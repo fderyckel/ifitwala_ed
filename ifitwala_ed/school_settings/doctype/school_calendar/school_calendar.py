@@ -342,16 +342,26 @@ def get_events(start, end, filters=None):
     if end:
         event_filters.append(["School Calendar Holidays", "holiday_date", "<=", getdate(end)])
 
-    return frappe.get_list(
+    events = frappe.get_all(
         "School Calendar Holidays",
         fields=[
-            "holiday_date as start",
-            "description as title",
+            "name",
+            "parent as school_calendar",
+            "holiday_date",
+            "description",
             "color",
         ],
         filters=event_filters,
-        update={"allDay": 1},
+        order_by="holiday_date asc",
     )
+
+    for event in events:
+        event["title"] = event.get("description") or _("Holiday")
+        event["start"] = event.get("holiday_date")
+        event["end"] = event.get("holiday_date")
+        event["allDay"] = 1
+
+    return events
 
 
 def _normalize_calendar_filters(filters) -> dict:

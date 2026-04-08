@@ -937,6 +937,7 @@ Track:
 At minimum define performance targets for:
 
 * attendance ledger initialization
+* student learning-space bootstrap at class-start bell time
 * Student Log submit
 * dashboard load for hottest staff pages
 * major background jobs such as reporting generation

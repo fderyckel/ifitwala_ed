@@ -7,7 +7,7 @@
 		     - Lightweight “welcome” + one high-signal shortcut (Morning Brief)
 		     - No data-heavy calls here (header is cached server-side)
 		   ============================================================ -->
-		<header class="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+		<header class="staff-home__header">
 			<div>
 				<h1 class="type-h1">
 					{{ greeting }},
@@ -40,9 +40,9 @@
 		     - Left: “what needs attention” (Focus)
 		     - Right: “what can I do quickly” (Quick Actions)
 		   ============================================================ -->
-		<section class="grid grid-cols-1 gap-6 md:grid-cols-12 md:items-start xl:gap-10">
+		<section class="staff-home__primary-grid">
 			<!-- LEFT COL: TASKS / FOCUS -------------------------------->
-			<div class="min-w-0 space-y-4 md:col-span-7 lg:col-span-8">
+			<div class="staff-home__focus-column min-w-0 space-y-4">
 				<!-- Focus is a read-only attention surface, not a task manager -->
 				<FocusListCard
 					:items="focusItems"
@@ -56,26 +56,30 @@
 			</div>
 
 			<!-- RIGHT COL: QUICK ACTIONS ------------------------------->
-			<div class="min-w-0 space-y-4 md:col-span-5 lg:col-span-4 xl:sticky xl:top-6">
+			<div class="staff-home__actions-column min-w-0 space-y-4 xl:sticky xl:top-6">
 				<h3 class="px-1 type-h3 text-canopy">Quick Actions</h3>
 
-				<div class="grid min-w-0 gap-3">
-					<!-- Create task uses overlay stack (single overlay system) -->
+				<div data-testid="staff-home-quick-actions" class="grid min-w-0 gap-3">
 					<button
-						v-if="userCapabilities.quick_action_create_task"
+						v-if="userCapabilities.quick_action_class_hub"
 						type="button"
-						class="action-tile group w-full min-w-0"
-						@click="openCreateTask"
+						class="action-tile group w-full min-w-0 disabled:cursor-not-allowed disabled:opacity-70"
+						:disabled="classHubQuickActionLoading"
+						@click="openClassHubQuickAction"
 					>
 						<div class="action-tile__icon shrink-0">
-							<FeatherIcon name="clipboard" class="h-6 w-6" />
+							<FeatherIcon name="book-open" class="h-6 w-6" />
 						</div>
 						<div class="flex-1 min-w-0">
 							<p class="type-body-strong text-ink transition-colors group-hover:text-jacaranda">
-								Create task
+								Open Class Hub
 							</p>
 							<p class="truncate type-caption text-slate-token/70">
-								Assign work to a class in seconds
+								{{
+									classHubQuickActionLoading
+										? 'Checking your teaching groups'
+										: 'Choose one of your teaching groups and open the class workspace'
+								}}
 							</p>
 						</div>
 						<FeatherIcon
@@ -155,32 +159,6 @@
 						/>
 					</button>
 
-					<!-- Standard Quick Actions (router links, not overlays) -->
-					<RouterLink
-						v-for="action in visibleQuickActions"
-						:key="action.label"
-						:to="action.to"
-						class="action-tile group w-full min-w-0"
-					>
-						<div class="action-tile__icon shrink-0">
-							<FeatherIcon :name="action.icon" class="h-6 w-6" />
-						</div>
-
-						<div class="flex-1 min-w-0">
-							<p class="type-body-strong text-ink transition-colors group-hover:text-jacaranda">
-								{{ action.label }}
-							</p>
-							<p class="truncate type-caption text-slate-token/70">
-								{{ action.caption }}
-							</p>
-						</div>
-
-						<FeatherIcon
-							name="chevron-right"
-							class="h-4 w-4 shrink-0 text-slate-token/40 transition-colors group-hover:text-jacaranda"
-						/>
-					</RouterLink>
-
 					<p
 						v-if="!hasVisibleQuickActions"
 						class="rounded-xl border border-dashed border-slate-300 bg-slate-50/70 px-4 py-3 type-caption text-slate-token/80"
@@ -192,78 +170,96 @@
 		</section>
 
 		<!-- ============================================================
-		     ANALYTICS HUB
+		     EXPLORE HUB
 		     Intent:
-		     - Keep it “browseable”: quick hits + category clusters
-		     - Links open new tab by default (analytics browsing is a side-activity)
+		     - Keep secondary destinations browseable without polluting the main action rail
+		     - Start with high-value workspaces and records, then fan into analytics categories
 		     - No data fetching here (it’s link-only)
 		   ============================================================ -->
 		<section v-if="hasVisibleAnalyticsLinks" class="rounded-2xl bg-surface shadow-soft">
 			<div class="rounded-2xl border border-[rgb(var(--sand-rgb)/0.35)]">
-				<div
-					class="flex flex-col gap-4 border-b border-[rgb(var(--sand-rgb)/0.35)] px-6 pb-6 pt-7 sm:flex-row sm:items-center sm:justify-between"
-				>
+				<div class="border-b border-[rgb(var(--sand-rgb)/0.35)] px-6 pb-6 pt-7">
 					<div class="space-y-2">
 						<p class="type-overline text-slate-token/70">Analytics</p>
 						<h3 class="type-h2">Insights & Dashboards</h3>
-						<p class="max-w-2xl type-body text-slate-token/80">
-							Jump straight into the dashboards you need. Start with the quick hitters, or browse
-							by category when you are exploring trends.
-						</p>
 					</div>
-
-					<RouterLink
-						to="/analytics"
-						target="_blank"
-						rel="noopener"
-						class="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 type-button-label text-ink shadow-sm transition hover:-translate-y-0.5 hover:border-jacaranda hover:text-jacaranda"
-					>
-						<FeatherIcon name="grid" class="h-4 w-4 text-slate-token/60" />
-						<span>View all analytics</span>
-					</RouterLink>
 				</div>
 
 				<div
-					class="grid grid-cols-1 gap-3 border-b border-[rgb(var(--sand-rgb)/0.35)] px-6 py-6 md:grid-cols-2 xl:grid-cols-3"
+					data-testid="staff-home-explore-links"
+					class="staff-home__analytics-quick-links border-b border-[rgb(var(--sand-rgb)/0.35)] px-6 py-6"
 				>
-					<RouterLink
-						v-for="link in visibleAnalyticsQuickLinks"
-						:key="link.label"
-						:to="link.to"
-						target="_blank"
-						rel="noopener"
-						class="group flex items-center gap-4 rounded-xl border border-slate-200 bg-white/90 px-4 py-3 shadow-sm transition-all hover:-translate-y-0.5 hover:border-jacaranda/70 hover:shadow-md"
-					>
-						<div
-							class="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-slate-50 text-canopy ring-1 ring-slate-200 transition group-hover:bg-sky/20"
+					<template v-for="link in visibleExploreLinks" :key="link.label">
+						<button
+							v-if="link.kind === 'action'"
+							type="button"
+							class="group flex w-full items-center gap-4 rounded-xl border border-slate-200 bg-white/90 px-4 py-3 text-left shadow-sm transition-all hover:-translate-y-0.5 hover:border-jacaranda/70 hover:shadow-md"
+							@click="link.action?.()"
 						>
-							<FeatherIcon :name="link.icon" class="h-5 w-5" />
-						</div>
+							<div
+								class="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-slate-50 text-canopy ring-1 ring-slate-200 transition group-hover:bg-sky/20"
+							>
+								<FeatherIcon :name="link.icon" class="h-5 w-5" />
+							</div>
 
-						<div class="min-w-0 flex-1">
-							<p class="type-body-strong text-ink transition-colors group-hover:text-jacaranda">
-								{{ link.label }}
-							</p>
-							<p class="truncate type-caption text-slate-token/70">
-								{{ link.caption }}
-							</p>
-						</div>
+							<div class="min-w-0 flex-1">
+								<p class="type-body-strong text-ink transition-colors group-hover:text-jacaranda">
+									{{ link.label }}
+								</p>
+								<p class="truncate type-caption text-slate-token/70">
+									{{ link.caption }}
+								</p>
+							</div>
 
-						<span
-							v-if="link.badge"
-							class="rounded-full bg-jacaranda/20 px-2 py-0.5 type-badge-label text-jacaranda ring-1 ring-jacaranda/25"
+							<span
+								v-if="link.badge"
+								class="rounded-full bg-jacaranda/20 px-2 py-0.5 type-badge-label text-jacaranda ring-1 ring-jacaranda/25"
+							>
+								{{ link.badge }}
+							</span>
+
+							<FeatherIcon
+								name="chevron-right"
+								class="h-4 w-4 shrink-0 text-slate-token/40 transition group-hover:text-jacaranda"
+							/>
+						</button>
+
+						<RouterLink
+							v-else
+							:to="link.to"
+							class="group flex items-center gap-4 rounded-xl border border-slate-200 bg-white/90 px-4 py-3 shadow-sm transition-all hover:-translate-y-0.5 hover:border-jacaranda/70 hover:shadow-md"
 						>
-							{{ link.badge }}
-						</span>
+							<div
+								class="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-slate-50 text-canopy ring-1 ring-slate-200 transition group-hover:bg-sky/20"
+							>
+								<FeatherIcon :name="link.icon" class="h-5 w-5" />
+							</div>
 
-						<FeatherIcon
-							name="arrow-up-right"
-							class="h-4 w-4 shrink-0 text-slate-token/40 transition group-hover:text-jacaranda"
-						/>
-					</RouterLink>
+							<div class="min-w-0 flex-1">
+								<p class="type-body-strong text-ink transition-colors group-hover:text-jacaranda">
+									{{ link.label }}
+								</p>
+								<p class="truncate type-caption text-slate-token/70">
+									{{ link.caption }}
+								</p>
+							</div>
+
+							<span
+								v-if="link.badge"
+								class="rounded-full bg-jacaranda/20 px-2 py-0.5 type-badge-label text-jacaranda ring-1 ring-jacaranda/25"
+							>
+								{{ link.badge }}
+							</span>
+
+							<FeatherIcon
+								name="chevron-right"
+								class="h-4 w-4 shrink-0 text-slate-token/40 transition group-hover:text-jacaranda"
+							/>
+						</RouterLink>
+					</template>
 				</div>
 
-				<div class="grid grid-cols-1 gap-4 px-6 py-6 md:grid-cols-2 xl:grid-cols-3">
+				<div class="staff-home__analytics-category-grid px-6 py-6">
 					<div
 						v-for="category in visibleAnalyticsCategories"
 						:key="category.title"
@@ -321,12 +317,13 @@
 
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
-import type { RouteLocationRaw } from 'vue-router';
+import { useRouter, type RouteLocationRaw } from 'vue-router';
 import { FeatherIcon, toast } from 'frappe-ui';
 
 import ScheduleCalendar from '@/components/calendar/ScheduleCalendar.vue';
 import FocusListCard from '@/components/focus/FocusListCard.vue';
 import { useOverlayStack } from '@/composables/useOverlayStack';
+import { createClassHubService } from '@/lib/classHubService';
 import {
 	getStaffHomeHeader,
 	listFocusItems,
@@ -361,6 +358,9 @@ import {
 
 /* USER --------------------------------------------------------- */
 const userDoc = ref<StaffHomeHeader | null>(null);
+const router = useRouter();
+const classHubService = createClassHubService();
+const classHubQuickActionLoading = ref(false);
 
 onMounted(async () => {
 	try {
@@ -383,36 +383,12 @@ const userCapabilities = computed<Record<string, boolean>>(
 );
 
 /* QUICK ACTIONS ------------------------------------------------ */
-const quickActions = [
-	{
-		label: 'My Growth',
-		caption: 'Requests, budgets, and completion follow-through',
-		icon: 'book-open',
-		to: { name: 'staff-professional-development' },
-		capability: 'staff_professional_development',
-	},
-	{
-		label: 'Update Gradebook',
-		caption: 'Capture evidence, notes, and marks',
-		icon: 'edit-3',
-		to: { name: 'staff-gradebook' },
-		capability: 'quick_action_gradebook',
-	},
-];
-
-function isQuickActionVisible(action: { capability?: string }) {
-	if (!action.capability) return true;
-	return Boolean(userCapabilities.value[action.capability]);
-}
-
-const visibleQuickActions = computed(() => quickActions.filter(isQuickActionVisible));
 const hasVisibleQuickActions = computed(
 	() =>
-		Boolean(userCapabilities.value.quick_action_create_task) ||
+		Boolean(userCapabilities.value.quick_action_class_hub) ||
 		Boolean(userCapabilities.value.quick_action_create_event) ||
 		Boolean(userCapabilities.value.quick_action_student_log) ||
-		Boolean(userCapabilities.value.quick_action_org_communication) ||
-		visibleQuickActions.value.length > 0
+		Boolean(userCapabilities.value.quick_action_org_communication)
 );
 
 /* FOCUS -------------------------------------------------------- */
@@ -621,12 +597,23 @@ function openFocusItem(item: FocusItem) {
 
 /* ANALYTICS ---------------------------------------------------- */
 type StaffHomeAnalyticsLink = {
+	kind?: 'route';
 	label: string;
 	caption?: string;
 	icon?: string;
 	to: RouteLocationRaw;
 	badge?: string;
 	capability?: string;
+};
+
+type StaffHomeExploreAction = {
+	kind: 'action';
+	label: string;
+	caption?: string;
+	icon?: string;
+	badge?: string;
+	capability?: string;
+	action: () => void;
 };
 
 type StaffHomeAnalyticsCategory = {
@@ -636,15 +623,40 @@ type StaffHomeAnalyticsCategory = {
 	links: StaffHomeAnalyticsLink[];
 };
 
-const analyticsQuickLinks: StaffHomeAnalyticsLink[] = [
+const exploreLinks: Array<StaffHomeAnalyticsLink | StaffHomeExploreAction> = [
 	{
-		label: 'Annoucement Archive',
+		kind: 'route',
+		label: 'Announcement Archive',
 		caption: 'Check all current and past announcements',
 		icon: 'activity',
 		to: '/staff/announcements',
 		badge: 'Hot',
 	},
 	{
+		kind: 'action',
+		label: 'Create task',
+		caption: 'Assign work to a class in seconds',
+		icon: 'clipboard',
+		capability: 'quick_action_create_task',
+		action: openCreateTask,
+	},
+	{
+		kind: 'route',
+		label: 'Update Gradebook',
+		caption: 'Capture evidence, notes, and marks',
+		icon: 'edit-3',
+		to: { name: 'staff-gradebook' },
+		capability: 'quick_action_gradebook',
+	},
+	{
+		kind: 'route',
+		label: 'Course Plans',
+		caption: 'Open the governed curriculum backbone and shared resources',
+		icon: 'layers',
+		to: { name: 'staff-course-plan-index' },
+	},
+	{
+		kind: 'route',
 		label: 'Room Utilization',
 		caption: 'Which rooms are free, over or under-used this week',
 		icon: 'clock',
@@ -686,16 +698,6 @@ const analyticsCategories: StaffHomeAnalyticsCategory[] = [
 				to: { name: 'staff-attendance-ledger' },
 				capability: 'analytics_attendance',
 			},
-			{
-				label: 'Late Arrivals',
-				to: '/analytics/operations/late-arrivals',
-				capability: 'analytics_attendance',
-			},
-			{
-				label: 'Duty Coverage',
-				to: '/analytics/operations/duty-coverage',
-				capability: 'analytics_attendance_admin',
-			},
 		],
 	},
 	{
@@ -708,11 +710,6 @@ const analyticsCategories: StaffHomeAnalyticsCategory[] = [
 				to: { name: 'staff-student-overview' },
 				capability: 'analytics_student_overview',
 			},
-			{
-				label: 'Assessment Trends',
-				to: '/analytics/academic/assessment-trends',
-				capability: 'analytics_attendance',
-			},
 		],
 	},
 	{
@@ -723,11 +720,6 @@ const analyticsCategories: StaffHomeAnalyticsCategory[] = [
 			{
 				label: 'Student Log Analytics',
 				to: { name: 'staff-student-log-analytics' },
-				capability: 'analytics_wellbeing',
-			},
-			{
-				label: 'Counseling Caseload',
-				to: '/analytics/wellbeing/counseling-caseload',
 				capability: 'analytics_wellbeing',
 			},
 		],
@@ -743,14 +735,9 @@ const analyticsCategories: StaffHomeAnalyticsCategory[] = [
 			},
 			{ label: 'Leave Balance', to: '/analytics/staff/leave-balance', capability: 'analytics_hr' },
 			{
-				label: 'Training Progress',
-				to: '/analytics/staff/training-progress',
-				capability: 'analytics_hr',
-			},
-			{
-				label: 'Evaluations Summary',
-				to: '/analytics/staff/evaluations-summary',
-				capability: 'analytics_hr',
+				label: 'My Growth',
+				to: { name: 'staff-professional-development' },
+				capability: 'staff_professional_development',
 			},
 		],
 	},
@@ -791,11 +778,6 @@ const analyticsCategories: StaffHomeAnalyticsCategory[] = [
 				to: { name: 'staff-inquiry-analytics' },
 				capability: 'analytics_admissions',
 			},
-			{
-				label: 'Survey Results',
-				to: '/analytics/engagement/survey-results',
-				capability: 'analytics_admissions',
-			},
 		],
 	},
 	{
@@ -827,9 +809,12 @@ function isAnalyticsLinkVisible(link: StaffHomeAnalyticsLink) {
 	return Boolean(userCapabilities.value[link.capability]);
 }
 
-const visibleAnalyticsQuickLinks = computed(() =>
-	analyticsQuickLinks.filter(isAnalyticsLinkVisible)
-);
+function isExploreLinkVisible(link: StaffHomeAnalyticsLink | StaffHomeExploreAction) {
+	if (!link.capability) return true;
+	return Boolean(userCapabilities.value[link.capability]);
+}
+
+const visibleExploreLinks = computed(() => exploreLinks.filter(isExploreLinkVisible));
 const visibleAnalyticsCategories = computed<StaffHomeAnalyticsCategory[]>(() =>
 	analyticsCategories
 		.map(category => ({
@@ -839,7 +824,7 @@ const visibleAnalyticsCategories = computed<StaffHomeAnalyticsCategory[]>(() =>
 		.filter(category => category.links.length > 0)
 );
 const hasVisibleAnalyticsLinks = computed(
-	() => visibleAnalyticsQuickLinks.value.length > 0 || visibleAnalyticsCategories.value.length > 0
+	() => visibleExploreLinks.value.length > 0 || visibleAnalyticsCategories.value.length > 0
 );
 
 /* GREETING ----------------------------------------------------- */
@@ -871,6 +856,39 @@ function openCreateTask() {
 		prefillDueDate: null,
 		prefillAvailableFrom: null,
 	});
+}
+
+async function openClassHubQuickAction() {
+	if (!userCapabilities.value.quick_action_class_hub || classHubQuickActionLoading.value) return;
+
+	classHubQuickActionLoading.value = true;
+	try {
+		const payload = await classHubService.resolveStaffHomeEntry();
+		const groups = Array.isArray(payload.groups) ? payload.groups : [];
+
+		if (payload.status === 'single' && groups.length === 1) {
+			await router.push({
+				name: 'ClassHub',
+				params: { studentGroup: groups[0].student_group },
+			});
+			return;
+		}
+
+		overlay.open('class-hub-group-picker', {
+			source_label: 'Staff Home',
+			groups,
+			message: payload.message ?? null,
+		});
+	} catch (err) {
+		console.error('[StaffHome] Failed to resolve Class Hub quick action:', err);
+		toast.create({
+			title: 'Could not open Class Hub',
+			text: 'Try again in a moment.',
+			icon: 'info',
+		});
+	} finally {
+		classHubQuickActionLoading.value = false;
+	}
 }
 
 /* OVERLAY: Event Quick Create --------------------------------- */
@@ -917,3 +935,63 @@ function openOrgCommunication() {
 	});
 }
 </script>
+
+<style scoped>
+.staff-home__header {
+	display: flex;
+	flex-direction: column;
+	gap: 1rem;
+}
+
+.staff-home__primary-grid {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr);
+	gap: 1.5rem;
+	align-items: start;
+}
+
+.staff-home__analytics-quick-links {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr);
+	gap: 1rem;
+}
+
+.staff-home__analytics-category-grid {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr);
+	gap: 1rem;
+}
+
+@media (min-width: 640px) {
+	.staff-home__header {
+		flex-direction: row;
+		align-items: flex-end;
+		justify-content: space-between;
+	}
+}
+
+@media (min-width: 1024px) {
+	.staff-home__primary-grid {
+		grid-template-columns: minmax(0, 1.9fr) minmax(21rem, 1fr);
+		gap: 2rem;
+	}
+
+	.staff-home__analytics-quick-links {
+		grid-template-columns: repeat(3, minmax(0, 1fr));
+	}
+
+	.staff-home__analytics-category-grid {
+		grid-template-columns: repeat(3, minmax(0, 1fr));
+	}
+}
+
+@media (min-width: 768px) and (max-width: 1023px) {
+	.staff-home__analytics-quick-links {
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+	}
+
+	.staff-home__analytics-category-grid {
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+	}
+}
+</style>

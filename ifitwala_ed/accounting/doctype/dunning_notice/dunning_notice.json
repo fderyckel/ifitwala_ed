@@ -1,8 +1,8 @@
 {
  "actions": [],
  "allow_import": 1,
- "autoname": "format:DUN-.#####",
- "creation": "2026-03-11 00:00:00.000000",
+ "autoname": "DUN-.#####",
+ "creation": "2026-03-11 00:00:00",
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
@@ -87,10 +87,11 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-03-11 00:00:00.000000",
+ "modified": "2026-04-02 13:19:29.868213",
  "modified_by": "Administrator",
  "module": "Accounting",
  "name": "Dunning Notice",
+ "naming_rule": "Expression",
  "owner": "Administrator",
  "permissions": [
   {
@@ -129,6 +130,7 @@
    "write": 1
   }
  ],
+ "row_format": "Dynamic",
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": []

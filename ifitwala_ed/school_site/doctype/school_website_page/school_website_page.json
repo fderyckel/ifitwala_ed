@@ -38,18 +38,18 @@
    "reqd": 1
   },
   {
-   "description": "Relative path inside the school's website. Use '/' for the home page. For other pages, enter only the path after the school slug, for example 'about' or 'programs'.",
+   "description": "Relative path inside the school's website. Use '/' for the home page. For other pages, enter only the path after the school website slug, for example 'about' or 'programs'.",
    "fieldname": "route",
    "fieldtype": "Data",
    "in_list_view": 1,
-   "label": "Route",
+   "label": "Relative Route",
    "reqd": 1
   },
   {
-   "description": "Read-only canonical route with school slug.",
+   "description": "Read-only canonical route resolved from the school's website slug plus this page's Relative Route.",
    "fieldname": "full_route",
    "fieldtype": "Data",
-   "label": "Full Route",
+   "label": "Canonical Full Route",
    "read_only": 1
   },
   {
@@ -130,7 +130,7 @@
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-03-29 16:02:00",
+ "modified": "2026-04-05 18:24:22.671518",
  "modified_by": "Administrator",
  "module": "School Site",
  "name": "School Website Page",
@@ -172,11 +172,14 @@
    "write": 1
   },
   {
+   "create": 1,
+   "delete": 1,
    "email": 1,
    "print": 1,
    "read": 1,
    "role": "Academic Admin",
-   "share": 1
+   "share": 1,
+   "write": 1
   },
   {
    "email": 1,

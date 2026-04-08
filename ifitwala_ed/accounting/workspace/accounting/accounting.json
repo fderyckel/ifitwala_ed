@@ -1,0 +1,337 @@
+{
+ "app": "ifitwala_ed",
+ "charts": [],
+ "content": "[{\"id\":\"acctHeader\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">Accounting</span>\",\"col\":12}},{\"id\":\"acctSalesInvoice\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Sales Invoice\",\"col\":3}},{\"id\":\"acctPaymentEntry\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Payment Entry\",\"col\":3}},{\"id\":\"acctAccountHolder\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Account Holder\",\"col\":3}},{\"id\":\"acctStatementRun\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Statement Of Accounts Run\",\"col\":3}},{\"id\":\"acctSpacer\",\"type\":\"spacer\",\"data\":{\"col\":12}},{\"id\":\"acctBilling\",\"type\":\"card\",\"data\":{\"card_name\":\"Billing & Receipts\",\"col\":3}},{\"id\":\"acctSetup\",\"type\":\"card\",\"data\":{\"card_name\":\"Setup & Pricing\",\"col\":3}},{\"id\":\"acctCollections\",\"type\":\"card\",\"data\":{\"card_name\":\"Collections & Reconciliation\",\"col\":3}},{\"id\":\"acctReports\",\"type\":\"card\",\"data\":{\"card_name\":\"Reports & Ledger\",\"col\":3}}]",
+ "creation": "2026-04-05 20:56:24.950416",
+ "custom_blocks": [],
+ "docstatus": 0,
+ "doctype": "Workspace",
+ "for_user": "",
+ "hide_custom": 0,
+ "icon": "table",
+ "idx": 0,
+ "indicator_color": "green",
+ "is_hidden": 0,
+ "label": "Accounting",
+ "links": [
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Billing & Receipts",
+   "link_count": 4,
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Account Holder",
+   "link_count": 0,
+   "link_to": "Account Holder",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Sales Invoice",
+   "link_count": 0,
+   "link_to": "Sales Invoice",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Payment Entry",
+   "link_count": 0,
+   "link_to": "Payment Entry",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Journal Entry",
+   "link_count": 0,
+   "link_to": "Journal Entry",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Setup & Pricing",
+   "link_count": 8,
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Accounts Settings",
+   "link_count": 0,
+   "link_to": "Accounts Settings",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Fiscal Year",
+   "link_count": 0,
+   "link_to": "Fiscal Year",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Accounting Period",
+   "link_count": 0,
+   "link_to": "Accounting Period",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Account",
+   "link_count": 0,
+   "link_to": "Account",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Billable Offering",
+   "link_count": 0,
+   "link_to": "Billable Offering",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Tax Category",
+   "link_count": 0,
+   "link_to": "Tax Category",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Sales Taxes and Charges Template",
+   "link_count": 0,
+   "link_to": "Sales Taxes and Charges Template",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Payment Terms Template",
+   "link_count": 0,
+   "link_to": "Payment Terms Template",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Collections & Reconciliation",
+   "link_count": 5,
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Payment Reconciliation",
+   "link_count": 0,
+   "link_to": "Payment Reconciliation",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Payment Request",
+   "link_count": 0,
+   "link_to": "Payment Request",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Dunning Notice",
+   "link_count": 0,
+   "link_to": "Dunning Notice",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Statement Of Accounts Run",
+   "link_count": 0,
+   "link_to": "Statement Of Accounts Run",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Professional Development Encumbrance",
+   "link_count": 0,
+   "link_to": "Professional Development Encumbrance",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Reports & Ledger",
+   "link_count": 6,
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 1,
+   "label": "Aged Receivables",
+   "link_count": 0,
+   "link_to": "Aged Receivables",
+   "link_type": "Report",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 1,
+   "label": "Account Holder Statement",
+   "link_count": 0,
+   "link_to": "Account Holder Statement",
+   "link_type": "Report",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 1,
+   "label": "Student Attribution",
+   "link_count": 0,
+   "link_to": "Student Attribution",
+   "link_type": "Report",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 1,
+   "label": "General Ledger",
+   "link_count": 0,
+   "link_to": "General Ledger",
+   "link_type": "Report",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 1,
+   "label": "Trial Balance",
+   "link_count": 0,
+   "link_to": "Trial Balance",
+   "link_type": "Report",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "GL Entry",
+   "link_count": 0,
+   "link_to": "GL Entry",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  }
+ ],
+ "modified": "2026-04-05 20:56:24.950416",
+ "modified_by": "Administrator",
+ "module": "Accounting",
+ "name": "Accounting",
+ "number_cards": [],
+ "owner": "Administrator",
+ "parent_page": "",
+ "public": 1,
+ "quick_lists": [],
+ "roles": [
+  {
+   "role": "Accounts Manager"
+  },
+  {
+   "role": "Accounts User"
+  },
+  {
+   "role": "Academic Admin"
+  }
+ ],
+ "sequence_id": 7.0,
+ "shortcuts": [
+  {
+   "color": "Green",
+   "doc_view": "List",
+   "label": "Sales Invoice",
+   "link_to": "Sales Invoice",
+   "type": "DocType"
+  },
+  {
+   "color": "Blue",
+   "doc_view": "List",
+   "label": "Payment Entry",
+   "link_to": "Payment Entry",
+   "type": "DocType"
+  },
+  {
+   "color": "Grey",
+   "doc_view": "List",
+   "label": "Account Holder",
+   "link_to": "Account Holder",
+   "type": "DocType"
+  },
+  {
+   "color": "Orange",
+   "doc_view": "List",
+   "label": "Statement Of Accounts Run",
+   "link_to": "Statement Of Accounts Run",
+   "type": "DocType"
+  }
+ ],
+ "title": "Accounting",
+ "type": "Workspace"
+}

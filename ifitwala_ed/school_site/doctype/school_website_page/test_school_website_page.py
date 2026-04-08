@@ -276,6 +276,13 @@ class TestSchoolWebsitePage(FrappeTestCase):
                             "leadership_title": "Academic Leadership",
                             "staff_title": "Faculty & Staff",
                             "role_profiles": ["Academic Admin"],
+                            "role_scopes": [
+                                {
+                                    "role_profile": "Academic Admin",
+                                    "school_scope": "current_and_descendants",
+                                    "descendant_depth": 1,
+                                }
+                            ],
                             "limit": 4,
                             "staff_limit": 8,
                             "show_staff_carousel": True,
@@ -286,6 +293,51 @@ class TestSchoolWebsitePage(FrappeTestCase):
             }
         )
         validate_page_blocks(page)
+
+    def test_validate_page_blocks_allows_staff_directory_props_for_standard_school_page(self):
+        page = frappe._dict(
+            {
+                "doctype": "School Website Page",
+                "page_type": "Standard",
+                "blocks": [
+                    _row(block_type="hero", props={"title": "Home"}, order=1),
+                    _row(
+                        block_type="staff_directory",
+                        props={
+                            "title": "Faculty & Staff",
+                            "description": "Meet the people shaping learning every day.",
+                            "designations": ["Teacher"],
+                            "role_profiles": ["Counselor"],
+                            "show_search": True,
+                            "show_designation_filter": True,
+                            "show_role_profile_filter": True,
+                            "limit": 12,
+                            "empty_state_title": "Directory coming soon",
+                            "empty_state_text": "Profiles appear automatically when staff are marked for the website.",
+                        },
+                        order=2,
+                    ),
+                ],
+            }
+        )
+        validate_page_blocks(page)
+
+    def test_validate_page_blocks_rejects_staff_directory_for_website_story(self):
+        page = frappe._dict(
+            {
+                "doctype": "Website Story",
+                "blocks": [
+                    _row(block_type="hero", props={"title": "Story"}, order=1),
+                    _row(
+                        block_type="staff_directory",
+                        props={"title": "Faculty & Staff"},
+                        order=2,
+                    ),
+                ],
+            }
+        )
+        with self.assertRaises(frappe.ValidationError):
+            validate_page_blocks(page)
 
     def test_validate_page_blocks_allows_admissions_blocks_for_admissions_page(self):
         page = frappe._dict(

@@ -10,7 +10,10 @@ vi.mock('@/resources/frappe', () => ({
 	apiMethod: apiMethodMock,
 }))
 
-import { getGuardianHomeSnapshot } from '@/lib/services/guardianHome/guardianHomeService'
+import {
+	getGuardianHomeSnapshot,
+	getGuardianStudentLearningBrief,
+} from '@/lib/services/guardianHome/guardianHomeService'
 
 describe('guardianHomeService', () => {
 	it('uses canonical method + payload shape', async () => {
@@ -32,6 +35,17 @@ describe('guardianHomeService', () => {
 		expect(apiMethodMock).toHaveBeenCalledWith(
 			'ifitwala_ed.api.guardian_home.get_guardian_home_snapshot',
 			{}
+		)
+	})
+
+	it('calls the guardian student learning brief endpoint with the expected payload', async () => {
+		apiMethodMock.mockResolvedValue({ course_briefs: [] })
+
+		await getGuardianStudentLearningBrief({ student_id: 'STU-1' } as any)
+
+		expect(apiMethodMock).toHaveBeenCalledWith(
+			'ifitwala_ed.api.guardian_home.get_guardian_student_learning_brief',
+			{ student_id: 'STU-1' }
 		)
 	})
 })

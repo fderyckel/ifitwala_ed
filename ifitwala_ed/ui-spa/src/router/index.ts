@@ -68,11 +68,11 @@ const routes: RouteRecordRaw[] = [
     component: () => import('@/pages/student/CourseDetail.vue'),
     props: route => ({
       course_id: String(route.params.course_id || ''),
-      learning_unit:
-        typeof route.query.learning_unit === 'string' ? route.query.learning_unit : '',
-      lesson: typeof route.query.lesson === 'string' ? route.query.lesson : '',
-      lesson_instance:
-        typeof route.query.lesson_instance === 'string' ? route.query.lesson_instance : '',
+      student_group:
+        typeof route.query.student_group === 'string' ? route.query.student_group : '',
+      unit_plan: typeof route.query.unit_plan === 'string' ? route.query.unit_plan : '',
+      class_session:
+        typeof route.query.class_session === 'string' ? route.query.class_session : '',
     }),
     meta: { layout: 'student' },
   },
@@ -83,9 +83,12 @@ const routes: RouteRecordRaw[] = [
     props: route => ({
       course_id: String(route.params.course_id || ''),
       task_delivery: String(route.params.task_delivery || ''),
-      learning_unit:
-        typeof route.query.learning_unit === 'string' ? route.query.learning_unit : '',
-      lesson: typeof route.query.lesson === 'string' ? route.query.lesson : '',
+      student_group:
+        typeof route.query.student_group === 'string' ? route.query.student_group : '',
+      unit_plan:
+        typeof route.query.unit_plan === 'string' ? route.query.unit_plan : '',
+      class_session:
+        typeof route.query.class_session === 'string' ? route.query.class_session : '',
     }),
     meta: { layout: 'student' },
   },
@@ -107,7 +110,26 @@ const routes: RouteRecordRaw[] = [
   { path: '/staff/portfolio', name: 'staff-portfolio', component: () => import('@/pages/staff/StaffPortfolioFeed.vue'), meta: { layout: 'staff', portal: 'Staff' } },
   { path: '/staff/professional-development', name: 'staff-professional-development', component: () => import('@/pages/staff/ProfessionalDevelopment.vue'), meta: { layout: 'staff' } },
   { path: '/staff/organization-chart', name: 'staff-organization-chart', component: () => import('@/pages/staff/organization_chart/OrganizationChart.vue'), meta: { layout: 'staff' } },
+  {
+    path: '/staff/course-plans',
+    name: 'staff-course-plan-index',
+    component: () => import('@/pages/staff/CoursePlanIndex.vue'),
+    meta: { layout: 'staff' },
+  },
+  {
+    path: '/staff/course-plans/:coursePlan',
+    name: 'staff-course-plan',
+    component: () => import('@/pages/staff/CoursePlanWorkspace.vue'),
+    props: route => ({
+      coursePlan: String(route.params.coursePlan || ''),
+      unitPlan: typeof route.query.unit_plan === 'string' ? route.query.unit_plan : '',
+      quizQuestionBank:
+        typeof route.query.quiz_question_bank === 'string' ? route.query.quiz_question_bank : '',
+    }),
+    meta: { layout: 'staff' },
+  },
   { path: '/staff/class/:studentGroup', name: 'ClassHub', component: () => import('@/pages/staff/ClassHub.vue'), meta: { layout: 'staff' } },
+  { path: '/staff/class/:studentGroup/planning', name: 'staff-class-planning', component: () => import('@/pages/staff/ClassPlanning.vue'), meta: { layout: 'staff' } },
 
 	{path: '/staff/morning-brief', name: 'MorningBriefing', component: () => import('@/pages/staff/morning_brief/MorningBriefing.vue'), meta: { layout: 'staff' } },
   { path: '/staff/student-groups', name: 'staff-student-groups', component: () => import('@/pages/staff/schedule/student-groups/StudentGroups.vue'), meta: { layout: 'staff' } },

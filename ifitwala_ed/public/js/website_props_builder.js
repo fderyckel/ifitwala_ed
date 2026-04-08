@@ -50,7 +50,16 @@
 			staff_limit: 8,
 			roles: [],
 			role_profiles: ['Academic Admin'],
+			role_scopes: [],
 			show_staff_carousel: true,
+		},
+		staff_directory: {
+			designations: [],
+			role_profiles: [],
+			show_search: true,
+			show_designation_filter: true,
+			show_role_profile_filter: true,
+			limit: null,
 		},
 	};
 

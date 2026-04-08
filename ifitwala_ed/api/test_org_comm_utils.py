@@ -10,6 +10,34 @@ from ifitwala_ed.api import org_comm_utils
 
 
 class TestOrgCommUtils(FrappeTestCase):
+    def test_check_audience_match_allows_owner_when_opted_in_without_scope_filters(self):
+        with patch.object(org_comm_utils.frappe, "get_cached_value", return_value="teacher@example.com"):
+            matched = org_comm_utils.check_audience_match(
+                "COMM-OWNER",
+                "teacher@example.com",
+                ["Instructor"],
+                frappe._dict(name="EMP-1", organization="ORG-1", school="SCH-1"),
+                allow_owner=True,
+            )
+
+        self.assertTrue(matched)
+
+    def test_check_audience_match_owner_override_respects_explicit_scope_filters(self):
+        with (
+            patch.object(org_comm_utils.frappe, "get_cached_value", return_value="teacher@example.com"),
+            patch.object(org_comm_utils.frappe, "get_all", return_value=[]),
+        ):
+            matched = org_comm_utils.check_audience_match(
+                "COMM-OWNER",
+                "teacher@example.com",
+                ["Instructor"],
+                frappe._dict(name="EMP-1", organization="ORG-1", school="SCH-1"),
+                filter_student_group="SG-1",
+                allow_owner=True,
+            )
+
+        self.assertFalse(matched)
+
     def test_check_audience_match_allows_schoolless_staff_on_organization_row(self):
         audiences = [
             frappe._dict(

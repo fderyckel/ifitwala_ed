@@ -58,11 +58,14 @@
 									<div class="relative aspect-[4/5] overflow-hidden bg-slate-100">
 										{% if person.photo and person.photo.original %}
 											{{ img_macro.smart_image(
+												thumb=person.photo.thumb,
 												card=person.photo.card,
+												medium=person.photo.medium,
 												original=person.photo.original,
 												alt=person.name ~ " - " ~ (person.title or ""),
 												class="h-full w-full object-cover transition duration-700 group-hover:scale-[1.03]",
-												fallback="card"
+												fallback="card",
+												sizes="(min-width: 640px) 336px, 288px"
 											) }}
 										{% else %}
 											<div class="site-people-fallback flex h-full w-full items-center justify-center bg-[radial-gradient(circle_at_top,_rgba(29,78,216,0.16),_transparent_58%),linear-gradient(135deg,_#eff6ff,_#f8fafc_55%,_#eef2ff)]">

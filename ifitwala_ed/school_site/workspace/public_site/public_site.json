@@ -14,7 +14,7 @@
  "is_hidden": 0,
  "label": "Public Site",
  "links": [],
- "modified": "2026-03-21 20:10:00.000000",
+ "modified": "2026-04-05 10:00:00.000000",
  "modified_by": "Administrator",
  "module": "School Site",
  "name": "Public Site",
@@ -26,6 +26,9 @@
  "roles": [
   {
    "role": "Academic Admin"
+  },
+  {
+   "role": "Academic Assistant"
   },
   {
    "role": "Administrator"

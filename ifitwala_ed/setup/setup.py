@@ -32,6 +32,7 @@ def setup_education():
     grant_role_read_select_to_hr()
     create_designations()
     create_log_type()
+    create_default_attendance_codes()
     create_location_type()
     add_other_records()
     ensure_hr_settings()
@@ -258,6 +259,67 @@ def create_log_type():
         {"doctype": "Student Log Type", "log_type": "Academic Honesty"},
         {"doctype": "Student Log Type", "log_type": "Social-Emotional"},
         {"doctype": "Student Log Type", "log_type": "Positive Attitude Towards Learning"},
+    ]
+    insert_record(data)
+
+
+def create_default_attendance_codes():
+    data = [
+        {
+            "doctype": "Student Attendance Code",
+            "attendance_code_name": "Present",
+            "attendance_code": "P",
+            "count_as_present": 1,
+            "is_default": 1,
+            "show_in_attendance_tool": 1,
+            "show_in_reports": 1,
+            "color": "#29CD42",
+            "display_order": 10,
+        },
+        {
+            "doctype": "Student Attendance Code",
+            "attendance_code_name": "Absent",
+            "attendance_code": "A",
+            "count_as_present": 0,
+            "is_default": 0,
+            "show_in_attendance_tool": 1,
+            "show_in_reports": 1,
+            "color": "#CB2929",
+            "display_order": 20,
+        },
+        {
+            "doctype": "Student Attendance Code",
+            "attendance_code_name": "Late",
+            "attendance_code": "L",
+            "count_as_present": 1,
+            "is_default": 0,
+            "show_in_attendance_tool": 1,
+            "show_in_reports": 1,
+            "color": "#FC8200",
+            "display_order": 30,
+        },
+        {
+            "doctype": "Student Attendance Code",
+            "attendance_code_name": "Informed Absence",
+            "attendance_code": "IA",
+            "count_as_present": 0,
+            "is_default": 0,
+            "show_in_attendance_tool": 0,
+            "show_in_reports": 1,
+            "color": "#CC6045",
+            "display_order": 40,
+        },
+        {
+            "doctype": "Student Attendance Code",
+            "attendance_code_name": "Field Trip",
+            "attendance_code": "FT",
+            "count_as_present": 1,
+            "is_default": 0,
+            "show_in_attendance_tool": 1,
+            "show_in_reports": 1,
+            "color": "#4463F0",
+            "display_order": 50,
+        },
     ]
     insert_record(data)
 

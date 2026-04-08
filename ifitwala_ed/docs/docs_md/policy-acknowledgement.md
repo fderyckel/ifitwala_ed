@@ -3,9 +3,9 @@ title: "Policy Acknowledgement: Append-Only Consent Evidence"
 slug: policy-acknowledgement
 category: Governance
 doc_order: 3
-version: "1.7.0"
-last_change_date: "2026-03-15"
-summary: "Record immutable who/what/when acknowledgement evidence with strict context, role, organization-scope validation, admissions family-signature rules, and staff policy-signature workflows that present amendment diffs first."
+version: "1.8.0"
+last_change_date: "2026-04-02"
+summary: "Record immutable who/what/when acknowledgement evidence with strict context, role, organization-scope validation, typed-signature controls, and version-scoped clause snapshots."
 seo_title: "Policy Acknowledgement: Append-Only Consent Evidence"
 seo_description: "Record immutable who/what/when acknowledgement evidence with strict context, role, and organization-scope validation."
 ---
@@ -33,6 +33,7 @@ seo_description: "Record immutable who/what/when acknowledgement evidence with s
 - Policy organization scope must apply to context organization.
 - Duplicate acknowledgements for same tuple are blocked:
   - `policy_version`, `acknowledged_by`, `context_doctype`, `context_name`
+- When a `Policy Version` defines acknowledgement clauses, every required clause must be checked before acknowledgement is accepted.
 - Document is append-only and ledger-submitted:
   - auto-submitted on insert (`docstatus = 1`)
   - edit blocked
@@ -48,6 +49,7 @@ seo_description: "Record immutable who/what/when acknowledgement evidence with s
   - guardian role only when guardian is linked to that student through `Student Guardian` and that relationship row is signer-authorized (`can_consent = 1` when the column exists).
 - Guardian acknowledgements require guardian self-context.
   - admissions family acknowledgements are allowed only for the actor's own linked `Guardian` record.
+- Guardian self-service acknowledgements require typed signature + attestation, aligned with admissions/staff e-sign controls.
 - Staff acknowledgements require staff role (`Academic Staff` or `Employee`).
 - `System Manager` can bypass role validation, and override inserts are comment-audited.
 
@@ -71,6 +73,7 @@ The internal workflow for staff policy signatures is campaign-based and scope-dr
    - confirm electronic-signature attestation
 5. On acknowledgement:
    - one immutable `Policy Acknowledgement` row is inserted (`acknowledged_for=Staff`, `context_doctype=Employee`)
+   - typed signature, attestation, and acknowledgement-clause snapshot are stored on the evidence row
    - open policy ToDos for that staff/policy version are closed
    - Focus invalidation is published.
 
@@ -97,9 +100,19 @@ The internal workflow for staff policy signatures is campaign-based and scope-dr
 - Admissions policy acknowledgement requires explicit e-sign payload:
   - `typed_signature_name`
   - `attestation_confirmed`
+  - `checked_clause_names` when the selected version defines acknowledgement clauses
 - Signature is server-validated against the expected admissions signer context shown in portal UI.
   - child-scoped policies sign against the selected applicant identity
   - family-scoped policies sign against the consenting guardian identity
+- One-click acknowledgement without typed signature + attestation is rejected.
+
+### Electronic Signature Controls (Guardian Portal)
+
+- Guardian portal acknowledgement requires explicit e-sign payload:
+  - `typed_signature_name`
+  - `attestation_confirmed`
+  - `checked_clause_names` when the selected version defines acknowledgement clauses
+- Signature is server-validated against the guardian self-context shown in portal UI.
 - One-click acknowledgement without typed signature + attestation is rejected.
 
 ## Where It Is Used Across the ERP
@@ -120,7 +133,11 @@ The internal workflow for staff policy signatures is campaign-based and scope-dr
   - requires applicant electronic-signature fields:
     - `typed_signature_name` (must match expected applicant signer name)
     - `attestation_confirmed` (required true/1)
+    - `checked_clause_names` when the active version defines acknowledgement clauses
   - idempotent return when same acknowledgement already exists.
+- Guardian portal endpoint `ifitwala_ed.api.guardian_policy.acknowledge_guardian_policy`:
+  - requires guardian electronic-signature fields and required-clause checks when the selected version defines acknowledgement clauses
+  - stores guardian self-context evidence on `Policy Acknowledgement`
 - Policy-version immutability chain:
   - existence of any acknowledgement activates lock behavior in [**Policy Version**](/docs/en/policy-version/).
 - Internal staff policy workflow APIs:
@@ -170,8 +187,11 @@ Acknowledgements are immutable records. Corrections should be handled by new pol
   - `context_doctype` (Data, required)
   - `context_name` (Data, required)
   - `acknowledged_at` (Datetime, required, read-only)
+  - `typed_signature_name` (Data, read-only)
+  - `attestation_confirmed` (Check, read-only)
+  - `acknowledgement_clause_snapshot` (Long Text JSON, read-only)
 - **Controller guards**:
-  - `before_insert`: policy/version, user, context, role, uniqueness, and scope validation + timestamping
+  - `before_insert`: policy/version, user, context, role, uniqueness, scope, and evidence-payload validation + timestamping
   - `before_save`: block edits except the draft->submitted transition
   - `before_submit`: enforce draft->submitted transition only
   - `before_update_after_submit`: block all post-submit edits

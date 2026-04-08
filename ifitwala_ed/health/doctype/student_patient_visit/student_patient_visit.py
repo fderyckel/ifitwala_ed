@@ -17,6 +17,10 @@ class StudentPatientVisit(Document):
         if not student:
             return
 
+        school = frappe.db.get_value("Student", student, "anchor_school")
+        if school:
+            self.school = school
+
     def after_insert(self):
         self.notify_instructor()
 

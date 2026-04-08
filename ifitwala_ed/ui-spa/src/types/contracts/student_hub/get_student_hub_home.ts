@@ -24,7 +24,7 @@ export type Response = {
 		image_url?: string | null
 	}
 	learning: {
-		 today_classes: TodayClass[]
+		today_classes: TodayClass[]
 		next_learning_step?: NextLearningStep | null
 		accessible_courses_count: number
 		selected_year?: string | null
@@ -68,7 +68,10 @@ export type NextLearningStep = {
 	kind: 'scheduled_class' | 'course'
 	title: string
 	subtitle: string
-	href: RouteTarget
+	href?: RouteTarget | null
+	cta_label?: string | null
+	status_label?: string | null
+	can_open?: number
 }
 
 export type WorkItem = {
@@ -83,9 +86,8 @@ export type WorkItem = {
 	delivery_mode?: string | null
 	requires_submission: number
 	require_grading: number
-	learning_unit?: string | null
-	lesson?: string | null
-	lesson_instance?: string | null
+	unit_plan?: string | null
+	class_session?: string | null
 	available_from?: string | null
 	due_date?: string | null
 	lock_date?: string | null

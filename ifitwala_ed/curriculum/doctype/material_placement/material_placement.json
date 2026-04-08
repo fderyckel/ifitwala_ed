@@ -1,0 +1,148 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "MAT-PLC-.YY.-.MM.-.####",
+ "creation": "2026-03-31 15:22:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "section_break_identity",
+  "supporting_material",
+  "course",
+  "anchor_doctype",
+  "anchor_name",
+  "column_break_usage",
+  "origin",
+  "usage_role",
+  "placement_order",
+  "placement_note"
+ ],
+ "fields": [
+  {
+   "fieldname": "section_break_identity",
+   "fieldtype": "Section Break",
+   "label": "Placement"
+  },
+  {
+   "fieldname": "supporting_material",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Supporting Material",
+   "options": "Supporting Material",
+   "reqd": 1
+  },
+  {
+   "fieldname": "course",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Course",
+   "options": "Course",
+   "read_only": 1,
+   "reqd": 1
+  },
+  {
+   "fieldname": "anchor_doctype",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Anchor Doctype",
+   "options": "Course Plan\nUnit Plan\nClass Teaching Plan\nClass Session\nTask",
+   "reqd": 1
+  },
+  {
+   "fieldname": "anchor_name",
+   "fieldtype": "Dynamic Link",
+   "in_list_view": 1,
+   "label": "Anchor Name",
+   "options": "anchor_doctype",
+   "reqd": 1
+  },
+  {
+   "fieldname": "column_break_usage",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "origin",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Origin",
+   "options": "curriculum\ntask\nshared_in_class",
+   "reqd": 1
+  },
+  {
+   "default": "Reference",
+   "fieldname": "usage_role",
+   "fieldtype": "Select",
+   "label": "Usage Role",
+   "options": "Required\nReference\nTemplate\nExample"
+  },
+  {
+   "fieldname": "placement_order",
+   "fieldtype": "Int",
+   "label": "Placement Order"
+  },
+  {
+   "fieldname": "placement_note",
+   "fieldtype": "Small Text",
+   "label": "Teacher Note"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-04-01 22:35:00.000000",
+ "modified_by": "Administrator",
+ "module": "Curriculum",
+ "name": "Material Placement",
+ "naming_rule": "Expression",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Academic Admin",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Instructor",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Curriculum Coordinator",
+   "share": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

@@ -15,10 +15,8 @@ from frappe.utils import get_datetime, now_datetime
 
 from ifitwala_ed.api import course_schedule as course_schedule_api
 from ifitwala_ed.api import portal as portal_api
-from ifitwala_ed.assessment import quiz_service
 
 COURSE_PLACEHOLDER = "/assets/ifitwala_ed/images/course_placeholder.jpg"
-MAX_SORT_INT = 2_147_483_647
 WORK_BOARD_NOW_LIMIT = 3
 WORK_BOARD_SOON_LIMIT = 6
 WORK_BOARD_LATER_LIMIT = 6
@@ -28,6 +26,7 @@ NOW_WINDOW_DAYS = 2
 SOON_WINDOW_DAYS = 7
 DONE_SUBMISSION_STATUSES = {"Submitted", "Late", "Resubmitted"}
 DONE_GRADING_STATUSES = {"Finalized", "Released"}
+OPENABLE_LEARNING_SPACE_STATUSES = {"ready", "shared_plan_only"}
 
 
 def _serialize_scalar(value: Any) -> Any:
@@ -49,18 +48,18 @@ def _safe_course_image(url: str | None) -> str:
 def _build_course_href(
     course_id: str,
     *,
-    learning_unit: str | None = None,
-    lesson: str | None = None,
-    lesson_instance: str | None = None,
+    student_group: str | None = None,
+    unit_plan: str | None = None,
+    class_session: str | None = None,
 ) -> dict[str, Any]:
     href: dict[str, Any] = {
         "name": "student-course-detail",
         "params": {"course_id": course_id},
     }
     query = {
-        "learning_unit": learning_unit,
-        "lesson": lesson,
-        "lesson_instance": lesson_instance,
+        "student_group": student_group,
+        "unit_plan": unit_plan,
+        "class_session": class_session,
     }
     query = {key: value for key, value in query.items() if value}
     if query:
@@ -194,6 +193,164 @@ def _build_student_course_scope(student_name: str) -> dict[str, dict[str, Any]]:
     return scope
 
 
+def _student_groups_for_course_year(scope_entry: dict[str, Any], academic_year: str | None) -> list[dict[str, Any]]:
+    rows = list(scope_entry.get("student_groups") or [])
+    selected_year = str(academic_year or "").strip()
+    if not selected_year:
+        return rows
+
+    matching = [row for row in rows if str(row.get("academic_year") or "").strip() == selected_year]
+    if matching:
+        return matching
+
+    return [row for row in rows if not str(row.get("academic_year") or "").strip()]
+
+
+def _fetch_active_class_plan_groups(student_groups: list[str]) -> set[str]:
+    names = sorted({str(name or "").strip() for name in student_groups if str(name or "").strip()})
+    if not names:
+        return set()
+
+    rows = frappe.get_all(
+        "Class Teaching Plan",
+        filters={"student_group": ["in", names], "planning_status": "Active"},
+        fields=["student_group"],
+        limit=0,
+    )
+    return {str(row.get("student_group") or "").strip() for row in rows if str(row.get("student_group") or "").strip()}
+
+
+def _fetch_active_course_plan_counts(course_ids: list[str]) -> dict[str, int]:
+    names = sorted({str(name or "").strip() for name in course_ids if str(name or "").strip()})
+    if not names:
+        return {}
+
+    rows = frappe.db.sql(
+        """
+        SELECT
+            course,
+            COUNT(*) AS active_plan_count
+        FROM `tabCourse Plan`
+        WHERE course IN %(courses)s
+          AND plan_status = 'Active'
+        GROUP BY course
+        """,
+        {"courses": tuple(names)},
+        as_dict=True,
+    )
+    return {str(row.get("course") or "").strip(): int(row.get("active_plan_count") or 0) for row in rows or []}
+
+
+def _serialize_course_learning_space(
+    course_id: str,
+    *,
+    academic_year: str | None,
+    scope_entry: dict[str, Any] | None,
+    class_plan_groups: set[str],
+    course_plan_counts: dict[str, int],
+) -> dict[str, Any]:
+    relevant_groups = _student_groups_for_course_year(scope_entry or {}, academic_year)
+    relevant_group_names = [
+        str(row.get("student_group") or "").strip()
+        for row in relevant_groups
+        if str(row.get("student_group") or "").strip()
+    ]
+    default_group = relevant_group_names[0] if relevant_group_names else None
+    has_class_plan = any(group in class_plan_groups for group in relevant_group_names)
+    has_shared_plan = course_plan_counts.get(course_id, 0) == 1
+
+    if has_class_plan:
+        status = "ready"
+        source = "class_teaching_plan"
+        status_label = _("Class Ready")
+        summary = _("Open your class learning space.")
+        cta_label = _("Open class")
+    elif has_shared_plan:
+        status = "shared_plan_only"
+        source = "course_plan_fallback"
+        status_label = _("Shared Plan")
+        if relevant_group_names:
+            summary = _("Your class plan is not published yet. Open the shared course plan for now.")
+        else:
+            summary = _("Your class is still being assigned. Open the shared course plan for now.")
+        cta_label = _("Open shared plan")
+    elif relevant_group_names:
+        status = "awaiting_class_plan"
+        source = "unavailable"
+        status_label = _("Class Plan Pending")
+        summary = _(
+            "Your teacher has not published this class learning space yet. Check with your teacher if this should already be available."
+        )
+        cta_label = _("Not ready yet")
+    else:
+        status = "awaiting_class_assignment"
+        source = "unavailable"
+        status_label = _("Class Assignment Pending")
+        summary = _(
+            "Your class is still being assigned. Check with your academic office if this should already be available."
+        )
+        cta_label = _("Not ready yet")
+
+    can_open = int(status in OPENABLE_LEARNING_SPACE_STATUSES)
+    href = _build_course_href(course_id, student_group=default_group) if can_open else None
+    return {
+        "source": source,
+        "status": status,
+        "status_label": status_label,
+        "summary": summary,
+        "cta_label": cta_label,
+        "can_open": can_open,
+        "href": href,
+    }
+
+
+def _attach_course_learning_space_state(
+    courses: list[dict[str, Any]],
+    *,
+    academic_year: str | None,
+    scope: dict[str, dict[str, Any]],
+) -> list[dict[str, Any]]:
+    course_ids = [
+        str(course.get("course") or "").strip() for course in courses if str(course.get("course") or "").strip()
+    ]
+    scoped_groups: list[str] = []
+    for course in courses:
+        course_id = str(course.get("course") or "").strip()
+        if not course_id:
+            continue
+        relevant_groups = _student_groups_for_course_year(scope.get(course_id) or {}, academic_year)
+        scoped_groups.extend(
+            str(row.get("student_group") or "").strip()
+            for row in relevant_groups
+            if str(row.get("student_group") or "").strip()
+        )
+
+    class_plan_groups = _fetch_active_class_plan_groups(scoped_groups)
+    course_plan_counts = _fetch_active_course_plan_counts(course_ids)
+
+    enriched: list[dict[str, Any]] = []
+    for course in courses:
+        course_id = str(course.get("course") or "").strip()
+        if not course_id:
+            enriched.append(course)
+            continue
+        learning_space = _serialize_course_learning_space(
+            course_id,
+            academic_year=academic_year,
+            scope_entry=scope.get(course_id),
+            class_plan_groups=class_plan_groups,
+            course_plan_counts=course_plan_counts,
+        )
+        enriched.append(
+            {
+                **course,
+                "href": learning_space.get("href"),
+                "learning_space": learning_space,
+            }
+        )
+    return enriched
+
+
 def _get_courses_for_year(student_name: str, academic_year: str) -> list[dict]:
     rows = frappe.db.sql(
         """
@@ -231,35 +388,23 @@ def _get_courses_for_year(student_name: str, academic_year: str) -> list[dict]:
     return courses
 
 
-def _serialize_delivery(row: dict[str, Any], quiz_state: dict[str, Any] | None = None) -> dict[str, Any]:
-    payload = {
-        "task_delivery": row.get("name"),
-        "student_group": row.get("student_group"),
-        "available_from": _serialize_scalar(row.get("available_from")),
-        "due_date": _serialize_scalar(row.get("due_date")),
-        "lock_date": _serialize_scalar(row.get("lock_date")),
-        "lesson_instance": row.get("lesson_instance"),
-        "delivery_mode": row.get("delivery_mode"),
-    }
-    if quiz_state:
-        payload["quiz"] = quiz_state
-    return payload
+def _build_student_courses_payload(
+    student_name: str, academic_year: str | None = None
+) -> tuple[dict[str, Any], dict[str, dict[str, Any]]]:
+    years = _get_academic_years(student_name)
+    selected = academic_year
+    if not selected or selected not in years:
+        selected = years[0] if years else None
 
+    scope = _build_student_course_scope(student_name)
+    courses = _get_courses_for_year(student_name, selected) if selected else []
+    courses = _attach_course_learning_space_state(courses, academic_year=selected, scope=scope)
 
-def _serialize_task(
-    row: dict[str, Any], deliveries: list[dict[str, Any]], quiz_state_map: dict[str, dict[str, Any]] | None = None
-) -> dict[str, Any]:
     return {
-        "task": row.get("name"),
-        "title": row.get("title") or row.get("name"),
-        "task_type": row.get("task_type"),
-        "learning_unit": row.get("learning_unit"),
-        "lesson": row.get("lesson"),
-        "deliveries": [
-            _serialize_delivery(delivery, quiz_state=(quiz_state_map or {}).get(delivery.get("name")))
-            for delivery in deliveries
-        ],
-    }
+        "academic_years": years,
+        "selected_year": selected,
+        "courses": courses,
+    }, scope
 
 
 def _coerce_datetime(value: Any) -> datetime | None:
@@ -343,11 +488,10 @@ def _fetch_student_hub_task_rows(student_name: str, student_groups: list[str]) -
             td.available_from,
             td.due_date,
             td.lock_date,
-            td.lesson_instance,
+            td.class_session,
             t.title,
             t.task_type,
-            t.learning_unit,
-            t.lesson,
+            t.unit_plan AS unit_plan,
             COALESCE(c.course_name, td.course, t.default_course) AS course_name,
             o.name AS task_outcome,
             o.submission_status,
@@ -395,9 +539,9 @@ def _build_work_item_href(row: dict[str, Any]) -> dict[str, Any] | None:
         return None
     return _build_course_href(
         course_id,
-        learning_unit=row.get("learning_unit"),
-        lesson=row.get("lesson"),
-        lesson_instance=row.get("lesson_instance"),
+        student_group=row.get("student_group"),
+        unit_plan=row.get("unit_plan"),
+        class_session=row.get("class_session"),
     )
 
 
@@ -462,9 +606,8 @@ def _serialize_work_item(row: dict[str, Any], anchor_dt: datetime, lane: str, la
         "delivery_mode": row.get("delivery_mode"),
         "requires_submission": int(row.get("requires_submission") or 0),
         "require_grading": int(row.get("require_grading") or 0),
-        "learning_unit": row.get("learning_unit"),
-        "lesson": row.get("lesson"),
-        "lesson_instance": row.get("lesson_instance"),
+        "unit_plan": row.get("unit_plan"),
+        "class_session": row.get("class_session"),
         "available_from": _serialize_scalar(row.get("available_from")),
         "due_date": _serialize_scalar(row.get("due_date")),
         "lock_date": _serialize_scalar(row.get("lock_date")),
@@ -551,7 +694,8 @@ def _class_timeline_item(course: dict[str, Any], anchor_dt: datetime) -> dict[st
         "subtitle": course.get("student_group_name") or _("Scheduled class"),
         "time_label": first_slot.get("time_range") or None,
         "status_label": "Class",
-        "href": course.get("href") or _build_course_href(course.get("course")),
+        "href": course.get("href")
+        or _build_course_href(course.get("course"), student_group=course.get("student_group")),
     }
 
 
@@ -601,371 +745,6 @@ def _build_learning_timeline(
     return ordered_days
 
 
-def _build_curriculum_payload(
-    *,
-    units: list[dict[str, Any]],
-    lessons: list[dict[str, Any]],
-    activities: list[dict[str, Any]],
-    tasks: list[dict[str, Any]],
-    deliveries: list[dict[str, Any]],
-    quiz_state_map: dict[str, dict[str, Any]] | None = None,
-) -> tuple[dict[str, Any], dict[str, dict[str, Any]]]:
-    deliveries_by_task: dict[str, list[dict[str, Any]]] = defaultdict(list)
-    for delivery in deliveries:
-        task_name = delivery.get("task")
-        if task_name:
-            deliveries_by_task[task_name].append(delivery)
-
-    units_by_name: dict[str, dict[str, Any]] = {}
-    lessons_by_name: dict[str, dict[str, Any]] = {}
-    activities_by_name: dict[str, dict[str, Any]] = {}
-
-    curriculum_units: list[dict[str, Any]] = []
-    for unit in units:
-        item = {
-            "name": unit.get("name"),
-            "unit_name": unit.get("unit_name") or unit.get("name"),
-            "unit_order": unit.get("unit_order"),
-            "duration": unit.get("duration"),
-            "estimated_duration": unit.get("estimated_duration"),
-            "unit_status": unit.get("unit_status"),
-            "is_published": int(unit.get("is_published") or 0),
-            "unit_overview": unit.get("unit_overview"),
-            "essential_understanding": unit.get("essential_understanding"),
-            "misconceptions": unit.get("misconceptions"),
-            "linked_tasks": [],
-            "lessons": [],
-        }
-        curriculum_units.append(item)
-        if item["name"]:
-            units_by_name[item["name"]] = item
-
-    for lesson in lessons:
-        item = {
-            "name": lesson.get("name"),
-            "learning_unit": lesson.get("learning_unit"),
-            "title": lesson.get("title") or lesson.get("name"),
-            "lesson_type": lesson.get("lesson_type"),
-            "lesson_order": lesson.get("lesson_order"),
-            "duration": lesson.get("duration"),
-            "start_date": _serialize_scalar(lesson.get("start_date")),
-            "is_published": int(lesson.get("is_published") or 0),
-            "linked_tasks": [],
-            "lesson_activities": [],
-        }
-        if item["name"]:
-            lessons_by_name[item["name"]] = item
-        parent = units_by_name.get(item["learning_unit"])
-        if parent:
-            parent["lessons"].append(item)
-
-    for activity in activities:
-        item = {
-            "name": activity.get("name"),
-            "lesson": activity.get("lesson"),
-            "title": activity.get("title"),
-            "activity_type": activity.get("activity_type"),
-            "lesson_activity_order": activity.get("lesson_activity_order"),
-            "estimated_duration": activity.get("estimated_duration"),
-            "is_required": int(activity.get("is_required") or 0),
-            "reading_content": activity.get("reading_content"),
-            "video_url": activity.get("video_url"),
-            "external_link": activity.get("external_link"),
-            "discussion_prompt": activity.get("discussion_prompt"),
-        }
-        if item["name"]:
-            activities_by_name[item["name"]] = item
-        parent = lessons_by_name.get(item["lesson"])
-        if parent:
-            parent["lesson_activities"].append(item)
-
-    course_tasks: list[dict[str, Any]] = []
-    unit_task_count = 0
-    lesson_task_count = 0
-    course_task_count = 0
-
-    for task in tasks:
-        task_name = task.get("name")
-        deliveries_for_task = deliveries_by_task.get(task_name, [])
-        serialized = _serialize_task(task, deliveries_for_task, quiz_state_map=quiz_state_map)
-
-        lesson_name = task.get("lesson")
-        unit_name = task.get("learning_unit")
-        if lesson_name and lesson_name in lessons_by_name:
-            lessons_by_name[lesson_name]["linked_tasks"].append(serialized)
-            lesson_task_count += 1
-            continue
-        if unit_name and unit_name in units_by_name:
-            units_by_name[unit_name]["linked_tasks"].append(serialized)
-            unit_task_count += 1
-            continue
-        course_tasks.append(serialized)
-        course_task_count += 1
-
-    counts = {
-        "units": len(curriculum_units),
-        "lessons": len(lessons_by_name),
-        "activities": len(activities_by_name),
-        "course_tasks": course_task_count,
-        "unit_tasks": unit_task_count,
-        "lesson_tasks": lesson_task_count,
-        "deliveries": len(deliveries),
-    }
-
-    return (
-        {
-            "counts": counts,
-            "course_tasks": course_tasks,
-            "units": curriculum_units,
-        },
-        {
-            "units": units_by_name,
-            "lessons": lessons_by_name,
-            "activities": activities_by_name,
-        },
-    )
-
-
-def _resolve_deep_link_context(
-    *,
-    requested_learning_unit: str | None,
-    requested_lesson: str | None,
-    requested_lesson_instance: str | None,
-    units_by_name: dict[str, dict[str, Any]],
-    lessons_by_name: dict[str, dict[str, Any]],
-    activities_by_name: dict[str, dict[str, Any]],
-    lesson_instances_by_name: dict[str, dict[str, Any]],
-) -> dict[str, Any]:
-    resolved_learning_unit = None
-    resolved_lesson = None
-    resolved_lesson_instance = None
-    source = "course_only"
-
-    if requested_lesson_instance:
-        lesson_instance = lesson_instances_by_name.get(requested_lesson_instance)
-        if lesson_instance:
-            resolved_lesson_instance = lesson_instance.get("name")
-            resolved_lesson = lesson_instance.get("lesson")
-            if not resolved_lesson and lesson_instance.get("lesson_activity"):
-                activity = activities_by_name.get(lesson_instance.get("lesson_activity"))
-                resolved_lesson = activity.get("lesson") if activity else None
-            if resolved_lesson and resolved_lesson in lessons_by_name:
-                resolved_learning_unit = lessons_by_name[resolved_lesson].get("learning_unit")
-            source = "lesson_instance"
-
-    if source == "course_only" and requested_lesson and requested_lesson in lessons_by_name:
-        resolved_lesson = requested_lesson
-        resolved_learning_unit = lessons_by_name[requested_lesson].get("learning_unit")
-        source = "lesson"
-
-    if source == "course_only" and requested_learning_unit and requested_learning_unit in units_by_name:
-        resolved_learning_unit = requested_learning_unit
-        source = "learning_unit"
-
-    if source == "course_only" and units_by_name:
-        ordered_units = sorted(
-            units_by_name.values(),
-            key=lambda row: (
-                row.get("unit_order") if row.get("unit_order") is not None else MAX_SORT_INT,
-                row.get("unit_name") or row.get("name") or "",
-            ),
-        )
-        first_unit = ordered_units[0]
-        resolved_learning_unit = first_unit.get("name")
-        source = "first_available"
-        lessons = first_unit.get("lessons") or []
-        if lessons:
-            ordered_lessons = sorted(
-                lessons,
-                key=lambda row: (
-                    row.get("lesson_order") if row.get("lesson_order") is not None else MAX_SORT_INT,
-                    row.get("title") or row.get("name") or "",
-                ),
-            )
-            resolved_lesson = ordered_lessons[0].get("name")
-
-    return {
-        "requested": {
-            "learning_unit": requested_learning_unit or None,
-            "lesson": requested_lesson or None,
-            "lesson_instance": requested_lesson_instance or None,
-        },
-        "resolved": {
-            "learning_unit": resolved_learning_unit,
-            "lesson": resolved_lesson,
-            "lesson_instance": resolved_lesson_instance,
-            "source": source,
-        },
-    }
-
-
-def _get_course_row(course_id: str) -> dict[str, Any]:
-    course = frappe.db.get_value(
-        "Course",
-        course_id,
-        [
-            "name",
-            "course_name",
-            "course_group",
-            "course_image",
-            "description",
-            "status",
-            "is_published",
-        ],
-        as_dict=True,
-    )
-    if not course:
-        frappe.throw(_("Course not found."), frappe.DoesNotExistError)
-    return course
-
-
-def _fetch_course_units(course_id: str) -> list[dict[str, Any]]:
-    return frappe.db.sql(
-        """
-        SELECT
-            name,
-            unit_name,
-            unit_order,
-            duration,
-            estimated_duration,
-            unit_status,
-            is_published,
-            unit_overview,
-            essential_understanding,
-            misconceptions
-        FROM `tabLearning Unit`
-        WHERE course = %(course)s
-        ORDER BY COALESCE(unit_order, %(max_sort)s) ASC, unit_name ASC, name ASC
-        """,
-        {"course": course_id, "max_sort": MAX_SORT_INT},
-        as_dict=True,
-    )
-
-
-def _fetch_course_lessons(unit_names: list[str]) -> list[dict[str, Any]]:
-    if not unit_names:
-        return []
-    return frappe.db.sql(
-        """
-        SELECT
-            name,
-            learning_unit,
-            title,
-            lesson_type,
-            lesson_order,
-            duration,
-            start_date,
-            is_published
-        FROM `tabLesson`
-        WHERE learning_unit IN %(units)s
-        ORDER BY learning_unit ASC, COALESCE(lesson_order, %(max_sort)s) ASC, title ASC, name ASC
-        """,
-        {"units": tuple(unit_names), "max_sort": MAX_SORT_INT},
-        as_dict=True,
-    )
-
-
-def _fetch_lesson_activities(lesson_names: list[str]) -> list[dict[str, Any]]:
-    if not lesson_names:
-        return []
-    return frappe.db.sql(
-        """
-        SELECT
-            name,
-            parent AS lesson,
-            title,
-            activity_type,
-            lesson_activity_order,
-            estimated_duration,
-            is_required,
-            reading_content,
-            video_url,
-            external_link,
-            discussion_prompt,
-            idx
-        FROM `tabLesson Activity`
-        WHERE parenttype = 'Lesson'
-          AND parentfield = 'lesson_activities'
-          AND parent IN %(lessons)s
-        ORDER BY parent ASC, COALESCE(lesson_activity_order, %(max_sort)s) ASC, idx ASC, name ASC
-        """,
-        {"lessons": tuple(lesson_names), "max_sort": MAX_SORT_INT},
-        as_dict=True,
-    )
-
-
-def _fetch_course_tasks(course_id: str) -> list[dict[str, Any]]:
-    return frappe.get_all(
-        "Task",
-        filters={"default_course": course_id, "is_archived": 0},
-        fields=["name", "title", "task_type", "learning_unit", "lesson"],
-        order_by="title asc, name asc",
-    )
-
-
-def _fetch_task_deliveries_for_course(
-    course_id: str, task_names: list[str], student_groups: list[str]
-) -> list[dict[str, Any]]:
-    if not task_names or not student_groups:
-        return []
-    return frappe.get_all(
-        "Task Delivery",
-        filters={
-            "docstatus": 1,
-            "course": course_id,
-            "task": ["in", task_names],
-            "student_group": ["in", student_groups],
-        },
-        fields=[
-            "name",
-            "task",
-            "student_group",
-            "available_from",
-            "due_date",
-            "lock_date",
-            "lesson_instance",
-            "delivery_mode",
-            "quiz_question_bank",
-            "quiz_question_count",
-            "quiz_time_limit_minutes",
-            "quiz_max_attempts",
-            "quiz_pass_percentage",
-            "quiz_shuffle_questions",
-            "quiz_shuffle_choices",
-        ],
-        order_by="due_date asc, available_from asc, name asc",
-    )
-
-
-def _fetch_lesson_instances_for_course(
-    course_id: str, student_groups: list[str], requested_lesson_instance: str | None
-) -> list[dict[str, Any]]:
-    names = set()
-    if requested_lesson_instance:
-        names.add(requested_lesson_instance)
-
-    if student_groups:
-        deliveries = frappe.get_all(
-            "Lesson Instance",
-            filters={
-                "course": course_id,
-                "student_group": ["in", student_groups],
-            },
-            fields=["name", "lesson", "lesson_activity", "student_group"],
-        )
-        for row in deliveries:
-            names.add(row.get("name"))
-
-    if not names:
-        return []
-
-    return frappe.get_all(
-        "Lesson Instance",
-        filters={"name": ["in", list(names)], "course": course_id},
-        fields=["name", "lesson", "lesson_activity", "student_group"],
-    )
-
-
 @frappe.whitelist()
 def get_courses_data(academic_year: str | None = None) -> dict:
     """Fetch courses data for the logged-in student."""
@@ -982,17 +761,8 @@ def get_courses_data(academic_year: str | None = None) -> dict:
             "error": _("No student profile linked to this login yet."),
         }
 
-    years = _get_academic_years(student_name)
-    selected = academic_year
-    if not selected or selected not in years:
-        selected = years[0] if years else None
-
-    courses = _get_courses_for_year(student_name, selected) if selected else []
-    return {
-        "academic_years": years,
-        "selected_year": selected,
-        "courses": courses,
-    }
+    payload, _scope = _build_student_courses_payload(student_name, academic_year)
+    return payload
 
 
 @frappe.whitelist()
@@ -1002,8 +772,7 @@ def get_student_hub_home() -> dict[str, Any]:
 
     identity = portal_api.get_student_portal_identity()
     schedule = course_schedule_api.get_today_courses()
-    course_data = get_courses_data()
-    scope = _build_student_course_scope(student_name)
+    course_data, scope = _build_student_courses_payload(student_name)
     accessible_course_count = len(scope)
     student_groups = sorted(
         {
@@ -1024,31 +793,56 @@ def get_student_hub_home() -> dict[str, Any]:
     next_title = None
     next_subtitle = None
     next_kind = None
+    next_cta_label = None
+    next_status_label = None
+    next_can_open = 0
 
     if orientation.get("current_class"):
         first = orientation["current_class"]
-        next_route = first.get("href") or _build_course_href(first.get("course"))
+        next_route = first.get("href") or _build_course_href(
+            first.get("course"), student_group=first.get("student_group")
+        )
         next_title = first.get("course_name") or first.get("course")
         next_subtitle = "Continue from your current class"
         next_kind = "scheduled_class"
+        next_cta_label = "Open class"
+        next_can_open = int(bool(next_route))
     elif orientation.get("next_class"):
         first = orientation["next_class"]
-        next_route = first.get("href") or _build_course_href(first.get("course"))
+        next_route = first.get("href") or _build_course_href(
+            first.get("course"), student_group=first.get("student_group")
+        )
         next_title = first.get("course_name") or first.get("course")
         next_subtitle = "Prepare for your next class"
         next_kind = "scheduled_class"
+        next_cta_label = "Prepare"
+        next_can_open = int(bool(next_route))
     elif work_board["now"]:
         first = work_board["now"][0]
-        next_route = first.get("href") or _build_course_href(first.get("course"))
+        next_route = first.get("href") or _build_course_href(
+            first.get("course"), student_group=first.get("student_group")
+        )
         next_title = first.get("title") or first.get("task")
         next_subtitle = first.get("lane_reason") or "Continue your current work"
         next_kind = "course"
+        next_cta_label = "Open now"
+        next_can_open = int(bool(next_route))
     elif courses:
-        first = courses[0]
-        next_route = first.get("href") or _build_course_href(first.get("course"))
+        first = next(
+            (course for course in courses if int((course.get("learning_space") or {}).get("can_open") or 0) == 1),
+            courses[0],
+        )
+        learning_space = first.get("learning_space") or {}
+        default_route = (
+            _build_course_href(first.get("course")) if int(learning_space.get("can_open") or 0) == 1 else None
+        )
+        next_route = learning_space.get("href") or first.get("href") or default_route
         next_title = first.get("course_name") or first.get("course")
-        next_subtitle = "Open your course space"
+        next_subtitle = learning_space.get("summary") or "Open your course space"
         next_kind = "course"
+        next_cta_label = learning_space.get("cta_label") or ("Open course" if next_route else "Not ready yet")
+        next_status_label = learning_space.get("status_label")
+        next_can_open = int(learning_space.get("can_open")) if "can_open" in learning_space else int(bool(next_route))
 
     return {
         "meta": {
@@ -1065,8 +859,11 @@ def get_student_hub_home() -> dict[str, Any]:
                     "title": next_title,
                     "subtitle": next_subtitle,
                     "href": next_route,
+                    "cta_label": next_cta_label,
+                    "status_label": next_status_label,
+                    "can_open": next_can_open,
                 }
-                if next_route and next_title and next_kind
+                if next_title and next_kind
                 else None
             ),
             "accessible_courses_count": accessible_course_count,
@@ -1075,85 +872,4 @@ def get_student_hub_home() -> dict[str, Any]:
             "work_board": work_board,
             "timeline": timeline,
         },
-    }
-
-
-@frappe.whitelist()
-def get_student_course_detail(
-    course_id: str,
-    learning_unit: str | None = None,
-    lesson: str | None = None,
-    lesson_instance: str | None = None,
-) -> dict[str, Any]:
-    if not course_id:
-        frappe.throw(_("Course is required."), frappe.ValidationError)
-
-    student_name = _require_student_name_for_session_user()
-    scope = _build_student_course_scope(student_name)
-    course_scope = scope.get(course_id)
-    if not course_scope:
-        frappe.throw(_("You do not have access to this course."), frappe.PermissionError)
-
-    course = _get_course_row(course_id)
-    student_groups = [
-        row["student_group"] for row in course_scope.get("student_groups") or [] if row.get("student_group")
-    ]
-
-    units = _fetch_course_units(course_id)
-    unit_names = [row.get("name") for row in units if row.get("name")]
-    lessons = _fetch_course_lessons(unit_names)
-    lesson_names = [row.get("name") for row in lessons if row.get("name")]
-    activities = _fetch_lesson_activities(lesson_names)
-    tasks = _fetch_course_tasks(course_id)
-    task_names = [row.get("name") for row in tasks if row.get("name")]
-    deliveries = _fetch_task_deliveries_for_course(course_id, task_names, student_groups)
-    tasks_by_name = {row["name"]: row for row in tasks if row.get("name")}
-    quiz_state_map = quiz_service.get_student_delivery_state_map(
-        student=student_name,
-        deliveries=deliveries,
-        tasks_by_name=tasks_by_name,
-    )
-    lesson_instances = _fetch_lesson_instances_for_course(course_id, student_groups, lesson_instance)
-
-    curriculum, maps = _build_curriculum_payload(
-        units=units,
-        lessons=lessons,
-        activities=activities,
-        tasks=tasks,
-        deliveries=deliveries,
-        quiz_state_map=quiz_state_map,
-    )
-
-    lesson_instances_by_name = {row["name"]: row for row in lesson_instances if row.get("name")}
-    deep_link = _resolve_deep_link_context(
-        requested_learning_unit=learning_unit,
-        requested_lesson=lesson,
-        requested_lesson_instance=lesson_instance,
-        units_by_name=maps["units"],
-        lessons_by_name=maps["lessons"],
-        activities_by_name=maps["activities"],
-        lesson_instances_by_name=lesson_instances_by_name,
-    )
-
-    return {
-        "meta": {
-            "generated_at": now_datetime().isoformat(),
-            "course_id": course_id,
-        },
-        "course": {
-            "course": course.get("name"),
-            "course_name": course.get("course_name") or course.get("name"),
-            "course_group": course.get("course_group"),
-            "course_image": _safe_course_image(course.get("course_image")),
-            "description": course.get("description"),
-            "status": course.get("status"),
-            "is_published": int(course.get("is_published") or 0),
-        },
-        "access": {
-            "student": student_name,
-            "academic_years": course_scope.get("academic_years") or [],
-            "student_groups": course_scope.get("student_groups") or [],
-        },
-        "deep_link": deep_link,
-        "curriculum": curriculum,
     }

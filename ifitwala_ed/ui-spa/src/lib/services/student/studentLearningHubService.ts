@@ -3,16 +3,27 @@
 import { apiMethod } from '@/resources/frappe'
 
 import type {
-	Request as GetStudentCourseDetailRequest,
-	Response as GetStudentCourseDetailResponse,
-} from '@/types/contracts/student_hub/get_student_course_detail'
+	Request as GetStudentCoursesDataRequest,
+	Response as GetStudentCoursesDataResponse,
+} from '@/types/contracts/student_hub/get_student_courses_data'
 import type {
 	Request as GetStudentHubHomeRequest,
 	Response as GetStudentHubHomeResponse,
 } from '@/types/contracts/student_hub/get_student_hub_home'
+import type {
+	Request as GetStudentLearningSpaceRequest,
+	Response as GetStudentLearningSpaceResponse,
+} from '@/types/contracts/student_learning/get_student_learning_space'
 
 const HOME_METHOD = 'ifitwala_ed.api.courses.get_student_hub_home'
-const COURSE_DETAIL_METHOD = 'ifitwala_ed.api.courses.get_student_course_detail'
+const COURSES_METHOD = 'ifitwala_ed.api.courses.get_courses_data'
+const LEARNING_SPACE_METHOD = 'ifitwala_ed.api.teaching_plans.get_student_learning_space'
+
+export async function getStudentCoursesData(
+	payload: GetStudentCoursesDataRequest = {}
+): Promise<GetStudentCoursesDataResponse> {
+	return apiMethod<GetStudentCoursesDataResponse>(COURSES_METHOD, payload)
+}
 
 export async function getStudentHubHome(
 	payload: GetStudentHubHomeRequest = {}
@@ -20,8 +31,8 @@ export async function getStudentHubHome(
 	return apiMethod<GetStudentHubHomeResponse>(HOME_METHOD, payload)
 }
 
-export async function getStudentCourseDetail(
-	payload: GetStudentCourseDetailRequest
-): Promise<GetStudentCourseDetailResponse> {
-	return apiMethod<GetStudentCourseDetailResponse>(COURSE_DETAIL_METHOD, payload)
+export async function getStudentLearningSpace(
+	payload: GetStudentLearningSpaceRequest
+): Promise<GetStudentLearningSpaceResponse> {
+	return apiMethod<GetStudentLearningSpaceResponse>(LEARNING_SPACE_METHOD, payload)
 }

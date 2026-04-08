@@ -133,6 +133,18 @@ If delivery strategy is **Separate Criteria**:
 
 MYP‑style reporting ignores task totals entirely.
 
+### Standards and mastery boundary
+
+Shared curriculum standards and unit-learning goals are part of the planned curriculum layer.
+
+Current reporting contract:
+
+* student-facing learning goals may be published from `Unit Plan` alignment rows
+* gradebook and term reporting truth still comes from `Task Outcome` and `Task Outcome Criterion`
+* there is no current runtime that aggregates term results directly from the `Learning Standards` master
+
+This boundary is intentional. It prevents reporting from drifting when shared curriculum vocabulary and live assessment evidence are not yet linked by one direct master-key path.
+
 ### Persisted Values
 
 Each Course Term Result stores:

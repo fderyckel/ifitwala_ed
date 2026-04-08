@@ -50,6 +50,10 @@ from ifitwala_ed.api.recommendation_intake import (
     get_recommendation_status_for_applicant,
     get_recommendation_template_rows_for_applicant,
 )
+from ifitwala_ed.governance.doctype.policy_acknowledgement.policy_acknowledgement import (
+    get_policy_version_acknowledgement_clauses_map,
+    populate_policy_acknowledgement_evidence,
+)
 from ifitwala_ed.governance.policy_utils import (
     ADMISSIONS_POLICY_MODE_FAMILY,
     get_applicant_policy_status,
@@ -2710,6 +2714,7 @@ def get_applicant_policies(student_applicant: str | None = None):
         for row_version in version_rows
         if (row_version.get("name") or "").strip()
     }
+    clauses_by_version = get_policy_version_acknowledgement_clauses_map(versions)
 
     payload = []
     for row_policy in policy_rows:
@@ -2725,6 +2730,7 @@ def get_applicant_policies(student_applicant: str | None = None):
                 "acknowledged_at": row_policy.get("acknowledged_at"),
                 "acknowledged_by": row_policy.get("acknowledged_by"),
                 "expected_signature_name": row_policy.get("expected_signature_name") or "",
+                "acknowledgement_clauses": clauses_by_version.get((policy_version or "").strip(), []),
             }
         )
 
@@ -2738,6 +2744,7 @@ def acknowledge_policy(
     student_applicant: str | None = None,
     typed_signature_name: str | None = None,
     attestation_confirmed: int | str | bool | None = None,
+    checked_clause_names=None,
 ):
     user = _require_admissions_portal_user()
     row = _ensure_applicant_match(student_applicant, user)
@@ -2809,6 +2816,12 @@ def acknowledge_policy(
             "context_doctype": context_doctype,
             "context_name": context_name,
         }
+    )
+    populate_policy_acknowledgement_evidence(
+        doc,
+        typed_signature_name=typed_signature_name,
+        attestation_confirmed=attestation_confirmed,
+        checked_clause_names=checked_clause_names,
     )
     doc.insert(ignore_permissions=True)
 

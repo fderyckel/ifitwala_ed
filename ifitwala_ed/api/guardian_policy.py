@@ -9,12 +9,29 @@ from frappe import _
 from frappe.utils import now_datetime
 
 from ifitwala_ed.api.guardian_home import _resolve_guardian_scope
+from ifitwala_ed.governance.doctype.policy_acknowledgement.policy_acknowledgement import (
+    get_policy_version_acknowledgement_clauses_map,
+    populate_policy_acknowledgement_evidence,
+)
 from ifitwala_ed.governance.policy_scope_utils import (
     get_organization_ancestors_including_self,
     get_school_ancestors_including_self,
     select_nearest_policy_rows_by_key,
 )
 from ifitwala_ed.governance.policy_utils import ensure_policy_applies_to_storage, policy_applies_to_filter_sql
+
+
+def _as_bool(value) -> bool:
+    return bool(frappe.utils.cint(value))
+
+
+def _normalize_signature_name(value: str | None) -> str:
+    return " ".join((value or "").strip().split()).casefold()
+
+
+def _expected_guardian_signature_name(guardian_name: str) -> str:
+    guardian_label = frappe.db.get_value("Guardian", guardian_name, "guardian_full_name")
+    return (guardian_label or guardian_name or "").strip()
 
 
 @frappe.whitelist()
@@ -43,7 +60,12 @@ def get_guardian_policy_overview() -> dict[str, Any]:
 
 
 @frappe.whitelist()
-def acknowledge_guardian_policy(policy_version: str) -> dict[str, Any]:
+def acknowledge_guardian_policy(
+    policy_version: str,
+    typed_signature_name: str | None = None,
+    attestation_confirmed: int | str | bool | None = None,
+    checked_clause_names=None,
+) -> dict[str, Any]:
     version = (policy_version or "").strip()
     if not version:
         frappe.throw(_("Policy Version is required."))
@@ -75,6 +97,29 @@ def acknowledge_guardian_policy(policy_version: str) -> dict[str, Any]:
             "policy_version": version,
         }
 
+    expected_signature_name = _expected_guardian_signature_name(guardian_name)
+    normalized_typed_name = _normalize_signature_name(typed_signature_name)
+    expected_candidates = {
+        normalized
+        for normalized in {
+            _normalize_signature_name(expected_signature_name),
+            _normalize_signature_name(guardian_name),
+        }
+        if normalized
+    }
+    if not _as_bool(attestation_confirmed):
+        frappe.throw(
+            _("You must confirm the electronic signature attestation before signing."),
+            frappe.ValidationError,
+        )
+    if not normalized_typed_name:
+        frappe.throw(_("Type your full name as your electronic signature."), frappe.ValidationError)
+    if expected_candidates and normalized_typed_name not in expected_candidates:
+        frappe.throw(
+            _("Typed signature must match exactly: {expected_name}").format(expected_name=expected_signature_name),
+            frappe.ValidationError,
+        )
+
     acknowledgement = frappe.get_doc(
         {
             "doctype": "Policy Acknowledgement",
@@ -84,6 +129,12 @@ def acknowledge_guardian_policy(policy_version: str) -> dict[str, Any]:
             "context_doctype": "Guardian",
             "context_name": guardian_name,
         }
+    )
+    populate_policy_acknowledgement_evidence(
+        acknowledgement,
+        typed_signature_name=typed_signature_name,
+        attestation_confirmed=attestation_confirmed,
+        checked_clause_names=checked_clause_names,
     )
     acknowledgement.insert()
 
@@ -133,6 +184,8 @@ def _get_guardian_policy_rows(*, guardian_name: str, children: list[dict[str, An
         if version and version not in ack_map:
             ack_map[version] = row
 
+    clauses_by_version = get_policy_version_acknowledgement_clauses_map(versions)
+    expected_signature_name = _expected_guardian_signature_name(guardian_name)
     out: list[dict[str, Any]] = []
     for row in rows:
         version = (row.get("policy_version") or "").strip()
@@ -152,6 +205,8 @@ def _get_guardian_policy_rows(*, guardian_name: str, children: list[dict[str, An
                 "effective_from": str(row.get("effective_from") or ""),
                 "effective_to": str(row.get("effective_to") or ""),
                 "approved_on": str(row.get("approved_on") or ""),
+                "expected_signature_name": expected_signature_name,
+                "acknowledgement_clauses": clauses_by_version.get(version, []),
                 "ack_context_doctype": "Guardian",
                 "ack_context_name": guardian_name,
                 "is_acknowledged": bool(acknowledgement),

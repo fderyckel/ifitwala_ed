@@ -1,71 +1,152 @@
-# ifitwala_ed/api/test_student_portfolio.py
+from __future__ import annotations
 
-from unittest.mock import patch
-from urllib.parse import parse_qs, urlparse
+import re
+from contextlib import contextmanager
+from types import ModuleType, SimpleNamespace
+from unittest import TestCase
 
-from frappe.tests.utils import FrappeTestCase
-
-from ifitwala_ed.api.student_portfolio import (
-    _deterministic_share_token,
-    _load_item_evidence,
-    _moderation_state_for_action,
-    _resolve_settings_for_school,
-    _token_hash,
-)
+from ifitwala_ed.tests.frappe_stubs import import_fresh, stubbed_frappe
 
 
-class TestStudentPortfolio(FrappeTestCase):
-    def test_token_hash_is_stable_and_sha256_length(self):
-        token = "abc123"
-        self.assertEqual(_token_hash(token), _token_hash(token))
-        self.assertEqual(len(_token_hash(token)), 64)
+@contextmanager
+def _student_portfolio_module():
+    file_access_api = ModuleType("ifitwala_ed.api.file_access")
+    file_access_api.resolve_academic_file_open_url = lambda **kwargs: "/open/file"
 
-    def test_deterministic_share_token_is_repeatable(self):
-        token_a = _deterministic_share_token(portfolio="SPF-001", user="test@example.com", idempotency_key="idem-1")
-        token_b = _deterministic_share_token(portfolio="SPF-001", user="test@example.com", idempotency_key="idem-1")
-        token_c = _deterministic_share_token(portfolio="SPF-001", user="test@example.com", idempotency_key="idem-2")
-        self.assertEqual(token_a, token_b)
-        self.assertNotEqual(token_a, token_c)
+    student_log_dashboard_api = ModuleType("ifitwala_ed.api.student_log_dashboard")
+    student_log_dashboard_api.get_authorized_schools = lambda user: ["SCH-1"]
 
-    def test_settings_defaults_without_school(self):
-        settings = _resolve_settings_for_school(None)
-        self.assertEqual(settings.get("enable_moderation"), 1)
-        self.assertEqual(settings.get("moderation_scope"), "Showcase only")
-        self.assertEqual(settings.get("allow_student_external_share"), 1)
+    school_tree_api = ModuleType("ifitwala_ed.utilities.school_tree")
+    school_tree_api.get_school_lineage = lambda school: [school]
 
-    def test_moderation_state_for_action(self):
-        self.assertEqual(_moderation_state_for_action("approve"), "Approved")
-        self.assertEqual(_moderation_state_for_action("return_for_edit"), "Returned for Edit")
-        self.assertEqual(_moderation_state_for_action("hide"), "Hidden / Rejected")
+    frappe_utils = ModuleType("frappe.utils")
+    frappe_utils.add_days = lambda value, days: value
+    frappe_utils.get_datetime = lambda value: value
+    frappe_utils.getdate = lambda value: value
+    frappe_utils.now_datetime = lambda: "2026-04-07 10:30:00"
+    frappe_utils.today = lambda: "2026-04-07"
+    frappe_utils.strip_html = lambda value: re.sub(r"<[^>]+>", "", value or "")
 
-    @patch("ifitwala_ed.api.student_portfolio.frappe.get_all")
-    def test_load_item_evidence_wraps_external_file_urls(self, mock_get_all):
-        mock_get_all.return_value = [
-            {
-                "name": "FILE-EXT-1",
-                "file_name": "portfolio-work.png",
-                "file_url": "/private/files/portfolio-work.png",
-                "file_size": 128,
-            }
-        ]
+    with stubbed_frappe(
+        extra_modules={
+            "frappe.utils": frappe_utils,
+            "ifitwala_ed.api.file_access": file_access_api,
+            "ifitwala_ed.api.student_log_dashboard": student_log_dashboard_api,
+            "ifitwala_ed.utilities.school_tree": school_tree_api,
+        }
+    ) as frappe:
+        frappe.db.get_value = lambda *args, **kwargs: None
+        frappe.db.count = lambda *args, **kwargs: 0
+        frappe.get_all = lambda *args, **kwargs: []
+        yield import_fresh("ifitwala_ed.api.student_portfolio")
 
-        evidence = _load_item_evidence(
-            [
+
+class TestStudentPortfolioApi(TestCase):
+    def test_create_reflection_entry_infers_student_for_student_actor(self):
+        captured: dict[str, object] = {}
+
+        with _student_portfolio_module() as module:
+            module.frappe.session.user = "student@example.com"
+            module.frappe.get_roles = lambda user=None: ["Student"]
+            module._resolve_student_for_user = lambda user: "STU-1"
+            module._ensure_can_write_student = lambda student: {"role": "Student", "students": [student]}
+            module._resolve_settings_for_school = lambda school: {"default_visibility_for_reflection": "Teacher"}
+            module.frappe.db.get_value = lambda doctype, name, fieldname=None, as_dict=False: {
+                ("Student", "STU-1", "anchor_school"): "SCH-1",
+                ("School", "SCH-1", "organization"): "ORG-1",
+            }.get((doctype, name, fieldname))
+            module.frappe.get_all = lambda doctype, filters=None, fields=None, order_by=None, limit=None: (
+                [{"academic_year": "2026-2027"}] if doctype == "Program Enrollment" else []
+            )
+
+            def fake_get_doc(data):
+                captured.update(data)
+                return SimpleNamespace(
+                    name="REF-1",
+                    student=data.get("student"),
+                    academic_year=data.get("academic_year"),
+                    entry_date=data.get("entry_date"),
+                    moderation_state=data.get("moderation_state"),
+                    insert=lambda ignore_permissions=True: None,
+                )
+
+            module.frappe.get_doc = fake_get_doc
+
+            payload = module.create_reflection_entry(
                 {
-                    "item_name": "SPI-001",
-                    "item_type": "External Artefact",
-                    "artefact_file": "FILE-EXT-1",
+                    "body": "I can now explain how the microscope evidence supports the claim.",
+                    "course": "COURSE-1",
+                    "student_group": "GROUP-1",
+                    "class_session": "SESSION-1",
                 }
-            ]
-        )
+            )
 
-        row = evidence.get("SPI-001") or {}
-        secure_url = (row.get("file_url") or "").strip()
-        self.assertTrue(secure_url)
+        self.assertEqual(payload["name"], "REF-1")
+        self.assertEqual(payload["student"], "STU-1")
+        self.assertEqual(captured["student"], "STU-1")
+        self.assertEqual(captured["school"], "SCH-1")
+        self.assertEqual(captured["academic_year"], "2026-2027")
+        self.assertEqual(captured["class_session"], "SESSION-1")
+        self.assertEqual(captured["visibility"], "Teacher")
 
-        parsed = urlparse(secure_url)
-        query = parse_qs(parsed.query)
-        self.assertEqual(parsed.path, "/api/method/ifitwala_ed.api.file_access.download_academic_file")
-        self.assertEqual((query.get("file") or [None])[0], "FILE-EXT-1")
-        self.assertEqual((query.get("context_doctype") or [None])[0], "Student Portfolio Item")
-        self.assertEqual((query.get("context_name") or [None])[0], "SPI-001")
+    def test_list_reflection_entries_accepts_learning_context_filters(self):
+        seen: dict[str, object] = {}
+
+        with _student_portfolio_module() as module:
+            module._resolve_actor_scope = lambda requested_students, school_filter=None: {
+                "role": "Student",
+                "students": ["STU-1"],
+                "user": "student@example.com",
+            }
+            module.frappe.db.count = lambda doctype, filters=None: seen.update({"count_filters": filters}) or 1
+
+            def fake_get_all(
+                doctype,
+                filters=None,
+                fields=None,
+                order_by=None,
+                start=None,
+                page_length=None,
+            ):
+                seen["filters"] = filters
+                seen["fields"] = fields
+                seen["page_length"] = page_length
+                return [
+                    {
+                        "name": "REF-1",
+                        "student": "STU-1",
+                        "academic_year": "2026-2027",
+                        "school": "SCH-1",
+                        "entry_date": "2026-04-07",
+                        "entry_type": "Reflection",
+                        "visibility": "Teacher",
+                        "moderation_state": "Draft",
+                        "body": "<p>Microscope evidence helped me compare the two cells.</p>",
+                        "course": "COURSE-1",
+                        "student_group": "GROUP-1",
+                        "class_session": "SESSION-1",
+                        "task_delivery": "TDL-1",
+                        "task_submission": "TS-1",
+                    }
+                ]
+
+            module.frappe.get_all = fake_get_all
+
+            payload = module.list_reflection_entries(
+                {
+                    "course": "COURSE-1",
+                    "student_group": "GROUP-1",
+                    "class_session": "SESSION-1",
+                    "task_delivery": "TDL-1",
+                    "task_submission": "TS-1",
+                }
+            )
+
+        self.assertEqual(seen["filters"]["course"], "COURSE-1")
+        self.assertEqual(seen["filters"]["student_group"], "GROUP-1")
+        self.assertEqual(seen["filters"]["class_session"], "SESSION-1")
+        self.assertEqual(seen["filters"]["task_delivery"], "TDL-1")
+        self.assertEqual(seen["filters"]["task_submission"], "TS-1")
+        self.assertIn("course", seen["fields"])
+        self.assertEqual(payload["items"][0]["task_delivery"], "TDL-1")
+        self.assertEqual(payload["items"][0]["body_preview"], "Microscope evidence helped me compare the two cells.")

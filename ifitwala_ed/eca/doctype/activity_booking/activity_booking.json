@@ -1,8 +1,8 @@
 {
  "actions": [],
  "allow_rename": 1,
- "autoname": "format:ABK-{YYYY}-{#####}",
- "creation": "2026-02-11 00:00:00.000000",
+ "autoname": "ABK-.YY.-.MM.-.#####",
+ "creation": "2026-02-11 00:00:00",
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
@@ -256,10 +256,11 @@
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-02-11 00:00:00.000000",
+ "modified": "2026-04-02 13:12:54.787341",
  "modified_by": "Administrator",
  "module": "ECA",
  "name": "Activity Booking",
+ "naming_rule": "Expression",
  "owner": "Administrator",
  "permissions": [
   {

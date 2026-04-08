@@ -37,6 +37,39 @@ describe('lib/frappe transport contract', () => {
 		expect(payload).toEqual({ id: 'A-1' })
 	})
 
+	it('apiRequest preserves already-unwrapped payloads with top-level message fields', async () => {
+		frappeRequestMock.mockResolvedValue({
+			message: 'Showing the shared course plan.',
+			learning: {
+				selected_context: {
+					unit_plan: 'UNIT-1',
+				},
+			},
+		})
+
+		const payload = await apiRequest<{
+			message: string
+			learning: { selected_context: { unit_plan: string } }
+		}>({ url: '/api/method/x' })
+
+		expect(payload).toEqual({
+			message: 'Showing the shared course plan.',
+			learning: {
+				selected_context: {
+					unit_plan: 'UNIT-1',
+				},
+			},
+		})
+	})
+
+	it('apiRequest preserves already-unwrapped payloads whose only field is message', async () => {
+		frappeRequestMock.mockResolvedValue({ message: 'Roster repaired.' })
+
+		const payload = await apiRequest<{ message: string }>({ url: '/api/method/x' })
+
+		expect(payload).toEqual({ message: 'Roster repaired.' })
+	})
+
 	it('apiRequest throws on null payload', async () => {
 		frappeRequestMock.mockResolvedValue(null)
 

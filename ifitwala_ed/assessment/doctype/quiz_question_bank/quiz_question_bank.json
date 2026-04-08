@@ -1,8 +1,8 @@
 {
  "actions": [],
  "allow_rename": 1,
- "autoname": "format:QBK-{#####}",
- "creation": "2026-03-13 11:30:42.000000",
+ "autoname": "QBK-.YY.-.MM.-.#####",
+ "creation": "2026-03-13 11:30:42",
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
@@ -40,10 +40,11 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-03-13 11:30:42.000000",
+ "modified": "2026-04-02 13:20:20.442195",
  "modified_by": "Administrator",
  "module": "Assessment",
  "name": "Quiz Question Bank",
+ "naming_rule": "Expression",
  "owner": "Administrator",
  "permissions": [
   {

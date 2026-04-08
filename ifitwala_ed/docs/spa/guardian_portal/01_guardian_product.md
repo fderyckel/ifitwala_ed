@@ -29,6 +29,8 @@ Rules:
 2. The default experience is family-first and parent-centric.
 3. The portal answers three questions first: what is happening, what needs attention, and what needs preparation.
 4. The portal is an awareness surface, not a live gradebook or a staff tool.
+5. Any curriculum-aware expansion must stay a family briefing layer, not a second student LMS.
+6. Curriculum visibility now includes `learning_highlights` on Guardian Home and a child-level learning brief on `/guardian/students/:student_id`.
 
 ## 2. User Model And Interaction Model
 
@@ -86,8 +88,8 @@ Surface matrix:
 
 | Route | Surface | Status | Purpose |
 | --- | --- | --- | --- |
-| `/guardian` | Guardian Home | Implemented | Family snapshot with counts, quick links, and four briefing zones. |
-| `/guardian/students/:student_id` | Guardian Student Shell | Implemented | Child-specific read view derived from the same guardian snapshot payload. |
+| `/guardian` | Guardian Home | Implemented | Family snapshot with counts, quick links, and five briefing zones including learning highlights. |
+| `/guardian/students/:student_id` | Guardian Student Shell | Implemented | Child-specific learning brief with course themes, upcoming experiences, and home-support prompts. |
 | `/guardian/course-selection` | Guardian Course Selection | Implemented | Family-first academic self-enrollment board for linked children. |
 | `/guardian/course-selection/:selection_window/:student_id` | Guardian Course Selection Detail | Implemented | Child-specific course-choice editor for one invited selection window. |
 | `/guardian/activities` | Guardian Activities | Implemented | Family-first activity booking and management flow. |
@@ -122,6 +124,10 @@ Rules:
 4. Uploads and direct guardian messaging remain outside the current `/hub/guardian` implementation.
 5. Any new guardian-facing action must use a named workflow endpoint and server-owned permissions.
 6. Family signatures, permission slips, and mutable consents are planned work and are governed by `ifitwala_ed/docs/files_and_policies/policy_04_family_signature_and_consent_contract.md` until implementation lands.
+
+Planned curriculum-awareness expansion is tracked separately in:
+
+- `ifitwala_ed/docs/curriculum/05_student_and_guardian_learning_experience_proposal.md`
 
 ## 5. Contract Matrix
 

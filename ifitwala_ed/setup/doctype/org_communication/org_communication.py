@@ -6,8 +6,15 @@
 import frappe
 from frappe import _
 from frappe.model.document import Document
+from frappe.model.naming import make_autoname
 from frappe.utils import get_datetime, now_datetime
 from frappe.utils.nestedset import get_descendants_of
+
+from ifitwala_ed.curriculum.materials import validate_reference_url
+from ifitwala_ed.setup.doctype.org_communication.attachments import (
+    ORG_COMMUNICATION_ATTACHMENT_BINDING_ROLE,
+    ORG_COMMUNICATION_ATTACHMENT_SLOT_PREFIX,
+)
 
 # --------------------------------------------------------------------
 # Role constants & basic role helper
@@ -43,6 +50,7 @@ TARGET_MODE_ALLOWED_RECIPIENTS = {
     "Team": {"to_staff"},
     "Student Group": {"to_staff", "to_students", "to_guardians"},
 }
+ORG_COMMUNICATION_NAME_PATTERN = "ORG-COMM-.YY.-.MM.-.#####"
 
 
 def _user_has_any_role(user: str, roles: set[str]) -> bool:
@@ -72,6 +80,9 @@ def _get_enabled_recipient_fields(row) -> set[str]:
 
 
 class OrgCommunication(Document):
+    def autoname(self):
+        self.name = make_autoname(ORG_COMMUNICATION_NAME_PATTERN)
+
     def validate(self):
         """Main validation pipeline.
 
@@ -92,6 +103,7 @@ class OrgCommunication(Document):
         self._validate_activity_context_links()
         self._normalize_and_validate_dates()
         self._validate_audiences()
+        self._validate_attachments()
         self._enforce_role_restrictions_on_audiences()
         self._enforce_status_rules()
         self._enforce_portal_surface_rules()
@@ -493,6 +505,87 @@ class OrgCommunication(Document):
                     ),
                     title=_("Audience Not Allowed"),
                 )
+
+    def _validate_attachments(self):
+        rows = self.get("attachments") or []
+        if not rows:
+            return
+
+        before = None if self.is_new() else self.get_doc_before_save()
+        unchanged_rows = {}
+        if before:
+            for row in before.get("attachments") or []:
+                row_name = str(row.get("name") or "").strip()
+                if row_name:
+                    unchanged_rows[row_name] = {
+                        "file": str(row.get("file") or "").strip(),
+                        "external_url": str(row.get("external_url") or "").strip(),
+                    }
+
+        for row in rows:
+            row_name = str(row.get("name") or "").strip()
+            file_url = str(row.get("file") or "").strip()
+            external_url = str(row.get("external_url") or "").strip()
+
+            if not file_url and not external_url:
+                continue
+
+            if file_url and external_url:
+                frappe.throw(_("Attachment rows may contain a file or an external URL, not both."))
+
+            if row_name and unchanged_rows.get(row_name) == {"file": file_url, "external_url": external_url}:
+                continue
+
+            if external_url:
+                row.external_url = validate_reference_url(external_url)
+                continue
+
+            if not self.name:
+                frappe.throw(_("Save the Org Communication before attaching governed files."))
+
+            if not row_name:
+                frappe.throw(_("Org Communication attachment rows must carry a stable governed row key."))
+
+            file_name = frappe.db.get_value(
+                "File",
+                {
+                    "attached_to_doctype": "Org Communication",
+                    "attached_to_name": self.name,
+                    "file_url": file_url,
+                },
+                "name",
+            )
+            if not file_name:
+                frappe.throw(_("Org Communication files must be uploaded through the governed attachment action."))
+
+            binding_name = frappe.db.get_value(
+                "Drive Binding",
+                {
+                    "binding_doctype": "Org Communication",
+                    "binding_name": self.name,
+                    "binding_role": ORG_COMMUNICATION_ATTACHMENT_BINDING_ROLE,
+                    "slot": f"{ORG_COMMUNICATION_ATTACHMENT_SLOT_PREFIX}{row_name}",
+                    "file": file_name,
+                    "status": "active",
+                },
+                "name",
+            )
+            if binding_name:
+                continue
+
+            drive_file_name = frappe.db.get_value(
+                "Drive File",
+                {
+                    "owner_doctype": "Org Communication",
+                    "owner_name": self.name,
+                    "slot": f"{ORG_COMMUNICATION_ATTACHMENT_SLOT_PREFIX}{row_name}",
+                    "file": file_name,
+                    "status": ["in", ["active", "processing", "blocked"]],
+                },
+                "name",
+            )
+            if not drive_file_name:
+                frappe.throw(_("Org Communication file rows must resolve to an active governed Drive file or binding."))
 
     # ----------------------------------------------------------------
     # Status / publish window rules

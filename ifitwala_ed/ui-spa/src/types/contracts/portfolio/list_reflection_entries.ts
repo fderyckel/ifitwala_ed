@@ -5,6 +5,11 @@ export type Request = {
 	school?: string
 	academic_year?: string
 	program_enrollment?: string
+	course?: string
+	student_group?: string
+	class_session?: string
+	task_delivery?: string
+	task_submission?: string
 	date_from?: string
 	date_to?: string
 	page?: number
@@ -22,6 +27,11 @@ export type ReflectionEntryRow = {
 	moderation_state?: string
 	body?: string
 	body_preview?: string
+	course?: string
+	student_group?: string
+	class_session?: string
+	task_delivery?: string
+	task_submission?: string
 }
 
 export type Response = {

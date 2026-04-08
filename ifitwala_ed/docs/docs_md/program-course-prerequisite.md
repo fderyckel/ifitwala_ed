@@ -3,8 +3,8 @@ title: "Program Course Prerequisite: Frozen Eligibility Thresholds"
 slug: program-course-prerequisite
 category: Curriculum
 doc_order: 4
-version: "1.0.0"
-last_change_date: "2026-02-28"
+version: "1.0.1"
+last_change_date: "2026-04-05"
 summary: "Define program-scoped prerequisite rules with DNF grouping and immutable numeric threshold snapshots for auditable enrollment decisions."
 seo_title: "Program Course Prerequisite: Frozen Eligibility Thresholds"
 seo_description: "Define program-scoped prerequisite rules with DNF grouping and immutable numeric threshold snapshots for auditable enrollment decisions."
@@ -62,6 +62,16 @@ On first save, controller resolves:
 
 Student passes if any full group passes.
 
+## Permission Model
+
+`Program Course Prerequisite` is a child table (`istable=1`) and follows parent [**Program**](/docs/en/program/) permissions.
+
+## Related Docs
+
+- [**Program**](/docs/en/program/)
+- [**Program Course**](/docs/en/program-course/)
+- [**Program Enrollment Request**](/docs/en/program-enrollment-request/)
+
 ## Technical Notes (IT)
 
 ### Schema and Controller Snapshot
@@ -78,13 +88,3 @@ Student passes if any full group passes.
   - resolves `grade_scale_used` from `required_course.grade_scale`, fallback `Program.grade_scale`
   - enforces immutability after first save for `grade_scale_used` and `min_numeric_score`
   - asserts both snapshot fields are present before save completes
-
-### Permission Model
-
-`Program Course Prerequisite` is a child table (`istable=1`) and follows parent [**Program**](/docs/en/program/) permissions.
-
-## Related Docs
-
-- [**Program**](/docs/en/program/)
-- [**Program Course**](/docs/en/program-course/)
-- [**Program Enrollment Request**](/docs/en/program-enrollment-request/)

@@ -341,6 +341,9 @@ def fetch_attendance_tool_bootstrap(
             program=selected_program,
         )
         attendance_codes = list_attendance_codes()
+        if not attendance_codes:
+            attendance_codes = list_attendance_codes(show_in_attendance_tool=None)
+        default_code = next((row["name"] for row in attendance_codes if int(row.get("is_default") or 0) == 1), None)
         selected_group = _pick_named_value(requested["student_group"], groups)
         if not selected_group and len(groups) == 1:
             selected_group = groups[0]["name"]
@@ -353,7 +356,7 @@ def fetch_attendance_tool_bootstrap(
             "student_groups": groups,
             "default_student_group": selected_group,
             "attendance_codes": attendance_codes,
-            "default_code": attendance_codes[0]["name"] if attendance_codes else None,
+            "default_code": default_code or (attendance_codes[0]["name"] if attendance_codes else None),
         }
 
     return _cached_context(

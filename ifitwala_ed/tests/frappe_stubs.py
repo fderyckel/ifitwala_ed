@@ -48,8 +48,12 @@ def stubbed_frappe(extra_modules: dict[str, object] | None = None) -> Iterator[t
     frappe.get_doc = lambda *args, **kwargs: None
     frappe.new_doc = lambda doctype: None
     frappe.db = types.SimpleNamespace()
+    frappe.permissions = types.SimpleNamespace(get_roles=lambda username=None: [])
 
     frappe_model = types.ModuleType("frappe.model")
+    frappe_model.child_table_fields = ()
+    frappe_model.default_fields = ()
+    frappe_model.optional_fields = ()
     frappe_model_document = types.ModuleType("frappe.model.document")
 
     class Document:
@@ -78,8 +82,30 @@ def stubbed_frappe(extra_modules: dict[str, object] | None = None) -> Iterator[t
     if extra_modules:
         modules.update(extra_modules)
 
+    restored_package_attrs: list[tuple[object, str, object, bool]] = []
+
     with patch.dict(sys.modules, modules, clear=False):
-        yield frappe
+        if extra_modules:
+            for module_name, module_obj in extra_modules.items():
+                parent_name, _, attr_name = module_name.rpartition(".")
+                if not parent_name or not attr_name:
+                    continue
+                parent_module = sys.modules.get(parent_name)
+                if parent_module is None:
+                    parent_module = importlib.import_module(parent_name)
+                had_attr = hasattr(parent_module, attr_name)
+                previous_value = getattr(parent_module, attr_name, None)
+                restored_package_attrs.append((parent_module, attr_name, previous_value, had_attr))
+                setattr(parent_module, attr_name, module_obj)
+
+        try:
+            yield frappe
+        finally:
+            for parent_module, attr_name, previous_value, had_attr in reversed(restored_package_attrs):
+                if had_attr:
+                    setattr(parent_module, attr_name, previous_value)
+                else:
+                    delattr(parent_module, attr_name)
 
 
 def import_fresh(module_name: str):

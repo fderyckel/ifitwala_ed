@@ -83,6 +83,85 @@
 		<template v-else>
 			<section class="card-surface p-5">
 				<div class="mb-4 flex items-center justify-between">
+					<div>
+						<h2 class="type-h3 text-ink">Learning Highlights</h2>
+						<p class="mt-1 type-caption text-ink/70">
+							Big themes, what is coming up next, and one simple prompt for home.
+						</p>
+					</div>
+					<span class="chip">{{ learningHighlights.length }}</span>
+				</div>
+				<div v-if="!learningHighlights.length" class="type-body text-ink/70">
+					Learning highlights will appear here once teachers publish the current class focus.
+				</div>
+				<div v-else class="grid gap-4 lg:grid-cols-2">
+					<article
+						v-for="highlight in learningHighlights"
+						:key="`${highlight.student}-${highlight.course}`"
+						class="rounded-xl border border-line-soft bg-surface-soft p-4"
+					>
+						<div class="flex items-start justify-between gap-3">
+							<div class="flex min-w-0 items-start gap-3">
+								<div
+									class="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-line-soft bg-white"
+								>
+									<img
+										v-if="childImage(highlight.student)"
+										:src="childImage(highlight.student)"
+										:alt="highlight.student_name || childName(highlight.student)"
+										class="h-full w-full object-cover"
+										loading="lazy"
+									/>
+									<span v-else class="type-body-strong text-ink/50">
+										{{ childInitials(highlight.student) }}
+									</span>
+								</div>
+								<div class="min-w-0">
+									<RouterLink
+										:to="{ name: 'guardian-student', params: { student_id: highlight.student } }"
+										class="type-body-strong text-jacaranda hover:underline"
+									>
+										{{ highlight.student_name || childName(highlight.student) }}
+									</RouterLink>
+									<p class="mt-1 type-caption text-ink/60">
+										{{ highlight.course_name || 'Current course' }}
+										<span v-if="highlight.class_label">· {{ highlight.class_label }}</span>
+									</p>
+								</div>
+							</div>
+							<span v-if="highlight.unit_title" class="chip">{{ highlight.unit_title }}</span>
+						</div>
+
+						<p v-if="highlight.focus_statement" class="mt-3 type-body text-ink/80">
+							{{ highlight.focus_statement }}
+						</p>
+						<p v-if="highlight.next_step" class="mt-3 type-caption text-ink/70">
+							Coming up: {{ highlight.next_step }}
+							<span v-if="highlight.next_step_supporting_text">
+								· {{ highlight.next_step_supporting_text }}
+							</span>
+						</p>
+						<div
+							v-if="highlight.dinner_prompt"
+							class="mt-4 rounded-lg border border-line-soft bg-white p-3"
+						>
+							<p class="type-overline text-ink/60">Talk at home</p>
+							<p class="mt-2 type-body text-ink/80">{{ highlight.dinner_prompt }}</p>
+						</div>
+						<div class="mt-4">
+							<RouterLink
+								:to="{ name: 'guardian-student', params: { student_id: highlight.student } }"
+								class="inline-flex text-sm font-medium text-jacaranda transition hover:text-jacaranda/80"
+							>
+								View learning brief
+							</RouterLink>
+						</div>
+					</article>
+				</div>
+			</section>
+
+			<section class="card-surface p-5">
+				<div class="mb-4 flex items-center justify-between">
 					<h2 class="type-h3 text-ink">Family Timeline</h2>
 				</div>
 				<div v-if="!familyTimeline.length" class="type-body text-ink/70">
@@ -274,6 +353,7 @@ const familyTimeline = computed(() => snapshot.value?.zones.family_timeline ?? [
 const attentionItems = computed(() => snapshot.value?.zones.attention_needed ?? []);
 const prepItems = computed(() => snapshot.value?.zones.preparation_and_support ?? []);
 const recentActivity = computed(() => snapshot.value?.zones.recent_activity ?? []);
+const learningHighlights = computed(() => snapshot.value?.zones.learning_highlights ?? []);
 
 const quickLinks = [
 	{
@@ -334,8 +414,27 @@ const childNameMap = computed(() => {
 	return map;
 });
 
+const childImageMap = computed(() => {
+	const map = new Map<string, string>();
+	for (const child of snapshot.value?.family.children ?? []) {
+		if (child.student_image_url) {
+			map.set(child.student, child.student_image_url);
+		}
+	}
+	return map;
+});
+
 function childName(student: string): string {
 	return childNameMap.value.get(student) ?? student;
+}
+
+function childImage(student: string): string {
+	return childImageMap.value.get(student) ?? '';
+}
+
+function childInitials(student: string): string {
+	const parts = childName(student).split(/\s+/).filter(Boolean).slice(0, 2);
+	return parts.map(part => part[0]?.toUpperCase() || '').join('') || '?';
 }
 
 function chipTitles(chips: DueTaskChip[]): string {

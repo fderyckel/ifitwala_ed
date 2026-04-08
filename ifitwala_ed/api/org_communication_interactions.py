@@ -87,7 +87,7 @@ def _ensure_visible_org_communication(org_communication: str, *, user: str, role
             _("Org Communication {org_communication} was not found.").format(org_communication=org_communication)
         )
 
-    if not check_audience_match(org_communication, user, roles, employee):
+    if not check_audience_match(org_communication, user, roles, employee, allow_owner=True):
         frappe.throw(_("You do not have permission to access this communication."), frappe.PermissionError)
 
 
@@ -115,7 +115,7 @@ def _normalize_comm_names(comm_names) -> list[str]:
 def _visible_names_for_user(comm_names: list[str], *, user: str, roles: set[str], employee: dict) -> list[str]:
     visible: list[str] = []
     for name in comm_names:
-        if check_audience_match(name, user, roles, employee):
+        if check_audience_match(name, user, roles, employee, allow_owner=True):
             visible.append(name)
     return visible
 

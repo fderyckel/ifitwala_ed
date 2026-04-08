@@ -1,9 +1,18 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createApp, defineComponent, h, nextTick, type App } from 'vue';
 
-const { createOrgCommunicationQuickMock, getOptionsMock } = vi.hoisted(() => ({
+const {
+	addOrgCommunicationLinkMock,
+	createOrgCommunicationQuickMock,
+	getOptionsMock,
+	removeOrgCommunicationAttachmentMock,
+	uploadOrgCommunicationAttachmentMock,
+} = vi.hoisted(() => ({
+	addOrgCommunicationLinkMock: vi.fn(),
 	createOrgCommunicationQuickMock: vi.fn(),
 	getOptionsMock: vi.fn(),
+	removeOrgCommunicationAttachmentMock: vi.fn(),
+	uploadOrgCommunicationAttachmentMock: vi.fn(),
 }));
 
 vi.mock('@headlessui/vue', () => {
@@ -147,8 +156,11 @@ vi.mock('frappe-ui', () => ({
 }));
 
 vi.mock('@/lib/services/orgCommunicationQuickCreateService', () => ({
+	addOrgCommunicationLink: addOrgCommunicationLinkMock,
 	createOrgCommunicationQuick: createOrgCommunicationQuickMock,
 	getOrgCommunicationQuickCreateOptions: getOptionsMock,
+	removeOrgCommunicationAttachment: removeOrgCommunicationAttachmentMock,
+	uploadOrgCommunicationAttachment: uploadOrgCommunicationAttachmentMock,
 }));
 
 import OrgCommunicationQuickCreateModal from '@/components/communication/OrgCommunicationQuickCreateModal.vue';
@@ -203,7 +215,14 @@ const quickCreateOptions = {
 		organizations: [{ name: 'ORG-1', organization_name: 'Root Org', abbr: 'RO' }],
 		schools: [{ name: 'SCH-1', school_name: 'Main School', abbr: 'MS', organization: 'ORG-1' }],
 		teams: [],
-		student_groups: [],
+		student_groups: [
+			{
+				name: 'SG-1',
+				student_group_name: 'Grade 6 Math',
+				student_group_abbreviation: 'G6 Math',
+				school: 'SCH-1',
+			},
+		],
 	},
 	permissions: {
 		can_create: true,
@@ -231,6 +250,16 @@ const wideAudienceQuickCreateOptions = {
 	},
 };
 
+const interactiveThreadQuickCreateOptions = {
+	...quickCreateOptions,
+	fields: {
+		...quickCreateOptions.fields,
+		interaction_modes: ['None', 'Open Thread'],
+		portal_surfaces: ['Desk', 'Morning Brief'],
+		priorities: ['Normal', 'High'],
+	},
+};
+
 async function flushUi() {
 	await Promise.resolve();
 	await nextTick();
@@ -238,7 +267,7 @@ async function flushUi() {
 	await nextTick();
 }
 
-function mountModal() {
+function mountModal(props: Record<string, unknown> = {}) {
 	const host = document.createElement('div');
 	document.body.appendChild(host);
 
@@ -249,6 +278,7 @@ function mountModal() {
 					open: true,
 					entryMode: 'staff-home',
 					title: 'Weekly staff update',
+					...props,
 				});
 			},
 		})
@@ -292,9 +322,31 @@ function setRichMessage(value: string) {
 	editor.dispatchEvent(new Event('input', { bubbles: true }));
 }
 
+function setInputByPlaceholder(placeholder: string, value: string) {
+	const input = Array.from(document.querySelectorAll('input')).find(node =>
+		(node.getAttribute('placeholder') || '').includes(placeholder)
+	) as HTMLInputElement | undefined;
+	if (!input) return;
+	input.value = value;
+	input.dispatchEvent(new Event('input', { bubbles: true }));
+}
+
+function setSelectByLabel(labelText: string, value: string) {
+	const label = Array.from(document.querySelectorAll('label')).find(node =>
+		(node.textContent || '').includes(labelText)
+	);
+	const select = label?.parentElement?.querySelector('select') as HTMLSelectElement | null;
+	if (!select) return;
+	select.value = value;
+	select.dispatchEvent(new Event('change', { bubbles: true }));
+}
+
 afterEach(() => {
+	addOrgCommunicationLinkMock.mockReset();
 	createOrgCommunicationQuickMock.mockReset();
 	getOptionsMock.mockReset();
+	removeOrgCommunicationAttachmentMock.mockReset();
+	uploadOrgCommunicationAttachmentMock.mockReset();
 	while (cleanupFns.length) cleanupFns.pop()?.();
 	document.body.innerHTML = '';
 });
@@ -436,5 +488,175 @@ describe('OrgCommunicationQuickCreateModal', () => {
 				to_community: 0,
 			}),
 		]);
+	});
+
+	it('renders a compact locked composer for class-event mode', async () => {
+		getOptionsMock.mockResolvedValue(quickCreateOptions);
+
+		mountModal({
+			entryMode: 'class-event',
+			title: '25-26-G6-Math1/IIS 2025-2026',
+			studentGroup: 'SG-1',
+			school: 'SCH-1',
+			sessionDate: '2026-04-03',
+			sessionTimeLabel: '8:00 AM - 8:45 AM',
+			courseLabel: 'IB MYP mathematics (Grade 6)',
+		});
+		await flushUi();
+
+		const text = document.body.textContent || '';
+		expect(text).toContain('Locked context');
+		expect(text).toContain('Send options');
+		expect(text).not.toContain('Communication type');
+		expect(text).not.toContain('Organization');
+		expect(text).not.toContain('Thread settings');
+		expect(document.querySelector('.if-org-communication-ready-check')).toBeNull();
+	});
+
+	it('lets users change interaction mode and toggle thread settings', async () => {
+		getOptionsMock.mockResolvedValue(interactiveThreadQuickCreateOptions);
+
+		mountModal();
+		await flushUi();
+
+		setSelectByLabel('Interaction mode', 'Open Thread');
+		await flushUi();
+
+		const privateNotesLabel = Array.from(document.querySelectorAll('label')).find(node =>
+			(node.textContent || '').includes('Allow private notes to school staff.')
+		);
+		const publicThreadLabel = Array.from(document.querySelectorAll('label')).find(node =>
+			(node.textContent || '').includes('Allow audience-visible public thread entries.')
+		);
+
+		const privateNotesInput = privateNotesLabel?.querySelector('input') as HTMLInputElement | null;
+		const publicThreadInput = publicThreadLabel?.querySelector('input') as HTMLInputElement | null;
+
+		expect(privateNotesInput?.disabled).toBe(false);
+		expect(publicThreadInput?.disabled).toBe(false);
+
+		privateNotesInput?.click();
+		publicThreadInput?.click();
+		await flushUi();
+
+		expect(privateNotesInput?.checked).toBe(true);
+		expect(publicThreadInput?.checked).toBe(true);
+	});
+
+	it('submits class-event payload with guardian visibility off by default', async () => {
+		getOptionsMock.mockResolvedValue(quickCreateOptions);
+		createOrgCommunicationQuickMock.mockResolvedValue({
+			ok: true,
+			status: 'created',
+			name: 'COMM-0006',
+			title: '25-26-G6-Math1/IIS 2025-2026',
+		});
+
+		mountModal({
+			entryMode: 'class-event',
+			title: '25-26-G6-Math1/IIS 2025-2026',
+			studentGroup: 'SG-1',
+			school: 'SCH-1',
+			sessionDate: '2026-04-03',
+			sessionTimeLabel: '8:00 AM - 8:45 AM',
+			courseLabel: 'IB MYP mathematics (Grade 6)',
+		});
+		await flushUi();
+
+		clickButton('Publish announcement');
+		await flushUi();
+
+		expect(createOrgCommunicationQuickMock).toHaveBeenCalledTimes(1);
+		expect(createOrgCommunicationQuickMock.mock.calls[0][0]).toMatchObject({
+			title: '25-26-G6-Math1/IIS 2025-2026',
+			communication_type: 'Class Announcement',
+			status: 'Published',
+			portal_surface: 'Everywhere',
+			organization: 'ORG-1',
+			school: 'SCH-1',
+			interaction_mode: 'None',
+			allow_private_notes: 0,
+			allow_public_thread: 0,
+			audiences: [
+				expect.objectContaining({
+					target_mode: 'Student Group',
+					student_group: 'SG-1',
+					to_students: 1,
+					to_guardians: 0,
+					to_staff: 0,
+					to_community: 0,
+				}),
+			],
+		});
+	});
+
+	it('auto-saves a class-event draft before adding a link attachment and publishes by update', async () => {
+		getOptionsMock.mockResolvedValue(quickCreateOptions);
+		createOrgCommunicationQuickMock
+			.mockResolvedValueOnce({
+				ok: true,
+				status: 'created',
+				name: 'COMM-DRAFT-1',
+				title: '25-26-G6-Math1/IIS 2025-2026',
+			})
+			.mockResolvedValueOnce({
+				ok: true,
+				status: 'updated',
+				name: 'COMM-DRAFT-1',
+				title: '25-26-G6-Math1/IIS 2025-2026',
+			});
+		addOrgCommunicationLinkMock.mockResolvedValue({
+			ok: true,
+			org_communication: 'COMM-DRAFT-1',
+			attachment: {
+				row_name: 'row-link',
+				kind: 'link',
+				title: 'Reference sheet',
+				external_url: 'https://example.com/reference',
+				open_url: 'https://example.com/reference',
+			},
+		});
+
+		mountModal({
+			entryMode: 'class-event',
+			title: '25-26-G6-Math1/IIS 2025-2026',
+			studentGroup: 'SG-1',
+			school: 'SCH-1',
+			sessionDate: '2026-04-03',
+			sessionTimeLabel: '8:00 AM - 8:45 AM',
+			courseLabel: 'IB MYP mathematics (Grade 6)',
+		});
+		await flushUi();
+
+		clickButton('Add link');
+		await flushUi();
+		setInputByPlaceholder('https://example.com/resource.pdf', 'https://example.com/reference');
+		setInputByPlaceholder('Optional display label', 'Reference sheet');
+		await flushUi();
+		clickButton('Add link');
+		await flushUi();
+		clickButton('Publish announcement');
+		await flushUi();
+
+		expect(createOrgCommunicationQuickMock).toHaveBeenNthCalledWith(
+			1,
+			expect.objectContaining({
+				name: null,
+				status: 'Draft',
+			})
+		);
+		expect(addOrgCommunicationLinkMock).toHaveBeenCalledWith({
+			org_communication: 'COMM-DRAFT-1',
+			title: 'Reference sheet',
+			external_url: 'https://example.com/reference',
+		});
+		expect(createOrgCommunicationQuickMock).toHaveBeenNthCalledWith(
+			2,
+			expect.objectContaining({
+				name: 'COMM-DRAFT-1',
+				status: 'Published',
+			})
+		);
+		expect(document.body.textContent || '').toContain('Reference sheet');
 	});
 });

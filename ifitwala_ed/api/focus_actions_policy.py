@@ -25,6 +25,9 @@ from ifitwala_ed.api.policy_signature import (
     parse_employee_from_todo_description,
     validate_staff_policy_scope_for_employee,
 )
+from ifitwala_ed.governance.doctype.policy_acknowledgement.policy_acknowledgement import (
+    populate_policy_acknowledgement_evidence,
+)
 
 
 def acknowledge_staff_policy(
@@ -32,6 +35,7 @@ def acknowledge_staff_policy(
     client_request_id: str | None = None,
     typed_signature_name: str | None = None,
     attestation_confirmed: int | str | bool | None = None,
+    checked_clause_names=None,
 ):
     user = _require_login()
     focus_item_id = (focus_item_id or "").strip()
@@ -194,6 +198,12 @@ def acknowledge_staff_policy(
                 "context_doctype": "Employee",
                 "context_name": employee_name,
             }
+        )
+        populate_policy_acknowledgement_evidence(
+            ack_doc,
+            typed_signature_name=typed_signature_name,
+            attestation_confirmed=attestation_confirmed,
+            checked_clause_names=checked_clause_names,
         )
         ack_doc.insert(ignore_permissions=True)
 

@@ -19,9 +19,7 @@
   "student_group",
   "program_enrollment",
   "activity_booking",
-  "lesson",
-  "lesson_instance",
-  "lesson_activity",
+  "class_session",
   "task_delivery",
   "task_submission",
   "attachments"
@@ -128,22 +126,10 @@
    "options": "Activity Booking"
   },
   {
-   "fieldname": "lesson",
+   "fieldname": "class_session",
    "fieldtype": "Link",
-   "label": "Lesson",
-   "options": "Lesson"
-  },
-  {
-   "fieldname": "lesson_instance",
-   "fieldtype": "Link",
-   "label": "Lesson Instance",
-   "options": "Lesson Instance"
-  },
-  {
-   "fieldname": "lesson_activity",
-   "fieldtype": "Link",
-   "label": "Lesson Activity",
-   "options": "Lesson Activity"
+   "label": "Class Session",
+   "options": "Class Session"
   },
   {
    "fieldname": "task_delivery",
@@ -166,6 +152,8 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
+ "modified": "2026-04-05 01:26:54.000000",
+ "modified_by": "Administrator",
  "module": "Students",
  "name": "Student Reflection Entry",
  "permissions": [

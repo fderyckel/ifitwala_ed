@@ -3,8 +3,8 @@ title: "Program Enrollment Request: Transactional Staging for Enrollment"
 slug: program-enrollment-request
 category: Enrollment
 doc_order: 4
-version: "1.6.1"
-last_change_date: "2026-03-29"
+version: "1.6.2"
+last_change_date: "2026-04-05"
 summary: "Capture enrollment intent, run deterministic validation snapshots, enforce override gates, and approve requests before materializing Program Enrollment, including basket-group snapshots, offering-derived term-window carry-forward, admissions hydration, portal self-enrollment provenance, report-driven batch actions, and PER form shortcuts into the request overview."
 seo_title: "Program Enrollment Request: Transactional Staging for Enrollment"
 seo_description: "Capture enrollment intent, run deterministic validation snapshots, enforce override gates, and approve requests before materializing Program Enrollment."
@@ -114,6 +114,16 @@ For statuses `Submitted`, `Under Review`, and `Approved`, validation snapshot mu
 4. If the choices pass live validation, the request stays canonical: `status = Submitted`, `selection_window = ...`, `submitted_by = guardian user`.
 5. If the choices still need attention, the request remains `Draft` and the portal explains what must be fixed first.
 
+## Permission Matrix
+
+| Role | Read | Write | Create | Delete |
+|---|---|---|---|---|
+| `System Manager` | Yes | Yes | Yes | Yes |
+| `Academic Admin` | Yes | Yes | Yes | Yes |
+| `Academic Assistant` | Yes | Yes | No | No |
+| `Curriculum Coordinator` | Yes | Yes | Yes | Yes |
+| `Academic Staff` | Yes | No | No | No |
+
 ## Related Docs
 
 - [**Program Offering**](/docs/en/program-offering/)
@@ -172,13 +182,3 @@ For statuses `Submitted`, `Under Review`, and `Approved`, validation snapshot mu
   - idempotent add and update of course rows
   - accepts an explicit enrollment date when a batch tool supplies one
   - copies `required`, `credited_basket_group`, and offering-derived `term_start` / `term_end` into `Program Enrollment Course`
-
-### Permission Matrix
-
-| Role | Read | Write | Create | Delete |
-|---|---|---|---|---|
-| `System Manager` | Yes | Yes | Yes | Yes |
-| `Academic Admin` | Yes | Yes | Yes | Yes |
-| `Academic Assistant` | Yes | Yes | No | No |
-| `Curriculum Coordinator` | Yes | Yes | Yes | Yes |
-| `Academic Staff` | Yes | No | No | No |

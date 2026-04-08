@@ -61,6 +61,14 @@ def _trim_meta_text(raw_html: str | None, *, limit: int = 160) -> str:
     return clean[:limit].rstrip() + "..."
 
 
+def _prune_none_values(value):
+    if isinstance(value, dict):
+        return {key: _prune_none_values(item) for key, item in value.items() if item is not None}
+    if isinstance(value, list):
+        return [_prune_none_values(item) for item in value if item is not None]
+    return value
+
+
 def _safe_link(value: str | None, *, fallback: str) -> str:
     link = (value or "").strip()
     if link.startswith("/") or link.startswith("https://"):
@@ -268,12 +276,27 @@ def _seed_course_learning_highlights(*, profile, course) -> bool:
     if profile.learning_highlights:
         return False
 
-    rows = frappe.get_all(
-        "Learning Unit",
-        filters={"course": course.name, "is_published": 1},
-        fields=["unit_name", "unit_order", "unit_status", "unit_overview", "essential_understanding"],
-        order_by="unit_order asc, unit_name asc",
-        limit=6,
+    rows = frappe.db.sql(
+        """
+        SELECT
+            up.title,
+            up.unit_order,
+            up.unit_status,
+            up.overview,
+            up.essential_understanding
+        FROM `tabUnit Plan` up
+        INNER JOIN `tabCourse Plan` cp ON cp.name = up.course_plan
+        WHERE up.course = %(course)s
+          AND COALESCE(up.is_published, 0) = 1
+          AND COALESCE(cp.plan_status, 'Draft') != 'Archived'
+        ORDER BY
+            CASE WHEN cp.plan_status = 'Active' THEN 0 ELSE 1 END,
+            COALESCE(up.unit_order, 2147483647) ASC,
+            up.title ASC
+        LIMIT 6
+        """,
+        {"course": course.name},
+        as_dict=True,
     )
     if not rows:
         return False
@@ -281,16 +304,16 @@ def _seed_course_learning_highlights(*, profile, course) -> bool:
     for row in rows:
         if (row.get("unit_status") or "").strip() == "Archived":
             continue
-        title = (row.unit_name or "").strip()
+        title = (row.get("title") or "").strip()
         if not title:
             continue
-        summary_source = row.unit_overview or row.essential_understanding or ""
+        summary_source = row.get("overview") or row.get("essential_understanding") or ""
         profile.append(
             "learning_highlights",
             {
                 "title": title,
                 "summary": _trim_meta_text(summary_source, limit=220),
-                "display_order": row.unit_order,
+                "display_order": row.get("unit_order"),
             },
         )
     return bool(profile.learning_highlights)
@@ -759,7 +782,7 @@ def _append_blocks(page, block_specs: list[dict]):
             {
                 "block_type": row["block_type"],
                 "order": row["order"],
-                "props": json.dumps(row["props"]),
+                "props": json.dumps(_prune_none_values(row["props"])),
                 "is_enabled": 1,
             },
         )

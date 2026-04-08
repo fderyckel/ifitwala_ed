@@ -3,8 +3,8 @@ title: "Program Enrollment Tool: Batch Request Preparation and Materialization"
 slug: program-enrollment-tool
 category: Enrollment
 doc_order: 6
-version: "2.3.0"
-last_change_date: "2026-03-29"
+version: "2.3.1"
+last_change_date: "2026-04-05"
 summary: "Use one in-product tool to either seed new Program Enrollment Requests from cohorts or existing enrollments, or fetch existing academic requests directly for batch validation, approval, and materialization, while the request report handles filtered approval/materialization shortcuts."
 seo_title: "Program Enrollment Tool: Batch Request Preparation and Materialization"
 seo_description: "Prepare Program Enrollment Requests in batch for cohorts or existing enrollment populations, then validate, approve, and materialize them into Program Enrollments."
@@ -107,6 +107,17 @@ If a choice still needs staff judgment, the tool creates the draft request and r
 - Request scope: one offering + one Academic Year
 - Result: staff load the existing academic requests directly, validate the stale drafts or submissions, approve the clean ones, and materialize enrollments without opening each request one by one.
 
+## Permission Matrix
+
+| Role | Read | Write | Create | Delete |
+|---|---|---|---|---|
+| `System Manager` | Yes | Yes | Yes | Yes |
+| `Academic Admin` | Yes | Yes | Yes | Yes |
+| `Schedule Maker` | Yes | Yes | Yes | Yes |
+| `Counselor` | Yes | Yes | Yes | Yes |
+| `Curriculum Coordinator` | Yes | Yes | Yes | Yes |
+| `Academic Assistant` | Yes | Yes | Yes | Yes |
+
 ## Related Docs
 
 - [**Program Enrollment Request**](/docs/en/program-enrollment-request/)
@@ -143,14 +154,3 @@ If a choice still needs staff judgment, the tool creates the draft request and r
   - supports batch validation, approval, and materialization
   - uses queue + realtime completion for large batches
   - writes review/blocker/failure detail to CSV when needed
-
-### Permission Matrix
-
-| Role | Read | Write | Create | Delete |
-|---|---|---|---|---|
-| `System Manager` | Yes | Yes | Yes | Yes |
-| `Academic Admin` | Yes | Yes | Yes | Yes |
-| `Schedule Maker` | Yes | Yes | Yes | Yes |
-| `Counselor` | Yes | Yes | Yes | Yes |
-| `Curriculum Coordinator` | Yes | Yes | Yes | Yes |
-| `Academic Assistant` | Yes | Yes | Yes | Yes |

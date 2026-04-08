@@ -55,7 +55,7 @@
 						<div class="flex items-start justify-between gap-3 px-5 pt-5">
 							<div>
 								<p class="type-overline">Task</p>
-								<DialogTitle class="type-h3 text-ink mt-1">Create task</DialogTitle>
+								<DialogTitle class="type-h3 text-ink mt-1">{{ dialogTitle }}</DialogTitle>
 							</div>
 
 							<button
@@ -71,313 +71,878 @@
 						<!-- Body -->
 						<div class="if-overlay__body">
 							<div class="space-y-6">
-								<!-- Step 1 -->
-								<section class="card-panel space-y-4 p-5">
-									<div class="flex items-center gap-3">
-										<span class="chip">Step 1</span>
-										<h3 class="type-h3 text-ink">What are you giving students?</h3>
-									</div>
-
-									<div class="grid gap-4 md:grid-cols-2">
-										<div class="space-y-1">
-											<label class="type-label">Title</label>
-											<FormControl
-												v-model="form.title"
-												type="text"
-												placeholder="Assignment title"
-											/>
+								<template v-if="!createdTask">
+									<section class="card-panel space-y-4 p-5">
+										<div class="flex items-center gap-3">
+											<span class="chip">Mode</span>
+											<h3 class="type-h3 text-ink">How do you want to assign this work?</h3>
 										</div>
-										<div class="space-y-1">
-											<label class="type-label">Type</label>
-											<FormControl
-												v-model="form.task_type"
-												type="select"
-												:options="taskTypeOptions"
-												option-label="label"
-												option-value="value"
-												placeholder="Select type (optional)"
-											/>
+										<div class="grid gap-3 md:grid-cols-2">
+											<button
+												type="button"
+												class="rounded-2xl border px-4 py-4 text-left transition"
+												:class="
+													taskMode === 'create'
+														? 'border-leaf/60 bg-sky/20 text-ink shadow-sm'
+														: 'border-border/70 bg-white text-ink/80 hover:border-leaf/40'
+												"
+												@click="setTaskMode('create')"
+											>
+												<p class="text-sm font-semibold text-ink">Create new task</p>
+												<p class="mt-1 text-xs text-ink/60">
+													Author a new reusable task, then assign it to this class.
+												</p>
+											</button>
+											<button
+												type="button"
+												class="rounded-2xl border px-4 py-4 text-left transition"
+												:class="
+													taskMode === 'reuse'
+														? 'border-leaf/60 bg-sky/20 text-ink shadow-sm'
+														: 'border-border/70 bg-white text-ink/80 hover:border-leaf/40'
+												"
+												@click="setTaskMode('reuse')"
+											>
+												<p class="text-sm font-semibold text-ink">Reuse existing task</p>
+												<p class="mt-1 text-xs text-ink/60">
+													Assign one of your course tasks again without rewriting the task
+													definition.
+												</p>
+											</button>
 										</div>
-									</div>
-
-									<div class="space-y-1">
-										<label class="type-label">Instructions</label>
-										<FormControl
-											v-model="form.instructions"
-											type="textarea"
-											:rows="4"
-											placeholder="Share directions, resources, or expectations..."
-										/>
-									</div>
-
-									<div v-if="isQuizTask" class="grid gap-4 md:grid-cols-2">
-										<div class="space-y-1">
-											<label class="type-label">Question bank</label>
-											<FormControl
-												v-model="form.quiz_question_bank"
-												type="select"
-												:options="quizBankOptions"
-												option-label="label"
-												option-value="value"
-												placeholder="Select a quiz bank"
-											/>
-										</div>
-										<div class="space-y-1">
-											<label class="type-label">Questions per attempt</label>
-											<FormControl
-												v-model="form.quiz_question_count"
-												type="number"
-												:min="1"
-												:step="1"
-												placeholder="Use all if blank"
-											/>
-										</div>
-										<div class="space-y-1">
-											<label class="type-label">Time limit (minutes)</label>
-											<FormControl
-												v-model="form.quiz_time_limit_minutes"
-												type="number"
-												:min="1"
-												:step="1"
-												placeholder="Optional"
-											/>
-										</div>
-										<div class="space-y-1">
-											<label class="type-label">Maximum attempts</label>
-											<FormControl
-												v-model="form.quiz_max_attempts"
-												type="number"
-												:min="0"
-												:step="1"
-												placeholder="Unlimited if blank"
-											/>
-										</div>
-										<div class="space-y-1">
-											<label class="type-label">Pass percentage</label>
-											<FormControl
-												v-model="form.quiz_pass_percentage"
-												type="number"
-												:min="0"
-												:max="100"
-												:step="1"
-												placeholder="Optional"
-											/>
-										</div>
-									</div>
-								</section>
-
-								<!-- Step 2 -->
-								<section class="card-panel space-y-4 p-5">
-									<div class="flex items-center gap-3">
-										<span class="chip">Step 2</span>
-										<h3 class="type-h3 text-ink">Which class?</h3>
-									</div>
-
-									<div class="space-y-1">
-										<label class="type-label">Class</label>
-
-										<div
-											v-if="isGroupLocked"
-											class="rounded-xl border border-border/80 bg-slate-50 px-3 py-2 text-sm text-ink/80"
-										>
-											{{ selectedGroupLabel || props.prefillStudentGroup || 'Class selected' }}
-										</div>
-
-										<FormControl
-											v-else
-											v-model="form.student_group"
-											type="select"
-											:options="groupOptions"
-											option-label="label"
-											option-value="value"
-											:disabled="groupsLoading"
-											placeholder="Select a class"
-										/>
-
-										<p
-											v-if="!groupsLoading && !groupOptions.length"
-											class="type-caption text-slate-token/70"
-										>
-											No classes available for your role yet.
+										<p class="text-xs text-ink/60">
+											New tasks stay reusable for you across your groups and future years. Share
+											with the course team only when the task is ready for other teachers too.
 										</p>
-									</div>
-								</section>
+									</section>
 
-								<!-- Step 3 -->
-								<section class="card-panel space-y-4 p-5">
-									<div class="flex items-center gap-3">
-										<span class="chip">Step 3</span>
-										<h3 class="type-h3 text-ink">What will happen?</h3>
-									</div>
+									<template v-if="taskMode === 'create'">
+										<section class="card-panel space-y-4 p-5">
+											<div class="flex items-center gap-3">
+												<span class="chip">Step 1</span>
+												<h3 class="type-h3 text-ink">What are you giving students?</h3>
+											</div>
 
-									<div class="grid gap-3 md:grid-cols-3">
-										<button
-											v-for="option in deliveryOptions"
-											:key="option.value"
-											type="button"
-											class="rounded-2xl border px-4 py-4 text-left transition"
-											:class="
-												form.delivery_mode === option.value
-													? 'border-leaf/60 bg-sky/20 text-ink shadow-sm'
-													: 'border-border/70 bg-white text-ink/80 hover:border-leaf/40'
-											"
-											@click="form.delivery_mode = option.value"
-										>
-											<p class="text-sm font-semibold text-ink">{{ option.label }}</p>
-											<p class="mt-1 text-xs text-ink/60">{{ option.help }}</p>
-										</button>
-									</div>
+											<div class="grid gap-4 md:grid-cols-2">
+												<div class="space-y-1">
+													<label class="type-label">Title</label>
+													<FormControl
+														v-model="form.title"
+														type="text"
+														placeholder="Assignment title"
+													/>
+												</div>
+												<div class="space-y-1">
+													<label class="type-label">Type</label>
+													<FormControl
+														v-model="form.task_type"
+														type="select"
+														:options="taskTypeOptions"
+														option-label="label"
+														option-value="value"
+														placeholder="Select type (optional)"
+													/>
+												</div>
+											</div>
 
-									<p v-if="isQuizTask" class="type-caption text-ink/70">
-										Quiz mode is controlled here: use `Assess` for an official graded quiz, or
-										choose another mode for practice.
-									</p>
-								</section>
+											<div class="space-y-1">
+												<label class="type-label">Instructions</label>
+												<FormControl
+													v-model="form.instructions"
+													type="textarea"
+													:rows="4"
+													placeholder="Share directions, resources, or expectations..."
+												/>
+											</div>
 
-								<!-- Step 4 -->
-								<section v-if="!isQuizTask" class="card-panel space-y-4 p-5">
-									<div class="flex items-center gap-3">
-										<span class="chip">Step 4</span>
-										<h3 class="type-h3 text-ink">Dates</h3>
-									</div>
-
-									<div class="grid gap-4 md:grid-cols-3">
-										<div class="space-y-1">
-											<label class="type-label">Available from</label>
-											<input
-												v-model="form.available_from"
-												type="datetime-local"
-												class="w-full rounded-xl border border-border/80 bg-white px-3 py-2 text-sm text-ink shadow-sm focus:border-jacaranda/50 focus:ring-1 focus:ring-jacaranda/30"
-											/>
-										</div>
-										<div class="space-y-1">
-											<label class="type-label">Due date</label>
-											<input
-												v-model="form.due_date"
-												type="datetime-local"
-												class="w-full rounded-xl border border-border/80 bg-white px-3 py-2 text-sm text-ink shadow-sm focus:border-jacaranda/50 focus:ring-1 focus:ring-jacaranda/30"
-											/>
-										</div>
-										<div class="space-y-1">
-											<label class="type-label">Lock date</label>
-											<input
-												v-model="form.lock_date"
-												type="datetime-local"
-												class="w-full rounded-xl border border-border/80 bg-white px-3 py-2 text-sm text-ink shadow-sm focus:border-jacaranda/50 focus:ring-1 focus:ring-jacaranda/30"
-											/>
-										</div>
-									</div>
-
-									<div class="grid gap-4 md:grid-cols-2">
-										<label
-											v-if="showLateSubmission"
-											class="flex items-center gap-2 text-sm text-ink/80"
-										>
-											<input
-												v-model="form.allow_late_submission"
-												type="checkbox"
-												class="rounded border-border/70 text-jacaranda"
-											/>
-											Allow late submissions
-										</label>
-										<div
-											class="rounded-xl border border-dashed border-border/80 bg-slate-50 px-3 py-2 text-sm text-ink/70"
-										>
-											Group submission is paused until the subgroup workflow is implemented.
-										</div>
-									</div>
-								</section>
-
-								<!-- Step 5 -->
-								<section class="card-panel space-y-4 p-5">
-									<div class="flex items-center gap-3">
-										<span class="chip">Step 5</span>
-										<h3 class="type-h3 text-ink">Grading (optional)</h3>
-									</div>
-
-									<div class="space-y-2">
-										<p class="type-label">Will you assess it?</p>
-										<div class="flex flex-wrap gap-2">
-											<button
-												type="button"
-												class="rounded-full border px-4 py-2 text-sm font-medium transition"
-												:class="
-													gradingEnabled
-														? 'border-leaf/60 bg-sky/20 text-ink'
-														: 'border-border/70 bg-white text-ink/70 hover:border-leaf/40'
-												"
-												@click="setGradingEnabled(true)"
+											<div
+												v-if="props.prefillQuizQuestionBankLabel || props.prefillUnitPlan"
+												class="flex flex-wrap gap-2"
 											>
-												Yes
-											</button>
-											<button
-												type="button"
-												class="rounded-full border px-4 py-2 text-sm font-medium transition"
-												:class="
-													!gradingEnabled
-														? 'border-leaf/60 bg-sky/20 text-ink'
-														: 'border-border/70 bg-white text-ink/70 hover:border-leaf/40'
-												"
-												@click="setGradingEnabled(false)"
-											>
-												No
-											</button>
-										</div>
-									</div>
+												<span v-if="props.prefillUnitPlan" class="chip">
+													Unit {{ props.prefillUnitPlan }}
+												</span>
+												<span v-if="props.prefillQuizQuestionBankLabel" class="chip">
+													Quiz {{ props.prefillQuizQuestionBankLabel }}
+												</span>
+											</div>
 
-									<div v-if="gradingEnabled" class="space-y-4">
+											<div v-if="isQuizTask" class="grid gap-4 md:grid-cols-2">
+												<div class="space-y-1">
+													<label class="type-label">Question bank</label>
+													<FormControl
+														v-model="form.quiz_question_bank"
+														type="select"
+														:options="quizBankOptions"
+														option-label="label"
+														option-value="value"
+														placeholder="Select a quiz bank"
+													/>
+													<p v-if="!quizBankOptions.length" class="type-caption text-ink/70">
+														No published quiz banks are available yet. Build one in the shared
+														course-plan workspace first.
+													</p>
+												</div>
+												<div class="space-y-1">
+													<label class="type-label">Questions per attempt</label>
+													<FormControl
+														v-model="form.quiz_question_count"
+														type="number"
+														:min="1"
+														:step="1"
+														placeholder="Use all if blank"
+													/>
+												</div>
+												<div class="space-y-1">
+													<label class="type-label">Time limit (minutes)</label>
+													<FormControl
+														v-model="form.quiz_time_limit_minutes"
+														type="number"
+														:min="1"
+														:step="1"
+														placeholder="Optional"
+													/>
+												</div>
+												<div class="space-y-1">
+													<label class="type-label">Maximum attempts</label>
+													<FormControl
+														v-model="form.quiz_max_attempts"
+														type="number"
+														:min="0"
+														:step="1"
+														placeholder="Unlimited if blank"
+													/>
+												</div>
+												<div class="space-y-1">
+													<label class="type-label">Pass percentage</label>
+													<FormControl
+														v-model="form.quiz_pass_percentage"
+														type="number"
+														:min="0"
+														:max="100"
+														:step="1"
+														placeholder="Optional"
+													/>
+												</div>
+											</div>
+
+											<label
+												class="flex items-start gap-3 rounded-2xl border border-border/70 bg-slate-50 px-4 py-3 text-sm text-ink/80"
+											>
+												<input
+													v-model="form.share_with_course_team"
+													type="checkbox"
+													class="mt-0.5 rounded border-border/70 text-jacaranda"
+												/>
+												<span>
+													<span class="block font-medium text-ink">
+														Share this task with other teachers on this course
+													</span>
+													<span class="block text-xs text-ink/60">
+														Leave this off to keep the task private to you. You can still reuse it
+														across your own groups and future school years.
+													</span>
+												</span>
+											</label>
+										</section>
+
+										<section class="card-panel space-y-4 p-5">
+											<div class="flex items-center gap-3">
+												<span class="chip">Step 2</span>
+												<h3 class="type-h3 text-ink">Which class?</h3>
+											</div>
+
+											<div class="space-y-1">
+												<label class="type-label">Class</label>
+
+												<div
+													v-if="isGroupLocked"
+													class="rounded-xl border border-border/80 bg-slate-50 px-3 py-2 text-sm text-ink/80"
+												>
+													{{ selectedGroupLabel || props.prefillStudentGroup || 'Class selected' }}
+												</div>
+
+												<FormControl
+													v-else
+													v-model="form.student_group"
+													type="select"
+													:options="groupOptions"
+													option-label="label"
+													option-value="value"
+													:disabled="groupsLoading"
+													placeholder="Select a class"
+												/>
+
+												<p
+													v-if="!groupsLoading && !groupOptions.length"
+													class="type-caption text-slate-token/70"
+												>
+													No classes available for your role yet.
+												</p>
+
+												<div
+													v-if="props.prefillUnitPlan || props.prefillClassSession"
+													class="mt-3 flex flex-wrap gap-2"
+												>
+													<span v-if="props.prefillUnitPlan" class="chip">
+														Unit {{ props.prefillUnitPlan }}
+													</span>
+													<span v-if="props.prefillClassSession" class="chip">
+														Session {{ props.prefillClassSession }}
+													</span>
+												</div>
+											</div>
+										</section>
+									</template>
+
+									<template v-else>
+										<section class="card-panel space-y-4 p-5">
+											<div class="flex items-center gap-3">
+												<span class="chip">Step 1</span>
+												<h3 class="type-h3 text-ink">Which class and which reusable task?</h3>
+											</div>
+
+											<div class="space-y-1">
+												<label class="type-label">Class</label>
+
+												<div
+													v-if="isGroupLocked"
+													class="rounded-xl border border-border/80 bg-slate-50 px-3 py-2 text-sm text-ink/80"
+												>
+													{{ selectedGroupLabel || props.prefillStudentGroup || 'Class selected' }}
+												</div>
+
+												<FormControl
+													v-else
+													v-model="form.student_group"
+													type="select"
+													:options="groupOptions"
+													option-label="label"
+													option-value="value"
+													:disabled="groupsLoading"
+													placeholder="Select a class"
+												/>
+
+												<p
+													v-if="!groupsLoading && !groupOptions.length"
+													class="type-caption text-slate-token/70"
+												>
+													No classes available for your role yet.
+												</p>
+											</div>
+
+											<div
+												v-if="props.prefillUnitPlan || props.prefillClassSession"
+												class="flex flex-wrap gap-2"
+											>
+												<span v-if="props.prefillUnitPlan" class="chip">
+													Unit {{ props.prefillUnitPlan }}
+												</span>
+												<span v-if="props.prefillClassSession" class="chip">
+													Session {{ props.prefillClassSession }}
+												</span>
+											</div>
+
+											<div class="grid gap-3 md:grid-cols-[minmax(0,1fr)_auto] md:items-end">
+												<div class="space-y-1">
+													<label class="type-label">Search reusable tasks</label>
+													<FormControl
+														v-model="taskLibraryQuery"
+														type="text"
+														:disabled="!form.student_group"
+														placeholder="Search by title"
+													/>
+												</div>
+												<Button
+													appearance="secondary"
+													:disabled="!form.student_group || taskLibraryLoading"
+													@click="loadReusableTasks"
+												>
+													Refresh library
+												</Button>
+											</div>
+
+											<div
+												v-if="taskLibraryError"
+												class="rounded-xl border border-flame/30 bg-flame/10 px-4 py-3 text-sm text-flame"
+											>
+												{{ taskLibraryError }}
+											</div>
+
+											<div
+												v-else-if="!form.student_group"
+												class="rounded-xl border border-dashed border-border/80 bg-slate-50 px-4 py-3 text-sm text-ink/70"
+											>
+												Select a class first to load reusable tasks for its course.
+											</div>
+
+											<div
+												v-else-if="taskLibraryLoading && !reusableTasks.length"
+												class="rounded-xl border border-line-soft bg-surface-soft px-4 py-3 text-sm text-ink/70"
+											>
+												Loading reusable tasks...
+											</div>
+
+											<div
+												v-else-if="!reusableTasks.length"
+												class="rounded-xl border border-dashed border-border/80 bg-slate-50 px-4 py-3 text-sm text-ink/70"
+											>
+												No reusable tasks found for this course yet.
+											</div>
+
+											<div v-else class="space-y-3">
+												<button
+													v-for="task in reusableTasks"
+													:key="task.name"
+													type="button"
+													class="w-full rounded-2xl border px-4 py-4 text-left transition"
+													:class="
+														selectedReusableTaskName === task.name
+															? 'border-leaf/60 bg-sky/20 text-ink shadow-sm'
+															: 'border-border/70 bg-white text-ink/80 hover:border-leaf/40'
+													"
+													@click="chooseReusableTask(task.name)"
+												>
+													<div class="flex flex-wrap items-start justify-between gap-3">
+														<div class="min-w-0">
+															<p class="text-sm font-semibold text-ink">{{ task.title }}</p>
+															<p class="mt-1 text-xs text-ink/60">
+																{{ task.task_type || 'Task' }}
+																<span v-if="task.unit_plan"> · {{ task.unit_plan }}</span>
+															</p>
+															<p
+																v-if="task.visibility_scope === 'shared' && task.owner"
+																class="mt-1 text-xs text-ink/60"
+															>
+																Shared by {{ task.owner }}
+															</p>
+														</div>
+														<span class="chip">{{ task.visibility_label }}</span>
+													</div>
+												</button>
+											</div>
+										</section>
+
+										<section v-if="selectedReusableTaskDetails" class="card-panel space-y-4 p-5">
+											<div class="flex items-center gap-3">
+												<span class="chip">Step 2</span>
+												<h3 class="type-h3 text-ink">Selected reusable task</h3>
+											</div>
+
+											<div class="rounded-2xl border border-line-soft bg-surface-soft p-4">
+												<div class="flex flex-wrap items-center gap-2">
+													<p class="type-body-strong text-ink">
+														{{ selectedReusableTaskDetails.title }}
+													</p>
+													<span class="chip">
+														{{ selectedReusableTaskDetails.task_type || 'Task' }}
+													</span>
+													<span class="chip">
+														{{
+															selectedReusableTaskDetails.visibility_scope === 'shared'
+																? 'Shared with course team'
+																: 'Your reusable task'
+														}}
+													</span>
+													<span v-if="selectedReusableTaskDetails.unit_plan" class="chip">
+														{{ selectedReusableTaskDetails.unit_plan }}
+													</span>
+												</div>
+												<p
+													v-if="selectedReusableTaskDetails.instructions"
+													class="mt-3 text-sm text-ink/70"
+												>
+													{{ selectedReusableTaskDetails.instructions }}
+												</p>
+												<p class="mt-3 text-xs text-ink/60">
+													Task definition edits and task materials stay on the reusable task. Use
+													this flow only for class-local assignment settings.
+												</p>
+											</div>
+										</section>
+									</template>
+
+									<!-- Step 3 -->
+									<section
+										v-if="taskMode === 'create' || selectedReusableTaskDetails"
+										class="card-panel space-y-4 p-5"
+									>
+										<div class="flex items-center gap-3">
+											<span class="chip">Step 3</span>
+											<h3 class="type-h3 text-ink">What will happen?</h3>
+										</div>
+
 										<div class="grid gap-3 md:grid-cols-3">
 											<button
-												v-for="option in gradingOptions"
+												v-for="option in deliveryOptions"
 												:key="option.value"
 												type="button"
 												class="rounded-2xl border px-4 py-4 text-left transition"
 												:class="
-													form.grading_mode === option.value
+													form.delivery_mode === option.value
 														? 'border-leaf/60 bg-sky/20 text-ink shadow-sm'
 														: 'border-border/70 bg-white text-ink/80 hover:border-leaf/40'
 												"
-												@click="form.grading_mode = option.value"
+												@click="form.delivery_mode = option.value"
 											>
 												<p class="text-sm font-semibold text-ink">{{ option.label }}</p>
 												<p class="mt-1 text-xs text-ink/60">{{ option.help }}</p>
 											</button>
 										</div>
 
-										<div v-if="form.grading_mode === 'Points'" class="max-w-xs space-y-1">
-											<label class="type-label">Max points</label>
-											<FormControl
-												v-model="form.max_points"
-												type="number"
-												:min="0"
-												:step="0.5"
-												placeholder="Enter max points"
-											/>
+										<p v-if="isQuizTask" class="type-caption text-ink/70">
+											Quiz mode is controlled here: use `Assess` for an official graded quiz, or
+											choose another mode for practice.
+										</p>
+									</section>
+
+									<!-- Step 4 -->
+									<section
+										v-if="(taskMode === 'create' || selectedReusableTaskDetails) && !isQuizTask"
+										class="card-panel space-y-4 p-5"
+									>
+										<div class="flex items-center gap-3">
+											<span class="chip">Step 4</span>
+											<h3 class="type-h3 text-ink">Dates</h3>
+										</div>
+
+										<div class="grid gap-4 md:grid-cols-3">
+											<div class="space-y-1">
+												<label class="type-label">Available from</label>
+												<input
+													v-model="form.available_from"
+													type="datetime-local"
+													class="w-full rounded-xl border border-border/80 bg-white px-3 py-2 text-sm text-ink shadow-sm focus:border-jacaranda/50 focus:ring-1 focus:ring-jacaranda/30"
+												/>
+											</div>
+											<div class="space-y-1">
+												<label class="type-label">Due date</label>
+												<input
+													v-model="form.due_date"
+													type="datetime-local"
+													class="w-full rounded-xl border border-border/80 bg-white px-3 py-2 text-sm text-ink shadow-sm focus:border-jacaranda/50 focus:ring-1 focus:ring-jacaranda/30"
+												/>
+											</div>
+											<div class="space-y-1">
+												<label class="type-label">Lock date</label>
+												<input
+													v-model="form.lock_date"
+													type="datetime-local"
+													class="w-full rounded-xl border border-border/80 bg-white px-3 py-2 text-sm text-ink shadow-sm focus:border-jacaranda/50 focus:ring-1 focus:ring-jacaranda/30"
+												/>
+											</div>
+										</div>
+
+										<div class="grid gap-4 md:grid-cols-2">
+											<label
+												v-if="showLateSubmission"
+												class="flex items-center gap-2 text-sm text-ink/80"
+											>
+												<input
+													v-model="form.allow_late_submission"
+													type="checkbox"
+													class="rounded border-border/70 text-jacaranda"
+												/>
+												Allow late submissions
+											</label>
+											<div
+												class="rounded-xl border border-dashed border-border/80 bg-slate-50 px-3 py-2 text-sm text-ink/70"
+											>
+												Group submission is paused until the subgroup workflow is implemented.
+											</div>
+										</div>
+									</section>
+
+									<!-- Step 5 -->
+									<section
+										v-if="taskMode === 'create' || selectedReusableTaskDetails"
+										class="card-panel space-y-4 p-5"
+									>
+										<div class="flex items-center gap-3">
+											<span class="chip">Step 5</span>
+											<h3 class="type-h3 text-ink">Grading (optional)</h3>
+										</div>
+
+										<div class="space-y-2">
+											<p class="type-label">Will you assess it?</p>
+											<div class="flex flex-wrap gap-2">
+												<button
+													type="button"
+													class="rounded-full border px-4 py-2 text-sm font-medium transition"
+													:class="
+														gradingEnabled
+															? 'border-leaf/60 bg-sky/20 text-ink'
+															: 'border-border/70 bg-white text-ink/70 hover:border-leaf/40'
+													"
+													@click="setGradingEnabled(true)"
+												>
+													Yes
+												</button>
+												<button
+													type="button"
+													class="rounded-full border px-4 py-2 text-sm font-medium transition"
+													:class="
+														!gradingEnabled
+															? 'border-leaf/60 bg-sky/20 text-ink'
+															: 'border-border/70 bg-white text-ink/70 hover:border-leaf/40'
+													"
+													@click="setGradingEnabled(false)"
+												>
+													No
+												</button>
+											</div>
+										</div>
+
+										<div v-if="gradingEnabled" class="space-y-4">
+											<div class="grid gap-3 md:grid-cols-3">
+												<button
+													v-for="option in gradingOptions"
+													:key="option.value"
+													type="button"
+													class="rounded-2xl border px-4 py-4 text-left transition"
+													:class="
+														form.grading_mode === option.value
+															? 'border-leaf/60 bg-sky/20 text-ink shadow-sm'
+															: 'border-border/70 bg-white text-ink/80 hover:border-leaf/40'
+													"
+													@click="form.grading_mode = option.value"
+												>
+													<p class="text-sm font-semibold text-ink">{{ option.label }}</p>
+													<p class="mt-1 text-xs text-ink/60">{{ option.help }}</p>
+												</button>
+											</div>
+
+											<div v-if="form.grading_mode === 'Points'" class="max-w-xs space-y-1">
+												<label class="type-label">Max points</label>
+												<FormControl
+													v-model="form.max_points"
+													type="number"
+													:min="0"
+													:step="0.5"
+													placeholder="Enter max points"
+												/>
+											</div>
+
+											<p class="text-xs text-ink/60">
+												Criteria grading is configured from the full Task record because it
+												requires Task Criteria and a rubric strategy.
+											</p>
+										</div>
+
+										<div class="space-y-2">
+											<p class="type-label">Allow comment in gradebook?</p>
+											<div class="flex flex-wrap gap-2">
+												<button
+													type="button"
+													class="rounded-full border px-4 py-2 text-sm font-medium transition"
+													:class="
+														form.allow_feedback
+															? 'border-leaf/60 bg-sky/20 text-ink'
+															: 'border-border/70 bg-white text-ink/70 hover:border-leaf/40'
+													"
+													@click="form.allow_feedback = true"
+												>
+													Yes
+												</button>
+												<button
+													type="button"
+													class="rounded-full border px-4 py-2 text-sm font-medium transition"
+													:class="
+														!form.allow_feedback
+															? 'border-leaf/60 bg-sky/20 text-ink'
+															: 'border-border/70 bg-white text-ink/70 hover:border-leaf/40'
+													"
+													@click="form.allow_feedback = false"
+												>
+													No
+												</button>
+											</div>
+											<p class="text-xs text-ink/60">
+												Show a comment box in the gradebook only when this is turned on. Comments
+												stay separate from points, criteria, or completion.
+											</p>
+										</div>
+
+										<p class="text-xs text-ink/60">
+											Moderation happens after grading (peer check).
+										</p>
+									</section>
+
+									<div
+										v-if="errorMessage"
+										class="rounded-xl border border-flame/30 bg-flame/10 px-4 py-3 text-sm text-flame"
+									>
+										<p>{{ errorMessage }}</p>
+										<div
+											v-if="errorRecovery === 'open-class-planning' && form.student_group"
+											class="mt-3"
+										>
+											<Button appearance="secondary" @click="openClassPlanning">
+												Open class planning
+											</Button>
 										</div>
 									</div>
+								</template>
 
-									<p class="text-xs text-ink/60">Moderation happens after grading (peer check).</p>
-								</section>
+								<template v-else>
+									<section class="card-panel space-y-4 p-5">
+										<div class="flex items-center gap-3">
+											<span class="chip">Created</span>
+											<h3 class="type-h3 text-ink">Assigned work ready</h3>
+										</div>
+										<p v-if="canEditTaskMaterials" class="type-body text-ink/80">
+											Add supporting materials while you are still in the task flow. Shared plan
+											content stays in curriculum planning; these are separately openable materials
+											for students.
+										</p>
+										<p v-else class="type-body text-ink/80">
+											This delivery now points to the reusable task you selected. Add any
+											class-specific resources in Class Planning rather than editing shared task
+											materials from this assign flow.
+										</p>
+										<div class="grid gap-3 md:grid-cols-3">
+											<div class="rounded-2xl border border-line-soft bg-surface-soft p-4">
+												<p class="type-overline text-ink/60">Task</p>
+												<p class="mt-1 type-body-strong text-ink">{{ createdTask.task }}</p>
+											</div>
+											<div class="rounded-2xl border border-line-soft bg-surface-soft p-4">
+												<p class="type-overline text-ink/60">Delivery</p>
+												<p class="mt-1 type-body-strong text-ink">
+													{{ createdTask.task_delivery }}
+												</p>
+											</div>
+											<div class="rounded-2xl border border-line-soft bg-surface-soft p-4">
+												<p class="type-overline text-ink/60">Outcomes</p>
+												<p class="mt-1 type-body-strong text-ink">
+													{{ createdTask.outcomes_created ?? '—' }}
+												</p>
+											</div>
+										</div>
+									</section>
 
-								<div
-									v-if="errorMessage"
-									class="rounded-xl border border-flame/30 bg-flame/10 px-4 py-3 text-sm text-flame"
-								>
-									{{ errorMessage }}
-								</div>
+									<section v-if="canEditTaskMaterials" class="card-panel space-y-4 p-5">
+										<div class="flex items-center gap-3">
+											<span class="chip">Materials</span>
+											<h3 class="type-h3 text-ink">Add task materials</h3>
+										</div>
+
+										<div class="flex flex-wrap gap-2">
+											<button
+												type="button"
+												class="rounded-full border px-4 py-2 text-sm font-medium transition"
+												:class="
+													materialComposerMode === 'link'
+														? 'border-leaf/60 bg-sky/20 text-ink'
+														: 'border-border/70 bg-white text-ink/70 hover:border-leaf/40'
+												"
+												@click="materialComposerMode = 'link'"
+											>
+												Add link
+											</button>
+											<button
+												type="button"
+												class="rounded-full border px-4 py-2 text-sm font-medium transition"
+												:class="
+													materialComposerMode === 'file'
+														? 'border-leaf/60 bg-sky/20 text-ink'
+														: 'border-border/70 bg-white text-ink/70 hover:border-leaf/40'
+												"
+												@click="materialComposerMode = 'file'"
+											>
+												Upload file
+											</button>
+										</div>
+
+										<div class="grid gap-4 md:grid-cols-2">
+											<div class="space-y-1">
+												<label class="type-label">Title</label>
+												<FormControl
+													v-model="materialForm.title"
+													type="text"
+													placeholder="Material title"
+												/>
+											</div>
+											<div class="space-y-1">
+												<label class="type-label">How students use it</label>
+												<FormControl
+													v-model="materialForm.modality"
+													type="select"
+													:options="materialModalityOptions"
+													option-label="label"
+													option-value="value"
+												/>
+											</div>
+										</div>
+
+										<div class="grid gap-4 md:grid-cols-2">
+											<div class="space-y-1">
+												<label class="type-label">Usage role</label>
+												<FormControl
+													v-model="materialForm.usage_role"
+													type="select"
+													:options="materialUsageRoleOptions"
+													option-label="label"
+													option-value="value"
+												/>
+											</div>
+											<div class="space-y-1">
+												<label class="type-label">Teacher note</label>
+												<FormControl
+													v-model="materialForm.placement_note"
+													type="text"
+													placeholder="Optional note for students"
+												/>
+											</div>
+										</div>
+
+										<div class="space-y-1">
+											<label class="type-label">Description</label>
+											<FormControl
+												v-model="materialForm.description"
+												type="textarea"
+												:rows="3"
+												placeholder="Optional context about this material"
+											/>
+										</div>
+
+										<div v-if="materialComposerMode === 'link'" class="space-y-1">
+											<label class="type-label">Reference URL</label>
+											<FormControl
+												v-model="materialForm.reference_url"
+												type="text"
+												placeholder="https://..."
+											/>
+										</div>
+
+										<div v-else class="space-y-3">
+											<input
+												ref="materialFileInput"
+												type="file"
+												class="hidden"
+												@change="onMaterialFileSelected"
+											/>
+											<div class="flex flex-wrap items-center gap-3">
+												<Button appearance="secondary" @click="materialFileInput?.click()">
+													Choose file
+												</Button>
+												<p class="type-caption text-ink/70">
+													{{ selectedMaterialFile?.name || 'No file selected yet.' }}
+												</p>
+											</div>
+										</div>
+
+										<div
+											v-if="materialError"
+											class="rounded-xl border border-flame/30 bg-flame/10 px-4 py-3 text-sm text-flame"
+										>
+											{{ materialError }}
+										</div>
+
+										<div class="flex justify-end">
+											<Button
+												appearance="primary"
+												:loading="materialSubmitting"
+												:disabled="!canAddMaterial"
+												@click="addMaterial"
+											>
+												{{ materialComposerMode === 'link' ? 'Add link' : 'Upload file' }}
+											</Button>
+										</div>
+									</section>
+
+									<section v-if="canEditTaskMaterials" class="card-panel space-y-4 p-5">
+										<div class="flex items-center justify-between gap-3">
+											<div class="flex items-center gap-3">
+												<span class="chip">Shared</span>
+												<h3 class="type-h3 text-ink">Current task materials</h3>
+											</div>
+											<span class="chip">{{ taskMaterials.length }} items</span>
+										</div>
+
+										<div
+											v-if="materialsLoading"
+											class="rounded-xl border border-line-soft bg-surface-soft px-4 py-3 text-sm text-ink/70"
+										>
+											Loading materials...
+										</div>
+
+										<div
+											v-else-if="!taskMaterials.length"
+											class="rounded-xl border border-dashed border-border/80 bg-slate-50 px-4 py-3 text-sm text-ink/70"
+										>
+											No materials shared on this task yet.
+										</div>
+
+										<div v-else class="space-y-3">
+											<article
+												v-for="material in taskMaterials"
+												:key="material.placement"
+												class="rounded-2xl border border-line-soft bg-surface-soft p-4"
+											>
+												<div class="flex items-start justify-between gap-3">
+													<div class="min-w-0">
+														<div class="flex flex-wrap items-center gap-2">
+															<p class="type-body-strong text-ink">{{ material.title }}</p>
+															<span class="chip">{{ material.material_type }}</span>
+															<span v-if="material.usage_role" class="chip">
+																{{ material.usage_role }}
+															</span>
+														</div>
+														<p v-if="material.description" class="mt-2 type-caption text-ink/70">
+															{{ material.description }}
+														</p>
+														<p
+															v-if="material.placement_note"
+															class="mt-2 type-caption text-ink/70"
+														>
+															{{ material.placement_note }}
+														</p>
+														<p
+															v-if="material.file_name || material.reference_url"
+															class="mt-2 type-caption text-ink/70"
+														>
+															{{ material.file_name || material.reference_url }}
+														</p>
+													</div>
+													<div class="flex items-center gap-2">
+														<a
+															v-if="material.open_url"
+															:href="material.open_url"
+															target="_blank"
+															rel="noreferrer"
+															class="if-action"
+														>
+															Open
+														</a>
+														<Button
+															appearance="secondary"
+															:loading="removingPlacement === material.placement"
+															@click="removeMaterial(material.placement)"
+														>
+															Remove
+														</Button>
+													</div>
+												</div>
+											</article>
+										</div>
+									</section>
+								</template>
 							</div>
 						</div>
 
 						<!-- Footer -->
 						<div class="if-overlay__footer">
-							<Button appearance="secondary" @click="emitClose('programmatic')">Cancel</Button>
+							<Button appearance="secondary" @click="emitClose('programmatic')">
+								{{ createdTask ? 'Done' : 'Cancel' }}
+							</Button>
 							<Button
+								v-if="!createdTask"
 								appearance="primary"
 								:loading="submitting"
 								:disabled="!canSubmit"
 								@click="submit"
 							>
-								Create
+								{{ submitLabel }}
 							</Button>
 						</div>
 					</DialogPanel>
@@ -397,17 +962,39 @@ import {
 	TransitionRoot,
 } from '@headlessui/vue';
 import { Button, FormControl, createResource, toast, FeatherIcon } from 'frappe-ui';
-import type { CreateTaskDeliveryInput, CreateTaskDeliveryPayload } from '@/types/tasks';
+import { useRouter } from 'vue-router';
+import { SIGNAL_TASK_DELIVERY_CREATED, uiSignals } from '@/lib/uiSignals';
+import type {
+	CreateTaskDeliveryInput,
+	CreateTaskDeliveryPayload,
+	ReusableTaskSummary,
+	TaskForDeliveryPayload,
+	TaskLibraryScope,
+} from '@/types/tasks';
 
 const props = defineProps<{
 	open: boolean;
 	zIndex?: number;
 	prefillStudentGroup?: string | null;
+	prefillCourse?: string | null;
+	prefillClassTeachingPlan?: string | null;
+	prefillClassSession?: string | null;
+	prefillUnitPlan?: string | null;
+	prefillQuizQuestionBank?: string | null;
+	prefillQuizQuestionBankLabel?: string | null;
+	prefillTitle?: string | null;
+	prefillTaskType?: string | null;
 	prefillDueDate?: string | null;
 	prefillAvailableFrom?: string | null;
 }>();
 
 type CloseReason = 'backdrop' | 'esc' | 'programmatic';
+type ErrorRecoveryAction = 'open-class-planning' | null;
+
+const MISSING_ACTIVE_PLAN_MESSAGE =
+	'This class needs an active Class Teaching Plan before assigned work can be created.';
+const SELECT_CLASS_PLAN_MESSAGE =
+	'Select the Class Teaching Plan for this class before creating assigned work.';
 
 const emit = defineEmits<{
 	(e: 'close', reason: CloseReason): void;
@@ -417,9 +1004,19 @@ const emit = defineEmits<{
 
 const open = computed(() => props.open);
 const zIndex = computed(() => props.zIndex ?? 60);
+const router = useRouter();
 
 const submitting = ref(false);
 const errorMessage = ref('');
+const errorRecovery = ref<ErrorRecoveryAction>(null);
+const createdTask = ref<CreateTaskDeliveryPayload | null>(null);
+const taskMaterials = ref<TaskMaterialRow[]>([]);
+const materialComposerMode = ref<'link' | 'file'>('link');
+const materialSubmitting = ref(false);
+const materialError = ref('');
+const selectedMaterialFile = ref<File | null>(null);
+const materialFileInput = ref<HTMLInputElement | null>(null);
+const removingPlacement = ref<string | null>(null);
 
 const initialFocus = ref<HTMLElement | null>(null);
 
@@ -459,7 +1056,22 @@ const taskTypeOptions = [
 	{ label: 'Other', value: 'Other' },
 ];
 
+type TaskComposerMode = 'create' | 'reuse';
 type DeliveryMode = CreateTaskDeliveryInput['delivery_mode'];
+type TaskMaterialRow = {
+	placement: string;
+	material: string;
+	title: string;
+	material_type: 'File' | 'Reference Link';
+	modality?: 'Read' | 'Watch' | 'Listen' | 'Use' | null;
+	description?: string | null;
+	reference_url?: string | null;
+	open_url?: string | null;
+	file_name?: string | null;
+	file_size?: string | null;
+	usage_role?: 'Required' | 'Reference' | 'Template' | 'Example' | null;
+	placement_note?: string | null;
+};
 
 const deliveryOptions: Array<{ label: string; value: DeliveryMode; help: string }> = [
 	{
@@ -480,6 +1092,18 @@ const gradingOptions = [
 	{ label: 'Complete / Not complete', value: 'Completion', help: 'Track completion only.' },
 	{ label: 'Yes / No', value: 'Binary', help: 'Simple yes or no grading.' },
 ];
+const materialModalityOptions = [
+	{ label: 'Read', value: 'Read' },
+	{ label: 'Watch', value: 'Watch' },
+	{ label: 'Listen', value: 'Listen' },
+	{ label: 'Use', value: 'Use' },
+];
+const materialUsageRoleOptions = [
+	{ label: 'Reference', value: 'Reference' },
+	{ label: 'Required', value: 'Required' },
+	{ label: 'Template', value: 'Template' },
+	{ label: 'Example', value: 'Example' },
+];
 
 type FormState = {
 	title: string;
@@ -497,8 +1121,18 @@ type FormState = {
 	lock_date: string;
 	allow_late_submission: boolean;
 	group_submission: boolean;
+	share_with_course_team: boolean;
 	grading_mode: string;
+	allow_feedback: boolean;
 	max_points: string;
+};
+type MaterialFormState = {
+	title: string;
+	description: string;
+	reference_url: string;
+	modality: 'Read' | 'Watch' | 'Listen' | 'Use';
+	usage_role: 'Required' | 'Reference' | 'Template' | 'Example';
+	placement_note: string;
 };
 
 const form = reactive<FormState>({
@@ -517,11 +1151,28 @@ const form = reactive<FormState>({
 	lock_date: '',
 	allow_late_submission: false,
 	group_submission: false,
+	share_with_course_team: false,
 	grading_mode: '',
+	allow_feedback: false,
 	max_points: '',
+});
+const materialForm = reactive<MaterialFormState>({
+	title: '',
+	description: '',
+	reference_url: '',
+	modality: 'Read',
+	usage_role: 'Reference',
+	placement_note: '',
 });
 
 const gradingEnabled = ref(false);
+const taskMode = ref<TaskComposerMode>('create');
+const createdTaskMode = ref<TaskComposerMode | null>(null);
+const reusableTasks = ref<ReusableTaskSummary[]>([]);
+const taskLibraryQuery = ref('');
+const taskLibraryError = ref('');
+const selectedReusableTaskName = ref('');
+const selectedReusableTaskDetails = ref<TaskForDeliveryPayload | null>(null);
 
 function unwrapMessage<T>(res: any): T | undefined {
 	if (res && typeof res === 'object' && 'message' in res) return (res as any).message;
@@ -563,6 +1214,56 @@ const quizBankResource = createResource({
 	},
 });
 
+const searchReusableTasksResource = createResource({
+	url: 'ifitwala_ed.api.task.search_reusable_tasks',
+	method: 'POST',
+	auto: false,
+	transform: unwrapMessage,
+	onSuccess: (rows: any) => {
+		reusableTasks.value = Array.isArray(rows) ? rows : [];
+		taskLibraryError.value = '';
+		if (selectedReusableTaskName.value) {
+			const stillVisible = reusableTasks.value.some(
+				row => row.name === selectedReusableTaskName.value
+			);
+			if (!stillVisible) {
+				selectedReusableTaskName.value = '';
+				selectedReusableTaskDetails.value = null;
+			}
+		}
+	},
+	onError: (err: any) => {
+		console.error('[CreateTaskDeliveryOverlay] searchReusableTasks:error', err);
+		reusableTasks.value = [];
+		selectedReusableTaskName.value = '';
+		selectedReusableTaskDetails.value = null;
+		taskLibraryError.value = extractTaskActionErrorMessage(
+			err,
+			'Unable to load reusable tasks right now.'
+		);
+	},
+});
+
+const getReusableTaskResource = createResource({
+	url: 'ifitwala_ed.api.task.get_task_for_delivery',
+	method: 'POST',
+	auto: false,
+	transform: unwrapMessage,
+	onSuccess: (payload: any) => {
+		selectedReusableTaskDetails.value = payload || null;
+		taskLibraryError.value = '';
+		if (payload) applyReusableTaskDefaults(payload as TaskForDeliveryPayload);
+	},
+	onError: (err: any) => {
+		console.error('[CreateTaskDeliveryOverlay] getReusableTask:error', err);
+		selectedReusableTaskDetails.value = null;
+		taskLibraryError.value = extractTaskActionErrorMessage(
+			err,
+			'Unable to load that task right now.'
+		);
+	},
+});
+
 const groupOptions = computed(() =>
 	groups.value.map(row => ({
 		label: row.student_group_name || row.name,
@@ -584,8 +1285,21 @@ const selectedGroupLabel = computed(() => {
 	return match?.label || '';
 });
 
+const dialogTitle = computed(() => (taskMode.value === 'reuse' ? 'Reuse task' : 'Create task'));
+const submitLabel = computed(() =>
+	taskMode.value === 'reuse' ? 'Assign existing task' : 'Create'
+);
+const selectedReusableTask = computed(
+	() => reusableTasks.value.find(row => row.name === selectedReusableTaskName.value) || null
+);
+const activeTaskType = computed(() =>
+	taskMode.value === 'reuse'
+		? selectedReusableTaskDetails.value?.task_type || selectedReusableTask.value?.task_type || ''
+		: form.task_type
+);
 const showLateSubmission = computed(() => form.delivery_mode !== 'Assign Only');
-const isQuizTask = computed(() => form.task_type === 'Quiz');
+const isQuizTask = computed(() => activeTaskType.value === 'Quiz');
+const canEditTaskMaterials = computed(() => createdTaskMode.value === 'create');
 
 watch(
 	() => form.delivery_mode,
@@ -597,14 +1311,27 @@ watch(
 );
 
 const canSubmit = computed(() => {
-	if (!form.title.trim()) return false;
 	if (!form.student_group) return false;
 	if (!form.delivery_mode) return false;
+	if (taskMode.value === 'reuse') {
+		if (!selectedReusableTaskDetails.value?.name) return false;
+		if (!gradingEnabled.value) return true;
+		if (!form.grading_mode) return false;
+		if (form.grading_mode === 'Points' && !String(form.max_points || '').trim()) return false;
+		return true;
+	}
+	if (!form.title.trim()) return false;
 	if (isQuizTask.value && !form.quiz_question_bank) return false;
 	if (!gradingEnabled.value) return true;
 	if (!form.grading_mode) return false;
 	if (form.grading_mode === 'Points' && !String(form.max_points || '').trim()) return false;
 	return true;
+});
+const canAddMaterial = computed(() => {
+	if (!createdTask.value || materialSubmitting.value) return false;
+	if (!materialForm.title.trim()) return false;
+	if (materialComposerMode.value === 'link') return Boolean(materialForm.reference_url.trim());
+	return Boolean(selectedMaterialFile.value);
 });
 
 watch(
@@ -618,7 +1345,9 @@ watch(
 		if (!isGroupLocked.value) {
 			groupResource.submit({});
 		}
-		quizBankResource.submit({});
+		quizBankResource.submit({
+			course: props.prefillCourse || undefined,
+		});
 	},
 	{ immediate: true }
 );
@@ -637,10 +1366,13 @@ onBeforeUnmount(() => {
 });
 
 function initializeForm() {
-	form.title = '';
+	createdTask.value = null;
+	createdTaskMode.value = null;
+	taskMode.value = 'create';
+	form.title = props.prefillTitle || '';
 	form.instructions = '';
-	form.task_type = '';
-	form.quiz_question_bank = '';
+	form.task_type = props.prefillTaskType || '';
+	form.quiz_question_bank = props.prefillQuizQuestionBank || '';
 	form.quiz_question_count = '';
 	form.quiz_time_limit_minutes = '';
 	form.quiz_max_attempts = '';
@@ -652,10 +1384,76 @@ function initializeForm() {
 	form.lock_date = '';
 	form.allow_late_submission = false;
 	form.group_submission = false;
+	form.share_with_course_team = false;
 	form.grading_mode = '';
+	form.allow_feedback = false;
 	form.max_points = '';
 	gradingEnabled.value = false;
 	errorMessage.value = '';
+	errorRecovery.value = null;
+	reusableTasks.value = [];
+	taskLibraryQuery.value = '';
+	taskLibraryError.value = '';
+	selectedReusableTaskName.value = '';
+	selectedReusableTaskDetails.value = null;
+	resetMaterialComposer();
+}
+
+function resetDeliveryFields() {
+	form.delivery_mode = 'Assign Only';
+	form.available_from = toDateTimeInput(props.prefillAvailableFrom);
+	form.due_date = toDateTimeInput(props.prefillDueDate);
+	form.lock_date = '';
+	form.allow_late_submission = false;
+	form.group_submission = false;
+	form.grading_mode = '';
+	form.allow_feedback = false;
+	form.max_points = '';
+	gradingEnabled.value = false;
+	errorMessage.value = '';
+	errorRecovery.value = null;
+}
+
+function setTaskMode(nextMode: TaskComposerMode) {
+	if (taskMode.value === nextMode) return;
+	taskMode.value = nextMode;
+	errorMessage.value = '';
+	errorRecovery.value = null;
+	resetDeliveryFields();
+	if (nextMode === 'create') {
+		reusableTasks.value = [];
+		taskLibraryQuery.value = '';
+		taskLibraryError.value = '';
+		selectedReusableTaskName.value = '';
+		selectedReusableTaskDetails.value = null;
+		form.title = props.prefillTitle || '';
+		form.instructions = '';
+		form.task_type = props.prefillTaskType || '';
+		form.quiz_question_bank = props.prefillQuizQuestionBank || '';
+		form.quiz_question_count = '';
+		form.quiz_time_limit_minutes = '';
+		form.quiz_max_attempts = '';
+		form.quiz_pass_percentage = '';
+		return;
+	}
+	form.title = '';
+	form.instructions = '';
+	form.task_type = '';
+	form.quiz_question_bank = '';
+	form.quiz_question_count = '';
+	form.quiz_time_limit_minutes = '';
+	form.quiz_max_attempts = '';
+	form.quiz_pass_percentage = '';
+	void loadReusableTasks();
+}
+
+function openClassPlanning() {
+	if (!form.student_group) return;
+	emitClose('programmatic');
+	void router.push({
+		name: 'staff-class-planning',
+		params: { studentGroup: form.student_group },
+	});
 }
 
 function setGradingEnabled(value: boolean) {
@@ -667,13 +1465,17 @@ function setGradingEnabled(value: boolean) {
 }
 
 watch(
-	() => form.task_type,
+	() => activeTaskType.value,
 	taskType => {
 		if (taskType === 'Quiz') {
 			form.delivery_mode = 'Assign Only';
 			gradingEnabled.value = false;
 			form.grading_mode = '';
 			form.max_points = '';
+			if (taskMode.value === 'create') return;
+			return;
+		}
+		if (taskMode.value === 'reuse') {
 			return;
 		}
 		form.quiz_question_bank = '';
@@ -681,6 +1483,25 @@ watch(
 		form.quiz_time_limit_minutes = '';
 		form.quiz_max_attempts = '';
 		form.quiz_pass_percentage = '';
+	}
+);
+
+watch(
+	() => form.student_group,
+	(studentGroup, previousGroup) => {
+		if (!props.open || taskMode.value !== 'reuse') return;
+		if (!studentGroup) {
+			reusableTasks.value = [];
+			selectedReusableTaskName.value = '';
+			selectedReusableTaskDetails.value = null;
+			taskLibraryError.value = '';
+			return;
+		}
+		if (studentGroup !== previousGroup) {
+			selectedReusableTaskName.value = '';
+			selectedReusableTaskDetails.value = null;
+		}
+		void loadReusableTasks();
 	}
 );
 
@@ -732,13 +1553,356 @@ const createTaskResource = createResource({
 		console.error('[CreateTaskDeliveryOverlay] createTaskResource:error', err);
 	},
 });
+const createTaskDeliveryResource = createResource({
+	url: 'ifitwala_ed.api.task.create_task_delivery',
+	method: 'POST',
+	auto: false,
+	transform: unwrapMessage,
+	onError: (err: any) => {
+		console.error('[CreateTaskDeliveryOverlay] createTaskDeliveryResource:error', err);
+	},
+});
+const listTaskMaterialsResource = createResource({
+	url: 'ifitwala_ed.api.materials.list_task_materials',
+	method: 'POST',
+	auto: false,
+	transform: unwrapMessage,
+	onSuccess: (payload: any) => {
+		taskMaterials.value = Array.isArray(payload?.materials) ? payload.materials : [];
+	},
+	onError: (err: any) => {
+		console.error('[CreateTaskDeliveryOverlay] listTaskMaterials:error', err);
+		taskMaterials.value = [];
+	},
+});
+const createTaskReferenceMaterialResource = createResource({
+	url: 'ifitwala_ed.api.materials.create_task_reference_material',
+	method: 'POST',
+	auto: false,
+	transform: unwrapMessage,
+	onError: (err: any) => {
+		console.error('[CreateTaskDeliveryOverlay] createTaskReferenceMaterial:error', err);
+	},
+});
+const removeTaskMaterialResource = createResource({
+	url: 'ifitwala_ed.api.materials.remove_task_material',
+	method: 'POST',
+	auto: false,
+	transform: unwrapMessage,
+	onError: (err: any) => {
+		console.error('[CreateTaskDeliveryOverlay] removeTaskMaterial:error', err);
+	},
+});
+const materialsLoading = computed(() => listTaskMaterialsResource.loading);
+const taskLibraryLoading = computed(
+	() => searchReusableTasksResource.loading || getReusableTaskResource.loading
+);
+
+function parseServerMessages(raw: unknown): string[] {
+	if (typeof raw !== 'string' || !raw.trim()) {
+		return [];
+	}
+	try {
+		const entries = JSON.parse(raw);
+		if (!Array.isArray(entries)) return [];
+		return entries
+			.map((entry: unknown) => {
+				if (typeof entry !== 'string') return String(entry || '');
+				try {
+					const payload = JSON.parse(entry);
+					return typeof payload?.message === 'string' ? payload.message : entry;
+				} catch {
+					return entry;
+				}
+			})
+			.filter((message: string) => Boolean((message || '').trim()));
+	} catch {
+		return [];
+	}
+}
+
+function isTransportOnlyErrorMessage(value: string) {
+	const message = String(value || '').trim();
+	if (!message) return false;
+	return message.includes('/api/method/') && /(?:Validation|Permission)Error\b/.test(message);
+}
+
+function extractTaskActionErrorMessage(
+	error: unknown,
+	fallback = 'Unable to save assigned work right now.'
+) {
+	if (!error) return fallback;
+	if (typeof error === 'string' && error.trim()) return error.trim();
+
+	const maybe = error as Record<string, unknown> & {
+		response?: Record<string, unknown>;
+	};
+	const serverMessages = [
+		...parseServerMessages(maybe.response?._server_messages),
+		...parseServerMessages(maybe._server_messages),
+		...parseServerMessages(maybe.response?._messages),
+		...parseServerMessages(maybe._messages),
+	].filter(message => !isTransportOnlyErrorMessage(message));
+	if (serverMessages.length) {
+		return serverMessages.join('\n');
+	}
+
+	const candidates = [
+		maybe.response?.message,
+		maybe.message,
+		maybe.response?.statusText,
+		maybe.response?.exception,
+		maybe.exception,
+		maybe.response?.exc,
+		maybe.exc,
+	];
+	for (const candidate of candidates) {
+		if (
+			typeof candidate === 'string' &&
+			candidate.trim() &&
+			!isTransportOnlyErrorMessage(candidate)
+		) {
+			return candidate.trim();
+		}
+		if (
+			candidate &&
+			typeof candidate === 'object' &&
+			'message' in candidate &&
+			typeof (candidate as Record<string, unknown>).message === 'string'
+		) {
+			const nestedMessage = String((candidate as Record<string, unknown>).message || '').trim();
+			if (nestedMessage && !isTransportOnlyErrorMessage(nestedMessage)) {
+				return nestedMessage;
+			}
+		}
+	}
+
+	if (error instanceof Error && error.message && !isTransportOnlyErrorMessage(error.message)) {
+		return error.message;
+	}
+
+	return fallback;
+}
+
+function normalizeTaskActionError(message: string) {
+	const cleanMessage = String(message || '').trim();
+	if (cleanMessage.includes(MISSING_ACTIVE_PLAN_MESSAGE)) {
+		return {
+			message:
+				'This class needs an active Class Teaching Plan before assigned work can be created. Open Class Planning for this class, create or activate the plan, then try again.',
+			recovery: 'open-class-planning' as ErrorRecoveryAction,
+		};
+	}
+	if (cleanMessage.includes(SELECT_CLASS_PLAN_MESSAGE)) {
+		return {
+			message:
+				'This class has more than one active Class Teaching Plan. Open Class Planning for this class, choose the correct plan there, then create the task from that surface.',
+			recovery: 'open-class-planning' as ErrorRecoveryAction,
+		};
+	}
+	return {
+		message: cleanMessage || 'Unable to save assigned work right now.',
+		recovery: null as ErrorRecoveryAction,
+	};
+}
+
+function applyReusableTaskDefaults(task: TaskForDeliveryPayload) {
+	form.delivery_mode = (task.default_delivery_mode as DeliveryMode) || 'Assign Only';
+	form.allow_feedback = Boolean(task.grading_defaults?.default_allow_feedback);
+	form.max_points = '';
+
+	const defaultGradingMode = task.grading_defaults?.default_grading_mode || '';
+	if (
+		task.task_type !== 'Quiz' &&
+		defaultGradingMode &&
+		defaultGradingMode !== 'None' &&
+		defaultGradingMode !== 'Criteria'
+	) {
+		gradingEnabled.value = true;
+		form.grading_mode = defaultGradingMode;
+		if (defaultGradingMode === 'Points' && task.grading_defaults?.default_max_points != null) {
+			form.max_points = String(task.grading_defaults.default_max_points);
+		}
+	} else {
+		gradingEnabled.value = false;
+		form.grading_mode = '';
+	}
+
+	form.allow_late_submission = false;
+}
+
+async function loadReusableTasks() {
+	if (taskMode.value !== 'reuse') return;
+	if (!form.student_group) {
+		reusableTasks.value = [];
+		selectedReusableTaskName.value = '';
+		selectedReusableTaskDetails.value = null;
+		taskLibraryError.value = 'Select a class first to load reusable tasks for its course.';
+		return;
+	}
+
+	taskLibraryError.value = '';
+	await searchReusableTasksResource.submit({
+		student_group: form.student_group,
+		unit_plan: props.prefillUnitPlan || undefined,
+		query: taskLibraryQuery.value.trim() || undefined,
+		scope: 'all' as TaskLibraryScope,
+	});
+}
+
+async function chooseReusableTask(taskName: string) {
+	if (!taskName || !form.student_group) return;
+	selectedReusableTaskName.value = taskName;
+	errorMessage.value = '';
+	errorRecovery.value = null;
+	await getReusableTaskResource.submit({
+		task: taskName,
+		student_group: form.student_group,
+	});
+}
+
+function resetMaterialDraftFields() {
+	materialForm.title = '';
+	materialForm.description = '';
+	materialForm.reference_url = '';
+	materialForm.modality = 'Read';
+	materialForm.usage_role = 'Reference';
+	materialForm.placement_note = '';
+	selectedMaterialFile.value = null;
+	if (materialFileInput.value) materialFileInput.value.value = '';
+}
+
+function resetMaterialComposer() {
+	materialComposerMode.value = 'link';
+	materialSubmitting.value = false;
+	materialError.value = '';
+	taskMaterials.value = [];
+	removingPlacement.value = null;
+	resetMaterialDraftFields();
+}
+
+async function loadTaskMaterials() {
+	if (!createdTask.value) return;
+	await listTaskMaterialsResource.submit({ task: createdTask.value.task });
+}
+
+function onMaterialFileSelected(event: Event) {
+	const target = event.target as HTMLInputElement | null;
+	const file = target?.files?.[0] || null;
+	selectedMaterialFile.value = file;
+	materialError.value = '';
+	if (file && !materialForm.title.trim()) {
+		materialForm.title = file.name;
+	}
+}
+
+async function uploadTaskMaterialFileRequest(task: string): Promise<TaskMaterialRow> {
+	if (!selectedMaterialFile.value) {
+		throw new Error('Please choose a file first.');
+	}
+
+	const formData = new FormData();
+	formData.append('task', task);
+	formData.append('title', materialForm.title.trim());
+	if (materialForm.description.trim())
+		formData.append('description', materialForm.description.trim());
+	if (materialForm.placement_note.trim())
+		formData.append('placement_note', materialForm.placement_note.trim());
+	formData.append('modality', materialForm.modality);
+	formData.append('usage_role', materialForm.usage_role);
+	formData.append('file', selectedMaterialFile.value, selectedMaterialFile.value.name);
+
+	const csrfToken =
+		((window as any)?.csrf_token as string | undefined) ||
+		((window as any)?.frappe?.csrf_token as string | undefined) ||
+		'';
+	const response = await fetch('/api/method/ifitwala_ed.api.materials.upload_task_material_file', {
+		method: 'POST',
+		credentials: 'same-origin',
+		body: formData,
+		headers: csrfToken ? { 'X-Frappe-CSRF-Token': csrfToken } : undefined,
+	});
+
+	const data = await response.json().catch(() => ({}));
+	if (!response.ok || data?.exception || data?.exc) {
+		const serverMessages = parseServerMessages(data?._server_messages);
+		throw new Error(
+			serverMessages.join('\n') || data?.message || response.statusText || 'Upload failed.'
+		);
+	}
+	return (data?.message ?? data) as TaskMaterialRow;
+}
+
+async function addMaterial() {
+	if (!createdTask.value) return;
+	if (!canAddMaterial.value) {
+		materialError.value =
+			materialComposerMode.value === 'link'
+				? 'Please provide a title and link.'
+				: 'Please provide a title and choose a file.';
+		return;
+	}
+
+	materialSubmitting.value = true;
+	materialError.value = '';
+	try {
+		if (materialComposerMode.value === 'link') {
+			await createTaskReferenceMaterialResource.submit({
+				task: createdTask.value.task,
+				title: materialForm.title.trim(),
+				reference_url: materialForm.reference_url.trim(),
+				description: materialForm.description.trim() || undefined,
+				modality: materialForm.modality,
+				usage_role: materialForm.usage_role,
+				placement_note: materialForm.placement_note.trim() || undefined,
+			});
+		} else {
+			await uploadTaskMaterialFileRequest(createdTask.value.task);
+		}
+
+		await loadTaskMaterials();
+		resetMaterialDraftFields();
+		toast.create({ appearance: 'success', message: 'Material added to the task.' });
+	} catch (error) {
+		const message =
+			error instanceof Error ? error.message : 'Unable to add the material right now.';
+		materialError.value = message;
+		toast.create({ appearance: 'danger', message });
+	} finally {
+		materialSubmitting.value = false;
+	}
+}
+
+async function removeMaterial(placement: string) {
+	if (!createdTask.value || !placement) return;
+	removingPlacement.value = placement;
+	try {
+		await removeTaskMaterialResource.submit({
+			task: createdTask.value.task,
+			placement,
+		});
+		await loadTaskMaterials();
+		toast.create({ appearance: 'success', message: 'Material removed from this task.' });
+	} catch (error) {
+		const message =
+			error instanceof Error ? error.message : 'Unable to remove this material right now.';
+		materialError.value = message;
+		toast.create({ appearance: 'danger', message });
+	} finally {
+		removingPlacement.value = null;
+	}
+}
 
 async function submit() {
 	if (!canSubmit.value) {
 		const missing: string[] = [];
-		if (!form.title.trim()) missing.push('Title');
 		if (!form.student_group) missing.push('Class');
-		if (isQuizTask.value && !form.quiz_question_bank) missing.push('Quiz question bank');
+		if (taskMode.value === 'reuse') {
+			if (!selectedReusableTaskDetails.value?.name) missing.push('Task to reuse');
+		} else {
+			if (!form.title.trim()) missing.push('Title');
+			if (isQuizTask.value && !form.quiz_question_bank) missing.push('Quiz question bank');
+		}
 		if (gradingEnabled.value) {
 			if (!form.grading_mode) missing.push('Grading mode');
 			if (form.grading_mode === 'Points' && !String(form.max_points || '').trim())
@@ -749,59 +1913,101 @@ async function submit() {
 			? `Please complete: ${missing.join(', ')}.`
 			: 'Please complete the required fields.';
 		errorMessage.value = msg;
+		errorRecovery.value = null;
 		toast.create({ appearance: 'warning', message: msg });
 		return;
 	}
 
 	submitting.value = true;
 	errorMessage.value = '';
-
-	const payload: CreateTaskDeliveryInput = {
-		title: form.title.trim(),
-		student_group: form.student_group,
-		delivery_mode: form.delivery_mode,
-		allow_late_submission:
-			form.delivery_mode === 'Assign Only' ? 0 : form.allow_late_submission ? 1 : 0,
-		group_submission: form.group_submission ? 1 : 0,
-	};
-
-	if (form.instructions.trim()) payload.instructions = form.instructions.trim();
-	if (form.task_type) payload.task_type = form.task_type;
-	if (isQuizTask.value) {
-		payload.quiz_question_bank = form.quiz_question_bank;
-		if (form.quiz_question_count) payload.quiz_question_count = form.quiz_question_count as any;
-		if (form.quiz_time_limit_minutes)
-			payload.quiz_time_limit_minutes = form.quiz_time_limit_minutes as any;
-		if (form.quiz_max_attempts) payload.quiz_max_attempts = form.quiz_max_attempts as any;
-		if (form.quiz_pass_percentage) payload.quiz_pass_percentage = form.quiz_pass_percentage as any;
-	}
-	if (form.available_from) payload.available_from = toFrappeDatetime(form.available_from) as any;
-	if (form.due_date) payload.due_date = toFrappeDatetime(form.due_date) as any;
-	if (form.lock_date) payload.lock_date = toFrappeDatetime(form.lock_date) as any;
-
-	if (isQuizTask.value) {
-		payload.grading_mode = form.delivery_mode === 'Assess' ? ('Points' as any) : ('None' as any);
-	} else if (gradingEnabled.value) {
-		payload.grading_mode = form.grading_mode as any;
-		if (form.grading_mode === 'Points') payload.max_points = form.max_points as any;
-	} else {
-		payload.grading_mode = 'None' as any;
-	}
+	errorRecovery.value = null;
 
 	try {
-		const res = await createTaskResource.submit(payload);
+		const deliveryPayload = {
+			student_group: form.student_group,
+			class_teaching_plan: props.prefillClassTeachingPlan || undefined,
+			class_session: props.prefillClassSession || undefined,
+			delivery_mode: form.delivery_mode,
+			allow_late_submission:
+				form.delivery_mode === 'Assign Only' ? 0 : form.allow_late_submission ? 1 : 0,
+			group_submission: form.group_submission ? 1 : 0,
+			allow_feedback: form.allow_feedback ? 1 : 0,
+		} as Record<string, any>;
+
+		if (props.prefillUnitPlan) {
+			deliveryPayload.unit_plan = props.prefillUnitPlan;
+		}
+		if (form.available_from)
+			deliveryPayload.available_from = toFrappeDatetime(form.available_from);
+		if (form.due_date) deliveryPayload.due_date = toFrappeDatetime(form.due_date);
+		if (form.lock_date) deliveryPayload.lock_date = toFrappeDatetime(form.lock_date);
+
+		if (isQuizTask.value) {
+			deliveryPayload.grading_mode = form.delivery_mode === 'Assess' ? 'Points' : 'None';
+		} else if (gradingEnabled.value) {
+			deliveryPayload.grading_mode = form.grading_mode;
+			if (form.grading_mode === 'Points') deliveryPayload.max_points = form.max_points;
+		} else {
+			deliveryPayload.grading_mode = 'None';
+		}
+
+		let res: unknown;
+		if (taskMode.value === 'reuse') {
+			deliveryPayload.task = selectedReusableTaskDetails.value?.name;
+			res = await createTaskDeliveryResource.submit(deliveryPayload);
+		} else {
+			const payload: CreateTaskDeliveryInput = {
+				...(deliveryPayload as CreateTaskDeliveryInput),
+				title: form.title.trim(),
+				is_template: form.share_with_course_team ? 1 : 0,
+			};
+
+			if (form.instructions.trim()) payload.instructions = form.instructions.trim();
+			if (form.task_type) payload.task_type = form.task_type;
+			if (isQuizTask.value) {
+				payload.quiz_question_bank = form.quiz_question_bank;
+				if (form.quiz_question_count)
+					payload.quiz_question_count = form.quiz_question_count as any;
+				if (form.quiz_time_limit_minutes)
+					payload.quiz_time_limit_minutes = form.quiz_time_limit_minutes as any;
+				if (form.quiz_max_attempts) payload.quiz_max_attempts = form.quiz_max_attempts as any;
+				if (form.quiz_pass_percentage)
+					payload.quiz_pass_percentage = form.quiz_pass_percentage as any;
+			}
+			res = await createTaskResource.submit(payload);
+		}
 		const out = res as CreateTaskDeliveryPayload | undefined;
 
 		if (!out?.task || !out?.task_delivery) throw new Error('Unexpected server response.');
 
 		emit('created', out);
-		emitClose('programmatic');
+		uiSignals.emit(SIGNAL_TASK_DELIVERY_CREATED, {
+			task: out.task,
+			task_delivery: out.task_delivery,
+			student_group: form.student_group || null,
+			class_teaching_plan: props.prefillClassTeachingPlan || null,
+			unit_plan: props.prefillUnitPlan || null,
+			class_session: props.prefillClassSession || null,
+		});
+		createdTask.value = out;
+		createdTaskMode.value = taskMode.value;
+		if (taskMode.value === 'create') {
+			await loadTaskMaterials();
+		}
+		toast.create({
+			appearance: 'success',
+			message:
+				taskMode.value === 'create'
+					? 'Task created. Add materials or close when done.'
+					: 'Assigned work created for this class.',
+		});
 	} catch (error) {
 		console.error('[CreateTaskDeliveryOverlay] submit:error', error);
-		const msg =
-			error instanceof Error ? error.message : 'Unable to create the assignment right now.';
-		errorMessage.value = msg;
-		toast.create({ appearance: 'danger', message: msg });
+		const rawMessage = extractTaskActionErrorMessage(error);
+		const normalized = normalizeTaskActionError(rawMessage);
+		errorMessage.value = normalized.message;
+		errorRecovery.value = normalized.recovery;
+		toast.create({ appearance: 'danger', message: normalized.message });
 	} finally {
 		submitting.value = false;
 	}

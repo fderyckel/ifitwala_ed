@@ -17,32 +17,32 @@
 <template>
 	<div class="relative">
 		<section class="paper-card schedule-card p-4 sm:p-6">
-			<header
-				class="flex flex-col gap-4 border-b border-[rgb(var(--border-rgb)/0.9)] pb-4 md:flex-row md:items-center md:justify-between"
-			>
+			<header class="border-b border-[rgb(var(--border-rgb)/0.9)] pb-4">
 				<div>
 					<h2 class="type-h2">Your upcoming commitments</h2>
 					<p class="type-meta">
 						{{ subtitle }}
 					</p>
 				</div>
+			</header>
 
+			<!-- Chips row -->
+			<div class="schedule-calendar__filters mt-4">
 				<div
-					class="flex w-full flex-wrap items-center gap-3 type-caption md:w-auto md:flex-nowrap"
+					class="schedule-calendar__filter-group schedule-calendar__filter-group--controls -mx-1 flex items-center gap-3 overflow-x-auto px-1 pb-1 md:mx-0 md:flex-wrap md:overflow-visible md:px-0 md:pb-0"
 				>
-					<span v-if="lastUpdatedLabel"> Updated {{ lastUpdatedLabel }} </span>
 					<button class="if-action type-button-label" @click="handleRefresh">
 						<FeatherIcon name="refresh-cw" class="h-4 w-4" />
 						Refresh
 					</button>
+					<span v-if="lastUpdatedLabel" class="type-caption text-slate-token/70">
+						Updated {{ lastUpdatedLabel }}
+					</span>
 				</div>
-			</header>
 
-			<!-- Chips row -->
-			<div class="mt-4 space-y-3">
 				<!-- Weekend / Full-day toggles -->
 				<div
-					class="-mx-1 flex items-center gap-3 overflow-x-auto px-1 pb-1 md:mx-0 md:flex-wrap md:overflow-visible md:px-0 md:pb-0"
+					class="schedule-calendar__filter-group -mx-1 flex items-center gap-3 overflow-x-auto px-1 pb-1 md:mx-0 md:flex-wrap md:overflow-visible md:px-0 md:pb-0"
 				>
 					<button
 						class="if-pill type-button-label"
@@ -64,7 +64,7 @@
 
 				<!-- Source chips -->
 				<div
-					class="-mx-1 flex items-center gap-3 overflow-x-auto px-1 pb-1 md:mx-0 md:flex-wrap md:overflow-visible md:px-0 md:pb-0"
+					class="schedule-calendar__filter-group -mx-1 flex items-center gap-3 overflow-x-auto px-1 pb-1 md:mx-0 md:flex-wrap md:overflow-visible md:px-0 md:pb-0"
 				>
 					<button
 						v-for="chip in sourceChips"
@@ -630,3 +630,28 @@ onBeforeUnmount(() => {
 	if (disposeCalendarInvalidate) disposeCalendarInvalidate();
 });
 </script>
+
+<style scoped>
+.schedule-calendar__filters {
+	display: flex;
+	flex-direction: column;
+	gap: 0.75rem;
+}
+
+@media (min-width: 1024px) {
+	.schedule-calendar__filters {
+		flex-direction: row;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: 0.75rem 1rem;
+	}
+
+	.schedule-calendar__filter-group {
+		flex: 0 1 auto;
+	}
+
+	.schedule-calendar__filter-group--controls {
+		margin-right: 0.5rem;
+	}
+}
+</style>

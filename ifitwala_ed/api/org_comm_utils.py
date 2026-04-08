@@ -11,7 +11,14 @@ from ifitwala_ed.utilities.school_tree import get_ancestor_schools, get_descenda
 
 
 def check_audience_match(
-    comm_name, user, roles, employee, filter_team=None, filter_student_group=None, filter_school=None
+    comm_name,
+    user,
+    roles,
+    employee,
+    filter_team=None,
+    filter_student_group=None,
+    filter_school=None,
+    allow_owner: bool = False,
 ):
     """
     Checks if the current user matches the audience criteria for a given Org Communication.
@@ -136,6 +143,11 @@ def check_audience_match(
         filter_school = None
     elif filter_school:
         active_scope = "School"
+
+    if allow_owner and user and user != "Guest" and not active_scope:
+        owner = frappe.get_cached_value("Org Communication", comm_name, "owner") if comm_name else None
+        if owner == user:
+            return True
 
     is_academic_admin = "Academic Admin" in roles
 

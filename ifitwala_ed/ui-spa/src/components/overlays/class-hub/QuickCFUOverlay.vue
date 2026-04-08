@@ -13,7 +13,7 @@
 			as="div"
 			class="if-overlay if-overlay--class-hub"
 			:style="overlayStyle"
-			@close="emitClose"
+			@close="onDialogClose"
 		>
 			<TransitionChild
 				as="template"
@@ -24,10 +24,10 @@
 				leave-from="if-overlay__fade-to"
 				leave-to="if-overlay__fade-from"
 			>
-				<div class="if-overlay__backdrop" />
+				<div class="if-overlay__backdrop" @click="emitClose('backdrop')" />
 			</TransitionChild>
 
-			<div class="if-overlay__wrap">
+			<div class="if-overlay__wrap" @click.self="emitClose('backdrop')">
 				<TransitionChild
 					as="template"
 					enter="if-overlay__panel-enter"
@@ -48,7 +48,7 @@
 									type="button"
 									class="if-overlay__icon-button"
 									aria-label="Close"
-									@click="emitClose"
+									@click="emitClose('programmatic')"
 								>
 									<span aria-hidden="true">x</span>
 								</button>
@@ -135,7 +135,7 @@
 							<button
 								type="button"
 								class="rounded-full border border-slate-200 bg-white px-4 py-2 type-button-label text-ink"
-								@click="emitClose"
+								@click="emitClose('programmatic')"
 							>
 								Cancel
 							</button>
@@ -155,24 +155,25 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, onBeforeUnmount, ref, watch } from 'vue';
 import { Dialog, DialogPanel, TransitionChild, TransitionRoot } from '@headlessui/vue';
 import { createClassHubService } from '@/lib/classHubService';
 import type { ClassHubSignal } from '@/types/classHub';
 
 type StudentOption = { student: string; student_name: string };
+type CloseReason = 'backdrop' | 'esc' | 'programmatic';
 
 const props = defineProps<{
 	open: boolean;
 	zIndex?: number;
 	overlayId?: string | null;
 	student_group: string;
-	lesson_instance?: string | null;
+	class_session?: string | null;
 	students?: StudentOption[];
 }>();
 
 const emit = defineEmits<{
-	(e: 'close'): void;
+	(e: 'close', reason: CloseReason): void;
 	(e: 'after-leave'): void;
 }>();
 
@@ -191,14 +192,14 @@ const errorMessage = ref('');
 const students = computed(() => props.students || []);
 const selectedStudents = ref<string[]>([]);
 
-function emitClose() {
-	emit('close');
+function emitClose(reason: CloseReason = 'programmatic') {
+	emit('close', reason);
 }
 
 async function submit() {
 	errorMessage.value = '';
 
-	if (!props.lesson_instance) {
+	if (!props.class_session) {
 		errorMessage.value = 'Start a session before saving CFU signals.';
 		return;
 	}
@@ -221,11 +222,33 @@ async function submit() {
 	}));
 
 	try {
-		await service.saveSignals(props.lesson_instance, payload);
-		emitClose();
+		await service.saveSignals(props.class_session, payload);
+		emitClose('programmatic');
 	} catch (err) {
 		errorMessage.value = 'Unable to save right now.';
 		console.error('[QuickCFUOverlay] submit failed', err);
 	}
 }
+
+function onDialogClose(_payload: unknown) {
+	// OverlayHost owns close enforcement.
+}
+
+function onKeydown(event: KeyboardEvent) {
+	if (!props.open) return;
+	if (event.key === 'Escape') emitClose('esc');
+}
+
+watch(
+	() => props.open,
+	value => {
+		if (value) document.addEventListener('keydown', onKeydown, true);
+		else document.removeEventListener('keydown', onKeydown, true);
+	},
+	{ immediate: true }
+);
+
+onBeforeUnmount(() => {
+	document.removeEventListener('keydown', onKeydown, true);
+});
 </script>

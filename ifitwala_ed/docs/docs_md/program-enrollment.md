@@ -3,8 +3,8 @@ title: "Program Enrollment: Committed Academic Enrollment Truth"
 slug: program-enrollment
 category: Enrollment
 doc_order: 5
-version: "1.2.4"
-last_change_date: "2026-03-29"
+version: "1.2.5"
+last_change_date: "2026-04-05"
 summary: "Store one committed enrollment per student/offering/year with source provenance, AY and term integrity checks, and traceable course status transitions including required, credited basket-group, and offering-derived term-window snapshots."
 seo_title: "Program Enrollment: Committed Academic Enrollment Truth"
 seo_description: "Store one committed enrollment per student/offering/year with source provenance, AY and term integrity checks, and traceable course status transitions."
@@ -73,6 +73,20 @@ seo_description: "Store one committed enrollment per student/offering/year with 
 - Authorized admin creates enrollment with `enrollment_source = Admin` and `enrollment_override_reason`.
 - Server enforces role, spine, and course-semantic invariants before save.
 
+## Permission Matrix
+
+| Role | Read | Write | Create | Delete |
+|---|---|---|---|---|
+| `System Manager` | Yes | Yes | Yes | Yes |
+| `Schedule Maker` | Yes | Yes | Yes | Yes |
+| `Academic Admin` | Yes | Yes | Yes | Yes |
+| `Academic Assistant` | Yes | Yes | Yes | No |
+| `Curriculum Coordinator` | Yes | Yes | Yes | No |
+| `Admission Officer` | Yes | Yes | Yes | No |
+| `Admission Manager` | Yes | Yes | Yes | Yes |
+| `Counselor` | Yes | No | No | No |
+| `Academic Staff` | Yes | No | No | No |
+
 ## Related Docs
 
 - [**Program Enrollment Request**](/docs/en/program-enrollment-request/)
@@ -131,17 +145,3 @@ seo_description: "Store one committed enrollment per student/offering/year with 
   - index on (`student`, `academic_year`)
   - index on (`program_offering`, `academic_year`)
   - unique on (`student`, `program_offering`, `academic_year`)
-
-### Permission Matrix
-
-| Role | Read | Write | Create | Delete |
-|---|---|---|---|---|
-| `System Manager` | Yes | Yes | Yes | Yes |
-| `Schedule Maker` | Yes | Yes | Yes | Yes |
-| `Academic Admin` | Yes | Yes | Yes | Yes |
-| `Academic Assistant` | Yes | Yes | Yes | No |
-| `Curriculum Coordinator` | Yes | Yes | Yes | No |
-| `Admission Officer` | Yes | Yes | Yes | No |
-| `Admission Manager` | Yes | Yes | Yes | Yes |
-| `Counselor` | Yes | No | No | No |
-| `Academic Staff` | Yes | No | No | No |

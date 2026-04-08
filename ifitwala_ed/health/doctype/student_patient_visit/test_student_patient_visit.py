@@ -7,6 +7,8 @@ import frappe
 from frappe.tests.utils import FrappeTestCase
 from frappe.utils import nowdate
 
+from ifitwala_ed.tests.factories.organization import make_organization, make_school
+
 
 class TestStudentPatientVisit(FrappeTestCase):
     def setUp(self):
@@ -47,6 +49,24 @@ class TestStudentPatientVisit(FrappeTestCase):
         self.assertEqual(visit.docstatus, 1)
         self.assertEqual(frappe.db.count("Student Log", {"student": student.name}), logs_before)
 
+    def test_visit_validate_sets_school_from_student_anchor_school(self):
+        organization = make_organization("Visit School Org")
+        school = make_school(organization.name, prefix="Visit School")
+        student = _make_student("Visit School")
+        frappe.db.set_value("Student", student.name, "anchor_school", school.name, update_modified=False)
+        patient = _make_student_patient(student.name)
+
+        visit = frappe.get_doc(
+            {
+                "doctype": "Student Patient Visit",
+                "date": nowdate(),
+                "student_patient": patient.name,
+                "note": "Student visited the nurse with school resolved server-side.",
+            }
+        ).insert()
+
+        self.assertEqual(visit.school, school.name)
+
     def test_visit_insert_joins_student_group_for_parent_fields(self):
         student = _make_student("Visit Group Join")
         patient = _make_student_patient(student.name)
@@ -54,13 +74,14 @@ class TestStudentPatientVisit(FrappeTestCase):
         saw_group_lookup = {"value": False}
 
         def guarded_sql(query, values=None, *args, **kwargs):
-            if "FROM `tabStudent Group Student` sgs" in query and "INNER JOIN `tabStudent Group` sg" in query:
+            sql = str(query)
+            if "`tabStudent Group Student`" in sql and "`tabStudent Group`" in sql:
                 saw_group_lookup["value"] = True
-                self.assertIn("sg.academic_year", query)
-                self.assertIn("sg.school", query)
-                self.assertIn("sg.school_schedule", query)
-                self.assertIn("IFNULL(sgs.active, 1) = 1", query)
-                self.assertIn("IFNULL(sg.status, 'Active') = 'Active'", query)
+                self.assertIn("sg.academic_year", sql)
+                self.assertIn("sg.school", sql)
+                self.assertIn("sg.school_schedule", sql)
+                self.assertIn("IFNULL(sgs.active, 1) = 1", sql)
+                self.assertIn("IFNULL(sg.status, 'Active') = 'Active'", sql)
                 return []
             return original_sql(query, values, *args, **kwargs)
 

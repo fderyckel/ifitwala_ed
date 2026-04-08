@@ -8,6 +8,7 @@ from frappe import _
 from frappe.utils import add_days, getdate, strip_html, today
 
 from ifitwala_ed.api.org_comm_utils import build_audience_summary, check_audience_match
+from ifitwala_ed.api.org_communication_attachments import serialize_org_communication_attachment_row
 from ifitwala_ed.utilities.employee_utils import (
     get_descendant_organizations,
     get_user_base_org,
@@ -302,7 +303,7 @@ def get_org_communication_item(name=None):
 
     # NOTE: check_audience_match MUST be updated to use Team Member doctype
     # and not Employee.department. (This is the real underlying bug.)
-    if not check_audience_match(name, user, roles, employee):
+    if not check_audience_match(name, user, roles, employee, allow_owner=True):
         frappe.throw(_("You do not have permission to view this communication."), frappe.PermissionError)
 
     doc = frappe.get_doc("Org Communication", name)
@@ -319,6 +320,11 @@ def get_org_communication_item(name=None):
         "activity_student_group": doc.activity_student_group,
         "audience_label": get_audience_label(doc.name),
         "audience_summary": build_audience_summary(doc.name),
+        "attachments": [
+            serialize_org_communication_attachment_row(doc.name, row)
+            for row in (doc.get("attachments") or [])
+            if str(getattr(row, "file", "") or "").strip() or str(getattr(row, "external_url", "") or "").strip()
+        ],
     }
 
 
@@ -624,6 +630,7 @@ def get_org_communication_feed(
             filter_team=filter_team_val,
             filter_student_group=filter_sg_val,
             filter_school=filter_school_val,
+            allow_owner=True,
         ):
             raw_text = strip_html(c.message or "") if c.message else ""
             if raw_text and len(raw_text) > 260:

@@ -96,6 +96,20 @@ function setup_organization_media_manager(frm) {
 	frm.add_custom_button(__("Manage Organization Media"), openManager, __("Actions"));
 }
 
+function setup_governed_drive_link(frm) {
+	const drive = window.ifitwala_ed && window.ifitwala_ed.drive;
+	if (!drive || typeof drive.addOpenContextButton !== "function" || frm.is_new()) {
+		return;
+	}
+
+	drive.addOpenContextButton(frm, {
+		doctype: "Organization",
+		name: frm.doc.name,
+		label: __("Open in Drive"),
+		group: __("Actions"),
+	});
+}
+
 function clear_invalid_default_school(frm, school, school_org) {
 	frappe.msgprint(
 		__(
@@ -121,6 +135,7 @@ frappe.ui.form.on("Organization", {
 	refresh(frm) {
 		setup_governed_organization_logo_upload(frm);
 		setup_organization_media_manager(frm);
+		setup_governed_drive_link(frm);
 	},
 
 	default_website_school(frm) {

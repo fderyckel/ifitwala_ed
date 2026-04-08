@@ -77,7 +77,7 @@
    "hidden": 0,
    "is_query_report": 0,
    "label": "Curriculum",
-   "link_count": 4,
+   "link_count": 3,
    "link_type": "DocType",
    "onboard": 0,
    "type": "Card Break"
@@ -95,19 +95,9 @@
   {
    "hidden": 0,
    "is_query_report": 0,
-   "label": "Learning Unit",
+   "label": "Unit Plan",
    "link_count": 0,
-   "link_to": "Learning Unit",
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Lesson",
-   "link_count": 0,
-   "link_to": "Lesson",
+   "link_to": "Unit Plan",
    "link_type": "DocType",
    "onboard": 0,
    "type": "Link"
@@ -270,7 +260,7 @@
    "type": "Link"
   }
  ],
- "modified": "2026-03-28 13:02:39.000000",
+ "modified": "2026-04-05 01:26:54.000000",
  "modified_by": "Administrator",
  "module": "School Settings",
  "name": "Academics",

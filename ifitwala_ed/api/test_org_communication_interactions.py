@@ -143,6 +143,48 @@ class TestOrgCommunicationSummaryContract(FrappeTestCase):
         self.assertEqual(summary["COMM-0001"]["self"]["reaction_code"], "like")
 
 
+class TestOrgCommunicationVisibilityGuards(FrappeTestCase):
+    def test_ensure_visible_org_communication_allows_creator_override(self):
+        with (
+            patch("ifitwala_ed.api.org_communication_interactions.frappe.db.exists", return_value=True),
+            patch(
+                "ifitwala_ed.api.org_communication_interactions.check_audience_match",
+                return_value=True,
+            ) as audience_match_mock,
+        ):
+            org_communication_interactions._ensure_visible_org_communication(
+                "COMM-0001",
+                user="teacher@example.com",
+                roles={"Instructor"},
+                employee={"name": "EMP-1", "school": "SCH-1"},
+            )
+
+        audience_match_mock.assert_called_once_with(
+            "COMM-0001",
+            "teacher@example.com",
+            {"Instructor"},
+            {"name": "EMP-1", "school": "SCH-1"},
+            allow_owner=True,
+        )
+
+    def test_visible_names_for_user_passes_creator_override(self):
+        with patch(
+            "ifitwala_ed.api.org_communication_interactions.check_audience_match",
+            side_effect=[True, False],
+        ) as audience_match_mock:
+            visible = org_communication_interactions._visible_names_for_user(
+                ["COMM-0001", "COMM-0002"],
+                user="teacher@example.com",
+                roles={"Instructor"},
+                employee={"name": "EMP-1", "school": "SCH-1"},
+            )
+
+        self.assertEqual(visible, ["COMM-0001"])
+        self.assertEqual(len(audience_match_mock.call_args_list), 2)
+        self.assertEqual(audience_match_mock.call_args_list[0].kwargs, {"allow_owner": True})
+        self.assertEqual(audience_match_mock.call_args_list[1].kwargs, {"allow_owner": True})
+
+
 class TestOrgCommunicationWorkflowEndpoints(FrappeTestCase):
     def test_react_endpoint_maps_reaction_to_intent(self):
         with (

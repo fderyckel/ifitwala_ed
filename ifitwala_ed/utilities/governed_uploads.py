@@ -274,6 +274,7 @@ def _build_drive_idempotency_key(*, payload: dict, content: bytes) -> str:
     seed_parts = [
         str(payload.get("task_submission") or "").strip(),
         str(payload.get("task") or "").strip(),
+        str(payload.get("material") or "").strip(),
         str(payload.get("student_applicant") or "").strip(),
         str(payload.get("applicant_health_profile") or "").strip(),
         str(payload.get("employee") or "").strip(),
@@ -472,6 +473,33 @@ def upload_task_resource(task: str | None = None, row_name: str | None = None, *
     payload = _response_payload(file_doc)
     payload["row_name"] = finalize_response.get("row_name") or session_response.get("row_name")
     return payload
+
+
+@frappe.whitelist()
+def upload_supporting_material_file(material: str | None = None, **_kwargs):
+    material = material or _get_form_arg("material") or frappe.form_dict.get("docname")
+    doc = _require_clean_saved_doc(
+        _require_doc("Supporting Material", material),
+        action_label=_("Upload Supporting Material"),
+    )
+
+    filename, content = _get_uploaded_file()
+    mime_type_hint = _resolve_upload_mime_type_hint(filename=filename)
+    drive_materials_api = _load_drive_module("ifitwala_drive.api.materials")
+
+    _session_response, _finalize_response, file_doc = _drive_upload_and_finalize(
+        create_session_callable=drive_materials_api.upload_supporting_material,
+        payload={
+            "material": doc.name,
+            "filename_original": filename,
+            "mime_type_hint": mime_type_hint,
+            "expected_size_bytes": len(content),
+            "upload_source": "SPA",
+        },
+        content=content,
+    )
+    _ensure_file_on_disk(file_doc)
+    return _response_payload(file_doc)
 
 
 @frappe.whitelist()

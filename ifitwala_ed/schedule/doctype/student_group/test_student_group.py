@@ -9,6 +9,7 @@ from unittest.mock import patch
 import frappe
 from frappe.tests.utils import FrappeTestCase
 
+from ifitwala_ed.curriculum import planning
 from ifitwala_ed.schedule.doctype.student_group.student_group import (
     StudentGroup,
     build_in_clause_placeholders,
@@ -123,6 +124,122 @@ class TestStudentGroup(TestCase):
         result = get_single_offering_academic_year("PO-1")
 
         self.assertEqual(result, {"academic_year": None})
+
+    @patch("ifitwala_ed.curriculum.planning.bootstrap_student_group_class_teaching_plan")
+    def test_after_insert_bootstraps_class_teaching_plan(self, mock_bootstrap):
+        group = object.__new__(StudentGroup)
+
+        group.after_insert()
+
+        mock_bootstrap.assert_called_once_with(group)
+
+    @patch("ifitwala_ed.curriculum.planning.frappe.logger")
+    @patch("ifitwala_ed.curriculum.planning.frappe.new_doc")
+    @patch("ifitwala_ed.curriculum.planning.frappe.get_all")
+    @patch("ifitwala_ed.curriculum.planning.frappe.db.get_value")
+    def test_bootstrap_student_group_class_teaching_plan_creates_active_plan_for_unambiguous_course_plan(
+        self,
+        mock_get_value,
+        mock_get_all,
+        mock_new_doc,
+        mock_logger,
+    ):
+        class FakePlan:
+            def __init__(self):
+                self.name = "CLASS-PLAN-1"
+                self.student_group = None
+                self.course_plan = None
+                self.planning_status = None
+                self.insert_calls = []
+
+            def insert(self, ignore_permissions=False):
+                self.insert_calls.append(ignore_permissions)
+
+        group = frappe._dict(
+            {
+                "name": "SG-1",
+                "group_based_on": "Course",
+                "status": "Active",
+                "course": "COURSE-1",
+                "academic_year": "AY-2026",
+            }
+        )
+        class_plan = FakePlan()
+        mock_get_all.return_value = [{"name": "COURSE-PLAN-1"}]
+        mock_get_value.return_value = None
+        mock_new_doc.return_value = class_plan
+        mock_logger.return_value = frappe._dict({"info": lambda _payload: None})
+
+        result = planning.bootstrap_student_group_class_teaching_plan(group)
+
+        mock_get_all.assert_called_once_with(
+            "Course Plan",
+            filters={
+                "course": "COURSE-1",
+                "plan_status": ["!=", "Archived"],
+                "academic_year": "AY-2026",
+            },
+            fields=["name"],
+            order_by="modified desc, creation desc",
+            limit=2,
+        )
+        mock_new_doc.assert_called_once_with("Class Teaching Plan")
+        self.assertEqual(class_plan.student_group, "SG-1")
+        self.assertEqual(class_plan.course_plan, "COURSE-PLAN-1")
+        self.assertEqual(class_plan.planning_status, "Active")
+        self.assertEqual(class_plan.insert_calls, [True])
+        self.assertEqual(
+            result,
+            {
+                "status": "created",
+                "reason": None,
+                "student_group": "SG-1",
+                "course_plan": "COURSE-PLAN-1",
+                "class_teaching_plan": "CLASS-PLAN-1",
+            },
+        )
+
+    @patch("ifitwala_ed.curriculum.planning.frappe.logger")
+    @patch("ifitwala_ed.curriculum.planning.frappe.new_doc")
+    @patch("ifitwala_ed.curriculum.planning.frappe.get_all")
+    @patch("ifitwala_ed.curriculum.planning.frappe.db.get_value")
+    def test_bootstrap_student_group_class_teaching_plan_skips_when_course_plan_is_ambiguous(
+        self,
+        mock_get_value,
+        mock_get_all,
+        mock_new_doc,
+        mock_logger,
+    ):
+        group = frappe._dict(
+            {
+                "name": "SG-1",
+                "group_based_on": "Course",
+                "status": "Active",
+                "course": "COURSE-1",
+                "academic_year": "AY-2026",
+            }
+        )
+        mock_get_all.side_effect = [
+            [],
+            [{"name": "COURSE-PLAN-1"}, {"name": "COURSE-PLAN-2"}],
+        ]
+        mock_logger.return_value = frappe._dict({"info": lambda _payload: None})
+
+        result = planning.bootstrap_student_group_class_teaching_plan(group)
+
+        self.assertEqual(mock_get_all.call_count, 2)
+        mock_get_value.assert_not_called()
+        mock_new_doc.assert_not_called()
+        self.assertEqual(
+            result,
+            {
+                "status": "skipped",
+                "reason": "multiple_course_plans",
+                "student_group": "SG-1",
+                "course_plan": None,
+                "class_teaching_plan": None,
+            },
+        )
 
 
 class TestStudentGroupScheduleAdvisories(FrappeTestCase):

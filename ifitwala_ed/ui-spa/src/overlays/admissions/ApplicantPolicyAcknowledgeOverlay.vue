@@ -67,6 +67,33 @@
 							</div>
 
 							<div class="rounded-2xl border border-border/70 bg-white p-4 shadow-soft space-y-3">
+								<div v-if="policyClauses.length" class="space-y-3 border-b border-border/70 pb-3">
+									<div>
+										<p class="type-body-strong text-ink">{{ __('Acknowledgement clauses') }}</p>
+										<p class="mt-1 type-caption text-ink/65">
+											{{ __('Check every required clause before signing this policy.') }}
+										</p>
+									</div>
+
+									<label
+										v-for="clause in policyClauses"
+										:key="clause.name"
+										class="flex items-start gap-3 rounded-2xl border border-border/70 px-3 py-3"
+									>
+										<input
+											:checked="checkedClauseNames.includes(clause.name)"
+											type="checkbox"
+											class="mt-1 h-4 w-4"
+											:disabled="isReadOnly || submitting"
+											@change="toggleClause(clause.name, $event)"
+										/>
+										<span class="type-caption text-ink/80">
+											{{ clause.clause_text }}
+											<span v-if="clause.is_required" class="text-rose-700">*</span>
+										</span>
+									</label>
+								</div>
+
 								<div>
 									<p class="type-body-strong text-ink">{{ __('Electronic signature') }}</p>
 									<p class="mt-1 type-caption text-ink/65">
@@ -181,6 +208,12 @@ type PolicyPayload = {
 	content_html: string;
 	expected_signer_name?: string;
 	student_applicant?: string | null;
+	acknowledgement_clauses?: Array<{
+		name: string;
+		clause_text: string;
+		is_required: boolean;
+		idx: number;
+	}>;
 };
 
 const props = defineProps<{
@@ -200,6 +233,7 @@ const errorMessage = ref('');
 const typedSignatureName = ref('');
 const attestationConfirmed = ref(false);
 const signatureTouched = ref(false);
+const checkedClauseNames = ref<string[]>([]);
 
 const overlayStyle = computed(() => ({
 	zIndex: props.zIndex || 0,
@@ -208,6 +242,7 @@ const overlayStyle = computed(() => ({
 const isReadOnly = computed(() => Boolean(props.readOnly));
 const policyName = computed(() => props.policy?.name || '');
 const policyContent = computed(() => props.policy?.content_html || '');
+const policyClauses = computed(() => props.policy?.acknowledgement_clauses || []);
 const expectedSignerLabel = computed(
 	() => String(props.policy?.expected_signer_name || '').trim() || __('Applicant record')
 );
@@ -241,6 +276,20 @@ function resetSignatureFields() {
 	typedSignatureName.value = '';
 	attestationConfirmed.value = false;
 	signatureTouched.value = false;
+	checkedClauseNames.value = [];
+}
+
+function toggleClause(clauseName: string, event: Event) {
+	const checked = (event.target as HTMLInputElement).checked;
+	const next = new Set(checkedClauseNames.value);
+	if (checked) next.add(clauseName);
+	else next.delete(clauseName);
+	checkedClauseNames.value = Array.from(next);
+}
+
+function hasRequiredClausesChecked(): boolean {
+	const checked = new Set(checkedClauseNames.value);
+	return policyClauses.value.every(clause => !clause.is_required || checked.has(clause.name));
 }
 
 function emitClose(reason: CloseReason) {
@@ -310,6 +359,10 @@ async function submit() {
 		setError('', __('Confirm the legal attestation before signing.'));
 		return;
 	}
+	if (!hasRequiredClausesChecked()) {
+		setError('', __('Check every required acknowledgement clause before signing.'));
+		return;
+	}
 
 	submitting.value = true;
 	clearError();
@@ -319,6 +372,7 @@ async function submit() {
 			student_applicant: props.policy.student_applicant || undefined,
 			typed_signature_name: typedSignatureName.value.trim(),
 			attestation_confirmed: attestationConfirmed.value ? 1 : 0,
+			checked_clause_names: checkedClauseNames.value,
 		});
 		emitClose('programmatic');
 		emit('done');

@@ -1,6 +1,60 @@
 export type ClassHubOverlay = 'QuickCFU' | 'QuickEvidence' | 'StudentContext' | 'TaskReview'
 
+export type ClassHubWheelStudent = {
+  student: string
+  student_name: string
+}
+
+export type ClassHubWheelNow = {
+  date_iso?: string | null
+  date_label: string
+  block_number?: number | null
+  block_label?: string | null
+  time_range?: string | null
+  location?: string | null
+}
+
+export type ClassHubWheelContext = {
+  student_group: string
+  title: string
+  academic_year?: string | null
+  course?: string | null
+  permissions: {
+    can_create_student_log: boolean
+  }
+  now: ClassHubWheelNow
+  students: ClassHubWheelStudent[]
+}
+
+export type ClassHubWheelResolution = {
+  status: 'ready' | 'multiple_current' | 'no_current_class' | 'unavailable'
+  message?: string | null
+  contexts: ClassHubWheelContext[]
+  next_class?: {
+    student_group: string
+    title: string
+    academic_year?: string | null
+    course?: string | null
+    now: ClassHubWheelNow
+  } | null
+}
+
+export type ClassHubHomeEntryGroup = {
+  student_group: string
+  student_group_name: string
+  title: string
+  academic_year?: string | null
+  course?: string | null
+}
+
+export type ClassHubHomeEntryResolution = {
+  status: 'single' | 'choose' | 'empty'
+  message?: string | null
+  groups: ClassHubHomeEntryGroup[]
+}
+
 export type ClassHubBundle = {
+  message?: string | null
   header: {
     student_group: string
     title: string
@@ -11,15 +65,22 @@ export type ClassHubBundle = {
     can_create_student_log: boolean
   }
   now: {
+    date_iso?: string | null
     date_label: string
     rotation_day_label?: string | null
+    block_number?: number | null
     block_label?: string | null
     time_range?: string | null
     location?: string | null
   }
   session: {
-    lesson_instance?: string | null
-    status: 'none' | 'active' | 'ended'
+    class_session?: string | null
+    class_teaching_plan?: string | null
+    title?: string | null
+    session_status?: string | null
+    session_date?: string | null
+    unit_plan?: string | null
+    status: 'none' | 'planned' | 'active' | 'ended'
     live_success_criteria?: string | null
   }
   today_items: Array<{
@@ -74,7 +135,7 @@ export type ClassHubSignal = {
 
 export type ClassHubQuickEvidencePayload = {
   student_group: string
-  lesson_instance?: string | null
+  class_session?: string | null
   students: string[]
   evidence_type: 'text' | 'link'
   text?: string | null

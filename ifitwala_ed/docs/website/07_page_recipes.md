@@ -121,6 +121,7 @@ Notes for `leadership` on Home/About:
 * By default the block renders `Academic Leadership` first, then `Faculty & Staff`.
 * Both sections only include `Employee` records where `show_on_website = 1`.
 * The primary carousel resolves from `Designation.default_role_profile = "Academic Admin"` unless page authors set a manual designation filter.
+* If a parent-school page needs selected roles from child campuses, use `role_scopes` on the primary carousel and set an explicit `descendant_depth`; the secondary staff carousel remains exact-school.
 
 ---
 

@@ -3,8 +3,8 @@ title: "Program Offering: Operational Enrollment Contract"
 slug: program-offering
 category: Enrollment
 doc_order: 2
-version: "1.2.0"
-last_change_date: "2026-03-26"
+version: "1.2.1"
+last_change_date: "2026-04-05"
 summary: "Define where and when a program is delivered, including AY span, offering courses, basket-group memberships, basket rules, capacity policy, activity-booking readiness gates, and self-enrollment readiness."
 seo_title: "Program Offering: Operational Enrollment Contract"
 seo_description: "Define where and when a program is delivered, including AY span, offering courses, basket-group memberships, basket rules, capacity policy, and activity-booking readiness gates."
@@ -102,6 +102,21 @@ Result: request validation and materialization use this offering as authoritativ
 
 A course not present in Program catalog can appear in offering only when the row is explicitly marked `non_catalog = 1` and exception justification is provided when the field exists.
 
+## Permission Matrix
+
+| Role | Read | Write | Create | Delete |
+|---|---|---|---|---|
+| `System Manager` | Yes | Yes | Yes | Yes |
+| `Academic Admin` | Yes | Yes | Yes | Yes |
+| `Curriculum Coordinator` | Yes | Yes | Yes | Yes |
+| `Academic Assistant` | Yes | Yes | Yes | No |
+| `Activity Coordinator` | Yes | Yes | Yes | No |
+| `Counselor` | Yes | No | No | No |
+| `Instructor` | Yes | No | No | No |
+| `Academic Staff` | Yes | No | No | No |
+| `Admission Manager` | Yes | No | No | No |
+| `Admission Officer` | Yes | No | No | No |
+
 ## Related Docs
 
 - [**Program Offering Course**](/docs/en/program-offering-course/)
@@ -146,18 +161,3 @@ A course not present in Program catalog can appear in offering only when the row
   - catalog membership enforced unless explicit non-catalog exception
   - status restricted to `Planned|Active|Archived`
   - activity booking guardrails and readiness gates enforced server-side
-
-### Permission Matrix
-
-| Role | Read | Write | Create | Delete |
-|---|---|---|---|---|
-| `System Manager` | Yes | Yes | Yes | Yes |
-| `Academic Admin` | Yes | Yes | Yes | Yes |
-| `Curriculum Coordinator` | Yes | Yes | Yes | Yes |
-| `Academic Assistant` | Yes | Yes | Yes | No |
-| `Activity Coordinator` | Yes | Yes | Yes | No |
-| `Counselor` | Yes | No | No | No |
-| `Instructor` | Yes | No | No | No |
-| `Academic Staff` | Yes | No | No | No |
-| `Admission Manager` | Yes | No | No | No |
-| `Admission Officer` | Yes | No | No | No |

@@ -279,9 +279,10 @@
 														<span>Due {{ formatDate(task.due_date) || '—' }}</span>
 													</div>
 													<div class="flex flex-wrap gap-1 opacity-80">
-														<Badge v-if="task.points" variant="subtle">Pts</Badge>
-														<Badge v-if="task.binary" variant="subtle">Binary</Badge>
-														<Badge v-if="task.criteria" variant="subtle">Crit</Badge>
+														<Badge v-if="taskModeBadge(task)" variant="subtle">
+															{{ taskModeBadge(task) }}
+														</Badge>
+														<Badge v-if="task.allow_feedback" variant="subtle">Comment</Badge>
 													</div>
 												</div>
 											</div>
@@ -302,7 +303,7 @@
 							<div class="flex items-center gap-3">
 								<h2 class="text-lg font-semibold text-ink">Grade Entry</h2>
 								<div
-									v-if="selectedTask"
+									v-if="showMaxPointsPill(gradebook.task)"
 									class="flex items-center gap-2 rounded-full bg-white px-2 py-0.5 text-xs text-ink/60 shadow-sm border border-border/50"
 								>
 									<span class="font-medium">Max Points:</span>
@@ -417,24 +418,33 @@
 
 									<div class="flex flex-wrap items-center gap-2">
 										<Badge
-											v-if="studentStates[student.task_student]?.complete"
-											variant="subtle"
-											theme="green"
-											class="!bg-leaf/10 !text-leaf"
+											v-if="showsBooleanResult(gradebook.task)"
+											:variant="
+												studentStates[student.task_student]?.complete ? 'subtle' : 'outline'
+											"
+											:theme="studentStates[student.task_student]?.complete ? 'green' : 'gray'"
+											:class="
+												studentStates[student.task_student]?.complete
+													? '!bg-leaf/10 !text-leaf'
+													: ''
+											"
 										>
-											<FeatherIcon name="check" class="mr-1 h-3 w-3" />
-											Complete
-										</Badge>
-										<Badge v-else-if="gradebook.task?.binary" variant="outline" theme="gray">
-											Incomplete
+											<FeatherIcon
+												:name="
+													studentStates[student.task_student]?.complete ? 'check' : 'minus-circle'
+												"
+												class="mr-1 h-3 w-3"
+											/>
+											{{ booleanResultLabel(gradebook.task, student.task_student) }}
 										</Badge>
 
 										<div
+											v-if="showsScoreSummary(gradebook.task)"
 											class="flex items-center rounded-lg bg-white px-3 py-1.5 shadow-sm border border-border/40"
 										>
-											<span class="mr-2 text-xs font-medium uppercase tracking-wider text-ink/40"
-												>Score</span
-											>
+											<span class="mr-2 text-xs font-medium uppercase tracking-wider text-ink/40">
+												{{ scoreSummaryLabel(gradebook.task) }}
+											</span>
 											<span class="text-lg font-bold text-ink">
 												{{ formatPoints(studentStates[student.task_student]?.mark_awarded) }}
 											</span>
@@ -446,6 +456,7 @@
 								<div class="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
 									<div class="space-y-4">
 										<FormControl
+											v-if="showsStatusControl(gradebook.task)"
 											type="select"
 											label="Status"
 											:options="statusOptions"
@@ -456,7 +467,7 @@
 											@update:modelValue="onStatusChanged(student.task_student, $event)"
 										/>
 
-										<div v-if="gradebook.task?.points" class="space-y-1.5">
+										<div v-if="isPointsTask(gradebook.task)" class="space-y-1.5">
 											<label
 												class="block text-xs font-semibold uppercase tracking-wide text-ink/50"
 												>Points Awarded</label
@@ -472,32 +483,37 @@
 											/>
 										</div>
 
-										<div v-if="gradebook.task?.binary" class="space-y-1.5">
+										<div v-if="showsBooleanResult(gradebook.task)" class="space-y-1.5">
 											<label
 												class="block text-xs font-semibold uppercase tracking-wide text-ink/50"
-												>Completion</label
+												>{{ booleanControlLabel(gradebook.task) }}</label
 											>
-											<button
-												type="button"
-												class="flex w-full items-center justify-center gap-2 rounded-md border border-border/60 bg-white px-4 py-2 text-sm font-medium transition-all hover:border-leaf hover:text-leaf active:scale-95"
-												:class="{
-													'!bg-leaf !text-white !border-leaf':
-														studentStates[student.task_student]?.complete,
-												}"
-												@click="toggleComplete(student.task_student)"
-											>
-												<FeatherIcon
-													:name="
-														studentStates[student.task_student]?.complete ? 'check' : 'circle'
+											<div class="grid grid-cols-2 gap-2">
+												<button
+													type="button"
+													class="rounded-md border px-4 py-2 text-sm font-medium transition-all"
+													:class="
+														studentStates[student.task_student]?.complete
+															? '!border-leaf !bg-leaf !text-white'
+															: 'border-border/60 bg-white text-ink/70 hover:border-leaf/60 hover:text-leaf'
 													"
-													class="h-4 w-4"
-												/>
-												{{
-													studentStates[student.task_student]?.complete
-														? 'Marked Complete'
-														: 'Mark Complete'
-												}}
-											</button>
+													@click="setBooleanState(student.task_student, true)"
+												>
+													{{ booleanPositiveLabel(gradebook.task) }}
+												</button>
+												<button
+													type="button"
+													class="rounded-md border px-4 py-2 text-sm font-medium transition-all"
+													:class="
+														!studentStates[student.task_student]?.complete
+															? 'border-slate-300 bg-slate-100 text-ink'
+															: 'border-border/60 bg-white text-ink/70 hover:border-leaf/60 hover:text-leaf'
+													"
+													@click="setBooleanState(student.task_student, false)"
+												>
+													{{ booleanNegativeLabel(gradebook.task) }}
+												</button>
+											</div>
 										</div>
 
 										<div class="pt-2">
@@ -533,14 +549,17 @@
 									</div>
 
 									<!-- Feedback Column -->
-									<div class="space-y-1.5 md:col-span-1 lg:col-span-2">
-										<label class="block text-xs font-semibold uppercase tracking-wide text-ink/50"
-											>Feedback</label
-										>
+									<div
+										v-if="supportsFeedback(gradebook.task)"
+										class="space-y-1.5 md:col-span-1 lg:col-span-2"
+									>
+										<label class="block text-xs font-semibold uppercase tracking-wide text-ink/50">
+											Comment
+										</label>
 										<FormControl
 											type="textarea"
 											rows="5"
-											placeholder="Positive reinforcement, areas for improvement..."
+											placeholder="Add a comment for this student..."
 											class="!h-full"
 											:model-value="studentStates[student.task_student]?.feedback || ''"
 											@update:modelValue="onFeedbackChanged(student.task_student, $event)"
@@ -581,9 +600,7 @@
 												v-if="criterion.levels && criterion.levels.length"
 												type="select"
 												size="sm"
-												:options="criterion.levels"
-												option-label="level"
-												option-value="level"
+												:options="criterionLevelOptions(criterion)"
 												placeholder="Level Achieved"
 												:model-value="
 													getCriterionState(student.task_student, criterion.assessment_criteria)
@@ -626,6 +643,7 @@
 												"
 											/>
 											<FormControl
+												v-if="supportsFeedback(gradebook.task)"
 												type="textarea"
 												rows="2"
 												size="sm"
@@ -686,7 +704,7 @@
 											:disabled="!studentStates[student.task_student]?.dirty"
 											@click="saveStudent(student.task_student)"
 										>
-											Save Grade
+											Save
 										</Button>
 									</div>
 								</div>
@@ -766,6 +784,7 @@ const filters = reactive({
 const defaultSchool = ref<string | null>(null);
 const schools = ref<FetchSchoolFilterContextResponse['schools']>([]);
 const schoolsLoading = ref(false);
+const routeGroupResolving = ref(false);
 
 const groups = ref<GroupSummary[]>([]);
 const groupsLoading = ref(false);
@@ -859,7 +878,7 @@ async function loadSchoolContext() {
 }
 
 // 2. Groups Loader
-async function loadGroups() {
+async function loadGroups(options: { skipRouteGroupSync?: boolean } = {}) {
 	groupsLoading.value = true;
 	try {
 		const rows = await gradebookService.fetchGroups({
@@ -876,7 +895,9 @@ async function loadGroups() {
 		}
 		groups.value = rows;
 
-		applyRouteGroupFromQuery();
+		if (!options.skipRouteGroupSync) {
+			await applyRouteGroupFromQuery();
+		}
 	} catch (error) {
 		console.error('Failed to load student groups', error);
 		showDangerToast('Could not load student groups');
@@ -897,6 +918,7 @@ async function loadTasks(groupName: string) {
 			student_group: groupName,
 		});
 		taskSummaries.value = payload?.tasks ?? [];
+		applyRouteTaskFromQuery(taskSummaries.value);
 	} catch (error) {
 		console.error('Failed to load tasks', error);
 		showDangerToast('Could not load tasks');
@@ -950,11 +972,21 @@ async function syncRoster() {
 /* COMPUTED - FILTER OPTIONS & DERIVED DATA ---------------------- */
 
 const schoolOptions = computed(() => {
-	const base = schools.value.map(s => ({ school_name: s.school_name || s.name, name: s.name }));
+	const base = schools.value.map(s => ({
+		label: s.school_name || s.name,
+		value: s.name,
+	}));
 	if (defaultSchool.value) return base;
 	// If no default school (admin global), add All option
-	return [{ school_name: 'All Schools', name: null }, ...base];
+	return [{ label: 'All Schools', value: null }, ...base];
 });
+
+function criterionLevelOptions(criterion: CriterionPayload) {
+	return (criterion.levels || []).map(level => ({
+		label: level.level,
+		value: level.level,
+	}));
+}
 
 // Derived Groups: Filter raw groups list by top bar selections
 const derivedGroups = computed(() => {
@@ -1120,6 +1152,13 @@ function resetFilters() {
 	void loadGroups();
 }
 
+function syncFiltersToGroup(group: GroupSummary) {
+	filters.school = group.school || null;
+	filters.academic_year = group.academic_year || null;
+	filters.program = group.program || null;
+	filters.course = group.course || null;
+}
+
 // Downstream Clearing Logic
 // Watch derivedGroups: if selectedGroup is no longer in it, deselect.
 watch(derivedGroups, newList => {
@@ -1144,7 +1183,11 @@ watch(derivedTasks, newList => {
 /* OTHER LOGIC (UNCHANGED MOSTLY) -------------------------------- */
 
 function selectGroup(group: GroupSummary | null) {
+	const previousGroup = selectedGroup.value?.name || null;
 	selectedGroup.value = group;
+	if (previousGroup !== (group?.name || null)) {
+		updateRouteTask(null);
+	}
 	if (group) {
 		// Reset task filters when switching group? Only if desired.
 		// Let's keep them as sticky filters might be useful.
@@ -1156,6 +1199,7 @@ function selectGroup(group: GroupSummary | null) {
 
 function selectTask(task: TaskSummary | null) {
 	selectedTask.value = task;
+	updateRouteTask(task?.name || null);
 }
 
 /* FORMATTERS & UTILS -------------------------------------------- */
@@ -1179,7 +1223,75 @@ function formatPoints(val: number | null | undefined) {
 	return typeof val === 'number' ? val : '—';
 }
 
-const hasCriterionFeedback = computed(() => gradebook.criteria.length > 0);
+function isPointsTask(task?: TaskPayload | TaskSummary | null) {
+	return task?.grading_mode === 'Points';
+}
+
+function isBinaryTask(task?: TaskPayload | TaskSummary | null) {
+	return task?.grading_mode === 'Binary';
+}
+
+function isCompletionTask(task?: TaskPayload | TaskSummary | null) {
+	return task?.grading_mode === 'Completion' || task?.delivery_type === 'Assign Only';
+}
+
+function isCriteriaTask(task?: TaskPayload | TaskSummary | null) {
+	return task?.grading_mode === 'Criteria';
+}
+
+function supportsFeedback(task?: TaskPayload | TaskSummary | null) {
+	return Boolean(task?.allow_feedback);
+}
+
+function showsBooleanResult(task?: TaskPayload | TaskSummary | null) {
+	return isBinaryTask(task) || isCompletionTask(task);
+}
+
+function showsScoreSummary(task?: TaskPayload | TaskSummary | null) {
+	if (isPointsTask(task)) return true;
+	if (!isCriteriaTask(task)) return false;
+	return task?.rubric_scoring_strategy !== 'Separate Criteria';
+}
+
+function showsStatusControl(task?: TaskPayload | TaskSummary | null) {
+	return task?.delivery_type === 'Assess';
+}
+
+function showMaxPointsPill(task?: TaskPayload | null) {
+	return isPointsTask(task) && task?.max_points !== null && task?.max_points !== undefined;
+}
+
+function scoreSummaryLabel(task?: TaskPayload | TaskSummary | null) {
+	return isCriteriaTask(task) ? 'Total' : 'Score';
+}
+
+function booleanControlLabel(task?: TaskPayload | TaskSummary | null) {
+	return isBinaryTask(task) ? 'Yes / No' : 'Completion';
+}
+
+function booleanPositiveLabel(task?: TaskPayload | TaskSummary | null) {
+	return isBinaryTask(task) ? 'Yes' : 'Complete';
+}
+
+function booleanNegativeLabel(task?: TaskPayload | TaskSummary | null) {
+	return isBinaryTask(task) ? 'No' : 'Not complete';
+}
+
+function booleanResultLabel(task: TaskPayload | null, taskStudent: string) {
+	const state = studentStates[taskStudent];
+	if (!state) return '—';
+	return state.complete ? booleanPositiveLabel(task) : booleanNegativeLabel(task);
+}
+
+function taskModeBadge(task?: TaskSummary | null) {
+	if (isCriteriaTask(task)) return 'Criteria';
+	if (isPointsTask(task)) return 'Points';
+	if (isBinaryTask(task)) return 'Yes/No';
+	if (isCompletionTask(task)) return 'Complete';
+	if (task?.delivery_type === 'Collect Work') return 'Collect';
+	return null;
+}
+
 const allStudentsVisible = computed(() => {
 	if (!gradebook.students.length) return false;
 	return gradebook.students.every(student => {
@@ -1202,16 +1314,52 @@ function currentRouteStudentGroup(): string | null {
 	return typeof value === 'string' && value ? value : null;
 }
 
-const pendingRouteGroup = ref<string | null>(currentRouteStudentGroup());
+function currentRouteTask(): string | null {
+	const value = route.query.task;
+	return typeof value === 'string' && value ? value : null;
+}
 
-function applyRouteGroupFromQuery() {
+const pendingRouteGroup = ref<string | null>(currentRouteStudentGroup());
+const pendingRouteTask = ref<string | null>(currentRouteTask());
+
+async function findRouteGroup(target: string) {
+	const rows = await gradebookService.fetchGroups({
+		search: target,
+		limit: 20,
+	});
+	return rows.find(row => row.name === target) || null;
+}
+
+async function applyRouteGroupFromQuery() {
 	const target = pendingRouteGroup.value;
-	if (!target || !groups.value.length) return;
-	const match = groups.value.find(row => row.name === target);
-	if (match) {
-		selectedGroup.value = match;
-		// IMPORTANT: If group is loaded from URL, we should try to set filters to match it
-		// so it's not hidden. But simple logic: don't force School filter change yet.
+	if (!target || routeGroupResolving.value) return;
+
+	routeGroupResolving.value = true;
+	try {
+		const visibleMatch = groups.value.find(row => row.name === target);
+		if (visibleMatch) {
+			syncFiltersToGroup(visibleMatch);
+			selectedGroup.value = visibleMatch;
+			pendingRouteGroup.value = null;
+			return;
+		}
+
+		const resolvedMatch = await findRouteGroup(target);
+		if (!resolvedMatch) {
+			pendingRouteGroup.value = null;
+			showDangerToast('Linked student group is no longer available.');
+			return;
+		}
+
+		syncFiltersToGroup(resolvedMatch);
+		await loadGroups({ skipRouteGroupSync: true });
+		selectedGroup.value = groups.value.find(row => row.name === target) || resolvedMatch;
+		pendingRouteGroup.value = null;
+	} catch (error) {
+		console.error('Failed to resolve linked student group', error);
+		showDangerToast('Could not load the linked student group');
+	} finally {
+		routeGroupResolving.value = false;
 	}
 }
 
@@ -1225,6 +1373,43 @@ function updateRouteStudentGroup(groupName: string | null) {
 		nextQuery.student_group = groupName;
 	} else {
 		delete nextQuery.student_group;
+	}
+	router.replace({ query: nextQuery }).catch(() => {});
+}
+
+function applyRouteTaskFromQuery(taskList: TaskSummary[] = taskSummaries.value) {
+	const target = pendingRouteTask.value;
+	if (!target) return;
+
+	const match = taskList.find(task => task.name === target) || null;
+	if (match) {
+		selectedTask.value = match;
+		pendingRouteTask.value = null;
+		return;
+	}
+
+	if (!taskList.length) {
+		if (tasksLoading.value || !selectedGroup.value) {
+			return;
+		}
+		pendingRouteTask.value = null;
+		return;
+	}
+
+	pendingRouteTask.value = null;
+	showDangerToast('Linked assigned work is no longer available for this class.');
+}
+
+function updateRouteTask(taskName: string | null) {
+	const current = currentRouteTask();
+	if (current === taskName || (!current && !taskName)) {
+		return;
+	}
+	const nextQuery = { ...route.query };
+	if (taskName) {
+		nextQuery.task = taskName;
+	} else {
+		delete nextQuery.task;
 	}
 	router.replace({ query: nextQuery }).catch(() => {});
 }
@@ -1322,7 +1507,17 @@ watch(
 	() => {
 		pendingRouteGroup.value = currentRouteStudentGroup();
 		if (pendingRouteGroup.value) {
-			applyRouteGroupFromQuery();
+			void applyRouteGroupFromQuery();
+		}
+	}
+);
+
+watch(
+	() => route.query.task,
+	() => {
+		pendingRouteTask.value = currentRouteTask();
+		if (pendingRouteTask.value) {
+			applyRouteTaskFromQuery();
 		}
 	}
 );
@@ -1411,10 +1606,10 @@ function onPointsChanged(taskStudent: string, value: number | null) {
 	scheduleStudentSave(taskStudent);
 }
 
-function toggleComplete(taskStudent: string) {
+function setBooleanState(taskStudent: string, value: boolean) {
 	const state = studentStates[taskStudent];
-	if (!state) return;
-	state.complete = !state.complete;
+	if (!state || state.complete === value) return;
+	state.complete = value;
 	state.dirty = true;
 	scheduleStudentSave(taskStudent);
 }
@@ -1463,6 +1658,9 @@ function onCriterionLevelChanged(
 	item.level_points = levelDef ? levelDef.points : item.level_points;
 	state.dirtyCriteria = true;
 	scheduleCriteriaSave(taskStudent);
+	if (state.dirty) {
+		scheduleStudentSave(taskStudent);
+	}
 }
 
 function onCriterionPointsChanged(
@@ -1479,6 +1677,9 @@ function onCriterionPointsChanged(
 	item.level_points = nextValue;
 	state.dirtyCriteria = true;
 	scheduleCriteriaSave(taskStudent);
+	if (state.dirty) {
+		scheduleStudentSave(taskStudent);
+	}
 }
 
 function onCriterionFeedbackChanged(taskStudent: string, criteriaName: string, value: string) {
@@ -1489,6 +1690,9 @@ function onCriterionFeedbackChanged(taskStudent: string, criteriaName: string, v
 	item.feedback = value;
 	state.dirtyCriteria = true;
 	scheduleCriteriaSave(taskStudent);
+	if (state.dirty) {
+		scheduleStudentSave(taskStudent);
+	}
 }
 
 async function saveStudent(taskStudent: string) {
@@ -1497,14 +1701,20 @@ async function saveStudent(taskStudent: string) {
 
 	state.saving = true;
 	try {
-		const payload = {
+		const payload: Record<string, string | number | boolean | null> = {
 			status: state.status,
-			mark_awarded: state.mark_awarded,
-			feedback: state.feedback,
 			visible_to_student: state.visible_to_student,
 			visible_to_guardian: state.visible_to_guardian,
-			complete: state.complete,
 		};
+		if (isPointsTask(gradebook.task)) {
+			payload.mark_awarded = state.mark_awarded;
+		}
+		if (showsBooleanResult(gradebook.task)) {
+			payload.complete = state.complete;
+		}
+		if (supportsFeedback(gradebook.task)) {
+			payload.feedback = state.feedback;
+		}
 		const doc: UpdateTaskStudentResponse = await gradebookService.updateTaskStudent({
 			task_student: taskStudent,
 			updates: payload,
@@ -1513,7 +1723,7 @@ async function saveStudent(taskStudent: string) {
 		state.updated_on = doc.updated_on;
 	} catch (error) {
 		console.error('Save failed', error);
-		showDangerToast('Failed to save grade');
+		showDangerToast('Failed to save changes');
 	} finally {
 		state.saving = false;
 		if (state.dirty) {
@@ -1541,6 +1751,7 @@ async function saveCriteria(taskStudent: string) {
 				task_student: taskStudent,
 				updates: {
 					criteria_scores: criteriaScores,
+					...(supportsFeedback(gradebook.task) ? { feedback: state.feedback } : {}),
 				},
 			});
 			if (doc?.updated_on) {

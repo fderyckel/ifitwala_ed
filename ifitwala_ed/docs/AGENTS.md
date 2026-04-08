@@ -119,6 +119,8 @@ For docs under `ifitwala_ed/docs/docs_md/`:
   - `version`
   - `last_change_date`
 - update both on every change
+- if the file documents a DocType, it must include a top-level `## Permission Matrix`
+- when the DocType inherits permissions from a parent (for example child tables), document that inherited model inside `## Permission Matrix` instead of omitting the section
 - `## Related Docs` should appear immediately before `## Technical Notes (IT)` when that section exists
 - `## Technical Notes (IT)` must be the final top-level section
 - `## Technical Notes (IT)` is reserved for administrator and system-admin implementation detail, not general product guidance

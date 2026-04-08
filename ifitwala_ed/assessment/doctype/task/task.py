@@ -53,53 +53,20 @@ class Task(Document):
         if field and field.reqd and not getattr(self, fieldname, None):
             frappe.throw(_("Select a Course or adjust the Task schema."))
 
-    def _get_lesson_info(self, lesson_name):
-        if not lesson_name:
-            return {}
-        return (
-            frappe.db.get_value(
-                "Lesson",
-                lesson_name,
-                ["course", "learning_unit"],
-                as_dict=True,
-            )
-            or {}
-        )
-
-    def _get_learning_unit_course(self, learning_unit):
-        if not learning_unit:
+    def _get_unit_plan_course(self, unit_plan_name):
+        if not unit_plan_name:
             return None
-        return frappe.db.get_value("Learning Unit", learning_unit, "course")
+        return frappe.db.get_value("Unit Plan", unit_plan_name, "course")
 
     def _validate_curriculum_alignment(self):
         course = self._get_course_value()
-        learning_unit = self.learning_unit or None
-        lesson = self.lesson or None
+        unit_plan_name = self.unit_plan or None
 
         unit_course = None
-        if learning_unit and course:
-            unit_course = self._get_learning_unit_course(learning_unit)
+        if unit_plan_name and course:
+            unit_course = self._get_unit_plan_course(unit_plan_name)
             if unit_course and unit_course != course:
-                frappe.throw(_("Learning Unit belongs to a different Course than the Task's Course."))
-
-        if not lesson:
-            return
-
-        lesson_info = self._get_lesson_info(lesson)
-        lesson_unit = lesson_info.get("learning_unit")
-        lesson_course = lesson_info.get("course")
-
-        if learning_unit and lesson_unit and lesson_unit != learning_unit:
-            frappe.throw(_("Lesson does not belong to the selected Learning Unit."))
-
-        if course:
-            if not lesson_course and lesson_unit:
-                if lesson_unit == learning_unit and unit_course:
-                    lesson_course = unit_course
-                else:
-                    lesson_course = self._get_learning_unit_course(lesson_unit)
-            if lesson_course and lesson_course != course:
-                frappe.throw(_("Lesson belongs to a different Course than the Task's Course."))
+                frappe.throw(_("Unit Plan belongs to a different Course than the Task's Course."))
 
     def _clear_grading_defaults(self):
         self.default_grade_scale = None

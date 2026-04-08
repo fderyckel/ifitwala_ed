@@ -8,8 +8,8 @@ import { setupFrappeUI } from '@/resources/frappe';
 import { installI18nBridge } from '@/lib/i18n';
 
 // Tailwind entry + portal styles
+import 'frappe-ui/style.css';
 import '@/style.css';
-import '@/styles/app.css';
 
 // PRODUCTION CONFIGURATION:
 // Point to the current origin (web server).

@@ -767,21 +767,17 @@ async function persistChanges() {
 	try {
 		const rows: BulkUpsertAttendanceRow[] = [];
 
-		for (const key of dirty.value) {
-			const [studentId, blockStr] = key.split('|');
-			const block = Number(blockStr);
-
-			const s = students.value.find(x => x.student === studentId);
-			if (!s) continue;
-
-			rows.push({
-				student: studentId,
-				student_group: filters.student_group,
-				attendance_date: selectedDate.value,
-				block_number: Number.isFinite(block) ? block : -1,
-				attendance_code: s.attendance[block as BlockKey] || '',
-				remark: s.remarks[block as BlockKey] || '',
-			});
+		for (const student of students.value) {
+			for (const block of blocks.value) {
+				rows.push({
+					student: student.student,
+					student_group: filters.student_group,
+					attendance_date: selectedDate.value,
+					block_number: block,
+					attendance_code: student.attendance[block] || '',
+					remark: student.remarks[block] || '',
+				});
+			}
 		}
 
 		await service.bulkUpsertAttendance({ payload: rows });

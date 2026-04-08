@@ -36,6 +36,7 @@ export const SIGNAL_ATTENDANCE_INVALIDATE = 'attendance:invalidate' as const
 export const SIGNAL_ADMISSIONS_PORTAL_INVALIDATE = 'admissions_portal:invalidate' as const
 export const SIGNAL_GRADEBOOK_INVALIDATE = 'gradebook:invalidate' as const
 export const SIGNAL_PROFESSIONAL_DEVELOPMENT_INVALIDATE = 'professional_development:invalidate' as const
+export const SIGNAL_TASK_DELIVERY_CREATED = 'task_delivery:created' as const
 
 /**
  * Optional: standard toast signal (only if/when you centralize toasts later).
@@ -57,6 +58,7 @@ export type UiSignalName =
 	| typeof SIGNAL_ADMISSIONS_PORTAL_INVALIDATE
 	| typeof SIGNAL_GRADEBOOK_INVALIDATE
 	| typeof SIGNAL_PROFESSIONAL_DEVELOPMENT_INVALIDATE
+	| typeof SIGNAL_TASK_DELIVERY_CREATED
 	| (string & {}) // allow custom names while keeping known ones typed
 
 export type UiSignalHandler<TPayload = unknown> = (payload?: TPayload) => void

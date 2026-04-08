@@ -89,7 +89,7 @@ def _recompute_official_outcome_internal(outcome_id, policy=None):
         return {"outcome": outcome_id, "grading_status": updates["grading_status"]}
 
     if grading_mode == "Criteria":
-        _apply_official_criteria_from_contribution(outcome_id, selected.get("name"))
+        has_rubric_scores = _apply_official_criteria_from_contribution(outcome_id, selected.get("name"))
         result = _apply_criteria_official_fields(
             outcome_id=outcome_id,
             grade_scale=grade_scale,
@@ -97,6 +97,7 @@ def _recompute_official_outcome_internal(outcome_id, policy=None):
             contribution=selected,
             rubric_scoring_strategy=rubric_strategy,
             rubric_version=rubric_version,
+            has_rubric_scores=has_rubric_scores,
         )
         if was_published:
             _clear_outcome_publish(outcome_id)
@@ -214,6 +215,9 @@ def _select_official_contribution(contributions):
 
 
 def _apply_non_criteria_official_fields(outcome_id, grade_scale, require_grading, contribution):
+    current_fields = _current_official_grading_fields(outcome_id)
+    score = contribution.get("score")
+    score_provided = score not in (None, "")
     grade_symbol = (contribution.get("grade") or "").strip()
     grade_value = contribution.get("grade_value")
     if grade_symbol:
@@ -221,11 +225,17 @@ def _apply_non_criteria_official_fields(outcome_id, grade_scale, require_grading
             frappe.throw(_("Grade Scale is required to apply an official grade."))
         if grade_value in (None, ""):
             grade_value = resolve_grade_symbol(grade_scale, grade_symbol)
+    elif score_provided and grade_scale:
+        grade_symbol, grade_value = resolve_grade_for_score(grade_scale, score)
+    elif not score_provided:
+        score = current_fields.get("official_score")
+        grade_symbol = current_fields.get("official_grade")
+        grade_value = current_fields.get("official_grade_value")
     else:
         grade_value = None
 
     official_fields = {
-        "official_score": contribution.get("score"),
+        "official_score": score,
         "official_grade": grade_symbol or None,
         "official_grade_value": grade_value,
         "official_feedback": contribution.get("feedback"),
@@ -248,11 +258,20 @@ def _apply_criteria_official_fields(
     contribution,
     rubric_scoring_strategy,
     rubric_version=None,
+    has_rubric_scores=True,
 ):
     strategy = (rubric_scoring_strategy or "Sum Total").strip() or "Sum Total"
     official_feedback = contribution.get("feedback")
+    current_fields = _current_official_grading_fields(outcome_id)
 
-    if strategy == "Separate Criteria":
+    if not has_rubric_scores:
+        updates = {
+            "official_score": current_fields.get("official_score"),
+            "official_grade": current_fields.get("official_grade"),
+            "official_grade_value": current_fields.get("official_grade_value"),
+            "official_feedback": official_feedback,
+        }
+    elif strategy == "Separate Criteria":
         updates = {
             "official_score": None,
             "official_grade": None,
@@ -334,7 +353,7 @@ def _sum_contribution_criterion_points(contribution_name, weights=None):
 
 def _apply_official_criteria_from_contribution(outcome_id, contribution_name):
     if not outcome_id or not contribution_name:
-        return
+        return False
 
     rows = (
         frappe.db.get_values(
@@ -351,6 +370,9 @@ def _apply_official_criteria_from_contribution(outcome_id, contribution_name):
         or []
     )
 
+    if not rows:
+        return False
+
     frappe.db.delete(
         "Task Outcome Criterion",
         {
@@ -359,8 +381,6 @@ def _apply_official_criteria_from_contribution(outcome_id, contribution_name):
             "parentfield": "official_criteria",
         },
     )
-    if not rows:
-        return
 
     values = []
     idx = 1
@@ -395,6 +415,21 @@ def _apply_official_criteria_from_contribution(outcome_id, contribution_name):
         doctype="Task Outcome Criterion",
         fields=fields,
         values=[[row.get(field) for field in fields] for row in values],
+    )
+    return True
+
+
+def _current_official_grading_fields(outcome_id):
+    if not outcome_id:
+        return {}
+    return (
+        frappe.db.get_value(
+            "Task Outcome",
+            outcome_id,
+            ["official_score", "official_grade", "official_grade_value"],
+            as_dict=True,
+        )
+        or {}
     )
 
 

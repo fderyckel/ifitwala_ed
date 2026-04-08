@@ -9,6 +9,7 @@
   "section_break_tbyy",
   "task",
   "student_group",
+  "class_teaching_plan",
   "column_break_sdwu",
   "delivery_mode",
   "requires_submission",
@@ -21,6 +22,7 @@
   "lock_date",
   "section_break_hybw",
   "grading_mode",
+  "allow_feedback",
   "max_points",
   "grade_scale",
   "rubric_scoring_strategy",
@@ -37,7 +39,7 @@
   "course",
   "academic_year",
   "school",
-  "lesson_instance",
+  "class_session",
   "amended_from"
  ],
  "fields": [
@@ -59,6 +61,13 @@
    "fieldtype": "Link",
    "label": "Student Group",
    "options": "Student Group",
+   "reqd": 1
+  },
+  {
+   "fieldname": "class_teaching_plan",
+   "fieldtype": "Link",
+   "label": "Class Teaching Plan",
+   "options": "Class Teaching Plan",
    "reqd": 1
   },
   {
@@ -129,6 +138,12 @@
    "fieldtype": "Select",
    "label": "Grading Mode",
    "options": "None\nCompletion\nBinary\nPoints\nCriteria"
+  },
+  {
+   "default": "0",
+   "fieldname": "allow_feedback",
+   "fieldtype": "Check",
+   "label": "Allow Feedback"
   },
   {
    "depends_on": "eval:doc.grading_mode=='Points'",
@@ -237,10 +252,10 @@
    "options": "School"
   },
   {
-   "fieldname": "lesson_instance",
+   "fieldname": "class_session",
    "fieldtype": "Link",
-   "label": "Lesson Instance",
-   "options": "Lesson Instance"
+   "label": "Class Session",
+   "options": "Class Session"
   },
   {
    "fieldname": "amended_from",
@@ -257,7 +272,7 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-03-13 13:26:48.439504",
+ "modified": "2026-04-02 18:14:49.000000",
  "modified_by": "Administrator",
  "module": "Assessment",
  "name": "Task Delivery",

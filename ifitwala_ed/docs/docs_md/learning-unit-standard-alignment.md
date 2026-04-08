@@ -3,9 +3,9 @@ title: "Learning Unit Standard Alignment: Unit-Level Standards Snapshot"
 slug: learning-unit-standard-alignment
 category: Curriculum
 doc_order: 4
-version: "1.0.0"
-last_change_date: "2026-03-12"
-summary: "Record the standards coverage and alignment notes that a specific learning unit claims, stored inline as child rows on the parent unit."
+version: "1.1.1"
+last_change_date: "2026-04-05"
+summary: "Record the standards coverage and alignment notes that a specific unit plan claims, stored inline as child rows on the parent unit."
 seo_title: "Learning Unit Standard Alignment: Unit-Level Standards Snapshot"
 seo_description: "Record the standards coverage and alignment notes that a specific learning unit claims, stored inline as child rows on the parent unit."
 ---
@@ -13,40 +13,40 @@ seo_description: "Record the standards coverage and alignment notes that a speci
 ## Learning Unit Standard Alignment: Unit-Level Standards Snapshot
 
 Status: Partial
-Code refs: `ifitwala_ed/curriculum/doctype/learning_unit_standard_alignment/learning_unit_standard_alignment.json`, `ifitwala_ed/curriculum/doctype/learning_unit_standard_alignment/learning_unit_standard_alignment.py`, `ifitwala_ed/curriculum/doctype/learning_unit/learning_unit.json`
+Code refs: `ifitwala_ed/curriculum/doctype/learning_unit_standard_alignment/learning_unit_standard_alignment.json`, `ifitwala_ed/curriculum/doctype/learning_unit_standard_alignment/learning_unit_standard_alignment.py`, `ifitwala_ed/curriculum/doctype/unit_plan/unit_plan.json`
 Test refs: None
 
-`Learning Unit Standard Alignment` is the child table that stores a unit's standards coverage claim. It captures framework metadata, code, description, coverage level, alignment strength, and notes directly inside the parent `Learning Unit`.
+`Learning Unit Standard Alignment` is the child table that stores a unit's standards coverage claim. It captures framework metadata, code, description, coverage level, alignment strength, and notes directly inside the parent `Unit Plan`.
 
-Current workspace note: these rows do not currently contain a `Link` to `Learning Standards`. They are an inline snapshot owned by the learning unit.
+Current workspace note: these rows do not currently contain a `Link` to `Learning Standards`. They are an inline snapshot owned by the unit plan.
 
 ## Before You Start (Prerequisites)
 
 Status: Implemented
-Code refs: `ifitwala_ed/curriculum/doctype/learning_unit/learning_unit.json`, `ifitwala_ed/curriculum/doctype/learning_unit_standard_alignment/learning_unit_standard_alignment.json`
+Code refs: `ifitwala_ed/curriculum/doctype/unit_plan/unit_plan.json`, `ifitwala_ed/curriculum/doctype/learning_unit_standard_alignment/learning_unit_standard_alignment.json`
 Test refs: None
 
-- Create the parent `Learning Unit` first.
+- Create the parent `Unit Plan` first.
 - Decide the standards framework details first because the row stores them inline.
 - Treat this row as planning metadata only; it is not a runtime grading or delivery record.
 
 ## Where It Is Used Across the ERP
 
 Status: Implemented
-Code refs: `ifitwala_ed/curriculum/doctype/learning_unit/learning_unit.json`, `ifitwala_ed/docs/curriculum/01_curriculum_task_delivery_contract.md`
+Code refs: `ifitwala_ed/curriculum/doctype/unit_plan/unit_plan.json`, `ifitwala_ed/docs/curriculum/01_curriculum_task_delivery_contract.md`
 Test refs: None
 
-- Stored only in `Learning Unit.standards`.
+- Stored only in `Unit Plan.standards`.
 - Used to express planned standards alignment for a unit.
-- Reaches the task stack only indirectly, through a `Task` choosing that `Learning Unit` as an optional curriculum anchor.
+- Reaches the task stack only indirectly, through a `Task` choosing that `Unit Plan` as an optional curriculum anchor.
 
 ## Lifecycle and Linked Documents
 
 Status: Partial
-Code refs: `ifitwala_ed/curriculum/doctype/learning_unit/learning_unit.json`, `ifitwala_ed/assessment/doctype/task/task.json`
+Code refs: `ifitwala_ed/curriculum/doctype/unit_plan/unit_plan.json`, `ifitwala_ed/assessment/doctype/task/task.json`
 Test refs: None
 
-1. Open the parent `Learning Unit`.
+1. Open the parent `Unit Plan`.
 2. Add one or more `Learning Unit Standard Alignment` rows to `standards`.
 3. Capture framework metadata, code, description, coverage, and notes for the unit.
 4. Optionally author `Task` rows against that unit. The task inherits the unit link only; it does not copy or denormalize these child rows.
@@ -57,9 +57,8 @@ Status: Implemented
 Code refs: None (documentation cross-reference section)
 Test refs: None
 
-- [**Learning Unit**](/docs/en/learning-unit/)
+- [**Unit Plan**](/docs/en/unit-plan/)
 - [**Learning Standards**](/docs/en/learning-standards/)
-- [**Lesson**](/docs/en/lesson/)
 - [**Task**](/docs/en/task/)
 
 ## Technical Notes (IT)
@@ -78,7 +77,7 @@ Test refs: None
 
 ### Current Contract
 
-- The child row belongs to `Learning Unit` only.
+- The child row belongs to `Unit Plan` only.
 - Business logic remains on the parent doctype; the child controller is intentionally empty.
 - The schema duplicates framework metadata inline instead of linking to `Learning Standards`.
 

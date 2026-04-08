@@ -617,6 +617,10 @@ def create_reflection_entry(payload=None, **kwargs):
     data = _normalize_payload(payload, kwargs)
     student = (data.get("student") or "").strip()
     if not student:
+        user = _require_authenticated_user()
+        if "Student" in _user_roles(user):
+            student = (_resolve_student_for_user(user) or "").strip()
+    if not student:
         frappe.throw(_("Student is required."))
 
     _ensure_can_write_student(student)
@@ -684,9 +688,7 @@ def create_reflection_entry(payload=None, **kwargs):
             "student_group": data.get("student_group"),
             "program_enrollment": program_enrollment or None,
             "activity_booking": data.get("activity_booking"),
-            "lesson": data.get("lesson"),
-            "lesson_instance": data.get("lesson_instance"),
-            "lesson_activity": data.get("lesson_activity"),
+            "class_session": data.get("class_session"),
             "task_delivery": data.get("task_delivery"),
             "task_submission": task_submission or None,
         }
@@ -728,6 +730,16 @@ def list_reflection_entries(payload=None, **kwargs):
         filters["program_enrollment"] = data.get("program_enrollment")
     if data.get("school"):
         filters["school"] = data.get("school")
+    if data.get("course"):
+        filters["course"] = data.get("course")
+    if data.get("student_group"):
+        filters["student_group"] = data.get("student_group")
+    if data.get("class_session"):
+        filters["class_session"] = data.get("class_session")
+    if data.get("task_delivery"):
+        filters["task_delivery"] = data.get("task_delivery")
+    if data.get("task_submission"):
+        filters["task_submission"] = data.get("task_submission")
 
     if data.get("date_from") and data.get("date_to"):
         filters["entry_date"] = ["between", [data.get("date_from"), data.get("date_to")]]
@@ -750,6 +762,11 @@ def list_reflection_entries(payload=None, **kwargs):
             "visibility",
             "moderation_state",
             "body",
+            "course",
+            "student_group",
+            "class_session",
+            "task_delivery",
+            "task_submission",
         ],
         order_by="entry_date desc, modified desc",
         start=offset,

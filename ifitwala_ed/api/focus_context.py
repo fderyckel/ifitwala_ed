@@ -37,6 +37,9 @@ from ifitwala_ed.api.policy_signature import (
     parse_employee_from_todo_description,
     validate_staff_policy_scope_for_employee,
 )
+from ifitwala_ed.governance.doctype.policy_acknowledgement.policy_acknowledgement import (
+    get_policy_version_acknowledgement_clauses,
+)
 
 
 def get_focus_context(
@@ -501,6 +504,7 @@ def get_focus_context(
                 "employee_name": employee.get("employee_full_name"),
                 "employee_group": employee.get("employee_group"),
                 "todo_due_date": str(todo.get("date")) if todo.get("date") else None,
+                "acknowledgement_clauses": get_policy_version_acknowledgement_clauses(reference_name),
                 "is_acknowledged": bool(existing_ack),
                 "acknowledged_at": existing_ack.get("acknowledged_at") if existing_ack else None,
             },

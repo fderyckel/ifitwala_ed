@@ -38,6 +38,30 @@ class TestOrgCommunicationArchiveItem(FrappeTestCase):
             activity_program_offering=None,
             activity_booking=None,
             activity_student_group=None,
+            get=lambda fieldname: (
+                [
+                    SimpleNamespace(
+                        name="row-file",
+                        section_break_sbex="Lesson PDF",
+                        file="/private/files/policy.pdf",
+                        external_url=None,
+                        description=None,
+                        file_name="policy.pdf",
+                        file_size=2048,
+                    ),
+                    SimpleNamespace(
+                        name="row-link",
+                        section_break_sbex="Reference link",
+                        file=None,
+                        external_url="https://example.com/reference",
+                        description=None,
+                        file_name=None,
+                        file_size=None,
+                    ),
+                ]
+                if fieldname == "attachments"
+                else []
+            ),
         )
 
         with (
@@ -63,7 +87,14 @@ class TestOrgCommunicationArchiveItem(FrappeTestCase):
             "staff@example.com",
             ["Academic Staff"],
             {"name": "EMP-1", "school": "SCH-1", "organization": "ORG-1"},
+            allow_owner=True,
         )
         self.assertEqual(result["message_html"], "<p><strong>Full body</strong></p>")
         self.assertEqual(result["audience_label"], "Staff · ISS")
         self.assertEqual(result["audience_summary"], audience_summary)
+        self.assertEqual(result["attachments"][0]["row_name"], "row-file")
+        self.assertEqual(
+            result["attachments"][0]["open_url"],
+            "/api/method/ifitwala_ed.api.file_access.open_org_communication_attachment?org_communication=COMM-0001&row_name=row-file",
+        )
+        self.assertEqual(result["attachments"][1]["external_url"], "https://example.com/reference")

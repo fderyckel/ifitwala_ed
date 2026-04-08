@@ -14,6 +14,7 @@ export type OrgCommunicationQuickAudienceRow = {
 }
 
 export type Request = {
+	name?: string | null
 	title: string
 	communication_type: string
 	status: string
@@ -37,7 +38,7 @@ export type Request = {
 
 export type Response = {
 	ok: boolean
-	status: 'created' | 'already_processed'
+	status: 'created' | 'updated' | 'already_processed'
 	name: string
 	title: string
 }

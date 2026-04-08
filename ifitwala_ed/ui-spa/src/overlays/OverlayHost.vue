@@ -46,6 +46,7 @@ import MeetingEventModal from '@/components/calendar/MeetingEventModal.vue';
 import SchoolEventModal from '@/components/calendar/SchoolEventModal.vue';
 import ClassEventModal from '@/components/calendar/ClassEventModal.vue';
 import EventQuickCreateOverlay from '@/overlays/calendar/EventQuickCreateOverlay.vue';
+import QuickClassSessionOverlay from '@/overlays/planning/QuickClassSessionOverlay.vue';
 import OrgCommunicationQuickCreateOverlay from '@/components/communication/OrgCommunicationQuickCreateModal.vue';
 import AttendanceRemarkOverlay from '@/overlays/attendance/AttendanceRemarkOverlay.vue';
 import StudentLogCreateOverlay from '@/overlays/student/StudentLogCreateOverlay.vue';
@@ -57,7 +58,9 @@ import StaffPolicyInformOverlay from '@/overlays/staff/StaffPolicyInformOverlay.
 import StaffPolicyCampaignOverlay from '@/overlays/staff/StaffPolicyCampaignOverlay.vue';
 import ProfessionalDevelopmentRequestOverlay from '@/overlays/staff/ProfessionalDevelopmentRequestOverlay.vue';
 import ProfessionalDevelopmentCompletionOverlay from '@/overlays/staff/ProfessionalDevelopmentCompletionOverlay.vue';
+import ClassHubGroupPickerOverlay from '@/components/overlays/class-hub/ClassHubGroupPickerOverlay.vue';
 import StudentContextOverlay from '@/components/overlays/class-hub/StudentContextOverlay.vue';
+import WheelPickerOverlay from '@/components/overlays/class-hub/WheelPickerOverlay.vue';
 import QuickEvidenceOverlay from '@/components/overlays/class-hub/QuickEvidenceOverlay.vue';
 import QuickCFUOverlay from '@/components/overlays/class-hub/QuickCFUOverlay.vue';
 import TaskReviewOverlay from '@/components/overlays/class-hub/TaskReviewOverlay.vue';
@@ -174,6 +177,8 @@ function resolveComponent(type: OverlayType) {
 	switch (type) {
 		case 'create-task':
 			return CreateTaskDeliveryOverlay;
+		case 'quick-class-session':
+			return QuickClassSessionOverlay;
 		case 'event-quick-create':
 			return EventQuickCreateOverlay;
 		case 'meeting-event':
@@ -204,8 +209,12 @@ function resolveComponent(type: OverlayType) {
 			return ProfessionalDevelopmentCompletionOverlay;
 		case 'focus-router':
 			return FocusRouterOverlay;
+		case 'class-hub-group-picker':
+			return ClassHubGroupPickerOverlay;
 		case 'class-hub-student-context':
 			return StudentContextOverlay;
+		case 'class-hub-wheel-picker':
+			return WheelPickerOverlay;
 		case 'class-hub-quick-evidence':
 			return QuickEvidenceOverlay;
 		case 'class-hub-quick-cfu':

@@ -42,11 +42,13 @@
 		</div>
 
 		<div v-else class="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-			<RouterLink
+			<component
 				v-for="course in courses"
 				:key="course.course"
-				:to="course.href"
-				class="group block bg-white rounded-lg shadow-md hover:shadow-xl transition-shadow duration-300 overflow-hidden"
+				:is="course.learning_space.can_open ? RouterLink : 'article'"
+				v-bind="courseCardProps(course)"
+				class="group block overflow-hidden rounded-2xl border border-line-soft bg-white transition-shadow duration-300"
+				:class="course.learning_space.can_open ? 'shadow-md hover:shadow-xl' : 'shadow-sm'"
 			>
 				<div class="relative">
 					<div class="aspect-video">
@@ -59,38 +61,66 @@
 						/>
 					</div>
 				</div>
-				<div class="p-4">
-					<p
-						class="text-base font-semibold text-gray-900 truncate group-hover:text-[var(--jacaranda)]"
-					>
-						{{ course.course_name }}
+				<div class="space-y-3 p-4">
+					<div class="flex items-start justify-between gap-3">
+						<div class="min-w-0">
+							<p
+								class="truncate text-base font-semibold text-gray-900"
+								:class="
+									course.learning_space.can_open ? 'group-hover:text-[var(--jacaranda)]' : ''
+								"
+							>
+								{{ course.course_name }}
+							</p>
+							<p class="mt-1 text-sm text-gray-500">
+								{{ course.course_group || '—' }}
+							</p>
+						</div>
+						<span class="chip shrink-0">{{ course.learning_space.status_label }}</span>
+					</div>
+					<p class="min-h-[3rem] text-sm text-gray-600">
+						{{ course.learning_space.summary }}
 					</p>
-					<p class="text-sm text-gray-500 mt-1">
-						{{ course.course_group || '—' }}
-					</p>
+					<div class="flex items-center justify-between gap-3 pt-1">
+						<p class="text-xs text-gray-500">
+							{{ courseSourceLabel(course.learning_space.source) }}
+						</p>
+						<span v-if="course.learning_space.can_open" class="if-action">
+							{{ course.learning_space.cta_label }}
+						</span>
+						<button v-else type="button" class="if-action cursor-not-allowed opacity-60" disabled>
+							{{ course.learning_space.cta_label }}
+						</button>
+					</div>
 				</div>
-			</RouterLink>
+			</component>
 		</div>
 	</div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { ref, onMounted } from 'vue';
 import { RouterLink } from 'vue-router';
-import { call, FeatherIcon } from 'frappe-ui';
+import { FeatherIcon } from 'frappe-ui';
+
+import { getStudentCoursesData } from '@/lib/services/student/studentLearningHubService';
+import type {
+	Response as StudentCoursesDataResponse,
+	StudentCourseCard,
+} from '@/types/contracts/student_hub/get_student_courses_data';
 
 const loading = ref(true);
-const error = ref(null);
-const courses = ref([]);
-const academicYears = ref([]);
-const selectedYear = ref(null);
+const error = ref<string | null>(null);
+const courses = ref<StudentCourseCard[]>([]);
+const academicYears = ref<string[]>([]);
+const selectedYear = ref<string | null>(null);
 
 // Absolute path for the public placeholder served by Frappe
 const PLACEHOLDER = '/assets/ifitwala_ed/images/course_placeholder.jpg';
 
 // If an image fails to load (404, etc.), swap to placeholder once
-function imgFallback(e) {
-	const el = e?.target;
+function imgFallback(e: Event) {
+	const el = e?.target as HTMLImageElement | null;
 	// Ensure it's an <img>, and avoid infinite loop by checking current src
 	if (!el || el.tagName !== 'IMG') return;
 	// If already the placeholder, do nothing
@@ -99,38 +129,42 @@ function imgFallback(e) {
 	el.src = PLACEHOLDER;
 }
 
+function courseCardProps(course: StudentCourseCard) {
+	return course.learning_space.can_open && course.href ? { to: course.href } : {};
+}
+
+function courseSourceLabel(source: StudentCourseCard['learning_space']['source']) {
+	if (source === 'class_teaching_plan') return 'Class learning space';
+	if (source === 'course_plan_fallback') return 'Shared course plan';
+	return 'Waiting for release';
+}
+
 async function fetchData() {
 	loading.value = true;
 	error.value = null;
 	try {
-		const response = await call('ifitwala_ed.api.courses.get_courses_data', {
+		const response: StudentCoursesDataResponse = await getStudentCoursesData({
 			academic_year: selectedYear.value,
 		});
 
-		// Support both shapes: {message: {...}} or payload directly
-		const msg =
-			response && typeof response === 'object' && 'message' in response
-				? response.message
-				: response;
-
-		if (msg?.error) {
-			error.value = msg.error;
-			courses.value = Array.isArray(msg?.courses) ? msg.courses : [];
-			academicYears.value = Array.isArray(msg?.academic_years) ? msg.academic_years : [];
+		if (response?.error) {
+			error.value = response.error;
+			courses.value = Array.isArray(response?.courses) ? response.courses : [];
+			academicYears.value = Array.isArray(response?.academic_years) ? response.academic_years : [];
 			return;
 		}
 
-		academicYears.value = Array.isArray(msg?.academic_years) ? msg.academic_years : [];
-		courses.value = Array.isArray(msg?.courses) ? msg.courses : [];
+		academicYears.value = Array.isArray(response?.academic_years) ? response.academic_years : [];
+		courses.value = Array.isArray(response?.courses) ? response.courses : [];
 
 		// Initialize or correct the selected year from backend
 		if (
 			selectedYear.value === null ||
-			(msg?.selected_year && msg.selected_year !== selectedYear.value)
+			(response?.selected_year && response.selected_year !== selectedYear.value)
 		) {
-			selectedYear.value = msg?.selected_year ?? null;
+			selectedYear.value = response?.selected_year ?? null;
 		}
-	} catch (e) {
+	} catch (e: unknown) {
 		console.error(e);
 		error.value = 'An unexpected error occurred while fetching courses.';
 	} finally {

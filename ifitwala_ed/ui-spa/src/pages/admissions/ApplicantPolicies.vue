@@ -120,6 +120,7 @@ function openPolicy(policy: ApplicantPolicy) {
 			content_html: policy.content_html,
 			expected_signer_name: policy.expected_signature_name,
 			student_applicant: currentApplicantName.value,
+			acknowledgement_clauses: policy.acknowledgement_clauses || [],
 		},
 		readOnly: isReadOnly.value,
 	});

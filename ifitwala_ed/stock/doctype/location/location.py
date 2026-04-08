@@ -177,7 +177,8 @@ class Location(Document):
         if not location_name:
             return
 
-        if self.is_new():
+        is_new = getattr(self, "is_new", None)
+        if callable(is_new) and is_new():
             # A brand-new Location is not in the NestedSet yet, so descendant expansion
             # must stay on the pending node itself during create-time validation.
             location_scope = (location_name,)

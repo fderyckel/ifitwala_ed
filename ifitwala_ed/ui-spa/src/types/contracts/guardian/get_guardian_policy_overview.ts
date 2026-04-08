@@ -4,6 +4,13 @@ import type { ChildRef } from '@/types/contracts/guardian/get_guardian_home_snap
 
 export type Request = Record<string, never>
 
+export type PolicyAcknowledgementClause = {
+	name: string
+	clause_text: string
+	is_required: boolean
+	idx: number
+}
+
 export type Response = {
 	meta: {
 		generated_at: string
@@ -34,6 +41,8 @@ export type GuardianPolicyRow = {
 	effective_from: string
 	effective_to: string
 	approved_on: string
+	expected_signature_name: string
+	acknowledgement_clauses: PolicyAcknowledgementClause[]
 	ack_context_doctype: 'Guardian'
 	ack_context_name: string
 	is_acknowledged: boolean

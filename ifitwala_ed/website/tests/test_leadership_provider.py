@@ -61,8 +61,8 @@ class TestLeadershipProvider(FrappeTestCase):
         )
 
         with patch(
-            "ifitwala_ed.website.providers.leadership.build_employee_image_variants",
-            return_value={"original": None, "card": None},
+            "ifitwala_ed.website.public_people.build_employee_image_variants",
+            return_value={"original": None, "card": None, "medium": None, "thumb": None},
         ):
             payload = provider.get_context(
                 school=frappe.get_doc("School", school.name),
@@ -114,8 +114,8 @@ class TestLeadershipProvider(FrappeTestCase):
         _make_employee(school=school.name, organization=organization.name, designation=teacher.name, first_name="Cleo")
 
         with patch(
-            "ifitwala_ed.website.providers.leadership.build_employee_image_variants",
-            return_value={"original": None, "card": None},
+            "ifitwala_ed.website.public_people.build_employee_image_variants",
+            return_value={"original": None, "card": None, "medium": None, "thumb": None},
         ):
             payload = provider.get_context(
                 school=frappe.get_doc("School", school.name),
@@ -135,6 +135,156 @@ class TestLeadershipProvider(FrappeTestCase):
             [person["name"] for person in sections[1]["people"]],
             ["Ari Leadership", "Cleo Leadership"],
         )
+
+    def test_role_scopes_can_include_direct_child_schools_for_selected_roles_only(self):
+        organization = make_organization(prefix="Leadership Scoped Org")
+        root_school = make_school(organization.name, prefix="Leadership Scoped Root", is_group=1)
+        child_school = make_school(
+            organization.name,
+            prefix="Leadership Scoped Child",
+            parent_school=root_school.name,
+            is_group=1,
+        )
+        grandchild_school = make_school(
+            organization.name,
+            prefix="Leadership Scoped Grandchild",
+            parent_school=child_school.name,
+        )
+
+        _ensure_role("Academic Staff")
+        _ensure_role("Counselor")
+
+        teacher = _make_designation(
+            organization=organization.name,
+            school=None,
+            title="Teacher",
+            role_profile="Academic Staff",
+        )
+        counselor = _make_designation(
+            organization=organization.name,
+            school=None,
+            title="Counselor",
+            role_profile="Counselor",
+        )
+        registrar = _make_designation(
+            organization=organization.name,
+            school=root_school.name,
+            title="Registrar",
+            role_profile="Employee",
+        )
+
+        _make_employee(
+            school=root_school.name,
+            organization=organization.name,
+            designation=teacher.name,
+            first_name="Ari",
+        )
+        _make_employee(
+            school=child_school.name,
+            organization=organization.name,
+            designation=teacher.name,
+            first_name="Bianca",
+        )
+        _make_employee(
+            school=grandchild_school.name,
+            organization=organization.name,
+            designation=teacher.name,
+            first_name="Grandchild",
+        )
+        _make_employee(
+            school=root_school.name,
+            organization=organization.name,
+            designation=counselor.name,
+            first_name="Clara",
+        )
+        _make_employee(
+            school=child_school.name,
+            organization=organization.name,
+            designation=counselor.name,
+            first_name="Dana",
+        )
+        _make_employee(
+            school=root_school.name,
+            organization=organization.name,
+            designation=registrar.name,
+            first_name="Erin",
+        )
+
+        with patch(
+            "ifitwala_ed.website.public_people.build_employee_image_variants",
+            return_value={"original": None, "card": None, "medium": None, "thumb": None},
+        ):
+            payload = provider.get_context(
+                school=frappe.get_doc("School", root_school.name),
+                page=frappe._dict(),
+                block_props={
+                    "roles": [teacher.name, counselor.name],
+                    "role_scopes": [
+                        {
+                            "role": teacher.name,
+                            "school_scope": "current_and_descendants",
+                            "descendant_depth": 1,
+                        },
+                        {
+                            "role": counselor.name,
+                            "school_scope": "current",
+                        },
+                    ],
+                    "limit": 6,
+                    "staff_limit": 4,
+                    "show_staff_carousel": True,
+                },
+            )
+
+        sections = payload["data"]["sections"]
+        self.assertEqual([section["key"] for section in sections], ["leadership", "staff"])
+        self.assertEqual(
+            [person["name"] for person in sections[0]["people"]],
+            ["Clara Leadership", "Ari Leadership", "Bianca Leadership"],
+        )
+        self.assertEqual(
+            [person["name"] for person in sections[1]["people"]],
+            ["Erin Leadership"],
+        )
+
+    def test_leadership_uses_employee_fields_from_canonical_public_people_service(self):
+        organization = make_organization(prefix="Leadership Public Profile Org")
+        school = make_school(organization.name, prefix="Leadership Public Profile School")
+
+        _ensure_role("Academic Admin")
+        principal = _make_designation(
+            organization=organization.name,
+            school=school.name,
+            title="Principal",
+            role_profile="Academic Admin",
+        )
+        employee = _make_employee(
+            school=school.name,
+            organization=organization.name,
+            designation=principal.name,
+            first_name="Amina",
+        )
+        employee.small_bio = "Guides the academic vision."
+        employee.save()
+
+        with patch(
+            "ifitwala_ed.website.public_people.build_employee_image_variants",
+            return_value={"original": None, "card": None, "medium": None, "thumb": None},
+        ):
+            payload = provider.get_context(
+                school=frappe.get_doc("School", school.name),
+                page=frappe._dict(),
+                block_props={
+                    "role_profiles": ["Academic Admin"],
+                    "limit": 4,
+                    "show_staff_carousel": False,
+                },
+            )
+
+        person = payload["data"]["sections"][0]["people"][0]
+        self.assertEqual(person["name"], "Amina Leadership")
+        self.assertEqual(person["title"], principal.designation_name)
+        self.assertEqual(person["bio"], "Guides the academic vision.")
 
 
 def _ensure_role(role_name: str):
@@ -165,6 +315,11 @@ def _make_employee(
     first_name: str,
     show_on_website: int = 1,
 ):
+    full_name = f"{first_name} Leadership"
+    for existing in frappe.get_all("Employee", filters={"employee_full_name": full_name}, pluck="name"):
+        if frappe.db.exists("Employee", existing):
+            frappe.delete_doc("Employee", existing, force=1, ignore_permissions=True)
+
     employee = frappe.get_doc(
         {
             "doctype": "Employee",

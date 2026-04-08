@@ -60,14 +60,15 @@ class Course(Document):
                 ).format(total_weight=total_weight)
             )
 
-    def get_learning_units(self):
-        lu_data = []
-        for unit in self.units:
-            unit_doc = frappe.get_doc("Learning Unit", unit.learning_unit)
-            if unit_doc.unit_name:
-                lu_data.append(unit_doc)
-        # lu_data = lu_data.sort(key=lambda x: x.start_date)
-        return lu_data
+    def get_unit_plans(self):
+        rows = frappe.get_all(
+            "Unit Plan",
+            filters={"course": self.name, "unit_status": ["!=", "Archived"]},
+            fields=["name"],
+            order_by="unit_order asc, creation asc",
+            limit=0,
+        )
+        return [frappe.get_doc("Unit Plan", row.get("name")) for row in rows if row.get("name")]
 
     def _sync_default_website_profile(self):
         if int(self.is_published or 0) != 1 or not (self.school or "").strip():

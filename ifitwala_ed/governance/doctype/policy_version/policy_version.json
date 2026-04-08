@@ -20,6 +20,8 @@
   "section_break_wgyc",
   "change_summary",
   "policy_text",
+  "section_break_acknowledgement_clauses",
+  "acknowledgement_clauses",
   "diff_html",
   "change_stats",
   "text_locked"
@@ -60,6 +62,17 @@
    "in_list_view": 1,
    "label": "Policy Text",
    "reqd": 1
+  },
+  {
+   "fieldname": "section_break_acknowledgement_clauses",
+   "fieldtype": "Section Break",
+   "label": "Acknowledgement Clauses"
+  },
+  {
+   "fieldname": "acknowledgement_clauses",
+   "fieldtype": "Table",
+   "label": "Acknowledgement Clauses",
+   "options": "Policy Version Acknowledgement Clause"
   },
   {
    "fieldname": "diff_html",
@@ -125,7 +138,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-03-29 16:59:58.690865",
+ "modified": "2026-04-02 12:41:14",
  "modified_by": "Administrator",
  "module": "Governance",
  "name": "Policy Version",

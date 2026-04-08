@@ -1,7 +1,7 @@
 # Student Portfolio + Journal Architecture (Students Module)
 
 Status: Implemented v1
-Last updated: 2026-02-12
+Last updated: 2026-04-07
 
 ## 1. Scope and placement
 
@@ -37,7 +37,7 @@ Guardians and external viewers are constrained to showcase-approved portfolio it
     - `artefact_file`
   - Includes showcase and moderation fields
 - `Student Reflection Entry`
-  - Universal context anchors (course, student_group, program_enrollment, activity_booking, lesson, lesson_instance, lesson_activity, task_delivery, task_submission)
+  - Universal context anchors (course, student_group, program_enrollment, activity_booking, class_session, task_delivery, task_submission)
 - `Tag Taxonomy`
   - Controlled school/framework taxonomy with optional `Learning Standards` linkage
 - `Evidence Tag`
@@ -54,7 +54,7 @@ Portfolio/Journal attaches to existing ERP entities without duplication:
 
 - `Task Submission`: canonical assessed evidence container
 - `Task Delivery`: assignment context anchor for reflections
-- `Lesson`, `Lesson Instance`, `Lesson Activity`: instructional context anchors for reflections
+- `Class Session`: instructional context anchor for reflections
 - `Course`, `Student Group`: classroom context anchors
 - `Program Enrollment`: program-level context and filtering
 - `Academic Year`: annual portfolio boundary
@@ -100,6 +100,21 @@ SPA service layer:
 Type contracts:
 
 - `ui-spa/src/types/contracts/portfolio/*`
+
+## 6.1 Learning-loop integration
+
+Status: Implemented
+
+The student course workspace now uses the portfolio/journal stack directly instead of sending students away to a separate journal-first flow for routine class reflection.
+
+Current runtime behavior:
+
+- `get_student_learning_space()` returns bounded `learning.reflection_entries` for the current course/class context
+- `CourseDetail.vue` shows a contextual reflection composer inside the learning workspace
+- `create_reflection_entry` now allows the student actor to omit `student` so the server can resolve the current student identity directly
+- full annual portfolio/journal filtering still lives in the dedicated portfolio feed surfaces
+
+This keeps quick reflection inside the current class/session flow while preserving the portfolio feed as the annual archive and curation surface.
 
 ## 7. File governance and GDPR
 

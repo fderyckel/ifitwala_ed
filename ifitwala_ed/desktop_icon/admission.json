@@ -11,7 +11,7 @@
  "link_to": "Admission",
  "link_type": "Workspace Sidebar",
  "logo_url": "",
- "modified": "2026-03-11 14:26:04.928198",
+ "modified": "2026-04-05 10:00:00.000000",
  "modified_by": "Administrator",
  "name": "Admission",
  "owner": "Administrator",
@@ -33,10 +33,16 @@
    "role": "Academic Assistant"
   },
   {
-   "role": "Marketing Manager"
+   "role": "Curriculum Coordinator"
   },
   {
+   "role": "Marketing Manager"
+  },
+   {
    "role": "Marketing User"
+  },
+  {
+   "role": "Website Manager"
   },
   {
    "role": "Accreditation Visitor"

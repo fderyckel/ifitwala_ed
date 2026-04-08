@@ -9,7 +9,6 @@ import { installI18nBridge } from '@/lib/i18n'
 
 // Tailwind entry + shared app styles
 import '@/style.css'
-import '@/styles/app.css'
 
 setConfig('realtime', {
   url: window.location.origin,

@@ -385,6 +385,25 @@ class TestPolicyVersionAmendments(FrappeTestCase):
         with self.assertRaises(frappe.ValidationError):
             version.save(ignore_permissions=True)
 
+    def test_acknowledgement_clauses_lock_after_activation(self):
+        version = self._make_policy_version(
+            policy=self.policy.name,
+            version_label="v1",
+            policy_text="<p>Draft text.</p>",
+            acknowledgement_clauses=[{"clause_text": "I accept the handbook terms.", "is_required": 1}],
+            is_active=0,
+        )
+
+        version.acknowledgement_clauses[0].clause_text = "I accept the updated handbook terms."
+        version.save(ignore_permissions=True)
+
+        version.is_active = 1
+        version.save(ignore_permissions=True)
+
+        version.acknowledgement_clauses[0].clause_text = "Edited after activation."
+        with self.assertRaises(frappe.ValidationError):
+            version.save(ignore_permissions=True)
+
     def test_policy_text_locks_after_acknowledgement(self):
         version = self._make_policy_version(
             policy=self.policy.name,
@@ -489,6 +508,7 @@ class TestPolicyVersionAmendments(FrappeTestCase):
         is_active: int,
         based_on_version: str | None = None,
         change_summary: str | None = None,
+        acknowledgement_clauses: list[dict] | None = None,
     ):
         doc = frappe.get_doc(
             {
@@ -496,6 +516,7 @@ class TestPolicyVersionAmendments(FrappeTestCase):
                 "institutional_policy": policy,
                 "version_label": version_label,
                 "policy_text": policy_text,
+                "acknowledgement_clauses": acknowledgement_clauses or [],
                 "is_active": is_active,
                 "based_on_version": based_on_version,
                 "change_summary": change_summary,

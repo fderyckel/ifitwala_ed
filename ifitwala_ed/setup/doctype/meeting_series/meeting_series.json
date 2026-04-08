@@ -1,8 +1,8 @@
 {
  "actions": [],
  "allow_rename": 1,
- "autoname": "format:MTS-{YYYY}-{#####}",
- "creation": "2025-11-15 00:00:00.000000",
+ "autoname": "MTS-.YY.-.MM.-.####",
+ "creation": "2025-11-15 00:00:00",
  "default_view": "List",
  "doctype": "DocType",
  "engine": "InnoDB",
@@ -164,7 +164,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-11-15 00:01:00.000000",
+ "modified": "2026-04-02 13:04:02.932065",
  "modified_by": "Administrator",
  "module": "Setup",
  "name": "Meeting Series",
@@ -196,6 +196,7 @@
    "write": 1
   }
  ],
+ "row_format": "Dynamic",
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": []

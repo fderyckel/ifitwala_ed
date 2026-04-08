@@ -7,8 +7,21 @@ import frappe
 from frappe import _
 from frappe.desk.reportview import get_filters_cond
 from frappe.model.document import Document
+from frappe.utils import getdate, nowdate
 
 from ifitwala_ed.utilities.school_tree import get_descendant_schools
+
+INSTRUCTOR_LOG_ROW_FIELDS = (
+    "program",
+    "academic_year",
+    "term",
+    "student_group",
+    "course",
+    "designation",
+    "other_details",
+    "from_date",
+    "to_date",
+)
 
 
 class Instructor(Document):
@@ -23,7 +36,7 @@ class Instructor(Document):
         self._validate_duplicate_employee()
 
     def before_save(self):
-        # Always rebuild the computed child table right before saving
+        # Reconcile the persisted instructor assignment history before saving.
         self.rebuild_instructor_log()
 
     def after_insert(self):
@@ -73,51 +86,63 @@ class Instructor(Document):
         self.instructor_image = employee.employee_image
 
     def rebuild_instructor_log(self):
-        """Clear and rebuild Instructor Log child table from Student Group Instructor links."""
-        self.set("instructor_log", [])
+        """
+        Reconcile Instructor Log against current Student Group Instructor assignments.
 
-        group_links = frappe.db.get_all(
-            "Student Group Instructor",
-            filters={"instructor": self.name},
-            fields=["parent as student_group", "designation"],
-        )
-        if not group_links:
-            return
+        Legacy undated rows from the old computed snapshot contract are treated as
+        migratable display artifacts, not authoritative history.
+        """
+        previous_state = _serialize_instructor_log_rows(self.get("instructor_log", []))
+        assignments = _get_current_instructor_assignments(self.name)
+        current_assignments = {
+            _instructor_log_key(a.get("student_group"), a.get("designation")): a for a in assignments
+        }
+        today = getdate(nowdate())
+        handled_keys = set()
+        reconciled_rows = []
 
-        student_group_names = [g["student_group"] for g in group_links]
-        groups = frappe.db.get_all(
-            "Student Group",
-            filters={"name": ["in", student_group_names]},
-            fields=[
-                "name as student_group",
-                "school",
-                "program_offering",
-                "program",
-                "academic_year",
-                "term",
-                "course",
-            ],
-        )
-        group_lookup = {g["student_group"]: g for g in groups}
+        for existing_row in self.get("instructor_log", []) or []:
+            row = _extract_instructor_log_row(existing_row)
+            key = _instructor_log_key(row.get("student_group"), row.get("designation"))
+            is_legacy_snapshot = not row.get("from_date") and not row.get("to_date")
+            is_open_history_row = bool(row.get("from_date")) and not row.get("to_date")
 
-        for link in group_links:
-            g = group_lookup.get(link["student_group"])
-            if not g:
+            if is_legacy_snapshot:
+                assignment = current_assignments.get(key)
+                if assignment and key not in handled_keys:
+                    row.update(_assignment_to_instructor_log_row(assignment))
+                    row["from_date"] = _assignment_start_date(assignment)
+                    row["to_date"] = None
+                    handled_keys.add(key)
+                    reconciled_rows.append(row)
                 continue
 
-            other_details = _format_instructor_log_details(g)
-            self.append(
-                "instructor_log",
-                {
-                    "program": g.get("program"),
-                    "academic_year": g.get("academic_year"),
-                    "term": g.get("term"),
-                    "student_group": g.get("student_group"),
-                    "course": g.get("course"),
-                    "designation": link.get("designation"),
-                    "other_details": other_details,
-                },
-            )
+            if is_open_history_row:
+                assignment = current_assignments.get(key)
+                if assignment and key not in handled_keys:
+                    row.update(_assignment_to_instructor_log_row(assignment))
+                    row["to_date"] = None
+                    handled_keys.add(key)
+                else:
+                    row["to_date"] = today
+
+            reconciled_rows.append(row)
+
+        for key, assignment in current_assignments.items():
+            if key in handled_keys:
+                continue
+            row = _assignment_to_instructor_log_row(assignment)
+            row["from_date"] = _assignment_start_date(assignment)
+            row["to_date"] = None
+            reconciled_rows.append(row)
+
+        reconciled_rows.sort(key=_instructor_log_sort_key, reverse=True)
+
+        self.set("instructor_log", [])
+        for row in reconciled_rows:
+            self.append("instructor_log", row)
+
+        return previous_state != _serialize_instructor_log_rows(self.get("instructor_log", []))
 
     def _validate_duplicate_employee(self):
         if self.employee and frappe.db.get_value(
@@ -142,6 +167,9 @@ def _ensure_instructor_role(user_id: str):
 def _format_instructor_log_details(group: dict) -> str | None:
     """Return a compact text summary for the Instructor Log optional details column."""
     parts = []
+    group_based_on = group.get("group_based_on")
+    if group_based_on:
+        parts.append(f"Group Type: {group_based_on}")
     school = group.get("school")
     if school:
         parts.append(f"School: {school}")
@@ -169,18 +197,121 @@ def sync_instructor_logs(instructor_names) -> None:
             continue
 
         instructor_doc = frappe.get_doc("Instructor", instructor_name)
-        instructor_doc.flags.ignore_version = True
-        instructor_doc.rebuild_instructor_log()
-        instructor_doc.save(ignore_permissions=True)
+        if instructor_doc.rebuild_instructor_log():
+            instructor_doc.flags.ignore_version = True
+            instructor_doc.save(ignore_permissions=True)
 
 
 @frappe.whitelist()
 def get_instructor_log(instructor: str):
     if not instructor:
-        return []
+        return {"rows": [], "changed": False}
     instructor_doc = frappe.get_doc("Instructor", instructor)
-    instructor_doc.rebuild_instructor_log()
-    return instructor_doc.get("instructor_log", [])
+    changed = instructor_doc.rebuild_instructor_log()
+    if changed:
+        instructor_doc.flags.ignore_version = True
+        instructor_doc.save(ignore_permissions=True)
+    return {"rows": _serialize_instructor_log_rows(instructor_doc.get("instructor_log", [])), "changed": changed}
+
+
+def _get_current_instructor_assignments(instructor_name: str) -> list[dict]:
+    if not instructor_name:
+        return []
+
+    group_links = frappe.db.get_all(
+        "Student Group Instructor",
+        filters={"instructor": instructor_name},
+        fields=["parent as student_group", "designation", "creation"],
+    )
+    if not group_links:
+        return []
+
+    student_group_names = [g["student_group"] for g in group_links if g.get("student_group")]
+    groups = frappe.db.get_all(
+        "Student Group",
+        filters={"name": ["in", student_group_names]},
+        fields=[
+            "name as student_group",
+            "school",
+            "program_offering",
+            "program",
+            "academic_year",
+            "term",
+            "course",
+            "group_based_on",
+        ],
+    )
+    group_lookup = {g["student_group"]: g for g in groups}
+
+    assignments = []
+    for link in group_links:
+        group = group_lookup.get(link.get("student_group"))
+        if not group:
+            continue
+        assignments.append(
+            {**group, "designation": link.get("designation"), "assignment_created": link.get("creation")}
+        )
+    return assignments
+
+
+def _assignment_to_instructor_log_row(assignment: dict) -> dict:
+    return {
+        "program": assignment.get("program"),
+        "academic_year": assignment.get("academic_year"),
+        "term": assignment.get("term"),
+        "student_group": assignment.get("student_group"),
+        "course": assignment.get("course"),
+        "designation": assignment.get("designation"),
+        "other_details": _format_instructor_log_details(assignment),
+    }
+
+
+def _assignment_start_date(assignment: dict):
+    creation = assignment.get("assignment_created")
+    if creation:
+        try:
+            return getdate(creation)
+        except Exception:
+            pass
+    return getdate(nowdate())
+
+
+def _instructor_log_key(student_group: str | None, designation: str | None) -> tuple[str, str]:
+    return ((student_group or "").strip(), (designation or "").strip())
+
+
+def _extract_instructor_log_row(row) -> dict:
+    extracted = {}
+    for fieldname in INSTRUCTOR_LOG_ROW_FIELDS:
+        extracted[fieldname] = getattr(row, fieldname, None)
+    return extracted
+
+
+def _serialize_instructor_log_value(value):
+    if hasattr(value, "isoformat"):
+        return value.isoformat()
+    if isinstance(value, str):
+        return value.strip()
+    return value
+
+
+def _serialize_instructor_log_rows(rows) -> list[dict]:
+    serialized_rows = []
+    for row in rows or []:
+        serialized_rows.append(
+            {
+                fieldname: _serialize_instructor_log_value(getattr(row, fieldname, None))
+                for fieldname in INSTRUCTOR_LOG_ROW_FIELDS
+            }
+        )
+    return serialized_rows
+
+
+def _instructor_log_sort_key(row: dict):
+    is_active = not row.get("to_date")
+    end_date = getdate(row.get("to_date") or row.get("from_date") or nowdate())
+    start_date = getdate(row.get("from_date") or row.get("to_date") or nowdate())
+    return (1 if is_active else 0, end_date.toordinal(), start_date.toordinal(), row.get("student_group") or "")
 
 
 # --- Permissions: Instructor visibility by school tree -----------------------

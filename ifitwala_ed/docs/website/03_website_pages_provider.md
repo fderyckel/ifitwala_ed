@@ -280,8 +280,10 @@ StaffProfile[] = {
 
 * Only employees with `Employee.show_on_website = 1`
 * Default grouping resolves from `Designation.default_role_profile = "Academic Admin"` for the current school scope
-* School-scoped designations match the current school; organization-scoped designations (blank `Designation.school`) are also allowed for the same organization
+* School-scoped designations match the current school by default; organization-scoped designations (blank `Designation.school`) are also allowed for the same organization
 * A manual designation filter may override the default role-profile grouping
+* Descendant-school inclusion is opt-in per designation or per role profile through block props; each rule may include all descendants or stop at a specific child depth
+* The secondary staff carousel remains exact-school unless a future contract explicitly widens it
 * Bio is plain text or sanitized HTML
 
 ---
@@ -329,7 +331,39 @@ Same shape as leadership, different filter.
 
 ---
 
-### 4.6 `get_school_hero_images`
+### 4.6 `get_school_staff_directory`
+
+**Consumes**
+
+```text
+school
+```
+
+**Returns**
+
+```json
+StaffDirectoryProfile[] = {
+  "name": string,
+  "title": string,
+  "photo": ImageRef,
+  "bio": string,
+  "designation": string,
+  "role_profile": string | null
+}
+```
+
+**Rules**
+
+* Only employees with `Employee.show_on_website = 1`
+* Exact-school only in the current implementation
+* Reads through the canonical public-people service, not a directory-specific query path
+* Optional include lists may restrict the result to selected designations and/or role profiles
+* Search and UI filtering happen client-side on the rendered directory cards; scope and visibility stay server-owned
+* Discoverability is page-based: schools create a dedicated `School Website Page` and place the `staff_directory` block on it
+
+---
+
+### 4.7 `get_school_hero_images`
 
 **Returns**
 
@@ -373,6 +407,7 @@ These **never** return directly to blocks.
 | program_grid    | `programs`      |
 | leadership_grid | `leadership`    |
 | staff_carousel  | `staff`         |
+| staff_directory | `staff_directory` |
 | primary_cta     | `primary_cta`   |
 
 This matrix is **authoritative**.

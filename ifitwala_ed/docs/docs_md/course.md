@@ -3,8 +3,8 @@ title: "Course: Catalog Unit for Program and Enrollment Design"
 slug: course
 category: Curriculum
 doc_order: 2
-version: "1.3.0"
-last_change_date: "2026-03-24"
+version: "1.3.1"
+last_change_date: "2026-04-01"
 summary: "Define a reusable catalog course with grade-scale context, assessment categories/criteria, status, and the website publication handoff used by public course marketing surfaces."
 seo_title: "Course: Catalog Unit for Program and Enrollment Design"
 seo_description: "Define a reusable catalog course with grade-scale context, assessment categories/criteria, and status used by Program and Program Offering enrollment flows."
@@ -56,7 +56,7 @@ If `assessment_criteria` rows are used, their `criteria_weighting` total must be
 2. Configure grade-scale fields (`default_grade_scale`, optional `grade_scale` override).
 3. Configure `assessment_categories` and `assessment_criteria` rows.
 4. Set lifecycle flags (`status`, `term_long`, publish flags).
-5. If `is_published = 1` and `school` is set, the system prepares a draft `Course Website Profile`, SEO defaults, curated highlight seed rows from published `Learning Unit` summaries when available, and the school `courses` index page.
+5. If `is_published = 1` and `school` is set, the system prepares a draft `Course Website Profile`, SEO defaults, curated highlight seed rows from published `Unit Plan` summaries when available, and the school `courses` index page.
 6. Add course into one or more programs via catalog mapping.
 
 <DoDont doTitle="Do" dontTitle="Don't">

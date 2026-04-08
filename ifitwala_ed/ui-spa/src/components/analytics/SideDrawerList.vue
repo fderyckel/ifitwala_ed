@@ -9,56 +9,103 @@
   - StudentLogAnalytics.vue
 -->
 <template>
-	<teleport to="body">
-		<transition name="fade">
-			<div v-if="open" class="fixed inset-0 z-40 bg-slate-900/40" @click="emitClose"></div>
-		</transition>
-		<transition name="slide">
-			<aside
-				v-if="open"
-				class="fixed right-0 top-0 z-50 flex h-full w-full max-w-xl flex-col border-l border-slate-200 bg-white shadow-xl"
+	<Teleport to="body">
+		<TransitionRoot as="template" :show="open">
+			<Dialog
+				as="div"
+				class="if-overlay if-overlay--drawer if-overlay--analytics-drawer"
+				:initialFocus="closeButtonRef"
+				@close="emitClose"
 			>
-				<header class="flex items-center justify-between border-b border-slate-200 px-4 py-3">
-					<div>
-						<p class="text-xs uppercase tracking-wide text-slate-500">{{ entityLabel }}</p>
-						<h3 class="text-lg font-semibold text-slate-800">{{ title }}</h3>
-					</div>
-					<button class="text-slate-500 hover:text-slate-700" @click="emitClose">X</button>
-				</header>
-				<section class="flex-1 overflow-y-auto px-4 py-3">
-					<slot name="filters" />
-					<div v-if="loading" class="py-6 text-center text-slate-500">Loading...</div>
-					<div v-else-if="!rows.length" class="py-6 text-center text-slate-400 text-sm">
-						No records for this slice.
-					</div>
-					<ul v-else class="divide-y divide-slate-100">
-						<li v-for="row in rows" :key="row.id || row.name" class="py-3">
-							<slot name="row" :row="row">
-								<div class="flex flex-col">
-									<span class="font-medium text-slate-800">{{ row.name || row.title }}</span>
-									<span class="text-xs text-slate-500">{{ row.subtitle }}</span>
-								</div>
-							</slot>
-						</li>
-					</ul>
-				</section>
-				<footer class="flex items-center justify-between border-t border-slate-200 px-4 py-3">
-					<slot name="actions" />
-					<button
-						v-if="onLoadMore"
-						class="rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"
-						@click="onLoadMore"
+				<TransitionChild
+					as="template"
+					enter="if-overlay__fade-enter"
+					enter-from="if-overlay__fade-from"
+					enter-to="if-overlay__fade-to"
+					leave="if-overlay__fade-leave"
+					leave-from="if-overlay__fade-to"
+					leave-to="if-overlay__fade-from"
+				>
+					<div class="if-overlay__backdrop" @click="emitClose" />
+				</TransitionChild>
+
+				<div class="if-overlay__wrap if-overlay__wrap--drawer" @click.self="emitClose">
+					<TransitionChild
+						as="template"
+						enter="if-overlay__panel-enter"
+						enter-from="if-overlay__panel-from"
+						enter-to="if-overlay__panel-to"
+						leave="if-overlay__panel-leave"
+						leave-from="if-overlay__panel-to"
+						leave-to="if-overlay__panel-from"
 					>
-						Load more
-					</button>
-				</footer>
-			</aside>
-		</transition>
-	</teleport>
+						<DialogPanel class="if-overlay__panel if-overlay__panel--drawer-md">
+							<header
+								class="flex items-start justify-between gap-3 border-b border-border/60 bg-[rgb(var(--surface-rgb)/0.96)] px-4 py-4"
+							>
+								<div class="min-w-0">
+									<p class="type-overline text-ink/60">{{ entityLabel }}</p>
+									<DialogTitle class="type-h3 mt-2 text-ink">{{ title }}</DialogTitle>
+								</div>
+								<button
+									ref="closeButtonRef"
+									type="button"
+									class="if-overlay__icon-button"
+									aria-label="Close"
+									@click="emitClose"
+								>
+									<FeatherIcon name="x" class="h-4 w-4" />
+								</button>
+							</header>
+							<section class="if-overlay__body custom-scrollbar px-4 py-3">
+								<slot name="filters" />
+								<div v-if="loading" class="py-6 text-center type-caption text-ink/60">
+									Loading...
+								</div>
+								<div v-else-if="!rows.length" class="py-6 text-center type-body text-ink/55">
+									No records for this slice.
+								</div>
+								<ul v-else class="divide-y divide-border/45">
+									<li v-for="row in rows" :key="row.id || row.name" class="py-3">
+										<slot name="row" :row="row">
+											<div class="flex flex-col">
+												<span class="type-body-strong text-ink">
+													{{ row.name || row.title }}
+												</span>
+												<span class="type-caption mt-1 text-ink/60">{{ row.subtitle }}</span>
+											</div>
+										</slot>
+									</li>
+								</ul>
+							</section>
+							<footer class="if-overlay__footer justify-between">
+								<slot name="actions" />
+								<button
+									v-if="onLoadMore"
+									class="rounded-xl border border-border/70 bg-[rgb(var(--surface-strong-rgb)/1)] px-3 py-2 type-button-label text-ink/80 transition-colors hover:bg-surface-soft"
+									@click="onLoadMore"
+								>
+									Load more
+								</button>
+							</footer>
+						</DialogPanel>
+					</TransitionChild>
+				</div>
+			</Dialog>
+		</TransitionRoot>
+	</Teleport>
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
+import {
+	Dialog,
+	DialogPanel,
+	DialogTitle,
+	TransitionChild,
+	TransitionRoot,
+} from '@headlessui/vue';
+import { computed, ref } from 'vue';
+import { FeatherIcon } from 'frappe-ui';
 
 type EntityType = 'student' | 'guardian';
 
@@ -76,6 +123,8 @@ const emit = defineEmits<{
 	(e: 'close'): void;
 }>();
 
+const closeButtonRef = ref<HTMLButtonElement | null>(null);
+
 const entityLabel = computed(() => {
 	if (props.entityLabel) return props.entityLabel;
 	if (props.entity === 'student') return 'Students';
@@ -87,23 +136,3 @@ function emitClose() {
 	emit('close');
 }
 </script>
-
-<style scoped>
-.fade-enter-active,
-.fade-leave-active {
-	transition: opacity 0.2s ease;
-}
-.fade-enter-from,
-.fade-leave-to {
-	opacity: 0;
-}
-
-.slide-enter-active,
-.slide-leave-active {
-	transition: transform 0.25s ease;
-}
-.slide-enter-from,
-.slide-leave-to {
-	transform: translateX(100%);
-}
-</style>

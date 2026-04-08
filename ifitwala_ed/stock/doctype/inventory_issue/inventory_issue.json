@@ -2,8 +2,8 @@
  "actions": [],
  "allow_import": 1,
  "allow_rename": 1,
- "autoname": "format:INVIS-{YYYY}-{####}",
- "creation": "2026-01-14 00:00:00.000000",
+ "autoname": "INVIS-.YY.-.MM.-.###",
+ "creation": "2026-01-14 00:00:00",
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
@@ -22,7 +22,8 @@
   "acknowledgment_attachment",
   "notes",
   "section_break_items",
-  "items"
+  "items",
+  "amended_from"
  ],
  "fields": [
   {
@@ -32,6 +33,7 @@
   {
    "fieldname": "issue_from_location",
    "fieldtype": "Link",
+   "in_list_view": 1,
    "label": "Issue From Location",
    "options": "Location",
    "reqd": 1
@@ -39,6 +41,7 @@
   {
    "fieldname": "issued_to_type",
    "fieldtype": "Select",
+   "in_list_view": 1,
    "label": "Issued To Type",
    "options": "Employee\nStudent\nGuardian\nLocation",
    "reqd": 1
@@ -114,15 +117,26 @@
    "label": "Items",
    "options": "Inventory Issue Item",
    "reqd": 1
+  },
+  {
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "no_copy": 1,
+   "options": "Inventory Issue",
+   "print_hide": 1,
+   "read_only": 1,
+   "search_index": 1
   }
  ],
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-01-14 00:00:00.000000",
+ "modified": "2026-04-02 13:12:25.942441",
  "modified_by": "Administrator",
  "module": "Stock",
  "name": "Inventory Issue",
+ "naming_rule": "Expression",
  "owner": "Administrator",
  "permissions": [
   {

@@ -344,149 +344,195 @@
 			</section>
 		</div>
 
-		<teleport to="body">
-			<transition name="fade">
-				<div
-					v-if="drawerOpen"
-					class="fixed inset-0 z-40 bg-slate-900/40"
-					@click="closeDrawer"
-				></div>
-			</transition>
-			<transition name="slide">
-				<aside
-					v-if="drawerOpen"
-					class="fixed right-0 top-0 z-50 flex h-full w-full max-w-2xl flex-col border-l border-slate-200 bg-white shadow-xl"
+		<Teleport to="body">
+			<TransitionRoot as="template" :show="drawerOpen">
+				<Dialog
+					as="div"
+					class="if-overlay if-overlay--drawer if-overlay--academic-load-detail"
+					:initialFocus="drawerCloseButtonRef"
+					@close="closeDrawer"
 				>
-					<header class="border-b border-slate-200 px-5 py-4">
-						<div class="flex items-start justify-between gap-3">
-							<div>
-								<p class="text-xs uppercase tracking-wide text-slate-500">Academic Load Detail</p>
-								<h3 class="text-lg font-semibold text-slate-800">
-									{{ drawerDetail?.educator?.full_name || 'Loading...' }}
-								</h3>
-							</div>
-							<button class="text-slate-500 hover:text-slate-700" @click="closeDrawer">X</button>
-						</div>
-						<div class="mt-3 flex flex-wrap gap-2">
-							<button
-								v-for="tab in drawerTabs"
-								:key="tab.value"
-								type="button"
-								class="rounded-full px-3 py-1.5 text-xs font-medium transition"
-								:class="
-									drawerTab === tab.value
-										? 'bg-canopy text-white'
-										: 'border border-slate-200 bg-white text-slate-600'
-								"
-								@click="drawerTab = tab.value"
-							>
-								{{ tab.label }}
-							</button>
-						</div>
-					</header>
+					<TransitionChild
+						as="template"
+						enter="if-overlay__fade-enter"
+						enter-from="if-overlay__fade-from"
+						enter-to="if-overlay__fade-to"
+						leave="if-overlay__fade-leave"
+						leave-from="if-overlay__fade-to"
+						leave-to="if-overlay__fade-from"
+					>
+						<div class="if-overlay__backdrop" @click="closeDrawer" />
+					</TransitionChild>
 
-					<section class="flex-1 overflow-y-auto px-5 py-4">
-						<div v-if="detailLoading" class="py-10 text-center text-sm text-slate-500">
-							Loading educator detail...
-						</div>
-						<div
-							v-else-if="detailError"
-							class="rounded-md border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-900"
+					<div class="if-overlay__wrap if-overlay__wrap--drawer" @click.self="closeDrawer">
+						<TransitionChild
+							as="template"
+							enter="if-overlay__panel-enter"
+							enter-from="if-overlay__panel-from"
+							enter-to="if-overlay__panel-to"
+							leave="if-overlay__panel-leave"
+							leave-from="if-overlay__panel-to"
+							leave-to="if-overlay__panel-from"
 						>
-							{{ detailError }}
-						</div>
-						<div v-else-if="drawerDetail" class="space-y-4">
-							<div v-if="drawerTab === 'overview'" class="grid gap-3 md:grid-cols-2">
-								<div class="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
-									<p class="text-xs uppercase tracking-wide text-slate-500">Teaching</p>
-									<p class="mt-2 text-2xl font-semibold text-slate-800">
-										{{ formatNumber(drawerDetail.facts.teaching_hours) }}
-									</p>
-									<p class="text-xs text-slate-500">Weekly-equivalent hours</p>
-								</div>
-								<div class="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
-									<p class="text-xs uppercase tracking-wide text-slate-500">Students</p>
-									<p class="mt-2 text-2xl font-semibold text-slate-800">
-										{{ drawerDetail.facts.students_taught }}
-									</p>
-									<p class="text-xs text-slate-500">Roster load adjustment</p>
-								</div>
-								<div class="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
-									<p class="text-xs uppercase tracking-wide text-slate-500">Activities</p>
-									<p class="mt-2 text-2xl font-semibold text-slate-800">
-										{{ formatNumber(drawerDetail.facts.activity_hours) }}
-									</p>
-									<p class="text-xs text-slate-500">Weekly-equivalent hours</p>
-								</div>
-								<div class="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
-									<p class="text-xs uppercase tracking-wide text-slate-500">Meetings + Events</p>
-									<p class="mt-2 text-2xl font-semibold text-slate-800">
-										{{
-											formatNumber(
-												drawerDetail.facts.meeting_weekly_avg_hours +
-													drawerDetail.facts.event_weekly_avg_hours
-											)
-										}}
-									</p>
-									<p class="text-xs text-slate-500">Weekly-equivalent hours</p>
-								</div>
-							</div>
-
-							<div v-else-if="drawerTab === 'teaching'">
-								<DetailTable :rows="drawerDetail.breakdown.teaching" :columns="teachingColumns" />
-							</div>
-
-							<div v-else-if="drawerTab === 'activities'">
-								<DetailTable
-									:rows="drawerDetail.breakdown.activities"
-									:columns="activityColumns"
-								/>
-							</div>
-
-							<div v-else-if="drawerTab === 'meetings'">
-								<DetailTable :rows="drawerDetail.breakdown.meetings" :columns="meetingColumns" />
-							</div>
-
-							<div v-else-if="drawerTab === 'events'">
-								<DetailTable :rows="drawerDetail.breakdown.events" :columns="eventColumns" />
-							</div>
-
-							<div v-else-if="drawerTab === 'timeline'" class="space-y-3">
-								<article
-									v-for="entry in drawerDetail.breakdown.timeline"
-									:key="`${entry.kind}-${entry.label}-${entry.from_datetime || entry.hours}`"
-									class="rounded-xl border border-slate-200 px-4 py-3"
+							<DialogPanel class="if-overlay__panel if-overlay__panel--drawer-lg">
+								<header
+									class="border-b border-border/60 bg-[rgb(var(--surface-rgb)/0.96)] px-5 py-4"
 								>
-									<p class="text-sm font-semibold text-slate-800">{{ entry.label }}</p>
-									<p class="text-xs text-slate-500">
-										{{ entry.kind }} ·
-										{{
-											entry.from_datetime
-												? `${entry.from_datetime} to ${entry.to_datetime}`
-												: `${entry.hours} hrs`
-										}}
-									</p>
-								</article>
-							</div>
+									<div class="flex items-start justify-between gap-3">
+										<div>
+											<p class="type-overline text-ink/60">Academic Load Detail</p>
+											<DialogTitle class="type-h3 mt-2 text-ink">
+												{{ drawerDetail?.educator?.full_name || 'Loading...' }}
+											</DialogTitle>
+										</div>
+										<button
+											ref="drawerCloseButtonRef"
+											type="button"
+											class="if-overlay__icon-button"
+											aria-label="Close"
+											@click="closeDrawer"
+										>
+											<FeatherIcon name="x" class="h-4 w-4" />
+										</button>
+									</div>
+									<div class="mt-3 flex flex-wrap gap-2">
+										<button
+											v-for="tab in drawerTabs"
+											:key="tab.value"
+											type="button"
+											class="rounded-full px-3 py-1.5 text-xs font-medium transition"
+											:class="
+												drawerTab === tab.value
+													? 'bg-canopy text-white'
+													: 'border border-slate-200 bg-white text-slate-600'
+											"
+											@click="drawerTab = tab.value"
+										>
+											{{ tab.label }}
+										</button>
+									</div>
+								</header>
 
-							<div v-else class="space-y-3">
-								<article
-									v-for="note in drawerDetail.breakdown.assignment_notes"
-									:key="note"
-									class="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700"
-								>
-									{{ note }}
-								</article>
-							</div>
-						</div>
-					</section>
-				</aside>
-			</transition>
-		</teleport>
+								<section class="if-overlay__body custom-scrollbar px-5 py-4">
+									<div v-if="detailLoading" class="py-10 text-center text-sm text-slate-500">
+										Loading educator detail...
+									</div>
+									<div
+										v-else-if="detailError"
+										class="rounded-md border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-900"
+									>
+										{{ detailError }}
+									</div>
+									<div v-else-if="drawerDetail" class="space-y-4">
+										<div v-if="drawerTab === 'overview'" class="grid gap-3 md:grid-cols-2">
+											<div class="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
+												<p class="text-xs uppercase tracking-wide text-slate-500">Teaching</p>
+												<p class="mt-2 text-2xl font-semibold text-slate-800">
+													{{ formatNumber(drawerDetail.facts.teaching_hours) }}
+												</p>
+												<p class="text-xs text-slate-500">Weekly-equivalent hours</p>
+											</div>
+											<div class="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
+												<p class="text-xs uppercase tracking-wide text-slate-500">Students</p>
+												<p class="mt-2 text-2xl font-semibold text-slate-800">
+													{{ drawerDetail.facts.students_taught }}
+												</p>
+												<p class="text-xs text-slate-500">Roster load adjustment</p>
+											</div>
+											<div class="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
+												<p class="text-xs uppercase tracking-wide text-slate-500">Activities</p>
+												<p class="mt-2 text-2xl font-semibold text-slate-800">
+													{{ formatNumber(drawerDetail.facts.activity_hours) }}
+												</p>
+												<p class="text-xs text-slate-500">Weekly-equivalent hours</p>
+											</div>
+											<div class="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
+												<p class="text-xs uppercase tracking-wide text-slate-500">
+													Meetings + Events
+												</p>
+												<p class="mt-2 text-2xl font-semibold text-slate-800">
+													{{
+														formatNumber(
+															drawerDetail.facts.meeting_weekly_avg_hours +
+																drawerDetail.facts.event_weekly_avg_hours
+														)
+													}}
+												</p>
+												<p class="text-xs text-slate-500">Weekly-equivalent hours</p>
+											</div>
+										</div>
+
+										<div v-else-if="drawerTab === 'teaching'">
+											<DetailTable
+												:rows="drawerDetail.breakdown.teaching"
+												:columns="teachingColumns"
+											/>
+										</div>
+
+										<div v-else-if="drawerTab === 'activities'">
+											<DetailTable
+												:rows="drawerDetail.breakdown.activities"
+												:columns="activityColumns"
+											/>
+										</div>
+
+										<div v-else-if="drawerTab === 'meetings'">
+											<DetailTable
+												:rows="drawerDetail.breakdown.meetings"
+												:columns="meetingColumns"
+											/>
+										</div>
+
+										<div v-else-if="drawerTab === 'events'">
+											<DetailTable :rows="drawerDetail.breakdown.events" :columns="eventColumns" />
+										</div>
+
+										<div v-else-if="drawerTab === 'timeline'" class="space-y-3">
+											<article
+												v-for="entry in drawerDetail.breakdown.timeline"
+												:key="`${entry.kind}-${entry.label}-${entry.from_datetime || entry.hours}`"
+												class="rounded-xl border border-slate-200 px-4 py-3"
+											>
+												<p class="text-sm font-semibold text-slate-800">{{ entry.label }}</p>
+												<p class="text-xs text-slate-500">
+													{{ entry.kind }} ·
+													{{
+														entry.from_datetime
+															? `${entry.from_datetime} to ${entry.to_datetime}`
+															: `${entry.hours} hrs`
+													}}
+												</p>
+											</article>
+										</div>
+
+										<div v-else class="space-y-3">
+											<article
+												v-for="note in drawerDetail.breakdown.assignment_notes"
+												:key="note"
+												class="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700"
+											>
+												{{ note }}
+											</article>
+										</div>
+									</div>
+								</section>
+							</DialogPanel>
+						</TransitionChild>
+					</div>
+				</Dialog>
+			</TransitionRoot>
+		</Teleport>
 	</div>
 </template>
 
 <script setup lang="ts">
+import {
+	Dialog,
+	DialogPanel,
+	DialogTitle,
+	TransitionChild,
+	TransitionRoot,
+} from '@headlessui/vue';
 import {
 	computed,
 	defineComponent,
@@ -655,6 +701,7 @@ const syncingMeta = ref(false);
 const activeTab = ref<AnalyticsTab>('overview');
 const drawerTab = ref<DrawerTab>('overview');
 const drawerOpen = ref(false);
+const drawerCloseButtonRef = ref<HTMLButtonElement | null>(null);
 const selectedEmployee = ref('');
 
 const filterMetaResource = createResource({
@@ -1012,25 +1059,3 @@ const DetailTable = defineComponent({
 	},
 });
 </script>
-
-<style scoped>
-.fade-enter-active,
-.fade-leave-active {
-	transition: opacity 0.2s ease;
-}
-
-.fade-enter-from,
-.fade-leave-to {
-	opacity: 0;
-}
-
-.slide-enter-active,
-.slide-leave-active {
-	transition: transform 0.25s ease;
-}
-
-.slide-enter-from,
-.slide-leave-to {
-	transform: translateX(100%);
-}
-</style>

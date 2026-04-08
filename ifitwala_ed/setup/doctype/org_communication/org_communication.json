@@ -1,7 +1,7 @@
 {
  "actions": [],
  "allow_rename": 1,
- "autoname": "field:title",
+ "autoname": "ORG-COMM-.YY.-.MM.-.#####",
  "creation": "2025-11-29 11:33:32.269337",
  "doctype": "DocType",
  "engine": "InnoDB",
@@ -32,6 +32,7 @@
   "audiences",
   "section_break_dcte",
   "message",
+  "attachments",
   "section_break_vuxv",
   "portal_surface",
   "internal_note",
@@ -52,8 +53,7 @@
    "in_list_view": 1,
    "in_standard_filter": 1,
    "label": "Title",
-   "reqd": 1,
-   "unique": 1
+   "reqd": 1
   },
   {
    "fieldname": "communication_type",
@@ -225,6 +225,12 @@
    "label": "Message"
   },
   {
+   "fieldname": "attachments",
+   "fieldtype": "Table",
+   "label": "Attachments",
+   "options": "Attached Document"
+  },
+  {
    "default": "None",
    "description": "Controls reactions/comments behaviour for this communication on portal and Morning Brief surfaces.",
    "fieldname": "interaction_mode",
@@ -250,11 +256,11 @@
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-02-28 23:20:38.123805",
+ "modified": "2026-04-05 15:17:58.369493",
  "modified_by": "Administrator",
  "module": "Setup",
  "name": "Org Communication",
- "naming_rule": "By fieldname",
+ "naming_rule": "Expression",
  "owner": "Administrator",
  "permissions": [
   {

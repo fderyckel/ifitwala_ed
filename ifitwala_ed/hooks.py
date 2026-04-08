@@ -29,7 +29,11 @@ required_apps = ["ifitwala_drive"]
 
 # include js, css files in header of desk.html
 
-app_include_js = ["/assets/ifitwala_ed/js/ifitwala_ed.bundle.js", "/assets/ifitwala_ed/js/initial_setup.js"]
+app_include_js = [
+    "/assets/ifitwala_ed/js/ifitwala_ed.bundle.js",
+    "/assets/ifitwala_ed/js/initial_setup.js",
+    "/assets/ifitwala_ed/js/governed_drive_links.js",
+]
 
 # app_include_css = "/assets/ifitwala_ed/css/desk_overrides.bundle.css"
 
@@ -181,6 +185,8 @@ permission_query_conditions = {
     "Applicant Interview Feedback": "ifitwala_ed.admission.doctype.applicant_interview_feedback.applicant_interview_feedback.get_permission_query_conditions",
     "Recommendation Request": "ifitwala_ed.admission.doctype.recommendation_request.recommendation_request.get_permission_query_conditions",
     "Recommendation Submission": "ifitwala_ed.admission.doctype.recommendation_submission.recommendation_submission.get_permission_query_conditions",
+    "Supporting Material": "ifitwala_ed.curriculum.doctype.supporting_material.supporting_material.get_permission_query_conditions",
+    "Material Placement": "ifitwala_ed.curriculum.doctype.material_placement.material_placement.get_permission_query_conditions",
     "Leave Application": "ifitwala_ed.hr.leave_permissions.leave_application_pqc",
     "Leave Allocation": "ifitwala_ed.hr.leave_permissions.leave_allocation_pqc",
     "Leave Policy": "ifitwala_ed.hr.leave_permissions.leave_policy_pqc",
@@ -225,6 +231,8 @@ has_permission = {
     "Applicant Interview Feedback": "ifitwala_ed.admission.doctype.applicant_interview_feedback.applicant_interview_feedback.has_permission",
     "Recommendation Request": "ifitwala_ed.admission.doctype.recommendation_request.recommendation_request.has_permission",
     "Recommendation Submission": "ifitwala_ed.admission.doctype.recommendation_submission.recommendation_submission.has_permission",
+    "Supporting Material": "ifitwala_ed.curriculum.doctype.supporting_material.supporting_material.has_permission",
+    "Material Placement": "ifitwala_ed.curriculum.doctype.material_placement.material_placement.has_permission",
     "Leave Application": "ifitwala_ed.hr.leave_permissions.leave_application_has_permission",
     "Leave Allocation": "ifitwala_ed.hr.leave_permissions.leave_allocation_has_permission",
     "Leave Policy": "ifitwala_ed.hr.leave_permissions.leave_policy_has_permission",
@@ -279,7 +287,21 @@ doc_events = {
         ],
         "on_update": "ifitwala_ed.hr.doctype.employee.employee.update_user_permissions",
     },
-    "Employee": {"after_save": "ifitwala_ed.hr.employee_access.sync_user_access_from_employee"},
+    "Employee": {
+        "after_save": [
+            "ifitwala_ed.hr.employee_access.sync_user_access_from_employee",
+            "ifitwala_ed.website.public_people.invalidate_public_people_cache",
+        ],
+        "on_trash": "ifitwala_ed.website.public_people.invalidate_public_people_cache",
+    },
+    "Designation": {
+        "after_save": "ifitwala_ed.website.public_people.invalidate_public_people_cache",
+        "on_trash": "ifitwala_ed.website.public_people.invalidate_public_people_cache",
+    },
+    "School": {
+        "after_save": "ifitwala_ed.website.public_people.invalidate_public_people_cache",
+        "on_trash": "ifitwala_ed.website.public_people.invalidate_public_people_cache",
+    },
     "File": {
         "validate": "ifitwala_ed.utilities.file_management.validate_admissions_attachment",
         "after_insert": "ifitwala_ed.utilities.file_dispatcher.handle_file_after_insert",

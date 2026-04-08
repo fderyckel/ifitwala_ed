@@ -27,20 +27,29 @@ class TestCourse(FrappeTestCase):
             }
         ).insert(ignore_permissions=True)
 
+        course_plan = frappe.get_doc(
+            {
+                "doctype": "Course Plan",
+                "title": f"Course Plan {frappe.generate_hash(length=4)}",
+                "course": course.name,
+                "plan_status": "Active",
+            }
+        ).insert(ignore_permissions=True)
+
         frappe.get_doc(
             {
-                "doctype": "Learning Unit",
-                "course": course.name,
-                "unit_name": f"Unit One {frappe.generate_hash(length=4)}",
+                "doctype": "Unit Plan",
+                "course_plan": course_plan.name,
+                "title": f"Unit One {frappe.generate_hash(length=4)}",
                 "is_published": 1,
-                "unit_overview": "<p>Students launch with inquiry, discussion, and foundational concepts.</p>",
+                "overview": "<p>Students launch with inquiry, discussion, and foundational concepts.</p>",
             }
         ).insert(ignore_permissions=True)
         frappe.get_doc(
             {
-                "doctype": "Learning Unit",
-                "course": course.name,
-                "unit_name": f"Unit Two {frappe.generate_hash(length=4)}",
+                "doctype": "Unit Plan",
+                "course_plan": course_plan.name,
+                "title": f"Unit Two {frappe.generate_hash(length=4)}",
                 "is_published": 1,
                 "essential_understanding": "<p>Students deepen understanding through application and reflection.</p>",
             }

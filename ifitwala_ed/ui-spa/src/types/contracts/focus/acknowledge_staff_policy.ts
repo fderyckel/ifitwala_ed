@@ -5,6 +5,7 @@ export type Request = {
 	client_request_id?: string | null;
 	typed_signature_name?: string | null;
 	attestation_confirmed?: 0 | 1;
+	checked_clause_names?: string[] | null;
 };
 
 export type Response = {

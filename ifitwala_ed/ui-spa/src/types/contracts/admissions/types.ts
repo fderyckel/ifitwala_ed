@@ -168,6 +168,12 @@ export type ApplicantPolicy = {
   acknowledged_at?: string | null
   acknowledged_by?: string | null
   expected_signature_name: string
+  acknowledgement_clauses?: Array<{
+    name: string
+    clause_text: string
+    is_required: boolean
+    idx: number
+  }>
 }
 
 export type ApplicantMessage = {

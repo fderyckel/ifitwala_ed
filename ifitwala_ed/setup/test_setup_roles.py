@@ -9,6 +9,7 @@ from frappe.tests.utils import FrappeTestCase
 
 from ifitwala_ed.setup.initial_setup import complete_initial_setup
 from ifitwala_ed.setup.setup import (
+    create_default_attendance_codes,
     create_designations,
     create_roles_with_homepage,
     ensure_canonical_role_records,
@@ -130,6 +131,39 @@ class TestSetupRoles(FrappeTestCase):
         self.assertTrue(rows)
         self.assertTrue(all(row.get("organization") == "ORG-ROOT" for row in rows))
         self.assertEqual(rows[0].get("designation_name"), "Director")
+
+    def test_create_default_attendance_codes_seeds_canonical_codes(self):
+        with patch("ifitwala_ed.setup.setup.insert_record") as insert_record:
+            create_default_attendance_codes()
+
+        rows = insert_record.call_args.args[0]
+        self.assertEqual(
+            [row.get("attendance_code_name") for row in rows],
+            ["Present", "Absent", "Late", "Informed Absence", "Field Trip"],
+        )
+        self.assertEqual(
+            [row.get("attendance_code") for row in rows],
+            ["P", "A", "L", "IA", "FT"],
+        )
+        self.assertEqual(
+            [int(row.get("count_as_present") or 0) for row in rows],
+            [1, 0, 1, 0, 1],
+        )
+        self.assertEqual(
+            [int(row.get("show_in_attendance_tool") or 0) for row in rows],
+            [1, 1, 1, 0, 1],
+        )
+        self.assertEqual(
+            [int(row.get("show_in_reports") or 0) for row in rows],
+            [1, 1, 1, 1, 1],
+        )
+        self.assertEqual(
+            [row.get("color") for row in rows],
+            ["#29CD42", "#CB2929", "#FC8200", "#CC6045", "#4463F0"],
+        )
+        defaults = [row for row in rows if int(row.get("is_default") or 0) == 1]
+        self.assertEqual(len(defaults), 1)
+        self.assertEqual(defaults[0].get("attendance_code_name"), "Present")
 
     def test_complete_initial_setup_seeds_designations_after_first_real_organization(self):
         root_doc = _DummyDoc("All Organizations")

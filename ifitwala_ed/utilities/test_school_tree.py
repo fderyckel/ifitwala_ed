@@ -3,7 +3,10 @@
 import frappe
 from frappe.tests.utils import FrappeTestCase
 
-from ifitwala_ed.utilities.school_tree import get_school_scope_for_academic_year
+from ifitwala_ed.utilities.school_tree import (
+    get_descendant_school_scope,
+    get_school_scope_for_academic_year,
+)
 
 
 class TestSchoolTreeScopes(FrappeTestCase):
@@ -33,6 +36,14 @@ class TestSchoolTreeScopes(FrappeTestCase):
         self.assertTrue(self.root_school in scope)
         self.assertTrue(self.child_school in scope)
         self.assertTrue(self.leaf_school in scope)
+
+    def test_get_descendant_school_scope_can_limit_to_direct_children(self):
+        scope = get_descendant_school_scope(self.root_school, max_depth=1)
+        self.assertEqual(scope, [self.root_school, self.child_school])
+
+    def test_get_descendant_school_scope_returns_full_subtree_without_depth_limit(self):
+        scope = get_descendant_school_scope(self.root_school)
+        self.assertEqual(scope, [self.root_school, self.child_school, self.leaf_school])
 
     def test_leaf_scope_prefers_self_when_ay_exists(self):
         self._create_academic_year(self.leaf_school, "2025-2026")

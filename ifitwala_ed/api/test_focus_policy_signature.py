@@ -78,6 +78,12 @@ class TestFocusPolicySignature(FrappeTestCase):
                 "based_on_version": self.base_policy_version.name,
                 "change_summary": "Added stricter password and phishing reporting expectations.",
                 "policy_text": "<p>Security policy baseline updated</p><p>Report phishing within 24 hours.</p>",
+                "acknowledgement_clauses": [
+                    {
+                        "clause_text": "I will report suspected phishing within 24 hours.",
+                        "is_required": 1,
+                    }
+                ],
                 "is_active": 1,
             }
         ).insert(ignore_permissions=True)
@@ -135,7 +141,9 @@ class TestFocusPolicySignature(FrappeTestCase):
         self.assertTrue((policy_ctx.get("change_summary") or "").strip())
         self.assertIn("policy-diff", policy_ctx.get("diff_html") or "")
         self.assertIsInstance(policy_ctx.get("change_stats"), dict)
+        self.assertEqual(len(policy_ctx.get("acknowledgement_clauses") or []), 1)
         signer_name = (policy_ctx.get("employee_name") or "").strip() or self.employee.name
+        clause_name = (policy_ctx.get("acknowledgement_clauses") or [])[0].get("name")
 
         client_request_id = f"fps-ack-{frappe.generate_hash(length=8)}"
         result = acknowledge_staff_policy(
@@ -143,6 +151,7 @@ class TestFocusPolicySignature(FrappeTestCase):
             client_request_id=client_request_id,
             typed_signature_name=signer_name,
             attestation_confirmed=1,
+            checked_clause_names=[clause_name],
         )
         self.assertTrue(result.get("ok"))
         self.assertEqual(result.get("status"), "processed")
@@ -165,6 +174,7 @@ class TestFocusPolicySignature(FrappeTestCase):
             client_request_id=client_request_id,
             typed_signature_name=signer_name,
             attestation_confirmed=1,
+            checked_clause_names=[clause_name],
         )
         self.assertTrue(replay.get("ok"))
         self.assertTrue(replay.get("idempotent"))
@@ -184,5 +194,25 @@ class TestFocusPolicySignature(FrappeTestCase):
                 focus_item_id=focus_item_id,
                 typed_signature_name="Wrong Name",
                 attestation_confirmed=1,
+                checked_clause_names=[],
                 client_request_id=f"fps-ack-bad-{frappe.generate_hash(length=8)}",
+            )
+
+    def test_policy_signature_rejects_missing_required_clause(self):
+        frappe.set_user(self.staff_user.name)
+
+        items = list_focus_items(open_only=1, limit=50, offset=0)
+        policy_items = [row for row in items if row.get("action_type") == ACTION_POLICY_STAFF_SIGN]
+        self.assertTrue(policy_items, "Expected policy signature action in focus list")
+
+        focus_item_id = policy_items[0]["id"]
+        signer_name = (self.employee.employee_full_name or "").strip() or self.employee.name
+
+        with self.assertRaises(frappe.ValidationError):
+            acknowledge_staff_policy(
+                focus_item_id=focus_item_id,
+                typed_signature_name=signer_name,
+                attestation_confirmed=1,
+                checked_clause_names=[],
+                client_request_id=f"fps-ack-missing-{frappe.generate_hash(length=8)}",
             )

@@ -52,6 +52,8 @@ Rules:
 3. Recent task-result rows appear only when `Task Outcome.is_published = 1`.
 4. Attendance rows on Guardian Home are exception-focused and limited to linked students.
 5. The family attendance surface may read only linked-student rows from `Student Attendance`, `Student Attendance Code`, and `Course`.
+6. `learning_highlights` and guardian child learning briefs may expose only guardian-safe summaries of current unit themes, upcoming learning experiences, next published learning step, and family discussion prompts.
+7. Guardian curriculum briefings must not expose teacher notes, class reflections, pacing notes, staff prompts, or raw daily activity detail.
 
 ## 3. Policy Visibility
 
@@ -210,6 +212,10 @@ Rules:
 3. Frontend hiding is not a visibility control; all filtering happens before the payload reaches the SPA.
 4. Finance rows must not expose account holders outside the authority rule, even if the guardian can see the student.
 5. Any new guardian-visible data class must add an explicit server gate and be documented here before release.
+
+Planned curriculum-awareness additions are tracked in:
+
+- `ifitwala_ed/docs/curriculum/05_student_and_guardian_learning_experience_proposal.md`
 
 ## 10. Contract Matrix
 

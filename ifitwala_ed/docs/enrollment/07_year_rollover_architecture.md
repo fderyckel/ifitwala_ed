@@ -306,6 +306,8 @@ The following are not currently implemented as one unified contract:
 - `End of Year Checklist` does not open or close `Program Offering Selection Window`
 - `End of Year Checklist` does not approve or materialize next-year enrollments
 - there is no single year-rollover cockpit that owns progression and closure together
+- current year rollover does not clone `Course Plan`, `Unit Plan`, `Class Teaching Plan`, `Class Session`, or class-authored assigned work
+- curriculum reuse across years is governed separately from enrollment rollover; do not document enrollment rollover as if it already carries class-planning runtime forward
 
 There is also current surface drift in source-population filtering:
 

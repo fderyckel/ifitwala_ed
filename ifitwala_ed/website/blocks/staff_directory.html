@@ -1,0 +1,121 @@
+<!-- ifitwala_ed/website/blocks/staff_directory.html -->
+{% import "ifitwala_ed/templates/includes/smart_image_macro.html" as img_macro %}
+
+<section class="block block-staff-directory">
+	<div class="mx-auto max-w-6xl px-6">
+		<div class="max-w-3xl">
+			<h2 class="text-3xl font-semibold tracking-tight text-slate-950 sm:text-4xl">{{ data.title }}</h2>
+			{% if data.description %}
+				<p class="mt-4 text-base leading-7 text-slate-600 sm:text-lg">{{ data.description }}</p>
+			{% endif %}
+		</div>
+
+		{% if data.has_people %}
+			<div class="mt-8 rounded-[1.75rem] border border-slate-200/80 bg-white p-5 shadow-[0_20px_60px_-42px_rgba(15,23,42,0.35)] sm:p-6" data-staff-directory>
+				{% if data.has_filters %}
+					<div class="grid gap-4 border-b border-slate-200/80 pb-5 md:grid-cols-[minmax(0,1.4fr)_repeat(2,minmax(0,0.8fr))_auto] md:items-end">
+						{% if data.show_search %}
+							<label class="grid gap-2">
+								<span class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Search</span>
+								<input
+									type="search"
+									class="h-11 rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm text-slate-900 outline-none transition focus:border-slate-400 focus:bg-white"
+									placeholder="Search staff"
+									data-directory-search
+								>
+							</label>
+						{% endif %}
+
+						{% if data.show_designation_filter %}
+							<label class="grid gap-2">
+								<span class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Role</span>
+								<select
+									class="h-11 rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm text-slate-900 outline-none transition focus:border-slate-400 focus:bg-white"
+									data-directory-designation
+								>
+									<option value="">All roles</option>
+									{% for option in data.designation_options %}
+										<option value="{{ option.value }}">{{ option.label }}</option>
+									{% endfor %}
+								</select>
+							</label>
+						{% endif %}
+
+						{% if data.show_role_profile_filter %}
+							<label class="grid gap-2">
+								<span class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Group</span>
+								<select
+									class="h-11 rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm text-slate-900 outline-none transition focus:border-slate-400 focus:bg-white"
+									data-directory-role-profile
+								>
+									<option value="">All groups</option>
+									{% for option in data.role_profile_options %}
+										<option value="{{ option.value }}">{{ option.label }}</option>
+									{% endfor %}
+								</select>
+							</label>
+						{% endif %}
+
+						<p class="text-sm font-medium text-slate-600 md:justify-self-end" aria-live="polite" data-directory-count>
+							{{ data.people_count }} {{ "person" if data.people_count == 1 else "people" }}
+						</p>
+					</div>
+				{% endif %}
+
+				<div class="mt-6 grid gap-5 sm:grid-cols-2 xl:grid-cols-3" data-directory-grid>
+					{% for person in data.people %}
+						<article
+							class="group flex h-full flex-col overflow-hidden rounded-[1.5rem] border border-slate-200/80 bg-slate-50/70 shadow-[0_18px_50px_-38px_rgba(15,23,42,0.35)] transition hover:-translate-y-1 hover:border-slate-300 hover:bg-white"
+							data-directory-card
+							data-search-text="{{ person.search_text }}"
+							data-designation="{{ person.designation or '' }}"
+							data-role-profile="{{ person.role_profile or '' }}"
+						>
+							<div class="relative aspect-[4/3] overflow-hidden bg-[radial-gradient(circle_at_top,_rgba(59,130,246,0.18),_transparent_58%),linear-gradient(135deg,_#eff6ff,_#f8fafc_55%,_#eef2ff)]">
+								{% if person.photo and person.photo.original %}
+									{{ img_macro.smart_image(
+										None,
+										person.photo.medium,
+										person.photo.card,
+										person.photo.thumb,
+										person.photo.original,
+										person.name,
+										"h-full w-full object-cover transition duration-500 group-hover:scale-[1.03]",
+										fallback="card",
+										sizes="(min-width: 1280px) 30vw, (min-width: 640px) 46vw, 94vw"
+									) }}
+								{% else %}
+									<div class="flex h-full w-full items-center justify-center">
+										<div class="flex h-20 w-20 items-center justify-center rounded-full border border-white/70 bg-white/80 text-2xl font-semibold tracking-[0.12em] text-slate-700 shadow-sm">
+											{{ person.initials }}
+										</div>
+									</div>
+								{% endif %}
+							</div>
+
+							<div class="flex flex-1 flex-col px-5 py-5 sm:px-6">
+								<h3 class="text-xl font-semibold tracking-tight text-slate-950">{{ person.name }}</h3>
+								{% if person.title %}
+									<p class="mt-2 text-sm font-medium text-slate-700">{{ person.title }}</p>
+								{% endif %}
+								{% if person.bio %}
+									<p class="mt-4 text-sm leading-6 text-slate-600">{{ person.bio }}</p>
+								{% endif %}
+							</div>
+						</article>
+					{% endfor %}
+				</div>
+
+				<div class="mt-6 hidden rounded-[1.4rem] border border-dashed border-slate-300 bg-slate-50 px-6 py-10 text-center" data-directory-no-results>
+					<h3 class="text-lg font-semibold text-slate-900">No matching staff found</h3>
+					<p class="mt-2 text-sm text-slate-600">Try a different search or clear one of the filters.</p>
+				</div>
+			</div>
+		{% else %}
+			<div class="mt-8 rounded-[1.75rem] border border-dashed border-slate-300 bg-white px-6 py-12 text-center">
+				<h3 class="text-xl font-semibold text-slate-900">{{ data.empty_state_title }}</h3>
+				<p class="mt-3 text-sm leading-6 text-slate-600">{{ data.empty_state_text }}</p>
+			</div>
+		{% endif %}
+	</div>
+</section>

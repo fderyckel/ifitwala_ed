@@ -98,6 +98,12 @@ export type Response = {
     }>
   } | null
   policy_signature?: {
+    acknowledgement_clauses?: Array<{
+      name: string
+      clause_text: string
+      is_required: boolean
+      idx: number
+    }> | null
     policy_version: string
     institutional_policy?: string | null
     policy_key?: string | null

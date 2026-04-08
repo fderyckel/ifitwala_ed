@@ -205,6 +205,50 @@ class TestMorningBrief(IfitwalaFrappeTestCase):
         )
         self.assertEqual(payload["school"], "Upper School")
 
+    def test_get_clinic_visits_trend_falls_back_to_real_visit_dates_when_business_day_resolution_is_empty(self):
+        with (
+            patch.object(morning_brief.frappe, "session", frappe._dict(user="nurse@example.com")),
+            patch.object(morning_brief, "_can_view_clinic_metrics", return_value=True),
+            patch.object(
+                morning_brief,
+                "_resolve_clinic_scope",
+                return_value={
+                    "base_school": "SCH-1",
+                    "school_scope": ["SCH-1"],
+                    "scope_label": "Upper School",
+                    "error": None,
+                },
+            ),
+            patch.object(morning_brief, "today", return_value="2026-04-02"),
+            patch.object(morning_brief, "_resolve_clinic_trend_start_date", return_value=date(2026, 3, 3)),
+            patch.object(morning_brief, "_load_clinic_calendar_context", return_value={}),
+            patch.object(
+                morning_brief,
+                "_is_scope_business_day",
+                return_value=False,
+            ),
+            patch.object(
+                morning_brief,
+                "_query_clinic_visit_counts",
+                return_value=[
+                    {"school": "SCH-1", "date": "2026-03-31", "count": 1},
+                    {"school": "SCH-1", "date": "2026-04-01", "count": 2},
+                    {"school": "SCH-1", "date": "2026-04-02", "count": 1},
+                ],
+            ),
+        ):
+            payload = morning_brief.get_clinic_visits_trend(time_range="1M")
+
+        self.assertEqual(
+            payload["data"],
+            [
+                {"date": "2026-03-31", "count": 1},
+                {"date": "2026-04-01", "count": 2},
+                {"date": "2026-04-02", "count": 1},
+            ],
+        )
+        self.assertEqual(payload["school"], "Upper School")
+
     def test_resolve_clinic_trend_start_date_uses_calendar_year_for_ytd(self):
         self.assertEqual(
             morning_brief._resolve_clinic_trend_start_date("YTD", date(2026, 3, 22)),

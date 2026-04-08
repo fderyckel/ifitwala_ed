@@ -12,6 +12,7 @@ export type StudentAttendanceCodeRow = {
 	attendance_code_name: string
 	display_order?: number
 	color?: string | null
+	is_default?: 0 | 1 | null
 }
 
 export type FetchSchoolFilterContextRequest = Record<string, never>

@@ -11,6 +11,7 @@ from frappe import _
 from frappe.utils import add_days, get_datetime, getdate, now_datetime, strip_html
 from frappe.utils.caching import redis_cache
 
+from ifitwala_ed.api import teaching_plans as teaching_plans_api
 from ifitwala_ed.api.org_communication_interactions import get_seen_org_communication_names
 from ifitwala_ed.schedule.schedule_utils import get_effective_schedule_for_ay, get_rotation_dates
 from ifitwala_ed.utilities.image_utils import apply_preferred_student_images
@@ -55,6 +56,7 @@ def get_guardian_home_snapshot(anchor_date=None, school_days=7, debug=0):
             "attention_needed": [],
             "preparation_and_support": [],
             "recent_activity": [],
+            "learning_highlights": [],
         },
         "counts": {
             "unread_communications": 0,
@@ -117,6 +119,7 @@ def get_guardian_home_snapshot(anchor_date=None, school_days=7, debug=0):
     payload["zones"]["attention_needed"] = attention_needed[:50]
     payload["zones"]["preparation_and_support"] = prep_items
     payload["zones"]["recent_activity"] = recent_activity
+    payload["zones"]["learning_highlights"] = _build_learning_highlights(children)
 
     payload["counts"]["unread_communications"] = communication_bundle["unread_count"]
     payload["counts"]["unread_visible_student_logs"] = log_bundle["unread_count"]
@@ -130,6 +133,27 @@ def get_guardian_home_snapshot(anchor_date=None, school_days=7, debug=0):
     )
 
     return _finalize_payload(payload, debug_mode, debug_warnings)
+
+
+@frappe.whitelist()
+def get_guardian_student_learning_brief(student_id: str) -> Dict[str, Any]:
+    user = frappe.session.user
+    guardian_name, children = _resolve_guardian_scope(user)
+    student_name = str(student_id or "").strip()
+    child = next((row for row in children if row.get("student") == student_name), None)
+    if not child:
+        frappe.throw(_("This student is not available in your guardian scope."), frappe.PermissionError)
+
+    course_briefs = _build_guardian_student_course_briefs(student_name)
+    return {
+        "meta": {
+            "generated_at": now_datetime().isoformat(),
+            "guardian": {"name": guardian_name},
+            "student": student_name,
+        },
+        "student": child,
+        "course_briefs": course_briefs,
+    }
 
 
 def _coerce_anchor_date(anchor_date: str | None) -> date:
@@ -266,6 +290,211 @@ def _get_student_group_context(
         }
 
     return out
+
+
+def _get_guardian_student_learning_targets(student_name: str) -> List[Dict[str, Any]]:
+    if not student_name:
+        return []
+
+    rows = frappe.db.sql(
+        """
+        SELECT
+            sg.course,
+            COALESCE(c.course_name, sg.course) AS course_name,
+            sg.name AS student_group,
+            sg.student_group_name,
+            sg.academic_year,
+            ctp.name AS class_teaching_plan,
+            ctp.modified AS class_plan_modified
+        FROM `tabStudent Group Student` sgs
+        INNER JOIN `tabStudent Group` sg ON sg.name = sgs.parent
+        LEFT JOIN `tabCourse` c ON c.name = sg.course
+        LEFT JOIN `tabClass Teaching Plan` ctp
+            ON ctp.student_group = sg.name
+           AND ctp.planning_status = 'Active'
+        WHERE sgs.student = %(student)s
+          AND COALESCE(sgs.active, 1) = 1
+          AND sg.status = 'Active'
+          AND sg.group_based_on = 'Course'
+          AND sg.course IS NOT NULL
+        ORDER BY
+            CASE WHEN ctp.name IS NULL THEN 1 ELSE 0 END ASC,
+            ctp.modified DESC,
+            sg.student_group_name ASC,
+            sg.name ASC
+        """,
+        {"student": student_name},
+        as_dict=True,
+    )
+
+    deduped: Dict[str, Dict[str, Any]] = {}
+    for row in rows or []:
+        course = (row.get("course") or "").strip()
+        if not course or course in deduped:
+            continue
+        deduped[course] = row
+    return list(deduped.values())
+
+
+def _build_guardian_conversation_prompt(unit: Dict[str, Any] | None, focus_statement: str | None) -> str | None:
+    if unit and unit.get("essential_understanding"):
+        return _("Ask how this unit connects to {essential_understanding}.").format(
+            essential_understanding=unit.get("essential_understanding")
+        )
+    if focus_statement:
+        return _("Ask what stood out today about: {focus_statement}").format(focus_statement=focus_statement)
+    if unit and unit.get("content"):
+        return _("Ask what they are discovering about {content}.").format(content=unit.get("content"))
+    if unit and unit.get("title"):
+        return _("Ask what feels most interesting or challenging in {unit_title}.").format(unit_title=unit.get("title"))
+    return None
+
+
+def _build_guardian_course_brief_from_learning_space(
+    learning_space: Dict[str, Any],
+    *,
+    include_resources: bool = False,
+) -> Dict[str, Any]:
+    units = learning_space.get("curriculum", {}).get("units") or []
+    learning = learning_space.get("learning") or {}
+    selected_context = learning.get("selected_context") or {}
+    selected_unit_plan = (selected_context.get("unit_plan") or "").strip()
+    selected_unit = next((unit for unit in units if unit.get("unit_plan") == selected_unit_plan), None)
+    selected_session_id = (selected_context.get("class_session") or "").strip()
+    selected_session = None
+    if selected_unit and selected_session_id:
+        selected_session = next(
+            (
+                session
+                for session in (selected_unit.get("sessions") or [])
+                if session.get("class_session") == selected_session_id
+            ),
+            None,
+        )
+
+    future_sessions = []
+    for unit in units:
+        for session in unit.get("sessions") or []:
+            session_date = session.get("session_date")
+            if session_date:
+                future_sessions.append(
+                    {
+                        "class_session": session.get("class_session"),
+                        "title": session.get("title"),
+                        "session_date": session_date,
+                        "learning_goal": session.get("learning_goal"),
+                    }
+                )
+    future_sessions = future_sessions[:3]
+
+    next_action = (learning.get("next_actions") or [None])[0] or {}
+    brief = {
+        "course": learning_space.get("course", {}).get("course"),
+        "course_name": learning_space.get("course", {}).get("course_name"),
+        "course_group": learning_space.get("course", {}).get("course_group"),
+        "class_label": next(
+            (
+                option.get("label")
+                for option in (learning_space.get("access", {}).get("student_group_options") or [])
+                if option.get("student_group") == learning_space.get("access", {}).get("resolved_student_group")
+            ),
+            learning_space.get("access", {}).get("resolved_student_group"),
+        ),
+        "current_unit": (
+            {
+                "unit_plan": selected_unit.get("unit_plan"),
+                "title": selected_unit.get("title"),
+                "overview": selected_unit.get("overview"),
+                "essential_understanding": selected_unit.get("essential_understanding"),
+                "content": selected_unit.get("content"),
+                "skills": selected_unit.get("skills"),
+                "concepts": selected_unit.get("concepts"),
+            }
+            if selected_unit
+            else None
+        ),
+        "current_session": (
+            {
+                "class_session": selected_session.get("class_session"),
+                "title": selected_session.get("title"),
+                "session_date": selected_session.get("session_date"),
+                "learning_goal": selected_session.get("learning_goal"),
+            }
+            if selected_session
+            else None
+        ),
+        "focus_statement": learning.get("focus", {}).get("statement"),
+        "next_step": next_action.get("label"),
+        "next_step_supporting_text": next_action.get("supporting_text"),
+        "upcoming_experiences": future_sessions,
+        "dinner_prompt": _build_guardian_conversation_prompt(
+            selected_unit,
+            learning.get("focus", {}).get("statement"),
+        ),
+    }
+    if include_resources:
+        brief["support_resources"] = (
+            (selected_unit or {}).get("shared_resources")
+            or learning_space.get("resources", {}).get("class_resources")
+            or learning_space.get("resources", {}).get("shared_resources")
+            or []
+        )[:3]
+    return brief
+
+
+def _build_learning_highlights(children: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    highlights: List[Dict[str, Any]] = []
+    for child in children or []:
+        student_name = child.get("student")
+        targets = _get_guardian_student_learning_targets(student_name)
+        if not targets:
+            continue
+        target = targets[0]
+        try:
+            learning_space = teaching_plans_api._build_student_learning_space_payload(
+                student_name,
+                target.get("course"),
+                student_group=target.get("student_group"),
+            )
+        except Exception:
+            continue
+
+        brief = _build_guardian_course_brief_from_learning_space(learning_space)
+        highlights.append(
+            {
+                "student": student_name,
+                "student_name": child.get("full_name"),
+                "course": brief.get("course"),
+                "course_name": brief.get("course_name"),
+                "class_label": brief.get("class_label"),
+                "unit_title": (brief.get("current_unit") or {}).get("title"),
+                "focus_statement": brief.get("focus_statement"),
+                "next_step": brief.get("next_step"),
+                "next_step_supporting_text": brief.get("next_step_supporting_text"),
+                "dinner_prompt": brief.get("dinner_prompt"),
+            }
+        )
+    return highlights
+
+
+def _build_guardian_student_course_briefs(student_name: str) -> List[Dict[str, Any]]:
+    briefs: List[Dict[str, Any]] = []
+    for target in _get_guardian_student_learning_targets(student_name):
+        try:
+            learning_space = teaching_plans_api._build_student_learning_space_payload(
+                student_name,
+                target.get("course"),
+                student_group=target.get("student_group"),
+            )
+        except Exception:
+            continue
+        briefs.append(
+            _build_guardian_course_brief_from_learning_space(
+                learning_space,
+                include_resources=True,
+            )
+        )
+    return briefs
 
 
 def _build_task_bundle(
