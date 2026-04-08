@@ -411,20 +411,6 @@ def get_org_communication_feed(
     filters_dict["team"] = filter_team_val
     filters_dict["school"] = filter_school_val
 
-    frappe.logger("org_comm_archive").warning(
-        {
-            "raw_filters": raw_filters,
-            "filters_dict": filters_dict,
-            "student_group_raw": raw_filters.get("student_group"),
-            "student_group_norm": filters_dict.get("student_group"),
-        }
-    )
-    frappe.logger("org_comm_archive").warning(
-        {
-            "sg_prefilter_applied": bool(filters_dict.get("student_group")),
-        }
-    )
-
     # Pagination params (start/page_length preferred over legacy limit_start/page_length)
     offset = int(start if start is not None else limit_start or 0)
     page_len = int(page_length if page_length is not None else limit or 30)
@@ -555,12 +541,16 @@ def get_org_communication_feed(
 
     if filter_sg_val:
         conditions.append(
-            "EXISTS ("
+            "("
+            "`tabOrg Communication`.activity_student_group = %(filter_student_group)s "
+            "OR EXISTS ("
             "SELECT a.name FROM `tabOrg Communication Audience` a "
             "WHERE a.parent = `tabOrg Communication`.name "
             "AND a.parenttype = 'Org Communication' "
             "AND a.parentfield = 'audiences' "
+            "AND a.target_mode = 'Student Group' "
             "AND a.student_group = %(filter_student_group)s"
+            ")"
             ")"
         )
         values["filter_student_group"] = filter_sg_val
@@ -572,6 +562,7 @@ def get_org_communication_feed(
             "WHERE a.parent = `tabOrg Communication`.name "
             "AND a.parenttype = 'Org Communication' "
             "AND a.parentfield = 'audiences' "
+            "AND a.target_mode = 'Team' "
             "AND a.team = %(filter_team)s"
             ")"
         )

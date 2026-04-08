@@ -95,3 +95,29 @@ class TestOrgCommUtils(FrappeTestCase):
             )
 
         self.assertFalse(matched)
+
+    def test_check_audience_match_allows_academic_admin_student_group_filter_without_staff_recipient_overlap(self):
+        audiences = [
+            frappe._dict(
+                target_mode="Student Group",
+                school=None,
+                include_descendants=0,
+                team=None,
+                student_group="SG-1",
+                to_staff=0,
+                to_students=1,
+                to_guardians=1,
+                to_community=0,
+            )
+        ]
+
+        with patch.object(org_comm_utils.frappe, "get_all", return_value=audiences):
+            matched = org_comm_utils.check_audience_match(
+                "COMM-SG",
+                "academic-admin@example.com",
+                ["Academic Admin"],
+                frappe._dict(name="EMP-1", organization="ORG-1", school="SCH-1"),
+                filter_student_group="SG-1",
+            )
+
+        self.assertTrue(matched)

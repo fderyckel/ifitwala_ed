@@ -1,6 +1,6 @@
 <!-- ifitwala_ed/ui-spa/src/pages/staff/OrgCommunicationArchive.vue -->
 <template>
-	<div class="min-h-screen flex flex-col gap-6 p-6">
+	<div class="staff-shell min-w-0 space-y-6">
 		<!-- Header -->
 		<header class="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
 			<div>
@@ -78,12 +78,10 @@
 		</FiltersBar>
 
 		<!-- Main Content Grid -->
-		<div
-			class="grid grid-cols-1 gap-6 flex-1 min-h-0 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] lg:h-[calc(100vh-16rem)]"
-		>
+		<div class="grid grid-cols-1 gap-6 min-h-0 md:grid-cols-10 md:h-[calc(100vh-16rem)]">
 			<!-- LEFT LIST -->
 			<div
-				class="flex flex-col min-h-0 h-full bg-surface-glass rounded-2xl border border-line-soft shadow-soft overflow-hidden"
+				class="flex flex-col min-h-0 h-full bg-surface-glass rounded-2xl border border-line-soft shadow-soft overflow-hidden md:col-span-3"
 			>
 				<div
 					class="custom-scrollbar flex-1 overflow-y-auto p-4 space-y-2 bg-sand/20"
@@ -197,7 +195,7 @@
 
 			<!-- RIGHT DETAIL -->
 			<div
-				class="min-h-0 h-full bg-surface-glass rounded-2xl border border-line-soft shadow-soft overflow-hidden flex flex-col relative"
+				class="min-h-0 h-full bg-surface-glass rounded-2xl border border-line-soft shadow-soft overflow-hidden flex flex-col relative md:col-span-7"
 			>
 				<div
 					v-if="!selectedComm"

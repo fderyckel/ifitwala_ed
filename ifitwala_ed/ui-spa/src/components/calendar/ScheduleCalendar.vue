@@ -17,11 +17,9 @@
 <template>
 	<div class="relative">
 		<section class="paper-card schedule-card p-4 sm:p-6">
-			<header
-				class="flex flex-col gap-2 border-b border-[rgb(var(--border-rgb)/0.9)] pb-4 sm:flex-row sm:items-end sm:justify-between"
-			>
+			<header class="schedule-calendar__header border-b border-[rgb(var(--border-rgb)/0.9)] pb-4">
 				<h2 class="type-h2">Your upcoming commitments</h2>
-				<p class="type-meta sm:text-right">
+				<p class="type-meta schedule-calendar__header-meta">
 					{{ subtitle }}
 				</p>
 			</header>
@@ -632,10 +630,36 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped>
+.schedule-calendar__header {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) auto;
+	align-items: end;
+	column-gap: 1rem;
+	row-gap: 0.25rem;
+}
+
+.schedule-calendar__header-meta {
+	justify-self: end;
+	text-align: right;
+	white-space: nowrap;
+}
+
 .schedule-calendar__filters {
 	display: flex;
 	flex-direction: column;
 	gap: 0.75rem;
+}
+
+@media (max-width: 639px) {
+	.schedule-calendar__header {
+		grid-template-columns: minmax(0, 1fr);
+	}
+
+	.schedule-calendar__header-meta {
+		justify-self: start;
+		text-align: left;
+		white-space: normal;
+	}
 }
 
 @media (min-width: 1024px) {

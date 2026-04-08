@@ -98,3 +98,75 @@ class TestOrgCommunicationArchiveItem(FrappeTestCase):
             "/api/method/ifitwala_ed.api.file_access.open_org_communication_attachment?org_communication=COMM-0001&row_name=row-file",
         )
         self.assertEqual(result["attachments"][1]["external_url"], "https://example.com/reference")
+
+
+class TestOrgCommunicationArchiveFeed(FrappeTestCase):
+    def test_get_feed_student_group_filter_prefilters_exact_group_scope(self):
+        captured = {}
+
+        def fake_sql(query, values=None, as_dict=False):
+            captured["query"] = query
+            captured["values"] = values or {}
+            self.assertTrue(as_dict)
+            return [
+                frappe._dict(
+                    name="COMM-0002",
+                    title="Group update",
+                    message="<p>Hello group</p>",
+                    communication_type="Class Announcement",
+                    status="Published",
+                    priority="Normal",
+                    portal_surface="Everywhere",
+                    school="SCH-1",
+                    organization="ORG-1",
+                    publish_from="2026-04-08 08:00:00",
+                    publish_to=None,
+                    brief_start_date=None,
+                    brief_end_date=None,
+                    interaction_mode="Comments",
+                    allow_private_notes=0,
+                    allow_public_thread=1,
+                    activity_program_offering=None,
+                    activity_booking=None,
+                    activity_student_group="SG-1",
+                )
+            ]
+
+        with (
+            patch(
+                "ifitwala_ed.api.org_communication_archive.frappe.session", frappe._dict({"user": "staff@example.com"})
+            ),
+            patch("ifitwala_ed.api.org_communication_archive.frappe.get_roles", return_value=["Academic Admin"]),
+            patch(
+                "ifitwala_ed.api.org_communication_archive.frappe.db.get_value",
+                return_value={"name": "EMP-1", "school": "SCH-1", "organization": "ORG-1"},
+            ),
+            patch(
+                "ifitwala_ed.api.org_communication_archive._get_scope",
+                return_value=("ORG-1", "SCH-1", [], []),
+            ),
+            patch("ifitwala_ed.api.org_communication_archive.frappe.db.sql", side_effect=fake_sql),
+            patch("ifitwala_ed.api.org_communication_archive.check_audience_match", return_value=True) as match_mock,
+            patch("ifitwala_ed.api.org_communication_archive.get_audience_label", return_value="Students · SG-1"),
+            patch("ifitwala_ed.api.org_communication_archive.build_audience_summary", return_value={}),
+        ):
+            result = org_communication_archive.get_org_communication_feed(
+                filters={"student_group": "SG-1"},
+                start=0,
+                page_length=10,
+            )
+
+        self.assertIn("activity_student_group = %(filter_student_group)s", captured["query"])
+        self.assertIn("a.target_mode = 'Student Group'", captured["query"])
+        self.assertEqual(captured["values"]["filter_student_group"], "SG-1")
+        match_mock.assert_called_once_with(
+            "COMM-0002",
+            "staff@example.com",
+            ["Academic Admin"],
+            {"name": "EMP-1", "school": "SCH-1", "organization": "ORG-1"},
+            filter_team=None,
+            filter_student_group="SG-1",
+            filter_school=None,
+            allow_owner=True,
+        )
+        self.assertEqual([item["name"] for item in result["items"]], ["COMM-0002"])

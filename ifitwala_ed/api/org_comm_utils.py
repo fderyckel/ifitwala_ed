@@ -150,6 +150,7 @@ def check_audience_match(
             return True
 
     is_academic_admin = "Academic Admin" in roles
+    is_system_manager = "System Manager" in roles
 
     # System Manager baseline:
     # - If no extra filters: see everything without checking audiences.
@@ -244,16 +245,10 @@ def check_audience_match(
         if active_scope == "Student Group" and target_mode != "Student Group":
             continue
 
-        enabled_recipients = _get_enabled_recipient_flags(aud)
-        if not enabled_recipients:
-            continue
-        if user_recipient_flags and not (enabled_recipients & user_recipient_flags):
-            continue
-
         if filter_student_group:
             if target_mode != "Student Group" or aud.student_group != filter_student_group:
                 continue
-            if is_academic_admin:
+            if is_academic_admin or is_system_manager:
                 return True
             if aud.student_group and aud.student_group in instructor_groups:
                 return True
@@ -262,10 +257,16 @@ def check_audience_match(
         if filter_team:
             if target_mode != "Team" or aud.team != filter_team:
                 continue
-            if is_academic_admin:
+            if is_academic_admin or is_system_manager:
                 return True
             if aud.team and aud.team in user_teams:
                 return True
+            continue
+
+        enabled_recipients = _get_enabled_recipient_flags(aud)
+        if not enabled_recipients:
+            continue
+        if user_recipient_flags and not (enabled_recipients & user_recipient_flags):
             continue
 
         if target_mode == "School Scope":

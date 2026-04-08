@@ -476,126 +476,170 @@
 			</div>
 
 			<!-- COMMUNITY PULSE: BIRTHDAYS -->
-			<section v-if="hasArrayData('staff_birthdays') || hasArrayData('my_student_birthdays')">
-				<div class="border-t border-border/60 pt-6">
-					<!-- Section header -->
-					<div class="mb-4 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+			<section
+				v-if="hasArrayData('staff_birthdays') || hasArrayData('my_student_birthdays')"
+				class="space-y-4 border-t border-border/60 pt-6"
+			>
+				<div class="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+					<div class="space-y-2">
+						<div
+							class="inline-flex w-fit items-center gap-2 rounded-full border border-border/60 bg-white/70 px-3 py-1"
+						>
+							<div
+								class="flex h-6 w-6 items-center justify-center rounded-full bg-surface-soft text-canopy"
+							>
+								<FeatherIcon name="gift" class="h-3.5 w-3.5" />
+							</div>
+							<span class="section-header text-slate-token/70">Community Pulse</span>
+						</div>
 						<div>
-							<h2 class="section-header flex items-center gap-2 text-slate-token/70">
-								<FeatherIcon name="gift" class="h-3 w-3" />
-								Community Pulse
-							</h2>
-							<p class="type-meta mt-0.5 text-slate-token/80">
-								Birthdays from our staff and your groups this week
+							<h2 class="text-lg font-semibold text-ink sm:text-xl">Birthdays across your week</h2>
+							<p class="type-meta mt-1 text-slate-token/80">
+								A gentle read on the people moments around staff life and your teaching groups.
 							</p>
 						</div>
-						<span class="text-xs font-medium italic text-jacaranda">
-							Small moments that keep the community connected 🎂
+					</div>
+
+					<div class="flex flex-wrap items-center gap-2">
+						<span
+							class="inline-flex items-center gap-2 rounded-full border border-border/60 bg-white/70 px-3 py-1 text-[11px] font-semibold text-slate-token/75"
+						>
+							<span class="h-1.5 w-1.5 rounded-full bg-canopy/70"></span>
+							{{ communityBirthdayTotal }} this week
+						</span>
+						<span
+							v-if="staffBirthdayCount"
+							class="inline-flex items-center rounded-full bg-surface-soft px-3 py-1 text-[11px] font-medium text-slate-token/75"
+						>
+							Staff {{ staffBirthdayCount }}
+						</span>
+						<span
+							v-if="studentBirthdayCount"
+							class="inline-flex items-center rounded-full bg-surface-soft px-3 py-1 text-[11px] font-medium text-slate-token/75"
+						>
+							My groups {{ studentBirthdayCount }}
 						</span>
 					</div>
+				</div>
 
-					<!-- Card with two columns -->
-					<div class="paper-card p-5">
-						<div class="grid gap-6 md:grid-cols-2">
-							<!-- Staff birthdays -->
-							<div v-if="hasArrayData('staff_birthdays')" class="space-y-3">
-								<div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-									<h3 class="text-xs font-semibold uppercase tracking-wide text-slate-token/70">
-										Staff Birthdays
-									</h3>
-									<span
-										class="inline-flex items-center rounded-full bg-surface-soft px-2 py-0.5 text-[10px] font-medium text-slate-token/70"
-									>
-										{{ widgets.data.staff_birthdays.length }} this week
-									</span>
-								</div>
-
-								<ul class="space-y-2">
-									<li
-										v-for="emp in widgets.data.staff_birthdays"
-										:key="emp.name"
-										class="flex items-center gap-3 rounded-xl bg-surface-soft/60 px-3 py-2"
-									>
-										<div
-											class="h-9 w-9 overflow-hidden rounded-full bg-white shadow-[var(--shadow-soft)]"
-										>
-											<img v-if="emp.image" :src="emp.image" class="h-full w-full object-cover" />
-											<div
-												v-else
-												class="flex h-full w-full items-center justify-center text-xs font-semibold text-slate-token/70"
-											>
-												{{ emp.name.substring(0, 1) }}
-											</div>
-										</div>
-										<div class="min-w-0 flex-1">
-											<p class="truncate text-sm font-semibold text-ink">
-												{{ emp.name }}
-											</p>
-											<p class="text-[11px] font-medium uppercase tracking-wide text-flame">
-												{{ formatBirthday(emp.date_of_birth) }}
-											</p>
-										</div>
-									</li>
-								</ul>
-							</div>
-
-							<!-- Student birthdays (my groups) -->
-							<div v-if="hasArrayData('my_student_birthdays')" class="space-y-3">
-								<div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-									<h3 class="text-xs font-semibold uppercase tracking-wide text-slate-token/70">
-										Student Birthdays (My Groups)
-									</h3>
-									<span
-										class="inline-flex items-center rounded-full bg-surface-soft px-2 py-0.5 text-[10px] font-medium text-slate-token/70"
-									>
-										{{ widgets.data.my_student_birthdays.length }} this week
-									</span>
-								</div>
-
-								<ul class="space-y-2">
-									<li
-										v-for="stu in widgets.data.my_student_birthdays"
-										:key="stu.first_name + stu.last_name"
-										class="flex items-center gap-3 rounded-xl bg-surface-soft/60 px-3 py-2"
-									>
-										<div
-											class="h-9 w-9 overflow-hidden rounded-full bg-white shadow-[var(--shadow-soft)]"
-										>
-											<img v-if="stu.image" :src="stu.image" class="h-full w-full object-cover" />
-											<div
-												v-else
-												class="flex h-full w-full items-center justify-center text-xs font-semibold text-slate-token/70"
-											>
-												{{ stu.first_name.substring(0, 1) }}
-											</div>
-										</div>
-										<div class="min-w-0 flex-1">
-											<p class="truncate text-sm font-semibold text-ink">
-												{{ stu.first_name }} {{ stu.last_name }}
-											</p>
-											<p class="text-[11px] font-medium uppercase tracking-wide text-flame">
-												{{ formatBirthday(stu.date_of_birth) }}
-											</p>
-										</div>
-									</li>
-								</ul>
-							</div>
+				<div class="paper-card overflow-hidden">
+					<div
+						class="flex flex-col gap-2 border-b border-border/60 bg-gradient-to-r from-white/95 via-surface-soft/70 to-white/90 px-5 py-4 lg:flex-row lg:items-center lg:justify-between"
+					>
+						<div>
+							<p class="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-token/55">
+								Weekly birthdays
+							</p>
+							<p class="mt-1 text-sm text-slate-token/82">
+								A quiet prompt for the corridor hello, the kind note, or the small celebration.
+							</p>
 						</div>
-
-						<!-- Empty-state text if only one side exists -->
-						<p
-							v-if="hasArrayData('staff_birthdays') && !hasArrayData('my_student_birthdays')"
-							class="mt-4 text-[11px] text-slate-token/70"
-						>
-							No student birthdays in your groups for this window.
-						</p>
-						<p
-							v-else-if="hasArrayData('my_student_birthdays') && !hasArrayData('staff_birthdays')"
-							class="mt-4 text-[11px] text-slate-token/70"
-						>
-							No staff birthdays in this window.
+						<p class="text-xs font-medium text-canopy/80">
+							Keep the week human while the rest of the brief stays operational.
 						</p>
 					</div>
+
+					<div class="grid gap-0 md:grid-cols-2">
+						<!-- Staff birthdays -->
+						<div v-if="hasArrayData('staff_birthdays')" class="space-y-3 p-5">
+							<div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+								<h3 class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-token/62">
+									Staff Birthdays
+								</h3>
+								<span
+									class="inline-flex items-center rounded-full bg-surface-soft px-2.5 py-1 text-[10px] font-medium text-slate-token/70"
+								>
+									{{ staffBirthdayCount }} this week
+								</span>
+							</div>
+
+							<ul class="space-y-2">
+								<li
+									v-for="emp in widgets.data.staff_birthdays"
+									:key="emp.name"
+									class="flex items-center gap-3 rounded-xl bg-surface-soft/60 px-3 py-2.5 transition-colors hover:bg-surface-soft"
+								>
+									<div
+										class="h-9 w-9 overflow-hidden rounded-full bg-white shadow-[var(--shadow-soft)] ring-1 ring-border/40"
+									>
+										<img v-if="emp.image" :src="emp.image" class="h-full w-full object-cover" />
+										<div
+											v-else
+											class="flex h-full w-full items-center justify-center text-xs font-semibold text-slate-token/70"
+										>
+											{{ emp.name.substring(0, 1) }}
+										</div>
+									</div>
+									<div class="min-w-0 flex-1">
+										<p class="truncate text-sm font-semibold text-ink">
+											{{ emp.name }}
+										</p>
+										<p class="text-[11px] font-medium uppercase tracking-wide text-flame">
+											{{ formatBirthday(emp.date_of_birth) }}
+										</p>
+									</div>
+								</li>
+							</ul>
+						</div>
+
+						<!-- Student birthdays (my groups) -->
+						<div
+							v-if="hasArrayData('my_student_birthdays')"
+							class="space-y-3 border-t border-border/50 p-5 md:border-l md:border-t-0"
+						>
+							<div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+								<h3 class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-token/62">
+									Student Birthdays (My Groups)
+								</h3>
+								<span
+									class="inline-flex items-center rounded-full bg-surface-soft px-2.5 py-1 text-[10px] font-medium text-slate-token/70"
+								>
+									{{ studentBirthdayCount }} this week
+								</span>
+							</div>
+
+							<ul class="space-y-2">
+								<li
+									v-for="stu in widgets.data.my_student_birthdays"
+									:key="stu.first_name + stu.last_name"
+									class="flex items-center gap-3 rounded-xl bg-surface-soft/60 px-3 py-2.5 transition-colors hover:bg-surface-soft"
+								>
+									<div
+										class="h-9 w-9 overflow-hidden rounded-full bg-white shadow-[var(--shadow-soft)] ring-1 ring-border/40"
+									>
+										<img v-if="stu.image" :src="stu.image" class="h-full w-full object-cover" />
+										<div
+											v-else
+											class="flex h-full w-full items-center justify-center text-xs font-semibold text-slate-token/70"
+										>
+											{{ stu.first_name.substring(0, 1) }}
+										</div>
+									</div>
+									<div class="min-w-0 flex-1">
+										<p class="truncate text-sm font-semibold text-ink">
+											{{ stu.first_name }} {{ stu.last_name }}
+										</p>
+										<p class="text-[11px] font-medium uppercase tracking-wide text-flame">
+											{{ formatBirthday(stu.date_of_birth) }}
+										</p>
+									</div>
+								</li>
+							</ul>
+						</div>
+					</div>
+
+					<p
+						v-if="hasArrayData('staff_birthdays') && !hasArrayData('my_student_birthdays')"
+						class="border-t border-border/50 px-5 py-3 text-[11px] text-slate-token/70"
+					>
+						No student birthdays in your groups for this window.
+					</p>
+					<p
+						v-else-if="hasArrayData('my_student_birthdays') && !hasArrayData('staff_birthdays')"
+						class="border-t border-border/50 px-5 py-3 text-[11px] text-slate-token/70"
+					>
+						No staff birthdays in this window.
+					</p>
 				</div>
 			</section>
 		</div>
@@ -858,6 +902,11 @@ const clinicVolumePoints = computed(() => {
 const hasClinicVolumeCard = computed(() => clinicVolume.value !== null);
 const clinicVolumeIsInteractive = computed(
 	() => !!clinicVolume.value && !clinicVolume.value.error && clinicVolumePoints.value.length > 0
+);
+const staffBirthdayCount = computed(() => widgets.data?.staff_birthdays?.length ?? 0);
+const studentBirthdayCount = computed(() => widgets.data?.my_student_birthdays?.length ?? 0);
+const communityBirthdayTotal = computed(
+	() => staffBirthdayCount.value + studentBirthdayCount.value
 );
 
 watch(
