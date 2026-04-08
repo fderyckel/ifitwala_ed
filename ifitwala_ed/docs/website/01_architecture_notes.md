@@ -583,7 +583,7 @@ Display published Programs as discoverable cards, with full detail links when th
 
 * `Program Offering` (school/program pairing)
 * `Program` (`is_published = 1`, `archive = 0`, slug required)
-* optional `Program Website Profile` (`status = "Published"` for full detail cards; draft/missing profiles render teaser cards only)
+* optional `Program Website Profile` (`status = "Published"` for full detail cards; status remains draft until school website readiness, workflow state, and optional publish window allow public visibility)
 
 **Props**
 

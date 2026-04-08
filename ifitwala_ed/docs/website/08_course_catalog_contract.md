@@ -132,8 +132,11 @@ Purpose:
 * `school`
 * `course`
 * `course_slug`
+* `content_owner`
 * `status`
 * `workflow_state`
+* `publish_at`
+* `expire_at`
 * `seo_profile`
 * `hero_image`
 * `intro_text`
@@ -178,6 +181,7 @@ Publication rules:
 * `Course` academic truth does not by itself make a public page visible
 * the website profile must also be workflow-published
 * the school must be website-published
+* optional `publish_at` / `expire_at` may further bound visibility
 * the course detail page must be school-scoped
 
 This preserves the locked product split:

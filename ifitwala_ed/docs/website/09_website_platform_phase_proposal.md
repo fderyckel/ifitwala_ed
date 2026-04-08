@@ -168,9 +168,9 @@ Do not begin schema or multi-module implementation until:
 
 ## 6. Phase 1 — Public People Platform
 
-Status: Planned
-Code refs: `ifitwala_ed/hr/doctype/employee/*`, `ifitwala_ed/website/providers/leadership.py`, `ifitwala_ed/website/blocks/leadership.html`, `ifitwala_ed/utilities/image_utils.py`, `ifitwala_ed/docs/hr/emlpoyee.md`
-Test refs: `ifitwala_ed/website/tests/test_leadership_provider.py`, `ifitwala_ed/utilities/test_employee_image_utils.py`
+Status: Implemented baseline
+Code refs: `ifitwala_ed/hr/doctype/employee/*`, `ifitwala_ed/website/public_people.py`, `ifitwala_ed/website/providers/leadership.py`, `ifitwala_ed/website/providers/staff_directory.py`, `ifitwala_ed/website/renderer.py`, `ifitwala_ed/utilities/image_utils.py`
+Test refs: `ifitwala_ed/website/tests/test_public_people.py`, `ifitwala_ed/website/tests/test_leadership_provider.py`, `ifitwala_ed/website/tests/test_staff_directory_provider.py`, `ifitwala_ed/website/tests/test_website_route_context.py`, `ifitwala_ed/utilities/test_employee_image_utils.py`
 
 This is the first real product layer to build after Phase 0 approval.
 
@@ -218,9 +218,9 @@ Replace special-case staff rendering with a canonical public people platform tha
 
 ## 7. Phase 2 — Core Dynamic Website Modules
 
-Status: Planned
-Code refs: `ifitwala_ed/website/providers/program_list.py`, `ifitwala_ed/website/providers/course_catalog.py`, `ifitwala_ed/website/providers/course_intro.py`, `ifitwala_ed/website/providers/content_snippet.py`, `ifitwala_ed/website/block_registry.py`
-Test refs: `ifitwala_ed/website/tests/test_program_list_provider.py`, `ifitwala_ed/website/tests/test_course_catalog_provider.py`
+Status: Implemented baseline
+Code refs: `ifitwala_ed/website/providers/program_list.py`, `ifitwala_ed/website/providers/course_catalog.py`, `ifitwala_ed/website/providers/story_feed.py`, `ifitwala_ed/website/providers/academic_calendar.py`, `ifitwala_ed/website/site_notices.py`, `ifitwala_ed/website/block_registry.py`
+Test refs: `ifitwala_ed/website/tests/test_program_list_provider.py`, `ifitwala_ed/website/tests/test_course_catalog_provider.py`, `ifitwala_ed/website/tests/test_story_feed_provider.py`, `ifitwala_ed/website/tests/test_academic_calendar_provider.py`, `ifitwala_ed/website/tests/test_site_notices.py`
 
 After the people platform is stable, build the reusable modules that strong school CMS products rely on daily.
 
@@ -243,9 +243,9 @@ After the people platform is stable, build the reusable modules that strong scho
 
 ## 8. Phase 3 — Editorial Governance And Publishing Operations
 
-Status: Planned
-Code refs: `ifitwala_ed/school_site/doctype/school_website_page/*`, `ifitwala_ed/website/bootstrap.py`, `ifitwala_ed/website/renderer.py`
-Test refs: `ifitwala_ed/school_site/doctype/school_website_page/test_school_website_page.py`
+Status: Implemented baseline
+Code refs: `ifitwala_ed/school_site/doctype/school_website_page/*`, `ifitwala_ed/school_site/doctype/website_story/*`, `ifitwala_ed/school_site/doctype/website_notice/*`, `ifitwala_ed/school_site/doctype/program_website_profile/*`, `ifitwala_ed/school_site/doctype/course_website_profile/*`, `ifitwala_ed/website/publication.py`, `ifitwala_ed/website/permissions.py`, `ifitwala_ed/hooks.py`
+Test refs: `ifitwala_ed/school_site/doctype/school_website_page/test_school_website_page.py`, `ifitwala_ed/school_site/doctype/program_website_profile/test_program_website_profile.py`, `ifitwala_ed/school_site/doctype/course_website_profile/test_course_website_profile.py`
 
 The goal of this phase is to make the system operable by non-technical school teams.
 

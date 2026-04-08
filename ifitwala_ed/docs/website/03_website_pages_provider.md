@@ -249,7 +249,8 @@ ProgramCard[] = {
 * Program must satisfy `is_published = 1` and `archive = 0`
 * Program must be offered by the school (Program Offering)
 * Ordered by `is_featured desc`, then `lft asc`
-* Published `Program Website Profile` rows render full linked detail cards
+* Only `Program Website Profile.status = "Published"` rows render full linked detail cards
+* Program profile publication also depends on school website readiness plus optional `publish_at` / `expire_at`
 * Draft or missing `Program Website Profile` rows still render teaser cards for published Programs
 * Teaser cards render image/title-only browse surfaces and do not link to a program detail page
 * Intro is truncated server-side and shown only for full linked detail cards
@@ -312,6 +313,7 @@ CourseCard[] = {
 **Rules**
 
 * Only courses with `Course Website Profile.status = "Published"`
+* Course profile publication also depends on school website readiness plus optional `publish_at` / `expire_at`
 * Course must satisfy `is_published = 1` and belong to the current school
 * Related program labels are limited to published, non-archived programs offered by the same school
 * Intro text is truncated server-side
@@ -363,7 +365,94 @@ StaffDirectoryProfile[] = {
 
 ---
 
-### 4.7 `get_school_hero_images`
+### 4.7 `get_story_feed`
+
+**Consumes**
+
+```text
+school
+```
+
+**Returns**
+
+```json
+StoryCard[] = {
+  "title": string,
+  "url": string,
+  "publish_date": string | null,
+  "tags": string[],
+  "excerpt": string | null
+}
+```
+
+**Rules**
+
+* Only `Website Story.status = "Published"` rows are visible
+* Story publication is school-scoped and also respects optional `publish_at` / `expire_at`
+* Excerpts are derived server-side from enabled story blocks, not from a second summary field
+* Feed results are cached with explicit invalidation on `Website Story` changes
+* The block links to the canonical school stories index under `/schools/{school_slug}/stories`
+
+---
+
+### 4.8 `get_academic_calendar`
+
+**Consumes**
+
+```text
+school
+```
+
+**Returns**
+
+```json
+CalendarItem[] = {
+  "kind": "term" | "holiday",
+  "title": string,
+  "date_text": string
+}
+```
+
+**Rules**
+
+* Public academic calendar content is read from `School Calendar`
+* Provider selects the active calendar first, then the next upcoming calendar, then the latest past calendar
+* Output is intentionally limited to term rows and holiday rows that are appropriate for the public website
+* Results are cached with explicit invalidation on `School Calendar` changes
+
+---
+
+### 4.9 `get_active_site_notice`
+
+**Consumes**
+
+```text
+school
+```
+
+**Returns**
+
+```json
+ActiveSiteNotice = {
+  "title": string | null,
+  "style": "info" | "success" | "warning" | "critical",
+  "message_html": string,
+  "button_label": string | null,
+  "button_link": string | null
+} | null
+```
+
+**Rules**
+
+* `Website Notice` is a shell-level public surface, not a page block
+* Only one highest-priority published notice is returned per school
+* Notice publication is school-scoped and respects optional `publish_at` / `expire_at`
+* Notice HTML is sanitized server-side before rendering
+* Results are cached with explicit invalidation on `Website Notice` changes
+
+---
+
+### 4.10 `get_school_hero_images`
 
 **Returns**
 
@@ -408,6 +497,8 @@ These **never** return directly to blocks.
 | leadership_grid | `leadership`    |
 | staff_carousel  | `staff`         |
 | staff_directory | `staff_directory` |
+| story_feed | `story_feed` |
+| academic_calendar | `academic_calendar` |
 | primary_cta     | `primary_cta`   |
 
 This matrix is **authoritative**.
@@ -420,7 +511,7 @@ This matrix is **authoritative**.
 | ----------------------- | ---------- |
 | get_home_page_context   | short TTL  |
 | get_school_page_context | medium TTL |
-| shared providers        | long TTL   |
+| shared providers        | long TTL with explicit invalidation owners |
 
 Caching is **transparent** to blocks.
 

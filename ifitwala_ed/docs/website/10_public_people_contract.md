@@ -1,9 +1,9 @@
 <!-- ifitwala_ed/docs/website/10_public_people_contract.md -->
 # Public People Contract
 
-Status: Partial implementation in place as of April 5, 2026
-Code refs: `ifitwala_ed/hr/doctype/employee/employee.json`, `ifitwala_ed/website/public_people.py`, `ifitwala_ed/website/providers/leadership.py`, `ifitwala_ed/utilities/image_utils.py`, `ifitwala_ed/hooks.py`
-Test refs: `ifitwala_ed/website/tests/test_public_people.py`, `ifitwala_ed/website/tests/test_leadership_provider.py`, `ifitwala_ed/utilities/test_school_tree.py`
+Status: Implemented baseline as of April 8, 2026
+Code refs: `ifitwala_ed/hr/doctype/employee/employee.json`, `ifitwala_ed/hr/doctype/employee/employee.py`, `ifitwala_ed/website/public_people.py`, `ifitwala_ed/website/providers/leadership.py`, `ifitwala_ed/website/providers/staff_directory.py`, `ifitwala_ed/website/renderer.py`, `ifitwala_ed/utilities/image_utils.py`, `ifitwala_ed/hooks.py`
+Test refs: `ifitwala_ed/website/tests/test_public_people.py`, `ifitwala_ed/website/tests/test_leadership_provider.py`, `ifitwala_ed/website/tests/test_staff_directory_provider.py`, `ifitwala_ed/website/tests/test_website_route_context.py`, `ifitwala_ed/utilities/test_school_tree.py`
 
 ## 1. Purpose
 
@@ -40,10 +40,16 @@ Public website code must not invent a second identity source for staff.
 Current public people rendering reads directly from `Employee` fields already present in the HR schema:
 
 - `employee_full_name`
+- `employee_preferred_name`
 - `designation`
+- `bio`
 - `small_bio`
 - `show_on_website`
 - `employee_image`
+- `show_public_profile_page`
+- `public_profile_slug`
+- `featured_on_website`
+- `website_sort_order`
 
 If future public website needs require additional fields, they should be added to `Employee` only after an explicit schema decision.
 
@@ -56,6 +62,13 @@ Current runtime rule:
   - the employee belongs to the relevant school scope
 
 There is no separate website publication workflow for employees in the current implementation.
+
+Implemented public-profile rule:
+
+- profile pages are optional and employee-owned
+- a public profile route exists only when `show_public_profile_page = 1`
+- `public_profile_slug` is generated and validated on `Employee`
+- profile routes remain school-scoped under `/schools/{school_slug}/people/{profile_slug}`
 
 ## 4. Scope Contract
 
@@ -99,7 +112,12 @@ Current public payload includes:
 - resolved public bio
 - optional public email placeholder, currently `None`
 - optional public phone placeholder, currently `None`
-- sort order placeholder, currently `None`
+- full bio fallback from `Employee.bio`
+- `featured`
+- `sort_order`
+- `profile_slug`
+- `has_profile_page`
+- `profile_url`
 - initials
 - responsive employee photo variants
 
@@ -133,11 +151,11 @@ Stale public-people cache without an invalidation owner is a bug.
 
 - leadership block consumes the canonical public-people service
 - staff directory block consumes the canonical public-people service
+- optional public person profile pages resolve through the canonical public-people service
 - public people payloads resolve from `Employee` and `Designation`
 
 ### 8.2 Not implemented yet
 
-- public employee profile pages
 - organization-level people hub search
 
 Those surfaces must reuse the same public-people service when implemented.
