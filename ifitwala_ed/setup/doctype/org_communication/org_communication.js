@@ -31,6 +31,8 @@ frappe.ui.form.on('Org Communication', {
 			}
 		}
 
+		frm.trigger('setup_governed_attachment_upload');
+
 		// Portal surface / Brief dates UX
 		update_brief_date_reqd(frm);
 
@@ -52,6 +54,11 @@ frappe.ui.form.on('Org Communication', {
 
 	audiences_remove(frm) {
 		setup_issuing_school_field(frm);
+		frm.trigger('setup_governed_attachment_upload');
+	},
+
+	activity_student_group(frm) {
+		frm.trigger('setup_governed_attachment_upload');
 	},
 
 	status(frm) {
@@ -81,6 +88,75 @@ frappe.ui.form.on('Org Communication', {
 				title: __('Class Announcement Audience')
 			});
 		}
+	},
+
+	setup_governed_attachment_upload(frm) {
+		const openUploader = () => {
+			if (frm.is_new()) {
+				frappe.msgprint(__('Please save the Org Communication before uploading attachments.'));
+				return;
+			}
+
+			if (!resolve_attachment_student_group(frm)) {
+				frappe.msgprint({
+					title: __('Missing Student Group Context'),
+					indicator: 'orange',
+					message: __(
+						'Add an Activity Student Group or at least one Student Group audience row before uploading governed attachments.'
+					)
+				});
+				return;
+			}
+
+			new frappe.ui.FileUploader({
+				method: 'ifitwala_ed.api.org_communication_attachments.upload_org_communication_attachment',
+				args: { org_communication: frm.doc.name },
+				doctype: 'Org Communication',
+				docname: frm.doc.name,
+				is_private: 1,
+				disable_private: true,
+				allow_multiple: false,
+				on_success() {
+					frm.reload_doc();
+				},
+				on_error() {
+					frappe.msgprint(__('Upload failed. Please try again.'));
+				},
+			});
+		};
+
+		const tableField = frm.get_field('attachments');
+		const hasStudentGroupContext = Boolean(resolve_attachment_student_group(frm));
+
+		if (tableField?.grid) {
+			tableField.grid.update_docfield_property('file', 'read_only', 1);
+			tableField.grid.update_docfield_property(
+				'file',
+				'description',
+				__('Use the Upload Attachment action for governed files.')
+			);
+
+			tableField.grid.wrapper
+				.find('.grid-custom-buttons .org-communication-upload-btn')
+				.remove();
+
+			const $gridButton = tableField.grid.add_custom_button(__('Upload Attachment'), openUploader);
+			$gridButton.addClass('org-communication-upload-btn');
+		}
+
+		frm.set_df_property(
+			'attachments',
+			'description',
+			hasStudentGroupContext
+				? __('Use Upload Attachment for governed files. External URLs can still be added manually.')
+				: __(
+					'Governed file upload becomes available after you set an Activity Student Group or add a Student Group audience row. External URLs can still be added manually.'
+				)
+		);
+
+		frm.remove_custom_button(__('Upload Attachment'), __('Actions'));
+		frm.remove_custom_button(__('Upload Attachment'));
+		frm.add_custom_button(__('Upload Attachment'), openUploader, __('Actions'));
 	}
 });
 
@@ -104,6 +180,19 @@ function ensure_org_comm_context(frm) {
 
 function has_organization_audience(frm) {
 	return Boolean((frm.doc.audiences || []).some(row => (row.target_mode || '').trim() === 'Organization'));
+}
+
+function resolve_attachment_student_group(frm) {
+	const activityStudentGroup = (frm.doc.activity_student_group || '').trim();
+	if (activityStudentGroup) {
+		return activityStudentGroup;
+	}
+
+	const audienceRows = frm.doc.audiences || [];
+	const matchingRow = audienceRows.find(row =>
+		(row.target_mode || '').trim() === 'Student Group' && (row.student_group || '').trim()
+	);
+	return (matchingRow?.student_group || '').trim();
 }
 
 function setup_issuing_school_field(frm) {
@@ -345,6 +434,7 @@ frappe.ui.form.on('Org Communication Audience', {
 		apply_audience_row_visibility(frm, cdt, cdn, row);
 		apply_recipient_defaults(frm, cdt, cdn, row);
 		setup_issuing_school_field(frm);
+		frm.trigger('setup_governed_attachment_upload');
 
 		// If row.school is empty, inherit parent Issuing School for School Scope only
 		if (row.target_mode === 'School Scope' && !row.school && frm.doc.school) {
@@ -366,6 +456,11 @@ frappe.ui.form.on('Org Communication Audience', {
 		}
 		apply_audience_row_visibility(frm, cdt, cdn, row);
 		apply_recipient_defaults(frm, cdt, cdn, row);
+		frm.trigger('setup_governed_attachment_upload');
+	},
+
+	student_group(frm) {
+		frm.trigger('setup_governed_attachment_upload');
 	}
 });
 

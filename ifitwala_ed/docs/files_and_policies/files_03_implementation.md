@@ -575,6 +575,7 @@ Current governed Desk endpoints:
 * `upload_applicant_image(student_applicant)`
 * `upload_task_resource(task)`
 * `upload_task_submission_attachment(task_submission)`
+* `upload_org_communication_attachment(org_communication)`
 
 These are the only allowed upload entry points for:
 
@@ -584,6 +585,7 @@ These are the only allowed upload entry points for:
 * Student Applicant `applicant_image`
 * Task `attachments` file rows
 * Task Submission attachments
+* Org Communication `attachments` file rows
 
 Server-side enforcement:
 

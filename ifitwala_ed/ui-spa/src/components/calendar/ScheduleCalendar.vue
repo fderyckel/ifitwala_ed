@@ -17,13 +17,13 @@
 <template>
 	<div class="relative">
 		<section class="paper-card schedule-card p-4 sm:p-6">
-			<header class="border-b border-[rgb(var(--border-rgb)/0.9)] pb-4">
-				<div>
-					<h2 class="type-h2">Your upcoming commitments</h2>
-					<p class="type-meta">
-						{{ subtitle }}
-					</p>
-				</div>
+			<header
+				class="flex flex-col gap-2 border-b border-[rgb(var(--border-rgb)/0.9)] pb-4 sm:flex-row sm:items-end sm:justify-between"
+			>
+				<h2 class="type-h2">Your upcoming commitments</h2>
+				<p class="type-meta sm:text-right">
+					{{ subtitle }}
+				</p>
 			</header>
 
 			<!-- Chips row -->

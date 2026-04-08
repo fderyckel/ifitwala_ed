@@ -1358,33 +1358,9 @@ def _resolve_gradebook_scope(school, academic_year, course):
 
 
 def _instructor_group_names(user):
-    names = set()
-    for row in frappe.get_all(
-        "Student Group Instructor",
-        filters={"user_id": user},
-        pluck="parent",
-    ):
-        names.add(row)
+    from ifitwala_ed.api.student_groups import _instructor_group_names as _canonical_instructor_group_names
 
-    instructor_ids = frappe.get_all("Instructor", filters={"linked_user_id": user}, pluck="name")
-    if instructor_ids:
-        for row in frappe.get_all(
-            "Student Group Instructor",
-            filters={"instructor": ["in", instructor_ids]},
-            pluck="parent",
-        ):
-            names.add(row)
-
-    employee = frappe.db.get_value("Employee", {"user_id": user, "employment_status": "Active"}, "name")
-    if employee:
-        for row in frappe.get_all(
-            "Student Group Instructor",
-            filters={"employee": employee},
-            pluck="parent",
-        ):
-            names.add(row)
-
-    return names
+    return _canonical_instructor_group_names(user)
 
 
 def _get_task_titles(task_ids):
