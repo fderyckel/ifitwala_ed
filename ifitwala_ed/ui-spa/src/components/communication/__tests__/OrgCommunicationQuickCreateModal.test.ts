@@ -250,6 +250,16 @@ const wideAudienceQuickCreateOptions = {
 	},
 };
 
+const interactiveThreadQuickCreateOptions = {
+	...quickCreateOptions,
+	fields: {
+		...quickCreateOptions.fields,
+		interaction_modes: ['None', 'Open Thread'],
+		portal_surfaces: ['Desk', 'Morning Brief'],
+		priorities: ['Normal', 'High'],
+	},
+};
+
 async function flushUi() {
 	await Promise.resolve();
 	await nextTick();
@@ -319,6 +329,16 @@ function setInputByPlaceholder(placeholder: string, value: string) {
 	if (!input) return;
 	input.value = value;
 	input.dispatchEvent(new Event('input', { bubbles: true }));
+}
+
+function setSelectByLabel(labelText: string, value: string) {
+	const label = Array.from(document.querySelectorAll('label')).find(node =>
+		(node.textContent || '').includes(labelText)
+	);
+	const select = label?.parentElement?.querySelector('select') as HTMLSelectElement | null;
+	if (!select) return;
+	select.value = value;
+	select.dispatchEvent(new Event('change', { bubbles: true }));
 }
 
 afterEach(() => {
@@ -491,6 +511,36 @@ describe('OrgCommunicationQuickCreateModal', () => {
 		expect(text).not.toContain('Organization');
 		expect(text).not.toContain('Thread settings');
 		expect(document.querySelector('.if-org-communication-ready-check')).toBeNull();
+	});
+
+	it('lets users change interaction mode and toggle thread settings', async () => {
+		getOptionsMock.mockResolvedValue(interactiveThreadQuickCreateOptions);
+
+		mountModal();
+		await flushUi();
+
+		setSelectByLabel('Interaction mode', 'Open Thread');
+		await flushUi();
+
+		const privateNotesLabel = Array.from(document.querySelectorAll('label')).find(node =>
+			(node.textContent || '').includes('Allow private notes to school staff.')
+		);
+		const publicThreadLabel = Array.from(document.querySelectorAll('label')).find(node =>
+			(node.textContent || '').includes('Allow audience-visible public thread entries.')
+		);
+
+		const privateNotesInput = privateNotesLabel?.querySelector('input') as HTMLInputElement | null;
+		const publicThreadInput = publicThreadLabel?.querySelector('input') as HTMLInputElement | null;
+
+		expect(privateNotesInput?.disabled).toBe(false);
+		expect(publicThreadInput?.disabled).toBe(false);
+
+		privateNotesInput?.click();
+		publicThreadInput?.click();
+		await flushUi();
+
+		expect(privateNotesInput?.checked).toBe(true);
+		expect(publicThreadInput?.checked).toBe(true);
 	});
 
 	it('submits class-event payload with guardian visibility off by default', async () => {

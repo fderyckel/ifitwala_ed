@@ -438,26 +438,38 @@
 
 												<div class="space-y-1">
 													<label class="type-label">Communication type</label>
-													<FormControl
+													<select
 														v-model="form.communication_type"
-														type="select"
-														:options="communicationTypeOptions"
+														class="if-org-communication-native-select"
 														:disabled="submitting || isClassEventMode"
-													/>
+													>
+														<option
+															v-for="option in communicationTypeOptions"
+															:key="getSelectOptionValue(option)"
+															:value="getSelectOptionValue(option)"
+														>
+															{{ getSelectOptionLabel(option) }}
+														</option>
+													</select>
 												</div>
 											</div>
 
 											<div class="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
 												<div class="space-y-1">
 													<label class="type-label">Organization</label>
-													<FormControl
+													<select
 														v-model="form.organization"
-														type="select"
-														:options="organizationSelectOptions"
-														option-label="label"
-														option-value="value"
+														class="if-org-communication-native-select"
 														:disabled="submitting || isClassEventMode"
-													/>
+													>
+														<option
+															v-for="option in organizationSelectOptions"
+															:key="getSelectOptionValue(option)"
+															:value="getSelectOptionValue(option)"
+														>
+															{{ getSelectOptionLabel(option) }}
+														</option>
+													</select>
 													<p class="type-caption text-ink/55">
 														{{ organizationHelpText }}
 													</p>
@@ -465,14 +477,20 @@
 
 												<div class="space-y-1">
 													<label class="type-label">Issuing school</label>
-													<FormControl
+													<select
 														v-model="form.school"
-														type="select"
-														:options="schoolSelectOptions"
-														option-label="label"
-														option-value="value"
+														class="if-org-communication-native-select"
 														:disabled="submitting || schoolSelectionLocked"
-													/>
+													>
+														<option value="">No issuing school</option>
+														<option
+															v-for="option in schoolSelectOptions"
+															:key="getSelectOptionValue(option)"
+															:value="getSelectOptionValue(option)"
+														>
+															{{ getSelectOptionLabel(option) }}
+														</option>
+													</select>
 													<p class="type-caption text-ink/55">
 														{{ schoolHelpText }}
 													</p>
@@ -551,24 +569,38 @@
 												</p>
 											</div>
 
-											<div class="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-3">
+											<div class="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
 												<div class="space-y-1">
 													<label class="type-label">Priority</label>
-													<FormControl
+													<select
 														v-model="form.priority"
-														type="select"
-														:options="priorityOptions"
+														class="if-org-communication-native-select"
 														:disabled="submitting"
-													/>
+													>
+														<option
+															v-for="option in priorityOptions"
+															:key="getSelectOptionValue(option)"
+															:value="getSelectOptionValue(option)"
+														>
+															{{ getSelectOptionLabel(option) }}
+														</option>
+													</select>
 												</div>
 												<div class="space-y-1">
 													<label class="type-label">Portal surface</label>
-													<FormControl
+													<select
 														v-model="form.portal_surface"
-														type="select"
-														:options="portalSurfaceOptions"
+														class="if-org-communication-native-select"
 														:disabled="submitting"
-													/>
+													>
+														<option
+															v-for="option in portalSurfaceOptions"
+															:key="getSelectOptionValue(option)"
+															:value="getSelectOptionValue(option)"
+														>
+															{{ getSelectOptionLabel(option) }}
+														</option>
+													</select>
 												</div>
 												<div class="space-y-1">
 													<label class="type-label">Brief order</label>
@@ -579,9 +611,6 @@
 														:disabled="submitting"
 													/>
 												</div>
-											</div>
-
-											<div class="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
 												<div class="space-y-1">
 													<label class="type-label">Publish from</label>
 													<input
@@ -600,9 +629,6 @@
 														:disabled="submitting"
 													/>
 												</div>
-											</div>
-
-											<div class="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
 												<div class="space-y-1">
 													<label class="type-label">
 														Brief start date
@@ -696,14 +722,20 @@
 													<div class="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
 														<div v-if="row.target_mode === 'School Scope'" class="space-y-1">
 															<label class="type-label">Audience school</label>
-															<FormControl
+															<select
 																v-model="row.school"
-																type="select"
-																:options="schoolSelectOptions"
-																option-label="label"
-																option-value="value"
+																class="if-org-communication-native-select"
 																:disabled="submitting || schoolSelectionLocked"
-															/>
+															>
+																<option value="">Select school</option>
+																<option
+																	v-for="option in schoolSelectOptions"
+																	:key="getSelectOptionValue(option)"
+																	:value="getSelectOptionValue(option)"
+																>
+																	{{ getSelectOptionLabel(option) }}
+																</option>
+															</select>
 															<label
 																class="mt-2 inline-flex cursor-pointer items-center gap-2 type-caption text-ink/70"
 															>
@@ -729,26 +761,38 @@
 
 														<div v-else-if="row.target_mode === 'Team'" class="space-y-1">
 															<label class="type-label">Team</label>
-															<FormControl
+															<select
 																v-model="row.team"
-																type="select"
-																:options="teamSelectOptions"
-																option-label="label"
-																option-value="value"
+																class="if-org-communication-native-select"
 																:disabled="submitting"
-															/>
+															>
+																<option value="">Select team</option>
+																<option
+																	v-for="option in teamSelectOptions"
+																	:key="getSelectOptionValue(option)"
+																	:value="getSelectOptionValue(option)"
+																>
+																	{{ getSelectOptionLabel(option) }}
+																</option>
+															</select>
 														</div>
 
 														<div v-else class="space-y-1">
 															<label class="type-label">Student group</label>
-															<FormControl
+															<select
 																v-model="row.student_group"
-																type="select"
-																:options="studentGroupSelectOptions"
-																option-label="label"
-																option-value="value"
+																class="if-org-communication-native-select"
 																:disabled="submitting || isClassEventMode"
-															/>
+															>
+																<option value="">Select student group</option>
+																<option
+																	v-for="option in studentGroupSelectOptions"
+																	:key="getSelectOptionValue(option)"
+																	:value="getSelectOptionValue(option)"
+																>
+																	{{ getSelectOptionLabel(option) }}
+																</option>
+															</select>
 														</div>
 
 														<div class="space-y-2">
@@ -847,12 +891,19 @@
 											<div class="mt-4 space-y-4">
 												<div class="space-y-1">
 													<label class="type-label">Interaction mode</label>
-													<FormControl
+													<select
 														v-model="form.interaction_mode"
-														type="select"
-														:options="interactionModeOptions"
+														class="if-org-communication-native-select"
 														:disabled="submitting"
-													/>
+													>
+														<option
+															v-for="option in interactionModeOptions"
+															:key="getSelectOptionValue(option)"
+															:value="getSelectOptionValue(option)"
+														>
+															{{ getSelectOptionLabel(option) }}
+														</option>
+													</select>
 												</div>
 												<label
 													class="flex cursor-pointer items-start gap-3 rounded-2xl border border-border/70 bg-surface-soft px-4 py-3 type-caption text-ink/75"
@@ -1105,6 +1156,16 @@ const interactionModeOptions = computed(() => options.value?.fields.interaction_
 const audienceTargetModeOptions = computed(
 	() => options.value?.fields.audience_target_modes ?? []
 );
+
+function getSelectOptionValue(option: string | { value?: string | null }) {
+	if (typeof option === 'string') return option;
+	return String(option?.value ?? '');
+}
+
+function getSelectOptionLabel(option: string | { label?: string | null; value?: string | null }) {
+	if (typeof option === 'string') return option;
+	return String(option?.label ?? option?.value ?? '');
+}
 
 const schoolSelectionLocked = computed(() => {
 	if (isClassEventMode.value) return true;
@@ -1880,3 +1941,47 @@ async function submitWithStatus(statusOverride: string) {
 	}
 }
 </script>
+
+<style scoped>
+.if-org-communication-native-select {
+	width: 100%;
+	appearance: none;
+	border-radius: 1rem;
+	border: 1px solid rgb(var(--border-rgb) / 0.8);
+	background-color: rgb(var(--surface-rgb));
+	background-image:
+		linear-gradient(45deg, transparent 50%, rgb(var(--ink-rgb) / 0.55) 50%),
+		linear-gradient(135deg, rgb(var(--ink-rgb) / 0.55) 50%, transparent 50%);
+	background-position:
+		calc(100% - 1.1rem) calc(50% - 0.12rem),
+		calc(100% - 0.8rem) calc(50% - 0.12rem);
+	background-repeat: no-repeat;
+	background-size:
+		0.4rem 0.4rem,
+		0.4rem 0.4rem;
+	box-shadow: var(--shadow-soft);
+	color: rgb(var(--ink-rgb));
+	font-size: 0.875rem;
+	line-height: 1.25rem;
+	padding: 0.625rem 2.5rem 0.625rem 0.875rem;
+	transition:
+		border-color 120ms ease,
+		box-shadow 120ms ease,
+		background-color 120ms ease;
+}
+
+.if-org-communication-native-select:focus {
+	border-color: rgb(var(--jacaranda-rgb) / 0.5);
+	box-shadow:
+		var(--shadow-soft),
+		0 0 0 1px rgb(var(--jacaranda-rgb) / 0.3);
+	outline: none;
+}
+
+.if-org-communication-native-select:disabled {
+	cursor: not-allowed;
+	background-color: rgb(var(--surface-soft-rgb) / 0.8);
+	color: rgb(var(--ink-rgb) / 0.5);
+	opacity: 0.8;
+}
+</style>
