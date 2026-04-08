@@ -79,6 +79,7 @@ class StudentGroup(Document):
             self.validate_term()
 
         self._derive_program_from_offering()
+        self._normalize_group_anchor_fields()
         self._validate_ay_in_offering_spine()
         self._enforce_school_rules()
         self._validate_course_scoping()
@@ -303,6 +304,11 @@ class StudentGroup(Document):
             frappe.throw(_("Please select a course."))
         if self.group_based_on == "Cohort" and not self.cohort:
             frappe.throw(_("Please select a cohort."))
+
+    def _normalize_group_anchor_fields(self) -> None:
+        """Clear anchor fields that do not apply to the selected grouping mode."""
+        if self.group_based_on != "Course":
+            self.course = None
 
     # Throwing message if more students than maximum size in the group
     def validate_size(self):

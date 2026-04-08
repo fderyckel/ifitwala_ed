@@ -3,8 +3,8 @@ title: "Student Group: Operational Teaching Group Contract"
 slug: student-group
 category: Schedule
 doc_order: 1
-version: "1.1.0"
-last_change_date: "2026-04-03"
+version: "1.1.1"
+last_change_date: "2026-04-08"
 summary: "Define the operational class, cohort, activity, or pastoral group used for rostering, instructor assignment, schedule intent, attendance scope, and downstream teaching materialization."
 seo_title: "Student Group: Operational Teaching Group Contract"
 seo_description: "Define the operational class, cohort, activity, or pastoral group used for rostering, instructor assignment, schedule intent, and attendance scope."
@@ -50,7 +50,7 @@ Current workspace note: when a selected Program Offering has exactly one Academi
 1. Create the group with `program_offering`, `group_based_on`, and `student_group_abbreviation`.
    If the selected Program Offering has exactly one `offering_academic_years` row, Desk auto-fills `academic_year`.
 2. Add the mode-specific anchor:
-   - `course` for `Course`
+   - `course` for `Course` only; Desk hides and server-clears it for other group modes
    - `cohort` for `Cohort`
    - no extra required selector for `Activity` or `Pastoral`
 3. Add `students` and `instructors`.
@@ -118,6 +118,7 @@ Current workspace note: when a selected Program Offering has exactly one Academi
 - **Client-side Desk affordances**:
   - AY, school, course, and schedule link queries are offering-aware
   - selecting `program_offering` auto-fills `academic_year` when exactly one offering AY exists
+  - `course` is shown only when `group_based_on` is `Course`, and Desk clears it when the group mode changes away from `Course`
   - student bulk-add is enabled for non-activity flows
   - schedule row instructor choices are constrained to the group’s instructor table
   - blank schedule rows default the instructor when exactly one instructor exists
@@ -127,6 +128,7 @@ Current workspace note: when a selected Program Offering has exactly one Academi
 - `validate()` enforces:
   - Academic Year membership inside the selected Program Offering spine
   - school ancestry rules
+  - non-course groups cannot persist a stale `course` anchor
   - course scoping for course-based groups
   - roster integrity and duplicate-student protection
   - internal student and instructor rotation/block clash checks

@@ -108,13 +108,14 @@ def build_org_communication_attachment_upload_contract(
     doc,
     *,
     row_name: str | None = None,
+    require_existing_row: bool = False,
 ) -> dict[str, Any]:
     if getattr(doc, "is_new", lambda: False)():
         frappe.throw(_("Save the Org Communication before attaching governed files."))
 
     context = resolve_org_communication_attachment_context(doc)
     row_key = _normalize_row_key(row_name)
-    if row_name:
+    if row_name and require_existing_row:
         _assert_attachment_row_exists(doc, row_key)
 
     return {
@@ -145,7 +146,11 @@ def validate_org_communication_attachment_finalize_context(upload_session_doc) -
         frappe.throw(_("Org Communication upload sessions require a communication-attachment slot."))
 
     doc = assert_org_communication_attachment_upload_access(upload_session_doc.owner_name, permission_type="write")
-    authoritative = build_org_communication_attachment_upload_contract(doc, row_name=row_key)
+    authoritative = build_org_communication_attachment_upload_contract(
+        doc,
+        row_name=row_key,
+        require_existing_row=False,
+    )
 
     field_map = {
         "owner_doctype": "owner_doctype",

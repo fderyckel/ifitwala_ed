@@ -625,7 +625,12 @@ class OrgCommunication(Document):
                 "name",
             )
             if not file_name:
-                frappe.throw(_("Org Communication files must be uploaded through the governed attachment action."))
+                frappe.throw(
+                    _(
+                        "Org Communication files must be uploaded through the governed attachment action. "
+                        "Raw Desk Attach is not supported for this attachment table."
+                    )
+                )
 
             binding_name = frappe.db.get_value(
                 "Drive Binding",
@@ -654,7 +659,12 @@ class OrgCommunication(Document):
                 "name",
             )
             if not drive_file_name:
-                frappe.throw(_("Org Communication file rows must resolve to an active governed Drive file or binding."))
+                frappe.throw(
+                    _(
+                        "This attachment is missing its governed Drive record. Re-upload it through the governed "
+                        "attachment action; raw Desk Attach is not supported here."
+                    )
+                )
 
     # ----------------------------------------------------------------
     # Status / publish window rules

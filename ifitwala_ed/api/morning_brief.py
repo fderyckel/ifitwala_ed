@@ -621,22 +621,41 @@ def get_my_student_groups(user: str) -> list[str]:
 
 
 def get_pending_grading_tasks(group_names):
-    """Count of past-due, graded tasks for the instructor."""
+    """Count overdue grading deliveries for the instructor's groups."""
     if not group_names:
         return 0
 
-    groups_formatted = "', '".join(group_names)
-    site_today = today()
+    # Match the old "past due as of today" behavior without relying on DB timezone.
+    site_cutoff = f"{today()} 00:00:00"
 
-    # Use site date string instead of DB CURDATE() to respect site timezone
-    return frappe.db.sql(
-        f"""
-		SELECT COUNT(name) FROM `tabTask`
-		WHERE student_group IN ('{groups_formatted}')
-		AND is_graded = 1 AND is_published = 1
-		AND status != 'Closed' AND due_date < '{site_today}'
-	"""
-    )[0][0]
+    return (
+        frappe.db.sql(
+            """
+            SELECT COUNT(DISTINCT td.name)
+            FROM `tabTask Delivery` td
+            INNER JOIN `tabTask` t
+                ON t.name = td.task
+            LEFT JOIN `tabTask Outcome` tou
+                ON tou.task_delivery = td.name
+            WHERE td.student_group IN %(group_names)s
+              AND td.require_grading = 1
+              AND td.docstatus = 1
+              AND td.due_date IS NOT NULL
+              AND td.due_date < %(site_cutoff)s
+              AND COALESCE(t.is_archived, 0) = 0
+              AND (
+                tou.name IS NULL
+                OR COALESCE(tou.is_complete, 0) = 0
+                OR COALESCE(tou.grading_status, '') NOT IN ('Finalized', 'Released', 'Moderated')
+              )
+            """,
+            {
+                "group_names": tuple(group_names),
+                "site_cutoff": site_cutoff,
+            },
+        )[0][0]
+        or 0
+    )
 
 
 # ==============================================================================

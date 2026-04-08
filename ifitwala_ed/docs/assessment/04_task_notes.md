@@ -147,6 +147,7 @@ Current workspace reality:
 - `api/task.py::search_reusable_tasks()` and `api/task.py::search_tasks()` now resolve one course-scoped reusable-task library at a time. They return only tasks the current user owns for that course or tasks explicitly shared with the course team.
 - `api/task.py::create_task_delivery()` now supports the assign-existing path. Reusing a task creates a new class-scoped delivery only; it does not rewrite the reusable task definition.
 - Same-teacher reuse across groups or school years stays available through task ownership. Cross-teacher reuse requires explicit course-library sharing.
+- Cross-surface dependency: staff Morning Brief instructor widgets in `ifitwala_ed/api/morning_brief.py` read overdue grading state from `Task Delivery` and `Task Outcome`, so any change to task ownership, delivery due-date semantics, grading-required flags, or outcome completion statuses must update Morning Brief code and `ifitwala_ed/api/test_morning_brief.py` in the same change.
 
 ### 2.1 Context ownership
 

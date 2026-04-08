@@ -133,6 +133,15 @@ class TestStudentGroup(TestCase):
 
         mock_bootstrap.assert_called_once_with(group)
 
+    def test_normalize_group_anchor_fields_clears_course_for_non_course_groups(self):
+        group = object.__new__(StudentGroup)
+        group.group_based_on = "Activity"
+        group.course = "COURSE-1"
+
+        StudentGroup._normalize_group_anchor_fields(group)
+
+        self.assertIsNone(group.course)
+
     @patch("ifitwala_ed.curriculum.planning.frappe.logger")
     @patch("ifitwala_ed.curriculum.planning.frappe.new_doc")
     @patch("ifitwala_ed.curriculum.planning.frappe.get_all")
