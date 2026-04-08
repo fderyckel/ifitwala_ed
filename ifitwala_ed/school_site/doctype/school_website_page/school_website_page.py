@@ -6,38 +6,15 @@ import frappe
 from frappe import _
 from frappe.model.document import Document
 
+from ifitwala_ed.website.publication import (
+    WORKFLOW_DEFAULT_STATE,
+    WORKFLOW_TRANSITIONS,
+    compute_publication_flags,
+    normalize_workflow_state,
+    validate_publication_window,
+)
 from ifitwala_ed.website.utils import normalize_route
 from ifitwala_ed.website.validators import validate_page_blocks
-
-WORKFLOW_DEFAULT_STATE = "Draft"
-WORKFLOW_STATES = (
-    "Draft",
-    "In Review",
-    "Approved",
-    "Published",
-)
-WORKFLOW_TRANSITIONS = {
-    "request_review": {
-        "from_states": ("Draft",),
-        "to_state": "In Review",
-        "roles": ("Marketing User", "Website Manager", "System Manager"),
-    },
-    "approve": {
-        "from_states": ("In Review",),
-        "to_state": "Approved",
-        "roles": ("Website Manager", "System Manager"),
-    },
-    "publish": {
-        "from_states": ("Approved",),
-        "to_state": "Published",
-        "roles": ("Website Manager", "System Manager"),
-    },
-    "return_to_draft": {
-        "from_states": ("In Review", "Approved", "Published"),
-        "to_state": "Draft",
-        "roles": ("Marketing User", "Website Manager", "System Manager"),
-    },
-}
 
 
 def build_school_website_page_name(*, school: str | None, route: str | None) -> str:
@@ -59,21 +36,19 @@ def build_school_website_page_name(*, school: str | None, route: str | None) -> 
     )
 
 
-def normalize_workflow_state(workflow_state: str | None) -> str:
-    value = (workflow_state or "").strip() or WORKFLOW_DEFAULT_STATE
-    if value not in WORKFLOW_STATES:
-        frappe.throw(
-            _("Invalid workflow state: {0}").format(value),
-            frappe.ValidationError,
-        )
-    return value
-
-
-def compute_school_page_publication_flags(*, school_is_public: bool, workflow_state: str) -> tuple[str, int]:
-    state = normalize_workflow_state(workflow_state)
-    is_published = 1 if school_is_public and state == "Published" else 0
-    status = "Published" if is_published == 1 else "Draft"
-    return status, is_published
+def compute_school_page_publication_flags(
+    *,
+    school_is_public: bool,
+    workflow_state: str,
+    publish_at=None,
+    expire_at=None,
+) -> tuple[str, int]:
+    return compute_publication_flags(
+        base_is_public=school_is_public,
+        workflow_state=workflow_state,
+        publish_at=publish_at,
+        expire_at=expire_at,
+    )
 
 
 class SchoolWebsitePage(Document):
@@ -90,6 +65,7 @@ class SchoolWebsitePage(Document):
 
     def validate(self):
         self._ensure_workflow_state()
+        validate_publication_window(publish_at=self.publish_at, expire_at=self.expire_at)
         self._sync_status_flags()
         school_slug = frappe.db.get_value("School", self.school, "website_slug")
         if not school_slug:
@@ -175,6 +151,8 @@ class SchoolWebsitePage(Document):
         status, is_published = compute_school_page_publication_flags(
             school_is_public=school_is_public,
             workflow_state=self.workflow_state,
+            publish_at=self.publish_at,
+            expire_at=self.expire_at,
         )
         self.status = status
         self.is_published = is_published

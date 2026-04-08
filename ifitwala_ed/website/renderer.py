@@ -6,6 +6,8 @@ import frappe
 from frappe import _
 
 from ifitwala_ed.website.block_registry import get_block_definition_map
+from ifitwala_ed.website.public_people import get_public_person_by_slug
+from ifitwala_ed.website.site_notices import get_active_site_notice
 from ifitwala_ed.website.utils import (
     build_story_url,
     is_school_public,
@@ -278,6 +280,7 @@ def _build_site_shell_context(*, school, route: str) -> dict:
         "logout_url": "/logout?redirect_to=/schools",
         "inquiry_url": inquiry_url,
         "apply_url": apply_url,
+        "active_notice": get_active_site_notice(school_name=school.name),
     }
 
 
@@ -684,6 +687,39 @@ def _build_story_index_context(*, route: str, school):
     }
 
 
+def _build_person_profile_context(*, route: str, school, profile_slug: str):
+    person = get_public_person_by_slug(
+        school_name=school.name,
+        organization_name=school.organization,
+        profile_slug=profile_slug,
+    )
+    if not person:
+        frappe.throw(
+            _("Profile not found for {0}.").format(profile_slug),
+            frappe.DoesNotExistError,
+        )
+
+    description = truncate_text(person.get("full_bio") or person.get("bio") or "", 160) or None
+    seo = _build_seo_context(
+        route=route,
+        fallback_title=person.get("name"),
+        fallback_description=description,
+        seo_profile=None,
+    )
+    theme = _build_theme_context(school=school)
+    return {
+        "page": {"route": route, "title": person.get("name")},
+        "school": school,
+        "person": person,
+        "blocks": [],
+        "block_scripts": [],
+        "seo": seo,
+        "theme": theme,
+        "site_shell": _build_site_shell_context(school=school, route=route),
+        "template": "ifitwala_ed/website/templates/person_profile.html",
+    }
+
+
 def _resolve_landing_organization():
     org = frappe.db.get_value(
         "Organization",
@@ -915,6 +951,13 @@ def build_render_context(*, route: str, preview: bool = False):
             school=school,
             story_slug=segments[3],
             preview=preview,
+        )
+
+    if len(segments) >= 4 and segments[2] == "people":
+        return _build_person_profile_context(
+            route=route,
+            school=school,
+            profile_slug=segments[3],
         )
 
     return _build_school_page_context(route=route, school=school, preview=preview)

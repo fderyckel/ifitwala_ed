@@ -49,6 +49,15 @@ class TestQuizApi(TestCase):
         ):
             cls.quiz_api = import_fresh("ifitwala_ed.api.quiz")
 
+    def setUp(self):
+        self.quiz_api.frappe.local = types.SimpleNamespace(response={})
+
+    def _assert_runtime_no_store_headers(self):
+        headers = self.quiz_api.frappe.local.response.get("headers") or {}
+        self.assertEqual(headers.get("Cache-Control"), "no-store, no-cache, must-revalidate, private")
+        self.assertEqual(headers.get("Pragma"), "no-cache")
+        self.assertEqual(headers.get("Expires"), "0")
+
     def test_open_session_uses_service_with_student_scope(self):
         with (
             patch.object(self.quiz_api, "_require_student_scope", return_value="STU-1"),
@@ -66,6 +75,7 @@ class TestQuizApi(TestCase):
             student="STU-1",
             user=self.quiz_api.frappe.session.user,
         )
+        self._assert_runtime_no_store_headers()
 
     def test_save_attempt_uses_direct_payload_body(self):
         with (
@@ -89,6 +99,7 @@ class TestQuizApi(TestCase):
             responses=[{"item_id": "QAI-1", "selected_option_ids": ["OPT-1"]}],
             student="STU-1",
         )
+        self._assert_runtime_no_store_headers()
 
     def test_submit_attempt_uses_direct_payload_body(self):
         with (
@@ -113,6 +124,7 @@ class TestQuizApi(TestCase):
             student="STU-1",
             user=self.quiz_api.frappe.session.user,
         )
+        self._assert_runtime_no_store_headers()
 
     def test_save_question_bank_creates_bank_and_questions(self):
         created = {"bank": 0, "question": 0}

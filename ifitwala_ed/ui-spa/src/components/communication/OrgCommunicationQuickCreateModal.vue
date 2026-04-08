@@ -83,28 +83,28 @@
 							<form v-else class="space-y-5" @submit.prevent="submit">
 								<div v-if="isClassEventMode" class="space-y-5">
 									<section class="rounded-[28px] border border-border/70 bg-white p-5 shadow-soft">
-										<div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-											<div class="space-y-1">
-												<p class="type-overline text-ink/55">Class event</p>
-												<h3 class="type-h3 text-ink">Locked context</h3>
-												<p class="type-caption text-ink/65">
-													This announcement stays tied to the selected class event and remains in
-													your org communication archive for history.
-												</p>
-											</div>
-											<span class="rounded-full bg-sky/25 px-3 py-1.5 type-caption text-canopy">
-												Class event context locked
-											</span>
+										<div class="space-y-1">
+											<p class="type-overline text-ink/55">Class event</p>
+											<h3 class="type-h3 text-ink">Locked context</h3>
+											<p class="type-caption text-ink/65">
+												This announcement stays tied to the selected class event and remains in
+												your org communication archive for history.
+											</p>
 										</div>
 
-										<div class="mt-4 grid grid-cols-1 gap-3 lg:grid-cols-2">
+										<div
+											class="if-class-event-context-card mt-4 rounded-[26px] border border-border/70 bg-surface-soft/70 px-4 py-2"
+										>
 											<div
-												v-for="item in classEventContextCards"
+												v-for="(item, index) in classEventContextCards"
 												:key="item.label"
-												class="rounded-2xl border border-border/70 bg-surface-soft/70 px-4 py-3"
+												class="if-class-event-context-row flex flex-col gap-1 py-3 sm:flex-row sm:items-baseline sm:gap-3"
+												:class="{ 'border-t border-border/60': index > 0 }"
 											>
-												<p class="type-caption text-ink/55">{{ item.label }}</p>
-												<p class="mt-1 type-body-strong text-ink">{{ item.value }}</p>
+												<p class="shrink-0 type-caption uppercase tracking-[0.18em] text-ink/45">
+													{{ item.label }}
+												</p>
+												<p class="type-body-strong text-ink">{{ item.value }}</p>
 											</div>
 										</div>
 									</section>

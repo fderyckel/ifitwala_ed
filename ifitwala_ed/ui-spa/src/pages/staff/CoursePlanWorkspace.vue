@@ -1360,12 +1360,12 @@ type EditableReflection = StaffPlanningReflection & {
 	local_id: number;
 };
 
-type EditableQuizQuestionOption = StaffCoursePlanQuizQuestionOption & {
+type EditableQuizQuestionOption = Omit<StaffCoursePlanQuizQuestionOption, 'is_correct'> & {
 	local_id: number;
 	is_correct: boolean;
 };
 
-type EditableQuizQuestion = Omit<StaffCoursePlanQuizQuestion, 'options'> & {
+type EditableQuizQuestion = Omit<StaffCoursePlanQuizQuestion, 'options' | 'is_published'> & {
 	local_id: number;
 	is_published: boolean;
 	options: EditableQuizQuestionOption[];

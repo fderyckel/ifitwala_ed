@@ -8,6 +8,7 @@ from unittest.mock import patch
 import frappe
 from frappe.tests.utils import FrappeTestCase
 
+from ifitwala_ed.setup.doctype.org_communication import attachments as org_communication_attachments
 from ifitwala_ed.setup.doctype.org_communication import org_communication as org_communication_controller
 
 
@@ -111,6 +112,121 @@ class TestOrgCommunication(FrappeTestCase):
         ):
             with self.assertRaises(frappe.ValidationError):
                 org_communication_controller.OrgCommunication._validate_and_enforce_issuing_school_scope(doc)
+
+    def test_class_announcement_uses_student_group_school_within_same_org_scope(self):
+        doc = frappe._dict(
+            communication_type="Class Announcement",
+            school="SCH-IMS",
+            activity_student_group=None,
+            audiences=[
+                frappe._dict(
+                    target_mode="Student Group",
+                    student_group="SG-IIS",
+                )
+            ],
+        )
+
+        def fake_get_value(doctype, name_or_filters, fieldname=None, as_dict=False):
+            if doctype == "Student Group" and name_or_filters == "SG-IIS" and fieldname == "school":
+                return "SCH-IIS"
+            if doctype == "School" and name_or_filters in {"SCH-IMS", "SCH-IIS"} and fieldname == "organization":
+                return "ORG-ROOT"
+            return None
+
+        with (
+            patch(
+                "ifitwala_ed.setup.doctype.org_communication.org_communication._get_school_scope_tree",
+                return_value=("SCH-IMS", ["SCH-IMS"]),
+            ),
+            patch(
+                "ifitwala_ed.setup.doctype.org_communication.org_communication._user_has_any_role",
+                return_value=False,
+            ),
+            patch(
+                "ifitwala_ed.setup.doctype.org_communication.org_communication.frappe.db.get_value",
+                side_effect=fake_get_value,
+            ),
+        ):
+            org_communication_controller.OrgCommunication._validate_and_enforce_issuing_school_scope(doc)
+
+        self.assertEqual(doc.school, "SCH-IIS")
+
+    def test_class_announcement_rejects_student_group_school_outside_org_scope(self):
+        doc = frappe._dict(
+            communication_type="Class Announcement",
+            school="SCH-IMS",
+            activity_student_group=None,
+            audiences=[
+                frappe._dict(
+                    target_mode="Student Group",
+                    student_group="SG-EXT",
+                )
+            ],
+        )
+
+        def fake_get_value(doctype, name_or_filters, fieldname=None, as_dict=False):
+            if doctype == "Student Group" and name_or_filters == "SG-EXT" and fieldname == "school":
+                return "SCH-EXT"
+            if doctype == "School" and name_or_filters == "SCH-IMS" and fieldname == "organization":
+                return "ORG-ROOT"
+            if doctype == "School" and name_or_filters == "SCH-EXT" and fieldname == "organization":
+                return "ORG-OTHER"
+            return None
+
+        with (
+            patch(
+                "ifitwala_ed.setup.doctype.org_communication.org_communication._get_school_scope_tree",
+                return_value=("SCH-IMS", ["SCH-IMS"]),
+            ),
+            patch(
+                "ifitwala_ed.setup.doctype.org_communication.org_communication._user_has_any_role",
+                return_value=False,
+            ),
+            patch(
+                "ifitwala_ed.setup.doctype.org_communication.org_communication.frappe.db.get_value",
+                side_effect=fake_get_value,
+            ),
+            patch(
+                "ifitwala_ed.setup.doctype.org_communication.org_communication._get_allowed_organizations_for_user",
+                return_value=["ORG-ROOT"],
+            ),
+        ):
+            with self.assertRaises(frappe.ValidationError):
+                org_communication_controller.OrgCommunication._validate_and_enforce_issuing_school_scope(doc)
+
+    def test_attachment_context_prefers_student_group_school_over_doc_school(self):
+        doc = frappe._dict(
+            school="SCH-IMS",
+            organization="ORG-ROOT",
+            activity_student_group=None,
+            audiences=[
+                frappe._dict(
+                    target_mode="Student Group",
+                    student_group="SG-IIS",
+                )
+            ],
+        )
+
+        def fake_get_value(doctype, name_or_filters, fieldname=None, as_dict=False):
+            if (
+                doctype == "Student Group"
+                and name_or_filters == "SG-IIS"
+                and fieldname == ["course", "school"]
+                and as_dict
+            ):
+                return frappe._dict(course="COURSE-1", school="SCH-IIS")
+            if doctype == "School" and name_or_filters == "SCH-IIS" and fieldname == "organization":
+                return "ORG-ROOT"
+            return None
+
+        with patch(
+            "ifitwala_ed.setup.doctype.org_communication.attachments.frappe.db.get_value",
+            side_effect=fake_get_value,
+        ):
+            context = org_communication_attachments.resolve_org_communication_attachment_context(doc)
+
+        self.assertEqual(context["school"], "SCH-IIS")
+        self.assertEqual(context["course"], "COURSE-1")
 
     def test_validate_school_scope_allows_blank_school(self):
         doc = frappe._dict(school=None)

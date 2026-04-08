@@ -511,6 +511,8 @@ describe('OrgCommunicationQuickCreateModal', () => {
 		expect(text).not.toContain('Organization');
 		expect(text).not.toContain('Thread settings');
 		expect(document.querySelector('.if-org-communication-ready-check')).toBeNull();
+		expect(document.querySelectorAll('.if-class-event-context-card')).toHaveLength(1);
+		expect(document.querySelectorAll('.if-class-event-context-row')).toHaveLength(4);
 	});
 
 	it('lets users change interaction mode and toggle thread settings', async () => {

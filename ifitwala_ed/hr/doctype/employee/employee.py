@@ -16,6 +16,7 @@ from ifitwala_ed.utilities.employee_utils import (
 )
 from ifitwala_ed.utilities.image_utils import get_preferred_employee_image_url
 from ifitwala_ed.utilities.transaction_base import delete_events
+from ifitwala_ed.website.utils import slugify_route_segment
 
 
 class EmployeeUserDisabledError(frappe.ValidationError):
@@ -64,6 +65,7 @@ class Employee(NestedSet):
         self.validate_reports_to()
         self.validate_preferred_email()
         self.validate_employee_history()
+        self.validate_public_website_fields()
 
         if self.user_id:
             self.validate_user_details()
@@ -226,6 +228,45 @@ class Employee(NestedSet):
                     "Employee cannot report to a supervisor from a different organization unless it is a parent organization."
                 )
             )
+
+    def validate_public_website_fields(self):
+        if int(self.show_public_profile_page or 0) == 1:
+            self.show_on_website = 1
+
+        slug = (self.public_profile_slug or "").strip()
+        if not int(self.show_public_profile_page or 0):
+            self.public_profile_slug = slug or None
+        else:
+            if not self.school:
+                frappe.throw(
+                    _("School is required before enabling a public profile page."),
+                    frappe.ValidationError,
+                )
+
+            if not slug:
+                preferred = (self.employee_preferred_name or "").strip()
+                full_name = (self.employee_full_name or "").strip()
+                slug = slugify_route_segment(preferred or full_name, fallback="employee")
+
+            slug = slugify_route_segment(slug, fallback="employee")
+            self.public_profile_slug = slug
+
+            exists = frappe.db.exists(
+                "Employee",
+                {
+                    "school": self.school,
+                    "public_profile_slug": slug,
+                    "name": ["!=", self.name],
+                },
+            )
+            if exists:
+                frappe.throw(
+                    _("Another employee in this school already uses the public profile slug '{0}'.").format(slug),
+                    frappe.ValidationError,
+                )
+
+        if self.website_sort_order in ("", None):
+            self.website_sort_order = None
 
         # Validate downward consistency (no cross-lineage connections)
         # Fetch all direct reports of the current employee

@@ -72,6 +72,9 @@
 												<span class="text-4xl font-semibold tracking-[0.12em] text-slate-500">{{ person.initials }}</span>
 											</div>
 										{% endif %}
+										{% if person.profile_url %}
+											<a href="{{ person.profile_url }}" class="absolute inset-0" aria-label="View {{ person.name }} profile"></a>
+										{% endif %}
 										{% if person.title %}
 											<div class="absolute left-4 top-4 rounded-full border border-white/55 bg-white/88 px-3 py-1 text-[0.68rem] font-semibold uppercase tracking-[0.18em] text-slate-700 shadow-sm backdrop-blur">
 												{{ person.title }}
@@ -80,7 +83,13 @@
 									</div>
 
 									<div class="flex flex-1 flex-col bg-[linear-gradient(180deg,_rgba(255,255,255,0.98),_rgba(248,250,252,0.96))] px-5 py-5 sm:px-6">
-										<h4 class="text-xl font-semibold tracking-tight text-slate-900">{{ person.name }}</h4>
+										<h4 class="text-xl font-semibold tracking-tight text-slate-900">
+											{% if person.profile_url %}
+												<a href="{{ person.profile_url }}" class="transition hover:text-slate-700">{{ person.name }}</a>
+											{% else %}
+												{{ person.name }}
+											{% endif %}
+										</h4>
 										{% if person.title %}
 											<p class="mt-2 text-sm font-medium text-slate-500">{{ person.title }}</p>
 										{% endif %}

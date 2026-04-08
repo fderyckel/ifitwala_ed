@@ -434,6 +434,14 @@ Bootstrap is deprecated legacy and must not be extended in touched code.
 - Use named routes or base-less internal paths only.
 - Do not hardcode SPA base prefixes.
 
+### 8.3 SPA Shell Container Discipline
+
+- Shared routed-page shell/container classes are architecture, not optional styling.
+- When touching routed SPA pages, preserve the canonical page-root shell for that surface (for example `staff-shell` on staff pages) unless the shell contract is explicitly documented and approved to change.
+- Do not replace a shared shell/container with ad-hoc root classes (`min-h-screen`, local padding, local max-width) during page rewrites just because the page still "looks acceptable" in isolation.
+- Validate routed-page layout changes against sibling pages in the same surface, not only the touched page by itself.
+- If a shell/container contract must change, update the authoritative SPA docs in the same approved change before editing affected page roots.
+
 ---
 
 ## 9. API / Workflow Design

@@ -199,6 +199,38 @@
 			</nav>
 		</header>
 
+		{% if site_shell.active_notice %}
+			{% set notice = site_shell.active_notice %}
+			{% set notice_class = "border-sky-200 bg-sky-50 text-sky-950" %}
+			{% if notice.style == "success" %}
+				{% set notice_class = "border-emerald-200 bg-emerald-50 text-emerald-950" %}
+			{% elif notice.style == "warning" %}
+				{% set notice_class = "border-amber-200 bg-amber-50 text-amber-950" %}
+			{% elif notice.style == "critical" %}
+				{% set notice_class = "border-rose-200 bg-rose-50 text-rose-950" %}
+			{% endif %}
+			<section class="site-shell-notice border-b {{ notice_class }}">
+				<div class="mx-auto flex max-w-6xl flex-col gap-3 px-4 py-3 sm:px-6 lg:flex-row lg:items-center lg:justify-between">
+					<div class="min-w-0">
+						{% if notice.title %}
+							<p class="text-sm font-semibold tracking-tight">{{ notice.title }}</p>
+						{% endif %}
+						<div class="prose prose-sm max-w-none {{ 'mt-1' if notice.title else '' }}">
+							{{ notice.message_html }}
+						</div>
+					</div>
+					{% if notice.button_label and notice.button_link %}
+						<a
+							href="{{ notice.button_link }}"
+							class="inline-flex shrink-0 rounded-full border border-current/15 bg-white/75 px-4 py-2 text-sm font-semibold transition hover:bg-white"
+						>
+							{{ notice.button_label }}
+						</a>
+					{% endif %}
+				</div>
+			</section>
+		{% endif %}
+
 		<main class="site-page-content page-content flex flex-1 flex-col gap-24 py-10">
 			{% block page_blocks %}
 				{% for block in blocks %}

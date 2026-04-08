@@ -168,6 +168,7 @@ class OrgCommunication(Document):
         """Enforce optional Issuing School rules using nestedset school hierarchy."""
         user = frappe.session.user
         default_school, tree = _get_school_scope_tree(user)
+        locked_class_school = self._resolve_locked_class_announcement_school()
         has_non_school_scope_audience = any(
             (row.target_mode or "").strip() and (row.target_mode or "").strip() != "School Scope"
             for row in (self.audiences or [])
@@ -175,13 +176,17 @@ class OrgCommunication(Document):
 
         # School is optional. When user has a configured default school and no value
         # was chosen, derive it for continuity with school-scoped users only.
-        if not self.school and default_school and not has_non_school_scope_audience:
+        if locked_class_school:
+            self.school = locked_class_school
+        elif not self.school and default_school and not has_non_school_scope_audience:
             self.school = default_school
 
         if not self.school:
             return
 
         if _user_has_any_role(user, ELEVATED_WIDE_AUDIENCE_ROLES):
+            if locked_class_school:
+                return
             if tree and self.school not in tree:
                 frappe.throw(
                     _(
@@ -190,6 +195,22 @@ class OrgCommunication(Document):
                     title=_("Issuing School Not Allowed"),
                 )
         else:
+            if locked_class_school:
+                if self._class_announcement_school_in_user_scope(
+                    user=user,
+                    target_school=self.school,
+                    default_school=default_school,
+                    school_tree=tree,
+                ):
+                    return
+                frappe.throw(
+                    _(
+                        "You can only issue class announcements from the selected class school "
+                        "when it stays within your authorized organization scope."
+                    ),
+                    title=_("Issuing School Not Allowed"),
+                )
+
             if default_school:
                 # Force, ignoring any client-side value
                 self.school = default_school
@@ -240,6 +261,54 @@ class OrgCommunication(Document):
                 ),
                 title=_("Invalid Organization"),
             )
+
+    def _resolve_locked_class_announcement_school(self) -> str | None:
+        if (self.communication_type or "").strip() != "Class Announcement":
+            return None
+
+        student_groups: list[str] = []
+        activity_student_group = (self.activity_student_group or "").strip()
+        if activity_student_group:
+            student_groups.append(activity_student_group)
+
+        for row in self.audiences or []:
+            if (row.target_mode or "").strip() != "Student Group":
+                continue
+            student_group = (row.student_group or "").strip()
+            if student_group and student_group not in student_groups:
+                student_groups.append(student_group)
+
+        if len(student_groups) != 1:
+            return None
+
+        school = frappe.db.get_value("Student Group", student_groups[0], "school")
+        return (school or "").strip() or None
+
+    def _class_announcement_school_in_user_scope(
+        self,
+        *,
+        user: str,
+        target_school: str,
+        default_school: str | None,
+        school_tree: list[str] | None,
+    ) -> bool:
+        if not target_school:
+            return False
+
+        if target_school in set(school_tree or []):
+            return True
+
+        target_org = (frappe.db.get_value("School", target_school, "organization") or "").strip()
+        if not target_org:
+            return False
+
+        default_org = (
+            (frappe.db.get_value("School", default_school, "organization") or "").strip() if default_school else ""
+        )
+        if default_org and target_org == default_org:
+            return True
+
+        return target_org in set(_get_allowed_organizations_for_user(user))
 
     def _validate_activity_context_links(self):
         """

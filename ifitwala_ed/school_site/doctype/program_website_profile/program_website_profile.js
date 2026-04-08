@@ -487,7 +487,7 @@ frappe.ui.form.on("Program Website Profile", {
 				return;
 			}
 
-			const previewUrl = `${getPreviewUrl(`/${schoolSlug}/programs/${programSlug}`)}?preview=1`;
+			const previewUrl = `${getPreviewUrl(`/schools/${schoolSlug}/programs/${programSlug}`)}?preview=1`;
 			window.open(previewUrl, "_blank");
 		});
 
@@ -527,12 +527,23 @@ frappe.ui.form.on("Program Website Profile", {
 			if (!frm.doc.seo_profile) {
 				banners.push(__("SEO fallback in use. Link an SEO Profile for full control."));
 			}
+			if (!frm.doc.content_owner) {
+				banners.push(__("Assign a Content Owner so review and maintenance responsibility is clear."));
+			}
+			if (frm.doc.publish_at) {
+				banners.push(__("This page is scheduled to publish automatically at {0}.", [frm.doc.publish_at]));
+			}
+			if (frm.doc.expire_at) {
+				banners.push(__("This page will expire automatically at {0}.", [frm.doc.expire_at]));
+			}
 
 			if (frm.doc.program) {
 				Promise.all([
 					getFieldValue("Program", frm.doc.program, "is_published"),
-					getFieldValue("Program", frm.doc.program, "archive")
-				]).then(([isPublished, isArchived]) => {
+					getFieldValue("Program", frm.doc.program, "archive"),
+					getFieldValue("School", frm.doc.school, "is_published"),
+					getFieldValue("School", frm.doc.school, "website_slug")
+				]).then(([isPublished, isArchived, schoolIsPublished, schoolSlug]) => {
 					const published = Boolean(parseInt(isPublished || 0, 10));
 					const archived = Boolean(parseInt(isArchived || 0, 10));
 					if (archived) {
@@ -540,6 +551,9 @@ frappe.ui.form.on("Program Website Profile", {
 					}
 					if (!published) {
 						banners.push(__("Program is not published; profile will remain draft."));
+					}
+					if (!parseInt(schoolIsPublished || 0, 10) || !schoolSlug) {
+						banners.push(__("School website must be published and have a website slug before this profile can go live."));
 					}
 					setBaseDashboardBanners(frm, banners);
 				}).catch(() => {

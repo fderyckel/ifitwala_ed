@@ -1,6 +1,4 @@
-# ifitwala_ed/school_site/doctype/website_story/website_story.py
-
-import json
+# ifitwala_ed/school_site/doctype/website_notice/website_notice.py
 
 import frappe
 from frappe import _
@@ -12,17 +10,25 @@ from ifitwala_ed.website.publication import (
     normalize_workflow_state,
     validate_publication_window,
 )
-from ifitwala_ed.website.validators import validate_page_blocks
+from ifitwala_ed.website.site_notices import invalidate_site_notice_cache
+from ifitwala_ed.website.utils import validate_cta_link
 
 
-class WebsiteStory(Document):
+class WebsiteNotice(Document):
     def validate(self):
         self._ensure_workflow_state()
         validate_publication_window(publish_at=self.publish_at, expire_at=self.expire_at)
+        self.button_link = validate_cta_link(self.button_link)
         self._sync_status()
-        self._validate_unique_slug()
-        self._validate_blocks_props_json()
-        validate_page_blocks(self)
+
+    def on_update(self):
+        invalidate_site_notice_cache()
+
+    def after_insert(self):
+        invalidate_site_notice_cache()
+
+    def on_trash(self):
+        invalidate_site_notice_cache()
 
     def _ensure_workflow_state(self):
         self.workflow_state = normalize_workflow_state(self.workflow_state)
@@ -81,42 +87,10 @@ class WebsiteStory(Document):
         self.workflow_state = target_state
         self._sync_status()
 
-    def _validate_unique_slug(self):
-        exists = frappe.db.exists(
-            "Website Story",
-            {
-                "school": self.school,
-                "slug": self.slug,
-                "name": ["!=", self.name],
-            },
-        )
-        if exists:
-            frappe.throw(
-                _("A story with this slug already exists for this school."),
-                frappe.ValidationError,
-            )
-
-    def _validate_blocks_props_json(self):
-        for row in self.blocks or []:
-            raw_props = (row.props or "").strip()
-            if not raw_props:
-                continue
-            try:
-                json.loads(raw_props)
-            except Exception as exc:
-                frappe.throw(
-                    _("Invalid block props JSON in row {0} ({1}): {2}").format(
-                        row.idx or "?",
-                        row.block_type or _("Unknown block"),
-                        str(exc),
-                    ),
-                    frappe.ValidationError,
-                )
-
 
 @frappe.whitelist()
 def transition_workflow_state(name: str, action: str) -> dict:
-    doc = frappe.get_doc("Website Story", name)
+    doc = frappe.get_doc("Website Notice", name)
     if not frappe.has_permission(doc=doc, ptype="write"):
         frappe.throw(_("Not permitted."), frappe.PermissionError)
 

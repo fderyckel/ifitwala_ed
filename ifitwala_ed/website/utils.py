@@ -22,6 +22,11 @@ def normalize_route(route: str | None) -> str:
     return route
 
 
+def slugify_route_segment(value: str | None, *, fallback: str = "item") -> str:
+    clean = re.sub(r"[^a-z0-9]+", "-", (value or "").strip().lower()).strip("-")
+    return clean or fallback
+
+
 def resolve_school_from_route(route: str):
     segments = [seg for seg in route.split("/") if seg]
     if len(segments) < 2 or segments[0] != "schools":
@@ -268,6 +273,10 @@ def build_course_profile_url(*, school_slug: str, course_slug: str) -> str:
 
 def build_story_url(*, school_slug: str, story_slug: str) -> str:
     return normalize_route(f"/schools/{school_slug}/stories/{story_slug}")
+
+
+def build_employee_profile_url(*, school_slug: str, employee_slug: str) -> str:
+    return normalize_route(f"/schools/{school_slug}/people/{employee_slug}")
 
 
 def resolve_admissions_cta_url(*, school, intent: str) -> str:

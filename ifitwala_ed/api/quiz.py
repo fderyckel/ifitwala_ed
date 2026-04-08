@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import hashlib
 from time import perf_counter
+from types import SimpleNamespace
 
 import frappe
 from frappe import _
@@ -118,7 +119,9 @@ def save_question_bank(payload=None, **kwargs):
 @frappe.whitelist()
 def open_session(task_delivery: str):
     student = _require_student_scope(task_delivery)
-    return quiz_service.open_quiz_session(task_delivery=task_delivery, student=student, user=frappe.session.user)
+    payload = quiz_service.open_quiz_session(task_delivery=task_delivery, student=student, user=frappe.session.user)
+    _set_quiz_runtime_no_store_headers()
+    return payload
 
 
 @frappe.whitelist()
@@ -129,7 +132,9 @@ def save_attempt(payload=None, **kwargs):
         frappe.throw(_("Quiz Attempt is required."))
     student = _require_student_for_attempt(attempt)
     responses = data.get("responses") or []
-    return quiz_service.save_attempt_responses(attempt=attempt, responses=responses, student=student)
+    result = quiz_service.save_attempt_responses(attempt=attempt, responses=responses, student=student)
+    _set_quiz_runtime_no_store_headers()
+    return result
 
 
 @frappe.whitelist()
@@ -140,12 +145,14 @@ def submit_attempt(payload=None, **kwargs):
         frappe.throw(_("Quiz Attempt is required."))
     student = _require_student_for_attempt(attempt)
     responses = data.get("responses") or []
-    return quiz_service.submit_attempt(
+    result = quiz_service.submit_attempt(
         attempt=attempt,
         responses=responses,
         student=student,
         user=frappe.session.user,
     )
+    _set_quiz_runtime_no_store_headers()
+    return result
 
 
 def _normalize_payload(payload, kwargs):
@@ -155,6 +162,23 @@ def _normalize_payload(payload, kwargs):
     if not isinstance(data, dict):
         frappe.throw(_("Payload must be a dict."))
     return data
+
+
+def _set_quiz_runtime_no_store_headers() -> None:
+    if not hasattr(frappe, "local") or frappe.local is None:
+        frappe.local = SimpleNamespace()
+
+    if not hasattr(frappe.local, "response") or frappe.local.response is None:
+        frappe.local.response = {}
+
+    headers = frappe.local.response.get("headers")
+    if not isinstance(headers, dict):
+        headers = {}
+        frappe.local.response["headers"] = headers
+
+    headers["Cache-Control"] = "no-store, no-cache, must-revalidate, private"
+    headers["Pragma"] = "no-cache"
+    headers["Expires"] = "0"
 
 
 def _normalize_rows_payload(value, *, label: str) -> list[dict]:

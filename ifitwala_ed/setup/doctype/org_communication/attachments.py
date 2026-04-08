@@ -77,12 +77,9 @@ def resolve_org_communication_attachment_context(doc) -> dict[str, str]:
         frappe.throw(_("Student Group is missing its authoritative Course context."))
 
     school_from_group = str(student_group_row.get("school") or "").strip()
-    school = str(getattr(doc, "school", "") or "").strip() or school_from_group
+    school = school_from_group or str(getattr(doc, "school", "") or "").strip()
     if not school:
         frappe.throw(_("Org Communication attachments require an issuing school."))
-
-    if school_from_group and school != school_from_group:
-        frappe.throw(_("Org Communication issuing school must match the Student Group school."))
 
     organization = str(getattr(doc, "organization", "") or "").strip()
     if not organization:

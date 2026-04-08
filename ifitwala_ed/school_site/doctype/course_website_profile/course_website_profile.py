@@ -6,54 +6,33 @@ import frappe
 from frappe import _
 from frappe.model.document import Document
 
+from ifitwala_ed.website.publication import (
+    WORKFLOW_TRANSITIONS,
+    compute_publication_status,
+    normalize_workflow_state,
+    validate_publication_window,
+)
 from ifitwala_ed.website.validators import validate_page_blocks
 
-WORKFLOW_DEFAULT_STATE = "Draft"
-WORKFLOW_STATES = (
-    "Draft",
-    "In Review",
-    "Approved",
-    "Published",
-)
-WORKFLOW_TRANSITIONS = {
-    "request_review": {
-        "from_states": ("Draft",),
-        "to_state": "In Review",
-        "roles": ("Marketing User", "Website Manager", "System Manager"),
-    },
-    "approve": {
-        "from_states": ("In Review",),
-        "to_state": "Approved",
-        "roles": ("Website Manager", "System Manager"),
-    },
-    "publish": {
-        "from_states": ("Approved",),
-        "to_state": "Published",
-        "roles": ("Website Manager", "System Manager"),
-    },
-    "return_to_draft": {
-        "from_states": ("In Review", "Approved", "Published"),
-        "to_state": "Draft",
-        "roles": ("Marketing User", "Website Manager", "System Manager"),
-    },
-}
 
-
-def normalize_workflow_state(workflow_state: str | None) -> str:
-    value = (workflow_state or "").strip() or WORKFLOW_DEFAULT_STATE
-    if value not in WORKFLOW_STATES:
-        frappe.throw(
-            _("Invalid workflow state: {0}").format(value),
-            frappe.ValidationError,
-        )
-    return value
-
-
-def compute_course_profile_status(*, course_is_published: bool, workflow_state: str) -> str:
-    state = normalize_workflow_state(workflow_state)
-    if course_is_published and state == "Published":
-        return "Published"
-    return "Draft"
+def compute_course_profile_status(
+    *,
+    school_is_public: bool,
+    course_is_published: bool,
+    course_scope_matches_school: bool,
+    has_course_slug: bool,
+    workflow_state: str,
+    publish_at=None,
+    expire_at=None,
+) -> str:
+    return compute_publication_status(
+        base_is_public=bool(
+            school_is_public and course_is_published and course_scope_matches_school and has_course_slug
+        ),
+        workflow_state=workflow_state,
+        publish_at=publish_at,
+        expire_at=expire_at,
+    )
 
 
 class CourseWebsiteProfile(Document):
@@ -61,6 +40,7 @@ class CourseWebsiteProfile(Document):
         self._ensure_workflow_state()
         self._sync_school_from_course()
         self._ensure_course_slug()
+        validate_publication_window(publish_at=self.publish_at, expire_at=self.expire_at)
         self._sync_status_from_course()
         self._validate_unique_profile()
         self._validate_course_scope()
@@ -101,13 +81,25 @@ class CourseWebsiteProfile(Document):
         )
 
     def _sync_status_from_course(self):
+        course_scope_matches_school = False
         course_is_published = False
         if self.course:
-            is_published = frappe.db.get_value("Course", self.course, "is_published")
-            course_is_published = int(is_published or 0) == 1
+            course_row = frappe.db.get_value(
+                "Course",
+                self.course,
+                ["is_published", "school"],
+                as_dict=True,
+            )
+            course_is_published = bool(course_row and int(course_row.is_published or 0) == 1)
+            course_scope_matches_school = bool(course_row and course_row.school == self.school)
         self.status = compute_course_profile_status(
+            school_is_public=self._get_school_publication_readiness(),
             course_is_published=course_is_published,
+            course_scope_matches_school=course_scope_matches_school,
+            has_course_slug=bool((self.course_slug or "").strip()),
             workflow_state=self.workflow_state,
+            publish_at=self.publish_at,
+            expire_at=self.expire_at,
         )
 
     def _validate_unique_profile(self):
@@ -172,6 +164,17 @@ class CourseWebsiteProfile(Document):
             return False
         return bool(int(row.is_published or 0) == 1 and row.school == self.school and self.course_slug)
 
+    def _get_school_publication_readiness(self) -> bool:
+        if not self.school:
+            return False
+        row = frappe.db.get_value(
+            "School",
+            self.school,
+            ["website_slug", "is_published"],
+            as_dict=True,
+        )
+        return bool(row and row.website_slug and int(row.is_published or 0) == 1)
+
     def _assert_transition_allowed(self, action: str) -> str:
         action_key = (action or "").strip()
         transition = WORKFLOW_TRANSITIONS.get(action_key)
@@ -200,9 +203,13 @@ class CourseWebsiteProfile(Document):
     def apply_workflow_action(self, action: str):
         action_key = self._assert_transition_allowed(action)
         target_state = WORKFLOW_TRANSITIONS[action_key]["to_state"]
-        if target_state == "Published" and not self._get_course_publication_readiness():
+        if target_state == "Published" and not (
+            self._get_school_publication_readiness() and self._get_course_publication_readiness()
+        ):
             frappe.throw(
-                _("Cannot publish until the Course is published, assigned to this School, and has a course slug."),
+                _(
+                    "Cannot publish until the school website is published and the Course is published, assigned to this School, and has a course slug."
+                ),
                 frappe.ValidationError,
             )
         self.workflow_state = target_state

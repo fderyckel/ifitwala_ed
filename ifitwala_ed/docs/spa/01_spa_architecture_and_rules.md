@@ -333,6 +333,34 @@ Forbidden:
 
 ---
 
+### 3.4.3 Routed Page Root Shell Contract (Locked)
+
+For routed SPA pages, the page root is part of the layout contract, not page-local decoration.
+
+Rules:
+
+* Staff pages must mount inside the canonical staff page shell (`staff-shell`) unless the canonical SPA docs are updated first.
+* Student and Guardian routed pages must mount inside their canonical portal shell/container contract and must not replace that with ad-hoc page-local wrappers.
+* A routed page must not replace a shared shell/container with local classes such as `min-h-screen`, custom padding, or ad-hoc max-width rules unless that shell change is intentional, documented, and applied consistently across the owning surface.
+* Inner grids/panels must not rely on accidental inherited width. The root container must explicitly preserve the intended shell width contract.
+
+Regression to prevent:
+
+* Removing `staff-shell` from a staff page root can collapse a previously wide two-column page into a stacked layout even when the inner grid classes are unchanged.
+
+Required review check when editing routed pages:
+
+1. Verify the page root still uses the canonical shell/container class for that surface.
+2. Compare the changed page against sibling routes in the same surface (`/staff/*`, `/student/*`, `/guardian/*`) instead of validating the page in isolation.
+3. If the shell contract itself needs to change, update this note and the relevant layout/style note in the same change before modifying page roots.
+
+Forbidden:
+
+* Treating shared page-root shell classes as optional styling sugar.
+* Replacing canonical shell classes during a feature rewrite without documenting the new shell contract.
+
+---
+
 ### 3.5 Architectural reason (why this matters)
 
 Under the A+ model:

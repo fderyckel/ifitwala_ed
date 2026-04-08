@@ -2,23 +2,23 @@
  "actions": [],
  "allow_rename": 1,
  "autoname": "hash",
- "creation": "2026-01-28 00:00:00.000000",
+ "creation": "2026-04-08 15:15:00.000000",
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
   "section_break_identity",
   "title",
-  "slug",
   "school",
   "content_owner",
   "status",
   "workflow_state",
-  "publish_date",
+  "style",
+  "priority",
   "publish_at",
   "expire_at",
-  "seo_profile",
-  "tags",
-  "blocks"
+  "message_html",
+  "button_label",
+  "button_link"
  ],
  "fields": [
   {
@@ -30,12 +30,6 @@
    "fieldname": "title",
    "fieldtype": "Data",
    "label": "Title",
-   "reqd": 1
-  },
-  {
-   "fieldname": "slug",
-   "fieldtype": "Data",
-   "label": "Slug",
    "reqd": 1
   },
   {
@@ -68,9 +62,17 @@
    "read_only": 1
   },
   {
-   "fieldname": "publish_date",
-   "fieldtype": "Date",
-   "label": "Publish Date"
+   "default": "info",
+   "fieldname": "style",
+   "fieldtype": "Select",
+   "label": "Style",
+   "options": "info\nsuccess\nwarning\ncritical"
+  },
+  {
+   "default": "0",
+   "fieldname": "priority",
+   "fieldtype": "Int",
+   "label": "Priority"
   },
   {
    "fieldname": "publish_at",
@@ -83,30 +85,29 @@
    "label": "Expire At"
   },
   {
-   "fieldname": "seo_profile",
-   "fieldtype": "Link",
-   "label": "SEO Profile",
-   "options": "Website SEO Profile"
+   "fieldname": "message_html",
+   "fieldtype": "Text Editor",
+   "label": "Message",
+   "reqd": 1
   },
   {
-   "fieldname": "tags",
+   "fieldname": "button_label",
    "fieldtype": "Data",
-   "label": "Tags"
+   "label": "Button Label"
   },
   {
-   "fieldname": "blocks",
-   "fieldtype": "Table",
-   "label": "Blocks",
-   "options": "School Website Page Block"
+   "fieldname": "button_link",
+   "fieldtype": "Data",
+   "label": "Button Link"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-04-08 15:12:00.000000",
+ "modified": "2026-04-08 15:15:00.000000",
  "modified_by": "Administrator",
  "module": "School Site",
- "name": "Website Story",
+ "name": "Website Notice",
  "owner": "Administrator",
  "permissions": [
   {

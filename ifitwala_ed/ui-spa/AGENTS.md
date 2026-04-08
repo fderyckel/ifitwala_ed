@@ -122,6 +122,10 @@ When page-init data is repeated or expensive, ask whether it should be aggregate
 - Use semantic typography helpers and project styling rules.
 - Respect root-owned typography and scoped styling discipline.
 - Do not create cross-surface style leakage.
+- Treat routed page-root shell/container classes as locked SPA contracts, not disposable local styling.
+- Preserve canonical page wrappers such as `staff-shell` unless the shell contract is being intentionally redesigned and documented first.
+- When rewriting a page, compare its root container against sibling routes in the same surface before finalizing layout changes.
+- Do not swap a shared shell for ad-hoc root classes (`min-h-screen`, page-local padding, custom max-width) without updating the canonical SPA note in the same approved change.
 
 ---
 

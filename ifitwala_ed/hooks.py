@@ -203,6 +203,11 @@ permission_query_conditions = {
     "Professional Development Record": "ifitwala_ed.hr.professional_development_permissions.professional_development_record_pqc",
     "Professional Development Outcome": "ifitwala_ed.hr.professional_development_permissions.professional_development_outcome_pqc",
     "Professional Development Encumbrance": "ifitwala_ed.hr.professional_development_permissions.professional_development_encumbrance_pqc",
+    "School Website Page": "ifitwala_ed.website.permissions.get_school_website_page_permission_query_conditions",
+    "Website Story": "ifitwala_ed.website.permissions.get_website_story_permission_query_conditions",
+    "Program Website Profile": "ifitwala_ed.website.permissions.get_program_website_profile_permission_query_conditions",
+    "Course Website Profile": "ifitwala_ed.website.permissions.get_course_website_profile_permission_query_conditions",
+    "Website Notice": "ifitwala_ed.website.permissions.get_website_notice_permission_query_conditions",
 }
 
 has_permission = {
@@ -250,6 +255,11 @@ has_permission = {
     "Professional Development Record": "ifitwala_ed.hr.professional_development_permissions.professional_development_record_has_permission",
     "Professional Development Outcome": "ifitwala_ed.hr.professional_development_permissions.professional_development_outcome_has_permission",
     "Professional Development Encumbrance": "ifitwala_ed.hr.professional_development_permissions.professional_development_encumbrance_has_permission",
+    "School Website Page": "ifitwala_ed.website.permissions.school_website_page_has_permission",
+    "Website Story": "ifitwala_ed.website.permissions.website_story_has_permission",
+    "Program Website Profile": "ifitwala_ed.website.permissions.program_website_profile_has_permission",
+    "Course Website Profile": "ifitwala_ed.website.permissions.course_website_profile_has_permission",
+    "Website Notice": "ifitwala_ed.website.permissions.website_notice_has_permission",
 }
 
 default_roles = [
@@ -301,6 +311,18 @@ doc_events = {
     "School": {
         "after_save": "ifitwala_ed.website.public_people.invalidate_public_people_cache",
         "on_trash": "ifitwala_ed.website.public_people.invalidate_public_people_cache",
+    },
+    "Website Notice": {
+        "after_save": "ifitwala_ed.website.site_notices.invalidate_site_notice_cache",
+        "on_trash": "ifitwala_ed.website.site_notices.invalidate_site_notice_cache",
+    },
+    "Website Story": {
+        "after_save": "ifitwala_ed.website.providers.story_feed.invalidate_story_feed_cache",
+        "on_trash": "ifitwala_ed.website.providers.story_feed.invalidate_story_feed_cache",
+    },
+    "School Calendar": {
+        "after_save": "ifitwala_ed.website.providers.academic_calendar.invalidate_academic_calendar_cache",
+        "on_trash": "ifitwala_ed.website.providers.academic_calendar.invalidate_academic_calendar_cache",
     },
     "File": {
         "validate": "ifitwala_ed.utilities.file_management.validate_admissions_attachment",
@@ -387,6 +409,7 @@ scheduler_events = {
     "hourly": [
         "ifitwala_ed.admission.scheduled_jobs.run_hourly_sla_sweep",
         "ifitwala_ed.schedule.attendance_jobs.prewarm_meeting_dates_hourly_guard",
+        "ifitwala_ed.website.publication.run_hourly_website_publication_sync",
     ],
     "daily": [
         "ifitwala_ed.students.doctype.student_log.student_log.dispatch_auto_close_completed_logs",
