@@ -915,10 +915,17 @@
 			justify-content: center;
 		}
 
+		.portal-sidebar--collapsed .portal-sidebar__footer {
+			align-items: center;
+		}
+
 		.portal-sidebar--collapsed .portal-sidebar__toggle {
+			width: 2.75rem;
+			min-height: 2.75rem;
 			justify-content: center;
-			padding-left: 0.6rem;
-			padding-right: 0.6rem;
+			align-self: center;
+			padding-left: 0;
+			padding-right: 0;
 		}
 
 		.portal-sidebar--collapsed .portal-sidebar__tooltip {

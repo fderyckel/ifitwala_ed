@@ -9,7 +9,9 @@ const {
 	fetchGroupsMock,
 	fetchGroupTasksMock,
 	getTaskGradebookMock,
+	getTaskQuizManualReviewMock,
 	repairTaskRosterMock,
+	saveTaskQuizManualReviewMock,
 	updateTaskStudentMock,
 } = vi.hoisted(() => ({
 	routeState: {
@@ -21,7 +23,9 @@ const {
 	fetchGroupsMock: vi.fn(),
 	fetchGroupTasksMock: vi.fn(),
 	getTaskGradebookMock: vi.fn(),
+	getTaskQuizManualReviewMock: vi.fn(),
 	repairTaskRosterMock: vi.fn(),
+	saveTaskQuizManualReviewMock: vi.fn(),
 	updateTaskStudentMock: vi.fn(),
 }));
 
@@ -154,7 +158,9 @@ vi.mock('@/lib/services/gradebook/gradebookService', () => ({
 		fetchGroups: fetchGroupsMock,
 		fetchGroupTasks: fetchGroupTasksMock,
 		getTaskGradebook: getTaskGradebookMock,
+		getTaskQuizManualReview: getTaskQuizManualReviewMock,
 		repairTaskRoster: repairTaskRosterMock,
+		saveTaskQuizManualReview: saveTaskQuizManualReviewMock,
 		updateTaskStudent: updateTaskStudentMock,
 	}),
 }));
@@ -298,7 +304,9 @@ afterEach(() => {
 	fetchGroupsMock.mockReset();
 	fetchGroupTasksMock.mockReset();
 	getTaskGradebookMock.mockReset();
+	getTaskQuizManualReviewMock.mockReset();
 	repairTaskRosterMock.mockReset();
+	saveTaskQuizManualReviewMock.mockReset();
 	updateTaskStudentMock.mockReset();
 	while (cleanupFns.length) cleanupFns.pop()?.();
 	document.body.innerHTML = '';
@@ -492,5 +500,98 @@ describe('Gradebook page', () => {
 		expect(text).toContain('Comment');
 		expect(text).not.toContain('Points Awarded');
 		expect(text).not.toContain('Max Points:');
+	});
+
+	it('routes assessed quiz tasks into the open-ended review panel', async () => {
+		mockGradebookFlow({
+			task: {
+				title: 'Quiz reflection',
+				task_type: 'Quiz',
+				grading_mode: 'Points',
+				points: 1,
+				binary: 0,
+				criteria: 0,
+				max_points: 4,
+				delivery_type: 'Assess',
+			},
+		});
+		getTaskQuizManualReviewMock.mockResolvedValue({
+			task: {
+				name: 'TDL-1',
+				title: 'Quiz reflection',
+				student_group: 'SG-1',
+				max_points: 4,
+				pass_percentage: 70,
+			},
+			summary: {
+				manual_item_count: 1,
+				pending_item_count: 1,
+				pending_student_count: 1,
+				pending_attempt_count: 1,
+			},
+			view_mode: 'question',
+			questions: [
+				{
+					quiz_question: 'QQ-1',
+					title: 'Explain the strategy',
+					manual_item_count: 1,
+					pending_item_count: 1,
+				},
+			],
+			students: [
+				{
+					student: 'STU-1',
+					student_name: 'Ada Lovelace',
+					student_id: 'S-001',
+					student_image: null,
+					manual_item_count: 1,
+					pending_item_count: 1,
+				},
+			],
+			selected_question: {
+				quiz_question: 'QQ-1',
+				title: 'Explain the strategy',
+			},
+			selected_student: null,
+			rows: [
+				{
+					item_id: 'QAI-1',
+					quiz_attempt: 'QAT-1',
+					task_outcome: 'OUT-1',
+					attempt_number: 1,
+					attempt_status: 'Needs Review',
+					submitted_on: '2026-04-08 11:00:00',
+					student: 'STU-1',
+					student_name: 'Ada Lovelace',
+					student_id: 'S-001',
+					student_image: null,
+					grading_status: 'Needs Review',
+					quiz_question: 'QQ-1',
+					title: 'Explain the strategy',
+					position: 1,
+					question_type: 'Essay',
+					prompt_html: '<p>Explain the strategy.</p>',
+					response_text: 'I compared both approaches.',
+					selected_option_ids: [],
+					selected_option_labels: [],
+					awarded_score: null,
+					requires_manual_grading: 1,
+				},
+			],
+		});
+
+		mountPage();
+		await flushUi();
+		await openTask('Quiz reflection');
+
+		expect(getTaskQuizManualReviewMock).toHaveBeenCalledWith({
+			task: 'TDL-1',
+			view_mode: 'question',
+			quiz_question: null,
+			student: null,
+		});
+		expect(document.body.textContent || '').toContain('Open-ended Quiz Review');
+		expect(document.body.textContent || '').toContain('Save Score');
+		expect(document.body.textContent || '').toContain('Ada Lovelace');
 	});
 });

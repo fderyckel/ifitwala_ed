@@ -29,111 +29,114 @@
 			<p class="mt-2 type-caption text-ink/70">{{ homeError }}</p>
 		</section>
 
-		<section class="grid gap-6 xl:grid-cols-[minmax(0,2fr),320px]">
-			<div class="card-surface p-5 sm:p-6">
-				<div class="flex items-center justify-between gap-3">
+		<section class="card-surface p-5 sm:p-6">
+			<div class="flex items-center justify-between gap-3">
+				<div>
+					<p class="type-overline text-ink/60">Today</p>
+					<h2 class="type-h2 text-ink">{{ orientationTitle }}</h2>
+					<p class="mt-1 type-body text-ink/70">{{ orientationSubtitle }}</p>
+				</div>
+				<RouterLink :to="{ name: 'student-courses' }" class="if-action">My Courses</RouterLink>
+			</div>
+
+			<p v-if="daySummary" class="mt-4 type-caption text-ink/60">{{ daySummary }}</p>
+
+			<div v-if="loadingHome" class="mt-5 type-body text-ink/70">
+				Loading today’s learning plan...
+			</div>
+
+			<div
+				v-else-if="currentClass"
+				class="mt-5 rounded-2xl border border-jacaranda/30 bg-jacaranda/10 p-5"
+			>
+				<div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
 					<div>
-						<p class="type-overline text-ink/60">Today</p>
-						<h2 class="type-h2 text-ink">{{ orientationTitle }}</h2>
-						<p class="mt-1 type-body text-ink/70">{{ orientationSubtitle }}</p>
+						<p class="type-overline text-ink/60">Current Class</p>
+						<p class="mt-1 type-h3 text-ink">{{ currentClass.course_name }}</p>
+						<p class="mt-2 type-body text-ink/70">
+							{{ classSubtitle(currentClass) }}
+						</p>
 					</div>
-					<RouterLink :to="{ name: 'student-courses' }" class="if-action">My Courses</RouterLink>
-				</div>
-
-				<p v-if="daySummary" class="mt-4 type-caption text-ink/60">{{ daySummary }}</p>
-
-				<div v-if="loadingHome" class="mt-5 type-body text-ink/70">
-					Loading today’s learning plan...
-				</div>
-
-				<div
-					v-else-if="currentClass"
-					class="mt-5 rounded-2xl border border-jacaranda/30 bg-jacaranda/10 p-5"
-				>
-					<div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-						<div>
-							<p class="type-overline text-ink/60">Current Class</p>
-							<p class="mt-1 type-h3 text-ink">{{ currentClass.course_name }}</p>
-							<p class="mt-2 type-body text-ink/70">
-								{{ classSubtitle(currentClass) }}
-							</p>
-						</div>
-						<RouterLink :to="linkFor(currentClass.href)" class="if-action">Open Class</RouterLink>
-					</div>
-				</div>
-
-				<div
-					v-else-if="nextClass"
-					class="mt-5 rounded-2xl border border-line-soft bg-surface-soft p-5"
-				>
-					<div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-						<div>
-							<p class="type-overline text-ink/60">Next Up</p>
-							<p class="mt-1 type-h3 text-ink">{{ nextClass.course_name }}</p>
-							<p class="mt-2 type-body text-ink/70">
-								{{ classSubtitle(nextClass) }}
-							</p>
-						</div>
-						<RouterLink :to="linkFor(nextClass.href)" class="if-action">Prepare</RouterLink>
-					</div>
-				</div>
-
-				<div
-					v-else-if="nextLearningStep"
-					class="mt-5 rounded-2xl border border-line-soft bg-surface-soft p-5"
-				>
-					<div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-						<div>
-							<p class="type-overline text-ink/60">Continue Learning</p>
-							<div class="mt-1 flex flex-wrap items-center gap-2">
-								<p class="type-h3 text-ink">{{ nextLearningStep.title }}</p>
-								<span v-if="nextLearningStep.status_label" class="chip">
-									{{ nextLearningStep.status_label }}
-								</span>
-							</div>
-							<p class="mt-2 type-body text-ink/70">{{ nextLearningStep.subtitle }}</p>
-						</div>
-						<RouterLink
-							v-if="nextLearningStep.can_open && nextLearningStep.href"
-							:to="linkFor(nextLearningStep.href)"
-							class="if-action"
-						>
-							{{ nextLearningStepButtonLabel }}
-						</RouterLink>
-						<button v-else type="button" class="if-action cursor-not-allowed opacity-60" disabled>
-							{{ nextLearningStepButtonLabel }}
-						</button>
-					</div>
-				</div>
-
-				<div v-else class="mt-5 rounded-2xl border border-dashed border-line-soft p-5">
-					<p class="type-body text-ink/70">No classes or work items are available yet.</p>
+					<RouterLink :to="linkFor(currentClass.href)" class="if-action">Open Class</RouterLink>
 				</div>
 			</div>
 
-			<aside class="card-surface p-5">
-				<p class="type-overline text-ink/60">Snapshot</p>
-				<div class="mt-4 grid gap-3">
-					<div class="rounded-2xl border border-line-soft bg-surface-soft p-4">
-						<p class="type-caption text-ink/60">Courses</p>
-						<p class="mt-1 type-h3 text-ink">{{ accessibleCourseCount }}</p>
-					</div>
-					<div class="rounded-2xl border border-line-soft bg-surface-soft p-4">
-						<p class="type-caption text-ink/60">In Now</p>
-						<p class="mt-1 type-h3 text-ink">{{ workBoard.now.length }}</p>
-					</div>
-					<div class="rounded-2xl border border-line-soft bg-surface-soft p-4">
-						<p class="type-caption text-ink/60">Coming This Week</p>
-						<p class="mt-1 type-h3 text-ink">
-							{{ workBoard.soon.length + workBoard.later.length }}
+			<div
+				v-else-if="nextClass"
+				class="mt-5 rounded-2xl border border-line-soft bg-surface-soft p-5"
+			>
+				<div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+					<div>
+						<p class="type-overline text-ink/60">Next Up</p>
+						<p class="mt-1 type-h3 text-ink">{{ nextClass.course_name }}</p>
+						<p class="mt-2 type-body text-ink/70">
+							{{ classSubtitle(nextClass) }}
 						</p>
 					</div>
-					<div class="rounded-2xl border border-line-soft bg-surface-soft p-4">
-						<p class="type-caption text-ink/60">Recently Done</p>
-						<p class="mt-1 type-h3 text-ink">{{ workBoard.done.length }}</p>
-					</div>
+					<RouterLink :to="linkFor(nextClass.href)" class="if-action">Prepare</RouterLink>
 				</div>
-			</aside>
+			</div>
+
+			<div
+				v-else-if="nextLearningStep"
+				class="mt-5 rounded-2xl border border-line-soft bg-surface-soft p-5"
+			>
+				<div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+					<div>
+						<p class="type-overline text-ink/60">Continue Learning</p>
+						<div class="mt-1 flex flex-wrap items-center gap-2">
+							<p class="type-h3 text-ink">{{ nextLearningStep.title }}</p>
+							<span v-if="nextLearningStep.status_label" class="chip">
+								{{ nextLearningStep.status_label }}
+							</span>
+						</div>
+						<p class="mt-2 type-body text-ink/70">{{ nextLearningStep.subtitle }}</p>
+					</div>
+					<RouterLink
+						v-if="nextLearningStep.can_open && nextLearningStep.href"
+						:to="linkFor(nextLearningStep.href)"
+						class="if-action"
+					>
+						{{ nextLearningStepButtonLabel }}
+					</RouterLink>
+					<button v-else type="button" class="if-action cursor-not-allowed opacity-60" disabled>
+						{{ nextLearningStepButtonLabel }}
+					</button>
+				</div>
+			</div>
+
+			<div v-else class="mt-5 rounded-2xl border border-dashed border-line-soft p-5">
+				<p class="type-body text-ink/70">No classes or work items are available yet.</p>
+			</div>
+		</section>
+
+		<section class="card-surface p-5">
+			<div class="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+				<div>
+					<p class="type-overline text-ink/60">Snapshot</p>
+					<h2 class="type-h3 text-ink">Jump back into the right place</h2>
+					<p class="type-caption text-ink/70">These cards are shortcuts, not just counts.</p>
+				</div>
+			</div>
+
+			<div class="mt-4 grid grid-cols-2 gap-3 md:grid-cols-4">
+				<RouterLink
+					v-for="item in snapshotLinks"
+					:key="item.key"
+					:to="item.to"
+					class="group rounded-2xl border border-line-soft bg-surface-soft p-4 transition hover:-translate-y-0.5 hover:border-jacaranda/35 hover:shadow-soft"
+				>
+					<div class="flex items-start justify-between gap-3">
+						<p class="type-caption text-ink/60">{{ item.title }}</p>
+						<FeatherIcon
+							name="arrow-up-right"
+							class="h-4 w-4 shrink-0 text-ink/35 transition group-hover:text-jacaranda"
+						/>
+					</div>
+					<p class="mt-3 type-h3 text-ink">{{ item.count }}</p>
+					<p class="mt-1 type-caption text-ink/70">{{ item.description }}</p>
+				</RouterLink>
+			</div>
 		</section>
 
 		<section class="space-y-4">
@@ -300,6 +303,14 @@ type BrowserSessionUser = {
 	email?: string | null;
 };
 
+type SnapshotLink = {
+	key: string;
+	title: string;
+	count: number;
+	description: string;
+	to: RouteTarget;
+};
+
 function getSessionUserInfo(): BrowserSessionUser {
 	const browserWindow = window as Window & {
 		frappe?: {
@@ -351,6 +362,11 @@ const timelineDays = computed<TimelineDay[]>(() => homePayload.value?.learning?.
 const accessibleCourseCount = computed(
 	() => homePayload.value?.learning?.accessible_courses_count ?? 0
 );
+const currentFocusCount = computed(() => {
+	if (workBoard.value.now.length) return workBoard.value.now.length;
+	return currentClass.value ? 1 : 0;
+});
+const comingThisWeekCount = computed(() => workBoard.value.soon.length);
 const daySummary = computed(() => {
 	const date = homePayload.value?.meta?.date ?? null;
 	const weekday = homePayload.value?.meta?.weekday ?? null;
@@ -408,6 +424,53 @@ const boardLanes = computed(() => [
 
 const nextLearningStepButtonLabel = computed(() => {
 	return nextLearningStep.value?.cta_label || 'Open course';
+});
+const snapshotLinks = computed<SnapshotLink[]>(() => {
+	const currentFocusTarget =
+		currentClass.value?.href ??
+		workBoard.value.now[0]?.href ??
+		nextLearningStep.value?.href ??
+		null;
+	const comingThisWeekTarget =
+		workBoard.value.soon[0]?.href ?? workBoard.value.later[0]?.href ?? null;
+	const doneTarget = workBoard.value.done[0]?.href ?? null;
+
+	return [
+		{
+			key: 'courses',
+			title: 'Courses',
+			count: accessibleCourseCount.value,
+			description: 'Open your learning spaces.',
+			to: linkFor({ name: 'student-courses' }),
+		},
+		{
+			key: 'in-now',
+			title: 'In Now',
+			count: currentFocusCount.value,
+			description: currentClass.value
+				? `Open ${currentClass.value.course_name}.`
+				: 'Resume your active work.',
+			to: linkFor(currentFocusTarget),
+		},
+		{
+			key: 'coming-this-week',
+			title: 'Coming This Week',
+			count: comingThisWeekCount.value,
+			description: workBoard.value.soon[0]?.title
+				? `Start with ${workBoard.value.soon[0].title}.`
+				: 'Review what is due next.',
+			to: linkFor(comingThisWeekTarget),
+		},
+		{
+			key: 'recently-done',
+			title: 'Recently Done',
+			count: workBoard.value.done.length,
+			description: workBoard.value.done[0]?.title
+				? `Review ${workBoard.value.done[0].title}.`
+				: 'See your latest completed work.',
+			to: linkFor(doneTarget),
+		},
+	];
 });
 
 async function loadHome() {

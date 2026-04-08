@@ -14,11 +14,18 @@
 
 from __future__ import annotations
 
+import json
+
 import frappe
 from frappe import _
 from frappe.utils import now_datetime
 
-from ifitwala_ed.assessment import task_contribution_service, task_outcome_service, task_submission_service
+from ifitwala_ed.assessment import (
+    quiz_service,
+    task_contribution_service,
+    task_outcome_service,
+    task_submission_service,
+)
 from ifitwala_ed.utilities.image_utils import apply_preferred_student_images
 
 # ---------------------------
@@ -641,6 +648,197 @@ def get_task_gradebook(task: str):
 
 
 @frappe.whitelist()
+def get_task_quiz_manual_review(
+    task: str, view_mode: str | None = None, quiz_question: str | None = None, student: str | None = None
+):
+    """
+    Return a bounded teacher grading surface for manually graded quiz items.
+
+    This stays in the gradebook domain because the teacher workflow is part of the
+    staff grading loop, but official quiz truth still recomputes through quiz_service.
+    """
+    if not _can_read_gradebook():
+        frappe.throw(_("Not permitted."), frappe.PermissionError)
+    _require(task, "Task Delivery")
+
+    delivery = _resolve_delivery(task)
+    _assert_group_access(delivery.get("student_group"))
+    task_row = _require_manual_quiz_review_delivery(delivery)
+    review_rows = _build_quiz_manual_review_rows(delivery)
+    mode = _normalize_quiz_manual_view_mode(view_mode)
+
+    question_options = _build_quiz_manual_question_options(review_rows)
+    student_options = _build_quiz_manual_student_options(review_rows)
+
+    selected_question = None
+    selected_student = None
+    filtered_rows = review_rows
+
+    if mode == "question":
+        selected_question = _resolve_selected_quiz_manual_question(quiz_question, question_options)
+        filtered_rows = (
+            [row for row in review_rows if row.get("quiz_question") == selected_question] if selected_question else []
+        )
+    else:
+        selected_student = _resolve_selected_quiz_manual_student(student, student_options)
+        filtered_rows = (
+            [row for row in review_rows if row.get("student") == selected_student] if selected_student else []
+        )
+
+    return {
+        "task": {
+            "name": delivery.get("name"),
+            "title": task_row.get("title") or task_row.get("name"),
+            "student_group": delivery.get("student_group"),
+            "max_points": _coerce_float(delivery.get("max_points")),
+            "pass_percentage": _coerce_float(delivery.get("quiz_pass_percentage")),
+        },
+        "summary": {
+            "manual_item_count": len(review_rows),
+            "pending_item_count": sum(1 for row in review_rows if int(row.get("requires_manual_grading") or 0) == 1),
+            "pending_student_count": len(
+                {
+                    row.get("student")
+                    for row in review_rows
+                    if int(row.get("requires_manual_grading") or 0) == 1 and row.get("student")
+                }
+            ),
+            "pending_attempt_count": len(
+                {
+                    row.get("quiz_attempt")
+                    for row in review_rows
+                    if int(row.get("requires_manual_grading") or 0) == 1 and row.get("quiz_attempt")
+                }
+            ),
+        },
+        "view_mode": mode,
+        "questions": question_options,
+        "students": student_options,
+        "selected_question": (
+            next(
+                (
+                    {
+                        "quiz_question": row.get("quiz_question"),
+                        "title": row.get("title"),
+                    }
+                    for row in question_options
+                    if row.get("quiz_question") == selected_question
+                ),
+                None,
+            )
+            if selected_question
+            else None
+        ),
+        "selected_student": (
+            next(
+                (
+                    {
+                        "student": row.get("student"),
+                        "student_name": row.get("student_name"),
+                        "student_id": row.get("student_id"),
+                    }
+                    for row in student_options
+                    if row.get("student") == selected_student
+                ),
+                None,
+            )
+            if selected_student
+            else None
+        ),
+        "rows": filtered_rows,
+    }
+
+
+@frappe.whitelist()
+def save_task_quiz_manual_review(task: str, grades=None, **kwargs):
+    """
+    Save teacher-awarded scores for manually graded quiz items and refresh attempt truth.
+    """
+    if not _can_write_gradebook():
+        frappe.throw(_("Not permitted."), frappe.PermissionError)
+    _require(task, "Task Delivery")
+
+    raw_rows = grades if grades is not None else kwargs.get("grades")
+    if isinstance(raw_rows, str):
+        raw_rows = frappe.parse_json(raw_rows)
+    if raw_rows is None:
+        payload = _normalize_payload(None, kwargs)
+        raw_rows = payload.get("grades")
+    rows = raw_rows
+    if not isinstance(rows, list) or not rows:
+        frappe.throw(_("Grades must be a non-empty list."))
+
+    delivery = _resolve_delivery(task)
+    _assert_group_access(delivery.get("student_group"))
+    _require_manual_quiz_review_delivery(delivery)
+
+    requested_items: dict[str, float] = {}
+    for row in rows:
+        if not isinstance(row, dict):
+            frappe.throw(_("Each quiz manual review row must be an object."))
+        item_id = str(row.get("item_id") or "").strip()
+        if not item_id:
+            frappe.throw(_("Quiz Attempt Item is required."))
+        score = _coerce_float(row.get("awarded_score"))
+        if score is None:
+            frappe.throw(_("Awarded score is required for manual quiz grading."))
+        if score < 0 or score > 1:
+            frappe.throw(_("Awarded score must stay between 0 and 1 for quiz manual grading."))
+        requested_items[item_id] = score
+
+    item_rows = frappe.get_all(
+        "Quiz Attempt Item",
+        filters={"name": ["in", list(requested_items.keys())]},
+        fields=["name", "quiz_attempt", "question_type"],
+        limit=0,
+    )
+    if len(item_rows) != len(requested_items):
+        frappe.throw(_("One or more quiz attempt items could not be found."))
+
+    attempt_ids = [row.get("quiz_attempt") for row in item_rows if row.get("quiz_attempt")]
+    attempt_rows = frappe.get_all(
+        "Quiz Attempt",
+        filters={"name": ["in", list(set(attempt_ids))]},
+        fields=["name", "task_delivery", "student", "status"],
+        limit=0,
+    )
+    attempt_map = {row.get("name"): row for row in attempt_rows if row.get("name")}
+
+    for item in item_rows:
+        if item.get("question_type") not in quiz_service.MANUAL_TYPES:
+            frappe.throw(_("Only manually graded quiz items can be updated from this surface."))
+        attempt = attempt_map.get(item.get("quiz_attempt"))
+        if not attempt or attempt.get("task_delivery") != delivery.get("name"):
+            frappe.throw(_("Quiz attempt item does not belong to the selected delivery."), frappe.PermissionError)
+        if attempt.get("status") not in {"Submitted", "Needs Review"}:
+            frappe.throw(_("Only submitted quiz attempts can be manually graded."))
+
+    touched_attempts = []
+    for item in item_rows:
+        frappe.db.set_value(
+            "Quiz Attempt Item",
+            item.get("name"),
+            {"awarded_score": requested_items[item["name"]]},
+            update_modified=True,
+        )
+        touched_attempts.append(item.get("quiz_attempt"))
+
+    for attempt_id in dict.fromkeys(touched_attempts):
+        attempt = attempt_map.get(attempt_id) or {}
+        quiz_service.refresh_attempt(
+            attempt_id,
+            user=frappe.session.user,
+            mark_submitted=True,
+            student=attempt.get("student"),
+        )
+
+    return {
+        "updated_item_count": len(item_rows),
+        "updated_attempt_count": len(dict.fromkeys(touched_attempts)),
+    }
+
+
+@frappe.whitelist()
 def repair_task_roster(task: str):
     """
     Backfill missing Task Outcome rows for a delivery already visible in gradebook.
@@ -860,6 +1058,263 @@ def _normalize_payload(payload, kwargs):
     if not isinstance(data, dict) or not data:
         frappe.throw(_("Payload must be a dict."))
     return data
+
+
+def _normalize_quiz_manual_view_mode(value: str | None) -> str:
+    return "student" if str(value or "").strip() == "student" else "question"
+
+
+def _require_manual_quiz_review_delivery(delivery):
+    task_name = delivery.get("task")
+    task_row = frappe.db.get_value(
+        "Task",
+        task_name,
+        ["name", "title", "task_type"],
+        as_dict=True,
+    )
+    if not task_row:
+        frappe.throw(_("Task not found."))
+    if (task_row.get("task_type") or "").strip() != "Quiz":
+        frappe.throw(_("Quiz manual review is only available for quiz deliveries."))
+    if (delivery.get("delivery_mode") or "").strip() != "Assess":
+        frappe.throw(_("Quiz manual review is only available for assessed quiz deliveries."))
+    return task_row
+
+
+def _build_quiz_manual_review_rows(delivery):
+    outcome_rows = frappe.get_all(
+        "Task Outcome",
+        filters={"task_delivery": delivery.get("name")},
+        fields=["name", "student", "grading_status"],
+        limit=0,
+    )
+    outcome_map = {row.get("name"): row for row in outcome_rows if row.get("name")}
+
+    attempt_rows = frappe.get_all(
+        "Quiz Attempt",
+        filters={
+            "task_delivery": delivery.get("name"),
+            "status": ["in", ["Submitted", "Needs Review"]],
+        },
+        fields=[
+            "name",
+            "task_outcome",
+            "student",
+            "attempt_number",
+            "status",
+            "submitted_on",
+            "score",
+            "percentage",
+            "passed",
+            "requires_manual_review",
+        ],
+        order_by="submitted_on desc, attempt_number desc, name asc",
+        limit=0,
+    )
+    attempt_map = {row.get("name"): row for row in attempt_rows if row.get("name")}
+    if not attempt_map:
+        return []
+
+    item_rows = frappe.get_all(
+        "Quiz Attempt Item",
+        filters={
+            "quiz_attempt": ["in", list(attempt_map.keys())],
+            "question_type": ["in", sorted(quiz_service.MANUAL_TYPES)],
+        },
+        fields=[
+            "name",
+            "quiz_attempt",
+            "quiz_question",
+            "position",
+            "question_type",
+            "prompt_html",
+            "option_payload",
+            "response_text",
+            "response_payload",
+            "awarded_score",
+            "requires_manual_grading",
+        ],
+        order_by="position asc, name asc",
+        limit=0,
+    )
+    if not item_rows:
+        return []
+
+    question_rows = frappe.get_all(
+        "Quiz Question",
+        filters={"name": ["in", list({row.get("quiz_question") for row in item_rows if row.get("quiz_question")})]},
+        fields=["name", "title"],
+        limit=0,
+    )
+    question_map = {row.get("name"): row for row in question_rows if row.get("name")}
+
+    student_ids = []
+    for attempt in attempt_rows:
+        student_id = attempt.get("student") or outcome_map.get(attempt.get("task_outcome"), {}).get("student")
+        if student_id:
+            student_ids.append(student_id)
+    student_display_map = _get_student_display_map(student_ids)
+    student_meta_map = _get_student_meta_map(student_ids)
+
+    rows = []
+    for item in item_rows:
+        attempt = attempt_map.get(item.get("quiz_attempt"))
+        if not attempt:
+            continue
+        outcome = outcome_map.get(attempt.get("task_outcome")) or {}
+        student_id = attempt.get("student") or outcome.get("student")
+        if not student_id:
+            continue
+        question = question_map.get(item.get("quiz_question")) or {}
+        student_meta = student_meta_map.get(student_id) or {}
+        selected_option_ids = _parse_quiz_manual_response_ids(item.get("response_payload"))
+        rows.append(
+            {
+                "item_id": item.get("name"),
+                "quiz_attempt": attempt.get("name"),
+                "task_outcome": attempt.get("task_outcome"),
+                "attempt_number": attempt.get("attempt_number"),
+                "attempt_status": attempt.get("status"),
+                "submitted_on": attempt.get("submitted_on"),
+                "student": student_id,
+                "student_name": student_display_map.get(student_id) or student_id,
+                "student_id": student_meta.get("student_id"),
+                "student_image": student_meta.get("student_image"),
+                "grading_status": outcome.get("grading_status"),
+                "quiz_question": item.get("quiz_question"),
+                "title": question.get("title") or item.get("quiz_question"),
+                "position": item.get("position"),
+                "question_type": item.get("question_type"),
+                "prompt_html": item.get("prompt_html"),
+                "response_text": item.get("response_text"),
+                "selected_option_ids": selected_option_ids,
+                "selected_option_labels": _resolve_quiz_manual_selected_option_labels(
+                    item.get("option_payload"), selected_option_ids
+                ),
+                "awarded_score": _coerce_float(item.get("awarded_score")),
+                "requires_manual_grading": 1 if _bool_flag(item.get("requires_manual_grading")) else 0,
+            }
+        )
+
+    rows.sort(
+        key=lambda row: (
+            str(row.get("title") or "").lower(),
+            str(row.get("student_name") or "").lower(),
+            row.get("attempt_number") or 0,
+            row.get("position") or 0,
+            str(row.get("item_id") or ""),
+        )
+    )
+    return rows
+
+
+def _build_quiz_manual_question_options(rows):
+    options = {}
+    for row in rows:
+        quiz_question = row.get("quiz_question")
+        if not quiz_question:
+            continue
+        option = options.setdefault(
+            quiz_question,
+            {
+                "quiz_question": quiz_question,
+                "title": row.get("title") or quiz_question,
+                "manual_item_count": 0,
+                "pending_item_count": 0,
+            },
+        )
+        option["manual_item_count"] += 1
+        if int(row.get("requires_manual_grading") or 0) == 1:
+            option["pending_item_count"] += 1
+
+    return sorted(
+        options.values(),
+        key=lambda row: (str(row.get("title") or "").lower(), str(row.get("quiz_question") or "")),
+    )
+
+
+def _build_quiz_manual_student_options(rows):
+    options = {}
+    for row in rows:
+        student = row.get("student")
+        if not student:
+            continue
+        option = options.setdefault(
+            student,
+            {
+                "student": student,
+                "student_name": row.get("student_name") or student,
+                "student_id": row.get("student_id"),
+                "student_image": row.get("student_image"),
+                "manual_item_count": 0,
+                "pending_item_count": 0,
+            },
+        )
+        option["manual_item_count"] += 1
+        if int(row.get("requires_manual_grading") or 0) == 1:
+            option["pending_item_count"] += 1
+
+    return sorted(
+        options.values(),
+        key=lambda row: (
+            str(row.get("student_name") or "").lower(),
+            str(row.get("student_id") or ""),
+            str(row.get("student") or ""),
+        ),
+    )
+
+
+def _resolve_selected_quiz_manual_question(requested, question_options):
+    requested_value = str(requested or "").strip()
+    if requested_value and any(row.get("quiz_question") == requested_value for row in question_options):
+        return requested_value
+    return question_options[0].get("quiz_question") if question_options else None
+
+
+def _resolve_selected_quiz_manual_student(requested, student_options):
+    requested_value = str(requested or "").strip()
+    if requested_value and any(row.get("student") == requested_value for row in student_options):
+        return requested_value
+    return student_options[0].get("student") if student_options else None
+
+
+def _parse_quiz_manual_response_ids(value) -> list[str]:
+    if value in (None, ""):
+        return []
+    try:
+        parsed = json.loads(value) if isinstance(value, str) else value
+    except Exception:
+        return []
+    if not isinstance(parsed, list):
+        return []
+    return [str(entry).strip() for entry in parsed if str(entry).strip()]
+
+
+def _resolve_quiz_manual_selected_option_labels(option_payload, selected_option_ids) -> list[str]:
+    if not option_payload or not selected_option_ids:
+        return []
+    try:
+        parsed = json.loads(option_payload) if isinstance(option_payload, str) else option_payload
+    except Exception:
+        return []
+    if not isinstance(parsed, list):
+        return []
+
+    option_map = {}
+    for row in parsed:
+        if not isinstance(row, dict):
+            continue
+        option_id = str(row.get("id") or "").strip()
+        if not option_id:
+            continue
+        option_map[option_id] = str(row.get("text") or "").strip() or option_id
+
+    labels = []
+    for option_id in selected_option_ids:
+        label = option_map.get(option_id)
+        if label:
+            labels.append(label)
+    return labels
 
 
 def _resolve_gradebook_scope(school, academic_year, course):
@@ -1191,6 +1646,7 @@ def _resolve_delivery(delivery_id):
             "grading_mode",
             "allow_feedback",
             "max_points",
+            "quiz_pass_percentage",
             "rubric_version",
             "rubric_scoring_strategy",
         ],

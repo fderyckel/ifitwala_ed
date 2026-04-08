@@ -39,8 +39,16 @@ vi.mock('vue-router', async () => {
 					default: '',
 				},
 			},
-			setup(_, { slots }) {
-				return () => h('a', {}, slots.default?.())
+			setup(props, { slots }) {
+				return () =>
+					h(
+						'a',
+						{
+							'data-to':
+								typeof props.to === 'string' ? props.to : JSON.stringify(props.to ?? {}),
+						},
+						slots.default?.()
+					)
 			},
 		}),
 	}
@@ -163,5 +171,131 @@ describe('StudentHome', () => {
 			node.textContent?.includes('Not ready yet')
 		) as HTMLButtonElement | undefined
 		expect(disabledButton?.disabled).toBe(true)
+	})
+
+	it('renders snapshot cards as clickable shortcuts', async () => {
+		;(window as Window & { frappe?: unknown }).frappe = {
+			session: {
+				user_info: {
+					fullname: 'Amina Example',
+				},
+			},
+		}
+
+		getStudentHubHomeMock.mockResolvedValue({
+			meta: {
+				generated_at: '2026-04-02T09:00:00',
+				date: '2026-04-02',
+				weekday: 'Thursday',
+			},
+			identity: {
+				user: 'student@example.com',
+				student: 'STU-1',
+				display_name: 'Amina',
+			},
+			learning: {
+				today_classes: [],
+				next_learning_step: {
+					kind: 'course',
+					title: 'Biology',
+					subtitle: 'Resume your course work.',
+					cta_label: 'Open course',
+					status_label: 'Open',
+					can_open: 1,
+					href: { name: 'student-course-detail', params: { course_id: 'BIO-1' } },
+				},
+				accessible_courses_count: 4,
+				selected_year: '2025-2026',
+				orientation: {
+					current_class: {
+						course: 'BIO-1',
+						course_name: 'Biology',
+						student_group: 'GRP-1',
+						instructors: ['Dr Green'],
+						time_slots: [{ time_range: '09:00 - 09:45' }],
+						href: { name: 'student-course-detail', params: { course_id: 'BIO-1' } },
+					},
+					next_class: null,
+				},
+				work_board: {
+					now: [
+						{
+							task_delivery: 'DEL-1',
+							task: 'TASK-1',
+							title: 'Lab Notes',
+							requires_submission: 1,
+							require_grading: 1,
+							href: { name: 'student-course-detail', params: { course_id: 'BIO-1' } },
+							lane: 'now',
+							lane_reason: 'Ready now',
+							status_label: 'Open',
+							outcome: {
+								has_submission: 0,
+								has_new_submission: 0,
+								is_complete: 0,
+							},
+						},
+					],
+					soon: [
+						{
+							task_delivery: 'DEL-2',
+							task: 'TASK-2',
+							title: 'Essay Draft',
+							requires_submission: 1,
+							require_grading: 1,
+							href: { name: 'student-course-detail', params: { course_id: 'ENG-1' } },
+							lane: 'soon',
+							lane_reason: 'Due this week',
+							status_label: 'Upcoming',
+							outcome: {
+								has_submission: 0,
+								has_new_submission: 0,
+								is_complete: 0,
+							},
+						},
+					],
+					later: [],
+					done: [
+						{
+							task_delivery: 'DEL-3',
+							task: 'TASK-3',
+							title: 'History Reflection',
+							requires_submission: 1,
+							require_grading: 1,
+							href: { name: 'student-course-detail', params: { course_id: 'HIS-1' } },
+							lane: 'done',
+							lane_reason: 'Completed',
+							status_label: 'Done',
+							outcome: {
+								has_submission: 1,
+								has_new_submission: 0,
+								is_complete: 1,
+							},
+						},
+					],
+				},
+				timeline: [],
+			},
+		})
+
+		mountStudentHome()
+		await flushUi()
+
+		const text = document.body.textContent || ''
+		expect(text).toContain('Jump back into the right place')
+		expect(text).toContain('Courses')
+		expect(text).toContain('In Now')
+		expect(text).toContain('Coming This Week')
+		expect(text).toContain('Recently Done')
+
+		const courseShortcut = Array.from(document.querySelectorAll('a')).find(node =>
+			node.textContent?.includes('Courses')
+		)
+		const inNowShortcut = Array.from(document.querySelectorAll('a')).find(node =>
+			node.textContent?.includes('In Now')
+		)
+
+		expect(courseShortcut?.getAttribute('data-to')).toContain('student-courses')
+		expect(inNowShortcut?.getAttribute('data-to')).toContain('BIO-1')
 	})
 })

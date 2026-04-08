@@ -377,338 +377,578 @@
 						</div>
 
 						<div v-else class="space-y-6">
-							<article
-								v-for="student in gradebook.students"
-								:key="student.task_student"
-								class="group relative rounded-xl border border-border bg-gray-50/30 p-5 transition-all hover:bg-white hover:shadow-md"
+							<section
+								v-if="showsQuizManualReview"
+								class="space-y-5 rounded-xl border border-border bg-gray-50/30 p-5"
 							>
-								<!-- Current Student Header -->
-								<div
-									class="flex flex-wrap items-start justify-between gap-4 border-b border-border/40 pb-4 mb-4"
-								>
-									<div class="flex items-center gap-4">
-										<img
-											:src="student.student_image || DEFAULT_STUDENT_IMAGE"
-											alt=""
-											class="h-12 w-12 rounded-full border border-white bg-white object-cover shadow-sm"
-											loading="lazy"
-											@error="onImgError"
-										/>
-										<div>
-											<p class="text-base font-bold text-ink hover:text-leaf transition-colors">
-												{{ student.student_name }}
-											</p>
-											<div class="flex items-center gap-2 text-xs text-ink/50">
-												<span v-if="student.student_id" class="font-mono">{{
-													student.student_id
-												}}</span>
-												<span>•</span>
-												<span
-													:class="{
-														'text-leaf font-medium':
-															studentStates[student.task_student]?.status === 'Finalized' ||
-															studentStates[student.task_student]?.status === 'Released',
-													}"
-												>
-													{{ studentStates[student.task_student]?.status || '—' }}
-												</span>
-											</div>
-										</div>
+								<div class="flex flex-wrap items-start justify-between gap-4">
+									<div class="space-y-1">
+										<h3 class="text-lg font-semibold text-ink">Open-ended Quiz Review</h3>
+										<p class="max-w-2xl text-sm text-ink/60">
+											Score manually graded quiz responses by question or by student. Each save
+											refreshes the official quiz attempt and outcome state on the server.
+										</p>
 									</div>
-
-									<div class="flex flex-wrap items-center gap-2">
-										<Badge
-											v-if="showsBooleanResult(gradebook.task)"
-											:variant="
-												studentStates[student.task_student]?.complete ? 'subtle' : 'outline'
-											"
-											:theme="studentStates[student.task_student]?.complete ? 'green' : 'gray'"
-											:class="
-												studentStates[student.task_student]?.complete
-													? '!bg-leaf/10 !text-leaf'
-													: ''
-											"
-										>
-											<FeatherIcon
-												:name="
-													studentStates[student.task_student]?.complete ? 'check' : 'minus-circle'
-												"
-												class="mr-1 h-3 w-3"
-											/>
-											{{ booleanResultLabel(gradebook.task, student.task_student) }}
-										</Badge>
-
-										<div
-											v-if="showsScoreSummary(gradebook.task)"
-											class="flex items-center rounded-lg bg-white px-3 py-1.5 shadow-sm border border-border/40"
-										>
-											<span class="mr-2 text-xs font-medium uppercase tracking-wider text-ink/40">
-												{{ scoreSummaryLabel(gradebook.task) }}
-											</span>
-											<span class="text-lg font-bold text-ink">
-												{{ formatPoints(studentStates[student.task_student]?.mark_awarded) }}
-											</span>
-										</div>
-									</div>
-								</div>
-
-								<!-- Grading Controls -->
-								<div class="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-									<div class="space-y-4">
-										<FormControl
-											v-if="showsStatusControl(gradebook.task)"
-											type="select"
-											label="Status"
-											:options="statusOptions"
-											option-label="label"
-											option-value="value"
-											placeholder="Select status"
-											:model-value="studentStates[student.task_student]?.status || ''"
-											@update:modelValue="onStatusChanged(student.task_student, $event)"
-										/>
-
-										<div v-if="isPointsTask(gradebook.task)" class="space-y-1.5">
-											<label
-												class="block text-xs font-semibold uppercase tracking-wide text-ink/50"
-												>Points Awarded</label
-											>
-											<FormControl
-												type="number"
-												placeholder="Points"
-												:step="0.5"
-												:min="0"
-												:max="gradebook.task?.max_points || undefined"
-												:model-value="studentStates[student.task_student]?.mark_awarded"
-												@update:modelValue="onPointsChanged(student.task_student, $event)"
-											/>
-										</div>
-
-										<div v-if="showsBooleanResult(gradebook.task)" class="space-y-1.5">
-											<label
-												class="block text-xs font-semibold uppercase tracking-wide text-ink/50"
-												>{{ booleanControlLabel(gradebook.task) }}</label
-											>
-											<div class="grid grid-cols-2 gap-2">
-												<button
-													type="button"
-													class="rounded-md border px-4 py-2 text-sm font-medium transition-all"
-													:class="
-														studentStates[student.task_student]?.complete
-															? '!border-leaf !bg-leaf !text-white'
-															: 'border-border/60 bg-white text-ink/70 hover:border-leaf/60 hover:text-leaf'
-													"
-													@click="setBooleanState(student.task_student, true)"
-												>
-													{{ booleanPositiveLabel(gradebook.task) }}
-												</button>
-												<button
-													type="button"
-													class="rounded-md border px-4 py-2 text-sm font-medium transition-all"
-													:class="
-														!studentStates[student.task_student]?.complete
-															? 'border-slate-300 bg-slate-100 text-ink'
-															: 'border-border/60 bg-white text-ink/70 hover:border-leaf/60 hover:text-leaf'
-													"
-													@click="setBooleanState(student.task_student, false)"
-												>
-													{{ booleanNegativeLabel(gradebook.task) }}
-												</button>
-											</div>
-										</div>
-
-										<div class="pt-2">
-											<label
-												class="block mb-2 text-xs font-semibold uppercase tracking-wide text-ink/50"
-												>Visibility</label
-											>
-											<div class="flex flex-col gap-2">
-												<FormControl
-													type="checkbox"
-													label="Visible to Student"
-													:model-value="
-														Boolean(studentStates[student.task_student]?.visible_to_student)
-													"
-													@update:modelValue="
-														value =>
-															setVisibility(student.task_student, 'visible_to_student', value)
-													"
-												/>
-												<FormControl
-													type="checkbox"
-													label="Visible to Guardian"
-													:model-value="
-														Boolean(studentStates[student.task_student]?.visible_to_guardian)
-													"
-													@update:modelValue="
-														value =>
-															setVisibility(student.task_student, 'visible_to_guardian', value)
-													"
-												/>
-											</div>
-										</div>
-									</div>
-
-									<!-- Feedback Column -->
-									<div
-										v-if="supportsFeedback(gradebook.task)"
-										class="space-y-1.5 md:col-span-1 lg:col-span-2"
+									<Button
+										size="sm"
+										appearance="primary"
+										:loading="quizManualSavingVisible"
+										:disabled="!visibleDirtyQuizManualRows.length"
+										@click="saveVisibleQuizManualRows"
 									>
-										<label class="block text-xs font-semibold uppercase tracking-wide text-ink/50">
-											Comment
-										</label>
+										Save Visible
+									</Button>
+								</div>
+
+								<div class="flex flex-wrap gap-2">
+									<Badge variant="subtle"
+										>Manual Items {{ quizManualReview?.summary.manual_item_count || 0 }}</Badge
+									>
+									<Badge variant="subtle"
+										>Pending {{ quizManualReview?.summary.pending_item_count || 0 }}</Badge
+									>
+									<Badge variant="subtle"
+										>Students {{ quizManualReview?.summary.pending_student_count || 0 }}</Badge
+									>
+									<Badge variant="subtle"
+										>Attempts {{ quizManualReview?.summary.pending_attempt_count || 0 }}</Badge
+									>
+								</div>
+
+								<div class="grid gap-4 lg:grid-cols-[auto_minmax(0,1fr)]">
+									<div class="inline-flex rounded-lg border border-border bg-white p-1 shadow-sm">
+										<button
+											type="button"
+											class="rounded-md px-3 py-2 text-sm font-medium transition-all"
+											:class="
+												quizManualViewMode === 'question'
+													? 'bg-leaf text-white shadow-sm'
+													: 'text-ink/70 hover:text-ink'
+											"
+											@click="setQuizManualViewMode('question')"
+										>
+											By Question
+										</button>
+										<button
+											type="button"
+											class="rounded-md px-3 py-2 text-sm font-medium transition-all"
+											:class="
+												quizManualViewMode === 'student'
+													? 'bg-leaf text-white shadow-sm'
+													: 'text-ink/70 hover:text-ink'
+											"
+											@click="setQuizManualViewMode('student')"
+										>
+											By Student
+										</button>
+									</div>
+
+									<div class="w-full">
 										<FormControl
-											type="textarea"
-											rows="5"
-											placeholder="Add a comment for this student..."
-											class="!h-full"
-											:model-value="studentStates[student.task_student]?.feedback || ''"
-											@update:modelValue="onFeedbackChanged(student.task_student, $event)"
+											v-if="quizManualViewMode === 'question'"
+											type="select"
+											:options="
+												(quizManualReview?.questions || []).map(question => ({
+													label: quizManualQuestionLabel(question),
+													value: question.quiz_question,
+												}))
+											"
+											:model-value="selectedQuizManualQuestion"
+											:disabled="quizManualLoading || !(quizManualReview?.questions || []).length"
+											placeholder="Select question"
+											@update:modelValue="onQuizManualQuestionSelected"
+										/>
+										<FormControl
+											v-else
+											type="select"
+											:options="
+												(quizManualReview?.students || []).map(student => ({
+													label: quizManualStudentLabel(student),
+													value: student.student,
+												}))
+											"
+											:model-value="selectedQuizManualStudent"
+											:disabled="quizManualLoading || !(quizManualReview?.students || []).length"
+											placeholder="Select student"
+											@update:modelValue="onQuizManualStudentSelected"
 										/>
 									</div>
 								</div>
 
-								<!-- Criteria Section -->
 								<div
-									v-if="gradebook.task?.criteria && gradebook.criteria.length"
-									class="mt-6 rounded-lg border border-border/60 bg-white p-4 shadow-sm"
+									v-if="quizManualLoading"
+									class="flex min-h-[220px] flex-col items-center justify-center gap-3 rounded-lg border border-dashed border-border/70 bg-white/70 p-6 text-center"
 								>
-									<div class="mb-4 flex items-center justify-between">
-										<h4 class="text-sm font-bold text-ink">Criteria Breakdown</h4>
-										<Badge
-											v-if="studentStates[student.task_student]?.dirtyCriteria"
-											variant="subtle"
-											theme="orange"
-										>
-											Unsaved Changes
-										</Badge>
-									</div>
-									<div class="grid gap-4 md:grid-cols-2">
+									<Spinner class="h-7 w-7 text-canopy" />
+									<p class="text-sm text-ink/50">Loading open-ended quiz responses...</p>
+								</div>
+
+								<div
+									v-else-if="!(quizManualReview?.rows || []).length"
+									class="rounded-lg border border-dashed border-border/70 bg-white/70 p-6 text-center text-sm text-ink/60"
+								>
+									<p class="font-medium text-ink">No open-ended quiz responses to review.</p>
+									<p class="mt-1">
+										This assessed quiz does not currently have submitted manual-grading items in
+										the selected view.
+									</p>
+								</div>
+
+								<div v-else class="space-y-4">
+									<article
+										v-for="row in quizManualReview?.rows || []"
+										:key="row.item_id"
+										class="rounded-xl border border-border bg-white p-5 shadow-sm"
+									>
 										<div
-											v-for="criterion in gradebook.criteria"
-											:key="criterion.assessment_criteria"
-											class="space-y-2 rounded-md bg-gray-50/50 p-3 ring-1 ring-border/40"
+											class="flex flex-wrap items-start justify-between gap-3 border-b border-border/50 pb-4"
 										>
-											<div class="flex justify-between">
-												<span class="text-sm font-medium text-ink">{{
-													criterion.criteria_name
-												}}</span>
-												<span v-if="criterion.criteria_weighting" class="text-xs text-ink/50"
-													>{{ criterion.criteria_weighting }}%</span
-												>
+											<div class="space-y-1">
+												<p class="text-base font-semibold text-ink">{{ row.title }}</p>
+												<div class="flex flex-wrap items-center gap-2 text-xs text-ink/55">
+													<span>{{ row.student_name }}</span>
+													<span v-if="row.student_id">• {{ row.student_id }}</span>
+													<span>• Attempt {{ row.attempt_number || '—' }}</span>
+													<span>• {{ row.attempt_status || '—' }}</span>
+												</div>
 											</div>
-											<FormControl
-												v-if="criterion.levels && criterion.levels.length"
-												type="select"
-												size="sm"
-												:options="criterionLevelOptions(criterion)"
-												placeholder="Level Achieved"
-												:model-value="
-													getCriterionState(student.task_student, criterion.assessment_criteria)
-														?.level ?? null
-												"
-												@update:modelValue="
-													level => onCriterionLevelChanged(student.task_student, criterion, level)
-												"
+											<div class="flex flex-wrap items-center gap-2">
+												<Badge v-if="row.requires_manual_grading" variant="subtle" theme="orange">
+													Needs Review
+												</Badge>
+												<Badge v-else variant="subtle" theme="green">Scored</Badge>
+												<Badge v-if="row.grading_status" variant="subtle">
+													{{ row.grading_status }}
+												</Badge>
+											</div>
+										</div>
+
+										<div class="mt-4 grid gap-5 xl:grid-cols-[minmax(0,2fr)_minmax(16rem,1fr)]">
+											<div class="space-y-4">
+												<div class="space-y-2">
+													<p class="text-xs font-semibold uppercase tracking-wide text-ink/45">
+														Prompt
+													</p>
+													<div
+														class="prose prose-sm max-w-none rounded-lg border border-border/60 bg-gray-50/60 px-4 py-3 text-ink"
+														v-html="row.prompt_html || '<p>No prompt available.</p>'"
+													/>
+												</div>
+
+												<div class="space-y-2">
+													<p class="text-xs font-semibold uppercase tracking-wide text-ink/45">
+														Student Response
+													</p>
+													<div class="rounded-lg border border-border/60 bg-white px-4 py-3">
+														<pre class="whitespace-pre-wrap text-sm text-ink">{{
+															quizManualResponseLabel(row)
+														}}</pre>
+													</div>
+												</div>
+											</div>
+
+											<div class="space-y-4 rounded-lg border border-border/60 bg-gray-50/50 p-4">
+												<div class="space-y-1.5">
+													<label
+														class="block text-xs font-semibold uppercase tracking-wide text-ink/50"
+													>
+														Awarded Score
+													</label>
+													<FormControl
+														type="number"
+														:min="0"
+														:max="1"
+														:step="0.1"
+														:model-value="quizManualRowStates[row.item_id]?.awarded_score"
+														@update:modelValue="onQuizManualScoreChanged(row.item_id, $event)"
+													/>
+													<p class="text-xs text-ink/50">
+														Use 0 to 1 for each manually graded quiz item.
+													</p>
+												</div>
+
+												<div class="space-y-1 text-xs text-ink/55">
+													<p>
+														Submitted
+														{{ formatDateTime(row.submitted_on) || '—' }}
+													</p>
+													<p>Question #{{ row.position || '—' }}</p>
+												</div>
+
+												<div
+													class="flex items-center justify-between border-t border-border/50 pt-3"
+												>
+													<Badge
+														v-if="quizManualRowStates[row.item_id]?.dirty"
+														variant="subtle"
+														theme="orange"
+													>
+														Unsaved
+													</Badge>
+													<span v-else class="text-xs text-ink/40">Saved</span>
+													<Button
+														size="sm"
+														appearance="primary"
+														:loading="quizManualRowStates[row.item_id]?.saving"
+														:disabled="
+															!quizManualRowStates[row.item_id]?.dirty ||
+															quizManualRowStates[row.item_id]?.awarded_score === null
+														"
+														@click="saveQuizManualRow(row.item_id)"
+													>
+														Save Score
+													</Button>
+												</div>
+											</div>
+										</div>
+									</article>
+								</div>
+							</section>
+
+							<template v-else>
+								<article
+									v-for="student in gradebook.students"
+									:key="student.task_student"
+									class="group relative rounded-xl border border-border bg-gray-50/30 p-5 transition-all hover:bg-white hover:shadow-md"
+								>
+									<!-- Current Student Header -->
+									<div
+										class="flex flex-wrap items-start justify-between gap-4 border-b border-border/40 pb-4 mb-4"
+									>
+										<div class="flex items-center gap-4">
+											<img
+												:src="student.student_image || DEFAULT_STUDENT_IMAGE"
+												alt=""
+												class="h-12 w-12 rounded-full border border-white bg-white object-cover shadow-sm"
+												loading="lazy"
+												@error="onImgError"
 											/>
-											<FormControl
-												v-else
-												type="text"
-												size="sm"
-												placeholder="Level"
-												:model-value="
-													getCriterionState(student.task_student, criterion.assessment_criteria)
-														?.level ?? ''
+											<div>
+												<p class="text-base font-bold text-ink hover:text-leaf transition-colors">
+													{{ student.student_name }}
+												</p>
+												<div class="flex items-center gap-2 text-xs text-ink/50">
+													<span v-if="student.student_id" class="font-mono">{{
+														student.student_id
+													}}</span>
+													<span>•</span>
+													<span
+														:class="{
+															'text-leaf font-medium':
+																studentStates[student.task_student]?.status === 'Finalized' ||
+																studentStates[student.task_student]?.status === 'Released',
+														}"
+													>
+														{{ studentStates[student.task_student]?.status || '—' }}
+													</span>
+												</div>
+											</div>
+										</div>
+
+										<div class="flex flex-wrap items-center gap-2">
+											<Badge
+												v-if="showsBooleanResult(gradebook.task)"
+												:variant="
+													studentStates[student.task_student]?.complete ? 'subtle' : 'outline'
 												"
-												@update:modelValue="
-													level => onCriterionLevelChanged(student.task_student, criterion, level)
+												:theme="studentStates[student.task_student]?.complete ? 'green' : 'gray'"
+												:class="
+													studentStates[student.task_student]?.complete
+														? '!bg-leaf/10 !text-leaf'
+														: ''
 												"
-											/>
-											<FormControl
-												type="number"
-												size="sm"
-												:step="0.1"
-												:min="0"
-												placeholder="Points"
-												:model-value="
-													getCriterionState(student.task_student, criterion.assessment_criteria)
-														?.level_points ?? 0
-												"
-												@update:modelValue="
-													value =>
-														onCriterionPointsChanged(
-															student.task_student,
-															criterion.assessment_criteria,
-															value
-														)
-												"
-											/>
-											<FormControl
-												v-if="supportsFeedback(gradebook.task)"
-												type="textarea"
-												rows="2"
-												size="sm"
-												placeholder="Criterion feedback"
-												:model-value="
-													getCriterionState(student.task_student, criterion.assessment_criteria)
-														?.feedback || ''
-												"
-												@update:modelValue="
-													value =>
-														onCriterionFeedbackChanged(
-															student.task_student,
-															criterion.assessment_criteria,
-															value
-														)
-												"
-											/>
-											<div class="flex items-center justify-between text-xs">
-												<span class="text-ink/60">Score:</span>
-												<span class="font-bold text-ink">
-													{{
-														formatPoints(
-															getCriterionState(
-																student.task_student,
-																criterion.assessment_criteria
-															)?.level_points
-														)
-													}}
+											>
+												<FeatherIcon
+													:name="
+														studentStates[student.task_student]?.complete
+															? 'check'
+															: 'minus-circle'
+													"
+													class="mr-1 h-3 w-3"
+												/>
+												{{ booleanResultLabel(gradebook.task, student.task_student) }}
+											</Badge>
+
+											<div
+												v-if="showsScoreSummary(gradebook.task)"
+												class="flex items-center rounded-lg bg-white px-3 py-1.5 shadow-sm border border-border/40"
+											>
+												<span
+													class="mr-2 text-xs font-medium uppercase tracking-wider text-ink/40"
+												>
+													{{ scoreSummaryLabel(gradebook.task) }}
+												</span>
+												<span class="text-lg font-bold text-ink">
+													{{ formatPoints(studentStates[student.task_student]?.mark_awarded) }}
 												</span>
 											</div>
 										</div>
 									</div>
-								</div>
 
-								<!-- Action Footer for Student Card -->
-								<div class="mt-4 flex items-center justify-between border-t border-border/40 pt-4">
-									<p class="text-xs text-ink/40">
-										Last updated
-										{{
-											formatDateTime(studentStates[student.task_student]?.updated_on) || 'Never'
-										}}
-									</p>
-									<div class="flex gap-2">
-										<Button
-											v-if="gradebook.task?.criteria && gradebook.criteria.length"
-											size="sm"
-											appearance="white"
-											:loading="studentStates[student.task_student]?.savingCriteria"
-											:disabled="!studentStates[student.task_student]?.dirtyCriteria"
-											@click="saveCriteria(student.task_student)"
+									<!-- Grading Controls -->
+									<div class="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+										<div class="space-y-4">
+											<FormControl
+												v-if="showsStatusControl(gradebook.task)"
+												type="select"
+												label="Status"
+												:options="statusOptions"
+												option-label="label"
+												option-value="value"
+												placeholder="Select status"
+												:model-value="studentStates[student.task_student]?.status || ''"
+												@update:modelValue="onStatusChanged(student.task_student, $event)"
+											/>
+
+											<div v-if="isPointsTask(gradebook.task)" class="space-y-1.5">
+												<label
+													class="block text-xs font-semibold uppercase tracking-wide text-ink/50"
+													>Points Awarded</label
+												>
+												<FormControl
+													type="number"
+													placeholder="Points"
+													:step="0.5"
+													:min="0"
+													:max="gradebook.task?.max_points || undefined"
+													:model-value="studentStates[student.task_student]?.mark_awarded"
+													@update:modelValue="onPointsChanged(student.task_student, $event)"
+												/>
+											</div>
+
+											<div v-if="showsBooleanResult(gradebook.task)" class="space-y-1.5">
+												<label
+													class="block text-xs font-semibold uppercase tracking-wide text-ink/50"
+													>{{ booleanControlLabel(gradebook.task) }}</label
+												>
+												<div class="grid grid-cols-2 gap-2">
+													<button
+														type="button"
+														class="rounded-md border px-4 py-2 text-sm font-medium transition-all"
+														:class="
+															studentStates[student.task_student]?.complete
+																? '!border-leaf !bg-leaf !text-white'
+																: 'border-border/60 bg-white text-ink/70 hover:border-leaf/60 hover:text-leaf'
+														"
+														@click="setBooleanState(student.task_student, true)"
+													>
+														{{ booleanPositiveLabel(gradebook.task) }}
+													</button>
+													<button
+														type="button"
+														class="rounded-md border px-4 py-2 text-sm font-medium transition-all"
+														:class="
+															!studentStates[student.task_student]?.complete
+																? 'border-slate-300 bg-slate-100 text-ink'
+																: 'border-border/60 bg-white text-ink/70 hover:border-leaf/60 hover:text-leaf'
+														"
+														@click="setBooleanState(student.task_student, false)"
+													>
+														{{ booleanNegativeLabel(gradebook.task) }}
+													</button>
+												</div>
+											</div>
+
+											<div class="pt-2">
+												<label
+													class="block mb-2 text-xs font-semibold uppercase tracking-wide text-ink/50"
+													>Visibility</label
+												>
+												<div class="flex flex-col gap-2">
+													<FormControl
+														type="checkbox"
+														label="Visible to Student"
+														:model-value="
+															Boolean(studentStates[student.task_student]?.visible_to_student)
+														"
+														@update:modelValue="
+															value =>
+																setVisibility(student.task_student, 'visible_to_student', value)
+														"
+													/>
+													<FormControl
+														type="checkbox"
+														label="Visible to Guardian"
+														:model-value="
+															Boolean(studentStates[student.task_student]?.visible_to_guardian)
+														"
+														@update:modelValue="
+															value =>
+																setVisibility(student.task_student, 'visible_to_guardian', value)
+														"
+													/>
+												</div>
+											</div>
+										</div>
+
+										<!-- Feedback Column -->
+										<div
+											v-if="supportsFeedback(gradebook.task)"
+											class="space-y-1.5 md:col-span-1 lg:col-span-2"
 										>
-											Save Criteria
-										</Button>
-										<Button
-											size="sm"
-											appearance="primary"
-											:loading="studentStates[student.task_student]?.saving"
-											:disabled="!studentStates[student.task_student]?.dirty"
-											@click="saveStudent(student.task_student)"
-										>
-											Save
-										</Button>
+											<label
+												class="block text-xs font-semibold uppercase tracking-wide text-ink/50"
+											>
+												Comment
+											</label>
+											<FormControl
+												type="textarea"
+												rows="5"
+												placeholder="Add a comment for this student..."
+												class="!h-full"
+												:model-value="studentStates[student.task_student]?.feedback || ''"
+												@update:modelValue="onFeedbackChanged(student.task_student, $event)"
+											/>
+										</div>
 									</div>
-								</div>
-							</article>
+
+									<!-- Criteria Section -->
+									<div
+										v-if="gradebook.task?.criteria && gradebook.criteria.length"
+										class="mt-6 rounded-lg border border-border/60 bg-white p-4 shadow-sm"
+									>
+										<div class="mb-4 flex items-center justify-between">
+											<h4 class="text-sm font-bold text-ink">Criteria Breakdown</h4>
+											<Badge
+												v-if="studentStates[student.task_student]?.dirtyCriteria"
+												variant="subtle"
+												theme="orange"
+											>
+												Unsaved Changes
+											</Badge>
+										</div>
+										<div class="grid gap-4 md:grid-cols-2">
+											<div
+												v-for="criterion in gradebook.criteria"
+												:key="criterion.assessment_criteria"
+												class="space-y-2 rounded-md bg-gray-50/50 p-3 ring-1 ring-border/40"
+											>
+												<div class="flex justify-between">
+													<span class="text-sm font-medium text-ink">{{
+														criterion.criteria_name
+													}}</span>
+													<span v-if="criterion.criteria_weighting" class="text-xs text-ink/50"
+														>{{ criterion.criteria_weighting }}%</span
+													>
+												</div>
+												<FormControl
+													v-if="criterion.levels && criterion.levels.length"
+													type="select"
+													size="sm"
+													:options="criterionLevelOptions(criterion)"
+													placeholder="Level Achieved"
+													:model-value="
+														getCriterionState(student.task_student, criterion.assessment_criteria)
+															?.level ?? null
+													"
+													@update:modelValue="
+														level =>
+															onCriterionLevelChanged(student.task_student, criterion, level)
+													"
+												/>
+												<FormControl
+													v-else
+													type="text"
+													size="sm"
+													placeholder="Level"
+													:model-value="
+														getCriterionState(student.task_student, criterion.assessment_criteria)
+															?.level ?? ''
+													"
+													@update:modelValue="
+														level =>
+															onCriterionLevelChanged(student.task_student, criterion, level)
+													"
+												/>
+												<FormControl
+													type="number"
+													size="sm"
+													:step="0.1"
+													:min="0"
+													placeholder="Points"
+													:model-value="
+														getCriterionState(student.task_student, criterion.assessment_criteria)
+															?.level_points ?? 0
+													"
+													@update:modelValue="
+														value =>
+															onCriterionPointsChanged(
+																student.task_student,
+																criterion.assessment_criteria,
+																value
+															)
+													"
+												/>
+												<FormControl
+													v-if="supportsFeedback(gradebook.task)"
+													type="textarea"
+													rows="2"
+													size="sm"
+													placeholder="Criterion feedback"
+													:model-value="
+														getCriterionState(student.task_student, criterion.assessment_criteria)
+															?.feedback || ''
+													"
+													@update:modelValue="
+														value =>
+															onCriterionFeedbackChanged(
+																student.task_student,
+																criterion.assessment_criteria,
+																value
+															)
+													"
+												/>
+												<div class="flex items-center justify-between text-xs">
+													<span class="text-ink/60">Score:</span>
+													<span class="font-bold text-ink">
+														{{
+															formatPoints(
+																getCriterionState(
+																	student.task_student,
+																	criterion.assessment_criteria
+																)?.level_points
+															)
+														}}
+													</span>
+												</div>
+											</div>
+										</div>
+									</div>
+
+									<!-- Action Footer for Student Card -->
+									<div
+										class="mt-4 flex items-center justify-between border-t border-border/40 pt-4"
+									>
+										<p class="text-xs text-ink/40">
+											Last updated
+											{{
+												formatDateTime(studentStates[student.task_student]?.updated_on) || 'Never'
+											}}
+										</p>
+										<div class="flex gap-2">
+											<Button
+												v-if="gradebook.task?.criteria && gradebook.criteria.length"
+												size="sm"
+												appearance="white"
+												:loading="studentStates[student.task_student]?.savingCriteria"
+												:disabled="!studentStates[student.task_student]?.dirtyCriteria"
+												@click="saveCriteria(student.task_student)"
+											>
+												Save Criteria
+											</Button>
+											<Button
+												size="sm"
+												appearance="primary"
+												:loading="studentStates[student.task_student]?.saving"
+												:disabled="!studentStates[student.task_student]?.dirty"
+												@click="saveStudent(student.task_student)"
+											>
+												Save
+											</Button>
+										</div>
+									</div>
+								</article>
+							</template>
 						</div>
 					</div>
 				</section>
@@ -731,6 +971,12 @@ import type {
 	CriterionPayload as GradebookCriterionPayload,
 	StudentRow as GradebookStudentRow,
 } from '@/types/contracts/gradebook/get_task_gradebook';
+import type {
+	Response as GetTaskQuizManualReviewResponse,
+	ReviewRow as QuizManualReviewRow,
+	QuestionOption as QuizManualQuestionOption,
+	StudentOption as QuizManualStudentOption,
+} from '@/types/contracts/gradebook/get_task_quiz_manual_review';
 import type { Response as UpdateTaskStudentResponse } from '@/types/contracts/gradebook/update_task_student';
 
 /* TYPE DEFINITIONS ------------------------------------------------ */
@@ -764,6 +1010,12 @@ interface StudentState {
 	savingCriteria: boolean;
 }
 
+interface QuizManualRowState {
+	awarded_score: number | null;
+	dirty: boolean;
+	saving: boolean;
+}
+
 /* STATE --------------------------------------------------------- */
 const route = useRoute();
 const router = useRouter();
@@ -795,6 +1047,8 @@ const tasksLoading = ref(false);
 const selectedTask = ref<TaskSummary | null>(null);
 const gradebookLoading = ref(false);
 const rosterSyncing = ref(false);
+const quizManualLoading = ref(false);
+const quizManualSavingVisible = ref(false);
 
 const gradebook = reactive<{
 	task: TaskPayload | null;
@@ -807,6 +1061,11 @@ const gradebook = reactive<{
 });
 
 const studentStates = reactive<Record<string, StudentState>>({});
+const quizManualReview = ref<GetTaskQuizManualReviewResponse | null>(null);
+const quizManualViewMode = ref<'question' | 'student'>('question');
+const selectedQuizManualQuestion = ref<string | null>(null);
+const selectedQuizManualStudent = ref<string | null>(null);
+const quizManualRowStates = reactive<Record<string, QuizManualRowState>>({});
 const statusOptions = [
 	{ label: 'Not Started', value: 'Not Started' },
 	{ label: 'In Progress', value: 'In Progress' },
@@ -939,12 +1198,41 @@ async function loadGradebook(taskName: string) {
 			gradebook.criteria = payload.criteria || [];
 			gradebook.students = payload.students || [];
 			initializeStudentStates();
+			if (isAssessedQuizTask(payload.task)) {
+				await loadQuizManualReview(taskName);
+			} else {
+				clearQuizManualReviewState();
+			}
 		}
 	} catch (error) {
 		console.error('Failed to load gradebook', error);
 		showDangerToast('Could not load gradebook');
+		clearQuizManualReviewState();
 	} finally {
 		gradebookLoading.value = false;
+	}
+}
+
+async function loadQuizManualReview(taskName: string) {
+	quizManualLoading.value = true;
+	try {
+		const payload = await gradebookService.getTaskQuizManualReview({
+			task: taskName,
+			view_mode: quizManualViewMode.value,
+			quiz_question: selectedQuizManualQuestion.value,
+			student: selectedQuizManualStudent.value,
+		});
+		quizManualReview.value = payload;
+		quizManualViewMode.value = payload.view_mode;
+		selectedQuizManualQuestion.value = payload.selected_question?.quiz_question || null;
+		selectedQuizManualStudent.value = payload.selected_student?.student || null;
+		initializeQuizManualRowStates();
+	} catch (error) {
+		console.error('Failed to load quiz manual review', error);
+		showDangerToast('Could not load open-ended quiz review');
+		clearQuizManualReviewState();
+	} finally {
+		quizManualLoading.value = false;
 	}
 }
 
@@ -1261,6 +1549,10 @@ function showMaxPointsPill(task?: TaskPayload | null) {
 	return isPointsTask(task) && task?.max_points !== null && task?.max_points !== undefined;
 }
 
+function isAssessedQuizTask(task?: TaskPayload | TaskSummary | null) {
+	return task?.task_type === 'Quiz' && task?.delivery_type === 'Assess';
+}
+
 function scoreSummaryLabel(task?: TaskPayload | TaskSummary | null) {
 	return isCriteriaTask(task) ? 'Total' : 'Score';
 }
@@ -1291,6 +1583,15 @@ function taskModeBadge(task?: TaskSummary | null) {
 	if (task?.delivery_type === 'Collect Work') return 'Collect';
 	return null;
 }
+
+const showsQuizManualReview = computed(() => isAssessedQuizTask(gradebook.task));
+
+const visibleDirtyQuizManualRows = computed(() => {
+	return (quizManualReview.value?.rows || []).filter(row => {
+		const state = quizManualRowStates[row.item_id];
+		return Boolean(state?.dirty && state.awarded_score !== null);
+	});
+});
 
 const allStudentsVisible = computed(() => {
 	if (!gradebook.students.length) return false;
@@ -1458,6 +1759,17 @@ function clearAllAutosaveTimers() {
 	}
 }
 
+function clearQuizManualReviewState() {
+	quizManualReview.value = null;
+	quizManualViewMode.value = 'question';
+	selectedQuizManualQuestion.value = null;
+	selectedQuizManualStudent.value = null;
+	quizManualSavingVisible.value = false;
+	for (const key of Object.keys(quizManualRowStates)) {
+		delete quizManualRowStates[key];
+	}
+}
+
 function scheduleStudentSave(taskStudent: string) {
 	const state = studentStates[taskStudent];
 	if (!state) return;
@@ -1530,6 +1842,7 @@ watch(
 		gradebook.task = null;
 		gradebook.criteria = [];
 		gradebook.students = [];
+		clearQuizManualReviewState();
 		if (groupName) {
 			void loadTasks(groupName);
 		} else {
@@ -1544,6 +1857,7 @@ watch(
 		gradebook.task = null;
 		gradebook.criteria = [];
 		gradebook.students = [];
+		clearQuizManualReviewState();
 		if (taskName) {
 			void loadGradebook(taskName);
 		}
@@ -1559,6 +1873,7 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
 	clearAllAutosaveTimers();
+	clearQuizManualReviewState();
 });
 
 function initializeStudentStates() {
@@ -1586,6 +1901,20 @@ function initializeStudentStates() {
 				level_points: c.level_points ?? 0,
 				feedback: normalizeFeedback(c.feedback),
 			})),
+		};
+	}
+}
+
+function initializeQuizManualRowStates() {
+	for (const key of Object.keys(quizManualRowStates)) {
+		delete quizManualRowStates[key];
+	}
+
+	for (const row of quizManualReview.value?.rows || []) {
+		quizManualRowStates[row.item_id] = {
+			awarded_score: row.awarded_score,
+			dirty: false,
+			saving: false,
 		};
 	}
 }
@@ -1692,6 +2021,125 @@ function onCriterionFeedbackChanged(taskStudent: string, criteriaName: string, v
 	scheduleCriteriaSave(taskStudent);
 	if (state.dirty) {
 		scheduleStudentSave(taskStudent);
+	}
+}
+
+function normalizeManualAwardedScore(value: string | number | null | undefined) {
+	if (value === null || value === undefined || value === '') return null;
+	const parsed = typeof value === 'number' ? value : Number.parseFloat(String(value));
+	return Number.isFinite(parsed) ? parsed : null;
+}
+
+function onQuizManualScoreChanged(itemId: string, value: string | number | null) {
+	const state = quizManualRowStates[itemId];
+	if (!state) return;
+	const nextValue = normalizeManualAwardedScore(value);
+	if (state.awarded_score === nextValue) return;
+	state.awarded_score = nextValue;
+	state.dirty = true;
+}
+
+function quizManualQuestionLabel(option: QuizManualQuestionOption) {
+	return option.pending_item_count
+		? `${option.title} (${option.pending_item_count} pending)`
+		: option.title;
+}
+
+function quizManualStudentLabel(option: QuizManualStudentOption) {
+	const suffix = option.student_id ? ` • ${option.student_id}` : '';
+	const pending = option.pending_item_count ? ` (${option.pending_item_count} pending)` : '';
+	return `${option.student_name}${suffix}${pending}`;
+}
+
+function quizManualResponseLabel(row: QuizManualReviewRow) {
+	const text = (row.response_text || '').trim();
+	if (text) return text;
+	if (row.selected_option_labels.length) return row.selected_option_labels.join(', ');
+	return 'No response submitted.';
+}
+
+async function setQuizManualViewMode(mode: 'question' | 'student') {
+	if (quizManualViewMode.value === mode) return;
+	quizManualViewMode.value = mode;
+	if (mode === 'question') {
+		selectedQuizManualStudent.value = null;
+	} else {
+		selectedQuizManualQuestion.value = null;
+	}
+	if (selectedTask.value?.name) {
+		await loadQuizManualReview(selectedTask.value.name);
+	}
+}
+
+async function onQuizManualQuestionSelected(value: string | null) {
+	selectedQuizManualQuestion.value = value;
+	if (selectedTask.value?.name) {
+		await loadQuizManualReview(selectedTask.value.name);
+	}
+}
+
+async function onQuizManualStudentSelected(value: string | null) {
+	selectedQuizManualStudent.value = value;
+	if (selectedTask.value?.name) {
+		await loadQuizManualReview(selectedTask.value.name);
+	}
+}
+
+async function saveQuizManualRows(itemIds: string[]) {
+	if (!selectedTask.value?.name || !itemIds.length) return;
+
+	const grades = itemIds
+		.map(itemId => ({
+			item_id: itemId,
+			awarded_score: quizManualRowStates[itemId]?.awarded_score ?? null,
+		}))
+		.filter(row => row.awarded_score !== null);
+	if (!grades.length) return;
+
+	const uniqueIds = new Set(itemIds);
+	itemIds.forEach(itemId => {
+		const state = quizManualRowStates[itemId];
+		if (state) {
+			state.saving = true;
+		}
+	});
+
+	try {
+		await gradebookService.saveTaskQuizManualReview({
+			task: selectedTask.value.name,
+			grades,
+		});
+		showSuccessToast(
+			uniqueIds.size === 1
+				? 'Quiz score saved.'
+				: `Saved ${uniqueIds.size} open-ended quiz scores.`
+		);
+		await loadQuizManualReview(selectedTask.value.name);
+	} catch (error) {
+		console.error('Failed to save quiz manual review', error);
+		showDangerToast('Could not save open-ended quiz scores');
+	} finally {
+		itemIds.forEach(itemId => {
+			const state = quizManualRowStates[itemId];
+			if (state) {
+				state.saving = false;
+			}
+		});
+	}
+}
+
+async function saveQuizManualRow(itemId: string) {
+	await saveQuizManualRows([itemId]);
+}
+
+async function saveVisibleQuizManualRows() {
+	const itemIds = visibleDirtyQuizManualRows.value.map(row => row.item_id);
+	if (!itemIds.length) return;
+	quizManualSavingVisible.value = true;
+	try {
+		await saveQuizManualRows(itemIds);
+	} finally {
+		quizManualSavingVisible.value = false;
 	}
 }
 

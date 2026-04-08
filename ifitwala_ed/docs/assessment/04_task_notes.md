@@ -3,7 +3,7 @@
 Status: **Authoritative / Current Workspace Contract**
 Scope: `Task`, `Task Delivery`, `Task Outcome`, `Task Submission`, `Task Contribution`
 Audience: Product, Engineering, and coding agents
-Last updated: 2026-04-01
+Last updated: 2026-04-08
 
 This document defines the current task runtime contract in the workspace.
 It replaces older lesson-instance-era notes and removes future-state claims that are not yet true in code.
@@ -207,6 +207,13 @@ For assessed quiz deliveries, current validation forces:
 - rubric fields cleared
 - quiz max points snapshotted from quiz configuration
 
+Current assessed quiz grading behavior:
+
+- choice and short-answer items are auto-scored in `quiz_service.py`
+- essay items remain on `Quiz Attempt Item` rows with `requires_manual_grading = 1` until a teacher records `awarded_score`
+- staff manual review for those items runs through the gradebook quiz-review endpoints, not through the standard contribution grid
+- question-level criteria or rubric scoring is not part of the current assessed quiz contract
+
 ### 2.5 Outcome materialization
 
 Delivery submission materializes student outcomes.
@@ -288,6 +295,12 @@ through the outcome truth service.
 Assessed quiz attempts update outcome truth directly in `quiz_service.py`.
 This is the current implemented exception to the standard contribution-driven path.
 Do not document or enforce a broader “only one writer exists” rule while this exception remains in code.
+
+Current write boundary for assessed quiz manual review:
+
+- teacher scoring writes `awarded_score` to `Quiz Attempt Item`
+- `quiz_service.refresh_attempt(...)` then recomputes `Quiz Attempt` and `Task Outcome`
+- the staff gradebook must not treat assessed quiz totals as teacher-entered `official_score`
 
 ### 3.5 Gradebook write boundary
 
