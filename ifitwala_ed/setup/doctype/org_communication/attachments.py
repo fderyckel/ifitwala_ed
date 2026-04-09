@@ -13,6 +13,13 @@ ORG_COMMUNICATION_ATTACHMENT_RETENTION_POLICY = "fixed_7y"
 ORG_COMMUNICATION_ATTACHMENT_SLOT_PREFIX = "communication_attachment__"
 
 
+def _field_value(source, fieldname: str):
+    getter = getattr(source, "get", None)
+    if callable(getter):
+        return getter(fieldname)
+    return getattr(source, fieldname, None)
+
+
 def _normalize_row_key(value: str | None) -> str:
     normalized = re.sub(r"[^A-Za-z0-9_-]+", "-", str(value or "").strip()).strip("-_")
     if normalized:
@@ -47,14 +54,14 @@ def assert_org_communication_attachment_upload_access(
 
 
 def _resolve_student_group_for_attachments(doc) -> str:
-    activity_student_group = str(getattr(doc, "activity_student_group", "") or "").strip()
+    activity_student_group = str(_field_value(doc, "activity_student_group") or "").strip()
     if activity_student_group:
         return activity_student_group
 
-    for row in doc.get("audiences") or []:
-        if str(getattr(row, "target_mode", "") or "").strip() != "Student Group":
+    for row in _field_value(doc, "audiences") or []:
+        if str(_field_value(row, "target_mode") or "").strip() != "Student Group":
             continue
-        student_group = str(getattr(row, "student_group", "") or "").strip()
+        student_group = str(_field_value(row, "student_group") or "").strip()
         if student_group:
             return student_group
 
@@ -77,11 +84,11 @@ def resolve_org_communication_attachment_context(doc) -> dict[str, str]:
         frappe.throw(_("Student Group is missing its authoritative Course context."))
 
     school_from_group = str(student_group_row.get("school") or "").strip()
-    school = school_from_group or str(getattr(doc, "school", "") or "").strip()
+    school = school_from_group or str(_field_value(doc, "school") or "").strip()
     if not school:
         frappe.throw(_("Org Communication attachments require an issuing school."))
 
-    organization = str(getattr(doc, "organization", "") or "").strip()
+    organization = str(_field_value(doc, "organization") or "").strip()
     if not organization:
         organization = str(frappe.db.get_value("School", school, "organization") or "").strip()
     if not organization:

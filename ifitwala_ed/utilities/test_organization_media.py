@@ -434,6 +434,10 @@ class TestOrganizationMedia(FrappeTestCase):
                 "ifitwala_ed.utilities.governed_uploads._drive_upload_and_finalize",
                 side_effect=_fake_drive_upload_and_finalize,
             ),
+            patch(
+                "ifitwala_ed.utilities.governed_uploads._ensure_file_on_disk",
+                return_value=None,
+            ),
         ):
             yield
 

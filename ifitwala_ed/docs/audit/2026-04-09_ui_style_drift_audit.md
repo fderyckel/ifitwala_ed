@@ -15,8 +15,9 @@
 
 - The repo already has a real UI system: `tokens.css`, `app.css`, `layout.css`, `components.css`, canonical SPA notes, and local agent rules.
 - The current patchwork comes from drift in usage, not from missing architecture.
-- The highest-risk drift vectors are now: shell/layout bypasses, raw palette utilities in page templates, and page-local scoped CSS carrying visual decisions.
+- The highest-risk drift vectors are now: route-root shell inconsistency, raw palette utilities in page templates, and page-local scoped CSS carrying visual decisions.
 - The undefined semantic utilities and stray CSS vars found in the initial audit have been removed, and the style-drift baseline is now intentionally empty.
+- `PortalLayout.vue` no longer carries its shell/background treatment inline; portal shell ownership now lives in shared layout classes.
 - The immediate goal should be to stop new drift, document the page-family rules more explicitly, and migrate the worst exceptions in controlled batches.
 
 ---
@@ -37,7 +38,7 @@
 
 ## Findings
 
-### 1. Canonical style architecture exists, but some layout shells bypass it
+### 1. Portal shell ownership is now normalized, but route-root consistency still needs follow-through
 
 **Code refs**
 - `ifitwala_ed/ui-spa/src/style.css`
@@ -49,10 +50,10 @@
 
 **What is happening**
 - `StaffPortalLayout.vue` is aligned with the shared shell classes.
-- `PortalLayout.vue` still embeds its main background and shell treatment inline in the template.
+- `PortalLayout.vue` has been normalized in the follow-up cleanup and now uses shared layout classes for the portal shell and page rhythm.
 
 **Implication**
-- The codebase has two competing sources of truth for shell styling: canonical CSS files and inline layout composition.
+- The remaining shell drift is now mostly at the route-page level, not at the layout root.
 
 ### 2. Route root shells are not normalized across surfaces
 
@@ -66,12 +67,13 @@
   - `ifitwala_ed/ui-spa/src/pages/staff/schedule/student-groups/StudentGroups.vue`
 
 **Student / Guardian**
-- Many pages use the expected rhythm-only roots (`space-y-*`).
-- A smaller set still owns page-level padding locally:
+- The highest-visibility student pages now use the shared portal page rhythm helper:
   - `ifitwala_ed/ui-spa/src/pages/student/Courses.vue`
   - `ifitwala_ed/ui-spa/src/pages/student/StudentLogs.vue`
   - `ifitwala_ed/ui-spa/src/pages/student/CourseDetail.vue`
   - `ifitwala_ed/ui-spa/src/pages/student/StudentQuiz.vue`
+- The main guardian portal routes now use the same shared portal page rhythm helper, and `SelfEnrollmentEditor.vue` also inherits that helper for both guardian and student course-selection detail routes.
+- Remaining student / guardian outliers should converge on the same `portal-page` helper or an equivalent rhythm-only root as they are touched.
 
 **Implication**
 - Agents do not have a clear enough page-family shell rule, so new pages can look “correct” while still drifting from the surface contract.
@@ -150,8 +152,8 @@
 
 ### P2. Normalize shell families
 
-- move `PortalLayout.vue` shell/background styling into canonical layout classes
-- standardize route-root rules for staff, analytics, student/guardian, and admissions page families
+- completed in part: moved `PortalLayout.vue` shell/background styling into canonical layout classes and normalized the main student and guardian route roots onto the shared portal rhythm helper
+- next: standardize the remaining route-root rules for staff, analytics, admissions, and any compact portal outliers
 
 ### P3. Promote recurring visual patterns into shared primitives
 

@@ -1,6 +1,6 @@
 <!-- ifitwala_ed/ui-spa/src/pages/guardian/GuardianFinance.vue -->
 <template>
-	<div class="space-y-6">
+	<div class="portal-page">
 		<header class="card-surface p-5 sm:p-6">
 			<div class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
 				<div>

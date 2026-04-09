@@ -129,7 +129,7 @@ When page-init data is repeated or expensive, ask whether it should be aggregate
 - For every routed page change, identify the owning surface first:
   - staff workspace pages -> `staff-shell`
   - staff analytics pages -> `analytics-shell`
-  - student / guardian pages -> layout-owned shell, page root usually rhythm only (`space-y-*`)
+  - student / guardian pages -> layout-owned shell, page root usually `portal-page` or equivalent rhythm-only structure
   - admissions pages -> layout-owned shell, page root rhythm only or shared named class
 - Reuse classes from `src/styles/components.css` and `src/styles/layout.css` before reaching for raw palette utilities.
 - Native Tailwind palette colors are allowed only for tightly local alert states or charts; they must not define a page's overall visual language.

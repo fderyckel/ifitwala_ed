@@ -65,8 +65,22 @@ def _as_bool(value) -> bool:
     return value in (1, "1", True)
 
 
+def _field_value(source, fieldname: str):
+    getter = getattr(source, "get", None)
+    if callable(getter):
+        return getter(fieldname)
+    return getattr(source, fieldname, None)
+
+
+def _set_field_value(target, fieldname: str, value) -> None:
+    if isinstance(target, dict):
+        target[fieldname] = value
+        return
+    setattr(target, fieldname, value)
+
+
 def _get_recipient_flags(row) -> dict[str, bool]:
-    return {field: _as_bool(getattr(row, field, 0)) for field in RECIPIENT_TOGGLE_FIELDS}
+    return {field: _as_bool(_field_value(row, field)) for field in RECIPIENT_TOGGLE_FIELDS}
 
 
 def _get_enabled_recipient_fields(row) -> set[str]:
@@ -130,9 +144,9 @@ class OrgCommunication(Document):
                 selected_org = (frappe.db.get_value("School", default_school, "organization") or "").strip()
 
         if selected_org:
-            self.organization = selected_org
+            _set_field_value(self, "organization", selected_org)
 
-        if not (self.organization or "").strip():
+        if not (_field_value(self, "organization") or "").strip():
             frappe.throw(
                 _("Organization is required for Org Communication."),
                 title=_("Missing Organization"),
@@ -158,7 +172,7 @@ class OrgCommunication(Document):
                 title=_("No Organization Scope"),
             )
 
-        if self.organization not in allowed_orgs:
+        if (_field_value(self, "organization") or "").strip() not in allowed_orgs:
             frappe.throw(
                 _("You can only issue communications for organizations within your authorized scope."),
                 title=_("Organization Not Allowed"),
@@ -168,26 +182,27 @@ class OrgCommunication(Document):
         """Enforce optional Issuing School rules using nestedset school hierarchy."""
         user = frappe.session.user
         default_school, tree = _get_school_scope_tree(user)
-        locked_class_school = self._resolve_locked_class_announcement_school()
+        locked_class_school = OrgCommunication._resolve_locked_class_announcement_school(self)
         has_non_school_scope_audience = any(
-            (row.target_mode or "").strip() and (row.target_mode or "").strip() != "School Scope"
-            for row in (self.audiences or [])
+            (_field_value(row, "target_mode") or "").strip()
+            and (_field_value(row, "target_mode") or "").strip() != "School Scope"
+            for row in (_field_value(self, "audiences") or [])
         )
 
         # School is optional. When user has a configured default school and no value
         # was chosen, derive it for continuity with school-scoped users only.
         if locked_class_school:
-            self.school = locked_class_school
-        elif not self.school and default_school and not has_non_school_scope_audience:
-            self.school = default_school
+            _set_field_value(self, "school", locked_class_school)
+        elif not _field_value(self, "school") and default_school and not has_non_school_scope_audience:
+            _set_field_value(self, "school", default_school)
 
-        if not self.school:
+        if not _field_value(self, "school"):
             return
 
         if _user_has_any_role(user, ELEVATED_WIDE_AUDIENCE_ROLES):
             if locked_class_school:
                 return
-            if tree and self.school not in tree:
+            if tree and _field_value(self, "school") not in tree:
                 frappe.throw(
                     _(
                         "You can only issue communications from your school ({default_school}) or its child schools."
@@ -196,9 +211,10 @@ class OrgCommunication(Document):
                 )
         else:
             if locked_class_school:
-                if self._class_announcement_school_in_user_scope(
+                if OrgCommunication._class_announcement_school_in_user_scope(
+                    self,
                     user=user,
-                    target_school=self.school,
+                    target_school=_field_value(self, "school"),
                     default_school=default_school,
                     school_tree=tree,
                 ):
@@ -213,7 +229,7 @@ class OrgCommunication(Document):
 
             if default_school:
                 # Force, ignoring any client-side value
-                self.school = default_school
+                _set_field_value(self, "school", default_school)
                 return
 
             allowed_schools = _get_allowed_schools_for_user(user)
@@ -226,7 +242,7 @@ class OrgCommunication(Document):
                     title=_("No School Scope"),
                 )
 
-            if self.school not in set(allowed_schools):
+            if _field_value(self, "school") not in set(allowed_schools):
                 frappe.throw(
                     _("You can only issue communications from schools within your organization scope."),
                     title=_("Issuing School Not Allowed"),
@@ -238,43 +254,43 @@ class OrgCommunication(Document):
         Organization can be the same as School.organization or any ancestor
         organization in the organization tree.
         """
-        if not self.school:
+        if not _field_value(self, "school"):
             return
 
-        school_org = frappe.db.get_value("School", self.school, "organization")
+        school_org = frappe.db.get_value("School", _field_value(self, "school"), "organization")
         if not school_org:
             return
 
-        if not self.organization:
-            self.organization = school_org
+        if not _field_value(self, "organization"):
+            _set_field_value(self, "organization", school_org)
             return
 
-        allowed_scope = set(_get_descendant_organizations_uncached(self.organization))
+        allowed_scope = set(_get_descendant_organizations_uncached(_field_value(self, "organization")))
         if school_org not in allowed_scope:
             frappe.throw(
                 _(
                     "Organization {org} does not include School {school}. School belongs to organization {school_org}."
                 ).format(
-                    org=self.organization,
-                    school=self.school,
+                    org=_field_value(self, "organization"),
+                    school=_field_value(self, "school"),
                     school_org=school_org,
                 ),
                 title=_("Invalid Organization"),
             )
 
     def _resolve_locked_class_announcement_school(self) -> str | None:
-        if (self.communication_type or "").strip() != "Class Announcement":
+        if (_field_value(self, "communication_type") or "").strip() != "Class Announcement":
             return None
 
         student_groups: list[str] = []
-        activity_student_group = (self.activity_student_group or "").strip()
+        activity_student_group = (_field_value(self, "activity_student_group") or "").strip()
         if activity_student_group:
             student_groups.append(activity_student_group)
 
-        for row in self.audiences or []:
-            if (row.target_mode or "").strip() != "Student Group":
+        for row in _field_value(self, "audiences") or []:
+            if (_field_value(row, "target_mode") or "").strip() != "Student Group":
                 continue
-            student_group = (row.student_group or "").strip()
+            student_group = (_field_value(row, "student_group") or "").strip()
             if student_group and student_group not in student_groups:
                 student_groups.append(student_group)
 

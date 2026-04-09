@@ -5,6 +5,28 @@ import frappe
 from frappe.model.document import Document
 
 
+def _get_active_student_groups_for_student(student: str) -> list[dict]:
+    if not student:
+        return []
+
+    return frappe.db.sql(
+        """
+        SELECT
+            sg.name,
+            sg.academic_year,
+            sg.school,
+            sg.school_schedule
+        FROM `tabStudent Group Student` sgs
+        INNER JOIN `tabStudent Group` sg ON sg.name = sgs.parent
+        WHERE sgs.student = %s
+          AND IFNULL(sgs.active, 1) = 1
+          AND IFNULL(sg.status, 'Active') = 'Active'
+    """,
+        (student,),
+        as_dict=True,
+    )
+
+
 class StudentPatientVisit(Document):
     def validate(self):
         self.set_school()
@@ -20,6 +42,13 @@ class StudentPatientVisit(Document):
         school = frappe.db.get_value("Student", student, "anchor_school")
         if school:
             self.school = school
+            return
+
+        for group in _get_active_student_groups_for_student(student):
+            school = group.get("school")
+            if school:
+                self.school = school
+                return
 
     def after_insert(self):
         self.notify_instructor()
@@ -55,22 +84,7 @@ class StudentPatientVisit(Document):
             current_time = get_time(self.time_of_arrival or frappe.utils.now_time())
 
             # 1. Get active groups for student
-            groups = frappe.db.sql(
-                """
-                SELECT
-                    sg.name,
-                    sg.academic_year,
-                    sg.school,
-                    sg.school_schedule
-                FROM `tabStudent Group Student` sgs
-                INNER JOIN `tabStudent Group` sg ON sg.name = sgs.parent
-                WHERE sgs.student = %s
-                  AND IFNULL(sgs.active, 1) = 1
-                  AND IFNULL(sg.status, 'Active') = 'Active'
-            """,
-                (student,),
-                as_dict=True,
-            )
+            groups = _get_active_student_groups_for_student(student)
 
             notified_users = set()
 

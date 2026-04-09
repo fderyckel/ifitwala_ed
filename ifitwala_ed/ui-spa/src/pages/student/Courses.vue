@@ -1,6 +1,6 @@
 <template>
-	<div class="p-4 sm:p-6 lg:p-8">
-		<div class="sm:flex sm:items-center sm:justify-between mb-6">
+	<div class="portal-page">
+		<div class="sm:flex sm:items-center sm:justify-between">
 			<h1 class="text-2xl font-bold text-gray-900">My Courses</h1>
 
 			<div v-if="!loading && academicYears.length" class="mt-4 sm:mt-0">

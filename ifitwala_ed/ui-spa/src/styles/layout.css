@@ -16,6 +16,31 @@
 		font-family: var(--font-sans);
 	}
 
+	.portal-layout__body {
+		@apply flex flex-1;
+	}
+
+	.portal-layout__workspace {
+		@apply flex min-w-0 flex-1 flex-col;
+	}
+
+	.portal-layout__frame {
+		@apply flex min-w-0 flex-1;
+	}
+
+	.portal-shell {
+		@apply flex-1 px-4 py-4 pb-24 sm:m-4 sm:rounded-3xl sm:border sm:px-6 sm:py-6 sm:pb-20 lg:px-8 lg:py-8;
+		background-color: rgb(var(--surface-rgb) / 0.75);
+		backdrop-filter: blur(14px);
+		-webkit-backdrop-filter: blur(14px);
+		box-shadow: var(--shadow-strong);
+		border-color: rgb(var(--sand-rgb) / 1);
+	}
+
+	.portal-page {
+		@apply flex flex-col gap-6;
+	}
+
 	.staff-layout__header {
 		@apply w-full border-b backdrop-blur-xl;
 		background-color: rgb(var(--surface-strong-rgb) / 0.9);

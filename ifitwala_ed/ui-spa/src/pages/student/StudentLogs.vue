@@ -1,8 +1,8 @@
 <!-- ifitwala_ed/ifitwala_ed/ui-spa/src/pages/students/StudentLogs.vue -->
 
 <template>
-	<div class="p-4 sm:p-6 lg:p-8">
-		<div class="mb-6">
+	<div class="portal-page">
+		<div>
 			<h1 class="type-h1">Student Logs</h1>
 			<p class="type-meta mt-1">Notes shared with you by staff.</p>
 		</div>

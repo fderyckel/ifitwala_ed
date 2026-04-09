@@ -1,6 +1,6 @@
 <!-- ifitwala_ed/ui-spa/src/pages/student/CourseDetail.vue -->
 <template>
-	<div class="space-y-6 p-4 sm:p-6 lg:p-8">
+	<div class="portal-page">
 		<div>
 			<RouterLink
 				:to="{ name: 'student-courses' }"

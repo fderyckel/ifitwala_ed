@@ -11,6 +11,31 @@ from ifitwala_ed.utilities.image_utils import build_employee_image_variants
 from ifitwala_ed.website.utils import build_employee_profile_url
 
 
+def _get_employee_public_fields() -> list[str]:
+    fields = [
+        "name",
+        "employee_full_name",
+        "designation",
+        "school",
+        "organization",
+        "show_on_website",
+    ]
+    optional_fields = [
+        "employee_preferred_name",
+        "employee_image",
+        "bio",
+        "small_bio",
+        "show_public_profile_page",
+        "public_profile_slug",
+        "featured_on_website",
+        "website_sort_order",
+    ]
+    for fieldname in optional_fields:
+        if frappe.db.has_column("Employee", fieldname):
+            fields.append(fieldname)
+    return fields
+
+
 def _normalize_school_names(school_names) -> tuple[str, ...]:
     if isinstance(school_names, str):
         school_names = [school_names]
@@ -124,21 +149,7 @@ def _get_published_public_people_records(
             "school": ["in", list(school_names)],
             "show_on_website": 1,
         },
-        fields=[
-            "name",
-            "employee_full_name",
-            "employee_preferred_name",
-            "employee_image",
-            "designation",
-            "bio",
-            "small_bio",
-            "school",
-            "organization",
-            "show_public_profile_page",
-            "public_profile_slug",
-            "featured_on_website",
-            "website_sort_order",
-        ],
+        fields=_get_employee_public_fields(),
         order_by="designation asc, employee_full_name asc",
         limit=max(len(school_names) * 200, 200),
     )
