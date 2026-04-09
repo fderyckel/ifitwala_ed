@@ -9,6 +9,75 @@ from frappe import _
 from ifitwala_ed.utilities.employee_utils import get_ancestor_organizations
 from ifitwala_ed.utilities.school_tree import get_ancestor_schools, get_descendant_schools
 
+STAFF_ROLES = {
+    "Academic Staff",
+    "Instructor",
+    "Employee",
+    "Academic Admin",
+    "Academic Assistant",
+    "System Manager",
+}
+
+
+def _as_bool(value) -> bool:
+    return value in (1, "1", True)
+
+
+def _resolve_student_record_for_user(user_id: str) -> dict:
+    student = frappe.db.get_value("Student", {"student_email": user_id}, ["name", "anchor_school"], as_dict=True)
+    if student:
+        return student or {}
+
+    user_email = frappe.db.get_value("User", user_id, "email")
+    if user_email and user_email != user_id:
+        student = frappe.db.get_value("Student", {"student_email": user_email}, ["name", "anchor_school"], as_dict=True)
+        if student:
+            return student or {}
+
+    return {}
+
+
+def _get_cached_portal_student_context(user_id: str) -> dict:
+    cache = getattr(frappe.flags, "_org_comm_student_context_cache", None)
+    if cache is None:
+        cache = {}
+        frappe.flags._org_comm_student_context_cache = cache
+
+    if user_id in cache:
+        return cache[user_id]
+
+    student_row = _resolve_student_record_for_user(user_id)
+    student_name = (student_row or {}).get("name")
+    anchor_school = (student_row or {}).get("anchor_school")
+
+    group_rows = []
+    if student_name:
+        group_rows = frappe.db.sql(
+            """
+            SELECT
+                sg.name AS student_group,
+                sg.school
+            FROM `tabStudent Group Student` sgs
+            INNER JOIN `tabStudent Group` sg ON sg.name = sgs.parent
+            WHERE sgs.student = %(student)s
+              AND COALESCE(sgs.active, 1) = 1
+              AND COALESCE(sg.status, 'Active') = 'Active'
+            """,
+            {"student": student_name},
+            as_dict=True,
+        )
+
+    school_names = {row.get("school") for row in (group_rows or []) if row.get("school")}
+    if anchor_school:
+        school_names.add(anchor_school)
+
+    cache[user_id] = {
+        "student_name": student_name,
+        "student_groups": {row.get("student_group") for row in (group_rows or []) if row.get("student_group")},
+        "school_names": school_names,
+    }
+    return cache[user_id]
+
 
 def check_audience_match(
     comm_name,
@@ -29,7 +98,8 @@ def check_audience_match(
             The match MUST happen on that Student Group row.
             Eligibility:
                     - Academic Admin: allowed
-                    - Others: must be instructor for that group
+                    - Instructors: must teach that group
+                    - Students: must belong to that group and be an enabled recipient
     - Else if filter_team is set:
             Only include communications that have an audience row with that exact team.
             The match MUST happen on that Team row.
@@ -48,9 +118,6 @@ def check_audience_match(
     - School scope does not include organization rows.
     """
 
-    def _as_bool(value) -> bool:
-        return value in (1, "1", True)
-
     def _get_enabled_recipient_flags(aud) -> set[str]:
         flags = set()
         if _as_bool(aud.to_staff):
@@ -65,15 +132,7 @@ def check_audience_match(
 
     def _get_user_recipient_flags() -> set[str]:
         flags = set()
-        staff_roles = {
-            "Academic Staff",
-            "Instructor",
-            "Employee",
-            "Academic Admin",
-            "Academic Assistant",
-            "System Manager",
-        }
-        if set(roles or []) & staff_roles:
+        if set(roles or []) & STAFF_ROLES:
             flags.add("to_staff")
         if "Student" in roles:
             flags.add("to_students")
@@ -102,8 +161,8 @@ def check_audience_match(
             )
         )
 
-    def _school_scope_match(aud_school, include_descendants, user_school_name, descendants_cache):
-        if not aud_school or not user_school_name:
+    def _school_scope_match(aud_school, include_descendants, user_school_names, descendants_cache):
+        if not aud_school or not user_school_names:
             return False
         if _as_bool(include_descendants):
             if aud_school not in descendants_cache:
@@ -111,8 +170,11 @@ def check_audience_match(
                     descendants_cache[aud_school] = set(get_descendant_schools(aud_school) or [])
                 except Exception:
                     descendants_cache[aud_school] = set()
-            return user_school_name == aud_school or user_school_name in descendants_cache[aud_school]
-        return user_school_name == aud_school
+            return any(
+                user_school == aud_school or user_school in descendants_cache[aud_school]
+                for user_school in user_school_names
+            )
+        return aud_school in user_school_names
 
     def _organization_scope_match(comm_org, user_org_name, ancestor_cache):
         if not comm_org or not user_org_name:
@@ -178,7 +240,22 @@ def check_audience_match(
         return False
 
     comm_org = frappe.get_cached_value("Org Communication", comm_name, "organization") if comm_name else None
+    employee = employee or {}
+    user_school_names = set()
     user_school = employee.get("school") if employee else None
+    if user_school:
+        user_school_names.add(user_school)
+    explicit_school_names = employee.get("school_names") or []
+    user_school_names.update({school for school in explicit_school_names if school})
+
+    student_groups = set(employee.get("student_groups") or [])
+    if "Student" in roles and (not student_groups or not user_school_names):
+        student_context = _get_cached_portal_student_context(user)
+        if not student_groups:
+            student_groups = set(student_context.get("student_groups") or [])
+        if not user_school_names:
+            user_school_names = set(student_context.get("school_names") or [])
+
     user_organization = employee.get("organization") if employee else None
     user_recipient_flags = _get_user_recipient_flags()
 
@@ -223,8 +300,8 @@ def check_audience_match(
             )
             user_teams = {r.get("parent") for r in rows if r.get("parent")}
 
-    needs_instructor_groups = filter_student_group is not None or any(
-        (a.target_mode or "").strip() == "Student Group" for a in audiences
+    needs_instructor_groups = not student_groups and (
+        filter_student_group is not None or any((a.target_mode or "").strip() == "Student Group" for a in audiences)
     )
     instructor_groups: set[str] = set()
     if needs_instructor_groups and not is_academic_admin:
@@ -249,6 +326,10 @@ def check_audience_match(
             if target_mode != "Student Group" or aud.student_group != filter_student_group:
                 continue
             if is_academic_admin or is_system_manager:
+                return True
+            enabled_recipients = _get_enabled_recipient_flags(aud)
+            recipient_overlap = not user_recipient_flags or bool(enabled_recipients & user_recipient_flags)
+            if aud.student_group and aud.student_group in student_groups and recipient_overlap:
                 return True
             if aud.student_group and aud.student_group in instructor_groups:
                 return True
@@ -276,13 +357,15 @@ def check_audience_match(
             if _school_scope_match(
                 aud.school,
                 aud.include_descendants,
-                user_school,
+                user_school_names,
                 descendants_cache,
             ):
                 return True
             continue
 
         if target_mode == "Organization":
+            if not (set(roles or []) & STAFF_ROLES):
+                continue
             if _organization_scope_match(comm_org, user_organization, organization_ancestor_cache):
                 return True
             continue
@@ -293,7 +376,9 @@ def check_audience_match(
             continue
 
         if target_mode == "Student Group":
-            if aud.student_group and (is_academic_admin or aud.student_group in instructor_groups):
+            if aud.student_group and (
+                is_academic_admin or aud.student_group in instructor_groups or aud.student_group in student_groups
+            ):
                 return True
             continue
 

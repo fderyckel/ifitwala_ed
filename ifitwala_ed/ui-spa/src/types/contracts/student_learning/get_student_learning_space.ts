@@ -1,5 +1,7 @@
 // ui-spa/src/types/contracts/student_learning/get_student_learning_space.ts
 
+import type { StudentOrgCommunicationCenterItem } from '@/types/studentCommunication'
+
 export type Request = {
 	course_id: string
 	student_group?: string
@@ -191,6 +193,9 @@ export type Response = {
 		title?: string | null
 		planning_status?: string | null
 		course_plan?: string | null
+	}
+	communications: {
+		course_updates: StudentOrgCommunicationCenterItem[]
 	}
 	message?: string | null
 	learning: {

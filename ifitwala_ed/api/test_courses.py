@@ -94,6 +94,16 @@ class TestCoursesApi(TestCase):
                 "ifitwala_ed.api.courses.portal_api.get_student_portal_identity",
                 return_value={"display_name": "Amina", "student": "STU-001", "user": "student@example.com"},
             ),
+            patch.object(
+                courses_api.student_communications_api,
+                "get_student_home_communication_summary",
+                return_value={
+                    "center_href": {"name": "student-communications"},
+                    "latest_course_update": None,
+                    "latest_activity_update": None,
+                    "latest_school_update": None,
+                },
+            ),
             patch(
                 "ifitwala_ed.api.courses.course_schedule_api.get_today_courses",
                 return_value={
@@ -126,6 +136,7 @@ class TestCoursesApi(TestCase):
         self.assertEqual(payload["learning"]["today_classes"][0]["course"], "COURSE-1")
         self.assertEqual(payload["learning"]["next_learning_step"]["kind"], "scheduled_class")
         self.assertEqual(payload["learning"]["next_learning_step"]["title"], "Biology")
+        self.assertEqual(payload["communications"]["center_href"]["name"], "student-communications")
 
     def test_get_student_hub_home_falls_back_to_first_accessible_course(self):
         with (
@@ -137,6 +148,16 @@ class TestCoursesApi(TestCase):
             patch(
                 "ifitwala_ed.api.courses.portal_api.get_student_portal_identity",
                 return_value={"display_name": "Amina", "student": "STU-001", "user": "student@example.com"},
+            ),
+            patch.object(
+                courses_api.student_communications_api,
+                "get_student_home_communication_summary",
+                return_value={
+                    "center_href": {"name": "student-communications"},
+                    "latest_course_update": None,
+                    "latest_activity_update": None,
+                    "latest_school_update": None,
+                },
             ),
             patch(
                 "ifitwala_ed.api.courses.course_schedule_api.get_today_courses",
@@ -219,6 +240,16 @@ class TestCoursesApi(TestCase):
             patch(
                 "ifitwala_ed.api.courses.portal_api.get_student_portal_identity",
                 return_value={"display_name": "Amina", "student": "STU-001", "user": "student@example.com"},
+            ),
+            patch.object(
+                courses_api.student_communications_api,
+                "get_student_home_communication_summary",
+                return_value={
+                    "center_href": {"name": "student-communications"},
+                    "latest_course_update": None,
+                    "latest_activity_update": None,
+                    "latest_school_update": None,
+                },
             ),
             patch(
                 "ifitwala_ed.api.courses.course_schedule_api.get_today_courses",
@@ -334,6 +365,16 @@ class TestCoursesApi(TestCase):
             patch(
                 "ifitwala_ed.api.courses.portal_api.get_student_portal_identity",
                 return_value={"display_name": "Amina", "student": "STU-001", "user": "student@example.com"},
+            ),
+            patch.object(
+                courses_api.student_communications_api,
+                "get_student_home_communication_summary",
+                return_value={
+                    "center_href": {"name": "student-communications"},
+                    "latest_course_update": None,
+                    "latest_activity_update": None,
+                    "latest_school_update": None,
+                },
             ),
             patch(
                 "ifitwala_ed.api.courses.course_schedule_api.get_today_courses",

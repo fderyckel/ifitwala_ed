@@ -290,6 +290,129 @@
 				</article>
 			</section>
 
+			<section :id="SECTION_IDS.communications" class="card-surface scroll-mt-40 p-6">
+				<div class="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+					<div>
+						<p class="type-overline text-ink/60">Class Updates</p>
+						<h2 class="mt-2 type-h2 text-ink">Messages connected to this class</h2>
+						<p class="mt-2 type-body text-ink/80">
+							Course announcements stay inside the class context and also appear in your
+							communication center.
+						</p>
+					</div>
+					<RouterLink :to="{ name: 'student-communications' }" class="if-action">
+						Open communication center
+					</RouterLink>
+				</div>
+
+				<p v-if="communicationActionError" class="mt-4 type-caption text-flame">
+					{{ communicationActionError }}
+				</p>
+
+				<div
+					v-if="!courseUpdates.length"
+					class="mt-5 rounded-2xl border border-dashed border-line-soft p-4"
+				>
+					<p class="type-body text-ink/70">
+						No class updates have been shared for this course yet.
+					</p>
+				</div>
+
+				<div v-else class="mt-5 space-y-4">
+					<article
+						v-for="item in courseUpdates"
+						:key="item.item_id"
+						class="rounded-2xl border border-line-soft bg-surface-soft p-4"
+					>
+						<div class="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+							<div class="min-w-0">
+								<div class="flex flex-wrap items-center gap-2">
+									<p class="type-body-strong text-ink">
+										{{ item.org_communication.title }}
+									</p>
+									<span class="chip">{{ item.org_communication.communication_type }}</span>
+									<span class="chip">{{ item.org_communication.priority }}</span>
+								</div>
+								<p class="mt-2 type-caption text-ink/60">
+									{{ communicationMetaLine(item) }}
+								</p>
+								<p class="mt-3 type-body text-ink/80">
+									{{ item.org_communication.snippet }}
+								</p>
+							</div>
+
+							<button type="button" class="if-action" @click="toggleCourseUpdate(item)">
+								{{ expandedCommunicationId === item.item_id ? 'Hide update' : 'Read update' }}
+							</button>
+						</div>
+
+						<div class="mt-4 flex flex-wrap items-center gap-3">
+							<InteractionEmojiChips
+								:interaction="interactionFor(item.org_communication.name)"
+								:readonly="!canReact(item.org_communication)"
+								:onReact="code => reactToCourseUpdate(item.org_communication.name, code)"
+							/>
+							<button
+								type="button"
+								class="if-action"
+								:disabled="!canComment(item.org_communication)"
+								@click="openCourseThread(item.org_communication)"
+							>
+								Comments ({{ interactionFor(item.org_communication.name).comments_total || 0 }})
+							</button>
+						</div>
+
+						<div
+							v-if="expandedCommunicationId === item.item_id"
+							class="mt-5 rounded-2xl border border-line-soft bg-white p-5"
+						>
+							<p
+								v-if="courseCommunicationDetailLoading[item.org_communication.name]"
+								class="type-body text-ink/70"
+							>
+								Loading full update...
+							</p>
+							<p
+								v-else-if="courseCommunicationDetailError[item.org_communication.name]"
+								class="type-body text-flame"
+							>
+								{{ courseCommunicationDetailError[item.org_communication.name] }}
+							</p>
+							<div v-else-if="courseCommunicationDetail(item.org_communication.name)">
+								<div
+									class="prose prose-slate max-w-none"
+									v-html="
+										courseCommunicationDetail(item.org_communication.name)?.message_html || ''
+									"
+								></div>
+
+								<div
+									v-if="
+										courseCommunicationDetail(item.org_communication.name)?.attachments?.length
+									"
+									class="mt-5 space-y-2"
+								>
+									<p class="type-body-strong text-ink">Attachments</p>
+									<div class="flex flex-wrap gap-2">
+										<a
+											v-for="attachment in courseCommunicationDetail(item.org_communication.name)
+												?.attachments || []"
+											:key="attachment.name"
+											:href="attachment.open_url"
+											target="_blank"
+											rel="noreferrer"
+											class="inline-flex items-center rounded-full border border-line-soft bg-surface-soft px-3 py-1 text-xs font-medium text-ink transition hover:border-jacaranda/40 hover:bg-jacaranda/5"
+										>
+											{{ attachment.label || attachment.file_name || attachment.name }}
+										</a>
+									</div>
+								</div>
+							</div>
+						</div>
+					</article>
+				</div>
+			</section>
+
 			<section
 				class="grid gap-6 xl:grid-cols-[minmax(0,18rem),minmax(0,1fr)] 2xl:grid-cols-[minmax(0,20rem),minmax(0,1fr)]"
 			>
@@ -908,6 +1031,19 @@
 				</div>
 			</section>
 		</template>
+
+		<CommentThreadDrawer
+			:open="threadOpen"
+			:title="threadTitle"
+			:rows="threadRows"
+			:loading="threadLoading"
+			:comment="commentValue"
+			:submit-loading="commentSubmitting"
+			:submit-disabled="commentSubmitting || !commentValue.trim()"
+			@close="closeThread"
+			@submit="submitCourseComment"
+			@update:comment="onCommentUpdate"
+		/>
 	</div>
 </template>
 
@@ -916,6 +1052,11 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { toast } from 'frappe-ui';
 import { useRoute, useRouter } from 'vue-router';
 
+import CommentThreadDrawer from '@/components/CommentThreadDrawer.vue';
+import InteractionEmojiChips from '@/components/InteractionEmojiChips.vue';
+import { formatLocalizedDateTime } from '@/lib/datetime';
+import { createCommunicationInteractionService } from '@/lib/services/communicationInteraction/communicationInteractionService';
+import { createOrgCommunicationArchiveService } from '@/lib/services/orgCommunicationArchive/orgCommunicationArchiveService';
 import { createReflectionEntry } from '@/lib/services/portfolio/portfolioService';
 import { getStudentLearningSpace } from '@/lib/services/student/studentLearningHubService';
 import type {
@@ -926,6 +1067,14 @@ import type {
 	StudentLearningSession,
 	StudentLearningUnit,
 } from '@/types/contracts/student_learning/get_student_learning_space';
+import type { Response as OrgCommunicationDetailResponse } from '@/types/contracts/org_communication_archive/get_org_communication_item';
+import type { ReactionCode } from '@/types/interactions';
+import type {
+	InteractionSummary,
+	InteractionSummaryMap,
+	InteractionThreadRow,
+} from '@/types/morning_brief';
+import type { StudentOrgCommunicationCenterItem } from '@/types/studentCommunication';
 
 const PLACEHOLDER =
 	'data:image/svg+xml;charset=UTF-8,' +
@@ -936,6 +1085,7 @@ const PLACEHOLDER =
 const SECTION_IDS = {
 	focus: 'learning-focus',
 	nextActions: 'next-actions',
+	communications: 'course-communications',
 	unitJourney: 'unit-journey',
 	sessionJourney: 'session-journey',
 	unitOverview: 'unit-overview',
@@ -955,6 +1105,8 @@ const props = defineProps<{
 
 const router = useRouter();
 const route = useRoute();
+const interactionService = createCommunicationInteractionService();
+const archiveService = createOrgCommunicationArchiveService();
 
 const learningSpace = ref<StudentLearningSpaceResponse | null>(null);
 const loading = ref(false);
@@ -967,6 +1119,20 @@ const scrollFrame = ref<number | null>(null);
 const reflectionBody = ref('');
 const reflectionError = ref('');
 const reflectionSaving = ref(false);
+const communicationActionError = ref('');
+const communicationSummaryMap = ref<InteractionSummaryMap>({});
+const expandedCommunicationId = ref('');
+const courseCommunicationDetailMap = ref<Record<string, OrgCommunicationDetailResponse | null>>(
+	{}
+);
+const courseCommunicationDetailLoading = ref<Record<string, boolean>>({});
+const courseCommunicationDetailError = ref<Record<string, string>>({});
+const threadOpen = ref(false);
+const threadLoading = ref(false);
+const commentSubmitting = ref(false);
+const threadRows = ref<InteractionThreadRow[]>([]);
+const commentValue = ref('');
+const selectedCommunication = ref<StudentOrgCommunicationCenterItem | null>(null);
 
 const learningFocus = computed(() => learningSpace.value?.learning.focus || {});
 const nextActions = computed(() => learningSpace.value?.learning.next_actions || []);
@@ -974,6 +1140,39 @@ const reflectionEntries = computed<StudentLearningReflectionEntry[]>(
 	() => learningSpace.value?.learning.reflection_entries || []
 );
 const unitNavigation = computed(() => learningSpace.value?.learning.unit_navigation || []);
+const courseUpdates = computed<StudentOrgCommunicationCenterItem[]>(
+	() => learningSpace.value?.communications?.course_updates || []
+);
+const threadTitle = computed(() =>
+	selectedCommunication.value
+		? `Comments · ${selectedCommunication.value.org_communication.title}`
+		: 'Comments'
+);
+
+function emptySummary(): InteractionSummary {
+	return {
+		counts: {},
+		reaction_counts: {},
+		reactions_total: 0,
+		comments_total: 0,
+		self: null,
+	};
+}
+
+function interactionFor(commName: string): InteractionSummary {
+	return communicationSummaryMap.value[commName] || emptySummary();
+}
+
+function canReact(item: { interaction_mode?: string | null }) {
+	return item.interaction_mode !== 'None';
+}
+
+function canComment(item: {
+	interaction_mode?: string | null;
+	allow_public_thread?: 0 | 1 | boolean;
+}) {
+	return canReact(item) && Boolean(item.allow_public_thread);
+}
 
 const selectedUnit = computed<StudentLearningUnit | null>(() => {
 	return (
@@ -1020,6 +1219,10 @@ const learningSections = computed(() => {
 	const sections: Array<{ id: LearningSectionId; label: string }> = [
 		{ id: SECTION_IDS.focus, label: 'Focus' },
 		{ id: SECTION_IDS.nextActions, label: `Next Actions (${nextActions.value.length})` },
+		{
+			id: SECTION_IDS.communications,
+			label: `Class Updates (${courseUpdates.value.length})`,
+		},
 		{ id: SECTION_IDS.unitJourney, label: `Units (${unitNavigation.value.length})` },
 	];
 
@@ -1384,6 +1587,150 @@ function assignedWorkActionLabel(item: StudentAssignedWork) {
 	return 'Open course workspace';
 }
 
+function communicationDateLabel(value?: string | null) {
+	if (!value) return '';
+	return formatLocalizedDateTime(value, { fallback: value });
+}
+
+function communicationMetaLine(item: StudentOrgCommunicationCenterItem) {
+	const parts = [
+		item.context_label || '',
+		communicationDateLabel(item.sort_at),
+		item.org_communication.communication_type,
+	].filter(Boolean);
+	return parts.join(' · ');
+}
+
+async function loadCourseCommunicationSummaries(items: StudentOrgCommunicationCenterItem[]) {
+	const names = items.map(item => item.org_communication.name).filter(Boolean);
+	if (!names.length) {
+		communicationSummaryMap.value = {};
+		return;
+	}
+	communicationSummaryMap.value = await interactionService.getOrgCommInteractionSummary({
+		comm_names: names,
+	});
+}
+
+function courseCommunicationDetail(name: string) {
+	return courseCommunicationDetailMap.value[name] || null;
+}
+
+async function loadCourseCommunicationDetail(name: string) {
+	if (courseCommunicationDetailMap.value[name] || courseCommunicationDetailLoading.value[name]) {
+		return;
+	}
+	courseCommunicationDetailLoading.value[name] = true;
+	courseCommunicationDetailError.value[name] = '';
+	try {
+		courseCommunicationDetailMap.value[name] = await archiveService.getOrgCommunicationItem({
+			name,
+		});
+	} catch (error) {
+		const message = error instanceof Error ? error.message : String(error || '');
+		courseCommunicationDetailError.value[name] = message || 'Could not load this update.';
+	} finally {
+		courseCommunicationDetailLoading.value[name] = false;
+	}
+}
+
+async function toggleCourseUpdate(item: StudentOrgCommunicationCenterItem) {
+	communicationActionError.value = '';
+	if (expandedCommunicationId.value === item.item_id) {
+		expandedCommunicationId.value = '';
+		return;
+	}
+	expandedCommunicationId.value = item.item_id;
+	await loadCourseCommunicationDetail(item.org_communication.name);
+}
+
+async function reactToCourseUpdate(commName: string, code: ReactionCode) {
+	communicationActionError.value = '';
+	try {
+		await interactionService.reactToOrgCommunication({
+			org_communication: commName,
+			reaction_code: code,
+			surface: 'Portal Feed',
+		});
+		await loadCourseCommunicationSummaries(courseUpdates.value);
+	} catch (error) {
+		const message = error instanceof Error ? error.message : String(error || '');
+		communicationActionError.value = message || 'Could not record reaction.';
+	}
+}
+
+async function openCourseThread(item: StudentOrgCommunicationCenterItem['org_communication']) {
+	communicationActionError.value = '';
+	if (!canComment(item)) {
+		communicationActionError.value = 'Comments are not enabled for this update.';
+		return;
+	}
+	selectedCommunication.value =
+		courseUpdates.value.find(row => row.org_communication.name === item.name) || null;
+	threadOpen.value = true;
+	commentValue.value = '';
+	threadRows.value = [];
+	threadLoading.value = true;
+	try {
+		threadRows.value = await interactionService.getCommunicationThread({
+			org_communication: item.name,
+			limit_start: 0,
+			limit: 200,
+		});
+	} catch (error) {
+		const message = error instanceof Error ? error.message : String(error || '');
+		communicationActionError.value = message || 'Could not load comment thread.';
+	} finally {
+		threadLoading.value = false;
+	}
+}
+
+function closeThread() {
+	threadOpen.value = false;
+	selectedCommunication.value = null;
+	commentValue.value = '';
+	threadRows.value = [];
+}
+
+function onCommentUpdate(value: string) {
+	commentValue.value = value;
+}
+
+async function submitCourseComment() {
+	communicationActionError.value = '';
+	const comm = selectedCommunication.value?.org_communication;
+	if (!comm) {
+		communicationActionError.value = 'Select an update first.';
+		return;
+	}
+	const note = commentValue.value.trim();
+	if (!note) {
+		communicationActionError.value = 'Please add a comment before posting.';
+		return;
+	}
+	commentSubmitting.value = true;
+	try {
+		await interactionService.postOrgCommunicationComment({
+			org_communication: comm.name,
+			note,
+			surface: 'Portal Feed',
+		});
+		commentValue.value = '';
+		threadRows.value = await interactionService.getCommunicationThread({
+			org_communication: comm.name,
+			limit_start: 0,
+			limit: 200,
+		});
+		await loadCourseCommunicationSummaries(courseUpdates.value);
+		toast.success('Comment posted.');
+	} catch (error) {
+		const message = error instanceof Error ? error.message : String(error || '');
+		communicationActionError.value = message || 'Could not post comment.';
+	} finally {
+		commentSubmitting.value = false;
+	}
+}
+
 const reflectionPrompt = computed(() => {
 	if (selectedSession.value?.learning_goal) {
 		return `After ${selectedSession.value.title}, note what evidence, question, or idea is shaping your understanding.`;
@@ -1530,6 +1877,26 @@ watch(
 			requestActiveSectionSync();
 		}
 	}
+);
+
+watch(
+	courseUpdates,
+	items => {
+		void loadCourseCommunicationSummaries(items);
+		if (
+			expandedCommunicationId.value &&
+			!items.some(item => item.item_id === expandedCommunicationId.value)
+		) {
+			expandedCommunicationId.value = '';
+		}
+		if (
+			selectedCommunication.value &&
+			!items.some(item => item.item_id === selectedCommunication.value?.item_id)
+		) {
+			closeThread();
+		}
+	},
+	{ immediate: true }
 );
 
 watch(

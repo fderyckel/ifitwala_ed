@@ -173,6 +173,99 @@ describe('StudentHome', () => {
 		expect(disabledButton?.disabled).toBe(true)
 	})
 
+	it('renders student communication highlights with direct links back into context', async () => {
+		;(window as Window & { frappe?: unknown }).frappe = {
+			session: {
+				user_info: {
+					fullname: 'Amina Example',
+				},
+			},
+		}
+
+		getStudentHubHomeMock.mockResolvedValue({
+			meta: {
+				generated_at: '2026-04-02T09:00:00',
+				date: '2026-04-02',
+				weekday: 'Thursday',
+			},
+			identity: {
+				user: 'student@example.com',
+				student: 'STU-1',
+				display_name: 'Amina',
+			},
+			learning: {
+				today_classes: [],
+				next_learning_step: null,
+				accessible_courses_count: 2,
+				selected_year: '2025-2026',
+				orientation: {
+					current_class: null,
+					next_class: null,
+				},
+				work_board: {
+					now: [],
+					soon: [],
+					later: [],
+					done: [],
+				},
+				timeline: [],
+			},
+			communications: {
+				center_href: { name: 'student-communications' },
+				latest_course_update: {
+					kind: 'course',
+					title: 'Microscope materials are ready',
+					subtitle: 'Biology A',
+					publish_at: '2026-04-01T08:00:00',
+					href: {
+						name: 'student-course-detail',
+						params: { course_id: 'COURSE-1' },
+						query: { student_group: 'GROUP-1' },
+					},
+					href_label: 'Open class',
+					item_id: 'org::COMM-1',
+					source_label: 'Class Update',
+				},
+				latest_activity_update: {
+					kind: 'activity',
+					title: 'Football practice moved to court 2',
+					subtitle: 'Football Club',
+					publish_at: '2026-04-01T16:00:00',
+					href: {
+						name: 'student-activities',
+						query: { program_offering: 'ACT-1' },
+					},
+					href_label: 'Open activity',
+					item_id: 'org::COMM-2',
+					source_label: 'Activity Update',
+				},
+				latest_school_update: {
+					kind: 'school',
+					title: 'Assembly starts at 8:00',
+					subtitle: 'Main Hall',
+					publish_at: '2026-04-02T07:30:00',
+					href: {
+						name: 'student-communications',
+						query: { source: 'school', item: 'event::EVENT-1' },
+					},
+					href_label: 'Open center',
+					item_id: 'event::EVENT-1',
+					source_label: 'School Event',
+				},
+			},
+		})
+
+		mountStudentHome()
+		await flushUi()
+
+		const text = document.body.textContent || ''
+		expect(text).toContain('Communication Center')
+		expect(text).toContain('Microscope materials are ready')
+		expect(text).toContain('Football practice moved to court 2')
+		expect(text).toContain('Assembly starts at 8:00')
+		expect(text).toContain('Open communication center')
+	})
+
 	it('renders snapshot cards as clickable shortcuts', async () => {
 		;(window as Window & { frappe?: unknown }).frappe = {
 			session: {

@@ -78,6 +78,9 @@ export interface OrgCommunicationListItem {
   interaction_mode: InteractionMode
   allow_private_notes: 0 | 1 | boolean
   allow_public_thread: 0 | 1 | boolean
+  activity_program_offering?: string | null
+  activity_booking?: string | null
+  activity_student_group?: string | null
   snippet: string
   audience_label?: string
   audience_summary?: AudienceSummary

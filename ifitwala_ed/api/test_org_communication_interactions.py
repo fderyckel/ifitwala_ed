@@ -221,6 +221,10 @@ class TestOrgCommunicationWorkflowEndpoints(FrappeTestCase):
             ),
             patch("ifitwala_ed.api.org_communication_interactions._ensure_visible_org_communication"),
             patch(
+                "ifitwala_ed.api.org_communication_interactions.frappe.get_cached_doc",
+                return_value=SimpleNamespace(interaction_mode="Student Q&A"),
+            ),
+            patch(
                 "ifitwala_ed.api.org_communication_interactions.create_interaction_entry",
                 return_value={"name": "ENTRY-0002"},
             ) as create_entry_mock,
@@ -239,6 +243,37 @@ class TestOrgCommunicationWorkflowEndpoints(FrappeTestCase):
             surface="Guardian Portal",
         )
         self.assertEqual(result, {"name": "ENTRY-0002"})
+
+    def test_post_comment_maps_structured_feedback_to_other_intent(self):
+        with (
+            patch(
+                "ifitwala_ed.api.org_communication_interactions._actor_context",
+                return_value=("staff@example.com", {"Academic Staff"}, {"name": "EMP-1", "school": "SCH-1"}),
+            ),
+            patch("ifitwala_ed.api.org_communication_interactions._ensure_visible_org_communication"),
+            patch(
+                "ifitwala_ed.api.org_communication_interactions.frappe.get_cached_doc",
+                return_value=SimpleNamespace(interaction_mode="Structured Feedback"),
+            ),
+            patch(
+                "ifitwala_ed.api.org_communication_interactions.create_interaction_entry",
+                return_value={"name": "ENTRY-0003"},
+            ) as create_entry_mock,
+        ):
+            result = org_communication_interactions.post_org_communication_comment(
+                org_communication="COMM-0003",
+                note="Needs follow-up",
+                surface="Portal Feed",
+            )
+
+        create_entry_mock.assert_called_once_with(
+            org_communication="COMM-0003",
+            user="staff@example.com",
+            intent_type="Other",
+            note="Needs follow-up",
+            surface="Portal Feed",
+        )
+        self.assertEqual(result, {"name": "ENTRY-0003"})
 
     def test_structured_feedback_thread_is_hidden_from_non_staff(self):
         with (

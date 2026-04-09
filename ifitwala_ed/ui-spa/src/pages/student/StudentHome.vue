@@ -139,6 +139,58 @@
 			</div>
 		</section>
 
+		<section class="card-surface p-5">
+			<div class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+				<div>
+					<p class="type-overline text-ink/60">Communications</p>
+					<h2 class="type-h3 text-ink">Recent updates across your student Hub</h2>
+					<p class="type-caption text-ink/70">
+						Class, activity, and school updates stay connected to where they belong.
+					</p>
+				</div>
+				<RouterLink :to="linkFor(communicationsCenterHref)" class="if-action">
+					Open communication center
+				</RouterLink>
+			</div>
+
+			<div
+				v-if="!communicationHighlights.length"
+				class="mt-4 rounded-2xl border border-dashed border-line-soft p-4"
+			>
+				<p class="type-body text-ink/70">
+					No student-facing updates are visible right now. New class, activity, and school messages
+					will appear here.
+				</p>
+			</div>
+
+			<div v-else class="mt-4 grid gap-3 lg:grid-cols-3">
+				<RouterLink
+					v-for="item in communicationHighlights"
+					:key="item.item_id || `${item.kind}-${item.title}`"
+					:to="linkFor(item.href)"
+					class="group rounded-2xl border border-line-soft bg-surface-soft p-4 transition hover:-translate-y-0.5 hover:border-jacaranda/35 hover:shadow-soft"
+				>
+					<div class="flex items-start justify-between gap-3">
+						<div>
+							<p class="type-caption text-ink/60">{{ item.source_label || 'Update' }}</p>
+							<p class="mt-2 type-body-strong text-ink">{{ item.title }}</p>
+						</div>
+						<FeatherIcon
+							name="arrow-up-right"
+							class="h-4 w-4 shrink-0 text-ink/35 transition group-hover:text-jacaranda"
+						/>
+					</div>
+					<p v-if="item.subtitle" class="mt-2 type-body text-ink/80">{{ item.subtitle }}</p>
+					<p v-if="item.publish_at" class="mt-3 type-caption text-ink/60">
+						{{ communicationDateLabel(item.publish_at) }}
+					</p>
+					<p class="mt-3 type-caption text-jacaranda">
+						{{ item.href_label || 'Open' }}
+					</p>
+				</RouterLink>
+			</div>
+		</section>
+
 		<section class="space-y-4">
 			<div class="flex items-center justify-between">
 				<div>
@@ -293,6 +345,7 @@ import type {
 	NextLearningStep,
 	Response as StudentHubHomeResponse,
 	RouteTarget,
+	StudentCommunicationSummary,
 	TimelineDay,
 	WorkItem,
 	TodayClass,
@@ -367,6 +420,17 @@ const currentFocusCount = computed(() => {
 	return currentClass.value ? 1 : 0;
 });
 const comingThisWeekCount = computed(() => workBoard.value.soon.length);
+const communicationsCenterHref = computed<RouteTarget>(
+	() => homePayload.value?.communications?.center_href || { name: 'student-communications' }
+);
+const communicationHighlights = computed<StudentCommunicationSummary[]>(() => {
+	const items = [
+		homePayload.value?.communications?.latest_course_update || null,
+		homePayload.value?.communications?.latest_activity_update || null,
+		homePayload.value?.communications?.latest_school_update || null,
+	];
+	return items.filter((item): item is StudentCommunicationSummary => Boolean(item));
+});
 const daySummary = computed(() => {
 	const date = homePayload.value?.meta?.date ?? null;
 	const weekday = homePayload.value?.meta?.weekday ?? null;
@@ -545,6 +609,10 @@ function timelineKindLabel(kind: string): string {
 	return 'Opens';
 }
 
+function communicationDateLabel(value: string): string {
+	return formatLocalizedDateTime(value, { fallback: value });
+}
+
 onMounted(() => {
 	loadHome();
 });
@@ -567,6 +635,12 @@ const quickLinks = [
 		description: 'Open your course spaces.',
 		icon: 'book-open',
 		to: { name: 'student-courses' },
+	},
+	{
+		title: 'Communication Center',
+		description: 'See all class, activity, and school updates together.',
+		icon: 'message-square',
+		to: { name: 'student-communications' },
 	},
 	{
 		title: 'Portfolio & Journal',

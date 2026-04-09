@@ -39,6 +39,12 @@ const routes: RouteRecordRaw[] = [
     meta: { layout: 'student' },
   },
   {
+    path: '/student/communications',
+    name: 'student-communications',
+    component: () => import('@/pages/student/StudentCommunicationCenter.vue'),
+    meta: { layout: 'student' },
+  },
+  {
     path: '/student/portfolio',
     name: 'student-portfolio',
     component: () => import('@/pages/student/StudentPortfolioFeed.vue'),

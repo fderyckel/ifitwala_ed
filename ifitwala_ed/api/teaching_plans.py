@@ -1650,6 +1650,7 @@ def _build_student_learning_space_payload(
     resources_payload = {"shared_resources": [], "class_resources": [], "general_assigned_work": []}
     assigned_work_count = 0
     reflection_entries: list[dict[str, Any]] = []
+    course_communications: list[dict[str, Any]] = []
 
     if class_plan_row:
         doc = frappe.get_doc("Class Teaching Plan", class_plan_row["name"])
@@ -1732,6 +1733,17 @@ def _build_student_learning_space_payload(
         student_group=selected_group or None,
         academic_year=reflections_academic_year or None,
     )
+    try:
+        from ifitwala_ed.api import student_communications as student_communications_api
+
+        course_communications = student_communications_api.get_student_course_communications(
+            student_name,
+            course_id=course_id,
+            student_group=selected_group,
+            limit=6,
+        )
+    except Exception:
+        frappe.log_error(frappe.get_traceback(), "Student Learning Space Communication Load Failed")
 
     return {
         "meta": {
@@ -1759,6 +1771,9 @@ def _build_student_learning_space_payload(
             "title": class_plan_row.get("title") if class_plan_row else None,
             "planning_status": class_plan_row.get("planning_status") if class_plan_row else None,
             "course_plan": resolved_course_plan,
+        },
+        "communications": {
+            "course_updates": course_communications,
         },
         "message": message,
         "learning": _build_student_learning_sections(

@@ -478,89 +478,95 @@
 			<!-- COMMUNITY PULSE: BIRTHDAYS -->
 			<section
 				v-if="hasArrayData('staff_birthdays') || hasArrayData('my_student_birthdays')"
-				class="space-y-4 border-t border-border/60 pt-6"
+				class="paper-card-frosted overflow-hidden"
 			>
-				<div class="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
-					<div class="space-y-2">
+				<div
+					class="grid gap-5 px-5 py-5 lg:grid-cols-[minmax(0,1.2fr),minmax(18rem,0.8fr)] lg:px-6 lg:py-6"
+				>
+					<div class="space-y-4">
 						<div
-							class="inline-flex w-fit items-center gap-2 rounded-full border border-border/60 bg-white/70 px-3 py-1"
+							class="inline-flex w-fit items-center gap-2 rounded-full border border-white/70 bg-[rgb(var(--surface-strong-rgb)/0.72)] px-3 py-1 shadow-[0_8px_24px_rgb(var(--ink-rgb)/0.04)] backdrop-blur-sm"
 						>
 							<div
-								class="flex h-6 w-6 items-center justify-center rounded-full bg-surface-soft text-canopy"
+								class="flex h-6 w-6 items-center justify-center rounded-full bg-[rgb(var(--canopy-rgb)/0.08)] text-canopy"
 							>
 								<FeatherIcon name="gift" class="h-3.5 w-3.5" />
 							</div>
-							<span class="section-header text-slate-token/70">Community Pulse</span>
+							<span class="section-header text-canopy/70">Community Pulse</span>
 						</div>
-						<div>
-							<h2 class="text-lg font-semibold text-ink sm:text-xl">Birthdays across your week</h2>
-							<p class="type-meta mt-1 text-slate-token/80">
-								A gentle read on the people moments around staff life and your teaching groups.
+
+						<div class="space-y-3">
+							<h2
+								class="max-w-2xl text-[1.9rem] text-ink sm:text-[2.2rem]"
+								style="font-family: var(--font-serif); line-height: 0.98"
+							>
+								This week&apos;s birthdays
+							</h2>
+							<p class="max-w-2xl type-meta text-slate-token/82">
+								A quieter note in the brief, bringing forward the staff and student moments worth
+								noticing before the day gets busy.
 							</p>
 						</div>
 					</div>
 
-					<div class="flex flex-wrap items-center gap-2">
-						<span
-							class="inline-flex items-center gap-2 rounded-full border border-border/60 bg-white/70 px-3 py-1 text-[11px] font-semibold text-slate-token/75"
+					<div class="grid gap-2.5 sm:grid-cols-3 lg:grid-cols-1 xl:grid-cols-3">
+						<div
+							class="rounded-[1.35rem] border border-white/70 bg-[rgb(var(--surface-strong-rgb)/0.74)] p-3 shadow-[0_10px_28px_rgb(var(--ink-rgb)/0.04)] backdrop-blur-sm"
 						>
-							<span class="h-1.5 w-1.5 rounded-full bg-canopy/70"></span>
-							{{ communityBirthdayTotal }} this week
-						</span>
-						<span
-							v-if="staffBirthdayCount"
-							class="inline-flex items-center rounded-full bg-surface-soft px-3 py-1 text-[11px] font-medium text-slate-token/75"
+							<p class="type-overline text-slate-token/58">In View</p>
+							<p class="mt-2 text-2xl font-semibold tracking-tight text-canopy">
+								{{ communityBirthdayTotal }}
+							</p>
+							<p class="mt-1 text-[11px] text-slate-token/70">birthdays this week</p>
+						</div>
+
+						<div
+							class="rounded-[1.35rem] border border-[rgb(var(--clay-rgb)/0.12)] bg-[rgb(var(--sand-rgb)/0.78)] p-3 shadow-[0_10px_28px_rgb(var(--ink-rgb)/0.04)]"
 						>
-							Staff {{ staffBirthdayCount }}
-						</span>
-						<span
-							v-if="studentBirthdayCount"
-							class="inline-flex items-center rounded-full bg-surface-soft px-3 py-1 text-[11px] font-medium text-slate-token/75"
+							<p class="type-overline text-slate-token/58">Staff</p>
+							<p class="mt-2 text-2xl font-semibold tracking-tight text-clay">
+								{{ staffBirthdayCount }}
+							</p>
+							<p class="mt-1 text-[11px] text-slate-token/70">across the school</p>
+						</div>
+
+						<div
+							class="rounded-[1.35rem] border border-[rgb(var(--jacaranda-rgb)/0.14)] bg-[rgb(var(--sky-rgb)/0.82)] p-3 shadow-[0_10px_28px_rgb(var(--ink-rgb)/0.04)]"
 						>
-							My groups {{ studentBirthdayCount }}
-						</span>
+							<p class="type-overline text-slate-token/58">My Groups</p>
+							<p class="mt-2 text-2xl font-semibold tracking-tight text-jacaranda">
+								{{ studentBirthdayCount }}
+							</p>
+							<p class="mt-1 text-[11px] text-slate-token/70">students in view</p>
+						</div>
 					</div>
 				</div>
 
-				<div class="paper-card overflow-hidden">
-					<div
-						class="flex flex-col gap-2 border-b border-border/60 bg-gradient-to-r from-white/95 via-surface-soft/70 to-white/90 px-5 py-4 lg:flex-row lg:items-center lg:justify-between"
-					>
-						<div>
-							<p class="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-token/55">
-								Weekly birthdays
-							</p>
-							<p class="mt-1 text-sm text-slate-token/82">
-								A quiet prompt for the corridor hello, the kind note, or the small celebration.
-							</p>
-						</div>
-						<p class="text-xs font-medium text-canopy/80">
-							Keep the week human while the rest of the brief stays operational.
-						</p>
-					</div>
-
-					<div class="grid gap-0 md:grid-cols-2">
-						<!-- Staff birthdays -->
-						<div v-if="hasArrayData('staff_birthdays')" class="space-y-3 p-5">
-							<div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-								<h3 class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-token/62">
-									Staff Birthdays
-								</h3>
+				<div class="px-5 pb-5 lg:px-6 lg:pb-6">
+					<div class="grid gap-4 md:grid-cols-2">
+						<div
+							class="rounded-[1.75rem] border border-[rgb(var(--clay-rgb)/0.1)] bg-[linear-gradient(180deg,rgb(var(--surface-strong-rgb)/0.84),rgb(var(--sand-rgb)/0.72))] p-4 shadow-[0_14px_36px_rgb(var(--ink-rgb)/0.05)] sm:p-5"
+						>
+							<div class="mb-4 flex items-start justify-between gap-3">
+								<div class="space-y-1.5">
+									<p class="type-overline text-slate-token/58">Staff Birthdays</p>
+									<p class="text-base font-semibold text-ink">Across the school this week.</p>
+								</div>
 								<span
-									class="inline-flex items-center rounded-full bg-surface-soft px-2.5 py-1 text-[10px] font-medium text-slate-token/70"
+									class="inline-flex h-8 min-w-[2rem] items-center justify-center rounded-full border border-[rgb(var(--clay-rgb)/0.14)] bg-[rgb(var(--surface-strong-rgb)/0.72)] px-2.5 text-[11px] font-semibold text-clay"
 								>
-									{{ staffBirthdayCount }} this week
+									{{ staffBirthdayCount }}
 								</span>
 							</div>
 
-							<ul class="space-y-2">
+							<ul v-if="staffBirthdayCount" class="space-y-2.5">
 								<li
 									v-for="emp in widgets.data.staff_birthdays"
 									:key="emp.name"
-									class="flex items-center gap-3 rounded-xl bg-surface-soft/60 px-3 py-2.5 transition-colors hover:bg-surface-soft"
+									class="flex items-center gap-3 rounded-2xl border border-white/75 bg-[rgb(var(--surface-strong-rgb)/0.82)] px-3 py-3 shadow-[0_8px_18px_rgb(var(--ink-rgb)/0.04)]"
 								>
 									<div
-										class="h-9 w-9 overflow-hidden rounded-full bg-white shadow-[var(--shadow-soft)] ring-1 ring-border/40"
+										class="h-10 w-10 overflow-hidden rounded-full bg-white shadow-[var(--shadow-soft)] ring-1 ring-[rgb(var(--clay-rgb)/0.12)]"
 									>
 										<img v-if="emp.image" :src="emp.image" class="h-full w-full object-cover" />
 										<div
@@ -574,38 +580,46 @@
 										<p class="truncate text-sm font-semibold text-ink">
 											{{ emp.name }}
 										</p>
-										<p class="text-[11px] font-medium uppercase tracking-wide text-flame">
-											{{ formatBirthday(emp.date_of_birth) }}
-										</p>
 									</div>
+									<span
+										class="shrink-0 rounded-full border border-[rgb(var(--clay-rgb)/0.16)] bg-[rgb(var(--sand-rgb)/0.9)] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-clay"
+									>
+										{{ formatBirthdayCompact(emp.date_of_birth) }}
+									</span>
 								</li>
 							</ul>
+
+							<div
+								v-else
+								class="rounded-2xl border border-dashed border-[rgb(var(--clay-rgb)/0.18)] bg-[rgb(var(--surface-strong-rgb)/0.55)] px-4 py-6 text-sm text-slate-token/72"
+							>
+								No staff birthdays in this window.
+							</div>
 						</div>
 
-						<!-- Student birthdays (my groups) -->
 						<div
-							v-if="hasArrayData('my_student_birthdays')"
-							class="space-y-3 border-t border-border/50 p-5 md:border-l md:border-t-0"
+							class="rounded-[1.75rem] border border-[rgb(var(--jacaranda-rgb)/0.12)] bg-[linear-gradient(180deg,rgb(var(--surface-strong-rgb)/0.84),rgb(var(--sky-rgb)/0.72))] p-4 shadow-[0_14px_36px_rgb(var(--ink-rgb)/0.05)] sm:p-5"
 						>
-							<div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-								<h3 class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-token/62">
-									Student Birthdays (My Groups)
-								</h3>
+							<div class="mb-4 flex items-start justify-between gap-3">
+								<div class="space-y-1.5">
+									<p class="type-overline text-slate-token/58">Student Birthdays</p>
+									<p class="text-base font-semibold text-ink">Inside your teaching groups.</p>
+								</div>
 								<span
-									class="inline-flex items-center rounded-full bg-surface-soft px-2.5 py-1 text-[10px] font-medium text-slate-token/70"
+									class="inline-flex h-8 min-w-[2rem] items-center justify-center rounded-full border border-[rgb(var(--jacaranda-rgb)/0.18)] bg-[rgb(var(--surface-strong-rgb)/0.72)] px-2.5 text-[11px] font-semibold text-jacaranda"
 								>
-									{{ studentBirthdayCount }} this week
+									{{ studentBirthdayCount }}
 								</span>
 							</div>
 
-							<ul class="space-y-2">
+							<ul v-if="studentBirthdayCount" class="space-y-2.5">
 								<li
 									v-for="stu in widgets.data.my_student_birthdays"
 									:key="stu.first_name + stu.last_name"
-									class="flex items-center gap-3 rounded-xl bg-surface-soft/60 px-3 py-2.5 transition-colors hover:bg-surface-soft"
+									class="flex items-center gap-3 rounded-2xl border border-white/75 bg-[rgb(var(--surface-strong-rgb)/0.82)] px-3 py-3 shadow-[0_8px_18px_rgb(var(--ink-rgb)/0.04)]"
 								>
 									<div
-										class="h-9 w-9 overflow-hidden rounded-full bg-white shadow-[var(--shadow-soft)] ring-1 ring-border/40"
+										class="h-10 w-10 overflow-hidden rounded-full bg-white shadow-[var(--shadow-soft)] ring-1 ring-[rgb(var(--jacaranda-rgb)/0.12)]"
 									>
 										<img v-if="stu.image" :src="stu.image" class="h-full w-full object-cover" />
 										<div
@@ -619,27 +633,23 @@
 										<p class="truncate text-sm font-semibold text-ink">
 											{{ stu.first_name }} {{ stu.last_name }}
 										</p>
-										<p class="text-[11px] font-medium uppercase tracking-wide text-flame">
-											{{ formatBirthday(stu.date_of_birth) }}
-										</p>
 									</div>
+									<span
+										class="shrink-0 rounded-full border border-[rgb(var(--jacaranda-rgb)/0.18)] bg-[rgb(var(--sky-rgb)/0.9)] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-jacaranda"
+									>
+										{{ formatBirthdayCompact(stu.date_of_birth) }}
+									</span>
 								</li>
 							</ul>
+
+							<div
+								v-else
+								class="rounded-2xl border border-dashed border-[rgb(var(--jacaranda-rgb)/0.2)] bg-[rgb(var(--surface-strong-rgb)/0.55)] px-4 py-6 text-sm text-slate-token/72"
+							>
+								No student birthdays in your groups for this window.
+							</div>
 						</div>
 					</div>
-
-					<p
-						v-if="hasArrayData('staff_birthdays') && !hasArrayData('my_student_birthdays')"
-						class="border-t border-border/50 px-5 py-3 text-[11px] text-slate-token/70"
-					>
-						No student birthdays in your groups for this window.
-					</p>
-					<p
-						v-else-if="hasArrayData('my_student_birthdays') && !hasArrayData('staff_birthdays')"
-						class="border-t border-border/50 px-5 py-3 text-[11px] text-slate-token/70"
-					>
-						No staff birthdays in this window.
-					</p>
 				</div>
 			</section>
 		</div>
@@ -1286,7 +1296,7 @@ function getPriorityClasses(priority: OrgPriority): string {
 	}
 }
 
-function formatBirthday(dateStr: string | null | undefined): string {
+function formatBirthdayCompact(dateStr: string | null | undefined): string {
 	if (!dateStr) return '';
 
 	// Parsed in local time; we only care about day + month, not year
@@ -1294,23 +1304,9 @@ function formatBirthday(dateStr: string | null | undefined): string {
 	const day = date.getDate();
 
 	// Force Gregorian month names, ignore Thai/Buddhist locale
-	const month = date.toLocaleString('en-US', { month: 'long' });
+	const month = date.toLocaleString('en-US', { month: 'short' });
 
-	const suffix = (value: number) => {
-		if (value > 3 && value < 21) return 'th';
-		switch (value % 10) {
-			case 1:
-				return 'st';
-			case 2:
-				return 'nd';
-			case 3:
-				return 'rd';
-			default:
-				return 'th';
-		}
-	};
-
-	return `${day}${suffix(day)} ${month}`;
+	return `${String(day).padStart(2, '0')} ${month}`;
 }
 
 onMounted(() => {

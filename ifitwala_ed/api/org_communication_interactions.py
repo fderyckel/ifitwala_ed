@@ -66,7 +66,7 @@ def _actor_context() -> tuple[str, set[str], dict]:
         frappe.db.get_value(
             "Employee",
             {"user_id": user, "employment_status": "Active"},
-            ["name", "school"],
+            ["name", "school", "organization"],
             as_dict=True,
         )
         or {}
@@ -561,10 +561,16 @@ def post_org_communication_comment(org_communication: str, note: str, surface: s
     if not body:
         frappe.throw(_("Please add a comment before posting."))
 
+    parent = frappe.get_cached_doc("Org Communication", org_communication)
+    mode = _to_text(getattr(parent, "interaction_mode", None)) or "None"
+    intent_type = "Comment"
+    if mode == "Structured Feedback":
+        intent_type = "Other"
+
     response = create_interaction_entry(
         org_communication=org_communication,
         user=user,
-        intent_type="Comment",
+        intent_type=intent_type,
         note=body,
         surface=_to_text(surface) or None,
     )

@@ -11,6 +11,7 @@ vi.mock('@/resources/frappe', () => ({
 }))
 
 import {
+	getStudentCommunicationCenter,
 	getStudentCoursesData,
 	getStudentHubHome,
 	getStudentLearningSpace,
@@ -56,6 +57,25 @@ describe('studentLearningHubService', () => {
 			{
 				course_id: 'COURSE-1',
 				student_group: 'GROUP-1',
+			}
+		)
+	})
+
+	it('uses canonical method + direct payload for the communication center', async () => {
+		apiMethodMock.mockResolvedValue({ items: [] })
+
+		await getStudentCommunicationCenter({
+			source: 'school',
+			start: 24,
+			page_length: 24,
+		})
+
+		expect(apiMethodMock).toHaveBeenCalledWith(
+			'ifitwala_ed.api.student_communications.get_student_communication_center',
+			{
+				source: 'school',
+				start: 24,
+				page_length: 24,
 			}
 		)
 	})

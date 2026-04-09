@@ -40,6 +40,23 @@ export type Response = {
 		}
 		timeline: TimelineDay[]
 	}
+	communications: {
+		center_href: RouteTarget
+		latest_course_update?: StudentCommunicationSummary | null
+		latest_activity_update?: StudentCommunicationSummary | null
+		latest_school_update?: StudentCommunicationSummary | null
+	}
+}
+
+export type StudentCommunicationSummary = {
+	kind: 'course' | 'activity' | 'school' | 'pastoral' | 'cohort'
+	title: string
+	subtitle?: string | null
+	publish_at?: string | null
+	href?: RouteTarget | null
+	href_label?: string | null
+	item_id?: string | null
+	source_label?: string | null
 }
 
 export type TodayClass = {

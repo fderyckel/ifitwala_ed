@@ -67,27 +67,36 @@ Rules:
 
 ## 3. Surface Matrix
 
-Status: Implemented
+Status: Partial
 
 Code refs:
 - `ifitwala_ed/ui-spa/src/pages/staff/morning_brief/MorningBriefing.vue`
 - `ifitwala_ed/ui-spa/src/pages/staff/OrgCommunicationArchive.vue`
 - `ifitwala_ed/ui-spa/src/components/activity/ActivityCommunicationPanel.vue`
+- `ifitwala_ed/ui-spa/src/pages/student/StudentCommunicationCenter.vue`
+- `ifitwala_ed/ui-spa/src/pages/student/StudentHome.vue`
+- `ifitwala_ed/ui-spa/src/pages/student/CourseDetail.vue`
+- `ifitwala_ed/api/student_communications.py`
 - `ifitwala_ed/ui-spa/src/pages/admissions/ApplicantMessages.vue`
 - `ifitwala_ed/ui-spa/src/lib/services/communicationInteraction/communicationInteractionService.ts`
 - `ifitwala_ed/ui-spa/src/lib/services/admissions/admissionsService.ts`
 
 Test refs:
 - `ifitwala_ed/ui-spa/src/lib/services/communicationInteraction/__tests__/communicationInteractionService.test.ts`
+- `ifitwala_ed/ui-spa/src/lib/services/student/__tests__/studentLearningHubService.test.ts`
+- `ifitwala_ed/ui-spa/src/pages/student/__tests__/StudentHome.test.ts`
+- `ifitwala_ed/ui-spa/src/pages/student/__tests__/CourseDetail.test.ts`
 - Component-level tests: None
 
 Rules:
 
 1. Staff Morning Brief comments and reactions use the shared interaction service.
 2. Staff Archive comments and reactions use the shared interaction service.
-3. Student and guardian activity communication panels use the shared interaction service.
-4. Applicant messages use the admissions service, which writes to the same canonical entry ledger.
-5. No surface may call any retired `Communication Interaction` API or schema artifact.
+3. Student activity communication panels and the student Communication Center use the shared interaction service.
+4. Student Hub and student course learning space may surface bounded communication summaries, but the portal-wide student history is owned by `StudentCommunicationCenter.vue`.
+5. Guardian activity communication panels use the shared interaction service, but a guardian-wide communication center is not implemented yet.
+6. Applicant messages use the admissions service, which writes to the same canonical entry ledger.
+7. No surface may call any retired `Communication Interaction` API or schema artifact.
 
 ## 4. Visibility and Read-State
 
@@ -96,6 +105,7 @@ Status: Implemented
 Code refs:
 - `ifitwala_ed/api/org_comm_utils.py`
 - `ifitwala_ed/api/org_communication_interactions.py`
+- `ifitwala_ed/api/student_communications.py`
 - `ifitwala_ed/api/admissions_communication.py`
 - `ifitwala_ed/api/guardian_home.py`
 - `ifitwala_ed/api/file_access.py`
@@ -110,13 +120,14 @@ Rules:
 
 1. Org Communication visibility is enforced server-side through `check_audience_match(...)`.
 2. Audience matching supports `School Scope`, `Organization`, `Team`, and `Student Group`.
-3. `Organization` audience rows are staff-only and match active `Employee.organization` without requiring `Employee.school`.
-4. Admissions visibility is enforced server-side through the `Student Applicant` context guard.
-5. Unread/read state is derived from `Portal Read Receipt`.
-6. For guardian/activity summary logic, a user’s own interaction entry also counts as seen.
-7. Hidden rows never contribute to threads, comment counts, or unread counts.
-8. Staff archive and shared interaction endpoints may allow the `Org Communication.owner` to access their own authored communication when no explicit audience scope filter (`team`, `student_group`, `school`) is being enforced.
-9. Org Communication attachment open routes must enforce the same audience visibility contract as archive detail, including owner visibility for authored history.
+3. Student portal visibility for `Student Group` audiences matches active `Student Group Student` membership and still requires `to_students = 1`.
+4. Student portal visibility for `School Scope` audiences matches the student anchor-school and active student-group school context; `Organization` rows remain staff-only.
+5. Admissions visibility is enforced server-side through the `Student Applicant` context guard.
+6. Unread/read state is derived from `Portal Read Receipt`.
+7. For guardian/activity summary logic, a user’s own interaction entry also counts as seen.
+8. Hidden rows never contribute to threads, comment counts, or unread counts.
+9. Staff archive and shared interaction endpoints may allow the `Org Communication.owner` to access their own authored communication when no explicit audience scope filter (`team`, `student_group`, `school`) is being enforced.
+10. Org Communication attachment open routes must enforce the same audience visibility contract as archive detail, including owner visibility for authored history.
 
 ## 5. Migration
 
@@ -165,7 +176,7 @@ Test refs:
 | Schema / DocType | `Org Communication`, `Communication Interaction Entry`, `Portal Read Receipt` | `setup/doctype/communication_interaction_entry/*`, `students/doctype/portal_read_receipt/*` | `api/test_org_communication_interactions.py` |
 | Controller / workflow logic | Shared messaging workflow APIs + admissions wrappers | `api/org_communication_interactions.py`, `api/admissions_communication.py` | `api/test_org_communication_interactions.py`, `api/test_admissions_communication.py` |
 | API endpoints | Named interaction endpoints only | `api/org_communication_interactions.py`, `api/admissions_communication.py` | `api/test_org_communication_interactions.py`, `api/test_admissions_communication.py` |
-| SPA/UI surfaces | Morning Brief, Archive, Activity panels, Applicant Messages | `ui-spa/src/pages/staff/morning_brief/MorningBriefing.vue`, `ui-spa/src/pages/staff/OrgCommunicationArchive.vue`, `ui-spa/src/components/activity/ActivityCommunicationPanel.vue`, `ui-spa/src/pages/admissions/ApplicantMessages.vue` | `ui-spa/src/lib/services/communicationInteraction/__tests__/communicationInteractionService.test.ts` |
+| SPA/UI surfaces | Morning Brief, Archive, Student Communication Center, Activity panels, Applicant Messages | `ui-spa/src/pages/staff/morning_brief/MorningBriefing.vue`, `ui-spa/src/pages/staff/OrgCommunicationArchive.vue`, `ui-spa/src/pages/student/StudentCommunicationCenter.vue`, `ui-spa/src/components/activity/ActivityCommunicationPanel.vue`, `ui-spa/src/pages/admissions/ApplicantMessages.vue` | `ui-spa/src/lib/services/communicationInteraction/__tests__/communicationInteractionService.test.ts`, `ui-spa/src/lib/services/student/__tests__/studentLearningHubService.test.ts` |
 | Reports / dashboards / briefings | Morning Brief, Archive, Guardian Home unread summaries | `api/org_communication_archive.py`, `api/guardian_home.py`, `ui-spa/src/pages/staff/morning_brief/MorningBriefing.vue` | `api/test_org_communication_interactions.py` |
 | Scheduler / background jobs | None | None | None |
 | Migration / retirement | Legacy snapshot rows backfilled in pre-sync; legacy schema removed in post-sync cleanup | `patches/setup/p01_migrate_communication_interactions_to_entry_ledger.py`, `patches/setup/p02_drop_communication_interaction_entry_legacy_link.py`, `patches/setup/p03_delete_communication_interaction_doctype.py`, `patches.txt` | None |

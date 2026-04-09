@@ -103,6 +103,9 @@ def _teaching_plans_module():
     quiz_service = ModuleType("ifitwala_ed.assessment.quiz_service")
     quiz_service.get_student_delivery_state_map = lambda **kwargs: {}
 
+    student_communications_api = ModuleType("ifitwala_ed.api.student_communications")
+    student_communications_api.get_student_course_communications = lambda *args, **kwargs: []
+
     frappe_utils = ModuleType("frappe.utils")
     frappe_utils.get_datetime = lambda value: value
     frappe_utils.now_datetime = lambda: "2026-04-07 10:30:00"
@@ -113,6 +116,7 @@ def _teaching_plans_module():
             "frappe.utils": frappe_utils,
             "ifitwala_ed.api.student_groups": student_groups_api,
             "ifitwala_ed.api.file_access": file_access_api,
+            "ifitwala_ed.api.student_communications": student_communications_api,
             "ifitwala_ed.curriculum.materials": materials_domain,
             "ifitwala_ed.curriculum.planning": planning_domain,
             "ifitwala_ed.assessment.quiz_service": quiz_service,
@@ -356,6 +360,7 @@ class TestTeachingPlansApi(TestCase):
         self.assertEqual(payload["learning"]["reflection_entries"][0]["class_session"], "SESSION-1")
         self.assertEqual(payload["learning"]["next_actions"][0]["kind"], "quiz")
         self.assertIn("Cell Structure Checkpoint", payload["learning"]["next_actions"][0]["label"])
+        self.assertEqual(payload["communications"]["course_updates"], [])
 
     def test_get_student_learning_space_falls_back_to_shared_course_plan_without_active_class(self):
         with _teaching_plans_module() as module:

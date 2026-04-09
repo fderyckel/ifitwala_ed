@@ -1,100 +1,128 @@
 <template>
 	<div class="portal-page">
-		<div class="sm:flex sm:items-center sm:justify-between">
-			<h1 class="text-2xl font-bold text-gray-900">My Courses</h1>
+		<header class="card-surface p-5 sm:p-6">
+			<div class="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+				<div>
+					<p class="type-overline text-ink/60">Student Hub</p>
+					<h1 class="type-h1 text-ink">My Courses</h1>
+					<p class="type-body text-ink/70">
+						Open the class spaces that are ready and see what is still waiting on release.
+					</p>
+				</div>
 
-			<div v-if="!loading && academicYears.length" class="mt-4 sm:mt-0">
-				<label for="academic-year" class="sr-only">Academic Year</label>
-				<select
-					id="academic-year"
-					v-model="selectedYear"
-					@change="fetchData"
-					:disabled="loading"
-					class="block w-full sm:w-auto pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-[var(--jacaranda)] focus:border-[var(--jacaranda)] sm:text-sm rounded-md"
-				>
-					<option v-for="year in academicYears" :key="year" :value="year">
-						{{ year }}
-					</option>
-				</select>
+				<div v-if="!loading && academicYears.length" class="w-full lg:w-auto">
+					<label for="academic-year" class="type-caption text-ink/70">Academic year</label>
+					<select
+						id="academic-year"
+						v-model="selectedYear"
+						@change="fetchData"
+						:disabled="loading"
+						class="if-input mt-2 w-full min-w-[14rem] lg:w-auto"
+					>
+						<option v-for="year in academicYears" :key="year" :value="year">
+							{{ year }}
+						</option>
+					</select>
+				</div>
 			</div>
-		</div>
+		</header>
 
-		<div v-if="loading" class="text-center py-10">
-			<p class="text-gray-500">Loading courses...</p>
-		</div>
+		<section v-if="loading" class="card-surface p-5">
+			<p class="type-body text-ink/70">Loading courses...</p>
+		</section>
 
-		<div v-else-if="error" class="bg-[var(--flame)]/5 border-l-4 border-[var(--flame)] p-4">
+		<section v-else-if="error" class="card-surface border border-flame/30 bg-[var(--flame)]/5 p-5">
 			<div class="flex">
 				<div class="flex-shrink-0">
 					<FeatherIcon name="alert-circle" class="h-5 w-5 text-[var(--flame)]" />
 				</div>
 				<div class="ml-3">
-					<p class="text-sm text-[var(--flame)]">{{ error }}</p>
+					<p class="type-body text-[var(--flame)]">{{ error }}</p>
 				</div>
 			</div>
-		</div>
+		</section>
 
-		<div
+		<section
 			v-else-if="!courses.length"
-			class="text-center py-10 border-2 border-dashed border-gray-300 rounded-lg"
+			class="card-surface border border-dashed border-line-soft p-10 text-center"
 		>
-			<p class="mt-2 text-sm text-gray-500">No courses found for the selected academic year.</p>
-		</div>
+			<p class="type-body text-ink/70">No courses found for the selected academic year.</p>
+		</section>
 
-		<div v-else class="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-			<component
-				v-for="course in courses"
-				:key="course.course"
-				:is="course.learning_space.can_open ? RouterLink : 'article'"
-				v-bind="courseCardProps(course)"
-				class="group block overflow-hidden rounded-2xl border border-line-soft bg-white transition-shadow duration-300"
-				:class="course.learning_space.can_open ? 'shadow-md hover:shadow-xl' : 'shadow-sm'"
-			>
-				<div class="relative">
-					<div class="aspect-video">
+		<section v-else class="space-y-4">
+			<div class="flex items-center justify-between">
+				<div>
+					<p class="type-overline text-ink/60">Learning Spaces</p>
+					<h2 class="type-h3 text-ink">Available courses this year</h2>
+				</div>
+				<span class="chip">{{ courses.length }} courses</span>
+			</div>
+
+			<div class="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+				<component
+					v-for="course in courses"
+					:key="course.course"
+					:is="course.learning_space.can_open ? RouterLink : 'article'"
+					v-bind="courseCardProps(course)"
+					class="group card-surface flex h-full flex-col overflow-hidden p-0 transition"
+					:class="
+						course.learning_space.can_open
+							? 'hover:-translate-y-0.5 hover:border-jacaranda/35 hover:shadow-strong'
+							: 'opacity-95'
+					"
+				>
+					<div class="h-40 overflow-hidden bg-surface-soft sm:h-44">
 						<img
 							:src="course.course_image || PLACEHOLDER"
 							:alt="course.course_name"
-							class="object-cover w-full h-full"
+							class="h-full w-full object-cover"
 							loading="lazy"
 							@error="imgFallback"
 						/>
 					</div>
-				</div>
-				<div class="space-y-3 p-4">
-					<div class="flex items-start justify-between gap-3">
-						<div class="min-w-0">
-							<p
-								class="truncate text-base font-semibold text-gray-900"
-								:class="
-									course.learning_space.can_open ? 'group-hover:text-[var(--jacaranda)]' : ''
-								"
-							>
-								{{ course.course_name }}
-							</p>
-							<p class="mt-1 text-sm text-gray-500">
-								{{ course.course_group || '—' }}
-							</p>
+
+					<div class="flex flex-1 flex-col gap-4 p-5">
+						<div class="flex items-start justify-between gap-3">
+							<div class="min-w-0">
+								<h3
+									class="truncate type-h3 text-ink"
+									:class="
+										course.learning_space.can_open ? 'group-hover:text-[var(--jacaranda)]' : ''
+									"
+								>
+									{{ course.course_name }}
+								</h3>
+								<p class="mt-1 type-caption text-ink/70">
+									{{ course.course_group || '—' }}
+								</p>
+							</div>
+							<span class="chip shrink-0">{{ course.learning_space.status_label }}</span>
 						</div>
-						<span class="chip shrink-0">{{ course.learning_space.status_label }}</span>
-					</div>
-					<p class="min-h-[3rem] text-sm text-gray-600">
-						{{ course.learning_space.summary }}
-					</p>
-					<div class="flex items-center justify-between gap-3 pt-1">
-						<p class="text-xs text-gray-500">
-							{{ courseSourceLabel(course.learning_space.source) }}
+
+						<p class="type-body text-ink/80">
+							{{ course.learning_space.summary }}
 						</p>
-						<span v-if="course.learning_space.can_open" class="if-action">
-							{{ course.learning_space.cta_label }}
-						</span>
-						<button v-else type="button" class="if-action cursor-not-allowed opacity-60" disabled>
-							{{ course.learning_space.cta_label }}
-						</button>
+
+						<div class="mt-auto flex items-center justify-between gap-3 pt-1">
+							<p class="type-caption text-ink/60">
+								{{ courseSourceLabel(course.learning_space.source) }}
+							</p>
+							<span v-if="course.learning_space.can_open" class="if-action">
+								{{ course.learning_space.cta_label }}
+							</span>
+							<button
+								v-else
+								type="button"
+								class="if-action cursor-not-allowed opacity-60"
+								disabled
+							>
+								{{ course.learning_space.cta_label }}
+							</button>
+						</div>
 					</div>
-				</div>
-			</component>
-		</div>
+				</component>
+			</div>
+		</section>
 	</div>
 </template>
 

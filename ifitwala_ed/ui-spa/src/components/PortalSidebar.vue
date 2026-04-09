@@ -182,6 +182,7 @@ const studentMenu: MenuItem[] = [
 	{ label: 'Dashboard', icon: 'home', to: { name: 'student-home' } },
 	{ label: 'Course Selection', icon: 'check-square', to: { name: 'student-course-selection' } },
 	{ label: 'Activities', icon: 'star', to: { name: 'student-activities' } },
+	{ label: 'Communications', icon: 'message-square', to: { name: 'student-communications' } },
 	{ label: 'Portfolio & Journal', icon: 'layers', to: { name: 'student-portfolio' } },
 	{ label: 'Courses', icon: 'book-open', to: { name: 'student-courses' } },
 	{ label: 'Student Log', icon: 'file-text', to: { name: 'student-logs' } },

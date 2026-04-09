@@ -121,3 +121,66 @@ class TestOrgCommUtils(FrappeTestCase):
             )
 
         self.assertTrue(matched)
+
+    def test_check_audience_match_allows_student_member_on_student_group_row(self):
+        audiences = [
+            frappe._dict(
+                target_mode="Student Group",
+                school=None,
+                include_descendants=0,
+                team=None,
+                student_group="SG-1",
+                to_staff=0,
+                to_students=1,
+                to_guardians=0,
+                to_community=0,
+            )
+        ]
+
+        with (
+            patch.object(org_comm_utils.frappe, "get_all", return_value=audiences),
+            patch(
+                "ifitwala_ed.api.org_comm_utils._get_cached_portal_student_context",
+                return_value={"student_name": "STU-1", "student_groups": {"SG-1"}, "school_names": {"SCH-1"}},
+            ),
+        ):
+            matched = org_comm_utils.check_audience_match(
+                "COMM-STUDENT",
+                "student@example.com",
+                ["Student"],
+                frappe._dict(),
+            )
+
+        self.assertTrue(matched)
+
+    def test_check_audience_match_student_group_filter_respects_student_recipient_flag(self):
+        audiences = [
+            frappe._dict(
+                target_mode="Student Group",
+                school=None,
+                include_descendants=0,
+                team=None,
+                student_group="SG-1",
+                to_staff=0,
+                to_students=0,
+                to_guardians=1,
+                to_community=0,
+            )
+        ]
+
+        with (
+            patch.object(org_comm_utils.frappe, "get_all", return_value=audiences),
+            patch(
+                "ifitwala_ed.api.org_comm_utils._get_cached_portal_student_context",
+                return_value={"student_name": "STU-1", "student_groups": {"SG-1"}, "school_names": {"SCH-1"}},
+            ),
+        ):
+            matched = org_comm_utils.check_audience_match(
+                "COMM-STUDENT",
+                "student@example.com",
+                ["Student"],
+                frappe._dict(),
+                filter_student_group="SG-1",
+            )
+
+        self.assertFalse(matched)
