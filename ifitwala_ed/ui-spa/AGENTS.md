@@ -130,7 +130,7 @@ When page-init data is repeated or expensive, ask whether it should be aggregate
   - staff workspace pages -> `staff-shell`
   - staff analytics pages -> `analytics-shell`
   - student / guardian pages -> layout-owned shell, page root usually `portal-page` or equivalent rhythm-only structure
-  - admissions pages -> layout-owned shell, page root rhythm only or shared named class
+  - admissions pages -> layout-owned shell, page root usually `admissions-page` or equivalent rhythm-only structure
 - Reuse classes from `src/styles/components.css` and `src/styles/layout.css` before reaching for raw palette utilities.
 - Native Tailwind palette colors are allowed only for tightly local alert states or charts; they must not define a page's overall visual language.
 - Do not introduce undefined semantic utilities or CSS vars. If a new style semantic is truly needed, update `tokens.css`, `tailwind.config.js`, and `ifitwala_ed/docs/spa/02_style_note.md` in the same change.

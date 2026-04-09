@@ -360,7 +360,7 @@ function setPreset(preset: ViewPreset) {
 </script>
 
 <template>
-	<div class="min-h-full px-4 py-4 md:px-6 lg:px-8">
+	<div class="analytics-shell">
 		<header class="flex flex-wrap items-center justify-between gap-3">
 			<div>
 				<h1 class="text-base font-semibold tracking-tight text-slate-900">

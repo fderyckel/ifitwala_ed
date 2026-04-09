@@ -41,6 +41,10 @@
 		@apply flex flex-col gap-6;
 	}
 
+	.admissions-page {
+		@apply flex flex-col gap-6;
+	}
+
 	.staff-layout__header {
 		@apply w-full border-b backdrop-blur-xl;
 		background-color: rgb(var(--surface-strong-rgb) / 0.9);

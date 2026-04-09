@@ -1,8 +1,13 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { createApp, defineComponent, h, nextTick, type App } from 'vue'
 
-const { overlayCloseMock } = vi.hoisted(() => ({
+const { overlayCloseMock, searchStudentsMock, searchFollowUpUsersMock, getFormOptionsMock, submitStudentLogMock, addClarificationMock } = vi.hoisted(() => ({
 	overlayCloseMock: vi.fn(),
+	searchStudentsMock: vi.fn(),
+	searchFollowUpUsersMock: vi.fn(),
+	getFormOptionsMock: vi.fn(),
+	submitStudentLogMock: vi.fn(),
+	addClarificationMock: vi.fn(),
 }))
 
 vi.mock('@headlessui/vue', () => {
@@ -63,11 +68,11 @@ vi.mock('frappe-ui', () => ({
 
 vi.mock('@/lib/services/studentLog/studentLogService', () => ({
 	createStudentLogService: () => ({
-		searchStudents: vi.fn(),
-		searchFollowUpUsers: vi.fn(),
-		getFormOptions: vi.fn(),
-		submitStudentLog: vi.fn(),
-		addClarification: vi.fn(),
+		searchStudents: searchStudentsMock,
+		searchFollowUpUsers: searchFollowUpUsersMock,
+		getFormOptions: getFormOptionsMock,
+		submitStudentLog: submitStudentLogMock,
+		addClarification: addClarificationMock,
 	}),
 }))
 
@@ -103,16 +108,20 @@ async function flushUi() {
 }
 
 function mountOverlay() {
+	return mountOverlayWithProps({
+		open: true,
+		mode: 'home',
+	})
+}
+
+function mountOverlayWithProps(props: Record<string, unknown>) {
 	const host = document.createElement('div')
 	document.body.appendChild(host)
 
 	const app: App = createApp(
 		defineComponent({
 			render() {
-				return h(StudentLogCreateOverlay, {
-					open: true,
-					mode: 'home',
-				})
+				return h(StudentLogCreateOverlay, props)
 			},
 		})
 	)
@@ -140,6 +149,11 @@ function setMicrophonePermission(state: PermissionState) {
 
 afterEach(() => {
 	overlayCloseMock.mockReset()
+	searchStudentsMock.mockReset()
+	searchFollowUpUsersMock.mockReset()
+	getFormOptionsMock.mockReset()
+	submitStudentLogMock.mockReset()
+	addClarificationMock.mockReset()
 	while (cleanupFns.length) cleanupFns.pop()?.()
 	document.body.innerHTML = ''
 	Object.defineProperty(window, 'SpeechRecognition', {
@@ -195,5 +209,57 @@ describe('StudentLogCreateOverlay speech dictation', () => {
 		expect(text).toContain('Something went wrong')
 		expect(text).toContain('Microphone access is blocked for this site.')
 		expect(text).toContain('Allow microphone access in your browser settings')
+	})
+})
+
+describe('StudentLogCreateOverlay form controls', () => {
+	it('renders native select controls with loaded options in attendance mode', async () => {
+		getFormOptionsMock.mockResolvedValue({
+			log_types: [{ value: 'NOTE', label: 'Note' }],
+			next_steps: [{ value: 'CALL_HOME', label: 'Call home', role: 'Teacher' }],
+			student_school: 'SCH-001',
+			allowed_next_step_schools: ['SCH-001'],
+		})
+
+		mountOverlayWithProps({
+			open: true,
+			mode: 'attendance',
+			student: {
+				id: 'STU-001',
+				label: 'Jo',
+			},
+		})
+		await flushUi()
+
+		const selects = Array.from(document.querySelectorAll('select'))
+		expect(selects).toHaveLength(1)
+		expect(selects[0]?.textContent || '').toContain('Note')
+
+		const followUpCheckbox = Array.from(document.querySelectorAll('input[type="checkbox"]')).find(input =>
+			(input.parentElement?.textContent || '').includes('Needs follow-up')
+		) as HTMLInputElement | undefined
+		followUpCheckbox?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+		await flushUi()
+
+		const followUpSelects = Array.from(document.querySelectorAll('select'))
+		expect(followUpSelects).toHaveLength(2)
+		expect(followUpSelects[1]?.textContent || '').toContain('Call home')
+	})
+
+	it('keeps visibility toggles in the dedicated responsive grid', async () => {
+		mountOverlay()
+		await flushUi()
+
+		const visibilityLabel = Array.from(document.querySelectorAll('p')).find(node =>
+			(node.textContent || '').trim() === 'Visibility'
+		)
+		const visibilityGrid = visibilityLabel
+			?.parentElement
+			?.querySelector('.student-log-create__visibility-grid') as HTMLDivElement | null
+
+		expect(visibilityGrid).not.toBeNull()
+		expect(visibilityGrid?.className || '').toContain('min-[480px]:grid-cols-2')
+		expect(visibilityGrid?.textContent || '').toContain('Visible to student')
+		expect(visibilityGrid?.textContent || '').toContain('Visible to parents')
 	})
 })

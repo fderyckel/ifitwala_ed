@@ -1,6 +1,6 @@
 <!-- ifitwala_ed/ui-spa/src/pages/staff/StaffPortfolioFeed.vue -->
 <template>
-	<div class="space-y-4">
+	<div class="staff-shell space-y-4">
 		<div class="flex items-center justify-between">
 			<RouterLink :to="{ name: 'staff-home' }" class="if-action">Back to Staff Home</RouterLink>
 		</div>

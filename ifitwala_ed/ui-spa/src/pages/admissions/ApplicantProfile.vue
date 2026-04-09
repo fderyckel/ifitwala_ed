@@ -1,7 +1,7 @@
 <!-- ifitwala_ed/ui-spa/src/pages/admissions/ApplicantProfile.vue -->
 
 <template>
-	<div class="space-y-6">
+	<div class="admissions-page">
 		<div class="flex flex-wrap items-start justify-between gap-4">
 			<div>
 				<p class="type-h2 text-ink">{{ __('Profile information') }}</p>

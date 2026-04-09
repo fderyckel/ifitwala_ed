@@ -18,6 +18,7 @@
 - The highest-risk drift vectors are now: route-root shell inconsistency, raw palette utilities in page templates, and page-local scoped CSS carrying visual decisions.
 - The undefined semantic utilities and stray CSS vars found in the initial audit have been removed, and the style-drift baseline is now intentionally empty.
 - `PortalLayout.vue` no longer carries its shell/background treatment inline; portal shell ownership now lives in shared layout classes.
+- Staff and admissions route-root normalization is now mostly explicit in shared classes (`staff-shell`, `analytics-shell`, `portal-page`, `admissions-page`) instead of being left as page-local padding conventions.
 - The immediate goal should be to stop new drift, document the page-family rules more explicitly, and migrate the worst exceptions in controlled batches.
 
 ---
@@ -59,7 +60,7 @@
 
 **Staff**
 - Canonical roots already in use: `staff-shell`, `analytics-shell`, `gradebook-shell`
-- Drift candidates still using page-local padding roots:
+- The previously identified page-local-padding staff outliers have been normalized onto shared shell families:
   - `ifitwala_ed/ui-spa/src/pages/staff/ProfessionalDevelopment.vue`
   - `ifitwala_ed/ui-spa/src/pages/staff/admissions/AdmissionsCockpit.vue`
   - `ifitwala_ed/ui-spa/src/pages/staff/analytics/StudentDemographicAnalytics.vue`
@@ -74,6 +75,18 @@
   - `ifitwala_ed/ui-spa/src/pages/student/StudentQuiz.vue`
 - The main guardian portal routes now use the same shared portal page rhythm helper, and `SelfEnrollmentEditor.vue` also inherits that helper for both guardian and student course-selection detail routes.
 - Remaining student / guardian outliers should converge on the same `portal-page` helper or an equivalent rhythm-only root as they are touched.
+
+**Admissions**
+- The admissions portal routes now converge on shared root helpers instead of anonymous `space-y-6` roots:
+  - `ifitwala_ed/ui-spa/src/pages/admissions/ApplicantDocuments.vue`
+  - `ifitwala_ed/ui-spa/src/pages/admissions/ApplicantEnrollmentChoices.vue`
+  - `ifitwala_ed/ui-spa/src/pages/admissions/ApplicantHealth.vue`
+  - `ifitwala_ed/ui-spa/src/pages/admissions/ApplicantMessages.vue`
+  - `ifitwala_ed/ui-spa/src/pages/admissions/ApplicantPolicies.vue`
+  - `ifitwala_ed/ui-spa/src/pages/admissions/ApplicantProfile.vue`
+  - `ifitwala_ed/ui-spa/src/pages/admissions/ApplicantStatus.vue`
+  - `ifitwala_ed/ui-spa/src/pages/admissions/ApplicantSubmit.vue`
+  - `ifitwala_ed/ui-spa/src/pages/admissions/ApplicantOverview.vue` already uses the named `admissions-overview` root
 
 **Implication**
 - Agents do not have a clear enough page-family shell rule, so new pages can look “correct” while still drifting from the surface contract.

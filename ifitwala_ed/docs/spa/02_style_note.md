@@ -426,7 +426,7 @@ Canonical shell ownership:
 * **Staff analytics pages** use `analytics-shell`
 * **Gradebook** uses its approved gradebook shell
 * **Student / Guardian routed pages** rely on `PortalLayout` for the outer background and shell; page roots should usually use the shared `portal-page` rhythm helper (or equivalent rhythm-only structure), not page-wide shell styling
-* **Admissions routed pages** rely on `AdmissionsLayout` for chrome and outer surfaces; page roots should be rhythm-only or a shared named page class
+* **Admissions routed pages** rely on `AdmissionsLayout` for chrome and outer surfaces; page roots should usually use the shared `admissions-page` rhythm helper (or an equivalent named page class), not page-local shell padding
 
 Rules:
 
