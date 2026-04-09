@@ -1995,7 +1995,7 @@ async function submitWithStatus(statusOverride: string) {
 
 .if-org-communication-native-select:disabled {
 	cursor: not-allowed;
-	background-color: rgb(var(--surface-soft-rgb) / 0.8);
+	background-color: rgb(var(--surface-rgb) / 0.8);
 	color: rgb(var(--ink-rgb) / 0.5);
 	opacity: 0.8;
 }
@@ -2008,7 +2008,7 @@ async function submitWithStatus(statusOverride: string) {
 	gap: 0.625rem;
 	border-radius: 1.25rem;
 	border: 1px solid rgb(var(--border-rgb) / 0.72);
-	background: rgb(var(--surface-soft-rgb) / 0.66);
+	background: rgb(var(--surface-rgb) / 0.66);
 	padding: 0.75rem 0.875rem;
 }
 

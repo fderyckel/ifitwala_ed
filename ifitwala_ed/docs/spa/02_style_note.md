@@ -416,6 +416,83 @@ Never style `input`, `select`, `textarea` globally.
 
 ---
 
+### 6.7 Surface shell families are locked
+
+Route families must not each invent their own outer page treatment.
+
+Canonical shell ownership:
+
+* **Staff workspace pages** use `staff-shell`
+* **Staff analytics pages** use `analytics-shell`
+* **Gradebook** uses its approved gradebook shell
+* **Student / Guardian routed pages** rely on `PortalLayout` for the outer background and shell; page roots should usually provide rhythm only (`space-y-*`), not page-wide shell styling
+* **Admissions routed pages** rely on `AdmissionsLayout` for chrome and outer surfaces; page roots should be rhythm-only or a shared named page class
+
+Rules:
+
+* Do not recreate page-wide gradients, max-widths, or shell padding inside routed pages when the layout already owns them
+* Do not replace a canonical shell with local `p-*`, `min-h-full`, or ad-hoc max-width wrappers just because one page looks acceptable in isolation
+* If a surface truly needs a new shell family, update `layout.css`, the owning layout component, and this note in the same approved change
+
+---
+
+### 6.8 State color contract is explicit
+
+Project state semantics are not free-form.
+
+Preferred mappings:
+
+* success / confirmed → `leaf` + `canopy`
+* warning / pending → `sand` + `clay`
+* danger / blocked → `flame`
+* neutral / quiet meta → `slate-token`, `text-ink/60`, `border-line-soft`
+
+Rules:
+
+* Do not invent pseudo-tokens such as `mint`, `forest`, `warm-amber`, `ochre`, `coral`, `sun`, or similar semantic names unless they are added to `tokens.css`, `tailwind.config.js`, and this note in the same approved change
+* Native Tailwind palette colors (`amber-*`, `rose-*`, `slate-*`, etc.) are allowed only for localized alert/validation states or data-viz needs
+* Native palette colors must not become the primary visual language of a routed page
+
+---
+
+### 6.9 Page-local scoped CSS is structural only
+
+Scoped CSS in pages is allowed, but its responsibility is narrow.
+
+Allowed in page `<style scoped>`:
+
+* responsive grid definitions
+* sticky columns
+* overflow / scroll mechanics
+* third-party sizing hooks
+* page-specific geometry that does not define reusable visual identity
+
+Forbidden in page `<style scoped>` unless the page is the single permanent owner and the rule is documented:
+
+* surface/background color systems
+* repeated card or button skins
+* typography scales that duplicate semantic helpers
+* repeated status pill styling
+* shareable gradients or shadows
+* substitute token definitions
+
+If the rule expresses brand, state semantics, or a reusable visual pattern, it belongs in `components.css` or `layout.css`, not in a page-local style block.
+
+---
+
+### 6.10 Drift prevention workflow
+
+Before merging any Vue page styling change:
+
+1. Identify the owning surface and canonical root shell first
+2. Search `styles/components.css`, `styles/layout.css`, and sibling pages before adding a new primitive
+3. If a new token or semantic utility is needed, update `tokens.css`, `tailwind.config.js`, and this note in the same change
+4. Run `python3 scripts/spa_style_guardrails.py`
+5. Compare the touched page against at least one sibling route in the same surface
+6. If the page already contains drift, do not copy it into new code; either fix it or isolate it as explicit legacy debt
+
+---
+
 ## 7. Legacy Styles & Deletion Strategy
 
 ### 7.1 No blind deletions

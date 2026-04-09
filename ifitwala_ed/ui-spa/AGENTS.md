@@ -126,6 +126,17 @@ When page-init data is repeated or expensive, ask whether it should be aggregate
 - Preserve canonical page wrappers such as `staff-shell` unless the shell contract is being intentionally redesigned and documented first.
 - When rewriting a page, compare its root container against sibling routes in the same surface before finalizing layout changes.
 - Do not swap a shared shell for ad-hoc root classes (`min-h-screen`, page-local padding, custom max-width) without updating the canonical SPA note in the same approved change.
+- For every routed page change, identify the owning surface first:
+  - staff workspace pages -> `staff-shell`
+  - staff analytics pages -> `analytics-shell`
+  - student / guardian pages -> layout-owned shell, page root usually rhythm only (`space-y-*`)
+  - admissions pages -> layout-owned shell, page root rhythm only or shared named class
+- Reuse classes from `src/styles/components.css` and `src/styles/layout.css` before reaching for raw palette utilities.
+- Native Tailwind palette colors are allowed only for tightly local alert states or charts; they must not define a page's overall visual language.
+- Do not introduce undefined semantic utilities or CSS vars. If a new style semantic is truly needed, update `tokens.css`, `tailwind.config.js`, and `ifitwala_ed/docs/spa/02_style_note.md` in the same change.
+- Page `<style scoped>` blocks may own layout geometry, sticky behavior, and third-party integration details. Reusable visual styling belongs in shared CSS files.
+- Before finalizing any UI styling change, run `python3 scripts/spa_style_guardrails.py` or `bash scripts/contracts_guardrails.sh`.
+- If a touched page already contains legacy drift, do not extend that drift casually. Either normalize it or leave it isolated and call it out.
 
 ---
 
@@ -153,6 +164,7 @@ Before finalizing a SPA change, verify:
 - no hardcoded base prefixes were introduced
 - no backend contract normalization was added
 - data loading is not bloated or waterfall-heavy
+- style guardrails still pass and no new semantic token drift was introduced
 - related overlays/pages remain safe under repeat clicks and slow networks
 
 ---

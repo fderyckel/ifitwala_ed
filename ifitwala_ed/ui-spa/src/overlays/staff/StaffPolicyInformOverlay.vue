@@ -71,7 +71,7 @@
 
 							<div v-else-if="policy" class="space-y-4">
 								<div class="card-surface p-4">
-									<div class="type-meta text-muted">
+									<div class="type-meta text-ink/60">
 										<span v-if="policy.policy_version"
 											>Policy Version: {{ policy.policy_version }}</span
 										>
@@ -79,7 +79,7 @@
 									</div>
 									<div
 										v-if="policy.signature_required && policy.acknowledgement_status === 'signed'"
-										class="type-meta text-muted mt-1"
+										class="type-meta text-ink/60 mt-1"
 									>
 										Acknowledged
 										<span v-if="policy.acknowledged_at">
@@ -140,7 +140,7 @@
 											class="prose prose-sm max-w-none text-ink"
 											v-html="trustedHtml(policy.diff_html || '')"
 										/>
-										<p v-else class="type-meta text-muted">
+										<p v-else class="type-meta text-ink/60">
 											No amendment diff is available for this version. Review the full policy text.
 										</p>
 									</div>
@@ -154,7 +154,7 @@
 											class="prose prose-sm max-w-none text-ink"
 											v-html="trustedHtml(policy.policy_text_html)"
 										/>
-										<p v-else class="type-meta text-muted">
+										<p v-else class="type-meta text-ink/60">
 											No policy text is available for this version.
 										</p>
 									</div>
@@ -162,7 +162,7 @@
 
 								<div class="card-surface p-4">
 									<div class="type-body font-medium">Version history</div>
-									<p class="type-meta text-muted mt-1">
+									<p class="type-meta text-ink/60 mt-1">
 										Latest and previous versions for this policy.
 									</p>
 									<div class="mt-3 overflow-auto">
@@ -201,7 +201,7 @@
 															class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium"
 															:class="
 																row.is_active
-																	? 'bg-mint/15 text-forest'
+																	? 'bg-leaf/15 text-canopy'
 																	: 'bg-slate-100 text-slate-600'
 															"
 														>
@@ -314,13 +314,13 @@ const statusClass = computed(() => {
 	if (!policy.value?.signature_required) return 'bg-slate-100 text-slate-700';
 	switch (policy.value?.acknowledgement_status) {
 		case 'signed':
-			return 'bg-mint/15 text-forest';
+			return 'bg-leaf/15 text-canopy';
 		case 'new_version':
 			return 'bg-sky/20 text-canopy';
 		case 'pending':
-			return 'bg-warm-amber/15 text-ochre';
+			return 'bg-sand text-clay';
 		default:
-			return 'bg-warm-amber/15 text-ochre';
+			return 'bg-sand text-clay';
 	}
 });
 

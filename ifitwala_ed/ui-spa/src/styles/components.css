@@ -635,7 +635,7 @@
 		align-items: center;
 		justify-content: center;
 		border-radius: 0.35rem;
-		border: 2px solid rgb(var(--slate-token-rgb) / 0.35);
+		border: 2px solid rgb(var(--slate-rgb) / 0.35);
 	}
 
 	.if-list-row__dot-inner {
@@ -643,7 +643,7 @@
 		height: 0.5rem;
 		width: 0.5rem;
 		border-radius: 999px;
-		background: rgb(var(--slate-token-rgb) / 0.45);
+		background: rgb(var(--slate-rgb) / 0.45);
 	}
 
 	.if-list-row__right {
@@ -662,7 +662,7 @@
 	}
 
 	.if-dot--muted {
-		background: rgb(var(--slate-token-rgb) / 0.35);
+		background: rgb(var(--slate-rgb) / 0.35);
 	}
 
 	.if-skel {

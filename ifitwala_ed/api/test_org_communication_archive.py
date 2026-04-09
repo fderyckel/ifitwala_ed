@@ -170,3 +170,105 @@ class TestOrgCommunicationArchiveFeed(FrappeTestCase):
             allow_owner=True,
         )
         self.assertEqual([item["name"] for item in result["items"]], ["COMM-0002"])
+
+    def test_get_feed_keeps_parent_organization_candidates_for_organization_audience(self):
+        captured = {}
+
+        def fake_sql(query, values=None, as_dict=False):
+            captured["query"] = query
+            captured["values"] = values or {}
+            self.assertTrue(as_dict)
+            return [
+                frappe._dict(
+                    name="COMM-ROOT",
+                    title="Org-wide update",
+                    message="<p>Hello staff</p>",
+                    communication_type="Information",
+                    status="Published",
+                    priority="Normal",
+                    portal_surface="Everywhere",
+                    school=None,
+                    organization="ORG-ROOT",
+                    publish_from="2026-04-08 08:00:00",
+                    publish_to=None,
+                    brief_start_date=None,
+                    brief_end_date=None,
+                    interaction_mode="None",
+                    allow_private_notes=0,
+                    allow_public_thread=0,
+                    activity_program_offering=None,
+                    activity_booking=None,
+                    activity_student_group=None,
+                )
+            ]
+
+        with (
+            patch(
+                "ifitwala_ed.api.org_communication_archive.frappe.session", frappe._dict({"user": "staff@example.com"})
+            ),
+            patch("ifitwala_ed.api.org_communication_archive.frappe.get_roles", return_value=["Academic Staff"]),
+            patch(
+                "ifitwala_ed.api.org_communication_archive.frappe.db.get_value",
+                return_value={"name": "EMP-1", "school": None, "organization": "ORG-CHILD"},
+            ),
+            patch(
+                "ifitwala_ed.api.org_communication_archive._get_scope",
+                return_value=("ORG-CHILD", None, ["ORG-CHILD"], []),
+            ),
+            patch(
+                "ifitwala_ed.api.org_communication_archive.get_ancestor_organizations",
+                return_value=["ORG-CHILD", "ORG-ROOT"],
+            ),
+            patch("ifitwala_ed.api.org_communication_archive.frappe.db.sql", side_effect=fake_sql),
+            patch("ifitwala_ed.api.org_communication_archive.check_audience_match", return_value=True),
+            patch("ifitwala_ed.api.org_communication_archive.get_audience_label", return_value="Staff · ORG"),
+            patch("ifitwala_ed.api.org_communication_archive.build_audience_summary", return_value={}),
+        ):
+            result = org_communication_archive.get_org_communication_feed(start=0, page_length=10)
+
+        self.assertIn("organization IN %(org_guard)s", captured["query"])
+        self.assertEqual(set(captured["values"]["org_guard"]), {"ORG-CHILD", "ORG-ROOT"})
+        self.assertEqual([item["name"] for item in result["items"]], ["COMM-ROOT"])
+
+
+class TestOrgCommunicationArchiveContext(FrappeTestCase):
+    def test_get_archive_context_lists_parent_organizations_for_child_org_user(self):
+        def fake_employee_lookup(doctype, filters, fields=None, as_dict=False):
+            self.assertEqual(doctype, "Employee")
+            self.assertEqual(filters, {"user_id": "staff@example.com"})
+            self.assertEqual(fields, ["name", "school", "organization"])
+            self.assertTrue(as_dict)
+            return {"name": "EMP-1", "school": None, "organization": "ORG-CHILD"}
+
+        with (
+            patch(
+                "ifitwala_ed.api.org_communication_archive.frappe.session", frappe._dict({"user": "staff@example.com"})
+            ),
+            patch("ifitwala_ed.api.org_communication_archive.frappe.get_roles", return_value=["Academic Staff"]),
+            patch("ifitwala_ed.api.org_communication_archive.frappe.db.get_value", side_effect=fake_employee_lookup),
+            patch(
+                "ifitwala_ed.api.org_communication_archive._get_scope",
+                return_value=("ORG-CHILD", None, ["ORG-CHILD"], []),
+            ),
+            patch(
+                "ifitwala_ed.api.org_communication_archive.get_ancestor_organizations",
+                return_value=["ORG-CHILD", "ORG-ROOT"],
+            ),
+            patch("ifitwala_ed.api.org_communication_archive.frappe.db.sql", return_value=[]),
+            patch(
+                "ifitwala_ed.api.org_communication_archive.frappe.get_all",
+                side_effect=[
+                    [
+                        {"name": "ORG-ROOT", "organization_name": "Root Org", "abbr": "ROOT"},
+                        {"name": "ORG-CHILD", "organization_name": "Child Org", "abbr": "CHILD"},
+                    ],
+                    [],
+                ],
+            ),
+        ):
+            result = org_communication_archive.get_archive_context()
+
+        self.assertEqual(
+            [row["name"] for row in result["organizations"]],
+            ["ORG-ROOT", "ORG-CHILD"],
+        )

@@ -16,9 +16,11 @@
 			:key="student.student"
 			class="border-b border-border/40 bg-[rgb(var(--surface-rgb)/0.6)] px-5 py-4 last:border-b-0"
 		>
-			<div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:gap-6">
+			<div
+				class="flex flex-col gap-4 lg:grid lg:grid-cols-[minmax(280px,1.05fr)_minmax(0,1.45fr)] lg:items-start lg:gap-6"
+			>
 				<!-- Identity -->
-				<div class="flex min-w-[240px] flex-1 items-center gap-3">
+				<div class="flex min-w-0 items-center gap-3 lg:min-w-[280px]">
 					<a
 						:href="studentLink(student.student)"
 						target="_blank"
@@ -87,19 +89,21 @@
 				</div>
 
 				<!-- Attendance controls -->
-				<div class="flex flex-1 flex-col gap-4">
+				<div class="flex min-w-0 flex-col gap-2">
 					<div
 						v-for="block in blocks"
 						:key="`${student.student}-${block}`"
-						class="flex flex-col gap-3 rounded-xl border border-border/50 bg-[rgb(var(--surface-rgb)/0.9)] p-3 shadow-inner sm:flex-row sm:items-center sm:justify-between"
+						class="flex flex-col gap-3 rounded-xl border border-border/50 bg-[rgb(var(--surface-rgb)/0.9)] p-3 shadow-inner sm:flex-row sm:items-center sm:justify-between lg:rounded-none lg:border-0 lg:bg-transparent lg:p-0 lg:shadow-none"
 					>
-						<div class="flex flex-wrap items-center gap-2">
+						<div class="flex flex-wrap items-center gap-2 lg:min-w-[82px] lg:flex-none">
 							<span class="text-xs font-medium uppercase tracking-wide text-ink/60">
 								{{ blockLabel(block) }}
 							</span>
 						</div>
 
-						<div class="flex w-full flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+						<div
+							class="flex w-full min-w-0 flex-col gap-3 sm:flex-row sm:items-center sm:justify-between lg:flex-1 lg:justify-start lg:gap-4"
+						>
 							<div class="flex flex-wrap items-center gap-2">
 								<button
 									v-for="code in codes"
@@ -118,7 +122,7 @@
 								</button>
 							</div>
 
-							<div class="flex items-center gap-2">
+							<div class="flex items-center gap-2 lg:ml-auto lg:flex-none">
 								<Button
 									appearance="minimal"
 									icon="message-circle"

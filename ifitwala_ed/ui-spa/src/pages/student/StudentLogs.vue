@@ -204,7 +204,7 @@ const PALETTE = [
 	'var(--leaf)', // leaf
 	'var(--moss)', // moss
 	'var(--jacaranda)', // jacaranda
-	'var(--bamboo)', // (fallback/custom?) - let's stick to knowns
+	'var(--slate)', // slate
 	'var(--sand)', // sand
 	'var(--flame)', // flame
 	'var(--clay)', // clay

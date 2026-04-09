@@ -52,4 +52,6 @@ if [ ! -f "$frappe_transport_file" ] || [ ! -f "$legacy_client_file" ]; then
   exit 1
 fi
 
+python3 "$root_dir/scripts/spa_style_guardrails.py"
+
 echo "contracts guardrails: ok"

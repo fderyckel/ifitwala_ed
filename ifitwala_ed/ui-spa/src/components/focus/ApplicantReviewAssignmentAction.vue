@@ -6,17 +6,17 @@
 				<div class="min-w-0">
 					<div class="type-body font-medium">
 						{{ targetLabel }}
-						<span v-if="assignment?.name" class="text-muted"> • {{ assignment.name }}</span>
+						<span v-if="assignment?.name" class="text-ink/60"> • {{ assignment.name }}</span>
 					</div>
-					<div class="type-meta text-muted mt-1">
+					<div class="type-meta text-ink/60 mt-1">
 						<span>{{ assignment?.applicant_name || assignment?.student_applicant }}</span>
 						<span v-if="assignment?.school"> • {{ assignment.school }}</span>
 						<span v-if="assignment?.program_offering"> • {{ assignment.program_offering }}</span>
 					</div>
-					<div v-if="assignment?.assigned_to_role" class="type-meta text-muted mt-1">
+					<div v-if="assignment?.assigned_to_role" class="type-meta text-ink/60 mt-1">
 						Assigned role: {{ assignment.assigned_to_role }}
 					</div>
-					<div v-if="assignment?.assigned_to_user_name" class="type-meta text-muted mt-1">
+					<div v-if="assignment?.assigned_to_user_name" class="type-meta text-ink/60 mt-1">
 						Assigned user: {{ assignment.assigned_to_user_name }}
 					</div>
 				</div>
@@ -40,7 +40,7 @@
 
 		<div v-if="assignment?.assigned_to_role" class="card-surface p-4">
 			<div class="type-body font-medium">Role queue ownership</div>
-			<p class="mt-2 type-meta text-muted">
+			<p class="mt-2 type-meta text-ink/60">
 				Any {{ assignment.assigned_to_role }} can complete this review. You can take it or assign
 				it.
 			</p>
@@ -78,7 +78,7 @@
 
 		<div v-if="assignment?.preview" class="card-surface p-4">
 			<div class="type-body font-medium">Preview</div>
-			<div class="mt-2 space-y-2 type-meta text-muted">
+			<div class="mt-2 space-y-2 type-meta text-ink/60">
 				<div v-if="assignment.target_type === 'Applicant Document Item'">
 					<div>
 						Requirement:
@@ -178,7 +178,7 @@
 					:key="row.assignment"
 					class="rounded-xl border border-ink/10 p-3"
 				>
-					<div class="type-meta text-muted">
+					<div class="type-meta text-ink/60">
 						{{ row.reviewer || 'Reviewer' }} • {{ row.decision || '—' }} •
 						{{ formatReviewTimestamp(row.decided_on) }}
 					</div>

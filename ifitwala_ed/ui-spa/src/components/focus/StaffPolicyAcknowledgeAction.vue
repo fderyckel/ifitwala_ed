@@ -6,26 +6,26 @@
 				<div class="min-w-0">
 					<div class="type-body font-medium">
 						Policy
-						<span v-if="policy?.policy_version" class="text-muted">
+						<span v-if="policy?.policy_version" class="text-ink/60">
 							• {{ policy.policy_version }}</span
 						>
 					</div>
-					<div class="type-meta text-muted mt-1">
+					<div class="type-meta text-ink/60 mt-1">
 						<span>{{ policyTitle }}</span>
 						<span v-if="policy?.version_label"> • Version {{ policy.version_label }}</span>
 					</div>
-					<div v-if="scopeLabel" class="type-meta text-muted mt-1">
+					<div v-if="scopeLabel" class="type-meta text-ink/60 mt-1">
 						{{ scopeLabel }}
 					</div>
-					<div v-if="policy?.employee_name || policy?.employee" class="type-meta text-muted mt-1">
+					<div v-if="policy?.employee_name || policy?.employee" class="type-meta text-ink/60 mt-1">
 						Signer: {{ expectedSignerLabel }}
 					</div>
-					<div v-if="policy?.todo_due_date" class="type-meta text-muted mt-1">
+					<div v-if="policy?.todo_due_date" class="type-meta text-ink/60 mt-1">
 						Due: {{ formatLocalizedDate(policy.todo_due_date, { includeWeekday: true }) }}
 					</div>
 					<div
 						v-if="policy?.is_acknowledged && policy?.acknowledged_at"
-						class="type-meta text-muted mt-1"
+						class="type-meta text-ink/60 mt-1"
 					>
 						Already acknowledged on
 						{{ formatLocalizedDateTime(policy.acknowledged_at, { includeWeekday: true }) }}
@@ -50,7 +50,7 @@
 			<div class="flex items-start justify-between gap-3">
 				<div>
 					<div class="type-body font-medium">Policy review</div>
-					<div class="type-meta text-muted mt-1">
+					<div class="type-meta text-ink/60 mt-1">
 						Review changes first, then expand to full policy text if needed.
 					</div>
 				</div>
@@ -104,7 +104,7 @@
 					class="prose prose-sm max-w-none text-ink"
 					v-html="trustedHtml(policy?.diff_html || '')"
 				/>
-				<p v-else class="type-meta text-muted">
+				<p v-else class="type-meta text-ink/60">
 					No amendment diff is available for this version. Review the full policy text.
 				</p>
 			</div>
@@ -115,7 +115,7 @@
 					class="prose prose-sm max-w-none text-ink"
 					v-html="trustedHtml(policy.policy_text_html)"
 				/>
-				<p v-else class="type-meta text-muted">No policy text is available for this version.</p>
+				<p v-else class="type-meta text-ink/60">No policy text is available for this version.</p>
 			</div>
 
 			<div v-if="activeTab === 'changes' && hasDiffHtml" class="mt-2 flex justify-end">
@@ -127,7 +127,7 @@
 
 		<div class="card-surface p-4">
 			<div class="type-body font-medium">Electronic signature</div>
-			<p class="type-meta text-muted mt-1">
+			<p class="type-meta text-ink/60 mt-1">
 				To sign, type your full name exactly as recorded and confirm the legal attestation.
 			</p>
 

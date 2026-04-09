@@ -248,7 +248,7 @@ function statusToneFor(statusKey: string): string {
 			return 'text-rose-700';
 		case 'pending':
 		case 'waiting_review':
-			return 'text-sun';
+			return 'text-clay';
 		default:
 			return 'text-ink/55';
 	}

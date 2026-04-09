@@ -97,7 +97,7 @@
 							<div class="flex flex-col items-start gap-2 sm:items-end">
 								<p
 									class="rounded-full px-3 py-1 type-caption"
-									:class="row.is_unread ? 'bg-coral/15 text-flame' : 'bg-mint/15 text-forest'"
+									:class="row.is_unread ? 'bg-flame/15 text-flame' : 'bg-leaf/15 text-canopy'"
 								>
 									{{ row.is_unread ? 'Unread' : 'Seen' }}
 								</p>

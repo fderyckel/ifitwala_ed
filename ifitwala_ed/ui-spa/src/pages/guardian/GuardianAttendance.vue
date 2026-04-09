@@ -72,7 +72,7 @@
 			<h2 class="mb-3 type-h3 text-ink">How to read this view</h2>
 			<div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
 				<div class="rounded-xl border border-line-soft bg-surface-soft p-4">
-					<div class="mb-2 h-8 w-8 rounded-lg border border-mint/40 bg-mint/20" />
+					<div class="mb-2 h-8 w-8 rounded-lg border border-leaf/40 bg-leaf/15" />
 					<p class="type-body-strong text-ink">Green</p>
 					<p class="type-caption text-ink/70">Attendance is recorded as present for that day.</p>
 				</div>
@@ -84,7 +84,7 @@
 					</p>
 				</div>
 				<div class="rounded-xl border border-line-soft bg-surface-soft p-4">
-					<div class="mb-2 h-8 w-8 rounded-lg border border-coral/40 bg-coral/20" />
+					<div class="mb-2 h-8 w-8 rounded-lg border border-flame/40 bg-flame/15" />
 					<p class="type-body-strong text-ink">Red</p>
 					<p class="type-caption text-ink/70">
 						The day includes an absence or other non-present code.
@@ -347,13 +347,13 @@ function selectedDay(student: string): GuardianAttendanceDay | null {
 function cellClass(student: string, cell: CalendarCell): string {
 	const selected = isSelectedCell(student, cell.date) ? 'ring-2 ring-jacaranda' : '';
 	if (cell.state === 'present') {
-		return `border-mint/40 bg-mint/20 text-forest ${selected}`.trim();
+		return `border-leaf/40 bg-leaf/15 text-canopy ${selected}`.trim();
 	}
 	if (cell.state === 'late') {
 		return `border-amber-300 bg-amber-200/70 text-amber-900 ${selected}`.trim();
 	}
 	if (cell.state === 'absence') {
-		return `border-coral/40 bg-coral/20 text-flame ${selected}`.trim();
+		return `border-flame/40 bg-flame/15 text-flame ${selected}`.trim();
 	}
 	return `border-line-soft bg-white text-ink/45 ${selected}`.trim();
 }
@@ -373,8 +373,8 @@ function detailStateLabel(state: GuardianAttendanceDay['state']): string {
 
 function detailStateClass(state: GuardianAttendanceDay['state']): string {
 	if (state === 'late') return 'bg-amber-200/70 text-amber-900';
-	if (state === 'absence') return 'bg-coral/20 text-flame';
-	return 'bg-mint/20 text-forest';
+	if (state === 'absence') return 'bg-flame/15 text-flame';
+	return 'bg-leaf/15 text-canopy';
 }
 
 function formatDetailDate(value: string): string {

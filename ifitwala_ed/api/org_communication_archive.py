@@ -10,6 +10,7 @@ from frappe.utils import add_days, getdate, strip_html, today
 from ifitwala_ed.api.org_comm_utils import build_audience_summary, check_audience_match
 from ifitwala_ed.api.org_communication_attachments import serialize_org_communication_attachment_row
 from ifitwala_ed.utilities.employee_utils import (
+    get_ancestor_organizations,
     get_descendant_organizations,
     get_user_base_org,
     get_user_base_school,
@@ -107,6 +108,23 @@ def _get_scope(user: str, employee: dict | None):
         )
 
     return base_org, base_school, org_scope, school_scope
+
+
+def _get_archive_organization_scope(*, base_org: str | None, org_scope: list[str] | None) -> list[str]:
+    """Return archive-visible org scope.
+
+    Archive candidates must include:
+    - the user's base organization
+    - its descendants
+    - its ancestors
+
+    This keeps parent organization communications eligible for
+    `Organization` audience matching while preserving sibling isolation.
+    """
+    scope = {org for org in (org_scope or []) if org}
+    if base_org:
+        scope.update(org for org in (get_ancestor_organizations(base_org) or []) if org)
+    return sorted(scope)
 
 
 @frappe.whitelist()
@@ -238,12 +256,14 @@ def get_archive_context():
         for g in (my_group_rows or [])
     ]
 
+    archive_org_scope = _get_archive_organization_scope(base_org=base_org, org_scope=org_scope)
+
     # -------------------------
-    # Organizations: base org + descendants; fallback to all
+    # Organizations: base org + descendants + ancestors; fallback to all
     # -------------------------
     org_filters = {}
-    if org_scope:
-        org_filters["name"] = ["in", org_scope]
+    if archive_org_scope:
+        org_filters["name"] = ["in", archive_org_scope]
 
     data["organizations"] = frappe.get_all(
         "Organization",
@@ -419,8 +439,8 @@ def get_org_communication_feed(
 
     # Org guard
     org_guard: set[str] = set()
-    if org_scope and "System Manager" not in roles:
-        org_guard = set(org_scope)
+    if "System Manager" not in roles:
+        org_guard = set(_get_archive_organization_scope(base_org=base_org, org_scope=org_scope))
 
     if not org_guard and school_scope and "System Manager" not in roles:
         orgs_from_schools = frappe.get_all(

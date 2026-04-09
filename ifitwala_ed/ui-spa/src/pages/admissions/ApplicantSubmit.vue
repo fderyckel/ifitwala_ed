@@ -173,7 +173,7 @@ const readinessItems = computed(() => {
 			item.state === 'complete'
 				? 'bg-leaf'
 				: item.state === 'in_progress'
-					? 'bg-sun'
+					? 'bg-clay'
 					: 'bg-amber-300',
 	}));
 });

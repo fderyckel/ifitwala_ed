@@ -899,7 +899,7 @@
 									<button
 										v-if="selectedSessionId"
 										type="button"
-										class="rounded-full border border-line-soft px-4 py-2 type-button-label text-ink transition hover:border-line-strong"
+										class="rounded-full border border-line-soft px-4 py-2 type-button-label text-ink transition hover:border-ink/30"
 										@click="startNewSession"
 									>
 										Start New Session Draft

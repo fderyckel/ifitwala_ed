@@ -18,7 +18,7 @@
 			<div class="flex min-w-0 flex-1 flex-col">
 				<div class="flex min-w-0 flex-1 xl:items-start">
 					<main
-						class="flex-1 px-4 py-4 sm:px-6 sm:py-6 lg:px-8 lg:py-8 pb-[var(--footer-h)] bg-surface-soft/75 backdrop-blur-sm shadow-strong sm:m-4 sm:rounded-3xl sm:border sm:border-sand"
+						class="flex-1 px-4 py-4 pb-24 bg-surface-soft/75 backdrop-blur-sm shadow-strong sm:m-4 sm:rounded-3xl sm:border sm:border-sand sm:px-6 sm:py-6 sm:pb-20 lg:px-8 lg:py-8"
 					>
 						<slot />
 					</main>

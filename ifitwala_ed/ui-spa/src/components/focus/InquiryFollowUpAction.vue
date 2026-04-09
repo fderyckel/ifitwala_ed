@@ -5,20 +5,20 @@
 			<div class="flex items-start justify-between gap-3">
 				<div class="min-w-0">
 					<div class="type-body font-medium">
-						Inquiry <span v-if="inquiry?.name" class="text-muted"> • {{ inquiry?.name }}</span>
+						Inquiry <span v-if="inquiry?.name" class="text-ink/60"> • {{ inquiry?.name }}</span>
 					</div>
-					<div class="type-meta text-muted mt-1">
+					<div class="type-meta text-ink/60 mt-1">
 						<span>{{ subjectName }}</span>
 						<span v-if="inquiry?.school"> • {{ inquiry?.school }}</span>
 						<span v-else-if="inquiry?.organization"> • {{ inquiry?.organization }}</span>
 					</div>
-					<div v-if="inquiry?.type_of_inquiry" class="type-meta text-muted mt-1">
+					<div v-if="inquiry?.type_of_inquiry" class="type-meta text-ink/60 mt-1">
 						Type: {{ inquiry?.type_of_inquiry }}
 					</div>
-					<div v-if="inquiry?.followup_due_on" class="type-meta text-muted mt-1">
+					<div v-if="inquiry?.followup_due_on" class="type-meta text-ink/60 mt-1">
 						Due: {{ formatLocalizedDate(inquiry?.followup_due_on, { includeWeekday: true }) }}
 					</div>
-					<div v-if="inquiry?.sla_status" class="type-meta text-muted mt-1">
+					<div v-if="inquiry?.sla_status" class="type-meta text-ink/60 mt-1">
 						SLA: {{ inquiry?.sla_status }}
 					</div>
 				</div>
@@ -41,7 +41,7 @@
 			<div class="flex items-start justify-between gap-3">
 				<div>
 					<div class="type-body font-medium">Inquiry details</div>
-					<div class="type-meta text-muted mt-1">
+					<div class="type-meta text-ink/60 mt-1">
 						Review the original inquiry before recording first contact.
 					</div>
 				</div>
@@ -69,11 +69,11 @@
 			<div class="grid gap-4 md:grid-cols-2">
 				<div class="space-y-3">
 					<div>
-						<div class="type-meta text-muted">Name</div>
+						<div class="type-meta text-ink/60">Name</div>
 						<div class="type-body mt-1">{{ subjectName }}</div>
 					</div>
 					<div v-if="inquiry?.email">
-						<div class="type-meta text-muted">Email</div>
+						<div class="type-meta text-ink/60">Email</div>
 						<a
 							:href="`mailto:${inquiry.email}`"
 							class="type-body mt-1 inline-flex text-canopy underline-offset-2 hover:underline"
@@ -82,7 +82,7 @@
 						</a>
 					</div>
 					<div v-if="inquiry?.phone_number">
-						<div class="type-meta text-muted">Phone</div>
+						<div class="type-meta text-ink/60">Phone</div>
 						<a
 							:href="`tel:${inquiry.phone_number}`"
 							class="type-body mt-1 inline-flex text-canopy underline-offset-2 hover:underline"
@@ -91,7 +91,7 @@
 						</a>
 					</div>
 					<div>
-						<div class="type-meta text-muted">Contact</div>
+						<div class="type-meta text-ink/60">Contact</div>
 						<div class="type-body mt-1">
 							{{ inquiry?.contact || 'No linked contact yet' }}
 						</div>
@@ -99,12 +99,12 @@
 				</div>
 
 				<div class="space-y-2">
-					<div class="type-meta text-muted">Message</div>
+					<div class="type-meta text-ink/60">Message</div>
 					<div class="rounded-xl border border-ink/10 bg-white px-4 py-3">
 						<p v-if="inquiry?.message" class="type-body whitespace-pre-wrap text-ink">
 							{{ inquiry.message }}
 						</p>
-						<p v-else class="type-meta text-muted">No message provided.</p>
+						<p v-else class="type-meta text-ink/60">No message provided.</p>
 					</div>
 				</div>
 			</div>
@@ -120,11 +120,11 @@
 
 		<div class="card-surface p-4">
 			<div class="type-body font-medium">First contact action</div>
-			<div class="type-meta text-muted mt-1">
+			<div class="type-meta text-ink/60 mt-1">
 				Mark this inquiry as contacted and close your follow-up ToDo.
 			</div>
 
-			<div v-if="!canMarkContacted" class="type-meta text-muted mt-3">
+			<div v-if="!canMarkContacted" class="type-meta text-ink/60 mt-3">
 				Only assigned inquiries in state <b>Assigned</b> can be completed from Focus.
 			</div>
 

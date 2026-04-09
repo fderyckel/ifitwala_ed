@@ -72,9 +72,7 @@
 					<div class="flex flex-col items-start gap-2 sm:items-end">
 						<p
 							class="rounded-full px-3 py-1 type-caption"
-							:class="
-								row.is_acknowledged ? 'bg-mint/15 text-forest' : 'bg-warm-amber/15 text-ochre'
-							"
+							:class="row.is_acknowledged ? 'bg-leaf/15 text-canopy' : 'bg-sand text-clay'"
 						>
 							{{ row.is_acknowledged ? 'Acknowledged' : 'Pending acknowledgement' }}
 						</p>
