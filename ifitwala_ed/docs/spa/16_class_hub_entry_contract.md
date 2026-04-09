@@ -60,8 +60,9 @@ Rules:
 1. Staff Home capability for this surface is `quick_action_class_hub`.
 2. Staff Home only shows the quick action when the current user has instructor-grade Class Hub access.
 3. The chooser payload must be server-owned and instructor-scoped.
-4. Staff Home must not derive accessible student groups from client-side route state, cached UI data, or broad student-group endpoints.
-5. Class Hub itself remains protected by the server-side instructor membership check for the target `student_group`.
+4. Class Hub group resolution may include both explicit `Student Group Instructor` assignments and operational teaching bookings derived from `Employee Booking`.
+5. Staff Home must not derive accessible student groups from client-side route state, cached UI data, or broad student-group endpoints.
+6. Class Hub itself remains protected by the server-side instructor membership check for the target `student_group`.
 
 ## 3. API and Overlay Contract
 
@@ -128,6 +129,7 @@ Test refs:
 - Staff Home and Class Hub intentionally have different entry semantics:
   - Staff Home -> choose or open a taught class
   - Class Hub -> run live class workflows, including the student picker
+- Class Hub teaching scope is server-owned and may be satisfied either by explicit instructor assignment on the Student Group or by authoritative teaching bookings materialized for that employee from the schedule.
 - The Class Hub route is still class-scoped, but live runtime now resolves the active `Class Teaching Plan` for that class and operates on real `Class Session` records instead of demo session state.
 - `Start Session` must reuse the dated `Class Session` when one already exists for the target date. It may create a minimal in-progress `Class Session` only when the class already has a valid class teaching plan and governed unit backbone.
 - The chooser overlay supports `Esc`, backdrop close, and explicit close button behavior through the shared overlay host contract.

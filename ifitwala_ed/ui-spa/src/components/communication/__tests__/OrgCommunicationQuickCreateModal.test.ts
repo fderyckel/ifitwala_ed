@@ -142,15 +142,35 @@ vi.mock('frappe-ui', () => ({
 		emits: ['change'],
 		setup(props, { emit }) {
 			return () =>
-				h('textarea', {
-					value: props.content ?? '',
-					placeholder: props.placeholder,
-					disabled: props.editable === false,
-					'data-text-editor': 'true',
-					class: props.editorClass,
-					onInput: (event: Event) =>
-						emit('change', (event.target as HTMLTextAreaElement).value),
-				});
+				h('div', { class: 'text-editor-stub' }, [
+					h(
+						'div',
+						{ class: 'text-editor-stub__toolbar' },
+						(Array.isArray(props.fixedMenu) ? props.fixedMenu : [])
+							.flatMap(button => (Array.isArray(button) ? button.slice(0, 1) : [button]))
+							.filter(button => button !== 'Separator')
+							.slice(0, 4)
+							.map(button =>
+								h(
+									'button',
+									{
+										title: String(button),
+										'data-editor-toolbar-button': String(button),
+									},
+									String(button)
+								)
+							)
+					),
+					h('textarea', {
+						value: props.content ?? '',
+						placeholder: props.placeholder,
+						disabled: props.editable === false,
+						'data-text-editor': 'true',
+						class: props.editorClass,
+						onInput: (event: Event) =>
+							emit('change', (event.target as HTMLTextAreaElement).value),
+					}),
+				]);
 		},
 	}),
 }));
@@ -320,6 +340,13 @@ function setRichMessage(value: string) {
 	if (!editor) return;
 	editor.value = value;
 	editor.dispatchEvent(new Event('input', { bubbles: true }));
+}
+
+function clickEditorToolbarButton(label: string) {
+	const button = document.querySelector(
+		`[data-editor-toolbar-button="${label}"]`
+	) as HTMLButtonElement | null;
+	button?.click();
 }
 
 function setInputByPlaceholder(placeholder: string, value: string) {
@@ -512,7 +539,31 @@ describe('OrgCommunicationQuickCreateModal', () => {
 		expect(text).not.toContain('Thread settings');
 		expect(document.querySelector('.if-org-communication-ready-check')).toBeNull();
 		expect(document.querySelectorAll('.if-class-event-context-card')).toHaveLength(1);
-		expect(document.querySelectorAll('.if-class-event-context-row')).toHaveLength(4);
+		expect(document.querySelectorAll('.if-class-event-context-pill')).toHaveLength(4);
+		expect(text).toContain('Auto applied');
+	});
+
+	it('does not submit the form when a rich-text toolbar control is clicked', async () => {
+		getOptionsMock.mockResolvedValue(quickCreateOptions);
+
+		mountModal({
+			entryMode: 'class-event',
+			title: '25-26-G6-Math1/IIS 2025-2026',
+			studentGroup: 'SG-1',
+			school: 'SCH-1',
+			sessionDate: '2026-04-03',
+			sessionTimeLabel: '8:00 AM - 8:45 AM',
+			courseLabel: 'IB MYP mathematics (Grade 6)',
+		});
+		await flushUi();
+
+		setRichMessage('<p>Keep this draft open</p>');
+		clickEditorToolbarButton('Bold');
+		await flushUi();
+
+		expect(createOrgCommunicationQuickMock).not.toHaveBeenCalled();
+		const editor = document.querySelector('[data-text-editor="true"]') as HTMLTextAreaElement | null;
+		expect(editor?.value).toBe('<p>Keep this draft open</p>');
 	});
 
 	it('lets users change interaction mode and toggle thread settings', async () => {

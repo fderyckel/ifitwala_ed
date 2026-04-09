@@ -83,28 +83,37 @@
 							<form v-else class="space-y-5" @submit.prevent="submit">
 								<div v-if="isClassEventMode" class="space-y-5">
 									<section class="rounded-[28px] border border-border/70 bg-white p-5 shadow-soft">
-										<div class="space-y-1">
-											<p class="type-overline text-ink/55">Class event</p>
-											<h3 class="type-h3 text-ink">Locked context</h3>
-											<p class="type-caption text-ink/65">
-												This announcement stays tied to the selected class event and remains in
-												your org communication archive for history.
-											</p>
+										<div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+											<div class="space-y-1">
+												<p class="type-overline text-ink/55">Class event</p>
+												<div class="flex flex-wrap items-center gap-2">
+													<h3 class="type-h3 text-ink">Locked context</h3>
+													<span class="rounded-full bg-sky/25 px-3 py-1 type-caption text-canopy">
+														Auto applied
+													</span>
+												</div>
+												<p class="type-caption text-ink/65">
+													The selected class event keeps scope, history, and archive context in
+													sync automatically.
+												</p>
+											</div>
 										</div>
 
 										<div
-											class="if-class-event-context-card mt-4 rounded-[26px] border border-border/70 bg-surface-soft/70 px-4 py-2"
+											class="if-class-event-context-card mt-4 grid grid-cols-1 gap-2.5 sm:grid-cols-2"
 										>
 											<div
 												v-for="(item, index) in classEventContextCards"
 												:key="item.label"
-												class="if-class-event-context-row flex flex-col gap-1 py-3 sm:flex-row sm:items-baseline sm:gap-3"
-												:class="{ 'border-t border-border/60': index > 0 }"
+												class="if-class-event-context-pill"
+												:class="`if-class-event-context-pill--${index}`"
 											>
-												<p class="shrink-0 type-caption uppercase tracking-[0.18em] text-ink/45">
+												<span class="if-class-event-context-pill__label">
 													{{ item.label }}
+												</span>
+												<p class="min-w-0 type-body-strong text-ink">
+													{{ item.value }}
 												</p>
-												<p class="type-body-strong text-ink">{{ item.value }}</p>
 											</div>
 										</div>
 									</section>
@@ -1902,7 +1911,13 @@ async function deleteAttachment(attachment: OrgCommunicationAttachmentRow) {
 	}
 }
 
-async function submit() {
+function isMessageEditorToolbarSubmitter(target: EventTarget | null) {
+	if (!(target instanceof HTMLElement)) return false;
+	return Boolean(target.closest('.if-org-communication-message-editor button'));
+}
+
+async function submit(event?: SubmitEvent) {
+	if (isMessageEditorToolbarSubmitter(event?.submitter ?? null)) return;
 	if (!isClassEventMode.value) {
 		await submitPublish();
 		return;
@@ -1983,5 +1998,50 @@ async function submitWithStatus(statusOverride: string) {
 	background-color: rgb(var(--surface-soft-rgb) / 0.8);
 	color: rgb(var(--ink-rgb) / 0.5);
 	opacity: 0.8;
+}
+
+.if-class-event-context-pill {
+	display: flex;
+	min-width: 0;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 0.625rem;
+	border-radius: 1.25rem;
+	border: 1px solid rgb(var(--border-rgb) / 0.72);
+	background: rgb(var(--surface-soft-rgb) / 0.66);
+	padding: 0.75rem 0.875rem;
+}
+
+.if-class-event-context-pill__label {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	border-radius: 9999px;
+	padding: 0.25rem 0.625rem;
+	font-size: 0.6875rem;
+	font-weight: 700;
+	letter-spacing: 0.16em;
+	line-height: 1;
+	text-transform: uppercase;
+}
+
+.if-class-event-context-pill--0 .if-class-event-context-pill__label {
+	background: rgb(var(--jacaranda-rgb) / 0.14);
+	color: rgb(var(--jacaranda-rgb) / 1);
+}
+
+.if-class-event-context-pill--1 .if-class-event-context-pill__label {
+	background: rgb(var(--leaf-rgb) / 0.14);
+	color: rgb(var(--canopy-rgb) / 1);
+}
+
+.if-class-event-context-pill--2 .if-class-event-context-pill__label {
+	background: rgb(var(--sky-rgb) / 0.24);
+	color: rgb(var(--canopy-rgb) / 1);
+}
+
+.if-class-event-context-pill--3 .if-class-event-context-pill__label {
+	background: rgb(var(--slate-rgb) / 0.14);
+	color: rgb(var(--slate-rgb) / 0.9);
 }
 </style>
