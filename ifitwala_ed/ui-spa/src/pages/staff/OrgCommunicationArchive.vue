@@ -78,10 +78,10 @@
 		</FiltersBar>
 
 		<!-- Main Content Grid -->
-		<div class="grid grid-cols-1 gap-6 min-h-0 md:grid-cols-10 md:h-[calc(100vh-16rem)]">
+		<div class="org-archive__grid grid grid-cols-1 gap-6 min-h-0">
 			<!-- LEFT LIST -->
 			<div
-				class="flex flex-col min-h-0 h-full bg-surface-glass rounded-2xl border border-line-soft shadow-soft overflow-hidden md:col-span-3"
+				class="org-archive__list flex flex-col min-h-0 h-full bg-surface-glass rounded-2xl border border-line-soft shadow-soft overflow-hidden"
 			>
 				<div
 					class="custom-scrollbar flex-1 overflow-y-auto p-4 space-y-2 bg-sand/20"
@@ -195,7 +195,7 @@
 
 			<!-- RIGHT DETAIL -->
 			<div
-				class="min-h-0 h-full bg-surface-glass rounded-2xl border border-line-soft shadow-soft overflow-hidden flex flex-col relative md:col-span-7"
+				class="org-archive__detail min-h-0 h-full bg-surface-glass rounded-2xl border border-line-soft shadow-soft overflow-hidden flex flex-col relative"
 			>
 				<div
 					v-if="!selectedComm"
@@ -1101,3 +1101,22 @@ function onDetailContentClick(event: MouseEvent) {
 	});
 }
 </script>
+
+<style scoped>
+.org-archive__grid {
+	min-height: 0;
+}
+
+@media (min-width: 900px) {
+	.org-archive__grid {
+		display: grid;
+		grid-template-columns: minmax(0, 3fr) minmax(0, 7fr);
+		height: calc(100vh - 16rem);
+	}
+
+	.org-archive__list,
+	.org-archive__detail {
+		min-width: 0;
+	}
+}
+</style>

@@ -38,6 +38,7 @@ frappe.ui.form.on('Org Communication', {
 
 		// Visibility info
 		show_visibility_hint(frm);
+		sync_context_section_visibility(frm);
 	},
 
 	portal_surface(frm) {
@@ -58,7 +59,24 @@ frappe.ui.form.on('Org Communication', {
 	},
 
 	activity_student_group(frm) {
+		sync_context_section_visibility(frm);
 		frm.trigger('setup_governed_attachment_upload');
+	},
+
+	activity_program_offering(frm) {
+		sync_context_section_visibility(frm);
+	},
+
+	activity_booking(frm) {
+		sync_context_section_visibility(frm);
+	},
+
+	admission_context_doctype(frm) {
+		sync_context_section_visibility(frm);
+	},
+
+	admission_context_name(frm) {
+		sync_context_section_visibility(frm);
 	},
 
 	status(frm) {
@@ -77,6 +95,8 @@ frappe.ui.form.on('Org Communication', {
 	},
 
 	communication_type(frm) {
+		sync_context_section_visibility(frm);
+
 		if (frm.doc.communication_type === 'Class Announcement') {
 			frappe.msgprint({
 				message: __(
@@ -193,6 +213,47 @@ function resolve_attachment_student_group(frm) {
 		(row.target_mode || '').trim() === 'Student Group' && (row.student_group || '').trim()
 	);
 	return (matchingRow?.student_group || '').trim();
+}
+
+function should_show_activity_context(frm) {
+	return Boolean(
+		(frm.doc.communication_type || '').trim() === 'Class Announcement' ||
+		(frm.doc.activity_program_offering || '').trim() ||
+		(frm.doc.activity_booking || '').trim() ||
+		(frm.doc.activity_student_group || '').trim()
+	);
+}
+
+function should_show_admission_context(frm) {
+	return Boolean(
+		(frm.doc.admission_context_doctype || '').trim() ||
+		(frm.doc.admission_context_name || '').trim()
+	);
+}
+
+function sync_context_section_visibility(frm) {
+	const showActivityContext = should_show_activity_context(frm);
+	const showAdmissionContext = should_show_admission_context(frm);
+
+	frm.toggle_display(
+		[
+			'activity_context_section',
+			'activity_program_offering',
+			'activity_booking',
+			'column_break_activity_context',
+			'activity_student_group'
+		],
+		showActivityContext
+	);
+
+	frm.toggle_display(
+		[
+			'admission_context_section',
+			'admission_context_doctype',
+			'admission_context_name'
+		],
+		showAdmissionContext
+	);
 }
 
 function setup_issuing_school_field(frm) {
