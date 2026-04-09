@@ -54,6 +54,26 @@ def _build_initials(full_name: str | None) -> str:
     return "".join(parts[:2])
 
 
+def _normalize_sort_order(value) -> int | None:
+    if value in ("", None, 0, "0"):
+        return None
+    return int(value)
+
+
+def _resolve_full_bio(row: dict) -> str:
+    full_bio = (row.get("bio") or "").strip()
+    if full_bio:
+        return full_bio
+
+    employee_name = (row.get("name") or "").strip()
+    get_cached_doc = getattr(frappe, "get_cached_doc", None)
+    if not employee_name or not callable(get_cached_doc):
+        return ""
+
+    employee_doc = get_cached_doc("Employee", employee_name)
+    return str(getattr(employee_doc, "bio", "") or "").strip()
+
+
 def _get_designation_map(designation_names: tuple[str, ...]) -> dict[str, dict]:
     if not designation_names:
         return {}
@@ -85,7 +105,7 @@ def _build_public_person(row: dict, designation_row: dict | None, school_row: di
     display_name = preferred_name or (row.get("employee_full_name") or row.get("name") or "").strip()
     title = ((designation_row or {}).get("designation_name") or row.get("designation") or "").strip()
     bio = (row.get("small_bio") or "").strip()
-    full_bio = (row.get("bio") or "").strip()
+    full_bio = _resolve_full_bio(row)
     school_slug = ((school_row or {}).get("website_slug") or "").strip()
     profile_slug = (row.get("public_profile_slug") or "").strip()
     has_profile_page = bool(int(row.get("show_public_profile_page") or 0) == 1 and school_slug and profile_slug)
@@ -106,7 +126,7 @@ def _build_public_person(row: dict, designation_row: dict | None, school_row: di
         "public_email": None,
         "public_phone": None,
         "featured": int(row.get("featured_on_website") or 0) == 1,
-        "sort_order": row.get("website_sort_order"),
+        "sort_order": _normalize_sort_order(row.get("website_sort_order")),
         "profile_slug": profile_slug or None,
         "has_profile_page": has_profile_page,
         "profile_url": (

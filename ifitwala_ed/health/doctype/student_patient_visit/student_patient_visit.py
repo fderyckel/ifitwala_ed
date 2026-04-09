@@ -55,7 +55,7 @@ class StudentPatientVisit(Document):
 
     def notify_instructor(self):
         try:
-            from frappe.utils import get_time, getdate
+            from frappe.utils import get_time, getdate, nowtime
 
             from ifitwala_ed.schedule.schedule_utils import get_effective_schedule_for_ay, get_rotation_dates
             from ifitwala_ed.schedule.student_group_scheduling import get_school_for_student_group
@@ -81,7 +81,7 @@ class StudentPatientVisit(Document):
             student_image = getattr(student_doc, "student_image", None)
 
             today_date = getdate(self.date) if self.date else getdate()
-            current_time = get_time(self.time_of_arrival or frappe.utils.now_time())
+            current_time = get_time(self.time_of_arrival or nowtime())
 
             # 1. Get active groups for student
             groups = _get_active_student_groups_for_student(student)

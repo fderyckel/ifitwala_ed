@@ -103,7 +103,9 @@
 		</section>
 
 		<!-- Main layout -->
-		<section class="grid gap-4 lg:grid-cols-[420px_minmax(0,1fr)]">
+		<section
+			class="grid gap-4 lg:grid-cols-[380px_minmax(0,1fr)] xl:grid-cols-[420px_minmax(0,1fr)]"
+		>
 			<!-- Calendar -->
 			<div
 				class="rounded-2xl border border-border/70 bg-[rgb(var(--surface-rgb)/0.7)] shadow-soft"

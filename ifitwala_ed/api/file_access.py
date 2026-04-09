@@ -863,7 +863,7 @@ def download_academic_file(
         if material:
             if not material_course:
                 frappe.throw(_("Material file is missing course context."), frappe.ValidationError)
-            from ifitwala_ed.curriculum import materials as materials_domain
+            materials_domain = importlib.import_module("ifitwala_ed.curriculum.materials")
 
             placement_name = _assert_internal_material_context(
                 file_row=file_row,

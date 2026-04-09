@@ -77,6 +77,11 @@ def resolve_org_communication_attachment_context(doc) -> dict[str, str]:
         as_dict=True,
     )
     if not student_group_row:
+        course = frappe.db.get_value("Student Group", student_group, "course")
+        school = frappe.db.get_value("Student Group", student_group, "school")
+        if course or school:
+            student_group_row = {"course": course, "school": school}
+    if not student_group_row:
         frappe.throw(_("Student Group does not exist: {0}").format(student_group))
 
     course = str(student_group_row.get("course") or "").strip()

@@ -1110,7 +1110,7 @@ function onDetailContentClick(event: MouseEvent) {
 @media (min-width: 900px) {
 	.org-archive__grid {
 		display: grid;
-		grid-template-columns: minmax(0, 3fr) minmax(0, 7fr);
+		grid-template-columns: minmax(0, 4fr) minmax(0, 6fr);
 		height: calc(100vh - 16rem);
 	}
 

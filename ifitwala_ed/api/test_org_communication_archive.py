@@ -272,3 +272,9 @@ class TestOrgCommunicationArchiveContext(FrappeTestCase):
             [row["name"] for row in result["organizations"]],
             ["ORG-ROOT", "ORG-CHILD"],
         )
+        self.assertEqual(
+            result["defaults"],
+            {"school": None, "organization": None, "team": None},
+        )
+        self.assertEqual(result["base_org"], "ORG-CHILD")
+        self.assertEqual(result["base_school"], None)

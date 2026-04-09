@@ -123,6 +123,8 @@ def _get_archive_organization_scope(*, base_org: str | None, org_scope: list[str
     """
     scope = {org for org in (org_scope or []) if org}
     if base_org:
+        scope.add(base_org)
+    if base_org and org_scope:
         scope.update(org for org in (get_ancestor_organizations(base_org) or []) if org)
     return sorted(scope)
 
@@ -194,18 +196,17 @@ def get_archive_context():
         if r.get("name")
     ]
 
-    # Default team only if unambiguous
-    default_team = my_teams[0]["value"] if len(my_teams) == 1 else None
-
     data = {
         "my_teams": my_teams,
         "my_groups": [],
         "schools": [],
         "organizations": [],
         "defaults": {
-            "school": base_school,
-            "organization": base_org,
-            "team": default_team,
+            # Archive starts unscoped so users see all communications visible
+            # to them unless they explicitly narrow with a filter.
+            "school": None,
+            "organization": None,
+            "team": None,
         },
         "base_org": base_org,
         "base_school": base_school,
@@ -228,7 +229,7 @@ def get_archive_context():
             )
 
     elif employee and ("Instructor" in roles or "Academic Staff" in roles):
-        instructor_name = frappe.db.get_value("Instructor", {"employee": employee.name}, "name")
+        instructor_name = frappe.db.get_value("Instructor", {"employee": employee_name}, "name")
         if instructor_name:
             group_names = (
                 frappe.get_all(
