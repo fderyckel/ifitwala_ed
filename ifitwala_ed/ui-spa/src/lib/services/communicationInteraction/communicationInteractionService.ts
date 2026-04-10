@@ -36,6 +36,10 @@ import type {
   Request as PostOrgCommunicationCommentRequest,
   Response as PostOrgCommunicationCommentResponse,
 } from '@/types/contracts/communication_interaction/post_org_communication_comment'
+import type {
+  Request as MarkOrgCommunicationReadRequest,
+  Response as MarkOrgCommunicationReadResponse,
+} from '@/types/contracts/communication_interaction/mark_org_communication_read'
 
 import type { ReactionCode } from '@/types/interactions'
 import type { OrgSurface } from '@/types/morning_brief'
@@ -73,6 +77,12 @@ export function createCommunicationInteractionService() {
 
   const postCommentResource = createResource<PostOrgCommunicationCommentResponse>({
     url: 'ifitwala_ed.api.org_communication_interactions.post_org_communication_comment',
+    method: 'POST',
+    auto: false,
+  })
+
+  const markReadResource = createResource<MarkOrgCommunicationReadResponse>({
+    url: 'ifitwala_ed.api.org_communication_interactions.mark_org_communication_read',
     method: 'POST',
     auto: false,
   })
@@ -135,6 +145,12 @@ export function createCommunicationInteractionService() {
     return response
   }
 
+  async function markOrgCommunicationRead(
+    payload: MarkOrgCommunicationReadRequest
+  ): Promise<MarkOrgCommunicationReadResponse> {
+    return markReadResource.submit(payload)
+  }
+
   return {
     getOrgCommInteractionSummary,
     getCommunicationThread,
@@ -142,5 +158,6 @@ export function createCommunicationInteractionService() {
     // semantic mutations (preferred)
     reactToOrgCommunication,
     postOrgCommunicationComment,
+    markOrgCommunicationRead,
   }
 }

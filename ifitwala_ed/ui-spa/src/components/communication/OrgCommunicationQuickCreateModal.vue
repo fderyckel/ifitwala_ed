@@ -332,9 +332,11 @@
 												<h4 class="type-h4 text-ink">Audience</h4>
 											</div>
 
-											<div class="mt-4 space-y-3">
+											<div
+												class="if-class-event-audience-grid mt-4 grid grid-cols-1 gap-3 lg:grid-cols-2"
+											>
 												<div
-													class="flex items-start gap-3 rounded-2xl border border-border/70 bg-white px-4 py-3 type-caption text-ink/75"
+													class="flex h-full items-start gap-3 rounded-2xl border border-border/70 bg-white px-4 py-3 type-caption text-ink/75"
 												>
 													<input
 														checked
@@ -352,7 +354,7 @@
 
 												<label
 													v-if="classEventAudienceRow"
-													class="flex cursor-pointer items-start gap-3 rounded-2xl border border-border/70 bg-white px-4 py-3 type-caption text-ink/75"
+													class="flex h-full cursor-pointer items-start gap-3 rounded-2xl border border-border/70 bg-white px-4 py-3 type-caption text-ink/75"
 												>
 													<input
 														v-model="classEventAudienceRow.to_guardians"

@@ -1,7 +1,7 @@
 <!-- ifitwala_ed/ui-spa/src/pages/student/StudentHome.vue -->
 <template>
-	<div class="space-y-6">
-		<header class="card-surface p-5 sm:p-6">
+	<div class="portal-page student-hub-page">
+		<header class="student-hub-hero">
 			<div class="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
 				<div>
 					<p class="type-overline text-ink/60">Student Hub</p>
@@ -24,12 +24,15 @@
 			</div>
 		</header>
 
-		<section v-if="homeError" class="card-surface border border-flame/30 bg-[var(--flame)]/5 p-5">
+		<section
+			v-if="homeError"
+			class="student-hub-section border border-flame/30 bg-[var(--flame)]/5"
+		>
 			<p class="type-body-strong text-flame">Could not load your Hub.</p>
 			<p class="mt-2 type-caption text-ink/70">{{ homeError }}</p>
 		</section>
 
-		<section class="card-surface p-5 sm:p-6">
+		<section class="student-hub-section student-hub-section--focus">
 			<div class="flex items-center justify-between gap-3">
 				<div>
 					<p class="type-overline text-ink/60">Today</p>
@@ -47,7 +50,7 @@
 
 			<div
 				v-else-if="currentClass"
-				class="mt-5 rounded-2xl border border-jacaranda/30 bg-jacaranda/10 p-5"
+				class="mt-5 student-hub-highlight student-hub-highlight--focus"
 			>
 				<div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
 					<div>
@@ -61,10 +64,7 @@
 				</div>
 			</div>
 
-			<div
-				v-else-if="nextClass"
-				class="mt-5 rounded-2xl border border-line-soft bg-surface-soft p-5"
-			>
+			<div v-else-if="nextClass" class="mt-5 student-hub-highlight student-hub-highlight--warm">
 				<div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
 					<div>
 						<p class="type-overline text-ink/60">Next Up</p>
@@ -79,7 +79,8 @@
 
 			<div
 				v-else-if="nextLearningStep"
-				class="mt-5 rounded-2xl border border-line-soft bg-surface-soft p-5"
+				class="mt-5 student-hub-highlight"
+				:class="nextLearningStepHighlightClass(nextLearningStep)"
 			>
 				<div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
 					<div>
@@ -105,12 +106,12 @@
 				</div>
 			</div>
 
-			<div v-else class="mt-5 rounded-2xl border border-dashed border-line-soft p-5">
+			<div v-else class="mt-5 student-hub-empty">
 				<p class="type-body text-ink/70">No classes or work items are available yet.</p>
 			</div>
 		</section>
 
-		<section class="card-surface p-5">
+		<section class="student-hub-section">
 			<div class="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
 				<div>
 					<p class="type-overline text-ink/60">Snapshot</p>
@@ -124,7 +125,8 @@
 					v-for="item in snapshotLinks"
 					:key="item.key"
 					:to="item.to"
-					class="group rounded-2xl border border-line-soft bg-surface-soft p-4 transition hover:-translate-y-0.5 hover:border-jacaranda/35 hover:shadow-soft"
+					class="group student-hub-card student-hub-card--interactive"
+					:class="snapshotSurfaceClass(item.key)"
 				>
 					<div class="flex items-start justify-between gap-3">
 						<p class="type-caption text-ink/60">{{ item.title }}</p>
@@ -139,7 +141,7 @@
 			</div>
 		</section>
 
-		<section class="card-surface p-5">
+		<section class="student-hub-section student-hub-section--warm">
 			<div class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
 				<div>
 					<p class="type-overline text-ink/60">Communications</p>
@@ -153,10 +155,7 @@
 				</RouterLink>
 			</div>
 
-			<div
-				v-if="!communicationHighlights.length"
-				class="mt-4 rounded-2xl border border-dashed border-line-soft p-4"
-			>
+			<div v-if="!communicationHighlights.length" class="mt-4 student-hub-empty">
 				<p class="type-body text-ink/70">
 					No student-facing updates are visible right now. New class, activity, and school messages
 					will appear here.
@@ -168,7 +167,7 @@
 					v-for="item in communicationHighlights"
 					:key="item.item_id || `${item.kind}-${item.title}`"
 					:to="linkFor(item.href)"
-					class="group rounded-2xl border border-line-soft bg-surface-soft p-4 transition hover:-translate-y-0.5 hover:border-jacaranda/35 hover:shadow-soft"
+					class="group student-hub-card student-hub-card--interactive student-hub-card--warm"
 				>
 					<div class="flex items-start justify-between gap-3">
 						<div>
@@ -202,12 +201,17 @@
 				</p>
 			</div>
 
-			<div v-if="loadingHome" class="card-surface p-5 type-body text-ink/70">
+			<div v-if="loadingHome" class="student-hub-section type-body text-ink/70">
 				Loading work board...
 			</div>
 
 			<div v-else class="grid gap-4 xl:grid-cols-4">
-				<section v-for="lane in boardLanes" :key="lane.key" class="card-surface p-4">
+				<section
+					v-for="lane in boardLanes"
+					:key="lane.key"
+					class="student-hub-lane"
+					:class="laneSurfaceClass(lane.key)"
+				>
 					<div class="mb-4 flex items-center justify-between gap-3">
 						<div>
 							<h3 class="type-h3 text-ink">{{ lane.title }}</h3>
@@ -216,10 +220,7 @@
 						<span class="chip">{{ lane.items.length }}</span>
 					</div>
 
-					<div
-						v-if="!lane.items.length"
-						class="rounded-2xl border border-dashed border-line-soft p-4"
-					>
+					<div v-if="!lane.items.length" class="student-hub-empty">
 						<p class="type-caption text-ink/60">{{ lane.empty }}</p>
 					</div>
 
@@ -228,7 +229,8 @@
 							v-for="item in lane.items"
 							:key="item.task_delivery"
 							:to="linkFor(item.href)"
-							class="block rounded-2xl border border-line-soft bg-surface-soft p-4 transition hover:shadow-soft"
+							class="student-hub-card student-hub-card--interactive block"
+							:class="workItemSurfaceClass(lane.key)"
 						>
 							<div class="flex flex-wrap items-center gap-2">
 								<p class="type-body-strong text-ink">{{ item.title }}</p>
@@ -255,21 +257,22 @@
 				<RouterLink :to="{ name: 'student-courses' }" class="if-action">Open Courses</RouterLink>
 			</div>
 
-			<div v-if="loadingHome" class="card-surface p-5 type-body text-ink/70">
+			<div v-if="loadingHome" class="student-hub-section type-body text-ink/70">
 				Loading timeline...
 			</div>
 
-			<div
-				v-else-if="!timelineDays.length"
-				class="card-surface border border-dashed border-line-soft p-5"
-			>
+			<div v-else-if="!timelineDays.length" class="student-hub-empty">
 				<p class="type-body text-ink/70">
 					No dated learning events are scheduled in the current window.
 				</p>
 			</div>
 
 			<div v-else class="space-y-4">
-				<section v-for="day in timelineDays" :key="day.date" class="card-surface p-5">
+				<section
+					v-for="day in timelineDays"
+					:key="day.date"
+					class="student-hub-section student-hub-section--support"
+				>
 					<div class="mb-4 flex items-center justify-between">
 						<h3 class="type-h3 text-ink">{{ formatDayLabel(day.date) }}</h3>
 						<span class="chip">{{ day.items.length }} items</span>
@@ -279,12 +282,8 @@
 							v-for="item in day.items"
 							:key="`${day.date}-${item.kind}-${item.title}-${item.date_time}`"
 							:to="linkFor(item.href)"
-							class="block rounded-2xl border p-4 transition hover:shadow-soft"
-							:class="
-								item.kind === 'task_due'
-									? 'border-jacaranda/30 bg-jacaranda/5'
-									: 'border-line-soft bg-surface-soft'
-							"
+							class="student-hub-card student-hub-card--interactive block"
+							:class="timelineItemSurfaceClass(item.kind)"
 						>
 							<div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
 								<div>
@@ -303,19 +302,19 @@
 			</div>
 		</section>
 
-		<section class="card-surface p-5">
+		<section class="student-hub-section student-hub-section--support">
 			<h2 class="mb-3 type-h3 text-ink">Calendar</h2>
 			<StudentCalendar :auto-refresh-interval="30 * 60 * 1000" />
 		</section>
 
-		<section class="card-surface p-5">
+		<section class="student-hub-section">
 			<h2 class="mb-3 type-h3 text-ink">Quick Links</h2>
 			<div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
 				<RouterLink
 					v-for="item in quickLinks"
 					:key="item.title"
 					:to="item.to"
-					class="action-tile group"
+					class="action-tile student-hub-action-tile group"
 				>
 					<div class="action-tile__icon">
 						<FeatherIcon :name="item.icon" class="h-5 w-5" />
@@ -611,6 +610,38 @@ function timelineKindLabel(kind: string): string {
 
 function communicationDateLabel(value: string): string {
 	return formatLocalizedDateTime(value, { fallback: value });
+}
+
+function snapshotSurfaceClass(key: string): string {
+	if (key === 'in-now') return 'student-hub-card--focus';
+	if (key === 'coming-this-week') return 'student-hub-card--warm';
+	if (key === 'recently-done') return 'student-hub-card--success';
+	return 'student-hub-card--neutral';
+}
+
+function laneSurfaceClass(key: string): string {
+	if (key === 'now') return 'student-hub-lane--now';
+	if (key === 'soon') return 'student-hub-lane--soon';
+	if (key === 'done') return 'student-hub-lane--done';
+	return 'student-hub-lane--later';
+}
+
+function workItemSurfaceClass(key: string): string {
+	if (key === 'now') return 'student-hub-card--focus';
+	if (key === 'soon') return 'student-hub-card--warm';
+	if (key === 'done') return 'student-hub-card--success';
+	return 'student-hub-card--neutral';
+}
+
+function timelineItemSurfaceClass(kind: string): string {
+	if (kind === 'task_due') return 'student-hub-card--focus';
+	if (kind === 'scheduled_class') return 'student-hub-card--warm';
+	return 'student-hub-card--neutral';
+}
+
+function nextLearningStepHighlightClass(step: NextLearningStep): string {
+	if (!step.can_open) return 'student-hub-highlight--warm';
+	return 'student-hub-highlight--focus';
 }
 
 onMounted(() => {

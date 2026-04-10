@@ -38,10 +38,15 @@
 				/>
 			</div>
 
-			<!-- Team -->
-			<div v-if="hasTeamFilter" class="flex flex-col gap-1">
-				<label class="type-label">Team</label>
-				<FormControl type="select" :options="teamOptions" v-model="filters.team" class="w-44" />
+			<!-- Communication Type -->
+			<div class="flex flex-col gap-1">
+				<label class="type-label">Communication Type</label>
+				<FormControl
+					type="select"
+					:options="communicationTypeOptions"
+					v-model="filters.communication_type"
+					class="w-44"
+				/>
 			</div>
 
 			<!-- Student Group -->
@@ -53,6 +58,12 @@
 					v-model="filters.student_group"
 					class="w-44"
 				/>
+			</div>
+
+			<!-- Team -->
+			<div v-if="hasTeamFilter" class="flex flex-col gap-1">
+				<label class="type-label">Team</label>
+				<FormControl type="select" :options="teamOptions" v-model="filters.team" class="w-44" />
 			</div>
 
 			<!-- With comments -->
@@ -370,7 +381,11 @@ import { formatLocalizedDate, formatLocalizedDateTime } from '@/lib/datetime';
 import { createOrgCommunicationArchiveService } from '@/lib/services/orgCommunicationArchive/orgCommunicationArchiveService';
 import { createCommunicationInteractionService } from '@/lib/services/communicationInteraction/communicationInteractionService';
 import { SIGNAL_ORG_COMMUNICATION_INVALIDATE, uiSignals } from '@/lib/uiSignals';
-import { type ArchiveFilters, type OrgCommunicationListItem } from '@/types/orgCommunication';
+import {
+	COMMUNICATION_TYPES,
+	type ArchiveFilters,
+	type OrgCommunicationListItem,
+} from '@/types/orgCommunication';
 import { type InteractionSummary, type InteractionThreadRow } from '@/types/morning_brief';
 import {
 	extractPolicyInformLinkFromClickEvent,
@@ -494,6 +509,14 @@ const schoolOptions = computed(() => {
 		: schoolChoices.value;
 	return [{ label: 'All schools', value: null }, ...scoped];
 });
+
+const communicationTypeOptions = computed(() => [
+	{ label: 'All types', value: 'All' },
+	...COMMUNICATION_TYPES.map(value => ({
+		label: value,
+		value,
+	})),
+]);
 
 const teamOptions = computed(() => [{ label: 'All teams', value: null }, ...myTeams.value]);
 

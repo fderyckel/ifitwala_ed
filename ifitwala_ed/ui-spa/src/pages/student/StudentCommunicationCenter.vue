@@ -1,6 +1,6 @@
 <template>
-	<div class="portal-page space-y-6">
-		<header class="card-surface p-5 sm:p-6">
+	<div class="portal-page student-hub-page">
+		<header class="student-hub-hero">
 			<div class="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
 				<div>
 					<p class="type-overline text-ink/60">Student Hub</p>
@@ -18,7 +18,7 @@
 			</div>
 		</header>
 
-		<section class="card-surface p-5">
+		<section class="student-hub-section student-hub-section--warm">
 			<div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
 				<div class="flex flex-wrap gap-2">
 					<button
@@ -48,25 +48,31 @@
 
 		<section
 			v-if="errorMessage"
-			class="card-surface border border-flame/30 bg-[var(--flame)]/5 p-5"
+			class="student-hub-section border border-flame/30 bg-[var(--flame)]/5"
 		>
 			<p class="type-body-strong text-flame">Could not load communications.</p>
 			<p class="mt-2 type-caption text-ink/70">{{ errorMessage }}</p>
 		</section>
 
-		<section v-else-if="loading && !items.length" class="card-surface p-5">
+		<section v-else-if="loading && !items.length" class="student-hub-section">
 			<p class="type-body text-ink/70">Loading student communications...</p>
 		</section>
 
-		<section
-			v-else-if="!items.length"
-			class="card-surface border border-dashed border-line-soft p-5"
-		>
+		<section v-else-if="!items.length" class="student-hub-empty">
 			<p class="type-body text-ink/70">No communications match this view right now.</p>
 		</section>
 
 		<section v-else class="space-y-4">
-			<article v-for="item in items" :key="item.item_id" class="card-surface p-5">
+			<article
+				v-for="item in items"
+				:key="item.item_id"
+				class="student-hub-section"
+				:class="
+					item.kind === 'org_communication'
+						? 'student-hub-section--warm'
+						: 'student-hub-section--support'
+				"
+			>
 				<template v-if="item.kind === 'org_communication'">
 					<div class="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
 						<div class="min-w-0">
@@ -110,7 +116,7 @@
 
 					<div
 						v-if="expandedItemId === item.item_id"
-						class="mt-5 rounded-2xl border border-line-soft bg-surface-soft p-5"
+						class="mt-5 student-hub-card student-hub-card--warm"
 					>
 						<p v-if="detailLoading[item.org_communication.name]" class="type-body text-ink/70">
 							Loading full update...
@@ -192,9 +198,9 @@
 
 		<SchoolEventModal
 			:open="schoolEventOpen"
-			:event="selectedSchoolEventName"
+			:event="selectedSchoolEvent"
 			@close="closeSchoolEvent"
-			@after-leave="selectedSchoolEventName = null"
+			@after-leave="resetSchoolEvent"
 		/>
 	</div>
 </template>
@@ -205,6 +211,7 @@ import { toast } from 'frappe-ui';
 import { RouterLink, useRoute, useRouter } from 'vue-router';
 
 import SchoolEventModal from '@/components/calendar/SchoolEventModal.vue';
+import type { SchoolEventDetails } from '@/components/calendar/schoolEventTypes';
 import CommentThreadDrawer from '@/components/CommentThreadDrawer.vue';
 import InteractionEmojiChips from '@/components/InteractionEmojiChips.vue';
 import { formatLocalizedDateTime } from '@/lib/datetime';
@@ -260,7 +267,7 @@ const threadRows = ref<InteractionThreadRow[]>([]);
 const commentValue = ref('');
 const selectedCommunication = ref<StudentOrgCommunicationCenterItem | null>(null);
 const schoolEventOpen = ref(false);
-const selectedSchoolEventName = ref<string | null>(null);
+const selectedSchoolEvent = ref<SchoolEventDetails | null>(null);
 
 const activeSource = computed<SourceFilter>(() => {
 	const value =
@@ -513,12 +520,27 @@ async function submitComment() {
 }
 
 function openSchoolEvent(item: StudentSchoolEventCenterItem) {
-	selectedSchoolEventName.value = item.school_event.name;
+	selectedSchoolEvent.value = {
+		name: item.school_event.name,
+		subject: item.school_event.subject,
+		school: item.school_event.school || null,
+		location: item.school_event.location || null,
+		event_category: item.school_event.event_category || null,
+		event_type: item.school_event.event_type || null,
+		description: item.school_event.description || null,
+		start: item.school_event.starts_on || null,
+		end: item.school_event.ends_on || null,
+		all_day: Boolean(item.school_event.all_day),
+	};
 	schoolEventOpen.value = true;
 }
 
 function closeSchoolEvent() {
 	schoolEventOpen.value = false;
+}
+
+function resetSchoolEvent() {
+	selectedSchoolEvent.value = null;
 }
 
 watch(

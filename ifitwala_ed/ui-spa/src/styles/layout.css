@@ -17,15 +17,19 @@
 	}
 
 	.portal-layout__body {
-		@apply flex flex-1;
+		@apply flex flex-1 min-h-0;
+		min-height: calc(100dvh - 3.5rem);
+		padding-bottom: 4.25rem;
 	}
 
 	.portal-layout__workspace {
 		@apply flex min-w-0 flex-1 flex-col;
+		min-height: 0;
 	}
 
 	.portal-layout__frame {
 		@apply flex min-w-0 flex-1;
+		min-height: 0;
 	}
 
 	.portal-shell {

@@ -1,6 +1,6 @@
 <template>
-	<div class="portal-page">
-		<header class="card-surface p-5 sm:p-6">
+	<div class="portal-page student-hub-page">
+		<header class="student-hub-hero">
 			<div class="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
 				<div>
 					<p class="type-overline text-ink/60">Student Hub</p>
@@ -27,11 +27,14 @@
 			</div>
 		</header>
 
-		<section v-if="loading" class="card-surface p-5">
+		<section v-if="loading" class="student-hub-section">
 			<p class="type-body text-ink/70">Loading courses...</p>
 		</section>
 
-		<section v-else-if="error" class="card-surface border border-flame/30 bg-[var(--flame)]/5 p-5">
+		<section
+			v-else-if="error"
+			class="student-hub-section border border-flame/30 bg-[var(--flame)]/5"
+		>
 			<div class="flex">
 				<div class="flex-shrink-0">
 					<FeatherIcon name="alert-circle" class="h-5 w-5 text-[var(--flame)]" />
@@ -42,14 +45,11 @@
 			</div>
 		</section>
 
-		<section
-			v-else-if="!courses.length"
-			class="card-surface border border-dashed border-line-soft p-10 text-center"
-		>
+		<section v-else-if="!courses.length" class="student-hub-empty p-10 text-center">
 			<p class="type-body text-ink/70">No courses found for the selected academic year.</p>
 		</section>
 
-		<section v-else class="space-y-4">
+		<section v-else class="student-hub-section student-hub-section--focus space-y-4">
 			<div class="flex items-center justify-between">
 				<div>
 					<p class="type-overline text-ink/60">Learning Spaces</p>
@@ -64,14 +64,14 @@
 					:key="course.course"
 					:is="course.learning_space.can_open ? RouterLink : 'article'"
 					v-bind="courseCardProps(course)"
-					class="group card-surface flex h-full flex-col overflow-hidden p-0 transition"
+					class="group student-hub-card student-hub-card--interactive flex h-full flex-col overflow-hidden p-0"
 					:class="
 						course.learning_space.can_open
-							? 'hover:-translate-y-0.5 hover:border-jacaranda/35 hover:shadow-strong'
-							: 'opacity-95'
+							? 'student-hub-card--focus'
+							: 'student-hub-card--warm opacity-95'
 					"
 				>
-					<div class="h-40 overflow-hidden bg-surface-soft sm:h-44">
+					<div class="student-hub-media-frame h-40 sm:h-44">
 						<img
 							:src="course.course_image || PLACEHOLDER"
 							:alt="course.course_name"

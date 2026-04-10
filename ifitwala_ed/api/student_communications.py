@@ -14,6 +14,7 @@ from frappe.utils import add_days, getdate, now_datetime, strip_html, today
 
 from ifitwala_ed.api.org_comm_utils import build_audience_summary, check_audience_match
 from ifitwala_ed.api.org_communication_archive import get_audience_label
+from ifitwala_ed.api.org_communication_interactions import get_seen_org_communication_names
 from ifitwala_ed.utilities.school_tree import get_ancestor_schools
 
 RECENT_WINDOW_DAYS = 90
@@ -35,13 +36,26 @@ def _recent_start_date():
     return add_days(getdate(today()), -RECENT_WINDOW_DAYS)
 
 
-def _build_course_href(course_id: str, *, student_group: str | None = None) -> dict[str, Any]:
+def _build_course_href(
+    course_id: str,
+    *,
+    student_group: str | None = None,
+    open_class_updates: bool = False,
+    communication_name: str | None = None,
+) -> dict[str, Any]:
     href: dict[str, Any] = {
         "name": "student-course-detail",
         "params": {"course_id": course_id},
     }
+    query: dict[str, str] = {}
     if student_group:
-        href["query"] = {"student_group": student_group}
+        query["student_group"] = student_group
+    if open_class_updates:
+        query["class_updates"] = "1"
+    if communication_name:
+        query["communication"] = communication_name
+    if query:
+        href["query"] = query
     return href
 
 
@@ -246,7 +260,12 @@ def _resolve_org_comm_context(
                 "source_type": "course",
                 "source_label": "Class Update",
                 "context_label": group_label,
-                "href": _build_course_href(group_row.get("course"), student_group=group_name),
+                "href": _build_course_href(
+                    group_row.get("course"),
+                    student_group=group_name,
+                    open_class_updates=True,
+                    communication_name=row.get("name"),
+                ),
                 "href_label": "Open class",
             }
 
@@ -347,9 +366,10 @@ def _fetch_student_org_communications(
     activity_program_offerings: set[str] | None = None,
     include_school_scope: bool = True,
 ) -> list[dict[str, Any]]:
-    target_groups = set(target_student_groups or [])
-    if not target_groups:
+    if target_student_groups is None:
         target_groups = set(context.get("group_names") or [])
+    else:
+        target_groups = set(target_student_groups or [])
 
     activity_offerings = set(activity_program_offerings or [])
 
@@ -456,6 +476,89 @@ def _fetch_student_org_communications(
     return visible_items
 
 
+def _resolve_course_target_groups(
+    context: dict[str, Any],
+    *,
+    course_id: str,
+    student_group: str | None = None,
+) -> set[str]:
+    requested_group = str(student_group or "").strip()
+    if requested_group:
+        group_row = (context.get("group_map") or {}).get(requested_group) or {}
+        if (group_row.get("group_based_on") or "").strip() == "Course" and group_row.get("course") == course_id:
+            return {requested_group}
+        return set()
+
+    return {
+        row.get("student_group")
+        for row in (context.get("group_rows") or [])
+        if (row.get("group_based_on") or "").strip() == "Course" and row.get("course") == course_id
+    }
+
+
+def _course_communication_summary(*, user: str, items: list[dict[str, Any]]) -> tuple[dict[str, Any], set[str]]:
+    communication_names = [
+        item.get("org_communication", {}).get("name")
+        for item in items
+        if item.get("kind") == "org_communication" and item.get("org_communication", {}).get("name")
+    ]
+    seen_names = get_seen_org_communication_names(user=user, communication_names=communication_names)
+    high_priority_count = sum(
+        1 for item in items if (item.get("org_communication", {}).get("priority") or "").strip() in {"High", "Critical"}
+    )
+    unread_count = sum(1 for comm_name in communication_names if comm_name not in seen_names)
+    latest_publish_at = items[0].get("sort_at") if items else None
+    return (
+        {
+            "total_count": len(items),
+            "unread_count": unread_count,
+            "high_priority_count": high_priority_count,
+            "has_high_priority": 1 if high_priority_count else 0,
+            "latest_publish_at": latest_publish_at,
+        },
+        seen_names,
+    )
+
+
+def _annotate_unread_course_items(items: list[dict[str, Any]], *, seen_names: set[str]) -> list[dict[str, Any]]:
+    annotated_items: list[dict[str, Any]] = []
+    for item in items:
+        if item.get("kind") != "org_communication":
+            annotated_items.append(item)
+            continue
+        communication_name = item.get("org_communication", {}).get("name")
+        annotated_items.append(
+            {
+                **item,
+                "is_unread": bool(communication_name and communication_name not in seen_names),
+            }
+        )
+    return annotated_items
+
+
+def _get_student_course_communication_items(
+    context: dict[str, Any],
+    *,
+    course_id: str,
+    student_group: str | None = None,
+) -> list[dict[str, Any]]:
+    target_groups = _resolve_course_target_groups(
+        context,
+        course_id=course_id,
+        student_group=student_group,
+    )
+    if not target_groups:
+        return []
+
+    return _sort_items(
+        _fetch_student_org_communications(
+            context,
+            target_student_groups=target_groups,
+            include_school_scope=False,
+        )
+    )
+
+
 def _fetch_student_school_events(context: dict[str, Any]) -> list[dict[str, Any]]:
     conditions = [
         "se.docstatus < 2",
@@ -509,7 +612,6 @@ def _fetch_student_school_events(context: dict[str, Any]) -> list[dict[str, Any]
             se.subject,
             se.school,
             se.location,
-            se.event_type,
             se.event_category,
             se.description,
             se.starts_on,
@@ -637,26 +739,77 @@ def get_student_course_communications(
     limit: int = 6,
 ) -> list[dict[str, Any]]:
     context = _resolve_student_context(student_name)
-    target_groups = set()
-    if student_group:
-        target_groups.add(student_group)
-    else:
-        target_groups = {
-            row.get("student_group")
-            for row in (context.get("group_rows") or [])
-            if (row.get("group_based_on") or "").strip() == "Course" and row.get("course") == course_id
-        }
+    items = _get_student_course_communication_items(
+        context,
+        course_id=course_id,
+        student_group=student_group,
+    )
+    return items[: max(1, int(limit or 6))]
 
-    if not target_groups:
-        return []
 
-    return _sort_items(
-        _fetch_student_org_communications(
-            context,
-            target_student_groups=target_groups,
-            include_school_scope=False,
+def get_student_course_communication_summary(
+    student_name: str,
+    *,
+    course_id: str,
+    student_group: str | None = None,
+) -> dict[str, Any]:
+    context = _resolve_student_context(student_name)
+    items = _get_student_course_communication_items(
+        context,
+        course_id=course_id,
+        student_group=student_group,
+    )
+    summary, _ = _course_communication_summary(user=context.get("user"), items=items)
+    return summary
+
+
+@frappe.whitelist()
+def get_student_course_communication_drawer(
+    course_id: str,
+    student_group: str | None = None,
+    focus_communication: str | None = None,
+    start: int = 0,
+    page_length: int = 24,
+) -> dict[str, Any]:
+    context = _resolve_student_context()
+    items = _get_student_course_communication_items(
+        context,
+        course_id=course_id,
+        student_group=student_group,
+    )
+    summary, seen_names = _course_communication_summary(user=context.get("user"), items=items)
+    annotated_items = _annotate_unread_course_items(items, seen_names=seen_names)
+
+    focus_name = str(focus_communication or "").strip()
+    offset = max(int(start or 0), 0)
+    page_len = max(int(page_length or 24), 1)
+    paged_items = annotated_items[offset : offset + page_len]
+
+    if focus_name:
+        focused_item = next(
+            (item for item in annotated_items if item.get("org_communication", {}).get("name") == focus_name),
+            None,
         )
-    )[: max(1, int(limit or 6))]
+        if focused_item and not any(row.get("org_communication", {}).get("name") == focus_name for row in paged_items):
+            paged_items = [focused_item] + [
+                row for row in paged_items if row.get("org_communication", {}).get("name") != focus_name
+            ]
+            paged_items = paged_items[:page_len]
+
+    return {
+        "meta": {
+            "generated_at": _serialize_scalar(now_datetime()),
+            "course_id": course_id,
+            "student_group": student_group or None,
+            "focus_communication": focus_name or None,
+        },
+        "summary": summary,
+        "items": paged_items,
+        "total_count": len(annotated_items),
+        "has_more": (offset + page_len) < len(annotated_items),
+        "start": offset,
+        "page_length": page_len,
+    }
 
 
 def get_student_activity_communications(

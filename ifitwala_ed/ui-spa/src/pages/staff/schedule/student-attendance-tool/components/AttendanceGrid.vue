@@ -3,7 +3,7 @@
 	<div class="flex h-full flex-col text-ink">
 		<!-- Header row (desktop) -->
 		<div
-			class="hidden border-b border-border/70 bg-[rgb(var(--surface-rgb)/0.8)] px-5 py-3 text-xs font-semibold uppercase tracking-wide text-ink/60 md:grid md:grid-cols-[minmax(220px,1.05fr)_minmax(0,1.6fr)_88px]"
+			class="hidden border-b border-border/70 bg-[rgb(var(--surface-rgb)/0.8)] px-5 py-3 text-xs font-semibold uppercase tracking-wide text-ink/60 min-[560px]:grid min-[560px]:grid-cols-[240px_minmax(0,1fr)_88px]"
 		>
 			<span>{{ __('Student') }}</span>
 			<span>{{ __('Attendance') }}</span>
@@ -16,11 +16,9 @@
 			:key="student.student"
 			class="border-b border-border/40 bg-[rgb(var(--surface-rgb)/0.6)] px-5 py-4 last:border-b-0"
 		>
-			<div
-				class="flex flex-col gap-4 md:grid md:grid-cols-[minmax(220px,1fr)_minmax(0,1.5fr)] md:items-start md:gap-4"
-			>
+			<div class="flex flex-col gap-4 min-[560px]:flex-row min-[560px]:items-start">
 				<!-- Identity -->
-				<div class="flex min-w-0 items-center gap-3 md:min-w-[220px]">
+				<div class="flex min-w-0 items-center gap-3 min-[560px]:w-[240px] min-[560px]:flex-none">
 					<a
 						:href="studentLink(student.student)"
 						target="_blank"
@@ -89,20 +87,22 @@
 				</div>
 
 				<!-- Attendance controls -->
-				<div class="flex min-w-0 flex-col gap-2">
+				<div class="flex min-w-0 flex-col gap-2 min-[560px]:flex-1">
 					<div
 						v-for="block in blocks"
 						:key="`${student.student}-${block}`"
-						class="flex flex-col gap-3 rounded-xl border border-border/50 bg-[rgb(var(--surface-rgb)/0.9)] p-3 shadow-inner sm:flex-row sm:items-center sm:justify-between md:rounded-none md:border-0 md:bg-transparent md:p-0 md:shadow-none"
+						class="flex flex-col gap-3 rounded-xl border border-border/50 bg-[rgb(var(--surface-rgb)/0.9)] p-3 shadow-inner sm:flex-row sm:items-center sm:justify-between min-[560px]:rounded-none min-[560px]:border-0 min-[560px]:bg-transparent min-[560px]:p-0 min-[560px]:shadow-none"
 					>
-						<div class="flex flex-wrap items-center gap-2 md:min-w-[72px] md:flex-none">
+						<div
+							class="flex flex-wrap items-center gap-2 min-[560px]:min-w-[72px] min-[560px]:flex-none"
+						>
 							<span class="text-xs font-medium uppercase tracking-wide text-ink/60">
 								{{ blockLabel(block) }}
 							</span>
 						</div>
 
 						<div
-							class="flex w-full min-w-0 flex-col gap-3 sm:flex-row sm:items-center sm:justify-between md:flex-1 md:justify-start md:gap-3"
+							class="flex w-full min-w-0 flex-col gap-3 sm:flex-row sm:items-center sm:justify-between min-[560px]:flex-1 min-[560px]:justify-start min-[560px]:gap-3"
 						>
 							<div class="flex flex-wrap items-center gap-2">
 								<button
@@ -122,7 +122,7 @@
 								</button>
 							</div>
 
-							<div class="flex items-center gap-2 md:ml-auto md:flex-none">
+							<div class="flex items-center gap-2 min-[560px]:ml-auto min-[560px]:flex-none">
 								<Button
 									appearance="minimal"
 									icon="message-circle"
@@ -136,7 +136,10 @@
 									:disabled="disabled"
 									@click="$emit('open-remark', { student, block })"
 								/>
-								<p v-if="student.remarks?.[block]" class="hidden text-xs text-ink/60 lg:inline">
+								<p
+									v-if="student.remarks?.[block]"
+									class="hidden text-xs text-ink/60 min-[560px]:inline"
+								>
 									{{ truncate(student.remarks?.[block]) }}
 								</p>
 							</div>
@@ -148,7 +151,7 @@
 			<!-- Mobile remark block -->
 			<div
 				v-if="studentHasRemark(student)"
-				class="mt-3 rounded-xl border border-jacaranda/20 bg-jacaranda/5 px-4 py-3 text-sm text-ink/80 md:hidden"
+				class="mt-3 rounded-xl border border-jacaranda/20 bg-jacaranda/5 px-4 py-3 text-sm text-ink/80 min-[560px]:hidden"
 			>
 				<strong class="block text-xs font-semibold uppercase tracking-wide text-jacaranda">
 					{{ __('Remark') }}

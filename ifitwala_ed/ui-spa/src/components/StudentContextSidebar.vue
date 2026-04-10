@@ -2,7 +2,7 @@
 <template>
 	<aside class="hidden xl:block xl:w-[18rem] xl:shrink-0" aria-label="Student context navigation">
 		<div class="sticky top-20 space-y-4 px-2 pb-6">
-			<section class="card-surface p-4">
+			<section class="student-context-panel">
 				<p class="type-overline text-ink/60">{{ currentPanel.kicker }}</p>
 				<h2 class="mt-1 type-h3 text-ink">{{ currentPanel.title }}</h2>
 				<p class="mt-2 type-caption text-ink/70">{{ currentPanel.description }}</p>
@@ -12,12 +12,8 @@
 						v-for="link in currentPanel.links"
 						:key="link.label"
 						:to="link.to"
-						class="flex items-start gap-2 rounded-xl border px-3 py-2 transition"
-						:class="
-							isActiveLink(link)
-								? 'border-jacaranda/40 bg-jacaranda/10 text-ink'
-								: 'border-line-soft bg-surface-soft text-ink/80 hover:border-jacaranda/30'
-						"
+						class="student-context-link"
+						:class="{ 'student-context-link--active': isActiveLink(link) }"
 					>
 						<FeatherIcon :name="link.icon" class="mt-0.5 h-4 w-4 shrink-0" />
 						<span class="min-w-0">

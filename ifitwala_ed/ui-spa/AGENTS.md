@@ -131,6 +131,12 @@ When page-init data is repeated or expensive, ask whether it should be aggregate
   - staff analytics pages -> `analytics-shell`
   - student / guardian pages -> layout-owned shell, page root usually `portal-page` or equivalent rhythm-only structure
   - admissions pages -> layout-owned shell, page root usually `admissions-page` or equivalent rhythm-only structure
+- For student learning surfaces, keep the accent hierarchy explicit:
+  - `jacaranda` for focus, active navigation, and “open / continue”
+  - `leaf` + `canopy` for ready/progress/completed
+  - `sand` + `clay` for preparation and guidance
+  - `flame` for blockers only
+  - prefer shared `student-hub-*` and portal chrome primitives over page-local color mixes
 - Reuse classes from `src/styles/components.css` and `src/styles/layout.css` before reaching for raw palette utilities.
 - Native Tailwind palette colors are allowed only for tightly local alert states or charts; they must not define a page's overall visual language.
 - Do not introduce undefined semantic utilities or CSS vars. If a new style semantic is truly needed, update `tokens.css`, `tailwind.config.js`, and `ifitwala_ed/docs/spa/02_style_note.md` in the same change.

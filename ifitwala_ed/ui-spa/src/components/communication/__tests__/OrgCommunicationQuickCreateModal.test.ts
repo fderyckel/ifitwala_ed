@@ -540,6 +540,9 @@ describe('OrgCommunicationQuickCreateModal', () => {
 		expect(document.querySelector('.if-org-communication-ready-check')).toBeNull();
 		expect(document.querySelectorAll('.if-class-event-context-card')).toHaveLength(1);
 		expect(document.querySelectorAll('.if-class-event-context-pill')).toHaveLength(4);
+		expect(
+			document.querySelector('.if-class-event-audience-grid')?.getAttribute('class') || ''
+		).toContain('lg:grid-cols-2');
 		expect(text).toContain('Auto applied');
 	});
 

@@ -12,6 +12,7 @@ vi.mock('@/resources/frappe', () => ({
 
 import {
 	getStudentCommunicationCenter,
+	getStudentCourseCommunicationDrawer,
 	getStudentCoursesData,
 	getStudentHubHome,
 	getStudentLearningSpace,
@@ -76,6 +77,29 @@ describe('studentLearningHubService', () => {
 				source: 'school',
 				start: 24,
 				page_length: 24,
+			}
+		)
+	})
+
+	it('uses canonical method + direct payload for the course communication drawer', async () => {
+		apiMethodMock.mockResolvedValue({ items: [] })
+
+		await getStudentCourseCommunicationDrawer({
+			course_id: 'COURSE-1',
+			student_group: 'GROUP-1',
+			focus_communication: 'COMM-1',
+			start: 0,
+			page_length: 18,
+		})
+
+		expect(apiMethodMock).toHaveBeenCalledWith(
+			'ifitwala_ed.api.student_communications.get_student_course_communication_drawer',
+			{
+				course_id: 'COURSE-1',
+				student_group: 'GROUP-1',
+				focus_communication: 'COMM-1',
+				start: 0,
+				page_length: 18,
 			}
 		)
 	})

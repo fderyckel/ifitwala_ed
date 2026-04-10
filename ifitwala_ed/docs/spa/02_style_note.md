@@ -453,6 +453,19 @@ Rules:
 * Native Tailwind palette colors (`amber-*`, `rose-*`, `slate-*`, etc.) are allowed only for localized alert/validation states or data-viz needs
 * Native palette colors must not become the primary visual language of a routed page
 
+### 6.8.1 Student learning surface accent hierarchy
+
+Student-facing learning surfaces should feel calm, readable, and alive, not monochrome.
+
+Rules:
+
+* `jacaranda` is the primary accent for learning focus, active navigation, “open / continue”, and route-level framing on student hub surfaces
+* `leaf` + `canopy` signal ready, current, progress, and completed states
+* `sand` + `clay` signal upcoming, preparation, guidance, and low-stress information groups
+* `flame` stays reserved for blockers, errors, urgency, and missed work; it must not become the default accent
+* Prefer shared `student-hub-*`, portal navbar, portal sidebar, and student context primitives in `components.css` over page-local color recipes
+* Do not tint every card. Use stronger color on headers, active cards, and section frames so the surface stays distraction-light
+
 ---
 
 ### 6.9 Page-local scoped CSS is structural only

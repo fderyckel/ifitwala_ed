@@ -26,6 +26,7 @@ export type StudentOrgCommunicationCenterItem = {
 	kind: 'org_communication'
 	item_id: string
 	sort_at?: string | null
+	is_unread?: boolean
 	source_type: StudentCommunicationSource
 	source_label: string
 	context_label?: string | null
