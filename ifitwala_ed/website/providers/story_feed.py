@@ -6,7 +6,7 @@ import frappe
 from frappe.utils import getdate
 from frappe.utils.caching import redis_cache
 
-from ifitwala_ed.website.utils import build_story_url, parse_props, truncate_text
+from ifitwala_ed.website.utils import build_story_url, is_block_enabled, parse_props, truncate_text
 
 DEFAULT_TITLE = "Stories & News"
 
@@ -21,7 +21,7 @@ def _normalize_limit(value) -> int:
 def _extract_story_excerpt(story_name: str) -> str | None:
     story = frappe.get_doc("Website Story", story_name)
     for row in story.blocks or []:
-        if not int(getattr(row, "is_enabled", 0) or 0):
+        if not is_block_enabled(row):
             continue
         props = parse_props(getattr(row, "props", None))
         for key in ("content_html", "subtitle", "description", "answer_html"):

@@ -145,6 +145,24 @@ class TestSchoolWebsitePage(FrappeTestCase):
         with self.assertRaises(frappe.ValidationError):
             validate_page_blocks(page)
 
+    def test_validate_page_blocks_treats_blank_is_enabled_as_enabled_for_configured_rows(self):
+        page = frappe._dict(
+            {
+                "doctype": "Website Story",
+                "blocks": [
+                    _row(block_type="hero", props={"title": "Story"}, order=1, is_enabled=None),
+                    _row(
+                        block_type="rich_text",
+                        props={"content_html": "<p>Body</p>", "max_width": "normal"},
+                        order=2,
+                        is_enabled="",
+                    ),
+                ],
+            }
+        )
+
+        validate_page_blocks(page)
+
     def test_validate_page_blocks_rejects_unknown_block_type(self):
         page = frappe._dict(
             {

@@ -217,6 +217,7 @@ Suggested block order:
 Notes:
 
 * `Website Story` uses the same validation rules for H1 ownership and block ordering.
+* `content_owner` must be an enabled internal editor (`Marketing User`, `Website Manager`, or `System Manager`) in the relevant school scope; portal `Website User` accounts are not valid story owners.
 * Story index route is handled at `/schools/{school_slug}/stories`.
 
 ---

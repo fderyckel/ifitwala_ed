@@ -96,6 +96,8 @@ const SEO_ASSISTANT_METHOD =
 	"ifitwala_ed.website.seo_checks.get_seo_assistant_report";
 const WORKFLOW_METHOD =
 	"ifitwala_ed.school_site.doctype.website_story.website_story.transition_workflow_state";
+const CONTENT_OWNER_QUERY_METHOD =
+	"ifitwala_ed.website.permissions.get_website_story_content_owner_options";
 
 function normalizeBlockTypes(value) {
 	if (!Array.isArray(value)) return [];
@@ -301,6 +303,15 @@ async function refreshSeoAssistant(frm, { showErrorToast = false } = {}) {
 }
 
 frappe.ui.form.on("Website Story", {
+	setup(frm) {
+		frm.set_query("content_owner", () => ({
+			query: CONTENT_OWNER_QUERY_METHOD,
+			filters: {
+				school: frm.doc.school || ""
+			}
+		}));
+	},
+
 	refresh(frm) {
 		frm.clear_custom_buttons();
 		syncAllowedBlockTypes(frm);

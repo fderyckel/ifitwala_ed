@@ -13,7 +13,7 @@ from ifitwala_ed.website.publication import (
     normalize_workflow_state,
     validate_publication_window,
 )
-from ifitwala_ed.website.utils import normalize_route
+from ifitwala_ed.website.utils import apply_missing_block_enabled_defaults, is_block_enabled, normalize_route
 from ifitwala_ed.website.validators import validate_page_blocks
 
 
@@ -67,6 +67,7 @@ class SchoolWebsitePage(Document):
         self._ensure_workflow_state()
         validate_publication_window(publish_at=self.publish_at, expire_at=self.expire_at)
         self._sync_status_flags()
+        apply_missing_block_enabled_defaults(self.blocks)
         school_slug = frappe.db.get_value("School", self.school, "website_slug")
         if not school_slug:
             frappe.throw(
@@ -306,7 +307,7 @@ class SchoolWebsitePage(Document):
                 )
 
     def _has_enabled_blocks(self) -> bool:
-        return any(int(getattr(row, "is_enabled", 0) or 0) == 1 for row in self.blocks or [])
+        return any(is_block_enabled(row) for row in self.blocks or [])
 
 
 @frappe.whitelist()

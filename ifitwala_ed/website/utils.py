@@ -78,6 +78,34 @@ def parse_props(raw_props: Any) -> dict:
     )
 
 
+def _get_block_row_value(row: Any, fieldname: str):
+    if isinstance(row, dict):
+        return row.get(fieldname)
+    return getattr(row, fieldname, None)
+
+
+def is_block_enabled(row: Any) -> bool:
+    value = _get_block_row_value(row, "is_enabled")
+    if isinstance(value, bool):
+        return value
+    if value in (None, ""):
+        return bool(str(_get_block_row_value(row, "block_type") or "").strip())
+    return int(value or 0) == 1
+
+
+def apply_missing_block_enabled_defaults(rows: Any) -> None:
+    for row in rows or []:
+        value = _get_block_row_value(row, "is_enabled")
+        if value not in (None, ""):
+            continue
+        if not str(_get_block_row_value(row, "block_type") or "").strip():
+            continue
+        if isinstance(row, dict):
+            row["is_enabled"] = 1
+            continue
+        setattr(row, "is_enabled", 1)
+
+
 def _load_schema(raw_schema: Any) -> dict | None:
     if not raw_schema:
         return None

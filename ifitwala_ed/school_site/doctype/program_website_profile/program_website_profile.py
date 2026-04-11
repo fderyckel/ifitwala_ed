@@ -12,6 +12,7 @@ from ifitwala_ed.website.publication import (
     normalize_workflow_state,
     validate_publication_window,
 )
+from ifitwala_ed.website.utils import apply_missing_block_enabled_defaults
 from ifitwala_ed.website.validators import validate_page_blocks
 
 
@@ -39,6 +40,7 @@ class ProgramWebsiteProfile(Document):
         self._sync_status_from_program()
         self._validate_unique_profile()
         self._validate_program_slug()
+        apply_missing_block_enabled_defaults(self.blocks)
         self._validate_blocks_props_json()
         validate_page_blocks(self)
 

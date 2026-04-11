@@ -6,12 +6,14 @@ import frappe
 from frappe import _
 from frappe.model.document import Document
 
+from ifitwala_ed.website.permissions import validate_website_story_content_owner
 from ifitwala_ed.website.publication import (
     WORKFLOW_TRANSITIONS,
     compute_publication_status,
     normalize_workflow_state,
     validate_publication_window,
 )
+from ifitwala_ed.website.utils import apply_missing_block_enabled_defaults
 from ifitwala_ed.website.validators import validate_page_blocks
 
 
@@ -19,8 +21,10 @@ class WebsiteStory(Document):
     def validate(self):
         self._ensure_workflow_state()
         validate_publication_window(publish_at=self.publish_at, expire_at=self.expire_at)
+        validate_website_story_content_owner(user=self.content_owner, school=self.school)
         self._sync_status()
         self._validate_unique_slug()
+        apply_missing_block_enabled_defaults(self.blocks)
         self._validate_blocks_props_json()
         validate_page_blocks(self)
 

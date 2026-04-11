@@ -60,11 +60,11 @@ class TestStaffCalendar(FrappeTestCase):
     def test_get_events_without_filters_uses_visible_date_window(self):
         with (
             patch(
-                "ifitwala_ed.hr.doctype.staff_calendar.staff_calendar.frappe.get_all",
-                return_value=["SC-2026"],
-            ) as get_all,
-            patch(
                 "ifitwala_ed.hr.doctype.staff_calendar.staff_calendar.frappe.get_list",
+                return_value=["SC-2026"],
+            ) as get_list,
+            patch(
+                "ifitwala_ed.hr.doctype.staff_calendar.staff_calendar.frappe.get_all",
                 return_value=[
                     frappe._dict(
                         name="HOL-0",
@@ -79,12 +79,13 @@ class TestStaffCalendar(FrappeTestCase):
             events = get_events("2026-03-01", "2026-03-31", "[]")
 
         self.assertEqual(
-            get_all.call_args.kwargs["filters"],
+            get_list.call_args.kwargs["filters"],
             {
                 "to_date": [">=", frappe.utils.getdate("2026-03-01")],
                 "from_date": ["<=", frappe.utils.getdate("2026-03-31")],
             },
         )
+        self.assertEqual(get_list.call_args.kwargs["limit"], 0)
         self.assertEqual(events[0]["title"], "Holiday")
 
     def test_get_events_parses_calendar_filter_rows(self):
@@ -98,11 +99,11 @@ class TestStaffCalendar(FrappeTestCase):
 
         with (
             patch(
-                "ifitwala_ed.hr.doctype.staff_calendar.staff_calendar.frappe.get_all",
-                return_value=["SC-2026"],
-            ) as get_all,
-            patch(
                 "ifitwala_ed.hr.doctype.staff_calendar.staff_calendar.frappe.get_list",
+                return_value=["SC-2026"],
+            ) as get_list,
+            patch(
+                "ifitwala_ed.hr.doctype.staff_calendar.staff_calendar.frappe.get_all",
                 return_value=[
                     frappe._dict(
                         name="HOL-1",
@@ -112,12 +113,12 @@ class TestStaffCalendar(FrappeTestCase):
                         color="#ff0",
                     )
                 ],
-            ) as get_list,
+            ) as get_all,
         ):
             events = get_events("2026-03-01", "2026-03-31", filters)
 
         self.assertEqual(
-            get_all.call_args.kwargs["filters"],
+            get_list.call_args.kwargs["filters"],
             {
                 "school": "Lamai School",
                 "employee_group": "Teachers",
@@ -127,7 +128,7 @@ class TestStaffCalendar(FrappeTestCase):
             },
         )
         self.assertEqual(
-            get_list.call_args.kwargs["filters"][0], ["Staff Calendar Holidays", "parent", "in", ["SC-2026"]]
+            get_all.call_args.kwargs["filters"][0], ["Staff Calendar Holidays", "parent", "in", ["SC-2026"]]
         )
         self.assertEqual(events[0]["title"], "Founders Day")
         self.assertEqual(events[0]["start"], "2026-03-12")
@@ -138,9 +139,12 @@ class TestStaffCalendar(FrappeTestCase):
         filters = json.dumps([{"fieldname": "staff_calendar", "value": "SC-2026"}])
 
         with (
-            patch("ifitwala_ed.hr.doctype.staff_calendar.staff_calendar.frappe.get_all") as get_all,
             patch(
                 "ifitwala_ed.hr.doctype.staff_calendar.staff_calendar.frappe.get_list",
+                return_value=["SC-2026"],
+            ) as get_list,
+            patch(
+                "ifitwala_ed.hr.doctype.staff_calendar.staff_calendar.frappe.get_all",
                 return_value=[
                     frappe._dict(
                         name="HOL-2",
@@ -154,18 +158,18 @@ class TestStaffCalendar(FrappeTestCase):
         ):
             events = get_events("2026-03-01", "2026-03-31", filters)
 
-        get_all.assert_not_called()
+        self.assertEqual(get_list.call_args.kwargs["filters"], {"name": "SC-2026"})
         self.assertEqual(events[0]["description"], "Sports Day")
         self.assertEqual(events[0]["end"], "2026-03-19")
 
     def test_get_events_uses_parent_field_for_multi_calendar_titles(self):
         with (
             patch(
-                "ifitwala_ed.hr.doctype.staff_calendar.staff_calendar.frappe.get_all",
+                "ifitwala_ed.hr.doctype.staff_calendar.staff_calendar.frappe.get_list",
                 return_value=["SC-A", "SC-B"],
             ),
             patch(
-                "ifitwala_ed.hr.doctype.staff_calendar.staff_calendar.frappe.get_list",
+                "ifitwala_ed.hr.doctype.staff_calendar.staff_calendar.frappe.get_all",
                 return_value=[
                     frappe._dict(
                         name="HOL-3",
@@ -183,3 +187,30 @@ class TestStaffCalendar(FrappeTestCase):
         self.assertEqual(events[0]["title"], "SC-A: Holiday")
         self.assertEqual(events[0]["start"], "2026-03-22")
         self.assertEqual(events[0]["end"], "2026-03-23")
+
+    def test_get_events_accepts_name_filter_from_list_view(self):
+        filters = json.dumps([["Staff Calendar", "name", "=", "SC-2026"]])
+
+        with (
+            patch(
+                "ifitwala_ed.hr.doctype.staff_calendar.staff_calendar.frappe.get_list",
+                return_value=["SC-2026"],
+            ) as get_list,
+            patch(
+                "ifitwala_ed.hr.doctype.staff_calendar.staff_calendar.frappe.get_all",
+                return_value=[
+                    frappe._dict(
+                        name="HOL-4",
+                        parent="SC-2026",
+                        holiday_date="2026-03-25",
+                        description="Name Filter Day",
+                        color="#def",
+                    )
+                ],
+            ),
+        ):
+            events = get_events("2026-03-01", "2026-03-31", filters)
+
+        self.assertEqual(get_list.call_args.kwargs["filters"], {"name": "SC-2026"})
+        self.assertEqual(events[0]["title"], "Name Filter Day")
+        self.assertEqual(events[0]["start"], "2026-03-25")

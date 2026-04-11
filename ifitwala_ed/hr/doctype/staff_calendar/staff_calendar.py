@@ -67,15 +67,15 @@ def _normalize_calendar_filters(filters) -> dict:
 def get_events(start, end, filters=None):
     filters = _normalize_calendar_filters(filters)
 
-    staff_calendar = filters.get("staff_calendar")
+    staff_calendar = filters.get("staff_calendar") or filters.get("name")
     school = filters.get("school")
     employee_group = filters.get("employee_group")
     academic_year = filters.get("academic_year")
 
+    calendar_filters = {}
     if staff_calendar:
-        calendar_names = [staff_calendar]
+        calendar_filters["name"] = staff_calendar
     else:
-        calendar_filters = {}
         if school:
             calendar_filters["school"] = school
         if employee_group:
@@ -87,7 +87,7 @@ def get_events(start, end, filters=None):
         if end:
             calendar_filters["from_date"] = ["<=", getdate(end)]
 
-        calendar_names = frappe.get_all("Staff Calendar", filters=calendar_filters, pluck="name")
+    calendar_names = frappe.get_list("Staff Calendar", filters=calendar_filters, pluck="name", limit=0)
 
     if not calendar_names:
         return []
@@ -100,7 +100,8 @@ def get_events(start, end, filters=None):
     if end:
         event_filters.append(["Staff Calendar Holidays", "holiday_date", "<=", getdate(end)])
 
-    events = frappe.get_list(
+    # Child rows inherit visibility from the permitted parent calendars above.
+    events = frappe.get_all(
         "Staff Calendar Holidays",
         fields=[
             "name",
@@ -111,6 +112,7 @@ def get_events(start, end, filters=None):
         ],
         filters=event_filters,
         order_by="holiday_date asc",
+        limit=0,
     )
 
     show_calendar_name = len(calendar_names) > 1 and not staff_calendar

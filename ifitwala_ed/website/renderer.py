@@ -14,6 +14,7 @@ from ifitwala_ed.website.public_people import get_public_person_by_slug
 from ifitwala_ed.website.site_notices import get_active_site_notice
 from ifitwala_ed.website.utils import (
     build_story_url,
+    is_block_enabled,
     is_school_public,
     normalize_route,
     parse_props,
@@ -323,7 +324,7 @@ def _resolve_provider(provider_path: str, block_type: str):
 
 
 def _sorted_blocks(page):
-    blocks = [row for row in (page.blocks or []) if row.is_enabled]
+    blocks = [row for row in (page.blocks or []) if is_block_enabled(row)]
     return sorted(blocks, key=lambda row: row.order if row.order is not None else (row.idx or 0))
 
 
