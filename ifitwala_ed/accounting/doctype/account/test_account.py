@@ -97,3 +97,14 @@ class TestAccount(FrappeTestCase):
                 parent_account=parent.name,
                 prefix="Expense Child",
             )
+
+    def test_account_name_is_qualified_by_organization_abbr(self):
+        org = self.make_organization("Naming")
+        account = self.make_account(
+            organization=org.name,
+            root_type="Asset",
+            account_type="Cash",
+            prefix="Cash Box",
+        )
+
+        self.assertTrue(account.name.endswith(f" - {org.abbr}"))

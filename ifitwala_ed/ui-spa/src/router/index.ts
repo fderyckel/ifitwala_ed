@@ -126,14 +126,15 @@ const routes: RouteRecordRaw[] = [
     path: '/staff/course-plans/:coursePlan',
     name: 'staff-course-plan',
     component: () => import('@/pages/staff/CoursePlanWorkspace.vue'),
-    props: route => ({
-      coursePlan: String(route.params.coursePlan || ''),
-      unitPlan: typeof route.query.unit_plan === 'string' ? route.query.unit_plan : '',
-      quizQuestionBank:
-        typeof route.query.quiz_question_bank === 'string' ? route.query.quiz_question_bank : '',
-    }),
-    meta: { layout: 'staff' },
-  },
+	    props: route => ({
+	      coursePlan: String(route.params.coursePlan || ''),
+	      unitPlan: typeof route.query.unit_plan === 'string' ? route.query.unit_plan : '',
+	      quizQuestionBank:
+	        typeof route.query.quiz_question_bank === 'string' ? route.query.quiz_question_bank : '',
+	      studentGroup: typeof route.query.student_group === 'string' ? route.query.student_group : '',
+	    }),
+	    meta: { layout: 'staff' },
+	  },
   { path: '/staff/class/:studentGroup', name: 'ClassHub', component: () => import('@/pages/staff/ClassHub.vue'), meta: { layout: 'staff' } },
   { path: '/staff/class/:studentGroup/planning', name: 'staff-class-planning', component: () => import('@/pages/staff/ClassPlanning.vue'), meta: { layout: 'staff' } },
 

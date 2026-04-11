@@ -1331,6 +1331,7 @@ import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } 
 import { toast } from 'frappe-ui';
 import { useRoute, useRouter } from 'vue-router';
 
+import CoursePlanTimelineCard from '@/components/planning/CoursePlanTimelineCard.vue';
 import PlanningRichTextField from '@/components/planning/PlanningRichTextField.vue';
 import PlanningResourcePanel from '@/components/planning/PlanningResourcePanel.vue';
 import { useOverlayStack } from '@/composables/useOverlayStack';
@@ -1345,6 +1346,7 @@ import type {
 	StaffCoursePlanQuizQuestion,
 	StaffCoursePlanQuizQuestionBank,
 	StaffCoursePlanQuizQuestionOption,
+	StaffCoursePlanTimelineUnit,
 	StaffCoursePlanUnit,
 } from '@/types/contracts/staff_teaching/get_staff_course_plan_surface';
 import type {
@@ -1375,6 +1377,7 @@ const props = defineProps<{
 	coursePlan: string;
 	unitPlan?: string;
 	quizQuestionBank?: string;
+	studentGroup?: string;
 }>();
 
 const route = useRoute();
@@ -1383,6 +1386,7 @@ const overlay = useOverlayStack();
 
 const SECTION_IDS = {
 	overview: 'course-plan-overview',
+	timeline: 'course-plan-timeline',
 	courseResources: 'course-plan-resources',
 	units: 'course-plan-units',
 	unitEditor: 'course-plan-unit-editor',
@@ -1393,6 +1397,18 @@ const SECTION_IDS = {
 } as const;
 
 type WorkspaceSectionId = (typeof SECTION_IDS)[keyof typeof SECTION_IDS];
+
+const collapsedSectionDefaults: Record<WorkspaceSectionId, boolean> = {
+	[SECTION_IDS.overview]: true,
+	[SECTION_IDS.timeline]: false,
+	[SECTION_IDS.courseResources]: false,
+	[SECTION_IDS.units]: false,
+	[SECTION_IDS.unitEditor]: false,
+	[SECTION_IDS.standards]: true,
+	[SECTION_IDS.reflections]: true,
+	[SECTION_IDS.unitResources]: true,
+	[SECTION_IDS.quizBanks]: true,
+};
 
 const surface = ref<StaffCoursePlanSurfaceResponse | null>(null);
 const loading = ref(false);
@@ -1479,6 +1495,9 @@ const selectedQuizQuestionBank = computed<StaffCoursePlanQuizQuestionBank | null
 	}
 	return detail;
 });
+const collapsedSections = reactive<Record<WorkspaceSectionId, boolean>>({
+	...collapsedSectionDefaults,
+});
 
 const canManagePlan = computed(() => Boolean(surface.value?.course_plan.can_manage_resources));
 const coursePlanAcademicYearOptions = computed(
@@ -1493,11 +1512,25 @@ const showUnitEditor = computed(() => Boolean(selectedUnit.value || creatingUnit
 const showQuizBankEditor = computed(() =>
 	Boolean(selectedQuizQuestionBank.value || creatingQuizQuestionBank.value)
 );
+const selectedUnitTimelineState = computed<StaffCoursePlanTimelineUnit | null>(() => {
+	const timelineUnits = surface.value?.curriculum.timeline.units || [];
+	return timelineUnits.find(unit => unit.unit_plan === selectedUnitPlan.value) || null;
+});
+const selectedQuizBankLabel = computed(() => {
+	return (
+		selectedQuizQuestionBank.value?.bank_title ||
+		surface.value?.assessment.quiz_question_banks.find(
+			bank => bank.quiz_question_bank === selectedQuizQuestionBankName.value
+		)?.bank_title ||
+		''
+	);
+});
 const navigationSections = computed<
 	{ id: WorkspaceSectionId; label: string; count?: number | null }[]
 >(() => {
 	const sections: { id: WorkspaceSectionId; label: string; count?: number | null }[] = [
 		{ id: SECTION_IDS.overview, label: 'Overview' },
+		{ id: SECTION_IDS.timeline, label: 'Timeline' },
 		{
 			id: SECTION_IDS.courseResources,
 			label: 'Plan Resources',

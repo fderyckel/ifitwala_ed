@@ -216,7 +216,7 @@ def get_student_group_row(student_group: str) -> dict:
     row = frappe.db.get_value(
         "Student Group",
         student_group,
-        ["name", "student_group_name", "student_group_abbreviation", "course", "academic_year", "school"],
+        ["name", "student_group_name", "student_group_abbreviation", "course", "academic_year", "school", "term"],
         as_dict=True,
     )
     if not row:

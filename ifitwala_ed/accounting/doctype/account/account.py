@@ -1,9 +1,13 @@
 import frappe
 from frappe import _
 from frappe.model.document import Document
+from frappe.utils import cstr
 
 
 class Account(Document):
+    def autoname(self):
+        self.name = get_account_autoname(self.account_number, self.account_name, self.organization)
+
     def validate(self):
         self.validate_organization()
         self.validate_root_type()
@@ -61,3 +65,19 @@ class Account(Document):
     def validate_group(self):
         # Posting rules enforced at transaction posting time.
         pass
+
+
+def get_account_autoname(account_number, account_name, organization):
+    organization_abbr = cstr(frappe.get_cached_value("Organization", organization, "abbr")).strip()
+    account_name = cstr(account_name).strip()
+    account_number = cstr(account_number).strip()
+
+    if account_number:
+        base_name = f"{account_number} - {account_name}"
+    else:
+        base_name = account_name
+
+    if organization_abbr:
+        return f"{base_name} - {organization_abbr}"
+
+    return base_name
