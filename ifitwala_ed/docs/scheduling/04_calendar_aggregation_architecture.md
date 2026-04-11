@@ -357,6 +357,8 @@ Location Calendar titles are intentionally redacted to occupancy labels such as:
 
 When a location group is selected, the label may append the concrete room name for operational clarity.
 
+Teaching rows may add the student group and course as operational context, but they must not expose instructor identity from the room calendar.
+
 It must not leak source document titles merely because a booking exists.
 
 ---

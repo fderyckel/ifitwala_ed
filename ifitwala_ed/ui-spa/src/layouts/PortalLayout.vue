@@ -1,7 +1,12 @@
 <!-- ifitwala_ed/ui-spa/src/layouts/PortalLayout.vue -->
 <template>
 	<!-- Student/Guardian surface (Portal) -->
-	<div class="ifitwala-theme portal-layout text-ink">
+	<div
+		class="ifitwala-theme portal-layout text-ink"
+		:class="
+			isDesktopRailExpanded ? 'portal-layout--rail-expanded' : 'portal-layout--rail-collapsed'
+		"
+	>
 		<PortalNavbar @toggle-sidebar="toggleSidebar" />
 
 		<div class="portal-layout__body">

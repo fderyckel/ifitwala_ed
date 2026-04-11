@@ -96,6 +96,7 @@ class TestRoomUtilizationApi(TestCase):
                     "to_datetime": "2026-02-01 10:30:00",
                     "occupancy_type": "Meeting",
                     "source_doctype": "Meeting",
+                    "source_name": "MTG-0001",
                 }
             )
         ]
@@ -137,3 +138,92 @@ class TestRoomUtilizationApi(TestCase):
             mocked_get_all.call_args.kwargs["filters"]["location"],
             ["in", ("SHARED-BUILDING", "EVENT-HALL")],
         )
+
+    def test_get_location_calendar_adds_student_group_and_course_for_teaching(self):
+        location_rows = [
+            frappe._dict(
+                {
+                    "name": "SCI-LAB",
+                    "location_name": "Science Lab",
+                    "parent_location": "Science Building",
+                    "location_type": "Lab",
+                    "location_type_name": "Lab",
+                    "is_group": 0,
+                }
+            )
+        ]
+        booking_rows = [
+            frappe._dict(
+                {
+                    "name": "LB-0100",
+                    "location": "SCI-LAB",
+                    "from_datetime": "2026-02-01 09:00:00",
+                    "to_datetime": "2026-02-01 10:00:00",
+                    "occupancy_type": "Teaching",
+                    "source_doctype": "Student Group",
+                    "source_name": "SG-8A-BIO",
+                }
+            )
+        ]
+        student_group_rows = [
+            frappe._dict(
+                {
+                    "name": "SG-8A-BIO",
+                    "student_group_name": "Grade 8A",
+                    "course": "BIO-101",
+                }
+            )
+        ]
+        course_rows = [
+            frappe._dict(
+                {
+                    "name": "BIO-101",
+                    "course_name": "Biology",
+                }
+            )
+        ]
+
+        def mocked_get_all(doctype, *args, **kwargs):
+            if doctype == "Location Booking":
+                return booking_rows
+            return []
+
+        def mocked_db_get_all(doctype, *args, **kwargs):
+            if doctype == "Student Group":
+                return student_group_rows
+            if doctype == "Course":
+                return course_rows
+            return []
+
+        with (
+            patch("ifitwala_ed.api.room_utilization._ensure_allowed_school", return_value="ISS"),
+            patch(
+                "ifitwala_ed.api.room_utilization._validate_date_range",
+                return_value=(date(2026, 2, 1), date(2026, 2, 1), 1),
+            ),
+            patch(
+                "ifitwala_ed.api.room_utilization.get_visible_location_rows_for_school",
+                return_value=location_rows,
+            ),
+            patch(
+                "ifitwala_ed.api.room_utilization.get_location_scope",
+                return_value=["SCI-LAB"],
+            ),
+            patch("ifitwala_ed.api.room_utilization._require_location_booking_table"),
+            patch("ifitwala_ed.api.room_utilization.frappe.db.has_column", return_value=True),
+            patch("ifitwala_ed.api.room_utilization.frappe.get_all", side_effect=mocked_get_all),
+            patch("ifitwala_ed.api.room_utilization.frappe.db.get_all", side_effect=mocked_db_get_all),
+        ):
+            payload = room_utilization.get_location_calendar(
+                filters={
+                    "school": "ISS",
+                    "from_date": "2026-02-01",
+                    "to_date": "2026-02-01",
+                    "location": "SCI-LAB",
+                }
+            )
+
+        self.assertEqual(payload["events"][0]["title"], "Teaching")
+        self.assertEqual(payload["events"][0]["meta"]["teaching_context_label"], "Grade 8A · Biology")
+        self.assertEqual(payload["events"][0]["meta"]["student_group_label"], "Grade 8A")
+        self.assertEqual(payload["events"][0]["meta"]["course_name"], "Biology")

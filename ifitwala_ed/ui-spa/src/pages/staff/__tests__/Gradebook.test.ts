@@ -445,6 +445,29 @@ describe('Gradebook page', () => {
 		expect(text).not.toContain('Yes / No');
 	});
 
+	it('renders student visibility checkboxes inline in the student header', async () => {
+		mockGradebookFlow();
+
+		mountPage();
+		await flushUi();
+		await openTask('Task 1');
+
+		const studentName = Array.from(document.querySelectorAll('p')).find(node =>
+			(node.textContent || '').includes('Ada Lovelace')
+		);
+		expect(studentName).not.toBeNull();
+
+		const studentHeader = studentName?.closest('div.border-b');
+		expect(studentHeader).not.toBeNull();
+
+		const visibilityRow = studentHeader?.querySelector('.gradebook-student-visibility');
+		expect(visibilityRow).not.toBeNull();
+		expect(visibilityRow?.textContent || '').toContain('Visible to Student');
+		expect(visibilityRow?.textContent || '').toContain('Visible to Guardian');
+		expect(visibilityRow?.querySelectorAll('input[type="checkbox"]').length).toBe(2);
+		expect(document.body.textContent || '').not.toContain('Visibility');
+	});
+
 	it('renders criteria grading with criteria controls and comment box only when enabled', async () => {
 		mockGradebookFlow({
 			task: {

@@ -5,7 +5,7 @@
 			<div>
 				<h1 class="type-h2 text-canopy">Room Utilization</h1>
 				<p class="type-body text-slate-500 mt-1">
-					Find free rooms and maximize space efficiency across your campus.
+					Find free rooms across your campus and book spaces.
 				</p>
 			</div>
 			<div class="flex flex-col items-end gap-2">
@@ -37,18 +37,27 @@
 						bookings.
 					</p>
 				</div>
-				<button
-					class="fui-btn-primary rounded-full px-5 py-2 text-sm font-medium transition-all hover:shadow-md active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
-					:disabled="
-						freeRoomsLoading ||
-						!availabilityFilters.date ||
-						!availabilityFilters.start_time ||
-						!availabilityFilters.end_time
-					"
-					@click="loadFreeRooms"
-				>
-					Find Free Rooms
-				</button>
+				<div class="flex flex-wrap items-center gap-3">
+					<button
+						v-if="canOpenCreateEvent"
+						class="rounded-full border border-slate-200 bg-white px-5 py-2 text-sm font-medium text-ink transition-all hover:border-canopy/40 hover:text-canopy hover:shadow-sm active:scale-95"
+						@click="openCreateEvent"
+					>
+						{{ eventQuickActionTitle }}
+					</button>
+					<button
+						class="fui-btn-primary rounded-full px-5 py-2 text-sm font-medium transition-all hover:shadow-md active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+						:disabled="
+							freeRoomsLoading ||
+							!availabilityFilters.date ||
+							!availabilityFilters.start_time ||
+							!availabilityFilters.end_time
+						"
+						@click="loadFreeRooms"
+					>
+						Find Free Rooms
+					</button>
+				</div>
 			</div>
 
 			<div class="grid gap-6 lg:grid-cols-[280px_1fr]">
@@ -581,6 +590,12 @@
 												{{ event.meta?.occupancy_type || 'Busy' }}
 											</span>
 										</div>
+										<p
+											v-if="event.meta?.teaching_context_label"
+											class="mt-2 text-xs font-medium text-slate-600"
+										>
+											{{ event.meta.teaching_context_label }}
+										</p>
 										<p v-if="event.meta?.location_label" class="mt-2 text-xs text-slate-500">
 											{{ event.meta.location_label }}
 										</p>
@@ -601,6 +616,7 @@ import { createResource } from 'frappe-ui';
 
 import StatsTile from '@/components/analytics/StatsTile.vue';
 import KpiRow from '@/components/analytics/KpiRow.vue';
+import { useOverlayStack } from '@/composables/useOverlayStack';
 
 type SchoolOption = { name: string; label: string };
 type LocationTypeOption = { value: string; label: string };
@@ -658,6 +674,11 @@ type LocationCalendarEvent = {
 		occupancy_type?: string | null;
 		location?: string | null;
 		location_label?: string | null;
+		student_group?: string | null;
+		student_group_label?: string | null;
+		course?: string | null;
+		course_name?: string | null;
+		teaching_context_label?: string | null;
 	};
 };
 
@@ -696,6 +717,7 @@ function formatDateKeyLabel(dateKey: string) {
 
 const selectedSchool = ref('');
 const selectedLocationType = ref('');
+const overlay = useOverlayStack();
 
 const availabilityFilters = ref({
 	date: today,
@@ -755,7 +777,27 @@ const analyticsAccessResource = createResource({
 	auto: false,
 });
 
+const staffHomeHeaderResource = createResource({
+	url: 'ifitwala_ed.api.portal.get_staff_home_header',
+	method: 'POST',
+	auto: false,
+});
+
 const canViewAnalytics = ref(false);
+const roomUtilizationCapabilities = computed(
+	() => staffHomeHeaderResource.data?.capabilities || {}
+);
+const canCreateMeeting = computed(() =>
+	Boolean(roomUtilizationCapabilities.value.quick_action_create_meeting)
+);
+const canCreateSchoolEvent = computed(() =>
+	Boolean(roomUtilizationCapabilities.value.quick_action_create_school_event)
+);
+const canOpenCreateEvent = computed(() => canCreateMeeting.value || canCreateSchoolEvent.value);
+const eventQuickActionTitle = computed(() => {
+	if (canCreateMeeting.value && !canCreateSchoolEvent.value) return 'Schedule meeting';
+	return 'Create event';
+});
 
 const timeUtilResource = createResource({
 	url: 'ifitwala_ed.api.room_utilization.get_room_time_utilization',
@@ -1074,8 +1116,30 @@ async function loadAnalyticsAccess() {
 	canViewAnalytics.value = Boolean(allowed);
 }
 
+async function loadRoomUtilizationCapabilities() {
+	try {
+		await staffHomeHeaderResource.submit({});
+	} catch (error) {
+		console.error('[RoomUtilization] Failed to load event quick create capabilities:', error);
+	}
+}
+
+function openCreateEvent() {
+	if (!canOpenCreateEvent.value) return;
+
+	const lockEventType = canCreateMeeting.value !== canCreateSchoolEvent.value;
+	const eventType = canCreateMeeting.value ? 'meeting' : 'school_event';
+
+	overlay.open('event-quick-create', {
+		eventType: lockEventType ? eventType : null,
+		lockEventType,
+		meetingMode: 'ad_hoc',
+		prefillSchool: selectedSchool.value || null,
+	});
+}
+
 onMounted(async () => {
-	await loadAnalyticsAccess();
+	await Promise.all([loadAnalyticsAccess(), loadRoomUtilizationCapabilities()]);
 	refreshMetrics();
 });
 </script>

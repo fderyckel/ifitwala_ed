@@ -20,6 +20,7 @@ from ifitwala_ed.setup.setup import (
 class _DummyDoc:
     def __init__(self, name):
         self.name = name
+        self.app_name = None
         self.app_logo = None
         self.ifitwala_initial_setup = 0
 
@@ -189,4 +190,5 @@ class TestSetupRoles(FrappeTestCase):
 
         create_designations_mock.assert_called_once_with()
         self.assertEqual(result["organization"], "Test Organization")
+        self.assertEqual(website_settings.app_name, "Test Organization")
         self.assertEqual(org_setting.ifitwala_initial_setup, 1)

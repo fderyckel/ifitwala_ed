@@ -589,6 +589,77 @@ def _occupancy_color(row: dict) -> str:
     return "#475569"
 
 
+def _is_teaching_booking(row: dict) -> bool:
+    occupancy = str(row.get("occupancy_type") or "").strip().lower()
+    source_doctype = str(row.get("source_doctype") or "").strip().lower()
+    return occupancy == "teaching" or source_doctype == "student group"
+
+
+def _get_teaching_calendar_context(rows: list[dict]) -> dict[str, dict]:
+    student_group_names = sorted(
+        {
+            str(row.get("source_name") or "").strip()
+            for row in rows
+            if _is_teaching_booking(row) and str(row.get("source_name") or "").strip()
+        }
+    )
+    if not student_group_names:
+        return {}
+
+    # Operational summary only: room-calendar teaching context is derived from already-scoped
+    # booking facts and must not depend on general Student Group form visibility.
+    group_rows = frappe.db.get_all(
+        "Student Group",
+        filters={"name": ["in", student_group_names]},
+        fields=["name", "student_group_name", "course"],
+        limit=max(len(student_group_names), 200),
+    )
+
+    course_names = sorted(
+        {str(row.get("course") or "").strip() for row in group_rows if str(row.get("course") or "").strip()}
+    )
+    course_name_map: dict[str, str] = {}
+    if course_names:
+        course_rows = frappe.db.get_all(
+            "Course",
+            filters={"name": ["in", course_names]},
+            fields=["name", "course_name"],
+            limit=max(len(course_names), 200),
+        )
+        course_name_map = {
+            str(row.get("name") or "").strip(): str(row.get("course_name") or row.get("name") or "").strip()
+            for row in course_rows
+            if str(row.get("name") or "").strip()
+        }
+
+    context_map: dict[str, dict] = {}
+    for row in group_rows:
+        group_name = str(row.get("name") or "").strip()
+        if not group_name:
+            continue
+
+        student_group_label = str(row.get("student_group_name") or group_name).strip() or group_name
+        course = str(row.get("course") or "").strip() or None
+        course_name = course_name_map.get(course or "", course or "")
+
+        teaching_context_label = student_group_label
+        if course_name:
+            teaching_context_label = _("{student_group} · {course}").format(
+                student_group=student_group_label,
+                course=course_name,
+            )
+
+        context_map[group_name] = {
+            "student_group": group_name,
+            "student_group_label": student_group_label,
+            "course": course,
+            "course_name": course_name or None,
+            "teaching_context_label": teaching_context_label,
+        }
+
+    return context_map
+
+
 @frappe.whitelist()
 def get_location_calendar(filters=None):
     filters = _parse_filters(filters)
@@ -671,16 +742,27 @@ def get_location_calendar(filters=None):
     rows = frappe.get_all(
         "Location Booking",
         filters=lb_filters,
-        fields=["name", "location", "from_datetime", "to_datetime", "occupancy_type", "source_doctype"],
+        fields=["name", "location", "from_datetime", "to_datetime", "occupancy_type", "source_doctype", "source_name"],
         order_by="from_datetime asc",
         limit=1500,
     )
 
     label_map = {row.get("value"): row.get("label") for row in location_options if row.get("value")}
+    teaching_context_map = _get_teaching_calendar_context(rows)
     events = []
     for row in rows:
         location_name = row.get("location")
         location_label = label_map.get(location_name) or location_name
+        meta = {
+            "occupancy_type": row.get("occupancy_type") or row.get("source_doctype") or _("Busy"),
+            "location": location_name,
+            "location_label": location_label,
+        }
+        if _is_teaching_booking(row):
+            teaching_context = teaching_context_map.get(str(row.get("source_name") or "").strip())
+            if teaching_context:
+                meta.update(teaching_context)
+
         events.append(
             {
                 "id": row.get("name"),
@@ -689,11 +771,7 @@ def get_location_calendar(filters=None):
                 "end": str(row.get("to_datetime")),
                 "allDay": False,
                 "color": _occupancy_color(row),
-                "meta": {
-                    "occupancy_type": row.get("occupancy_type") or row.get("source_doctype") or _("Busy"),
-                    "location": location_name,
-                    "location_label": location_label,
-                },
+                "meta": meta,
             }
         )
 

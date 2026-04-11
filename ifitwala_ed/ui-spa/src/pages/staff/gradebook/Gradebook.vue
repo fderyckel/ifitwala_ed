@@ -615,7 +615,7 @@
 									<div
 										class="flex flex-wrap items-start justify-between gap-4 border-b border-border/40 pb-4 mb-4"
 									>
-										<div class="flex items-center gap-4">
+										<div class="flex min-w-0 flex-1 items-center gap-4">
 											<img
 												:src="student.student_image || DEFAULT_STUDENT_IMAGE"
 												alt=""
@@ -623,10 +623,56 @@
 												loading="lazy"
 												@error="onImgError"
 											/>
-											<div>
-												<p class="text-base font-bold text-ink hover:text-leaf transition-colors">
-													{{ student.student_name }}
-												</p>
+											<div class="min-w-0 flex-1">
+												<div class="flex flex-wrap items-center gap-x-4 gap-y-2">
+													<p
+														class="text-base font-bold text-ink transition-colors hover:text-leaf"
+													>
+														{{ student.student_name }}
+													</p>
+													<div
+														class="gradebook-student-visibility grid grid-cols-2 gap-x-4 gap-y-2"
+													>
+														<label
+															class="inline-flex cursor-pointer items-center gap-2 text-sm text-ink/70"
+														>
+															<input
+																type="checkbox"
+																class="h-4 w-4 rounded border-border/70 text-leaf focus:ring-[rgb(var(--leaf-rgb)/0.35)]"
+																:checked="
+																	Boolean(studentStates[student.task_student]?.visible_to_student)
+																"
+																@change="
+																	onVisibilityInputChange(
+																		student.task_student,
+																		'visible_to_student',
+																		$event
+																	)
+																"
+															/>
+															<span>Visible to Student</span>
+														</label>
+														<label
+															class="inline-flex cursor-pointer items-center gap-2 text-sm text-ink/70"
+														>
+															<input
+																type="checkbox"
+																class="h-4 w-4 rounded border-border/70 text-leaf focus:ring-[rgb(var(--leaf-rgb)/0.35)]"
+																:checked="
+																	Boolean(studentStates[student.task_student]?.visible_to_guardian)
+																"
+																@change="
+																	onVisibilityInputChange(
+																		student.task_student,
+																		'visible_to_guardian',
+																		$event
+																	)
+																"
+															/>
+															<span>Visible to Guardian</span>
+														</label>
+													</div>
+												</div>
 												<div class="flex items-center gap-2 text-xs text-ink/50">
 													<span v-if="student.student_id" class="font-mono">{{
 														student.student_id
@@ -746,37 +792,6 @@
 													>
 														{{ booleanNegativeLabel(gradebook.task) }}
 													</button>
-												</div>
-											</div>
-
-											<div class="pt-2">
-												<label
-													class="block mb-2 text-xs font-semibold uppercase tracking-wide text-ink/50"
-													>Visibility</label
-												>
-												<div class="flex flex-col gap-2">
-													<FormControl
-														type="checkbox"
-														label="Visible to Student"
-														:model-value="
-															Boolean(studentStates[student.task_student]?.visible_to_student)
-														"
-														@update:modelValue="
-															value =>
-																setVisibility(student.task_student, 'visible_to_student', value)
-														"
-													/>
-													<FormControl
-														type="checkbox"
-														label="Visible to Guardian"
-														:model-value="
-															Boolean(studentStates[student.task_student]?.visible_to_guardian)
-														"
-														@update:modelValue="
-															value =>
-																setVisibility(student.task_student, 'visible_to_guardian', value)
-														"
-													/>
 												</div>
 											</div>
 										</div>
@@ -1953,6 +1968,15 @@ function setVisibility(
 	state[field] = value;
 	state.dirty = true;
 	scheduleStudentSave(taskStudent);
+}
+
+function onVisibilityInputChange(
+	taskStudent: string,
+	field: 'visible_to_student' | 'visible_to_guardian',
+	event: Event
+) {
+	const target = event.target as HTMLInputElement | null;
+	setVisibility(taskStudent, field, Boolean(target?.checked));
 }
 
 function onFeedbackChanged(taskStudent: string, value: string) {

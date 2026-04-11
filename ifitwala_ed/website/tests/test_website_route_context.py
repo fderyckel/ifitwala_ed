@@ -44,28 +44,27 @@ class TestWebsiteRouteContext(FrappeTestCase):
             preview=True,
         )
 
-    def test_root_index_redirects_when_renderer_requests_redirect(self):
+    def test_root_index_returns_public_home_context_when_renderer_does_not_redirect(self):
         original_request = self._set_request_path("/")
         original_form_dict = self._set_form_dict({})
-        original_redirect = getattr(frappe.local.flags, "redirect_location", None)
         context = frappe._dict()
-        redirected_to = None
 
         try:
-            frappe.local.flags.redirect_location = None
             with patch(
                 "ifitwala_ed.www.index.build_render_context",
-                return_value={"redirect_location": "/schools/demo"},
-            ):
-                with self.assertRaises(frappe.Redirect):
-                    get_index_context(context)
-            redirected_to = frappe.local.flags.redirect_location
+                return_value={
+                    "template": "ifitwala_ed/website/templates/network_home.html",
+                    "landing": {"brand_name": "Ifitwala"},
+                },
+            ) as mocked_build_render_context:
+                result = get_index_context(context)
         finally:
             self._restore_form_dict(original_form_dict)
             self._restore_request(original_request)
-            frappe.local.flags.redirect_location = original_redirect
 
-        self.assertEqual(redirected_to, "/schools/demo")
+        self.assertEqual(result.no_cache, 1)
+        self.assertEqual(result.template, "ifitwala_ed/website/templates/network_home.html")
+        mocked_build_render_context.assert_called_once_with(route="/", preview=False)
 
     def test_public_person_profile_route_builds_profile_context(self):
         organization = make_organization(prefix="Route Profile Org")

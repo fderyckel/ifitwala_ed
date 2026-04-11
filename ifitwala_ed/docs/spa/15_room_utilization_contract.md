@@ -33,6 +33,7 @@ Rules:
 4. Room-type filtering is a first-class workflow input, not a presentation-only label.
 5. The SPA must not compute school hierarchy, shared-location inheritance, or location privacy rules client-side.
 6. Page access is staff-wide, but the utilization analytics components on that page remain restricted to the analytics roles enforced by the server.
+7. The Free Rooms Finder may open the canonical event quick-create overlay as a contextual next action and should prefill the current school when one is selected.
 
 ## 2. API and Read-Model Contract
 
@@ -111,6 +112,7 @@ Rules:
 3. When a group/building is selected, the title may append the concrete room label for operational clarity.
 4. The Location Calendar must not leak Meeting or School Event titles merely because a booking exists in the same location.
 5. Group selections must expand through canonical location hierarchy helpers instead of duplicating descendant lookups in the page or endpoint.
+6. Teaching rows may add operational context limited to `Student Group` plus `Course`; they must not expose instructor identity from the room calendar.
 
 ## 6. Contract Matrix
 

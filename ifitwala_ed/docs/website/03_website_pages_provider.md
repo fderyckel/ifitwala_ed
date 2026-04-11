@@ -94,8 +94,8 @@ These correspond to actual routes.
 
 **Used by**
 
-* historical note only; current root behavior is handled by the root-school resolver at `/`
-* organization discovery now lives at `/schools`
+* historical note only; current root behavior is handled by the trusted public-home renderer at `/`
+* school discovery now lives at `/schools`
 
 **Consumes**
 

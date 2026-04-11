@@ -20,6 +20,7 @@ Status: Partial
 Code refs:
 - `ifitwala_ed/ui-spa/src/overlays/calendar/EventQuickCreateOverlay.vue`
 - `ifitwala_ed/ui-spa/src/pages/staff/StaffHome.vue`
+- `ifitwala_ed/ui-spa/src/pages/staff/analytics/RoomUtilization.vue`
 - `ifitwala_ed/ui-spa/src/overlays/OverlayHost.vue`
 - `ifitwala_ed/ui-spa/src/composables/useOverlayStack.ts`
 
@@ -33,8 +34,9 @@ Rules:
 3. The meeting workflow also supports explicit `meetingMode='ad_hoc' | 'team'`.
 4. `meetingMode='ad_hoc'` is the attendee-first workflow used by Staff Home.
 5. `meetingMode='team'` is the team-owned workflow contract where team attendees are hydrated from the server and locked by context inside the overlay.
-6. Staff Home currently opens the overlay in `meetingMode='ad_hoc'` and changes the quick-action copy to `Schedule meeting` when the user can create meetings but not school events.
-7. No SPA team-owned entry point is wired to open `meetingMode='team'` yet, so the entry-point matrix is still partial even though the mode contract is implemented.
+6. Staff Home and Room Utilization both open the overlay in `meetingMode='ad_hoc'`; Room Utilization should prefill the currently selected school when one is in scope.
+7. Entry-point copy remains permission-sensitive: use `Schedule meeting` when the user can create meetings but not school events; otherwise use `Create event`.
+8. No SPA team-owned entry point is wired to open `meetingMode='team'` yet, so the entry-point matrix is still partial even though the mode contract is implemented.
 
 ## 2. API and Payload Contract
 

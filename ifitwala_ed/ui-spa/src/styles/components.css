@@ -1292,13 +1292,26 @@
 	}
 
 	@media (min-width: 1024px) {
+		.portal-navbar__inner {
+			padding-left: calc(
+				var(--portal-rail-width, 5rem) + var(--portal-desktop-gutter, 1rem) + 1.5rem
+			);
+			padding-right: 1.5rem;
+		}
+
 		.portal-sidebar,
 		.portal-sidebar--mobile-open,
 		.portal-sidebar--mobile-closed {
-			top: 1rem;
+			top: calc(var(--portal-navbar-height, 3.5rem) + var(--portal-desktop-gutter, 1rem));
 			bottom: auto;
-			height: calc(100dvh - 3.5rem - 4.25rem - 1rem);
-			max-height: calc(100dvh - 3.5rem - 4.25rem - 1rem);
+			height: calc(
+				100dvh - var(--portal-navbar-height, 3.5rem) - var(--portal-footer-reserve, 4.25rem) -
+					var(--portal-desktop-gutter, 1rem)
+			);
+			max-height: calc(
+				100dvh - var(--portal-navbar-height, 3.5rem) - var(--portal-footer-reserve, 4.25rem) -
+					var(--portal-desktop-gutter, 1rem)
+			);
 			transform: none;
 		}
 

@@ -3,11 +3,11 @@ title: "Organization: Legal Entity and Hierarchy Root"
 slug: organization
 category: Setup
 doc_order: 1
-version: "1.0.9"
-last_change_date: "2026-03-29"
-summary: "Define legal entities as a NestedSet hierarchy and anchor schools, policy scope, website-school ownership, and root website default-school resolution."
+version: "1.1.0"
+last_change_date: "2026-04-11"
+summary: "Define legal entities as a NestedSet hierarchy and anchor schools, policy scope, website-school ownership, and featured public-school/default website behavior."
 seo_title: "Organization: Legal Entity and Hierarchy Root"
-seo_description: "Define legal entities as a NestedSet hierarchy and anchor schools, policy scope, and website-school ownership."
+seo_description: "Define legal entities as a NestedSet hierarchy and anchor schools, policy scope, website-school ownership, and public brand defaults."
 ---
 
 ## Organization: Legal Entity and Hierarchy Root
@@ -19,8 +19,8 @@ seo_description: "Define legal entities as a NestedSet hierarchy and anchor scho
 - Organization is a tree (`NestedSet`) using `parent_organization`.
 - Parent organization must be a group (`is_group = 1`).
 - `default_website_school`, when set, must belong to the same organization.
-- `default_website_school`, when valid and published, is the primary public root-domain resolver for `/`.
-- `organization_logo` is the website shell organization mark and organization landing brand.
+- `default_website_school`, when valid and published, is the featured-school spotlight for the public home page and the primary public-school preference for default discovery content.
+- `organization_logo` is the public website and login-shell organization mark.
 - Virtual root (`All Organizations`) cannot have a parent.
 - Organization permissions are enforced in two layers:
   - DocType permission rows decide which actions a role may perform

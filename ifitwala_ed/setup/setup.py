@@ -21,6 +21,7 @@ from ifitwala_ed.website.block_registry import (
 from ifitwala_ed.website.block_registry import (
     sync_website_block_definitions,
 )
+from ifitwala_ed.website.public_brand import sync_public_brand_website_settings
 
 
 def setup_education():
@@ -41,6 +42,7 @@ def setup_education():
     setup_website_block_definitions()
     setup_website_theme_profiles()
     setup_default_website_pages()
+    sync_public_brand_website_settings()
     grant_core_crm_permissions()
     ensure_policy_audience_records()
 
@@ -485,6 +487,8 @@ def setup_website_top_bar():
     # Public school website navigation is rendered from School Website Page records.
     top_bar_items = [
         {"label": "Home", "url": "/"},
+        {"label": "Schools", "url": "/schools"},
+        {"label": "Inquire", "url": "/apply/inquiry"},
         {"label": "Login", "url": "/login"},
     ]
 

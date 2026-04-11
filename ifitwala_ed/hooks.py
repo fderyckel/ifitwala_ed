@@ -40,6 +40,7 @@ app_include_js = [
 # include js, css files in header of web template
 # web_include_css = "/assets/ifitwala/css/ifitwala.css"
 # web_include_js = "/assets/ifitwala/js/ifitwala.js"
+update_website_context = ["ifitwala_ed.website.context.update_website_context"]
 
 # include custom scss in every website theme (without file extension ".scss")
 # website_theme_scss = "ifitwala/public/scss/website"

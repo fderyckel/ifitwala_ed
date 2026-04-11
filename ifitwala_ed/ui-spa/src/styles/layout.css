@@ -16,10 +16,23 @@
 		font-family: var(--font-sans);
 	}
 
+	.portal-layout {
+		--portal-navbar-height: 3.5rem;
+		--portal-footer-reserve: 4.25rem;
+		--portal-desktop-gutter: 1rem;
+		--portal-rail-collapsed-width: 5rem;
+		--portal-rail-expanded-width: 16rem;
+		--portal-rail-width: var(--portal-rail-collapsed-width);
+	}
+
+	.portal-layout--rail-expanded {
+		--portal-rail-width: var(--portal-rail-expanded-width);
+	}
+
 	.portal-layout__body {
 		@apply flex flex-1 min-h-0;
-		min-height: calc(100dvh - 3.5rem);
-		padding-bottom: 4.25rem;
+		min-height: calc(100dvh - var(--portal-navbar-height));
+		padding-bottom: var(--portal-footer-reserve);
 	}
 
 	.portal-layout__workspace {
@@ -71,9 +84,9 @@
 
 	@media (min-width: 1024px) {
 		.portal-layout__body {
-			gap: 1rem;
-			padding-left: 1rem;
-			padding-right: 1rem;
+			gap: var(--portal-desktop-gutter);
+			padding-left: var(--portal-desktop-gutter);
+			padding-right: var(--portal-desktop-gutter);
 		}
 	}
 

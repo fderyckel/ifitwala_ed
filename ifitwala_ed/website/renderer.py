@@ -6,6 +6,10 @@ import frappe
 from frappe import _
 
 from ifitwala_ed.website.block_registry import get_block_definition_map
+from ifitwala_ed.website.public_brand import (
+    get_descendant_organization_names,
+    get_public_brand_identity,
+)
 from ifitwala_ed.website.public_people import get_public_person_by_slug
 from ifitwala_ed.website.site_notices import get_active_site_notice
 from ifitwala_ed.website.utils import (
@@ -277,7 +281,7 @@ def _build_site_shell_context(*, school, route: str) -> dict:
         "portal_login_url": "/hub",
         "schools_url": "/schools",
         "other_organizations_url": "/schools",
-        "logout_url": "/logout?redirect_to=/schools",
+        "logout_url": "/logout?redirect_to=/",
         "inquiry_url": inquiry_url,
         "apply_url": apply_url,
         "active_notice": get_active_site_notice(school_name=school.name),
@@ -720,54 +724,25 @@ def _build_person_profile_context(*, route: str, school, profile_slug: str):
     }
 
 
-def _resolve_landing_organization():
-    org = frappe.db.get_value(
-        "Organization",
-        {
-            "archived": 0,
-            "name": ["!=", "All Organizations"],
-            "parent_organization": ["in", ["All Organizations", "", None]],
-        },
-        ["name", "organization_name", "organization_logo", "default_website_school", "lft", "rgt"],
-        as_dict=True,
-        order_by="lft asc",
-    )
-    if org:
-        return org
-
-    org = frappe.db.get_value(
-        "Organization",
-        {"archived": 0, "name": ["!=", "All Organizations"]},
-        ["name", "organization_name", "organization_logo", "default_website_school", "lft", "rgt"],
-        as_dict=True,
-        order_by="lft asc",
-    )
-    if org:
-        return org
-
-    return frappe.db.get_value(
-        "Organization",
-        {"name": "All Organizations"},
-        ["name", "organization_name", "organization_logo", "default_website_school", "lft", "rgt"],
-        as_dict=True,
-    )
+def _build_public_navigation_items() -> list[dict]:
+    return [
+        {"label": _("Home"), "url": "/"},
+        {"label": _("Schools"), "url": "/schools"},
+        {"label": _("Inquire"), "url": "/apply/inquiry"},
+    ]
 
 
-def _get_descendant_organization_names(organization) -> list[str]:
-    if not organization:
-        return []
-
-    lft = organization.get("lft")
-    rgt = organization.get("rgt")
-    if lft is None or rgt is None:
-        return [organization.get("name")] if organization.get("name") else []
-
-    return frappe.get_all(
-        "Organization",
-        filters={"lft": [">=", lft], "rgt": ["<=", rgt], "archived": 0},
-        pluck="name",
-        order_by="lft asc",
-    )
+def _get_public_organization_labels(*, organization_names: list[str]) -> dict[str, str]:
+    if not organization_names:
+        return {}
+    return {
+        row.name: (row.organization_name or row.name)
+        for row in frappe.get_all(
+            "Organization",
+            filters={"name": ["in", organization_names]},
+            fields=["name", "organization_name"],
+        )
+    }
 
 
 def _get_landing_school_cards(*, organization_names: list[str]) -> list[dict]:
@@ -781,20 +756,22 @@ def _get_landing_school_cards(*, organization_names: list[str]) -> list[dict]:
             "is_published": 1,
             "website_slug": ["!=", ""],
         },
-        fields=["name", "school_name", "school_tagline", "school_logo", "website_slug", "organization"],
+        fields=[
+            "name",
+            "school_name",
+            "school_tagline",
+            "school_logo",
+            "website_slug",
+            "organization",
+            "about_snippet",
+            "more_info",
+        ],
         order_by="lft asc, school_name asc",
     )
     if not schools:
         return []
 
-    organization_labels = {
-        row.name: (row.organization_name or row.name)
-        for row in frappe.get_all(
-            "Organization",
-            filters={"name": ["in", organization_names]},
-            fields=["name", "organization_name"],
-        )
-    }
+    organization_labels = _get_public_organization_labels(organization_names=organization_names)
 
     cards = []
     for school in schools:
@@ -806,6 +783,7 @@ def _get_landing_school_cards(*, organization_names: list[str]) -> list[dict]:
                 "name": school.name,
                 "label": school.school_name or school.name,
                 "tagline": (school.school_tagline or "").strip(),
+                "description": truncate_text(school.about_snippet or school.more_info or "", 160) or None,
                 "logo": school.school_logo,
                 "url": normalize_route(f"/{SCHOOL_ROUTE_PREFIX}/{slug}"),
                 "organization": organization_labels.get(school.organization) or school.organization,
@@ -814,72 +792,117 @@ def _get_landing_school_cards(*, organization_names: list[str]) -> list[dict]:
     return cards
 
 
-def _build_organization_landing_context(*, route: str):
-    organization = _resolve_landing_organization() or {}
-    organization_name = (organization.get("organization_name") or organization.get("name") or _("Organization")).strip()
-    organization_names = _get_descendant_organization_names(organization)
-    school_cards = _get_landing_school_cards(organization_names=organization_names)
+def _resolve_featured_school(*, organization, school_cards: list[dict]):
+    if not school_cards:
+        return None
 
+    default_school = (organization.get("default_website_school") or "").strip()
+    featured = next((row for row in school_cards if row["name"] == default_school), None)
+    featured = featured or school_cards[0]
+
+    school = frappe.get_doc("School", featured["name"])
+    try:
+        inquiry_url = resolve_admissions_cta_url(school=school, intent="inquire")
+    except frappe.ValidationError:
+        inquiry_url = "/apply/inquiry"
+
+    try:
+        apply_url = resolve_admissions_cta_url(school=school, intent="apply")
+    except frappe.ValidationError:
+        apply_url = featured["url"]
+
+    return {
+        **featured,
+        "inquiry_url": validate_cta_link(inquiry_url) or "/apply/inquiry",
+        "apply_url": validate_cta_link(apply_url) or featured["url"],
+    }
+
+
+def _get_public_program_count(*, school_names: list[str]) -> int:
+    if not school_names:
+        return 0
+
+    offering_rows = frappe.get_all(
+        "Program Offering",
+        filters={"school": ["in", school_names]},
+        pluck="program",
+    )
+    program_names = sorted({program for program in offering_rows if program})
+    if not program_names:
+        return 0
+
+    return len(
+        frappe.get_all(
+            "Program",
+            filters={"name": ["in", program_names], "is_published": 1, "archive": 0},
+            pluck="name",
+        )
+    )
+
+
+def _build_public_landing_payload(*, route: str) -> dict:
+    brand = get_public_brand_identity()
+    organization = brand.get("organization") or {}
+    organization_names = get_descendant_organization_names(organization)
+    school_cards = _get_landing_school_cards(organization_names=organization_names)
+    featured_school = _resolve_featured_school(organization=organization, school_cards=school_cards)
+    school_names = [row["name"] for row in school_cards]
+
+    return {
+        "brand_name": brand["brand_name"],
+        "brand_logo": brand["brand_logo"],
+        "organization_name": brand["organization_name"],
+        "organization_logo": brand["organization_logo"],
+        "current_route": normalize_route(route),
+        "navigation": _build_public_navigation_items(),
+        "is_guest_user": (frappe.session.user or "Guest") == "Guest",
+        "login_url": "/login",
+        "hub_url": "/hub",
+        "logout_url": "/logout?redirect_to=/",
+        "inquiry_url": "/apply/inquiry",
+        "directory_url": "/schools",
+        "home_url": "/",
+        "school_count": len(school_cards),
+        "program_count": _get_public_program_count(school_names=school_names),
+        "featured_school": featured_school,
+        "schools": school_cards,
+        "preview_schools": school_cards[:6],
+    }
+
+
+def _build_public_home_context(*, route: str):
+    landing = _build_public_landing_payload(route=route)
     seo = _build_seo_context(
         route=route,
-        fallback_title=organization_name,
-        fallback_description=_("Explore our schools and programs."),
+        fallback_title=landing["brand_name"],
+        fallback_description=_("Explore our schools, admissions pathways, and featured public programs."),
         seo_profile=None,
     )
 
     return {
-        "landing": {
-            "organization_name": organization_name,
-            "organization_logo": organization.get("organization_logo"),
-            "schools": school_cards,
-        },
+        "landing": landing,
         "seo": seo,
-        "is_guest_user": (frappe.session.user or "Guest") == "Guest",
-        "login_url": "/login",
-        "hub_url": "/hub",
-        "logout_url": "/logout?redirect_to=/schools",
-        "inquiry_url": "/apply/inquiry",
         "current_year": frappe.utils.now_datetime().year,
-        "template": "ifitwala_ed/website/templates/organization_landing.html",
+        "template": "ifitwala_ed/website/templates/network_home.html",
     }
 
 
-def _resolve_root_redirect_url() -> str:
-    organization = _resolve_landing_organization() or {}
-    organization_names = _get_descendant_organization_names(organization)
+def _build_school_directory_context(*, route: str):
+    landing = _build_public_landing_payload(route=route)
 
-    default_school = (organization.get("default_website_school") or "").strip()
-    if default_school:
-        row = frappe.db.get_value(
-            "School",
-            default_school,
-            ["name", "website_slug", "is_published", "organization"],
-            as_dict=True,
-        )
-        if (
-            row
-            and row.website_slug
-            and int(row.is_published or 0) == 1
-            and (not organization_names or row.organization in organization_names)
-        ):
-            return normalize_route(f"/{SCHOOL_ROUTE_PREFIX}/{row.website_slug}")
+    seo = _build_seo_context(
+        route=route,
+        fallback_title=_("{0} Schools").format(landing["brand_name"]),
+        fallback_description=_("Browse the public school directory and open each school website."),
+        seo_profile=None,
+    )
 
-    if organization_names:
-        school = frappe.db.get_value(
-            "School",
-            {
-                "organization": ["in", organization_names],
-                "is_published": 1,
-                "website_slug": ["!=", ""],
-            },
-            ["name", "website_slug"],
-            as_dict=True,
-            order_by="lft asc, school_name asc",
-        )
-        if school and school.website_slug:
-            return normalize_route(f"/{SCHOOL_ROUTE_PREFIX}/{school.website_slug}")
-
-    return "/schools"
+    return {
+        "landing": landing,
+        "seo": seo,
+        "current_year": frappe.utils.now_datetime().year,
+        "template": "ifitwala_ed/website/templates/organization_landing.html",
+    }
 
 
 def build_render_context(*, route: str, preview: bool = False):
@@ -888,18 +911,14 @@ def build_render_context(*, route: str, preview: bool = False):
         route = "/"
 
     if route == "/":
-        return {
-            "redirect_location": _resolve_root_redirect_url(),
-        }
+        return _build_public_home_context(route=route)
 
     segments = [seg for seg in route.split("/") if seg]
     if not segments:
-        return {
-            "redirect_location": _resolve_root_redirect_url(),
-        }
+        return _build_public_home_context(route="/")
 
     if route == "/schools":
-        return _build_organization_landing_context(route=route)
+        return _build_school_directory_context(route=route)
 
     if segments[0] != SCHOOL_ROUTE_PREFIX:
         frappe.throw(
@@ -908,7 +927,7 @@ def build_render_context(*, route: str, preview: bool = False):
         )
 
     if len(segments) < 2:
-        return _build_organization_landing_context(route="/schools")
+        return _build_school_directory_context(route="/schools")
 
     school = resolve_school_from_route(route)
     if not preview and not is_school_public(school):
