@@ -9,23 +9,26 @@
   "file",
   "attached_doctype",
   "attached_name",
+  "retention_policy",
+  "organization",
+  "school",
+  "version_number",
+  "column_break_zjrc",
   "primary_subject_type",
   "primary_subject_id",
   "data_class",
   "purpose",
-  "retention_policy",
   "retention_until",
   "slot",
-  "organization",
-  "school",
-  "legal_hold",
+  "source_file",
+  "column_break_rfdf",
   "erasure_state",
-  "version_number",
+  "legal_hold",
   "is_current_version",
   "content_hash",
-  "source_file",
   "upload_source",
   "ip_address",
+  "section_break_yiyf",
   "secondary_subjects"
  ],
  "fields": [
@@ -164,11 +167,23 @@
    "fieldtype": "Table",
    "label": "Secondary Subjects",
    "options": "File Classification Subject"
+  },
+  {
+   "fieldname": "column_break_zjrc",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "column_break_rfdf",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "section_break_yiyf",
+   "fieldtype": "Section Break"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-03-26 22:38:00.000000",
+ "modified": "2026-04-11 23:29:09.586038",
  "modified_by": "Administrator",
  "module": "Setup",
  "name": "File Classification",

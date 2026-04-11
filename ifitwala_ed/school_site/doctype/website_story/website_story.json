@@ -2,22 +2,24 @@
  "actions": [],
  "allow_rename": 1,
  "autoname": "hash",
- "creation": "2026-01-28 00:00:00.000000",
+ "creation": "2026-01-28 00:00:00",
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
   "section_break_identity",
   "title",
-  "slug",
-  "school",
   "content_owner",
-  "status",
-  "workflow_state",
+  "slug",
   "publish_date",
-  "publish_at",
   "expire_at",
   "seo_profile",
+  "column_break_ecwu",
+  "status",
+  "school",
+  "workflow_state",
+  "publish_at",
   "tags",
+  "section_break_sfss",
   "blocks"
  ],
  "fields": [
@@ -29,18 +31,21 @@
   {
    "fieldname": "title",
    "fieldtype": "Data",
+   "in_list_view": 1,
    "label": "Title",
    "reqd": 1
   },
   {
    "fieldname": "slug",
    "fieldtype": "Data",
+   "in_list_view": 1,
    "label": "Slug",
    "reqd": 1
   },
   {
    "fieldname": "school",
    "fieldtype": "Link",
+   "in_list_view": 1,
    "label": "School",
    "options": "School",
    "reqd": 1
@@ -98,15 +103,24 @@
    "fieldtype": "Table",
    "label": "Blocks",
    "options": "School Website Page Block"
+  },
+  {
+   "fieldname": "column_break_ecwu",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "section_break_sfss",
+   "fieldtype": "Section Break"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-04-08 15:12:00.000000",
+ "modified": "2026-04-11 23:32:18.335219",
  "modified_by": "Administrator",
  "module": "School Site",
  "name": "Website Story",
+ "naming_rule": "Random",
  "owner": "Administrator",
  "permissions": [
   {
@@ -154,6 +168,7 @@
    "write": 1
   }
  ],
+ "row_format": "Dynamic",
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": []

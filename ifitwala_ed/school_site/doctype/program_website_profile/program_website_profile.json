@@ -10,11 +10,12 @@
   "school",
   "program",
   "content_owner",
+  "seo_profile",
+  "column_break_drmi",
   "status",
   "workflow_state",
-  "publish_at",
   "expire_at",
-  "seo_profile",
+  "publish_at",
   "section_break_content",
   "hero_image",
   "intro_text",
@@ -106,12 +107,16 @@
   {
    "fieldname": "section_break_d088",
    "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "column_break_drmi",
+   "fieldtype": "Column Break"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-04-08 19:45:21",
+ "modified": "2026-04-11 23:41:56.572139",
  "modified_by": "Administrator",
  "module": "School Site",
  "name": "Program Website Profile",
