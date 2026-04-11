@@ -192,7 +192,7 @@
 									name: 'staff-course-plan',
 									params: { coursePlan: surface.teaching_plan.course_plan },
 									query: {
-										student_group: props.studentGroup || undefined,
+										student_group: studentGroup || undefined,
 										unit_plan: selectedUnit?.unit_plan || undefined,
 									},
 								}"

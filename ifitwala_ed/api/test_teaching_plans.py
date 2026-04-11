@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from contextlib import contextmanager
-from datetime import datetime
+from datetime import date, datetime
 from types import ModuleType, SimpleNamespace
 from unittest import TestCase
 from unittest.mock import Mock, patch
@@ -103,6 +103,13 @@ def _teaching_plans_module():
     quiz_service = ModuleType("ifitwala_ed.assessment.quiz_service")
     quiz_service.get_student_delivery_state_map = lambda **kwargs: {}
 
+    school_settings_utils = ModuleType("ifitwala_ed.school_settings.school_settings_utils")
+    school_settings_utils.resolve_school_calendars_for_window = lambda school, start_date, end_date: []
+
+    schedule_utils = ModuleType("ifitwala_ed.schedule.schedule_utils")
+    schedule_utils.get_calendar_holiday_set = lambda calendar_name: set()
+    schedule_utils.get_weekend_days_for_calendar = lambda calendar_name: [0, 6]
+
     student_communications_api = ModuleType("ifitwala_ed.api.student_communications")
     student_communications_api.get_student_course_communication_summary = lambda *args, **kwargs: {
         "total_count": 0,
@@ -113,7 +120,14 @@ def _teaching_plans_module():
     }
 
     frappe_utils = ModuleType("frappe.utils")
-    frappe_utils.get_datetime = lambda value: value
+    frappe_utils.get_datetime = lambda value: (
+        value
+        if isinstance(value, datetime)
+        else datetime.combine(value, datetime.min.time())
+        if isinstance(value, date)
+        else datetime.fromisoformat(str(value))
+    )
+    frappe_utils.getdate = lambda value: value if isinstance(value, date) else datetime.fromisoformat(str(value)).date()
     frappe_utils.now_datetime = lambda: "2026-04-07 10:30:00"
     frappe_utils.strip_html = lambda value: str(value or "").replace("<p>", "").replace("</p>", "")
 
@@ -126,6 +140,8 @@ def _teaching_plans_module():
             "ifitwala_ed.curriculum.materials": materials_domain,
             "ifitwala_ed.curriculum.planning": planning_domain,
             "ifitwala_ed.assessment.quiz_service": quiz_service,
+            "ifitwala_ed.school_settings.school_settings_utils": school_settings_utils,
+            "ifitwala_ed.schedule.schedule_utils": schedule_utils,
             "ifitwala_ed.utilities.governed_uploads": governed_uploads,
         }
     ) as frappe:
@@ -953,6 +969,216 @@ class TestTeachingPlansApi(TestCase):
             payload["assessment"]["selected_quiz_question_bank"]["questions"][0]["quiz_question"],
             "QQ-1",
         )
+
+    def test_build_course_plan_timeline_skips_holidays_and_blocks_after_unresolved_duration(self):
+        with _teaching_plans_module() as module:
+
+            def fake_get_all(doctype, *args, **kwargs):
+                if doctype == "School Calendar Holidays":
+                    return [
+                        {"holiday_date": date(2026, 1, 19), "description": "Mid-year break"},
+                        {"holiday_date": date(2026, 1, 20), "description": "Mid-year break"},
+                        {"holiday_date": date(2026, 1, 21), "description": "Mid-year break"},
+                        {"holiday_date": date(2026, 1, 22), "description": "Mid-year break"},
+                        {"holiday_date": date(2026, 1, 23), "description": "Mid-year break"},
+                    ]
+                if doctype == "School Calendar Term":
+                    return [
+                        {
+                            "term": "TERM-1",
+                            "start": date(2026, 1, 5),
+                            "end": date(2026, 1, 30),
+                            "number_of_instructional_days": 20,
+                        }
+                    ]
+                return []
+
+            with (
+                patch.object(
+                    module,
+                    "_resolve_course_plan_timeline_scope",
+                    return_value={
+                        "status": "ready",
+                        "scope": {
+                            "mode": "academic_year",
+                            "academic_year": "2026-2027",
+                            "school": "SCH-1",
+                            "window_start": "2026-01-05",
+                            "window_end": "2026-01-30",
+                        },
+                    },
+                ),
+                patch(
+                    "ifitwala_ed.school_settings.school_settings_utils.resolve_school_calendars_for_window",
+                    return_value=[{"name": "CAL-1", "academic_year": "2026-2027"}],
+                ),
+                patch("ifitwala_ed.schedule.schedule_utils.get_weekend_days_for_calendar", return_value=[0, 6]),
+                patch(
+                    "ifitwala_ed.schedule.schedule_utils.get_calendar_holiday_set",
+                    return_value={
+                        date(2026, 1, 19),
+                        date(2026, 1, 20),
+                        date(2026, 1, 21),
+                        date(2026, 1, 22),
+                        date(2026, 1, 23),
+                    },
+                ),
+                patch.object(module.frappe, "get_all", side_effect=fake_get_all),
+            ):
+                payload = module._build_course_plan_timeline(
+                    {"course": "COURSE-1", "academic_year": "2026-2027", "school": "SCH-1"},
+                    [
+                        {
+                            "unit_plan": "UNIT-1",
+                            "title": "Cells and Systems",
+                            "unit_order": 10,
+                            "duration": "3 weeks",
+                            "unit_status": "Active",
+                            "is_published": 1,
+                        },
+                        {
+                            "unit_plan": "UNIT-2",
+                            "title": "Scientific Method",
+                            "unit_order": 20,
+                            "duration": "TBD",
+                            "unit_status": "Draft",
+                            "is_published": 0,
+                        },
+                        {
+                            "unit_plan": "UNIT-3",
+                            "title": "Lab Reflection",
+                            "unit_order": 30,
+                            "duration": "1 week",
+                            "unit_status": "Draft",
+                            "is_published": 0,
+                        },
+                    ],
+                )
+
+        self.assertEqual(payload["status"], "ready")
+        self.assertEqual(payload["holidays"][0]["start_date"], "2026-01-19")
+        self.assertEqual(payload["holidays"][0]["end_date"], "2026-01-23")
+        self.assertEqual(payload["units"][0]["start_date"], "2026-01-05")
+        self.assertEqual(payload["units"][0]["end_date"], "2026-01-30")
+        self.assertEqual(payload["units"][1]["schedule_state"], "unscheduled_duration")
+        self.assertEqual(payload["units"][2]["schedule_state"], "blocked")
+
+    def test_resolve_course_plan_timeline_scope_clamps_to_student_group_term(self):
+        with _teaching_plans_module() as module:
+            with (
+                patch.object(module, "_assert_staff_group_access", return_value=None),
+                patch.object(
+                    module.planning,
+                    "get_student_group_row",
+                    return_value={
+                        "name": "GROUP-1",
+                        "student_group_name": "Biology A",
+                        "student_group_abbreviation": "BIO-A",
+                        "course": "COURSE-1",
+                        "academic_year": "2026-2027",
+                        "school": "SCH-1",
+                        "term": "TERM-1",
+                    },
+                ),
+                patch.object(
+                    module.frappe.db,
+                    "get_value",
+                    side_effect=[
+                        {
+                            "name": "2026-2027",
+                            "year_start_date": date(2026, 1, 1),
+                            "year_end_date": date(2026, 12, 31),
+                        },
+                        {
+                            "name": "TERM-1",
+                            "term_start_date": date(2026, 1, 5),
+                            "term_end_date": date(2026, 3, 27),
+                            "academic_year": "2026-2027",
+                        },
+                    ],
+                ),
+            ):
+                payload = module._resolve_course_plan_timeline_scope(
+                    {
+                        "course": "COURSE-1",
+                        "academic_year": "2026-2027",
+                        "school": "SCH-1",
+                    },
+                    student_group="GROUP-1",
+                )
+
+        self.assertEqual(payload["status"], "ready")
+        self.assertEqual(payload["scope"]["mode"], "student_group_term")
+        self.assertEqual(payload["scope"]["student_group"], "GROUP-1")
+        self.assertEqual(payload["scope"]["term"], "TERM-1")
+        self.assertEqual(payload["scope"]["window_start"], "2026-01-05")
+        self.assertEqual(payload["scope"]["window_end"], "2026-03-27")
+
+    def test_build_staff_course_plan_bundle_passes_student_group_to_timeline(self):
+        with _teaching_plans_module() as module:
+            with (
+                patch.object(
+                    module,
+                    "_resolve_planning_resource_anchor",
+                    return_value={
+                        "anchor_doctype": "Course Plan",
+                        "anchor_name": "COURSE-PLAN-1",
+                        "can_manage_resources": 1,
+                    },
+                ),
+                patch.object(
+                    module.planning,
+                    "get_course_plan_row",
+                    return_value={
+                        "name": "COURSE-PLAN-1",
+                        "title": "Biology Plan",
+                        "course": "COURSE-1",
+                        "school": "SCH-1",
+                        "academic_year": "2026-2027",
+                        "cycle_label": "Semester 1",
+                        "plan_status": "Active",
+                    },
+                ),
+                patch.object(module, "_build_unit_lookup", return_value={}),
+                patch.object(module, "_fetch_material_map", return_value={}),
+                patch.object(module, "_fetch_course_quiz_question_banks", return_value=[]),
+                patch.object(module, "_fetch_selected_quiz_question_bank", return_value=None),
+                patch.object(module, "_fetch_academic_year_options_for_schools", return_value={"SCH-1": []}),
+                patch.object(module, "_fetch_program_options_for_course", return_value=[]),
+                patch.object(
+                    module,
+                    "_build_course_plan_timeline",
+                    return_value={
+                        "status": "blocked",
+                        "reason": "missing_academic_year",
+                        "message": "x",
+                        "scope": {},
+                        "terms": [],
+                        "holidays": [],
+                        "units": [],
+                        "summary": {},
+                    },
+                ) as timeline_mock,
+                patch.object(
+                    module.frappe,
+                    "get_doc",
+                    return_value=SimpleNamespace(
+                        name="COURSE-PLAN-1",
+                        modified="2026-04-02 09:00:00",
+                        summary="Shared course summary",
+                        check_permission=lambda ptype: None,
+                    ),
+                ),
+                patch.object(
+                    module.frappe.db,
+                    "get_value",
+                    return_value={"course_name": "Biology", "course_group": "Science"},
+                ),
+            ):
+                module._build_staff_course_plan_bundle("COURSE-PLAN-1", student_group="GROUP-1")
+
+        timeline_mock.assert_called_once()
+        self.assertEqual(timeline_mock.call_args.kwargs["student_group"], "GROUP-1")
 
     def test_list_staff_course_plans_serializes_manage_flag(self):
         with _teaching_plans_module() as module:

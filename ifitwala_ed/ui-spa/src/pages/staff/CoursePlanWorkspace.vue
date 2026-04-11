@@ -69,17 +69,26 @@
 				:id="SECTION_IDS.overview"
 				class="scroll-mt-40 rounded-[2rem] border border-line-soft bg-white p-6 shadow-soft"
 			>
-				<div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+				<button
+					type="button"
+					class="flex w-full flex-col gap-4 text-left lg:flex-row lg:items-start lg:justify-between"
+					:aria-expanded="!isSectionCollapsed(SECTION_IDS.overview)"
+					@click="toggleSection(SECTION_IDS.overview)"
+				>
 					<div>
 						<p class="type-overline text-ink/60">Course Plan Overview</p>
 						<h2 class="mt-2 type-h2 text-ink">
 							{{ surface.course_plan.course_name || surface.course_plan.course }}
 						</h2>
 						<p class="mt-2 type-body text-ink/80">
-							This shared plan sets the governed backbone every linked class teaching plan uses.
+							{{
+								isSectionCollapsed(SECTION_IDS.overview)
+									? 'Open the shared plan metadata, summary, and publishing controls.'
+									: 'This shared plan sets the governed backbone every linked class teaching plan uses.'
+							}}
 						</p>
 					</div>
-					<div class="flex flex-wrap gap-2">
+					<div class="flex flex-wrap items-center gap-2 lg:justify-end">
 						<span v-if="surface.course_plan.course_group" class="chip">
 							{{ surface.course_plan.course_group }}
 						</span>
@@ -89,10 +98,16 @@
 						<span v-if="surface.course_plan.cycle_label" class="chip">
 							{{ surface.course_plan.cycle_label }}
 						</span>
+						<span class="chip">{{
+							isSectionCollapsed(SECTION_IDS.overview) ? 'Show' : 'Hide'
+						}}</span>
 					</div>
-				</div>
+				</button>
 
-				<div v-if="canManagePlan" class="mt-6 grid gap-4 lg:grid-cols-2">
+				<div
+					v-if="!isSectionCollapsed(SECTION_IDS.overview) && canManagePlan"
+					class="mt-6 grid gap-4 lg:grid-cols-2"
+				>
 					<label class="block space-y-2">
 						<span class="type-caption text-ink/70">Course Plan Title</span>
 						<input
@@ -163,7 +178,10 @@
 					</div>
 				</div>
 
-				<div v-else class="mt-6 rounded-2xl border border-line-soft bg-surface-soft p-5">
+				<div
+					v-else-if="!isSectionCollapsed(SECTION_IDS.overview)"
+					class="mt-6 rounded-2xl border border-line-soft bg-surface-soft p-5"
+				>
 					<PlanningRichTextField
 						v-if="hasRichTextContent(surface.course_plan.summary)"
 						:model-value="surface.course_plan.summary"
@@ -174,6 +192,10 @@
 						No shared summary has been captured for this course plan yet.
 					</p>
 				</div>
+			</section>
+
+			<section :id="SECTION_IDS.timeline" class="scroll-mt-40">
+				<CoursePlanTimelineCard :timeline="surface.curriculum.timeline" />
 			</section>
 
 			<section
@@ -322,7 +344,12 @@
 					:id="SECTION_IDS.unitEditor"
 					class="scroll-mt-40 space-y-6 rounded-[2rem] border border-line-soft bg-white p-6 shadow-soft"
 				>
-					<div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+					<button
+						type="button"
+						class="flex w-full flex-col gap-4 text-left lg:flex-row lg:items-start lg:justify-between"
+						:aria-expanded="!isSectionCollapsed(SECTION_IDS.unitEditor)"
+						@click="toggleSection(SECTION_IDS.unitEditor)"
+					>
 						<div>
 							<p class="type-overline text-ink/60">
 								{{ creatingUnit ? 'New Unit Plan' : 'Selected Unit' }}
@@ -331,632 +358,658 @@
 								{{ creatingUnit ? 'Draft a governed unit' : selectedUnit?.title || 'Unit Plan' }}
 							</h2>
 							<p class="mt-2 type-body text-ink/80">
-								Keep the unit backbone shared while class teaching plans continue to own pacing,
-								sessions, and local delivery choices.
+								{{
+									isSectionCollapsed(SECTION_IDS.unitEditor)
+										? 'Open the governed unit content, standards, reflections, and shared resources.'
+										: 'Keep the unit backbone shared while class teaching plans continue to own pacing, sessions, and local delivery choices.'
+								}}
 							</p>
 						</div>
-						<div class="flex flex-wrap gap-2">
+						<div class="flex flex-wrap items-center gap-2">
 							<span v-if="!creatingUnit" class="chip">Unit {{ unitForm.unit_order || '—' }}</span>
 							<span v-if="unitForm.unit_status" class="chip">{{ unitForm.unit_status }}</span>
 							<span v-if="unitForm.duration" class="chip">{{ unitForm.duration }}</span>
 							<span v-if="unitForm.estimated_duration" class="chip">
 								{{ unitForm.estimated_duration }}
 							</span>
+							<span
+								v-if="selectedUnitTimelineState?.start_date && selectedUnitTimelineState?.end_date"
+								class="chip"
+							>
+								{{ selectedUnitTimelineState.start_date }} →
+								{{ selectedUnitTimelineState.end_date }}
+							</span>
+							<span class="chip">{{
+								isSectionCollapsed(SECTION_IDS.unitEditor) ? 'Show' : 'Hide'
+							}}</span>
 						</div>
-					</div>
+					</button>
 
-					<div v-if="canManagePlan" class="grid gap-4 lg:grid-cols-2">
-						<label class="block space-y-2">
-							<span class="type-caption text-ink/70">Unit Title</span>
-							<input
-								v-model="unitForm.title"
-								data-quick-focus="unit-title"
-								type="text"
-								class="if-input w-full"
-								placeholder="e.g. Cells and Systems"
-							/>
-						</label>
-						<label class="block space-y-2">
-							<span class="type-caption text-ink/70">Program</span>
-							<select v-model="unitForm.program" class="if-input w-full">
-								<option value="">Optional program</option>
-								<option
-									v-for="option in courseProgramOptions"
-									:key="option.value"
-									:value="option.value"
-								>
-									{{ option.label }}
-								</option>
-							</select>
-							<p class="type-caption text-ink/60">
-								{{
-									courseProgramOptions.length
-										? 'Only Program records already linked to this course are available here.'
-										: 'No Program records currently link to this course.'
-								}}
-							</p>
-						</label>
-						<label class="block space-y-2">
-							<span class="type-caption text-ink/70">Unit Code</span>
-							<input
-								v-model="unitForm.unit_code"
-								type="text"
-								class="if-input w-full"
-								placeholder="Optional unit code"
-							/>
-						</label>
-						<label class="block space-y-2">
-							<span class="type-caption text-ink/70">Unit Order</span>
-							<input
-								v-model.number="unitForm.unit_order"
-								type="number"
-								min="1"
-								step="1"
-								class="if-input w-full"
-							/>
-						</label>
-						<label class="block space-y-2">
-							<span class="type-caption text-ink/70">Unit Status</span>
-							<select v-model="unitForm.unit_status" class="if-input w-full">
-								<option v-for="option in unitStatusOptions" :key="option" :value="option">
-									{{ option }}
-								</option>
-							</select>
-						</label>
-						<label class="block space-y-2">
-							<span class="type-caption text-ink/70">Version</span>
-							<input
-								v-model="unitForm.version"
-								type="text"
-								class="if-input w-full"
-								placeholder="Optional version"
-							/>
-						</label>
-						<label class="block space-y-2">
-							<span class="type-caption text-ink/70">Duration</span>
-							<input
-								v-model="unitForm.duration"
-								type="text"
-								class="if-input w-full"
-								placeholder="e.g. 6 weeks"
-							/>
-						</label>
-						<label class="block space-y-2">
-							<span class="type-caption text-ink/70">Estimated Duration</span>
-							<input
-								v-model="unitForm.estimated_duration"
-								type="text"
-								class="if-input w-full"
-								placeholder="e.g. 24 GLH"
-							/>
-						</label>
-						<label
-							class="flex items-center gap-3 rounded-2xl border border-line-soft bg-surface-soft px-4 py-4 lg:col-span-2"
-						>
-							<input v-model="unitForm.is_published" type="checkbox" class="h-4 w-4" />
-							<div>
-								<p class="type-body-strong text-ink">Published for class inheritance</p>
+					<template v-if="!isSectionCollapsed(SECTION_IDS.unitEditor)">
+						<div v-if="canManagePlan" class="grid gap-4 lg:grid-cols-2">
+							<label class="block space-y-2">
+								<span class="type-caption text-ink/70">Unit Title</span>
+								<input
+									v-model="unitForm.title"
+									data-quick-focus="unit-title"
+									type="text"
+									class="if-input w-full"
+									placeholder="e.g. Cells and Systems"
+								/>
+							</label>
+							<label class="block space-y-2">
+								<span class="type-caption text-ink/70">Program</span>
+								<select v-model="unitForm.program" class="if-input w-full">
+									<option value="">Optional program</option>
+									<option
+										v-for="option in courseProgramOptions"
+										:key="option.value"
+										:value="option.value"
+									>
+										{{ option.label }}
+									</option>
+								</select>
+								<p class="type-caption text-ink/60">
+									{{
+										courseProgramOptions.length
+											? 'Only Program records already linked to this course are available here.'
+											: 'No Program records currently link to this course.'
+									}}
+								</p>
+							</label>
+							<label class="block space-y-2">
+								<span class="type-caption text-ink/70">Unit Code</span>
+								<input
+									v-model="unitForm.unit_code"
+									type="text"
+									class="if-input w-full"
+									placeholder="Optional unit code"
+								/>
+							</label>
+							<label class="block space-y-2">
+								<span class="type-caption text-ink/70">Unit Order</span>
+								<input
+									v-model.number="unitForm.unit_order"
+									type="number"
+									min="1"
+									step="1"
+									class="if-input w-full"
+								/>
+							</label>
+							<label class="block space-y-2">
+								<span class="type-caption text-ink/70">Unit Status</span>
+								<select v-model="unitForm.unit_status" class="if-input w-full">
+									<option v-for="option in unitStatusOptions" :key="option" :value="option">
+										{{ option }}
+									</option>
+								</select>
+							</label>
+							<label class="block space-y-2">
+								<span class="type-caption text-ink/70">Version</span>
+								<input
+									v-model="unitForm.version"
+									type="text"
+									class="if-input w-full"
+									placeholder="Optional version"
+								/>
+							</label>
+							<label class="block space-y-2">
+								<span class="type-caption text-ink/70">Duration</span>
+								<input
+									v-model="unitForm.duration"
+									type="text"
+									class="if-input w-full"
+									placeholder="e.g. 6 weeks"
+								/>
+							</label>
+							<label class="block space-y-2">
+								<span class="type-caption text-ink/70">Estimated Duration</span>
+								<input
+									v-model="unitForm.estimated_duration"
+									type="text"
+									class="if-input w-full"
+									placeholder="e.g. 24 GLH"
+								/>
+							</label>
+							<label
+								class="flex items-center gap-3 rounded-2xl border border-line-soft bg-surface-soft px-4 py-4 lg:col-span-2"
+							>
+								<input v-model="unitForm.is_published" type="checkbox" class="h-4 w-4" />
+								<div>
+									<p class="type-body-strong text-ink">Published for class inheritance</p>
+									<p class="type-caption text-ink/70">
+										Use this when the governed unit is ready for linked classes to inherit.
+									</p>
+								</div>
+							</label>
+							<label class="block space-y-2 lg:col-span-2">
+								<span class="type-caption text-ink/70">Overview & Rationale</span>
+								<PlanningRichTextField
+									v-model="unitForm.overview"
+									placeholder="State the unit arc, rationale, and what makes this backbone important."
+									min-height-class="min-h-[8rem]"
+								/>
+							</label>
+							<label class="block space-y-2 lg:col-span-2">
+								<span class="type-caption text-ink/70">Essential Understanding</span>
+								<PlanningRichTextField
+									v-model="unitForm.essential_understanding"
+									placeholder="Capture the shared understanding every class should build."
+									min-height-class="min-h-[8rem]"
+								/>
+							</label>
+							<label class="block space-y-2 lg:col-span-2">
+								<span class="type-caption text-ink/70">Likely Misconceptions</span>
+								<PlanningRichTextField
+									v-model="unitForm.misconceptions"
+									placeholder="List likely misunderstandings students may bring into the unit."
+									min-height-class="min-h-[8rem]"
+								/>
+							</label>
+							<label class="block space-y-2">
+								<span class="type-caption text-ink/70">Content</span>
+								<PlanningRichTextField
+									v-model="unitForm.content"
+									placeholder="What should students know?"
+									min-height-class="min-h-[8rem]"
+								/>
+							</label>
+							<label class="block space-y-2">
+								<span class="type-caption text-ink/70">Skills</span>
+								<PlanningRichTextField
+									v-model="unitForm.skills"
+									placeholder="What should students be able to do?"
+									min-height-class="min-h-[8rem]"
+								/>
+							</label>
+							<label class="block space-y-2 lg:col-span-2">
+								<span class="type-caption text-ink/70">Concepts</span>
+								<PlanningRichTextField
+									v-model="unitForm.concepts"
+									placeholder="Which big ideas or concepts should anchor the unit?"
+									min-height-class="min-h-[8rem]"
+								/>
+							</label>
+						</div>
+
+						<div v-else class="grid gap-4 lg:grid-cols-2">
+							<div
+								v-if="hasRichTextContent(selectedUnit?.overview)"
+								class="rounded-2xl border border-line-soft bg-surface-soft p-4"
+							>
+								<p class="type-overline text-ink/60">Overview</p>
+								<PlanningRichTextField
+									:model-value="selectedUnit?.overview"
+									:editable="false"
+									display-class="mt-2 text-ink/80"
+								/>
+							</div>
+							<div
+								v-if="hasRichTextContent(selectedUnit?.essential_understanding)"
+								class="rounded-2xl border border-line-soft bg-surface-soft p-4"
+							>
+								<p class="type-overline text-ink/60">Essential Understanding</p>
+								<PlanningRichTextField
+									:model-value="selectedUnit?.essential_understanding"
+									:editable="false"
+									display-class="mt-2 text-ink/80"
+								/>
+							</div>
+							<div
+								v-if="hasRichTextContent(selectedUnit?.content)"
+								class="rounded-2xl border border-line-soft bg-surface-soft p-4"
+							>
+								<p class="type-overline text-ink/60">Content</p>
+								<PlanningRichTextField
+									:model-value="selectedUnit?.content"
+									:editable="false"
+									display-class="mt-2 text-ink/80"
+								/>
+							</div>
+							<div
+								v-if="hasRichTextContent(selectedUnit?.skills)"
+								class="rounded-2xl border border-line-soft bg-surface-soft p-4"
+							>
+								<p class="type-overline text-ink/60">Skills</p>
+								<PlanningRichTextField
+									:model-value="selectedUnit?.skills"
+									:editable="false"
+									display-class="mt-2 text-ink/80"
+								/>
+							</div>
+							<div
+								v-if="hasRichTextContent(selectedUnit?.concepts)"
+								class="rounded-2xl border border-line-soft bg-surface-soft p-4"
+							>
+								<p class="type-overline text-ink/60">Concepts</p>
+								<PlanningRichTextField
+									:model-value="selectedUnit?.concepts"
+									:editable="false"
+									display-class="mt-2 text-ink/80"
+								/>
+							</div>
+							<div
+								v-if="hasRichTextContent(selectedUnit?.misconceptions)"
+								class="rounded-2xl border border-line-soft bg-surface-soft p-4"
+							>
+								<p class="type-overline text-ink/60">Likely Misconceptions</p>
+								<PlanningRichTextField
+									:model-value="selectedUnit?.misconceptions"
+									:editable="false"
+									display-class="mt-2 text-ink/80"
+								/>
+							</div>
+						</div>
+
+						<section :id="SECTION_IDS.standards" class="scroll-mt-40 space-y-3">
+							<div class="flex items-center justify-between gap-3">
+								<div>
+									<p class="type-overline text-ink/60">Standards Alignment</p>
+									<h3 class="mt-1 type-h3 text-ink">Shared alignment rows</h3>
+								</div>
+								<div class="flex items-center gap-2">
+									<span class="chip">{{ unitForm.standards.length }}</span>
+									<button
+										v-if="canManagePlan"
+										type="button"
+										class="if-action if-action--subtle"
+										@click="addStandard"
+									>
+										Add Standard
+									</button>
+								</div>
+							</div>
+
+							<div
+								v-if="!unitForm.standards.length"
+								class="rounded-2xl border border-dashed border-line-soft p-4"
+							>
 								<p class="type-caption text-ink/70">
-									Use this when the governed unit is ready for linked classes to inherit.
+									No standards have been captured for this unit yet.
 								</p>
 							</div>
-						</label>
-						<label class="block space-y-2 lg:col-span-2">
-							<span class="type-caption text-ink/70">Overview & Rationale</span>
-							<PlanningRichTextField
-								v-model="unitForm.overview"
-								placeholder="State the unit arc, rationale, and what makes this backbone important."
-								min-height-class="min-h-[8rem]"
-							/>
-						</label>
-						<label class="block space-y-2 lg:col-span-2">
-							<span class="type-caption text-ink/70">Essential Understanding</span>
-							<PlanningRichTextField
-								v-model="unitForm.essential_understanding"
-								placeholder="Capture the shared understanding every class should build."
-								min-height-class="min-h-[8rem]"
-							/>
-						</label>
-						<label class="block space-y-2 lg:col-span-2">
-							<span class="type-caption text-ink/70">Likely Misconceptions</span>
-							<PlanningRichTextField
-								v-model="unitForm.misconceptions"
-								placeholder="List likely misunderstandings students may bring into the unit."
-								min-height-class="min-h-[8rem]"
-							/>
-						</label>
-						<label class="block space-y-2">
-							<span class="type-caption text-ink/70">Content</span>
-							<PlanningRichTextField
-								v-model="unitForm.content"
-								placeholder="What should students know?"
-								min-height-class="min-h-[8rem]"
-							/>
-						</label>
-						<label class="block space-y-2">
-							<span class="type-caption text-ink/70">Skills</span>
-							<PlanningRichTextField
-								v-model="unitForm.skills"
-								placeholder="What should students be able to do?"
-								min-height-class="min-h-[8rem]"
-							/>
-						</label>
-						<label class="block space-y-2 lg:col-span-2">
-							<span class="type-caption text-ink/70">Concepts</span>
-							<PlanningRichTextField
-								v-model="unitForm.concepts"
-								placeholder="Which big ideas or concepts should anchor the unit?"
-								min-height-class="min-h-[8rem]"
-							/>
-						</label>
-					</div>
 
-					<div v-else class="grid gap-4 lg:grid-cols-2">
-						<div
-							v-if="hasRichTextContent(selectedUnit?.overview)"
-							class="rounded-2xl border border-line-soft bg-surface-soft p-4"
-						>
-							<p class="type-overline text-ink/60">Overview</p>
-							<PlanningRichTextField
-								:model-value="selectedUnit?.overview"
-								:editable="false"
-								display-class="mt-2 text-ink/80"
-							/>
-						</div>
-						<div
-							v-if="hasRichTextContent(selectedUnit?.essential_understanding)"
-							class="rounded-2xl border border-line-soft bg-surface-soft p-4"
-						>
-							<p class="type-overline text-ink/60">Essential Understanding</p>
-							<PlanningRichTextField
-								:model-value="selectedUnit?.essential_understanding"
-								:editable="false"
-								display-class="mt-2 text-ink/80"
-							/>
-						</div>
-						<div
-							v-if="hasRichTextContent(selectedUnit?.content)"
-							class="rounded-2xl border border-line-soft bg-surface-soft p-4"
-						>
-							<p class="type-overline text-ink/60">Content</p>
-							<PlanningRichTextField
-								:model-value="selectedUnit?.content"
-								:editable="false"
-								display-class="mt-2 text-ink/80"
-							/>
-						</div>
-						<div
-							v-if="hasRichTextContent(selectedUnit?.skills)"
-							class="rounded-2xl border border-line-soft bg-surface-soft p-4"
-						>
-							<p class="type-overline text-ink/60">Skills</p>
-							<PlanningRichTextField
-								:model-value="selectedUnit?.skills"
-								:editable="false"
-								display-class="mt-2 text-ink/80"
-							/>
-						</div>
-						<div
-							v-if="hasRichTextContent(selectedUnit?.concepts)"
-							class="rounded-2xl border border-line-soft bg-surface-soft p-4"
-						>
-							<p class="type-overline text-ink/60">Concepts</p>
-							<PlanningRichTextField
-								:model-value="selectedUnit?.concepts"
-								:editable="false"
-								display-class="mt-2 text-ink/80"
-							/>
-						</div>
-						<div
-							v-if="hasRichTextContent(selectedUnit?.misconceptions)"
-							class="rounded-2xl border border-line-soft bg-surface-soft p-4"
-						>
-							<p class="type-overline text-ink/60">Likely Misconceptions</p>
-							<PlanningRichTextField
-								:model-value="selectedUnit?.misconceptions"
-								:editable="false"
-								display-class="mt-2 text-ink/80"
-							/>
-						</div>
-					</div>
-
-					<section :id="SECTION_IDS.standards" class="scroll-mt-40 space-y-3">
-						<div class="flex items-center justify-between gap-3">
-							<div>
-								<p class="type-overline text-ink/60">Standards Alignment</p>
-								<h3 class="mt-1 type-h3 text-ink">Shared alignment rows</h3>
-							</div>
-							<div class="flex items-center gap-2">
-								<span class="chip">{{ unitForm.standards.length }}</span>
-								<button
-									v-if="canManagePlan"
-									type="button"
-									class="if-action if-action--subtle"
-									@click="addStandard"
+							<div v-else class="space-y-4">
+								<article
+									v-for="standard in unitForm.standards"
+									:key="standard.local_id"
+									class="rounded-2xl border border-line-soft bg-surface-soft p-4"
 								>
-									Add Standard
-								</button>
+									<div class="grid gap-4 lg:grid-cols-2">
+										<label class="block space-y-2">
+											<span class="type-caption text-ink/70">Framework Name</span>
+											<input
+												v-model="standard.framework_name"
+												type="text"
+												class="if-input w-full"
+												:disabled="!canManagePlan"
+											/>
+										</label>
+										<label class="block space-y-2">
+											<span class="type-caption text-ink/70">Framework Version</span>
+											<input
+												v-model="standard.framework_version"
+												type="text"
+												class="if-input w-full"
+												:disabled="!canManagePlan"
+											/>
+										</label>
+										<label class="block space-y-2">
+											<span class="type-caption text-ink/70">Subject Area</span>
+											<input
+												v-model="standard.subject_area"
+												type="text"
+												class="if-input w-full"
+												:disabled="!canManagePlan"
+											/>
+										</label>
+										<label class="block space-y-2">
+											<span class="type-caption text-ink/70">Program</span>
+											<select
+												v-model="standard.program"
+												class="if-input w-full"
+												:disabled="!canManagePlan"
+											>
+												<option value="">Optional program</option>
+												<option
+													v-for="option in courseProgramOptions"
+													:key="option.value"
+													:value="option.value"
+												>
+													{{ option.label }}
+												</option>
+											</select>
+										</label>
+										<label class="block space-y-2">
+											<span class="type-caption text-ink/70">Strand</span>
+											<input
+												v-model="standard.strand"
+												type="text"
+												class="if-input w-full"
+												:disabled="!canManagePlan"
+											/>
+										</label>
+										<label class="block space-y-2">
+											<span class="type-caption text-ink/70">Substrand</span>
+											<input
+												v-model="standard.substrand"
+												type="text"
+												class="if-input w-full"
+												:disabled="!canManagePlan"
+											/>
+										</label>
+										<label class="block space-y-2">
+											<span class="type-caption text-ink/70">Standard Code</span>
+											<input
+												v-model="standard.standard_code"
+												type="text"
+												class="if-input w-full"
+												:disabled="!canManagePlan"
+											/>
+										</label>
+										<label class="block space-y-2">
+											<span class="type-caption text-ink/70">Coverage Level</span>
+											<select
+												v-model="standard.coverage_level"
+												class="if-input w-full"
+												:disabled="!canManagePlan"
+											>
+												<option value="">Select</option>
+												<option
+													v-for="option in coverageLevelOptions"
+													:key="option"
+													:value="option"
+												>
+													{{ option }}
+												</option>
+											</select>
+										</label>
+										<label class="block space-y-2">
+											<span class="type-caption text-ink/70">Alignment Strength</span>
+											<select
+												v-model="standard.alignment_strength"
+												class="if-input w-full"
+												:disabled="!canManagePlan"
+											>
+												<option value="">Select</option>
+												<option
+													v-for="option in alignmentStrengthOptions"
+													:key="option"
+													:value="option"
+												>
+													{{ option }}
+												</option>
+											</select>
+										</label>
+										<label class="block space-y-2">
+											<span class="type-caption text-ink/70">Alignment Type</span>
+											<select
+												v-model="standard.alignment_type"
+												class="if-input w-full"
+												:disabled="!canManagePlan"
+											>
+												<option value="">Select</option>
+												<option
+													v-for="option in alignmentTypeOptions"
+													:key="option"
+													:value="option"
+												>
+													{{ option }}
+												</option>
+											</select>
+										</label>
+										<label class="block space-y-2 lg:col-span-2">
+											<span class="type-caption text-ink/70">Standard Description</span>
+											<textarea
+												v-model="standard.standard_description"
+												rows="3"
+												class="if-input min-h-[6rem] w-full resize-y"
+												:disabled="!canManagePlan"
+											/>
+										</label>
+										<label class="block space-y-2 lg:col-span-2">
+											<span class="type-caption text-ink/70">Notes</span>
+											<textarea
+												v-model="standard.notes"
+												rows="3"
+												class="if-input min-h-[6rem] w-full resize-y"
+												:disabled="!canManagePlan"
+											/>
+										</label>
+									</div>
+									<div v-if="canManagePlan" class="mt-4 flex justify-end">
+										<button
+											type="button"
+											class="if-action if-action--subtle"
+											@click="removeStandard(standard.local_id)"
+										>
+											Remove Standard
+										</button>
+									</div>
+								</article>
 							</div>
-						</div>
+						</section>
 
-						<div
-							v-if="!unitForm.standards.length"
-							class="rounded-2xl border border-dashed border-line-soft p-4"
-						>
-							<p class="type-caption text-ink/70">
-								No standards have been captured for this unit yet.
-							</p>
-						</div>
-
-						<div v-else class="space-y-4">
-							<article
-								v-for="standard in unitForm.standards"
-								:key="standard.local_id"
-								class="rounded-2xl border border-line-soft bg-surface-soft p-4"
-							>
-								<div class="grid gap-4 lg:grid-cols-2">
-									<label class="block space-y-2">
-										<span class="type-caption text-ink/70">Framework Name</span>
-										<input
-											v-model="standard.framework_name"
-											type="text"
-											class="if-input w-full"
-											:disabled="!canManagePlan"
-										/>
-									</label>
-									<label class="block space-y-2">
-										<span class="type-caption text-ink/70">Framework Version</span>
-										<input
-											v-model="standard.framework_version"
-											type="text"
-											class="if-input w-full"
-											:disabled="!canManagePlan"
-										/>
-									</label>
-									<label class="block space-y-2">
-										<span class="type-caption text-ink/70">Subject Area</span>
-										<input
-											v-model="standard.subject_area"
-											type="text"
-											class="if-input w-full"
-											:disabled="!canManagePlan"
-										/>
-									</label>
-									<label class="block space-y-2">
-										<span class="type-caption text-ink/70">Program</span>
-										<select
-											v-model="standard.program"
-											class="if-input w-full"
-											:disabled="!canManagePlan"
-										>
-											<option value="">Optional program</option>
-											<option
-												v-for="option in courseProgramOptions"
-												:key="option.value"
-												:value="option.value"
-											>
-												{{ option.label }}
-											</option>
-										</select>
-									</label>
-									<label class="block space-y-2">
-										<span class="type-caption text-ink/70">Strand</span>
-										<input
-											v-model="standard.strand"
-											type="text"
-											class="if-input w-full"
-											:disabled="!canManagePlan"
-										/>
-									</label>
-									<label class="block space-y-2">
-										<span class="type-caption text-ink/70">Substrand</span>
-										<input
-											v-model="standard.substrand"
-											type="text"
-											class="if-input w-full"
-											:disabled="!canManagePlan"
-										/>
-									</label>
-									<label class="block space-y-2">
-										<span class="type-caption text-ink/70">Standard Code</span>
-										<input
-											v-model="standard.standard_code"
-											type="text"
-											class="if-input w-full"
-											:disabled="!canManagePlan"
-										/>
-									</label>
-									<label class="block space-y-2">
-										<span class="type-caption text-ink/70">Coverage Level</span>
-										<select
-											v-model="standard.coverage_level"
-											class="if-input w-full"
-											:disabled="!canManagePlan"
-										>
-											<option value="">Select</option>
-											<option v-for="option in coverageLevelOptions" :key="option" :value="option">
-												{{ option }}
-											</option>
-										</select>
-									</label>
-									<label class="block space-y-2">
-										<span class="type-caption text-ink/70">Alignment Strength</span>
-										<select
-											v-model="standard.alignment_strength"
-											class="if-input w-full"
-											:disabled="!canManagePlan"
-										>
-											<option value="">Select</option>
-											<option
-												v-for="option in alignmentStrengthOptions"
-												:key="option"
-												:value="option"
-											>
-												{{ option }}
-											</option>
-										</select>
-									</label>
-									<label class="block space-y-2">
-										<span class="type-caption text-ink/70">Alignment Type</span>
-										<select
-											v-model="standard.alignment_type"
-											class="if-input w-full"
-											:disabled="!canManagePlan"
-										>
-											<option value="">Select</option>
-											<option v-for="option in alignmentTypeOptions" :key="option" :value="option">
-												{{ option }}
-											</option>
-										</select>
-									</label>
-									<label class="block space-y-2 lg:col-span-2">
-										<span class="type-caption text-ink/70">Standard Description</span>
-										<textarea
-											v-model="standard.standard_description"
-											rows="3"
-											class="if-input min-h-[6rem] w-full resize-y"
-											:disabled="!canManagePlan"
-										/>
-									</label>
-									<label class="block space-y-2 lg:col-span-2">
-										<span class="type-caption text-ink/70">Notes</span>
-										<textarea
-											v-model="standard.notes"
-											rows="3"
-											class="if-input min-h-[6rem] w-full resize-y"
-											:disabled="!canManagePlan"
-										/>
-									</label>
+						<section :id="SECTION_IDS.reflections" class="scroll-mt-40 space-y-3">
+							<div class="flex items-center justify-between gap-3">
+								<div>
+									<p class="type-overline text-ink/60">Shared Reflections</p>
+									<h3 class="mt-1 type-h3 text-ink">Bird's-eye planning notes</h3>
 								</div>
-								<div v-if="canManagePlan" class="mt-4 flex justify-end">
+								<div class="flex items-center gap-2">
+									<span class="chip">{{ unitForm.reflections.length }}</span>
 									<button
+										v-if="canManagePlan"
 										type="button"
 										class="if-action if-action--subtle"
-										@click="removeStandard(standard.local_id)"
+										@click="addReflection"
 									>
-										Remove Standard
+										Add Reflection
 									</button>
 								</div>
-							</article>
-						</div>
-					</section>
-
-					<section :id="SECTION_IDS.reflections" class="scroll-mt-40 space-y-3">
-						<div class="flex items-center justify-between gap-3">
-							<div>
-								<p class="type-overline text-ink/60">Shared Reflections</p>
-								<h3 class="mt-1 type-h3 text-ink">Bird's-eye planning notes</h3>
 							</div>
-							<div class="flex items-center gap-2">
-								<span class="chip">{{ unitForm.reflections.length }}</span>
-								<button
-									v-if="canManagePlan"
-									type="button"
-									class="if-action if-action--subtle"
-									@click="addReflection"
-								>
-									Add Reflection
-								</button>
-							</div>
-						</div>
 
-						<div
-							v-if="!unitForm.reflections.length"
-							class="rounded-2xl border border-dashed border-line-soft p-4"
-						>
-							<p class="type-caption text-ink/70">
-								No shared reflections captured yet for this unit.
-							</p>
-						</div>
-
-						<div v-else class="space-y-4">
-							<article
-								v-for="reflection in unitForm.reflections"
-								:key="reflection.local_id"
-								class="rounded-2xl border border-line-soft bg-surface-soft p-4"
+							<div
+								v-if="!unitForm.reflections.length"
+								class="rounded-2xl border border-dashed border-line-soft p-4"
 							>
-								<div class="grid gap-4 lg:grid-cols-2">
-									<label class="block space-y-2">
-										<span class="type-caption text-ink/70">Academic Year</span>
-										<input
-											:value="reflection.academic_year || derivedReflectionAcademicYear"
-											type="text"
-											class="if-input w-full"
-											disabled
-										/>
-									</label>
-									<label class="block space-y-2">
-										<span class="type-caption text-ink/70">School</span>
-										<input
-											:value="reflection.school || derivedReflectionSchool"
-											type="text"
-											class="if-input w-full"
-											disabled
-										/>
-									</label>
-									<p class="type-caption text-ink/60 lg:col-span-2">
-										Academic Year and School stay derived from the parent course plan.
-									</p>
-									<label class="block space-y-2 lg:col-span-2">
-										<span class="type-caption text-ink/70">Prior To The Unit</span>
-										<PlanningRichTextField
-											v-model="reflection.prior_to_the_unit"
-											:editable="canManagePlan"
-											min-height-class="min-h-[6rem]"
-										/>
-									</label>
-									<label class="block space-y-2 lg:col-span-2">
-										<span class="type-caption text-ink/70">During The Unit</span>
-										<PlanningRichTextField
-											v-model="reflection.during_the_unit"
-											:editable="canManagePlan"
-											min-height-class="min-h-[6rem]"
-										/>
-									</label>
-									<label class="block space-y-2 lg:col-span-2">
-										<span class="type-caption text-ink/70">What Worked Well</span>
-										<PlanningRichTextField
-											v-model="reflection.what_work_well"
-											:editable="canManagePlan"
-											min-height-class="min-h-[6rem]"
-										/>
-									</label>
-									<label class="block space-y-2 lg:col-span-2">
-										<span class="type-caption text-ink/70">What Didn't Work Well</span>
-										<PlanningRichTextField
-											v-model="reflection.what_didnt_work_well"
-											:editable="canManagePlan"
-											min-height-class="min-h-[6rem]"
-										/>
-									</label>
-									<label class="block space-y-2 lg:col-span-2">
-										<span class="type-caption text-ink/70">Change Suggestions</span>
-										<PlanningRichTextField
-											v-model="reflection.changes_suggestions"
-											:editable="canManagePlan"
-											min-height-class="min-h-[6rem]"
-										/>
-									</label>
-								</div>
-								<div v-if="canManagePlan" class="mt-4 flex justify-end">
-									<button
-										type="button"
-										class="if-action if-action--subtle"
-										@click="removeReflection(reflection.local_id)"
+								<p class="type-caption text-ink/70">
+									No shared reflections captured yet for this unit.
+								</p>
+							</div>
+
+							<div v-else class="space-y-4">
+								<article
+									v-for="reflection in unitForm.reflections"
+									:key="reflection.local_id"
+									class="rounded-2xl border border-line-soft bg-surface-soft p-4"
+								>
+									<div class="grid gap-4 lg:grid-cols-2">
+										<label class="block space-y-2">
+											<span class="type-caption text-ink/70">Academic Year</span>
+											<input
+												:value="reflection.academic_year || derivedReflectionAcademicYear"
+												type="text"
+												class="if-input w-full"
+												disabled
+											/>
+										</label>
+										<label class="block space-y-2">
+											<span class="type-caption text-ink/70">School</span>
+											<input
+												:value="reflection.school || derivedReflectionSchool"
+												type="text"
+												class="if-input w-full"
+												disabled
+											/>
+										</label>
+										<p class="type-caption text-ink/60 lg:col-span-2">
+											Academic Year and School stay derived from the parent course plan.
+										</p>
+										<label class="block space-y-2 lg:col-span-2">
+											<span class="type-caption text-ink/70">Prior To The Unit</span>
+											<PlanningRichTextField
+												v-model="reflection.prior_to_the_unit"
+												:editable="canManagePlan"
+												min-height-class="min-h-[6rem]"
+											/>
+										</label>
+										<label class="block space-y-2 lg:col-span-2">
+											<span class="type-caption text-ink/70">During The Unit</span>
+											<PlanningRichTextField
+												v-model="reflection.during_the_unit"
+												:editable="canManagePlan"
+												min-height-class="min-h-[6rem]"
+											/>
+										</label>
+										<label class="block space-y-2 lg:col-span-2">
+											<span class="type-caption text-ink/70">What Worked Well</span>
+											<PlanningRichTextField
+												v-model="reflection.what_work_well"
+												:editable="canManagePlan"
+												min-height-class="min-h-[6rem]"
+											/>
+										</label>
+										<label class="block space-y-2 lg:col-span-2">
+											<span class="type-caption text-ink/70">What Didn't Work Well</span>
+											<PlanningRichTextField
+												v-model="reflection.what_didnt_work_well"
+												:editable="canManagePlan"
+												min-height-class="min-h-[6rem]"
+											/>
+										</label>
+										<label class="block space-y-2 lg:col-span-2">
+											<span class="type-caption text-ink/70">Change Suggestions</span>
+											<PlanningRichTextField
+												v-model="reflection.changes_suggestions"
+												:editable="canManagePlan"
+												min-height-class="min-h-[6rem]"
+											/>
+										</label>
+									</div>
+									<div v-if="canManagePlan" class="mt-4 flex justify-end">
+										<button
+											type="button"
+											class="if-action if-action--subtle"
+											@click="removeReflection(reflection.local_id)"
+										>
+											Remove Reflection
+										</button>
+									</div>
+								</article>
+							</div>
+						</section>
+
+						<section v-if="selectedUnit?.class_reflections?.length" class="space-y-3">
+							<div class="flex items-center justify-between gap-3">
+								<h3 class="type-h3 text-ink">Class Reflections Across This Unit</h3>
+								<span class="chip">{{ selectedUnit.class_reflections.length }}</span>
+							</div>
+							<div class="grid gap-3 xl:grid-cols-2">
+								<article
+									v-for="reflection in selectedUnit.class_reflections"
+									:key="`${selectedUnit.unit_plan}-${reflection.class_teaching_plan}`"
+									class="rounded-2xl border border-line-soft bg-surface-soft p-4"
+								>
+									<div class="flex items-center justify-between gap-3">
+										<p class="type-body-strong text-ink">{{ reflection.class_label }}</p>
+										<span v-if="reflection.academic_year" class="chip">
+											{{ reflection.academic_year }}
+										</span>
+									</div>
+									<div
+										v-if="hasRichTextContent(reflection.prior_to_the_unit)"
+										class="mt-3 space-y-2"
 									>
-										Remove Reflection
-									</button>
-								</div>
-							</article>
-						</div>
-					</section>
+										<p class="type-overline text-ink/60">Prior To The Unit</p>
+										<PlanningRichTextField
+											:model-value="reflection.prior_to_the_unit"
+											:editable="false"
+											display-class="text-ink/80"
+										/>
+									</div>
+									<div
+										v-if="hasRichTextContent(reflection.during_the_unit)"
+										class="mt-3 space-y-2"
+									>
+										<p class="type-overline text-ink/60">During The Unit</p>
+										<PlanningRichTextField
+											:model-value="reflection.during_the_unit"
+											:editable="false"
+											display-class="text-ink/80"
+										/>
+									</div>
+									<div v-if="hasRichTextContent(reflection.what_work_well)" class="mt-3 space-y-2">
+										<p class="type-overline text-ink/60">What Worked Well</p>
+										<PlanningRichTextField
+											:model-value="reflection.what_work_well"
+											:editable="false"
+											display-class="text-ink/70"
+										/>
+									</div>
+									<div
+										v-if="hasRichTextContent(reflection.what_didnt_work_well)"
+										class="mt-3 space-y-2"
+									>
+										<p class="type-overline text-ink/60">Watch For</p>
+										<PlanningRichTextField
+											:model-value="reflection.what_didnt_work_well"
+											:editable="false"
+											display-class="text-ink/70"
+										/>
+									</div>
+									<div
+										v-if="hasRichTextContent(reflection.changes_suggestions)"
+										class="mt-3 space-y-2"
+									>
+										<p class="type-overline text-ink/60">Next Change</p>
+										<PlanningRichTextField
+											:model-value="reflection.changes_suggestions"
+											:editable="false"
+											display-class="text-ink/70"
+										/>
+									</div>
+								</article>
+							</div>
+						</section>
 
-					<section v-if="selectedUnit?.class_reflections?.length" class="space-y-3">
-						<div class="flex items-center justify-between gap-3">
-							<h3 class="type-h3 text-ink">Class Reflections Across This Unit</h3>
-							<span class="chip">{{ selectedUnit.class_reflections.length }}</span>
-						</div>
-						<div class="grid gap-3 xl:grid-cols-2">
-							<article
-								v-for="reflection in selectedUnit.class_reflections"
-								:key="`${selectedUnit.unit_plan}-${reflection.class_teaching_plan}`"
-								class="rounded-2xl border border-line-soft bg-surface-soft p-4"
+						<div v-if="canManagePlan" class="flex justify-end gap-3">
+							<button
+								v-if="creatingUnit"
+								type="button"
+								class="if-action if-action--subtle"
+								@click="cancelNewUnit"
 							>
-								<div class="flex items-center justify-between gap-3">
-									<p class="type-body-strong text-ink">{{ reflection.class_label }}</p>
-									<span v-if="reflection.academic_year" class="chip">
-										{{ reflection.academic_year }}
-									</span>
-								</div>
-								<div
-									v-if="hasRichTextContent(reflection.prior_to_the_unit)"
-									class="mt-3 space-y-2"
-								>
-									<p class="type-overline text-ink/60">Prior To The Unit</p>
-									<PlanningRichTextField
-										:model-value="reflection.prior_to_the_unit"
-										:editable="false"
-										display-class="text-ink/80"
-									/>
-								</div>
-								<div v-if="hasRichTextContent(reflection.during_the_unit)" class="mt-3 space-y-2">
-									<p class="type-overline text-ink/60">During The Unit</p>
-									<PlanningRichTextField
-										:model-value="reflection.during_the_unit"
-										:editable="false"
-										display-class="text-ink/80"
-									/>
-								</div>
-								<div v-if="hasRichTextContent(reflection.what_work_well)" class="mt-3 space-y-2">
-									<p class="type-overline text-ink/60">What Worked Well</p>
-									<PlanningRichTextField
-										:model-value="reflection.what_work_well"
-										:editable="false"
-										display-class="text-ink/70"
-									/>
-								</div>
-								<div
-									v-if="hasRichTextContent(reflection.what_didnt_work_well)"
-									class="mt-3 space-y-2"
-								>
-									<p class="type-overline text-ink/60">Watch For</p>
-									<PlanningRichTextField
-										:model-value="reflection.what_didnt_work_well"
-										:editable="false"
-										display-class="text-ink/70"
-									/>
-								</div>
-								<div
-									v-if="hasRichTextContent(reflection.changes_suggestions)"
-									class="mt-3 space-y-2"
-								>
-									<p class="type-overline text-ink/60">Next Change</p>
-									<PlanningRichTextField
-										:model-value="reflection.changes_suggestions"
-										:editable="false"
-										display-class="text-ink/70"
-									/>
-								</div>
-							</article>
+								Cancel New Unit
+							</button>
+							<button
+								type="button"
+								class="if-action"
+								:disabled="unitPending"
+								@click="handleSaveUnitPlan"
+							>
+								{{
+									unitPending ? 'Saving...' : creatingUnit ? 'Create Unit Plan' : 'Save Unit Plan'
+								}}
+							</button>
 						</div>
-					</section>
 
-					<div v-if="canManagePlan" class="flex justify-end gap-3">
-						<button
-							v-if="creatingUnit"
-							type="button"
-							class="if-action if-action--subtle"
-							@click="cancelNewUnit"
-						>
-							Cancel New Unit
-						</button>
-						<button
-							type="button"
-							class="if-action"
-							:disabled="unitPending"
-							@click="handleSaveUnitPlan"
-						>
-							{{
-								unitPending ? 'Saving...' : creatingUnit ? 'Create Unit Plan' : 'Save Unit Plan'
-							}}
-						</button>
-					</div>
-
-					<div :id="SECTION_IDS.unitResources" class="scroll-mt-40">
-						<PlanningResourcePanel
-							anchor-doctype="Unit Plan"
-							:anchor-name="selectedUnit?.unit_plan || null"
-							:can-manage="canManagePlan"
-							eyebrow="Unit Resources"
-							title="Shared resources for this unit"
-							description="Use this layer for governed materials every class should inherit while teaching the unit."
-							empty-message="No governed unit resources yet."
-							blocked-message="Save the unit plan before sharing unit resources."
-							read-only-message="Only approved curriculum staff can edit shared unit resources."
-							:resources="selectedUnit?.shared_resources || []"
-							@changed="loadSurface"
-						/>
-					</div>
+						<div :id="SECTION_IDS.unitResources" class="scroll-mt-40">
+							<PlanningResourcePanel
+								anchor-doctype="Unit Plan"
+								:anchor-name="selectedUnit?.unit_plan || null"
+								:can-manage="canManagePlan"
+								eyebrow="Unit Resources"
+								title="Shared resources for this unit"
+								description="Use this layer for governed materials every class should inherit while teaching the unit."
+								empty-message="No governed unit resources yet."
+								blocked-message="Save the unit plan before sharing unit resources."
+								read-only-message="Only approved curriculum staff can edit shared unit resources."
+								:resources="selectedUnit?.shared_resources || []"
+								@changed="loadSurface"
+							/>
+						</div>
+					</template>
 				</section>
 
 				<section v-else class="rounded-[2rem] border border-line-soft bg-white p-6 shadow-soft">
@@ -966,361 +1019,389 @@
 				</section>
 			</section>
 
-			<section
-				:id="SECTION_IDS.quizBanks"
-				class="scroll-mt-40 grid gap-6 xl:grid-cols-[minmax(0,20rem),minmax(0,1fr)]"
-			>
-				<aside class="space-y-4 xl:self-start">
-					<section class="rounded-[2rem] border border-line-soft bg-white p-5 shadow-soft">
-						<div class="mb-4 flex items-center justify-between gap-3">
-							<div>
-								<p class="type-overline text-ink/60">Course Quiz Banks</p>
-								<h2 class="mt-1 type-h3 text-ink">Shared quiz authoring</h2>
-							</div>
-							<span class="chip">{{ surface.assessment.quiz_question_banks.length }}</span>
-						</div>
-
-						<p class="mb-4 type-caption text-ink/70">
-							Quiz banks are shared at the course level so teachers can assign them later from the
-							class task flow.
-						</p>
-
-						<div class="space-y-3">
-							<button
-								v-for="bank in surface.assessment.quiz_question_banks"
-								:key="bank.quiz_question_bank"
-								type="button"
-								class="w-full rounded-2xl border p-4 text-left transition"
-								:class="
-									selectedQuizQuestionBank?.quiz_question_bank === bank.quiz_question_bank &&
-									!creatingQuizQuestionBank
-										? 'border-jacaranda bg-jacaranda/10 shadow-soft'
-										: 'border-line-soft bg-surface-soft hover:border-jacaranda/40'
-								"
-								@click="selectQuizQuestionBank(bank.quiz_question_bank)"
-							>
-								<div class="flex items-start justify-between gap-3">
-									<div class="min-w-0">
-										<p class="type-body-strong text-ink">{{ bank.bank_title }}</p>
-										<p class="mt-1 type-caption text-ink/70">
-											{{ bank.published_question_count || 0 }} published of
-											{{ bank.question_count || 0 }} total
-										</p>
-									</div>
-									<span class="chip">
-										{{ bank.is_published ? 'Ready' : 'Draft' }}
-									</span>
-								</div>
-							</button>
-
-							<div
-								v-if="!surface.assessment.quiz_question_banks.length"
-								class="rounded-2xl border border-dashed border-line-soft p-4"
-							>
-								<p class="type-caption text-ink/70">No course quiz banks yet.</p>
-							</div>
-						</div>
-
-						<div v-if="canManagePlan" class="mt-4">
-							<button type="button" class="if-action w-full" @click="startNewQuizQuestionBank">
-								{{ creatingQuizQuestionBank ? 'Editing New Quiz Bank' : 'New Quiz Bank' }}
-							</button>
-						</div>
-					</section>
-				</aside>
-
-				<section class="rounded-[2rem] border border-line-soft bg-white p-6 shadow-soft">
-					<div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-						<div>
-							<p class="type-overline text-ink/60">
-								{{ creatingQuizQuestionBank ? 'New Quiz Bank' : 'Selected Quiz Bank' }}
-							</p>
-							<h2 class="mt-2 type-h2 text-ink">
-								{{
-									creatingQuizQuestionBank
-										? 'Draft a reusable quiz bank'
-										: quizBankForm.bank_title || 'Quiz Bank'
-								}}
-							</h2>
-							<p class="mt-2 type-body text-ink/80">
-								Build question banks once, then assign them through the class task flow without
-								rewriting the quiz each time.
-							</p>
-						</div>
-						<div class="flex flex-wrap gap-2">
-							<span class="chip"> {{ quizBankForm.questions.length }} questions </span>
-							<span class="chip">
-								{{ quizBankForm.is_published ? 'Published' : 'Draft only' }}
-							</span>
-							<button
-								v-if="canManagePlan && !creatingQuizQuestionBank && selectedQuizQuestionBank"
-								type="button"
-								class="if-action if-action--subtle"
-								:disabled="!selectedQuizQuestionBank.is_published"
-								@click="openAssignFromQuizBank(selectedQuizQuestionBank)"
-							>
-								Assign This Quiz
-							</button>
-						</div>
-					</div>
-					<p
-						v-if="
-							canManagePlan &&
-							!creatingQuizQuestionBank &&
-							selectedQuizQuestionBank &&
-							!selectedQuizQuestionBank.is_published
-						"
-						class="mt-3 type-caption text-ink/70"
-					>
-						Publish the quiz bank before assigning it to a class.
-					</p>
-
-					<div
-						v-if="!showQuizBankEditor"
-						class="mt-6 rounded-2xl border border-dashed border-line-soft p-5"
-					>
-						<p class="type-caption text-ink/70">
-							Select a quiz bank, or create a new one for this course.
+			<section :id="SECTION_IDS.quizBanks" class="scroll-mt-40 space-y-6">
+				<button
+					type="button"
+					class="flex w-full flex-col gap-4 rounded-[2rem] border border-line-soft bg-white p-6 text-left shadow-soft lg:flex-row lg:items-start lg:justify-between"
+					:aria-expanded="!isSectionCollapsed(SECTION_IDS.quizBanks)"
+					@click="toggleSection(SECTION_IDS.quizBanks)"
+				>
+					<div>
+						<p class="type-overline text-ink/60">Course Quiz Banks</p>
+						<h2 class="mt-2 type-h2 text-ink">Shared quiz authoring</h2>
+						<p class="mt-2 type-body text-ink/80">
+							{{
+								isSectionCollapsed(SECTION_IDS.quizBanks)
+									? 'Open the course-level question banks when you need to author, revise, or assign a reusable quiz.'
+									: 'Build question banks once, then assign them through the class task flow without rewriting the quiz each time.'
+							}}
 						</p>
 					</div>
+					<div class="flex flex-wrap items-center gap-2 lg:justify-end">
+						<span class="chip">{{ surface.assessment.quiz_question_banks.length }} banks</span>
+						<span v-if="selectedQuizBankLabel" class="chip">{{ selectedQuizBankLabel }}</span>
+						<span class="chip">{{
+							isSectionCollapsed(SECTION_IDS.quizBanks) ? 'Show' : 'Hide'
+						}}</span>
+					</div>
+				</button>
 
-					<template v-else>
-						<div v-if="canManagePlan" class="mt-6 grid gap-4 lg:grid-cols-2">
-							<label class="block space-y-2">
-								<span class="type-caption text-ink/70">Bank Title</span>
-								<input
-									v-model="quizBankForm.bank_title"
-									data-quick-focus="quiz-bank-title"
-									type="text"
-									class="if-input w-full"
-									placeholder="e.g. Cell Structure Check-in"
-								/>
-							</label>
-							<label
-								class="flex items-center gap-3 rounded-2xl border border-line-soft bg-surface-soft px-4 py-4"
-							>
-								<input v-model="quizBankForm.is_published" type="checkbox" class="h-4 w-4" />
+				<div
+					v-if="!isSectionCollapsed(SECTION_IDS.quizBanks)"
+					class="grid gap-6 xl:grid-cols-[minmax(0,20rem),minmax(0,1fr)]"
+				>
+					<aside class="space-y-4 xl:self-start">
+						<section class="rounded-[2rem] border border-line-soft bg-white p-5 shadow-soft">
+							<div class="mb-4 flex items-center justify-between gap-3">
 								<div>
-									<p class="type-body-strong text-ink">Ready for assignment</p>
-									<p class="type-caption text-ink/70">
-										Published banks appear in the quiz selection step when teachers assign work.
-									</p>
+									<p class="type-overline text-ink/60">Course Quiz Banks</p>
+									<h2 class="mt-1 type-h3 text-ink">Shared quiz authoring</h2>
 								</div>
-							</label>
-							<label class="block space-y-2 lg:col-span-2">
-								<span class="type-caption text-ink/70">Description</span>
-								<textarea
-									v-model="quizBankForm.description"
-									rows="4"
-									class="if-input min-h-[8rem] w-full resize-y"
-									placeholder="Explain what this quiz bank checks and when teachers should use it."
-								/>
-							</label>
-						</div>
+								<span class="chip">{{ surface.assessment.quiz_question_banks.length }}</span>
+							</div>
 
-						<section class="mt-6 space-y-4">
-							<div class="flex items-center justify-between gap-3">
-								<div>
-									<p class="type-overline text-ink/60">Questions</p>
-									<h3 class="mt-1 type-h3 text-ink">Reusable quiz items</h3>
-								</div>
+							<p class="mb-4 type-caption text-ink/70">
+								Quiz banks are shared at the course level so teachers can assign them later from
+								the class task flow.
+							</p>
+
+							<div class="space-y-3">
 								<button
-									v-if="canManagePlan"
+									v-for="bank in surface.assessment.quiz_question_banks"
+									:key="bank.quiz_question_bank"
 									type="button"
-									class="if-action if-action--subtle"
-									@click="addQuizQuestion"
+									class="w-full rounded-2xl border p-4 text-left transition"
+									:class="
+										selectedQuizQuestionBank?.quiz_question_bank === bank.quiz_question_bank &&
+										!creatingQuizQuestionBank
+											? 'border-jacaranda bg-jacaranda/10 shadow-soft'
+											: 'border-line-soft bg-surface-soft hover:border-jacaranda/40'
+									"
+									@click="selectQuizQuestionBank(bank.quiz_question_bank)"
 								>
-									Add Question
+									<div class="flex items-start justify-between gap-3">
+										<div class="min-w-0">
+											<p class="type-body-strong text-ink">{{ bank.bank_title }}</p>
+											<p class="mt-1 type-caption text-ink/70">
+												{{ bank.published_question_count || 0 }} published of
+												{{ bank.question_count || 0 }} total
+											</p>
+										</div>
+										<span class="chip">
+											{{ bank.is_published ? 'Ready' : 'Draft' }}
+										</span>
+									</div>
+								</button>
+
+								<div
+									v-if="!surface.assessment.quiz_question_banks.length"
+									class="rounded-2xl border border-dashed border-line-soft p-4"
+								>
+									<p class="type-caption text-ink/70">No course quiz banks yet.</p>
+								</div>
+							</div>
+
+							<div v-if="canManagePlan" class="mt-4">
+								<button type="button" class="if-action w-full" @click="startNewQuizQuestionBank">
+									{{ creatingQuizQuestionBank ? 'Editing New Quiz Bank' : 'New Quiz Bank' }}
 								</button>
 							</div>
+						</section>
+					</aside>
 
-							<div
-								v-if="!quizBankForm.questions.length"
-								class="rounded-2xl border border-dashed border-line-soft p-4"
-							>
-								<p class="type-caption text-ink/70">
-									No questions yet. Add reusable questions teachers can pull into quiz-backed
-									tasks.
+					<section class="rounded-[2rem] border border-line-soft bg-white p-6 shadow-soft">
+						<div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+							<div>
+								<p class="type-overline text-ink/60">
+									{{ creatingQuizQuestionBank ? 'New Quiz Bank' : 'Selected Quiz Bank' }}
+								</p>
+								<h2 class="mt-2 type-h2 text-ink">
+									{{
+										creatingQuizQuestionBank
+											? 'Draft a reusable quiz bank'
+											: quizBankForm.bank_title || 'Quiz Bank'
+									}}
+								</h2>
+								<p class="mt-2 type-body text-ink/80">
+									Build question banks once, then assign them through the class task flow without
+									rewriting the quiz each time.
 								</p>
 							</div>
-
-							<div v-else class="space-y-4">
-								<article
-									v-for="question in quizBankForm.questions"
-									:key="question.local_id"
-									class="rounded-2xl border border-line-soft bg-surface-soft p-4"
+							<div class="flex flex-wrap gap-2">
+								<span class="chip"> {{ quizBankForm.questions.length }} questions </span>
+								<span class="chip">
+									{{ quizBankForm.is_published ? 'Published' : 'Draft only' }}
+								</span>
+								<button
+									v-if="canManagePlan && !creatingQuizQuestionBank && selectedQuizQuestionBank"
+									type="button"
+									class="if-action if-action--subtle"
+									:disabled="!selectedQuizQuestionBank.is_published"
+									@click="openAssignFromQuizBank(selectedQuizQuestionBank)"
 								>
-									<div class="grid gap-4 lg:grid-cols-2">
-										<label class="block space-y-2">
-											<span class="type-caption text-ink/70">Question Title</span>
-											<input
-												v-model="question.title"
-												type="text"
-												class="if-input w-full"
-												placeholder="e.g. Identify the nucleus"
-												:disabled="!canManagePlan"
-											/>
-										</label>
-										<label class="block space-y-2">
-											<span class="type-caption text-ink/70">Question Type</span>
-											<select
-												v-model="question.question_type"
-												class="if-input w-full"
-												:disabled="!canManagePlan"
-												@change="handleQuizQuestionTypeChange(question)"
-											>
-												<option
-													v-for="option in quizQuestionTypeOptions"
-													:key="option"
-													:value="option"
-												>
-													{{ option }}
-												</option>
-											</select>
-										</label>
-										<label
-											class="flex items-center gap-3 rounded-2xl border border-line-soft bg-white px-4 py-4 lg:col-span-2"
-										>
-											<input
-												v-model="question.is_published"
-												type="checkbox"
-												class="h-4 w-4"
-												:disabled="!canManagePlan"
-											/>
-											<div>
-												<p class="type-body-strong text-ink">Published in the bank</p>
-												<p class="type-caption text-ink/70">
-													Only published questions are available for quiz attempts.
-												</p>
-											</div>
-										</label>
-										<label class="block space-y-2 lg:col-span-2">
-											<span class="type-caption text-ink/70">Prompt</span>
-											<PlanningRichTextField
-												v-model="question.prompt"
-												:editable="canManagePlan"
-												min-height-class="min-h-[8rem]"
-											/>
-										</label>
-										<label
-											v-if="question.question_type === 'Short Answer'"
-											class="block space-y-2 lg:col-span-2"
-										>
-											<span class="type-caption text-ink/70">Accepted Answers</span>
-											<textarea
-												v-model="question.accepted_answers"
-												rows="4"
-												class="if-input min-h-[8rem] w-full resize-y"
-												placeholder="One accepted answer per line"
-												:disabled="!canManagePlan"
-											/>
-										</label>
+									Assign This Quiz
+								</button>
+							</div>
+						</div>
+						<p
+							v-if="
+								canManagePlan &&
+								!creatingQuizQuestionBank &&
+								selectedQuizQuestionBank &&
+								!selectedQuizQuestionBank.is_published
+							"
+							class="mt-3 type-caption text-ink/70"
+						>
+							Publish the quiz bank before assigning it to a class.
+						</p>
+
+						<div
+							v-if="!showQuizBankEditor"
+							class="mt-6 rounded-2xl border border-dashed border-line-soft p-5"
+						>
+							<p class="type-caption text-ink/70">
+								Select a quiz bank, or create a new one for this course.
+							</p>
+						</div>
+
+						<template v-else>
+							<div v-if="canManagePlan" class="mt-6 grid gap-4 lg:grid-cols-2">
+								<label class="block space-y-2">
+									<span class="type-caption text-ink/70">Bank Title</span>
+									<input
+										v-model="quizBankForm.bank_title"
+										data-quick-focus="quiz-bank-title"
+										type="text"
+										class="if-input w-full"
+										placeholder="e.g. Cell Structure Check-in"
+									/>
+								</label>
+								<label
+									class="flex items-center gap-3 rounded-2xl border border-line-soft bg-surface-soft px-4 py-4"
+								>
+									<input v-model="quizBankForm.is_published" type="checkbox" class="h-4 w-4" />
+									<div>
+										<p class="type-body-strong text-ink">Ready for assignment</p>
+										<p class="type-caption text-ink/70">
+											Published banks appear in the quiz selection step when teachers assign work.
+										</p>
 									</div>
+								</label>
+								<label class="block space-y-2 lg:col-span-2">
+									<span class="type-caption text-ink/70">Description</span>
+									<textarea
+										v-model="quizBankForm.description"
+										rows="4"
+										class="if-input min-h-[8rem] w-full resize-y"
+										placeholder="Explain what this quiz bank checks and when teachers should use it."
+									/>
+								</label>
+							</div>
 
-									<section
-										v-if="isChoiceQuestion(question.question_type)"
-										class="mt-4 space-y-3 rounded-2xl border border-line-soft bg-white p-4"
+							<section class="mt-6 space-y-4">
+								<div class="flex items-center justify-between gap-3">
+									<div>
+										<p class="type-overline text-ink/60">Questions</p>
+										<h3 class="mt-1 type-h3 text-ink">Reusable quiz items</h3>
+									</div>
+									<button
+										v-if="canManagePlan"
+										type="button"
+										class="if-action if-action--subtle"
+										@click="addQuizQuestion"
 									>
-										<div class="flex items-center justify-between gap-3">
-											<div>
-												<p class="type-overline text-ink/60">Answer Options</p>
-												<h4 class="mt-1 type-body-strong text-ink">Choice payload</h4>
-											</div>
-											<button
-												v-if="canManagePlan && question.question_type !== 'True / False'"
-												type="button"
-												class="if-action if-action--subtle"
-												@click="addQuizOption(question)"
-											>
-												Add Option
-											</button>
-										</div>
+										Add Question
+									</button>
+								</div>
 
-										<div class="space-y-3">
-											<div
-												v-for="option in question.options"
-												:key="option.local_id"
-												class="grid gap-3 rounded-2xl border border-line-soft bg-surface-soft p-3 md:grid-cols-[minmax(0,1fr),auto,auto]"
-											>
+								<div
+									v-if="!quizBankForm.questions.length"
+									class="rounded-2xl border border-dashed border-line-soft p-4"
+								>
+									<p class="type-caption text-ink/70">
+										No questions yet. Add reusable questions teachers can pull into quiz-backed
+										tasks.
+									</p>
+								</div>
+
+								<div v-else class="space-y-4">
+									<article
+										v-for="question in quizBankForm.questions"
+										:key="question.local_id"
+										class="rounded-2xl border border-line-soft bg-surface-soft p-4"
+									>
+										<div class="grid gap-4 lg:grid-cols-2">
+											<label class="block space-y-2">
+												<span class="type-caption text-ink/70">Question Title</span>
 												<input
-													v-model="option.option_text"
+													v-model="question.title"
 													type="text"
 													class="if-input w-full"
-													placeholder="Option text"
+													placeholder="e.g. Identify the nucleus"
 													:disabled="!canManagePlan"
 												/>
-												<label
-													class="flex items-center gap-2 rounded-xl border border-line-soft bg-white px-3 py-2 type-caption text-ink/70"
+											</label>
+											<label class="block space-y-2">
+												<span class="type-caption text-ink/70">Question Type</span>
+												<select
+													v-model="question.question_type"
+													class="if-input w-full"
+													:disabled="!canManagePlan"
+													@change="handleQuizQuestionTypeChange(question)"
 												>
-													<input
-														v-model="option.is_correct"
-														type="checkbox"
-														class="h-4 w-4"
-														:disabled="!canManagePlan"
-													/>
-													<span>Correct</span>
-												</label>
+													<option
+														v-for="option in quizQuestionTypeOptions"
+														:key="option"
+														:value="option"
+													>
+														{{ option }}
+													</option>
+												</select>
+											</label>
+											<label
+												class="flex items-center gap-3 rounded-2xl border border-line-soft bg-white px-4 py-4 lg:col-span-2"
+											>
+												<input
+													v-model="question.is_published"
+													type="checkbox"
+													class="h-4 w-4"
+													:disabled="!canManagePlan"
+												/>
+												<div>
+													<p class="type-body-strong text-ink">Published in the bank</p>
+													<p class="type-caption text-ink/70">
+														Only published questions are available for quiz attempts.
+													</p>
+												</div>
+											</label>
+											<label class="block space-y-2 lg:col-span-2">
+												<span class="type-caption text-ink/70">Prompt</span>
+												<PlanningRichTextField
+													v-model="question.prompt"
+													:editable="canManagePlan"
+													min-height-class="min-h-[8rem]"
+												/>
+											</label>
+											<label
+												v-if="question.question_type === 'Short Answer'"
+												class="block space-y-2 lg:col-span-2"
+											>
+												<span class="type-caption text-ink/70">Accepted Answers</span>
+												<textarea
+													v-model="question.accepted_answers"
+													rows="4"
+													class="if-input min-h-[8rem] w-full resize-y"
+													placeholder="One accepted answer per line"
+													:disabled="!canManagePlan"
+												/>
+											</label>
+										</div>
+
+										<section
+											v-if="isChoiceQuestion(question.question_type)"
+											class="mt-4 space-y-3 rounded-2xl border border-line-soft bg-white p-4"
+										>
+											<div class="flex items-center justify-between gap-3">
+												<div>
+													<p class="type-overline text-ink/60">Answer Options</p>
+													<h4 class="mt-1 type-body-strong text-ink">Choice payload</h4>
+												</div>
 												<button
 													v-if="canManagePlan && question.question_type !== 'True / False'"
 													type="button"
 													class="if-action if-action--subtle"
-													@click="removeQuizOption(question, option.local_id)"
+													@click="addQuizOption(question)"
 												>
-													Remove
+													Add Option
 												</button>
 											</div>
+
+											<div class="space-y-3">
+												<div
+													v-for="option in question.options"
+													:key="option.local_id"
+													class="grid gap-3 rounded-2xl border border-line-soft bg-surface-soft p-3 md:grid-cols-[minmax(0,1fr),auto,auto]"
+												>
+													<input
+														v-model="option.option_text"
+														type="text"
+														class="if-input w-full"
+														placeholder="Option text"
+														:disabled="!canManagePlan"
+													/>
+													<label
+														class="flex items-center gap-2 rounded-xl border border-line-soft bg-white px-3 py-2 type-caption text-ink/70"
+													>
+														<input
+															v-model="option.is_correct"
+															type="checkbox"
+															class="h-4 w-4"
+															:disabled="!canManagePlan"
+														/>
+														<span>Correct</span>
+													</label>
+													<button
+														v-if="canManagePlan && question.question_type !== 'True / False'"
+														type="button"
+														class="if-action if-action--subtle"
+														@click="removeQuizOption(question, option.local_id)"
+													>
+														Remove
+													</button>
+												</div>
+											</div>
+										</section>
+
+										<label class="mt-4 block space-y-2">
+											<span class="type-caption text-ink/70">Explanation</span>
+											<PlanningRichTextField
+												v-model="question.explanation"
+												placeholder="Optional feedback or explanation shown when allowed."
+												:editable="canManagePlan"
+												min-height-class="min-h-[6rem]"
+											/>
+										</label>
+
+										<div v-if="canManagePlan" class="mt-4 flex justify-end">
+											<button
+												type="button"
+												class="if-action if-action--subtle"
+												@click="removeQuizQuestion(question.local_id)"
+											>
+												Remove Question
+											</button>
 										</div>
-									</section>
+									</article>
+								</div>
+							</section>
 
-									<label class="mt-4 block space-y-2">
-										<span class="type-caption text-ink/70">Explanation</span>
-										<PlanningRichTextField
-											v-model="question.explanation"
-											placeholder="Optional feedback or explanation shown when allowed."
-											:editable="canManagePlan"
-											min-height-class="min-h-[6rem]"
-										/>
-									</label>
-
-									<div v-if="canManagePlan" class="mt-4 flex justify-end">
-										<button
-											type="button"
-											class="if-action if-action--subtle"
-											@click="removeQuizQuestion(question.local_id)"
-										>
-											Remove Question
-										</button>
-									</div>
-								</article>
+							<div v-if="canManagePlan" class="mt-6 flex flex-wrap justify-end gap-3">
+								<button
+									v-if="creatingQuizQuestionBank"
+									type="button"
+									class="if-action if-action--subtle"
+									@click="cancelNewQuizQuestionBank"
+								>
+									Cancel New Quiz Bank
+								</button>
+								<button
+									type="button"
+									class="if-action"
+									:disabled="quizBankPending"
+									@click="handleSaveQuizQuestionBank"
+								>
+									{{
+										quizBankPending
+											? 'Saving...'
+											: creatingQuizQuestionBank
+												? 'Create Quiz Bank'
+												: 'Save Quiz Bank'
+									}}
+								</button>
 							</div>
-						</section>
-
-						<div v-if="canManagePlan" class="mt-6 flex flex-wrap justify-end gap-3">
-							<button
-								v-if="creatingQuizQuestionBank"
-								type="button"
-								class="if-action if-action--subtle"
-								@click="cancelNewQuizQuestionBank"
-							>
-								Cancel New Quiz Bank
-							</button>
-							<button
-								type="button"
-								class="if-action"
-								:disabled="quizBankPending"
-								@click="handleSaveQuizQuestionBank"
-							>
-								{{
-									quizBankPending
-										? 'Saving...'
-										: creatingQuizQuestionBank
-											? 'Create Quiz Bank'
-											: 'Save Quiz Bank'
-								}}
-							</button>
-						</div>
-					</template>
-				</section>
+						</template>
+					</section>
+				</div>
 			</section>
 		</template>
 	</div>
@@ -1578,6 +1659,59 @@ function nextId() {
 	return nextLocalId.value++;
 }
 
+function coursePlanSectionStorageKey() {
+	return `ifitwala.course-plan.sections.${props.coursePlan}`;
+}
+
+function loadCollapsedSections() {
+	Object.assign(collapsedSections, collapsedSectionDefaults);
+	if (typeof window === 'undefined' || !props.coursePlan) return;
+	try {
+		const raw = window.localStorage.getItem(coursePlanSectionStorageKey());
+		if (!raw) return;
+		const parsed = JSON.parse(raw) as Partial<Record<WorkspaceSectionId, boolean>>;
+		for (const sectionId of Object.values(SECTION_IDS)) {
+			if (typeof parsed?.[sectionId] === 'boolean') {
+				collapsedSections[sectionId] = parsed[sectionId] as boolean;
+			}
+		}
+	} catch {
+		Object.assign(collapsedSections, collapsedSectionDefaults);
+	}
+}
+
+function persistCollapsedSections() {
+	if (typeof window === 'undefined' || !props.coursePlan) return;
+	window.localStorage.setItem(coursePlanSectionStorageKey(), JSON.stringify(collapsedSections));
+}
+
+function isSectionCollapsed(sectionId: WorkspaceSectionId) {
+	return Boolean(collapsedSections[sectionId]);
+}
+
+function setSectionCollapsed(sectionId: WorkspaceSectionId, collapsed: boolean) {
+	collapsedSections[sectionId] = collapsed;
+	persistCollapsedSections();
+}
+
+function setSectionExpanded(sectionId: WorkspaceSectionId, expanded: boolean) {
+	setSectionCollapsed(sectionId, !expanded);
+}
+
+function toggleSection(sectionId: WorkspaceSectionId) {
+	setSectionCollapsed(sectionId, !isSectionCollapsed(sectionId));
+}
+
+function expandSectionChain(sectionId: WorkspaceSectionId) {
+	if (
+		sectionId === SECTION_IDS.standards ||
+		sectionId === SECTION_IDS.reflections ||
+		sectionId === SECTION_IDS.unitResources
+	) {
+		setSectionExpanded(SECTION_IDS.unitEditor, true);
+	}
+}
+
 function isChoiceQuestion(questionType?: string | null) {
 	return ['Single Choice', 'Multiple Answer', 'True / False'].includes(questionType || '');
 }
@@ -1728,6 +1862,8 @@ function requestActiveSectionSync() {
 function syncRouteHashSection(behavior: ScrollBehavior = 'auto') {
 	const sectionId = String(route.hash || '').replace(/^#/, '') as WorkspaceSectionId;
 	if (!sectionId) return;
+	expandSectionChain(sectionId);
+	setSectionExpanded(sectionId, true);
 	const element = getSectionElement(sectionId);
 	if (!element) return;
 	activeSectionId.value = sectionId;
@@ -1735,6 +1871,8 @@ function syncRouteHashSection(behavior: ScrollBehavior = 'auto') {
 }
 
 async function jumpToSection(sectionId: WorkspaceSectionId, focusSelector?: string) {
+	expandSectionChain(sectionId);
+	setSectionExpanded(sectionId, true);
 	await setSectionHash(sectionId);
 	await nextTick();
 	const element = getSectionElement(sectionId);
@@ -1765,6 +1903,7 @@ async function quickEditUnit() {
 	) {
 		return;
 	}
+	setSectionExpanded(SECTION_IDS.unitEditor, true);
 	await jumpToSection(SECTION_IDS.unitEditor, '[data-quick-focus="unit-title"]');
 }
 
@@ -1776,6 +1915,7 @@ async function quickUploadUnitFile() {
 	) {
 		return;
 	}
+	setSectionExpanded(SECTION_IDS.unitResources, true);
 	setResourceComposerMode(SECTION_IDS.unitResources, 'file');
 	await jumpToSection(SECTION_IDS.unitResources, '[data-resource-choose-file="true"]');
 }
@@ -1787,11 +1927,13 @@ async function quickAddReflection() {
 		return;
 	}
 	addReflection();
+	setSectionExpanded(SECTION_IDS.reflections, true);
 	await jumpToSection(SECTION_IDS.reflections);
 }
 
 async function quickStartQuizBank() {
 	await startNewQuizQuestionBank();
+	setSectionExpanded(SECTION_IDS.quizBanks, true);
 	await jumpToSection(SECTION_IDS.quizBanks, '[data-quick-focus="quiz-bank-title"]');
 }
 
@@ -1891,6 +2033,7 @@ async function loadSurface() {
 			unit_plan: props.unitPlan || undefined,
 			quiz_question_bank:
 				props.quizQuestionBank || selectedQuizQuestionBankName.value || undefined,
+			student_group: props.studentGroup || undefined,
 		});
 		if (ticket !== loadToken.value) return;
 		surface.value = payload;
@@ -1916,6 +2059,7 @@ async function selectUnit(unitPlan: string) {
 	creatingUnit.value = false;
 	selectedUnitPlan.value = unitPlan;
 	syncUnitForm(surface.value?.curriculum.units.find(unit => unit.unit_plan === unitPlan) || null);
+	setSectionExpanded(SECTION_IDS.unitEditor, true);
 	await router.replace({
 		name: 'staff-course-plan',
 		params: { coursePlan: props.coursePlan },
@@ -1931,6 +2075,7 @@ async function startNewUnit() {
 	creatingUnit.value = true;
 	selectedUnitPlan.value = '';
 	syncUnitForm(null);
+	setSectionExpanded(SECTION_IDS.unitEditor, true);
 	await router.replace({
 		name: 'staff-course-plan',
 		params: { coursePlan: props.coursePlan },
@@ -2173,9 +2318,17 @@ async function handleSaveQuizQuestionBank() {
 }
 
 watch(
-	() => [props.coursePlan, props.unitPlan, props.quizQuestionBank],
+	() => [props.coursePlan, props.unitPlan, props.quizQuestionBank, props.studentGroup],
 	() => {
 		loadSurface();
+	},
+	{ immediate: true }
+);
+
+watch(
+	() => props.coursePlan,
+	() => {
+		loadCollapsedSections();
 	},
 	{ immediate: true }
 );
@@ -2185,6 +2338,8 @@ watch(
 	hash => {
 		const sectionId = String(hash || '').replace(/^#/, '') as WorkspaceSectionId;
 		if (!sectionId) return;
+		expandSectionChain(sectionId);
+		setSectionExpanded(sectionId, true);
 		activeSectionId.value = sectionId;
 	}
 );
@@ -2198,6 +2353,7 @@ watch(navigationSections, () => {
 
 onMounted(() => {
 	window.addEventListener('scroll', requestActiveSectionSync, { passive: true });
+	loadCollapsedSections();
 	requestActiveSectionSync();
 });
 

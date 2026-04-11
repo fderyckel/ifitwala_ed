@@ -250,6 +250,7 @@ The CoA structure must follow ERPNext conventions closely, even if not fully use
 * Each new Organization automatically receives the packaged default chart of accounts.
 * The packaged default is the ERPNext v16 international `standard_chart_of_accounts` template.
 * Existing sites that have Organizations with zero `Account` rows are backfilled by a migration patch.
+* `Account.account_name` keeps the human-facing chart label, but the `Account` docname is qualified with the Organization abbreviation to preserve multi-organization isolation and avoid name collisions across sibling organizations.
 
 ### 10.1 Minimum Active Accounts (Phase 0)
 

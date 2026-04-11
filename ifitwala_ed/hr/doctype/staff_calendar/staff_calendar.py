@@ -4,7 +4,7 @@
 # ifitwala_ed.hr.doctype.staff_calendar.staff_calendar
 
 import importlib
-from datetime import date
+from datetime import date, timedelta
 
 import frappe
 from frappe import _
@@ -104,7 +104,7 @@ def get_events(start, end, filters=None):
         "Staff Calendar Holidays",
         fields=[
             "name",
-            "parent as staff_calendar",
+            "parent",
             "holiday_date",
             "description",
             "color",
@@ -114,20 +114,28 @@ def get_events(start, end, filters=None):
     )
 
     show_calendar_name = len(calendar_names) > 1 and not staff_calendar
+    normalized_events = []
     for event in events:
+        holiday_date = getdate(event.get("holiday_date")) if event.get("holiday_date") else None
+        if not holiday_date:
+            continue
+
+        staff_calendar_name = event.get("staff_calendar") or event.get("parent")
         title = event.get("description") or _("Holiday")
-        if show_calendar_name:
+        if show_calendar_name and staff_calendar_name:
             title = _("{staff_calendar}: {title}").format(
-                staff_calendar=event.get("staff_calendar"),
+                staff_calendar=staff_calendar_name,
                 title=title,
             )
+        event["staff_calendar"] = staff_calendar_name
         event["description"] = title
         event["title"] = title
-        event["start"] = event.get("holiday_date")
-        event["end"] = event.get("holiday_date")
+        event["start"] = str(holiday_date)
+        event["end"] = str(holiday_date + timedelta(days=1))
         event["allDay"] = 1
+        normalized_events.append(event)
 
-    return events
+    return normalized_events
 
 
 class StaffCalendar(Document):

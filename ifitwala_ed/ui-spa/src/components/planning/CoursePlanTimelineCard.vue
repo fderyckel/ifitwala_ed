@@ -168,6 +168,13 @@ function diffDays(start: Date, end: Date): number {
 	return Math.round((end.getTime() - start.getTime()) / DAY_MS);
 }
 
+function formatIsoDate(value: Date): string {
+	const year = value.getFullYear();
+	const month = `${value.getMonth() + 1}`.padStart(2, '0');
+	const day = `${value.getDate()}`.padStart(2, '0');
+	return `${year}-${month}-${day}`;
+}
+
 const windowStart = computed(() => parseDate(props.timeline.scope.window_start));
 const windowEnd = computed(() => parseDate(props.timeline.scope.window_end));
 const totalDays = computed(() => {
@@ -195,8 +202,8 @@ const monthSegments = computed(() => {
 		segments.push({
 			key: `${cursor.getFullYear()}-${cursor.getMonth() + 1}`,
 			label: monthFormatter.format(segmentStart),
-			start_date: segmentStart.toISOString().slice(0, 10),
-			end_date: segmentEnd.toISOString().slice(0, 10),
+			start_date: formatIsoDate(segmentStart),
+			end_date: formatIsoDate(segmentEnd),
 		});
 		cursor = nextMonth;
 	}

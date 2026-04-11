@@ -117,6 +117,7 @@ Create a **minimal but ERPNext-aligned Chart of Accounts** that can support all 
 * Cannot post to group accounts
 * Cannot create circular account hierarchies
 * Accounts strictly scoped to Organization
+* Account docnames are qualified by Organization abbreviation so identical chart labels can safely exist in different organizations
 
 ### Edge Cases to Test
 

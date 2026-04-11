@@ -117,13 +117,32 @@ describe('staffTeachingService', () => {
 		apiMethodMock.mockResolvedValue({
 			course_plan: { course_plan: 'COURSE-PLAN-1', can_manage_resources: 1 },
 			resources: { course_plan_resources: [] },
-			curriculum: { units: [], unit_count: 0 },
+			curriculum: {
+				units: [],
+				unit_count: 0,
+				timeline: {
+					status: 'blocked',
+					reason: 'missing_academic_year',
+					message: 'Add an Academic Year first.',
+					scope: {},
+					terms: [],
+					holidays: [],
+					units: [],
+					summary: {
+						scheduled_unit_count: 0,
+						unscheduled_unit_count: 0,
+						overflow_unit_count: 0,
+						instructional_day_count: 0,
+					},
+				},
+			},
 			resolved: { unit_plan: null },
 		})
 
 		await getStaffCoursePlanSurface({
 			course_plan: 'COURSE-PLAN-1',
 			unit_plan: 'UNIT-1',
+			student_group: 'GROUP-1',
 		})
 
 		expect(apiMethodMock).toHaveBeenCalledWith(
@@ -131,6 +150,7 @@ describe('staffTeachingService', () => {
 			{
 				course_plan: 'COURSE-PLAN-1',
 				unit_plan: 'UNIT-1',
+				student_group: 'GROUP-1',
 			}
 		)
 	})

@@ -131,6 +131,7 @@ class TestStaffCalendar(FrappeTestCase):
         )
         self.assertEqual(events[0]["title"], "Founders Day")
         self.assertEqual(events[0]["start"], "2026-03-12")
+        self.assertEqual(events[0]["end"], "2026-03-13")
         self.assertEqual(events[0]["allDay"], 1)
 
     def test_get_events_accepts_direct_staff_calendar_filter(self):
@@ -155,4 +156,30 @@ class TestStaffCalendar(FrappeTestCase):
 
         get_all.assert_not_called()
         self.assertEqual(events[0]["description"], "Sports Day")
-        self.assertEqual(events[0]["end"], "2026-03-18")
+        self.assertEqual(events[0]["end"], "2026-03-19")
+
+    def test_get_events_uses_parent_field_for_multi_calendar_titles(self):
+        with (
+            patch(
+                "ifitwala_ed.hr.doctype.staff_calendar.staff_calendar.frappe.get_all",
+                return_value=["SC-A", "SC-B"],
+            ),
+            patch(
+                "ifitwala_ed.hr.doctype.staff_calendar.staff_calendar.frappe.get_list",
+                return_value=[
+                    frappe._dict(
+                        name="HOL-3",
+                        parent="SC-A",
+                        holiday_date="2026-03-22",
+                        description="",
+                        color="#abc",
+                    )
+                ],
+            ),
+        ):
+            events = get_events("2026-03-01", "2026-03-31", "[]")
+
+        self.assertEqual(events[0]["staff_calendar"], "SC-A")
+        self.assertEqual(events[0]["title"], "SC-A: Holiday")
+        self.assertEqual(events[0]["start"], "2026-03-22")
+        self.assertEqual(events[0]["end"], "2026-03-23")
