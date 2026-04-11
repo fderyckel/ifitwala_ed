@@ -69,6 +69,14 @@
            px-5 py-9 sm:px-6;
 	}
 
+	@media (min-width: 1024px) {
+		.portal-layout__body {
+			gap: 1rem;
+			padding-left: 1rem;
+			padding-right: 1rem;
+		}
+	}
+
 	/* ============================================================
      LEGACY CANDIDATES - moved for audit (do not delete yet)
      Delete only after runtime coverage / user confirmation.

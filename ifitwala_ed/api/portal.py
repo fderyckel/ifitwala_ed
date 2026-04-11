@@ -114,6 +114,7 @@ def _build_staff_home_capabilities(roles: set[str], user: str | None = None) -> 
         "analytics_admissions": bool(roles & set(ADMISSIONS_ANALYTICS_ROLES)),
         "analytics_demographics": bool(roles & set(DEMOGRAPHICS_ANALYTICS_ROLES)),
         "analytics_student_overview": bool(roles & set(STUDENT_OVERVIEW_STAFF_ROLES)),
+        "room_utilization_page": bool(roles & set(STAFF_ROLES)),
         "analytics_scheduling": bool(roles & (set(SCHEDULING_ROLES) | set(ADMIN_ROLES))),
         "analytics_academic_load": bool(
             roles

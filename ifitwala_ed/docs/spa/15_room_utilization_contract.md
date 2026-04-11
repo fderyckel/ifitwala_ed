@@ -32,6 +32,7 @@ Rules:
 3. The page must keep one selected school context and reuse it across free-room search, utilization analytics, and location-calendar scope.
 4. Room-type filtering is a first-class workflow input, not a presentation-only label.
 5. The SPA must not compute school hierarchy, shared-location inheritance, or location privacy rules client-side.
+6. Page access is staff-wide, but the utilization analytics components on that page remain restricted to the analytics roles enforced by the server.
 
 ## 2. API and Read-Model Contract
 

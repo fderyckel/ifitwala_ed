@@ -661,7 +661,7 @@ const exploreLinks: Array<StaffHomeAnalyticsLink | StaffHomeExploreAction> = [
 		caption: 'Which rooms are free, over or under-used this week',
 		icon: 'clock',
 		to: '/staff/room-utilization',
-		capability: 'analytics_scheduling',
+		capability: 'room_utilization_page',
 	},
 ];
 
@@ -754,7 +754,7 @@ const analyticsCategories: StaffHomeAnalyticsCategory[] = [
 			{
 				label: 'Room Occupancy',
 				to: { name: 'staff-room-utilization' },
-				capability: 'analytics_scheduling',
+				capability: 'room_utilization_page',
 			},
 			{
 				label: 'Bus & Route Load',

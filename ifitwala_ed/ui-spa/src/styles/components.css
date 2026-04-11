@@ -1295,10 +1295,10 @@
 		.portal-sidebar,
 		.portal-sidebar--mobile-open,
 		.portal-sidebar--mobile-closed {
-			top: auto;
+			top: 1rem;
 			bottom: auto;
-			height: auto;
-			max-height: none;
+			height: calc(100dvh - 3.5rem - 4.25rem - 1rem);
+			max-height: calc(100dvh - 3.5rem - 4.25rem - 1rem);
 			transform: none;
 		}
 
@@ -1308,6 +1308,7 @@
 
 		.portal-sidebar--collapsed {
 			width: 5rem;
+			overflow: visible;
 		}
 
 		/* Keep rail tooltips visible outside the scroll container. */

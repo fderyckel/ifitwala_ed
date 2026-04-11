@@ -542,7 +542,7 @@ describe('OrgCommunicationQuickCreateModal', () => {
 		expect(document.querySelectorAll('.if-class-event-context-pill')).toHaveLength(4);
 		expect(
 			document.querySelector('.if-class-event-audience-grid')?.getAttribute('class') || ''
-		).toContain('lg:grid-cols-2');
+		).toContain('min-[480px]:grid-cols-2');
 		expect(text).toContain('Auto applied');
 	});
 

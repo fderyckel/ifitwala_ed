@@ -333,7 +333,7 @@
 											</div>
 
 											<div
-												class="if-class-event-audience-grid mt-4 grid grid-cols-1 gap-3 lg:grid-cols-2"
+												class="if-class-event-audience-grid mt-4 grid grid-cols-1 gap-3 min-[480px]:grid-cols-2"
 											>
 												<div
 													class="flex h-full items-start gap-3 rounded-2xl border border-border/70 bg-white px-4 py-3 type-caption text-ink/75"
