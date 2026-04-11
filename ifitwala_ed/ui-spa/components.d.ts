@@ -24,6 +24,7 @@ declare module 'vue' {
     ClassPulse: typeof import('./src/components/class-hub/ClassPulse.vue')['default']
     CommentThreadDrawer: typeof import('./src/components/CommentThreadDrawer.vue')['default']
     ContentDialog: typeof import('./src/components/ContentDialog.vue')['default']
+    CoursePlanTimelineCard: typeof import('./src/components/planning/CoursePlanTimelineCard.vue')['default']
     CreateTaskDeliveryOverlay: typeof import('./src/components/tasks/CreateTaskDeliveryOverlay.vue')['default']
     DateRangePills: typeof import('./src/components/filters/DateRangePills.vue')['default']
     DonutSplit: typeof import('./src/components/analytics/DonutSplit.vue')['default']
