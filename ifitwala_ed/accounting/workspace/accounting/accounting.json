@@ -18,7 +18,7 @@
    "hidden": 0,
    "is_query_report": 0,
    "label": "Billing & Receipts",
-   "link_count": 4,
+   "link_count": 6,
    "link_type": "DocType",
    "onboard": 0,
    "type": "Card Break"
@@ -66,8 +66,28 @@
   {
    "hidden": 0,
    "is_query_report": 0,
+   "label": "Billing Schedule",
+   "link_count": 0,
+   "link_to": "Billing Schedule",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Billing Run",
+   "link_count": 0,
+   "link_to": "Billing Run",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
    "label": "Setup & Pricing",
-   "link_count": 8,
+   "link_count": 9,
    "link_type": "DocType",
    "onboard": 0,
    "type": "Card Break"
@@ -118,6 +138,16 @@
    "label": "Billable Offering",
    "link_count": 0,
    "link_to": "Billable Offering",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Program Billing Plan",
+   "link_count": 0,
+   "link_to": "Program Billing Plan",
    "link_type": "DocType",
    "onboard": 0,
    "type": "Link"
@@ -281,7 +311,7 @@
    "type": "Link"
   }
  ],
- "modified": "2026-04-05 20:56:24.950416",
+ "modified": "2026-04-11 12:00:00.000000",
  "modified_by": "Administrator",
  "module": "Accounting",
  "name": "Accounting",

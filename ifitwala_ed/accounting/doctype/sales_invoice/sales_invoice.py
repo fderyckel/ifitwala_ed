@@ -441,6 +441,7 @@ class SalesInvoice(Document):
     def on_cancel(self):
         self._validate_no_settlements_before_cancel()
         cancel_gl_entries("Sales Invoice", self.name)
+        from ifitwala_ed.accounting.billing.invoice_generation import reset_billing_rows_for_invoice
 
         if self.adjustment_type == "Credit Note" and self.against_sales_invoice:
             source_outstanding = money(
@@ -459,8 +460,14 @@ class SalesInvoice(Document):
                 "status": "Cancelled",
             },
         )
+        reset_billing_rows_for_invoice(self.name)
         sync_payment_requests_for_invoice(self.name)
         sync_dunning_notices_for_invoice(self.name)
+
+    def on_trash(self):
+        from ifitwala_ed.accounting.billing.invoice_generation import reset_billing_rows_for_invoice
+
+        reset_billing_rows_for_invoice(self.name)
 
     def _apply_credit_note_to_source(self):
         if not self.against_sales_invoice:

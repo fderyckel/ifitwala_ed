@@ -165,6 +165,24 @@ Each Offering defines:
 
 No accounting logic is hard‑coded by pedagogical type.
 
+### 5.2 Phase 1 Billing Structure Boundary
+
+`Billable Offering` is the fee catalog and accounting-mapping layer only.
+
+Phase 1 adds separate program billing objects:
+
+* `Program Billing Plan` composes the relevant billable offerings for one `Program Offering` and `Academic Year`
+* `Program Billing Plan Component` stores program-local quantity and default-rate policy
+* `Billing Schedule` derives the per-enrollment billing rows
+* `Billing Run` batches pending schedule rows into draft invoices grouped by `Account Holder`
+
+Locked boundary:
+
+* keep income-account and tax-category ownership on `Billable Offering`
+* keep plan-local pricing on `Program Billing Plan Component`
+* keep installment splitting on `Payment Terms Template`
+* keep all GL posting inside `Sales Invoice`
+
 ---
 
 ## 6. Billing Cadence (Supported Structures)
@@ -180,6 +198,12 @@ The system must structurally support:
 * Ad‑hoc charges
 
 Operational policy is configurable per Organization.
+
+Phase 1 implementation status:
+
+* Annual, Term, and Monthly program billing structures are implemented through `Program Billing Plan`
+* Billing schedules are generated from `Program Enrollment`
+* Accounting can generate draft invoices in bulk for one `Program Offering` through `Billing Run`
 
 ---
 
