@@ -20,7 +20,9 @@ def execute():
     )
 
     for organization in organizations:
-        if frappe.db.count("Account", filters={"organization": organization}):
+        if frappe.db.count("Account", filters={"organization": organization}) and frappe.db.exists(
+            "Accounts Settings", organization
+        ):
             continue
 
         create_coa_for_organization(organization)

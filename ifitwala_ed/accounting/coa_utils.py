@@ -1,6 +1,7 @@
 # ifitwala_ed/accounting/coa_utils.py
 import frappe
 from frappe import _
+from frappe.utils.nestedset import rebuild_tree
 
 from ifitwala_ed.accounting.doctype.account.chart_of_accounts.chart_of_accounts import (
     create_charts,
@@ -132,6 +133,9 @@ def create_coa_for_organization(organization, template_name=None):
 
     existing_count = frappe.db.count("Account", filters={"organization": organization})
     if existing_count:
+        if not frappe.db.exists("Accounts Settings", organization):
+            rebuild_tree("Account")
+            ensure_accounts_settings(organization)
         return {
             "created": 0,
             "skipped": existing_count,
