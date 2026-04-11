@@ -5,11 +5,11 @@
 import importlib
 import json
 import os
+import unicodedata
 
 import frappe
 from frappe.utils import cstr
 from frappe.utils.nestedset import rebuild_tree
-from unidecode import unidecode
 
 STANDARD_CHART_ALIASES = {
     "Standard": "standard_chart_of_accounts",
@@ -108,15 +108,20 @@ def create_charts(
 
 def add_suffix_if_duplicate(account_name, account_number, accounts):
     if account_number:
-        account_name_in_db = unidecode(" - ".join([account_number, account_name.strip().lower()]))
+        account_name_in_db = normalize_account_key(" - ".join([account_number, account_name.strip().lower()]))
     else:
-        account_name_in_db = unidecode(account_name.strip().lower())
+        account_name_in_db = normalize_account_key(account_name.strip().lower())
 
     if account_name_in_db in accounts:
         count = accounts.count(account_name_in_db)
         account_name = account_name + " " + cstr(count)
 
     return account_name, account_name_in_db
+
+
+def normalize_account_key(value):
+    normalized = unicodedata.normalize("NFKD", cstr(value))
+    return normalized.encode("ascii", "ignore").decode("ascii")
 
 
 def identify_is_group(child):
