@@ -105,7 +105,7 @@
   {
    "hidden": 0,
    "is_query_report": 0,
-   "label": "Account",
+   "label": "Chart of Accounts",
    "link_count": 0,
    "link_to": "Account",
    "link_type": "DocType",

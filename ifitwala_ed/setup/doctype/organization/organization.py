@@ -31,6 +31,14 @@ class Organization(NestedSet):
         self.validate_default_website_school()
         self.validate_governed_public_media()
 
+    def after_insert(self):
+        if self.name == VIRTUAL_ROOT:
+            return
+
+        from ifitwala_ed.accounting.coa_utils import create_coa_for_organization
+
+        create_coa_for_organization(self.name)
+
     def validate_governed_public_media(self):
         logo_file = (self.organization_logo_file or "").strip()
         logo_url = (self.organization_logo or "").strip()

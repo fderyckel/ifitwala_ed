@@ -16,6 +16,21 @@ STANDARD_CHART_ALIASES = {
     "standard_chart_of_accounts": "standard_chart_of_accounts",
 }
 
+CHART_METADATA_FIELDS = {
+    "account_name",
+    "account_number",
+    "account_type",
+    "account_currency",
+    "account_category",
+    "is_group",
+    "root_type",
+    "tax_rate",
+}
+
+
+def get_chart_metadata_fields():
+    return CHART_METADATA_FIELDS
+
 
 def _get_chart_from_python_template(chart_template):
     module_name = STANDARD_CHART_ALIASES.get(chart_template)
@@ -46,15 +61,7 @@ def create_charts(
                 if root_account:
                     root_type = child.get("root_type")
 
-                if account_name not in [
-                    "account_name",
-                    "account_number",
-                    "account_type",
-                    "root_type",
-                    "is_group",
-                    "tax_rate",
-                    "account_currency",
-                ]:
+                if account_name not in get_chart_metadata_fields():
                     account_number = cstr(child.get("account_number")).strip()
                     account_name, account_name_in_db = add_suffix_if_duplicate(account_name, account_number, accounts)
 
@@ -115,20 +122,7 @@ def add_suffix_if_duplicate(account_name, account_number, accounts):
 def identify_is_group(child):
     if child.get("is_group"):
         is_group = child.get("is_group")
-    elif len(
-        set(child.keys())
-        - set(
-            [
-                "account_name",
-                "account_type",
-                "root_type",
-                "is_group",
-                "tax_rate",
-                "account_number",
-                "account_currency",
-            ]
-        )
-    ):
+    elif len(set(child.keys()) - set(get_chart_metadata_fields())):
         is_group = 1
     else:
         is_group = 0

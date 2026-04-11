@@ -21,7 +21,7 @@ This file is the canonical reference and will be updated incrementally as decisi
 | Organization (legal entity) | Company | Same doctype; surfaced as Organization. |
 | Accounting Settings (org-level) | Accounts Settings | Org-level defaults. |
 | Fiscal Year | Fiscal Year | Implemented. Legal accounting-year authority, distinct from Academic Year and retained separately from Accounting Period. |
-| Chart of Accounts Template | Chart of Accounts Importer + chart template JSON/Python files | Templates live under `ifitwala_ed/accounting/doctype/account/chart_of_accounts`. Current packaged default is `standard_chart_of_accounts` (English); additional templates can be added later in the same module. |
+| Chart of Accounts Template | Chart of Accounts Importer + chart template JSON/Python files | Templates live under `ifitwala_ed/accounting/doctype/account/chart_of_accounts`. The packaged default is the ERPNext v16 international `standard_chart_of_accounts` template, and it is auto-installed for each new Organization. |
 | Account | Account | ERPNext account tree. |
 | GL Entry | GL Entry | Ledger row. |
 | Journal Entry | Journal Entry | Manual accounting entry. |
@@ -244,6 +244,12 @@ No complex jurisdiction rules in Phase 0.
 ## 10. Chart of Accounts (ERPNext‑Aligned)
 
 The CoA structure must follow ERPNext conventions closely, even if not fully used yet.
+
+### 10.0 Default provisioning
+
+* Each new Organization automatically receives the packaged default chart of accounts.
+* The packaged default is the ERPNext v16 international `standard_chart_of_accounts` template.
+* Existing sites that have Organizations with zero `Account` rows are backfilled by a migration patch.
 
 ### 10.1 Minimum Active Accounts (Phase 0)
 

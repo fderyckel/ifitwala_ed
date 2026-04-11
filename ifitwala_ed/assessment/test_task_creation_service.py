@@ -112,6 +112,8 @@ class TestTaskCreationService(TestCase):
 
         self.assertEqual(task.insert_calls, 1)
         self.assertEqual(task.unit_plan, "UNIT-1")
+        self.assertEqual(task.default_grading_mode, "Points")
+        self.assertEqual(task.default_max_points, "20")
         self.assertEqual(task.default_allow_feedback, 1)
         self.assertEqual(
             permission_calls,
