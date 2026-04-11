@@ -21,7 +21,7 @@ Current response contract:
 - `course`
 - `access`
 - `teaching_plan`
-- `communications.course_updates`
+- `communications.course_updates_summary`
 - `message`
 - `learning`
 - `resources`
@@ -38,7 +38,8 @@ Current product behavior:
 - class-aware planning is the primary student reality
 - shared course-plan content is fallback only
 - the student sees explicit unavailable or fallback messaging instead of silent failure
-- class-linked student-group communications surface inside the same learning-space bootstrap instead of a second page-specific fetch chain
+- the learning-space bootstrap exposes only bounded class-update summary data, not an inline message feed
+- `CourseDetail.vue` stays learning-first and exposes a single `Class Updates` handoff into the filtered student Communication Center
 - the server resolves `learning.focus`, `learning.next_actions`, `learning.reflection_entries`, `learning.selected_context`, and `learning.unit_navigation`
 - the student page stays learning-first and does not expose shared-plan management labels
 - non-quiz assigned work opens back into `CourseDetail.vue` as the task workspace; quiz work launches `StudentQuiz.vue` only for attempt runtime
@@ -95,7 +96,8 @@ Test refs: `ifitwala_ed/api/test_courses.py`, `ifitwala_ed/ui-spa/src/pages/stud
 - Work-board, next-step, and timeline links should preserve `student_group`, `unit_plan`, and `class_session` whenever the source row has them.
 - `get_student_hub_home()` may also expose bounded communication highlights, but those highlights must still link students back into the owning course, activity, or Communication Center context instead of creating a second inbox on Home.
 - `StudentHome.vue` should hand students into `CourseDetail.vue`; it must not become a competing second LMS tree.
-- `CourseDetail.vue` remains the canonical workspace for non-quiz assigned work, session flow, materials, and class-context review.
+- `CourseDetail.vue` remains the canonical workspace for non-quiz assigned work, session flow, materials, and class-context review; it does not render class messages inline.
+- The `Class Updates` action on `CourseDetail.vue` must route into `StudentCommunicationCenter.vue` with server-owned `course_id` and `student_group` filters applied.
 - `StudentCommunicationCenter.vue` owns the portal-wide student history across class, activity, pastoral/cohort, and school-event items.
 
 ## Assigned Work In The LMS

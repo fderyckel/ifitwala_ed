@@ -1,7 +1,5 @@
 // ui-spa/src/types/contracts/student_learning/get_student_learning_space.ts
 
-import type { StudentCourseCommunicationSummary } from '@/types/contracts/student_communication/get_student_course_communication_drawer'
-
 export type Request = {
 	course_id: string
 	student_group?: string
@@ -163,6 +161,14 @@ export type StudentLearningReflectionEntry = {
 	class_session?: string | null
 	task_delivery?: string | null
 	task_submission?: string | null
+}
+
+export type StudentCourseCommunicationSummary = {
+	total_count: number
+	unread_count: number
+	high_priority_count: number
+	has_high_priority: 0 | 1
+	latest_publish_at?: string | null
 }
 
 export type Response = {

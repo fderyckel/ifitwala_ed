@@ -44,6 +44,35 @@ def _student_communications_module():
 
 
 class TestStudentCommunicationsApi(TestCase):
+    def test_course_context_links_into_filtered_communication_center(self):
+        with _student_communications_module() as module:
+            item = module._resolve_org_comm_context(
+                {"name": "COMM-1"},
+                {
+                    "group_map": {
+                        "GROUP-1": {
+                            "student_group_name": "Biology A",
+                            "group_based_on": "Course",
+                            "course": "COURSE-1",
+                        }
+                    }
+                },
+                "GROUP-1",
+            )
+
+        self.assertEqual(item["source_type"], "course")
+        self.assertEqual(item["href"]["name"], "student-communications")
+        self.assertEqual(
+            item["href"]["query"],
+            {
+                "source": "course",
+                "item": "org::COMM-1",
+                "course_id": "COURSE-1",
+                "student_group": "GROUP-1",
+            },
+        )
+        self.assertEqual(item["href_label"], "Open class updates")
+
     def test_get_student_course_communication_summary_counts_unread_and_priority(self):
         with _student_communications_module() as module:
             items = [
@@ -85,19 +114,21 @@ class TestStudentCommunicationsApi(TestCase):
             },
         )
 
-    def test_get_student_course_communication_drawer_includes_focused_item_and_unread_flags(self):
+    def test_get_student_communication_center_course_scope_filters_to_requested_class(self):
         with _student_communications_module() as module:
             items = [
                 {
                     "kind": "org_communication",
                     "item_id": "org::COMM-1",
                     "sort_at": "2026-04-10T09:00:00",
+                    "source_type": "course",
                     "org_communication": {"name": "COMM-1", "priority": "Normal"},
                 },
                 {
                     "kind": "org_communication",
                     "item_id": "org::COMM-2",
                     "sort_at": "2026-04-09T09:00:00",
+                    "source_type": "course",
                     "org_communication": {"name": "COMM-2", "priority": "Critical"},
                 },
             ]
@@ -105,26 +136,26 @@ class TestStudentCommunicationsApi(TestCase):
             with (
                 patch.object(module, "_resolve_student_context", return_value={"user": "student@example.com"}),
                 patch.object(module, "_get_student_course_communication_items", return_value=items),
-                patch.object(
-                    module,
-                    "get_seen_org_communication_names",
-                    return_value={"COMM-1"},
-                ),
+                patch.object(module, "_fetch_student_org_communications", return_value=[]),
+                patch.object(module, "_fetch_student_school_events", return_value=[]),
             ):
-                payload = module.get_student_course_communication_drawer(
+                payload = module.get_student_communication_center(
+                    source="all",
                     course_id="COURSE-1",
                     student_group="GROUP-1",
-                    focus_communication="COMM-2",
+                    item="org::COMM-2",
                     start=0,
                     page_length=1,
                 )
 
-        self.assertEqual(payload["summary"]["total_count"], 2)
-        self.assertEqual(payload["summary"]["unread_count"], 1)
-        self.assertEqual(payload["summary"]["high_priority_count"], 1)
+        self.assertEqual(payload["meta"]["source"], "course")
+        self.assertEqual(payload["meta"]["course_id"], "COURSE-1")
+        self.assertEqual(payload["meta"]["student_group"], "GROUP-1")
+        self.assertEqual(payload["meta"]["item"], "org::COMM-2")
+        self.assertEqual(payload["summary"]["source_counts"], {"course": 2})
+        self.assertEqual(payload["total_count"], 2)
         self.assertEqual(len(payload["items"]), 1)
-        self.assertEqual(payload["items"][0]["org_communication"]["name"], "COMM-2")
-        self.assertTrue(payload["items"][0]["is_unread"])
+        self.assertEqual(payload["items"][0]["item_id"], "org::COMM-2")
 
     def test_fetch_student_school_events_does_not_query_missing_event_type_column(self):
         with _student_communications_module() as module:

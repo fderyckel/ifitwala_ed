@@ -93,10 +93,11 @@ Rules:
 1. Staff Morning Brief comments and reactions use the shared interaction service.
 2. Staff Archive comments and reactions use the shared interaction service.
 3. Student activity communication panels and the student Communication Center use the shared interaction service.
-4. Student Hub and student course learning space may surface bounded communication summaries, but the portal-wide student history is owned by `StudentCommunicationCenter.vue`.
-5. Guardian activity communication panels use the shared interaction service, but a guardian-wide communication center is not implemented yet.
-6. Applicant messages use the admissions service, which writes to the same canonical entry ledger.
-7. No surface may call any retired `Communication Interaction` API or schema artifact.
+4. Student Hub may surface bounded communication highlights, but the portal-wide student history is owned by `StudentCommunicationCenter.vue`.
+5. `CourseDetail.vue` must not render inline class-message bodies; it may expose only a bounded `Class Updates` handoff into `StudentCommunicationCenter.vue` with the current `course_id` and `student_group` context applied.
+6. Guardian activity communication panels use the shared interaction service, but a guardian-wide communication center is not implemented yet.
+7. Applicant messages use the admissions service, which writes to the same canonical entry ledger.
+8. No surface may call any retired `Communication Interaction` API or schema artifact.
 
 ## 4. Visibility and Read-State
 

@@ -8,22 +8,12 @@ import type { Response as StudentLearningSpaceResponse } from '@/types/contracts
 const {
 	getStudentLearningSpaceMock,
 	createReflectionEntryMock,
-	getOrgCommunicationItemMock,
-	getOrgCommInteractionSummaryMock,
-	getCommunicationThreadMock,
-	reactToOrgCommunicationMock,
-	postOrgCommunicationCommentMock,
 	routeState,
 	routerReplaceMock,
 } =
 	vi.hoisted(() => ({
 		getStudentLearningSpaceMock: vi.fn(),
 		createReflectionEntryMock: vi.fn(),
-		getOrgCommunicationItemMock: vi.fn(),
-		getOrgCommInteractionSummaryMock: vi.fn(),
-		getCommunicationThreadMock: vi.fn(),
-		reactToOrgCommunicationMock: vi.fn(),
-		postOrgCommunicationCommentMock: vi.fn(),
 		routeState: {
 			query: {
 				student_group: 'GROUP-1',
@@ -46,8 +36,9 @@ vi.mock('vue-router', async () => {
 					default: '',
 				},
 			},
-			setup(_, { slots }) {
-				return () => h('a', {}, slots.default?.())
+			setup(props, { slots }) {
+				return () =>
+					h('a', { 'data-to': JSON.stringify(props.to || null) }, slots.default?.())
 			},
 		}),
 		useRouter: () => ({
@@ -65,51 +56,6 @@ vi.mock('@/lib/services/portfolio/portfolioService', () => ({
 	createReflectionEntry: createReflectionEntryMock,
 }))
 
-vi.mock('@/components/InteractionEmojiChips.vue', async () => {
-	const { defineComponent, h } = await import('vue')
-
-	return {
-		default: defineComponent({
-			name: 'InteractionEmojiChipsStub',
-			setup() {
-				return () => h('div', 'Interaction chips')
-			},
-		}),
-	}
-})
-
-vi.mock('@/components/CommentThreadDrawer.vue', async () => {
-	const { defineComponent, h } = await import('vue')
-
-	return {
-		default: defineComponent({
-			name: 'CommentThreadDrawerStub',
-			setup() {
-				return () => h('div', 'Comment drawer')
-			},
-		}),
-	}
-})
-
-vi.mock('@/lib/services/communicationInteraction/communicationInteractionService', () => ({
-	createCommunicationInteractionService: () => ({
-		getOrgCommInteractionSummary: getOrgCommInteractionSummaryMock,
-		getCommunicationThread: getCommunicationThreadMock,
-		reactToOrgCommunication: reactToOrgCommunicationMock,
-		postOrgCommunicationComment: postOrgCommunicationCommentMock,
-	}),
-}))
-
-vi.mock('@/lib/services/orgCommunicationArchive/orgCommunicationArchiveService', () => ({
-	createOrgCommunicationArchiveService: () => ({
-		getOrgCommunicationItem: getOrgCommunicationItemMock,
-	}),
-}))
-
-vi.mock('@/lib/datetime', () => ({
-	formatLocalizedDateTime: (value: string) => value,
-}))
-
 vi.mock('frappe-ui', () => ({
 	toast: {
 		success: vi.fn(),
@@ -120,19 +66,6 @@ vi.mock('frappe-ui', () => ({
 import CourseDetail from '@/pages/student/CourseDetail.vue'
 
 const cleanupFns: Array<() => void> = []
-
-getOrgCommInteractionSummaryMock.mockResolvedValue({})
-getCommunicationThreadMock.mockResolvedValue([])
-reactToOrgCommunicationMock.mockResolvedValue({ name: 'ENTRY-1' })
-postOrgCommunicationCommentMock.mockResolvedValue({ name: 'ENTRY-2' })
-getOrgCommunicationItemMock.mockResolvedValue({
-	name: 'COMM-1',
-	title: 'Microscope materials are ready',
-	message_html: '<p>Please review the shared microscope guide before class.</p>',
-	communication_type: 'Class Announcement',
-	priority: 'Normal',
-	publish_from: '2026-04-01T08:00:00',
-})
 
 function buildPayload(message: string | null = null): StudentLearningSpaceResponse {
 	return {
@@ -164,41 +97,13 @@ function buildPayload(message: string | null = null): StudentLearningSpaceRespon
 			course_plan: 'COURSE-PLAN-00001',
 		},
 		communications: {
-			course_updates: [
-				{
-					kind: 'org_communication',
-					item_id: 'org::COMM-1',
-					sort_at: '2026-04-01T08:00:00',
-					source_type: 'course',
-					source_label: 'Class Update',
-					context_label: 'Biology A',
-					href: {
-						name: 'student-course-detail',
-						params: { course_id: 'COURSE-1' },
-						query: { student_group: 'GROUP-1' },
-					},
-					href_label: 'Open class',
-					org_communication: {
-						name: 'COMM-1',
-						title: 'Microscope materials are ready',
-						communication_type: 'Class Announcement',
-						status: 'Published',
-						priority: 'Normal',
-						portal_surface: 'Everywhere',
-						school: 'SCH-1',
-						organization: 'ORG-1',
-						publish_from: '2026-04-01T08:00:00',
-						publish_to: null,
-						brief_start_date: null,
-						brief_end_date: null,
-						interaction_mode: 'Emoji reactions only',
-						allow_private_notes: 0,
-						allow_public_thread: 1,
-						snippet: 'Please review the shared microscope guide before class.',
-						has_active_thread: true,
-					},
-				},
-			],
+			course_updates_summary: {
+				total_count: 3,
+				unread_count: 2,
+				high_priority_count: 1,
+				has_high_priority: 1,
+				latest_publish_at: '2026-04-01T08:00:00',
+			},
 		},
 		message,
 		learning: {
@@ -420,11 +325,6 @@ function mountCourseDetail() {
 afterEach(() => {
 	getStudentLearningSpaceMock.mockReset()
 	createReflectionEntryMock.mockReset()
-	getOrgCommunicationItemMock.mockReset()
-	getOrgCommInteractionSummaryMock.mockReset()
-	getCommunicationThreadMock.mockReset()
-	reactToOrgCommunicationMock.mockReset()
-	postOrgCommunicationCommentMock.mockReset()
 	routerReplaceMock.mockReset()
 	resetRouteState()
 	while (cleanupFns.length) {
@@ -451,7 +351,7 @@ describe('CourseDetail', () => {
 		expect(document.body.textContent).toContain('Learning Focus')
 		expect(document.body.textContent).toContain('What to do next')
 		expect(document.body.textContent).toContain('Class Updates')
-		expect(document.body.textContent).toContain('Microscope materials are ready')
+		expect(document.body.textContent).toContain('2 new')
 		expect(document.body.textContent).toContain('This Unit')
 		expect(document.body.textContent).toContain('Assigned Work')
 		expect(document.body.textContent).toContain('Resources for this session')
@@ -466,6 +366,8 @@ describe('CourseDetail', () => {
 		expect(document.body.textContent).toContain('Observation walk')
 		expect(document.body.textContent).toContain('Continue Cell Structure Checkpoint')
 		expect(document.body.textContent).toContain('Cell Structure Checkpoint')
+		expect(document.body.textContent).not.toContain('Messages connected to this class')
+		expect(document.body.textContent).not.toContain('Microscope materials are ready')
 		expect(document.body.textContent).not.toContain('Class plan published')
 		expect(document.body.textContent).not.toContain('Planning not published')
 		expect(document.body.textContent).not.toContain('Teacher note')
@@ -473,6 +375,14 @@ describe('CourseDetail', () => {
 		const headerImage = document.querySelector('header img')
 		expect(headerImage).toBeTruthy()
 		expect(headerImage?.className).toContain('aspect-square')
+
+		const classUpdatesLink = Array.from(document.querySelectorAll('a')).find(anchor =>
+			anchor.textContent?.includes('Class Updates')
+		)
+		expect(classUpdatesLink?.getAttribute('data-to')).toContain('"name":"student-communications"')
+		expect(classUpdatesLink?.getAttribute('data-to')).toContain('"source":"course"')
+		expect(classUpdatesLink?.getAttribute('data-to')).toContain('"course_id":"COURSE-1"')
+		expect(classUpdatesLink?.getAttribute('data-to')).toContain('"student_group":"GROUP-1"')
 	})
 
 	it('keeps the learning space visible when shared-plan messaging is present', async () => {

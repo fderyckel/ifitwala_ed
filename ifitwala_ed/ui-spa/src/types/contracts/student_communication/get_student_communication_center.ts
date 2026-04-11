@@ -2,6 +2,9 @@ import type { StudentCommunicationCenterItem } from '@/types/studentCommunicatio
 
 export type Request = {
 	source?: 'all' | 'course' | 'activity' | 'school' | 'pastoral' | 'cohort'
+	course_id?: string | null
+	student_group?: string | null
+	item?: string | null
 	start?: number | null
 	page_length?: number | null
 }
@@ -10,6 +13,9 @@ export type Response = {
 	meta: {
 		generated_at: string
 		source: 'all' | 'course' | 'activity' | 'school' | 'pastoral' | 'cohort'
+		course_id?: string | null
+		student_group?: string | null
+		item?: string | null
 	}
 	summary: {
 		total_items: number

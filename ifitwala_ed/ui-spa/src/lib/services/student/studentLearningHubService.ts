@@ -15,10 +15,6 @@ import type {
 	Response as GetStudentCommunicationCenterResponse,
 } from '@/types/contracts/student_communication/get_student_communication_center'
 import type {
-	Request as GetStudentCourseCommunicationDrawerRequest,
-	Response as GetStudentCourseCommunicationDrawerResponse,
-} from '@/types/contracts/student_communication/get_student_course_communication_drawer'
-import type {
 	Request as GetStudentLearningSpaceRequest,
 	Response as GetStudentLearningSpaceResponse,
 } from '@/types/contracts/student_learning/get_student_learning_space'
@@ -27,8 +23,6 @@ const HOME_METHOD = 'ifitwala_ed.api.courses.get_student_hub_home'
 const COURSES_METHOD = 'ifitwala_ed.api.courses.get_courses_data'
 const LEARNING_SPACE_METHOD = 'ifitwala_ed.api.teaching_plans.get_student_learning_space'
 const COMMUNICATION_CENTER_METHOD = 'ifitwala_ed.api.student_communications.get_student_communication_center'
-const COURSE_COMMUNICATION_DRAWER_METHOD =
-	'ifitwala_ed.api.student_communications.get_student_course_communication_drawer'
 
 export async function getStudentCoursesData(
 	payload: GetStudentCoursesDataRequest = {}
@@ -52,13 +46,4 @@ export async function getStudentCommunicationCenter(
 	payload: GetStudentCommunicationCenterRequest = {}
 ): Promise<GetStudentCommunicationCenterResponse> {
 	return apiMethod<GetStudentCommunicationCenterResponse>(COMMUNICATION_CENTER_METHOD, payload)
-}
-
-export async function getStudentCourseCommunicationDrawer(
-	payload: GetStudentCourseCommunicationDrawerRequest
-): Promise<GetStudentCourseCommunicationDrawerResponse> {
-	return apiMethod<GetStudentCourseCommunicationDrawerResponse>(
-		COURSE_COMMUNICATION_DRAWER_METHOD,
-		payload
-	)
 }

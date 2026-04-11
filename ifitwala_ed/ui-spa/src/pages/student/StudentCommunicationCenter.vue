@@ -3,14 +3,24 @@
 		<header class="student-hub-hero">
 			<div class="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
 				<div>
-					<p class="type-overline text-ink/60">Student Hub</p>
+					<p class="type-overline text-ink/60">
+						{{ hasCourseScope ? 'Class Updates' : 'Student Hub' }}
+					</p>
 					<h1 class="type-h1 text-ink">Communication Center</h1>
 					<p class="type-body text-ink/70">
-						See class, activity, pastoral, cohort, and school updates in one place.
+						{{ heroDescription }}
 					</p>
 				</div>
 				<div class="flex items-center gap-2">
-					<RouterLink :to="{ name: 'student-home' }" class="if-action">Back to Home</RouterLink>
+					<RouterLink v-if="courseBackTo" :to="courseBackTo" class="if-action">
+						Back to course
+					</RouterLink>
+					<button v-if="hasCourseScope" type="button" class="if-action" @click="clearCourseScope">
+						All communications
+					</button>
+					<RouterLink v-else :to="{ name: 'student-home' }" class="if-action">
+						Back to Home
+					</RouterLink>
 					<button type="button" class="if-action" :disabled="loading" @click="refreshFeed">
 						Refresh
 					</button>
@@ -20,7 +30,12 @@
 
 		<section class="student-hub-section student-hub-section--warm">
 			<div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-				<div class="flex flex-wrap gap-2">
+				<div v-if="hasCourseScope">
+					<p class="type-caption text-ink/60">Filtered to this class</p>
+					<p class="mt-1 type-body-strong text-ink">{{ scopedContextLabel }}</p>
+					<p class="mt-1 type-caption text-ink/70">Most recent messages appear first.</p>
+				</div>
+				<div v-else class="flex flex-wrap gap-2">
 					<button
 						v-for="option in sourceOptions"
 						:key="option.value"
@@ -59,7 +74,13 @@
 		</section>
 
 		<section v-else-if="!items.length" class="student-hub-empty">
-			<p class="type-body text-ink/70">No communications match this view right now.</p>
+			<p class="type-body text-ink/70">
+				{{
+					hasCourseScope
+						? 'No class updates match this class right now.'
+						: 'No communications match this view right now.'
+				}}
+			</p>
 		</section>
 
 		<section v-else class="space-y-4">
@@ -269,7 +290,20 @@ const selectedCommunication = ref<StudentOrgCommunicationCenterItem | null>(null
 const schoolEventOpen = ref(false);
 const selectedSchoolEvent = ref<SchoolEventDetails | null>(null);
 
+const activeCourseId = computed(() =>
+	typeof route.query.course_id === 'string' ? route.query.course_id.trim() : ''
+);
+
+const activeStudentGroup = computed(() =>
+	typeof route.query.student_group === 'string' ? route.query.student_group.trim() : ''
+);
+
+const hasCourseScope = computed(() => Boolean(activeCourseId.value));
+
 const activeSource = computed<SourceFilter>(() => {
+	if (hasCourseScope.value) {
+		return 'course';
+	}
 	const value =
 		typeof route.query.source === 'string' ? route.query.source.trim().toLowerCase() : 'all';
 	if (sourceOptions.some(option => option.value === value)) {
@@ -282,14 +316,44 @@ const requestedItemId = computed(() =>
 	typeof route.query.item === 'string' ? route.query.item.trim() : ''
 );
 
+const courseBackTo = computed(() => {
+	if (!activeCourseId.value) {
+		return null;
+	}
+	return {
+		name: 'student-course-detail' as const,
+		params: { course_id: activeCourseId.value },
+		query: {
+			student_group: activeStudentGroup.value || undefined,
+		},
+	};
+});
+
+const heroDescription = computed(() => {
+	if (hasCourseScope.value) {
+		return 'See the messages shared with this class, newest first, without adding noise to the course page.';
+	}
+	return 'See class, activity, pastoral, cohort, and school updates in one place.';
+});
+
+const scopedContextLabel = computed(() => {
+	const firstCourseItem = items.value.find(
+		(item): item is StudentOrgCommunicationCenterItem =>
+			item.kind === 'org_communication' && item.source_type === 'course'
+	);
+	return firstCourseItem?.context_label || 'Selected class';
+});
+
 const summaryChips = computed(() =>
-	sourceOptions
-		.filter(option => option.value !== 'all')
-		.map(option => ({
-			label: option.label,
-			count: summaryCounts.value[option.value] || 0,
-		}))
-		.filter(chip => chip.count > 0)
+	hasCourseScope.value
+		? []
+		: sourceOptions
+				.filter(option => option.value !== 'all')
+				.map(option => ({
+					label: option.label,
+					count: summaryCounts.value[option.value] || 0,
+				}))
+				.filter(chip => chip.count > 0)
 );
 
 const threadTitle = computed(() =>
@@ -372,6 +436,9 @@ async function loadFeed(reset = true) {
 	try {
 		const response = await getStudentCommunicationCenter({
 			source: activeSource.value,
+			course_id: activeCourseId.value || undefined,
+			student_group: activeStudentGroup.value || undefined,
+			item: reset ? requestedItemId.value || undefined : undefined,
 			start: reset ? 0 : items.value.length,
 			page_length: 24,
 		});
@@ -402,6 +469,19 @@ async function selectSource(source: SourceFilter) {
 		query: {
 			...route.query,
 			source: source === 'all' ? undefined : source,
+			course_id: source === 'course' ? route.query.course_id : undefined,
+			student_group: source === 'course' ? route.query.student_group : undefined,
+			item: undefined,
+		},
+	});
+}
+
+async function clearCourseScope() {
+	await router.replace({
+		query: {
+			source: undefined,
+			course_id: undefined,
+			student_group: undefined,
 			item: undefined,
 		},
 	});
@@ -544,7 +624,13 @@ function resetSchoolEvent() {
 }
 
 watch(
-	() => activeSource.value,
+	() =>
+		[
+			activeSource.value,
+			activeCourseId.value,
+			activeStudentGroup.value,
+			requestedItemId.value,
+		] as const,
 	() => {
 		void loadFeed(true);
 	},
