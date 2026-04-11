@@ -3,7 +3,7 @@
 Status: **UX LOCK DRAFT (Thin)**
 Audience: Product + Engineering + Codex agents
 Goal: A teacher should grade and return work with **minimum clicks** and **zero doctype awareness**.
-Last updated: 2026-04-05
+Last updated: 2026-04-11
 
 ---
 
@@ -30,6 +30,10 @@ Teachers must never navigate to doctypes.
 * Teachers think: “I’m grading **this assignment** for my class.”
 * Student-centric is a secondary tool (interventions), not the default grading surface.
 * Staff surfaces that already own class context, especially `ClassPlanning.vue`, should deep-link into Gradebook with `student_group` + `task` (`Task Delivery`) query context so the teacher lands on the exact delivery without reselecting it.
+* Runtime shape is now a **dual-mode gradebook**:
+  * **Task View** stays the default and optimized grading path.
+  * **Overview** is a bounded class matrix for scanning all students across recent deliveries in one group.
+* Overview must remain a secondary mode and must not add latency or request fan-out to the default task-first grading loop.
 
 #### A) Context & Filters (top bar)
 
@@ -73,11 +77,12 @@ Why:
 Grid is always:
 
 * Rows: Students
-* Columns: **One selected Delivery** (default) OR optional “multi-delivery grid” (advanced)
+* Columns: **One selected Delivery** in **Task View** (default) OR recent deliveries in **Overview** mode
 
 **Default column mode:** single-delivery
 
 * Keeps the primary grading workflow fast.
+* Overview mode must lazy-load only when selected and must use one bounded aggregated read for the chosen student group.
 
 Cell content rules (one glance, no clutter):
 

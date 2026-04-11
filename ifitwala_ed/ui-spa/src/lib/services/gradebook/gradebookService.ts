@@ -12,6 +12,10 @@ import type {
 	Response as FetchGroupTasksResponse,
 } from '@/types/contracts/gradebook/fetch_group_tasks'
 import type {
+	Request as GetGridRequest,
+	Response as GetGridResponse,
+} from '@/types/contracts/gradebook/get_grid'
+import type {
 	Request as GetTaskGradebookRequest,
 	Response as GetTaskGradebookResponse,
 } from '@/types/contracts/gradebook/get_task_gradebook'
@@ -41,6 +45,12 @@ export function createGradebookService() {
 
 	const fetchGroupTasksResource = createResource<FetchGroupTasksResponse>({
 		url: 'ifitwala_ed.api.gradebook.fetch_group_tasks',
+		method: 'POST',
+		auto: false,
+	})
+
+	const getGridResource = createResource<GetGridResponse>({
+		url: 'ifitwala_ed.api.gradebook.get_grid',
 		method: 'POST',
 		auto: false,
 	})
@@ -83,6 +93,10 @@ export function createGradebookService() {
 		return fetchGroupTasksResource.submit(payload)
 	}
 
+	async function getGrid(payload: GetGridRequest): Promise<GetGridResponse> {
+		return getGridResource.submit(payload)
+	}
+
 	async function getTaskGradebook(
 		payload: GetTaskGradebookRequest,
 	): Promise<GetTaskGradebookResponse> {
@@ -120,6 +134,7 @@ export function createGradebookService() {
 	return {
 		fetchGroups,
 		fetchGroupTasks,
+		getGrid,
 		getTaskGradebook,
 		repairTaskRoster,
 		getTaskQuizManualReview,

@@ -335,6 +335,147 @@ class TestGradebookApi(TestCase):
             },
         )
 
+    def test_get_grid_returns_bounded_overview_payload_for_selected_group(self):
+        with stubbed_frappe(extra_modules=_gradebook_stub_modules()) as frappe:
+
+            def fake_get_all(doctype, filters=None, fields=None, order_by=None, limit=0, pluck=None):
+                if doctype == "Task Delivery":
+                    return [
+                        {
+                            "name": "TDL-0002",
+                            "task": "TASK-2",
+                            "grading_mode": "Points",
+                            "rubric_scoring_strategy": None,
+                            "due_date": "2026-04-04 10:00:00",
+                            "delivery_mode": "Assess",
+                            "allow_feedback": 0,
+                            "max_points": 20,
+                        },
+                        {
+                            "name": "TDL-0001",
+                            "task": "TASK-1",
+                            "grading_mode": "Criteria",
+                            "rubric_scoring_strategy": "Separate Criteria",
+                            "due_date": "2026-04-03 10:00:00",
+                            "delivery_mode": "Assess",
+                            "allow_feedback": 1,
+                            "max_points": None,
+                        },
+                    ]
+                if doctype == "Task":
+                    return [
+                        {"name": "TASK-1", "title": "Rubric reflection", "task_type": "Assignment"},
+                        {"name": "TASK-2", "title": "Quiz score", "task_type": "Quiz"},
+                    ]
+                if doctype == "Task Outcome":
+                    return [
+                        {
+                            "name": "OUT-1",
+                            "task_delivery": "TDL-0001",
+                            "student": "STU-1",
+                            "grading_status": "Needs Review",
+                            "procedural_status": None,
+                            "has_submission": 1,
+                            "has_new_submission": 1,
+                            "official_score": None,
+                            "official_grade": None,
+                            "official_grade_value": None,
+                            "official_feedback": "Great detail.",
+                            "is_complete": 0,
+                            "is_published": 0,
+                        },
+                        {
+                            "name": "OUT-2",
+                            "task_delivery": "TDL-0002",
+                            "student": "STU-1",
+                            "grading_status": "Released",
+                            "procedural_status": None,
+                            "has_submission": 1,
+                            "has_new_submission": 0,
+                            "official_score": 18,
+                            "official_grade": "A",
+                            "official_grade_value": "A",
+                            "official_feedback": None,
+                            "is_complete": 0,
+                            "is_published": 1,
+                        },
+                    ]
+                if doctype == "Task Outcome Criterion":
+                    return [
+                        {
+                            "parent": "OUT-1",
+                            "assessment_criteria": "CRIT-1",
+                            "level": "Secure",
+                            "level_points": 4,
+                        }
+                    ]
+                return []
+
+            frappe.get_all = fake_get_all
+
+            module = import_fresh("ifitwala_ed.api.gradebook")
+            module._can_read_gradebook = lambda: True
+            module._resolve_gradebook_scope = lambda school, academic_year, course: {
+                "courses": [course] if course else [],
+                "student_groups": ["GRP-1"],
+            }
+            module._assert_group_access = lambda student_group: None
+            module._get_student_display_map = lambda student_ids: {"STU-1": "Ada Lovelace"}
+            module._get_student_meta_map = lambda student_ids: {
+                "STU-1": {"student_id": "S-001", "student_image": None}
+            }
+
+            payload = module.get_grid(
+                {
+                    "school": "SCH-1",
+                    "academic_year": "2025-2026",
+                    "student_group": "GRP-1",
+                    "limit": 2,
+                }
+            )
+
+        self.assertEqual(
+            payload["deliveries"],
+            [
+                {
+                    "delivery_id": "TDL-0001",
+                    "task_title": "Rubric reflection",
+                    "grading_mode": "Criteria",
+                    "rubric_scoring_strategy": "Separate Criteria",
+                    "due_date": "2026-04-03 10:00:00",
+                    "delivery_mode": "Assess",
+                    "allow_feedback": 1,
+                    "max_points": None,
+                    "task_type": "Assignment",
+                },
+                {
+                    "delivery_id": "TDL-0002",
+                    "task_title": "Quiz score",
+                    "grading_mode": "Points",
+                    "rubric_scoring_strategy": None,
+                    "due_date": "2026-04-04 10:00:00",
+                    "delivery_mode": "Assess",
+                    "allow_feedback": 0,
+                    "max_points": 20.0,
+                    "task_type": "Quiz",
+                },
+            ],
+        )
+        self.assertEqual(
+            payload["students"],
+            [
+                {
+                    "student": "STU-1",
+                    "student_name": "Ada Lovelace",
+                    "student_id": "S-001",
+                    "student_image": None,
+                }
+            ],
+        )
+        self.assertEqual(payload["cells"][0]["official"]["criteria"], [{"criteria": "CRIT-1", "level": "Secure", "points": 4}])
+        self.assertTrue(payload["cells"][0]["flags"]["has_new_submission"])
+        self.assertTrue(payload["cells"][1]["flags"]["is_published"])
+
     def test_update_task_student_rejects_feedback_when_comments_disabled(self):
         with stubbed_frappe(extra_modules=_gradebook_stub_modules()) as frappe:
 

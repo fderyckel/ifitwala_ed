@@ -8,6 +8,7 @@ const {
 	fetchSchoolContextMock,
 	fetchGroupsMock,
 	fetchGroupTasksMock,
+	getGridMock,
 	getTaskGradebookMock,
 	getTaskQuizManualReviewMock,
 	repairTaskRosterMock,
@@ -22,6 +23,7 @@ const {
 	fetchSchoolContextMock: vi.fn(),
 	fetchGroupsMock: vi.fn(),
 	fetchGroupTasksMock: vi.fn(),
+	getGridMock: vi.fn(),
 	getTaskGradebookMock: vi.fn(),
 	getTaskQuizManualReviewMock: vi.fn(),
 	repairTaskRosterMock: vi.fn(),
@@ -157,6 +159,7 @@ vi.mock('@/lib/services/gradebook/gradebookService', () => ({
 	createGradebookService: () => ({
 		fetchGroups: fetchGroupsMock,
 		fetchGroupTasks: fetchGroupTasksMock,
+		getGrid: getGridMock,
 		getTaskGradebook: getTaskGradebookMock,
 		getTaskQuizManualReview: getTaskQuizManualReviewMock,
 		repairTaskRoster: repairTaskRosterMock,
@@ -278,6 +281,7 @@ function mockGradebookFlow(options?: {
 			},
 		],
 	});
+	getGridMock.mockResolvedValue({ deliveries: [], students: [], cells: [] });
 	getTaskGradebookMock.mockResolvedValue({
 		task,
 		criteria: options?.criteria || [],
@@ -296,6 +300,15 @@ async function openTask(title: string) {
 	await flushUi();
 }
 
+async function switchToOverview() {
+	const overviewButton = Array.from(document.querySelectorAll('button')).find(button =>
+		(button.textContent || '').includes('Overview')
+	);
+	expect(overviewButton).not.toBeNull();
+	overviewButton!.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+	await flushUi();
+}
+
 afterEach(() => {
 	routeState.query = {};
 	replaceMock.mockClear();
@@ -303,6 +316,7 @@ afterEach(() => {
 	fetchSchoolContextMock.mockReset();
 	fetchGroupsMock.mockReset();
 	fetchGroupTasksMock.mockReset();
+	getGridMock.mockReset();
 	getTaskGradebookMock.mockReset();
 	getTaskQuizManualReviewMock.mockReset();
 	repairTaskRosterMock.mockReset();
@@ -323,6 +337,7 @@ describe('Gradebook page', () => {
 		});
 		fetchGroupsMock.mockResolvedValue([]);
 		fetchGroupTasksMock.mockResolvedValue({ tasks: [] });
+		getGridMock.mockResolvedValue({ deliveries: [], students: [], cells: [] });
 		getTaskGradebookMock.mockResolvedValue({ task: null, criteria: [], students: [] });
 
 		mountPage();
@@ -363,6 +378,7 @@ describe('Gradebook page', () => {
 			return [];
 		});
 		fetchGroupTasksMock.mockResolvedValue({ tasks: [] });
+		getGridMock.mockResolvedValue({ deliveries: [], students: [], cells: [] });
 		getTaskGradebookMock.mockResolvedValue({ task: null, criteria: [], students: [] });
 
 		mountPage();
@@ -395,6 +411,73 @@ describe('Gradebook page', () => {
 		expect(fetchGroupTasksMock).toHaveBeenCalledWith({ student_group: 'SG-1' });
 		expect(getTaskGradebookMock).toHaveBeenCalledWith({ task: task.name });
 		expect(document.body.textContent || '').toContain('Ada Lovelace');
+	});
+
+	it('loads the overview grid only after the teacher switches modes', async () => {
+		mockGradebookFlow();
+		getGridMock.mockResolvedValue({
+			deliveries: [
+				{
+					delivery_id: 'TDL-1',
+					task_title: 'Task 1',
+					due_date: '2026-04-03 10:00:00',
+					grading_mode: 'Points',
+					rubric_scoring_strategy: null,
+					delivery_mode: 'Assess',
+					allow_feedback: 0,
+					max_points: 20,
+					task_type: 'Assignment',
+				},
+			],
+			students: [
+				{
+					student: 'STU-1',
+					student_name: 'Ada Lovelace',
+					student_id: 'S-001',
+					student_image: null,
+				},
+			],
+			cells: [
+				{
+					outcome_id: 'OUT-1',
+					student: 'STU-1',
+					delivery_id: 'TDL-1',
+					flags: {
+						has_submission: false,
+						has_new_submission: false,
+						grading_status: 'Not Started',
+						procedural_status: null,
+						is_complete: false,
+						is_published: false,
+					},
+					official: {
+						score: null,
+						grade: null,
+						grade_value: null,
+						feedback: null,
+						criteria: [],
+					},
+				},
+			],
+		});
+
+		mountPage();
+		await flushUi();
+
+		expect(getGridMock).not.toHaveBeenCalled();
+
+		await switchToOverview();
+
+		expect(getGridMock).toHaveBeenCalledWith({
+			school: 'SCH-1',
+			academic_year: '2025-2026',
+			student_group: 'SG-1',
+			course: 'Math 1',
+			task_type: null,
+			delivery_mode: null,
+			limit: 10,
+		});
+		expect(document.body.textContent || '').toContain('Class Overview');
 	});
 
 	it('renders binary grading without points or comment controls when comments are disabled', async () => {
