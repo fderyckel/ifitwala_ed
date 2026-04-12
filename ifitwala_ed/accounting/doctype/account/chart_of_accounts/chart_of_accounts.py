@@ -103,6 +103,7 @@ def create_charts(
         frappe.local.flags.ignore_update_nsm = True
         _import_accounts(chart, None, None, root_account=True)
         rebuild_tree("Account")
+        sync_account_types_from_chart(organization, chart=chart)
         frappe.local.flags.ignore_update_nsm = False
 
 
@@ -133,6 +134,53 @@ def identify_is_group(child):
         is_group = 0
 
     return is_group
+
+
+def sync_account_types_from_chart(organization, chart=None, overwrite=False):
+    chart = chart or get_chart("standard_chart_of_accounts")
+    if not chart:
+        return 0
+
+    updated = 0
+
+    def _sync(children, parent_account=None):
+        nonlocal updated
+
+        for account_name, child in children.items():
+            if account_name in get_chart_metadata_fields():
+                continue
+
+            account_label = cstr(child.get("account_name") or account_name).strip()
+            account_docname = frappe.db.get_value(
+                "Account",
+                {
+                    "organization": organization,
+                    "account_name": account_label,
+                    "parent_account": parent_account,
+                },
+                "name",
+            )
+
+            if not account_docname:
+                continue
+
+            expected_account_type = cstr(child.get("account_type")).strip()
+            if expected_account_type:
+                current_account_type = cstr(frappe.db.get_value("Account", account_docname, "account_type")).strip()
+                if overwrite or not current_account_type:
+                    frappe.db.set_value(
+                        "Account",
+                        account_docname,
+                        "account_type",
+                        expected_account_type,
+                        update_modified=False,
+                    )
+                    updated += 1
+
+            _sync(child, parent_account=account_docname)
+
+    _sync(chart)
+    return updated
 
 
 @frappe.whitelist()

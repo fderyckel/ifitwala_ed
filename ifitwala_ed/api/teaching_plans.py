@@ -363,6 +363,7 @@ def _fetch_timeline_holiday_spans(
     *,
     window_start: date,
     window_end: date,
+    weekend_days: list[int] | tuple[int, ...] | set[int] | None = None,
 ) -> list[dict[str, Any]]:
     rows = frappe.get_all(
         "School Calendar Holidays",
@@ -380,6 +381,7 @@ def _fetch_timeline_holiday_spans(
     spans: list[dict[str, Any]] = []
     current: dict[str, Any] | None = None
     seen_titles: set[str] = set()
+    weekend_day_set = {int(day) for day in (weekend_days or [])}
 
     for row in rows or []:
         holiday_date = row.get("holiday_date")
@@ -396,9 +398,19 @@ def _fetch_timeline_holiday_spans(
             }
             seen_titles = {title}
             continue
-        if holiday_day == current["end_date"] + timedelta(days=1):
+        gap_is_weekend_bridge = False
+        if holiday_day > current["end_date"] + timedelta(days=1):
+            gap_cursor = current["end_date"] + timedelta(days=1)
+            gap_is_weekend_bridge = True
+            while gap_cursor < holiday_day:
+                if _timeline_weekday_js(gap_cursor) not in weekend_day_set:
+                    gap_is_weekend_bridge = False
+                    break
+                gap_cursor += timedelta(days=1)
+
+        if holiday_day == current["end_date"] + timedelta(days=1) or gap_is_weekend_bridge:
             current["end_date"] = holiday_day
-            current["day_count"] += 1
+            current["day_count"] = (current["end_date"] - current["start_date"]).days + 1
             if title not in seen_titles:
                 current["titles"].append(title)
                 seen_titles.add(title)
@@ -488,6 +500,7 @@ def _build_course_plan_timeline(
         school_calendar,
         window_start=window_start,
         window_end=window_end,
+        weekend_days=weekend_days,
     )
     term_rows = _fetch_timeline_calendar_terms(
         school_calendar,

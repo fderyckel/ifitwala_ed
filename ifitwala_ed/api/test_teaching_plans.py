@@ -1063,6 +1063,35 @@ class TestTeachingPlansApi(TestCase):
         self.assertEqual(payload["units"][1]["schedule_state"], "unscheduled_duration")
         self.assertEqual(payload["units"][2]["schedule_state"], "blocked")
 
+    def test_fetch_timeline_holiday_spans_merges_weekend_inside_same_break(self):
+        with _teaching_plans_module() as module:
+            with patch.object(
+                module.frappe,
+                "get_all",
+                return_value=[
+                    {"holiday_date": date(2026, 1, 9), "description": "Mid-term break"},
+                    {"holiday_date": date(2026, 1, 12), "description": "Mid-term break"},
+                ],
+            ):
+                payload = module._fetch_timeline_holiday_spans(
+                    "CAL-1",
+                    window_start=date(2026, 1, 1),
+                    window_end=date(2026, 1, 31),
+                    weekend_days=[0, 6],
+                )
+
+        self.assertEqual(
+            payload,
+            [
+                {
+                    "start_date": "2026-01-09",
+                    "end_date": "2026-01-12",
+                    "titles": ["Mid-term break"],
+                    "day_count": 4,
+                }
+            ],
+        )
+
     def test_resolve_course_plan_timeline_scope_clamps_to_student_group_term(self):
         with _teaching_plans_module() as module:
             with (

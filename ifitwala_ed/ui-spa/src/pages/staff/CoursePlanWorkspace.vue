@@ -66,6 +66,77 @@
 
 		<template v-else-if="surface">
 			<section
+				v-if="navigationSections.length"
+				class="rounded-[1.75rem] border border-line-soft bg-white/92 px-5 py-4 shadow-soft"
+			>
+				<div class="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
+					<div class="min-w-0">
+						<p class="type-overline text-ink/55">Quick Access</p>
+						<p class="mt-1 type-caption text-ink/65">
+							Jump to the next planning area without losing your place.
+						</p>
+					</div>
+
+					<div v-if="canManagePlan" class="flex flex-wrap gap-2">
+						<button
+							type="button"
+							class="if-action if-action--subtle"
+							:disabled="!selectedUnit"
+							@click="quickEditUnit"
+						>
+							Edit Unit
+						</button>
+						<button
+							type="button"
+							class="if-action if-action--subtle"
+							:disabled="!selectedUnit"
+							@click="quickUploadUnitFile"
+						>
+							Upload Unit PDF
+						</button>
+						<button
+							type="button"
+							class="if-action if-action--subtle"
+							:disabled="!selectedUnit"
+							@click="quickAddReflection"
+						>
+							Add Reflection
+						</button>
+						<button type="button" class="if-action if-action--subtle" @click="quickStartQuizBank">
+							New Quiz Bank
+						</button>
+					</div>
+				</div>
+
+				<div class="mt-3 flex gap-2 overflow-x-auto pb-1">
+					<button
+						v-for="section in navigationSections"
+						:key="section.id"
+						type="button"
+						class="flex shrink-0 items-center gap-2 rounded-full border px-4 py-2 text-sm font-medium transition"
+						:class="
+							activeSectionId === section.id
+								? 'border-jacaranda bg-jacaranda/10 text-ink shadow-soft'
+								: 'border-line-soft bg-white text-ink/70 hover:border-jacaranda/40 hover:text-ink'
+						"
+						@click="jumpToSection(section.id)"
+					>
+						<span>{{ section.label }}</span>
+						<span
+							v-if="section.count !== undefined && section.count !== null"
+							class="rounded-full bg-white/80 px-2 py-0.5 text-xs text-ink/70"
+						>
+							{{ section.count }}
+						</span>
+					</button>
+				</div>
+
+				<p v-if="canManagePlan && !selectedUnit" class="mt-3 type-caption text-ink/65">
+					Select a governed unit first to unlock reflection and unit-resource shortcuts.
+				</p>
+			</section>
+
+			<section
 				:id="SECTION_IDS.overview"
 				class="scroll-mt-40 rounded-[2rem] border border-line-soft bg-white p-6 shadow-soft"
 			>
@@ -194,98 +265,96 @@
 				</div>
 			</section>
 
-			<section :id="SECTION_IDS.timeline" class="scroll-mt-40">
-				<CoursePlanTimelineCard :timeline="surface.curriculum.timeline" />
-			</section>
-
 			<section
-				v-if="navigationSections.length"
-				class="sticky top-20 z-20 rounded-[2rem] border border-line-soft bg-white/95 p-4 shadow-soft backdrop-blur supports-[backdrop-filter]:bg-white/85"
+				:id="SECTION_IDS.timeline"
+				class="scroll-mt-40 rounded-[2rem] border border-line-soft bg-white p-6 shadow-soft"
 			>
-				<div class="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+				<button
+					type="button"
+					class="flex w-full flex-col gap-4 text-left lg:flex-row lg:items-start lg:justify-between"
+					:aria-expanded="!isSectionCollapsed(SECTION_IDS.timeline)"
+					@click="toggleSection(SECTION_IDS.timeline)"
+				>
 					<div>
-						<p class="type-overline text-ink/60">Quick Access</p>
-						<p class="mt-1 type-caption text-ink/70">
-							Jump straight to the next planning task without digging through the full page.
+						<p class="type-overline text-ink/60">Curriculum Timeline</p>
+						<h2 class="mt-2 type-h2 text-ink">Year-at-a-glance pacing</h2>
+						<p class="mt-2 type-body text-ink/80">
+							{{
+								isSectionCollapsed(SECTION_IDS.timeline)
+									? 'Open the calendar view to see unit pacing against the real school schedule.'
+									: 'See the governed unit sequence against instructional dates, terms, and break periods.'
+							}}
 						</p>
 					</div>
-
-					<div v-if="canManagePlan" class="flex flex-wrap gap-2">
-						<button
-							type="button"
-							class="if-action if-action--subtle"
-							:disabled="!selectedUnit"
-							@click="quickEditUnit"
-						>
-							Edit Unit
-						</button>
-						<button
-							type="button"
-							class="if-action if-action--subtle"
-							:disabled="!selectedUnit"
-							@click="quickUploadUnitFile"
-						>
-							Upload Unit PDF
-						</button>
-						<button
-							type="button"
-							class="if-action if-action--subtle"
-							:disabled="!selectedUnit"
-							@click="quickAddReflection"
-						>
-							Add Reflection
-						</button>
-						<button type="button" class="if-action if-action--subtle" @click="quickStartQuizBank">
-							New Quiz Bank
-						</button>
-					</div>
-				</div>
-
-				<div class="mt-4 flex gap-2 overflow-x-auto pb-1">
-					<button
-						v-for="section in navigationSections"
-						:key="section.id"
-						type="button"
-						class="flex shrink-0 items-center gap-2 rounded-full border px-4 py-2 text-sm font-medium transition"
-						:class="
-							activeSectionId === section.id
-								? 'border-jacaranda bg-jacaranda/10 text-ink shadow-soft'
-								: 'border-line-soft bg-white text-ink/70 hover:border-jacaranda/40 hover:text-ink'
-						"
-						@click="jumpToSection(section.id)"
-					>
-						<span>{{ section.label }}</span>
-						<span
-							v-if="section.count !== undefined && section.count !== null"
-							class="rounded-full bg-white/80 px-2 py-0.5 text-xs text-ink/70"
-						>
-							{{ section.count }}
+					<div class="flex flex-wrap items-center gap-2 lg:justify-end">
+						<span v-if="timelineScopeLabel" class="chip">{{ timelineScopeLabel }}</span>
+						<span v-if="timelineDateLabel" class="chip">{{ timelineDateLabel }}</span>
+						<span class="chip">
+							{{ surface.curriculum.timeline.summary.scheduled_unit_count || 0 }} scheduled units
 						</span>
-					</button>
-				</div>
+						<span v-if="surface.curriculum.timeline.holidays.length" class="chip">
+							{{ surface.curriculum.timeline.holidays.length }} holiday spans
+						</span>
+						<span class="chip">{{
+							isSectionCollapsed(SECTION_IDS.timeline) ? 'Show' : 'Hide'
+						}}</span>
+					</div>
+				</button>
 
-				<p v-if="canManagePlan && !selectedUnit" class="mt-3 type-caption text-ink/70">
-					Select a governed unit first to unlock reflection and unit-resource shortcuts.
-				</p>
+				<div v-if="!isSectionCollapsed(SECTION_IDS.timeline)" class="mt-6">
+					<CoursePlanTimelineCard :timeline="surface.curriculum.timeline" hide-header embedded />
+				</div>
 			</section>
 
 			<section class="grid gap-6 xl:grid-cols-[minmax(0,20rem),minmax(0,1fr)]">
 				<aside class="space-y-6 xl:self-start">
-					<div :id="SECTION_IDS.courseResources" class="scroll-mt-40">
-						<PlanningResourcePanel
-							anchor-doctype="Course Plan"
-							:anchor-name="surface.course_plan.course_plan"
-							:can-manage="canManagePlan"
-							eyebrow="Shared Plan Resources"
-							title="Resources for every class using this plan"
-							description="Keep governed references, anchor texts, and shared files at the course-plan level."
-							empty-message="No shared course-plan resources yet."
-							blocked-message="Choose a course plan before sharing resources."
-							read-only-message="Only approved curriculum staff can edit shared course-plan resources."
-							:resources="surface.resources.course_plan_resources"
-							@changed="loadSurface"
-						/>
-					</div>
+					<section
+						:id="SECTION_IDS.courseResources"
+						class="scroll-mt-40 rounded-[2rem] border border-line-soft bg-white p-6 shadow-soft"
+					>
+						<button
+							type="button"
+							class="flex w-full flex-col gap-4 text-left lg:flex-row lg:items-start lg:justify-between"
+							:aria-expanded="!isSectionCollapsed(SECTION_IDS.courseResources)"
+							@click="toggleSection(SECTION_IDS.courseResources)"
+						>
+							<div>
+								<p class="type-overline text-ink/60">Shared Plan Resources</p>
+								<h2 class="mt-2 type-h2 text-ink">Resources for every class using this plan</h2>
+								<p class="mt-2 type-body text-ink/80">
+									{{
+										isSectionCollapsed(SECTION_IDS.courseResources)
+											? 'Open the governed references, links, and shared files attached at the course-plan level.'
+											: 'Keep governed references, anchor texts, and shared files at the course-plan level.'
+									}}
+								</p>
+							</div>
+							<div class="flex flex-wrap items-center gap-2 lg:justify-end">
+								<span class="chip">{{ coursePlanResourceCount }} resources</span>
+								<span class="chip">{{
+									isSectionCollapsed(SECTION_IDS.courseResources) ? 'Show' : 'Hide'
+								}}</span>
+							</div>
+						</button>
+
+						<div v-if="!isSectionCollapsed(SECTION_IDS.courseResources)" class="mt-6">
+							<PlanningResourcePanel
+								anchor-doctype="Course Plan"
+								:anchor-name="surface.course_plan.course_plan"
+								:can-manage="canManagePlan"
+								eyebrow="Shared Plan Resources"
+								title="Resources for every class using this plan"
+								description="Keep governed references, anchor texts, and shared files at the course-plan level."
+								empty-message="No shared course-plan resources yet."
+								blocked-message="Choose a course plan before sharing resources."
+								read-only-message="Only approved curriculum staff can edit shared course-plan resources."
+								:resources="surface.resources.course_plan_resources"
+								hide-header
+								embedded
+								@changed="loadSurface"
+							/>
+						</div>
+					</section>
 
 					<section
 						:id="SECTION_IDS.units"
@@ -1019,10 +1088,13 @@
 				</section>
 			</section>
 
-			<section :id="SECTION_IDS.quizBanks" class="scroll-mt-40 space-y-6">
+			<section
+				:id="SECTION_IDS.quizBanks"
+				class="scroll-mt-40 rounded-[2rem] border border-line-soft bg-white p-6 shadow-soft"
+			>
 				<button
 					type="button"
-					class="flex w-full flex-col gap-4 rounded-[2rem] border border-line-soft bg-white p-6 text-left shadow-soft lg:flex-row lg:items-start lg:justify-between"
+					class="flex w-full flex-col gap-4 text-left lg:flex-row lg:items-start lg:justify-between"
 					:aria-expanded="!isSectionCollapsed(SECTION_IDS.quizBanks)"
 					@click="toggleSection(SECTION_IDS.quizBanks)"
 				>
@@ -1048,10 +1120,10 @@
 
 				<div
 					v-if="!isSectionCollapsed(SECTION_IDS.quizBanks)"
-					class="grid gap-6 xl:grid-cols-[minmax(0,20rem),minmax(0,1fr)]"
+					class="mt-6 grid gap-6 xl:grid-cols-[minmax(0,20rem),minmax(0,1fr)]"
 				>
 					<aside class="space-y-4 xl:self-start">
-						<section class="rounded-[2rem] border border-line-soft bg-white p-5 shadow-soft">
+						<section class="rounded-[1.75rem] border border-line-soft bg-surface-soft/55 p-5">
 							<div class="mb-4 flex items-center justify-between gap-3">
 								<div>
 									<p class="type-overline text-ink/60">Course Quiz Banks</p>
@@ -1109,7 +1181,7 @@
 						</section>
 					</aside>
 
-					<section class="rounded-[2rem] border border-line-soft bg-white p-6 shadow-soft">
+					<section class="rounded-[1.75rem] border border-line-soft bg-surface-soft/40 p-6">
 						<div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
 							<div>
 								<p class="type-overline text-ink/60">
@@ -1558,6 +1630,10 @@ const quizQuestionTypeOptions = [
 	'Short Answer',
 	'Essay',
 ];
+const timelineShortDateFormatter = new Intl.DateTimeFormat(undefined, {
+	month: 'short',
+	day: 'numeric',
+});
 
 const selectedUnit = computed<StaffCoursePlanUnit | null>(() => {
 	return (
@@ -1605,6 +1681,29 @@ const selectedQuizBankLabel = computed(() => {
 		)?.bank_title ||
 		''
 	);
+});
+const coursePlanResourceCount = computed(
+	() => surface.value?.resources.course_plan_resources.length || 0
+);
+const timelineSummary = computed(() => surface.value?.curriculum.timeline || null);
+const timelineScopeLabel = computed(() => {
+	const timeline = timelineSummary.value;
+	if (!timeline || timeline.status !== 'ready') return '';
+	const scope = timeline.scope || {};
+	if (scope.mode === 'student_group_term') {
+		return scope.student_group_label
+			? `${scope.student_group_label} · ${scope.term_label || scope.term || 'Term'}`
+			: scope.term_label || scope.term || 'Term';
+	}
+	return scope.academic_year || '';
+});
+const timelineDateLabel = computed(() => {
+	const timeline = timelineSummary.value;
+	if (!timeline || timeline.status !== 'ready') return '';
+	const start = parseIsoDate(timeline.scope.window_start);
+	const end = parseIsoDate(timeline.scope.window_end);
+	if (!start || !end) return '';
+	return `${timelineShortDateFormatter.format(start)} to ${timelineShortDateFormatter.format(end)}`;
 });
 const navigationSections = computed<
 	{ id: WorkspaceSectionId; label: string; count?: number | null }[]
@@ -1657,6 +1756,12 @@ const navigationSections = computed<
 
 function nextId() {
 	return nextLocalId.value++;
+}
+
+function parseIsoDate(value?: string | null) {
+	if (!value) return null;
+	const parsed = new Date(`${value}T00:00:00`);
+	return Number.isNaN(parsed.getTime()) ? null : parsed;
 }
 
 function coursePlanSectionStorageKey() {

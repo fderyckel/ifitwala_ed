@@ -3,6 +3,12 @@
 import frappe
 from frappe.tests.utils import FrappeTestCase
 
+from ifitwala_ed.accounting.doctype.account.account import get_children
+from ifitwala_ed.accounting.doctype.account.chart_of_accounts.chart_of_accounts import sync_account_types_from_chart
+from ifitwala_ed.accounting.doctype.account.chart_of_accounts.verified.standard_chart_of_accounts import (
+    get as get_standard_chart,
+)
+
 
 class TestAccount(FrappeTestCase):
     def make_organization(self, prefix="Org"):
@@ -108,3 +114,31 @@ class TestAccount(FrappeTestCase):
         )
 
         self.assertTrue(account.name.endswith(f" - {org.abbr}"))
+
+    def test_tree_children_are_scoped_by_organization(self):
+        org = self.make_organization("Tree")
+
+        roots = get_children("Account", organization=org.name, is_root=True)
+
+        self.assertTrue(roots)
+        self.assertIn("Application of Funds (Assets)", {row.get("title") for row in roots})
+
+        asset_root_name = next(row.get("value") for row in roots if row.get("title") == "Application of Funds (Assets)")
+        children = get_children("Account", organization=org.name, parent=asset_root_name)
+        self.assertIn("Current Assets", {row.get("title") for row in children})
+
+    def test_sync_account_types_from_standard_chart_backfills_missing_values(self):
+        org = self.make_organization("Types")
+        debtors = frappe.get_all(
+            "Account",
+            filters={"organization": org.name, "account_name": "Debtors"},
+            fields=["name", "account_type"],
+            limit=1,
+        )[0]
+
+        frappe.db.set_value("Account", debtors.name, "account_type", "", update_modified=False)
+        updated = sync_account_types_from_chart(org.name, chart=get_standard_chart())
+        account_type = frappe.db.get_value("Account", debtors.name, "account_type")
+
+        self.assertGreaterEqual(updated, 1)
+        self.assertEqual(account_type, "Receivable")

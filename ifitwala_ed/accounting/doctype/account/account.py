@@ -81,3 +81,56 @@ def get_account_autoname(account_number, account_name, organization):
         return f"{base_name} - {organization_abbr}"
 
     return base_name
+
+
+def _get_account_title(account):
+    account_number = cstr(account.get("account_number")).strip()
+    account_name = cstr(account.get("account_name")).strip()
+    if account_number:
+        return f"{account_number} - {account_name}"
+    return account_name
+
+
+@frappe.whitelist()
+def get_children(doctype, parent=None, organization=None, is_root=False, **kwargs):
+    filters = dict(kwargs.get("filters") or {})
+    organization = cstr(organization or filters.get("organization")).strip()
+    if not organization:
+        return []
+
+    if is_root or not parent:
+        rows = frappe.get_all(
+            "Account",
+            filters={"organization": organization},
+            fields=["name", "account_name", "account_number", "parent_account", "is_group"],
+            order_by="lft asc",
+            limit=5000,
+        )
+        root_rows = []
+        for row in rows:
+            if cstr(row.get("parent_account")).strip():
+                continue
+            root_rows.append(
+                {
+                    "value": row.get("name"),
+                    "title": _get_account_title(row),
+                    "expandable": 1 if row.get("is_group") else 0,
+                }
+            )
+        return root_rows
+
+    rows = frappe.get_all(
+        "Account",
+        filters={"organization": organization, "parent_account": parent},
+        fields=["name", "account_name", "account_number", "is_group"],
+        order_by="lft asc",
+        limit=5000,
+    )
+    return [
+        {
+            "value": row.get("name"),
+            "title": _get_account_title(row),
+            "expandable": 1 if row.get("is_group") else 0,
+        }
+        for row in rows
+    ]

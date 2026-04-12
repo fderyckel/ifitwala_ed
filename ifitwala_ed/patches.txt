@@ -15,3 +15,4 @@ ifitwala_ed.patches.migrate_learning_units_to_unit_plans
 ifitwala_ed.patches.publish_student_profile_print_format
 ifitwala_ed.patches.sync_public_brand_website_settings
 ifitwala_ed.patches.backfill_default_chart_of_accounts
+ifitwala_ed.patches.backfill_standard_account_types

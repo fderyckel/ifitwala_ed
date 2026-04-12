@@ -6,6 +6,7 @@ from frappe.utils.nestedset import rebuild_tree
 from ifitwala_ed.accounting.doctype.account.chart_of_accounts.chart_of_accounts import (
     create_charts,
     get_chart,
+    sync_account_types_from_chart,
 )
 
 DEFAULT_CHART_TEMPLATE = "standard_chart_of_accounts"
@@ -133,6 +134,9 @@ def create_coa_for_organization(organization, template_name=None):
 
     existing_count = frappe.db.count("Account", filters={"organization": organization})
     if existing_count:
+        chart = get_chart(template_name)
+        if chart:
+            sync_account_types_from_chart(organization, chart=chart)
         if not frappe.db.exists("Accounts Settings", organization):
             rebuild_tree("Account")
             ensure_accounts_settings(organization)

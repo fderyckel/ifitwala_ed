@@ -1,6 +1,6 @@
 <template>
-	<article class="rounded-[2rem] border border-line-soft bg-white p-6 shadow-soft">
-		<div class="flex items-center justify-between gap-3">
+	<article :class="panelClasses">
+		<div v-if="!hideHeader" class="flex items-center justify-between gap-3">
 			<div>
 				<p class="type-overline text-ink/60">{{ eyebrow }}</p>
 				<h2 class="mt-1 type-h3 text-ink">{{ title }}</h2>
@@ -11,7 +11,10 @@
 
 		<div
 			v-if="!anchorName"
-			class="mt-5 rounded-2xl border border-dashed border-line-soft bg-surface-soft px-4 py-4"
+			:class="[
+				panelSectionOffset,
+				'rounded-2xl border border-dashed border-line-soft bg-surface-soft px-4 py-4',
+			]"
 		>
 			<p class="type-body-strong text-ink">Resource sharing is blocked here.</p>
 			<p class="mt-1 type-caption text-ink/70">{{ blockedMessage }}</p>
@@ -20,7 +23,10 @@
 		<template v-else>
 			<div
 				v-if="!canManageResources"
-				class="mt-5 rounded-2xl border border-line-soft bg-surface-soft px-4 py-4"
+				:class="[
+					panelSectionOffset,
+					'rounded-2xl border border-line-soft bg-surface-soft px-4 py-4',
+				]"
 			>
 				<p class="type-body-strong text-ink">Resources are visible here, but editing is locked.</p>
 				<p class="mt-1 type-caption text-ink/70">{{ readOnlyMessageToUse }}</p>
@@ -28,7 +34,7 @@
 
 			<section
 				v-if="canManageResources"
-				class="mt-5 rounded-2xl border border-line-soft bg-surface-soft p-5"
+				:class="[panelSectionOffset, 'rounded-2xl border border-line-soft bg-surface-soft p-5']"
 			>
 				<div class="flex flex-wrap gap-2">
 					<button
@@ -147,7 +153,7 @@
 				</div>
 			</section>
 
-			<section class="mt-5 space-y-3">
+			<section :class="[panelSectionOffset, 'space-y-3']">
 				<div
 					v-if="!resources.length"
 					class="rounded-2xl border border-dashed border-line-soft px-4 py-4"
@@ -220,18 +226,26 @@ import {
 } from '@/lib/services/staff/staffTeachingService';
 import type { StaffPlanningMaterial } from '@/types/contracts/staff_teaching/get_staff_class_planning_surface';
 
-const props = defineProps<{
-	anchorDoctype: PlanningMaterialAnchorDoctype;
-	anchorName?: string | null;
-	eyebrow: string;
-	title: string;
-	description: string;
-	emptyMessage: string;
-	blockedMessage: string;
-	canManage?: boolean;
-	readOnlyMessage?: string;
-	resources: StaffPlanningMaterial[];
-}>();
+const props = withDefaults(
+	defineProps<{
+		anchorDoctype: PlanningMaterialAnchorDoctype;
+		anchorName?: string | null;
+		eyebrow: string;
+		title: string;
+		description: string;
+		emptyMessage: string;
+		blockedMessage: string;
+		canManage?: boolean;
+		readOnlyMessage?: string;
+		resources: StaffPlanningMaterial[];
+		hideHeader?: boolean;
+		embedded?: boolean;
+	}>(),
+	{
+		hideHeader: false,
+		embedded: false,
+	}
+);
 
 const emit = defineEmits<{
 	(e: 'changed'): void;
@@ -267,7 +281,12 @@ const usageRoleOptions = [
 	{ label: 'Example', value: 'Example' },
 ];
 
+const hideHeader = computed(() => props.hideHeader);
 const canManageResources = computed(() => props.canManage !== false);
+const panelClasses = computed(() =>
+	props.embedded ? 'space-y-0' : 'rounded-[2rem] border border-line-soft bg-white p-6 shadow-soft'
+);
+const panelSectionOffset = computed(() => (hideHeader.value ? '' : 'mt-5'));
 const readOnlyMessageToUse = computed(
 	() =>
 		props.readOnlyMessage ||
