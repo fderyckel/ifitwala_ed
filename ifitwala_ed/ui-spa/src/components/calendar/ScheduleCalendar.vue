@@ -132,11 +132,12 @@ import FullCalendar from '@fullcalendar/vue3';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import timeGridPlugin from '@fullcalendar/timegrid';
 import listPlugin from '@fullcalendar/list';
-import { DatesSetArg, EventClickArg } from '@fullcalendar/core';
+import { DatesSetArg, EventClickArg, EventContentArg } from '@fullcalendar/core';
 import { FeatherIcon } from 'frappe-ui';
 
 import { CalendarSource, useCalendarEvents } from '@/composables/useCalendarEvents';
 import { useCalendarPrefs } from '@/composables/useCalendarPrefs';
+import { buildScheduleCalendarListMeta } from '@/components/calendar/scheduleCalendarListMeta';
 import { SIGNAL_CALENDAR_INVALIDATE, uiSignals } from '@/lib/uiSignals';
 
 // ✅ Overlay stack (single renderer via OverlayHost teleported to #overlay-root)
@@ -248,6 +249,7 @@ const calendarOptions = ref({
 	hiddenDays: hiddenDays.value,
 	datesSet: (arg: DatesSetArg) => handleDatesSet(arg),
 	eventDisplay: 'block',
+	eventContent: (info: EventContentArg) => renderEventContent(info),
 	eventClick: (info: EventClickArg) => handleEventClick(info),
 });
 
@@ -446,6 +448,34 @@ const lastUpdatedLabel = computed(() => {
 
 function toggleChip(id: CalendarSource) {
 	toggleSource(id);
+}
+
+function renderEventContent(info: EventContentArg) {
+	const title = info.event.title || 'Untitled event';
+	if (!info.view.type.startsWith('list')) {
+		const titleNode = document.createElement('span');
+		titleNode.className = 'fc-event-title';
+		titleNode.textContent = title;
+		return { domNodes: [titleNode] };
+	}
+
+	const wrapper = document.createElement('div');
+	wrapper.className = 'schedule-calendar__list-event-content';
+
+	const titleNode = document.createElement('div');
+	titleNode.className = 'schedule-calendar__list-event-title';
+	titleNode.textContent = title;
+	wrapper.appendChild(titleNode);
+
+	const metaText = buildScheduleCalendarListMeta(info.event);
+	if (metaText) {
+		const metaNode = document.createElement('div');
+		metaNode.className = 'schedule-calendar__list-event-meta';
+		metaNode.textContent = metaText;
+		wrapper.appendChild(metaNode);
+	}
+
+	return { domNodes: [wrapper] };
 }
 
 /**

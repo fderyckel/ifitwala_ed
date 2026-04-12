@@ -145,6 +145,23 @@ def sanitize_login_redirect_param() -> None:
         _raise_request_redirect(target)
 
 
+def ensure_guest_public_home_page_cache() -> None:
+    """
+    Clear stale cached guest homepage values before Frappe resolves `/`.
+
+    Frappe caches `get_home_page()` per session user. When guest traffic was
+    previously cached to `login`, the new public root cannot win until the hash
+    entry is removed.
+    """
+    if (frappe.session.user or "Guest") != "Guest":
+        return
+
+    cache = frappe.cache()
+    cached_home_page = cache.hget("home_page", "Guest")
+    if cached_home_page and str(cached_home_page).strip("/") != "index":
+        cache.hdel("home_page", "Guest")
+
+
 def _resolve_portal_only_redirect_path(*, roles: set[str]) -> str:
     if ADMISSIONS_APPLICANT_ROLE in roles:
         return "/admissions"
@@ -396,7 +413,7 @@ def get_website_user_home_page(user=None) -> str:
     """
     user = user or frappe.session.user
     if not user or user == "Guest":
-        return "/login"
+        return "index"
 
     roles = set(frappe.get_roles(user))
     _self_heal_employee_user_link(user=user, roles=roles)

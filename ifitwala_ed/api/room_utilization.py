@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, timedelta
 from typing import Any
 
 import frappe
@@ -13,15 +13,20 @@ from frappe import _
 from frappe.utils import add_days, cint, get_datetime, getdate, time_diff_in_seconds
 
 from ifitwala_ed.api.student_log_dashboard import get_authorized_schools
+from ifitwala_ed.schedule.schedule_utils import get_weekend_days_for_calendar
+from ifitwala_ed.school_settings.school_settings_utils import resolve_school_calendars_for_window
 from ifitwala_ed.utilities.location_utils import (
     find_room_conflicts,
     get_location_scope,
     get_visible_location_rows_for_school,
 )
+from ifitwala_ed.utilities.school_tree import get_school_lineage
 
 MAX_RANGE_DAYS = 62
 LONG_RANGE_ROLES = {"System Manager", "Administrator", "Academic Admin"}
 ANALYTICS_ROLES = {"Academic Admin", "Academic Assistant", "Curriculum Coordinator"}
+DEFAULT_TIME_UTIL_START = "07:00:00"
+DEFAULT_TIME_UTIL_END = "16:00:00"
 
 
 def _parse_filters(filters: Any | None) -> dict:
@@ -191,6 +196,120 @@ def _validate_date_range(from_date, to_date, *, enforce_scope: bool = True) -> t
     return start, end, days
 
 
+def _coerce_flag(value: Any) -> bool:
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, (int, float)):
+        return bool(value)
+    text = str(value or "").strip().lower()
+    return text in {"1", "true", "yes", "on"}
+
+
+def _time_to_str(raw, fallback: str) -> str:
+    if not raw:
+        return fallback
+    value = str(raw).strip()
+    if not value:
+        return fallback
+    if len(value) == 5:
+        return f"{value}:00"
+    return value
+
+
+def _get_school_time_util_defaults(school: str | None) -> dict[str, str]:
+    defaults = {
+        "day_start_time": DEFAULT_TIME_UTIL_START,
+        "day_end_time": DEFAULT_TIME_UTIL_END,
+    }
+    school_value = str(school or "").strip()
+    if not school_value:
+        return defaults
+
+    lineage = get_school_lineage(school_value) or [school_value]
+    school_rows = frappe.get_all(
+        "School",
+        filters={"name": ["in", lineage]},
+        fields=["name", "portal_calendar_start_time", "portal_calendar_end_time"],
+        limit=max(len(lineage), 1),
+    )
+    school_by_name = {row.name: row for row in school_rows}
+
+    for school_name in lineage:
+        row = school_by_name.get(school_name)
+        if not row:
+            continue
+        start_raw = row.portal_calendar_start_time
+        end_raw = row.portal_calendar_end_time
+        if not start_raw and not end_raw:
+            continue
+        defaults["day_start_time"] = _time_to_str(start_raw, defaults["day_start_time"])
+        defaults["day_end_time"] = _time_to_str(end_raw, defaults["day_end_time"])
+        break
+
+    return defaults
+
+
+def _get_instructional_dates_for_school(school: str, from_date: date, to_date: date) -> list[date]:
+    calendar_rows = resolve_school_calendars_for_window(school, from_date, to_date)
+    default_weekend_days = set(get_weekend_days_for_calendar(None) or [6, 0])
+
+    holiday_by_calendar: dict[str, set[date]] = {}
+    if calendar_rows:
+        calendar_names = [row.get("name") for row in calendar_rows if row.get("name")]
+        if calendar_names:
+            holiday_rows = frappe.get_all(
+                "School Calendar Holidays",
+                filters={
+                    "parent": ["in", calendar_names],
+                    "holiday_date": ["between", [from_date, to_date]],
+                },
+                fields=["parent", "holiday_date"],
+                order_by="holiday_date asc",
+                limit=max(len(calendar_names) * 200, 500),
+            )
+            for row in holiday_rows:
+                calendar_name = row.get("parent")
+                holiday_date = row.get("holiday_date")
+                if not calendar_name or not holiday_date:
+                    continue
+                holiday_by_calendar.setdefault(calendar_name, set()).add(getdate(holiday_date))
+
+    weekend_days_by_calendar = {
+        row.get("name"): set(get_weekend_days_for_calendar(row.get("name")) or [6, 0])
+        for row in calendar_rows
+        if row.get("name")
+    }
+
+    valid_dates: list[date] = []
+    cursor = from_date
+    while cursor <= to_date:
+        js_weekday = (cursor.weekday() + 1) % 7
+        active_calendar = next(
+            (
+                row
+                for row in calendar_rows
+                if row.get("year_start_date")
+                and row.get("year_end_date")
+                and getdate(row.get("year_start_date")) <= cursor <= getdate(row.get("year_end_date"))
+            ),
+            None,
+        )
+
+        if active_calendar:
+            calendar_name = active_calendar.get("name")
+            weekend_days = weekend_days_by_calendar.get(calendar_name, default_weekend_days)
+            holidays = holiday_by_calendar.get(calendar_name, set())
+        else:
+            weekend_days = default_weekend_days
+            holidays = set()
+
+        if js_weekday not in weekend_days and cursor not in holidays:
+            valid_dates.append(cursor)
+        cursor += timedelta(days=1)
+
+    return valid_dates
+
+
 def _get_candidate_rooms(filters: dict) -> list[dict]:
     selected_school = _ensure_allowed_school(filters.get("school"))
     location_types = _extract_location_types(filters)
@@ -257,10 +376,13 @@ def get_room_utilization_filter_meta():
         )
         default_school = allowed[0]
 
+    time_util_defaults_by_school = {school_name: _get_school_time_util_defaults(school_name) for school_name in allowed}
+
     return {
         "schools": school_rows,
         "default_school": default_school,
         "location_types": _get_schedulable_location_type_options(),
+        "time_util_defaults_by_school": time_util_defaults_by_school,
     }
 
 
@@ -355,15 +477,22 @@ def get_room_time_utilization(filters=None):
 
     from_date, to_date, day_count = _validate_date_range(filters.get("from_date"), filters.get("to_date"))
 
-    day_start = filters.get("day_start_time") or "07:00:00"
-    day_end = filters.get("day_end_time") or "16:00:00"
+    selected_school = _ensure_allowed_school(filters.get("school"))
+    time_defaults = _get_school_time_util_defaults(selected_school)
+
+    day_start = filters.get("day_start_time") or time_defaults["day_start_time"]
+    day_end = filters.get("day_end_time") or time_defaults["day_end_time"]
+    include_non_instructional_days = _coerce_flag(filters.get("include_non_instructional_days"))
 
     day_window_seconds = time_diff_in_seconds(day_end, day_start)
     if day_window_seconds <= 0:
         frappe.throw(_("Day End Time must be after Day Start Time."))
 
     day_window_minutes = int(day_window_seconds / 60)
-    available_minutes = day_count * day_window_minutes
+    active_day_count = day_count
+    if not include_non_instructional_days:
+        active_day_count = len(_get_instructional_dates_for_school(selected_school, from_date, to_date))
+    available_minutes = active_day_count * day_window_minutes
 
     # NOTE: Student Group schedules count only if materialized into Location Booking.
     rooms = _get_candidate_rooms(filters)
@@ -371,6 +500,8 @@ def get_room_time_utilization(filters=None):
         return {
             "range": {"from": str(from_date), "to": str(to_date)},
             "day_window": {"start": day_start, "end": day_end},
+            "include_non_instructional_days": include_non_instructional_days,
+            "active_day_count": active_day_count,
             "rooms": [],
         }
 
@@ -440,6 +571,8 @@ def get_room_time_utilization(filters=None):
     return {
         "range": {"from": str(from_date), "to": str(to_date)},
         "day_window": {"start": day_start, "end": day_end},
+        "include_non_instructional_days": include_non_instructional_days,
+        "active_day_count": active_day_count,
         "rooms": room_payload,
     }
 

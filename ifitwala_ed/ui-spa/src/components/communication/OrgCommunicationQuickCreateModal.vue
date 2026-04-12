@@ -936,7 +936,13 @@
 														class="mt-0.5 rounded border-slate-300 text-jacaranda"
 														:disabled="submitting || publicThreadDisabled"
 													/>
-													<span>Allow audience-visible public thread entries.</span>
+													<span>
+														<span class="block">Allow shared thread entries for recipients.</span>
+														<span class="mt-1 block text-[11px] text-ink/60">
+															Visible only to staff, students, guardians, or community recipients
+															who are in this communication&apos;s audience.
+														</span>
+													</span>
 												</label>
 											</div>
 										</section>

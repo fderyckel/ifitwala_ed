@@ -85,6 +85,7 @@ website_redirects = WEBSITE_REDIRECTS
 # ----------
 # Neutralize sticky login redirect-to=/desk (and legacy /app) before login page/scripts execute.
 before_request = [
+    "ifitwala_ed.api.users.ensure_guest_public_home_page_cache",
     "ifitwala_ed.api.users.sanitize_login_redirect_param",
     "ifitwala_ed.api.users.redirect_non_staff_away_from_desk",
 ]
@@ -94,8 +95,8 @@ on_login = "ifitwala_ed.api.users.redirect_user_to_entry_portal_on_login"
 on_session_creation = "ifitwala_ed.api.users.redirect_user_to_entry_portal_on_session_creation"
 # Resolve website home directly from the same canonical role policy.
 get_website_user_home_page = "ifitwala_ed.api.users.get_website_user_home_page"
-# application home page (overrides mutable Website Settings.home_page drift)
-home_page = "/"
+# application home page (Frappe expects the page route name, not "/")
+home_page = "index"
 
 # website user home page (by Role)
 role_home_page = {

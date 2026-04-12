@@ -10,6 +10,10 @@ export type InteractionMode =
 
 export type AudienceType = 'Staff' | 'Student' | 'Guardian' | 'Community' | null
 
+// Server-owned visibility terms:
+// - "Public to audience" means shared with the communication's resolved recipient audience,
+//   not public internet visibility.
+// - "Private to school" is school-side visibility rather than audience-shared visibility.
 export type InteractionVisibility =
 	| 'Public to audience'
 	| 'Private to school'

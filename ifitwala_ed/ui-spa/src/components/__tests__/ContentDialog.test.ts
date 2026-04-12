@@ -74,7 +74,13 @@ async function flushUi() {
 	await nextTick();
 }
 
-function mountDialog(content = '<p>Hello world</p>') {
+function mountDialog(
+	content = '<p>Hello world</p>',
+	options: {
+		showInteractions?: boolean;
+		showComments?: boolean;
+	} = {}
+) {
 	const host = document.createElement('div');
 	document.body.appendChild(host);
 
@@ -87,7 +93,8 @@ function mountDialog(content = '<p>Hello world</p>') {
 					title: 'Announcement detail',
 					subtitle: 'Wednesday, 18 March 2026',
 					content,
-					showInteractions: true,
+					showInteractions: options.showInteractions ?? true,
+					showComments: options.showComments,
 					interaction: {
 						counts: {},
 						self: null,
@@ -140,5 +147,16 @@ describe('ContentDialog', () => {
 		expect(policyRow).not.toBeNull();
 		expect(policyRow?.textContent || '').toContain('Read Policy');
 		expect(policyRow?.textContent || '').toContain('Open Policy in Desk');
+	});
+
+	it('hides the comments action when the caller disables shared comments', async () => {
+		mountDialog('<p>Hello world</p>', { showComments: false });
+
+		await flushUi();
+
+		const text = document.body.textContent || '';
+		expect(text).not.toContain('Comments');
+		expect(text).toContain('Acknowledge or react without leaving the briefing.');
+		expect(document.body.querySelector('[data-testid="interaction-chips-stub"]')).not.toBeNull();
 	});
 });

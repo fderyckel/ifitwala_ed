@@ -31,6 +31,30 @@ Rules:
 3. `Portal Read Receipt` is the only runtime read-state ledger.
 4. `Communication Interaction` is removed from the schema and runtime contract.
 
+## 1.1 Audience and Visibility Terms
+
+Status: Implemented
+
+Code refs:
+- `ifitwala_ed/api/org_comm_utils.py`
+- `ifitwala_ed/api/org_communication_interactions.py`
+- `ifitwala_ed/setup/doctype/communication_interaction_entry/communication_interaction_entry.py`
+- `ifitwala_ed/ui-spa/src/components/communication/OrgCommunicationQuickCreateModal.vue`
+
+Test refs:
+- `ifitwala_ed/api/test_org_communication_interactions.py`
+- `ifitwala_ed/api/test_admissions_communication.py`
+- `ifitwala_ed/ui-spa/src/components/communication/__tests__/OrgCommunicationQuickCreateModal.test.ts`
+
+Rules:
+
+1. `Audience` means the recipients resolved for that communication by its audience rows and server-side visibility checks.
+2. The resolved audience may include staff, students, guardians, and/or community recipients depending on the communication configuration. It does not mean "outside the school" by default.
+3. `Public to audience` means visible to the resolved recipients of that communication on supported surfaces. It does not mean public web visibility, open internet visibility, or cross-school visibility.
+4. `allow_public_thread` means "allow recipient-visible shared thread entries" for that communication's resolved audience.
+5. `allow_public_thread=0` is not a global "interactions off" switch. Depending on interaction mode, entries may still be accepted with school-side/private visibility.
+6. `allow_private_notes` means school-side/private visibility rather than recipient-visible thread sharing.
+
 ## 2. Workflow APIs
 
 Status: Implemented

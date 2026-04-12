@@ -228,6 +228,7 @@ def _collect_student_group_events_from_bookings(
             eb.name            AS booking_name,
             eb.from_datetime   AS from_datetime,
             eb.to_datetime     AS to_datetime,
+            eb.location        AS location,
             eb.source_name     AS student_group,
             sg.student_group_name,
             sg.course,
@@ -282,6 +283,7 @@ def _collect_student_group_events_from_bookings(
                     "student_group": row.student_group,
                     "course": row.course,
                     "booking": row.booking_name,
+                    "location": row.location,
                 },
             )
         )
@@ -454,6 +456,7 @@ def _collect_meeting_events(
             m.from_datetime,
             m.to_datetime,
             m.location,
+            m.school,
             m.team,
             m.virtual_meeting_link
         FROM `tabMeeting Participant` mp
@@ -479,16 +482,30 @@ def _collect_meeting_events(
     if not rows:
         return []
 
-    team_colors: Dict[str, str] = {}
+    team_meta_by_name: Dict[str, dict] = {}
     teams = {row.team for row in rows if row.team}
     if teams:
-        color_rows = frappe.get_all(
+        team_rows = frappe.get_all(
             "Team",
             filters={"name": ["in", list(teams)]},
+            fields=["name", "meeting_color", "school"],
+            ignore_permissions=True,
+        )
+        team_meta_by_name = {row.name: row for row in team_rows}
+
+    school_color_by_name: Dict[str, str] = {}
+    school_names = {(row.school or "").strip() for row in rows if (row.school or "").strip()}
+    school_names.update(
+        {(row.get("school") or "").strip() for row in team_meta_by_name.values() if (row.get("school") or "").strip()}
+    )
+    if school_names:
+        school_rows = frappe.get_all(
+            "School",
+            filters={"name": ["in", list(school_names)]},
             fields=["name", "meeting_color"],
             ignore_permissions=True,
         )
-        team_colors = {row.name: (row.meeting_color or "").strip() for row in color_rows}
+        school_color_by_name = {row.name: (row.meeting_color or "").strip() for row in school_rows}
 
     events: List[CalendarEvent] = []
     for row in rows:
@@ -496,8 +513,11 @@ def _collect_meeting_events(
         if not start_dt:
             continue
 
-        team_color = (team_colors.get(row.team, "") or "").strip()
-        event_color = team_color or "#7c3aed"
+        team_meta = team_meta_by_name.get(row.team) or {}
+        team_color = (team_meta.get("meeting_color") or "").strip()
+        effective_school = (row.school or team_meta.get("school") or "").strip()
+        school_color = (school_color_by_name.get(effective_school) or "").strip()
+        event_color = team_color or school_color or "#7c3aed"
 
         events.append(
             CalendarEvent(
@@ -512,6 +532,7 @@ def _collect_meeting_events(
                     "location": row.location,
                     "team": row.team,
                     "team_color": team_color,
+                    "school": effective_school,
                     "virtual_link": row.virtual_meeting_link,
                 },
             )

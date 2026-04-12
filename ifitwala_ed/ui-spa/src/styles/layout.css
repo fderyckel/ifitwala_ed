@@ -35,6 +35,10 @@
 		padding-bottom: var(--portal-footer-reserve);
 	}
 
+	.portal-layout__rail-spacer {
+		display: none;
+	}
+
 	.portal-layout__workspace {
 		@apply flex min-w-0 flex-1 flex-col;
 		min-height: 0;
@@ -87,6 +91,20 @@
 			gap: var(--portal-desktop-gutter);
 			padding-left: var(--portal-desktop-gutter);
 			padding-right: var(--portal-desktop-gutter);
+		}
+
+		.portal-layout__rail-spacer {
+			display: block;
+			width: var(--portal-rail-width);
+			min-width: var(--portal-rail-width);
+			flex-shrink: 0;
+			transition: width 220ms ease;
+		}
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.portal-layout__rail-spacer {
+			transition: none !important;
 		}
 	}
 

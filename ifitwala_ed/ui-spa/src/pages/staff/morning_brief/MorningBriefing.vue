@@ -121,13 +121,14 @@
 								<FeatherIcon name="arrow-right" class="h-4 w-4" />
 							</button>
 
-							<!-- Interaction strip for spotlight (staff comments mode only) -->
+							<!-- Interaction strip for spotlight -->
 							<div
-								v-if="canShowInteractions(currentSpotlight)"
+								v-if="hasVisibleAnnouncementActions(currentSpotlight)"
 								class="mt-3 flex flex-col gap-2 border-t border-border/40 pt-2 text-[11px] text-slate-token/70 sm:flex-row sm:items-center sm:justify-between"
 							>
 								<div class="flex flex-wrap items-center gap-2 sm:gap-3">
 									<button
+										v-if="canReactToAnnouncement(currentSpotlight)"
 										type="button"
 										class="inline-flex items-center gap-1 rounded-full bg-surface-soft px-2 py-1 hover:bg-surface-soft/80"
 										@click.stop="acknowledgeAnnouncement(currentSpotlight)"
@@ -142,6 +143,7 @@
 									</button>
 
 									<button
+										v-if="canCommentOnAnnouncement(currentSpotlight)"
 										type="button"
 										class="inline-flex items-center gap-1 rounded-full px-2 py-1 text-slate-token/70 hover:bg-surface-soft"
 										@click.stop="openInteractionThread(currentSpotlight)"
@@ -241,13 +243,14 @@
 									v-html="item.content"
 								></p>
 
-								<!-- Interaction summary for each announcement (staff comments only) -->
+								<!-- Interaction summary for each announcement -->
 								<div
-									v-if="canShowInteractions(item)"
+									v-if="hasVisibleAnnouncementActions(item)"
 									class="mt-2 flex flex-col gap-2 text-[10px] text-slate-token/65 sm:flex-row sm:items-center sm:justify-between"
 								>
 									<div class="flex flex-wrap items-center gap-2">
 										<button
+											v-if="canReactToAnnouncement(item)"
 											type="button"
 											class="inline-flex items-center gap-1 rounded-full px-2 py-0.5 hover:bg-surface-soft"
 											@click.stop="acknowledgeAnnouncement(item)"
@@ -257,6 +260,7 @@
 										</button>
 
 										<button
+											v-if="canCommentOnAnnouncement(item)"
 											type="button"
 											class="inline-flex items-center gap-1 rounded-full px-2 py-0.5 hover:bg-surface-soft"
 											@click.stop="openInteractionThread(item)"
@@ -663,6 +667,7 @@
 			:image-fallback="dialogContent.imageFallback"
 			:badge="dialogContent.badge"
 			:show-interactions="showInteractionsForActive"
+			:show-comments="showCommentsForActive"
 			:interaction="
 				activeCommunication ? getInteractionFor(activeCommunication) : { counts: {}, self: null }
 			"
@@ -776,9 +781,8 @@ import {
 	type StudentLogDetail,
 } from '@/types/morning_brief';
 import type { InteractionSummary, ReactionCode } from '@/types/morning_brief';
-import { canShowPublicInteractions } from '@/utils/orgCommunication';
+import { getAudienceInteractionCapabilities } from '@/utils/orgCommunication';
 import type { PolicyInformLinkPayload } from '@/utils/policyInformLink';
-import type { OrgCommunicationListItem } from '@/types/orgCommunication';
 import { getInteractionStats } from '@/utils/interactionStats';
 
 interface DialogContent {
@@ -820,7 +824,12 @@ const showAnnouncementCenter = ref<boolean>(false);
 const showClinicHistory = ref<boolean>(false);
 const showInteractionDrawer = ref<boolean>(false);
 const activeCommunication = ref<Announcement | null>(null);
-const showInteractionsForActive = computed(() => canShowInteractions(activeCommunication.value));
+const showInteractionsForActive = computed(
+	() => getAnnouncementInteractionCapabilities(activeCommunication.value).hasVisibleActions
+);
+const showCommentsForActive = computed(
+	() => getAnnouncementInteractionCapabilities(activeCommunication.value).canComment
+);
 const newComment = ref<string>('');
 const interactionService = createCommunicationInteractionService();
 const interactionSummaryData = ref<InteractionSummaryMap>({});
@@ -942,9 +951,20 @@ const filteredAnnouncements = computed<Announcement[]>(() => {
 
 const limitedAnnouncements = computed<Announcement[]>(() => filteredAnnouncements.value);
 
-// Adapter because the shared helper is typed for org communication list items
-function canShowInteractions(item: Announcement | null | undefined): boolean {
-	return canShowPublicInteractions(item as unknown as OrgCommunicationListItem | null | undefined);
+function getAnnouncementInteractionCapabilities(item: Announcement | null | undefined) {
+	return getAudienceInteractionCapabilities(item);
+}
+
+function canReactToAnnouncement(item: Announcement | null | undefined): boolean {
+	return getAnnouncementInteractionCapabilities(item).canReact;
+}
+
+function canCommentOnAnnouncement(item: Announcement | null | undefined): boolean {
+	return getAnnouncementInteractionCapabilities(item).canComment;
+}
+
+function hasVisibleAnnouncementActions(item: Announcement | null | undefined): boolean {
+	return getAnnouncementInteractionCapabilities(item).hasVisibleActions;
 }
 
 watch(
@@ -1105,10 +1125,10 @@ function getInteractionStatsFor(item: Announcement) {
 }
 
 function openInteractionThread(item: Announcement): void {
-	if (!canShowInteractions(item)) {
+	if (!canCommentOnAnnouncement(item)) {
 		toast({
 			title: 'Comments unavailable',
-			text: 'Comments are disabled for this announcement.',
+			text: 'Shared comments are turned off for this announcement.',
 			icon: 'info',
 		});
 		return;
@@ -1138,7 +1158,7 @@ async function acknowledgeAnnouncement(item: Announcement): Promise<void> {
 		});
 		return;
 	}
-	if (!canShowInteractions(item)) {
+	if (!canReactToAnnouncement(item)) {
 		toast({
 			title: 'Reactions unavailable',
 			text: 'Reactions are disabled for this announcement.',
@@ -1173,10 +1193,10 @@ async function submitComment(): Promise<void> {
 		});
 		return;
 	}
-	if (!canShowInteractions(activeCommunication.value)) {
+	if (!canCommentOnAnnouncement(activeCommunication.value)) {
 		toast({
 			title: 'Comments unavailable',
-			text: 'Comments are disabled for this announcement.',
+			text: 'Shared comments are turned off for this announcement.',
 			icon: 'info',
 		});
 		return;
@@ -1220,7 +1240,7 @@ async function reactToAnnouncement(item: Announcement, reaction: ReactionCode): 
 		});
 		return;
 	}
-	if (!canShowInteractions(item)) {
+	if (!canReactToAnnouncement(item)) {
 		toast({
 			title: 'Reactions unavailable',
 			text: 'Reactions are disabled for this announcement.',
@@ -1229,7 +1249,7 @@ async function reactToAnnouncement(item: Announcement, reaction: ReactionCode): 
 		return;
 	}
 
-	if (reaction === 'question') {
+	if (reaction === 'question' && canCommentOnAnnouncement(item)) {
 		openInteractionThread(item);
 		return;
 	}

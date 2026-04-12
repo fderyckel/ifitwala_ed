@@ -119,16 +119,20 @@
 
 					<p v-if="actionError" class="mt-4 type-caption text-flame">{{ actionError }}</p>
 
-					<div class="mt-4 flex flex-wrap items-center gap-3">
+					<div
+						v-if="hasVisibleInteractionActions(item.org_communication)"
+						class="mt-4 flex flex-wrap items-center gap-3"
+					>
 						<InteractionEmojiChips
+							v-if="canReact(item.org_communication)"
 							:interaction="interactionFor(item.org_communication.name)"
-							:readonly="!canReact(item.org_communication)"
-							:onReact="code => reactToCommunication(item.org_communication.name, code)"
+							:readonly="false"
+							:onReact="code => reactToCommunication(item.org_communication, code)"
 						/>
 						<button
+							v-if="canComment(item.org_communication)"
 							type="button"
 							class="if-action"
-							:disabled="!canComment(item.org_communication)"
 							@click="openThread(item)"
 						>
 							Comments ({{ interactionFor(item.org_communication.name).comments_total || 0 }})
@@ -251,6 +255,7 @@ import type {
 	StudentOrgCommunicationCenterItem,
 	StudentSchoolEventCenterItem,
 } from '@/types/studentCommunication';
+import { getAudienceInteractionCapabilities } from '@/utils/orgCommunication';
 
 type SourceFilter = 'all' | 'course' | 'activity' | 'school' | 'pastoral' | 'cohort';
 
@@ -376,15 +381,40 @@ function interactionFor(commName: string): InteractionSummary {
 	return summaryMap.value[commName] || emptySummary();
 }
 
-function canReact(item: { interaction_mode?: string | null }) {
-	return item.interaction_mode !== 'None';
+function getInteractionCapabilities(
+	item:
+		| { interaction_mode?: string | null; allow_public_thread?: 0 | 1 | boolean | string | null }
+		| null
+		| undefined
+) {
+	return getAudienceInteractionCapabilities(item);
 }
 
-function canComment(item: {
-	interaction_mode?: string | null;
-	allow_public_thread?: 0 | 1 | boolean;
-}) {
-	return canReact(item) && Boolean(item.allow_public_thread);
+function canReact(
+	item:
+		| { interaction_mode?: string | null; allow_public_thread?: 0 | 1 | boolean | string | null }
+		| null
+		| undefined
+) {
+	return getInteractionCapabilities(item).canReact;
+}
+
+function canComment(
+	item:
+		| { interaction_mode?: string | null; allow_public_thread?: 0 | 1 | boolean | string | null }
+		| null
+		| undefined
+) {
+	return getInteractionCapabilities(item).canComment;
+}
+
+function hasVisibleInteractionActions(
+	item:
+		| { interaction_mode?: string | null; allow_public_thread?: 0 | 1 | boolean | string | null }
+		| null
+		| undefined
+) {
+	return getInteractionCapabilities(item).hasVisibleActions;
 }
 
 function metaLine(item: StudentOrgCommunicationCenterItem) {
@@ -513,11 +543,22 @@ async function toggleOrgCommunication(item: StudentOrgCommunicationCenterItem) {
 	await loadCommunicationDetail(item.org_communication.name);
 }
 
-async function reactToCommunication(commName: string, code: ReactionCode) {
+async function reactToCommunication(
+	comm: {
+		name: string;
+		interaction_mode?: string | null;
+		allow_public_thread?: 0 | 1 | boolean | string | null;
+	},
+	code: ReactionCode
+) {
 	actionError.value = '';
+	if (!canReact(comm)) {
+		actionError.value = 'Reactions are not enabled for this update.';
+		return;
+	}
 	try {
 		await interactionService.reactToOrgCommunication({
-			org_communication: commName,
+			org_communication: comm.name,
 			reaction_code: code,
 			surface: 'Portal Feed',
 		});
@@ -531,7 +572,7 @@ async function reactToCommunication(commName: string, code: ReactionCode) {
 async function openThread(item: StudentOrgCommunicationCenterItem) {
 	actionError.value = '';
 	if (!canComment(item.org_communication)) {
-		actionError.value = 'Comments are not enabled for this update.';
+		actionError.value = 'Shared comments are not enabled for this update.';
 		return;
 	}
 	selectedCommunication.value = item;
@@ -569,6 +610,10 @@ async function submitComment() {
 	const comm = selectedCommunication.value?.org_communication;
 	if (!comm) {
 		actionError.value = 'Select an update first.';
+		return;
+	}
+	if (!canComment(comm)) {
+		actionError.value = 'Shared comments are not enabled for this update.';
 		return;
 	}
 	const note = commentValue.value.trim();

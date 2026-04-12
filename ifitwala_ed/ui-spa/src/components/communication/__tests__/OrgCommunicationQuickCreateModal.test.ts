@@ -582,7 +582,7 @@ describe('OrgCommunicationQuickCreateModal', () => {
 			(node.textContent || '').includes('Allow private notes to school staff.')
 		);
 		const publicThreadLabel = Array.from(document.querySelectorAll('label')).find(node =>
-			(node.textContent || '').includes('Allow audience-visible public thread entries.')
+			(node.textContent || '').includes('Allow shared thread entries for recipients.')
 		);
 
 		const privateNotesInput = privateNotesLabel?.querySelector('input') as HTMLInputElement | null;

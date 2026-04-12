@@ -1,12 +1,22 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createApp, defineComponent, h, nextTick, type App } from 'vue';
 
-const { overlayOpenMock, analyticsSubmitMock, headerSubmitMock, freeRoomsSubmitMock, locationCalendarState } =
+const {
+	overlayOpenMock,
+	analyticsSubmitMock,
+	headerSubmitMock,
+	freeRoomsSubmitMock,
+	locationCalendarState,
+	roomUtilizationState,
+} =
 	vi.hoisted(() => ({
 		overlayOpenMock: vi.fn(),
 		analyticsSubmitMock: vi.fn(),
 		headerSubmitMock: vi.fn(),
 		freeRoomsSubmitMock: vi.fn(),
+		roomUtilizationState: {
+			analyticsAllowed: 0,
+		},
 		locationCalendarState: {
 			data: {
 				locations: [{ value: 'SCI-LAB', label: 'Science Lab' }],
@@ -38,6 +48,12 @@ vi.mock('frappe-ui', async () => {
 					schools: [{ name: 'ISS', label: 'Ifitwala Secondary School' }],
 					default_school: 'ISS',
 					location_types: [],
+					time_util_defaults_by_school: {
+						ISS: {
+							day_start_time: '08:15:00',
+							day_end_time: '15:45:00',
+						},
+					},
 				});
 			}
 			if (url.includes('can_view_room_utilization_analytics')) {
@@ -46,7 +62,7 @@ vi.mock('frappe-ui', async () => {
 					loading: false,
 					async submit(payload?: any) {
 						analyticsSubmitMock(payload);
-						state.data = { allowed: 0 };
+						state.data = { allowed: roomUtilizationState.analyticsAllowed };
 						return state.data;
 					},
 				});
@@ -155,6 +171,7 @@ afterEach(() => {
 	analyticsSubmitMock.mockReset();
 	headerSubmitMock.mockReset();
 	freeRoomsSubmitMock.mockReset();
+	roomUtilizationState.analyticsAllowed = 0;
 	locationCalendarState.data = {
 		locations: [{ value: 'SCI-LAB', label: 'Science Lab' }],
 		events: [],
@@ -184,5 +201,22 @@ describe('RoomUtilization', () => {
 			meetingMode: 'ad_hoc',
 			prefillSchool: 'ISS',
 		});
+	});
+
+	it('uses school portal calendar times as the default day window and shows the checkbox control', async () => {
+		roomUtilizationState.analyticsAllowed = 1;
+
+		mountRoomUtilization();
+		await flushUi();
+
+		const timeInputs = Array.from(
+			document.querySelectorAll('input[type="time"]')
+		) as HTMLInputElement[];
+		const checkbox = document.querySelector('input[type="checkbox"]') as HTMLInputElement | null;
+
+		expect(timeInputs.some(input => input.value === '08:15')).toBe(true);
+		expect(timeInputs.some(input => input.value === '15:45')).toBe(true);
+		expect(checkbox).not.toBeNull();
+		expect(checkbox?.checked).toBe(false);
 	});
 });

@@ -10,6 +10,8 @@
 		<PortalNavbar @toggle-sidebar="toggleSidebar" />
 
 		<div class="portal-layout__body">
+			<div class="portal-layout__rail-spacer" aria-hidden="true" />
+
 			<PortalSidebar
 				:is-mobile-open="isMobileSidebarOpen"
 				:is-rail-expanded="isDesktopRailExpanded"

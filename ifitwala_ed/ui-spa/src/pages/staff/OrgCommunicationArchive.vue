@@ -321,22 +321,25 @@
 					</div>
 
 					<!-- Interactions Footer -->
-					<div class="p-4 border-t border-line-soft bg-surface-soft/80 z-10 sticky bottom-0">
+					<div
+						v-if="selectedComm && hasVisibleInteractionActions(selectedComm)"
+						class="p-4 border-t border-line-soft bg-surface-soft/80 z-10 sticky bottom-0"
+					>
 						<div class="flex items-center justify-between gap-4">
 							<InteractionEmojiChips
-								v-if="selectedComm"
+								v-if="selectedComm && canReact(selectedComm)"
 								:interaction="getInteractionFor(selectedComm)"
-								:readonly="!canInteract(selectedComm)"
+								:readonly="false"
 								:onReact="code => reactTo(selectedComm, code)"
 							/>
 
 							<div class="flex items-center gap-3 ml-auto">
 								<Button
+									v-if="selectedComm && canComment(selectedComm)"
 									variant="subtle"
 									color="gray"
 									class="gap-2 whitespace-nowrap"
 									@click="openThread(selectedComm)"
-									:disabled="!canInteract(selectedComm)"
 								>
 									<FeatherIcon name="message-square" class="h-4 w-4 shrink-0" />
 
@@ -399,6 +402,7 @@ import DateRangePills from '@/components/filters/DateRangePills.vue';
 import CommentThreadDrawer from '@/components/CommentThreadDrawer.vue';
 import InteractionEmojiChips from '@/components/InteractionEmojiChips.vue';
 import { getInteractionStats as buildInteractionStats } from '@/utils/interactionStats';
+import { getAudienceInteractionCapabilities } from '@/utils/orgCommunication';
 
 const PAGE_LENGTH = 10;
 const FEED_THROTTLE_MS = 500;
@@ -847,8 +851,20 @@ function getInteractionStats(item: OrgCommunicationListItem) {
 	return buildInteractionStats(getInteractionFor(item));
 }
 
-function canInteract(item: OrgCommunicationListItem) {
-	return item.interaction_mode !== 'None';
+function getInteractionCapabilities(item: OrgCommunicationListItem | null | undefined) {
+	return getAudienceInteractionCapabilities(item);
+}
+
+function canReact(item: OrgCommunicationListItem | null | undefined) {
+	return getInteractionCapabilities(item).canReact;
+}
+
+function canComment(item: OrgCommunicationListItem | null | undefined) {
+	return getInteractionCapabilities(item).canComment;
+}
+
+function hasVisibleInteractionActions(item: OrgCommunicationListItem | null | undefined) {
+	return getInteractionCapabilities(item).hasVisibleActions;
 }
 
 async function refreshSummary(names: string[]) {
@@ -923,10 +939,18 @@ function onOrgCommInvalidated(payload?: { names?: string[] }) {
 	}
 }
 
-function notifyInteractionsDisabled() {
+function notifyReactionsDisabled() {
 	toast({
-		title: 'Interactions disabled',
-		text: 'Comments and reactions are turned off for this announcement.',
+		title: 'Reactions unavailable',
+		text: 'Reactions are turned off for this announcement.',
+		icon: 'info',
+	});
+}
+
+function notifyCommentsDisabled() {
+	toast({
+		title: 'Comments unavailable',
+		text: 'Shared comments are turned off for this announcement.',
 		icon: 'info',
 	});
 }
@@ -958,8 +982,8 @@ async function reactTo(item: OrgCommunicationListItem, code: ReactionCode) {
 		});
 		return;
 	}
-	if (!canInteract(item)) {
-		notifyInteractionsDisabled();
+	if (!canReact(item)) {
+		notifyReactionsDisabled();
 		return;
 	}
 
@@ -988,8 +1012,8 @@ async function openThread(item: OrgCommunicationListItem) {
 		});
 		return;
 	}
-	if (!canInteract(item)) {
-		notifyInteractionsDisabled();
+	if (!canComment(item)) {
+		notifyCommentsDisabled();
 		return;
 	}
 	selectedComm.value = item;
@@ -1006,8 +1030,8 @@ async function submitComment() {
 		});
 		return;
 	}
-	if (!canInteract(selectedComm.value)) {
-		notifyInteractionsDisabled();
+	if (!canComment(selectedComm.value)) {
+		notifyCommentsDisabled();
 		return;
 	}
 

@@ -28,6 +28,7 @@ class TestRoutingRules(FrappeTestCase):
         self.assertEqual(
             hooks.before_request,
             [
+                "ifitwala_ed.api.users.ensure_guest_public_home_page_cache",
                 "ifitwala_ed.api.users.sanitize_login_redirect_param",
                 "ifitwala_ed.api.users.redirect_non_staff_away_from_desk",
             ],
@@ -36,7 +37,7 @@ class TestRoutingRules(FrappeTestCase):
             hooks.update_website_context,
             ["ifitwala_ed.website.context.update_website_context"],
         )
-        self.assertEqual(hooks.home_page, "/")
+        self.assertEqual(hooks.home_page, "index")
 
     def test_website_routes_are_scoped(self):
         rules = hooks.website_route_rules

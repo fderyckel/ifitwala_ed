@@ -115,6 +115,9 @@ Rules:
    - `allow_public_thread=0`
    - one `Student Group` audience row with `to_students=1`
 6. In `entryMode='class-event'`, guardian visibility starts unchecked and is controlled only by the single exposed guardian toggle.
+7. In this contract, `allow_public_thread` means recipient-visible shared thread entries for the communication's resolved audience, not public web visibility.
+8. The resolved audience may include staff, students, guardians, and/or community recipients depending on the selected audience rows.
+9. `allow_private_notes` remains the school-side/private notes setting and must not be described in the UI or docs as recipient-visible thread sharing.
 
 ## 4. Class-Event Attachment Contract
 

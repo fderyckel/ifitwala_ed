@@ -5,6 +5,7 @@ import re
 import frappe
 from frappe import _
 
+from ifitwala_ed.api.file_access import resolve_public_website_media_url
 from ifitwala_ed.website.block_registry import get_block_definition_map
 from ifitwala_ed.website.public_brand import (
     get_descendant_organization_names,
@@ -189,6 +190,10 @@ def _fallback_nav_label(*, route: str, page_type: str | None) -> str:
     return segment.replace("-", " ").replace("_", " ").title()
 
 
+def _resolve_public_brand_media_url(*, file_name: str | None, file_url: str | None) -> str | None:
+    return resolve_public_website_media_url(file_name=file_name, file_url=file_url)
+
+
 def _navigation_sort_key(row) -> tuple[int, int, str]:
     raw_order = row.get("navigation_order") if isinstance(row, dict) else getattr(row, "navigation_order", None)
     route = row.get("route") if isinstance(row, dict) else getattr(row, "route", "")
@@ -245,12 +250,13 @@ def _build_site_shell_context(*, school, route: str) -> dict:
     organization_row = frappe.db.get_value(
         "Organization",
         school.organization,
-        ["name", "organization_name", "organization_logo"],
+        ["name", "organization_name", "organization_logo", "organization_logo_file"],
         as_dict=True,
     )
 
     organization_name = (organization_row.get("organization_name") if organization_row else None) or school.organization
     organization_logo = organization_row.get("organization_logo") if organization_row else None
+    organization_logo_file = organization_row.get("organization_logo_file") if organization_row else None
 
     inquiry_url = None
     try:
@@ -269,9 +275,15 @@ def _build_site_shell_context(*, school, route: str) -> dict:
     return {
         "brand_name": school.school_name or school.name,
         "brand_url": brand_url,
-        "brand_logo": getattr(school, "school_logo", None),
+        "brand_logo": _resolve_public_brand_media_url(
+            file_name=getattr(school, "school_logo_file", None),
+            file_url=getattr(school, "school_logo", None),
+        ),
         "organization_name": organization_name,
-        "organization_logo": organization_logo,
+        "organization_logo": _resolve_public_brand_media_url(
+            file_name=organization_logo_file,
+            file_url=organization_logo,
+        ),
         "navigation": navigation,
         "footer_links": footer_links,
         "current_route": normalize_route(route),
@@ -762,6 +774,7 @@ def _get_landing_school_cards(*, organization_names: list[str]) -> list[dict]:
             "school_name",
             "school_tagline",
             "school_logo",
+            "school_logo_file",
             "website_slug",
             "organization",
             "about_snippet",
@@ -785,7 +798,10 @@ def _get_landing_school_cards(*, organization_names: list[str]) -> list[dict]:
                 "label": school.school_name or school.name,
                 "tagline": (school.school_tagline or "").strip(),
                 "description": truncate_text(school.about_snippet or school.more_info or "", 160) or None,
-                "logo": school.school_logo,
+                "logo": _resolve_public_brand_media_url(
+                    file_name=school.school_logo_file,
+                    file_url=school.school_logo,
+                ),
                 "url": normalize_route(f"/{SCHOOL_ROUTE_PREFIX}/{slug}"),
                 "organization": organization_labels.get(school.organization) or school.organization,
             }

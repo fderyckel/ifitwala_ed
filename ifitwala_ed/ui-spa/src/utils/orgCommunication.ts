@@ -1,30 +1,53 @@
 // ifitwala_ed/ui-spa/src/utils/orgCommunication.ts
-import type { OrgCommunicationListItem } from '@/types/orgCommunication'
 
-export function canShowPublicInteractions(
-	item: OrgCommunicationListItem | null | undefined
-): boolean {
-	if (!item) return false
+export type OrgCommunicationInteractionSource = {
+	interaction_mode?: string | null
+	allow_public_thread?: 0 | 1 | boolean | string | null
+}
 
-	const mode = (item.interaction_mode || 'None').trim()
+export type OrgCommunicationInteractionCapabilities = {
+	canReact: boolean
+	canComment: boolean
+	hasVisibleActions: boolean
+}
 
-	// Only these modes allow comments + emoji
-	const interactiveModes = [
-		'Staff Comments',
-		'Structured Feedback',
-		'Student Q&A'
-	]
+function isCheckedValue(raw: unknown): boolean {
+	return raw === 1 || raw === true || raw === '1'
+}
 
-	if (!interactiveModes.includes(mode)) {
-		return false
+// Centralize the current shipped SPA affordance rule until the backend exposes
+// actor-specific capabilities directly.
+//
+// Terms:
+// - "comment" means recipient-visible shared thread access
+// - "react" means a surface may show the reaction affordance
+// - "audience" means the resolved recipients of this communication, not public web visibility
+export function getAudienceInteractionCapabilities(
+	item: OrgCommunicationInteractionSource | null | undefined
+): OrgCommunicationInteractionCapabilities {
+	if (!item) {
+		return {
+			canReact: false,
+			canComment: false,
+			hasVisibleActions: false,
+		}
 	}
 
-	// Frappe booleans can be 0/1, '0'/'1', true/false
-	const raw = item.allow_public_thread as unknown
-	const publicEnabled =
-		raw === 1 ||
-		raw === true ||
-		raw === '1'
+	const mode = String(item.interaction_mode || 'None').trim() || 'None'
+	const canReact = mode !== 'None'
+	const canComment = canReact && isCheckedValue(item.allow_public_thread)
 
-	return publicEnabled
+	return {
+		canReact,
+		canComment,
+		hasVisibleActions: canReact || canComment,
+	}
+}
+
+// Backward-compatible wrapper for existing callers that only need the
+// top-level "show interaction affordances" answer.
+export function canShowPublicInteractions(
+	item: OrgCommunicationInteractionSource | null | undefined
+): boolean {
+	return getAudienceInteractionCapabilities(item).hasVisibleActions
 }

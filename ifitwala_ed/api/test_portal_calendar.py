@@ -1,12 +1,14 @@
 # ifitwala_ed/api/test_portal_calendar.py
 
 from datetime import date, datetime, time, timedelta
+from unittest.mock import patch
 
 import frappe
 from frappe.tests.utils import FrappeTestCase
 
 from ifitwala_ed.api.calendar import (
     _collect_staff_holiday_events,
+    _collect_student_group_events_from_bookings,
     _resolve_employee_for_user,
     _system_tzinfo,
     get_staff_calendar,
@@ -121,6 +123,44 @@ class TestPortalCalendar(FrappeTestCase):
                 sources=["student_group", "meeting", "school_event", "staff_holiday"],
                 force_refresh=True,
             )
+
+    def test_booking_backed_class_events_include_location_meta(self):
+        tzinfo = _system_tzinfo()
+        window_start = tzinfo.localize(datetime(2026, 1, 7, 8, 0, 0))
+        window_end = tzinfo.localize(datetime(2026, 1, 7, 12, 0, 0))
+
+        booking_row = frappe._dict(
+            {
+                "booking_name": "EB-0001",
+                "from_datetime": window_start,
+                "to_datetime": tzinfo.localize(datetime(2026, 1, 7, 9, 30, 0)),
+                "location": "ROOM-101",
+                "student_group": "SG-ALG-1",
+                "student_group_name": "Algebra A",
+                "course": "COURSE-ALG",
+                "program": None,
+                "program_offering": None,
+                "school": self.child_school,
+                "school_schedule": None,
+                "academic_year": self.academic_year,
+                "status": "Active",
+            }
+        )
+
+        with (
+            patch("ifitwala_ed.api.calendar_staff_feed.frappe.db.table_exists", return_value=True),
+            patch("ifitwala_ed.api.calendar_staff_feed.frappe.db.sql", return_value=[booking_row]),
+            patch("ifitwala_ed.api.calendar_staff_feed._course_meta_map", return_value={}),
+        ):
+            events = _collect_student_group_events_from_bookings(
+                "EMP-0001",
+                window_start,
+                window_end,
+                tzinfo,
+            )
+
+        self.assertEqual(len(events), 1)
+        self.assertEqual(events[0].meta.get("location"), "ROOM-101")
 
     def _create_organization(self) -> str:
         hash_key = frappe.generate_hash(length=6).upper()

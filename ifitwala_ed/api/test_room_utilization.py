@@ -10,6 +10,46 @@ from ifitwala_ed.api import room_utilization
 
 
 class TestRoomUtilizationApi(TestCase):
+    def test_get_room_utilization_filter_meta_includes_school_time_defaults(self):
+        school_rows = [frappe._dict({"name": "ISS", "label": "Ifitwala Secondary School"})]
+        lineage_school_rows = [
+            frappe._dict(
+                {
+                    "name": "ISS",
+                    "portal_calendar_start_time": "08:15:00",
+                    "portal_calendar_end_time": "15:45:00",
+                }
+            )
+        ]
+
+        def mocked_get_all(doctype, *args, **kwargs):
+            if doctype == "School" and kwargs.get("fields") == ["name", "school_name as label"]:
+                return school_rows
+            if doctype == "School" and kwargs.get("fields") == [
+                "name",
+                "portal_calendar_start_time",
+                "portal_calendar_end_time",
+            ]:
+                return lineage_school_rows
+            return []
+
+        with (
+            patch("ifitwala_ed.api.room_utilization.get_authorized_schools", return_value=["ISS"]),
+            patch("ifitwala_ed.api.room_utilization.get_school_lineage", return_value=["ISS"]),
+            patch("ifitwala_ed.api.room_utilization.frappe.get_all", side_effect=mocked_get_all),
+            patch("ifitwala_ed.api.room_utilization._get_schedulable_location_type_options", return_value=[]),
+        ):
+            payload = room_utilization.get_room_utilization_filter_meta()
+
+        self.assertEqual(payload["default_school"], "ISS")
+        self.assertEqual(
+            payload["time_util_defaults_by_school"]["ISS"],
+            {
+                "day_start_time": "08:15:00",
+                "day_end_time": "15:45:00",
+            },
+        )
+
     def test_get_free_rooms_passes_location_type_to_visible_scope_helper(self):
         room_rows = [
             frappe._dict(
@@ -227,3 +267,113 @@ class TestRoomUtilizationApi(TestCase):
         self.assertEqual(payload["events"][0]["meta"]["teaching_context_label"], "Grade 8A · Biology")
         self.assertEqual(payload["events"][0]["meta"]["student_group_label"], "Grade 8A")
         self.assertEqual(payload["events"][0]["meta"]["course_name"], "Biology")
+
+    def test_get_room_time_utilization_excludes_weekends_and_holidays_by_default(self):
+        room_rows = [
+            frappe._dict(
+                {
+                    "name": "ROOM-1",
+                    "location_name": "Room 1",
+                    "parent_location": "Main Building",
+                    "location_type": "Classroom",
+                    "location_type_name": "Classroom",
+                }
+            )
+        ]
+        calendar_rows = [
+            frappe._dict(
+                {
+                    "name": "CAL-ISS-2026",
+                    "school": "ISS",
+                    "academic_year": "AY-2026",
+                    "year_start_date": date(2025, 8, 1),
+                    "year_end_date": date(2026, 6, 30),
+                }
+            )
+        ]
+        holiday_rows = [
+            frappe._dict(
+                {
+                    "parent": "CAL-ISS-2026",
+                    "holiday_date": date(2026, 2, 6),
+                }
+            )
+        ]
+
+        def mocked_get_all(doctype, *args, **kwargs):
+            if doctype == "School Calendar Holidays":
+                return holiday_rows
+            return []
+
+        with (
+            patch("ifitwala_ed.api.room_utilization._require_room_utilization_analytics_access"),
+            patch("ifitwala_ed.api.room_utilization._ensure_allowed_school", return_value="ISS"),
+            patch(
+                "ifitwala_ed.api.room_utilization._validate_date_range",
+                return_value=(date(2026, 2, 6), date(2026, 2, 8), 3),
+            ),
+            patch(
+                "ifitwala_ed.api.room_utilization._get_school_time_util_defaults",
+                return_value={"day_start_time": "08:00:00", "day_end_time": "09:00:00"},
+            ),
+            patch("ifitwala_ed.api.room_utilization.resolve_school_calendars_for_window", return_value=calendar_rows),
+            patch("ifitwala_ed.api.room_utilization.get_weekend_days_for_calendar", return_value=[6, 0]),
+            patch("ifitwala_ed.api.room_utilization.frappe.get_all", side_effect=mocked_get_all),
+            patch("ifitwala_ed.api.room_utilization.get_visible_location_rows_for_school", return_value=room_rows),
+            patch("ifitwala_ed.api.room_utilization._require_location_booking_table"),
+            patch("ifitwala_ed.api.room_utilization.frappe.db.has_column", return_value=True),
+            patch("ifitwala_ed.api.room_utilization.frappe.db.get_all", return_value=[]),
+        ):
+            payload = room_utilization.get_room_time_utilization(
+                filters={
+                    "school": "ISS",
+                    "from_date": "2026-02-06",
+                    "to_date": "2026-02-08",
+                }
+            )
+
+        self.assertFalse(payload["include_non_instructional_days"])
+        self.assertEqual(payload["active_day_count"], 0)
+        self.assertEqual(payload["rooms"][0]["available_minutes"], 0)
+
+    def test_get_room_time_utilization_can_include_weekends_and_holidays(self):
+        room_rows = [
+            frappe._dict(
+                {
+                    "name": "ROOM-1",
+                    "location_name": "Room 1",
+                    "parent_location": "Main Building",
+                    "location_type": "Classroom",
+                    "location_type_name": "Classroom",
+                }
+            )
+        ]
+
+        with (
+            patch("ifitwala_ed.api.room_utilization._require_room_utilization_analytics_access"),
+            patch("ifitwala_ed.api.room_utilization._ensure_allowed_school", return_value="ISS"),
+            patch(
+                "ifitwala_ed.api.room_utilization._validate_date_range",
+                return_value=(date(2026, 2, 6), date(2026, 2, 8), 3),
+            ),
+            patch(
+                "ifitwala_ed.api.room_utilization._get_school_time_util_defaults",
+                return_value={"day_start_time": "08:00:00", "day_end_time": "09:00:00"},
+            ),
+            patch("ifitwala_ed.api.room_utilization.get_visible_location_rows_for_school", return_value=room_rows),
+            patch("ifitwala_ed.api.room_utilization._require_location_booking_table"),
+            patch("ifitwala_ed.api.room_utilization.frappe.db.has_column", return_value=True),
+            patch("ifitwala_ed.api.room_utilization.frappe.db.get_all", return_value=[]),
+        ):
+            payload = room_utilization.get_room_time_utilization(
+                filters={
+                    "school": "ISS",
+                    "from_date": "2026-02-06",
+                    "to_date": "2026-02-08",
+                    "include_non_instructional_days": 1,
+                }
+            )
+
+        self.assertTrue(payload["include_non_instructional_days"])
+        self.assertEqual(payload["active_day_count"], 3)
+        self.assertEqual(payload["rooms"][0]["available_minutes"], 180)

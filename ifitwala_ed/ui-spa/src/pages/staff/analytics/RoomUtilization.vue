@@ -266,6 +266,16 @@
 							</div>
 						</div>
 					</div>
+					<label
+						class="mt-3 flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-600"
+					>
+						<input
+							v-model="timeUtilFilters.include_non_instructional_days"
+							type="checkbox"
+							class="h-4 w-4 rounded border-slate-300 text-jacaranda focus:ring-jacaranda/30"
+						/>
+						<span>Include weekends and holidays</span>
+					</label>
 				</div>
 
 				<div v-if="timeUtilLoading" class="flex-1 flex flex-col items-center justify-center py-12">
@@ -620,6 +630,7 @@ import { useOverlayStack } from '@/composables/useOverlayStack';
 
 type SchoolOption = { name: string; label: string };
 type LocationTypeOption = { value: string; label: string };
+type TimeUtilDefaults = { day_start_time: string; day_end_time: string };
 
 type FreeRoom = {
 	room: string;
@@ -731,6 +742,7 @@ const timeUtilFilters = ref({
 	to_date: today,
 	day_start_time: '07:00',
 	day_end_time: '16:00',
+	include_non_instructional_days: false,
 });
 
 const capacityFilters = ref({
@@ -753,6 +765,9 @@ const filterMetaResource = createResource({
 const filterMeta = computed(() => (filterMetaResource.data as any) || {});
 const schools = computed<SchoolOption[]>(() => filterMeta.value.schools || []);
 const locationTypes = computed<LocationTypeOption[]>(() => filterMeta.value.location_types || []);
+const timeUtilDefaultsBySchool = computed<Record<string, TimeUtilDefaults>>(
+	() => filterMeta.value.time_util_defaults_by_school || {}
+);
 
 watch(
 	filterMeta,
@@ -761,6 +776,22 @@ watch(
 		if (data.default_school && !selectedSchool.value) {
 			selectedSchool.value = data.default_school;
 		}
+	},
+	{ immediate: true }
+);
+
+watch(
+	() => [selectedSchool.value, timeUtilDefaultsBySchool.value],
+	([schoolName, defaultsBySchool]) => {
+		const schoolDefaults = schoolName ? defaultsBySchool?.[schoolName] : null;
+		if (!schoolDefaults) return;
+		timeUtilFilters.value.day_start_time = String(
+			schoolDefaults.day_start_time || '07:00:00'
+		).slice(0, 5);
+		timeUtilFilters.value.day_end_time = String(schoolDefaults.day_end_time || '16:00:00').slice(
+			0,
+			5
+		);
 	},
 	{ immediate: true }
 );
@@ -972,6 +1003,7 @@ async function loadTimeUtil() {
 			to_date: timeUtilFilters.value.to_date,
 			day_start_time: timeUtilFilters.value.day_start_time,
 			day_end_time: timeUtilFilters.value.day_end_time,
+			include_non_instructional_days: timeUtilFilters.value.include_non_instructional_days ? 1 : 0,
 			location_type: selectedLocationType.value || null,
 		},
 	});
@@ -1039,6 +1071,7 @@ watch(
 		timeUtilFilters.value.to_date,
 		timeUtilFilters.value.day_start_time,
 		timeUtilFilters.value.day_end_time,
+		timeUtilFilters.value.include_non_instructional_days,
 	],
 	() => {
 		if (!canViewAnalytics.value) return;

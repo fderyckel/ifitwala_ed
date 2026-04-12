@@ -144,6 +144,8 @@ Operational consequence:
 
 - absence of a booking means the staff feed should not assume a staff teaching commitment exists
 - booking-derived class events are the correct bridge from abstract timetable intent into operational calendar visibility
+- lightweight list rendering may expose `meta.location` from `Employee Booking.location` directly on the feed row
+- SPA clients must not derive class location by re-reading schedule rows or opening detail endpoints during list paint
 
 ### 3.2 Staff holiday events use a two-step fallback
 
@@ -157,6 +159,11 @@ This means staff holiday visibility is school-lineage aware and remains usable w
 ### 3.3 Meeting and School Event visibility is source-specific
 
 Meetings are included when the user is a participant directly or through the linked employee.
+Meeting event color precedence is:
+
+- `Team.meeting_color` when explicitly set
+- otherwise `School.meeting_color` from the effective meeting school
+- otherwise the final hardcoded meeting fallback used by the feed
 
 School Events are included when:
 

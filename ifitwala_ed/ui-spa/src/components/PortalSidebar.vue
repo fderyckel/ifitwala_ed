@@ -9,7 +9,7 @@
 
 	<aside
 		:class="[
-			'portal-sidebar fixed left-0 z-40 lg:sticky lg:self-start lg:z-20',
+			'portal-sidebar fixed left-0 z-40 lg:z-20',
 			isMobileOpen ? 'portal-sidebar--mobile-open' : 'portal-sidebar--mobile-closed',
 			isRailExpanded ? 'portal-sidebar--expanded' : 'portal-sidebar--collapsed',
 		]"

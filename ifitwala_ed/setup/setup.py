@@ -495,7 +495,7 @@ def setup_website_top_bar():
     ws = frappe.get_single("Website Settings")
     ws.top_bar_items = []
     if ws.meta.has_field("home_page"):
-        ws.home_page = "/"
+        ws.home_page = "index"
 
     for item in top_bar_items:
         ws.append("top_bar_items", item)

@@ -33,16 +33,20 @@
 
 				<p class="type-body text-ink/80">{{ item.snippet }}</p>
 
-				<div class="mt-3 flex flex-wrap items-center gap-3">
+				<div
+					v-if="hasVisibleInteractionActions(item)"
+					class="mt-3 flex flex-wrap items-center gap-3"
+				>
 					<InteractionEmojiChips
+						v-if="canReact(item)"
 						:interaction="interactionFor(item.name)"
-						:readonly="!canReact(item)"
-						:onReact="code => react(item.name, code)"
+						:readonly="false"
+						:onReact="code => react(item, code)"
 					/>
 					<button
+						v-if="canComment(item)"
 						type="button"
 						class="if-action"
-						:disabled="!canComment(item)"
 						@click="openThread(item)"
 					>
 						Comments ({{ interactionFor(item.name).comments_total || 0 }})
@@ -83,6 +87,7 @@ import type {
 	InteractionThreadRow,
 } from '@/types/morning_brief';
 import type { ReactionCode } from '@/types/interactions';
+import { getAudienceInteractionCapabilities } from '@/utils/orgCommunication';
 
 const props = defineProps<{
 	programOffering: string | null;
@@ -122,12 +127,20 @@ function interactionFor(commName: string): InteractionSummary {
 	return summaryMap.value[commName] || emptySummary();
 }
 
-function canReact(item: OrgCommunicationListItem): boolean {
-	return item.interaction_mode !== 'None';
+function getInteractionCapabilities(item: OrgCommunicationListItem | null | undefined) {
+	return getAudienceInteractionCapabilities(item);
 }
 
-function canComment(item: OrgCommunicationListItem): boolean {
-	return canReact(item) && Boolean(item.allow_public_thread);
+function canReact(item: OrgCommunicationListItem | null | undefined): boolean {
+	return getInteractionCapabilities(item).canReact;
+}
+
+function canComment(item: OrgCommunicationListItem | null | undefined): boolean {
+	return getInteractionCapabilities(item).canComment;
+}
+
+function hasVisibleInteractionActions(item: OrgCommunicationListItem | null | undefined): boolean {
+	return getInteractionCapabilities(item).hasVisibleActions;
 }
 
 function formatDate(value: string | null | undefined): string {
@@ -172,11 +185,15 @@ async function loadFeed() {
 	}
 }
 
-async function react(commName: string, code: ReactionCode) {
+async function react(item: OrgCommunicationListItem, code: ReactionCode) {
 	actionError.value = '';
+	if (!canReact(item)) {
+		actionError.value = 'Reactions are not enabled for this update.';
+		return;
+	}
 	try {
 		await interactionService.reactToOrgCommunication({
-			org_communication: commName,
+			org_communication: item.name,
 			reaction_code: code,
 			surface: 'Portal Feed',
 		});
@@ -190,7 +207,7 @@ async function react(commName: string, code: ReactionCode) {
 async function openThread(item: OrgCommunicationListItem) {
 	actionError.value = '';
 	if (!canComment(item)) {
-		actionError.value = 'Comments are not enabled for this update.';
+		actionError.value = 'Shared comments are not enabled for this update.';
 		return;
 	}
 	selectedComm.value = item;
@@ -228,6 +245,10 @@ async function submitComment() {
 	const comm = selectedComm.value;
 	if (!comm) {
 		actionError.value = 'Select a communication first.';
+		return;
+	}
+	if (!canComment(comm)) {
+		actionError.value = 'Shared comments are not enabled for this update.';
 		return;
 	}
 	const note = commentValue.value.trim();
