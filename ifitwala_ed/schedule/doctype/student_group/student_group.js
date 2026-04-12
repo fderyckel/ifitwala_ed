@@ -155,6 +155,21 @@ frappe.ui.form.on("Student Group", {
 				};
 				f.__set_once = true;
 			}
+
+			const locationField = grid.get_field("location");
+			if (locationField && !locationField.__set_once) {
+				locationField.get_query = function () {
+					return {
+						query: "ifitwala_ed.schedule.doctype.student_group.student_group.schedule_location_query",
+						filters: {
+							program_offering: frm.doc.program_offering || "",
+							academic_year: frm.doc.academic_year || "",
+							school: frm.doc.school || "",
+						}
+					};
+				};
+				locationField.__set_once = true;
+			}
 		}
 
 		toggle_school_schedule_field(frm);

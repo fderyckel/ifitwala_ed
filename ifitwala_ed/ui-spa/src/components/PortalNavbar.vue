@@ -158,17 +158,20 @@ function getSessionUserInfo() {
 	const fullname = String(
 		userInfo.fullname || userInfo.full_name || userInfo.name || session.full_name || ''
 	).trim();
+	const userId = String(session.user || userInfo.name || '').trim();
 
 	return {
 		fullname,
 		email,
+		userId,
 	};
 }
 
 const user = computed(() => {
 	const userInfo = getSessionUserInfo();
 	const resolvedFullName = (
-		(portalSection.value === 'student' && studentIdentity.value?.display_name) ||
+		(portalSection.value === 'student' &&
+			(studentIdentity.value?.full_name || studentIdentity.value?.display_name)) ||
 		(portalSection.value === 'guardian' &&
 			(guardianIdentity.value?.display_name || guardianIdentity.value?.full_name)) ||
 		userInfo.fullname ||
@@ -184,7 +187,12 @@ const user = computed(() => {
 	return {
 		fullname: resolvedFullName,
 		email:
-			(portalSection.value === 'guardian' ? guardianIdentity.value?.email : null) ||
+			(portalSection.value === 'student'
+				? studentIdentity.value?.user
+				: portalSection.value === 'guardian'
+					? guardianIdentity.value?.email || guardianIdentity.value?.user
+					: null) ||
+			userInfo.userId ||
 			userInfo.email ||
 			'guest@example.com',
 		initials: initials.toUpperCase(),
