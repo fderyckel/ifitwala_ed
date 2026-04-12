@@ -245,6 +245,8 @@ def resolve_public_website_media_url(
 
     resolved_name = (file_name or "").strip()
     if not resolved_name:
+        if raw_url.startswith("/private/") or raw_url.startswith("/files/ifitwala_drive/"):
+            return None
         return raw_url or None
 
     open_url = build_public_website_media_url(file_name=resolved_name)
