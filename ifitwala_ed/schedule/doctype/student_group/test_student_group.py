@@ -339,6 +339,51 @@ class TestStudentGroupScheduleAdvisories(FrappeTestCase):
             order_by="location_name asc",
         )
 
+    @patch("ifitwala_ed.schedule.doctype.student_group.student_group.get_rotation_dates")
+    @patch("ifitwala_ed.schedule.doctype.student_group.student_group.find_room_conflicts")
+    @patch.object(StudentGroup, "_get_school_schedule")
+    def test_validate_location_conflicts_absolute_checks_exact_room_only(
+        self,
+        mock_get_school_schedule,
+        mock_find_room_conflicts,
+        mock_get_rotation_dates,
+    ):
+        group = frappe.get_doc(
+            {
+                "doctype": "Student Group",
+                "name": "25-26-G6-Kafue",
+                "academic_year": "IIS 2025-2026",
+                "student_group_schedule": [
+                    {
+                        "rotation_day": 1,
+                        "block_number": 3,
+                        "location": "D201",
+                    }
+                ],
+            }
+        )
+        mock_get_school_schedule.return_value = frappe._dict(
+            {
+                "school_schedule_block": [
+                    frappe._dict(
+                        {
+                            "rotation_day": 1,
+                            "block_number": 3,
+                            "from_time": "09:40:00",
+                            "to_time": "09:55:00",
+                        }
+                    )
+                ]
+            }
+        )
+        mock_get_rotation_dates.return_value = [{"rotation_day": 1, "date": "2025-08-07"}]
+        mock_find_room_conflicts.return_value = []
+
+        group.validate_location_conflicts_absolute()
+
+        mock_find_room_conflicts.assert_called_once()
+        self.assertEqual(mock_find_room_conflicts.call_args.kwargs.get("include_children"), False)
+
     def test_validate_schedule_rows_warns_for_break_block(self):
         group = frappe.get_doc(
             {

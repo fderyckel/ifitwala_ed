@@ -1077,6 +1077,7 @@ class StudentGroup(Document):
                 loc,
                 start_dt,
                 end_dt,
+                include_children=False,
                 exclude=exclude,
             )
             for c in hits:

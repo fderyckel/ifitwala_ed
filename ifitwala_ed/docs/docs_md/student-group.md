@@ -142,7 +142,7 @@ Current workspace note: when a selected Program Offering has exactly one Academi
   - course-based groups scheduled in non-instructional blocks such as recess, assembly, and lunch-style blocks
   - course-based groups scheduled in block types that do not match course teaching, for example a course group scheduled in an activity block
 - `_validate_schedule_locations()` blocks container/non-schedulable Locations and rooms outside the Student Group school visibility scope before room-conflict checks run, so save failures stay actionable.
-- `validate_location_conflicts_absolute()` expands abstract schedule rows into real datetimes via rotation dates, then checks governed room conflicts against materialized bookings.
+- `validate_location_conflicts_absolute()` expands abstract schedule rows into real datetimes via rotation dates, then checks governed room conflicts against materialized bookings for the exact scheduled room on each row.
 - `after_insert()` calls the curriculum bootstrap helper so a new active course-based group gets a default `Class Teaching Plan` automatically when exactly one non-archived `Course Plan` is available for that course/academic-year context.
 - `before_save()` and `after_save()` compute change deltas for students, instructors, and schedule rows so downstream sync stays bounded, including durable Instructor Log history updates.
 - `on_update()` rebuilds employee bookings only for active groups that actually have schedule rows.
