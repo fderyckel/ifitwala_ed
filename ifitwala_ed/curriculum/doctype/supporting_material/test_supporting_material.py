@@ -19,7 +19,7 @@ def _supporting_material_module():
         f"{table_alias}.course in ('COURSE-1')"
     )
     materials_stub.user_can_manage_supporting_material = lambda user, material_name, course=None: (
-        course == "COURSE-1" and user == "teacher@example.com"
+        course == "COURSE-1" and user in {"teacher@example.com", "coordinator@example.com"}
     )
     materials_stub.user_can_read_supporting_material = lambda user, material_name, course=None: (
         course == "COURSE-1" and user in {"teacher@example.com", "coordinator@example.com"}
@@ -119,11 +119,11 @@ class TestSupportingMaterial(TestCase):
             with self.assertRaises(StubValidationError):
                 material.on_trash()
 
-    def test_has_permission_keeps_coordinator_read_only(self):
+    def test_has_permission_allows_program_scoped_coordinator_write(self):
         with _supporting_material_module() as module:
             material = module.SupportingMaterial()
             material.name = "MAT-1"
             material.course = "COURSE-1"
 
             self.assertTrue(module.has_permission(material, ptype="read", user="coordinator@example.com"))
-            self.assertFalse(module.has_permission(material, ptype="write", user="coordinator@example.com"))
+            self.assertTrue(module.has_permission(material, ptype="write", user="coordinator@example.com"))

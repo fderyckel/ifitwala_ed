@@ -3,8 +3,8 @@ title: "Supporting Material: Reusable Learning Material"
 slug: supporting-material
 category: Curriculum
 doc_order: 8
-version: "1.0.4"
-last_change_date: "2026-04-05"
+version: "1.1.0"
+last_change_date: "2026-04-13"
 summary: "Store reusable supporting files and links that students open alongside units, sessions, and tasks without turning planning content into a file library."
 seo_title: "Supporting Material: Reusable Learning Material"
 seo_description: "Store reusable supporting files and links that students open alongside units, sessions, and tasks without turning planning content into a file library."
@@ -52,6 +52,20 @@ Test refs: `ifitwala_ed/curriculum/doctype/supporting_material/test_supporting_m
 3. Share the material into one or more contexts using `Material Placement`.
 4. Students open the material from the LMS shelf or task context.
 
+## Permission Matrix
+
+Status: Implemented
+Code refs: `ifitwala_ed/curriculum/doctype/supporting_material/supporting_material.json`, `ifitwala_ed/curriculum/doctype/supporting_material/supporting_material.py`, `ifitwala_ed/curriculum/materials.py`
+Test refs: `ifitwala_ed/curriculum/test_materials.py`, `ifitwala_ed/curriculum/doctype/supporting_material/test_supporting_material.py`
+
+| Role | Read | Write | Create | Delete | Notes |
+|---|---|---|---|---|---|
+| `System Manager` | Yes | Yes | Yes | Yes | Global administrative access |
+| `Academic Admin` | Yes | Yes | Yes | Yes | Global academic access |
+| `Instructor` | Yes | Yes | Yes | Yes | Limited by taught-course or class anchor scope |
+| `Curriculum Coordinator` | Yes | Yes | Yes | No | Write applies to program-scoped shared curriculum materials anchored to `Course Plan` and `Unit Plan`; class-owned anchors remain instructor/class-scoped |
+| `Accreditation Visitor` | No | No | No | No | Not in the live supporting-material runtime access contract |
+
 ## Related Docs
 
 Status: Implemented
@@ -81,7 +95,9 @@ Test refs: `ifitwala_ed/curriculum/test_materials.py`, `ifitwala_ed/curriculum/d
 - `Supporting Material` is reusable and course-scoped.
 - File-backed materials store the authoritative `File` link on the material itself, not on `Task.attachments`.
 - File-backed materials require a governed `Drive Binding` with `general_reference`.
-- Desk read/list visibility is course-scoped through permission hooks, and curriculum coordinators are read-only by default.
+- Desk read/list visibility is course-scoped through permission hooks.
+- `Academic Admin` can manage supporting materials across curriculum scope.
+- `Curriculum Coordinator` can manage supporting materials for program-scoped shared curriculum on `Course Plan` and `Unit Plan`; they do not gain class-owned material write access just from coordinator scope.
 - Session instructions, activity prompts, and curriculum rich text are not modeled as `Supporting Material`.
 
 ### Current Constraints To Preserve In Review

@@ -1,6 +1,6 @@
 {% set generated_on = frappe.utils.formatdate(frappe.utils.nowdate()) %}
-{% set school_meta = frappe.get_cached_value("School", doc.school, ["school_name", "school_logo", "organization"], as_dict=True) if doc.school else None %}
-{% set org_meta = frappe.get_cached_value("Organization", school_meta.organization, ["organization_name", "organization_logo"], as_dict=True) if school_meta and school_meta.organization else None %}
+{% set school_meta = frappe.db.get_value("School", doc.school, ["school_name", "school_logo", "organization"], as_dict=True) if doc.school else None %}
+{% set org_meta = frappe.db.get_value("Organization", school_meta.organization, ["organization_name", "organization_logo"], as_dict=True) if school_meta and school_meta.organization else None %}
 {% set brand_logo = school_meta.school_logo if school_meta and school_meta.school_logo else (org_meta.organization_logo if org_meta and org_meta.organization_logo else "") %}
 {% set brand_name = school_meta.school_name if school_meta and school_meta.school_name else (org_meta.organization_name if org_meta and org_meta.organization_name else "Ifitwala Ed") %}
 {% set secondary_brand = org_meta.organization_name if org_meta and org_meta.organization_name and org_meta.organization_name != brand_name else "" %}
@@ -61,16 +61,16 @@
 				<div class="stat-label">Holiday Rows</div>
 				<div class="stat-value">{{ holiday_rows|length }}</div>
 			</div>
-			<div class="stat-card">
-				<div class="stat-label">Working Days</div>
-				<div class="stat-value">{{ frappe.utils.escape_html(doc.total_working_day or 0) }}</div>
-			</div>
-			<div class="stat-card">
-				<div class="stat-label">Total Holidays</div>
-				<div class="stat-value">{{ frappe.utils.escape_html(doc.total_holidays or 0) }}</div>
+				<div class="stat-card">
+					<div class="stat-label">Working Days</div>
+					<div class="stat-value">{{ doc.total_working_day or 0 }}</div>
+				</div>
+				<div class="stat-card">
+					<div class="stat-label">Total Holidays</div>
+					<div class="stat-value">{{ doc.total_holidays or 0 }}</div>
+				</div>
 			</div>
 		</div>
-	</div>
 
 	<div class="summary-grid">
 		<div class="summary-card">

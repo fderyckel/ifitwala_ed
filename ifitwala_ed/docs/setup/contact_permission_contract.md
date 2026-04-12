@@ -19,10 +19,11 @@ Rules:
 
 1. `Contact` remains the native Frappe DocType; Ifitwala Ed governs role access through seeded `Custom DocPerm` rows rather than a custom clone.
 2. The canonical Desk roles with read/write/create access on `Contact` are `Academic Admin`, `Academic Assistant`, `Accounts User`, `Accounts Manager`, `Admission Officer`, and `Admission Manager`.
-3. Manager-level roles keep delete access on `Contact`: `Academic Admin`, `Academic Assistant`, `Accounts Manager`, and `Admission Manager`.
-4. Non-manager editor roles keep no delete access on `Contact`: `Accounts User` and `Admission Officer`.
-5. The permission seed must create any missing canonical roles before inserting `Custom DocPerm` rows, so migrate/setup never fails on a missing role record.
-6. App-level Contact permission hooks must not narrow list visibility beyond the seeded DocPerm contract.
+3. `Curriculum Coordinator` has read-only Desk access on `Contact` and `Address` so student-facing academic workflows can open linked family CRM records without granting edit authority.
+4. Manager-level roles keep delete access on `Contact`: `Academic Admin`, `Academic Assistant`, `Accounts Manager`, and `Admission Manager`.
+5. Non-manager editor roles keep no delete access on `Contact`: `Accounts User` and `Admission Officer`.
+6. The permission seed must create any missing canonical roles before inserting `Custom DocPerm` rows, so migrate/setup never fails on a missing role record.
+7. App-level Contact permission hooks must not narrow list visibility beyond the seeded DocPerm contract.
 
 ## 2. Runtime Enforcement
 

@@ -67,11 +67,33 @@ class TestMaterialsPermissions(TestCase):
         self.assertIn("COURSE-1", sql)
         self.assertIn("COURSE-2", sql)
 
-    def test_user_can_manage_course_material_denies_read_only_coordinator(self):
+    def test_user_can_manage_course_material_allows_program_scoped_coordinator(self):
         with _materials_module(
             roles=["Curriculum Coordinator"],
             instructor_groups=[],
             coordinator_courses=["COURSE-2"],
         ) as materials:
-            self.assertFalse(materials.user_can_manage_course_material("teacher@example.com", "COURSE-2"))
+            self.assertTrue(materials.user_can_manage_course_material("teacher@example.com", "COURSE-2"))
             self.assertTrue(materials.user_can_read_course_material("teacher@example.com", "COURSE-2"))
+
+    def test_user_can_manage_material_anchor_allows_coordinator_for_shared_anchor_only(self):
+        with _materials_module(
+            roles=["Curriculum Coordinator"],
+            instructor_groups=[],
+            coordinator_courses=["COURSE-2"],
+        ) as materials:
+            materials.resolve_anchor_context = lambda doctype, name: {
+                "anchor_doctype": doctype,
+                "anchor_name": name,
+                "course": "COURSE-2",
+                "student_group": "GROUP-9",
+            }
+
+            self.assertTrue(materials.user_can_manage_material_anchor("teacher@example.com", "Unit Plan", "UNIT-1"))
+            self.assertFalse(
+                materials.user_can_manage_material_anchor(
+                    "teacher@example.com",
+                    "Class Teaching Plan",
+                    "CLASS-PLAN-1",
+                )
+            )

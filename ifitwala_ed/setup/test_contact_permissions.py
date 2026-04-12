@@ -47,6 +47,15 @@ CONTACT_ROLE_MATRIX = {
         "comment": 1,
         "assign": 1,
     },
+    "Curriculum Coordinator": {
+        "read": 1,
+        "write": 0,
+        "create": 0,
+        "delete": 0,
+        "email": 0,
+        "comment": 0,
+        "assign": 0,
+    },
     "HR Manager": {
         "read": 1,
         "write": 0,
@@ -130,6 +139,15 @@ ADDRESS_ROLE_MATRIX = {
         "email": 1,
         "comment": 1,
         "assign": 1,
+    },
+    "Curriculum Coordinator": {
+        "read": 1,
+        "write": 0,
+        "create": 0,
+        "delete": 0,
+        "email": 0,
+        "comment": 0,
+        "assign": 0,
     },
 }
 

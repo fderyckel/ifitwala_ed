@@ -26,7 +26,7 @@ def _material_placement_module():
     materials_stub.normalize_material_usage_role = lambda value: str(value or "").strip() or "Reference"
     materials_stub.resolve_anchor_course = lambda anchor_doctype, anchor_name: "COURSE-1"
     materials_stub.user_can_manage_material_anchor = lambda user, anchor_doctype, anchor_name: (
-        user == "teacher@example.com"
+        user in {"teacher@example.com", "coordinator@example.com"}
     )
     materials_stub.user_can_read_material_anchor = lambda user, anchor_doctype, anchor_name: (
         user in {"teacher@example.com", "coordinator@example.com"}
@@ -81,11 +81,11 @@ class TestMaterialPlacement(TestCase):
             with self.assertRaises(StubValidationError):
                 placement._validate_duplicate()
 
-    def test_has_permission_keeps_coordinator_read_only(self):
+    def test_has_permission_allows_program_scoped_coordinator_write(self):
         with _material_placement_module() as module:
             placement = module.MaterialPlacement()
             placement.anchor_doctype = "Task"
             placement.anchor_name = "TASK-1"
 
             self.assertTrue(module.has_permission(placement, ptype="read", user="coordinator@example.com"))
-            self.assertFalse(module.has_permission(placement, ptype="write", user="coordinator@example.com"))
+            self.assertTrue(module.has_permission(placement, ptype="write", user="coordinator@example.com"))

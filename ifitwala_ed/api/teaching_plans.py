@@ -2,22 +2,24 @@ from __future__ import annotations
 
 import hashlib
 import json
-import re
+import sys
 from collections import defaultdict
-from datetime import date, datetime, timedelta
+from datetime import date, datetime
 from time import perf_counter
 from typing import Any
 
 import frappe
 from frappe import _
-from frappe.utils import get_datetime, getdate, now_datetime, strip_html
 
+from ifitwala_ed.api import teaching_plans_mutations as _mutations_impl
+from ifitwala_ed.api import teaching_plans_staff as _staff_impl
+from ifitwala_ed.api import teaching_plans_student as _student_impl
+from ifitwala_ed.api import teaching_plans_timeline as _timeline_impl
 from ifitwala_ed.api.file_access import resolve_academic_file_open_url
 from ifitwala_ed.api.student_groups import TRIAGE_ROLES, _instructor_group_names
 from ifitwala_ed.assessment import quiz_service
 from ifitwala_ed.curriculum import materials as materials_domain
 from ifitwala_ed.curriculum import planning
-from ifitwala_ed.utilities import governed_uploads
 
 PLANNING_RESOURCE_ANCHORS = {
     "Course Plan",
@@ -28,6 +30,10 @@ PLANNING_RESOURCE_ANCHORS = {
 GOVERNED_PLANNING_RESOURCE_ANCHORS = {"Course Plan", "Unit Plan"}
 STUDENT_LEARNING_SPACE_WARN_ELAPSED_MS = 1200
 STUDENT_LEARNING_SPACE_WARN_PAYLOAD_BYTES = 350_000
+
+
+def _module():
+    return sys.modules[__name__]
 
 
 def _serialize_scalar(value: Any) -> Any:
@@ -195,42 +201,15 @@ def _serialize_course_plan_summary(
 
 
 def _timeline_blocked(reason: str, message: str) -> dict[str, Any]:
-    return {
-        "status": "blocked",
-        "reason": reason,
-        "message": message,
-        "scope": {},
-        "terms": [],
-        "holidays": [],
-        "units": [],
-        "summary": {
-            "scheduled_unit_count": 0,
-            "unscheduled_unit_count": 0,
-            "overflow_unit_count": 0,
-            "instructional_day_count": 0,
-        },
-    }
+    return _timeline_impl.timeline_blocked(_module(), reason, message)
 
 
 def _timeline_weekday_js(value: date) -> int:
-    return (value.weekday() + 1) % 7
+    return _timeline_impl.timeline_weekday_js(_module(), value)
 
 
 def _timeline_duration_weeks(value: str | None) -> int | None:
-    text = planning.normalize_text(value)
-    if not text:
-        return None
-
-    if text.isdigit():
-        weeks = int(text)
-        return weeks if weeks > 0 else None
-
-    match = re.fullmatch(r"(\d+)\s*(?:week|weeks|wk|wks)\b", text.lower())
-    if not match:
-        return None
-
-    weeks = int(match.group(1) or 0)
-    return weeks if weeks > 0 else None
+    return _timeline_impl.timeline_duration_weeks(_module(), value)
 
 
 def _resolve_course_plan_timeline_scope(
@@ -238,85 +217,11 @@ def _resolve_course_plan_timeline_scope(
     *,
     student_group: str | None = None,
 ) -> dict[str, Any]:
-    academic_year = planning.normalize_text(course_plan_row.get("academic_year"))
-    if not academic_year:
-        return _timeline_blocked(
-            "missing_academic_year",
-            _("Add an Academic Year to this course plan before using the curriculum timeline."),
-        )
-
-    academic_year_row = frappe.db.get_value(
-        "Academic Year",
-        academic_year,
-        ["name", "year_start_date", "year_end_date"],
-        as_dict=True,
+    return _timeline_impl.resolve_course_plan_timeline_scope(
+        _module(),
+        course_plan_row,
+        student_group=student_group,
     )
-    if (
-        not academic_year_row
-        or not academic_year_row.get("year_start_date")
-        or not academic_year_row.get("year_end_date")
-    ):
-        return _timeline_blocked(
-            "missing_academic_year_window",
-            _("This Academic Year is missing its start or end date, so the curriculum timeline cannot be shown yet."),
-        )
-
-    scope = {
-        "mode": "academic_year",
-        "academic_year": academic_year,
-        "school": planning.normalize_text(course_plan_row.get("school")) or None,
-        "student_group": None,
-        "student_group_label": None,
-        "term": None,
-        "term_label": None,
-        "window_start": _serialize_scalar(academic_year_row.get("year_start_date")),
-        "window_end": _serialize_scalar(academic_year_row.get("year_end_date")),
-    }
-
-    selected_school = planning.normalize_text(course_plan_row.get("school"))
-    selected_term = ""
-    if student_group:
-        _assert_staff_group_access(student_group)
-        group_row = planning.get_student_group_row(student_group)
-        if planning.normalize_text(group_row.get("course")) != planning.normalize_text(course_plan_row.get("course")):
-            frappe.throw(_("Selected class does not belong to this course plan."), frappe.ValidationError)
-        group_academic_year = planning.normalize_text(group_row.get("academic_year"))
-        if group_academic_year and group_academic_year != academic_year:
-            frappe.throw(_("Selected class does not belong to this course plan academic year."), frappe.ValidationError)
-
-        selected_school = planning.normalize_text(group_row.get("school")) or selected_school
-        selected_term = planning.normalize_text(group_row.get("term"))
-        scope["student_group"] = planning.normalize_text(group_row.get("name")) or None
-        scope["student_group_label"] = (
-            planning.normalize_text(group_row.get("student_group_name"))
-            or planning.normalize_text(group_row.get("student_group_abbreviation"))
-            or planning.normalize_text(group_row.get("name"))
-            or None
-        )
-
-    if selected_term:
-        term_row = frappe.db.get_value(
-            "Term",
-            selected_term,
-            ["name", "term_start_date", "term_end_date", "academic_year"],
-            as_dict=True,
-        )
-        if term_row and term_row.get("term_start_date") and term_row.get("term_end_date"):
-            term_academic_year = planning.normalize_text(term_row.get("academic_year"))
-            if not term_academic_year or term_academic_year == academic_year:
-                scope["mode"] = "student_group_term"
-                scope["term"] = planning.normalize_text(term_row.get("name")) or None
-                scope["term_label"] = planning.normalize_text(term_row.get("name")) or None
-                scope["window_start"] = _serialize_scalar(term_row.get("term_start_date"))
-                scope["window_end"] = _serialize_scalar(term_row.get("term_end_date"))
-
-    if not selected_school:
-        return _timeline_blocked(
-            "missing_school",
-            _("This course plan is missing its school scope, so the curriculum timeline cannot be resolved."),
-        )
-    scope["school"] = selected_school
-    return {"status": "ready", "scope": scope}
 
 
 def _fetch_timeline_calendar_terms(
@@ -325,37 +230,12 @@ def _fetch_timeline_calendar_terms(
     window_start: date,
     window_end: date,
 ) -> list[dict[str, Any]]:
-    rows = frappe.get_all(
-        "School Calendar Term",
-        filters={
-            "parent": school_calendar,
-            "parenttype": "School Calendar",
-            "parentfield": "terms",
-        },
-        fields=["term", "start", "end", "number_of_instructional_days"],
-        order_by="start asc, idx asc",
-        limit=0,
+    return _timeline_impl.fetch_timeline_calendar_terms(
+        _module(),
+        school_calendar,
+        window_start=window_start,
+        window_end=window_end,
     )
-    payload: list[dict[str, Any]] = []
-    for row in rows or []:
-        start_value = row.get("start")
-        end_value = row.get("end")
-        if not start_value or not end_value:
-            continue
-        start_date = max(window_start, getdate(start_value))
-        end_date = min(window_end, getdate(end_value))
-        if end_date < window_start or start_date > window_end or end_date < start_date:
-            continue
-        payload.append(
-            {
-                "term": row.get("term"),
-                "label": row.get("term"),
-                "start_date": _serialize_scalar(start_date),
-                "end_date": _serialize_scalar(end_date),
-                "instructional_days": int(row.get("number_of_instructional_days") or 0),
-            }
-        )
-    return payload
 
 
 def _fetch_timeline_holiday_spans(
@@ -365,82 +245,13 @@ def _fetch_timeline_holiday_spans(
     window_end: date,
     weekend_days: list[int] | tuple[int, ...] | set[int] | None = None,
 ) -> list[dict[str, Any]]:
-    rows = frappe.get_all(
-        "School Calendar Holidays",
-        filters={
-            "parent": school_calendar,
-            "parenttype": "School Calendar",
-            "parentfield": "holidays",
-            "weekly_off": 0,
-            "holiday_date": ["between", [window_start, window_end]],
-        },
-        fields=["holiday_date", "description"],
-        order_by="holiday_date asc, idx asc",
-        limit=0,
+    return _timeline_impl.fetch_timeline_holiday_spans(
+        _module(),
+        school_calendar,
+        window_start=window_start,
+        window_end=window_end,
+        weekend_days=weekend_days,
     )
-    spans: list[dict[str, Any]] = []
-    current: dict[str, Any] | None = None
-    seen_titles: set[str] = set()
-    weekend_day_set = {int(day) for day in (weekend_days or [])}
-
-    for row in rows or []:
-        holiday_date = row.get("holiday_date")
-        if not holiday_date:
-            continue
-        holiday_day = getdate(holiday_date)
-        title = planning.normalize_text(row.get("description")) or _("Holiday")
-        if not current:
-            current = {
-                "start_date": holiday_day,
-                "end_date": holiday_day,
-                "titles": [title],
-                "day_count": 1,
-            }
-            seen_titles = {title}
-            continue
-        gap_is_weekend_bridge = False
-        if holiday_day > current["end_date"] + timedelta(days=1):
-            gap_cursor = current["end_date"] + timedelta(days=1)
-            gap_is_weekend_bridge = True
-            while gap_cursor < holiday_day:
-                if _timeline_weekday_js(gap_cursor) not in weekend_day_set:
-                    gap_is_weekend_bridge = False
-                    break
-                gap_cursor += timedelta(days=1)
-
-        if holiday_day == current["end_date"] + timedelta(days=1) or gap_is_weekend_bridge:
-            current["end_date"] = holiday_day
-            current["day_count"] = (current["end_date"] - current["start_date"]).days + 1
-            if title not in seen_titles:
-                current["titles"].append(title)
-                seen_titles.add(title)
-            continue
-        spans.append(
-            {
-                "start_date": _serialize_scalar(current["start_date"]),
-                "end_date": _serialize_scalar(current["end_date"]),
-                "titles": current["titles"],
-                "day_count": current["day_count"],
-            }
-        )
-        current = {
-            "start_date": holiday_day,
-            "end_date": holiday_day,
-            "titles": [title],
-            "day_count": 1,
-        }
-        seen_titles = {title}
-
-    if current:
-        spans.append(
-            {
-                "start_date": _serialize_scalar(current["start_date"]),
-                "end_date": _serialize_scalar(current["end_date"]),
-                "titles": current["titles"],
-                "day_count": current["day_count"],
-            }
-        )
-    return spans
 
 
 def _build_course_plan_timeline(
@@ -449,163 +260,12 @@ def _build_course_plan_timeline(
     *,
     student_group: str | None = None,
 ) -> dict[str, Any]:
-    from ifitwala_ed.schedule.schedule_utils import get_calendar_holiday_set, get_weekend_days_for_calendar
-    from ifitwala_ed.school_settings.school_settings_utils import resolve_school_calendars_for_window
-
-    scope_payload = _resolve_course_plan_timeline_scope(course_plan_row, student_group=student_group)
-    if scope_payload.get("status") != "ready":
-        return scope_payload
-
-    scope = scope_payload["scope"]
-    window_start = get_datetime(scope["window_start"]).date()
-    window_end = get_datetime(scope["window_end"]).date()
-
-    calendar_rows = resolve_school_calendars_for_window(scope.get("school"), window_start, window_end)
-    school_calendar_row = next(
-        (
-            row
-            for row in (calendar_rows or [])
-            if planning.normalize_text(row.get("academic_year")) == planning.normalize_text(scope.get("academic_year"))
-        ),
-        None,
+    return _timeline_impl.build_course_plan_timeline(
+        _module(),
+        course_plan_row,
+        units,
+        student_group=student_group,
     )
-    if not school_calendar_row:
-        return _timeline_blocked(
-            "missing_school_calendar",
-            _("No School Calendar is available for this timeline window. Add or resolve the school calendar first."),
-        )
-
-    school_calendar = planning.normalize_text(school_calendar_row.get("name"))
-    weekend_days = get_weekend_days_for_calendar(school_calendar)
-    holiday_dates = {
-        holiday_date
-        for holiday_date in get_calendar_holiday_set(school_calendar)
-        if window_start <= holiday_date <= window_end
-    }
-    instructional_dates: list[date] = []
-    cursor = window_start
-    while cursor <= window_end:
-        if _timeline_weekday_js(cursor) not in weekend_days and cursor not in holiday_dates:
-            instructional_dates.append(cursor)
-        cursor += timedelta(days=1)
-
-    if not instructional_dates:
-        return _timeline_blocked(
-            "empty_instructional_window",
-            _("No instructional days are available in this timeline window after weekends and holidays are applied."),
-        )
-
-    instructional_days_per_week = max(1, 7 - len(set(weekend_days)))
-    holiday_spans = _fetch_timeline_holiday_spans(
-        school_calendar,
-        window_start=window_start,
-        window_end=window_end,
-        weekend_days=weekend_days,
-    )
-    term_rows = _fetch_timeline_calendar_terms(
-        school_calendar,
-        window_start=window_start,
-        window_end=window_end,
-    )
-
-    current_instructional_index = 0
-    blocked_by_unresolved = False
-    payload_units: list[dict[str, Any]] = []
-    scheduled_unit_count = 0
-    unscheduled_unit_count = 0
-    overflow_unit_count = 0
-
-    for unit in units:
-        unit_duration_weeks = _timeline_duration_weeks(unit.get("duration"))
-        unit_payload = {
-            "unit_plan": unit.get("unit_plan"),
-            "title": unit.get("title") or unit.get("unit_plan"),
-            "unit_order": unit.get("unit_order"),
-            "duration_label": unit.get("duration"),
-            "duration_weeks": unit_duration_weeks,
-            "unit_status": unit.get("unit_status"),
-            "is_published": int(unit.get("is_published") or 0),
-            "start_date": None,
-            "end_date": None,
-            "instructional_day_count": None,
-            "calendar_day_span": None,
-            "overflow": 0,
-            "schedule_state": "scheduled",
-            "message": None,
-        }
-
-        if blocked_by_unresolved:
-            unit_payload["schedule_state"] = "blocked"
-            unit_payload["message"] = _(
-                "A previous unit is missing a usable week duration, so the remaining sequence cannot be scheduled yet."
-            )
-            unscheduled_unit_count += 1
-            payload_units.append(unit_payload)
-            continue
-
-        if not unit_duration_weeks:
-            unit_payload["schedule_state"] = "unscheduled_duration"
-            unit_payload["message"] = _(
-                "Add a numeric week duration such as '6 weeks' before this unit can appear on the curriculum timeline."
-            )
-            blocked_by_unresolved = True
-            unscheduled_unit_count += 1
-            payload_units.append(unit_payload)
-            continue
-
-        needed_instructional_days = unit_duration_weeks * instructional_days_per_week
-        unit_payload["instructional_day_count"] = needed_instructional_days
-
-        if current_instructional_index >= len(instructional_dates):
-            unit_payload["schedule_state"] = "overflow"
-            unit_payload["overflow"] = 1
-            unit_payload["message"] = _(
-                "This unit starts after the selected timeline window because earlier units already use all available instructional days."
-            )
-            unscheduled_unit_count += 1
-            overflow_unit_count += 1
-            payload_units.append(unit_payload)
-            continue
-
-        end_index = current_instructional_index + needed_instructional_days - 1
-        start_date = instructional_dates[current_instructional_index]
-        overflow = end_index >= len(instructional_dates)
-        end_date = instructional_dates[min(end_index, len(instructional_dates) - 1)]
-
-        unit_payload["start_date"] = _serialize_scalar(start_date)
-        unit_payload["end_date"] = _serialize_scalar(end_date)
-        unit_payload["calendar_day_span"] = (end_date - start_date).days + 1
-        unit_payload["overflow"] = 1 if overflow else 0
-        if overflow:
-            unit_payload["schedule_state"] = "overflow"
-            unit_payload["message"] = _(
-                "This unit extends past the selected timeline window after holidays and other non-instructional days are applied."
-            )
-            overflow_unit_count += 1
-        else:
-            scheduled_unit_count += 1
-
-        payload_units.append(unit_payload)
-        current_instructional_index = min(end_index + 1, len(instructional_dates))
-
-    return {
-        "status": "ready",
-        "reason": None,
-        "message": None,
-        "scope": {
-            **scope,
-            "school_calendar": school_calendar,
-        },
-        "terms": term_rows,
-        "holidays": holiday_spans,
-        "units": payload_units,
-        "summary": {
-            "scheduled_unit_count": scheduled_unit_count,
-            "unscheduled_unit_count": unscheduled_unit_count,
-            "overflow_unit_count": overflow_unit_count,
-            "instructional_day_count": len(instructional_dates),
-        },
-    }
 
 
 def _serialize_class_teaching_plan_row(row: dict) -> dict[str, Any]:
@@ -1713,243 +1373,44 @@ def _attach_resources_and_work(
 
 
 def _coerce_learning_datetime(value: Any) -> datetime | None:
-    if value in (None, ""):
-        return None
-    try:
-        parsed = get_datetime(value)
-        if isinstance(parsed, datetime):
-            return parsed
-        if isinstance(parsed, str):
-            return datetime.fromisoformat(parsed.replace("Z", "+00:00"))
-        return None
-    except Exception:
-        return None
+    return _student_impl.coerce_learning_datetime(_module(), value)
 
 
 def _iter_learning_sessions(units: list[dict[str, Any]]):
-    for unit in units or []:
-        for session in unit.get("sessions") or []:
-            yield unit, session
+    return _student_impl.iter_learning_sessions(_module(), units)
 
 
 def _flatten_assigned_work(
     units: list[dict[str, Any]],
     general_assigned_work: list[dict[str, Any]] | None,
 ) -> list[dict[str, Any]]:
-    flattened: list[dict[str, Any]] = []
-    seen: set[str] = set()
-
-    def append_item(item: dict[str, Any] | None) -> None:
-        if not isinstance(item, dict):
-            return
-        key = planning.normalize_text(item.get("task_delivery"))
-        if not key or key in seen:
-            return
-        seen.add(key)
-        flattened.append(item)
-
-    for item in general_assigned_work or []:
-        append_item(item)
-
-    for unit in units or []:
-        for item in unit.get("assigned_work") or []:
-            append_item(item)
-        for session in unit.get("sessions") or []:
-            for item in session.get("assigned_work") or []:
-                append_item(item)
-
-    return flattened
+    return _student_impl.flatten_assigned_work(_module(), units, general_assigned_work)
 
 
 def _resolve_student_learning_focus(units: list[dict[str, Any]]) -> tuple[dict[str, Any] | None, dict[str, Any] | None]:
-    if not units:
-        return None, None
-
-    today = now_datetime().date()
-    in_progress: list[tuple[datetime, dict[str, Any], dict[str, Any]]] = []
-    upcoming: list[tuple[datetime, dict[str, Any], dict[str, Any]]] = []
-    undated: list[tuple[int, int, dict[str, Any], dict[str, Any]]] = []
-    previous: list[tuple[datetime, dict[str, Any], dict[str, Any]]] = []
-
-    for unit_index, (unit, session) in enumerate(_iter_learning_sessions(units)):
-        session_date = _coerce_learning_datetime(session.get("session_date"))
-        session_status = planning.normalize_text(session.get("session_status")).lower()
-        if session_status == "in progress":
-            in_progress.append((session_date or now_datetime(), unit, session))
-            continue
-        if session_date and session_date.date() >= today:
-            upcoming.append((session_date, unit, session))
-            continue
-        if session_date:
-            previous.append((session_date, unit, session))
-            continue
-        undated.append((unit_index, int(session.get("sequence_index") or 0), unit, session))
-
-    if in_progress:
-        _, unit, session = sorted(in_progress, key=lambda row: row[0])[0]
-        return unit, session
-    if upcoming:
-        _, unit, session = sorted(upcoming, key=lambda row: row[0])[0]
-        return unit, session
-    if undated:
-        _, _, unit, session = sorted(undated, key=lambda row: (row[0], row[1]))[0]
-        return unit, session
-    if previous:
-        _, unit, session = sorted(previous, key=lambda row: row[0], reverse=True)[0]
-        return unit, session
-    return units[0], None
+    return _student_impl.resolve_student_learning_focus(_module(), units)
 
 
 def _build_student_focus_statement(unit: dict[str, Any] | None, session: dict[str, Any] | None) -> str | None:
-    if session and planning.normalize_long_text(session.get("learning_goal")):
-        return planning.normalize_long_text(session.get("learning_goal"))
-    if unit and planning.normalize_long_text(unit.get("essential_understanding")):
-        return planning.normalize_long_text(unit.get("essential_understanding"))
-    if unit and planning.normalize_long_text(unit.get("overview")):
-        return planning.normalize_long_text(unit.get("overview"))
-    if unit and planning.normalize_text(unit.get("title")):
-        return _("You are currently working through {unit_title}.").format(unit_title=unit.get("title"))
-    return None
+    return _student_impl.build_student_focus_statement(_module(), unit, session)
 
 
 def _build_student_learning_focus(units: list[dict[str, Any]]) -> dict[str, Any]:
-    unit, session = _resolve_student_learning_focus(units)
-    return {
-        "current_unit": (
-            {
-                "unit_plan": unit.get("unit_plan"),
-                "title": unit.get("title"),
-            }
-            if unit
-            else None
-        ),
-        "current_session": (
-            {
-                "class_session": session.get("class_session"),
-                "title": session.get("title"),
-                "session_date": session.get("session_date"),
-                "learning_goal": session.get("learning_goal"),
-            }
-            if session
-            else None
-        ),
-        "statement": _build_student_focus_statement(unit, session),
-    }
+    return _student_impl.build_student_learning_focus(_module(), units)
 
 
 def _build_student_unit_navigation(
     units: list[dict[str, Any]],
     current_unit_plan: str | None,
 ) -> list[dict[str, Any]]:
-    current_unit_plan = planning.normalize_text(current_unit_plan)
-    return [
-        {
-            "unit_plan": unit.get("unit_plan"),
-            "title": unit.get("title"),
-            "unit_order": unit.get("unit_order"),
-            "session_count": len(unit.get("sessions") or []),
-            "assigned_work_count": len(unit.get("assigned_work") or []),
-            "is_current": int(planning.normalize_text(unit.get("unit_plan")) == current_unit_plan),
-        }
-        for unit in units or []
-    ]
+    return _student_impl.build_student_unit_navigation(_module(), units, current_unit_plan)
 
 
 def _build_student_next_actions(
     units: list[dict[str, Any]],
     general_assigned_work: list[dict[str, Any]] | None,
 ) -> list[dict[str, Any]]:
-    actions: list[tuple[int, datetime, dict[str, Any]]] = []
-    fallback_date = datetime.max
-    seen: set[tuple[str, str]] = set()
-
-    for item in _flatten_assigned_work(units, general_assigned_work):
-        task_delivery = planning.normalize_text(item.get("task_delivery"))
-        quiz_state = item.get("quiz_state") or {}
-        due_at = _coerce_learning_datetime(item.get("due_date")) or fallback_date
-        title = planning.normalize_text(item.get("title")) or _("Assigned work")
-        action: dict[str, Any]
-        priority = 3
-        if (item.get("task_type") or "").strip() == "Quiz" and quiz_state.get("can_continue"):
-            priority = 0
-            action = {
-                "kind": "quiz",
-                "label": _("Continue {title}").format(title=title),
-                "supporting_text": quiz_state.get("status_label") or _("Your attempt is in progress."),
-                "task_delivery": task_delivery,
-                "class_session": item.get("class_session"),
-                "unit_plan": item.get("unit_plan"),
-            }
-        elif (item.get("task_type") or "").strip() == "Quiz" and quiz_state.get("can_retry"):
-            priority = 1
-            action = {
-                "kind": "quiz",
-                "label": _("Retry {title}").format(title=title),
-                "supporting_text": quiz_state.get("status_label") or _("You can start another attempt."),
-                "task_delivery": task_delivery,
-                "class_session": item.get("class_session"),
-                "unit_plan": item.get("unit_plan"),
-            }
-        elif (item.get("task_type") or "").strip() == "Quiz" and quiz_state.get("can_start"):
-            priority = 1
-            action = {
-                "kind": "quiz",
-                "label": _("Start {title}").format(title=title),
-                "supporting_text": _("Ready when you are."),
-                "task_delivery": task_delivery,
-                "class_session": item.get("class_session"),
-                "unit_plan": item.get("unit_plan"),
-            }
-        else:
-            action = {
-                "kind": "assigned_work",
-                "label": _("Complete {title}").format(title=title),
-                "supporting_text": _("Due {due_date}").format(due_date=item.get("due_date"))
-                if item.get("due_date")
-                else _("Assigned for this course."),
-                "task_delivery": task_delivery,
-                "class_session": item.get("class_session"),
-                "unit_plan": item.get("unit_plan"),
-            }
-            if due_at != fallback_date:
-                priority = 2
-        key = ("task", task_delivery)
-        if task_delivery and key not in seen:
-            seen.add(key)
-            actions.append((priority, due_at, action))
-
-    today = now_datetime().date()
-    for unit, session in _iter_learning_sessions(units):
-        session_id = planning.normalize_text(session.get("class_session"))
-        if not session_id:
-            continue
-        session_date = _coerce_learning_datetime(session.get("session_date"))
-        if session_date and session_date.date() < today:
-            continue
-        key = ("session", session_id)
-        if key in seen:
-            continue
-        seen.add(key)
-        actions.append(
-            (
-                4,
-                session_date or fallback_date,
-                {
-                    "kind": "session",
-                    "label": _("Get ready for {title}").format(
-                        title=planning.normalize_text(session.get("title")) or _("your next class")
-                    ),
-                    "supporting_text": _("Session on {session_date}").format(session_date=session.get("session_date"))
-                    if session.get("session_date")
-                    else (session.get("learning_goal") or _("Your class will continue this unit soon.")),
-                    "class_session": session_id,
-                    "unit_plan": unit.get("unit_plan"),
-                },
-            )
-        )
-
-    actions.sort(key=lambda row: (row[0], row[1], row[2].get("label") or ""))
-    return [row[2] for row in actions[:4]]
+    return _student_impl.build_student_next_actions(_module(), units, general_assigned_work)
 
 
 def _build_student_learning_sections(
@@ -1957,19 +1418,12 @@ def _build_student_learning_sections(
     general_assigned_work: list[dict[str, Any]] | None,
     reflection_entries: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
-    focus = _build_student_learning_focus(units)
-    current_unit_plan = planning.normalize_text((focus.get("current_unit") or {}).get("unit_plan"))
-    current_session = focus.get("current_session") or {}
-    return {
-        "focus": focus,
-        "next_actions": _build_student_next_actions(units, general_assigned_work),
-        "reflection_entries": reflection_entries or [],
-        "selected_context": {
-            "unit_plan": current_unit_plan or None,
-            "class_session": planning.normalize_text(current_session.get("class_session")) or None,
-        },
-        "unit_navigation": _build_student_unit_navigation(units, current_unit_plan),
-    }
+    return _student_impl.build_student_learning_sections(
+        _module(),
+        units,
+        general_assigned_work,
+        reflection_entries,
+    )
 
 
 def _fetch_student_learning_reflections(
@@ -1980,54 +1434,14 @@ def _fetch_student_learning_reflections(
     academic_year: str | None = None,
     limit: int = 8,
 ) -> list[dict[str, Any]]:
-    filters: dict[str, Any] = {
-        "student": student_name,
-        "course": course_id,
-    }
-    if student_group:
-        filters["student_group"] = student_group
-    if academic_year:
-        filters["academic_year"] = academic_year
-
-    rows = frappe.get_all(
-        "Student Reflection Entry",
-        filters=filters,
-        fields=[
-            "name",
-            "entry_date",
-            "entry_type",
-            "visibility",
-            "moderation_state",
-            "body",
-            "course",
-            "student_group",
-            "class_session",
-            "task_delivery",
-            "task_submission",
-        ],
-        order_by="entry_date desc, modified desc",
-        limit=max(int(limit or 0), 1),
+    return _student_impl.fetch_student_learning_reflections(
+        _module(),
+        student_name,
+        course_id=course_id,
+        student_group=student_group,
+        academic_year=academic_year,
+        limit=limit,
     )
-
-    payload: list[dict[str, Any]] = []
-    for row in rows or []:
-        payload.append(
-            {
-                "name": row.get("name"),
-                "entry_date": _serialize_scalar(row.get("entry_date")),
-                "entry_type": row.get("entry_type"),
-                "visibility": row.get("visibility"),
-                "moderation_state": row.get("moderation_state"),
-                "body": row.get("body"),
-                "body_preview": strip_html(row.get("body") or "")[:280],
-                "course": row.get("course"),
-                "student_group": row.get("student_group"),
-                "class_session": row.get("class_session"),
-                "task_delivery": row.get("task_delivery"),
-                "task_submission": row.get("task_submission"),
-            }
-        )
-    return payload
 
 
 def _build_student_learning_space_payload(
@@ -2035,278 +1449,23 @@ def _build_student_learning_space_payload(
     course_id: str,
     student_group: str | None = None,
 ) -> dict[str, Any]:
-    course_id = planning.normalize_text(course_id)
-    if not course_id:
-        frappe.throw(_("Course is required."), frappe.ValidationError)
-
-    _assert_student_course_access(student_name, course_id)
-    group_options = _resolve_student_group_options(student_name, course_id)
-
-    selected_group, class_plan_row = _resolve_student_plan(course_id, group_options, student_group)
-    selected_group_option = next(
-        (row for row in group_options if planning.normalize_text(row.get("student_group")) == selected_group),
-        None,
-    )
-    if selected_group:
-        _assert_student_group_membership(student_name, selected_group)
-
-    course = frappe.db.get_value(
-        "Course",
-        course_id,
-        ["name", "course_name", "course_group", "description", "course_image"],
-        as_dict=True,
-    )
-    if not course:
-        frappe.throw(_("Course not found."))
-
-    message = None
-    units_payload: list[dict[str, Any]] = []
-    resolved_course_plan = None
-    resources_payload = {"shared_resources": [], "class_resources": [], "general_assigned_work": []}
-    assigned_work_count = 0
-    reflection_entries: list[dict[str, Any]] = []
-    course_communication_summary: dict[str, Any] = {
-        "total_count": 0,
-        "unread_count": 0,
-        "high_priority_count": 0,
-        "has_high_priority": 0,
-        "latest_publish_at": None,
-    }
-
-    if class_plan_row:
-        doc = frappe.get_doc("Class Teaching Plan", class_plan_row["name"])
-        resolved_course_plan = doc.course_plan
-        unit_lookup = _build_unit_lookup(doc.course_plan, audience="student")
-        unit_rows = _serialize_backbone_units(doc.name, unit_lookup, audience="student")
-        sessions = _fetch_class_sessions(doc.name, audience="student")
-        assigned_work = _fetch_assigned_work(doc.name, audience="student", student_name=student_name)
-        sessions_by_unit: dict[str, list[dict[str, Any]]] = defaultdict(list)
-        for session in sessions:
-            sessions_by_unit[session.get("unit_plan")].append(session)
-        units_payload = [{**row, "sessions": sessions_by_unit.get(row.get("unit_plan"), [])} for row in unit_rows]
-        resources_payload = _attach_resources_and_work(
-            units=units_payload,
-            course_plan=doc.course_plan,
-            class_teaching_plan=doc.name,
-            assigned_work=assigned_work,
-        )
-        assigned_work_count = len(assigned_work)
-    else:
-        course_plans = frappe.get_all(
-            "Course Plan",
-            filters={"course": course_id, "plan_status": "Active"},
-            fields=["name", "title"],
-            order_by="modified desc, creation desc",
-            limit=2,
-        )
-        if len(course_plans) == 1:
-            resolved_course_plan = course_plans[0]["name"]
-            unit_lookup = _build_unit_lookup(resolved_course_plan, audience="student")
-            units_payload = [
-                {
-                    "unit_plan": row.get("name"),
-                    "title": row.get("title"),
-                    "unit_order": row.get("unit_order"),
-                    "program": row.get("program"),
-                    "unit_code": row.get("unit_code"),
-                    "unit_status": row.get("unit_status"),
-                    "version": row.get("version"),
-                    "duration": row.get("duration"),
-                    "estimated_duration": row.get("estimated_duration"),
-                    "overview": row.get("overview"),
-                    "essential_understanding": row.get("essential_understanding"),
-                    "content": row.get("content"),
-                    "skills": row.get("skills"),
-                    "concepts": row.get("concepts"),
-                    "standards": row.get("standards", []),
-                    "shared_resources": [],
-                    "assigned_work": [],
-                    "sessions": [],
-                }
-                for row in unit_lookup.values()
-            ]
-            resources_payload = _attach_resources_and_work(
-                units=units_payload,
-                course_plan=resolved_course_plan,
-            )
-            if group_options:
-                message = _("Your teacher has not published a class teaching plan yet. Showing the shared course plan.")
-            else:
-                message = _(
-                    "Your class is not available yet. Showing the shared course plan while your class is being assigned."
-                )
-        else:
-            if group_options:
-                message = _(
-                    "Your learning space is not available yet because the class teaching plan has not been published. Check with your teacher if this class should already be available."
-                )
-            else:
-                message = _(
-                    "Your learning space is not available yet because your class is still being assigned and no shared course plan is published yet. Check with your teacher or academic office if this course should already be available."
-                )
-
-    reflections_academic_year = planning.normalize_text(
-        (class_plan_row or {}).get("academic_year") or (selected_group_option or {}).get("academic_year")
-    )
-    reflection_entries = _fetch_student_learning_reflections(
+    return _student_impl.build_student_learning_space_payload(
+        _module(),
         student_name,
-        course_id=course_id,
-        student_group=selected_group or None,
-        academic_year=reflections_academic_year or None,
+        course_id,
+        student_group=student_group,
     )
-    try:
-        from ifitwala_ed.api import student_communications as student_communications_api
-
-        course_communication_summary = student_communications_api.get_student_course_communication_summary(
-            student_name,
-            course_id=course_id,
-            student_group=selected_group,
-        )
-    except Exception:
-        frappe.log_error(frappe.get_traceback(), "Student Learning Space Communication Load Failed")
-
-    return {
-        "meta": {
-            "generated_at": _serialize_scalar(now_datetime()),
-            "course_id": course_id,
-        },
-        "course": {
-            "course": course.get("name"),
-            "course_name": course.get("course_name") or course.get("name"),
-            "course_group": course.get("course_group"),
-            "description": course.get("description"),
-            "course_image": course.get("course_image"),
-        },
-        "access": {
-            "student_group_options": group_options,
-            "resolved_student_group": selected_group,
-            "class_teaching_plan": class_plan_row.get("name") if class_plan_row else None,
-            "course_plan": resolved_course_plan,
-        },
-        "teaching_plan": {
-            "source": "class_teaching_plan"
-            if class_plan_row
-            else ("course_plan_fallback" if resolved_course_plan else "unavailable"),
-            "class_teaching_plan": class_plan_row.get("name") if class_plan_row else None,
-            "title": class_plan_row.get("title") if class_plan_row else None,
-            "planning_status": class_plan_row.get("planning_status") if class_plan_row else None,
-            "course_plan": resolved_course_plan,
-        },
-        "communications": {
-            "course_updates_summary": course_communication_summary,
-        },
-        "message": message,
-        "learning": _build_student_learning_sections(
-            units_payload,
-            resources_payload.get("general_assigned_work") or [],
-            reflection_entries,
-        ),
-        "resources": resources_payload,
-        "curriculum": {
-            "units": units_payload,
-            "counts": {
-                "units": len(units_payload),
-                "sessions": sum(len(unit.get("sessions") or []) for unit in units_payload),
-                "assigned_work": assigned_work_count,
-            },
-        },
-    }
 
 
 def _resolve_staff_plan(
-    student_group: str, requested_plan: str | None
-) -> tuple[dict, list[dict], list[dict], str | None]:
-    group = _group_context(student_group)
-    course_plans = frappe.get_all(
-        "Course Plan",
-        filters={"course": group["course"], "plan_status": ["!=", "Archived"]},
-        fields=["name", "title", "academic_year", "cycle_label", "plan_status"],
-        order_by="modified desc, creation desc",
-        limit=50,
-    )
-    class_plans = frappe.get_all(
-        "Class Teaching Plan",
-        filters={"student_group": student_group},
-        fields=["name", "title", "course_plan", "planning_status"],
-        order_by="modified desc, creation desc",
-        limit=50,
-    )
-
-    selected = planning.normalize_text(requested_plan)
-    if selected and not any(row.get("name") == selected for row in class_plans):
-        frappe.throw(_("Selected class teaching plan does not belong to this class."), frappe.PermissionError)
-    if not selected and len(class_plans) == 1:
-        selected = class_plans[0]["name"]
-    return group, course_plans, class_plans, selected or None
+    student_group: str,
+    requested_plan: str | None,
+) -> tuple[dict[str, Any], list[dict[str, Any]], list[dict[str, Any]], str | None]:
+    return _staff_impl.resolve_staff_plan(_module(), student_group, requested_plan)
 
 
 def _build_staff_bundle(student_group: str, class_teaching_plan: str | None = None) -> dict[str, Any]:
-    group, course_plans, class_plans, resolved_plan = _resolve_staff_plan(student_group, class_teaching_plan)
-
-    payload: dict[str, Any] = {
-        "meta": {
-            "generated_at": _serialize_scalar(now_datetime()),
-            "student_group": student_group,
-        },
-        "group": {
-            "student_group": group.get("name"),
-            "title": group.get("student_group_name") or group.get("student_group_abbreviation") or group.get("name"),
-            "course": group.get("course"),
-            "academic_year": group.get("academic_year"),
-        },
-        "course_plans": [_serialize_course_plan(row) for row in course_plans],
-        "class_teaching_plans": [_serialize_class_teaching_plan_row(row) for row in class_plans],
-        "resolved": {
-            "class_teaching_plan": resolved_plan,
-            "can_initialize": 1 if course_plans else 0,
-            "requires_course_plan_selection": 1 if not resolved_plan and len(course_plans) != 1 else 0,
-        },
-    }
-
-    if not resolved_plan:
-        payload["teaching_plan"] = None
-        payload["resources"] = {"shared_resources": [], "class_resources": [], "general_assigned_work": []}
-        payload["curriculum"] = {"units": [], "session_count": 0, "assigned_work_count": 0}
-        return payload
-
-    doc = frappe.get_doc("Class Teaching Plan", resolved_plan)
-    unit_lookup = _build_unit_lookup(doc.course_plan, audience="staff")
-    unit_rows = _serialize_backbone_units(doc.name, unit_lookup, audience="staff")
-    sessions = _fetch_class_sessions(doc.name, audience="staff")
-    assigned_work = _fetch_assigned_work(doc.name, audience="staff")
-    sessions_by_unit: dict[str, list[dict[str, Any]]] = defaultdict(list)
-    for session in sessions:
-        sessions_by_unit[session.get("unit_plan")].append(session)
-
-    decorated_units = [
-        {
-            **row,
-            "sessions": sessions_by_unit.get(row.get("unit_plan"), []),
-        }
-        for row in unit_rows
-    ]
-    resource_bundle = _attach_resources_and_work(
-        units=decorated_units,
-        course_plan=doc.course_plan,
-        class_teaching_plan=doc.name,
-        assigned_work=assigned_work,
-    )
-
-    payload["teaching_plan"] = {
-        "class_teaching_plan": doc.name,
-        "title": doc.title,
-        "course_plan": doc.course_plan,
-        "planning_status": doc.planning_status,
-        "team_note": doc.team_note,
-    }
-    payload["resolved"]["course_plan"] = doc.course_plan
-    payload["resources"] = resource_bundle
-    payload["curriculum"] = {
-        "units": decorated_units,
-        "session_count": len(sessions),
-        "assigned_work_count": len(assigned_work),
-    }
-    return payload
+    return _staff_impl.build_staff_bundle(_module(), student_group, class_teaching_plan=class_teaching_plan)
 
 
 def _build_staff_course_plan_bundle(
@@ -2315,100 +1474,13 @@ def _build_staff_course_plan_bundle(
     quiz_question_bank: str | None = None,
     student_group: str | None = None,
 ) -> dict[str, Any]:
-    context = _resolve_planning_resource_anchor("Course Plan", course_plan, ptype="read")
-    course_plan_row = planning.get_course_plan_row(context["anchor_name"])
-    course_plan_doc = frappe.get_doc("Course Plan", context["anchor_name"])
-    course_row = (
-        frappe.db.get_value(
-            "Course",
-            course_plan_row.get("course"),
-            ["course_name", "course_group"],
-            as_dict=True,
-        )
-        or {}
+    return _staff_impl.build_staff_course_plan_bundle(
+        _module(),
+        course_plan,
+        unit_plan=unit_plan,
+        quiz_question_bank=quiz_question_bank,
+        student_group=student_group,
     )
-    unit_lookup = _build_unit_lookup(course_plan_doc.name, audience="staff")
-    materials_by_anchor = _fetch_material_map(
-        [("Course Plan", course_plan_doc.name), *[("Unit Plan", name) for name in unit_lookup.keys()]]
-    )
-    units = _serialize_governed_units(course_plan_doc.name, unit_lookup, materials_by_anchor)
-    selected_unit = planning.normalize_text(unit_plan)
-    if selected_unit and not any(row.get("unit_plan") == selected_unit for row in units):
-        frappe.throw(_("Selected unit plan does not belong to this course plan."), frappe.PermissionError)
-    if not selected_unit and units:
-        selected_unit = units[0].get("unit_plan")
-    selected_unit_row = next((row for row in units if row.get("unit_plan") == selected_unit), None)
-    selected_programs = [
-        planning.normalize_text(selected_unit_row.get("program")) if selected_unit_row else "",
-        *[
-            planning.normalize_text(row.get("program"))
-            for row in (selected_unit_row or {}).get("standards", [])
-            if planning.normalize_text(row.get("program"))
-        ],
-    ]
-
-    quiz_question_banks = _fetch_course_quiz_question_banks(course_plan_row.get("course"))
-    selected_quiz_question_bank = planning.normalize_text(quiz_question_bank)
-    if selected_quiz_question_bank and not any(
-        row.get("quiz_question_bank") == selected_quiz_question_bank for row in quiz_question_banks
-    ):
-        frappe.throw(_("Selected quiz question bank does not belong to this course."), frappe.PermissionError)
-    if not selected_quiz_question_bank and quiz_question_banks:
-        selected_quiz_question_bank = quiz_question_banks[0].get("quiz_question_bank")
-
-    academic_year_options = _fetch_academic_year_options_for_schools(
-        [course_plan_row.get("school")],
-        pinned_years={course_plan_row.get("school"): course_plan_row.get("academic_year")}
-        if planning.normalize_text(course_plan_row.get("school"))
-        else None,
-    ).get(planning.normalize_text(course_plan_row.get("school")), [])
-    program_options = _fetch_program_options_for_course(
-        course_plan_row.get("course"),
-        pinned_programs=selected_programs,
-    )
-
-    return {
-        "meta": {
-            "generated_at": _serialize_scalar(now_datetime()),
-            "course_plan": course_plan_doc.name,
-        },
-        "course_plan": _serialize_course_plan_summary(
-            {
-                **course_plan_row,
-                "modified": course_plan_doc.modified,
-                "summary": course_plan_doc.summary,
-            },
-            course_row=course_row,
-            can_manage_resources=int(context.get("can_manage_resources") or 0),
-        ),
-        "resolved": {
-            "unit_plan": selected_unit or None,
-            "quiz_question_bank": selected_quiz_question_bank or None,
-        },
-        "resources": {
-            "course_plan_resources": materials_by_anchor.get(("Course Plan", course_plan_doc.name), []),
-        },
-        "field_options": {
-            "academic_years": academic_year_options,
-            "programs": program_options,
-        },
-        "curriculum": {
-            "units": units,
-            "unit_count": len(units),
-            "timeline": _build_course_plan_timeline(
-                course_plan_row,
-                units,
-                student_group=planning.normalize_text(student_group) or None,
-            ),
-        },
-        "assessment": {
-            "quiz_question_banks": quiz_question_banks,
-            "selected_quiz_question_bank": _fetch_selected_quiz_question_bank(
-                selected_quiz_question_bank,
-                expected_course=course_plan_row.get("course"),
-            ),
-        },
-    }
 
 
 @frappe.whitelist()
@@ -2455,83 +1527,10 @@ def list_staff_course_plans() -> dict[str, Any]:
     course_plan_count = 0
     course_option_count = 0
     try:
-        user = _require_logged_in_user()
-        roles = set(frappe.get_roles(user))
-        creation_access = _build_course_plan_creation_access(user, roles)
-        filters: dict[str, Any] = {"plan_status": ["!=", "Archived"]}
-        if planning.user_has_global_curriculum_access(user, roles):
-            rows = frappe.get_list(
-                "Course Plan",
-                filters=filters,
-                fields=[
-                    "name",
-                    "modified",
-                    "title",
-                    "course",
-                    "school",
-                    "academic_year",
-                    "cycle_label",
-                    "plan_status",
-                ],
-                order_by="modified desc, creation desc",
-                limit=0,
-            )
-        else:
-            managed_courses = planning.get_curriculum_manageable_course_names(user, roles)
-            if managed_courses:
-                filters["course"] = ["in", managed_courses]
-                rows = frappe.get_list(
-                    "Course Plan",
-                    filters=filters,
-                    fields=[
-                        "name",
-                        "modified",
-                        "title",
-                        "course",
-                        "school",
-                        "academic_year",
-                        "cycle_label",
-                        "plan_status",
-                    ],
-                    order_by="modified desc, creation desc",
-                    limit=0,
-                )
-            else:
-                rows = []
-        course_names = sorted({row.get("course") for row in rows if row.get("course")})
-        course_map = {
-            row.get("name"): row
-            for row in frappe.get_all(
-                "Course",
-                filters={"name": ["in", course_names]} if course_names else {"name": ["in", [""]]},
-                fields=["name", "course_name", "course_group"],
-                limit=0,
-            )
-        }
-        payload = []
-        for row in rows or []:
-            payload.append(
-                _serialize_course_plan_summary(
-                    row,
-                    course_row=course_map.get(row.get("course")),
-                    can_manage_resources=int(
-                        planning.user_can_manage_course_curriculum(user, row.get("course"), roles)
-                    ),
-                )
-            )
-        course_plan_count = len(payload)
-        course_option_count = len(creation_access.get("course_options") or [])
-        return {
-            "meta": {
-                "generated_at": _serialize_scalar(now_datetime()),
-            },
-            "access": {
-                "can_create_course_plans": creation_access["can_create_course_plans"],
-                "create_block_reason": creation_access["create_block_reason"],
-            },
-            "course_options": creation_access["course_options"],
-            "course_plans": payload,
-        }
+        payload = _staff_impl.list_staff_course_plans_payload(_module())
+        course_plan_count = len(payload.get("course_plans") or [])
+        course_option_count = len(payload.get("course_options") or [])
+        return payload
     except Exception:
         status = "error"
         raise
@@ -2552,48 +1551,10 @@ def create_course_plan(payload=None, **kwargs) -> dict[str, Any]:
     course_name = ""
     created_name = ""
     try:
-        user = _require_logged_in_user()
-        roles = set(frappe.get_roles(user))
-        data = _normalize_payload(payload if payload is not None else kwargs)
-        course_name = planning.normalize_text(data.get("course"))
-        if not course_name:
-            frappe.throw(_("Course is required."))
-
-        allowed_courses = {row.get("name"): row for row in _list_creatable_course_rows(user, roles) if row.get("name")}
-        if not allowed_courses:
-            frappe.throw(
-                _(
-                    "You need an active teaching assignment or curriculum leadership access before you can start a shared course plan."
-                ),
-                frappe.PermissionError,
-            )
-        course_row = allowed_courses.get(course_name)
-        if not course_row:
-            frappe.throw(_("You cannot create a shared course plan for this course."), frappe.PermissionError)
-
-        doc = frappe.new_doc("Course Plan")
-        doc.course = course_name
-        doc.title = planning.normalize_text(data.get("title")) or _("{course_name} Plan").format(
-            course_name=course_row.get("course_name") or course_name
-        )
-        doc.academic_year = planning.normalize_text(data.get("academic_year")) or None
-        _validate_course_plan_academic_year(
-            course_school=course_row.get("school"),
-            academic_year=doc.academic_year,
-        )
-        doc.cycle_label = planning.normalize_text(data.get("cycle_label")) or None
-        if data.get("plan_status") not in (None, ""):
-            doc.plan_status = data.get("plan_status")
-        doc.summary = planning.normalize_rich_text(data.get("summary"))
-
-        doc.insert(ignore_permissions=True)
-        created_name = planning.normalize_text(getattr(doc, "name", None))
-        return {
-            "course_plan": doc.name,
-            "course": doc.course,
-            "title": doc.title,
-            "plan_status": doc.plan_status,
-        }
+        created = _mutations_impl.create_course_plan_impl(_module(), payload, **kwargs)
+        course_name = planning.normalize_text(created.get("course"))
+        created_name = planning.normalize_text(created.get("course_plan"))
+        return created
     except Exception:
         status = "error"
         raise
@@ -2609,20 +1570,7 @@ def create_course_plan(payload=None, **kwargs) -> dict[str, Any]:
 
 @frappe.whitelist()
 def create_class_teaching_plan(student_group: str, course_plan: str) -> dict[str, Any]:
-    _assert_staff_group_access(student_group)
-    group = _group_context(student_group)
-    course_plan_row = planning.get_course_plan_row(course_plan)
-    if planning.normalize_text(course_plan_row.get("course")) != planning.normalize_text(group.get("course")):
-        frappe.throw(_("The selected course plan does not belong to this class course."), frappe.ValidationError)
-
-    doc = frappe.new_doc("Class Teaching Plan")
-    doc.course_plan = course_plan
-    doc.student_group = student_group
-    doc.insert(ignore_permissions=True)
-    return {
-        "class_teaching_plan": doc.name,
-        "student_group": student_group,
-    }
+    return _mutations_impl.create_class_teaching_plan_impl(_module(), student_group, course_plan)
 
 
 @frappe.whitelist()
@@ -2631,17 +1579,12 @@ def save_class_teaching_plan(
     planning_status: str | None = None,
     team_note: str | None = None,
 ) -> dict[str, Any]:
-    doc = frappe.get_doc("Class Teaching Plan", planning.normalize_text(class_teaching_plan))
-    _assert_staff_group_access(doc.student_group)
-
-    if planning_status not in (None, ""):
-        doc.planning_status = planning_status
-    doc.team_note = planning.normalize_rich_text(team_note)
-    doc.save(ignore_permissions=True)
-    return {
-        "class_teaching_plan": doc.name,
-        "planning_status": doc.planning_status,
-    }
+    return _mutations_impl.save_class_teaching_plan_impl(
+        _module(),
+        class_teaching_plan,
+        planning_status=planning_status,
+        team_note=team_note,
+    )
 
 
 @frappe.whitelist()
@@ -2657,33 +1600,19 @@ def save_class_teaching_plan_unit(
     what_didnt_work_well: str | None = None,
     changes_suggestions: str | None = None,
 ) -> dict[str, Any]:
-    plan_name = planning.normalize_text(class_teaching_plan)
-    doc = frappe.get_doc("Class Teaching Plan", plan_name)
-    _assert_staff_group_access(doc.student_group)
-
-    matched = None
-    for row in doc.get("units") or []:
-        if planning.normalize_text(row.unit_plan) == planning.normalize_text(unit_plan):
-            matched = row
-            break
-    if not matched:
-        frappe.throw(_("Unit Plan is not part of this class teaching plan."), frappe.ValidationError)
-
-    if pacing_status not in (None, ""):
-        matched.pacing_status = pacing_status
-    matched.teacher_focus = planning.normalize_long_text(teacher_focus)
-    matched.pacing_note = planning.normalize_long_text(pacing_note)
-    matched.prior_to_the_unit = planning.normalize_rich_text(prior_to_the_unit)
-    matched.during_the_unit = planning.normalize_rich_text(during_the_unit)
-    matched.what_work_well = planning.normalize_rich_text(what_work_well)
-    matched.what_didnt_work_well = planning.normalize_rich_text(what_didnt_work_well)
-    matched.changes_suggestions = planning.normalize_rich_text(changes_suggestions)
-    doc.save(ignore_permissions=True)
-    return {
-        "class_teaching_plan": doc.name,
-        "unit_plan": matched.unit_plan,
-        "pacing_status": matched.pacing_status,
-    }
+    return _mutations_impl.save_class_teaching_plan_unit_impl(
+        _module(),
+        class_teaching_plan,
+        unit_plan,
+        pacing_status=pacing_status,
+        teacher_focus=teacher_focus,
+        pacing_note=pacing_note,
+        prior_to_the_unit=prior_to_the_unit,
+        during_the_unit=during_the_unit,
+        what_work_well=what_work_well,
+        what_didnt_work_well=what_didnt_work_well,
+        changes_suggestions=changes_suggestions,
+    )
 
 
 @frappe.whitelist()
@@ -2699,82 +1628,31 @@ def save_class_session(
     activities_json: str | None = None,
     class_session: str | None = None,
 ) -> dict[str, Any]:
-    plan_doc = frappe.get_doc("Class Teaching Plan", class_teaching_plan)
-    _assert_staff_group_access(plan_doc.student_group)
-
-    if class_session:
-        doc = frappe.get_doc("Class Session", class_session)
-        if planning.normalize_text(doc.class_teaching_plan) != planning.normalize_text(class_teaching_plan):
-            frappe.throw(_("Class Session does not belong to this class teaching plan."), frappe.PermissionError)
-    else:
-        doc = frappe.new_doc("Class Session")
-        doc.class_teaching_plan = class_teaching_plan
-
-    doc.unit_plan = unit_plan
-    doc.title = title
-    if session_status not in (None, ""):
-        doc.session_status = session_status
-    doc.session_date = session_date or None
-    doc.sequence_index = int(sequence_index) if sequence_index not in (None, "") else None
-    doc.learning_goal = planning.normalize_long_text(learning_goal)
-    doc.teacher_note = planning.normalize_rich_text(teacher_note)
-
-    parsed_activities = frappe.parse_json(activities_json) if activities_json else []
-    planning.replace_session_activities(doc, parsed_activities)
-
-    if doc.is_new():
-        doc.insert(ignore_permissions=True)
-    else:
-        doc.save(ignore_permissions=True)
-
-    return {
-        "class_session": doc.name,
-        "class_teaching_plan": class_teaching_plan,
-        "session_status": doc.session_status,
-    }
+    return _mutations_impl.save_class_session_impl(
+        _module(),
+        class_teaching_plan,
+        unit_plan,
+        title,
+        session_status=session_status,
+        session_date=session_date,
+        sequence_index=sequence_index,
+        learning_goal=learning_goal,
+        teacher_note=teacher_note,
+        activities_json=activities_json,
+        class_session=class_session,
+    )
 
 
 @frappe.whitelist()
 def save_course_plan(payload=None, **kwargs) -> dict[str, Any]:
     started_at = perf_counter()
     status = "success"
-    course_plan = ""
-    course = ""
+    course_plan_name = ""
     try:
-        data = _normalize_payload(payload if payload is not None else kwargs)
-        course_plan = planning.normalize_text(data.get("course_plan"))
-        if not course_plan:
-            frappe.throw(_("Course Plan is required."))
-
-        doc = frappe.get_doc("Course Plan", course_plan)
-        course = planning.normalize_text(getattr(doc, "course", None))
-        _assert_course_curriculum_access(
-            doc.course,
-            ptype="write",
-            action_label=_("update this shared course plan"),
-        )
-        planning.assert_record_modified_matches(
-            expected_modified=data.get("expected_modified"),
-            current_modified=getattr(doc, "modified", None),
-            section_label=_("Shared course plan"),
-        )
-
-        doc.title = planning.normalize_text(data.get("title")) or None
-        doc.academic_year = planning.normalize_text(data.get("academic_year")) or None
-        _validate_course_plan_academic_year(
-            course_school=getattr(doc, "school", None),
-            academic_year=doc.academic_year,
-            previous_academic_year=doc.get_db_value("academic_year") if hasattr(doc, "get_db_value") else None,
-        )
-        doc.cycle_label = planning.normalize_text(data.get("cycle_label")) or None
-        doc.plan_status = planning.normalize_text(data.get("plan_status")) or None
-        doc.summary = planning.normalize_rich_text(data.get("summary"))
-
-        doc.save(ignore_permissions=True)
-        return {
-            "course_plan": doc.name,
-            "plan_status": doc.plan_status,
-        }
+        if payload is not None or kwargs:
+            data = _normalize_payload(payload if payload is not None else kwargs)
+            course_plan_name = planning.normalize_text(data.get("course_plan"))
+        return _mutations_impl.save_course_plan_impl(_module(), payload, **kwargs)
     except Exception:
         status = "error"
         raise
@@ -2783,8 +1661,7 @@ def save_course_plan(payload=None, **kwargs) -> dict[str, Any]:
             "course_plan_save",
             started_at=started_at,
             status=status,
-            course_plan=course_plan,
-            course=course,
+            course_plan=course_plan_name,
         )
 
 
@@ -2816,103 +1693,34 @@ def save_unit_plan(
 ) -> dict[str, Any]:
     started_at = perf_counter()
     status = "success"
-    course_plan_name = planning.normalize_text(course_plan)
-    unit_plan_name = planning.normalize_text(unit_plan)
-    course_name = ""
-    doc = None
+    result = None
     try:
-        data = _normalize_payload(payload if payload is not None else kwargs)
-        course_plan_name = planning.normalize_text(course_plan or data.get("course_plan"))
-        unit_plan_name = planning.normalize_text(unit_plan or data.get("unit_plan"))
-        title = title if title is not None else data.get("title")
-        program = program if program is not None else data.get("program")
-        unit_code = unit_code if unit_code is not None else data.get("unit_code")
-        unit_order = unit_order if unit_order is not None else data.get("unit_order")
-        unit_status = unit_status if unit_status is not None else data.get("unit_status")
-        version = version if version is not None else data.get("version")
-        duration = duration if duration is not None else data.get("duration")
-        estimated_duration = estimated_duration if estimated_duration is not None else data.get("estimated_duration")
-        is_published = is_published if is_published is not None else data.get("is_published")
-        overview = overview if overview is not None else data.get("overview")
-        essential_understanding = (
-            essential_understanding if essential_understanding is not None else data.get("essential_understanding")
+        result = _mutations_impl.save_unit_plan_impl(
+            _module(),
+            payload,
+            course_plan=course_plan,
+            unit_plan=unit_plan,
+            title=title,
+            program=program,
+            unit_code=unit_code,
+            unit_order=unit_order,
+            unit_status=unit_status,
+            version=version,
+            duration=duration,
+            estimated_duration=estimated_duration,
+            is_published=is_published,
+            expected_modified=expected_modified,
+            overview=overview,
+            essential_understanding=essential_understanding,
+            misconceptions=misconceptions,
+            content=content,
+            skills=skills,
+            concepts=concepts,
+            standards_json=standards_json,
+            reflections_json=reflections_json,
+            **kwargs,
         )
-        misconceptions = misconceptions if misconceptions is not None else data.get("misconceptions")
-        content = content if content is not None else data.get("content")
-        skills = skills if skills is not None else data.get("skills")
-        concepts = concepts if concepts is not None else data.get("concepts")
-        standards_json = standards_json if standards_json is not None else data.get("standards_json")
-        reflections_json = reflections_json if reflections_json is not None else data.get("reflections_json")
-        expected_modified = expected_modified if expected_modified is not None else data.get("expected_modified")
-
-        if unit_plan_name:
-            doc = frappe.get_doc("Unit Plan", unit_plan_name)
-            course_plan_row = planning.get_course_plan_row(doc.course_plan)
-            course_name = planning.normalize_text(course_plan_row.get("course"))
-            _assert_course_curriculum_access(
-                course_plan_row.get("course"),
-                ptype="write",
-                action_label=_("update this unit plan"),
-            )
-            planning.assert_record_modified_matches(
-                expected_modified=expected_modified,
-                current_modified=getattr(doc, "modified", None),
-                section_label=_("Unit plan"),
-            )
-        else:
-            if not course_plan_name:
-                frappe.throw(_("Course Plan is required."))
-            course_plan_row = planning.get_course_plan_row(course_plan_name)
-            course_name = planning.normalize_text(course_plan_row.get("course"))
-            _assert_course_curriculum_access(
-                course_plan_row.get("course"),
-                ptype="write",
-                action_label=_("create a unit plan for this course"),
-            )
-            doc = frappe.new_doc("Unit Plan")
-            doc.course_plan = course_plan_name
-
-        doc.title = planning.normalize_text(title) or None
-        doc.program = planning.normalize_text(program) or None
-        _validate_course_program_link(
-            course=course_plan_row.get("course"),
-            program=doc.program,
-            previous_program=doc.get_db_value("program") if hasattr(doc, "get_db_value") else None,
-        )
-        doc.unit_code = planning.normalize_text(unit_code) or None
-        doc.unit_order = int(unit_order) if unit_order not in (None, "") else None
-        if unit_status not in (None, ""):
-            doc.unit_status = planning.normalize_text(unit_status) or None
-        doc.version = planning.normalize_text(version) or None
-        doc.duration = planning.normalize_text(duration) or None
-        doc.estimated_duration = planning.normalize_text(estimated_duration) or None
-        doc.is_published = planning.normalize_flag(is_published)
-        doc.overview = planning.normalize_rich_text(overview)
-        doc.essential_understanding = planning.normalize_rich_text(essential_understanding)
-        doc.misconceptions = planning.normalize_rich_text(misconceptions)
-        doc.content = planning.normalize_rich_text(content)
-        doc.skills = planning.normalize_rich_text(skills)
-        doc.concepts = planning.normalize_rich_text(concepts)
-
-        planning.replace_unit_plan_standards(
-            doc,
-            _normalize_rows_payload(standards_json, label=_("Standards")),
-        )
-        planning.replace_unit_plan_reflections(
-            doc,
-            _normalize_rows_payload(reflections_json, label=_("Reflections")),
-            course_plan_row=course_plan_row,
-        )
-        if doc.is_new():
-            doc.insert(ignore_permissions=True)
-        else:
-            doc.save(ignore_permissions=True)
-
-        return {
-            "course_plan": doc.course_plan,
-            "unit_plan": doc.name,
-            "unit_order": doc.unit_order,
-        }
+        return result
     except Exception:
         status = "error"
         raise
@@ -2921,37 +1729,14 @@ def save_unit_plan(
             "unit_plan_save",
             started_at=started_at,
             status=status,
-            course_plan=planning.normalize_text(getattr(doc, "course_plan", None)),
-            unit_plan=planning.normalize_text(getattr(doc, "name", None)),
-            course=course_name,
+            course_plan=planning.normalize_text((result or {}).get("course_plan")),
+            unit_plan=planning.normalize_text((result or {}).get("unit_plan")),
         )
 
 
 @frappe.whitelist()
 def create_planning_reference_material(payload=None, **kwargs) -> dict[str, Any]:
-    data = _normalize_payload(payload if payload is not None else kwargs)
-    context = _resolve_planning_resource_anchor(data.get("anchor_doctype"), data.get("anchor_name"), ptype="write")
-    title = planning.normalize_text(data.get("title"))
-    if not title:
-        frappe.throw(_("Title is required."))
-
-    material, placement = materials_domain.create_reference_material(
-        anchor_doctype=context["anchor_doctype"],
-        anchor_name=context["anchor_name"],
-        title=title,
-        reference_url=data.get("reference_url"),
-        description=data.get("description"),
-        modality=data.get("modality"),
-        usage_role=data.get("usage_role"),
-        placement_note=data.get("placement_note"),
-        origin=materials_domain.resolve_material_origin(context["anchor_doctype"]),
-    )
-    return {
-        "anchor_doctype": context["anchor_doctype"],
-        "anchor_name": context["anchor_name"],
-        "placement": placement.name,
-        "resource": _reload_anchor_material(context["anchor_doctype"], context["anchor_name"], material.name),
-    }
+    return _mutations_impl.create_planning_reference_material_impl(_module(), payload, **kwargs)
 
 
 @frappe.whitelist()
@@ -2964,123 +1749,29 @@ def upload_planning_material_file(
     usage_role: str | None = None,
     placement_note: str | None = None,
 ) -> dict[str, Any]:
-    anchor_doctype = anchor_doctype or frappe.form_dict.get("anchor_doctype")
-    anchor_name = anchor_name or frappe.form_dict.get("anchor_name")
-    title = title or frappe.form_dict.get("title")
-    description = description if description is not None else frappe.form_dict.get("description")
-    modality = modality if modality is not None else frappe.form_dict.get("modality")
-    usage_role = usage_role if usage_role is not None else frappe.form_dict.get("usage_role")
-    placement_note = placement_note if placement_note is not None else frappe.form_dict.get("placement_note")
-
-    context = _resolve_planning_resource_anchor(anchor_doctype, anchor_name, ptype="write")
-    title = planning.normalize_text(title)
-    if not title:
-        frappe.throw(_("Title is required."))
-
-    frappe.db.savepoint("upload_planning_material_file")
-    try:
-        material = materials_domain.create_file_material_record(
-            anchor_doctype=context["anchor_doctype"],
-            anchor_name=context["anchor_name"],
-            title=title,
-            description=description,
-            modality=modality,
-        )
-        governed_uploads.upload_supporting_material_file(material=material.name)
-        placement = materials_domain.create_material_placement(
-            supporting_material=material.name,
-            anchor_doctype=context["anchor_doctype"],
-            anchor_name=context["anchor_name"],
-            usage_role=usage_role,
-            placement_note=placement_note,
-            origin=materials_domain.resolve_material_origin(context["anchor_doctype"]),
-        )
-    except Exception:
-        frappe.db.rollback(save_point="upload_planning_material_file")
-        raise
-
-    return {
-        "anchor_doctype": context["anchor_doctype"],
-        "anchor_name": context["anchor_name"],
-        "placement": placement.name,
-        "resource": _reload_anchor_material(context["anchor_doctype"], context["anchor_name"], material.name),
-    }
+    return _mutations_impl.upload_planning_material_file_impl(
+        _module(),
+        anchor_doctype=anchor_doctype,
+        anchor_name=anchor_name,
+        title=title,
+        description=description,
+        modality=modality,
+        usage_role=usage_role,
+        placement_note=placement_note,
+    )
 
 
 @frappe.whitelist()
 def remove_planning_material(payload=None, **kwargs) -> dict[str, Any]:
-    data = _normalize_payload(payload if payload is not None else kwargs)
-    context = _resolve_planning_resource_anchor(data.get("anchor_doctype"), data.get("anchor_name"), ptype="write")
-    placement = planning.normalize_text(data.get("placement"))
-    if not placement:
-        frappe.throw(_("Placement is required."))
-
-    materials_domain.delete_anchor_material_placement(
-        placement,
-        anchor_doctype=context["anchor_doctype"],
-        anchor_name=context["anchor_name"],
-    )
-    return {
-        "anchor_doctype": context["anchor_doctype"],
-        "anchor_name": context["anchor_name"],
-        "placement": placement,
-        "removed": 1,
-    }
+    return _mutations_impl.remove_planning_material_impl(_module(), payload, **kwargs)
 
 
 def _resolve_student_group_options(student_name: str, course_id: str) -> list[dict[str, Any]]:
-    rows = frappe.db.sql(
-        """
-        SELECT
-            sg.name AS student_group,
-            sg.student_group_name,
-            sg.student_group_abbreviation,
-            sg.academic_year
-        FROM `tabStudent Group Student` sgs
-        INNER JOIN `tabStudent Group` sg ON sg.name = sgs.parent
-        WHERE sgs.student = %(student)s
-          AND COALESCE(sgs.active, 1) = 1
-          AND sg.status = 'Active'
-          AND sg.group_based_on = 'Course'
-          AND sg.course = %(course)s
-        ORDER BY sg.student_group_name ASC, sg.name ASC
-        """,
-        {"student": student_name, "course": course_id},
-        as_dict=True,
-    )
-    return [
-        {
-            "student_group": row.get("student_group"),
-            "label": row.get("student_group_name") or row.get("student_group_abbreviation") or row.get("student_group"),
-            "academic_year": row.get("academic_year"),
-        }
-        for row in rows or []
-        if row.get("student_group")
-    ]
+    return _student_impl.resolve_student_group_options(_module(), student_name, course_id)
 
 
 def _resolve_student_plan(course_id: str, student_groups: list[dict[str, Any]], requested_group: str | None):
-    selected_group = planning.normalize_text(requested_group)
-    valid_groups = {row["student_group"] for row in student_groups if row.get("student_group")}
-    if selected_group and selected_group not in valid_groups:
-        frappe.throw(_("Selected class is not available for this course."), frappe.PermissionError)
-    if not selected_group and len(student_groups) == 1:
-        selected_group = student_groups[0]["student_group"]
-    if not selected_group and student_groups:
-        selected_group = student_groups[0]["student_group"]
-
-    class_plan_row = None
-    if selected_group:
-        rows = frappe.get_all(
-            "Class Teaching Plan",
-            filters={"student_group": selected_group, "planning_status": "Active"},
-            fields=["name", "title", "course_plan", "planning_status", "team_note", "academic_year"],
-            order_by="modified desc, creation desc",
-            limit=1,
-        )
-        class_plan_row = rows[0] if rows else None
-
-    return selected_group or None, class_plan_row
+    return _student_impl.resolve_student_plan(_module(), course_id, student_groups, requested_group)
 
 
 @frappe.whitelist()

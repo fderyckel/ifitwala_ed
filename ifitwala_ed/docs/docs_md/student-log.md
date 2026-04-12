@@ -288,11 +288,150 @@ A: They remain in the student's permanent record. Follow-up status may auto-comp
 **Q: Can students see logs about behavioral incidents?**
 A: Only if you explicitly check "Visible to Student." Most schools keep behavioral logs internal while sharing academic progress notes.
 
-**Q: How do I run reports on student logs?**
-A: Use the Student Log Report (under Students > Reports) to filter by date range, log type, school, or follow-up status. Export to Excel for further analysis.
+**Q: How do I run reports or analytics on student logs?**
+A: Use the **Student Log Report** for formatted documentation and export (Students > Reports > Student Logs). For visual analytics and charts, use the **Student Log Dashboard** in the staff SPA at `/staff/analytics/student-logs`. See the dedicated sections above for details on both tools.
+
+**Q: Can I print or export logs for case files?**
+A: Yes! The Student Log Report includes a professionally formatted print template with color-coded status badges, threaded follow-ups, and filter summaries—perfect for case files, meetings, or accreditation evidence. Export to Excel for data analysis or PDF for documentation.
 
 **Q: Can I create logs in bulk?**
 A: Yes, Student Log supports Data Import for bulk creation (e.g., importing historical records). Use with care—logs are part of the official student record.
+
+---
+
+## Student Log Report
+
+The **Student Logs Report** is a comprehensive script report that gives you a consolidated view of all student logs and their follow-ups—perfect for generating documentation for meetings, accreditation reviews, or case file exports.
+
+### Accessing the Report
+
+Navigate to **Students > Reports > Student Logs**. The report loads with a default date range (last 30 days) but you can customize filters to see exactly what you need.
+
+### Available Filters
+
+| Filter | What It Does | Example Use |
+|--------|--------------|-------------|
+| **From / To Date** | Date range for log creation | Last semester, specific month |
+| **Student** | Filter to one specific student | Case file for a single student |
+| **Program** | Filter by academic program | Elementary vs. High School logs |
+| **School** | Filter by school (includes descendants) | Campus-specific reports |
+| **Academic Year** | Filter by school year | 2024-2025 academic year only |
+| **Log Type** | Filter by category | Only behavioral observations |
+| **Follow-up Status** | Open, In Progress, or Completed | See what's still pending |
+| **Requires Follow-up** | Yes/No filter | Find all unresolved cases |
+| **Author** | Who created the log | My own logs for review |
+| **Follow-up Author** | Who added follow-up notes | Cases handled by a counselor |
+
+### Report Output
+
+The report displays logs in a hierarchical format:
+
+- **Parent rows** show the main Student Log with:
+  - Log ID and student name
+  - Date, time, and log type
+  - Program, school, and academic year
+  - Follow-up status with color coding
+  - Visibility indicators (👤 student, 👪 guardians)
+  - Log content snippet
+
+- **Child rows** (indented) show each Follow Up with:
+  - Follow-up date and author
+  - Response content
+  - Response time metrics
+
+<Callout type="tip" title="Grouped view">
+Logs with multiple follow-ups are grouped together under a single parent row, making it easy to see the complete history of a case at a glance.
+</Callout>
+
+### Printing and Exporting
+
+The report includes a professionally formatted print template with:
+- **Color-coded status badges** — Red (Open), Orange (In Progress), Green (Completed)
+- **Status-accented card borders** — Each log card shows its status with a colored left border
+- **Student and context information** — Clear metadata about program, school, academic year
+- **Follow-up threading** — Indented follow-ups show the conversation flow
+- **Filter summary** — Print header shows which filters were applied
+
+**Export options:**
+- **Print** — Generate PDF for case files or meetings
+- **Export to Excel** — Download for further analysis or data manipulation
+
+<Callout type="info" title="Why Ifitwala Ed is different">
+Unlike basic list reports, the Student Logs Report presents data in a narrative format that reads like a case file. The print template is designed for professional documentation—perfect for counselor case notes, admin reviews, or accreditation evidence.
+</Callout>
+
+---
+
+## Student Log Dashboard (Analytics)
+
+The **Student Log Dashboard** provides visual analytics and insights into student support activity across your school or organization. Access it through the staff SPA at `/staff/analytics/student-logs`.
+
+### Who Can Access
+
+Dashboard access is restricted to specific roles:
+- Academic Admin
+- Pastoral Lead
+- Counselor
+- Learning Support
+- Curriculum Coordinator
+- Accreditation Visitor
+- System Manager
+
+### Dashboard Widgets
+
+The dashboard presents multiple visualizations:
+
+| Widget | What It Shows | Why It Matters |
+|--------|---------------|----------------|
+| **Logs by Type** | Bar chart of log types | Identify patterns (e.g., many academic concerns in one grade) |
+| **Logs by Cohort** | Distribution across graduating classes | Track which year groups need more support |
+| **Logs by Program** | Breakdown by academic program | Compare support needs across divisions |
+| **Logs by Author** | Who's creating logs | Ensure consistent documentation practices |
+| **Next Step Types** | What actions are being planned | Identify common intervention paths |
+| **Incidents Over Time** | Timeline of log creation | Spot trends and seasonal patterns |
+| **Open Follow-ups** | Count of pending tasks | Monitor workload and response times |
+
+### Interactive Features
+
+**Filtering:**
+- Filter by date range, academic year, school, program, or author
+- Academic Year takes precedence—if you select an AY, date range adjusts automatically
+- School filter includes descendant schools (parent campus shows all satellites)
+
+**Student Search:**
+- Search for specific students to see their complete log history
+- Recent logs appear with follow-up summaries and response time metrics
+- Click through to view the full log detail
+
+**Real-time Updates:**
+- Filter meta (schools, programs, authors) updates based on your permission scope
+- You only see data for schools and students within your organizational scope
+
+### Response Time Metrics
+
+For logs with follow-ups, the dashboard calculates and displays:
+- **Response time in minutes** — How long from log creation to first follow-up
+- **Human-readable labels** — "2h 30m", "1d 4h", etc.
+- **Follow-up counts** — How many actions each log generated
+
+<Callout type="success" title="Use case: Pastoral care review">
+A Pastoral Lead can filter to their school, select the current academic year, and see:
+- Which cohorts have the most behavioral logs
+- Whether follow-ups are happening promptly
+- Which types of incidents are trending upward
+- Who on their team is handling the most cases
+</Callout>
+
+### Dashboard vs. Report: When to Use Which
+
+| Use Case | Dashboard | Report |
+|----------|-----------|--------|
+| **Quick overview** | ✅ Charts show patterns at a glance | ❌ Requires reading rows |
+| **Trend analysis** | ✅ Time series and distributions | ⚠️ Can export to analyze |
+| **Single student case** | ✅ Student search with timeline | ✅ Filter to one student |
+| **Printed documentation** | ❌ Screen-only | ✅ Professional print template |
+| **Accreditation evidence** | ⚠️ Screenshots possible | ✅ Formatted PDF export |
+| **Bulk data export** | ❌ Limited export | ✅ Excel export with all fields |
 
 ---
 

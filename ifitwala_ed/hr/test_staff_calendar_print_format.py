@@ -42,6 +42,7 @@ class TestStaffCalendarPrintFormat(unittest.TestCase):
         for token in (
             "school_logo",
             "organization_logo",
+            "frappe.db.get_value",
             "doc.staff_calendar_name",
             "doc.school",
             "doc.employee_group",

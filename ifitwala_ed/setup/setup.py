@@ -23,6 +23,18 @@ from ifitwala_ed.website.block_registry import (
 )
 from ifitwala_ed.website.public_brand import sync_public_brand_website_settings
 
+DEFAULT_ADDRESS_TEMPLATE = (
+    "{{ address_line1 }}<br>\n"
+    "{% if address_line2 %}{{ address_line2 }}<br>{% endif -%}\n"
+    "{{ city }}<br>\n"
+    "{% if state %}{{ state }}<br>{% endif -%}\n"
+    "{% if pincode %} PIN:  {{ pincode }}<br>{% endif -%}\n"
+    "{{ country }}<br>\n"
+    "{% if phone %}Phone: {{ phone }}<br>{% endif -%}\n"
+    "{% if fax %}Fax: {{ fax }}<br>{% endif -%}\n"
+    "{% if email_id %}Email: {{ email_id }}<br>{% endif -%}\n"
+)
+
 
 def setup_education():
     ensure_initial_setup_flag()
@@ -36,6 +48,7 @@ def setup_education():
     create_default_attendance_codes()
     create_location_type()
     add_other_records()
+    ensure_default_address_template()
     ensure_hr_settings()
     create_student_file_folder()
     setup_website_top_bar()
@@ -397,6 +410,80 @@ def add_other_records(country=None):
         frappe.db.commit()
 
 
+def ensure_default_address_template():
+    if not frappe.db.table_exists("Address Template"):
+        return
+
+    if frappe.db.exists("Address Template", {"is_default": 1}):
+        return
+
+    country = _get_address_template_seed_country()
+    if country:
+        frappe.get_doc(
+            {
+                "doctype": "Address Template",
+                "country": country,
+                "is_default": 1,
+                "template": DEFAULT_ADDRESS_TEMPLATE,
+            }
+        ).insert(ignore_permissions=True, ignore_if_duplicate=True)
+        frappe.clear_cache(doctype="Address Template")
+        return
+
+    template_name = _get_existing_address_template_to_promote()
+    if not template_name:
+        return
+
+    doc = frappe.get_doc("Address Template", template_name)
+    changed = False
+
+    if not int(doc.is_default or 0):
+        doc.is_default = 1
+        changed = True
+
+    if not cstr(doc.template).strip():
+        doc.template = DEFAULT_ADDRESS_TEMPLATE
+        changed = True
+
+    if changed:
+        doc.save(ignore_permissions=True)
+        frappe.clear_cache(doctype="Address Template")
+
+
+def _get_address_template_seed_country() -> str | None:
+    if not frappe.db.table_exists("Country"):
+        return None
+
+    preferred_country = cstr(frappe.db.get_single_value("System Settings", "country")).strip()
+    templated_countries = set(frappe.get_all("Address Template", pluck="country", limit=500))
+    countries: list[str] = []
+
+    if (
+        preferred_country
+        and preferred_country not in templated_countries
+        and frappe.db.exists("Country", preferred_country)
+    ):
+        countries.append(preferred_country)
+
+    all_countries = frappe.get_all("Country", pluck="name", order_by="name asc", limit=500)
+    countries.extend(country for country in all_countries if country not in countries)
+
+    for country in countries:
+        if country not in templated_countries:
+            return country
+
+    return None
+
+
+def _get_existing_address_template_to_promote() -> str | None:
+    preferred_country = cstr(frappe.db.get_single_value("System Settings", "country")).strip()
+    if preferred_country and frappe.db.exists("Address Template", preferred_country):
+        return preferred_country
+
+    template_name = frappe.db.get_value("Address Template", {}, "name", order_by="creation asc")
+    return cstr(template_name).strip() or None
+
+
 def _get_doctype_editor_roles(doctype: str) -> list[str]:
     """Return roles that can create or edit the given DocType at permlevel 0."""
     meta = frappe.get_meta(doctype)
@@ -548,6 +635,7 @@ def grant_core_crm_permissions():
             "Admission Manager": ["read", "write", "create", "delete", "email", "comment", "assign"],
             "Academic Admin": ["read", "write", "create", "delete", "email", "comment", "assign"],
             "Academic Assistant": ["read", "write", "create", "delete", "email", "comment", "assign"],
+            "Curriculum Coordinator": ["read"],
             "HR Manager": ["read"],
             "HR User": ["read"],
             "Employee": ["read"],
@@ -559,6 +647,7 @@ def grant_core_crm_permissions():
             "Admission Manager": ["read", "write", "create", "delete", "email", "comment", "assign"],
             "Academic Admin": ["read", "write", "create", "delete", "email", "comment", "assign"],
             "Academic Assistant": ["read", "write", "create", "delete", "email", "comment", "assign"],
+            "Curriculum Coordinator": ["read"],
         },
     }
 
