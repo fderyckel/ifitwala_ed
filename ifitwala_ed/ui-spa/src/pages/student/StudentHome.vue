@@ -11,12 +11,12 @@
 					</p>
 				</div>
 				<div class="flex items-center gap-2">
-					<RouterLink :to="{ name: 'student-course-selection' }" class="if-action">
-						Course Selection
-					</RouterLink>
-					<RouterLink :to="{ name: 'student-activities' }" class="if-action">
-						Book Activities
-					</RouterLink>
+					<button type="button" class="if-action" @click="scrollToSection('calendar')">
+						Calendar
+					</button>
+					<button type="button" class="if-action" @click="scrollToSection('quick-links')">
+						Quick Links
+					</button>
 					<button type="button" class="if-action" :disabled="loadingHome" @click="loadHome">
 						Refresh
 					</button>
@@ -111,85 +111,6 @@
 			</div>
 		</section>
 
-		<section class="student-hub-section">
-			<div class="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-				<div>
-					<p class="type-overline text-ink/60">Snapshot</p>
-					<h2 class="type-h3 text-ink">Jump back into the right place</h2>
-					<p class="type-caption text-ink/70">These cards are shortcuts, not just counts.</p>
-				</div>
-			</div>
-
-			<div class="mt-4 grid grid-cols-2 gap-3 md:grid-cols-4">
-				<RouterLink
-					v-for="item in snapshotLinks"
-					:key="item.key"
-					:to="item.to"
-					class="group student-hub-card student-hub-card--interactive"
-					:class="snapshotSurfaceClass(item.key)"
-				>
-					<div class="flex items-start justify-between gap-3">
-						<p class="type-caption text-ink/60">{{ item.title }}</p>
-						<FeatherIcon
-							name="arrow-up-right"
-							class="h-4 w-4 shrink-0 text-ink/35 transition group-hover:text-jacaranda"
-						/>
-					</div>
-					<p class="mt-3 type-h3 text-ink">{{ item.count }}</p>
-					<p class="mt-1 type-caption text-ink/70">{{ item.description }}</p>
-				</RouterLink>
-			</div>
-		</section>
-
-		<section class="student-hub-section student-hub-section--warm">
-			<div class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-				<div>
-					<p class="type-overline text-ink/60">Communications</p>
-					<h2 class="type-h3 text-ink">Recent updates across your student Hub</h2>
-					<p class="type-caption text-ink/70">
-						Class, activity, and school updates stay connected to where they belong.
-					</p>
-				</div>
-				<RouterLink :to="linkFor(communicationsCenterHref)" class="if-action">
-					Open communication center
-				</RouterLink>
-			</div>
-
-			<div v-if="!communicationHighlights.length" class="mt-4 student-hub-empty">
-				<p class="type-body text-ink/70">
-					No student-facing updates are visible right now. New class, activity, and school messages
-					will appear here.
-				</p>
-			</div>
-
-			<div v-else class="mt-4 grid gap-3 lg:grid-cols-3">
-				<RouterLink
-					v-for="item in communicationHighlights"
-					:key="item.item_id || `${item.kind}-${item.title}`"
-					:to="linkFor(item.href)"
-					class="group student-hub-card student-hub-card--interactive student-hub-card--warm"
-				>
-					<div class="flex items-start justify-between gap-3">
-						<div>
-							<p class="type-caption text-ink/60">{{ item.source_label || 'Update' }}</p>
-							<p class="mt-2 type-body-strong text-ink">{{ item.title }}</p>
-						</div>
-						<FeatherIcon
-							name="arrow-up-right"
-							class="h-4 w-4 shrink-0 text-ink/35 transition group-hover:text-jacaranda"
-						/>
-					</div>
-					<p v-if="item.subtitle" class="mt-2 type-body text-ink/80">{{ item.subtitle }}</p>
-					<p v-if="item.publish_at" class="mt-3 type-caption text-ink/60">
-						{{ communicationDateLabel(item.publish_at) }}
-					</p>
-					<p class="mt-3 type-caption text-jacaranda">
-						{{ item.href_label || 'Open' }}
-					</p>
-				</RouterLink>
-			</div>
-		</section>
-
 		<section class="space-y-4">
 			<div class="flex items-center justify-between">
 				<div>
@@ -248,6 +169,55 @@
 			</div>
 		</section>
 
+		<section class="student-hub-section student-hub-section--warm">
+			<div class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+				<div>
+					<p class="type-overline text-ink/60">Communications</p>
+					<h2 class="type-h3 text-ink">Recent updates across your student Hub</h2>
+					<p class="type-caption text-ink/70">
+						Class, activity, and school updates stay connected to where they belong.
+					</p>
+				</div>
+				<RouterLink :to="linkFor(communicationsCenterHref)" class="if-action">
+					Open communication center
+				</RouterLink>
+			</div>
+
+			<div v-if="!communicationHighlights.length" class="mt-4 student-hub-empty">
+				<p class="type-body text-ink/70">
+					No student-facing updates are visible right now. New class, activity, and school messages
+					will appear here.
+				</p>
+			</div>
+
+			<div v-else class="mt-4 grid gap-3 lg:grid-cols-3">
+				<RouterLink
+					v-for="item in communicationHighlights"
+					:key="item.item_id || `${item.kind}-${item.title}`"
+					:to="linkFor(item.href)"
+					class="group student-hub-card student-hub-card--interactive student-hub-card--warm"
+				>
+					<div class="flex items-start justify-between gap-3">
+						<div>
+							<p class="type-caption text-ink/60">{{ item.source_label || 'Update' }}</p>
+							<p class="mt-2 type-body-strong text-ink">{{ item.title }}</p>
+						</div>
+						<FeatherIcon
+							name="arrow-up-right"
+							class="h-4 w-4 shrink-0 text-ink/35 transition group-hover:text-jacaranda"
+						/>
+					</div>
+					<p v-if="item.subtitle" class="mt-2 type-body text-ink/80">{{ item.subtitle }}</p>
+					<p v-if="item.publish_at" class="mt-3 type-caption text-ink/60">
+						{{ communicationDateLabel(item.publish_at) }}
+					</p>
+					<p class="mt-3 type-caption text-jacaranda">
+						{{ item.href_label || 'Open' }}
+					</p>
+				</RouterLink>
+			</div>
+		</section>
+
 		<section class="space-y-4">
 			<div class="flex items-center justify-between">
 				<div>
@@ -302,12 +272,12 @@
 			</div>
 		</section>
 
-		<section class="student-hub-section student-hub-section--support">
+		<section id="student-home-calendar" class="student-hub-section student-hub-section--support">
 			<h2 class="mb-3 type-h3 text-ink">Calendar</h2>
 			<StudentCalendar :auto-refresh-interval="30 * 60 * 1000" />
 		</section>
 
-		<section class="student-hub-section">
+		<section id="student-home-quick-links" class="student-hub-section">
 			<h2 class="mb-3 type-h3 text-ink">Quick Links</h2>
 			<div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
 				<RouterLink
@@ -353,14 +323,6 @@ import type {
 type BrowserSessionUser = {
 	fullname?: string | null;
 	email?: string | null;
-};
-
-type SnapshotLink = {
-	key: string;
-	title: string;
-	count: number;
-	description: string;
-	to: RouteTarget;
 };
 
 function getSessionUserInfo(): BrowserSessionUser {
@@ -411,14 +373,6 @@ const workBoard = computed(() => {
 	);
 });
 const timelineDays = computed<TimelineDay[]>(() => homePayload.value?.learning?.timeline ?? []);
-const accessibleCourseCount = computed(
-	() => homePayload.value?.learning?.accessible_courses_count ?? 0
-);
-const currentFocusCount = computed(() => {
-	if (workBoard.value.now.length) return workBoard.value.now.length;
-	return currentClass.value ? 1 : 0;
-});
-const comingThisWeekCount = computed(() => workBoard.value.soon.length);
 const communicationsCenterHref = computed<RouteTarget>(
 	() => homePayload.value?.communications?.center_href || { name: 'student-communications' }
 );
@@ -487,53 +441,6 @@ const boardLanes = computed(() => [
 
 const nextLearningStepButtonLabel = computed(() => {
 	return nextLearningStep.value?.cta_label || 'Open course';
-});
-const snapshotLinks = computed<SnapshotLink[]>(() => {
-	const currentFocusTarget =
-		currentClass.value?.href ??
-		workBoard.value.now[0]?.href ??
-		nextLearningStep.value?.href ??
-		null;
-	const comingThisWeekTarget =
-		workBoard.value.soon[0]?.href ?? workBoard.value.later[0]?.href ?? null;
-	const doneTarget = workBoard.value.done[0]?.href ?? null;
-
-	return [
-		{
-			key: 'courses',
-			title: 'Courses',
-			count: accessibleCourseCount.value,
-			description: 'Open your learning spaces.',
-			to: linkFor({ name: 'student-courses' }),
-		},
-		{
-			key: 'in-now',
-			title: 'In Now',
-			count: currentFocusCount.value,
-			description: currentClass.value
-				? `Open ${currentClass.value.course_name}.`
-				: 'Resume your active work.',
-			to: linkFor(currentFocusTarget),
-		},
-		{
-			key: 'coming-this-week',
-			title: 'Coming This Week',
-			count: comingThisWeekCount.value,
-			description: workBoard.value.soon[0]?.title
-				? `Start with ${workBoard.value.soon[0].title}.`
-				: 'Review what is due next.',
-			to: linkFor(comingThisWeekTarget),
-		},
-		{
-			key: 'recently-done',
-			title: 'Recently Done',
-			count: workBoard.value.done.length,
-			description: workBoard.value.done[0]?.title
-				? `Review ${workBoard.value.done[0].title}.`
-				: 'See your latest completed work.',
-			to: linkFor(doneTarget),
-		},
-	];
 });
 
 async function loadHome() {
@@ -612,13 +519,6 @@ function communicationDateLabel(value: string): string {
 	return formatLocalizedDateTime(value, { fallback: value });
 }
 
-function snapshotSurfaceClass(key: string): string {
-	if (key === 'in-now') return 'student-hub-card--focus';
-	if (key === 'coming-this-week') return 'student-hub-card--warm';
-	if (key === 'recently-done') return 'student-hub-card--success';
-	return 'student-hub-card--neutral';
-}
-
 function laneSurfaceClass(key: string): string {
 	if (key === 'now') return 'student-hub-lane--now';
 	if (key === 'soon') return 'student-hub-lane--soon';
@@ -642,6 +542,11 @@ function timelineItemSurfaceClass(kind: string): string {
 function nextLearningStepHighlightClass(step: NextLearningStep): string {
 	if (!step.can_open) return 'student-hub-highlight--warm';
 	return 'student-hub-highlight--focus';
+}
+
+function scrollToSection(section: 'calendar' | 'quick-links') {
+	const targetId = section === 'calendar' ? 'student-home-calendar' : 'student-home-quick-links';
+	document.getElementById(targetId)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
 onMounted(() => {

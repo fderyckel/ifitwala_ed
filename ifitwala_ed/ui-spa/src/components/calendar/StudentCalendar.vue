@@ -2,14 +2,7 @@
 <template>
 	<div class="relative">
 		<section class="paper-card schedule-card p-6">
-			<header
-				class="flex flex-col gap-4 border-b border-[rgb(var(--border-rgb)/0.9)] pb-4 md:flex-row md:items-center md:justify-between"
-			>
-				<div>
-					<h2 class="type-h2">My Calendar</h2>
-					<p class="type-meta">{{ subtitle }}</p>
-				</div>
-
+			<header class="flex justify-end border-b border-[rgb(var(--border-rgb)/0.9)] pb-4">
 				<div class="flex items-center gap-3 type-caption">
 					<button class="if-action type-button-label" @click="handleRefresh">
 						<FeatherIcon
@@ -186,13 +179,6 @@ const counts = computed<Record<StudentCalendarSource, number>>(() => {
 	}
 
 	return next;
-});
-
-const subtitle = computed(() => {
-	const total = filteredEvents.value.length;
-	return total
-		? `${total} event${total === 1 ? '' : 's'} in view`
-		: 'Nothing scheduled in this range';
 });
 
 const isEmpty = computed(

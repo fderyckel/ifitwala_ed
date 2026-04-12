@@ -41,4 +41,30 @@ describe('getAudienceInteractionCapabilities', () => {
 			hasVisibleActions: true,
 		});
 	});
+
+	it('treats string booleans as checked values for shared comments', () => {
+		expect(
+			getAudienceInteractionCapabilities({
+				interaction_mode: 'Staff Comments',
+				allow_public_thread: 'true',
+			})
+		).toEqual({
+			canReact: true,
+			canComment: true,
+			hasVisibleActions: true,
+		});
+	});
+
+	it('keeps explicit falsey string values disabled for shared comments', () => {
+		expect(
+			getAudienceInteractionCapabilities({
+				interaction_mode: 'Staff Comments',
+				allow_public_thread: 'false',
+			})
+		).toEqual({
+			canReact: true,
+			canComment: false,
+			hasVisibleActions: true,
+		});
+	});
 });

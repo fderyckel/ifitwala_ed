@@ -12,7 +12,17 @@ export type OrgCommunicationInteractionCapabilities = {
 }
 
 function isCheckedValue(raw: unknown): boolean {
-	return raw === 1 || raw === true || raw === '1'
+	if (raw === true || raw === 1) return true
+	if (raw === false || raw === 0 || raw == null) return false
+
+	if (typeof raw === 'string') {
+		const normalized = raw.trim().toLowerCase()
+		if (!normalized) return false
+		if (['0', 'false', 'no', 'n', 'off'].includes(normalized)) return false
+		if (['1', 'true', 'yes', 'y', 'on'].includes(normalized)) return true
+	}
+
+	return Boolean(raw)
 }
 
 // Centralize the current shipped SPA affordance rule until the backend exposes
@@ -42,12 +52,4 @@ export function getAudienceInteractionCapabilities(
 		canComment,
 		hasVisibleActions: canReact || canComment,
 	}
-}
-
-// Backward-compatible wrapper for existing callers that only need the
-// top-level "show interaction affordances" answer.
-export function canShowPublicInteractions(
-	item: OrgCommunicationInteractionSource | null | undefined
-): boolean {
-	return getAudienceInteractionCapabilities(item).hasVisibleActions
 }

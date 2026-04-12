@@ -174,3 +174,191 @@ When documenting Drive or file-related UX in Ifitwala_Ed, explicitly state:
 - whether the endpoint is bootstrap, read-model, or mutation
 - how many foundational calls the SPA is expected to make
 - whether preview/download uses Drive grants instead of raw URLs
+
+---
+
+## 10. User-Centric Documentation Style (docs/docs_md/)
+
+Files under `docs/docs_md/` are **end-user documentation**. They must be written for the people actually using Ifitwala Ed—teachers, administrators, admissions staff, principals—not just developers.
+
+### 10.1 Target Audience
+
+Write for:
+- **System Administrators** setting up the platform
+- **Academic Staff** using features day-to-day
+- **School Leadership** making configuration decisions
+- **Operational Staff** who are not technical
+
+Do NOT write for:
+- Software developers (that's what code comments and architecture docs are for)
+- Frappe framework experts
+
+### 10.2 Tone and Voice
+
+| Do This | Not This |
+|---------|----------|
+| Conversational and helpful | Dry, technical, academic |
+| "You can create..." "Your schools will..." | "The system implements..." "The DocType enforces..." |
+| Explain *why* it matters | Just list *what* it does |
+| Use real examples | Use abstract descriptions |
+| Celebrate differentiators | Be neutral about capabilities |
+| Anticipate user questions | Assume they already understand |
+
+### 10.3 Document Structure
+
+Every `docs_md` DocType document should follow this structure:
+
+1. **Opening Hook** — What is this? Why does it matter? (1-2 paragraphs)
+2. **Why This Matters** — Bullet points explaining practical value
+3. **Creating/Using [DocType]** — Step-by-step practical guide
+4. **Field Reference** — Table explaining what each field does, with tips
+5. **Where You'll Use This** — Real workflows and scenarios
+6. **Permissions: Who Can Do What** — Second-level section (##) with role table
+7. **Best Practices** — Actionable advice for different scenarios
+8. **Common Questions** — FAQ format addressing likely confusion points
+9. **Related Docs** — Links to connected features
+10. **Technical Notes (IT)** — Final section for system administrators
+
+### 10.4 Key Content Elements
+
+**Include marketing positioning where appropriate:**
+- Call out why Ifitwala Ed's approach is different/better
+- Use callout boxes for differentiators
+- Don't be afraid to sell the platform's depth
+
+**Make it practical:**
+- Step-by-step instructions, not just feature lists
+- Real-world scenarios (single school vs. multi-campus vs. international group)
+- Tips for common situations
+- Warnings about gotchas
+
+**Make it accessible:**
+- Define technical terms when first used
+- Use tables for comparisons and role matrices
+- Use bullet points for scannable content
+- Include a FAQ section
+
+### 10.5 Permission Matrix Placement
+
+The `## Permissions: Who Can Do What` section (or similarly named) **must be a second-level heading** (`##`), not buried at the end. Users need to understand access control early.
+
+Include:
+- What each role can do (in plain language)
+- Typical job titles for each role
+- How scoping/isolation works (if relevant)
+
+### 10.6 Reference Document
+
+See `organization.md` as the canonical example of this style:
+- Conversational tone throughout
+- "Why Ifitwala Ed is different" callouts
+- Step-by-step creation guide
+- Real-world scenarios (single school, group, multi-national)
+- Practical FAQ
+- Permission section as `##` (second level)
+- Technical details relegated to final section
+
+When writing or rewriting any `docs_md` file, use `organization.md` as your style reference.
+
+---
+
+## 11. Custom Block Components (docs/docs_md/)
+
+The documentation system supports custom JSX-style blocks for richer presentation. Use these instead of plain markdown for better user experience.
+
+### 11.1 Steps Block
+
+Use `<Steps>` with nested `<Step>` entries for procedural instructions. Each step can include a `title` attribute.
+
+```markdown
+<Steps title="Setting up your Organization">
+  <Step title="Navigate to Setup">
+    Go to **Setup > Organization**, then click **New**.
+  </Step>
+  <Step title="Enter Basic Information">
+    Fill in the Organization Name and Abbreviation.
+  </Step>
+</Steps>
+```
+
+**When to use:**
+- Creation/setup workflows
+- Multi-step processes
+- Lifecycle explanations
+
+### 11.2 Do / Don't Block
+
+Use `<DoDont>` with nested `<Do>` and `<Dont>` entries for guidance on best practices.
+
+```markdown
+<DoDont doTitle="Do" dontTitle="Don't">
+  <Do>Create an Organization even for single schools.</Do>
+  <Do>Use meaningful abbreviations.</Do>
+  <Dont>Create separate Organizations for each campus.</Dont>
+  <Dont>Change the abbreviation frequently.</Dont>
+</DoDont>
+```
+
+**When to use:**
+- Best practices sections
+- Common pitfalls to avoid
+- Quick guidance without lengthy explanations
+
+### 11.3 Related Docs Block
+
+Use `<RelatedDocs>` to render related document cards. The `slugs` attribute accepts comma-separated slugs.
+
+```markdown
+<RelatedDocs
+  slugs="school,institutional-policy,student-applicant"
+  title="Continue With Related Setup Docs"
+/>
+```
+
+**When to use:**
+- End of documents (instead of markdown link lists)
+- "See also" sections
+- Navigation to related workflows
+
+### 11.4 Callout Block
+
+Use `<Callout>` for highlighted information boxes.
+
+```markdown
+<Callout type="info" title="Why Ifitwala Ed is different">
+  Unlike platforms that treat each school as an isolated silo...
+</Callout>
+
+<Callout type="warning" title="Enterprise-grade security">
+  This is architectural isolation that most platforms don't have...
+</Callout>
+
+<Callout type="tip" title="What happens automatically">
+  The moment you save, Ifitwala Ed creates a complete Chart of Accounts...
+</Callout>
+```
+
+**Available types:** `info`, `warning`, `tip`, `success`, `error`
+
+**When to use:**
+- Differentiators and marketing positioning (`type="info"`)
+- Important warnings (`type="warning"`)
+- Helpful tips (`type="tip"`)
+- Positive confirmations (`type="success"`)
+- Critical errors to avoid (`type="error"`)
+
+### 11.5 Block Usage Guidelines
+
+| Block | Location | Purpose |
+|-------|----------|---------|
+| `Steps` | After "Creating/Using" heading | Step-by-step procedures |
+| `DoDont` | Inside "Best Practices" section | Quick do/don't guidance |
+| `RelatedDocs` | Before "Technical Notes (IT)" | Navigation to related docs |
+| `Callout` | Anywhere emphasis is needed | Highlighted information |
+
+**Formatting tips:**
+- Use sentence case for Step titles and Callout titles
+- Keep Step content to 1-3 sentences
+- Limit DoDont lists to 4-6 items per side
+- Always include a `title` attribute for Steps and Callouts
+- Use RelatedDocs instead of markdown bullet lists for related links

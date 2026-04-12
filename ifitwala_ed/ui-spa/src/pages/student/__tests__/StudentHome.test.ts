@@ -266,7 +266,7 @@ describe('StudentHome', () => {
 		expect(text).toContain('Open communication center')
 	})
 
-	it('renders snapshot cards as clickable shortcuts', async () => {
+	it('renders hero jump actions for the calendar and quick links sections', async () => {
 		;(window as Window & { frappe?: unknown }).frappe = {
 			session: {
 				user_info: {
@@ -288,84 +288,18 @@ describe('StudentHome', () => {
 			},
 			learning: {
 				today_classes: [],
-				next_learning_step: {
-					kind: 'course',
-					title: 'Biology',
-					subtitle: 'Resume your course work.',
-					cta_label: 'Open course',
-					status_label: 'Open',
-					can_open: 1,
-					href: { name: 'student-course-detail', params: { course_id: 'BIO-1' } },
-				},
-				accessible_courses_count: 4,
+				next_learning_step: null,
+				accessible_courses_count: 0,
 				selected_year: '2025-2026',
 				orientation: {
-					current_class: {
-						course: 'BIO-1',
-						course_name: 'Biology',
-						student_group: 'GRP-1',
-						instructors: ['Dr Green'],
-						time_slots: [{ time_range: '09:00 - 09:45' }],
-						href: { name: 'student-course-detail', params: { course_id: 'BIO-1' } },
-					},
+					current_class: null,
 					next_class: null,
 				},
 				work_board: {
-					now: [
-						{
-							task_delivery: 'DEL-1',
-							task: 'TASK-1',
-							title: 'Lab Notes',
-							requires_submission: 1,
-							require_grading: 1,
-							href: { name: 'student-course-detail', params: { course_id: 'BIO-1' } },
-							lane: 'now',
-							lane_reason: 'Ready now',
-							status_label: 'Open',
-							outcome: {
-								has_submission: 0,
-								has_new_submission: 0,
-								is_complete: 0,
-							},
-						},
-					],
-					soon: [
-						{
-							task_delivery: 'DEL-2',
-							task: 'TASK-2',
-							title: 'Essay Draft',
-							requires_submission: 1,
-							require_grading: 1,
-							href: { name: 'student-course-detail', params: { course_id: 'ENG-1' } },
-							lane: 'soon',
-							lane_reason: 'Due this week',
-							status_label: 'Upcoming',
-							outcome: {
-								has_submission: 0,
-								has_new_submission: 0,
-								is_complete: 0,
-							},
-						},
-					],
+					now: [],
+					soon: [],
 					later: [],
-					done: [
-						{
-							task_delivery: 'DEL-3',
-							task: 'TASK-3',
-							title: 'History Reflection',
-							requires_submission: 1,
-							require_grading: 1,
-							href: { name: 'student-course-detail', params: { course_id: 'HIS-1' } },
-							lane: 'done',
-							lane_reason: 'Completed',
-							status_label: 'Done',
-							outcome: {
-								has_submission: 1,
-								has_new_submission: 0,
-								is_complete: 1,
-							},
-						},
-					],
+					done: [],
 				},
 				timeline: [],
 			},
@@ -374,21 +308,16 @@ describe('StudentHome', () => {
 		mountStudentHome()
 		await flushUi()
 
-		const text = document.body.textContent || ''
-		expect(text).toContain('Jump back into the right place')
-		expect(text).toContain('Courses')
-		expect(text).toContain('In Now')
-		expect(text).toContain('Coming This Week')
-		expect(text).toContain('Recently Done')
-
-		const courseShortcut = Array.from(document.querySelectorAll('a')).find(node =>
-			node.textContent?.includes('Courses')
+		const calendarButton = Array.from(document.querySelectorAll('button')).find(node =>
+			node.textContent?.includes('Calendar')
 		)
-		const inNowShortcut = Array.from(document.querySelectorAll('a')).find(node =>
-			node.textContent?.includes('In Now')
+		const quickLinksButton = Array.from(document.querySelectorAll('button')).find(node =>
+			node.textContent?.includes('Quick Links')
 		)
 
-		expect(courseShortcut?.getAttribute('data-to')).toContain('student-courses')
-		expect(inNowShortcut?.getAttribute('data-to')).toContain('BIO-1')
+		expect(calendarButton).toBeTruthy()
+		expect(quickLinksButton).toBeTruthy()
+		expect(document.getElementById('student-home-calendar')).toBeTruthy()
+		expect(document.getElementById('student-home-quick-links')).toBeTruthy()
 	})
 })

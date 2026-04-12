@@ -1,156 +1,279 @@
 ---
-title: "Policy Version: Legal Text Snapshot and Activation Gate"
+title: "Policy Version: Publish and Track Policy Changes"
 slug: policy-version
 category: Governance
 doc_order: 2
-version: "1.6.0"
-last_change_date: "2026-04-02"
-summary: "Store immutable policy text versions, version-scoped acknowledgement clauses, enforce amendment chains with stored diffs, and lock legal text once a version becomes active or acknowledged."
-seo_title: "Policy Version: Legal Text Snapshot and Activation Gate"
-seo_description: "Store immutable policy text versions, enforce amendment chains with stored diffs, and lock legal text once a version is active or acknowledged."
+version: "1.7.0"
+last_change_date: "2026-04-11"
+summary: "Create immutable policy text versions with automatic diff tracking, acknowledgement clauses, and controlled activation for applicants, guardians, and staff."
+seo_title: "Policy Version: Publish and Track Policy Changes"
+seo_description: "Learn how to create, publish, and version control your institutional policies with automated diff tracking and acknowledgement management."
 ---
 
-## Policy Version: Legal Text Snapshot and Activation Gate
+## What is a Policy Version?
 
-## Before You Start (Prerequisites)
+A **Policy Version** is the actual legal text of a policy at a specific point in time. While the Institutional Policy defines what the policy is and who it applies to, the Policy Version contains the words people read and acknowledge.
 
-- Create and activate the parent `Institutional Policy` first.
-- Finalize legal text and version label before activation because active/acknowledged text is lock-protected.
-- Publish an active version before collecting acknowledgements.
+Think of it like this:
+- **Institutional Policy** = The book title and catalog information
+- **Policy Version** = The actual content of each edition
 
-`Policy Version` stores the actual legal/consent text that users acknowledge. It is the legal artifact under an `Institutional Policy`.
+When your Privacy Policy needs updating, you don't edit the old text—you create a new Policy Version. This preserves the historical record, maintains audit trails, and lets you track exactly what was acknowledged when.
 
-## What It Enforces
+<Callout type="info" title="Why Ifitwala Ed is different">
+Unlike simple document uploads that lose history, Ifitwala Ed's Policy Versions create an immutable legal record. Once published, the text is locked. Changes require new versions with automatic diff comparison. You can see exactly what changed between versions—down to the paragraph level—and users see a clear change summary before re-acknowledging.
+</Callout>
 
-- Parent `institutional_policy` must exist and be active.
-- `version_label` must be unique per institutional policy.
-- `policy_text` must be non-empty.
-- `acknowledgement_clauses` may define version-scoped required or optional checkboxes shown during acknowledgement.
-- For every new version after the first, `based_on_version` is required.
-- `based_on_version` must point to a version under the same `institutional_policy`.
-- `change_summary` is required before activating an amended version (draft amendments can be saved while summary is pending).
-- `diff_html` and `change_stats` are generated server-side from `based_on_version` -> current text.
-- Only one active version is allowed per institutional policy.
-- `institutional_policy` is immutable after insert.
-- `approved_by` (when set) must be an enabled system user with `Policy Version` write access and in policy scope:
-  - school-scoped policy: approver must belong to the same school or an ancestor/parent school
-  - organization-scoped policy: approver must belong to the same organization or an ancestor/parent organization
-- Policy admins may create, read, and edit versions for policies rooted in their base organization or descendant organizations.
-- Runtime visibility is scope-enforced server-side through parent policy scope:
-  - parent policy organization must be in user organization lineage (`self + parents`)
-  - if parent policy is school-scoped, policy school must be in user school lineage (`self + parents`)
-- `policy_text` and `acknowledgement_clauses` are editable only while Draft (`is_active = 0`) and no acknowledgements exist.
-- Lifecycle is controlled by `is_active` (not DocType submit/cancel workflow).
-- Once a version is activated, `policy_text` is permanently lock-protected (`text_locked = 1`) even if later deactivated.
-- Once a version is activated, acknowledgement clause definitions are also lock-protected for that version.
-- Once any acknowledgement exists for a version:
-  - legal/core fields are lock-protected (`policy_text`, `version_label`, `institutional_policy`, amendment/diff metadata, acknowledgement clause definitions).
-  - only `System Manager` with explicit `flags.override_reason` can override, and override is comment-audited.
-- Deletion is blocked.
+---
 
-## Where It Is Used Across the ERP
+## Why Policy Versions Matter
 
-- [**Policy Acknowledgement**](/docs/en/policy-acknowledgement/): `policy_version` must be active for acknowledgements.
-- [**Student Applicant**](/docs/en/student-applicant/):
-  - admissions policy requirements use active versions only
-  - portal policy payload includes version text (`content_html`) from active versions
-- Admissions portal endpoints:
-  - `get_applicant_policies`
-  - `acknowledge_policy`
+### 1. **Immutable Legal Record**
+Once a version is activated or acknowledged, its text is permanently locked. No accidental edits, no "I thought I saved it" moments. Your legal history is preserved exactly as it was published.
 
-## Lifecycle and Linked Documents
+### 2. **Automatic Diff Tracking**
+When you create a new version based on an old one, the system automatically generates a visual diff showing what changed. Users see additions, deletions, and modifications clearly marked before they acknowledge.
 
-1. Draft legal text under the parent `Institutional Policy`.
-2. For amendments, open an existing version in Desk and use **Create Amendment** to prefill:
-   - `institutional_policy`
-   - `based_on_version`
-   - copied `policy_text`
-   - suggested next `version_label`
-3. Update `change_summary` and amended text in the new draft version.
-4. Use **Share Policy** on the version form to open a communication modal that:
-   - creates a draft `Org Communication`
-   - defaults to one-week Morning Brief window
-   - reuses the parent policy scope instead of widening it:
-     - school-scoped policies offer `School` and `Team`
-     - organization-wide staff-only policies additionally offer `Organization Staff`
-     - organization-wide mixed-audience policies offer `Schools in Organization`, `School`, and `Team`
-   - `Organization Staff` creates one organization-level staff audience row and keeps `Org Communication.school` blank so staff without a linked school remain eligible
-   - `Schools in Organization` writes explicit audience rows for all schools in that organization
-   - preselects recipients from `Institutional Policy.applies_to` with staff checked by default (editable before submit)
-   - supports recipient toggles (staff/students/guardians/community)
-   - locks `Organization Staff` and `Team` to staff-only recipients
-   - can optionally trigger a staff signature campaign (off by default; staff policies only)
-   - embeds a policy link that opens the SPA `staff-policy-inform` overlay (read-only, close-only) from Morning Brief and Org Communication surfaces
-5. Activate one version at a time for live acknowledgement collection.
-6. Collect acknowledgements through portal/flows tied to this active version.
-7. When acknowledgements exist, treat core legal fields as lock-protected history.
+### 3. **Acknowledgement Clauses**
+Define specific checkboxes users must tick—"I have read the policy," "I consent to data processing," "I understand the consequences." These become part of the legal record.
+
+### 4. **Controlled Activation**
+Only one version can be active at a time per policy. Draft versions let you perfect the text with stakeholders before going live. Schedule effective dates for planned policy rollouts.
+
+### 5. **Complete Audit Trail**
+Who approved this version? When did it become active? How many people acknowledged it? Every action is timestamped and attributed. Accreditation and legal compliance made simple.
+
+---
+
+## Creating a Policy Version
+
+<Steps title="Publishing a New Policy Version">
+  <Step title="Open the Parent Policy">
+    Navigate to the Institutional Policy you want to version. Click **Create Policy Version**.
+  </Step>
+  <Step title="Set Version Label">
+    Enter a version label (e.g., "v1", "v2.1", "2024-Update"). This must be unique within the policy.
+  </Step>
+  <Step title="Write the Policy Text">
+    Use the rich text editor to compose your policy. Include all legal language, formatting, and structure.
+  </Step>
+  <Step title="Add Acknowledgement Clauses">
+    Define what users must check to acknowledge: "I have read and understood this policy," "I consent to X," etc.
+  </Step>
+  <Step title="Set Effective Dates (Optional)">
+    Specify when this version becomes effective and when it expires. Useful for planned policy transitions.
+  </Step>
+  <Step title="Get Approval">
+    Select the person who approved this version. They must have write access and be within the policy scope.
+  </Step>
+  <Step title="Activate">
+    Check **Is Active** to publish. The previous active version is automatically deactivated. Only one version can be active at a time.
+  </Step>
+</Steps>
+
+<Callout type="success" title="First version vs. amendments">
+For your first version, the form opens blank. For amendments, click **Create Amendment** on an existing version to prefill with the previous text, copy the policy context, and suggest the next version label.
+</Callout>
+
+---
+
+## Creating Policy Amendments
+
+When you need to update an existing policy, create an amendment rather than editing the locked text.
+
+<Steps title="Amending an Existing Policy">
+  <Step title="Open Current Version">
+    Find the active Policy Version you want to update. Click **Create Amendment**.
+  </Step>
+  <Step title="Review Auto-Prefilled Data">
+    The system copies the policy text, sets the based-on version, and suggests a new version label (v1 → v2, etc.).
+  </Step>
+  <Step title="Document Changes">
+    Fill in the **Change Summary**—a human-readable description of what changed and why. This is required for amendments.
+  </Step>
+  <Step title="Edit the Text">
+    Modify the policy text. The system will automatically generate a diff showing what changed.
+  </Step>
+  <Step title="Review Diff">
+    Check the auto-generated **Diff HTML** to ensure changes are captured correctly.
+  </Step>
+  <Step title="Activate">
+    Save and activate. Users will see the change summary and diff when they next access the policy.
+  </Step>
+</Steps>
+
+<Callout type="tip" title="Communication integration">
+When you share a policy, the system can create an Org Communication with Morning Brief distribution. Staff see the policy in their daily briefing with a link to read and acknowledge.
+</Callout>
+
+---
+
+## Policy Version Fields Explained
+
+| Field | What It's For | Tips |
+|-------|---------------|------|
+| **Institutional Policy** | The parent policy identity | Auto-filled when created from policy; cannot change |
+| **Version Label** | Human-readable version ID | Use semantic versioning (v1, v2.1) or dates (2024-01) |
+| **Based On Version** | Previous version this amends | Required for amendments; creates diff automatically |
+| **Policy Text** | The actual legal content | Use formatting, headings, and clear language |
+| **Change Summary** | What changed and why | Required for amendments; shown to users before acknowledgement |
+| **Diff HTML** | Visual comparison | Auto-generated from Based On Version; read-only |
+| **Change Stats** | Metrics (paragraphs changed, etc.) | Auto-generated; read-only |
+| **Acknowledgement Clauses** | Required checkboxes | Create specific consent items users must agree to |
+| **Effective From/To** | Validity period | Optional; useful for scheduled policy updates |
+| **Approved By/On** | Approval record | Shows who authorized this version |
+| **Is Active** | Published status | Only one version per policy can be active |
+
+---
+
+## Locking and Immutability
+
+### When Text Locks
+
+Policy text becomes uneditable when:
+1. **Activated** — The version is marked Is Active
+2. **Acknowledged** — Anyone acknowledges this version
+
+Once locked, text changes require creating a new version. This preserves legal integrity.
+
+### Override (Emergency Only)
+
+System Managers can override locks with an explicit reason, which is audit-logged. Use only for critical corrections, never for routine updates.
 
 <Callout type="warning" title="Lock after adoption">
-After first activation or acknowledgement, legal text mutation is restricted by controller guards to preserve consent integrity.
+After activation or first acknowledgement, policy text is permanently locked. Always review carefully before activating. If you find an error, create a new version rather than trying to edit the locked one.
 </Callout>
 
-<Callout type="tip" title="Versioning strategy">
-Use a new version row for policy changes. Keep old versions for audit continuity instead of editing accepted text.
-</Callout>
+---
+
+## Sharing and Communicating Policies
+
+### Share Policy Button
+
+Use **Share Policy** on any version to:
+- Create an Org Communication draft
+- Default to one-week Morning Brief window
+- Target appropriate audiences based on policy scope
+- Preselect recipients from the Applies To settings
+- Optionally launch a staff signature campaign
+
+### Audience Targeting
+
+The share dialog respects your policy scope:
+- **School-scoped policies**: Offer School and Team audiences
+- **Organization-wide staff policies**: Offer Organization Staff audience
+- **Mixed-audience policies**: Offer Schools in Organization, School, and Team
+
+### Staff Signature Campaigns
+
+For staff policies, enable the optional signature campaign:
+- Targets employees by organization, school, and employee group
+- Creates ToDos for pending signatures
+- Tracks completion in analytics
+- Reminds through Morning Brief
+
+---
+
+## Where Policy Versions Appear
+
+### Admissions Portal
+Applicants see the active version of Applicant policies. They must acknowledge before progressing through admissions stages. Missing acknowledgements block readiness.
+
+### Guardian Portal
+Parents see active Guardian policies for their linked children. They acknowledge once per policy per child (or family-wide depending on settings). Historical acknowledgements are preserved.
+
+### Staff Workspace
+Staff see active Staff policies in their policy library. Morning Brief highlights new or updated policies. Signature campaigns create actionable ToDos.
+
+### Policy Inform Overlay
+Clicking a policy link opens a read-only overlay showing:
+- Current policy text
+- Change summary (if amended)
+- Visual diff (if amended)
+- Acknowledgement clauses
+- Action buttons to acknowledge
+
+---
+
+## Best Practices
+
+<DoDont doTitle="Do" dontTitle="Don't">
+  <Do>Create a new version for every material policy change.</Do>
+  <Do>Write clear change summaries explaining what changed and why.</Do>
+  <Do>Review the auto-generated diff before activating.</Do>
+  <Do>Use effective dates for planned policy transitions.</Do>
+  <Do>Share new versions through Morning Brief for visibility.</Do>
+  <Do>Deactivate old Institutional Policies rather than deleting.</Do>
+  <Dont>Edit text after activation—create a new version instead.</Dont>
+  <Dont>Skip the change summary for amendments.</Dont>
+  <Dont>Activate without reviewing acknowledgement clauses.</Dont>
+  <Dont>Create multiple active versions of the same policy.</Dont>
+</DoDont>
+
+---
+
+## Common Questions
+
+**Q: Can I edit a policy after activating it?**
+A: No. Once active (or acknowledged), the text is locked. Create a new Policy Version instead. This preserves the legal record.
+
+**Q: What happens to old acknowledgements when I publish a new version?**
+A: Historical acknowledgements remain valid for the version they signed. Depending on your settings, users may need to re-acknowledge the new version for certain activities.
+
+**Q: How do I see what changed between versions?**
+A: The system auto-generates a visual diff. Open the newer version and look at the Diff HTML field—it highlights additions, deletions, and modifications.
+
+**Q: Can I schedule a policy to activate later?**
+A: Yes, use the Effective From date. However, the version must still be marked Is Active. The date is for reference and reporting.
+
+**Q: What if I find a typo in an active policy?**
+A: For minor typos, System Managers can override with an audit reason. For substantive changes, create a new version. When in doubt, create a new version—it's safer legally.
+
+**Q: How do users know a policy has been updated?**
+A: When you share the policy through Morning Brief or Org Communication, users see the change summary. The policy inform overlay shows the diff when they view it.
+
+**Q: Can I have draft versions while another is active?**
+A: Yes. You can create and edit draft versions while another version is active. Only activate the new version when ready to publish.
+
+**Q: What happens if I deactivate the active version?**
+A: The policy no longer appears in portals for new acknowledgements. Historical acknowledgements are preserved. If this was the only active version, the policy effectively becomes unavailable until a new version is activated.
+
+---
+
+<RelatedDocs
+  slugs="institutional-policy,policy-acknowledgement,student-applicant,org-communication"
+  title="Continue With Governance Docs"
+/>
+
+---
 
 ## Technical Notes (IT)
 
-### Schema and Controller Snapshot
-
-- **DocType schema file**: `ifitwala_ed/governance/doctype/policy_version/policy_version.json`
-- **Controller file**: `ifitwala_ed/governance/doctype/policy_version/policy_version.py`
-- **Workflow API**: `ifitwala_ed.api.policy_communication.create_policy_amendment_communication`
-- **Required fields (`reqd=1`)**:
-  - `institutional_policy` (`Link` -> `Institutional Policy`)
-  - `version_label` (`Data`)
-  - `policy_text` (`Text Editor`)
-  - `is_active` (`Check`)
-- **Lifecycle hooks in controller**: `before_insert`, `before_save`, `before_delete`
-- **Operational/public methods**:
-  - `create_policy_amendment_communication` (named workflow action for communication + optional signature campaign launch)
-
-- **DocType**: `Policy Version` (`ifitwala_ed/governance/doctype/policy_version/`)
-- **Autoname**: `hash`
-- **Fields**:
-  - `institutional_policy` (Link -> Institutional Policy, required)
-  - `version_label` (Data, required)
-  - `based_on_version` (Link -> Policy Version)
-  - `change_summary` (Small Text; required for activation when amended)
-  - `policy_text` (Text Editor, required)
-  - `acknowledgement_clauses` (Table -> `Policy Version Acknowledgement Clause`)
-  - `diff_html` (Text Editor; server-generated, read-only)
-  - `change_stats` (Small Text JSON; server-generated, read-only)
-  - `text_locked` (Check; hidden server lock flag)
-  - `effective_from` (Date)
-  - `effective_to` (Date)
-  - `approved_by` (Link -> User)
-  - `approved_on` (Datetime)
-  - `is_active` (Check, required, default `0`)
-- **Controller guards**:
-  - `before_insert`: policy admin check + parent/uniqueness/text validation + amendment chain validation + diff generation
-  - `before_save`: draft/active text lock enforcement + acknowledgement lock + amendment/diff synchronization + approved-by write/scope validation + active-state validation
-  - `before_delete`: hard block
+- **DocType**: `Policy Version` — Located in Governance module
+- **Autoname**: `GOV-POL-VER-.####` format
+- **Locking**: Text locks when `is_active=1` OR acknowledgements exist
+- **Amendment Chain**: `based_on_version` links versions in a chain
+- **Diff Generation**: Server-side generation from previous version text
 
 ### Permission Matrix
 
 | Role | Read | Write | Create | Delete | Notes |
-|---|---|---|---|---|---|
-| `System Manager` | Yes | Yes | Yes | Yes | Doctype permission allows delete; controller blocks delete |
-| `Organization Admin` | Yes | Yes | Yes | Yes | Doctype permission allows delete; controller blocks delete |
-| `Accounts Manager` | Yes | Yes | Yes | Yes | Doctype permission allows delete; controller blocks delete |
-| `Admission Manager` | Yes | Yes | Yes | Yes | Doctype permission allows delete; controller blocks delete |
-| `Academic Admin` | Yes | Yes | Yes | Yes | Doctype permission allows delete; controller blocks delete |
-| `HR Manager` | Yes | Yes | Yes | Yes | Doctype permission allows delete; controller blocks delete |
+|------|------|-------|--------|--------|-------|
+| `System Manager` | Yes | Yes | Yes | Blocked | Can override locks with reason |
+| `Organization Admin` | Yes | Yes | Yes | Blocked | Full version management |
+| `Accounts Manager` | Yes | Yes | Yes | Blocked | Full version management |
+| `Admission Manager` | Yes | Yes | Yes | Blocked | Full version management |
+| `Academic Admin` | Yes | Yes | Yes | Blocked | Full version management |
+| `HR Manager` | Yes | Yes | Yes | Blocked | Full version management |
+| `Employee` | Yes | No | No | No | Read-only access |
+| `Accreditation Visitor` | Yes | No | No | No | Read-only for audits |
 
-Runtime controller rules:
-- Policy version management requires policy-admin roles (`System Manager`, `Organization Admin`, `Accounts Manager`, `Admission Manager`, `Academic Admin`, `HR Manager`).
-- `approved_by` options are filtered by a server link query so only write-capable users in valid policy scope are selectable.
-- `policy_text` and acknowledgement clause definitions become append-only once version is active or acknowledged; edits then require creating a new version.
-- Amended versions are first-class artifacts with human `change_summary` and stored paragraph diff (`diff_html` + `change_stats`).
-- Policy admins may manage versions for parent policies rooted in their organization or descendant organizations; non-admin read/list visibility remains enforced through parent policy scope.
+**Lock Rules:**
+- `policy_text` and `acknowledgement_clauses` editable only while Draft (`is_active=0`) and no acknowledgements
+- Once active or acknowledged, fields are lock-protected
+- Only System Manager with explicit `flags.override_reason` can override
+- All overrides are comment-audited
 
-## Related Docs
-
-- [**Institutional Policy**](/docs/en/institutional-policy/) - policy identity and scope owner
-- [**Policy Acknowledgement**](/docs/en/policy-acknowledgement/) - evidence tied to versions
-- [**Student Applicant**](/docs/en/student-applicant/) - admissions readiness and portal acknowledgements
+**Approval Scope:**
+- School-scoped policies: Approver must belong to same school or ancestor
+- Organization-scoped: Approver must belong to same organization or ancestor
