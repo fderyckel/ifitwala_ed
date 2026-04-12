@@ -252,6 +252,10 @@ It should be:
 
 Hero:
 
+- anchor-school branding using scoped `School` data only:
+  - `school_name`
+  - `school_logo`
+  - `school_tagline`
 - `student_full_name` with fallback to first/middle/last name construction
 - `student_preferred_name` when present and distinct
 - `student_id`
@@ -276,6 +280,24 @@ Identity and language:
 - `student_first_language`
 - `student_second_language`
 - `residency_status`
+
+CRM summary:
+
+- Student-linked `Contact` only through explicit `Dynamic Link -> Contact`
+- Student-linked `Address` records only through explicit `Dynamic Link -> Address`
+- contact summary may include:
+  - contact display name derived from `Contact.first_name` / `Contact.last_name`
+  - `Contact Email.email_id`
+  - `Contact Phone.phone`
+- address summary may include:
+  - `address_title`
+  - `address_type`
+  - `address_line1`
+  - `address_line2`
+  - `city`
+  - `state`
+  - `pincode`
+  - `country`
 
 Family:
 
@@ -313,6 +335,11 @@ Exclude from the standard Student Profile by default:
 - `address_html`
 - `allow_direct_creation`
 - internal tab, section, and layout helper fields
+
+Note:
+
+- `contact_html` and `address_html` remain excluded as raw helper fields
+- the print format may render its own scoped CRM summary by querying only the Student's explicitly linked `Contact` and `Address` records
 
 ### 7.4 Explicit Non-Goals for Phase 1
 

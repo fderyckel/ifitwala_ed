@@ -214,3 +214,32 @@ class TestStaffCalendar(FrappeTestCase):
         self.assertEqual(get_list.call_args.kwargs["filters"], {"name": "SC-2026"})
         self.assertEqual(events[0]["title"], "Name Filter Day")
         self.assertEqual(events[0]["start"], "2026-03-25")
+
+    def test_get_events_defaults_to_current_employee_staff_calendar(self):
+        with (
+            patch(
+                "ifitwala_ed.hr.doctype.staff_calendar.staff_calendar.frappe.db.get_value",
+                return_value=frappe._dict(name="EMP-0001", current_holiday_lis="SC-SELF"),
+            ),
+            patch(
+                "ifitwala_ed.hr.doctype.staff_calendar.staff_calendar.frappe.get_list",
+                return_value=["SC-SELF"],
+            ) as get_list,
+            patch(
+                "ifitwala_ed.hr.doctype.staff_calendar.staff_calendar.frappe.get_all",
+                return_value=[
+                    frappe._dict(
+                        name="HOL-5",
+                        parent="SC-SELF",
+                        holiday_date="2026-03-28",
+                        description="Default Calendar Day",
+                        color="#999",
+                    )
+                ],
+            ),
+        ):
+            events = get_events("2026-03-01", "2026-03-31", "[]")
+
+        self.assertEqual(get_list.call_args.kwargs["filters"], {"name": "SC-SELF"})
+        self.assertEqual(events[0]["staff_calendar"], "SC-SELF")
+        self.assertEqual(events[0]["title"], "Default Calendar Day")

@@ -63,6 +63,19 @@ def _normalize_calendar_filters(filters) -> dict:
     return normalized
 
 
+def _resolve_default_staff_calendar_for_current_user() -> str | None:
+    employee = frappe.db.get_value(
+        "Employee",
+        {"user_id": frappe.session.user, "employment_status": "Active"},
+        ["name", "current_holiday_lis"],
+        as_dict=True,
+    )
+    if not employee:
+        return None
+
+    return employee.get("current_holiday_lis") or None
+
+
 @frappe.whitelist()
 def get_events(start, end, filters=None):
     filters = _normalize_calendar_filters(filters)
@@ -71,6 +84,9 @@ def get_events(start, end, filters=None):
     school = filters.get("school")
     employee_group = filters.get("employee_group")
     academic_year = filters.get("academic_year")
+
+    if not any((staff_calendar, school, employee_group, academic_year)):
+        staff_calendar = _resolve_default_staff_calendar_for_current_user()
 
     calendar_filters = {}
     if staff_calendar:

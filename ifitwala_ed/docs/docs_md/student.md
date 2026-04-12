@@ -3,8 +3,8 @@ title: "Student: Your Learner Records Made Simple"
 slug: student
 category: Students
 doc_order: 1
-version: "1.2.0"
-last_change_date: "2026-04-11"
+version: "1.3.0"
+last_change_date: "2026-04-12"
 summary: "Manage learner records with confidence—from admissions intake to alumni status. Understand when to use the admissions pipeline versus importing existing students."
 seo_title: "Student: Your Learner Records Made Simple"
 seo_description: "Learn how to manage Student records in Ifitwala Ed—from admissions promotion to bulk importing existing students with full portal access and health record integration."
@@ -147,6 +147,29 @@ When you import students, all the same automation runs as with admissions:
 | **Student Applicant** | Link to admissions record | Auto-set when promoted from applicant |
 | **Enabled** | Active status | Uncheck to deactivate without deleting history |
 | **Exit Date / Reason** | For withdrawn students | Use when a student leaves your school |
+
+---
+
+## Contact And Address Workflow
+
+On the Student Desk form, the Contact and Address area is intended to stay visible as the family quick-view:
+
+- `contact_html` and `address_html` render the linked CRM summary directly on the Student form
+- if your role already has native `Contact` or `Address` Desk access, the Student form also exposes direct open actions to those records
+- if your role can read Student but does not have native `Contact` or `Address` access, the Student form remains the safe read-only context instead of widening raw CRM permissions
+
+### Family Address Reuse Proposal
+
+When a student has exactly one linked Address, the Student form can propose reusing that same Address for related guardians and siblings.
+
+Rules:
+
+- this is always an explicit proposal, never a silent automatic link
+- only related guardians and siblings with **no existing Address link** are offered
+- guardians or siblings who already have an Address link are shown as excluded from the proposal
+- the same Address record is reused through additional links; the system does not duplicate address text just to speed up family setup
+
+This flow is especially useful after migration/import when staff have already linked siblings and guardians and want to avoid repetitive family address entry.
 
 ---
 

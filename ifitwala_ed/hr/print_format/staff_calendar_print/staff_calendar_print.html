@@ -1,0 +1,158 @@
+{% set generated_on = frappe.utils.formatdate(frappe.utils.nowdate()) %}
+{% set school_meta = frappe.get_cached_value("School", doc.school, ["school_name", "school_logo", "organization"], as_dict=True) if doc.school else None %}
+{% set org_meta = frappe.get_cached_value("Organization", school_meta.organization, ["organization_name", "organization_logo"], as_dict=True) if school_meta and school_meta.organization else None %}
+{% set brand_logo = school_meta.school_logo if school_meta and school_meta.school_logo else (org_meta.organization_logo if org_meta and org_meta.organization_logo else "") %}
+{% set brand_name = school_meta.school_name if school_meta and school_meta.school_name else (org_meta.organization_name if org_meta and org_meta.organization_name else "Ifitwala Ed") %}
+{% set secondary_brand = org_meta.organization_name if org_meta and org_meta.organization_name and org_meta.organization_name != brand_name else "" %}
+{% set holiday_rows = (doc.holidays or [])|sort(attribute='holiday_date') %}
+
+<div class="ifitwala-print staff-calendar-print">
+	<div class="masthead">
+		<div class="brand-strip"></div>
+		<div class="masthead-inner">
+			<div class="brand-mark">
+				{% if brand_logo %}
+				<img src="{{ frappe.utils.escape_html(brand_logo) }}" alt="{{ frappe.utils.escape_html(brand_name) }}">
+				{% else %}
+				<div class="brand-mark__fallback">IE</div>
+				{% endif %}
+			</div>
+			<div class="brand-copy">
+				<div class="eyebrow">Planning Calendar</div>
+				<h1>{{ frappe.utils.escape_html(doc.staff_calendar_name or doc.name) }}</h1>
+				<div class="brand-name">{{ frappe.utils.escape_html(brand_name) }}</div>
+				{% if secondary_brand %}
+				<div class="brand-subline">{{ frappe.utils.escape_html(secondary_brand) }}</div>
+				{% endif %}
+			</div>
+			<div class="doc-meta">
+				<div class="meta-row">
+					<div class="meta-key">Generated</div>
+					<div class="meta-value">{{ frappe.utils.escape_html(generated_on) }}</div>
+				</div>
+				<div class="meta-row">
+					<div class="meta-key">Calendar Record</div>
+					<div class="meta-value">{{ frappe.utils.escape_html(doc.name) }}</div>
+				</div>
+				<div class="meta-row">
+					<div class="meta-key">Window</div>
+					<div class="meta-value">
+						{% if doc.from_date %}{{ frappe.utils.escape_html(doc.get_formatted("from_date")) }}{% else %}--{% endif %}
+						<span class="meta-sep">to</span>
+						{% if doc.to_date %}{{ frappe.utils.escape_html(doc.get_formatted("to_date")) }}{% else %}--{% endif %}
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+
+	<div class="hero-card">
+		<div class="hero-copy">
+			<div class="hero-kicker">Staff Coverage</div>
+			<div class="hero-title">Elegant calendar output for staff planning, noticeboards, and family communication.</div>
+			<div class="hero-subtitle">
+				{% if doc.school %}<span>{{ frappe.utils.escape_html(doc.get_formatted("school")) }}</span>{% endif %}
+				{% if doc.employee_group %}<span>{{ frappe.utils.escape_html(doc.get_formatted("employee_group")) }}</span>{% endif %}
+				{% if doc.academic_year %}<span>{{ frappe.utils.escape_html(doc.get_formatted("academic_year")) }}</span>{% endif %}
+			</div>
+		</div>
+		<div class="hero-stats">
+			<div class="stat-card">
+				<div class="stat-label">Holiday Rows</div>
+				<div class="stat-value">{{ holiday_rows|length }}</div>
+			</div>
+			<div class="stat-card">
+				<div class="stat-label">Working Days</div>
+				<div class="stat-value">{{ frappe.utils.escape_html(doc.total_working_day or 0) }}</div>
+			</div>
+			<div class="stat-card">
+				<div class="stat-label">Total Holidays</div>
+				<div class="stat-value">{{ frappe.utils.escape_html(doc.total_holidays or 0) }}</div>
+			</div>
+		</div>
+	</div>
+
+	<div class="summary-grid">
+		<div class="summary-card">
+			<div class="summary-title">School</div>
+			<div class="summary-value">
+				{% if doc.school %}
+				{{ frappe.utils.escape_html(doc.get_formatted("school")) }}
+				{% else %}
+				Not assigned
+				{% endif %}
+			</div>
+		</div>
+		<div class="summary-card">
+			<div class="summary-title">Employee Group</div>
+			<div class="summary-value">{{ frappe.utils.escape_html(doc.get_formatted("employee_group")) }}</div>
+		</div>
+		<div class="summary-card">
+			<div class="summary-title">Academic Year</div>
+			<div class="summary-value">
+				{% if doc.academic_year %}
+				{{ frappe.utils.escape_html(doc.get_formatted("academic_year")) }}
+				{% else %}
+				Not assigned
+				{% endif %}
+			</div>
+		</div>
+	</div>
+
+	<div class="section-card">
+		<div class="section-head">
+			<div class="section-kicker">Holiday Schedule</div>
+			<div class="section-title">Dated closures and weekly offs</div>
+		</div>
+
+		{% if holiday_rows %}
+		<table class="calendar-table">
+			<thead>
+				<tr>
+					<th>Date</th>
+					<th>Day</th>
+					<th>Occasion</th>
+					<th>Type</th>
+				</tr>
+			</thead>
+			<tbody>
+				{% for row in holiday_rows %}
+				{% set holiday_date = frappe.utils.getdate(row.holiday_date) %}
+				{% set holiday_label = (row.description or "").strip() or ("Weekly Off" if row.weekly_off else "Holiday") %}
+				<tr>
+					<td>
+						<div class="date-chip">
+							<div class="date-chip__day">{{ holiday_date.strftime("%d") }}</div>
+							<div class="date-chip__month">{{ holiday_date.strftime("%b %Y") }}</div>
+						</div>
+					</td>
+					<td>
+						<div class="weekday">{{ holiday_date.strftime("%A") }}</div>
+					</td>
+					<td>
+						<div class="occasion">
+							<span class="color-dot" style="background: {{ frappe.utils.escape_html(row.color or '#C7D2D9') }}"></span>
+							<span>{{ frappe.utils.escape_html(holiday_label) }}</span>
+						</div>
+					</td>
+					<td>
+						<span class="type-pill {{ 'type-pill--weekly' if row.weekly_off else 'type-pill--holiday' }}">
+							{{ "Weekly Off" if row.weekly_off else "Holiday" }}
+						</span>
+					</td>
+				</tr>
+				{% endfor %}
+			</tbody>
+		</table>
+		{% else %}
+		<div class="empty-state">
+			<div class="empty-state__title">No holiday rows are currently recorded.</div>
+			<div class="empty-state__copy">This print format stays usable even before the calendar has been populated.</div>
+		</div>
+		{% endif %}
+	</div>
+
+	<div class="footer-note">
+		Prepared from Ifitwala Ed for staff planning and clean paper distribution.
+	</div>
+</div>

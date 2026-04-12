@@ -67,6 +67,37 @@ class TestStudentProfilePrintFormat(unittest.TestCase):
         self.assertIn("doc.additional_comment", self.html)
         self.assertIn("Additional Comment", self.html)
 
+    def test_school_branding_tokens_are_present(self):
+        for token in (
+            'frappe.get_cached_value("School", doc.anchor_school, ["school_name", "school_logo", "school_tagline"], as_dict=True)',
+            "school_meta.school_logo",
+            "school_meta.school_tagline",
+            "brand-mark",
+            "brand-tagline",
+        ):
+            self.assertIn(
+                token, self.html if "frappe.get_cached_value" in token or "school_meta" in token else self.css
+            )
+
+    def test_linked_contact_and_address_tokens_are_present(self):
+        for token in (
+            'frappe.db.get_value("Dynamic Link", {"link_doctype": "Student", "link_name": doc.name, "parenttype": "Contact"}, "parent")',
+            'frappe.get_all("Contact Email"',
+            'frappe.get_all("Contact Phone"',
+            'frappe.get_all("Address"',
+            "Contact and Address",
+            "Linked Contact",
+            "Linked Address",
+            "crm-grid",
+            "address-card",
+        ):
+            self.assertIn(
+                token,
+                self.html
+                if token.startswith("frappe.") or token in {"Contact and Address", "Linked Contact", "Linked Address"}
+                else self.css,
+            )
+
     def test_uses_real_guardian_child_fields(self):
         for token in (
             "row.guardian_name",
@@ -103,11 +134,13 @@ class TestStudentProfilePrintFormat(unittest.TestCase):
 
     def test_compact_image_and_status_styling_are_present(self):
         self.assertIn(".hero-image img", self.css)
-        self.assertIn("width: 82px;", self.css)
-        self.assertIn("height: 104px;", self.css)
+        self.assertIn("width: 86px;", self.css)
+        self.assertIn("height: 108px;", self.css)
         self.assertIn(".status-pill", self.css)
         self.assertIn(".hero-label", self.css)
         self.assertIn(".info-key", self.css)
+        self.assertIn(".brand-ribbon", self.css)
+        self.assertIn(".crm-grid", self.css)
         self.assertNotIn(".label,", self.css)
 
 

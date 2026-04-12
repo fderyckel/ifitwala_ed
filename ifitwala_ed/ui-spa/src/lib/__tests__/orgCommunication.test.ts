@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
-import { getAudienceInteractionCapabilities } from '@/utils/orgCommunication';
+import {
+	getAudienceInteractionCapabilities,
+	ORG_COMMUNICATION_VIEWERS,
+} from '@/utils/orgCommunication';
 
 describe('getAudienceInteractionCapabilities', () => {
 	it('disables all actions when interaction mode is None', () => {
@@ -16,49 +19,51 @@ describe('getAudienceInteractionCapabilities', () => {
 		});
 	});
 
-	it('allows reactions but not shared comments when the shared thread is off', () => {
+	it('keeps staff comments available on staff-facing surfaces even when the shared-thread flag is off', () => {
 		expect(
 			getAudienceInteractionCapabilities({
 				interaction_mode: 'Staff Comments',
 				allow_public_thread: 0,
+			}, {
+				viewer: ORG_COMMUNICATION_VIEWERS.STAFF,
 			})
 		).toEqual({
 			canReact: true,
-			canComment: false,
+			canComment: true,
 			hasVisibleActions: true,
 		});
 	});
 
-	it('allows both reactions and shared comments when the shared thread is on', () => {
+	it('hides staff-only interactions on recipient-facing surfaces', () => {
+		expect(
+			getAudienceInteractionCapabilities({
+				interaction_mode: 'Staff Comments',
+				allow_public_thread: 1,
+			})
+		).toEqual({
+			canReact: false,
+			canComment: false,
+			hasVisibleActions: false,
+		});
+	});
+
+	it('allows shared-thread comments on recipient-facing surfaces when the mode supports them', () => {
 		expect(
 			getAudienceInteractionCapabilities({
 				interaction_mode: 'Student Q&A',
 				allow_public_thread: '1',
 			})
 		).toEqual({
-			canReact: true,
+			canReact: false,
 			canComment: true,
 			hasVisibleActions: true,
 		});
 	});
 
-	it('treats string booleans as checked values for shared comments', () => {
+	it('keeps structured-feedback reactions available on recipient-facing surfaces', () => {
 		expect(
 			getAudienceInteractionCapabilities({
-				interaction_mode: 'Staff Comments',
-				allow_public_thread: 'true',
-			})
-		).toEqual({
-			canReact: true,
-			canComment: true,
-			hasVisibleActions: true,
-		});
-	});
-
-	it('keeps explicit falsey string values disabled for shared comments', () => {
-		expect(
-			getAudienceInteractionCapabilities({
-				interaction_mode: 'Staff Comments',
+				interaction_mode: 'Structured Feedback',
 				allow_public_thread: 'false',
 			})
 		).toEqual({

@@ -555,6 +555,266 @@ def get_contact_linked_to_student(student_name):
     )
 
 
+def _require_student_access(student_name: str, *, ptype: str = "read") -> "Student":
+    student_name = (student_name or "").strip()
+    if not student_name or not frappe.db.exists("Student", student_name):
+        frappe.throw(_("Invalid Student: {0}").format(student_name or _("missing")))
+    student = frappe.get_doc("Student", student_name)
+    if not frappe.has_permission("Student", doc=student, ptype=ptype):
+        frappe.throw(_("You do not have permission to {0} this Student.").format(ptype))
+    return student
+
+
+def _get_student_address_names(student_name: str) -> list[str]:
+    rows = frappe.get_all(
+        "Dynamic Link",
+        filters={
+            "parenttype": "Address",
+            "link_doctype": "Student",
+            "link_name": student_name,
+        },
+        fields=["parent"],
+        order_by="creation asc",
+        limit=0,
+    )
+    return [(row.get("parent") or "").strip() for row in rows if (row.get("parent") or "").strip()]
+
+
+def _has_address_link(*, link_doctype: str, link_name: str, address_name: str | None = None) -> bool:
+    filters = {
+        "parenttype": "Address",
+        "link_doctype": link_doctype,
+        "link_name": link_name,
+    }
+    if address_name:
+        filters["parent"] = address_name
+    return bool(frappe.db.exists("Dynamic Link", filters))
+
+
+def _build_family_address_link_proposal(student: "Student", address_name: str) -> dict:
+    eligible_guardians = []
+    skipped_guardians = []
+    eligible_siblings = []
+    skipped_siblings = []
+
+    for row in student.get("guardians") or []:
+        guardian_name = (row.get("guardian") or "").strip()
+        if not guardian_name:
+            continue
+        if _has_address_link(link_doctype="Guardian", link_name=guardian_name, address_name=address_name):
+            continue
+        if _has_address_link(link_doctype="Guardian", link_name=guardian_name):
+            skipped_guardians.append(
+                {
+                    "guardian": guardian_name,
+                    "guardian_name": row.get("guardian_name") or guardian_name,
+                    "reason": "existing_address",
+                }
+            )
+            continue
+        eligible_guardians.append(
+            {
+                "guardian": guardian_name,
+                "guardian_name": row.get("guardian_name") or guardian_name,
+                "relation": row.get("relation") or "",
+            }
+        )
+
+    for row in student.get("siblings") or []:
+        sibling_name = (row.get("student") or "").strip()
+        if not sibling_name or sibling_name == student.name:
+            continue
+        if _has_address_link(link_doctype="Student", link_name=sibling_name, address_name=address_name):
+            continue
+        if _has_address_link(link_doctype="Student", link_name=sibling_name):
+            skipped_siblings.append(
+                {
+                    "student": sibling_name,
+                    "sibling_name": row.get("sibling_name") or sibling_name,
+                    "reason": "existing_address",
+                }
+            )
+            continue
+        eligible_siblings.append(
+            {
+                "student": sibling_name,
+                "sibling_name": row.get("sibling_name") or sibling_name,
+            }
+        )
+
+    return {
+        "address": address_name,
+        "eligible_guardians": eligible_guardians,
+        "eligible_siblings": eligible_siblings,
+        "skipped_guardians": skipped_guardians,
+        "skipped_siblings": skipped_siblings,
+        "has_candidates": bool(eligible_guardians or eligible_siblings),
+    }
+
+
+def _ensure_address_link(
+    address_name: str, *, link_doctype: str, link_name: str, link_title: str | None = None
+) -> bool:
+    address_name = (address_name or "").strip()
+    link_doctype = (link_doctype or "").strip()
+    link_name = (link_name or "").strip()
+
+    if not address_name or not frappe.db.exists("Address", address_name):
+        frappe.throw(_("Invalid Address: {0}").format(address_name or _("missing")))
+    if not link_doctype:
+        frappe.throw(_("Link DocType is required."))
+    if not link_name:
+        frappe.throw(_("Link name is required."))
+    if _has_address_link(link_doctype=link_doctype, link_name=link_name, address_name=address_name):
+        return False
+
+    links_field = frappe.get_meta("Address").get_field("links")
+    if not links_field:
+        frappe.throw(_("Address links field is missing from Address metadata."))
+
+    frappe.get_doc(
+        {
+            "doctype": "Dynamic Link",
+            "parenttype": "Address",
+            "parentfield": links_field.fieldname,
+            "parent": address_name,
+            "link_doctype": link_doctype,
+            "link_name": link_name,
+            "link_title": (link_title or "").strip() or None,
+        }
+    ).insert(ignore_permissions=True)
+    return True
+
+
+def _parse_name_list(value) -> list[str]:
+    parsed = frappe.parse_json(value) if isinstance(value, str) else value
+    if not parsed:
+        return []
+    if not isinstance(parsed, list):
+        frappe.throw(_("Expected a list payload."))
+    names = []
+    seen = set()
+    for item in parsed:
+        normalized = (item or "").strip()
+        if not normalized or normalized in seen:
+            continue
+        seen.add(normalized)
+        names.append(normalized)
+    return names
+
+
+@frappe.whitelist()
+def get_student_crm_summary(student_name: str) -> dict:
+    student = _require_student_access(student_name, ptype="read")
+    contact_name = (get_contact_linked_to_student(student.name) or "").strip()
+    address_names = _get_student_address_names(student.name)
+
+    can_open_contact = bool(contact_name and frappe.has_permission("Contact", doc=contact_name, ptype="read"))
+    readable_addresses = [
+        address_name
+        for address_name in address_names
+        if frappe.has_permission("Address", doc=address_name, ptype="read")
+    ]
+
+    return {
+        "contact": contact_name if can_open_contact else None,
+        "addresses": readable_addresses,
+        "address_count": len(address_names),
+        "has_hidden_addresses": len(readable_addresses) != len(address_names),
+    }
+
+
+@frappe.whitelist()
+def get_family_address_link_proposal(student_name: str, address_name: str | None = None) -> dict:
+    student = _require_student_access(student_name, ptype="read")
+    student_address_names = _get_student_address_names(student.name)
+
+    resolved_address = (address_name or "").strip()
+    if resolved_address:
+        if resolved_address not in student_address_names:
+            frappe.throw(_("Address {0} is not linked to Student {1}.").format(resolved_address, student.name))
+    elif len(student_address_names) == 1:
+        resolved_address = student_address_names[0]
+    else:
+        return {
+            "address": None,
+            "linked_addresses": student_address_names,
+            "has_candidates": False,
+            "reason": "requires_exactly_one_student_address",
+        }
+
+    if not frappe.has_permission("Address", doc=resolved_address, ptype="read"):
+        return {
+            "address": None,
+            "linked_addresses": student_address_names,
+            "has_candidates": False,
+            "reason": "address_not_readable",
+        }
+
+    proposal = _build_family_address_link_proposal(student, resolved_address)
+    proposal["linked_addresses"] = student_address_names
+    return proposal
+
+
+@frappe.whitelist()
+def link_family_address(student_name: str, address_name: str, guardians=None, siblings=None) -> dict:
+    student = _require_student_access(student_name, ptype="write")
+    if not frappe.has_permission("Address", doc=address_name, ptype="write"):
+        frappe.throw(_("You do not have permission to update this Address."))
+
+    proposal = get_family_address_link_proposal(student.name, address_name)
+    if proposal.get("reason"):
+        frappe.throw(_("Address linking proposal is not available for this Student."))
+
+    requested_guardians = set(_parse_name_list(guardians))
+    requested_siblings = set(_parse_name_list(siblings))
+    allowed_guardians = {row["guardian"] for row in proposal.get("eligible_guardians") or []}
+    allowed_siblings = {row["student"] for row in proposal.get("eligible_siblings") or []}
+
+    invalid_guardians = sorted(requested_guardians - allowed_guardians)
+    invalid_siblings = sorted(requested_siblings - allowed_siblings)
+    if invalid_guardians or invalid_siblings:
+        frappe.throw(_("Address targets are stale. Refresh the Student form and try again."))
+    if not requested_guardians and not requested_siblings:
+        frappe.throw(_("Select at least one family record to link to this Address."))
+
+    guardian_titles = {
+        row["guardian"]: row.get("guardian_name") or row["guardian"] for row in proposal.get("eligible_guardians") or []
+    }
+    sibling_titles = {
+        row["student"]: row.get("sibling_name") or row["student"] for row in proposal.get("eligible_siblings") or []
+    }
+
+    linked_guardians = []
+    linked_siblings = []
+
+    for guardian_name in sorted(requested_guardians):
+        if _ensure_address_link(
+            address_name,
+            link_doctype="Guardian",
+            link_name=guardian_name,
+            link_title=guardian_titles.get(guardian_name),
+        ):
+            linked_guardians.append(guardian_name)
+
+    for sibling_name in sorted(requested_siblings):
+        if _ensure_address_link(
+            address_name,
+            link_doctype="Student",
+            link_name=sibling_name,
+            link_title=sibling_titles.get(sibling_name),
+        ):
+            linked_siblings.append(sibling_name)
+
+    return {
+        "address": address_name,
+        "linked_guardians": linked_guardians,
+        "linked_siblings": linked_siblings,
+        "guardians_count": len(linked_guardians),
+        "siblings_count": len(linked_siblings),
+    }
+
+
 @frappe.whitelist()
 def get_student_guardians(student_id: str) -> list[dict]:
     """Return guardians for a given student. Used for sibling guardian sync."""

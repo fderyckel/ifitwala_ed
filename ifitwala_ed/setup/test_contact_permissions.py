@@ -94,6 +94,45 @@ CONTACT_ROLE_MATRIX = {
     },
 }
 
+ADDRESS_ROLE_MATRIX = {
+    "Admission Officer": {
+        "read": 1,
+        "write": 0,
+        "create": 0,
+        "delete": 0,
+        "email": 1,
+        "comment": 1,
+        "assign": 1,
+    },
+    "Admission Manager": {
+        "read": 1,
+        "write": 1,
+        "create": 1,
+        "delete": 1,
+        "email": 1,
+        "comment": 1,
+        "assign": 1,
+    },
+    "Academic Admin": {
+        "read": 1,
+        "write": 1,
+        "create": 1,
+        "delete": 1,
+        "email": 1,
+        "comment": 1,
+        "assign": 1,
+    },
+    "Academic Assistant": {
+        "read": 1,
+        "write": 1,
+        "create": 1,
+        "delete": 1,
+        "email": 1,
+        "comment": 1,
+        "assign": 1,
+    },
+}
+
 
 class TestContactPermissions(FrappeTestCase):
     @staticmethod
@@ -135,6 +174,34 @@ class TestContactPermissions(FrappeTestCase):
                     int(by_role[role].get(fieldname) or 0),
                     value,
                     msg=f"Unexpected {fieldname} for role {role}",
+                )
+
+    def test_grant_core_crm_permissions_seeds_address_rows_for_canonical_roles(self):
+        grant_core_crm_permissions()
+
+        available_fields = self._available_permission_fields()
+        rows = frappe.get_all(
+            "Custom DocPerm",
+            filters={
+                "parent": "Address",
+                "permlevel": 0,
+                "role": ["in", list(ADDRESS_ROLE_MATRIX)],
+            },
+            fields=available_fields,
+            limit=len(ADDRESS_ROLE_MATRIX),
+        )
+        by_role = {row.role: row for row in rows}
+
+        self.assertEqual(set(by_role), set(ADDRESS_ROLE_MATRIX))
+
+        for role, expected in ADDRESS_ROLE_MATRIX.items():
+            for fieldname, value in expected.items():
+                if fieldname not in available_fields:
+                    continue
+                self.assertEqual(
+                    int(by_role[role].get(fieldname) or 0),
+                    value,
+                    msg=f"Unexpected Address {fieldname} for role {role}",
                 )
 
     def test_contact_permission_query_conditions_scope_employee_contacts_for_hr(self):

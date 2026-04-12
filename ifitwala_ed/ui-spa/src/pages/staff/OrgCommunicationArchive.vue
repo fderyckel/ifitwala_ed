@@ -364,14 +364,18 @@
 
 		<CommentThreadDrawer
 			:open="showThreadDrawer"
-			title="Comments"
+			:title="threadTitle"
 			:rows="threadRows"
 			:loading="threadLoading"
-			v-model:comment="newComment"
+			:comment="newComment"
 			:submit-loading="interactionActionLoading"
+			:submit-disabled="interactionActionLoading || !newComment.trim()"
+			submit-label="Send"
+			placeholder="Add a short comment (max 300 characters)"
 			:format-timestamp="value => formatDate(value, 'DD MMM HH:mm')"
-			@close="showThreadDrawer = false"
+			@close="closeThread"
 			@submit="submitComment"
+			@update:comment="onCommentUpdate"
 		/>
 	</div>
 </template>
@@ -389,7 +393,11 @@ import {
 	type ArchiveFilters,
 	type OrgCommunicationListItem,
 } from '@/types/orgCommunication';
-import { type InteractionSummary, type InteractionThreadRow } from '@/types/morning_brief';
+import {
+	ORG_SURFACES,
+	type InteractionSummary,
+	type InteractionThreadRow,
+} from '@/types/morning_brief';
 import {
 	extractPolicyInformLinkFromClickEvent,
 	type PolicyInformLinkPayload,
@@ -402,7 +410,10 @@ import DateRangePills from '@/components/filters/DateRangePills.vue';
 import CommentThreadDrawer from '@/components/CommentThreadDrawer.vue';
 import InteractionEmojiChips from '@/components/InteractionEmojiChips.vue';
 import { getInteractionStats as buildInteractionStats } from '@/utils/interactionStats';
-import { getAudienceInteractionCapabilities } from '@/utils/orgCommunication';
+import {
+	getAudienceInteractionCapabilities,
+	ORG_COMMUNICATION_VIEWERS,
+} from '@/utils/orgCommunication';
 
 const PAGE_LENGTH = 10;
 const FEED_THROTTLE_MS = 500;
@@ -457,6 +468,10 @@ const selectedStats = computed(() => {
 	if (!selectedComm.value) return null;
 	return buildInteractionStats(getInteractionFor(selectedComm.value));
 });
+
+const threadTitle = computed(() =>
+	selectedComm.value ? `Comments · ${selectedComm.value.title}` : 'Comments'
+);
 
 const detailMessageHtml = computed(() => {
 	if (!fullContent.value || typeof fullContent.value.message_html !== 'string') return '';
@@ -852,7 +867,9 @@ function getInteractionStats(item: OrgCommunicationListItem) {
 }
 
 function getInteractionCapabilities(item: OrgCommunicationListItem | null | undefined) {
-	return getAudienceInteractionCapabilities(item);
+	return getAudienceInteractionCapabilities(item, {
+		viewer: ORG_COMMUNICATION_VIEWERS.STAFF,
+	});
 }
 
 function canReact(item: OrgCommunicationListItem | null | undefined) {
@@ -890,6 +907,7 @@ async function refreshThread(orgCommunication: string, opts?: { silent?: boolean
 			org_communication: orgCommunication,
 		});
 	} catch (err) {
+		threadRows.value = [];
 		if (!opts?.silent) {
 			toast({
 				title: 'Unable to load comments',
@@ -942,7 +960,7 @@ function onOrgCommInvalidated(payload?: { names?: string[] }) {
 function notifyReactionsDisabled() {
 	toast({
 		title: 'Reactions unavailable',
-		text: 'Reactions are turned off for this announcement.',
+		text: 'Reactions are not available for this announcement.',
 		icon: 'info',
 	});
 }
@@ -950,7 +968,7 @@ function notifyReactionsDisabled() {
 function notifyCommentsDisabled() {
 	toast({
 		title: 'Comments unavailable',
-		text: 'Shared comments are turned off for this announcement.',
+		text: 'Comments are not available for this announcement.',
 		icon: 'info',
 	});
 }
@@ -991,6 +1009,7 @@ async function reactTo(item: OrgCommunicationListItem, code: ReactionCode) {
 		await interactionService.reactToOrgCommunication({
 			org_communication: item.name,
 			reaction_code: code,
+			surface: ORG_SURFACES.DESK,
 		});
 	} catch (err) {
 		toast({
@@ -1017,8 +1036,20 @@ async function openThread(item: OrgCommunicationListItem) {
 		return;
 	}
 	selectedComm.value = item;
+	newComment.value = '';
+	threadRows.value = [];
 	showThreadDrawer.value = true;
 	await refreshThread(item.name);
+}
+
+function closeThread() {
+	showThreadDrawer.value = false;
+	newComment.value = '';
+	threadRows.value = [];
+}
+
+function onCommentUpdate(value: string) {
+	newComment.value = value;
 }
 
 async function submitComment() {
@@ -1047,11 +1078,15 @@ async function submitComment() {
 
 	interactionActionLoading.value = true;
 	try {
+		const orgCommunication = selectedComm.value.name;
 		await interactionService.postOrgCommunicationComment({
-			org_communication: selectedComm.value.name,
+			org_communication: orgCommunication,
 			note,
+			surface: ORG_SURFACES.DESK,
 		});
 		newComment.value = '';
+		await refreshThread(orgCommunication, { silent: true });
+		await refreshSummary([orgCommunication]);
 	} catch (err) {
 		toast({
 			title: 'Unable to post comment',

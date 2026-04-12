@@ -170,7 +170,10 @@ async function flushUi() {
 	await nextTick();
 }
 
-function buildItem(allowPublicThread: string | number | boolean) {
+function buildItem(options?: {
+	allowPublicThread?: string | number | boolean;
+	interactionMode?: string;
+}) {
 	return {
 		name: 'COMM-0001',
 		title: 'Shared update',
@@ -184,9 +187,9 @@ function buildItem(allowPublicThread: string | number | boolean) {
 		publish_to: null,
 		brief_start_date: null,
 		brief_end_date: null,
-		interaction_mode: 'Staff Comments',
+		interaction_mode: options?.interactionMode || 'Staff Comments',
 		allow_private_notes: 0,
-		allow_public_thread: allowPublicThread,
+		allow_public_thread: options?.allowPublicThread ?? 0,
 		snippet: 'Short snippet',
 		audience_label: 'All staff',
 	};
@@ -224,7 +227,7 @@ afterEach(() => {
 });
 
 describe('OrgCommunicationArchive', () => {
-	it('shows the shared comments button when the communication allows recipient-visible thread entries', async () => {
+	it('keeps the comments button visible for staff comments on the staff archive surface', async () => {
 		getArchiveContextMock.mockResolvedValue({
 			my_teams: [],
 			my_groups: [],
@@ -237,7 +240,7 @@ describe('OrgCommunicationArchive', () => {
 			},
 		});
 		getOrgCommunicationFeedMock.mockResolvedValue({
-			items: [buildItem('true')],
+			items: [buildItem({ allowPublicThread: 'false' })],
 			has_more: false,
 			start: 0,
 			page_length: 10,
@@ -268,7 +271,7 @@ describe('OrgCommunicationArchive', () => {
 		expect(document.body.querySelector('[data-testid="interaction-chips-stub"]')).not.toBeNull();
 	});
 
-	it('hides the shared comments button while keeping reactions visible when the shared thread is off', async () => {
+	it('hides archive interaction actions when the communication mode is None', async () => {
 		getArchiveContextMock.mockResolvedValue({
 			my_teams: [],
 			my_groups: [],
@@ -281,7 +284,7 @@ describe('OrgCommunicationArchive', () => {
 			},
 		});
 		getOrgCommunicationFeedMock.mockResolvedValue({
-			items: [buildItem('false')],
+			items: [buildItem({ interactionMode: 'None', allowPublicThread: 'false' })],
 			has_more: false,
 			start: 0,
 			page_length: 10,
@@ -309,6 +312,6 @@ describe('OrgCommunicationArchive', () => {
 		);
 
 		expect(commentButton).toBeUndefined();
-		expect(document.body.querySelector('[data-testid="interaction-chips-stub"]')).not.toBeNull();
+		expect(document.body.querySelector('[data-testid="interaction-chips-stub"]')).toBeNull();
 	});
 });

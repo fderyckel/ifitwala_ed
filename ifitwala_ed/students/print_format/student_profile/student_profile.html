@@ -6,29 +6,58 @@
 {% set preferred_name = (doc.student_preferred_name or "").strip() %}
 {% set is_active = 1 if doc.enabled else 0 %}
 {% set generated_on = frappe.utils.formatdate(frappe.utils.nowdate()) %}
+{% set school_meta = frappe.get_cached_value("School", doc.anchor_school, ["school_name", "school_logo", "school_tagline"], as_dict=True) if doc.anchor_school else None %}
+{% set brand_name = school_meta.school_name if school_meta and school_meta.school_name else (doc.get_formatted('anchor_school') if doc.anchor_school else "Ifitwala Ed") %}
+{% set brand_logo = school_meta.school_logo if school_meta and school_meta.school_logo else "" %}
+{% set brand_tagline = ((school_meta.school_tagline if school_meta and school_meta.school_tagline else "") or "").strip() %}
+{% set contact_name = frappe.db.get_value("Dynamic Link", {"link_doctype": "Student", "link_name": doc.name, "parenttype": "Contact"}, "parent") %}
+{% set contact_doc = frappe.get_doc("Contact", contact_name) if contact_name else None %}
+{% set contact_full_name = (((contact_doc.first_name or "") ~ " " ~ (contact_doc.last_name or "")).strip()) if contact_doc else "" %}
+{% set contact_email_rows = frappe.get_all("Contact Email", filters={"parent": contact_name}, fields=["email_id", "is_primary", "idx"], order_by="is_primary desc, idx asc, creation asc") if contact_name else [] %}
+{% set contact_phone_rows = frappe.get_all("Contact Phone", filters={"parent": contact_name}, fields=["phone", "is_primary_mobile_no", "idx"], order_by="is_primary_mobile_no desc, idx asc, creation asc") if contact_name else [] %}
+{% set address_link_rows = frappe.get_all("Dynamic Link", filters={"parenttype": "Address", "link_doctype": "Student", "link_name": doc.name}, fields=["parent"], order_by="creation asc") %}
+{% set address_names = address_link_rows | map(attribute='parent') | list %}
+{% set address_docs = frappe.get_all("Address", filters={"name": ["in", address_names]}, fields=["name", "address_title", "address_type", "address_line1", "address_line2", "city", "state", "country", "pincode"], order_by="creation asc") if address_names else [] %}
+{% set address_map = {} %}
+{% for row in address_docs %}
+	{% set _ = address_map.update({row.name: row}) %}
+{% endfor %}
 
 <div class="ifitwala-print student-profile">
-	<div class="print-header">
-		<div class="brand-block">
-			<div class="eyebrow">Ifitwala Ed</div>
-			<h1>Student Profile</h1>
-			<div class="subtle">Generated on {{ frappe.utils.escape_html(generated_on) }}</div>
-		</div>
-		<div class="doc-meta">
-			<div class="meta-row">
-				<div class="meta-key">Record</div>
-				<div class="meta-value">{{ frappe.utils.escape_html(doc.name) }}</div>
+	<div class="masthead">
+		<div class="brand-ribbon"></div>
+		<div class="masthead-inner">
+			<div class="brand-mark">
+				{% if brand_logo %}
+				<img src="{{ frappe.utils.escape_html(brand_logo) }}" alt="{{ frappe.utils.escape_html(brand_name) }}">
+				{% else %}
+				<div class="brand-mark__fallback">SP</div>
+				{% endif %}
 			</div>
-			{% if doc.student_id %}
-			<div class="meta-row">
-				<div class="meta-key">Student ID</div>
-				<div class="meta-value">{{ frappe.utils.escape_html(doc.student_id) }}</div>
+			<div class="brand-block">
+				<div class="eyebrow">{{ frappe.utils.escape_html(brand_name) }}</div>
+				<h1>Student Profile</h1>
+				{% if brand_tagline %}
+				<div class="brand-tagline">{{ frappe.utils.escape_html(brand_tagline) }}</div>
+				{% endif %}
+				<div class="subtle">Generated on {{ frappe.utils.escape_html(generated_on) }}</div>
 			</div>
-			{% endif %}
-			<div class="meta-row">
-				<div class="meta-key">Status</div>
-				<div class="meta-value">
-					<span class="status-pill {{ 'active' if is_active else 'inactive' }}">{{ 'Active' if is_active else 'Inactive' }}</span>
+			<div class="doc-meta">
+				<div class="meta-row">
+					<div class="meta-key">Record</div>
+					<div class="meta-value">{{ frappe.utils.escape_html(doc.name) }}</div>
+				</div>
+				{% if doc.student_id %}
+				<div class="meta-row">
+					<div class="meta-key">Student ID</div>
+					<div class="meta-value">{{ frappe.utils.escape_html(doc.student_id) }}</div>
+				</div>
+				{% endif %}
+				<div class="meta-row">
+					<div class="meta-key">Status</div>
+					<div class="meta-value">
+						<span class="status-pill {{ 'active' if is_active else 'inactive' }}">{{ 'Active' if is_active else 'Inactive' }}</span>
+					</div>
 				</div>
 			</div>
 		</div>
@@ -41,6 +70,10 @@
 			{% if preferred_name and preferred_name != full_name %}
 			<div class="preferred-name">Preferred name: {{ frappe.utils.escape_html(preferred_name) }}</div>
 			{% endif %}
+			<div class="hero-subtitle">
+				{% if doc.anchor_school %}<span>{{ frappe.utils.escape_html(doc.get_formatted('anchor_school')) }}</span>{% endif %}
+				{% if brand_tagline %}<span>{{ frappe.utils.escape_html(brand_tagline) }}</span>{% endif %}
+			</div>
 
 			<div class="hero-grid">
 				{% if doc.anchor_school %}
@@ -143,6 +176,71 @@
 			</div>
 		</div>
 	</div>
+
+	{% if contact_name or address_names %}
+	<div class="section-card wide-card crm-card">
+		<div class="section-title">Contact and Address</div>
+		<div class="crm-grid">
+			{% if contact_name %}
+			<div class="crm-panel">
+				<div class="crm-panel__eyebrow">Linked Contact</div>
+				<div class="crm-panel__title">{{ frappe.utils.escape_html(contact_full_name or contact_name) }}</div>
+				{% if contact_full_name and contact_full_name != contact_name %}
+				<div class="crm-panel__subtle">{{ frappe.utils.escape_html(contact_name) }}</div>
+				{% endif %}
+				<div class="contact-list">
+					{% if contact_email_rows %}
+						{% for row in contact_email_rows %}
+						<div class="contact-chip">
+							<span class="contact-chip__label">{{ "Primary Email" if row.is_primary else "Email" }}</span>
+							<span class="contact-chip__value">{{ frappe.utils.escape_html(row.email_id or "") }}</span>
+						</div>
+						{% endfor %}
+					{% endif %}
+					{% if contact_phone_rows %}
+						{% for row in contact_phone_rows %}
+						<div class="contact-chip">
+							<span class="contact-chip__label">{{ "Primary Phone" if row.is_primary_mobile_no else "Phone" }}</span>
+							<span class="contact-chip__value">{{ frappe.utils.escape_html(row.phone or "") }}</span>
+						</div>
+						{% endfor %}
+					{% endif %}
+					{% if not contact_email_rows and not contact_phone_rows %}
+					<div class="crm-empty">No email or phone rows are linked to this contact.</div>
+					{% endif %}
+				</div>
+			</div>
+			{% endif %}
+
+			{% if address_names %}
+			<div class="crm-panel">
+				<div class="crm-panel__eyebrow">Linked Address{% if address_names|length > 1 %}es{% endif %}</div>
+				<div class="address-stack">
+					{% for address_name in address_names %}
+					{% set address = address_map.get(address_name) %}
+					{% if address %}
+					<div class="address-card">
+						<div class="address-card__title">{{ frappe.utils.escape_html((address.address_title or address.name or "").strip()) }}</div>
+						{% if address.address_type %}
+						<div class="address-card__meta">{{ frappe.utils.escape_html(address.address_type) }}</div>
+						{% endif %}
+						<div class="address-lines">
+							{% if address.address_line1 %}<div>{{ frappe.utils.escape_html(address.address_line1) }}</div>{% endif %}
+							{% if address.address_line2 %}<div>{{ frappe.utils.escape_html(address.address_line2) }}</div>{% endif %}
+							{% if address.city or address.state or address.pincode %}
+							<div>{{ frappe.utils.escape_html(((address.city or "") ~ (", " if address.city and address.state else "") ~ (address.state or "") ~ (" " if (address.city or address.state) and address.pincode else "") ~ (address.pincode or "")).strip()) }}</div>
+							{% endif %}
+							{% if address.country %}<div>{{ frappe.utils.escape_html(address.country) }}</div>{% endif %}
+						</div>
+					</div>
+					{% endif %}
+					{% endfor %}
+				</div>
+			</div>
+			{% endif %}
+		</div>
+	</div>
+	{% endif %}
 
 	{% if doc.account_holder or (doc.guardians and doc.guardians|length) %}
 	<div class="section-card wide-card">

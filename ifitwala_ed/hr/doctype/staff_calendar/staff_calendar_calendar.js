@@ -9,6 +9,12 @@ frappe.views.calendar["Staff Calendar"] = {
     title: "description",
     allDay: "allDay",
   },
+  options: {
+    eventClick(info) {
+      info.jsEvent.preventDefault();
+      return false;
+    },
+  },
   order_by: "from_date",
   get_events_method: "ifitwala_ed.hr.doctype.staff_calendar.staff_calendar.get_events",
   filters: [

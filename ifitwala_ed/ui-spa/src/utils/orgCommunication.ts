@@ -5,6 +5,14 @@ export type OrgCommunicationInteractionSource = {
 	allow_public_thread?: 0 | 1 | boolean | string | null
 }
 
+export const ORG_COMMUNICATION_VIEWERS = {
+	STAFF: 'staff',
+	RECIPIENT: 'recipient',
+} as const
+
+export type OrgCommunicationInteractionViewer =
+	(typeof ORG_COMMUNICATION_VIEWERS)[keyof typeof ORG_COMMUNICATION_VIEWERS]
+
 export type OrgCommunicationInteractionCapabilities = {
 	canReact: boolean
 	canComment: boolean
@@ -31,9 +39,13 @@ function isCheckedValue(raw: unknown): boolean {
 // Terms:
 // - "comment" means recipient-visible shared thread access
 // - "react" means a surface may show the reaction affordance
+// - "recipient" means a recipient-facing surface (student / guardian / community)
 // - "audience" means the resolved recipients of this communication, not public web visibility
 export function getAudienceInteractionCapabilities(
-	item: OrgCommunicationInteractionSource | null | undefined
+	item: OrgCommunicationInteractionSource | null | undefined,
+	options?: {
+		viewer?: OrgCommunicationInteractionViewer
+	}
 ): OrgCommunicationInteractionCapabilities {
 	if (!item) {
 		return {
@@ -44,8 +56,17 @@ export function getAudienceInteractionCapabilities(
 	}
 
 	const mode = String(item.interaction_mode || 'None').trim() || 'None'
-	const canReact = mode !== 'None'
-	const canComment = canReact && isCheckedValue(item.allow_public_thread)
+	const viewer = options?.viewer ?? ORG_COMMUNICATION_VIEWERS.RECIPIENT
+	const sharedThreadEnabled = isCheckedValue(item.allow_public_thread)
+
+	const canReact =
+		mode === 'Structured Feedback' ||
+		(mode === 'Staff Comments' && viewer === ORG_COMMUNICATION_VIEWERS.STAFF)
+
+	const canComment =
+		mode !== 'None' &&
+		(viewer === ORG_COMMUNICATION_VIEWERS.STAFF ||
+			(mode !== 'Staff Comments' && sharedThreadEnabled))
 
 	return {
 		canReact,

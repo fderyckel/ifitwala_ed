@@ -154,15 +154,18 @@ async function flushUi() {
 	await nextTick();
 }
 
-function buildAnnouncement(allowPublicThread: string | boolean | number) {
+function buildAnnouncement(options?: {
+	allowPublicThread?: string | boolean | number;
+	interactionMode?: string;
+}) {
 	return {
 		name: 'COMM-0001',
 		title: 'High priority update',
 		content: '<p>Shared update body</p>',
 		type: 'Information',
 		priority: 'High',
-		interaction_mode: 'Staff Comments',
-		allow_public_thread: allowPublicThread,
+		interaction_mode: options?.interactionMode || 'Staff Comments',
+		allow_public_thread: options?.allowPublicThread ?? 0,
 		allow_private_notes: 0,
 	};
 }
@@ -198,9 +201,9 @@ afterEach(() => {
 });
 
 describe('MorningBriefing', () => {
-	it('shows the comments action when the announcement allows shared thread entries', async () => {
+	it('keeps the comments action visible for staff comments on the staff briefing surface', async () => {
 		widgetsPayloadRef.current = {
-			announcements: [buildAnnouncement('true')],
+			announcements: [buildAnnouncement({ allowPublicThread: 'false' })],
 			today_label: 'Monday',
 		};
 		getOrgCommInteractionSummaryMock.mockResolvedValue({
@@ -221,9 +224,9 @@ describe('MorningBriefing', () => {
 		expect(buttons.some(button => (button.textContent || '').includes('Comments'))).toBe(true);
 	});
 
-	it('keeps reactions visible while hiding comments when the shared thread is off', async () => {
+	it('hides briefing interaction actions when the communication mode is None', async () => {
 		widgetsPayloadRef.current = {
-			announcements: [buildAnnouncement('false')],
+			announcements: [buildAnnouncement({ interactionMode: 'None', allowPublicThread: 'false' })],
 			today_label: 'Monday',
 		};
 		getOrgCommInteractionSummaryMock.mockResolvedValue({
@@ -240,7 +243,7 @@ describe('MorningBriefing', () => {
 		await flushUi();
 
 		const buttons = Array.from(document.querySelectorAll('button'));
-		expect(buttons.some(button => (button.textContent || '').includes('Reactions'))).toBe(true);
+		expect(buttons.some(button => (button.textContent || '').includes('Reactions'))).toBe(false);
 		expect(buttons.some(button => (button.textContent || '').includes('Comments'))).toBe(false);
 	});
 });

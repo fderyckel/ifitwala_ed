@@ -781,7 +781,10 @@ import {
 	type StudentLogDetail,
 } from '@/types/morning_brief';
 import type { InteractionSummary, ReactionCode } from '@/types/morning_brief';
-import { getAudienceInteractionCapabilities } from '@/utils/orgCommunication';
+import {
+	getAudienceInteractionCapabilities,
+	ORG_COMMUNICATION_VIEWERS,
+} from '@/utils/orgCommunication';
 import type { PolicyInformLinkPayload } from '@/utils/policyInformLink';
 import { getInteractionStats } from '@/utils/interactionStats';
 
@@ -952,7 +955,9 @@ const filteredAnnouncements = computed<Announcement[]>(() => {
 const limitedAnnouncements = computed<Announcement[]>(() => filteredAnnouncements.value);
 
 function getAnnouncementInteractionCapabilities(item: Announcement | null | undefined) {
-	return getAudienceInteractionCapabilities(item);
+	return getAudienceInteractionCapabilities(item, {
+		viewer: ORG_COMMUNICATION_VIEWERS.STAFF,
+	});
 }
 
 function canReactToAnnouncement(item: Announcement | null | undefined): boolean {
@@ -1128,7 +1133,7 @@ function openInteractionThread(item: Announcement): void {
 	if (!canCommentOnAnnouncement(item)) {
 		toast({
 			title: 'Comments unavailable',
-			text: 'Shared comments are turned off for this announcement.',
+			text: 'Comments are not available for this announcement.',
 			icon: 'info',
 		});
 		return;
@@ -1196,7 +1201,7 @@ async function submitComment(): Promise<void> {
 	if (!canCommentOnAnnouncement(activeCommunication.value)) {
 		toast({
 			title: 'Comments unavailable',
-			text: 'Shared comments are turned off for this announcement.',
+			text: 'Comments are not available for this announcement.',
 			icon: 'info',
 		});
 		return;

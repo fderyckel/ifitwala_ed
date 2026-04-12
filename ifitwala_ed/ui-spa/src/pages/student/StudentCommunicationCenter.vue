@@ -255,7 +255,10 @@ import type {
 	StudentOrgCommunicationCenterItem,
 	StudentSchoolEventCenterItem,
 } from '@/types/studentCommunication';
-import { getAudienceInteractionCapabilities } from '@/utils/orgCommunication';
+import {
+	getAudienceInteractionCapabilities,
+	ORG_COMMUNICATION_VIEWERS,
+} from '@/utils/orgCommunication';
 
 type SourceFilter = 'all' | 'course' | 'activity' | 'school' | 'pastoral' | 'cohort';
 
@@ -387,7 +390,9 @@ function getInteractionCapabilities(
 		| null
 		| undefined
 ) {
-	return getAudienceInteractionCapabilities(item);
+	return getAudienceInteractionCapabilities(item, {
+		viewer: ORG_COMMUNICATION_VIEWERS.RECIPIENT,
+	});
 }
 
 function canReact(

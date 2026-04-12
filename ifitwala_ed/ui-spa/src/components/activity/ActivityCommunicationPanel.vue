@@ -87,7 +87,10 @@ import type {
 	InteractionThreadRow,
 } from '@/types/morning_brief';
 import type { ReactionCode } from '@/types/interactions';
-import { getAudienceInteractionCapabilities } from '@/utils/orgCommunication';
+import {
+	getAudienceInteractionCapabilities,
+	ORG_COMMUNICATION_VIEWERS,
+} from '@/utils/orgCommunication';
 
 const props = defineProps<{
 	programOffering: string | null;
@@ -128,7 +131,9 @@ function interactionFor(commName: string): InteractionSummary {
 }
 
 function getInteractionCapabilities(item: OrgCommunicationListItem | null | undefined) {
-	return getAudienceInteractionCapabilities(item);
+	return getAudienceInteractionCapabilities(item, {
+		viewer: ORG_COMMUNICATION_VIEWERS.RECIPIENT,
+	});
 }
 
 function canReact(item: OrgCommunicationListItem | null | undefined): boolean {

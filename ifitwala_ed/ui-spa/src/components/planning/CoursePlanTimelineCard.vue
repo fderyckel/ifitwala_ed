@@ -324,7 +324,7 @@ function barClass(unit: StaffCoursePlanTimelineUnit) {
 .timeline-label {
 	position: sticky;
 	left: 0;
-	z-index: 5;
+	z-index: 8;
 	display: flex;
 	flex-direction: column;
 	justify-content: center;
@@ -332,14 +332,18 @@ function barClass(unit: StaffCoursePlanTimelineUnit) {
 	min-width: 0;
 	padding: 1rem 1.25rem;
 	border-right: 1px solid rgb(var(--border-rgb) / 0.9);
-	background: rgb(var(--surface-soft-rgb) / 0.94);
+	background: rgb(var(--surface-soft-rgb));
 	overflow: hidden;
-	box-shadow: 14px 0 20px rgb(var(--surface-soft-rgb) / 0.94);
+	box-shadow:
+		22px 0 0 rgb(var(--surface-soft-rgb)),
+		28px 0 30px rgb(var(--surface-soft-rgb) / 0.98);
 }
 
 .timeline-label--header {
 	background: white;
-	box-shadow: 14px 0 20px rgb(255 255 255 / 0.94);
+	box-shadow:
+		22px 0 0 rgb(255 255 255),
+		28px 0 30px rgb(255 255 255 / 0.98);
 }
 
 .timeline-label::after {
@@ -348,17 +352,23 @@ function barClass(unit: StaffCoursePlanTimelineUnit) {
 	top: 0;
 	right: -1px;
 	bottom: 0;
-	width: 1.4rem;
+	width: 2.4rem;
 	background: linear-gradient(
 		90deg,
-		rgb(var(--surface-soft-rgb) / 0.98),
+		rgb(var(--surface-soft-rgb)),
+		rgb(var(--surface-soft-rgb) / 0.96) 58%,
 		rgb(var(--surface-soft-rgb) / 0)
 	);
 	pointer-events: none;
 }
 
 .timeline-label--header::after {
-	background: linear-gradient(90deg, rgb(255 255 255 / 0.98), rgb(255 255 255 / 0));
+	background: linear-gradient(
+		90deg,
+		rgb(255 255 255),
+		rgb(255 255 255 / 0.96) 58%,
+		rgb(255 255 255 / 0)
+	);
 }
 
 .timeline-label__title {
@@ -372,7 +382,7 @@ function barClass(unit: StaffCoursePlanTimelineUnit) {
 .timeline-track {
 	position: relative;
 	min-width: 0;
-	padding: 0.9rem 1.25rem 0.9rem 1.4rem;
+	padding: 0.9rem 1.25rem 0.9rem 2.5rem;
 }
 
 .timeline-track--header {
@@ -429,12 +439,20 @@ function barClass(unit: StaffCoursePlanTimelineUnit) {
 	top: 0;
 	bottom: 0;
 	border-radius: 0.9rem;
-	border: 1px solid rgb(var(--border-rgb) / 0.68);
-	background: linear-gradient(
-		135deg,
-		rgb(var(--surface-soft-rgb) / 0.78),
-		rgb(var(--ink-rgb) / 0.08)
-	);
+	border: 1px solid rgb(var(--clay-rgb) / 0.28);
+	background:
+		repeating-linear-gradient(
+			135deg,
+			rgb(var(--ink-rgb) / 0.11),
+			rgb(var(--ink-rgb) / 0.11) 9px,
+			transparent 9px,
+			transparent 18px
+		),
+		linear-gradient(180deg, rgb(var(--sand-rgb) / 0.46), rgb(var(--sand-rgb) / 0.26));
+	box-shadow:
+		inset 0 0 0 1px rgb(255 255 255 / 0.2),
+		0 0 0 1px rgb(var(--sand-rgb) / 0.08);
+	opacity: 0.98;
 }
 
 .timeline-holiday__label {
@@ -446,19 +464,24 @@ function barClass(unit: StaffCoursePlanTimelineUnit) {
 	text-overflow: ellipsis;
 	white-space: nowrap;
 	font-size: 0.68rem;
-	font-weight: 600;
-	color: rgb(var(--ink-rgb) / 0.62);
+	font-weight: 700;
+	color: rgb(var(--ink-rgb) / 0.72);
 }
 
 .timeline-holiday--row {
 	top: 0.45rem;
 	bottom: 0.45rem;
 	border-radius: 0.75rem;
-	background: linear-gradient(
-		180deg,
-		rgb(var(--surface-soft-rgb) / 0.88),
-		rgb(var(--ink-rgb) / 0.08)
-	);
+	background:
+		repeating-linear-gradient(
+			135deg,
+			rgb(var(--ink-rgb) / 0.1),
+			rgb(var(--ink-rgb) / 0.1) 9px,
+			transparent 9px,
+			transparent 18px
+		),
+		linear-gradient(180deg, rgb(var(--sand-rgb) / 0.52), rgb(var(--sand-rgb) / 0.3));
+	border-color: rgb(var(--clay-rgb) / 0.34);
 }
 
 .timeline-baseline {
@@ -473,34 +496,46 @@ function barClass(unit: StaffCoursePlanTimelineUnit) {
 
 .timeline-bar {
 	position: absolute;
-	top: calc(50% - 1rem);
-	height: 2rem;
+	top: calc(50% - 1.45rem);
+	display: flex;
+	flex-direction: column;
+	justify-content: center;
+	gap: 0.12rem;
+	height: 2.9rem;
 	border: 1px solid transparent;
 	border-radius: 999px;
-	padding: 0.2rem 0.75rem;
+	padding: 0.38rem 0.85rem;
 	overflow: hidden;
-	white-space: nowrap;
-	text-overflow: ellipsis;
+	white-space: normal;
 	z-index: 2;
 }
 
 .timeline-bar__title {
-	font-size: 0.78rem;
+	display: block;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	font-size: 0.8rem;
 	font-weight: 700;
-	color: rgb(var(--ink-rgb) / 0.92);
+	color: rgb(var(--ink-rgb) / 0.94);
 }
 
 .timeline-bar__meta {
-	font-size: 0.68rem;
-	color: rgb(var(--ink-rgb) / 0.62);
+	display: block;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	font-size: 0.7rem;
+	font-weight: 600;
+	color: rgb(var(--ink-rgb) / 0.74);
 }
 
 .timeline-bar--published {
-	border-color: rgb(var(--jacaranda-rgb) / 0.38);
+	border-color: rgb(var(--jacaranda-rgb) / 0.42);
 	background: linear-gradient(
 		90deg,
-		rgb(var(--jacaranda-rgb) / 0.2),
-		rgb(var(--jacaranda-rgb) / 0.12)
+		rgb(var(--jacaranda-rgb) / 0.24),
+		rgb(var(--jacaranda-rgb) / 0.14)
 	);
 }
 
