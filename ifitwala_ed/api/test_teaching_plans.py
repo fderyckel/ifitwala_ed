@@ -1551,6 +1551,7 @@ class TestTeachingPlansApi(TestCase):
 
             with (
                 patch.object(module, "_validate_course_program_link"),
+                patch.object(module.planning, "ensure_linked_unit_plan_standards"),
                 patch.object(module.frappe, "get_doc", side_effect=fake_get_doc),
                 patch.object(module.frappe, "new_doc", return_value=unit_doc),
             ):
@@ -1614,6 +1615,7 @@ class TestTeachingPlansApi(TestCase):
 
             with (
                 patch.object(module, "_validate_course_program_link"),
+                patch.object(module.planning, "ensure_linked_unit_plan_standards"),
                 patch.object(
                     module.frappe,
                     "get_doc",

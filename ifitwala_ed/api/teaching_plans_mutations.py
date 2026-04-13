@@ -316,6 +316,7 @@ def save_unit_plan_impl(
         doc,
         api._normalize_rows_payload(standards_json, label=api._("Standards")),
     )
+    api.planning.ensure_linked_unit_plan_standards(doc)
     api.planning.replace_unit_plan_reflections(
         doc,
         api._normalize_rows_payload(reflections_json, label=api._("Reflections")),

@@ -373,6 +373,7 @@ def fetch_class_sessions(api, class_teaching_plan: str, audience: str = "staff")
 
 def serialize_standards_rows(api, rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
     fields = (
+        "learning_standard",
         "framework_name",
         "framework_version",
         "subject_area",
@@ -456,6 +457,7 @@ def build_unit_lookup(api, course_plan: str, audience: str = "staff") -> dict[st
         unit_names,
         parentfield="standards",
         fields=[
+            "learning_standard",
             "framework_name",
             "framework_version",
             "subject_area",

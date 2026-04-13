@@ -3,9 +3,9 @@ title: "Unit Plan: Governed Curriculum Backbone Inside a Course Plan"
 slug: unit-plan
 category: Curriculum
 doc_order: 5
-version: "1.4.0"
-last_change_date: "2026-04-05"
-summary: "Define the shared unit backbone for a course plan, including standards alignment, pedagogy, reflections, and reusable context that class teaching plans inherit."
+version: "1.5.0"
+last_change_date: "2026-04-13"
+summary: "Define the shared unit backbone for a course plan, including validated standards alignment, pedagogy, reflections, and reusable context that class teaching plans inherit."
 seo_title: "Unit Plan: Governed Curriculum Backbone Inside a Course Plan"
 seo_description: "Define the shared unit backbone for a course plan, including standards alignment, pedagogy, and reflections that class teaching plans inherit."
 ---
@@ -48,7 +48,7 @@ Code refs: `ifitwala_ed/curriculum/doctype/unit_plan/unit_plan.py`, `ifitwala_ed
 Test refs: `ifitwala_ed/api/test_teaching_plans.py`
 
 1. Create the unit under a `Course Plan` with required `title`.
-2. Capture the shared pedagogy, durations, misconceptions, content, skills, concepts, and inline standards alignment.
+2. Capture the shared pedagogy, durations, misconceptions, content, skills, concepts, and validated standards alignment.
 3. Add shared `Curriculum Planning Reflection` rows when the curriculum team wants unit-level planning history.
 4. Staff can edit and save the governed unit directly from the shared `ui-spa` course-plan workspace.
 5. Class teaching plans inherit the governed unit sequence automatically.
@@ -109,4 +109,4 @@ Test refs: `ifitwala_ed/curriculum/doctype/unit_plan/test_unit_plan.py`
 
 - `Unit Plan` is a shared curriculum object, not a class-owned teaching event and not a grading fact table.
 - Class-specific pacing, activities, and reflections still belong on `Class Teaching Plan` and `Class Session`.
-- Inline standards rows remain snapshots owned by the unit; they do not hard-link back to `Learning Standards`.
+- Inline standards rows remain snapshots owned by the unit, but each row must now resolve to an existing `Learning Standards` record so teachers cannot invent standards or taxonomy paths on the unit plan.

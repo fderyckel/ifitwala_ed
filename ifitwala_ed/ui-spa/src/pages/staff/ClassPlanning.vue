@@ -1025,6 +1025,7 @@ import { useRoute, useRouter } from 'vue-router';
 import PlanningResourcePanel from '@/components/planning/PlanningResourcePanel.vue';
 import { useOverlayStack } from '@/composables/useOverlayStack';
 import { SIGNAL_TASK_DELIVERY_CREATED, uiSignals } from '@/lib/uiSignals';
+import { normalizePlanningSurfaceError } from '@/lib/planning/planningActionGuards';
 import {
 	createClassTeachingPlan,
 	getStaffClassPlanningSurface,
@@ -1270,7 +1271,7 @@ async function loadSurface() {
 	} catch (error) {
 		if (ticket !== loadToken.value) return;
 		surface.value = null;
-		errorMessage.value = error instanceof Error ? error.message : 'Unknown error';
+		errorMessage.value = normalizePlanningSurfaceError(error);
 	} finally {
 		if (ticket === loadToken.value) {
 			loading.value = false;

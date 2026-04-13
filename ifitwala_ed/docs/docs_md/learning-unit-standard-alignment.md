@@ -3,9 +3,9 @@ title: "Learning Unit Standard Alignment: Unit-Level Standards Snapshot"
 slug: learning-unit-standard-alignment
 category: Curriculum
 doc_order: 4
-version: "1.1.1"
-last_change_date: "2026-04-05"
-summary: "Record the standards coverage and alignment notes that a specific unit plan claims, stored inline as child rows on the parent unit."
+version: "1.2.0"
+last_change_date: "2026-04-13"
+summary: "Record the standards coverage and alignment notes that a specific unit plan claims, using a validated link to the approved standards catalog plus a unit-owned inline snapshot."
 seo_title: "Learning Unit Standard Alignment: Unit-Level Standards Snapshot"
 seo_description: "Record the standards coverage and alignment notes that a specific learning unit claims, stored inline as child rows on the parent unit."
 ---
@@ -16,9 +16,7 @@ Status: Partial
 Code refs: `ifitwala_ed/curriculum/doctype/learning_unit_standard_alignment/learning_unit_standard_alignment.json`, `ifitwala_ed/curriculum/doctype/learning_unit_standard_alignment/learning_unit_standard_alignment.py`, `ifitwala_ed/curriculum/doctype/unit_plan/unit_plan.json`
 Test refs: None
 
-`Learning Unit Standard Alignment` is the child table that stores a unit's standards coverage claim. It captures framework metadata, code, description, coverage level, alignment strength, and notes directly inside the parent `Unit Plan`.
-
-Current workspace note: these rows do not currently contain a `Link` to `Learning Standards`. They are an inline snapshot owned by the unit plan.
+`Learning Unit Standard Alignment` is the child table that stores a unit's standards coverage claim. Each row now selects an existing `Learning Standards` record, then stores a validated inline snapshot of the approved framework metadata, code, and description inside the parent `Unit Plan`.
 
 ## Before You Start (Prerequisites)
 
@@ -27,7 +25,7 @@ Code refs: `ifitwala_ed/curriculum/doctype/unit_plan/unit_plan.json`, `ifitwala_
 Test refs: None
 
 - Create the parent `Unit Plan` first.
-- Decide the standards framework details first because the row stores them inline.
+- Ensure the required standards already exist in `Learning Standards` because teachers now select from the approved catalog instead of typing the standard identity from scratch.
 - Treat this row as planning metadata only; it is not a runtime grading or delivery record.
 
 ## Where It Is Used Across the ERP
@@ -48,7 +46,7 @@ Test refs: None
 
 1. Open the parent `Unit Plan`.
 2. Add one or more `Learning Unit Standard Alignment` rows to `standards`.
-3. Capture framework metadata, code, description, coverage, and notes for the unit.
+3. Select the existing `Learning Standards` row, then capture unit-specific coverage, strength, and notes.
 4. Optionally author `Task` rows against that unit. The task inherits the unit link only; it does not copy or denormalize these child rows.
 
 ## Related Docs
@@ -79,9 +77,11 @@ Test refs: None
 
 - The child row belongs to `Unit Plan` only.
 - Business logic remains on the parent doctype; the child controller is intentionally empty.
-- The schema duplicates framework metadata inline instead of linking to `Learning Standards`.
+- The schema now stores both:
+  - a `Learning Standards` link for identity and validation
+  - a unit-owned snapshot of the approved metadata for stable downstream reads
 
 ### Current Constraints To Preserve In Review
 
 - Do not add business rules to this child controller unless the parent contract is explicitly redesigned.
-- Do not document this child row as a standalone reusable standards library item.
+- Do not treat free-typed framework metadata as valid. The parent `Unit Plan` now validates that every standards row resolves to an existing `Learning Standards` record.

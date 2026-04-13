@@ -657,22 +657,24 @@ def ensure_linked_unit_plan_standards(doc) -> None:
             if normalize_text((row or {}).get("learning_standard"))
         }
     )
-    linked_rows = {
-        row["learning_standard"]: row
-        for row in (
-            _normalize_learning_standard_catalog_row(raw_row)
-            for raw_row in (
-                frappe.get_all(
-                    "Learning Standards",
-                    filters={"name": ["in", linked_names]},
-                    fields=["name", *LEARNING_STANDARD_CATALOG_FIELDS],
-                    limit=0,
+    linked_rows = {}
+    if linked_names:
+        linked_rows = {
+            row["learning_standard"]: row
+            for row in (
+                _normalize_learning_standard_catalog_row(raw_row)
+                for raw_row in (
+                    frappe.get_all(
+                        "Learning Standards",
+                        filters={"name": ["in", linked_names]},
+                        fields=["name", *LEARNING_STANDARD_CATALOG_FIELDS],
+                        limit=0,
+                    )
+                    or []
                 )
-                or []
             )
-        )
-        if row.get("learning_standard")
-    }
+            if row.get("learning_standard")
+        }
 
     seen: set[str] = set()
     resolved_rows: list[dict[str, str | None]] = []

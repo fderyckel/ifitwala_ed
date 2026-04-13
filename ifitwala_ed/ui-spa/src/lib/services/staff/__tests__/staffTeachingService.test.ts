@@ -15,6 +15,7 @@ vi.mock('@/resources/frappe', () => ({
 import {
 	createCoursePlan,
 	createPlanningReferenceMaterial,
+	getLearningStandardPicker,
 	getStaffClassPlanningSurface,
 	getStaffCoursePlanIndex,
 	getStaffCoursePlanSurface,
@@ -151,6 +152,29 @@ describe('staffTeachingService', () => {
 				course_plan: 'COURSE-PLAN-1',
 				unit_plan: 'UNIT-1',
 				student_group: 'GROUP-1',
+			}
+		)
+	})
+
+	it('uses the canonical method for the learning standards picker', async () => {
+		apiMethodMock.mockResolvedValue({
+			filters: {},
+			options: { frameworks: [], programs: [], strands: [], substrands: [] },
+			standards: [],
+		})
+
+		await getLearningStandardPicker({
+			program: 'MYP',
+			strand: 'Inquiry',
+			search_text: 'cells',
+		})
+
+		expect(apiMethodMock).toHaveBeenCalledWith(
+			'ifitwala_ed.curriculum.doctype.unit_plan.unit_plan.get_learning_standard_picker',
+			{
+				program: 'MYP',
+				strand: 'Inquiry',
+				search_text: 'cells',
 			}
 		)
 	})

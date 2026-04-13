@@ -14,6 +14,10 @@ import type {
 	Response as GetStaffCoursePlanIndexResponse,
 } from '@/types/contracts/staff_teaching/get_staff_course_plan_index'
 import type {
+	Request as GetLearningStandardPickerRequest,
+	Response as GetLearningStandardPickerResponse,
+} from '@/types/contracts/staff_teaching/get_learning_standard_picker'
+import type {
 	Request as GetStaffCoursePlanSurfaceRequest,
 	Response as GetStaffCoursePlanSurfaceResponse,
 	StaffCoursePlanQuizQuestion,
@@ -23,6 +27,8 @@ const METHODS = {
 	getClassPlanningSurface: 'ifitwala_ed.api.teaching_plans.get_staff_class_planning_surface',
 	getCoursePlanIndex: 'ifitwala_ed.api.teaching_plans.list_staff_course_plans',
 	getCoursePlanSurface: 'ifitwala_ed.api.teaching_plans.get_staff_course_plan_surface',
+	getLearningStandardPicker:
+		'ifitwala_ed.curriculum.doctype.unit_plan.unit_plan.get_learning_standard_picker',
 	createCoursePlan: 'ifitwala_ed.api.teaching_plans.create_course_plan',
 	createPlan: 'ifitwala_ed.api.teaching_plans.create_class_teaching_plan',
 	saveCoursePlan: 'ifitwala_ed.api.teaching_plans.save_course_plan',
@@ -274,6 +280,12 @@ export async function getStaffCoursePlanSurface(
 	payload: GetStaffCoursePlanSurfaceRequest
 ): Promise<GetStaffCoursePlanSurfaceResponse> {
 	return apiMethod<GetStaffCoursePlanSurfaceResponse>(METHODS.getCoursePlanSurface, payload)
+}
+
+export async function getLearningStandardPicker(
+	payload: GetLearningStandardPickerRequest
+): Promise<GetLearningStandardPickerResponse> {
+	return apiMethod<GetLearningStandardPickerResponse>(METHODS.getLearningStandardPicker, payload)
 }
 
 export async function createCoursePlan(

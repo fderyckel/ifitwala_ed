@@ -601,6 +601,7 @@ import {
 	suggestSessionSequence,
 	suggestUnitPlan,
 } from './quickClassSessionRules';
+import { normalizePlanningSurfaceError } from '@/lib/planning/planningActionGuards';
 
 type CloseReason = 'backdrop' | 'esc' | 'programmatic';
 
@@ -831,8 +832,7 @@ async function loadSurface() {
 	} catch (error) {
 		if (ticket !== loadToken.value) return;
 		surface.value = null;
-		errorMessage.value =
-			error instanceof Error ? error.message : 'Could not load the class planning surface.';
+		errorMessage.value = normalizePlanningSurfaceError(error);
 	} finally {
 		if (ticket === loadToken.value) {
 			loading.value = false;

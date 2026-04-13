@@ -3,8 +3,8 @@ title: "Institutional Policy: Manage School Policies with Confidence"
 slug: institutional-policy
 category: Governance
 doc_order: 1
-version: "1.6.0"
-last_change_date: "2026-04-11"
+version: "1.6.1"
+last_change_date: "2026-04-13"
 summary: "Create and manage institutional policies—from data privacy to conduct codes—with scoped applicability, version control, and automated acknowledgement tracking across applicants, students, guardians, and staff."
 seo_title: "Institutional Policy: Manage School Policies with Confidence"
 seo_description: "Learn how to manage institutional policies in Ifitwala Ed with scoped applicability, version control, and automated acknowledgement tracking."
@@ -92,8 +92,8 @@ After creating the Institutional Policy, you'll create Policy Versions to hold t
 | Audience | Where They See It | Typical Policies |
 |----------|-------------------|------------------|
 | **Applicant** | Admissions portal during application | Enrollment agreements, fee policies |
-| **Student** | Student portal (when implemented) | Code of conduct, academic integrity |
-| **Guardian** | Family portal | Data consent, communication policies |
+| **Student** | Student portal durable-policy surface (planned) | Code of conduct, academic integrity |
+| **Guardian** | Family portal (`/hub/guardian/policies`) | Data consent, communication policies |
 | **Staff** | Staff workspace, Morning Brief | HR policies, safeguarding, data protection |
 
 <Callout type="warning" title="Audience vs. Signer Authority">
@@ -121,10 +121,14 @@ For policies that apply to Applicants, choose how signatures are collected:
 - Policies appear in the order they must be acknowledged
 
 ### Guardian Portal
-- Parents see policies for their linked children
-- Signatures are tracked per child per policy
-- Expired or updated policies prompt re-acknowledgement
+- Guardians can review active guardian-scoped policies in their family portal scope
+- Durable acknowledgements are currently stored as guardian-self evidence, filtered by signer-authorized linked children
+- Updated policies prompt re-acknowledgement when a new active version replaces the old one
 - Historical signatures are preserved for audit
+
+### Student Portal
+- Student-scoped durable policy acknowledgement is planned but not yet wired in the current student hub
+- Student audience should still be modeled on the Institutional Policy even before the student portal surface ships
 
 ### Staff Workspace
 - Staff see policies applicable to their role and school

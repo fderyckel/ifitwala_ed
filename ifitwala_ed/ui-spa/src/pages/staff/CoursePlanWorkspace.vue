@@ -682,11 +682,27 @@
 										v-if="canManagePlan"
 										type="button"
 										class="if-action if-action--subtle"
-										@click="addStandard"
+										@click="openStandardsOverlay"
 									>
-										Add Standard
+										Select Standards
 									</button>
 								</div>
+							</div>
+
+							<div
+								v-if="legacyStandardsCount"
+								class="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3"
+							>
+								<p class="type-body-strong text-amber-950">
+									{{ legacyStandardsCount }} standards row{{
+										legacyStandardsCount > 1 ? 's need' : ' needs'
+									}}
+									re-selection
+								</p>
+								<p class="mt-1 type-caption text-amber-900/80">
+									These rows do not yet carry a catalog link. Remove and re-add them through Select
+									Standards so the unit saves against the approved learning-standards master.
+								</p>
 							</div>
 
 							<div
@@ -711,7 +727,7 @@
 												v-model="standard.framework_name"
 												type="text"
 												class="if-input w-full"
-												:disabled="!canManagePlan"
+												disabled
 											/>
 										</label>
 										<label class="block space-y-2">
@@ -720,7 +736,7 @@
 												v-model="standard.framework_version"
 												type="text"
 												class="if-input w-full"
-												:disabled="!canManagePlan"
+												disabled
 											/>
 										</label>
 										<label class="block space-y-2">
@@ -729,25 +745,17 @@
 												v-model="standard.subject_area"
 												type="text"
 												class="if-input w-full"
-												:disabled="!canManagePlan"
+												disabled
 											/>
 										</label>
 										<label class="block space-y-2">
 											<span class="type-caption text-ink/70">Program</span>
-											<select
+											<input
 												v-model="standard.program"
+												type="text"
 												class="if-input w-full"
-												:disabled="!canManagePlan"
-											>
-												<option value="">Optional program</option>
-												<option
-													v-for="option in courseProgramOptions"
-													:key="option.value"
-													:value="option.value"
-												>
-													{{ option.label }}
-												</option>
-											</select>
+												disabled
+											/>
 										</label>
 										<label class="block space-y-2">
 											<span class="type-caption text-ink/70">Strand</span>
@@ -755,7 +763,7 @@
 												v-model="standard.strand"
 												type="text"
 												class="if-input w-full"
-												:disabled="!canManagePlan"
+												disabled
 											/>
 										</label>
 										<label class="block space-y-2">
@@ -764,7 +772,7 @@
 												v-model="standard.substrand"
 												type="text"
 												class="if-input w-full"
-												:disabled="!canManagePlan"
+												disabled
 											/>
 										</label>
 										<label class="block space-y-2">
@@ -773,7 +781,7 @@
 												v-model="standard.standard_code"
 												type="text"
 												class="if-input w-full"
-												:disabled="!canManagePlan"
+												disabled
 											/>
 										</label>
 										<label class="block space-y-2">
@@ -812,20 +820,12 @@
 										</label>
 										<label class="block space-y-2">
 											<span class="type-caption text-ink/70">Alignment Type</span>
-											<select
+											<input
 												v-model="standard.alignment_type"
+												type="text"
 												class="if-input w-full"
-												:disabled="!canManagePlan"
-											>
-												<option value="">Select</option>
-												<option
-													v-for="option in alignmentTypeOptions"
-													:key="option"
-													:value="option"
-												>
-													{{ option }}
-												</option>
-											</select>
+												disabled
+											/>
 										</label>
 										<label class="block space-y-2 lg:col-span-2">
 											<span class="type-caption text-ink/70">Standard Description</span>
@@ -833,7 +833,7 @@
 												v-model="standard.standard_description"
 												rows="3"
 												class="if-input min-h-[6rem] w-full resize-y"
-												:disabled="!canManagePlan"
+												disabled
 											/>
 										</label>
 										<label class="block space-y-2 lg:col-span-2">
@@ -1494,6 +1494,7 @@ import {
 	saveGovernedUnitPlan,
 	saveQuizQuestionBank,
 } from '@/lib/services/staff/staffTeachingService';
+import type { StaffLearningStandardPickerRow } from '@/types/contracts/staff_teaching/get_learning_standard_picker';
 import type {
 	Response as StaffCoursePlanSurfaceResponse,
 	StaffCoursePlanQuizQuestion,
@@ -1622,7 +1623,6 @@ const coursePlanStatusOptions = ['Draft', 'Active', 'Archived'];
 const unitStatusOptions = ['Draft', 'Active', 'Archived'];
 const coverageLevelOptions = ['Introduced', 'Reinforced', 'Mastered'];
 const alignmentStrengthOptions = ['Exact', 'Partial', 'Broad'];
-const alignmentTypeOptions = ['Knowledge', 'Skill', 'Practice', 'Process'];
 const quizQuestionTypeOptions = [
 	'Single Choice',
 	'Multiple Answer',
@@ -1666,6 +1666,18 @@ const derivedReflectionAcademicYear = computed(
 );
 const derivedReflectionSchool = computed(() => surface.value?.course_plan.school || '');
 const showUnitEditor = computed(() => Boolean(selectedUnit.value || creatingUnit.value));
+const legacyStandardsCount = computed(
+	() =>
+		unitForm.standards.filter(
+			standard =>
+				!String(standard.learning_standard || '').trim() &&
+				Boolean(
+					String(standard.standard_code || '').trim() ||
+					String(standard.standard_description || '').trim() ||
+					String(standard.framework_name || '').trim()
+				)
+		).length
+);
 const showQuizBankEditor = computed(() =>
 	Boolean(selectedQuizQuestionBank.value || creatingQuizQuestionBank.value)
 );
@@ -1835,6 +1847,7 @@ function hasRichTextContent(value?: string | null) {
 function buildEditableStandard(standard?: StaffPlanningStandard): EditableStandard {
 	return {
 		local_id: nextId(),
+		learning_standard: standard?.learning_standard || '',
 		framework_name: standard?.framework_name || '',
 		framework_version: standard?.framework_version || '',
 		subject_area: standard?.subject_area || '',
@@ -2202,8 +2215,54 @@ function cancelNewUnit() {
 	syncUnitForm(null);
 }
 
-function addStandard() {
-	unitForm.standards.push(buildEditableStandard({ program: unitForm.program || undefined }));
+function applySelectedLearningStandards(rows: StaffLearningStandardPickerRow[]) {
+	const existingStandards = new Set(
+		unitForm.standards
+			.map(standard => String(standard.learning_standard || '').trim())
+			.filter(value => Boolean(value))
+	);
+	let added = 0;
+
+	rows.forEach(standard => {
+		const learningStandard = String(standard.learning_standard || '').trim();
+		if (!learningStandard || existingStandards.has(learningStandard)) {
+			return;
+		}
+		unitForm.standards.push(
+			buildEditableStandard({
+				learning_standard: learningStandard,
+				framework_name: standard.framework_name || '',
+				framework_version: standard.framework_version || '',
+				subject_area: standard.subject_area || '',
+				program: standard.program || unitForm.program || '',
+				strand: standard.strand || '',
+				substrand: standard.substrand || '',
+				standard_code: standard.standard_code || '',
+				standard_description: standard.standard_description || '',
+				alignment_type: standard.alignment_type || '',
+			})
+		);
+		existingStandards.add(learningStandard);
+		added += 1;
+	});
+
+	if (added) {
+		toast.success(`${added} learning standard${added === 1 ? '' : 's'} added.`);
+		return;
+	}
+	toast.error('All selected standards are already on this unit.');
+}
+
+function openStandardsOverlay() {
+	if (!canManagePlan.value) return;
+	overlay.open('learning-standards-picker', {
+		unitTitle: unitForm.title || selectedUnit.value?.title || 'Selected Unit',
+		unitProgram: unitForm.program || null,
+		existingStandards: unitForm.standards
+			.map(standard => String(standard.learning_standard || '').trim())
+			.filter(value => Boolean(value)),
+		onApply: applySelectedLearningStandards,
+	});
 }
 
 function removeStandard(localId: number) {

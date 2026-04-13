@@ -4,6 +4,7 @@
 import frappe
 from frappe.tests.utils import FrappeTestCase
 
+from ifitwala_ed.curriculum import planning
 from ifitwala_ed.curriculum.doctype.unit_plan.unit_plan import get_program_subtree_scope
 
 
@@ -49,3 +50,82 @@ class TestUnitPlan(FrappeTestCase):
         ).insert(ignore_permissions=True)
 
         self.assertEqual(get_program_subtree_scope(leaf.name), [leaf.name])
+
+    def test_ensure_linked_unit_plan_standards_rewrites_snapshot_from_catalog(self):
+        standard = frappe.get_doc(
+            {
+                "doctype": "Learning Standards",
+                "framework_name": "IB MYP",
+                "program": f"MYP {frappe.generate_hash(length=6)}",
+                "strand": "Inquiry",
+                "substrand": "Research",
+                "standard_code": f"STD-{frappe.generate_hash(length=5)}",
+                "standard_description": "Plan and carry out a guided investigation.",
+                "alignment_type": "Skill",
+            }
+        ).insert(ignore_permissions=True)
+
+        class FakeUnitDoc:
+            def __init__(self, rows):
+                self.standards = rows
+
+            def get(self, fieldname):
+                return getattr(self, fieldname)
+
+            def set(self, fieldname, value):
+                setattr(self, fieldname, value)
+
+        doc = FakeUnitDoc(
+            [
+                {
+                    "learning_standard": standard.name,
+                    "framework_name": "Wrong Value",
+                    "standard_code": "WRONG",
+                    "coverage_level": "Introduced",
+                    "alignment_strength": "Exact",
+                    "notes": "Use during the first lab.",
+                }
+            ]
+        )
+
+        planning.ensure_linked_unit_plan_standards(doc)
+
+        self.assertEqual(len(doc.standards), 1)
+        self.assertEqual(doc.standards[0]["learning_standard"], standard.name)
+        self.assertEqual(doc.standards[0]["framework_name"], "IB MYP")
+        self.assertEqual(doc.standards[0]["standard_code"], standard.standard_code)
+        self.assertEqual(doc.standards[0]["alignment_type"], "Skill")
+        self.assertEqual(doc.standards[0]["coverage_level"], "Introduced")
+        self.assertEqual(doc.standards[0]["alignment_strength"], "Exact")
+        self.assertEqual(doc.standards[0]["notes"], "Use during the first lab.")
+
+    def test_ensure_linked_unit_plan_standards_rejects_duplicate_standard(self):
+        standard = frappe.get_doc(
+            {
+                "doctype": "Learning Standards",
+                "framework_name": "Common Core",
+                "strand": "Reading",
+                "standard_code": f"CC-{frappe.generate_hash(length=5)}",
+                "standard_description": "Quote textual evidence to support analysis.",
+            }
+        ).insert(ignore_permissions=True)
+
+        class FakeUnitDoc:
+            def __init__(self, rows):
+                self.standards = rows
+
+            def get(self, fieldname):
+                return getattr(self, fieldname)
+
+            def set(self, fieldname, value):
+                setattr(self, fieldname, value)
+
+        doc = FakeUnitDoc(
+            [
+                {"learning_standard": standard.name, "coverage_level": "Introduced"},
+                {"learning_standard": standard.name, "coverage_level": "Reinforced"},
+            ]
+        )
+
+        with self.assertRaises(frappe.ValidationError):
+            planning.ensure_linked_unit_plan_standards(doc)

@@ -3,9 +3,9 @@ title: "Learning Standards: Standards Catalog for Curriculum Taxonomy"
 slug: learning-standards
 category: Curriculum
 doc_order: 3
-version: "1.2.0"
-last_change_date: "2026-04-07"
-summary: "Catalog standards-framework rows for curriculum taxonomy while the live curriculum runtime still publishes unit standards inline and reporting still aggregates official outcome truth."
+version: "1.3.0"
+last_change_date: "2026-04-13"
+summary: "Catalog standards-framework rows for curriculum taxonomy and validate unit-plan standards selections against the approved standards master while reporting still aggregates official outcome truth."
 seo_title: "Learning Standards: Standards Catalog for Curriculum Taxonomy"
 seo_description: "Catalog standards-framework rows for curriculum taxonomy while the live curriculum runtime still publishes unit standards inline and reporting still aggregates official outcome truth."
 ---
@@ -18,7 +18,7 @@ Test refs: `ifitwala_ed/api/test_teaching_plans.py`
 
 `Learning Standards` is the standalone standards catalog for framework metadata such as framework name, subject area, strand, substrand, code, and description.
 
-Current runtime note: this master exists, but `Unit Plan` does not currently link to it by field. Unit-level standards are still stored inline via `Learning Unit Standard Alignment`, the student learning space publishes those unit-alignment rows, and neither `Task` nor `Task Delivery` dereferences `Learning Standards` directly in the live schema.
+Current runtime note: `Unit Plan` standards rows now select an existing `Learning Standards` record and persist a validated inline snapshot for the unit. Student learning surfaces still publish the unit-alignment rows, and neither `Task` nor `Task Delivery` dereferences `Learning Standards` directly in the live schema.
 
 ## Before You Start (Prerequisites)
 
@@ -51,7 +51,7 @@ Test refs: None
 
 1. Create the standards catalog row with framework and taxonomy metadata.
 2. Use it as the reference vocabulary for curriculum planning and future mastery-tracking work.
-3. When documenting a `Unit Plan` today, re-enter the relevant framework metadata inside `Learning Unit Standard Alignment` rows because the current schema does not link those rows back to this master.
+3. When documenting a `Unit Plan`, choose the standard from this master so the unit row copies the approved framework metadata instead of relying on free typing.
 4. Treat standards visibility and assessed mastery as separate layers today:
    - published unit goals come from the unit alignment rows
    - official reporting truth still comes from outcomes/criteria
@@ -91,5 +91,5 @@ Test refs: `ifitwala_ed/api/test_teaching_plans.py`
 
 ### Current Constraints To Preserve In Review
 
-- Do not claim that `Unit Plan` rows point to `Learning Standards`; they currently do not.
+- `Unit Plan` standards rows now point to an existing `Learning Standards` record and copy the approved catalog metadata into the unit-owned snapshot.
 - Do not claim that standards mastery is aggregated through this DocType in the current gradebook or term-reporting contract.

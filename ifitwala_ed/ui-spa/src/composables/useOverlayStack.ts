@@ -19,6 +19,7 @@ export type OverlayType =
   | 'staff-professional-development-request'
   | 'staff-professional-development-completion'
   | 'focus-router'
+  | 'learning-standards-picker'
   | 'class-hub-group-picker'
   | 'class-hub-student-context'
   | 'class-hub-wheel-picker'
