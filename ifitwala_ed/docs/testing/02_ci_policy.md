@@ -31,6 +31,16 @@ All PRs targeting `main` must pass:
 5. `spa-typecheck-build`
 - Verifies SPA type-check and unit tests.
 
+## 2.2 Browser E2E rollout
+
+1. Browser E2E is now implemented as a repo-root Cypress layer for deterministic `/hub` and `/admissions` journeys.
+2. It is not a required PR check yet.
+3. The gating sequence remains:
+   - stabilize locally with `./scripts/codex e2e`
+   - prove repeatability on dedicated infrastructure
+   - only then consider PR-gating a small smoke pack
+4. Until that rollout is complete, browser E2E remains a local/manual and future-nightly concern rather than a merge requirement.
+
 ## 2.1 Framework baseline
 
 CI benches are initialized against **Frappe `version-16`**.
@@ -46,6 +56,7 @@ Nightly jobs:
 1. `nightly-backend-full`
 2. `nightly-api-regression`
 3. `nightly-spa-smoke`
+4. Future: browser E2E smoke/critical packs once the dedicated runner path is restored and stable.
 
 Nightly smoke/unit frontend step is intentionally non-blocking to keep signal while the SPA unit harness scales.
 

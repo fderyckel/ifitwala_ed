@@ -29,7 +29,13 @@ Goals:
 - Verify client transport contracts and composable logic.
 - Validate locked UI contract invariants (payload shape, overlay behavior, TDZ safety checks where feasible).
 
-5. Nightly heavy suites
+5. Browser E2E journeys (small, deterministic)
+- Use Cypress only for a narrow set of cross-layer browser journeys that can fail even when backend and SPA unit tests pass.
+- Current browser surfaces in scope are `/hub` and `/admissions`.
+- Data setup must be deterministic and prepared through test-only Python helpers under `ifitwala_ed/tests/e2e/`, not through public app APIs.
+- Browser E2E must run against a dedicated test site, never ambient shared developer state.
+
+6. Nightly heavy suites
 - Full app backend run and extended domain/API suites.
 
 ## 3. Prioritized Invariants
@@ -48,6 +54,7 @@ Goals:
 3. Use mocks/patches for external systems where possible.
 4. Avoid schema invention; use existing DocType fields only.
 5. Add or update tests in the same PR as behavior changes.
+6. Keep browser E2E focused on shell bootstrap, role/scope rendering, admissions session switching, form save persistence, and submit gating/submission state.
 
 ## 5. Success Metrics (tracked by `scripts/test_metrics.sh`)
 

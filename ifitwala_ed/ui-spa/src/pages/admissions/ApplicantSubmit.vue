@@ -1,7 +1,7 @@
 <!-- ifitwala_ed/ui-spa/src/pages/admissions/ApplicantSubmit.vue -->
 
 <template>
-	<div class="admissions-page">
+	<div data-testid="admissions-submit-page" class="admissions-page">
 		<div>
 			<p class="type-h2 text-ink">{{ __('Submit application') }}</p>
 			<p class="mt-1 type-caption text-ink/60">
@@ -45,6 +45,7 @@
 
 			<div
 				v-if="blockingActions.length"
+				data-testid="admissions-submit-blocked"
 				class="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3"
 			>
 				<p class="type-body-strong text-amber-900">{{ __('Action required') }}</p>
@@ -84,6 +85,7 @@
 
 			<div class="flex flex-wrap items-center gap-3">
 				<button
+					data-testid="admissions-submit-open"
 					type="button"
 					class="rounded-full bg-ink px-5 py-2 type-caption text-white shadow-soft disabled:opacity-50"
 					:disabled="isReadOnly || !isReady"

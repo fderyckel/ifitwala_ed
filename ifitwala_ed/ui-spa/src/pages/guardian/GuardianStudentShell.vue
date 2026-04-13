@@ -48,7 +48,11 @@
 			<p class="type-body text-ink/70">{{ errorMessage }}</p>
 		</section>
 
-		<section v-else-if="!brief" class="card-surface p-5">
+		<section
+			v-else-if="!brief"
+			data-testid="guardian-student-scope-error"
+			class="card-surface p-5"
+		>
 			<p class="type-body-strong text-flame">
 				This student is not available in your guardian scope.
 			</p>

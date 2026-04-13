@@ -1,7 +1,7 @@
 <!-- ifitwala_ed/docs/testing/05_browser_e2e_proposal.md -->
 # Ifitwala_Ed Browser E2E Proposal (Non-Canonical)
 
-Status: Proposed
+Status: Implemented (phase 1, local/manual)
 Scope: repo-level browser E2E for `/hub` and `/admissions`
 Canonical impact: none until explicitly approved and folded into `01_test_strategy.md` and `02_ci_policy.md`
 Code refs: `package.json`, `ifitwala_ed/ui-spa/package.json`, `ifitwala_ed/codex_cli.py`, `.github/workflows/ci.yml`, `.github/workflows/nightly.yml`, `ifitwala_ed/ui-spa/src/router/index.ts`, `ifitwala_ed/ui-spa/src/router/admissions.ts`, `ifitwala_ed/ui-spa/src/apps/portal/main.ts`, `ifitwala_ed/ui-spa/src/apps/admissions/main.ts`, `ifitwala_ed/ui-spa/src/composables/useAdmissionsSession.ts`, `ifitwala_ed/ui-spa/src/lib/services/admissions/admissionsService.ts`
