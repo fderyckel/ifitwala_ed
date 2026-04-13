@@ -69,6 +69,9 @@
 					<div class="space-y-1">
 						<label class="type-label">Title</label>
 						<FormControl v-model="form.title" type="text" placeholder="Resource title" />
+						<p v-if="composerMode === 'link'" class="type-caption text-ink/60">
+							Leave this blank to use the link domain as the title.
+						</p>
 					</div>
 					<div class="space-y-1">
 						<label class="type-label">How students use it</label>
@@ -296,10 +299,9 @@ const readOnlyMessageToUse = computed(
 const canSubmit = computed(() => {
 	if (!canManageResources.value) return false;
 	if (!props.anchorName?.trim()) return false;
-	if (!form.title.trim()) return false;
 	return composerMode.value === 'link'
-		? Boolean(form.reference_url.trim())
-		: Boolean(selectedFile.value);
+		? Boolean(normalizeReferenceUrl(form.reference_url))
+		: Boolean(selectedFile.value) && Boolean(form.title.trim());
 });
 
 function resetDraftFields() {
@@ -335,7 +337,7 @@ async function addResource() {
 	if (!canSubmit.value) {
 		errorMessage.value =
 			composerMode.value === 'link'
-				? 'Provide a title and a valid link.'
+				? 'Provide a valid http or https link.'
 				: 'Provide a title and choose a file.';
 		return;
 	}
@@ -344,11 +346,15 @@ async function addResource() {
 	errorMessage.value = '';
 	try {
 		if (composerMode.value === 'link') {
+			const referenceUrl = normalizeReferenceUrl(form.reference_url);
+			if (!referenceUrl) {
+				throw new Error('Provide a valid http or https link.');
+			}
 			await createPlanningReferenceMaterial({
 				anchor_doctype: props.anchorDoctype,
 				anchor_name: props.anchorName,
-				title: form.title.trim(),
-				reference_url: form.reference_url.trim(),
+				title: resolveReferenceTitle(form.title, referenceUrl),
+				reference_url: referenceUrl,
 				description: form.description.trim() || undefined,
 				modality: form.modality,
 				usage_role: form.usage_role,
@@ -402,6 +408,32 @@ async function removeResource(placement: string) {
 		toast.error(message);
 	} finally {
 		removingPlacement.value = null;
+	}
+}
+
+function normalizeReferenceUrl(value: string): string {
+	const trimmed = String(value || '').trim();
+	if (!trimmed) return '';
+	try {
+		const parsed = new URL(trimmed);
+		return parsed.protocol === 'http:' || parsed.protocol === 'https:' ? trimmed : '';
+	} catch {
+		return '';
+	}
+}
+
+function resolveReferenceTitle(title: string, referenceUrl: string): string {
+	const explicitTitle = String(title || '').trim();
+	if (explicitTitle) return explicitTitle;
+	return deriveTitleFromUrl(referenceUrl);
+}
+
+function deriveTitleFromUrl(referenceUrl: string): string {
+	try {
+		const parsed = new URL(referenceUrl);
+		return (parsed.hostname || referenceUrl).replace(/^www\./, '') || referenceUrl;
+	} catch {
+		return referenceUrl;
 	}
 }
 </script>

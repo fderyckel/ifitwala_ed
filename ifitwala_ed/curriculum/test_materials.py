@@ -31,7 +31,7 @@ def _materials_module(*, roles: list[str], instructor_groups: list[str], coordin
             return None
 
         def fake_sql(query, params=None, as_dict=False):
-            if "FROM `tabProgram Coordinator`" in query:
+            if "FROM `tabProgram Coordinator`" in query and "JOIN `tabProgram Course`" in query:
                 rows = [{"course": course} for course in (coordinator_courses or [])]
                 return rows if as_dict else rows
             return []

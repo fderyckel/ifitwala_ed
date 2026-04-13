@@ -54,9 +54,9 @@ class TestStaffCalendarPrintFormat(unittest.TestCase):
             "row.description",
             "row.color",
             "row.weekly_off",
-            "calendar-months",
-            "month-grid",
-            "day-cell",
+            "calendar-month-page",
+            "month-calendar-table",
+            "day-box",
             "range(month_count)",
         ):
             self.assertIn(token, html)
@@ -66,9 +66,11 @@ class TestStaffCalendarPrintFormat(unittest.TestCase):
             "row.type",
             "doc.organization_logo",
             "doc.school_logo",
-            "calendar-table",
+            'class="calendar-table"',
             "date-chip",
             "type-pill",
+            "month-grid",
+            "day-cell",
         ):
             self.assertNotIn(token, html)
 
@@ -109,12 +111,12 @@ class TestStaffCalendarPrintFormat(unittest.TestCase):
         for token in (
             "August 2025",
             "September 2025",
-            "Visual staff calendar",
+            "Staff Calendar",
             "School Closed",
             "Sunday",
-            "Weekly Off",
-            "day-cell",
-            "month-card",
+            "Outside Range",
+            "day-box",
+            "calendar-month-page",
         ):
             self.assertIn(token, rendered)
 
@@ -122,14 +124,14 @@ class TestStaffCalendarPrintFormat(unittest.TestCase):
         css = STAFF_CALENDAR_CSS_PATH.read_text(encoding="utf-8")
 
         for token in (
-            ".brand-mark img",
-            ".hero-card",
-            ".summary-card",
-            ".calendar-months",
-            ".month-card",
-            ".month-grid",
-            ".day-cell",
-            ".day-event",
+            ".page-header",
+            ".page-summary",
+            ".page-legend",
+            ".calendar-month-page",
+            ".month-calendar-table",
+            ".day-box--out-of-range",
+            ".day-entry",
+            "page-break-after: always",
         ):
             self.assertIn(token, css)
 

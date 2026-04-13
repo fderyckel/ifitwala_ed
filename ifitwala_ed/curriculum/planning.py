@@ -15,6 +15,17 @@ _RICH_TEXT_TAG_RE = re.compile(r"<[^>]*>")
 _RICH_TEXT_MEDIA_RE = re.compile(r"<(audio|hr|iframe|img|table|video)\b", re.IGNORECASE)
 _RICH_TEXT_SCRIPT_STYLE_RE = re.compile(r"<(script|style)\b[\s\S]*?</\1>", re.IGNORECASE)
 _RICH_TEXT_NBSP_RE = re.compile(r"&nbsp;|&#160;", re.IGNORECASE)
+LEARNING_STANDARD_CATALOG_FIELDS = (
+    "framework_name",
+    "framework_version",
+    "subject_area",
+    "program",
+    "strand",
+    "substrand",
+    "standard_code",
+    "standard_description",
+    "alignment_type",
+)
 
 
 def normalize_text(value: str | None) -> str:
@@ -535,6 +546,7 @@ def replace_unit_plan_standards(doc, rows: Iterable[dict] | None) -> None:
     sanitized: list[dict] = []
     for row in rows or []:
         payload = {
+            "learning_standard": normalize_text((row or {}).get("learning_standard")) or None,
             "framework_name": normalize_text((row or {}).get("framework_name")) or None,
             "framework_version": normalize_text((row or {}).get("framework_version")) or None,
             "subject_area": normalize_text((row or {}).get("subject_area")) or None,
@@ -552,6 +564,152 @@ def replace_unit_plan_standards(doc, rows: Iterable[dict] | None) -> None:
             continue
         sanitized.append(payload)
     doc.set("standards", sanitized)
+
+
+def _normalize_learning_standard_catalog_row(row: dict | None) -> dict[str, str | None]:
+    payload = {
+        fieldname: normalize_long_text((row or {}).get(fieldname))
+        if fieldname == "standard_description"
+        else normalize_text((row or {}).get(fieldname)) or None
+        for fieldname in LEARNING_STANDARD_CATALOG_FIELDS
+    }
+    payload["learning_standard"] = (
+        normalize_text((row or {}).get("name") or (row or {}).get("learning_standard")) or None
+    )
+    return payload
+
+
+def _catalog_rows_match(candidate: dict[str, str | None], row: dict[str, str | None]) -> bool:
+    for fieldname in LEARNING_STANDARD_CATALOG_FIELDS:
+        expected = row.get(fieldname)
+        if expected in (None, ""):
+            continue
+        if candidate.get(fieldname) != expected:
+            return False
+    return True
+
+
+def _resolve_learning_standard_candidates(code: str) -> list[dict[str, str | None]]:
+    if not code:
+        return []
+    return [
+        _normalize_learning_standard_catalog_row(row)
+        for row in (
+            frappe.get_all(
+                "Learning Standards",
+                filters={"standard_code": code},
+                fields=["name", *LEARNING_STANDARD_CATALOG_FIELDS],
+                limit=0,
+            )
+            or []
+        )
+    ]
+
+
+def _resolve_unit_standard_catalog_row(
+    row: dict | None,
+    linked_rows: dict[str, dict[str, str | None]],
+) -> dict[str, str | None]:
+    normalized = _normalize_learning_standard_catalog_row(row)
+    linked_name = normalized.get("learning_standard")
+    if linked_name:
+        linked_row = linked_rows.get(linked_name)
+        if not linked_row:
+            frappe.throw(
+                _("Learning Standard {0} does not exist.").format(linked_name),
+                frappe.ValidationError,
+            )
+        return linked_row
+
+    code = normalized.get("standard_code")
+    if not code:
+        frappe.throw(
+            _("Each standards alignment row must select an existing Learning Standard."),
+            frappe.ValidationError,
+        )
+
+    matches = [
+        candidate
+        for candidate in _resolve_learning_standard_candidates(code)
+        if _catalog_rows_match(candidate, normalized)
+    ]
+    if len(matches) == 1:
+        return matches[0]
+    if not matches:
+        frappe.throw(
+            _("Standard {0} must match an existing Learning Standard.").format(code),
+            frappe.ValidationError,
+        )
+    frappe.throw(
+        _("Standard {0} matches multiple Learning Standards. Select the exact standard from the catalog.").format(
+            code,
+        ),
+        frappe.ValidationError,
+    )
+
+
+def ensure_linked_unit_plan_standards(doc) -> None:
+    rows = list(doc.get("standards") or [])
+    linked_names = sorted(
+        {
+            normalize_text((row or {}).get("learning_standard"))
+            for row in rows
+            if normalize_text((row or {}).get("learning_standard"))
+        }
+    )
+    linked_rows = {
+        row["learning_standard"]: row
+        for row in (
+            _normalize_learning_standard_catalog_row(raw_row)
+            for raw_row in (
+                frappe.get_all(
+                    "Learning Standards",
+                    filters={"name": ["in", linked_names]},
+                    fields=["name", *LEARNING_STANDARD_CATALOG_FIELDS],
+                    limit=0,
+                )
+                or []
+            )
+        )
+        if row.get("learning_standard")
+    }
+
+    seen: set[str] = set()
+    resolved_rows: list[dict[str, str | None]] = []
+    for row in rows:
+        normalized_row = {
+            "coverage_level": normalize_text((row or {}).get("coverage_level")) or None,
+            "alignment_strength": normalize_text((row or {}).get("alignment_strength")) or None,
+            "notes": normalize_long_text((row or {}).get("notes")),
+        }
+        if not any(normalized_row.values()) and not any(
+            normalize_text((row or {}).get(fieldname))
+            or (normalize_long_text((row or {}).get(fieldname)) if fieldname == "standard_description" else None)
+            for fieldname in ("learning_standard", *LEARNING_STANDARD_CATALOG_FIELDS)
+        ):
+            continue
+
+        catalog_row = _resolve_unit_standard_catalog_row(row, linked_rows)
+        learning_standard = catalog_row.get("learning_standard")
+        if not learning_standard:
+            frappe.throw(_("Each standards alignment row must select an existing Learning Standard."))
+        if learning_standard in seen:
+            frappe.throw(
+                _("Learning Standard {0} is already aligned to this unit.").format(
+                    catalog_row.get("standard_code") or learning_standard,
+                ),
+                frappe.ValidationError,
+            )
+        seen.add(learning_standard)
+        resolved_rows.append(
+            {
+                "learning_standard": learning_standard,
+                **{fieldname: catalog_row.get(fieldname) for fieldname in LEARNING_STANDARD_CATALOG_FIELDS},
+                **normalized_row,
+            }
+        )
+
+    doc.set("standards", resolved_rows)
 
 
 def replace_unit_plan_reflections(doc, rows: Iterable[dict] | None, *, course_plan_row: dict | None = None) -> None:

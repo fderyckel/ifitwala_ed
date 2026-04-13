@@ -480,10 +480,14 @@ def _coordinator_course_names(user: str) -> list[str]:
 
     rows = frappe.db.sql(
         """
-        SELECT course
-        FROM `tabProgram Coordinator`
-        WHERE employee = %(employee)s
-          AND COALESCE(status, 'Active') = 'Active'
+        SELECT DISTINCT pcr.course
+        FROM `tabProgram Coordinator` pc
+        JOIN `tabProgram Course` pcr ON pcr.parent = pc.parent
+        WHERE pc.parenttype = 'Program'
+          AND pc.parentfield = 'program_coordinators'
+          AND pcr.parenttype = 'Program'
+          AND pcr.parentfield = 'courses'
+          AND pc.coordinator = %(employee)s
         """,
         {"employee": employee},
         as_dict=True,
