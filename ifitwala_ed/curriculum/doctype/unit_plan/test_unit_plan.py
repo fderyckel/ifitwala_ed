@@ -1,6 +1,8 @@
 # Copyright (c) 2026, François de Ryckel and Contributors
 # See license.txt
 
+from unittest.mock import patch
+
 import frappe
 from frappe.tests.utils import FrappeTestCase
 
@@ -129,3 +131,47 @@ class TestUnitPlan(FrappeTestCase):
 
         with self.assertRaises(frappe.ValidationError):
             planning.ensure_linked_unit_plan_standards(doc)
+
+    def test_ensure_linked_unit_plan_standards_falls_back_to_direct_identifier_resolution(self):
+        standard = frappe.get_doc(
+            {
+                "doctype": "Learning Standards",
+                "framework_name": "NGSS",
+                "strand": "Life Science",
+                "standard_code": f"NG-{frappe.generate_hash(length=5)}",
+                "standard_description": "Develop a model to describe cell function.",
+                "alignment_type": "Knowledge",
+            }
+        ).insert(ignore_permissions=True)
+
+        class FakeUnitDoc:
+            def __init__(self, rows):
+                self.standards = rows
+
+            def get(self, fieldname):
+                return getattr(self, fieldname)
+
+            def set(self, fieldname, value):
+                setattr(self, fieldname, value)
+
+        doc = FakeUnitDoc(
+            [
+                {
+                    "learning_standard": standard.name,
+                    "coverage_level": "Introduced",
+                }
+            ]
+        )
+
+        original_get_all = frappe.get_all
+
+        def fake_get_all(doctype, *args, **kwargs):
+            if doctype == "Learning Standards" and kwargs.get("filters") == {"name": ["in", [standard.name]]}:
+                return []
+            return original_get_all(doctype, *args, **kwargs)
+
+        with patch.object(frappe, "get_all", side_effect=fake_get_all):
+            planning.ensure_linked_unit_plan_standards(doc)
+
+        self.assertEqual(doc.standards[0]["learning_standard"], standard.name)
+        self.assertEqual(doc.standards[0]["standard_code"], standard.standard_code)

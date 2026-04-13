@@ -606,6 +606,41 @@ def _resolve_learning_standard_candidates(code: str) -> list[dict[str, str | Non
     ]
 
 
+def _resolve_learning_standard_identifier(
+    identifier: str,
+    row: dict[str, str | None],
+) -> dict[str, str | None] | None:
+    identifier = normalize_text(identifier)
+    if not identifier:
+        return None
+
+    direct_match = frappe.db.get_value(
+        "Learning Standards",
+        identifier,
+        ["name", *LEARNING_STANDARD_CATALOG_FIELDS],
+        as_dict=True,
+    )
+    if direct_match:
+        return _normalize_learning_standard_catalog_row(direct_match)
+
+    code_matches = _resolve_learning_standard_candidates(identifier)
+    if not code_matches:
+        return None
+    if len(code_matches) == 1:
+        return code_matches[0]
+
+    narrowed = [candidate for candidate in code_matches if _catalog_rows_match(candidate, row)]
+    if len(narrowed) == 1:
+        return narrowed[0]
+
+    frappe.throw(
+        _("Learning Standard {0} matches multiple catalog rows. Select the exact record again.").format(
+            identifier,
+        ),
+        frappe.ValidationError,
+    )
+
+
 def _resolve_unit_standard_catalog_row(
     row: dict | None,
     linked_rows: dict[str, dict[str, str | None]],
@@ -613,7 +648,10 @@ def _resolve_unit_standard_catalog_row(
     normalized = _normalize_learning_standard_catalog_row(row)
     linked_name = normalized.get("learning_standard")
     if linked_name:
-        linked_row = linked_rows.get(linked_name)
+        linked_row = linked_rows.get(linked_name) or _resolve_learning_standard_identifier(
+            linked_name,
+            normalized,
+        )
         if not linked_row:
             frappe.throw(
                 _("Learning Standard {0} does not exist.").format(linked_name),

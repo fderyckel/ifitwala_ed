@@ -67,6 +67,16 @@ class UnitPlan(Document):
         planning.sync_all_class_teaching_plans(self.course_plan)
 
 
+def _program_picker_scope(program: str | None) -> list[str]:
+    program = planning.normalize_text(program)
+    if not program:
+        return []
+    if not frappe.db.exists("Program", program):
+        return [program]
+    descendants = get_descendants_of("Program", program) or []
+    return [program, *descendants]
+
+
 @frappe.whitelist()
 def get_program_subtree_scope(program: str):
     program = planning.normalize_text(program)
@@ -95,7 +105,8 @@ def get_learning_standard_picker(
     if framework_name:
         filters["framework_name"] = framework_name
     if program:
-        filters["program"] = program
+        program_scope = _program_picker_scope(program)
+        filters["program"] = ["in", program_scope or [program]]
     if strand:
         filters["strand"] = strand
     if substrand and substrand != "[No Substrand]":
@@ -139,7 +150,14 @@ def get_learning_standard_picker(
         }
     )
     programs = sorted(
-        {planning.normalize_text(row.get("program")) for row in rows if planning.normalize_text(row.get("program"))}
+        {
+            *(
+                planning.normalize_text(row.get("program"))
+                for row in rows
+                if planning.normalize_text(row.get("program"))
+            ),
+            *((program,) if program else ()),
+        }
     )
     strands = sorted(
         {planning.normalize_text(row.get("strand")) for row in rows if planning.normalize_text(row.get("strand"))}

@@ -328,7 +328,7 @@ function addSelectedStandards(frm, dialog) {
 			return;
 		}
 		const row = frm.add_child("standards");
-		row.learning_standard = standard.learning_standard;
+		frappe.model.set_value(row.doctype, row.name, "learning_standard", standard.learning_standard);
 		row.framework_name = standard.framework_name || "";
 		row.framework_version = standard.framework_version || "";
 		row.subject_area = standard.subject_area || "";

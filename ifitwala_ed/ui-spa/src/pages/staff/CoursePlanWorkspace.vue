@@ -2255,9 +2255,13 @@ function applySelectedLearningStandards(rows: StaffLearningStandardPickerRow[]) 
 
 function openStandardsOverlay() {
 	if (!canManagePlan.value) return;
+	const preferredProgram =
+		unitForm.program ||
+		selectedUnit.value?.program ||
+		(courseProgramOptions.value.length === 1 ? courseProgramOptions.value[0]?.value || '' : '');
 	overlay.open('learning-standards-picker', {
 		unitTitle: unitForm.title || selectedUnit.value?.title || 'Selected Unit',
-		unitProgram: unitForm.program || null,
+		unitProgram: preferredProgram || null,
 		existingStandards: unitForm.standards
 			.map(standard => String(standard.learning_standard || '').trim())
 			.filter(value => Boolean(value)),
