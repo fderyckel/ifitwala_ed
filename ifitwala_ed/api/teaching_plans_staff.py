@@ -131,7 +131,17 @@ def build_staff_course_plan_bundle(
     materials_by_anchor = api._fetch_material_map(
         [("Course Plan", course_plan_doc.name), *[("Unit Plan", name) for name in unit_lookup.keys()]]
     )
-    units = api._serialize_governed_units(course_plan_doc.name, unit_lookup, materials_by_anchor)
+    unit_rows = list(unit_lookup.values())
+    if not all(
+        api.planning.normalize_text((row or {}).get("name") or (row or {}).get("unit_plan")) for row in unit_rows
+    ):
+        unit_rows = None
+    units = api._serialize_governed_units(
+        course_plan_doc.name,
+        unit_lookup,
+        materials_by_anchor,
+        unit_rows=unit_rows,
+    )
     selected_unit = api.planning.normalize_text(unit_plan)
     if selected_unit and not any(row.get("unit_plan") == selected_unit for row in units):
         api.frappe.throw(api._("Selected unit plan does not belong to this course plan."), api.frappe.PermissionError)

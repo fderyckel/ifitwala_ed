@@ -1,7 +1,7 @@
 <!-- ifitwala_ed/ui-spa/src/layouts/AdmissionsLayout.vue -->
 
 <template>
-	<div class="ifitwala-theme admissions-layout text-ink">
+	<div data-testid="admissions-layout" class="ifitwala-theme admissions-layout text-ink">
 		<header
 			class="sticky top-0 z-30 border-b border-[rgb(var(--sand-rgb)/0.4)] bg-surface-glass backdrop-blur-xl"
 		>
@@ -83,6 +83,7 @@
 				<main class="flex-1">
 					<div
 						v-if="availableApplicants.length > 1"
+						data-testid="admissions-family-switcher"
 						class="mb-6 rounded-3xl border border-border/70 bg-surface px-5 py-4 shadow-soft"
 					>
 						<p class="type-caption text-ink/60">{{ __('Family workspace') }}</p>
@@ -119,6 +120,7 @@
 
 					<div
 						v-if="readOnlyReason"
+						data-testid="admissions-read-only-banner"
 						class="mb-6 rounded-3xl border border-amber-200 bg-amber-50 px-5 py-4 shadow-soft"
 					>
 						<p class="type-body-strong text-amber-900">{{ __('Read-only mode') }}</p>

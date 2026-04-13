@@ -1,6 +1,6 @@
 <!-- ifitwala_ed/ui-spa/src/pages/guardian/GuardianHome.vue -->
 <template>
-	<div class="portal-page">
+	<div data-testid="guardian-home-page" class="portal-page">
 		<header class="card-surface p-5 sm:p-6">
 			<div class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
 				<div>
