@@ -1,11 +1,16 @@
 from __future__ import annotations
 
+import hashlib
+import json
 import sys
+from collections import defaultdict
 from datetime import date, datetime
 from time import perf_counter
 from typing import Any
 
 import frappe
+from frappe import _
+from frappe.utils import get_datetime, getdate, now_datetime, strip_html
 
 from ifitwala_ed.api import teaching_plans_mutations as _mutations_impl
 from ifitwala_ed.api import teaching_plans_read_models as _read_models_impl
@@ -13,7 +18,12 @@ from ifitwala_ed.api import teaching_plans_shared as _shared_impl
 from ifitwala_ed.api import teaching_plans_staff as _staff_impl
 from ifitwala_ed.api import teaching_plans_student as _student_impl
 from ifitwala_ed.api import teaching_plans_timeline as _timeline_impl
+from ifitwala_ed.api.file_access import resolve_academic_file_open_url
+from ifitwala_ed.api.student_groups import TRIAGE_ROLES, _instructor_group_names
+from ifitwala_ed.assessment import quiz_service
+from ifitwala_ed.curriculum import materials as materials_domain
 from ifitwala_ed.curriculum import planning
+from ifitwala_ed.utilities import governed_uploads
 
 PLANNING_RESOURCE_ANCHORS = {
     "Course Plan",
@@ -24,6 +34,23 @@ PLANNING_RESOURCE_ANCHORS = {
 GOVERNED_PLANNING_RESOURCE_ANCHORS = {"Course Plan", "Unit Plan"}
 STUDENT_LEARNING_SPACE_WARN_ELAPSED_MS = 1200
 STUDENT_LEARNING_SPACE_WARN_PAYLOAD_BYTES = 350_000
+
+_COMPAT_EXPORTS = (
+    _,
+    TRIAGE_ROLES,
+    _instructor_group_names,
+    defaultdict,
+    get_datetime,
+    getdate,
+    now_datetime,
+    strip_html,
+    resolve_academic_file_open_url,
+    quiz_service,
+    materials_domain,
+    governed_uploads,
+    hashlib,
+    json,
+)
 
 
 def _module():
