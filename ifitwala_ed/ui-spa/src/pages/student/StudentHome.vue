@@ -32,6 +32,46 @@
 			<p class="mt-2 type-caption text-ink/70">{{ homeError }}</p>
 		</section>
 
+		<section
+			v-if="policySummary.pending_count"
+			class="student-hub-section student-hub-section--warm"
+		>
+			<div class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+				<div>
+					<p class="type-overline text-ink/60">Action Needed</p>
+					<h2 class="type-h2 text-ink">Policies need your acknowledgement</h2>
+					<p class="mt-1 type-body text-ink/70">
+						{{ policySummary.pending_count }}
+						{{ policySummary.pending_count === 1 ? 'policy is' : 'policies are' }}
+						waiting for your signature.
+					</p>
+				</div>
+				<RouterLink :to="{ name: 'student-policies' }" class="if-action">Open Policies</RouterLink>
+			</div>
+			<div class="mt-4 grid gap-3 lg:grid-cols-3">
+				<article
+					v-for="item in policySummary.items"
+					:key="item.policy_version"
+					class="student-hub-card student-hub-card--warm"
+				>
+					<div class="flex items-start justify-between gap-3">
+						<div>
+							<p class="type-body-strong text-ink">
+								{{ item.policy_title }}
+								<span v-if="item.version_label" class="text-ink/60"
+									>· {{ item.version_label }}</span
+								>
+							</p>
+							<p v-if="item.description" class="mt-2 type-caption text-ink/70">
+								{{ item.description }}
+							</p>
+						</div>
+						<span class="chip">{{ item.status_label }}</span>
+					</div>
+				</article>
+			</div>
+		</section>
+
 		<section class="student-hub-section student-hub-section--focus">
 			<div class="flex items-center justify-between gap-3">
 				<div>
@@ -356,6 +396,13 @@ const greetingName = computed(() => {
 const nextLearningStep = computed<NextLearningStep | null>(
 	() => homePayload.value?.learning?.next_learning_step ?? null
 );
+const policySummary = computed(
+	() =>
+		homePayload.value?.policies ?? {
+			pending_count: 0,
+			items: [],
+		}
+);
 const currentClass = computed<TodayClass | null>(
 	() => homePayload.value?.learning?.orientation?.current_class ?? null
 );
@@ -554,6 +601,12 @@ onMounted(() => {
 });
 
 const quickLinks = [
+	{
+		title: 'Policies',
+		description: 'Review and acknowledge active student policies.',
+		icon: 'shield',
+		to: { name: 'student-policies' },
+	},
 	{
 		title: 'Course Selection',
 		description: 'Review required rows and confirm your program choices.',

@@ -180,6 +180,7 @@ const hasGuardianPortal = computed(() => portalRoles.value.includes('guardian'))
 
 const studentMenu: MenuItem[] = [
 	{ label: 'Courses', icon: 'book-open', to: { name: 'student-courses' } },
+	{ label: 'Policies', icon: 'shield', to: { name: 'student-policies' } },
 	{ label: 'Portfolio & Journal', icon: 'layers', to: { name: 'student-portfolio' } },
 	{ label: 'Communications', icon: 'message-square', to: { name: 'student-communications' } },
 	{ label: 'Activities', icon: 'star', to: { name: 'student-activities' } },

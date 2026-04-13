@@ -16,6 +16,7 @@ from frappe.utils import get_datetime, now_datetime
 from ifitwala_ed.api import course_schedule as course_schedule_api
 from ifitwala_ed.api import portal as portal_api
 from ifitwala_ed.api import student_communications as student_communications_api
+from ifitwala_ed.api.student_policy import get_student_policy_home_summary
 
 COURSE_PLACEHOLDER = "/assets/ifitwala_ed/images/course_placeholder.jpg"
 WORK_BOARD_NOW_LIMIT = 3
@@ -862,6 +863,7 @@ def get_student_hub_home() -> dict[str, Any]:
             "weekday": schedule.get("weekday"),
         },
         "identity": identity,
+        "policies": get_student_policy_home_summary(student_name),
         "learning": {
             "today_classes": today_courses,
             "next_learning_step": (

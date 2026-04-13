@@ -48,6 +48,45 @@
 			</article>
 		</section>
 
+		<section v-if="policySummary.pending_count" class="card-surface p-5">
+			<div class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+				<div>
+					<p class="type-overline text-ink/60">Policy Actions</p>
+					<h2 class="type-h3 text-ink">Policies need your acknowledgement</h2>
+					<p class="type-caption text-ink/70">
+						{{ policySummary.pending_count }}
+						{{ policySummary.pending_count === 1 ? 'policy is' : 'policies are' }}
+						waiting for your family action.
+					</p>
+				</div>
+				<RouterLink class="if-action" :to="{ name: 'guardian-policies' }"
+					>Open Policies</RouterLink
+				>
+			</div>
+			<ul class="mt-4 space-y-2">
+				<li
+					v-for="item in policySummary.items"
+					:key="item.policy_version"
+					class="rounded-lg border border-line-soft bg-white p-3"
+				>
+					<div class="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+						<div>
+							<p class="type-body-strong text-ink">
+								{{ item.policy_title }}
+								<span v-if="item.version_label" class="text-ink/60"
+									>· {{ item.version_label }}</span
+								>
+							</p>
+							<p v-if="item.description" class="mt-1 type-caption text-ink/70">
+								{{ item.description }}
+							</p>
+						</div>
+						<span class="chip">{{ item.status_label }}</span>
+					</div>
+				</li>
+			</ul>
+		</section>
+
 		<section class="card-surface p-5">
 			<h2 class="mb-3 type-h3 text-ink">Quick Links</h2>
 			<div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -350,6 +389,13 @@ const counts = computed(
 		}
 );
 const familyTimeline = computed(() => snapshot.value?.zones.family_timeline ?? []);
+const policySummary = computed(
+	() =>
+		snapshot.value?.policies ?? {
+			pending_count: 0,
+			items: [],
+		}
+);
 const attentionItems = computed(() => snapshot.value?.zones.attention_needed ?? []);
 const prepItems = computed(() => snapshot.value?.zones.preparation_and_support ?? []);
 const recentActivity = computed(() => snapshot.value?.zones.recent_activity ?? []);

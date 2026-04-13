@@ -1,12 +1,12 @@
-// ifitwala_ed/ui-spa/src/pages/guardian/__tests__/GuardianPolicies.test.ts
+// ifitwala_ed/ui-spa/src/pages/student/__tests__/StudentPolicies.test.ts
 
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { createApp, defineComponent, h, nextTick, type App } from 'vue'
 
-const { getGuardianPolicyOverviewMock, acknowledgeGuardianPolicyMock, toastSuccessMock, toastErrorMock } =
+const { getStudentPolicyOverviewMock, acknowledgeStudentPolicyMock, toastSuccessMock, toastErrorMock } =
 	vi.hoisted(() => ({
-		getGuardianPolicyOverviewMock: vi.fn(),
-		acknowledgeGuardianPolicyMock: vi.fn(),
+		getStudentPolicyOverviewMock: vi.fn(),
+		acknowledgeStudentPolicyMock: vi.fn(),
 		toastSuccessMock: vi.fn(),
 		toastErrorMock: vi.fn(),
 	}))
@@ -18,12 +18,12 @@ vi.mock('frappe-ui', () => ({
 	},
 }))
 
-vi.mock('@/lib/services/guardianPolicy/guardianPolicyService', () => ({
-	getGuardianPolicyOverview: getGuardianPolicyOverviewMock,
-	acknowledgeGuardianPolicy: acknowledgeGuardianPolicyMock,
+vi.mock('@/lib/services/studentPolicy/studentPolicyService', () => ({
+	getStudentPolicyOverview: getStudentPolicyOverviewMock,
+	acknowledgeStudentPolicy: acknowledgeStudentPolicyMock,
 }))
 
-import GuardianPolicies from '@/pages/guardian/GuardianPolicies.vue'
+import StudentPolicies from '@/pages/student/StudentPolicies.vue'
 
 const cleanupFns: Array<() => void> = []
 
@@ -34,14 +34,14 @@ async function flushUi() {
 	await nextTick()
 }
 
-function mountGuardianPolicies() {
+function mountStudentPolicies() {
 	const host = document.createElement('div')
 	document.body.appendChild(host)
 
 	const app: App = createApp(
 		defineComponent({
 			render() {
-				return h(GuardianPolicies)
+				return h(StudentPolicies)
 			},
 		})
 	)
@@ -54,8 +54,8 @@ function mountGuardianPolicies() {
 }
 
 afterEach(() => {
-	getGuardianPolicyOverviewMock.mockReset()
-	acknowledgeGuardianPolicyMock.mockReset()
+	getStudentPolicyOverviewMock.mockReset()
+	acknowledgeStudentPolicyMock.mockReset()
 	toastSuccessMock.mockReset()
 	toastErrorMock.mockReset()
 	while (cleanupFns.length) {
@@ -64,16 +64,14 @@ afterEach(() => {
 	document.body.innerHTML = ''
 })
 
-describe('GuardianPolicies', () => {
-	it('renders pending guardian policy rows from the canonical payload', async () => {
-		getGuardianPolicyOverviewMock.mockResolvedValue({
+describe('StudentPolicies', () => {
+	it('renders pending student policy rows from the canonical payload', async () => {
+		getStudentPolicyOverviewMock.mockResolvedValue({
 			meta: {
-				generated_at: '2026-03-13T09:00:00',
-				guardian: { name: 'GRD-0001' },
+				generated_at: '2026-04-13T09:00:00',
+				student: { name: 'STU-0001' },
 			},
-			family: {
-				children: [{ student: 'STU-1', full_name: 'Amina Example', school: 'School One' }],
-			},
+			identity: { student: 'STU-0001', user: 'student@example.com' },
 			counts: {
 				total_policies: 2,
 				acknowledged_policies: 1,
@@ -82,22 +80,22 @@ describe('GuardianPolicies', () => {
 			rows: [
 				{
 					policy_name: 'POL-1',
-					policy_key: 'privacy',
-					policy_title: 'Privacy Policy',
-					policy_category: 'Privacy & Data Protection',
+					policy_key: 'student_handbook',
+					policy_title: 'Student Handbook',
+					policy_category: 'Handbooks',
 					policy_version: 'VER-1',
-					version_label: 'v1',
+					version_label: '2026',
 					organization: 'ORG-1',
 					school: 'SCHOOL-1',
-					description: 'Review privacy expectations.',
+					description: 'Review handbook expectations.',
 					policy_text: 'Policy text',
-					effective_from: '2026-03-01',
+					effective_from: '2026-04-01',
 					effective_to: '',
-					approved_on: '2026-03-01 09:00:00',
-					expected_signature_name: 'Mariam Example',
+					approved_on: '2026-04-01 09:00:00',
+					expected_signature_name: 'Amina Example',
 					acknowledgement_clauses: [],
-					ack_context_doctype: 'Guardian',
-					ack_context_name: 'GRD-0001',
+					ack_context_doctype: 'Student',
+					ack_context_name: 'STU-0001',
 					is_acknowledged: false,
 					acknowledged_at: '',
 					acknowledged_by: '',
@@ -105,31 +103,31 @@ describe('GuardianPolicies', () => {
 			],
 		})
 
-		mountGuardianPolicies()
+		mountStudentPolicies()
 		await flushUi()
 
 		const text = document.body.textContent || ''
-		expect(getGuardianPolicyOverviewMock).toHaveBeenCalledTimes(1)
-		expect(text).toContain('Guardian Policies')
-		expect(text).toContain('Privacy Policy')
+		expect(getStudentPolicyOverviewMock).toHaveBeenCalledTimes(1)
+		expect(text).toContain('Student Policies')
+		expect(text).toContain('Student Handbook')
 		expect(text).toContain('Pending acknowledgement')
-		expect(text).toContain('Review privacy expectations.')
+		expect(text).toContain('Review handbook expectations.')
 	})
 
-	it('acknowledges a pending policy and reloads the overview', async () => {
-		getGuardianPolicyOverviewMock
+	it('acknowledges a pending student policy and reloads the overview', async () => {
+		getStudentPolicyOverviewMock
 			.mockResolvedValueOnce({
-				meta: { generated_at: '2026-03-13T09:00:00', guardian: { name: 'GRD-0001' } },
-				family: { children: [] },
+				meta: { generated_at: '2026-04-13T09:00:00', student: { name: 'STU-0001' } },
+				identity: { student: 'STU-0001', user: 'student@example.com' },
 				counts: { total_policies: 1, acknowledged_policies: 0, pending_policies: 1 },
 				rows: [
 					{
 						policy_name: 'POL-1',
-						policy_key: 'privacy',
-						policy_title: 'Privacy Policy',
-						policy_category: 'Privacy & Data Protection',
+						policy_key: 'student_handbook',
+						policy_title: 'Student Handbook',
+						policy_category: 'Handbooks',
 						policy_version: 'VER-1',
-						version_label: 'v1',
+						version_label: '2026',
 						organization: 'ORG-1',
 						school: 'SCHOOL-1',
 						description: '',
@@ -137,10 +135,10 @@ describe('GuardianPolicies', () => {
 						effective_from: '',
 						effective_to: '',
 						approved_on: '',
-						expected_signature_name: 'Mariam Example',
+						expected_signature_name: 'Amina Example',
 						acknowledgement_clauses: [],
-						ack_context_doctype: 'Guardian',
-						ack_context_name: 'GRD-0001',
+						ack_context_doctype: 'Student',
+						ack_context_name: 'STU-0001',
 						is_acknowledged: false,
 						acknowledged_at: '',
 						acknowledged_by: '',
@@ -148,17 +146,17 @@ describe('GuardianPolicies', () => {
 				],
 			})
 			.mockResolvedValueOnce({
-				meta: { generated_at: '2026-03-13T09:01:00', guardian: { name: 'GRD-0001' } },
-				family: { children: [] },
+				meta: { generated_at: '2026-04-13T09:01:00', student: { name: 'STU-0001' } },
+				identity: { student: 'STU-0001', user: 'student@example.com' },
 				counts: { total_policies: 1, acknowledged_policies: 1, pending_policies: 0 },
 				rows: [
 					{
 						policy_name: 'POL-1',
-						policy_key: 'privacy',
-						policy_title: 'Privacy Policy',
-						policy_category: 'Privacy & Data Protection',
+						policy_key: 'student_handbook',
+						policy_title: 'Student Handbook',
+						policy_category: 'Handbooks',
 						policy_version: 'VER-1',
-						version_label: 'v1',
+						version_label: '2026',
 						organization: 'ORG-1',
 						school: 'SCHOOL-1',
 						description: '',
@@ -166,28 +164,28 @@ describe('GuardianPolicies', () => {
 						effective_from: '',
 						effective_to: '',
 						approved_on: '',
-						expected_signature_name: 'Mariam Example',
+						expected_signature_name: 'Amina Example',
 						acknowledgement_clauses: [],
-						ack_context_doctype: 'Guardian',
-						ack_context_name: 'GRD-0001',
+						ack_context_doctype: 'Student',
+						ack_context_name: 'STU-0001',
 						is_acknowledged: true,
-						acknowledged_at: '2026-03-13 09:01:00',
-						acknowledged_by: 'guardian@example.com',
+						acknowledged_at: '2026-04-13 09:01:00',
+						acknowledged_by: 'student@example.com',
 					},
 				],
 			})
-		acknowledgeGuardianPolicyMock.mockResolvedValue({
+		acknowledgeStudentPolicyMock.mockResolvedValue({
 			ok: true,
 			status: 'acknowledged',
 			acknowledgement_name: 'ACK-1',
 			policy_version: 'VER-1',
 		})
 
-		mountGuardianPolicies()
+		mountStudentPolicies()
 		await flushUi()
 
 		const input = document.querySelector('input[type="text"]') as HTMLInputElement
-		input.value = 'Mariam Example'
+		input.value = 'Amina Example'
 		input.dispatchEvent(new Event('input', { bubbles: true }))
 		await flushUi()
 
@@ -204,13 +202,13 @@ describe('GuardianPolicies', () => {
 		button?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
 		await flushUi()
 
-		expect(acknowledgeGuardianPolicyMock).toHaveBeenCalledWith({
+		expect(acknowledgeStudentPolicyMock).toHaveBeenCalledWith({
 			policy_version: 'VER-1',
-			typed_signature_name: 'Mariam Example',
+			typed_signature_name: 'Amina Example',
 			attestation_confirmed: 1,
 			checked_clause_names: [],
 		})
-		expect(getGuardianPolicyOverviewMock).toHaveBeenCalledTimes(2)
+		expect(getStudentPolicyOverviewMock).toHaveBeenCalledTimes(2)
 		expect(toastSuccessMock).toHaveBeenCalled()
 	})
 })

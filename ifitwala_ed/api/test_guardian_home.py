@@ -30,6 +30,7 @@ class TestGuardianHome(FrappeTestCase):
 
         self.assertEqual(payload["meta"]["guardian"]["name"], "GRD-0001")
         self.assertEqual(payload["family"]["children"], [])
+        self.assertEqual(payload["policies"], {"pending_count": 0, "items": []})
         self.assertEqual(payload["zones"]["family_timeline"], [])
         self.assertEqual(payload["zones"]["attention_needed"], [])
         self.assertEqual(payload["zones"]["preparation_and_support"], [])
@@ -163,6 +164,10 @@ class TestGuardianHome(FrappeTestCase):
                 return_value=frappe.utils.get_datetime("2026-02-02 08:00:00"),
             ),
             patch("ifitwala_ed.api.guardian_home._resolve_guardian_scope", return_value=("GRD-0001", children)),
+            patch(
+                "ifitwala_ed.api.guardian_policy.get_guardian_policy_home_summary",
+                return_value={"pending_count": 2, "items": [{"policy_version": "VER-1"}]},
+            ),
             patch("ifitwala_ed.api.guardian_home._get_student_group_membership", return_value=membership),
             patch("ifitwala_ed.api.guardian_home._get_student_group_context", return_value=group_context),
             patch("ifitwala_ed.api.guardian_home._build_task_bundle", return_value=task_bundle),
@@ -179,6 +184,7 @@ class TestGuardianHome(FrappeTestCase):
 
         self.assertEqual(payload["meta"]["guardian"]["name"], "GRD-0001")
         self.assertEqual(payload["family"]["children"], children)
+        self.assertEqual(payload["policies"]["pending_count"], 2)
         self.assertEqual(payload["zones"]["family_timeline"], family_timeline)
         self.assertEqual(payload["zones"]["preparation_and_support"], prep_items)
         self.assertEqual(payload["zones"]["recent_activity"], recent_activity)

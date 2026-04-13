@@ -130,6 +130,19 @@ describe('StudentHome', () => {
 				student: 'STU-1',
 				display_name: 'Amina',
 			},
+			policies: {
+				pending_count: 1,
+				items: [
+					{
+						policy_version: 'VER-1',
+						policy_title: 'Student Handbook',
+						version_label: '2026',
+						description: 'Review handbook expectations.',
+						status_label: 'Pending acknowledgement',
+						href: { name: 'student-policies' },
+					},
+				],
+			},
 			learning: {
 				today_classes: [],
 				next_learning_step: {
@@ -162,6 +175,8 @@ describe('StudentHome', () => {
 		await flushUi()
 
 		const text = document.body.textContent || ''
+		expect(text).toContain('Policies need your acknowledgement')
+		expect(text).toContain('Student Handbook')
 		expect(text).toContain('A course is still being prepared')
 		expect(text).toContain('Biology')
 		expect(text).toContain('Class Assignment Pending')
@@ -192,6 +207,10 @@ describe('StudentHome', () => {
 				user: 'student@example.com',
 				student: 'STU-1',
 				display_name: 'Amina',
+			},
+			policies: {
+				pending_count: 0,
+				items: [],
 			},
 			learning: {
 				today_classes: [],
@@ -285,6 +304,10 @@ describe('StudentHome', () => {
 				user: 'student@example.com',
 				student: 'STU-1',
 				display_name: 'Amina',
+			},
+			policies: {
+				pending_count: 0,
+				items: [],
 			},
 			learning: {
 				today_classes: [],

@@ -8,6 +8,15 @@ export type RouteTarget = {
 	query?: Record<string, string>
 }
 
+export type PolicyActionItem = {
+	policy_version: string
+	policy_title: string
+	version_label?: string
+	description?: string
+	status_label: string
+	href: RouteTarget
+}
+
 export type Response = {
 	meta: {
 		generated_at: string
@@ -22,6 +31,10 @@ export type Response = {
 		first_name?: string | null
 		full_name?: string | null
 		image_url?: string | null
+	}
+	policies?: {
+		pending_count: number
+		items: PolicyActionItem[]
 	}
 	learning: {
 		today_classes: TodayClass[]

@@ -6,6 +6,21 @@ export type Request = {
 	debug?: number
 }
 
+export type RouteTarget = {
+	name: string
+	params?: Record<string, string>
+	query?: Record<string, string>
+}
+
+export type PolicyActionItem = {
+	policy_version: string
+	policy_title: string
+	version_label?: string
+	description?: string
+	status_label: string
+	href: RouteTarget
+}
+
 export type Response = {
 	meta: {
 		generated_at: string
@@ -15,6 +30,10 @@ export type Response = {
 	}
 	family: {
 		children: ChildRef[]
+	}
+	policies?: {
+		pending_count: number
+		items: PolicyActionItem[]
 	}
 	zones: {
 		family_timeline: FamilyTimelineDay[]

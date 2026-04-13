@@ -38,11 +38,12 @@ def get_latest_submission_version(outcome_id):
     if not outcome_id:
         frappe.throw(_("Task Outcome is required."))
 
-    version = frappe.db.get_value(
+    rows = frappe.db.get_all(
         "Task Submission",
-        {"task_outcome": outcome_id},
-        "max(version)",
+        filters={"task_outcome": outcome_id},
+        fields=[{"MAX": "version", "as": "max_version"}],
     )
+    version = rows[0].get("max_version") if rows else None
     try:
         return int(version or 0)
     except Exception:
