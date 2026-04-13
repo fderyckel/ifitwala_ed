@@ -5,6 +5,17 @@
 {% set brand_name = school_meta.school_name if school_meta and school_meta.school_name else (org_meta.organization_name if org_meta and org_meta.organization_name else "Ifitwala Ed") %}
 {% set secondary_brand = org_meta.organization_name if org_meta and org_meta.organization_name and org_meta.organization_name != brand_name else "" %}
 {% set holiday_rows = (doc.holidays or [])|sort(attribute='holiday_date') %}
+{% set from_date = frappe.utils.getdate(doc.from_date) if doc.from_date else None %}
+{% set to_date = frappe.utils.getdate(doc.to_date) if doc.to_date else None %}
+{% if not from_date and holiday_rows %}
+	{% set from_date = frappe.utils.getdate(holiday_rows[0].holiday_date) %}
+{% endif %}
+{% if not to_date and holiday_rows %}
+	{% set to_date = frappe.utils.getdate(holiday_rows[-1].holiday_date) %}
+{% endif %}
+{% set month_count = (((to_date.year - from_date.year) * 12) + (to_date.month - from_date.month) + 1) if from_date and to_date else 0 %}
+{% set month_anchor = from_date.replace(day=1) if from_date else None %}
+{% set weekday_labels = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"] %}
 
 <div class="ifitwala-print staff-calendar-print">
 	<div class="masthead">
@@ -37,9 +48,9 @@
 				<div class="meta-row">
 					<div class="meta-key">Window</div>
 					<div class="meta-value">
-						{% if doc.from_date %}{{ frappe.utils.escape_html(doc.get_formatted("from_date")) }}{% else %}--{% endif %}
+						{% if from_date %}{{ frappe.utils.escape_html(frappe.utils.formatdate(from_date)) }}{% else %}--{% endif %}
 						<span class="meta-sep">to</span>
-						{% if doc.to_date %}{{ frappe.utils.escape_html(doc.get_formatted("to_date")) }}{% else %}--{% endif %}
+						{% if to_date %}{{ frappe.utils.escape_html(frappe.utils.formatdate(to_date)) }}{% else %}--{% endif %}
 					</div>
 				</div>
 			</div>
@@ -48,8 +59,8 @@
 
 	<div class="hero-card">
 		<div class="hero-copy">
-			<div class="hero-kicker">Staff Coverage</div>
-			<div class="hero-title">Elegant calendar output for staff planning, noticeboards, and family communication.</div>
+			<div class="hero-kicker">Academic Calendar</div>
+			<div class="hero-title">A true month-by-month staff calendar, prepared for noticeboards, meetings, and home distribution.</div>
 			<div class="hero-subtitle">
 				{% if doc.school %}<span>{{ frappe.utils.escape_html(doc.get_formatted("school")) }}</span>{% endif %}
 				{% if doc.employee_group %}<span>{{ frappe.utils.escape_html(doc.get_formatted("employee_group")) }}</span>{% endif %}
@@ -58,19 +69,19 @@
 		</div>
 		<div class="hero-stats">
 			<div class="stat-card">
-				<div class="stat-label">Holiday Rows</div>
-				<div class="stat-value">{{ holiday_rows|length }}</div>
+				<div class="stat-label">Months Shown</div>
+				<div class="stat-value">{{ month_count }}</div>
 			</div>
-				<div class="stat-card">
-					<div class="stat-label">Working Days</div>
-					<div class="stat-value">{{ doc.total_working_day or 0 }}</div>
-				</div>
-				<div class="stat-card">
-					<div class="stat-label">Total Holidays</div>
-					<div class="stat-value">{{ doc.total_holidays or 0 }}</div>
-				</div>
+			<div class="stat-card">
+				<div class="stat-label">Working Days</div>
+				<div class="stat-value">{{ doc.total_working_day or 0 }}</div>
+			</div>
+			<div class="stat-card">
+				<div class="stat-label">Total Holidays</div>
+				<div class="stat-value">{{ doc.total_holidays or holiday_rows|length }}</div>
 			</div>
 		</div>
+	</div>
 
 	<div class="summary-grid">
 		<div class="summary-card">
@@ -85,7 +96,13 @@
 		</div>
 		<div class="summary-card">
 			<div class="summary-title">Employee Group</div>
-			<div class="summary-value">{{ frappe.utils.escape_html(doc.get_formatted("employee_group")) }}</div>
+			<div class="summary-value">
+				{% if doc.employee_group %}
+				{{ frappe.utils.escape_html(doc.get_formatted("employee_group")) }}
+				{% else %}
+				Not assigned
+				{% endif %}
+			</div>
 		</div>
 		<div class="summary-card">
 			<div class="summary-title">Academic Year</div>
@@ -100,54 +117,83 @@
 	</div>
 
 	<div class="section-card">
-		<div class="section-head">
-			<div class="section-kicker">Holiday Schedule</div>
-			<div class="section-title">Dated closures and weekly offs</div>
+		<div class="section-head section-head--calendar">
+			<div>
+				<div class="section-kicker">Calendar View</div>
+				<div class="section-title">Visual staff calendar</div>
+			</div>
+			<div class="legend">
+				<div class="legend-item">
+					<span class="legend-swatch legend-swatch--holiday"></span>
+					<span>Holiday</span>
+				</div>
+				<div class="legend-item">
+					<span class="legend-swatch legend-swatch--weekly"></span>
+					<span>Weekly Off</span>
+				</div>
+				<div class="legend-item">
+					<span class="legend-swatch legend-swatch--out"></span>
+					<span>Outside range</span>
+				</div>
+			</div>
 		</div>
 
-		{% if holiday_rows %}
-		<table class="calendar-table">
-			<thead>
-				<tr>
-					<th>Date</th>
-					<th>Day</th>
-					<th>Occasion</th>
-					<th>Type</th>
-				</tr>
-			</thead>
-			<tbody>
-				{% for row in holiday_rows %}
-				{% set holiday_date = frappe.utils.getdate(row.holiday_date) %}
-				{% set holiday_label = (row.description or "").strip() or ("Weekly Off" if row.weekly_off else "Holiday") %}
-				<tr>
-					<td>
-						<div class="date-chip">
-							<div class="date-chip__day">{{ holiday_date.strftime("%d") }}</div>
-							<div class="date-chip__month">{{ holiday_date.strftime("%b %Y") }}</div>
+		{% if month_count %}
+		<div class="calendar-months">
+			{% for month_offset in range(month_count) %}
+			{% set month_start = frappe.utils.getdate(frappe.utils.add_to_date(month_anchor, months=month_offset, as_datetime=False)) %}
+			{% set next_month_start = frappe.utils.getdate(frappe.utils.add_to_date(month_start, months=1, as_datetime=False)) %}
+			{% set lead_days = (month_start.weekday() + 1) % 7 %}
+			{% set grid_start = frappe.utils.getdate(frappe.utils.add_to_date(month_start, days=(0 - lead_days), as_datetime=False)) %}
+			<div class="month-card">
+				<div class="month-card__header">
+					<div class="month-title">{{ month_start.strftime("%B %Y") }}</div>
+					<div class="month-subtitle">
+						{% if doc.employee_group %}{{ frappe.utils.escape_html(doc.get_formatted("employee_group")) }}{% else %}Staff Calendar{% endif %}
+					</div>
+				</div>
+				<div class="month-weekdays">
+					{% for label in weekday_labels %}
+					<div class="month-weekdays__cell">{{ label }}</div>
+					{% endfor %}
+				</div>
+				<div class="month-grid">
+					{% for day_offset in range(42) %}
+					{% set current_date = frappe.utils.getdate(frappe.utils.add_to_date(grid_start, days=day_offset, as_datetime=False)) %}
+					{% set in_month = current_date.month == month_start.month %}
+					{% set in_range = (not from_date or current_date >= from_date) and (not to_date or current_date <= to_date) %}
+					{% set is_first_week = day_offset < 7 %}
+					<div class="day-cell{{ ' day-cell--adjacent' if not in_month else '' }}{{ ' day-cell--out-of-range' if not in_range else '' }}{{ ' day-cell--first-week' if is_first_week else '' }}">
+						<div class="day-cell__topline">
+							<div class="day-number">{{ current_date.day }}</div>
+							{% if current_date == from_date %}
+							<div class="day-marker">Start</div>
+							{% elif current_date == to_date %}
+							<div class="day-marker">End</div>
+							{% endif %}
 						</div>
-					</td>
-					<td>
-						<div class="weekday">{{ holiday_date.strftime("%A") }}</div>
-					</td>
-					<td>
-						<div class="occasion">
-							<span class="color-dot" style="background: {{ frappe.utils.escape_html(row.color or '#C7D2D9') }}"></span>
-							<span>{{ frappe.utils.escape_html(holiday_label) }}</span>
+						<div class="day-events">
+							{% for row in holiday_rows %}
+							{% set row_date = frappe.utils.getdate(row.holiday_date) %}
+							{% if row_date == current_date %}
+							{% set holiday_label = (row.description or "").strip() or ("Weekly Off" if row.weekly_off else "Holiday") %}
+							<div class="day-event{{ ' day-event--weekly' if row.weekly_off else ' day-event--holiday' }}">
+								<span class="day-event__dot" style="background: {{ frappe.utils.escape_html(row.color or '#C7D2D9') }}"></span>
+								<span class="day-event__text">{{ frappe.utils.escape_html(holiday_label) }}</span>
+							</div>
+							{% endif %}
+							{% endfor %}
 						</div>
-					</td>
-					<td>
-						<span class="type-pill {{ 'type-pill--weekly' if row.weekly_off else 'type-pill--holiday' }}">
-							{{ "Weekly Off" if row.weekly_off else "Holiday" }}
-						</span>
-					</td>
-				</tr>
-				{% endfor %}
-			</tbody>
-		</table>
+					</div>
+					{% endfor %}
+				</div>
+			</div>
+			{% endfor %}
+		</div>
 		{% else %}
 		<div class="empty-state">
-			<div class="empty-state__title">No holiday rows are currently recorded.</div>
-			<div class="empty-state__copy">This print format stays usable even before the calendar has been populated.</div>
+			<div class="empty-state__title">No printable calendar range is available.</div>
+			<div class="empty-state__copy">Set a date window or add holiday rows so the visual calendar can be generated.</div>
 		</div>
 		{% endif %}
 	</div>
