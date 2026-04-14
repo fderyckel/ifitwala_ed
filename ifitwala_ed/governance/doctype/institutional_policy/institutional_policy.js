@@ -3,6 +3,18 @@
 // For license information, please see license.txt
 
 frappe.ui.form.on("Institutional Policy", {
+	setup(frm) {
+		frm.set_query("school", () => ({
+			filters: {
+				organization: frm.doc.organization || "",
+			},
+		}));
+	},
+	organization(frm) {
+		if (!frm.is_new()) return;
+		if (!frm.doc.school) return;
+		frm.set_value("school", "");
+	},
 	refresh(frm) {
 		if (frm.is_new() || !frm.doc.name) return;
 

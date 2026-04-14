@@ -3,8 +3,8 @@ title: "Policy Version: Publish and Track Policy Changes"
 slug: policy-version
 category: Governance
 doc_order: 2
-version: "1.7.0"
-last_change_date: "2026-04-11"
+version: "1.7.1"
+last_change_date: "2026-04-14"
 summary: "Create immutable policy text versions with automatic diff tracking, acknowledgement clauses, and controlled activation for applicants, guardians, and staff."
 seo_title: "Policy Version: Publish and Track Policy Changes"
 seo_description: "Learn how to create, publish, and version control your institutional policies with automated diff tracking and acknowledgement management."
@@ -64,7 +64,7 @@ Who approved this version? When did it become active? How many people acknowledg
     Specify when this version becomes effective and when it expires. Useful for planned policy transitions.
   </Step>
   <Step title="Get Approval">
-    Select the person who approved this version. They must have write access and be within the policy scope.
+    Select the person who approved this version. They must have write access and be allowed to manage the policy's organization scope or local policy scope.
   </Step>
   <Step title="Activate">
     Check **Is Active** to publish. The previous active version is automatically deactivated. Only one version can be active at a time.
@@ -121,7 +121,7 @@ When you share a policy, the system can create an Org Communication with Morning
 | **Change Stats** | Metrics (paragraphs changed, etc.) | Auto-generated; read-only |
 | **Acknowledgement Clauses** | Required checkboxes | Create specific consent items users must agree to |
 | **Effective From/To** | Validity period | Optional; useful for scheduled policy updates |
-| **Approved By/On** | Approval record | Shows who authorized this version |
+| **Approved By/On** | Approval record | Select a policy admin or in-scope approver with Policy Version write access |
 | **Is Active** | Published status | Only one version per policy can be active |
 
 ---

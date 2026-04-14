@@ -9,7 +9,6 @@ from ifitwala_ed.governance.policy_scope_utils import (
     get_user_policy_scope,
     is_policy_manageable_by_user,
     is_policy_within_user_scope,
-    is_school_within_policy_organization_scope,
 )
 from ifitwala_ed.governance.policy_utils import (
     POLICY_APPLIES_TO_CHILD_DOCTYPE,
@@ -67,17 +66,15 @@ class InstitutionalPolicy(Document):
             return
         if not self.organization:
             return
-        if is_school_within_policy_organization_scope(
-            policy_organization=self.organization,
-            school=self.school,
-        ):
+        school_org = (frappe.db.get_value("School", self.school, "organization") or "").strip()
+        if school_org == (self.organization or "").strip():
             return
 
-        school_org = frappe.db.get_value("School", self.school, "organization")
         frappe.throw(
             _(
-                "School Organization '{school_organization}' is outside Policy Organization scope '{policy_organization}'. "
-                "Scope includes the Policy Organization and its descendants."
+                "Selected School belongs to Organization '{school_organization}', but this policy is scoped to "
+                "Organization '{policy_organization}'. For school-scoped policies, the School must belong directly "
+                "to the selected Organization. Leave School blank for an organization-wide policy."
             ).format(
                 school_organization=school_org or _("Unknown"),
                 policy_organization=self.organization,
@@ -96,7 +93,12 @@ class InstitutionalPolicy(Document):
         before_school = (before.get("school") or "").strip()
         current_school = (self.get("school") or "").strip()
         if before_school and before_school != current_school:
-            frappe.throw(_("School is immutable once set."))
+            frappe.throw(
+                _(
+                    "School cannot be changed or cleared after creation. This policy is currently scoped to "
+                    "School '{current_school}'. Create a new Institutional Policy if you need a different school scope."
+                ).format(current_school=before_school)
+            )
 
     def _validate_policy_category(self):
         if not self.policy_category or self.policy_category not in POLICY_CATEGORIES:

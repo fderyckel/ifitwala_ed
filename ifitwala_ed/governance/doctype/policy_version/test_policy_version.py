@@ -41,6 +41,12 @@ class TestPolicyVersionApprovedBy(FrappeTestCase):
             school=self.sibling_school,
             prefix="sibling-writer",
         )
+        self.org_scope_admin = self._make_user_with_employee_for_org(
+            role="Academic Admin",
+            organization=self.organization,
+            school=None,
+            prefix="org-scope-admin",
+        )
         self.no_write_user = self._make_user_with_employee(
             role="Employee",
             school=self.child_school,
@@ -69,12 +75,12 @@ class TestPolicyVersionApprovedBy(FrappeTestCase):
         version.save(ignore_permissions=True)
         self.assertEqual(version.approved_by, self.parent_writer)
 
-    def test_approved_by_rejects_sibling_school_writer(self):
+    def test_approved_by_allows_org_scope_admin_without_school(self):
         version = self._make_policy_version(approved_by=self.child_writer)
-        version.approved_by = self.sibling_writer
+        version.approved_by = self.org_scope_admin
 
-        with self.assertRaises(frappe.PermissionError):
-            version.save(ignore_permissions=True)
+        version.save(ignore_permissions=True)
+        self.assertEqual(version.approved_by, self.org_scope_admin)
 
     def test_approved_by_rejects_user_without_write_access(self):
         with self.assertRaises(frappe.PermissionError):
@@ -93,7 +99,8 @@ class TestPolicyVersionApprovedBy(FrappeTestCase):
 
         self.assertIn(self.child_writer, names)
         self.assertIn(self.parent_writer, names)
-        self.assertNotIn(self.sibling_writer, names)
+        self.assertIn(self.sibling_writer, names)
+        self.assertIn(self.org_scope_admin, names)
         self.assertNotIn(self.no_write_user, names)
 
     def test_parent_org_hr_manager_can_create_policy_version_for_descendant_policy(self):

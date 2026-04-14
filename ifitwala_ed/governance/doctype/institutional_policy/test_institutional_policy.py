@@ -173,6 +173,36 @@ class TestInstitutionalPolicy(FrappeTestCase):
         self.assertEqual(policy.organization, child_org)
         self.assertEqual(policy.school, child_school.name)
 
+    def test_insert_rejects_school_from_different_organization(self):
+        parent_org = self._make_organization("Policy Parent", is_group=1)
+        child_org = self._make_organization("Policy Child", parent=parent_org)
+        child_school = frappe.get_doc(
+            {
+                "doctype": "School",
+                "school_name": f"Policy Child Scope-{frappe.generate_hash(length=8)}",
+                "abbr": f"S{frappe.generate_hash(length=4)}",
+                "organization": child_org,
+                "is_group": 1,
+            }
+        ).insert(ignore_permissions=True)
+        self.created.append(("School", child_school.name))
+
+        policy = frappe.get_doc(
+            {
+                "doctype": "Institutional Policy",
+                "policy_key": f"org_school_mismatch_{frappe.generate_hash(length=6)}",
+                "policy_title": f"Org School Mismatch {frappe.generate_hash(length=6)}",
+                "policy_category": "Academic",
+                "applies_to": [{"policy_audience": "Staff"}],
+                "organization": parent_org,
+                "school": child_school.name,
+                "is_active": 1,
+            }
+        )
+
+        with self.assertRaisesRegex(frappe.ValidationError, "must belong directly to the selected Organization"):
+            policy.insert(ignore_permissions=True)
+
     def _make_policy_admin_user(self, organization: str, *, role: str, prefix: str) -> str:
         user = make_user(
             email=f"{prefix}-{frappe.generate_hash(length=8)}@ifitwala.test",

@@ -3,8 +3,8 @@ title: "Institutional Policy: Manage School Policies with Confidence"
 slug: institutional-policy
 category: Governance
 doc_order: 1
-version: "1.6.1"
-last_change_date: "2026-04-13"
+version: "1.6.2"
+last_change_date: "2026-04-14"
 summary: "Create and manage institutional policies—from data privacy to conduct codes—with scoped applicability, version control, and automated acknowledgement tracking across applicants, students, guardians, and staff."
 seo_title: "Institutional Policy: Manage School Policies with Confidence"
 seo_description: "Learn how to manage institutional policies in Ifitwala Ed with scoped applicability, version control, and automated acknowledgement tracking."
@@ -57,7 +57,7 @@ Every policy version, every acknowledgement, every change is permanently recorde
     Select from categories like Safeguarding, Privacy & Data Protection, Admissions, Academic, Conduct & Behaviour, Health & Safety, Operations, Handbooks, or Employment.
   </Step>
   <Step title="Set the Scope">
-    Choose the Organization (required) and optionally a specific School. Leave School blank for organization-wide policies.
+    Choose the Organization (required) and optionally a specific School. If you set a School, it must belong directly to that Organization. Leave School blank for organization-wide policies.
   </Step>
   <Step title="Define Audience">
     Select who this policy applies to: Applicants, Students, Guardians, Staff, or any combination. You must select at least one.
@@ -82,10 +82,10 @@ After creating the Institutional Policy, you'll create Policy Versions to hold t
 
 | Scope Level | What It Means | Example Use Case |
 |-------------|---------------|------------------|
-| **Organization Only** | Applies to all schools in the organization | Group-wide Data Privacy Policy |
+| **Organization Only** | Applies across the selected organization and its descendant hierarchy | Group-wide Data Privacy Policy |
 | **Specific School** | Applies only to that school and its descendants | Campus-specific uniform policy |
 
-**Important:** When you set a School, that policy applies to the school and all its child schools (satellite campuses). This makes multi-campus management effortless.
+**Important:** When you set a School, that school must belong directly to the selected Organization. The policy then applies to that school and its child schools (satellite campuses). For a parent-organization policy that should cover child organizations or multiple schools, leave `School` blank and keep the policy organization-wide.
 
 ### Understanding Audience
 
@@ -178,7 +178,7 @@ A: No, organization is immutable after creation. This preserves audit integrity.
 A: You create a new Policy Version with the updated text. The system can show the diff to users. Depending on your settings, existing acknowledgements may remain valid or prompt re-signature.
 
 **Q: How do school-scoped policies interact with organization policies?**
-A: The system uses "nearest match" resolution. If both organization and school-level policies exist for the same policy_key, the school-specific one wins for that school and its descendants.
+A: The system uses "nearest match" resolution. If both organization-wide and school-level policies exist for the same policy_key, the school-specific one wins for that school and its descendants. School-level policies must use a school that belongs directly to the selected organization; cross-organization school picks are blocked.
 
 **Q: Can a policy apply to multiple audiences?**
 A: Yes—select any combination of Applicant, Student, Guardian, and Staff. The policy will appear in all relevant portals and workflows.

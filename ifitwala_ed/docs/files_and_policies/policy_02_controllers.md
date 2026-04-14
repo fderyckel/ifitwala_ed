@@ -30,8 +30,9 @@ institutional_policy.py
 1. `policy_key` must be unique within `organization`
 2. `organization` must be set
 3. `school`, if set, must belong to the Policy Organization scope:
-   School.organization must be either the same Organization or a descendant
-   Organization in the Organization NestedSet.
+   School.organization must be the same Organization selected on the policy.
+   If a parent Organization policy should cover descendants, leave `school` blank
+   and keep the policy organization-scoped.
 
 **Hard-fail** if violated.
 
@@ -178,10 +179,9 @@ If `approved_by` is set:
 * Must be an enabled **System User**
 * Must have **write** access to `Policy Version`
 * Scope enforcement:
-  * If policy has `school`: user must belong to that school or an ancestor (parent) school
-  * If policy is org-scoped only: user must belong to that organization or an ancestor organization
-
-Desk link options for `approved_by` are server-filtered to this same rule.
+  * User may be a policy admin whose management scope covers the policy organization
+  * Or the user may be an in-scope active employee for the local policy scope
+  * Desk link options for `approved_by` use the same server-side rule
 
 ---
 
