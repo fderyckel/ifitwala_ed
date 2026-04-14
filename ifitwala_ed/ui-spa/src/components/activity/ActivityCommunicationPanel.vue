@@ -49,7 +49,9 @@
 						class="if-action"
 						@click="openThread(item)"
 					>
-						Comments ({{ interactionFor(item.name).comments_total || 0 }})
+						{{ commentUiFor(item).actionLabel }} ({{
+							interactionFor(item.name).comments_total || 0
+						}})
 					</button>
 				</div>
 			</article>
@@ -62,8 +64,11 @@
 		:rows="threadRows"
 		:loading="threadLoading"
 		:comment="commentValue"
+		:submit-label="activeCommentUi.submitLabel"
 		:submit-loading="commentSubmitting"
 		:submit-disabled="commentSubmitting || !commentValue.trim()"
+		:placeholder="activeCommentUi.placeholder"
+		:empty-message="activeCommentUi.emptyMessage"
 		@close="closeThread"
 		@submit="submitComment"
 		@update:comment="onCommentUpdate"
@@ -89,6 +94,7 @@ import type {
 import type { ReactionCode } from '@/types/interactions';
 import {
 	getAudienceInteractionCapabilities,
+	getInteractionCommentUi,
 	ORG_COMMUNICATION_VIEWERS,
 } from '@/utils/orgCommunication';
 
@@ -111,10 +117,6 @@ const commentSubmitting = ref<boolean>(false);
 const threadRows = ref<InteractionThreadRow[]>([]);
 const selectedComm = ref<OrgCommunicationListItem | null>(null);
 const commentValue = ref<string>('');
-
-const threadTitle = computed(() =>
-	selectedComm.value ? `Comments · ${selectedComm.value.title}` : 'Comments'
-);
 
 function emptySummary(): InteractionSummary {
 	return {
@@ -147,6 +149,18 @@ function canComment(item: OrgCommunicationListItem | null | undefined): boolean 
 function hasVisibleInteractionActions(item: OrgCommunicationListItem | null | undefined): boolean {
 	return getInteractionCapabilities(item).hasVisibleActions;
 }
+
+function commentUiFor(item: OrgCommunicationListItem | null | undefined) {
+	return getInteractionCommentUi(getInteractionCapabilities(item).commentMode);
+}
+
+const activeCommentUi = computed(() => commentUiFor(selectedComm.value));
+
+const threadTitle = computed(() =>
+	selectedComm.value
+		? `${activeCommentUi.value.titleLabel} · ${selectedComm.value.title}`
+		: activeCommentUi.value.titleLabel
+);
 
 function formatDate(value: string | null | undefined): string {
 	if (!value) return 'Date unavailable';
@@ -212,7 +226,7 @@ async function react(item: OrgCommunicationListItem, code: ReactionCode) {
 async function openThread(item: OrgCommunicationListItem) {
 	actionError.value = '';
 	if (!canComment(item)) {
-		actionError.value = 'Shared comments are not enabled for this update.';
+		actionError.value = commentUiFor(item).unavailableMessage;
 		return;
 	}
 	selectedComm.value = item;
@@ -228,7 +242,7 @@ async function openThread(item: OrgCommunicationListItem) {
 		});
 	} catch (error) {
 		const message = error instanceof Error ? error.message : String(error || '');
-		actionError.value = message || 'Could not load comment thread.';
+		actionError.value = message || commentUiFor(item).loadErrorMessage;
 	} finally {
 		threadLoading.value = false;
 	}
@@ -253,12 +267,12 @@ async function submitComment() {
 		return;
 	}
 	if (!canComment(comm)) {
-		actionError.value = 'Shared comments are not enabled for this update.';
+		actionError.value = commentUiFor(comm).unavailableMessage;
 		return;
 	}
 	const note = commentValue.value.trim();
 	if (!note) {
-		actionError.value = 'Please add a comment before posting.';
+		actionError.value = commentUiFor(comm).requiredMessage;
 		return;
 	}
 	commentSubmitting.value = true;
@@ -275,10 +289,10 @@ async function submitComment() {
 			limit: 200,
 		});
 		await loadSummaries(feedItems.value);
-		toast.success('Comment posted.');
+		toast.success(commentUiFor(comm).postSuccessMessage);
 	} catch (error) {
 		const message = error instanceof Error ? error.message : String(error || '');
-		actionError.value = message || 'Could not post comment.';
+		actionError.value = message || commentUiFor(comm).postErrorMessage;
 	} finally {
 		commentSubmitting.value = false;
 	}

@@ -416,6 +416,7 @@ import InteractionEmojiChips from '@/components/InteractionEmojiChips.vue';
 import { getInteractionStats as buildInteractionStats } from '@/utils/interactionStats';
 import {
 	getAudienceInteractionCapabilities,
+	getInteractionCommentUi,
 	ORG_COMMUNICATION_VIEWERS,
 } from '@/utils/orgCommunication';
 
@@ -474,7 +475,9 @@ const selectedStats = computed(() => {
 });
 
 const threadTitle = computed(() =>
-	selectedComm.value ? `Comments · ${selectedComm.value.title}` : 'Comments'
+	selectedComm.value
+		? `${getInteractionCommentUi(getInteractionCapabilities(selectedComm.value).commentMode).titleLabel} · ${selectedComm.value.title}`
+		: 'Comments'
 );
 
 const detailMessageHtml = computed(() => {
@@ -994,7 +997,7 @@ function notifyReactionsDisabled() {
 function notifyCommentsDisabled() {
 	toast({
 		title: 'Comments unavailable',
-		text: 'Comments are not available for this announcement.',
+		text: 'Comments are not available for this announcement in this interaction mode.',
 		icon: 'info',
 	});
 }

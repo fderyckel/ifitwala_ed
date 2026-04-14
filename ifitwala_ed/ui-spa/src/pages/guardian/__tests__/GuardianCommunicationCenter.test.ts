@@ -181,7 +181,7 @@ describe('GuardianCommunicationCenter', () => {
 						publish_to: null,
 						brief_start_date: null,
 						brief_end_date: null,
-						interaction_mode: 'Shared Comments',
+						interaction_mode: 'Student Q&A',
 						allow_private_notes: 0,
 						allow_public_thread: 1,
 						snippet: 'Bring the signed form tomorrow.',
@@ -314,7 +314,7 @@ describe('GuardianCommunicationCenter', () => {
 							publish_to: null,
 							brief_start_date: null,
 							brief_end_date: null,
-							interaction_mode: 'Shared Comments',
+							interaction_mode: 'Student Q&A',
 							allow_private_notes: 0,
 							allow_public_thread: 1,
 							snippet: 'Study the lab notes.',
@@ -347,5 +347,76 @@ describe('GuardianCommunicationCenter', () => {
 			page_length: 24,
 		})
 		expect(document.body.textContent || '').toContain('Biology checkpoint')
+	})
+
+	it('shows ask-school semantics for private student q-and-a updates', async () => {
+		getGuardianCommunicationCenterMock.mockResolvedValue({
+			meta: {
+				generated_at: '2026-04-15T09:00:00',
+				source: 'all',
+				student: null,
+			},
+			family: {
+				children: [{ student: 'STU-1', full_name: 'Amina Example', school: 'School One' }],
+			},
+			summary: {
+				total_items: 1,
+				source_counts: { school: 1 },
+				unread_items: 1,
+			},
+			items: [
+				{
+					kind: 'org_communication',
+					item_id: 'org::COMM-PRIVATE',
+					sort_at: '2026-04-14T08:00:00',
+					source_type: 'school',
+					source_label: 'School Update',
+					context_label: 'School One',
+					matched_children: [
+						{ student: 'STU-1', full_name: 'Amina Example', school: 'School One' },
+					],
+					is_unread: true,
+					org_communication: {
+						name: 'COMM-PRIVATE',
+						title: 'Private follow-up',
+						communication_type: 'Information',
+						status: 'Published',
+						priority: 'Normal',
+						portal_surface: 'Guardian Portal',
+						school: 'School One',
+						organization: 'ORG-1',
+						publish_from: '2026-04-14T08:00:00',
+						publish_to: null,
+						brief_start_date: null,
+						brief_end_date: null,
+						interaction_mode: 'Student Q&A',
+						allow_private_notes: 1,
+						allow_public_thread: 0,
+						snippet: 'Ask the school privately.',
+						has_active_thread: true,
+					},
+				},
+			],
+			total_count: 1,
+			has_more: false,
+			start: 0,
+			page_length: 24,
+		})
+		getOrgCommInteractionSummaryMock.mockResolvedValue({
+			'COMM-PRIVATE': {
+				counts: {},
+				reaction_counts: {},
+				reactions_total: 0,
+				comments_total: 0,
+				self: null,
+			},
+		})
+
+		mountGuardianCommunicationCenter()
+		await flushUi()
+
+		const text = document.body.textContent || ''
+		expect(text).toContain('Ask School')
+		expect(text).not.toContain('Interaction chips')
 	})
 })

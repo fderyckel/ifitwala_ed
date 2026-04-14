@@ -290,3 +290,45 @@ class TestOrgCommunicationWorkflowEndpoints(FrappeTestCase):
             rows = org_communication_interactions.get_org_communication_thread("COMM-0003")
 
         self.assertEqual(rows, [])
+
+    def test_student_qa_thread_keeps_non_staff_self_rows_when_shared_thread_is_off(self):
+        expected_rows = [
+            {
+                "name": "ENTRY-0004",
+                "user": "guardian@example.com",
+                "full_name": "Guardian Example",
+                "audience_type": "Guardian",
+                "intent_type": "Comment",
+                "reaction_code": None,
+                "note": "Private question",
+                "visibility": "Private to school",
+                "is_teacher_reply": 0,
+                "is_pinned": 0,
+                "is_resolved": 0,
+                "creation": "2026-04-15 09:00:00",
+                "modified": "2026-04-15 09:00:00",
+            }
+        ]
+
+        with (
+            patch(
+                "ifitwala_ed.api.org_communication_interactions._actor_context",
+                return_value=("guardian@example.com", {"Guardian"}, {}),
+            ),
+            patch("ifitwala_ed.api.org_communication_interactions._ensure_visible_org_communication"),
+            patch(
+                "ifitwala_ed.api.org_communication_interactions.frappe.get_cached_doc",
+                return_value=SimpleNamespace(interaction_mode="Student Q&A"),
+            ),
+            patch(
+                "ifitwala_ed.api.org_communication_interactions.frappe.db.sql",
+                return_value=expected_rows,
+            ) as sql_mock,
+        ):
+            rows = org_communication_interactions.get_org_communication_thread("COMM-0004")
+
+        self.assertEqual(rows, expected_rows)
+        self.assertIn(
+            "(i.visibility = 'Public to audience' OR i.user = %(user)s)",
+            sql_mock.call_args.args[0],
+        )

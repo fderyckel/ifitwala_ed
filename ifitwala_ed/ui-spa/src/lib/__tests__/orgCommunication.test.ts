@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 
 import {
 	getAudienceInteractionCapabilities,
+	getInteractionCommentUi,
+	ORG_COMMUNICATION_COMMENT_MODES,
 	ORG_COMMUNICATION_VIEWERS,
 } from '@/utils/orgCommunication';
 
@@ -16,6 +18,7 @@ describe('getAudienceInteractionCapabilities', () => {
 			canReact: false,
 			canComment: false,
 			hasVisibleActions: false,
+			commentMode: ORG_COMMUNICATION_COMMENT_MODES.NONE,
 		});
 	});
 
@@ -31,10 +34,25 @@ describe('getAudienceInteractionCapabilities', () => {
 			canReact: true,
 			canComment: true,
 			hasVisibleActions: true,
+			commentMode: ORG_COMMUNICATION_COMMENT_MODES.STAFF_THREAD,
 		});
 	});
 
-	it('hides staff-only interactions on recipient-facing surfaces', () => {
+	it('keeps structured feedback reaction-only on recipient-facing surfaces', () => {
+		expect(
+			getAudienceInteractionCapabilities({
+				interaction_mode: 'Structured Feedback',
+				allow_public_thread: 1,
+			})
+		).toEqual({
+			canReact: true,
+			canComment: false,
+			hasVisibleActions: true,
+			commentMode: ORG_COMMUNICATION_COMMENT_MODES.NONE,
+		});
+	});
+
+	it('hides staff-only staff-comments interactions on recipient-facing surfaces', () => {
 		expect(
 			getAudienceInteractionCapabilities({
 				interaction_mode: 'Staff Comments',
@@ -44,10 +62,11 @@ describe('getAudienceInteractionCapabilities', () => {
 			canReact: false,
 			canComment: false,
 			hasVisibleActions: false,
+			commentMode: ORG_COMMUNICATION_COMMENT_MODES.NONE,
 		});
 	});
 
-	it('allows shared-thread comments on recipient-facing surfaces when the mode supports them', () => {
+	it('allows shared student q-and-a threads on recipient-facing surfaces when shared thread is on', () => {
 		expect(
 			getAudienceInteractionCapabilities({
 				interaction_mode: 'Student Q&A',
@@ -57,19 +76,28 @@ describe('getAudienceInteractionCapabilities', () => {
 			canReact: false,
 			canComment: true,
 			hasVisibleActions: true,
+			commentMode: ORG_COMMUNICATION_COMMENT_MODES.SHARED_THREAD,
 		});
 	});
 
-	it('keeps structured-feedback reactions available on recipient-facing surfaces', () => {
+	it('keeps private student q-and-a notes available on recipient-facing surfaces when shared thread is off', () => {
 		expect(
 			getAudienceInteractionCapabilities({
-				interaction_mode: 'Structured Feedback',
+				interaction_mode: 'Student Q&A',
 				allow_public_thread: 'false',
 			})
 		).toEqual({
-			canReact: true,
-			canComment: false,
+			canReact: false,
+			canComment: true,
 			hasVisibleActions: true,
+			commentMode: ORG_COMMUNICATION_COMMENT_MODES.PRIVATE_NOTE,
+		});
+	});
+
+	it('returns ask-school copy for private recipient notes', () => {
+		expect(getInteractionCommentUi(ORG_COMMUNICATION_COMMENT_MODES.PRIVATE_NOTE)).toMatchObject({
+			actionLabel: 'Ask School',
+			submitLabel: 'Send to School',
 		});
 	});
 });

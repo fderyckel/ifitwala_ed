@@ -897,7 +897,7 @@
 											class="rounded-[28px] border border-border/70 bg-white p-5 shadow-soft"
 										>
 											<p class="type-overline text-ink/55">Interaction</p>
-											<h3 class="mt-1 type-h3 text-ink">Thread settings</h3>
+											<h3 class="mt-1 type-h3 text-ink">Interaction settings</h3>
 											<div class="mt-4 space-y-4">
 												<div class="space-y-1">
 													<label class="type-label">Interaction mode</label>
@@ -924,7 +924,14 @@
 														class="mt-0.5 rounded border-slate-300 text-jacaranda"
 														:disabled="submitting || privateNotesDisabled"
 													/>
-													<span>Allow private notes to school staff.</span>
+													<span>
+														<span class="block">
+															Allow private questions or notes to school staff.
+														</span>
+														<span class="mt-1 block text-[11px] text-ink/60">
+															{{ privateNotesHelpText }}
+														</span>
+													</span>
 												</label>
 												<label
 													class="flex cursor-pointer items-start gap-3 rounded-2xl border border-border/70 bg-surface-soft px-4 py-3 type-caption text-ink/75"
@@ -936,10 +943,11 @@
 														:disabled="submitting || publicThreadDisabled"
 													/>
 													<span>
-														<span class="block">Allow shared thread entries for recipients.</span>
+														<span class="block">
+															Allow shared audience thread entries for recipients.
+														</span>
 														<span class="mt-1 block text-[11px] text-ink/60">
-															Visible only to staff, students, or guardians who are in this
-															communication&apos;s audience.
+															{{ publicThreadHelpText }}
 														</span>
 													</span>
 												</label>
@@ -1245,7 +1253,7 @@ const summarySubtitle = computed(() => {
 		const parts = [props.courseLabel, props.sessionDate].filter(Boolean);
 		return parts.length ? parts.join(' · ') : 'Class event communication';
 	}
-	return 'Check issuing scope, thread settings, and audience rows before publishing.';
+	return 'Check issuing scope, interaction settings, and audience rows before publishing.';
 });
 const issuingScopeLabel = computed(() => {
 	const schoolOption = schoolSelectOptions.value.find(option => option.value === form.school);
@@ -1259,8 +1267,39 @@ const issuingScopeLabel = computed(() => {
 const briefDatesRequired = computed(() =>
 	['Morning Brief', 'Everywhere'].includes(String(form.portal_surface || '').trim())
 );
-const privateNotesDisabled = computed(() => form.interaction_mode === 'None');
-const publicThreadDisabled = computed(() => form.interaction_mode === 'None');
+const privateNotesDisabled = computed(
+	() => !['Structured Feedback'].includes(String(form.interaction_mode || '').trim())
+);
+const publicThreadDisabled = computed(
+	() =>
+		!['Structured Feedback', 'Student Q&A'].includes(String(form.interaction_mode || '').trim())
+);
+const privateNotesHelpText = computed(() => {
+	const mode = String(form.interaction_mode || '').trim();
+	if (mode === 'Structured Feedback') {
+		return 'School-side only when the selected interaction mode supports it.';
+	}
+	if (mode === 'Student Q&A') {
+		return 'Student Q&A already switches between shared audience thread and private notes through the setting below.';
+	}
+	if (mode === 'Staff Comments') {
+		return 'Staff Comments stays inside the staff thread, so this setting is not used.';
+	}
+	return 'Enable a supported interaction mode to use private notes.';
+});
+const publicThreadHelpText = computed(() => {
+	const mode = String(form.interaction_mode || '').trim();
+	if (mode === 'Student Q&A') {
+		return "Visible only to students or guardians in this communication's resolved audience. When off, recipient entries stay private to school staff.";
+	}
+	if (mode === 'Structured Feedback') {
+		return 'Used only on supported surfaces for recipient-visible feedback entries. This does not control staff-only discussion.';
+	}
+	if (mode === 'Staff Comments') {
+		return 'Staff Comments stays inside the staff thread, so this setting is not used.';
+	}
+	return 'Enable a supported interaction mode to use shared audience thread entries.';
+});
 const organizationHelpText = computed(
 	() => 'Organization is required and defaults from your user scope.'
 );
@@ -1477,9 +1516,18 @@ watch(
 watch(
 	() => form.interaction_mode,
 	modeValue => {
-		if (modeValue !== 'None') return;
-		form.allow_public_thread = false;
-		form.allow_private_notes = false;
+		const mode = String(modeValue || '').trim();
+		if (mode === 'None') {
+			form.allow_public_thread = false;
+			form.allow_private_notes = false;
+			return;
+		}
+		if (mode !== 'Structured Feedback') {
+			form.allow_private_notes = false;
+		}
+		if (!['Structured Feedback', 'Student Q&A'].includes(mode)) {
+			form.allow_public_thread = false;
+		}
 	}
 );
 

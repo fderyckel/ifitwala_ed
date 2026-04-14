@@ -52,6 +52,9 @@ POLICY_SIGNATURE_AUDIENCE_WORKFLOW_DESCRIPTIONS = {
     "Guardian": "Guardians acknowledge this policy in Guardian Portal; no staff tasks are created.",
     "Student": "Students acknowledge this policy in Student Hub; no staff tasks are created.",
 }
+POLICY_SIGNATURE_REGISTER_STATUS_ALL = "all"
+POLICY_SIGNATURE_REGISTER_STATUS_PENDING = "pending"
+POLICY_SIGNATURE_REGISTER_STATUS_SIGNED = "signed"
 MULTIPLE_ORGANIZATIONS_LABEL = "Multiple organizations"
 MULTIPLE_SCHOOLS_LABEL = "Multiple schools"
 

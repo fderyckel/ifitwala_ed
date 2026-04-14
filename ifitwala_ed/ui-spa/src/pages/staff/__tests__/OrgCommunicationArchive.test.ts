@@ -446,4 +446,48 @@ describe('OrgCommunicationArchive', () => {
 		expect(bodyText).not.toContain('👍');
 		expect(bodyText).not.toContain('💬');
 	});
+
+	it('keeps structured feedback reaction-only on the staff archive surface', async () => {
+		getArchiveContextMock.mockResolvedValue({
+			my_teams: [],
+			my_groups: [],
+			schools: [],
+			organizations: [],
+			defaults: {
+				organization: null,
+				school: null,
+				team: null,
+			},
+		});
+		getOrgCommunicationFeedMock.mockResolvedValue({
+			items: [buildItem({ interactionMode: 'Structured Feedback', allowPublicThread: 'true' })],
+			has_more: false,
+			start: 0,
+			page_length: 10,
+		});
+		getOrgCommunicationItemMock.mockResolvedValue({
+			name: 'COMM-0001',
+			message_html: '<p>Body</p>',
+			attachments: [],
+		});
+		getOrgCommInteractionSummaryMock.mockResolvedValue({
+			'COMM-0001': {
+				counts: {},
+				self: null,
+				reaction_counts: {},
+				reactions_total: 1,
+				comments_total: 0,
+			},
+		});
+
+		mountArchive();
+		await flushUi();
+
+		const commentButton = Array.from(document.querySelectorAll('button')).find(button =>
+			(button.textContent || '').includes('Comments')
+		);
+
+		expect(commentButton).toBeUndefined();
+		expect(document.body.querySelector('[data-testid="interaction-chips-stub"]')).not.toBeNull();
+	});
 });

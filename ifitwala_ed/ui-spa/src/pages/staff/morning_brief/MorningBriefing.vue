@@ -1133,7 +1133,7 @@ function openInteractionThread(item: Announcement): void {
 	if (!canCommentOnAnnouncement(item)) {
 		toast({
 			title: 'Comments unavailable',
-			text: 'Comments are not available for this announcement.',
+			text: 'Comments are not available for this announcement in this interaction mode.',
 			icon: 'info',
 		});
 		return;
@@ -1201,7 +1201,7 @@ async function submitComment(): Promise<void> {
 	if (!canCommentOnAnnouncement(activeCommunication.value)) {
 		toast({
 			title: 'Comments unavailable',
-			text: 'Comments are not available for this announcement.',
+			text: 'Comments are not available for this announcement in this interaction mode.',
 			icon: 'info',
 		});
 		return;

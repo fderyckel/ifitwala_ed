@@ -54,12 +54,14 @@ Rules:
 1. `Audience` means the recipients resolved for that communication by its audience rows and server-side visibility checks.
 2. The resolved audience may include staff, students, and/or guardians depending on the communication configuration. It does not mean "outside the school" by default.
 3. `Public to audience` means visible to the resolved recipients of that communication on supported surfaces. It does not mean public web visibility, open internet visibility, or cross-school visibility.
-4. `allow_public_thread` means "allow recipient-visible shared thread entries" for that communication's resolved audience.
+4. `allow_public_thread` means "allow recipient-visible shared audience thread entries" for that communication's resolved audience.
 5. `allow_public_thread=0` is not a global "interactions off" switch. Depending on interaction mode, entries may still be accepted with school-side/private visibility.
 6. `allow_private_notes` means school-side/private visibility rather than recipient-visible thread sharing.
-7. Staff-facing surfaces must not treat `allow_public_thread` as the sole comment toggle. For modes such as `Staff Comments` and staff-managed `Structured Feedback` / `Student Q&A`, staff thread access still follows the backend mode rules.
-8. Recipient-facing surfaces still treat `allow_public_thread` as the shared-thread visibility toggle; school-side/private note workflows must not be presented as a generic shared comments button.
-9. `Student Q&A` does not support bare reaction-only submissions through `react_to_org_communication`; surfaces should route users into the question/comment flow instead of showing generic reaction affordances.
+7. Staff-facing surfaces must not treat `allow_public_thread` as the sole thread toggle. `Staff Comments` remains a staff thread, and `Student Q&A` remains available to staff even when recipient entries are private.
+8. Recipient-facing `Student Q&A` with `allow_public_thread=1` is a shared audience thread.
+9. Recipient-facing `Student Q&A` with `allow_public_thread=0` is a private note-to-school flow, not a missing-interactions state.
+10. Recipient-facing `Structured Feedback` is a reaction/feedback mode and must not be presented as a generic comment thread.
+11. `Student Q&A` does not support bare reaction-only submissions through `react_to_org_communication`; surfaces should route users into the question/comment flow instead of showing generic reaction affordances.
 
 ## 2. Workflow APIs
 

@@ -234,7 +234,7 @@
   },
   {
    "default": "None",
-   "description": "Controls reactions/comments behaviour for this communication on portal and Morning Brief surfaces.",
+   "description": "Controls whether this communication uses staff discussion, recipient Q&A, or structured feedback on supported surfaces.",
    "fieldname": "interaction_mode",
    "fieldtype": "Select",
    "label": "Interaction Mode",
@@ -242,23 +242,23 @@
   },
   {
    "default": "1",
-   "description": "If enabled, guardians/students can send private questions/concerns visible only to school staff.",
+   "description": "If enabled, recipients can send private questions or notes visible only to school staff when the selected interaction mode supports it.",
    "fieldname": "allow_private_notes",
    "fieldtype": "Check",
-   "label": "Allow Private Notes to School"
+   "label": "Allow Private Notes to School Staff"
   },
   {
    "default": "0",
-   "description": "If enabled, interactions in this communication can be visible to others in the same audience (e.g. staff or student group).",
+   "description": "If enabled, recipient-visible entries can be shared with others in the same resolved audience. This does not control staff-only discussion.",
    "fieldname": "allow_public_thread",
    "fieldtype": "Check",
-   "label": "Allow Public Thread"
+   "label": "Allow Shared Audience Thread"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-04-09 10:18:00.000000",
+ "modified": "2026-04-15 01:35:04.000000",
  "modified_by": "Administrator",
  "module": "Setup",
  "name": "Org Communication",

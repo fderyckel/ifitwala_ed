@@ -274,7 +274,7 @@ const interactiveThreadQuickCreateOptions = {
 	...quickCreateOptions,
 	fields: {
 		...quickCreateOptions.fields,
-		interaction_modes: ['None', 'Open Thread'],
+		interaction_modes: ['None', 'Student Q&A', 'Structured Feedback', 'Staff Comments'],
 		portal_surfaces: ['Desk', 'Morning Brief'],
 		priorities: ['Normal', 'High'],
 	},
@@ -572,30 +572,41 @@ describe('OrgCommunicationQuickCreateModal', () => {
 		expect(editor?.value).toBe('<p>Keep this draft open</p>');
 	});
 
-	it('lets users change interaction mode and toggle thread settings', async () => {
+	it('keeps interaction settings aligned to the selected interaction mode', async () => {
 		getOptionsMock.mockResolvedValue(interactiveThreadQuickCreateOptions);
 
 		mountModal();
 		await flushUi();
 
-		setSelectByLabel('Interaction mode', 'Open Thread');
-		await flushUi();
-
 		const privateNotesLabel = Array.from(document.querySelectorAll('label')).find(node =>
-			(node.textContent || '').includes('Allow private notes to school staff.')
+			(node.textContent || '').includes('Allow private questions or notes to school staff.')
 		);
 		const publicThreadLabel = Array.from(document.querySelectorAll('label')).find(node =>
-			(node.textContent || '').includes('Allow shared thread entries for recipients.')
+			(node.textContent || '').includes('Allow shared audience thread entries for recipients.')
 		);
 
 		const privateNotesInput = privateNotesLabel?.querySelector('input') as HTMLInputElement | null;
 		const publicThreadInput = publicThreadLabel?.querySelector('input') as HTMLInputElement | null;
 
+		setSelectByLabel('Interaction mode', 'Student Q&A');
+		await flushUi();
+
+		expect(privateNotesInput?.disabled).toBe(true);
+		expect(publicThreadInput?.disabled).toBe(false);
+
+		publicThreadInput?.click();
+		await flushUi();
+
+		expect(privateNotesInput?.checked).toBe(false);
+		expect(publicThreadInput?.checked).toBe(true);
+
+		setSelectByLabel('Interaction mode', 'Structured Feedback');
+		await flushUi();
+
 		expect(privateNotesInput?.disabled).toBe(false);
 		expect(publicThreadInput?.disabled).toBe(false);
 
 		privateNotesInput?.click();
-		publicThreadInput?.click();
 		await flushUi();
 
 		expect(privateNotesInput?.checked).toBe(true);

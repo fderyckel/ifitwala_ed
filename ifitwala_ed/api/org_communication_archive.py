@@ -674,7 +674,7 @@ def get_org_communication_feed(
                     "activity_booking": c.activity_booking,
                     "activity_student_group": c.activity_student_group,
                     "snippet": snippet,
-                    "has_active_thread": c.allow_public_thread,
+                    "has_active_thread": c.interaction_mode in {"Staff Comments", "Student Q&A"},
                     "audience_label": get_audience_label(c.name),
                     "audience_summary": build_audience_summary(c.name),
                 }

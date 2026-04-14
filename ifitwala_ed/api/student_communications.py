@@ -327,7 +327,7 @@ def _serialize_org_communication_item(
         "activity_booking": row.get("activity_booking"),
         "activity_student_group": row.get("activity_student_group"),
         "snippet": _snippet_from_html(row.get("message")),
-        "has_active_thread": row.get("allow_public_thread"),
+        "has_active_thread": row.get("interaction_mode") == "Student Q&A",
         "audience_label": get_audience_label(row.get("name")),
         "audience_summary": build_audience_summary(row.get("name")),
     }
