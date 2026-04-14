@@ -175,3 +175,49 @@ class TestUnitPlan(FrappeTestCase):
 
         self.assertEqual(doc.standards[0]["learning_standard"], standard.name)
         self.assertEqual(doc.standards[0]["standard_code"], standard.standard_code)
+
+    def test_ensure_linked_unit_plan_standards_falls_back_to_snapshot_match_when_identifier_fails(self):
+        standard = frappe.get_doc(
+            {
+                "doctype": "Learning Standards",
+                "framework_name": "IB MYP",
+                "program": f"MYP {frappe.generate_hash(length=6)}",
+                "strand": "Identity",
+                "substrand": "Narrative",
+                "standard_code": f"MYP-{frappe.generate_hash(length=5)}",
+                "standard_description": "Analyze how narrative voice shapes meaning.",
+                "alignment_type": "Skill",
+            }
+        ).insert(ignore_permissions=True)
+
+        class FakeUnitDoc:
+            def __init__(self, rows):
+                self.standards = rows
+
+            def get(self, fieldname):
+                return getattr(self, fieldname)
+
+            def set(self, fieldname, value):
+                setattr(self, fieldname, value)
+
+        doc = FakeUnitDoc(
+            [
+                {
+                    "learning_standard": "broken-link-value",
+                    "framework_name": standard.framework_name,
+                    "program": standard.program,
+                    "strand": standard.strand,
+                    "substrand": standard.substrand,
+                    "standard_code": standard.standard_code,
+                    "standard_description": standard.standard_description,
+                    "alignment_type": standard.alignment_type,
+                    "coverage_level": "Introduced",
+                }
+            ]
+        )
+
+        planning.ensure_linked_unit_plan_standards(doc)
+
+        self.assertEqual(doc.standards[0]["learning_standard"], standard.name)
+        self.assertEqual(doc.standards[0]["standard_code"], standard.standard_code)
+        self.assertEqual(doc.standards[0]["coverage_level"], "Introduced")

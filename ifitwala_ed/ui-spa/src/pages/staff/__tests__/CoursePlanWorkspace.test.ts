@@ -301,8 +301,10 @@ describe('CoursePlanWorkspace page', () => {
 		expect(overlayOpenMock).toHaveBeenCalledWith(
 			'learning-standards-picker',
 			expect.objectContaining({
+				unitPlan: 'UNIT-1',
 				unitTitle: 'Cells and Systems',
 				unitProgram: 'MYP',
+				programLocked: true,
 				existingStandards: ['LS-1'],
 				onApply: expect.any(Function),
 			})

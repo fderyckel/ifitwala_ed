@@ -2260,8 +2260,10 @@ function openStandardsOverlay() {
 		selectedUnit.value?.program ||
 		(courseProgramOptions.value.length === 1 ? courseProgramOptions.value[0]?.value || '' : '');
 	overlay.open('learning-standards-picker', {
+		unitPlan: unitForm.unit_plan || selectedUnit.value?.unit_plan || null,
 		unitTitle: unitForm.title || selectedUnit.value?.title || 'Selected Unit',
 		unitProgram: preferredProgram || null,
+		programLocked: Boolean(preferredProgram),
 		existingStandards: unitForm.standards
 			.map(standard => String(standard.learning_standard || '').trim())
 			.filter(value => Boolean(value)),

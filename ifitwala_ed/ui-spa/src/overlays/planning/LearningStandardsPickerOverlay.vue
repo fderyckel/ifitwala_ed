@@ -161,7 +161,33 @@
 
 							<section v-else class="space-y-4">
 								<div
-									v-if="!filters.strand"
+									v-if="noStandardsForLockedProgram"
+									class="rounded-2xl border border-dashed border-line-soft bg-white px-5 py-6"
+								>
+									<p class="type-body-strong text-ink">
+										No learning standards are configured for this unit's program yet.
+									</p>
+									<p class="mt-1 type-caption text-ink/70">
+										Add `Learning Standards` rows for {{ props.unitProgram || 'this program' }}
+										or pick a unit with a configured standards catalog.
+									</p>
+								</div>
+
+								<div
+									v-else-if="needsFramework"
+									class="rounded-2xl border border-dashed border-line-soft bg-white px-5 py-6"
+								>
+									<p class="type-body-strong text-ink">
+										Choose a framework to see matching strands.
+									</p>
+									<p class="mt-1 type-caption text-ink/70">
+										The overlay narrows the standards catalog by framework before showing the
+										available strands for this unit.
+									</p>
+								</div>
+
+								<div
+									v-else-if="!filters.strand"
 									class="rounded-2xl border border-dashed border-line-soft bg-white px-5 py-6"
 								>
 									<p class="type-body-strong text-ink">
@@ -301,8 +327,10 @@ const props = defineProps<{
 	open: boolean;
 	zIndex?: number;
 	overlayId?: string | null;
+	unitPlan?: string | null;
 	unitTitle?: string | null;
 	unitProgram?: string | null;
+	programLocked?: boolean;
 	existingStandards?: string[];
 	onApply?: (rows: StaffLearningStandardPickerRow[]) => void;
 }>();
@@ -320,6 +348,7 @@ const errorMessage = ref('');
 const pickerResponse = ref<LearningStandardPickerResponse | null>(null);
 const loadToken = ref(0);
 const resettingFilters = ref(false);
+const autoSelectingFilters = ref(false);
 let searchTimer: ReturnType<typeof setTimeout> | null = null;
 
 const filters = reactive({
@@ -353,6 +382,7 @@ const substrandOptions = computed(() => [
 const selectedRows = computed(() => Object.values(selectedStandards.value));
 const selectedStandardIds = computed(() => new Set(Object.keys(selectedStandards.value)));
 const visibleStandards = computed(() => pickerResponse.value?.standards || []);
+const programLocked = computed(() => Boolean(props.programLocked || props.unitProgram));
 const selectableCount = computed(
 	() =>
 		visibleStandards.value.filter(row => !existingStandardsSet.value.has(row.learning_standard))
@@ -363,18 +393,31 @@ const showFrameworkSelect = computed(
 );
 const showProgramSelect = computed(
 	() =>
-		Boolean(filters.framework_name) ||
-		Boolean(filters.program) ||
-		pickerOptions.value.frameworks.length <= 1
+		!programLocked.value && (Boolean(filters.program) || pickerOptions.value.programs.length > 1)
 );
 const showStrandSelect = computed(
 	() =>
-		Boolean(filters.program) || Boolean(filters.strand) || pickerOptions.value.programs.length <= 1
+		(!showFrameworkSelect.value || Boolean(filters.framework_name)) &&
+		(programLocked.value || Boolean(filters.program) || !showProgramSelect.value)
 );
 const showSubstrandSelect = computed(
 	() =>
 		Boolean(filters.strand) &&
 		(pickerOptions.value.substrands.length > 0 || Boolean(pickerOptions.value.has_blank_substrand))
+);
+const needsFramework = computed(
+	() =>
+		showFrameworkSelect.value &&
+		!filters.framework_name &&
+		pickerOptions.value.frameworks.length > 1
+);
+const noStandardsForLockedProgram = computed(
+	() =>
+		programLocked.value &&
+		!loading.value &&
+		!errorMessage.value &&
+		!pickerOptions.value.frameworks.length &&
+		!visibleStandards.value.length
 );
 
 function resetOverlayState() {
@@ -401,6 +444,7 @@ async function loadPicker() {
 
 	try {
 		const response = await getLearningStandardPicker({
+			unit_plan: props.unitPlan || undefined,
 			framework_name: filters.framework_name || undefined,
 			program: filters.program || undefined,
 			strand: filters.strand || undefined,
@@ -411,6 +455,9 @@ async function loadPicker() {
 			return;
 		}
 		pickerResponse.value = response;
+		if (applyAutoSelections(response)) {
+			return;
+		}
 	} catch (error) {
 		if (ticket !== loadToken.value) {
 			return;
@@ -426,6 +473,40 @@ async function loadPicker() {
 		if (ticket === loadToken.value) {
 			loading.value = false;
 		}
+	}
+}
+
+function applyAutoSelections(response: LearningStandardPickerResponse) {
+	autoSelectingFilters.value = true;
+	try {
+		if (!programLocked.value && !filters.program && response.options.programs.length === 1) {
+			filters.program = response.options.programs[0] || '';
+			return true;
+		}
+		if (!filters.framework_name && response.options.frameworks.length === 1) {
+			filters.framework_name = response.options.frameworks[0] || '';
+			return true;
+		}
+		if (
+			!filters.strand &&
+			(!response.options.frameworks.length || Boolean(filters.framework_name)) &&
+			response.options.strands.length === 1
+		) {
+			filters.strand = response.options.strands[0] || '';
+			return true;
+		}
+		if (
+			!filters.substrand &&
+			Boolean(filters.strand) &&
+			response.options.substrands.length === 1 &&
+			!response.options.has_blank_substrand
+		) {
+			filters.substrand = response.options.substrands[0] || '';
+			return true;
+		}
+		return false;
+	} finally {
+		autoSelectingFilters.value = false;
 	}
 }
 
@@ -505,7 +586,7 @@ watch(
 watch(
 	() => [filters.framework_name, filters.program, filters.strand, filters.substrand] as const,
 	(nextFilters, previousFilters) => {
-		if (!props.open || resettingFilters.value) {
+		if (!props.open || resettingFilters.value || autoSelectingFilters.value) {
 			return;
 		}
 		if (JSON.stringify(nextFilters) === JSON.stringify(previousFilters)) {
@@ -518,7 +599,7 @@ watch(
 watch(
 	() => filters.search_text,
 	() => {
-		if (!props.open || resettingFilters.value) {
+		if (!props.open || resettingFilters.value || autoSelectingFilters.value) {
 			return;
 		}
 		if (searchTimer) {

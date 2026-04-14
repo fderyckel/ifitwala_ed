@@ -89,6 +89,7 @@ def get_program_subtree_scope(program: str):
 
 @frappe.whitelist()
 def get_learning_standard_picker(
+    unit_plan: str | None = None,
     framework_name: str | None = None,
     program: str | None = None,
     strand: str | None = None,
@@ -96,11 +97,17 @@ def get_learning_standard_picker(
     search_text: str | None = None,
 ):
     filters = {}
+    unit_plan = planning.normalize_text(unit_plan)
     framework_name = planning.normalize_text(framework_name)
     program = planning.normalize_text(program)
     strand = planning.normalize_text(strand)
     substrand = planning.normalize_text(substrand)
     search_text = planning.normalize_text(search_text)
+
+    if unit_plan:
+        resolved_program = planning.normalize_text(frappe.db.get_value("Unit Plan", unit_plan, "program"))
+        if resolved_program:
+            program = resolved_program
 
     if framework_name:
         filters["framework_name"] = framework_name
@@ -185,6 +192,7 @@ def get_learning_standard_picker(
 
     return {
         "filters": {
+            "unit_plan": unit_plan or None,
             "framework_name": framework_name or None,
             "program": program or None,
             "strand": strand or None,

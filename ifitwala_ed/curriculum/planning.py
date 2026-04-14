@@ -652,15 +652,16 @@ def _resolve_unit_standard_catalog_row(
             linked_name,
             normalized,
         )
-        if not linked_row:
+        if linked_row:
+            return linked_row
+
+    code = normalized.get("standard_code")
+    if not code:
+        if linked_name:
             frappe.throw(
                 _("Learning Standard {0} does not exist.").format(linked_name),
                 frappe.ValidationError,
             )
-        return linked_row
-
-    code = normalized.get("standard_code")
-    if not code:
         frappe.throw(
             _("Each standards alignment row must select an existing Learning Standard."),
             frappe.ValidationError,
@@ -674,6 +675,13 @@ def _resolve_unit_standard_catalog_row(
     if len(matches) == 1:
         return matches[0]
     if not matches:
+        if linked_name:
+            frappe.throw(
+                _("Learning Standard {0} could not be resolved from the catalog. Re-select it from the picker.").format(
+                    linked_name
+                ),
+                frappe.ValidationError,
+            )
         frappe.throw(
             _("Standard {0} must match an existing Learning Standard.").format(code),
             frappe.ValidationError,
