@@ -56,6 +56,10 @@ Test refs: `ifitwala_ed/ui-spa/src/pages/staff/__tests__/StaffPolicies.test.ts`
    - version history rows,
    - derived signature state.
 3. No second modal system is introduced.
+4. When the overlay is opened from a staff archive communication and passes `org_communication`, the payload endpoint may honor that communication visibility as a surface-specific fallback after verifying:
+   - the user can view that communication, and
+   - the communication organization/school context is compatible with the requested policy version.
+5. This fallback is intended for archive-launched policy communications, especially `Academic Admin` users whose active `Employee` record has no default school and therefore rely on organization descendant fallback.
 
 ## Signature Analytics Link Contract
 Status: Implemented

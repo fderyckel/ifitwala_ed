@@ -193,7 +193,6 @@ def _create_thread(*, context_doctype: str, context_name: str, context_row: dict
             "to_students": 1,
             "to_staff": 0,
             "to_guardians": 0,
-            "to_community": 0,
         },
     )
     doc.insert(ignore_permissions=True)

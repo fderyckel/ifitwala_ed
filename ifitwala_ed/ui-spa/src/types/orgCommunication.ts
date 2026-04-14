@@ -28,7 +28,7 @@ export type AudiencePrimary = {
 	scope_type: 'School' | 'Organization' | 'Team' | 'Student Group' | 'Global'
 	scope_value: string | null
 	scope_label: string | null
-	recipients: Array<'Staff' | 'Students' | 'Guardians' | 'Community'>
+	recipients: Array<'Staff' | 'Students' | 'Guardians'>
 	include_descendants: 0 | 1
 }
 
@@ -112,7 +112,6 @@ export interface OrgCommunicationAudienceRow {
 	to_staff?: 0 | 1 | boolean
 	to_students?: 0 | 1 | boolean
 	to_guardians?: 0 | 1 | boolean
-	to_community?: 0 | 1 | boolean
 	note?: string | null
 }
 

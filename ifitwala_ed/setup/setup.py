@@ -10,6 +10,10 @@ from frappe.utils import cstr, get_files_path
 
 from ifitwala_ed.admission.access import ADMISSIONS_FAMILY_ROLE
 from ifitwala_ed.governance.policy_utils import ensure_policy_audience_records
+from ifitwala_ed.printing.letter_head.sync import (
+    ensure_print_settings_with_letterhead,
+    sync_default_school_letter_head,
+)
 from ifitwala_ed.routing.policy import canonical_path_for_section
 from ifitwala_ed.school_site.doctype.website_theme_profile.website_theme_profile import (
     ensure_theme_profile_presets,
@@ -45,6 +49,7 @@ def setup_education():
     grant_role_read_select_to_hr()
     create_designations()
     create_log_type()
+    create_default_leave_types()
     create_default_attendance_codes()
     create_location_type()
     add_other_records()
@@ -56,6 +61,8 @@ def setup_education():
     setup_website_theme_profiles()
     setup_default_website_pages()
     sync_public_brand_website_settings()
+    sync_default_school_letter_head()
+    ensure_print_settings_with_letterhead()
     grant_core_crm_permissions()
     ensure_policy_audience_records()
 
@@ -274,6 +281,22 @@ def create_log_type():
         {"doctype": "Student Log Type", "log_type": "Academic Honesty"},
         {"doctype": "Student Log Type", "log_type": "Social-Emotional"},
         {"doctype": "Student Log Type", "log_type": "Positive Attitude Towards Learning"},
+    ]
+    insert_record(data)
+
+
+def create_default_leave_types():
+    data = [
+        {"doctype": "Leave Type", "leave_type_name": "Annual Leave"},
+        {"doctype": "Leave Type", "leave_type_name": "Sick Leave"},
+        {"doctype": "Leave Type", "leave_type_name": "Personal Leave"},
+        {"doctype": "Leave Type", "leave_type_name": "School Related Activities"},
+        {"doctype": "Leave Type", "leave_type_name": "Bereavement Leave"},
+        {"doctype": "Leave Type", "leave_type_name": "Maternity Leave"},
+        {"doctype": "Leave Type", "leave_type_name": "Paternity Leave"},
+        {"doctype": "Leave Type", "leave_type_name": "Family Care Leave"},
+        {"doctype": "Leave Type", "leave_type_name": "Professional Development Leave"},
+        {"doctype": "Leave Type", "leave_type_name": "Unpaid Leave", "is_lwp": 1},
     ]
     insert_record(data)
 

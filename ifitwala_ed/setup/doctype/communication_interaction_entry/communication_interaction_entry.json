@@ -47,7 +47,7 @@
    "fieldname": "audience_type",
    "fieldtype": "Select",
    "label": "Audience Type",
-   "options": "Staff\nStudent\nGuardian\nCommunity"
+   "options": "Staff\nStudent\nGuardian"
   },
   {
    "fieldname": "surface",
@@ -105,7 +105,7 @@
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-02-11 00:00:00.000000",
+ "modified": "2026-04-14 22:16:06.000000",
  "modified_by": "Administrator",
  "module": "Setup",
  "name": "Communication Interaction Entry",

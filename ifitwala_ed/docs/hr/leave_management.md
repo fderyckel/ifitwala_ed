@@ -36,6 +36,31 @@ This document is the implementation contract for the leave domain integrated int
 - `Employee Attendance` (leave-driven staff attendance ledger)
 - `HR Settings` (singleton with leave-specific control flags used by this domain)
 
+## Default Leave Type Seed Contract
+
+Fresh installs seed a baseline leave-type catalog through `setup_education()` so HR can start configuring policies without manual doctype setup.
+
+Seeded defaults:
+
+- `Annual Leave`
+- `Sick Leave`
+- `Personal Leave`
+- `School Related Activities`
+- `Bereavement Leave`
+- `Maternity Leave`
+- `Paternity Leave`
+- `Family Care Leave`
+- `Professional Development Leave`
+- `Unpaid Leave`
+
+Seed behavior:
+
+- Only `Unpaid Leave` is created with `is_lwp = 1`
+- No default leave allocations, earned-leave behavior, carry-forward rules, encashment rules, or compensatory behavior are preconfigured
+- Leave policies remain the canonical place to define entitlement counts and operational rules
+
+Existing-site rollout uses `ifitwala_ed.patches.backfill_default_leave_types` to seed the same defaults idempotently.
+
 ## Canonical Schema Mapping Applied
 
 - `company` fields and filters mapped to `organization`

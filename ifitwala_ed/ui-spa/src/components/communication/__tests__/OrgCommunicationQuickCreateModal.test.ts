@@ -509,12 +509,15 @@ describe('OrgCommunicationQuickCreateModal', () => {
 		expect(createOrgCommunicationQuickMock.mock.calls[0][0].audiences).toEqual([
 			expect.objectContaining({
 				target_mode: 'Organization',
-				to_staff: 1,
-				to_students: 0,
-				to_guardians: 0,
-				to_community: 0,
-			}),
-		]);
+				school: null,
+				team: null,
+					student_group: null,
+					include_descendants: 0,
+					to_staff: 1,
+					to_students: 0,
+					to_guardians: 0,
+				}),
+			]);
 	});
 
 	it('renders a compact locked composer for class-event mode', async () => {
@@ -636,14 +639,13 @@ describe('OrgCommunicationQuickCreateModal', () => {
 			audiences: [
 				expect.objectContaining({
 					target_mode: 'Student Group',
-					student_group: 'SG-1',
-					to_students: 1,
-					to_guardians: 0,
-					to_staff: 0,
-					to_community: 0,
-				}),
-			],
-		});
+						student_group: 'SG-1',
+						to_students: 1,
+						to_guardians: 0,
+						to_staff: 0,
+					}),
+				],
+			});
 	});
 
 	it('auto-saves a class-event draft before adding a link attachment and publishes by update', async () => {

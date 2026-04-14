@@ -105,7 +105,7 @@ Rules:
 2. The SPA mirrors the Desk client audience-row behaviors for target-mode visibility and recipient defaults, but those checks are UX only.
 3. The SPA must not bypass or replace controller validation with generic `frappe.client.insert`.
 4. Role-based restrictions for wide-audience rows remain server-owned and are only mirrored in the SPA to make blocked actions obvious earlier:
-   - `School Scope` rows targeting `Staff` or `Community`
+   - `School Scope` rows targeting `Staff`
    - `Organization` rows targeting `Staff`
 5. `entryMode='class-event'` hard-locks these payload values even though they are hidden from the overlay:
    - `communication_type='Class Announcement'`
@@ -116,7 +116,7 @@ Rules:
    - one `Student Group` audience row with `to_students=1`
 6. In `entryMode='class-event'`, guardian visibility starts unchecked and is controlled only by the single exposed guardian toggle.
 7. In this contract, `allow_public_thread` means recipient-visible shared thread entries for the communication's resolved audience, not public web visibility.
-8. The resolved audience may include staff, students, guardians, and/or community recipients depending on the selected audience rows.
+8. The resolved audience may include staff, students, and/or guardians depending on the selected audience rows.
 9. `allow_private_notes` remains the school-side/private notes setting and must not be described in the UI or docs as recipient-visible thread sharing.
 
 ## 4. Class-Event Attachment Contract

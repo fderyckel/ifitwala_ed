@@ -947,7 +947,7 @@ def _build_school_event_blocks(
         if event_school:
             eligible_students = {s for s in eligible_students if student_school.get(s) == event_school}
 
-        if audience_type == "Whole School Community":
+        if audience_type == "All Students, Guardians, and Employees":
             return eligible_students
         if audience_type == "All Guardians":
             return eligible_students

@@ -3,7 +3,7 @@ title: "Policy Version: Publish and Track Policy Changes"
 slug: policy-version
 category: Governance
 doc_order: 2
-version: "1.7.1"
+version: "1.7.2"
 last_change_date: "2026-04-14"
 summary: "Create immutable policy text versions with automatic diff tracking, acknowledgement clauses, and controlled activation for applicants, guardians, and staff."
 seo_title: "Policy Version: Publish and Track Policy Changes"
@@ -163,6 +163,15 @@ The share dialog respects your policy scope:
 - **School-scoped policies**: Offer School and Team audiences
 - **Organization-wide staff policies**: Offer Organization Staff audience
 - **Mixed-audience policies**: Offer Schools in Organization, School, and Team
+
+<Callout type="tip" title="How Schools in Organization works">
+For organization-wide student or guardian policies, **Schools in Organization** fans out to every school in the selected organization **and its child organizations**. This is designed for top-parent academic admins who manage a whole organization branch rather than one default school.
+</Callout>
+
+Policy sharing targets only these recipient groups:
+- **Staff**
+- **Students**
+- **Guardians**
 
 ### Staff Signature Campaigns
 

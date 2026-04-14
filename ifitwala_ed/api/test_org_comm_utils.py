@@ -49,7 +49,6 @@ class TestOrgCommUtils(FrappeTestCase):
                 to_staff=1,
                 to_students=0,
                 to_guardians=0,
-                to_community=0,
             )
         ]
 
@@ -78,7 +77,6 @@ class TestOrgCommUtils(FrappeTestCase):
                 to_staff=1,
                 to_students=0,
                 to_guardians=0,
-                to_community=0,
             )
         ]
 
@@ -107,7 +105,6 @@ class TestOrgCommUtils(FrappeTestCase):
                 to_staff=0,
                 to_students=1,
                 to_guardians=1,
-                to_community=0,
             )
         ]
 
@@ -133,7 +130,6 @@ class TestOrgCommUtils(FrappeTestCase):
                 to_staff=0,
                 to_students=1,
                 to_guardians=0,
-                to_community=0,
             )
         ]
 
@@ -164,7 +160,6 @@ class TestOrgCommUtils(FrappeTestCase):
                 to_staff=0,
                 to_students=0,
                 to_guardians=1,
-                to_community=0,
             )
         ]
 
@@ -196,7 +191,6 @@ class TestOrgCommUtils(FrappeTestCase):
                 to_staff=1,
                 to_students=0,
                 to_guardians=0,
-                to_community=0,
             )
         ]
 
@@ -226,7 +220,6 @@ class TestOrgCommUtils(FrappeTestCase):
                 to_staff=0,
                 to_students=1,
                 to_guardians=1,
-                to_community=0,
             )
         ]
 
@@ -265,7 +258,6 @@ class TestOrgCommUtils(FrappeTestCase):
                 to_staff=1,
                 to_students=0,
                 to_guardians=0,
-                to_community=0,
             )
         ]
 

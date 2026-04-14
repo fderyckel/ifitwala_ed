@@ -544,7 +544,7 @@ def _fetch_student_school_events(context: dict[str, Any]) -> list[dict[str, Any]
             SELECT 1
             FROM `tabSchool Event Audience` sea
             WHERE sea.parent = se.name
-              AND sea.audience_type IN ('Whole School Community', 'All Students')
+              AND sea.audience_type IN ('All Students, Guardians, and Employees', 'All Students')
         )
         """
     ]

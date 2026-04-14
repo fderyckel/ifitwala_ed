@@ -77,8 +77,6 @@ class CommunicationInteractionEntry(Document):
             self.audience_type = "Student"
         elif roles & {"Employee", "Academic Staff", "Academic Admin", "System Manager", "Academic Assistant"}:
             self.audience_type = "Staff"
-        else:
-            self.audience_type = "Community"
 
     def _apply_mode_constraints(self):
         parent = frappe.get_cached_doc("Org Communication", self.org_communication)

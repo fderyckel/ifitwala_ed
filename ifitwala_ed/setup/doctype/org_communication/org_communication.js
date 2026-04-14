@@ -548,7 +548,7 @@ function apply_audience_row_visibility(frm, cdt, cdn, row) {
 
 function update_recipient_toggle_state(gf, target_mode) {
 	const allowed = get_allowed_recipient_fields(target_mode);
-	const toggle_fields = ['to_staff', 'to_students', 'to_guardians', 'to_community'];
+	const toggle_fields = ['to_staff', 'to_students', 'to_guardians'];
 
 	toggle_fields.forEach(fieldname => {
 		const field = get_grid_field(gf, fieldname);
@@ -596,7 +596,7 @@ function get_allowed_recipient_fields(target_mode) {
 		return ['to_staff', 'to_students', 'to_guardians'];
 	}
 	if (target_mode === 'School Scope') {
-		return ['to_staff', 'to_students', 'to_guardians', 'to_community'];
+		return ['to_staff', 'to_students', 'to_guardians'];
 	}
 	return [];
 }
@@ -612,13 +612,12 @@ function apply_recipient_defaults(frm, cdt, cdn, row) {
 	if (!target_mode) return;
 
 	const allowed = get_allowed_recipient_fields(target_mode);
-	const toggle_fields = ['to_staff', 'to_students', 'to_guardians', 'to_community'];
+	const toggle_fields = ['to_staff', 'to_students', 'to_guardians'];
 
 	const values = {
 		to_staff: is_checked(row.to_staff),
 		to_students: is_checked(row.to_students),
-		to_guardians: is_checked(row.to_guardians),
-		to_community: is_checked(row.to_community)
+		to_guardians: is_checked(row.to_guardians)
 	};
 
 	toggle_fields.forEach(fieldname => {

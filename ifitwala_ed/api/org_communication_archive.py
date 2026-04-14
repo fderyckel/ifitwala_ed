@@ -716,7 +716,6 @@ def get_audience_label(comm_name: str) -> str:
             "to_staff",
             "to_students",
             "to_guardians",
-            "to_community",
         ],
     )
 
@@ -749,8 +748,6 @@ def get_audience_label(comm_name: str) -> str:
         recipients.append("Students")
     if any(_as_bool(a.get("to_guardians")) for a in audiences):
         recipients.append("Guardians")
-    if any(_as_bool(a.get("to_community")) for a in audiences):
-        recipients.append("Community")
     recipients_label = " · ".join(recipients) if recipients else "Audience"
 
     school_abbrs = []

@@ -126,8 +126,6 @@ def check_audience_match(
             flags.add("to_students")
         if _as_bool(aud.to_guardians):
             flags.add("to_guardians")
-        if _as_bool(aud.to_community):
-            flags.add("to_community")
         return flags
 
     def _get_user_recipient_flags() -> set[str]:
@@ -138,8 +136,6 @@ def check_audience_match(
             flags.add("to_students")
         if "Guardian" in roles:
             flags.add("to_guardians")
-        if not flags and user and user != "Guest":
-            flags.add("to_community")
         return flags
 
     def _get_instructor_groups(user_id, employee_doc) -> set[str]:
@@ -241,7 +237,6 @@ def check_audience_match(
             "to_staff",
             "to_students",
             "to_guardians",
-            "to_community",
         ],
     )
 
@@ -419,8 +414,6 @@ def build_audience_summary(comm_name: str) -> dict:
             recipients.append("Students")
         if _as_bool(aud.to_guardians):
             recipients.append("Guardians")
-        if _as_bool(aud.to_community):
-            recipients.append("Community")
         return recipients
 
     if not comm_name:
@@ -438,7 +431,6 @@ def build_audience_summary(comm_name: str) -> dict:
             "to_staff",
             "to_students",
             "to_guardians",
-            "to_community",
         ],
     )
 
@@ -464,7 +456,7 @@ def build_audience_summary(comm_name: str) -> dict:
         target_mode = (aud.target_mode or "").strip()
         scope_type = "Global"
         scope_value = None
-        scope_label = "Whole community"
+        scope_label = "Whole audience"
         include_descendants = 0
 
         if target_mode == "Student Group" or (not target_mode and aud.student_group):
@@ -525,7 +517,7 @@ def build_audience_summary(comm_name: str) -> dict:
         primary = {
             "scope_type": "Global",
             "scope_value": None,
-            "scope_label": "Whole community",
+            "scope_label": "Whole audience",
             "recipients": [],
             "include_descendants": 0,
         }

@@ -10,6 +10,7 @@ from frappe.tests.utils import FrappeTestCase
 from ifitwala_ed.setup.initial_setup import complete_initial_setup
 from ifitwala_ed.setup.setup import (
     create_default_attendance_codes,
+    create_default_leave_types,
     create_designations,
     create_roles_with_homepage,
     ensure_canonical_role_records,
@@ -165,6 +166,28 @@ class TestSetupRoles(FrappeTestCase):
         defaults = [row for row in rows if int(row.get("is_default") or 0) == 1]
         self.assertEqual(len(defaults), 1)
         self.assertEqual(defaults[0].get("attendance_code_name"), "Present")
+
+    def test_create_default_leave_types_seeds_education_leave_catalog(self):
+        with patch("ifitwala_ed.setup.setup.insert_record") as insert_record:
+            create_default_leave_types()
+
+        rows = insert_record.call_args.args[0]
+        self.assertEqual(
+            [row.get("leave_type_name") for row in rows],
+            [
+                "Annual Leave",
+                "Sick Leave",
+                "Personal Leave",
+                "School Related Activities",
+                "Bereavement Leave",
+                "Maternity Leave",
+                "Paternity Leave",
+                "Family Care Leave",
+                "Professional Development Leave",
+                "Unpaid Leave",
+            ],
+        )
+        self.assertEqual([int(row.get("is_lwp") or 0) for row in rows], [0, 0, 0, 0, 0, 0, 0, 0, 0, 1])
 
     def test_complete_initial_setup_seeds_designations_after_first_real_organization(self):
         root_doc = _DummyDoc("All Organizations")

@@ -49,7 +49,7 @@ Test refs:
 Rules:
 
 1. `Audience` means the recipients resolved for that communication by its audience rows and server-side visibility checks.
-2. The resolved audience may include staff, students, guardians, and/or community recipients depending on the communication configuration. It does not mean "outside the school" by default.
+2. The resolved audience may include staff, students, and/or guardians depending on the communication configuration. It does not mean "outside the school" by default.
 3. `Public to audience` means visible to the resolved recipients of that communication on supported surfaces. It does not mean public web visibility, open internet visibility, or cross-school visibility.
 4. `allow_public_thread` means "allow recipient-visible shared thread entries" for that communication's resolved audience.
 5. `allow_public_thread=0` is not a global "interactions off" switch. Depending on interaction mode, entries may still be accepted with school-side/private visibility.

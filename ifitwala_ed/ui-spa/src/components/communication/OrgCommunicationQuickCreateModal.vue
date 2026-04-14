@@ -835,9 +835,8 @@
 																"
 																class="type-caption text-amber-700"
 															>
-																School-scope Staff and Community rows require Academic Admin,
-																Academic Assistant, HR Manager, Accounts Manager, or System
-																Manager.
+																School-scope Staff rows require Academic Admin, Academic Assistant,
+																HR Manager, Accounts Manager, or System Manager.
 															</p>
 															<p
 																v-else-if="
@@ -939,8 +938,8 @@
 													<span>
 														<span class="block">Allow shared thread entries for recipients.</span>
 														<span class="mt-1 block text-[11px] text-ink/60">
-															Visible only to staff, students, guardians, or community recipients
-															who are in this communication&apos;s audience.
+															Visible only to staff, students, or guardians who are in this
+															communication&apos;s audience.
 														</span>
 													</span>
 												</label>
@@ -1029,7 +1028,7 @@ import type { Response as OrgCommunicationQuickCreateOptionsResponse } from '@/t
 
 type CloseReason = 'backdrop' | 'esc' | 'programmatic';
 type EntryMode = 'staff-home' | 'class-event';
-type RecipientField = 'to_staff' | 'to_students' | 'to_guardians' | 'to_community';
+type RecipientField = 'to_staff' | 'to_students' | 'to_guardians';
 type AudienceRowState = {
 	id: string;
 	target_mode: string;
@@ -1040,7 +1039,6 @@ type AudienceRowState = {
 	to_staff: boolean;
 	to_students: boolean;
 	to_guardians: boolean;
-	to_community: boolean;
 	note: string;
 };
 
@@ -1195,7 +1193,6 @@ const recipientToggleDefinitions: Array<{ field: RecipientField; label: string }
 	{ field: 'to_staff', label: 'Staff' },
 	{ field: 'to_students', label: 'Students' },
 	{ field: 'to_guardians', label: 'Guardians' },
-	{ field: 'to_community', label: 'Community' },
 ];
 const messageEditorButtons = [
 	'Paragraph',
@@ -1221,7 +1218,7 @@ const overlayTitle = computed(() =>
 const overlayDescription = computed(() =>
 	isClassEventMode.value
 		? 'Create an org communication from this class context without leaving the calendar flow.'
-		: 'Publish or save a communication for staff, a student group, or your broader school community from Staff Home.'
+		: 'Publish or save a communication for staff, students, guardians, or a student group from Staff Home.'
 );
 const isFuturePublishFrom = computed(() => {
 	if (!form.publish_from) return false;
@@ -1404,12 +1401,8 @@ function getValidationMessage(draftMode = false) {
 		if (!recipientToggleDefinitions.some(recipient => Boolean(row[recipient.field]))) {
 			return 'Audience row must include at least one Recipient toggle.';
 		}
-		if (
-			!canTargetWideSchoolScope.value &&
-			row.target_mode === 'School Scope' &&
-			(row.to_staff || row.to_community)
-		) {
-			return 'You are not allowed to target Staff or Community at School Scope from your current role.';
+		if (!canTargetWideSchoolScope.value && row.target_mode === 'School Scope' && row.to_staff) {
+			return 'You are not allowed to target Staff at School Scope from your current role.';
 		}
 		if (!canTargetWideSchoolScope.value && row.target_mode === 'Organization') {
 			return 'You are not allowed to target Staff at Organization scope from your current role.';
@@ -1573,7 +1566,6 @@ function initializeForm() {
 				to_students: true,
 				to_guardians: false,
 				to_staff: false,
-				to_community: false,
 			}),
 		];
 		return;
@@ -1601,7 +1593,6 @@ function createAudienceRow(seed: Partial<AudienceRowState> = {}): AudienceRowSta
 		to_staff: Boolean(seed.to_staff ?? false),
 		to_students: Boolean(seed.to_students ?? false),
 		to_guardians: Boolean(seed.to_guardians ?? false),
-		to_community: Boolean(seed.to_community ?? false),
 		note: seed.note || '',
 	};
 	applyAudienceDefaults(row);
@@ -1664,7 +1655,6 @@ function applyAudienceDefaults(row: AudienceRowState) {
 		if (isClassEventMode.value) {
 			row.to_staff = false;
 			row.to_students = true;
-			row.to_community = false;
 			return;
 		}
 		if (!row.to_staff && !row.to_students && !row.to_guardians) {
@@ -1685,7 +1675,7 @@ function isRecipientDisabled(row: AudienceRowState, field: RecipientField) {
 	if (
 		row.target_mode === 'School Scope' &&
 		!canTargetWideSchoolScope.value &&
-		(field === 'to_staff' || field === 'to_community')
+		field === 'to_staff'
 	) {
 		return true;
 	}
@@ -1749,23 +1739,24 @@ function buildAudiencePayload(): OrgCommunicationQuickAudienceRow[] {
 				to_staff: 0,
 				to_students: 1,
 				to_guardians: row?.to_guardians ? 1 : 0,
-				to_community: 0,
 				note: null,
 			},
 		];
 	}
-	return audienceRows.value.map(row => ({
-		target_mode: row.target_mode,
-		school: row.school || null,
-		team: row.team || null,
-		student_group: row.student_group || null,
-		include_descendants: row.include_descendants ? 1 : 0,
-		to_staff: row.to_staff ? 1 : 0,
-		to_students: row.to_students ? 1 : 0,
-		to_guardians: row.to_guardians ? 1 : 0,
-		to_community: row.to_community ? 1 : 0,
-		note: row.note.trim() || null,
-	}));
+	return audienceRows.value.map(row => {
+		const targetMode = row.target_mode;
+		return {
+			target_mode: targetMode,
+			school: targetMode === 'School Scope' ? row.school || null : null,
+			team: targetMode === 'Team' ? row.team || null : null,
+			student_group: targetMode === 'Student Group' ? row.student_group || null : null,
+			include_descendants: targetMode === 'School Scope' && row.include_descendants ? 1 : 0,
+			to_staff: row.to_staff ? 1 : 0,
+			to_students: row.to_students ? 1 : 0,
+			to_guardians: row.to_guardians ? 1 : 0,
+			note: row.note.trim() || null,
+		};
+	});
 }
 
 function buildPayload(statusOverride?: string): CreateOrgCommunicationQuickRequest {

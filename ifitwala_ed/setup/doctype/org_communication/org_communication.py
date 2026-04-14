@@ -24,9 +24,9 @@ from ifitwala_ed.setup.doctype.org_communication.attachments import (
 ADMIN_ROLES_FULL = {"System Manager", "Academic Admin"}
 
 # Elevated audience rights: can target School Scope audiences with
-# Staff or Community recipients, and can choose Issuing School within their nested scope.
+# Staff recipients, and can choose Issuing School within their nested scope.
 ELEVATED_WIDE_AUDIENCE_ROLES = {"System Manager", "Academic Admin", "Academic Assistant"}
-# Allowed to target/publish School Scope audiences that include Staff or Community.
+# Allowed to target/publish School Scope audiences that include Staff.
 # Kept separate from issuing-school elevation to avoid widening school-selection privileges.
 WIDE_AUDIENCE_RECIPIENT_ROLES = {
     "System Manager",
@@ -37,15 +37,14 @@ WIDE_AUDIENCE_RECIPIENT_ROLES = {
 }
 
 AUDIENCE_TARGET_MODES = ("School Scope", "Organization", "Team", "Student Group")
-RECIPIENT_TOGGLE_FIELDS = ("to_staff", "to_students", "to_guardians", "to_community")
+RECIPIENT_TOGGLE_FIELDS = ("to_staff", "to_students", "to_guardians")
 RECIPIENT_TOGGLE_LABELS = {
     "to_staff": "Staff",
     "to_students": "Students",
     "to_guardians": "Guardians",
-    "to_community": "Community",
 }
 TARGET_MODE_ALLOWED_RECIPIENTS = {
-    "School Scope": {"to_staff", "to_students", "to_guardians", "to_community"},
+    "School Scope": {"to_staff", "to_students", "to_guardians"},
     "Organization": {"to_staff"},
     "Team": {"to_staff"},
     "Student Group": {"to_staff", "to_students", "to_guardians"},
@@ -570,14 +569,10 @@ class OrgCommunication(Document):
         for row in self.audiences:
             target_mode = (row.target_mode or "").strip()
             enabled_recipients = _get_enabled_recipient_fields(row)
-            if (
-                target_mode == "School Scope"
-                and enabled_recipients & {"to_staff", "to_community"}
-                and not is_wide_privileged
-            ):
+            if target_mode == "School Scope" and enabled_recipients & {"to_staff"} and not is_wide_privileged:
                 frappe.throw(
                     _(
-                        "You are not allowed to target Staff or Community at School Scope. "
+                        "You are not allowed to target Staff at School Scope. "
                         "Only Academic Admin, Academic Assistant, HR Manager, Accounts Manager, or System Manager may do this."
                     ),
                     title=_("Audience Not Allowed"),
@@ -712,15 +707,12 @@ class OrgCommunication(Document):
         # Restrict publishing of wide audiences for non-privileged users
         if self.status == "Published" and not is_admin:
             if any(
-                (
-                    (r.target_mode or "").strip() == "School Scope"
-                    and _get_enabled_recipient_fields(r) & {"to_staff", "to_community"}
-                )
+                ((r.target_mode or "").strip() == "School Scope" and _get_enabled_recipient_fields(r) & {"to_staff"})
                 or (r.target_mode or "").strip() == "Organization"
                 for r in self.audiences
             ):
                 frappe.throw(
-                    _("You are not allowed to publish wide staff/community communications from your current role."),
+                    _("You are not allowed to publish wide staff communications from your current role."),
                     title=_("Publish Not Allowed"),
                 )
 
