@@ -921,8 +921,9 @@ def get_children(doctype, parent=None, organization=None, is_root=False, is_tree
     # NOTE:
     # - Treeview calls this often; avoid N+1 queries.
     # - We keep the existing "All Organizations" sentinel for compatibility with current JS.
+    # - Tree visibility must mirror scripted Employee visibility; do not inject an extra status gate here.
 
-    filters = [["employment_status", "=", "Active"]]
+    filters = []
 
     # Organization filter (compat with current treeview default)
     if organization and organization != "All Organizations":
@@ -974,8 +975,7 @@ def get_children(doctype, parent=None, organization=None, is_root=False, is_tree
         """
 		SELECT reports_to, COUNT(*) AS cnt
 		FROM `tabEmployee`
-		WHERE employment_status = 'Active'
-			AND reports_to IN %(names)s
+		WHERE reports_to IN %(names)s
 		GROUP BY reports_to
 		""",
         {"names": tuple(names)},

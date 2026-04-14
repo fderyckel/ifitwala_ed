@@ -167,6 +167,47 @@ class TestStaffScopeFallbackUnit(TestCase):
                     employee_module.employee_has_permission(blocked_doc, "read", "academic.admin@example.com")
                 )
 
+    def test_employee_tree_root_loading_does_not_inject_active_status_filter(self):
+        with _employee_permission_module() as employee_module:
+            get_list_calls = []
+
+            class AttrDict(dict):
+                __getattr__ = dict.get
+                __setattr__ = dict.__setitem__
+
+            def fake_get_list(doctype, fields=None, filters=None, order_by=None):
+                get_list_calls.append(filters or [])
+                return [AttrDict(value="EMP-0001", title="Teacher A", reports_to="")]
+
+            with (
+                patch.object(employee_module.frappe, "get_list", side_effect=fake_get_list, create=True),
+                patch.object(employee_module.frappe.db, "sql", return_value=[], create=True),
+            ):
+                rows = employee_module.get_children("Employee", parent="", organization="ORG-ROOT", is_root=True)
+
+        self.assertEqual(get_list_calls, [[["organization", "=", "ORG-ROOT"]]])
+        self.assertEqual(rows[0].get("expandable"), 0)
+
+    def test_employee_tree_expandable_query_does_not_filter_active_status(self):
+        with _employee_permission_module() as employee_module:
+
+            class AttrDict(dict):
+                __getattr__ = dict.get
+                __setattr__ = dict.__setitem__
+
+            with (
+                patch.object(
+                    employee_module.frappe,
+                    "get_list",
+                    return_value=[AttrDict(value="EMP-0001", title="Teacher A", reports_to="")],
+                    create=True,
+                ),
+                patch.object(employee_module.frappe.db, "sql", return_value=[], create=True) as sql,
+            ):
+                employee_module.get_children("Employee", parent="", is_root=True)
+
+        self.assertNotIn("employment_status", sql.call_args.args[0].lower())
+
     def test_contact_permission_query_conditions_fall_back_to_org_scope_when_no_school(self):
         with _contact_utils_module() as contact_utils:
             with (

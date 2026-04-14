@@ -6,6 +6,7 @@ import frappe
 from frappe.tests.utils import FrappeTestCase
 
 from ifitwala_ed.api.guardian_attendance import get_guardian_attendance_snapshot
+from ifitwala_ed.api.guardian_communications import get_guardian_communication_center
 from ifitwala_ed.api.guardian_finance import _resolve_finance_scope, get_guardian_finance_snapshot
 from ifitwala_ed.api.guardian_monitoring import (
     get_guardian_monitoring_snapshot,
@@ -13,6 +14,7 @@ from ifitwala_ed.api.guardian_monitoring import (
 )
 from ifitwala_ed.api.guardian_policy import (
     _children_with_signer_authority,
+    _get_guardian_policy_rows,
     _query_policy_candidates_for_context,
     acknowledge_guardian_policy,
     get_guardian_policy_overview,
@@ -195,6 +197,49 @@ class TestGuardianPolicyPhase2(FrappeTestCase):
         self.assertIn("tabInstitutional Policy Audience", sql_mock.call_args.args[0])
         self.assertEqual(sql_mock.call_args.args[1][-1], "Guardian")
 
+    def test_get_guardian_policy_rows_sanitizes_policy_text(self):
+        children = [{"student": "STU-1", "school": "SCHOOL-1"}]
+
+        with (
+            patch("ifitwala_ed.api.guardian_policy.ensure_policy_applies_to_storage", return_value={"ok": True}),
+            patch(
+                "ifitwala_ed.api.guardian_policy._resolve_policy_contexts",
+                return_value=[{"organization": "ORG-1", "school": "SCHOOL-1"}],
+            ),
+            patch(
+                "ifitwala_ed.api.guardian_policy._query_policy_candidates_for_context",
+                return_value=[
+                    {
+                        "policy_name": "POL-1",
+                        "policy_key": "family_handbook",
+                        "policy_title": "Family Handbook",
+                        "policy_category": "Handbooks",
+                        "policy_version": "VER-1",
+                        "version_label": "v1",
+                        "policy_organization": "ORG-1",
+                        "policy_school": "SCHOOL-1",
+                        "description": "Review this handbook.",
+                        "policy_text": "<h1>Family Handbook</h1><p>Welcome</p><script>alert(1)</script>",
+                        "effective_from": None,
+                        "effective_to": None,
+                        "approved_on": None,
+                    }
+                ],
+            ),
+            patch("ifitwala_ed.api.guardian_policy.frappe.get_all", return_value=[]),
+            patch("ifitwala_ed.api.guardian_policy.get_policy_version_acknowledgement_clauses_map", return_value={}),
+            patch(
+                "ifitwala_ed.api.guardian_policy._expected_guardian_signature_name",
+                return_value="Mariam Example",
+            ),
+        ):
+            rows = _get_guardian_policy_rows(guardian_name="GRD-0001", children=children)
+
+        self.assertEqual(len(rows), 1)
+        self.assertIn("<h2>Family Handbook</h2>", rows[0]["policy_text"])
+        self.assertIn("<p>Welcome</p>", rows[0]["policy_text"])
+        self.assertNotIn("<script", rows[0]["policy_text"])
+
 
 class TestGuardianFinancePhase2(FrappeTestCase):
     def test_finance_scope_authorizes_account_holder_by_email_match(self):
@@ -368,6 +413,112 @@ class TestGuardianMonitoringPhase2(FrappeTestCase):
         ):
             with self.assertRaises(frappe.PermissionError):
                 mark_guardian_student_log_read("LOG-404")
+
+
+class TestGuardianCommunicationCenterPhase2(FrappeTestCase):
+    def test_communication_center_rejects_out_of_scope_student_filter(self):
+        with patch(
+            "ifitwala_ed.api.guardian_communications._resolve_guardian_communication_context",
+            return_value={
+                "children": [{"student": "STU-1", "full_name": "Amina Example", "school": "SCHOOL-1"}],
+                "student_names": ["STU-1"],
+            },
+        ):
+            with self.assertRaises(frappe.PermissionError):
+                get_guardian_communication_center(student="STU-404")
+
+    def test_communication_center_returns_familywide_items_and_unread_counts(self):
+        children = [
+            {"student": "STU-1", "full_name": "Amina Example", "school": "SCHOOL-1"},
+            {"student": "STU-2", "full_name": "Noah Example", "school": "SCHOOL-1"},
+        ]
+        items = [
+            {
+                "kind": "org_communication",
+                "item_id": "org::COMM-1",
+                "sort_at": "2026-04-14T08:00:00",
+                "source_type": "school",
+                "source_label": "School Update",
+                "context_label": "School One",
+                "matched_children": children,
+                "is_unread": True,
+                "org_communication": {
+                    "name": "COMM-1",
+                    "title": "Whole-school reminder",
+                    "communication_type": "Reminder",
+                    "status": "Published",
+                    "priority": "Normal",
+                    "portal_surface": "Guardian Portal",
+                    "school": "SCHOOL-1",
+                    "organization": "ORG-1",
+                    "publish_from": "2026-04-14T08:00:00",
+                    "publish_to": None,
+                    "brief_start_date": None,
+                    "brief_end_date": None,
+                    "interaction_mode": "Shared Comments",
+                    "allow_private_notes": 0,
+                    "allow_public_thread": 1,
+                    "snippet": "Bring the signed form tomorrow.",
+                    "has_active_thread": 1,
+                },
+            },
+            {
+                "kind": "org_communication",
+                "item_id": "org::COMM-2",
+                "sort_at": "2026-04-13T10:00:00",
+                "source_type": "course",
+                "source_label": "Class Update",
+                "context_label": "Biology A",
+                "matched_children": [children[0]],
+                "is_unread": False,
+                "org_communication": {
+                    "name": "COMM-2",
+                    "title": "Biology checkpoint",
+                    "communication_type": "Information",
+                    "status": "Published",
+                    "priority": "High",
+                    "portal_surface": "Portal Feed",
+                    "school": "SCHOOL-1",
+                    "organization": "ORG-1",
+                    "publish_from": "2026-04-13T10:00:00",
+                    "publish_to": None,
+                    "brief_start_date": None,
+                    "brief_end_date": None,
+                    "interaction_mode": "Shared Comments",
+                    "allow_private_notes": 0,
+                    "allow_public_thread": 1,
+                    "snippet": "Study the microscope lab notes.",
+                    "has_active_thread": 1,
+                },
+            },
+        ]
+
+        with (
+            patch(
+                "ifitwala_ed.api.guardian_communications.now_datetime",
+                return_value=frappe.utils.get_datetime("2026-04-15 09:00:00"),
+            ),
+            patch(
+                "ifitwala_ed.api.guardian_communications._resolve_guardian_communication_context",
+                return_value={
+                    "children": children,
+                    "student_names": ["STU-1", "STU-2"],
+                },
+            ) as context_mock,
+            patch(
+                "ifitwala_ed.api.guardian_communications._fetch_guardian_org_communications",
+                return_value=items,
+            ) as fetch_mock,
+        ):
+            payload = get_guardian_communication_center(student="STU-1", page_length=10)
+
+        fetch_mock.assert_called_once_with(context_mock.return_value, selected_student="STU-1")
+        self.assertEqual(payload["meta"]["student"], "STU-1")
+        self.assertEqual(payload["summary"]["total_items"], 2)
+        self.assertEqual(payload["summary"]["unread_items"], 1)
+        self.assertEqual(payload["summary"]["source_counts"], {"school": 1, "course": 1})
+        self.assertEqual(payload["family"]["children"], children)
+        self.assertEqual(payload["items"], items)
 
 
 class TestGuardianAttendancePhase2(FrappeTestCase):

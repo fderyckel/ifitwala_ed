@@ -205,6 +205,7 @@ describe('GuardianHome', () => {
 		expect(getGuardianHomeSnapshotMock).toHaveBeenCalledWith({ school_days: 7 })
 		const text = document.body.textContent || ''
 		expect(text).toContain('Family Snapshot')
+		expect(text).toContain('Communications')
 		expect(text).toContain('Policies need your acknowledgement')
 		expect(text).toContain('Family Handbook')
 		expect(text).toContain('Learning Highlights')

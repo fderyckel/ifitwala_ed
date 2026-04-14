@@ -193,6 +193,113 @@ class TestPolicySignature(FrappeTestCase):
         self.assertIn(self.organization.name, organizations)
         self.assertTrue(any(row.get("policy_version") == self.policy_version.name for row in policies))
 
+    def test_campaign_options_scope_school_and_policy_versions_by_selected_context(self):
+        sibling_school = make_school(self.organization.name, prefix="PS Sibling School")
+        self.created.append(("School", sibling_school.name))
+
+        other_organization = make_organization(prefix="PS Other Org")
+        self.created.append(("Organization", other_organization.name))
+        other_school = make_school(other_organization.name, prefix="PS Other School")
+        self.created.append(("School", other_school.name))
+
+        current_school_policy = frappe.get_doc(
+            {
+                "doctype": "Institutional Policy",
+                "policy_key": f"staff_school_{frappe.generate_hash(length=8)}",
+                "policy_title": "Current School Safeguarding",
+                "policy_category": "Employment",
+                "applies_to": [{"policy_audience": "Staff"}],
+                "organization": self.organization.name,
+                "school": self.school.name,
+                "is_active": 1,
+            }
+        ).insert(ignore_permissions=True)
+        self.created.append(("Institutional Policy", current_school_policy.name))
+        current_school_version = frappe.get_doc(
+            {
+                "doctype": "Policy Version",
+                "institutional_policy": current_school_policy.name,
+                "version_label": "v1",
+                "policy_text": "<p>Current school policy.</p>",
+                "is_active": 1,
+            }
+        ).insert(ignore_permissions=True)
+        self.created.append(("Policy Version", current_school_version.name))
+
+        sibling_school_policy = frappe.get_doc(
+            {
+                "doctype": "Institutional Policy",
+                "policy_key": f"staff_sibling_{frappe.generate_hash(length=8)}",
+                "policy_title": "Sibling School Safeguarding",
+                "policy_category": "Employment",
+                "applies_to": [{"policy_audience": "Staff"}],
+                "organization": self.organization.name,
+                "school": sibling_school.name,
+                "is_active": 1,
+            }
+        ).insert(ignore_permissions=True)
+        self.created.append(("Institutional Policy", sibling_school_policy.name))
+        sibling_school_version = frappe.get_doc(
+            {
+                "doctype": "Policy Version",
+                "institutional_policy": sibling_school_policy.name,
+                "version_label": "v1",
+                "policy_text": "<p>Sibling school policy.</p>",
+                "is_active": 1,
+            }
+        ).insert(ignore_permissions=True)
+        self.created.append(("Policy Version", sibling_school_version.name))
+
+        other_org_policy = frappe.get_doc(
+            {
+                "doctype": "Institutional Policy",
+                "policy_key": f"staff_other_{frappe.generate_hash(length=8)}",
+                "policy_title": "Other Organization Handbook",
+                "policy_category": "Employment",
+                "applies_to": [{"policy_audience": "Staff"}],
+                "organization": other_organization.name,
+                "is_active": 1,
+            }
+        ).insert(ignore_permissions=True)
+        self.created.append(("Institutional Policy", other_org_policy.name))
+        other_org_version = frappe.get_doc(
+            {
+                "doctype": "Policy Version",
+                "institutional_policy": other_org_policy.name,
+                "version_label": "v1",
+                "policy_text": "<p>Other org policy.</p>",
+                "is_active": 1,
+            }
+        ).insert(ignore_permissions=True)
+        self.created.append(("Policy Version", other_org_version.name))
+
+        frappe.set_user("Administrator")
+        org_payload = get_staff_policy_campaign_options(organization=self.organization.name)
+        org_options = org_payload.get("options") or {}
+        org_schools = org_options.get("schools") or []
+        org_policy_versions = [row.get("policy_version") for row in org_options.get("policies") or []]
+
+        self.assertIn(self.school.name, org_schools)
+        self.assertIn(sibling_school.name, org_schools)
+        self.assertNotIn(other_school.name, org_schools)
+        self.assertIn(self.policy_version.name, org_policy_versions)
+        self.assertNotIn(current_school_version.name, org_policy_versions)
+        self.assertNotIn(sibling_school_version.name, org_policy_versions)
+        self.assertNotIn(other_org_version.name, org_policy_versions)
+
+        school_payload = get_staff_policy_campaign_options(
+            organization=self.organization.name,
+            school=self.school.name,
+        )
+        school_policy_versions = [
+            row.get("policy_version") for row in (school_payload.get("options") or {}).get("policies") or []
+        ]
+
+        self.assertIn(self.policy_version.name, school_policy_versions)
+        self.assertIn(current_school_version.name, school_policy_versions)
+        self.assertNotIn(sibling_school_version.name, school_policy_versions)
+        self.assertNotIn(other_org_version.name, school_policy_versions)
+
     def test_launch_campaign_counts_and_dashboard(self):
         client_request_id = f"policy-launch-{frappe.generate_hash(length=8)}"
         result = launch_staff_policy_campaign(

@@ -1,222 +1,354 @@
 ---
-title: "Policy Acknowledgement: Append-Only Consent Evidence"
+title: "Policy Acknowledgement: Immutable Consent Evidence"
 slug: policy-acknowledgement
 category: Governance
 doc_order: 3
-version: "1.8.0"
-last_change_date: "2026-04-02"
-summary: "Record immutable who/what/when acknowledgement evidence with strict context, role, organization-scope validation, typed-signature controls, and version-scoped clause snapshots."
-seo_title: "Policy Acknowledgement: Append-Only Consent Evidence"
-seo_description: "Record immutable who/what/when acknowledgement evidence with strict context, role, and organization-scope validation."
+version: "2.0.0"
+last_change_date: "2026-04-11"
+summary: "Create permanent, tamper-proof records of who acknowledged which policy version, when, and under what context—forming your legal audit trail across staff, guardians, students, and applicants."
+seo_title: "Policy Acknowledgement: Immutable Consent Evidence"
+seo_description: "Learn how Policy Acknowledgements create permanent, tamper-proof records of policy consent with electronic signatures and audit trails."
 ---
 
-## Policy Acknowledgement: Append-Only Consent Evidence
+## What is a Policy Acknowledgement?
 
-## Before You Start (Prerequisites)
+A **Policy Acknowledgement** is the permanent, tamper-proof evidence that someone acknowledged a specific policy version. It answers the critical questions that matter in audits, disputes, and compliance reviews:
 
-- Create and activate the target `Policy Version` first.
-- Ensure the context record exists first (`Student Applicant`, `Student`, `Guardian`, or `Employee`).
-- Ensure the acknowledging user is correctly linked to that context with required role visibility.
+- **Who** acknowledged the policy
+- **What** version they acknowledged
+- **When** they acknowledged it
+- **How** they acknowledged it (signature, attestation, clauses)
+- **In what context** (as staff, guardian for a child, student, or applicant)
 
-`Policy Acknowledgement` is the evidence row proving a user acknowledged an active policy version for a specific business context.
+Once created, a Policy Acknowledgement cannot be edited, cancelled, or deleted. It is **immutable evidence**—designed for the real world where "we said they agreed" isn't enough; you need proof.
 
-## What It Enforces
-
-- `policy_version` is required and must be active.
-- `acknowledged_by` must equal the current session user.
-- Context must be explicit (`context_doctype`, `context_name`) and must exist.
-- `acknowledged_for` must match allowed context doctypes:
-  - `Applicant` -> `Student Applicant`
-  - `Student` -> `Student`
-  - `Guardian` -> `Guardian`
-  - `Staff` -> `Employee`
-- Policy organization scope must apply to context organization.
-- Duplicate acknowledgements for same tuple are blocked:
-  - `policy_version`, `acknowledged_by`, `context_doctype`, `context_name`
-- When a `Policy Version` defines acknowledgement clauses, every required clause must be checked before acknowledgement is accepted.
-- Document is append-only and ledger-submitted:
-  - auto-submitted on insert (`docstatus = 1`)
-  - edit blocked
-  - cancel blocked
-  - delete blocked
-- `acknowledged_at` is server-stamped at insert.
-
-## Role and Context Rules
-
-- Applicant acknowledgements require role `Admissions Applicant` or `Admissions Family` and matching applicant linkage to the selected `Student Applicant`.
-- Student acknowledgements allow:
-  - users with `Student` role
-  - guardian role only when guardian is linked to that student through `Student Guardian` and that relationship row is signer-authorized (`can_consent = 1` when the column exists).
-- Guardian acknowledgements require guardian self-context.
-  - admissions family acknowledgements are allowed only for the actor's own linked `Guardian` record.
-- Guardian self-service acknowledgements require typed signature + attestation, aligned with admissions/staff e-sign controls.
-- Staff acknowledgements require staff role (`Academic Staff` or `Employee`).
-- `System Manager` can bypass role validation, and override inserts are comment-audited.
-
-## Staff Signature Campaign Workflow (Internal Tools)
-
-The internal workflow for staff policy signatures is campaign-based and scope-driven:
-
-1. Select a `Policy Version` plus target scope:
-   - `organization` (required)
-   - `school` (optional)
-   - `employee_group` (optional)
-2. Preview scope impact before launch:
-   - target employees
-   - eligible users
-   - already signed
-   - already open
-   - to create
-3. Launch creates `ToDo` rows linked to `Policy Version` for staff not already signed and not already open.
-4. Staff complete acknowledgement from Focus action `policy_acknowledgement.staff.sign` using formal e-sign controls:
-   - type full signer name exactly as employee record
-   - confirm electronic-signature attestation
-5. On acknowledgement:
-   - one immutable `Policy Acknowledgement` row is inserted (`acknowledged_for=Staff`, `context_doctype=Employee`)
-   - typed signature, attestation, and acknowledgement-clause snapshot are stored on the evidence row
-   - open policy ToDos for that staff/policy version are closed
-   - Focus invalidation is published.
-
-### New Policy vs Updated Policy (Best-Practice Trigger Rules)
-
-- New policy (`Policy Version` first active release):
-  - launch campaign for full intended scope.
-- Updated policy (new active `Policy Version` replacing prior version):
-  - launch a fresh campaign for the new version; do not reuse prior acknowledgements.
-  - prior acknowledgements remain immutable evidence for the old version.
-  - staff review flow defaults to amendment changes (`change_summary` + `diff_html`) before full text.
-- Scope changes (organization/school/group changes):
-  - apply to future campaign launches only; existing acknowledgements are not recomputed.
-
-### Electronic Signature Controls (Staff)
-
-- Signature is server-validated, not UI-only:
-  - typed signature name must match employee identity context
-  - legal attestation confirmation is required
-- One-click acknowledgement without attestation is rejected.
-
-### Electronic Signature Controls (Applicant Portal)
-
-- Admissions policy acknowledgement requires explicit e-sign payload:
-  - `typed_signature_name`
-  - `attestation_confirmed`
-  - `checked_clause_names` when the selected version defines acknowledgement clauses
-- Signature is server-validated against the expected admissions signer context shown in portal UI.
-  - child-scoped policies sign against the selected applicant identity
-  - family-scoped policies sign against the consenting guardian identity
-- One-click acknowledgement without typed signature + attestation is rejected.
-
-### Electronic Signature Controls (Guardian Portal)
-
-- Guardian portal acknowledgement requires explicit e-sign payload:
-  - `typed_signature_name`
-  - `attestation_confirmed`
-  - `checked_clause_names` when the selected version defines acknowledgement clauses
-- Signature is server-validated against the guardian self-context shown in portal UI.
-- One-click acknowledgement without typed signature + attestation is rejected.
-
-## Where It Is Used Across the ERP
-
-- [**Student Applicant**](/docs/en/student-applicant/):
-  - applicant policy readiness checks
-  - admissions portal policy status display
-- Admissions portal endpoint `ifitwala_ed.api.admissions_portal.acknowledge_policy`:
-  - creates admissions acknowledgement rows with context:
-    - child-scoped admissions policies:
-      - `acknowledged_for = Applicant`
-      - `context_doctype = Student Applicant`
-      - `context_name = <applicant>`
-    - family-scoped admissions policies:
-      - `acknowledged_for = Guardian`
-      - `context_doctype = Guardian`
-      - `context_name = <guardian>`
-  - requires applicant electronic-signature fields:
-    - `typed_signature_name` (must match expected applicant signer name)
-    - `attestation_confirmed` (required true/1)
-    - `checked_clause_names` when the active version defines acknowledgement clauses
-  - idempotent return when same acknowledgement already exists.
-- Guardian portal endpoint `ifitwala_ed.api.guardian_policy.acknowledge_guardian_policy`:
-  - requires guardian electronic-signature fields and required-clause checks when the selected version defines acknowledgement clauses
-  - stores guardian self-context evidence on `Policy Acknowledgement`
-- Policy-version immutability chain:
-  - existence of any acknowledgement activates lock behavior in [**Policy Version**](/docs/en/policy-version/).
-- Internal staff policy workflow APIs:
-  - `ifitwala_ed.api.policy_signature.get_staff_policy_campaign_options`
-  - `ifitwala_ed.api.policy_signature.launch_staff_policy_campaign`
-  - `ifitwala_ed.api.policy_signature.get_staff_policy_signature_dashboard`
-  - `ifitwala_ed.api.focus.acknowledge_staff_policy`
-
-## Lifecycle and Linked Documents
-
-1. Resolve the active policy version for the user and business context.
-2. Insert acknowledgement for the current session user against explicit context fields.
-3. Prevent duplicates for the same version/user/context tuple (controller validation + database unique index).
-4. Keep the record append-only as durable consent evidence.
-
-<Callout type="warning" title="Identity rule">
-`acknowledged_by` must match the current user session; proxy acknowledgements are blocked except governed override paths.
+<Callout type="info" title="Why immutability matters">
+In traditional systems, consent records can be modified, backdated, or deleted. Ifitwala Ed's Policy Acknowledgements are append-only ledger records. When a parent questions whether they agreed to the media consent policy, you can show the exact timestamp, the typed signature, the clauses they checked, and the version they saw. No he-said-she-said. Just evidence.
 </Callout>
 
-<Callout type="info" title="Evidence model">
-Acknowledgements are immutable records. Corrections should be handled by new policy versions or governance-approved flows.
+---
+
+## The Anatomy of an Acknowledgement
+
+### Who Acknowledged
+
+| Field | What It Records |
+|-------|-----------------|
+| **Acknowledged By** | The User who performed the acknowledgement |
+| **Acknowledged For** | Their role context: Staff, Guardian, Student, or Applicant |
+| **Context Record** | The specific Employee, Guardian, Student, or Student Applicant record |
+
+### What Was Acknowledged
+
+| Field | What It Records |
+|-------|-----------------|
+| **Policy Version** | The exact Policy Version acknowledged |
+| **Acknowledged At** | Server-timestamp (cannot be spoofed) |
+| **Typed Signature** | Full name as typed for e-signature |
+| **Attestation Confirmed** | Whether legal attestation checkbox was checked |
+| **Clause Snapshot** | JSON record of which clauses were checked |
+
+<Callout type="success" title="The snapshot principle">
+When someone acknowledges a policy, the system captures a snapshot—not just a reference. If the policy clauses change later, the acknowledgement record preserves what the person actually agreed to at that moment. The evidence remains valid even as policies evolve.
 </Callout>
+
+---
+
+## How Acknowledgements Are Created
+
+Policy Acknowledgements aren't created manually in Desk. They are the **output** of signing workflows across your organization:
+
+### Staff Acknowledgements
+
+Created when staff complete Focus ToDo tasks:
+
+<Steps title="Staff Signing Flow">
+  <Step title="Receive ToDo">
+    Staff member receives a Focus task: "Acknowledge [Policy Name]"
+  </Step>
+  <Step title="Review Policy">
+    Open the task to see diff viewer (what changed) or full policy text
+  </Step>
+  <Step title="Check Clauses">
+    Check required acknowledgement clauses (e.g., "I have read...")
+  </Step>
+  <Step title="Type Signature">
+    Type full name exactly as it appears in their employee record
+  </Step>
+  <Step title="Confirm Attestation">
+    Check the legal attestation box
+  </Step>
+  <Step title="Submit">
+    Click "Sign and acknowledge policy"
+  </Step>
+  <Step title="Evidence Created">
+    Policy Acknowledgement record is created; ToDo auto-completes
+  </Step>
+</Steps>
+
+### Guardian Acknowledgements
+
+Created when guardians sign policies in their portal:
+
+<Steps title="Guardian Signing Flow">
+  <Step title="View Policies">
+    Guardian navigates to `/hub/guardian/policies`
+  </Step>
+  <Step title="Select Policy">
+    Click on a pending policy card
+  </Step>
+  <Step title="Read Policy">
+    Expand and read the full policy text
+  </Step>
+  <Step title="Check Clauses">
+    Check all required acknowledgement clauses
+  </Step>
+  <Step title="Type Signature">
+    Type their full name as displayed
+  </Step>
+  <Step title="Confirm Attestation">
+    Check legal attestation
+  </Step>
+  <Step title="Submit">
+    Submit the acknowledgement
+  </Step>
+  <Step title="Evidence Created">
+    Policy Acknowledgement is recorded with guardian context
+  </Step>
+</Steps>
+
+### Student Acknowledgements
+
+Created through the Student Hub:
+
+- Students see pending policies at `/hub/student/policies`
+- Same guided signing flow as guardians
+- Acknowledgement recorded with Student context
+- Part of student readiness tracking
+
+### Applicant Acknowledgements
+
+Created during the admissions process:
+
+- Applicants see required policies in admissions portal
+- May sign directly (child mode) or through guardian (family mode)
+- Acknowledgement recorded with Student Applicant context
+- Blocks application readiness until complete
+
+---
+
+## The Electronic Signature
+
+Every Policy Acknowledgement includes a **typed electronic signature** with legal attestation. This isn't just clicking "I agree"—it's a deliberate, auditable process:
+
+### Signature Requirements
+
+| Requirement | Why It Matters |
+|-------------|----------------|
+| **Full name typed exactly** | Proves intentional, deliberate action |
+| **Name must match record** | Prevents proxy signatures and errors |
+| **Legal attestation checkbox** | Confirms understanding of e-signature legal status |
+| **Required clauses checked** | Evidence of specific understandings |
+| **Server validation** | Cannot be bypassed by client manipulation |
+
+<Callout type="warning" title="No shortcuts">
+The system rejects one-click acknowledgements. Staff cannot just click "Done"—they must type their name, character by character, and confirm they understand this constitutes a legal signature. This deliberate friction is the point.
+</Callout>
+
+### What the Signer Sees
+
+Before submitting, signers see:
+- **Expected signer name**: "Expected: Jane Smith"
+- **Signature preview**: What they typed
+- **Timestamp preview**: When it will be recorded
+- **Clause checklist**: What they're agreeing to
+
+---
+
+## Acknowledgement Clauses
+
+Policy Versions can define **acknowledgement clauses**—specific statements signers must agree to. These become part of the evidence snapshot.
+
+### Common Clause Types
+
+| Type | Example | Required? |
+|------|---------|-----------|
+| **Read confirmation** | "I have read and understood this policy" | Yes |
+| **Agreement** | "I agree to abide by this policy" | Yes |
+| **Awareness** | "I understand the consequences of violation" | Yes |
+| **Optional consent** | "I consent to photography for school events" | No |
+
+### Clause Snapshots
+
+When an acknowledgement is created, the system records:
+- Which clauses existed on that policy version
+- Which clauses were required
+- Which clauses the user checked
+
+This means if you later add a new clause to the policy, old acknowledgements remain valid evidence of what was agreed to at the time.
+
+---
+
+## Viewing and Using Acknowledgements
+
+### In Desk
+
+Navigate to **Governance > Policy Acknowledgement** to see all records:
+
+- **List view**: Who acknowledged what, when
+- **Filters**: By policy version, date range, context type
+- **Export**: For compliance reports and audits
+
+### In Analytics Dashboard
+
+The Policy Signature Analytics dashboard shows:
+- Who has acknowledged (signed list)
+- Who hasn't (pending list)
+- Completion percentages
+- Version-specific tracking
+
+### In Applicant Records
+
+For **Student Applicants**, the readiness panel shows:
+- Which policies are acknowledged
+- Which are pending
+- Direct links to view acknowledgements
+
+### In Guardian Portal
+
+Guardians see their own acknowledgement history:
+- Acknowledged status per policy
+- Timestamp of acknowledgement
+- Cannot be forged or modified
+
+---
+
+## Duplicate Prevention
+
+The system enforces **one acknowledgement per person per policy version per context**. You cannot:
+- Acknowledge the same version twice
+- Create duplicate records through API manipulation
+- Override an existing acknowledgement
+
+If someone tries to acknowledge again, they receive a clear message: "You have already acknowledged this policy."
+
+<Callout type="tip" title="What about new versions?">
+When a new Policy Version is activated, acknowledgements reset. Staff, guardians, and students must acknowledge the new version—even if they acknowledged the old one. This is by design: new versions mean new content, which requires new consent.
+</Callout>
+
+---
+
+## Audit and Compliance
+
+### What You Can Prove
+
+With Policy Acknowledgements, you can demonstrate:
+
+| Scenario | Evidence Available |
+|----------|-------------------|
+| Parent claims they didn't agree to media consent | Timestamped acknowledgement with typed signature and clauses |
+| Staff disputes they knew the safeguarding rules | Version history, acknowledgement date, diff showing what was current |
+| Accreditation requires policy dissemination | Completion reports, pending lists, audit trails |
+| Legal discovery requests consent records | Immutable records with full context and signature evidence |
+
+### Retention
+
+Policy Acknowledgements are retained indefinitely. Even if:
+- The Policy Version is deactivated
+- The Institutional Policy is deactivated
+- The user account is deactivated
+
+The acknowledgement record persists as legal evidence.
+
+---
+
+## Common Questions
+
+**Q: Can I edit a Policy Acknowledgement?**
+A: No. Policy Acknowledgements are immutable by design. If there was an error in the process, create a new policy version and collect fresh acknowledgements.
+
+**Q: What if someone made a mistake while signing?**
+A: The acknowledgement stands as evidence of what occurred. If the signature was clearly wrong (e.g., typed "Mickey Mouse"), you can deactivate the current policy version, create a corrected version, and launch a new signature campaign.
+
+**Q: Can administrators sign on behalf of others?**
+A: Only System Managers can bypass certain validations, and these actions are audit-logged. Standard users must sign for themselves.
+
+**Q: How do I export acknowledgement records?**
+A: Use the Policy Acknowledgement list in Desk. Apply filters for policy version, date range, or context type, then export to Excel/CSV.
+
+**Q: What's the difference between Policy Version and Policy Acknowledgement?**
+A: Policy Version is the legal text. Policy Acknowledgement is the evidence that someone agreed to that text. Think of it as: Version = the contract; Acknowledgement = the signed copy.
+
+**Q: Can I see what clauses someone checked?**
+A: Yes. The `acknowledgement_clause_snapshot` field contains JSON showing which clauses were checked at the time of signing.
+
+**Q: What happens to acknowledgements when I delete a user?**
+A: Acknowledgements are preserved. The `acknowledged_by` field may reference a deactivated user, but the record remains valid evidence.
+
+---
+
+<RelatedDocs
+  slugs="institutional-policy,policy-version,student-applicant,student-log"
+  title="Continue With Governance Docs"
+/>
+
+---
 
 ## Technical Notes (IT)
 
-### Schema and Controller Snapshot
+- **DocType**: `Policy Acknowledgement` — Located in Governance module
+- **Autoname**: `hash` format
+- **Is Submittable**: Yes (auto-submitted on insert)
+- **Immutable**: All edit, cancel, and delete operations are blocked by controller
+- **Audit logging**: System Manager overrides are comment-audited
 
-- **DocType schema file**: `ifitwala_ed/governance/doctype/policy_acknowledgement/policy_acknowledgement.json`
-- **Controller file**: `ifitwala_ed/governance/doctype/policy_acknowledgement/policy_acknowledgement.py`
-- **Required fields (`reqd=1`)**:
-  - `policy_version` (`Link` -> `Policy Version`)
-  - `acknowledged_by` (`Link` -> `User`)
-  - `acknowledged_for` (`Select`)
-  - `context_doctype` (`Data`)
-  - `context_name` (`Data`)
-  - `acknowledged_at` (`Datetime`)
-- **Lifecycle hooks in controller**: `before_insert`, `before_save`, `before_submit`, `before_update_after_submit`, `before_cancel`, `before_delete`, `after_insert`, `on_submit`
-- **Operational/public methods**: none beyond standard document behavior.
+### Key Fields
 
-- **DocType**: `Policy Acknowledgement` (`ifitwala_ed/governance/doctype/policy_acknowledgement/`)
-- **Autoname**: `hash`
-- **Is Submittable**: `Yes` (auto-submit on insert)
-- **Fields**:
-  - `policy_version` (Link -> Policy Version, required)
-  - `acknowledged_by` (Link -> User, required)
-  - `acknowledged_for` (Select, required): `Applicant`, `Student`, `Guardian`, `Staff`
-  - `context_doctype` (Data, required)
-  - `context_name` (Data, required)
-  - `acknowledged_at` (Datetime, required, read-only)
-  - `typed_signature_name` (Data, read-only)
-  - `attestation_confirmed` (Check, read-only)
-  - `acknowledgement_clause_snapshot` (Long Text JSON, read-only)
-- **Controller guards**:
-  - `before_insert`: policy/version, user, context, role, uniqueness, scope, and evidence-payload validation + timestamping
-  - `before_save`: block edits except the draft->submitted transition
-  - `before_submit`: enforce draft->submitted transition only
-  - `before_update_after_submit`: block all post-submit edits
-  - `before_cancel`: block cancel
-  - `before_delete`: block deletes
-  - `after_insert`: auto-submit to submitted evidence state
-  - `on_submit`: System Manager override comment when role matrix is bypassed
+| Field | Type | Notes |
+|-------|------|-------|
+| `policy_version` | Link | Required; must be active at time of acknowledgement |
+| `acknowledged_by` | Link → User | Required; must match current session user |
+| `acknowledged_for` | Select | Applicant, Student, Guardian, or Staff |
+| `context_doctype` | Data | Employee, Student, Guardian, or Student Applicant |
+| `context_name` | Data | Specific record name |
+| `acknowledged_at` | Datetime | Server-stamped; read-only |
+| `typed_signature_name` | Data | What the user typed |
+| `attestation_confirmed` | Check | Whether attestation was checked |
+| `acknowledgement_clause_snapshot` | JSON | Record of checked clauses |
+
+### Controller Guards
+
+| Hook | Behavior |
+|------|----------|
+| `before_insert` | Validate policy/version, user, context, role, uniqueness, scope, evidence payload |
+| `before_save` | Block all edits except draft→submitted transition |
+| `before_submit` | Enforce draft→submitted only |
+| `before_update_after_submit` | Block all post-submit edits |
+| `before_cancel` | Block cancel |
+| `before_delete` | Block delete |
+| `after_insert` | Auto-submit to submitted evidence state |
+| `on_submit` | System Manager override comment when role matrix bypassed |
 
 ### Permission Matrix
 
 | Role | Read | Write | Create | Delete | Notes |
-|---|---|---|---|---|---|
-| `System Manager` | Yes | Yes | Yes | No | Controller still blocks edit/cancel/delete lifecycle transitions |
-| `Guardian` | Yes | No | Yes | No | Runtime role/context checks apply |
-| `Student` | Yes | No | Yes | No | Runtime role/context checks apply |
-| `Academic Staff` | Yes | No | Yes | No | Runtime visibility is self staff context only |
+|------|------|-------|--------|--------|-------|
+| `System Manager` | Yes | Blocked | Yes | Blocked | Controller blocks edit/cancel/delete |
+| `Guardian` | Yes | No | Yes | No | Runtime context checks apply |
+| `Student` | Yes | No | Yes | No | Runtime context checks apply |
+| `Academic Staff` | Yes | No | Yes | No | Self context visibility only |
 | `Admission Officer` | Yes | No | No | No | Read-only |
-| `Admission Manager` | Yes | No | No | No | Read-only |
-| `Admissions Applicant` | Yes | No | Yes | No | Must match applicant context linkage |
-| `Admissions Family` | Yes | No | Yes | No | Applicant or guardian context must be explicitly linked to that user |
+| `Admissions Applicant` | Yes | No | Yes | No | Must match applicant linkage |
+| `Admissions Family` | Yes | No | Yes | No | Linked guardian context required |
 
-Runtime visibility is enforced server-side via `permission_query_conditions` + `has_permission` hooks by role and context (organization/school scope, applicant linkage, guardian linkage, student self, staff self). Guardian access to student-context acknowledgement rows also requires signer authority on the `Student Guardian` relationship when that field is present.
+**Runtime Enforcement:**
+- Visibility is enforced via `permission_query_conditions` and `has_permission` hooks
+- Guardian access to student-context rows requires signer authority (`can_consent`) on Student Guardian relationship
+- Duplicate tuple enforcement: `(policy_version, acknowledged_by, context_doctype, context_name)`
 
-## Related Docs
+### API Integration Points
 
-- [**Institutional Policy**](/docs/en/institutional-policy/) - policy scope source
-- [**Policy Version**](/docs/en/policy-version/) - legal text/version owner
-- [**Student Applicant**](/docs/en/student-applicant/) - admissions readiness and acknowledgement flow
+- `ifitwala_ed.api.admissions_portal.acknowledge_policy` — Admissions portal signing
+- `ifitwala_ed.api.guardian_policy.acknowledge_guardian_policy` — Guardian portal signing
+- `ifitwala_ed.api.focus.acknowledge_staff_policy` — Staff Focus action signing
+- `ifitwala_ed.api.policy_signature.get_staff_policy_signature_dashboard` — Analytics data

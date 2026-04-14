@@ -79,6 +79,79 @@ def _get_cached_portal_student_context(user_id: str) -> dict:
     return cache[user_id]
 
 
+def _get_cached_guardian_context(user_id: str) -> dict:
+    cache = getattr(frappe.flags, "_org_comm_guardian_context_cache", None)
+    if cache is None:
+        cache = {}
+        frappe.flags._org_comm_guardian_context_cache = cache
+
+    if user_id in cache:
+        return cache[user_id]
+
+    guardian_name = frappe.db.get_value("Guardian", {"user": user_id}, "name")
+    if not guardian_name:
+        cache[user_id] = {
+            "guardian_name": None,
+            "student_names": set(),
+            "student_groups": set(),
+            "school_names": set(),
+        }
+        return cache[user_id]
+
+    student_guardian_rows = frappe.get_all(
+        "Student Guardian",
+        filters={"guardian": guardian_name, "parenttype": "Student"},
+        fields=["parent"],
+    )
+    guardian_student_rows = frappe.get_all(
+        "Guardian Student",
+        filters={"parent": guardian_name, "parenttype": "Guardian"},
+        fields=["student"],
+    )
+    linked_students = sorted(
+        {row.get("parent") for row in (student_guardian_rows or []) if row.get("parent")}
+        | {row.get("student") for row in (guardian_student_rows or []) if row.get("student")}
+    )
+
+    student_rows = []
+    if linked_students:
+        student_rows = frappe.get_all(
+            "Student",
+            filters={"name": ["in", linked_students], "enabled": 1},
+            fields=["name", "anchor_school"],
+        )
+
+    enabled_students = sorted({row.get("name") for row in (student_rows or []) if row.get("name")})
+    group_rows = []
+    if enabled_students:
+        group_rows = frappe.db.sql(
+            """
+            SELECT
+                sgs.student,
+                sg.name AS student_group,
+                sg.school
+            FROM `tabStudent Group Student` sgs
+            INNER JOIN `tabStudent Group` sg ON sg.name = sgs.parent
+            WHERE sgs.student IN %(students)s
+              AND COALESCE(sgs.active, 1) = 1
+              AND COALESCE(sg.status, 'Active') = 'Active'
+            """,
+            {"students": tuple(enabled_students)},
+            as_dict=True,
+        )
+
+    school_names = {row.get("anchor_school") for row in (student_rows or []) if row.get("anchor_school")}
+    school_names.update({row.get("school") for row in (group_rows or []) if row.get("school")})
+
+    cache[user_id] = {
+        "guardian_name": guardian_name,
+        "student_names": set(enabled_students),
+        "student_groups": {row.get("student_group") for row in (group_rows or []) if row.get("student_group")},
+        "school_names": school_names,
+    }
+    return cache[user_id]
+
+
 def check_audience_match(
     comm_name,
     user,
@@ -259,6 +332,11 @@ def check_audience_match(
             student_groups = set(student_context.get("student_groups") or [])
         if not user_school_names:
             user_school_names = set(student_context.get("school_names") or [])
+
+    if "Guardian" in roles and (not student_groups or not user_school_names):
+        guardian_context = _get_cached_guardian_context(user)
+        student_groups.update(set(guardian_context.get("student_groups") or []))
+        user_school_names.update(set(guardian_context.get("school_names") or []))
 
     user_organization = employee.get("organization") if employee else None
     user_recipient_flags = _get_user_recipient_flags()

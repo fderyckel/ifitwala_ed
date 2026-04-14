@@ -6,11 +6,18 @@ const {
 	getDashboardMock,
 	getStaffHomeHeaderMock,
 	overlayOpenMock,
+	routeQueryMock,
 } = vi.hoisted(() => ({
 	getCampaignOptionsMock: vi.fn(),
 	getDashboardMock: vi.fn(),
 	getStaffHomeHeaderMock: vi.fn(),
 	overlayOpenMock: vi.fn(),
+	routeQueryMock: {
+		organization: 'ORG-1',
+		school: 'SCH-1',
+		employee_group: 'GROUP-1',
+		policy_version: 'VER-1',
+	},
 }));
 
 vi.mock('@/lib/services/policySignature/policySignatureService', () => ({
@@ -32,12 +39,7 @@ vi.mock('@/composables/useOverlayStack', () => ({
 
 vi.mock('vue-router', () => ({
 	useRoute: () => ({
-		query: {
-			organization: 'ORG-1',
-			school: 'SCH-1',
-			employee_group: 'GROUP-1',
-			policy_version: 'VER-1',
-		},
+		query: routeQueryMock,
 	}),
 }));
 
@@ -112,6 +114,13 @@ afterEach(() => {
 	getDashboardMock.mockReset();
 	getStaffHomeHeaderMock.mockReset();
 	overlayOpenMock.mockReset();
+	Object.assign(routeQueryMock, {
+		organization: 'ORG-1',
+		school: 'SCH-1',
+		employee_group: 'GROUP-1',
+		policy_version: 'VER-1',
+	});
+	vi.useRealTimers();
 	while (cleanupFns.length) {
 		cleanupFns.pop()?.();
 	}
@@ -280,5 +289,170 @@ describe('PolicySignatureAnalytics', () => {
 			employee_group: 'GROUP-1',
 			policy_version: 'VER-1',
 		});
+	});
+
+	it('reloads dependent school and policy options when organization and school change', async () => {
+		vi.useFakeTimers();
+
+		getStaffHomeHeaderMock.mockResolvedValue({
+			user: 'admin@example.com',
+			capabilities: { manage_policy_signatures: true },
+		});
+		getCampaignOptionsMock.mockImplementation(async (payload?: Record<string, unknown>) => {
+			const organization = String(payload?.organization || '');
+			const school = String(payload?.school || '');
+
+			if (organization === 'ORG-1') {
+				return {
+					options: {
+						organizations: ['ORG-1', 'ORG-2'],
+						schools: ['SCH-1'],
+						employee_groups: ['GROUP-1'],
+						policies: [
+							{
+								policy_version: 'VER-1',
+								policy_title: 'Community Handbook',
+								version_label: 'v1',
+								applies_to_tokens: ['Staff'],
+							},
+						],
+					},
+					preview: {
+						target_employee_rows: 0,
+						eligible_users: 0,
+						already_signed: 0,
+						already_open: 0,
+						to_create: 0,
+						skipped_scope: 0,
+						policy_audiences: ['Staff'],
+						audience_previews: [],
+					},
+				};
+			}
+
+			if (organization === 'ORG-2' && !school) {
+				return {
+					options: {
+						organizations: ['ORG-1', 'ORG-2'],
+						schools: ['SCH-2A', 'SCH-2B'],
+						employee_groups: ['GROUP-2'],
+						policies: [
+							{
+								policy_version: 'VER-2-ORG',
+								policy_title: 'Org Two Handbook',
+								version_label: 'v4',
+								applies_to_tokens: ['Staff'],
+							},
+						],
+					},
+					preview: {
+						target_employee_rows: 0,
+						eligible_users: 0,
+						already_signed: 0,
+						already_open: 0,
+						to_create: 0,
+						skipped_scope: 0,
+						policy_audiences: ['Staff'],
+						audience_previews: [],
+					},
+				};
+			}
+
+			if (organization === 'ORG-2' && school === 'SCH-2A') {
+				return {
+					options: {
+						organizations: ['ORG-1', 'ORG-2'],
+						schools: ['SCH-2A', 'SCH-2B'],
+						employee_groups: ['GROUP-2A'],
+						policies: [
+							{
+								policy_version: 'VER-2-ORG',
+								policy_title: 'Org Two Handbook',
+								version_label: 'v4',
+								applies_to_tokens: ['Staff'],
+							},
+							{
+								policy_version: 'VER-2A',
+								policy_title: 'School Two A Safeguarding',
+								version_label: 'v1',
+								applies_to_tokens: ['Staff'],
+							},
+						],
+					},
+					preview: {
+						target_employee_rows: 0,
+						eligible_users: 0,
+						already_signed: 0,
+						already_open: 0,
+						to_create: 0,
+						skipped_scope: 0,
+						policy_audiences: ['Staff'],
+						audience_previews: [],
+					},
+				};
+			}
+
+			throw new Error(`Unexpected campaign options payload: ${JSON.stringify(payload)}`);
+		});
+		getDashboardMock.mockResolvedValue({
+			summary: {
+				policy_version: 'VER-1',
+				policy_title: 'Community Handbook',
+				version_label: 'v1',
+				organization: 'ORG-1',
+				school: 'SCH-1',
+				employee_group: 'GROUP-1',
+				applies_to_tokens: ['Staff'],
+				eligible_targets: 0,
+				signed: 0,
+				pending: 0,
+				completion_pct: 0,
+				skipped_scope: 0,
+			},
+			audiences: [],
+		});
+
+		mountAnalyticsPage();
+		await flushUi();
+		await flushUi();
+
+		const selects = Array.from(document.querySelectorAll('select')) as HTMLSelectElement[];
+		const [organizationSelect, schoolSelect, _groupSelect, policySelect] = selects;
+
+		organizationSelect.value = 'ORG-2';
+		organizationSelect.dispatchEvent(new Event('change', { bubbles: true }));
+		await flushUi();
+		await vi.advanceTimersByTimeAsync(250);
+		await flushUi();
+		await flushUi();
+
+		expect(getCampaignOptionsMock).toHaveBeenLastCalledWith({
+			organization: 'ORG-2',
+			school: null,
+			employee_group: null,
+			policy_version: 'VER-1',
+		});
+		expect(Array.from(schoolSelect.options).map(option => option.value)).toEqual(['', 'SCH-2A', 'SCH-2B']);
+		expect(Array.from(policySelect.options).map(option => option.value)).toEqual(['', 'VER-2-ORG']);
+		expect(policySelect.value).toBe('');
+
+		schoolSelect.value = 'SCH-2A';
+		schoolSelect.dispatchEvent(new Event('change', { bubbles: true }));
+		await flushUi();
+		await vi.advanceTimersByTimeAsync(250);
+		await flushUi();
+		await flushUi();
+
+		expect(getCampaignOptionsMock).toHaveBeenLastCalledWith({
+			organization: 'ORG-2',
+			school: 'SCH-2A',
+			employee_group: null,
+			policy_version: null,
+		});
+		expect(Array.from(policySelect.options).map(option => option.value)).toEqual([
+			'',
+			'VER-2-ORG',
+			'VER-2A',
+		]);
 	});
 });

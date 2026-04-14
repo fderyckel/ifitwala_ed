@@ -31,6 +31,7 @@ Permission scope for `Employee`:
   - when no school scope resolves, or the active Employee profile exists with a blank `school`, Employee visibility falls back to the user's organization descendant scope
 - Academic Admin organization fallback resolves from active `Employee.organization`, then persisted user default `organization`, and unions explicit `User Permission` grants on `Organization`.
 - `Employee` role has read-only access to their own Employee record only.
+- Employee Desk list, tree, and report surfaces must follow the same scripted visibility scope and must not inject an implicit `employment_status = "Active"` filter.
 
 ### 1.1 Staff Portal Holiday Resolution (Portal Calendar Contract)
 
@@ -182,6 +183,11 @@ Impact: Employee tree root now treats "manager not visible in current scope" as 
 We decided HR organization scope must also honor explicit `User Permission` grants on `Organization`.
 Reason: role-authorized HR users can be scoped operationally through defaults and explicit org permissions without depending on Employee linkage.
 Impact: Employee permission scope now unions descendants from default organization and descendants from explicit Organization User Permissions.
+
+[2026-04-15] Decision:
+We decided Employee list and tree surfaces must not add an implicit active-status filter on top of scripted visibility.
+Reason: report view already exposes the full permitted Employee scope, and extra list/tree filtering created product drift where authorized staff were silently missing outside report view.
+Impact: Employee list and tree now follow the same server-owned visibility contract as report view; status filtering is user-chosen, not hard-coded by the surface.
 
 [2026-02-26] Decision:
 We decided HR base-org resolution must not depend on linked Employee rows.

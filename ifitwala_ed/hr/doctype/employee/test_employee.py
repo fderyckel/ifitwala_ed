@@ -444,6 +444,34 @@ class TestEmployee(FrappeTestCase):
 
         self.assertEqual({row.get("value") for row in rows}, {"EMP-0001", "EMP-0002"})
 
+    def test_employee_tree_root_loading_does_not_inject_active_status_filter(self):
+        get_list_calls = []
+
+        def fake_get_list(doctype, fields=None, filters=None, order_by=None):
+            get_list_calls.append(filters or [])
+            return [frappe._dict(value="EMP-0001", title="Teacher A", reports_to="")]
+
+        with (
+            patch("ifitwala_ed.hr.doctype.employee.employee.frappe.get_list", side_effect=fake_get_list),
+            patch("ifitwala_ed.hr.doctype.employee.employee.frappe.db.sql", return_value=[]),
+        ):
+            rows = employee_controller.get_children("Employee", parent="", organization="ORG-ROOT", is_root=True)
+
+        self.assertEqual(get_list_calls, [[["organization", "=", "ORG-ROOT"]]])
+        self.assertEqual(rows[0].get("expandable"), 0)
+
+    def test_employee_tree_expandable_query_does_not_filter_active_status(self):
+        with (
+            patch(
+                "ifitwala_ed.hr.doctype.employee.employee.frappe.get_list",
+                return_value=[frappe._dict(value="EMP-0001", title="Teacher A", reports_to="")],
+            ),
+            patch("ifitwala_ed.hr.doctype.employee.employee.frappe.db.sql", return_value=[]) as sql,
+        ):
+            employee_controller.get_children("Employee", parent="", is_root=True)
+
+        self.assertNotIn("employment_status", sql.call_args.args[0].lower())
+
     def test_employee_pqc_academic_admin_remains_school_scoped(self):
         with (
             patch("ifitwala_ed.hr.doctype.employee.employee.frappe.get_roles", return_value=["Academic Admin"]),

@@ -180,6 +180,83 @@ def _employee_group_options_for_scope(
     )
 
 
+def _policy_options_for_scope(
+    *,
+    organization: str | None,
+    organization_scope: list[str],
+    school: str | None,
+) -> list[dict]:
+    organization = (organization or "").strip() or None
+    school = (school or "").strip() or None
+
+    scoped_orgs = (
+        get_organization_ancestors_including_self(organization)
+        if organization
+        else sorted({(org or "").strip() for org in organization_scope if (org or "").strip()})
+    )
+    if not scoped_orgs:
+        return []
+
+    params: dict = {"policy_organizations": tuple(scoped_orgs)}
+    school_scope_clause = ""
+    if organization:
+        school_scope_clause = " AND (ifnull(ip.school, '') = '')"
+        if school:
+            school_ancestors = get_school_ancestors_including_self(school)
+            if school_ancestors:
+                params["school_ancestors"] = tuple(school_ancestors)
+                school_scope_clause = " AND (ifnull(ip.school, '') = '' OR ip.school IN %(school_ancestors)s)"
+
+    rows = frappe.db.sql(
+        f"""
+        SELECT
+            pv.name AS policy_version,
+            pv.version_label,
+            pv.effective_from,
+            pv.effective_to,
+            ip.name AS institutional_policy,
+            ip.policy_title,
+            ip.policy_key,
+            ip.organization AS policy_organization,
+            ip.school AS policy_school
+        FROM `tabPolicy Version` pv
+        JOIN `tabInstitutional Policy` ip
+          ON ip.name = pv.institutional_policy
+        WHERE pv.is_active = 1
+          AND ip.is_active = 1
+          AND ip.organization IN %(policy_organizations)s
+          {school_scope_clause}
+        ORDER BY ip.policy_title ASC, pv.modified DESC
+        """,
+        params,
+        as_dict=True,
+    )
+
+    if organization:
+        rows = select_nearest_policy_rows_by_key(
+            rows=rows,
+            context_organization=organization,
+            context_school=school,
+            policy_key_field="policy_key",
+            policy_organization_field="policy_organization",
+            policy_school_field="policy_school",
+        )
+
+    token_map = get_policy_applies_to_token_map(
+        [row.get("institutional_policy") for row in rows if row.get("institutional_policy")]
+    )
+
+    options = []
+    for row in rows:
+        tokens = list(token_map.get((row.get("institutional_policy") or "").strip(), ()))
+        if not _supported_policy_signature_audiences(tokens):
+            continue
+        row["applies_to_tokens"] = tokens
+        options.append(row)
+
+    return options
+
+
 def _active_staff_policy_rows_for_context(
     *,
     context_organization: str,
@@ -963,87 +1040,16 @@ def get_staff_policy_campaign_options(
     _ensure_school_in_scope(school=school, organization_scope=org_scope)
 
     organization_options = sorted(scoped_orgs)
-
-    school_options = []
-    if org_scope:
-        school_rows = frappe.get_all(
-            "School",
-            filters={"organization": ["in", tuple(org_scope)]},
-            fields=["name"],
-            limit=0,
-        )
-        school_options = sorted(
-            {(row.get("name") or "").strip() for row in school_rows if (row.get("name") or "").strip()}
-        )
-
-    group_conditions = []
-    group_params = {}
-    if org_scope:
-        group_conditions.append("organization IN %(organizations)s")
-        group_params["organizations"] = tuple(org_scope)
-    if school:
-        school_scope = get_descendant_schools(school) or [school]
-        group_conditions.append("school IN %(schools)s")
-        group_params["schools"] = tuple(school_scope)
-    group_where = " AND ".join(group_conditions) if group_conditions else "1=1"
-    group_rows = frappe.db.sql(
-        f"""
-        SELECT DISTINCT employee_group
-        FROM `tabEmployee`
-        WHERE employment_status = 'Active'
-          AND ifnull(employee_group, '') != ''
-          AND {group_where}
-        ORDER BY employee_group ASC
-        """,
-        group_params,
-        as_dict=True,
+    school_options = _school_options_for_scope(org_scope)
+    employee_group_options = _employee_group_options_for_scope(
+        organization_scope=org_scope,
+        school=school,
     )
-    employee_group_options = [
-        row.get("employee_group") for row in group_rows if (row.get("employee_group") or "").strip()
-    ]
-
-    policy_options = []
-    policy_params = {}
-    if organization:
-        ancestors = get_organization_ancestors_including_self(organization)
-        policy_scope_orgs = ancestors or []
-    else:
-        policy_scope_orgs = org_scope
-
-    if policy_scope_orgs:
-        policy_params["policy_organizations"] = tuple(policy_scope_orgs)
-        raw_policy_options = frappe.db.sql(
-            """
-            SELECT
-                pv.name AS policy_version,
-                pv.version_label,
-                pv.effective_from,
-                pv.effective_to,
-                ip.name AS institutional_policy,
-                ip.policy_title,
-                ip.policy_key,
-                ip.organization AS policy_organization,
-                ip.school AS policy_school
-            FROM `tabPolicy Version` pv
-            JOIN `tabInstitutional Policy` ip
-              ON ip.name = pv.institutional_policy
-            WHERE pv.is_active = 1
-              AND ip.is_active = 1
-              AND ip.organization IN %(policy_organizations)s
-            ORDER BY ip.policy_title ASC, pv.version_label DESC
-            """,
-            policy_params,
-            as_dict=True,
-        )
-        token_map = get_policy_applies_to_token_map(
-            [row.get("institutional_policy") for row in raw_policy_options if row.get("institutional_policy")]
-        )
-        for row in raw_policy_options:
-            tokens = list(token_map.get((row.get("institutional_policy") or "").strip(), ()))
-            if not _supported_policy_signature_audiences(tokens):
-                continue
-            row["applies_to_tokens"] = tokens
-            policy_options.append(row)
+    policy_options = _policy_options_for_scope(
+        organization=organization,
+        organization_scope=org_scope,
+        school=school,
+    )
 
     preview = {
         "target_employee_rows": 0,

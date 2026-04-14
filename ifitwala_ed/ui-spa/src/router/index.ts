@@ -107,6 +107,7 @@ const routes: RouteRecordRaw[] = [
 
   // Guardian
   { path: '/guardian', name: 'guardian-home', component: () => import('@/pages/guardian/GuardianHome.vue'), meta: { layout: 'student' } },
+  { path: '/guardian/communications', name: 'guardian-communications', component: () => import('@/pages/guardian/GuardianCommunicationCenter.vue'), meta: { layout: 'student' } },
   { path: '/guardian/course-selection', name: 'guardian-course-selection', component: () => import('@/pages/guardian/GuardianCourseSelection.vue'), meta: { layout: 'student' } },
   { path: '/guardian/course-selection/:selection_window/:student_id', name: 'guardian-course-selection-detail', component: () => import('@/pages/guardian/GuardianCourseSelectionDetail.vue'), meta: { layout: 'student' } },
   { path: '/guardian/activities', name: 'guardian-activities', component: () => import('@/pages/guardian/GuardianActivities.vue'), meta: { layout: 'student' } },

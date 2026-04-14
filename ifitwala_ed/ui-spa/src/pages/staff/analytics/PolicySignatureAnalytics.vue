@@ -26,6 +26,7 @@
 					v-model="filters.organization"
 					class="h-9 min-w-[180px] rounded-md border px-2 text-sm"
 					:disabled="loadingOptions"
+					@change="handleOrganizationChange"
 				>
 					<option value="">Select organization</option>
 					<option v-for="org in options.organizations" :key="org" :value="org">
@@ -40,6 +41,7 @@
 					v-model="filters.school"
 					class="h-9 min-w-[180px] rounded-md border px-2 text-sm"
 					:disabled="loadingOptions || !filters.organization"
+					@change="handleSchoolChange"
 				>
 					<option value="">All schools</option>
 					<option v-for="school in options.schools" :key="school" :value="school">
@@ -482,6 +484,15 @@ function policyLabel(policy: PolicyOption) {
 		policy.policy_version;
 	const version = (policy.version_label || '').trim();
 	return version ? `${title} (v${version})` : title;
+}
+
+function handleOrganizationChange() {
+	if (filters.school) filters.school = '';
+	if (filters.employee_group) filters.employee_group = '';
+}
+
+function handleSchoolChange() {
+	if (filters.employee_group) filters.employee_group = '';
 }
 
 function normalizeSelection() {

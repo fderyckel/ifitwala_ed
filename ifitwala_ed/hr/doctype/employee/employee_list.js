@@ -3,7 +3,6 @@
 
 frappe.listview_settings["Employee"] = {
 	add_fields: ["employment_status", "department", "designation", "employee_image"],
-	filters: [["employment_status", "=", "Active"]],
 	onload(listview) {
 		if (listview.__employee_image_cache) return;
 		listview.__employee_image_cache = Object.create(null);

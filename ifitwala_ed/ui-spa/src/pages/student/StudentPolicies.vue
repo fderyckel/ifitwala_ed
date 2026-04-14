@@ -85,9 +85,12 @@
 					:open="!row.is_acknowledged"
 				>
 					<summary class="cursor-pointer type-body-strong text-ink">Open policy text</summary>
-					<div class="mt-3 whitespace-pre-wrap type-body text-ink/80">
-						{{ row.policy_text || 'No policy text available.' }}
-					</div>
+					<div
+						v-if="row.policy_text"
+						class="policy-richtext prose prose-sm mt-3 max-w-none text-ink/80"
+						v-html="trustedHtml(row.policy_text)"
+					/>
+					<p v-else class="mt-3 type-body text-ink/70">No policy text available.</p>
 				</details>
 
 				<div
@@ -247,6 +250,10 @@ function normalizeName(value: string): string {
 	return value.trim().replace(/\s+/g, ' ').toLowerCase();
 }
 
+function trustedHtml(html: string): string {
+	return String(html || '');
+}
+
 function isRowBusy(policyVersion: string): boolean {
 	return Boolean(busyRows.value[policyVersion]);
 }
@@ -372,3 +379,50 @@ onMounted(() => {
 	void loadOverview();
 });
 </script>
+
+<style scoped>
+.policy-richtext :deep(.ql-editor) {
+	padding: 0;
+}
+
+.policy-richtext :deep(p + p) {
+	margin-top: 0.75rem;
+}
+
+.policy-richtext :deep(ul) {
+	list-style-type: disc;
+	padding-inline-start: 1.5rem;
+}
+
+.policy-richtext :deep(ol) {
+	list-style-type: decimal;
+	padding-inline-start: 1.5rem;
+}
+
+.policy-richtext :deep(li) {
+	margin: 0.25rem 0;
+}
+
+.policy-richtext :deep(a) {
+	color: rgb(var(--jacaranda-rgb) / 1);
+	text-decoration: underline;
+	text-underline-offset: 0.14em;
+}
+
+.policy-richtext :deep(u) {
+	text-decoration: underline;
+	text-underline-offset: 0.14em;
+}
+
+.policy-richtext :deep(h2) {
+	font-size: 1.25rem;
+	font-weight: 600;
+	line-height: 1.35;
+}
+
+.policy-richtext :deep(h3) {
+	font-size: 1.125rem;
+	font-weight: 600;
+	line-height: 1.4;
+}
+</style>

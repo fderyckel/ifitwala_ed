@@ -180,6 +180,41 @@ class TestOrgCommUtils(FrappeTestCase):
 
         self.assertFalse(matched)
 
+    def test_check_audience_match_allows_guardian_member_on_student_group_row(self):
+        audiences = [
+            frappe._dict(
+                target_mode="Student Group",
+                school=None,
+                include_descendants=0,
+                team=None,
+                student_group="SG-1",
+                to_staff=0,
+                to_students=0,
+                to_guardians=1,
+            )
+        ]
+
+        with (
+            patch.object(org_comm_utils.frappe, "get_all", return_value=audiences),
+            patch(
+                "ifitwala_ed.api.org_comm_utils._get_cached_guardian_context",
+                return_value={
+                    "guardian_name": "GRD-0001",
+                    "student_names": {"STU-1"},
+                    "student_groups": {"SG-1"},
+                    "school_names": {"SCH-1"},
+                },
+            ),
+        ):
+            matched = org_comm_utils.check_audience_match(
+                "COMM-GUARDIAN",
+                "guardian@example.com",
+                ["Guardian"],
+                frappe._dict(),
+            )
+
+        self.assertTrue(matched)
+
     def test_check_audience_match_allows_academic_admin_descendant_school_scope(self):
         audiences = [
             frappe._dict(

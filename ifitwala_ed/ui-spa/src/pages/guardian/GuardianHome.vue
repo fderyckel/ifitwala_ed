@@ -30,10 +30,13 @@
 		</header>
 
 		<section class="grid grid-cols-2 gap-3 sm:grid-cols-4">
-			<article class="card-surface p-3">
+			<RouterLink
+				:to="{ name: 'guardian-communications' }"
+				class="card-surface block p-3 transition hover:border-jacaranda/30 hover:bg-jacaranda/5"
+			>
 				<p class="type-caption">Unread communications</p>
 				<p class="type-h3 text-ink">{{ counts.unread_communications }}</p>
-			</article>
+			</RouterLink>
 			<article class="card-surface p-3">
 				<p class="type-caption">Unread student logs</p>
 				<p class="type-h3 text-ink">{{ counts.unread_visible_student_logs }}</p>
@@ -402,6 +405,12 @@ const recentActivity = computed(() => snapshot.value?.zones.recent_activity ?? [
 const learningHighlights = computed(() => snapshot.value?.zones.learning_highlights ?? []);
 
 const quickLinks = [
+	{
+		title: 'Communications',
+		description: 'Review family-wide school and class updates in one place.',
+		icon: 'message-square',
+		to: { name: 'guardian-communications' },
+	},
 	{
 		title: 'Course Selection',
 		description: 'Confirm each child’s program choices before the deadline.',

@@ -90,7 +90,7 @@ describe('GuardianPolicies', () => {
 					organization: 'ORG-1',
 					school: 'SCHOOL-1',
 					description: 'Review privacy expectations.',
-					policy_text: 'Policy text',
+					policy_text: '<h2>Guardian Privacy Policy</h2><p>Policy text</p>',
 					effective_from: '2026-03-01',
 					effective_to: '',
 					approved_on: '2026-03-01 09:00:00',
@@ -114,6 +114,8 @@ describe('GuardianPolicies', () => {
 		expect(text).toContain('Privacy Policy')
 		expect(text).toContain('Pending acknowledgement')
 		expect(text).toContain('Review privacy expectations.')
+		expect(document.querySelector('.policy-richtext h2')?.textContent).toBe('Guardian Privacy Policy')
+		expect(document.body.innerHTML).not.toContain('&lt;h2&gt;')
 	})
 
 	it('acknowledges a pending policy and reloads the overview', async () => {
@@ -133,7 +135,7 @@ describe('GuardianPolicies', () => {
 						organization: 'ORG-1',
 						school: 'SCHOOL-1',
 						description: '',
-						policy_text: 'Policy text',
+						policy_text: '<p>Policy text</p>',
 						effective_from: '',
 						effective_to: '',
 						approved_on: '',
@@ -162,7 +164,7 @@ describe('GuardianPolicies', () => {
 						organization: 'ORG-1',
 						school: 'SCHOOL-1',
 						description: '',
-						policy_text: 'Policy text',
+						policy_text: '<p>Policy text</p>',
 						effective_from: '',
 						effective_to: '',
 						approved_on: '',

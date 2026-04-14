@@ -18,6 +18,7 @@ from ifitwala_ed.governance.policy_scope_utils import (
     select_nearest_policy_rows_by_key,
 )
 from ifitwala_ed.governance.policy_utils import ensure_policy_applies_to_storage, policy_applies_to_filter_sql
+from ifitwala_ed.utilities.html_sanitizer import sanitize_html
 
 
 def _as_bool(value) -> bool:
@@ -254,7 +255,7 @@ def _get_student_policy_rows(*, student_name: str) -> list[dict[str, Any]]:
                 "organization": row.get("policy_organization"),
                 "school": row.get("policy_school"),
                 "description": row.get("description") or "",
-                "policy_text": row.get("policy_text") or "",
+                "policy_text": sanitize_html(row.get("policy_text") or "", allow_headings_from="h2"),
                 "effective_from": str(row.get("effective_from") or ""),
                 "effective_to": str(row.get("effective_to") or ""),
                 "approved_on": str(row.get("approved_on") or ""),

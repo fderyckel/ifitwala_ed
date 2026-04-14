@@ -1,43 +1,54 @@
 ---
-title: "Institutional Policy: Manage School Policies with Confidence"
+title: "Institutional Policy: Unified Governance for Your School"
 slug: institutional-policy
 category: Governance
 doc_order: 1
-version: "1.6.2"
-last_change_date: "2026-04-14"
-summary: "Create and manage institutional policies—from data privacy to conduct codes—with scoped applicability, version control, and automated acknowledgement tracking across applicants, students, guardians, and staff."
-seo_title: "Institutional Policy: Manage School Policies with Confidence"
-seo_description: "Learn how to manage institutional policies in Ifitwala Ed with scoped applicability, version control, and automated acknowledgement tracking."
+version: "2.0.0"
+last_change_date: "2026-04-11"
+summary: "Create and manage institutional policies that flow seamlessly across your organization—from staff signature campaigns to guardian portals, student hubs, and admissions workflows—all with comprehensive analytics and audit trails."
+seo_title: "Institutional Policy: Unified Governance for Your School"
+seo_description: "Learn how Ifitwala Ed's integrated policy governance connects staff campaigns, guardian acknowledgements, student policies, and admissions requirements in one unified system."
 ---
 
-## What is an Institutional Policy?
+## What is Institutional Policy?
 
-An **Institutional Policy** is the foundation of your school's governance framework. It defines what a policy is, who it applies to, and where it has authority—from organization-wide rules to school-specific guidelines.
+An **Institutional Policy** is the foundation of your school's governance framework. It defines what a policy is, who it applies to, and where it has authority—creating a single source of truth that flows through every corner of your organization.
 
-Think of it as the "policy identity" that lives on even as the actual policy text evolves through versions. Whether it's your Code of Conduct, Data Privacy Policy, or Media Consent rules, the Institutional Policy is the anchor that ensures the right people see and acknowledge the right rules at the right time.
+Unlike disconnected document storage, Ifitwala Ed's policies are **alive**. They appear automatically in the right places:
+- **Staff** see policies in their Focus tasks and Morning Brief
+- **Guardians** review and sign in their family portal
+- **Students** acknowledge in their student hub
+- **Applicants** sign during admissions
+- **Administrators** track completion in real-time analytics
 
 <Callout type="info" title="Why Ifitwala Ed is different">
-Unlike document storage systems that just file PDFs, Ifitwala Ed's policy framework is alive. It knows which policies apply to which audiences, tracks who has acknowledged what, and automatically gates admissions or activities based on missing signatures. It's governance that actually governs.
+Most platforms treat policies as static documents. Ifitwala Ed treats them as **governance workflows**. A single policy identity can cascade through staff signature campaigns, guardian acknowledgements, student requirements, and admissions gates—each with their own signing flow, tracking, and audit trail. It's governance that actually governs.
 </Callout>
 
 ---
 
-## Why Institutional Policies Matter
+## The Policy Ecosystem: How It All Connects
 
-### 1. **Audience-Aware Distribution**
-Policies automatically reach the right people. An Applicant policy appears in the admissions portal. A Guardian policy shows in the family portal. Staff policies appear in the staff workspace. No manual list management, no missed communications.
+### 1. **Policy Identity** (This DocType)
+The root definition: what the policy is, who it applies to (Staff, Guardians, Students, Applicants), and where it has scope (Organization-wide or school-specific).
 
-### 2. **Scoped Authority**
-Set policies at the organization level (applies to all schools) or specific to individual schools. A parent-school policy automatically cascades to all its satellite campuses. School-specific policies override when needed.
+### 2. **Policy Version**
+The actual legal text at a point in time. Create new versions when rules change, with automatic diff tracking and version history.
 
-### 3. **Version-Proof Identity**
-The Institutional Policy stays constant even as legal text evolves. When you update your Privacy Policy, you're creating a new Policy Version—not breaking historical acknowledgements or confusion about which rules applied when.
+### 3. **Policy Surfaces** — Where People Interact
+| Surface | Who | Experience |
+|---------|-----|------------|
+| **Staff Focus Action** | Employees | ToDo task with inline diff viewer and e-signature |
+| **Morning Brief** | Staff | Policy announcements with one-click review |
+| **Guardian Portal** | Parents | Family policy library with per-child acknowledgements |
+| **Student Hub** | Students | Age-appropriate policy review and signing |
+| **Admissions Portal** | Applicants | Required policy acknowledgements before enrollment |
+| **Policy Analytics Dashboard** | Admins | Real-time completion tracking across all audiences |
+| **Policy Campaign Overlay** | Admins | Launch targeted signature campaigns |
+| **Policy Inform Overlay** | Everyone | Read-only policy viewer with change history |
 
-### 4. **Acknowledgement Gatekeeping**
-Admissions readiness checks automatically flag missing policy acknowledgements. Media publishing is gated behind consent policy status. Staff activities can require current policy signatures. Compliance becomes automatic.
-
-### 5. **Audit-Ready History**
-Every policy version, every acknowledgement, every change is permanently recorded. Accreditation visits, legal discovery, or internal reviews—your policy history is complete and unalterable.
+### 4. **Policy Acknowledgement**
+Immutable evidence of who signed what, when, and which version—forming your audit trail.
 
 ---
 
@@ -48,30 +59,30 @@ Every policy version, every acknowledgement, every change is permanently recorde
     Go to **Governance > Institutional Policy** and click **New**.
   </Step>
   <Step title="Define the Policy Key">
-    Enter a stable machine identifier (e.g., `privacy_policy`, `code_of_conduct`, `media_consent`). This never changes and is used by the system to resolve policies.
+    Enter a stable machine identifier (e.g., `privacy_policy`, `code_of_conduct`, `media_consent`). This never changes and is used by the system to resolve policies across all surfaces.
   </Step>
   <Step title="Add the Title">
-    Enter the human-readable title (e.g., "Student Data Privacy Policy"). This is what users see in portals and lists.
+    Enter the human-readable title (e.g., "Student Data Privacy Policy"). This appears in all portals and communications.
   </Step>
   <Step title="Choose Category">
-    Select from categories like Safeguarding, Privacy & Data Protection, Admissions, Academic, Conduct & Behaviour, Health & Safety, Operations, Handbooks, or Employment.
+    Select from: Safeguarding, Privacy & Data Protection, Admissions, Academic, Conduct & Behaviour, Health & Safety, Operations, Handbooks, or Employment. Categories help organize the policy library.
   </Step>
   <Step title="Set the Scope">
-    Choose the Organization (required) and optionally a specific School. If you set a School, it must belong directly to that Organization. Leave School blank for organization-wide policies.
+    Choose the Organization (required) and optionally a specific School. Leave School blank for organization-wide policies that apply to all campuses.
   </Step>
   <Step title="Define Audience">
-    Select who this policy applies to: Applicants, Students, Guardians, Staff, or any combination. You must select at least one.
+    Select who this policy applies to: **Applicants**, **Students**, **Guardians**, **Staff**, or any combination. This determines which portals and workflows surface the policy.
   </Step>
   <Step title="Set Admissions Mode (if applicable)">
-    For Applicant policies, choose how acknowledgements work: Child Acknowledgement, Family Acknowledgement, or Child Optional Consent.
+    For Applicant policies, choose signing mode: Child Acknowledgement, Family Acknowledgement, or Child Optional Consent.
   </Step>
   <Step title="Save">
-    Click **Save**. Your policy identity is now created and ready for versions.
+    Click **Save**. Your policy identity is now ready for versions.
   </Step>
 </Steps>
 
-<Callout type="tip" title="What happens next">
-After creating the Institutional Policy, you'll create Policy Versions to hold the actual legal text. Use the **Create Policy Version** button on the policy form to start your first version.
+<Callout type="success" title="What happens automatically">
+After creating the Institutional Policy, you'll create Policy Versions to hold the actual legal text. Once a version is activated, it automatically appears in all relevant portals and surfaces based on your audience selections.
 </Callout>
 
 ---
@@ -82,65 +93,177 @@ After creating the Institutional Policy, you'll create Policy Versions to hold t
 
 | Scope Level | What It Means | Example Use Case |
 |-------------|---------------|------------------|
-| **Organization Only** | Applies across the selected organization and its descendant hierarchy | Group-wide Data Privacy Policy |
-| **Specific School** | Applies only to that school and its descendants | Campus-specific uniform policy |
+| **Organization Only** | Applies to all schools in the organization | Group-wide Data Privacy Policy |
+| **Specific School** | Applies to that school and its descendants | Campus-specific uniform policy |
 
-**Important:** When you set a School, that school must belong directly to the selected Organization. The policy then applies to that school and its child schools (satellite campuses). For a parent-organization policy that should cover child organizations or multiple schools, leave `School` blank and keep the policy organization-wide.
+**Important:** School-scoped policies automatically apply to satellite campuses (child schools). This makes multi-campus management effortless.
 
 ### Understanding Audience
 
-| Audience | Where They See It | Typical Policies |
-|----------|-------------------|------------------|
-| **Applicant** | Admissions portal during application | Enrollment agreements, fee policies |
-| **Student** | Student portal durable-policy surface (planned) | Code of conduct, academic integrity |
-| **Guardian** | Family portal (`/hub/guardian/policies`) | Data consent, communication policies |
-| **Staff** | Staff workspace, Morning Brief | HR policies, safeguarding, data protection |
+| Audience | Where They See It | Signing Experience |
+|----------|-------------------|-------------------|
+| **Applicant** | Admissions portal | Review and acknowledge before enrollment |
+| **Student** | Student Hub (`/hub/student/policies`) | Age-appropriate policy review with e-signature |
+| **Guardian** | Guardian Portal (`/hub/guardian/policies`) | Per-child acknowledgements with family context |
+| **Staff** | Focus tasks, Morning Brief | Inline diff viewer, ToDo-driven workflow |
 
 <Callout type="warning" title="Audience vs. Signer Authority">
-Policy audience determines who sees the policy, but not always who can sign. Guardian policies require the guardian to have signer authority (can_consent flag) for a linked child. Staff always sign for themselves.
+Policy audience determines who sees the policy, but not always who can sign. Guardian policies require the guardian to have signer authority (`can_consent` flag) for linked children. Staff always sign for themselves.
 </Callout>
 
 ### Admissions Acknowledgement Modes
 
-For policies that apply to Applicants, choose how signatures are collected:
+For policies that apply to Applicants:
 
 | Mode | How It Works | Best For |
 |------|--------------|----------|
-| **Child Acknowledgement** | Applicant (student) signs directly | Older students applying independently |
+| **Child Acknowledgement** | Applicant signs directly | Older students applying independently |
 | **Family Acknowledgement** | Guardian signs on behalf of applicant | Younger children, family decisions |
 | **Child Optional Consent** | Student can optionally consent | Media release, optional participation |
+
+---
+
+## Policy Surfaces in Detail
+
+### 1. Staff Signature Campaigns (Launch Overlay)
+
+Admins launch targeted policy campaigns via the **Policy Signature Campaign Overlay** (`/staff` → Set up campaign):
+
+- **Select scope:** Organization, School, Employee Group
+- **Choose policy version:** Any active version
+- **Preview audience:** See eligible, signed, and pending counts before launch
+- **Set due date:** Optional deadline for completion
+- **Launch:** Creates Focus ToDos for all eligible staff
+
+<Callout type="tip" title="Campaign intelligence">
+The overlay shows you exactly who will receive tasks, who has already signed, and who has pending ToDos—preventing duplicate work and letting you target precisely.
+</Callout>
+
+### 2. Staff Policy Acknowledgement (Focus Action)
+
+Staff sign policies through **Focus** (their task dashboard):
+
+- **ToDo notification:** "Acknowledge [Policy Name]"
+- **Inline diff viewer:** See exactly what changed from the previous version
+- **Full policy text:** Expand to read complete policy
+- **Change summary:** Human-readable description of amendments
+- **E-signature:** Type full name + legal attestation checkbox
+- **Acknowledgement clauses:** Check required boxes (e.g., "I have read...")
+
+Once signed, the ToDo auto-completes and the acknowledgement is recorded immutably.
+
+### 3. Staff Policy Library (Inform Overlay)
+
+Staff can browse policies anytime via:
+- **Morning Brief** policy links
+- **Org Communication** policy announcements
+- **Staff Policy Library** page
+
+The **Policy Inform Overlay** provides:
+- Current policy text
+- Visual diff (if amended version)
+- Version history table
+- Acknowledgement status
+- Read-only, close-only interface
+
+### 4. Guardian Portal Policies
+
+Guardians access policies at `/hub/guardian/policies`:
+
+- **Policy cards:** Show title, category, version, and scope
+- **Status badges:** "Acknowledged" or "Pending acknowledgement"
+- **Expandable text:** Read full policy inline
+- **Per-child context:** Acknowledge for each linked student
+- **E-signature flow:** Same robust signing as staff (name match + attestation)
+- **Acknowledgement clauses:** Required checkboxes per policy
+
+Guardians only see policies explicitly scoped to them and where they have signing authority for at least one child.
+
+### 5. Student Hub Policies
+
+Students access policies at `/hub/student/policies`:
+
+- **Student-appropriate view:** Clean, readable policy cards
+- **Progress counters:** Total, Acknowledged, Pending
+- **Inline policy reading:** Expand to read without leaving the page
+- **Guided signing:** Step-by-step acknowledgement flow
+- **Electronic signature:** Type name + legal confirmation
+
+### 6. Admissions Portal Policies
+
+Applicants encounter policies during the admissions process:
+
+- **Required acknowledgements:** Block progression until signed
+- **Policy list:** All applicable applicant policies
+- **Review & Acknowledge button:** Opens signing overlay
+- **Read-only mode:** If application is read-only, policies display without signing
+- **Status tracking:** Admissions staff see completion in readiness checks
+
+### 7. Policy Signature Analytics Dashboard
+
+Admins track completion in real-time at `/staff/analytics/policy-signatures`:
+
+**KPIs at a glance:**
+- Eligible Signers
+- Signed
+- Pending
+- Completion %
+
+**Audience sections:**
+- Staff (with campaign launch capability)
+- Guardians (portal tracking)
+- Students (hub tracking)
+
+**Breakdown tables:**
+- By Organization
+- By School
+- By Context (Employee Group for staff)
+
+**Detailed rows:**
+- Pending list (who still needs to sign)
+- Signed list (recent acknowledgements with timestamps)
+
+<Callout type="success" title="Real-world use case">
+A Pastoral Lead filters to their school, selects the current academic year, and sees:
+- 87% of staff have signed the new Safeguarding Policy
+- 12 guardians still need to acknowledge the Data Privacy update
+- 3 students have pending acknowledgements for the Code of Conduct
+They click "Set up campaign" to nudge remaining staff with targeted ToDos.
+</Callout>
 
 ---
 
 ## Where Policies Are Used
 
 ### Admissions Workflow
-- Applicants see required policies in their portal
-- Missing acknowledgements block readiness for enrollment
-- Admissions staff can track completion status
-- Policies appear in the order they must be acknowledged
+- Required policies block readiness for enrollment
+- Portal shows policy list with completion status
+- Admissions staff track via readiness checks
+- Policies appear in order they must be acknowledged
 
-### Guardian Portal
-- Guardians can review active guardian-scoped policies in their family portal scope
-- Durable acknowledgements are currently stored as guardian-self evidence, filtered by signer-authorized linked children
-- Updated policies prompt re-acknowledgement when a new active version replaces the old one
-- Historical signatures are preserved for audit
+### Guardian Engagement
+- Parents see policies for all linked children
+- Sign once per policy per child (or family-wide depending on settings)
+- Historical acknowledgements preserved
+- Re-acknowledgement prompted for new versions
 
-### Student Portal
-- Student-scoped durable policy acknowledgement is planned but not yet wired in the current student hub
-- Student audience should still be modeled on the Institutional Policy even before the student portal surface ships
+### Staff Compliance
+- Morning Brief highlights new/updated policies
+- Focus ToDos drive completion
+- Signature campaigns target specific groups
+- Completion analytics track organization-wide compliance
 
-### Staff Workspace
-- Staff see policies applicable to their role and school
-- Morning Brief can highlight new or updated policies
-- Signature campaigns can target specific employee groups
-- Completion analytics show organization-wide compliance
+### Student Accountability
+- Age-appropriate policy presentation
+- Guided acknowledgement flow
+- Part of student readiness checks
+- Builds digital citizenship skills
 
 ### Operational Gates
 - Media publishing checks consent policy status
 - Activity participation can require current acknowledgements
-- Program enrollment can gate on policy compliance
-- Health services can check vaccination policy status
+- Program enrollment gates on policy compliance
+- Health services check vaccination policy status
 
 ---
 
@@ -152,12 +275,22 @@ For policies that apply to Applicants, choose how signatures are collected:
 - **Inactive policies** are hidden but preserved for historical reference
 - **Never delete**—always deactivate to maintain audit history
 
+### Version Management
+
+1. Create new **Policy Version** when rules change
+2. System generates automatic diff from previous version
+3. Add **change summary** explaining what changed and why
+4. **Activate** new version (automatically deactivates old)
+5. Affected audiences see "New version to review" status
+6. Re-acknowledgement collected through respective portals
+
 <DoDont doTitle="Do" dontTitle="Don't">
   <Do>Create the Institutional Policy before creating Policy Versions.</Do>
   <Do>Use stable, descriptive policy_keys (e.g., `data_privacy_policy`).</Do>
   <Do>Set organization scope first, then refine to school if needed.</Do>
   <Do>Deactivate old policies instead of deleting them.</Do>
   <Do>Use categories consistently for easier management.</Do>
+  <Do>Create new versions for material changes—don't edit locked text.</Do>
   <Dont>Change policy_key after creation—it's immutable.</Dont>
   <Dont>Delete policies—deactivate instead.</Dont>
   <Dont>Forget to set audience—policies without audience apply to no one.</Dont>
@@ -171,23 +304,29 @@ For policies that apply to Applicants, choose how signatures are collected:
 **Q: What's the difference between Institutional Policy and Policy Version?**
 A: Institutional Policy is the identity and scope (what, who, where). Policy Version is the actual legal text at a point in time. You create the policy identity once, then create multiple versions as rules evolve.
 
-**Q: Can I move a policy to a different organization?**
-A: No, organization is immutable after creation. This preserves audit integrity. Create a new policy in the target organization if needed.
+**Q: How do I launch a staff signature campaign?**
+A: Go to the Policy Signature Analytics dashboard and click "Set up campaign." Select your scope (organization/school/employee group), choose the policy version, preview the audience, and launch. Focus ToDos are created automatically for all eligible staff.
+
+**Q: Can guardians sign for multiple children at once?**
+A: Guardians see policies in their portal with per-child context. Depending on the policy's admissions acknowledgement mode, they may sign once per family or per child. The system tracks acknowledgements separately for audit purposes.
+
+**Q: How do students sign policies?**
+A: Students access their policy library at `/hub/student/policies`. They see policy cards with status, can read the full text inline, and complete a guided signing flow with electronic signature and legal attestation.
 
 **Q: What happens when I update a policy?**
-A: You create a new Policy Version with the updated text. The system can show the diff to users. Depending on your settings, existing acknowledgements may remain valid or prompt re-signature.
+A: You create a new Policy Version with the updated text. The system shows the diff to users. Staff see "New version to review" in Focus. Guardians and students see updated policy cards in their portals. Analytics reset to track the new version's completion.
 
 **Q: How do school-scoped policies interact with organization policies?**
-A: The system uses "nearest match" resolution. If both organization-wide and school-level policies exist for the same policy_key, the school-specific one wins for that school and its descendants. School-level policies must use a school that belongs directly to the selected organization; cross-organization school picks are blocked.
+A: The system uses "nearest match" resolution. If both organization and school-level policies exist for the same policy_key, the school-specific one wins for that school and its descendants.
 
-**Q: Can a policy apply to multiple audiences?**
-A: Yes—select any combination of Applicant, Student, Guardian, and Staff. The policy will appear in all relevant portals and workflows.
+**Q: Can I track policy completion across all audiences?**
+A: Yes! The Policy Signature Analytics dashboard shows completion rates for Staff, Guardians, and Students side-by-side, with breakdowns by organization, school, and context.
 
 **Q: What happens to acknowledgements when I deactivate a policy?**
 A: Historical acknowledgements are preserved. New acknowledgements are no longer collected. If you reactivate, collection resumes.
 
-**Q: How do I track who hasn't signed a policy?**
-A: Use the Policy Acknowledgement report or check the analytics in the staff workspace. You can see completion rates by organization, school, or employee group.
+**Q: Can applicants see policies before submitting an application?**
+A: Yes, applicant-scoped policies appear in the admissions portal. They must acknowledge required policies before their application can be considered complete.
 
 ---
 
@@ -205,6 +344,12 @@ A: Use the Policy Acknowledgement report or check the analytics in the staff wor
 - **Immutable Fields**: `policy_key`, `organization` (after creation)
 - **One-time Settable**: `school` (can be set if initially blank, then locked)
 - **Deletion**: Blocked by controller—use `is_active` instead
+- **SPA Surfaces:**
+  - Staff Campaign Overlay: `/staff` → Set up campaign
+  - Staff Inform Overlay: Policy read-only viewer
+  - Guardian Policies: `/hub/guardian/policies`
+  - Student Policies: `/hub/student/policies`
+  - Analytics Dashboard: `/staff/analytics/policy-signatures`
 
 ### Permission Matrix
 

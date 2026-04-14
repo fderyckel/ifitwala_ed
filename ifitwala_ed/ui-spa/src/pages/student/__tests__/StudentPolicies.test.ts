@@ -88,7 +88,7 @@ describe('StudentPolicies', () => {
 					organization: 'ORG-1',
 					school: 'SCHOOL-1',
 					description: 'Review handbook expectations.',
-					policy_text: 'Policy text',
+					policy_text: '<h2>Student Handbook</h2><p>Policy text</p>',
 					effective_from: '2026-04-01',
 					effective_to: '',
 					approved_on: '2026-04-01 09:00:00',
@@ -112,6 +112,8 @@ describe('StudentPolicies', () => {
 		expect(text).toContain('Student Handbook')
 		expect(text).toContain('Pending acknowledgement')
 		expect(text).toContain('Review handbook expectations.')
+		expect(document.querySelector('.policy-richtext h2')?.textContent).toBe('Student Handbook')
+		expect(document.body.innerHTML).not.toContain('&lt;h2&gt;')
 	})
 
 	it('acknowledges a pending student policy and reloads the overview', async () => {
@@ -131,7 +133,7 @@ describe('StudentPolicies', () => {
 						organization: 'ORG-1',
 						school: 'SCHOOL-1',
 						description: '',
-						policy_text: 'Policy text',
+						policy_text: '<p>Policy text</p>',
 						effective_from: '',
 						effective_to: '',
 						approved_on: '',
@@ -160,7 +162,7 @@ describe('StudentPolicies', () => {
 						organization: 'ORG-1',
 						school: 'SCHOOL-1',
 						description: '',
-						policy_text: 'Policy text',
+						policy_text: '<p>Policy text</p>',
 						effective_from: '',
 						effective_to: '',
 						approved_on: '',

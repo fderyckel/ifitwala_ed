@@ -6,6 +6,7 @@ import frappe
 from frappe.tests.utils import FrappeTestCase
 
 from ifitwala_ed.api.student_policy import (
+    _get_student_policy_rows,
     _query_policy_candidates_for_context,
     acknowledge_student_policy,
     get_student_policy_home_summary,
@@ -173,3 +174,49 @@ class TestStudentPolicy(FrappeTestCase):
         self.assertEqual([row["policy_name"] for row in rows], ["POL-1"])
         self.assertIn("tabInstitutional Policy Audience", sql_mock.call_args.args[0])
         self.assertEqual(sql_mock.call_args.args[1][-1], "Student")
+
+    def test_get_student_policy_rows_sanitizes_policy_text(self):
+        def fake_get_value(doctype, name_or_filters, fieldname, as_dict=False):
+            if doctype == "Student":
+                return {
+                    "anchor_school": "SCHOOL-1",
+                    "student_full_name": "Amina Example",
+                    "student_preferred_name": "",
+                }
+            if doctype == "School":
+                return "ORG-1"
+            self.fail(f"Unexpected get_value call for {doctype}")
+
+        with (
+            patch("ifitwala_ed.api.student_policy.ensure_policy_applies_to_storage", return_value={"ok": True}),
+            patch("ifitwala_ed.api.student_policy.frappe.db.get_value", side_effect=fake_get_value),
+            patch(
+                "ifitwala_ed.api.student_policy._query_policy_candidates_for_context",
+                return_value=[
+                    {
+                        "policy_name": "POL-1",
+                        "policy_key": "student_handbook",
+                        "policy_title": "Student Handbook",
+                        "policy_category": "Handbooks",
+                        "policy_version": "VER-1",
+                        "version_label": "v1",
+                        "policy_organization": "ORG-1",
+                        "policy_school": "SCHOOL-1",
+                        "description": "Review this handbook.",
+                        "policy_text": "<h1>Student Handbook</h1><p>Welcome</p><script>alert(1)</script>",
+                        "effective_from": None,
+                        "effective_to": None,
+                        "approved_on": None,
+                    }
+                ],
+            ),
+            patch("ifitwala_ed.api.student_policy.frappe.get_all", return_value=[]),
+            patch("ifitwala_ed.api.student_policy.get_policy_version_acknowledgement_clauses_map", return_value={}),
+            patch("ifitwala_ed.api.student_policy._expected_student_signature_name", return_value="Amina Example"),
+        ):
+            rows = _get_student_policy_rows(student_name="STU-0001")
+
+        self.assertEqual(len(rows), 1)
+        self.assertIn("<h2>Student Handbook</h2>", rows[0]["policy_text"])
+        self.assertIn("<p>Welcome</p>", rows[0]["policy_text"])
+        self.assertNotIn("<script", rows[0]["policy_text"])
