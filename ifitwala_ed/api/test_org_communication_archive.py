@@ -284,11 +284,16 @@ class TestOrgCommunicationArchiveFeed(FrappeTestCase):
 class TestOrgCommunicationArchiveContext(FrappeTestCase):
     def test_get_archive_context_lists_parent_organizations_for_child_org_user(self):
         def fake_employee_lookup(doctype, filters, fields=None, as_dict=False):
-            self.assertEqual(doctype, "Employee")
-            self.assertEqual(filters, {"user_id": "staff@example.com"})
-            self.assertEqual(fields, ["name", "school", "organization"])
-            self.assertTrue(as_dict)
-            return {"name": "EMP-1", "school": None, "organization": "ORG-CHILD"}
+            if doctype == "Employee":
+                self.assertEqual(filters, {"user_id": "staff@example.com"})
+                self.assertEqual(fields, ["name", "school", "organization"])
+                self.assertTrue(as_dict)
+                return {"name": "EMP-1", "school": None, "organization": "ORG-CHILD"}
+            if doctype == "Instructor":
+                self.assertEqual(filters, {"employee": "EMP-1"})
+                self.assertEqual(fields, "name")
+                return None
+            raise AssertionError(f"Unexpected get_value call: {doctype} {filters} {fields}")
 
         with (
             patch(

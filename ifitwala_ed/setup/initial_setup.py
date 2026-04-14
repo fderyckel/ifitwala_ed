@@ -95,7 +95,7 @@ def complete_initial_setup(org_name=None, org_abbr=None, school_name=None, schoo
     # ─── update Website Settings ─────────────────────────────────────────────
     ws = frappe.get_single("Website Settings")
     if org:
-        ws.app_name = (org.organization_name or org.name or "").strip()
+        ws.app_name = (getattr(org, "organization_name", None) or getattr(org, "name", None) or "").strip()
 
     file_url = None
     if app_logo:

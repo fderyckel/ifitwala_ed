@@ -732,26 +732,6 @@ class StudentGroup(Document):
         if not selected_locations:
             return
 
-        scope_school = _resolve_student_group_location_school(
-            program_offering=self.program_offering,
-            school=self.school,
-            academic_year=self.academic_year,
-        )
-
-        visible_room_names = None
-        if scope_school:
-            visible_room_names = {
-                row.get("name")
-                for row in get_visible_location_rows_for_school(
-                    scope_school,
-                    include_groups=False,
-                    only_schedulable=True,
-                    fields=["name"],
-                    limit=2000,
-                )
-                if row.get("name")
-            }
-
         for row_number, location_name in selected_locations:
             location_row = frappe.db.get_value("Location", location_name, ["name", "is_group"], as_dict=True)
             if not location_row:
@@ -783,6 +763,27 @@ class StudentGroup(Document):
                     title=_("Invalid Schedule Location"),
                 )
 
+        scope_school = _resolve_student_group_location_school(
+            program_offering=self.program_offering,
+            school=self.school,
+            academic_year=self.academic_year,
+        )
+
+        visible_room_names = None
+        if scope_school:
+            visible_room_names = {
+                row.get("name")
+                for row in get_visible_location_rows_for_school(
+                    scope_school,
+                    include_groups=False,
+                    only_schedulable=True,
+                    fields=["name"],
+                    limit=2000,
+                )
+                if row.get("name")
+            }
+
+        for row_number, location_name in selected_locations:
             if visible_room_names is not None and location_name not in visible_room_names:
                 frappe.throw(
                     _(

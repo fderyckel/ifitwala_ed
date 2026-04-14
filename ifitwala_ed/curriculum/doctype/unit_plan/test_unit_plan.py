@@ -54,11 +54,17 @@ class TestUnitPlan(FrappeTestCase):
         self.assertEqual(get_program_subtree_scope(leaf.name), [leaf.name])
 
     def test_ensure_linked_unit_plan_standards_rewrites_snapshot_from_catalog(self):
+        program = frappe.get_doc(
+            {
+                "doctype": "Program",
+                "program_name": f"MYP {frappe.generate_hash(length=6)}",
+            }
+        ).insert(ignore_permissions=True)
         standard = frappe.get_doc(
             {
                 "doctype": "Learning Standards",
                 "framework_name": "IB MYP",
-                "program": f"MYP {frappe.generate_hash(length=6)}",
+                "program": program.name,
                 "strand": "Inquiry",
                 "substrand": "Research",
                 "standard_code": f"STD-{frappe.generate_hash(length=5)}",
@@ -177,11 +183,17 @@ class TestUnitPlan(FrappeTestCase):
         self.assertEqual(doc.standards[0]["standard_code"], standard.standard_code)
 
     def test_ensure_linked_unit_plan_standards_falls_back_to_snapshot_match_when_identifier_fails(self):
+        program = frappe.get_doc(
+            {
+                "doctype": "Program",
+                "program_name": f"MYP {frappe.generate_hash(length=6)}",
+            }
+        ).insert(ignore_permissions=True)
         standard = frappe.get_doc(
             {
                 "doctype": "Learning Standards",
                 "framework_name": "IB MYP",
-                "program": f"MYP {frappe.generate_hash(length=6)}",
+                "program": program.name,
                 "strand": "Identity",
                 "substrand": "Narrative",
                 "standard_code": f"MYP-{frappe.generate_hash(length=5)}",

@@ -211,10 +211,14 @@ class TestOrgCommunication(FrappeTestCase):
             if (
                 doctype == "Student Group"
                 and name_or_filters == "SG-IIS"
-                and fieldname == ["course", "school"]
+                and list(fieldname or []) == ["course", "school"]
                 and as_dict
             ):
                 return frappe._dict(course="COURSE-1", school="SCH-IIS")
+            if doctype == "Student Group" and name_or_filters == "SG-IIS" and fieldname == "course":
+                return "COURSE-1"
+            if doctype == "Student Group" and name_or_filters == "SG-IIS" and fieldname == "school":
+                return "SCH-IIS"
             if doctype == "School" and name_or_filters == "SCH-IIS" and fieldname == "organization":
                 return "ORG-ROOT"
             return None

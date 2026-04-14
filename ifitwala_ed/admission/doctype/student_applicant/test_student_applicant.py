@@ -1451,11 +1451,12 @@ class TestStudentApplicant(FrappeTestCase):
 
     def _create_org(self):
         name = f"Org-{frappe.generate_hash(length=6)}"
+        abbr = f"O{frappe.generate_hash(length=6)}".upper()
         doc = frappe.get_doc(
             {
                 "doctype": "Organization",
                 "organization_name": name,
-                "abbr": name[:6].upper(),
+                "abbr": abbr,
             }
         ).insert(ignore_permissions=True)
         self._created.append(("Organization", doc.name))

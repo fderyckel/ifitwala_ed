@@ -18,6 +18,9 @@ def _supporting_material_module():
     materials_stub.get_material_permission_query_conditions = lambda user=None, table_alias="", manage_only=False: (
         f"{table_alias}.course in ('COURSE-1')"
     )
+    materials_stub.user_can_manage_course_material = lambda user, course: (
+        course == "COURSE-1" and user in {"teacher@example.com", "coordinator@example.com"}
+    )
     materials_stub.user_can_manage_supporting_material = lambda user, material_name, course=None: (
         course == "COURSE-1" and user in {"teacher@example.com", "coordinator@example.com"}
     )
@@ -127,3 +130,10 @@ class TestSupportingMaterial(TestCase):
 
             self.assertTrue(module.has_permission(material, ptype="read", user="coordinator@example.com"))
             self.assertTrue(module.has_permission(material, ptype="write", user="coordinator@example.com"))
+
+    def test_has_permission_allows_create_for_unsaved_manageable_course(self):
+        with _supporting_material_module() as module:
+            material = module.SupportingMaterial()
+            material.course = "COURSE-1"
+
+            self.assertTrue(module.has_permission(material, ptype="create", user="coordinator@example.com"))

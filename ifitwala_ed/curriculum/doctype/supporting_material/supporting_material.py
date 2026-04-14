@@ -11,6 +11,7 @@ from ifitwala_ed.curriculum.materials import (
     MATERIAL_TYPE_REFERENCE_LINK,
     get_material_permission_query_conditions,
     normalize_material_modality,
+    user_can_manage_course_material,
     user_can_manage_supporting_material,
     user_can_read_supporting_material,
     validate_reference_url,
@@ -104,15 +105,19 @@ def has_permission(doc, ptype: str | None = None, user: str | None = None) -> bo
     user = user or frappe.session.user
     if not user or user == "Guest":
         return False
+    ptype = (ptype or "read").lower()
     if not doc:
         return True
 
-    material_name = (getattr(doc, "name", None) or "").strip()
     course = (getattr(doc, "course", None) or "").strip() or None
+    if ptype == "create":
+        return bool(course) and user_can_manage_course_material(user, course)
+
+    material_name = (getattr(doc, "name", None) or "").strip()
     if not material_name:
         return False
 
-    if ptype in {"read", "select", "report", "print", "email", "share", "export", None}:
+    if ptype in {"read", "select", "report", "print", "email", "share", "export"}:
         return user_can_read_supporting_material(user, material_name, course=course)
 
     return user_can_manage_supporting_material(user, material_name, course=course)

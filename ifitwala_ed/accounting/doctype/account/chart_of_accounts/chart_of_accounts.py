@@ -64,6 +64,9 @@ def create_charts(
                 if account_name not in get_chart_metadata_fields():
                     account_number = cstr(child.get("account_number")).strip()
                     account_name, account_name_in_db = add_suffix_if_duplicate(account_name, account_number, accounts)
+                    desired_account_name = cstr(
+                        child.get("account_name") if from_coa_importer else account_name
+                    ).strip()
 
                     is_group = identify_is_group(child)
                     report_type = (
@@ -73,7 +76,7 @@ def create_charts(
                     account = frappe.get_doc(
                         {
                             "doctype": "Account",
-                            "account_name": child.get("account_name") if from_coa_importer else account_name,
+                            "account_name": desired_account_name,
                             "organization": organization,
                             "parent_account": parent,
                             "is_group": is_group,
@@ -93,6 +96,16 @@ def create_charts(
                     account.flags.ignore_permissions = True
 
                     account.insert()
+
+                    if cstr(account.account_name).strip() != desired_account_name:
+                        frappe.db.set_value(
+                            "Account",
+                            account.name,
+                            "account_name",
+                            desired_account_name,
+                            update_modified=False,
+                        )
+                        account.account_name = desired_account_name
 
                     accounts.append(account_name_in_db)
 
@@ -160,6 +173,20 @@ def sync_account_types_from_chart(organization, chart=None, overwrite=False):
                 },
                 "name",
             )
+
+            if not account_docname:
+                qualified_account_label = cstr(account_label).strip()
+                if qualified_account_label:
+                    qualified_account_label = f"{qualified_account_label} - {cstr(frappe.get_cached_value('Organization', organization, 'abbr')).strip()}"
+                account_docname = frappe.db.get_value(
+                    "Account",
+                    {
+                        "organization": organization,
+                        "account_name": qualified_account_label,
+                        "parent_account": parent_account,
+                    },
+                    "name",
+                )
 
             if not account_docname:
                 continue

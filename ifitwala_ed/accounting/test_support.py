@@ -239,6 +239,8 @@ class AccountingTestMixin:
                 "student": student_name,
                 "academic_year": academic_year_name,
                 "enrollment_date": enrollment_date,
+                "enrollment_source": "Migration",
+                "enrollment_override_reason": "Accounting test setup",
             }
         )
         enrollment.insert()

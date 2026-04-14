@@ -84,8 +84,14 @@ def get_account_autoname(account_number, account_name, organization):
 
 
 def _get_account_title(account):
+    organization = cstr(account.get("organization")).strip()
     account_number = cstr(account.get("account_number")).strip()
-    account_name = cstr(account.get("account_name")).strip()
+    account_name = cstr(account.get("account_name") or account.get("name")).strip()
+    if organization:
+        organization_abbr = cstr(frappe.get_cached_value("Organization", organization, "abbr")).strip()
+        suffix = f" - {organization_abbr}" if organization_abbr else ""
+        if suffix and account_name.endswith(suffix):
+            account_name = account_name[: -len(suffix)].rstrip()
     if account_number:
         return f"{account_number} - {account_name}"
     return account_name
@@ -102,7 +108,7 @@ def get_children(doctype, parent=None, organization=None, is_root=False, **kwarg
         rows = frappe.get_all(
             "Account",
             filters={"organization": organization},
-            fields=["name", "account_name", "account_number", "parent_account", "is_group"],
+            fields=["name", "organization", "account_name", "account_number", "parent_account", "is_group"],
             order_by="lft asc",
             limit=5000,
         )
@@ -122,7 +128,7 @@ def get_children(doctype, parent=None, organization=None, is_root=False, **kwarg
     rows = frappe.get_all(
         "Account",
         filters={"organization": organization, "parent_account": parent},
-        fields=["name", "account_name", "account_number", "is_group"],
+        fields=["name", "organization", "account_name", "account_number", "is_group"],
         order_by="lft asc",
         limit=5000,
     )

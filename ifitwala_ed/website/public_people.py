@@ -66,12 +66,10 @@ def _resolve_full_bio(row: dict) -> str:
         return full_bio
 
     employee_name = (row.get("name") or "").strip()
-    get_cached_doc = getattr(frappe, "get_cached_doc", None)
-    if not employee_name or not callable(get_cached_doc):
+    if not employee_name or not frappe.db.has_column("Employee", "bio"):
         return ""
 
-    employee_doc = get_cached_doc("Employee", employee_name)
-    return str(getattr(employee_doc, "bio", "") or "").strip()
+    return str(frappe.db.get_value("Employee", employee_name, "bio") or "").strip()
 
 
 def _get_designation_map(designation_names: tuple[str, ...]) -> dict[str, dict]:
