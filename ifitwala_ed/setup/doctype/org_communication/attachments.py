@@ -11,6 +11,9 @@ ORG_COMMUNICATION_ATTACHMENT_DATA_CLASS = "administrative"
 ORG_COMMUNICATION_ATTACHMENT_PURPOSE = "administrative"
 ORG_COMMUNICATION_ATTACHMENT_RETENTION_POLICY = "fixed_7y"
 ORG_COMMUNICATION_ATTACHMENT_SLOT_PREFIX = "communication_attachment__"
+ORG_COMMUNICATION_ATTACHMENT_CLASS_CATEGORY = "Class Communication Attachment"
+ORG_COMMUNICATION_ATTACHMENT_SCHOOL_CATEGORY = "School Communication Attachment"
+ORG_COMMUNICATION_ATTACHMENT_ORGANIZATION_CATEGORY = "Organization Communication Attachment"
 
 
 def _field_value(source, fieldname: str):
@@ -35,6 +38,11 @@ def parse_org_communication_attachment_row_key(slot: str | None) -> str | None:
     return row_key or None
 
 
+def _clean_link_value(value: str | None) -> str | None:
+    resolved = str(value or "").strip()
+    return resolved or None
+
+
 def _get_doc(name: str, *, permission_type: str | None = None):
     if not frappe.db.exists("Org Communication", name):
         frappe.throw(_("Org Communication does not exist: {0}").format(name))
@@ -53,57 +61,112 @@ def assert_org_communication_attachment_upload_access(
     return _get_doc(org_communication, permission_type=permission_type)
 
 
-def _resolve_student_group_for_attachments(doc) -> str:
-    activity_student_group = str(_field_value(doc, "activity_student_group") or "").strip()
+def _resolve_student_group_for_attachments(doc) -> str | None:
+    activity_student_group = _clean_link_value(_field_value(doc, "activity_student_group"))
     if activity_student_group:
         return activity_student_group
 
     for row in _field_value(doc, "audiences") or []:
         if str(_field_value(row, "target_mode") or "").strip() != "Student Group":
             continue
-        student_group = str(_field_value(row, "student_group") or "").strip()
+        student_group = _clean_link_value(_field_value(row, "student_group"))
         if student_group:
             return student_group
 
-    frappe.throw(_("Org Communication attachments require a Student Group audience context."))
+    return None
 
 
-def resolve_org_communication_attachment_context(doc) -> dict[str, str]:
-    student_group = _resolve_student_group_for_attachments(doc)
-    student_group_row = frappe.db.get_value(
-        "Student Group",
-        student_group,
-        ["course", "school"],
+def _get_unique_audience_link_value(doc, *, target_mode: str, fieldname: str) -> str | None:
+    values: list[str] = []
+    for row in _field_value(doc, "audiences") or []:
+        if str(_field_value(row, "target_mode") or "").strip() != target_mode:
+            continue
+        value = _clean_link_value(_field_value(row, fieldname))
+        if value and value not in values:
+            values.append(value)
+    if len(values) == 1:
+        return values[0]
+    return None
+
+
+def _resolve_team_attachment_context(doc) -> dict[str, str | None]:
+    team = _get_unique_audience_link_value(doc, target_mode="Team", fieldname="team")
+    if not team:
+        return {"team": None, "school": None, "organization": None}
+
+    team_row = frappe.db.get_value(
+        "Team",
+        team,
+        ["school", "organization"],
         as_dict=True,
     )
-    if not student_group_row:
-        course = frappe.db.get_value("Student Group", student_group, "course")
-        school = frappe.db.get_value("Student Group", student_group, "school")
-        if course or school:
-            student_group_row = {"course": course, "school": school}
-    if not student_group_row:
-        frappe.throw(_("Student Group does not exist: {0}").format(student_group))
+    if not team_row:
+        frappe.throw(_("Selected Team does not exist: {0}").format(team))
 
-    course = str(student_group_row.get("course") or "").strip()
-    if not course:
-        frappe.throw(_("Student Group is missing its authoritative Course context."))
+    return {
+        "team": team,
+        "school": _clean_link_value(team_row.get("school")),
+        "organization": _clean_link_value(team_row.get("organization")),
+    }
 
-    school_from_group = str(student_group_row.get("school") or "").strip()
-    school = school_from_group or str(_field_value(doc, "school") or "").strip()
-    if not school:
-        frappe.throw(_("Org Communication attachments require an issuing school."))
 
-    organization = str(_field_value(doc, "organization") or "").strip()
-    if not organization:
-        organization = str(frappe.db.get_value("School", school, "organization") or "").strip()
+def resolve_org_communication_attachment_context(doc) -> dict[str, str | None]:
+    student_group = _resolve_student_group_for_attachments(doc)
+    if student_group:
+        student_group_row = frappe.db.get_value(
+            "Student Group",
+            student_group,
+            ["course", "school"],
+            as_dict=True,
+        )
+        if not student_group_row:
+            course = frappe.db.get_value("Student Group", student_group, "course")
+            school = frappe.db.get_value("Student Group", student_group, "school")
+            if course or school:
+                student_group_row = {"course": course, "school": school}
+        if not student_group_row:
+            frappe.throw(_("Student Group does not exist: {0}").format(student_group))
+
+        course = _clean_link_value(student_group_row.get("course"))
+        if not course:
+            frappe.throw(_("Student Group is missing its authoritative Course context."))
+
+        school = _clean_link_value(student_group_row.get("school")) or _clean_link_value(_field_value(doc, "school"))
+        if not school:
+            frappe.throw(_("Org Communication attachments require an issuing school."))
+
+        organization = _clean_link_value(_field_value(doc, "organization"))
+        if not organization:
+            organization = _clean_link_value(frappe.db.get_value("School", school, "organization"))
+        if not organization:
+            frappe.throw(_("Org Communication attachments require an organization."))
+
+        return {
+            "context_kind": "student_group",
+            "organization": organization,
+            "school": school,
+            "course": course,
+            "student_group": student_group,
+        }
+
+    team_context = _resolve_team_attachment_context(doc)
+    school = (
+        _clean_link_value(_field_value(doc, "school"))
+        or _get_unique_audience_link_value(doc, target_mode="School Scope", fieldname="school")
+        or team_context.get("school")
+    )
+    organization = _clean_link_value(_field_value(doc, "organization")) or team_context.get("organization")
+    if not organization and school:
+        organization = _clean_link_value(frappe.db.get_value("School", school, "organization"))
     if not organization:
         frappe.throw(_("Org Communication attachments require an organization."))
 
     return {
+        "context_kind": "school" if school else "organization",
         "organization": organization,
         "school": school,
-        "course": course,
-        "student_group": student_group,
+        "course": None,
+        "student_group": None,
     }
 
 
@@ -196,10 +259,26 @@ def get_org_communication_context_override(owner_name: str | None, slot: str | N
 
     doc = _get_doc(owner_name)
     context = resolve_org_communication_attachment_context(doc)
+    if context["context_kind"] == "student_group":
+        return {
+            "root_folder": "Home/Courses",
+            "subfolder": (f"{context['course']}/Communications/{context['student_group']}/{doc.name}/Attachments"),
+            "file_category": ORG_COMMUNICATION_ATTACHMENT_CLASS_CATEGORY,
+            "logical_key": str(slot or "").strip() or f"org_communication_attachment_{doc.name}",
+        }
+
+    if context["school"]:
+        return {
+            "root_folder": "Home/Organizations",
+            "subfolder": f"{context['organization']}/Schools/{context['school']}/Communications/{doc.name}/Attachments",
+            "file_category": ORG_COMMUNICATION_ATTACHMENT_SCHOOL_CATEGORY,
+            "logical_key": str(slot or "").strip() or f"org_communication_attachment_{doc.name}",
+        }
+
     return {
-        "root_folder": "Home/Courses",
-        "subfolder": (f"{context['course']}/Communications/{context['student_group']}/{doc.name}/Attachments"),
-        "file_category": "Class Communication Attachment",
+        "root_folder": "Home/Organizations",
+        "subfolder": f"{context['organization']}/Communications/{doc.name}/Attachments",
+        "file_category": ORG_COMMUNICATION_ATTACHMENT_ORGANIZATION_CATEGORY,
         "logical_key": str(slot or "").strip() or f"org_communication_attachment_{doc.name}",
     }
 

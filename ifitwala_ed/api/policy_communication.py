@@ -22,6 +22,7 @@ from ifitwala_ed.governance.policy_utils import (
     get_policy_applies_to_tokens_for_policy,
 )
 from ifitwala_ed.utilities.employee_utils import get_descendant_organizations
+from ifitwala_ed.utilities.html_sanitizer import sanitize_html
 from ifitwala_ed.utilities.school_tree import get_descendant_schools
 
 SCOPE_ORGANIZATION_STAFF = "organization_staff"
@@ -111,6 +112,7 @@ def _policy_row(policy_version: str) -> dict:
     if not row:
         frappe.throw(_("Policy Version was not found."))
     row_out = row[0]
+    row_out["policy_text"] = sanitize_html(row_out.get("policy_text") or "", allow_headings_from="h2")
     row_out["applies_to_tokens"] = list(get_policy_applies_to_tokens_for_policy(row_out.get("institutional_policy")))
     return row_out
 
@@ -546,7 +548,7 @@ def get_policy_inform_payload(
         "change_summary": (row.get("change_summary") or "").strip() or None,
         "change_stats": _parse_change_stats(row.get("change_stats")),
         "diff_html": row.get("diff_html") or "",
-        "policy_text_html": row.get("policy_text") or "",
+        "policy_text_html": sanitize_html(row.get("policy_text") or "", allow_headings_from="h2"),
         "history": history_rows,
         "signature_required": bool(signature_state.get("signature_required")),
         "acknowledgement_status": (signature_state.get("acknowledgement_status") or "").strip() or "informational",

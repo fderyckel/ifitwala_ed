@@ -879,6 +879,26 @@ class TestSubmitApplication(FrappeTestCase):
         self.assertEqual(clauses[0].get("clause_text"), "I confirm the information is accurate.")
         self.assertTrue(bool(clauses[0].get("is_required")))
 
+    def test_get_applicant_policies_sanitizes_policy_html(self):
+        if not _policy_schema_available():
+            self.skipTest("Institutional Policy applies_to storage is required for applicant policy tests.")
+
+        version = self._create_required_applicant_policy_version(
+            organization=self.organization,
+            school=self.school,
+            policy_text='<h1>Applicant Policy</h1><p>Allowed</p><script>alert(1)</script><img src="x" onerror="alert(2)">',
+        )
+
+        frappe.set_user(self.applicant_user)
+        payload = get_applicant_policies(student_applicant=self.applicant.name)
+        target = next((row for row in (payload.get("policies") or []) if row.get("policy_version") == version), None)
+
+        self.assertTrue(bool(target))
+        self.assertIn("<h2>Applicant Policy</h2>", target.get("content_html") or "")
+        self.assertIn("<p>Allowed</p>", target.get("content_html") or "")
+        self.assertNotIn("<script", target.get("content_html") or "")
+        self.assertNotIn("onerror", target.get("content_html") or "")
+
     def test_acknowledge_policy_requires_attestation_confirmation(self):
         if not _policy_schema_available():
             self.skipTest("Institutional Policy applies_to storage is required for applicant policy tests.")
@@ -1675,6 +1695,7 @@ class TestSubmitApplication(FrappeTestCase):
         school: str,
         admissions_acknowledgement_mode: str | None = None,
         acknowledgement_clauses: list[dict] | None = None,
+        policy_text: str | None = None,
     ) -> str:
         ensure_policy_audience_records()
         policy_payload = {
@@ -1700,7 +1721,7 @@ class TestSubmitApplication(FrappeTestCase):
                 "doctype": "Policy Version",
                 "institutional_policy": policy.name,
                 "version_label": "v1",
-                "policy_text": "<p>Applicant consent text.</p>",
+                "policy_text": policy_text or "<p>Applicant consent text.</p>",
                 "acknowledgement_clauses": acknowledgement_clauses or [],
                 "is_active": 1,
             }

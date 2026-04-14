@@ -111,19 +111,20 @@ frappe.ui.form.on('Org Communication', {
 	},
 
 	setup_governed_attachment_upload(frm) {
-		const openUploader = () => {
-			if (frm.is_new()) {
-				frappe.msgprint(__('Please save the Org Communication before uploading attachments.'));
+		const openUploader = async () => {
+			try {
+				if (frm.is_new() || frm.is_dirty()) {
+					await frm.save();
+				}
+			} catch (error) {
 				return;
 			}
 
-			if (!resolve_attachment_student_group(frm)) {
+			if (!String(frm.doc.organization || '').trim()) {
 				frappe.msgprint({
-					title: __('Missing Student Group Context'),
+					title: __('Missing Organization'),
 					indicator: 'orange',
-					message: __(
-						'Add an Activity Student Group or at least one Student Group audience row before uploading governed attachments.'
-					)
+					message: __('Set Organization on the communication before uploading governed attachments.')
 				});
 				return;
 			}
@@ -146,7 +147,8 @@ frappe.ui.form.on('Org Communication', {
 		};
 
 		const tableField = frm.get_field('attachments');
-		const hasStudentGroupContext = Boolean(resolve_attachment_student_group(frm));
+		const attachmentContextMode = resolve_attachment_context_mode(frm);
+		const hasGovernedContext = attachmentContextMode !== 'missing-organization';
 
 		if (tableField?.grid) {
 			tableField.grid.update_docfield_property('file', 'read_only', 1);
@@ -167,11 +169,13 @@ frappe.ui.form.on('Org Communication', {
 		frm.set_df_property(
 			'attachments',
 			'description',
-			hasStudentGroupContext
-				? __('Use Upload Attachment for governed files. External URLs can still be added manually.')
-				: __(
-					'Governed file upload becomes available after you set an Activity Student Group or add a Student Group audience row. External URLs can still be added manually.'
-				)
+			!hasGovernedContext
+				? __('Set Organization and save the communication before uploading governed files. External URLs can still be added manually.')
+				: attachmentContextMode === 'class'
+				? __('Use Upload Attachment for governed files. Class communications route attachments through the class context.')
+				: attachmentContextMode === 'school'
+				? __('Use Upload Attachment for governed files. School and team communications route attachments through the communication school context.')
+				: __('Use Upload Attachment for governed files. Organization-wide communications route attachments through the organization context.')
 		);
 
 		frm.remove_custom_button(__('Upload Attachment'), __('Actions'));
@@ -213,6 +217,38 @@ function resolve_attachment_student_group(frm) {
 		(row.target_mode || '').trim() === 'Student Group' && (row.student_group || '').trim()
 	);
 	return (matchingRow?.student_group || '').trim();
+}
+
+function resolve_attachment_context_mode(frm) {
+	if (!String(frm.doc.organization || '').trim()) {
+		return 'missing-organization';
+	}
+
+	if (resolve_attachment_student_group(frm)) {
+		return 'class';
+	}
+
+	if (String(frm.doc.school || '').trim()) {
+		return 'school';
+	}
+
+	const audienceRows = frm.doc.audiences || [];
+	const schoolRows = audienceRows.filter(row =>
+		(row.target_mode || '').trim() === 'School Scope' && String(row.school || '').trim()
+	);
+	const uniqueSchools = new Set(schoolRows.map(row => String(row.school || '').trim()).filter(Boolean));
+	if (uniqueSchools.size === 1) {
+		return 'school';
+	}
+
+	const hasTeamContext = audienceRows.some(row =>
+		(row.target_mode || '').trim() === 'Team' && String(row.team || '').trim()
+	);
+	if (hasTeamContext) {
+		return 'school';
+	}
+
+	return 'organization';
 }
 
 function should_show_activity_context(frm) {

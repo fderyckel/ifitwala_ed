@@ -58,6 +58,7 @@ from ifitwala_ed.governance.policy_utils import (
     ADMISSIONS_POLICY_MODE_FAMILY,
     get_applicant_policy_status,
 )
+from ifitwala_ed.utilities.html_sanitizer import sanitize_html
 
 INVALID_SESSION_USERS = {"guest", "none", "null", "undefined"}
 
@@ -2723,7 +2724,7 @@ def get_applicant_policies(student_applicant: str | None = None):
             {
                 "name": row_policy.get("label"),
                 "policy_version": policy_version,
-                "content_html": policy_text_by_version.get(policy_version, ""),
+                "content_html": sanitize_html(policy_text_by_version.get(policy_version, ""), allow_headings_from="h2"),
                 "is_required": bool(row_policy.get("is_required")),
                 "acknowledgement_mode": row_policy.get("admissions_acknowledgement_mode"),
                 "is_acknowledged": bool(row_policy.get("is_acknowledged")),

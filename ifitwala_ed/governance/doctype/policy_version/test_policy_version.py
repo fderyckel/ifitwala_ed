@@ -376,6 +376,19 @@ class TestPolicyVersionAmendments(FrappeTestCase):
         self.assertEqual(version.policy_text, "<p>Draft text two.</p>")
         self.assertEqual(int(version.text_locked or 0), 0)
 
+    def test_policy_text_is_sanitized_before_save(self):
+        version = self._make_policy_version(
+            policy=self.policy.name,
+            version_label="v1",
+            policy_text='<h1>Policy</h1><p>Allowed</p><script>alert(1)</script><img src="x" onerror="alert(2)">',
+            is_active=0,
+        )
+
+        self.assertIn("<h2>Policy</h2>", version.policy_text)
+        self.assertIn("<p>Allowed</p>", version.policy_text)
+        self.assertNotIn("<script", version.policy_text)
+        self.assertNotIn("onerror", version.policy_text)
+
     def test_policy_text_locks_after_activation(self):
         version = self._make_policy_version(
             policy=self.policy.name,

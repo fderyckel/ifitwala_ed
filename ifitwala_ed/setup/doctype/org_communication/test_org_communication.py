@@ -231,6 +231,87 @@ class TestOrgCommunication(FrappeTestCase):
 
         self.assertEqual(context["school"], "SCH-IIS")
         self.assertEqual(context["course"], "COURSE-1")
+        self.assertEqual(context["context_kind"], "student_group")
+
+    def test_attachment_context_falls_back_to_single_school_scope_audience(self):
+        doc = frappe._dict(
+            school=None,
+            organization=None,
+            activity_student_group=None,
+            audiences=[
+                frappe._dict(
+                    target_mode="School Scope",
+                    school="SCH-ROOT",
+                )
+            ],
+        )
+
+        def fake_get_value(doctype, name_or_filters, fieldname=None, as_dict=False):
+            if doctype == "School" and name_or_filters == "SCH-ROOT" and fieldname == "organization":
+                return "ORG-ROOT"
+            return None
+
+        with patch(
+            "ifitwala_ed.setup.doctype.org_communication.attachments.frappe.db.get_value",
+            side_effect=fake_get_value,
+        ):
+            context = org_communication_attachments.resolve_org_communication_attachment_context(doc)
+
+        self.assertEqual(context["context_kind"], "school")
+        self.assertEqual(context["school"], "SCH-ROOT")
+        self.assertEqual(context["organization"], "ORG-ROOT")
+        self.assertIsNone(context["course"])
+        self.assertIsNone(context["student_group"])
+
+    def test_attachment_context_allows_organization_scope_without_school(self):
+        doc = frappe._dict(
+            school=None,
+            organization="ORG-ROOT",
+            activity_student_group=None,
+            audiences=[frappe._dict(target_mode="Organization", to_staff=1)],
+        )
+
+        context = org_communication_attachments.resolve_org_communication_attachment_context(doc)
+
+        self.assertEqual(context["context_kind"], "organization")
+        self.assertEqual(context["organization"], "ORG-ROOT")
+        self.assertIsNone(context["school"])
+        self.assertIsNone(context["course"])
+        self.assertIsNone(context["student_group"])
+
+    def test_attachment_context_uses_team_school_when_no_explicit_school(self):
+        doc = frappe._dict(
+            school=None,
+            organization=None,
+            activity_student_group=None,
+            audiences=[
+                frappe._dict(
+                    target_mode="Team",
+                    team="TEAM-1",
+                    to_staff=1,
+                )
+            ],
+        )
+
+        def fake_get_value(doctype, name_or_filters, fieldname=None, as_dict=False):
+            if (
+                doctype == "Team"
+                and name_or_filters == "TEAM-1"
+                and list(fieldname or []) == ["school", "organization"]
+                and as_dict
+            ):
+                return frappe._dict(school="SCH-TEAM", organization="ORG-TEAM")
+            return None
+
+        with patch(
+            "ifitwala_ed.setup.doctype.org_communication.attachments.frappe.db.get_value",
+            side_effect=fake_get_value,
+        ):
+            context = org_communication_attachments.resolve_org_communication_attachment_context(doc)
+
+        self.assertEqual(context["context_kind"], "school")
+        self.assertEqual(context["school"], "SCH-TEAM")
+        self.assertEqual(context["organization"], "ORG-TEAM")
 
     def test_validate_school_scope_allows_blank_school(self):
         doc = frappe._dict(school=None)

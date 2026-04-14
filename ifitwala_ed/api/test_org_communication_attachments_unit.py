@@ -78,6 +78,54 @@ class TestOrgCommunicationAttachmentsUnit(TestCase):
         self.assertEqual(authoritative["student_group"], "SG-1")
         self.assertEqual(authoritative["course"], "COURSE-1")
 
+    def test_context_override_uses_school_scope_path_for_single_school_audience(self):
+        with stubbed_frappe() as frappe:
+            org_doc = _FakeOrgCommunicationDoc(
+                name="COMM-0002",
+                organization="ORG-1",
+                school="",
+                audiences=[SimpleNamespace(target_mode="School Scope", school="SCH-2")],
+            )
+            frappe.db.exists = lambda doctype, name=None: doctype == "Org Communication" and name == "COMM-0002"
+
+            def fake_get_value(doctype, name, fieldname=None, as_dict=False):
+                if doctype == "School" and name == "SCH-2" and fieldname == "organization":
+                    return "ORG-1"
+                return None
+
+            frappe.db.get_value = fake_get_value
+            frappe.get_doc = lambda doctype, name=None: org_doc
+
+            attachments = import_fresh("ifitwala_ed.setup.doctype.org_communication.attachments")
+            override = attachments.get_org_communication_context_override(
+                "COMM-0002", "communication_attachment__row-1"
+            )
+
+        self.assertEqual(override["root_folder"], "Home/Organizations")
+        self.assertEqual(override["subfolder"], "ORG-1/Schools/SCH-2/Communications/COMM-0002/Attachments")
+        self.assertEqual(override["file_category"], "School Communication Attachment")
+
+    def test_context_override_uses_organization_scope_path_without_school_context(self):
+        with stubbed_frappe() as frappe:
+            org_doc = _FakeOrgCommunicationDoc(
+                name="COMM-0003",
+                organization="ORG-ROOT",
+                school="",
+                audiences=[SimpleNamespace(target_mode="Organization")],
+            )
+            frappe.db.exists = lambda doctype, name=None: doctype == "Org Communication" and name == "COMM-0003"
+            frappe.db.get_value = lambda *args, **kwargs: None
+            frappe.get_doc = lambda doctype, name=None: org_doc
+
+            attachments = import_fresh("ifitwala_ed.setup.doctype.org_communication.attachments")
+            override = attachments.get_org_communication_context_override(
+                "COMM-0003", "communication_attachment__row-1"
+            )
+
+        self.assertEqual(override["root_folder"], "Home/Organizations")
+        self.assertEqual(override["subfolder"], "ORG-ROOT/Communications/COMM-0003/Attachments")
+        self.assertEqual(override["file_category"], "Organization Communication Attachment")
+
     def test_upload_endpoint_unpacks_drive_tuple_and_uses_session_row_name(self):
         file_access = ModuleType("ifitwala_ed.api.file_access")
         file_access.build_org_communication_attachment_open_url = lambda *, org_communication, row_name: (

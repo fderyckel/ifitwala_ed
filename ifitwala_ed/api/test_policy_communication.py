@@ -232,7 +232,7 @@ class TestPolicyCommunication(FrappeTestCase):
             "change_summary": "Updated hem length.",
             "change_stats": {"added": 1, "removed": 0, "modified": 2},
             "diff_html": "<p>diff</p>",
-            "policy_text": "<p>policy</p>",
+            "policy_text": '<h1>policy</h1><p>Allowed</p><script>alert(1)</script><img src="x" onerror="alert(2)">',
         }
 
         with (
@@ -277,6 +277,10 @@ class TestPolicyCommunication(FrappeTestCase):
 
         self.assertEqual(result["policy_version"], "PV-003")
         self.assertEqual(result["policy_school"], "SCH-ROOT")
+        self.assertIn("<h2>policy</h2>", result["policy_text_html"])
+        self.assertIn("<p>Allowed</p>", result["policy_text_html"])
+        self.assertNotIn("<script", result["policy_text_html"])
+        self.assertNotIn("onerror", result["policy_text_html"])
 
     def test_get_policy_inform_payload_rejects_unrelated_org_communication(self):
         policy_row = {

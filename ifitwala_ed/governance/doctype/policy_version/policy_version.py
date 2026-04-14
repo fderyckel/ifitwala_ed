@@ -19,6 +19,7 @@ from ifitwala_ed.governance.policy_scope_utils import (
     is_policy_within_user_scope,
 )
 from ifitwala_ed.governance.policy_utils import ensure_policy_admin, is_policy_admin, is_system_manager
+from ifitwala_ed.utilities.html_sanitizer import sanitize_html
 
 PRIVILEGED_POLICY_WRITE_ROLES = frozenset({"System Manager", "Administrator"})
 
@@ -338,6 +339,7 @@ def approved_by_user_query(doctype, txt, searchfield, start, page_len, filters):
 class PolicyVersion(Document):
     def before_insert(self):
         ensure_policy_admin()
+        self._sanitize_policy_text()
         self._validate_parent_policy()
         self._validate_unique_version_label()
         self._validate_policy_text_required()
@@ -349,6 +351,7 @@ class PolicyVersion(Document):
 
     def before_save(self):
         ensure_policy_admin()
+        self._sanitize_policy_text()
         if self.is_new():
             self._validate_parent_policy()
         before = self.get_doc_before_save() if not self.is_new() else None
@@ -386,6 +389,9 @@ class PolicyVersion(Document):
     def _validate_policy_text_required(self):
         if not (self.policy_text or "").strip():
             frappe.throw(_("Policy Text is required."))
+
+    def _sanitize_policy_text(self):
+        self.policy_text = sanitize_html(self.policy_text or "", allow_headings_from="h2")
 
     def _validate_unique_version_label(self):
         if not self.institutional_policy or not self.version_label:

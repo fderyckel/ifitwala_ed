@@ -19,6 +19,7 @@ from ifitwala_ed.governance.policy_utils import (
     policy_applies_to_filter_sql,
 )
 from ifitwala_ed.utilities.employee_utils import get_descendant_organizations, get_user_base_org
+from ifitwala_ed.utilities.html_sanitizer import sanitize_html
 from ifitwala_ed.utilities.school_tree import get_descendant_schools
 
 POLICY_SIGNATURE_MANAGER_ROLES = frozenset(
@@ -507,6 +508,7 @@ def get_policy_version_context(
         frappe.throw(_("Policy Version not found."), frappe.DoesNotExistError)
 
     row = rows[0]
+    row["policy_text"] = sanitize_html(row.get("policy_text") or "", allow_headings_from="h2")
     row["applies_to_tokens"] = list(get_policy_applies_to_tokens_for_policy(row.get("institutional_policy")))
     if require_active and (not row.get("policy_version_is_active") or not row.get("policy_is_active")):
         frappe.throw(_("Policy Version must be active under an active Institutional Policy."))
