@@ -30,6 +30,7 @@ def clear_e2e_records() -> dict[str, int]:
         "student_guardians": 0,
         "guardian_students": 0,
         "guardians": 0,
+        "contacts": 0,
         "students": 0,
         "employees": 0,
         "users": 0,
@@ -86,6 +87,27 @@ def clear_e2e_records() -> dict[str, int]:
         if frappe.db.exists("Guardian", guardian_name):
             frappe.delete_doc("Guardian", guardian_name, force=1, ignore_permissions=True)
             counts["guardians"] += 1
+
+    contact_names = set(
+        frappe.get_all(
+            "Contact",
+            filters={"user": ["in", user_emails]},
+            pluck="name",
+        )
+        or []
+    )
+    contact_names.update(
+        frappe.get_all(
+            "Contact Email",
+            filters={"email_id": ["in", user_emails]},
+            pluck="parent",
+        )
+        or []
+    )
+    for contact_name in sorted(name for name in contact_names if name):
+        if frappe.db.exists("Contact", contact_name):
+            frappe.delete_doc("Contact", contact_name, force=1, ignore_permissions=True)
+            counts["contacts"] += 1
 
     for student_name in student_names:
         if frappe.db.exists("Student", student_name):

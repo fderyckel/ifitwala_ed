@@ -414,6 +414,24 @@ Why:
 
 Never style `input`, `select`, `textarea` globally.
 
+### 6.6.1 Authoring focus grammar
+
+Within a scoped form family, plain text inputs, textareas, selects, and editable rich-text shells should share one focus treatment instead of mixing browser-default black rings with custom controls.
+
+Preferred authoring focus pattern:
+
+* jacaranda border tint
+* soft jacaranda outer ring
+* restrained shadow lift
+* same interaction timing across plain inputs and rich-text wrappers
+
+Rules:
+
+* apply this at the surface or component-family scope, not globally
+* if a routed page introduces a richer focus treatment for authoring fields, use it consistently across the page’s text-entry controls
+* avoid one-off focus recipes where rich-text fields glow but neighboring text inputs do not
+* default browser black outlines should not remain on some fields while adjacent authored controls use branded focus states
+
 ---
 
 ### 6.7 Surface shell families are locked

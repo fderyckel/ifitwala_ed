@@ -605,16 +605,41 @@
 								class="course-plan-unit-panel scroll-mt-40 space-y-4"
 							>
 								<div class="course-plan-unit-panel__header">
-									<div>
-										<p class="type-overline text-ink/60">Unit Setup</p>
-										<h3 class="mt-1 type-h3 text-ink">Core metadata and publishing state</h3>
+									<div class="space-y-3">
+										<div>
+											<p class="type-overline text-ink/60">Unit Setup</p>
+											<h3 class="mt-1 type-h3 text-ink">Core metadata and publishing state</h3>
+										</div>
+										<p class="max-w-xl type-caption text-ink/65">
+											Keep the shared unit identity, order, and readiness clear before staff work
+											deeper into the narrative and standards layers.
+										</p>
 									</div>
-									<p class="max-w-xl type-caption text-ink/65">
-										Keep the shared unit identity, order, and readiness clear before staff work
-										deeper into the narrative and standards layers.
-									</p>
+									<button
+										type="button"
+										class="course-plan-unit-panel__toggle"
+										data-testid="unit-panel-toggle-setup"
+										:aria-controls="`${UNIT_PANEL_IDS.setup}-content`"
+										:aria-expanded="!isUnitPanelCollapsed(UNIT_PANEL_IDS.setup)"
+										@click="toggleUnitPanel(UNIT_PANEL_IDS.setup)"
+									>
+										<span class="type-caption text-ink/70">
+											{{
+												isUnitPanelCollapsed(UNIT_PANEL_IDS.setup)
+													? 'Show section'
+													: 'Hide section'
+											}}
+										</span>
+										<span class="course-plan-unit-panel__toggle-icon">
+											{{ isUnitPanelCollapsed(UNIT_PANEL_IDS.setup) ? '+' : '-' }}
+										</span>
+									</button>
 								</div>
-								<div class="grid gap-4 lg:grid-cols-2">
+								<div
+									v-if="!isUnitPanelCollapsed(UNIT_PANEL_IDS.setup)"
+									:id="`${UNIT_PANEL_IDS.setup}-content`"
+									class="grid gap-4 lg:grid-cols-2"
+								>
 									<label class="course-plan-unit-subcard block space-y-2">
 										<span class="type-caption text-ink/70">Unit Title</span>
 										<input
@@ -718,17 +743,42 @@
 								class="course-plan-unit-panel scroll-mt-40 space-y-4"
 							>
 								<div class="course-plan-unit-panel__header">
-									<div>
-										<p class="type-overline text-ink/60">Core Narrative</p>
-										<h3 class="mt-1 type-h3 text-ink">Purpose, understanding, and watch-fors</h3>
+									<div class="space-y-3">
+										<div>
+											<p class="type-overline text-ink/60">Core Narrative</p>
+											<h3 class="mt-1 type-h3 text-ink">Purpose, understanding, and watch-fors</h3>
+										</div>
+										<p class="max-w-xl type-caption text-ink/65">
+											Keep the unit rationale, enduring understanding, and common watch-fors on
+											separate rows so longer rich text stays readable.
+										</p>
 									</div>
-									<p class="max-w-xl type-caption text-ink/65">
-										Separate the backbone story of the unit from the concrete content and skills so
-										staff can orient quickly.
-									</p>
+									<button
+										type="button"
+										class="course-plan-unit-panel__toggle"
+										data-testid="unit-panel-toggle-narrative"
+										:aria-controls="`${UNIT_PANEL_IDS.narrative}-content`"
+										:aria-expanded="!isUnitPanelCollapsed(UNIT_PANEL_IDS.narrative)"
+										@click="toggleUnitPanel(UNIT_PANEL_IDS.narrative)"
+									>
+										<span class="type-caption text-ink/70">
+											{{
+												isUnitPanelCollapsed(UNIT_PANEL_IDS.narrative)
+													? 'Show section'
+													: 'Hide section'
+											}}
+										</span>
+										<span class="course-plan-unit-panel__toggle-icon">
+											{{ isUnitPanelCollapsed(UNIT_PANEL_IDS.narrative) ? '+' : '-' }}
+										</span>
+									</button>
 								</div>
-								<div class="grid gap-4 xl:grid-cols-2">
-									<label class="course-plan-unit-subcard block space-y-2 xl:col-span-2">
+								<div
+									v-if="!isUnitPanelCollapsed(UNIT_PANEL_IDS.narrative)"
+									:id="`${UNIT_PANEL_IDS.narrative}-content`"
+									class="space-y-4"
+								>
+									<label class="course-plan-unit-subcard block space-y-2">
 										<span class="type-caption text-ink/70">Overview & Rationale</span>
 										<PlanningRichTextField
 											v-model="unitForm.overview"
@@ -760,18 +810,43 @@
 								class="course-plan-unit-panel scroll-mt-40 space-y-4"
 							>
 								<div class="course-plan-unit-panel__header">
-									<div>
-										<p class="type-overline text-ink/60">Learning Focus</p>
-										<h3 class="mt-1 type-h3 text-ink">
-											Content, skills, and concepts in one view
-										</h3>
+									<div class="space-y-3">
+										<div>
+											<p class="type-overline text-ink/60">Learning Focus</p>
+											<h3 class="mt-1 type-h3 text-ink">
+												Content, skills, and concepts in one view
+											</h3>
+										</div>
+										<p class="max-w-xl type-caption text-ink/65">
+											Give each learning pillar its own row so longer entries can breathe without
+											blurring together.
+										</p>
 									</div>
-									<p class="max-w-xl type-caption text-ink/65">
-										Keep the three pillars of the unit side by side so the distinctions are easy to
-										scan before editing.
-									</p>
+									<button
+										type="button"
+										class="course-plan-unit-panel__toggle"
+										data-testid="unit-panel-toggle-learning-focus"
+										:aria-controls="`${UNIT_PANEL_IDS.learningFocus}-content`"
+										:aria-expanded="!isUnitPanelCollapsed(UNIT_PANEL_IDS.learningFocus)"
+										@click="toggleUnitPanel(UNIT_PANEL_IDS.learningFocus)"
+									>
+										<span class="type-caption text-ink/70">
+											{{
+												isUnitPanelCollapsed(UNIT_PANEL_IDS.learningFocus)
+													? 'Show section'
+													: 'Hide section'
+											}}
+										</span>
+										<span class="course-plan-unit-panel__toggle-icon">
+											{{ isUnitPanelCollapsed(UNIT_PANEL_IDS.learningFocus) ? '+' : '-' }}
+										</span>
+									</button>
 								</div>
-								<div class="grid gap-4 xl:grid-cols-3">
+								<div
+									v-if="!isUnitPanelCollapsed(UNIT_PANEL_IDS.learningFocus)"
+									:id="`${UNIT_PANEL_IDS.learningFocus}-content`"
+									class="space-y-4"
+								>
 									<label class="course-plan-unit-subcard block space-y-2">
 										<span class="type-caption text-ink/70">Content</span>
 										<PlanningRichTextField
@@ -803,16 +878,41 @@
 						<template v-else>
 							<section class="course-plan-unit-panel space-y-4">
 								<div class="course-plan-unit-panel__header">
-									<div>
-										<p class="type-overline text-ink/60">Core Narrative</p>
-										<h3 class="mt-1 type-h3 text-ink">Shared unit backbone</h3>
+									<div class="space-y-3">
+										<div>
+											<p class="type-overline text-ink/60">Core Narrative</p>
+											<h3 class="mt-1 type-h3 text-ink">Shared unit backbone</h3>
+										</div>
+										<p class="max-w-xl type-caption text-ink/65">
+											The selected unit keeps overview, understanding, and watch-fors on separate
+											rows so the narrative stays readable before the learning-focus fields below.
+										</p>
 									</div>
-									<p class="max-w-xl type-caption text-ink/65">
-										The selected unit is grouped here so overview, understanding, and watch-fors do
-										not blur into the learning-focus fields below.
-									</p>
+									<button
+										type="button"
+										class="course-plan-unit-panel__toggle"
+										data-testid="unit-panel-toggle-narrative"
+										:aria-controls="`${UNIT_PANEL_IDS.narrative}-content`"
+										:aria-expanded="!isUnitPanelCollapsed(UNIT_PANEL_IDS.narrative)"
+										@click="toggleUnitPanel(UNIT_PANEL_IDS.narrative)"
+									>
+										<span class="type-caption text-ink/70">
+											{{
+												isUnitPanelCollapsed(UNIT_PANEL_IDS.narrative)
+													? 'Show section'
+													: 'Hide section'
+											}}
+										</span>
+										<span class="course-plan-unit-panel__toggle-icon">
+											{{ isUnitPanelCollapsed(UNIT_PANEL_IDS.narrative) ? '+' : '-' }}
+										</span>
+									</button>
 								</div>
-								<div class="grid gap-4 xl:grid-cols-2">
+								<div
+									v-if="!isUnitPanelCollapsed(UNIT_PANEL_IDS.narrative)"
+									:id="`${UNIT_PANEL_IDS.narrative}-content`"
+									class="space-y-4"
+								>
 									<div
 										v-if="hasRichTextContent(selectedUnit?.overview)"
 										class="course-plan-unit-subcard space-y-2"
@@ -837,7 +937,7 @@
 									</div>
 									<div
 										v-if="hasRichTextContent(selectedUnit?.misconceptions)"
-										class="course-plan-unit-subcard space-y-2 xl:col-span-2"
+										class="course-plan-unit-subcard space-y-2"
 									>
 										<p class="type-overline text-ink/60">Likely Misconceptions</p>
 										<PlanningRichTextField
@@ -851,16 +951,41 @@
 
 							<section class="course-plan-unit-panel space-y-4">
 								<div class="course-plan-unit-panel__header">
-									<div>
-										<p class="type-overline text-ink/60">Learning Focus</p>
-										<h3 class="mt-1 type-h3 text-ink">Content, skills, and concepts</h3>
+									<div class="space-y-3">
+										<div>
+											<p class="type-overline text-ink/60">Learning Focus</p>
+											<h3 class="mt-1 type-h3 text-ink">Content, skills, and concepts</h3>
+										</div>
+										<p class="max-w-xl type-caption text-ink/65">
+											The selected unit keeps the three learning anchors on separate rows so long
+											entries remain easy to scan.
+										</p>
 									</div>
-									<p class="max-w-xl type-caption text-ink/65">
-										The selected unit keeps these three shared teaching anchors in separate cards
-										for faster scanning.
-									</p>
+									<button
+										type="button"
+										class="course-plan-unit-panel__toggle"
+										data-testid="unit-panel-toggle-learning-focus"
+										:aria-controls="`${UNIT_PANEL_IDS.learningFocus}-content`"
+										:aria-expanded="!isUnitPanelCollapsed(UNIT_PANEL_IDS.learningFocus)"
+										@click="toggleUnitPanel(UNIT_PANEL_IDS.learningFocus)"
+									>
+										<span class="type-caption text-ink/70">
+											{{
+												isUnitPanelCollapsed(UNIT_PANEL_IDS.learningFocus)
+													? 'Show section'
+													: 'Hide section'
+											}}
+										</span>
+										<span class="course-plan-unit-panel__toggle-icon">
+											{{ isUnitPanelCollapsed(UNIT_PANEL_IDS.learningFocus) ? '+' : '-' }}
+										</span>
+									</button>
 								</div>
-								<div class="grid gap-4 xl:grid-cols-3">
+								<div
+									v-if="!isUnitPanelCollapsed(UNIT_PANEL_IDS.learningFocus)"
+									:id="`${UNIT_PANEL_IDS.learningFocus}-content`"
+									class="space-y-4"
+								>
 									<div
 										v-if="hasRichTextContent(selectedUnit?.content)"
 										class="course-plan-unit-subcard space-y-2"
@@ -902,12 +1027,18 @@
 							:id="SECTION_IDS.standards"
 							class="course-plan-unit-panel scroll-mt-40 space-y-3"
 						>
-							<div class="flex items-center justify-between gap-3">
-								<div>
-									<p class="type-overline text-ink/60">Standards Alignment</p>
-									<h3 class="mt-1 type-h3 text-ink">Shared alignment rows</h3>
+							<div class="course-plan-unit-panel__header">
+								<div class="space-y-3">
+									<div>
+										<p class="type-overline text-ink/60">Standards Alignment</p>
+										<h3 class="mt-1 type-h3 text-ink">Shared alignment rows</h3>
+									</div>
+									<p class="max-w-xl type-caption text-ink/65">
+										Keep the approved shared standards available without forcing the full row list
+										open all the time.
+									</p>
 								</div>
-								<div class="flex items-center gap-2">
+								<div class="flex flex-wrap items-center gap-2">
 									<span class="chip">{{ unitForm.standards.length }}</span>
 									<button
 										v-if="canManagePlan"
@@ -917,230 +1048,254 @@
 									>
 										Select Standards
 									</button>
+									<button
+										type="button"
+										class="course-plan-unit-panel__toggle"
+										data-testid="unit-panel-toggle-standards"
+										:aria-controls="`${SECTION_IDS.standards}-content`"
+										:aria-expanded="!isSectionCollapsed(SECTION_IDS.standards)"
+										@click="toggleSection(SECTION_IDS.standards)"
+									>
+										<span class="type-caption text-ink/70">
+											{{
+												isSectionCollapsed(SECTION_IDS.standards) ? 'Show section' : 'Hide section'
+											}}
+										</span>
+										<span class="course-plan-unit-panel__toggle-icon">
+											{{ isSectionCollapsed(SECTION_IDS.standards) ? '+' : '-' }}
+										</span>
+									</button>
 								</div>
 							</div>
 
 							<div
-								v-if="legacyStandardsCount"
-								class="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3"
+								v-if="!isSectionCollapsed(SECTION_IDS.standards)"
+								:id="`${SECTION_IDS.standards}-content`"
+								class="space-y-3"
 							>
-								<p class="type-body-strong text-amber-950">
-									{{ legacyStandardsCount }} standards row{{
-										legacyStandardsCount > 1 ? 's need' : ' needs'
-									}}
-									re-selection
-								</p>
-								<p class="mt-1 type-caption text-amber-900/80">
-									These rows do not yet carry a catalog link. Remove and re-add them through Select
-									Standards so the unit saves against the approved learning-standards master.
-								</p>
-							</div>
-
-							<div
-								v-if="!unitForm.standards.length"
-								class="rounded-2xl border border-dashed border-line-soft p-4"
-							>
-								<p class="type-caption text-ink/70">
-									No standards have been captured for this unit yet.
-								</p>
-							</div>
-
-							<div v-else class="space-y-3">
-								<article
-									v-for="standard in unitForm.standards"
-									:key="standard.local_id"
-									class="overflow-hidden rounded-[1.5rem] border transition"
-									:class="
-										isStandardExpanded(standard.local_id)
-											? 'border-jacaranda/35 bg-white shadow-soft'
-											: 'border-line-soft bg-surface-soft hover:border-jacaranda/35 hover:bg-white/95'
-									"
+								<div
+									v-if="legacyStandardsCount"
+									class="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3"
 								>
-									<button
-										type="button"
-										class="group flex w-full items-start justify-between gap-4 px-4 py-4 text-left transition focus:outline-none focus-visible:ring-2 focus-visible:ring-jacaranda/30 sm:px-5"
-										:aria-controls="`course-plan-standard-${standard.local_id}`"
-										:aria-expanded="isStandardExpanded(standard.local_id)"
-										@click="toggleStandardExpansion(standard.local_id)"
-									>
-										<div class="min-w-0 flex-1">
-											<div class="flex min-w-0 items-center gap-3">
-												<span
-													class="inline-flex shrink-0 items-center rounded-full border border-jacaranda/20 bg-jacaranda/10 px-3 py-1 text-xs font-semibold tracking-[0.08em] text-jacaranda"
-												>
-													{{ trimmedValue(standard.standard_code) || 'Code pending' }}
-												</span>
-												<div
-													class="flex min-w-0 flex-1 items-center gap-2 overflow-x-auto whitespace-nowrap no-scrollbar"
-												>
-													<span
-														v-for="token in standardSummaryTokens(standard)"
-														:key="token.key"
-														class="chip shrink-0"
-														:class="token.pending ? 'border-dashed text-ink/55' : ''"
-													>
-														{{ token.label }}
-													</span>
-												</div>
-											</div>
-											<p class="mt-3 type-body text-ink/85">
-												{{ standardSummaryDescription(standard) }}
-											</p>
-										</div>
-										<div class="flex shrink-0 items-center gap-2 pl-1">
-											<span class="chip">{{
-												isStandardExpanded(standard.local_id) ? 'Hide details' : 'Details'
-											}}</span>
-											<span
-												class="inline-flex h-9 w-9 items-center justify-center rounded-full border border-line-soft bg-white text-base font-semibold text-ink/60 transition group-hover:border-jacaranda/35 group-hover:text-jacaranda"
-											>
-												{{ isStandardExpanded(standard.local_id) ? '-' : '+' }}
-											</span>
-										</div>
-									</button>
+									<p class="type-body-strong text-amber-950">
+										{{ legacyStandardsCount }} standards row{{
+											legacyStandardsCount > 1 ? 's need' : ' needs'
+										}}
+										re-selection
+									</p>
+									<p class="mt-1 type-caption text-amber-900/80">
+										These rows do not yet carry a catalog link. Remove and re-add them through
+										Select Standards so the unit saves against the approved learning-standards
+										master.
+									</p>
+								</div>
 
-									<div
-										v-if="isStandardExpanded(standard.local_id)"
-										:id="`course-plan-standard-${standard.local_id}`"
-										class="border-t border-line-soft px-4 pb-4 pt-4 sm:px-5 sm:pb-5"
+								<div
+									v-if="!unitForm.standards.length"
+									class="rounded-2xl border border-dashed border-line-soft p-4"
+								>
+									<p class="type-caption text-ink/70">
+										No standards have been captured for this unit yet.
+									</p>
+								</div>
+
+								<div v-else class="space-y-3">
+									<article
+										v-for="standard in unitForm.standards"
+										:key="standard.local_id"
+										class="overflow-hidden rounded-[1.5rem] border transition"
+										:class="
+											isStandardExpanded(standard.local_id)
+												? 'border-jacaranda/35 bg-white shadow-soft'
+												: 'border-line-soft bg-surface-soft hover:border-jacaranda/35 hover:bg-white/95'
+										"
 									>
-										<div class="grid gap-4 lg:grid-cols-2">
-											<label class="block space-y-2">
-												<span class="type-caption text-ink/70">Framework Name</span>
-												<input
-													v-model="standard.framework_name"
-													type="text"
-													class="if-input w-full"
-													disabled
-												/>
-											</label>
-											<label class="block space-y-2">
-												<span class="type-caption text-ink/70">Framework Version</span>
-												<input
-													v-model="standard.framework_version"
-													type="text"
-													class="if-input w-full"
-													disabled
-												/>
-											</label>
-											<label class="block space-y-2">
-												<span class="type-caption text-ink/70">Subject Area</span>
-												<input
-													v-model="standard.subject_area"
-													type="text"
-													class="if-input w-full"
-													disabled
-												/>
-											</label>
-											<label class="block space-y-2">
-												<span class="type-caption text-ink/70">Program</span>
-												<input
-													v-model="standard.program"
-													type="text"
-													class="if-input w-full"
-													disabled
-												/>
-											</label>
-											<label class="block space-y-2">
-												<span class="type-caption text-ink/70">Strand</span>
-												<input
-													v-model="standard.strand"
-													type="text"
-													class="if-input w-full"
-													disabled
-												/>
-											</label>
-											<label class="block space-y-2">
-												<span class="type-caption text-ink/70">Substrand</span>
-												<input
-													v-model="standard.substrand"
-													type="text"
-													class="if-input w-full"
-													disabled
-												/>
-											</label>
-											<label class="block space-y-2">
-												<span class="type-caption text-ink/70">Standard Code</span>
-												<input
-													v-model="standard.standard_code"
-													type="text"
-													class="if-input w-full"
-													disabled
-												/>
-											</label>
-											<label class="block space-y-2">
-												<span class="type-caption text-ink/70">Coverage Level</span>
-												<select
-													v-model="standard.coverage_level"
-													class="if-input w-full"
-													:disabled="!canManagePlan"
-												>
-													<option value="">Select</option>
-													<option
-														v-for="option in coverageLevelOptions"
-														:key="option"
-														:value="option"
+										<button
+											type="button"
+											class="group flex w-full items-start justify-between gap-4 px-4 py-4 text-left transition focus:outline-none focus-visible:ring-2 focus-visible:ring-jacaranda/30 sm:px-5"
+											:aria-controls="`course-plan-standard-${standard.local_id}`"
+											:aria-expanded="isStandardExpanded(standard.local_id)"
+											@click="toggleStandardExpansion(standard.local_id)"
+										>
+											<div class="min-w-0 flex-1">
+												<div class="flex min-w-0 items-center gap-3">
+													<span
+														class="inline-flex shrink-0 items-center rounded-full border border-jacaranda/20 bg-jacaranda/10 px-3 py-1 text-xs font-semibold tracking-[0.08em] text-jacaranda"
 													>
-														{{ option }}
-													</option>
-												</select>
-											</label>
-											<label class="block space-y-2">
-												<span class="type-caption text-ink/70">Alignment Strength</span>
-												<select
-													v-model="standard.alignment_strength"
-													class="if-input w-full"
-													:disabled="!canManagePlan"
-												>
-													<option value="">Select</option>
-													<option
-														v-for="option in alignmentStrengthOptions"
-														:key="option"
-														:value="option"
+														{{ trimmedValue(standard.standard_code) || 'Code pending' }}
+													</span>
+													<div
+														class="flex min-w-0 flex-1 items-center gap-2 overflow-x-auto whitespace-nowrap no-scrollbar"
 													>
-														{{ option }}
-													</option>
-												</select>
-											</label>
-											<label class="block space-y-2">
-												<span class="type-caption text-ink/70">Alignment Type</span>
-												<input
-													v-model="standard.alignment_type"
-													type="text"
-													class="if-input w-full"
-													disabled
-												/>
-											</label>
-											<label class="block space-y-2 lg:col-span-2">
-												<span class="type-caption text-ink/70">Standard Description</span>
-												<textarea
-													v-model="standard.standard_description"
-													rows="3"
-													class="if-input min-h-[6rem] w-full resize-y"
-													disabled
-												/>
-											</label>
-											<label class="block space-y-2 lg:col-span-2">
-												<span class="type-caption text-ink/70">Notes</span>
-												<textarea
-													v-model="standard.notes"
-													rows="3"
-													class="if-input min-h-[6rem] w-full resize-y"
-													:disabled="!canManagePlan"
-												/>
-											</label>
+														<span
+															v-for="token in standardSummaryTokens(standard)"
+															:key="token.key"
+															class="chip shrink-0"
+															:class="token.pending ? 'border-dashed text-ink/55' : ''"
+														>
+															{{ token.label }}
+														</span>
+													</div>
+												</div>
+												<p class="mt-3 type-body text-ink/85">
+													{{ standardSummaryDescription(standard) }}
+												</p>
+											</div>
+											<div class="flex shrink-0 items-center gap-2 pl-1">
+												<span class="chip">{{
+													isStandardExpanded(standard.local_id) ? 'Hide details' : 'Details'
+												}}</span>
+												<span
+													class="inline-flex h-9 w-9 items-center justify-center rounded-full border border-line-soft bg-white text-base font-semibold text-ink/60 transition group-hover:border-jacaranda/35 group-hover:text-jacaranda"
+												>
+													{{ isStandardExpanded(standard.local_id) ? '-' : '+' }}
+												</span>
+											</div>
+										</button>
+
+										<div
+											v-if="isStandardExpanded(standard.local_id)"
+											:id="`course-plan-standard-${standard.local_id}`"
+											class="border-t border-line-soft px-4 pb-4 pt-4 sm:px-5 sm:pb-5"
+										>
+											<div class="grid gap-4 lg:grid-cols-2">
+												<label class="block space-y-2">
+													<span class="type-caption text-ink/70">Framework Name</span>
+													<input
+														v-model="standard.framework_name"
+														type="text"
+														class="if-input w-full"
+														disabled
+													/>
+												</label>
+												<label class="block space-y-2">
+													<span class="type-caption text-ink/70">Framework Version</span>
+													<input
+														v-model="standard.framework_version"
+														type="text"
+														class="if-input w-full"
+														disabled
+													/>
+												</label>
+												<label class="block space-y-2">
+													<span class="type-caption text-ink/70">Subject Area</span>
+													<input
+														v-model="standard.subject_area"
+														type="text"
+														class="if-input w-full"
+														disabled
+													/>
+												</label>
+												<label class="block space-y-2">
+													<span class="type-caption text-ink/70">Program</span>
+													<input
+														v-model="standard.program"
+														type="text"
+														class="if-input w-full"
+														disabled
+													/>
+												</label>
+												<label class="block space-y-2">
+													<span class="type-caption text-ink/70">Strand</span>
+													<input
+														v-model="standard.strand"
+														type="text"
+														class="if-input w-full"
+														disabled
+													/>
+												</label>
+												<label class="block space-y-2">
+													<span class="type-caption text-ink/70">Substrand</span>
+													<input
+														v-model="standard.substrand"
+														type="text"
+														class="if-input w-full"
+														disabled
+													/>
+												</label>
+												<label class="block space-y-2">
+													<span class="type-caption text-ink/70">Standard Code</span>
+													<input
+														v-model="standard.standard_code"
+														type="text"
+														class="if-input w-full"
+														disabled
+													/>
+												</label>
+												<label class="block space-y-2">
+													<span class="type-caption text-ink/70">Coverage Level</span>
+													<select
+														v-model="standard.coverage_level"
+														class="if-input w-full"
+														:disabled="!canManagePlan"
+													>
+														<option value="">Select</option>
+														<option
+															v-for="option in coverageLevelOptions"
+															:key="option"
+															:value="option"
+														>
+															{{ option }}
+														</option>
+													</select>
+												</label>
+												<label class="block space-y-2">
+													<span class="type-caption text-ink/70">Alignment Strength</span>
+													<select
+														v-model="standard.alignment_strength"
+														class="if-input w-full"
+														:disabled="!canManagePlan"
+													>
+														<option value="">Select</option>
+														<option
+															v-for="option in alignmentStrengthOptions"
+															:key="option"
+															:value="option"
+														>
+															{{ option }}
+														</option>
+													</select>
+												</label>
+												<label class="block space-y-2">
+													<span class="type-caption text-ink/70">Alignment Type</span>
+													<input
+														v-model="standard.alignment_type"
+														type="text"
+														class="if-input w-full"
+														disabled
+													/>
+												</label>
+												<label class="block space-y-2 lg:col-span-2">
+													<span class="type-caption text-ink/70">Standard Description</span>
+													<textarea
+														v-model="standard.standard_description"
+														rows="3"
+														class="if-input min-h-[6rem] w-full resize-y"
+														disabled
+													/>
+												</label>
+												<label class="block space-y-2 lg:col-span-2">
+													<span class="type-caption text-ink/70">Notes</span>
+													<textarea
+														v-model="standard.notes"
+														rows="3"
+														class="if-input min-h-[6rem] w-full resize-y"
+														:disabled="!canManagePlan"
+													/>
+												</label>
+											</div>
+											<div v-if="canManagePlan" class="mt-4 flex justify-end">
+												<button
+													type="button"
+													class="if-action if-action--subtle"
+													@click="removeStandard(standard.local_id)"
+												>
+													Remove Standard
+												</button>
+											</div>
 										</div>
-										<div v-if="canManagePlan" class="mt-4 flex justify-end">
-											<button
-												type="button"
-												class="if-action if-action--subtle"
-												@click="removeStandard(standard.local_id)"
-											>
-												Remove Standard
-											</button>
-										</div>
-									</div>
-								</article>
+									</article>
+								</div>
 							</div>
 						</section>
 
@@ -1872,6 +2027,7 @@ const UNIT_PANEL_IDS = {
 } as const;
 
 type WorkspaceSectionId = (typeof SECTION_IDS)[keyof typeof SECTION_IDS];
+type UnitPanelId = (typeof UNIT_PANEL_IDS)[keyof typeof UNIT_PANEL_IDS];
 
 const collapsedSectionDefaults: Record<WorkspaceSectionId, boolean> = {
 	[SECTION_IDS.overview]: true,
@@ -1883,6 +2039,11 @@ const collapsedSectionDefaults: Record<WorkspaceSectionId, boolean> = {
 	[SECTION_IDS.reflections]: true,
 	[SECTION_IDS.unitResources]: true,
 	[SECTION_IDS.quizBanks]: true,
+};
+const collapsedUnitPanelDefaults: Record<UnitPanelId, boolean> = {
+	[UNIT_PANEL_IDS.setup]: false,
+	[UNIT_PANEL_IDS.narrative]: true,
+	[UNIT_PANEL_IDS.learningFocus]: true,
 };
 
 const surface = ref<StaffCoursePlanSurfaceResponse | null>(null);
@@ -1977,6 +2138,9 @@ const selectedQuizQuestionBank = computed<StaffCoursePlanQuizQuestionBank | null
 });
 const collapsedSections = reactive<Record<WorkspaceSectionId, boolean>>({
 	...collapsedSectionDefaults,
+});
+const collapsedUnitPanels = reactive<Record<UnitPanelId, boolean>>({
+	...collapsedUnitPanelDefaults,
 });
 
 const canManagePlan = computed(() => Boolean(surface.value?.course_plan.can_manage_resources));
@@ -2198,6 +2362,10 @@ function coursePlanSectionStorageKey() {
 	return `ifitwala.course-plan.sections.${props.coursePlan}`;
 }
 
+function coursePlanUnitPanelStorageKey() {
+	return `ifitwala.course-plan.unit-panels.${props.coursePlan}`;
+}
+
 function loadCollapsedSections() {
 	Object.assign(collapsedSections, collapsedSectionDefaults);
 	if (typeof window === 'undefined' || !props.coursePlan) return;
@@ -2215,13 +2383,42 @@ function loadCollapsedSections() {
 	}
 }
 
+function loadCollapsedUnitPanels() {
+	Object.assign(collapsedUnitPanels, collapsedUnitPanelDefaults);
+	if (typeof window === 'undefined' || !props.coursePlan) return;
+	try {
+		const raw = window.localStorage.getItem(coursePlanUnitPanelStorageKey());
+		if (!raw) return;
+		const parsed = JSON.parse(raw) as Partial<Record<UnitPanelId, boolean>>;
+		for (const panelId of Object.values(UNIT_PANEL_IDS)) {
+			if (typeof parsed?.[panelId] === 'boolean') {
+				collapsedUnitPanels[panelId] = parsed[panelId] as boolean;
+			}
+		}
+	} catch {
+		Object.assign(collapsedUnitPanels, collapsedUnitPanelDefaults);
+	}
+}
+
 function persistCollapsedSections() {
 	if (typeof window === 'undefined' || !props.coursePlan) return;
 	window.localStorage.setItem(coursePlanSectionStorageKey(), JSON.stringify(collapsedSections));
 }
 
+function persistCollapsedUnitPanels() {
+	if (typeof window === 'undefined' || !props.coursePlan) return;
+	window.localStorage.setItem(
+		coursePlanUnitPanelStorageKey(),
+		JSON.stringify(collapsedUnitPanels)
+	);
+}
+
 function isSectionCollapsed(sectionId: WorkspaceSectionId) {
 	return Boolean(collapsedSections[sectionId]);
+}
+
+function isUnitPanelCollapsed(panelId: UnitPanelId) {
+	return Boolean(collapsedUnitPanels[panelId]);
 }
 
 function setSectionCollapsed(sectionId: WorkspaceSectionId, collapsed: boolean) {
@@ -2229,12 +2426,25 @@ function setSectionCollapsed(sectionId: WorkspaceSectionId, collapsed: boolean) 
 	persistCollapsedSections();
 }
 
+function setUnitPanelCollapsed(panelId: UnitPanelId, collapsed: boolean) {
+	collapsedUnitPanels[panelId] = collapsed;
+	persistCollapsedUnitPanels();
+}
+
 function setSectionExpanded(sectionId: WorkspaceSectionId, expanded: boolean) {
 	setSectionCollapsed(sectionId, !expanded);
 }
 
+function setUnitPanelExpanded(panelId: UnitPanelId, expanded: boolean) {
+	setUnitPanelCollapsed(panelId, !expanded);
+}
+
 function toggleSection(sectionId: WorkspaceSectionId) {
 	setSectionCollapsed(sectionId, !isSectionCollapsed(sectionId));
+}
+
+function toggleUnitPanel(panelId: UnitPanelId) {
+	setUnitPanelCollapsed(panelId, !isUnitPanelCollapsed(panelId));
 }
 
 function expandSectionChain(sectionId: WorkspaceSectionId) {
@@ -2402,8 +2612,10 @@ function focusWithinSection(sectionId: WorkspaceSectionId, selector: string) {
 	}, 220);
 }
 
-function scrollToUnitPanel(panelId: string) {
+async function scrollToUnitPanel(panelId: UnitPanelId) {
 	if (typeof document === 'undefined') return;
+	setUnitPanelExpanded(panelId, true);
+	await nextTick();
 	document.getElementById(panelId)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
@@ -2503,6 +2715,7 @@ async function quickEditUnit() {
 		return;
 	}
 	setSectionExpanded(SECTION_IDS.unitEditor, true);
+	setUnitPanelExpanded(UNIT_PANEL_IDS.setup, true);
 	await jumpToSection(SECTION_IDS.unitEditor, '[data-quick-focus="unit-title"]');
 }
 
@@ -2677,6 +2890,7 @@ async function startNewUnit() {
 	selectedUnitPlan.value = '';
 	syncUnitForm(null);
 	setSectionExpanded(SECTION_IDS.unitEditor, true);
+	setUnitPanelExpanded(UNIT_PANEL_IDS.setup, true);
 	await router.replace({
 		name: 'staff-course-plan',
 		params: { coursePlan: props.coursePlan },
@@ -2983,6 +3197,7 @@ watch(
 	() => props.coursePlan,
 	() => {
 		loadCollapsedSections();
+		loadCollapsedUnitPanels();
 	},
 	{ immediate: true }
 );
@@ -3008,6 +3223,7 @@ watch(navigationSections, () => {
 onMounted(() => {
 	window.addEventListener('scroll', requestActiveSectionSync, { passive: true });
 	loadCollapsedSections();
+	loadCollapsedUnitPanels();
 	requestActiveSectionSync();
 });
 
@@ -3052,12 +3268,70 @@ onBeforeUnmount(() => {
 	gap: 0.75rem;
 }
 
+.course-plan-unit-panel__toggle {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.7rem;
+	align-self: flex-start;
+	border: 1px solid rgb(var(--border-rgb) / 0.76);
+	border-radius: 999px;
+	padding: 0.35rem 0.4rem 0.35rem 0.8rem;
+	background: rgb(var(--surface-strong-rgb) / 0.96);
+	box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.75);
+	transition:
+		border-color 140ms ease,
+		box-shadow 140ms ease,
+		transform 140ms ease;
+}
+
+.course-plan-unit-panel__toggle:hover {
+	border-color: rgb(var(--jacaranda-rgb) / 0.28);
+	box-shadow: 0 8px 18px rgb(var(--ink-rgb) / 0.06);
+}
+
+.course-plan-unit-panel__toggle:focus-visible {
+	outline: none;
+	border-color: rgb(var(--jacaranda-rgb) / 0.42);
+	box-shadow: 0 0 0 3px rgb(var(--jacaranda-rgb) / 0.12);
+}
+
+.course-plan-unit-panel__toggle-icon {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 2rem;
+	height: 2rem;
+	border: 1px solid rgb(var(--border-rgb) / 0.7);
+	border-radius: 999px;
+	background: rgb(var(--surface-rgb) / 0.9);
+	color: rgb(var(--ink-rgb) / 0.68);
+	font-size: 1rem;
+	font-weight: 600;
+	line-height: 1;
+}
+
 .course-plan-unit-subcard {
 	border: 1px solid var(--border-subtle);
 	border-radius: 1.25rem;
 	padding: 1rem;
 	background: rgb(var(--surface-strong-rgb) / 0.96);
 	box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.72);
+}
+
+:deep(.if-input) {
+	transition:
+		border-color 140ms ease,
+		box-shadow 140ms ease,
+		background-color 140ms ease;
+}
+
+:deep(.if-input:focus),
+:deep(.if-input:focus-visible) {
+	outline: none;
+	border-color: rgb(var(--jacaranda-rgb) / 0.42);
+	box-shadow:
+		0 0 0 3px rgb(var(--jacaranda-rgb) / 0.12),
+		var(--shadow-soft);
 }
 
 .course-plan-unit-save-button {

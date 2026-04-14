@@ -415,6 +415,15 @@ describe('CoursePlanWorkspace page', () => {
 		mountPage()
 		await flushUi()
 
+		expect(document.body.textContent || '').not.toContain('RL.6.3')
+
+		const standardsToggle = document.querySelector(
+			'[data-testid="unit-panel-toggle-standards"]'
+		) as HTMLButtonElement | null
+		expect(standardsToggle).not.toBeNull()
+		standardsToggle?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+		await flushUi()
+
 		const pageText = document.body.textContent || ''
 		expect(pageText).toContain('RL.6.3')
 		expect(pageText).toContain('Reading: Literature')
@@ -434,6 +443,99 @@ describe('CoursePlanWorkspace page', () => {
 
 		expect(document.body.textContent || '').toContain('Framework Name')
 		expect(document.body.textContent || '').toContain('Remove Standard')
+	})
+
+	it('keeps the long core narrative collapsed until staff opens it', async () => {
+		getStaffCoursePlanSurfaceMock.mockResolvedValue({
+			meta: {
+				generated_at: '2026-04-13 10:00:00',
+				course_plan: 'COURSE-PLAN-1',
+			},
+			course_plan: {
+				course_plan: 'COURSE-PLAN-1',
+				record_modified: '2026-04-13 10:00:00',
+				title: 'ELA Semester 1 Plan',
+				course: 'COURSE-1',
+				course_name: 'English Language Arts',
+				course_group: 'Humanities',
+				school: 'SCH-1',
+				academic_year: '2026-2027',
+				cycle_label: 'Semester 1',
+				plan_status: 'Active',
+				summary: '<p>Shared summary</p>',
+				can_manage_resources: 1,
+			},
+			resolved: {
+				unit_plan: 'UNIT-1',
+				quiz_question_bank: null,
+			},
+			resources: {
+				course_plan_resources: [],
+			},
+			field_options: {
+				academic_years: [],
+				programs: [{ value: 'MYP', label: 'MYP' }],
+			},
+			curriculum: {
+				units: [
+					{
+						unit_plan: 'UNIT-1',
+						record_modified: '2026-04-13 10:00:00',
+						title: 'Narrative Writing Launch',
+						program: 'MYP',
+						unit_order: 2,
+						unit_status: 'Active',
+						is_published: 1,
+						overview: '<p>Backbone narrative for the unit.</p>',
+						essential_understanding: '<p>Students shape identity through story.</p>',
+						misconceptions: '<p>Strong narratives are not just timelines.</p>',
+						content: '<p>Memoirs and essays</p>',
+						skills: '<p>Close reading and drafting</p>',
+						concepts: '<p>Voice and identity</p>',
+						standards: [],
+						shared_reflections: [],
+						class_reflections: [],
+						shared_resources: [],
+					},
+				],
+				unit_count: 1,
+				timeline: {
+					status: 'blocked',
+					reason: 'missing_calendar',
+					message: 'Add a calendar first.',
+					scope: {},
+					terms: [],
+					holidays: [],
+					units: [],
+					summary: {
+						scheduled_unit_count: 0,
+						unscheduled_unit_count: 1,
+						overflow_unit_count: 0,
+						instructional_day_count: 0,
+					},
+				},
+			},
+			assessment: {
+				quiz_question_banks: [],
+				selected_quiz_question_bank: null,
+			},
+		})
+
+		mountPage()
+		await flushUi()
+
+		expect(document.body.textContent || '').not.toContain('Backbone narrative for the unit.')
+
+		const narrativeToggle = document.querySelector(
+			'[data-testid="unit-panel-toggle-narrative"]'
+		) as HTMLButtonElement | null
+		expect(narrativeToggle).not.toBeNull()
+		narrativeToggle?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+		await flushUi()
+
+		expect(document.body.textContent || '').toContain('Backbone narrative for the unit.')
+		expect(document.body.textContent || '').toContain('Students shape identity through story.')
+		expect(document.body.textContent || '').toContain('Strong narratives are not just timelines.')
 	})
 
 	it('shows the sticky save rail after the selected unit becomes dirty', async () => {
