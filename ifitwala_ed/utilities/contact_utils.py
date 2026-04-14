@@ -72,6 +72,12 @@ def _resolve_academic_contact_school_scope(user: str) -> list[str]:
     return list(dict.fromkeys(get_descendant_schools(default_school) or [default_school]))
 
 
+def _resolve_academic_contact_org_scope(user: str) -> list[str]:
+    from ifitwala_ed.hr.doctype.employee.employee import _resolve_academic_admin_org_scope
+
+    return _resolve_academic_admin_org_scope(user)
+
+
 def _resolve_self_employee_contact(user: str) -> str | None:
     from ifitwala_ed.hr.doctype.employee.employee import _resolve_self_employee
 
@@ -91,11 +97,19 @@ def _employee_contact_scope_sql(user: str) -> str | None:
 
     if roles & ACADEMIC_CONTACT_ROLES:
         schools = _resolve_academic_contact_school_scope(user)
-        if not schools:
+        if schools:
+            vals = ", ".join(frappe.db.escape(school, percent=False) for school in schools)
+            return f"emp.school IN ({vals})"
+
+        if "Academic Admin" not in roles:
             return "1=0"
 
-        vals = ", ".join(frappe.db.escape(school, percent=False) for school in schools)
-        return f"emp.school IN ({vals})"
+        orgs = _resolve_academic_contact_org_scope(user)
+        if not orgs:
+            return "1=0"
+
+        vals = ", ".join(frappe.db.escape(org, percent=False) for org in orgs)
+        return f"emp.organization IN ({vals})"
 
     if "Employee" in roles:
         own_employee = _resolve_self_employee_contact(user)
@@ -137,15 +151,28 @@ def _employee_contact_scope_matches(contact_name: str | None, user: str, roles: 
 
     if roles & ACADEMIC_CONTACT_ROLES:
         schools = set(_resolve_academic_contact_school_scope(user))
-        if not schools:
+        if schools:
+            rows = frappe.get_all(
+                "Employee",
+                filters={"name": ["in", linked_employees]},
+                fields=["school"],
+                limit=len(linked_employees),
+            )
+            return any(cstr(row.get("school")).strip() in schools for row in rows)
+
+        if "Academic Admin" not in roles:
+            return False
+
+        orgs = set(_resolve_academic_contact_org_scope(user))
+        if not orgs:
             return False
         rows = frappe.get_all(
             "Employee",
             filters={"name": ["in", linked_employees]},
-            fields=["school"],
+            fields=["organization"],
             limit=len(linked_employees),
         )
-        return any(cstr(row.get("school")).strip() in schools for row in rows)
+        return any(cstr(row.get("organization")).strip() in orgs for row in rows)
 
     if "Employee" in roles:
         own_employee = _resolve_self_employee_contact(user)

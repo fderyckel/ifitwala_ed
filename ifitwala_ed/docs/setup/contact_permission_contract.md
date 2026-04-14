@@ -23,7 +23,7 @@ Rules:
 4. Manager-level roles keep delete access on `Contact`: `Academic Admin`, `Academic Assistant`, `Accounts Manager`, and `Admission Manager`.
 5. Non-manager editor roles keep no delete access on `Contact`: `Accounts User` and `Admission Officer`.
 6. The permission seed must create any missing canonical roles before inserting `Custom DocPerm` rows, so migrate/setup never fails on a missing role record.
-7. App-level Contact permission hooks must not narrow list visibility beyond the seeded DocPerm contract.
+7. App-level Contact permission hooks may further restrict employee-linked contacts through the server-owned Employee visibility contract; non-employee-linked contacts continue to defer to the seeded DocPerm contract.
 
 ## 2. Runtime Enforcement
 
@@ -43,8 +43,12 @@ Rules:
 1. Fresh installs seed the canonical `Contact` permissions through `grant_core_crm_permissions()` during `after_install`.
 2. Existing sites collapse legacy role names through `ifitwala_ed.patches.canonicalize_role_names`, which then re-runs `grant_core_crm_permissions()`.
 3. `grant_core_crm_permissions()` ensures canonical roles exist before seeding the `Custom DocPerm` rows.
-4. Contact document-level permission checks defer to Frappe core once the seeded DocPerm rows exist.
-5. Contact list visibility is not further constrained by app-specific query conditions.
+4. Contact document-level permission checks apply employee-linked contact scope on top of Frappe core permissions.
+5. Contact list visibility keeps non-employee-linked contacts on the seeded DocPerm contract, but employee-linked contacts are narrowed server-side:
+   - `HR Manager` / `HR User`: organization descendants plus blank-organization employee rows
+   - `Academic Admin` / `Academic Assistant`: default school + descendant-school scope
+   - `Academic Admin` only: when no default school is configured, organization descendants
+   - `Employee`: own linked employee contact only
 
 ## 3. Contract Matrix
 

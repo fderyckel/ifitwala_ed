@@ -251,6 +251,39 @@ class TestContactPermissions(FrappeTestCase):
         self.assertIn("SCH-CHILD", condition)
         self.assertIn("NOT", condition)
 
+    def test_contact_permission_query_conditions_scope_employee_contacts_for_academic_org_tree_when_no_school(self):
+        with (
+            patch("ifitwala_ed.utilities.contact_utils.frappe.get_roles", return_value=["Academic Admin"]),
+            patch("ifitwala_ed.utilities.contact_utils._resolve_academic_contact_school_scope", return_value=[]),
+            patch(
+                "ifitwala_ed.utilities.contact_utils._resolve_academic_contact_org_scope",
+                return_value=["ORG-ROOT", "ORG-CHILD"],
+            ),
+        ):
+            condition = contact_utils.contact_permission_query_conditions("academic.admin@example.com")
+
+        self.assertIn("ORG-ROOT", condition)
+        self.assertIn("ORG-CHILD", condition)
+        self.assertIn("NOT", condition)
+
+    def test_employee_contact_scope_matches_academic_org_tree_when_no_school(self):
+        with (
+            patch("ifitwala_ed.utilities.contact_utils.frappe.get_roles", return_value=["Academic Admin"]),
+            patch("ifitwala_ed.utilities.contact_utils._resolve_academic_contact_school_scope", return_value=[]),
+            patch(
+                "ifitwala_ed.utilities.contact_utils._resolve_academic_contact_org_scope",
+                return_value=["ORG-ROOT", "ORG-CHILD"],
+            ),
+            patch(
+                "ifitwala_ed.utilities.contact_utils.frappe.get_all",
+                side_effect=[
+                    ["EMP-0001"],
+                    [frappe._dict(organization="ORG-CHILD")],
+                ],
+            ),
+        ):
+            self.assertTrue(contact_utils._employee_contact_scope_matches("CONTACT-0001", "academic.admin@example.com"))
+
     def test_contact_permission_query_conditions_scope_employee_only_for_employee_role(self):
         with (
             patch("ifitwala_ed.utilities.contact_utils.frappe.get_roles", return_value=["Employee"]),

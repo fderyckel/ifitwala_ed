@@ -1045,12 +1045,18 @@ def get_permission_query_conditions(user=None):
         vals = ", ".join(frappe.db.escape(o) for o in orgs)
         return f"(`tabEmployee`.`organization` IN ({vals}) OR IFNULL(`tabEmployee`.`organization`, '') = '')"
 
-    # Academic Admin: scope by default school only
+    # Academic Admin: default school stays school-scoped; blank-school falls back to org descendants
     if "Academic Admin" in roles:
         default_school = _get_user_default_from_db(user, "school")
-        if not default_school:
+        if default_school:
+            return f"`tabEmployee`.`school` = {frappe.db.escape(default_school)}"
+
+        orgs = _resolve_academic_admin_org_scope(user)
+        if not orgs:
             return "1=0"
-        return f"`tabEmployee`.`school` = {frappe.db.escape(default_school)}"
+
+        vals = ", ".join(frappe.db.escape(o) for o in orgs)
+        return f"`tabEmployee`.`organization` IN ({vals})"
 
     # Employee: own record only
     if "Employee" in roles:
@@ -1088,14 +1094,20 @@ def employee_has_permission(doc=None, ptype=None, user=None):
             return False
         return doc.organization in orgs
 
-    # Academic Admin -> read only, default school only
+    # Academic Admin -> read only; default school stays school-scoped, blank-school falls back to org descendants
     if "Academic Admin" in roles:
         if ptype not in read_like:
             return False
         default_school = _get_user_default_from_db(user, "school")
         if doc is None:
-            return bool(default_school)
-        return bool(default_school and cstr(doc.school).strip() == default_school)
+            return bool(default_school or _resolve_academic_admin_org_scope(user))
+        if default_school:
+            return bool(cstr(doc.school).strip() == default_school)
+
+        orgs = set(_resolve_academic_admin_org_scope(user))
+        if not orgs:
+            return False
+        return cstr(doc.organization).strip() in orgs
 
     # Employee -> read only own record
     if "Employee" in roles:
@@ -1120,6 +1132,45 @@ def _resolve_hr_base_org(user: str) -> str | None:
 
     global_org = frappe.db.get_single_value("Global Defaults", "default_organization")
     return cstr(global_org).strip() or None
+
+
+def _resolve_academic_admin_base_org(user: str) -> str | None:
+    """Resolve Academic Admin base org from active Employee context first, then persisted defaults."""
+    employee_org = cstr(get_user_base_org(user)).strip()
+    if employee_org:
+        return employee_org
+
+    return _get_user_default_from_db(user, "organization")
+
+
+def _resolve_academic_admin_org_scope(user: str) -> list[str]:
+    """Resolve read-only Academic Admin org scope for blank-school fallback."""
+    scope: set[str] = set()
+
+    base_org = _resolve_academic_admin_base_org(user)
+    if base_org:
+        scope.update(
+            {cstr(org).strip() for org in (_get_descendant_organizations_uncached(base_org) or []) if cstr(org).strip()}
+        )
+
+    explicit_orgs = frappe.get_all(
+        "User Permission",
+        filters={"user": user, "allow": "Organization"},
+        pluck="for_value",
+    )
+    for org in explicit_orgs:
+        org_name = cstr(org).strip()
+        if not org_name:
+            continue
+        scope.update(
+            {
+                cstr(item).strip()
+                for item in (_get_descendant_organizations_uncached(org_name) or [])
+                if cstr(item).strip()
+            }
+        )
+
+    return sorted(scope)
 
 
 def _resolve_hr_org_scope(user: str) -> list[str]:

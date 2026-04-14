@@ -1,101 +1,99 @@
-.ifitwala-print.staff-calendar-print {
-  --ink: #1a2430;
+@page {
+  size: A4 landscape;
+  margin: 8mm 10mm;
+}
+
+.staff-calendar-print {
+  --ink: #1f2937;
   --muted: #667085;
+  --line: #cfd6de;
+  --soft-line: #e7ecf1;
   --accent: #0f5b78;
-  --line: #d7dde3;
-  --soft-line: #ebeff3;
+  --accent-soft: #eef5f8;
   --holiday-bg: #eef7f5;
-  --holiday-border: #b6d9cf;
-  --weekly-bg: #fff5df;
-  --weekly-border: #e5cb8a;
-  --outside-bg: #f5f6f8;
+  --holiday-border: #9ccfbe;
+  --weekly-bg: #fff5dd;
+  --weekly-border: #ddc27f;
+  --muted-bg: #f4f6f8;
   color: var(--ink);
   font-family: "Avenir Next", "Helvetica Neue", Arial, sans-serif;
   font-size: 10px;
-  line-height: 1.35;
+  line-height: 1.3;
 }
 
-.ifitwala-print.staff-calendar-print,
-.ifitwala-print.staff-calendar-print * {
+.staff-calendar-print,
+.staff-calendar-print * {
   box-sizing: border-box;
 }
 
-.ifitwala-print.staff-calendar-print .calendar-month-page {
-  page-break-after: always;
-  break-after: page;
-  padding: 0;
+@media screen {
+  .staff-calendar-print {
+    min-width: 1100px;
+    max-width: 1120px;
+    margin: 0 auto;
+  }
 }
 
-.ifitwala-print.staff-calendar-print .calendar-month-page:last-child {
+.staff-calendar-print .calendar-page {
+  page-break-after: always;
+  break-after: page;
+}
+
+.staff-calendar-print .calendar-page:last-child {
   page-break-after: auto;
   break-after: auto;
 }
 
-.ifitwala-print.staff-calendar-print .page-strip {
-  height: 10px;
-  background: linear-gradient(90deg, #0f5b78 0%, #1d7a8c 55%, #d6a94d 100%);
-}
-
-.ifitwala-print.staff-calendar-print .page-header,
-.ifitwala-print.staff-calendar-print .page-summary,
-.ifitwala-print.staff-calendar-print .page-legend,
-.ifitwala-print.staff-calendar-print .month-calendar-table {
+.staff-calendar-print .calendar-header,
+.staff-calendar-print .calendar-summary,
+.staff-calendar-print .calendar-grid {
   width: 100%;
   border-collapse: collapse;
 }
 
-.ifitwala-print.staff-calendar-print .page-header {
-  border: 1px solid var(--line);
-  border-top: none;
-  background: linear-gradient(160deg, #ffffff 0%, #f7fafc 56%, #eef5f8 100%);
+.staff-calendar-print .calendar-header {
+  margin-bottom: 8px;
+  border-bottom: 2px solid #0f5b78;
 }
 
-.ifitwala-print.staff-calendar-print .page-header td {
-  padding: 14px 16px;
-  vertical-align: top;
-}
-
-.ifitwala-print.staff-calendar-print .page-header__brand {
-  width: 90px;
-}
-
-.ifitwala-print.staff-calendar-print .page-header__brand img,
-.ifitwala-print.staff-calendar-print .brand-fallback {
-  width: 62px;
-  height: 62px;
-  border: 1px solid var(--line);
-  border-radius: 16px;
-  background: #fff;
-}
-
-.ifitwala-print.staff-calendar-print .page-header__brand img {
-  object-fit: contain;
-  padding: 6px;
-}
-
-.ifitwala-print.staff-calendar-print .brand-fallback {
-  display: table-cell;
-  text-align: center;
+.staff-calendar-print .calendar-header td {
   vertical-align: middle;
+  padding: 0 0 8px;
+}
+
+.staff-calendar-print .calendar-header__logo {
+  width: 56px;
+  padding-right: 12px;
+}
+
+.staff-calendar-print .calendar-header__fallback {
+  width: 44px;
+  height: 44px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #fff;
   color: var(--accent);
   font-family: Baskerville, Georgia, serif;
-  font-size: 24px;
-  font-weight: 600;
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 42px;
+  text-align: center;
 }
 
-.ifitwala-print.staff-calendar-print .page-header__title {
+.staff-calendar-print .calendar-header__main {
   width: auto;
 }
 
-.ifitwala-print.staff-calendar-print .page-header__meta {
-  width: 230px;
+.staff-calendar-print .calendar-header__side {
+  width: 250px;
   text-align: right;
 }
 
-.ifitwala-print.staff-calendar-print .eyebrow,
-.ifitwala-print.staff-calendar-print .meta-label,
-.ifitwala-print.staff-calendar-print .summary-label,
-.ifitwala-print.staff-calendar-print .month-calendar-table th {
+.staff-calendar-print .calendar-header__eyebrow,
+.staff-calendar-print .calendar-header__kicker,
+.staff-calendar-print .calendar-header__meta-label,
+.staff-calendar-print .calendar-summary__label,
+.staff-calendar-print .calendar-grid th {
   color: var(--muted);
   font-size: 8px;
   font-weight: 700;
@@ -103,168 +101,142 @@
   text-transform: uppercase;
 }
 
-.ifitwala-print.staff-calendar-print .calendar-name,
-.ifitwala-print.staff-calendar-print .month-name {
+.staff-calendar-print .calendar-header__kicker {
+  margin-bottom: 2px;
+}
+
+.staff-calendar-print .calendar-header__month {
   font-family: Baskerville, Georgia, serif;
+  font-size: 28px;
+  line-height: 1.02;
   color: #101828;
 }
 
-.ifitwala-print.staff-calendar-print .calendar-name {
-  margin-top: 2px;
-  font-size: 22px;
-  line-height: 1.1;
-}
-
-.ifitwala-print.staff-calendar-print .month-name {
+.staff-calendar-print .calendar-header__name {
   margin-top: 3px;
-  font-size: 26px;
-  line-height: 1.05;
-}
-
-.ifitwala-print.staff-calendar-print .brand-line {
-  margin-top: 6px;
   font-size: 12px;
   font-weight: 600;
+  color: #223041;
 }
 
-.ifitwala-print.staff-calendar-print .brand-subline,
-.ifitwala-print.staff-calendar-print .meta-value,
-.ifitwala-print.staff-calendar-print .page-footer,
-.ifitwala-print.staff-calendar-print .calendar-empty-state__copy {
+.staff-calendar-print .calendar-header__subline,
+.staff-calendar-print .calendar-header__meta-value,
+.staff-calendar-print .calendar-footer,
+.staff-calendar-print .calendar-empty-state__copy {
   color: var(--muted);
 }
 
-.ifitwala-print.staff-calendar-print .meta-label {
-  margin-top: 6px;
+.staff-calendar-print .calendar-header__meta-label {
+  margin-top: 5px;
 }
 
-.ifitwala-print.staff-calendar-print .meta-label:first-child {
+.staff-calendar-print .calendar-header__meta-label:first-child {
   margin-top: 0;
 }
 
-.ifitwala-print.staff-calendar-print .meta-value {
-  margin-top: 2px;
-  font-size: 10px;
+.staff-calendar-print .calendar-header__meta-value {
+  margin-top: 1px;
+  font-size: 9px;
 }
 
-.ifitwala-print.staff-calendar-print .meta-sep {
-  margin: 0 4px;
+.staff-calendar-print .calendar-header__meta-sep {
+  margin: 0 3px;
 }
 
-.ifitwala-print.staff-calendar-print .page-summary {
-  margin-top: 10px;
-  border: 1px solid var(--line);
+.staff-calendar-print .calendar-summary {
+  margin-bottom: 8px;
   table-layout: fixed;
 }
 
-.ifitwala-print.staff-calendar-print .page-summary td {
-  width: 20%;
-  padding: 10px 10px 11px;
+.staff-calendar-print .calendar-summary td {
+  padding: 7px 8px;
   vertical-align: top;
-  border-right: 1px solid var(--soft-line);
-  background: #fff;
+  border: 1px solid var(--line);
+  background: #fafbfc;
 }
 
-.ifitwala-print.staff-calendar-print .page-summary td:last-child {
-  border-right: none;
-}
-
-.ifitwala-print.staff-calendar-print .summary-value {
-  margin-top: 4px;
-  font-size: 11px;
+.staff-calendar-print .calendar-summary__value {
+  margin-top: 3px;
+  font-size: 10px;
   font-weight: 600;
   color: #1f2937;
 }
 
-.ifitwala-print.staff-calendar-print .page-legend {
-  margin-top: 10px;
+.staff-calendar-print .calendar-summary__legend-cell {
+  width: 22%;
+  white-space: nowrap;
 }
 
-.ifitwala-print.staff-calendar-print .page-legend td {
-  padding-right: 12px;
-}
-
-.ifitwala-print.staff-calendar-print .legend-pill {
+.staff-calendar-print .legend-chip {
   display: inline-block;
-  padding: 4px 9px;
+  margin: 1px 4px 1px 0;
+  padding: 3px 7px;
   border: 1px solid var(--line);
   border-radius: 999px;
-  font-size: 8.5px;
+  font-size: 8px;
   font-weight: 700;
 }
 
-.ifitwala-print.staff-calendar-print .legend-pill--holiday {
+.staff-calendar-print .legend-chip--holiday {
   background: var(--holiday-bg);
   border-color: var(--holiday-border);
 }
 
-.ifitwala-print.staff-calendar-print .legend-pill--weekly {
+.staff-calendar-print .legend-chip--weekly {
   background: var(--weekly-bg);
   border-color: var(--weekly-border);
 }
 
-.ifitwala-print.staff-calendar-print .legend-pill--out {
-  background: var(--outside-bg);
+.staff-calendar-print .legend-chip--muted {
+  background: var(--muted-bg);
 }
 
-.ifitwala-print.staff-calendar-print .month-calendar-table {
-  margin-top: 10px;
-  border: 1px solid var(--line);
+.staff-calendar-print .calendar-grid {
   table-layout: fixed;
+  border: 1.5px solid #9aa4b1;
 }
 
-.ifitwala-print.staff-calendar-print .month-calendar-table th {
-  padding: 8px 6px;
+.staff-calendar-print .calendar-grid th {
+  padding: 6px 5px;
   text-align: center;
-  border-right: 1px solid var(--soft-line);
-  border-bottom: 1px solid var(--line);
-  background: #f8fafc;
+  border: 1px solid var(--line);
+  background: var(--accent-soft);
 }
 
-.ifitwala-print.staff-calendar-print .month-calendar-table th:last-child {
-  border-right: none;
-}
-
-.ifitwala-print.staff-calendar-print .month-calendar-table td {
-  height: 92px;
-  padding: 6px 7px;
+.staff-calendar-print .calendar-day {
+  height: 112px;
+  padding: 6px 7px 8px;
   vertical-align: top;
-  border-right: 1px solid var(--soft-line);
-  border-bottom: 1px solid var(--soft-line);
+  border: 1px solid var(--line);
   background: #fff;
 }
 
-.ifitwala-print.staff-calendar-print .month-calendar-table tr:last-child td {
-  border-bottom: none;
-}
-
-.ifitwala-print.staff-calendar-print .month-calendar-table td:last-child {
-  border-right: none;
-}
-
-.ifitwala-print.staff-calendar-print .day-box--adjacent {
+.staff-calendar-print .calendar-day--adjacent {
   background: #fbfcfd;
 }
 
-.ifitwala-print.staff-calendar-print .day-box--out-of-range {
-  background: var(--outside-bg);
+.staff-calendar-print .calendar-day--muted {
+  background: var(--muted-bg);
 }
 
-.ifitwala-print.staff-calendar-print .day-box__head {
+.staff-calendar-print .calendar-day__head {
+  overflow: hidden;
   margin-bottom: 5px;
 }
 
-.ifitwala-print.staff-calendar-print .day-number {
+.staff-calendar-print .calendar-day__number {
+  float: right;
   font-size: 14px;
   font-weight: 700;
-  color: #0f172a;
+  color: #111827;
 }
 
-.ifitwala-print.staff-calendar-print .day-flag {
-  float: right;
+.staff-calendar-print .calendar-day__flag {
+  float: left;
+  margin-top: 1px;
   padding: 2px 5px;
   border-radius: 999px;
-  background: rgba(15, 91, 120, 0.1);
+  background: rgba(15, 91, 120, 0.11);
   color: var(--accent);
   font-size: 7px;
   font-weight: 700;
@@ -272,28 +244,31 @@
   text-transform: uppercase;
 }
 
-.ifitwala-print.staff-calendar-print .day-box__body {
+.staff-calendar-print .calendar-day__events {
   clear: both;
+  min-height: 34px;
 }
 
-.ifitwala-print.staff-calendar-print .day-entry {
-  margin-bottom: 4px;
-  padding: 4px 5px;
-  border: 1px solid var(--holiday-border);
-  border-radius: 7px;
+.staff-calendar-print .calendar-day__event {
+  margin-bottom: 3px;
+  padding: 3px 4px;
+  border-left: 3px solid var(--holiday-border);
+  background: rgba(255, 255, 255, 0.9);
+  font-size: 8px;
+  line-height: 1.2;
+}
+
+.staff-calendar-print .calendar-day__event--holiday {
   background: var(--holiday-bg);
+  border-left-color: var(--holiday-border);
 }
 
-.ifitwala-print.staff-calendar-print .day-entry:last-child {
-  margin-bottom: 0;
-}
-
-.ifitwala-print.staff-calendar-print .day-entry--weekly {
-  border-color: var(--weekly-border);
+.staff-calendar-print .calendar-day__event--weekly {
   background: var(--weekly-bg);
+  border-left-color: var(--weekly-border);
 }
 
-.ifitwala-print.staff-calendar-print .day-entry__dot {
+.staff-calendar-print .calendar-day__event-dot {
   display: inline-block;
   width: 7px;
   height: 7px;
@@ -302,38 +277,35 @@
   vertical-align: middle;
 }
 
-.ifitwala-print.staff-calendar-print .day-entry__text {
+.staff-calendar-print .calendar-day__event-text {
   display: inline;
-  font-size: 8.5px;
   font-weight: 600;
-  line-height: 1.2;
   color: #223041;
 }
 
-.ifitwala-print.staff-calendar-print .page-footer {
-  margin-top: 8px;
+.staff-calendar-print .calendar-day__notes {
+  margin-top: 6px;
+}
+
+.staff-calendar-print .calendar-day__note-line {
+  height: 12px;
+  border-top: 1px solid var(--soft-line);
+}
+
+.staff-calendar-print .calendar-footer {
+  margin-top: 6px;
   text-align: right;
   font-size: 8px;
 }
 
-.ifitwala-print.staff-calendar-print .calendar-empty-state {
-  padding: 30px 20px;
+.staff-calendar-print .calendar-empty-state {
+  padding: 28px 18px;
   border: 1px solid var(--line);
   text-align: center;
 }
 
-.ifitwala-print.staff-calendar-print .calendar-empty-state__title {
+.staff-calendar-print .calendar-empty-state__title {
   font-family: Baskerville, Georgia, serif;
   font-size: 18px;
   color: #101828;
-}
-
-@media print {
-  .ifitwala-print.staff-calendar-print .calendar-month-page {
-    page-break-after: always;
-  }
-
-  .ifitwala-print.staff-calendar-print .calendar-month-page:last-child {
-    page-break-after: auto;
-  }
 }

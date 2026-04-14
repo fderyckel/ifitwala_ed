@@ -26,7 +26,10 @@ Permission scope for `Employee`:
   - employees in their organization descendant scope
   - employees where `organization` is blank
 - HR organization scope resolution uses persisted defaults (`DefaultValue`) for user `organization`, then `Global Defaults.default_organization`, and expands explicit `User Permission` grants on `Organization`; if none resolves, only unassigned-organization Employee rows are visible to HR.
-- `Academic Admin` has read-only Employee access scoped to the user default school.
+- `Academic Admin` has read-only Employee access with a two-step scope contract:
+  - when the user has a default school, Employee visibility stays scoped to that exact school
+  - when the user has no default school, Employee visibility falls back to the user's organization descendant scope
+- Academic Admin organization fallback resolves from active `Employee.organization`, then persisted user default `organization`, and unions explicit `User Permission` grants on `Organization`.
 - `Employee` role has read-only access to their own Employee record only.
 
 ### 1.1 Staff Portal Holiday Resolution (Portal Calendar Contract)
@@ -89,6 +92,7 @@ Role handling now follows managed sync:
 - contact visibility for employee-linked contacts is server-scoped through `Contact.links -> Employee`:
   - `HR Manager` / `HR User`: read employee contacts in their organization scope
   - `Academic Admin` / `Academic Assistant`: read employee contacts in their default school + descendant-school scope
+  - `Academic Admin` only: when no default school is configured, employee-linked contact visibility falls back to organization descendant scope
   - `Employee`: read only the contact linked to their own employee record
 - when `Employee.employment_status` is not `Active`, the linked `User` is disabled and all assigned role rows are removed.
 - routing policy resolves active employee status using `Employee.user_id` first, then an unambiguous active match on `employee_professional_email` to avoid false-negative staff routing when legacy user links are missing.
@@ -202,7 +206,7 @@ Impact: `Employee.on_update()` now always syncs user defaults for linked users, 
 [2026-02-26] Decision:
 We decided Employee permission hooks enforce role-specific scope rules explicitly:
 - HR roles: scoped CRUD to org descendants + blank organization rows
-- Academic Admin: read-only on default school
+- Academic Admin: read-only on default school, with organization-descendant fallback only when no default school is configured
 - Employee: read-only own record
 Reason: this is the required product contract and prevents implicit fallback behavior from granting or denying the wrong access.
 Impact: list and form permissions are now consistent with the intended HR/academic/employee visibility model.

@@ -752,7 +752,7 @@
 													</span>
 												</div>
 											</div>
-											<p class="mt-3 type-body text-ink/85 line-clamp-1">
+											<p class="mt-3 type-body text-ink/85">
 												{{ standardSummaryDescription(standard) }}
 											</p>
 										</div>

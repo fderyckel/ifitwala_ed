@@ -33,6 +33,8 @@ class TestStaffCalendarPrintFormat(unittest.TestCase):
         self.assertEqual(values["doc_type"], "Staff Calendar")
         self.assertEqual(values["html"], payload["html"])
         self.assertEqual(values["css"], payload["css"])
+        self.assertIn("<style>", payload["html"])
+        self.assertIn("@page", payload["html"])
 
     def test_template_parses_as_valid_jinja(self):
         html = STAFF_CALENDAR_TEMPLATE_PATH.read_text(encoding="utf-8")
@@ -54,9 +56,9 @@ class TestStaffCalendarPrintFormat(unittest.TestCase):
             "row.description",
             "row.color",
             "row.weekly_off",
-            "calendar-month-page",
-            "month-calendar-table",
-            "day-box",
+            "calendar-page",
+            "calendar-grid",
+            "calendar-day__notes",
             "range(month_count)",
         ):
             self.assertIn(token, html)
@@ -66,11 +68,11 @@ class TestStaffCalendarPrintFormat(unittest.TestCase):
             "row.type",
             "doc.organization_logo",
             "doc.school_logo",
-            'class="calendar-table"',
+            "month-calendar-table",
             "date-chip",
             "type-pill",
             "month-grid",
-            "day-cell",
+            "day-box",
         ):
             self.assertNotIn(token, html)
 
@@ -115,8 +117,8 @@ class TestStaffCalendarPrintFormat(unittest.TestCase):
             "School Closed",
             "Sunday",
             "Outside Range",
-            "day-box",
-            "calendar-month-page",
+            "calendar-day__note-line",
+            "calendar-page",
         ):
             self.assertIn(token, rendered)
 
@@ -124,13 +126,13 @@ class TestStaffCalendarPrintFormat(unittest.TestCase):
         css = STAFF_CALENDAR_CSS_PATH.read_text(encoding="utf-8")
 
         for token in (
-            ".page-header",
-            ".page-summary",
-            ".page-legend",
-            ".calendar-month-page",
-            ".month-calendar-table",
-            ".day-box--out-of-range",
-            ".day-entry",
+            "@page",
+            "A4 landscape",
+            ".calendar-header",
+            ".calendar-summary",
+            ".calendar-grid",
+            ".calendar-day__notes",
+            ".legend-chip",
             "page-break-after: always",
         ):
             self.assertIn(token, css)

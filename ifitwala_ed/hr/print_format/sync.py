@@ -41,8 +41,10 @@ MANAGED_PRINT_FORMAT_FIELDS = (
 
 def load_staff_calendar_print_format_payload() -> dict:
     payload = json.loads(STAFF_CALENDAR_PRINT_FORMAT_PATH.read_text(encoding="utf-8"))
-    payload["html"] = STAFF_CALENDAR_TEMPLATE_PATH.read_text(encoding="utf-8").strip()
-    payload["css"] = STAFF_CALENDAR_CSS_PATH.read_text(encoding="utf-8").strip()
+    template = STAFF_CALENDAR_TEMPLATE_PATH.read_text(encoding="utf-8").strip()
+    css = STAFF_CALENDAR_CSS_PATH.read_text(encoding="utf-8").strip()
+    payload["html"] = f"<style>\n{css}\n</style>\n{template}"
+    payload["css"] = css
     return payload
 
 
