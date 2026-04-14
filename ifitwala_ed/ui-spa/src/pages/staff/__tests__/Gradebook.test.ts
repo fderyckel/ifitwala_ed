@@ -307,6 +307,7 @@ async function switchToOverview() {
 	expect(overviewButton).not.toBeNull();
 	overviewButton!.dispatchEvent(new MouseEvent('click', { bubbles: true }));
 	await flushUi();
+	await flushUi();
 }
 
 afterEach(() => {

@@ -4,12 +4,14 @@ import { createApp, defineComponent, h, nextTick, type App } from 'vue';
 const {
 	getCampaignOptionsMock,
 	getDashboardMock,
+	getAudienceRowsMock,
 	getStaffHomeHeaderMock,
 	overlayOpenMock,
 	routeQueryMock,
 } = vi.hoisted(() => ({
 	getCampaignOptionsMock: vi.fn(),
 	getDashboardMock: vi.fn(),
+	getAudienceRowsMock: vi.fn(),
 	getStaffHomeHeaderMock: vi.fn(),
 	overlayOpenMock: vi.fn(),
 	routeQueryMock: {
@@ -24,6 +26,7 @@ vi.mock('@/lib/services/policySignature/policySignatureService', () => ({
 	createPolicySignatureService: () => ({
 		getCampaignOptions: getCampaignOptionsMock,
 		getDashboard: getDashboardMock,
+		getAudienceRows: getAudienceRowsMock,
 	}),
 }));
 
@@ -112,6 +115,7 @@ function mountAnalyticsPage() {
 afterEach(() => {
 	getCampaignOptionsMock.mockReset();
 	getDashboardMock.mockReset();
+	getAudienceRowsMock.mockReset();
 	getStaffHomeHeaderMock.mockReset();
 	overlayOpenMock.mockReset();
 	Object.assign(routeQueryMock, {
@@ -454,5 +458,214 @@ describe('PolicySignatureAnalytics', () => {
 			'VER-2-ORG',
 			'VER-2A',
 		]);
+	});
+
+	it('opens the searchable audience register and fetches paginated guardian rows on demand', async () => {
+		getStaffHomeHeaderMock.mockResolvedValue({
+			user: 'admin@example.com',
+			capabilities: { manage_policy_signatures: true },
+		});
+		getCampaignOptionsMock.mockResolvedValue({
+			options: {
+				organizations: ['ORG-1'],
+				schools: ['SCH-1'],
+				employee_groups: ['GROUP-1'],
+				policies: [
+					{
+						policy_version: 'VER-1',
+						policy_title: 'Community Handbook',
+						version_label: 'v1',
+						applies_to_tokens: ['Guardian'],
+					},
+				],
+			},
+			preview: {
+				target_employee_rows: 0,
+				eligible_users: 0,
+				already_signed: 0,
+				already_open: 0,
+				to_create: 0,
+				skipped_scope: 0,
+				policy_audiences: ['Guardian'],
+				audience_previews: [],
+			},
+		});
+		getDashboardMock.mockResolvedValue({
+			summary: {
+				policy_version: 'VER-1',
+				policy_title: 'Community Handbook',
+				version_label: 'v1',
+				organization: 'ORG-1',
+				school: 'SCH-1',
+				employee_group: 'GROUP-1',
+				applies_to_tokens: ['Guardian'],
+				eligible_targets: 42,
+				signed: 21,
+				pending: 21,
+				completion_pct: 50,
+				skipped_scope: 0,
+			},
+			audiences: [
+				{
+					audience: 'Guardian',
+					audience_label: 'Guardians',
+					workflow_description: 'Guardians acknowledge this policy in Guardian Portal; no staff tasks are created.',
+					supports_campaign_launch: false,
+					summary: {
+						target_rows: 42,
+						eligible_targets: 42,
+						signed: 21,
+						pending: 21,
+						completion_pct: 50,
+						skipped_scope: 0,
+						already_open: 0,
+						to_create: 0,
+					},
+					breakdowns: {
+						by_organization: [],
+						by_school: [],
+						by_context: [],
+						context_label: 'Guardian Email',
+					},
+					rows: {
+						pending: [],
+						signed: [],
+					},
+				},
+			],
+		});
+		getAudienceRowsMock
+			.mockResolvedValueOnce({
+				audience: 'Guardian',
+				audience_label: 'Guardians',
+				workflow_description:
+					'Guardians acknowledge this policy in Guardian Portal; no staff tasks are created.',
+				supports_campaign_launch: false,
+				status: 'all',
+				query: null,
+				rows: [
+					{
+						record_id: 'GRD-1',
+						subject_name: 'Guardian One',
+						subject_subtitle: 'guardian-one@example.com',
+						context_label: 'Linked students: Student One',
+						organization: 'ORG-1',
+						school: 'SCH-1',
+						is_signed: true,
+						acknowledged_at: '2026-04-15 08:30:00',
+						acknowledged_by: 'guardian1@example.com',
+					},
+				],
+				pagination: {
+					page: 1,
+					limit: 25,
+					total_rows: 42,
+					total_pages: 2,
+				},
+			})
+			.mockResolvedValueOnce({
+				audience: 'Guardian',
+				audience_label: 'Guardians',
+				workflow_description:
+					'Guardians acknowledge this policy in Guardian Portal; no staff tasks are created.',
+				supports_campaign_launch: false,
+				status: 'all',
+				query: 'guardian two',
+				rows: [
+					{
+						record_id: 'GRD-2',
+						subject_name: 'Guardian Two',
+						subject_subtitle: 'guardian-two@example.com',
+						context_label: 'Linked students: Student Two',
+						organization: 'ORG-1',
+						school: 'SCH-1',
+						is_signed: false,
+					},
+				],
+				pagination: {
+					page: 1,
+					limit: 25,
+					total_rows: 1,
+					total_pages: 1,
+				},
+			})
+			.mockResolvedValueOnce({
+				audience: 'Guardian',
+				audience_label: 'Guardians',
+				workflow_description:
+					'Guardians acknowledge this policy in Guardian Portal; no staff tasks are created.',
+				supports_campaign_launch: false,
+				status: 'signed',
+				query: 'guardian two',
+				rows: [],
+				pagination: {
+					page: 1,
+					limit: 25,
+					total_rows: 0,
+					total_pages: 1,
+				},
+			});
+
+		mountAnalyticsPage();
+		await flushUi();
+		await flushUi();
+
+		const openRegisterButton = Array.from(document.querySelectorAll('button')).find(button =>
+			(button.textContent || '').includes('Open searchable register')
+		);
+		openRegisterButton?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		await flushUi();
+		await flushUi();
+
+		expect(getAudienceRowsMock).toHaveBeenCalledWith({
+			policy_version: 'VER-1',
+			audience: 'Guardian',
+			organization: 'ORG-1',
+			school: 'SCH-1',
+			employee_group: 'GROUP-1',
+			status: 'all',
+			query: null,
+			page: 1,
+			limit: 25,
+		});
+
+		const searchInput = document.querySelector('input[type="search"]') as HTMLInputElement;
+		searchInput.value = 'guardian two';
+		searchInput.dispatchEvent(new Event('input', { bubbles: true }));
+		searchInput.dispatchEvent(new KeyboardEvent('keyup', { key: 'Enter', bubbles: true }));
+		await flushUi();
+		await flushUi();
+
+		expect(getAudienceRowsMock).toHaveBeenLastCalledWith({
+			policy_version: 'VER-1',
+			audience: 'Guardian',
+			organization: 'ORG-1',
+			school: 'SCH-1',
+			employee_group: 'GROUP-1',
+			status: 'all',
+			query: 'guardian two',
+			page: 1,
+			limit: 25,
+		});
+
+		const signedButton = Array.from(document.querySelectorAll('button')).find(button =>
+			(button.textContent || '').trim() === 'Signed'
+		);
+		signedButton?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		await flushUi();
+		await flushUi();
+
+		expect(getAudienceRowsMock).toHaveBeenLastCalledWith({
+			policy_version: 'VER-1',
+			audience: 'Guardian',
+			organization: 'ORG-1',
+			school: 'SCH-1',
+			employee_group: 'GROUP-1',
+			status: 'signed',
+			query: 'guardian two',
+			page: 1,
+			limit: 25,
+		});
+		expect(document.body.textContent || '').toContain('No people matched this search');
 	});
 });

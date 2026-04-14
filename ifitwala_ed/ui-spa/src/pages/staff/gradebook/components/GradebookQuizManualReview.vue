@@ -4,8 +4,8 @@
 			<div class="space-y-1">
 				<h3 class="text-lg font-semibold text-ink">Open-ended Quiz Review</h3>
 				<p class="max-w-2xl text-sm text-ink/60">
-					Score manually graded quiz responses by question or by student. Each save refreshes the official
-					quiz attempt and outcome state on the server.
+					Score manually graded quiz responses by question or by student. Each save refreshes the
+					official quiz attempt and outcome state on the server.
 				</p>
 			</div>
 			<Button
@@ -31,7 +31,9 @@
 				<button
 					type="button"
 					class="rounded-md px-3 py-2 text-sm font-medium transition-all"
-					:class="viewMode === 'question' ? 'bg-leaf text-white shadow-sm' : 'text-ink/70 hover:text-ink'"
+					:class="
+						viewMode === 'question' ? 'bg-leaf text-white shadow-sm' : 'text-ink/70 hover:text-ink'
+					"
 					@click="setViewMode('question')"
 				>
 					By Question
@@ -39,7 +41,9 @@
 				<button
 					type="button"
 					class="rounded-md px-3 py-2 text-sm font-medium transition-all"
-					:class="viewMode === 'student' ? 'bg-leaf text-white shadow-sm' : 'text-ink/70 hover:text-ink'"
+					:class="
+						viewMode === 'student' ? 'bg-leaf text-white shadow-sm' : 'text-ink/70 hover:text-ink'
+					"
 					@click="setViewMode('student')"
 				>
 					By Student
@@ -91,7 +95,10 @@
 			class="rounded-lg border border-dashed border-border/70 bg-white/70 p-6 text-center text-sm text-ink/60"
 		>
 			<p class="font-medium text-ink">No open-ended quiz responses to review.</p>
-			<p class="mt-1">This assessed quiz does not currently have submitted manual-grading items in the selected view.</p>
+			<p class="mt-1">
+				This assessed quiz does not currently have submitted manual-grading items in the selected
+				view.
+			</p>
 		</div>
 
 		<div v-else class="space-y-4">
@@ -100,7 +107,9 @@
 				:key="row.item_id"
 				class="rounded-xl border border-border bg-white p-5 shadow-sm"
 			>
-				<div class="flex flex-wrap items-start justify-between gap-3 border-b border-border/50 pb-4">
+				<div
+					class="flex flex-wrap items-start justify-between gap-3 border-b border-border/50 pb-4"
+				>
 					<div class="space-y-1">
 						<p class="text-base font-semibold text-ink">{{ row.title }}</p>
 						<div class="flex flex-wrap items-center gap-2 text-xs text-ink/55">
@@ -111,7 +120,9 @@
 						</div>
 					</div>
 					<div class="flex flex-wrap items-center gap-2">
-						<Badge v-if="row.requires_manual_grading" variant="subtle" theme="orange">Needs Review</Badge>
+						<Badge v-if="row.requires_manual_grading" variant="subtle" theme="orange"
+							>Needs Review</Badge
+						>
 						<Badge v-else variant="subtle" theme="green">Scored</Badge>
 						<Badge v-if="row.grading_status" variant="subtle">{{ row.grading_status }}</Badge>
 					</div>
@@ -128,7 +139,9 @@
 						</div>
 
 						<div class="space-y-2">
-							<p class="text-xs font-semibold uppercase tracking-wide text-ink/45">Student Response</p>
+							<p class="text-xs font-semibold uppercase tracking-wide text-ink/45">
+								Student Response
+							</p>
 							<div class="rounded-lg border border-border/60 bg-white px-4 py-3">
 								<pre class="whitespace-pre-wrap text-sm text-ink">{{ responseLabel(row) }}</pre>
 							</div>
@@ -157,13 +170,17 @@
 						</div>
 
 						<div class="flex items-center justify-between border-t border-border/50 pt-3">
-							<Badge v-if="rowStates[row.item_id]?.dirty" variant="subtle" theme="orange">Unsaved</Badge>
+							<Badge v-if="rowStates[row.item_id]?.dirty" variant="subtle" theme="orange"
+								>Unsaved</Badge
+							>
 							<span v-else class="text-xs text-ink/40">Saved</span>
 							<Button
 								size="sm"
 								appearance="primary"
 								:loading="rowStates[row.item_id]?.saving"
-								:disabled="!rowStates[row.item_id]?.dirty || rowStates[row.item_id]?.awarded_score === null"
+								:disabled="
+									!rowStates[row.item_id]?.dirty || rowStates[row.item_id]?.awarded_score === null
+								"
 								@click="saveRow(row.item_id)"
 							>
 								Save Score
@@ -177,246 +194,252 @@
 </template>
 
 <script setup lang="ts">
-import { computed, reactive, ref, watch } from 'vue'
-import { Badge, Button, FormControl, Spinner, toast } from 'frappe-ui'
-import { createGradebookService } from '@/lib/services/gradebook/gradebookService'
+import { computed, reactive, ref, watch } from 'vue';
+import { Badge, Button, FormControl, Spinner, toast } from 'frappe-ui';
+import { createGradebookService } from '@/lib/services/gradebook/gradebookService';
 import type {
 	Response as GetTaskQuizManualReviewResponse,
 	QuestionOption as QuizManualQuestionOption,
 	ReviewRow as QuizManualReviewRow,
 	StudentOption as QuizManualStudentOption,
-} from '@/types/contracts/gradebook/get_task_quiz_manual_review'
-import { formatDateTime } from '../gradebookUtils'
+} from '@/types/contracts/gradebook/get_task_quiz_manual_review';
+import { formatDateTime } from '../gradebookUtils';
 
 interface QuizManualRowState {
-	awarded_score: number | null
-	dirty: boolean
-	saving: boolean
+	awarded_score: number | null;
+	dirty: boolean;
+	saving: boolean;
 }
 
 const props = defineProps<{
-	taskName: string
-}>()
+	taskName: string;
+}>();
 
-const gradebookService = createGradebookService()
-const loading = ref(false)
-const savingVisible = ref(false)
-const review = ref<GetTaskQuizManualReviewResponse | null>(null)
-const viewMode = ref<'question' | 'student'>('question')
-const selectedQuestion = ref<string | null>(null)
-const selectedStudent = ref<string | null>(null)
-const rowStates = reactive<Record<string, QuizManualRowState>>({})
-const loadVersion = ref(0)
+const gradebookService = createGradebookService();
+const loading = ref(false);
+const savingVisible = ref(false);
+const review = ref<GetTaskQuizManualReviewResponse | null>(null);
+const viewMode = ref<'question' | 'student'>('question');
+const selectedQuestion = ref<string | null>(null);
+const selectedStudent = ref<string | null>(null);
+const rowStates = reactive<Record<string, QuizManualRowState>>({});
+const loadVersion = ref(0);
 
 const visibleDirtyRows = computed(() => {
 	return (review.value?.rows || []).filter(row => {
-		const state = rowStates[row.item_id]
-		return Boolean(state?.dirty && state.awarded_score !== null)
-	})
-})
+		const state = rowStates[row.item_id];
+		return Boolean(state?.dirty && state.awarded_score !== null);
+	});
+});
 
 function showToast(title: string, appearance: 'danger' | 'success' | 'warning' = 'danger') {
 	const toastApi = toast as unknown as
 		| ((payload: { title: string; appearance?: string }) => void)
 		| {
-				error?: (message: string) => void
-				create?: (payload: { title: string; appearance?: string }) => void
-		  }
+				error?: (message: string) => void;
+				create?: (payload: { title: string; appearance?: string }) => void;
+		  };
 	if (typeof toastApi === 'function') {
-		toastApi({ title, appearance })
-		return
+		toastApi({ title, appearance });
+		return;
 	}
 	if (appearance === 'danger' && toastApi && typeof toastApi.error === 'function') {
-		toastApi.error(title)
-		return
+		toastApi.error(title);
+		return;
 	}
 	if (toastApi && typeof toastApi.create === 'function') {
-		toastApi.create({ title, appearance })
+		toastApi.create({ title, appearance });
 	}
 }
 
 function showDangerToast(title: string) {
-	showToast(title, 'danger')
+	showToast(title, 'danger');
 }
 
 function showSuccessToast(title: string) {
-	showToast(title, 'success')
+	showToast(title, 'success');
 }
 
 function clearState() {
-	review.value = null
-	viewMode.value = 'question'
-	selectedQuestion.value = null
-	selectedStudent.value = null
-	savingVisible.value = false
+	review.value = null;
+	viewMode.value = 'question';
+	selectedQuestion.value = null;
+	selectedStudent.value = null;
+	savingVisible.value = false;
 	for (const key of Object.keys(rowStates)) {
-		delete rowStates[key]
+		delete rowStates[key];
 	}
 }
 
 async function loadReview() {
 	if (!props.taskName) {
-		clearState()
-		return
+		clearState();
+		return;
 	}
 
-	const version = loadVersion.value + 1
-	loadVersion.value = version
-	loading.value = true
+	const version = loadVersion.value + 1;
+	loadVersion.value = version;
+	loading.value = true;
 	try {
 		const payload = await gradebookService.getTaskQuizManualReview({
 			task: props.taskName,
 			view_mode: viewMode.value,
 			quiz_question: selectedQuestion.value,
 			student: selectedStudent.value,
-		})
+		});
 		if (loadVersion.value !== version) {
-			return
+			return;
 		}
-		review.value = payload
-		viewMode.value = payload.view_mode
-		selectedQuestion.value = payload.selected_question?.quiz_question || null
-		selectedStudent.value = payload.selected_student?.student || null
-		initializeRowStates()
+		review.value = payload;
+		viewMode.value = payload.view_mode;
+		selectedQuestion.value = payload.selected_question?.quiz_question || null;
+		selectedStudent.value = payload.selected_student?.student || null;
+		initializeRowStates();
 	} catch (error) {
-		console.error('Failed to load quiz manual review', error)
+		console.error('Failed to load quiz manual review', error);
 		if (loadVersion.value === version) {
-			showDangerToast('Could not load open-ended quiz review')
-			clearState()
+			showDangerToast('Could not load open-ended quiz review');
+			clearState();
 		}
 	} finally {
 		if (loadVersion.value === version) {
-			loading.value = false
+			loading.value = false;
 		}
 	}
 }
 
 function initializeRowStates() {
 	for (const key of Object.keys(rowStates)) {
-		delete rowStates[key]
+		delete rowStates[key];
 	}
 	for (const row of review.value?.rows || []) {
 		rowStates[row.item_id] = {
 			awarded_score: row.awarded_score,
 			dirty: false,
 			saving: false,
-		}
+		};
 	}
 }
 
 function normalizeScore(value: string | number | null | undefined) {
-	if (value === null || value === undefined || value === '') return null
-	const parsed = typeof value === 'number' ? value : Number.parseFloat(String(value))
-	return Number.isFinite(parsed) ? parsed : null
+	if (value === null || value === undefined || value === '') return null;
+	const parsed = typeof value === 'number' ? value : Number.parseFloat(String(value));
+	return Number.isFinite(parsed) ? parsed : null;
 }
 
 function onScoreChanged(itemId: string, value: string | number | null) {
-	const state = rowStates[itemId]
-	if (!state) return
-	const nextValue = normalizeScore(value)
-	if (state.awarded_score === nextValue) return
-	state.awarded_score = nextValue
-	state.dirty = true
+	const state = rowStates[itemId];
+	if (!state) return;
+	const nextValue = normalizeScore(value);
+	if (state.awarded_score === nextValue) return;
+	state.awarded_score = nextValue;
+	state.dirty = true;
 }
 
 function questionLabel(option: QuizManualQuestionOption) {
-	return option.pending_item_count ? `${option.title} (${option.pending_item_count} pending)` : option.title
+	return option.pending_item_count
+		? `${option.title} (${option.pending_item_count} pending)`
+		: option.title;
 }
 
 function studentLabel(option: QuizManualStudentOption) {
-	const suffix = option.student_id ? ` • ${option.student_id}` : ''
-	const pending = option.pending_item_count ? ` (${option.pending_item_count} pending)` : ''
-	return `${option.student_name}${suffix}${pending}`
+	const suffix = option.student_id ? ` • ${option.student_id}` : '';
+	const pending = option.pending_item_count ? ` (${option.pending_item_count} pending)` : '';
+	return `${option.student_name}${suffix}${pending}`;
 }
 
 function responseLabel(row: QuizManualReviewRow) {
-	const text = (row.response_text || '').trim()
-	if (text) return text
-	if (row.selected_option_labels.length) return row.selected_option_labels.join(', ')
-	return 'No response submitted.'
+	const text = (row.response_text || '').trim();
+	if (text) return text;
+	if (row.selected_option_labels.length) return row.selected_option_labels.join(', ');
+	return 'No response submitted.';
 }
 
 async function setViewMode(mode: 'question' | 'student') {
-	if (viewMode.value === mode) return
-	viewMode.value = mode
+	if (viewMode.value === mode) return;
+	viewMode.value = mode;
 	if (mode === 'question') {
-		selectedStudent.value = null
+		selectedStudent.value = null;
 	} else {
-		selectedQuestion.value = null
+		selectedQuestion.value = null;
 	}
-	await loadReview()
+	await loadReview();
 }
 
 async function onQuestionSelected(value: string | null) {
-	selectedQuestion.value = value
-	await loadReview()
+	selectedQuestion.value = value;
+	await loadReview();
 }
 
 async function onStudentSelected(value: string | null) {
-	selectedStudent.value = value
-	await loadReview()
+	selectedStudent.value = value;
+	await loadReview();
 }
 
 async function saveRows(itemIds: string[]) {
-	if (!props.taskName || !itemIds.length) return
+	if (!props.taskName || !itemIds.length) return;
 
 	const grades = itemIds
 		.map(itemId => ({
 			item_id: itemId,
 			awarded_score: rowStates[itemId]?.awarded_score ?? null,
 		}))
-		.filter(row => row.awarded_score !== null)
-	if (!grades.length) return
+		.filter(row => row.awarded_score !== null);
+	if (!grades.length) return;
 
-	const uniqueIds = new Set(itemIds)
+	const uniqueIds = new Set(itemIds);
 	itemIds.forEach(itemId => {
-		const state = rowStates[itemId]
+		const state = rowStates[itemId];
 		if (state) {
-			state.saving = true
+			state.saving = true;
 		}
-	})
+	});
 
 	try {
 		await gradebookService.saveTaskQuizManualReview({
 			task: props.taskName,
 			grades,
-		})
-		showSuccessToast(uniqueIds.size === 1 ? 'Quiz score saved.' : `Saved ${uniqueIds.size} open-ended quiz scores.`)
-		await loadReview()
+		});
+		showSuccessToast(
+			uniqueIds.size === 1
+				? 'Quiz score saved.'
+				: `Saved ${uniqueIds.size} open-ended quiz scores.`
+		);
+		await loadReview();
 	} catch (error) {
-		console.error('Failed to save quiz manual review', error)
-		showDangerToast('Could not save open-ended quiz scores')
+		console.error('Failed to save quiz manual review', error);
+		showDangerToast('Could not save open-ended quiz scores');
 	} finally {
 		itemIds.forEach(itemId => {
-			const state = rowStates[itemId]
+			const state = rowStates[itemId];
 			if (state) {
-				state.saving = false
+				state.saving = false;
 			}
-		})
+		});
 	}
 }
 
 async function saveRow(itemId: string) {
-	await saveRows([itemId])
+	await saveRows([itemId]);
 }
 
 async function saveVisibleRows() {
-	const itemIds = visibleDirtyRows.value.map(row => row.item_id)
-	if (!itemIds.length) return
-	savingVisible.value = true
+	const itemIds = visibleDirtyRows.value.map(row => row.item_id);
+	if (!itemIds.length) return;
+	savingVisible.value = true;
 	try {
-		await saveRows(itemIds)
+		await saveRows(itemIds);
 	} finally {
-		savingVisible.value = false
+		savingVisible.value = false;
 	}
 }
 
 watch(
 	() => props.taskName,
 	() => {
-		clearState()
-		void loadReview()
+		clearState();
+		void loadReview();
 	},
 	{ immediate: true }
-)
+);
 </script>

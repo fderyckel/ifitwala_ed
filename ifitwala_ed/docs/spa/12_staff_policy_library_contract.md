@@ -73,7 +73,7 @@ Test refs: `ifitwala_ed/ui-spa/src/pages/staff/__tests__/StaffPolicies.test.ts`
 ## Policy Signature Analytics Surface
 Status: Implemented
 Code refs: `ifitwala_ed/api/policy_signature.py`, `ifitwala_ed/ui-spa/src/pages/staff/analytics/PolicySignatureAnalytics.vue`, `ifitwala_ed/ui-spa/src/overlays/staff/StaffPolicyCampaignOverlay.vue`
-Test refs: `ifitwala_ed/api/test_policy_signature.py`
+Test refs: `ifitwala_ed/api/test_policy_signature.py`, `ifitwala_ed/ui-spa/src/pages/staff/__tests__/PolicySignatureAnalytics.test.ts`
 
 1. The analytics page must show acknowledgement status for every supported audience on the selected policy version:
    - `Staff`
@@ -83,6 +83,24 @@ Test refs: `ifitwala_ed/api/test_policy_signature.py`
 3. Guardian and student rows are tracking-only on this surface and must be labeled as portal acknowledgements, not internal tasks.
 4. The `Employee Group` filter narrows staff counts only and must not silently reshape guardian or student counts.
 5. The campaign overlay must preserve current analytics filters when opened from the analytics page so staff can launch or inspect follow-up work without losing context.
+6. The dashboard bootstrap remains a bounded summary read:
+   - metric cards,
+   - audience breakdown tables,
+   - short pending/signed previews only for small audiences.
+7. Large audience browsing must use the dedicated audience register instead of rendering long inline tables.
+8. The audience register is server-backed and must support:
+   - `audience`,
+   - `status`,
+   - `query`,
+   - `page`,
+   - `limit`.
+9. The audience register loads on demand from `get_staff_policy_signature_audience_rows` so the page does not add register request waterfalls during initial bootstrap.
+10. The analytics metric card layout on this page is local to the surface and uses five cards that flow as `3 + 2` on desktop:
+   - `Eligible`
+   - `Signed`
+   - `Pending`
+   - `Completion`
+   - `Out of scope`
 
 ## Contract Matrix
 Status: Implemented
@@ -93,8 +111,8 @@ Test refs: `ifitwala_ed/api/test_policy_signature.py`, `ifitwala_ed/api/test_ana
 |---|---|---|
 | Schema / DocType | Reuse `Institutional Policy`, `Policy Version`, `Policy Acknowledgement`, `Employee` | Implemented |
 | Controller / workflow logic | Signature-required status is derived from existing workflow artifacts, not new schema | Implemented |
-| API endpoints | `get_staff_policy_library`, `get_policy_inform_payload` | Implemented |
-| SPA / UI surfaces | `/staff/policies` page + existing `staff-policy-inform` overlay | Implemented |
-| Reports / dashboards | Staff Home link integration with capability gate | Implemented |
+| API endpoints | `get_staff_policy_library`, `get_policy_inform_payload`, `get_staff_policy_signature_dashboard`, `get_staff_policy_signature_audience_rows` | Implemented |
+| SPA / UI surfaces | `/staff/policies`, `/staff/analytics/policy-signatures`, existing `staff-policy-inform` overlay | Implemented |
+| Reports / dashboards | Staff Home link integration with capability gate plus on-demand audience register for high-volume policy analytics | Implemented |
 | Scheduler / background jobs | None | Implemented |
 | Tests | Backend and SPA regression coverage for status and overlay flow | Implemented |

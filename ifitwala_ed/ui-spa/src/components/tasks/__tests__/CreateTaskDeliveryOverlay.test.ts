@@ -298,9 +298,11 @@ async function flushUi() {
 }
 
 function findButton(text: string) {
-	return Array.from(document.querySelectorAll('button')).find(button =>
-		(button.textContent || '').includes(text)
-	) as HTMLButtonElement | undefined;
+	const buttons = Array.from(document.querySelectorAll('button')) as HTMLButtonElement[];
+	return (
+		buttons.find(button => (button.textContent || '').trim() === text) ||
+		buttons.find(button => (button.textContent || '').includes(text))
+	);
 }
 
 async function clickButton(text: string) {

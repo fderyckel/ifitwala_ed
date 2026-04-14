@@ -7,12 +7,14 @@
 				<div class="space-y-1">
 					<h2 class="text-lg font-semibold text-ink">Class Overview</h2>
 					<p class="max-w-2xl text-sm text-ink/60">
-						Rows are students and columns are recent deliveries for this group. Open any cell to jump back
-						into quick grading.
+						Rows are students and columns are recent deliveries for this group. Open any cell to
+						jump back into quick grading.
 					</p>
 				</div>
 				<div class="flex items-center gap-3">
-					<div class="hidden text-xs uppercase tracking-wide text-ink/45 sm:block">Recent deliveries</div>
+					<div class="hidden text-xs uppercase tracking-wide text-ink/45 sm:block">
+						Recent deliveries
+					</div>
 					<FormControl
 						type="select"
 						size="sm"
@@ -27,15 +29,23 @@
 		</div>
 
 		<div class="min-h-[400px] flex-1 bg-white p-6">
-			<div v-if="!group" class="flex h-full flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed border-border/60 bg-gray-50/30 p-12 text-center text-ink/60">
+			<div
+				v-if="!group"
+				class="flex h-full flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed border-border/60 bg-gray-50/30 p-12 text-center text-ink/60"
+			>
 				<div class="rounded-full bg-gray-100 p-4">
 					<FeatherIcon name="layout" class="h-8 w-8 text-ink/30" />
 				</div>
 				<p class="text-lg font-medium text-ink">No Group Selected</p>
-				<p class="max-w-xs text-sm">Choose a student group first to open the overall gradebook view.</p>
+				<p class="max-w-xs text-sm">
+					Choose a student group first to open the overall gradebook view.
+				</p>
 			</div>
 
-			<div v-else-if="loading" class="flex h-full flex-col items-center justify-center gap-3 pt-20">
+			<div
+				v-else-if="loading"
+				class="flex h-full flex-col items-center justify-center gap-3 pt-20"
+			>
 				<Spinner class="h-8 w-8 text-canopy" />
 				<p class="text-sm text-ink/50">Loading overview...</p>
 			</div>
@@ -54,8 +64,8 @@
 			>
 				<p class="text-lg font-medium text-ink">Nothing to show yet</p>
 				<p class="max-w-md text-sm">
-					This overview only shows deliveries that match the current group and filters. Try a different group
-					or widen the task filters.
+					This overview only shows deliveries that match the current group and filters. Try a
+					different group or widen the task filters.
 				</p>
 			</div>
 
@@ -106,8 +116,12 @@
 											class="h-10 w-10 rounded-full border border-white bg-white object-cover shadow-sm"
 										/>
 										<div class="min-w-0">
-											<p class="truncate text-sm font-semibold text-ink">{{ student.student_name }}</p>
-											<p v-if="student.student_id" class="text-xs text-ink/50">{{ student.student_id }}</p>
+											<p class="truncate text-sm font-semibold text-ink">
+												{{ student.student_name }}
+											</p>
+											<p v-if="student.student_id" class="text-xs text-ink/50">
+												{{ student.student_id }}
+											</p>
 										</div>
 									</div>
 								</th>
@@ -119,9 +133,7 @@
 									<button
 										type="button"
 										class="flex min-h-[104px] w-full flex-col items-start justify-between rounded-lg border px-3 py-3 text-left transition-all"
-										:class="
-											cellClass(student.student, delivery.delivery_id)
-										"
+										:class="cellClass(student.student, delivery.delivery_id)"
 										@click="openCell(student.student, delivery.delivery_id)"
 									>
 										<div class="space-y-1">
@@ -133,7 +145,11 @@
 											</p>
 										</div>
 										<div class="flex flex-wrap gap-1">
-											<Badge v-for="badge in cellBadges(student.student, delivery)" :key="badge" variant="subtle">
+											<Badge
+												v-for="badge in cellBadges(student.student, delivery)"
+												:key="badge"
+												variant="subtle"
+											>
 												{{ badge }}
 											</Badge>
 										</div>
@@ -149,91 +165,100 @@
 </template>
 
 <script setup lang="ts">
-import { computed, reactive, ref, watch } from 'vue'
-import { Badge, FeatherIcon, FormControl, Spinner, toast } from 'frappe-ui'
-import { createGradebookService } from '@/lib/services/gradebook/gradebookService'
-import type { GroupSummary } from '@/types/contracts/gradebook/fetch_groups'
-import type { Delivery, Response as GetGridResponse } from '@/types/contracts/gradebook/get_grid'
-import { DEFAULT_STUDENT_IMAGE, formatDate, formatPoints, isBinaryTask, isCompletionTask, isCriteriaTask, isPointsTask, taskModeBadge } from '../gradebookUtils'
+import { computed, reactive, ref, watch } from 'vue';
+import { Badge, FeatherIcon, FormControl, Spinner, toast } from 'frappe-ui';
+import { createGradebookService } from '@/lib/services/gradebook/gradebookService';
+import type { GroupSummary } from '@/types/contracts/gradebook/fetch_groups';
+import type { Delivery, Response as GetGridResponse } from '@/types/contracts/gradebook/get_grid';
+import {
+	DEFAULT_STUDENT_IMAGE,
+	formatDate,
+	formatPoints,
+	isBinaryTask,
+	isCompletionTask,
+	isCriteriaTask,
+	isPointsTask,
+	taskModeBadge,
+} from '../gradebookUtils';
 
 const props = defineProps<{
-	group: GroupSummary | null
-	school: string | null
-	academicYear: string | null
-	course: string | null
-	taskType: string | null
-	deliveryType: string | null
-	selectedTaskName?: string | null
-}>()
+	group: GroupSummary | null;
+	school: string | null;
+	academicYear: string | null;
+	course: string | null;
+	taskType: string | null;
+	deliveryType: string | null;
+	selectedTaskName?: string | null;
+}>();
 
 const emit = defineEmits<{
-	openTask: [payload: { taskName: string; student: string }]
-}>()
+	openTask: [payload: { taskName: string; student: string }];
+}>();
 
-const gradebookService = createGradebookService()
-const loading = ref(false)
-const errorMessage = ref<string | null>(null)
-const deliveryLimit = ref(10)
+const gradebookService = createGradebookService();
+const loading = ref(false);
+const errorMessage = ref<string | null>(null);
+const deliveryLimit = ref(10);
 const response = reactive<GetGridResponse>({
 	deliveries: [],
 	students: [],
 	cells: [],
-})
-const loadVersion = ref(0)
+});
+const loadVersion = ref(0);
 
 const limitOptions = [
 	{ label: '8 columns', value: 8 },
 	{ label: '10 columns', value: 10 },
 	{ label: '14 columns', value: 14 },
-]
+];
 
-const deliveries = computed(() => response.deliveries || [])
-const students = computed(() => response.students || [])
+const deliveries = computed(() => response.deliveries || []);
+const students = computed(() => response.students || []);
 const cellMap = computed(() => {
-	const entries = new Map<string, GetGridResponse['cells'][number]>()
+	const entries = new Map<string, GetGridResponse['cells'][number]>();
 	for (const cell of response.cells || []) {
-		entries.set(`${cell.student}::${cell.delivery_id}`, cell)
+		entries.set(`${cell.student}::${cell.delivery_id}`, cell);
 	}
-	return entries
-})
+	return entries;
+});
 
 function showToast(title: string, appearance: 'danger' | 'success' | 'warning' = 'danger') {
 	const toastApi = toast as unknown as
 		| ((payload: { title: string; appearance?: string }) => void)
 		| {
-				error?: (message: string) => void
-				create?: (payload: { title: string; appearance?: string }) => void
-		  }
+				error?: (message: string) => void;
+				create?: (payload: { title: string; appearance?: string }) => void;
+		  };
 	if (typeof toastApi === 'function') {
-		toastApi({ title, appearance })
-		return
+		toastApi({ title, appearance });
+		return;
 	}
 	if (appearance === 'danger' && toastApi && typeof toastApi.error === 'function') {
-		toastApi.error(title)
-		return
+		toastApi.error(title);
+		return;
 	}
 	if (toastApi && typeof toastApi.create === 'function') {
-		toastApi.create({ title, appearance })
+		toastApi.create({ title, appearance });
 	}
 }
 
 function clearResponse() {
-	response.deliveries = []
-	response.students = []
-	response.cells = []
+	response.deliveries = [];
+	response.students = [];
+	response.cells = [];
 }
 
 async function loadGrid() {
 	if (!props.group || !props.school || !props.academicYear) {
-		clearResponse()
-		errorMessage.value = null
-		return
+		clearResponse();
+		errorMessage.value = null;
+		return;
 	}
 
-	const version = loadVersion.value + 1
-	loadVersion.value = version
-	loading.value = true
-	errorMessage.value = null
+	const version = loadVersion.value + 1;
+	loadVersion.value = version;
+	loading.value = true;
+	errorMessage.value = null;
 
 	try {
 		const payload = await gradebookService.getGrid({
@@ -244,121 +269,125 @@ async function loadGrid() {
 			task_type: props.taskType,
 			delivery_mode: props.deliveryType,
 			limit: deliveryLimit.value,
-		})
+		});
 		if (loadVersion.value !== version) {
-			return
+			return;
 		}
-		response.deliveries = payload.deliveries || []
-		response.students = payload.students || []
-		response.cells = payload.cells || []
+		response.deliveries = payload.deliveries || [];
+		response.students = payload.students || [];
+		response.cells = payload.cells || [];
 	} catch (error) {
-		console.error('Failed to load overview grid', error)
+		console.error('Failed to load overview grid', error);
 		if (loadVersion.value === version) {
-			clearResponse()
-			errorMessage.value = 'The overview could not be loaded right now.'
-			showToast('Could not load the gradebook overview')
+			clearResponse();
+			errorMessage.value = 'The overview could not be loaded right now.';
+			showToast('Could not load the gradebook overview');
 		}
 	} finally {
 		if (loadVersion.value === version) {
-			loading.value = false
+			loading.value = false;
 		}
 	}
 }
 
 function onLimitChanged(value: number | string | null) {
-	const parsed = typeof value === 'number' ? value : Number.parseInt(String(value || ''), 10)
-	if (!Number.isFinite(parsed)) return
-	deliveryLimit.value = parsed
+	const parsed = typeof value === 'number' ? value : Number.parseInt(String(value || ''), 10);
+	if (!Number.isFinite(parsed)) return;
+	deliveryLimit.value = parsed;
 }
 
 function findCell(student: string, deliveryId: string) {
-	return cellMap.value.get(`${student}::${deliveryId}`) || null
+	return cellMap.value.get(`${student}::${deliveryId}`) || null;
 }
 
 function primaryLabel(student: string, delivery: Delivery) {
-	const cell = findCell(student, delivery.delivery_id)
-	if (!cell) return '—'
+	const cell = findCell(student, delivery.delivery_id);
+	if (!cell) return '—';
 
 	if (isPointsTask(delivery)) {
-		return String(cell.official.score ?? cell.official.grade ?? '—')
+		return String(cell.official.score ?? cell.official.grade ?? '—');
 	}
 	if (isCriteriaTask(delivery)) {
 		if (delivery.rubric_scoring_strategy === 'Separate Criteria') {
-			return cell.official.criteria?.length ? `${cell.official.criteria.length} criteria` : '—'
+			return cell.official.criteria?.length ? `${cell.official.criteria.length} criteria` : '—';
 		}
-		return String(cell.official.score ?? cell.official.grade ?? '—')
+		return String(cell.official.score ?? cell.official.grade ?? '—');
 	}
 	if (isBinaryTask(delivery)) {
-		return cell.flags.is_complete ? 'Yes' : 'No'
+		return cell.flags.is_complete ? 'Yes' : 'No';
 	}
 	if (isCompletionTask(delivery)) {
-		return cell.flags.is_complete ? 'Complete' : 'Not complete'
+		return cell.flags.is_complete ? 'Complete' : 'Not complete';
 	}
 	if (delivery.delivery_mode === 'Collect Work') {
-		return cell.flags.has_submission ? 'Submitted' : 'Awaiting'
+		return cell.flags.has_submission ? 'Submitted' : 'Awaiting';
 	}
-	return cell.flags.grading_status || cell.flags.procedural_status || '—'
+	return cell.flags.grading_status || cell.flags.procedural_status || '—';
 }
 
 function secondaryLabel(student: string, delivery: Delivery) {
-	const cell = findCell(student, delivery.delivery_id)
-	if (!cell) return 'No outcome yet'
+	const cell = findCell(student, delivery.delivery_id);
+	if (!cell) return 'No outcome yet';
 
 	if (isCriteriaTask(delivery) && cell.official.criteria?.length) {
 		const levels = cell.official.criteria
 			.map(item => item.level)
 			.filter(Boolean)
 			.slice(0, 2)
-			.join(' · ')
-		if (levels) return levels
+			.join(' · ');
+		if (levels) return levels;
 	}
 
 	if (delivery.delivery_mode === 'Collect Work') {
-		return cell.flags.procedural_status || cell.flags.grading_status || 'No submission'
+		return cell.flags.procedural_status || cell.flags.grading_status || 'No submission';
 	}
 
-	return cell.flags.grading_status || cell.flags.procedural_status || 'Open task'
+	return cell.flags.grading_status || cell.flags.procedural_status || 'Open task';
 }
 
 function cellBadges(student: string, delivery: Delivery) {
-	const cell = findCell(student, delivery.delivery_id)
-	if (!cell) return []
+	const cell = findCell(student, delivery.delivery_id);
+	if (!cell) return [];
 
-	const badges: string[] = []
+	const badges: string[] = [];
 	if (cell.flags.has_new_submission) {
-		badges.push('New Evidence')
+		badges.push('New Evidence');
 	}
 	if (cell.flags.is_published) {
-		badges.push('Released')
+		badges.push('Released');
 	}
 	if (delivery.allow_feedback && cell.official.feedback) {
-		badges.push('Comment')
+		badges.push('Comment');
 	}
-	if (isPointsTask(delivery) && delivery.max_points !== null && delivery.max_points !== undefined) {
-		badges.push(`${formatPoints(delivery.max_points)} max`)
+	if (
+		isPointsTask(delivery) &&
+		delivery.max_points !== null &&
+		delivery.max_points !== undefined
+	) {
+		badges.push(`${formatPoints(delivery.max_points)} max`);
 	}
-	return badges
+	return badges;
 }
 
 function cellClass(student: string, deliveryId: string) {
-	const cell = findCell(student, deliveryId)
+	const cell = findCell(student, deliveryId);
 	if (!cell) {
-		return 'border-border/70 bg-gray-50/50 hover:border-leaf/40 hover:bg-white'
+		return 'border-border/70 bg-gray-50/50 hover:border-leaf/40 hover:bg-white';
 	}
 	if (cell.flags.has_new_submission) {
-		return 'border-sand/70 bg-sand/10 hover:border-sand hover:bg-white'
+		return 'border-sand/70 bg-sand/10 hover:border-sand hover:bg-white';
 	}
 	if (cell.flags.is_published) {
-		return 'border-leaf/40 bg-leaf/5 hover:border-leaf hover:bg-white'
+		return 'border-leaf/40 bg-leaf/5 hover:border-leaf hover:bg-white';
 	}
 	if (props.selectedTaskName === deliveryId) {
-		return 'border-leaf/40 bg-sky/10 hover:border-leaf hover:bg-white'
+		return 'border-leaf/40 bg-sky/10 hover:border-leaf hover:bg-white';
 	}
-	return 'border-border/70 bg-white hover:border-leaf/40 hover:bg-white'
+	return 'border-border/70 bg-white hover:border-leaf/40 hover:bg-white';
 }
 
 function openCell(student: string, deliveryId: string) {
-	emit('openTask', { taskName: deliveryId, student })
+	emit('openTask', { taskName: deliveryId, student });
 }
 
 watch(
@@ -372,8 +401,8 @@ watch(
 		deliveryLimit.value,
 	],
 	() => {
-		void loadGrid()
+		void loadGrid();
 	},
 	{ immediate: true }
-)
+);
 </script>

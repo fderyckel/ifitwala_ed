@@ -1375,13 +1375,12 @@ def _sorted_signed_rows(rows: list[dict], limit: int) -> list[dict]:
     )[:limit]
 
 
-def _build_staff_audience_section(
+def _build_staff_audience_dataset(
     *,
     policy_row: dict,
     organization: str,
     school: str | None,
     employee_group: str | None,
-    limit: int,
 ) -> dict:
     targets = _target_employees(organization=organization, school=school, employee_group=employee_group)
     eligible, skipped_scope = _eligible_employee_rows(policy_row=policy_row, rows=targets)
@@ -1454,19 +1453,15 @@ def _build_staff_audience_section(
             "by_context": _build_breakdown(rows, field="subject_subtitle"),
             "context_label": _("Employee Group"),
         },
-        "rows": {
-            "pending": [row for row in rows if not row["is_signed"]][:limit],
-            "signed": _sorted_signed_rows(rows, limit),
-        },
+        "rows": rows,
     }
 
 
-def _build_student_audience_section(
+def _build_student_audience_dataset(
     *,
     policy_row: dict,
     organization: str,
     school: str | None,
-    limit: int,
 ) -> dict:
     targets = _target_students(organization=organization, school=school)
     eligible, skipped_scope = _eligible_student_rows(policy_row=policy_row, rows=targets)
@@ -1520,19 +1515,15 @@ def _build_student_audience_section(
             "by_context": [],
             "context_label": _("Portal Email"),
         },
-        "rows": {
-            "pending": [row for row in rows if not row["is_signed"]][:limit],
-            "signed": _sorted_signed_rows(rows, limit),
-        },
+        "rows": rows,
     }
 
 
-def _build_guardian_audience_section(
+def _build_guardian_audience_dataset(
     *,
     policy_row: dict,
     organization: str,
     school: str | None,
-    limit: int,
 ) -> dict:
     targets = _target_guardians(organization=organization, school=school)
     eligible, skipped_scope = _eligible_guardian_rows(policy_row=policy_row, rows=targets)
@@ -1597,10 +1588,144 @@ def _build_guardian_audience_section(
             "by_context": [],
             "context_label": _("Guardian Email"),
         },
+        "rows": rows,
+    }
+
+
+def _finalize_audience_section(*, dataset: dict, limit: int) -> dict:
+    rows = list(dataset.get("rows") or [])
+    pending_rows = [row for row in rows if not row.get("is_signed")][:limit]
+    signed_rows = _sorted_signed_rows(rows, limit)
+
+    return {
+        "audience": dataset.get("audience"),
+        "audience_label": dataset.get("audience_label"),
+        "workflow_description": dataset.get("workflow_description"),
+        "supports_campaign_launch": bool(dataset.get("supports_campaign_launch")),
+        "summary": dataset.get("summary") or {},
+        "breakdowns": dataset.get("breakdowns") or {},
         "rows": {
-            "pending": [row for row in rows if not row["is_signed"]][:limit],
-            "signed": _sorted_signed_rows(rows, limit),
+            "pending": pending_rows,
+            "signed": signed_rows,
         },
+    }
+
+
+def _build_policy_signature_audience_dataset(
+    *,
+    audience: str,
+    policy_row: dict,
+    organization: str,
+    school: str | None,
+    employee_group: str | None,
+) -> dict:
+    if audience == "Staff":
+        return _build_staff_audience_dataset(
+            policy_row=policy_row,
+            organization=organization,
+            school=school,
+            employee_group=employee_group,
+        )
+    if audience == "Guardian":
+        return _build_guardian_audience_dataset(
+            policy_row=policy_row,
+            organization=organization,
+            school=school,
+        )
+    if audience == "Student":
+        return _build_student_audience_dataset(
+            policy_row=policy_row,
+            organization=organization,
+            school=school,
+        )
+    frappe.throw(_("Unsupported policy signature audience."))
+    return {}
+
+
+def _normalize_policy_signature_audience(audience: str | None) -> str:
+    audience_key = (audience or "").strip().casefold()
+    mapping = {
+        "staff": "Staff",
+        "guardian": "Guardian",
+        "student": "Student",
+    }
+    normalized = mapping.get(audience_key)
+    if normalized:
+        return normalized
+    frappe.throw(_("Unsupported policy signature audience."))
+    return ""
+
+
+def _normalize_register_status(status: str | None) -> str:
+    normalized = (status or POLICY_SIGNATURE_REGISTER_STATUS_ALL).strip().casefold()
+    allowed = {
+        POLICY_SIGNATURE_REGISTER_STATUS_ALL,
+        POLICY_SIGNATURE_REGISTER_STATUS_PENDING,
+        POLICY_SIGNATURE_REGISTER_STATUS_SIGNED,
+    }
+    if normalized in allowed:
+        return normalized
+    frappe.throw(_("Unsupported policy signature register status."))
+    return POLICY_SIGNATURE_REGISTER_STATUS_ALL
+
+
+def _register_row_matches_query(row: dict, query: str | None) -> bool:
+    query = (query or "").strip().casefold()
+    if not query:
+        return True
+
+    haystack = " ".join(
+        [
+            row.get("record_id") or "",
+            row.get("subject_name") or "",
+            row.get("subject_subtitle") or "",
+            row.get("context_label") or "",
+            row.get("organization") or "",
+            row.get("school") or "",
+            row.get("acknowledged_by") or "",
+        ]
+    ).casefold()
+    return query in haystack
+
+
+def _filter_policy_signature_register_rows(
+    *,
+    rows: list[dict],
+    status: str,
+    query: str | None,
+) -> list[dict]:
+    filtered: list[dict] = []
+    for row in rows:
+        is_signed = bool(row.get("is_signed"))
+        if status == POLICY_SIGNATURE_REGISTER_STATUS_PENDING and is_signed:
+            continue
+        if status == POLICY_SIGNATURE_REGISTER_STATUS_SIGNED and not is_signed:
+            continue
+        if not _register_row_matches_query(row, query):
+            continue
+        filtered.append(row)
+
+    filtered.sort(
+        key=lambda row: (
+            (row.get("subject_name") or row.get("record_id") or "").casefold(),
+            (row.get("record_id") or "").casefold(),
+        )
+    )
+    return filtered
+
+
+def _paginate_policy_signature_register_rows(*, rows: list[dict], page: int, limit: int) -> tuple[list[dict], dict]:
+    total_rows = len(rows)
+    total_pages = max(1, (total_rows + limit - 1) // limit)
+    page = max(1, min(page, total_pages))
+    start = (page - 1) * limit
+    end = start + limit
+
+    return rows[start:end], {
+        "page": page,
+        "limit": limit,
+        "total_rows": total_rows,
+        "total_pages": total_pages,
     }
 
 
@@ -1618,36 +1743,14 @@ def _build_policy_signature_dashboard_payload(
 
     audience_sections = []
     for audience in audiences:
-        if audience == "Staff":
-            audience_sections.append(
-                _build_staff_audience_section(
-                    policy_row=policy_row,
-                    organization=organization,
-                    school=school,
-                    employee_group=employee_group,
-                    limit=limit,
-                )
-            )
-            continue
-        if audience == "Guardian":
-            audience_sections.append(
-                _build_guardian_audience_section(
-                    policy_row=policy_row,
-                    organization=organization,
-                    school=school,
-                    limit=limit,
-                )
-            )
-            continue
-        if audience == "Student":
-            audience_sections.append(
-                _build_student_audience_section(
-                    policy_row=policy_row,
-                    organization=organization,
-                    school=school,
-                    limit=limit,
-                )
-            )
+        dataset = _build_policy_signature_audience_dataset(
+            audience=audience,
+            policy_row=policy_row,
+            organization=organization,
+            school=school,
+            employee_group=employee_group,
+        )
+        audience_sections.append(_finalize_audience_section(dataset=dataset, limit=limit))
 
     total_eligible = sum((section.get("summary") or {}).get("eligible_targets", 0) for section in audience_sections)
     total_signed = sum((section.get("summary") or {}).get("signed", 0) for section in audience_sections)
@@ -1673,6 +1776,77 @@ def _build_policy_signature_dashboard_payload(
             "skipped_scope": total_skipped,
         },
         "audiences": audience_sections,
+    }
+
+
+@frappe.whitelist()
+def get_staff_policy_signature_audience_rows(
+    *,
+    policy_version: str | None = None,
+    audience: str | None = None,
+    organization: str | None = None,
+    school: str | None = None,
+    employee_group: str | None = None,
+    status: str | None = None,
+    query: str | None = None,
+    page: int = 1,
+    limit: int = 25,
+):
+    user, roles = _require_roles(POLICY_SIGNATURE_ANALYTICS_ROLES)
+
+    policy_version = (policy_version or "").strip()
+    if not policy_version:
+        frappe.throw(_("policy_version is required."))
+
+    audience_name = _normalize_policy_signature_audience(audience)
+    register_status = _normalize_register_status(status)
+    query = (query or "").strip() or None
+    page = max(1, int(page or 1))
+    limit = max(1, min(int(limit or 25), 100))
+
+    policy_row = get_policy_version_context(
+        policy_version,
+        require_active=False,
+    )
+    if audience_name not in _supported_policy_signature_audiences(policy_row.get("applies_to_tokens")):
+        frappe.throw(_("Selected Policy Version does not apply to the requested audience."))
+
+    scoped_orgs = _manager_scope_organizations(user=user, roles=roles)
+    organization = (organization or "").strip() or (policy_row.get("policy_organization") or "").strip()
+    school = (school or "").strip() or None
+    employee_group = (employee_group or "").strip() or None
+
+    _ensure_organization_in_scope(organization, scoped_orgs)
+    org_scope = get_descendant_organizations(organization)
+    _ensure_school_in_scope(school=school, organization_scope=org_scope)
+
+    dataset = _build_policy_signature_audience_dataset(
+        audience=audience_name,
+        policy_row=policy_row,
+        organization=organization,
+        school=school,
+        employee_group=employee_group,
+    )
+    filtered_rows = _filter_policy_signature_register_rows(
+        rows=list(dataset.get("rows") or []),
+        status=register_status,
+        query=query,
+    )
+    paged_rows, pagination = _paginate_policy_signature_register_rows(
+        rows=filtered_rows,
+        page=page,
+        limit=limit,
+    )
+
+    return {
+        "audience": dataset.get("audience"),
+        "audience_label": dataset.get("audience_label"),
+        "workflow_description": dataset.get("workflow_description"),
+        "supports_campaign_launch": bool(dataset.get("supports_campaign_launch")),
+        "status": register_status,
+        "query": query,
+        "rows": paged_rows,
+        "pagination": pagination,
     }
 
 

@@ -17,12 +17,16 @@
 				</div>
 
 				<div v-if="gradebook.students.length" class="flex flex-wrap items-center gap-2">
-					<span class="text-xs font-medium uppercase tracking-wider text-ink/50">Visible to all:</span>
+					<span class="text-xs font-medium uppercase tracking-wider text-ink/50"
+						>Visible to all:</span
+					>
 					<Button
 						size="sm"
 						appearance="minimal"
 						:class="
-							allStudentsVisible ? 'bg-sky/30 text-ink font-semibold' : 'text-ink/60 hover:text-ink'
+							allStudentsVisible
+								? 'bg-sky/30 text-ink font-semibold'
+								: 'text-ink/60 hover:text-ink'
 						"
 						@click="toggleVisibilityGroup('student')"
 					>
@@ -32,7 +36,9 @@
 						size="sm"
 						appearance="minimal"
 						:class="
-							allGuardiansVisible ? 'bg-sky/30 text-ink font-semibold' : 'text-ink/60 hover:text-ink'
+							allGuardiansVisible
+								? 'bg-sky/30 text-ink font-semibold'
+								: 'text-ink/60 hover:text-ink'
 						"
 						@click="toggleVisibilityGroup('guardian')"
 					>
@@ -43,7 +49,10 @@
 		</div>
 
 		<div class="min-h-[400px] flex-1 bg-white p-6">
-			<div v-if="gradebookLoading" class="flex h-full flex-col items-center justify-center gap-3 pt-20">
+			<div
+				v-if="gradebookLoading"
+				class="flex h-full flex-col items-center justify-center gap-3 pt-20"
+			>
 				<Spinner class="h-8 w-8 text-canopy" />
 				<p class="text-sm text-ink/50">Loading gradebook...</p>
 			</div>
@@ -65,11 +74,16 @@
 			>
 				<p class="text-lg font-medium text-ink">No Students Assigned</p>
 				<p class="max-w-xs text-sm">This task has no students in the roster.</p>
-				<Button size="md" appearance="primary" :loading="rosterSyncing" @click="syncRoster">Sync roster</Button>
+				<Button size="md" appearance="primary" :loading="rosterSyncing" @click="syncRoster"
+					>Sync roster</Button
+				>
 			</div>
 
 			<div v-else class="space-y-6">
-				<GradebookQuizManualReview v-if="showsQuizManualReview && taskName" :task-name="taskName" />
+				<GradebookQuizManualReview
+					v-if="showsQuizManualReview && taskName"
+					:task-name="taskName"
+				/>
 
 				<template v-else>
 					<article
@@ -83,7 +97,9 @@
 								: 'border-border bg-gray-50/30'
 						"
 					>
-						<div class="mb-4 flex flex-wrap items-start justify-between gap-4 border-b border-border/40 pb-4">
+						<div
+							class="mb-4 flex flex-wrap items-start justify-between gap-4 border-b border-border/40 pb-4"
+						>
 							<div class="flex min-w-0 flex-1 items-center gap-4">
 								<img
 									:src="student.student_image || DEFAULT_STUDENT_IMAGE"
@@ -98,24 +114,40 @@
 											{{ student.student_name }}
 										</p>
 										<div class="gradebook-student-visibility grid grid-cols-2 gap-x-4 gap-y-2">
-											<label class="inline-flex cursor-pointer items-center gap-2 text-sm text-ink/70">
+											<label
+												class="inline-flex cursor-pointer items-center gap-2 text-sm text-ink/70"
+											>
 												<input
 													type="checkbox"
 													class="h-4 w-4 rounded border-border/70 text-leaf focus:ring-[rgb(var(--leaf-rgb)/0.35)]"
-													:checked="Boolean(studentStates[student.task_student]?.visible_to_student)"
+													:checked="
+														Boolean(studentStates[student.task_student]?.visible_to_student)
+													"
 													@change="
-														onVisibilityInputChange(student.task_student, 'visible_to_student', $event)
+														onVisibilityInputChange(
+															student.task_student,
+															'visible_to_student',
+															$event
+														)
 													"
 												/>
 												<span>Visible to Student</span>
 											</label>
-											<label class="inline-flex cursor-pointer items-center gap-2 text-sm text-ink/70">
+											<label
+												class="inline-flex cursor-pointer items-center gap-2 text-sm text-ink/70"
+											>
 												<input
 													type="checkbox"
 													class="h-4 w-4 rounded border-border/70 text-leaf focus:ring-[rgb(var(--leaf-rgb)/0.35)]"
-													:checked="Boolean(studentStates[student.task_student]?.visible_to_guardian)"
+													:checked="
+														Boolean(studentStates[student.task_student]?.visible_to_guardian)
+													"
 													@change="
-														onVisibilityInputChange(student.task_student, 'visible_to_guardian', $event)
+														onVisibilityInputChange(
+															student.task_student,
+															'visible_to_guardian',
+															$event
+														)
 													"
 												/>
 												<span>Visible to Guardian</span>
@@ -123,7 +155,9 @@
 										</div>
 									</div>
 									<div class="flex items-center gap-2 text-xs text-ink/50">
-										<span v-if="student.student_id" class="font-mono">{{ student.student_id }}</span>
+										<span v-if="student.student_id" class="font-mono">{{
+											student.student_id
+										}}</span>
 										<span>•</span>
 										<span
 											:class="{
@@ -143,10 +177,14 @@
 									v-if="showsBooleanResult(gradebook.task)"
 									:variant="studentStates[student.task_student]?.complete ? 'subtle' : 'outline'"
 									:theme="studentStates[student.task_student]?.complete ? 'green' : 'gray'"
-									:class="studentStates[student.task_student]?.complete ? '!bg-leaf/10 !text-leaf' : ''"
+									:class="
+										studentStates[student.task_student]?.complete ? '!bg-leaf/10 !text-leaf' : ''
+									"
 								>
 									<FeatherIcon
-										:name="studentStates[student.task_student]?.complete ? 'check' : 'minus-circle'"
+										:name="
+											studentStates[student.task_student]?.complete ? 'check' : 'minus-circle'
+										"
 										class="mr-1 h-3 w-3"
 									/>
 									{{ booleanResultLabel(student.task_student) }}
@@ -228,8 +266,13 @@
 								</div>
 							</div>
 
-							<div v-if="supportsFeedback(gradebook.task)" class="space-y-1.5 md:col-span-1 lg:col-span-2">
-								<label class="block text-xs font-semibold uppercase tracking-wide text-ink/50">Comment</label>
+							<div
+								v-if="supportsFeedback(gradebook.task)"
+								class="space-y-1.5 md:col-span-1 lg:col-span-2"
+							>
+								<label class="block text-xs font-semibold uppercase tracking-wide text-ink/50"
+									>Comment</label
+								>
 								<FormControl
 									type="textarea"
 									rows="5"
@@ -247,7 +290,11 @@
 						>
 							<div class="mb-4 flex items-center justify-between">
 								<h4 class="text-sm font-bold text-ink">Criteria Breakdown</h4>
-								<Badge v-if="studentStates[student.task_student]?.dirtyCriteria" variant="subtle" theme="orange">
+								<Badge
+									v-if="studentStates[student.task_student]?.dirtyCriteria"
+									variant="subtle"
+									theme="orange"
+								>
 									Unsaved Changes
 								</Badge>
 							</div>
@@ -269,16 +316,26 @@
 										size="sm"
 										:options="criterionLevelOptions(criterion)"
 										placeholder="Level Achieved"
-										:model-value="getCriterionState(student.task_student, criterion.assessment_criteria)?.level ?? null"
-										@update:modelValue="level => onCriterionLevelChanged(student.task_student, criterion, level)"
+										:model-value="
+											getCriterionState(student.task_student, criterion.assessment_criteria)
+												?.level ?? null
+										"
+										@update:modelValue="
+											level => onCriterionLevelChanged(student.task_student, criterion, level)
+										"
 									/>
 									<FormControl
 										v-else
 										type="text"
 										size="sm"
 										placeholder="Level"
-										:model-value="getCriterionState(student.task_student, criterion.assessment_criteria)?.level ?? ''"
-										@update:modelValue="level => onCriterionLevelChanged(student.task_student, criterion, level)"
+										:model-value="
+											getCriterionState(student.task_student, criterion.assessment_criteria)
+												?.level ?? ''
+										"
+										@update:modelValue="
+											level => onCriterionLevelChanged(student.task_student, criterion, level)
+										"
 									/>
 									<FormControl
 										type="number"
@@ -287,11 +344,16 @@
 										:min="0"
 										placeholder="Points"
 										:model-value="
-											getCriterionState(student.task_student, criterion.assessment_criteria)?.level_points ?? 0
+											getCriterionState(student.task_student, criterion.assessment_criteria)
+												?.level_points ?? 0
 										"
 										@update:modelValue="
 											value =>
-												onCriterionPointsChanged(student.task_student, criterion.assessment_criteria, value)
+												onCriterionPointsChanged(
+													student.task_student,
+													criterion.assessment_criteria,
+													value
+												)
 										"
 									/>
 									<FormControl
@@ -301,11 +363,16 @@
 										size="sm"
 										placeholder="Criterion feedback"
 										:model-value="
-											getCriterionState(student.task_student, criterion.assessment_criteria)?.feedback || ''
+											getCriterionState(student.task_student, criterion.assessment_criteria)
+												?.feedback || ''
 										"
 										@update:modelValue="
 											value =>
-												onCriterionFeedbackChanged(student.task_student, criterion.assessment_criteria, value)
+												onCriterionFeedbackChanged(
+													student.task_student,
+													criterion.assessment_criteria,
+													value
+												)
 										"
 									/>
 									<div class="flex items-center justify-between text-xs">
@@ -313,7 +380,8 @@
 										<span class="font-bold text-ink">
 											{{
 												formatPoints(
-													getCriterionState(student.task_student, criterion.assessment_criteria)?.level_points
+													getCriterionState(student.task_student, criterion.assessment_criteria)
+														?.level_points
 												)
 											}}
 										</span>
@@ -324,7 +392,8 @@
 
 						<div class="mt-4 flex items-center justify-between border-t border-border/40 pt-4">
 							<p class="text-xs text-ink/40">
-								Last updated {{ formatDateTime(studentStates[student.task_student]?.updated_on) || 'Never' }}
+								Last updated
+								{{ formatDateTime(studentStates[student.task_student]?.updated_on) || 'Never' }}
 							</p>
 							<div class="flex gap-2">
 								<Button
@@ -356,12 +425,15 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, reactive, ref, watch } from 'vue'
-import { Badge, Button, FeatherIcon, FormControl, Spinner, toast } from 'frappe-ui'
-import { createGradebookService } from '@/lib/services/gradebook/gradebookService'
-import type { CriterionPayload, TaskPayload } from '@/types/contracts/gradebook/get_task_gradebook'
-import type { Response as UpdateTaskStudentResponse } from '@/types/contracts/gradebook/update_task_student'
-import GradebookQuizManualReview from './GradebookQuizManualReview.vue'
+import { computed, nextTick, onBeforeUnmount, reactive, ref, watch } from 'vue';
+import { Badge, Button, FeatherIcon, FormControl, Spinner, toast } from 'frappe-ui';
+import { createGradebookService } from '@/lib/services/gradebook/gradebookService';
+import type {
+	CriterionPayload,
+	TaskPayload,
+} from '@/types/contracts/gradebook/get_task_gradebook';
+import type { Response as UpdateTaskStudentResponse } from '@/types/contracts/gradebook/update_task_student';
+import GradebookQuizManualReview from './GradebookQuizManualReview.vue';
 import {
 	DEFAULT_STUDENT_IMAGE,
 	booleanControlLabel,
@@ -378,73 +450,73 @@ import {
 	showsScoreSummary,
 	showsStatusControl,
 	supportsFeedback,
-} from '../gradebookUtils'
+} from '../gradebookUtils';
 
 interface StudentCriterionState {
-	assessment_criteria: string
-	level: string | number | null
-	level_points: number
-	feedback: string
+	assessment_criteria: string;
+	level: string | number | null;
+	level_points: number;
+	feedback: string;
 }
 
 interface StudentState {
-	status: string
-	mark_awarded: number | null
-	feedback: string
-	visible_to_student: boolean
-	visible_to_guardian: boolean
-	complete: boolean
-	criteria: StudentCriterionState[]
-	updated_on?: string | null
-	dirty: boolean
-	dirtyCriteria: boolean
-	saving: boolean
-	savingCriteria: boolean
+	status: string;
+	mark_awarded: number | null;
+	feedback: string;
+	visible_to_student: boolean;
+	visible_to_guardian: boolean;
+	complete: boolean;
+	criteria: StudentCriterionState[];
+	updated_on?: string | null;
+	dirty: boolean;
+	dirtyCriteria: boolean;
+	saving: boolean;
+	savingCriteria: boolean;
 }
 
 interface TaskGradebookState {
-	task: TaskPayload | null
-	criteria: CriterionPayload[]
+	task: TaskPayload | null;
+	criteria: CriterionPayload[];
 	students: Array<{
-		task_student: string
-		student: string
-		student_name: string
-		student_id?: string | null
-		student_image?: string | null
-		status?: string | null
-		complete: 0 | 1
-		mark_awarded: number | null
-		feedback?: string | null
-		visible_to_student: 0 | 1
-		visible_to_guardian: 0 | 1
-		updated_on?: string | null
+		task_student: string;
+		student: string;
+		student_name: string;
+		student_id?: string | null;
+		student_image?: string | null;
+		status?: string | null;
+		complete: 0 | 1;
+		mark_awarded: number | null;
+		feedback?: string | null;
+		visible_to_student: 0 | 1;
+		visible_to_guardian: 0 | 1;
+		updated_on?: string | null;
 		criteria_scores: Array<{
-			assessment_criteria: string
-			level: string | number | null
-			level_points: number | null
-			feedback?: string | null
-		}>
-	}>
+			assessment_criteria: string;
+			level: string | number | null;
+			level_points: number | null;
+			feedback?: string | null;
+		}>;
+	}>;
 }
 
 const props = defineProps<{
-	taskName: string | null
-	focusStudent?: string | null
-}>()
+	taskName: string | null;
+	focusStudent?: string | null;
+}>();
 
-const gradebookService = createGradebookService()
-const rootElement = ref<HTMLElement | null>(null)
-const gradebookLoading = ref(false)
-const rosterSyncing = ref(false)
+const gradebookService = createGradebookService();
+const rootElement = ref<HTMLElement | null>(null);
+const gradebookLoading = ref(false);
+const rosterSyncing = ref(false);
 
 const gradebook = reactive<TaskGradebookState>({
 	task: null,
 	criteria: [],
 	students: [],
-})
+});
 
-const studentStates = reactive<Record<string, StudentState>>({})
-const loadVersion = ref(0)
+const studentStates = reactive<Record<string, StudentState>>({});
+const loadVersion = ref(0);
 
 const statusOptions = [
 	{ label: 'Not Started', value: 'Not Started' },
@@ -454,104 +526,108 @@ const statusOptions = [
 	{ label: 'Finalized', value: 'Finalized' },
 	{ label: 'Released', value: 'Released' },
 	{ label: 'Not Applicable', value: 'Not Applicable' },
-]
+];
 
-const AUTOSAVE_DELAY = 2500
-const studentSaveTimers: Record<string, ReturnType<typeof setTimeout> | null> = {}
-const criteriaSaveTimers: Record<string, ReturnType<typeof setTimeout> | null> = {}
+const AUTOSAVE_DELAY = 2500;
+const studentSaveTimers: Record<string, ReturnType<typeof setTimeout> | null> = {};
+const criteriaSaveTimers: Record<string, ReturnType<typeof setTimeout> | null> = {};
 
-const showsQuizManualReview = computed(() => isAssessedQuizTask(gradebook.task))
+const showsQuizManualReview = computed(() => isAssessedQuizTask(gradebook.task));
 
 const allStudentsVisible = computed(() => {
-	if (!gradebook.students.length) return false
-	return gradebook.students.every(student => Boolean(studentStates[student.task_student]?.visible_to_student))
-})
+	if (!gradebook.students.length) return false;
+	return gradebook.students.every(student =>
+		Boolean(studentStates[student.task_student]?.visible_to_student)
+	);
+});
 
 const allGuardiansVisible = computed(() => {
-	if (!gradebook.students.length) return false
-	return gradebook.students.every(student => Boolean(studentStates[student.task_student]?.visible_to_guardian))
-})
+	if (!gradebook.students.length) return false;
+	return gradebook.students.every(student =>
+		Boolean(studentStates[student.task_student]?.visible_to_guardian)
+	);
+});
 
 function showToast(title: string, appearance: 'danger' | 'success' | 'warning' = 'danger') {
 	const toastApi = toast as unknown as
 		| ((payload: { title: string; appearance?: string }) => void)
 		| {
-				error?: (message: string) => void
-				create?: (payload: { title: string; appearance?: string }) => void
-		  }
+				error?: (message: string) => void;
+				create?: (payload: { title: string; appearance?: string }) => void;
+		  };
 	if (typeof toastApi === 'function') {
-		toastApi({ title, appearance })
-		return
+		toastApi({ title, appearance });
+		return;
 	}
 	if (appearance === 'danger' && toastApi && typeof toastApi.error === 'function') {
-		toastApi.error(title)
-		return
+		toastApi.error(title);
+		return;
 	}
 	if (toastApi && typeof toastApi.create === 'function') {
-		toastApi.create({ title, appearance })
+		toastApi.create({ title, appearance });
 	}
 }
 
 function showDangerToast(title: string) {
-	showToast(title, 'danger')
+	showToast(title, 'danger');
 }
 
 function showSuccessToast(title: string) {
-	showToast(title, 'success')
+	showToast(title, 'success');
 }
 
 function resetGradebook() {
-	gradebook.task = null
-	gradebook.criteria = []
-	gradebook.students = []
-	clearAllAutosaveTimers()
+	gradebook.task = null;
+	gradebook.criteria = [];
+	gradebook.students = [];
+	clearAllAutosaveTimers();
 	for (const key of Object.keys(studentStates)) {
-		delete studentStates[key]
+		delete studentStates[key];
 	}
 }
 
 async function loadGradebook(taskName: string) {
-	const version = loadVersion.value + 1
-	loadVersion.value = version
-	gradebookLoading.value = true
+	const version = loadVersion.value + 1;
+	loadVersion.value = version;
+	gradebookLoading.value = true;
 	try {
-		const payload = await gradebookService.getTaskGradebook({ task: taskName })
+		const payload = await gradebookService.getTaskGradebook({ task: taskName });
 		if (loadVersion.value !== version) {
-			return
+			return;
 		}
-		gradebook.task = payload.task
-		gradebook.criteria = payload.criteria || []
-		gradebook.students = payload.students || []
-		initializeStudentStates()
-		await scrollToFocusedStudent()
+		gradebook.task = payload.task;
+		gradebook.criteria = payload.criteria || [];
+		gradebook.students = payload.students || [];
+		initializeStudentStates();
+		await scrollToFocusedStudent();
 	} catch (error) {
-		console.error('Failed to load gradebook', error)
+		console.error('Failed to load gradebook', error);
 		if (loadVersion.value === version) {
-			showDangerToast('Could not load gradebook')
+			showDangerToast('Could not load gradebook');
 		}
 	} finally {
 		if (loadVersion.value === version) {
-			gradebookLoading.value = false
+			gradebookLoading.value = false;
 		}
 	}
 }
 
 async function syncRoster() {
 	if (!props.taskName) {
-		showToast('Select a task first.', 'warning')
-		return
+		showToast('Select a task first.', 'warning');
+		return;
 	}
 
-	rosterSyncing.value = true
+	rosterSyncing.value = true;
 	try {
-		const payload = await gradebookService.repairTaskRoster({ task: props.taskName })
-		showSuccessToast(payload.message || 'Roster synced.')
-		await loadGradebook(props.taskName)
+		const payload = await gradebookService.repairTaskRoster({ task: props.taskName });
+		showSuccessToast(payload.message || 'Roster synced.');
+		await loadGradebook(props.taskName);
 	} catch (error) {
-		console.error('Failed to sync task roster', error)
-		showDangerToast('Could not sync the task roster')
+		console.error('Failed to sync task roster', error);
+		showDangerToast('Could not sync the task roster');
 	} finally {
-		rosterSyncing.value = false
+		rosterSyncing.value = false;
 	}
 }
 
@@ -559,30 +635,30 @@ function criterionLevelOptions(criterion: CriterionPayload) {
 	return (criterion.levels || []).map(level => ({
 		label: level.level,
 		value: level.level,
-	}))
+	}));
 }
 
 function clearAllAutosaveTimers() {
 	for (const key of Object.keys(studentSaveTimers)) {
-		const handle = studentSaveTimers[key]
+		const handle = studentSaveTimers[key];
 		if (handle) {
-			clearTimeout(handle)
+			clearTimeout(handle);
 		}
-		delete studentSaveTimers[key]
+		delete studentSaveTimers[key];
 	}
 	for (const key of Object.keys(criteriaSaveTimers)) {
-		const handle = criteriaSaveTimers[key]
+		const handle = criteriaSaveTimers[key];
 		if (handle) {
-			clearTimeout(handle)
+			clearTimeout(handle);
 		}
-		delete criteriaSaveTimers[key]
+		delete criteriaSaveTimers[key];
 	}
 }
 
 function initializeStudentStates() {
-	clearAllAutosaveTimers()
+	clearAllAutosaveTimers();
 	for (const key of Object.keys(studentStates)) {
-		delete studentStates[key]
+		delete studentStates[key];
 	}
 
 	for (const student of gradebook.students) {
@@ -604,84 +680,88 @@ function initializeStudentStates() {
 				level_points: item.level_points ?? 0,
 				feedback: normalizeFeedback(item.feedback),
 			})),
-		}
+		};
 	}
 }
 
 function scheduleStudentSave(taskStudent: string) {
-	const state = studentStates[taskStudent]
-	if (!state) return
+	const state = studentStates[taskStudent];
+	if (!state) return;
 
-	const existing = studentSaveTimers[taskStudent]
+	const existing = studentSaveTimers[taskStudent];
 	if (existing) {
-		clearTimeout(existing)
+		clearTimeout(existing);
 	}
 
 	studentSaveTimers[taskStudent] = setTimeout(() => {
-		studentSaveTimers[taskStudent] = null
+		studentSaveTimers[taskStudent] = null;
 		if (!state.dirty) {
-			return
+			return;
 		}
 		if (state.saving) {
-			scheduleStudentSave(taskStudent)
-			return
+			scheduleStudentSave(taskStudent);
+			return;
 		}
-		void saveStudent(taskStudent)
-	}, AUTOSAVE_DELAY)
+		void saveStudent(taskStudent);
+	}, AUTOSAVE_DELAY);
 }
 
 function scheduleCriteriaSave(taskStudent: string) {
-	const state = studentStates[taskStudent]
-	if (!state) return
+	const state = studentStates[taskStudent];
+	if (!state) return;
 
-	const existing = criteriaSaveTimers[taskStudent]
+	const existing = criteriaSaveTimers[taskStudent];
 	if (existing) {
-		clearTimeout(existing)
+		clearTimeout(existing);
 	}
 
 	criteriaSaveTimers[taskStudent] = setTimeout(() => {
-		criteriaSaveTimers[taskStudent] = null
+		criteriaSaveTimers[taskStudent] = null;
 		if (!state.dirtyCriteria) {
-			return
+			return;
 		}
 		if (state.savingCriteria) {
-			scheduleCriteriaSave(taskStudent)
-			return
+			scheduleCriteriaSave(taskStudent);
+			return;
 		}
-		void saveCriteria(taskStudent)
-	}, AUTOSAVE_DELAY)
+		void saveCriteria(taskStudent);
+	}, AUTOSAVE_DELAY);
 }
 
 function onStatusChanged(taskStudent: string, value: string) {
-	const state = studentStates[taskStudent]
-	if (!state || state.status === value) return
-	state.status = value
-	state.dirty = true
-	scheduleStudentSave(taskStudent)
+	const state = studentStates[taskStudent];
+	if (!state || state.status === value) return;
+	state.status = value;
+	state.dirty = true;
+	scheduleStudentSave(taskStudent);
 }
 
 function onPointsChanged(taskStudent: string, value: number | null) {
-	const state = studentStates[taskStudent]
-	if (!state || state.mark_awarded === value) return
-	state.mark_awarded = value
-	state.dirty = true
-	scheduleStudentSave(taskStudent)
+	const state = studentStates[taskStudent];
+	if (!state || state.mark_awarded === value) return;
+	state.mark_awarded = value;
+	state.dirty = true;
+	scheduleStudentSave(taskStudent);
 }
 
 function setBooleanState(taskStudent: string, value: boolean) {
-	const state = studentStates[taskStudent]
-	if (!state || state.complete === value) return
-	state.complete = value
-	state.dirty = true
-	scheduleStudentSave(taskStudent)
+	const state = studentStates[taskStudent];
+	if (!state || state.complete === value) return;
+	state.complete = value;
+	state.dirty = true;
+	scheduleStudentSave(taskStudent);
 }
 
-function setVisibility(taskStudent: string, field: 'visible_to_student' | 'visible_to_guardian', value: boolean) {
-	const state = studentStates[taskStudent]
-	if (!state || state[field] === value) return
-	state[field] = value
-	state.dirty = true
-	scheduleStudentSave(taskStudent)
+function setVisibility(
+	taskStudent: string,
+	field: 'visible_to_student' | 'visible_to_guardian',
+	value: boolean
+) {
+	const state = studentStates[taskStudent];
+	if (!state || state[field] === value) return;
+	state[field] = value;
+	state.dirty = true;
+	scheduleStudentSave(taskStudent);
 }
 
 function onVisibilityInputChange(
@@ -689,109 +769,119 @@ function onVisibilityInputChange(
 	field: 'visible_to_student' | 'visible_to_guardian',
 	event: Event
 ) {
-	const target = event.target as HTMLInputElement | null
-	setVisibility(taskStudent, field, Boolean(target?.checked))
+	const target = event.target as HTMLInputElement | null;
+	setVisibility(taskStudent, field, Boolean(target?.checked));
 }
 
 function onFeedbackChanged(taskStudent: string, value: string) {
-	const state = studentStates[taskStudent]
-	if (!state || state.feedback === value) return
-	state.feedback = value
-	state.dirty = true
-	scheduleStudentSave(taskStudent)
+	const state = studentStates[taskStudent];
+	if (!state || state.feedback === value) return;
+	state.feedback = value;
+	state.dirty = true;
+	scheduleStudentSave(taskStudent);
 }
 
 function getCriterionState(taskStudent: string, criteriaName: string) {
-	const state = studentStates[taskStudent]
-	return state?.criteria.find(criteria => criteria.assessment_criteria === criteriaName)
+	const state = studentStates[taskStudent];
+	return state?.criteria.find(criteria => criteria.assessment_criteria === criteriaName);
 }
 
-function onCriterionLevelChanged(taskStudent: string, criterionRow: CriterionPayload, levelValue: string | number | null) {
-	const state = studentStates[taskStudent]
-	if (!state) return
-	const item = state.criteria.find(criteria => criteria.assessment_criteria === criterionRow.assessment_criteria)
-	if (!item || item.level === levelValue) return
+function onCriterionLevelChanged(
+	taskStudent: string,
+	criterionRow: CriterionPayload,
+	levelValue: string | number | null
+) {
+	const state = studentStates[taskStudent];
+	if (!state) return;
+	const item = state.criteria.find(
+		criteria => criteria.assessment_criteria === criterionRow.assessment_criteria
+	);
+	if (!item || item.level === levelValue) return;
 
-	const levelDef = criterionRow.levels.find(level => level.level === levelValue)
-	item.level = levelValue
-	item.level_points = levelDef ? levelDef.points : item.level_points
-	state.dirtyCriteria = true
-	scheduleCriteriaSave(taskStudent)
+	const levelDef = criterionRow.levels.find(level => level.level === levelValue);
+	item.level = levelValue;
+	item.level_points = levelDef ? levelDef.points : item.level_points;
+	state.dirtyCriteria = true;
+	scheduleCriteriaSave(taskStudent);
 	if (state.dirty) {
-		scheduleStudentSave(taskStudent)
+		scheduleStudentSave(taskStudent);
 	}
 }
 
-function onCriterionPointsChanged(taskStudent: string, criteriaName: string, value: number | null) {
-	const state = studentStates[taskStudent]
-	if (!state) return
-	const item = state.criteria.find(criteria => criteria.assessment_criteria === criteriaName)
-	if (!item) return
+function onCriterionPointsChanged(
+	taskStudent: string,
+	criteriaName: string,
+	value: number | null
+) {
+	const state = studentStates[taskStudent];
+	if (!state) return;
+	const item = state.criteria.find(criteria => criteria.assessment_criteria === criteriaName);
+	if (!item) return;
 
-	const nextValue = typeof value === 'number' ? value : 0
-	if (item.level_points === nextValue) return
-	item.level_points = nextValue
-	state.dirtyCriteria = true
-	scheduleCriteriaSave(taskStudent)
+	const nextValue = typeof value === 'number' ? value : 0;
+	if (item.level_points === nextValue) return;
+	item.level_points = nextValue;
+	state.dirtyCriteria = true;
+	scheduleCriteriaSave(taskStudent);
 	if (state.dirty) {
-		scheduleStudentSave(taskStudent)
+		scheduleStudentSave(taskStudent);
 	}
 }
 
 function onCriterionFeedbackChanged(taskStudent: string, criteriaName: string, value: string) {
-	const state = studentStates[taskStudent]
-	if (!state) return
-	const item = state.criteria.find(criteria => criteria.assessment_criteria === criteriaName)
-	if (!item || item.feedback === value) return
-	item.feedback = value
-	state.dirtyCriteria = true
-	scheduleCriteriaSave(taskStudent)
+	const state = studentStates[taskStudent];
+	if (!state) return;
+	const item = state.criteria.find(criteria => criteria.assessment_criteria === criteriaName);
+	if (!item || item.feedback === value) return;
+	item.feedback = value;
+	state.dirtyCriteria = true;
+	scheduleCriteriaSave(taskStudent);
 	if (state.dirty) {
-		scheduleStudentSave(taskStudent)
+		scheduleStudentSave(taskStudent);
 	}
 }
 
 async function saveStudent(taskStudent: string) {
-	const state = studentStates[taskStudent]
-	if (!state) return
+	const state = studentStates[taskStudent];
+	if (!state) return;
 
-	state.saving = true
+	state.saving = true;
 	try {
 		const payload: Record<string, string | number | boolean | null> = {
 			status: state.status,
 			visible_to_student: state.visible_to_student,
 			visible_to_guardian: state.visible_to_guardian,
-		}
+		};
 		if (isPointsTask(gradebook.task)) {
-			payload.mark_awarded = state.mark_awarded
+			payload.mark_awarded = state.mark_awarded;
 		}
 		if (showsBooleanResult(gradebook.task)) {
-			payload.complete = state.complete
+			payload.complete = state.complete;
 		}
 		if (supportsFeedback(gradebook.task)) {
-			payload.feedback = state.feedback
+			payload.feedback = state.feedback;
 		}
 		const doc: UpdateTaskStudentResponse = await gradebookService.updateTaskStudent({
 			task_student: taskStudent,
 			updates: payload,
-		})
-		state.dirty = false
-		state.updated_on = doc.updated_on
+		});
+		state.dirty = false;
+		state.updated_on = doc.updated_on;
 	} catch (error) {
-		console.error('Save failed', error)
-		showDangerToast('Failed to save changes')
+		console.error('Save failed', error);
+		showDangerToast('Failed to save changes');
 	} finally {
-		state.saving = false
+		state.saving = false;
 		if (state.dirty) {
-			scheduleStudentSave(taskStudent)
+			scheduleStudentSave(taskStudent);
 		}
 	}
 }
 
 async function saveCriteria(taskStudent: string) {
-	const state = studentStates[taskStudent]
-	if (!state) return
-	state.savingCriteria = true
+	const state = studentStates[taskStudent];
+	if (!state) return;
+	state.savingCriteria = true;
 	try {
 		const criteriaScores = state.criteria
 			.map(criteria => ({
@@ -800,7 +890,7 @@ async function saveCriteria(taskStudent: string) {
 				level_points: criteria.level_points ?? 0,
 				feedback: criteria.feedback,
 			}))
-			.filter(row => row.assessment_criteria && row.level !== null && row.level !== '')
+			.filter(row => row.assessment_criteria && row.level !== null && row.level !== '');
 
 		if (criteriaScores.length) {
 			const doc: UpdateTaskStudentResponse = await gradebookService.updateTaskStudent({
@@ -809,68 +899,72 @@ async function saveCriteria(taskStudent: string) {
 					criteria_scores: criteriaScores,
 					...(supportsFeedback(gradebook.task) ? { feedback: state.feedback } : {}),
 				},
-			})
+			});
 			if (doc?.updated_on) {
-				state.updated_on = doc.updated_on
+				state.updated_on = doc.updated_on;
 			}
 		}
-		state.dirtyCriteria = false
+		state.dirtyCriteria = false;
 	} catch (error) {
-		console.error(error)
-		showDangerToast('Error saving criteria')
+		console.error(error);
+		showDangerToast('Error saving criteria');
 	} finally {
-		state.savingCriteria = false
+		state.savingCriteria = false;
 	}
 }
 
 function toggleVisibilityGroup(type: 'student' | 'guardian') {
-	const field = type === 'student' ? 'visible_to_student' : 'visible_to_guardian'
-	const targetValue = type === 'student' ? !allStudentsVisible.value : !allGuardiansVisible.value
+	const field = type === 'student' ? 'visible_to_student' : 'visible_to_guardian';
+	const targetValue = type === 'student' ? !allStudentsVisible.value : !allGuardiansVisible.value;
 
 	gradebook.students.forEach(student => {
-		setVisibility(student.task_student, field, targetValue)
-	})
+		setVisibility(student.task_student, field, targetValue);
+	});
 }
 
 function booleanResultLabel(taskStudent: string) {
-	const state = studentStates[taskStudent]
-	if (!state) return '—'
-	return state.complete ? booleanPositiveLabel(gradebook.task) : booleanNegativeLabel(gradebook.task)
+	const state = studentStates[taskStudent];
+	if (!state) return '—';
+	return state.complete
+		? booleanPositiveLabel(gradebook.task)
+		: booleanNegativeLabel(gradebook.task);
 }
 
 function onImgError(event: Event, fallback?: string) {
-	const element = event.target as HTMLImageElement
-	element.onerror = null
-	element.src = fallback || DEFAULT_STUDENT_IMAGE
+	const element = event.target as HTMLImageElement;
+	element.onerror = null;
+	element.src = fallback || DEFAULT_STUDENT_IMAGE;
 }
 
 async function scrollToFocusedStudent() {
-	if (!props.focusStudent || !rootElement.value) return
-	await nextTick()
-	const target = rootElement.value.querySelector<HTMLElement>(`[data-gradebook-student="${props.focusStudent}"]`)
-	if (!target) return
-	target.scrollIntoView({ block: 'center', behavior: 'smooth' })
+	if (!props.focusStudent || !rootElement.value) return;
+	await nextTick();
+	const target = rootElement.value.querySelector<HTMLElement>(
+		`[data-gradebook-student="${props.focusStudent}"]`
+	);
+	if (!target) return;
+	target.scrollIntoView({ block: 'center', behavior: 'smooth' });
 }
 
 watch(
 	() => props.taskName,
 	taskName => {
-		resetGradebook()
+		resetGradebook();
 		if (taskName) {
-			void loadGradebook(taskName)
+			void loadGradebook(taskName);
 		}
 	},
 	{ immediate: true }
-)
+);
 
 watch(
 	() => props.focusStudent,
 	() => {
-		void scrollToFocusedStudent()
+		void scrollToFocusedStudent();
 	}
-)
+);
 
 onBeforeUnmount(() => {
-	clearAllAutosaveTimers()
-})
+	clearAllAutosaveTimers();
+});
 </script>

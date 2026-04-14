@@ -379,10 +379,12 @@ describe('CourseDetail', () => {
 		const classUpdatesLink = Array.from(document.querySelectorAll('a')).find(anchor =>
 			anchor.textContent?.includes('Class Updates')
 		)
-		expect(classUpdatesLink?.getAttribute('data-to')).toContain('"name":"student-communications"')
-		expect(classUpdatesLink?.getAttribute('data-to')).toContain('"source":"course"')
-		expect(classUpdatesLink?.getAttribute('data-to')).toContain('"course_id":"COURSE-1"')
-		expect(classUpdatesLink?.getAttribute('data-to')).toContain('"student_group":"GROUP-1"')
+		expect(classUpdatesLink).toBeTruthy()
+		const classUpdatesHref = classUpdatesLink?.getAttribute('data-to') || ''
+		expect(classUpdatesHref).toContain('"name":"student-communications"')
+		expect(classUpdatesHref).toContain('"source":"course"')
+		expect(classUpdatesHref).toContain('"course_id":"COURSE-1"')
+		expect(classUpdatesHref).toContain('"student_group":"GROUP-1"')
 	})
 
 	it('keeps the learning space visible when shared-plan messaging is present', async () => {

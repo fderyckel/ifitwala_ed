@@ -120,9 +120,9 @@ function mountPanel() {
 }
 
 function setInputValue(placeholder: string, value: string) {
-	const input = Array.from(document.querySelectorAll('input')).find(
-		node => (node as HTMLInputElement).placeholder === placeholder
-	) as HTMLInputElement | undefined;
+	const input = document.querySelector(`input[placeholder="${placeholder}"]`) as
+		| HTMLInputElement
+		| null;
 	if (!input) throw new Error(`Missing input ${placeholder}`);
 	input.value = value;
 	input.dispatchEvent(new Event('input', { bubbles: true }));
@@ -143,6 +143,12 @@ describe('PlanningResourcePanel', () => {
 		});
 
 		mountPanel();
+		await flushUi();
+
+		const linkModeButton = document.querySelector(
+			'button[data-resource-mode="link"]'
+		) as HTMLButtonElement | null;
+		linkModeButton?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
 		await flushUi();
 
 		setInputValue('https://...', 'https://www.youtube.com/watch?v=abc123');

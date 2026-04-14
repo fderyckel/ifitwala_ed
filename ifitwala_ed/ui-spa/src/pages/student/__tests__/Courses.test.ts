@@ -155,9 +155,9 @@ describe('Courses', () => {
 		expect(links.some(textValue => textValue.includes('Biology'))).toBe(true)
 		expect(links.some(textValue => textValue.includes('History'))).toBe(false)
 
-		const fixedImageWrappers = Array.from(document.querySelectorAll('div')).filter(node =>
-			node.className.includes('h-40 overflow-hidden bg-surface-soft')
+		const mediaFrames = Array.from(document.querySelectorAll('div')).filter(node =>
+			node.className.includes('student-hub-media-frame')
 		)
-		expect(fixedImageWrappers.length).toBeGreaterThan(0)
+		expect(mediaFrames.length).toBeGreaterThan(0)
 	})
 })

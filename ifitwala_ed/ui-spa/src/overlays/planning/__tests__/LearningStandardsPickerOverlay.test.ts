@@ -197,11 +197,19 @@ describe('LearningStandardsPickerOverlay', () => {
 		mountOverlay()
 		await flushUi(4)
 
-		expect(getLearningStandardPickerMock).toHaveBeenCalledTimes(2)
+		expect(getLearningStandardPickerMock).toHaveBeenCalledTimes(3)
 		expect(getLearningStandardPickerMock).toHaveBeenNthCalledWith(2, {
 			unit_plan: 'UNIT-1',
+			framework_name: undefined,
+			program: 'IB-MYP-G6',
+			strand: undefined,
+			substrand: undefined,
+			search_text: undefined,
+		})
+		expect(getLearningStandardPickerMock).toHaveBeenNthCalledWith(3, {
+			unit_plan: 'UNIT-1',
 			framework_name: 'IB MYP',
-			program: undefined,
+			program: 'IB-MYP-G6',
 			strand: undefined,
 			substrand: undefined,
 			search_text: undefined,

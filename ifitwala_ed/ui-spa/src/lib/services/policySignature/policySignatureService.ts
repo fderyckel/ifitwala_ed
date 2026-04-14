@@ -17,6 +17,10 @@ import type {
 	Response as GetDashboardResponse,
 } from '@/types/contracts/policy_signature/get_staff_policy_signature_dashboard';
 import type {
+	Request as GetAudienceRowsRequest,
+	Response as GetAudienceRowsResponse,
+} from '@/types/contracts/policy_signature/get_staff_policy_signature_audience_rows';
+import type {
 	Request as GetPolicyLibraryRequest,
 	Response as GetPolicyLibraryResponse,
 } from '@/types/contracts/policy_signature/get_staff_policy_library';
@@ -36,6 +40,12 @@ export function createPolicySignatureService() {
 
 	const getDashboardResource = createResource<GetDashboardResponse>({
 		url: 'ifitwala_ed.api.policy_signature.get_staff_policy_signature_dashboard',
+		method: 'POST',
+		auto: false,
+	});
+
+	const getAudienceRowsResource = createResource<GetAudienceRowsResponse>({
+		url: 'ifitwala_ed.api.policy_signature.get_staff_policy_signature_audience_rows',
 		method: 'POST',
 		auto: false,
 	});
@@ -64,6 +74,10 @@ export function createPolicySignatureService() {
 		return getDashboardResource.submit(payload);
 	}
 
+	async function getAudienceRows(payload: GetAudienceRowsRequest): Promise<GetAudienceRowsResponse> {
+		return getAudienceRowsResource.submit(payload);
+	}
+
 	async function getPolicyLibrary(
 		payload: GetPolicyLibraryRequest = {}
 	): Promise<GetPolicyLibraryResponse> {
@@ -74,6 +88,7 @@ export function createPolicySignatureService() {
 		getCampaignOptions,
 		launchCampaign,
 		getDashboard,
+		getAudienceRows,
 		getPolicyLibrary,
 	};
 }

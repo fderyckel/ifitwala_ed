@@ -331,6 +331,10 @@ describe('OrgCommunicationArchive', () => {
 		const schoolSelect = selects[1] as HTMLSelectElement;
 		const studentGroupSelect = selects[3] as HTMLSelectElement;
 
+		schoolSelect.value = 'SCH-1';
+		schoolSelect.dispatchEvent(new Event('change'));
+		await flushUi();
+
 		expect(Array.from(studentGroupSelect.options).map(option => option.textContent)).toEqual([
 			'All groups',
 			'Group 1',
