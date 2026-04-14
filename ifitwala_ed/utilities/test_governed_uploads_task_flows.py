@@ -15,6 +15,7 @@ def _governed_uploads_module():
 
     image_utils = ModuleType("ifitwala_ed.utilities.image_utils")
     image_utils.EMPLOYEE_VARIANT_PRIORITY = []
+    image_utils.file_url_is_accessible = lambda file_url, *, file_name=None, is_private=0: True
     image_utils.get_employee_image_variants_map = lambda employee_names: {}
     image_utils.get_preferred_employee_image_url = lambda employee_name, original_url=None, slots=None: original_url
 
@@ -54,6 +55,122 @@ class _FakeDoc:
 
 
 class TestGovernedUploadTaskFlows(TestCase):
+    def test_drive_upload_and_finalize_injects_idempotency_key_for_strict_wrapper(self):
+        storage_calls = []
+        uploads_api = SimpleNamespace(finalize_upload_session=lambda **kwargs: {"file_id": "FILE-EMP-0001"})
+        storage_base = SimpleNamespace(
+            get_storage_backend=lambda _backend: SimpleNamespace(
+                write_temporary_object=lambda *, object_key, content: storage_calls.append((object_key, content))
+            )
+        )
+        session_doc = _FakeDoc(
+            name="DUS-EMP-1",
+            storage_backend="drive_test",
+            tmp_object_key="tmp/employee-photo.png",
+            status="pending",
+            received_size_bytes=None,
+            error_log="old-error",
+        )
+        file_doc = SimpleNamespace(name="FILE-EMP-0001")
+        observed = {}
+
+        def strict_wrapper(
+            *,
+            employee,
+            filename_original,
+            mime_type_hint=None,
+            expected_size_bytes=None,
+            idempotency_key=None,
+            upload_source=None,
+        ):
+            observed.update(
+                {
+                    "employee": employee,
+                    "filename_original": filename_original,
+                    "mime_type_hint": mime_type_hint,
+                    "expected_size_bytes": expected_size_bytes,
+                    "idempotency_key": idempotency_key,
+                    "upload_source": upload_source,
+                }
+            )
+            return {"upload_session_id": "DUS-EMP-1"}
+
+        def fake_get_doc(doctype, name):
+            if doctype == "Drive Upload Session":
+                self.assertEqual(name, "DUS-EMP-1")
+                return session_doc
+            if doctype == "File":
+                self.assertEqual(name, "FILE-EMP-0001")
+                return file_doc
+            raise AssertionError(f"Unexpected get_doc call: {doctype} {name}")
+
+        with _governed_uploads_module() as governed_uploads:
+            base_payload = {
+                "employee": "EMP-0001",
+                "filename_original": "employee-photo.png",
+                "mime_type_hint": "image/png",
+                "expected_size_bytes": len(b"employee-content"),
+                "upload_source": "Desk",
+            }
+            expected_idempotency_key = governed_uploads._build_drive_idempotency_key(
+                payload=base_payload,
+                content=b"employee-content",
+            )
+
+            with (
+                patch.object(
+                    governed_uploads,
+                    "_load_drive_module",
+                    side_effect=lambda module_name: (
+                        uploads_api if module_name == "ifitwala_drive.api.uploads" else storage_base
+                    ),
+                ),
+                patch.object(governed_uploads.frappe, "get_doc", side_effect=fake_get_doc),
+            ):
+                session_response, finalize_response, returned_file_doc = governed_uploads._drive_upload_and_finalize(
+                    create_session_callable=strict_wrapper,
+                    payload=base_payload,
+                    content=b"employee-content",
+                )
+
+        self.assertEqual(observed["employee"], "EMP-0001")
+        self.assertEqual(observed["filename_original"], "employee-photo.png")
+        self.assertEqual(observed["mime_type_hint"], "image/png")
+        self.assertEqual(observed["expected_size_bytes"], len(b"employee-content"))
+        self.assertEqual(observed["idempotency_key"], expected_idempotency_key)
+        self.assertEqual(observed["upload_source"], "Desk")
+        self.assertEqual(storage_calls, [("tmp/employee-photo.png", b"employee-content")])
+        self.assertEqual(session_doc.status, "uploaded")
+        self.assertEqual(session_doc.received_size_bytes, len(b"employee-content"))
+        self.assertIsNone(session_doc.error_log)
+        self.assertEqual(session_doc.saved, 1)
+        self.assertEqual(session_response["upload_session_id"], "DUS-EMP-1")
+        self.assertEqual(finalize_response["file_id"], "FILE-EMP-0001")
+        self.assertIs(returned_file_doc, file_doc)
+
+    def test_ensure_file_on_disk_accepts_drive_backed_storage_when_accessible(self):
+        file_doc = SimpleNamespace(
+            name="FILE-EMP-0001",
+            file_url="/private/files/ifitwala_drive/files/aa/bb/employee-photo.png",
+            is_private=1,
+        )
+
+        with _governed_uploads_module() as governed_uploads:
+            governed_uploads._ensure_file_on_disk(file_doc)
+
+    def test_ensure_file_on_disk_rejects_inaccessible_storage_target(self):
+        file_doc = SimpleNamespace(
+            name="FILE-EMP-0001",
+            file_url="/private/files/ifitwala_drive/files/aa/bb/employee-photo.png",
+            is_private=1,
+        )
+
+        with _governed_uploads_module() as governed_uploads:
+            governed_uploads.file_url_is_accessible = lambda file_url, *, file_name=None, is_private=0: False
+
+            with self.assertRaises(governed_uploads.frappe.ValidationError):
+                governed_uploads._ensure_file_on_disk(file_doc)
+
     def test_resolve_upload_mime_type_hint_ignores_multipart_envelope(self):
         with _governed_uploads_module() as governed_uploads:
             governed_uploads.frappe.request = SimpleNamespace(

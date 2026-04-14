@@ -466,9 +466,12 @@ def _get_preferred_governed_image_url(
     *,
     original_url: str | None = None,
     slots: Sequence[str],
+    fallback_to_original: bool = True,
 ) -> str | None:
     subject_name = str(subject_name or "").strip()
     if not subject_name:
+        if not fallback_to_original:
+            return None
         return original_url if file_url_exists_on_disk(original_url) else None
 
     variants = _get_governed_image_variants_map(primary_subject_type, [subject_name], slots=slots).get(subject_name, {})
@@ -476,6 +479,9 @@ def _get_preferred_governed_image_url(
         file_url = variants.get(slot)
         if file_url:
             return file_url
+
+    if not fallback_to_original:
+        return None
 
     return _resolve_original_governed_image_url(primary_subject_type, subject_name, original_url)
 
@@ -486,6 +492,7 @@ def _build_governed_image_variants(
     *,
     original_url: str | None = None,
     slots: Sequence[str],
+    fallback_to_original: bool = True,
 ) -> dict[str, str | None]:
     subject_name = str(subject_name or "").strip()
     variants = (
@@ -493,11 +500,13 @@ def _build_governed_image_variants(
         if subject_name
         else {}
     )
-    original_fallback = variants.get("profile_image") or _resolve_original_governed_image_url(
-        primary_subject_type,
-        subject_name,
-        original_url,
-    )
+    original_fallback = variants.get("profile_image")
+    if not original_fallback and fallback_to_original:
+        original_fallback = _resolve_original_governed_image_url(
+            primary_subject_type,
+            subject_name,
+            original_url,
+        )
 
     return {
         "original": original_fallback,
@@ -517,6 +526,7 @@ def _apply_preferred_governed_images(
     subject_field: str,
     image_field: str,
     slots: Sequence[str],
+    fallback_to_original: bool = True,
 ) -> list[dict]:
     if not rows:
         return rows
@@ -538,12 +548,14 @@ def _apply_preferred_governed_images(
 
         if preferred_url:
             row[image_field] = preferred_url
-        else:
+        elif fallback_to_original:
             row[image_field] = _resolve_original_governed_image_url(
                 primary_subject_type,
                 subject_name,
                 original_url,
             )
+        else:
+            row[image_field] = None
 
     return rows
 
@@ -561,21 +573,29 @@ def get_preferred_employee_image_url(
     *,
     original_url: str | None = None,
     slots: Sequence[str] = EMPLOYEE_VARIANT_PRIORITY,
+    fallback_to_original: bool = True,
 ) -> str | None:
     return _get_preferred_governed_image_url(
         "Employee",
         employee_name,
         original_url=original_url,
         slots=slots,
+        fallback_to_original=fallback_to_original,
     )
 
 
-def build_employee_image_variants(employee_name: str | None, original_url: str | None = None) -> dict[str, str | None]:
+def build_employee_image_variants(
+    employee_name: str | None,
+    original_url: str | None = None,
+    *,
+    fallback_to_original: bool = True,
+) -> dict[str, str | None]:
     return _build_governed_image_variants(
         "Employee",
         employee_name,
         original_url=original_url,
         slots=EMPLOYEE_VARIANT_SLOTS,
+        fallback_to_original=fallback_to_original,
     )
 
 
@@ -585,6 +605,7 @@ def apply_preferred_employee_images(
     employee_field: str = "id",
     image_field: str = "image",
     slots: Sequence[str] = EMPLOYEE_VARIANT_PRIORITY,
+    fallback_to_original: bool = True,
 ) -> list[dict]:
     return _apply_preferred_governed_images(
         rows,
@@ -592,6 +613,7 @@ def apply_preferred_employee_images(
         subject_field=employee_field,
         image_field=image_field,
         slots=slots,
+        fallback_to_original=fallback_to_original,
     )
 
 

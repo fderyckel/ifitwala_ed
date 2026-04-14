@@ -714,146 +714,200 @@
 								</p>
 							</div>
 
-							<div v-else class="space-y-4">
+							<div v-else class="space-y-3">
 								<article
 									v-for="standard in unitForm.standards"
 									:key="standard.local_id"
-									class="rounded-2xl border border-line-soft bg-surface-soft p-4"
+									class="overflow-hidden rounded-[1.5rem] border transition"
+									:class="
+										isStandardExpanded(standard.local_id)
+											? 'border-jacaranda/35 bg-white shadow-soft'
+											: 'border-line-soft bg-surface-soft hover:border-jacaranda/35 hover:bg-white/95'
+									"
 								>
-									<div class="grid gap-4 lg:grid-cols-2">
-										<label class="block space-y-2">
-											<span class="type-caption text-ink/70">Framework Name</span>
-											<input
-												v-model="standard.framework_name"
-												type="text"
-												class="if-input w-full"
-												disabled
-											/>
-										</label>
-										<label class="block space-y-2">
-											<span class="type-caption text-ink/70">Framework Version</span>
-											<input
-												v-model="standard.framework_version"
-												type="text"
-												class="if-input w-full"
-												disabled
-											/>
-										</label>
-										<label class="block space-y-2">
-											<span class="type-caption text-ink/70">Subject Area</span>
-											<input
-												v-model="standard.subject_area"
-												type="text"
-												class="if-input w-full"
-												disabled
-											/>
-										</label>
-										<label class="block space-y-2">
-											<span class="type-caption text-ink/70">Program</span>
-											<input
-												v-model="standard.program"
-												type="text"
-												class="if-input w-full"
-												disabled
-											/>
-										</label>
-										<label class="block space-y-2">
-											<span class="type-caption text-ink/70">Strand</span>
-											<input
-												v-model="standard.strand"
-												type="text"
-												class="if-input w-full"
-												disabled
-											/>
-										</label>
-										<label class="block space-y-2">
-											<span class="type-caption text-ink/70">Substrand</span>
-											<input
-												v-model="standard.substrand"
-												type="text"
-												class="if-input w-full"
-												disabled
-											/>
-										</label>
-										<label class="block space-y-2">
-											<span class="type-caption text-ink/70">Standard Code</span>
-											<input
-												v-model="standard.standard_code"
-												type="text"
-												class="if-input w-full"
-												disabled
-											/>
-										</label>
-										<label class="block space-y-2">
-											<span class="type-caption text-ink/70">Coverage Level</span>
-											<select
-												v-model="standard.coverage_level"
-												class="if-input w-full"
-												:disabled="!canManagePlan"
-											>
-												<option value="">Select</option>
-												<option
-													v-for="option in coverageLevelOptions"
-													:key="option"
-													:value="option"
+									<button
+										type="button"
+										class="group flex w-full items-start justify-between gap-4 px-4 py-4 text-left transition focus:outline-none focus-visible:ring-2 focus-visible:ring-jacaranda/30 sm:px-5"
+										:aria-controls="`course-plan-standard-${standard.local_id}`"
+										:aria-expanded="isStandardExpanded(standard.local_id)"
+										@click="toggleStandardExpansion(standard.local_id)"
+									>
+										<div class="min-w-0 flex-1">
+											<div class="flex min-w-0 items-center gap-3">
+												<span
+													class="inline-flex shrink-0 items-center rounded-full border border-jacaranda/20 bg-jacaranda/10 px-3 py-1 text-xs font-semibold tracking-[0.08em] text-jacaranda"
 												>
-													{{ option }}
-												</option>
-											</select>
-										</label>
-										<label class="block space-y-2">
-											<span class="type-caption text-ink/70">Alignment Strength</span>
-											<select
-												v-model="standard.alignment_strength"
-												class="if-input w-full"
-												:disabled="!canManagePlan"
-											>
-												<option value="">Select</option>
-												<option
-													v-for="option in alignmentStrengthOptions"
-													:key="option"
-													:value="option"
+													{{ trimmedValue(standard.standard_code) || 'Code pending' }}
+												</span>
+												<div
+													class="flex min-w-0 flex-1 items-center gap-2 overflow-x-auto whitespace-nowrap no-scrollbar"
 												>
-													{{ option }}
-												</option>
-											</select>
-										</label>
-										<label class="block space-y-2">
-											<span class="type-caption text-ink/70">Alignment Type</span>
-											<input
-												v-model="standard.alignment_type"
-												type="text"
-												class="if-input w-full"
-												disabled
-											/>
-										</label>
-										<label class="block space-y-2 lg:col-span-2">
-											<span class="type-caption text-ink/70">Standard Description</span>
-											<textarea
-												v-model="standard.standard_description"
-												rows="3"
-												class="if-input min-h-[6rem] w-full resize-y"
-												disabled
-											/>
-										</label>
-										<label class="block space-y-2 lg:col-span-2">
-											<span class="type-caption text-ink/70">Notes</span>
-											<textarea
-												v-model="standard.notes"
-												rows="3"
-												class="if-input min-h-[6rem] w-full resize-y"
-												:disabled="!canManagePlan"
-											/>
-										</label>
-									</div>
-									<div v-if="canManagePlan" class="mt-4 flex justify-end">
-										<button
-											type="button"
-											class="if-action if-action--subtle"
-											@click="removeStandard(standard.local_id)"
-										>
-											Remove Standard
-										</button>
+													<span
+														v-for="token in standardSummaryTokens(standard)"
+														:key="token.key"
+														class="chip shrink-0"
+														:class="token.pending ? 'border-dashed text-ink/55' : ''"
+													>
+														{{ token.label }}
+													</span>
+												</div>
+											</div>
+											<p class="mt-3 type-body text-ink/85 line-clamp-1">
+												{{ standardSummaryDescription(standard) }}
+											</p>
+										</div>
+										<div class="flex shrink-0 items-center gap-2 pl-1">
+											<span class="chip">{{
+												isStandardExpanded(standard.local_id) ? 'Hide details' : 'Details'
+											}}</span>
+											<span
+												class="inline-flex h-9 w-9 items-center justify-center rounded-full border border-line-soft bg-white text-base font-semibold text-ink/60 transition group-hover:border-jacaranda/35 group-hover:text-jacaranda"
+											>
+												{{ isStandardExpanded(standard.local_id) ? '-' : '+' }}
+											</span>
+										</div>
+									</button>
+
+									<div
+										v-if="isStandardExpanded(standard.local_id)"
+										:id="`course-plan-standard-${standard.local_id}`"
+										class="border-t border-line-soft px-4 pb-4 pt-4 sm:px-5 sm:pb-5"
+									>
+										<div class="grid gap-4 lg:grid-cols-2">
+											<label class="block space-y-2">
+												<span class="type-caption text-ink/70">Framework Name</span>
+												<input
+													v-model="standard.framework_name"
+													type="text"
+													class="if-input w-full"
+													disabled
+												/>
+											</label>
+											<label class="block space-y-2">
+												<span class="type-caption text-ink/70">Framework Version</span>
+												<input
+													v-model="standard.framework_version"
+													type="text"
+													class="if-input w-full"
+													disabled
+												/>
+											</label>
+											<label class="block space-y-2">
+												<span class="type-caption text-ink/70">Subject Area</span>
+												<input
+													v-model="standard.subject_area"
+													type="text"
+													class="if-input w-full"
+													disabled
+												/>
+											</label>
+											<label class="block space-y-2">
+												<span class="type-caption text-ink/70">Program</span>
+												<input
+													v-model="standard.program"
+													type="text"
+													class="if-input w-full"
+													disabled
+												/>
+											</label>
+											<label class="block space-y-2">
+												<span class="type-caption text-ink/70">Strand</span>
+												<input
+													v-model="standard.strand"
+													type="text"
+													class="if-input w-full"
+													disabled
+												/>
+											</label>
+											<label class="block space-y-2">
+												<span class="type-caption text-ink/70">Substrand</span>
+												<input
+													v-model="standard.substrand"
+													type="text"
+													class="if-input w-full"
+													disabled
+												/>
+											</label>
+											<label class="block space-y-2">
+												<span class="type-caption text-ink/70">Standard Code</span>
+												<input
+													v-model="standard.standard_code"
+													type="text"
+													class="if-input w-full"
+													disabled
+												/>
+											</label>
+											<label class="block space-y-2">
+												<span class="type-caption text-ink/70">Coverage Level</span>
+												<select
+													v-model="standard.coverage_level"
+													class="if-input w-full"
+													:disabled="!canManagePlan"
+												>
+													<option value="">Select</option>
+													<option
+														v-for="option in coverageLevelOptions"
+														:key="option"
+														:value="option"
+													>
+														{{ option }}
+													</option>
+												</select>
+											</label>
+											<label class="block space-y-2">
+												<span class="type-caption text-ink/70">Alignment Strength</span>
+												<select
+													v-model="standard.alignment_strength"
+													class="if-input w-full"
+													:disabled="!canManagePlan"
+												>
+													<option value="">Select</option>
+													<option
+														v-for="option in alignmentStrengthOptions"
+														:key="option"
+														:value="option"
+													>
+														{{ option }}
+													</option>
+												</select>
+											</label>
+											<label class="block space-y-2">
+												<span class="type-caption text-ink/70">Alignment Type</span>
+												<input
+													v-model="standard.alignment_type"
+													type="text"
+													class="if-input w-full"
+													disabled
+												/>
+											</label>
+											<label class="block space-y-2 lg:col-span-2">
+												<span class="type-caption text-ink/70">Standard Description</span>
+												<textarea
+													v-model="standard.standard_description"
+													rows="3"
+													class="if-input min-h-[6rem] w-full resize-y"
+													disabled
+												/>
+											</label>
+											<label class="block space-y-2 lg:col-span-2">
+												<span class="type-caption text-ink/70">Notes</span>
+												<textarea
+													v-model="standard.notes"
+													rows="3"
+													class="if-input min-h-[6rem] w-full resize-y"
+													:disabled="!canManagePlan"
+												/>
+											</label>
+										</div>
+										<div v-if="canManagePlan" class="mt-4 flex justify-end">
+											<button
+												type="button"
+												class="if-action if-action--subtle"
+												@click="removeStandard(standard.local_id)"
+											>
+												Remove Standard
+											</button>
+										</div>
 									</div>
 								</article>
 							</div>
@@ -1577,6 +1631,7 @@ const creatingQuizQuestionBank = ref(false);
 const loadToken = ref(0);
 const nextLocalId = ref(1);
 const activeSectionId = ref<WorkspaceSectionId>(SECTION_IDS.overview);
+const expandedStandardIds = ref<number[]>([]);
 let scrollFrame = 0;
 
 const coursePlanForm = reactive({
@@ -1834,14 +1889,72 @@ function isChoiceQuestion(questionType?: string | null) {
 }
 
 function hasRichTextContent(value?: string | null) {
-	return Boolean(
-		String(value || '')
-			.replace(/<style[\s\S]*?<\/style>/gi, ' ')
-			.replace(/<script[\s\S]*?<\/script>/gi, ' ')
-			.replace(/<[^>]*>/g, ' ')
-			.replace(/&nbsp;|&#160;/gi, ' ')
-			.trim()
-	);
+	return Boolean(toPlainText(value));
+}
+
+function toPlainText(value?: string | null) {
+	return String(value || '')
+		.replace(/<style[\s\S]*?<\/style>/gi, ' ')
+		.replace(/<script[\s\S]*?<\/script>/gi, ' ')
+		.replace(/<[^>]*>/g, ' ')
+		.replace(/&nbsp;|&#160;/gi, ' ')
+		.trim();
+}
+
+function trimmedValue(value?: string | null) {
+	return String(value || '').trim();
+}
+
+function standardSummaryTokens(standard: EditableStandard) {
+	const strand = trimmedValue(standard.strand);
+	const substrand = trimmedValue(standard.substrand);
+	const coverageLevel = trimmedValue(standard.coverage_level);
+	const alignmentType = trimmedValue(standard.alignment_type);
+	const alignmentStrength = trimmedValue(standard.alignment_strength);
+
+	return [
+		{
+			key: 'strand',
+			label: strand || 'Strand pending',
+			pending: !strand,
+		},
+		{
+			key: 'substrand',
+			label: substrand || 'Substrand pending',
+			pending: !substrand,
+		},
+		{
+			key: 'coverage-level',
+			label: coverageLevel ? `Coverage: ${coverageLevel}` : 'Coverage pending',
+			pending: !coverageLevel,
+		},
+		{
+			key: 'alignment-type',
+			label: alignmentType ? `Type: ${alignmentType}` : 'Type pending',
+			pending: !alignmentType,
+		},
+		{
+			key: 'alignment-strength',
+			label: alignmentStrength ? `Strength: ${alignmentStrength}` : 'Strength pending',
+			pending: !alignmentStrength,
+		},
+	];
+}
+
+function standardSummaryDescription(standard: EditableStandard) {
+	return toPlainText(standard.standard_description) || 'Standard description pending.';
+}
+
+function isStandardExpanded(localId: number) {
+	return expandedStandardIds.value.includes(localId);
+}
+
+function toggleStandardExpansion(localId: number) {
+	if (isStandardExpanded(localId)) {
+		expandedStandardIds.value = expandedStandardIds.value.filter(id => id !== localId);
+		return;
+	}
+	expandedStandardIds.value = [...expandedStandardIds.value, localId];
 }
 
 function buildEditableStandard(standard?: StaffPlanningStandard): EditableStandard {
@@ -2083,6 +2196,7 @@ function syncUnitForm(unit: StaffCoursePlanUnit | null) {
 	unitForm.skills = unit?.skills || '';
 	unitForm.concepts = unit?.concepts || '';
 	unitForm.standards = (unit?.standards || []).map(standard => buildEditableStandard(standard));
+	expandedStandardIds.value = [];
 	unitForm.reflections = (unit?.shared_reflections || []).map(reflection =>
 		buildEditableReflection(reflection)
 	);
@@ -2273,6 +2387,7 @@ function openStandardsOverlay() {
 
 function removeStandard(localId: number) {
 	unitForm.standards = unitForm.standards.filter(standard => standard.local_id !== localId);
+	expandedStandardIds.value = expandedStandardIds.value.filter(id => id !== localId);
 }
 
 function addReflection() {

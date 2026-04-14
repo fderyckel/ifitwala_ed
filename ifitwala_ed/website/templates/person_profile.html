@@ -8,7 +8,7 @@
 		<div class="overflow-hidden rounded-[2rem] border border-slate-200/80 bg-white shadow-[0_24px_80px_-46px_rgba(15,23,42,0.35)]">
 			<div class="grid gap-0 lg:grid-cols-[minmax(0,22rem)_minmax(0,1fr)]">
 				<div class="relative min-h-[22rem] bg-[radial-gradient(circle_at_top,_rgba(59,130,246,0.18),_transparent_58%),linear-gradient(135deg,_#eff6ff,_#f8fafc_55%,_#eef2ff)]">
-					{% if person.photo and person.photo.original %}
+					{% if person.photo and (person.photo.thumb or person.photo.card or person.photo.medium or person.photo.original) %}
 						{{ img_macro.smart_image(
 							person.photo.thumb,
 							person.photo.card,

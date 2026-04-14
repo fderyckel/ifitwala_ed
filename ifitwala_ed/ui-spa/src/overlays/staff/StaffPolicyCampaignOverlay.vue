@@ -31,7 +31,7 @@
 					leave-to="if-overlay__panel-from"
 				>
 					<DialogPanel class="if-overlay__panel">
-						<div class="if-overlay__header px-6 pt-6">
+						<div class="flex items-start justify-between gap-4 px-6 pt-6">
 							<div class="min-w-0">
 								<DialogTitle class="type-h2 text-ink">Policy Signature Campaign</DialogTitle>
 								<p class="mt-1 type-caption text-ink/60">
@@ -41,11 +41,11 @@
 							<button
 								ref="closeBtnEl"
 								type="button"
-								class="if-overlay__close"
+								class="if-overlay__icon-button shrink-0"
 								@click="emitClose('programmatic')"
 								aria-label="Close"
 							>
-								<FeatherIcon name="x" class="h-5 w-5" />
+								<FeatherIcon name="x" class="h-4 w-4" />
 							</button>
 						</div>
 
@@ -71,12 +71,15 @@
 								</p>
 							</div>
 
-							<section class="grid grid-cols-1 gap-4 md:grid-cols-2">
-								<label class="space-y-1">
-									<span class="type-label">Organization</span>
+							<section class="grid gap-4 md:grid-cols-2">
+								<div class="flex min-w-0 flex-col gap-1">
+									<label for="policy-campaign-organization" class="type-label leading-tight"
+										>Organization</label
+									>
 									<select
+										id="policy-campaign-organization"
 										v-model="form.organization"
-										class="h-10 w-full rounded-md border border-slate-300 bg-white px-3 text-sm"
+										class="if-overlay__input"
 										:disabled="busyOptions || busyLaunch"
 									>
 										<option value="">Select organization</option>
@@ -84,13 +87,16 @@
 											{{ org }}
 										</option>
 									</select>
-								</label>
+								</div>
 
-								<label class="space-y-1">
-									<span class="type-label">School (optional)</span>
+								<div class="flex min-w-0 flex-col gap-1">
+									<label for="policy-campaign-school" class="type-label leading-tight"
+										>School (optional)</label
+									>
 									<select
+										id="policy-campaign-school"
 										v-model="form.school"
-										class="h-10 w-full rounded-md border border-slate-300 bg-white px-3 text-sm"
+										class="if-overlay__input"
 										:disabled="busyOptions || busyLaunch || !form.organization"
 									>
 										<option value="">All schools in scope</option>
@@ -98,13 +104,16 @@
 											{{ school }}
 										</option>
 									</select>
-								</label>
+								</div>
 
-								<label class="space-y-1">
-									<span class="type-label">Employee Group (optional)</span>
+								<div class="flex min-w-0 flex-col gap-1">
+									<label for="policy-campaign-employee-group" class="type-label leading-tight"
+										>Employee Group (optional)</label
+									>
 									<select
+										id="policy-campaign-employee-group"
 										v-model="form.employee_group"
-										class="h-10 w-full rounded-md border border-slate-300 bg-white px-3 text-sm"
+										class="if-overlay__input"
 										:disabled="busyOptions || busyLaunch || !form.organization"
 									>
 										<option value="">All groups</option>
@@ -112,13 +121,16 @@
 											{{ group }}
 										</option>
 									</select>
-								</label>
+								</div>
 
-								<label class="space-y-1">
-									<span class="type-label">Policy Version</span>
+								<div class="flex min-w-0 flex-col gap-1">
+									<label for="policy-campaign-policy-version" class="type-label leading-tight"
+										>Policy Version</label
+									>
 									<select
+										id="policy-campaign-policy-version"
 										v-model="form.policy_version"
-										class="h-10 w-full rounded-md border border-slate-300 bg-white px-3 text-sm"
+										class="if-overlay__input"
 										:disabled="busyOptions || busyLaunch || !form.organization"
 									>
 										<option value="">Select policy version</option>
@@ -130,28 +142,34 @@
 											{{ policyLabel(policy) }}
 										</option>
 									</select>
-								</label>
+								</div>
 
-								<label class="space-y-1">
-									<span class="type-label">Due Date (optional)</span>
+								<div class="flex min-w-0 flex-col gap-1">
+									<label for="policy-campaign-due-date" class="type-label leading-tight"
+										>Due Date (optional)</label
+									>
 									<input
+										id="policy-campaign-due-date"
 										v-model="form.due_date"
 										type="date"
-										class="h-10 w-full rounded-md border border-slate-300 bg-white px-3 text-sm"
+										class="if-overlay__input"
 										:disabled="busyLaunch"
 									/>
-								</label>
+								</div>
 
-								<label class="space-y-1 md:col-span-2">
-									<span class="type-label">Assignment Message (optional)</span>
+								<div class="flex min-w-0 flex-col gap-1 md:col-span-2">
+									<label for="policy-campaign-message" class="type-label leading-tight"
+										>Assignment Message (optional)</label
+									>
 									<textarea
+										id="policy-campaign-message"
 										v-model="form.message"
 										rows="3"
-										class="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm"
+										class="if-textarea"
 										:disabled="busyLaunch"
 										placeholder="Optional note shown in the assigned ToDo."
 									/>
-								</label>
+								</div>
 							</section>
 
 							<section class="rounded-2xl border border-slate-200 bg-white px-4 py-4 shadow-soft">
@@ -188,7 +206,9 @@
 							</section>
 						</div>
 
-						<div class="if-overlay__footer px-6 pb-6 flex items-center justify-between gap-3">
+						<div
+							class="if-overlay__footer flex flex-col gap-3 px-6 pb-6 sm:flex-row sm:items-center sm:justify-between"
+						>
 							<RouterLink
 								v-if="canOpenAnalytics"
 								:to="analyticsRoute"
@@ -202,17 +222,19 @@
 								>Select organization and policy first.</span
 							>
 
-							<div class="flex items-center gap-2">
+							<div
+								class="flex w-full flex-col-reverse gap-2 sm:w-auto sm:flex-row sm:items-center"
+							>
 								<button
 									type="button"
-									class="rounded-full border border-border/70 bg-white px-4 py-2 type-caption text-ink/70"
+									class="w-full rounded-full border border-border/70 bg-white px-4 py-2 type-caption text-ink/70 sm:w-auto"
 									@click="emitClose('programmatic')"
 								>
 									Cancel
 								</button>
 								<button
 									type="button"
-									class="rounded-full bg-ink px-5 py-2 type-caption text-white shadow-soft disabled:opacity-50"
+									class="w-full rounded-full bg-ink px-5 py-2 type-button-label text-white shadow-soft disabled:opacity-50 sm:w-auto"
 									:disabled="!canLaunch || busyLaunch"
 									@click="launchCampaign"
 								>

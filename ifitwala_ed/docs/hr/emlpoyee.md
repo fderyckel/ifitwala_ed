@@ -126,6 +126,8 @@ Current read consumers using canonical variant resolution:
 Org chart visibility contract:
 - the staff org chart defaults to `All Organizations`, not the viewer's base organization
 - employee image access for the org chart is available to any authenticated active employee; base-organization scope does not gate employee thumbnails on that surface
+- the org chart surface resolves Employee image derivatives in this order: `profile_image_thumb` -> `profile_image_card` -> `profile_image_medium`; it must not fall back to the original full-size image on that surface
+- when a governed Employee derivative is stored in `ifitwala_drive` instead of local disk, the org chart still resolves it through the named Employee file route, which may redirect to a Drive-issued download URL after the employee-access check passes
 - changes to employee image display permissions must update both the employee image route tests and the org chart consumer contract tests in the same change
 
 This keeps Employee image governance and User avatar synchronization aligned.

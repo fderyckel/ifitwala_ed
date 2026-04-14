@@ -129,6 +129,71 @@ class TestPublicPeopleService(FrappeTestCase):
         self.assertEqual(person["employee"], employee.name)
         self.assertEqual(person["full_bio"], employee.bio)
 
+    def test_public_people_disables_original_image_fallback_for_website_surfaces(self):
+        organization = make_organization(prefix="Public People Image Org")
+        school = make_school(organization.name, prefix="Public People Image School")
+        designation = _make_designation(
+            organization=organization.name,
+            school=school.name,
+            title="Teacher",
+            role_profile="Academic Staff",
+        )
+        employee = _make_employee(
+            school=school.name,
+            organization=organization.name,
+            designation=designation.name,
+            first_name="Dana",
+        )
+        employee.employee_image = "/private/files/ifitwala_drive/files/aa/bb/dana-original.png"
+        employee.save(ignore_permissions=True)
+
+        captured_calls = []
+
+        def fake_build_employee_image_variants(employee_name, original_url=None, *, fallback_to_original=True):
+            captured_calls.append(
+                {
+                    "employee_name": employee_name,
+                    "original_url": original_url,
+                    "fallback_to_original": fallback_to_original,
+                }
+            )
+            return {
+                "original": None,
+                "card": "/files/employee/dana-card.webp",
+                "medium": "/files/employee/dana-medium.webp",
+                "thumb": "/files/employee/dana-thumb.webp",
+            }
+
+        with patch(
+            "ifitwala_ed.website.public_people.build_employee_image_variants",
+            side_effect=fake_build_employee_image_variants,
+        ):
+            rows = public_people.get_public_people_records(
+                school_names=(school.name,),
+                organization_name=organization.name,
+            )
+
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(
+            rows[0]["photo"],
+            {
+                "original": None,
+                "card": "/files/employee/dana-card.webp",
+                "medium": "/files/employee/dana-medium.webp",
+                "thumb": "/files/employee/dana-thumb.webp",
+            },
+        )
+        self.assertEqual(
+            captured_calls,
+            [
+                {
+                    "employee_name": rows[0]["employee"],
+                    "original_url": "/private/files/ifitwala_drive/files/aa/bb/dana-original.png",
+                    "fallback_to_original": False,
+                }
+            ],
+        )
+
 
 def _make_designation(*, organization: str, school: str | None, title: str, role_profile: str):
     designation = frappe.get_doc(

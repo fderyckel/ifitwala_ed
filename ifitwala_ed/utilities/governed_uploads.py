@@ -17,6 +17,7 @@ from frappe import _
 
 from ifitwala_ed.utilities.image_utils import (
     EMPLOYEE_VARIANT_PRIORITY,
+    file_url_is_accessible,
     get_employee_image_variants_map,
     get_preferred_employee_image_url,
 )
@@ -155,14 +156,12 @@ def _ensure_file_on_disk(file_doc):
         frappe.throw(_("File URL missing after upload."))
     if file_doc.file_url.startswith("http"):
         return
-    rel_path = file_doc.file_url.lstrip("/")
-    if rel_path.startswith("private/") or rel_path.startswith("public/"):
-        abs_path = frappe.utils.get_site_path(rel_path)
-    else:
-        base = "private" if file_doc.is_private else "public"
-        abs_path = frappe.utils.get_site_path(base, rel_path)
-    if not os.path.exists(abs_path):
-        frappe.throw(_("File could not be finalized on disk. Please retry the upload."))
+    if not file_url_is_accessible(
+        file_doc.file_url,
+        file_name=getattr(file_doc, "name", None),
+        is_private=getattr(file_doc, "is_private", 0),
+    ):
+        frappe.throw(_("File could not be finalized in managed storage. Please retry the upload."))
 
 
 def _sync_linked_employee_user_image(employee_name: str, *, original_url: str | None = None) -> None:

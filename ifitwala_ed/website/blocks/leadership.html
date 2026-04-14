@@ -56,7 +56,7 @@
 								{% set bio_id = "people-bio-" ~ section.key ~ "-" ~ section_index ~ "-" ~ loop.index0 %}
 								<article class="site-people-card group flex min-w-[18rem] max-w-[18rem] snap-start flex-col overflow-hidden rounded-[1.65rem] border border-slate-200/80 bg-white shadow-[0_18px_45px_-34px_rgba(15,23,42,0.42)] sm:min-w-[21rem] sm:max-w-[21rem]">
 									<div class="relative aspect-[4/5] overflow-hidden bg-slate-100">
-										{% if person.photo and person.photo.original %}
+										{% if person.photo and (person.photo.thumb or person.photo.card or person.photo.medium or person.photo.original) %}
 											{{ img_macro.smart_image(
 												thumb=person.photo.thumb,
 												card=person.photo.card,

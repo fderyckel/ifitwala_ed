@@ -129,9 +129,10 @@ Current runtime behavior:
 
 - people payloads use `build_employee_image_variants(...)`
 - website cards should prefer `thumb`, `card`, and `medium`
-- original image is only a fallback
+- public website people surfaces do not fall back to the original full-size employee image
 
 Public people surfaces must not fetch full original employee images by default when a derivative exists.
+If no governed derivative is available yet, website people surfaces should render the non-image fallback state instead of downloading the original.
 
 ## 7. Cache Ownership
 

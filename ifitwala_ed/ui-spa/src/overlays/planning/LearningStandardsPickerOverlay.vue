@@ -426,7 +426,7 @@ function resetOverlayState() {
 	pickerResponse.value = null;
 	selectedStandards.value = {};
 	filters.framework_name = '';
-	filters.program = props.unitProgram || '';
+	filters.program = programLocked.value ? '' : props.unitProgram || '';
 	filters.strand = '';
 	filters.substrand = '';
 	filters.search_text = '';
@@ -456,6 +456,10 @@ async function loadPicker() {
 		}
 		pickerResponse.value = response;
 		if (applyAutoSelections(response)) {
+			await nextTick();
+			if (ticket === loadToken.value) {
+				await loadPicker();
+			}
 			return;
 		}
 	} catch (error) {
@@ -580,7 +584,8 @@ watch(
 			await nextTick();
 			closeButtonEl.value?.focus();
 		}
-	}
+	},
+	{ immediate: true }
 );
 
 watch(

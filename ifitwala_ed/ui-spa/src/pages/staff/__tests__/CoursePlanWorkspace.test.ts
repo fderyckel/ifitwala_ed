@@ -310,4 +310,121 @@ describe('CoursePlanWorkspace page', () => {
 			})
 		)
 	})
+
+	it('shows compact standard summary cards and expands details on click', async () => {
+		getStaffCoursePlanSurfaceMock.mockResolvedValue({
+			meta: {
+				generated_at: '2026-04-13 10:00:00',
+				course_plan: 'COURSE-PLAN-1',
+			},
+			course_plan: {
+				course_plan: 'COURSE-PLAN-1',
+				record_modified: '2026-04-13 10:00:00',
+				title: 'ELA Semester 1 Plan',
+				course: 'COURSE-1',
+				course_name: 'English Language Arts',
+				course_group: 'Humanities',
+				school: 'SCH-1',
+				academic_year: '2026-2027',
+				cycle_label: 'Semester 1',
+				plan_status: 'Active',
+				summary: '<p>Shared summary</p>',
+				can_manage_resources: 1,
+			},
+			resolved: {
+				unit_plan: 'UNIT-1',
+				quiz_question_bank: null,
+			},
+			resources: {
+				course_plan_resources: [],
+			},
+			field_options: {
+				academic_years: [],
+				programs: [{ value: 'MYP', label: 'MYP' }],
+			},
+			curriculum: {
+				units: [
+					{
+						unit_plan: 'UNIT-1',
+						record_modified: '2026-04-13 10:00:00',
+						title: 'Reading the Plot Arc',
+						program: 'MYP',
+						unit_order: 6,
+						unit_status: 'Active',
+						is_published: 1,
+						overview: '',
+						essential_understanding: '',
+						misconceptions: '',
+						content: '',
+						skills: '',
+						concepts: '',
+						standards: [
+							{
+								learning_standard: 'LS-1',
+								framework_name: 'Common Core',
+								framework_version: '1',
+								subject_area: 'English',
+								program: 'IB MYP G6',
+								strand: 'Reading: Literature',
+								substrand: 'Key Ideas and Details',
+								standard_code: 'RL.6.3',
+								standard_description:
+									"Describe how a particular story's or drama's plot unfolds.",
+								coverage_level: 'Introduced',
+								alignment_strength: 'Exact',
+								alignment_type: 'Knowledge',
+								notes: 'Use with mentor texts.',
+							},
+						],
+						shared_reflections: [],
+						class_reflections: [],
+						shared_resources: [],
+					},
+				],
+				unit_count: 1,
+				timeline: {
+					status: 'blocked',
+					reason: 'missing_calendar',
+					message: 'Add a calendar first.',
+					scope: {},
+					terms: [],
+					holidays: [],
+					units: [],
+					summary: {
+						scheduled_unit_count: 0,
+						unscheduled_unit_count: 1,
+						overflow_unit_count: 0,
+						instructional_day_count: 0,
+					},
+				},
+			},
+			assessment: {
+				quiz_question_banks: [],
+				selected_quiz_question_bank: null,
+			},
+		})
+
+		mountPage()
+		await flushUi()
+
+		const pageText = document.body.textContent || ''
+		expect(pageText).toContain('RL.6.3')
+		expect(pageText).toContain('Reading: Literature')
+		expect(pageText).toContain('Key Ideas and Details')
+		expect(pageText).toContain('Coverage: Introduced')
+		expect(pageText).toContain('Type: Knowledge')
+		expect(pageText).toContain('Strength: Exact')
+		expect(pageText).toContain("Describe how a particular story's or drama's plot unfolds.")
+		expect(pageText).not.toContain('Framework Name')
+
+		const standardCardButton = Array.from(document.querySelectorAll('button')).find(button => {
+			const text = button.textContent || ''
+			return text.includes('RL.6.3') && text.includes('Describe how a particular story')
+		})
+		standardCardButton?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+		await flushUi()
+
+		expect(document.body.textContent || '').toContain('Framework Name')
+		expect(document.body.textContent || '').toContain('Remove Standard')
+	})
 })

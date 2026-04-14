@@ -137,6 +137,7 @@ def _build_public_person(row: dict, designation_row: dict | None, school_row: di
         "photo": build_employee_image_variants(
             row.get("name"),
             original_url=row.get("employee_image"),
+            fallback_to_original=False,
         ),
     }
 

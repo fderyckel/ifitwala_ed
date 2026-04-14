@@ -643,6 +643,24 @@ def _read_file_bytes(file_row: dict) -> bytes | None:
         return handle.read()
 
 
+def _resolve_drive_download_grant_url(file_name: str) -> str | None:
+    drive_file = frappe.db.get_value(
+        "Drive File",
+        {"file": file_name},
+        "name",
+    )
+    if not drive_file:
+        return None
+
+    try:
+        grant = _load_drive_access_callable("issue_download_grant")(drive_file_id=drive_file)
+    except Exception:
+        return None
+
+    target_url = str((grant or {}).get("url") or "").strip()
+    return target_url or None
+
+
 def _resolve_public_website_media_grant_url(file_name: str) -> str | None:
     drive_file = frappe.db.get_value(
         "Drive File",
@@ -896,6 +914,11 @@ def download_admissions_file(
 
     content = _read_file_bytes(file_row)
     if content is None:
+        target_url = _resolve_drive_download_grant_url(file_name)
+        if target_url:
+            frappe.local.response["type"] = "redirect"
+            frappe.local.response["location"] = target_url
+            return
         frappe.throw(_("Could not read the file content."), frappe.DoesNotExistError)
 
     filename = (file_row.get("file_name") or "").strip() or "document"
@@ -1058,6 +1081,11 @@ def download_academic_file(
 
     content = _read_file_bytes(file_row)
     if content is None:
+        target_url = _resolve_drive_download_grant_url(file_name)
+        if target_url:
+            frappe.local.response["type"] = "redirect"
+            frappe.local.response["location"] = target_url
+            return
         frappe.throw(_("Could not read the file content."), frappe.DoesNotExistError)
 
     filename = (file_row.get("file_name") or "").strip() or "document"
@@ -1098,6 +1126,11 @@ def download_guardian_file(
 
     content = _read_file_bytes(file_row)
     if content is None:
+        target_url = _resolve_drive_download_grant_url(file_name)
+        if target_url:
+            frappe.local.response["type"] = "redirect"
+            frappe.local.response["location"] = target_url
+            return
         frappe.throw(_("Could not read the file content."), frappe.DoesNotExistError)
 
     filename = (file_row.get("file_name") or "").strip() or "document"
@@ -1138,6 +1171,11 @@ def download_employee_file(
 
     content = _read_file_bytes(file_row)
     if content is None:
+        target_url = _resolve_drive_download_grant_url(file_name)
+        if target_url:
+            frappe.local.response["type"] = "redirect"
+            frappe.local.response["location"] = target_url
+            return
         frappe.throw(_("Could not read the file content."), frappe.DoesNotExistError)
 
     filename = (file_row.get("file_name") or "").strip() or "document"
