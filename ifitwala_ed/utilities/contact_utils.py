@@ -63,13 +63,21 @@ def _resolve_hr_contact_org_scope(user: str) -> list[str]:
 
 
 def _resolve_academic_contact_school_scope(user: str) -> list[str]:
-    from ifitwala_ed.hr.doctype.employee.employee import _get_user_default_from_db
+    from ifitwala_ed.hr.doctype.employee.employee import (
+        _get_user_default_from_db,
+        _resolve_academic_admin_school_scope,
+    )
 
-    default_school = _get_user_default_from_db(user, "school")
-    if not default_school:
+    roles = set(frappe.get_roles(user))
+    if "Academic Admin" in roles:
+        school_scope = _resolve_academic_admin_school_scope(user)
+    else:
+        school_scope = _get_user_default_from_db(user, "school")
+
+    if not school_scope:
         return []
 
-    return list(dict.fromkeys(get_descendant_schools(default_school) or [default_school]))
+    return list(dict.fromkeys(get_descendant_schools(school_scope) or [school_scope]))
 
 
 def _resolve_academic_contact_org_scope(user: str) -> list[str]:

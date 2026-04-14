@@ -89,3 +89,11 @@ class TestMaterialPlacement(TestCase):
 
             self.assertTrue(module.has_permission(placement, ptype="read", user="coordinator@example.com"))
             self.assertTrue(module.has_permission(placement, ptype="write", user="coordinator@example.com"))
+
+    def test_has_permission_allows_create_for_unsaved_manageable_anchor(self):
+        with _material_placement_module() as module:
+            placement = module.MaterialPlacement()
+            placement.anchor_doctype = "Unit Plan"
+            placement.anchor_name = "UNIT-1"
+
+            self.assertTrue(module.has_permission(placement, ptype="create", user="coordinator@example.com"))

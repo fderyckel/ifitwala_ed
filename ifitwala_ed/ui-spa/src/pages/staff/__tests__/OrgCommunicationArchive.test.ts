@@ -439,8 +439,11 @@ describe('OrgCommunicationArchive', () => {
 		const commentButton = Array.from(document.querySelectorAll('button')).find(button =>
 			(button.textContent || '').includes('Comments')
 		);
+		const bodyText = document.body.textContent || '';
 
 		expect(commentButton).toBeUndefined();
 		expect(document.body.querySelector('[data-testid="interaction-chips-stub"]')).toBeNull();
+		expect(bodyText).not.toContain('👍');
+		expect(bodyText).not.toContain('💬');
 	});
 });

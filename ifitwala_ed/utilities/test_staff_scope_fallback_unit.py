@@ -80,6 +80,7 @@ def _contact_utils_module():
 
     employee_module = ModuleType("ifitwala_ed.hr.doctype.employee.employee")
     employee_module._get_user_default_from_db = lambda user, key: None
+    employee_module._resolve_academic_admin_school_scope = lambda user: None
     employee_module._resolve_academic_admin_org_scope = lambda user: []
     employee_module._resolve_self_employee = lambda user: None
 
@@ -100,11 +101,35 @@ def _contact_utils_module():
 
 
 class TestStaffScopeFallbackUnit(TestCase):
+    def test_resolve_academic_admin_school_scope_ignores_stale_default_when_active_profile_school_is_blank(self):
+        with _employee_permission_module() as employee_module:
+            with (
+                patch.object(
+                    employee_module.frappe.db,
+                    "get_value",
+                    return_value={"name": "EMP-0001", "school": ""},
+                ),
+                patch.object(employee_module, "_get_user_default_from_db", return_value="SCH-STALE"),
+            ):
+                school_scope = employee_module._resolve_academic_admin_school_scope("academic.admin@example.com")
+
+        self.assertIsNone(school_scope)
+
+    def test_resolve_academic_admin_school_scope_uses_default_when_no_active_profile_exists(self):
+        with _employee_permission_module() as employee_module:
+            with (
+                patch.object(employee_module.frappe.db, "get_value", return_value=None),
+                patch.object(employee_module, "_get_user_default_from_db", return_value="SCH-ROOT"),
+            ):
+                school_scope = employee_module._resolve_academic_admin_school_scope("academic.admin@example.com")
+
+        self.assertEqual(school_scope, "SCH-ROOT")
+
     def test_employee_pqc_keeps_academic_admin_school_scope_when_default_school_exists(self):
         with _employee_permission_module() as employee_module:
             with (
                 patch.object(employee_module.frappe, "get_roles", return_value=["Academic Admin"]),
-                patch.object(employee_module, "_get_user_default_from_db", return_value="SCH-ROOT"),
+                patch.object(employee_module, "_resolve_academic_admin_school_scope", return_value="SCH-ROOT"),
             ):
                 condition = employee_module.get_permission_query_conditions("academic.admin@example.com")
 
@@ -114,7 +139,7 @@ class TestStaffScopeFallbackUnit(TestCase):
         with _employee_permission_module() as employee_module:
             with (
                 patch.object(employee_module.frappe, "get_roles", return_value=["Academic Admin"]),
-                patch.object(employee_module, "_get_user_default_from_db", return_value=None),
+                patch.object(employee_module, "_resolve_academic_admin_school_scope", return_value=None),
                 patch.object(
                     employee_module, "_resolve_academic_admin_org_scope", return_value=["ORG-ROOT", "ORG-CHILD"]
                 ),
@@ -130,7 +155,7 @@ class TestStaffScopeFallbackUnit(TestCase):
 
             with (
                 patch.object(employee_module.frappe, "get_roles", return_value=["Academic Admin"]),
-                patch.object(employee_module, "_get_user_default_from_db", return_value=None),
+                patch.object(employee_module, "_resolve_academic_admin_school_scope", return_value=None),
                 patch.object(
                     employee_module, "_resolve_academic_admin_org_scope", return_value=["ORG-ROOT", "ORG-CHILD"]
                 ),

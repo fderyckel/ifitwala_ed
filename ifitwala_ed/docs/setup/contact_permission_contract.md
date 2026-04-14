@@ -46,8 +46,8 @@ Rules:
 4. Contact document-level permission checks apply employee-linked contact scope on top of Frappe core permissions.
 5. Contact list visibility keeps non-employee-linked contacts on the seeded DocPerm contract, but employee-linked contacts are narrowed server-side:
    - `HR Manager` / `HR User`: organization descendants plus blank-organization employee rows
-   - `Academic Admin` / `Academic Assistant`: default school + descendant-school scope
-   - `Academic Admin` only: when no default school is configured, organization descendants
+   - `Academic Admin` / `Academic Assistant`: effective school + descendant-school scope, where Academic Admin resolves school from the active Employee profile before persisted defaults
+   - `Academic Admin` only: when no school scope resolves, or the active Employee profile exists with a blank `school`, organization descendants
    - `Employee`: own linked employee contact only
 
 ## 3. Contract Matrix

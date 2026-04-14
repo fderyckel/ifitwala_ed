@@ -167,7 +167,10 @@
 								</div>
 
 								<!-- Interaction Summary -->
-								<div class="flex items-center gap-3 ml-auto">
+								<div
+									v-if="getInteractionFor(item).self || hasVisibleInteractionActions(item)"
+									class="flex items-center gap-3 ml-auto"
+								>
 									<div
 										v-if="getInteractionFor(item).self"
 										class="text-xs text-jacaranda font-medium flex items-center gap-1"
@@ -176,6 +179,7 @@
 										You: {{ getInteractionFor(item).self?.intent_type || 'Responded' }}
 									</div>
 									<div
+										v-if="hasVisibleInteractionActions(item)"
 										class="flex items-center gap-1 text-xs text-slate-token/50 bg-slate-50 px-2 py-1 rounded"
 									>
 										<span>👍 {{ getInteractionStats(item).reactions_total }}</span>

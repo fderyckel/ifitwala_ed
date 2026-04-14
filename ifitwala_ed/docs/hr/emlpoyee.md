@@ -27,8 +27,8 @@ Permission scope for `Employee`:
   - employees where `organization` is blank
 - HR organization scope resolution uses persisted defaults (`DefaultValue`) for user `organization`, then `Global Defaults.default_organization`, and expands explicit `User Permission` grants on `Organization`; if none resolves, only unassigned-organization Employee rows are visible to HR.
 - `Academic Admin` has read-only Employee access with a two-step scope contract:
-  - when the user has a default school, Employee visibility stays scoped to that exact school
-  - when the user has no default school, Employee visibility falls back to the user's organization descendant scope
+  - school scope resolves from the active `Employee.school` first; only users without an active Employee profile fall back to persisted user default `school`
+  - when no school scope resolves, or the active Employee profile exists with a blank `school`, Employee visibility falls back to the user's organization descendant scope
 - Academic Admin organization fallback resolves from active `Employee.organization`, then persisted user default `organization`, and unions explicit `User Permission` grants on `Organization`.
 - `Employee` role has read-only access to their own Employee record only.
 
@@ -91,8 +91,8 @@ Role handling now follows managed sync:
 - on employee save, `_ensure_primary_contact()` self-heals the contact graph: if the user-linked contact exists but is missing a `Contact.links` row to the current `Employee`, the link is inserted; if the employee already has `empl_primary_contact`, that contact is reused as a repair target.
 - contact visibility for employee-linked contacts is server-scoped through `Contact.links -> Employee`:
   - `HR Manager` / `HR User`: read employee contacts in their organization scope
-  - `Academic Admin` / `Academic Assistant`: read employee contacts in their default school + descendant-school scope
-  - `Academic Admin` only: when no default school is configured, employee-linked contact visibility falls back to organization descendant scope
+  - `Academic Admin` / `Academic Assistant`: read employee contacts in their effective school + descendant-school scope, where Academic Admin resolves school from the active Employee profile before persisted defaults
+  - `Academic Admin` only: when no school scope resolves, or the active Employee profile exists with a blank `school`, employee-linked contact visibility falls back to organization descendant scope
   - `Employee`: read only the contact linked to their own employee record
 - when `Employee.employment_status` is not `Active`, the linked `User` is disabled and all assigned role rows are removed.
 - routing policy resolves active employee status using `Employee.user_id` first, then an unambiguous active match on `employee_professional_email` to avoid false-negative staff routing when legacy user links are missing.

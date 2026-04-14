@@ -1047,9 +1047,9 @@ def get_permission_query_conditions(user=None):
 
     # Academic Admin: default school stays school-scoped; blank-school falls back to org descendants
     if "Academic Admin" in roles:
-        default_school = _get_user_default_from_db(user, "school")
-        if default_school:
-            return f"`tabEmployee`.`school` = {frappe.db.escape(default_school)}"
+        school_scope = _resolve_academic_admin_school_scope(user)
+        if school_scope:
+            return f"`tabEmployee`.`school` = {frappe.db.escape(school_scope)}"
 
         orgs = _resolve_academic_admin_org_scope(user)
         if not orgs:
@@ -1098,11 +1098,11 @@ def employee_has_permission(doc=None, ptype=None, user=None):
     if "Academic Admin" in roles:
         if ptype not in read_like:
             return False
-        default_school = _get_user_default_from_db(user, "school")
+        school_scope = _resolve_academic_admin_school_scope(user)
         if doc is None:
-            return bool(default_school or _resolve_academic_admin_org_scope(user))
-        if default_school:
-            return bool(cstr(doc.school).strip() == default_school)
+            return bool(school_scope or _resolve_academic_admin_org_scope(user))
+        if school_scope:
+            return bool(cstr(doc.school).strip() == school_scope)
 
         orgs = set(_resolve_academic_admin_org_scope(user))
         if not orgs:
@@ -1132,6 +1132,26 @@ def _resolve_hr_base_org(user: str) -> str | None:
 
     global_org = frappe.db.get_single_value("Global Defaults", "default_organization")
     return cstr(global_org).strip() or None
+
+
+def _resolve_academic_admin_school_scope(user: str) -> str | None:
+    """
+    Resolve school scope for Academic Admin visibility.
+
+    The active Employee profile is authoritative. If that profile exists with a blank school,
+    treat the user as schoolless and fall back to organization scope instead of reviving a stale
+    persisted default school.
+    """
+    active_employee = frappe.db.get_value(
+        "Employee",
+        {"user_id": user, "employment_status": "Active"},
+        ["name", "school"],
+        as_dict=True,
+    )
+    if active_employee:
+        return cstr(active_employee.get("school")).strip() or None
+
+    return _get_user_default_from_db(user, "school")
 
 
 def _resolve_academic_admin_base_org(user: str) -> str | None:
