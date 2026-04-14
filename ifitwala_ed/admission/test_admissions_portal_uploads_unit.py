@@ -33,6 +33,7 @@ def _admissions_portal_module():
 def _load_real_mime_type_resolver():
     image_utils = ModuleType("ifitwala_ed.utilities.image_utils")
     image_utils.EMPLOYEE_VARIANT_PRIORITY = []
+    image_utils.file_url_is_accessible = lambda file_url, *, file_name=None, is_private=0: True
     image_utils.get_employee_image_variants_map = lambda employee_names: {}
     image_utils.get_preferred_employee_image_url = lambda employee_name, original_url=None, slots=None: original_url
 

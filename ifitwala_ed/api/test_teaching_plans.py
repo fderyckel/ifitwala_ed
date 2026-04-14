@@ -73,6 +73,7 @@ def _teaching_plans_module():
     planning_domain.get_unit_plan_rows = lambda course_plan: []
     planning_domain.replace_session_activities = lambda doc, activities: None
     planning_domain.replace_unit_plan_standards = lambda doc, rows: doc.set("standards", rows)
+    planning_domain.ensure_linked_unit_plan_standards = lambda doc: None
 
     def _replace_unit_plan_reflections(doc, rows, course_plan_row=None):
         defaults = course_plan_row or {}
