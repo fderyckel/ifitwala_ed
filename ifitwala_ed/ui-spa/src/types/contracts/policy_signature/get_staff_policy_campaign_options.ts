@@ -7,6 +7,8 @@ export type Request = {
 	policy_version?: string | null;
 };
 
+export type PolicySignatureAudience = 'Staff' | 'Guardian' | 'Student';
+
 export type PolicyOption = {
 	policy_version: string;
 	version_label?: string | null;
@@ -17,6 +19,7 @@ export type PolicyOption = {
 	policy_key?: string | null;
 	policy_organization?: string | null;
 	policy_school?: string | null;
+	applies_to_tokens?: PolicySignatureAudience[];
 };
 
 export type PreviewCounts = {
@@ -26,6 +29,21 @@ export type PreviewCounts = {
 	already_open: number;
 	to_create: number;
 	skipped_scope: number;
+	policy_audiences: PolicySignatureAudience[];
+	audience_previews: {
+		audience: PolicySignatureAudience;
+		audience_label: string;
+		workflow_description: string;
+		supports_campaign_launch: boolean;
+		target_rows: number;
+		eligible_targets: number;
+		signed: number;
+		pending: number;
+		completion_pct: number;
+		skipped_scope: number;
+		already_open: number;
+		to_create: number;
+	}[];
 };
 
 export type Response = {

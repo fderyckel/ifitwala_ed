@@ -66,6 +66,20 @@ Test refs: `ifitwala_ed/ui-spa/src/pages/staff/__tests__/StaffPolicies.test.ts`
 2. The action navigates by named route to `staff-policy-signature-analytics`.
 3. Navigation query must prefill analytics filters with `policy_version` and current scope filters (`organization`, `school`, `employee_group`) when present.
 
+## Policy Signature Analytics Surface
+Status: Implemented
+Code refs: `ifitwala_ed/api/policy_signature.py`, `ifitwala_ed/ui-spa/src/pages/staff/analytics/PolicySignatureAnalytics.vue`, `ifitwala_ed/ui-spa/src/overlays/staff/StaffPolicyCampaignOverlay.vue`
+Test refs: `ifitwala_ed/api/test_policy_signature.py`
+
+1. The analytics page must show acknowledgement status for every supported audience on the selected policy version:
+   - `Staff`
+   - `Guardian`
+   - `Student`
+2. Staff remains the only audience that can launch internal signature tasks from the campaign overlay.
+3. Guardian and student rows are tracking-only on this surface and must be labeled as portal acknowledgements, not internal tasks.
+4. The `Employee Group` filter narrows staff counts only and must not silently reshape guardian or student counts.
+5. The campaign overlay must preserve current analytics filters when opened from the analytics page so staff can launch or inspect follow-up work without losing context.
+
 ## Contract Matrix
 Status: Implemented
 Code refs: `ifitwala_ed/api/policy_signature.py`, `ifitwala_ed/api/policy_communication.py`, `ifitwala_ed/ui-spa/src/pages/staff/StaffPolicies.vue`, `ifitwala_ed/ui-spa/src/router/index.ts`

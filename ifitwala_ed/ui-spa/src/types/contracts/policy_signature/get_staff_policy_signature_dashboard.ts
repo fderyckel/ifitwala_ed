@@ -8,24 +8,54 @@ export type Request = {
 	limit?: number;
 };
 
-export type StaffPolicySignatureRow = {
-	employee: string;
-	employee_name: string;
+export type PolicySignatureAudience = 'Staff' | 'Guardian' | 'Student';
+
+export type PolicySignatureAudienceRow = {
+	record_id: string;
+	subject_name: string;
+	subject_subtitle?: string | null;
+	context_label?: string | null;
 	user_id?: string | null;
 	organization?: string | null;
 	school?: string | null;
-	employee_group?: string | null;
 	is_signed: boolean;
 	acknowledged_at?: string | null;
 	acknowledged_by?: string | null;
 };
 
-export type StaffPolicySignatureBreakdown = {
+export type PolicySignatureBreakdown = {
 	label: string;
 	signed: number;
 	pending: number;
 	total: number;
 	completion_pct: number;
+};
+
+export type PolicySignatureAudienceSection = {
+	audience: PolicySignatureAudience;
+	audience_label: string;
+	workflow_description: string;
+	supports_campaign_launch: boolean;
+	summary: {
+		target_rows: number;
+		eligible_targets: number;
+		signed: number;
+		pending: number;
+		completion_pct: number;
+		skipped_scope: number;
+		already_open: number;
+		to_create: number;
+	};
+	breakdowns: {
+		by_organization: PolicySignatureBreakdown[];
+		by_school: PolicySignatureBreakdown[];
+		by_context: PolicySignatureBreakdown[];
+		context_label?: string | null;
+	};
+	rows: {
+		pending: PolicySignatureAudienceRow[];
+		signed: PolicySignatureAudienceRow[];
+	};
 };
 
 export type Response = {
@@ -40,20 +70,12 @@ export type Response = {
 		organization?: string | null;
 		school?: string | null;
 		employee_group?: string | null;
-		target_employee_rows: number;
-		eligible_users: number;
+		applies_to_tokens: PolicySignatureAudience[];
+		eligible_targets: number;
 		signed: number;
 		pending: number;
 		completion_pct: number;
 		skipped_scope: number;
 	};
-	breakdowns: {
-		by_organization: StaffPolicySignatureBreakdown[];
-		by_school: StaffPolicySignatureBreakdown[];
-		by_employee_group: StaffPolicySignatureBreakdown[];
-	};
-	rows: {
-		pending: StaffPolicySignatureRow[];
-		signed: StaffPolicySignatureRow[];
-	};
+	audiences: PolicySignatureAudienceSection[];
 };

@@ -539,10 +539,32 @@ const communicationTypeOptions = computed(() => [
 
 const teamOptions = computed(() => [{ label: 'All teams', value: null }, ...myTeams.value]);
 
-const studentGroupOptions = computed(() => [
-	{ label: 'All groups', value: null },
-	...myStudentGroups.value,
-]);
+const studentGroupOptions = computed(() => {
+	const selectedSchool =
+		typeof filters.value.school === 'string' ? filters.value.school.trim() || null : null;
+	const selectedOrganization =
+		typeof filters.value.organization === 'string'
+			? filters.value.organization.trim() || null
+			: null;
+
+	let scopedGroups = myStudentGroups.value;
+
+	if (selectedSchool) {
+		scopedGroups = scopedGroups.filter(group => (group.school || null) === selectedSchool);
+	} else if (selectedOrganization) {
+		const allowedSchools = new Set(
+			schoolChoices.value
+				.filter(school => (school.organization || null) === selectedOrganization)
+				.map(school => school.value)
+		);
+		scopedGroups = scopedGroups.filter(group => {
+			const groupSchool = group.school || null;
+			return !!groupSchool && allowedSchools.has(groupSchool);
+		});
+	}
+
+	return [{ label: 'All groups', value: null }, ...scopedGroups];
+});
 
 let reloadTimer: number | null = null;
 let feedThrottleTimer: number | null = null;

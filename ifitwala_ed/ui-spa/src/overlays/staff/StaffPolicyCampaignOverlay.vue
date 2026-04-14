@@ -35,7 +35,8 @@
 							<div class="min-w-0">
 								<DialogTitle class="type-h2 text-ink">Policy Signature Campaign</DialogTitle>
 								<p class="mt-1 type-caption text-ink/60">
-									Create internal signature tasks by organization, school, and employee group.
+									Review audience coverage before launch. Staff audiences use internal tasks;
+									guardian and student audiences are tracked through their portals.
 								</p>
 							</div>
 							<button
@@ -174,33 +175,74 @@
 
 							<section class="rounded-2xl border border-slate-200 bg-white px-4 py-4 shadow-soft">
 								<div class="flex items-center justify-between gap-3">
-									<p class="type-body-strong text-ink">Campaign preview</p>
+									<p class="type-body-strong text-ink">Audience preview</p>
 									<p v-if="busyOptions" class="type-caption text-slate-500">Refreshing preview…</p>
 								</div>
-								<div class="mt-3 grid grid-cols-2 gap-3 md:grid-cols-3">
-									<div class="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
-										<p class="type-caption text-slate-500">Targets</p>
-										<p class="type-body-strong text-ink">{{ preview.target_employee_rows }}</p>
-									</div>
-									<div class="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
-										<p class="type-caption text-slate-500">Eligible</p>
-										<p class="type-body-strong text-ink">{{ preview.eligible_users }}</p>
-									</div>
-									<div class="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
-										<p class="type-caption text-slate-500">To create</p>
-										<p class="type-body-strong text-ink">{{ preview.to_create }}</p>
-									</div>
-									<div class="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
-										<p class="type-caption text-slate-500">Already signed</p>
-										<p class="type-body-strong text-ink">{{ preview.already_signed }}</p>
-									</div>
-									<div class="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
-										<p class="type-caption text-slate-500">Already open</p>
-										<p class="type-body-strong text-ink">{{ preview.already_open }}</p>
-									</div>
-									<div class="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
-										<p class="type-caption text-slate-500">Out of scope</p>
-										<p class="type-body-strong text-ink">{{ preview.skipped_scope }}</p>
+								<div v-if="preview.policy_audiences.length" class="mt-3 flex flex-wrap gap-2">
+									<span
+										v-for="audience in preview.policy_audiences"
+										:key="audience"
+										class="rounded-full bg-slate-100 px-3 py-1 type-caption text-slate-700"
+									>
+										{{ audience }}
+									</span>
+								</div>
+								<div class="mt-3 grid gap-3 lg:grid-cols-3">
+									<article
+										v-for="audience in audiencePreviews"
+										:key="audience.audience"
+										class="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3"
+									>
+										<div class="flex items-start justify-between gap-3">
+											<div>
+												<p class="type-body-strong text-ink">{{ audience.audience_label }}</p>
+												<p class="mt-1 type-caption text-slate-500">
+													{{ audience.workflow_description }}
+												</p>
+											</div>
+											<span
+												class="rounded-full px-2 py-1 type-caption"
+												:class="
+													audience.supports_campaign_launch
+														? 'bg-jacaranda/10 text-jacaranda'
+														: 'bg-white text-slate-500'
+												"
+											>
+												{{ audience.supports_campaign_launch ? 'Launchable' : 'Tracked only' }}
+											</span>
+										</div>
+										<div class="mt-3 grid grid-cols-2 gap-2">
+											<div>
+												<p class="type-caption text-slate-500">Eligible</p>
+												<p class="type-body-strong text-ink">{{ audience.eligible_targets }}</p>
+											</div>
+											<div>
+												<p class="type-caption text-slate-500">Signed</p>
+												<p class="type-body-strong text-ink">{{ audience.signed }}</p>
+											</div>
+											<div>
+												<p class="type-caption text-slate-500">Pending</p>
+												<p class="type-body-strong text-ink">{{ audience.pending }}</p>
+											</div>
+											<div>
+												<p class="type-caption text-slate-500">
+													{{ audience.supports_campaign_launch ? 'To create' : 'Skipped' }}
+												</p>
+												<p class="type-body-strong text-ink">
+													{{
+														audience.supports_campaign_launch
+															? audience.to_create
+															: audience.skipped_scope
+													}}
+												</p>
+											</div>
+										</div>
+									</article>
+									<div
+										v-if="!audiencePreviews.length"
+										class="rounded-xl border border-dashed border-slate-300 px-3 py-4 type-caption text-slate-500"
+									>
+										Select organization and policy version to preview audience coverage.
 									</div>
 								</div>
 							</section>
@@ -238,7 +280,7 @@
 									:disabled="!canLaunch || busyLaunch"
 									@click="launchCampaign"
 								>
-									{{ busyLaunch ? 'Creating…' : 'Create signature tasks' }}
+									{{ busyLaunch ? 'Creating…' : 'Create staff signature tasks' }}
 								</button>
 							</div>
 						</div>
@@ -274,6 +316,10 @@ type CloseReason = 'backdrop' | 'esc' | 'programmatic';
 const props = defineProps<{
 	open: boolean;
 	zIndex?: number;
+	organization?: string;
+	school?: string;
+	employee_group?: string;
+	policy_version?: string;
 }>();
 const emit = defineEmits<{
 	(e: 'close', reason: CloseReason): void;
@@ -307,6 +353,8 @@ const preview = reactive<PreviewCounts>({
 	already_open: 0,
 	to_create: 0,
 	skipped_scope: 0,
+	policy_audiences: [],
+	audience_previews: [],
 });
 
 const form = reactive({
@@ -321,6 +369,12 @@ const form = reactive({
 const overlayStyle = computed(() => ({
 	zIndex: props.zIndex || 0,
 }));
+
+const audiencePreviews = computed(() => preview.audience_previews || []);
+
+const staffAudiencePreview = computed(() => {
+	return audiencePreviews.value.find(audience => audience.audience === 'Staff') || null;
+});
 
 const canOpenAnalytics = computed(() => {
 	return !!form.organization && !!form.policy_version;
@@ -338,6 +392,7 @@ const analyticsRoute = computed(() => ({
 
 const canLaunch = computed(() => {
 	if (!form.organization || !form.policy_version) return false;
+	if (!staffAudiencePreview.value?.supports_campaign_launch) return false;
 	if (preview.to_create <= 0) return false;
 	return true;
 });
@@ -384,6 +439,15 @@ function normalizeSelection() {
 	}
 }
 
+function applyInitialContext() {
+	form.organization = (props.organization || '').trim();
+	form.school = (props.school || '').trim();
+	form.employee_group = (props.employee_group || '').trim();
+	form.policy_version = (props.policy_version || '').trim();
+	form.due_date = '';
+	form.message = '';
+}
+
 async function refreshOptions() {
 	if (!props.open) return;
 
@@ -407,6 +471,8 @@ async function refreshOptions() {
 		preview.already_open = response.preview?.already_open || 0;
 		preview.to_create = response.preview?.to_create || 0;
 		preview.skipped_scope = response.preview?.skipped_scope || 0;
+		preview.policy_audiences = [...(response.preview?.policy_audiences || [])];
+		preview.audience_previews = [...(response.preview?.audience_previews || [])];
 
 		if (!form.organization && options.organizations.length === 1) {
 			form.organization = options.organizations[0];
@@ -480,6 +546,7 @@ watch(
 	() => props.open,
 	next => {
 		if (!next) return;
+		applyInitialContext();
 		resetFeedback();
 		refreshOptions();
 	},

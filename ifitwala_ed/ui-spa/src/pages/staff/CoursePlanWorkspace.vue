@@ -455,222 +455,453 @@
 					</button>
 
 					<template v-if="!isSectionCollapsed(SECTION_IDS.unitEditor)">
-						<div v-if="canManagePlan" class="grid gap-4 lg:grid-cols-2">
-							<label class="block space-y-2">
-								<span class="type-caption text-ink/70">Unit Title</span>
-								<input
-									v-model="unitForm.title"
-									data-quick-focus="unit-title"
-									type="text"
-									class="if-input w-full"
-									placeholder="e.g. Cells and Systems"
-								/>
-							</label>
-							<label class="block space-y-2">
-								<span class="type-caption text-ink/70">Program</span>
-								<select v-model="unitForm.program" class="if-input w-full">
-									<option value="">Optional program</option>
-									<option
-										v-for="option in courseProgramOptions"
-										:key="option.value"
-										:value="option.value"
-									>
-										{{ option.label }}
-									</option>
-								</select>
-								<p class="type-caption text-ink/60">
-									{{
-										courseProgramOptions.length
-											? 'Only Program records already linked to this course are available here.'
-											: 'No Program records currently link to this course.'
-									}}
-								</p>
-							</label>
-							<label class="block space-y-2">
-								<span class="type-caption text-ink/70">Unit Code</span>
-								<input
-									v-model="unitForm.unit_code"
-									type="text"
-									class="if-input w-full"
-									placeholder="Optional unit code"
-								/>
-							</label>
-							<label class="block space-y-2">
-								<span class="type-caption text-ink/70">Unit Order</span>
-								<input
-									v-model.number="unitForm.unit_order"
-									type="number"
-									min="1"
-									step="1"
-									class="if-input w-full"
-								/>
-							</label>
-							<label class="block space-y-2">
-								<span class="type-caption text-ink/70">Unit Status</span>
-								<select v-model="unitForm.unit_status" class="if-input w-full">
-									<option v-for="option in unitStatusOptions" :key="option" :value="option">
-										{{ option }}
-									</option>
-								</select>
-							</label>
-							<label class="block space-y-2">
-								<span class="type-caption text-ink/70">Version</span>
-								<input
-									v-model="unitForm.version"
-									type="text"
-									class="if-input w-full"
-									placeholder="Optional version"
-								/>
-							</label>
-							<label class="block space-y-2">
-								<span class="type-caption text-ink/70">Duration</span>
-								<input
-									v-model="unitForm.duration"
-									type="text"
-									class="if-input w-full"
-									placeholder="e.g. 6 weeks"
-								/>
-							</label>
-							<label class="block space-y-2">
-								<span class="type-caption text-ink/70">Estimated Duration</span>
-								<input
-									v-model="unitForm.estimated_duration"
-									type="text"
-									class="if-input w-full"
-									placeholder="e.g. 24 GLH"
-								/>
-							</label>
-							<label
-								class="flex items-center gap-3 rounded-2xl border border-line-soft bg-surface-soft px-4 py-4 lg:col-span-2"
+						<template v-if="canManagePlan">
+							<section class="course-plan-unit-panel course-plan-unit-panel--hero space-y-5">
+								<div class="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
+									<div class="min-w-0 space-y-4">
+										<div>
+											<p class="type-overline text-jacaranda">Unit Workspace</p>
+											<h3 class="mt-1 type-h3 text-ink">
+												{{
+													creatingUnit
+														? 'Draft the governed unit structure'
+														: 'Refine the shared unit backbone'
+												}}
+											</h3>
+											<p class="mt-2 max-w-3xl type-caption text-ink/70">
+												Move through the sections below to update the governed unit setup, core
+												narrative, learning focus, standards, and reflections without losing your
+												place inside one long card.
+											</p>
+										</div>
+										<div class="flex flex-wrap gap-2">
+											<button
+												type="button"
+												class="chip cursor-pointer transition hover:border-jacaranda/40 hover:bg-white hover:text-ink"
+												@click="scrollToUnitPanel(UNIT_PANEL_IDS.setup)"
+											>
+												Basics
+											</button>
+											<button
+												type="button"
+												class="chip cursor-pointer transition hover:border-jacaranda/40 hover:bg-white hover:text-ink"
+												@click="scrollToUnitPanel(UNIT_PANEL_IDS.narrative)"
+											>
+												Core Narrative
+											</button>
+											<button
+												type="button"
+												class="chip cursor-pointer transition hover:border-jacaranda/40 hover:bg-white hover:text-ink"
+												@click="scrollToUnitPanel(UNIT_PANEL_IDS.learningFocus)"
+											>
+												Learning Focus
+											</button>
+											<button
+												type="button"
+												class="chip cursor-pointer transition hover:border-jacaranda/40 hover:bg-white hover:text-ink"
+												@click="jumpToSection(SECTION_IDS.standards)"
+											>
+												Standards
+											</button>
+											<button
+												type="button"
+												class="chip cursor-pointer transition hover:border-jacaranda/40 hover:bg-white hover:text-ink"
+												@click="jumpToSection(SECTION_IDS.reflections)"
+											>
+												Reflections
+											</button>
+											<button
+												type="button"
+												class="chip cursor-pointer transition hover:border-jacaranda/40 hover:bg-white hover:text-ink"
+												@click="jumpToSection(SECTION_IDS.unitResources)"
+											>
+												Resources
+											</button>
+										</div>
+									</div>
+									<div class="flex w-full flex-col gap-3 xl:w-auto xl:min-w-[18rem]">
+										<div class="flex flex-wrap gap-2 xl:justify-end">
+											<span
+												class="chip"
+												:class="
+													unitPending
+														? 'border-jacaranda/35 bg-jacaranda/10 text-jacaranda'
+														: unitFormDirty
+															? 'border-flame/25 bg-flame/10 text-flame'
+															: 'border-line-soft bg-white/90 text-ink/70'
+												"
+											>
+												{{ unitSaveStatusLabel }}
+											</span>
+											<span
+												v-if="creatingUnit"
+												class="chip border-jacaranda/20 bg-white/80 text-ink/70"
+											>
+												New unit
+											</span>
+										</div>
+										<div class="rounded-2xl border border-white/70 bg-white/85 p-4 shadow-sm">
+											<p class="type-caption text-ink/60">{{ unitSaveSupportText }}</p>
+											<div class="mt-3 flex flex-wrap gap-2">
+												<button
+													v-if="creatingUnit"
+													type="button"
+													class="if-action if-action--subtle"
+													@click="cancelNewUnit"
+												>
+													Cancel New Unit
+												</button>
+												<button
+													type="button"
+													class="if-action course-plan-unit-save-button"
+													data-testid="unit-save-header-button"
+													:disabled="!canSaveUnitAction"
+													@click="handleSaveUnitPlan"
+												>
+													{{ unitSaveActionLabel }}
+												</button>
+											</div>
+										</div>
+									</div>
+								</div>
+							</section>
+
+							<div
+								v-if="showUnitSaveRail"
+								data-testid="unit-save-rail"
+								class="course-plan-unit-save-rail sticky bottom-4 z-20"
 							>
-								<input v-model="unitForm.is_published" type="checkbox" class="h-4 w-4" />
-								<div>
-									<p class="type-body-strong text-ink">Published for class inheritance</p>
-									<p class="type-caption text-ink/70">
-										Use this when the governed unit is ready for linked classes to inherit.
+								<div class="course-plan-unit-save-rail__inner">
+									<div class="min-w-0">
+										<p class="type-caption text-ink/60">Selected Unit</p>
+										<p class="mt-1 type-body-strong text-ink">{{ unitSaveStatusLabel }}</p>
+										<p class="mt-1 type-caption text-ink/70">
+											{{ unitSaveSupportText }}
+										</p>
+									</div>
+									<div class="flex flex-wrap gap-2">
+										<button
+											v-if="creatingUnit"
+											type="button"
+											class="if-action if-action--subtle"
+											@click="cancelNewUnit"
+										>
+											Cancel New Unit
+										</button>
+										<button
+											type="button"
+											class="if-action course-plan-unit-save-button"
+											:disabled="!canSaveUnitAction"
+											@click="handleSaveUnitPlan"
+										>
+											{{ unitSaveActionLabel }}
+										</button>
+									</div>
+								</div>
+							</div>
+
+							<section
+								:id="UNIT_PANEL_IDS.setup"
+								class="course-plan-unit-panel scroll-mt-40 space-y-4"
+							>
+								<div class="course-plan-unit-panel__header">
+									<div>
+										<p class="type-overline text-ink/60">Unit Setup</p>
+										<h3 class="mt-1 type-h3 text-ink">Core metadata and publishing state</h3>
+									</div>
+									<p class="max-w-xl type-caption text-ink/65">
+										Keep the shared unit identity, order, and readiness clear before staff work
+										deeper into the narrative and standards layers.
 									</p>
 								</div>
-							</label>
-							<label class="block space-y-2 lg:col-span-2">
-								<span class="type-caption text-ink/70">Overview & Rationale</span>
-								<PlanningRichTextField
-									v-model="unitForm.overview"
-									placeholder="State the unit arc, rationale, and what makes this backbone important."
-									min-height-class="min-h-[8rem]"
-								/>
-							</label>
-							<label class="block space-y-2 lg:col-span-2">
-								<span class="type-caption text-ink/70">Essential Understanding</span>
-								<PlanningRichTextField
-									v-model="unitForm.essential_understanding"
-									placeholder="Capture the shared understanding every class should build."
-									min-height-class="min-h-[8rem]"
-								/>
-							</label>
-							<label class="block space-y-2 lg:col-span-2">
-								<span class="type-caption text-ink/70">Likely Misconceptions</span>
-								<PlanningRichTextField
-									v-model="unitForm.misconceptions"
-									placeholder="List likely misunderstandings students may bring into the unit."
-									min-height-class="min-h-[8rem]"
-								/>
-							</label>
-							<label class="block space-y-2">
-								<span class="type-caption text-ink/70">Content</span>
-								<PlanningRichTextField
-									v-model="unitForm.content"
-									placeholder="What should students know?"
-									min-height-class="min-h-[8rem]"
-								/>
-							</label>
-							<label class="block space-y-2">
-								<span class="type-caption text-ink/70">Skills</span>
-								<PlanningRichTextField
-									v-model="unitForm.skills"
-									placeholder="What should students be able to do?"
-									min-height-class="min-h-[8rem]"
-								/>
-							</label>
-							<label class="block space-y-2 lg:col-span-2">
-								<span class="type-caption text-ink/70">Concepts</span>
-								<PlanningRichTextField
-									v-model="unitForm.concepts"
-									placeholder="Which big ideas or concepts should anchor the unit?"
-									min-height-class="min-h-[8rem]"
-								/>
-							</label>
-						</div>
+								<div class="grid gap-4 lg:grid-cols-2">
+									<label class="course-plan-unit-subcard block space-y-2">
+										<span class="type-caption text-ink/70">Unit Title</span>
+										<input
+											v-model="unitForm.title"
+											data-quick-focus="unit-title"
+											type="text"
+											class="if-input w-full"
+											placeholder="e.g. Cells and Systems"
+										/>
+									</label>
+									<label class="course-plan-unit-subcard block space-y-2">
+										<span class="type-caption text-ink/70">Program</span>
+										<select v-model="unitForm.program" class="if-input w-full">
+											<option value="">Optional program</option>
+											<option
+												v-for="option in courseProgramOptions"
+												:key="option.value"
+												:value="option.value"
+											>
+												{{ option.label }}
+											</option>
+										</select>
+										<p class="type-caption text-ink/60">
+											{{
+												courseProgramOptions.length
+													? 'Only Program records already linked to this course are available here.'
+													: 'No Program records currently link to this course.'
+											}}
+										</p>
+									</label>
+									<label class="course-plan-unit-subcard block space-y-2">
+										<span class="type-caption text-ink/70">Unit Code</span>
+										<input
+											v-model="unitForm.unit_code"
+											type="text"
+											class="if-input w-full"
+											placeholder="Optional unit code"
+										/>
+									</label>
+									<label class="course-plan-unit-subcard block space-y-2">
+										<span class="type-caption text-ink/70">Unit Order</span>
+										<input
+											v-model.number="unitForm.unit_order"
+											type="number"
+											min="1"
+											step="1"
+											class="if-input w-full"
+										/>
+									</label>
+									<label class="course-plan-unit-subcard block space-y-2">
+										<span class="type-caption text-ink/70">Unit Status</span>
+										<select v-model="unitForm.unit_status" class="if-input w-full">
+											<option v-for="option in unitStatusOptions" :key="option" :value="option">
+												{{ option }}
+											</option>
+										</select>
+									</label>
+									<label class="course-plan-unit-subcard block space-y-2">
+										<span class="type-caption text-ink/70">Version</span>
+										<input
+											v-model="unitForm.version"
+											type="text"
+											class="if-input w-full"
+											placeholder="Optional version"
+										/>
+									</label>
+									<label class="course-plan-unit-subcard block space-y-2">
+										<span class="type-caption text-ink/70">Duration</span>
+										<input
+											v-model="unitForm.duration"
+											type="text"
+											class="if-input w-full"
+											placeholder="e.g. 6 weeks"
+										/>
+									</label>
+									<label class="course-plan-unit-subcard block space-y-2">
+										<span class="type-caption text-ink/70">Estimated Duration</span>
+										<input
+											v-model="unitForm.estimated_duration"
+											type="text"
+											class="if-input w-full"
+											placeholder="e.g. 24 GLH"
+										/>
+									</label>
+									<label
+										class="course-plan-unit-subcard flex items-center gap-3 px-4 py-4 lg:col-span-2"
+									>
+										<input v-model="unitForm.is_published" type="checkbox" class="h-4 w-4" />
+										<div>
+											<p class="type-body-strong text-ink">Published for class inheritance</p>
+											<p class="type-caption text-ink/70">
+												Use this when the governed unit is ready for linked classes to inherit.
+											</p>
+										</div>
+									</label>
+								</div>
+							</section>
 
-						<div v-else class="grid gap-4 lg:grid-cols-2">
-							<div
-								v-if="hasRichTextContent(selectedUnit?.overview)"
-								class="rounded-2xl border border-line-soft bg-surface-soft p-4"
+							<section
+								:id="UNIT_PANEL_IDS.narrative"
+								class="course-plan-unit-panel scroll-mt-40 space-y-4"
 							>
-								<p class="type-overline text-ink/60">Overview</p>
-								<PlanningRichTextField
-									:model-value="selectedUnit?.overview"
-									:editable="false"
-									display-class="mt-2 text-ink/80"
-								/>
-							</div>
-							<div
-								v-if="hasRichTextContent(selectedUnit?.essential_understanding)"
-								class="rounded-2xl border border-line-soft bg-surface-soft p-4"
-							>
-								<p class="type-overline text-ink/60">Essential Understanding</p>
-								<PlanningRichTextField
-									:model-value="selectedUnit?.essential_understanding"
-									:editable="false"
-									display-class="mt-2 text-ink/80"
-								/>
-							</div>
-							<div
-								v-if="hasRichTextContent(selectedUnit?.content)"
-								class="rounded-2xl border border-line-soft bg-surface-soft p-4"
-							>
-								<p class="type-overline text-ink/60">Content</p>
-								<PlanningRichTextField
-									:model-value="selectedUnit?.content"
-									:editable="false"
-									display-class="mt-2 text-ink/80"
-								/>
-							</div>
-							<div
-								v-if="hasRichTextContent(selectedUnit?.skills)"
-								class="rounded-2xl border border-line-soft bg-surface-soft p-4"
-							>
-								<p class="type-overline text-ink/60">Skills</p>
-								<PlanningRichTextField
-									:model-value="selectedUnit?.skills"
-									:editable="false"
-									display-class="mt-2 text-ink/80"
-								/>
-							</div>
-							<div
-								v-if="hasRichTextContent(selectedUnit?.concepts)"
-								class="rounded-2xl border border-line-soft bg-surface-soft p-4"
-							>
-								<p class="type-overline text-ink/60">Concepts</p>
-								<PlanningRichTextField
-									:model-value="selectedUnit?.concepts"
-									:editable="false"
-									display-class="mt-2 text-ink/80"
-								/>
-							</div>
-							<div
-								v-if="hasRichTextContent(selectedUnit?.misconceptions)"
-								class="rounded-2xl border border-line-soft bg-surface-soft p-4"
-							>
-								<p class="type-overline text-ink/60">Likely Misconceptions</p>
-								<PlanningRichTextField
-									:model-value="selectedUnit?.misconceptions"
-									:editable="false"
-									display-class="mt-2 text-ink/80"
-								/>
-							</div>
-						</div>
+								<div class="course-plan-unit-panel__header">
+									<div>
+										<p class="type-overline text-ink/60">Core Narrative</p>
+										<h3 class="mt-1 type-h3 text-ink">Purpose, understanding, and watch-fors</h3>
+									</div>
+									<p class="max-w-xl type-caption text-ink/65">
+										Separate the backbone story of the unit from the concrete content and skills so
+										staff can orient quickly.
+									</p>
+								</div>
+								<div class="grid gap-4 xl:grid-cols-2">
+									<label class="course-plan-unit-subcard block space-y-2 xl:col-span-2">
+										<span class="type-caption text-ink/70">Overview & Rationale</span>
+										<PlanningRichTextField
+											v-model="unitForm.overview"
+											placeholder="State the unit arc, rationale, and what makes this backbone important."
+											min-height-class="min-h-[8rem]"
+										/>
+									</label>
+									<label class="course-plan-unit-subcard block space-y-2">
+										<span class="type-caption text-ink/70">Essential Understanding</span>
+										<PlanningRichTextField
+											v-model="unitForm.essential_understanding"
+											placeholder="Capture the shared understanding every class should build."
+											min-height-class="min-h-[8rem]"
+										/>
+									</label>
+									<label class="course-plan-unit-subcard block space-y-2">
+										<span class="type-caption text-ink/70">Likely Misconceptions</span>
+										<PlanningRichTextField
+											v-model="unitForm.misconceptions"
+											placeholder="List likely misunderstandings students may bring into the unit."
+											min-height-class="min-h-[8rem]"
+										/>
+									</label>
+								</div>
+							</section>
 
-						<section :id="SECTION_IDS.standards" class="scroll-mt-40 space-y-3">
+							<section
+								:id="UNIT_PANEL_IDS.learningFocus"
+								class="course-plan-unit-panel scroll-mt-40 space-y-4"
+							>
+								<div class="course-plan-unit-panel__header">
+									<div>
+										<p class="type-overline text-ink/60">Learning Focus</p>
+										<h3 class="mt-1 type-h3 text-ink">
+											Content, skills, and concepts in one view
+										</h3>
+									</div>
+									<p class="max-w-xl type-caption text-ink/65">
+										Keep the three pillars of the unit side by side so the distinctions are easy to
+										scan before editing.
+									</p>
+								</div>
+								<div class="grid gap-4 xl:grid-cols-3">
+									<label class="course-plan-unit-subcard block space-y-2">
+										<span class="type-caption text-ink/70">Content</span>
+										<PlanningRichTextField
+											v-model="unitForm.content"
+											placeholder="What should students know?"
+											min-height-class="min-h-[8rem]"
+										/>
+									</label>
+									<label class="course-plan-unit-subcard block space-y-2">
+										<span class="type-caption text-ink/70">Skills</span>
+										<PlanningRichTextField
+											v-model="unitForm.skills"
+											placeholder="What should students be able to do?"
+											min-height-class="min-h-[8rem]"
+										/>
+									</label>
+									<label class="course-plan-unit-subcard block space-y-2">
+										<span class="type-caption text-ink/70">Concepts</span>
+										<PlanningRichTextField
+											v-model="unitForm.concepts"
+											placeholder="Which big ideas or concepts should anchor the unit?"
+											min-height-class="min-h-[8rem]"
+										/>
+									</label>
+								</div>
+							</section>
+						</template>
+
+						<template v-else>
+							<section class="course-plan-unit-panel space-y-4">
+								<div class="course-plan-unit-panel__header">
+									<div>
+										<p class="type-overline text-ink/60">Core Narrative</p>
+										<h3 class="mt-1 type-h3 text-ink">Shared unit backbone</h3>
+									</div>
+									<p class="max-w-xl type-caption text-ink/65">
+										The selected unit is grouped here so overview, understanding, and watch-fors do
+										not blur into the learning-focus fields below.
+									</p>
+								</div>
+								<div class="grid gap-4 xl:grid-cols-2">
+									<div
+										v-if="hasRichTextContent(selectedUnit?.overview)"
+										class="course-plan-unit-subcard space-y-2"
+									>
+										<p class="type-overline text-ink/60">Overview</p>
+										<PlanningRichTextField
+											:model-value="selectedUnit?.overview"
+											:editable="false"
+											display-class="text-ink/80"
+										/>
+									</div>
+									<div
+										v-if="hasRichTextContent(selectedUnit?.essential_understanding)"
+										class="course-plan-unit-subcard space-y-2"
+									>
+										<p class="type-overline text-ink/60">Essential Understanding</p>
+										<PlanningRichTextField
+											:model-value="selectedUnit?.essential_understanding"
+											:editable="false"
+											display-class="text-ink/80"
+										/>
+									</div>
+									<div
+										v-if="hasRichTextContent(selectedUnit?.misconceptions)"
+										class="course-plan-unit-subcard space-y-2 xl:col-span-2"
+									>
+										<p class="type-overline text-ink/60">Likely Misconceptions</p>
+										<PlanningRichTextField
+											:model-value="selectedUnit?.misconceptions"
+											:editable="false"
+											display-class="text-ink/80"
+										/>
+									</div>
+								</div>
+							</section>
+
+							<section class="course-plan-unit-panel space-y-4">
+								<div class="course-plan-unit-panel__header">
+									<div>
+										<p class="type-overline text-ink/60">Learning Focus</p>
+										<h3 class="mt-1 type-h3 text-ink">Content, skills, and concepts</h3>
+									</div>
+									<p class="max-w-xl type-caption text-ink/65">
+										The selected unit keeps these three shared teaching anchors in separate cards
+										for faster scanning.
+									</p>
+								</div>
+								<div class="grid gap-4 xl:grid-cols-3">
+									<div
+										v-if="hasRichTextContent(selectedUnit?.content)"
+										class="course-plan-unit-subcard space-y-2"
+									>
+										<p class="type-overline text-ink/60">Content</p>
+										<PlanningRichTextField
+											:model-value="selectedUnit?.content"
+											:editable="false"
+											display-class="text-ink/80"
+										/>
+									</div>
+									<div
+										v-if="hasRichTextContent(selectedUnit?.skills)"
+										class="course-plan-unit-subcard space-y-2"
+									>
+										<p class="type-overline text-ink/60">Skills</p>
+										<PlanningRichTextField
+											:model-value="selectedUnit?.skills"
+											:editable="false"
+											display-class="text-ink/80"
+										/>
+									</div>
+									<div
+										v-if="hasRichTextContent(selectedUnit?.concepts)"
+										class="course-plan-unit-subcard space-y-2"
+									>
+										<p class="type-overline text-ink/60">Concepts</p>
+										<PlanningRichTextField
+											:model-value="selectedUnit?.concepts"
+											:editable="false"
+											display-class="text-ink/80"
+										/>
+									</div>
+								</div>
+							</section>
+						</template>
+
+						<section
+							:id="SECTION_IDS.standards"
+							class="course-plan-unit-panel scroll-mt-40 space-y-3"
+						>
 							<div class="flex items-center justify-between gap-3">
 								<div>
 									<p class="type-overline text-ink/60">Standards Alignment</p>
@@ -913,7 +1144,10 @@
 							</div>
 						</section>
 
-						<section :id="SECTION_IDS.reflections" class="scroll-mt-40 space-y-3">
+						<section
+							:id="SECTION_IDS.reflections"
+							class="course-plan-unit-panel scroll-mt-40 space-y-3"
+						>
 							<div class="flex items-center justify-between gap-3">
 								<div>
 									<p class="type-overline text-ink/60">Shared Reflections</p>
@@ -945,7 +1179,7 @@
 								<article
 									v-for="reflection in unitForm.reflections"
 									:key="reflection.local_id"
-									class="rounded-2xl border border-line-soft bg-surface-soft p-4"
+									class="course-plan-unit-subcard"
 								>
 									<div class="grid gap-4 lg:grid-cols-2">
 										<label class="block space-y-2">
@@ -1023,7 +1257,10 @@
 							</div>
 						</section>
 
-						<section v-if="selectedUnit?.class_reflections?.length" class="space-y-3">
+						<section
+							v-if="selectedUnit?.class_reflections?.length"
+							class="course-plan-unit-panel space-y-3"
+						>
 							<div class="flex items-center justify-between gap-3">
 								<h3 class="type-h3 text-ink">Class Reflections Across This Unit</h3>
 								<span class="chip">{{ selectedUnit.class_reflections.length }}</span>
@@ -1032,7 +1269,7 @@
 								<article
 									v-for="reflection in selectedUnit.class_reflections"
 									:key="`${selectedUnit.unit_plan}-${reflection.class_teaching_plan}`"
-									class="rounded-2xl border border-line-soft bg-surface-soft p-4"
+									class="course-plan-unit-subcard"
 								>
 									<div class="flex items-center justify-between gap-3">
 										<p class="type-body-strong text-ink">{{ reflection.class_label }}</p>
@@ -1096,28 +1333,50 @@
 							</div>
 						</section>
 
-						<div v-if="canManagePlan" class="flex justify-end gap-3">
-							<button
-								v-if="creatingUnit"
-								type="button"
-								class="if-action if-action--subtle"
-								@click="cancelNewUnit"
-							>
-								Cancel New Unit
-							</button>
-							<button
-								type="button"
-								class="if-action"
-								:disabled="unitPending"
-								@click="handleSaveUnitPlan"
-							>
-								{{
-									unitPending ? 'Saving...' : creatingUnit ? 'Create Unit Plan' : 'Save Unit Plan'
-								}}
-							</button>
-						</div>
+						<section
+							v-if="canManagePlan"
+							class="course-plan-unit-panel course-plan-unit-panel--footer flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"
+						>
+							<div>
+								<p class="type-overline text-ink/60">Final Checkpoint</p>
+								<p class="mt-1 type-caption text-ink/70">
+									Save from here or from the sticky rail while you scroll through the unit.
+								</p>
+							</div>
+							<div class="flex flex-wrap gap-2">
+								<button
+									v-if="creatingUnit"
+									type="button"
+									class="if-action if-action--subtle"
+									@click="cancelNewUnit"
+								>
+									Cancel New Unit
+								</button>
+								<button
+									type="button"
+									class="if-action course-plan-unit-save-button"
+									:disabled="!canSaveUnitAction"
+									@click="handleSaveUnitPlan"
+								>
+									{{ unitSaveActionLabel }}
+								</button>
+							</div>
+						</section>
 
-						<div :id="SECTION_IDS.unitResources" class="scroll-mt-40">
+						<section
+							:id="SECTION_IDS.unitResources"
+							class="course-plan-unit-panel scroll-mt-40 space-y-4"
+						>
+							<div class="course-plan-unit-panel__header">
+								<div>
+									<p class="type-overline text-ink/60">Unit Resources</p>
+									<h3 class="mt-1 type-h3 text-ink">Shared resources for this unit</h3>
+								</div>
+								<p class="max-w-xl type-caption text-ink/65">
+									Use this layer for governed materials every class should inherit while teaching
+									the unit.
+								</p>
+							</div>
 							<PlanningResourcePanel
 								anchor-doctype="Unit Plan"
 								:anchor-name="selectedUnit?.unit_plan || null"
@@ -1129,9 +1388,11 @@
 								blocked-message="Save the unit plan before sharing unit resources."
 								read-only-message="Only approved curriculum staff can edit shared unit resources."
 								:resources="selectedUnit?.shared_resources || []"
+								hide-header
+								embedded
 								@changed="loadSurface"
 							/>
-						</div>
+						</section>
 					</template>
 				</section>
 
@@ -1604,6 +1865,12 @@ const SECTION_IDS = {
 	quizBanks: 'course-plan-quiz-banks',
 } as const;
 
+const UNIT_PANEL_IDS = {
+	setup: 'course-plan-unit-setup',
+	narrative: 'course-plan-unit-narrative',
+	learningFocus: 'course-plan-unit-learning-focus',
+} as const;
+
 type WorkspaceSectionId = (typeof SECTION_IDS)[keyof typeof SECTION_IDS];
 
 const collapsedSectionDefaults: Record<WorkspaceSectionId, boolean> = {
@@ -1624,6 +1891,7 @@ const errorMessage = ref('');
 const coursePlanPending = ref(false);
 const unitPending = ref(false);
 const quizBankPending = ref(false);
+const unitDraftSnapshot = ref('');
 const selectedUnitPlan = ref('');
 const selectedQuizQuestionBankName = ref(String(props.quizQuestionBank || '').trim());
 const creatingUnit = ref(false);
@@ -1772,6 +2040,39 @@ const timelineDateLabel = computed(() => {
 	if (!start || !end) return '';
 	return `${timelineShortDateFormatter.format(start)} to ${timelineShortDateFormatter.format(end)}`;
 });
+const unitFormSignature = computed(() => buildUnitDraftSignature());
+const unitFormDirty = computed(() => unitFormSignature.value !== unitDraftSnapshot.value);
+const canSaveUnitAction = computed(() =>
+	Boolean(canManagePlan.value && !unitPending.value && (creatingUnit.value || unitFormDirty.value))
+);
+const showUnitSaveRail = computed(() =>
+	Boolean(
+		canManagePlan.value &&
+		showUnitEditor.value &&
+		!isSectionCollapsed(SECTION_IDS.unitEditor) &&
+		(creatingUnit.value || unitPending.value || unitFormDirty.value)
+	)
+);
+const unitSaveActionLabel = computed(() => {
+	if (unitPending.value) return 'Saving...';
+	return creatingUnit.value ? 'Create Unit Plan' : 'Save Unit Plan';
+});
+const unitSaveStatusLabel = computed(() => {
+	if (unitPending.value) return 'Saving...';
+	if (creatingUnit.value) return unitFormDirty.value ? 'Draft not saved yet' : 'Draft unit';
+	return unitFormDirty.value ? 'Unsaved changes' : 'All changes saved';
+});
+const unitSaveSupportText = computed(() => {
+	if (unitPending.value) return 'Saving the governed unit now.';
+	if (creatingUnit.value) {
+		return unitFormDirty.value
+			? 'Create this governed unit when the draft looks right.'
+			: 'Start filling the draft, then save it from here or from the sticky rail.';
+	}
+	return unitFormDirty.value
+		? 'Save the unit before leaving so linked classes inherit the latest shared guidance.'
+		: 'This governed unit is up to date.';
+});
 const navigationSections = computed<
 	{ id: WorkspaceSectionId; label: string; count?: number | null }[]
 >(() => {
@@ -1829,6 +2130,68 @@ function parseIsoDate(value?: string | null) {
 	if (!value) return null;
 	const parsed = new Date(`${value}T00:00:00`);
 	return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
+function normalizeSnapshotText(value?: string | null) {
+	return String(value || '').trim();
+}
+
+function normalizeSnapshotRichText(value?: string | null) {
+	return hasRichTextContent(value) ? String(value || '').trim() : '';
+}
+
+function normalizeStandardForSnapshot(standard: StaffPlanningStandard) {
+	return {
+		learning_standard: normalizeSnapshotText(standard.learning_standard),
+		framework_name: normalizeSnapshotText(standard.framework_name),
+		framework_version: normalizeSnapshotText(standard.framework_version),
+		subject_area: normalizeSnapshotText(standard.subject_area),
+		program: normalizeSnapshotText(standard.program),
+		strand: normalizeSnapshotText(standard.strand),
+		substrand: normalizeSnapshotText(standard.substrand),
+		standard_code: normalizeSnapshotText(standard.standard_code),
+		standard_description: normalizeSnapshotText(standard.standard_description),
+		coverage_level: normalizeSnapshotText(standard.coverage_level),
+		alignment_strength: normalizeSnapshotText(standard.alignment_strength),
+		alignment_type: normalizeSnapshotText(standard.alignment_type),
+		notes: normalizeSnapshotText(standard.notes),
+	};
+}
+
+function normalizeReflectionForSnapshot(reflection: StaffPlanningReflection) {
+	return {
+		academic_year: normalizeSnapshotText(reflection.academic_year),
+		school: normalizeSnapshotText(reflection.school),
+		prior_to_the_unit: normalizeSnapshotRichText(reflection.prior_to_the_unit),
+		during_the_unit: normalizeSnapshotRichText(reflection.during_the_unit),
+		what_work_well: normalizeSnapshotRichText(reflection.what_work_well),
+		what_didnt_work_well: normalizeSnapshotRichText(reflection.what_didnt_work_well),
+		changes_suggestions: normalizeSnapshotRichText(reflection.changes_suggestions),
+	};
+}
+
+function buildUnitDraftSignature() {
+	return JSON.stringify({
+		title: normalizeSnapshotText(unitForm.title),
+		program: normalizeSnapshotText(unitForm.program),
+		unit_code: normalizeSnapshotText(unitForm.unit_code),
+		unit_order: unitForm.unit_order ?? null,
+		unit_status: normalizeSnapshotText(unitForm.unit_status),
+		version: normalizeSnapshotText(unitForm.version),
+		duration: normalizeSnapshotText(unitForm.duration),
+		estimated_duration: normalizeSnapshotText(unitForm.estimated_duration),
+		is_published: unitForm.is_published ? 1 : 0,
+		overview: normalizeSnapshotRichText(unitForm.overview),
+		essential_understanding: normalizeSnapshotRichText(unitForm.essential_understanding),
+		misconceptions: normalizeSnapshotRichText(unitForm.misconceptions),
+		content: normalizeSnapshotRichText(unitForm.content),
+		skills: normalizeSnapshotRichText(unitForm.skills),
+		concepts: normalizeSnapshotRichText(unitForm.concepts),
+		standards: serializeStandards().map(standard => normalizeStandardForSnapshot(standard)),
+		reflections: serializeReflections().map(reflection =>
+			normalizeReflectionForSnapshot(reflection)
+		),
+	});
 }
 
 function coursePlanSectionStorageKey() {
@@ -2039,6 +2402,11 @@ function focusWithinSection(sectionId: WorkspaceSectionId, selector: string) {
 	}, 220);
 }
 
+function scrollToUnitPanel(panelId: string) {
+	if (typeof document === 'undefined') return;
+	document.getElementById(panelId)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
 async function setSectionHash(sectionId: WorkspaceSectionId) {
 	const nextHash = `#${sectionId}`;
 	if (route.hash === nextHash) return;
@@ -2200,6 +2568,7 @@ function syncUnitForm(unit: StaffCoursePlanUnit | null) {
 	unitForm.reflections = (unit?.shared_reflections || []).map(reflection =>
 		buildEditableReflection(reflection)
 	);
+	unitDraftSnapshot.value = buildUnitDraftSignature();
 }
 
 function syncQuizBankForm(bank: StaffCoursePlanQuizQuestionBank | null) {
@@ -2650,3 +3019,90 @@ onBeforeUnmount(() => {
 	}
 });
 </script>
+
+<style scoped>
+.course-plan-unit-panel {
+	border: 1px solid var(--border-subtle);
+	border-radius: 1.5rem;
+	padding: 1.25rem;
+	background:
+		linear-gradient(180deg, rgb(var(--surface-rgb) / 0.98), rgb(var(--surface-rgb) / 0.9)),
+		rgb(var(--surface-rgb) / 0.94);
+	box-shadow:
+		inset 0 1px 0 rgb(255 255 255 / 0.7),
+		0 10px 22px rgb(var(--ink-rgb) / 0.04);
+}
+
+.course-plan-unit-panel--hero {
+	border-color: rgb(var(--jacaranda-rgb) / 0.18);
+	background:
+		linear-gradient(180deg, rgb(var(--jacaranda-rgb) / 0.1), rgb(var(--surface-rgb) / 0.95) 38%),
+		rgb(var(--surface-rgb) / 0.96);
+}
+
+.course-plan-unit-panel--footer {
+	background:
+		linear-gradient(180deg, rgb(var(--surface-rgb) / 0.96), rgb(var(--surface-rgb) / 0.88)),
+		rgb(var(--surface-rgb) / 0.94);
+}
+
+.course-plan-unit-panel__header {
+	display: flex;
+	flex-direction: column;
+	gap: 0.75rem;
+}
+
+.course-plan-unit-subcard {
+	border: 1px solid var(--border-subtle);
+	border-radius: 1.25rem;
+	padding: 1rem;
+	background: rgb(var(--surface-strong-rgb) / 0.96);
+	box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.72);
+}
+
+.course-plan-unit-save-button {
+	border-color: rgb(var(--jacaranda-rgb) / 0.9);
+	background: rgb(var(--jacaranda-rgb) / 0.94);
+	color: rgb(var(--surface-strong-rgb) / 1);
+}
+
+.course-plan-unit-save-button:hover:not(:disabled) {
+	border-color: rgb(var(--jacaranda-rgb) / 1);
+	background: rgb(var(--jacaranda-rgb) / 1);
+	color: rgb(var(--surface-strong-rgb) / 1);
+}
+
+.course-plan-unit-save-button:disabled {
+	border-color: rgb(var(--border-rgb) / 0.9);
+	background: rgb(var(--surface-strong-rgb) / 1);
+	color: rgb(var(--ink-rgb) / 0.45);
+	box-shadow: none;
+	cursor: not-allowed;
+}
+
+.course-plan-unit-save-rail__inner {
+	display: flex;
+	flex-direction: column;
+	gap: 0.75rem;
+	border: 1px solid rgb(var(--jacaranda-rgb) / 0.18);
+	border-radius: 1.25rem;
+	padding: 0.9rem 1rem;
+	background: rgb(var(--surface-strong-rgb) / 0.96);
+	backdrop-filter: blur(12px);
+	-webkit-backdrop-filter: blur(12px);
+	box-shadow: 0 18px 40px rgb(var(--ink-rgb) / 0.12);
+}
+
+@media (min-width: 768px) {
+	.course-plan-unit-panel {
+		padding: 1.4rem;
+	}
+
+	.course-plan-unit-panel__header,
+	.course-plan-unit-save-rail__inner {
+		flex-direction: row;
+		align-items: flex-start;
+		justify-content: space-between;
+	}
+}
+</style>

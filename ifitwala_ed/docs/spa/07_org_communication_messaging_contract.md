@@ -119,12 +119,19 @@ Rules:
 
 1. Staff Morning Brief comments and reactions use the shared interaction service.
 2. Staff Archive comments and reactions use the shared interaction service.
-3. Student activity communication panels and the student Communication Center use the shared interaction service.
-4. Student Hub may surface bounded communication highlights, but the portal-wide student history is owned by `StudentCommunicationCenter.vue`.
-5. `CourseDetail.vue` must not render inline class-message bodies; it may expose only a bounded `Class Updates` handoff into `StudentCommunicationCenter.vue` with the current `course_id` and `student_group` context applied.
-6. Guardian activity communication panels use the shared interaction service, but a guardian-wide communication center is not implemented yet.
-7. Applicant messages use the admissions service, which writes to the same canonical entry ledger.
-8. No surface may call any retired `Communication Interaction` API or schema artifact.
+3. Staff Archive bootstrap defaults for `Academic Admin` come from the linked `Employee` record:
+   - `organization = Employee.organization`
+   - `school = Employee.school` when present
+4. Staff Archive student-group filter options are constrained by the active school/org filter context:
+   - selected school => only groups in that school
+   - no selected school but selected organization => only groups in that organization-scoped school list
+   - broader fallback => the archive context scope returned by `get_archive_context()`
+5. Student activity communication panels and the student Communication Center use the shared interaction service.
+6. Student Hub may surface bounded communication highlights, but the portal-wide student history is owned by `StudentCommunicationCenter.vue`.
+7. `CourseDetail.vue` must not render inline class-message bodies; it may expose only a bounded `Class Updates` handoff into `StudentCommunicationCenter.vue` with the current `course_id` and `student_group` context applied.
+8. Guardian activity communication panels use the shared interaction service, but a guardian-wide communication center is not implemented yet.
+9. Applicant messages use the admissions service, which writes to the same canonical entry ledger.
+10. No surface may call any retired `Communication Interaction` API or schema artifact.
 
 ## 4. Visibility and Read-State
 
@@ -156,6 +163,12 @@ Rules:
 8. Hidden rows never contribute to threads, comment counts, or unread counts.
 9. Staff archive and shared interaction endpoints may allow the `Org Communication.owner` to access their own authored communication when no explicit audience scope filter (`team`, `student_group`, `school`) is being enforced.
 10. Org Communication attachment open routes must enforce the same audience visibility contract as archive detail, including owner visibility for authored history.
+11. Staff archive `Academic Admin` visibility is school-cone first:
+    - when `Employee.school` exists, visible school-scoped and student-group communications must stay within that school plus its descendant schools
+    - descendant-organization fallback does not widen archive visibility beyond that school cone
+12. Staff archive `Academic Admin` visibility falls back to organization scope only when no `Employee.school` is configured:
+    - visible school-scoped and student-group communications may come from any school belonging to `Employee.organization` or its descendant organizations
+    - organization-targeted staff rows may also resolve within that descendant-organization scope
 
 ## 5. Migration
 

@@ -16,9 +16,7 @@
 							type="button"
 							class="rounded-lg px-3 py-2 text-sm font-medium transition-all"
 							:class="
-								viewMode === 'task'
-									? 'bg-leaf text-white shadow-sm'
-									: 'text-ink/70 hover:text-ink'
+								viewMode === 'task' ? 'bg-leaf text-white shadow-sm' : 'text-ink/70 hover:text-ink'
 							"
 							@click="setViewMode('task')"
 						>
@@ -114,7 +112,13 @@
 					</div>
 
 					<div class="ml-auto">
-						<Button v-if="hasActiveFilters" appearance="minimal" size="md" icon="x" @click="resetFilters">
+						<Button
+							v-if="hasActiveFilters"
+							appearance="minimal"
+							size="md"
+							icon="x"
+							@click="resetFilters"
+						>
 							Reset
 						</Button>
 					</div>
@@ -128,7 +132,9 @@
 					>
 						<div class="border-b border-border/50 bg-gray-50/50 px-4 py-3">
 							<div class="flex items-center justify-between gap-2">
-								<h2 class="text-sm font-semibold uppercase tracking-wide text-ink/70">Student Groups</h2>
+								<h2 class="text-sm font-semibold uppercase tracking-wide text-ink/70">
+									Student Groups
+								</h2>
 								<Button
 									size="sm"
 									appearance="minimal"
@@ -203,7 +209,9 @@
 									<h2 class="text-sm font-semibold uppercase tracking-wide text-ink/70">Tasks</h2>
 									<p class="text-xs text-ink/50" v-if="selectedGroup">{{ selectedGroup.label }}</p>
 								</div>
-								<p class="text-xs text-ink/45" v-if="viewMode === 'overview'">Select one to quick-grade</p>
+								<p class="text-xs text-ink/45" v-if="viewMode === 'overview'">
+									Select one to quick-grade
+								</p>
 							</div>
 						</div>
 
@@ -312,7 +320,11 @@
 					</section>
 				</div>
 
-				<GradebookTaskView v-if="viewMode === 'task'" :task-name="selectedTask?.name || null" :focus-student="focusedStudent" />
+				<GradebookTaskView
+					v-if="viewMode === 'task'"
+					:task-name="selectedTask?.name || null"
+					:focus-student="focusedStudent"
+				/>
 				<AsyncGradebookOverviewView
 					v-else
 					:group="selectedGroup"
@@ -330,25 +342,25 @@
 </template>
 
 <script setup lang="ts">
-import { defineAsyncComponent, computed, onMounted, reactive, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import { Badge, Button, FeatherIcon, FormControl, toast } from 'frappe-ui'
-import { createGradebookService } from '@/lib/services/gradebook/gradebookService'
-import { createStudentAttendanceService } from '@/lib/services/studentAttendance/studentAttendanceService'
-import type { FetchSchoolFilterContextResponse } from '@/types/contracts/studentAttendance'
-import type { GroupSummary } from '@/types/contracts/gradebook/fetch_groups'
-import type { TaskSummary } from '@/types/contracts/gradebook/fetch_group_tasks'
-import GradebookTaskView from './components/GradebookTaskView.vue'
-import { formatDate, taskModeBadge } from './gradebookUtils'
+import { defineAsyncComponent, computed, onMounted, reactive, ref, watch } from 'vue';
+import { useRoute, useRouter, type LocationQueryRaw } from 'vue-router';
+import { Badge, Button, FeatherIcon, FormControl, toast } from 'frappe-ui';
+import { createGradebookService } from '@/lib/services/gradebook/gradebookService';
+import { createStudentAttendanceService } from '@/lib/services/studentAttendance/studentAttendanceService';
+import type { FetchSchoolFilterContextResponse } from '@/types/contracts/studentAttendance';
+import type { GroupSummary } from '@/types/contracts/gradebook/fetch_groups';
+import type { TaskSummary } from '@/types/contracts/gradebook/fetch_group_tasks';
+import GradebookTaskView from './components/GradebookTaskView.vue';
+import { formatDate, taskModeBadge } from './gradebookUtils';
 
 const AsyncGradebookOverviewView = defineAsyncComponent(
 	() => import('./components/GradebookOverviewView.vue')
-)
+);
 
-const route = useRoute()
-const router = useRouter()
-const gradebookService = createGradebookService()
-const studentAttendanceService = createStudentAttendanceService()
+const route = useRoute();
+const router = useRouter();
+const gradebookService = createGradebookService();
+const studentAttendanceService = createStudentAttendanceService();
 
 const filters = reactive({
 	school: null as string | null,
@@ -357,109 +369,109 @@ const filters = reactive({
 	course: null as string | null,
 	task_type: null as string | null,
 	delivery_type: null as string | null,
-})
+});
 
-const defaultSchool = ref<string | null>(null)
-const schools = ref<FetchSchoolFilterContextResponse['schools']>([])
-const schoolsLoading = ref(false)
-const routeGroupResolving = ref(false)
+const defaultSchool = ref<string | null>(null);
+const schools = ref<FetchSchoolFilterContextResponse['schools']>([]);
+const schoolsLoading = ref(false);
+const routeGroupResolving = ref(false);
 
-const groups = ref<GroupSummary[]>([])
-const groupsLoading = ref(false)
-const selectedGroup = ref<GroupSummary | null>(null)
-const taskSummaries = ref<TaskSummary[]>([])
-const tasksLoading = ref(false)
-const selectedTask = ref<TaskSummary | null>(null)
-const viewMode = ref<'task' | 'overview'>(currentRouteView())
-const focusedStudent = ref<string | null>(currentRouteStudent())
+const groups = ref<GroupSummary[]>([]);
+const groupsLoading = ref(false);
+const selectedGroup = ref<GroupSummary | null>(null);
+const taskSummaries = ref<TaskSummary[]>([]);
+const tasksLoading = ref(false);
+const selectedTask = ref<TaskSummary | null>(null);
+const viewMode = ref<'task' | 'overview'>(currentRouteView());
+const focusedStudent = ref<string | null>(currentRouteStudent());
 
 function showToast(title: string, appearance: 'danger' | 'success' | 'warning' = 'danger') {
 	const toastApi = toast as unknown as
 		| ((payload: { title: string; appearance?: string }) => void)
 		| {
-				error?: (message: string) => void
-				create?: (payload: { title: string; appearance?: string }) => void
-		  }
+				error?: (message: string) => void;
+				create?: (payload: { title: string; appearance?: string }) => void;
+		  };
 	if (typeof toastApi === 'function') {
-		toastApi({ title, appearance })
-		return
+		toastApi({ title, appearance });
+		return;
 	}
 	if (appearance === 'danger' && toastApi && typeof toastApi.error === 'function') {
-		toastApi.error(title)
-		return
+		toastApi.error(title);
+		return;
 	}
 	if (toastApi && typeof toastApi.create === 'function') {
-		toastApi.create({ title, appearance })
+		toastApi.create({ title, appearance });
 	}
 }
 
 function showDangerToast(title: string) {
-	showToast(title, 'danger')
+	showToast(title, 'danger');
 }
 
 function onSchoolsLoaded(data: FetchSchoolFilterContextResponse) {
-	const rows = Array.isArray(data.schools) ? data.schools : []
-	schools.value = rows
-	const defaultValue = data.default_school || null
+	const rows = Array.isArray(data.schools) ? data.schools : [];
+	schools.value = rows;
+	const defaultValue = data.default_school || null;
 	if (defaultValue) {
-		defaultSchool.value = defaultValue
+		defaultSchool.value = defaultValue;
 		if (!filters.school) {
-			filters.school = defaultValue
+			filters.school = defaultValue;
 		}
 	}
 }
 
 async function loadSchoolContext() {
-	schoolsLoading.value = true
+	schoolsLoading.value = true;
 	try {
-		const payload = await studentAttendanceService.fetchSchoolContext({})
-		onSchoolsLoaded(payload)
+		const payload = await studentAttendanceService.fetchSchoolContext({});
+		onSchoolsLoaded(payload);
 	} catch (error) {
-		console.error('Failed to load school context', error)
-		showDangerToast('Could not load schools')
+		console.error('Failed to load school context', error);
+		showDangerToast('Could not load schools');
 	} finally {
-		schoolsLoading.value = false
+		schoolsLoading.value = false;
 	}
 }
 
 async function loadGroups(options: { skipRouteGroupSync?: boolean } = {}) {
-	groupsLoading.value = true
+	groupsLoading.value = true;
 	try {
 		const rows = await gradebookService.fetchGroups({
 			school: filters.school,
-		})
+		});
 		if (selectedGroup.value?.name && !rows.find(row => row.name === selectedGroup.value?.name)) {
-			rows.unshift(selectedGroup.value)
+			rows.unshift(selectedGroup.value);
 		}
-		groups.value = rows
+		groups.value = rows;
 		if (!options.skipRouteGroupSync) {
-			await applyRouteGroupFromQuery()
+			await applyRouteGroupFromQuery();
 		}
 	} catch (error) {
-		console.error('Failed to load student groups', error)
-		showDangerToast('Could not load student groups')
+		console.error('Failed to load student groups', error);
+		showDangerToast('Could not load student groups');
 	} finally {
-		groupsLoading.value = false
+		groupsLoading.value = false;
 	}
 }
 
 function reloadGroups() {
-	void loadGroups()
+	void loadGroups();
 }
 
 async function loadTasks(groupName: string) {
-	tasksLoading.value = true
+	tasksLoading.value = true;
 	try {
 		const payload = await gradebookService.fetchGroupTasks({
 			student_group: groupName,
-		})
-		taskSummaries.value = payload?.tasks ?? []
-		applyRouteTaskFromQuery(taskSummaries.value)
+		});
+		taskSummaries.value = payload?.tasks ?? [];
+		applyRouteTaskFromQuery(taskSummaries.value);
 	} catch (error) {
-		console.error('Failed to load tasks', error)
-		showDangerToast('Could not load tasks')
+		console.error('Failed to load tasks', error);
+		showDangerToast('Could not load tasks');
 	} finally {
-		tasksLoading.value = false
+		tasksLoading.value = false;
 	}
 }
 
@@ -467,325 +479,337 @@ const schoolOptions = computed(() => {
 	const base = schools.value.map(school => ({
 		label: school.school_name || school.name,
 		value: school.name,
-	}))
-	if (defaultSchool.value) return base
-	return [{ label: 'All Schools', value: null }, ...base]
-})
+	}));
+	if (defaultSchool.value) return base;
+	return [{ label: 'All Schools', value: null }, ...base];
+});
 
 const derivedGroups = computed(() => {
-	let list = groups.value
+	let list = groups.value;
 	if (filters.school) {
-		list = list.filter(group => group.school === filters.school)
+		list = list.filter(group => group.school === filters.school);
 	}
 	if (filters.academic_year) {
-		list = list.filter(group => group.academic_year === filters.academic_year)
+		list = list.filter(group => group.academic_year === filters.academic_year);
 	}
 	if (filters.program) {
-		list = list.filter(group => group.program === filters.program)
+		list = list.filter(group => group.program === filters.program);
 	}
 	if (filters.course) {
-		list = list.filter(group => group.course === filters.course)
+		list = list.filter(group => group.course === filters.course);
 	}
-	return list
-})
+	return list;
+});
 
 const groupPickerOptions = computed(() =>
 	derivedGroups.value.map(group => ({
 		label: group.label,
 		value: group.name,
 	}))
-)
+);
 
 const availableGroupsForOptions = computed(() => {
-	let list = groups.value
+	let list = groups.value;
 	if (filters.school) {
-		list = list.filter(group => group.school === filters.school)
+		list = list.filter(group => group.school === filters.school);
 	}
-	return list
-})
+	return list;
+});
 
 const yearOptions = computed(() => {
-	const years = new Set(availableGroupsForOptions.value.map(group => group.academic_year).filter(Boolean))
+	const years = new Set(
+		availableGroupsForOptions.value.map(group => group.academic_year).filter(Boolean)
+	);
 	return Array.from(years)
 		.sort()
 		.reverse()
-		.map(year => ({ label: year, value: year }))
-})
+		.map(year => ({ label: year, value: year }));
+});
 
 const programOptions = computed(() => {
-	let list = availableGroupsForOptions.value
+	let list = availableGroupsForOptions.value;
 	if (filters.academic_year) {
-		list = list.filter(group => group.academic_year === filters.academic_year)
+		list = list.filter(group => group.academic_year === filters.academic_year);
 	}
-	const values = new Set(list.map(group => group.program).filter(Boolean))
+	const values = new Set(list.map(group => group.program).filter(Boolean));
 	return Array.from(values)
 		.sort()
-		.map(program => ({ label: program, value: program }))
-})
+		.map(program => ({ label: program, value: program }));
+});
 
 const courseOptions = computed(() => {
-	let list = availableGroupsForOptions.value
+	let list = availableGroupsForOptions.value;
 	if (filters.academic_year) {
-		list = list.filter(group => group.academic_year === filters.academic_year)
+		list = list.filter(group => group.academic_year === filters.academic_year);
 	}
 	if (filters.program) {
-		list = list.filter(group => group.program === filters.program)
+		list = list.filter(group => group.program === filters.program);
 	}
-	const values = new Set(list.map(group => group.course).filter(Boolean))
+	const values = new Set(list.map(group => group.course).filter(Boolean));
 	return Array.from(values)
 		.sort()
-		.map(course => ({ label: course, value: course }))
-})
+		.map(course => ({ label: course, value: course }));
+});
 
 const hasActiveFilters = computed(() => {
-	return Boolean(filters.school || filters.academic_year || filters.program || filters.course)
-})
+	return Boolean(filters.school || filters.academic_year || filters.program || filters.course);
+});
 
 const derivedTasks = computed(() => {
-	let list = taskSummaries.value
+	let list = taskSummaries.value;
 	if (filters.task_type) {
-		list = list.filter(task => task.task_type === filters.task_type)
+		list = list.filter(task => task.task_type === filters.task_type);
 	}
 	if (filters.delivery_type) {
-		list = list.filter(task => task.delivery_type === filters.delivery_type)
+		list = list.filter(task => task.delivery_type === filters.delivery_type);
 	}
-	return list
-})
+	return list;
+});
 
 const taskTypeOptions = computed(() => {
-	const types = new Set(taskSummaries.value.map(task => task.task_type).filter(Boolean))
-	return [{ label: 'All Types', value: null }, ...Array.from(types).sort().map(type => ({ label: type, value: type }))]
-})
+	const types = new Set(taskSummaries.value.map(task => task.task_type).filter(Boolean));
+	return [
+		{ label: 'All Types', value: null },
+		...Array.from(types)
+			.sort()
+			.map(type => ({ label: type, value: type })),
+	];
+});
 
 const deliveryTypeOptions = computed(() => {
-	const types = new Set(taskSummaries.value.map(task => task.delivery_type).filter(Boolean))
-	return [{ label: 'All Modes', value: null }, ...Array.from(types).sort().map(type => ({ label: type, value: type }))]
-})
+	const types = new Set(taskSummaries.value.map(task => task.delivery_type).filter(Boolean));
+	return [
+		{ label: 'All Modes', value: null },
+		...Array.from(types)
+			.sort()
+			.map(type => ({ label: type, value: type })),
+	];
+});
 
 function onSchoolSelected(value: string | null) {
-	filters.school = value
-	filters.academic_year = null
-	filters.program = null
-	filters.course = null
-	void loadGroups()
+	filters.school = value;
+	filters.academic_year = null;
+	filters.program = null;
+	filters.course = null;
+	void loadGroups();
 }
 
 function onYearSelected(value: string | null) {
-	filters.academic_year = value
-	filters.program = null
-	filters.course = null
+	filters.academic_year = value;
+	filters.program = null;
+	filters.course = null;
 }
 
 function onProgramSelected(value: string | null) {
-	filters.program = value
-	filters.course = null
+	filters.program = value;
+	filters.course = null;
 }
 
 function onCourseSelected(value: string | null) {
-	filters.course = value
+	filters.course = value;
 }
 
 function onGroupSelectedFromToolbar(groupName: string | null) {
 	if (!groupName) {
-		selectGroup(null)
-		return
+		selectGroup(null);
+		return;
 	}
 
-	const match = derivedGroups.value.find(group => group.name === groupName)
+	const match = derivedGroups.value.find(group => group.name === groupName);
 	if (!match) {
-		showDangerToast('Selected group is no longer available.')
-		return
+		showDangerToast('Selected group is no longer available.');
+		return;
 	}
 
-	selectGroup(match)
+	selectGroup(match);
 }
 
 function resetFilters() {
-	filters.school = defaultSchool.value
-	filters.academic_year = null
-	filters.program = null
-	filters.course = null
-	void loadGroups()
+	filters.school = defaultSchool.value;
+	filters.academic_year = null;
+	filters.program = null;
+	filters.course = null;
+	void loadGroups();
 }
 
 function syncFiltersToGroup(group: GroupSummary) {
-	filters.school = group.school || null
-	filters.academic_year = group.academic_year || null
-	filters.program = group.program || null
-	filters.course = group.course || null
+	filters.school = group.school || null;
+	filters.academic_year = group.academic_year || null;
+	filters.program = group.program || null;
+	filters.course = group.course || null;
 }
 
 function currentRouteStudentGroup(): string | null {
-	const value = route.query.student_group
-	return typeof value === 'string' && value ? value : null
+	const value = route.query.student_group;
+	return typeof value === 'string' && value ? value : null;
 }
 
 function currentRouteTask(): string | null {
-	const value = route.query.task
-	return typeof value === 'string' && value ? value : null
+	const value = route.query.task;
+	return typeof value === 'string' && value ? value : null;
 }
 
 function currentRouteView(): 'task' | 'overview' {
-	return route.query.view === 'overview' ? 'overview' : 'task'
+	return route.query.view === 'overview' ? 'overview' : 'task';
 }
 
 function currentRouteStudent(): string | null {
-	const value = route.query.student
-	return typeof value === 'string' && value ? value : null
+	const value = route.query.student;
+	return typeof value === 'string' && value ? value : null;
 }
 
-const pendingRouteGroup = ref<string | null>(currentRouteStudentGroup())
-const pendingRouteTask = ref<string | null>(currentRouteTask())
+const pendingRouteGroup = ref<string | null>(currentRouteStudentGroup());
+const pendingRouteTask = ref<string | null>(currentRouteTask());
 
 async function findRouteGroup(target: string) {
 	const rows = await gradebookService.fetchGroups({
 		search: target,
 		limit: 20,
-	})
-	return rows.find(row => row.name === target) || null
+	});
+	return rows.find(row => row.name === target) || null;
 }
 
 async function applyRouteGroupFromQuery() {
-	const target = pendingRouteGroup.value
-	if (!target || routeGroupResolving.value) return
+	const target = pendingRouteGroup.value;
+	if (!target || routeGroupResolving.value) return;
 
-	routeGroupResolving.value = true
+	routeGroupResolving.value = true;
 	try {
-		const visibleMatch = groups.value.find(row => row.name === target)
+		const visibleMatch = groups.value.find(row => row.name === target);
 		if (visibleMatch) {
-			syncFiltersToGroup(visibleMatch)
-			selectedGroup.value = visibleMatch
-			pendingRouteGroup.value = null
-			return
+			syncFiltersToGroup(visibleMatch);
+			selectedGroup.value = visibleMatch;
+			pendingRouteGroup.value = null;
+			return;
 		}
 
-		const resolvedMatch = await findRouteGroup(target)
+		const resolvedMatch = await findRouteGroup(target);
 		if (!resolvedMatch) {
-			pendingRouteGroup.value = null
-			showDangerToast('Linked student group is no longer available.')
-			return
+			pendingRouteGroup.value = null;
+			showDangerToast('Linked student group is no longer available.');
+			return;
 		}
 
-		syncFiltersToGroup(resolvedMatch)
-		await loadGroups({ skipRouteGroupSync: true })
-		selectedGroup.value = groups.value.find(row => row.name === target) || resolvedMatch
-		pendingRouteGroup.value = null
+		syncFiltersToGroup(resolvedMatch);
+		await loadGroups({ skipRouteGroupSync: true });
+		selectedGroup.value = groups.value.find(row => row.name === target) || resolvedMatch;
+		pendingRouteGroup.value = null;
 	} catch (error) {
-		console.error('Failed to resolve linked student group', error)
-		showDangerToast('Could not load the linked student group')
+		console.error('Failed to resolve linked student group', error);
+		showDangerToast('Could not load the linked student group');
 	} finally {
-		routeGroupResolving.value = false
+		routeGroupResolving.value = false;
 	}
 }
 
 function applyRouteTaskFromQuery(taskList: TaskSummary[] = taskSummaries.value) {
-	const target = pendingRouteTask.value
-	if (!target) return
+	const target = pendingRouteTask.value;
+	if (!target) return;
 
-	const match = taskList.find(task => task.name === target) || null
+	const match = taskList.find(task => task.name === target) || null;
 	if (match) {
-		selectedTask.value = match
-		pendingRouteTask.value = null
-		return
+		selectedTask.value = match;
+		pendingRouteTask.value = null;
+		return;
 	}
 
 	if (!taskList.length) {
 		if (tasksLoading.value || !selectedGroup.value) {
-			return
+			return;
 		}
-		pendingRouteTask.value = null
-		return
+		pendingRouteTask.value = null;
+		return;
 	}
 
-	pendingRouteTask.value = null
-	showDangerToast('Linked assigned work is no longer available for this class.')
+	pendingRouteTask.value = null;
+	showDangerToast('Linked assigned work is no longer available for this class.');
 }
 
-function updateRouteQuery(mutator: (nextQuery: Record<string, unknown>) => void) {
-	const nextQuery = { ...route.query } as Record<string, unknown>
-	mutator(nextQuery)
-	router.replace({ query: nextQuery }).catch(() => {})
+function updateRouteQuery(mutator: (nextQuery: LocationQueryRaw) => void) {
+	const nextQuery: LocationQueryRaw = { ...route.query };
+	mutator(nextQuery);
+	router.replace({ query: nextQuery }).catch(() => {});
 }
 
 function updateRouteStudentGroup(groupName: string | null) {
-	const current = currentRouteStudentGroup()
+	const current = currentRouteStudentGroup();
 	if (current === groupName || (!current && !groupName)) {
-		return
+		return;
 	}
 	updateRouteQuery(nextQuery => {
 		if (groupName) {
-			nextQuery.student_group = groupName
+			nextQuery.student_group = groupName;
 		} else {
-			delete nextQuery.student_group
+			delete nextQuery.student_group;
 		}
-	})
+	});
 }
 
 function updateRouteTask(taskName: string | null) {
-	const current = currentRouteTask()
+	const current = currentRouteTask();
 	if (current === taskName || (!current && !taskName)) {
-		return
+		return;
 	}
 	updateRouteQuery(nextQuery => {
 		if (taskName) {
-			nextQuery.task = taskName
+			nextQuery.task = taskName;
 		} else {
-			delete nextQuery.task
+			delete nextQuery.task;
 		}
-	})
+	});
 }
 
 function updateRouteView(mode: 'task' | 'overview') {
-	const current = currentRouteView()
+	const current = currentRouteView();
 	if (current === mode) {
-		return
+		return;
 	}
 	updateRouteQuery(nextQuery => {
 		if (mode === 'overview') {
-			nextQuery.view = 'overview'
+			nextQuery.view = 'overview';
 		} else {
-			delete nextQuery.view
+			delete nextQuery.view;
 		}
-	})
+	});
 }
 
 function updateRouteStudent(student: string | null) {
-	const current = currentRouteStudent()
+	const current = currentRouteStudent();
 	if (current === student || (!current && !student)) {
-		return
+		return;
 	}
 	updateRouteQuery(nextQuery => {
 		if (student) {
-			nextQuery.student = student
+			nextQuery.student = student;
 		} else {
-			delete nextQuery.student
+			delete nextQuery.student;
 		}
-	})
+	});
 }
 
 function setViewMode(mode: 'task' | 'overview') {
 	if (mode === 'overview' && !selectedGroup.value) {
-		showToast('Select a student group first.', 'warning')
-		return
+		showToast('Select a student group first.', 'warning');
+		return;
 	}
-	viewMode.value = mode
-	updateRouteView(mode)
+	viewMode.value = mode;
+	updateRouteView(mode);
 }
 
 function selectGroup(group: GroupSummary | null) {
-	const previousGroup = selectedGroup.value?.name || null
-	selectedGroup.value = group
+	const previousGroup = selectedGroup.value?.name || null;
+	selectedGroup.value = group;
 	if (previousGroup !== (group?.name || null)) {
-		selectedTask.value = null
-		taskSummaries.value = []
-		updateRouteTask(null)
-		updateRouteStudent(null)
-		focusedStudent.value = null
+		selectedTask.value = null;
+		taskSummaries.value = [];
+		updateRouteTask(null);
+		updateRouteStudent(null);
+		focusedStudent.value = null;
 	}
 	if (group) {
-		updateRouteStudentGroup(group.name)
+		updateRouteStudentGroup(group.name);
 	} else {
-		updateRouteStudentGroup(null)
+		updateRouteStudentGroup(null);
 	}
 }
 
@@ -793,104 +817,104 @@ function selectTask(
 	task: TaskSummary | null,
 	options: { switchMode?: boolean; focusStudent?: string | null } = {}
 ) {
-	selectedTask.value = task
-	updateRouteTask(task?.name || null)
+	selectedTask.value = task;
+	updateRouteTask(task?.name || null);
 
 	if (options.switchMode !== false && task) {
-		viewMode.value = 'task'
-		updateRouteView('task')
+		viewMode.value = 'task';
+		updateRouteView('task');
 	}
 
-	const nextFocusedStudent = options.focusStudent === undefined ? null : options.focusStudent
-	focusedStudent.value = nextFocusedStudent
-	updateRouteStudent(nextFocusedStudent)
+	const nextFocusedStudent = options.focusStudent === undefined ? null : options.focusStudent;
+	focusedStudent.value = nextFocusedStudent;
+	updateRouteStudent(nextFocusedStudent);
 }
 
 function onOverviewOpenTask(payload: { taskName: string; student: string }) {
-	const match = taskSummaries.value.find(task => task.name === payload.taskName) || null
+	const match = taskSummaries.value.find(task => task.name === payload.taskName) || null;
 	if (!match) {
-		showDangerToast('That delivery is no longer available in this class.')
-		return
+		showDangerToast('That delivery is no longer available in this class.');
+		return;
 	}
 	selectTask(match, {
 		switchMode: true,
 		focusStudent: payload.student,
-	})
+	});
 }
 
 watch(derivedGroups, newList => {
 	if (selectedGroup.value) {
-		const stillVisible = newList.find(group => group.name === selectedGroup.value?.name)
+		const stillVisible = newList.find(group => group.name === selectedGroup.value?.name);
 		if (!stillVisible) {
-			selectGroup(null)
+			selectGroup(null);
 		}
 	}
-})
+});
 
 watch(derivedTasks, newList => {
 	if (selectedTask.value) {
-		const stillVisible = newList.find(task => task.name === selectedTask.value?.name)
+		const stillVisible = newList.find(task => task.name === selectedTask.value?.name);
 		if (!stillVisible) {
-			selectTask(null, { switchMode: false, focusStudent: null })
+			selectTask(null, { switchMode: false, focusStudent: null });
 		}
 	}
-})
+});
 
 watch(
 	() => route.query.student_group,
 	() => {
-		pendingRouteGroup.value = currentRouteStudentGroup()
+		pendingRouteGroup.value = currentRouteStudentGroup();
 		if (pendingRouteGroup.value) {
-			void applyRouteGroupFromQuery()
+			void applyRouteGroupFromQuery();
 		} else {
-			selectGroup(null)
+			selectGroup(null);
 		}
 	}
-)
+);
 
 watch(
 	() => route.query.task,
 	() => {
-		pendingRouteTask.value = currentRouteTask()
+		pendingRouteTask.value = currentRouteTask();
 		if (pendingRouteTask.value) {
-			applyRouteTaskFromQuery()
+			applyRouteTaskFromQuery();
 		} else {
-			selectedTask.value = null
+			selectedTask.value = null;
 		}
 	}
-)
+);
 
 watch(
 	() => route.query.view,
 	() => {
-		viewMode.value = currentRouteView()
+		viewMode.value = currentRouteView();
 	}
-)
+);
 
 watch(
 	() => route.query.student,
 	() => {
-		focusedStudent.value = currentRouteStudent()
+		focusedStudent.value = currentRouteStudent();
 	}
-)
+);
 
 watch(
 	() => selectedGroup.value?.name,
 	groupName => {
-		taskSummaries.value = []
-		selectedTask.value = null
+		taskSummaries.value = [];
+		selectedTask.value = null;
 		if (groupName) {
-			void loadTasks(groupName)
+			void loadTasks(groupName);
 		} else {
-			updateRouteStudentGroup(null)
+			updateRouteStudentGroup(null);
 		}
 	}
-)
+);
 
 onMounted(() => {
 	void (async () => {
-		await loadSchoolContext()
-		await loadGroups()
-	})()
-})
+		await loadSchoolContext();
+		await loadGroups();
+	})();
+});
 </script>

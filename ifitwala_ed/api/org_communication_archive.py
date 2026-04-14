@@ -110,6 +110,34 @@ def _get_scope(user: str, employee: dict | None):
     return base_org, base_school, org_scope, school_scope
 
 
+def _get_archive_employee_context(user: str, roles: list[str]):
+    """Return archive visibility context plus base org/school scopes.
+
+    Academic Admin archive scope is school-first:
+    - with Employee.school: school cone only
+    - without Employee.school: organization descendant fallback
+    """
+    employee = frappe.db.get_value(
+        "Employee",
+        {"user_id": user},
+        ["name", "school", "organization"],
+        as_dict=True,
+    )
+
+    base_org, base_school, org_scope, school_scope = _get_scope(user, employee)
+
+    archive_employee = dict(employee or {})
+    if "Academic Admin" in (roles or []):
+        school_names = [school for school in (school_scope or []) if school]
+        organization_names = [org for org in (org_scope or []) if org]
+        if organization_names and not base_school:
+            archive_employee["organization_names"] = organization_names
+        if school_names:
+            archive_employee["school_names"] = school_names
+
+    return archive_employee, base_org, base_school, org_scope, school_scope
+
+
 def _get_archive_organization_scope(*, base_org: str | None, org_scope: list[str] | None) -> list[str]:
     """Return archive-visible org scope.
 
@@ -134,15 +162,7 @@ def get_archive_context():
     """Returns context data for the archive page filters."""
     user = frappe.session.user
     roles = frappe.get_roles(user)
-
-    employee = frappe.db.get_value(
-        "Employee",
-        {"user_id": user},
-        ["name", "school", "organization"],
-        as_dict=True,
-    )
-
-    base_org, base_school, org_scope, school_scope = _get_scope(user, employee)
+    employee, base_org, base_school, org_scope, school_scope = _get_archive_employee_context(user, roles)
 
     # -------------------------
     # Teams (Team -> Team Member)
@@ -202,10 +222,8 @@ def get_archive_context():
         "schools": [],
         "organizations": [],
         "defaults": {
-            # Archive starts unscoped so users see all communications visible
-            # to them unless they explicitly narrow with a filter.
-            "school": None,
-            "organization": None,
+            "school": base_school if "Academic Admin" in roles else None,
+            "organization": base_org if "Academic Admin" in roles else None,
             "team": None,
         },
         "base_org": base_org,
@@ -310,17 +328,9 @@ def get_org_communication_item(name=None):
     user = frappe.session.user
     roles = frappe.get_roles(user)
 
-    # Only what we actually need here (no department)
-    # Keep detail visibility aligned with the feed endpoint. The feed already scopes
-    # the visible list using the user-linked Employee record without an extra status
-    # filter, so the detail endpoint must resolve the same context or users can see a
-    # row in the archive list but silently lose the full body in the detail pane.
-    employee = frappe.db.get_value(
-        "Employee",
-        {"user_id": user},
-        ["name", "school", "organization"],
-        as_dict=True,
-    )
+    # Keep detail visibility aligned with the feed endpoint or users can see a
+    # row in the archive list but lose the full body in the detail pane.
+    employee, _base_org, _base_school, _org_scope, _school_scope = _get_archive_employee_context(user, roles)
 
     # NOTE: check_audience_match MUST be updated to use Team Member doctype
     # and not Employee.department. (This is the real underlying bug.)
@@ -374,12 +384,7 @@ def get_org_communication_feed(
 ) -> dict:
     user = frappe.session.user
     roles = frappe.get_roles(user)
-    employee = frappe.db.get_value(
-        "Employee",
-        {"user_id": user},
-        ["name", "school", "organization"],
-        as_dict=True,
-    )
+    employee, base_org, base_school, org_scope, school_scope = _get_archive_employee_context(user, roles)
 
     # Merge legacy params into filters before normalization
     raw_filters = _parse_filters(filters)
@@ -435,8 +440,6 @@ def get_org_communication_feed(
     # Pagination params (start/page_length preferred over legacy limit_start/page_length)
     offset = int(start if start is not None else limit_start or 0)
     page_len = int(page_length if page_length is not None else limit or 30)
-
-    base_org, base_school, org_scope, school_scope = _get_scope(user, employee)
 
     # Org guard
     org_guard: set[str] = set()

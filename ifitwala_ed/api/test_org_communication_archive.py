@@ -99,6 +99,56 @@ class TestOrgCommunicationArchiveItem(FrappeTestCase):
         )
         self.assertEqual(result["attachments"][1]["external_url"], "https://example.com/reference")
 
+    def test_get_item_enriches_academic_admin_with_archive_scope(self):
+        doc = SimpleNamespace(
+            name="COMM-0002",
+            title="Parent school update",
+            message="<p>Visible to descendant schools</p>",
+            communication_type="Information",
+            priority="Normal",
+            publish_from="2026-03-09 08:00:00",
+            activity_program_offering=None,
+            activity_booking=None,
+            activity_student_group=None,
+            get=lambda fieldname: [],
+        )
+
+        with (
+            patch(
+                "ifitwala_ed.api.org_communication_archive.frappe.session",
+                frappe._dict({"user": "academic-admin@example.com"}),
+            ),
+            patch("ifitwala_ed.api.org_communication_archive.frappe.get_roles", return_value=["Academic Admin"]),
+            patch(
+                "ifitwala_ed.api.org_communication_archive.frappe.db.get_value",
+                return_value={"name": "EMP-1", "school": "SCH-PARENT", "organization": "ORG-ROOT"},
+            ),
+            patch(
+                "ifitwala_ed.api.org_communication_archive._get_scope",
+                return_value=("ORG-ROOT", "SCH-PARENT", ["ORG-ROOT", "ORG-CHILD"], ["SCH-PARENT", "SCH-CHILD"]),
+            ),
+            patch(
+                "ifitwala_ed.api.org_communication_archive.check_audience_match", return_value=True
+            ) as audience_match_mock,
+            patch("ifitwala_ed.api.org_communication_archive.frappe.get_doc", return_value=doc),
+            patch("ifitwala_ed.api.org_communication_archive.get_audience_label", return_value="Staff · SCH"),
+            patch("ifitwala_ed.api.org_communication_archive.build_audience_summary", return_value={}),
+        ):
+            org_communication_archive.get_org_communication_item("COMM-0002")
+
+        audience_match_mock.assert_called_once_with(
+            "COMM-0002",
+            "academic-admin@example.com",
+            ["Academic Admin"],
+            {
+                "name": "EMP-1",
+                "school": "SCH-PARENT",
+                "organization": "ORG-ROOT",
+                "school_names": ["SCH-PARENT", "SCH-CHILD"],
+            },
+            allow_owner=True,
+        )
+
 
 class TestOrgCommunicationArchiveFeed(FrappeTestCase):
     def test_get_feed_student_group_filter_prefilters_exact_group_scope(self):
@@ -278,3 +328,59 @@ class TestOrgCommunicationArchiveContext(FrappeTestCase):
         )
         self.assertEqual(result["base_org"], "ORG-CHILD")
         self.assertEqual(result["base_school"], None)
+
+    def test_get_archive_context_defaults_academic_admin_to_employee_org_and_school(self):
+        def fake_employee_lookup(doctype, filters, fields=None, as_dict=False):
+            self.assertEqual(doctype, "Employee")
+            self.assertEqual(filters, {"user_id": "academic-admin@example.com"})
+            self.assertEqual(fields, ["name", "school", "organization"])
+            self.assertTrue(as_dict)
+            return {"name": "EMP-1", "school": "SCH-1", "organization": "ORG-1"}
+
+        with (
+            patch(
+                "ifitwala_ed.api.org_communication_archive.frappe.session",
+                frappe._dict({"user": "academic-admin@example.com"}),
+            ),
+            patch("ifitwala_ed.api.org_communication_archive.frappe.get_roles", return_value=["Academic Admin"]),
+            patch("ifitwala_ed.api.org_communication_archive.frappe.db.get_value", side_effect=fake_employee_lookup),
+            patch(
+                "ifitwala_ed.api.org_communication_archive._get_scope",
+                return_value=("ORG-1", "SCH-1", ["ORG-1"], ["SCH-1", "SCH-2"]),
+            ),
+            patch("ifitwala_ed.api.org_communication_archive.frappe.db.sql", return_value=[]),
+            patch(
+                "ifitwala_ed.api.org_communication_archive.frappe.get_all",
+                side_effect=[
+                    [
+                        {
+                            "name": "SG-1",
+                            "student_group_abbreviation": "G1",
+                            "student_group_name": "Group 1",
+                            "school": "SCH-1",
+                        },
+                        {
+                            "name": "SG-2",
+                            "student_group_abbreviation": "G2",
+                            "student_group_name": "Group 2",
+                            "school": "SCH-2",
+                        },
+                    ],
+                    [{"name": "ORG-1", "organization_name": "Org 1", "abbr": "ORG"}],
+                    [
+                        {"name": "SCH-1", "school_name": "School 1", "abbr": "S1", "organization": "ORG-1"},
+                        {"name": "SCH-2", "school_name": "School 2", "abbr": "S2", "organization": "ORG-1"},
+                    ],
+                ],
+            ),
+        ):
+            result = org_communication_archive.get_archive_context()
+
+        self.assertEqual(
+            result["defaults"],
+            {"school": "SCH-1", "organization": "ORG-1", "team": None},
+        )
+        self.assertEqual(
+            [row["value"] for row in result["my_groups"]],
+            ["SG-1", "SG-2"],
+        )

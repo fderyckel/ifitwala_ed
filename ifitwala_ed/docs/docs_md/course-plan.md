@@ -3,8 +3,8 @@ title: "Course Plan: Shared Curriculum Version For A Course"
 slug: course-plan
 category: Curriculum
 doc_order: 4
-version: "1.5.0"
-last_change_date: "2026-04-11"
+version: "1.5.1"
+last_change_date: "2026-04-14"
 summary: "Define the governed shared curriculum version for a course, including SPA-first creation from the course-plan index, cycle labeling, publication status, shared summary context, the calendar-aware curriculum timeline, and the governed workspace used to author units, quiz banks, and assignment-ready curriculum assets."
 seo_title: "Course Plan: Shared Curriculum Version For A Course"
 seo_description: "Define the governed shared curriculum version for a course, including the shared summary and the unit-plan backbone inherited by linked classes."
@@ -118,6 +118,7 @@ Test refs: `ifitwala_ed/api/test_teaching_plans.py`, `ifitwala_ed/api/test_quiz.
 - The staff course-plan workspace uses one bounded bootstrap payload and explicit save mutations rather than client waterfalls.
 - Long course-plan workspace cards such as Overview, Timeline, Plan Resources, Unit Content, and Quiz Banks can now collapse and persist their open/closed state per course plan so staff can reduce scroll noise without losing context.
 - Quick Access on the course-plan workspace is a compact top-integrated jump strip rather than a large floating card, to preserve vertical space and reduce distraction while editing.
+- The selected-unit editor inside the staff course-plan workspace now groups unit setup, core narrative, learning focus, standards, reflections, and resources into distinct internal panels, and it keeps unit save actions visible both near the top of the editor and through a sticky save rail while staff scroll.
 - Quiz banks remain course-level assessment assets in the current schema, but the staff course-plan workspace is the current SPA authoring surface for them.
 - Assignment handoff from the course-plan workspace must stay prefilled into the canonical task-delivery overlay rather than creating a parallel assignment path.
 

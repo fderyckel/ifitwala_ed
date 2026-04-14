@@ -1,9 +1,10 @@
 import type { TaskSummary } from '@/types/contracts/gradebook/fetch_group_tasks'
+import type { Delivery } from '@/types/contracts/gradebook/get_grid'
 import type { TaskPayload } from '@/types/contracts/gradebook/get_task_gradebook'
 
 export const DEFAULT_STUDENT_IMAGE = '/assets/ifitwala_ed/images/default_student_image.png'
 
-type TaskLike = TaskPayload | TaskSummary | null | undefined
+type TaskLike = TaskPayload | TaskSummary | Delivery | null | undefined
 
 function resolveDeliveryMode(task?: TaskLike | Record<string, unknown> | null) {
 	if (!task) return null

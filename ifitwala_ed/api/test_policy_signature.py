@@ -129,6 +129,53 @@ class TestPolicySignature(FrappeTestCase):
         self.created.append(("Employee", employee.name))
         return employee
 
+    def _make_guardian(self, *, user: str):
+        seed = frappe.generate_hash(length=6)
+        phone_suffix = "".join(str(ord(ch) % 10) for ch in seed[:6])
+        guardian = frappe.get_doc(
+            {
+                "doctype": "Guardian",
+                "guardian_first_name": "Guardian",
+                "guardian_last_name": seed,
+                "guardian_email": user,
+                "guardian_mobile_phone": f"+1415{phone_suffix}",
+                "user": user,
+                "organization": self.organization.name,
+            }
+        ).insert(ignore_permissions=True)
+        self.created.append(("Guardian", guardian.name))
+        return guardian
+
+    def _make_student(self, *, user: str, guardian_name: str):
+        seed = frappe.generate_hash(length=6)
+        previous_import = getattr(frappe.flags, "in_import", False)
+        frappe.flags.in_import = True
+        try:
+            student = frappe.get_doc(
+                {
+                    "doctype": "Student",
+                    "student_first_name": "Policy",
+                    "student_last_name": f"Student-{seed}",
+                    "student_email": user,
+                    "anchor_school": self.school.name,
+                    "allow_direct_creation": 1,
+                }
+            )
+            student.append(
+                "guardians",
+                {
+                    "guardian": guardian_name,
+                    "relation": "Mother",
+                    "can_consent": 1,
+                },
+            )
+            student.insert(ignore_permissions=True)
+        finally:
+            frappe.flags.in_import = previous_import
+
+        self.created.append(("Student", student.name))
+        return student
+
     def test_campaign_options_load_for_hr_manager_scope(self):
         self._assign_role(self.user_one.name, "HR Manager")
 
@@ -312,3 +359,136 @@ class TestPolicySignature(FrappeTestCase):
         inherited_row = by_policy.get(parent_school_policy.name) or {}
         self.assertEqual(inherited_row.get("policy_version"), parent_school_version.name)
         self.assertEqual(inherited_row.get("policy_school"), parent_school.name)
+
+    def test_dashboard_and_campaign_preview_include_guardian_and_student_audiences(self):
+        guardian_user_one = make_user(roles=["Guardian"])
+        guardian_user_two = make_user(roles=["Guardian"])
+        student_user_one = make_user(roles=["Student"])
+        student_user_two = make_user(roles=["Student"])
+        self.created.extend(
+            [
+                ("User", guardian_user_one.name),
+                ("User", guardian_user_two.name),
+                ("User", student_user_one.name),
+                ("User", student_user_two.name),
+            ]
+        )
+
+        guardian_one = self._make_guardian(user=guardian_user_one.name)
+        guardian_two = self._make_guardian(user=guardian_user_two.name)
+        student_one = self._make_student(user=student_user_one.name, guardian_name=guardian_one.name)
+        self._make_student(user=student_user_two.name, guardian_name=guardian_two.name)
+
+        mixed_policy = frappe.get_doc(
+            {
+                "doctype": "Institutional Policy",
+                "policy_key": f"family_policy_{frappe.generate_hash(length=8)}",
+                "policy_title": "Community Handbook",
+                "policy_category": "Handbooks",
+                "applies_to": [
+                    {"policy_audience": "Staff"},
+                    {"policy_audience": "Guardian"},
+                    {"policy_audience": "Student"},
+                ],
+                "organization": self.organization.name,
+                "is_active": 1,
+            }
+        ).insert(ignore_permissions=True)
+        self.created.append(("Institutional Policy", mixed_policy.name))
+
+        mixed_version = frappe.get_doc(
+            {
+                "doctype": "Policy Version",
+                "institutional_policy": mixed_policy.name,
+                "version_label": "v1",
+                "policy_text": "<p>Community handbook text.</p>",
+                "is_active": 1,
+            }
+        ).insert(ignore_permissions=True)
+        self.created.append(("Policy Version", mixed_version.name))
+
+        frappe.set_user(self.user_one.name)
+        staff_ack = frappe.get_doc(
+            {
+                "doctype": "Policy Acknowledgement",
+                "policy_version": mixed_version.name,
+                "acknowledged_by": self.user_one.name,
+                "acknowledged_for": "Staff",
+                "context_doctype": "Employee",
+                "context_name": self.employee_one.name,
+            }
+        ).insert(ignore_permissions=True)
+        self.created.append(("Policy Acknowledgement", staff_ack.name))
+
+        frappe.set_user(guardian_user_one.name)
+        guardian_ack = frappe.get_doc(
+            {
+                "doctype": "Policy Acknowledgement",
+                "policy_version": mixed_version.name,
+                "acknowledged_by": guardian_user_one.name,
+                "acknowledged_for": "Guardian",
+                "context_doctype": "Guardian",
+                "context_name": guardian_one.name,
+            }
+        ).insert(ignore_permissions=True)
+        self.created.append(("Policy Acknowledgement", guardian_ack.name))
+
+        frappe.set_user(student_user_one.name)
+        student_ack = frappe.get_doc(
+            {
+                "doctype": "Policy Acknowledgement",
+                "policy_version": mixed_version.name,
+                "acknowledged_by": student_user_one.name,
+                "acknowledged_for": "Student",
+                "context_doctype": "Student",
+                "context_name": student_one.name,
+            }
+        ).insert(ignore_permissions=True)
+        self.created.append(("Policy Acknowledgement", student_ack.name))
+
+        frappe.set_user("Administrator")
+        preview = get_staff_policy_campaign_options(
+            organization=self.organization.name,
+            school=self.school.name,
+            employee_group=self.employee_group.name,
+            policy_version=mixed_version.name,
+        )
+        preview_rows = (preview.get("preview") or {}).get("audience_previews") or []
+        preview_by_audience = {row.get("audience"): row for row in preview_rows}
+
+        self.assertEqual((preview.get("preview") or {}).get("policy_audiences"), ["Staff", "Guardian", "Student"])
+        self.assertEqual((preview.get("preview") or {}).get("to_create"), 1)
+        self.assertEqual(preview_by_audience.get("Guardian", {}).get("pending"), 1)
+        self.assertEqual(preview_by_audience.get("Student", {}).get("signed"), 1)
+        self.assertFalse(preview_by_audience.get("Guardian", {}).get("supports_campaign_launch"))
+
+        dashboard = get_staff_policy_signature_dashboard(
+            policy_version=mixed_version.name,
+            organization=self.organization.name,
+            school=self.school.name,
+            employee_group=self.employee_group.name,
+        )
+        self.assertEqual((dashboard.get("summary") or {}).get("applies_to_tokens"), ["Staff", "Guardian", "Student"])
+        self.assertEqual((dashboard.get("summary") or {}).get("eligible_targets"), 6)
+        self.assertEqual((dashboard.get("summary") or {}).get("signed"), 3)
+        self.assertEqual((dashboard.get("summary") or {}).get("pending"), 3)
+
+        audience_sections = dashboard.get("audiences") or []
+        audience_by_name = {row.get("audience"): row for row in audience_sections}
+
+        staff_section = audience_by_name.get("Staff") or {}
+        guardian_section = audience_by_name.get("Guardian") or {}
+        student_section = audience_by_name.get("Student") or {}
+
+        self.assertEqual((staff_section.get("summary") or {}).get("to_create"), 1)
+        self.assertEqual((guardian_section.get("summary") or {}).get("signed"), 1)
+        self.assertEqual((guardian_section.get("summary") or {}).get("pending"), 1)
+        self.assertEqual((student_section.get("summary") or {}).get("signed"), 1)
+        self.assertEqual((student_section.get("summary") or {}).get("pending"), 1)
+
+        guardian_pending_rows = (guardian_section.get("rows") or {}).get("pending") or []
+        student_signed_rows = (student_section.get("rows") or {}).get("signed") or []
+        self.assertEqual(len(guardian_pending_rows), 1)
+        self.assertEqual(guardian_pending_rows[0].get("subject_name"), guardian_two.guardian_full_name)
+        self.assertEqual(len(student_signed_rows), 1)
+        self.assertEqual(student_signed_rows[0].get("record_id"), student_one.name)

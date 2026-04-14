@@ -227,6 +227,135 @@ afterEach(() => {
 });
 
 describe('OrgCommunicationArchive', () => {
+	it('boots the archive feed with the academic-admin default organization and school', async () => {
+		getArchiveContextMock.mockResolvedValue({
+			my_teams: [],
+			my_groups: [
+				{ label: 'Group 1', value: 'SG-1', school: 'SCH-1' },
+				{ label: 'Group 2', value: 'SG-2', school: 'SCH-2' },
+			],
+			schools: [
+				{ name: 'SCH-1', school_name: 'School 1', organization: 'ORG-1' },
+				{ name: 'SCH-2', school_name: 'School 2', organization: 'ORG-1' },
+			],
+			organizations: [{ name: 'ORG-1', organization_name: 'Org 1' }],
+			defaults: {
+				organization: 'ORG-1',
+				school: 'SCH-1',
+				team: null,
+			},
+		});
+		getOrgCommunicationFeedMock.mockResolvedValue({
+			items: [buildItem()],
+			has_more: false,
+			start: 0,
+			page_length: 10,
+		});
+		getOrgCommunicationItemMock.mockResolvedValue({
+			name: 'COMM-0001',
+			message_html: '<p>Body</p>',
+			attachments: [],
+		});
+		getOrgCommInteractionSummaryMock.mockResolvedValue({
+			'COMM-0001': {
+				counts: {},
+				self: null,
+				reaction_counts: {},
+				reactions_total: 0,
+				comments_total: 0,
+			},
+		});
+
+		mountArchive();
+		await flushUi();
+
+		expect(getOrgCommunicationFeedMock).toHaveBeenCalledWith(
+			expect.objectContaining({
+				filters: expect.objectContaining({
+					organization: 'ORG-1',
+					school: 'SCH-1',
+				}),
+			})
+		);
+	});
+
+	it('limits student-group options to the selected school and current organization scope', async () => {
+		getArchiveContextMock.mockResolvedValue({
+			my_teams: [],
+			my_groups: [
+				{ label: 'Group 1', value: 'SG-1', school: 'SCH-1' },
+				{ label: 'Group 2', value: 'SG-2', school: 'SCH-2' },
+				{ label: 'Group 9', value: 'SG-9', school: 'SCH-9' },
+			],
+			schools: [
+				{ name: 'SCH-1', school_name: 'School 1', organization: 'ORG-1' },
+				{ name: 'SCH-2', school_name: 'School 2', organization: 'ORG-1' },
+				{ name: 'SCH-9', school_name: 'School 9', organization: 'ORG-2' },
+			],
+			organizations: [
+				{ name: 'ORG-1', organization_name: 'Org 1' },
+				{ name: 'ORG-2', organization_name: 'Org 2' },
+			],
+			defaults: {
+				organization: 'ORG-1',
+				school: 'SCH-1',
+				team: null,
+			},
+		});
+		getOrgCommunicationFeedMock.mockResolvedValue({
+			items: [buildItem()],
+			has_more: false,
+			start: 0,
+			page_length: 10,
+		});
+		getOrgCommunicationItemMock.mockResolvedValue({
+			name: 'COMM-0001',
+			message_html: '<p>Body</p>',
+			attachments: [],
+		});
+		getOrgCommInteractionSummaryMock.mockResolvedValue({
+			'COMM-0001': {
+				counts: {},
+				self: null,
+				reaction_counts: {},
+				reactions_total: 0,
+				comments_total: 0,
+			},
+		});
+
+		mountArchive();
+		await flushUi();
+
+		const selects = Array.from(document.querySelectorAll('select'));
+		const organizationSelect = selects[0] as HTMLSelectElement;
+		const schoolSelect = selects[1] as HTMLSelectElement;
+		const studentGroupSelect = selects[3] as HTMLSelectElement;
+
+		expect(Array.from(studentGroupSelect.options).map(option => option.textContent)).toEqual([
+			'All groups',
+			'Group 1',
+		]);
+
+		schoolSelect.value = '';
+		schoolSelect.dispatchEvent(new Event('change'));
+		await flushUi();
+
+		expect(Array.from(studentGroupSelect.options).map(option => option.textContent)).toEqual([
+			'All groups',
+			'Group 1',
+			'Group 2',
+		]);
+
+		organizationSelect.value = 'ORG-2';
+		organizationSelect.dispatchEvent(new Event('change'));
+		await flushUi();
+
+		expect(Array.from(studentGroupSelect.options).map(option => option.textContent)).toEqual([
+			'All groups',
+			'Group 9',
+		]);
+	});
+
 	it('keeps the comments button visible for staff comments on the staff archive surface', async () => {
 		getArchiveContextMock.mockResolvedValue({
 			my_teams: [],

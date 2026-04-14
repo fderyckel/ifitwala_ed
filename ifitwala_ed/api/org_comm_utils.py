@@ -97,7 +97,7 @@ def check_audience_match(
             Only include communications that have an audience row with that exact student_group.
             The match MUST happen on that Student Group row.
             Eligibility:
-                    - Academic Admin: allowed
+                    - Academic Admin: allowed only when the group belongs to the admin's allowed school scope
                     - Instructors: must teach that group
                     - Students: must belong to that group and be an enabled recipient
     - Else if filter_team is set:
@@ -109,7 +109,7 @@ def check_audience_match(
 
     Strict filter behavior for organization-wide rows:
     - Organization target mode is staff-only and matches active Employee.organization.
-    - The communication organization must be self/ancestor of Employee.organization.
+    - Archive callers may widen this with explicit descendant organization scope in employee.organization_names.
 
     Strict school filter behaviour:
     - If filter_school = X, only School Scope rows are eligible.
@@ -161,6 +161,12 @@ def check_audience_match(
             )
         )
 
+    def _student_group_in_allowed_school_scope(student_group_name: str | None, allowed_school_names: set[str]) -> bool:
+        if not student_group_name or not allowed_school_names:
+            return False
+        student_group_school = frappe.get_cached_value("Student Group", student_group_name, "school")
+        return bool(student_group_school and student_group_school in allowed_school_names)
+
     def _school_scope_match(aud_school, include_descendants, user_school_names, descendants_cache):
         if not aud_school or not user_school_names:
             return False
@@ -177,6 +183,9 @@ def check_audience_match(
         return aud_school in user_school_names
 
     def _organization_scope_match(comm_org, user_org_name, ancestor_cache):
+        allowed_organizations = {org for org in (employee.get("organization_names") or []) if org}
+        if comm_org and allowed_organizations and comm_org in allowed_organizations:
+            return True
         if not comm_org or not user_org_name:
             return False
         if user_org_name not in ancestor_cache:
@@ -325,8 +334,10 @@ def check_audience_match(
         if filter_student_group:
             if target_mode != "Student Group" or aud.student_group != filter_student_group:
                 continue
-            if is_academic_admin or is_system_manager:
+            if is_system_manager:
                 return True
+            if is_academic_admin:
+                return _student_group_in_allowed_school_scope(aud.student_group, user_school_names)
             enabled_recipients = _get_enabled_recipient_flags(aud)
             recipient_overlap = not user_recipient_flags or bool(enabled_recipients & user_recipient_flags)
             if aud.student_group and aud.student_group in student_groups and recipient_overlap:
@@ -376,9 +387,11 @@ def check_audience_match(
             continue
 
         if target_mode == "Student Group":
-            if aud.student_group and (
-                is_academic_admin or aud.student_group in instructor_groups or aud.student_group in student_groups
-            ):
+            if is_academic_admin:
+                if _student_group_in_allowed_school_scope(aud.student_group, user_school_names):
+                    return True
+                continue
+            if aud.student_group and (aud.student_group in instructor_groups or aud.student_group in student_groups):
                 return True
             continue
 

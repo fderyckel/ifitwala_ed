@@ -1,8 +1,15 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { createApp, defineComponent, h, nextTick, type App } from 'vue'
 
-const { getStaffCoursePlanSurfaceMock, routeState, routerReplaceMock, overlayOpenMock } = vi.hoisted(() => ({
+const {
+	getStaffCoursePlanSurfaceMock,
+	saveGovernedUnitPlanMock,
+	routeState,
+	routerReplaceMock,
+	overlayOpenMock,
+} = vi.hoisted(() => ({
 	getStaffCoursePlanSurfaceMock: vi.fn(),
+	saveGovernedUnitPlanMock: vi.fn(),
 	routeState: {
 		query: {
 			student_group: 'GROUP-1',
@@ -40,7 +47,7 @@ vi.mock('vue-router', async () => {
 vi.mock('@/lib/services/staff/staffTeachingService', () => ({
 	getStaffCoursePlanSurface: getStaffCoursePlanSurfaceMock,
 	saveCoursePlan: vi.fn(),
-	saveGovernedUnitPlan: vi.fn(),
+	saveGovernedUnitPlan: saveGovernedUnitPlanMock,
 	saveQuizQuestionBank: vi.fn(),
 }))
 
@@ -121,6 +128,7 @@ function mountPage() {
 
 afterEach(() => {
 	getStaffCoursePlanSurfaceMock.mockReset()
+	saveGovernedUnitPlanMock.mockReset()
 	routerReplaceMock.mockReset()
 	overlayOpenMock.mockReset()
 	window.localStorage.clear()
@@ -426,5 +434,104 @@ describe('CoursePlanWorkspace page', () => {
 
 		expect(document.body.textContent || '').toContain('Framework Name')
 		expect(document.body.textContent || '').toContain('Remove Standard')
+	})
+
+	it('shows the sticky save rail after the selected unit becomes dirty', async () => {
+		getStaffCoursePlanSurfaceMock.mockResolvedValue({
+			meta: {
+				generated_at: '2026-04-13 10:00:00',
+				course_plan: 'COURSE-PLAN-1',
+			},
+			course_plan: {
+				course_plan: 'COURSE-PLAN-1',
+				record_modified: '2026-04-13 10:00:00',
+				title: 'Biology Semester 1 Plan',
+				course: 'COURSE-1',
+				course_name: 'Biology',
+				course_group: 'Science',
+				school: 'SCH-1',
+				academic_year: '2026-2027',
+				cycle_label: 'Semester 1',
+				plan_status: 'Active',
+				summary: '<p>Shared summary</p>',
+				can_manage_resources: 1,
+			},
+			resolved: {
+				unit_plan: 'UNIT-1',
+				quiz_question_bank: null,
+			},
+			resources: {
+				course_plan_resources: [],
+			},
+			field_options: {
+				academic_years: [],
+				programs: [{ value: 'MYP', label: 'MYP' }],
+			},
+			curriculum: {
+				units: [
+					{
+						unit_plan: 'UNIT-1',
+						record_modified: '2026-04-13 10:00:00',
+						title: 'Cells and Systems',
+						program: 'MYP',
+						unit_order: 10,
+						unit_status: 'Active',
+						is_published: 1,
+						overview: '<p>Overview</p>',
+						essential_understanding: '<p>Understanding</p>',
+						misconceptions: '<p>Misconception</p>',
+						content: '<p>Content</p>',
+						skills: '<p>Skills</p>',
+						concepts: '<p>Concepts</p>',
+						standards: [],
+						shared_reflections: [],
+						class_reflections: [],
+						shared_resources: [],
+					},
+				],
+				unit_count: 1,
+				timeline: {
+					status: 'blocked',
+					reason: 'missing_calendar',
+					message: 'Add a calendar first.',
+					scope: {},
+					terms: [],
+					holidays: [],
+					units: [],
+					summary: {
+						scheduled_unit_count: 0,
+						unscheduled_unit_count: 1,
+						overflow_unit_count: 0,
+						instructional_day_count: 0,
+					},
+				},
+			},
+			assessment: {
+				quiz_question_banks: [],
+				selected_quiz_question_bank: null,
+			},
+		})
+
+		mountPage()
+		await flushUi()
+
+		expect(document.querySelector('[data-testid="unit-save-rail"]')).toBeNull()
+
+		const unitCodeInput = document.querySelector(
+			'input[placeholder="Optional unit code"]'
+		) as HTMLInputElement | null
+		expect(unitCodeInput).not.toBeNull()
+		if (!unitCodeInput) return
+
+		unitCodeInput.value = 'BIO-U1'
+		unitCodeInput.dispatchEvent(new Event('input', { bubbles: true }))
+		await flushUi()
+
+		expect(document.querySelector('[data-testid="unit-save-rail"]')).not.toBeNull()
+		expect(document.body.textContent || '').toContain('Unsaved changes')
+		expect(
+			(document.querySelector('[data-testid="unit-save-header-button"]') as HTMLButtonElement | null)
+				?.disabled
+		).toBe(false)
 	})
 })

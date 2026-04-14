@@ -779,7 +779,10 @@ watch(
 );
 
 watch(
-	() => [selectedSchool.value, timeUtilDefaultsBySchool.value],
+	(): [string, Record<string, TimeUtilDefaults>] => [
+		selectedSchool.value,
+		timeUtilDefaultsBySchool.value,
+	],
 	([schoolName, defaultsBySchool]) => {
 		const schoolDefaults = schoolName ? defaultsBySchool?.[schoolName] : null;
 		if (!schoolDefaults) return;
