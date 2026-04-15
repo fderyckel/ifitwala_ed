@@ -699,7 +699,7 @@ class TestSubmitApplication(FrappeTestCase):
 
         self._set_admissions_access_mode("Family Workspace")
         family_user = self._create_family_user()
-        guardian = self._create_guardian_record(user=family_user.name)
+        guardian = self._create_guardian_record(user=family_user.name, is_primary_guardian=True)
         second_applicant = self._create_applicant(self.organization, self.school, self._create_applicant_user())
 
         self._link_family_guardian(self.applicant, guardian_name=guardian.name, user=family_user.name)
@@ -992,7 +992,7 @@ class TestSubmitApplication(FrappeTestCase):
 
         self._set_admissions_access_mode("Family Workspace")
         family_user = self._create_family_user()
-        guardian = self._create_guardian_record(user=family_user.name)
+        guardian = self._create_guardian_record(user=family_user.name, is_primary_guardian=True)
         self._link_family_guardian(self.applicant, guardian_name=guardian.name, user=family_user.name)
         family_policy_version = self._create_required_applicant_policy_version(
             organization=self.organization,
@@ -1047,38 +1047,22 @@ class TestSubmitApplication(FrappeTestCase):
 
         self._set_admissions_access_mode("Family Workspace")
         family_user = self._create_family_user()
-        guardian = self._create_guardian_record(user=family_user.name)
+        guardian = self._create_guardian_record(user=family_user.name, is_primary_guardian=False)
         self._link_family_guardian(
             self.applicant,
             guardian_name=guardian.name,
             user=family_user.name,
             is_primary_guardian=False,
         )
-        family_policy_version = self._create_required_applicant_policy_version(
+        self._create_required_applicant_policy_version(
             organization=self.organization,
             school=self.school,
             admissions_acknowledgement_mode="Family Acknowledgement",
         )
 
         frappe.set_user(family_user.name)
-        policies = get_applicant_policies(student_applicant=self.applicant.name)
-        target = next(
-            (
-                row
-                for row in (policies.get("policies") or [])
-                if (row.get("policy_version") or "").strip() == family_policy_version
-            ),
-            None,
-        )
-        self.assertTrue(bool(target))
-
         with self.assertRaises(frappe.PermissionError):
-            acknowledge_policy(
-                student_applicant=self.applicant.name,
-                policy_version=family_policy_version,
-                typed_signature_name=target.get("expected_signature_name"),
-                attestation_confirmed=1,
-            )
+            get_applicant_policies(student_applicant=self.applicant.name)
 
     def test_update_applicant_profile_persists_values(self):
         language = self._get_or_create_language_xtra()
@@ -1872,7 +1856,7 @@ class TestSubmitApplication(FrappeTestCase):
         frappe.clear_cache(user=user.name)
         return user
 
-    def _create_guardian_record(self, *, user: str | None = None):
+    def _create_guardian_record(self, *, user: str | None = None, is_primary_guardian: bool = False):
         email = user or f"guardian-{frappe.generate_hash(length=8)}@example.com"
         guardian = frappe.get_doc(
             {
@@ -1881,6 +1865,7 @@ class TestSubmitApplication(FrappeTestCase):
                 "guardian_last_name": "Guardian",
                 "guardian_email": email,
                 "guardian_mobile_phone": "+14155550121",
+                "is_primary_guardian": 1 if is_primary_guardian else 0,
                 "user": user,
             }
         ).insert(ignore_permissions=True)

@@ -1,6 +1,6 @@
 # Education File Semantics And Cross-App Upload Contract
 
-Status: Proposal
+Status: Accepted and Phase 1 implemented
 Date: 2026-04-15
 Related current-state docs:
 
@@ -13,9 +13,9 @@ Related current-state docs:
 
 - Keep `ifitwala_drive` strict. It should reject stale or unknown governance values.
 - Keep `ifitwala_ed` responsible for education workflow semantics, tenant scope, and the meaning of each upload surface.
-- Phase 1 should unblock current failures by mapping reusable teaching files onto the existing allowed purpose `academic_report`.
-- Phase 2 should introduce an education-oriented purpose `learning_resource` across Ed, Drive, metadata, retention rules, tests, and docs in one coordinated cross-app change.
-- Phase 3 should replace scattered hand-written upload dicts with one shared, versioned cross-app contract per workflow.
+- `learning_resource` is now the implemented governed purpose for reusable teaching-resource workflows in both apps.
+- `Supporting Material` and task resource attachments now use `learning_resource`.
+- The next architecture phase should replace scattered hand-written upload dicts with one shared, versioned cross-app contract per workflow.
 
 ## Problem Statement
 
@@ -29,10 +29,10 @@ Recent upload failures show the same root problem:
 The concrete example is `Supporting Material`:
 
 - product meaning: reusable instructional resource
-- current emergency-compatible purpose: `academic_report`
-- better education meaning: `learning_resource`
+- retired emergency-compatible purpose: `academic_report`
+- implemented education meaning: `learning_resource`
 
-`academic_report` is serviceable as a short-term compatibility purpose, but it is semantically wrong for slides, worksheets, lab handouts, readers, exemplars, and similar classroom resources.
+`academic_report` was serviceable as a short-term compatibility purpose, but it is semantically wrong for slides, worksheets, lab handouts, readers, exemplars, and similar classroom resources.
 
 ## Education-Driven Semantic Principles
 
@@ -146,8 +146,8 @@ This proposal does not try to redesign every purpose at once. It tightens the ed
 
 | Upload surface | Current runtime purpose | Proposed target purpose | Why |
 | --- | --- | --- | --- |
-| `Supporting Material` file upload | `academic_report` | `learning_resource` | reusable teaching file shared into plans, units, tasks, or class context |
-| Task resource attachment | `academic_report` | `learning_resource` | teacher-provided file that helps complete or understand work |
+| `Supporting Material` file upload | `learning_resource` | `learning_resource` | reusable teaching file shared into plans, units, tasks, or class context |
+| Task resource attachment | `learning_resource` | `learning_resource` | teacher-provided file that helps complete or understand work |
 | Task submission attachment | `assessment_submission` | `assessment_submission` | learner work product |
 | Marked or feedback attachment | `assessment_feedback` | `assessment_feedback` | returned evaluation artifact |
 | Prior transcript / report card in admissions | `academic_report` | `academic_report` | formal evaluative record |
@@ -243,6 +243,21 @@ Finalize should fail only when:
 
 This is better than comparing many ad hoc strings assembled in multiple modules.
 
+## Current Implementation Status
+
+Implemented in this rollout:
+
+- `learning_resource` added to the canonical Ed purpose registry
+- `learning_resource` added to the governed metadata enums used by `File Classification` and applicant document configuration
+- `Supporting Material` upload builders moved from `academic_report` to `learning_resource`
+- task resource upload builders moved from `academic_report` to `learning_resource`
+- Drive-side session and file validation now rejects unknown purposes explicitly, including stale teaching-resource aliases
+
+Intentionally not changed in this rollout:
+
+- admissions, transcript, report-card, and other evaluative workflows that still belong on `academic_report`
+- existing binding-role names such as `general_reference`, which remain a compatibility layer until Drive binding semantics are separately normalized
+
 ## Documentation Proposal
 
 The docs should separate:
@@ -294,50 +309,30 @@ Ed should translate those into concise user-facing errors such as:
 
 The browser should not receive a raw mixed message assembled from low-level exceptions.
 
-## Phased Rollout
+## Rollout Status
 
-### Phase 1: Immediate unblock
+### Completed in this rollout
 
-Implement now:
+- retired the stale `general_reference` purpose usage in Ed teaching-resource builders
+- added `learning_resource` to the canonical purpose set
+- updated File Classification and applicant document metadata to the canonical purpose catalog
+- updated Drive validators and governed file models to reject unknown purposes explicitly
+- migrated `Supporting Material` and task resource workflows to `learning_resource`
+- added parity and regression tests across both repos
 
-- remap `Supporting Material` uploads in Ed from `general_reference` to `academic_report`
-- update current-state docs to match runtime behavior
-- add regression tests around the supporting-material contract
-
-Reason:
-
-- this fixes the broken upload path without inventing an unsupported new purpose in only one app
-
-### Phase 2: Education semantics upgrade
-
-Cross-app change:
-
-- add `learning_resource` to the canonical purpose set
-- add retention and governance support for it
-- update File Classification metadata, Drive validators, and Ed builders together
-- document exact scope and examples
-
-### Phase 3: Workflow migration
-
-Cross-app change:
-
-- migrate `Supporting Material` and task resource workflows from `academic_report` to `learning_resource`
-- add a temporary alias or data migration only if required for existing files
-
-### Phase 4: Contract centralization
+### Next architecture phase
 
 Cross-app change:
 
 - replace hand-written workflow dicts with shared `GovernedUploadSpec` definitions
-- add parity tests and deploy checks
+- add deploy-time parity checks and contract snapshots so Ed and Drive cannot drift silently
 
 ## Recommendation
 
-Approve this proposal as the semantic direction:
+Accepted semantic direction:
 
-- immediate compatibility fix now
-- `learning_resource` as the education-oriented target purpose
+- `learning_resource` as the education-oriented teaching-resource purpose
 - strict Drive validation retained
 - shared workflow-spec contract as the long-term integration model
 
-This gives the repo a safe production unblock today and a clearer education-first file model for the next cross-app phase.
+This rollout gives the repo a clearer education-first file model now and defines the next contract-centralization phase without keeping stale emergency guidance in the canonical note.

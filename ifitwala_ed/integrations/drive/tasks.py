@@ -6,8 +6,10 @@ from typing import Any
 import frappe
 from frappe import _
 
+from ifitwala_ed.utilities.file_classification_contract import LEARNING_RESOURCE_PURPOSE
+
 _TASK_RESOURCE_DATA_CLASS = "academic"
-_TASK_RESOURCE_PURPOSE = "academic_report"
+_TASK_RESOURCE_PURPOSE = LEARNING_RESOURCE_PURPOSE
 _TASK_RESOURCE_RETENTION_POLICY = "until_program_end_plus_1y"
 _TASK_RESOURCE_SLOT_PREFIX = "supporting_material__"
 _TASK_SUBMISSION_DATA_CLASS = "assessment"

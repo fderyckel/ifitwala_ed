@@ -552,6 +552,7 @@ medical_record
 visa_document
 policy_acknowledgement
 background_check
+learning_resource
 academic_report
 employee_profile_display
 guardian_profile_display

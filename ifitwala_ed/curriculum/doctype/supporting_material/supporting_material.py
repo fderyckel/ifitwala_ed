@@ -36,7 +36,7 @@ class SupportingMaterial(Document):
         self.reference_url = (self.reference_url or "").strip() or None
         self.file = (self.file or "").strip() or None
         self.file_name = (self.file_name or "").strip() or None
-        self.file_size = (self.file_size or "").strip() or None
+        self.file_size = None if self.file_size is None else str(self.file_size).strip() or None
         self.modality = normalize_material_modality(self.modality)
 
         if not self.title:

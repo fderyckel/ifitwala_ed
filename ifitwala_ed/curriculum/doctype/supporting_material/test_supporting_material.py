@@ -84,6 +84,24 @@ class TestSupportingMaterial(TestCase):
             with self.assertRaises(StubValidationError):
                 material._validate_type_specific_fields()
 
+    def test_normalize_accepts_numeric_file_size_from_governed_upload_finalize(self):
+        with _supporting_material_module() as module:
+            material = module.SupportingMaterial()
+            material.flags = SimpleNamespace(allow_missing_file=True)
+            material.title = "Worksheet"
+            material.course = "COURSE-1"
+            material.material_type = "File"
+            material.description = ""
+            material.reference_url = ""
+            material.file = "FILE-1"
+            material.file_name = "worksheet.pdf"
+            material.file_size = 2048
+            material.modality = "Use"
+
+            material._normalize()
+
+        self.assertEqual(material.file_size, "2048")
+
     def test_validate_governed_file_rejects_wrong_attachment_owner(self):
         with _supporting_material_module() as module:
 

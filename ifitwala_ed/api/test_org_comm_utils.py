@@ -244,6 +244,72 @@ class TestOrgCommUtils(FrappeTestCase):
 
         self.assertTrue(matched)
 
+    def test_check_audience_match_allows_academic_admin_school_scope_without_staff_recipient_overlap(self):
+        audiences = [
+            frappe._dict(
+                target_mode="School Scope",
+                school="SCH-CHILD",
+                include_descendants=0,
+                team=None,
+                student_group=None,
+                to_staff=0,
+                to_students=1,
+                to_guardians=1,
+            )
+        ]
+
+        with patch.object(org_comm_utils.frappe, "get_all", return_value=audiences):
+            matched = org_comm_utils.check_audience_match(
+                "COMM-SCHOOL",
+                "academic-admin@example.com",
+                ["Academic Admin"],
+                frappe._dict(
+                    name="EMP-1",
+                    organization="ORG-1",
+                    school="SCH-PARENT",
+                    school_names=["SCH-PARENT", "SCH-CHILD"],
+                ),
+            )
+
+        self.assertTrue(matched)
+
+    def test_check_audience_match_allows_academic_admin_student_group_without_filter(self):
+        audiences = [
+            frappe._dict(
+                target_mode="Student Group",
+                school=None,
+                include_descendants=0,
+                team=None,
+                student_group="SG-1",
+                to_staff=0,
+                to_students=1,
+                to_guardians=1,
+            )
+        ]
+
+        def fake_cached_value(doctype, name, fieldname):
+            if (doctype, name, fieldname) == ("Student Group", "SG-1", "school"):
+                return "SCH-CHILD"
+            return None
+
+        with (
+            patch.object(org_comm_utils.frappe, "get_all", return_value=audiences),
+            patch.object(org_comm_utils.frappe, "get_cached_value", side_effect=fake_cached_value),
+        ):
+            matched = org_comm_utils.check_audience_match(
+                "COMM-SG",
+                "academic-admin@example.com",
+                ["Academic Admin"],
+                frappe._dict(
+                    name="EMP-1",
+                    organization="ORG-1",
+                    school="SCH-PARENT",
+                    school_names=["SCH-PARENT", "SCH-CHILD"],
+                ),
+            )
+
+        self.assertTrue(matched)
+
     def test_check_audience_match_rejects_academic_admin_student_group_outside_school_scope(self):
         audiences = [
             frappe._dict(

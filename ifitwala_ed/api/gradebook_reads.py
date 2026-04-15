@@ -59,11 +59,7 @@ def get_grid(api, filters=None, **kwargs):
 
     task_map = api._get_task_summary_map([row.get("task") for row in deliveries])
     if task_type:
-        deliveries = [
-            row
-            for row in deliveries
-            if (task_map.get(row.get("task")) or {}).get("task_type") == task_type
-        ]
+        deliveries = [row for row in deliveries if (task_map.get(row.get("task")) or {}).get("task_type") == task_type]
         if not deliveries:
             return {"deliveries": [], "students": [], "cells": []}
 
@@ -537,7 +533,9 @@ def get_task_gradebook(api, task: str):
     }
 
 
-def get_task_quiz_manual_review(api, task: str, view_mode: str | None = None, quiz_question: str | None = None, student: str | None = None):
+def get_task_quiz_manual_review(
+    api, task: str, view_mode: str | None = None, quiz_question: str | None = None, student: str | None = None
+):
     if not api._can_read_gradebook():
         frappe.throw(_("Not permitted."), frappe.PermissionError)
     api._require(task, "Task Delivery")

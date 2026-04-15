@@ -414,145 +414,139 @@
 					class="scroll-mt-40 space-y-6 rounded-[2rem] border border-line-soft bg-white p-6 shadow-soft"
 				>
 					<div class="course-plan-unit-editor-header">
-						<div class="min-w-0 space-y-4">
-							<div>
-								<p class="type-overline text-ink/60">
-									{{ creatingUnit ? 'New Unit Plan' : 'Selected Unit' }}
-								</p>
-								<h2 class="mt-2 type-h2 text-ink">
-									{{ unitEditorHeading }}
-								</h2>
-							</div>
-							<div
-								v-if="!isSectionCollapsed(SECTION_IDS.unitEditor)"
-								class="course-plan-unit-editor-nav"
-							>
-								<button
-									type="button"
-									class="course-plan-unit-nav-pill"
-									@click="scrollToUnitPanel(UNIT_PANEL_IDS.setup)"
-								>
-									Basics
-								</button>
-								<button
-									type="button"
-									class="course-plan-unit-nav-pill"
-									@click="scrollToUnitPanel(UNIT_PANEL_IDS.narrative)"
-								>
-									Core Narrative
-								</button>
-								<button
-									type="button"
-									class="course-plan-unit-nav-pill"
-									@click="scrollToUnitPanel(UNIT_PANEL_IDS.learningFocus)"
-								>
-									Learning Focus
-								</button>
-								<button
-									type="button"
-									class="course-plan-unit-nav-pill"
-									@click="jumpToSection(SECTION_IDS.standards)"
-								>
-									Standards
-								</button>
-								<button
-									type="button"
-									class="course-plan-unit-nav-pill"
-									@click="jumpToSection(SECTION_IDS.reflections)"
-								>
-									Reflections
-								</button>
-								<button
-									type="button"
-									class="course-plan-unit-nav-pill"
-									@click="jumpToSection(SECTION_IDS.unitResources)"
-								>
-									Resources
-								</button>
-							</div>
+						<div>
+							<p class="type-overline text-ink/60">
+								{{ creatingUnit ? 'New Unit Plan' : 'Selected Unit' }}
+							</p>
+							<h2 class="mt-2 type-h2 text-ink">
+								{{ unitEditorHeading }}
+							</h2>
 						</div>
-						<div class="course-plan-unit-editor-header__aside">
-							<div class="course-plan-unit-editor-summary">
-								<span v-if="!creatingUnit" class="course-plan-unit-summary-pill">
-									<span class="course-plan-unit-summary-pill__label">Unit</span>
-									<span class="course-plan-unit-summary-pill__value">
-										{{ unitForm.unit_order || '—' }}
-									</span>
+						<div class="course-plan-unit-editor-summary">
+							<span v-if="!creatingUnit" class="course-plan-unit-summary-pill">
+								<span class="course-plan-unit-summary-pill__label">Unit</span>
+								<span class="course-plan-unit-summary-pill__value">
+									{{ unitForm.unit_order || '—' }}
 								</span>
-								<span v-if="unitForm.unit_status" class="course-plan-unit-summary-pill">
-									<span class="course-plan-unit-summary-pill__label">Status</span>
-									<span class="course-plan-unit-summary-pill__value">
-										{{ unitForm.unit_status }}
-									</span>
+							</span>
+							<span v-if="unitForm.unit_status" class="course-plan-unit-summary-pill">
+								<span class="course-plan-unit-summary-pill__label">Status</span>
+								<span class="course-plan-unit-summary-pill__value">
+									{{ unitForm.unit_status }}
 								</span>
-								<span
-									v-if="
-										selectedUnitTimelineState?.start_date && selectedUnitTimelineState?.end_date
-									"
-									class="course-plan-unit-summary-pill"
-								>
-									<span class="course-plan-unit-summary-pill__label">Timeline</span>
-									<span class="course-plan-unit-summary-pill__value">
-										{{ selectedUnitTimelineState.start_date }} →
-										{{ selectedUnitTimelineState.end_date }}
-									</span>
+							</span>
+							<span
+								v-if="selectedUnitTimelineState?.start_date && selectedUnitTimelineState?.end_date"
+								class="course-plan-unit-summary-pill"
+							>
+								<span class="course-plan-unit-summary-pill__label">Timeline</span>
+								<span class="course-plan-unit-summary-pill__value">
+									{{ selectedUnitTimelineState.start_date }} →
+									{{ selectedUnitTimelineState.end_date }}
 								</span>
-								<button
-									type="button"
-									class="course-plan-unit-summary-pill course-plan-unit-summary-pill--toggle"
-									:aria-expanded="!isSectionCollapsed(SECTION_IDS.unitEditor)"
-									@click="toggleSection(SECTION_IDS.unitEditor)"
-								>
-									<span class="course-plan-unit-summary-pill__label">Section</span>
-									<span class="course-plan-unit-summary-pill__value">
-										{{ isSectionCollapsed(SECTION_IDS.unitEditor) ? 'Show' : 'Hide' }}
-									</span>
-									<span class="course-plan-unit-summary-pill__icon">
-										{{ isSectionCollapsed(SECTION_IDS.unitEditor) ? '+' : '-' }}
-									</span>
-								</button>
-								<span
-									v-if="canManagePlan"
-									class="course-plan-unit-summary-pill"
-									:class="
-										unitPending
-											? 'border-jacaranda/35 bg-jacaranda/16 text-jacaranda'
-											: unitFormDirty
-												? 'border-flame/25 bg-flame/10 text-flame'
-												: 'border-line-soft bg-white/95 text-ink/72'
-									"
-								>
-									<span class="course-plan-unit-summary-pill__label">Save State</span>
-									<span class="course-plan-unit-summary-pill__value">
-										{{ unitSaveStatusLabel }}
-									</span>
+							</span>
+							<button
+								type="button"
+								class="course-plan-unit-summary-pill course-plan-unit-summary-pill--toggle"
+								:aria-expanded="!isSectionCollapsed(SECTION_IDS.unitEditor)"
+								@click="toggleSection(SECTION_IDS.unitEditor)"
+							>
+								<span class="course-plan-unit-summary-pill__label">Section</span>
+								<span class="course-plan-unit-summary-pill__value">
+									{{ isSectionCollapsed(SECTION_IDS.unitEditor) ? 'Show' : 'Hide' }}
 								</span>
-								<span
-									v-if="creatingUnit"
-									class="course-plan-unit-summary-pill border-jacaranda/20 bg-white/92 text-ink/72"
-								>
-									<span class="course-plan-unit-summary-pill__label">Mode</span>
-									<span class="course-plan-unit-summary-pill__value">New unit</span>
+								<span class="course-plan-unit-summary-pill__icon">
+									{{ isSectionCollapsed(SECTION_IDS.unitEditor) ? '+' : '-' }}
 								</span>
-								<button
-									v-if="creatingUnit"
-									type="button"
-									class="if-action if-action--subtle course-plan-unit-inline-action"
-									@click="cancelNewUnit"
-								>
-									Cancel New Unit
-								</button>
-								<button
-									v-if="canManagePlan"
-									type="button"
-									class="if-action course-plan-unit-save-button course-plan-unit-inline-action"
-									data-testid="unit-save-header-button"
-									:disabled="!canSaveUnitAction"
-									@click="handleSaveUnitPlan"
-								>
-									{{ unitSaveActionLabel }}
-								</button>
-							</div>
+							</button>
+							<span
+								v-if="canManagePlan"
+								class="course-plan-unit-summary-pill"
+								:class="
+									unitPending
+										? 'border-jacaranda/35 bg-jacaranda/16 text-jacaranda'
+										: unitFormDirty
+											? 'border-flame/25 bg-flame/10 text-flame'
+											: 'border-line-soft bg-white/95 text-ink/72'
+								"
+							>
+								<span class="course-plan-unit-summary-pill__label">Save State</span>
+								<span class="course-plan-unit-summary-pill__value">
+									{{ unitSaveStatusLabel }}
+								</span>
+							</span>
+							<span
+								v-if="creatingUnit"
+								class="course-plan-unit-summary-pill border-jacaranda/20 bg-white/92 text-ink/72"
+							>
+								<span class="course-plan-unit-summary-pill__label">Mode</span>
+								<span class="course-plan-unit-summary-pill__value">New unit</span>
+							</span>
+							<button
+								v-if="creatingUnit"
+								type="button"
+								class="if-action if-action--subtle course-plan-unit-inline-action"
+								@click="cancelNewUnit"
+							>
+								Cancel New Unit
+							</button>
+							<button
+								v-if="canManagePlan"
+								type="button"
+								class="if-action course-plan-unit-save-button course-plan-unit-inline-action"
+								data-testid="unit-save-header-button"
+								:disabled="!canSaveUnitAction"
+								@click="handleSaveUnitPlan"
+							>
+								{{ unitSaveActionLabel }}
+							</button>
+						</div>
+						<div
+							v-if="!isSectionCollapsed(SECTION_IDS.unitEditor)"
+							class="course-plan-unit-editor-nav"
+						>
+							<button
+								type="button"
+								class="course-plan-unit-nav-pill"
+								@click="scrollToUnitPanel(UNIT_PANEL_IDS.setup)"
+							>
+								Basics
+							</button>
+							<button
+								type="button"
+								class="course-plan-unit-nav-pill"
+								@click="scrollToUnitPanel(UNIT_PANEL_IDS.narrative)"
+							>
+								Core Narrative
+							</button>
+							<button
+								type="button"
+								class="course-plan-unit-nav-pill"
+								@click="scrollToUnitPanel(UNIT_PANEL_IDS.learningFocus)"
+							>
+								Learning Focus
+							</button>
+							<button
+								type="button"
+								class="course-plan-unit-nav-pill"
+								@click="jumpToSection(SECTION_IDS.standards)"
+							>
+								Standards
+							</button>
+							<button
+								type="button"
+								class="course-plan-unit-nav-pill"
+								@click="jumpToSection(SECTION_IDS.reflections)"
+							>
+								Reflections
+							</button>
+							<button
+								type="button"
+								class="course-plan-unit-nav-pill"
+								@click="jumpToSection(SECTION_IDS.unitResources)"
+							>
+								Resources
+							</button>
 						</div>
 					</div>
 
@@ -3341,25 +3335,18 @@ onBeforeUnmount(() => {
 .course-plan-unit-editor-header {
 	display: flex;
 	flex-direction: column;
-	gap: 1.25rem;
+	gap: 1rem;
 }
 
 .course-plan-unit-editor-nav,
 .course-plan-unit-editor-summary {
 	display: flex;
 	flex-wrap: nowrap;
+	align-items: center;
 	gap: 0.75rem;
 	overflow-x: auto;
 	padding-bottom: 0.1rem;
 	scrollbar-width: thin;
-}
-
-.course-plan-unit-editor-header__aside {
-	display: flex;
-	flex-direction: row;
-	align-items: flex-start;
-	justify-content: flex-end;
-	min-width: 0;
 }
 
 .course-plan-unit-nav-pill,
@@ -3478,7 +3465,7 @@ onBeforeUnmount(() => {
 
 .course-plan-unit-inline-action {
 	flex-shrink: 0;
-	align-self: stretch;
+	align-self: center;
 	white-space: nowrap;
 }
 
@@ -3590,20 +3577,6 @@ onBeforeUnmount(() => {
 @media (min-width: 768px) {
 	.course-plan-unit-panel {
 		padding: 1.4rem;
-	}
-
-	.course-plan-unit-editor-header {
-		flex-direction: row;
-		align-items: flex-start;
-		justify-content: space-between;
-	}
-
-	.course-plan-unit-editor-header__aside {
-		max-width: min(48rem, 58vw);
-	}
-
-	.course-plan-unit-editor-summary {
-		justify-content: flex-end;
 	}
 
 	.course-plan-unit-panel__header,

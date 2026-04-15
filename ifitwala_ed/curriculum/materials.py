@@ -7,6 +7,7 @@ import frappe
 from frappe import _
 
 from ifitwala_ed.api import student_groups as student_groups_api
+from ifitwala_ed.utilities.file_classification_contract import LEARNING_RESOURCE_PURPOSE
 
 MATERIAL_TYPE_FILE = "File"
 MATERIAL_TYPE_REFERENCE_LINK = "Reference Link"
@@ -25,7 +26,7 @@ MATERIAL_CLASS_OWNED_ANCHORS = {"Class Teaching Plan", "Class Session"}
 MATERIAL_FILE_SLOT = "material_file"
 MATERIAL_BINDING_ROLE = "general_reference"
 MATERIAL_DATA_CLASS = "academic"
-MATERIAL_PURPOSE = "academic_report"
+MATERIAL_PURPOSE = LEARNING_RESOURCE_PURPOSE
 MATERIAL_RETENTION_POLICY = "until_program_end_plus_1y"
 
 _ADMIN_ROLES = {"Administrator", "System Manager", "Academic Admin"}

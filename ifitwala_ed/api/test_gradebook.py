@@ -421,9 +421,7 @@ class TestGradebookApi(TestCase):
             }
             module._assert_group_access = lambda student_group: None
             module._get_student_display_map = lambda student_ids: {"STU-1": "Ada Lovelace"}
-            module._get_student_meta_map = lambda student_ids: {
-                "STU-1": {"student_id": "S-001", "student_image": None}
-            }
+            module._get_student_meta_map = lambda student_ids: {"STU-1": {"student_id": "S-001", "student_image": None}}
 
             payload = module.get_grid(
                 {
@@ -472,7 +470,9 @@ class TestGradebookApi(TestCase):
                 }
             ],
         )
-        self.assertEqual(payload["cells"][0]["official"]["criteria"], [{"criteria": "CRIT-1", "level": "Secure", "points": 4}])
+        self.assertEqual(
+            payload["cells"][0]["official"]["criteria"], [{"criteria": "CRIT-1", "level": "Secure", "points": 4}]
+        )
         self.assertTrue(payload["cells"][0]["flags"]["has_new_submission"])
         self.assertTrue(payload["cells"][1]["flags"]["is_published"])
 

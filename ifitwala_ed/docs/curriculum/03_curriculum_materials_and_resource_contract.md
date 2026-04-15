@@ -130,7 +130,7 @@ Locked rules:
 - open/download URLs must be server-resolved
 - raw private file paths are not a valid SPA contract
 - Ifitwala_Ed owns context, placement, and permission checks
-- current supporting-material upload classification uses purpose `academic_report` and binding role `general_reference`; the education-oriented `learning_resource` replacement is proposed in `ifitwala_ed/docs/files_and_policies/files_07_education_file_semantics_and_cross_app_contract.md`
+- current supporting-material upload classification uses purpose `learning_resource`; the binding role remains `general_reference` in the current compatibility rollout so existing Drive binding semantics do not drift
 
 ## Permissions And Scope
 

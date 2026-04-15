@@ -428,13 +428,24 @@ def check_audience_match(
                 return True
             continue
 
-        enabled_recipients = _get_enabled_recipient_flags(aud)
-        if not enabled_recipients:
-            continue
-        if user_recipient_flags and not (enabled_recipients & user_recipient_flags):
-            continue
-
         if target_mode == "School Scope":
+            if is_academic_admin:
+                if filter_school_scope is not None and aud.school:
+                    if aud.school not in filter_school_scope:
+                        continue
+                if _school_scope_match(
+                    aud.school,
+                    aud.include_descendants,
+                    user_school_names,
+                    descendants_cache,
+                ):
+                    return True
+                continue
+            enabled_recipients = _get_enabled_recipient_flags(aud)
+            if not enabled_recipients:
+                continue
+            if user_recipient_flags and not (enabled_recipients & user_recipient_flags):
+                continue
             if filter_school_scope is not None and aud.school:
                 if aud.school not in filter_school_scope:
                     continue
@@ -448,6 +459,15 @@ def check_audience_match(
             continue
 
         if target_mode == "Organization":
+            if is_academic_admin:
+                if _organization_scope_match(comm_org, user_organization, organization_ancestor_cache):
+                    return True
+                continue
+            enabled_recipients = _get_enabled_recipient_flags(aud)
+            if not enabled_recipients:
+                continue
+            if user_recipient_flags and not (enabled_recipients & user_recipient_flags):
+                continue
             if not (set(roles or []) & STAFF_ROLES):
                 continue
             if _organization_scope_match(comm_org, user_organization, organization_ancestor_cache):
@@ -455,6 +475,15 @@ def check_audience_match(
             continue
 
         if target_mode == "Team":
+            if is_academic_admin:
+                if aud.team:
+                    return True
+                continue
+            enabled_recipients = _get_enabled_recipient_flags(aud)
+            if not enabled_recipients:
+                continue
+            if user_recipient_flags and not (enabled_recipients & user_recipient_flags):
+                continue
             if aud.team and (is_academic_admin or aud.team in user_teams):
                 return True
             continue
@@ -463,6 +492,11 @@ def check_audience_match(
             if is_academic_admin:
                 if _student_group_in_allowed_school_scope(aud.student_group, user_school_names):
                     return True
+                continue
+            enabled_recipients = _get_enabled_recipient_flags(aud)
+            if not enabled_recipients:
+                continue
+            if user_recipient_flags and not (enabled_recipients & user_recipient_flags):
                 continue
             if aud.student_group and (aud.student_group in instructor_groups or aud.student_group in student_groups):
                 return True

@@ -187,6 +187,7 @@ Rules:
     - visible school-scoped and student-group communications may come from any school belonging to `Employee.organization` or its descendant organizations
     - organization-targeted staff rows may also resolve within that descendant-organization scope
 15. Shared org-communication interaction endpoints (`summary`, `thread`, `react`, `comment`, `mark read`) must use the same effective academic-admin visibility context as archive/detail so a visible communication never becomes non-interactive solely because the user has no default school.
+16. Within that effective scope, `Academic Admin` archive/detail and shared interaction visibility does not depend on recipient overlap (`to_staff` vs `to_students` / `to_guardians`); scoped student-group and school-scope communications remain readable and interactive for the admin lens.
 
 ## 5. Migration
 

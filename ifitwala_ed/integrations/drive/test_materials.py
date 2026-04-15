@@ -33,18 +33,18 @@ def _drive_materials_module():
 
 
 class TestDriveSupportingMaterialContract(TestCase):
-    def test_build_supporting_material_upload_contract_uses_academic_report_purpose(self):
+    def test_build_supporting_material_upload_contract_uses_learning_resource_purpose(self):
         with _drive_materials_module() as module:
             payload = module.build_supporting_material_upload_contract(
                 SimpleNamespace(name="MAT-0001", course="COURSE-1")
             )
 
-        self.assertEqual(payload["purpose"], "academic_report")
+        self.assertEqual(payload["purpose"], "learning_resource")
         self.assertEqual(payload["slot"], "material_file")
         self.assertEqual(payload["organization"], "ORG-1")
         self.assertEqual(payload["school"], "SCH-1")
 
-    def test_validate_supporting_material_finalize_context_rejects_stale_general_reference_purpose(self):
+    def test_validate_supporting_material_finalize_context_rejects_stale_academic_report_purpose(self):
         upload_session_doc = SimpleNamespace(
             owner_doctype="Supporting Material",
             owner_name="MAT-0001",
@@ -55,7 +55,7 @@ class TestDriveSupportingMaterialContract(TestCase):
             intended_primary_subject_type="Organization",
             intended_primary_subject_id="ORG-1",
             intended_data_class="academic",
-            intended_purpose="general_reference",
+            intended_purpose="academic_report",
             intended_retention_policy="until_program_end_plus_1y",
             intended_slot="material_file",
         )
