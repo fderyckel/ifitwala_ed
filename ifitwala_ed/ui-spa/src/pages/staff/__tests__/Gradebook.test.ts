@@ -300,14 +300,28 @@ async function openTask(title: string) {
 	await flushUi();
 }
 
+async function selectGroup(label: string) {
+	const groupButton = Array.from(document.querySelectorAll('button')).find(button =>
+		(button.textContent || '').includes(label)
+	);
+	expect(groupButton).not.toBeNull();
+	groupButton!.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+	await flushUi();
+}
+
 async function switchToOverview() {
 	const overviewButton = Array.from(document.querySelectorAll('button')).find(button =>
 		(button.textContent || '').includes('Overview')
 	);
 	expect(overviewButton).not.toBeNull();
 	overviewButton!.dispatchEvent(new MouseEvent('click', { bubbles: true }));
-	await flushUi();
-	await flushUi();
+	for (let index = 0; index < 10; index += 1) {
+		await new Promise(resolve => window.setTimeout(resolve, 10));
+		await flushUi();
+		if (document.body.textContent?.includes('Class Overview')) {
+			break;
+		}
+	}
 }
 
 afterEach(() => {

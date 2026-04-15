@@ -114,11 +114,16 @@
 				<article
 					v-for="card in dashboardMetricCards"
 					:key="card.id"
-					class="rounded-2xl border px-4 py-4 shadow-soft"
+					class="rounded-2xl border px-4 py-4"
 					:class="metricCardClasses(card.tone)"
 				>
 					<div class="flex items-start justify-between gap-3">
-						<p class="type-caption uppercase tracking-[0.14em] text-slate-500">{{ card.label }}</p>
+						<p
+							class="type-caption uppercase tracking-[0.14em]"
+							:class="metricLabelClasses(card.tone)"
+						>
+							{{ card.label }}
+						</p>
 						<p v-if="card.hint" class="type-caption text-slate-500">{{ card.hint }}</p>
 					</div>
 					<p class="mt-3 text-3xl font-semibold" :class="metricValueClasses(card.tone)">
@@ -195,10 +200,15 @@
 					<article
 						v-for="card in audienceMetricCards(section)"
 						:key="card.id"
-						class="rounded-2xl border px-4 py-4 shadow-soft"
+						class="rounded-2xl border px-4 py-4"
 						:class="metricCardClasses(card.tone)"
 					>
-						<p class="type-caption uppercase tracking-[0.14em] text-slate-500">{{ card.label }}</p>
+						<p
+							class="type-caption uppercase tracking-[0.14em]"
+							:class="metricLabelClasses(card.tone)"
+						>
+							{{ card.label }}
+						</p>
 						<p class="mt-3 text-3xl font-semibold" :class="metricValueClasses(card.tone)">
 							{{ card.value }}
 						</p>
@@ -819,11 +829,28 @@ function audienceMetricCards(section: PolicySignatureAudienceSection): MetricCar
 }
 
 function metricCardClasses(tone: MetricTone) {
-	if (tone === 'signed') return 'border-leaf/40 bg-leaf/10';
-	if (tone === 'pending') return 'border-flame/30 bg-flame/10';
-	if (tone === 'completion') return 'border-jacaranda/25 bg-jacaranda/10';
-	if (tone === 'muted') return 'border-sand/70 bg-sand/30';
-	return 'border-slate-200 bg-white';
+	const base = 'bg-[rgb(var(--surface-strong-rgb)/0.98)]';
+	if (tone === 'signed') {
+		return `${base} border-leaf/34 shadow-[0_16px_30px_rgb(var(--leaf-rgb)/0.08)]`;
+	}
+	if (tone === 'pending') {
+		return `${base} border-flame/34 shadow-[0_16px_30px_rgb(var(--flame-rgb)/0.08)]`;
+	}
+	if (tone === 'completion') {
+		return `${base} border-jacaranda/28 shadow-[0_16px_30px_rgb(var(--jacaranda-rgb)/0.08)]`;
+	}
+	if (tone === 'muted') {
+		return `${base} border-sand/82 shadow-[0_16px_28px_rgb(var(--clay-rgb)/0.06)]`;
+	}
+	return `${base} border-slate-200 shadow-[0_16px_28px_rgb(var(--ink-rgb)/0.05)]`;
+}
+
+function metricLabelClasses(tone: MetricTone) {
+	if (tone === 'signed') return 'text-canopy/75';
+	if (tone === 'pending') return 'text-flame/75';
+	if (tone === 'completion') return 'text-jacaranda/75';
+	if (tone === 'muted') return 'text-clay';
+	return 'text-slate-500';
 }
 
 function metricValueClasses(tone: MetricTone) {

@@ -200,8 +200,8 @@ describe('LearningStandardsPickerOverlay', () => {
 		expect(getLearningStandardPickerMock).toHaveBeenCalledTimes(3)
 		expect(getLearningStandardPickerMock).toHaveBeenNthCalledWith(2, {
 			unit_plan: 'UNIT-1',
-			framework_name: undefined,
-			program: 'IB-MYP-G6',
+			framework_name: 'IB MYP',
+			program: undefined,
 			strand: undefined,
 			substrand: undefined,
 			search_text: undefined,
@@ -209,8 +209,8 @@ describe('LearningStandardsPickerOverlay', () => {
 		expect(getLearningStandardPickerMock).toHaveBeenNthCalledWith(3, {
 			unit_plan: 'UNIT-1',
 			framework_name: 'IB MYP',
-			program: 'IB-MYP-G6',
-			strand: undefined,
+			program: undefined,
+			strand: 'Identity',
 			substrand: undefined,
 			search_text: undefined,
 		})

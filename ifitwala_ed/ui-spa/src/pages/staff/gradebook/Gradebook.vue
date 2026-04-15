@@ -325,7 +325,7 @@
 					:task-name="selectedTask?.name || null"
 					:focus-student="focusedStudent"
 				/>
-				<AsyncGradebookOverviewView
+				<GradebookOverviewView
 					v-else
 					:group="selectedGroup"
 					:school="filters.school"
@@ -342,7 +342,7 @@
 </template>
 
 <script setup lang="ts">
-import { defineAsyncComponent, computed, onMounted, reactive, ref, watch } from 'vue';
+import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { useRoute, useRouter, type LocationQueryRaw } from 'vue-router';
 import { Badge, Button, FeatherIcon, FormControl, toast } from 'frappe-ui';
 import { createGradebookService } from '@/lib/services/gradebook/gradebookService';
@@ -350,12 +350,9 @@ import { createStudentAttendanceService } from '@/lib/services/studentAttendance
 import type { FetchSchoolFilterContextResponse } from '@/types/contracts/studentAttendance';
 import type { GroupSummary } from '@/types/contracts/gradebook/fetch_groups';
 import type { TaskSummary } from '@/types/contracts/gradebook/fetch_group_tasks';
+import GradebookOverviewView from './components/GradebookOverviewView.vue';
 import GradebookTaskView from './components/GradebookTaskView.vue';
 import { formatDate, taskModeBadge } from './gradebookUtils';
-
-const AsyncGradebookOverviewView = defineAsyncComponent(
-	() => import('./components/GradebookOverviewView.vue')
-);
 
 const route = useRoute();
 const router = useRouter();

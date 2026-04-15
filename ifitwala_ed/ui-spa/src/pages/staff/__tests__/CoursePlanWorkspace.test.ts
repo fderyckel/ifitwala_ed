@@ -415,6 +415,11 @@ describe('CoursePlanWorkspace page', () => {
 		mountPage()
 		await flushUi()
 
+		expect(document.body.textContent || '').toContain('Unit 6: Reading the Plot Arc')
+		expect(document.body.textContent || '').toContain('Basics')
+		expect(document.body.textContent || '').toContain('Core Narrative')
+		expect(document.body.textContent || '').toContain('Learning Focus')
+		expect(document.body.textContent || '').not.toContain('Unit Workspace')
 		expect(document.body.textContent || '').not.toContain('RL.6.3')
 
 		const standardsToggle = document.querySelector(

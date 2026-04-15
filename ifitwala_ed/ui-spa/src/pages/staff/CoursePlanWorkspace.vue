@@ -413,159 +413,167 @@
 					:id="SECTION_IDS.unitEditor"
 					class="scroll-mt-40 space-y-6 rounded-[2rem] border border-line-soft bg-white p-6 shadow-soft"
 				>
-					<button
-						type="button"
-						class="flex w-full flex-col gap-4 text-left lg:flex-row lg:items-start lg:justify-between"
-						:aria-expanded="!isSectionCollapsed(SECTION_IDS.unitEditor)"
-						@click="toggleSection(SECTION_IDS.unitEditor)"
-					>
-						<div>
-							<p class="type-overline text-ink/60">
-								{{ creatingUnit ? 'New Unit Plan' : 'Selected Unit' }}
-							</p>
-							<h2 class="mt-2 type-h2 text-ink">
-								{{ creatingUnit ? 'Draft a governed unit' : selectedUnit?.title || 'Unit Plan' }}
-							</h2>
-							<p class="mt-2 type-body text-ink/80">
-								{{
-									isSectionCollapsed(SECTION_IDS.unitEditor)
-										? 'Open the governed unit content, standards, reflections, and shared resources.'
-										: 'Keep the unit backbone shared while class teaching plans continue to own pacing, sessions, and local delivery choices.'
-								}}
-							</p>
-						</div>
-						<div class="flex flex-wrap items-center gap-2">
-							<span v-if="!creatingUnit" class="chip">Unit {{ unitForm.unit_order || '—' }}</span>
-							<span v-if="unitForm.unit_status" class="chip">{{ unitForm.unit_status }}</span>
-							<span v-if="unitForm.duration" class="chip">{{ unitForm.duration }}</span>
-							<span v-if="unitForm.estimated_duration" class="chip">
-								{{ unitForm.estimated_duration }}
-							</span>
-							<span
-								v-if="selectedUnitTimelineState?.start_date && selectedUnitTimelineState?.end_date"
-								class="chip"
+					<div class="course-plan-unit-editor-header">
+						<div class="min-w-0 space-y-4">
+							<div>
+								<p class="type-overline text-ink/60">
+									{{ creatingUnit ? 'New Unit Plan' : 'Selected Unit' }}
+								</p>
+								<h2 class="mt-2 type-h2 text-ink">
+									{{ unitEditorHeading }}
+								</h2>
+							</div>
+							<div
+								v-if="!isSectionCollapsed(SECTION_IDS.unitEditor)"
+								class="course-plan-unit-editor-nav"
 							>
-								{{ selectedUnitTimelineState.start_date }} →
-								{{ selectedUnitTimelineState.end_date }}
-							</span>
-							<span class="chip">{{
-								isSectionCollapsed(SECTION_IDS.unitEditor) ? 'Show' : 'Hide'
-							}}</span>
+								<button
+									type="button"
+									class="course-plan-unit-nav-pill"
+									@click="scrollToUnitPanel(UNIT_PANEL_IDS.setup)"
+								>
+									Basics
+								</button>
+								<button
+									type="button"
+									class="course-plan-unit-nav-pill"
+									@click="scrollToUnitPanel(UNIT_PANEL_IDS.narrative)"
+								>
+									Core Narrative
+								</button>
+								<button
+									type="button"
+									class="course-plan-unit-nav-pill"
+									@click="scrollToUnitPanel(UNIT_PANEL_IDS.learningFocus)"
+								>
+									Learning Focus
+								</button>
+								<button
+									type="button"
+									class="course-plan-unit-nav-pill"
+									@click="jumpToSection(SECTION_IDS.standards)"
+								>
+									Standards
+								</button>
+								<button
+									type="button"
+									class="course-plan-unit-nav-pill"
+									@click="jumpToSection(SECTION_IDS.reflections)"
+								>
+									Reflections
+								</button>
+								<button
+									type="button"
+									class="course-plan-unit-nav-pill"
+									@click="jumpToSection(SECTION_IDS.unitResources)"
+								>
+									Resources
+								</button>
+							</div>
 						</div>
-					</button>
+						<div class="course-plan-unit-editor-header__aside">
+							<div class="course-plan-unit-editor-summary">
+								<span v-if="!creatingUnit" class="course-plan-unit-summary-pill">
+									<span class="course-plan-unit-summary-pill__label">Unit</span>
+									<span class="course-plan-unit-summary-pill__value">
+										{{ unitForm.unit_order || '—' }}
+									</span>
+								</span>
+								<span v-if="unitForm.unit_status" class="course-plan-unit-summary-pill">
+									<span class="course-plan-unit-summary-pill__label">Status</span>
+									<span class="course-plan-unit-summary-pill__value">
+										{{ unitForm.unit_status }}
+									</span>
+								</span>
+								<span v-if="unitForm.duration" class="course-plan-unit-summary-pill">
+									<span class="course-plan-unit-summary-pill__label">Duration</span>
+									<span class="course-plan-unit-summary-pill__value">
+										{{ unitForm.duration }}
+									</span>
+								</span>
+								<span v-if="unitForm.estimated_duration" class="course-plan-unit-summary-pill">
+									<span class="course-plan-unit-summary-pill__label">Estimate</span>
+									<span class="course-plan-unit-summary-pill__value">
+										{{ unitForm.estimated_duration }}
+									</span>
+								</span>
+								<span
+									v-if="
+										selectedUnitTimelineState?.start_date && selectedUnitTimelineState?.end_date
+									"
+									class="course-plan-unit-summary-pill"
+								>
+									<span class="course-plan-unit-summary-pill__label">Timeline</span>
+									<span class="course-plan-unit-summary-pill__value">
+										{{ selectedUnitTimelineState.start_date }} →
+										{{ selectedUnitTimelineState.end_date }}
+									</span>
+								</span>
+								<button
+									type="button"
+									class="course-plan-unit-summary-pill course-plan-unit-summary-pill--toggle"
+									:aria-expanded="!isSectionCollapsed(SECTION_IDS.unitEditor)"
+									@click="toggleSection(SECTION_IDS.unitEditor)"
+								>
+									<span class="course-plan-unit-summary-pill__label">Section</span>
+									<span class="course-plan-unit-summary-pill__value">
+										{{ isSectionCollapsed(SECTION_IDS.unitEditor) ? 'Show' : 'Hide' }}
+									</span>
+									<span class="course-plan-unit-summary-pill__icon">
+										{{ isSectionCollapsed(SECTION_IDS.unitEditor) ? '+' : '-' }}
+									</span>
+								</button>
+							</div>
+							<div v-if="canManagePlan" class="course-plan-unit-editor-actions">
+								<div class="flex flex-wrap gap-2">
+									<span
+										class="course-plan-unit-summary-pill"
+										:class="
+											unitPending
+												? 'border-jacaranda/35 bg-jacaranda/16 text-jacaranda'
+												: unitFormDirty
+													? 'border-flame/25 bg-flame/10 text-flame'
+													: 'border-line-soft bg-white/95 text-ink/72'
+										"
+									>
+										<span class="course-plan-unit-summary-pill__label">Save State</span>
+										<span class="course-plan-unit-summary-pill__value">
+											{{ unitSaveStatusLabel }}
+										</span>
+									</span>
+									<span
+										v-if="creatingUnit"
+										class="course-plan-unit-summary-pill border-jacaranda/20 bg-white/92 text-ink/72"
+									>
+										<span class="course-plan-unit-summary-pill__label">Mode</span>
+										<span class="course-plan-unit-summary-pill__value">New unit</span>
+									</span>
+								</div>
+								<div class="flex flex-wrap gap-2">
+									<button
+										v-if="creatingUnit"
+										type="button"
+										class="if-action if-action--subtle"
+										@click="cancelNewUnit"
+									>
+										Cancel New Unit
+									</button>
+									<button
+										type="button"
+										class="if-action course-plan-unit-save-button"
+										data-testid="unit-save-header-button"
+										:disabled="!canSaveUnitAction"
+										@click="handleSaveUnitPlan"
+									>
+										{{ unitSaveActionLabel }}
+									</button>
+								</div>
+							</div>
+						</div>
+					</div>
 
 					<template v-if="!isSectionCollapsed(SECTION_IDS.unitEditor)">
 						<template v-if="canManagePlan">
-							<section class="course-plan-unit-panel course-plan-unit-panel--hero space-y-5">
-								<div class="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
-									<div class="min-w-0 space-y-4">
-										<div>
-											<p class="type-overline text-jacaranda">Unit Workspace</p>
-											<h3 class="mt-1 type-h3 text-ink">
-												{{
-													creatingUnit
-														? 'Draft the governed unit structure'
-														: 'Refine the shared unit backbone'
-												}}
-											</h3>
-											<p class="mt-2 max-w-3xl type-caption text-ink/70">
-												Move through the sections below to update the governed unit setup, core
-												narrative, learning focus, standards, and reflections without losing your
-												place inside one long card.
-											</p>
-										</div>
-										<div class="flex flex-wrap gap-2">
-											<button
-												type="button"
-												class="chip cursor-pointer transition hover:border-jacaranda/40 hover:bg-white hover:text-ink"
-												@click="scrollToUnitPanel(UNIT_PANEL_IDS.setup)"
-											>
-												Basics
-											</button>
-											<button
-												type="button"
-												class="chip cursor-pointer transition hover:border-jacaranda/40 hover:bg-white hover:text-ink"
-												@click="scrollToUnitPanel(UNIT_PANEL_IDS.narrative)"
-											>
-												Core Narrative
-											</button>
-											<button
-												type="button"
-												class="chip cursor-pointer transition hover:border-jacaranda/40 hover:bg-white hover:text-ink"
-												@click="scrollToUnitPanel(UNIT_PANEL_IDS.learningFocus)"
-											>
-												Learning Focus
-											</button>
-											<button
-												type="button"
-												class="chip cursor-pointer transition hover:border-jacaranda/40 hover:bg-white hover:text-ink"
-												@click="jumpToSection(SECTION_IDS.standards)"
-											>
-												Standards
-											</button>
-											<button
-												type="button"
-												class="chip cursor-pointer transition hover:border-jacaranda/40 hover:bg-white hover:text-ink"
-												@click="jumpToSection(SECTION_IDS.reflections)"
-											>
-												Reflections
-											</button>
-											<button
-												type="button"
-												class="chip cursor-pointer transition hover:border-jacaranda/40 hover:bg-white hover:text-ink"
-												@click="jumpToSection(SECTION_IDS.unitResources)"
-											>
-												Resources
-											</button>
-										</div>
-									</div>
-									<div class="flex w-full flex-col gap-3 xl:w-auto xl:min-w-[18rem]">
-										<div class="flex flex-wrap gap-2 xl:justify-end">
-											<span
-												class="chip"
-												:class="
-													unitPending
-														? 'border-jacaranda/35 bg-jacaranda/10 text-jacaranda'
-														: unitFormDirty
-															? 'border-flame/25 bg-flame/10 text-flame'
-															: 'border-line-soft bg-white/90 text-ink/70'
-												"
-											>
-												{{ unitSaveStatusLabel }}
-											</span>
-											<span
-												v-if="creatingUnit"
-												class="chip border-jacaranda/20 bg-white/80 text-ink/70"
-											>
-												New unit
-											</span>
-										</div>
-										<div class="rounded-2xl border border-white/70 bg-white/85 p-4 shadow-sm">
-											<p class="type-caption text-ink/60">{{ unitSaveSupportText }}</p>
-											<div class="mt-3 flex flex-wrap gap-2">
-												<button
-													v-if="creatingUnit"
-													type="button"
-													class="if-action if-action--subtle"
-													@click="cancelNewUnit"
-												>
-													Cancel New Unit
-												</button>
-												<button
-													type="button"
-													class="if-action course-plan-unit-save-button"
-													data-testid="unit-save-header-button"
-													:disabled="!canSaveUnitAction"
-													@click="handleSaveUnitPlan"
-												>
-													{{ unitSaveActionLabel }}
-												</button>
-											</div>
-										</div>
-									</div>
-								</div>
-							</section>
-
 							<div
 								v-if="showUnitSaveRail"
 								data-testid="unit-save-rail"
@@ -2217,6 +2225,12 @@ const showUnitSaveRail = computed(() =>
 		(creatingUnit.value || unitPending.value || unitFormDirty.value)
 	)
 );
+const unitEditorHeading = computed(() => {
+	if (creatingUnit.value) return 'Draft a governed unit';
+	const title = String(selectedUnit.value?.title || unitForm.title || 'Unit Plan').trim();
+	const order = unitForm.unit_order;
+	return order ? `Unit ${order}: ${title}` : title;
+});
 const unitSaveActionLabel = computed(() => {
 	if (unitPending.value) return 'Saving...';
 	return creatingUnit.value ? 'Create Unit Plan' : 'Save Unit Plan';
@@ -2614,6 +2628,7 @@ function focusWithinSection(sectionId: WorkspaceSectionId, selector: string) {
 
 async function scrollToUnitPanel(panelId: UnitPanelId) {
 	if (typeof document === 'undefined') return;
+	setSectionExpanded(SECTION_IDS.unitEditor, true);
 	setUnitPanelExpanded(panelId, true);
 	await nextTick();
 	document.getElementById(panelId)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -3238,28 +3253,159 @@ onBeforeUnmount(() => {
 
 <style scoped>
 .course-plan-unit-panel {
-	border: 1px solid var(--border-subtle);
+	border: 1px solid rgb(var(--jacaranda-rgb) / 0.18);
 	border-radius: 1.5rem;
 	padding: 1.25rem;
 	background:
-		linear-gradient(180deg, rgb(var(--surface-rgb) / 0.98), rgb(var(--surface-rgb) / 0.9)),
-		rgb(var(--surface-rgb) / 0.94);
+		linear-gradient(180deg, rgb(var(--jacaranda-rgb) / 0.12), rgb(var(--surface-rgb) / 0.95) 38%),
+		rgb(var(--surface-rgb) / 0.96);
 	box-shadow:
 		inset 0 1px 0 rgb(255 255 255 / 0.7),
 		0 10px 22px rgb(var(--ink-rgb) / 0.04);
 }
 
-.course-plan-unit-panel--hero {
-	border-color: rgb(var(--jacaranda-rgb) / 0.18);
+.course-plan-unit-panel--footer {
 	background:
-		linear-gradient(180deg, rgb(var(--jacaranda-rgb) / 0.1), rgb(var(--surface-rgb) / 0.95) 38%),
+		linear-gradient(180deg, rgb(var(--jacaranda-rgb) / 0.14), rgb(var(--surface-rgb) / 0.95) 42%),
 		rgb(var(--surface-rgb) / 0.96);
 }
 
-.course-plan-unit-panel--footer {
+.course-plan-unit-editor-header {
+	display: flex;
+	flex-direction: column;
+	gap: 1.25rem;
+}
+
+.course-plan-unit-editor-nav,
+.course-plan-unit-editor-summary {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.75rem;
+}
+
+.course-plan-unit-editor-header__aside {
+	display: flex;
+	flex-direction: column;
+	gap: 0.9rem;
+}
+
+.course-plan-unit-editor-actions {
+	display: flex;
+	flex-direction: column;
+	gap: 0.75rem;
+}
+
+.course-plan-unit-nav-pill,
+.course-plan-unit-summary-pill {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.55rem;
+	border: 1px solid rgb(var(--jacaranda-rgb) / 0.22);
+	border-radius: 1rem;
+	padding: 0.8rem 1rem;
 	background:
-		linear-gradient(180deg, rgb(var(--surface-rgb) / 0.96), rgb(var(--surface-rgb) / 0.88)),
-		rgb(var(--surface-rgb) / 0.94);
+		linear-gradient(
+			180deg,
+			rgb(var(--jacaranda-rgb) / 0.08),
+			rgb(var(--surface-strong-rgb) / 0.96)
+		),
+		rgb(var(--surface-strong-rgb) / 0.96);
+	box-shadow:
+		inset 0 1px 0 rgb(255 255 255 / 0.82),
+		0 10px 18px rgb(var(--ink-rgb) / 0.05);
+}
+
+.course-plan-unit-nav-pill {
+	cursor: pointer;
+	font-size: 0.95rem;
+	font-weight: 600;
+	color: rgb(var(--ink-rgb) / 0.88);
+	transition:
+		border-color 140ms ease,
+		box-shadow 140ms ease,
+		transform 140ms ease,
+		background-color 140ms ease;
+}
+
+.course-plan-unit-nav-pill:hover {
+	border-color: rgb(var(--jacaranda-rgb) / 0.38);
+	box-shadow:
+		0 0 0 3px rgb(var(--jacaranda-rgb) / 0.08),
+		0 14px 24px rgb(var(--ink-rgb) / 0.07);
+	transform: translateY(-1px);
+}
+
+.course-plan-unit-nav-pill:focus-visible {
+	outline: none;
+	border-color: rgb(var(--jacaranda-rgb) / 0.42);
+	box-shadow:
+		0 0 0 3px rgb(var(--jacaranda-rgb) / 0.12),
+		0 14px 24px rgb(var(--ink-rgb) / 0.07);
+}
+
+.course-plan-unit-summary-pill {
+	flex-direction: column;
+	align-items: flex-start;
+	min-width: 8.25rem;
+	color: rgb(var(--ink-rgb) / 0.9);
+}
+
+.course-plan-unit-summary-pill__label {
+	font-size: 0.72rem;
+	font-weight: 700;
+	letter-spacing: 0.08em;
+	text-transform: uppercase;
+	color: rgb(var(--ink-rgb) / 0.56);
+}
+
+.course-plan-unit-summary-pill__value {
+	font-size: 0.98rem;
+	font-weight: 600;
+	line-height: 1.35;
+}
+
+.course-plan-unit-summary-pill--toggle {
+	cursor: pointer;
+	flex-direction: row;
+	align-items: center;
+	justify-content: space-between;
+	min-width: 8rem;
+	text-align: left;
+	transition:
+		border-color 140ms ease,
+		box-shadow 140ms ease,
+		transform 140ms ease;
+}
+
+.course-plan-unit-summary-pill--toggle:hover {
+	border-color: rgb(var(--jacaranda-rgb) / 0.36);
+	box-shadow:
+		0 0 0 3px rgb(var(--jacaranda-rgb) / 0.08),
+		0 14px 24px rgb(var(--ink-rgb) / 0.07);
+	transform: translateY(-1px);
+}
+
+.course-plan-unit-summary-pill--toggle:focus-visible {
+	outline: none;
+	border-color: rgb(var(--jacaranda-rgb) / 0.42);
+	box-shadow:
+		0 0 0 3px rgb(var(--jacaranda-rgb) / 0.12),
+		0 14px 24px rgb(var(--ink-rgb) / 0.07);
+}
+
+.course-plan-unit-summary-pill__icon {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 2rem;
+	height: 2rem;
+	border: 1px solid rgb(var(--jacaranda-rgb) / 0.16);
+	border-radius: 999px;
+	background: rgb(var(--surface-rgb) / 0.92);
+	color: rgb(var(--ink-rgb) / 0.62);
+	font-size: 1rem;
+	font-weight: 600;
+	line-height: 1;
 }
 
 .course-plan-unit-panel__header {
@@ -3370,6 +3516,25 @@ onBeforeUnmount(() => {
 @media (min-width: 768px) {
 	.course-plan-unit-panel {
 		padding: 1.4rem;
+	}
+
+	.course-plan-unit-editor-header {
+		flex-direction: row;
+		align-items: flex-start;
+		justify-content: space-between;
+	}
+
+	.course-plan-unit-editor-header__aside {
+		align-items: flex-end;
+		max-width: 32rem;
+	}
+
+	.course-plan-unit-editor-summary {
+		justify-content: flex-end;
+	}
+
+	.course-plan-unit-editor-actions {
+		align-items: flex-end;
 	}
 
 	.course-plan-unit-panel__header,

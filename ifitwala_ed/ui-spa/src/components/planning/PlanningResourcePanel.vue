@@ -245,6 +245,7 @@ const props = withDefaults(
 		embedded?: boolean;
 	}>(),
 	{
+		canManage: true,
 		hideHeader: false,
 		embedded: false,
 	}
