@@ -3,8 +3,8 @@ title: "Institutional Policy: Unified Governance for Your School"
 slug: institutional-policy
 category: Governance
 doc_order: 1
-version: "2.0.0"
-last_change_date: "2026-04-11"
+version: "2.0.1"
+last_change_date: "2026-04-15"
 summary: "Create and manage institutional policies that flow seamlessly across your organization—from staff signature campaigns to guardian portals, student hubs, and admissions workflows—all with comprehensive analytics and audit trails."
 seo_title: "Institutional Policy: Unified Governance for Your School"
 seo_description: "Learn how Ifitwala Ed's integrated policy governance connects staff campaigns, guardian acknowledgements, student policies, and admissions requirements in one unified system."
@@ -108,7 +108,7 @@ After creating the Institutional Policy, you'll create Policy Versions to hold t
 | **Staff** | Focus tasks, Morning Brief | Inline diff viewer, ToDo-driven workflow |
 
 <Callout type="warning" title="Audience vs. Signer Authority">
-Policy audience determines who sees the policy, but not always who can sign. Guardian policies require the guardian to have signer authority (`can_consent` flag) for linked children. Staff always sign for themselves.
+Policy audience determines who sees the policy, but not always who can sign. Guardian policies require the guardian to be the primary guardian and to hold the linked signer authority (`can_consent`) for at least one child. Staff always sign for themselves.
 </Callout>
 
 ### Admissions Acknowledgement Modes
@@ -177,7 +177,7 @@ Guardians access policies at `/hub/guardian/policies`:
 - **E-signature flow:** Same robust signing as staff (name match + attestation)
 - **Acknowledgement clauses:** Required checkboxes per policy
 
-Guardians only see policies explicitly scoped to them and where they have signing authority for at least one child.
+Guardians only see policies explicitly scoped to them and where they are the primary guardian with signing authority for at least one child.
 
 ### 5. Student Hub Policies
 

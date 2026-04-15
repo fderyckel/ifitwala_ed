@@ -937,6 +937,7 @@ class StudentApplicant(Document):
             guardian_name = (row.get("guardian") or "").strip()
             relationship = (row.get("relationship") or "").strip() or "Other"
             contact_name = (row.get("contact") or "").strip() or None
+            row_primary_guardian = cint(row.get("is_primary_guardian") or 0)
 
             if guardian_name:
                 if not frappe.db.exists("Guardian", guardian_name):
@@ -951,7 +952,9 @@ class StudentApplicant(Document):
                         "guardian": guardian_doc,
                         "relationship": relationship,
                         "contact": contact_name,
-                        "can_consent": cint(row.get("can_consent") or 0),
+                        "can_consent": 1
+                        if (row_primary_guardian or cint(guardian_doc.get("is_primary_guardian") or 0))
+                        else 0,
                     }
                 )
                 continue
@@ -965,7 +968,7 @@ class StudentApplicant(Document):
                 continue
             seen.add(key)
             row_spec["relationship"] = relationship
-            row_spec["can_consent"] = cint(row.get("can_consent") or 0)
+            row_spec["can_consent"] = 1 if cint(row.get("is_primary_guardian") or 0) else 0
             if contact_name and not row_spec.get("contact"):
                 row_spec["contact"] = contact_name
             resolved.append(row_spec)

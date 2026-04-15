@@ -25,7 +25,7 @@ Test refs: `ifitwala_ed/api/test_guardian_phase2.py`, `ifitwala_ed/ui-spa/src/pa
 Current state:
 
 1. Guardian durable acknowledgement is implemented on `/guardian/policies`.
-2. Guardian policy visibility is filtered from linked students with signer authority via `Student Guardian.can_consent`.
+2. Guardian policy visibility is filtered from linked students with signer authority via `Student Guardian.can_consent`, and that enrolled signer flag must be granted only to primary guardians.
 3. Guardian acknowledgement evidence is stored as immutable `Policy Acknowledgement` rows on guardian self-context.
 4. Guardian Home and the guardian sidebar link to the policies page, but Guardian Home does not yet surface pending policy work as an attention card or count.
 5. The student portal has no route, page, menu item, or home attention surface for policy acknowledgement.
@@ -96,7 +96,7 @@ Test refs: `ifitwala_ed/api/test_guardian_phase2.py`, `ifitwala_ed/governance/do
 
 Rules:
 
-1. Guardian durable policy visibility must stay server-owned and continue to require signer authority from `Student Guardian.can_consent`.
+1. Guardian durable policy visibility must stay server-owned and continue to require signer authority from `Student Guardian.can_consent`, with primary-guardian status as the upstream business rule for that signer flag.
 2. Student durable policy visibility must be server-owned and limited to the current student self-context.
 3. Guardian portals must not expose actionable student-only acknowledgements in the first enrolled-student slice.
 4. Student portals must not expose guardian-only acknowledgements.

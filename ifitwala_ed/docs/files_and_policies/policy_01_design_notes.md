@@ -244,7 +244,7 @@ Fields:
 * `use_applicant_contact` (checkbox)
 * `relationship` (Select, same options as `Student Guardian.relation`)
 * `is_primary` (checkbox)
-* `can_consent` (checkbox, default = true)
+* `can_consent` (derived signer checkbox; true only for rows marked `is_primary_guardian`)
 * guardian profile fields mirrored from `Guardian`
 
 This mirrors the existing Student ↔ Guardian model and removes all implicit assumptions about who is allowed to act during admissions.
@@ -259,12 +259,12 @@ Phase 3 defines **who can acknowledge**, **for whom**, and **when a policy is co
 
 * Applicant-stage (`context_doctype = Student Applicant`)
 
-  * `acknowledged_for = Applicant` → Admissions Applicant user, or Guardian user linked via `Student Applicant Guardian` with `can_consent = 1`
+  * `acknowledged_for = Applicant` → Admissions Applicant user, or Guardian user linked via a primary `Student Applicant Guardian` row with the derived signer flag `can_consent = 1`
   * `acknowledged_for = Guardian` → Guardian user acknowledging for self only, and linked to the applicant
 
 * Student-stage (`context_doctype = Student`)
 
-  * `acknowledged_for = Student` → Student user, or Guardian user linked via `Student Guardian` (and `can_consent = 1` if added later)
+  * `acknowledged_for = Student` → Student user, or Guardian user linked via `Student Guardian` with `can_consent = 1`, where that signer flag is reserved for primary guardians
   * `acknowledged_for = Guardian` → Guardian user acknowledging for self only
 
 #### Completion rules (summary)

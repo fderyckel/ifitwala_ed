@@ -35,6 +35,13 @@ def _expected_guardian_signature_name(guardian_name: str) -> str:
     return (guardian_label or guardian_name or "").strip()
 
 
+def _guardian_has_primary_signer_authority(guardian_name: str) -> bool:
+    guardian_name = (guardian_name or "").strip()
+    if not guardian_name:
+        return False
+    return bool(frappe.utils.cint(frappe.db.get_value("Guardian", guardian_name, "is_primary_guardian") or 0))
+
+
 @frappe.whitelist()
 def get_guardian_policy_overview() -> dict[str, Any]:
     user = frappe.session.user
@@ -255,6 +262,8 @@ def _get_guardian_policy_rows(*, guardian_name: str, children: list[dict[str, An
 
 def _children_with_signer_authority(*, guardian_name: str, children: list[dict[str, Any]]) -> list[dict[str, Any]]:
     if not guardian_name or not children:
+        return []
+    if not _guardian_has_primary_signer_authority(guardian_name):
         return []
 
     if not frappe.db.has_column("Student Guardian", "can_consent"):

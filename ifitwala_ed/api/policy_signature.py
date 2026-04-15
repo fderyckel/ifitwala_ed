@@ -808,6 +808,7 @@ def _target_guardians(*, organization: str, school: str | None) -> list[dict]:
           ON sch.name = st.anchor_school
         WHERE sg.parenttype = 'Student'
           AND sg.parentfield = 'guardians'
+          AND ifnull(g.is_primary_guardian, 0) = 1
           AND st.anchor_school IN %(schools)s
           {guardian_scope_sql}
         ORDER BY g.guardian_full_name ASC, g.name ASC, st.student_full_name ASC

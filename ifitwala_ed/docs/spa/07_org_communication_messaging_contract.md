@@ -186,6 +186,7 @@ Rules:
 14. Staff archive `Academic Admin` visibility falls back to organization scope only when no `Employee.school` is configured:
     - visible school-scoped and student-group communications may come from any school belonging to `Employee.organization` or its descendant organizations
     - organization-targeted staff rows may also resolve within that descendant-organization scope
+15. Shared org-communication interaction endpoints (`summary`, `thread`, `react`, `comment`, `mark read`) must use the same effective academic-admin visibility context as archive/detail so a visible communication never becomes non-interactive solely because the user has no default school.
 
 ## 5. Migration
 

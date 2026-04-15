@@ -1059,6 +1059,7 @@ class TestStudentApplicant(FrappeTestCase):
                 "relationship": "Mother",
                 "is_primary": 1,
                 "can_consent": 1,
+                "is_primary_guardian": 1,
             },
         )
         applicant.flags.from_applicant_invite = True
@@ -1179,6 +1180,7 @@ class TestStudentApplicant(FrappeTestCase):
             {
                 "relationship": "Father",
                 "can_consent": 1,
+                "is_primary_guardian": 1,
                 "guardian_first_name": "Profile",
                 "guardian_last_name": "Guardian",
                 "guardian_email": guardian_email,
@@ -1291,6 +1293,7 @@ class TestStudentApplicant(FrappeTestCase):
                     "relationship": "Mother",
                     "is_primary": 1,
                     "can_consent": 1,
+                    "is_primary_guardian": 1,
                 },
             )
             applicant.save(ignore_permissions=True)

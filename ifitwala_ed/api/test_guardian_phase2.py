@@ -146,6 +146,7 @@ class TestGuardianPolicyPhase2(FrappeTestCase):
         ]
 
         with (
+            patch("ifitwala_ed.api.guardian_policy._guardian_has_primary_signer_authority", return_value=True),
             patch("ifitwala_ed.api.guardian_policy.frappe.db.has_column", return_value=True),
             patch(
                 "ifitwala_ed.api.guardian_policy.frappe.get_all",
@@ -155,6 +156,14 @@ class TestGuardianPolicyPhase2(FrappeTestCase):
             filtered = _children_with_signer_authority(guardian_name="GRD-0001", children=children)
 
         self.assertEqual(filtered, [children[0]])
+
+    def test_children_with_signer_authority_rejects_non_primary_guardian(self):
+        children = [{"student": "STU-1", "full_name": "Amina Example", "school": "SCHOOL-1"}]
+
+        with patch("ifitwala_ed.api.guardian_policy._guardian_has_primary_signer_authority", return_value=False):
+            filtered = _children_with_signer_authority(guardian_name="GRD-0001", children=children)
+
+        self.assertEqual(filtered, [])
 
     def test_query_policy_candidates_filters_guardian_rows_in_sql(self):
         with (

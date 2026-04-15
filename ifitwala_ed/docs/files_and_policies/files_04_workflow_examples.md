@@ -217,7 +217,7 @@ create_and_classify_file(
 		"primary_subject_type": "Student Applicant",
 		"primary_subject_id": applicant.name,
 		"data_class": "legal",
-		"purpose": "identity_verification",
+		"purpose": "identification_document",
 		"retention_policy": "until_school_exit_plus_6m",
 		"slot": "identity_passport",
 		"organization": org,

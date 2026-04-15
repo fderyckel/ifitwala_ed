@@ -144,6 +144,47 @@ class TestOrgCommunicationSummaryContract(FrappeTestCase):
 
 
 class TestOrgCommunicationVisibilityGuards(FrappeTestCase):
+    def test_actor_context_enriches_academic_admin_without_default_school(self):
+        with (
+            patch(
+                "ifitwala_ed.api.org_communication_interactions.frappe.session",
+                SimpleNamespace(user="academic-admin@example.com"),
+            ),
+            patch.object(
+                org_communication_interactions.frappe,
+                "get_roles",
+                return_value=["Academic Admin"],
+            ),
+            patch.object(
+                org_communication_interactions.frappe.db,
+                "get_value",
+                return_value={"name": "EMP-1", "school": None, "organization": "ORG-ROOT"},
+            ),
+            patch(
+                "ifitwala_ed.api.org_communication_interactions.get_descendant_organizations",
+                return_value=["ORG-ROOT", "ORG-CHILD"],
+            ),
+            patch.object(
+                org_communication_interactions.frappe,
+                "get_all",
+                return_value=["SCH-ROOT", "SCH-CHILD"],
+            ),
+        ):
+            user, roles, employee = org_communication_interactions._actor_context()
+
+        self.assertEqual(user, "academic-admin@example.com")
+        self.assertEqual(roles, {"Academic Admin"})
+        self.assertEqual(
+            employee,
+            {
+                "name": "EMP-1",
+                "school": None,
+                "organization": "ORG-ROOT",
+                "organization_names": ["ORG-ROOT", "ORG-CHILD"],
+                "school_names": ["SCH-ROOT", "SCH-CHILD"],
+            },
+        )
+
     def test_ensure_visible_org_communication_allows_creator_override(self):
         with (
             patch("ifitwala_ed.api.org_communication_interactions.frappe.db.exists", return_value=True),

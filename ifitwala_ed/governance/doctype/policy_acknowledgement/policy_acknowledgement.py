@@ -408,6 +408,8 @@ class PolicyAcknowledgement(Document):
         return names[0] if names else None
 
     def _guardian_linked_to_student(self, guardian_name: str, student_name: str) -> bool:
+        if not _guardian_has_primary_signer_authority(guardian_name):
+            return False
         filters = {
             "parent": student_name,
             "parenttype": "Student",
@@ -449,6 +451,8 @@ class PolicyAcknowledgement(Document):
                 return _("Guardian-linked account is not connected to a Guardian record.")
             if self.context_name not in guardian_names:
                 return _("Guardians may only acknowledge policies for themselves.")
+            if not _guardian_has_primary_signer_authority(self.context_name):
+                return _("Only primary guardians may acknowledge guardian policies.")
             return None
         if self.acknowledged_for == "Staff":
             if has_staff_role():
@@ -504,6 +508,13 @@ def _guardian_name_for_user(user: str) -> str:
     return (frappe.db.get_value("Guardian", {"user": user}, "name") or "").strip()
 
 
+def _guardian_has_primary_signer_authority(guardian_name: str) -> bool:
+    guardian_name = (guardian_name or "").strip()
+    if not guardian_name:
+        return False
+    return bool(frappe.utils.cint(frappe.db.get_value("Guardian", guardian_name, "is_primary_guardian") or 0))
+
+
 def _student_name_for_user(user: str) -> str:
     return (frappe.db.get_value("Student", {"student_email": user}, "name") or "").strip()
 
@@ -523,10 +534,21 @@ def _student_applicant_names_for_user(user: str) -> list[str]:
     return get_admissions_portal_applicant_names_for_user(user=user, include_promoted=False)
 
 
-def _student_guardian_signer_sql(alias: str = "sg") -> str:
+def _student_guardian_signer_sql(alias: str = "sg", guardian_alias: str = "g") -> str:
+    clauses: list[str] = []
     if frappe.db.has_column("Student Guardian", "can_consent"):
-        return f" and ifnull({alias}.can_consent, 0) = 1"
-    return ""
+        clauses.append(f"ifnull({alias}.can_consent, 0) = 1")
+    if frappe.db.has_column("Guardian", "is_primary_guardian"):
+        clauses.append(
+            "exists ("
+            f"select 1 from `tabGuardian` {guardian_alias} "
+            f"where {guardian_alias}.name = {alias}.guardian "
+            f"and ifnull({guardian_alias}.is_primary_guardian, 0) = 1"
+            ")"
+        )
+    if not clauses:
+        return ""
+    return " and " + " and ".join(clauses)
 
 
 def get_permission_query_conditions(user: str | None = None) -> str | None:
@@ -692,8 +714,10 @@ def has_permission(doc: "PolicyAcknowledgement", user: str | None = None, ptype:
     guardian_name = _guardian_name_for_user(user)
     if guardian_name:
         if context_doctype == "Guardian" and context_name == guardian_name:
-            return True
+            return _guardian_has_primary_signer_authority(guardian_name)
         if context_doctype == "Student":
+            if not _guardian_has_primary_signer_authority(guardian_name):
+                return False
             filters = {
                 "parent": context_name,
                 "parenttype": "Student",

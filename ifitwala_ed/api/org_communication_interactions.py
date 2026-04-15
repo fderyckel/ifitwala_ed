@@ -18,6 +18,8 @@ from ifitwala_ed.setup.doctype.communication_interaction_entry.communication_int
     INTENT_REACTION_MAP,
     REACTION_INTENT_MAP,
 )
+from ifitwala_ed.utilities.employee_utils import get_descendant_organizations
+from ifitwala_ed.utilities.school_tree import get_descendant_schools
 
 READ_RECEIPT_DOCTYPE = "Portal Read Receipt"
 READ_RECEIPT_REFERENCE_DOCTYPE = "Org Communication"
@@ -56,6 +58,40 @@ def _session_user() -> str:
     return user
 
 
+def _expand_employee_visibility_context(employee: dict, roles: set[str]) -> dict:
+    employee = dict(employee or {})
+    if "Academic Admin" not in (roles or set()):
+        return employee
+
+    base_school = _to_text(employee.get("school"))
+    if base_school:
+        school_names = [school for school in (get_descendant_schools(base_school) or []) if _to_text(school)]
+        if school_names:
+            employee["school_names"] = school_names
+        return employee
+
+    base_organization = _to_text(employee.get("organization"))
+    if not base_organization:
+        return employee
+
+    organization_names = [org for org in (get_descendant_organizations(base_organization) or []) if _to_text(org)]
+    if organization_names:
+        employee["organization_names"] = organization_names
+
+    school_rows = frappe.get_all(
+        "School",
+        filters={"organization": ["in", organization_names]}
+        if organization_names
+        else {"organization": base_organization},
+        pluck="name",
+    )
+    school_names = [school for school in (school_rows or []) if _to_text(school)]
+    if school_names:
+        employee["school_names"] = school_names
+
+    return employee
+
+
 def _actor_context() -> tuple[str, set[str], dict]:
     user = _session_user()
     if not user:
@@ -71,6 +107,7 @@ def _actor_context() -> tuple[str, set[str], dict]:
         )
         or {}
     )
+    employee = _expand_employee_visibility_context(employee, roles)
     return user, roles, employee
 
 

@@ -130,7 +130,7 @@ class TestPolicySignature(FrappeTestCase):
         self.created.append(("Employee", employee.name))
         return employee
 
-    def _make_guardian(self, *, user: str):
+    def _make_guardian(self, *, user: str, is_primary_guardian: int = 1):
         seed = frappe.generate_hash(length=6)
         phone_suffix = "".join(str(ord(ch) % 10) for ch in seed[:6])
         guardian = frappe.get_doc(
@@ -142,6 +142,7 @@ class TestPolicySignature(FrappeTestCase):
                 "guardian_mobile_phone": f"+1415{phone_suffix}",
                 "user": user,
                 "organization": self.organization.name,
+                "is_primary_guardian": is_primary_guardian,
             }
         ).insert(ignore_permissions=True)
         self.created.append(("Guardian", guardian.name))
@@ -712,3 +713,57 @@ class TestPolicySignature(FrappeTestCase):
         self.assertEqual(len(signed_rows), 1)
         self.assertEqual(signed_rows[0].get("record_id"), guardian_one.name)
         self.assertTrue(signed_rows[0].get("is_signed"))
+
+    def test_guardian_audience_rows_exclude_non_primary_guardians(self):
+        primary_user = make_user(roles=["Guardian"])
+        secondary_user = make_user(roles=["Guardian"])
+        self.created.extend([("User", primary_user.name), ("User", secondary_user.name)])
+
+        primary_guardian = self._make_guardian(user=primary_user.name, is_primary_guardian=1)
+        secondary_guardian = self._make_guardian(user=secondary_user.name, is_primary_guardian=0)
+        self._make_student(
+            user=f"student+{frappe.generate_hash(length=4)}@example.com", guardian_name=primary_guardian.name
+        )
+        self._make_student(
+            user=f"student+{frappe.generate_hash(length=4)}@example.com",
+            guardian_name=secondary_guardian.name,
+        )
+
+        guardian_policy = frappe.get_doc(
+            {
+                "doctype": "Institutional Policy",
+                "policy_key": f"guardian_primary_{frappe.generate_hash(length=8)}",
+                "policy_title": "Guardian Primary Authority Policy",
+                "policy_category": "Handbooks",
+                "applies_to": [{"policy_audience": "Guardian"}],
+                "organization": self.organization.name,
+                "is_active": 1,
+            }
+        ).insert(ignore_permissions=True)
+        self.created.append(("Institutional Policy", guardian_policy.name))
+
+        guardian_version = frappe.get_doc(
+            {
+                "doctype": "Policy Version",
+                "institutional_policy": guardian_policy.name,
+                "version_label": "v1",
+                "policy_text": "<p>Primary guardian authority policy text.</p>",
+                "is_active": 1,
+            }
+        ).insert(ignore_permissions=True)
+        self.created.append(("Policy Version", guardian_version.name))
+
+        frappe.set_user("Administrator")
+        payload = get_staff_policy_signature_audience_rows(
+            policy_version=guardian_version.name,
+            audience="Guardian",
+            organization=self.organization.name,
+            school=self.school.name,
+            status="all",
+            page=1,
+            limit=10,
+        )
+
+        rows = payload.get("rows") or []
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0].get("record_id"), primary_guardian.name)

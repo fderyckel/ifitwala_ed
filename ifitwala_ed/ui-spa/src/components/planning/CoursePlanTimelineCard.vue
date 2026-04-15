@@ -332,18 +332,26 @@ function barClass(unit: StaffCoursePlanTimelineUnit) {
 	min-width: 0;
 	padding: 1rem 1.25rem;
 	border-right: 1px solid rgb(var(--border-rgb) / 0.9);
-	background: rgb(var(--surface-soft-rgb));
+	background:
+		linear-gradient(180deg, rgb(var(--surface-rgb) / 1), rgb(var(--surface-rgb) / 0.98)),
+		rgb(var(--surface-rgb) / 1);
 	overflow: hidden;
 	box-shadow:
-		22px 0 0 rgb(var(--surface-soft-rgb)),
-		28px 0 30px rgb(var(--surface-soft-rgb) / 0.98);
+		18px 0 0 rgb(var(--surface-rgb) / 1),
+		30px 0 28px rgb(var(--surface-rgb) / 0.98);
 }
 
 .timeline-label--header {
-	background: white;
+	background:
+		linear-gradient(
+			180deg,
+			rgb(var(--surface-strong-rgb) / 1),
+			rgb(var(--surface-strong-rgb) / 0.98)
+		),
+		rgb(var(--surface-strong-rgb) / 1);
 	box-shadow:
-		22px 0 0 rgb(255 255 255),
-		28px 0 30px rgb(255 255 255 / 0.98);
+		18px 0 0 rgb(var(--surface-strong-rgb) / 1),
+		30px 0 28px rgb(var(--surface-strong-rgb) / 0.98);
 }
 
 .timeline-label::after {
@@ -355,9 +363,9 @@ function barClass(unit: StaffCoursePlanTimelineUnit) {
 	width: 2.4rem;
 	background: linear-gradient(
 		90deg,
-		rgb(var(--surface-soft-rgb)),
-		rgb(var(--surface-soft-rgb) / 0.96) 58%,
-		rgb(var(--surface-soft-rgb) / 0)
+		rgb(var(--surface-rgb) / 1),
+		rgb(var(--surface-rgb) / 0.96) 58%,
+		rgb(var(--surface-rgb) / 0)
 	);
 	pointer-events: none;
 }
@@ -365,9 +373,9 @@ function barClass(unit: StaffCoursePlanTimelineUnit) {
 .timeline-label--header::after {
 	background: linear-gradient(
 		90deg,
-		rgb(255 255 255),
-		rgb(255 255 255 / 0.96) 58%,
-		rgb(255 255 255 / 0)
+		rgb(var(--surface-strong-rgb) / 1),
+		rgb(var(--surface-strong-rgb) / 0.96) 58%,
+		rgb(var(--surface-strong-rgb) / 0)
 	);
 }
 
@@ -389,12 +397,8 @@ function barClass(unit: StaffCoursePlanTimelineUnit) {
 	padding-top: 0.75rem;
 	padding-bottom: 0.85rem;
 	background:
-		linear-gradient(
-			to bottom,
-			rgb(var(--surface-soft-rgb) / 0.45),
-			rgb(var(--surface-soft-rgb) / 0)
-		),
-		white;
+		linear-gradient(to bottom, rgb(var(--surface-rgb) / 0.45), rgb(var(--surface-rgb) / 0)),
+		rgb(var(--surface-strong-rgb) / 1);
 }
 
 .timeline-track__inner {
@@ -541,11 +545,7 @@ function barClass(unit: StaffCoursePlanTimelineUnit) {
 
 .timeline-bar--draft {
 	border-color: rgb(var(--sand-rgb) / 0.9);
-	background: linear-gradient(
-		90deg,
-		rgb(var(--sand-rgb) / 0.55),
-		rgb(var(--surface-soft-rgb) / 0.95)
-	);
+	background: linear-gradient(90deg, rgb(var(--sand-rgb) / 0.55), rgb(var(--surface-rgb) / 0.95));
 }
 
 .timeline-bar--overflow {

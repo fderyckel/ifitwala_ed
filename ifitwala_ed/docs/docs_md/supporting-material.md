@@ -3,8 +3,8 @@ title: "Supporting Material: Reusable Learning Material"
 slug: supporting-material
 category: Curriculum
 doc_order: 8
-version: "1.1.0"
-last_change_date: "2026-04-13"
+version: "1.1.1"
+last_change_date: "2026-04-15"
 summary: "Store reusable supporting files and links that students open alongside units, sessions, and tasks without turning planning content into a file library."
 seo_title: "Supporting Material: Reusable Learning Material"
 seo_description: "Store reusable supporting files and links that students open alongside units, sessions, and tasks without turning planning content into a file library."
@@ -75,6 +75,7 @@ Test refs: `ifitwala_ed/curriculum/doctype/supporting_material/test_supporting_m
 - [**Material Placement**](/docs/en/material-placement/)
 - [**Task**](/docs/en/task/)
 - [**Unit Plan**](/docs/en/unit-plan/)
+- `ifitwala_ed/docs/files_and_policies/files_07_education_file_semantics_and_cross_app_contract.md`
 
 ## Technical Notes (IT)
 
@@ -94,7 +95,8 @@ Test refs: `ifitwala_ed/curriculum/test_materials.py`, `ifitwala_ed/curriculum/d
 
 - `Supporting Material` is reusable and course-scoped.
 - File-backed materials store the authoritative `File` link on the material itself, not on `Task.attachments`.
-- File-backed materials require a governed `Drive Binding` with `general_reference`.
+- File-backed materials require a governed `Drive Binding` with binding role `general_reference`.
+- Current governed upload classification for `Supporting Material` uses purpose `academic_report` under the allowed file-governance purpose set. The proposed education-specific `learning_resource` purpose is tracked separately in `ifitwala_ed/docs/files_and_policies/files_07_education_file_semantics_and_cross_app_contract.md`.
 - Desk read/list visibility is course-scoped through permission hooks.
 - `Academic Admin` can manage supporting materials across curriculum scope.
 - `Curriculum Coordinator` can manage supporting materials for program-scoped shared curriculum on `Course Plan` and `Unit Plan`; they do not gain class-owned material write access just from coordinator scope.

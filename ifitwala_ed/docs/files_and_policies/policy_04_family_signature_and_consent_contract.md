@@ -55,11 +55,11 @@ Test refs: `ifitwala_ed/admission/doctype/student_applicant/test_student_applica
 Rules:
 
 1. Guardian signing authority is owned by relationship rows, not by guardian identity alone.
-2. Applicant-stage signing authority comes from `Student Applicant Guardian.can_consent`.
-3. Enrolled-student-stage signing authority comes from `Student Guardian.can_consent`.
-4. More than one guardian may have signing authority for the same child or family.
+2. Applicant-stage signing authority comes from `Student Applicant Guardian.is_primary_guardian`; applicant signer authority must only be granted to rows marked primary.
+3. Enrolled-student-stage signing authority comes from `Student Guardian.can_consent`, and that enrolled signer flag must be reserved for guardians who are primary guardians.
+4. Only guardian rows marked primary may have family-facing signing authority for the same child or family.
 5. Emergency-only or temporary-care guardians may remain linked without signing authority.
-6. `is_primary`, `is_primary_guardian`, and `is_financial_guardian` must never imply document-signing authority.
+6. `is_primary` and `is_financial_guardian` must never imply document-signing authority. `is_primary_guardian` is the source rule for family-facing signer authority, while enrolled runtime permission continues to enforce the derived `Student Guardian.can_consent` flag.
 7. Every Phase-2 workflow must declare whether completion means:
    - any authorized signer may complete it once, or
    - all required signers must complete it
@@ -210,7 +210,7 @@ Pros:
 
 1. Keeps immutable `Policy Acknowledgement` semantics intact instead of overloading them with mutable states.
 2. Delivers the highest-value family workflow first: guardian-facing permission requests and consents in `/hub/guardian`.
-3. Preserves the signer-authority model already established by `can_consent`.
+3. Preserves the enrolled signer-authority runtime model on `can_consent` while tightening the business rule so only primary guardians receive that signer authority.
 4. Supports later student co-sign without forcing student-specific complexity into Phase 2A.
 5. Makes reminders, expiry, and withdrawal explicit instead of encoding them as absence of acknowledgement.
 

@@ -417,6 +417,7 @@ class TestInviteApplicant(FrappeTestCase):
                 "relationship": "Mother",
                 "can_consent": 1,
                 "is_primary": 1,
+                "is_primary_guardian": 1,
                 "guardian_first_name": "Family",
                 "guardian_last_name": "Collaborator",
                 "guardian_email": invite_email,
@@ -1034,6 +1035,51 @@ class TestSubmitApplication(FrappeTestCase):
         self._created.append(("Policy Acknowledgement", ack.get("name")))
         self.assertEqual((ack.get("acknowledged_by") or "").strip(), family_user.name)
 
+    def test_acknowledge_policy_family_mode_rejects_non_primary_guardian(self):
+        if not _policy_schema_available():
+            self.skipTest("Institutional Policy applies_to storage is required for family acknowledgement tests.")
+        if not _admission_settings_has_field("admissions_access_mode"):
+            self.skipTest("Admission Settings.admissions_access_mode is required for family workspace tests.")
+        if not institutional_policy_db_has_column("admissions_acknowledgement_mode"):
+            self.skipTest(
+                "Institutional Policy.admissions_acknowledgement_mode is required for family acknowledgement tests."
+            )
+
+        self._set_admissions_access_mode("Family Workspace")
+        family_user = self._create_family_user()
+        guardian = self._create_guardian_record(user=family_user.name)
+        self._link_family_guardian(
+            self.applicant,
+            guardian_name=guardian.name,
+            user=family_user.name,
+            is_primary_guardian=False,
+        )
+        family_policy_version = self._create_required_applicant_policy_version(
+            organization=self.organization,
+            school=self.school,
+            admissions_acknowledgement_mode="Family Acknowledgement",
+        )
+
+        frappe.set_user(family_user.name)
+        policies = get_applicant_policies(student_applicant=self.applicant.name)
+        target = next(
+            (
+                row
+                for row in (policies.get("policies") or [])
+                if (row.get("policy_version") or "").strip() == family_policy_version
+            ),
+            None,
+        )
+        self.assertTrue(bool(target))
+
+        with self.assertRaises(frappe.PermissionError):
+            acknowledge_policy(
+                student_applicant=self.applicant.name,
+                policy_version=family_policy_version,
+                typed_signature_name=target.get("expected_signature_name"),
+                attestation_confirmed=1,
+            )
+
     def test_update_applicant_profile_persists_values(self):
         language = self._get_or_create_language_xtra()
         country = self._get_any_country()
@@ -1093,6 +1139,7 @@ class TestSubmitApplication(FrappeTestCase):
                     "relationship": "Mother",
                     "can_consent": 1,
                     "is_primary": 1,
+                    "is_primary_guardian": 1,
                     "use_applicant_contact": 0,
                     "guardian_first_name": "Mina",
                     "guardian_last_name": "Portal",
@@ -1108,6 +1155,7 @@ class TestSubmitApplication(FrappeTestCase):
         guardians = payload.get("guardians") or []
         self.assertEqual(len(guardians), 1)
         self.assertEqual((guardians[0].get("guardian_email") or "").strip(), guardian_email)
+        self.assertTrue(bool(guardians[0].get("can_consent")))
         self.assertTrue(bool((guardians[0].get("contact") or "").strip()))
 
         self.applicant.reload()
@@ -1116,6 +1164,7 @@ class TestSubmitApplication(FrappeTestCase):
         self.assertEqual(rows[0].guardian_first_name, "Mina")
         self.assertEqual(rows[0].guardian_last_name, "Portal")
         self.assertEqual((rows[0].guardian_email or "").strip(), guardian_email)
+        self.assertEqual(int(rows[0].can_consent or 0), 1)
         self.assertTrue(bool((rows[0].contact or "").strip()))
 
         self.assertTrue(
@@ -1161,6 +1210,40 @@ class TestSubmitApplication(FrappeTestCase):
                     }
                 ],
             )
+
+    def test_update_applicant_profile_forces_non_primary_guardian_to_non_signing(self):
+        self._set_guardians_section_setting(1)
+        guardian_email = f"secondary-{frappe.generate_hash(length=8)}@example.com"
+
+        frappe.set_user(self.applicant_user)
+        payload = update_applicant_profile(
+            student_applicant=self.applicant.name,
+            guardians=[
+                {
+                    "relationship": "Aunt",
+                    "can_consent": 1,
+                    "is_primary": 0,
+                    "is_primary_guardian": 0,
+                    "use_applicant_contact": 0,
+                    "guardian_first_name": "Secondary",
+                    "guardian_last_name": "Guardian",
+                    "guardian_email": guardian_email,
+                    "guardian_mobile_phone": "+14155550109",
+                    "guardian_gender": "Female",
+                    "guardian_image": "/private/files/guardian-secondary.png",
+                }
+            ],
+        )
+
+        self.assertTrue(payload.get("ok"))
+        guardians = payload.get("guardians") or []
+        self.assertEqual(len(guardians), 1)
+        self.assertFalse(bool(guardians[0].get("can_consent")))
+
+        self.applicant.reload()
+        rows = self.applicant.get("guardians") or []
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(int(rows[0].can_consent or 0), 0)
 
     def test_update_applicant_health_rejects_stale_expected_modified(self):
         frappe.set_user(self.applicant_user)
@@ -1287,6 +1370,7 @@ class TestSubmitApplication(FrappeTestCase):
                     "use_applicant_contact": 1,
                     "can_consent": 1,
                     "is_primary": 1,
+                    "is_primary_guardian": 1,
                     "guardian_first_name": "Mina",
                     "guardian_last_name": "Portal",
                     "guardian_email": f"guardian-{frappe.generate_hash(length=8)}@example.com",
@@ -1803,15 +1887,16 @@ class TestSubmitApplication(FrappeTestCase):
         self._created.append(("Guardian", guardian.name))
         return guardian
 
-    def _link_family_guardian(self, applicant, *, guardian_name: str, user: str):
+    def _link_family_guardian(self, applicant, *, guardian_name: str, user: str, is_primary_guardian: bool = True):
         applicant.append(
             "guardians",
             {
                 "guardian": guardian_name,
                 "user": user,
                 "relationship": "Mother",
-                "can_consent": 1,
+                "can_consent": 1 if is_primary_guardian else 0,
                 "is_primary": 1,
+                "is_primary_guardian": 1 if is_primary_guardian else 0,
                 "guardian_first_name": "Family",
                 "guardian_last_name": "Guardian",
                 "guardian_email": user,

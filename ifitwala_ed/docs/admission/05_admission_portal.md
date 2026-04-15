@@ -154,7 +154,7 @@ When `Admission Settings.admissions_access_mode = Family Workspace`, a second we
 This role:
 
 * is distinct from `Admissions Applicant`
-* is anchored through explicit `Student Applicant Guardian` rows with `can_consent = 1`
+* is anchored through explicit `Student Applicant Guardian` rows where `is_primary_guardian = 1` and the derived signer flag `can_consent = 1`
 * uses one real user per adult collaborator; shared logins are not allowed
 
 ---

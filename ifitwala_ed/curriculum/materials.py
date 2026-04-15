@@ -25,7 +25,7 @@ MATERIAL_CLASS_OWNED_ANCHORS = {"Class Teaching Plan", "Class Session"}
 MATERIAL_FILE_SLOT = "material_file"
 MATERIAL_BINDING_ROLE = "general_reference"
 MATERIAL_DATA_CLASS = "academic"
-MATERIAL_PURPOSE = "general_reference"
+MATERIAL_PURPOSE = "academic_report"
 MATERIAL_RETENTION_POLICY = "until_program_end_plus_1y"
 
 _ADMIN_ROLES = {"Administrator", "System Manager", "Academic Admin"}
