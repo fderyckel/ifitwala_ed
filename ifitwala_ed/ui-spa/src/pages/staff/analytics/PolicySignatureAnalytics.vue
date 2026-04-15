@@ -19,7 +19,7 @@
 			</button>
 		</header>
 
-		<FiltersBar class="analytics-filters">
+		<FiltersBar class="analytics-filters !items-start">
 			<div class="flex flex-col gap-1">
 				<label class="type-label">Organization</label>
 				<select

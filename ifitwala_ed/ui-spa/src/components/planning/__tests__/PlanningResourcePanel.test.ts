@@ -1,11 +1,13 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createApp, defineComponent, h, nextTick, type App } from 'vue';
 
-const { createPlanningReferenceMaterialMock, toastSuccessMock, toastErrorMock } = vi.hoisted(() => ({
-	createPlanningReferenceMaterialMock: vi.fn(),
-	toastSuccessMock: vi.fn(),
-	toastErrorMock: vi.fn(),
-}));
+const { createPlanningReferenceMaterialMock, toastSuccessMock, toastErrorMock } = vi.hoisted(
+	() => ({
+		createPlanningReferenceMaterialMock: vi.fn(),
+		toastSuccessMock: vi.fn(),
+		toastErrorMock: vi.fn(),
+	})
+);
 
 vi.mock('frappe-ui', () => ({
 	Button: defineComponent({
@@ -120,9 +122,9 @@ function mountPanel() {
 }
 
 function setInputValue(placeholder: string, value: string) {
-	const input = document.querySelector(`input[placeholder="${placeholder}"]`) as
-		| HTMLInputElement
-		| null;
+	const input = document.querySelector(
+		`input[placeholder="${placeholder}"]`
+	) as HTMLInputElement | null;
 	if (!input) throw new Error(`Missing input ${placeholder}`);
 	input.value = value;
 	input.dispatchEvent(new Event('input', { bubbles: true }));
@@ -155,7 +157,9 @@ describe('PlanningResourcePanel', () => {
 		await flushUi();
 
 		const submitButton = Array.from(document.querySelectorAll('button')).find(
-			button => (button.textContent || '').trim() === 'Add link' && !button.hasAttribute('data-resource-mode')
+			button =>
+				(button.textContent || '').trim() === 'Add link' &&
+				!button.hasAttribute('data-resource-mode')
 		) as HTMLButtonElement | undefined;
 		if (!submitButton) throw new Error('Missing Add link submit button');
 

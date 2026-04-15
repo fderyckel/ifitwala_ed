@@ -80,7 +80,17 @@ vi.mock('frappe-ui', () => ({
 	}),
 	FormControl: defineComponent({
 		name: 'FormControlStub',
-		props: ['modelValue', 'type', 'options', 'disabled', 'rows', 'placeholder', 'min', 'max', 'step'],
+		props: [
+			'modelValue',
+			'type',
+			'options',
+			'disabled',
+			'rows',
+			'placeholder',
+			'min',
+			'max',
+			'step',
+		],
 		emits: ['update:modelValue'],
 		setup(props, { emit }) {
 			const resolveOption = (option: unknown) => {
@@ -270,7 +280,10 @@ function mockGradebookFlow(options?: {
 				status: null,
 				grading_mode: task.grading_mode as string | null,
 				allow_feedback: task.allow_feedback as 0 | 1,
-				rubric_scoring_strategy: task.rubric_scoring_strategy as 'Sum Total' | 'Separate Criteria' | null,
+				rubric_scoring_strategy: task.rubric_scoring_strategy as
+					| 'Sum Total'
+					| 'Separate Criteria'
+					| null,
 				points: task.points as 0 | 1,
 				binary: task.binary as 0 | 1,
 				criteria: task.criteria as 0 | 1,
@@ -406,7 +419,9 @@ describe('Gradebook page', () => {
 		]);
 		expect(fetchGroupTasksMock).toHaveBeenCalledWith({ student_group: linkedGroup.name });
 
-		const schoolSelect = document.querySelector('select[data-placeholder="School"]') as HTMLSelectElement;
+		const schoolSelect = document.querySelector(
+			'select[data-placeholder="School"]'
+		) as HTMLSelectElement;
 		const groupSelect = document.querySelector(
 			'select[data-placeholder="Select group"]'
 		) as HTMLSelectElement;
