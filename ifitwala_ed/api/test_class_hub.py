@@ -64,10 +64,28 @@ class _FakeClassSessionDoc:
 
 
 class TestClassHub(FrappeTestCase):
+    def test_class_hub_group_names_includes_employee_booking_groups(self):
+        def fake_get_all(doctype, filters=None, pluck=None, **kwargs):
+            if doctype == "Employee Booking":
+                self.assertEqual(filters.get("employee"), "EMP-001")
+                self.assertEqual(filters.get("source_doctype"), "Student Group")
+                return ["SG-BOOKED"]
+            return []
+
+        with (
+            patch("ifitwala_ed.api.class_hub._instructor_group_names", return_value=set()),
+            patch("ifitwala_ed.api.class_hub.frappe.db.table_exists", return_value=True),
+            patch("ifitwala_ed.api.class_hub._resolve_employee_for_user", return_value={"name": "EMP-001"}),
+            patch("ifitwala_ed.api.class_hub.frappe.get_all", side_effect=fake_get_all),
+        ):
+            group_names = class_hub._class_hub_group_names("teacher@example.com")
+
+        self.assertEqual(group_names, {"SG-BOOKED"})
+
     def test_resolve_staff_home_entry_returns_single_group_when_only_one_is_taught(self):
         with (
             patch.object(class_hub.frappe, "session", SimpleNamespace(user="teacher@example.com")),
-            patch("ifitwala_ed.api.class_hub._instructor_group_names", return_value={"SG-0001"}),
+            patch("ifitwala_ed.api.class_hub._class_hub_group_names", return_value={"SG-0001"}),
             patch(
                 "ifitwala_ed.api.class_hub.frappe.get_all",
                 return_value=[
@@ -90,7 +108,7 @@ class TestClassHub(FrappeTestCase):
     def test_resolve_staff_home_entry_returns_empty_state_without_groups(self):
         with (
             patch.object(class_hub.frappe, "session", SimpleNamespace(user="teacher@example.com")),
-            patch("ifitwala_ed.api.class_hub._instructor_group_names", return_value=set()),
+            patch("ifitwala_ed.api.class_hub._class_hub_group_names", return_value=set()),
         ):
             payload = class_hub.resolve_staff_home_entry()
 
@@ -172,7 +190,7 @@ class TestClassHub(FrappeTestCase):
     def test_assert_instructor_uses_canonical_group_membership_helper(self):
         with (
             patch("ifitwala_ed.api.class_hub.frappe.db.exists", return_value=True),
-            patch("ifitwala_ed.api.class_hub._instructor_group_names", return_value={"SG-0001"}),
+            patch("ifitwala_ed.api.class_hub._class_hub_group_names", return_value={"SG-0001"}),
             patch.object(class_hub.frappe, "session", SimpleNamespace(user="teacher@example.com")),
         ):
             class_hub._assert_instructor("SG-0001")
@@ -189,7 +207,7 @@ class TestClassHub(FrappeTestCase):
         with (
             patch.object(class_hub.frappe, "session", SimpleNamespace(user="teacher@example.com")),
             patch("ifitwala_ed.api.class_hub._resolve_employee_for_user", return_value={"name": "EMP-001"}),
-            patch("ifitwala_ed.api.class_hub._instructor_group_names", return_value={"SG-0001"}),
+            patch("ifitwala_ed.api.class_hub._class_hub_group_names", return_value={"SG-0001"}),
             patch("ifitwala_ed.api.class_hub._resolve_live_class_rows", return_value=([current_row], None)),
             patch(
                 "ifitwala_ed.api.class_hub.frappe.db.get_value",
@@ -267,7 +285,7 @@ class TestClassHub(FrappeTestCase):
         with (
             patch.object(class_hub.frappe, "session", SimpleNamespace(user="teacher@example.com")),
             patch("ifitwala_ed.api.class_hub._resolve_employee_for_user", return_value={"name": "EMP-001"}),
-            patch("ifitwala_ed.api.class_hub._instructor_group_names", return_value={"SG-0001", "SG-0002"}),
+            patch("ifitwala_ed.api.class_hub._class_hub_group_names", return_value={"SG-0001", "SG-0002"}),
             patch("ifitwala_ed.api.class_hub._resolve_live_class_rows", return_value=(current_rows, None)),
             patch("ifitwala_ed.api.class_hub.frappe.db.get_value", side_effect=fake_group_row),
             patch("ifitwala_ed.api.class_hub.frappe.get_all", side_effect=fake_roster),

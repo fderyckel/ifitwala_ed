@@ -103,6 +103,19 @@ describe('GuardianHome', () => {
 					{ student: 'STU-2', full_name: 'Noah Example', school: 'School One' },
 				],
 			},
+			policies: {
+				pending_count: 2,
+				items: [
+					{
+						policy_version: 'VER-1',
+						policy_title: 'Family Handbook',
+						version_label: '2026',
+						description: 'Review family expectations.',
+						status_label: 'Pending acknowledgement',
+						href: { name: 'guardian-policies' },
+					},
+				],
+			},
 			zones: {
 				family_timeline: [
 					{
@@ -192,6 +205,9 @@ describe('GuardianHome', () => {
 		expect(getGuardianHomeSnapshotMock).toHaveBeenCalledWith({ school_days: 7 })
 		const text = document.body.textContent || ''
 		expect(text).toContain('Family Snapshot')
+		expect(text).toContain('Communications')
+		expect(text).toContain('Policies need your acknowledgement')
+		expect(text).toContain('Family Handbook')
 		expect(text).toContain('Learning Highlights')
 		expect(text).toContain('Students are comparing how cell structures work together.')
 		expect(text).toContain('Talk at home')

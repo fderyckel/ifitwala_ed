@@ -10,6 +10,16 @@ from ifitwala_ed.setup.doctype.organization import organization as organization_
 
 
 class TestOrganization(FrappeTestCase):
+    def _make_organization(self, prefix="Org"):
+        data = {
+            "doctype": "Organization",
+            "organization_name": f"{prefix} {frappe.generate_hash(length=6)}",
+            "abbr": f"O{frappe.generate_hash(length=4)}",
+        }
+        if frappe.db.exists("Organization", "All Organizations"):
+            data["parent_organization"] = "All Organizations"
+        return frappe.get_doc(data).insert(ignore_permissions=True)
+
     def test_org_pqc_is_generic_org_scope_filter(self):
         with (
             patch(
@@ -174,3 +184,15 @@ class TestOrganization(FrappeTestCase):
             scope = organization_controller._resolve_user_org_scope("hr.user@example.com")
 
         self.assertEqual(scope, ["ORG-CHILD", "ORG-PARENT"])
+
+    def test_real_organization_gets_default_chart_of_accounts(self):
+        org = self._make_organization("Finance")
+
+        self.assertTrue(frappe.db.exists("Accounts Settings", org.name))
+        self.assertGreater(frappe.db.count("Account", filters={"organization": org.name}), 0)
+        self.assertTrue(frappe.db.exists("Account", {"organization": org.name, "account_name": "Debtors"}))
+        self.assertTrue(frappe.db.exists("Account", {"organization": org.name, "account_name": "Customer Advances"}))
+
+        settings = frappe.get_doc("Accounts Settings", org.name)
+        self.assertTrue(settings.default_receivable_account)
+        self.assertTrue(settings.default_advance_account)

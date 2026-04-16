@@ -32,7 +32,7 @@
 | Organization (legal entity) | Company | Same doctype; surfaced as Organization. |
 | Accounting Settings (org-level) | Accounts Settings | Org-level defaults. |
 | Fiscal Year | Fiscal Year | Implemented as the legal accounting-year authority above posting locks. |
-| Chart of Accounts Template | Chart of Accounts Importer + chart template JSON/Python files | Templates live under `ifitwala_ed/accounting/doctype/account/chart_of_accounts`. Current packaged default is `standard_chart_of_accounts` (English); additional templates can be added later in the same module. |
+| Chart of Accounts Template | Chart of Accounts Importer + chart template JSON/Python files | Templates live under `ifitwala_ed/accounting/doctype/account/chart_of_accounts`. The packaged default is the ERPNext v16 international `standard_chart_of_accounts` template, and it is auto-installed for each new Organization. |
 | Account | Account | ERPNext account tree. |
 | GL Entry | GL Entry | Ledger row. |
 | Journal Entry | Journal Entry | Manual accounting entry. |
@@ -117,6 +117,7 @@ Create a **minimal but ERPNext-aligned Chart of Accounts** that can support all 
 * Cannot post to group accounts
 * Cannot create circular account hierarchies
 * Accounts strictly scoped to Organization
+* Account docnames are qualified by Organization abbreviation so identical chart labels can safely exist in different organizations
 
 ### Edge Cases to Test
 

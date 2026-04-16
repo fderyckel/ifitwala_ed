@@ -3,8 +3,8 @@ title: "Student Applicant: The Admission Record of Truth"
 slug: student-applicant
 category: Admission
 doc_order: 4
-version: "1.20.1"
-last_change_date: "2026-03-23"
+version: "1.20.2"
+last_change_date: "2026-04-15"
 summary: "Manage applicant lifecycle from invitation to promotion, with readiness checks across profile, documents, policies, recommendations, school-scoped health gating, and the admissions-to-enrollment bridge."
 seo_title: "Student Applicant: The Admission Record of Truth"
 seo_description: "Manage applicant lifecycle from invitation to promotion, with readiness checks across profile, documents, policies, recommendations, school-scoped health gating, and the admissions-to-enrollment bridge."
@@ -165,15 +165,15 @@ Behavior in code:
 - `Student Applicant.applicant_user` is set to that user identity
 - `Student Applicant.portal_account_email` is set to the chosen invite email
 - if applicant is already linked to a different email/user, invite is blocked
-- family collaborator eligibility is limited to guardian rows where `can_consent = 1` and a guardian personal email exists
+- family collaborator eligibility is limited to guardian rows marked `is_primary_guardian = 1`, which in turn derive `can_consent = 1`, and a guardian personal email exists
 
 ### Family Workspace Login and Collaboration
 
 When `Admission Settings.admissions_access_mode = Family Workspace`, `/admissions` becomes a family workspace instead of a single-applicant workspace.
 
 - family collaborators use role `Admissions Family`
-- access is resolved from explicit `Student Applicant Guardian` rows with `can_consent = 1`
-- `can_consent` is the canonical admissions-stage signer-authority flag and may be enabled for more than one guardian
+- access for signer workflows is resolved from explicit primary `Student Applicant Guardian` rows where `is_primary_guardian = 1` and the derived signer flag `can_consent = 1`
+- `can_consent` remains the runtime admissions-stage signer-authority flag, but it is now derived from `is_primary_guardian` rather than independently enabled across multiple guardians
 - one adult user can be linked to multiple active applicants and switch between them inside `/admissions`
 - collaboration is multi-user, not shared-login:
   - each adult has their own `User`
@@ -232,7 +232,7 @@ If email delivery fails, portal linkage still succeeds (`User` + role + applican
 - `contact` -> `Contact` (tracked guardian contact used for carry-over)
 - `relationship` (Mother/Father/etc.)
 - `is_primary`
-- `can_consent` (canonical signer-authority flag; shown in the admissions workspace as `Authorized signer for school documents and consents`)
+- `can_consent` (runtime signer-authority flag; derived from `is_primary_guardian` and shown in the admissions workspace as `Authorized signer for school documents and consents`)
 - guardian identity/profile fields mirrored from `Guardian` (`salutation`, names, email, mobile, work fields, guardian flags)
 - `use_applicant_contact` to explicitly reuse `Student Applicant.applicant_contact` for a guardian row
 - applicant portal save validation enforces required guardian fields per row: first name, last name, personal email, mobile phone, and photo
@@ -462,7 +462,7 @@ For a brand-new site or a newly onboarded school, this is what must exist before
   - provisions guardians only from explicit applicant guardian rows; there is no applicant-contact fallback guardian creation
   - applicant user is reserved for the student identity and cannot be reused as a guardian user
   - links guardians to Student in canonical Student guardian rows when guardian rows exist
-  - carries `Student Applicant Guardian.can_consent` into `Student Guardian.can_consent` so signer authority survives promotion and later guardian policy workflows
+  - carries primary-guardian signer authority from `Student Applicant Guardian` into `Student Guardian.can_consent` so enrolled guardian policy workflows stay limited to primary guardians
   - syncs `Student.siblings` from shared explicit guardians carried forward from admissions
   - links tracked guardian Contact rows to `Student Applicant`, `Guardian`, and promoted `Student`
   - is idempotent (re-run does not duplicate users or guardian links)

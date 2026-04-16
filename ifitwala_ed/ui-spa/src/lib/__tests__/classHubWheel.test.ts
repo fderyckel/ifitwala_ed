@@ -45,7 +45,7 @@ describe('classHubWheel helpers', () => {
   })
 
   it('builds a forward-only target rotation for the selected segment', () => {
-    expect(buildWheelTargetRotation(0, 0, 4, 6)).toBe(2070)
+    expect(buildWheelTargetRotation(0, 0, 4, 6)).toBe(2475)
     expect(buildWheelTargetRotation(30, 2, 6, 5)).toBeGreaterThan(30)
   })
 

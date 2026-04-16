@@ -12,13 +12,25 @@ import type {
 	Response as FetchGroupTasksResponse,
 } from '@/types/contracts/gradebook/fetch_group_tasks'
 import type {
+	Request as GetGridRequest,
+	Response as GetGridResponse,
+} from '@/types/contracts/gradebook/get_grid'
+import type {
 	Request as GetTaskGradebookRequest,
 	Response as GetTaskGradebookResponse,
 } from '@/types/contracts/gradebook/get_task_gradebook'
 import type {
+	Request as GetTaskQuizManualReviewRequest,
+	Response as GetTaskQuizManualReviewResponse,
+} from '@/types/contracts/gradebook/get_task_quiz_manual_review'
+import type {
 	Request as RepairTaskRosterRequest,
 	Response as RepairTaskRosterResponse,
 } from '@/types/contracts/gradebook/repair_task_roster'
+import type {
+	Request as SaveTaskQuizManualReviewRequest,
+	Response as SaveTaskQuizManualReviewResponse,
+} from '@/types/contracts/gradebook/save_task_quiz_manual_review'
 import type {
 	Request as UpdateTaskStudentRequest,
 	Response as UpdateTaskStudentResponse,
@@ -37,6 +49,12 @@ export function createGradebookService() {
 		auto: false,
 	})
 
+	const getGridResource = createResource<GetGridResponse>({
+		url: 'ifitwala_ed.api.gradebook.get_grid',
+		method: 'POST',
+		auto: false,
+	})
+
 	const getTaskGradebookResource = createResource<GetTaskGradebookResponse>({
 		url: 'ifitwala_ed.api.gradebook.get_task_gradebook',
 		method: 'POST',
@@ -45,6 +63,18 @@ export function createGradebookService() {
 
 	const repairTaskRosterResource = createResource<RepairTaskRosterResponse>({
 		url: 'ifitwala_ed.api.gradebook.repair_task_roster',
+		method: 'POST',
+		auto: false,
+	})
+
+	const getTaskQuizManualReviewResource = createResource<GetTaskQuizManualReviewResponse>({
+		url: 'ifitwala_ed.api.gradebook.get_task_quiz_manual_review',
+		method: 'POST',
+		auto: false,
+	})
+
+	const saveTaskQuizManualReviewResource = createResource<SaveTaskQuizManualReviewResponse>({
+		url: 'ifitwala_ed.api.gradebook.save_task_quiz_manual_review',
 		method: 'POST',
 		auto: false,
 	})
@@ -63,6 +93,10 @@ export function createGradebookService() {
 		return fetchGroupTasksResource.submit(payload)
 	}
 
+	async function getGrid(payload: GetGridRequest): Promise<GetGridResponse> {
+		return getGridResource.submit(payload)
+	}
+
 	async function getTaskGradebook(
 		payload: GetTaskGradebookRequest,
 	): Promise<GetTaskGradebookResponse> {
@@ -73,6 +107,18 @@ export function createGradebookService() {
 		payload: RepairTaskRosterRequest,
 	): Promise<RepairTaskRosterResponse> {
 		return repairTaskRosterResource.submit(payload)
+	}
+
+	async function getTaskQuizManualReview(
+		payload: GetTaskQuizManualReviewRequest,
+	): Promise<GetTaskQuizManualReviewResponse> {
+		return getTaskQuizManualReviewResource.submit(payload)
+	}
+
+	async function saveTaskQuizManualReview(
+		payload: SaveTaskQuizManualReviewRequest,
+	): Promise<SaveTaskQuizManualReviewResponse> {
+		return saveTaskQuizManualReviewResource.submit(payload)
 	}
 
 	async function updateTaskStudent(
@@ -88,8 +134,11 @@ export function createGradebookService() {
 	return {
 		fetchGroups,
 		fetchGroupTasks,
+		getGrid,
 		getTaskGradebook,
 		repairTaskRoster,
+		getTaskQuizManualReview,
+		saveTaskQuizManualReview,
 		updateTaskStudent,
 	}
 }

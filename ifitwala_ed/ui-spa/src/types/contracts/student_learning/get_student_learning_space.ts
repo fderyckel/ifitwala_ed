@@ -163,6 +163,14 @@ export type StudentLearningReflectionEntry = {
 	task_submission?: string | null
 }
 
+export type StudentCourseCommunicationSummary = {
+	total_count: number
+	unread_count: number
+	high_priority_count: number
+	has_high_priority: 0 | 1
+	latest_publish_at?: string | null
+}
+
 export type Response = {
 	meta: {
 		generated_at: string
@@ -191,6 +199,9 @@ export type Response = {
 		title?: string | null
 		planning_status?: string | null
 		course_plan?: string | null
+	}
+	communications: {
+		course_updates_summary: StudentCourseCommunicationSummary
 	}
 	message?: string | null
 	learning: {

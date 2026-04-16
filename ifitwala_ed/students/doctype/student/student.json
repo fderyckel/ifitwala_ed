@@ -6,6 +6,7 @@
  "creation": "2024-12-06 14:26:44.955491",
  "default_view": "List",
  "doctype": "DocType",
+ "documentation": "https://ifitwala.com/docs/en/student",
  "engine": "InnoDB",
  "field_order": [
   "section_break_w2rn",
@@ -323,7 +324,7 @@
  "image_field": "student_image",
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-03-26 12:47:24.493390",
+ "modified": "2026-04-12 22:34:32.907315",
  "modified_by": "Administrator",
  "module": "Students",
  "name": "Student",

@@ -13,6 +13,34 @@ from ifitwala_ed.api.student_log import _can_create_student_log_for_session_user
 from ifitwala_ed.curriculum import planning
 
 
+def _class_hub_group_names(user: str) -> set[str]:
+    group_names = set(_instructor_group_names(user))
+    if not user or user == "Guest" or not frappe.db.table_exists("Employee Booking"):
+        return group_names
+
+    employee_row = _resolve_employee_for_user(
+        user,
+        fields=["name"],
+        employment_status_filter=["!=", "Inactive"],
+    )
+    employee_id = (employee_row or {}).get("name")
+    if not employee_id:
+        return group_names
+
+    booking_groups = frappe.get_all(
+        "Employee Booking",
+        filters={
+            "employee": employee_id,
+            "source_doctype": "Student Group",
+            "source_name": ["is", "set"],
+        },
+        pluck="source_name",
+        ignore_permissions=True,
+    )
+    group_names.update(group_name for group_name in booking_groups or [] if group_name)
+    return group_names
+
+
 def _assert_instructor(student_group: str) -> None:
     if not student_group or not isinstance(student_group, str):
         frappe.throw("student_group is required")
@@ -24,7 +52,7 @@ def _assert_instructor(student_group: str) -> None:
     if not user or user == "Guest":
         frappe.throw(_("Login required"))
 
-    if student_group not in _instructor_group_names(user):
+    if student_group not in _class_hub_group_names(user):
         frappe.throw(_("Not permitted to access this class"))
 
 
@@ -516,7 +544,7 @@ def _build_bundle_message(
 
 
 def _list_staff_home_groups(user: str) -> List[Dict[str, Any]]:
-    group_names = sorted(_instructor_group_names(user))
+    group_names = sorted(_class_hub_group_names(user))
     if not group_names:
         return []
 
@@ -726,7 +754,7 @@ def resolve_current_picker_context() -> Dict[str, Any]:
             "next_class": None,
         }
 
-    allowed_groups = _instructor_group_names(user)
+    allowed_groups = _class_hub_group_names(user)
     current_rows, next_row = _resolve_live_class_rows(employee_id)
     current_rows = [row for row in current_rows if row.get("student_group") in allowed_groups]
     next_row = next_row if next_row and next_row.get("student_group") in allowed_groups else None

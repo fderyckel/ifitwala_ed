@@ -17,6 +17,7 @@ from ifitwala_ed.schedule.doctype.student_group.student_group import (
     get_single_offering_academic_year,
     instructor_log_sync_context,
     is_same_or_descendant,
+    schedule_location_query,
 )
 from ifitwala_ed.schedule.student_group_scheduling import fetch_block_grid
 
@@ -133,6 +134,15 @@ class TestStudentGroup(TestCase):
 
         mock_bootstrap.assert_called_once_with(group)
 
+    def test_normalize_group_anchor_fields_clears_course_for_non_course_groups(self):
+        group = object.__new__(StudentGroup)
+        group.group_based_on = "Activity"
+        group.course = "COURSE-1"
+
+        StudentGroup._normalize_group_anchor_fields(group)
+
+        self.assertIsNone(group.course)
+
     @patch("ifitwala_ed.curriculum.planning.frappe.logger")
     @patch("ifitwala_ed.curriculum.planning.frappe.new_doc")
     @patch("ifitwala_ed.curriculum.planning.frappe.get_all")
@@ -243,6 +253,137 @@ class TestStudentGroup(TestCase):
 
 
 class TestStudentGroupScheduleAdvisories(FrappeTestCase):
+    @patch("ifitwala_ed.schedule.doctype.student_group.student_group.frappe.db.get_value")
+    @patch("ifitwala_ed.schedule.doctype.student_group.student_group.is_schedulable_location")
+    def test_validate_schedule_locations_rejects_group_location(self, mock_is_schedulable_location, mock_get_value):
+        group = frappe.get_doc(
+            {
+                "doctype": "Student Group",
+                "school": "KIS Bangkok",
+                "student_group_schedule": [
+                    {
+                        "rotation_day": 1,
+                        "block_number": 3,
+                        "location": "D204",
+                    }
+                ],
+            }
+        )
+        mock_is_schedulable_location.return_value = False
+        mock_get_value.return_value = frappe._dict({"name": "D204", "is_group": 1})
+
+        with self.assertRaises(frappe.ValidationError) as exc:
+            group._validate_schedule_locations()
+
+        self.assertIn("group/container location", str(exc.exception))
+        self.assertIn("D204", str(exc.exception))
+
+    @patch("ifitwala_ed.schedule.doctype.student_group.student_group.get_visible_location_rows_for_school")
+    @patch("ifitwala_ed.schedule.doctype.student_group.student_group.frappe.db.get_value")
+    @patch("ifitwala_ed.schedule.doctype.student_group.student_group.is_schedulable_location")
+    def test_validate_schedule_locations_rejects_room_outside_visible_scope(
+        self,
+        mock_is_schedulable_location,
+        mock_get_value,
+        mock_get_visible_location_rows_for_school,
+    ):
+        group = frappe.get_doc(
+            {
+                "doctype": "Student Group",
+                "school": "KIS Bangkok",
+                "student_group_schedule": [
+                    {
+                        "rotation_day": 1,
+                        "block_number": 3,
+                        "location": "D204",
+                    }
+                ],
+            }
+        )
+        mock_is_schedulable_location.return_value = True
+        mock_get_value.return_value = frappe._dict({"name": "D204", "is_group": 0})
+        mock_get_visible_location_rows_for_school.return_value = [{"name": "D203"}]
+
+        with self.assertRaises(frappe.ValidationError) as exc:
+            group._validate_schedule_locations()
+
+        self.assertIn("outside the visible room scope", str(exc.exception))
+        self.assertIn("KIS Bangkok", str(exc.exception))
+
+    @patch("ifitwala_ed.schedule.doctype.student_group.student_group.get_visible_location_rows_for_school")
+    def test_schedule_location_query_returns_only_matching_schedulable_rooms(
+        self,
+        mock_get_visible_location_rows_for_school,
+    ):
+        mock_get_visible_location_rows_for_school.return_value = [
+            {"name": "D203", "location_name": "D203"},
+            {"name": "D204", "location_name": "D204"},
+        ]
+
+        rows = schedule_location_query(
+            "Location",
+            "204",
+            "name",
+            0,
+            20,
+            {"school": "KIS Bangkok"},
+        )
+
+        self.assertEqual(rows, [["D204"]])
+        mock_get_visible_location_rows_for_school.assert_called_once_with(
+            "KIS Bangkok",
+            include_groups=False,
+            only_schedulable=True,
+            fields=["name", "location_name"],
+            limit=2000,
+            order_by="location_name asc",
+        )
+
+    @patch("ifitwala_ed.schedule.doctype.student_group.student_group.get_rotation_dates")
+    @patch("ifitwala_ed.schedule.doctype.student_group.student_group.find_room_conflicts")
+    @patch.object(StudentGroup, "_get_school_schedule")
+    def test_validate_location_conflicts_absolute_checks_exact_room_only(
+        self,
+        mock_get_school_schedule,
+        mock_find_room_conflicts,
+        mock_get_rotation_dates,
+    ):
+        group = frappe.get_doc(
+            {
+                "doctype": "Student Group",
+                "name": "25-26-G6-Kafue",
+                "academic_year": "IIS 2025-2026",
+                "student_group_schedule": [
+                    {
+                        "rotation_day": 1,
+                        "block_number": 3,
+                        "location": "D201",
+                    }
+                ],
+            }
+        )
+        mock_get_school_schedule.return_value = frappe._dict(
+            {
+                "school_schedule_block": [
+                    frappe._dict(
+                        {
+                            "rotation_day": 1,
+                            "block_number": 3,
+                            "from_time": "09:40:00",
+                            "to_time": "09:55:00",
+                        }
+                    )
+                ]
+            }
+        )
+        mock_get_rotation_dates.return_value = [{"rotation_day": 1, "date": "2025-08-07"}]
+        mock_find_room_conflicts.return_value = []
+
+        group.validate_location_conflicts_absolute()
+
+        mock_find_room_conflicts.assert_called_once()
+        self.assertEqual(mock_find_room_conflicts.call_args.kwargs.get("include_children"), False)
+
     def test_validate_schedule_rows_warns_for_break_block(self):
         group = frappe.get_doc(
             {

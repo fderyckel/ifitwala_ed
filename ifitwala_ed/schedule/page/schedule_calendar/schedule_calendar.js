@@ -41,10 +41,16 @@ function render_schedule_calendar_page(wrapper) {
 		if (cal) cal.refetchEvents();
 	}, "refresh");
 
-	const roles          = frappe.user_roles || [];
-	const is_acad_admin  = roles.includes("Academic Admin");
-	const is_plain_instr = roles.includes("Instructor") && !is_acad_admin;
-	const is_sysmgr      = roles.includes("System Manager");
+	const roles = frappe.user_roles || [];
+	const observerRoles = [
+		"Academic Admin",
+		"Academic Assistant",
+		"Curriculum Coordinator",
+		"Accreditation Visitor",
+	];
+	const hasObserverRole = observerRoles.some(role => roles.includes(role));
+	const is_plain_instr = roles.includes("Instructor") && !hasObserverRole;
+	const is_sysmgr = roles.includes("System Manager");
 
 	// ---------------------------------------------------------------------
 	// Fetch defaults, then build the filter bar

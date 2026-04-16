@@ -1167,10 +1167,7 @@ function wellbeingTypeLabel(type: WellbeingTimelineItem['type']) {
 </script>
 
 <template>
-	<div
-		class="min-h-full px-4 pb-8 pt-8 md:px-6 lg:px-8"
-		style="background: var(--portal-gradient-bg)"
-	>
+	<div class="analytics-shell">
 		<header class="flex flex-wrap items-center justify-between gap-3">
 			<div class="flex-1 text-center">
 				<h1 class="text-2xl font-semibold tracking-tight text-slate-900 md:text-3xl">

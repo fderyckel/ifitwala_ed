@@ -4,7 +4,8 @@
 		class="planning-richtext-field overflow-hidden rounded-2xl border border-line-soft bg-white shadow-sm"
 	>
 		<TextEditor
-			:content="normalizedContent"
+			class="planning-richtext-field__editor"
+			:content="editorContent"
 			:editable="editable"
 			:fixed-menu="editorButtons"
 			:extensions="editorExtensions"
@@ -17,7 +18,7 @@
 		v-else-if="hasContent"
 		class="planning-richtext-display prose prose-sm max-w-none text-ink"
 		:class="displayClass"
-		v-html="trustedHtml(normalizedContent)"
+		v-html="trustedHtml(rawContent)"
 	/>
 </template>
 
@@ -63,19 +64,24 @@ const editorButtons = [
 ];
 const editorExtensions = [PlanningUnderline];
 
-const normalizedContent = computed(() => String(props.modelValue || ''));
+const rawContent = computed(() => String(props.modelValue || ''));
+const editorContent = computed(() => normalizeEditorContent(rawContent.value));
 const editorClass = computed(
 	() =>
 		`prose prose-sm max-w-none bg-white px-4 py-3 text-sm text-ink focus:outline-none ${props.minHeightClass}`
 );
-const hasContent = computed(() => hasRichTextContent(normalizedContent.value));
+const hasContent = computed(() => hasRichTextContent(rawContent.value));
 
 function handleChange(content: string) {
-	emit('update:modelValue', content);
+	emit('update:modelValue', hasRichTextContent(content) ? content : '');
 }
 
 function trustedHtml(html: string): string {
 	return String(html || '');
+}
+
+function normalizeEditorContent(value: string): string {
+	return hasRichTextContent(value) ? String(value || '') : '<p></p>';
 }
 
 function hasRichTextContent(value: string): boolean {
@@ -91,6 +97,42 @@ function hasRichTextContent(value: string): boolean {
 </script>
 
 <style>
+.planning-richtext-field {
+	transition:
+		border-color 140ms ease,
+		box-shadow 140ms ease,
+		background-color 140ms ease;
+}
+
+.planning-richtext-field:focus-within {
+	border-color: rgb(var(--jacaranda-rgb) / 0.42);
+	box-shadow:
+		0 0 0 3px rgb(var(--jacaranda-rgb) / 0.12),
+		var(--shadow-soft);
+}
+
+.planning-richtext-field__editor {
+	background: rgb(var(--surface-rgb) / 0.7);
+}
+
+.planning-richtext-field__editor > .w-full {
+	background: transparent;
+}
+
+.planning-richtext-field__editor .border-outline-gray-modals {
+	border: 0;
+	border-bottom: 1px solid var(--border-subtle);
+	border-radius: 0;
+	background: rgb(var(--surface-rgb) / 0.82);
+	padding-inline: 0.25rem;
+}
+
+.planning-richtext-field__editor .ProseMirror {
+	background: rgb(var(--surface-strong-rgb) / 1);
+	border-bottom-left-radius: 1rem;
+	border-bottom-right-radius: 1rem;
+}
+
 .planning-richtext-field .ProseMirror ul:not([data-type='taskList']),
 .planning-richtext-display ul {
 	list-style-type: disc;

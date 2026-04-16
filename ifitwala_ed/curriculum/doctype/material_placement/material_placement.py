@@ -85,6 +85,7 @@ def has_permission(doc, ptype: str | None = None, user: str | None = None) -> bo
     user = user or frappe.session.user
     if not user or user == "Guest":
         return False
+    ptype = (ptype or "read").lower()
     if not doc:
         return True
 
@@ -93,7 +94,7 @@ def has_permission(doc, ptype: str | None = None, user: str | None = None) -> bo
     if not anchor_doctype or not anchor_name:
         return False
 
-    if ptype in {"read", "select", "report", "print", "email", "share", "export", None}:
+    if ptype in {"read", "select", "report", "print", "email", "share", "export"}:
         return user_can_read_material_anchor(user, anchor_doctype, anchor_name)
 
     return user_can_manage_material_anchor(user, anchor_doctype, anchor_name)

@@ -217,17 +217,33 @@ Used by:
 										</span>
 									</div>
 
-									<FormControl
-										type="select"
-										size="md"
-										:options="logTypeOptions"
-										option-label="label"
-										option-value="value"
-										:model-value="form.log_type"
-										:disabled="!form.student || optionsLoading || submitting"
-										placeholder="Select type"
-										@update:modelValue="v => (form.log_type = v)"
-									/>
+									<select
+										class="w-full rounded-xl border border-border/70 bg-white px-3 py-2 text-sm text-ink shadow-soft outline-none transition focus:ring-2 focus:ring-[rgb(var(--leaf-rgb)/0.35)] disabled:cursor-not-allowed disabled:bg-surface-soft disabled:text-ink/45"
+										:value="form.log_type"
+										:disabled="
+											!form.student || optionsLoading || submitting || !logTypeOptions.length
+										"
+										@change="
+											event =>
+												(form.log_type = String((event.target as HTMLSelectElement)?.value || ''))
+										"
+									>
+										<option value="">{{ __('Select type') }}</option>
+										<option
+											v-for="option in logTypeOptions"
+											:key="option.value"
+											:value="option.value"
+										>
+											{{ option.label }}
+										</option>
+									</select>
+
+									<p
+										v-if="form.student && !optionsLoading && !logTypeOptions.length"
+										class="type-caption text-ink/55"
+									>
+										{{ __('No note types are available for this student yet.') }}
+									</p>
 								</section>
 
 								<!-- Note -->
@@ -267,7 +283,9 @@ Used by:
 									<p class="type-caption text-ink/70">{{ __('Visibility') }}</p>
 
 									<div class="rounded-2xl border border-border/70 bg-white px-4 py-3 shadow-soft">
-										<div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+										<div
+											class="student-log-create__visibility-grid grid grid-cols-1 gap-3 min-[480px]:grid-cols-2"
+										>
 											<label
 												class="flex gap-3 rounded-xl border border-border/60 bg-white px-3 py-3 hover:bg-sky/20 transition"
 											>
@@ -328,17 +346,33 @@ Used by:
 										</label>
 
 										<div v-if="form.requires_follow_up" class="space-y-3 pt-1">
-											<FormControl
-												type="select"
-												size="md"
-												:options="nextStepOptions"
-												option-label="label"
-												option-value="value"
-												:model-value="form.next_step"
-												:disabled="submitting || optionsLoading"
-												placeholder="Select next step"
-												@update:modelValue="onNextStepSelected"
-											/>
+											<select
+												class="w-full rounded-xl border border-border/70 bg-white px-3 py-2 text-sm text-ink shadow-soft outline-none transition focus:ring-2 focus:ring-[rgb(var(--leaf-rgb)/0.35)] disabled:cursor-not-allowed disabled:bg-surface-soft disabled:text-ink/45"
+												:value="form.next_step"
+												:disabled="submitting || optionsLoading || !nextStepOptions.length"
+												@change="
+													event =>
+														onNextStepSelected(
+															String((event.target as HTMLSelectElement)?.value || '')
+														)
+												"
+											>
+												<option value="">{{ __('Select next step') }}</option>
+												<option
+													v-for="option in nextStepOptions"
+													:key="option.value"
+													:value="option.value"
+												>
+													{{ option.label }}
+												</option>
+											</select>
+
+											<p
+												v-if="!optionsLoading && !nextStepOptions.length"
+												class="type-caption text-ink/55"
+											>
+												{{ __('No follow-up steps are available for this student yet.') }}
+											</p>
 
 											<div v-if="followUpRoleHint" class="type-caption text-ink/55">
 												{{ followUpRoleHint }}

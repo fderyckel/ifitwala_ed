@@ -8,6 +8,8 @@ from frappe.model.document import Document
 
 from ifitwala_ed.utilities.file_classification_contract import (
     ALLOWED_PRIMARY_SUBJECT_TYPES,
+    format_allowed_file_purposes,
+    is_allowed_file_purpose,
     is_school_required_for_subject_type,
 )
 
@@ -28,6 +30,7 @@ class FileClassification(Document):
     def validate(self):
         self._validate_required_fields()
         self._validate_primary_subject_type()
+        self._validate_purpose()
         self._sync_attached_fields()
         self._ensure_unique_file()
 
@@ -41,6 +44,16 @@ class FileClassification(Document):
     def _validate_primary_subject_type(self):
         if self.primary_subject_type not in ALLOWED_PRIMARY_SUBJECT_TYPES:
             frappe.throw(_("Invalid primary_subject_type."))
+
+    def _validate_purpose(self):
+        if is_allowed_file_purpose(self.purpose):
+            return
+        frappe.throw(
+            _('Purpose cannot be "{0}". It should be one of "{1}".').format(
+                self.purpose,
+                format_allowed_file_purposes(),
+            )
+        )
 
     def _sync_attached_fields(self):
         if not self.file:

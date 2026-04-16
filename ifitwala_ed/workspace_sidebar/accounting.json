@@ -24,6 +24,54 @@
    "icon": "list",
    "indent": 0,
    "keep_closed": 0,
+   "label": "Chart of Accounts",
+   "link_to": "Account",
+   "link_type": "DocType",
+   "show_arrow": 0,
+   "type": "Link"
+  },
+  {
+   "child": 0,
+   "collapsible": 1,
+   "icon": "list",
+   "indent": 0,
+   "keep_closed": 0,
+   "label": "Program Billing Plan",
+   "link_to": "Program Billing Plan",
+   "link_type": "DocType",
+   "show_arrow": 0,
+   "type": "Link"
+  },
+  {
+   "child": 0,
+   "collapsible": 1,
+   "icon": "list",
+   "indent": 0,
+   "keep_closed": 0,
+   "label": "Billing Schedule",
+   "link_to": "Billing Schedule",
+   "link_type": "DocType",
+   "show_arrow": 0,
+   "type": "Link"
+  },
+  {
+   "child": 0,
+   "collapsible": 1,
+   "icon": "list",
+   "indent": 0,
+   "keep_closed": 0,
+   "label": "Billing Run",
+   "link_to": "Billing Run",
+   "link_type": "DocType",
+   "show_arrow": 0,
+   "type": "Link"
+  },
+  {
+   "child": 0,
+   "collapsible": 1,
+   "icon": "list",
+   "indent": 0,
+   "keep_closed": 0,
    "label": "Sales Invoice",
    "link_to": "Sales Invoice",
    "link_type": "DocType",
@@ -67,7 +115,7 @@
    "type": "Link"
   }
  ],
- "modified": "2026-04-05 20:56:24.950416",
+ "modified": "2026-04-11 12:00:00.000000",
  "modified_by": "Administrator",
  "module": "Accounting",
  "name": "Accounting",

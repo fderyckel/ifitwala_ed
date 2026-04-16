@@ -340,6 +340,7 @@ def _expected_family_signer_name(*, student_applicant: str, user: str) -> str:
                 "parentfield": "guardians",
                 "guardian": ["in", guardian_names],
                 "can_consent": 1,
+                "is_primary_guardian": 1,
             },
             fields=["guardian", "guardian_full_name", "guardian_first_name", "guardian_last_name"],
             limit=5,
@@ -520,6 +521,7 @@ def get_applicant_policy_status(
             "parenttype": "Student Applicant",
             "parentfield": "guardians",
             "can_consent": 1,
+            "is_primary_guardian": 1,
         },
         fields=["guardian"],
     )

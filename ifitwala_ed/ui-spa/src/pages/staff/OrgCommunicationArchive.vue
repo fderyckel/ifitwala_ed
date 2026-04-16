@@ -1,6 +1,6 @@
 <!-- ifitwala_ed/ui-spa/src/pages/staff/OrgCommunicationArchive.vue -->
 <template>
-	<div class="min-h-screen flex flex-col gap-6 p-6">
+	<div class="staff-shell min-w-0 space-y-6">
 		<!-- Header -->
 		<header class="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
 			<div>
@@ -38,10 +38,15 @@
 				/>
 			</div>
 
-			<!-- Team -->
-			<div v-if="hasTeamFilter" class="flex flex-col gap-1">
-				<label class="type-label">Team</label>
-				<FormControl type="select" :options="teamOptions" v-model="filters.team" class="w-44" />
+			<!-- Communication Type -->
+			<div class="flex flex-col gap-1">
+				<label class="type-label">Communication Type</label>
+				<FormControl
+					type="select"
+					:options="communicationTypeOptions"
+					v-model="filters.communication_type"
+					class="w-44"
+				/>
 			</div>
 
 			<!-- Student Group -->
@@ -53,6 +58,12 @@
 					v-model="filters.student_group"
 					class="w-44"
 				/>
+			</div>
+
+			<!-- Team -->
+			<div v-if="hasTeamFilter" class="flex flex-col gap-1">
+				<label class="type-label">Team</label>
+				<FormControl type="select" :options="teamOptions" v-model="filters.team" class="w-44" />
 			</div>
 
 			<!-- With comments -->
@@ -78,12 +89,10 @@
 		</FiltersBar>
 
 		<!-- Main Content Grid -->
-		<div
-			class="grid grid-cols-1 gap-6 flex-1 min-h-0 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] lg:h-[calc(100vh-16rem)]"
-		>
+		<div class="org-archive__grid grid grid-cols-1 gap-6 min-h-0">
 			<!-- LEFT LIST -->
 			<div
-				class="flex flex-col min-h-0 h-full bg-surface-glass rounded-2xl border border-line-soft shadow-soft overflow-hidden"
+				class="org-archive__list flex flex-col min-h-0 h-full bg-surface-glass rounded-2xl border border-line-soft shadow-soft overflow-hidden"
 			>
 				<div
 					class="custom-scrollbar flex-1 overflow-y-auto p-4 space-y-2 bg-sand/20"
@@ -158,7 +167,10 @@
 								</div>
 
 								<!-- Interaction Summary -->
-								<div class="flex items-center gap-3 ml-auto">
+								<div
+									v-if="getInteractionFor(item).self || hasVisibleInteractionActions(item)"
+									class="flex items-center gap-3 ml-auto"
+								>
 									<div
 										v-if="getInteractionFor(item).self"
 										class="text-xs text-jacaranda font-medium flex items-center gap-1"
@@ -167,6 +179,7 @@
 										You: {{ getInteractionFor(item).self?.intent_type || 'Responded' }}
 									</div>
 									<div
+										v-if="hasVisibleInteractionActions(item)"
 										class="flex items-center gap-1 text-xs text-slate-token/50 bg-slate-50 px-2 py-1 rounded"
 									>
 										<span>👍 {{ getInteractionStats(item).reactions_total }}</span>
@@ -197,7 +210,7 @@
 
 			<!-- RIGHT DETAIL -->
 			<div
-				class="min-h-0 h-full bg-surface-glass rounded-2xl border border-line-soft shadow-soft overflow-hidden flex flex-col relative"
+				class="org-archive__detail min-h-0 h-full bg-surface-glass rounded-2xl border border-line-soft shadow-soft overflow-hidden flex flex-col relative"
 			>
 				<div
 					v-if="!selectedComm"
@@ -312,22 +325,25 @@
 					</div>
 
 					<!-- Interactions Footer -->
-					<div class="p-4 border-t border-line-soft bg-surface-soft/80 z-10 sticky bottom-0">
+					<div
+						v-if="selectedComm && hasVisibleInteractionActions(selectedComm)"
+						class="p-4 border-t border-line-soft bg-surface-soft/80 z-10 sticky bottom-0"
+					>
 						<div class="flex items-center justify-between gap-4">
 							<InteractionEmojiChips
-								v-if="selectedComm"
+								v-if="selectedComm && canReact(selectedComm)"
 								:interaction="getInteractionFor(selectedComm)"
-								:readonly="!canInteract(selectedComm)"
+								:readonly="false"
 								:onReact="code => reactTo(selectedComm, code)"
 							/>
 
 							<div class="flex items-center gap-3 ml-auto">
 								<Button
+									v-if="selectedComm && canComment(selectedComm)"
 									variant="subtle"
 									color="gray"
 									class="gap-2 whitespace-nowrap"
 									@click="openThread(selectedComm)"
-									:disabled="!canInteract(selectedComm)"
 								>
 									<FeatherIcon name="message-square" class="h-4 w-4 shrink-0" />
 
@@ -352,14 +368,18 @@
 
 		<CommentThreadDrawer
 			:open="showThreadDrawer"
-			title="Comments"
+			:title="threadTitle"
 			:rows="threadRows"
 			:loading="threadLoading"
-			v-model:comment="newComment"
+			:comment="newComment"
 			:submit-loading="interactionActionLoading"
+			:submit-disabled="interactionActionLoading || !newComment.trim()"
+			submit-label="Send"
+			placeholder="Add a short comment (max 300 characters)"
 			:format-timestamp="value => formatDate(value, 'DD MMM HH:mm')"
-			@close="showThreadDrawer = false"
+			@close="closeThread"
 			@submit="submitComment"
+			@update:comment="onCommentUpdate"
 		/>
 	</div>
 </template>
@@ -372,8 +392,16 @@ import { formatLocalizedDate, formatLocalizedDateTime } from '@/lib/datetime';
 import { createOrgCommunicationArchiveService } from '@/lib/services/orgCommunicationArchive/orgCommunicationArchiveService';
 import { createCommunicationInteractionService } from '@/lib/services/communicationInteraction/communicationInteractionService';
 import { SIGNAL_ORG_COMMUNICATION_INVALIDATE, uiSignals } from '@/lib/uiSignals';
-import { type ArchiveFilters, type OrgCommunicationListItem } from '@/types/orgCommunication';
-import { type InteractionSummary, type InteractionThreadRow } from '@/types/morning_brief';
+import {
+	COMMUNICATION_TYPES,
+	type ArchiveFilters,
+	type OrgCommunicationListItem,
+} from '@/types/orgCommunication';
+import {
+	ORG_SURFACES,
+	type InteractionSummary,
+	type InteractionThreadRow,
+} from '@/types/morning_brief';
 import {
 	extractPolicyInformLinkFromClickEvent,
 	type PolicyInformLinkPayload,
@@ -386,6 +414,11 @@ import DateRangePills from '@/components/filters/DateRangePills.vue';
 import CommentThreadDrawer from '@/components/CommentThreadDrawer.vue';
 import InteractionEmojiChips from '@/components/InteractionEmojiChips.vue';
 import { getInteractionStats as buildInteractionStats } from '@/utils/interactionStats';
+import {
+	getAudienceInteractionCapabilities,
+	getInteractionCommentUi,
+	ORG_COMMUNICATION_VIEWERS,
+} from '@/utils/orgCommunication';
 
 const PAGE_LENGTH = 10;
 const FEED_THROTTLE_MS = 500;
@@ -440,6 +473,12 @@ const selectedStats = computed(() => {
 	if (!selectedComm.value) return null;
 	return buildInteractionStats(getInteractionFor(selectedComm.value));
 });
+
+const threadTitle = computed(() =>
+	selectedComm.value
+		? `${getInteractionCommentUi(getInteractionCapabilities(selectedComm.value).commentMode).titleLabel} · ${selectedComm.value.title}`
+		: 'Comments'
+);
 
 const detailMessageHtml = computed(() => {
 	if (!fullContent.value || typeof fullContent.value.message_html !== 'string') return '';
@@ -497,12 +536,42 @@ const schoolOptions = computed(() => {
 	return [{ label: 'All schools', value: null }, ...scoped];
 });
 
+const communicationTypeOptions = computed(() => [
+	{ label: 'All types', value: 'All' },
+	...COMMUNICATION_TYPES.map(value => ({
+		label: value,
+		value,
+	})),
+]);
+
 const teamOptions = computed(() => [{ label: 'All teams', value: null }, ...myTeams.value]);
 
-const studentGroupOptions = computed(() => [
-	{ label: 'All groups', value: null },
-	...myStudentGroups.value,
-]);
+const studentGroupOptions = computed(() => {
+	const selectedSchool =
+		typeof filters.value.school === 'string' ? filters.value.school.trim() || null : null;
+	const selectedOrganization =
+		typeof filters.value.organization === 'string'
+			? filters.value.organization.trim() || null
+			: null;
+
+	let scopedGroups = myStudentGroups.value;
+
+	if (selectedSchool) {
+		scopedGroups = scopedGroups.filter(group => (group.school || null) === selectedSchool);
+	} else if (selectedOrganization) {
+		const allowedSchools = new Set(
+			schoolChoices.value
+				.filter(school => (school.organization || null) === selectedOrganization)
+				.map(school => school.value)
+		);
+		scopedGroups = scopedGroups.filter(group => {
+			const groupSchool = group.school || null;
+			return !!groupSchool && allowedSchools.has(groupSchool);
+		});
+	}
+
+	return [{ label: 'All groups', value: null }, ...scopedGroups];
+});
 
 let reloadTimer: number | null = null;
 let feedThrottleTimer: number | null = null;
@@ -826,8 +895,22 @@ function getInteractionStats(item: OrgCommunicationListItem) {
 	return buildInteractionStats(getInteractionFor(item));
 }
 
-function canInteract(item: OrgCommunicationListItem) {
-	return item.interaction_mode !== 'None';
+function getInteractionCapabilities(item: OrgCommunicationListItem | null | undefined) {
+	return getAudienceInteractionCapabilities(item, {
+		viewer: ORG_COMMUNICATION_VIEWERS.STAFF,
+	});
+}
+
+function canReact(item: OrgCommunicationListItem | null | undefined) {
+	return getInteractionCapabilities(item).canReact;
+}
+
+function canComment(item: OrgCommunicationListItem | null | undefined) {
+	return getInteractionCapabilities(item).canComment;
+}
+
+function hasVisibleInteractionActions(item: OrgCommunicationListItem | null | undefined) {
+	return getInteractionCapabilities(item).hasVisibleActions;
 }
 
 async function refreshSummary(names: string[]) {
@@ -853,6 +936,7 @@ async function refreshThread(orgCommunication: string, opts?: { silent?: boolean
 			org_communication: orgCommunication,
 		});
 	} catch (err) {
+		threadRows.value = [];
 		if (!opts?.silent) {
 			toast({
 				title: 'Unable to load comments',
@@ -902,10 +986,18 @@ function onOrgCommInvalidated(payload?: { names?: string[] }) {
 	}
 }
 
-function notifyInteractionsDisabled() {
+function notifyReactionsDisabled() {
 	toast({
-		title: 'Interactions disabled',
-		text: 'Comments and reactions are turned off for this announcement.',
+		title: 'Reactions unavailable',
+		text: 'Reactions are not available for this announcement.',
+		icon: 'info',
+	});
+}
+
+function notifyCommentsDisabled() {
+	toast({
+		title: 'Comments unavailable',
+		text: 'Comments are not available for this announcement in this interaction mode.',
 		icon: 'info',
 	});
 }
@@ -937,8 +1029,8 @@ async function reactTo(item: OrgCommunicationListItem, code: ReactionCode) {
 		});
 		return;
 	}
-	if (!canInteract(item)) {
-		notifyInteractionsDisabled();
+	if (!canReact(item)) {
+		notifyReactionsDisabled();
 		return;
 	}
 
@@ -946,6 +1038,7 @@ async function reactTo(item: OrgCommunicationListItem, code: ReactionCode) {
 		await interactionService.reactToOrgCommunication({
 			org_communication: item.name,
 			reaction_code: code,
+			surface: ORG_SURFACES.DESK,
 		});
 	} catch (err) {
 		toast({
@@ -967,13 +1060,25 @@ async function openThread(item: OrgCommunicationListItem) {
 		});
 		return;
 	}
-	if (!canInteract(item)) {
-		notifyInteractionsDisabled();
+	if (!canComment(item)) {
+		notifyCommentsDisabled();
 		return;
 	}
 	selectedComm.value = item;
+	newComment.value = '';
+	threadRows.value = [];
 	showThreadDrawer.value = true;
 	await refreshThread(item.name);
+}
+
+function closeThread() {
+	showThreadDrawer.value = false;
+	newComment.value = '';
+	threadRows.value = [];
+}
+
+function onCommentUpdate(value: string) {
+	newComment.value = value;
 }
 
 async function submitComment() {
@@ -985,8 +1090,8 @@ async function submitComment() {
 		});
 		return;
 	}
-	if (!canInteract(selectedComm.value)) {
-		notifyInteractionsDisabled();
+	if (!canComment(selectedComm.value)) {
+		notifyCommentsDisabled();
 		return;
 	}
 
@@ -1002,11 +1107,15 @@ async function submitComment() {
 
 	interactionActionLoading.value = true;
 	try {
+		const orgCommunication = selectedComm.value.name;
 		await interactionService.postOrgCommunicationComment({
-			org_communication: selectedComm.value.name,
+			org_communication: orgCommunication,
 			note,
+			surface: ORG_SURFACES.DESK,
 		});
 		newComment.value = '';
+		await refreshThread(orgCommunication, { silent: true });
+		await refreshSummary([orgCommunication]);
 	} catch (err) {
 		toast({
 			title: 'Unable to post comment',
@@ -1103,3 +1212,22 @@ function onDetailContentClick(event: MouseEvent) {
 	});
 }
 </script>
+
+<style scoped>
+.org-archive__grid {
+	min-height: 0;
+}
+
+@media (min-width: 900px) {
+	.org-archive__grid {
+		display: grid;
+		grid-template-columns: minmax(0, 4fr) minmax(0, 6fr);
+		height: calc(100vh - 16rem);
+	}
+
+	.org-archive__list,
+	.org-archive__detail {
+		min-width: 0;
+	}
+}
+</style>

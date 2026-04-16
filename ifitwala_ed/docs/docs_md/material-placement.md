@@ -3,8 +3,8 @@ title: "Material Placement: Shared Context For Supporting Materials"
 slug: material-placement
 category: Curriculum
 doc_order: 9
-version: "1.4.0"
-last_change_date: "2026-04-01"
+version: "1.5.0"
+last_change_date: "2026-04-13"
 summary: "Place reusable supporting materials into shared plans, class plans, sessions, and tasks without duplicating the underlying material."
 seo_title: "Material Placement: Shared Context For Supporting Materials"
 seo_description: "Place reusable supporting materials into shared plans, units, class sessions, and tasks without duplicating the underlying material."
@@ -56,6 +56,20 @@ Test refs: `ifitwala_ed/curriculum/doctype/material_placement/test_material_plac
 3. Removing the share deletes the placement only.
 4. The underlying material remains reusable until explicitly archived or deleted.
 
+## Permission Matrix
+
+Status: Implemented
+Code refs: `ifitwala_ed/curriculum/doctype/material_placement/material_placement.json`, `ifitwala_ed/curriculum/doctype/material_placement/material_placement.py`, `ifitwala_ed/curriculum/materials.py`
+Test refs: `ifitwala_ed/curriculum/test_materials.py`, `ifitwala_ed/curriculum/doctype/material_placement/test_material_placement.py`
+
+| Role | Read | Write | Create | Delete | Notes |
+|---|---|---|---|---|---|
+| `System Manager` | Yes | Yes | Yes | Yes | Global administrative access |
+| `Academic Admin` | Yes | Yes | Yes | Yes | Global academic access |
+| `Instructor` | Yes | Yes | Yes | Yes | Limited by taught-course or class anchor scope |
+| `Curriculum Coordinator` | Yes | Yes | Yes | No | Write applies to shared curriculum placements on `Course Plan` and `Unit Plan`; class-owned anchors remain instructor/class-scoped |
+| `Accreditation Visitor` | No | No | No | No | Not in the live material-placement runtime access contract |
+
 ## Related Docs
 
 Status: Implemented
@@ -92,6 +106,7 @@ Test refs: `ifitwala_ed/curriculum/doctype/material_placement/test_material_plac
 - Placement course must match the authoritative course on both the material and the anchor.
 - Duplicate share of the same material into the same anchor is rejected.
 - Shared-plan resources are course-readable, while class-owned placements are now scoped through the class plan or class session anchor.
+- Program-scoped curriculum coordinators can create and edit shared-plan placements on `Course Plan` and `Unit Plan`, but they do not gain class-owned placement write access through coordinator scope alone.
 
 ### Current Constraints To Preserve In Review
 

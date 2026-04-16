@@ -192,6 +192,84 @@ class AccountingTestMixin:
         offering.insert()
         return offering
 
+    def get_program_offering_academic_year(self, program_offering):
+        return frappe.db.get_value(
+            "Program Offering Academic Year",
+            {"parent": program_offering, "parenttype": "Program Offering"},
+            "academic_year",
+        )
+
+    def make_term(self, academic_year, school=None, term_name=None, start_date="2025-08-01", end_date="2025-12-15"):
+        school_name = school or frappe.db.get_value("Academic Year", academic_year, "school")
+        term = frappe.get_doc(
+            {
+                "doctype": "Term",
+                "academic_year": academic_year,
+                "school": school_name,
+                "term_name": term_name or f"Term {frappe.generate_hash(length=6)}",
+                "term_type": "Academic",
+                "term_start_date": start_date,
+                "term_end_date": end_date,
+                "archived": 0,
+                "visible_to_admission": 1,
+            }
+        )
+        term.insert()
+        return term
+
+    def make_program_enrollment(
+        self,
+        organization,
+        account_holder=None,
+        school=None,
+        program_offering=None,
+        student=None,
+        academic_year=None,
+        enrollment_date="2025-08-01",
+    ):
+        offering_name = program_offering or self.make_program_offering(organization, school=school).name
+        school_name = school or frappe.db.get_value("Program Offering", offering_name, "school")
+        account_holder_name = account_holder or self.make_account_holder(organization).name
+        student_name = student or self.make_student(organization, account_holder_name, school=school_name).name
+        academic_year_name = academic_year or self.get_program_offering_academic_year(offering_name)
+        enrollment = frappe.get_doc(
+            {
+                "doctype": "Program Enrollment",
+                "program_offering": offering_name,
+                "student": student_name,
+                "academic_year": academic_year_name,
+                "enrollment_date": enrollment_date,
+                "enrollment_source": "Migration",
+                "enrollment_override_reason": "Accounting test setup",
+            }
+        )
+        enrollment.insert()
+        return enrollment
+
+    def make_program_billing_plan(
+        self,
+        organization,
+        program_offering,
+        academic_year,
+        components,
+        billing_cadence="Annual",
+        is_active=1,
+    ):
+        doc = frappe.get_doc(
+            {
+                "doctype": "Program Billing Plan",
+                "organization": organization,
+                "program_offering": program_offering,
+                "academic_year": academic_year,
+                "billing_cadence": billing_cadence,
+                "invoice_grouping_policy": "One invoice per Account Holder per period",
+                "is_active": is_active,
+                "components": components,
+            }
+        )
+        doc.insert()
+        return doc
+
     def make_payment_terms_template(self, organization, title=None):
         doc = frappe.get_doc(
             {

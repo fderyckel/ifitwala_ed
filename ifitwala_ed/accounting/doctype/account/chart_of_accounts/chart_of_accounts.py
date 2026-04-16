@@ -5,16 +5,31 @@
 import importlib
 import json
 import os
+import unicodedata
 
 import frappe
 from frappe.utils import cstr
 from frappe.utils.nestedset import rebuild_tree
-from unidecode import unidecode
 
 STANDARD_CHART_ALIASES = {
     "Standard": "standard_chart_of_accounts",
     "standard_chart_of_accounts": "standard_chart_of_accounts",
 }
+
+CHART_METADATA_FIELDS = {
+    "account_name",
+    "account_number",
+    "account_type",
+    "account_currency",
+    "account_category",
+    "is_group",
+    "root_type",
+    "tax_rate",
+}
+
+
+def get_chart_metadata_fields():
+    return CHART_METADATA_FIELDS
 
 
 def _get_chart_from_python_template(chart_template):
@@ -46,17 +61,12 @@ def create_charts(
                 if root_account:
                     root_type = child.get("root_type")
 
-                if account_name not in [
-                    "account_name",
-                    "account_number",
-                    "account_type",
-                    "root_type",
-                    "is_group",
-                    "tax_rate",
-                    "account_currency",
-                ]:
+                if account_name not in get_chart_metadata_fields():
                     account_number = cstr(child.get("account_number")).strip()
                     account_name, account_name_in_db = add_suffix_if_duplicate(account_name, account_number, accounts)
+                    desired_account_name = cstr(
+                        child.get("account_name") if from_coa_importer else account_name
+                    ).strip()
 
                     is_group = identify_is_group(child)
                     report_type = (
@@ -66,7 +76,7 @@ def create_charts(
                     account = frappe.get_doc(
                         {
                             "doctype": "Account",
-                            "account_name": child.get("account_name") if from_coa_importer else account_name,
+                            "account_name": desired_account_name,
                             "organization": organization,
                             "parent_account": parent,
                             "is_group": is_group,
@@ -87,6 +97,16 @@ def create_charts(
 
                     account.insert()
 
+                    if cstr(account.account_name).strip() != desired_account_name:
+                        frappe.db.set_value(
+                            "Account",
+                            account.name,
+                            "account_name",
+                            desired_account_name,
+                            update_modified=False,
+                        )
+                        account.account_name = desired_account_name
+
                     accounts.append(account_name_in_db)
 
                     _import_accounts(child, account.name, root_type)
@@ -95,15 +115,16 @@ def create_charts(
         # after all accounts are already inserted.
         frappe.local.flags.ignore_update_nsm = True
         _import_accounts(chart, None, None, root_account=True)
-        rebuild_tree("Account", "parent_account")
+        rebuild_tree("Account")
+        sync_account_types_from_chart(organization, chart=chart)
         frappe.local.flags.ignore_update_nsm = False
 
 
 def add_suffix_if_duplicate(account_name, account_number, accounts):
     if account_number:
-        account_name_in_db = unidecode(" - ".join([account_number, account_name.strip().lower()]))
+        account_name_in_db = normalize_account_key(" - ".join([account_number, account_name.strip().lower()]))
     else:
-        account_name_in_db = unidecode(account_name.strip().lower())
+        account_name_in_db = normalize_account_key(account_name.strip().lower())
 
     if account_name_in_db in accounts:
         count = accounts.count(account_name_in_db)
@@ -112,28 +133,81 @@ def add_suffix_if_duplicate(account_name, account_number, accounts):
     return account_name, account_name_in_db
 
 
+def normalize_account_key(value):
+    normalized = unicodedata.normalize("NFKD", cstr(value))
+    return normalized.encode("ascii", "ignore").decode("ascii")
+
+
 def identify_is_group(child):
     if child.get("is_group"):
         is_group = child.get("is_group")
-    elif len(
-        set(child.keys())
-        - set(
-            [
-                "account_name",
-                "account_type",
-                "root_type",
-                "is_group",
-                "tax_rate",
-                "account_number",
-                "account_currency",
-            ]
-        )
-    ):
+    elif len(set(child.keys()) - set(get_chart_metadata_fields())):
         is_group = 1
     else:
         is_group = 0
 
     return is_group
+
+
+def sync_account_types_from_chart(organization, chart=None, overwrite=False):
+    chart = chart or get_chart("standard_chart_of_accounts")
+    if not chart:
+        return 0
+
+    updated = 0
+
+    def _sync(children, parent_account=None):
+        nonlocal updated
+
+        for account_name, child in children.items():
+            if account_name in get_chart_metadata_fields():
+                continue
+
+            account_label = cstr(child.get("account_name") or account_name).strip()
+            account_docname = frappe.db.get_value(
+                "Account",
+                {
+                    "organization": organization,
+                    "account_name": account_label,
+                    "parent_account": parent_account,
+                },
+                "name",
+            )
+
+            if not account_docname:
+                qualified_account_label = cstr(account_label).strip()
+                if qualified_account_label:
+                    qualified_account_label = f"{qualified_account_label} - {cstr(frappe.get_cached_value('Organization', organization, 'abbr')).strip()}"
+                account_docname = frappe.db.get_value(
+                    "Account",
+                    {
+                        "organization": organization,
+                        "account_name": qualified_account_label,
+                        "parent_account": parent_account,
+                    },
+                    "name",
+                )
+
+            if not account_docname:
+                continue
+
+            expected_account_type = cstr(child.get("account_type")).strip()
+            if expected_account_type:
+                current_account_type = cstr(frappe.db.get_value("Account", account_docname, "account_type")).strip()
+                if overwrite or not current_account_type:
+                    frappe.db.set_value(
+                        "Account",
+                        account_docname,
+                        "account_type",
+                        expected_account_type,
+                        update_modified=False,
+                    )
+                    updated += 1
+
+            _sync(child, parent_account=account_docname)
+
+    _sync(chart)
+    return updated
 
 
 @frappe.whitelist()

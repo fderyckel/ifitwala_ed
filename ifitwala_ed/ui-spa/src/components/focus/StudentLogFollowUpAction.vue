@@ -19,16 +19,16 @@
 				<div class="min-w-0">
 					<div class="type-body font-medium">
 						Student Log
-						<span v-if="log?.name" class="text-muted"> • {{ log.name }}</span>
+						<span v-if="log?.name" class="text-ink/60"> • {{ log.name }}</span>
 					</div>
 
-					<div class="type-meta text-muted mt-1">
+					<div class="type-meta text-ink/60 mt-1">
 						<span v-if="log?.student_name">{{ log.student_name }}</span>
 						<span v-if="log?.log_type"> • {{ log.log_type }}</span>
 						<span v-if="logTimestampLabel"> • {{ logTimestampLabel }}</span>
 					</div>
 
-					<div v-if="log?.follow_up_status" class="type-meta text-muted mt-1">
+					<div v-if="log?.follow_up_status" class="type-meta text-ink/60 mt-1">
 						Status: {{ log.follow_up_status }}
 					</div>
 				</div>
@@ -49,7 +49,7 @@
 			</div>
 
 			<div v-if="log?.log_html" class="mt-3">
-				<div class="type-meta text-muted mb-1">Log note</div>
+				<div class="type-meta text-ink/60 mb-1">Log note</div>
 				<div class="prose prose-sm max-w-none" v-html="trustedHtml(log.log_html)" />
 			</div>
 		</div>
@@ -60,9 +60,9 @@
 		<div class="card-surface p-4">
 			<div class="type-body font-medium">Follow-ups</div>
 
-			<div v-if="loading" class="type-body text-muted mt-3">Loading…</div>
+			<div v-if="loading" class="type-body text-ink/60 mt-3">Loading…</div>
 
-			<div v-else-if="followUps.length === 0" class="type-body text-muted mt-3">
+			<div v-else-if="followUps.length === 0" class="type-body text-ink/60 mt-3">
 				No follow-ups yet.
 			</div>
 
@@ -70,7 +70,7 @@
 				<div v-for="fu in followUps" :key="fu.name" class="rounded-xl border border-ink/10 p-3">
 					<div class="flex items-start justify-between gap-3">
 						<div class="min-w-0">
-							<div class="type-meta text-muted">
+							<div class="type-meta text-ink/60">
 								<span v-if="fu.follow_up_author">{{ fu.follow_up_author }}</span>
 								<span v-if="fu.date"> • {{ followUpDateLabel(fu.date) }}</span>
 								<span v-if="fu.docstatus === 0"> • Draft</span>
@@ -101,7 +101,7 @@
        ============================================================ -->
 		<div v-if="modeState === 'assignee'" class="card-surface p-4">
 			<div class="type-body font-medium">Your follow-up</div>
-			<div class="type-meta text-muted mt-1">
+			<div class="type-meta text-ink/60 mt-1">
 				Write what you did, what happened, and any next action.
 			</div>
 
@@ -113,10 +113,10 @@
 					placeholder="Type your follow-up…"
 					:disabled="busy"
 				/>
-				<div class="type-meta text-muted mt-2">
+				<div class="type-meta text-ink/60 mt-2">
 					Keep it factual and actionable. No sensitive details beyond what’s necessary.
 				</div>
-				<div v-if="draftText.trim().length > 0 && !canSubmit" class="type-meta text-muted mt-2">
+				<div v-if="draftText.trim().length > 0 && !canSubmit" class="type-meta text-ink/60 mt-2">
 					Please write at least 5 characters.
 				</div>
 			</div>
@@ -146,13 +146,13 @@
        ============================================================ -->
 		<div v-else-if="modeState === 'author'" class="card-surface p-4">
 			<div class="type-body font-medium">Review outcome</div>
-			<div class="type-meta text-muted mt-1">
+			<div class="type-meta text-ink/60 mt-1">
 				Decide whether to close the log, or reassign follow-up.
 			</div>
 
 			<!-- Reassign -->
 			<div class="mt-4">
-				<div class="type-meta text-muted mb-1">Reassign to (User ID / email)</div>
+				<div class="type-meta text-ink/60 mb-1">Reassign to (User ID / email)</div>
 				<input
 					v-model="reassignTo"
 					class="if-input w-full"
@@ -162,7 +162,7 @@
 				/>
 				<div
 					v-if="reassignTo.trim().length > 0 && reassignTo.trim().length < 3"
-					class="type-meta text-muted mt-2"
+					class="type-meta text-ink/60 mt-2"
 				>
 					Please enter a valid user.
 				</div>
@@ -189,7 +189,7 @@
 
 			<!-- Complete -->
 			<div class="mt-6 border-t border-ink/10 pt-4">
-				<div class="type-meta text-muted">
+				<div class="type-meta text-ink/60">
 					If you’re satisfied with the outcome, complete the log.
 				</div>
 
@@ -204,7 +204,7 @@
 					</button>
 				</div>
 
-				<div v-if="!canComplete" class="type-meta text-muted mt-2">
+				<div v-if="!canComplete" class="type-meta text-ink/60 mt-2">
 					This is disabled if the log is already Completed.
 				</div>
 			</div>

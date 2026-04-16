@@ -1,209 +1,341 @@
 ---
-title: "Student: Canonical Learner Record and Import Rules"
+title: "Student: Your Learner Records Made Simple"
 slug: student
 category: Students
 doc_order: 1
-version: "1.0.0"
-last_change_date: "2026-03-16"
-summary: "Understand when Students are created from admissions versus imported from an existing school, and how to run the Frappe v16 Data Import path safely."
-seo_title: "Student: Canonical Learner Record and Import Rules"
-seo_description: "Learn the Student creation rules, Data Import setup, import-only bypass flag, and school-scoped onboarding requirements for Frappe v16."
+version: "1.3.0"
+last_change_date: "2026-04-12"
+summary: "Manage learner records with confidence—from admissions intake to alumni status. Understand when to use the admissions pipeline versus importing existing students."
+seo_title: "Student: Your Learner Records Made Simple"
+seo_description: "Learn how to manage Student records in Ifitwala Ed—from admissions promotion to bulk importing existing students with full portal access and health record integration."
 ---
 
-## Student: Canonical Learner Record and Import Rules
+## What is a Student Record?
 
-`Student` is the canonical operational learner record in Ifitwala Ed.
+A **Student** is the central learner record in Ifitwala Ed. It's the single source of truth for everything about a learner—their identity, academic history, guardians, health information, and portal access.
 
-The normal production path is:
-
-`Inquiry -> Student Applicant -> Promotion -> Student`
-
-Direct creation is intentionally restricted so day-to-day operations stay aligned with admissions and enrollment.
-
-<Callout type="warning" title="Canonical path">
-In steady state, Students should be created by promoting an approved [**Student Applicant**](/docs/en/student-applicant/). Data Import is an explicit onboarding and migration exception, not the default intake workflow.
+<Callout type="info" title="Why Ifitwala Ed is different">
+Unlike platforms that scatter student data across disconnected modules, Ifitwala Ed's Student record is deeply integrated. One record connects to admissions, enrollment, attendance, assessments, health, finance, and the family portal—giving you a complete 360° view of every learner without switching contexts.
 </Callout>
 
-## Before You Start (Prerequisites)
+---
 
-- Confirm the target school already exists and you know the exact `School` record to use for `anchor_school`.
-- Confirm any linked values used in the sheet already exist, especially `School`, `Student Cohort`, `Student House`, `Language Xtra`, `Country`, and `Account Holder` where applicable.
-- Confirm the importing user has Desk access plus `Import` permission on `Student`.
-- Prepare clean unique values for `student_email`, `student_id` when used, and the generated `student_full_name` combination.
+## How Students Are Created
 
-## How Student Creation Works
+There are two ways Student records enter the system:
 
-There are two supported creation modes in current runtime code:
+### 1. **Admissions Pipeline (The Normal Path)**
 
-1. Applicant promotion
-2. Explicit import / migration bypass
+The standard way students enter your system is through the admissions workflow:
 
-### 1. Applicant Promotion
+`Inquiry → Student Applicant → Approved → Promoted to Student`
 
-This is the canonical path.
+This is how the vast majority of your students should be created. It ensures:
+- Complete application history is preserved
+- All required documents are collected
+- Proper approval workflows are followed
+- Student and guardian portal accounts are created automatically
 
-- Triggered by `Student Applicant.promote_to_student()`
-- Sets `student_applicant`
-- Copies applicant profile values into `Student`
-- Sets `anchor_school` from the applicant school
-- Suppresses Student side effects during the promotion insert itself through `frappe.flags.from_applicant_promotion`
+### 2. **Direct Import (For Existing Schools)**
 
-### 2. Data Import / Migration Bypass
+If you're migrating from another system or onboarding an existing school, you can import students directly using the Data Import tool. This is an intentional exception path—not the default workflow.
 
-This is the exception path used for existing-school onboarding or legacy migration.
+<Callout type="warning" title="Choose the right path">
+- **New admissions** → Always use the Applicant promotion workflow
+- **Existing school migration** → Use Data Import with the special flag
+- **Never** create students manually one-by-one in Desk (this is blocked for data integrity)
+</Callout>
 
-- `Student` DocType metadata has `allow_import = 1`
-- `Student.before_insert()` checks `frappe.flags.in_import`
-- In import context, every inserted row must include `allow_direct_creation = 1`
-- Migration and patch contexts are also allowed through `frappe.flags.in_migration` or `frappe.flags.in_patch`
+---
 
-If `allow_direct_creation` is not set to `1` during import, the row is rejected with a validation error.
+## Creating Students Through Admissions
 
-## Is There a Flag for Existing-School Student Import?
+The admissions workflow is the heart of Ifitwala Ed's student intake. Here's how it works:
 
-Yes.
+<Steps title="From Prospect to Student">
+  <Step title="Capture the Inquiry">
+    A family expresses interest—via your website, phone, or walk-in. This creates an Inquiry record.
+  </Step>
+  <Step title="Invite to Apply">
+    When they're ready, convert the Inquiry to a Student Applicant. The system tracks their entire application journey.
+  </Step>
+  <Step title="Collect Evidence">
+    Applicants upload documents, complete health profiles, and submit recommendations—all linked to their application.
+  </Step>
+  <Step title="Review and Decide">
+    Your admissions team reviews readiness, interviews the family, and makes an offer decision.
+  </Step>
+  <Step title="Promote to Student">
+    Upon acceptance, click "Promote to Student." The system creates the Student record, portal accounts, and health profile automatically.
+  </Step>
+</Steps>
 
-The flag is:
+<Callout type="success" title="What happens automatically">
+When you promote an applicant:
+- Student record is created with all application data
+- Student portal user account is created (email = username)
+- Student Patient record is created for health services
+- Contact record links the student to your CRM
+- Guardian relationships and portal access are established
+</Callout>
 
-- `allow_direct_creation`
+---
 
-Current metadata details:
+## Importing Existing Students
 
-- field type: `Check`
-- default: `0`
-- hidden: `1`
-- read only: `1`
-- purpose: explicit acknowledgement that this row is being created outside the admissions promotion path
+If you're bringing in students from a previous system, use Data Import. This is designed for one-time migrations, not ongoing intake.
 
-This flag is enforced in:
+### Before You Import
 
-- [student.py](/Users/francois.de/Documents/ifitwala_ed/ifitwala_ed/students/doctype/student/student.py)
+Make sure you have:
+- **School record** already created (you'll need `anchor_school`)
+- **Cohorts** set up (if you use them)
+- **Student Houses** configured (if you use them)
+- **Languages** defined in the system
+- **Clean, unique email addresses** for every student
 
-It exists specifically to support controlled direct creation for import, migration, and audited admin exceptions.
+<Steps title="Importing Students via Data Import">
+  <Step title="Open Data Import">
+    Go to **Data Import** in Desk (or open Student and click Menu → Import).
+  </Step>
+  <Step title="Select Student DocType">
+    Choose "Student" as the target DocType and select "Insert New Records."
+  </Step>
+  <Step title="Download Template">
+    Download the import template. Include all fields you need.
+  </Step>
+  <Step title="Add the Required Flag">
+    **Critical:** Add a column called `allow_direct_creation` and set it to `1` on every row. Without this, the import will fail.
+  </Step>
+  <Step title="Fill Required Fields">
+    Every row needs: `student_first_name`, `student_last_name`, `student_email`, and `anchor_school`.
+  </Step>
+  <Step title="Add Optional Fields">
+    Include: date of birth, gender, nationality, cohort, student house, joining date, etc.
+  </Step>
+  <Step title="Validate and Import">
+    Upload your file, run validation to check for errors, then start the import.
+  </Step>
+</Steps>
 
-## Frappe v16 Data Import Procedure
+<Callout type="tip" title="Import side effects">
+When you import students, all the same automation runs as with admissions:
+- Portal user accounts are created
+- Student Patient records are created
+- Contacts are linked
+- Full names are auto-generated
+</Callout>
 
-This is the verified procedure for the current repo contract.
+---
 
-1. Open `Student` in Desk and use `Menu -> Import`, or open the Frappe Data Import tool and choose `Student`.
-2. Select `Insert New Records`.
-3. Download the template and include the fields you need for onboarding.
-4. Ensure the import file includes `allow_direct_creation` and set it to `1` on every row.
-5. Populate the required identity fields:
-   - `student_first_name`
-   - `student_last_name`
-   - `student_email`
-6. Populate school-scoped anchors and any verified linked fields:
-   - `anchor_school`
-   - `cohort` if used
-   - `student_house` if used
-7. Upload the completed file and run validation before starting import.
+## Student Fields Explained
 
-What happens on successful import:
+| Field | What It's For | Tips |
+|-------|---------------|------|
+| **Student ID** | Optional external ID (legacy systems) | Leave blank to auto-generate STUD-YY-#### format |
+| **First / Middle / Last Name** | Legal name | All three are used to generate the full name automatically |
+| **Preferred Name** | What the student likes to be called | Shows in lists and parent communications |
+| **Email** | Portal username and primary contact | Must be unique; becomes their login username |
+| **Date of Birth** | For age calculations and grade placement | Cannot be after today or the joining date |
+| **Gender** | Demographics and reporting | Used for housing, sports, and diversity metrics |
+| **Joining Date** | When they started at your school | Used for anniversary calculations and reporting |
+| **First / Second Language** | Language proficiency tracking | Set up Language Xtra records first |
+| **Nationality** | Citizenship information | Links to Country records |
+| **Anchor School** | Primary school affiliation | Every student needs this for scoping |
+| **Cohort** | Graduating class (e.g., "Class of 2030") | Great for longitudinal tracking |
+| **Student House** | House/dorm assignment | For competitions and residential management |
+| **Student Applicant** | Link to admissions record | Auto-set when promoted from applicant |
+| **Enabled** | Active status | Uncheck to deactivate without deleting history |
+| **Exit Date / Reason** | For withdrawn students | Use when a student leaves your school |
 
-- Student records are inserted as direct-creation exceptions
-- Student side effects run for imported rows:
-  - user creation
-  - student patient creation
-  - contact linking
-  - image/sibling sync on update flows
+---
 
-## Current Permission Setup in This Repo
+## Contact And Address Workflow
 
-The Student DocType is import-enabled, but the role matrix matters.
+On the Student Desk form, the Contact and Address area is intended to stay visible as the family quick-view:
 
-Current `student.json` permissions grant `import` to:
+- `contact_html` and `address_html` render the linked CRM summary directly on the Student form
+- if your role already has native `Contact` or `Address` Desk access, the Student form also exposes direct open actions to those records
+- if your role can read Student but does not have native `Contact` or `Address` access, the Student form remains the safe read-only context instead of widening raw CRM permissions
 
-- `Academic Admin`
-- `Academic Assistant`
+### Family Address Reuse Proposal
 
-Current `student.json` permissions do **not** grant `import` to:
+When a student has exactly one linked Address, the Student form can propose reusing that same Address for related guardians and siblings.
 
-- `System Manager`
+Rules:
 
-Practical consequence:
+- this is always an explicit proposal, never a silent automatic link
+- only related guardians and siblings with **no existing Address link** are offered
+- guardians or siblings who already have an Address link are shown as excluded from the proposal
+- the same Address record is reused through additional links; the system does not duplicate address text just to speed up family setup
 
-- if the importing operator is using an admin account with elevated framework access, they may still be able to run the import
-- if you want a non-Administrator sysadmin role to use the Desk import flow consistently, grant `Import` on `Student` in Frappe Role Permissions Manager
+This flow is especially useful after migration/import when staff have already linked siblings and guardians and want to avoid repetitive family address entry.
 
-Frappe’s permissions model exposes `Import` as a role permission in Role Permissions Manager, and the Data Import tool is the standard UI path for bulk inserts and updates in current Frappe documentation.
+---
 
-## Recommended Import Shape for Existing-School Onboarding
+## Where You'll Use Student Records
 
-For an existing school migration, treat `Student` import as a school-scoped onboarding sheet, not a global dump.
+### Admissions & Enrollment
+- Track the full journey from inquiry to enrollment
+- View application history and submitted documents
+- Manage waitlists and offers
 
-Recommended minimum columns:
+### Academic Life
+- Enroll students in courses and programs
+- Track attendance and participation
+- View grades and assessment results
+- Manage course loads and academic policies
 
-- `student_first_name`
-- `student_middle_name`
-- `student_last_name`
-- `student_preferred_name`
-- `student_email`
-- `student_date_of_birth`
-- `student_gender`
-- `student_mobile_number`
-- `student_joining_date`
-- `student_first_language`
-- `student_second_language`
-- `student_nationality`
-- `student_second_nationality`
-- `anchor_school`
-- `cohort`
-- `student_house`
-- `residency_status`
-- `enabled`
-- `allow_direct_creation`
+### Health & Wellness
+- Access Student Patient records for health services
+- Track vaccinations and medical conditions
+- Manage nurse visits and health screenings
+- Store emergency contacts and medical consent
 
-Recommended values:
+### Finance & Billing
+- Link to Account Holder for invoicing
+- View billing plans and payment history
+- Manage fee concessions and scholarships
+- Track family financial relationships
 
-- `allow_direct_creation = 1` on every imported row
-- `enabled = 1` unless the student should land inactive immediately
-- `anchor_school` set explicitly for every row
+### Family Engagement
+- Student portal for assignments and grades
+- Guardian portal for parents to view progress
+- Automatic communication via email
+- Portfolio for showcasing student work
 
-## Blocking Errors You Should Expect
+### Reports & Analytics
+- Cohort-based longitudinal tracking
+- Demographic analysis
+- Retention and attrition reporting
+- Academic performance dashboards
 
-The import will fail when:
+---
 
-- `allow_direct_creation` is missing or not `1`
-- required fields are missing
-- unique fields collide (`student_email`, `student_id` when supplied, or derived `student_full_name`)
-- linked values do not exist in the target site
-- date validation fails, for example birth date after joining date
+## Permissions: Who Can Do What
 
-This is expected. The controller is designed to block silent bad imports.
+Student records contain sensitive information, so access is carefully controlled:
 
-## Do and Don't
+| Role | What They Can Do | Typical User |
+|------|------------------|--------------|
+| **System Manager** | Full access including imports | IT Administrator |
+| **Academic Admin** | Create, edit, import students | Principal, Registrar |
+| **Academic Assistant** | Edit students, run imports | Admissions Coordinator |
+| **Instructor** | View students they teach | Teachers |
+| **Nurse** | View health-related information | School Nurse |
+| **Counselor** | View assigned students | Guidance Counselor |
+| **Student** | View their own record | The student themselves (via portal) |
+| **Guardian** | View their children's records | Parents (via portal) |
+
+### Data Privacy Notes
+
+- Instructors only see students in their classes
+- Guardians only see their own children
+- Health information is restricted to medical staff
+- Financial details are limited to billing staff
+- Portal access is automatically created for students and guardians
+
+<Callout type="warning" title="Important import permission note">
+Academic Admin and Academic Assistant have import permission. System Manager does **not** have import permission by default—this is intentional to prevent accidental bulk changes. If an admin needs to import, grant "Import" permission explicitly in Role Permissions Manager.
+</Callout>
+
+---
+
+## Best Practices
+
+### For New Students (Admissions)
+- Always use the **applicant promotion workflow**
+- Don't create students directly in Desk (it's blocked for good reason)
+- Ensure all required documents are collected before promotion
+- Verify guardian relationships are correct before promotion
+
+### For Existing Students (Migration)
+- Prepare your data carefully before importing
+- Use school-scoped import files (don't mix schools in one spreadsheet)
+- Always set `allow_direct_creation = 1` on every row
+- Include `anchor_school` explicitly for every student
+- Validate your import file before running the actual import
+
+### Data Quality
+- Use consistent naming conventions
+- Set up Cohorts and Student Houses before importing
+- Ensure email addresses are valid and unique
+- Check that joining dates make sense (after date of birth)
+- Use the Student ID field only for legacy IDs from previous systems
+
+### Ongoing Management
+- Use "Enabled" to deactivate students rather than deleting
+- Record exit dates and reasons for withdrawn students
+- Update contact information promptly when families move
+- Sync image changes are automatic when updated
 
 <DoDont doTitle="Do" dontTitle="Don't">
-  <Do>Use Student Applicant promotion for normal admissions-created learners.</Do>
-  <Do>Use Data Import only for existing-school onboarding, migration, or other explicit exception flows.</Do>
-  <Do>Set `allow_direct_creation = 1` on every imported row.</Do>
-  <Do>Keep `anchor_school` explicit on every row to preserve tenant and school scope.</Do>
-  <Dont>Assume `System Manager` currently has Student import permission in repo metadata.</Dont>
-  <Dont>Use a global mixed-school spreadsheet when importing operational students.</Dont>
-  <Dont>Skip link-data preparation and expect import validation to infer missing schools, cohorts, or houses.</Dont>
+  <Do>Use the admissions workflow for all new student intake.</Do>
+  <Do>Import existing students only for migrations and onboarding.</Do>
+  <Do>Set `allow_direct_creation = 1` on every import row.</Do>
+  <Do>Include `anchor_school` for every imported student.</Do>
+  <Do>Validate import files before running the actual import.</Do>
+  <Dont>Create students manually in Desk (use admissions or import).</Dont>
+  <Dont>Mix multiple schools in one import spreadsheet.</Dont>
+  <Dont>Skip data validation and expect the system to fix errors.</Dont>
+  <Dont>Delete students—use "Enabled" to deactivate instead.</Dont>
 </DoDont>
 
-## Related Docs
+---
 
-- [**Student Applicant**](/docs/en/student-applicant/)
-- [**School**](/docs/en/school/)
-- [**Organization**](/docs/en/organization/)
-- [**Student Enrollment Playbook**](/docs/en/student-enrollment-playbook/)
+## Common Questions
+
+**Q: Can I create a Student directly without going through admissions?**
+A: Generally no—this is intentionally blocked to maintain data integrity. Use Data Import with `allow_direct_creation = 1` for migrations only.
+
+**Q: What happens to a student's data when they graduate?**
+A: The record remains in the system with their full history. You can set an exit date and reason. This preserves transcripts, grades, and records for alumni purposes.
+
+**Q: Can a student belong to multiple schools?**
+A: Every student has one "anchor school," but they can be enrolled in courses or programs across schools within the same organization (depending on your setup).
+
+**Q: How do students and parents access the portal?**
+A: Portal accounts are created automatically when a student is promoted from applicant or imported. They use the student's email as the username. Guardians get portal access linked to their contact records.
+
+**Q: Can I update student information in bulk?**
+A: Yes, use Data Import with the "Update Existing Records" option. Be careful with bulk changes—always back up first.
+
+**Q: What if a student transfers between my schools?**
+A: Keep the same Student record and update the `anchor_school` field. Their full history stays intact—transcripts, grades, everything follows them.
+
+**Q: Why was my import rejected?**
+A: Common reasons: missing `allow_direct_creation = 1`, duplicate emails, missing required fields (first name, last name, email, anchor_school), or linked records that don't exist (cohort, house, etc.).
+
+---
+
+<RelatedDocs
+  slugs="student-applicant,school,organization,student-enrollment-playbook,inquiry"
+  title="Continue With Admissions and Enrollment Docs"
+/>
+
+---
 
 ## Technical Notes (IT)
 
-### Latest Technical Snapshot (2026-03-16)
+- **DocType**: `Student` — Located in Students module
+- **Autoname**: `STUD-.YY.-.####` format (auto-generated)
+- **Creation Paths**: Applicant promotion (canonical) or Data Import (exception)
+- **Import Flag**: `allow_direct_creation` check field required for imports
+- **Side Effects**: User creation, Student Patient creation, Contact linking, image sync
 
-- **Primary runtime owners**:
-  - `ifitwala_ed/students/doctype/student/student.py`
-  - `ifitwala_ed/students/doctype/student/student.json`
-  - `ifitwala_ed/admission/doctype/student_applicant/student_applicant.py`
-  - `ifitwala_ed/students/doctype/student/test_student.py`
-- **Verified import contract**:
-  - DocType metadata enables import with `allow_import = 1`
-  - import insert path requires `allow_direct_creation = 1` on each row
-  - applicant promotion remains the canonical non-exception creation flow
-- **Permission nuance**:
-  - repo metadata currently grants Student `import` permission to `Academic Admin` and `Academic Assistant`
-  - repo metadata currently does not grant Student `import` permission to `System Manager`
+### Permission Matrix
+
+| Role | Read | Write | Create | Delete | Import | Notes |
+|------|------|-------|--------|--------|--------|-------|
+| `System Manager` | Yes | Yes | Yes | Yes | No | No import by default (intentional) |
+| `Academic Admin` | Yes | Yes | Yes | No | Yes | Full academic access |
+| `Academic Assistant` | Yes | Yes | Yes | No | Yes | Can create and import |
+| `Instructor` | Yes | Yes | No | No | No | Owns students they teach |
+| `Nurse` | Yes | Yes | No | No | No | Medical context access |
+| `Counselor` | Yes | Yes | No | No | No | Assigned student access |
+| `Admission Manager` | Yes | Yes | Yes | No | No | Admissions context |
+| `Admission Officer` | Yes | Yes | Yes | No | No | Admissions context |
+| `Guardian` | Yes* | No | No | No | No | Own children only (portal) |
+| `Student` | Yes* | No | No | No | No | Self only (portal) |
+
+*Read access is scoped by relationship (own children, own record, or enrolled students)

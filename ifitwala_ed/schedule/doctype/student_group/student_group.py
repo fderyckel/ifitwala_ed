@@ -15,7 +15,11 @@ from ifitwala_ed.schedule.student_group_employee_booking import (
     rebuild_employee_bookings_for_student_group,
 )
 from ifitwala_ed.schedule.student_group_scheduling import check_slot_conflicts, get_schedule_block_warning
-from ifitwala_ed.utilities.location_utils import find_room_conflicts
+from ifitwala_ed.utilities.location_utils import (
+    find_room_conflicts,
+    get_visible_location_rows_for_school,
+    is_schedulable_location,
+)
 from ifitwala_ed.utilities.school_tree import get_ancestor_schools
 
 
@@ -49,6 +53,34 @@ def _student_group_instructor_log_state(doc):
     return group_fields, tuple(instructor_rows)
 
 
+def _resolve_student_group_location_school(
+    *,
+    program_offering: str | None = None,
+    school: str | None = None,
+    academic_year: str | None = None,
+) -> str | None:
+    """
+    Resolve the school that governs location visibility for Student Group rooming.
+
+    Use the most specific scope first:
+    1. explicit Student Group school
+    2. Program Offering school
+    3. Academic Year school
+    """
+    if school:
+        return school
+
+    if program_offering:
+        offering_school = frappe.db.get_value("Program Offering", program_offering, "school")
+        if offering_school:
+            return offering_school
+
+    if academic_year:
+        return frappe.db.get_value("Academic Year", academic_year, "school")
+
+    return None
+
+
 def instructor_log_sync_context(previous_doc, current_doc):
     previous_names = _student_group_instructor_names(previous_doc) if previous_doc else set()
     current_names = _student_group_instructor_names(current_doc)
@@ -79,6 +111,7 @@ class StudentGroup(Document):
             self.validate_term()
 
         self._derive_program_from_offering()
+        self._normalize_group_anchor_fields()
         self._validate_ay_in_offering_spine()
         self._enforce_school_rules()
         self._validate_course_scoping()
@@ -90,6 +123,7 @@ class StudentGroup(Document):
         self.validate_and_set_child_table_fields()
         self.validate_duplicate_students()
         self.validate_rotation_clashes()
+        self._validate_schedule_locations()
         self.validate_location_capacity()
 
         ########
@@ -303,6 +337,11 @@ class StudentGroup(Document):
             frappe.throw(_("Please select a course."))
         if self.group_based_on == "Cohort" and not self.cohort:
             frappe.throw(_("Please select a cohort."))
+
+    def _normalize_group_anchor_fields(self) -> None:
+        """Clear anchor fields that do not apply to the selected grouping mode."""
+        if self.group_based_on != "Course":
+            self.course = None
 
     # Throwing message if more students than maximum size in the group
     def validate_size(self):
@@ -673,6 +712,90 @@ class StudentGroup(Document):
                 title=_("Maximum Capacity Exceeded"),
             )
 
+    def _validate_schedule_locations(self):
+        """
+        Student Group schedule rows must target concrete schedulable rooms only.
+
+        This blocks container/group Locations from being saved into timetable rows,
+        which would otherwise expand into descendant conflicts and look like stale
+        duplicate data to users.
+        """
+        if not self.student_group_schedule:
+            return
+
+        selected_locations = []
+        for row in self.student_group_schedule or []:
+            location_name = (getattr(row, "location", "") or "").strip()
+            if location_name:
+                selected_locations.append((row.idx, location_name))
+
+        if not selected_locations:
+            return
+
+        for row_number, location_name in selected_locations:
+            location_row = frappe.db.get_value("Location", location_name, ["name", "is_group"], as_dict=True)
+            if not location_row:
+                frappe.throw(
+                    _("Row {row_number}: Location {location} does not exist.").format(
+                        row_number=row_number,
+                        location=location_name,
+                    ),
+                    title=_("Invalid Schedule Location"),
+                )
+
+            if not is_schedulable_location(location_name):
+                if cint(location_row.get("is_group") or 0):
+                    frappe.throw(
+                        _(
+                            "Row {row_number}: Location {location} is a group/container location. Choose a specific room instead."
+                        ).format(
+                            row_number=row_number,
+                            location=location_name,
+                        ),
+                        title=_("Invalid Schedule Location"),
+                    )
+
+                frappe.throw(
+                    _("Row {row_number}: Location {location} is not an active schedulable room.").format(
+                        row_number=row_number,
+                        location=location_name,
+                    ),
+                    title=_("Invalid Schedule Location"),
+                )
+
+        scope_school = _resolve_student_group_location_school(
+            program_offering=self.program_offering,
+            school=self.school,
+            academic_year=self.academic_year,
+        )
+
+        visible_room_names = None
+        if scope_school:
+            visible_room_names = {
+                row.get("name")
+                for row in get_visible_location_rows_for_school(
+                    scope_school,
+                    include_groups=False,
+                    only_schedulable=True,
+                    fields=["name"],
+                    limit=2000,
+                )
+                if row.get("name")
+            }
+
+        for row_number, location_name in selected_locations:
+            if visible_room_names is not None and location_name not in visible_room_names:
+                frappe.throw(
+                    _(
+                        "Row {row_number}: Location {location} is outside the visible room scope for school {school}."
+                    ).format(
+                        row_number=row_number,
+                        location=location_name,
+                        school=scope_school,
+                    ),
+                    title=_("Location Not Available"),
+                )
+
     def _get_school_schedule(self):
         """
         Resolve the School Schedule used to validate schedule rows.
@@ -955,6 +1078,7 @@ class StudentGroup(Document):
                 loc,
                 start_dt,
                 end_dt,
+                include_children=False,
                 exclude=exclude,
             )
             for c in hits:
@@ -1316,6 +1440,43 @@ def allowed_school_query(doctype, txt, searchfield, start, page_len, filters):
         """,
         (min_lft, max_rgt, f"%{txt}%", page_len, start),
     )
+
+
+@frappe.whitelist()
+@frappe.validate_and_sanitize_search_inputs
+def schedule_location_query(doctype, txt, searchfield, start, page_len, filters):
+    filters = frappe.parse_json(filters) if isinstance(filters, str) else (filters or {})
+    scope_school = _resolve_student_group_location_school(
+        program_offering=(filters or {}).get("program_offering"),
+        school=(filters or {}).get("school"),
+        academic_year=(filters or {}).get("academic_year"),
+    )
+    if not scope_school:
+        return []
+
+    rows = get_visible_location_rows_for_school(
+        scope_school,
+        include_groups=False,
+        only_schedulable=True,
+        fields=["name", "location_name"],
+        limit=2000,
+        order_by="location_name asc",
+    )
+    if not rows:
+        return []
+
+    search_txt = (txt or "").strip().lower()
+    if search_txt:
+        rows = [
+            row
+            for row in rows
+            if search_txt in (str(row.get("name") or "").lower())
+            or search_txt in (str(row.get("location_name") or "").lower())
+        ]
+
+    start = cint(start or 0)
+    page_len = cint(page_len or 20)
+    return [[row.get("name")] for row in rows[start : start + page_len] if row.get("name")]
 
 
 @frappe.whitelist()

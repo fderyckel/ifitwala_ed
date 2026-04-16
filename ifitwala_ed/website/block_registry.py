@@ -423,6 +423,45 @@ WEBSITE_BLOCK_DEFINITIONS = [
         "seo_role": "supporting",
         "is_core": 1,
     },
+    {
+        "block_type": "story_feed",
+        "label": "Story Feed",
+        "template_path": "ifitwala_ed/website/blocks/story_feed.html",
+        "script_path": None,
+        "provider_path": "ifitwala_ed.website.providers.story_feed.get_context",
+        "props_schema": {
+            "type": "object",
+            "properties": {
+                "title": {"type": "string"},
+                "description": {"type": "string"},
+                "limit": {"type": ["integer", "null"], "minimum": 1},
+                "show_excerpt": {"type": "boolean"},
+            },
+            "additionalProperties": False,
+        },
+        "seo_role": "supporting",
+        "is_core": 1,
+    },
+    {
+        "block_type": "academic_calendar",
+        "label": "Academic Calendar",
+        "template_path": "ifitwala_ed/website/blocks/academic_calendar.html",
+        "script_path": None,
+        "provider_path": "ifitwala_ed.website.providers.academic_calendar.get_context",
+        "props_schema": {
+            "type": "object",
+            "properties": {
+                "title": {"type": "string"},
+                "description": {"type": "string"},
+                "limit": {"type": ["integer", "null"], "minimum": 1},
+                "include_terms": {"type": "boolean"},
+                "include_holidays": {"type": "boolean"},
+            },
+            "additionalProperties": False,
+        },
+        "seo_role": "supporting",
+        "is_core": 1,
+    },
 ]
 
 BASE_SURFACE_BLOCK_TYPES = (
@@ -436,7 +475,7 @@ BASE_SURFACE_BLOCK_TYPES = (
     "faq",
     "content_snippet",
 )
-SCHOOL_SURFACE_BLOCK_TYPES = ("staff_directory",)
+SCHOOL_SURFACE_BLOCK_TYPES = ("staff_directory", "story_feed", "academic_calendar")
 ADMISSIONS_SURFACE_BLOCK_TYPES = (
     "admissions_overview",
     "admissions_steps",

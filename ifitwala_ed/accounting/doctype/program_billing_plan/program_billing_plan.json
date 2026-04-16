@@ -1,0 +1,121 @@
+{
+ "actions": [],
+ "allow_import": 1,
+ "allow_rename": 1,
+ "autoname": "PBP-.#####",
+ "creation": "2026-04-11 12:00:00.000000",
+ "doctype": "DocType",
+ "document_type": "Setup",
+ "engine": "InnoDB",
+ "field_order": [
+  "organization",
+  "program_offering",
+  "academic_year",
+  "billing_cadence",
+  "invoice_grouping_policy",
+  "is_active",
+  "components"
+ ],
+ "fields": [
+  {
+   "fieldname": "organization",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Organization",
+   "options": "Organization",
+   "reqd": 1
+  },
+  {
+   "fieldname": "program_offering",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Program Offering",
+   "options": "Program Offering",
+   "reqd": 1
+  },
+  {
+   "fieldname": "academic_year",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Academic Year",
+   "options": "Academic Year",
+   "reqd": 1
+  },
+  {
+   "fieldname": "billing_cadence",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Billing Cadence",
+   "options": "Annual\nTerm\nMonthly",
+   "reqd": 1
+  },
+  {
+   "default": "One invoice per Account Holder per period",
+   "fieldname": "invoice_grouping_policy",
+   "fieldtype": "Select",
+   "label": "Invoice Grouping Policy",
+   "options": "One invoice per Account Holder per period",
+   "reqd": 1
+  },
+  {
+   "default": "1",
+   "fieldname": "is_active",
+   "fieldtype": "Check",
+   "in_list_view": 1,
+   "label": "Active"
+  },
+  {
+   "fieldname": "components",
+   "fieldtype": "Table",
+   "label": "Components",
+   "options": "Program Billing Plan Component",
+   "reqd": 1
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-04-11 12:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Accounting",
+ "name": "Program Billing Plan",
+ "naming_rule": "Expression",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Accounts Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Accounts User",
+   "share": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

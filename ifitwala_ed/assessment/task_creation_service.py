@@ -245,6 +245,8 @@ def create_task_and_delivery(
             0 if data.get("task_type") == "Quiz" else 1 if data["delivery_mode"] in ("Collect Work", "Assess") else 0
         )
         task.default_allow_feedback = to_check_value(data.get("allow_feedback"))
+        if data.get("task_type") != "Quiz" and task.default_grading_mode == "Points":
+            task.default_max_points = data["max_points"]
 
         if data.get("grade_scale") and data["grading_mode"] not in (None, "None"):
             task.default_grade_scale = data["grade_scale"]

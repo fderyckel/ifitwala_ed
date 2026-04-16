@@ -21,7 +21,7 @@ This file is the canonical reference and will be updated incrementally as decisi
 | Organization (legal entity) | Company | Same doctype; surfaced as Organization. |
 | Accounting Settings (org-level) | Accounts Settings | Org-level defaults. |
 | Fiscal Year | Fiscal Year | Implemented. Legal accounting-year authority, distinct from Academic Year and retained separately from Accounting Period. |
-| Chart of Accounts Template | Chart of Accounts Importer + chart template JSON/Python files | Templates live under `ifitwala_ed/accounting/doctype/account/chart_of_accounts`. Current packaged default is `standard_chart_of_accounts` (English); additional templates can be added later in the same module. |
+| Chart of Accounts Template | Chart of Accounts Importer + chart template JSON/Python files | Templates live under `ifitwala_ed/accounting/doctype/account/chart_of_accounts`. The packaged default is the ERPNext v16 international `standard_chart_of_accounts` template, and it is auto-installed for each new Organization. |
 | Account | Account | ERPNext account tree. |
 | GL Entry | GL Entry | Ledger row. |
 | Journal Entry | Journal Entry | Manual accounting entry. |
@@ -165,6 +165,24 @@ Each Offering defines:
 
 No accounting logic is hard‑coded by pedagogical type.
 
+### 5.2 Phase 1 Billing Structure Boundary
+
+`Billable Offering` is the fee catalog and accounting-mapping layer only.
+
+Phase 1 adds separate program billing objects:
+
+* `Program Billing Plan` composes the relevant billable offerings for one `Program Offering` and `Academic Year`
+* `Program Billing Plan Component` stores program-local quantity and default-rate policy
+* `Billing Schedule` derives the per-enrollment billing rows
+* `Billing Run` batches pending schedule rows into draft invoices grouped by `Account Holder`
+
+Locked boundary:
+
+* keep income-account and tax-category ownership on `Billable Offering`
+* keep plan-local pricing on `Program Billing Plan Component`
+* keep installment splitting on `Payment Terms Template`
+* keep all GL posting inside `Sales Invoice`
+
 ---
 
 ## 6. Billing Cadence (Supported Structures)
@@ -180,6 +198,12 @@ The system must structurally support:
 * Ad‑hoc charges
 
 Operational policy is configurable per Organization.
+
+Phase 1 implementation status:
+
+* Annual, Term, and Monthly program billing structures are implemented through `Program Billing Plan`
+* Billing schedules are generated from `Program Enrollment`
+* Accounting can generate draft invoices in bulk for one `Program Offering` through `Billing Run`
 
 ---
 
@@ -244,6 +268,15 @@ No complex jurisdiction rules in Phase 0.
 ## 10. Chart of Accounts (ERPNext‑Aligned)
 
 The CoA structure must follow ERPNext conventions closely, even if not fully used yet.
+
+### 10.0 Default provisioning
+
+* Each new Organization automatically receives the packaged default chart of accounts.
+* The packaged default is the ERPNext v16 international `standard_chart_of_accounts` template.
+* Existing sites that have Organizations with zero `Account` rows are backfilled by a migration patch.
+* Existing sites also backfill ERPNext-defined `account_type` values for standard-chart accounts when those values are missing.
+* `Account.account_name` keeps the human-facing chart label, but the `Account` docname is qualified with the Organization abbreviation to preserve multi-organization isolation and avoid name collisions across sibling organizations.
+* The Chart of Accounts tree is organization-scoped and uses an account-specific tree loader so finance can browse the actual nested chart in Desk.
 
 ### 10.1 Minimum Active Accounts (Phase 0)
 

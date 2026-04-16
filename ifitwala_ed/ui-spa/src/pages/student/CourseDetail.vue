@@ -1,6 +1,6 @@
 <!-- ifitwala_ed/ui-spa/src/pages/student/CourseDetail.vue -->
 <template>
-	<div class="space-y-6 p-4 sm:p-6 lg:p-8">
+	<div class="portal-page">
 		<div>
 			<RouterLink
 				:to="{ name: 'student-courses' }"
@@ -141,6 +141,23 @@
 						>
 							Resources
 						</button>
+						<RouterLink
+							:to="classUpdatesHref"
+							class="inline-flex items-center justify-center gap-2 rounded-full border px-4 py-2 text-sm font-semibold transition"
+							:class="
+								courseUpdateSummary.unread_count || courseUpdateSummary.has_high_priority
+									? 'border-jacaranda/40 bg-jacaranda/5 text-jacaranda'
+									: 'border-line-soft bg-white text-ink hover:border-jacaranda/40 hover:bg-jacaranda/5'
+							"
+						>
+							<span>Class Updates</span>
+							<span
+								v-if="classUpdatesBadge"
+								class="rounded-full bg-white/90 px-2 py-0.5 text-xs font-semibold text-jacaranda"
+							>
+								{{ classUpdatesBadge }}
+							</span>
+						</RouterLink>
 					</div>
 
 					<nav
@@ -914,13 +931,14 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { toast } from 'frappe-ui';
-import { useRoute, useRouter } from 'vue-router';
+import { RouterLink, useRoute, useRouter } from 'vue-router';
 
 import { createReflectionEntry } from '@/lib/services/portfolio/portfolioService';
 import { getStudentLearningSpace } from '@/lib/services/student/studentLearningHubService';
 import type {
 	Response as StudentLearningSpaceResponse,
 	StudentAssignedWork,
+	StudentCourseCommunicationSummary,
 	StudentLearningNextAction,
 	StudentLearningReflectionEntry,
 	StudentLearningSession,
@@ -932,6 +950,14 @@ const PLACEHOLDER =
 	encodeURIComponent(
 		`<svg xmlns="http://www.w3.org/2000/svg" width="600" height="600"><rect width="600" height="600" fill="#f3ede2"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" font-family="Arial, sans-serif" font-size="32" fill="#8a7963">Course</text></svg>`
 	);
+
+const EMPTY_COURSE_UPDATE_SUMMARY: StudentCourseCommunicationSummary = {
+	total_count: 0,
+	unread_count: 0,
+	high_priority_count: 0,
+	has_high_priority: 0,
+	latest_publish_at: null,
+};
 
 const SECTION_IDS = {
 	focus: 'learning-focus',
@@ -974,6 +1000,9 @@ const reflectionEntries = computed<StudentLearningReflectionEntry[]>(
 	() => learningSpace.value?.learning.reflection_entries || []
 );
 const unitNavigation = computed(() => learningSpace.value?.learning.unit_navigation || []);
+const courseUpdateSummary = computed<StudentCourseCommunicationSummary>(
+	() => learningSpace.value?.communications?.course_updates_summary || EMPTY_COURSE_UPDATE_SUMMARY
+);
 
 const selectedUnit = computed<StudentLearningUnit | null>(() => {
 	return (
@@ -1014,6 +1043,26 @@ const hasVisibleResources = computed(() => {
 		learningSpace.value?.resources.class_resources.length ||
 		learningSpace.value?.resources.shared_resources.length
 	);
+});
+
+const classUpdatesHref = computed(() => ({
+	name: 'student-communications' as const,
+	query: {
+		source: 'course',
+		course_id: props.course_id,
+		student_group:
+			learningSpace.value?.access.resolved_student_group || props.student_group || undefined,
+	},
+}));
+
+const classUpdatesBadge = computed(() => {
+	if (courseUpdateSummary.value.unread_count > 0) {
+		return `${courseUpdateSummary.value.unread_count} new`;
+	}
+	if (courseUpdateSummary.value.total_count > 0) {
+		return String(courseUpdateSummary.value.total_count);
+	}
+	return '';
 });
 
 const learningSections = computed(() => {

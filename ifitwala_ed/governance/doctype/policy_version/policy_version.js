@@ -131,15 +131,15 @@ function buildPolicyMessageHtml(frm, policyMeta) {
 function defaultRecipients(policyMeta) {
 	const appliesTo = new Set(getPolicyAudienceTokens(policyMeta));
 	if (appliesTo.has("Applicant")) {
-		return { to_staff: 1, to_students: 1, to_guardians: 1, to_community: 0 };
+		return { to_staff: 1, to_students: 1, to_guardians: 1 };
 	}
 	if (appliesTo.has("Student")) {
-		return { to_staff: 1, to_students: 1, to_guardians: 0, to_community: 0 };
+		return { to_staff: 1, to_students: 1, to_guardians: 0 };
 	}
 	if (appliesTo.has("Guardian")) {
-		return { to_staff: 1, to_students: 0, to_guardians: 1, to_community: 0 };
+		return { to_staff: 1, to_students: 0, to_guardians: 1 };
 	}
-	return { to_staff: 1, to_students: 0, to_guardians: 0, to_community: 0 };
+	return { to_staff: 1, to_students: 0, to_guardians: 0 };
 }
 
 async function getInstitutionalPolicyMeta(policyName) {
@@ -170,7 +170,6 @@ const TARGET_SCOPE_ORGANIZATION_STAFF = "Organization Staff";
 const TARGET_SCOPE_SCHOOLS_IN_ORGANIZATION = "Schools in Organization";
 const TARGET_SCOPE_SCHOOL = "School";
 const TARGET_SCOPE_TEAM = "Team";
-const NON_STAFF_POLICY_AUDIENCES = new Set(["Applicant", "Student", "Guardian", "Community"]);
 
 function getPolicyScopeSchool(policyMeta) {
 	return String(policyMeta.school || "").trim();
@@ -178,7 +177,7 @@ function getPolicyScopeSchool(policyMeta) {
 
 function isStaffOnlyPolicy(policyMeta) {
 	const tokens = getPolicyAudienceTokens(policyMeta);
-	return tokens.includes("Staff") && !tokens.some(token => NON_STAFF_POLICY_AUDIENCES.has(token));
+	return tokens.includes("Staff") && !tokens.some(token => token !== "Staff");
 }
 
 function getTargetScopeOptions(policyMeta) {
@@ -210,7 +209,7 @@ function getTargetScopeHelpHtml(policyMeta, scope) {
 			"Reach all active employees in this organization, including staff without a School."
 		),
 		[TARGET_SCOPE_SCHOOLS_IN_ORGANIZATION]: __(
-			"Create one school audience per school in this organization. Use this for school-linked recipients."
+			"Create one school audience per school in this organization and its child organizations. Use this for student- and guardian-linked recipients."
 		),
 		[TARGET_SCOPE_SCHOOL]: policySchool
 			? __("Stay within the parent policy school scope.")
@@ -268,20 +267,17 @@ async function openSharePolicyDialog(frm) {
 			frappe.msgprint(__("Team is required for Team scope."));
 			return;
 		}
-		if (!values.to_staff && !values.to_students && !values.to_guardians && !values.to_community) {
+		if (!values.to_staff && !values.to_students && !values.to_guardians) {
 			frappe.msgprint(__("Select at least one recipient type."));
 			return;
 		}
-		if (
-			values.target_scope === TARGET_SCOPE_TEAM &&
-			(values.to_students || values.to_guardians || values.to_community)
-		) {
+		if (values.target_scope === TARGET_SCOPE_TEAM && (values.to_students || values.to_guardians)) {
 			frappe.msgprint(__("Team scope supports Staff recipients only."));
 			return;
 		}
 		if (
 			values.target_scope === TARGET_SCOPE_ORGANIZATION_STAFF &&
-			(!values.to_staff || values.to_students || values.to_guardians || values.to_community)
+			(!values.to_staff || values.to_students || values.to_guardians)
 		) {
 			frappe.msgprint(__("Organization Staff scope supports Staff recipients only."));
 			return;
@@ -313,9 +309,8 @@ async function openSharePolicyDialog(frm) {
 					to_staff: values.to_staff ? 1 : 0,
 					to_students: values.to_students ? 1 : 0,
 					to_guardians: values.to_guardians ? 1 : 0,
-					to_community: values.to_community ? 1 : 0,
 				},
-			});
+				});
 			const result = response?.message || {};
 			const commName = String(result.communication || "").trim();
 			if (!commName) throw new Error(__("Communication creation did not return a document name."));
@@ -411,12 +406,6 @@ async function openSharePolicyDialog(frm) {
 				default: recipientDefaults.to_guardians,
 			},
 			{
-				fieldtype: "Check",
-				fieldname: "to_community",
-				label: __("To Community"),
-				default: recipientDefaults.to_community,
-			},
-			{
 				fieldtype: "Date",
 				fieldname: "brief_start_date",
 				label: __("Brief Start Date"),
@@ -507,13 +496,12 @@ async function openSharePolicyDialog(frm) {
 
 		const lockStaffOnly =
 			scope === TARGET_SCOPE_TEAM || scope === TARGET_SCOPE_ORGANIZATION_STAFF;
-		for (const fieldname of ["to_staff", "to_students", "to_guardians", "to_community"]) {
+		for (const fieldname of ["to_staff", "to_students", "to_guardians"]) {
 			d.set_df_property(fieldname, "read_only", lockStaffOnly ? 1 : 0);
 		}
 		if (lockStaffOnly) {
 			d.set_value("to_students", 0);
 			d.set_value("to_guardians", 0);
-			d.set_value("to_community", 0);
 			d.set_value("to_staff", 1);
 		}
 		if (scope !== TARGET_SCOPE_TEAM) {

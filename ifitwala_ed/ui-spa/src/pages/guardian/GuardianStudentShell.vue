@@ -1,6 +1,6 @@
 <!-- ifitwala_ed/ui-spa/src/pages/guardian/GuardianStudentShell.vue -->
 <template>
-	<div class="space-y-6">
+	<div class="portal-page">
 		<header class="card-surface p-5 sm:p-6">
 			<div class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
 				<div class="flex items-center gap-4">
@@ -48,7 +48,11 @@
 			<p class="type-body text-ink/70">{{ errorMessage }}</p>
 		</section>
 
-		<section v-else-if="!brief" class="card-surface p-5">
+		<section
+			v-else-if="!brief"
+			data-testid="guardian-student-scope-error"
+			class="card-surface p-5"
+		>
 			<p class="type-body-strong text-flame">
 				This student is not available in your guardian scope.
 			</p>

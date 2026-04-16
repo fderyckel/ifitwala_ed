@@ -4,7 +4,7 @@ import frappe
 from frappe import _
 
 from ifitwala_ed.website.block_registry import get_allowed_block_types, get_block_definition_map
-from ifitwala_ed.website.utils import parse_props, validate_cta_link, validate_props_schema
+from ifitwala_ed.website.utils import is_block_enabled, parse_props, validate_cta_link, validate_props_schema
 
 CTA_LINK_FIELDS_BY_BLOCK = {
     "hero": ("cta_link",),
@@ -16,7 +16,7 @@ CTA_LINK_FIELDS_BY_BLOCK = {
 def _sorted_enabled_blocks(page) -> list:
     rows = []
     for row in getattr(page, "blocks", None) or []:
-        if int(getattr(row, "is_enabled", 0) or 0) != 1:
+        if not is_block_enabled(row):
             continue
         rows.append(row)
     return sorted(rows, key=lambda row: ((row.order if row.order is not None else (row.idx or 0)), row.idx or 0))

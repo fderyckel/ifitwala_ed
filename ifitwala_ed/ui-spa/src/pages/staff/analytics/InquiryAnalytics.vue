@@ -1,6 +1,6 @@
 <!-- ifitwala_ed/ui-spa/src/pages/staff/analytics/InquiryAnalytics.vue -->
 <template>
-	<div class="flex flex-col gap-6 p-6">
+	<div class="analytics-shell">
 		<header class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
 			<h1 class="type-h2 text-canopy">Inquiry Analytics</h1>
 			<div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-3">

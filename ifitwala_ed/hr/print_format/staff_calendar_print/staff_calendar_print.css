@@ -1,0 +1,311 @@
+@page {
+  size: A4 landscape;
+  margin: 8mm 10mm;
+}
+
+.staff-calendar-print {
+  --ink: #1f2937;
+  --muted: #667085;
+  --line: #cfd6de;
+  --soft-line: #e7ecf1;
+  --accent: #0f5b78;
+  --accent-soft: #eef5f8;
+  --holiday-bg: #eef7f5;
+  --holiday-border: #9ccfbe;
+  --weekly-bg: #fff5dd;
+  --weekly-border: #ddc27f;
+  --muted-bg: #f4f6f8;
+  color: var(--ink);
+  font-family: "Avenir Next", "Helvetica Neue", Arial, sans-serif;
+  font-size: 10px;
+  line-height: 1.3;
+}
+
+.staff-calendar-print,
+.staff-calendar-print * {
+  box-sizing: border-box;
+}
+
+@media screen {
+  .staff-calendar-print {
+    min-width: 1100px;
+    max-width: 1120px;
+    margin: 0 auto;
+  }
+}
+
+.staff-calendar-print .calendar-page {
+  page-break-after: always;
+  break-after: page;
+}
+
+.staff-calendar-print .calendar-page:last-child {
+  page-break-after: auto;
+  break-after: auto;
+}
+
+.staff-calendar-print .calendar-header,
+.staff-calendar-print .calendar-summary,
+.staff-calendar-print .calendar-grid {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.staff-calendar-print .calendar-header {
+  margin-bottom: 8px;
+  border-bottom: 2px solid #0f5b78;
+}
+
+.staff-calendar-print .calendar-header td {
+  vertical-align: middle;
+  padding: 0 0 8px;
+}
+
+.staff-calendar-print .calendar-header__logo {
+  width: 56px;
+  padding-right: 12px;
+}
+
+.staff-calendar-print .calendar-header__fallback {
+  width: 44px;
+  height: 44px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #fff;
+  color: var(--accent);
+  font-family: Baskerville, Georgia, serif;
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 42px;
+  text-align: center;
+}
+
+.staff-calendar-print .calendar-header__main {
+  width: auto;
+}
+
+.staff-calendar-print .calendar-header__side {
+  width: 250px;
+  text-align: right;
+}
+
+.staff-calendar-print .calendar-header__eyebrow,
+.staff-calendar-print .calendar-header__kicker,
+.staff-calendar-print .calendar-header__meta-label,
+.staff-calendar-print .calendar-summary__label,
+.staff-calendar-print .calendar-grid th {
+  color: var(--muted);
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.staff-calendar-print .calendar-header__kicker {
+  margin-bottom: 2px;
+}
+
+.staff-calendar-print .calendar-header__month {
+  font-family: Baskerville, Georgia, serif;
+  font-size: 28px;
+  line-height: 1.02;
+  color: #101828;
+}
+
+.staff-calendar-print .calendar-header__name {
+  margin-top: 3px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #223041;
+}
+
+.staff-calendar-print .calendar-header__subline,
+.staff-calendar-print .calendar-header__meta-value,
+.staff-calendar-print .calendar-footer,
+.staff-calendar-print .calendar-empty-state__copy {
+  color: var(--muted);
+}
+
+.staff-calendar-print .calendar-header__meta-label {
+  margin-top: 5px;
+}
+
+.staff-calendar-print .calendar-header__meta-label:first-child {
+  margin-top: 0;
+}
+
+.staff-calendar-print .calendar-header__meta-value {
+  margin-top: 1px;
+  font-size: 9px;
+}
+
+.staff-calendar-print .calendar-header__meta-sep {
+  margin: 0 3px;
+}
+
+.staff-calendar-print .calendar-summary {
+  margin-bottom: 8px;
+  table-layout: fixed;
+}
+
+.staff-calendar-print .calendar-summary td {
+  padding: 7px 8px;
+  vertical-align: top;
+  border: 1px solid var(--line);
+  background: #fafbfc;
+}
+
+.staff-calendar-print .calendar-summary__value {
+  margin-top: 3px;
+  font-size: 10px;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.staff-calendar-print .calendar-summary__legend-cell {
+  width: 22%;
+  white-space: nowrap;
+}
+
+.staff-calendar-print .legend-chip {
+  display: inline-block;
+  margin: 1px 4px 1px 0;
+  padding: 3px 7px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  font-size: 8px;
+  font-weight: 700;
+}
+
+.staff-calendar-print .legend-chip--holiday {
+  background: var(--holiday-bg);
+  border-color: var(--holiday-border);
+}
+
+.staff-calendar-print .legend-chip--weekly {
+  background: var(--weekly-bg);
+  border-color: var(--weekly-border);
+}
+
+.staff-calendar-print .legend-chip--muted {
+  background: var(--muted-bg);
+}
+
+.staff-calendar-print .calendar-grid {
+  table-layout: fixed;
+  border: 1.5px solid #9aa4b1;
+}
+
+.staff-calendar-print .calendar-grid th {
+  padding: 6px 5px;
+  text-align: center;
+  border: 1px solid var(--line);
+  background: var(--accent-soft);
+}
+
+.staff-calendar-print .calendar-day {
+  height: 112px;
+  padding: 6px 7px 8px;
+  vertical-align: top;
+  border: 1px solid var(--line);
+  background: #fff;
+}
+
+.staff-calendar-print .calendar-day--adjacent {
+  background: #fbfcfd;
+}
+
+.staff-calendar-print .calendar-day--muted {
+  background: var(--muted-bg);
+}
+
+.staff-calendar-print .calendar-day__head {
+  overflow: hidden;
+  margin-bottom: 5px;
+}
+
+.staff-calendar-print .calendar-day__number {
+  float: right;
+  font-size: 14px;
+  font-weight: 700;
+  color: #111827;
+}
+
+.staff-calendar-print .calendar-day__flag {
+  float: left;
+  margin-top: 1px;
+  padding: 2px 5px;
+  border-radius: 999px;
+  background: rgba(15, 91, 120, 0.11);
+  color: var(--accent);
+  font-size: 7px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.staff-calendar-print .calendar-day__events {
+  clear: both;
+  min-height: 34px;
+}
+
+.staff-calendar-print .calendar-day__event {
+  margin-bottom: 3px;
+  padding: 3px 4px;
+  border-left: 3px solid var(--holiday-border);
+  background: rgba(255, 255, 255, 0.9);
+  font-size: 8px;
+  line-height: 1.2;
+}
+
+.staff-calendar-print .calendar-day__event--holiday {
+  background: var(--holiday-bg);
+  border-left-color: var(--holiday-border);
+}
+
+.staff-calendar-print .calendar-day__event--weekly {
+  background: var(--weekly-bg);
+  border-left-color: var(--weekly-border);
+}
+
+.staff-calendar-print .calendar-day__event-dot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  margin-right: 4px;
+  border-radius: 999px;
+  vertical-align: middle;
+}
+
+.staff-calendar-print .calendar-day__event-text {
+  display: inline;
+  font-weight: 600;
+  color: #223041;
+}
+
+.staff-calendar-print .calendar-day__notes {
+  margin-top: 6px;
+}
+
+.staff-calendar-print .calendar-day__note-line {
+  height: 12px;
+  border-top: 1px solid var(--soft-line);
+}
+
+.staff-calendar-print .calendar-footer {
+  margin-top: 6px;
+  text-align: right;
+  font-size: 8px;
+}
+
+.staff-calendar-print .calendar-empty-state {
+  padding: 28px 18px;
+  border: 1px solid var(--line);
+  text-align: center;
+}
+
+.staff-calendar-print .calendar-empty-state__title {
+  font-family: Baskerville, Georgia, serif;
+  font-size: 18px;
+  color: #101828;
+}

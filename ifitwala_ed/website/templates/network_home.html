@@ -1,0 +1,260 @@
+<!-- ifitwala_ed/website/templates/network_home.html -->
+{% from "ifitwala_ed/website/templates/includes/public_site_shell_macros.html" import render_public_footer, render_public_header %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="utf-8">
+	<title>{{ seo.meta_title or "" }}</title>
+	{% if seo.meta_description %}
+	<meta name="description" content="{{ seo.meta_description }}">
+	{% endif %}
+	{% if seo.canonical_url %}
+	<link rel="canonical" href="{{ seo.canonical_url }}">
+	{% endif %}
+	{% if seo.noindex %}
+	<meta name="robots" content="noindex, nofollow">
+	{% endif %}
+	{% if seo.og_title %}
+	<meta property="og:title" content="{{ seo.og_title }}">
+	{% endif %}
+	{% if seo.og_description %}
+	<meta property="og:description" content="{{ seo.og_description }}">
+	{% endif %}
+	{% if seo.og_image %}
+	<meta property="og:image" content="{{ seo.og_image }}">
+	{% endif %}
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<link rel="icon" type="image/svg+xml" href="/assets/ifitwala_ed/favicon.svg">
+	<link
+		rel="stylesheet"
+		href="{{ website_css_url or '/assets/ifitwala_ed/css/ifitwala_site.bundle.css' }}"
+	>
+</head>
+<body class="bg-stone-50 text-slate-950">
+	<div class="min-h-screen flex flex-col">
+		{{ render_public_header(landing) }}
+
+		<main class="flex-1">
+			<section class="overflow-hidden bg-slate-950 text-white">
+				<div class="mx-auto grid w-full max-w-6xl gap-10 px-6 py-16 lg:grid-cols-[1.1fr_0.9fr] lg:py-24">
+					<div class="relative">
+						<div class="absolute inset-y-0 left-0 hidden w-32 rounded-full bg-emerald-400/20 blur-3xl lg:block"></div>
+						<div class="relative space-y-6">
+							<p class="text-xs font-semibold uppercase tracking-[0.28em] text-emerald-200">
+								Public Home
+							</p>
+							<h1 class="max-w-3xl text-4xl font-semibold tracking-tight text-white sm:text-5xl">
+								Discover the right school within {{ landing.brand_name }}.
+							</h1>
+							<p class="max-w-2xl text-base leading-7 text-slate-300 sm:text-lg">
+								Explore campuses, compare public school profiles, review admissions pathways, and reach the right team before you ever need to log in.
+							</p>
+
+							<div class="flex flex-wrap gap-3">
+								<a
+									href="{{ landing.directory_url }}"
+									class="inline-flex rounded-full bg-white px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-slate-100"
+								>
+									Explore Schools
+								</a>
+								<a
+									href="{{ landing.inquiry_url }}"
+									class="inline-flex rounded-full border border-white/30 px-5 py-3 text-sm font-semibold text-white transition hover:border-white/60 hover:bg-white/10"
+								>
+									Start an Inquiry
+								</a>
+							</div>
+
+							<div class="flex flex-wrap gap-3 pt-2">
+								<div class="rounded-2xl border border-white/10 bg-white/5 px-4 py-3">
+									<div class="text-2xl font-semibold text-white">{{ landing.school_count }}</div>
+									<div class="text-xs uppercase tracking-[0.18em] text-slate-300">Published Schools</div>
+								</div>
+								{% if landing.program_count %}
+									<div class="rounded-2xl border border-white/10 bg-white/5 px-4 py-3">
+										<div class="text-2xl font-semibold text-white">{{ landing.program_count }}</div>
+										<div class="text-xs uppercase tracking-[0.18em] text-slate-300">Published Programs</div>
+									</div>
+								{% endif %}
+							</div>
+						</div>
+					</div>
+
+					<div class="relative">
+						<div class="rounded-[2rem] border border-white/10 bg-white/10 p-6 shadow-2xl backdrop-blur">
+							{% if landing.featured_school %}
+								<p class="text-xs font-semibold uppercase tracking-[0.24em] text-amber-200">
+									Featured School
+								</p>
+								<div class="mt-5 flex items-start gap-4">
+									{% if landing.featured_school.logo %}
+										<img
+											src="{{ landing.featured_school.logo }}"
+											alt="{{ landing.featured_school.label }}"
+											class="h-16 w-16 rounded-2xl border border-white/10 bg-white object-cover"
+											loading="lazy"
+										>
+									{% else %}
+										<div class="flex h-16 w-16 items-center justify-center rounded-2xl border border-white/10 bg-white/10 text-xl font-semibold text-white">
+											{{ landing.featured_school.label[:1] }}
+										</div>
+									{% endif %}
+									<div class="min-w-0">
+										<h2 class="text-2xl font-semibold tracking-tight text-white">
+											{{ landing.featured_school.label }}
+										</h2>
+										{% if landing.featured_school.tagline %}
+											<p class="mt-2 text-sm text-slate-200">{{ landing.featured_school.tagline }}</p>
+										{% endif %}
+										{% if landing.featured_school.organization %}
+											<p class="mt-3 text-xs uppercase tracking-[0.18em] text-slate-300">
+												{{ landing.featured_school.organization }}
+											</p>
+										{% endif %}
+									</div>
+								</div>
+								{% if landing.featured_school.description %}
+									<p class="mt-6 text-sm leading-7 text-slate-200">
+										{{ landing.featured_school.description }}
+									</p>
+								{% endif %}
+								<div class="mt-6 flex flex-wrap gap-3">
+									<a
+										href="{{ landing.featured_school.url }}"
+										class="inline-flex rounded-full bg-white px-4 py-2.5 text-sm font-semibold text-slate-950 transition hover:bg-slate-100"
+									>
+										Visit School Site
+									</a>
+									<a
+										href="{{ landing.featured_school.inquiry_url }}"
+										class="inline-flex rounded-full border border-white/20 px-4 py-2.5 text-sm font-semibold text-white transition hover:border-white/50 hover:bg-white/10"
+									>
+										Contact Admissions
+									</a>
+								</div>
+							{% else %}
+								<p class="text-xs font-semibold uppercase tracking-[0.24em] text-amber-200">
+									Public Setup
+								</p>
+								<h2 class="mt-4 text-2xl font-semibold tracking-tight text-white">
+									No published schools are available yet.
+								</h2>
+								<p class="mt-4 text-sm leading-7 text-slate-200">
+									Sign in to finish the first school setup, publish its website, and turn this homepage into a live public entry point.
+								</p>
+								<div class="mt-6">
+									<a
+										href="{{ landing.login_url }}"
+										class="inline-flex rounded-full bg-white px-4 py-2.5 text-sm font-semibold text-slate-950 transition hover:bg-slate-100"
+									>
+										Login
+									</a>
+								</div>
+							{% endif %}
+						</div>
+					</div>
+				</div>
+			</section>
+
+			<section class="mx-auto w-full max-w-6xl px-6 py-14 lg:py-20">
+				<div class="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+					<div>
+						<p class="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">Schools</p>
+						<h2 class="mt-3 text-3xl font-semibold tracking-tight text-slate-950">
+							Start with the school that fits the learner.
+						</h2>
+						<p class="mt-3 max-w-3xl text-base leading-7 text-slate-600">
+							Each school site carries its own programs, stories, and admissions details. Families can move from discovery to inquiry without jumping through the login screen first.
+						</p>
+					</div>
+					<a
+						href="{{ landing.directory_url }}"
+						class="inline-flex rounded-full border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:border-slate-400 hover:bg-white hover:text-slate-950"
+					>
+						View Full Directory
+					</a>
+				</div>
+
+				{% if landing.preview_schools %}
+					<div class="mt-8 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+						{% for school in landing.preview_schools %}
+							<a
+								href="{{ school.url }}"
+								class="group flex h-full flex-col rounded-[1.6rem] border border-slate-200 bg-white p-6 shadow-sm transition hover:-translate-y-1 hover:border-slate-300 hover:shadow-lg"
+							>
+								<div class="flex items-start gap-4">
+									{% if school.logo %}
+										<img
+											src="{{ school.logo }}"
+											alt="{{ school.label }}"
+											class="h-14 w-14 rounded-2xl bg-slate-100 object-cover"
+											loading="lazy"
+										>
+									{% else %}
+										<div class="flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-200 text-base font-semibold text-slate-700">
+											{{ school.label[:1] }}
+										</div>
+									{% endif %}
+									<div class="min-w-0 flex-1">
+										<h3 class="text-lg font-semibold tracking-tight text-slate-950">{{ school.label }}</h3>
+										{% if school.tagline %}
+											<p class="mt-1 text-sm text-slate-600">{{ school.tagline }}</p>
+										{% endif %}
+									</div>
+								</div>
+								{% if school.description %}
+									<p class="mt-5 text-sm leading-7 text-slate-600">
+										{{ school.description }}
+									</p>
+								{% endif %}
+								<div class="mt-auto pt-5 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+									{{ school.organization }}
+								</div>
+							</a>
+						{% endfor %}
+					</div>
+				{% endif %}
+			</section>
+
+			<section class="border-y border-slate-200 bg-white">
+				<div class="mx-auto grid w-full max-w-6xl gap-6 px-6 py-14 lg:grid-cols-3">
+					<div class="rounded-[1.6rem] border border-slate-200 bg-stone-50 p-6">
+						<p class="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">1. Compare</p>
+						<h3 class="mt-3 text-xl font-semibold tracking-tight text-slate-950">Browse the schools.</h3>
+						<p class="mt-3 text-sm leading-7 text-slate-600">
+							See the public overview of each school before narrowing down the best fit.
+						</p>
+						<a href="{{ landing.directory_url }}" class="mt-5 inline-flex text-sm font-semibold text-slate-950">Open directory</a>
+					</div>
+
+					<div class="rounded-[1.6rem] border border-slate-200 bg-stone-50 p-6">
+						<p class="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">2. Ask</p>
+						<h3 class="mt-3 text-xl font-semibold tracking-tight text-slate-950">Start the admissions conversation.</h3>
+						<p class="mt-3 text-sm leading-7 text-slate-600">
+							Use the public inquiry flow to contact the right admissions team without a staff account.
+						</p>
+						<a href="{{ landing.inquiry_url }}" class="mt-5 inline-flex text-sm font-semibold text-slate-950">Start an inquiry</a>
+					</div>
+
+					<div class="rounded-[1.6rem] border border-slate-200 bg-stone-50 p-6">
+						<p class="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">3. Continue</p>
+						<h3 class="mt-3 text-xl font-semibold tracking-tight text-slate-950">Login only when needed.</h3>
+						<p class="mt-3 text-sm leading-7 text-slate-600">
+							Portal access stays an explicit action for staff, students, and guardians instead of the public front door.
+						</p>
+						<a href="{{ landing.login_url }}" class="mt-5 inline-flex text-sm font-semibold text-slate-950">Go to login</a>
+					</div>
+				</div>
+			</section>
+		</main>
+
+		{{ render_public_footer(landing, current_year) }}
+	</div>
+
+	<script src="/assets/ifitwala_ed/website/image_fallback.js" defer></script>
+	<script
+		src="{{ website_js_url or '/assets/ifitwala_ed/js/ifitwala_site.bundle.js' }}"
+		defer
+	></script>
+</body>
+</html>

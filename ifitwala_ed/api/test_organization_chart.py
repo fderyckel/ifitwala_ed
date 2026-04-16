@@ -16,12 +16,20 @@ def _organization_chart_module():
     helper_state = {"calls": []}
     image_utils = ModuleType("ifitwala_ed.utilities.image_utils")
 
-    def apply_preferred_employee_images(rows, *, employee_field="id", image_field="image", slots=None):
+    def apply_preferred_employee_images(
+        rows,
+        *,
+        employee_field="id",
+        image_field="image",
+        slots=None,
+        fallback_to_original=True,
+    ):
         helper_state["calls"].append(
             {
                 "employee_field": employee_field,
                 "image_field": image_field,
                 "slots": slots,
+                "fallback_to_original": fallback_to_original,
             }
         )
         resolved = []
@@ -146,6 +154,11 @@ class TestOrganizationChartApi(TestCase):
         self.assertEqual(payload[0]["date_of_joining_label"], "formatted:2025-08-01")
         self.assertEqual(helper_state["calls"][0]["employee_field"], "id")
         self.assertEqual(helper_state["calls"][0]["image_field"], "image")
+        self.assertEqual(
+            helper_state["calls"][0]["slots"],
+            ("profile_image_thumb", "profile_image_card", "profile_image_medium"),
+        )
+        self.assertFalse(helper_state["calls"][0]["fallback_to_original"])
         self.assertEqual(calls["employee"], 2)
 
     def test_get_org_chart_tree_returns_helper_resolved_images(self):
@@ -202,3 +215,8 @@ class TestOrganizationChartApi(TestCase):
         )
         self.assertEqual(helper_state["calls"][0]["employee_field"], "id")
         self.assertEqual(helper_state["calls"][0]["image_field"], "image")
+        self.assertEqual(
+            helper_state["calls"][0]["slots"],
+            ("profile_image_thumb", "profile_image_card", "profile_image_medium"),
+        )
+        self.assertFalse(helper_state["calls"][0]["fallback_to_original"])

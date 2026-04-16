@@ -21,6 +21,8 @@ from ifitwala_ed.governance.policy_utils import (
     get_policy_applies_to_tokens,
     get_policy_applies_to_tokens_for_policy,
 )
+from ifitwala_ed.utilities.employee_utils import get_descendant_organizations
+from ifitwala_ed.utilities.html_sanitizer import sanitize_html
 from ifitwala_ed.utilities.school_tree import get_descendant_schools
 
 SCOPE_ORGANIZATION_STAFF = "organization_staff"
@@ -65,7 +67,7 @@ def _parse_change_stats(raw_stats) -> dict[str, int]:
 
 def _default_recipient_flags(applies_to) -> dict[str, int]:
     tokens = set(get_policy_applies_to_tokens(applies_to))
-    flags = {"to_staff": 1, "to_students": 0, "to_guardians": 0, "to_community": 0}
+    flags = {"to_staff": 1, "to_students": 0, "to_guardians": 0}
     if "Applicant" in tokens:
         flags["to_students"] = 1
         flags["to_guardians"] = 1
@@ -78,7 +80,7 @@ def _default_recipient_flags(applies_to) -> dict[str, int]:
 
 def _is_staff_only_recipients(recipient_flags: dict[str, int]) -> bool:
     return bool(recipient_flags.get("to_staff")) and not any(
-        recipient_flags.get(fieldname) for fieldname in ("to_students", "to_guardians", "to_community")
+        recipient_flags.get(fieldname) for fieldname in ("to_students", "to_guardians")
     )
 
 
@@ -110,44 +112,20 @@ def _policy_row(policy_version: str) -> dict:
     if not row:
         frappe.throw(_("Policy Version was not found."))
     row_out = row[0]
+    row_out["policy_text"] = sanitize_html(row_out.get("policy_text") or "", allow_headings_from="h2")
     row_out["applies_to_tokens"] = list(get_policy_applies_to_tokens_for_policy(row_out.get("institutional_policy")))
     return row_out
 
 
-def _resolve_org_root_school(organization: str) -> str:
-    schools = frappe.get_all(
-        "School",
-        filters={"organization": organization},
-        fields=["name", "lft", "rgt"],
-        order_by="lft asc",
-        limit=0,
-    )
-    if not schools:
-        frappe.throw(_("No schools were found for this organization."))
-
-    root = schools[0]
-    root_lft = int(root.get("lft") or 0)
-    root_rgt = int(root.get("rgt") or 0)
-    if root_lft <= 0 or root_rgt <= 0:
-        frappe.throw(_("School hierarchy is not initialized. Please rebuild School tree."))
-
-    for school in schools:
-        lft = int(school.get("lft") or 0)
-        rgt = int(school.get("rgt") or 0)
-        if lft < root_lft or rgt > root_rgt:
-            frappe.throw(
-                _("Organization has multiple school roots. Choose School or Team scope for this communication.")
-            )
-
-    return (root.get("name") or "").strip()
-
-
 def _get_organization_schools(organization: str) -> list[str]:
+    organization_scope = [org for org in (get_descendant_organizations(organization) or []) if org]
+    if not organization_scope:
+        organization_scope = [organization]
     schools = frappe.get_all(
         "School",
-        filters={"organization": organization},
+        filters={"organization": ["in", organization_scope]},
         fields=["name"],
-        order_by="lft asc, name asc",
+        order_by="organization asc, lft asc, name asc",
         limit=0,
     )
     return [(row.get("name") or "").strip() for row in schools if (row.get("name") or "").strip()]
@@ -224,6 +202,76 @@ def _get_active_employee_context(user: str) -> dict | None:
     )
 
 
+def _get_policy_inform_employee_context(user: str, roles: list[str]) -> dict | None:
+    employee = _get_active_employee_context(user)
+    if not employee:
+        return employee
+
+    if "Academic Admin" not in (roles or []):
+        return employee
+
+    base_school = (employee.get("school") or "").strip()
+    base_organization = (employee.get("organization") or "").strip()
+    if base_school:
+        school_names = [school for school in (get_descendant_schools(base_school) or []) if school]
+        if school_names:
+            employee["school_names"] = school_names
+        return employee
+
+    if not base_organization:
+        return employee
+
+    organization_names = [org for org in (get_descendant_organizations(base_organization) or []) if org]
+    if organization_names:
+        employee["organization_names"] = organization_names
+
+    school_rows = frappe.get_all(
+        "School",
+        filters={"organization": ["in", organization_names]}
+        if organization_names
+        else {"organization": base_organization},
+        pluck="name",
+    )
+    school_names = [school for school in (school_rows or []) if school]
+    if school_names:
+        employee["school_names"] = school_names
+
+    return employee
+
+
+def _is_policy_visible_via_org_communication(
+    *,
+    user: str,
+    roles: list[str],
+    employee: dict | None,
+    policy_organization: str,
+    policy_school: str,
+    org_communication: str,
+) -> bool:
+    if not check_audience_match(org_communication, user, roles, employee):
+        return False
+
+    communication_row = frappe.db.get_value(
+        "Org Communication",
+        org_communication,
+        ["organization", "school"],
+        as_dict=True,
+    )
+    if not communication_row:
+        return False
+
+    communication_organization = (communication_row.get("organization") or "").strip()
+    communication_school = (communication_row.get("school") or "").strip()
+
+    if communication_organization != policy_organization:
+        return False
+
+    if not policy_school:
+        return True
+
+    return _is_school_within_scope(policy_school, communication_school)
+
+
 @frappe.whitelist()
 def create_policy_amendment_communication(
     *,
@@ -242,7 +290,6 @@ def create_policy_amendment_communication(
     to_staff: int | str | bool | None = None,
     to_students: int | str | bool | None = None,
     to_guardians: int | str | bool | None = None,
-    to_community: int | str | bool | None = None,
 ):
     ensure_policy_admin()
 
@@ -259,13 +306,12 @@ def create_policy_amendment_communication(
     target_school = (target_school or "").strip() or None
     target_team = (target_team or "").strip() or None
     campaign_employee_group = (campaign_employee_group or "").strip() or None
-    explicit_recipient_payload = any(value is not None for value in (to_staff, to_students, to_guardians, to_community))
+    explicit_recipient_payload = any(value is not None for value in (to_staff, to_students, to_guardians))
     if explicit_recipient_payload:
         recipient_flags = {
             "to_staff": 1 if frappe.utils.cint(to_staff) else 0,
             "to_students": 1 if frappe.utils.cint(to_students) else 0,
             "to_guardians": 1 if frappe.utils.cint(to_guardians) else 0,
-            "to_community": 1 if frappe.utils.cint(to_community) else 0,
         }
     else:
         recipient_flags = _default_recipient_flags(row.get("applies_to_tokens"))
@@ -307,11 +353,7 @@ def create_policy_amendment_communication(
             frappe.throw(_("Team scope on a school-scoped policy requires a team inside the policy school scope."))
         if policy_school and not _is_school_within_scope(policy_school, resolved_school):
             frappe.throw(_("Selected Team must belong to the policy school scope."))
-        if (
-            recipient_flags.get("to_students")
-            or recipient_flags.get("to_guardians")
-            or recipient_flags.get("to_community")
-        ):
+        if recipient_flags.get("to_students") or recipient_flags.get("to_guardians"):
             frappe.throw(_("Team scope supports Staff recipients only."))
 
         audience_rows = [
@@ -338,8 +380,11 @@ def create_policy_amendment_communication(
                 frappe.throw(_("Schools in Organization scope is not available for school-scoped policies."))
             org_schools = _get_organization_schools(policy_organization)
             if not org_schools:
-                frappe.throw(_("Schools in Organization scope requires at least one School in this organization."))
-            resolved_school = _resolve_org_root_school(policy_organization)
+                frappe.throw(
+                    _(
+                        "Schools in Organization scope requires at least one School in this organization or its child organizations."
+                    )
+                )
             audience_rows = [
                 {
                     "target_mode": "School Scope",
@@ -452,23 +497,29 @@ def get_policy_inform_payload(
     org_communication: str | None = None,
 ):
     user = _require_authenticated_user()
+    roles = frappe.get_roles(user)
+    employee = _get_policy_inform_employee_context(user, roles)
     row = _policy_row((policy_version or "").strip())
 
     policy_organization = (row.get("policy_organization") or "").strip()
     policy_school = (row.get("policy_school") or "").strip()
+    org_communication = (org_communication or "").strip()
     if not is_policy_within_user_scope(
         policy_organization=policy_organization,
         policy_school=policy_school,
         user=user,
     ):
-        frappe.throw(_("You do not have permission to view this policy."), frappe.PermissionError)
-
-    org_communication = (org_communication or "").strip()
-    if org_communication:
-        roles = frappe.get_roles(user)
-        employee = _get_active_employee_context(user)
-        if not check_audience_match(org_communication, user, roles, employee):
-            frappe.throw(_("You do not have permission to view this communication."), frappe.PermissionError)
+        if not org_communication or not _is_policy_visible_via_org_communication(
+            user=user,
+            roles=roles,
+            employee=employee,
+            policy_organization=policy_organization,
+            policy_school=policy_school,
+            org_communication=org_communication,
+        ):
+            frappe.throw(_("You do not have permission to view this policy."), frappe.PermissionError)
+    elif org_communication and not check_audience_match(org_communication, user, roles, employee):
+        frappe.throw(_("You do not have permission to view this communication."), frappe.PermissionError)
 
     policy_label = (
         (row.get("policy_title") or "").strip()
@@ -497,7 +548,7 @@ def get_policy_inform_payload(
         "change_summary": (row.get("change_summary") or "").strip() or None,
         "change_stats": _parse_change_stats(row.get("change_stats")),
         "diff_html": row.get("diff_html") or "",
-        "policy_text_html": row.get("policy_text") or "",
+        "policy_text_html": sanitize_html(row.get("policy_text") or "", allow_headings_from="h2"),
         "history": history_rows,
         "signature_required": bool(signature_state.get("signature_required")),
         "acknowledgement_status": (signature_state.get("acknowledgement_status") or "").strip() or "informational",

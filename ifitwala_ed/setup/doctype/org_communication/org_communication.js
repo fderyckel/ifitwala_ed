@@ -31,11 +31,14 @@ frappe.ui.form.on('Org Communication', {
 			}
 		}
 
+		frm.trigger('setup_governed_attachment_upload');
+
 		// Portal surface / Brief dates UX
 		update_brief_date_reqd(frm);
 
 		// Visibility info
 		show_visibility_hint(frm);
+		sync_context_section_visibility(frm);
 	},
 
 	portal_surface(frm) {
@@ -52,6 +55,28 @@ frappe.ui.form.on('Org Communication', {
 
 	audiences_remove(frm) {
 		setup_issuing_school_field(frm);
+		frm.trigger('setup_governed_attachment_upload');
+	},
+
+	activity_student_group(frm) {
+		sync_context_section_visibility(frm);
+		frm.trigger('setup_governed_attachment_upload');
+	},
+
+	activity_program_offering(frm) {
+		sync_context_section_visibility(frm);
+	},
+
+	activity_booking(frm) {
+		sync_context_section_visibility(frm);
+	},
+
+	admission_context_doctype(frm) {
+		sync_context_section_visibility(frm);
+	},
+
+	admission_context_name(frm) {
+		sync_context_section_visibility(frm);
 	},
 
 	status(frm) {
@@ -70,6 +95,8 @@ frappe.ui.form.on('Org Communication', {
 	},
 
 	communication_type(frm) {
+		sync_context_section_visibility(frm);
+
 		if (frm.doc.communication_type === 'Class Announcement') {
 			frappe.msgprint({
 				message: __(
@@ -81,6 +108,79 @@ frappe.ui.form.on('Org Communication', {
 				title: __('Class Announcement Audience')
 			});
 		}
+	},
+
+	setup_governed_attachment_upload(frm) {
+		const openUploader = async () => {
+			try {
+				if (frm.is_new() || frm.is_dirty()) {
+					await frm.save();
+				}
+			} catch (error) {
+				return;
+			}
+
+			if (!String(frm.doc.organization || '').trim()) {
+				frappe.msgprint({
+					title: __('Missing Organization'),
+					indicator: 'orange',
+					message: __('Set Organization on the communication before uploading governed attachments.')
+				});
+				return;
+			}
+
+			new frappe.ui.FileUploader({
+				method: 'ifitwala_ed.api.org_communication_attachments.upload_org_communication_attachment',
+				args: { org_communication: frm.doc.name },
+				doctype: 'Org Communication',
+				docname: frm.doc.name,
+				is_private: 1,
+				disable_private: true,
+				allow_multiple: false,
+				on_success() {
+					frm.reload_doc();
+				},
+				on_error() {
+					frappe.msgprint(__('Upload failed. Please try again.'));
+				},
+			});
+		};
+
+		const tableField = frm.get_field('attachments');
+		const attachmentContextMode = resolve_attachment_context_mode(frm);
+		const hasGovernedContext = attachmentContextMode !== 'missing-organization';
+
+		if (tableField?.grid) {
+			tableField.grid.update_docfield_property('file', 'read_only', 1);
+			tableField.grid.update_docfield_property(
+				'file',
+				'description',
+				__('Use the Upload Attachment action for governed files.')
+			);
+
+			tableField.grid.wrapper
+				.find('.grid-custom-buttons .org-communication-upload-btn')
+				.remove();
+
+			const $gridButton = tableField.grid.add_custom_button(__('Upload Attachment'), openUploader);
+			$gridButton.addClass('org-communication-upload-btn');
+		}
+
+		frm.set_df_property(
+			'attachments',
+			'description',
+			!hasGovernedContext
+				? __('Set Organization and save the communication before uploading governed files. External URLs can still be added manually.')
+				: attachmentContextMode === 'class'
+				? __('Use Upload Attachment for governed files. Class communications route attachments through the class context.')
+				: attachmentContextMode === 'school'
+				? __('Use Upload Attachment for governed files. School and team communications route attachments through the communication school context.')
+				: __('Use Upload Attachment for governed files. Organization-wide communications route attachments through the organization context.')
+		);
+
+		frm.remove_custom_button(__('Upload Attachment'), __('Actions'));
+		frm.remove_custom_button(__('Upload Attachment'));
+		frm.add_custom_button(__('Upload Attachment'), openUploader, __('Actions'));
 	}
 });
 
@@ -104,6 +204,92 @@ function ensure_org_comm_context(frm) {
 
 function has_organization_audience(frm) {
 	return Boolean((frm.doc.audiences || []).some(row => (row.target_mode || '').trim() === 'Organization'));
+}
+
+function resolve_attachment_student_group(frm) {
+	const activityStudentGroup = (frm.doc.activity_student_group || '').trim();
+	if (activityStudentGroup) {
+		return activityStudentGroup;
+	}
+
+	const audienceRows = frm.doc.audiences || [];
+	const matchingRow = audienceRows.find(row =>
+		(row.target_mode || '').trim() === 'Student Group' && (row.student_group || '').trim()
+	);
+	return (matchingRow?.student_group || '').trim();
+}
+
+function resolve_attachment_context_mode(frm) {
+	if (!String(frm.doc.organization || '').trim()) {
+		return 'missing-organization';
+	}
+
+	if (resolve_attachment_student_group(frm)) {
+		return 'class';
+	}
+
+	if (String(frm.doc.school || '').trim()) {
+		return 'school';
+	}
+
+	const audienceRows = frm.doc.audiences || [];
+	const schoolRows = audienceRows.filter(row =>
+		(row.target_mode || '').trim() === 'School Scope' && String(row.school || '').trim()
+	);
+	const uniqueSchools = new Set(schoolRows.map(row => String(row.school || '').trim()).filter(Boolean));
+	if (uniqueSchools.size === 1) {
+		return 'school';
+	}
+
+	const hasTeamContext = audienceRows.some(row =>
+		(row.target_mode || '').trim() === 'Team' && String(row.team || '').trim()
+	);
+	if (hasTeamContext) {
+		return 'school';
+	}
+
+	return 'organization';
+}
+
+function should_show_activity_context(frm) {
+	return Boolean(
+		(frm.doc.communication_type || '').trim() === 'Class Announcement' ||
+		(frm.doc.activity_program_offering || '').trim() ||
+		(frm.doc.activity_booking || '').trim() ||
+		(frm.doc.activity_student_group || '').trim()
+	);
+}
+
+function should_show_admission_context(frm) {
+	return Boolean(
+		(frm.doc.admission_context_doctype || '').trim() ||
+		(frm.doc.admission_context_name || '').trim()
+	);
+}
+
+function sync_context_section_visibility(frm) {
+	const showActivityContext = should_show_activity_context(frm);
+	const showAdmissionContext = should_show_admission_context(frm);
+
+	frm.toggle_display(
+		[
+			'activity_context_section',
+			'activity_program_offering',
+			'activity_booking',
+			'column_break_activity_context',
+			'activity_student_group'
+		],
+		showActivityContext
+	);
+
+	frm.toggle_display(
+		[
+			'admission_context_section',
+			'admission_context_doctype',
+			'admission_context_name'
+		],
+		showAdmissionContext
+	);
 }
 
 function setup_issuing_school_field(frm) {
@@ -345,6 +531,7 @@ frappe.ui.form.on('Org Communication Audience', {
 		apply_audience_row_visibility(frm, cdt, cdn, row);
 		apply_recipient_defaults(frm, cdt, cdn, row);
 		setup_issuing_school_field(frm);
+		frm.trigger('setup_governed_attachment_upload');
 
 		// If row.school is empty, inherit parent Issuing School for School Scope only
 		if (row.target_mode === 'School Scope' && !row.school && frm.doc.school) {
@@ -366,6 +553,11 @@ frappe.ui.form.on('Org Communication Audience', {
 		}
 		apply_audience_row_visibility(frm, cdt, cdn, row);
 		apply_recipient_defaults(frm, cdt, cdn, row);
+		frm.trigger('setup_governed_attachment_upload');
+	},
+
+	student_group(frm) {
+		frm.trigger('setup_governed_attachment_upload');
 	}
 });
 
@@ -392,7 +584,7 @@ function apply_audience_row_visibility(frm, cdt, cdn, row) {
 
 function update_recipient_toggle_state(gf, target_mode) {
 	const allowed = get_allowed_recipient_fields(target_mode);
-	const toggle_fields = ['to_staff', 'to_students', 'to_guardians', 'to_community'];
+	const toggle_fields = ['to_staff', 'to_students', 'to_guardians'];
 
 	toggle_fields.forEach(fieldname => {
 		const field = get_grid_field(gf, fieldname);
@@ -440,7 +632,7 @@ function get_allowed_recipient_fields(target_mode) {
 		return ['to_staff', 'to_students', 'to_guardians'];
 	}
 	if (target_mode === 'School Scope') {
-		return ['to_staff', 'to_students', 'to_guardians', 'to_community'];
+		return ['to_staff', 'to_students', 'to_guardians'];
 	}
 	return [];
 }
@@ -456,13 +648,12 @@ function apply_recipient_defaults(frm, cdt, cdn, row) {
 	if (!target_mode) return;
 
 	const allowed = get_allowed_recipient_fields(target_mode);
-	const toggle_fields = ['to_staff', 'to_students', 'to_guardians', 'to_community'];
+	const toggle_fields = ['to_staff', 'to_students', 'to_guardians'];
 
 	const values = {
 		to_staff: is_checked(row.to_staff),
 		to_students: is_checked(row.to_students),
-		to_guardians: is_checked(row.to_guardians),
-		to_community: is_checked(row.to_community)
+		to_guardians: is_checked(row.to_guardians)
 	};
 
 	toggle_fields.forEach(fieldname => {

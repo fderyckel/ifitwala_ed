@@ -49,6 +49,7 @@ import EventQuickCreateOverlay from '@/overlays/calendar/EventQuickCreateOverlay
 import QuickClassSessionOverlay from '@/overlays/planning/QuickClassSessionOverlay.vue';
 import OrgCommunicationQuickCreateOverlay from '@/components/communication/OrgCommunicationQuickCreateModal.vue';
 import AttendanceRemarkOverlay from '@/overlays/attendance/AttendanceRemarkOverlay.vue';
+import LearningStandardsPickerOverlay from '@/overlays/planning/LearningStandardsPickerOverlay.vue';
 import StudentLogCreateOverlay from '@/overlays/student/StudentLogCreateOverlay.vue';
 import StudentLogFollowUpOverlay from '@/overlays/student/StudentLogFollowUpOverlay.vue';
 import FocusRouterOverlay from '@/overlays/focus/FocusRouterOverlay.vue';
@@ -209,6 +210,8 @@ function resolveComponent(type: OverlayType) {
 			return ProfessionalDevelopmentCompletionOverlay;
 		case 'focus-router':
 			return FocusRouterOverlay;
+		case 'learning-standards-picker':
+			return LearningStandardsPickerOverlay;
 		case 'class-hub-group-picker':
 			return ClassHubGroupPickerOverlay;
 		case 'class-hub-student-context':

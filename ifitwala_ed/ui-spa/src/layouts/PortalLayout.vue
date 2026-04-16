@@ -2,11 +2,16 @@
 <template>
 	<!-- Student/Guardian surface (Portal) -->
 	<div
-		class="min-h-screen flex flex-col text-ink bg-gradient-to-b from-sky/95 via-sand/95 to-white bg-[radial-gradient(circle_at_0_0,rgb(var(--jacaranda-rgb)/0.18),transparent_55%)] sm:bg-[radial-gradient(circle_at_0_0,rgb(var(--jacaranda-rgb)/0.18),transparent_55%),radial-gradient(circle_at_100%_0,rgb(var(--leaf-rgb)/0.14),transparent_55%),linear-gradient(to_bottom,rgb(var(--sky-rgb)/0.98),rgb(var(--sand-rgb)/0.98))]"
+		class="ifitwala-theme portal-layout text-ink"
+		:class="
+			isDesktopRailExpanded ? 'portal-layout--rail-expanded' : 'portal-layout--rail-collapsed'
+		"
 	>
 		<PortalNavbar @toggle-sidebar="toggleSidebar" />
 
-		<div class="flex flex-1">
+		<div class="portal-layout__body">
+			<div class="portal-layout__rail-spacer" aria-hidden="true" />
+
 			<PortalSidebar
 				:is-mobile-open="isMobileSidebarOpen"
 				:is-rail-expanded="isDesktopRailExpanded"
@@ -15,11 +20,9 @@
 				@toggle-rail="toggleRail"
 			/>
 
-			<div class="flex min-w-0 flex-1 flex-col">
-				<div class="flex min-w-0 flex-1 xl:items-start">
-					<main
-						class="flex-1 px-4 py-4 sm:px-6 sm:py-6 lg:px-8 lg:py-8 pb-[var(--footer-h)] bg-surface-soft/75 backdrop-blur-sm shadow-strong sm:m-4 sm:rounded-3xl sm:border sm:border-sand"
-					>
+			<div class="portal-layout__workspace">
+				<div class="portal-layout__frame xl:items-start">
+					<main class="portal-shell">
 						<slot />
 					</main>
 

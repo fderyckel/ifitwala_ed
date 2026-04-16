@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 import shlex
 import shutil
 import subprocess
@@ -20,6 +21,11 @@ DEFAULT_BACKEND_SMOKE_MODULES = (
     "ifitwala_ed.api.test_users",
     "ifitwala_ed.hr.test_leave_permissions",
 )
+
+E2E_PACK_SPECS = {
+    "smoke": "cypress/e2e/{hub/staff-home.cy.js,hub/route-resolution.cy.js,admissions/profile-save.cy.js}",
+    "critical": "cypress/e2e/**/*.cy.js",
+}
 
 
 @dataclass(frozen=True)
@@ -96,6 +102,53 @@ def _spa_typecheck_specs() -> list[CommandSpec]:
         CommandSpec(("yarn", "--cwd", "ifitwala_ed/ui-spa", "install", "--frozen-lockfile")),
         CommandSpec(("yarn", "--cwd", "ifitwala_ed/ui-spa", "type-check")),
     ]
+
+
+def _e2e_prepare_specs(site: str, pack: str) -> list[CommandSpec]:
+    return [
+        CommandSpec(
+            (
+                "bench",
+                "--site",
+                site,
+                "execute",
+                "ifitwala_ed.tests.e2e.scenarios.prepare_pack",
+                "--kwargs",
+                json.dumps({"pack": pack, "reset_first": 1}),
+            )
+        )
+    ]
+
+
+def _e2e_run_specs(
+    *,
+    base_url: str,
+    site: str,
+    pack: str,
+    open_runner: bool,
+    headed: bool,
+) -> list[CommandSpec]:
+    normalized_pack = str(pack or "critical").strip().lower() or "critical"
+    if normalized_pack not in E2E_PACK_SPECS:
+        raise ValueError(f"unsupported e2e pack: {pack}")
+
+    argv = [
+        "yarn",
+        "cypress",
+        "open" if open_runner else "run",
+        "--config",
+        f"baseUrl={base_url}",
+        "--env",
+        f"ifitwalaSite={site},ifitwalaPack={normalized_pack}",
+    ]
+
+    spec_pattern = E2E_PACK_SPECS[normalized_pack]
+    if spec_pattern:
+        argv.extend(["--spec", spec_pattern])
+    if headed and not open_runner:
+        argv.append("--headed")
+
+    return [CommandSpec(tuple(argv))]
 
 
 def cmd_doctor(args: argparse.Namespace) -> int:
@@ -178,6 +231,39 @@ def cmd_ci(args: argparse.Namespace) -> int:
     return _run_specs(specs, dry_run=args.dry_run, fail_fast=args.fail_fast)
 
 
+def cmd_e2e(args: argparse.Namespace) -> int:
+    if not args.site:
+        print("[codex] error: --site is required for e2e.", file=sys.stderr)
+        return 2
+    if not args.base_url:
+        print("[codex] error: --base-url is required for e2e.", file=sys.stderr)
+        return 2
+
+    pack = str(args.pack or "critical").strip().lower() or "critical"
+    if pack not in E2E_PACK_SPECS:
+        print(
+            f"[codex] error: unsupported --pack '{args.pack}'. Expected one of: {', '.join(sorted(E2E_PACK_SPECS))}.",
+            file=sys.stderr,
+        )
+        return 2
+
+    specs: list[CommandSpec] = []
+    if not args.skip_frontend_build:
+        specs.extend(_desk_build_specs())
+    if not args.skip_prepare:
+        specs.extend(_e2e_prepare_specs(args.site, pack))
+    specs.extend(
+        _e2e_run_specs(
+            base_url=args.base_url,
+            site=args.site,
+            pack=pack,
+            open_runner=args.open,
+            headed=args.headed,
+        )
+    )
+    return _run_specs(specs, dry_run=args.dry_run, fail_fast=args.fail_fast)
+
+
 def _add_common_command_flags(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--dry-run", action="store_true", help="Print commands without executing them.")
     parser.add_argument("--fail-fast", action="store_true", help="Stop immediately on first failing command.")
@@ -223,6 +309,30 @@ def build_parser() -> argparse.ArgumentParser:
     spa_parser = subparsers.add_parser("spa-typecheck", help="Run SPA type-check flow.")
     _add_common_command_flags(spa_parser)
     spa_parser.set_defaults(func=cmd_spa_typecheck)
+
+    e2e_parser = subparsers.add_parser("e2e", help="Prepare deterministic browser-E2E data and run Cypress.")
+    _add_common_command_flags(e2e_parser)
+    e2e_parser.add_argument("--site", help="Frappe site name (required).")
+    e2e_parser.add_argument("--base-url", help="Running site base URL, e.g. http://127.0.0.1:8000 (required).")
+    e2e_parser.add_argument(
+        "--pack",
+        default="critical",
+        choices=tuple(sorted(E2E_PACK_SPECS)),
+        help="E2E pack to prepare and run.",
+    )
+    e2e_parser.add_argument("--headed", action="store_true", help="Run Cypress in headed mode.")
+    e2e_parser.add_argument("--open", action="store_true", help="Open the interactive Cypress runner.")
+    e2e_parser.add_argument(
+        "--skip-prepare",
+        action="store_true",
+        help="Skip deterministic scenario preparation before running Cypress.",
+    )
+    e2e_parser.add_argument(
+        "--skip-frontend-build",
+        action="store_true",
+        help="Skip the root frontend build before running Cypress.",
+    )
+    e2e_parser.set_defaults(func=cmd_e2e)
 
     ci_parser = subparsers.add_parser("ci", help="Run CI-aligned local checks.")
     _add_common_command_flags(ci_parser)

@@ -1,0 +1,92 @@
+.ifitwala-letterhead {
+  color: #17212b;
+  font-family: "Avenir Next", "Helvetica Neue", Arial, sans-serif;
+  margin: 0 0 20px;
+  page-break-inside: avoid;
+  break-inside: avoid;
+}
+
+.ifitwala-letterhead,
+.ifitwala-letterhead * {
+  box-sizing: border-box;
+}
+
+.ifitwala-letterhead__ribbon {
+  height: 4px;
+  background: linear-gradient(90deg, #204a5d 0%, #4d7a88 58%, #a8bdc7 100%);
+  border-radius: 999px;
+  margin-bottom: 12px;
+}
+
+.ifitwala-letterhead__panel {
+  display: table;
+  width: 100%;
+  border-bottom: 1px solid #d7dde3;
+  background: linear-gradient(135deg, rgba(238, 245, 247, 0.72), #ffffff 42%);
+  padding: 0 0 14px;
+}
+
+.ifitwala-letterhead__mark,
+.ifitwala-letterhead__copy {
+  display: table-cell;
+  vertical-align: middle;
+}
+
+.ifitwala-letterhead__mark {
+  width: 88px;
+  padding-right: 16px;
+}
+
+.ifitwala-letterhead__logo {
+  width: 68px;
+  height: 68px;
+  object-fit: contain;
+  display: block;
+  border: 1px solid rgba(32, 74, 93, 0.14);
+  border-radius: 16px;
+  background: #ffffff;
+  padding: 8px;
+}
+
+.ifitwala-letterhead__eyebrow {
+  color: #667085;
+  font-size: 8.75px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.ifitwala-letterhead__name {
+  margin-top: 3px;
+  color: #0f1720;
+  font-family: Baskerville, Georgia, serif;
+  font-size: 23px;
+  font-weight: 600;
+  line-height: 1.14;
+}
+
+.ifitwala-letterhead__secondary,
+.ifitwala-letterhead__tagline {
+  color: #667085;
+  font-size: 10.5px;
+  line-height: 1.45;
+}
+
+.ifitwala-letterhead__secondary {
+  margin-top: 4px;
+}
+
+.ifitwala-letterhead__tagline {
+  margin-top: 3px;
+  letter-spacing: 0.01em;
+}
+
+@media print {
+  .ifitwala-letterhead {
+    margin-bottom: 16px;
+  }
+
+  .ifitwala-letterhead__panel {
+    padding-bottom: 12px;
+  }
+}

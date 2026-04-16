@@ -1,6 +1,6 @@
 <!-- ifitwala_ed/ui-spa/src/pages/guardian/GuardianHome.vue -->
 <template>
-	<div class="space-y-6">
+	<div data-testid="guardian-home-page" class="portal-page">
 		<header class="card-surface p-5 sm:p-6">
 			<div class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
 				<div>
@@ -30,10 +30,13 @@
 		</header>
 
 		<section class="grid grid-cols-2 gap-3 sm:grid-cols-4">
-			<article class="card-surface p-3">
+			<RouterLink
+				:to="{ name: 'guardian-communications' }"
+				class="card-surface block p-3 transition hover:border-jacaranda/30 hover:bg-jacaranda/5"
+			>
 				<p class="type-caption">Unread communications</p>
 				<p class="type-h3 text-ink">{{ counts.unread_communications }}</p>
-			</article>
+			</RouterLink>
 			<article class="card-surface p-3">
 				<p class="type-caption">Unread student logs</p>
 				<p class="type-h3 text-ink">{{ counts.unread_visible_student_logs }}</p>
@@ -46,6 +49,45 @@
 				<p class="type-caption">Upcoming assessments</p>
 				<p class="type-h3 text-ink">{{ counts.upcoming_assessments }}</p>
 			</article>
+		</section>
+
+		<section v-if="policySummary.pending_count" class="card-surface p-5">
+			<div class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+				<div>
+					<p class="type-overline text-ink/60">Policy Actions</p>
+					<h2 class="type-h3 text-ink">Policies need your acknowledgement</h2>
+					<p class="type-caption text-ink/70">
+						{{ policySummary.pending_count }}
+						{{ policySummary.pending_count === 1 ? 'policy is' : 'policies are' }}
+						waiting for your family action.
+					</p>
+				</div>
+				<RouterLink class="if-action" :to="{ name: 'guardian-policies' }"
+					>Open Policies</RouterLink
+				>
+			</div>
+			<ul class="mt-4 space-y-2">
+				<li
+					v-for="item in policySummary.items"
+					:key="item.policy_version"
+					class="rounded-lg border border-line-soft bg-white p-3"
+				>
+					<div class="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+						<div>
+							<p class="type-body-strong text-ink">
+								{{ item.policy_title }}
+								<span v-if="item.version_label" class="text-ink/60"
+									>· {{ item.version_label }}</span
+								>
+							</p>
+							<p v-if="item.description" class="mt-1 type-caption text-ink/70">
+								{{ item.description }}
+							</p>
+						</div>
+						<span class="chip">{{ item.status_label }}</span>
+					</div>
+				</li>
+			</ul>
 		</section>
 
 		<section class="card-surface p-5">
@@ -350,12 +392,25 @@ const counts = computed(
 		}
 );
 const familyTimeline = computed(() => snapshot.value?.zones.family_timeline ?? []);
+const policySummary = computed(
+	() =>
+		snapshot.value?.policies ?? {
+			pending_count: 0,
+			items: [],
+		}
+);
 const attentionItems = computed(() => snapshot.value?.zones.attention_needed ?? []);
 const prepItems = computed(() => snapshot.value?.zones.preparation_and_support ?? []);
 const recentActivity = computed(() => snapshot.value?.zones.recent_activity ?? []);
 const learningHighlights = computed(() => snapshot.value?.zones.learning_highlights ?? []);
 
 const quickLinks = [
+	{
+		title: 'Communications',
+		description: 'Review family-wide school and class updates in one place.',
+		icon: 'message-square',
+		to: { name: 'guardian-communications' },
+	},
 	{
 		title: 'Course Selection',
 		description: 'Confirm each child’s program choices before the deadline.',

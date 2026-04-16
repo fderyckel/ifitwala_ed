@@ -90,10 +90,12 @@ describe('GuardianPolicies', () => {
 					organization: 'ORG-1',
 					school: 'SCHOOL-1',
 					description: 'Review privacy expectations.',
-					policy_text: 'Policy text',
+					policy_text: '<h2>Guardian Privacy Policy</h2><p>Policy text</p>',
 					effective_from: '2026-03-01',
 					effective_to: '',
 					approved_on: '2026-03-01 09:00:00',
+					expected_signature_name: 'Mariam Example',
+					acknowledgement_clauses: [],
 					ack_context_doctype: 'Guardian',
 					ack_context_name: 'GRD-0001',
 					is_acknowledged: false,
@@ -112,6 +114,8 @@ describe('GuardianPolicies', () => {
 		expect(text).toContain('Privacy Policy')
 		expect(text).toContain('Pending acknowledgement')
 		expect(text).toContain('Review privacy expectations.')
+		expect(document.querySelector('.policy-richtext h2')?.textContent).toBe('Guardian Privacy Policy')
+		expect(document.body.innerHTML).not.toContain('&lt;h2&gt;')
 	})
 
 	it('acknowledges a pending policy and reloads the overview', async () => {
@@ -131,10 +135,12 @@ describe('GuardianPolicies', () => {
 						organization: 'ORG-1',
 						school: 'SCHOOL-1',
 						description: '',
-						policy_text: 'Policy text',
+						policy_text: '<p>Policy text</p>',
 						effective_from: '',
 						effective_to: '',
 						approved_on: '',
+						expected_signature_name: 'Mariam Example',
+						acknowledgement_clauses: [],
 						ack_context_doctype: 'Guardian',
 						ack_context_name: 'GRD-0001',
 						is_acknowledged: false,
@@ -158,10 +164,12 @@ describe('GuardianPolicies', () => {
 						organization: 'ORG-1',
 						school: 'SCHOOL-1',
 						description: '',
-						policy_text: 'Policy text',
+						policy_text: '<p>Policy text</p>',
 						effective_from: '',
 						effective_to: '',
 						approved_on: '',
+						expected_signature_name: 'Mariam Example',
+						acknowledgement_clauses: [],
 						ack_context_doctype: 'Guardian',
 						ack_context_name: 'GRD-0001',
 						is_acknowledged: true,
@@ -180,13 +188,30 @@ describe('GuardianPolicies', () => {
 		mountGuardianPolicies()
 		await flushUi()
 
+		const input = document.querySelector('input[type="text"]') as HTMLInputElement
+		input.value = 'Mariam Example'
+		input.dispatchEvent(new Event('input', { bubbles: true }))
+		await flushUi()
+
+		const checkbox = Array.from(document.querySelectorAll('input[type="checkbox"]')).find(
+			node => !(node as HTMLInputElement).disabled
+		) as HTMLInputElement | undefined
+		checkbox!.checked = true
+		checkbox!.dispatchEvent(new Event('change', { bubbles: true }))
+		await flushUi()
+
 		const button = Array.from(document.querySelectorAll('button')).find(button =>
-			(button.textContent || '').includes('Acknowledge')
+			(button.textContent || '').includes('Sign and acknowledge policy')
 		)
 		button?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
 		await flushUi()
 
-		expect(acknowledgeGuardianPolicyMock).toHaveBeenCalledWith({ policy_version: 'VER-1' })
+		expect(acknowledgeGuardianPolicyMock).toHaveBeenCalledWith({
+			policy_version: 'VER-1',
+			typed_signature_name: 'Mariam Example',
+			attestation_confirmed: 1,
+			checked_clause_names: [],
+		})
 		expect(getGuardianPolicyOverviewMock).toHaveBeenCalledTimes(2)
 		expect(toastSuccessMock).toHaveBeenCalled()
 	})

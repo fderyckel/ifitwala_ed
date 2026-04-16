@@ -16,6 +16,7 @@ from ifitwala_ed.utilities.employee_utils import (
 )
 from ifitwala_ed.utilities.image_utils import get_preferred_employee_image_url
 from ifitwala_ed.utilities.transaction_base import delete_events
+from ifitwala_ed.website.utils import slugify_route_segment
 
 
 class EmployeeUserDisabledError(frappe.ValidationError):
@@ -64,6 +65,7 @@ class Employee(NestedSet):
         self.validate_reports_to()
         self.validate_preferred_email()
         self.validate_employee_history()
+        self.validate_public_website_fields()
 
         if self.user_id:
             self.validate_user_details()
@@ -226,6 +228,45 @@ class Employee(NestedSet):
                     "Employee cannot report to a supervisor from a different organization unless it is a parent organization."
                 )
             )
+
+    def validate_public_website_fields(self):
+        if int(self.show_public_profile_page or 0) == 1:
+            self.show_on_website = 1
+
+        slug = (self.public_profile_slug or "").strip()
+        if not int(self.show_public_profile_page or 0):
+            self.public_profile_slug = slug or None
+        else:
+            if not self.school:
+                frappe.throw(
+                    _("School is required before enabling a public profile page."),
+                    frappe.ValidationError,
+                )
+
+            if not slug:
+                preferred = (self.employee_preferred_name or "").strip()
+                full_name = (self.employee_full_name or "").strip()
+                slug = slugify_route_segment(preferred or full_name, fallback="employee")
+
+            slug = slugify_route_segment(slug, fallback="employee")
+            self.public_profile_slug = slug
+
+            exists = frappe.db.exists(
+                "Employee",
+                {
+                    "school": self.school,
+                    "public_profile_slug": slug,
+                    "name": ["!=", self.name],
+                },
+            )
+            if exists:
+                frappe.throw(
+                    _("Another employee in this school already uses the public profile slug '{0}'.").format(slug),
+                    frappe.ValidationError,
+                )
+
+        if self.website_sort_order in ("", None):
+            self.website_sort_order = None
 
         # Validate downward consistency (no cross-lineage connections)
         # Fetch all direct reports of the current employee
@@ -880,8 +921,9 @@ def get_children(doctype, parent=None, organization=None, is_root=False, is_tree
     # NOTE:
     # - Treeview calls this often; avoid N+1 queries.
     # - We keep the existing "All Organizations" sentinel for compatibility with current JS.
+    # - Tree visibility must mirror scripted Employee visibility; do not inject an extra status gate here.
 
-    filters = [["employment_status", "=", "Active"]]
+    filters = []
 
     # Organization filter (compat with current treeview default)
     if organization and organization != "All Organizations":
@@ -933,8 +975,7 @@ def get_children(doctype, parent=None, organization=None, is_root=False, is_tree
         """
 		SELECT reports_to, COUNT(*) AS cnt
 		FROM `tabEmployee`
-		WHERE employment_status = 'Active'
-			AND reports_to IN %(names)s
+		WHERE reports_to IN %(names)s
 		GROUP BY reports_to
 		""",
         {"names": tuple(names)},
@@ -1004,12 +1045,18 @@ def get_permission_query_conditions(user=None):
         vals = ", ".join(frappe.db.escape(o) for o in orgs)
         return f"(`tabEmployee`.`organization` IN ({vals}) OR IFNULL(`tabEmployee`.`organization`, '') = '')"
 
-    # Academic Admin: scope by default school only
+    # Academic Admin: default school stays school-scoped; blank-school falls back to org descendants
     if "Academic Admin" in roles:
-        default_school = _get_user_default_from_db(user, "school")
-        if not default_school:
+        school_scope = _resolve_academic_admin_school_scope(user)
+        if school_scope:
+            return f"`tabEmployee`.`school` = {frappe.db.escape(school_scope)}"
+
+        orgs = _resolve_academic_admin_org_scope(user)
+        if not orgs:
             return "1=0"
-        return f"`tabEmployee`.`school` = {frappe.db.escape(default_school)}"
+
+        vals = ", ".join(frappe.db.escape(o) for o in orgs)
+        return f"`tabEmployee`.`organization` IN ({vals})"
 
     # Employee: own record only
     if "Employee" in roles:
@@ -1047,14 +1094,20 @@ def employee_has_permission(doc=None, ptype=None, user=None):
             return False
         return doc.organization in orgs
 
-    # Academic Admin -> read only, default school only
+    # Academic Admin -> read only; default school stays school-scoped, blank-school falls back to org descendants
     if "Academic Admin" in roles:
         if ptype not in read_like:
             return False
-        default_school = _get_user_default_from_db(user, "school")
+        school_scope = _resolve_academic_admin_school_scope(user)
         if doc is None:
-            return bool(default_school)
-        return bool(default_school and cstr(doc.school).strip() == default_school)
+            return bool(school_scope or _resolve_academic_admin_org_scope(user))
+        if school_scope:
+            return bool(cstr(doc.school).strip() == school_scope)
+
+        orgs = set(_resolve_academic_admin_org_scope(user))
+        if not orgs:
+            return False
+        return cstr(doc.organization).strip() in orgs
 
     # Employee -> read only own record
     if "Employee" in roles:
@@ -1079,6 +1132,65 @@ def _resolve_hr_base_org(user: str) -> str | None:
 
     global_org = frappe.db.get_single_value("Global Defaults", "default_organization")
     return cstr(global_org).strip() or None
+
+
+def _resolve_academic_admin_school_scope(user: str) -> str | None:
+    """
+    Resolve school scope for Academic Admin visibility.
+
+    The active Employee profile is authoritative. If that profile exists with a blank school,
+    treat the user as schoolless and fall back to organization scope instead of reviving a stale
+    persisted default school.
+    """
+    active_employee = frappe.db.get_value(
+        "Employee",
+        {"user_id": user, "employment_status": "Active"},
+        ["name", "school"],
+        as_dict=True,
+    )
+    if active_employee:
+        return cstr(active_employee.get("school")).strip() or None
+
+    return _get_user_default_from_db(user, "school")
+
+
+def _resolve_academic_admin_base_org(user: str) -> str | None:
+    """Resolve Academic Admin base org from active Employee context first, then persisted defaults."""
+    employee_org = cstr(get_user_base_org(user)).strip()
+    if employee_org:
+        return employee_org
+
+    return _get_user_default_from_db(user, "organization")
+
+
+def _resolve_academic_admin_org_scope(user: str) -> list[str]:
+    """Resolve read-only Academic Admin org scope for blank-school fallback."""
+    scope: set[str] = set()
+
+    base_org = _resolve_academic_admin_base_org(user)
+    if base_org:
+        scope.update(
+            {cstr(org).strip() for org in (_get_descendant_organizations_uncached(base_org) or []) if cstr(org).strip()}
+        )
+
+    explicit_orgs = frappe.get_all(
+        "User Permission",
+        filters={"user": user, "allow": "Organization"},
+        pluck="for_value",
+    )
+    for org in explicit_orgs:
+        org_name = cstr(org).strip()
+        if not org_name:
+            continue
+        scope.update(
+            {
+                cstr(item).strip()
+                for item in (_get_descendant_organizations_uncached(org_name) or [])
+                if cstr(item).strip()
+            }
+        )
+
+    return sorted(scope)
 
 
 def _resolve_hr_org_scope(user: str) -> list[str]:

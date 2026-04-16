@@ -1,6 +1,6 @@
 <!-- ifitwala_ed/ui-spa/src/pages/staff/StaffHome.vue -->
 <template>
-	<div class="staff-shell space-y-5">
+	<div data-testid="staff-home-page" class="staff-shell space-y-5">
 		<!-- ============================================================
 		     HEADER / GREETING
 		     Intent:
@@ -661,7 +661,7 @@ const exploreLinks: Array<StaffHomeAnalyticsLink | StaffHomeExploreAction> = [
 		caption: 'Which rooms are free, over or under-used this week',
 		icon: 'clock',
 		to: '/staff/room-utilization',
-		capability: 'analytics_scheduling',
+		capability: 'room_utilization_page',
 	},
 ];
 
@@ -754,7 +754,7 @@ const analyticsCategories: StaffHomeAnalyticsCategory[] = [
 			{
 				label: 'Room Occupancy',
 				to: { name: 'staff-room-utilization' },
-				capability: 'analytics_scheduling',
+				capability: 'room_utilization_page',
 			},
 			{
 				label: 'Bus & Route Load',

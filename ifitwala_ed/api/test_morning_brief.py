@@ -11,6 +11,35 @@ from ifitwala_ed.tests.base import IfitwalaFrappeTestCase
 
 
 class TestMorningBrief(IfitwalaFrappeTestCase):
+    def test_get_pending_grading_tasks_uses_task_delivery_schema(self):
+        captured = {}
+
+        def fake_sql(query, values=None, as_dict=False, **kwargs):
+            captured["query"] = query
+            captured["values"] = values
+            captured["as_dict"] = as_dict
+            return [(7,)]
+
+        with (
+            patch.object(morning_brief, "today", return_value="2026-04-08"),
+            patch.object(morning_brief.frappe.db, "sql", side_effect=fake_sql),
+        ):
+            count = morning_brief.get_pending_grading_tasks(["SG-1", "SG-2"])
+
+        self.assertEqual(count, 7)
+        self.assertFalse(captured["as_dict"])
+        self.assertIn("FROM `tabTask Delivery` td", captured["query"])
+        self.assertIn("LEFT JOIN `tabTask Outcome` tou", captured["query"])
+        self.assertIn("COUNT(DISTINCT td.name)", captured["query"])
+        self.assertIn("td.student_group IN %(group_names)s", captured["query"])
+        self.assertIn("td.require_grading = 1", captured["query"])
+        self.assertIn("td.docstatus = 1", captured["query"])
+        self.assertIn("td.due_date < %(site_cutoff)s", captured["query"])
+        self.assertIn("COALESCE(t.is_archived, 0) = 0", captured["query"])
+        self.assertNotIn("FROM `tabTask`\n\t\tWHERE student_group", captured["query"])
+        self.assertEqual(captured["values"]["group_names"], ("SG-1", "SG-2"))
+        self.assertEqual(captured["values"]["site_cutoff"], "2026-04-08 00:00:00")
+
     def test_get_staff_birthdays_filters_active_employees_with_birthdays_only(self):
         captured = {}
 
@@ -104,6 +133,28 @@ class TestMorningBrief(IfitwalaFrappeTestCase):
         self.assertEqual(payload.get("clinic_volume"), clinic_payload)
         self.assertNotIn("admissions_pulse", payload)
         self.assertNotIn("critical_incidents", payload)
+
+    def test_get_briefing_widgets_includes_instructor_widgets_for_group_context(self):
+        with (
+            patch.object(morning_brief.frappe, "session", frappe._dict(user="teacher@example.com")),
+            patch.object(morning_brief.frappe, "get_roles", return_value=["Instructor"]),
+            patch.object(morning_brief, "now_datetime", return_value=datetime(2026, 4, 8, 8, 15, 0)),
+            patch.object(morning_brief, "get_daily_bulletin", return_value=[]),
+            patch.object(morning_brief, "_can_view_clinic_metrics", return_value=False),
+            patch.object(morning_brief, "get_my_student_groups", return_value=["SG-1"]),
+            patch.object(morning_brief, "get_pending_grading_tasks", return_value=4),
+            patch.object(morning_brief, "get_my_student_birthdays", return_value=[]),
+            patch.object(
+                morning_brief,
+                "get_my_absent_students",
+                return_value=[{"student_name": "Jane Doe"}],
+            ),
+        ):
+            payload = morning_brief.get_briefing_widgets()
+
+        self.assertEqual(payload.get("grading_velocity"), 4)
+        self.assertEqual(payload.get("my_absent_students"), [{"student_name": "Jane Doe"}])
+        self.assertIn("my_student_birthdays", payload)
 
     def test_get_clinic_activity_skips_weekends_and_holidays_for_business_days(self):
         context = {

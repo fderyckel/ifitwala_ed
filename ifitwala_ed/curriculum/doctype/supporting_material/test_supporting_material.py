@@ -18,8 +18,11 @@ def _supporting_material_module():
     materials_stub.get_material_permission_query_conditions = lambda user=None, table_alias="", manage_only=False: (
         f"{table_alias}.course in ('COURSE-1')"
     )
+    materials_stub.user_can_manage_course_material = lambda user, course: (
+        course == "COURSE-1" and user in {"teacher@example.com", "coordinator@example.com"}
+    )
     materials_stub.user_can_manage_supporting_material = lambda user, material_name, course=None: (
-        course == "COURSE-1" and user == "teacher@example.com"
+        course == "COURSE-1" and user in {"teacher@example.com", "coordinator@example.com"}
     )
     materials_stub.user_can_read_supporting_material = lambda user, material_name, course=None: (
         course == "COURSE-1" and user in {"teacher@example.com", "coordinator@example.com"}
@@ -81,6 +84,24 @@ class TestSupportingMaterial(TestCase):
             with self.assertRaises(StubValidationError):
                 material._validate_type_specific_fields()
 
+    def test_normalize_accepts_numeric_file_size_from_governed_upload_finalize(self):
+        with _supporting_material_module() as module:
+            material = module.SupportingMaterial()
+            material.flags = SimpleNamespace(allow_missing_file=True)
+            material.title = "Worksheet"
+            material.course = "COURSE-1"
+            material.material_type = "File"
+            material.description = ""
+            material.reference_url = ""
+            material.file = "FILE-1"
+            material.file_name = "worksheet.pdf"
+            material.file_size = 2048
+            material.modality = "Use"
+
+            material._normalize()
+
+        self.assertEqual(material.file_size, "2048")
+
     def test_validate_governed_file_rejects_wrong_attachment_owner(self):
         with _supporting_material_module() as module:
 
@@ -119,11 +140,18 @@ class TestSupportingMaterial(TestCase):
             with self.assertRaises(StubValidationError):
                 material.on_trash()
 
-    def test_has_permission_keeps_coordinator_read_only(self):
+    def test_has_permission_allows_program_scoped_coordinator_write(self):
         with _supporting_material_module() as module:
             material = module.SupportingMaterial()
             material.name = "MAT-1"
             material.course = "COURSE-1"
 
             self.assertTrue(module.has_permission(material, ptype="read", user="coordinator@example.com"))
-            self.assertFalse(module.has_permission(material, ptype="write", user="coordinator@example.com"))
+            self.assertTrue(module.has_permission(material, ptype="write", user="coordinator@example.com"))
+
+    def test_has_permission_allows_create_for_unsaved_manageable_course(self):
+        with _supporting_material_module() as module:
+            material = module.SupportingMaterial()
+            material.course = "COURSE-1"
+
+            self.assertTrue(module.has_permission(material, ptype="create", user="coordinator@example.com"))

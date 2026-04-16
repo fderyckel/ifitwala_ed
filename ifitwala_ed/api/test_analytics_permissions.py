@@ -90,6 +90,11 @@ class TestAnalyticsPermissions(FrappeTestCase):
         caps = _build_staff_home_capabilities({"Academic Assistant"})
         self.assertTrue(caps.get("analytics_demographics"))
 
+    def test_staff_home_room_utilization_page_capability_for_employee(self):
+        caps = _build_staff_home_capabilities({"Employee"})
+        self.assertTrue(caps.get("room_utilization_page"))
+        self.assertFalse(caps.get("analytics_scheduling"))
+
     def test_staff_home_student_overview_capability_for_academic_assistant(self):
         caps = _build_staff_home_capabilities({"Academic Assistant"})
         self.assertFalse(caps.get("analytics_student_overview"))

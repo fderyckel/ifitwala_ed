@@ -1,6 +1,6 @@
 <!-- ifitwala_ed/ui-spa/src/pages/guardian/GuardianPolicies.vue -->
 <template>
-	<div class="space-y-6">
+	<div class="portal-page">
 		<header class="card-surface p-5 sm:p-6">
 			<div class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
 				<div>
@@ -72,9 +72,7 @@
 					<div class="flex flex-col items-start gap-2 sm:items-end">
 						<p
 							class="rounded-full px-3 py-1 type-caption"
-							:class="
-								row.is_acknowledged ? 'bg-mint/15 text-forest' : 'bg-warm-amber/15 text-ochre'
-							"
+							:class="row.is_acknowledged ? 'bg-leaf/15 text-canopy' : 'bg-sand text-clay'"
 						>
 							{{ row.is_acknowledged ? 'Acknowledged' : 'Pending acknowledgement' }}
 						</p>
@@ -89,9 +87,12 @@
 					:open="!row.is_acknowledged"
 				>
 					<summary class="cursor-pointer type-body-strong text-ink">Open policy text</summary>
-					<div class="mt-3 whitespace-pre-wrap type-body text-ink/80">
-						{{ row.policy_text || 'No policy text available.' }}
-					</div>
+					<div
+						v-if="row.policy_text"
+						class="policy-richtext prose prose-sm mt-3 max-w-none text-ink/80"
+						v-html="trustedHtml(row.policy_text)"
+					/>
+					<p v-else class="mt-3 type-body text-ink/70">No policy text available.</p>
 				</details>
 
 				<div
@@ -251,6 +252,10 @@ function normalizeName(value: string): string {
 	return value.trim().replace(/\s+/g, ' ').toLowerCase();
 }
 
+function trustedHtml(html: string): string {
+	return String(html || '');
+}
+
 function isRowBusy(policyVersion: string): boolean {
 	return Boolean(busyRows.value[policyVersion]);
 }
@@ -391,3 +396,50 @@ onMounted(() => {
 	void loadOverview();
 });
 </script>
+
+<style scoped>
+.policy-richtext :deep(.ql-editor) {
+	padding: 0;
+}
+
+.policy-richtext :deep(p + p) {
+	margin-top: 0.75rem;
+}
+
+.policy-richtext :deep(ul) {
+	list-style-type: disc;
+	padding-inline-start: 1.5rem;
+}
+
+.policy-richtext :deep(ol) {
+	list-style-type: decimal;
+	padding-inline-start: 1.5rem;
+}
+
+.policy-richtext :deep(li) {
+	margin: 0.25rem 0;
+}
+
+.policy-richtext :deep(a) {
+	color: rgb(var(--jacaranda-rgb) / 1);
+	text-decoration: underline;
+	text-underline-offset: 0.14em;
+}
+
+.policy-richtext :deep(u) {
+	text-decoration: underline;
+	text-underline-offset: 0.14em;
+}
+
+.policy-richtext :deep(h2) {
+	font-size: 1.25rem;
+	font-weight: 600;
+	line-height: 1.35;
+}
+
+.policy-richtext :deep(h3) {
+	font-size: 1.125rem;
+	font-weight: 600;
+	line-height: 1.4;
+}
+</style>

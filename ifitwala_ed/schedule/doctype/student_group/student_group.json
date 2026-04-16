@@ -101,6 +101,7 @@
    "options": "Student Cohort"
   },
   {
+   "depends_on": "eval:doc.group_based_on == 'Course'",
    "fieldname": "course",
    "fieldtype": "Link",
    "in_global_search": 1,
@@ -204,7 +205,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-03-28 12:27:37.841147",
+ "modified": "2026-04-08 22:11:38.000000",
  "modified_by": "Administrator",
  "module": "Schedule",
  "name": "Student Group",

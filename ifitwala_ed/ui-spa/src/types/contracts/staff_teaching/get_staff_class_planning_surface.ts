@@ -16,6 +16,7 @@ export type StaffPlanningActivity = {
 }
 
 export type StaffPlanningStandard = {
+	learning_standard?: string | null
 	framework_name?: string | null
 	framework_version?: string | null
 	subject_area?: string | null

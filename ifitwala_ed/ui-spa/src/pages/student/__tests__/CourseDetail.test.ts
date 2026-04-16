@@ -5,13 +5,18 @@ import { createApp, defineComponent, h, nextTick, type App } from 'vue'
 
 import type { Response as StudentLearningSpaceResponse } from '@/types/contracts/student_learning/get_student_learning_space'
 
-const { getStudentLearningSpaceMock, createReflectionEntryMock, routeState, routerReplaceMock } =
+const {
+	getStudentLearningSpaceMock,
+	createReflectionEntryMock,
+	routeState,
+	routerReplaceMock,
+} =
 	vi.hoisted(() => ({
-	getStudentLearningSpaceMock: vi.fn(),
-	createReflectionEntryMock: vi.fn(),
-	routeState: {
-		query: {
-			student_group: 'GROUP-1',
+		getStudentLearningSpaceMock: vi.fn(),
+		createReflectionEntryMock: vi.fn(),
+		routeState: {
+			query: {
+				student_group: 'GROUP-1',
 		},
 		hash: '',
 	},
@@ -31,8 +36,9 @@ vi.mock('vue-router', async () => {
 					default: '',
 				},
 			},
-			setup(_, { slots }) {
-				return () => h('a', {}, slots.default?.())
+			setup(props, { slots }) {
+				return () =>
+					h('a', { 'data-to': JSON.stringify(props.to || null) }, slots.default?.())
 			},
 		}),
 		useRouter: () => ({
@@ -89,6 +95,15 @@ function buildPayload(message: string | null = null): StudentLearningSpaceRespon
 			title: 'Biology A · Semester 1',
 			planning_status: 'Active',
 			course_plan: 'COURSE-PLAN-00001',
+		},
+		communications: {
+			course_updates_summary: {
+				total_count: 3,
+				unread_count: 2,
+				high_priority_count: 1,
+				has_high_priority: 1,
+				latest_publish_at: '2026-04-01T08:00:00',
+			},
 		},
 		message,
 		learning: {
@@ -335,6 +350,8 @@ describe('CourseDetail', () => {
 		expect(document.body.textContent).toContain('Biology')
 		expect(document.body.textContent).toContain('Learning Focus')
 		expect(document.body.textContent).toContain('What to do next')
+		expect(document.body.textContent).toContain('Class Updates')
+		expect(document.body.textContent).toContain('2 new')
 		expect(document.body.textContent).toContain('This Unit')
 		expect(document.body.textContent).toContain('Assigned Work')
 		expect(document.body.textContent).toContain('Resources for this session')
@@ -349,6 +366,8 @@ describe('CourseDetail', () => {
 		expect(document.body.textContent).toContain('Observation walk')
 		expect(document.body.textContent).toContain('Continue Cell Structure Checkpoint')
 		expect(document.body.textContent).toContain('Cell Structure Checkpoint')
+		expect(document.body.textContent).not.toContain('Messages connected to this class')
+		expect(document.body.textContent).not.toContain('Microscope materials are ready')
 		expect(document.body.textContent).not.toContain('Class plan published')
 		expect(document.body.textContent).not.toContain('Planning not published')
 		expect(document.body.textContent).not.toContain('Teacher note')
@@ -356,6 +375,16 @@ describe('CourseDetail', () => {
 		const headerImage = document.querySelector('header img')
 		expect(headerImage).toBeTruthy()
 		expect(headerImage?.className).toContain('aspect-square')
+
+		const classUpdatesLink = Array.from(document.querySelectorAll('a')).find(anchor =>
+			anchor.textContent?.includes('Class Updates')
+		)
+		expect(classUpdatesLink).toBeTruthy()
+		const classUpdatesHref = classUpdatesLink?.getAttribute('data-to') || ''
+		expect(classUpdatesHref).toContain('"name":"student-communications"')
+		expect(classUpdatesHref).toContain('"source":"course"')
+		expect(classUpdatesHref).toContain('"course_id":"COURSE-1"')
+		expect(classUpdatesHref).toContain('"student_group":"GROUP-1"')
 	})
 
 	it('keeps the learning space visible when shared-plan messaging is present', async () => {

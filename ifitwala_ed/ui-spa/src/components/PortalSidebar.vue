@@ -9,7 +9,7 @@
 
 	<aside
 		:class="[
-			'portal-sidebar fixed inset-y-0 left-0 z-40 lg:static lg:inset-auto lg:z-auto',
+			'portal-sidebar fixed left-0 z-40 lg:z-20',
 			isMobileOpen ? 'portal-sidebar--mobile-open' : 'portal-sidebar--mobile-closed',
 			isRailExpanded ? 'portal-sidebar--expanded' : 'portal-sidebar--collapsed',
 		]"
@@ -179,17 +179,17 @@ const hasStudentPortal = computed(() => portalRoles.value.includes('student'));
 const hasGuardianPortal = computed(() => portalRoles.value.includes('guardian'));
 
 const studentMenu: MenuItem[] = [
-	{ label: 'Dashboard', icon: 'home', to: { name: 'student-home' } },
-	{ label: 'Course Selection', icon: 'check-square', to: { name: 'student-course-selection' } },
-	{ label: 'Activities', icon: 'star', to: { name: 'student-activities' } },
-	{ label: 'Portfolio & Journal', icon: 'layers', to: { name: 'student-portfolio' } },
 	{ label: 'Courses', icon: 'book-open', to: { name: 'student-courses' } },
+	{ label: 'Policies', icon: 'shield', to: { name: 'student-policies' } },
+	{ label: 'Portfolio & Journal', icon: 'layers', to: { name: 'student-portfolio' } },
+	{ label: 'Communications', icon: 'message-square', to: { name: 'student-communications' } },
+	{ label: 'Activities', icon: 'star', to: { name: 'student-activities' } },
 	{ label: 'Student Log', icon: 'file-text', to: { name: 'student-logs' } },
-	{ label: 'Profile', icon: 'user', to: { name: 'student-profile' } },
 ];
 
 const guardianMenu: MenuItem[] = [
 	{ label: 'Family Snapshot', icon: 'home', to: { name: 'guardian-home' } },
+	{ label: 'Communications', icon: 'message-square', to: { name: 'guardian-communications' } },
 	{ label: 'Course Selection', icon: 'check-square', to: { name: 'guardian-course-selection' } },
 	{ label: 'Activities', icon: 'star', to: { name: 'guardian-activities' } },
 	{ label: 'Attendance', icon: 'calendar', to: { name: 'guardian-attendance' } },

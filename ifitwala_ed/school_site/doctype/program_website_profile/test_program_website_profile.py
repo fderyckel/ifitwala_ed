@@ -19,14 +19,28 @@ class TestProgramWebsiteProfile(FrappeTestCase):
 
     def test_program_profile_status_requires_workflow_published(self):
         status = compute_program_profile_status(
+            school_is_public=True,
             program_is_published=True,
+            has_program_slug=True,
             workflow_state="Approved",
         )
         self.assertEqual(status, "Draft")
 
-    def test_program_profile_status_requires_program_published(self):
+    def test_program_profile_status_requires_school_and_program_readiness(self):
         status = compute_program_profile_status(
+            school_is_public=False,
             program_is_published=False,
+            has_program_slug=False,
             workflow_state="Published",
+        )
+        self.assertEqual(status, "Draft")
+
+    def test_program_profile_status_respects_publication_window(self):
+        status = compute_program_profile_status(
+            school_is_public=True,
+            program_is_published=True,
+            has_program_slug=True,
+            workflow_state="Published",
+            publish_at="2099-01-01 08:00:00",
         )
         self.assertEqual(status, "Draft")

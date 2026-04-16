@@ -28,7 +28,7 @@ frappe.after_ajax(() => {
 			// ─── new branding fields ───────────────────────────────────────────
 			{
 				fieldtype: 'Attach Image',
-				label: __('Login Page Logo (app_logo)'),
+				label: __('Initial Site Logo (fallback until Organization Logo is set)'),
 				fieldname: 'app_logo',
 			},
 			// ───────────────────────────────────────────────────────────────────

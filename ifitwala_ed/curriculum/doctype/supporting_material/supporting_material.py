@@ -11,6 +11,7 @@ from ifitwala_ed.curriculum.materials import (
     MATERIAL_TYPE_REFERENCE_LINK,
     get_material_permission_query_conditions,
     normalize_material_modality,
+    user_can_manage_course_material,
     user_can_manage_supporting_material,
     user_can_read_supporting_material,
     validate_reference_url,
@@ -35,7 +36,7 @@ class SupportingMaterial(Document):
         self.reference_url = (self.reference_url or "").strip() or None
         self.file = (self.file or "").strip() or None
         self.file_name = (self.file_name or "").strip() or None
-        self.file_size = (self.file_size or "").strip() or None
+        self.file_size = None if self.file_size is None else str(self.file_size).strip() or None
         self.modality = normalize_material_modality(self.modality)
 
         if not self.title:
@@ -104,15 +105,19 @@ def has_permission(doc, ptype: str | None = None, user: str | None = None) -> bo
     user = user or frappe.session.user
     if not user or user == "Guest":
         return False
+    ptype = (ptype or "read").lower()
     if not doc:
         return True
 
-    material_name = (getattr(doc, "name", None) or "").strip()
     course = (getattr(doc, "course", None) or "").strip() or None
+    if ptype == "create":
+        return bool(course) and user_can_manage_course_material(user, course)
+
+    material_name = (getattr(doc, "name", None) or "").strip()
     if not material_name:
         return False
 
-    if ptype in {"read", "select", "report", "print", "email", "share", "export", None}:
+    if ptype in {"read", "select", "report", "print", "email", "share", "export"}:
         return user_can_read_supporting_material(user, material_name, course=course)
 
     return user_can_manage_supporting_material(user, material_name, course=course)

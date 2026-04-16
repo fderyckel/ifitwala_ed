@@ -10,6 +10,7 @@ from frappe.utils import add_days, getdate, strip_html, today
 from ifitwala_ed.api.org_comm_utils import build_audience_summary, check_audience_match
 from ifitwala_ed.api.org_communication_attachments import serialize_org_communication_attachment_row
 from ifitwala_ed.utilities.employee_utils import (
+    get_ancestor_organizations,
     get_descendant_organizations,
     get_user_base_org,
     get_user_base_school,
@@ -109,12 +110,13 @@ def _get_scope(user: str, employee: dict | None):
     return base_org, base_school, org_scope, school_scope
 
 
-@frappe.whitelist()
-def get_archive_context():
-    """Returns context data for the archive page filters."""
-    user = frappe.session.user
-    roles = frappe.get_roles(user)
+def _get_archive_employee_context(user: str, roles: list[str]):
+    """Return archive visibility context plus base org/school scopes.
 
+    Academic Admin archive scope is school-first:
+    - with Employee.school: school cone only
+    - without Employee.school: organization descendant fallback
+    """
     employee = frappe.db.get_value(
         "Employee",
         {"user_id": user},
@@ -123,6 +125,44 @@ def get_archive_context():
     )
 
     base_org, base_school, org_scope, school_scope = _get_scope(user, employee)
+
+    archive_employee = dict(employee or {})
+    if "Academic Admin" in (roles or []):
+        school_names = [school for school in (school_scope or []) if school]
+        organization_names = [org for org in (org_scope or []) if org]
+        if organization_names and not base_school:
+            archive_employee["organization_names"] = organization_names
+        if school_names:
+            archive_employee["school_names"] = school_names
+
+    return archive_employee, base_org, base_school, org_scope, school_scope
+
+
+def _get_archive_organization_scope(*, base_org: str | None, org_scope: list[str] | None) -> list[str]:
+    """Return archive-visible org scope.
+
+    Archive candidates must include:
+    - the user's base organization
+    - its descendants
+    - its ancestors
+
+    This keeps parent organization communications eligible for
+    `Organization` audience matching while preserving sibling isolation.
+    """
+    scope = {org for org in (org_scope or []) if org}
+    if base_org:
+        scope.add(base_org)
+    if base_org and org_scope:
+        scope.update(org for org in (get_ancestor_organizations(base_org) or []) if org)
+    return sorted(scope)
+
+
+@frappe.whitelist()
+def get_archive_context():
+    """Returns context data for the archive page filters."""
+    user = frappe.session.user
+    roles = frappe.get_roles(user)
+    employee, base_org, base_school, org_scope, school_scope = _get_archive_employee_context(user, roles)
 
     # -------------------------
     # Teams (Team -> Team Member)
@@ -176,18 +216,15 @@ def get_archive_context():
         if r.get("name")
     ]
 
-    # Default team only if unambiguous
-    default_team = my_teams[0]["value"] if len(my_teams) == 1 else None
-
     data = {
         "my_teams": my_teams,
         "my_groups": [],
         "schools": [],
         "organizations": [],
         "defaults": {
-            "school": base_school,
-            "organization": base_org,
-            "team": default_team,
+            "school": base_school if "Academic Admin" in roles else None,
+            "organization": base_org if "Academic Admin" in roles else None,
+            "team": None,
         },
         "base_org": base_org,
         "base_school": base_school,
@@ -210,7 +247,7 @@ def get_archive_context():
             )
 
     elif employee and ("Instructor" in roles or "Academic Staff" in roles):
-        instructor_name = frappe.db.get_value("Instructor", {"employee": employee.name}, "name")
+        instructor_name = frappe.db.get_value("Instructor", {"employee": employee_name}, "name")
         if instructor_name:
             group_names = (
                 frappe.get_all(
@@ -238,12 +275,14 @@ def get_archive_context():
         for g in (my_group_rows or [])
     ]
 
+    archive_org_scope = _get_archive_organization_scope(base_org=base_org, org_scope=org_scope)
+
     # -------------------------
-    # Organizations: base org + descendants; fallback to all
+    # Organizations: base org + descendants + ancestors; fallback to all
     # -------------------------
     org_filters = {}
-    if org_scope:
-        org_filters["name"] = ["in", org_scope]
+    if archive_org_scope:
+        org_filters["name"] = ["in", archive_org_scope]
 
     data["organizations"] = frappe.get_all(
         "Organization",
@@ -289,17 +328,9 @@ def get_org_communication_item(name=None):
     user = frappe.session.user
     roles = frappe.get_roles(user)
 
-    # Only what we actually need here (no department)
-    # Keep detail visibility aligned with the feed endpoint. The feed already scopes
-    # the visible list using the user-linked Employee record without an extra status
-    # filter, so the detail endpoint must resolve the same context or users can see a
-    # row in the archive list but silently lose the full body in the detail pane.
-    employee = frappe.db.get_value(
-        "Employee",
-        {"user_id": user},
-        ["name", "school", "organization"],
-        as_dict=True,
-    )
+    # Keep detail visibility aligned with the feed endpoint or users can see a
+    # row in the archive list but lose the full body in the detail pane.
+    employee, _base_org, _base_school, _org_scope, _school_scope = _get_archive_employee_context(user, roles)
 
     # NOTE: check_audience_match MUST be updated to use Team Member doctype
     # and not Employee.department. (This is the real underlying bug.)
@@ -353,12 +384,7 @@ def get_org_communication_feed(
 ) -> dict:
     user = frappe.session.user
     roles = frappe.get_roles(user)
-    employee = frappe.db.get_value(
-        "Employee",
-        {"user_id": user},
-        ["name", "school", "organization"],
-        as_dict=True,
-    )
+    employee, base_org, base_school, org_scope, school_scope = _get_archive_employee_context(user, roles)
 
     # Merge legacy params into filters before normalization
     raw_filters = _parse_filters(filters)
@@ -411,30 +437,14 @@ def get_org_communication_feed(
     filters_dict["team"] = filter_team_val
     filters_dict["school"] = filter_school_val
 
-    frappe.logger("org_comm_archive").warning(
-        {
-            "raw_filters": raw_filters,
-            "filters_dict": filters_dict,
-            "student_group_raw": raw_filters.get("student_group"),
-            "student_group_norm": filters_dict.get("student_group"),
-        }
-    )
-    frappe.logger("org_comm_archive").warning(
-        {
-            "sg_prefilter_applied": bool(filters_dict.get("student_group")),
-        }
-    )
-
     # Pagination params (start/page_length preferred over legacy limit_start/page_length)
     offset = int(start if start is not None else limit_start or 0)
     page_len = int(page_length if page_length is not None else limit or 30)
 
-    base_org, base_school, org_scope, school_scope = _get_scope(user, employee)
-
     # Org guard
     org_guard: set[str] = set()
-    if org_scope and "System Manager" not in roles:
-        org_guard = set(org_scope)
+    if "System Manager" not in roles:
+        org_guard = set(_get_archive_organization_scope(base_org=base_org, org_scope=org_scope))
 
     if not org_guard and school_scope and "System Manager" not in roles:
         orgs_from_schools = frappe.get_all(
@@ -555,12 +565,16 @@ def get_org_communication_feed(
 
     if filter_sg_val:
         conditions.append(
-            "EXISTS ("
+            "("
+            "`tabOrg Communication`.activity_student_group = %(filter_student_group)s "
+            "OR EXISTS ("
             "SELECT a.name FROM `tabOrg Communication Audience` a "
             "WHERE a.parent = `tabOrg Communication`.name "
             "AND a.parenttype = 'Org Communication' "
             "AND a.parentfield = 'audiences' "
+            "AND a.target_mode = 'Student Group' "
             "AND a.student_group = %(filter_student_group)s"
+            ")"
             ")"
         )
         values["filter_student_group"] = filter_sg_val
@@ -572,6 +586,7 @@ def get_org_communication_feed(
             "WHERE a.parent = `tabOrg Communication`.name "
             "AND a.parenttype = 'Org Communication' "
             "AND a.parentfield = 'audiences' "
+            "AND a.target_mode = 'Team' "
             "AND a.team = %(filter_team)s"
             ")"
         )
@@ -659,7 +674,7 @@ def get_org_communication_feed(
                     "activity_booking": c.activity_booking,
                     "activity_student_group": c.activity_student_group,
                     "snippet": snippet,
-                    "has_active_thread": c.allow_public_thread,
+                    "has_active_thread": c.interaction_mode in {"Staff Comments", "Student Q&A"},
                     "audience_label": get_audience_label(c.name),
                     "audience_summary": build_audience_summary(c.name),
                 }
@@ -701,7 +716,6 @@ def get_audience_label(comm_name: str) -> str:
             "to_staff",
             "to_students",
             "to_guardians",
-            "to_community",
         ],
     )
 
@@ -734,8 +748,6 @@ def get_audience_label(comm_name: str) -> str:
         recipients.append("Students")
     if any(_as_bool(a.get("to_guardians")) for a in audiences):
         recipients.append("Guardians")
-    if any(_as_bool(a.get("to_community")) for a in audiences):
-        recipients.append("Community")
     recipients_label = " · ".join(recipients) if recipients else "Audience"
 
     school_abbrs = []

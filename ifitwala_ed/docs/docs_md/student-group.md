@@ -3,8 +3,8 @@ title: "Student Group: Operational Teaching Group Contract"
 slug: student-group
 category: Schedule
 doc_order: 1
-version: "1.1.0"
-last_change_date: "2026-04-03"
+version: "1.1.2"
+last_change_date: "2026-04-12"
 summary: "Define the operational class, cohort, activity, or pastoral group used for rostering, instructor assignment, schedule intent, attendance scope, and downstream teaching materialization."
 seo_title: "Student Group: Operational Teaching Group Contract"
 seo_description: "Define the operational class, cohort, activity, or pastoral group used for rostering, instructor assignment, schedule intent, and attendance scope."
@@ -50,7 +50,7 @@ Current workspace note: when a selected Program Offering has exactly one Academi
 1. Create the group with `program_offering`, `group_based_on`, and `student_group_abbreviation`.
    If the selected Program Offering has exactly one `offering_academic_years` row, Desk auto-fills `academic_year`.
 2. Add the mode-specific anchor:
-   - `course` for `Course`
+   - `course` for `Course` only; Desk hides and server-clears it for other group modes
    - `cohort` for `Cohort`
    - no extra required selector for `Activity` or `Pastoral`
 3. Add `students` and `instructors`.
@@ -118,8 +118,10 @@ Current workspace note: when a selected Program Offering has exactly one Academi
 - **Client-side Desk affordances**:
   - AY, school, course, and schedule link queries are offering-aware
   - selecting `program_offering` auto-fills `academic_year` when exactly one offering AY exists
+  - `course` is shown only when `group_based_on` is `Course`, and Desk clears it when the group mode changes away from `Course`
   - student bulk-add is enabled for non-activity flows
   - schedule row instructor choices are constrained to the group’s instructor table
+  - schedule row location choices are constrained to visible schedulable rooms for the group’s school context
   - blank schedule rows default the instructor when exactly one instructor exists
 
 ### Current Contract
@@ -127,6 +129,7 @@ Current workspace note: when a selected Program Offering has exactly one Academi
 - `validate()` enforces:
   - Academic Year membership inside the selected Program Offering spine
   - school ancestry rules
+  - non-course groups cannot persist a stale `course` anchor
   - course scoping for course-based groups
   - roster integrity and duplicate-student protection
   - internal student and instructor rotation/block clash checks
@@ -138,7 +141,8 @@ Current workspace note: when a selected Program Offering has exactly one Academi
 - `_validate_schedule_rows()` stamps `from_time` and `to_time` from `School Schedule Block`, enforces instructor membership, and emits advisory warnings for:
   - course-based groups scheduled in non-instructional blocks such as recess, assembly, and lunch-style blocks
   - course-based groups scheduled in block types that do not match course teaching, for example a course group scheduled in an activity block
-- `validate_location_conflicts_absolute()` expands abstract schedule rows into real datetimes via rotation dates, then checks governed room conflicts against materialized bookings.
+- `_validate_schedule_locations()` blocks container/non-schedulable Locations and rooms outside the Student Group school visibility scope before room-conflict checks run, so save failures stay actionable.
+- `validate_location_conflicts_absolute()` expands abstract schedule rows into real datetimes via rotation dates, then checks governed room conflicts against materialized bookings for the exact scheduled room on each row.
 - `after_insert()` calls the curriculum bootstrap helper so a new active course-based group gets a default `Class Teaching Plan` automatically when exactly one non-archived `Course Plan` is available for that course/academic-year context.
 - `before_save()` and `after_save()` compute change deltas for students, instructors, and schedule rows so downstream sync stays bounded, including durable Instructor Log history updates.
 - `on_update()` rebuilds employee bookings only for active groups that actually have schedule rows.
@@ -157,6 +161,8 @@ Current workspace note: when a selected Program Offering has exactly one Academi
   returns Program Offering courses valid for the selected AY and optional term
 - `schedule_picker_query(...)`
   returns School Schedules for the selected AY inside the allowed school ancestry chain
+- `schedule_location_query(...)`
+  returns visible schedulable rooms for the Student Group school context
 
 ### Permission and Visibility Notes
 

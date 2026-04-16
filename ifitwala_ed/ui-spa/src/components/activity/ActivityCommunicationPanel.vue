@@ -33,19 +33,25 @@
 
 				<p class="type-body text-ink/80">{{ item.snippet }}</p>
 
-				<div class="mt-3 flex flex-wrap items-center gap-3">
+				<div
+					v-if="hasVisibleInteractionActions(item)"
+					class="mt-3 flex flex-wrap items-center gap-3"
+				>
 					<InteractionEmojiChips
+						v-if="canReact(item)"
 						:interaction="interactionFor(item.name)"
-						:readonly="!canReact(item)"
-						:onReact="code => react(item.name, code)"
+						:readonly="false"
+						:onReact="code => react(item, code)"
 					/>
 					<button
+						v-if="canComment(item)"
 						type="button"
 						class="if-action"
-						:disabled="!canComment(item)"
 						@click="openThread(item)"
 					>
-						Comments ({{ interactionFor(item.name).comments_total || 0 }})
+						{{ commentUiFor(item).actionLabel }} ({{
+							interactionFor(item.name).comments_total || 0
+						}})
 					</button>
 				</div>
 			</article>
@@ -58,8 +64,11 @@
 		:rows="threadRows"
 		:loading="threadLoading"
 		:comment="commentValue"
+		:submit-label="activeCommentUi.submitLabel"
 		:submit-loading="commentSubmitting"
 		:submit-disabled="commentSubmitting || !commentValue.trim()"
+		:placeholder="activeCommentUi.placeholder"
+		:empty-message="activeCommentUi.emptyMessage"
 		@close="closeThread"
 		@submit="submitComment"
 		@update:comment="onCommentUpdate"
@@ -83,6 +92,11 @@ import type {
 	InteractionThreadRow,
 } from '@/types/morning_brief';
 import type { ReactionCode } from '@/types/interactions';
+import {
+	getAudienceInteractionCapabilities,
+	getInteractionCommentUi,
+	ORG_COMMUNICATION_VIEWERS,
+} from '@/utils/orgCommunication';
 
 const props = defineProps<{
 	programOffering: string | null;
@@ -104,10 +118,6 @@ const threadRows = ref<InteractionThreadRow[]>([]);
 const selectedComm = ref<OrgCommunicationListItem | null>(null);
 const commentValue = ref<string>('');
 
-const threadTitle = computed(() =>
-	selectedComm.value ? `Comments · ${selectedComm.value.title}` : 'Comments'
-);
-
 function emptySummary(): InteractionSummary {
 	return {
 		counts: {},
@@ -122,13 +132,35 @@ function interactionFor(commName: string): InteractionSummary {
 	return summaryMap.value[commName] || emptySummary();
 }
 
-function canReact(item: OrgCommunicationListItem): boolean {
-	return item.interaction_mode !== 'None';
+function getInteractionCapabilities(item: OrgCommunicationListItem | null | undefined) {
+	return getAudienceInteractionCapabilities(item, {
+		viewer: ORG_COMMUNICATION_VIEWERS.RECIPIENT,
+	});
 }
 
-function canComment(item: OrgCommunicationListItem): boolean {
-	return canReact(item) && Boolean(item.allow_public_thread);
+function canReact(item: OrgCommunicationListItem | null | undefined): boolean {
+	return getInteractionCapabilities(item).canReact;
 }
+
+function canComment(item: OrgCommunicationListItem | null | undefined): boolean {
+	return getInteractionCapabilities(item).canComment;
+}
+
+function hasVisibleInteractionActions(item: OrgCommunicationListItem | null | undefined): boolean {
+	return getInteractionCapabilities(item).hasVisibleActions;
+}
+
+function commentUiFor(item: OrgCommunicationListItem | null | undefined) {
+	return getInteractionCommentUi(getInteractionCapabilities(item).commentMode);
+}
+
+const activeCommentUi = computed(() => commentUiFor(selectedComm.value));
+
+const threadTitle = computed(() =>
+	selectedComm.value
+		? `${activeCommentUi.value.titleLabel} · ${selectedComm.value.title}`
+		: activeCommentUi.value.titleLabel
+);
 
 function formatDate(value: string | null | undefined): string {
 	if (!value) return 'Date unavailable';
@@ -172,11 +204,15 @@ async function loadFeed() {
 	}
 }
 
-async function react(commName: string, code: ReactionCode) {
+async function react(item: OrgCommunicationListItem, code: ReactionCode) {
 	actionError.value = '';
+	if (!canReact(item)) {
+		actionError.value = 'Reactions are not enabled for this update.';
+		return;
+	}
 	try {
 		await interactionService.reactToOrgCommunication({
-			org_communication: commName,
+			org_communication: item.name,
 			reaction_code: code,
 			surface: 'Portal Feed',
 		});
@@ -190,7 +226,7 @@ async function react(commName: string, code: ReactionCode) {
 async function openThread(item: OrgCommunicationListItem) {
 	actionError.value = '';
 	if (!canComment(item)) {
-		actionError.value = 'Comments are not enabled for this update.';
+		actionError.value = commentUiFor(item).unavailableMessage;
 		return;
 	}
 	selectedComm.value = item;
@@ -206,7 +242,7 @@ async function openThread(item: OrgCommunicationListItem) {
 		});
 	} catch (error) {
 		const message = error instanceof Error ? error.message : String(error || '');
-		actionError.value = message || 'Could not load comment thread.';
+		actionError.value = message || commentUiFor(item).loadErrorMessage;
 	} finally {
 		threadLoading.value = false;
 	}
@@ -230,9 +266,13 @@ async function submitComment() {
 		actionError.value = 'Select a communication first.';
 		return;
 	}
+	if (!canComment(comm)) {
+		actionError.value = commentUiFor(comm).unavailableMessage;
+		return;
+	}
 	const note = commentValue.value.trim();
 	if (!note) {
-		actionError.value = 'Please add a comment before posting.';
+		actionError.value = commentUiFor(comm).requiredMessage;
 		return;
 	}
 	commentSubmitting.value = true;
@@ -249,10 +289,10 @@ async function submitComment() {
 			limit: 200,
 		});
 		await loadSummaries(feedItems.value);
-		toast.success('Comment posted.');
+		toast.success(commentUiFor(comm).postSuccessMessage);
 	} catch (error) {
 		const message = error instanceof Error ? error.message : String(error || '');
-		actionError.value = message || 'Could not post comment.';
+		actionError.value = message || commentUiFor(comm).postErrorMessage;
 	} finally {
 		commentSubmitting.value = false;
 	}

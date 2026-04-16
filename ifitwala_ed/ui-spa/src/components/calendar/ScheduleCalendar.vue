@@ -17,13 +17,11 @@
 <template>
 	<div class="relative">
 		<section class="paper-card schedule-card p-4 sm:p-6">
-			<header class="border-b border-[rgb(var(--border-rgb)/0.9)] pb-4">
-				<div>
-					<h2 class="type-h2">Your upcoming commitments</h2>
-					<p class="type-meta">
-						{{ subtitle }}
-					</p>
-				</div>
+			<header class="schedule-calendar__header border-b border-[rgb(var(--border-rgb)/0.9)] pb-4">
+				<h2 class="type-h2">Your upcoming commitments</h2>
+				<p class="type-meta schedule-calendar__header-meta">
+					{{ subtitle }}
+				</p>
 			</header>
 
 			<!-- Chips row -->
@@ -134,11 +132,12 @@ import FullCalendar from '@fullcalendar/vue3';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import timeGridPlugin from '@fullcalendar/timegrid';
 import listPlugin from '@fullcalendar/list';
-import { DatesSetArg, EventClickArg } from '@fullcalendar/core';
+import { DatesSetArg, EventClickArg, EventContentArg } from '@fullcalendar/core';
 import { FeatherIcon } from 'frappe-ui';
 
 import { CalendarSource, useCalendarEvents } from '@/composables/useCalendarEvents';
 import { useCalendarPrefs } from '@/composables/useCalendarPrefs';
+import { buildScheduleCalendarListMeta } from '@/components/calendar/scheduleCalendarListMeta';
 import { SIGNAL_CALENDAR_INVALIDATE, uiSignals } from '@/lib/uiSignals';
 
 // ✅ Overlay stack (single renderer via OverlayHost teleported to #overlay-root)
@@ -250,6 +249,7 @@ const calendarOptions = ref({
 	hiddenDays: hiddenDays.value,
 	datesSet: (arg: DatesSetArg) => handleDatesSet(arg),
 	eventDisplay: 'block',
+	eventContent: (info: EventContentArg) => renderEventContent(info),
 	eventClick: (info: EventClickArg) => handleEventClick(info),
 });
 
@@ -450,6 +450,34 @@ function toggleChip(id: CalendarSource) {
 	toggleSource(id);
 }
 
+function renderEventContent(info: EventContentArg) {
+	const title = info.event.title || 'Untitled event';
+	if (!info.view.type.startsWith('list')) {
+		const titleNode = document.createElement('span');
+		titleNode.className = 'fc-event-title';
+		titleNode.textContent = title;
+		return { domNodes: [titleNode] };
+	}
+
+	const wrapper = document.createElement('div');
+	wrapper.className = 'schedule-calendar__list-event-content';
+
+	const titleNode = document.createElement('div');
+	titleNode.className = 'schedule-calendar__list-event-title';
+	titleNode.textContent = title;
+	wrapper.appendChild(titleNode);
+
+	const metaText = buildScheduleCalendarListMeta(info.event);
+	if (metaText) {
+		const metaNode = document.createElement('div');
+		metaNode.className = 'schedule-calendar__list-event-meta';
+		metaNode.textContent = metaText;
+		wrapper.appendChild(metaNode);
+	}
+
+	return { domNodes: [wrapper] };
+}
+
 /**
  * Overlay stack:
  * - schedule calendar never mounts event dialogs
@@ -632,10 +660,36 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped>
+.schedule-calendar__header {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) auto;
+	align-items: end;
+	column-gap: 1rem;
+	row-gap: 0.25rem;
+}
+
+.schedule-calendar__header-meta {
+	justify-self: end;
+	text-align: right;
+	white-space: nowrap;
+}
+
 .schedule-calendar__filters {
 	display: flex;
 	flex-direction: column;
 	gap: 0.75rem;
+}
+
+@media (max-width: 639px) {
+	.schedule-calendar__header {
+		grid-template-columns: minmax(0, 1fr);
+	}
+
+	.schedule-calendar__header-meta {
+		justify-self: start;
+		text-align: left;
+		white-space: normal;
+	}
 }
 
 @media (min-width: 1024px) {

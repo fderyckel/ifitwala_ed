@@ -205,9 +205,9 @@ function statusLabel(status: StaffPolicyLibraryRow['acknowledgement_status']) {
 }
 
 function statusClass(status: StaffPolicyLibraryRow['acknowledgement_status']) {
-	if (status === 'signed') return 'bg-mint/15 text-forest';
+	if (status === 'signed') return 'bg-leaf/15 text-canopy';
 	if (status === 'new_version') return 'bg-sky/20 text-canopy';
-	if (status === 'pending') return 'bg-warm-amber/15 text-ochre';
+	if (status === 'pending') return 'bg-sand text-clay';
 	return 'bg-slate-100 text-slate-700';
 }
 

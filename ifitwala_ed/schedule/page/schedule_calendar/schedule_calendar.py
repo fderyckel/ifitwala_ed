@@ -2,6 +2,8 @@
 # For license information, please see license.txt
 
 
+from __future__ import annotations
+
 import json
 
 import frappe
@@ -16,6 +18,13 @@ from ifitwala_ed.schedule.schedule_utils import (
     get_rotation_dates,
 )
 from ifitwala_ed.utilities.school_tree import get_descendant_schools
+
+SCHEDULE_CALENDAR_OBSERVER_ROLES = {
+    "Academic Admin",
+    "Academic Assistant",
+    "Curriculum Coordinator",
+    "Accreditation Visitor",
+}
 
 
 # ─────────────────────────────────────────────────────────────────────
@@ -41,6 +50,107 @@ def _norm(v):
 # ─────────────────────────────────────────────────────────────────────
 def _get_default_instructor(user):
     return frappe.db.get_value("Instructor", {"linked_user_id": user}, "name")
+
+
+def _get_user_base_school_for_schedule_calendar(user: str) -> str | None:
+    school = frappe.db.get_value("Employee", {"user_id": user, "employment_status": "Active"}, "school")
+    if school:
+        return school
+
+    default_school = frappe.defaults.get_user_default("school", user=user)
+    if default_school:
+        return default_school
+
+    return frappe.db.get_value("Instructor", {"linked_user_id": user}, "school")
+
+
+def _resolve_schedule_calendar_access_context(user: str) -> dict:
+    roles = set(frappe.get_roles(user))
+    is_system_manager = bool(roles & {"System Manager", "Administrator"})
+    observer_roles = roles & SCHEDULE_CALENDAR_OBSERVER_ROLES
+
+    if is_system_manager:
+        return {
+            "user": user,
+            "roles": roles,
+            "mode": "unrestricted",
+            "school_scope": [],
+            "default_instructor": _get_default_instructor(user),
+        }
+
+    if observer_roles:
+        base_school = _get_user_base_school_for_schedule_calendar(user)
+        school_scope = []
+        if base_school:
+            school_scope = list(dict.fromkeys([base_school, *(get_descendant_schools(base_school) or [])]))
+
+        return {
+            "user": user,
+            "roles": roles,
+            "mode": "observer_scoped",
+            "observer_roles": sorted(observer_roles),
+            "base_school": base_school,
+            "school_scope": school_scope,
+            "default_instructor": _get_default_instructor(user),
+        }
+
+    if "Instructor" in roles:
+        return {
+            "user": user,
+            "roles": roles,
+            "mode": "own_instructor",
+            "school_scope": [],
+            "default_instructor": _get_default_instructor(user),
+        }
+
+    return {
+        "user": user,
+        "roles": roles,
+        "mode": "blocked",
+        "school_scope": [],
+        "default_instructor": None,
+    }
+
+
+def _ensure_instructor_visible_for_schedule_calendar(instructor: str | None, ctx: dict) -> str | None:
+    instructor_name = _norm(instructor)
+    if not instructor_name:
+        return None
+
+    mode = ctx.get("mode")
+    if mode == "unrestricted":
+        return instructor_name
+
+    if mode == "own_instructor":
+        default_instructor = _norm(ctx.get("default_instructor"))
+        if not default_instructor:
+            return None
+        if instructor_name != default_instructor:
+            frappe.throw(
+                frappe._("You may only view your own instructor calendar."),
+                frappe.PermissionError,
+            )
+        return default_instructor
+
+    if mode == "observer_scoped":
+        school_scope = set(ctx.get("school_scope") or [])
+        if not school_scope:
+            frappe.throw(
+                frappe._("Your account does not have a school scope for Schedule Calendar."),
+                frappe.PermissionError,
+            )
+        instructor_school = frappe.db.get_value("Instructor", instructor_name, "school")
+        if not instructor_school or instructor_school not in school_scope:
+            frappe.throw(
+                frappe._("You are not allowed to view calendar data for instructor {0}.").format(instructor_name),
+                frappe.PermissionError,
+            )
+        return instructor_name
+
+    frappe.throw(
+        frappe._("You do not have permission to access Schedule Calendar."),
+        frappe.PermissionError,
+    )
 
 
 @frappe.whitelist()
@@ -98,25 +208,26 @@ def get_default_academic_year():
 def fetch_instructor_options(doctype=None, txt="", searchfield=None, start=0, page_len=20, filters=None):
 
     user = frappe.session.user
-    roles = set(frappe.get_roles(user))
+    ctx = _resolve_schedule_calendar_access_context(user)
+    mode = ctx.get("mode")
 
     Instr = DocType("Instructor")
     qb = frappe.qb
     query = qb.from_(Instr).select(Instr.name, Instr.instructor_name)
 
     # ---------- scope by school --------------------------------------
-    if "Academic Admin" in roles:
-        user_school = frappe.db.get_value("Employee", {"user_id": user}, "school") or frappe.db.get_value(
-            "Instructor", {"linked_user_id": user}, "school"
-        )
-        if user_school:
-            schools = [user_school] + get_descendant_schools(user_school)
-            query = query.where(Instr.school.isin(schools))
-    elif "Instructor" in roles:
-        instr = _get_default_instructor(user)
+    if mode == "observer_scoped":
+        schools = ctx.get("school_scope") or []
+        if not schools:
+            return []
+        query = query.where(Instr.school.isin(schools))
+    elif mode == "own_instructor":
+        instr = _norm(ctx.get("default_instructor"))
         if not instr:
             return []
         query = query.where(Instr.name == instr)
+    elif mode != "unrestricted":
+        return []
 
     # ---------- name search ------------------------------------------
     if txt:
@@ -133,7 +244,7 @@ def get_instructor_events(start, end, filters=None):
     school_calendar = filters.get("school_calendar")
     academic_year = filters.get("academic_year") or current_academic_year()
     user = frappe.session.user
-    roles = set(frappe.get_roles(user))
+    ctx = _resolve_schedule_calendar_access_context(user)
     start_date = getdate(start)
     end_date = getdate(end)
     events = []
@@ -149,18 +260,16 @@ def get_instructor_events(start, end, filters=None):
         return s.zfill(8) if len(s) == 7 else s  # '9:10:00' → '09:10:00'
 
     # ---------- resolve instructor -----------------------------------
-    if "Academic Admin" in roles or "Academic Assistant" in roles:
-        # Admin & Assistant can pass instructor filter
-        instructor = filters.get("instructor")
+    requested_instructor = filters.get("instructor")
+    if ctx.get("mode") == "own_instructor":
+        instructor = _norm(ctx.get("default_instructor"))
         if not instructor:
-            # maybe return empty or pick default? return empty is safer
             return []
-    else:
-        # strictly Instructor-only path
-        instructor = _get_default_instructor(user)
-        if not instructor:
-            return []  # do not throw
         filters["instructor"] = instructor
+    else:
+        if not requested_instructor:
+            return []
+        instructor = _ensure_instructor_visible_for_schedule_calendar(requested_instructor, ctx)
 
     # ---------- SG query ---------------------------------------------
     SG = DocType("Student Group")

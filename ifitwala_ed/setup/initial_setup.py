@@ -35,7 +35,7 @@ def is_setup_done():
 @frappe.whitelist()
 def complete_initial_setup(org_name=None, org_abbr=None, school_name=None, school_abbr=None, app_logo=None):
     """Create root Organization & School and optionally set
-    the login-logo in Website Settings."""
+    the fallback public-site logo in Website Settings."""
     if is_setup_done():
         frappe.throw(_("Initial setup already completed."))
 
@@ -94,6 +94,8 @@ def complete_initial_setup(org_name=None, org_abbr=None, school_name=None, schoo
 
     # ─── update Website Settings ─────────────────────────────────────────────
     ws = frappe.get_single("Website Settings")
+    if org:
+        ws.app_name = (getattr(org, "organization_name", None) or getattr(org, "name", None) or "").strip()
 
     file_url = None
     if app_logo:

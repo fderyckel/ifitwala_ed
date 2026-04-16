@@ -75,6 +75,15 @@ class TestSchoolWebsitePage(FrappeTestCase):
         self.assertEqual(status, "Draft")
         self.assertEqual(is_published, 0)
 
+    def test_school_page_publication_flags_respect_publish_window(self):
+        status, is_published = compute_school_page_publication_flags(
+            school_is_public=True,
+            workflow_state="Published",
+            publish_at="2099-01-01 08:00:00",
+        )
+        self.assertEqual(status, "Draft")
+        self.assertEqual(is_published, 0)
+
     def test_build_school_website_page_name_uses_school_name_and_route(self):
         organization = make_organization(prefix="Name Org")
         school = make_school(organization.name, prefix="Name School")
@@ -135,6 +144,24 @@ class TestSchoolWebsitePage(FrappeTestCase):
         page = frappe._dict({"blocks": []})
         with self.assertRaises(frappe.ValidationError):
             validate_page_blocks(page)
+
+    def test_validate_page_blocks_treats_blank_is_enabled_as_enabled_for_configured_rows(self):
+        page = frappe._dict(
+            {
+                "doctype": "Website Story",
+                "blocks": [
+                    _row(block_type="hero", props={"title": "Story"}, order=1, is_enabled=None),
+                    _row(
+                        block_type="rich_text",
+                        props={"content_html": "<p>Body</p>", "max_width": "normal"},
+                        order=2,
+                        is_enabled="",
+                    ),
+                ],
+            }
+        )
+
+        validate_page_blocks(page)
 
     def test_validate_page_blocks_rejects_unknown_block_type(self):
         page = frappe._dict(
@@ -338,6 +365,24 @@ class TestSchoolWebsitePage(FrappeTestCase):
         )
         with self.assertRaises(frappe.ValidationError):
             validate_page_blocks(page)
+
+    def test_validate_page_blocks_allows_story_feed_and_academic_calendar_for_standard_school_page(self):
+        page = frappe._dict(
+            {
+                "doctype": "School Website Page",
+                "page_type": "Standard",
+                "blocks": [
+                    _row(block_type="hero", props={"title": "Home"}, order=1),
+                    _row(block_type="story_feed", props={"title": "Stories", "limit": 3}, order=2),
+                    _row(
+                        block_type="academic_calendar",
+                        props={"title": "Academic Calendar", "include_terms": True, "include_holidays": True},
+                        order=3,
+                    ),
+                ],
+            }
+        )
+        validate_page_blocks(page)
 
     def test_validate_page_blocks_allows_admissions_blocks_for_admissions_page(self):
         page = frappe._dict(

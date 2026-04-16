@@ -102,6 +102,7 @@
    "reqd": 1
   },
   {
+   "depends_on": "eval:doc.communication_type==='Class Announcement' || doc.activity_program_offering || doc.activity_booking || doc.activity_student_group",
    "fieldname": "activity_context_section",
    "fieldtype": "Section Break",
    "label": "Activity Context"
@@ -130,6 +131,7 @@
    "options": "Student Group"
   },
   {
+   "depends_on": "eval:doc.admission_context_doctype || doc.admission_context_name",
    "fieldname": "admission_context_section",
    "fieldtype": "Section Break",
    "label": "Admission Context"
@@ -232,7 +234,7 @@
   },
   {
    "default": "None",
-   "description": "Controls reactions/comments behaviour for this communication on portal and Morning Brief surfaces.",
+   "description": "Controls whether this communication uses staff discussion, recipient Q&A, or structured feedback on supported surfaces.",
    "fieldname": "interaction_mode",
    "fieldtype": "Select",
    "label": "Interaction Mode",
@@ -240,23 +242,23 @@
   },
   {
    "default": "1",
-   "description": "If enabled, guardians/students can send private questions/concerns visible only to school staff.",
+   "description": "If enabled, recipients can send private questions or notes visible only to school staff when the selected interaction mode supports it.",
    "fieldname": "allow_private_notes",
    "fieldtype": "Check",
-   "label": "Allow Private Notes to School"
+   "label": "Allow Private Notes to School Staff"
   },
   {
    "default": "0",
-   "description": "If enabled, interactions in this communication can be visible to others in the same audience (e.g. staff or student group).",
+   "description": "If enabled, recipient-visible entries can be shared with others in the same resolved audience. This does not control staff-only discussion.",
    "fieldname": "allow_public_thread",
    "fieldtype": "Check",
-   "label": "Allow Public Thread"
+   "label": "Allow Shared Audience Thread"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-04-05 15:17:58.369493",
+ "modified": "2026-04-15 01:35:04.000000",
  "modified_by": "Administrator",
  "module": "Setup",
  "name": "Org Communication",

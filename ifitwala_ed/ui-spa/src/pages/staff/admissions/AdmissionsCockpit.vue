@@ -1,6 +1,6 @@
 <!-- ifitwala_ed/ui-spa/src/pages/staff/admissions/AdmissionsCockpit.vue -->
 <template>
-	<div class="flex flex-col gap-6 p-6">
+	<div class="analytics-shell">
 		<header class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
 			<div>
 				<h1 class="type-h2 text-canopy">Admissions Cockpit</h1>

@@ -290,6 +290,25 @@
 		color: rgb(var(--slate-rgb) / 0.95);
 		font-size: 0.9rem;
 	}
+
+	.calendar-shell .fc .schedule-calendar__list-event-content {
+		display: flex;
+		flex-direction: column;
+		gap: 0.15rem;
+		padding-block: 0.1rem;
+	}
+
+	.calendar-shell .fc .schedule-calendar__list-event-title {
+		color: rgb(var(--ink-rgb) / 0.96);
+		font-weight: 650;
+		line-height: 1.35;
+	}
+
+	.calendar-shell .fc .schedule-calendar__list-event-meta {
+		color: rgb(var(--slate-rgb) / 0.78);
+		font-size: 0.78rem;
+		line-height: 1.35;
+	}
 }
 
 @layer components {

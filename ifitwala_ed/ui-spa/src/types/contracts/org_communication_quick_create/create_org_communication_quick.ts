@@ -9,7 +9,6 @@ export type OrgCommunicationQuickAudienceRow = {
 	to_staff?: 0 | 1
 	to_students?: 0 | 1
 	to_guardians?: 0 | 1
-	to_community?: 0 | 1
 	note?: string | null
 }
 

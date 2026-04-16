@@ -204,3 +204,33 @@ class TestPolicyAcknowledgement(FrappeTestCase):
             orgs = doc._resolve_context_organizations()
 
         self.assertEqual(orgs, ["ORG-1", "ORG-2"])
+
+    def test_has_permission_rejects_non_primary_guardian_self_context(self):
+        doc = frappe._dict(
+            policy_version=self.policy_version.name,
+            acknowledged_by="other@example.com",
+            context_doctype="Guardian",
+            context_name="GUARD-SECONDARY",
+        )
+
+        with (
+            patch(
+                "ifitwala_ed.governance.doctype.policy_acknowledgement.policy_acknowledgement.is_system_manager",
+                return_value=False,
+            ),
+            patch(
+                "ifitwala_ed.governance.doctype.policy_acknowledgement.policy_acknowledgement.frappe.get_roles",
+                return_value=["Guardian"],
+            ),
+            patch(
+                "ifitwala_ed.governance.doctype.policy_acknowledgement.policy_acknowledgement._guardian_name_for_user",
+                return_value="GUARD-SECONDARY",
+            ),
+            patch(
+                "ifitwala_ed.governance.doctype.policy_acknowledgement.policy_acknowledgement._guardian_has_primary_signer_authority",
+                return_value=False,
+            ),
+        ):
+            allowed = policy_ack_controller.has_permission(doc, user="guardian@example.com")
+
+        self.assertFalse(allowed)

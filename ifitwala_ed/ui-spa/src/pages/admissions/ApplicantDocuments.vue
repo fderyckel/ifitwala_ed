@@ -1,7 +1,7 @@
 <!-- ifitwala_ed/ui-spa/src/pages/admissions/ApplicantDocuments.vue -->
 
 <template>
-	<div class="space-y-6">
+	<div class="admissions-page">
 		<div class="flex flex-wrap items-start justify-between gap-4">
 			<div>
 				<p class="type-h2 text-ink">{{ __('Documents') }}</p>
@@ -248,7 +248,7 @@ function statusToneFor(statusKey: string): string {
 			return 'text-rose-700';
 		case 'pending':
 		case 'waiting_review':
-			return 'text-sun';
+			return 'text-clay';
 		default:
 			return 'text-ink/55';
 	}

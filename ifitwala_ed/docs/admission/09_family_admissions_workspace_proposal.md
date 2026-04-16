@@ -265,7 +265,7 @@ Recommended modes:
 Recommended authority rules:
 
 - a linked adult may act only when the applicant guardian relationship is explicit
-- adult authority for admissions-stage child action must require `can_consent = 1`
+- adult authority for admissions-stage child action must require a primary guardian relationship and the derived signer flag `can_consent = 1`
 - adult authority must never be inferred from shared email alone
 - child applicant self-action may still exist in legacy single-applicant mode, but family workspace should not depend on child identity reuse
 - separate adults may both contribute data, but each acknowledgement record must still name the actual signer; one adult may never sign as another

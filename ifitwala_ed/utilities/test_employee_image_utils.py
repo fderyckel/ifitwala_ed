@@ -206,3 +206,33 @@ class TestEmployeeImageUtils(FrappeTestCase):
             resolved = image_utils.apply_preferred_employee_images(rows)
 
         self.assertEqual(resolved[0]["image"], "/files/employee/original_employee.png")
+
+    def test_apply_preferred_employee_images_can_skip_original_fallback(self):
+        classification_rows = [
+            {
+                "primary_subject_id": "EMP-0001",
+                "slot": "profile_image_thumb",
+                "file": "FILE-BROKEN-THUMB",
+            },
+        ]
+        file_rows = [
+            {"name": "FILE-BROKEN-THUMB", "file_url": "/files/employee/thumb_broken.webp", "is_private": 0},
+        ]
+        rows = [
+            {"id": "EMP-0001", "image": "/files/employee/original_employee.png"},
+        ]
+
+        def fake_file_exists(file_url, is_private=0):
+            return file_url != "/files/employee/thumb_broken.webp"
+
+        with (
+            patch("ifitwala_ed.utilities.image_utils.frappe.get_all", side_effect=[classification_rows, file_rows]),
+            patch("ifitwala_ed.utilities.image_utils.file_url_exists_on_disk", side_effect=fake_file_exists),
+        ):
+            resolved = image_utils.apply_preferred_employee_images(
+                rows,
+                slots=("profile_image_thumb", "profile_image_card", "profile_image_medium"),
+                fallback_to_original=False,
+            )
+
+        self.assertIsNone(resolved[0]["image"])

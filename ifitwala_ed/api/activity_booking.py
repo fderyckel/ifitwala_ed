@@ -1734,6 +1734,26 @@ def get_activity_communications(
     start: int = 0,
     page_length: int = 30,
 ):
+    user_roles = set(frappe.get_roles(frappe.session.user))
+    if "Student" in user_roles:
+        from ifitwala_ed.api import student_communications as student_communications_api
+
+        student_name = frappe.db.get_value("Student", {"student_email": frappe.session.user}, "name")
+        if not student_name:
+            user_email = frappe.db.get_value("User", frappe.session.user, "email")
+            if user_email and user_email != frappe.session.user:
+                student_name = frappe.db.get_value("Student", {"student_email": user_email}, "name")
+        if not student_name:
+            frappe.throw(_("No student profile linked to this login yet."), frappe.PermissionError)
+
+        return student_communications_api.get_student_activity_communications(
+            student_name,
+            activity_program_offering=activity_program_offering,
+            activity_student_group=activity_student_group,
+            start=start,
+            page_length=page_length,
+        )
+
     return get_activity_communication_feed(
         activity_program_offering=activity_program_offering,
         activity_student_group=activity_student_group,

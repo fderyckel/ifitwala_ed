@@ -2347,11 +2347,13 @@ safeguarding
 administrative
 legal
 operational
+identity_image
 ```
 
 ### `purpose` (machine-readable)
 
 ```
+text
 identification_document
 contract
 assessment_submission
@@ -2361,7 +2363,17 @@ medical_record
 visa_document
 policy_acknowledgement
 background_check
+learning_resource
 academic_report
+employee_profile_display
+guardian_profile_display
+student_profile_display
+applicant_profile_display
+organization_public_media
+portfolio_evidence
+journal_attachment
+portfolio_export
+journal_export
 administrative
 other
 ```

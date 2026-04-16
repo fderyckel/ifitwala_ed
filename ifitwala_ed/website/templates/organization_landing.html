@@ -1,4 +1,5 @@
 <!-- ifitwala_ed/website/templates/organization_landing.html -->
+{% from "ifitwala_ed/website/templates/includes/public_site_shell_macros.html" import render_public_footer, render_public_header %}
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -23,114 +24,113 @@
 	<meta property="og:image" content="{{ seo.og_image }}">
 	{% endif %}
 	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<link rel="icon" type="image/svg+xml" href="/assets/ifitwala_ed/favicon.svg">
 	<link
 		rel="stylesheet"
 		href="{{ website_css_url or '/assets/ifitwala_ed/css/ifitwala_site.bundle.css' }}"
 	>
 </head>
-<body class="bg-slate-50 text-slate-900">
+<body class="bg-slate-50 text-slate-950">
 	<div class="min-h-screen flex flex-col">
-		<header class="border-b border-slate-200 bg-white">
-			<div class="mx-auto flex w-full max-w-6xl items-center justify-between px-6 py-4">
-				<div class="inline-flex items-center gap-3">
-					{% if landing.organization_logo %}
-						<img
-							src="{{ landing.organization_logo }}"
-							alt="{{ landing.organization_name }}"
-							class="h-10 w-10 rounded-md object-cover"
-							loading="lazy"
-						>
-					{% endif %}
-					<span class="text-base font-semibold tracking-tight">{{ landing.organization_name }}</span>
-				</div>
-				<div class="inline-flex items-center gap-2">
-					{% if is_guest_user %}
-						<a
-							href="{{ login_url }}"
-							class="inline-flex rounded-md border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-100 hover:text-slate-900"
-						>
-							Login
-						</a>
-					{% else %}
-						<a
-							href="{{ hub_url }}"
-							class="inline-flex rounded-md border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-100 hover:text-slate-900"
-						>
-							Hub
-						</a>
-						<a
-							href="{{ logout_url }}"
-							class="inline-flex rounded-md border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-100 hover:text-slate-900"
-						>
-							Logout
-						</a>
-					{% endif %}
-				</div>
-			</div>
-		</header>
+		{{ render_public_header(landing) }}
 
-		<main class="mx-auto w-full max-w-6xl flex-1 px-6 py-12">
-			<section class="rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
-				<h1 class="text-3xl font-semibold tracking-tight text-slate-900">{{ landing.organization_name }}</h1>
-				<p class="mt-3 max-w-3xl text-base text-slate-600">
-					Choose a school to explore programs, admissions details, and campus stories.
-				</p>
-			</section>
+		<main class="flex-1">
+			<section class="border-b border-slate-200 bg-white">
+				<div class="mx-auto w-full max-w-6xl px-6 py-14 lg:py-18">
+					<div class="max-w-4xl">
+						<p class="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">
+							School Directory
+						</p>
+						<h1 class="mt-4 text-4xl font-semibold tracking-tight text-slate-950 sm:text-5xl">
+							Browse every published school in {{ landing.brand_name }}.
+						</h1>
+						<p class="mt-4 text-base leading-7 text-slate-600 sm:text-lg">
+							Open each school website to review its public story, admissions information, and school-specific pages without being pushed into login first.
+						</p>
 
-			<section class="mt-8 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-				{% for school in landing.schools %}
-					<a
-						href="{{ school.url }}"
-						class="group rounded-xl border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:border-slate-300 hover:shadow"
-					>
-						<div class="flex items-start gap-4">
-							{% if school.logo %}
-								<img
-									src="{{ school.logo }}"
-									alt="{{ school.label }}"
-									class="h-12 w-12 rounded-md object-cover"
-									loading="lazy"
-								>
-							{% else %}
-								<div class="flex h-12 w-12 items-center justify-center rounded-md bg-slate-200 text-sm font-semibold text-slate-700">
-									{{ school.label[:1] }}
+						<div class="mt-6 flex flex-wrap items-center gap-3">
+							<div class="rounded-full border border-slate-200 bg-slate-50 px-4 py-2 text-sm font-medium text-slate-700">
+								{{ landing.school_count }} published school{{ '' if landing.school_count == 1 else 's' }}
+							</div>
+							{% if landing.program_count %}
+								<div class="rounded-full border border-slate-200 bg-slate-50 px-4 py-2 text-sm font-medium text-slate-700">
+									{{ landing.program_count }} published program{{ '' if landing.program_count == 1 else 's' }}
 								</div>
 							{% endif %}
-							<div class="min-w-0 flex-1">
-								<h2 class="text-lg font-semibold text-slate-900">{{ school.label }}</h2>
-								{% if school.tagline %}
-									<p class="mt-1 text-sm text-slate-600">{{ school.tagline }}</p>
-								{% endif %}
-								{% if school.organization %}
-									<p class="mt-2 text-xs uppercase tracking-wide text-slate-500">{{ school.organization }}</p>
-								{% endif %}
-							</div>
 						</div>
-					</a>
-				{% endfor %}
+					</div>
+				</div>
 			</section>
 
-			{% if not landing.schools %}
-				<section class="mt-8 rounded-xl border border-amber-200 bg-amber-50 p-5 text-sm text-amber-800">
-					No published schools are available yet.
-				</section>
-			{% endif %}
+			<section class="mx-auto w-full max-w-6xl px-6 py-10 lg:py-14">
+				{% if landing.schools %}
+					<div class="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+						{% for school in landing.schools %}
+							<a
+								href="{{ school.url }}"
+								class="group flex h-full flex-col rounded-[1.7rem] border border-slate-200 bg-white p-6 shadow-sm transition hover:-translate-y-1 hover:border-slate-300 hover:shadow-lg"
+							>
+								<div class="flex items-start gap-4">
+									{% if school.logo %}
+										<img
+											src="{{ school.logo }}"
+											alt="{{ school.label }}"
+											class="h-14 w-14 rounded-2xl bg-slate-100 object-cover"
+											loading="lazy"
+										>
+									{% else %}
+										<div class="flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-200 text-base font-semibold text-slate-700">
+											{{ school.label[:1] }}
+										</div>
+									{% endif %}
+									<div class="min-w-0 flex-1">
+										<h2 class="text-xl font-semibold tracking-tight text-slate-950">{{ school.label }}</h2>
+										{% if school.tagline %}
+											<p class="mt-1 text-sm text-slate-600">{{ school.tagline }}</p>
+										{% endif %}
+									</div>
+								</div>
+
+								{% if school.description %}
+									<p class="mt-5 text-sm leading-7 text-slate-600">
+										{{ school.description }}
+									</p>
+								{% endif %}
+
+								<div class="mt-auto flex items-center justify-between gap-4 pt-6">
+									<p class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+										{{ school.organization }}
+									</p>
+									<span class="text-sm font-semibold text-slate-950">Open site</span>
+								</div>
+							</a>
+						{% endfor %}
+					</div>
+				{% else %}
+					<section class="rounded-[1.8rem] border border-amber-200 bg-amber-50 p-8 text-amber-950 shadow-sm">
+						<p class="text-xs font-semibold uppercase tracking-[0.24em] text-amber-700">
+							No Published Schools
+						</p>
+						<h2 class="mt-4 text-2xl font-semibold tracking-tight">
+							The public directory is not ready yet.
+						</h2>
+						<p class="mt-4 max-w-2xl text-sm leading-7 text-amber-900">
+							Sign in to finish the first school setup, publish its website, and make it visible here for families.
+						</p>
+						<div class="mt-6">
+							<a
+								href="{{ landing.login_url }}"
+								class="inline-flex rounded-full border border-amber-300 bg-white px-4 py-2.5 text-sm font-semibold text-amber-950 transition hover:bg-amber-100"
+							>
+								Login
+							</a>
+						</div>
+					</section>
+				{% endif %}
+			</section>
 		</main>
 
-		<footer class="border-t border-slate-200 bg-white">
-			<div class="mx-auto max-w-6xl px-6 py-6 text-sm text-slate-600">
-				&copy; {{ current_year }} {{ landing.organization_name }}. All rights reserved.
-			</div>
-		</footer>
-
-		<a
-			href="{{ inquiry_url }}"
-			class="fixed bottom-5 right-5 z-50 inline-flex flex-col rounded-2xl border border-slate-200 bg-white px-4 py-3 text-left shadow-lg transition hover:-translate-y-0.5 hover:shadow-xl"
-			aria-label="Let's talk about admissions"
-		>
-			<span class="text-sm font-semibold text-slate-900">Let's Talk</span>
-			<span class="text-xs text-slate-600">Ask Admissions</span>
-		</a>
+		{{ render_public_footer(landing, current_year) }}
 	</div>
 
 	<script src="/assets/ifitwala_ed/website/image_fallback.js" defer></script>

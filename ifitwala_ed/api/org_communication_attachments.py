@@ -36,8 +36,33 @@ def _load_drive_callable(attribute: str):
     if callable(callable_obj):
         return callable_obj
 
+    drive_integration = None
+    try:
+        drive_integration = importlib.import_module(
+            "ifitwala_drive.services.integration.ifitwala_ed_org_communications"
+        )
+        importlib.reload(drive_integration)
+        drive_api = importlib.reload(drive_api)
+    except Exception:
+        drive_api = importlib.import_module("ifitwala_drive.api.communications")
+
+    callable_obj = getattr(drive_api, attribute, None)
+    if callable(callable_obj):
+        return callable_obj
+
+    service_attribute = f"{attribute}_service"
+    if drive_integration and hasattr(drive_integration, service_attribute):
+        service_callable = getattr(drive_integration, service_attribute)
+
+        def _wrapped_service_callable(**kwargs):
+            return service_callable(kwargs)
+
+        return _wrapped_service_callable
+
     frappe.throw(
-        _("Ifitwala Drive is missing communications method '{0}'. Deploy the updated Drive app.").format(attribute)
+        _(
+            "Ifitwala Drive is missing communications method '{0}'. Deploy or restart the Drive app so the updated communications API is available."
+        ).format(attribute)
     )
 
 
@@ -121,14 +146,18 @@ def upload_org_communication_attachment(
         "expected_size_bytes": len(content),
         "upload_source": "SPA",
     }
-    finalize_response = _drive_upload_and_finalize(
+    session_response, finalize_response, _file_doc = _drive_upload_and_finalize(
         create_session_callable=create_session_callable,
         payload=session_payload,
         content=content,
     )
 
     doc.reload()
-    resolved_row_name = _clean_text(finalize_response.get("row_name")) or _clean_text(row_name)
+    resolved_row_name = (
+        _clean_text(finalize_response.get("row_name"))
+        or _clean_text(session_response.get("row_name"))
+        or _clean_text(row_name)
+    )
     target_row = _get_attachment_row(doc, resolved_row_name)
 
     return {

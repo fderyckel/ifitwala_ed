@@ -77,7 +77,12 @@ class TestFocusPolicySignature(FrappeTestCase):
                 "version_label": "v2",
                 "based_on_version": self.base_policy_version.name,
                 "change_summary": "Added stricter password and phishing reporting expectations.",
-                "policy_text": "<p>Security policy baseline updated</p><p>Report phishing within 24 hours.</p>",
+                "policy_text": (
+                    "<p>Security policy baseline updated</p>"
+                    "<p>Report phishing within 24 hours.</p>"
+                    "<script>alert(1)</script>"
+                    '<img src="x" onerror="alert(2)">'
+                ),
                 "acknowledgement_clauses": [
                     {
                         "clause_text": "I will report suspected phishing within 24 hours.",
@@ -140,6 +145,8 @@ class TestFocusPolicySignature(FrappeTestCase):
         self.assertEqual(policy_ctx.get("based_on_version"), self.base_policy_version.name)
         self.assertTrue((policy_ctx.get("change_summary") or "").strip())
         self.assertIn("policy-diff", policy_ctx.get("diff_html") or "")
+        self.assertNotIn("<script", policy_ctx.get("policy_text_html") or "")
+        self.assertNotIn("onerror", policy_ctx.get("policy_text_html") or "")
         self.assertIsInstance(policy_ctx.get("change_stats"), dict)
         self.assertEqual(len(policy_ctx.get("acknowledgement_clauses") or []), 1)
         signer_name = (policy_ctx.get("employee_name") or "").strip() or self.employee.name

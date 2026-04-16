@@ -51,6 +51,7 @@ def get_guardian_home_snapshot(anchor_date=None, school_days=7, debug=0):
             "guardian": {"name": None},
         },
         "family": {"children": []},
+        "policies": {"pending_count": 0, "items": []},
         "zones": {
             "family_timeline": [],
             "attention_needed": [],
@@ -73,6 +74,13 @@ def get_guardian_home_snapshot(anchor_date=None, school_days=7, debug=0):
 
     if not children:
         return _finalize_payload(payload, debug_mode, debug_warnings)
+
+    from ifitwala_ed.api.guardian_policy import get_guardian_policy_home_summary
+
+    payload["policies"] = get_guardian_policy_home_summary(
+        guardian_name=guardian_name,
+        children=children,
+    )
 
     student_names = [c["student"] for c in children]
     membership = _get_student_group_membership(student_names)
@@ -939,7 +947,7 @@ def _build_school_event_blocks(
         if event_school:
             eligible_students = {s for s in eligible_students if student_school.get(s) == event_school}
 
-        if audience_type == "Whole School Community":
+        if audience_type == "All Students, Guardians, and Employees":
             return eligible_students
         if audience_type == "All Guardians":
             return eligible_students

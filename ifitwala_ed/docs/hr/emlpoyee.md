@@ -26,8 +26,13 @@ Permission scope for `Employee`:
   - employees in their organization descendant scope
   - employees where `organization` is blank
 - HR organization scope resolution uses persisted defaults (`DefaultValue`) for user `organization`, then `Global Defaults.default_organization`, and expands explicit `User Permission` grants on `Organization`; if none resolves, only unassigned-organization Employee rows are visible to HR.
-- `Academic Admin` has read-only Employee access scoped to the user default school.
+- `Academic Admin` has read-only Employee access with a two-step scope contract:
+  - school scope resolves from the active `Employee.school` first; only users without an active Employee profile fall back to persisted user default `school`
+  - when no school scope resolves, or the active Employee profile exists with a blank `school`, Employee visibility falls back to the user's organization descendant scope
+- Academic Admin organization fallback resolves from active `Employee.organization`, then persisted user default `organization`, and unions explicit `User Permission` grants on `Organization`.
 - `Employee` role has read-only access to their own Employee record only.
+- Employee Desk list, tree, and report surfaces must follow the same scripted visibility scope and must not inject an implicit `employment_status = "Active"` filter.
+- Employee Desk list load reconciles a legacy persisted `employment_status = "Active"` filter from older list defaults so inherited user state cannot silently narrow visibility after the contract change.
 
 ### 1.1 Staff Portal Holiday Resolution (Portal Calendar Contract)
 
@@ -88,7 +93,8 @@ Role handling now follows managed sync:
 - on employee save, `_ensure_primary_contact()` self-heals the contact graph: if the user-linked contact exists but is missing a `Contact.links` row to the current `Employee`, the link is inserted; if the employee already has `empl_primary_contact`, that contact is reused as a repair target.
 - contact visibility for employee-linked contacts is server-scoped through `Contact.links -> Employee`:
   - `HR Manager` / `HR User`: read employee contacts in their organization scope
-  - `Academic Admin` / `Academic Assistant`: read employee contacts in their default school + descendant-school scope
+  - `Academic Admin` / `Academic Assistant`: read employee contacts in their effective school + descendant-school scope, where Academic Admin resolves school from the active Employee profile before persisted defaults
+  - `Academic Admin` only: when no school scope resolves, or the active Employee profile exists with a blank `school`, employee-linked contact visibility falls back to organization descendant scope
   - `Employee`: read only the contact linked to their own employee record
 - when `Employee.employment_status` is not `Active`, the linked `User` is disabled and all assigned role rows are removed.
 - routing policy resolves active employee status using `Employee.user_id` first, then an unambiguous active match on `employee_professional_email` to avoid false-negative staff routing when legacy user links are missing.
@@ -126,6 +132,8 @@ Current read consumers using canonical variant resolution:
 Org chart visibility contract:
 - the staff org chart defaults to `All Organizations`, not the viewer's base organization
 - employee image access for the org chart is available to any authenticated active employee; base-organization scope does not gate employee thumbnails on that surface
+- the org chart surface resolves Employee image derivatives in this order: `profile_image_thumb` -> `profile_image_card` -> `profile_image_medium`; it must not fall back to the original full-size image on that surface
+- when a governed Employee derivative is stored in `ifitwala_drive` instead of local disk, the org chart still resolves it through the named Employee file route, which may redirect to a Drive-issued download URL after the employee-access check passes
 - changes to employee image display permissions must update both the employee image route tests and the org chart consumer contract tests in the same change
 
 This keeps Employee image governance and User avatar synchronization aligned.
@@ -177,6 +185,16 @@ We decided HR organization scope must also honor explicit `User Permission` gran
 Reason: role-authorized HR users can be scoped operationally through defaults and explicit org permissions without depending on Employee linkage.
 Impact: Employee permission scope now unions descendants from default organization and descendants from explicit Organization User Permissions.
 
+[2026-04-15] Decision:
+We decided Employee list and tree surfaces must not add an implicit active-status filter on top of scripted visibility.
+Reason: report view already exposes the full permitted Employee scope, and extra list/tree filtering created product drift where authorized staff were silently missing outside report view.
+Impact: Employee list and tree now follow the same server-owned visibility contract as report view; status filtering is user-chosen, not hard-coded by the surface.
+
+[2026-04-15] Decision:
+We decided Employee list load must also remove a persisted legacy `employment_status = "Active"` filter when present.
+Reason: some users can carry forward old list-state that was seeded by the previous hard-coded list default, which keeps list view narrower than report view even after the code contract changes.
+Impact: Employee list now self-heals the inherited legacy status filter on load; users can still add a new status filter intentionally afterward.
+
 [2026-02-26] Decision:
 We decided HR base-org resolution must not depend on linked Employee rows.
 Reason: HR doctype scope is an operator scope concern and should be driven by organization defaults/permissions, not employee linkage status.
@@ -200,7 +218,7 @@ Impact: `Employee.on_update()` now always syncs user defaults for linked users, 
 [2026-02-26] Decision:
 We decided Employee permission hooks enforce role-specific scope rules explicitly:
 - HR roles: scoped CRUD to org descendants + blank organization rows
-- Academic Admin: read-only on default school
+- Academic Admin: read-only on default school, with organization-descendant fallback only when no default school is configured
 - Employee: read-only own record
 Reason: this is the required product contract and prevents implicit fallback behavior from granting or denying the wrong access.
 Impact: list and form permissions are now consistent with the intended HR/academic/employee visibility model.

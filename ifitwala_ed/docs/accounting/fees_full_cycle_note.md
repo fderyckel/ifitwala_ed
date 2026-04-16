@@ -321,21 +321,36 @@ For a school finance team, the current full cycle is:
 
 That is the production fee cycle currently supported in this repository.
 
-## 8. Planned Billing Automation Not Yet Live
+## 8. Structured Billing By Program Offering
 
-Status: Planned
-Code refs: `ifitwala_ed/docs/accounting/phase1_notes.md`, `ifitwala_ed/docs/accounting/phase1_codex.md`
-Test refs: None
+Status: Implemented
+Code refs: `ifitwala_ed/accounting/doctype/program_billing_plan/program_billing_plan.py`, `ifitwala_ed/accounting/doctype/billing_schedule/billing_schedule.py`, `ifitwala_ed/accounting/doctype/billing_run/billing_run.py`, `ifitwala_ed/accounting/billing/schedule_generation.py`, `ifitwala_ed/accounting/billing/invoice_generation.py`
+Test refs: `ifitwala_ed/accounting/doctype/program_billing_plan/test_program_billing_plan.py`, `ifitwala_ed/accounting/doctype/billing_schedule/test_billing_schedule.py`, `ifitwala_ed/accounting/doctype/billing_run/test_billing_run.py`
 
-The repository also contains a Phase 1 billing design, but it is not the current live workflow.
+The repository now supports a structured Phase 1 billing path for recurring program charges.
 
-Planned objects include:
+The accounting split is:
 
-- `Program Billing Plan`
-- `Billing Schedule`
-- deterministic draft invoice generation from billing schedules
+- `Billable Offering` remains the fee catalog and accounting-mapping master.
+- `Program Billing Plan` defines which fee components apply to one `Program Offering` in one `Academic Year`.
+- `Billing Schedule` derives per-enrollment billing rows from the active plan.
+- `Billing Run` lets accounting generate draft invoices in bulk for all pending rows in a program scope.
 
-That planned design would make recurring tuition billing more structured, but finance should not assume those objects or automations are available until the corresponding code exists.
+Operationally:
+
+1. Create the relevant `Billable Offering` records.
+2. Create one active `Program Billing Plan` for the program offering and academic year.
+3. Set the component `qty` and `default_rate` values on the plan.
+4. Generate `Billing Schedule` records from current `Program Enrollment` rows.
+5. Create a `Billing Run` for the target due-date window.
+6. Generate draft invoices grouped by `Account Holder`.
+7. Review and submit the resulting invoices through the normal accounting flow.
+
+Important limits:
+
+- bulk generation creates draft invoices only
+- payment schedules still come from `Payment Terms Template` if used on the billing run
+- cancelling or deleting a generated invoice resets the linked billing rows back to `Pending`
 
 ## 9. Contract Matrix
 
@@ -359,5 +374,6 @@ Test refs: `ifitwala_ed/accounting/doctype/sales_invoice/test_sales_invoice.py`,
 | Dunning workflow | Implemented | `Dunning Notice` |
 | Statement processing run | Implemented | `Statement Of Accounts Run` |
 | Follow-up reporting | Implemented | Aged receivables, statements, student attribution |
-| Automated fee schedule / recurring billing engine | Planned | `phase1_notes.md` design only |
+| Automated fee schedule / recurring billing engine | Implemented | `Program Billing Plan` + `Billing Schedule` |
+| Bulk draft invoice generation by Program Offering | Implemented | `Billing Run` + `invoice_generation.py` |
 | Automated multi-channel collections dispatch | Not found in current workspace | None |

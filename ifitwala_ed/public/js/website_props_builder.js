@@ -61,6 +61,15 @@
 			show_role_profile_filter: true,
 			limit: null,
 		},
+		story_feed: {
+			limit: 3,
+			show_excerpt: true,
+		},
+		academic_calendar: {
+			limit: 6,
+			include_terms: true,
+			include_holidays: true,
+		},
 	};
 
 	function toLabel(name) {

@@ -22,6 +22,7 @@ from ifitwala_ed.api.calendar import (
     suggest_meeting_rooms,
     suggest_meeting_slots,
 )
+from ifitwala_ed.api.calendar_staff_feed import _collect_meeting_events
 
 
 class _DummyLock:
@@ -267,6 +268,80 @@ class TestCalendarApi(TestCase):
 
         mocked_student_check.assert_called_once()
         mocked_get_doc.assert_not_called()
+
+    def test_collect_meeting_events_falls_back_to_school_default_color(self):
+        tzinfo = _system_tzinfo()
+        window_start = datetime(2026, 2, 1, 0, 0, 0)
+        window_end = datetime(2026, 2, 7, 0, 0, 0)
+        meeting_row = frappe._dict(
+            {
+                "name": "MTG-0001",
+                "meeting_name": "Weekly Check-in",
+                "date": "2026-02-02",
+                "start_time": "09:00:00",
+                "end_time": "10:00:00",
+                "from_datetime": "2026-02-02 09:00:00",
+                "to_datetime": "2026-02-02 10:00:00",
+                "location": None,
+                "school": "SCHOOL-1",
+                "team": None,
+                "virtual_meeting_link": None,
+            }
+        )
+
+        def _fake_get_all(doctype, filters=None, fields=None, ignore_permissions=False, **kwargs):
+            if doctype == "School":
+                return [frappe._dict({"name": "SCHOOL-1", "meeting_color": "#a4f3dd"})]
+            if doctype == "Team":
+                return []
+            raise AssertionError(f"Unexpected get_all call: doctype={doctype!r}")
+
+        with (
+            patch("ifitwala_ed.api.calendar_staff_feed._resolve_employee_for_user", return_value={"name": "EMP-0001"}),
+            patch("ifitwala_ed.api.calendar_staff_feed.frappe.db.sql", return_value=[meeting_row]),
+            patch("ifitwala_ed.api.calendar_staff_feed.frappe.get_all", side_effect=_fake_get_all),
+        ):
+            events = _collect_meeting_events("staff@example.com", window_start, window_end, tzinfo)
+
+        self.assertEqual(len(events), 1)
+        self.assertEqual(events[0].color, "#a4f3dd")
+
+    def test_collect_meeting_events_keeps_explicit_team_color_over_school_default(self):
+        tzinfo = _system_tzinfo()
+        window_start = datetime(2026, 2, 1, 0, 0, 0)
+        window_end = datetime(2026, 2, 7, 0, 0, 0)
+        meeting_row = frappe._dict(
+            {
+                "name": "MTG-0002",
+                "meeting_name": "Leadership Sync",
+                "date": "2026-02-03",
+                "start_time": "11:00:00",
+                "end_time": "12:00:00",
+                "from_datetime": "2026-02-03 11:00:00",
+                "to_datetime": "2026-02-03 12:00:00",
+                "location": None,
+                "school": "SCHOOL-1",
+                "team": "TEAM-1",
+                "virtual_meeting_link": None,
+            }
+        )
+
+        def _fake_get_all(doctype, filters=None, fields=None, ignore_permissions=False, **kwargs):
+            if doctype == "Team":
+                return [frappe._dict({"name": "TEAM-1", "meeting_color": "#112233", "school": "SCHOOL-1"})]
+            if doctype == "School":
+                return [frappe._dict({"name": "SCHOOL-1", "meeting_color": "#a4f3dd"})]
+            raise AssertionError(f"Unexpected get_all call: doctype={doctype!r}")
+
+        with (
+            patch("ifitwala_ed.api.calendar_staff_feed._resolve_employee_for_user", return_value={"name": "EMP-0001"}),
+            patch("ifitwala_ed.api.calendar_staff_feed.frappe.db.sql", return_value=[meeting_row]),
+            patch("ifitwala_ed.api.calendar_staff_feed.frappe.get_all", side_effect=_fake_get_all),
+        ):
+            events = _collect_meeting_events("staff@example.com", window_start, window_end, tzinfo)
+
+        self.assertEqual(len(events), 1)
+        self.assertEqual(events[0].color, "#112233")
 
     def test_create_school_event_quick_defaults_custom_users_to_session_user(self):
         cache = _DummyCache()

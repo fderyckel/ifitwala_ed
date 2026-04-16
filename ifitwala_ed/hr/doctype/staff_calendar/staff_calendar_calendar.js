@@ -4,10 +4,16 @@
 frappe.views.calendar["Staff Calendar"] = {
   field_map: {
     start: "holiday_date",
-    end: "holiday_date",
+    // Let Frappe synthesize the exclusive all-day end from the holiday date.
     id: "name",
     title: "description",
     allDay: "allDay",
+  },
+  options: {
+    eventClick(info) {
+      info.jsEvent.preventDefault();
+      return false;
+    },
   },
   order_by: "from_date",
   get_events_method: "ifitwala_ed.hr.doctype.staff_calendar.staff_calendar.get_events",

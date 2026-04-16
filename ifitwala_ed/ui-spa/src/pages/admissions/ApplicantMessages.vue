@@ -1,7 +1,7 @@
 <!-- ifitwala_ed/ui-spa/src/pages/admissions/ApplicantMessages.vue -->
 
 <template>
-	<div class="space-y-6">
+	<div class="admissions-page">
 		<div>
 			<p class="type-h2 text-ink">{{ __('Messages') }}</p>
 			<p class="mt-1 type-caption text-ink/60">

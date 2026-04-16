@@ -15,7 +15,6 @@
   "to_staff",
   "to_students",
   "to_guardians",
-  "to_community",
   "column_break_xeey",
   "note"
  ],
@@ -74,11 +73,6 @@
    "label": "To Guardians"
   },
   {
-   "fieldname": "to_community",
-   "fieldtype": "Check",
-   "label": "To Community"
-  },
-  {
    "fieldname": "column_break_xeey",
    "fieldtype": "Column Break"
   },
@@ -93,7 +87,7 @@
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2026-03-26 19:58:15.000000",
+ "modified": "2026-04-14 22:16:06.000000",
  "modified_by": "Administrator",
  "module": "Setup",
  "name": "Org Communication Audience",

@@ -14,8 +14,8 @@
 
 | Path | Owner | Purpose |
 | --- | --- | --- |
-| `/` | Root resolver | Redirect to default published school; fallback to `/schools` |
-| `/schools` | Organization Landing | School discovery page |
+| `/` | Public home renderer | School-first public landing page |
+| `/schools` | School directory renderer | Multi-school discovery page |
 | `/schools/<school_slug>/...` | Custom website renderer | School marketing pages |
 | `/apply/...` | Native Frappe Web Forms | Public admissions entry forms |
 | `/inquiry` | Legacy redirect | `301` to `/apply/inquiry` |
@@ -26,8 +26,9 @@
 
 Rules:
 * No root catch-all.
-* `/` resolves to the configured default published school when available.
-* If no valid default school is available, `/` falls back to `/schools`.
+* `/` is the school-first public homepage for the top public organization scope.
+* `/` must never degrade into the login page.
+* `/schools` is the directory/finder for published schools in the same top public organization scope.
 * No root-level school marketing pages.
 * No exception-based router ownership for webforms.
 * Web Form branding must be delivered by static assets via `webform_include_css` / `webform_include_js` (app `public/...` paths), not route or controller overrides.
@@ -583,7 +584,7 @@ Display published Programs as discoverable cards, with full detail links when th
 
 * `Program Offering` (school/program pairing)
 * `Program` (`is_published = 1`, `archive = 0`, slug required)
-* optional `Program Website Profile` (`status = "Published"` for full detail cards; draft/missing profiles render teaser cards only)
+* optional `Program Website Profile` (`status = "Published"` for full detail cards; status remains draft until school website readiness, workflow state, and optional publish window allow public visibility)
 
 **Props**
 

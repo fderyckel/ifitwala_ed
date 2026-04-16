@@ -155,6 +155,21 @@ frappe.ui.form.on("Student Group", {
 				};
 				f.__set_once = true;
 			}
+
+			const locationField = grid.get_field("location");
+			if (locationField && !locationField.__set_once) {
+				locationField.get_query = function () {
+					return {
+						query: "ifitwala_ed.schedule.doctype.student_group.student_group.schedule_location_query",
+						filters: {
+							program_offering: frm.doc.program_offering || "",
+							academic_year: frm.doc.academic_year || "",
+							school: frm.doc.school || "",
+						}
+					};
+				};
+				locationField.__set_once = true;
+			}
 		}
 
 		toggle_school_schedule_field(frm);
@@ -228,16 +243,18 @@ frappe.ui.form.on("Student Group", {
 		frm.set_value("course", null);
 	},
 
-	group_based_on(frm) {
+	async group_based_on(frm) {
 		frm.set_df_property("program", "reqd", 0);
 		frm.set_df_property("course", "reqd", 0);
 		frm.set_df_property("cohort", "reqd", 0);
 
 		if (frm.doc.group_based_on === "Cohort") {
-			frm.doc.course = null;
+			await frm.set_value("course", null);
 			frm.set_df_property("cohort", "reqd", 1);
 		} else if (frm.doc.group_based_on === "Course") {
 			frm.set_df_property("course", "reqd", 1);
+		} else if (frm.doc.course) {
+			await frm.set_value("course", null);
 		}
 	},
 

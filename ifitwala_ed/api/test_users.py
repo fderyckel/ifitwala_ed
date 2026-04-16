@@ -790,6 +790,11 @@ class TestUserRedirect(FrappeTestCase):
         frappe.delete_doc("Employee", employee.name, force=True)
         frappe.delete_doc("User", user.email, force=True)
 
+    def test_get_website_user_home_page_returns_index_for_guest(self):
+        frappe.set_user("Guest")
+        self.assertEqual(get_website_user_home_page(), "index")
+        frappe.set_user("Administrator")
+
     def test_logout_flow_does_not_force_redirect_exception(self):
         """Logout-triggered on_login must not raise Redirect."""
         user = frappe.new_doc("User")

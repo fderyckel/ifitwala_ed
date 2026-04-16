@@ -1,5 +1,5 @@
 <template>
-	<div class="space-y-6 p-4 sm:p-6 lg:p-8">
+	<div class="portal-page">
 		<div>
 			<RouterLink
 				:to="backRoute"

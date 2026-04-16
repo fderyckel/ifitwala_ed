@@ -7,90 +7,66 @@
   Used by:
   - PortalLayout.vue (layouts)
 -->
-	<nav class="bg-white border-b border-gray-200 shadow-sm sticky top-0 z-30">
-		<div class="container mx-auto px-4">
-			<div class="flex items-center justify-between h-14">
-				<div class="flex items-center space-x-4">
-					<button
-						@click="$emit('toggle-sidebar')"
-						class="p-2 rounded-md text-gray-600 hover:bg-gray-100 hover:text-gray-800 lg:hidden"
-						aria-label="Toggle sidebar"
-					>
-						<FeatherIcon name="menu" class="h-5 w-5" />
+	<nav class="portal-navbar">
+		<div class="portal-navbar__inner">
+			<div class="portal-navbar__start">
+				<button
+					@click="$emit('toggle-sidebar')"
+					class="portal-navbar__menu-button"
+					aria-label="Toggle sidebar"
+				>
+					<FeatherIcon name="menu" class="h-5 w-5" />
+				</button>
+
+				<RouterLink :to="{ name: `${defaultPortal}-home` }" class="portal-navbar__brand">
+					<span class="portal-navbar__brand-mark">
+						<FeatherIcon name="book-open" class="h-5 w-5" />
+					</span>
+					<span class="portal-navbar__brand-label">Ifitwala</span>
+				</RouterLink>
+			</div>
+
+			<div class="flex items-center">
+				<div class="relative">
+					<button @click="isUserMenuOpen = !isUserMenuOpen" class="portal-navbar__profile-trigger">
+						<span class="portal-navbar__profile-name">{{ user.fullname }}</span>
+						<img
+							v-if="user.avatarImage"
+							:src="user.avatarImage"
+							:alt="`${user.fullname} avatar`"
+							class="portal-navbar__avatar"
+						/>
+						<div v-else class="portal-navbar__avatar-fallback">
+							{{ user.initials }}
+						</div>
 					</button>
 
-					<RouterLink
-						:to="{ name: `${defaultPortal}-home` }"
-						class="flex items-center space-x-2 text-gray-800"
+					<transition
+						enter-active-class="transition ease-out duration-100"
+						enter-from-class="transform opacity-0 scale-95"
+						enter-to-class="transform opacity-100 scale-100"
+						leave-active-class="transition ease-in duration-75"
+						leave-from-class="transform opacity-100 scale-100"
+						leave-to-class="transform opacity-0 scale-95"
 					>
-						<FeatherIcon name="book-open" class="h-5 w-5 text-blue-600" />
-						<span class="font-semibold text-lg leading-tight">Ifitwala</span>
-					</RouterLink>
-				</div>
-
-				<div class="flex items-center">
-					<div class="relative">
-						<button
-							@click="isUserMenuOpen = !isUserMenuOpen"
-							class="flex items-center space-x-2 p-2 rounded-full hover:bg-gray-100 focus:outline-none"
-						>
-							<span class="text-sm font-medium text-gray-700 hidden sm:block">{{
-								user.fullname
-							}}</span>
-							<img
-								v-if="user.avatarImage"
-								:src="user.avatarImage"
-								:alt="`${user.fullname} avatar`"
-								class="h-8 w-8 rounded-full object-cover border border-gray-200"
-							/>
-							<div
-								v-else
-								class="h-8 w-8 rounded-full bg-blue-500 flex items-center justify-center text-white font-bold"
-							>
-								{{ user.initials }}
-							</div>
-						</button>
-
-						<transition
-							enter-active-class="transition ease-out duration-100"
-							enter-from-class="transform opacity-0 scale-95"
-							enter-to-class="transform opacity-100 scale-100"
-							leave-active-class="transition ease-in duration-75"
-							leave-from-class="transform opacity-100 scale-100"
-							leave-to-class="transform opacity-0 scale-95"
-						>
-							<div
-								v-if="isUserMenuOpen"
-								class="absolute right-0 mt-2 w-56 origin-top-right bg-white rounded-md shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none"
-							>
-								<div class="py-1">
-									<div class="px-4 py-2 border-b">
-										<p class="text-sm text-gray-700">Signed in as</p>
-										<p class="text-sm font-medium text-gray-900 truncate">{{ user.email }}</p>
-									</div>
-									<a
-										href="/desk/user-profile"
-										class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-									>
-										My Profile
-									</a>
-									<a
-										href="/update-password"
-										class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-									>
-										Security Settings
-									</a>
-									<div class="border-t border-gray-100"></div>
-									<a
-										href="/logout?redirect-to=%2F"
-										class="block px-4 py-2 text-sm text-red-600 hover:bg-red-50"
-									>
-										Logout
-									</a>
+						<div v-if="isUserMenuOpen" class="portal-navbar__menu">
+							<div class="py-1">
+								<div class="portal-navbar__menu-header">
+									<p class="portal-navbar__menu-label">Signed in as</p>
+									<p class="portal-navbar__menu-email">{{ user.email }}</p>
 								</div>
+								<a href="/desk/user-profile" class="portal-navbar__menu-link"> My Profile </a>
+								<a href="/update-password" class="portal-navbar__menu-link"> Security Settings </a>
+								<div class="portal-navbar__menu-separator"></div>
+								<a
+									href="/logout?redirect-to=%2F"
+									class="portal-navbar__menu-link portal-navbar__menu-link--danger"
+								>
+									Logout
+								</a>
 							</div>
-						</transition>
-					</div>
+						</div>
+					</transition>
 				</div>
 			</div>
 		</div>
@@ -182,17 +158,20 @@ function getSessionUserInfo() {
 	const fullname = String(
 		userInfo.fullname || userInfo.full_name || userInfo.name || session.full_name || ''
 	).trim();
+	const userId = String(session.user || userInfo.name || '').trim();
 
 	return {
 		fullname,
 		email,
+		userId,
 	};
 }
 
 const user = computed(() => {
 	const userInfo = getSessionUserInfo();
 	const resolvedFullName = (
-		(portalSection.value === 'student' && studentIdentity.value?.display_name) ||
+		(portalSection.value === 'student' &&
+			(studentIdentity.value?.full_name || studentIdentity.value?.display_name)) ||
 		(portalSection.value === 'guardian' &&
 			(guardianIdentity.value?.display_name || guardianIdentity.value?.full_name)) ||
 		userInfo.fullname ||
@@ -208,7 +187,12 @@ const user = computed(() => {
 	return {
 		fullname: resolvedFullName,
 		email:
-			(portalSection.value === 'guardian' ? guardianIdentity.value?.email : null) ||
+			(portalSection.value === 'student'
+				? studentIdentity.value?.user
+				: portalSection.value === 'guardian'
+					? guardianIdentity.value?.email || guardianIdentity.value?.user
+					: null) ||
+			userInfo.userId ||
 			userInfo.email ||
 			'guest@example.com',
 		initials: initials.toUpperCase(),

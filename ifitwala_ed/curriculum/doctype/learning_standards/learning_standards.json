@@ -1,6 +1,8 @@
 {
  "actions": [],
+ "allow_import": 1,
  "allow_rename": 1,
+ "autoname": "hash",
  "creation": "2025-09-24 19:21:49.618779",
  "default_view": "List",
  "doctype": "DocType",
@@ -42,6 +44,8 @@
   {
    "fieldname": "program",
    "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
    "label": "Program",
    "options": "Program"
   },
@@ -101,10 +105,11 @@
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-09-24 19:29:37.456094",
+ "modified": "2026-04-12 22:32:11.068470",
  "modified_by": "Administrator",
  "module": "Curriculum",
  "name": "Learning Standards",
+ "naming_rule": "Random",
  "owner": "Administrator",
  "permissions": [
   {
@@ -154,7 +159,10 @@
   }
  ],
  "row_format": "Dynamic",
+ "search_fields": "strand, substrand",
+ "show_title_field_in_link": 1,
  "sort_field": "modified",
  "sort_order": "DESC",
- "states": []
+ "states": [],
+ "title_field": "standard_code"
 }

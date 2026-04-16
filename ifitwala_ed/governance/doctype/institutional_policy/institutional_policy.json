@@ -9,12 +9,13 @@
   "policy_key",
   "policy_title",
   "policy_category",
-  "applies_to",
-  "admissions_acknowledgement_mode",
+  "description",
+  "column_break_xfzs",
   "organization",
   "school",
-  "description",
-  "is_active"
+  "applies_to",
+  "is_active",
+  "admissions_acknowledgement_mode"
  ],
  "fields": [
   {
@@ -45,8 +46,6 @@
   {
    "fieldname": "applies_to",
    "fieldtype": "Table MultiSelect",
-   "in_list_view": 1,
-   "in_standard_filter": 1,
    "label": "Applies To",
    "options": "Institutional Policy Audience",
    "reqd": 1
@@ -86,11 +85,15 @@
    "fieldtype": "Check",
    "label": "Is Active",
    "reqd": 1
+  },
+  {
+   "fieldname": "column_break_xfzs",
+   "fieldtype": "Column Break"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-03-17 09:00:00",
+ "modified": "2026-04-11 22:35:51.399091",
  "modified_by": "Administrator",
  "module": "Governance",
  "name": "Institutional Policy",

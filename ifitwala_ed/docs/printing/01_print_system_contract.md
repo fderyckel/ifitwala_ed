@@ -138,6 +138,34 @@ Rules:
 5. Phase 1 should standardize tokens and page grammar first. Do not assume a shared runtime CSS include or shared Jinja macro package until that infrastructure is explicitly implemented.
 6. Until a shared helper layer exists, each approved print format may embed the approved token block and layout rules directly in its owned HTML/CSS.
 
+### 3.1 Default Letter Head
+
+Status: Implemented
+
+Code refs:
+- `ifitwala_ed/printing/letter_head/default_school_letter_head.json`
+- `ifitwala_ed/printing/letter_head/default_school_letter_head.html`
+- `ifitwala_ed/printing/letter_head/default_school_letter_head.css`
+- `ifitwala_ed/printing/letter_head/sync.py`
+- `ifitwala_ed/patches/publish_default_school_letter_head.py`
+- `ifitwala_ed/setup/setup.py`
+
+Test refs:
+- `ifitwala_ed/printing/test_default_school_letter_head.py`
+
+Rules:
+
+1. The app ships one managed default HTML `Letter Head` record synced by app code rather than desk-edited drift.
+2. Brand resolution must stay inside the current document's own scope. Allowed context inputs are the document's existing `school`, `anchor_school`, and `organization` fields, plus direct `School` or `Organization` document prints.
+3. Logo fallback order is:
+   - current school
+   - ancestor schools in the same school tree
+   - the current organization
+   - ancestor organizations in that organization tree
+4. The virtual root organization `All Organizations` is explicitly excluded from brand fallback.
+5. Tagline fallback is school-only: current school, then ancestor schools. Organization tagline fallback is not part of the current schema contract.
+6. If no in-scope logo exists, the letterhead remains text-only. It must not borrow a sibling or site-global organization logo.
+
 ## 4. Schema-to-Print Workflow
 
 Status: Approved
@@ -252,6 +280,10 @@ It should be:
 
 Hero:
 
+- anchor-school branding using scoped `School` data only:
+  - `school_name`
+  - `school_logo`
+  - `school_tagline`
 - `student_full_name` with fallback to first/middle/last name construction
 - `student_preferred_name` when present and distinct
 - `student_id`
@@ -276,6 +308,24 @@ Identity and language:
 - `student_first_language`
 - `student_second_language`
 - `residency_status`
+
+CRM summary:
+
+- Student-linked `Contact` only through explicit `Dynamic Link -> Contact`
+- Student-linked `Address` records only through explicit `Dynamic Link -> Address`
+- contact summary may include:
+  - contact display name derived from `Contact.first_name` / `Contact.last_name`
+  - `Contact Email.email_id`
+  - `Contact Phone.phone`
+- address summary may include:
+  - `address_title`
+  - `address_type`
+  - `address_line1`
+  - `address_line2`
+  - `city`
+  - `state`
+  - `pincode`
+  - `country`
 
 Family:
 
@@ -313,6 +363,11 @@ Exclude from the standard Student Profile by default:
 - `address_html`
 - `allow_direct_creation`
 - internal tab, section, and layout helper fields
+
+Note:
+
+- `contact_html` and `address_html` remain excluded as raw helper fields
+- the print format may render its own scoped CRM summary by querying only the Student's explicitly linked `Contact` and `Address` records
 
 ### 7.4 Explicit Non-Goals for Phase 1
 

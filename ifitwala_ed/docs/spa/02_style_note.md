@@ -414,6 +414,114 @@ Why:
 
 Never style `input`, `select`, `textarea` globally.
 
+### 6.6.1 Authoring focus grammar
+
+Within a scoped form family, plain text inputs, textareas, selects, and editable rich-text shells should share one focus treatment instead of mixing browser-default black rings with custom controls.
+
+Preferred authoring focus pattern:
+
+* jacaranda border tint
+* soft jacaranda outer ring
+* restrained shadow lift
+* same interaction timing across plain inputs and rich-text wrappers
+
+Rules:
+
+* apply this at the surface or component-family scope, not globally
+* if a routed page introduces a richer focus treatment for authoring fields, use it consistently across the page’s text-entry controls
+* avoid one-off focus recipes where rich-text fields glow but neighboring text inputs do not
+* default browser black outlines should not remain on some fields while adjacent authored controls use branded focus states
+
+---
+
+### 6.7 Surface shell families are locked
+
+Route families must not each invent their own outer page treatment.
+
+Canonical shell ownership:
+
+* **Staff workspace pages** use `staff-shell`
+* **Staff analytics pages** use `analytics-shell`
+* **Gradebook** uses its approved gradebook shell
+* **Student / Guardian routed pages** rely on `PortalLayout` for the outer background and shell; page roots should usually use the shared `portal-page` rhythm helper (or equivalent rhythm-only structure), not page-wide shell styling
+* **Admissions routed pages** rely on `AdmissionsLayout` for chrome and outer surfaces; page roots should usually use the shared `admissions-page` rhythm helper (or an equivalent named page class), not page-local shell padding
+
+Rules:
+
+* Do not recreate page-wide gradients, max-widths, or shell padding inside routed pages when the layout already owns them
+* Do not replace a canonical shell with local `p-*`, `min-h-full`, or ad-hoc max-width wrappers just because one page looks acceptable in isolation
+* If a surface truly needs a new shell family, update `layout.css`, the owning layout component, and this note in the same approved change
+
+---
+
+### 6.8 State color contract is explicit
+
+Project state semantics are not free-form.
+
+Preferred mappings:
+
+* success / confirmed → `leaf` + `canopy`
+* warning / pending → `sand` + `clay`
+* danger / blocked → `flame`
+* neutral / quiet meta → `slate-token`, `text-ink/60`, `border-line-soft`
+
+Rules:
+
+* Do not invent pseudo-tokens such as `mint`, `forest`, `warm-amber`, `ochre`, `coral`, `sun`, or similar semantic names unless they are added to `tokens.css`, `tailwind.config.js`, and this note in the same approved change
+* Native Tailwind palette colors (`amber-*`, `rose-*`, `slate-*`, etc.) are allowed only for localized alert/validation states or data-viz needs
+* Native palette colors must not become the primary visual language of a routed page
+
+### 6.8.1 Student learning surface accent hierarchy
+
+Student-facing learning surfaces should feel calm, readable, and alive, not monochrome.
+
+Rules:
+
+* `jacaranda` is the primary accent for learning focus, active navigation, “open / continue”, and route-level framing on student hub surfaces
+* `leaf` + `canopy` signal ready, current, progress, and completed states
+* `sand` + `clay` signal upcoming, preparation, guidance, and low-stress information groups
+* `flame` stays reserved for blockers, errors, urgency, and missed work; it must not become the default accent
+* Prefer shared `student-hub-*`, portal navbar, portal sidebar, and student context primitives in `components.css` over page-local color recipes
+* Do not tint every card. Use stronger color on headers, active cards, and section frames so the surface stays distraction-light
+
+---
+
+### 6.9 Page-local scoped CSS is structural only
+
+Scoped CSS in pages is allowed, but its responsibility is narrow.
+
+Allowed in page `<style scoped>`:
+
+* responsive grid definitions
+* sticky columns
+* overflow / scroll mechanics
+* third-party sizing hooks
+* page-specific geometry that does not define reusable visual identity
+
+Forbidden in page `<style scoped>` unless the page is the single permanent owner and the rule is documented:
+
+* surface/background color systems
+* repeated card or button skins
+* typography scales that duplicate semantic helpers
+* repeated status pill styling
+* shareable gradients or shadows
+* substitute token definitions
+
+If the rule expresses brand, state semantics, or a reusable visual pattern, it belongs in `components.css` or `layout.css`, not in a page-local style block.
+
+---
+
+### 6.10 Drift prevention workflow
+
+Before merging any Vue page styling change:
+
+1. Identify the owning surface and canonical root shell first
+2. Search `styles/components.css`, `styles/layout.css`, and sibling pages before adding a new primitive
+3. If a new token or semantic utility is needed, update `tokens.css`, `tailwind.config.js`, and this note in the same change
+4. Run `python3 scripts/spa_style_guardrails.py`
+5. Compare the touched page against at least one sibling route in the same surface
+6. If the page already contains drift, do not copy it into new code; either fix it or isolate it as explicit legacy debt
+
 ---
 
 ## 7. Legacy Styles & Deletion Strategy

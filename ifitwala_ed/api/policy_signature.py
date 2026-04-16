@@ -13,11 +13,13 @@ from ifitwala_ed.governance.policy_scope_utils import (
     select_nearest_policy_rows_by_key,
 )
 from ifitwala_ed.governance.policy_utils import (
+    get_policy_applies_to_token_map,
     get_policy_applies_to_tokens_for_policy,
     policy_applies_to,
     policy_applies_to_filter_sql,
 )
 from ifitwala_ed.utilities.employee_utils import get_descendant_organizations, get_user_base_org
+from ifitwala_ed.utilities.html_sanitizer import sanitize_html
 from ifitwala_ed.utilities.school_tree import get_descendant_schools
 
 POLICY_SIGNATURE_MANAGER_ROLES = frozenset(
@@ -39,10 +41,31 @@ STAFF_POLICY_STATUS_SIGNED = "signed"
 STAFF_POLICY_STATUS_PENDING = "pending"
 STAFF_POLICY_STATUS_NEW_VERSION = "new_version"
 STAFF_POLICY_STATUS_INFO = "informational"
+POLICY_SIGNATURE_AUDIENCE_ORDER = ("Staff", "Guardian", "Student")
+POLICY_SIGNATURE_AUDIENCE_LABELS = {
+    "Staff": "Staff",
+    "Guardian": "Guardians",
+    "Student": "Students",
+}
+POLICY_SIGNATURE_AUDIENCE_WORKFLOW_DESCRIPTIONS = {
+    "Staff": "Staff campaigns create internal signature tasks for eligible employees.",
+    "Guardian": "Guardians acknowledge this policy in Guardian Portal; no staff tasks are created.",
+    "Student": "Students acknowledge this policy in Student Hub; no staff tasks are created.",
+}
+POLICY_SIGNATURE_REGISTER_STATUS_ALL = "all"
+POLICY_SIGNATURE_REGISTER_STATUS_PENDING = "pending"
+POLICY_SIGNATURE_REGISTER_STATUS_SIGNED = "signed"
+MULTIPLE_ORGANIZATIONS_LABEL = "Multiple organizations"
+MULTIPLE_SCHOOLS_LABEL = "Multiple schools"
 
 
 def _policy_applies_to_staff(applies_to: str | None) -> bool:
     return policy_applies_to(applies_to, "Staff")
+
+
+def _supported_policy_signature_audiences(applies_to_tokens) -> list[str]:
+    tokens = set(applies_to_tokens or [])
+    return [audience for audience in POLICY_SIGNATURE_AUDIENCE_ORDER if audience in tokens]
 
 
 def _require_roles(allowed_roles: set[str] | frozenset[str]) -> tuple[str, set[str]]:
@@ -112,6 +135,15 @@ def _school_options_for_scope(organization_scope: list[str]) -> list[str]:
     return sorted({(row or "").strip() for row in rows if (row or "").strip()})
 
 
+def _school_scope_names(*, organization_scope: list[str], school: str | None) -> list[str]:
+    school = (school or "").strip()
+    if school:
+        return sorted(
+            {(name or "").strip() for name in (get_descendant_schools(school) or [school]) if (name or "").strip()}
+        )
+    return _school_options_for_scope(organization_scope)
+
+
 def _employee_group_options_for_scope(
     *,
     organization_scope: list[str],
@@ -149,6 +181,83 @@ def _employee_group_options_for_scope(
     return sorted(
         {(row.get("employee_group") or "").strip() for row in rows if (row.get("employee_group") or "").strip()}
     )
+
+
+def _policy_options_for_scope(
+    *,
+    organization: str | None,
+    organization_scope: list[str],
+    school: str | None,
+) -> list[dict]:
+    organization = (organization or "").strip() or None
+    school = (school or "").strip() or None
+
+    scoped_orgs = (
+        get_organization_ancestors_including_self(organization)
+        if organization
+        else sorted({(org or "").strip() for org in organization_scope if (org or "").strip()})
+    )
+    if not scoped_orgs:
+        return []
+
+    params: dict = {"policy_organizations": tuple(scoped_orgs)}
+    school_scope_clause = ""
+    if organization:
+        school_scope_clause = " AND (ifnull(ip.school, '') = '')"
+        if school:
+            school_ancestors = get_school_ancestors_including_self(school)
+            if school_ancestors:
+                params["school_ancestors"] = tuple(school_ancestors)
+                school_scope_clause = " AND (ifnull(ip.school, '') = '' OR ip.school IN %(school_ancestors)s)"
+
+    rows = frappe.db.sql(
+        f"""
+        SELECT
+            pv.name AS policy_version,
+            pv.version_label,
+            pv.effective_from,
+            pv.effective_to,
+            ip.name AS institutional_policy,
+            ip.policy_title,
+            ip.policy_key,
+            ip.organization AS policy_organization,
+            ip.school AS policy_school
+        FROM `tabPolicy Version` pv
+        JOIN `tabInstitutional Policy` ip
+          ON ip.name = pv.institutional_policy
+        WHERE pv.is_active = 1
+          AND ip.is_active = 1
+          AND ip.organization IN %(policy_organizations)s
+          {school_scope_clause}
+        ORDER BY ip.policy_title ASC, pv.modified DESC
+        """,
+        params,
+        as_dict=True,
+    )
+
+    if organization:
+        rows = select_nearest_policy_rows_by_key(
+            rows=rows,
+            context_organization=organization,
+            context_school=school,
+            policy_key_field="policy_key",
+            policy_organization_field="policy_organization",
+            policy_school_field="policy_school",
+        )
+
+    token_map = get_policy_applies_to_token_map(
+        [row.get("institutional_policy") for row in rows if row.get("institutional_policy")]
+    )
+
+    options = []
+    for row in rows:
+        tokens = list(token_map.get((row.get("institutional_policy") or "").strip(), ()))
+        if not _supported_policy_signature_audiences(tokens):
+            continue
+        row["applies_to_tokens"] = tokens
+        options.append(row)
+
+    return options
 
 
 def _active_staff_policy_rows_for_context(
@@ -479,6 +588,7 @@ def get_policy_version_context(
         frappe.throw(_("Policy Version not found."), frappe.DoesNotExistError)
 
     row = rows[0]
+    row["policy_text"] = sanitize_html(row.get("policy_text") or "", allow_headings_from="h2")
     row["applies_to_tokens"] = list(get_policy_applies_to_tokens_for_policy(row.get("institutional_policy")))
     if require_active and (not row.get("policy_version_is_active") or not row.get("policy_is_active")):
         frappe.throw(_("Policy Version must be active under an active Institutional Policy."))
@@ -509,6 +619,27 @@ def validate_staff_policy_scope_for_employee(policy_row: dict, employee_row: dic
     school_chain = get_school_ancestors_including_self(employee_school)
     if policy_school not in set(school_chain):
         frappe.throw(_("Policy school scope does not apply to this Employee school."))
+
+
+def _policy_scope_applies_to_context(*, policy_row: dict, organization: str | None, school: str | None) -> bool:
+    organization = (organization or "").strip()
+    school = (school or "").strip()
+    if not organization:
+        return False
+
+    if not is_policy_organization_applicable_to_context(
+        policy_organization=policy_row.get("policy_organization"),
+        context_organization=organization,
+    ):
+        return False
+
+    policy_school = (policy_row.get("policy_school") or "").strip()
+    if not policy_school:
+        return True
+    if not school:
+        return False
+
+    return policy_school in set(get_school_ancestors_including_self(school))
 
 
 def find_open_staff_policy_todos(*, user: str, policy_version: str) -> list[dict]:
@@ -621,6 +752,102 @@ def _target_employees(*, organization: str, school: str | None, employee_group: 
     return out
 
 
+def _target_students(*, organization: str, school: str | None) -> list[dict]:
+    org_scope = get_descendant_organizations(organization)
+    school_scope = _school_scope_names(organization_scope=org_scope, school=school)
+    if not school_scope:
+        return []
+
+    return frappe.db.sql(
+        """
+        SELECT
+            st.name,
+            st.student_full_name,
+            st.student_preferred_name,
+            st.student_email,
+            st.anchor_school AS school,
+            sch.organization
+        FROM `tabStudent` st
+        JOIN `tabSchool` sch
+          ON sch.name = st.anchor_school
+        WHERE st.anchor_school IN %(schools)s
+        ORDER BY st.student_full_name ASC, st.name ASC
+        """,
+        {"schools": tuple(school_scope)},
+        as_dict=True,
+    )
+
+
+def _target_guardians(*, organization: str, school: str | None) -> list[dict]:
+    org_scope = get_descendant_organizations(organization)
+    school_scope = _school_scope_names(organization_scope=org_scope, school=school)
+    if not school_scope:
+        return []
+
+    guardian_scope_sql = ""
+    if frappe.db.has_column("Student Guardian", "can_consent"):
+        guardian_scope_sql = " AND sg.can_consent = 1"
+
+    rows = frappe.db.sql(
+        f"""
+        SELECT
+            g.name AS guardian,
+            g.guardian_full_name,
+            g.guardian_email,
+            g.user AS user_id,
+            st.name AS student,
+            st.student_full_name,
+            st.anchor_school AS school,
+            sch.organization
+        FROM `tabStudent Guardian` sg
+        JOIN `tabStudent` st
+          ON st.name = sg.parent
+        JOIN `tabGuardian` g
+          ON g.name = sg.guardian
+        JOIN `tabSchool` sch
+          ON sch.name = st.anchor_school
+        WHERE sg.parenttype = 'Student'
+          AND sg.parentfield = 'guardians'
+          AND ifnull(g.is_primary_guardian, 0) = 1
+          AND st.anchor_school IN %(schools)s
+          {guardian_scope_sql}
+        ORDER BY g.guardian_full_name ASC, g.name ASC, st.student_full_name ASC
+        """,
+        {"schools": tuple(school_scope)},
+        as_dict=True,
+    )
+
+    grouped: dict[str, dict] = {}
+    for row in rows:
+        guardian_name = (row.get("guardian") or "").strip()
+        if not guardian_name:
+            continue
+
+        item = grouped.setdefault(
+            guardian_name,
+            {
+                "name": guardian_name,
+                "guardian_full_name": (row.get("guardian_full_name") or "").strip() or guardian_name,
+                "guardian_email": (row.get("guardian_email") or "").strip() or None,
+                "user_id": (row.get("user_id") or "").strip() or None,
+                "contexts": [],
+                "student_names": [],
+            },
+        )
+        student_name = (row.get("student_full_name") or row.get("student") or "").strip()
+        if student_name and student_name not in item["student_names"]:
+            item["student_names"].append(student_name)
+        item["contexts"].append(
+            {
+                "organization": (row.get("organization") or "").strip(),
+                "school": (row.get("school") or "").strip(),
+                "student_name": student_name,
+            }
+        )
+
+    return list(grouped.values())
+
+
 def _acknowledged_employee_names(policy_version: str, employee_names: list[str]) -> set[str]:
     names = sorted({(name or "").strip() for name in employee_names if (name or "").strip()})
     if not names:
@@ -669,6 +896,73 @@ def _eligible_employee_rows(*, policy_row: dict, rows: list[dict]) -> tuple[list
         except Exception:
             skipped_scope += 1
     return eligible, skipped_scope
+
+
+def _eligible_student_rows(*, policy_row: dict, rows: list[dict]) -> tuple[list[dict], int]:
+    eligible = []
+    skipped_scope = 0
+    for row in rows:
+        if _policy_scope_applies_to_context(
+            policy_row=policy_row,
+            organization=row.get("organization"),
+            school=row.get("school"),
+        ):
+            eligible.append(row)
+            continue
+        skipped_scope += 1
+    return eligible, skipped_scope
+
+
+def _eligible_guardian_rows(*, policy_row: dict, rows: list[dict]) -> tuple[list[dict], int]:
+    eligible = []
+    skipped_scope = 0
+    for row in rows:
+        contexts = row.get("contexts") or []
+        if any(
+            _policy_scope_applies_to_context(
+                policy_row=policy_row,
+                organization=context.get("organization"),
+                school=context.get("school"),
+            )
+            for context in contexts
+        ):
+            eligible.append(row)
+            continue
+        skipped_scope += 1
+    return eligible, skipped_scope
+
+
+def _acknowledgement_rows_by_context(
+    *,
+    policy_version: str,
+    acknowledged_for: str,
+    context_doctype: str,
+    context_names: list[str],
+) -> dict[str, dict]:
+    names = sorted({(name or "").strip() for name in context_names if (name or "").strip()})
+    if not names:
+        return {}
+
+    rows = frappe.get_all(
+        "Policy Acknowledgement",
+        filters={
+            "policy_version": policy_version,
+            "acknowledged_for": acknowledged_for,
+            "context_doctype": context_doctype,
+            "context_name": ["in", tuple(names)],
+            "docstatus": 1,
+        },
+        fields=["context_name", "acknowledged_at", "acknowledged_by"],
+        order_by="acknowledged_at desc",
+        limit=0,
+    )
+    ack_by_context: dict[str, dict] = {}
+    for row in rows:
+        context_name = (row.get("context_name") or "").strip()
+        if not context_name or context_name in ack_by_context:
+            continue
+        ack_by_context[context_name] = row
+    return ack_by_context
 
 
 def _dedupe_by_user(rows: list[dict]) -> list[dict]:
@@ -750,79 +1044,16 @@ def get_staff_policy_campaign_options(
     _ensure_school_in_scope(school=school, organization_scope=org_scope)
 
     organization_options = sorted(scoped_orgs)
-
-    school_options = []
-    if org_scope:
-        school_rows = frappe.get_all(
-            "School",
-            filters={"organization": ["in", tuple(org_scope)]},
-            fields=["name"],
-            limit=0,
-        )
-        school_options = sorted(
-            {(row.get("name") or "").strip() for row in school_rows if (row.get("name") or "").strip()}
-        )
-
-    group_conditions = []
-    group_params = {}
-    if org_scope:
-        group_conditions.append("organization IN %(organizations)s")
-        group_params["organizations"] = tuple(org_scope)
-    if school:
-        school_scope = get_descendant_schools(school) or [school]
-        group_conditions.append("school IN %(schools)s")
-        group_params["schools"] = tuple(school_scope)
-    group_where = " AND ".join(group_conditions) if group_conditions else "1=1"
-    group_rows = frappe.db.sql(
-        f"""
-        SELECT DISTINCT employee_group
-        FROM `tabEmployee`
-        WHERE employment_status = 'Active'
-          AND ifnull(employee_group, '') != ''
-          AND {group_where}
-        ORDER BY employee_group ASC
-        """,
-        group_params,
-        as_dict=True,
+    school_options = _school_options_for_scope(org_scope)
+    employee_group_options = _employee_group_options_for_scope(
+        organization_scope=org_scope,
+        school=school,
     )
-    employee_group_options = [
-        row.get("employee_group") for row in group_rows if (row.get("employee_group") or "").strip()
-    ]
-
-    policy_options = []
-    policy_params = {}
-    if organization:
-        ancestors = get_organization_ancestors_including_self(organization)
-        policy_scope_orgs = ancestors or []
-    else:
-        policy_scope_orgs = org_scope
-
-    if policy_scope_orgs:
-        policy_params["policy_organizations"] = tuple(policy_scope_orgs)
-        policy_options = frappe.db.sql(
-            f"""
-            SELECT
-                pv.name AS policy_version,
-                pv.version_label,
-                pv.effective_from,
-                pv.effective_to,
-                ip.name AS institutional_policy,
-                ip.policy_title,
-                ip.policy_key,
-                ip.organization AS policy_organization,
-                ip.school AS policy_school
-            FROM `tabPolicy Version` pv
-            JOIN `tabInstitutional Policy` ip
-              ON ip.name = pv.institutional_policy
-            WHERE pv.is_active = 1
-              AND ip.is_active = 1
-              AND ip.organization IN %(policy_organizations)s
-              AND {policy_applies_to_filter_sql(policy_alias="ip", audience_placeholder="%(applies_to)s")}
-            ORDER BY ip.policy_title ASC, pv.version_label DESC
-            """,
-            {**policy_params, "applies_to": "Staff"},
-            as_dict=True,
-        )
+    policy_options = _policy_options_for_scope(
+        organization=organization,
+        organization_scope=org_scope,
+        school=school,
+    )
 
     preview = {
         "target_employee_rows": 0,
@@ -831,19 +1062,48 @@ def get_staff_policy_campaign_options(
         "already_open": 0,
         "to_create": 0,
         "skipped_scope": 0,
+        "policy_audiences": [],
+        "audience_previews": [],
     }
     if organization and policy_version:
         policy_row = get_policy_version_context(
             policy_version,
             require_active=True,
-            require_staff_applies=True,
         )
-        preview = _campaign_preview(
+        dashboard_payload = _build_policy_signature_dashboard_payload(
             policy_row=policy_row,
             organization=organization,
             school=school,
             employee_group=employee_group,
+            limit=25,
         )
+        preview["policy_audiences"] = list((dashboard_payload.get("summary") or {}).get("applies_to_tokens") or [])
+        preview["audience_previews"] = [
+            {
+                "audience": section.get("audience"),
+                "audience_label": section.get("audience_label"),
+                "workflow_description": section.get("workflow_description"),
+                "supports_campaign_launch": bool(section.get("supports_campaign_launch")),
+                **(section.get("summary") or {}),
+            }
+            for section in dashboard_payload.get("audiences") or []
+        ]
+        staff_preview = next(
+            (section for section in (dashboard_payload.get("audiences") or []) if section.get("audience") == "Staff"),
+            None,
+        )
+        if staff_preview:
+            staff_summary = staff_preview.get("summary") or {}
+            preview.update(
+                {
+                    "target_employee_rows": staff_summary.get("target_rows", 0),
+                    "eligible_users": staff_summary.get("eligible_targets", 0),
+                    "already_signed": staff_summary.get("signed", 0),
+                    "already_open": staff_summary.get("already_open", 0),
+                    "to_create": staff_summary.get("to_create", 0),
+                    "skipped_scope": staff_summary.get("skipped_scope", 0),
+                }
+            )
 
     return {
         "options": {
@@ -1099,6 +1359,498 @@ def _build_breakdown(rows: list[dict], *, field: str) -> list[dict]:
     return out
 
 
+def _compact_scope_label(values: list[str], *, multiple_label: str) -> str | None:
+    cleaned = sorted({(value or "").strip() for value in values if (value or "").strip()})
+    if not cleaned:
+        return None
+    if len(cleaned) == 1:
+        return cleaned[0]
+    return multiple_label
+
+
+def _sorted_signed_rows(rows: list[dict], limit: int) -> list[dict]:
+    return sorted(
+        [row for row in rows if row.get("is_signed")],
+        key=lambda row: str(row.get("acknowledged_at") or ""),
+        reverse=True,
+    )[:limit]
+
+
+def _build_staff_audience_dataset(
+    *,
+    policy_row: dict,
+    organization: str,
+    school: str | None,
+    employee_group: str | None,
+) -> dict:
+    targets = _target_employees(organization=organization, school=school, employee_group=employee_group)
+    eligible, skipped_scope = _eligible_employee_rows(policy_row=policy_row, rows=targets)
+    eligible = _dedupe_by_user(eligible)
+
+    acknowledged_names = _acknowledged_employee_names(
+        policy_version=policy_row["policy_version"],
+        employee_names=[row.get("name") for row in eligible],
+    )
+    open_todo_user_ids = _open_todo_users(
+        policy_version=policy_row["policy_version"],
+        users=[row.get("user_id") for row in eligible],
+    )
+    ack_by_employee = _acknowledgement_rows_by_context(
+        policy_version=policy_row["policy_version"],
+        acknowledged_for="Staff",
+        context_doctype="Employee",
+        context_names=[row.get("name") for row in eligible],
+    )
+
+    already_signed = 0
+    already_open = 0
+    to_create = 0
+    rows = []
+    for employee in eligible:
+        employee_name = (employee.get("name") or "").strip()
+        user_id = (employee.get("user_id") or "").strip()
+        ack = ack_by_employee.get(employee_name)
+        if employee_name in acknowledged_names:
+            already_signed += 1
+        elif user_id in open_todo_user_ids:
+            already_open += 1
+        else:
+            to_create += 1
+
+        rows.append(
+            {
+                "record_id": employee_name,
+                "subject_name": employee.get("employee_full_name") or employee_name,
+                "subject_subtitle": (employee.get("employee_group") or "").strip() or None,
+                "context_label": None,
+                "organization": employee.get("organization"),
+                "school": employee.get("school"),
+                "is_signed": bool(ack),
+                "acknowledged_at": ack.get("acknowledged_at") if ack else None,
+                "acknowledged_by": ack.get("acknowledged_by") if ack else None,
+            }
+        )
+
+    signed_count = sum(1 for row in rows if row["is_signed"])
+    pending_count = len(rows) - signed_count
+    return {
+        "audience": "Staff",
+        "audience_label": POLICY_SIGNATURE_AUDIENCE_LABELS["Staff"],
+        "workflow_description": POLICY_SIGNATURE_AUDIENCE_WORKFLOW_DESCRIPTIONS["Staff"],
+        "supports_campaign_launch": True,
+        "summary": {
+            "target_rows": len(targets),
+            "eligible_targets": len(rows),
+            "signed": signed_count,
+            "pending": pending_count,
+            "completion_pct": _completion_pct(signed_count, len(rows)),
+            "skipped_scope": skipped_scope,
+            "already_open": already_open,
+            "to_create": to_create,
+        },
+        "breakdowns": {
+            "by_organization": _build_breakdown(rows, field="organization"),
+            "by_school": _build_breakdown(rows, field="school"),
+            "by_context": _build_breakdown(rows, field="subject_subtitle"),
+            "context_label": _("Employee Group"),
+        },
+        "rows": rows,
+    }
+
+
+def _build_student_audience_dataset(
+    *,
+    policy_row: dict,
+    organization: str,
+    school: str | None,
+) -> dict:
+    targets = _target_students(organization=organization, school=school)
+    eligible, skipped_scope = _eligible_student_rows(policy_row=policy_row, rows=targets)
+    ack_by_student = _acknowledgement_rows_by_context(
+        policy_version=policy_row["policy_version"],
+        acknowledged_for="Student",
+        context_doctype="Student",
+        context_names=[row.get("name") for row in eligible],
+    )
+
+    rows = []
+    for student in eligible:
+        student_name = (student.get("name") or "").strip()
+        preferred_name = (student.get("student_preferred_name") or "").strip()
+        full_name = (student.get("student_full_name") or "").strip() or student_name
+        ack = ack_by_student.get(student_name)
+        rows.append(
+            {
+                "record_id": student_name,
+                "subject_name": preferred_name or full_name,
+                "subject_subtitle": full_name if preferred_name and preferred_name != full_name else None,
+                "context_label": (student.get("student_email") or "").strip() or None,
+                "organization": student.get("organization"),
+                "school": student.get("school"),
+                "is_signed": bool(ack),
+                "acknowledged_at": ack.get("acknowledged_at") if ack else None,
+                "acknowledged_by": ack.get("acknowledged_by") if ack else None,
+            }
+        )
+
+    signed_count = sum(1 for row in rows if row["is_signed"])
+    pending_count = len(rows) - signed_count
+    return {
+        "audience": "Student",
+        "audience_label": POLICY_SIGNATURE_AUDIENCE_LABELS["Student"],
+        "workflow_description": POLICY_SIGNATURE_AUDIENCE_WORKFLOW_DESCRIPTIONS["Student"],
+        "supports_campaign_launch": False,
+        "summary": {
+            "target_rows": len(targets),
+            "eligible_targets": len(rows),
+            "signed": signed_count,
+            "pending": pending_count,
+            "completion_pct": _completion_pct(signed_count, len(rows)),
+            "skipped_scope": skipped_scope,
+            "already_open": 0,
+            "to_create": 0,
+        },
+        "breakdowns": {
+            "by_organization": _build_breakdown(rows, field="organization"),
+            "by_school": _build_breakdown(rows, field="school"),
+            "by_context": [],
+            "context_label": _("Portal Email"),
+        },
+        "rows": rows,
+    }
+
+
+def _build_guardian_audience_dataset(
+    *,
+    policy_row: dict,
+    organization: str,
+    school: str | None,
+) -> dict:
+    targets = _target_guardians(organization=organization, school=school)
+    eligible, skipped_scope = _eligible_guardian_rows(policy_row=policy_row, rows=targets)
+    ack_by_guardian = _acknowledgement_rows_by_context(
+        policy_version=policy_row["policy_version"],
+        acknowledged_for="Guardian",
+        context_doctype="Guardian",
+        context_names=[row.get("name") for row in eligible],
+    )
+
+    rows = []
+    for guardian in eligible:
+        guardian_name = (guardian.get("name") or "").strip()
+        contexts = guardian.get("contexts") or []
+        ack = ack_by_guardian.get(guardian_name)
+        linked_students = guardian.get("student_names") or []
+        context_bits = []
+        if linked_students:
+            context_bits.append(_("Linked students: {students}").format(students=", ".join(linked_students)))
+        if not guardian.get("user_id"):
+            context_bits.append(_("No guardian portal user linked yet"))
+        rows.append(
+            {
+                "record_id": guardian_name,
+                "subject_name": guardian.get("guardian_full_name") or guardian_name,
+                "subject_subtitle": guardian.get("guardian_email"),
+                "context_label": " · ".join(context_bits) if context_bits else None,
+                "organization": _compact_scope_label(
+                    [context.get("organization") for context in contexts],
+                    multiple_label=MULTIPLE_ORGANIZATIONS_LABEL,
+                ),
+                "school": _compact_scope_label(
+                    [context.get("school") for context in contexts],
+                    multiple_label=MULTIPLE_SCHOOLS_LABEL,
+                ),
+                "is_signed": bool(ack),
+                "acknowledged_at": ack.get("acknowledged_at") if ack else None,
+                "acknowledged_by": ack.get("acknowledged_by") if ack else None,
+            }
+        )
+
+    signed_count = sum(1 for row in rows if row["is_signed"])
+    pending_count = len(rows) - signed_count
+    return {
+        "audience": "Guardian",
+        "audience_label": POLICY_SIGNATURE_AUDIENCE_LABELS["Guardian"],
+        "workflow_description": POLICY_SIGNATURE_AUDIENCE_WORKFLOW_DESCRIPTIONS["Guardian"],
+        "supports_campaign_launch": False,
+        "summary": {
+            "target_rows": len(targets),
+            "eligible_targets": len(rows),
+            "signed": signed_count,
+            "pending": pending_count,
+            "completion_pct": _completion_pct(signed_count, len(rows)),
+            "skipped_scope": skipped_scope,
+            "already_open": 0,
+            "to_create": 0,
+        },
+        "breakdowns": {
+            "by_organization": _build_breakdown(rows, field="organization"),
+            "by_school": _build_breakdown(rows, field="school"),
+            "by_context": [],
+            "context_label": _("Guardian Email"),
+        },
+        "rows": rows,
+    }
+
+
+def _finalize_audience_section(*, dataset: dict, limit: int) -> dict:
+    rows = list(dataset.get("rows") or [])
+    pending_rows = [row for row in rows if not row.get("is_signed")][:limit]
+    signed_rows = _sorted_signed_rows(rows, limit)
+
+    return {
+        "audience": dataset.get("audience"),
+        "audience_label": dataset.get("audience_label"),
+        "workflow_description": dataset.get("workflow_description"),
+        "supports_campaign_launch": bool(dataset.get("supports_campaign_launch")),
+        "summary": dataset.get("summary") or {},
+        "breakdowns": dataset.get("breakdowns") or {},
+        "rows": {
+            "pending": pending_rows,
+            "signed": signed_rows,
+        },
+    }
+
+
+def _build_policy_signature_audience_dataset(
+    *,
+    audience: str,
+    policy_row: dict,
+    organization: str,
+    school: str | None,
+    employee_group: str | None,
+) -> dict:
+    if audience == "Staff":
+        return _build_staff_audience_dataset(
+            policy_row=policy_row,
+            organization=organization,
+            school=school,
+            employee_group=employee_group,
+        )
+    if audience == "Guardian":
+        return _build_guardian_audience_dataset(
+            policy_row=policy_row,
+            organization=organization,
+            school=school,
+        )
+    if audience == "Student":
+        return _build_student_audience_dataset(
+            policy_row=policy_row,
+            organization=organization,
+            school=school,
+        )
+    frappe.throw(_("Unsupported policy signature audience."))
+    return {}
+
+
+def _normalize_policy_signature_audience(audience: str | None) -> str:
+    audience_key = (audience or "").strip().casefold()
+    mapping = {
+        "staff": "Staff",
+        "guardian": "Guardian",
+        "student": "Student",
+    }
+    normalized = mapping.get(audience_key)
+    if normalized:
+        return normalized
+    frappe.throw(_("Unsupported policy signature audience."))
+    return ""
+
+
+def _normalize_register_status(status: str | None) -> str:
+    normalized = (status or POLICY_SIGNATURE_REGISTER_STATUS_ALL).strip().casefold()
+    allowed = {
+        POLICY_SIGNATURE_REGISTER_STATUS_ALL,
+        POLICY_SIGNATURE_REGISTER_STATUS_PENDING,
+        POLICY_SIGNATURE_REGISTER_STATUS_SIGNED,
+    }
+    if normalized in allowed:
+        return normalized
+    frappe.throw(_("Unsupported policy signature register status."))
+    return POLICY_SIGNATURE_REGISTER_STATUS_ALL
+
+
+def _register_row_matches_query(row: dict, query: str | None) -> bool:
+    query = (query or "").strip().casefold()
+    if not query:
+        return True
+
+    haystack = " ".join(
+        [
+            row.get("record_id") or "",
+            row.get("subject_name") or "",
+            row.get("subject_subtitle") or "",
+            row.get("context_label") or "",
+            row.get("organization") or "",
+            row.get("school") or "",
+            row.get("acknowledged_by") or "",
+        ]
+    ).casefold()
+    return query in haystack
+
+
+def _filter_policy_signature_register_rows(
+    *,
+    rows: list[dict],
+    status: str,
+    query: str | None,
+) -> list[dict]:
+    filtered: list[dict] = []
+    for row in rows:
+        is_signed = bool(row.get("is_signed"))
+        if status == POLICY_SIGNATURE_REGISTER_STATUS_PENDING and is_signed:
+            continue
+        if status == POLICY_SIGNATURE_REGISTER_STATUS_SIGNED and not is_signed:
+            continue
+        if not _register_row_matches_query(row, query):
+            continue
+        filtered.append(row)
+
+    filtered.sort(
+        key=lambda row: (
+            (row.get("subject_name") or row.get("record_id") or "").casefold(),
+            (row.get("record_id") or "").casefold(),
+        )
+    )
+    return filtered
+
+
+def _paginate_policy_signature_register_rows(*, rows: list[dict], page: int, limit: int) -> tuple[list[dict], dict]:
+    total_rows = len(rows)
+    total_pages = max(1, (total_rows + limit - 1) // limit)
+    page = max(1, min(page, total_pages))
+    start = (page - 1) * limit
+    end = start + limit
+
+    return rows[start:end], {
+        "page": page,
+        "limit": limit,
+        "total_rows": total_rows,
+        "total_pages": total_pages,
+    }
+
+
+def _build_policy_signature_dashboard_payload(
+    *,
+    policy_row: dict,
+    organization: str,
+    school: str | None,
+    employee_group: str | None,
+    limit: int,
+) -> dict:
+    audiences = _supported_policy_signature_audiences(policy_row.get("applies_to_tokens"))
+    if not audiences:
+        frappe.throw(_("Selected Policy Version does not apply to Staff, Guardians, or Students."))
+
+    audience_sections = []
+    for audience in audiences:
+        dataset = _build_policy_signature_audience_dataset(
+            audience=audience,
+            policy_row=policy_row,
+            organization=organization,
+            school=school,
+            employee_group=employee_group,
+        )
+        audience_sections.append(_finalize_audience_section(dataset=dataset, limit=limit))
+
+    total_eligible = sum((section.get("summary") or {}).get("eligible_targets", 0) for section in audience_sections)
+    total_signed = sum((section.get("summary") or {}).get("signed", 0) for section in audience_sections)
+    total_pending = sum((section.get("summary") or {}).get("pending", 0) for section in audience_sections)
+    total_skipped = sum((section.get("summary") or {}).get("skipped_scope", 0) for section in audience_sections)
+    return {
+        "summary": {
+            "policy_version": policy_row.get("policy_version"),
+            "institutional_policy": policy_row.get("institutional_policy"),
+            "policy_key": policy_row.get("policy_key"),
+            "policy_title": policy_row.get("policy_title"),
+            "version_label": policy_row.get("version_label"),
+            "effective_from": policy_row.get("effective_from"),
+            "effective_to": policy_row.get("effective_to"),
+            "organization": organization,
+            "school": school,
+            "employee_group": employee_group,
+            "applies_to_tokens": audiences,
+            "eligible_targets": total_eligible,
+            "signed": total_signed,
+            "pending": total_pending,
+            "completion_pct": _completion_pct(total_signed, total_eligible),
+            "skipped_scope": total_skipped,
+        },
+        "audiences": audience_sections,
+    }
+
+
+@frappe.whitelist()
+def get_staff_policy_signature_audience_rows(
+    *,
+    policy_version: str | None = None,
+    audience: str | None = None,
+    organization: str | None = None,
+    school: str | None = None,
+    employee_group: str | None = None,
+    status: str | None = None,
+    query: str | None = None,
+    page: int = 1,
+    limit: int = 25,
+):
+    user, roles = _require_roles(POLICY_SIGNATURE_ANALYTICS_ROLES)
+
+    policy_version = (policy_version or "").strip()
+    if not policy_version:
+        frappe.throw(_("policy_version is required."))
+
+    audience_name = _normalize_policy_signature_audience(audience)
+    register_status = _normalize_register_status(status)
+    query = (query or "").strip() or None
+    page = max(1, int(page or 1))
+    limit = max(1, min(int(limit or 25), 100))
+
+    policy_row = get_policy_version_context(
+        policy_version,
+        require_active=False,
+    )
+    if audience_name not in _supported_policy_signature_audiences(policy_row.get("applies_to_tokens")):
+        frappe.throw(_("Selected Policy Version does not apply to the requested audience."))
+
+    scoped_orgs = _manager_scope_organizations(user=user, roles=roles)
+    organization = (organization or "").strip() or (policy_row.get("policy_organization") or "").strip()
+    school = (school or "").strip() or None
+    employee_group = (employee_group or "").strip() or None
+
+    _ensure_organization_in_scope(organization, scoped_orgs)
+    org_scope = get_descendant_organizations(organization)
+    _ensure_school_in_scope(school=school, organization_scope=org_scope)
+
+    dataset = _build_policy_signature_audience_dataset(
+        audience=audience_name,
+        policy_row=policy_row,
+        organization=organization,
+        school=school,
+        employee_group=employee_group,
+    )
+    filtered_rows = _filter_policy_signature_register_rows(
+        rows=list(dataset.get("rows") or []),
+        status=register_status,
+        query=query,
+    )
+    paged_rows, pagination = _paginate_policy_signature_register_rows(
+        rows=filtered_rows,
+        page=page,
+        limit=limit,
+    )
+
+    return {
+        "audience": dataset.get("audience"),
+        "audience_label": dataset.get("audience_label"),
+        "workflow_description": dataset.get("workflow_description"),
+        "supports_campaign_launch": bool(dataset.get("supports_campaign_launch")),
+        "status": register_status,
+        "query": query,
+        "rows": paged_rows,
+        "pagination": pagination,
+    }
+
+
 @frappe.whitelist()
 def get_staff_policy_signature_dashboard(
     *,
@@ -1117,7 +1869,6 @@ def get_staff_policy_signature_dashboard(
     policy_row = get_policy_version_context(
         policy_version,
         require_active=False,
-        require_staff_applies=True,
     )
 
     scoped_orgs = _manager_scope_organizations(user=user, roles=roles)
@@ -1130,95 +1881,13 @@ def get_staff_policy_signature_dashboard(
     org_scope = get_descendant_organizations(organization)
     _ensure_school_in_scope(school=school, organization_scope=org_scope)
 
-    targets = _target_employees(
+    return _build_policy_signature_dashboard_payload(
+        policy_row=policy_row,
         organization=organization,
         school=school,
         employee_group=employee_group,
+        limit=limit,
     )
-    eligible, skipped_scope = _eligible_employee_rows(policy_row=policy_row, rows=targets)
-
-    employee_names = [row.get("name") for row in eligible if row.get("name")]
-    ack_rows = (
-        frappe.get_all(
-            "Policy Acknowledgement",
-            filters={
-                "policy_version": policy_version,
-                "acknowledged_for": "Staff",
-                "context_doctype": "Employee",
-                "context_name": ["in", tuple(employee_names)],
-            },
-            fields=["context_name", "acknowledged_at", "acknowledged_by"],
-            order_by="acknowledged_at desc",
-            limit=0,
-        )
-        if employee_names
-        else []
-    )
-
-    ack_by_employee: dict[str, dict] = {}
-    for row in ack_rows:
-        context_name = (row.get("context_name") or "").strip()
-        if not context_name or context_name in ack_by_employee:
-            continue
-        ack_by_employee[context_name] = row
-
-    rows = []
-    for employee in eligible:
-        employee_name = (employee.get("name") or "").strip()
-        ack = ack_by_employee.get(employee_name)
-        rows.append(
-            {
-                "employee": employee_name,
-                "employee_name": employee.get("employee_full_name") or employee_name,
-                "user_id": employee.get("user_id"),
-                "organization": employee.get("organization"),
-                "school": employee.get("school"),
-                "employee_group": employee.get("employee_group"),
-                "is_signed": bool(ack),
-                "acknowledged_at": ack.get("acknowledged_at") if ack else None,
-                "acknowledged_by": ack.get("acknowledged_by") if ack else None,
-            }
-        )
-
-    signed_count = sum(1 for row in rows if row["is_signed"])
-    pending_count = len(rows) - signed_count
-
-    pending_rows = [row for row in rows if not row["is_signed"]][:limit]
-    signed_rows = sorted(
-        [row for row in rows if row["is_signed"]],
-        key=lambda row: str(row.get("acknowledged_at") or ""),
-        reverse=True,
-    )[:limit]
-
-    return {
-        "summary": {
-            "policy_version": policy_version,
-            "institutional_policy": policy_row.get("institutional_policy"),
-            "policy_key": policy_row.get("policy_key"),
-            "policy_title": policy_row.get("policy_title"),
-            "version_label": policy_row.get("version_label"),
-            "effective_from": policy_row.get("effective_from"),
-            "effective_to": policy_row.get("effective_to"),
-            "organization": organization,
-            "school": school,
-            "employee_group": employee_group,
-            "target_employee_rows": len(targets),
-            "eligible_users": len(rows),
-            "signed": signed_count,
-            "pending": pending_count,
-            "completion_pct": _completion_pct(signed_count, len(rows)),
-            "skipped_scope": skipped_scope,
-        },
-        "breakdowns": {
-            "by_organization": _build_breakdown(rows, field="organization"),
-            "by_school": _build_breakdown(rows, field="school"),
-            "by_employee_group": _build_breakdown(rows, field="employee_group"),
-        },
-        "rows": {
-            "pending": pending_rows,
-            "signed": signed_rows,
-        },
-    }
 
 
 @frappe.whitelist()

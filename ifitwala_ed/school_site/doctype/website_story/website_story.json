@@ -2,18 +2,24 @@
  "actions": [],
  "allow_rename": 1,
  "autoname": "hash",
- "creation": "2026-01-28 00:00:00.000000",
+ "creation": "2026-01-28 00:00:00",
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
   "section_break_identity",
   "title",
+  "content_owner",
   "slug",
-  "school",
-  "status",
   "publish_date",
+  "expire_at",
   "seo_profile",
+  "column_break_ecwu",
+  "status",
+  "school",
+  "workflow_state",
+  "publish_at",
   "tags",
+  "section_break_sfss",
   "blocks"
  ],
  "fields": [
@@ -25,33 +31,61 @@
   {
    "fieldname": "title",
    "fieldtype": "Data",
+   "in_list_view": 1,
    "label": "Title",
    "reqd": 1
   },
   {
    "fieldname": "slug",
    "fieldtype": "Data",
+   "in_list_view": 1,
    "label": "Slug",
    "reqd": 1
   },
   {
    "fieldname": "school",
    "fieldtype": "Link",
+   "in_list_view": 1,
    "label": "School",
    "options": "School",
    "reqd": 1
+  },
+  {
+   "fieldname": "content_owner",
+   "fieldtype": "Link",
+   "label": "Content Owner",
+   "options": "User"
   },
   {
    "default": "Draft",
    "fieldname": "status",
    "fieldtype": "Select",
    "label": "Status",
-   "options": "Draft\nPublished"
+   "options": "Draft\nPublished",
+   "read_only": 1
+  },
+  {
+   "default": "Draft",
+   "fieldname": "workflow_state",
+   "fieldtype": "Select",
+   "label": "Workflow State",
+   "options": "Draft\nIn Review\nApproved\nPublished",
+   "read_only": 1
   },
   {
    "fieldname": "publish_date",
    "fieldtype": "Date",
    "label": "Publish Date"
+  },
+  {
+   "fieldname": "publish_at",
+   "fieldtype": "Datetime",
+   "label": "Publish At"
+  },
+  {
+   "fieldname": "expire_at",
+   "fieldtype": "Datetime",
+   "label": "Expire At"
   },
   {
    "fieldname": "seo_profile",
@@ -69,15 +103,24 @@
    "fieldtype": "Table",
    "label": "Blocks",
    "options": "School Website Page Block"
+  },
+  {
+   "fieldname": "column_break_ecwu",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "section_break_sfss",
+   "fieldtype": "Section Break"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-01-28 00:00:00.000000",
+ "modified": "2026-04-11 23:32:18.335219",
  "modified_by": "Administrator",
  "module": "School Site",
  "name": "Website Story",
+ "naming_rule": "Random",
  "owner": "Administrator",
  "permissions": [
   {
@@ -94,6 +137,30 @@
    "create": 1,
    "delete": 1,
    "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Website Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Marketing User",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
    "print": 1,
    "read": 1,
    "role": "Academic Admin",
@@ -101,6 +168,7 @@
    "write": 1
   }
  ],
+ "row_format": "Dynamic",
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": []

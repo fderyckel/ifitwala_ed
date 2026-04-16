@@ -60,6 +60,14 @@ Cross-app wrapper contract:
 
 * if `ifitwala_ed` calls a new `ifitwala_drive.api.*` method, that Drive wrapper must be exported in the deployed Drive app at the same time
 * the thin API wrapper and the underlying `ifitwala_drive.services.integration.ifitwala_ed_media.*` service must both exist
+* the thin API wrapper signature is part of the contract, not an implementation detail
+* Drive-backed session-creation wrappers used by Ed must continue to accept the workflow-specific identifiers plus the shared governed upload keywords:
+  * `filename_original`
+  * `mime_type_hint`
+  * `expected_size_bytes`
+  * `idempotency_key`
+  * `upload_source`
+* for the current governed media wrappers, removing `idempotency_key` from the exported `ifitwala_drive.api.media.*` function signature is a breaking cross-app change
 * browser refresh, browser cache clear, and `bench clear-cache` do **not** reload Python imports for this contract
 * deployment is incomplete until app processes are restarted and the imported module surface matches the code on disk
 
@@ -68,11 +76,14 @@ Mandatory deployment verification for new Drive-backed upload wrappers:
 * deploy both `ifitwala_ed` and `ifitwala_drive` together
 * restart the web and worker processes after deploy
 * verify from `bench --site <site> console`:
+  * `import inspect`
   * `import ifitwala_drive.api.media as m; hasattr(m, "<method_name>")`
   * `import ifitwala_drive.services.integration.ifitwala_ed_media as i; hasattr(i, "<method_name>_service")`
+  * `inspect.signature(getattr(m, "<method_name>"))`
+  * confirm the printed signature still includes the shared governed upload keywords expected by Ed, including `idempotency_key` where the Ed wrapper passes it
   * confirm `m.__file__` and `i.__file__` point to the intended checkout
-* add a regression test on the Ed side that resolves the correct Drive callable
-* add a regression test on the Drive side that the exported wrapper delegates to the intended service
+* add a regression test on the Ed side that exercises the strict session-wrapper keyword contract at `_drive_upload_and_finalize(...)`
+* add a regression test on the Drive side that the exported wrapper delegates to the intended service and preserves the accepted keyword surface
 
 Cross-app MIME handoff rule:
 
@@ -575,6 +586,7 @@ Current governed Desk endpoints:
 * `upload_applicant_image(student_applicant)`
 * `upload_task_resource(task)`
 * `upload_task_submission_attachment(task_submission)`
+* `upload_org_communication_attachment(org_communication)`
 
 These are the only allowed upload entry points for:
 
@@ -584,6 +596,7 @@ These are the only allowed upload entry points for:
 * Student Applicant `applicant_image`
 * Task `attachments` file rows
 * Task Submission attachments
+* Org Communication `attachments` file rows
 
 Server-side enforcement:
 

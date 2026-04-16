@@ -44,6 +44,25 @@ The wrapper invokes `python3 -m ifitwala_ed.codex_cli`.
   - backend smoke phase
 - Phases can be skipped with `--skip-lint`, `--skip-frontend`, `--skip-backend`.
 
+7. `e2e --site <site> --base-url <url>`
+- Prepares deterministic browser-test scenarios through `ifitwala_ed.tests.e2e.scenarios.prepare_pack`.
+- Runs the repo-root Cypress suite against the running site.
+- Supported packs:
+  - `smoke`
+  - `critical`
+- Useful flags:
+  - `--pack smoke`
+  - `--headed`
+  - `--open`
+  - `--skip-prepare`
+  - `--skip-frontend-build`
+
+Root package scripts mirror the CLI and expect `SITE` and `BASE_URL` env vars:
+- `yarn test:e2e:smoke`
+- `yarn test:e2e:critical`
+- `yarn test:e2e:headed`
+- `yarn test:e2e:open`
+
 ## 4. Execution Controls
 
 1. `--dry-run`

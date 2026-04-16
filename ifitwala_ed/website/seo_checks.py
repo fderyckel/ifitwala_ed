@@ -8,6 +8,7 @@ from frappe import _
 from frappe.utils import strip_html
 
 from ifitwala_ed.website.block_registry import get_block_definition_map
+from ifitwala_ed.website.utils import is_block_enabled
 
 SEO_TITLE_MAX = 60
 SEO_DESCRIPTION_MAX = 160
@@ -54,10 +55,7 @@ def _coerce_blocks(rows: Any) -> list[dict]:
 
 
 def _is_enabled(row: dict) -> bool:
-    value = row.get("is_enabled")
-    if isinstance(value, bool):
-        return value
-    return int(value or 0) == 1
+    return is_block_enabled(row)
 
 
 def _sort_rank(row: dict) -> float:

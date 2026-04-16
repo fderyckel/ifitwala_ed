@@ -162,6 +162,10 @@
 										<button
 											type="button"
 											class="meeting-modal__action-button"
+											:class="{
+												'cursor-not-allowed opacity-60': Boolean(planSessionBlockedReason),
+											}"
+											:disabled="Boolean(planSessionBlockedReason)"
 											@click="emitPlanSession"
 										>
 											<FeatherIcon name="edit-3" class="h-4 w-4" />
@@ -207,6 +211,12 @@
 										</button>
 									</template>
 								</div>
+								<p
+									v-if="planSessionBlockedReason"
+									class="mt-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 type-caption text-amber-900"
+								>
+									{{ planSessionBlockedReason }}
+								</p>
 							</div>
 						</div>
 					</DialogPanel>
@@ -224,11 +234,12 @@ import {
 	TransitionChild,
 	TransitionRoot,
 } from '@headlessui/vue';
-import { FeatherIcon } from 'frappe-ui';
+import { FeatherIcon, toast } from 'frappe-ui';
 import { computed, onBeforeUnmount, ref, watch } from 'vue';
 import { RouterLink, useRoute } from 'vue-router';
 import { useOverlayStack } from '@/composables/useOverlayStack';
 import { api } from '@/lib/client';
+import { getPlanSessionBlockedReason } from '@/lib/planning/planningActionGuards';
 import type { ClassEventDetails } from './classEventTypes';
 
 const props = defineProps<{
@@ -299,6 +310,7 @@ watch(
 );
 
 const courseLabel = computed(() => data.value?.course_name || data.value?.course || '—');
+const planSessionBlockedReason = computed(() => getPlanSessionBlockedReason(data.value?.course));
 
 const sessionDateLabel = computed(() => {
 	if (!data.value?.session_date) return '';
@@ -388,6 +400,10 @@ function emitCreateTask() {
 
 function emitPlanSession() {
 	if (!data.value?.student_group) return;
+	if (planSessionBlockedReason.value) {
+		toast.error(planSessionBlockedReason.value);
+		return;
+	}
 
 	overlay.replaceTop('quick-class-session', {
 		studentGroup: data.value.student_group,

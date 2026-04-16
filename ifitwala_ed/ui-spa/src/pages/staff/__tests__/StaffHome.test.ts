@@ -171,7 +171,7 @@ describe('StaffHome', () => {
 				quick_action_student_log: true,
 				quick_action_org_communication: true,
 				quick_action_gradebook: true,
-				analytics_scheduling: true,
+				room_utilization_page: true,
 			},
 		});
 		listFocusItemsMock.mockResolvedValue([]);
@@ -210,5 +210,27 @@ describe('StaffHome', () => {
 			prefillDueDate: null,
 			prefillAvailableFrom: null,
 		});
+	});
+
+	it('shows room utilization in explore links without exposing scheduling analytics links', async () => {
+		getStaffHomeHeaderMock.mockResolvedValue({
+			first_name: 'Mali',
+			full_name: 'Mali Bangkok',
+			capabilities: {
+				room_utilization_page: true,
+				analytics_scheduling: false,
+			},
+		});
+		listFocusItemsMock.mockResolvedValue([]);
+
+		mountStaffHome();
+		await flushUi();
+
+		const exploreLinks = document.querySelector('[data-testid="staff-home-explore-links"]');
+		const analyticsCategories = document.querySelector('.staff-home__analytics-category-grid');
+
+		expect(exploreLinks?.textContent || '').toContain('Room Utilization');
+		expect(analyticsCategories?.textContent || '').toContain('Room Occupancy');
+		expect(analyticsCategories?.textContent || '').not.toContain('Bus & Route Load');
 	});
 });

@@ -7,6 +7,7 @@ import frappe
 from frappe import _
 
 from ifitwala_ed.api import student_groups as student_groups_api
+from ifitwala_ed.utilities.file_classification_contract import LEARNING_RESOURCE_PURPOSE
 
 MATERIAL_TYPE_FILE = "File"
 MATERIAL_TYPE_REFERENCE_LINK = "Reference Link"
@@ -25,7 +26,7 @@ MATERIAL_CLASS_OWNED_ANCHORS = {"Class Teaching Plan", "Class Session"}
 MATERIAL_FILE_SLOT = "material_file"
 MATERIAL_BINDING_ROLE = "general_reference"
 MATERIAL_DATA_CLASS = "academic"
-MATERIAL_PURPOSE = "general_reference"
+MATERIAL_PURPOSE = LEARNING_RESOURCE_PURPOSE
 MATERIAL_RETENTION_POLICY = "until_program_end_plus_1y"
 
 _ADMIN_ROLES = {"Administrator", "System Manager", "Academic Admin"}
@@ -480,10 +481,14 @@ def _coordinator_course_names(user: str) -> list[str]:
 
     rows = frappe.db.sql(
         """
-        SELECT course
-        FROM `tabProgram Coordinator`
-        WHERE employee = %(employee)s
-          AND COALESCE(status, 'Active') = 'Active'
+        SELECT DISTINCT pcr.course
+        FROM `tabProgram Coordinator` pc
+        JOIN `tabProgram Course` pcr ON pcr.parent = pc.parent
+        WHERE pc.parenttype = 'Program'
+          AND pc.parentfield = 'program_coordinators'
+          AND pcr.parenttype = 'Program'
+          AND pcr.parentfield = 'courses'
+          AND pc.coordinator = %(employee)s
         """,
         {"employee": employee},
         as_dict=True,
@@ -543,10 +548,11 @@ def _visibility_scope(user: str, *, manage_only: bool = False) -> dict[str, obje
             if _normalize_text(course):
                 shared_courses.add(_normalize_text(course))
 
-    if not manage_only and "Curriculum Coordinator" in roles:
+    if "Curriculum Coordinator" in roles:
         coordinator_courses = _coordinator_course_names(user)
         shared_courses.update(coordinator_courses)
-        class_courses.update(coordinator_courses)
+        if not manage_only:
+            class_courses.update(coordinator_courses)
 
     if not manage_only:
         student_courses = _student_course_names(user)
@@ -819,6 +825,9 @@ def _staff_has_course_access(user: str, course: str, roles: set[str]) -> bool:
 def _staff_can_manage_course(user: str, course: str, roles: set[str]) -> bool:
     group_names = list(student_groups_api._instructor_group_names(user) or [])
     if group_names and frappe.db.exists("Student Group", {"name": ["in", group_names], "course": course}):
+        return True
+
+    if "Curriculum Coordinator" in roles and course in set(_get_coordinator_course_names(user)):
         return True
 
     return False

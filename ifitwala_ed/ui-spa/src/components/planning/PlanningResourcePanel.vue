@@ -1,6 +1,6 @@
 <template>
-	<article class="rounded-[2rem] border border-line-soft bg-white p-6 shadow-soft">
-		<div class="flex items-center justify-between gap-3">
+	<article :class="panelClasses">
+		<div v-if="!hideHeader" class="flex items-center justify-between gap-3">
 			<div>
 				<p class="type-overline text-ink/60">{{ eyebrow }}</p>
 				<h2 class="mt-1 type-h3 text-ink">{{ title }}</h2>
@@ -11,7 +11,10 @@
 
 		<div
 			v-if="!anchorName"
-			class="mt-5 rounded-2xl border border-dashed border-line-soft bg-surface-soft px-4 py-4"
+			:class="[
+				panelSectionOffset,
+				'rounded-2xl border border-dashed border-line-soft bg-surface-soft px-4 py-4',
+			]"
 		>
 			<p class="type-body-strong text-ink">Resource sharing is blocked here.</p>
 			<p class="mt-1 type-caption text-ink/70">{{ blockedMessage }}</p>
@@ -20,7 +23,10 @@
 		<template v-else>
 			<div
 				v-if="!canManageResources"
-				class="mt-5 rounded-2xl border border-line-soft bg-surface-soft px-4 py-4"
+				:class="[
+					panelSectionOffset,
+					'rounded-2xl border border-line-soft bg-surface-soft px-4 py-4',
+				]"
 			>
 				<p class="type-body-strong text-ink">Resources are visible here, but editing is locked.</p>
 				<p class="mt-1 type-caption text-ink/70">{{ readOnlyMessageToUse }}</p>
@@ -28,7 +34,7 @@
 
 			<section
 				v-if="canManageResources"
-				class="mt-5 rounded-2xl border border-line-soft bg-surface-soft p-5"
+				:class="[panelSectionOffset, 'rounded-2xl border border-line-soft bg-surface-soft p-5']"
 			>
 				<div class="flex flex-wrap gap-2">
 					<button
@@ -63,6 +69,9 @@
 					<div class="space-y-1">
 						<label class="type-label">Title</label>
 						<FormControl v-model="form.title" type="text" placeholder="Resource title" />
+						<p v-if="composerMode === 'link'" class="type-caption text-ink/60">
+							Leave this blank to use the link domain as the title.
+						</p>
 					</div>
 					<div class="space-y-1">
 						<label class="type-label">How students use it</label>
@@ -147,7 +156,7 @@
 				</div>
 			</section>
 
-			<section class="mt-5 space-y-3">
+			<section :class="[panelSectionOffset, 'space-y-3']">
 				<div
 					v-if="!resources.length"
 					class="rounded-2xl border border-dashed border-line-soft px-4 py-4"
@@ -220,18 +229,27 @@ import {
 } from '@/lib/services/staff/staffTeachingService';
 import type { StaffPlanningMaterial } from '@/types/contracts/staff_teaching/get_staff_class_planning_surface';
 
-const props = defineProps<{
-	anchorDoctype: PlanningMaterialAnchorDoctype;
-	anchorName?: string | null;
-	eyebrow: string;
-	title: string;
-	description: string;
-	emptyMessage: string;
-	blockedMessage: string;
-	canManage?: boolean;
-	readOnlyMessage?: string;
-	resources: StaffPlanningMaterial[];
-}>();
+const props = withDefaults(
+	defineProps<{
+		anchorDoctype: PlanningMaterialAnchorDoctype;
+		anchorName?: string | null;
+		eyebrow: string;
+		title: string;
+		description: string;
+		emptyMessage: string;
+		blockedMessage: string;
+		canManage?: boolean;
+		readOnlyMessage?: string;
+		resources: StaffPlanningMaterial[];
+		hideHeader?: boolean;
+		embedded?: boolean;
+	}>(),
+	{
+		canManage: true,
+		hideHeader: false,
+		embedded: false,
+	}
+);
 
 const emit = defineEmits<{
 	(e: 'changed'): void;
@@ -267,7 +285,12 @@ const usageRoleOptions = [
 	{ label: 'Example', value: 'Example' },
 ];
 
+const hideHeader = computed(() => props.hideHeader);
 const canManageResources = computed(() => props.canManage !== false);
+const panelClasses = computed(() =>
+	props.embedded ? 'space-y-0' : 'rounded-[2rem] border border-line-soft bg-white p-6 shadow-soft'
+);
+const panelSectionOffset = computed(() => (hideHeader.value ? '' : 'mt-5'));
 const readOnlyMessageToUse = computed(
 	() =>
 		props.readOnlyMessage ||
@@ -277,10 +300,9 @@ const readOnlyMessageToUse = computed(
 const canSubmit = computed(() => {
 	if (!canManageResources.value) return false;
 	if (!props.anchorName?.trim()) return false;
-	if (!form.title.trim()) return false;
 	return composerMode.value === 'link'
-		? Boolean(form.reference_url.trim())
-		: Boolean(selectedFile.value);
+		? Boolean(normalizeReferenceUrl(form.reference_url))
+		: Boolean(selectedFile.value) && Boolean(form.title.trim());
 });
 
 function resetDraftFields() {
@@ -316,7 +338,7 @@ async function addResource() {
 	if (!canSubmit.value) {
 		errorMessage.value =
 			composerMode.value === 'link'
-				? 'Provide a title and a valid link.'
+				? 'Provide a valid http or https link.'
 				: 'Provide a title and choose a file.';
 		return;
 	}
@@ -325,11 +347,15 @@ async function addResource() {
 	errorMessage.value = '';
 	try {
 		if (composerMode.value === 'link') {
+			const referenceUrl = normalizeReferenceUrl(form.reference_url);
+			if (!referenceUrl) {
+				throw new Error('Provide a valid http or https link.');
+			}
 			await createPlanningReferenceMaterial({
 				anchor_doctype: props.anchorDoctype,
 				anchor_name: props.anchorName,
-				title: form.title.trim(),
-				reference_url: form.reference_url.trim(),
+				title: resolveReferenceTitle(form.title, referenceUrl),
+				reference_url: referenceUrl,
 				description: form.description.trim() || undefined,
 				modality: form.modality,
 				usage_role: form.usage_role,
@@ -383,6 +409,32 @@ async function removeResource(placement: string) {
 		toast.error(message);
 	} finally {
 		removingPlacement.value = null;
+	}
+}
+
+function normalizeReferenceUrl(value: string): string {
+	const trimmed = String(value || '').trim();
+	if (!trimmed) return '';
+	try {
+		const parsed = new URL(trimmed);
+		return parsed.protocol === 'http:' || parsed.protocol === 'https:' ? trimmed : '';
+	} catch {
+		return '';
+	}
+}
+
+function resolveReferenceTitle(title: string, referenceUrl: string): string {
+	const explicitTitle = String(title || '').trim();
+	if (explicitTitle) return explicitTitle;
+	return deriveTitleFromUrl(referenceUrl);
+}
+
+function deriveTitleFromUrl(referenceUrl: string): string {
+	try {
+		const parsed = new URL(referenceUrl);
+		return (parsed.hostname || referenceUrl).replace(/^www\./, '') || referenceUrl;
+	} catch {
+		return referenceUrl;
 	}
 }
 </script>

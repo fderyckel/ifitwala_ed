@@ -514,7 +514,70 @@ Canonical provider: `ifitwala_ed.website.providers.staff_directory.get_context`
 
 ---
 
-## 13) CTA
+## 13) Story Feed
+
+Canonical provider: `ifitwala_ed.website.providers.story_feed.get_context`
+
+### Purpose
+
+* Display the latest published school stories or announcements
+* Reuse the canonical `Website Story` publication workflow instead of page-specific copy
+* Link to the school-level stories index and story detail routes
+
+### Props (schema)
+
+| prop | type | required | default | notes |
+| --- | --- | --- | --- | --- |
+| `title` | string | no | `Stories & News` | Section title |
+| `description` | string | no | — | Supporting intro copy |
+| `limit` | integer | no | `3` | Max published stories to show |
+| `show_excerpt` | boolean | no | `true` | Include server-derived excerpt text |
+
+### Example
+```json
+{
+  "title": "Stories & News",
+  "description": "Read the latest stories, announcements, and moments from campus life.",
+  "limit": 3,
+  "show_excerpt": true
+}
+```
+
+---
+
+## 14) Academic Calendar
+
+Canonical provider: `ifitwala_ed.website.providers.academic_calendar.get_context`
+
+### Purpose
+
+* Display upcoming public academic dates from the selected `School Calendar`
+* Keep school-term and holiday highlights reusable instead of hand-maintained on pages
+
+### Props (schema)
+
+| prop | type | required | default | notes |
+| --- | --- | --- | --- | --- |
+| `title` | string | no | `Academic Calendar` | Section title |
+| `description` | string | no | — | Supporting intro copy |
+| `limit` | integer | no | `6` | Max upcoming items to render |
+| `include_terms` | boolean | no | `true` | Show term rows from the selected calendar |
+| `include_holidays` | boolean | no | `true` | Show upcoming holiday rows from the selected calendar |
+
+### Example
+```json
+{
+  "title": "Academic Calendar",
+  "description": "Keep track of the most important upcoming term dates and school holidays.",
+  "limit": 6,
+  "include_terms": true,
+  "include_holidays": true
+}
+```
+
+---
+
+## 15) CTA
 
 ### Purpose
 
@@ -541,7 +604,7 @@ Canonical provider: `ifitwala_ed.website.providers.staff_directory.get_context`
 
 ---
 
-## 13) Course Intro
+## 16) Course Intro
 
 ### Purpose
 
@@ -571,7 +634,7 @@ Canonical provider: `ifitwala_ed.website.providers.staff_directory.get_context`
 
 ---
 
-## 14) Learning Highlights
+## 17) Learning Highlights
 
 ### Purpose
 
@@ -595,7 +658,7 @@ Canonical provider: `ifitwala_ed.website.providers.staff_directory.get_context`
 
 ---
 
-## 15) Course Catalog
+## 18) Course Catalog
 
 ### Purpose
 

@@ -8,6 +8,15 @@ export type RouteTarget = {
 	query?: Record<string, string>
 }
 
+export type PolicyActionItem = {
+	policy_version: string
+	policy_title: string
+	version_label?: string
+	description?: string
+	status_label: string
+	href: RouteTarget
+}
+
 export type Response = {
 	meta: {
 		generated_at: string
@@ -22,6 +31,10 @@ export type Response = {
 		first_name?: string | null
 		full_name?: string | null
 		image_url?: string | null
+	}
+	policies?: {
+		pending_count: number
+		items: PolicyActionItem[]
 	}
 	learning: {
 		today_classes: TodayClass[]
@@ -40,6 +53,23 @@ export type Response = {
 		}
 		timeline: TimelineDay[]
 	}
+	communications: {
+		center_href: RouteTarget
+		latest_course_update?: StudentCommunicationSummary | null
+		latest_activity_update?: StudentCommunicationSummary | null
+		latest_school_update?: StudentCommunicationSummary | null
+	}
+}
+
+export type StudentCommunicationSummary = {
+	kind: 'course' | 'activity' | 'school' | 'pastoral' | 'cohort'
+	title: string
+	subtitle?: string | null
+	publish_at?: string | null
+	href?: RouteTarget | null
+	href_label?: string | null
+	item_id?: string | null
+	source_label?: string | null
 }
 
 export type TodayClass = {

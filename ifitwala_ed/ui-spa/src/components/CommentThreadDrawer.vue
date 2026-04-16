@@ -12,7 +12,7 @@
 		<TransitionRoot as="template" :show="open">
 			<Dialog
 				as="div"
-				class="if-overlay if-overlay--drawer if-overlay--comment-thread"
+				class="if-overlay if-overlay--drawer if-overlay--comment-thread z-[100]"
 				:initialFocus="closeButtonRef"
 				@close="emit('close')"
 			>
@@ -38,9 +38,11 @@
 						leave-from="if-overlay__panel-to"
 						leave-to="if-overlay__panel-from"
 					>
-						<DialogPanel class="if-overlay__panel if-overlay__panel--drawer-sm">
+						<DialogPanel
+							class="if-overlay__panel if-overlay__panel--drawer-sm comment-thread__panel"
+						>
 							<header
-								class="flex items-start justify-between gap-3 border-b border-border/60 bg-[rgb(var(--surface-rgb)/0.96)] px-4 py-4"
+								class="comment-thread__header flex items-start justify-between gap-3 border-b border-border/60 px-4 py-4"
 							>
 								<div class="min-w-0">
 									<p class="type-overline text-ink/60">Thread</p>
@@ -57,7 +59,9 @@
 								</button>
 							</header>
 
-							<section class="if-overlay__body custom-scrollbar space-y-4 px-4 py-4">
+							<section
+								class="if-overlay__body comment-thread__body custom-scrollbar space-y-4 px-4 py-4"
+							>
 								<div v-if="loading" class="py-4 text-center">
 									<LoadingIndicator />
 								</div>
@@ -89,7 +93,7 @@
 								</div>
 							</section>
 
-							<div class="border-t border-border/60 bg-[rgb(var(--surface-strong-rgb)/1)] p-4">
+							<div class="comment-thread__footer border-t border-border/60 p-4">
 								<div class="flex flex-col gap-2">
 									<FormControl
 										v-model="commentValue"
@@ -187,3 +191,17 @@ function formatTimestamp(value?: string | null) {
 	return value ?? '';
 }
 </script>
+
+<style scoped>
+.comment-thread__panel {
+	background: rgb(var(--surface-strong-rgb) / 1);
+	border-left: 1px solid rgb(var(--border-rgb) / 0.9);
+	box-shadow: var(--shadow-overlay);
+}
+
+.comment-thread__header,
+.comment-thread__body,
+.comment-thread__footer {
+	background: rgb(var(--surface-strong-rgb) / 1);
+}
+</style>

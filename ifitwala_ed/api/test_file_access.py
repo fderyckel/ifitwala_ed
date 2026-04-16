@@ -12,13 +12,16 @@ from ifitwala_ed.api.file_access import (
     build_employee_file_open_url,
     build_guardian_file_open_url,
     build_org_communication_attachment_open_url,
+    build_public_website_media_url,
     download_academic_file,
     download_employee_file,
     download_guardian_file,
     open_org_communication_attachment,
+    open_public_website_media,
     resolve_academic_file_open_url,
     resolve_employee_file_open_url,
     resolve_guardian_file_open_url,
+    resolve_public_website_media_url,
 )
 
 
@@ -105,6 +108,32 @@ class TestFileAccessUrlContracts(FrappeTestCase):
         )
         self.assertEqual((query.get("org_communication") or [None])[0], "COMM-0001")
         self.assertEqual((query.get("row_name") or [None])[0], "row-001")
+
+    def test_build_public_website_media_url_includes_file(self):
+        url = build_public_website_media_url(file_name="FILE-PUBLIC-1")
+        parsed = urlparse(url)
+        query = parse_qs(parsed.query)
+
+        self.assertEqual(parsed.path, "/api/method/ifitwala_ed.api.file_access.open_public_website_media")
+        self.assertEqual((query.get("file") or [None])[0], "FILE-PUBLIC-1")
+
+    def test_resolve_public_website_media_keeps_public_files(self):
+        self.assertEqual(
+            resolve_public_website_media_url(
+                file_name="FILE-PUBLIC-1",
+                file_url="/files/logo.png",
+            ),
+            "/files/logo.png",
+        )
+
+    def test_resolve_public_website_media_wraps_private_files(self):
+        self.assertEqual(
+            resolve_public_website_media_url(
+                file_name="FILE-PUBLIC-1",
+                file_url="/private/files/logo.png",
+            ),
+            "/api/method/ifitwala_ed.api.file_access.open_public_website_media?file=FILE-PUBLIC-1",
+        )
 
     def test_resolve_guardian_file_open_url_keeps_external_links(self):
         external = "https://cdn.example.com/avatar.webp"
@@ -363,3 +392,51 @@ class TestFileAccessUrlContracts(FrappeTestCase):
             frappe.local.response.get("location"),
             "https://preview.example.com/policy.pdf",
         )
+
+    def test_open_public_website_media_streams_private_logo_for_guest(self):
+        file_row = {
+            "name": "FILE-PUBLIC-1",
+            "file_url": "/private/files/Organization/root/logo.png",
+            "file_name": "logo.png",
+            "is_private": 1,
+            "organization": "ORG-ROOT",
+            "school": "",
+        }
+
+        with (
+            patch("ifitwala_ed.api.file_access._resolve_public_website_media_row", return_value=file_row),
+            patch("ifitwala_ed.api.file_access._assert_public_website_media_visible"),
+            patch("ifitwala_ed.api.file_access._read_file_bytes", return_value=b"logo-bytes"),
+        ):
+            frappe.local.response = {}
+            open_public_website_media(file="FILE-PUBLIC-1")
+
+        self.assertEqual(frappe.local.response.get("type"), "download")
+        self.assertEqual(frappe.local.response.get("filename"), "logo.png")
+        self.assertEqual(frappe.local.response.get("filecontent"), b"logo-bytes")
+        self.assertEqual(frappe.local.response.get("display_content_as"), "inline")
+
+    def test_open_public_website_media_redirects_to_drive_preview_when_file_bytes_missing(self):
+        file_row = {
+            "name": "FILE-PUBLIC-1",
+            "file_url": "/private/files/Organization/root/logo.png",
+            "file_name": "logo.png",
+            "is_private": 1,
+            "organization": "ORG-ROOT",
+            "school": "",
+        }
+
+        with (
+            patch("ifitwala_ed.api.file_access._resolve_public_website_media_row", return_value=file_row),
+            patch("ifitwala_ed.api.file_access._assert_public_website_media_visible"),
+            patch("ifitwala_ed.api.file_access._read_file_bytes", return_value=None),
+            patch(
+                "ifitwala_ed.api.file_access._resolve_public_website_media_grant_url",
+                return_value="https://preview.example.com/logo.png",
+            ),
+        ):
+            frappe.local.response = {}
+            open_public_website_media(file="FILE-PUBLIC-1")
+
+        self.assertEqual(frappe.local.response.get("type"), "redirect")
+        self.assertEqual(frappe.local.response.get("location"), "https://preview.example.com/logo.png")

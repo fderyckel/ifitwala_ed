@@ -121,13 +121,14 @@
 								<FeatherIcon name="arrow-right" class="h-4 w-4" />
 							</button>
 
-							<!-- Interaction strip for spotlight (staff comments mode only) -->
+							<!-- Interaction strip for spotlight -->
 							<div
-								v-if="canShowInteractions(currentSpotlight)"
+								v-if="hasVisibleAnnouncementActions(currentSpotlight)"
 								class="mt-3 flex flex-col gap-2 border-t border-border/40 pt-2 text-[11px] text-slate-token/70 sm:flex-row sm:items-center sm:justify-between"
 							>
 								<div class="flex flex-wrap items-center gap-2 sm:gap-3">
 									<button
+										v-if="canReactToAnnouncement(currentSpotlight)"
 										type="button"
 										class="inline-flex items-center gap-1 rounded-full bg-surface-soft px-2 py-1 hover:bg-surface-soft/80"
 										@click.stop="acknowledgeAnnouncement(currentSpotlight)"
@@ -142,6 +143,7 @@
 									</button>
 
 									<button
+										v-if="canCommentOnAnnouncement(currentSpotlight)"
 										type="button"
 										class="inline-flex items-center gap-1 rounded-full px-2 py-1 text-slate-token/70 hover:bg-surface-soft"
 										@click.stop="openInteractionThread(currentSpotlight)"
@@ -241,13 +243,14 @@
 									v-html="item.content"
 								></p>
 
-								<!-- Interaction summary for each announcement (staff comments only) -->
+								<!-- Interaction summary for each announcement -->
 								<div
-									v-if="canShowInteractions(item)"
+									v-if="hasVisibleAnnouncementActions(item)"
 									class="mt-2 flex flex-col gap-2 text-[10px] text-slate-token/65 sm:flex-row sm:items-center sm:justify-between"
 								>
 									<div class="flex flex-wrap items-center gap-2">
 										<button
+											v-if="canReactToAnnouncement(item)"
 											type="button"
 											class="inline-flex items-center gap-1 rounded-full px-2 py-0.5 hover:bg-surface-soft"
 											@click.stop="acknowledgeAnnouncement(item)"
@@ -257,6 +260,7 @@
 										</button>
 
 										<button
+											v-if="canCommentOnAnnouncement(item)"
 											type="button"
 											class="inline-flex items-center gap-1 rounded-full px-2 py-0.5 hover:bg-surface-soft"
 											@click.stop="openInteractionThread(item)"
@@ -476,125 +480,179 @@
 			</div>
 
 			<!-- COMMUNITY PULSE: BIRTHDAYS -->
-			<section v-if="hasArrayData('staff_birthdays') || hasArrayData('my_student_birthdays')">
-				<div class="border-t border-border/60 pt-6">
-					<!-- Section header -->
-					<div class="mb-4 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-						<div>
-							<h2 class="section-header flex items-center gap-2 text-slate-token/70">
-								<FeatherIcon name="gift" class="h-3 w-3" />
-								Community Pulse
+			<section
+				v-if="hasArrayData('staff_birthdays') || hasArrayData('my_student_birthdays')"
+				class="paper-card-frosted overflow-hidden"
+			>
+				<div
+					class="grid gap-5 px-5 py-5 lg:grid-cols-[minmax(0,1.2fr),minmax(18rem,0.8fr)] lg:px-6 lg:py-6"
+				>
+					<div class="space-y-4">
+						<div
+							class="inline-flex w-fit items-center gap-2 rounded-full border border-white/70 bg-[rgb(var(--surface-strong-rgb)/0.72)] px-3 py-1 shadow-[0_8px_24px_rgb(var(--ink-rgb)/0.04)] backdrop-blur-sm"
+						>
+							<div
+								class="flex h-6 w-6 items-center justify-center rounded-full bg-[rgb(var(--canopy-rgb)/0.08)] text-canopy"
+							>
+								<FeatherIcon name="gift" class="h-3.5 w-3.5" />
+							</div>
+							<span class="section-header text-canopy/70">Community Pulse</span>
+						</div>
+
+						<div class="space-y-3">
+							<h2
+								class="max-w-2xl text-[1.9rem] text-ink sm:text-[2.2rem]"
+								style="font-family: var(--font-serif); line-height: 0.98"
+							>
+								This week&apos;s birthdays
 							</h2>
-							<p class="type-meta mt-0.5 text-slate-token/80">
-								Birthdays from our staff and your groups this week
+							<p class="max-w-2xl type-meta text-slate-token/82">
+								A quieter note in the brief, bringing forward the staff and student moments worth
+								noticing before the day gets busy.
 							</p>
 						</div>
-						<span class="text-xs font-medium italic text-jacaranda">
-							Small moments that keep the community connected 🎂
-						</span>
 					</div>
 
-					<!-- Card with two columns -->
-					<div class="paper-card p-5">
-						<div class="grid gap-6 md:grid-cols-2">
-							<!-- Staff birthdays -->
-							<div v-if="hasArrayData('staff_birthdays')" class="space-y-3">
-								<div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-									<h3 class="text-xs font-semibold uppercase tracking-wide text-slate-token/70">
-										Staff Birthdays
-									</h3>
-									<span
-										class="inline-flex items-center rounded-full bg-surface-soft px-2 py-0.5 text-[10px] font-medium text-slate-token/70"
-									>
-										{{ widgets.data.staff_birthdays.length }} this week
-									</span>
-								</div>
+					<div class="grid gap-2.5 sm:grid-cols-3 lg:grid-cols-1 xl:grid-cols-3">
+						<div
+							class="rounded-[1.35rem] border border-white/70 bg-[rgb(var(--surface-strong-rgb)/0.74)] p-3 shadow-[0_10px_28px_rgb(var(--ink-rgb)/0.04)] backdrop-blur-sm"
+						>
+							<p class="type-overline text-slate-token/58">In View</p>
+							<p class="mt-2 text-2xl font-semibold tracking-tight text-canopy">
+								{{ communityBirthdayTotal }}
+							</p>
+							<p class="mt-1 text-[11px] text-slate-token/70">birthdays this week</p>
+						</div>
 
-								<ul class="space-y-2">
-									<li
-										v-for="emp in widgets.data.staff_birthdays"
-										:key="emp.name"
-										class="flex items-center gap-3 rounded-xl bg-surface-soft/60 px-3 py-2"
-									>
-										<div
-											class="h-9 w-9 overflow-hidden rounded-full bg-white shadow-[var(--shadow-soft)]"
-										>
-											<img v-if="emp.image" :src="emp.image" class="h-full w-full object-cover" />
-											<div
-												v-else
-												class="flex h-full w-full items-center justify-center text-xs font-semibold text-slate-token/70"
-											>
-												{{ emp.name.substring(0, 1) }}
-											</div>
-										</div>
-										<div class="min-w-0 flex-1">
-											<p class="truncate text-sm font-semibold text-ink">
-												{{ emp.name }}
-											</p>
-											<p class="text-[11px] font-medium uppercase tracking-wide text-flame">
-												{{ formatBirthday(emp.date_of_birth) }}
-											</p>
-										</div>
-									</li>
-								</ul>
+						<div
+							class="rounded-[1.35rem] border border-[rgb(var(--clay-rgb)/0.12)] bg-[rgb(var(--sand-rgb)/0.78)] p-3 shadow-[0_10px_28px_rgb(var(--ink-rgb)/0.04)]"
+						>
+							<p class="type-overline text-slate-token/58">Staff</p>
+							<p class="mt-2 text-2xl font-semibold tracking-tight text-clay">
+								{{ staffBirthdayCount }}
+							</p>
+							<p class="mt-1 text-[11px] text-slate-token/70">across the school</p>
+						</div>
+
+						<div
+							class="rounded-[1.35rem] border border-[rgb(var(--jacaranda-rgb)/0.14)] bg-[rgb(var(--sky-rgb)/0.82)] p-3 shadow-[0_10px_28px_rgb(var(--ink-rgb)/0.04)]"
+						>
+							<p class="type-overline text-slate-token/58">My Groups</p>
+							<p class="mt-2 text-2xl font-semibold tracking-tight text-jacaranda">
+								{{ studentBirthdayCount }}
+							</p>
+							<p class="mt-1 text-[11px] text-slate-token/70">students in view</p>
+						</div>
+					</div>
+				</div>
+
+				<div class="px-5 pb-5 lg:px-6 lg:pb-6">
+					<div class="grid gap-4 md:grid-cols-2">
+						<div
+							class="rounded-[1.75rem] border border-[rgb(var(--clay-rgb)/0.1)] bg-[linear-gradient(180deg,rgb(var(--surface-strong-rgb)/0.84),rgb(var(--sand-rgb)/0.72))] p-4 shadow-[0_14px_36px_rgb(var(--ink-rgb)/0.05)] sm:p-5"
+						>
+							<div class="mb-4 flex items-start justify-between gap-3">
+								<div class="space-y-1.5">
+									<p class="type-overline text-slate-token/58">Staff Birthdays</p>
+									<p class="text-base font-semibold text-ink">Across the school this week.</p>
+								</div>
+								<span
+									class="inline-flex h-8 min-w-[2rem] items-center justify-center rounded-full border border-[rgb(var(--clay-rgb)/0.14)] bg-[rgb(var(--surface-strong-rgb)/0.72)] px-2.5 text-[11px] font-semibold text-clay"
+								>
+									{{ staffBirthdayCount }}
+								</span>
 							</div>
 
-							<!-- Student birthdays (my groups) -->
-							<div v-if="hasArrayData('my_student_birthdays')" class="space-y-3">
-								<div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-									<h3 class="text-xs font-semibold uppercase tracking-wide text-slate-token/70">
-										Student Birthdays (My Groups)
-									</h3>
-									<span
-										class="inline-flex items-center rounded-full bg-surface-soft px-2 py-0.5 text-[10px] font-medium text-slate-token/70"
+							<ul v-if="staffBirthdayCount" class="space-y-2.5">
+								<li
+									v-for="emp in widgets.data.staff_birthdays"
+									:key="emp.name"
+									class="flex items-center gap-3 rounded-2xl border border-white/75 bg-[rgb(var(--surface-strong-rgb)/0.82)] px-3 py-3 shadow-[0_8px_18px_rgb(var(--ink-rgb)/0.04)]"
+								>
+									<div
+										class="h-10 w-10 overflow-hidden rounded-full bg-white shadow-[var(--shadow-soft)] ring-1 ring-[rgb(var(--clay-rgb)/0.12)]"
 									>
-										{{ widgets.data.my_student_birthdays.length }} this week
-									</span>
-								</div>
-
-								<ul class="space-y-2">
-									<li
-										v-for="stu in widgets.data.my_student_birthdays"
-										:key="stu.first_name + stu.last_name"
-										class="flex items-center gap-3 rounded-xl bg-surface-soft/60 px-3 py-2"
-									>
+										<img v-if="emp.image" :src="emp.image" class="h-full w-full object-cover" />
 										<div
-											class="h-9 w-9 overflow-hidden rounded-full bg-white shadow-[var(--shadow-soft)]"
+											v-else
+											class="flex h-full w-full items-center justify-center text-xs font-semibold text-slate-token/70"
 										>
-											<img v-if="stu.image" :src="stu.image" class="h-full w-full object-cover" />
-											<div
-												v-else
-												class="flex h-full w-full items-center justify-center text-xs font-semibold text-slate-token/70"
-											>
-												{{ stu.first_name.substring(0, 1) }}
-											</div>
+											{{ emp.name.substring(0, 1) }}
 										</div>
-										<div class="min-w-0 flex-1">
-											<p class="truncate text-sm font-semibold text-ink">
-												{{ stu.first_name }} {{ stu.last_name }}
-											</p>
-											<p class="text-[11px] font-medium uppercase tracking-wide text-flame">
-												{{ formatBirthday(stu.date_of_birth) }}
-											</p>
-										</div>
-									</li>
-								</ul>
+									</div>
+									<div class="min-w-0 flex-1">
+										<p class="truncate text-sm font-semibold text-ink">
+											{{ emp.name }}
+										</p>
+									</div>
+									<span
+										class="shrink-0 rounded-full border border-[rgb(var(--clay-rgb)/0.16)] bg-[rgb(var(--sand-rgb)/0.9)] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-clay"
+									>
+										{{ formatBirthdayCompact(emp.date_of_birth) }}
+									</span>
+								</li>
+							</ul>
+
+							<div
+								v-else
+								class="rounded-2xl border border-dashed border-[rgb(var(--clay-rgb)/0.18)] bg-[rgb(var(--surface-strong-rgb)/0.55)] px-4 py-6 text-sm text-slate-token/72"
+							>
+								No staff birthdays in this window.
 							</div>
 						</div>
 
-						<!-- Empty-state text if only one side exists -->
-						<p
-							v-if="hasArrayData('staff_birthdays') && !hasArrayData('my_student_birthdays')"
-							class="mt-4 text-[11px] text-slate-token/70"
+						<div
+							class="rounded-[1.75rem] border border-[rgb(var(--jacaranda-rgb)/0.12)] bg-[linear-gradient(180deg,rgb(var(--surface-strong-rgb)/0.84),rgb(var(--sky-rgb)/0.72))] p-4 shadow-[0_14px_36px_rgb(var(--ink-rgb)/0.05)] sm:p-5"
 						>
-							No student birthdays in your groups for this window.
-						</p>
-						<p
-							v-else-if="hasArrayData('my_student_birthdays') && !hasArrayData('staff_birthdays')"
-							class="mt-4 text-[11px] text-slate-token/70"
-						>
-							No staff birthdays in this window.
-						</p>
+							<div class="mb-4 flex items-start justify-between gap-3">
+								<div class="space-y-1.5">
+									<p class="type-overline text-slate-token/58">Student Birthdays</p>
+									<p class="text-base font-semibold text-ink">Inside your teaching groups.</p>
+								</div>
+								<span
+									class="inline-flex h-8 min-w-[2rem] items-center justify-center rounded-full border border-[rgb(var(--jacaranda-rgb)/0.18)] bg-[rgb(var(--surface-strong-rgb)/0.72)] px-2.5 text-[11px] font-semibold text-jacaranda"
+								>
+									{{ studentBirthdayCount }}
+								</span>
+							</div>
+
+							<ul v-if="studentBirthdayCount" class="space-y-2.5">
+								<li
+									v-for="stu in widgets.data.my_student_birthdays"
+									:key="stu.first_name + stu.last_name"
+									class="flex items-center gap-3 rounded-2xl border border-white/75 bg-[rgb(var(--surface-strong-rgb)/0.82)] px-3 py-3 shadow-[0_8px_18px_rgb(var(--ink-rgb)/0.04)]"
+								>
+									<div
+										class="h-10 w-10 overflow-hidden rounded-full bg-white shadow-[var(--shadow-soft)] ring-1 ring-[rgb(var(--jacaranda-rgb)/0.12)]"
+									>
+										<img v-if="stu.image" :src="stu.image" class="h-full w-full object-cover" />
+										<div
+											v-else
+											class="flex h-full w-full items-center justify-center text-xs font-semibold text-slate-token/70"
+										>
+											{{ stu.first_name.substring(0, 1) }}
+										</div>
+									</div>
+									<div class="min-w-0 flex-1">
+										<p class="truncate text-sm font-semibold text-ink">
+											{{ stu.first_name }} {{ stu.last_name }}
+										</p>
+									</div>
+									<span
+										class="shrink-0 rounded-full border border-[rgb(var(--jacaranda-rgb)/0.18)] bg-[rgb(var(--sky-rgb)/0.9)] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-jacaranda"
+									>
+										{{ formatBirthdayCompact(stu.date_of_birth) }}
+									</span>
+								</li>
+							</ul>
+
+							<div
+								v-else
+								class="rounded-2xl border border-dashed border-[rgb(var(--jacaranda-rgb)/0.2)] bg-[rgb(var(--surface-strong-rgb)/0.55)] px-4 py-6 text-sm text-slate-token/72"
+							>
+								No student birthdays in your groups for this window.
+							</div>
+						</div>
 					</div>
 				</div>
 			</section>
@@ -609,6 +667,7 @@
 			:image-fallback="dialogContent.imageFallback"
 			:badge="dialogContent.badge"
 			:show-interactions="showInteractionsForActive"
+			:show-comments="showCommentsForActive"
 			:interaction="
 				activeCommunication ? getInteractionFor(activeCommunication) : { counts: {}, self: null }
 			"
@@ -722,9 +781,11 @@ import {
 	type StudentLogDetail,
 } from '@/types/morning_brief';
 import type { InteractionSummary, ReactionCode } from '@/types/morning_brief';
-import { canShowPublicInteractions } from '@/utils/orgCommunication';
+import {
+	getAudienceInteractionCapabilities,
+	ORG_COMMUNICATION_VIEWERS,
+} from '@/utils/orgCommunication';
 import type { PolicyInformLinkPayload } from '@/utils/policyInformLink';
-import type { OrgCommunicationListItem } from '@/types/orgCommunication';
 import { getInteractionStats } from '@/utils/interactionStats';
 
 interface DialogContent {
@@ -766,7 +827,12 @@ const showAnnouncementCenter = ref<boolean>(false);
 const showClinicHistory = ref<boolean>(false);
 const showInteractionDrawer = ref<boolean>(false);
 const activeCommunication = ref<Announcement | null>(null);
-const showInteractionsForActive = computed(() => canShowInteractions(activeCommunication.value));
+const showInteractionsForActive = computed(
+	() => getAnnouncementInteractionCapabilities(activeCommunication.value).hasVisibleActions
+);
+const showCommentsForActive = computed(
+	() => getAnnouncementInteractionCapabilities(activeCommunication.value).canComment
+);
 const newComment = ref<string>('');
 const interactionService = createCommunicationInteractionService();
 const interactionSummaryData = ref<InteractionSummaryMap>({});
@@ -859,6 +925,11 @@ const hasClinicVolumeCard = computed(() => clinicVolume.value !== null);
 const clinicVolumeIsInteractive = computed(
 	() => !!clinicVolume.value && !clinicVolume.value.error && clinicVolumePoints.value.length > 0
 );
+const staffBirthdayCount = computed(() => widgets.data?.staff_birthdays?.length ?? 0);
+const studentBirthdayCount = computed(() => widgets.data?.my_student_birthdays?.length ?? 0);
+const communityBirthdayTotal = computed(
+	() => staffBirthdayCount.value + studentBirthdayCount.value
+);
 
 watch(
 	clinicVolume,
@@ -883,9 +954,22 @@ const filteredAnnouncements = computed<Announcement[]>(() => {
 
 const limitedAnnouncements = computed<Announcement[]>(() => filteredAnnouncements.value);
 
-// Adapter because the shared helper is typed for org communication list items
-function canShowInteractions(item: Announcement | null | undefined): boolean {
-	return canShowPublicInteractions(item as unknown as OrgCommunicationListItem | null | undefined);
+function getAnnouncementInteractionCapabilities(item: Announcement | null | undefined) {
+	return getAudienceInteractionCapabilities(item, {
+		viewer: ORG_COMMUNICATION_VIEWERS.STAFF,
+	});
+}
+
+function canReactToAnnouncement(item: Announcement | null | undefined): boolean {
+	return getAnnouncementInteractionCapabilities(item).canReact;
+}
+
+function canCommentOnAnnouncement(item: Announcement | null | undefined): boolean {
+	return getAnnouncementInteractionCapabilities(item).canComment;
+}
+
+function hasVisibleAnnouncementActions(item: Announcement | null | undefined): boolean {
+	return getAnnouncementInteractionCapabilities(item).hasVisibleActions;
 }
 
 watch(
@@ -1046,10 +1130,10 @@ function getInteractionStatsFor(item: Announcement) {
 }
 
 function openInteractionThread(item: Announcement): void {
-	if (!canShowInteractions(item)) {
+	if (!canCommentOnAnnouncement(item)) {
 		toast({
 			title: 'Comments unavailable',
-			text: 'Comments are disabled for this announcement.',
+			text: 'Comments are not available for this announcement in this interaction mode.',
 			icon: 'info',
 		});
 		return;
@@ -1079,7 +1163,7 @@ async function acknowledgeAnnouncement(item: Announcement): Promise<void> {
 		});
 		return;
 	}
-	if (!canShowInteractions(item)) {
+	if (!canReactToAnnouncement(item)) {
 		toast({
 			title: 'Reactions unavailable',
 			text: 'Reactions are disabled for this announcement.',
@@ -1114,10 +1198,10 @@ async function submitComment(): Promise<void> {
 		});
 		return;
 	}
-	if (!canShowInteractions(activeCommunication.value)) {
+	if (!canCommentOnAnnouncement(activeCommunication.value)) {
 		toast({
 			title: 'Comments unavailable',
-			text: 'Comments are disabled for this announcement.',
+			text: 'Comments are not available for this announcement in this interaction mode.',
 			icon: 'info',
 		});
 		return;
@@ -1161,7 +1245,7 @@ async function reactToAnnouncement(item: Announcement, reaction: ReactionCode): 
 		});
 		return;
 	}
-	if (!canShowInteractions(item)) {
+	if (!canReactToAnnouncement(item)) {
 		toast({
 			title: 'Reactions unavailable',
 			text: 'Reactions are disabled for this announcement.',
@@ -1170,7 +1254,7 @@ async function reactToAnnouncement(item: Announcement, reaction: ReactionCode): 
 		return;
 	}
 
-	if (reaction === 'question') {
+	if (reaction === 'question' && canCommentOnAnnouncement(item)) {
 		openInteractionThread(item);
 		return;
 	}
@@ -1237,7 +1321,7 @@ function getPriorityClasses(priority: OrgPriority): string {
 	}
 }
 
-function formatBirthday(dateStr: string | null | undefined): string {
+function formatBirthdayCompact(dateStr: string | null | undefined): string {
 	if (!dateStr) return '';
 
 	// Parsed in local time; we only care about day + month, not year
@@ -1245,23 +1329,9 @@ function formatBirthday(dateStr: string | null | undefined): string {
 	const day = date.getDate();
 
 	// Force Gregorian month names, ignore Thai/Buddhist locale
-	const month = date.toLocaleString('en-US', { month: 'long' });
+	const month = date.toLocaleString('en-US', { month: 'short' });
 
-	const suffix = (value: number) => {
-		if (value > 3 && value < 21) return 'th';
-		switch (value % 10) {
-			case 1:
-				return 'st';
-			case 2:
-				return 'nd';
-			case 3:
-				return 'rd';
-			default:
-				return 'th';
-		}
-	};
-
-	return `${day}${suffix(day)} ${month}`;
+	return `${String(day).padStart(2, '0')} ${month}`;
 }
 
 onMounted(() => {

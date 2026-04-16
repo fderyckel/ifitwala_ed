@@ -1,6 +1,6 @@
 <!-- ifitwala_ed/ui-spa/src/components/self_enrollment/SelfEnrollmentEditor.vue -->
 <template>
-	<div class="space-y-6">
+	<div class="portal-page">
 		<header class="card-surface p-5 sm:p-6">
 			<div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
 				<div class="flex items-start gap-4">

@@ -192,6 +192,7 @@
 									name: 'staff-course-plan',
 									params: { coursePlan: surface.teaching_plan.course_plan },
 									query: {
+										student_group: studentGroup || undefined,
 										unit_plan: selectedUnit?.unit_plan || undefined,
 									},
 								}"
@@ -899,7 +900,7 @@
 									<button
 										v-if="selectedSessionId"
 										type="button"
-										class="rounded-full border border-line-soft px-4 py-2 type-button-label text-ink transition hover:border-line-strong"
+										class="rounded-full border border-line-soft px-4 py-2 type-button-label text-ink transition hover:border-ink/30"
 										@click="startNewSession"
 									>
 										Start New Session Draft
@@ -1024,6 +1025,7 @@ import { useRoute, useRouter } from 'vue-router';
 import PlanningResourcePanel from '@/components/planning/PlanningResourcePanel.vue';
 import { useOverlayStack } from '@/composables/useOverlayStack';
 import { SIGNAL_TASK_DELIVERY_CREATED, uiSignals } from '@/lib/uiSignals';
+import { normalizePlanningSurfaceError } from '@/lib/planning/planningActionGuards';
 import {
 	createClassTeachingPlan,
 	getStaffClassPlanningSurface,
@@ -1269,7 +1271,7 @@ async function loadSurface() {
 	} catch (error) {
 		if (ticket !== loadToken.value) return;
 		surface.value = null;
-		errorMessage.value = error instanceof Error ? error.message : 'Unknown error';
+		errorMessage.value = normalizePlanningSurfaceError(error);
 	} finally {
 		if (ticket === loadToken.value) {
 			loading.value = false;

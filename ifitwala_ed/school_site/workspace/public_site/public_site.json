@@ -1,8 +1,8 @@
 {
  "app": "ifitwala_ed",
  "charts": [],
- "content": "[{\"id\":\"public-site-header\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">Public Site</span>\",\"col\":12}},{\"id\":\"public-site-school-shortcut\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"School\",\"col\":3}}]",
- "creation": "2026-03-21 20:10:00.000000",
+ "content": "[{\"id\":\"public-site-header\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">Public Site</span>\",\"col\":12}},{\"id\":\"public-site-school-shortcut\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"School\",\"col\":3}},{\"id\":\"_tgUEybQ0B\",\"type\":\"spacer\",\"data\":{\"col\":12}},{\"id\":\"PFV7zg4Ywd\",\"type\":\"card\",\"data\":{\"card_name\":\"Website - Settings\",\"col\":4}},{\"id\":\"SZbO7P05pb\",\"type\":\"card\",\"data\":{\"card_name\":\"Website - Pages\",\"col\":4}},{\"id\":\"pdXA8Ff9DR\",\"type\":\"card\",\"data\":{\"card_name\":\"Website - Curriculum\",\"col\":4}},{\"id\":\"NBAdLsLy_x\",\"type\":\"spacer\",\"data\":{\"col\":12}},{\"id\":\"UkczyU6MUp\",\"type\":\"card\",\"data\":{\"card_name\":\"Files\",\"col\":4}}]",
+ "creation": "2026-03-21 20:10:00",
  "custom_blocks": [],
  "docstatus": 0,
  "doctype": "Workspace",
@@ -13,8 +13,185 @@
  "indicator_color": "blue",
  "is_hidden": 0,
  "label": "Public Site",
- "links": [],
- "modified": "2026-04-05 10:00:00.000000",
+ "links": [
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Files",
+   "link_count": 3,
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "File Classification",
+   "link_count": 0,
+   "link_to": "File Classification",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "File Management Settings",
+   "link_count": 0,
+   "link_to": "File Management Settings",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "File",
+   "link_count": 0,
+   "link_to": "File",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Website - Settings",
+   "link_count": 4,
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Website Block Definition",
+   "link_count": 0,
+   "link_to": "Website Block Definition",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Website SEO Profile",
+   "link_count": 0,
+   "link_to": "Website SEO Profile",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Website Theme Profile",
+   "link_count": 0,
+   "link_to": "Website Theme Profile",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Website Route Meta",
+   "link_count": 0,
+   "link_to": "Website Route Meta",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Website - Pages",
+   "link_count": 4,
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Website Story",
+   "link_count": 0,
+   "link_to": "Website Story",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Website Notice",
+   "link_count": 0,
+   "link_to": "Website Notice",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Website Slideshow",
+   "link_count": 0,
+   "link_to": "Website Slideshow",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Website Snippet",
+   "link_count": 0,
+   "link_to": "Website Snippet",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Website - Curriculum",
+   "link_count": 3,
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "School Website Page",
+   "link_count": 0,
+   "link_to": "School Website Page",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Course Website Profile",
+   "link_count": 0,
+   "link_to": "Course Website Profile",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Program Website Profile",
+   "link_count": 0,
+   "link_to": "Program Website Profile",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  }
+ ],
+ "modified": "2026-04-11 23:40:04.255867",
  "modified_by": "Administrator",
  "module": "School Site",
  "name": "Public Site",

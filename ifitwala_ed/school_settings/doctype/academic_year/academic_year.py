@@ -117,7 +117,7 @@ class AcademicYear(Document):
                     "color": "#7575ff",
                     "reference_type": "Academic Year",
                     "reference_name": self.name,
-                    "audience": [{"audience_type": "Whole School Community"}],
+                    "audience": [{"audience_type": "All Students, Guardians, and Employees"}],
                 }
             )
             start_year.flags.ignore_audience_permissions = True
@@ -147,7 +147,7 @@ class AcademicYear(Document):
                     "color": "#7575ff",
                     "reference_type": "Academic Year",
                     "reference_name": self.name,
-                    "audience": [{"audience_type": "Whole School Community"}],
+                    "audience": [{"audience_type": "All Students, Guardians, and Employees"}],
                 }
             )
             end_year.flags.ignore_audience_permissions = True

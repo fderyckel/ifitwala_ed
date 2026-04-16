@@ -19,6 +19,7 @@ from ifitwala_ed.governance.policy_scope_utils import (
     select_nearest_policy_rows_by_key,
 )
 from ifitwala_ed.governance.policy_utils import ensure_policy_applies_to_storage, policy_applies_to_filter_sql
+from ifitwala_ed.utilities.html_sanitizer import sanitize_html
 
 
 def _as_bool(value) -> bool:
@@ -32,6 +33,13 @@ def _normalize_signature_name(value: str | None) -> str:
 def _expected_guardian_signature_name(guardian_name: str) -> str:
     guardian_label = frappe.db.get_value("Guardian", guardian_name, "guardian_full_name")
     return (guardian_label or guardian_name or "").strip()
+
+
+def _guardian_has_primary_signer_authority(guardian_name: str) -> bool:
+    guardian_name = (guardian_name or "").strip()
+    if not guardian_name:
+        return False
+    return bool(frappe.utils.cint(frappe.db.get_value("Guardian", guardian_name, "is_primary_guardian") or 0))
 
 
 @frappe.whitelist()
@@ -56,6 +64,33 @@ def get_guardian_policy_overview() -> dict[str, Any]:
             "pending_policies": total - acknowledged,
         },
         "rows": rows,
+    }
+
+
+def get_guardian_policy_home_summary(*, guardian_name: str, children: list[dict[str, Any]]) -> dict[str, Any]:
+    guardian_name = (guardian_name or "").strip()
+    if not guardian_name:
+        return {"pending_count": 0, "items": []}
+
+    authorized_children = _children_with_signer_authority(guardian_name=guardian_name, children=children or [])
+    rows = _get_guardian_policy_rows(guardian_name=guardian_name, children=authorized_children)
+    pending_rows = [row for row in rows if not row.get("is_acknowledged")]
+    return {
+        "pending_count": len(pending_rows),
+        "items": [
+            {
+                "policy_version": row.get("policy_version") or "",
+                "policy_title": row.get("policy_title") or "",
+                "version_label": row.get("version_label") or "",
+                "description": row.get("description") or "",
+                "status_label": _("Pending acknowledgement"),
+                "href": {
+                    "name": "guardian-policies",
+                    "query": {"policy_version": row.get("policy_version") or ""},
+                },
+            }
+            for row in pending_rows[:3]
+        ],
     }
 
 
@@ -201,7 +236,7 @@ def _get_guardian_policy_rows(*, guardian_name: str, children: list[dict[str, An
                 "organization": row.get("policy_organization"),
                 "school": row.get("policy_school"),
                 "description": row.get("description") or "",
-                "policy_text": row.get("policy_text") or "",
+                "policy_text": sanitize_html(row.get("policy_text") or "", allow_headings_from="h2"),
                 "effective_from": str(row.get("effective_from") or ""),
                 "effective_to": str(row.get("effective_to") or ""),
                 "approved_on": str(row.get("approved_on") or ""),
@@ -227,6 +262,8 @@ def _get_guardian_policy_rows(*, guardian_name: str, children: list[dict[str, An
 
 def _children_with_signer_authority(*, guardian_name: str, children: list[dict[str, Any]]) -> list[dict[str, Any]]:
     if not guardian_name or not children:
+        return []
+    if not _guardian_has_primary_signer_authority(guardian_name):
         return []
 
     if not frappe.db.has_column("Student Guardian", "can_consent"):

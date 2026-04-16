@@ -1,0 +1,49 @@
+<!-- ifitwala_ed/website/templates/person_profile.html -->
+{% extends "ifitwala_ed/website/templates/page.html" %}
+{% import "ifitwala_ed/templates/includes/smart_image_macro.html" as img_macro %}
+
+{% block page_blocks %}
+<section class="block-person-profile">
+	<div class="mx-auto max-w-5xl px-6">
+		<div class="overflow-hidden rounded-[2rem] border border-slate-200/80 bg-white shadow-[0_24px_80px_-46px_rgba(15,23,42,0.35)]">
+			<div class="grid gap-0 lg:grid-cols-[minmax(0,22rem)_minmax(0,1fr)]">
+				<div class="relative min-h-[22rem] bg-[radial-gradient(circle_at_top,_rgba(59,130,246,0.18),_transparent_58%),linear-gradient(135deg,_#eff6ff,_#f8fafc_55%,_#eef2ff)]">
+					{% if person.photo and (person.photo.thumb or person.photo.card or person.photo.medium or person.photo.original) %}
+						{{ img_macro.smart_image(
+							person.photo.thumb,
+							person.photo.card,
+							person.photo.medium,
+							person.photo.original,
+							person.name,
+							"h-full w-full object-cover",
+							fallback="medium",
+							sizes="(min-width: 1024px) 22rem, 100vw"
+						) }}
+					{% else %}
+						<div class="flex h-full min-h-[22rem] items-center justify-center">
+							<div class="flex h-28 w-28 items-center justify-center rounded-full border border-white/70 bg-white/80 text-4xl font-semibold tracking-[0.12em] text-slate-700 shadow-sm">
+								{{ person.initials }}
+							</div>
+						</div>
+					{% endif %}
+				</div>
+
+				<div class="px-6 py-8 sm:px-8 lg:px-10 lg:py-10">
+					{% if person.school_name %}
+						<p class="text-[0.72rem] font-semibold uppercase tracking-[0.22em] text-slate-500">{{ person.school_name }}</p>
+					{% endif %}
+					<h1 class="mt-3 text-4xl font-semibold tracking-tight text-slate-950 sm:text-5xl">{{ person.name }}</h1>
+					{% if person.title %}
+						<p class="mt-4 text-base font-medium text-slate-600 sm:text-lg">{{ person.title }}</p>
+					{% endif %}
+					{% if person.full_bio %}
+						<div class="prose prose-slate mt-8 max-w-none text-slate-700">
+							<p>{{ person.full_bio }}</p>
+						</div>
+					{% endif %}
+				</div>
+			</div>
+		</div>
+	</div>
+</section>
+{% endblock %}

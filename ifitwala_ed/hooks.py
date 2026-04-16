@@ -40,6 +40,7 @@ app_include_js = [
 # include js, css files in header of web template
 # web_include_css = "/assets/ifitwala/css/ifitwala.css"
 # web_include_js = "/assets/ifitwala/js/ifitwala.js"
+update_website_context = ["ifitwala_ed.website.context.update_website_context"]
 
 # include custom scss in every website theme (without file extension ".scss")
 # website_theme_scss = "ifitwala/public/scss/website"
@@ -84,6 +85,7 @@ website_redirects = WEBSITE_REDIRECTS
 # ----------
 # Neutralize sticky login redirect-to=/desk (and legacy /app) before login page/scripts execute.
 before_request = [
+    "ifitwala_ed.api.users.ensure_guest_public_home_page_cache",
     "ifitwala_ed.api.users.sanitize_login_redirect_param",
     "ifitwala_ed.api.users.redirect_non_staff_away_from_desk",
 ]
@@ -93,8 +95,8 @@ on_login = "ifitwala_ed.api.users.redirect_user_to_entry_portal_on_login"
 on_session_creation = "ifitwala_ed.api.users.redirect_user_to_entry_portal_on_session_creation"
 # Resolve website home directly from the same canonical role policy.
 get_website_user_home_page = "ifitwala_ed.api.users.get_website_user_home_page"
-# application home page (overrides mutable Website Settings.home_page drift)
-home_page = "/"
+# application home page (Frappe expects the page route name, not "/")
+home_page = "index"
 
 # website user home page (by Role)
 role_home_page = {
@@ -203,6 +205,11 @@ permission_query_conditions = {
     "Professional Development Record": "ifitwala_ed.hr.professional_development_permissions.professional_development_record_pqc",
     "Professional Development Outcome": "ifitwala_ed.hr.professional_development_permissions.professional_development_outcome_pqc",
     "Professional Development Encumbrance": "ifitwala_ed.hr.professional_development_permissions.professional_development_encumbrance_pqc",
+    "School Website Page": "ifitwala_ed.website.permissions.get_school_website_page_permission_query_conditions",
+    "Website Story": "ifitwala_ed.website.permissions.get_website_story_permission_query_conditions",
+    "Program Website Profile": "ifitwala_ed.website.permissions.get_program_website_profile_permission_query_conditions",
+    "Course Website Profile": "ifitwala_ed.website.permissions.get_course_website_profile_permission_query_conditions",
+    "Website Notice": "ifitwala_ed.website.permissions.get_website_notice_permission_query_conditions",
 }
 
 has_permission = {
@@ -250,6 +257,11 @@ has_permission = {
     "Professional Development Record": "ifitwala_ed.hr.professional_development_permissions.professional_development_record_has_permission",
     "Professional Development Outcome": "ifitwala_ed.hr.professional_development_permissions.professional_development_outcome_has_permission",
     "Professional Development Encumbrance": "ifitwala_ed.hr.professional_development_permissions.professional_development_encumbrance_has_permission",
+    "School Website Page": "ifitwala_ed.website.permissions.school_website_page_has_permission",
+    "Website Story": "ifitwala_ed.website.permissions.website_story_has_permission",
+    "Program Website Profile": "ifitwala_ed.website.permissions.program_website_profile_has_permission",
+    "Course Website Profile": "ifitwala_ed.website.permissions.course_website_profile_has_permission",
+    "Website Notice": "ifitwala_ed.website.permissions.website_notice_has_permission",
 }
 
 default_roles = [
@@ -301,6 +313,18 @@ doc_events = {
     "School": {
         "after_save": "ifitwala_ed.website.public_people.invalidate_public_people_cache",
         "on_trash": "ifitwala_ed.website.public_people.invalidate_public_people_cache",
+    },
+    "Website Notice": {
+        "after_save": "ifitwala_ed.website.site_notices.invalidate_site_notice_cache",
+        "on_trash": "ifitwala_ed.website.site_notices.invalidate_site_notice_cache",
+    },
+    "Website Story": {
+        "after_save": "ifitwala_ed.website.providers.story_feed.invalidate_story_feed_cache",
+        "on_trash": "ifitwala_ed.website.providers.story_feed.invalidate_story_feed_cache",
+    },
+    "School Calendar": {
+        "after_save": "ifitwala_ed.website.providers.academic_calendar.invalidate_academic_calendar_cache",
+        "on_trash": "ifitwala_ed.website.providers.academic_calendar.invalidate_academic_calendar_cache",
     },
     "File": {
         "validate": "ifitwala_ed.utilities.file_management.validate_admissions_attachment",
@@ -387,6 +411,7 @@ scheduler_events = {
     "hourly": [
         "ifitwala_ed.admission.scheduled_jobs.run_hourly_sla_sweep",
         "ifitwala_ed.schedule.attendance_jobs.prewarm_meeting_dates_hourly_guard",
+        "ifitwala_ed.website.publication.run_hourly_website_publication_sync",
     ],
     "daily": [
         "ifitwala_ed.students.doctype.student_log.student_log.dispatch_auto_close_completed_logs",

@@ -91,8 +91,22 @@ class TestCoursesApi(TestCase):
             patch("ifitwala_ed.api.courses._build_student_course_scope", return_value={"COURSE-1": {}}),
             patch("ifitwala_ed.api.courses.now_datetime", return_value=anchor),
             patch(
+                "ifitwala_ed.api.courses.get_student_policy_home_summary",
+                return_value={"pending_count": 1, "items": [{"policy_version": "VER-1"}]},
+            ),
+            patch(
                 "ifitwala_ed.api.courses.portal_api.get_student_portal_identity",
                 return_value={"display_name": "Amina", "student": "STU-001", "user": "student@example.com"},
+            ),
+            patch.object(
+                courses_api.student_communications_api,
+                "get_student_home_communication_summary",
+                return_value={
+                    "center_href": {"name": "student-communications"},
+                    "latest_course_update": None,
+                    "latest_activity_update": None,
+                    "latest_school_update": None,
+                },
             ),
             patch(
                 "ifitwala_ed.api.courses.course_schedule_api.get_today_courses",
@@ -123,13 +137,19 @@ class TestCoursesApi(TestCase):
             payload = courses_api.get_student_hub_home()
 
         self.assertEqual(payload["identity"]["display_name"], "Amina")
+        self.assertEqual(payload["policies"]["pending_count"], 1)
         self.assertEqual(payload["learning"]["today_classes"][0]["course"], "COURSE-1")
         self.assertEqual(payload["learning"]["next_learning_step"]["kind"], "scheduled_class")
         self.assertEqual(payload["learning"]["next_learning_step"]["title"], "Biology")
+        self.assertEqual(payload["communications"]["center_href"]["name"], "student-communications")
 
     def test_get_student_hub_home_falls_back_to_first_accessible_course(self):
         with (
             patch("ifitwala_ed.api.courses._require_student_name_for_session_user", return_value="STU-001"),
+            patch(
+                "ifitwala_ed.api.courses.get_student_policy_home_summary",
+                return_value={"pending_count": 0, "items": []},
+            ),
             patch(
                 "ifitwala_ed.api.courses._build_student_course_scope",
                 return_value={"COURSE-1": {}, "COURSE-2": {}},
@@ -137,6 +157,16 @@ class TestCoursesApi(TestCase):
             patch(
                 "ifitwala_ed.api.courses.portal_api.get_student_portal_identity",
                 return_value={"display_name": "Amina", "student": "STU-001", "user": "student@example.com"},
+            ),
+            patch.object(
+                courses_api.student_communications_api,
+                "get_student_home_communication_summary",
+                return_value={
+                    "center_href": {"name": "student-communications"},
+                    "latest_course_update": None,
+                    "latest_activity_update": None,
+                    "latest_school_update": None,
+                },
             ),
             patch(
                 "ifitwala_ed.api.courses.course_schedule_api.get_today_courses",
@@ -176,6 +206,10 @@ class TestCoursesApi(TestCase):
     def test_get_student_hub_home_prefers_first_openable_course_when_first_course_is_blocked(self):
         with (
             patch("ifitwala_ed.api.courses._require_student_name_for_session_user", return_value="STU-001"),
+            patch(
+                "ifitwala_ed.api.courses.get_student_policy_home_summary",
+                return_value={"pending_count": 0, "items": []},
+            ),
             patch(
                 "ifitwala_ed.api.courses._build_student_courses_payload",
                 return_value=(
@@ -219,6 +253,16 @@ class TestCoursesApi(TestCase):
             patch(
                 "ifitwala_ed.api.courses.portal_api.get_student_portal_identity",
                 return_value={"display_name": "Amina", "student": "STU-001", "user": "student@example.com"},
+            ),
+            patch.object(
+                courses_api.student_communications_api,
+                "get_student_home_communication_summary",
+                return_value={
+                    "center_href": {"name": "student-communications"},
+                    "latest_course_update": None,
+                    "latest_activity_update": None,
+                    "latest_school_update": None,
+                },
             ),
             patch(
                 "ifitwala_ed.api.courses.course_schedule_api.get_today_courses",
@@ -332,8 +376,22 @@ class TestCoursesApi(TestCase):
             ),
             patch("ifitwala_ed.api.courses.now_datetime", return_value=anchor),
             patch(
+                "ifitwala_ed.api.courses.get_student_policy_home_summary",
+                return_value={"pending_count": 2, "items": [{"policy_version": "VER-1"}]},
+            ),
+            patch(
                 "ifitwala_ed.api.courses.portal_api.get_student_portal_identity",
                 return_value={"display_name": "Amina", "student": "STU-001", "user": "student@example.com"},
+            ),
+            patch.object(
+                courses_api.student_communications_api,
+                "get_student_home_communication_summary",
+                return_value={
+                    "center_href": {"name": "student-communications"},
+                    "latest_course_update": None,
+                    "latest_activity_update": None,
+                    "latest_school_update": None,
+                },
             ),
             patch(
                 "ifitwala_ed.api.courses.course_schedule_api.get_today_courses",
@@ -384,6 +442,7 @@ class TestCoursesApi(TestCase):
             payload = courses_api.get_student_hub_home()
 
         self.assertIn("orientation", payload["learning"])
+        self.assertEqual(payload["policies"]["pending_count"], 2)
         self.assertIn("work_board", payload["learning"])
         self.assertIn("timeline", payload["learning"])
         self.assertEqual(payload["learning"]["work_board"]["now"][0]["task_delivery"], "TD-1")

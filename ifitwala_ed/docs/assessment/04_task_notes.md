@@ -3,7 +3,7 @@
 Status: **Authoritative / Current Workspace Contract**
 Scope: `Task`, `Task Delivery`, `Task Outcome`, `Task Submission`, `Task Contribution`
 Audience: Product, Engineering, and coding agents
-Last updated: 2026-04-01
+Last updated: 2026-04-08
 
 This document defines the current task runtime contract in the workspace.
 It replaces older lesson-instance-era notes and removes future-state claims that are not yet true in code.
@@ -147,6 +147,7 @@ Current workspace reality:
 - `api/task.py::search_reusable_tasks()` and `api/task.py::search_tasks()` now resolve one course-scoped reusable-task library at a time. They return only tasks the current user owns for that course or tasks explicitly shared with the course team.
 - `api/task.py::create_task_delivery()` now supports the assign-existing path. Reusing a task creates a new class-scoped delivery only; it does not rewrite the reusable task definition.
 - Same-teacher reuse across groups or school years stays available through task ownership. Cross-teacher reuse requires explicit course-library sharing.
+- Cross-surface dependency: staff Morning Brief instructor widgets in `ifitwala_ed/api/morning_brief.py` read overdue grading state from `Task Delivery` and `Task Outcome`, so any change to task ownership, delivery due-date semantics, grading-required flags, or outcome completion statuses must update Morning Brief code and `ifitwala_ed/api/test_morning_brief.py` in the same change.
 
 ### 2.1 Context ownership
 
@@ -206,6 +207,13 @@ For assessed quiz deliveries, current validation forces:
 - `grading_mode = "Points"`
 - rubric fields cleared
 - quiz max points snapshotted from quiz configuration
+
+Current assessed quiz grading behavior:
+
+- choice and short-answer items are auto-scored in `quiz_service.py`
+- essay items remain on `Quiz Attempt Item` rows with `requires_manual_grading = 1` until a teacher records `awarded_score`
+- staff manual review for those items runs through the gradebook quiz-review endpoints, not through the standard contribution grid
+- question-level criteria or rubric scoring is not part of the current assessed quiz contract
 
 ### 2.5 Outcome materialization
 
@@ -288,6 +296,12 @@ through the outcome truth service.
 Assessed quiz attempts update outcome truth directly in `quiz_service.py`.
 This is the current implemented exception to the standard contribution-driven path.
 Do not document or enforce a broader “only one writer exists” rule while this exception remains in code.
+
+Current write boundary for assessed quiz manual review:
+
+- teacher scoring writes `awarded_score` to `Quiz Attempt Item`
+- `quiz_service.refresh_attempt(...)` then recomputes `Quiz Attempt` and `Task Outcome`
+- the staff gradebook must not treat assessed quiz totals as teacher-entered `official_score`
 
 ### 3.5 Gradebook write boundary
 

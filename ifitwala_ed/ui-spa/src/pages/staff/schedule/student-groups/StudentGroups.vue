@@ -1,6 +1,6 @@
 <template>
 	<!-- Page wrapper -->
-	<div class="min-h-full px-4 py-4 md:px-6 lg:px-8">
+	<div class="staff-shell">
 		<!-- Header -->
 		<div class="flex items-center justify-between gap-3">
 			<h1 class="text-xl font-semibold tracking-tight">Student Group Cards</h1>

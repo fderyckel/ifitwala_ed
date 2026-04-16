@@ -142,6 +142,8 @@ describe('Courses', () => {
 		await flushUi()
 
 		const text = document.body.textContent || ''
+		expect(text).toContain('My Courses')
+		expect(text).toContain('Available courses this year')
 		expect(text).toContain('Biology')
 		expect(text).toContain('Class Ready')
 		expect(text).toContain('Open class')
@@ -152,5 +154,10 @@ describe('Courses', () => {
 		const links = Array.from(document.querySelectorAll('a')).map(node => node.textContent || '')
 		expect(links.some(textValue => textValue.includes('Biology'))).toBe(true)
 		expect(links.some(textValue => textValue.includes('History'))).toBe(false)
+
+		const mediaFrames = Array.from(document.querySelectorAll('div')).filter(node =>
+			node.className.includes('student-hub-media-frame')
+		)
+		expect(mediaFrames.length).toBeGreaterThan(0)
 	})
 })

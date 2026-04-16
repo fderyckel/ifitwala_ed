@@ -230,7 +230,6 @@ class TestOrgCommunicationQuickCreate(FrappeTestCase):
                     "to_staff": 1,
                     "to_students": 0,
                     "to_guardians": 0,
-                    "to_community": 0,
                 }
             ],
         )
@@ -273,6 +272,53 @@ class TestOrgCommunicationQuickCreate(FrappeTestCase):
         self.assertEqual(doc.insert_calls, 0)
         has_permission_mock.assert_not_called()
         cache.set_value.assert_not_called()
+
+    def test_create_quick_strips_stale_scope_fields_from_organization_audience(self):
+        doc = _DummyOrgCommunicationDoc()
+        cache = Mock()
+        cache.get_value.return_value = None
+        cache.lock.return_value = nullcontext()
+
+        with (
+            patch("ifitwala_ed.api.org_communication_quick_create.frappe.has_permission", return_value=True),
+            patch("ifitwala_ed.api.org_communication_quick_create.frappe.cache", return_value=cache),
+            patch("ifitwala_ed.api.org_communication_quick_create.frappe.new_doc", return_value=doc),
+        ):
+            org_communication_quick_create.create_org_communication_quick(
+                title="Staff-wide reminder",
+                communication_type="Information",
+                status="Published",
+                portal_surface="Everywhere",
+                organization="ORG-1",
+                audiences=[
+                    {
+                        "target_mode": "Organization",
+                        "school": "SCH-STALE",
+                        "team": "TEAM-STALE",
+                        "student_group": "SG-STALE",
+                        "include_descendants": 1,
+                        "to_staff": 1,
+                    }
+                ],
+            )
+
+        self.assertEqual(
+            doc.audiences,
+            [
+                {
+                    "target_mode": "Organization",
+                    "school": None,
+                    "team": None,
+                    "student_group": None,
+                    "include_descendants": 0,
+                    "note": None,
+                    "to_staff": 1,
+                    "to_students": 0,
+                    "to_guardians": 0,
+                    "to_community": 0,
+                }
+            ],
+        )
 
     def test_create_quick_returns_cached_result_for_same_client_request_id(self):
         cache = Mock()

@@ -399,6 +399,15 @@ frappe.ui.form.on("School Website Page", {
 			} else if (!frm.doc.seo_profile) {
 				banners.push(__("Missing SEO Profile and fallback fields."));
 			}
+			if (!frm.doc.content_owner) {
+				banners.push(__("Set a Content Owner so review responsibility is clear."));
+			}
+			if (frm.doc.workflow_state === "Published" && frm.doc.publish_at) {
+				banners.push(__("This page is scheduled and will only go live after Publish At."));
+			}
+			if (frm.doc.workflow_state === "Published" && frm.doc.expire_at) {
+				banners.push(__("This page will automatically return to draft after Expire At."));
+			}
 
 			if (frm.doc.school) {
 				frappe.db

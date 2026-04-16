@@ -300,10 +300,9 @@
    "show_dashboard": 1
   },
   {
-   "description": "Unique school URL identity. This owns the /schools/{website_slug} base path for every public page in this school website.",
    "fieldname": "website_slug",
    "fieldtype": "Data",
-   "label": "School Website Slug",
+   "label": "Website Slug",
    "unique": 1
   },
   {
@@ -441,7 +440,7 @@
  "index_web_pages_for_search": 1,
  "is_tree": 1,
  "links": [],
- "modified": "2026-04-05 17:33:25",
+ "modified": "2026-04-05 16:30:23.355980",
  "modified_by": "Administrator",
  "module": "School Settings",
  "name": "School",

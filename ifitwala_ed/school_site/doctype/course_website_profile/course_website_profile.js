@@ -524,18 +524,32 @@ frappe.ui.form.on("Course Website Profile", {
 			if (!frm.doc.seo_profile) {
 				banners.push(__("SEO fallback in use. Link an SEO Profile for full control."));
 			}
+			if (!frm.doc.content_owner) {
+				banners.push(__("Assign a Content Owner so review and maintenance responsibility is clear."));
+			}
+			if (frm.doc.publish_at) {
+				banners.push(__("This page is scheduled to publish automatically at {0}.", [frm.doc.publish_at]));
+			}
+			if (frm.doc.expire_at) {
+				banners.push(__("This page will expire automatically at {0}.", [frm.doc.expire_at]));
+			}
 
 			if (frm.doc.course) {
 				Promise.all([
 					getFieldValue("Course", frm.doc.course, "is_published"),
-					getFieldValue("Course", frm.doc.course, "school")
-				]).then(([isPublished, courseSchool]) => {
+					getFieldValue("Course", frm.doc.course, "school"),
+					getFieldValue("School", frm.doc.school, "is_published"),
+					getFieldValue("School", frm.doc.school, "website_slug")
+				]).then(([isPublished, courseSchool, schoolIsPublished, schoolSlug]) => {
 					const published = Boolean(parseInt(isPublished || 0, 10));
 					if (!published) {
 						banners.push(__("Course is not published; profile will remain draft."));
 					}
 					if (courseSchool && frm.doc.school && courseSchool !== frm.doc.school) {
 						banners.push(__("Course school does not match this profile school."));
+					}
+					if (!parseInt(schoolIsPublished || 0, 10) || !schoolSlug) {
+						banners.push(__("School website must be published and have a website slug before this profile can go live."));
 					}
 					setBaseDashboardBanners(frm, banners);
 				}).catch(() => {

@@ -98,36 +98,36 @@ export function createClassHubService() {
   })
 
   async function getBundle(payload: BundlePayload) {
-    return bundleResource.submit(payload)
+    return unwrapMessage(await bundleResource.submit(payload))
   }
 
   async function startSession(payload: BundlePayload) {
-    return startSessionResource.submit(payload)
+    return unwrapMessage(await startSessionResource.submit(payload))
   }
 
   async function endSession(classSession: string) {
-    return endSessionResource.submit({ class_session: classSession })
+    return unwrapMessage(await endSessionResource.submit({ class_session: classSession }))
   }
 
   async function saveSignals(classSession: string, signals: ClassHubSignal[]) {
-    return saveSignalsResource.submit({
+    return unwrapMessage(await saveSignalsResource.submit({
       class_session: classSession,
       signals_json: JSON.stringify(signals || []),
-    })
+    }))
   }
 
   async function quickEvidence(payload: ClassHubQuickEvidencePayload) {
-    return quickEvidenceResource.submit({
+    return unwrapMessage(await quickEvidenceResource.submit({
       payload_json: JSON.stringify(payload || {}),
-    })
+    }))
   }
 
   async function resolveCurrentPickerContext() {
-    return currentPickerContextResource.submit({})
+    return unwrapMessage(await currentPickerContextResource.submit({}))
   }
 
   async function resolveStaffHomeEntry() {
-    return staffHomeEntryResource.submit({})
+    return unwrapMessage(await staffHomeEntryResource.submit({}))
   }
 
   return {

@@ -18,6 +18,11 @@ from ifitwala_ed.utilities.image_utils import apply_preferred_employee_images
 
 EXPAND_MAX_NODES = 260
 EXPAND_MAX_DEPTH = 6
+ORG_CHART_IMAGE_SLOTS = (
+    "profile_image_thumb",
+    "profile_image_card",
+    "profile_image_medium",
+)
 
 
 # ---------------------------------------------------------------------------
@@ -121,7 +126,13 @@ def _serialize_employees(rows: Iterable[dict]) -> list[dict]:
                 "parent_id": row.get("reports_to") or None,
             }
         )
-    return apply_preferred_employee_images(payload, employee_field="id", image_field="image")
+    return apply_preferred_employee_images(
+        payload,
+        employee_field="id",
+        image_field="image",
+        slots=ORG_CHART_IMAGE_SLOTS,
+        fallback_to_original=False,
+    )
 
 
 def _employee_fields() -> list[str]:

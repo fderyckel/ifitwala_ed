@@ -83,28 +83,37 @@
 							<form v-else class="space-y-5" @submit.prevent="submit">
 								<div v-if="isClassEventMode" class="space-y-5">
 									<section class="rounded-[28px] border border-border/70 bg-white p-5 shadow-soft">
-										<div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+										<div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
 											<div class="space-y-1">
 												<p class="type-overline text-ink/55">Class event</p>
-												<h3 class="type-h3 text-ink">Locked context</h3>
+												<div class="flex flex-wrap items-center gap-2">
+													<h3 class="type-h3 text-ink">Locked context</h3>
+													<span class="rounded-full bg-sky/25 px-3 py-1 type-caption text-canopy">
+														Auto applied
+													</span>
+												</div>
 												<p class="type-caption text-ink/65">
-													This announcement stays tied to the selected class event and remains in
-													your org communication archive for history.
+													The selected class event keeps scope, history, and archive context in
+													sync automatically.
 												</p>
 											</div>
-											<span class="rounded-full bg-sky/25 px-3 py-1.5 type-caption text-canopy">
-												Class event context locked
-											</span>
 										</div>
 
-										<div class="mt-4 grid grid-cols-1 gap-3 lg:grid-cols-2">
+										<div
+											class="if-class-event-context-card mt-4 grid grid-cols-1 gap-2.5 sm:grid-cols-2"
+										>
 											<div
-												v-for="item in classEventContextCards"
+												v-for="(item, index) in classEventContextCards"
 												:key="item.label"
-												class="rounded-2xl border border-border/70 bg-surface-soft/70 px-4 py-3"
+												class="if-class-event-context-pill"
+												:class="`if-class-event-context-pill--${index}`"
 											>
-												<p class="type-caption text-ink/55">{{ item.label }}</p>
-												<p class="mt-1 type-body-strong text-ink">{{ item.value }}</p>
+												<span class="if-class-event-context-pill__label">
+													{{ item.label }}
+												</span>
+												<p class="min-w-0 type-body-strong text-ink">
+													{{ item.value }}
+												</p>
 											</div>
 										</div>
 									</section>
@@ -323,9 +332,11 @@
 												<h4 class="type-h4 text-ink">Audience</h4>
 											</div>
 
-											<div class="mt-4 space-y-3">
+											<div
+												class="if-class-event-audience-grid mt-4 grid grid-cols-1 gap-3 min-[480px]:grid-cols-2"
+											>
 												<div
-													class="flex items-start gap-3 rounded-2xl border border-border/70 bg-white px-4 py-3 type-caption text-ink/75"
+													class="flex h-full items-start gap-3 rounded-2xl border border-border/70 bg-white px-4 py-3 type-caption text-ink/75"
 												>
 													<input
 														checked
@@ -343,7 +354,7 @@
 
 												<label
 													v-if="classEventAudienceRow"
-													class="flex cursor-pointer items-start gap-3 rounded-2xl border border-border/70 bg-white px-4 py-3 type-caption text-ink/75"
+													class="flex h-full cursor-pointer items-start gap-3 rounded-2xl border border-border/70 bg-white px-4 py-3 type-caption text-ink/75"
 												>
 													<input
 														v-model="classEventAudienceRow.to_guardians"
@@ -824,9 +835,8 @@
 																"
 																class="type-caption text-amber-700"
 															>
-																School-scope Staff and Community rows require Academic Admin,
-																Academic Assistant, HR Manager, Accounts Manager, or System
-																Manager.
+																School-scope Staff rows require Academic Admin, Academic Assistant,
+																HR Manager, Accounts Manager, or System Manager.
 															</p>
 															<p
 																v-else-if="
@@ -887,7 +897,7 @@
 											class="rounded-[28px] border border-border/70 bg-white p-5 shadow-soft"
 										>
 											<p class="type-overline text-ink/55">Interaction</p>
-											<h3 class="mt-1 type-h3 text-ink">Thread settings</h3>
+											<h3 class="mt-1 type-h3 text-ink">Interaction settings</h3>
 											<div class="mt-4 space-y-4">
 												<div class="space-y-1">
 													<label class="type-label">Interaction mode</label>
@@ -914,7 +924,12 @@
 														class="mt-0.5 rounded border-slate-300 text-jacaranda"
 														:disabled="submitting || privateNotesDisabled"
 													/>
-													<span>Allow private notes to school staff.</span>
+													<span>
+														<span class="block"> Let teachers and staff reply privately. </span>
+														<span class="mt-1 block text-[11px] text-ink/60">
+															{{ privateNotesHelpText }}
+														</span>
+													</span>
 												</label>
 												<label
 													class="flex cursor-pointer items-start gap-3 rounded-2xl border border-border/70 bg-surface-soft px-4 py-3 type-caption text-ink/75"
@@ -925,7 +940,14 @@
 														class="mt-0.5 rounded border-slate-300 text-jacaranda"
 														:disabled="submitting || publicThreadDisabled"
 													/>
-													<span>Allow audience-visible public thread entries.</span>
+													<span>
+														<span class="block">
+															Let students or families reply in the shared thread.
+														</span>
+														<span class="mt-1 block text-[11px] text-ink/60">
+															{{ publicThreadHelpText }}
+														</span>
+													</span>
 												</label>
 											</div>
 										</section>
@@ -1012,7 +1034,7 @@ import type { Response as OrgCommunicationQuickCreateOptionsResponse } from '@/t
 
 type CloseReason = 'backdrop' | 'esc' | 'programmatic';
 type EntryMode = 'staff-home' | 'class-event';
-type RecipientField = 'to_staff' | 'to_students' | 'to_guardians' | 'to_community';
+type RecipientField = 'to_staff' | 'to_students' | 'to_guardians';
 type AudienceRowState = {
 	id: string;
 	target_mode: string;
@@ -1023,7 +1045,6 @@ type AudienceRowState = {
 	to_staff: boolean;
 	to_students: boolean;
 	to_guardians: boolean;
-	to_community: boolean;
 	note: string;
 };
 
@@ -1178,7 +1199,6 @@ const recipientToggleDefinitions: Array<{ field: RecipientField; label: string }
 	{ field: 'to_staff', label: 'Staff' },
 	{ field: 'to_students', label: 'Students' },
 	{ field: 'to_guardians', label: 'Guardians' },
-	{ field: 'to_community', label: 'Community' },
 ];
 const messageEditorButtons = [
 	'Paragraph',
@@ -1204,7 +1224,7 @@ const overlayTitle = computed(() =>
 const overlayDescription = computed(() =>
 	isClassEventMode.value
 		? 'Create an org communication from this class context without leaving the calendar flow.'
-		: 'Publish or save a communication for staff, a student group, or your broader school community from Staff Home.'
+		: 'Publish or save a communication for staff, students, guardians, or a student group from Staff Home.'
 );
 const isFuturePublishFrom = computed(() => {
 	if (!form.publish_from) return false;
@@ -1231,7 +1251,7 @@ const summarySubtitle = computed(() => {
 		const parts = [props.courseLabel, props.sessionDate].filter(Boolean);
 		return parts.length ? parts.join(' · ') : 'Class event communication';
 	}
-	return 'Check issuing scope, thread settings, and audience rows before publishing.';
+	return 'Check issuing scope, interaction settings, and audience rows before publishing.';
 });
 const issuingScopeLabel = computed(() => {
 	const schoolOption = schoolSelectOptions.value.find(option => option.value === form.school);
@@ -1245,8 +1265,39 @@ const issuingScopeLabel = computed(() => {
 const briefDatesRequired = computed(() =>
 	['Morning Brief', 'Everywhere'].includes(String(form.portal_surface || '').trim())
 );
-const privateNotesDisabled = computed(() => form.interaction_mode === 'None');
-const publicThreadDisabled = computed(() => form.interaction_mode === 'None');
+const privateNotesDisabled = computed(
+	() => !['Structured Feedback'].includes(String(form.interaction_mode || '').trim())
+);
+const publicThreadDisabled = computed(
+	() =>
+		!['Structured Feedback', 'Student Q&A'].includes(String(form.interaction_mode || '').trim())
+);
+const privateNotesHelpText = computed(() => {
+	const mode = String(form.interaction_mode || '').trim();
+	if (mode === 'Structured Feedback') {
+		return 'Use this when staff may need private follow-up that students or families will not see.';
+	}
+	if (mode === 'Student Q&A') {
+		return 'For Student Q&A, use the setting below to choose shared replies or private staff notes.';
+	}
+	if (mode === 'Staff Comments') {
+		return 'Staff Comments stays inside the staff thread, so this setting is not used.';
+	}
+	return 'Choose Structured Feedback if you want staff-only notes or questions here.';
+});
+const publicThreadHelpText = computed(() => {
+	const mode = String(form.interaction_mode || '').trim();
+	if (mode === 'Student Q&A') {
+		return 'Students or families in the selected audience can reply here. Turn this off to keep replies visible only to staff.';
+	}
+	if (mode === 'Structured Feedback') {
+		return 'Use this when recipients should be able to see and respond in the shared thread.';
+	}
+	if (mode === 'Staff Comments') {
+		return 'Staff Comments stays inside the staff thread, so this setting is not used.';
+	}
+	return 'Choose Student Q&A or Structured Feedback if recipients should reply in a shared thread.';
+});
 const organizationHelpText = computed(
 	() => 'Organization is required and defaults from your user scope.'
 );
@@ -1387,12 +1438,8 @@ function getValidationMessage(draftMode = false) {
 		if (!recipientToggleDefinitions.some(recipient => Boolean(row[recipient.field]))) {
 			return 'Audience row must include at least one Recipient toggle.';
 		}
-		if (
-			!canTargetWideSchoolScope.value &&
-			row.target_mode === 'School Scope' &&
-			(row.to_staff || row.to_community)
-		) {
-			return 'You are not allowed to target Staff or Community at School Scope from your current role.';
+		if (!canTargetWideSchoolScope.value && row.target_mode === 'School Scope' && row.to_staff) {
+			return 'You are not allowed to target Staff at School Scope from your current role.';
 		}
 		if (!canTargetWideSchoolScope.value && row.target_mode === 'Organization') {
 			return 'You are not allowed to target Staff at Organization scope from your current role.';
@@ -1467,9 +1514,18 @@ watch(
 watch(
 	() => form.interaction_mode,
 	modeValue => {
-		if (modeValue !== 'None') return;
-		form.allow_public_thread = false;
-		form.allow_private_notes = false;
+		const mode = String(modeValue || '').trim();
+		if (mode === 'None') {
+			form.allow_public_thread = false;
+			form.allow_private_notes = false;
+			return;
+		}
+		if (mode !== 'Structured Feedback') {
+			form.allow_private_notes = false;
+		}
+		if (!['Structured Feedback', 'Student Q&A'].includes(mode)) {
+			form.allow_public_thread = false;
+		}
 	}
 );
 
@@ -1556,7 +1612,6 @@ function initializeForm() {
 				to_students: true,
 				to_guardians: false,
 				to_staff: false,
-				to_community: false,
 			}),
 		];
 		return;
@@ -1584,7 +1639,6 @@ function createAudienceRow(seed: Partial<AudienceRowState> = {}): AudienceRowSta
 		to_staff: Boolean(seed.to_staff ?? false),
 		to_students: Boolean(seed.to_students ?? false),
 		to_guardians: Boolean(seed.to_guardians ?? false),
-		to_community: Boolean(seed.to_community ?? false),
 		note: seed.note || '',
 	};
 	applyAudienceDefaults(row);
@@ -1647,7 +1701,6 @@ function applyAudienceDefaults(row: AudienceRowState) {
 		if (isClassEventMode.value) {
 			row.to_staff = false;
 			row.to_students = true;
-			row.to_community = false;
 			return;
 		}
 		if (!row.to_staff && !row.to_students && !row.to_guardians) {
@@ -1668,7 +1721,7 @@ function isRecipientDisabled(row: AudienceRowState, field: RecipientField) {
 	if (
 		row.target_mode === 'School Scope' &&
 		!canTargetWideSchoolScope.value &&
-		(field === 'to_staff' || field === 'to_community')
+		field === 'to_staff'
 	) {
 		return true;
 	}
@@ -1732,23 +1785,24 @@ function buildAudiencePayload(): OrgCommunicationQuickAudienceRow[] {
 				to_staff: 0,
 				to_students: 1,
 				to_guardians: row?.to_guardians ? 1 : 0,
-				to_community: 0,
 				note: null,
 			},
 		];
 	}
-	return audienceRows.value.map(row => ({
-		target_mode: row.target_mode,
-		school: row.school || null,
-		team: row.team || null,
-		student_group: row.student_group || null,
-		include_descendants: row.include_descendants ? 1 : 0,
-		to_staff: row.to_staff ? 1 : 0,
-		to_students: row.to_students ? 1 : 0,
-		to_guardians: row.to_guardians ? 1 : 0,
-		to_community: row.to_community ? 1 : 0,
-		note: row.note.trim() || null,
-	}));
+	return audienceRows.value.map(row => {
+		const targetMode = row.target_mode;
+		return {
+			target_mode: targetMode,
+			school: targetMode === 'School Scope' ? row.school || null : null,
+			team: targetMode === 'Team' ? row.team || null : null,
+			student_group: targetMode === 'Student Group' ? row.student_group || null : null,
+			include_descendants: targetMode === 'School Scope' && row.include_descendants ? 1 : 0,
+			to_staff: row.to_staff ? 1 : 0,
+			to_students: row.to_students ? 1 : 0,
+			to_guardians: row.to_guardians ? 1 : 0,
+			note: row.note.trim() || null,
+		};
+	});
 }
 
 function buildPayload(statusOverride?: string): CreateOrgCommunicationQuickRequest {
@@ -1902,7 +1956,13 @@ async function deleteAttachment(attachment: OrgCommunicationAttachmentRow) {
 	}
 }
 
-async function submit() {
+function isMessageEditorToolbarSubmitter(target: EventTarget | null) {
+	if (!(target instanceof HTMLElement)) return false;
+	return Boolean(target.closest('.if-org-communication-message-editor button'));
+}
+
+async function submit(event?: SubmitEvent) {
+	if (isMessageEditorToolbarSubmitter(event?.submitter ?? null)) return;
 	if (!isClassEventMode.value) {
 		await submitPublish();
 		return;
@@ -1980,8 +2040,53 @@ async function submitWithStatus(statusOverride: string) {
 
 .if-org-communication-native-select:disabled {
 	cursor: not-allowed;
-	background-color: rgb(var(--surface-soft-rgb) / 0.8);
+	background-color: rgb(var(--surface-rgb) / 0.8);
 	color: rgb(var(--ink-rgb) / 0.5);
 	opacity: 0.8;
+}
+
+.if-class-event-context-pill {
+	display: flex;
+	min-width: 0;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 0.625rem;
+	border-radius: 1.25rem;
+	border: 1px solid rgb(var(--border-rgb) / 0.72);
+	background: rgb(var(--surface-rgb) / 0.66);
+	padding: 0.75rem 0.875rem;
+}
+
+.if-class-event-context-pill__label {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	border-radius: 9999px;
+	padding: 0.25rem 0.625rem;
+	font-size: 0.6875rem;
+	font-weight: 700;
+	letter-spacing: 0.16em;
+	line-height: 1;
+	text-transform: uppercase;
+}
+
+.if-class-event-context-pill--0 .if-class-event-context-pill__label {
+	background: rgb(var(--jacaranda-rgb) / 0.14);
+	color: rgb(var(--jacaranda-rgb) / 1);
+}
+
+.if-class-event-context-pill--1 .if-class-event-context-pill__label {
+	background: rgb(var(--leaf-rgb) / 0.14);
+	color: rgb(var(--canopy-rgb) / 1);
+}
+
+.if-class-event-context-pill--2 .if-class-event-context-pill__label {
+	background: rgb(var(--sky-rgb) / 0.24);
+	color: rgb(var(--canopy-rgb) / 1);
+}
+
+.if-class-event-context-pill--3 .if-class-event-context-pill__label {
+	background: rgb(var(--slate-rgb) / 0.14);
+	color: rgb(var(--slate-rgb) / 0.9);
 }
 </style>

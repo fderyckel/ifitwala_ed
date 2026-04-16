@@ -14,6 +14,8 @@ from frappe.model.document import Document
 from ifitwala_ed.utilities import file_management
 from ifitwala_ed.utilities.file_classification_contract import (
     ALLOWED_PRIMARY_SUBJECT_TYPES,
+    format_allowed_file_purposes,
+    is_allowed_file_purpose,
     is_school_required_for_subject_type,
 )
 
@@ -49,6 +51,14 @@ def _validate_classification_payload(classification: Dict[str, Any]) -> None:
     primary_subject_type = classification.get("primary_subject_type")
     if primary_subject_type not in ALLOWED_SUBJECT_TYPES:
         frappe.throw(_("Invalid primary_subject_type."))
+
+    if not is_allowed_file_purpose(classification.get("purpose")):
+        frappe.throw(
+            _('Purpose cannot be "{0}". It should be one of "{1}".').format(
+                classification.get("purpose"),
+                format_allowed_file_purposes(),
+            )
+        )
 
     for fieldname in REQUIRED_CLASSIFICATION_FIELDS:
         if fieldname == "school" and not is_school_required_for_subject_type(primary_subject_type):

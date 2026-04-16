@@ -2,17 +2,19 @@
  "actions": [],
  "allow_import": 1,
  "autoname": "field:year",
- "creation": "2026-03-11 00:00:00.000000",
+ "creation": "2026-03-11 00:00:00",
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
   "year",
   "disabled",
   "is_short_year",
+  "auto_created",
+  "column_break_kgow",
   "year_start_date",
   "year_end_date",
-  "organizations",
-  "auto_created"
+  "section_break_yqyf",
+  "organizations"
  ],
  "fields": [
   {
@@ -68,12 +70,20 @@
    "hidden": 1,
    "label": "Auto Created",
    "read_only": 1
+  },
+  {
+   "fieldname": "column_break_kgow",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "section_break_yqyf",
+   "fieldtype": "Section Break"
   }
  ],
  "icon": "fa fa-calendar",
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-03-11 00:00:00.000000",
+ "modified": "2026-04-11 16:49:15.928346",
  "modified_by": "Administrator",
  "module": "Accounting",
  "name": "Fiscal Year",
@@ -110,11 +120,10 @@
    "print": 1,
    "read": 1,
    "report": 1,
-   "role": "Accounts User",
-   "share": 0,
-   "write": 0
+   "role": "Accounts User"
   }
  ],
+ "row_format": "Dynamic",
  "show_name_in_global_search": 1,
  "sort_field": "year_start_date",
  "sort_order": "DESC",

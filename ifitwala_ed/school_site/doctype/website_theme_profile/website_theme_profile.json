@@ -2,24 +2,28 @@
  "actions": [],
  "allow_rename": 1,
  "autoname": "hash",
- "creation": "2026-02-12 00:00:00.000000",
+ "creation": "2026-02-12 00:00:00",
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
   "profile_name",
-  "scope_type",
   "organization",
+  "column_break_xugm",
+  "scope_type",
   "school",
+  "column_break_qfiz",
   "preset_type",
   "is_default",
   "appearance_section",
   "primary_color",
-  "accent_color",
-  "surface_color",
   "text_color",
+  "column_break_ljuz",
+  "surface_color",
+  "accent_color",
   "layout_section",
   "type_scale",
   "spacing_density",
+  "column_break_rspj",
   "hero_style",
   "enable_motion"
  ],
@@ -127,15 +131,32 @@
    "fieldname": "enable_motion",
    "fieldtype": "Check",
    "label": "Enable Motion Enhancements"
+  },
+  {
+   "fieldname": "column_break_xugm",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "column_break_qfiz",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "column_break_ljuz",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "column_break_rspj",
+   "fieldtype": "Column Break"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-02-12 00:00:00.000000",
+ "modified": "2026-04-11 23:35:35.034674",
  "modified_by": "Administrator",
  "module": "School Site",
  "name": "Website Theme Profile",
+ "naming_rule": "Random",
  "owner": "Administrator",
  "permissions": [
   {

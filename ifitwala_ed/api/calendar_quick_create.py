@@ -1151,14 +1151,14 @@ def _collect_school_event_busy_windows(
             student_group = _safe_text(audience.get("student_group"))
             include_guardians = cint(audience.get("include_guardians"))
 
-            if audience_type in {"All Students", "Whole School Community"}:
+            if audience_type in {"All Students", "All Students, Guardians, and Employees"}:
                 for ctx in student_contexts:
                     lineage = student_lineage_map.get(ctx["user"]) or set()
                     if event_school and lineage and event_school not in lineage:
                         continue
                     _append_busy_window(busy_by_user, ctx["user"], start_dt, end_dt)
 
-            if audience_type in {"All Guardians", "Whole School Community"}:
+            if audience_type in {"All Guardians", "All Students, Guardians, and Employees"}:
                 for ctx in guardian_contexts:
                     lineage = guardian_lineage_map.get(ctx["user"]) or set()
                     if event_school and lineage and event_school not in lineage:
@@ -1374,7 +1374,7 @@ def _collect_student_school_event_conflict_labels(
             audience_type = _safe_text(audience.get("audience_type"))
             student_group = _safe_text(audience.get("student_group"))
 
-            if audience_type in {"All Students", "Whole School Community"}:
+            if audience_type in {"All Students", "All Students, Guardians, and Employees"}:
                 for ctx in student_contexts:
                     lineage = student_lineage_map.get(ctx["user"]) or set()
                     if event_school and lineage and event_school not in lineage:

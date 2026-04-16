@@ -1,222 +1,367 @@
 ---
-title: "Institutional Policy: Policy Identity and Scope Anchor"
+title: "Institutional Policy: Unified Governance for Your School"
 slug: institutional-policy
 category: Governance
 doc_order: 1
-version: "1.5.0"
-last_change_date: "2026-03-25"
-summary: "Define policy identity, organization/school scope, target audience, and lifecycle rules so admissions, guardian, staff, and governance workflows resolve the correct active policy versions and acknowledgements."
-seo_title: "Institutional Policy: Policy Identity and Scope Anchor"
-seo_description: "Define policy identity, organization/school scope, and target audience so admissions, guardian, staff, and governance workflows resolve the correct active policy versions and acknowledgements."
+version: "2.0.1"
+last_change_date: "2026-04-15"
+summary: "Create and manage institutional policies that flow seamlessly across your organization—from staff signature campaigns to guardian portals, student hubs, and admissions workflows—all with comprehensive analytics and audit trails."
+seo_title: "Institutional Policy: Unified Governance for Your School"
+seo_description: "Learn how Ifitwala Ed's integrated policy governance connects staff campaigns, guardian acknowledgements, student policies, and admissions requirements in one unified system."
 ---
 
-## Institutional Policy: Policy Identity and Scope Anchor
+## What is Institutional Policy?
 
-## Before You Start (Prerequisites)
+An **Institutional Policy** is the foundation of your school's governance framework. It defines what a policy is, who it applies to, and where it has authority—creating a single source of truth that flows through every corner of your organization.
 
-- Create the target [**Organization**](/docs/en/organization/) first (policy scope anchor).
-- Decide `policy_key`, category, and applies-to audience model before insertion.
-- Create [**Institutional Policy**](/docs/en/institutional-policy/) identity records before creating any [**Policy Version**](/docs/en/policy-version/) rows.
+Unlike disconnected document storage, Ifitwala Ed's policies are **alive**. They appear automatically in the right places:
+- **Staff** see policies in their Focus tasks and Morning Brief
+- **Guardians** review and sign in their family portal
+- **Students** acknowledge in their student hub
+- **Applicants** sign during admissions
+- **Administrators** track completion in real-time analytics
 
-### What `policy_key` Is
-
-`policy_key` is the stable machine identifier for a policy identity.
-
-- It is not display text; `policy_title` is the human-facing label.
-- It is used by server logic to resolve policy requirements by organization scope (nearest policy per key).
-- It is immutable after insert.
-- It must be unique within the same `organization`.
-
-Example used in current code: `media_consent` (image publish consent flow).
-
-### Where to Find Existing `policy_key` Values
-
-There is no separate "policy key catalog" DocType in the current model. Existing keys are found in policy records:
-
-1. Desk list view: [**Institutional Policy**](/docs/en/institutional-policy/) -> `policy_key` column.
-2. Desk form: [**Institutional Policy**](/docs/en/institutional-policy/) -> `policy_key` field on each record.
-3. Admissions readiness/policy payloads:
-   - [**Student Applicant**](/docs/en/student-applicant/) readiness (`has_required_policies`) returns missing/required labels from policy key/name chain.
-   - Admissions portal policy list (`get_applicant_policies`) labels policies by `policy_key` first, then title/name fallback.
-4. Internal staff policy payloads:
-   - staff policy library and analytics payloads return `policy_key` for active staff-scope policies.
-   - policy inform payloads keep policy identity attached to the active version shown in the overlay.
-5. Code-level constants for specific product behavior (example): `ifitwala_ed/governance/policy_utils.py` -> `MEDIA_CONSENT_POLICY_KEY`.
-
-### Related Policy Doctypes
-
-- [**Policy Version**](/docs/en/policy-version/) - legal text snapshots under an institutional policy
-- [**Policy Acknowledgement**](/docs/en/policy-acknowledgement/) - append-only acknowledgement evidence rows
-
-`Institutional Policy` defines what a policy is, where it applies, and who it applies to. It is the semantic root for all policy versions and acknowledgements.
-
-## What It Enforces
-
-- Policy identity is stable through `policy_key` + `organization`.
-- `policy_key` and `organization` are immutable after insert.
-- `school` is optional; blank means organization-wide scope.
-- `school` can be set one time if initially blank, then becomes immutable.
-- `policy_category` must be one of the locked categories in governance utilities.
-- `applies_to` is a required multi-audience field and must include one or more of:
-  - `Applicant`
-  - `Student`
-  - `Guardian`
-  - `Staff`
-- `applies_to` is stored as a Frappe-native `Table MultiSelect` backed by `Institutional Policy Audience` child rows linked to `Policy Audience`.
-- `applies_to` rows are normalized server-side before save. Runtime checks use audience inclusion, not exact string equality.
-- `admissions_acknowledgement_mode` controls how admissions portal acknowledgement is written:
-  - `Child Acknowledgement`
-  - `Family Acknowledgement`
-  - `Child Optional Consent`
-- `admissions_acknowledgement_mode` affects admissions-stage acknowledgement routing only; guardian and staff self-service use their own context-specific acknowledgement paths.
-- `school` must be inside policy organization scope (organization descendants allowed).
-- Deletion is blocked; policy should be deactivated instead (`is_active = 0`).
-- Policy admin management scope is descendant-owned:
-  - policy admins may create, read, and edit policies for their base organization and descendant organizations
-  - management scope for policy admins is broader than end-user applicability visibility
-- Runtime visibility is scope-enforced server-side:
-  - `organization` must be in user organization lineage (`self + parents`)
-  - if policy is school-scoped, `school` must be in user school lineage (`self + parents`)
-
-## Audience and Product Reach
-
-`Institutional Policy` is the scope and identity root for policy behavior across the ERP, not just admissions.
-
-- `Applicant` policies drive admissions readiness, portal display, and applicant-stage acknowledgements.
-- `Guardian` policies drive guardian self-service visibility and acknowledgement for linked children in scope.
-- `Staff` policies drive internal policy communication, staff policy library visibility, signature campaigns, focus actions, acknowledgements, and analytics.
-- `Student` is a valid canonical audience in the data model and acknowledgement model. The current workspace does not expose a dedicated student policy library surface in this note set, so any future student-facing delivery should be documented under its owning product surface.
-
-## Audience Scope vs Signer Authority
-
-- `applies_to` answers which audiences a policy targets.
-- `applies_to` does not grant signer authority by itself.
-- Guardian signer authority is owned by relationship rows:
-  - admissions-stage: `Student Applicant Guardian.can_consent`
-  - enrolled-student stage: `Student Guardian.can_consent`
-- Admissions-stage acknowledgements still use `admissions_acknowledgement_mode` to choose applicant or guardian context.
-- Staff acknowledgements are always self-context on `Employee`; policy audience does not let one staff member sign for another.
-- Current guardian portal policy visibility uses both rules together:
-  - the policy audience must include `Guardian`
-  - the guardian must have signer authority for at least one linked child in scope
-
-## School Scope Resolution
-
-- `school` blank (`NULL`/empty) means the policy is org-wide for the selected `organization` scope.
-- When `school` is set to a parent school, the policy applies to that school and all descendant schools.
-- School matching uses the active business context school lineage (`self -> parent -> ...`) plus org-wide blank fallback:
-  - applicant school for admissions flows
-  - linked child school for guardian flows
-  - employee school for staff flows
-- Final policy selection remains nearest-only by `policy_key` on the [**Organization**](/docs/en/organization/) ancestor chain.
-
-## Where It Is Used Across the ERP
-
-- Governance and authoring:
-  - [**Policy Version**](/docs/en/policy-version/) requires an active parent policy identity.
-  - the Institutional Policy Desk form is the long-lived root where policy identity, scope, and audience are maintained before creating versions.
-  - [**Policy Acknowledgement**](/docs/en/policy-acknowledgement/) resolves parent organization scope from the policy chain.
-- Admissions and applicant readiness:
-  - [**Student Applicant**](/docs/en/student-applicant/) readiness uses active applicant-audience policies (`has_required_policies`).
-  - admissions portal policy lists (`get_applicant_policies`) resolve active versions through organization/school scope and nearest `policy_key`.
-  - `admissions_acknowledgement_mode` decides whether applicant-stage acknowledgement lands on `Student Applicant` or `Guardian` context.
-- Guardian self-service:
-  - guardian policy overview and acknowledgement resolve guardian-audience active policies across linked child scope.
-  - guardian visibility still requires signer-authorized child relationships; audience match alone is not enough.
-- Internal staff workflows:
-  - staff policy library (`get_staff_policy_library`, `/staff/policies`) shows active staff-audience policy versions in employee scope.
-  - policy inform payloads and overlays expose current policy text, change summary, diff stats, and version history for in-scope staff readers.
-  - policy signature campaigns (`get_staff_policy_campaign_options`, `launch_staff_policy_campaign`) use policy scope to target employees by organization, school, and employee group.
-  - focus acknowledgement actions write immutable staff acknowledgements on `Employee` context and close related policy ToDos.
-  - policy signature analytics aggregate completion by organization, school, and employee group for active staff policies.
-- Internal communication defaults:
-  - policy communication/share flows derive default recipients from `Institutional Policy.applies_to`.
-  - the same policy scope (`organization`, optional `school`) is reused to build communication audiences before optional staff-signature campaign launch.
-- Downstream operational gates:
-  - `policy_key = media_consent` is used by applicant/student image publish gating through acknowledgement checks.
-  - nearest-only policy override remains keyed by `policy_key` across [**Organization**](/docs/en/organization/) ancestor scope via `select_nearest_policy_rows_by_key`.
-
-## Lifecycle and Linked Documents
-
-1. Create policy identity (`policy_key`) and audience/scope under the correct organization.
-2. Use **Create Policy Version** on the Institutional Policy form to open a prefilled draft:
-   - first version: prefilled with `institutional_policy` + suggested `version_label` (`v1`)
-   - subsequent versions: prefilled as amendment from current active/latest version (`based_on_version`, copied `policy_text`, suggested bumped `version_label`)
-3. Save and finalize the [**Policy Version**](/docs/en/policy-version/) legal text snapshot.
-4. Activate the policy version and keep the identity active while it should remain selectable by scope resolution.
-5. Optionally share or distribute the active version through internal communication flows; recipient defaults come from `applies_to`, while staff-signature campaigns remain staff-only.
-6. Collect acknowledgements through [**Policy Acknowledgement**](/docs/en/policy-acknowledgement/) using active versions only:
-   - applicant-stage flows use admissions context rules
-   - guardian flows use guardian self-context
-   - staff flows use employee self-context
-7. Use acknowledgement evidence downstream for readiness, pending signature state, analytics, and publish/consent gates.
-8. Deactivate the policy identity when it should stop participating in future resolution. Do not delete historical roots.
-
-<Callout type="warning" title="Scope integrity">
-Policy scope is organization-sensitive. Wrong scope setup causes downstream acknowledgement and readiness mismatches.
+<Callout type="info" title="Why Ifitwala Ed is different">
+Most platforms treat policies as static documents. Ifitwala Ed treats them as **governance workflows**. A single policy identity can cascade through staff signature campaigns, guardian acknowledgements, student requirements, and admissions gates—each with their own signing flow, tracking, and audit trail. It's governance that actually governs.
 </Callout>
 
-<Callout type="tip" title="Lifecycle approach">
-Treat this record as long-lived identity. Version the legal text in [**Policy Version**](/docs/en/policy-version/) instead of replacing policy roots.
+---
+
+## The Policy Ecosystem: How It All Connects
+
+### 1. **Policy Identity** (This DocType)
+The root definition: what the policy is, who it applies to (Staff, Guardians, Students, Applicants), and where it has scope (Organization-wide or school-specific).
+
+### 2. **Policy Version**
+The actual legal text at a point in time. Create new versions when rules change, with automatic diff tracking and version history.
+
+### 3. **Policy Surfaces** — Where People Interact
+| Surface | Who | Experience |
+|---------|-----|------------|
+| **Staff Focus Action** | Employees | ToDo task with inline diff viewer and e-signature |
+| **Morning Brief** | Staff | Policy announcements with one-click review |
+| **Guardian Portal** | Parents | Family policy library with per-child acknowledgements |
+| **Student Hub** | Students | Age-appropriate policy review and signing |
+| **Admissions Portal** | Applicants | Required policy acknowledgements before enrollment |
+| **Policy Analytics Dashboard** | Admins | Real-time completion tracking across all audiences |
+| **Policy Campaign Overlay** | Admins | Launch targeted signature campaigns |
+| **Policy Inform Overlay** | Everyone | Read-only policy viewer with change history |
+
+### 4. **Policy Acknowledgement**
+Immutable evidence of who signed what, when, and which version—forming your audit trail.
+
+---
+
+## Creating an Institutional Policy
+
+<Steps title="Setting up a New Policy">
+  <Step title="Navigate to Governance">
+    Go to **Governance > Institutional Policy** and click **New**.
+  </Step>
+  <Step title="Define the Policy Key">
+    Enter a stable machine identifier (e.g., `privacy_policy`, `code_of_conduct`, `media_consent`). This never changes and is used by the system to resolve policies across all surfaces.
+  </Step>
+  <Step title="Add the Title">
+    Enter the human-readable title (e.g., "Student Data Privacy Policy"). This appears in all portals and communications.
+  </Step>
+  <Step title="Choose Category">
+    Select from: Safeguarding, Privacy & Data Protection, Admissions, Academic, Conduct & Behaviour, Health & Safety, Operations, Handbooks, or Employment. Categories help organize the policy library.
+  </Step>
+  <Step title="Set the Scope">
+    Choose the Organization (required) and optionally a specific School. Leave School blank for organization-wide policies that apply to all campuses.
+  </Step>
+  <Step title="Define Audience">
+    Select who this policy applies to: **Applicants**, **Students**, **Guardians**, **Staff**, or any combination. This determines which portals and workflows surface the policy.
+  </Step>
+  <Step title="Set Admissions Mode (if applicable)">
+    For Applicant policies, choose signing mode: Child Acknowledgement, Family Acknowledgement, or Child Optional Consent.
+  </Step>
+  <Step title="Save">
+    Click **Save**. Your policy identity is now ready for versions.
+  </Step>
+</Steps>
+
+<Callout type="success" title="What happens automatically">
+After creating the Institutional Policy, you'll create Policy Versions to hold the actual legal text. Once a version is activated, it automatically appears in all relevant portals and surfaces based on your audience selections.
 </Callout>
 
-## Related Docs
+---
 
-- [**Organization**](/docs/en/organization/) - ancestor scope and nearest-match resolution root
-- [**School**](/docs/en/school/) - school lineage and descendant applicability
-- [**Policy Version**](/docs/en/policy-version/) - legal text versions, communication/share flow, and activation rules
-- [**Policy Acknowledgement**](/docs/en/policy-acknowledgement/) - immutable acknowledgement evidence across applicant, guardian, student, and staff contexts
-- [**Student Applicant**](/docs/en/student-applicant/) - admissions readiness, portal policy display, and applicant-stage acknowledgement behavior
+## Policy Scope and Audience
+
+### Understanding Scope
+
+| Scope Level | What It Means | Example Use Case |
+|-------------|---------------|------------------|
+| **Organization Only** | Applies to all schools in the organization | Group-wide Data Privacy Policy |
+| **Specific School** | Applies to that school and its descendants | Campus-specific uniform policy |
+
+**Important:** School-scoped policies automatically apply to satellite campuses (child schools). This makes multi-campus management effortless.
+
+### Understanding Audience
+
+| Audience | Where They See It | Signing Experience |
+|----------|-------------------|-------------------|
+| **Applicant** | Admissions portal | Review and acknowledge before enrollment |
+| **Student** | Student Hub (`/hub/student/policies`) | Age-appropriate policy review with e-signature |
+| **Guardian** | Guardian Portal (`/hub/guardian/policies`) | Per-child acknowledgements with family context |
+| **Staff** | Focus tasks, Morning Brief | Inline diff viewer, ToDo-driven workflow |
+
+<Callout type="warning" title="Audience vs. Signer Authority">
+Policy audience determines who sees the policy, but not always who can sign. Guardian policies require the guardian to be the primary guardian and to hold the linked signer authority (`can_consent`) for at least one child. Staff always sign for themselves.
+</Callout>
+
+### Admissions Acknowledgement Modes
+
+For policies that apply to Applicants:
+
+| Mode | How It Works | Best For |
+|------|--------------|----------|
+| **Child Acknowledgement** | Applicant signs directly | Older students applying independently |
+| **Family Acknowledgement** | Guardian signs on behalf of applicant | Younger children, family decisions |
+| **Child Optional Consent** | Student can optionally consent | Media release, optional participation |
+
+---
+
+## Policy Surfaces in Detail
+
+### 1. Staff Signature Campaigns (Launch Overlay)
+
+Admins launch targeted policy campaigns via the **Policy Signature Campaign Overlay** (`/staff` → Set up campaign):
+
+- **Select scope:** Organization, School, Employee Group
+- **Choose policy version:** Any active version
+- **Preview audience:** See eligible, signed, and pending counts before launch
+- **Set due date:** Optional deadline for completion
+- **Launch:** Creates Focus ToDos for all eligible staff
+
+<Callout type="tip" title="Campaign intelligence">
+The overlay shows you exactly who will receive tasks, who has already signed, and who has pending ToDos—preventing duplicate work and letting you target precisely.
+</Callout>
+
+### 2. Staff Policy Acknowledgement (Focus Action)
+
+Staff sign policies through **Focus** (their task dashboard):
+
+- **ToDo notification:** "Acknowledge [Policy Name]"
+- **Inline diff viewer:** See exactly what changed from the previous version
+- **Full policy text:** Expand to read complete policy
+- **Change summary:** Human-readable description of amendments
+- **E-signature:** Type full name + legal attestation checkbox
+- **Acknowledgement clauses:** Check required boxes (e.g., "I have read...")
+
+Once signed, the ToDo auto-completes and the acknowledgement is recorded immutably.
+
+### 3. Staff Policy Library (Inform Overlay)
+
+Staff can browse policies anytime via:
+- **Morning Brief** policy links
+- **Org Communication** policy announcements
+- **Staff Policy Library** page
+
+The **Policy Inform Overlay** provides:
+- Current policy text
+- Visual diff (if amended version)
+- Version history table
+- Acknowledgement status
+- Read-only, close-only interface
+
+### 4. Guardian Portal Policies
+
+Guardians access policies at `/hub/guardian/policies`:
+
+- **Policy cards:** Show title, category, version, and scope
+- **Status badges:** "Acknowledged" or "Pending acknowledgement"
+- **Expandable text:** Read full policy inline
+- **Per-child context:** Acknowledge for each linked student
+- **E-signature flow:** Same robust signing as staff (name match + attestation)
+- **Acknowledgement clauses:** Required checkboxes per policy
+
+Guardians only see policies explicitly scoped to them and where they are the primary guardian with signing authority for at least one child.
+
+### 5. Student Hub Policies
+
+Students access policies at `/hub/student/policies`:
+
+- **Student-appropriate view:** Clean, readable policy cards
+- **Progress counters:** Total, Acknowledged, Pending
+- **Inline policy reading:** Expand to read without leaving the page
+- **Guided signing:** Step-by-step acknowledgement flow
+- **Electronic signature:** Type name + legal confirmation
+
+### 6. Admissions Portal Policies
+
+Applicants encounter policies during the admissions process:
+
+- **Required acknowledgements:** Block progression until signed
+- **Policy list:** All applicable applicant policies
+- **Review & Acknowledge button:** Opens signing overlay
+- **Read-only mode:** If application is read-only, policies display without signing
+- **Status tracking:** Admissions staff see completion in readiness checks
+
+### 7. Policy Signature Analytics Dashboard
+
+Admins track completion in real-time at `/staff/analytics/policy-signatures`:
+
+**KPIs at a glance:**
+- Eligible Signers
+- Signed
+- Pending
+- Completion %
+
+**Audience sections:**
+- Staff (with campaign launch capability)
+- Guardians (portal tracking)
+- Students (hub tracking)
+
+**Breakdown tables:**
+- By Organization
+- By School
+- By Context (Employee Group for staff)
+
+**Detailed rows:**
+- Pending list (who still needs to sign)
+- Signed list (recent acknowledgements with timestamps)
+
+<Callout type="success" title="Real-world use case">
+A Pastoral Lead filters to their school, selects the current academic year, and sees:
+- 87% of staff have signed the new Safeguarding Policy
+- 12 guardians still need to acknowledge the Data Privacy update
+- 3 students have pending acknowledgements for the Code of Conduct
+They click "Set up campaign" to nudge remaining staff with targeted ToDos.
+</Callout>
+
+---
+
+## Where Policies Are Used
+
+### Admissions Workflow
+- Required policies block readiness for enrollment
+- Portal shows policy list with completion status
+- Admissions staff track via readiness checks
+- Policies appear in order they must be acknowledged
+
+### Guardian Engagement
+- Parents see policies for all linked children
+- Sign once per policy per child (or family-wide depending on settings)
+- Historical acknowledgements preserved
+- Re-acknowledgement prompted for new versions
+
+### Staff Compliance
+- Morning Brief highlights new/updated policies
+- Focus ToDos drive completion
+- Signature campaigns target specific groups
+- Completion analytics track organization-wide compliance
+
+### Student Accountability
+- Age-appropriate policy presentation
+- Guided acknowledgement flow
+- Part of student readiness checks
+- Builds digital citizenship skills
+
+### Operational Gates
+- Media publishing checks consent policy status
+- Activity participation can require current acknowledgements
+- Program enrollment gates on policy compliance
+- Health services check vaccination policy status
+
+---
+
+## Managing Policy Lifecycle
+
+### Activating and Deactivating
+
+- **Active policies** participate in resolution and acknowledgement collection
+- **Inactive policies** are hidden but preserved for historical reference
+- **Never delete**—always deactivate to maintain audit history
+
+### Version Management
+
+1. Create new **Policy Version** when rules change
+2. System generates automatic diff from previous version
+3. Add **change summary** explaining what changed and why
+4. **Activate** new version (automatically deactivates old)
+5. Affected audiences see "New version to review" status
+6. Re-acknowledgement collected through respective portals
+
+<DoDont doTitle="Do" dontTitle="Don't">
+  <Do>Create the Institutional Policy before creating Policy Versions.</Do>
+  <Do>Use stable, descriptive policy_keys (e.g., `data_privacy_policy`).</Do>
+  <Do>Set organization scope first, then refine to school if needed.</Do>
+  <Do>Deactivate old policies instead of deleting them.</Do>
+  <Do>Use categories consistently for easier management.</Do>
+  <Do>Create new versions for material changes—don't edit locked text.</Do>
+  <Dont>Change policy_key after creation—it's immutable.</Dont>
+  <Dont>Delete policies—deactivate instead.</Dont>
+  <Dont>Forget to set audience—policies without audience apply to no one.</Dont>
+  <Dont>Create versions before creating the policy identity.</Dont>
+</DoDont>
+
+---
+
+## Common Questions
+
+**Q: What's the difference between Institutional Policy and Policy Version?**
+A: Institutional Policy is the identity and scope (what, who, where). Policy Version is the actual legal text at a point in time. You create the policy identity once, then create multiple versions as rules evolve.
+
+**Q: How do I launch a staff signature campaign?**
+A: Go to the Policy Signature Analytics dashboard and click "Set up campaign." Select your scope (organization/school/employee group), choose the policy version, preview the audience, and launch. Focus ToDos are created automatically for all eligible staff.
+
+**Q: Can guardians sign for multiple children at once?**
+A: Guardians see policies in their portal with per-child context. Depending on the policy's admissions acknowledgement mode, they may sign once per family or per child. The system tracks acknowledgements separately for audit purposes.
+
+**Q: How do students sign policies?**
+A: Students access their policy library at `/hub/student/policies`. They see policy cards with status, can read the full text inline, and complete a guided signing flow with electronic signature and legal attestation.
+
+**Q: What happens when I update a policy?**
+A: You create a new Policy Version with the updated text. The system shows the diff to users. Staff see "New version to review" in Focus. Guardians and students see updated policy cards in their portals. Analytics reset to track the new version's completion.
+
+**Q: How do school-scoped policies interact with organization policies?**
+A: The system uses "nearest match" resolution. If both organization and school-level policies exist for the same policy_key, the school-specific one wins for that school and its descendants.
+
+**Q: Can I track policy completion across all audiences?**
+A: Yes! The Policy Signature Analytics dashboard shows completion rates for Staff, Guardians, and Students side-by-side, with breakdowns by organization, school, and context.
+
+**Q: What happens to acknowledgements when I deactivate a policy?**
+A: Historical acknowledgements are preserved. New acknowledgements are no longer collected. If you reactivate, collection resumes.
+
+**Q: Can applicants see policies before submitting an application?**
+A: Yes, applicant-scoped policies appear in the admissions portal. They must acknowledge required policies before their application can be considered complete.
+
+---
+
+<RelatedDocs
+  slugs="policy-version,policy-acknowledgement,organization,school,student-applicant"
+  title="Continue With Governance Docs"
+/>
+
+---
 
 ## Technical Notes (IT)
 
-### Schema and Controller Snapshot
-
-- **DocType schema file**: `ifitwala_ed/governance/doctype/institutional_policy/institutional_policy.json`
-- **Controller file**: `ifitwala_ed/governance/doctype/institutional_policy/institutional_policy.py`
-- **Required fields (`reqd=1`)**:
-  - `policy_key` (`Data`)
-  - `policy_title` (`Data`)
-  - `policy_category` (`Select`)
-  - `applies_to` (`Table MultiSelect` -> `Institutional Policy Audience`)
-  - `organization` (`Link` -> [**Organization**](/docs/en/organization/))
-  - `is_active` (`Check`)
-- **Lifecycle hooks in controller**: `before_insert`, `before_save`, `before_delete`
-- **Desk action**:
-  - `Create Policy Version` button creates a prefilled `Policy Version` draft from policy context.
-
-- **DocType**: `Institutional Policy` (`ifitwala_ed/governance/doctype/institutional_policy/`)
-- **Autoname**: `hash`
-- **Fields**:
-  - `policy_key` (Data, required)
-  - `policy_title` (Data, required)
-  - `policy_category` (Select, required)
-  - `applies_to` (Table MultiSelect, required): child rows of `Institutional Policy Audience`
-  - `policy_audience` (Link -> `Policy Audience`, required on each child row): `Applicant`, `Student`, `Guardian`, `Staff`
-  - `admissions_acknowledgement_mode` (Select, default `Child Acknowledgement`): `Child Acknowledgement`, `Family Acknowledgement`, `Child Optional Consent`
-  - `organization` (Link -> [**Organization**](/docs/en/organization/), required)
-  - `school` (Link -> School, optional)
-  - `description` (Small Text)
-  - `is_active` (Check, required, default `1`)
-- **Controller guards**:
-  - `before_insert`: admin permission, category validation, applies-to normalization/validation, unique policy key by organization, school scope validation
-  - `before_save`: admin permission, applies-to normalization/validation, school scope validation, immutability enforcement (`school` one-time set if previously blank)
-  - `before_delete`: hard block
-- **Scope helper**:
-  - `is_school_within_policy_organization_scope` validates school organization ancestry under the policy organization.
+- **DocType**: `Institutional Policy` — Located in Governance module
+- **Autoname**: `hash` format
+- **Immutable Fields**: `policy_key`, `organization` (after creation)
+- **One-time Settable**: `school` (can be set if initially blank, then locked)
+- **Deletion**: Blocked by controller—use `is_active` instead
+- **SPA Surfaces:**
+  - Staff Campaign Overlay: `/staff` → Set up campaign
+  - Staff Inform Overlay: Policy read-only viewer
+  - Guardian Policies: `/hub/guardian/policies`
+  - Student Policies: `/hub/student/policies`
+  - Analytics Dashboard: `/staff/analytics/policy-signatures`
 
 ### Permission Matrix
 
 | Role | Read | Write | Create | Delete | Notes |
-|---|---|---|---|---|---|
-| `System Manager` | Yes | Yes | Yes | Yes | Doctype permission allows delete; controller blocks delete |
-| `Organization Admin` | Yes | Yes | Yes | Yes | Doctype permission allows delete; controller blocks delete |
-| `Admission Manager` | Yes | Yes | Yes | Yes | Doctype permission allows delete; controller blocks delete |
-| `Academic Admin` | Yes | Yes | Yes | Yes | Doctype permission allows delete; controller blocks delete |
-| `HR Manager` | Yes | Yes | Yes | Yes | Doctype permission allows delete; controller blocks delete |
+|------|------|-------|--------|--------|-------|
+| `System Manager` | Yes | Yes | Yes | Blocked | Controller blocks delete |
+| `Organization Admin` | Yes | Yes | Yes | Blocked | Controller blocks delete |
+| `Accounts Manager` | Yes | Yes | Yes | Blocked | Controller blocks delete |
+| `Admission Manager` | Yes | Yes | Yes | Blocked | Controller blocks delete |
+| `Academic Admin` | Yes | Yes | Yes | Blocked | Controller blocks delete |
+| `HR Manager` | Yes | Yes | Yes | Blocked | Controller blocks delete |
+| `Academic Staff` | Yes | No | No | No | Read-only access |
+| `Accreditation Visitor` | Yes | No | No | No | Read-only for audits |
 
-Runtime controller rule:
-- Policy management is restricted to policy admins (`System Manager`, `Organization Admin`, `Accounts Manager`, `Admission Manager`, `Academic Admin`, `HR Manager`), regardless of Desk form visibility.
-- Controller role pass is necessary but not sufficient: user must also have DocType create/write permission for `Institutional Policy`.
-- Policy admins may manage policies rooted in their organization or descendant organizations; this is the authoring scope used for create/write and management list visibility.
-- Read/list visibility for non-admin readers is enforced by `permission_query_conditions` + `has_permission` hooks, not client filtering.
+**Management Scope:** Policy admins may manage policies rooted in their base organization or descendant organizations. Read visibility is enforced through scope hooks.

@@ -47,7 +47,7 @@
 		</section>
 
 		<template v-else>
-			<section class="card-surface p-5">
+			<section id="communication-center" class="card-surface p-5">
 				<div class="mb-3 flex items-center justify-between gap-3">
 					<h2 class="type-h3 text-ink">My Bookings</h2>
 					<p class="type-caption text-ink/60">Humanized statuses are shown for clarity.</p>
@@ -233,7 +233,7 @@
 
 <script setup lang="ts">
 import { computed, ref } from 'vue';
-import { RouterLink } from 'vue-router';
+import { RouterLink, useRoute } from 'vue-router';
 import { toast } from 'frappe-ui';
 
 import ActivityCommunicationPanel from '@/components/activity/ActivityCommunicationPanel.vue';
@@ -255,6 +255,7 @@ import type {
 
 const loading = ref<boolean>(true);
 const errorMessage = ref<string>('');
+const route = useRoute();
 const board = ref<{
 	settings: {
 		default_max_choices: number;
@@ -369,7 +370,14 @@ async function loadBoard() {
 			students: payload.students,
 			offerings: payload.offerings,
 		};
-		if (!centerOffering.value && payload.offerings.length) {
+		const requestedOffering =
+			typeof route.query.program_offering === 'string' ? route.query.program_offering.trim() : '';
+		if (
+			requestedOffering &&
+			payload.offerings.some(row => row.program_offering === requestedOffering)
+		) {
+			centerOffering.value = requestedOffering;
+		} else if (!centerOffering.value && payload.offerings.length) {
 			centerOffering.value = payload.offerings[0].program_offering;
 		}
 	} catch (error) {

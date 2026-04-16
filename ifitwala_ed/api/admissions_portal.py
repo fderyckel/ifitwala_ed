@@ -58,6 +58,7 @@ from ifitwala_ed.governance.policy_utils import (
     ADMISSIONS_POLICY_MODE_FAMILY,
     get_applicant_policy_status,
 )
+from ifitwala_ed.utilities.html_sanitizer import sanitize_html
 
 INVALID_SESSION_USERS = {"guest", "none", "null", "undefined"}
 
@@ -958,6 +959,10 @@ def _guardian_row_is_empty(row: dict) -> bool:
     return not any(_as_text(row.get(fieldname)).strip() for fieldname in identity_fields)
 
 
+def _guardian_signer_flag_from_primary_guardian(row: dict) -> int:
+    return 1 if _as_check(row.get("is_primary_guardian")) else 0
+
+
 def _validate_guardian_profile_row(row: dict) -> dict:
     missing_labels = [
         _(label)
@@ -998,6 +1003,7 @@ def _validate_guardian_profile_row(row: dict) -> dict:
         except Exception:
             frappe.throw(_("Guardian work phone must be a valid phone number."))
     row["guardian_work_phone"] = guardian_work_phone
+    row["can_consent"] = _guardian_signer_flag_from_primary_guardian(row)
 
     return row
 
@@ -1205,8 +1211,7 @@ def _normalize_guardian_row(row_payload: dict) -> dict:
 
     normalized["name"] = _as_text(row_payload.get("name")).strip()
     normalized["relationship"] = normalized.get("relationship") or "Other"
-    if not normalized.get("can_consent"):
-        normalized["can_consent"] = 0
+    normalized["can_consent"] = _guardian_signer_flag_from_primary_guardian(normalized)
     return normalized
 
 
@@ -1419,6 +1424,7 @@ def _resolve_family_guardian_context(*, student_applicant: str, user: str) -> st
             "parentfield": "guardians",
             "user": user,
             "can_consent": 1,
+            "is_primary_guardian": 1,
         },
         fields=["guardian"],
         limit=5,
@@ -1439,6 +1445,7 @@ def _resolve_family_guardian_context(*, student_applicant: str, user: str) -> st
                 "parentfield": "guardians",
                 "guardian": ["in", guardian_names],
                 "can_consent": 1,
+                "is_primary_guardian": 1,
             },
             fields=["guardian"],
             limit=5,
@@ -2723,7 +2730,7 @@ def get_applicant_policies(student_applicant: str | None = None):
             {
                 "name": row_policy.get("label"),
                 "policy_version": policy_version,
-                "content_html": policy_text_by_version.get(policy_version, ""),
+                "content_html": sanitize_html(policy_text_by_version.get(policy_version, ""), allow_headings_from="h2"),
                 "is_required": bool(row_policy.get("is_required")),
                 "acknowledgement_mode": row_policy.get("admissions_acknowledgement_mode"),
                 "is_acknowledged": bool(row_policy.get("is_acknowledged")),
@@ -3081,10 +3088,13 @@ def get_family_invite_options(*, student_applicant: str | None = None) -> dict:
     guardian_payload = []
     for row in applicant.get("guardians") or []:
         email = normalize_email_value(row.get("guardian_email"))
-        eligible = bool(email and cint(row.get("can_consent")))
+        is_primary_guardian = bool(cint(row.get("is_primary_guardian") or 0))
+        eligible = bool(email and cint(row.get("can_consent")) and is_primary_guardian)
         reason = ""
-        if not cint(row.get("can_consent")):
-            reason = _("Mark this guardian as an authorized signer before inviting portal access.")
+        if not is_primary_guardian:
+            reason = _("Mark this guardian as the primary guardian before inviting portal access.")
+        elif not cint(row.get("can_consent")):
+            reason = _("Only the primary guardian may be invited as the authorized signer.")
         elif not email:
             reason = _("Add a guardian personal email before inviting portal access.")
         guardian_payload.append(
@@ -3119,6 +3129,8 @@ def invite_family_collaborator(
 
     applicant = frappe.get_doc("Student Applicant", student_applicant)
     target_row = _get_applicant_guardian_row(applicant, guardian_row or "")
+    if not cint(target_row.get("is_primary_guardian") or 0):
+        frappe.throw(_("Only primary guardian rows may be invited to the family workspace as signers."))
     if not cint(target_row.get("can_consent")):
         frappe.throw(_("Only guardian rows marked as authorized signers may be invited to the family workspace."))
 

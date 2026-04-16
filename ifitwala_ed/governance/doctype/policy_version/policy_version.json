@@ -8,15 +8,16 @@
  "engine": "InnoDB",
  "field_order": [
   "institutional_policy",
+  "policy_title",
   "version_label",
-  "based_on_version",
   "column_break_xyu0",
   "effective_from",
   "effective_to",
-  "is_active",
+  "based_on_version",
   "column_break_gvnx",
   "approved_by",
   "approved_on",
+  "is_active",
   "section_break_wgyc",
   "change_summary",
   "policy_text",
@@ -134,11 +135,22 @@
   {
    "fieldname": "column_break_gvnx",
    "fieldtype": "Column Break"
+  },
+  {
+   "fetch_from": "institutional_policy.policy_title",
+   "fetch_if_empty": 1,
+   "fieldname": "policy_title",
+   "fieldtype": "Data",
+   "in_global_search": 1,
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Policy Title",
+   "read_only": 1
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-04-02 12:41:14",
+ "modified": "2026-04-14 21:38:25.136617",
  "modified_by": "Administrator",
  "module": "Governance",
  "name": "Policy Version",
@@ -233,6 +245,7 @@
   }
  ],
  "row_format": "Dynamic",
+ "search_fields": "policy_title",
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": []

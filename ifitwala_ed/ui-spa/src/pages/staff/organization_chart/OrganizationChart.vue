@@ -5,7 +5,7 @@
 			<div>
 				<h1 class="type-h2 text-canopy">Organization Chart</h1>
 				<p class="type-body text-slate-500 mt-1">
-					Explore reporting lines across your organization in a focused, calm view.
+					Explore reporting lines across your organization.
 				</p>
 			</div>
 		</header>

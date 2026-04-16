@@ -8,8 +8,11 @@ const {
 	fetchSchoolContextMock,
 	fetchGroupsMock,
 	fetchGroupTasksMock,
+	getGridMock,
 	getTaskGradebookMock,
+	getTaskQuizManualReviewMock,
 	repairTaskRosterMock,
+	saveTaskQuizManualReviewMock,
 	updateTaskStudentMock,
 } = vi.hoisted(() => ({
 	routeState: {
@@ -20,8 +23,11 @@ const {
 	fetchSchoolContextMock: vi.fn(),
 	fetchGroupsMock: vi.fn(),
 	fetchGroupTasksMock: vi.fn(),
+	getGridMock: vi.fn(),
 	getTaskGradebookMock: vi.fn(),
+	getTaskQuizManualReviewMock: vi.fn(),
 	repairTaskRosterMock: vi.fn(),
+	saveTaskQuizManualReviewMock: vi.fn(),
 	updateTaskStudentMock: vi.fn(),
 }));
 
@@ -74,7 +80,17 @@ vi.mock('frappe-ui', () => ({
 	}),
 	FormControl: defineComponent({
 		name: 'FormControlStub',
-		props: ['modelValue', 'type', 'options', 'disabled', 'rows', 'placeholder', 'min', 'max', 'step'],
+		props: [
+			'modelValue',
+			'type',
+			'options',
+			'disabled',
+			'rows',
+			'placeholder',
+			'min',
+			'max',
+			'step',
+		],
 		emits: ['update:modelValue'],
 		setup(props, { emit }) {
 			const resolveOption = (option: unknown) => {
@@ -153,8 +169,11 @@ vi.mock('@/lib/services/gradebook/gradebookService', () => ({
 	createGradebookService: () => ({
 		fetchGroups: fetchGroupsMock,
 		fetchGroupTasks: fetchGroupTasksMock,
+		getGrid: getGridMock,
 		getTaskGradebook: getTaskGradebookMock,
+		getTaskQuizManualReview: getTaskQuizManualReviewMock,
 		repairTaskRoster: repairTaskRosterMock,
+		saveTaskQuizManualReview: saveTaskQuizManualReviewMock,
 		updateTaskStudent: updateTaskStudentMock,
 	}),
 }));
@@ -261,7 +280,10 @@ function mockGradebookFlow(options?: {
 				status: null,
 				grading_mode: task.grading_mode as string | null,
 				allow_feedback: task.allow_feedback as 0 | 1,
-				rubric_scoring_strategy: task.rubric_scoring_strategy as 'Sum Total' | 'Separate Criteria' | null,
+				rubric_scoring_strategy: task.rubric_scoring_strategy as
+					| 'Sum Total'
+					| 'Separate Criteria'
+					| null,
 				points: task.points as 0 | 1,
 				binary: task.binary as 0 | 1,
 				criteria: task.criteria as 0 | 1,
@@ -272,6 +294,7 @@ function mockGradebookFlow(options?: {
 			},
 		],
 	});
+	getGridMock.mockResolvedValue({ deliveries: [], students: [], cells: [] });
 	getTaskGradebookMock.mockResolvedValue({
 		task,
 		criteria: options?.criteria || [],
@@ -290,6 +313,30 @@ async function openTask(title: string) {
 	await flushUi();
 }
 
+async function selectGroup(label: string) {
+	const groupButton = Array.from(document.querySelectorAll('button')).find(button =>
+		(button.textContent || '').includes(label)
+	);
+	expect(groupButton).not.toBeNull();
+	groupButton!.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+	await flushUi();
+}
+
+async function switchToOverview() {
+	const overviewButton = Array.from(document.querySelectorAll('button')).find(button =>
+		(button.textContent || '').includes('Overview')
+	);
+	expect(overviewButton).not.toBeNull();
+	overviewButton!.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+	for (let index = 0; index < 10; index += 1) {
+		await new Promise(resolve => window.setTimeout(resolve, 10));
+		await flushUi();
+		if (document.body.textContent?.includes('Class Overview')) {
+			break;
+		}
+	}
+}
+
 afterEach(() => {
 	routeState.query = {};
 	replaceMock.mockClear();
@@ -297,8 +344,11 @@ afterEach(() => {
 	fetchSchoolContextMock.mockReset();
 	fetchGroupsMock.mockReset();
 	fetchGroupTasksMock.mockReset();
+	getGridMock.mockReset();
 	getTaskGradebookMock.mockReset();
+	getTaskQuizManualReviewMock.mockReset();
 	repairTaskRosterMock.mockReset();
+	saveTaskQuizManualReviewMock.mockReset();
 	updateTaskStudentMock.mockReset();
 	while (cleanupFns.length) cleanupFns.pop()?.();
 	document.body.innerHTML = '';
@@ -315,6 +365,7 @@ describe('Gradebook page', () => {
 		});
 		fetchGroupsMock.mockResolvedValue([]);
 		fetchGroupTasksMock.mockResolvedValue({ tasks: [] });
+		getGridMock.mockResolvedValue({ deliveries: [], students: [], cells: [] });
 		getTaskGradebookMock.mockResolvedValue({ task: null, criteria: [], students: [] });
 
 		mountPage();
@@ -355,6 +406,7 @@ describe('Gradebook page', () => {
 			return [];
 		});
 		fetchGroupTasksMock.mockResolvedValue({ tasks: [] });
+		getGridMock.mockResolvedValue({ deliveries: [], students: [], cells: [] });
 		getTaskGradebookMock.mockResolvedValue({ task: null, criteria: [], students: [] });
 
 		mountPage();
@@ -367,7 +419,9 @@ describe('Gradebook page', () => {
 		]);
 		expect(fetchGroupTasksMock).toHaveBeenCalledWith({ student_group: linkedGroup.name });
 
-		const schoolSelect = document.querySelector('select[data-placeholder="School"]') as HTMLSelectElement;
+		const schoolSelect = document.querySelector(
+			'select[data-placeholder="School"]'
+		) as HTMLSelectElement;
 		const groupSelect = document.querySelector(
 			'select[data-placeholder="Select group"]'
 		) as HTMLSelectElement;
@@ -387,6 +441,73 @@ describe('Gradebook page', () => {
 		expect(fetchGroupTasksMock).toHaveBeenCalledWith({ student_group: 'SG-1' });
 		expect(getTaskGradebookMock).toHaveBeenCalledWith({ task: task.name });
 		expect(document.body.textContent || '').toContain('Ada Lovelace');
+	});
+
+	it('loads the overview grid only after the teacher switches modes', async () => {
+		mockGradebookFlow();
+		getGridMock.mockResolvedValue({
+			deliveries: [
+				{
+					delivery_id: 'TDL-1',
+					task_title: 'Task 1',
+					due_date: '2026-04-03 10:00:00',
+					grading_mode: 'Points',
+					rubric_scoring_strategy: null,
+					delivery_mode: 'Assess',
+					allow_feedback: 0,
+					max_points: 20,
+					task_type: 'Assignment',
+				},
+			],
+			students: [
+				{
+					student: 'STU-1',
+					student_name: 'Ada Lovelace',
+					student_id: 'S-001',
+					student_image: null,
+				},
+			],
+			cells: [
+				{
+					outcome_id: 'OUT-1',
+					student: 'STU-1',
+					delivery_id: 'TDL-1',
+					flags: {
+						has_submission: false,
+						has_new_submission: false,
+						grading_status: 'Not Started',
+						procedural_status: null,
+						is_complete: false,
+						is_published: false,
+					},
+					official: {
+						score: null,
+						grade: null,
+						grade_value: null,
+						feedback: null,
+						criteria: [],
+					},
+				},
+			],
+		});
+
+		mountPage();
+		await flushUi();
+
+		expect(getGridMock).not.toHaveBeenCalled();
+
+		await switchToOverview();
+
+		expect(getGridMock).toHaveBeenCalledWith({
+			school: 'SCH-1',
+			academic_year: '2025-2026',
+			student_group: 'SG-1',
+			course: 'Math 1',
+			task_type: null,
+			delivery_mode: null,
+			limit: 10,
+		});
+		expect(document.body.textContent || '').toContain('Class Overview');
 	});
 
 	it('renders binary grading without points or comment controls when comments are disabled', async () => {
@@ -435,6 +556,29 @@ describe('Gradebook page', () => {
 		expect(text).toContain('Complete');
 		expect(text).toContain('Not complete');
 		expect(text).not.toContain('Yes / No');
+	});
+
+	it('renders student visibility checkboxes inline in the student header', async () => {
+		mockGradebookFlow();
+
+		mountPage();
+		await flushUi();
+		await openTask('Task 1');
+
+		const studentName = Array.from(document.querySelectorAll('p')).find(node =>
+			(node.textContent || '').includes('Ada Lovelace')
+		);
+		expect(studentName).not.toBeNull();
+
+		const studentHeader = studentName?.closest('div.border-b');
+		expect(studentHeader).not.toBeNull();
+
+		const visibilityRow = studentHeader?.querySelector('.gradebook-student-visibility');
+		expect(visibilityRow).not.toBeNull();
+		expect(visibilityRow?.textContent || '').toContain('Visible to Student');
+		expect(visibilityRow?.textContent || '').toContain('Visible to Guardian');
+		expect(visibilityRow?.querySelectorAll('input[type="checkbox"]').length).toBe(2);
+		expect(document.body.textContent || '').not.toContain('Visibility');
 	});
 
 	it('renders criteria grading with criteria controls and comment box only when enabled', async () => {
@@ -492,5 +636,98 @@ describe('Gradebook page', () => {
 		expect(text).toContain('Comment');
 		expect(text).not.toContain('Points Awarded');
 		expect(text).not.toContain('Max Points:');
+	});
+
+	it('routes assessed quiz tasks into the open-ended review panel', async () => {
+		mockGradebookFlow({
+			task: {
+				title: 'Quiz reflection',
+				task_type: 'Quiz',
+				grading_mode: 'Points',
+				points: 1,
+				binary: 0,
+				criteria: 0,
+				max_points: 4,
+				delivery_type: 'Assess',
+			},
+		});
+		getTaskQuizManualReviewMock.mockResolvedValue({
+			task: {
+				name: 'TDL-1',
+				title: 'Quiz reflection',
+				student_group: 'SG-1',
+				max_points: 4,
+				pass_percentage: 70,
+			},
+			summary: {
+				manual_item_count: 1,
+				pending_item_count: 1,
+				pending_student_count: 1,
+				pending_attempt_count: 1,
+			},
+			view_mode: 'question',
+			questions: [
+				{
+					quiz_question: 'QQ-1',
+					title: 'Explain the strategy',
+					manual_item_count: 1,
+					pending_item_count: 1,
+				},
+			],
+			students: [
+				{
+					student: 'STU-1',
+					student_name: 'Ada Lovelace',
+					student_id: 'S-001',
+					student_image: null,
+					manual_item_count: 1,
+					pending_item_count: 1,
+				},
+			],
+			selected_question: {
+				quiz_question: 'QQ-1',
+				title: 'Explain the strategy',
+			},
+			selected_student: null,
+			rows: [
+				{
+					item_id: 'QAI-1',
+					quiz_attempt: 'QAT-1',
+					task_outcome: 'OUT-1',
+					attempt_number: 1,
+					attempt_status: 'Needs Review',
+					submitted_on: '2026-04-08 11:00:00',
+					student: 'STU-1',
+					student_name: 'Ada Lovelace',
+					student_id: 'S-001',
+					student_image: null,
+					grading_status: 'Needs Review',
+					quiz_question: 'QQ-1',
+					title: 'Explain the strategy',
+					position: 1,
+					question_type: 'Essay',
+					prompt_html: '<p>Explain the strategy.</p>',
+					response_text: 'I compared both approaches.',
+					selected_option_ids: [],
+					selected_option_labels: [],
+					awarded_score: null,
+					requires_manual_grading: 1,
+				},
+			],
+		});
+
+		mountPage();
+		await flushUi();
+		await openTask('Quiz reflection');
+
+		expect(getTaskQuizManualReviewMock).toHaveBeenCalledWith({
+			task: 'TDL-1',
+			view_mode: 'question',
+			quiz_question: null,
+			student: null,
+		});
+		expect(document.body.textContent || '').toContain('Open-ended Quiz Review');
+		expect(document.body.textContent || '').toContain('Save Score');
+		expect(document.body.textContent || '').toContain('Ada Lovelace');
 	});
 });

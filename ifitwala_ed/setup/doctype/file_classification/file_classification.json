@@ -9,23 +9,26 @@
   "file",
   "attached_doctype",
   "attached_name",
+  "retention_policy",
+  "organization",
+  "school",
+  "version_number",
+  "column_break_zjrc",
   "primary_subject_type",
   "primary_subject_id",
   "data_class",
   "purpose",
-  "retention_policy",
   "retention_until",
   "slot",
-  "organization",
-  "school",
-  "legal_hold",
+  "source_file",
+  "column_break_rfdf",
   "erasure_state",
-  "version_number",
+  "legal_hold",
   "is_current_version",
   "content_hash",
-  "source_file",
   "upload_source",
   "ip_address",
+  "section_break_yiyf",
   "secondary_subjects"
  ],
  "fields": [
@@ -35,6 +38,7 @@
    "in_list_view": 1,
    "label": "File",
    "options": "File",
+   "read_only": 1,
    "reqd": 1,
    "unique": 1
   },
@@ -56,6 +60,7 @@
    "in_list_view": 1,
    "label": "Primary Subject Type",
    "options": "Student\nGuardian\nEmployee\nStudent Applicant\nOrganization",
+   "read_only": 1,
    "reqd": 1
   },
   {
@@ -64,6 +69,7 @@
    "in_list_view": 1,
    "label": "Primary Subject ID",
    "options": "primary_subject_type",
+   "read_only": 1,
    "reqd": 1
   },
   {
@@ -72,13 +78,15 @@
    "in_list_view": 1,
    "label": "Data Class",
    "options": "academic\nassessment\nsafeguarding\nadministrative\nidentity_image\nlegal\noperational",
+   "read_only": 1,
    "reqd": 1
   },
   {
    "fieldname": "purpose",
    "fieldtype": "Select",
    "label": "Purpose",
-   "options": "text\nidentification_document\ncontract\nassessment_submission\nassessment_feedback\nsafeguarding_evidence\nmedical_record\nvisa_document\npolicy_acknowledgement\nbackground_check\nacademic_report\nemployee_profile_display\nguardian_profile_display\nstudent_profile_display\napplicant_profile_display\norganization_public_media\nportfolio_evidence\njournal_attachment\nportfolio_export\njournal_export\nadministrative\nother",
+   "options": "text\nidentification_document\ncontract\nassessment_submission\nassessment_feedback\nsafeguarding_evidence\nmedical_record\nvisa_document\npolicy_acknowledgement\nbackground_check\nlearning_resource\nacademic_report\nemployee_profile_display\nguardian_profile_display\nstudent_profile_display\napplicant_profile_display\norganization_public_media\nportfolio_evidence\njournal_attachment\nportfolio_export\njournal_export\nadministrative\nother",
+   "read_only": 1,
    "reqd": 1
   },
   {
@@ -86,6 +94,7 @@
    "fieldtype": "Select",
    "label": "Retention Policy",
    "options": "until_program_end_plus_1y\nuntil_school_exit_plus_6m\nemployment_duration_plus_grace\nfixed_7y\nimmediate_on_request",
+   "read_only": 1,
    "reqd": 1
   },
   {
@@ -98,6 +107,7 @@
    "fieldname": "slot",
    "fieldtype": "Data",
    "label": "Slot",
+   "read_only": 1,
    "reqd": 1
   },
   {
@@ -105,13 +115,15 @@
    "fieldtype": "Link",
    "label": "Organization",
    "options": "Organization",
+   "read_only": 1,
    "reqd": 1
   },
   {
    "fieldname": "school",
    "fieldtype": "Link",
    "label": "School",
-   "options": "School"
+   "options": "School",
+   "read_only": 1
   },
   {
    "default": "0",
@@ -129,46 +141,64 @@
   {
    "fieldname": "version_number",
    "fieldtype": "Int",
-   "label": "Version Number"
+   "label": "Version Number",
+   "read_only": 1
   },
   {
    "default": "0",
    "fieldname": "is_current_version",
    "fieldtype": "Check",
-   "label": "Is Current Version"
+   "label": "Is Current Version",
+   "read_only": 1
   },
   {
    "fieldname": "content_hash",
    "fieldtype": "Data",
-   "label": "Content Hash"
+   "label": "Content Hash",
+   "read_only": 1
   },
   {
    "fieldname": "source_file",
    "fieldtype": "Link",
    "label": "Source File",
-   "options": "File"
+   "options": "File",
+   "read_only": 1
   },
   {
    "fieldname": "upload_source",
    "fieldtype": "Select",
    "label": "Upload Source",
-   "options": "Desk\nSPA\nAPI\nJob"
+   "options": "Desk\nSPA\nAPI\nJob",
+   "read_only": 1
   },
   {
    "fieldname": "ip_address",
    "fieldtype": "Data",
-   "label": "IP Address"
+   "label": "IP Address",
+   "read_only": 1
   },
   {
    "fieldname": "secondary_subjects",
    "fieldtype": "Table",
    "label": "Secondary Subjects",
    "options": "File Classification Subject"
+  },
+  {
+   "fieldname": "column_break_zjrc",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "column_break_rfdf",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "section_break_yiyf",
+   "fieldtype": "Section Break"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-03-26 22:38:00.000000",
+ "modified": "2026-04-15 20:24:00.000000",
  "modified_by": "Administrator",
  "module": "Setup",
  "name": "File Classification",

@@ -11,11 +11,11 @@
 
 * One H1 owner block must be first (`hero`, `admissions_overview`, or `program_intro`).
 * Route input for `School Website Page` is school-relative (`/`, `about`, `admissions`, `about/team`).
-* Publication is workflow-driven (`Draft -> In Review -> Approved -> Published`).
+* Publication is workflow-driven (`Draft -> In Review -> Approved -> Published`) and website-owned records may also use `publish_at` / `expire_at`.
 * First-time School publication now prepares and publishes canonical starter pages (`/`, `about`, `admissions`, `programs`) when the School itself is public.
 * First-time Program/Course publication still prepares starter website/SEO defaults without bypassing profile review workflow.
 * Allowed blocks depend on context:
-  * `School Website Page` (Standard): `hero`, `rich_text`, `section_carousel`, `program_list`, `course_catalog`, `leadership`, `cta`, `faq`, `content_snippet`
+  * `School Website Page` (Standard): `hero`, `rich_text`, `section_carousel`, `program_list`, `course_catalog`, `leadership`, `staff_directory`, `story_feed`, `academic_calendar`, `cta`, `faq`, `content_snippet`
   * `School Website Page` (Admissions): Standard + `admissions_overview`, `admissions_steps`, `admission_cta`
   * `Program Website Profile`: Standard + `program_intro`
   * `Course Website Profile`: Standard + `course_intro`, `learning_highlights`
@@ -199,7 +199,8 @@ Example `program_intro` props:
 
 Notes:
 
-* Profile `status` is derived from workflow state + program publish readiness.
+* Profile `status` is derived from workflow state + school website readiness + program publish readiness + optional publish window.
+* Assign `content_owner` when different teams share page ownership.
 * Program page route is system-generated: `/schools/{school_slug}/programs/{program_slug}`.
 
 ---
@@ -216,6 +217,7 @@ Suggested block order:
 Notes:
 
 * `Website Story` uses the same validation rules for H1 ownership and block ordering.
+* `content_owner` must be an enabled internal editor (`Marketing User`, `Website Manager`, or `System Manager`) in the relevant school scope; portal `Website User` accounts are not valid story owners.
 * Story index route is handled at `/schools/{school_slug}/stories`.
 
 ---
@@ -267,6 +269,7 @@ Notes:
 
 * `course_intro` renders the profile hero, intro, overview, aims, and assessment summary from the website profile fields.
 * `learning_highlights` renders curated website-owned highlights, not a raw `Learning Unit` tree.
+* Profile `status` is derived from workflow state + school website readiness + course publish readiness + optional publish window.
 * Course page route is system-generated: `/schools/{school_slug}/courses/{course_slug}`.
 
 ---

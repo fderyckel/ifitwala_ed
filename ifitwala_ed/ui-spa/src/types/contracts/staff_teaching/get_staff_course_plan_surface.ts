@@ -9,6 +9,66 @@ export type Request = {
 	course_plan: string
 	unit_plan?: string
 	quiz_question_bank?: string
+	student_group?: string
+}
+
+export type StaffCoursePlanTimelineTerm = {
+	term?: string | null
+	label?: string | null
+	start_date?: string | null
+	end_date?: string | null
+	instructional_days?: number
+}
+
+export type StaffCoursePlanTimelineHoliday = {
+	start_date?: string | null
+	end_date?: string | null
+	titles: string[]
+	day_count?: number
+}
+
+export type StaffCoursePlanTimelineUnit = {
+	unit_plan?: string | null
+	title: string
+	unit_order?: number | null
+	duration_label?: string | null
+	duration_weeks?: number | null
+	unit_status?: string | null
+	is_published?: number
+	start_date?: string | null
+	end_date?: string | null
+	instructional_day_count?: number | null
+	calendar_day_span?: number | null
+	overflow?: number
+	schedule_state?: string | null
+	message?: string | null
+}
+
+export type StaffCoursePlanTimeline = {
+	status: 'ready' | 'blocked'
+	reason?: string | null
+	message?: string | null
+	scope: {
+		mode?: string | null
+		academic_year?: string | null
+		school?: string | null
+		school_calendar?: string | null
+		student_group?: string | null
+		student_group_label?: string | null
+		term?: string | null
+		term_label?: string | null
+		window_start?: string | null
+		window_end?: string | null
+	}
+	terms: StaffCoursePlanTimelineTerm[]
+	holidays: StaffCoursePlanTimelineHoliday[]
+	units: StaffCoursePlanTimelineUnit[]
+	summary: {
+		scheduled_unit_count?: number
+		unscheduled_unit_count?: number
+		overflow_unit_count?: number
+		instructional_day_count?: number
+	}
 }
 
 export type StaffCoursePlanQuizQuestionOption = {
@@ -119,6 +179,7 @@ export type Response = {
 	curriculum: {
 		units: StaffCoursePlanUnit[]
 		unit_count: number
+		timeline: StaffCoursePlanTimeline
 	}
 	assessment: {
 		quiz_question_banks: StaffCoursePlanQuizQuestionBankSummary[]

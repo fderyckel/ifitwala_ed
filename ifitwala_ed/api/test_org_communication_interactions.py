@@ -144,6 +144,47 @@ class TestOrgCommunicationSummaryContract(FrappeTestCase):
 
 
 class TestOrgCommunicationVisibilityGuards(FrappeTestCase):
+    def test_actor_context_enriches_academic_admin_without_default_school(self):
+        with (
+            patch(
+                "ifitwala_ed.api.org_communication_interactions.frappe.session",
+                SimpleNamespace(user="academic-admin@example.com"),
+            ),
+            patch.object(
+                org_communication_interactions.frappe,
+                "get_roles",
+                return_value=["Academic Admin"],
+            ),
+            patch.object(
+                org_communication_interactions.frappe.db,
+                "get_value",
+                return_value={"name": "EMP-1", "school": None, "organization": "ORG-ROOT"},
+            ),
+            patch(
+                "ifitwala_ed.api.org_communication_interactions.get_descendant_organizations",
+                return_value=["ORG-ROOT", "ORG-CHILD"],
+            ),
+            patch.object(
+                org_communication_interactions.frappe,
+                "get_all",
+                return_value=["SCH-ROOT", "SCH-CHILD"],
+            ),
+        ):
+            user, roles, employee = org_communication_interactions._actor_context()
+
+        self.assertEqual(user, "academic-admin@example.com")
+        self.assertEqual(roles, {"Academic Admin"})
+        self.assertEqual(
+            employee,
+            {
+                "name": "EMP-1",
+                "school": None,
+                "organization": "ORG-ROOT",
+                "organization_names": ["ORG-ROOT", "ORG-CHILD"],
+                "school_names": ["SCH-ROOT", "SCH-CHILD"],
+            },
+        )
+
     def test_ensure_visible_org_communication_allows_creator_override(self):
         with (
             patch("ifitwala_ed.api.org_communication_interactions.frappe.db.exists", return_value=True),
@@ -221,6 +262,10 @@ class TestOrgCommunicationWorkflowEndpoints(FrappeTestCase):
             ),
             patch("ifitwala_ed.api.org_communication_interactions._ensure_visible_org_communication"),
             patch(
+                "ifitwala_ed.api.org_communication_interactions.frappe.get_cached_doc",
+                return_value=SimpleNamespace(interaction_mode="Student Q&A"),
+            ),
+            patch(
                 "ifitwala_ed.api.org_communication_interactions.create_interaction_entry",
                 return_value={"name": "ENTRY-0002"},
             ) as create_entry_mock,
@@ -240,6 +285,37 @@ class TestOrgCommunicationWorkflowEndpoints(FrappeTestCase):
         )
         self.assertEqual(result, {"name": "ENTRY-0002"})
 
+    def test_post_comment_maps_structured_feedback_to_other_intent(self):
+        with (
+            patch(
+                "ifitwala_ed.api.org_communication_interactions._actor_context",
+                return_value=("staff@example.com", {"Academic Staff"}, {"name": "EMP-1", "school": "SCH-1"}),
+            ),
+            patch("ifitwala_ed.api.org_communication_interactions._ensure_visible_org_communication"),
+            patch(
+                "ifitwala_ed.api.org_communication_interactions.frappe.get_cached_doc",
+                return_value=SimpleNamespace(interaction_mode="Structured Feedback"),
+            ),
+            patch(
+                "ifitwala_ed.api.org_communication_interactions.create_interaction_entry",
+                return_value={"name": "ENTRY-0003"},
+            ) as create_entry_mock,
+        ):
+            result = org_communication_interactions.post_org_communication_comment(
+                org_communication="COMM-0003",
+                note="Needs follow-up",
+                surface="Portal Feed",
+            )
+
+        create_entry_mock.assert_called_once_with(
+            org_communication="COMM-0003",
+            user="staff@example.com",
+            intent_type="Other",
+            note="Needs follow-up",
+            surface="Portal Feed",
+        )
+        self.assertEqual(result, {"name": "ENTRY-0003"})
+
     def test_structured_feedback_thread_is_hidden_from_non_staff(self):
         with (
             patch(
@@ -255,3 +331,45 @@ class TestOrgCommunicationWorkflowEndpoints(FrappeTestCase):
             rows = org_communication_interactions.get_org_communication_thread("COMM-0003")
 
         self.assertEqual(rows, [])
+
+    def test_student_qa_thread_keeps_non_staff_self_rows_when_shared_thread_is_off(self):
+        expected_rows = [
+            {
+                "name": "ENTRY-0004",
+                "user": "guardian@example.com",
+                "full_name": "Guardian Example",
+                "audience_type": "Guardian",
+                "intent_type": "Comment",
+                "reaction_code": None,
+                "note": "Private question",
+                "visibility": "Private to school",
+                "is_teacher_reply": 0,
+                "is_pinned": 0,
+                "is_resolved": 0,
+                "creation": "2026-04-15 09:00:00",
+                "modified": "2026-04-15 09:00:00",
+            }
+        ]
+
+        with (
+            patch(
+                "ifitwala_ed.api.org_communication_interactions._actor_context",
+                return_value=("guardian@example.com", {"Guardian"}, {}),
+            ),
+            patch("ifitwala_ed.api.org_communication_interactions._ensure_visible_org_communication"),
+            patch(
+                "ifitwala_ed.api.org_communication_interactions.frappe.get_cached_doc",
+                return_value=SimpleNamespace(interaction_mode="Student Q&A"),
+            ),
+            patch(
+                "ifitwala_ed.api.org_communication_interactions.frappe.db.sql",
+                return_value=expected_rows,
+            ) as sql_mock,
+        ):
+            rows = org_communication_interactions.get_org_communication_thread("COMM-0004")
+
+        self.assertEqual(rows, expected_rows)
+        self.assertIn(
+            "(i.visibility = 'Public to audience' OR i.user = %(user)s)",
+            sql_mock.call_args.args[0],
+        )

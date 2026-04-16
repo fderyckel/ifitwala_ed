@@ -25,8 +25,10 @@ from ifitwala_ed.stock.doctype.location_booking.location_booking import (
     upsert_location_booking,
 )
 
+WHOLE_SCHOOL_AUDIENCE = "All Students, Guardians, and Employees"
+
 BROAD_AUDIENCE_TYPES = {
-    "Whole School Community",
+    WHOLE_SCHOOL_AUDIENCE,
     "All Students",
     "All Guardians",
     "All Employees",
@@ -99,7 +101,7 @@ class SchoolEvent(Document):
         """
         Only privileged roles may use broad audience types:
 
-        - Whole School Community
+        - All Students, Guardians, and Employees
         - All Students
         - All Guardians
         - All Employees
@@ -180,7 +182,7 @@ class SchoolEvent(Document):
 
             # Broad types + Custom Users → no links
             elif a_type in {
-                "Whole School Community",
+                WHOLE_SCHOOL_AUDIENCE,
                 "All Students",
                 "All Guardians",
                 "All Employees",
@@ -605,7 +607,7 @@ def _audience_row_matches_user(
     Return True if this audience row applies to the current user.
 
     Handles:
-    - Whole School Community
+    - All Students, Guardians, and Employees
     - All Students (+ optional include_guardians)
     - All Guardians (+ optional include_students)
     - All Employees (Employee role only)
@@ -627,7 +629,7 @@ def _audience_row_matches_user(
     is_guardian = "Guardian" in user_roles
 
     # Broad types
-    if a_type == "Whole School Community":
+    if a_type == WHOLE_SCHOOL_AUDIENCE:
         return True
 
     if a_type == "All Students":

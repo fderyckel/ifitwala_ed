@@ -225,6 +225,34 @@ def build_org_communication_attachment_open_url(
     )
 
 
+def build_public_website_media_url(*, file_name: str) -> str:
+    resolved_file = (file_name or "").strip()
+    if not resolved_file:
+        return ""
+    return "/api/method/ifitwala_ed.api.file_access.open_public_website_media?" + urlencode({"file": resolved_file})
+
+
+def resolve_public_website_media_url(
+    *,
+    file_name: str | None,
+    file_url: str | None,
+) -> str | None:
+    raw_url = (file_url or "").strip()
+    if raw_url.startswith(("http://", "https://")):
+        return raw_url
+    if raw_url.startswith("/files/") and not raw_url.startswith("/files/ifitwala_drive/"):
+        return raw_url
+
+    resolved_name = (file_name or "").strip()
+    if not resolved_name:
+        if raw_url.startswith("/private/") or raw_url.startswith("/files/ifitwala_drive/"):
+            return None
+        return raw_url or None
+
+    open_url = build_public_website_media_url(file_name=resolved_name)
+    return open_url or raw_url or None
+
+
 def _require_authenticated_user() -> str:
     user = (frappe.session.user or "").strip()
     if not user or user == "Guest":
@@ -274,6 +302,31 @@ def _resolve_any_file_row(file_name: str) -> dict:
     if not row:
         frappe.throw(_("File not found."), frappe.DoesNotExistError)
     return row
+
+
+def _resolve_public_website_media_row(file_name: str) -> dict:
+    file_row = _resolve_any_file_row(file_name)
+    classification = frappe.db.get_value(
+        "File Classification",
+        {
+            "file": file_name,
+            "primary_subject_type": "Organization",
+            "purpose": "organization_public_media",
+            "is_current_version": 1,
+        },
+        ["name", "organization", "school"],
+        as_dict=True,
+    )
+    if not classification:
+        frappe.throw(_("This file is not published for public website use."), frappe.PermissionError)
+    file_row.update(
+        {
+            "classification": classification.get("name"),
+            "organization": (classification.get("organization") or "").strip(),
+            "school": (classification.get("school") or "").strip(),
+        }
+    )
+    return file_row
 
 
 def _load_drive_access_callable(attribute: str):
@@ -590,6 +643,81 @@ def _read_file_bytes(file_row: dict) -> bytes | None:
         return handle.read()
 
 
+def _resolve_drive_download_grant_url(file_name: str) -> str | None:
+    drive_file = frappe.db.get_value(
+        "Drive File",
+        {"file": file_name},
+        "name",
+    )
+    if not drive_file:
+        return None
+
+    try:
+        grant = _load_drive_access_callable("issue_download_grant")(drive_file_id=drive_file)
+    except Exception:
+        return None
+
+    target_url = str((grant or {}).get("url") or "").strip()
+    return target_url or None
+
+
+def _resolve_public_website_media_grant_url(file_name: str) -> str | None:
+    drive_file = frappe.db.get_value(
+        "Drive File",
+        {"file": file_name},
+        ["name", "preview_status"],
+        as_dict=True,
+    )
+    if not drive_file or not drive_file.get("name"):
+        return None
+
+    try:
+        if (drive_file.get("preview_status") or "").strip() == "ready":
+            grant = _load_drive_access_callable("issue_preview_grant")(drive_file_id=drive_file.get("name"))
+        else:
+            grant = _load_drive_access_callable("issue_download_grant")(drive_file_id=drive_file.get("name"))
+    except Exception:
+        return None
+
+    target_url = str((grant or {}).get("url") or "").strip()
+    return target_url or None
+
+
+def _assert_public_website_media_visible(file_row: dict) -> None:
+    from ifitwala_ed.website.public_brand import (
+        get_descendant_organization_names,
+        resolve_public_brand_organization,
+    )
+
+    organization = (file_row.get("organization") or "").strip()
+    if not organization:
+        frappe.throw(_("Public website media is missing organization context."), frappe.PermissionError)
+
+    public_brand_organization = resolve_public_brand_organization()
+    visible_organizations = set(get_descendant_organization_names(public_brand_organization))
+    if organization not in visible_organizations:
+        frappe.throw(_("This media is not visible on the public website."), frappe.PermissionError)
+
+    school = (file_row.get("school") or "").strip()
+    if not school:
+        return
+
+    school_row = frappe.db.get_value(
+        "School",
+        school,
+        ["organization", "is_published", "website_slug"],
+        as_dict=True,
+    )
+    if not school_row:
+        frappe.throw(_("School not found for this media."), frappe.DoesNotExistError)
+    if (school_row.get("organization") or "").strip() != organization:
+        frappe.throw(_("School media organization scope is invalid."), frappe.PermissionError)
+    if not frappe.utils.cint(school_row.get("is_published")):
+        frappe.throw(_("This school media is not published."), frappe.PermissionError)
+    if not (school_row.get("website_slug") or "").strip():
+        frappe.throw(_("This school media is missing a website route."), frappe.PermissionError)
+
+
 def _resolve_student_context_for_file(file_row: dict) -> tuple[str | None, str | None]:
     file_name = (file_row.get("name") or "").strip()
     if not file_name:
@@ -786,6 +914,11 @@ def download_admissions_file(
 
     content = _read_file_bytes(file_row)
     if content is None:
+        target_url = _resolve_drive_download_grant_url(file_name)
+        if target_url:
+            frappe.local.response["type"] = "redirect"
+            frappe.local.response["location"] = target_url
+            return
         frappe.throw(_("Could not read the file content."), frappe.DoesNotExistError)
 
     filename = (file_row.get("file_name") or "").strip() or "document"
@@ -837,6 +970,46 @@ def open_org_communication_attachment(
 
 
 @frappe.whitelist(allow_guest=True)
+def open_public_website_media(file: str | None = None):
+    file_name = (file or "").strip()
+    if not file_name:
+        frappe.throw(_("File is required."), frappe.ValidationError)
+
+    file_row = _resolve_public_website_media_row(file_name)
+    _assert_public_website_media_visible(file_row)
+
+    file_url = (file_row.get("file_url") or "").strip()
+    if file_url.startswith(("http://", "https://")):
+        frappe.local.response["type"] = "redirect"
+        frappe.local.response["location"] = file_url
+        return
+
+    if file_url.startswith("/files/") and not file_url.startswith("/files/ifitwala_drive/"):
+        frappe.local.response["type"] = "redirect"
+        frappe.local.response["location"] = file_url
+        return
+
+    content = _read_file_bytes(file_row)
+    if content is not None:
+        filename = (file_row.get("file_name") or "").strip() or "image"
+        content_type = mimetypes.guess_type(filename)[0] or "application/octet-stream"
+        frappe.local.response["type"] = "download"
+        frappe.local.response["filename"] = filename
+        frappe.local.response["filecontent"] = content
+        frappe.local.response["display_content_as"] = "inline"
+        frappe.local.response["content_type"] = content_type
+        return
+
+    target_url = _resolve_public_website_media_grant_url(file_name)
+    if target_url:
+        frappe.local.response["type"] = "redirect"
+        frappe.local.response["location"] = target_url
+        return
+
+    frappe.throw(_("Could not resolve a public website media URL."), frappe.DoesNotExistError)
+
+
+@frappe.whitelist(allow_guest=True)
 def download_academic_file(
     file: str | None = None,
     context_doctype: str | None = None,
@@ -863,7 +1036,7 @@ def download_academic_file(
         if material:
             if not material_course:
                 frappe.throw(_("Material file is missing course context."), frappe.ValidationError)
-            from ifitwala_ed.curriculum import materials as materials_domain
+            materials_domain = importlib.import_module("ifitwala_ed.curriculum.materials")
 
             placement_name = _assert_internal_material_context(
                 file_row=file_row,
@@ -908,6 +1081,11 @@ def download_academic_file(
 
     content = _read_file_bytes(file_row)
     if content is None:
+        target_url = _resolve_drive_download_grant_url(file_name)
+        if target_url:
+            frappe.local.response["type"] = "redirect"
+            frappe.local.response["location"] = target_url
+            return
         frappe.throw(_("Could not read the file content."), frappe.DoesNotExistError)
 
     filename = (file_row.get("file_name") or "").strip() or "document"
@@ -948,6 +1126,11 @@ def download_guardian_file(
 
     content = _read_file_bytes(file_row)
     if content is None:
+        target_url = _resolve_drive_download_grant_url(file_name)
+        if target_url:
+            frappe.local.response["type"] = "redirect"
+            frappe.local.response["location"] = target_url
+            return
         frappe.throw(_("Could not read the file content."), frappe.DoesNotExistError)
 
     filename = (file_row.get("file_name") or "").strip() or "document"
@@ -988,6 +1171,11 @@ def download_employee_file(
 
     content = _read_file_bytes(file_row)
     if content is None:
+        target_url = _resolve_drive_download_grant_url(file_name)
+        if target_url:
+            frappe.local.response["type"] = "redirect"
+            frappe.local.response["location"] = target_url
+            return
         frappe.throw(_("Could not read the file content."), frappe.DoesNotExistError)
 
     filename = (file_row.get("file_name") or "").strip() or "document"

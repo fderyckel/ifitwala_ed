@@ -14,12 +14,24 @@
 
 from __future__ import annotations
 
+import importlib
+import json
+import sys
+
 import frappe
 from frappe import _
-from frappe.utils import now_datetime
 
-from ifitwala_ed.assessment import task_contribution_service, task_outcome_service, task_submission_service
+from ifitwala_ed.assessment import quiz_service, task_submission_service
 from ifitwala_ed.utilities.image_utils import apply_preferred_student_images
+
+gradebook_reads = importlib.import_module("ifitwala_ed.api.gradebook_reads")
+gradebook_writes = importlib.import_module("ifitwala_ed.api.gradebook_writes")
+gradebook_reads = importlib.reload(gradebook_reads)
+gradebook_writes = importlib.reload(gradebook_writes)
+
+# Keep the public endpoint path and helper monkeypatch surface stable while
+# the read and write implementations live in smaller modules.
+_API_MODULE = sys.modules[__name__]
 
 # ---------------------------
 # Public endpoints (UI)
@@ -28,296 +40,22 @@ from ifitwala_ed.utilities.image_utils import apply_preferred_student_images
 
 @frappe.whitelist()
 def get_grid(filters=None, **kwargs):
-    """
-    Grid = Task Outcome rows for deliveries in scope.
-    """
-    if not _can_read_gradebook():
-        frappe.throw(_("Not permitted."), frappe.PermissionError)
-
-    data = _normalize_filters(filters, kwargs)
-    school = data.get("school")
-    academic_year = data.get("academic_year")
-    course = data.get("course")
-    _require(school, "School")
-    _require(academic_year, "Academic Year")
-
-    scope = _resolve_gradebook_scope(school, academic_year, course)
-    is_instructor_scoped = _is_instructor_scoped_user()
-    delivery_filters = {
-        "school": school,
-        "academic_year": academic_year,
-    }
-    if is_instructor_scoped:
-        if not scope.get("student_groups"):
-            frappe.throw(_("No instructor teaching scope found."))
-        delivery_filters["student_group"] = ["in", scope["student_groups"]]
-    elif scope.get("student_groups"):
-        delivery_filters["student_group"] = ["in", scope["student_groups"]]
-    if scope.get("courses"):
-        delivery_filters["course"] = ["in", scope["courses"]]
-
-    deliveries = frappe.get_all(
-        "Task Delivery",
-        filters=delivery_filters,
-        fields=[
-            "name",
-            "task",
-            "grading_mode",
-            "rubric_scoring_strategy",
-            "due_date",
-        ],
-        order_by="due_date asc, name asc",
-        limit=0,
-    )
-    if not deliveries:
-        return {"deliveries": [], "students": [], "cells": []}
-
-    task_titles = _get_task_titles([row.get("task") for row in deliveries])
-    delivery_map = {}
-    for row in deliveries:
-        delivery_map[row["name"]] = row
-
-    delivery_payload = []
-    for row in deliveries:
-        delivery_payload.append(
-            {
-                "delivery_id": row.get("name"),
-                "task_title": task_titles.get(row.get("task")) or row.get("task"),
-                "grading_mode": row.get("grading_mode"),
-                "rubric_scoring_strategy": row.get("rubric_scoring_strategy"),
-                "due_date": row.get("due_date"),
-            }
-        )
-
-    outcomes = frappe.get_all(
-        "Task Outcome",
-        filters={"task_delivery": ["in", list(delivery_map.keys())]},
-        fields=[
-            "name",
-            "task_delivery",
-            "student",
-            "grading_status",
-            "procedural_status",
-            "has_submission",
-            "has_new_submission",
-            "official_score",
-            "official_grade",
-            "official_grade_value",
-        ],
-        order_by="student asc, task_delivery asc",
-        limit=0,
-    )
-
-    student_ids = [row.get("student") for row in outcomes if row.get("student")]
-    student_map = _get_student_display_map(student_ids)
-    students = _build_student_payload(student_ids, student_map)
-
-    criteria_outcome_ids = {
-        row.get("name")
-        for row in outcomes
-        if delivery_map.get(row.get("task_delivery"), {}).get("grading_mode") == "Criteria"
-    }
-    criteria_map = _get_outcome_criteria_map(criteria_outcome_ids)
-
-    cells = []
-    for row in outcomes:
-        outcome_id = row.get("name")
-        delivery_id = row.get("task_delivery")
-        delivery = delivery_map.get(delivery_id, {})
-        cell = {
-            "outcome_id": outcome_id,
-            "student_id": row.get("student"),
-            "delivery_id": delivery_id,
-            "flags": {
-                "has_submission": _bool_flag(row.get("has_submission")),
-                "has_new_submission": _bool_flag(row.get("has_new_submission")),
-                "grading_status": row.get("grading_status"),
-                "procedural_status": row.get("procedural_status"),
-            },
-            "official": {
-                "score": row.get("official_score"),
-                "grade": row.get("official_grade"),
-                "grade_value": row.get("official_grade_value"),
-            },
-        }
-        if delivery.get("grading_mode") == "Criteria":
-            cell["official"]["criteria"] = criteria_map.get(outcome_id, [])
-        cells.append(cell)
-
-    return {
-        "deliveries": delivery_payload,
-        "students": students,
-        "cells": cells,
-    }
+    return gradebook_reads.get_grid(_API_MODULE, filters=filters, **kwargs)
 
 
 @frappe.whitelist()
 def get_drawer(outcome_id: str):
-    """
-    Drawer payload for a single outcome.
-    """
-    _require(outcome_id, "Task Outcome")
-
-    if not _can_read_gradebook():
-        frappe.throw(_("Not permitted."), frappe.PermissionError)
-
-    # Fetch Outcome
-    outcome_fields = [
-        "name",
-        "task_delivery",
-        "grading_status",
-        "procedural_status",
-        "official_score",
-        "official_grade",
-        "official_grade_value",
-        "official_feedback",
-    ]
-    outcome_doc = frappe.db.get_value("Task Outcome", outcome_id, outcome_fields, as_dict=True)
-    if not outcome_doc:
-        frappe.throw(_("Task Outcome not found."))
-
-    outcome_criteria = _get_outcome_criteria_map({outcome_id}).get(outcome_id, [])
-
-    # Fetch Submissions
-    submissions = frappe.get_all(
-        "Task Submission",
-        filters={"task_outcome": outcome_id},
-        fields=[
-            "name",
-            "version",
-            "submitted_on",
-            "submitted_by",
-            "is_late",
-            "is_cloned",
-            "cloned_from",
-            "submission_origin",
-            "is_stub",
-            "evidence_note",
-            "link_url",
-            "text_content",
-            "attachments",
-        ],
-        order_by="version desc",
-        limit=20,
-    )
-
-    contributions = frappe.get_all(
-        "Task Contribution",
-        filters={"task_outcome": outcome_id},
-        fields=[
-            "name",
-            "contributor",
-            "contribution_type",
-            "status",
-            "is_stale",
-            "task_submission",
-            "score",
-            "grade",
-            "grade_value",
-            "feedback",
-            "moderation_action",
-            "submitted_on",
-            "modified",
-        ],
-        order_by="submitted_on desc, modified desc",
-        limit=100,
-    )
-
-    my_contribution = _select_my_contribution(contributions)
-    my_criteria = []
-    if my_contribution:
-        my_criteria = _get_contribution_criteria(my_contribution.get("name"))
-
-    moderation_history = _build_moderation_history(contributions)
-    submission_versions = [
-        {
-            "submission_id": row.get("name"),
-            "version": row.get("version"),
-            "submitted_on": row.get("submitted_on"),
-            "origin": row.get("submission_origin"),
-            "is_stub": _bool_flag(row.get("is_stub")),
-        }
-        for row in sorted(submissions, key=lambda r: r.get("version") or 0)
-    ]
-    latest_submission = submissions[0] if submissions else None
-    if latest_submission:
-        latest_submission = {
-            "submission_id": latest_submission.get("name"),
-            "version": latest_submission.get("version"),
-            "submitted_on": latest_submission.get("submitted_on"),
-            "origin": latest_submission.get("submission_origin"),
-            "is_stub": _bool_flag(latest_submission.get("is_stub")),
-        }
-
-    return {
-        "outcome": {
-            "outcome_id": outcome_doc.get("name"),
-            "grading_status": outcome_doc.get("grading_status"),
-            "procedural_status": outcome_doc.get("procedural_status"),
-            "official": {
-                "score": outcome_doc.get("official_score"),
-                "grade": outcome_doc.get("official_grade"),
-                "grade_value": outcome_doc.get("official_grade_value"),
-                "feedback": outcome_doc.get("official_feedback"),
-            },
-            "criteria": outcome_criteria,
-        },
-        "latest_submission": latest_submission,
-        "submission_versions": submission_versions,
-        "my_contribution": {
-            "status": my_contribution.get("status"),
-            "criteria": my_criteria,
-            "feedback": my_contribution.get("feedback"),
-        }
-        if my_contribution
-        else None,
-        "moderation_history": moderation_history,
-        "submissions": submissions,
-        "contributions": contributions,
-    }
+    return gradebook_reads.get_drawer(_API_MODULE, outcome_id)
 
 
 @frappe.whitelist()
 def save_draft(payload=None, **kwargs):
-    """
-    Save a draft contribution (no direct Outcome writes).
-    """
-    if not _can_write_gradebook():
-        frappe.throw(_("Not permitted."), frappe.PermissionError)
-
-    data = _normalize_payload(payload, kwargs)
-    _reject_official_fields(data)
-    outcome_id = _get_payload_value(data, "task_outcome", "outcome")
-    _require(outcome_id, "Task Outcome")
-    submission_id = _get_existing_submission_id(outcome_id, data)
-    if submission_id:
-        data["task_submission"] = submission_id
-    result = task_contribution_service.save_draft_contribution(data, contributor=frappe.session.user)
-    return {
-        "result": result,
-        "outcome": _get_outcome_summary(outcome_id),
-    }
+    return gradebook_writes.save_draft(_API_MODULE, payload=payload, **kwargs)
 
 
 @frappe.whitelist()
 def submit_contribution(payload=None, **kwargs):
-    """
-    Submit a contribution (no direct Outcome writes).
-    """
-    if not _can_write_gradebook():
-        frappe.throw(_("Not permitted."), frappe.PermissionError)
-
-    data = _normalize_payload(payload, kwargs)
-    _reject_official_fields(data)
-    outcome_id = _get_payload_value(data, "task_outcome", "outcome")
-    _require(outcome_id, "Task Outcome")
-    data["task_submission"] = _resolve_or_create_stub_submission_id(outcome_id, data)
-    result = task_contribution_service.submit_contribution(data, contributor=frappe.session.user)
-    return {
-        "ok": True,
-        "outcome_update": result.get("outcome_update"),
-        "result": result,
-    }
+    return gradebook_writes.submit_contribution(_API_MODULE, payload=payload, **kwargs)
 
 
 @frappe.whitelist()
@@ -327,35 +65,12 @@ def save_contribution_draft(payload=None, **kwargs):
 
 @frappe.whitelist()
 def moderator_action(payload=None, **kwargs):
-    """
-    Moderator action (Approve/Return/etc) via contributions.
-    """
-    if not _is_academic_adminish():
-        frappe.throw(_("Not permitted."), frappe.PermissionError)
-
-    data = _normalize_payload(payload, kwargs)
-    _reject_official_fields(data)
-    outcome_id = _get_payload_value(data, "task_outcome", "outcome")
-    _require(outcome_id, "Task Outcome")
-    data["task_submission"] = _resolve_or_create_stub_submission_id(outcome_id, data)
-    result = task_contribution_service.apply_moderator_action(data, contributor=frappe.session.user)
-    return {
-        "ok": True,
-        "outcome_update": result.get("outcome_update"),
-        "result": result,
-    }
+    return gradebook_writes.moderator_action(_API_MODULE, payload=payload, **kwargs)
 
 
 @frappe.whitelist()
 def mark_new_submission_seen(outcome: str):
-    """
-    Clear 'New Evidence' flag.
-    """
-    _require(outcome, "Task Outcome")
-    if not _can_write_gradebook() and not _is_academic_adminish():
-        frappe.throw(_("Not permitted."), frappe.PermissionError)
-
-    return task_outcome_service.mark_new_submission_seen(outcome)
+    return gradebook_writes.mark_new_submission_seen(_API_MODULE, outcome)
 
 
 # ---------------------------
@@ -372,471 +87,53 @@ def fetch_groups(
     program: str | None = None,
     course: str | None = None,
 ):
-    """
-    Return visible student groups for current gradebook users.
-    Compatibility shape for existing Gradebook.vue.
-    """
-    if not _can_read_gradebook():
-        frappe.throw(_("Not permitted."), frappe.PermissionError)
-
-    filters = {}
-    if school:
-        filters["school"] = school
-    if academic_year:
-        filters["academic_year"] = academic_year
-    if program:
-        filters["program"] = program
-    if course:
-        filters["course"] = course
-
-    if _is_instructor_scoped_user():
-        names = sorted(_instructor_group_names(frappe.session.user))
-        if not names:
-            return []
-        filters["name"] = ["in", names]
-
-    rows = frappe.get_all(
-        "Student Group",
-        filters=filters,
-        fields=[
-            "name",
-            "student_group_name",
-            "school",
-            "program",
-            "course",
-            "cohort",
-            "academic_year",
-        ],
-        order_by="student_group_name asc, name asc",
-        limit=0,
+    return gradebook_reads.fetch_groups(
+        _API_MODULE,
+        search=search,
+        limit=limit,
+        school=school,
+        academic_year=academic_year,
+        program=program,
+        course=course,
     )
-
-    if search:
-        needle = str(search).strip().lower()
-        if needle:
-            rows = [
-                row
-                for row in rows
-                if needle in str(row.get("student_group_name") or "").lower()
-                or needle in str(row.get("name") or "").lower()
-            ]
-
-    cap = None
-    if limit not in (None, ""):
-        try:
-            cap = max(1, min(int(limit), 500))
-        except Exception:
-            cap = 100
-    if cap is not None:
-        rows = rows[:cap]
-
-    return [
-        {
-            "name": row.get("name"),
-            "label": row.get("student_group_name") or row.get("name"),
-            "school": row.get("school"),
-            "program": row.get("program"),
-            "course": row.get("course"),
-            "cohort": row.get("cohort"),
-            "academic_year": row.get("academic_year"),
-        }
-        for row in rows
-        if row.get("name")
-    ]
 
 
 @frappe.whitelist()
 def fetch_group_tasks(student_group: str):
-    """
-    Return delivery rows (task list) for a student group.
-    Compatibility shape for existing Gradebook.vue.
-    """
-    if not _can_read_gradebook():
-        frappe.throw(_("Not permitted."), frappe.PermissionError)
-    _require(student_group, "Student Group")
-    _assert_group_access(student_group)
-
-    deliveries = frappe.get_all(
-        "Task Delivery",
-        filters={"student_group": student_group},
-        fields=[
-            "name",
-            "task",
-            "due_date",
-            "delivery_mode",
-            "grading_mode",
-            "allow_feedback",
-            "max_points",
-            "rubric_scoring_strategy",
-        ],
-        order_by="due_date desc, modified desc",
-        limit=0,
-    )
-
-    task_ids = [row.get("task") for row in deliveries if row.get("task")]
-    task_map = {}
-    if task_ids:
-        task_rows = frappe.get_all(
-            "Task",
-            filters={"name": ["in", task_ids]},
-            fields=["name", "title", "task_type"],
-            limit=0,
-        )
-        task_map = {row.get("name"): row for row in task_rows if row.get("name")}
-
-    tasks = []
-    for delivery in deliveries:
-        grading_mode = (delivery.get("grading_mode") or "").strip()
-        delivery_mode = (delivery.get("delivery_mode") or "").strip()
-        task_row = task_map.get(delivery.get("task")) or {}
-        tasks.append(
-            {
-                "name": delivery.get("name"),  # Task Delivery id (compat key consumed by Gradebook.vue)
-                "title": task_row.get("title") or delivery.get("task"),
-                "due_date": delivery.get("due_date"),
-                "status": None,
-                "grading_mode": grading_mode or None,
-                "allow_feedback": 1 if _bool_flag(delivery.get("allow_feedback")) else 0,
-                "rubric_scoring_strategy": delivery.get("rubric_scoring_strategy") or None,
-                "points": 1 if grading_mode == "Points" else 0,
-                "binary": 1 if grading_mode in {"Binary", "Completion"} else 0,
-                "criteria": 1 if grading_mode == "Criteria" else 0,
-                "observations": 1 if delivery_mode in {"Assign Only", "Collect Work"} else 0,
-                "max_points": _coerce_float(delivery.get("max_points")),
-                "task_type": task_row.get("task_type"),
-                "delivery_type": delivery_mode or None,
-            }
-        )
-
-    return {"tasks": tasks}
+    return gradebook_reads.fetch_group_tasks(_API_MODULE, student_group)
 
 
 @frappe.whitelist()
 def get_task_gradebook(task: str):
-    """
-    Return student grading payload for a Task Delivery.
-    Compatibility shape for existing Gradebook.vue.
-    """
-    if not _can_read_gradebook():
-        frappe.throw(_("Not permitted."), frappe.PermissionError)
-    _require(task, "Task Delivery")
+    return gradebook_reads.get_task_gradebook(_API_MODULE, task)
 
-    delivery = _resolve_delivery(task)
-    _assert_group_access(delivery.get("student_group"))
 
-    task_row = frappe.db.get_value(
-        "Task",
-        delivery.get("task"),
-        ["name", "title", "task_type"],
-        as_dict=True,
-    ) or {"name": delivery.get("task"), "title": delivery.get("task")}
-
-    criteria_payload = _build_delivery_criteria_payload(delivery)
-
-    outcomes = frappe.get_all(
-        "Task Outcome",
-        filters={"task_delivery": delivery.get("name")},
-        fields=[
-            "name",
-            "student",
-            "grading_status",
-            "is_complete",
-            "official_score",
-            "official_feedback",
-            "is_published",
-            "modified",
-        ],
-        order_by="student asc",
-        limit=0,
+@frappe.whitelist()
+def get_task_quiz_manual_review(
+    task: str, view_mode: str | None = None, quiz_question: str | None = None, student: str | None = None
+):
+    return gradebook_reads.get_task_quiz_manual_review(
+        _API_MODULE,
+        task,
+        view_mode=view_mode,
+        quiz_question=quiz_question,
+        student=student,
     )
-    outcome_ids = [row.get("name") for row in outcomes if row.get("name")]
-    outcome_criteria = _get_outcome_criteria_rows(outcome_ids)
 
-    student_ids = [row.get("student") for row in outcomes if row.get("student")]
-    student_display_map = _get_student_display_map(student_ids)
-    student_meta_map = _get_student_meta_map(student_ids)
 
-    students_payload = []
-    for outcome in outcomes:
-        student_id = outcome.get("student")
-        meta = student_meta_map.get(student_id) or {}
-        criteria_rows = outcome_criteria.get(outcome.get("name"), {})
-
-        criteria_scores = []
-        seen_criteria = set()
-        for criterion in criteria_payload:
-            criteria_name = criterion.get("assessment_criteria")
-            if not criteria_name:
-                continue
-            seen_criteria.add(criteria_name)
-            row = criteria_rows.get(criteria_name) or {}
-            criteria_scores.append(
-                {
-                    "assessment_criteria": criteria_name,
-                    "level": row.get("level"),
-                    "level_points": _coerce_float(row.get("level_points")),
-                    "feedback": row.get("feedback"),
-                }
-            )
-
-        for criteria_name, row in criteria_rows.items():
-            if criteria_name in seen_criteria:
-                continue
-            criteria_scores.append(
-                {
-                    "assessment_criteria": criteria_name,
-                    "level": row.get("level"),
-                    "level_points": _coerce_float(row.get("level_points")),
-                    "feedback": row.get("feedback"),
-                }
-            )
-
-        students_payload.append(
-            {
-                "task_student": outcome.get("name"),  # compatibility key, points to Task Outcome
-                "student": student_id,
-                "student_name": (
-                    meta.get("student_preferred_name")
-                    or meta.get("student_full_name")
-                    or student_display_map.get(student_id)
-                    or student_id
-                ),
-                "student_id": meta.get("student_id"),
-                "student_image": meta.get("student_image"),
-                "status": outcome.get("grading_status"),
-                "complete": int(outcome.get("is_complete") or 0),
-                "mark_awarded": _coerce_float(outcome.get("official_score")),
-                "feedback": outcome.get("official_feedback"),
-                "visible_to_student": int(outcome.get("is_published") or 0),
-                "visible_to_guardian": int(outcome.get("is_published") or 0),
-                "updated_on": outcome.get("modified"),
-                "criteria_scores": criteria_scores,
-            }
-        )
-
-    grading_mode = (delivery.get("grading_mode") or "").strip()
-    delivery_mode = (delivery.get("delivery_mode") or "").strip()
-    task_payload = {
-        "name": delivery.get("name"),
-        "title": task_row.get("title") or task_row.get("name"),
-        "student_group": delivery.get("student_group"),
-        "due_date": delivery.get("due_date"),
-        "grading_mode": grading_mode or None,
-        "allow_feedback": 1 if _bool_flag(delivery.get("allow_feedback")) else 0,
-        "rubric_scoring_strategy": delivery.get("rubric_scoring_strategy") or None,
-        "points": 1 if grading_mode == "Points" else 0,
-        "binary": 1 if grading_mode in {"Binary", "Completion"} else 0,
-        "criteria": 1 if grading_mode == "Criteria" else 0,
-        "observations": 1 if delivery_mode in {"Assign Only", "Collect Work"} else 0,
-        "max_points": _coerce_float(delivery.get("max_points")),
-        "task_type": task_row.get("task_type"),
-        "delivery_type": delivery_mode or None,
-    }
-
-    return {
-        "task": task_payload,
-        "criteria": criteria_payload,
-        "students": students_payload,
-    }
+@frappe.whitelist()
+def save_task_quiz_manual_review(task: str, grades=None, **kwargs):
+    return gradebook_writes.save_task_quiz_manual_review(_API_MODULE, task, grades=grades, **kwargs)
 
 
 @frappe.whitelist()
 def repair_task_roster(task: str):
-    """
-    Backfill missing Task Outcome rows for a delivery already visible in gradebook.
-    """
-    if not _can_write_gradebook():
-        frappe.throw(_("Not permitted."), frappe.PermissionError)
-    _require(task, "Task Delivery")
-
-    delivery = frappe.get_doc("Task Delivery", task)
-    _assert_group_access(delivery.student_group)
-
-    before_count = frappe.db.count("Task Outcome", {"task_delivery": delivery.name})
-    was_draft = int(delivery.docstatus or 0) == 0
-
-    if was_draft:
-        delivery.flags.ignore_permissions = True
-        delivery.submit()
-        delivery = frappe.get_doc("Task Delivery", task)
-
-    materialized = delivery.materialize_roster()
-    after_count = frappe.db.count("Task Outcome", {"task_delivery": delivery.name})
-    outcomes_created = max(after_count - before_count, 0)
-    eligible_students = materialized.get("eligible_students", after_count)
-
-    if outcomes_created:
-        message = _("Roster synced for {student_count} students.").format(student_count=outcomes_created)
-    elif after_count:
-        message = _("Roster is already up to date.")
-    else:
-        message = _("No active students are currently in this student group.")
-
-    return {
-        "task_delivery": delivery.name,
-        "docstatus": int(delivery.docstatus or 0),
-        "was_draft": 1 if was_draft else 0,
-        "eligible_students": eligible_students,
-        "outcomes_created": outcomes_created,
-        "outcomes_total": after_count,
-        "message": message,
-    }
+    return gradebook_writes.repair_task_roster(_API_MODULE, task)
 
 
 @frappe.whitelist()
 def update_task_student(task_student: str, updates=None, **kwargs):
-    """
-    Update gradebook row for a Task Outcome id.
-    Writes run through contribution services for grading data.
-    """
-    if not _can_write_gradebook():
-        frappe.throw(_("Not permitted."), frappe.PermissionError)
-    _require(task_student, "Task Outcome")
-
-    payload = updates if updates is not None else kwargs
-    if isinstance(payload, str):
-        payload = frappe.parse_json(payload)
-    if not isinstance(payload, dict):
-        frappe.throw(_("Updates payload must be a dict."))
-
-    outcome_row = frappe.db.get_value(
-        "Task Outcome",
-        task_student,
-        ["name", "task_delivery", "official_score"],
-        as_dict=True,
-    )
-    if not outcome_row:
-        frappe.throw(_("Task Outcome not found."))
-
-    delivery_row = (
-        frappe.db.get_value(
-            "Task Delivery",
-            outcome_row.get("task_delivery"),
-            ["name", "student_group", "delivery_mode", "grading_mode", "allow_feedback"],
-            as_dict=True,
-        )
-        or {}
-    )
-    _assert_group_access(delivery_row.get("student_group"))
-
-    grading_mode = (delivery_row.get("grading_mode") or "").strip()
-    delivery_mode = (delivery_row.get("delivery_mode") or "").strip()
-    allow_feedback = _bool_flag(delivery_row.get("allow_feedback"))
-    boolean_mode = grading_mode in {"Binary", "Completion"} or delivery_mode == "Assign Only"
-    score_provided = "mark_awarded" in payload and payload.get("mark_awarded") not in (None, "")
-    feedback_provided = "feedback" in payload
-    criteria_provided = isinstance(payload.get("criteria_scores"), list)
-    complete_provided = "complete" in payload
-
-    if score_provided and grading_mode != "Points":
-        frappe.throw(_("Points can only be recorded for points grading."))
-
-    if criteria_provided and grading_mode != "Criteria":
-        frappe.throw(_("Criteria scores can only be recorded for criteria grading."))
-
-    if complete_provided and not boolean_mode:
-        frappe.throw(_("Completion can only be recorded for completion, binary, or assign-only work."))
-
-    if feedback_provided and not allow_feedback:
-        frappe.throw(_("Comments are not enabled for this delivery."))
-
-    if score_provided or feedback_provided or criteria_provided:
-        contribution_payload = {"task_outcome": task_student}
-        if score_provided:
-            contribution_payload["score"] = payload.get("mark_awarded")
-        elif grading_mode == "Points" and outcome_row.get("official_score") not in (None, ""):
-            contribution_payload["score"] = outcome_row.get("official_score")
-
-        if feedback_provided:
-            contribution_payload["feedback"] = payload.get("feedback")
-
-        if criteria_provided:
-            rubric_scores = []
-            for row in payload.get("criteria_scores") or []:
-                if not isinstance(row, dict):
-                    continue
-                criteria_name = row.get("assessment_criteria")
-                level_value = row.get("level")
-                if not criteria_name or level_value in (None, ""):
-                    continue
-                rubric_scores.append(
-                    {
-                        "assessment_criteria": criteria_name,
-                        "level": level_value,
-                        "level_points": _coerce_float(row.get("level_points")),
-                        "feedback": row.get("feedback"),
-                    }
-                )
-            if rubric_scores:
-                contribution_payload["rubric_scores"] = rubric_scores
-
-        should_submit_contribution = True
-        if grading_mode == "Criteria" and not contribution_payload.get("rubric_scores"):
-            existing_scores = _build_rubric_scores_from_outcome(task_student)
-            if existing_scores:
-                contribution_payload["rubric_scores"] = existing_scores
-            elif criteria_provided:
-                frappe.throw(_("Criteria levels are required before saving criteria marks."))
-            elif not feedback_provided:
-                should_submit_contribution = False
-
-        if should_submit_contribution:
-            _reject_official_fields(contribution_payload)
-            contribution_payload["task_submission"] = _resolve_or_create_stub_submission_id(
-                task_student, contribution_payload
-            )
-            task_contribution_service.submit_contribution(contribution_payload, contributor=frappe.session.user)
-
-    status_value = _normalize_grading_status(payload.get("status")) if "status" in payload else None
-    visibility_provided = "visible_to_student" in payload or "visible_to_guardian" in payload
-    if status_value is not None and delivery_mode != "Assess":
-        frappe.throw(_("Grading status can only be updated for assessed work."))
-    if status_value is not None or complete_provided or visibility_provided:
-        outcome_doc = frappe.get_doc("Task Outcome", task_student)
-        if status_value is not None:
-            outcome_doc.grading_status = status_value
-        if complete_provided:
-            outcome_doc.is_complete = 1 if _bool_flag(payload.get("complete")) else 0
-        if visibility_provided:
-            publish_flag = _bool_flag(payload.get("visible_to_student")) or _bool_flag(
-                payload.get("visible_to_guardian")
-            )
-            outcome_doc.is_published = 1 if publish_flag else 0
-            if publish_flag:
-                outcome_doc.published_on = now_datetime()
-                outcome_doc.published_by = frappe.session.user
-            else:
-                outcome_doc.published_on = None
-                outcome_doc.published_by = None
-        outcome_doc.save(ignore_permissions=False)
-
-    fresh = (
-        frappe.db.get_value(
-            "Task Outcome",
-            task_student,
-            [
-                "name",
-                "official_score",
-                "official_feedback",
-                "grading_status",
-                "is_complete",
-                "is_published",
-                "modified",
-            ],
-            as_dict=True,
-        )
-        or {}
-    )
-    return {
-        "task_student": fresh.get("name"),
-        "mark_awarded": _coerce_float(fresh.get("official_score")),
-        "feedback": fresh.get("official_feedback"),
-        "status": fresh.get("grading_status"),
-        "complete": int(fresh.get("is_complete") or 0),
-        "visible_to_student": int(fresh.get("is_published") or 0),
-        "visible_to_guardian": int(fresh.get("is_published") or 0),
-        "updated_on": fresh.get("modified"),
-    }
+    return gradebook_writes.update_task_student(_API_MODULE, task_student, updates=updates, **kwargs)
 
 
 # ---------------------------
@@ -860,6 +157,263 @@ def _normalize_payload(payload, kwargs):
     if not isinstance(data, dict) or not data:
         frappe.throw(_("Payload must be a dict."))
     return data
+
+
+def _normalize_quiz_manual_view_mode(value: str | None) -> str:
+    return "student" if str(value or "").strip() == "student" else "question"
+
+
+def _require_manual_quiz_review_delivery(delivery):
+    task_name = delivery.get("task")
+    task_row = frappe.db.get_value(
+        "Task",
+        task_name,
+        ["name", "title", "task_type"],
+        as_dict=True,
+    )
+    if not task_row:
+        frappe.throw(_("Task not found."))
+    if (task_row.get("task_type") or "").strip() != "Quiz":
+        frappe.throw(_("Quiz manual review is only available for quiz deliveries."))
+    if (delivery.get("delivery_mode") or "").strip() != "Assess":
+        frappe.throw(_("Quiz manual review is only available for assessed quiz deliveries."))
+    return task_row
+
+
+def _build_quiz_manual_review_rows(delivery):
+    outcome_rows = frappe.get_all(
+        "Task Outcome",
+        filters={"task_delivery": delivery.get("name")},
+        fields=["name", "student", "grading_status"],
+        limit=0,
+    )
+    outcome_map = {row.get("name"): row for row in outcome_rows if row.get("name")}
+
+    attempt_rows = frappe.get_all(
+        "Quiz Attempt",
+        filters={
+            "task_delivery": delivery.get("name"),
+            "status": ["in", ["Submitted", "Needs Review"]],
+        },
+        fields=[
+            "name",
+            "task_outcome",
+            "student",
+            "attempt_number",
+            "status",
+            "submitted_on",
+            "score",
+            "percentage",
+            "passed",
+            "requires_manual_review",
+        ],
+        order_by="submitted_on desc, attempt_number desc, name asc",
+        limit=0,
+    )
+    attempt_map = {row.get("name"): row for row in attempt_rows if row.get("name")}
+    if not attempt_map:
+        return []
+
+    item_rows = frappe.get_all(
+        "Quiz Attempt Item",
+        filters={
+            "quiz_attempt": ["in", list(attempt_map.keys())],
+            "question_type": ["in", sorted(quiz_service.MANUAL_TYPES)],
+        },
+        fields=[
+            "name",
+            "quiz_attempt",
+            "quiz_question",
+            "position",
+            "question_type",
+            "prompt_html",
+            "option_payload",
+            "response_text",
+            "response_payload",
+            "awarded_score",
+            "requires_manual_grading",
+        ],
+        order_by="position asc, name asc",
+        limit=0,
+    )
+    if not item_rows:
+        return []
+
+    question_rows = frappe.get_all(
+        "Quiz Question",
+        filters={"name": ["in", list({row.get("quiz_question") for row in item_rows if row.get("quiz_question")})]},
+        fields=["name", "title"],
+        limit=0,
+    )
+    question_map = {row.get("name"): row for row in question_rows if row.get("name")}
+
+    student_ids = []
+    for attempt in attempt_rows:
+        student_id = attempt.get("student") or outcome_map.get(attempt.get("task_outcome"), {}).get("student")
+        if student_id:
+            student_ids.append(student_id)
+    student_display_map = _get_student_display_map(student_ids)
+    student_meta_map = _get_student_meta_map(student_ids)
+
+    rows = []
+    for item in item_rows:
+        attempt = attempt_map.get(item.get("quiz_attempt"))
+        if not attempt:
+            continue
+        outcome = outcome_map.get(attempt.get("task_outcome")) or {}
+        student_id = attempt.get("student") or outcome.get("student")
+        if not student_id:
+            continue
+        question = question_map.get(item.get("quiz_question")) or {}
+        student_meta = student_meta_map.get(student_id) or {}
+        selected_option_ids = _parse_quiz_manual_response_ids(item.get("response_payload"))
+        rows.append(
+            {
+                "item_id": item.get("name"),
+                "quiz_attempt": attempt.get("name"),
+                "task_outcome": attempt.get("task_outcome"),
+                "attempt_number": attempt.get("attempt_number"),
+                "attempt_status": attempt.get("status"),
+                "submitted_on": attempt.get("submitted_on"),
+                "student": student_id,
+                "student_name": student_display_map.get(student_id) or student_id,
+                "student_id": student_meta.get("student_id"),
+                "student_image": student_meta.get("student_image"),
+                "grading_status": outcome.get("grading_status"),
+                "quiz_question": item.get("quiz_question"),
+                "title": question.get("title") or item.get("quiz_question"),
+                "position": item.get("position"),
+                "question_type": item.get("question_type"),
+                "prompt_html": item.get("prompt_html"),
+                "response_text": item.get("response_text"),
+                "selected_option_ids": selected_option_ids,
+                "selected_option_labels": _resolve_quiz_manual_selected_option_labels(
+                    item.get("option_payload"), selected_option_ids
+                ),
+                "awarded_score": _coerce_float(item.get("awarded_score")),
+                "requires_manual_grading": 1 if _bool_flag(item.get("requires_manual_grading")) else 0,
+            }
+        )
+
+    rows.sort(
+        key=lambda row: (
+            str(row.get("title") or "").lower(),
+            str(row.get("student_name") or "").lower(),
+            row.get("attempt_number") or 0,
+            row.get("position") or 0,
+            str(row.get("item_id") or ""),
+        )
+    )
+    return rows
+
+
+def _build_quiz_manual_question_options(rows):
+    options = {}
+    for row in rows:
+        quiz_question = row.get("quiz_question")
+        if not quiz_question:
+            continue
+        option = options.setdefault(
+            quiz_question,
+            {
+                "quiz_question": quiz_question,
+                "title": row.get("title") or quiz_question,
+                "manual_item_count": 0,
+                "pending_item_count": 0,
+            },
+        )
+        option["manual_item_count"] += 1
+        if int(row.get("requires_manual_grading") or 0) == 1:
+            option["pending_item_count"] += 1
+
+    return sorted(
+        options.values(),
+        key=lambda row: (str(row.get("title") or "").lower(), str(row.get("quiz_question") or "")),
+    )
+
+
+def _build_quiz_manual_student_options(rows):
+    options = {}
+    for row in rows:
+        student = row.get("student")
+        if not student:
+            continue
+        option = options.setdefault(
+            student,
+            {
+                "student": student,
+                "student_name": row.get("student_name") or student,
+                "student_id": row.get("student_id"),
+                "student_image": row.get("student_image"),
+                "manual_item_count": 0,
+                "pending_item_count": 0,
+            },
+        )
+        option["manual_item_count"] += 1
+        if int(row.get("requires_manual_grading") or 0) == 1:
+            option["pending_item_count"] += 1
+
+    return sorted(
+        options.values(),
+        key=lambda row: (
+            str(row.get("student_name") or "").lower(),
+            str(row.get("student_id") or ""),
+            str(row.get("student") or ""),
+        ),
+    )
+
+
+def _resolve_selected_quiz_manual_question(requested, question_options):
+    requested_value = str(requested or "").strip()
+    if requested_value and any(row.get("quiz_question") == requested_value for row in question_options):
+        return requested_value
+    return question_options[0].get("quiz_question") if question_options else None
+
+
+def _resolve_selected_quiz_manual_student(requested, student_options):
+    requested_value = str(requested or "").strip()
+    if requested_value and any(row.get("student") == requested_value for row in student_options):
+        return requested_value
+    return student_options[0].get("student") if student_options else None
+
+
+def _parse_quiz_manual_response_ids(value) -> list[str]:
+    if value in (None, ""):
+        return []
+    try:
+        parsed = json.loads(value) if isinstance(value, str) else value
+    except Exception:
+        return []
+    if not isinstance(parsed, list):
+        return []
+    return [str(entry).strip() for entry in parsed if str(entry).strip()]
+
+
+def _resolve_quiz_manual_selected_option_labels(option_payload, selected_option_ids) -> list[str]:
+    if not option_payload or not selected_option_ids:
+        return []
+    try:
+        parsed = json.loads(option_payload) if isinstance(option_payload, str) else option_payload
+    except Exception:
+        return []
+    if not isinstance(parsed, list):
+        return []
+
+    option_map = {}
+    for row in parsed:
+        if not isinstance(row, dict):
+            continue
+        option_id = str(row.get("id") or "").strip()
+        if not option_id:
+            continue
+        option_map[option_id] = str(row.get("text") or "").strip() or option_id
+
+    labels = []
+    for option_id in selected_option_ids:
+        label = option_map.get(option_id)
+        if label:
+            labels.append(label)
+    return labels
 
 
 def _resolve_gradebook_scope(school, academic_year, course):
@@ -903,36 +457,12 @@ def _resolve_gradebook_scope(school, academic_year, course):
 
 
 def _instructor_group_names(user):
-    names = set()
-    for row in frappe.get_all(
-        "Student Group Instructor",
-        filters={"user_id": user},
-        pluck="parent",
-    ):
-        names.add(row)
+    from ifitwala_ed.api.student_groups import _instructor_group_names as _canonical_instructor_group_names
 
-    instructor_ids = frappe.get_all("Instructor", filters={"linked_user_id": user}, pluck="name")
-    if instructor_ids:
-        for row in frappe.get_all(
-            "Student Group Instructor",
-            filters={"instructor": ["in", instructor_ids]},
-            pluck="parent",
-        ):
-            names.add(row)
-
-    employee = frappe.db.get_value("Employee", {"user_id": user, "employment_status": "Active"}, "name")
-    if employee:
-        for row in frappe.get_all(
-            "Student Group Instructor",
-            filters={"employee": employee},
-            pluck="parent",
-        ):
-            names.add(row)
-
-    return names
+    return _canonical_instructor_group_names(user)
 
 
-def _get_task_titles(task_ids):
+def _get_task_summary_map(task_ids):
     task_ids = [task_id for task_id in set(task_ids or []) if task_id]
     if not task_ids:
         return {}
@@ -940,19 +470,28 @@ def _get_task_titles(task_ids):
     rows = frappe.get_all(
         "Task",
         filters={"name": ["in", task_ids]},
-        fields=["name", "title"],
+        fields=["name", "title", "task_type"],
         limit=0,
     )
-    return {row.get("name"): row.get("title") for row in rows}
+    return {row.get("name"): row for row in rows if row.get("name")}
 
 
-def _build_student_payload(student_ids, student_map):
+def _build_student_payload(student_ids, student_map, student_meta_map=None):
     unique_ids = {student_id for student_id in student_ids if student_id}
-    ordered = sorted(unique_ids, key=lambda sid: student_map.get(sid) or sid)
+    meta_map = student_meta_map or {}
+    ordered = sorted(
+        unique_ids,
+        key=lambda sid: (
+            (student_map.get(sid) or sid).lower(),
+            sid,
+        ),
+    )
     return [
         {
-            "student_id": student_id,
+            "student": student_id,
             "student_name": student_map.get(student_id) or student_id,
+            "student_id": (meta_map.get(student_id) or {}).get("student_id"),
+            "student_image": (meta_map.get(student_id) or {}).get("student_image"),
         }
         for student_id in ordered
     ]
@@ -1191,6 +730,7 @@ def _resolve_delivery(delivery_id):
             "grading_mode",
             "allow_feedback",
             "max_points",
+            "quiz_pass_percentage",
             "rubric_version",
             "rubric_scoring_strategy",
         ],
@@ -1374,3 +914,15 @@ def _coerce_float(value):
         return float(value)
     except Exception:
         return None
+
+
+def _coerce_int(value, default=0, minimum=None, maximum=None):
+    try:
+        out = int(value)
+    except Exception:
+        out = default
+    if minimum is not None:
+        out = max(minimum, out)
+    if maximum is not None:
+        out = min(maximum, out)
+    return out

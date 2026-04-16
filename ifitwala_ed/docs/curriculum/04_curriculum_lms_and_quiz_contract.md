@@ -1,8 +1,8 @@
 # Curriculum LMS And Quiz Contract
 
 Status: Canonical current-state contract
-Code refs: `ifitwala_ed/api/teaching_plans.py`, `ifitwala_ed/api/courses.py`, `ifitwala_ed/api/quiz.py`, `ifitwala_ed/api/student_portfolio.py`, `ifitwala_ed/assessment/quiz_service.py`, `ifitwala_ed/assessment/task_creation_service.py`, `ifitwala_ed/assessment/doctype/task/task.json`, `ifitwala_ed/assessment/doctype/task_delivery/task_delivery.json`, `ifitwala_ed/assessment/doctype/quiz_question_bank/quiz_question_bank.json`, `ifitwala_ed/assessment/doctype/quiz_question/quiz_question.json`, `ifitwala_ed/assessment/doctype/quiz_attempt/quiz_attempt.json`, `ifitwala_ed/assessment/doctype/quiz_attempt_item/quiz_attempt_item.json`, `ifitwala_ed/ui-spa/src/types/contracts/student_learning/get_student_learning_space.ts`, `ifitwala_ed/ui-spa/src/types/contracts/student_quiz/open_student_quiz_session.ts`, `ifitwala_ed/ui-spa/src/types/contracts/student_hub/get_student_hub_home.ts`, `ifitwala_ed/ui-spa/src/lib/services/student/studentLearningHubService.ts`, `ifitwala_ed/ui-spa/src/lib/services/student/studentQuizService.ts`, `ifitwala_ed/ui-spa/src/lib/services/portfolio/portfolioService.ts`, `ifitwala_ed/ui-spa/src/pages/student/CourseDetail.vue`, `ifitwala_ed/ui-spa/src/pages/student/StudentHome.vue`, `ifitwala_ed/ui-spa/src/pages/student/StudentQuiz.vue`, `ifitwala_ed/ui-spa/src/router/index.ts`
-Test refs: `ifitwala_ed/api/test_teaching_plans.py`, `ifitwala_ed/api/test_courses.py`, `ifitwala_ed/api/test_quiz.py`, `ifitwala_ed/api/test_student_portfolio.py`, `ifitwala_ed/assessment/test_quiz_service.py`, `ifitwala_ed/ui-spa/src/lib/services/student/__tests__/studentLearningHubService.test.ts`, `ifitwala_ed/ui-spa/src/lib/services/student/__tests__/studentQuizService.test.ts`, `ifitwala_ed/ui-spa/src/pages/student/__tests__/CourseDetail.test.ts`, `ifitwala_ed/ui-spa/src/pages/student/__tests__/StudentHome.test.ts`
+Code refs: `ifitwala_ed/api/teaching_plans.py`, `ifitwala_ed/api/courses.py`, `ifitwala_ed/api/student_communications.py`, `ifitwala_ed/api/quiz.py`, `ifitwala_ed/api/student_portfolio.py`, `ifitwala_ed/api/gradebook.py`, `ifitwala_ed/assessment/quiz_service.py`, `ifitwala_ed/assessment/task_creation_service.py`, `ifitwala_ed/assessment/doctype/task/task.json`, `ifitwala_ed/assessment/doctype/task_delivery/task_delivery.json`, `ifitwala_ed/assessment/doctype/quiz_question_bank/quiz_question_bank.json`, `ifitwala_ed/assessment/doctype/quiz_question/quiz_question.json`, `ifitwala_ed/assessment/doctype/quiz_attempt/quiz_attempt.json`, `ifitwala_ed/assessment/doctype/quiz_attempt_item/quiz_attempt_item.json`, `ifitwala_ed/ui-spa/src/types/contracts/student_learning/get_student_learning_space.ts`, `ifitwala_ed/ui-spa/src/types/contracts/student_quiz/open_student_quiz_session.ts`, `ifitwala_ed/ui-spa/src/types/contracts/student_hub/get_student_hub_home.ts`, `ifitwala_ed/ui-spa/src/types/contracts/student_communication/get_student_communication_center.ts`, `ifitwala_ed/ui-spa/src/types/contracts/gradebook/get_task_quiz_manual_review.ts`, `ifitwala_ed/ui-spa/src/types/contracts/gradebook/save_task_quiz_manual_review.ts`, `ifitwala_ed/ui-spa/src/lib/services/student/studentLearningHubService.ts`, `ifitwala_ed/ui-spa/src/lib/services/student/studentQuizService.ts`, `ifitwala_ed/ui-spa/src/lib/services/portfolio/portfolioService.ts`, `ifitwala_ed/ui-spa/src/lib/services/gradebook/gradebookService.ts`, `ifitwala_ed/ui-spa/src/pages/student/CourseDetail.vue`, `ifitwala_ed/ui-spa/src/pages/student/StudentHome.vue`, `ifitwala_ed/ui-spa/src/pages/student/StudentCommunicationCenter.vue`, `ifitwala_ed/ui-spa/src/pages/student/StudentQuiz.vue`, `ifitwala_ed/ui-spa/src/pages/staff/gradebook/Gradebook.vue`, `ifitwala_ed/ui-spa/src/router/index.ts`
+Test refs: `ifitwala_ed/api/test_teaching_plans.py`, `ifitwala_ed/api/test_courses.py`, `ifitwala_ed/api/test_quiz.py`, `ifitwala_ed/api/test_student_portfolio.py`, `ifitwala_ed/api/test_gradebook.py`, `ifitwala_ed/assessment/test_quiz_service.py`, `ifitwala_ed/ui-spa/src/lib/services/student/__tests__/studentLearningHubService.test.ts`, `ifitwala_ed/ui-spa/src/lib/services/student/__tests__/studentQuizService.test.ts`, `ifitwala_ed/ui-spa/src/pages/student/__tests__/CourseDetail.test.ts`, `ifitwala_ed/ui-spa/src/pages/student/__tests__/StudentHome.test.ts`, `ifitwala_ed/ui-spa/src/pages/staff/__tests__/Gradebook.test.ts`
 
 This is the canonical source of truth for the student learning space and native quiz runtime.
 
@@ -21,6 +21,7 @@ Current response contract:
 - `course`
 - `access`
 - `teaching_plan`
+- `communications.course_updates_summary`
 - `message`
 - `learning`
 - `resources`
@@ -37,6 +38,8 @@ Current product behavior:
 - class-aware planning is the primary student reality
 - shared course-plan content is fallback only
 - the student sees explicit unavailable or fallback messaging instead of silent failure
+- the learning-space bootstrap exposes only bounded class-update summary data, not an inline message feed
+- `CourseDetail.vue` stays learning-first and exposes a single `Class Updates` handoff into the filtered student Communication Center
 - the server resolves `learning.focus`, `learning.next_actions`, `learning.reflection_entries`, `learning.selected_context`, and `learning.unit_navigation`
 - the student page stays learning-first and does not expose shared-plan management labels
 - non-quiz assigned work opens back into `CourseDetail.vue` as the task workspace; quiz work launches `StudentQuiz.vue` only for attempt runtime
@@ -86,13 +89,16 @@ Test refs: `ifitwala_ed/api/test_teaching_plans.py`, `ifitwala_ed/api/test_stude
 ## Student Hub Handoff Into Course Context
 
 Status: Implemented
-Code refs: `ifitwala_ed/api/courses.py`, `ifitwala_ed/ui-spa/src/types/contracts/student_hub/get_student_hub_home.ts`, `ifitwala_ed/ui-spa/src/pages/student/StudentHome.vue`, `ifitwala_ed/ui-spa/src/pages/student/CourseDetail.vue`
+Code refs: `ifitwala_ed/api/courses.py`, `ifitwala_ed/api/student_communications.py`, `ifitwala_ed/ui-spa/src/types/contracts/student_hub/get_student_hub_home.ts`, `ifitwala_ed/ui-spa/src/types/contracts/student_communication/get_student_communication_center.ts`, `ifitwala_ed/ui-spa/src/pages/student/StudentHome.vue`, `ifitwala_ed/ui-spa/src/pages/student/CourseDetail.vue`, `ifitwala_ed/ui-spa/src/pages/student/StudentCommunicationCenter.vue`
 Test refs: `ifitwala_ed/api/test_courses.py`, `ifitwala_ed/ui-spa/src/pages/student/__tests__/StudentHome.test.ts`
 
 - `get_student_hub_home()` is allowed to link into the student course page, but it must route into the exact class-owned context when that context is known.
 - Work-board, next-step, and timeline links should preserve `student_group`, `unit_plan`, and `class_session` whenever the source row has them.
+- `get_student_hub_home()` may also expose bounded communication highlights, but those highlights must still link students back into the owning course, activity, or Communication Center context instead of creating a second inbox on Home.
 - `StudentHome.vue` should hand students into `CourseDetail.vue`; it must not become a competing second LMS tree.
-- `CourseDetail.vue` remains the canonical workspace for non-quiz assigned work, session flow, materials, and class-context review.
+- `CourseDetail.vue` remains the canonical workspace for non-quiz assigned work, session flow, materials, and class-context review; it does not render class messages inline.
+- The `Class Updates` action on `CourseDetail.vue` must route into `StudentCommunicationCenter.vue` with server-owned `course_id` and `student_group` filters applied.
+- `StudentCommunicationCenter.vue` owns the portal-wide student history across class, activity, pastoral/cohort, and school-event items.
 
 ## Assigned Work In The LMS
 
@@ -178,9 +184,31 @@ Current runtime behavior:
 - update `Task Outcome` according to practice versus assessed rules
 - preserve class and unit context back to `CourseDetail.vue`
 
+## Staff Quiz Manual Review
+
+Status: Implemented
+Code refs: `ifitwala_ed/api/gradebook.py`, `ifitwala_ed/assessment/quiz_service.py`, `ifitwala_ed/ui-spa/src/types/contracts/gradebook/get_task_quiz_manual_review.ts`, `ifitwala_ed/ui-spa/src/types/contracts/gradebook/save_task_quiz_manual_review.ts`, `ifitwala_ed/ui-spa/src/lib/services/gradebook/gradebookService.ts`, `ifitwala_ed/ui-spa/src/pages/staff/gradebook/Gradebook.vue`
+Test refs: `ifitwala_ed/api/test_gradebook.py`, `ifitwala_ed/ui-spa/src/pages/staff/__tests__/Gradebook.test.ts`
+
+The staff gradebook now owns the manual-review surface for assessed quiz items that require human scoring.
+
+Current teacher behavior:
+
+- assessed quiz tasks route into an `Open-ended Quiz Review` panel inside the existing gradebook shell
+- teachers can review manually graded quiz items `by question` across a group or `by student`
+- the teacher records `awarded_score` on each `Quiz Attempt Item` in the range `0..1`
+- each save refreshes the canonical quiz attempt through `quiz_service.refresh_attempt(...)`
+- official outcome totals remain server-derived from quiz attempt truth; the teacher does not type the assessed quiz total directly into `Task Outcome`
+
+Current product boundary:
+
+- this manual-review surface is for assessed quiz items only
+- question-level rubric or criteria scoring for quiz items is not implemented yet
+- overall teacher feedback and visibility controls remain outside this question-level review surface
+
 ## Security And Release Rules
 
-Status: Implemented with one explicit hardening gap
+Status: Implemented
 Code refs: `ifitwala_ed/api/quiz.py`, `ifitwala_ed/assessment/quiz_service.py`
 Test refs: `ifitwala_ed/api/test_quiz.py`, `ifitwala_ed/assessment/test_quiz_service.py`
 
@@ -189,13 +217,8 @@ Current enforced rules:
 - student attempt access is server-scoped by student and course
 - answer keys and correctness are not included in active attempt payloads
 - assessed quiz review redacts score, percentage, correctness, accepted answers, correct options, and explanations
+- quiz runtime responses set explicit no-store cache headers
 - essay items remain in manual-review state until graded
-
-Current gap that remains real:
-
-- `api/quiz.py` does not currently set explicit cache-control headers for active attempt responses
-
-Treat that as unfinished hardening work. Do not document it as already solved.
 
 ## Concurrency And Idempotency
 
@@ -215,7 +238,7 @@ Do not move quiz correctness or attempt sequencing into client logic.
 ## Current Gaps And Non-Goals
 
 Status: Partial
-Code refs: `ifitwala_ed/ui-spa/src/pages/student/CourseDetail.vue`, `ifitwala_ed/assessment/doctype/task/task.json`, `ifitwala_ed/assessment/doctype/task_delivery/task_delivery.json`
+Code refs: `ifitwala_ed/ui-spa/src/pages/student/CourseDetail.vue`, `ifitwala_ed/assessment/doctype/task/task.json`, `ifitwala_ed/assessment/doctype/task_delivery/task_delivery.json`, `ifitwala_ed/ui-spa/src/pages/staff/gradebook/Gradebook.vue`
 Test refs: None
 
 Not implemented now:
@@ -223,6 +246,7 @@ Not implemented now:
 - waiting-period-between-attempts policy
 - a second gradebook or second LMS tree
 - inline quiz-bank quick-create inside the task-delivery overlay
+- question-level rubric or criteria scoring for quiz items
 
 These are not missing documentation. They are real product boundaries today.
 

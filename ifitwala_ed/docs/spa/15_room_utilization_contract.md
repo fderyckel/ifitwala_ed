@@ -32,6 +32,8 @@ Rules:
 3. The page must keep one selected school context and reuse it across free-room search, utilization analytics, and location-calendar scope.
 4. Room-type filtering is a first-class workflow input, not a presentation-only label.
 5. The SPA must not compute school hierarchy, shared-location inheritance, or location privacy rules client-side.
+6. Page access is staff-wide, but the utilization analytics components on that page remain restricted to the analytics roles enforced by the server.
+7. The Free Rooms Finder may open the canonical event quick-create overlay as a contextual next action and should prefill the current school when one is selected.
 
 ## 2. API and Read-Model Contract
 
@@ -46,11 +48,12 @@ Test refs:
 
 Rules:
 
-1. `get_room_utilization_filter_meta()` is the canonical bootstrap for allowed schools, default school, and schedulable room-type options.
+1. `get_room_utilization_filter_meta()` is the canonical bootstrap for allowed schools, default school, schedulable room-type options, and school-scoped Time Utilization day-window defaults derived from `School.portal_calendar_start_time` / `School.portal_calendar_end_time`.
 2. `get_free_rooms(...)`, `get_room_time_utilization(...)`, and `get_room_capacity_utilization(...)` must all resolve candidate rooms through `get_visible_location_rows_for_school(...)`.
 3. `get_location_calendar(...)` is the only Room Utilization endpoint allowed to read Location Booking rows directly for timeline display.
 4. Room availability and utilization remain authoritative from `Location Booking`; the page must not union Meeting, School Event, Employee Booking, or timetable rows client-side.
 5. The SPA must use the named endpoints directly and must not introduce extra room-scope fetches to rebuild visibility rules locally.
+6. `get_room_time_utilization(...)` owns weekend/holiday exclusion server-side through the effective `School Calendar` resolver; the SPA may only send an explicit include/exclude flag.
 
 ## 3. Shared Location Visibility Contract
 
@@ -110,6 +113,7 @@ Rules:
 3. When a group/building is selected, the title may append the concrete room label for operational clarity.
 4. The Location Calendar must not leak Meeting or School Event titles merely because a booking exists in the same location.
 5. Group selections must expand through canonical location hierarchy helpers instead of duplicating descendant lookups in the page or endpoint.
+6. Teaching rows may add operational context limited to `Student Group` plus `Course`; they must not expose instructor identity from the room calendar.
 
 ## 6. Contract Matrix
 
@@ -149,3 +153,4 @@ Test refs:
 - The Room Utilization page still uses one filter-meta bootstrap and one endpoint per read model; the Location Calendar adds one bounded debounced read rather than client-side request waterfalls.
 - Shared-location visibility is cache-backed through `get_visible_location_names_for_school(...)`; cache keys remain school-scoped.
 - The Location Calendar intentionally reuses `Location Booking` directly instead of rehydrating Meeting or School Event detail payloads.
+- Time Utilization defaults to the selected school's portal calendar day window, and weekend/holiday exclusion is resolved server-side from the effective school calendar instead of inferred in the browser.

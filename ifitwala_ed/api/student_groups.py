@@ -3,6 +3,7 @@
 import frappe
 from frappe import _
 
+from ifitwala_ed.api.calendar_core import _resolve_employee_for_user
 from ifitwala_ed.schedule.attendance_utils import get_student_group_students
 
 TRIAGE_ROLES = {
@@ -22,33 +23,52 @@ def _user_roles(user: str) -> set[str]:
 
 def _instructor_group_names(user: str) -> set[str]:
     names: set[str] = set()
-    # Linked directly via user id
-    for row in frappe.get_all(
-        "Student Group Instructor",
-        filters={"user_id": user},
-        pluck="parent",
-    ):
-        names.add(row)
+    if not user or user == "Guest":
+        return names
 
-    # Linked via Instructor document
-    instructor_ids = frappe.get_all("Instructor", filters={"linked_user_id": user}, pluck="name")
+    def _merge_group_names(filters: dict) -> None:
+        for row in frappe.get_all(
+            "Student Group Instructor",
+            filters={"parenttype": "Student Group", **filters},
+            pluck="parent",
+            ignore_permissions=True,
+        ):
+            if row:
+                names.add(row)
+
+    _merge_group_names({"user_id": user})
+
+    employee_row = _resolve_employee_for_user(
+        user,
+        fields=["name"],
+        employment_status_filter=["!=", "Inactive"],
+    )
+    employee_id = (employee_row or {}).get("name")
+
+    instructor_ids = set(
+        frappe.get_all(
+            "Instructor",
+            filters={"linked_user_id": user},
+            pluck="name",
+            ignore_permissions=True,
+        )
+        or []
+    )
+
+    if employee_id:
+        _merge_group_names({"employee": employee_id})
+        instructor_ids.update(
+            frappe.get_all(
+                "Instructor",
+                filters={"employee": employee_id},
+                pluck="name",
+                ignore_permissions=True,
+            )
+            or []
+        )
+
     if instructor_ids:
-        for row in frappe.get_all(
-            "Student Group Instructor",
-            filters={"instructor": ["in", instructor_ids]},
-            pluck="parent",
-        ):
-            names.add(row)
-
-    # Linked via Employee mapping
-    employee = frappe.db.get_value("Employee", {"user_id": user, "employment_status": "Active"}, "name")
-    if employee:
-        for row in frappe.get_all(
-            "Student Group Instructor",
-            filters={"employee": employee},
-            pluck="parent",
-        ):
-            names.add(row)
+        _merge_group_names({"instructor": ["in", sorted(instructor_ids)]})
 
     return names
 

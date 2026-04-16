@@ -4,7 +4,7 @@
 # ifitwala_ed.hr.doctype.staff_calendar.staff_calendar
 
 import importlib
-from datetime import date
+from datetime import date, timedelta
 
 import frappe
 from frappe import _
@@ -63,19 +63,35 @@ def _normalize_calendar_filters(filters) -> dict:
     return normalized
 
 
+def _resolve_default_staff_calendar_for_current_user() -> str | None:
+    employee = frappe.db.get_value(
+        "Employee",
+        {"user_id": frappe.session.user, "employment_status": "Active"},
+        ["name", "current_holiday_lis"],
+        as_dict=True,
+    )
+    if not employee:
+        return None
+
+    return employee.get("current_holiday_lis") or None
+
+
 @frappe.whitelist()
 def get_events(start, end, filters=None):
     filters = _normalize_calendar_filters(filters)
 
-    staff_calendar = filters.get("staff_calendar")
+    staff_calendar = filters.get("staff_calendar") or filters.get("name")
     school = filters.get("school")
     employee_group = filters.get("employee_group")
     academic_year = filters.get("academic_year")
 
+    if not any((staff_calendar, school, employee_group, academic_year)):
+        staff_calendar = _resolve_default_staff_calendar_for_current_user()
+
+    calendar_filters = {}
     if staff_calendar:
-        calendar_names = [staff_calendar]
+        calendar_filters["name"] = staff_calendar
     else:
-        calendar_filters = {}
         if school:
             calendar_filters["school"] = school
         if employee_group:
@@ -87,7 +103,7 @@ def get_events(start, end, filters=None):
         if end:
             calendar_filters["from_date"] = ["<=", getdate(end)]
 
-        calendar_names = frappe.get_all("Staff Calendar", filters=calendar_filters, pluck="name")
+    calendar_names = frappe.get_list("Staff Calendar", filters=calendar_filters, pluck="name", limit=0)
 
     if not calendar_names:
         return []
@@ -100,34 +116,44 @@ def get_events(start, end, filters=None):
     if end:
         event_filters.append(["Staff Calendar Holidays", "holiday_date", "<=", getdate(end)])
 
-    events = frappe.get_list(
+    # Child rows inherit visibility from the permitted parent calendars above.
+    events = frappe.get_all(
         "Staff Calendar Holidays",
         fields=[
             "name",
-            "parent as staff_calendar",
+            "parent",
             "holiday_date",
             "description",
             "color",
         ],
         filters=event_filters,
         order_by="holiday_date asc",
+        limit=0,
     )
 
     show_calendar_name = len(calendar_names) > 1 and not staff_calendar
+    normalized_events = []
     for event in events:
+        holiday_date = getdate(event.get("holiday_date")) if event.get("holiday_date") else None
+        if not holiday_date:
+            continue
+
+        staff_calendar_name = event.get("staff_calendar") or event.get("parent")
         title = event.get("description") or _("Holiday")
-        if show_calendar_name:
+        if show_calendar_name and staff_calendar_name:
             title = _("{staff_calendar}: {title}").format(
-                staff_calendar=event.get("staff_calendar"),
+                staff_calendar=staff_calendar_name,
                 title=title,
             )
+        event["staff_calendar"] = staff_calendar_name
         event["description"] = title
         event["title"] = title
-        event["start"] = event.get("holiday_date")
-        event["end"] = event.get("holiday_date")
+        event["start"] = str(holiday_date)
+        event["end"] = str(holiday_date + timedelta(days=1))
         event["allDay"] = 1
+        normalized_events.append(event)
 
-    return events
+    return normalized_events
 
 
 class StaffCalendar(Document):

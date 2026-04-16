@@ -68,6 +68,10 @@
   "bio",
   "show_on_website",
   "small_bio",
+  "show_public_profile_page",
+  "public_profile_slug",
+  "featured_on_website",
+  "website_sort_order",
   "exit_tab",
   "notice_date",
   "column_break_hkhj",
@@ -524,6 +528,28 @@
    "permlevel": 1
   },
   {
+   "default": "0",
+   "fieldname": "show_public_profile_page",
+   "fieldtype": "Check",
+   "label": "Enable Public Profile Page"
+  },
+  {
+   "fieldname": "public_profile_slug",
+   "fieldtype": "Data",
+   "label": "Public Profile Slug"
+  },
+  {
+   "default": "0",
+   "fieldname": "featured_on_website",
+   "fieldtype": "Check",
+   "label": "Featured on Website"
+  },
+  {
+   "fieldname": "website_sort_order",
+   "fieldtype": "Int",
+   "label": "Website Sort Order"
+  },
+  {
    "fieldname": "employee_history",
    "fieldtype": "Table",
    "label": "Internal Work History",
@@ -550,7 +576,7 @@
  "index_web_pages_for_search": 1,
  "is_tree": 1,
  "links": [],
- "modified": "2026-03-29 11:14:36.564802",
+ "modified": "2026-04-08 15:05:00.000000",
  "modified_by": "Administrator",
  "module": "HR",
  "name": "Employee",

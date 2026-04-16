@@ -1,8 +1,10 @@
 frappe.ui.form.on('Student', {
 	refresh: function(frm) {
-    if (!frm.doc.__islocal) {
-      frm.trigger('setup_account_holder_filter');
-    }
+		frappe.dynamic_link = { doc: frm.doc, fieldname: "name", doctype: "Student" };
+
+		if (!frm.doc.__islocal) {
+			frm.trigger('setup_account_holder_filter');
+		}
 
 		if (frm.is_new()) {
 			frm.disable_save();
@@ -19,6 +21,10 @@ frappe.ui.form.on('Student', {
 				"orange"
 			);
 		}
+
+		frm.trigger("render_contact_address_readonly");
+		frm.trigger("refresh_crm_actions");
+		frm.trigger("refresh_family_address_proposal");
 
 		frm.trigger("setup_governed_image_upload");
 		frm.trigger("setup_governed_drive_link");
@@ -49,11 +55,203 @@ frappe.ui.form.on('Student', {
         }
     },
 
+	render_contact_address_readonly: function(frm) {
+		if (frm.is_new()) {
+			frappe.contacts.clear_address_and_contact(frm);
+			return;
+		}
+
+		frappe.contacts.render_address_and_contact(frm);
+	},
+
+	refresh_crm_actions: function(frm) {
+		frm.remove_custom_button(__("Contact"), __("View"));
+		frm.remove_custom_button(__("Address"), __("View"));
+		frm.remove_custom_button(__("Addresses"), __("View"));
+
+		if (frm.is_new()) {
+			return;
+		}
+
+		frappe.call({
+			method: "ifitwala_ed.students.doctype.student.student.get_student_crm_summary",
+			args: { student_name: frm.doc.name },
+			callback: function(r) {
+				const summary = r.message || {};
+				if (summary.contact) {
+					frm.add_custom_button(
+						__("Contact"),
+						() => frappe.set_route("Form", "Contact", summary.contact),
+						__("View")
+					);
+				}
+
+				const addresses = Array.isArray(summary.addresses) ? summary.addresses : [];
+				if (addresses.length === 1) {
+					frm.add_custom_button(
+						__("Address"),
+						() => frappe.set_route("Form", "Address", addresses[0]),
+						__("View")
+					);
+					return;
+				}
+
+				if (addresses.length > 1) {
+					frm.add_custom_button(
+						__("Addresses"),
+						() => openAddressPickerDialog(addresses),
+						__("View")
+					);
+				}
+			}
+		});
+	},
+
 	setup_sibling_guardian_sync: function(frm) {
 		// Track siblings before save to detect new additions
 		if (!frm.__siblings_before_save) {
 			frm.__siblings_before_save = (frm.doc.siblings || []).map(s => s.student);
 		}
+	},
+
+	refresh_family_address_proposal: function(frm) {
+		frm.remove_custom_button(__("Review Family Address Links"), __("Actions"));
+		if (frm.is_new()) {
+			return;
+		}
+
+		frappe.call({
+			method: "ifitwala_ed.students.doctype.student.student.get_family_address_link_proposal",
+			args: { student_name: frm.doc.name },
+			callback: function(r) {
+				const proposal = r.message || {};
+				if (!proposal.has_candidates || !proposal.address) {
+					return;
+				}
+
+				frm.__family_address_proposal = proposal;
+				frm.add_custom_button(
+					__("Review Family Address Links"),
+					() => frm.events.show_family_address_dialog(frm, proposal),
+					__("Actions")
+				);
+
+				const promptKey = getFamilyAddressPromptKey(frm.doc.name, proposal.address);
+				if (window.localStorage && window.localStorage.getItem(promptKey)) {
+					return;
+				}
+
+				setTimeout(() => {
+					if (frm.is_dirty() || frm.is_new()) {
+						return;
+					}
+					frm.events.show_family_address_dialog(frm, proposal);
+				}, 250);
+			}
+		});
+	},
+
+	show_family_address_dialog: function(frm, proposal) {
+		if (!proposal?.address || !proposal.has_candidates) {
+			return;
+		}
+
+		const promptKey = getFamilyAddressPromptKey(frm.doc.name, proposal.address);
+		const guardianRows = Array.isArray(proposal.eligible_guardians) ? proposal.eligible_guardians : [];
+		const siblingRows = Array.isArray(proposal.eligible_siblings) ? proposal.eligible_siblings : [];
+		const skippedGuardians = Array.isArray(proposal.skipped_guardians) ? proposal.skipped_guardians : [];
+		const skippedSiblings = Array.isArray(proposal.skipped_siblings) ? proposal.skipped_siblings : [];
+
+		const fields = [
+			{
+				fieldtype: "HTML",
+				fieldname: "context_html",
+				options: buildFamilyAddressContextHtml(proposal),
+			},
+		];
+
+		if (guardianRows.length) {
+			fields.push({
+				fieldtype: "MultiCheck",
+				fieldname: "guardians",
+				label: __("Guardians"),
+				options: guardianRows.map((row) => ({
+					label: row.relation
+						? __("{0} ({1})", [row.guardian_name || row.guardian, row.relation])
+						: (row.guardian_name || row.guardian),
+					value: row.guardian,
+					checked: 1,
+				})),
+			});
+		}
+
+		if (siblingRows.length) {
+			fields.push({
+				fieldtype: "MultiCheck",
+				fieldname: "siblings",
+				label: __("Siblings"),
+				options: siblingRows.map((row) => ({
+					label: row.sibling_name || row.student,
+					value: row.student,
+					checked: 1,
+				})),
+			});
+		}
+
+		if (skippedGuardians.length || skippedSiblings.length) {
+			fields.push({
+				fieldtype: "HTML",
+				fieldname: "skipped_html",
+				options: buildFamilyAddressSkippedHtml(skippedGuardians, skippedSiblings),
+			});
+		}
+
+		const dialog = new frappe.ui.Dialog({
+			title: __("Reuse Family Address"),
+			fields,
+			primary_action_label: __("Link Selected Records"),
+			primary_action(values) {
+				const guardians = normalizeMultiCheckValues(values.guardians);
+				const siblings = normalizeMultiCheckValues(values.siblings);
+				if (!guardians.length && !siblings.length) {
+					frappe.show_alert({
+						message: __("Select at least one family record to link."),
+						indicator: "orange",
+					});
+					return;
+				}
+
+				frappe.call({
+					method: "ifitwala_ed.students.doctype.student.student.link_family_address",
+					args: {
+						student_name: frm.doc.name,
+						address_name: proposal.address,
+						guardians,
+						siblings,
+					},
+					freeze: true,
+					freeze_message: __("Linking family address..."),
+					callback: function(res) {
+						const payload = res.message || {};
+						const linkedTotal = cint(payload.guardians_count) + cint(payload.siblings_count);
+						rememberFamilyAddressPrompt(promptKey);
+						dialog.hide();
+						frappe.show_alert({
+							message: __("{0} family record(s) linked to Address {1}.", [linkedTotal, proposal.address]),
+							indicator: "green",
+						});
+						frm.reload_doc();
+					}
+				});
+			},
+			secondary_action_label: __("Not Now"),
+			secondary_action() {
+				rememberFamilyAddressPrompt(promptKey);
+				dialog.hide();
+			},
+		});
+
+		dialog.show();
 	},
 
 	show_guardian_sync_dialog: function(frm, sibling_id, sibling_name) {
@@ -293,3 +491,103 @@ frappe.ui.form.on("Student", {
 		});
 	}
 });
+
+function cint(value) {
+	return parseInt(value || 0, 10) || 0;
+}
+
+function normalizeMultiCheckValues(value) {
+	if (!value) {
+		return [];
+	}
+	if (Array.isArray(value)) {
+		return value.filter(Boolean);
+	}
+	return Object.entries(value)
+		.filter(([, checked]) => Boolean(checked))
+		.map(([key]) => key);
+}
+
+function openAddressPickerDialog(addresses) {
+	const options = (addresses || [])
+		.map((addressName) => `
+			<li>
+				<a href="#" class="student-address-link" data-address="${frappe.utils.escape_html(addressName)}">
+					${frappe.utils.escape_html(addressName)}
+				</a>
+			</li>
+		`)
+		.join("");
+
+	const dialog = new frappe.ui.Dialog({
+		title: __("Linked Addresses"),
+		fields: [
+			{
+				fieldtype: "HTML",
+				fieldname: "addresses_html",
+				options: `<p>${__("Select the Address record to open.")}</p><ul>${options}</ul>`,
+			},
+		],
+	});
+
+	dialog.show();
+	dialog.$wrapper.on("click", ".student-address-link", function(event) {
+		event.preventDefault();
+		const addressName = $(event.currentTarget).data("address");
+		if (addressName) {
+			dialog.hide();
+			frappe.set_route("Form", "Address", addressName);
+		}
+	});
+}
+
+function getFamilyAddressPromptKey(studentName, addressName) {
+	return `ifitwala_ed:student-family-address:${studentName}:${addressName}`;
+}
+
+function rememberFamilyAddressPrompt(promptKey) {
+	if (!window.localStorage || !promptKey) {
+		return;
+	}
+	window.localStorage.setItem(promptKey, "1");
+}
+
+function buildFamilyAddressContextHtml(proposal) {
+	const guardianCount = cint(proposal.eligible_guardians?.length);
+	const siblingCount = cint(proposal.eligible_siblings?.length);
+	const parts = [];
+	if (guardianCount) {
+		parts.push(__("{0} guardian(s)", [guardianCount]));
+	}
+	if (siblingCount) {
+		parts.push(__("{0} sibling(s)", [siblingCount]));
+	}
+	const summary = parts.join(__(" and "));
+	return `
+		<p>
+			${__("Address {0} is linked to this student.", [frappe.utils.escape_html(proposal.address)])}
+		</p>
+		<p>
+			${__("You can reuse that same Address for {0} who do not already have an Address link.", [summary])}
+		</p>
+	`;
+}
+
+function buildFamilyAddressSkippedHtml(skippedGuardians, skippedSiblings) {
+	const items = [];
+	(skippedGuardians || []).forEach((row) => {
+		items.push(`<li>${frappe.utils.escape_html(row.guardian_name || row.guardian)}: ${__("already has an Address link")}</li>`);
+	});
+	(skippedSiblings || []).forEach((row) => {
+		items.push(`<li>${frappe.utils.escape_html(row.sibling_name || row.student)}: ${__("already has an Address link")}</li>`);
+	});
+	if (!items.length) {
+		return "";
+	}
+	return `
+		<div class="text-muted" style="margin-top: 12px;">
+			<p>${__("Not included in this proposal:")}</p>
+			<ul>${items.join("")}</ul>
+		</div>
+	`;
+}

@@ -173,7 +173,7 @@ class Term(Document):
                     "all_day": 1,
                     "reference_type": "Term",
                     "reference_name": self.name,
-                    "audience": [{"audience_type": "Whole School Community"}],
+                    "audience": [{"audience_type": "All Students, Guardians, and Employees"}],
                 }
             )
             start_evt.flags.ignore_audience_permissions = True
@@ -199,7 +199,7 @@ class Term(Document):
                     "all_day": 1,
                     "reference_type": "Term",
                     "reference_name": self.name,
-                    "audience": [{"audience_type": "Whole School Community"}],
+                    "audience": [{"audience_type": "All Students, Guardians, and Employees"}],
                 }
             )
             end_evt.flags.ignore_audience_permissions = True

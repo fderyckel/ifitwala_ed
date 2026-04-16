@@ -15,6 +15,8 @@ from frappe.utils import get_datetime, now_datetime
 
 from ifitwala_ed.api import course_schedule as course_schedule_api
 from ifitwala_ed.api import portal as portal_api
+from ifitwala_ed.api import student_communications as student_communications_api
+from ifitwala_ed.api.student_policy import get_student_policy_home_summary
 
 COURSE_PLACEHOLDER = "/assets/ifitwala_ed/images/course_placeholder.jpg"
 WORK_BOARD_NOW_LIMIT = 3
@@ -789,6 +791,16 @@ def get_student_hub_home() -> dict[str, Any]:
     work_board = _build_work_board_payload(task_rows, anchor_dt)
     timeline = _build_learning_timeline(today_courses=today_courses, task_rows=task_rows, anchor_dt=anchor_dt)
     orientation = _build_home_orientation(today_courses, anchor_dt)
+    communications = {
+        "center_href": {"name": "student-communications"},
+        "latest_course_update": None,
+        "latest_activity_update": None,
+        "latest_school_update": None,
+    }
+    try:
+        communications = student_communications_api.get_student_home_communication_summary(student_name)
+    except Exception:
+        frappe.log_error(frappe.get_traceback(), "Student Hub Communication Summary Load Failed")
     next_route = None
     next_title = None
     next_subtitle = None
@@ -851,6 +863,7 @@ def get_student_hub_home() -> dict[str, Any]:
             "weekday": schedule.get("weekday"),
         },
         "identity": identity,
+        "policies": get_student_policy_home_summary(student_name),
         "learning": {
             "today_classes": today_courses,
             "next_learning_step": (
@@ -872,4 +885,5 @@ def get_student_hub_home() -> dict[str, Any]:
             "work_board": work_board,
             "timeline": timeline,
         },
+        "communications": communications,
     }

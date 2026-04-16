@@ -138,7 +138,8 @@ describe('PortalNavbar', () => {
 		}
 		getStudentPortalIdentityMock.mockResolvedValue({
 			user: 'student@example.com',
-			display_name: 'Amina Example',
+			display_name: 'Amina',
+			full_name: 'Amina Example',
 			image_url: '/files/student-thumb.webp',
 		})
 
@@ -149,5 +150,12 @@ describe('PortalNavbar', () => {
 		expect(getGuardianPortalIdentityMock).not.toHaveBeenCalled()
 		expect(document.body.textContent || '').toContain('Amina Example')
 		expect(document.querySelector('img[src="/files/student-thumb.webp"]')).not.toBeNull()
+
+		const buttons = Array.from(document.querySelectorAll('button'))
+		buttons[buttons.length - 1]?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+		await flushUi()
+
+		expect(document.body.textContent || '').toContain('student@example.com')
+		expect(document.body.textContent || '').not.toContain('guest@example.com')
 	})
 })

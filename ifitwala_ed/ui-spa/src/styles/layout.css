@@ -16,6 +16,56 @@
 		font-family: var(--font-sans);
 	}
 
+	.portal-layout {
+		--portal-navbar-height: 3.5rem;
+		--portal-footer-reserve: 4.25rem;
+		--portal-desktop-gutter: 1rem;
+		--portal-rail-collapsed-width: 5rem;
+		--portal-rail-expanded-width: 16rem;
+		--portal-rail-width: var(--portal-rail-collapsed-width);
+	}
+
+	.portal-layout--rail-expanded {
+		--portal-rail-width: var(--portal-rail-expanded-width);
+	}
+
+	.portal-layout__body {
+		@apply flex flex-1 min-h-0;
+		min-height: calc(100dvh - var(--portal-navbar-height));
+		padding-bottom: var(--portal-footer-reserve);
+	}
+
+	.portal-layout__rail-spacer {
+		display: none;
+	}
+
+	.portal-layout__workspace {
+		@apply flex min-w-0 flex-1 flex-col;
+		min-height: 0;
+	}
+
+	.portal-layout__frame {
+		@apply flex min-w-0 flex-1;
+		min-height: 0;
+	}
+
+	.portal-shell {
+		@apply flex-1 px-4 py-4 pb-24 sm:m-4 sm:rounded-3xl sm:border sm:px-6 sm:py-6 sm:pb-20 lg:px-8 lg:py-8;
+		background-color: rgb(var(--surface-rgb) / 0.75);
+		backdrop-filter: blur(14px);
+		-webkit-backdrop-filter: blur(14px);
+		box-shadow: var(--shadow-strong);
+		border-color: rgb(var(--sand-rgb) / 1);
+	}
+
+	.portal-page {
+		@apply flex flex-col gap-6;
+	}
+
+	.admissions-page {
+		@apply flex flex-col gap-6;
+	}
+
 	.staff-layout__header {
 		@apply w-full border-b backdrop-blur-xl;
 		background-color: rgb(var(--surface-strong-rgb) / 0.9);
@@ -34,6 +84,28 @@
 	.staff-shell {
 		@apply w-full max-w-6xl mx-auto flex flex-col gap-10
            px-5 py-9 sm:px-6;
+	}
+
+	@media (min-width: 1024px) {
+		.portal-layout__body {
+			gap: var(--portal-desktop-gutter);
+			padding-left: var(--portal-desktop-gutter);
+			padding-right: var(--portal-desktop-gutter);
+		}
+
+		.portal-layout__rail-spacer {
+			display: block;
+			width: var(--portal-rail-width);
+			min-width: var(--portal-rail-width);
+			flex-shrink: 0;
+			transition: width 220ms ease;
+		}
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.portal-layout__rail-spacer {
+			transition: none !important;
+		}
 	}
 
 	/* ============================================================

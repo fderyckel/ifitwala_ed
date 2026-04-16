@@ -39,6 +39,18 @@ const routes: RouteRecordRaw[] = [
     meta: { layout: 'student' },
   },
   {
+    path: '/student/policies',
+    name: 'student-policies',
+    component: () => import('@/pages/student/StudentPolicies.vue'),
+    meta: { layout: 'student' },
+  },
+  {
+    path: '/student/communications',
+    name: 'student-communications',
+    component: () => import('@/pages/student/StudentCommunicationCenter.vue'),
+    meta: { layout: 'student' },
+  },
+  {
     path: '/student/portfolio',
     name: 'student-portfolio',
     component: () => import('@/pages/student/StudentPortfolioFeed.vue'),
@@ -95,6 +107,7 @@ const routes: RouteRecordRaw[] = [
 
   // Guardian
   { path: '/guardian', name: 'guardian-home', component: () => import('@/pages/guardian/GuardianHome.vue'), meta: { layout: 'student' } },
+  { path: '/guardian/communications', name: 'guardian-communications', component: () => import('@/pages/guardian/GuardianCommunicationCenter.vue'), meta: { layout: 'student' } },
   { path: '/guardian/course-selection', name: 'guardian-course-selection', component: () => import('@/pages/guardian/GuardianCourseSelection.vue'), meta: { layout: 'student' } },
   { path: '/guardian/course-selection/:selection_window/:student_id', name: 'guardian-course-selection-detail', component: () => import('@/pages/guardian/GuardianCourseSelectionDetail.vue'), meta: { layout: 'student' } },
   { path: '/guardian/activities', name: 'guardian-activities', component: () => import('@/pages/guardian/GuardianActivities.vue'), meta: { layout: 'student' } },
@@ -125,6 +138,7 @@ const routes: RouteRecordRaw[] = [
       unitPlan: typeof route.query.unit_plan === 'string' ? route.query.unit_plan : '',
       quizQuestionBank:
         typeof route.query.quiz_question_bank === 'string' ? route.query.quiz_question_bank : '',
+      studentGroup: typeof route.query.student_group === 'string' ? route.query.student_group : '',
     }),
     meta: { layout: 'staff' },
   },

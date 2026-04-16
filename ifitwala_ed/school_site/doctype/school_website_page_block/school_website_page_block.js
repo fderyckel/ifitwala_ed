@@ -31,6 +31,15 @@ function getPropsBuilder() {
 	});
 }
 
+function ensureRowEnabledDefault(cdt, cdn) {
+	const row = locals[cdt] && locals[cdt][cdn];
+	if (!row) return;
+	if (row.is_enabled === 0 || row.is_enabled === "0" || row.is_enabled === false) return;
+	if (row.is_enabled === 1 || row.is_enabled === "1" || row.is_enabled === true) return;
+	if (!String(row.block_type || "").trim()) return;
+	frappe.model.set_value(cdt, cdn, "is_enabled", 1);
+}
+
 function getGridFormField(gridForm, fieldname) {
 	if (!gridForm || !fieldname) return null;
 	if (typeof gridForm.get_field === "function") {
@@ -44,6 +53,7 @@ function getGridFormField(gridForm, fieldname) {
 
 frappe.ui.form.on("School Website Page Block", {
 	form_render(frm, cdt, cdn) {
+		ensureRowEnabledDefault(cdt, cdn);
 		const grid = frm.fields_dict.blocks && frm.fields_dict.blocks.grid;
 		if (!grid) return;
 		const grid_row = grid.get_row(cdn);
@@ -73,5 +83,9 @@ frappe.ui.form.on("School Website Page Block", {
 		});
 
 		propsField.$wrapper.append(button);
+	},
+
+	block_type(frm, cdt, cdn) {
+		ensureRowEnabledDefault(cdt, cdn);
 	}
 });

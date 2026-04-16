@@ -1,7 +1,7 @@
 <!-- ifitwala_ed/ui-spa/src/pages/admissions/ApplicantPolicies.vue -->
 
 <template>
-	<div class="space-y-6">
+	<div class="admissions-page">
 		<div>
 			<p class="type-h2 text-ink">{{ __('Policies') }}</p>
 			<p class="mt-1 type-caption text-ink/60">
@@ -43,7 +43,7 @@
 						<p class="type-body-strong text-ink">{{ policy.name }}</p>
 						<p
 							class="mt-1 type-caption"
-							:class="policy.is_acknowledged ? 'text-leaf' : 'text-sun'"
+							:class="policy.is_acknowledged ? 'text-leaf' : 'text-clay'"
 						>
 							{{ policy.is_acknowledged ? __('Acknowledged') : __('Pending acknowledgement') }}
 						</p>

@@ -434,6 +434,14 @@ Bootstrap is deprecated legacy and must not be extended in touched code.
 - Use named routes or base-less internal paths only.
 - Do not hardcode SPA base prefixes.
 
+### 8.3 SPA Shell Container Discipline
+
+- Shared routed-page shell/container classes are architecture, not optional styling.
+- When touching routed SPA pages, preserve the canonical page-root shell for that surface (for example `staff-shell` on staff pages) unless the shell contract is explicitly documented and approved to change.
+- Do not replace a shared shell/container with ad-hoc root classes (`min-h-screen`, local padding, local max-width) during page rewrites just because the page still "looks acceptable" in isolation.
+- Validate routed-page layout changes against sibling pages in the same surface, not only the touched page by itself.
+- If a shell/container contract must change, update the authoritative SPA docs in the same approved change before editing affected page roots.
+
 ---
 
 ## 9. API / Workflow Design
@@ -553,7 +561,95 @@ If a critical assumption cannot be verified from the workspace, stop and say exa
 
 ---
 
-## 16. Final Safety Rule
+## 16. Frappe Security Model (Learned)
+
+When assessing security in Frappe Framework code, understand the framework's built-in protections before claiming vulnerabilities.
+
+### 16.1 SQL Escape Behavior
+
+`frappe.db.escape()` returns **quoted, escaped literals** — not raw strings.
+
+```python
+# escape("O'Brien") → 'O\'Brien'  (quotes included in output)
+# This makes f-string concatenation with escaped values SAFE from injection
+```
+
+**Rule**: Code using `frappe.db.escape()` in SQL construction is protected against injection, even if stylistically questionable. Distinguish between "code smell" and "exploitable vulnerability."
+
+### 16.2 HTML Sanitization Stack
+
+Frappe uses **Bleach** internally for HTML sanitization:
+
+```python
+from frappe.utils import sanitize_html  # Bleach-based
+
+# Strips: <script>, event handlers (onclick, onerror), javascript: URLs, dangerous data URIs
+```
+
+When auditing for XSS:
+1. **Always trace the complete data flow** — user input → storage → API → UI
+2. **Check controller hooks** (`before_insert`, `before_save`, `validate`) for existing sanitization
+3. **Verify the sanitization is actually applied** — don't assume absence based on API response
+
+**Example pattern that IS safe:**
+```python
+class PolicyVersion(Document):
+    def before_insert(self):
+        self._sanitize_policy_text()  # Called here
+
+    def before_save(self):
+        self._sanitize_policy_text()  # And here
+
+    def _sanitize_policy_text(self):
+        from ifitwala_ed.utilities.html_sanitizer import sanitize_html
+        self.policy_text = sanitize_html(self.policy_text or "")
+```
+
+Even though `policy_text` flows to `v-html` in Vue, it's sanitized at the controller level.
+
+### 16.3 Data Flow Verification Required
+
+Before claiming XSS:
+- Verify raw user input reaches the database unsanitized
+- Verify the API returns unsanitized content
+- Verify the UI renders without sanitization
+
+**All three must be true for stored XSS to exist.**
+
+### 16.4 Server-Generated Safe HTML
+
+Content generated server-side with `html.escape()` is safe for `v-html`:
+
+```python
+def generate_diff_html(old, new):
+    return f"<div>{escape(old)} → {escape(new)}</div>"  # Safe
+```
+
+The `html.escape()` function encodes `<`, `>`, `&`, and `"` — making injection impossible.
+
+### 16.5 Framework-Aware Assessment
+
+**DON'T**: See `v-html` in Vue + user input field → claim XSS
+**DO**: Trace: User input → Controller hook sanitization? → API response → Vue rendering
+
+What looks vulnerable in raw web frameworks may be **protected by Frappe's multi-layer defenses**:
+- DocType controller hooks
+- Permission system
+- Built-in sanitizers
+- Query parameterization
+
+### 16.6 Testing Security Claims
+
+Before reporting a security issue:
+1. Create a reproduction attempt with actual payloads
+2. Verify the payload executes (for XSS) or the query structure changes (for SQLi)
+3. If protected by framework behavior, document it as "defense in depth" not "critical vulnerability"
+
+**Reference**: See `ifitwala_ed/utilities/html_sanitizer.py` for project-specific sanitization wrappers.
+
+---
+
+## 17. Final Safety Rule
 
 If unsure:
 

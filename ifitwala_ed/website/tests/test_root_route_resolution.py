@@ -9,92 +9,96 @@ from ifitwala_ed.website import renderer
 
 
 class TestRootRouteResolution(FrappeTestCase):
-    def test_build_render_context_root_returns_redirect_payload(self):
-        with patch.object(renderer, "_resolve_root_redirect_url", return_value="/schools/demo"):
+    def test_build_render_context_root_returns_public_home_context(self):
+        payload = {"template": "ifitwala_ed/website/templates/network_home.html"}
+
+        with patch.object(renderer, "_build_public_home_context", return_value=payload) as mocked_home:
             context = renderer.build_render_context(route="/", preview=False)
 
-        self.assertEqual(context.get("redirect_location"), "/schools/demo")
+        self.assertEqual(context, payload)
+        mocked_home.assert_called_once_with(route="/")
 
-    def test_root_redirect_uses_default_website_school_when_valid(self):
-        organization = frappe._dict(
-            {
-                "name": "ORG-1",
-                "organization_name": "Root Org",
-                "default_website_school": "SCH-1",
-            }
-        )
-        school_row = frappe._dict(
+    def test_build_render_context_school_directory_uses_directory_context(self):
+        payload = {"template": "ifitwala_ed/website/templates/organization_landing.html"}
+
+        with patch.object(renderer, "_build_school_directory_context", return_value=payload) as mocked_directory:
+            context = renderer.build_render_context(route="/schools", preview=False)
+
+        self.assertEqual(context, payload)
+        mocked_directory.assert_called_once_with(route="/schools")
+
+    def test_public_landing_payload_prefers_default_website_school_for_featured_school(self):
+        brand = {
+            "brand_name": "Root Org",
+            "brand_logo": "/files/root-logo.png",
+            "organization_name": "Root Org",
+            "organization_logo": "/files/root-logo.png",
+            "organization": frappe._dict({"default_website_school": "SCH-1"}),
+        }
+        school_cards = [
             {
                 "name": "SCH-1",
-                "website_slug": "demo",
-                "is_published": 1,
-                "organization": "ORG-1",
-            }
-        )
-
-        with (
-            patch.object(renderer, "_resolve_landing_organization", return_value=organization),
-            patch.object(
-                renderer,
-                "_get_descendant_organization_names",
-                return_value=["ORG-1"],
-            ),
-            patch.object(renderer.frappe.db, "get_value", return_value=school_row),
-        ):
-            result = renderer._resolve_root_redirect_url()
-
-        self.assertEqual(result, "/schools/demo")
-
-    def test_root_redirect_falls_back_to_first_published_school_when_default_invalid(self):
-        organization = frappe._dict(
-            {
-                "name": "ORG-1",
-                "organization_name": "Root Org",
-                "default_website_school": "SCH-1",
-            }
-        )
-        fallback_school = frappe._dict(
+                "label": "Alpha School",
+                "tagline": "Default school",
+                "description": "Alpha description",
+                "logo": "/files/alpha.png",
+                "url": "/schools/alpha",
+                "organization": "Root Org",
+            },
             {
                 "name": "SCH-2",
-                "website_slug": "fallback",
-            }
-        )
+                "label": "Beta School",
+                "tagline": "Fallback school",
+                "description": "Beta description",
+                "logo": "/files/beta.png",
+                "url": "/schools/beta",
+                "organization": "Root Org",
+            },
+        ]
 
         with (
-            patch.object(renderer, "_resolve_landing_organization", return_value=organization),
-            patch.object(
-                renderer,
-                "_get_descendant_organization_names",
-                return_value=["ORG-1"],
-            ),
-            patch.object(
-                renderer.frappe.db,
-                "get_value",
-                side_effect=[None, fallback_school],
-            ),
+            patch.object(renderer, "get_public_brand_identity", return_value=brand),
+            patch.object(renderer, "get_descendant_organization_names", return_value=["ORG-1"]),
+            patch.object(renderer, "_get_landing_school_cards", return_value=school_cards),
+            patch.object(renderer, "_get_public_program_count", return_value=7),
+            patch.object(renderer.frappe, "get_doc", return_value=frappe._dict(name="SCH-1")),
+            patch.object(renderer, "resolve_admissions_cta_url", return_value="/apply/inquiry"),
         ):
-            result = renderer._resolve_root_redirect_url()
+            payload = renderer._build_public_landing_payload(route="/")
 
-        self.assertEqual(result, "/schools/fallback")
+        self.assertEqual(payload["featured_school"]["name"], "SCH-1")
+        self.assertEqual(payload["school_count"], 2)
+        self.assertEqual(payload["program_count"], 7)
+        self.assertEqual(payload["preview_schools"][0]["name"], "SCH-1")
 
-    def test_root_redirect_falls_back_to_school_discovery_when_no_school_available(self):
-        organization = frappe._dict(
+    def test_public_landing_payload_falls_back_to_first_school_when_default_missing(self):
+        brand = {
+            "brand_name": "Root Org",
+            "brand_logo": "/files/root-logo.png",
+            "organization_name": "Root Org",
+            "organization_logo": "/files/root-logo.png",
+            "organization": frappe._dict({"default_website_school": "MISSING"}),
+        }
+        school_cards = [
             {
-                "name": "ORG-1",
-                "organization_name": "Root Org",
-                "default_website_school": "",
+                "name": "SCH-2",
+                "label": "Beta School",
+                "tagline": "First listed school",
+                "description": "Beta description",
+                "logo": "/files/beta.png",
+                "url": "/schools/beta",
+                "organization": "Root Org",
             }
-        )
+        ]
 
         with (
-            patch.object(renderer, "_resolve_landing_organization", return_value=organization),
-            patch.object(
-                renderer,
-                "_get_descendant_organization_names",
-                return_value=["ORG-1"],
-            ),
-            patch.object(renderer.frappe.db, "get_value", return_value=None),
+            patch.object(renderer, "get_public_brand_identity", return_value=brand),
+            patch.object(renderer, "get_descendant_organization_names", return_value=["ORG-1"]),
+            patch.object(renderer, "_get_landing_school_cards", return_value=school_cards),
+            patch.object(renderer, "_get_public_program_count", return_value=0),
+            patch.object(renderer.frappe, "get_doc", return_value=frappe._dict(name="SCH-2")),
+            patch.object(renderer, "resolve_admissions_cta_url", return_value="/apply/inquiry"),
         ):
-            result = renderer._resolve_root_redirect_url()
+            payload = renderer._build_public_landing_payload(route="/")
 
-        self.assertEqual(result, "/schools")
+        self.assertEqual(payload["featured_school"]["name"], "SCH-2")

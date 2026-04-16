@@ -402,7 +402,7 @@ def _is_student_audience(doc, student_name, my_groups):
         atype = aud.audience_type
 
         # Public
-        if atype in ("Whole School Community", "All Students"):
+        if atype in ("All Students, Guardians, and Employees", "All Students"):
             return True
 
         # Group based

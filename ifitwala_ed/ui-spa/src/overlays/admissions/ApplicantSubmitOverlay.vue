@@ -30,7 +30,7 @@
 					leave-from="if-overlay__panel-to"
 					leave-to="if-overlay__panel-from"
 				>
-					<DialogPanel class="if-overlay__panel">
+					<DialogPanel data-testid="admissions-submit-overlay" class="if-overlay__panel">
 						<div class="if-overlay__header px-6 pt-6">
 							<div class="min-w-0">
 								<DialogTitle class="type-h2 text-ink">{{ __('Submit application') }}</DialogTitle>
@@ -90,6 +90,7 @@
 									{{ __('Cancel') }}
 								</button>
 								<button
+									data-testid="admissions-submit-confirm"
 									type="button"
 									class="rounded-full bg-ink px-5 py-2 type-caption text-white shadow-soft disabled:opacity-50"
 									:disabled="isReadOnly || submitting"

@@ -19,6 +19,7 @@ from ifitwala_ed.governance.policy_scope_utils import (
     is_policy_within_user_scope,
 )
 from ifitwala_ed.governance.policy_utils import ensure_policy_admin, is_policy_admin, is_system_manager
+from ifitwala_ed.utilities.html_sanitizer import sanitize_html
 
 PRIVILEGED_POLICY_WRITE_ROLES = frozenset({"System Manager", "Administrator"})
 
@@ -251,6 +252,27 @@ def _scope_employee_users(*, policy_organization: str | None, policy_school: str
     return {(row or "").strip() for row in rows if (row or "").strip()}
 
 
+def _policy_management_users(*, policy_organization: str | None) -> set[str]:
+    policy_organization = (policy_organization or "").strip()
+    if not policy_organization:
+        return set()
+
+    organization_scope = tuple(get_organization_ancestors_including_self(policy_organization))
+    if not organization_scope:
+        return set()
+
+    rows = frappe.get_all(
+        "Employee",
+        filters={
+            "employment_status": "Active",
+            "user_id": ["is", "set"],
+            "organization": ["in", organization_scope],
+        },
+        pluck="user_id",
+    )
+    return {(row or "").strip() for row in rows if (row or "").strip()}
+
+
 def _users_with_policy_version_write_access() -> set[str]:
     write_roles = _policy_version_write_roles() | set(PRIVILEGED_POLICY_WRITE_ROLES)
     return _users_with_roles(write_roles)
@@ -262,11 +284,12 @@ def _eligible_approver_users(*, policy_organization: str | None, policy_school: 
         return set()
 
     privileged_users = _users_with_roles(PRIVILEGED_POLICY_WRITE_ROLES)
+    management_users = _policy_management_users(policy_organization=policy_organization)
     scoped_users = _scope_employee_users(
         policy_organization=policy_organization,
         policy_school=policy_school,
     )
-    return write_users & (scoped_users | privileged_users)
+    return write_users & (scoped_users | management_users | privileged_users)
 
 
 @frappe.whitelist()
@@ -316,6 +339,7 @@ def approved_by_user_query(doctype, txt, searchfield, start, page_len, filters):
 class PolicyVersion(Document):
     def before_insert(self):
         ensure_policy_admin()
+        self._sanitize_policy_text()
         self._validate_parent_policy()
         self._validate_unique_version_label()
         self._validate_policy_text_required()
@@ -327,6 +351,7 @@ class PolicyVersion(Document):
 
     def before_save(self):
         ensure_policy_admin()
+        self._sanitize_policy_text()
         if self.is_new():
             self._validate_parent_policy()
         before = self.get_doc_before_save() if not self.is_new() else None
@@ -364,6 +389,9 @@ class PolicyVersion(Document):
     def _validate_policy_text_required(self):
         if not (self.policy_text or "").strip():
             frappe.throw(_("Policy Text is required."))
+
+    def _sanitize_policy_text(self):
+        self.policy_text = sanitize_html(self.policy_text or "", allow_headings_from="h2")
 
     def _validate_unique_version_label(self):
         if not self.institutional_policy or not self.version_label:
@@ -603,13 +631,11 @@ class PolicyVersion(Document):
         if approver in eligible_users:
             return
 
-        if policy_school:
-            frappe.throw(
-                _("Approved By must belong to the selected school or one of its parent schools."),
-                frappe.PermissionError,
-            )
         frappe.throw(
-            _("Approved By must belong to the policy organization or one of its parent organizations."),
+            _(
+                "Approved By must have write access and be allowed to manage the selected policy organization or "
+                "local policy scope."
+            ),
             frappe.PermissionError,
         )
 

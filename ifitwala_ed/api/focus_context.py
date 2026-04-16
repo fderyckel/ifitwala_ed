@@ -40,6 +40,7 @@ from ifitwala_ed.api.policy_signature import (
 from ifitwala_ed.governance.doctype.policy_acknowledgement.policy_acknowledgement import (
     get_policy_version_acknowledgement_clauses,
 )
+from ifitwala_ed.utilities.html_sanitizer import sanitize_html
 
 
 def get_focus_context(
@@ -497,7 +498,7 @@ def get_focus_context(
                 "change_stats": parsed_change_stats,
                 "effective_from": str(policy_row.get("effective_from")) if policy_row.get("effective_from") else None,
                 "effective_to": str(policy_row.get("effective_to")) if policy_row.get("effective_to") else None,
-                "policy_text_html": policy_row.get("policy_text") or "",
+                "policy_text_html": sanitize_html(policy_row.get("policy_text") or "", allow_headings_from="h2"),
                 "policy_organization": policy_row.get("policy_organization"),
                 "policy_school": policy_row.get("policy_school"),
                 "employee": employee.get("name"),

@@ -1059,6 +1059,7 @@ class TestStudentApplicant(FrappeTestCase):
                 "relationship": "Mother",
                 "is_primary": 1,
                 "can_consent": 1,
+                "is_primary_guardian": 1,
             },
         )
         applicant.flags.from_applicant_invite = True
@@ -1179,6 +1180,7 @@ class TestStudentApplicant(FrappeTestCase):
             {
                 "relationship": "Father",
                 "can_consent": 1,
+                "is_primary_guardian": 1,
                 "guardian_first_name": "Profile",
                 "guardian_last_name": "Guardian",
                 "guardian_email": guardian_email,
@@ -1291,6 +1293,7 @@ class TestStudentApplicant(FrappeTestCase):
                     "relationship": "Mother",
                     "is_primary": 1,
                     "can_consent": 1,
+                    "is_primary_guardian": 1,
                 },
             )
             applicant.save(ignore_permissions=True)
@@ -1451,11 +1454,12 @@ class TestStudentApplicant(FrappeTestCase):
 
     def _create_org(self):
         name = f"Org-{frappe.generate_hash(length=6)}"
+        abbr = f"O{frappe.generate_hash(length=6)}".upper()
         doc = frappe.get_doc(
             {
                 "doctype": "Organization",
                 "organization_name": name,
-                "abbr": name[:6].upper(),
+                "abbr": abbr,
             }
         ).insert(ignore_permissions=True)
         self._created.append(("Organization", doc.name))

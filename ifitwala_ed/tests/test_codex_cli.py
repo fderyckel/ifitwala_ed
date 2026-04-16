@@ -12,6 +12,31 @@ class TestCodexCli(TestCase):
         rc = codex_cli.main(["backend-smoke", "--dry-run"])
         self.assertEqual(rc, 2)
 
+    def test_e2e_requires_site(self):
+        rc = codex_cli.main(["e2e", "--dry-run", "--base-url", "http://127.0.0.1:8000"])
+        self.assertEqual(rc, 2)
+
+    def test_e2e_requires_base_url(self):
+        rc = codex_cli.main(["e2e", "--dry-run", "--site", "test_site"])
+        self.assertEqual(rc, 2)
+
+    def test_e2e_allows_dry_run_when_prepare_and_frontend_are_skipped(self):
+        rc = codex_cli.main(
+            [
+                "e2e",
+                "--dry-run",
+                "--site",
+                "test_site",
+                "--base-url",
+                "http://127.0.0.1:8000",
+                "--skip-prepare",
+                "--skip-frontend-build",
+                "--pack",
+                "smoke",
+            ]
+        )
+        self.assertEqual(rc, 0)
+
     def test_ci_requires_site_when_backend_enabled(self):
         rc = codex_cli.main(["ci", "--dry-run", "--skip-lint", "--skip-frontend"])
         self.assertEqual(rc, 2)

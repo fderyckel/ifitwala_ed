@@ -9,9 +9,13 @@
   "section_break_identity",
   "school",
   "program",
+  "content_owner",
+  "seo_profile",
+  "column_break_drmi",
   "status",
   "workflow_state",
-  "seo_profile",
+  "expire_at",
+  "publish_at",
   "section_break_content",
   "hero_image",
   "intro_text",
@@ -41,6 +45,12 @@
    "reqd": 1
   },
   {
+   "fieldname": "content_owner",
+   "fieldtype": "Link",
+   "label": "Content Owner",
+   "options": "User"
+  },
+  {
    "default": "Draft",
    "description": "Read-only. Controlled by Workflow State and Program publication readiness.",
    "fieldname": "status",
@@ -56,6 +66,16 @@
    "label": "Workflow State",
    "options": "Draft\nIn Review\nApproved\nPublished",
    "read_only": 1
+  },
+  {
+   "fieldname": "publish_at",
+   "fieldtype": "Datetime",
+   "label": "Publish At"
+  },
+  {
+   "fieldname": "expire_at",
+   "fieldtype": "Datetime",
+   "label": "Expire At"
   },
   {
    "fieldname": "seo_profile",
@@ -87,12 +107,16 @@
   {
    "fieldname": "section_break_d088",
    "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "column_break_drmi",
+   "fieldtype": "Column Break"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-03-12 07:44:08.784069",
+ "modified": "2026-04-11 23:41:56.572139",
  "modified_by": "Administrator",
  "module": "School Site",
  "name": "Program Website Profile",

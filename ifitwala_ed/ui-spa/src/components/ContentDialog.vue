@@ -85,11 +85,7 @@
 												{{ __('Team Responses') }}
 											</p>
 											<p class="mt-1 text-xs text-slate-token/75">
-												{{
-													__(
-														'Acknowledge, react, or continue the discussion without leaving the briefing.'
-													)
-												}}
+												{{ interactionDescription }}
 											</p>
 										</div>
 										<div
@@ -111,6 +107,7 @@
 										</button>
 
 										<button
+											v-if="showCommentsAction"
 											type="button"
 											class="content-dialog__action-button"
 											@click="$emit('open-comments')"
@@ -210,6 +207,12 @@ const interaction = computed<InteractionSummary>(() => ({
 const stats = computed(() => getInteractionStats(interaction.value));
 const contentHtml = computed(() => props.content || '');
 const commentCount = computed(() => stats.value.comments_total ?? 0);
+const showCommentsAction = computed(() => props.showComments !== false);
+const interactionDescription = computed(() =>
+	showCommentsAction.value
+		? __('Acknowledge, react, or continue the discussion without leaving the briefing.')
+		: __('Acknowledge or react without leaving the briefing.')
+);
 
 function closeDialog() {
 	isOpen.value = false;
