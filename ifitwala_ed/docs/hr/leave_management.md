@@ -75,9 +75,10 @@ Existing-site rollout uses `ifitwala_ed.patches.backfill_default_leave_types` to
 
 HR leave flows use **Staff Calendar only**.
 
-- Primary holiday source field: `Employee.current_holiday_lis`
+- Primary stored holiday source field: `Employee.current_holiday_lis`
 - Holiday row source doctype: `Staff Calendar Holidays`
 - No School Calendar fallback is used in HR leave calculations
+- When the stored employee link lags behind a recent Staff Calendar change, HR holiday resolution may self-heal to the effective `Staff Calendar` instead of requiring a manual Employee re-save first
 
 This applies to:
 

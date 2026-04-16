@@ -97,6 +97,7 @@ class TestMedicalInfoAndEmergencyContactReport(TestCase):
         "_medical_field_defs",
         return_value=[
             {"fieldname": "blood_group", "label": "Blood Group", "fieldtype": "Select"},
+            {"fieldname": "speech_problem", "label": "Speech Problem", "fieldtype": "Small Text"},
             {"fieldname": "allergies", "label": "Any allergies", "fieldtype": "Check"},
             {"fieldname": "medical_info", "label": "Medical Info", "fieldtype": "Text Editor"},
             {"fieldname": "diet_requirements", "label": "Diet Requirements", "fieldtype": "Small Text"},
@@ -106,6 +107,7 @@ class TestMedicalInfoAndEmergencyContactReport(TestCase):
         entries = report._collect_medical_entries(
             {
                 "blood_group": "O Positive",
+                "speech_problem": "No",
                 "allergies": 0,
                 "medical_info": "<p>Carry inhaler</p>",
                 "diet_requirements": "",
@@ -115,7 +117,9 @@ class TestMedicalInfoAndEmergencyContactReport(TestCase):
         self.assertEqual([entry["fieldname"] for entry in entries], ["blood_group", "medical_info"])
         self.assertEqual(entries[0]["label"], "Blood Group")
         self.assertEqual(entries[0]["value_html"], "O Positive")
+        self.assertEqual(entries[0]["layout"], "compact")
         self.assertEqual(entries[1]["value_html"], "Carry inhaler")
+        self.assertEqual(entries[1]["layout"], "wide")
 
     @patch.object(
         report,
@@ -192,7 +196,9 @@ class TestMedicalInfoAndEmergencyContactReport(TestCase):
             "medicalEntries = row._medical_entries || []",
             "panel panel--medical",
             "medical-entry",
+            "medical-entry--wide",
             "row._guardian_contact_count",
+            "grid-template-columns:repeat(3,minmax(0,1fr))",
         ):
             self.assertIn(token, html_text)
 

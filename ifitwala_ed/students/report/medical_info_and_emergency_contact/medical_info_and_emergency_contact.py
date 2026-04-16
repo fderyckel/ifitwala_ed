@@ -348,7 +348,10 @@ def _collect_medical_entries(patient: frappe._dict | None) -> list[dict[str, str
     entries = []
     for df in _medical_field_defs():
         raw_value = patient.get(df["fieldname"])
-        rendered = _format_field_value(raw_value, df["fieldtype"])
+        text_value = _extract_field_text(raw_value, df["fieldtype"])
+        if _should_suppress_medical_text(text_value):
+            continue
+        rendered = _render_field_text(text_value)
         if not rendered:
             continue
         entries.append(
@@ -356,6 +359,7 @@ def _collect_medical_entries(patient: frappe._dict | None) -> list[dict[str, str
                 "fieldname": df["fieldname"],
                 "label": df["label"],
                 "value_html": rendered,
+                "layout": _get_medical_entry_layout(text_value, df["fieldtype"]),
             }
         )
 
@@ -420,11 +424,18 @@ def _medical_field_defs() -> list[dict]:
 
 
 def _format_field_value(value, fieldtype: str) -> str:
+    text = _extract_field_text(value, fieldtype)
+    if _should_suppress_medical_text(text):
+        return ""
+    return _render_field_text(text)
+
+
+def _extract_field_text(value, fieldtype: str) -> str:
     if value in (None, "", 0, "0"):
         return ""
 
     if fieldtype == "Check":
-        return escape_html(_("Yes")) if cint(value) else ""
+        return _("Yes") if cint(value) else ""
 
     text = cstr(value).strip()
     if not text:
@@ -433,8 +444,42 @@ def _format_field_value(value, fieldtype: str) -> str:
     if fieldtype == "Text Editor":
         text = strip_html_tags(text)
 
-    text = escape_html(text).replace("\n", "<br>")
-    return text
+    return cstr(text).strip()
+
+
+def _render_field_text(text: str) -> str:
+    if not text:
+        return ""
+    return escape_html(text).replace("\n", "<br>")
+
+
+def _should_suppress_medical_text(text: str) -> bool:
+    normalized = cstr(text).strip().lower()
+    if not normalized:
+        return True
+
+    return normalized in {
+        "no",
+        "none",
+        "n/a",
+        "na",
+        "nil",
+        "not applicable",
+        "not provided",
+        "no problem",
+        "no problems",
+        "no issue",
+        "no issues",
+    }
+
+
+def _get_medical_entry_layout(text: str, fieldtype: str) -> str:
+    normalized = cstr(text).strip()
+    if fieldtype in {"Long Text", "Text", "Text Editor"}:
+        return "wide"
+    if "\n" in normalized or len(normalized) > 48:
+        return "wide"
+    return "compact"
 
 
 def _format_age(dob) -> str:

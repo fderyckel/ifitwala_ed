@@ -147,14 +147,19 @@ Operational consequence:
 - lightweight list rendering may expose `meta.location` from `Employee Booking.location` directly on the feed row
 - SPA clients must not derive class location by re-reading schedule rows or opening detail endpoints during list paint
 
-### 3.2 Staff holiday events use a two-step fallback
+### 3.2 Staff holiday events use employee-linked Staff Calendar precedence
 
 Staff holiday events resolve in this order:
 
-1. `Staff Calendar Holidays` from the best matching `Staff Calendar`
-2. fallback to `School Calendar Holidays` via nearest school-calendar lineage
+1. `Staff Calendar Holidays` from `Employee.current_holiday_lis` when that linked `Staff Calendar` overlaps the requested window
+2. otherwise `Staff Calendar Holidays` from the best matching `Staff Calendar`
+3. fallback to `School Calendar Holidays` via nearest school-calendar lineage only when no `Staff Calendar` resolves for the employee
 
-This means staff holiday visibility is school-lineage aware and remains usable when no direct `Staff Calendar` exists.
+Operational consequences:
+
+- once a `Staff Calendar` resolves for the employee, school-calendar fallback must not widen the holiday set for that same window
+- employee-linked staff calendars take effect without waiting for a later Employee save because Staff Calendar writes re-sync affected `Employee.current_holiday_lis` rows
+- staff holiday visibility remains school-lineage aware when the employee link is blank or stale
 
 ### 3.3 Meeting and School Event visibility is source-specific
 

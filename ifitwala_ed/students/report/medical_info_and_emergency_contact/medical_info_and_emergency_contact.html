@@ -161,20 +161,22 @@
 	.section-note{
 		letter-spacing:0.04em;
 	}
-	.medical-entry{
+	.medical-entry-list{
 		display:grid;
-		grid-template-columns:34% 1fr;
-		column-gap:14px;
-		align-items:start;
-		padding:6px 0;
-		border-bottom:1px solid rgba(228,200,186,.65);
+		grid-template-columns:repeat(3,minmax(0,1fr));
+		gap:8px;
 	}
-	.medical-entry:first-child{
-		padding-top:0;
+	.medical-entry{
+		padding:9px 10px;
+		border:1px solid rgba(228,200,186,.8);
+		background:rgba(255,255,255,.82);
 	}
-	.medical-entry:last-child{
-		padding-bottom:0;
-		border-bottom:none;
+	.medical-entry--wide{
+		grid-column:1 / -1;
+	}
+	.medical-entry__label{
+		display:block;
+		margin-bottom:4px;
 	}
 	.medical-entry__value{
 		color:var(--ifw-ink);
@@ -313,7 +315,7 @@
 						</div>
 						<div class="medical-entry-list">
 							{% for (var j = 0; j < medicalEntries.length; j++) { var entry = medicalEntries[j]; %}
-								<div class="medical-entry">
+								<div class="medical-entry{{ entry.layout === 'wide' ? ' medical-entry--wide' : '' }}">
 									<div class="medical-entry__label">{{ frappe.utils.escape_html(entry.label || entry.fieldname || "") }}</div>
 									<div class="medical-entry__value">{{ entry.value_html || "" }}</div>
 								</div>

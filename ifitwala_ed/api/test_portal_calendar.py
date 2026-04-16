@@ -76,6 +76,55 @@ class TestPortalCalendar(FrappeTestCase):
         self.assertEqual(event.meta.get("fallback"), "school_calendar")
         self.assertEqual(event.meta.get("school_calendar"), self.parent_calendar)
 
+    def test_staff_holidays_use_employee_link_when_employee_school_is_blank(self):
+        employee_group = self._create_employee_group("Leadership")
+        staff_calendar = self._create_staff_calendar(
+            self.parent_school,
+            employee_group,
+            self.holiday_date,
+        )
+        employee = self._create_employee(None, employee_group=employee_group)
+        frappe.db.set_value("Employee", employee, "current_holiday_lis", staff_calendar, update_modified=False)
+
+        tzinfo = _system_tzinfo()
+        window_start = tzinfo.localize(datetime.combine(self.holiday_date, time(0, 0, 0)))
+        window_end = window_start + timedelta(days=1)
+
+        events = _collect_staff_holiday_events(
+            "user@example.com",
+            window_start,
+            window_end,
+            tzinfo,
+            employee_id=employee,
+        )
+
+        self.assertEqual(len(events), 1)
+        self.assertEqual(events[0].meta.get("staff_calendar"), staff_calendar)
+        self.assertEqual(events[0].meta.get("resolution"), "employee_link")
+
+    def test_staff_holidays_do_not_fallback_to_school_calendar_when_staff_calendar_resolves(self):
+        employee_group = self._create_employee_group("Leadership")
+        self._create_staff_calendar(
+            self.parent_school,
+            employee_group,
+            holiday_date=None,
+        )
+        employee = self._create_employee(self.child_school, employee_group=employee_group)
+
+        tzinfo = _system_tzinfo()
+        window_start = tzinfo.localize(datetime.combine(self.holiday_date, time(0, 0, 0)))
+        window_end = window_start + timedelta(days=1)
+
+        events = _collect_staff_holiday_events(
+            "user@example.com",
+            window_start,
+            window_end,
+            tzinfo,
+            employee_id=employee,
+        )
+
+        self.assertEqual(events, [])
+
     def test_staff_calendar_resolves_employee_by_email_when_user_id_missing(self):
         user = self._create_user()
         employee = self._create_employee(self.child_school, professional_email=user.name)
@@ -228,6 +277,41 @@ class TestPortalCalendar(FrappeTestCase):
         self._created.append(("User", doc.name))
         return doc
 
+    def _create_employee_group(self, group_name: str) -> str:
+        hash_key = frappe.generate_hash(length=5).upper()
+        doc = frappe.get_doc(
+            {
+                "doctype": "Employee Group",
+                "employee_group_name": f"{group_name} {hash_key}",
+            }
+        ).insert(ignore_permissions=True)
+        self._created.append(("Employee Group", doc.name))
+        return doc.name
+
+    def _create_staff_calendar(self, school: str, employee_group: str, holiday_date: date | None) -> str:
+        holidays = []
+        if holiday_date:
+            holidays.append(
+                {
+                    "holiday_date": holiday_date,
+                    "description": "Staff Calendar Holiday",
+                    "weekly_off": 0,
+                }
+            )
+
+        doc = frappe.get_doc(
+            {
+                "doctype": "Staff Calendar",
+                "school": school,
+                "employee_group": employee_group,
+                "from_date": date(2025, 9, 1),
+                "to_date": date(2026, 8, 31),
+                "holidays": holidays,
+            }
+        ).insert(ignore_permissions=True)
+        self._created.append(("Staff Calendar", doc.name))
+        return doc.name
+
     def _create_school_calendar(self, school: str, academic_year: str, holiday_date: date) -> str:
         doc = frappe.get_doc(
             {
@@ -246,21 +330,30 @@ class TestPortalCalendar(FrappeTestCase):
         self._created.append(("School Calendar", doc.name))
         return doc.name
 
-    def _create_employee(self, school: str, *, professional_email: str | None = None) -> str:
+    def _create_employee(
+        self,
+        school: str | None,
+        *,
+        professional_email: str | None = None,
+        employee_group: str | None = None,
+    ) -> str:
         hash_key = frappe.generate_hash(length=6).upper()
         email = professional_email or f"portal-staff-{hash_key.lower()}@example.com"
-        doc = frappe.get_doc(
-            {
-                "doctype": "Employee",
-                "employee_first_name": "Portal",
-                "employee_last_name": f"Staff {hash_key}",
-                "employee_gender": "Prefer not to say",
-                "employee_professional_email": email,
-                "organization": self.organization,
-                "date_of_joining": frappe.utils.nowdate(),
-                "employment_status": "Active",
-                "school": school,
-            }
-        ).insert(ignore_permissions=True)
+        payload = {
+            "doctype": "Employee",
+            "employee_first_name": "Portal",
+            "employee_last_name": f"Staff {hash_key}",
+            "employee_gender": "Prefer not to say",
+            "employee_professional_email": email,
+            "organization": self.organization,
+            "date_of_joining": frappe.utils.nowdate(),
+            "employment_status": "Active",
+        }
+        if school:
+            payload["school"] = school
+        if employee_group:
+            payload["employee_group"] = employee_group
+
+        doc = frappe.get_doc(payload).insert(ignore_permissions=True)
         self._created.append(("Employee", doc.name))
         return doc.name

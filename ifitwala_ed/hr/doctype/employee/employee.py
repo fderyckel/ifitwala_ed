@@ -10,11 +10,16 @@ from frappe.permissions import get_doc_permissions
 from frappe.utils import add_years, cstr, getdate, today, validate_email_address
 from frappe.utils.nestedset import NestedSet
 
+from ifitwala_ed.hr.utils import (
+    invalidate_staff_portal_calendar_cache,
+    resolve_current_staff_calendar_for_employee,
+)
 from ifitwala_ed.utilities.employee_utils import (
     get_descendant_organizations,
     get_user_base_org,
 )
 from ifitwala_ed.utilities.image_utils import get_preferred_employee_image_url
+from ifitwala_ed.utilities.school_tree import get_school_lineage
 from ifitwala_ed.utilities.transaction_base import delete_events
 from ifitwala_ed.website.utils import slugify_route_segment
 
@@ -66,6 +71,7 @@ class Employee(NestedSet):
         self.validate_preferred_email()
         self.validate_employee_history()
         self.validate_public_website_fields()
+        self._sync_staff_calendar()
 
         if self.user_id:
             self.validate_user_details()
@@ -106,8 +112,11 @@ class Employee(NestedSet):
 
         self.reset_employee_emails_cache()
         self.sync_employee_history()
-        self._sync_staff_calendar()
         self._ensure_primary_contact()
+
+        prev = self.get_doc_before_save() or {}
+        if (prev.get("current_holiday_lis") or None) != (self.current_holiday_lis or None):
+            invalidate_staff_portal_calendar_cache(self.name)
 
         # ---------------------------------------------------------
         # 2) Role / authority enforcement (HR-governed, safe)
@@ -604,50 +613,71 @@ class Employee(NestedSet):
         user.save(ignore_permissions=True)
 
     def _sync_staff_calendar(self):
-        """Attach the appropriate Staff Calendar to current_holiday_lis based on employee_group.
-
-        Strategy:
-        - If no employee_group or employee not Active → clear current_holiday_lis.
-        - Otherwise, pick the Staff Calendar whose employee_group matches,
-                and whose period (from_date/to_date) contains today.
-        - If multiple match, choose the one with the latest from_date.
-        - If none match the date, fall back to the latest by from_date.
-        """
-        # Only for active staff
+        """Resolve the authoritative Staff Calendar link for this employee before save."""
         if self.employment_status != "Active":
             self.current_holiday_lis = None
             return
 
-        if not self.employee_group:
-            self.current_holiday_lis = None
+        employee_name = (self.name or "").strip()
+        if employee_name and frappe.db.exists("Employee", employee_name):
+            selected = resolve_current_staff_calendar_for_employee(employee_name)
+            self.current_holiday_lis = (selected or {}).get("name")
             return
 
         today_d = getdate(today())
-
-        calendars = frappe.get_all(
-            "Staff Calendar",
-            filters={"employee_group": self.employee_group},
-            fields=["name", "from_date", "to_date"],
-            order_by="from_date desc",
-        )
-
-        if not calendars:
-            self.current_holiday_lis = None
-            return
-
         selected = None
-        for cal in calendars:
-            from_d = getdate(cal.get("from_date")) if cal.get("from_date") else None
-            to_d = getdate(cal.get("to_date")) if cal.get("to_date") else None
+        linked_name = (self.current_holiday_lis or "").strip()
 
-            if from_d and to_d and from_d <= today_d <= to_d:
-                selected = cal["name"]
-                break
+        linked_rows = []
+        if linked_name:
+            linked_rows = frappe.get_all(
+                "Staff Calendar",
+                filters={"name": linked_name},
+                fields=["name", "school", "from_date", "to_date"],
+                limit=1,
+                ignore_permissions=True,
+            )
+            if linked_rows:
+                linked = linked_rows[0]
+                from_date = getdate(linked.get("from_date")) if linked.get("from_date") else None
+                to_date = getdate(linked.get("to_date")) if linked.get("to_date") else None
+                if from_date and to_date and from_date <= today_d <= to_date:
+                    selected = linked
 
-        if not selected:
-            selected = calendars[0]["name"]
+        if not selected and self.employee_group:
+            calendars = frappe.get_all(
+                "Staff Calendar",
+                filters={"employee_group": self.employee_group},
+                fields=["name", "school", "from_date", "to_date"],
+                limit=0,
+                ignore_permissions=True,
+            )
 
-        self.current_holiday_lis = selected
+            if self.school:
+                school_rank = {school: idx for idx, school in enumerate(get_school_lineage(self.school))}
+                scoped = [row for row in calendars if (row.get("school") or "").strip() in school_rank]
+                active = []
+                for row in scoped:
+                    from_date = getdate(row.get("from_date")) if row.get("from_date") else None
+                    to_date = getdate(row.get("to_date")) if row.get("to_date") else None
+                    if from_date and to_date and from_date <= today_d <= to_date:
+                        active.append(row)
+
+                ranked = active or scoped
+                ranked.sort(
+                    key=lambda row: (
+                        school_rank.get((row.get("school") or "").strip(), 10**9),
+                        -(getdate(row.get("from_date")).toordinal() if row.get("from_date") else 0),
+                        row.get("name") or "",
+                    )
+                )
+                selected = ranked[0] if ranked else None
+            elif linked_rows:
+                selected = linked_rows[0]
+            elif len(calendars) == 1:
+                selected = calendars[0]
+
+        self.current_holiday_lis = (selected or {}).get("name")
 
     def reset_employee_emails_cache(self):
         prev_doc = self.get_doc_before_save() or {}

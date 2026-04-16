@@ -273,11 +273,16 @@ For SPA calendar surfaces (staff, student, guardian):
 
 Server contract for staff portal:
 
-1. Attempt `Staff Calendar` holidays using nearest lineage school match.
-2. If no Staff Calendar holidays are available, fallback to effective `School Calendar Holidays` for the same window (`self -> nearest ancestor`).
+1. Attempt `Staff Calendar` holidays from `Employee.current_holiday_lis` first when that linked `Staff Calendar` overlaps the requested window.
+2. Otherwise attempt `Staff Calendar` holidays using nearest lineage school match.
+3. Fallback to effective `School Calendar Holidays` for the same window (`self -> nearest ancestor`) only when no `Staff Calendar` resolves for the employee.
 3. If the logged-in user is the built-in `Administrator` account and no active `Employee` record resolves, the calendar feed must still return a normal payload instead of raising a permission error.
 4. This fallback is only for the built-in `Administrator` user. Other staff portal users without an active `Employee` record must still receive the explicit permission error.
 5. In the `Administrator` fallback path, employee-scoped sources stay empty, while user-scoped participant sources may still return events.
+
+Additional rule:
+
+* once a `Staff Calendar` resolves for the employee, the staff portal must not widen that holiday source with `School Calendar` rows for the same window
 
 Server + client contract for student portal:
 

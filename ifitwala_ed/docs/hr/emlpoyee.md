@@ -38,15 +38,18 @@ Permission scope for `Employee`:
 
 For staff portal calendar reads, holiday resolution follows this server-owned precedence:
 
-1. Resolve `Staff Calendar` by:
+1. If `Employee.current_holiday_lis` resolves to a `Staff Calendar` that overlaps the requested date window, use that linked Staff Calendar.
+2. Otherwise resolve `Staff Calendar` by:
   - `employee_group` match
   - date-window overlap
   - nearest school in lineage (`employee.school` -> parent -> grandparent)
-2. If no Staff Calendar holidays are available, fallback to `School Calendar Holidays` from the effective School Calendar resolver for the same date window.
+3. Only if no `Staff Calendar` resolves for the employee, fallback to `School Calendar Holidays` from the effective School Calendar resolver for the same date window.
 
 Important:
+- Once a `Staff Calendar` resolves for an employee, `School Calendar` fallback does not widen or replace that employee holiday source for the same window.
 - This fallback is lineage-based and deterministic.
 - No sibling-school leakage is allowed.
+- `Staff Calendar` writes re-sync affected `Employee.current_holiday_lis` rows so newly created or updated staff calendars take effect without requiring an Employee re-save.
 - SPA clients must not guess school/AY fallback; they consume API payload only.
 - If the logged-in user is the built-in `Administrator` account and no resolved active `Employee` record exists, employee-scoped calendar sources return empty instead of raising, while user-linked participant sources may still load.
 - Other staff portal users without an active `Employee` record still raise the explicit permission error.
