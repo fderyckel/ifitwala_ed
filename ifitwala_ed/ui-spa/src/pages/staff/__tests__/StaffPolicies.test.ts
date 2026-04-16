@@ -237,6 +237,11 @@ describe('StaffPolicies', () => {
 		expect(text).toContain('Guardian Handbook');
 		expect(text).toContain('Guardians');
 		expect(text).toContain('Guardian Portal');
+		expect(getPolicyLibraryMock).toHaveBeenCalledWith({
+			organization: null,
+			school: null,
+			audience: null,
+		});
 	});
 
 	it('opens the policy inform overlay when a row action is clicked', async () => {

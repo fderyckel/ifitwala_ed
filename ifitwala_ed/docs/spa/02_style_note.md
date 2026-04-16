@@ -359,7 +359,7 @@ Vue templates **must use these**, not raw Tailwind text utilities.
 
 ### 6.3.1 Routed page headers are a shared contract
 
-Status: Planned normalization, mandatory for all newly touched routed staff pages
+Status: Shared primitive implemented; normalization still required for legacy staff-shell pages when touched
 
 Code refs:
 
@@ -379,8 +379,8 @@ Test refs:
 Observed drift examples:
 
 * `ui-spa/src/pages/staff/OrgCommunicationArchive.vue` and `ui-spa/src/pages/staff/morning_brief/MorningBriefing.vue` use `type-h1`
-* `ui-spa/src/pages/staff/StaffPolicies.vue`, `ui-spa/src/pages/staff/analytics/AcademicLoad.vue`, and `ui-spa/src/pages/staff/analytics/PolicySignatureAnalytics.vue` use `type-h2`
-* `ui-spa/src/pages/staff/analytics/StudentOverview.vue` and `ui-spa/src/pages/staff/analytics/StudentDemographicAnalytics.vue` bypass semantic helpers and change alignment
+* `ui-spa/src/pages/staff/StaffPolicies.vue` still uses `type-h2`
+* analytics pages under `ui-spa/src/pages/staff/analytics/` now use the shared `page-header*` primitive and are the canonical reference
 
 Canonical target for route-level headers in `staff-shell` and `analytics-shell`:
 
@@ -406,7 +406,7 @@ Rules:
 * Do not use raw Tailwind typography utilities (`text-base`, `text-2xl`, `tracking-tight`, etc.) for routed page titles or subtitles when semantic helpers already exist.
 * Actions live in a separate trailing cluster. On mobile they stack below the intro; on desktop they sit to the right. The actions cluster must not change the intro alignment.
 * Pages without a useful subtitle may omit it, but must not replace it with decorative filler text.
-* `page-header*` is the planned shared primitive. Until it exists in shared CSS, touched pages should mirror this structure directly instead of inventing page-local variants.
+* `page-header*` is the shared primitive. Do not recreate this pattern with page-local flex/title classes when the shared classes already exist.
 * Student / guardian hero surfaces may keep their own accent language, but they must still follow the same principle: one route-level title block, semantic typography, and no ad-hoc alignment drift.
 
 ---

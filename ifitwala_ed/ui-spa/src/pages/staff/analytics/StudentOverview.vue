@@ -1168,18 +1168,26 @@ function wellbeingTypeLabel(type: WellbeingTimelineItem['type']) {
 
 <template>
 	<div class="analytics-shell">
-		<header class="flex flex-wrap items-center justify-between gap-3">
-			<div class="flex-1 text-center">
-				<h1 class="text-2xl font-semibold tracking-tight text-slate-900 md:text-3xl">
-					Student Overview
-				</h1>
+		<header class="page-header">
+			<div class="page-header__intro">
+				<h1 class="type-h1 text-canopy">Student Overview</h1>
+				<p class="type-meta text-slate-token/80">
+					One student snapshot across identity, learning, attendance, wellbeing, and history.
+				</p>
 			</div>
-			<div class="ifit-filters flex flex-col items-end gap-2">
-				<select v-model="viewMode" class="h-8 rounded-md border px-2 text-xs">
-					<option v-for="m in viewModeOptions" :key="m.id" :value="m.id">
-						{{ m.label }}
-					</option>
-				</select>
+			<div class="page-header__actions ifit-filters">
+				<div class="flex flex-col gap-1">
+					<label for="student-overview-view-mode" class="type-label">Lens</label>
+					<select
+						id="student-overview-view-mode"
+						v-model="viewMode"
+						class="h-9 rounded-md border px-2 text-sm"
+					>
+						<option v-for="m in viewModeOptions" :key="m.id" :value="m.id">
+							{{ m.label }}
+						</option>
+					</select>
+				</div>
 			</div>
 		</header>
 

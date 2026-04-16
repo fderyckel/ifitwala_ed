@@ -1,9 +1,6 @@
 import type {
 	StaffCoursePlanQuizQuestion,
-	StaffCoursePlanQuizQuestionBank,
 	StaffCoursePlanQuizQuestionOption,
-	StaffCoursePlanTimelineUnit,
-	StaffCoursePlanUnit,
 } from '@/types/contracts/staff_teaching/get_staff_course_plan_surface';
 import type {
 	StaffPlanningReflection,
@@ -376,16 +373,3 @@ export function serializeQuizQuestions(
 		})),
 	}));
 }
-
-export type CoursePlanUnitEditorProps = {
-	canManagePlan: boolean;
-	creatingUnit: boolean;
-	selectedUnit: StaffCoursePlanUnit | null;
-	selectedUnitTimelineState: StaffCoursePlanTimelineUnit | null;
-};
-
-export type CoursePlanQuizBankEditorProps = {
-	canManagePlan: boolean;
-	creatingQuizQuestionBank: boolean;
-	selectedQuizQuestionBank: StaffCoursePlanQuizQuestionBank | null;
-};

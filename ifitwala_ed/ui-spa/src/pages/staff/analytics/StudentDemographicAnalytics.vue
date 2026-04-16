@@ -361,12 +361,10 @@ function setPreset(preset: ViewPreset) {
 
 <template>
 	<div class="analytics-shell">
-		<header class="flex flex-wrap items-center justify-between gap-3">
-			<div>
-				<h1 class="text-base font-semibold tracking-tight text-slate-900">
-					Student Demographic Analytics
-				</h1>
-				<p class="mt-0.5 text-xs text-slate-500">
+		<header class="page-header">
+			<div class="page-header__intro">
+				<h1 class="type-h1 text-canopy">Student Demographic Analytics</h1>
+				<p class="type-meta text-slate-token/80">
 					Active-student demographics for academic admin, academic assistants, admissions, and
 					marketing.
 				</p>

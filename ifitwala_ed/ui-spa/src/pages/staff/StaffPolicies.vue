@@ -166,6 +166,9 @@ import type {
 	PolicyLibraryRow,
 } from '@/types/contracts/policy_signature/get_staff_policy_library';
 
+type PolicyLibraryAudience = 'All' | 'Staff' | 'Guardian' | 'Student';
+type PolicyLibraryAudienceFilter = PolicyLibraryAudience | '';
+
 const overlay = useOverlayStack();
 const router = useRouter();
 const service = createPolicySignatureService();
@@ -179,18 +182,24 @@ const canViewPolicySignatureAnalytics = ref(false);
 const options = reactive({
 	organizations: [] as string[],
 	schools: [] as string[],
-	audiences: [] as Array<'All' | 'Staff' | 'Guardian' | 'Student'>,
+	audiences: [] as PolicyLibraryAudience[],
 });
 
 const filters = reactive({
 	organization: '',
 	school: '',
-	audience: 'Staff' as 'All' | 'Staff' | 'Guardian' | 'Student',
+	audience: '' as PolicyLibraryAudienceFilter,
 });
 
 const canManageAudiences = computed(() => Boolean(payload.value?.meta?.can_manage_audiences));
 const rows = computed<PolicyLibraryRow[]>(() => payload.value?.rows || []);
-const showStaffStatusMetrics = computed(() => filters.audience === 'Staff');
+const currentAudience = computed<PolicyLibraryAudience>(() => {
+	const serverAudience = payload.value?.filters?.audience;
+	if (serverAudience) return serverAudience;
+	if (filters.audience) return filters.audience;
+	return canManageAudiences.value ? 'All' : 'Staff';
+});
+const showStaffStatusMetrics = computed(() => currentAudience.value === 'Staff');
 
 const subtitleText = computed(() => {
 	if (canManageAudiences.value) {
@@ -327,7 +336,8 @@ function normalizeFiltersFromPayload(next: PolicyLibraryResponse) {
 	filters.organization = String(next.filters?.organization || '').trim();
 	filters.school = String(next.filters?.school || '').trim();
 	filters.audience =
-		(next.filters?.audience as 'All' | 'Staff' | 'Guardian' | 'Student' | undefined) || 'Staff';
+		(next.filters?.audience as PolicyLibraryAudience | undefined) ||
+		(next.meta?.can_manage_audiences ? 'All' : 'Staff');
 	syncingFromServer.value = false;
 }
 
@@ -338,7 +348,7 @@ async function refreshPolicyLibrary() {
 		const response = await service.getPolicyLibrary({
 			organization: filters.organization || null,
 			school: filters.school || null,
-			audience: filters.audience || 'Staff',
+			audience: filters.audience || null,
 		});
 		payload.value = response;
 		normalizeFiltersFromPayload(response);

@@ -390,10 +390,10 @@ onMounted(async () => {
 
 <template>
 	<div class="analytics-shell attendance-ledger-shell">
-		<header class="flex flex-wrap items-end justify-between gap-3">
-			<div>
-				<h1 class="type-h2 text-canopy">Attendance Ledger</h1>
-				<p class="type-body mt-1 text-slate-token/80">
+		<header class="page-header">
+			<div class="page-header__intro">
+				<h1 class="type-h1 text-canopy">Attendance Ledger</h1>
+				<p class="type-meta text-slate-token/80">
 					Row-level attendance evidence for follow-up, compliance, and code integrity.
 				</p>
 			</div>

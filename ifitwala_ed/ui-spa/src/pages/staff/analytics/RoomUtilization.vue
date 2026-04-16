@@ -1,20 +1,22 @@
 <!-- ifitwala_ed/ui-spa/src/pages/staff/analytics/RoomUtilization.vue -->
 <template>
 	<div class="analytics-shell">
-		<header class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-			<div class="text-left">
-				<h1 class="type-h2 text-canopy">Room Utilization</h1>
-				<p class="type-body text-slate-500 mt-1">
+		<header class="page-header">
+			<div class="page-header__intro">
+				<h1 class="type-h1 text-canopy">Room Utilization</h1>
+				<p class="type-meta text-slate-token/80">
 					Find free rooms across your campus and book spaces.
 				</p>
 			</div>
-			<button
-				v-if="canViewAnalytics"
-				class="rounded-full bg-canopy px-5 py-2 text-sm font-medium text-white transition-all hover:bg-leaf hover:shadow-md active:scale-95"
-				@click="refreshMetrics"
-			>
-				Refresh Data
-			</button>
+			<div v-if="canViewAnalytics" class="page-header__actions">
+				<button
+					type="button"
+					class="rounded-full bg-canopy px-5 py-2 text-sm font-medium text-white transition-all hover:bg-leaf hover:shadow-md active:scale-95"
+					@click="refreshMetrics"
+				>
+					Refresh Data
+				</button>
+			</div>
 		</header>
 
 		<KpiRow v-if="canViewAnalytics" :items="kpiItems" class="mb-2" />

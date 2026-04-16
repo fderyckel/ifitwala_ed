@@ -425,14 +425,19 @@ If the page cannot prove the failure is permission-related, it must show an hone
 
 ### 5.6 Analytics page header contract
 
-Status: Planned normalization, mandatory for all new or touched analytics pages
+Status: Implemented
 
 Code refs:
 - `ifitwala_ed/ui-spa/src/styles/components.css`
 - `ifitwala_ed/ui-spa/src/pages/staff/analytics/AcademicLoad.vue`
 - `ifitwala_ed/ui-spa/src/pages/staff/analytics/AttendanceAnalytics.vue`
+- `ifitwala_ed/ui-spa/src/pages/staff/analytics/AttendanceLedger.vue`
+- `ifitwala_ed/ui-spa/src/pages/staff/analytics/EnrollmentAnalytics.vue`
+- `ifitwala_ed/ui-spa/src/pages/staff/analytics/InquiryAnalytics.vue`
 - `ifitwala_ed/ui-spa/src/pages/staff/analytics/PolicySignatureAnalytics.vue`
+- `ifitwala_ed/ui-spa/src/pages/staff/analytics/RoomUtilization.vue`
 - `ifitwala_ed/ui-spa/src/pages/staff/analytics/StudentDemographicAnalytics.vue`
+- `ifitwala_ed/ui-spa/src/pages/staff/analytics/StudentLogAnalytics.vue`
 - `ifitwala_ed/ui-spa/src/pages/staff/analytics/StudentOverview.vue`
 
 Test refs:

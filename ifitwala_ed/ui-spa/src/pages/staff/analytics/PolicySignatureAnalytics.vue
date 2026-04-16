@@ -1,22 +1,23 @@
 <!-- ifitwala_ed/ui-spa/src/pages/staff/analytics/PolicySignatureAnalytics.vue -->
 <template>
 	<div class="analytics-shell space-y-5">
-		<header class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-			<div>
-				<h1 class="type-h2 text-canopy">Policy Signatures</h1>
-				<p class="type-caption text-slate-500">
+		<header class="page-header">
+			<div class="page-header__intro">
+				<h1 class="type-h1 text-canopy">Policy Signatures</h1>
+				<p class="type-meta text-slate-token/80">
 					Track policy acknowledgement status across staff, guardians, and students from one place.
 				</p>
 			</div>
-			<button
-				v-if="canManageCampaigns"
-				type="button"
-				class="inline-flex items-center gap-2 rounded-full bg-ink px-4 py-2 type-button-label text-white shadow-soft disabled:opacity-50"
-				@click="openCampaignOverlay"
-			>
-				<FeatherIcon name="plus" class="h-4 w-4" />
-				<span>Set up campaign</span>
-			</button>
+			<div v-if="canManageCampaigns" class="page-header__actions">
+				<button
+					type="button"
+					class="inline-flex items-center gap-2 rounded-full bg-ink px-4 py-2 type-button-label text-white shadow-soft disabled:opacity-50"
+					@click="openCampaignOverlay"
+				>
+					<FeatherIcon name="plus" class="h-4 w-4" />
+					<span>Set up campaign</span>
+				</button>
+			</div>
 		</header>
 
 		<FiltersBar class="analytics-filters !items-start">

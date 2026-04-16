@@ -24,8 +24,8 @@ Status: Implemented
 Code refs: `ifitwala_ed/ui-spa/src/router/index.ts`, `ifitwala_ed/ui-spa/src/pages/staff/StaffHome.vue`
 Test refs: None
 
-1. Canonical route is `/staff/policy-library` in the staff SPA shell.
-2. Legacy `/staff/policies` redirects to the canonical route.
+1. Canonical route is `/staff/policies` in the staff SPA shell.
+2. `/staff/policy-library` redirects to the canonical route.
 3. Staff Home labels this surface as `Policy Library`.
 
 ## Filter Contract
@@ -134,7 +134,7 @@ Test refs: `ifitwala_ed/api/test_policy_signature.py`, `ifitwala_ed/api/test_ana
 | Schema / DocType | Reuse `Institutional Policy`, `Policy Version`, `Policy Acknowledgement`, `Employee` | Implemented |
 | Controller / workflow logic | Cross-audience browsing remains library-only; actionable acknowledgement flows stay in Focus, Guardian Portal, Student Hub, and Admissions | Implemented |
 | API endpoints | `get_policy_library`, `get_policy_inform_payload`, `get_staff_policy_signature_dashboard`, `get_staff_policy_signature_audience_rows` | Implemented |
-| SPA / UI surfaces | `/staff/policy-library`, `/staff/analytics/policy-signatures`, existing policy-inform overlay | Implemented |
+| SPA / UI surfaces | `/staff/policies`, `/staff/analytics/policy-signatures`, existing policy-inform overlay | Implemented |
 | Reports / dashboards | Staff Home link integration with capability gate plus on-demand audience register for high-volume policy analytics | Implemented |
 | Scheduler / background jobs | None | Implemented |
 | Tests | Backend and SPA regression coverage for cross-audience browsing and staff-mode status flow | Implemented |

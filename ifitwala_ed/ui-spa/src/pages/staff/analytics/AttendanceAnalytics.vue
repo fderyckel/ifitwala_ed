@@ -601,14 +601,14 @@ onBeforeUnmount(() => {
 
 <template>
 	<div class="analytics-shell attendance-analytics-shell">
-		<header class="flex flex-wrap items-end justify-between gap-3">
-			<div>
-				<h1 class="type-h2 text-canopy">Attendance Analytics</h1>
-				<p class="type-body mt-1 text-slate-token/80">
+		<header class="page-header">
+			<div class="page-header__intro">
+				<h1 class="type-h1 text-canopy">Attendance Analytics</h1>
+				<p class="type-meta text-slate-token/80">
 					Pattern-first attendance intelligence with role-aware framing.
 				</p>
 			</div>
-			<div class="flex flex-col items-end gap-2">
+			<div class="page-header__actions">
 				<StatsTile :label="roleHeading" :value="meta?.window_source || 'window'" tone="info" />
 			</div>
 		</header>

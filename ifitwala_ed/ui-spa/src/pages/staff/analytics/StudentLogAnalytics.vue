@@ -286,15 +286,15 @@ function responseMetric(followUp: StudentLogFollowUpSummary) {
 
 <template>
 	<div class="analytics-shell">
-		<header class="flex flex-wrap items-center justify-between gap-3">
-			<div>
-				<h1 class="type-h2 text-canopy">Student Log Analytics</h1>
-				<p class="type-body text-slate-token/80 mt-1">
+		<header class="page-header">
+			<div class="page-header__intro">
+				<h1 class="type-h1 text-canopy">Student Log Analytics</h1>
+				<p class="type-meta text-slate-token/80">
 					Trends and follow-ups for the students you have access to.
 				</p>
 			</div>
 
-			<div class="flex flex-col items-end gap-2">
+			<div class="page-header__actions">
 				<StatsTile :value="openFollowUps" label="Open follow-ups" tone="warning" />
 			</div>
 		</header>

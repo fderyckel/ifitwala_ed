@@ -3,7 +3,7 @@ title: "Institutional Policy: Unified Governance for Your School"
 slug: institutional-policy
 category: Governance
 doc_order: 1
-version: "2.0.2"
+version: "2.0.3"
 last_change_date: "2026-04-16"
 summary: "Create and manage institutional policies that flow seamlessly across your organization—from staff signature campaigns to guardian portals, student hubs, and admissions workflows—all with comprehensive analytics and audit trails."
 seo_title: "Institutional Policy: Unified Governance for Your School"
@@ -157,7 +157,7 @@ Once signed, the ToDo auto-completes and the acknowledgement is recorded immutab
 Staff can browse policies anytime via:
 - **Morning Brief** policy links
 - **Org Communication** policy announcements
-- **Policy Library** page at `/hub/staff/policy-library`
+- **Policy Library** page at `/hub/staff/policies`
 
 The **Policy Inform Overlay** provides:
 - Current policy text
@@ -349,7 +349,7 @@ A: Yes, applicant-scoped policies appear in the admissions portal. They must ack
 - **Deletion**: Blocked by controller—use `is_active` instead
 - **SPA Surfaces:**
   - Staff Campaign Overlay: `/staff` → Set up campaign
-  - Policy Library: `/hub/staff/policy-library`
+  - Policy Library: `/hub/staff/policies`
   - Staff Inform Overlay: Policy read-only viewer
   - Guardian Policies: `/hub/guardian/policies`
   - Student Policies: `/hub/student/policies`

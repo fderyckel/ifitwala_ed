@@ -97,7 +97,7 @@ Test refs: `ifitwala_ed/api/test_teaching_plans.py`, `ifitwala_ed/api/test_quiz.
 - **Operational/public methods**:
   - `list_staff_course_plans()` (whitelisted)
   - `create_course_plan(...)` (whitelisted)
-  - `get_staff_course_plan_surface(course_plan, unit_plan=None)` (whitelisted)
+  - `get_staff_course_plan_surface(course_plan, unit_plan=None, quiz_question_bank=None, student_group=None)` (whitelisted)
   - `save_course_plan(...)` (whitelisted)
 
 ### Current Contract

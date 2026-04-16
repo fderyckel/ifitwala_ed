@@ -2225,6 +2225,33 @@
 		@apply w-full max-w-6xl mx-auto flex flex-col px-5 py-9 sm:px-6 gap-6;
 	}
 
+	.page-header {
+		@apply flex flex-col gap-3;
+	}
+
+	.page-header__intro {
+		@apply min-w-0 flex-1 text-left;
+	}
+
+	.page-header__intro .type-meta {
+		max-width: 48rem;
+	}
+
+	.page-header__actions {
+		@apply flex shrink-0 flex-wrap items-center gap-3 self-start;
+	}
+
+	@media (min-width: 640px) {
+		.page-header {
+			@apply flex-row items-start justify-between gap-4;
+		}
+
+		.page-header__actions {
+			justify-content: flex-end;
+			align-self: flex-start;
+		}
+	}
+
 	.analytics-card {
 		@apply border rounded-2xl shadow-sm overflow-hidden p-4 sm:p-5 flex flex-col gap-3;
 		border-color: rgb(var(--border-rgb) / 0.9);

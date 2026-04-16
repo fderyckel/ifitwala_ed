@@ -1,10 +1,20 @@
 <!-- ifitwala_ed/ui-spa/src/pages/staff/analytics/EnrollmentAnalytics.vue -->
 <template>
 	<div class="analytics-shell">
-		<header class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-			<div>
-				<h1 class="type-h2 text-canopy">Enrollment</h1>
-				<p class="text-xs text-slate-500">{{ scopeLabel }}</p>
+		<header class="page-header">
+			<div class="page-header__intro">
+				<h1 class="type-h1 text-canopy">Enrollment</h1>
+				<p class="type-meta text-slate-token/80">
+					Enrollment shape and change across your selected organization, school, and academic-year
+					range.
+				</p>
+				<div class="mt-2 flex flex-wrap items-center gap-2">
+					<span
+						class="inline-flex items-center rounded-full border border-slate-200 bg-white px-3 py-1 type-caption text-slate-token/70"
+					>
+						{{ scopeLabel }}
+					</span>
+				</div>
 			</div>
 		</header>
 
