@@ -225,6 +225,21 @@ def build_org_communication_attachment_open_url(
     )
 
 
+def build_org_communication_attachment_preview_url(
+    *,
+    org_communication: str,
+    row_name: str,
+) -> str:
+    resolved_org_communication = (org_communication or "").strip()
+    resolved_row_name = (row_name or "").strip()
+    if not resolved_org_communication or not resolved_row_name:
+        return ""
+
+    return "/api/method/ifitwala_ed.api.file_access.preview_org_communication_attachment?" + urlencode(
+        {"org_communication": resolved_org_communication, "row_name": resolved_row_name}
+    )
+
+
 def build_public_website_media_url(*, file_name: str) -> str:
     resolved_file = (file_name or "").strip()
     if not resolved_file:
@@ -405,6 +420,31 @@ def _resolve_org_communication_drive_file(org_communication: str, row_name: str)
         return drive_file.get("name"), drive_file.get("file")
 
     frappe.throw(_("Governed attachment file was not found."), frappe.DoesNotExistError)
+
+
+def _resolve_drive_file_grant_target_url(
+    *,
+    drive_file_id: str,
+    file_id: str,
+    prefer_preview: bool = False,
+) -> str:
+    grant_method = "issue_download_grant"
+    if prefer_preview:
+        preview_status = frappe.db.get_value("Drive File", drive_file_id, "preview_status")
+        if preview_status == "ready":
+            grant_method = "issue_preview_grant"
+
+    grant = _load_drive_access_callable(grant_method)(drive_file_id=drive_file_id)
+    target_url = str((grant or {}).get("url") or "").strip()
+    if target_url:
+        return target_url
+
+    fallback_url = frappe.db.get_value("File", file_id, "file_url")
+    target_url = str(fallback_url or "").strip()
+    if target_url:
+        return target_url
+
+    frappe.throw(_("Could not resolve an attachment open URL."), frappe.DoesNotExistError)
 
 
 def _resolve_guardian_from_file(file_row: dict) -> str:
@@ -952,18 +992,39 @@ def open_org_communication_attachment(
         frappe.throw(_("Attachment file is missing."), frappe.DoesNotExistError)
 
     drive_file_id, file_id = _resolve_org_communication_drive_file(doc.name, str(row_name or "").strip())
-    preview_status = frappe.db.get_value("Drive File", drive_file_id, "preview_status")
-    if preview_status == "ready":
-        grant = _load_drive_access_callable("issue_preview_grant")(drive_file_id=drive_file_id)
-    else:
-        grant = _load_drive_access_callable("issue_download_grant")(drive_file_id=drive_file_id)
+    target_url = _resolve_drive_file_grant_target_url(
+        drive_file_id=drive_file_id,
+        file_id=file_id,
+        prefer_preview=False,
+    )
 
-    target_url = str((grant or {}).get("url") or "").strip()
-    if not target_url:
-        fallback_url = frappe.db.get_value("File", file_id, "file_url")
-        target_url = str(fallback_url or "").strip()
-    if not target_url:
-        frappe.throw(_("Could not resolve an attachment open URL."), frappe.DoesNotExistError)
+    frappe.local.response["type"] = "redirect"
+    frappe.local.response["location"] = target_url
+
+
+@frappe.whitelist()
+def preview_org_communication_attachment(
+    org_communication: str | None = None,
+    row_name: str | None = None,
+):
+    doc, target_row = _require_org_communication_attachment_context(
+        str(org_communication or "").strip(),
+        str(row_name or "").strip(),
+    )
+
+    if str(getattr(target_row, "external_url", "") or "").strip():
+        frappe.throw(_("External links do not support governed preview."), frappe.ValidationError)
+
+    file_url = str(getattr(target_row, "file", "") or "").strip()
+    if not file_url:
+        frappe.throw(_("Attachment file is missing."), frappe.DoesNotExistError)
+
+    drive_file_id, file_id = _resolve_org_communication_drive_file(doc.name, str(row_name or "").strip())
+    target_url = _resolve_drive_file_grant_target_url(
+        drive_file_id=drive_file_id,
+        file_id=file_id,
+        prefer_preview=True,
+    )
 
     frappe.local.response["type"] = "redirect"
     frappe.local.response["location"] = target_url

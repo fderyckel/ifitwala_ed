@@ -305,7 +305,9 @@
 								<a
 									v-for="attachment in detailAttachments"
 									:key="attachment.row_name"
-									:href="attachment.open_url || attachment.external_url || '#'"
+									:href="
+										attachment.preview_url || attachment.open_url || attachment.external_url || '#'
+									"
 									target="_blank"
 									rel="noopener noreferrer"
 									class="flex items-center justify-between gap-3 rounded-xl border border-line-soft bg-surface-soft px-4 py-3 transition hover:border-jacaranda/40 hover:bg-white"

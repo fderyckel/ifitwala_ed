@@ -12,12 +12,14 @@ from ifitwala_ed.api.file_access import (
     build_employee_file_open_url,
     build_guardian_file_open_url,
     build_org_communication_attachment_open_url,
+    build_org_communication_attachment_preview_url,
     build_public_website_media_url,
     download_academic_file,
     download_employee_file,
     download_guardian_file,
     open_org_communication_attachment,
     open_public_website_media,
+    preview_org_communication_attachment,
     resolve_academic_file_open_url,
     resolve_employee_file_open_url,
     resolve_guardian_file_open_url,
@@ -105,6 +107,21 @@ class TestFileAccessUrlContracts(FrappeTestCase):
         self.assertEqual(
             parsed.path,
             "/api/method/ifitwala_ed.api.file_access.open_org_communication_attachment",
+        )
+        self.assertEqual((query.get("org_communication") or [None])[0], "COMM-0001")
+        self.assertEqual((query.get("row_name") or [None])[0], "row-001")
+
+    def test_build_org_communication_attachment_preview_url_includes_row_context(self):
+        url = build_org_communication_attachment_preview_url(
+            org_communication="COMM-0001",
+            row_name="row-001",
+        )
+        parsed = urlparse(url)
+        query = parse_qs(parsed.query)
+
+        self.assertEqual(
+            parsed.path,
+            "/api/method/ifitwala_ed.api.file_access.preview_org_communication_attachment",
         )
         self.assertEqual((query.get("org_communication") or [None])[0], "COMM-0001")
         self.assertEqual((query.get("row_name") or [None])[0], "row-001")
@@ -344,7 +361,7 @@ class TestFileAccessUrlContracts(FrappeTestCase):
                     context_name="MAT-1",
                 )
 
-    def test_open_org_communication_attachment_redirects_to_drive_preview_grant(self):
+    def test_open_org_communication_attachment_redirects_to_drive_download_grant(self):
         attachment_row = frappe._dict(
             name="row-001",
             file="/private/files/policy.pdf",
@@ -361,6 +378,8 @@ class TestFileAccessUrlContracts(FrappeTestCase):
 
         comm_doc = _CommDoc()
 
+        grant_calls = []
+
         def fake_get_value(doctype, filters=None, fieldname=None, as_dict=False):
             if doctype == "Employee":
                 return {"name": "EMP-1", "school": "SCH-1", "organization": "ORG-1"}
@@ -370,16 +389,17 @@ class TestFileAccessUrlContracts(FrappeTestCase):
                 return "ready"
             return None
 
+        def fake_load(attribute):
+            grant_calls.append(attribute)
+            return lambda **_kwargs: {"url": "https://download.example.com/policy.pdf"}
+
         with (
             patch("ifitwala_ed.api.file_access._require_authenticated_user", return_value="staff@example.com"),
             patch("ifitwala_ed.api.file_access.frappe.get_roles", return_value=["Academic Staff"]),
             patch("ifitwala_ed.api.file_access.frappe.db.get_value", side_effect=fake_get_value),
             patch("ifitwala_ed.api.file_access.check_audience_match", return_value=True),
             patch("ifitwala_ed.api.file_access.frappe.get_doc", return_value=comm_doc),
-            patch(
-                "ifitwala_ed.api.file_access._load_drive_access_callable",
-                return_value=lambda **_kwargs: {"url": "https://preview.example.com/policy.pdf"},
-            ),
+            patch("ifitwala_ed.api.file_access._load_drive_access_callable", side_effect=fake_load),
         ):
             frappe.local.response = {}
             open_org_communication_attachment(
@@ -390,8 +410,113 @@ class TestFileAccessUrlContracts(FrappeTestCase):
         self.assertEqual(frappe.local.response.get("type"), "redirect")
         self.assertEqual(
             frappe.local.response.get("location"),
+            "https://download.example.com/policy.pdf",
+        )
+        self.assertEqual(grant_calls, ["issue_download_grant"])
+
+    def test_preview_org_communication_attachment_redirects_to_drive_preview_grant_when_ready(self):
+        attachment_row = frappe._dict(
+            name="row-001",
+            file="/private/files/policy.pdf",
+            external_url=None,
+        )
+
+        class _CommDoc:
+            name = "COMM-0001"
+
+            def get(self, fieldname):
+                if fieldname == "attachments":
+                    return [attachment_row]
+                return []
+
+        comm_doc = _CommDoc()
+        grant_calls = []
+
+        def fake_get_value(doctype, filters=None, fieldname=None, as_dict=False):
+            if doctype == "Employee":
+                return {"name": "EMP-1", "school": "SCH-1", "organization": "ORG-1"}
+            if doctype == "Drive Binding":
+                return {"drive_file": "DRIVE-0001", "file": "FILE-0001"}
+            if doctype == "Drive File" and filters == "DRIVE-0001" and fieldname == "preview_status":
+                return "ready"
+            return None
+
+        def fake_load(attribute):
+            grant_calls.append(attribute)
+            return lambda **_kwargs: {"url": "https://preview.example.com/policy.pdf"}
+
+        with (
+            patch("ifitwala_ed.api.file_access._require_authenticated_user", return_value="staff@example.com"),
+            patch("ifitwala_ed.api.file_access.frappe.get_roles", return_value=["Academic Staff"]),
+            patch("ifitwala_ed.api.file_access.frappe.db.get_value", side_effect=fake_get_value),
+            patch("ifitwala_ed.api.file_access.check_audience_match", return_value=True),
+            patch("ifitwala_ed.api.file_access.frappe.get_doc", return_value=comm_doc),
+            patch("ifitwala_ed.api.file_access._load_drive_access_callable", side_effect=fake_load),
+        ):
+            frappe.local.response = {}
+            preview_org_communication_attachment(
+                org_communication="COMM-0001",
+                row_name="row-001",
+            )
+
+        self.assertEqual(frappe.local.response.get("type"), "redirect")
+        self.assertEqual(
+            frappe.local.response.get("location"),
             "https://preview.example.com/policy.pdf",
         )
+        self.assertEqual(grant_calls, ["issue_preview_grant"])
+
+    def test_preview_org_communication_attachment_falls_back_to_download_when_preview_not_ready(self):
+        attachment_row = frappe._dict(
+            name="row-001",
+            file="/private/files/policy.pdf",
+            external_url=None,
+        )
+
+        class _CommDoc:
+            name = "COMM-0001"
+
+            def get(self, fieldname):
+                if fieldname == "attachments":
+                    return [attachment_row]
+                return []
+
+        comm_doc = _CommDoc()
+        grant_calls = []
+
+        def fake_get_value(doctype, filters=None, fieldname=None, as_dict=False):
+            if doctype == "Employee":
+                return {"name": "EMP-1", "school": "SCH-1", "organization": "ORG-1"}
+            if doctype == "Drive Binding":
+                return {"drive_file": "DRIVE-0001", "file": "FILE-0001"}
+            if doctype == "Drive File" and filters == "DRIVE-0001" and fieldname == "preview_status":
+                return "pending"
+            return None
+
+        def fake_load(attribute):
+            grant_calls.append(attribute)
+            return lambda **_kwargs: {"url": "https://download.example.com/policy.pdf"}
+
+        with (
+            patch("ifitwala_ed.api.file_access._require_authenticated_user", return_value="staff@example.com"),
+            patch("ifitwala_ed.api.file_access.frappe.get_roles", return_value=["Academic Staff"]),
+            patch("ifitwala_ed.api.file_access.frappe.db.get_value", side_effect=fake_get_value),
+            patch("ifitwala_ed.api.file_access.check_audience_match", return_value=True),
+            patch("ifitwala_ed.api.file_access.frappe.get_doc", return_value=comm_doc),
+            patch("ifitwala_ed.api.file_access._load_drive_access_callable", side_effect=fake_load),
+        ):
+            frappe.local.response = {}
+            preview_org_communication_attachment(
+                org_communication="COMM-0001",
+                row_name="row-001",
+            )
+
+        self.assertEqual(frappe.local.response.get("type"), "redirect")
+        self.assertEqual(
+            frappe.local.response.get("location"),
+            "https://download.example.com/policy.pdf",
+        )
+        self.assertEqual(grant_calls, ["issue_download_grant"])
 
     def test_open_public_website_media_streams_private_logo_for_guest(self):
         file_row = {

@@ -6,7 +6,10 @@ from typing import Any
 import frappe
 from frappe import _
 
-from ifitwala_ed.api.file_access import build_org_communication_attachment_open_url
+from ifitwala_ed.api.file_access import (
+    build_org_communication_attachment_open_url,
+    build_org_communication_attachment_preview_url,
+)
 from ifitwala_ed.setup.doctype.org_communication.attachments import (
     ORG_COMMUNICATION_ATTACHMENT_BINDING_ROLE,
     ORG_COMMUNICATION_ATTACHMENT_SLOT_PREFIX,
@@ -106,6 +109,10 @@ def serialize_org_communication_attachment_row(org_communication: str, row) -> d
             org_communication=org_communication,
             row_name=row_name,
         )
+        preview_url = build_org_communication_attachment_preview_url(
+            org_communication=org_communication,
+            row_name=row_name,
+        )
         return {
             "row_name": row_name,
             "kind": "file",
@@ -113,6 +120,7 @@ def serialize_org_communication_attachment_row(org_communication: str, row) -> d
             "description": description,
             "file_name": file_name or title,
             "file_size": file_size,
+            "preview_url": preview_url,
             "open_url": open_url,
         }
 

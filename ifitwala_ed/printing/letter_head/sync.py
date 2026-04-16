@@ -44,13 +44,7 @@ def sync_default_school_letter_head() -> bool:
 
     if frappe.db.exists("Letter Head", name):
         doc = frappe.get_doc("Letter Head", name)
-        changed = False
-        for fieldname, value in values.items():
-            if doc.get(fieldname) != value:
-                doc.set(fieldname, value)
-                changed = True
-
-        if not changed:
+        if not _reconcile_letter_head_fields(doc, values):
             return False
 
         doc.flags.ignore_permissions = True
@@ -65,6 +59,13 @@ def sync_default_school_letter_head() -> bool:
         }
     )
     doc.insert(ignore_permissions=True)
+
+    # Frappe v16 normalizes new Letter Head rows toward Image source during insert.
+    # Re-load and reconcile immediately so the first sync leaves the managed HTML record in place.
+    doc = frappe.get_doc("Letter Head", name)
+    if _reconcile_letter_head_fields(doc, values):
+        doc.flags.ignore_permissions = True
+        doc.save()
     return True
 
 
@@ -78,3 +79,12 @@ def ensure_print_settings_with_letterhead() -> bool:
     settings.with_letterhead = 1
     settings.save(ignore_permissions=True)
     return True
+
+
+def _reconcile_letter_head_fields(doc, values: dict) -> bool:
+    changed = False
+    for fieldname, value in values.items():
+        if doc.get(fieldname) != value:
+            doc.set(fieldname, value)
+            changed = True
+    return changed

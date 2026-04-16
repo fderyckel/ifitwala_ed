@@ -258,8 +258,8 @@
 												</div>
 												<div class="flex flex-wrap gap-2">
 													<a
-														v-if="attachment.open_url"
-														:href="attachment.open_url"
+														v-if="attachment.preview_url || attachment.open_url"
+														:href="attachment.preview_url || attachment.open_url"
 														target="_blank"
 														rel="noopener noreferrer"
 														class="rounded-full border border-border/80 bg-white px-3 py-1.5 type-button-label text-ink transition hover:border-jacaranda hover:text-jacaranda"

@@ -174,7 +174,7 @@
 									v-for="attachment in communicationDetail(item.org_communication.name)
 										?.attachments || []"
 									:key="attachment.row_name"
-									:href="attachment.open_url"
+									:href="attachment.preview_url || attachment.open_url"
 									target="_blank"
 									rel="noreferrer"
 									class="inline-flex items-center rounded-full border border-line-soft bg-white px-3 py-1 text-xs font-medium text-ink transition hover:border-jacaranda/40 hover:bg-jacaranda/5"

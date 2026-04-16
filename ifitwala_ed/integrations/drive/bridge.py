@@ -2,15 +2,17 @@ from __future__ import annotations
 
 from typing import Any
 
-from ifitwala_ed.integrations.drive import admissions, materials, media, org_communications, tasks
-
 
 def reconcile_upload_session_payload(payload: dict[str, Any]) -> dict[str, Any]:
+    from ifitwala_ed.integrations.drive import tasks
+
     payload = tasks.reconcile_task_submission_session_payload(payload)
     return payload
 
 
 def resolve_finalize_contract(upload_session_doc) -> dict[str, Any]:
+    from ifitwala_ed.integrations.drive import tasks
+
     authoritative = tasks.validate_task_submission_finalize_context(upload_session_doc)
     if authoritative is not None:
         return {
@@ -22,6 +24,8 @@ def resolve_finalize_contract(upload_session_doc) -> dict[str, Any]:
             ),
             "binding_role": None,
         }
+
+    from ifitwala_ed.integrations.drive import org_communications
 
     authoritative = tasks.validate_task_resource_finalize_context(upload_session_doc)
     if authoritative is not None:
@@ -49,6 +53,8 @@ def resolve_finalize_contract(upload_session_doc) -> dict[str, Any]:
             "binding_role": "communication_attachment",
         }
 
+    from ifitwala_ed.integrations.drive import materials
+
     authoritative = materials.validate_supporting_material_finalize_context(upload_session_doc)
     if authoritative is not None:
         return {
@@ -62,6 +68,8 @@ def resolve_finalize_contract(upload_session_doc) -> dict[str, Any]:
             "binding_role": "general_reference",
         }
 
+    from ifitwala_ed.integrations.drive import media
+
     authoritative = media.validate_media_finalize_context(upload_session_doc)
     if authoritative is not None:
         return {
@@ -73,6 +81,8 @@ def resolve_finalize_contract(upload_session_doc) -> dict[str, Any]:
                 "organization_media" if getattr(upload_session_doc, "owner_doctype", None) == "Organization" else None
             ),
         }
+
+    from ifitwala_ed.integrations.drive import admissions
 
     authoritative = admissions.validate_applicant_document_finalize_context(upload_session_doc)
     if authoritative is not None:
@@ -124,10 +134,24 @@ def resolve_finalize_contract(upload_session_doc) -> dict[str, Any]:
 
 
 def run_post_finalize(upload_session_doc, created_file) -> dict[str, Any]:
+    from ifitwala_ed.integrations.drive import tasks
+
     response: dict[str, Any] = {}
     response.update(tasks.run_task_post_finalize(upload_session_doc, created_file))
+
+    from ifitwala_ed.integrations.drive import org_communications
+
     response.update(org_communications.run_org_communication_attachment_post_finalize(upload_session_doc, created_file))
+
+    from ifitwala_ed.integrations.drive import materials
+
     response.update(materials.run_material_post_finalize(upload_session_doc, created_file))
+
+    from ifitwala_ed.integrations.drive import media
+
     response.update(media.run_media_post_finalize(upload_session_doc, created_file))
+
+    from ifitwala_ed.integrations.drive import admissions
+
     response.update(admissions.run_admissions_post_finalize(upload_session_doc, created_file))
     return response

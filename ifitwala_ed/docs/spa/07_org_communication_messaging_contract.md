@@ -95,7 +95,7 @@ Rules:
 2. Clients must not assemble messaging behavior from generic CRUD calls.
 3. Admissions endpoints remain context-specific wrappers over the same canonical entry/read-state model.
 4. `get_org_communication_item` must expose full-body HTML as `message_html`, not `message`, so the SPA transport envelope unwrapping cannot collide with the domain payload.
-5. `get_org_communication_item` may expose attachment rows for archive/detail rendering, but governed file rows must be returned with server-owned `open_url` values instead of raw private paths.
+5. `get_org_communication_item` may expose attachment rows for archive/detail rendering, but governed file rows must be returned with server-owned action URLs such as `open_url` and optional `preview_url`, never raw private paths.
 
 ## 3. Surface Matrix
 

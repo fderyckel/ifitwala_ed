@@ -4,26 +4,31 @@
 
 **Ifitwala_Ed** is an open-source **Institutional Operating System** that replaces fragmented SaaS tools with **one coherent data model, one permission system, and one analytics surface**.
 
-Built on the enterprise-grade **Frappe Framework**, it is designed for schools, colleges, and universities that value **data sovereignty, architectural integrity, and long-term scalability.**
+Built on the enterprise-grade **Frappe Framework**, it is designed for schools, colleges, and universities that value **data sovereignty, architectural integrity, long-term scalability, and true integration between all the stakeholders and various domains of your educational institution .**
 
 ---
 
 ## 🚀 The Paradigm Shift
 
-Most educational institutions operate on a "Frankenstein stack": an SIS for enrollment, an LMS for grading, a separate timetable tool, a HR module that is not connected to education, a Tableau dashboard for analytics, and endless spreadsheets to bridge the gaps.
+Most educational institutions operate on a "Frankenstein stack": an SIS for enrollment, an LMS for grading, a distinct admission module, a separate timetable tool, a HR module that is not connected to education, an accounting software unrelated to the needs of an education institution, a Tableau dashboard for analytics, and endless spreadsheets to bridge the gaps.
 
-**The result?** Data is duplicated, permissions drift, analytics require manual reconciliation, and staff waste time moving information instead of acting on it.
+**The result?** Data is duplicated, permissions drift, analytics require manual reconciliation, and staff spent time moving information instead of acting on it.
 
 **Ifitwala_Ed eliminates fragmentation at the root.**
-We do not build "integrations" between disconnected modules. We build **one backbone** where every module — Academic, Operational, HR, Marketing & Communication, and Financial — references the same single source of truth.
+We do not build "integrations" between disconnected modules. We build **one backbone** where every module — Academic, Operation, Analytics, Admission, HR, Marketing & Communication, and Financial — references the same single source of truth.
+
+**Ifitwala is an Education ERP - Education Resource Platform.**
+Yes Education institution are not and should not be compared and considered as "Entreprise".  The model, fundamentally human at its core, is different and Ifitwala Ed is build around capturing that difference in both its UI-UX design and architecture.
 
 ---
 
 ## 🏛️ Architecture: The Nested Set Hierarchy
 
-Education is hierarchical by nature. Ifitwala Ed reflect this structure.
+Education is hierarchical by nature. Ifitwala Ed reflect this structure at its core.
 
 Ifitwala_Ed uses a **Nested Set Hierarchy** to model the reality of your institution. This is a lot more than just a labeling system; it is the logic engine that drives permissions, reporting, and policy inheritance throughout the whole system.
+
+This allows a true multi-campuses and multi-schools platform with each entities having its own models, management organization, data structure, workflows.
 
 ### Visualizing the Nested Reality
 

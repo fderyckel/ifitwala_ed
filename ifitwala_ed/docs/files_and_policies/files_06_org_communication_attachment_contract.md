@@ -108,7 +108,7 @@ Rules:
 5. Desk must not claim that student-group context is required when organization or school communication contexts are valid.
 6. Raw Desk `Attach` remains non-canonical and is still rejected by controller validation for file rows.
 
-## 6. Visibility and Open URL Contract
+## 6. Visibility and Attachment Action URL Contract
 
 **Status:** Implemented
 **Code refs:** `ifitwala_ed/api/file_access.py`, `ifitwala_ed/api/org_communication_archive.py`, `ifitwala_ed/api/org_comm_utils.py`
@@ -117,6 +117,8 @@ Rules:
 Rules:
 
 1. Attachment reads must continue to enforce the same communication visibility contract as archive/detail reads.
-2. Authorized viewers receive server-owned `open_url` values only.
-3. Private file URLs must never be constructed in the client.
-4. Authored-history owner access remains aligned with the existing `allow_owner=True` attachment-open rule.
+2. Authorized viewers receive server-owned action URLs only.
+3. File rows expose stable Ed-owned `open_url` values and may also expose stable Ed-owned `preview_url` values for richer preview flows.
+4. Those stable routes are not durable storage URLs; Drive grants remain short-lived and are resolved at request time.
+5. Private file URLs must never be constructed in the client.
+6. Authored-history owner access remains aligned with the existing `allow_owner=True` attachment-open rule.

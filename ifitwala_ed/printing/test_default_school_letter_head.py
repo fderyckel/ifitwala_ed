@@ -1,9 +1,13 @@
 import html
 import json
+import sys
 import unittest
+from types import SimpleNamespace
+from unittest.mock import patch
 
 from jinja2 import Environment
 
+from ifitwala_ed.printing.letter_head import sync as letter_head_sync
 from ifitwala_ed.printing.letter_head.sync import (
     DEFAULT_SCHOOL_LETTER_HEAD_CSS_PATH,
     DEFAULT_SCHOOL_LETTER_HEAD_PATH,
@@ -46,6 +50,18 @@ class TestDefaultSchoolLetterHead(unittest.TestCase):
         self.assertEqual(values["is_default"], 1)
         self.assertIn("<style>", payload["content"])
         self.assertIn("ifitwala-letterhead__name", payload["content"])
+
+    def test_sync_reconciles_new_insert_back_to_managed_html_state(self):
+        fake_frappe = _FakeSyncFrappe()
+        values = get_default_school_letter_head_values()
+
+        with patch.dict(sys.modules, {"frappe": fake_frappe}):
+            changed = letter_head_sync.sync_default_school_letter_head()
+
+        self.assertTrue(changed)
+        self.assertEqual(fake_frappe.doc["source"], "HTML")
+        self.assertEqual(fake_frappe.doc["content"], values["content"])
+        self.assertEqual(fake_frappe.doc.save_count, 1)
 
     def test_template_uses_only_in_scope_school_and_organization_fallbacks(self):
         for token in (
@@ -299,6 +315,62 @@ class _FakeUtils:
     @staticmethod
     def escape_html(value):
         return "" if value is None else html.escape(str(value), quote=True)
+
+
+class _FakeLetterHeadDoc(dict):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.flags = SimpleNamespace(ignore_permissions=False)
+        self.save_count = 0
+
+    def get(self, key, default=None):
+        return super().get(key, default)
+
+    def set(self, key, value):
+        self[key] = value
+
+    def save(self):
+        self.save_count += 1
+        return self
+
+
+class _FakeSyncDB:
+    def __init__(self):
+        self.created = False
+
+    def exists(self, doctype, name):
+        if doctype != "Letter Head":
+            raise AssertionError(f"Unexpected doctype: {doctype}")
+        return name if self.created and name == "Ifitwala Default School Letter Head" else None
+
+
+class _FakeSyncFrappe:
+    def __init__(self):
+        self.db = _FakeSyncDB()
+        self.doc = None
+
+    def get_doc(self, *args):
+        if len(args) == 2:
+            doctype, name = args
+            if doctype == "Letter Head" and name == "Ifitwala Default School Letter Head" and self.doc is not None:
+                return self.doc
+            raise AssertionError(f"Unexpected get_doc lookup: {args}")
+
+        if len(args) == 1 and isinstance(args[0], dict):
+            payload = dict(args[0])
+            doc = _FakeLetterHeadDoc(**payload)
+
+            def _insert(ignore_permissions=False):
+                doc["source"] = "Image"
+                doc["content"] = ""
+                self.doc = doc
+                self.db.created = True
+                return doc
+
+            doc.insert = _insert
+            return doc
+
+        raise AssertionError(f"Unexpected get_doc call: {args}")
 
 
 if __name__ == "__main__":
