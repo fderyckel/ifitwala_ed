@@ -31,6 +31,7 @@ Today Ifitwala_Ed already enforces the correct broad shape for governed reads:
 - business surfaces return server-owned `open_url` values instead of raw private paths
 - `open_org_communication_attachment(...)` re-checks communication visibility, then resolves a Drive grant just in time
 - Org Communication rows now also expose a stable `preview_url` route owned by Ed
+- staff, student, and guardian communication detail surfaces now render inline image previews and compact PDF preview tiles when those governed preview routes are available
 - planning-material surfaces now also expose stable `preview_url` routes for governed file resources in the staff course-plan and class-planning workspaces
 - the student learning space now also exposes stable `preview_url` routes for governed file resources on `CourseDetail.vue`
 - student task-material chips remain lightweight, but they also prefer `preview_url` over `open_url` when preview is available
@@ -44,9 +45,9 @@ What still does not exist yet:
 
 Drive now has a narrow image-derivative foundation, but Ed should still treat preview as partial rollout:
 
-- Org Communication can use `preview_url` where Drive reports a ready preview
+- Org Communication can use `preview_url` where Drive reports a ready preview, with file attachments rendering as image/PDF preview cards and links falling back to compact metadata cards
 - staff planning-material surfaces can use `preview_url` where Drive reports a ready preview
-- the student learning space can use `preview_url` where Drive reports a ready preview, while still keeping `open_url` explicit
+- the student learning space can use `preview_url` where Drive reports a ready preview, with richer resource cards keeping `open_url` explicit and task chips staying lightweight
 - other surfaces should still be treated as open/download-only until their stable preview routes exist
 
 ## Assessment Of The Proposal

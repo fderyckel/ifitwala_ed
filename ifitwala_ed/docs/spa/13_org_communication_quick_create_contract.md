@@ -119,7 +119,7 @@ Rules:
 8. The resolved audience may include staff, students, and/or guardians depending on the selected audience rows.
 9. `allow_private_notes` remains the school-side/private notes setting and must not be described in the UI or docs as recipient-visible thread sharing.
 
-## 4. Class-Event Attachment Contract
+## 4. Quick-Create Attachment Contract
 
 Status: Implemented
 
@@ -143,7 +143,7 @@ Test refs:
 Rules:
 
 1. The canonical governed attachment contract now lives in `ifitwala_ed/docs/files_and_policies/files_06_org_communication_attachment_contract.md`.
-2. `entryMode='class-event'` is the only quick-create mode that exposes attachment actions inline in this contract version.
+2. `entryMode='class-event'` and `entryMode='staff-home'` both expose the same inline attachment actions in the shared quick-create overlay.
 3. The overlay exposes only:
    - `Add file`
    - `Add link`
@@ -153,12 +153,13 @@ Rules:
    - owner `Org Communication`
    - one deterministic slot `communication_attachment__<row_name>`
    - Drive binding role `communication_attachment`
-7. For class-event mode, attachment governance remains organization-owned, but folder placement and browse context are derived from the locked class context:
+7. For `entryMode='staff-home'`, attachment governance context is resolved from the persisted communication itself using the canonical org-communication attachment contract. The SPA must not derive storage scope, folder paths, or file URLs on its own.
+8. For class-event mode, attachment governance remains organization-owned, but folder placement and browse context are derived from the locked class context:
    - course
    - student group
    - issuing school
-8. External links are allowed as attachment rows, but they remain explicit `https://` links and do not replace governed upload for local files.
-9. The archive/detail surface receives attachment rows with server-owned `open_url` values. The SPA must not construct or guess private media paths.
+9. External links are allowed as attachment rows, but they remain explicit `https://` links and do not replace governed upload for local files.
+10. The archive/detail surface receives attachment rows with server-owned `open_url` values and optional server-owned `preview_url` values. The SPA must not construct or guess private media paths.
 
 ## 5. Overlay and Invalidation Contract
 

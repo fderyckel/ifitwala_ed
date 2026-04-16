@@ -279,6 +279,83 @@ describe('OrgCommunicationArchive', () => {
 		);
 	});
 
+	it('renders governed attachment preview cards in archive detail when preview routes exist', async () => {
+		getArchiveContextMock.mockResolvedValue({
+			my_teams: [],
+			my_groups: [],
+			schools: [],
+			organizations: [],
+			defaults: {
+				organization: null,
+				school: null,
+				team: null,
+			},
+		});
+		getOrgCommunicationFeedMock.mockResolvedValue({
+			items: [buildItem()],
+			has_more: false,
+			start: 0,
+			page_length: 10,
+		});
+		getOrgCommunicationItemMock.mockResolvedValue({
+			name: 'COMM-0001',
+			message_html: '<p>Body</p>',
+			attachments: [
+				{
+					row_name: 'ATT-IMAGE',
+					kind: 'file',
+					title: 'Event photo',
+					file_name: 'event-photo.jpg',
+					file_size: 2048,
+					preview_url: '/api/method/ifitwala_ed.api.file_access.preview_org_communication_attachment?row_name=ATT-IMAGE',
+					open_url: '/api/method/ifitwala_ed.api.file_access.open_org_communication_attachment?row_name=ATT-IMAGE',
+				},
+				{
+					row_name: 'ATT-PDF',
+					kind: 'file',
+					title: 'Agenda',
+					file_name: 'agenda.pdf',
+					file_size: 4096,
+					preview_url: '/api/method/ifitwala_ed.api.file_access.preview_org_communication_attachment?row_name=ATT-PDF',
+					open_url: '/api/method/ifitwala_ed.api.file_access.open_org_communication_attachment?row_name=ATT-PDF',
+				},
+				{
+					row_name: 'ATT-LINK',
+					kind: 'link',
+					title: 'Reference site',
+					external_url: 'https://example.com/reference',
+					open_url: 'https://example.com/reference',
+				},
+			],
+		});
+		getOrgCommInteractionSummaryMock.mockResolvedValue({
+			'COMM-0001': {
+				counts: {},
+				self: null,
+				reaction_counts: {},
+				reactions_total: 0,
+				comments_total: 0,
+			},
+		});
+
+		mountArchive();
+		await flushUi();
+
+		const imagePreview = document.querySelector('[data-communication-attachment-kind="image"] img');
+		expect(imagePreview?.getAttribute('src')).toContain('ATT-IMAGE');
+
+		const pdfPreview = document.querySelector('[data-communication-attachment-kind="pdf"]');
+		expect(pdfPreview?.getAttribute('href')).toContain('ATT-PDF');
+
+		const openOriginalLinks = Array.from(document.querySelectorAll('a')).filter(anchor =>
+			(anchor.textContent || '').includes('Open original')
+		);
+		expect(openOriginalLinks.length).toBeGreaterThan(0);
+		expect(openOriginalLinks[0]?.getAttribute('href')).toContain('open_org_communication_attachment');
+		expect(document.body.textContent || '').toContain('Reference site');
+		expect(document.body.textContent || '').toContain('Open link');
+	});
+
 	it('limits student-group options to the selected school and current organization scope', async () => {
 		getArchiveContextMock.mockResolvedValue({
 			my_teams: [],

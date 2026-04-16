@@ -760,4 +760,68 @@ describe('OrgCommunicationQuickCreateModal', () => {
 		);
 		expect(document.body.textContent || '').toContain('Reference sheet');
 	});
+
+	it('auto-saves a staff-home draft before adding a link attachment and publishes by update', async () => {
+		getOptionsMock.mockResolvedValue(quickCreateOptions);
+		createOrgCommunicationQuickMock
+			.mockResolvedValueOnce({
+				ok: true,
+				status: 'created',
+				name: 'COMM-DRAFT-2',
+				title: 'Weekly staff update',
+			})
+			.mockResolvedValueOnce({
+				ok: true,
+				status: 'updated',
+				name: 'COMM-DRAFT-2',
+				title: 'Weekly staff update',
+			});
+		addOrgCommunicationLinkMock.mockResolvedValue({
+			ok: true,
+			org_communication: 'COMM-DRAFT-2',
+			attachment: {
+				row_name: 'row-link-staff',
+				kind: 'link',
+				title: 'Policy PDF',
+				external_url: 'https://example.com/policy.pdf',
+				open_url: 'https://example.com/policy.pdf',
+			},
+		});
+
+		mountModal();
+		await flushUi();
+
+		clickRecipient('Students');
+		await flushUi();
+		clickButton('Add link');
+		await flushUi();
+		setInputByPlaceholder('https://example.com/resource.pdf', 'https://example.com/policy.pdf');
+		setInputByPlaceholder('Optional display label', 'Policy PDF');
+		await flushUi();
+		clickButton('Add link');
+		await flushUi();
+		clickButton('Publish');
+		await flushUi();
+
+		expect(createOrgCommunicationQuickMock).toHaveBeenNthCalledWith(
+			1,
+			expect.objectContaining({
+				name: null,
+				status: 'Draft',
+			})
+		);
+		expect(addOrgCommunicationLinkMock).toHaveBeenCalledWith({
+			org_communication: 'COMM-DRAFT-2',
+			title: 'Policy PDF',
+			external_url: 'https://example.com/policy.pdf',
+		});
+		expect(createOrgCommunicationQuickMock).toHaveBeenNthCalledWith(
+			2,
+			expect.objectContaining({
+				name: 'COMM-DRAFT-2',
+				status: 'Published',
+			})
+		);
+		expect(document.body.textContent || '').toContain('Policy PDF');
+	});
 });

@@ -93,9 +93,9 @@ function reconcileLegacyEmployeeStatusFilter(listview) {
 		filterArea.add(filter);
 	});
 
-	if (typeof listview.refresh === "function") {
-		listview.refresh();
-	}
+	// Refreshing here runs before ReportView finishes bootstrapping its view state
+	// and can corrupt the route into `/view/undefined`.
+
 }
 
 function isLegacyActiveStatusFilter(filter) {

@@ -247,6 +247,116 @@ describe('GuardianCommunicationCenter', () => {
 		expect(document.body.textContent || '').toContain('Full body')
 	})
 
+	it('renders governed attachment preview cards inside the guardian communication detail', async () => {
+		getGuardianCommunicationCenterMock.mockResolvedValue({
+			meta: {
+				generated_at: '2026-04-15T09:00:00',
+				source: 'all',
+				student: null,
+			},
+			family: {
+				children: [{ student: 'STU-1', full_name: 'Amina Example', school: 'School One' }],
+			},
+			summary: {
+				total_items: 1,
+				source_counts: { school: 1 },
+				unread_items: 1,
+			},
+			items: [
+				{
+					kind: 'org_communication',
+					item_id: 'org::COMM-1',
+					sort_at: '2026-04-14T08:00:00',
+					source_type: 'school',
+					source_label: 'School Update',
+					context_label: 'School One',
+					matched_children: [
+						{ student: 'STU-1', full_name: 'Amina Example', school: 'School One' },
+					],
+					is_unread: true,
+					org_communication: {
+						name: 'COMM-1',
+						title: 'Whole-school reminder',
+						communication_type: 'Reminder',
+						status: 'Published',
+						priority: 'Normal',
+						portal_surface: 'Guardian Portal',
+						school: 'School One',
+						organization: 'ORG-1',
+						publish_from: '2026-04-14T08:00:00',
+						publish_to: null,
+						brief_start_date: null,
+						brief_end_date: null,
+						interaction_mode: 'Student Q&A',
+						allow_private_notes: 0,
+						allow_public_thread: 1,
+						snippet: 'Bring the signed form tomorrow.',
+						has_active_thread: true,
+					},
+				},
+			],
+			total_count: 1,
+			has_more: false,
+			start: 0,
+			page_length: 24,
+		})
+		getOrgCommInteractionSummaryMock.mockResolvedValue({
+			'COMM-1': {
+				counts: {},
+				reaction_counts: {},
+				reactions_total: 0,
+				comments_total: 0,
+				self: null,
+			},
+		})
+		getOrgCommunicationItemMock.mockResolvedValue({
+			name: 'COMM-1',
+			title: 'Whole-school reminder',
+			message_html: '<p>Full body</p>',
+			communication_type: 'Reminder',
+			priority: 'Normal',
+			publish_from: '2026-04-14T08:00:00',
+			attachments: [
+				{
+					row_name: 'ATT-IMAGE',
+					kind: 'file',
+					title: 'Poster',
+					file_name: 'poster.webp',
+					file_size: 3072,
+					preview_url: '/api/method/ifitwala_ed.api.file_access.preview_org_communication_attachment?row_name=ATT-IMAGE',
+					open_url: '/api/method/ifitwala_ed.api.file_access.open_org_communication_attachment?row_name=ATT-IMAGE',
+				},
+				{
+					row_name: 'ATT-LINK',
+					kind: 'link',
+					title: 'School site',
+					external_url: 'https://example.com/school',
+					open_url: 'https://example.com/school',
+				},
+			],
+		})
+		markOrgCommunicationReadMock.mockResolvedValue({
+			ok: true,
+			org_communication: 'COMM-1',
+			read_at: '2026-04-15T09:05:00',
+		})
+
+		mountGuardianCommunicationCenter()
+		await flushUi()
+
+		const readButton = Array.from(document.querySelectorAll('button')).find(button =>
+			button.textContent?.includes('Read update')
+		) as HTMLButtonElement | undefined
+		expect(readButton).toBeTruthy()
+		readButton?.click()
+		await flushUi()
+
+		const imagePreview = document.querySelector('[data-communication-attachment-kind="image"] img')
+		expect(imagePreview?.getAttribute('src')).toContain('ATT-IMAGE')
+		expect(document.body.textContent || '').toContain('School site')
+		expect(document.body.textContent || '').toContain('Open link')
+	})
+
 	it('reloads the feed when the child filter changes', async () => {
 		getGuardianCommunicationCenterMock
 			.mockResolvedValueOnce({

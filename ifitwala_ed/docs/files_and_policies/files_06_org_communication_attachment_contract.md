@@ -122,3 +122,4 @@ Rules:
 4. Those stable routes are not durable storage URLs; Drive grants remain short-lived and are resolved at request time.
 5. Private file URLs must never be constructed in the client.
 6. Authored-history owner access remains aligned with the existing `allow_owner=True` attachment-open rule.
+7. Archive/detail surfaces may render inline image previews and compact PDF preview tiles from `preview_url`, but external links and unsupported files must still degrade to compact metadata cards instead of raw-path embeds.

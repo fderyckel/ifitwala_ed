@@ -169,19 +169,9 @@
 							class="mt-5 space-y-2"
 						>
 							<p class="type-body-strong text-ink">Attachments</p>
-							<div class="flex flex-wrap gap-2">
-								<a
-									v-for="attachment in communicationDetail(item.org_communication.name)
-										?.attachments || []"
-									:key="attachment.row_name"
-									:href="attachment.preview_url || attachment.open_url"
-									target="_blank"
-									rel="noreferrer"
-									class="inline-flex items-center rounded-full border border-line-soft bg-white px-3 py-1 text-xs font-medium text-ink transition hover:border-jacaranda/40 hover:bg-jacaranda/5"
-								>
-									{{ attachment.title || attachment.file_name || attachment.row_name }}
-								</a>
-							</div>
+							<CommunicationAttachmentPreviewList
+								:attachments="communicationDetail(item.org_communication.name)?.attachments || []"
+							/>
 						</div>
 					</div>
 				</div>
@@ -218,6 +208,7 @@ import { toast } from 'frappe-ui';
 import { RouterLink } from 'vue-router';
 
 import CommentThreadDrawer from '@/components/CommentThreadDrawer.vue';
+import CommunicationAttachmentPreviewList from '@/components/communication/CommunicationAttachmentPreviewList.vue';
 import InteractionEmojiChips from '@/components/InteractionEmojiChips.vue';
 import { formatLocalizedDateTime } from '@/lib/datetime';
 import { createCommunicationInteractionService } from '@/lib/services/communicationInteraction/communicationInteractionService';

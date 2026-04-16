@@ -75,7 +75,7 @@ Current resource preview behavior in that workspace:
 
 - governed file resources prefer stable Ed-owned `preview_url` routes when preview is available
 - session resources plus unit, class, and shared course resource shelves render inline image previews and compact PDF preview tiles
-- task-linked material chips remain lightweight inside assigned-work cards and keep `Open original` separate through `open_url`
+- task-linked material chips remain lightweight inside assigned-work cards and prefer `preview_url` without turning each task card into a document viewer
 
 This is the live LMS model.
 

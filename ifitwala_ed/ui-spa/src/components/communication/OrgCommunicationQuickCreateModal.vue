@@ -539,6 +539,136 @@
 										<section
 											class="rounded-[28px] border border-border/70 bg-white p-5 shadow-soft"
 										>
+											<div
+												class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between"
+											>
+												<div class="space-y-1">
+													<p class="type-overline text-ink/55">Attachments</p>
+													<h3 class="type-h3 text-ink">Files and links</h3>
+													<p class="type-caption text-ink/65">
+														{{ attachmentSectionHelpText }}
+													</p>
+												</div>
+												<div class="flex flex-wrap gap-2">
+													<button
+														type="button"
+														class="rounded-full border border-border/80 bg-surface px-3 py-1.5 type-button-label text-ink transition hover:border-jacaranda hover:text-jacaranda"
+														:disabled="submitting || attachmentSubmitting"
+														@click="triggerAttachmentFilePicker"
+													>
+														Add file
+													</button>
+													<button
+														type="button"
+														class="rounded-full border border-border/80 bg-surface px-3 py-1.5 type-button-label text-ink transition hover:border-jacaranda hover:text-jacaranda"
+														:disabled="submitting || attachmentSubmitting"
+														@click="showLinkComposer = !showLinkComposer"
+													>
+														{{ showLinkComposer ? 'Close link' : 'Add link' }}
+													</button>
+												</div>
+											</div>
+
+											<input
+												ref="attachmentFileInput"
+												type="file"
+												class="hidden"
+												multiple
+												@change="onAttachmentFileSelected"
+											/>
+
+											<div
+												v-if="attachmentErrorMessage"
+												class="mt-4 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3"
+											>
+												<p class="type-caption text-rose-900">{{ attachmentErrorMessage }}</p>
+											</div>
+
+											<div
+												v-if="showLinkComposer"
+												class="mt-4 rounded-[24px] border border-border/70 bg-surface-soft/70 p-4"
+											>
+												<div class="grid grid-cols-1 gap-3">
+													<div class="space-y-1">
+														<label class="type-label">Link URL</label>
+														<FormControl
+															v-model="linkDraft.external_url"
+															type="text"
+															placeholder="https://example.com/resource.pdf"
+															:disabled="submitting || attachmentSubmitting"
+														/>
+													</div>
+													<div class="space-y-1">
+														<label class="type-label">Link label</label>
+														<FormControl
+															v-model="linkDraft.title"
+															type="text"
+															placeholder="Optional display label"
+															:disabled="submitting || attachmentSubmitting"
+														/>
+													</div>
+												</div>
+												<div class="mt-3 flex flex-wrap justify-end gap-2">
+													<Button
+														appearance="secondary"
+														:disabled="submitting || attachmentSubmitting"
+														@click="resetLinkDraft"
+													>
+														Cancel
+													</Button>
+													<Button
+														appearance="primary"
+														:loading="attachmentSubmitting"
+														:disabled="submitting || attachmentSubmitting || !linkDraftReady"
+														@click="submitLinkAttachment"
+													>
+														Add link
+													</Button>
+												</div>
+											</div>
+
+											<div class="mt-4 space-y-3">
+												<div
+													v-for="attachment in attachmentRows"
+													:key="attachment.row_name"
+													class="flex flex-col gap-3 rounded-2xl border border-border/70 bg-surface-soft/70 px-4 py-3 sm:flex-row sm:items-center sm:justify-between"
+												>
+													<div class="min-w-0">
+														<p class="type-body-strong text-ink">{{ attachment.title }}</p>
+														<p class="mt-1 truncate type-caption text-ink/60">
+															{{ formatAttachmentMeta(attachment) }}
+														</p>
+													</div>
+													<div class="flex flex-wrap gap-2">
+														<a
+															v-if="attachment.preview_url || attachment.open_url"
+															:href="attachment.preview_url || attachment.open_url"
+															target="_blank"
+															rel="noopener noreferrer"
+															class="rounded-full border border-border/80 bg-white px-3 py-1.5 type-button-label text-ink transition hover:border-jacaranda hover:text-jacaranda"
+														>
+															Open
+														</a>
+														<button
+															type="button"
+															class="rounded-full border border-border/80 bg-white px-3 py-1.5 type-button-label text-slate-token transition hover:border-rose-300 hover:text-rose-700"
+															:disabled="submitting || attachmentSubmitting"
+															@click="deleteAttachment(attachment)"
+														>
+															Remove
+														</button>
+													</div>
+												</div>
+												<p v-if="!attachmentRows.length" class="type-caption text-ink/60">
+													No attachments yet. Keep it light: add only the file or link teachers and
+													families actually need.
+												</p>
+											</div>
+										</section>
+
+										<section
+											class="rounded-[28px] border border-border/70 bg-white p-5 shadow-soft"
+										>
 											<div class="space-y-1">
 												<p class="type-overline text-ink/55">Delivery</p>
 												<h3 class="type-h3 text-ink">Publishing and surfaces</h3>
@@ -1339,6 +1469,11 @@ const classEventScheduleLabel = computed(() => {
 	const parts = [props.sessionDate, props.sessionTimeLabel].filter(Boolean);
 	return parts.length ? parts.join(' · ') : 'Selected class event';
 });
+const attachmentSectionHelpText = computed(() =>
+	isClassEventMode.value
+		? 'Add a governed file or a link without leaving this class flow. The first attachment saves a draft automatically so the communication owns the file history.'
+		: 'Add a governed file or a link without leaving Staff Home. The first attachment saves a draft automatically so the communication owns the file history.'
+);
 const classEventContextCards = computed(() => [
 	{
 		label: 'Course',
