@@ -328,7 +328,7 @@
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-03-28 12:26:35.635942",
+ "modified": "2026-04-14 20:39:42.685759",
  "modified_by": "Administrator",
  "module": "HR",
  "name": "Professional Development Request",
@@ -413,6 +413,7 @@
   }
  ],
  "row_format": "Dynamic",
+ "search_fields": "employee",
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": [],

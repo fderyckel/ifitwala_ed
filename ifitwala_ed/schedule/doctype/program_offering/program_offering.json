@@ -312,7 +312,7 @@
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-03-28 12:30:33.858590",
+ "modified": "2026-04-14 23:03:13.419326",
  "modified_by": "Administrator",
  "module": "Schedule",
  "name": "Program Offering",
@@ -356,15 +356,13 @@
    "write": 1
   },
   {
-   "create": 1,
    "email": 1,
    "export": 1,
    "print": 1,
    "read": 1,
    "report": 1,
    "role": "Academic Assistant",
-   "share": 1,
-   "write": 1
+   "share": 1
   },
   {
    "email": 1,

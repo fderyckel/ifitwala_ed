@@ -1,7 +1,7 @@
 {
  "actions": [],
  "allow_import": 1,
- "autoname": "naming_series:",
+ "autoname": "naming_series",
  "creation": "2013-02-20 19:10:38",
  "doctype": "DocType",
  "document_type": "Setup",
@@ -268,13 +268,27 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-11-12 12:54:03.589896",
+ "modified": "2026-04-14 20:38:27.770555",
  "modified_by": "Administrator",
  "module": "HR",
  "name": "Leave Allocation",
  "naming_rule": "By \"Naming Series\" field",
  "owner": "Administrator",
  "permissions": [
+  {
+   "cancel": 1,
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Administrator",
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  },
   {
    "amend": 1,
    "cancel": 1,
@@ -304,6 +318,15 @@
    "share": 1,
    "submit": 1,
    "write": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Academic Admin",
+   "share": 1
   }
  ],
  "row_format": "Dynamic",

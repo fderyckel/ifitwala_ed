@@ -1,33 +1,37 @@
 {
  "actions": [],
  "allow_rename": 1,
- "autoname": "format:PDR-{YYYY}-{####}",
- "creation": "2026-03-20 09:59:26.000000",
+ "autoname": "PDR-.YY.-.####",
+ "creation": "2026-03-20 09:59:26",
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
   "section_break_scope",
   "professional_development_request",
   "employee",
+  "professional_development_budget",
+  "professional_development_theme",
+  "column_break_xcsq",
   "organization",
   "school",
   "academic_year",
-  "professional_development_budget",
-  "professional_development_theme",
   "section_break_details",
   "title",
   "professional_development_type",
-  "provider_name",
-  "location",
   "start_datetime",
   "end_datetime",
+  "column_break_jsdq",
+  "provider_name",
+  "location",
   "status",
   "section_break_finance",
   "estimated_total",
-  "actual_total",
   "professional_development_encumbrance",
+  "column_break_onto",
+  "actual_total",
   "section_break_links",
   "employee_booking",
+  "column_break_udvs",
   "professional_development_outcome"
  ],
  "fields": [
@@ -179,15 +183,32 @@
    "label": "Professional Development Outcome",
    "options": "Professional Development Outcome",
    "read_only": 1
+  },
+  {
+   "fieldname": "column_break_xcsq",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "column_break_jsdq",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "column_break_onto",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "column_break_udvs",
+   "fieldtype": "Column Break"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-03-20 10:37:48.000000",
+ "modified": "2026-04-14 20:42:17.764584",
  "modified_by": "Administrator",
  "module": "HR",
  "name": "Professional Development Record",
+ "naming_rule": "Expression",
  "owner": "Administrator",
  "permissions": [
   {
@@ -266,6 +287,11 @@
    "role": "Accounts User",
    "share": 1,
    "write": 1
+  },
+  {
+   "read": 1,
+   "report": 1,
+   "role": "Accreditation Visitor"
   }
  ],
  "row_format": "Dynamic",
