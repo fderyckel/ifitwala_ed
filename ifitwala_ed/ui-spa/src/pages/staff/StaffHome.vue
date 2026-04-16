@@ -735,7 +735,6 @@ const analyticsCategories: StaffHomeAnalyticsCategory[] = [
 				label: 'Organizational Chart',
 				to: { name: 'staff-organization-chart' },
 			},
-			{ label: 'Leave Balance', to: '/analytics/staff/leave-balance', capability: 'analytics_hr' },
 			{
 				label: 'My Growth',
 				to: { name: 'staff-professional-development' },
@@ -757,11 +756,6 @@ const analyticsCategories: StaffHomeAnalyticsCategory[] = [
 				label: 'Room Occupancy',
 				to: { name: 'staff-room-utilization' },
 				capability: 'room_utilization_page',
-			},
-			{
-				label: 'Bus & Route Load',
-				to: '/analytics/scheduling/bus-route-load',
-				capability: 'analytics_scheduling',
 			},
 		],
 	},
@@ -787,11 +781,6 @@ const analyticsCategories: StaffHomeAnalyticsCategory[] = [
 		description: 'Safeguarding signals and audit readiness.',
 		icon: 'shield',
 		links: [
-			{
-				label: 'Audit Readiness',
-				to: '/analytics/compliance/audit-readiness',
-				capability: 'analytics_attendance_admin',
-			},
 			{
 				label: 'Policy Acknowledgments',
 				to: { name: 'staff-policy-signature-analytics' },

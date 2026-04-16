@@ -109,11 +109,13 @@ def _build_rows(filters: frappe._dict) -> list[dict]:
         student_id = student.student
         patient = patient_map.get(student_id)
         g_info = guardian_map.get(student_id) or {}
-        medical_html = _render_medical_summary(patient)
+        medical_entries = _collect_medical_entries(patient)
+        medical_html = _render_medical_summary(medical_entries)
         if not medical_html:
             medical_html = f"<span class='text-muted'>{escape_html(_('No medical information provided.'))}</span>"
 
         guardian_html = g_info.get("html")
+        has_guardian_contacts = bool(guardian_html)
         if not guardian_html:
             guardian_html = f"<span class='text-muted'>{escape_html(_('No guardian contacts recorded.'))}</span>"
 
@@ -129,6 +131,11 @@ def _build_rows(filters: frappe._dict) -> list[dict]:
                 "guardian_secondary_name": g_info.get("secondary_name"),
                 "guardian_secondary_phone": g_info.get("secondary_phone"),
                 "_student_image": student.student_image,
+                "_medical_entries": medical_entries,
+                "_medical_entry_count": len(medical_entries),
+                "_has_medical_info": bool(medical_entries),
+                "_guardian_contact_count": g_info.get("count", 0),
+                "_has_guardian_contacts": has_guardian_contacts,
                 "_group_label": group_label,
                 "_program_label": program_label,
                 "_school_label": school_label,
@@ -236,6 +243,7 @@ def _fetch_guardian_contacts(student_ids: list[str]) -> dict[str, dict]:
     return {
         student: {
             "html": "<hr class='guardian-divider'>".join(info["blocks"]),
+            "count": len(info["blocks"]),
             "primary_name": info.get("primary_name"),
             "primary_phone": info.get("primary_phone"),
             "secondary_name": info.get("secondary_name"),
@@ -333,19 +341,32 @@ def _unique_sequence(values: list[str | None]) -> list[str]:
     return result
 
 
-def _render_medical_summary(patient: frappe._dict | None) -> str:
+def _collect_medical_entries(patient: frappe._dict | None) -> list[dict[str, str]]:
     if not patient:
-        return ""
+        return []
 
-    lines = []
+    entries = []
     for df in _medical_field_defs():
         raw_value = patient.get(df["fieldname"])
         rendered = _format_field_value(raw_value, df["fieldtype"])
         if not rendered:
             continue
-        label = escape_html(df["label"])
-        lines.append(f"<div class='med-line'><span class='med-label'>{label}:</span> {rendered}</div>")
+        entries.append(
+            {
+                "fieldname": df["fieldname"],
+                "label": df["label"],
+                "value_html": rendered,
+            }
+        )
 
+    return entries
+
+
+def _render_medical_summary(entries: list[dict[str, str]]) -> str:
+    lines = []
+    for entry in entries:
+        label = escape_html(entry["label"])
+        lines.append(f"<div class='med-line'><span class='med-label'>{label}:</span> {entry['value_html']}</div>")
     return "".join(lines)
 
 

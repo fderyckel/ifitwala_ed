@@ -79,10 +79,19 @@ def ensure_print_settings_with_letterhead() -> bool:
     import frappe
 
     settings = frappe.get_single("Print Settings")
-    if int(settings.with_letterhead or 0) == 1:
+    changed = False
+
+    if int(settings.with_letterhead or 0) != 1:
+        settings.with_letterhead = 1
+        changed = True
+
+    if getattr(settings, "repeat_header_footer", None) is not None and int(settings.repeat_header_footer or 0) != 1:
+        settings.repeat_header_footer = 1
+        changed = True
+
+    if not changed:
         return False
 
-    settings.with_letterhead = 1
     settings.save(ignore_permissions=True)
     return True
 

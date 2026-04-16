@@ -77,11 +77,10 @@ class TestStudentProfilePrintFormat(unittest.TestCase):
         ):
             self.assertIn(token, self.html if "frappe.db.get_value" in token or "school_meta" in token else self.css)
 
-    def test_template_integrates_managed_letterhead_and_footer(self):
+    def test_template_integrates_managed_letterhead_without_inline_footer(self):
         for token in (
             "using_managed_letterhead",
             "{{ letter_head | safe }}",
-            "{{ footer | safe }}",
             "no_letterhead",
             "document-banner",
             "student-profile--with-letterhead",
@@ -92,6 +91,7 @@ class TestStudentProfilePrintFormat(unittest.TestCase):
                 if token.startswith("{{") or "managed_letterhead" in token or token == "no_letterhead"
                 else self.css,
             )
+        self.assertNotIn("{{ footer | safe }}", self.html)
 
     def test_linked_contact_and_address_tokens_are_present(self):
         for token in (

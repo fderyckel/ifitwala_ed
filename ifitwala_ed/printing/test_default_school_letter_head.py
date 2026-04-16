@@ -71,6 +71,17 @@ class TestDefaultSchoolLetterHead(unittest.TestCase):
         self.assertEqual(fake_frappe.doc["content"], values["content"])
         self.assertEqual(fake_frappe.doc.save_count, 1)
 
+    def test_print_settings_helper_enables_letterhead_and_repeat_footer(self):
+        fake_frappe = _FakePrintSettingsFrappe(with_letterhead=0, repeat_header_footer=0)
+
+        with patch.dict(sys.modules, {"frappe": fake_frappe}):
+            changed = letter_head_sync.ensure_print_settings_with_letterhead()
+
+        self.assertTrue(changed)
+        self.assertEqual(fake_frappe.settings.with_letterhead, 1)
+        self.assertEqual(fake_frappe.settings.repeat_header_footer, 1)
+        self.assertEqual(fake_frappe.settings.save_count, 1)
+
     def test_template_uses_only_in_scope_school_and_organization_fallbacks(self):
         for token in (
             'doc.get("school")',
@@ -433,6 +444,30 @@ class _FakeSyncFrappe:
             return doc
 
         raise AssertionError(f"Unexpected get_doc call: {args}")
+
+
+class _FakePrintSettings:
+    def __init__(self, with_letterhead=0, repeat_header_footer=0):
+        self.with_letterhead = with_letterhead
+        self.repeat_header_footer = repeat_header_footer
+        self.save_count = 0
+
+    def save(self, ignore_permissions=False):
+        self.save_count += 1
+        return self
+
+
+class _FakePrintSettingsFrappe:
+    def __init__(self, with_letterhead=0, repeat_header_footer=0):
+        self.settings = _FakePrintSettings(
+            with_letterhead=with_letterhead,
+            repeat_header_footer=repeat_header_footer,
+        )
+
+    def get_single(self, doctype):
+        if doctype != "Print Settings":
+            raise AssertionError(f"Unexpected singleton lookup: {doctype}")
+        return self.settings
 
 
 if __name__ == "__main__":

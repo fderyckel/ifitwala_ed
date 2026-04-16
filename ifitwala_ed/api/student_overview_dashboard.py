@@ -109,15 +109,6 @@ def _get_student_scope(user: str) -> List[str]:
     return []
 
 
-def _normalize_params(obj):
-    if isinstance(obj, str):
-        try:
-            return frappe.parse_json(obj) or {}
-        except Exception:
-            return {}
-    return obj or {}
-
-
 @frappe.whitelist()
 def get_filter_meta():
     """
@@ -232,22 +223,6 @@ def search_students(search_text: str = "", school: str | None = None, program: s
     Blank search: up to 20 students in scope (no name filter).
     """
     user, roles, visible_students = _ensure_student_overview_access()
-
-    # ----- Helper: program subtree (NestedSet) -----
-    def _get_program_subtree(program_name: str | None) -> list[str] | None:
-        if not program_name:
-            return None
-        value = frappe.db.get_value("Program", program_name, ["lft", "rgt"])
-        if not value:
-            return [program_name]
-        lft, rgt = value
-        if lft is None or rgt is None:
-            return [program_name]
-        return frappe.get_all(
-            "Program",
-            filters={"lft": (">=", lft), "rgt": ("<=", rgt)},
-            pluck="name",
-        )
 
     # ----- Student / Guardian path -----
     if visible_students:
@@ -625,7 +600,6 @@ def _task_rows(student: str, program: str | None):
             t.student_group,
             t.delivery_type,
             t.due_date,
-            t.status as task_status,
             t.program,
             t.academic_year,
             ts.status,
