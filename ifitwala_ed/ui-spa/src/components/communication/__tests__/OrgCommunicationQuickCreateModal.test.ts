@@ -579,10 +579,10 @@ describe('OrgCommunicationQuickCreateModal', () => {
 		await flushUi();
 
 		const privateNotesLabel = Array.from(document.querySelectorAll('label')).find(node =>
-			(node.textContent || '').includes('Allow private questions or notes to school staff.')
+			(node.textContent || '').includes('Let teachers and staff reply privately.')
 		);
 		const publicThreadLabel = Array.from(document.querySelectorAll('label')).find(node =>
-			(node.textContent || '').includes('Allow shared audience thread entries for recipients.')
+			(node.textContent || '').includes('Let students or families reply in the shared thread.')
 		);
 
 		const privateNotesInput = privateNotesLabel?.querySelector('input') as HTMLInputElement | null;

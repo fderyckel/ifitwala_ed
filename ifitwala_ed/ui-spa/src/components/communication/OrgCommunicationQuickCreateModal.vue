@@ -925,9 +925,7 @@
 														:disabled="submitting || privateNotesDisabled"
 													/>
 													<span>
-														<span class="block">
-															Allow private questions or notes to school staff.
-														</span>
+														<span class="block"> Let teachers and staff reply privately. </span>
 														<span class="mt-1 block text-[11px] text-ink/60">
 															{{ privateNotesHelpText }}
 														</span>
@@ -944,7 +942,7 @@
 													/>
 													<span>
 														<span class="block">
-															Allow shared audience thread entries for recipients.
+															Let students or families reply in the shared thread.
 														</span>
 														<span class="mt-1 block text-[11px] text-ink/60">
 															{{ publicThreadHelpText }}
@@ -1277,28 +1275,28 @@ const publicThreadDisabled = computed(
 const privateNotesHelpText = computed(() => {
 	const mode = String(form.interaction_mode || '').trim();
 	if (mode === 'Structured Feedback') {
-		return 'School-side only when the selected interaction mode supports it.';
+		return 'Use this when staff may need private follow-up that students or families will not see.';
 	}
 	if (mode === 'Student Q&A') {
-		return 'Student Q&A already switches between shared audience thread and private notes through the setting below.';
+		return 'For Student Q&A, use the setting below to choose shared replies or private staff notes.';
 	}
 	if (mode === 'Staff Comments') {
 		return 'Staff Comments stays inside the staff thread, so this setting is not used.';
 	}
-	return 'Enable a supported interaction mode to use private notes.';
+	return 'Choose Structured Feedback if you want staff-only notes or questions here.';
 });
 const publicThreadHelpText = computed(() => {
 	const mode = String(form.interaction_mode || '').trim();
 	if (mode === 'Student Q&A') {
-		return "Visible only to students or guardians in this communication's resolved audience. When off, recipient entries stay private to school staff.";
+		return 'Students or families in the selected audience can reply here. Turn this off to keep replies visible only to staff.';
 	}
 	if (mode === 'Structured Feedback') {
-		return 'Used only on supported surfaces for recipient-visible feedback entries. This does not control staff-only discussion.';
+		return 'Use this when recipients should be able to see and respond in the shared thread.';
 	}
 	if (mode === 'Staff Comments') {
 		return 'Staff Comments stays inside the staff thread, so this setting is not used.';
 	}
-	return 'Enable a supported interaction mode to use shared audience thread entries.';
+	return 'Choose Student Q&A or Structured Feedback if recipients should reply in a shared thread.';
 });
 const organizationHelpText = computed(
 	() => 'Organization is required and defaults from your user scope.'

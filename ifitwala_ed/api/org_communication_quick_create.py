@@ -83,6 +83,11 @@ def _parse_audiences(audiences) -> list[dict]:
             "include_descendants": _as_check(raw_row.get("include_descendants")),
             "note": _clean_text(raw_row.get("note")),
         }
+        if row["target_mode"] == "Organization":
+            row["school"] = None
+            row["team"] = None
+            row["student_group"] = None
+            row["include_descendants"] = 0
         for fieldname in RECIPIENT_TOGGLE_FIELDS:
             row[fieldname] = _as_check(raw_row.get(fieldname))
         cleaned_rows.append(row)
