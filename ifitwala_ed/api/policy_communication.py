@@ -541,6 +541,7 @@ def get_policy_inform_payload(
         "policy_key": (row.get("policy_key") or "").strip() or None,
         "policy_title": (row.get("policy_title") or "").strip() or None,
         "policy_label": policy_label,
+        "applies_to_tokens": list(row.get("applies_to_tokens") or []),
         "version_label": (row.get("version_label") or "").strip() or None,
         "policy_organization": policy_organization or None,
         "policy_school": policy_school or None,

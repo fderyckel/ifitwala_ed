@@ -3,8 +3,8 @@ title: "Task: The Reusable Learning and Assessment Blueprint"
 slug: task
 category: Assessment
 doc_order: 4
-version: "1.8.0"
-last_change_date: "2026-04-05"
+version: "1.8.1"
+last_change_date: "2026-04-16"
 summary: "Author reusable learning tasks once, then deliver them to groups with the right grading mode, evidence expectations, and task-specific supporting materials."
 seo_title: "Task: The Reusable Learning and Assessment Blueprint"
 seo_description: "Author reusable learning tasks once, then deliver them to groups with the right grading mode, evidence expectations, and rubric strategy."
@@ -124,6 +124,7 @@ Test refs: `ifitwala_ed/utilities/test_governed_uploads_task_flows.py`
 - `api/task.py::search_reusable_tasks()` resolves one course-scoped task library at a time and returns only the current user's own tasks plus tasks explicitly shared with that course team.
 - `api/task.py::create_task_delivery()` now owns the assign-existing-task flow and validates that private tasks stay private until shared.
 - The task overlay keeps teachers in-context after task creation so they can add task materials without leaving the workflow.
+- After a new task is created, the same overlay now prefers governed `preview_url` routes for file-backed task materials and renders inline image previews plus compact PDF preview tiles when available.
 - The task overlay does not expose task-material editing after reusing an existing task, because class-local delivery work must not silently mutate a shared reusable definition.
 - No current workflow may treat a task created from one class/session flow as silently promoted shared curriculum just because it is reusable later.
 

@@ -3,7 +3,7 @@ title: "Course Plan: Shared Curriculum Version For A Course"
 slug: course-plan
 category: Curriculum
 doc_order: 4
-version: "1.5.5"
+version: "1.5.6"
 last_change_date: "2026-04-16"
 summary: "Define the governed shared curriculum version for a course, including SPA-first creation from the course-plan index, cycle labeling, publication status, shared summary context, the calendar-aware curriculum timeline, and the governed workspace used to author units, quiz banks, and assignment-ready curriculum assets."
 seo_title: "Course Plan: Shared Curriculum Version For A Course"
@@ -13,7 +13,7 @@ seo_description: "Define the governed shared curriculum version for a course, in
 ## Course Plan: Shared Curriculum Version For A Course
 
 Status: Implemented
-Code refs: `ifitwala_ed/curriculum/doctype/course_plan/course_plan.json`, `ifitwala_ed/curriculum/doctype/course_plan/course_plan.py`, `ifitwala_ed/api/teaching_plans.py`, `ifitwala_ed/api/quiz.py`, `ifitwala_ed/ui-spa/src/pages/staff/CoursePlanIndex.vue`, `ifitwala_ed/ui-spa/src/pages/staff/CoursePlanWorkspace.vue`, `ifitwala_ed/ui-spa/src/components/planning/CoursePlanTimelineCard.vue`, `ifitwala_ed/ui-spa/src/pages/staff/ClassPlanning.vue`
+Code refs: `ifitwala_ed/curriculum/doctype/course_plan/course_plan.json`, `ifitwala_ed/curriculum/doctype/course_plan/course_plan.py`, `ifitwala_ed/api/teaching_plans.py`, `ifitwala_ed/api/quiz.py`, `ifitwala_ed/ui-spa/src/pages/staff/CoursePlanIndex.vue`, `ifitwala_ed/ui-spa/src/pages/staff/CoursePlanWorkspace.vue`, `ifitwala_ed/ui-spa/src/components/planning/course-plan-workspace/CoursePlanWorkspaceHeader.vue`, `ifitwala_ed/ui-spa/src/components/planning/course-plan-workspace/CoursePlanUnitEditor.vue`, `ifitwala_ed/ui-spa/src/components/planning/course-plan-workspace/CoursePlanQuizBanksSection.vue`, `ifitwala_ed/ui-spa/src/components/planning/CoursePlanTimelineCard.vue`, `ifitwala_ed/ui-spa/src/lib/planning/coursePlanWorkspace.ts`, `ifitwala_ed/ui-spa/src/pages/staff/ClassPlanning.vue`
 Test refs: `ifitwala_ed/api/test_teaching_plans.py`, `ifitwala_ed/api/test_quiz.py`, `ifitwala_ed/ui-spa/src/lib/services/staff/__tests__/staffTeachingService.test.ts`, `ifitwala_ed/ui-spa/src/pages/staff/__tests__/CoursePlanWorkspace.test.ts`
 
 `Course Plan` is the governed shared curriculum version for a `Course`. It defines the academic-year or cycle-level planning record that owns the `Unit Plan` backbone and the shared summary educators see before they begin class-level adaptation.
@@ -34,7 +34,7 @@ Test refs: None
 ## Where It Is Used Across The ERP
 
 Status: Implemented
-Code refs: `ifitwala_ed/curriculum/doctype/unit_plan/unit_plan.json`, `ifitwala_ed/curriculum/doctype/class_teaching_plan/class_teaching_plan.json`, `ifitwala_ed/api/teaching_plans.py`, `ifitwala_ed/ui-spa/src/pages/staff/CoursePlanIndex.vue`, `ifitwala_ed/ui-spa/src/pages/staff/CoursePlanWorkspace.vue`, `ifitwala_ed/ui-spa/src/pages/staff/ClassPlanning.vue`
+Code refs: `ifitwala_ed/curriculum/doctype/unit_plan/unit_plan.json`, `ifitwala_ed/curriculum/doctype/class_teaching_plan/class_teaching_plan.json`, `ifitwala_ed/api/teaching_plans.py`, `ifitwala_ed/ui-spa/src/pages/staff/CoursePlanIndex.vue`, `ifitwala_ed/ui-spa/src/pages/staff/CoursePlanWorkspace.vue`, `ifitwala_ed/ui-spa/src/components/planning/course-plan-workspace/CoursePlanUnitEditor.vue`, `ifitwala_ed/ui-spa/src/components/planning/course-plan-workspace/CoursePlanQuizBanksSection.vue`, `ifitwala_ed/ui-spa/src/pages/staff/ClassPlanning.vue`
 Test refs: `ifitwala_ed/api/test_teaching_plans.py`, `ifitwala_ed/ui-spa/src/lib/services/staff/__tests__/staffTeachingService.test.ts`
 
 - Parent planning context for [**Unit Plan**](/docs/en/unit-plan/) rows.
@@ -116,11 +116,14 @@ Test refs: `ifitwala_ed/api/test_teaching_plans.py`, `ifitwala_ed/api/test_quiz.
 - Rich course-plan HTML is sanitized server-side before save so Desk/SPAs can preserve formatting without storing script-bearing markup.
 - Hot course-plan index/load/save endpoints now emit bounded `ifitwala.curriculum` event logs with status and elapsed time for Cloud Logging metrics and alerting.
 - The staff course-plan workspace uses one bounded bootstrap payload and explicit save mutations rather than client waterfalls.
+- `CoursePlanWorkspace.vue` remains the single route/bootstrap/save owner, while section rendering and shared draft helpers now live in extracted `ui-spa/src/components/planning/course-plan-workspace/` components plus `ui-spa/src/lib/planning/coursePlanWorkspace.ts` so future analytics cards can compose onto the same bounded surface without creating a second orchestration layer.
 - Long course-plan workspace cards such as Overview, Timeline, Plan Resources, Unit Content, and Quiz Banks can now collapse and persist their open/closed state per course plan so staff can reduce scroll noise without losing context.
 - The course-plan workspace now merges the governed-curriculum header and Quick Access into one top workspace-header card so shared context, quick actions, and section jumps stay together before the editable sections begin.
 - The selected-unit editor inside the staff course-plan workspace now groups unit setup, core narrative, learning focus, standards, reflections, and resources into distinct internal panels, keeps unit save actions visible both near the top of the editor and through a sticky save rail while staff scroll, and lets staff collapse long unit sections individually so the workspace starts cleaner.
 - Within the selected-unit editor, long rich-text authoring areas such as core narrative and learning focus now stack vertically instead of forcing multi-column reading for dense content.
+- Shared course-plan workspace visuals now use `course-plan-*` component classes in `ui-spa/src/styles/components.css` instead of page-scoped styling, so extracted workspace sections can be reused on other curriculum surfaces without losing the styling contract.
 - Shared Plan Resources and Unit Resources in the staff course-plan workspace now surface governed `preview_url` routes for file attachments and keep `open_url` as the explicit original-file action; the route contract is stable, but the underlying file or derivative grant remains short-lived and server-resolved at request time.
+- Shared Plan Resources and Unit Resources still delegate to the canonical `PlanningResourcePanel` flow, so governed file upload/preview/open behavior and refresh ownership stay unchanged even though the surrounding workspace sections are now modularized.
 - In that same workspace, the two shared resource sections now render inline image thumbnails and compact PDF preview tiles when a governed preview route is available, instead of reducing every file resource to a text-only action row.
 - Quiz banks remain course-level assessment assets in the current schema, but the staff course-plan workspace is the current SPA authoring surface for them.
 - Assignment handoff from the course-plan workspace must stay prefilled into the canonical task-delivery overlay rather than creating a parallel assignment path.

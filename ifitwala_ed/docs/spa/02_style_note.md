@@ -357,6 +357,60 @@ Vue templates **must use these**, not raw Tailwind text utilities.
 
 ---
 
+### 6.3.1 Routed page headers are a shared contract
+
+Status: Planned normalization, mandatory for all newly touched routed staff pages
+
+Code refs:
+
+* `ui-spa/src/styles/components.css`
+* `ui-spa/src/pages/staff/OrgCommunicationArchive.vue`
+* `ui-spa/src/pages/staff/morning_brief/MorningBriefing.vue`
+* `ui-spa/src/pages/staff/StaffPolicies.vue`
+* `ui-spa/src/pages/staff/analytics/AcademicLoad.vue`
+* `ui-spa/src/pages/staff/analytics/PolicySignatureAnalytics.vue`
+* `ui-spa/src/pages/staff/analytics/StudentOverview.vue`
+* `ui-spa/src/pages/staff/analytics/StudentDemographicAnalytics.vue`
+
+Test refs:
+
+* None
+
+Observed drift examples:
+
+* `ui-spa/src/pages/staff/OrgCommunicationArchive.vue` and `ui-spa/src/pages/staff/morning_brief/MorningBriefing.vue` use `type-h1`
+* `ui-spa/src/pages/staff/StaffPolicies.vue`, `ui-spa/src/pages/staff/analytics/AcademicLoad.vue`, and `ui-spa/src/pages/staff/analytics/PolicySignatureAnalytics.vue` use `type-h2`
+* `ui-spa/src/pages/staff/analytics/StudentOverview.vue` and `ui-spa/src/pages/staff/analytics/StudentDemographicAnalytics.vue` bypass semantic helpers and change alignment
+
+Canonical target for route-level headers in `staff-shell` and `analytics-shell`:
+
+```vue
+<header class="page-header">
+  <div class="page-header__intro">
+    <h1 class="type-h1 text-canopy">Page title</h1>
+    <p class="type-meta text-slate-token/80">
+      One sentence that explains the page's operational purpose.
+    </p>
+  </div>
+  <div class="page-header__actions">
+    <!-- Date pills, refresh buttons, or page-scoped actions -->
+  </div>
+</header>
+```
+
+Rules:
+
+* The intro block is always left-aligned. Do not center it to "balance" actions, and do not right-align it.
+* Route-level titles use `<h1>` + `.type-h1`. `.type-h2` is for in-page section headings, not page titles.
+* The subtitle / top explanation uses `.type-meta` when present and should normally stay to one sentence. If more operational context is needed, move it into chips, badges, or the first surface block below the header.
+* Do not use raw Tailwind typography utilities (`text-base`, `text-2xl`, `tracking-tight`, etc.) for routed page titles or subtitles when semantic helpers already exist.
+* Actions live in a separate trailing cluster. On mobile they stack below the intro; on desktop they sit to the right. The actions cluster must not change the intro alignment.
+* Pages without a useful subtitle may omit it, but must not replace it with decorative filler text.
+* `page-header*` is the planned shared primitive. Until it exists in shared CSS, touched pages should mirror this structure directly instead of inventing page-local variants.
+* Student / guardian hero surfaces may keep their own accent language, but they must still follow the same principle: one route-level title block, semantic typography, and no ad-hoc alignment drift.
+
+---
+
 ### 6.4 Surfaces over colors
 
 Cards are surfaces, not boxes.
@@ -517,10 +571,11 @@ Before merging any Vue page styling change:
 
 1. Identify the owning surface and canonical root shell first
 2. Search `styles/components.css`, `styles/layout.css`, and sibling pages before adding a new primitive
-3. If a new token or semantic utility is needed, update `tokens.css`, `tailwind.config.js`, and this note in the same change
-4. Run `python3 scripts/spa_style_guardrails.py`
-5. Compare the touched page against at least one sibling route in the same surface
-6. If the page already contains drift, do not copy it into new code; either fix it or isolate it as explicit legacy debt
+3. Compare the route-level page header against this note and at least one sibling route in the same shell family before accepting any title/alignment change
+4. If a new token or semantic utility is needed, update `tokens.css`, `tailwind.config.js`, and this note in the same change
+5. Run `python3 scripts/spa_style_guardrails.py`
+6. Compare the touched page against at least one sibling route in the same surface
+7. If the page already contains drift, do not copy it into new code; either fix it or isolate it as explicit legacy debt
 
 ---
 

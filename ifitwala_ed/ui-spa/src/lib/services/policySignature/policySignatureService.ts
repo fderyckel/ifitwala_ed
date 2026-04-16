@@ -51,7 +51,7 @@ export function createPolicySignatureService() {
 	});
 
 	const getPolicyLibraryResource = createResource<GetPolicyLibraryResponse>({
-		url: 'ifitwala_ed.api.policy_signature.get_staff_policy_library',
+		url: 'ifitwala_ed.api.policy_signature.get_policy_library',
 		method: 'POST',
 		auto: false,
 	});

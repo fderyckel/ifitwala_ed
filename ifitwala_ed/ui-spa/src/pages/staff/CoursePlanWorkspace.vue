@@ -1,129 +1,18 @@
 <template>
-	<div class="staff-shell space-y-6">
-		<section class="overflow-hidden rounded-[2rem] border border-line-soft bg-white shadow-soft">
-			<div class="course-plan-workspace-header">
-				<div class="grid gap-6 lg:grid-cols-[minmax(0,1fr),auto] lg:items-end">
-					<div class="space-y-4">
-						<RouterLink
-							:to="{ name: 'staff-course-plan-index' }"
-							class="inline-flex items-center gap-2 type-caption text-ink/70 transition hover:text-ink"
-						>
-							<span>←</span>
-							<span>Back to Course Plans</span>
-						</RouterLink>
-						<div>
-							<p class="type-overline text-ink/60">Governed Curriculum</p>
-							<h1 class="mt-2 type-h1 text-ink">
-								{{ surface?.course_plan.title || coursePlan || 'Course Plan' }}
-							</h1>
-							<p class="mt-2 max-w-3xl type-body text-ink/80">
-								Shape the shared course backbone, capture reusable unit guidance, and build quiz
-								banks teachers can assign without leaving the staff SPA.
-							</p>
-						</div>
-					</div>
-					<div class="flex flex-wrap gap-2 lg:justify-end">
-						<button
-							type="button"
-							class="chip cursor-pointer transition hover:border-jacaranda/40 hover:bg-sky/20 hover:text-ink"
-							@click="jumpToSection(SECTION_IDS.overview)"
-						>
-							{{ surface?.course_plan.course_name || 'Course pending' }}
-						</button>
-						<button
-							type="button"
-							class="chip cursor-pointer transition hover:border-jacaranda/40 hover:bg-sky/20 hover:text-ink"
-							@click="jumpToSection(SECTION_IDS.units)"
-						>
-							{{ surface?.curriculum.unit_count || 0 }} units
-						</button>
-						<button
-							type="button"
-							class="chip cursor-pointer transition hover:border-jacaranda/40 hover:bg-sky/20 hover:text-ink"
-							@click="jumpToSection(SECTION_IDS.quizBanks)"
-						>
-							{{ surface?.assessment.quiz_question_banks.length || 0 }} quiz banks
-						</button>
-						<span class="chip">{{ surface?.course_plan.plan_status || 'Draft' }}</span>
-						<span class="chip">{{ canManagePlan ? 'Editable' : 'Read only' }}</span>
-					</div>
-				</div>
-
-				<template v-if="surface && navigationSections.length">
-					<div class="course-plan-workspace-header__divider" />
-
-					<div class="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
-						<div class="min-w-0">
-							<p class="type-overline text-ink/55">Quick Access</p>
-							<p class="mt-1 type-caption text-ink/65">
-								Jump to the next planning area without losing your place.
-							</p>
-						</div>
-
-						<div v-if="canManagePlan" class="flex flex-wrap gap-2">
-							<button
-								type="button"
-								class="if-action if-action--subtle"
-								:disabled="!selectedUnit"
-								@click="quickEditUnit"
-							>
-								Edit Unit
-							</button>
-							<button
-								type="button"
-								class="if-action if-action--subtle"
-								:disabled="!selectedUnit"
-								@click="quickUploadUnitFile"
-							>
-								Upload Unit PDF
-							</button>
-							<button
-								type="button"
-								class="if-action if-action--subtle"
-								:disabled="!selectedUnit"
-								@click="quickAddReflection"
-							>
-								Add Reflection
-							</button>
-							<button
-								type="button"
-								class="if-action if-action--subtle"
-								@click="quickStartQuizBank"
-							>
-								New Quiz Bank
-							</button>
-						</div>
-					</div>
-
-					<div class="mt-3 flex gap-2 overflow-x-auto pb-1">
-						<button
-							v-for="section in navigationSections"
-							:key="section.id"
-							type="button"
-							class="course-plan-quick-access-pill"
-							:class="
-								activeSectionId === section.id
-									? 'course-plan-quick-access-pill--active'
-									: 'course-plan-quick-access-pill--idle'
-							"
-							@click="jumpToSection(section.id)"
-						>
-							<span>{{ section.label }}</span>
-							<span
-								v-if="section.count !== undefined && section.count !== null"
-								class="course-plan-quick-access-pill__count"
-							>
-								{{ section.count }}
-							</span>
-						</button>
-					</div>
-
-					<p v-if="canManagePlan && !selectedUnit" class="mt-3 type-caption text-ink/65">
-						Select a governed unit first to unlock reflection and unit-resource shortcuts.
-					</p>
-				</template>
-			</div>
-		</section>
+	<div class="staff-shell space-y-6 course-plan-workspace">
+		<CoursePlanWorkspaceHeader
+			:course-plan="props.coursePlan"
+			:surface="surface"
+			:can-manage-plan="canManagePlan"
+			:navigation-sections="navigationSections"
+			:active-section-id="activeSectionId"
+			:selected-unit="selectedUnit"
+			@jump-to-section="jumpToSection"
+			@quick-edit-unit="quickEditUnit"
+			@quick-upload-unit-file="quickUploadUnitFile"
+			@quick-add-reflection="quickAddReflection"
+			@quick-start-quiz-bank="quickStartQuizBank"
+		/>
 
 		<section
 			v-if="errorMessage"
@@ -141,1803 +30,102 @@
 		</section>
 
 		<template v-else-if="surface">
-			<section
-				:id="SECTION_IDS.overview"
-				class="scroll-mt-40 rounded-[2rem] border border-line-soft bg-white p-6 shadow-soft"
-			>
-				<button
-					type="button"
-					class="flex w-full flex-col gap-4 text-left lg:flex-row lg:items-start lg:justify-between"
-					:aria-expanded="!isSectionCollapsed(SECTION_IDS.overview)"
-					@click="toggleSection(SECTION_IDS.overview)"
-				>
-					<div>
-						<p class="type-overline text-ink/60">Course Plan Overview</p>
-						<h2 class="mt-2 type-h2 text-ink">
-							{{ surface.course_plan.course_name || surface.course_plan.course }}
-						</h2>
-						<p class="mt-2 type-body text-ink/80">
-							{{
-								isSectionCollapsed(SECTION_IDS.overview)
-									? 'Open the shared plan metadata, summary, and publishing controls.'
-									: 'This shared plan sets the governed backbone every linked class teaching plan uses.'
-							}}
-						</p>
-					</div>
-					<div class="flex flex-wrap items-center gap-2 lg:justify-end">
-						<span v-if="surface.course_plan.course_group" class="chip">
-							{{ surface.course_plan.course_group }}
-						</span>
-						<span v-if="surface.course_plan.academic_year" class="chip">
-							{{ surface.course_plan.academic_year }}
-						</span>
-						<span v-if="surface.course_plan.cycle_label" class="chip">
-							{{ surface.course_plan.cycle_label }}
-						</span>
-						<span class="chip">{{
-							isSectionCollapsed(SECTION_IDS.overview) ? 'Show' : 'Hide'
-						}}</span>
-					</div>
-				</button>
+			<CoursePlanOverviewSection
+				:course-plan-surface="surface.course_plan"
+				:course-plan-form="coursePlanForm"
+				:academic-year-options="coursePlanAcademicYearOptions"
+				:can-manage-plan="canManagePlan"
+				:collapsed="isSectionCollapsed(SECTION_IDS.overview)"
+				:pending="coursePlanPending"
+				@toggle="toggleSection(SECTION_IDS.overview)"
+				@save="handleSaveCoursePlan"
+			/>
 
-				<div
-					v-if="!isSectionCollapsed(SECTION_IDS.overview) && canManagePlan"
-					class="mt-6 grid gap-4 lg:grid-cols-2"
-				>
-					<label class="block space-y-2">
-						<span class="type-caption text-ink/70">Course Plan Title</span>
-						<input
-							v-model="coursePlanForm.title"
-							type="text"
-							class="if-input w-full"
-							placeholder="e.g. Biology Semester 1 Plan"
-						/>
-					</label>
-					<label class="block space-y-2">
-						<span class="type-caption text-ink/70">Academic Year</span>
-						<select
-							v-model="coursePlanForm.academic_year"
-							class="if-input w-full"
-							:disabled="!coursePlanAcademicYearOptions.length"
-						>
-							<option value="">Optional academic year</option>
-							<option
-								v-for="option in coursePlanAcademicYearOptions"
-								:key="option.value"
-								:value="option.value"
-							>
-								{{ option.label }}
-							</option>
-						</select>
-						<p class="type-caption text-ink/60">
-							{{
-								coursePlanAcademicYearOptions.length
-									? 'Only Academic Year records in this course school scope are available here.'
-									: 'No Academic Year records are available for this course school yet.'
-							}}
-						</p>
-					</label>
-					<label class="block space-y-2">
-						<span class="type-caption text-ink/70">Cycle Label</span>
-						<input
-							v-model="coursePlanForm.cycle_label"
-							type="text"
-							class="if-input w-full"
-							placeholder="e.g. Semester 1"
-						/>
-					</label>
-					<label class="block space-y-2">
-						<span class="type-caption text-ink/70">Publishing Status</span>
-						<select v-model="coursePlanForm.plan_status" class="if-input w-full">
-							<option v-for="option in coursePlanStatusOptions" :key="option" :value="option">
-								{{ option }}
-							</option>
-						</select>
-					</label>
-					<label class="block space-y-2 lg:col-span-2">
-						<span class="type-caption text-ink/70">Summary</span>
-						<PlanningRichTextField
-							v-model="coursePlanForm.summary"
-							placeholder="State the shared purpose, scope, and non-negotiables for this course plan."
-							min-height-class="min-h-[9rem]"
-						/>
-					</label>
-					<div class="flex justify-end lg:col-span-2">
-						<button
-							type="button"
-							class="if-action"
-							:disabled="coursePlanPending"
-							@click="handleSaveCoursePlan"
-						>
-							{{ coursePlanPending ? 'Saving...' : 'Save Shared Course Plan' }}
-						</button>
-					</div>
-				</div>
-
-				<div
-					v-else-if="!isSectionCollapsed(SECTION_IDS.overview)"
-					class="mt-6 rounded-2xl border border-line-soft bg-surface-soft p-5"
-				>
-					<PlanningRichTextField
-						v-if="hasRichTextContent(surface.course_plan.summary)"
-						:model-value="surface.course_plan.summary"
-						:editable="false"
-						display-class="text-ink/80"
-					/>
-					<p v-else class="type-caption text-ink/70">
-						No shared summary has been captured for this course plan yet.
-					</p>
-				</div>
-			</section>
-
-			<section
-				:id="SECTION_IDS.timeline"
-				class="scroll-mt-40 rounded-[2rem] border border-line-soft bg-white p-6 shadow-soft"
-			>
-				<button
-					type="button"
-					class="flex w-full flex-col gap-4 text-left lg:flex-row lg:items-start lg:justify-between"
-					:aria-expanded="!isSectionCollapsed(SECTION_IDS.timeline)"
-					@click="toggleSection(SECTION_IDS.timeline)"
-				>
-					<div>
-						<p class="type-overline text-ink/60">Curriculum Timeline</p>
-						<h2 class="mt-2 type-h2 text-ink">Year-at-a-glance pacing</h2>
-						<p class="mt-2 type-body text-ink/80">
-							{{
-								isSectionCollapsed(SECTION_IDS.timeline)
-									? 'Open the calendar view to see unit pacing against the real school schedule.'
-									: 'See the governed unit sequence against instructional dates, terms, and break periods.'
-							}}
-						</p>
-					</div>
-					<div class="flex flex-wrap items-center gap-2 lg:justify-end">
-						<span v-if="timelineScopeLabel" class="chip">{{ timelineScopeLabel }}</span>
-						<span v-if="timelineDateLabel" class="chip">{{ timelineDateLabel }}</span>
-						<span class="chip">
-							{{ surface.curriculum.timeline.summary.scheduled_unit_count || 0 }} scheduled units
-						</span>
-						<span v-if="surface.curriculum.timeline.holidays.length" class="chip">
-							{{ surface.curriculum.timeline.holidays.length }} holiday spans
-						</span>
-						<span class="chip">{{
-							isSectionCollapsed(SECTION_IDS.timeline) ? 'Show' : 'Hide'
-						}}</span>
-					</div>
-				</button>
-
-				<div v-if="!isSectionCollapsed(SECTION_IDS.timeline)" class="mt-6">
-					<CoursePlanTimelineCard :timeline="surface.curriculum.timeline" hide-header embedded />
-				</div>
-			</section>
+			<CoursePlanTimelineSection
+				:timeline="surface.curriculum.timeline"
+				:timeline-scope-label="timelineScopeLabel"
+				:timeline-date-label="timelineDateLabel"
+				:collapsed="isSectionCollapsed(SECTION_IDS.timeline)"
+				@toggle="toggleSection(SECTION_IDS.timeline)"
+			/>
 
 			<section class="grid gap-6 xl:grid-cols-[minmax(0,20rem),minmax(0,1fr)]">
-				<aside class="space-y-6 xl:self-start">
-					<section
-						:id="SECTION_IDS.courseResources"
-						class="scroll-mt-40 rounded-[2rem] border border-line-soft bg-white p-6 shadow-soft"
-					>
-						<button
-							type="button"
-							class="flex w-full flex-col gap-4 text-left lg:flex-row lg:items-start lg:justify-between"
-							:aria-expanded="!isSectionCollapsed(SECTION_IDS.courseResources)"
-							@click="toggleSection(SECTION_IDS.courseResources)"
-						>
-							<div>
-								<p class="type-overline text-ink/60">Shared Plan Resources</p>
-								<h2 class="mt-2 type-h2 text-ink">Resources for every class using this plan</h2>
-								<p class="mt-2 type-body text-ink/80">
-									{{
-										isSectionCollapsed(SECTION_IDS.courseResources)
-											? 'Open the governed references, links, and shared files attached at the course-plan level.'
-											: 'Keep governed references, anchor texts, and shared files at the course-plan level.'
-									}}
-								</p>
-							</div>
-							<div class="flex flex-wrap items-center gap-2 lg:justify-end">
-								<span class="chip">{{ coursePlanResourceCount }} resources</span>
-								<span class="chip">{{
-									isSectionCollapsed(SECTION_IDS.courseResources) ? 'Show' : 'Hide'
-								}}</span>
-							</div>
-						</button>
+				<CoursePlanUnitSidebar
+					:course-plan-name="surface.course_plan.course_plan"
+					:course-plan-resources="surface.resources.course_plan_resources"
+					:can-manage-plan="canManagePlan"
+					:course-plan-resource-count="coursePlanResourceCount"
+					:course-resources-collapsed="isSectionCollapsed(SECTION_IDS.courseResources)"
+					:units="surface.curriculum.units"
+					:unit-count="surface.curriculum.unit_count"
+					:selected-unit-plan="selectedUnitPlan"
+					:creating-unit="creatingUnit"
+					@toggle-course-resources="toggleSection(SECTION_IDS.courseResources)"
+					@resource-changed="loadSurface"
+					@select-unit="selectUnit"
+					@start-new-unit="startNewUnit"
+				/>
 
-						<div v-if="!isSectionCollapsed(SECTION_IDS.courseResources)" class="mt-6">
-							<PlanningResourcePanel
-								anchor-doctype="Course Plan"
-								:anchor-name="surface.course_plan.course_plan"
-								:can-manage="canManagePlan"
-								eyebrow="Shared Plan Resources"
-								title="Resources for every class using this plan"
-								description="Keep governed references, anchor texts, and shared files at the course-plan level."
-								empty-message="No shared course-plan resources yet."
-								blocked-message="Choose a course plan before sharing resources."
-								read-only-message="Only approved curriculum staff can edit shared course-plan resources."
-								:resources="surface.resources.course_plan_resources"
-								enable-attachment-preview
-								hide-header
-								embedded
-								@changed="loadSurface"
-							/>
-						</div>
-					</section>
-
-					<section
-						:id="SECTION_IDS.units"
-						class="scroll-mt-40 rounded-[2rem] border border-line-soft bg-white p-5 shadow-soft"
-					>
-						<div class="mb-4 flex items-center justify-between gap-3">
-							<div>
-								<p class="type-overline text-ink/60">Unit Backbone</p>
-								<h2 class="mt-1 type-h3 text-ink">Governed sequence</h2>
-							</div>
-							<span class="chip">{{ surface.curriculum.unit_count }}</span>
-						</div>
-
-						<div class="space-y-3">
-							<button
-								v-for="unit in surface.curriculum.units"
-								:key="unit.unit_plan"
-								type="button"
-								class="w-full rounded-2xl border p-4 text-left transition"
-								:class="
-									selectedUnit?.unit_plan === unit.unit_plan && !creatingUnit
-										? 'border-jacaranda bg-jacaranda/10 shadow-soft'
-										: 'border-line-soft bg-surface-soft hover:border-jacaranda/40'
-								"
-								@click="selectUnit(unit.unit_plan)"
-							>
-								<div class="flex items-start justify-between gap-3">
-									<div class="min-w-0">
-										<p class="type-overline text-ink/60">Unit {{ unit.unit_order || '—' }}</p>
-										<p class="mt-1 type-body-strong text-ink">{{ unit.title }}</p>
-									</div>
-									<span class="chip">{{ unit.shared_resources.length }} resources</span>
-								</div>
-							</button>
-
-							<div
-								v-if="!surface.curriculum.units.length"
-								class="rounded-2xl border border-dashed border-line-soft p-4"
-							>
-								<p class="type-caption text-ink/70">
-									Add the first unit plan to define the shared curriculum backbone.
-								</p>
-							</div>
-						</div>
-
-						<div v-if="canManagePlan" class="mt-4">
-							<button type="button" class="if-action w-full" @click="startNewUnit">
-								{{ creatingUnit ? 'Editing New Unit' : 'New Unit Plan' }}
-							</button>
-						</div>
-					</section>
-				</aside>
-
-				<section
-					v-if="showUnitEditor"
-					:id="SECTION_IDS.unitEditor"
-					class="scroll-mt-40 space-y-6 rounded-[2rem] border border-line-soft bg-white p-6 shadow-soft"
-				>
-					<div class="course-plan-unit-editor-header">
-						<div>
-							<p class="type-overline text-ink/60">
-								{{ creatingUnit ? 'New Unit Plan' : 'Selected Unit' }}
-							</p>
-							<h2 class="mt-2 type-h2 text-ink">
-								{{ unitEditorHeading }}
-							</h2>
-						</div>
-						<div class="course-plan-unit-editor-summary">
-							<span v-if="!creatingUnit" class="course-plan-unit-summary-pill">
-								<span class="course-plan-unit-summary-pill__label">Unit</span>
-								<span class="course-plan-unit-summary-pill__value">
-									{{ unitForm.unit_order || '—' }}
-								</span>
-							</span>
-							<span v-if="unitForm.unit_status" class="course-plan-unit-summary-pill">
-								<span class="course-plan-unit-summary-pill__label">Status</span>
-								<span class="course-plan-unit-summary-pill__value">
-									{{ unitForm.unit_status }}
-								</span>
-							</span>
-							<span
-								v-if="selectedUnitTimelineState?.start_date && selectedUnitTimelineState?.end_date"
-								class="course-plan-unit-summary-pill"
-							>
-								<span class="course-plan-unit-summary-pill__label">Timeline</span>
-								<span class="course-plan-unit-summary-pill__value">
-									{{ selectedUnitTimelineState.start_date }} →
-									{{ selectedUnitTimelineState.end_date }}
-								</span>
-							</span>
-							<button
-								type="button"
-								class="course-plan-unit-summary-pill course-plan-unit-summary-pill--toggle"
-								:aria-expanded="!isSectionCollapsed(SECTION_IDS.unitEditor)"
-								@click="toggleSection(SECTION_IDS.unitEditor)"
-							>
-								<span class="course-plan-unit-summary-pill__label">Section</span>
-								<span class="course-plan-unit-summary-pill__value">
-									{{ isSectionCollapsed(SECTION_IDS.unitEditor) ? 'Show' : 'Hide' }}
-								</span>
-								<span class="course-plan-unit-summary-pill__icon">
-									{{ isSectionCollapsed(SECTION_IDS.unitEditor) ? '+' : '-' }}
-								</span>
-							</button>
-							<span
-								v-if="canManagePlan"
-								class="course-plan-unit-summary-pill"
-								:class="
-									unitPending
-										? 'border-jacaranda/35 bg-jacaranda/16 text-jacaranda'
-										: unitFormDirty
-											? 'border-flame/25 bg-flame/10 text-flame'
-											: 'border-line-soft bg-white/95 text-ink/72'
-								"
-							>
-								<span class="course-plan-unit-summary-pill__label">Save State</span>
-								<span class="course-plan-unit-summary-pill__value">
-									{{ unitSaveStatusLabel }}
-								</span>
-							</span>
-							<span
-								v-if="creatingUnit"
-								class="course-plan-unit-summary-pill border-jacaranda/20 bg-white/92 text-ink/72"
-							>
-								<span class="course-plan-unit-summary-pill__label">Mode</span>
-								<span class="course-plan-unit-summary-pill__value">New unit</span>
-							</span>
-							<button
-								v-if="creatingUnit"
-								type="button"
-								class="if-action if-action--subtle course-plan-unit-inline-action"
-								@click="cancelNewUnit"
-							>
-								Cancel New Unit
-							</button>
-							<button
-								v-if="canManagePlan"
-								type="button"
-								class="if-action course-plan-unit-save-button course-plan-unit-inline-action"
-								data-testid="unit-save-header-button"
-								:disabled="!canSaveUnitAction"
-								@click="handleSaveUnitPlan"
-							>
-								{{ unitSaveActionLabel }}
-							</button>
-						</div>
-						<div
-							v-if="!isSectionCollapsed(SECTION_IDS.unitEditor)"
-							class="course-plan-unit-editor-nav"
-						>
-							<button
-								type="button"
-								class="course-plan-unit-nav-pill"
-								@click="scrollToUnitPanel(UNIT_PANEL_IDS.setup)"
-							>
-								Basics
-							</button>
-							<button
-								type="button"
-								class="course-plan-unit-nav-pill"
-								@click="scrollToUnitPanel(UNIT_PANEL_IDS.narrative)"
-							>
-								Core Narrative
-							</button>
-							<button
-								type="button"
-								class="course-plan-unit-nav-pill"
-								@click="scrollToUnitPanel(UNIT_PANEL_IDS.learningFocus)"
-							>
-								Learning Focus
-							</button>
-							<button
-								type="button"
-								class="course-plan-unit-nav-pill"
-								@click="jumpToSection(SECTION_IDS.standards)"
-							>
-								Standards
-							</button>
-							<button
-								type="button"
-								class="course-plan-unit-nav-pill"
-								@click="jumpToSection(SECTION_IDS.reflections)"
-							>
-								Reflections
-							</button>
-							<button
-								type="button"
-								class="course-plan-unit-nav-pill"
-								@click="jumpToSection(SECTION_IDS.unitResources)"
-							>
-								Resources
-							</button>
-						</div>
-					</div>
-
-					<template v-if="!isSectionCollapsed(SECTION_IDS.unitEditor)">
-						<template v-if="canManagePlan">
-							<div
-								v-if="showUnitSaveRail"
-								data-testid="unit-save-rail"
-								class="course-plan-unit-save-rail sticky bottom-4 z-20"
-							>
-								<div class="course-plan-unit-save-rail__inner">
-									<div class="min-w-0">
-										<p class="type-caption text-ink/60">Selected Unit</p>
-										<p class="mt-1 type-body-strong text-ink">{{ unitSaveStatusLabel }}</p>
-										<p class="mt-1 type-caption text-ink/70">
-											{{ unitSaveSupportText }}
-										</p>
-									</div>
-									<div class="flex flex-wrap gap-2">
-										<button
-											v-if="creatingUnit"
-											type="button"
-											class="if-action if-action--subtle"
-											@click="cancelNewUnit"
-										>
-											Cancel New Unit
-										</button>
-										<button
-											type="button"
-											class="if-action course-plan-unit-save-button"
-											:disabled="!canSaveUnitAction"
-											@click="handleSaveUnitPlan"
-										>
-											{{ unitSaveActionLabel }}
-										</button>
-									</div>
-								</div>
-							</div>
-
-							<section
-								:id="UNIT_PANEL_IDS.setup"
-								class="course-plan-unit-panel scroll-mt-40 space-y-4"
-							>
-								<div class="course-plan-unit-panel__header">
-									<div class="space-y-3">
-										<div>
-											<p class="type-overline text-ink/60">Unit Setup</p>
-											<h3 class="mt-1 type-h3 text-ink">Core metadata and publishing state</h3>
-										</div>
-										<p class="max-w-xl type-caption text-ink/65">
-											Keep the shared unit identity, order, and readiness clear before staff work
-											deeper into the narrative and standards layers.
-										</p>
-									</div>
-									<button
-										type="button"
-										class="course-plan-unit-panel__toggle"
-										data-testid="unit-panel-toggle-setup"
-										:aria-controls="`${UNIT_PANEL_IDS.setup}-content`"
-										:aria-expanded="!isUnitPanelCollapsed(UNIT_PANEL_IDS.setup)"
-										@click="toggleUnitPanel(UNIT_PANEL_IDS.setup)"
-									>
-										<span class="type-caption text-ink/70">
-											{{
-												isUnitPanelCollapsed(UNIT_PANEL_IDS.setup)
-													? 'Show section'
-													: 'Hide section'
-											}}
-										</span>
-										<span class="course-plan-unit-panel__toggle-icon">
-											{{ isUnitPanelCollapsed(UNIT_PANEL_IDS.setup) ? '+' : '-' }}
-										</span>
-									</button>
-								</div>
-								<div
-									v-if="!isUnitPanelCollapsed(UNIT_PANEL_IDS.setup)"
-									:id="`${UNIT_PANEL_IDS.setup}-content`"
-									class="grid gap-4 lg:grid-cols-2"
-								>
-									<label class="course-plan-unit-subcard block space-y-2">
-										<span class="type-caption text-ink/70">Unit Title</span>
-										<input
-											v-model="unitForm.title"
-											data-quick-focus="unit-title"
-											type="text"
-											class="if-input w-full"
-											placeholder="e.g. Cells and Systems"
-										/>
-									</label>
-									<label class="course-plan-unit-subcard block space-y-2">
-										<span class="type-caption text-ink/70">Program</span>
-										<select v-model="unitForm.program" class="if-input w-full">
-											<option value="">Optional program</option>
-											<option
-												v-for="option in courseProgramOptions"
-												:key="option.value"
-												:value="option.value"
-											>
-												{{ option.label }}
-											</option>
-										</select>
-										<p class="type-caption text-ink/60">
-											{{
-												courseProgramOptions.length
-													? 'Only Program records already linked to this course are available here.'
-													: 'No Program records currently link to this course.'
-											}}
-										</p>
-									</label>
-									<label class="course-plan-unit-subcard block space-y-2">
-										<span class="type-caption text-ink/70">Unit Code</span>
-										<input
-											v-model="unitForm.unit_code"
-											type="text"
-											class="if-input w-full"
-											placeholder="Optional unit code"
-										/>
-									</label>
-									<label class="course-plan-unit-subcard block space-y-2">
-										<span class="type-caption text-ink/70">Unit Order</span>
-										<input
-											v-model.number="unitForm.unit_order"
-											type="number"
-											min="1"
-											step="1"
-											class="if-input w-full"
-										/>
-									</label>
-									<label class="course-plan-unit-subcard block space-y-2">
-										<span class="type-caption text-ink/70">Unit Status</span>
-										<select v-model="unitForm.unit_status" class="if-input w-full">
-											<option v-for="option in unitStatusOptions" :key="option" :value="option">
-												{{ option }}
-											</option>
-										</select>
-									</label>
-									<label class="course-plan-unit-subcard block space-y-2">
-										<span class="type-caption text-ink/70">Version</span>
-										<input
-											v-model="unitForm.version"
-											type="text"
-											class="if-input w-full"
-											placeholder="Optional version"
-										/>
-									</label>
-									<label class="course-plan-unit-subcard block space-y-2">
-										<span class="type-caption text-ink/70">Duration</span>
-										<input
-											v-model="unitForm.duration"
-											type="text"
-											class="if-input w-full"
-											placeholder="e.g. 6 weeks"
-										/>
-									</label>
-									<label class="course-plan-unit-subcard block space-y-2">
-										<span class="type-caption text-ink/70">Estimated Duration</span>
-										<input
-											v-model="unitForm.estimated_duration"
-											type="text"
-											class="if-input w-full"
-											placeholder="e.g. 24 GLH"
-										/>
-									</label>
-									<label
-										class="course-plan-unit-subcard flex items-center gap-3 px-4 py-4 lg:col-span-2"
-									>
-										<input v-model="unitForm.is_published" type="checkbox" class="h-4 w-4" />
-										<div>
-											<p class="type-body-strong text-ink">Published for class inheritance</p>
-											<p class="type-caption text-ink/70">
-												Use this when the governed unit is ready for linked classes to inherit.
-											</p>
-										</div>
-									</label>
-								</div>
-							</section>
-
-							<section
-								:id="UNIT_PANEL_IDS.narrative"
-								class="course-plan-unit-panel scroll-mt-40 space-y-4"
-							>
-								<div class="course-plan-unit-panel__header">
-									<div class="space-y-3">
-										<div>
-											<p class="type-overline text-ink/60">Core Narrative</p>
-											<h3 class="mt-1 type-h3 text-ink">Purpose, understanding, and watch-fors</h3>
-										</div>
-										<p class="max-w-xl type-caption text-ink/65">
-											Keep the unit rationale, enduring understanding, and common watch-fors on
-											separate rows so longer rich text stays readable.
-										</p>
-									</div>
-									<button
-										type="button"
-										class="course-plan-unit-panel__toggle"
-										data-testid="unit-panel-toggle-narrative"
-										:aria-controls="`${UNIT_PANEL_IDS.narrative}-content`"
-										:aria-expanded="!isUnitPanelCollapsed(UNIT_PANEL_IDS.narrative)"
-										@click="toggleUnitPanel(UNIT_PANEL_IDS.narrative)"
-									>
-										<span class="type-caption text-ink/70">
-											{{
-												isUnitPanelCollapsed(UNIT_PANEL_IDS.narrative)
-													? 'Show section'
-													: 'Hide section'
-											}}
-										</span>
-										<span class="course-plan-unit-panel__toggle-icon">
-											{{ isUnitPanelCollapsed(UNIT_PANEL_IDS.narrative) ? '+' : '-' }}
-										</span>
-									</button>
-								</div>
-								<div
-									v-if="!isUnitPanelCollapsed(UNIT_PANEL_IDS.narrative)"
-									:id="`${UNIT_PANEL_IDS.narrative}-content`"
-									class="space-y-4"
-								>
-									<label class="course-plan-unit-subcard block space-y-2">
-										<span class="type-caption text-ink/70">Overview & Rationale</span>
-										<PlanningRichTextField
-											v-model="unitForm.overview"
-											placeholder="State the unit arc, rationale, and what makes this backbone important."
-											min-height-class="min-h-[8rem]"
-										/>
-									</label>
-									<label class="course-plan-unit-subcard block space-y-2">
-										<span class="type-caption text-ink/70">Essential Understanding</span>
-										<PlanningRichTextField
-											v-model="unitForm.essential_understanding"
-											placeholder="Capture the shared understanding every class should build."
-											min-height-class="min-h-[8rem]"
-										/>
-									</label>
-									<label class="course-plan-unit-subcard block space-y-2">
-										<span class="type-caption text-ink/70">Likely Misconceptions</span>
-										<PlanningRichTextField
-											v-model="unitForm.misconceptions"
-											placeholder="List likely misunderstandings students may bring into the unit."
-											min-height-class="min-h-[8rem]"
-										/>
-									</label>
-								</div>
-							</section>
-
-							<section
-								:id="UNIT_PANEL_IDS.learningFocus"
-								class="course-plan-unit-panel scroll-mt-40 space-y-4"
-							>
-								<div class="course-plan-unit-panel__header">
-									<div class="space-y-3">
-										<div>
-											<p class="type-overline text-ink/60">Learning Focus</p>
-											<h3 class="mt-1 type-h3 text-ink">
-												Content, skills, and concepts in one view
-											</h3>
-										</div>
-										<p class="max-w-xl type-caption text-ink/65">
-											Give each learning pillar its own row so longer entries can breathe without
-											blurring together.
-										</p>
-									</div>
-									<button
-										type="button"
-										class="course-plan-unit-panel__toggle"
-										data-testid="unit-panel-toggle-learning-focus"
-										:aria-controls="`${UNIT_PANEL_IDS.learningFocus}-content`"
-										:aria-expanded="!isUnitPanelCollapsed(UNIT_PANEL_IDS.learningFocus)"
-										@click="toggleUnitPanel(UNIT_PANEL_IDS.learningFocus)"
-									>
-										<span class="type-caption text-ink/70">
-											{{
-												isUnitPanelCollapsed(UNIT_PANEL_IDS.learningFocus)
-													? 'Show section'
-													: 'Hide section'
-											}}
-										</span>
-										<span class="course-plan-unit-panel__toggle-icon">
-											{{ isUnitPanelCollapsed(UNIT_PANEL_IDS.learningFocus) ? '+' : '-' }}
-										</span>
-									</button>
-								</div>
-								<div
-									v-if="!isUnitPanelCollapsed(UNIT_PANEL_IDS.learningFocus)"
-									:id="`${UNIT_PANEL_IDS.learningFocus}-content`"
-									class="space-y-4"
-								>
-									<label class="course-plan-unit-subcard block space-y-2">
-										<span class="type-caption text-ink/70">Content</span>
-										<PlanningRichTextField
-											v-model="unitForm.content"
-											placeholder="What should students know?"
-											min-height-class="min-h-[8rem]"
-										/>
-									</label>
-									<label class="course-plan-unit-subcard block space-y-2">
-										<span class="type-caption text-ink/70">Skills</span>
-										<PlanningRichTextField
-											v-model="unitForm.skills"
-											placeholder="What should students be able to do?"
-											min-height-class="min-h-[8rem]"
-										/>
-									</label>
-									<label class="course-plan-unit-subcard block space-y-2">
-										<span class="type-caption text-ink/70">Concepts</span>
-										<PlanningRichTextField
-											v-model="unitForm.concepts"
-											placeholder="Which big ideas or concepts should anchor the unit?"
-											min-height-class="min-h-[8rem]"
-										/>
-									</label>
-								</div>
-							</section>
-						</template>
-
-						<template v-else>
-							<section class="course-plan-unit-panel space-y-4">
-								<div class="course-plan-unit-panel__header">
-									<div class="space-y-3">
-										<div>
-											<p class="type-overline text-ink/60">Core Narrative</p>
-											<h3 class="mt-1 type-h3 text-ink">Shared unit backbone</h3>
-										</div>
-										<p class="max-w-xl type-caption text-ink/65">
-											The selected unit keeps overview, understanding, and watch-fors on separate
-											rows so the narrative stays readable before the learning-focus fields below.
-										</p>
-									</div>
-									<button
-										type="button"
-										class="course-plan-unit-panel__toggle"
-										data-testid="unit-panel-toggle-narrative"
-										:aria-controls="`${UNIT_PANEL_IDS.narrative}-content`"
-										:aria-expanded="!isUnitPanelCollapsed(UNIT_PANEL_IDS.narrative)"
-										@click="toggleUnitPanel(UNIT_PANEL_IDS.narrative)"
-									>
-										<span class="type-caption text-ink/70">
-											{{
-												isUnitPanelCollapsed(UNIT_PANEL_IDS.narrative)
-													? 'Show section'
-													: 'Hide section'
-											}}
-										</span>
-										<span class="course-plan-unit-panel__toggle-icon">
-											{{ isUnitPanelCollapsed(UNIT_PANEL_IDS.narrative) ? '+' : '-' }}
-										</span>
-									</button>
-								</div>
-								<div
-									v-if="!isUnitPanelCollapsed(UNIT_PANEL_IDS.narrative)"
-									:id="`${UNIT_PANEL_IDS.narrative}-content`"
-									class="space-y-4"
-								>
-									<div
-										v-if="hasRichTextContent(selectedUnit?.overview)"
-										class="course-plan-unit-subcard space-y-2"
-									>
-										<p class="type-overline text-ink/60">Overview</p>
-										<PlanningRichTextField
-											:model-value="selectedUnit?.overview"
-											:editable="false"
-											display-class="text-ink/80"
-										/>
-									</div>
-									<div
-										v-if="hasRichTextContent(selectedUnit?.essential_understanding)"
-										class="course-plan-unit-subcard space-y-2"
-									>
-										<p class="type-overline text-ink/60">Essential Understanding</p>
-										<PlanningRichTextField
-											:model-value="selectedUnit?.essential_understanding"
-											:editable="false"
-											display-class="text-ink/80"
-										/>
-									</div>
-									<div
-										v-if="hasRichTextContent(selectedUnit?.misconceptions)"
-										class="course-plan-unit-subcard space-y-2"
-									>
-										<p class="type-overline text-ink/60">Likely Misconceptions</p>
-										<PlanningRichTextField
-											:model-value="selectedUnit?.misconceptions"
-											:editable="false"
-											display-class="text-ink/80"
-										/>
-									</div>
-								</div>
-							</section>
-
-							<section class="course-plan-unit-panel space-y-4">
-								<div class="course-plan-unit-panel__header">
-									<div class="space-y-3">
-										<div>
-											<p class="type-overline text-ink/60">Learning Focus</p>
-											<h3 class="mt-1 type-h3 text-ink">Content, skills, and concepts</h3>
-										</div>
-										<p class="max-w-xl type-caption text-ink/65">
-											The selected unit keeps the three learning anchors on separate rows so long
-											entries remain easy to scan.
-										</p>
-									</div>
-									<button
-										type="button"
-										class="course-plan-unit-panel__toggle"
-										data-testid="unit-panel-toggle-learning-focus"
-										:aria-controls="`${UNIT_PANEL_IDS.learningFocus}-content`"
-										:aria-expanded="!isUnitPanelCollapsed(UNIT_PANEL_IDS.learningFocus)"
-										@click="toggleUnitPanel(UNIT_PANEL_IDS.learningFocus)"
-									>
-										<span class="type-caption text-ink/70">
-											{{
-												isUnitPanelCollapsed(UNIT_PANEL_IDS.learningFocus)
-													? 'Show section'
-													: 'Hide section'
-											}}
-										</span>
-										<span class="course-plan-unit-panel__toggle-icon">
-											{{ isUnitPanelCollapsed(UNIT_PANEL_IDS.learningFocus) ? '+' : '-' }}
-										</span>
-									</button>
-								</div>
-								<div
-									v-if="!isUnitPanelCollapsed(UNIT_PANEL_IDS.learningFocus)"
-									:id="`${UNIT_PANEL_IDS.learningFocus}-content`"
-									class="space-y-4"
-								>
-									<div
-										v-if="hasRichTextContent(selectedUnit?.content)"
-										class="course-plan-unit-subcard space-y-2"
-									>
-										<p class="type-overline text-ink/60">Content</p>
-										<PlanningRichTextField
-											:model-value="selectedUnit?.content"
-											:editable="false"
-											display-class="text-ink/80"
-										/>
-									</div>
-									<div
-										v-if="hasRichTextContent(selectedUnit?.skills)"
-										class="course-plan-unit-subcard space-y-2"
-									>
-										<p class="type-overline text-ink/60">Skills</p>
-										<PlanningRichTextField
-											:model-value="selectedUnit?.skills"
-											:editable="false"
-											display-class="text-ink/80"
-										/>
-									</div>
-									<div
-										v-if="hasRichTextContent(selectedUnit?.concepts)"
-										class="course-plan-unit-subcard space-y-2"
-									>
-										<p class="type-overline text-ink/60">Concepts</p>
-										<PlanningRichTextField
-											:model-value="selectedUnit?.concepts"
-											:editable="false"
-											display-class="text-ink/80"
-										/>
-									</div>
-								</div>
-							</section>
-						</template>
-
-						<section
-							:id="SECTION_IDS.standards"
-							class="course-plan-unit-panel scroll-mt-40 space-y-3"
-						>
-							<div class="course-plan-unit-panel__header">
-								<div class="space-y-3">
-									<div>
-										<p class="type-overline text-ink/60">Standards Alignment</p>
-										<h3 class="mt-1 type-h3 text-ink">Shared alignment rows</h3>
-									</div>
-									<p class="max-w-xl type-caption text-ink/65">
-										Keep the approved shared standards available without forcing the full row list
-										open all the time.
-									</p>
-								</div>
-								<div class="flex flex-wrap items-center gap-2">
-									<span class="chip">{{ unitForm.standards.length }}</span>
-									<button
-										v-if="canManagePlan"
-										type="button"
-										class="if-action if-action--subtle"
-										@click="openStandardsOverlay"
-									>
-										Select Standards
-									</button>
-									<button
-										type="button"
-										class="course-plan-unit-panel__toggle"
-										data-testid="unit-panel-toggle-standards"
-										:aria-controls="`${SECTION_IDS.standards}-content`"
-										:aria-expanded="!isSectionCollapsed(SECTION_IDS.standards)"
-										@click="toggleSection(SECTION_IDS.standards)"
-									>
-										<span class="type-caption text-ink/70">
-											{{
-												isSectionCollapsed(SECTION_IDS.standards) ? 'Show section' : 'Hide section'
-											}}
-										</span>
-										<span class="course-plan-unit-panel__toggle-icon">
-											{{ isSectionCollapsed(SECTION_IDS.standards) ? '+' : '-' }}
-										</span>
-									</button>
-								</div>
-							</div>
-
-							<div
-								v-if="!isSectionCollapsed(SECTION_IDS.standards)"
-								:id="`${SECTION_IDS.standards}-content`"
-								class="space-y-3"
-							>
-								<div
-									v-if="legacyStandardsCount"
-									class="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3"
-								>
-									<p class="type-body-strong text-amber-950">
-										{{ legacyStandardsCount }} standards row{{
-											legacyStandardsCount > 1 ? 's need' : ' needs'
-										}}
-										re-selection
-									</p>
-									<p class="mt-1 type-caption text-amber-900/80">
-										These rows do not yet carry a catalog link. Remove and re-add them through
-										Select Standards so the unit saves against the approved learning-standards
-										master.
-									</p>
-								</div>
-
-								<div
-									v-if="!unitForm.standards.length"
-									class="rounded-2xl border border-dashed border-line-soft p-4"
-								>
-									<p class="type-caption text-ink/70">
-										No standards have been captured for this unit yet.
-									</p>
-								</div>
-
-								<div v-else class="space-y-3">
-									<article
-										v-for="standard in unitForm.standards"
-										:key="standard.local_id"
-										class="overflow-hidden rounded-[1.5rem] border transition"
-										:class="
-											isStandardExpanded(standard.local_id)
-												? 'border-jacaranda/35 bg-white shadow-soft'
-												: 'border-line-soft bg-surface-soft hover:border-jacaranda/35 hover:bg-white/95'
-										"
-									>
-										<button
-											type="button"
-											class="group flex w-full items-start justify-between gap-4 px-4 py-4 text-left transition focus:outline-none focus-visible:ring-2 focus-visible:ring-jacaranda/30 sm:px-5"
-											:aria-controls="`course-plan-standard-${standard.local_id}`"
-											:aria-expanded="isStandardExpanded(standard.local_id)"
-											@click="toggleStandardExpansion(standard.local_id)"
-										>
-											<div class="min-w-0 flex-1">
-												<div class="flex min-w-0 items-center gap-3">
-													<span
-														class="inline-flex shrink-0 items-center rounded-full border border-jacaranda/20 bg-jacaranda/10 px-3 py-1 text-xs font-semibold tracking-[0.08em] text-jacaranda"
-													>
-														{{ trimmedValue(standard.standard_code) || 'Code pending' }}
-													</span>
-													<div
-														class="flex min-w-0 flex-1 items-center gap-2 overflow-x-auto whitespace-nowrap no-scrollbar"
-													>
-														<span
-															v-for="token in standardSummaryTokens(standard)"
-															:key="token.key"
-															class="chip shrink-0"
-															:class="token.pending ? 'border-dashed text-ink/55' : ''"
-														>
-															{{ token.label }}
-														</span>
-													</div>
-												</div>
-												<p class="mt-3 type-body text-ink/85">
-													{{ standardSummaryDescription(standard) }}
-												</p>
-											</div>
-											<div class="flex shrink-0 items-center gap-2 pl-1">
-												<span class="chip">{{
-													isStandardExpanded(standard.local_id) ? 'Hide details' : 'Details'
-												}}</span>
-												<span
-													class="inline-flex h-9 w-9 items-center justify-center rounded-full border border-line-soft bg-white text-base font-semibold text-ink/60 transition group-hover:border-jacaranda/35 group-hover:text-jacaranda"
-												>
-													{{ isStandardExpanded(standard.local_id) ? '-' : '+' }}
-												</span>
-											</div>
-										</button>
-
-										<div
-											v-if="isStandardExpanded(standard.local_id)"
-											:id="`course-plan-standard-${standard.local_id}`"
-											class="border-t border-line-soft px-4 pb-4 pt-4 sm:px-5 sm:pb-5"
-										>
-											<div class="grid gap-4 lg:grid-cols-2">
-												<label class="block space-y-2">
-													<span class="type-caption text-ink/70">Framework Name</span>
-													<input
-														v-model="standard.framework_name"
-														type="text"
-														class="if-input w-full"
-														disabled
-													/>
-												</label>
-												<label class="block space-y-2">
-													<span class="type-caption text-ink/70">Framework Version</span>
-													<input
-														v-model="standard.framework_version"
-														type="text"
-														class="if-input w-full"
-														disabled
-													/>
-												</label>
-												<label class="block space-y-2">
-													<span class="type-caption text-ink/70">Subject Area</span>
-													<input
-														v-model="standard.subject_area"
-														type="text"
-														class="if-input w-full"
-														disabled
-													/>
-												</label>
-												<label class="block space-y-2">
-													<span class="type-caption text-ink/70">Program</span>
-													<input
-														v-model="standard.program"
-														type="text"
-														class="if-input w-full"
-														disabled
-													/>
-												</label>
-												<label class="block space-y-2">
-													<span class="type-caption text-ink/70">Strand</span>
-													<input
-														v-model="standard.strand"
-														type="text"
-														class="if-input w-full"
-														disabled
-													/>
-												</label>
-												<label class="block space-y-2">
-													<span class="type-caption text-ink/70">Substrand</span>
-													<input
-														v-model="standard.substrand"
-														type="text"
-														class="if-input w-full"
-														disabled
-													/>
-												</label>
-												<label class="block space-y-2">
-													<span class="type-caption text-ink/70">Standard Code</span>
-													<input
-														v-model="standard.standard_code"
-														type="text"
-														class="if-input w-full"
-														disabled
-													/>
-												</label>
-												<label class="block space-y-2">
-													<span class="type-caption text-ink/70">Coverage Level</span>
-													<select
-														v-model="standard.coverage_level"
-														class="if-input w-full"
-														:disabled="!canManagePlan"
-													>
-														<option value="">Select</option>
-														<option
-															v-for="option in coverageLevelOptions"
-															:key="option"
-															:value="option"
-														>
-															{{ option }}
-														</option>
-													</select>
-												</label>
-												<label class="block space-y-2">
-													<span class="type-caption text-ink/70">Alignment Strength</span>
-													<select
-														v-model="standard.alignment_strength"
-														class="if-input w-full"
-														:disabled="!canManagePlan"
-													>
-														<option value="">Select</option>
-														<option
-															v-for="option in alignmentStrengthOptions"
-															:key="option"
-															:value="option"
-														>
-															{{ option }}
-														</option>
-													</select>
-												</label>
-												<label class="block space-y-2">
-													<span class="type-caption text-ink/70">Alignment Type</span>
-													<input
-														v-model="standard.alignment_type"
-														type="text"
-														class="if-input w-full"
-														disabled
-													/>
-												</label>
-												<label class="block space-y-2 lg:col-span-2">
-													<span class="type-caption text-ink/70">Standard Description</span>
-													<textarea
-														v-model="standard.standard_description"
-														rows="3"
-														class="if-input min-h-[6rem] w-full resize-y"
-														disabled
-													/>
-												</label>
-												<label class="block space-y-2 lg:col-span-2">
-													<span class="type-caption text-ink/70">Notes</span>
-													<textarea
-														v-model="standard.notes"
-														rows="3"
-														class="if-input min-h-[6rem] w-full resize-y"
-														:disabled="!canManagePlan"
-													/>
-												</label>
-											</div>
-											<div v-if="canManagePlan" class="mt-4 flex justify-end">
-												<button
-													type="button"
-													class="if-action if-action--subtle"
-													@click="removeStandard(standard.local_id)"
-												>
-													Remove Standard
-												</button>
-											</div>
-										</div>
-									</article>
-								</div>
-							</div>
-						</section>
-
-						<section
-							:id="SECTION_IDS.reflections"
-							class="course-plan-unit-panel scroll-mt-40 space-y-3"
-						>
-							<div class="flex items-center justify-between gap-3">
-								<div>
-									<p class="type-overline text-ink/60">Shared Reflections</p>
-									<h3 class="mt-1 type-h3 text-ink">Bird's-eye planning notes</h3>
-								</div>
-								<div class="flex items-center gap-2">
-									<span class="chip">{{ unitForm.reflections.length }}</span>
-									<button
-										v-if="canManagePlan"
-										type="button"
-										class="if-action if-action--subtle"
-										@click="addReflection"
-									>
-										Add Reflection
-									</button>
-								</div>
-							</div>
-
-							<div
-								v-if="!unitForm.reflections.length"
-								class="rounded-2xl border border-dashed border-line-soft p-4"
-							>
-								<p class="type-caption text-ink/70">
-									No shared reflections captured yet for this unit.
-								</p>
-							</div>
-
-							<div v-else class="space-y-4">
-								<article
-									v-for="reflection in unitForm.reflections"
-									:key="reflection.local_id"
-									class="course-plan-unit-subcard"
-								>
-									<div class="grid gap-4 lg:grid-cols-2">
-										<label class="block space-y-2">
-											<span class="type-caption text-ink/70">Academic Year</span>
-											<input
-												:value="reflection.academic_year || derivedReflectionAcademicYear"
-												type="text"
-												class="if-input w-full"
-												disabled
-											/>
-										</label>
-										<label class="block space-y-2">
-											<span class="type-caption text-ink/70">School</span>
-											<input
-												:value="reflection.school || derivedReflectionSchool"
-												type="text"
-												class="if-input w-full"
-												disabled
-											/>
-										</label>
-										<p class="type-caption text-ink/60 lg:col-span-2">
-											Academic Year and School stay derived from the parent course plan.
-										</p>
-										<label class="block space-y-2 lg:col-span-2">
-											<span class="type-caption text-ink/70">Prior To The Unit</span>
-											<PlanningRichTextField
-												v-model="reflection.prior_to_the_unit"
-												:editable="canManagePlan"
-												min-height-class="min-h-[6rem]"
-											/>
-										</label>
-										<label class="block space-y-2 lg:col-span-2">
-											<span class="type-caption text-ink/70">During The Unit</span>
-											<PlanningRichTextField
-												v-model="reflection.during_the_unit"
-												:editable="canManagePlan"
-												min-height-class="min-h-[6rem]"
-											/>
-										</label>
-										<label class="block space-y-2 lg:col-span-2">
-											<span class="type-caption text-ink/70">What Worked Well</span>
-											<PlanningRichTextField
-												v-model="reflection.what_work_well"
-												:editable="canManagePlan"
-												min-height-class="min-h-[6rem]"
-											/>
-										</label>
-										<label class="block space-y-2 lg:col-span-2">
-											<span class="type-caption text-ink/70">What Didn't Work Well</span>
-											<PlanningRichTextField
-												v-model="reflection.what_didnt_work_well"
-												:editable="canManagePlan"
-												min-height-class="min-h-[6rem]"
-											/>
-										</label>
-										<label class="block space-y-2 lg:col-span-2">
-											<span class="type-caption text-ink/70">Change Suggestions</span>
-											<PlanningRichTextField
-												v-model="reflection.changes_suggestions"
-												:editable="canManagePlan"
-												min-height-class="min-h-[6rem]"
-											/>
-										</label>
-									</div>
-									<div v-if="canManagePlan" class="mt-4 flex justify-end">
-										<button
-											type="button"
-											class="if-action if-action--subtle"
-											@click="removeReflection(reflection.local_id)"
-										>
-											Remove Reflection
-										</button>
-									</div>
-								</article>
-							</div>
-						</section>
-
-						<section
-							v-if="selectedUnit?.class_reflections?.length"
-							class="course-plan-unit-panel space-y-3"
-						>
-							<div class="flex items-center justify-between gap-3">
-								<h3 class="type-h3 text-ink">Class Reflections Across This Unit</h3>
-								<span class="chip">{{ selectedUnit.class_reflections.length }}</span>
-							</div>
-							<div class="grid gap-3 xl:grid-cols-2">
-								<article
-									v-for="reflection in selectedUnit.class_reflections"
-									:key="`${selectedUnit.unit_plan}-${reflection.class_teaching_plan}`"
-									class="course-plan-unit-subcard"
-								>
-									<div class="flex items-center justify-between gap-3">
-										<p class="type-body-strong text-ink">{{ reflection.class_label }}</p>
-										<span v-if="reflection.academic_year" class="chip">
-											{{ reflection.academic_year }}
-										</span>
-									</div>
-									<div
-										v-if="hasRichTextContent(reflection.prior_to_the_unit)"
-										class="mt-3 space-y-2"
-									>
-										<p class="type-overline text-ink/60">Prior To The Unit</p>
-										<PlanningRichTextField
-											:model-value="reflection.prior_to_the_unit"
-											:editable="false"
-											display-class="text-ink/80"
-										/>
-									</div>
-									<div
-										v-if="hasRichTextContent(reflection.during_the_unit)"
-										class="mt-3 space-y-2"
-									>
-										<p class="type-overline text-ink/60">During The Unit</p>
-										<PlanningRichTextField
-											:model-value="reflection.during_the_unit"
-											:editable="false"
-											display-class="text-ink/80"
-										/>
-									</div>
-									<div v-if="hasRichTextContent(reflection.what_work_well)" class="mt-3 space-y-2">
-										<p class="type-overline text-ink/60">What Worked Well</p>
-										<PlanningRichTextField
-											:model-value="reflection.what_work_well"
-											:editable="false"
-											display-class="text-ink/70"
-										/>
-									</div>
-									<div
-										v-if="hasRichTextContent(reflection.what_didnt_work_well)"
-										class="mt-3 space-y-2"
-									>
-										<p class="type-overline text-ink/60">Watch For</p>
-										<PlanningRichTextField
-											:model-value="reflection.what_didnt_work_well"
-											:editable="false"
-											display-class="text-ink/70"
-										/>
-									</div>
-									<div
-										v-if="hasRichTextContent(reflection.changes_suggestions)"
-										class="mt-3 space-y-2"
-									>
-										<p class="type-overline text-ink/60">Next Change</p>
-										<PlanningRichTextField
-											:model-value="reflection.changes_suggestions"
-											:editable="false"
-											display-class="text-ink/70"
-										/>
-									</div>
-								</article>
-							</div>
-						</section>
-
-						<section
-							v-if="canManagePlan"
-							class="course-plan-unit-panel course-plan-unit-panel--footer flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"
-						>
-							<div>
-								<p class="type-overline text-ink/60">Final Checkpoint</p>
-								<p class="mt-1 type-caption text-ink/70">
-									Save from here or from the sticky rail while you scroll through the unit.
-								</p>
-							</div>
-							<div class="flex flex-wrap gap-2">
-								<button
-									v-if="creatingUnit"
-									type="button"
-									class="if-action if-action--subtle"
-									@click="cancelNewUnit"
-								>
-									Cancel New Unit
-								</button>
-								<button
-									type="button"
-									class="if-action course-plan-unit-save-button"
-									:disabled="!canSaveUnitAction"
-									@click="handleSaveUnitPlan"
-								>
-									{{ unitSaveActionLabel }}
-								</button>
-							</div>
-						</section>
-
-						<section
-							:id="SECTION_IDS.unitResources"
-							class="course-plan-unit-panel scroll-mt-40 space-y-4"
-						>
-							<div class="course-plan-unit-panel__header">
-								<div>
-									<p class="type-overline text-ink/60">Unit Resources</p>
-									<h3 class="mt-1 type-h3 text-ink">Shared resources for this unit</h3>
-								</div>
-								<p class="max-w-xl type-caption text-ink/65">
-									Use this layer for governed materials every class should inherit while teaching
-									the unit.
-								</p>
-							</div>
-							<PlanningResourcePanel
-								anchor-doctype="Unit Plan"
-								:anchor-name="selectedUnit?.unit_plan || null"
-								:can-manage="canManagePlan"
-								eyebrow="Unit Resources"
-								title="Shared resources for this unit"
-								description="Use this layer for governed materials every class should inherit while teaching the unit."
-								empty-message="No governed unit resources yet."
-								blocked-message="Save the unit plan before sharing unit resources."
-								read-only-message="Only approved curriculum staff can edit shared unit resources."
-								:resources="selectedUnit?.shared_resources || []"
-								enable-attachment-preview
-								hide-header
-								embedded
-								@changed="loadSurface"
-							/>
-						</section>
-					</template>
-				</section>
-
-				<section v-else class="rounded-[2rem] border border-line-soft bg-white p-6 shadow-soft">
-					<p class="type-body text-ink/70">
-						Select a governed unit to edit the shared backbone, or create a new unit plan.
-					</p>
-				</section>
+				<CoursePlanUnitEditor
+					:show="showUnitEditor"
+					:can-manage-plan="canManagePlan"
+					:creating-unit="creatingUnit"
+					:unit-pending="unitPending"
+					:unit-form-dirty="unitFormDirty"
+					:unit-form="unitForm"
+					:selected-unit="selectedUnit"
+					:selected-unit-timeline-state="selectedUnitTimelineState"
+					:course-program-options="courseProgramOptions"
+					:unit-status-options="unitStatusOptions"
+					:derived-reflection-academic-year="derivedReflectionAcademicYear"
+					:derived-reflection-school="derivedReflectionSchool"
+					:legacy-standards-count="legacyStandardsCount"
+					:show-unit-save-rail="showUnitSaveRail"
+					:unit-editor-heading="unitEditorHeading"
+					:unit-save-status-label="unitSaveStatusLabel"
+					:unit-save-support-text="unitSaveSupportText"
+					:unit-save-action-label="unitSaveActionLabel"
+					:can-save-unit-action="canSaveUnitAction"
+					:collapsed-sections="collapsedSections"
+					:collapsed-unit-panels="collapsedUnitPanels"
+					:is-standard-expanded="isStandardExpanded"
+					@toggle-section="toggleSection"
+					@jump-to-section="jumpToSection"
+					@toggle-unit-panel="toggleUnitPanel"
+					@scroll-to-unit-panel="scrollToUnitPanel"
+					@open-standards-overlay="openStandardsOverlay"
+					@toggle-standard="toggleStandardExpansion"
+					@remove-standard="removeStandard"
+					@add-reflection="addReflection"
+					@remove-reflection="removeReflection"
+					@save-unit="handleSaveUnitPlan"
+					@cancel-new-unit="cancelNewUnit"
+					@resource-changed="loadSurface"
+				/>
 			</section>
 
-			<section
-				:id="SECTION_IDS.quizBanks"
-				class="scroll-mt-40 rounded-[2rem] border border-line-soft bg-white p-6 shadow-soft"
-			>
-				<button
-					type="button"
-					class="flex w-full flex-col gap-4 text-left lg:flex-row lg:items-start lg:justify-between"
-					:aria-expanded="!isSectionCollapsed(SECTION_IDS.quizBanks)"
-					@click="toggleSection(SECTION_IDS.quizBanks)"
-				>
-					<div>
-						<p class="type-overline text-ink/60">Course Quiz Banks</p>
-						<h2 class="mt-2 type-h2 text-ink">Shared quiz authoring</h2>
-						<p class="mt-2 type-body text-ink/80">
-							{{
-								isSectionCollapsed(SECTION_IDS.quizBanks)
-									? 'Open the course-level question banks when you need to author, revise, or assign a reusable quiz.'
-									: 'Build question banks once, then assign them through the class task flow without rewriting the quiz each time.'
-							}}
-						</p>
-					</div>
-					<div class="flex flex-wrap items-center gap-2 lg:justify-end">
-						<span class="chip">{{ surface.assessment.quiz_question_banks.length }} banks</span>
-						<span v-if="selectedQuizBankLabel" class="chip">{{ selectedQuizBankLabel }}</span>
-						<span class="chip">{{
-							isSectionCollapsed(SECTION_IDS.quizBanks) ? 'Show' : 'Hide'
-						}}</span>
-					</div>
-				</button>
-
-				<div
-					v-if="!isSectionCollapsed(SECTION_IDS.quizBanks)"
-					class="mt-6 grid gap-6 xl:grid-cols-[minmax(0,20rem),minmax(0,1fr)]"
-				>
-					<aside class="space-y-4 xl:self-start">
-						<section class="rounded-[1.75rem] border border-line-soft bg-surface-soft/55 p-5">
-							<div class="mb-4 flex items-center justify-between gap-3">
-								<div>
-									<p class="type-overline text-ink/60">Course Quiz Banks</p>
-									<h2 class="mt-1 type-h3 text-ink">Shared quiz authoring</h2>
-								</div>
-								<span class="chip">{{ surface.assessment.quiz_question_banks.length }}</span>
-							</div>
-
-							<p class="mb-4 type-caption text-ink/70">
-								Quiz banks are shared at the course level so teachers can assign them later from
-								the class task flow.
-							</p>
-
-							<div class="space-y-3">
-								<button
-									v-for="bank in surface.assessment.quiz_question_banks"
-									:key="bank.quiz_question_bank"
-									type="button"
-									class="w-full rounded-2xl border p-4 text-left transition"
-									:class="
-										selectedQuizQuestionBank?.quiz_question_bank === bank.quiz_question_bank &&
-										!creatingQuizQuestionBank
-											? 'border-jacaranda bg-jacaranda/10 shadow-soft'
-											: 'border-line-soft bg-surface-soft hover:border-jacaranda/40'
-									"
-									@click="selectQuizQuestionBank(bank.quiz_question_bank)"
-								>
-									<div class="flex items-start justify-between gap-3">
-										<div class="min-w-0">
-											<p class="type-body-strong text-ink">{{ bank.bank_title }}</p>
-											<p class="mt-1 type-caption text-ink/70">
-												{{ bank.published_question_count || 0 }} published of
-												{{ bank.question_count || 0 }} total
-											</p>
-										</div>
-										<span class="chip">
-											{{ bank.is_published ? 'Ready' : 'Draft' }}
-										</span>
-									</div>
-								</button>
-
-								<div
-									v-if="!surface.assessment.quiz_question_banks.length"
-									class="rounded-2xl border border-dashed border-line-soft p-4"
-								>
-									<p class="type-caption text-ink/70">No course quiz banks yet.</p>
-								</div>
-							</div>
-
-							<div v-if="canManagePlan" class="mt-4">
-								<button type="button" class="if-action w-full" @click="startNewQuizQuestionBank">
-									{{ creatingQuizQuestionBank ? 'Editing New Quiz Bank' : 'New Quiz Bank' }}
-								</button>
-							</div>
-						</section>
-					</aside>
-
-					<section class="rounded-[1.75rem] border border-line-soft bg-surface-soft/40 p-6">
-						<div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-							<div>
-								<p class="type-overline text-ink/60">
-									{{ creatingQuizQuestionBank ? 'New Quiz Bank' : 'Selected Quiz Bank' }}
-								</p>
-								<h2 class="mt-2 type-h2 text-ink">
-									{{
-										creatingQuizQuestionBank
-											? 'Draft a reusable quiz bank'
-											: quizBankForm.bank_title || 'Quiz Bank'
-									}}
-								</h2>
-								<p class="mt-2 type-body text-ink/80">
-									Build question banks once, then assign them through the class task flow without
-									rewriting the quiz each time.
-								</p>
-							</div>
-							<div class="flex flex-wrap gap-2">
-								<span class="chip"> {{ quizBankForm.questions.length }} questions </span>
-								<span class="chip">
-									{{ quizBankForm.is_published ? 'Published' : 'Draft only' }}
-								</span>
-								<button
-									v-if="canManagePlan && !creatingQuizQuestionBank && selectedQuizQuestionBank"
-									type="button"
-									class="if-action if-action--subtle"
-									:disabled="!selectedQuizQuestionBank.is_published"
-									@click="openAssignFromQuizBank(selectedQuizQuestionBank)"
-								>
-									Assign This Quiz
-								</button>
-							</div>
-						</div>
-						<p
-							v-if="
-								canManagePlan &&
-								!creatingQuizQuestionBank &&
-								selectedQuizQuestionBank &&
-								!selectedQuizQuestionBank.is_published
-							"
-							class="mt-3 type-caption text-ink/70"
-						>
-							Publish the quiz bank before assigning it to a class.
-						</p>
-
-						<div
-							v-if="!showQuizBankEditor"
-							class="mt-6 rounded-2xl border border-dashed border-line-soft p-5"
-						>
-							<p class="type-caption text-ink/70">
-								Select a quiz bank, or create a new one for this course.
-							</p>
-						</div>
-
-						<template v-else>
-							<div v-if="canManagePlan" class="mt-6 grid gap-4 lg:grid-cols-2">
-								<label class="block space-y-2">
-									<span class="type-caption text-ink/70">Bank Title</span>
-									<input
-										v-model="quizBankForm.bank_title"
-										data-quick-focus="quiz-bank-title"
-										type="text"
-										class="if-input w-full"
-										placeholder="e.g. Cell Structure Check-in"
-									/>
-								</label>
-								<label
-									class="flex items-center gap-3 rounded-2xl border border-line-soft bg-surface-soft px-4 py-4"
-								>
-									<input v-model="quizBankForm.is_published" type="checkbox" class="h-4 w-4" />
-									<div>
-										<p class="type-body-strong text-ink">Ready for assignment</p>
-										<p class="type-caption text-ink/70">
-											Published banks appear in the quiz selection step when teachers assign work.
-										</p>
-									</div>
-								</label>
-								<label class="block space-y-2 lg:col-span-2">
-									<span class="type-caption text-ink/70">Description</span>
-									<textarea
-										v-model="quizBankForm.description"
-										rows="4"
-										class="if-input min-h-[8rem] w-full resize-y"
-										placeholder="Explain what this quiz bank checks and when teachers should use it."
-									/>
-								</label>
-							</div>
-
-							<section class="mt-6 space-y-4">
-								<div class="flex items-center justify-between gap-3">
-									<div>
-										<p class="type-overline text-ink/60">Questions</p>
-										<h3 class="mt-1 type-h3 text-ink">Reusable quiz items</h3>
-									</div>
-									<button
-										v-if="canManagePlan"
-										type="button"
-										class="if-action if-action--subtle"
-										@click="addQuizQuestion"
-									>
-										Add Question
-									</button>
-								</div>
-
-								<div
-									v-if="!quizBankForm.questions.length"
-									class="rounded-2xl border border-dashed border-line-soft p-4"
-								>
-									<p class="type-caption text-ink/70">
-										No questions yet. Add reusable questions teachers can pull into quiz-backed
-										tasks.
-									</p>
-								</div>
-
-								<div v-else class="space-y-4">
-									<article
-										v-for="question in quizBankForm.questions"
-										:key="question.local_id"
-										class="rounded-2xl border border-line-soft bg-surface-soft p-4"
-									>
-										<div class="grid gap-4 lg:grid-cols-2">
-											<label class="block space-y-2">
-												<span class="type-caption text-ink/70">Question Title</span>
-												<input
-													v-model="question.title"
-													type="text"
-													class="if-input w-full"
-													placeholder="e.g. Identify the nucleus"
-													:disabled="!canManagePlan"
-												/>
-											</label>
-											<label class="block space-y-2">
-												<span class="type-caption text-ink/70">Question Type</span>
-												<select
-													v-model="question.question_type"
-													class="if-input w-full"
-													:disabled="!canManagePlan"
-													@change="handleQuizQuestionTypeChange(question)"
-												>
-													<option
-														v-for="option in quizQuestionTypeOptions"
-														:key="option"
-														:value="option"
-													>
-														{{ option }}
-													</option>
-												</select>
-											</label>
-											<label
-												class="flex items-center gap-3 rounded-2xl border border-line-soft bg-white px-4 py-4 lg:col-span-2"
-											>
-												<input
-													v-model="question.is_published"
-													type="checkbox"
-													class="h-4 w-4"
-													:disabled="!canManagePlan"
-												/>
-												<div>
-													<p class="type-body-strong text-ink">Published in the bank</p>
-													<p class="type-caption text-ink/70">
-														Only published questions are available for quiz attempts.
-													</p>
-												</div>
-											</label>
-											<label class="block space-y-2 lg:col-span-2">
-												<span class="type-caption text-ink/70">Prompt</span>
-												<PlanningRichTextField
-													v-model="question.prompt"
-													:editable="canManagePlan"
-													min-height-class="min-h-[8rem]"
-												/>
-											</label>
-											<label
-												v-if="question.question_type === 'Short Answer'"
-												class="block space-y-2 lg:col-span-2"
-											>
-												<span class="type-caption text-ink/70">Accepted Answers</span>
-												<textarea
-													v-model="question.accepted_answers"
-													rows="4"
-													class="if-input min-h-[8rem] w-full resize-y"
-													placeholder="One accepted answer per line"
-													:disabled="!canManagePlan"
-												/>
-											</label>
-										</div>
-
-										<section
-											v-if="isChoiceQuestion(question.question_type)"
-											class="mt-4 space-y-3 rounded-2xl border border-line-soft bg-white p-4"
-										>
-											<div class="flex items-center justify-between gap-3">
-												<div>
-													<p class="type-overline text-ink/60">Answer Options</p>
-													<h4 class="mt-1 type-body-strong text-ink">Choice payload</h4>
-												</div>
-												<button
-													v-if="canManagePlan && question.question_type !== 'True / False'"
-													type="button"
-													class="if-action if-action--subtle"
-													@click="addQuizOption(question)"
-												>
-													Add Option
-												</button>
-											</div>
-
-											<div class="space-y-3">
-												<div
-													v-for="option in question.options"
-													:key="option.local_id"
-													class="grid gap-3 rounded-2xl border border-line-soft bg-surface-soft p-3 md:grid-cols-[minmax(0,1fr),auto,auto]"
-												>
-													<input
-														v-model="option.option_text"
-														type="text"
-														class="if-input w-full"
-														placeholder="Option text"
-														:disabled="!canManagePlan"
-													/>
-													<label
-														class="flex items-center gap-2 rounded-xl border border-line-soft bg-white px-3 py-2 type-caption text-ink/70"
-													>
-														<input
-															v-model="option.is_correct"
-															type="checkbox"
-															class="h-4 w-4"
-															:disabled="!canManagePlan"
-														/>
-														<span>Correct</span>
-													</label>
-													<button
-														v-if="canManagePlan && question.question_type !== 'True / False'"
-														type="button"
-														class="if-action if-action--subtle"
-														@click="removeQuizOption(question, option.local_id)"
-													>
-														Remove
-													</button>
-												</div>
-											</div>
-										</section>
-
-										<label class="mt-4 block space-y-2">
-											<span class="type-caption text-ink/70">Explanation</span>
-											<PlanningRichTextField
-												v-model="question.explanation"
-												placeholder="Optional feedback or explanation shown when allowed."
-												:editable="canManagePlan"
-												min-height-class="min-h-[6rem]"
-											/>
-										</label>
-
-										<div v-if="canManagePlan" class="mt-4 flex justify-end">
-											<button
-												type="button"
-												class="if-action if-action--subtle"
-												@click="removeQuizQuestion(question.local_id)"
-											>
-												Remove Question
-											</button>
-										</div>
-									</article>
-								</div>
-							</section>
-
-							<div v-if="canManagePlan" class="mt-6 flex flex-wrap justify-end gap-3">
-								<button
-									v-if="creatingQuizQuestionBank"
-									type="button"
-									class="if-action if-action--subtle"
-									@click="cancelNewQuizQuestionBank"
-								>
-									Cancel New Quiz Bank
-								</button>
-								<button
-									type="button"
-									class="if-action"
-									:disabled="quizBankPending"
-									@click="handleSaveQuizQuestionBank"
-								>
-									{{
-										quizBankPending
-											? 'Saving...'
-											: creatingQuizQuestionBank
-												? 'Create Quiz Bank'
-												: 'Save Quiz Bank'
-									}}
-								</button>
-							</div>
-						</template>
-					</section>
-				</div>
-			</section>
+			<CoursePlanQuizBanksSection
+				:collapsed="isSectionCollapsed(SECTION_IDS.quizBanks)"
+				:can-manage-plan="canManagePlan"
+				:creating-quiz-question-bank="creatingQuizQuestionBank"
+				:show-quiz-bank-editor="showQuizBankEditor"
+				:quiz-question-banks="surface.assessment.quiz_question_banks"
+				:selected-quiz-question-bank="selectedQuizQuestionBank"
+				:selected-quiz-bank-label="selectedQuizBankLabel"
+				:quiz-bank-form="quizBankForm"
+				:quiz-bank-pending="quizBankPending"
+				@toggle="toggleSection(SECTION_IDS.quizBanks)"
+				@select-bank="selectQuizQuestionBank"
+				@start-new-bank="startNewQuizQuestionBank"
+				@assign-quiz="openAssignFromQuizBank"
+				@add-question="addQuizQuestion"
+				@remove-question="removeQuizQuestion"
+				@add-option="addQuizOption"
+				@remove-option="removeQuizOption"
+				@question-type-change="handleQuizQuestionTypeChange"
+				@cancel-new-bank="cancelNewQuizQuestionBank"
+				@save-bank="handleSaveQuizQuestionBank"
+			/>
 		</template>
 	</div>
 </template>
@@ -1947,9 +135,12 @@ import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } 
 import { toast } from 'frappe-ui';
 import { useRoute, useRouter } from 'vue-router';
 
-import CoursePlanTimelineCard from '@/components/planning/CoursePlanTimelineCard.vue';
-import PlanningRichTextField from '@/components/planning/PlanningRichTextField.vue';
-import PlanningResourcePanel from '@/components/planning/PlanningResourcePanel.vue';
+import CoursePlanOverviewSection from '@/components/planning/course-plan-workspace/CoursePlanOverviewSection.vue';
+import CoursePlanQuizBanksSection from '@/components/planning/course-plan-workspace/CoursePlanQuizBanksSection.vue';
+import CoursePlanTimelineSection from '@/components/planning/course-plan-workspace/CoursePlanTimelineSection.vue';
+import CoursePlanUnitEditor from '@/components/planning/course-plan-workspace/CoursePlanUnitEditor.vue';
+import CoursePlanUnitSidebar from '@/components/planning/course-plan-workspace/CoursePlanUnitSidebar.vue';
+import CoursePlanWorkspaceHeader from '@/components/planning/course-plan-workspace/CoursePlanWorkspaceHeader.vue';
 import { useOverlayStack } from '@/composables/useOverlayStack';
 import {
 	getStaffCoursePlanSurface,
@@ -1960,35 +151,33 @@ import {
 import type { StaffLearningStandardPickerRow } from '@/types/contracts/staff_teaching/get_learning_standard_picker';
 import type {
 	Response as StaffCoursePlanSurfaceResponse,
-	StaffCoursePlanQuizQuestion,
 	StaffCoursePlanQuizQuestionBank,
-	StaffCoursePlanQuizQuestionOption,
 	StaffCoursePlanTimelineUnit,
 	StaffCoursePlanUnit,
 } from '@/types/contracts/staff_teaching/get_staff_course_plan_surface';
-import type {
-	StaffPlanningReflection,
-	StaffPlanningStandard,
-} from '@/types/contracts/staff_teaching/get_staff_class_planning_surface';
-
-type EditableStandard = StaffPlanningStandard & {
-	local_id: number;
-};
-
-type EditableReflection = StaffPlanningReflection & {
-	local_id: number;
-};
-
-type EditableQuizQuestionOption = Omit<StaffCoursePlanQuizQuestionOption, 'is_correct'> & {
-	local_id: number;
-	is_correct: boolean;
-};
-
-type EditableQuizQuestion = Omit<StaffCoursePlanQuizQuestion, 'options' | 'is_published'> & {
-	local_id: number;
-	is_published: boolean;
-	options: EditableQuizQuestionOption[];
-};
+import {
+	SECTION_IDS,
+	UNIT_PANEL_IDS,
+	buildBlankQuizQuestion,
+	buildEditableQuizOption,
+	buildEditableQuizQuestion,
+	buildEditableReflection,
+	buildEditableStandard,
+	buildUnitDraftSignature,
+	handleQuizQuestionTypeChange as syncQuizQuestionType,
+	parseIsoDate,
+	serializeQuizQuestions,
+	serializeReflections,
+	serializeStandards,
+	unitStatusOptions,
+	type CoursePlanFormState,
+	type EditableQuizQuestion,
+	type QuizBankFormState,
+	type UnitFormState,
+	type UnitPanelId,
+	type WorkspaceNavigationSection,
+	type WorkspaceSectionId,
+} from '@/lib/planning/coursePlanWorkspace';
 
 const props = defineProps<{
 	coursePlan: string;
@@ -2001,27 +190,6 @@ const route = useRoute();
 const router = useRouter();
 const overlay = useOverlayStack();
 
-const SECTION_IDS = {
-	overview: 'course-plan-overview',
-	timeline: 'course-plan-timeline',
-	courseResources: 'course-plan-resources',
-	units: 'course-plan-units',
-	unitEditor: 'course-plan-unit-editor',
-	standards: 'course-plan-standards',
-	reflections: 'course-plan-reflections',
-	unitResources: 'course-plan-unit-resources',
-	quizBanks: 'course-plan-quiz-banks',
-} as const;
-
-const UNIT_PANEL_IDS = {
-	setup: 'course-plan-unit-setup',
-	narrative: 'course-plan-unit-narrative',
-	learningFocus: 'course-plan-unit-learning-focus',
-} as const;
-
-type WorkspaceSectionId = (typeof SECTION_IDS)[keyof typeof SECTION_IDS];
-type UnitPanelId = (typeof UNIT_PANEL_IDS)[keyof typeof UNIT_PANEL_IDS];
-
 const collapsedSectionDefaults: Record<WorkspaceSectionId, boolean> = {
 	[SECTION_IDS.overview]: true,
 	[SECTION_IDS.timeline]: false,
@@ -2033,6 +201,7 @@ const collapsedSectionDefaults: Record<WorkspaceSectionId, boolean> = {
 	[SECTION_IDS.unitResources]: true,
 	[SECTION_IDS.quizBanks]: true,
 };
+
 const collapsedUnitPanelDefaults: Record<UnitPanelId, boolean> = {
 	[UNIT_PANEL_IDS.setup]: false,
 	[UNIT_PANEL_IDS.narrative]: true,
@@ -2056,7 +225,7 @@ const activeSectionId = ref<WorkspaceSectionId>(SECTION_IDS.overview);
 const expandedStandardIds = ref<number[]>([]);
 let scrollFrame = 0;
 
-const coursePlanForm = reactive({
+const coursePlanForm = reactive<CoursePlanFormState>({
 	record_modified: '',
 	title: '',
 	academic_year: '',
@@ -2065,13 +234,13 @@ const coursePlanForm = reactive({
 	summary: '',
 });
 
-const unitForm = reactive({
+const unitForm = reactive<UnitFormState>({
 	unit_plan: '',
 	record_modified: '',
 	title: '',
 	program: '',
 	unit_code: '',
-	unit_order: null as number | null,
+	unit_order: null,
 	unit_status: 'Active',
 	version: '',
 	duration: '',
@@ -2083,30 +252,19 @@ const unitForm = reactive({
 	content: '',
 	skills: '',
 	concepts: '',
-	standards: [] as EditableStandard[],
-	reflections: [] as EditableReflection[],
+	standards: [],
+	reflections: [],
 });
 
-const quizBankForm = reactive({
+const quizBankForm = reactive<QuizBankFormState>({
 	quiz_question_bank: '',
 	record_modified: '',
 	bank_title: '',
 	description: '',
 	is_published: true,
-	questions: [] as EditableQuizQuestion[],
+	questions: [],
 });
 
-const coursePlanStatusOptions = ['Draft', 'Active', 'Archived'];
-const unitStatusOptions = ['Draft', 'Active', 'Archived'];
-const coverageLevelOptions = ['Introduced', 'Reinforced', 'Mastered'];
-const alignmentStrengthOptions = ['Exact', 'Partial', 'Broad'];
-const quizQuestionTypeOptions = [
-	'Single Choice',
-	'Multiple Answer',
-	'True / False',
-	'Short Answer',
-	'Essay',
-];
 const timelineShortDateFormatter = new Intl.DateTimeFormat(undefined, {
 	month: 'short',
 	day: 'numeric',
@@ -2129,6 +287,7 @@ const selectedQuizQuestionBank = computed<StaffCoursePlanQuizQuestionBank | null
 	}
 	return detail;
 });
+
 const collapsedSections = reactive<Record<WorkspaceSectionId, boolean>>({
 	...collapsedSectionDefaults,
 });
@@ -2197,7 +356,17 @@ const timelineDateLabel = computed(() => {
 	if (!start || !end) return '';
 	return `${timelineShortDateFormatter.format(start)} to ${timelineShortDateFormatter.format(end)}`;
 });
-const unitFormSignature = computed(() => buildUnitDraftSignature());
+const unitFormSignature = computed(() =>
+	buildUnitDraftSignature(
+		unitForm,
+		serializeStandards(unitForm.standards),
+		serializeReflections(
+			unitForm.reflections,
+			derivedReflectionAcademicYear.value,
+			derivedReflectionSchool.value
+		)
+	)
+);
 const unitFormDirty = computed(() => unitFormSignature.value !== unitDraftSnapshot.value);
 const canSaveUnitAction = computed(() =>
 	Boolean(canManagePlan.value && !unitPending.value && (creatingUnit.value || unitFormDirty.value))
@@ -2240,10 +409,8 @@ const unitSaveSupportText = computed(() => {
 		? 'Save the unit before leaving so linked classes inherit the latest shared guidance.'
 		: 'This governed unit is up to date.';
 });
-const navigationSections = computed<
-	{ id: WorkspaceSectionId; label: string; count?: number | null }[]
->(() => {
-	const sections: { id: WorkspaceSectionId; label: string; count?: number | null }[] = [
+const navigationSections = computed<WorkspaceNavigationSection[]>(() => {
+	const sections: WorkspaceNavigationSection[] = [
 		{ id: SECTION_IDS.overview, label: 'Overview' },
 		{ id: SECTION_IDS.timeline, label: 'Timeline' },
 		{
@@ -2270,9 +437,6 @@ const navigationSections = computed<
 			label: 'Reflections',
 			count: unitForm.reflections.length,
 		});
-	}
-
-	if (showUnitEditor.value) {
 		sections.push({
 			id: SECTION_IDS.unitResources,
 			label: 'Unit Resources',
@@ -2291,74 +455,6 @@ const navigationSections = computed<
 
 function nextId() {
 	return nextLocalId.value++;
-}
-
-function parseIsoDate(value?: string | null) {
-	if (!value) return null;
-	const parsed = new Date(`${value}T00:00:00`);
-	return Number.isNaN(parsed.getTime()) ? null : parsed;
-}
-
-function normalizeSnapshotText(value?: string | null) {
-	return String(value || '').trim();
-}
-
-function normalizeSnapshotRichText(value?: string | null) {
-	return hasRichTextContent(value) ? String(value || '').trim() : '';
-}
-
-function normalizeStandardForSnapshot(standard: StaffPlanningStandard) {
-	return {
-		learning_standard: normalizeSnapshotText(standard.learning_standard),
-		framework_name: normalizeSnapshotText(standard.framework_name),
-		framework_version: normalizeSnapshotText(standard.framework_version),
-		subject_area: normalizeSnapshotText(standard.subject_area),
-		program: normalizeSnapshotText(standard.program),
-		strand: normalizeSnapshotText(standard.strand),
-		substrand: normalizeSnapshotText(standard.substrand),
-		standard_code: normalizeSnapshotText(standard.standard_code),
-		standard_description: normalizeSnapshotText(standard.standard_description),
-		coverage_level: normalizeSnapshotText(standard.coverage_level),
-		alignment_strength: normalizeSnapshotText(standard.alignment_strength),
-		alignment_type: normalizeSnapshotText(standard.alignment_type),
-		notes: normalizeSnapshotText(standard.notes),
-	};
-}
-
-function normalizeReflectionForSnapshot(reflection: StaffPlanningReflection) {
-	return {
-		academic_year: normalizeSnapshotText(reflection.academic_year),
-		school: normalizeSnapshotText(reflection.school),
-		prior_to_the_unit: normalizeSnapshotRichText(reflection.prior_to_the_unit),
-		during_the_unit: normalizeSnapshotRichText(reflection.during_the_unit),
-		what_work_well: normalizeSnapshotRichText(reflection.what_work_well),
-		what_didnt_work_well: normalizeSnapshotRichText(reflection.what_didnt_work_well),
-		changes_suggestions: normalizeSnapshotRichText(reflection.changes_suggestions),
-	};
-}
-
-function buildUnitDraftSignature() {
-	return JSON.stringify({
-		title: normalizeSnapshotText(unitForm.title),
-		program: normalizeSnapshotText(unitForm.program),
-		unit_code: normalizeSnapshotText(unitForm.unit_code),
-		unit_order: unitForm.unit_order ?? null,
-		unit_status: normalizeSnapshotText(unitForm.unit_status),
-		version: normalizeSnapshotText(unitForm.version),
-		duration: normalizeSnapshotText(unitForm.duration),
-		estimated_duration: normalizeSnapshotText(unitForm.estimated_duration),
-		is_published: unitForm.is_published ? 1 : 0,
-		overview: normalizeSnapshotRichText(unitForm.overview),
-		essential_understanding: normalizeSnapshotRichText(unitForm.essential_understanding),
-		misconceptions: normalizeSnapshotRichText(unitForm.misconceptions),
-		content: normalizeSnapshotRichText(unitForm.content),
-		skills: normalizeSnapshotRichText(unitForm.skills),
-		concepts: normalizeSnapshotRichText(unitForm.concepts),
-		standards: serializeStandards().map(standard => normalizeStandardForSnapshot(standard)),
-		reflections: serializeReflections().map(reflection =>
-			normalizeReflectionForSnapshot(reflection)
-		),
-	});
 }
 
 function coursePlanSectionStorageKey() {
@@ -2460,67 +556,6 @@ function expandSectionChain(sectionId: WorkspaceSectionId) {
 	}
 }
 
-function isChoiceQuestion(questionType?: string | null) {
-	return ['Single Choice', 'Multiple Answer', 'True / False'].includes(questionType || '');
-}
-
-function hasRichTextContent(value?: string | null) {
-	return Boolean(toPlainText(value));
-}
-
-function toPlainText(value?: string | null) {
-	return String(value || '')
-		.replace(/<style[\s\S]*?<\/style>/gi, ' ')
-		.replace(/<script[\s\S]*?<\/script>/gi, ' ')
-		.replace(/<[^>]*>/g, ' ')
-		.replace(/&nbsp;|&#160;/gi, ' ')
-		.trim();
-}
-
-function trimmedValue(value?: string | null) {
-	return String(value || '').trim();
-}
-
-function standardSummaryTokens(standard: EditableStandard) {
-	const strand = trimmedValue(standard.strand);
-	const substrand = trimmedValue(standard.substrand);
-	const coverageLevel = trimmedValue(standard.coverage_level);
-	const alignmentType = trimmedValue(standard.alignment_type);
-	const alignmentStrength = trimmedValue(standard.alignment_strength);
-
-	return [
-		{
-			key: 'strand',
-			label: strand || 'Strand pending',
-			pending: !strand,
-		},
-		{
-			key: 'substrand',
-			label: substrand || 'Substrand pending',
-			pending: !substrand,
-		},
-		{
-			key: 'coverage-level',
-			label: coverageLevel ? `Coverage: ${coverageLevel}` : 'Coverage pending',
-			pending: !coverageLevel,
-		},
-		{
-			key: 'alignment-type',
-			label: alignmentType ? `Type: ${alignmentType}` : 'Type pending',
-			pending: !alignmentType,
-		},
-		{
-			key: 'alignment-strength',
-			label: alignmentStrength ? `Strength: ${alignmentStrength}` : 'Strength pending',
-			pending: !alignmentStrength,
-		},
-	];
-}
-
-function standardSummaryDescription(standard: EditableStandard) {
-	return toPlainText(standard.standard_description) || 'Standard description pending.';
-}
-
 function isStandardExpanded(localId: number) {
 	return expandedStandardIds.value.includes(localId);
 }
@@ -2531,76 +566,6 @@ function toggleStandardExpansion(localId: number) {
 		return;
 	}
 	expandedStandardIds.value = [...expandedStandardIds.value, localId];
-}
-
-function buildEditableStandard(standard?: StaffPlanningStandard): EditableStandard {
-	return {
-		local_id: nextId(),
-		learning_standard: standard?.learning_standard || '',
-		framework_name: standard?.framework_name || '',
-		framework_version: standard?.framework_version || '',
-		subject_area: standard?.subject_area || '',
-		program: standard?.program || unitForm.program || '',
-		strand: standard?.strand || '',
-		substrand: standard?.substrand || '',
-		standard_code: standard?.standard_code || '',
-		standard_description: standard?.standard_description || '',
-		coverage_level: standard?.coverage_level || '',
-		alignment_strength: standard?.alignment_strength || '',
-		alignment_type: standard?.alignment_type || '',
-		notes: standard?.notes || '',
-	};
-}
-
-function buildEditableReflection(reflection?: StaffPlanningReflection): EditableReflection {
-	return {
-		local_id: nextId(),
-		academic_year: reflection?.academic_year || derivedReflectionAcademicYear.value || '',
-		school: reflection?.school || derivedReflectionSchool.value || '',
-		prior_to_the_unit: reflection?.prior_to_the_unit || '',
-		during_the_unit: reflection?.during_the_unit || '',
-		what_work_well: reflection?.what_work_well || '',
-		what_didnt_work_well: reflection?.what_didnt_work_well || '',
-		changes_suggestions: reflection?.changes_suggestions || '',
-	};
-}
-
-function buildEditableQuizOption(
-	option?: StaffCoursePlanQuizQuestionOption
-): EditableQuizQuestionOption {
-	return {
-		local_id: nextId(),
-		option_text: option?.option_text || '',
-		is_correct: Boolean(option?.is_correct),
-	};
-}
-
-function buildEditableQuizQuestion(question?: StaffCoursePlanQuizQuestion): EditableQuizQuestion {
-	return {
-		local_id: nextId(),
-		quiz_question: question?.quiz_question || '',
-		title: question?.title || '',
-		question_type: question?.question_type || 'Single Choice',
-		is_published: question?.is_published !== 0,
-		prompt: question?.prompt || '',
-		accepted_answers: question?.accepted_answers || '',
-		explanation: question?.explanation || '',
-		options: (question?.options || []).map(option => buildEditableQuizOption(option)),
-	};
-}
-
-function buildBlankQuizQuestion(questionType = 'Single Choice'): EditableQuizQuestion {
-	const question = buildEditableQuizQuestion({
-		title: '',
-		question_type: questionType,
-		is_published: 1,
-		prompt: '',
-		accepted_answers: '',
-		explanation: '',
-		options: [],
-	});
-	handleQuizQuestionTypeChange(question);
-	return question;
 }
 
 function getSectionElement(sectionId: WorkspaceSectionId) {
@@ -2780,12 +745,27 @@ function syncUnitForm(unit: StaffCoursePlanUnit | null) {
 	unitForm.content = unit?.content || '';
 	unitForm.skills = unit?.skills || '';
 	unitForm.concepts = unit?.concepts || '';
-	unitForm.standards = (unit?.standards || []).map(standard => buildEditableStandard(standard));
+	unitForm.standards = (unit?.standards || []).map(standard =>
+		buildEditableStandard(nextId, standard, unit?.program || '')
+	);
 	expandedStandardIds.value = [];
 	unitForm.reflections = (unit?.shared_reflections || []).map(reflection =>
-		buildEditableReflection(reflection)
+		buildEditableReflection(
+			nextId,
+			reflection,
+			derivedReflectionAcademicYear.value,
+			derivedReflectionSchool.value
+		)
 	);
-	unitDraftSnapshot.value = buildUnitDraftSignature();
+	unitDraftSnapshot.value = buildUnitDraftSignature(
+		unitForm,
+		serializeStandards(unitForm.standards),
+		serializeReflections(
+			unitForm.reflections,
+			derivedReflectionAcademicYear.value,
+			derivedReflectionSchool.value
+		)
+	);
 }
 
 function syncQuizBankForm(bank: StaffCoursePlanQuizQuestionBank | null) {
@@ -2795,7 +775,7 @@ function syncQuizBankForm(bank: StaffCoursePlanQuizQuestionBank | null) {
 	quizBankForm.description = bank?.description || '';
 	quizBankForm.is_published = bank?.is_published !== 0;
 	quizBankForm.questions = (bank?.questions || []).map(question =>
-		buildEditableQuizQuestion(question)
+		buildEditableQuizQuestion(nextId, question)
 	);
 }
 
@@ -2930,18 +910,22 @@ function applySelectedLearningStandards(rows: StaffLearningStandardPickerRow[]) 
 			return;
 		}
 		unitForm.standards.push(
-			buildEditableStandard({
-				learning_standard: learningStandard,
-				framework_name: standard.framework_name || '',
-				framework_version: standard.framework_version || '',
-				subject_area: standard.subject_area || '',
-				program: standard.program || unitForm.program || '',
-				strand: standard.strand || '',
-				substrand: standard.substrand || '',
-				standard_code: standard.standard_code || '',
-				standard_description: standard.standard_description || '',
-				alignment_type: standard.alignment_type || '',
-			})
+			buildEditableStandard(
+				nextId,
+				{
+					learning_standard: learningStandard,
+					framework_name: standard.framework_name || '',
+					framework_version: standard.framework_version || '',
+					subject_area: standard.subject_area || '',
+					program: standard.program || unitForm.program || '',
+					strand: standard.strand || '',
+					substrand: standard.substrand || '',
+					standard_code: standard.standard_code || '',
+					standard_description: standard.standard_description || '',
+					alignment_type: standard.alignment_type || '',
+				},
+				unitForm.program || ''
+			)
 		);
 		existingStandards.add(learningStandard);
 		added += 1;
@@ -2978,25 +962,20 @@ function removeStandard(localId: number) {
 }
 
 function addReflection() {
-	unitForm.reflections.push(buildEditableReflection());
+	unitForm.reflections.push(
+		buildEditableReflection(
+			nextId,
+			undefined,
+			derivedReflectionAcademicYear.value,
+			derivedReflectionSchool.value
+		)
+	);
 }
 
 function removeReflection(localId: number) {
 	unitForm.reflections = unitForm.reflections.filter(
 		reflection => reflection.local_id !== localId
 	);
-}
-
-function serializeStandards(): StaffPlanningStandard[] {
-	return unitForm.standards.map(({ local_id, ...row }) => row);
-}
-
-function serializeReflections(): StaffPlanningReflection[] {
-	return unitForm.reflections.map(({ local_id, academic_year, school, ...row }) => ({
-		...row,
-		academic_year: derivedReflectionAcademicYear.value || academic_year || null,
-		school: derivedReflectionSchool.value || school || null,
-	}));
 }
 
 async function startNewQuizQuestionBank() {
@@ -3041,7 +1020,7 @@ async function cancelNewQuizQuestionBank() {
 }
 
 function addQuizQuestion() {
-	quizBankForm.questions.push(buildBlankQuizQuestion());
+	quizBankForm.questions.push(buildBlankQuizQuestion(nextId));
 }
 
 function removeQuizQuestion(localId: number) {
@@ -3051,7 +1030,7 @@ function removeQuizQuestion(localId: number) {
 }
 
 function addQuizOption(question: EditableQuizQuestion) {
-	question.options.push(buildEditableQuizOption());
+	question.options.push(buildEditableQuizOption(nextId));
 }
 
 function removeQuizOption(question: EditableQuizQuestion, localId: number) {
@@ -3059,38 +1038,7 @@ function removeQuizOption(question: EditableQuizQuestion, localId: number) {
 }
 
 function handleQuizQuestionTypeChange(question: EditableQuizQuestion) {
-	if (question.question_type === 'True / False') {
-		question.options = [
-			buildEditableQuizOption({ option_text: 'True', is_correct: 1 }),
-			buildEditableQuizOption({ option_text: 'False', is_correct: 0 }),
-		];
-		question.accepted_answers = '';
-		return;
-	}
-
-	if (isChoiceQuestion(question.question_type)) {
-		if (question.options.length < 2) {
-			question.options = [buildEditableQuizOption(), buildEditableQuizOption()];
-		}
-		question.accepted_answers = '';
-		return;
-	}
-
-	question.options = [];
-	if (question.question_type !== 'Short Answer') {
-		question.accepted_answers = '';
-	}
-}
-
-function serializeQuizQuestions(): StaffCoursePlanQuizQuestion[] {
-	return quizBankForm.questions.map(({ local_id, is_published, options, ...question }) => ({
-		...question,
-		is_published: is_published ? 1 : 0,
-		options: options.map(({ local_id: optionLocalId, is_correct, ...option }) => ({
-			...option,
-			is_correct: is_correct ? 1 : 0,
-		})),
-	}));
+	syncQuizQuestionType(question, nextId);
 }
 
 async function handleSaveCoursePlan() {
@@ -3138,8 +1086,12 @@ async function handleSaveUnitPlan() {
 			content: unitForm.content || null,
 			skills: unitForm.skills || null,
 			concepts: unitForm.concepts || null,
-			standards: serializeStandards(),
-			reflections: serializeReflections(),
+			standards: serializeStandards(unitForm.standards),
+			reflections: serializeReflections(
+				unitForm.reflections,
+				derivedReflectionAcademicYear.value,
+				derivedReflectionSchool.value
+			),
 		});
 		creatingUnit.value = false;
 		await router.replace({
@@ -3171,7 +1123,7 @@ async function handleSaveQuizQuestionBank() {
 			bank_title: quizBankForm.bank_title.trim(),
 			description: quizBankForm.description || null,
 			is_published: quizBankForm.is_published ? 1 : 0,
-			questions: serializeQuizQuestions(),
+			questions: serializeQuizQuestions(quizBankForm.questions),
 		});
 		creatingQuizQuestionBank.value = false;
 		selectedQuizQuestionBankName.value = result.quiz_question_bank;
@@ -3239,380 +1191,3 @@ onBeforeUnmount(() => {
 	}
 });
 </script>
-
-<style scoped>
-.course-plan-unit-panel {
-	border: 1px solid rgb(var(--jacaranda-rgb) / 0.18);
-	border-radius: 1.5rem;
-	padding: 1.25rem;
-	background:
-		linear-gradient(180deg, rgb(var(--jacaranda-rgb) / 0.12), rgb(var(--surface-rgb) / 0.95) 38%),
-		rgb(var(--surface-rgb) / 0.96);
-	box-shadow:
-		inset 0 1px 0 rgb(255 255 255 / 0.7),
-		0 10px 22px rgb(var(--ink-rgb) / 0.04);
-}
-
-.course-plan-workspace-header {
-	display: flex;
-	flex-direction: column;
-	gap: 1.25rem;
-	padding: 1.5rem;
-}
-
-.course-plan-workspace-header__divider {
-	height: 1px;
-	background: linear-gradient(
-		90deg,
-		rgb(var(--border-rgb) / 0.2),
-		rgb(var(--border-rgb) / 0.82) 18%,
-		rgb(var(--border-rgb) / 0.82) 82%,
-		rgb(var(--border-rgb) / 0.2)
-	);
-}
-
-.course-plan-quick-access-pill {
-	display: inline-flex;
-	flex-shrink: 0;
-	align-items: center;
-	gap: 0.6rem;
-	border: 1px solid rgb(var(--border-rgb) / 0.82);
-	border-radius: 999px;
-	padding: 0.72rem 1.15rem;
-	background:
-		linear-gradient(180deg, rgb(var(--surface-strong-rgb) / 1), rgb(var(--surface-rgb) / 0.92)),
-		rgb(var(--surface-strong-rgb) / 0.98);
-	color: rgb(var(--ink-rgb) / 0.76);
-	font-size: 0.95rem;
-	font-weight: 600;
-	box-shadow:
-		inset 0 1px 0 rgb(255 255 255 / 0.82),
-		0 8px 18px rgb(var(--ink-rgb) / 0.04);
-	transition:
-		border-color 140ms ease,
-		background-color 140ms ease,
-		box-shadow 140ms ease,
-		color 140ms ease,
-		transform 140ms ease;
-}
-
-.course-plan-quick-access-pill--idle:hover {
-	border-color: rgb(var(--jacaranda-rgb) / 0.34);
-	background:
-		linear-gradient(
-			180deg,
-			rgb(var(--jacaranda-rgb) / 0.1),
-			rgb(var(--surface-strong-rgb) / 0.98)
-		),
-		rgb(var(--surface-strong-rgb) / 1);
-	color: rgb(var(--ink-rgb) / 0.92);
-	box-shadow:
-		0 0 0 3px rgb(var(--jacaranda-rgb) / 0.08),
-		0 14px 24px rgb(var(--ink-rgb) / 0.06);
-	transform: translateY(-1px);
-}
-
-.course-plan-quick-access-pill--active {
-	border-color: rgb(var(--jacaranda-rgb) / 0.5);
-	background:
-		linear-gradient(180deg, rgb(var(--jacaranda-rgb) / 0.22), rgb(var(--jacaranda-rgb) / 0.12)),
-		rgb(var(--surface-strong-rgb) / 0.98);
-	color: rgb(var(--ink-rgb) / 0.98);
-	box-shadow:
-		0 0 0 3px rgb(var(--jacaranda-rgb) / 0.12),
-		0 16px 28px rgb(var(--ink-rgb) / 0.08);
-}
-
-.course-plan-quick-access-pill:focus-visible {
-	outline: none;
-	border-color: rgb(var(--jacaranda-rgb) / 0.5);
-	box-shadow:
-		0 0 0 3px rgb(var(--jacaranda-rgb) / 0.14),
-		0 14px 24px rgb(var(--ink-rgb) / 0.07);
-}
-
-.course-plan-quick-access-pill__count {
-	display: inline-flex;
-	align-items: center;
-	justify-content: center;
-	min-width: 1.7rem;
-	padding: 0.2rem 0.5rem;
-	border-radius: 999px;
-	background: rgb(var(--surface-strong-rgb) / 0.96);
-	color: rgb(var(--ink-rgb) / 0.72);
-	font-size: 0.76rem;
-	font-weight: 700;
-	box-shadow: inset 0 0 0 1px rgb(var(--border-rgb) / 0.85);
-}
-
-.course-plan-quick-access-pill--active .course-plan-quick-access-pill__count {
-	background: rgb(var(--surface-strong-rgb) / 0.98);
-	color: rgb(var(--jacaranda-rgb) / 0.96);
-	box-shadow: inset 0 0 0 1px rgb(var(--jacaranda-rgb) / 0.16);
-}
-
-.course-plan-unit-panel--footer {
-	background:
-		linear-gradient(180deg, rgb(var(--jacaranda-rgb) / 0.14), rgb(var(--surface-rgb) / 0.95) 42%),
-		rgb(var(--surface-rgb) / 0.96);
-}
-
-.course-plan-unit-editor-header {
-	display: flex;
-	flex-direction: column;
-	gap: 1rem;
-}
-
-.course-plan-unit-editor-nav,
-.course-plan-unit-editor-summary {
-	display: flex;
-	flex-wrap: nowrap;
-	align-items: center;
-	gap: 0.75rem;
-	overflow-x: auto;
-	padding-bottom: 0.1rem;
-	scrollbar-width: thin;
-}
-
-.course-plan-unit-nav-pill,
-.course-plan-unit-summary-pill {
-	display: inline-flex;
-	flex-shrink: 0;
-	align-items: center;
-	gap: 0.55rem;
-	border: 1px solid rgb(var(--jacaranda-rgb) / 0.22);
-	border-radius: 1rem;
-	padding: 0.8rem 1rem;
-	background:
-		linear-gradient(
-			180deg,
-			rgb(var(--jacaranda-rgb) / 0.08),
-			rgb(var(--surface-strong-rgb) / 0.96)
-		),
-		rgb(var(--surface-strong-rgb) / 0.96);
-	box-shadow:
-		inset 0 1px 0 rgb(255 255 255 / 0.82),
-		0 10px 18px rgb(var(--ink-rgb) / 0.05);
-}
-
-.course-plan-unit-nav-pill {
-	cursor: pointer;
-	font-size: 0.95rem;
-	font-weight: 600;
-	color: rgb(var(--ink-rgb) / 0.88);
-	transition:
-		border-color 140ms ease,
-		box-shadow 140ms ease,
-		transform 140ms ease,
-		background-color 140ms ease;
-}
-
-.course-plan-unit-nav-pill:hover {
-	border-color: rgb(var(--jacaranda-rgb) / 0.38);
-	box-shadow:
-		0 0 0 3px rgb(var(--jacaranda-rgb) / 0.08),
-		0 14px 24px rgb(var(--ink-rgb) / 0.07);
-	transform: translateY(-1px);
-}
-
-.course-plan-unit-nav-pill:focus-visible {
-	outline: none;
-	border-color: rgb(var(--jacaranda-rgb) / 0.42);
-	box-shadow:
-		0 0 0 3px rgb(var(--jacaranda-rgb) / 0.12),
-		0 14px 24px rgb(var(--ink-rgb) / 0.07);
-}
-
-.course-plan-unit-summary-pill {
-	flex-direction: column;
-	align-items: flex-start;
-	min-width: 7.2rem;
-	color: rgb(var(--ink-rgb) / 0.9);
-}
-
-.course-plan-unit-summary-pill__label {
-	font-size: 0.72rem;
-	font-weight: 700;
-	letter-spacing: 0.08em;
-	text-transform: uppercase;
-	color: rgb(var(--ink-rgb) / 0.56);
-}
-
-.course-plan-unit-summary-pill__value {
-	font-size: 0.98rem;
-	font-weight: 600;
-	line-height: 1.35;
-}
-
-.course-plan-unit-summary-pill--toggle {
-	cursor: pointer;
-	flex-direction: row;
-	align-items: center;
-	justify-content: space-between;
-	min-width: 7.4rem;
-	text-align: left;
-	transition:
-		border-color 140ms ease,
-		box-shadow 140ms ease,
-		transform 140ms ease;
-}
-
-.course-plan-unit-summary-pill--toggle:hover {
-	border-color: rgb(var(--jacaranda-rgb) / 0.36);
-	box-shadow:
-		0 0 0 3px rgb(var(--jacaranda-rgb) / 0.08),
-		0 14px 24px rgb(var(--ink-rgb) / 0.07);
-	transform: translateY(-1px);
-}
-
-.course-plan-unit-summary-pill--toggle:focus-visible {
-	outline: none;
-	border-color: rgb(var(--jacaranda-rgb) / 0.42);
-	box-shadow:
-		0 0 0 3px rgb(var(--jacaranda-rgb) / 0.12),
-		0 14px 24px rgb(var(--ink-rgb) / 0.07);
-}
-
-.course-plan-unit-summary-pill__icon {
-	display: inline-flex;
-	align-items: center;
-	justify-content: center;
-	width: 2rem;
-	height: 2rem;
-	border: 1px solid rgb(var(--jacaranda-rgb) / 0.16);
-	border-radius: 999px;
-	background: rgb(var(--surface-rgb) / 0.92);
-	color: rgb(var(--ink-rgb) / 0.62);
-	font-size: 1rem;
-	font-weight: 600;
-	line-height: 1;
-}
-
-.course-plan-unit-inline-action {
-	flex-shrink: 0;
-	align-self: center;
-	white-space: nowrap;
-}
-
-.course-plan-unit-panel__header {
-	display: flex;
-	flex-direction: column;
-	gap: 0.75rem;
-}
-
-.course-plan-unit-panel__toggle {
-	display: inline-flex;
-	align-items: center;
-	gap: 0.7rem;
-	align-self: flex-start;
-	border: 1px solid rgb(var(--border-rgb) / 0.76);
-	border-radius: 999px;
-	padding: 0.35rem 0.4rem 0.35rem 0.8rem;
-	background: rgb(var(--surface-strong-rgb) / 0.96);
-	box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.75);
-	transition:
-		border-color 140ms ease,
-		box-shadow 140ms ease,
-		transform 140ms ease;
-}
-
-.course-plan-unit-panel__toggle:hover {
-	border-color: rgb(var(--jacaranda-rgb) / 0.28);
-	box-shadow: 0 8px 18px rgb(var(--ink-rgb) / 0.06);
-}
-
-.course-plan-unit-panel__toggle:focus-visible {
-	outline: none;
-	border-color: rgb(var(--jacaranda-rgb) / 0.42);
-	box-shadow: 0 0 0 3px rgb(var(--jacaranda-rgb) / 0.12);
-}
-
-.course-plan-unit-panel__toggle-icon {
-	display: inline-flex;
-	align-items: center;
-	justify-content: center;
-	width: 2rem;
-	height: 2rem;
-	border: 1px solid rgb(var(--border-rgb) / 0.7);
-	border-radius: 999px;
-	background: rgb(var(--surface-rgb) / 0.9);
-	color: rgb(var(--ink-rgb) / 0.68);
-	font-size: 1rem;
-	font-weight: 600;
-	line-height: 1;
-}
-
-.course-plan-unit-subcard {
-	border: 1px solid var(--border-subtle);
-	border-radius: 1.25rem;
-	padding: 1rem;
-	background: rgb(var(--surface-strong-rgb) / 0.96);
-	box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.72);
-}
-
-:deep(.if-input) {
-	transition:
-		border-color 140ms ease,
-		box-shadow 140ms ease,
-		background-color 140ms ease;
-}
-
-:deep(.if-input:focus),
-:deep(.if-input:focus-visible) {
-	outline: none;
-	border-color: rgb(var(--jacaranda-rgb) / 0.42);
-	box-shadow:
-		0 0 0 3px rgb(var(--jacaranda-rgb) / 0.12),
-		var(--shadow-soft);
-}
-
-.course-plan-unit-save-button {
-	border-color: rgb(var(--jacaranda-rgb) / 0.9);
-	background: rgb(var(--jacaranda-rgb) / 0.94);
-	color: rgb(var(--surface-strong-rgb) / 1);
-}
-
-.course-plan-unit-save-button:hover:not(:disabled) {
-	border-color: rgb(var(--jacaranda-rgb) / 1);
-	background: rgb(var(--jacaranda-rgb) / 1);
-	color: rgb(var(--surface-strong-rgb) / 1);
-}
-
-.course-plan-unit-save-button:disabled {
-	border-color: rgb(var(--border-rgb) / 0.9);
-	background: rgb(var(--surface-strong-rgb) / 1);
-	color: rgb(var(--ink-rgb) / 0.45);
-	box-shadow: none;
-	cursor: not-allowed;
-}
-
-.course-plan-unit-save-rail__inner {
-	display: flex;
-	flex-direction: column;
-	gap: 0.75rem;
-	border: 1px solid rgb(var(--jacaranda-rgb) / 0.18);
-	border-radius: 1.25rem;
-	padding: 0.9rem 1rem;
-	background: rgb(var(--surface-strong-rgb) / 0.96);
-	backdrop-filter: blur(12px);
-	-webkit-backdrop-filter: blur(12px);
-	box-shadow: 0 18px 40px rgb(var(--ink-rgb) / 0.12);
-}
-
-@media (min-width: 768px) {
-	.course-plan-unit-panel {
-		padding: 1.4rem;
-	}
-
-	.course-plan-workspace-header {
-		padding: 1.6rem;
-	}
-
-	.course-plan-unit-panel__header,
-	.course-plan-unit-save-rail__inner {
-		flex-direction: row;
-		align-items: flex-start;
-		justify-content: space-between;
-	}
-}
-</style>

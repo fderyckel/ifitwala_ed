@@ -879,6 +879,72 @@
 												:key="material.placement"
 												class="rounded-2xl border border-line-soft bg-surface-soft p-4"
 											>
+												<div v-if="showInlineImagePreview(material)" class="mb-4">
+													<a
+														:href="primaryMaterialUrl(material) || undefined"
+														target="_blank"
+														rel="noreferrer"
+														class="group block overflow-hidden rounded-2xl border border-line-soft bg-white"
+														data-task-material-preview-kind="image"
+													>
+														<img
+															:src="primaryMaterialUrl(material) || undefined"
+															:alt="material.title"
+															class="h-40 w-full object-cover transition duration-200 group-hover:scale-[1.01]"
+															loading="lazy"
+														/>
+														<div
+															class="flex items-center justify-between border-t border-line-soft bg-white px-4 py-3"
+														>
+															<div>
+																<p
+																	class="text-xs font-semibold uppercase tracking-[0.18em] text-ink/45"
+																>
+																	Image preview
+																</p>
+																<p class="mt-1 text-sm text-ink/80">
+																	Open the governed preview for this task material.
+																</p>
+															</div>
+															<span class="chip">{{ materialExtensionLabel(material) }}</span>
+														</div>
+													</a>
+												</div>
+
+												<div v-else-if="showPdfPreviewTile(material)" class="mb-4">
+													<a
+														:href="primaryMaterialUrl(material) || undefined"
+														target="_blank"
+														rel="noreferrer"
+														class="group block rounded-2xl border border-line-soft bg-white p-4 transition hover:border-jacaranda/30 hover:bg-jacaranda/5"
+														data-task-material-preview-kind="pdf"
+													>
+														<div class="flex items-start justify-between gap-3">
+															<div>
+																<p
+																	class="text-xs font-semibold uppercase tracking-[0.18em] text-ink/45"
+																>
+																	PDF preview
+																</p>
+																<p class="mt-2 text-base font-semibold text-ink">
+																	{{ material.title }}
+																</p>
+																<p class="mt-2 text-sm text-ink/75">
+																	Open a compact governed preview for this task material.
+																</p>
+															</div>
+															<div class="rounded-2xl bg-clay/15 px-3 py-2 text-right">
+																<p
+																	class="text-[11px] font-semibold uppercase tracking-[0.18em] text-clay"
+																>
+																	{{ materialExtensionLabel(material) }}
+																</p>
+																<p class="mt-1 text-xs text-ink/60">Preview ready</p>
+															</div>
+														</div>
+													</a>
+												</div>
+
 												<div class="flex items-start justify-between gap-3">
 													<div class="min-w-0">
 														<div class="flex flex-wrap items-center gap-2">
@@ -906,13 +972,22 @@
 													</div>
 													<div class="flex items-center gap-2">
 														<a
-															v-if="material.open_url"
-															:href="material.open_url"
+															v-if="primaryMaterialUrl(material)"
+															:href="primaryMaterialUrl(material) || undefined"
 															target="_blank"
 															rel="noreferrer"
 															class="if-action"
 														>
-															Open
+															{{ primaryMaterialActionLabel(material) }}
+														</a>
+														<a
+															v-if="showMaterialOpenOriginalAction(material)"
+															:href="material.open_url || undefined"
+															target="_blank"
+															rel="noreferrer"
+															class="if-action"
+														>
+															Open original
 														</a>
 														<Button
 															appearance="secondary"
@@ -1066,9 +1141,10 @@ type TaskMaterialRow = {
 	modality?: 'Read' | 'Watch' | 'Listen' | 'Use' | null;
 	description?: string | null;
 	reference_url?: string | null;
+	preview_url?: string | null;
 	open_url?: string | null;
 	file_name?: string | null;
-	file_size?: string | null;
+	file_size?: number | string | null;
 	usage_role?: 'Required' | 'Reference' | 'Template' | 'Example' | null;
 	placement_note?: string | null;
 };
@@ -1779,6 +1855,60 @@ function resetMaterialComposer() {
 	taskMaterials.value = [];
 	removingPlacement.value = null;
 	resetMaterialDraftFields();
+}
+
+function materialExtension(material: TaskMaterialRow) {
+	const rawName = String(material.file_name || '').trim();
+	const lastDot = rawName.lastIndexOf('.');
+	if (!rawName || lastDot < 0 || lastDot === rawName.length - 1) {
+		return '';
+	}
+	return rawName.slice(lastDot + 1).toLowerCase();
+}
+
+function materialExtensionLabel(material: TaskMaterialRow) {
+	return materialExtension(material) ? materialExtension(material).toUpperCase() : 'FILE';
+}
+
+function isImageMaterial(material: TaskMaterialRow) {
+	return (
+		material.material_type === 'File' &&
+		['jpg', 'jpeg', 'png', 'webp'].includes(materialExtension(material))
+	);
+}
+
+function isPdfMaterial(material: TaskMaterialRow) {
+	return material.material_type === 'File' && materialExtension(material) === 'pdf';
+}
+
+function primaryMaterialUrl(material: TaskMaterialRow) {
+	return material.preview_url || material.open_url || material.reference_url || null;
+}
+
+function showInlineImagePreview(material: TaskMaterialRow) {
+	return Boolean(
+		material.preview_url && primaryMaterialUrl(material) && isImageMaterial(material)
+	);
+}
+
+function showPdfPreviewTile(material: TaskMaterialRow) {
+	return Boolean(material.preview_url && primaryMaterialUrl(material) && isPdfMaterial(material));
+}
+
+function primaryMaterialActionLabel(material: TaskMaterialRow) {
+	if (material.preview_url) {
+		return 'Preview';
+	}
+	return material.material_type === 'Reference Link' ? 'Open link' : 'Open';
+}
+
+function showMaterialOpenOriginalAction(material: TaskMaterialRow) {
+	return Boolean(
+		material.material_type === 'File' &&
+		material.preview_url &&
+		material.open_url &&
+		material.open_url !== material.preview_url
+	);
 }
 
 async function loadTaskMaterials() {

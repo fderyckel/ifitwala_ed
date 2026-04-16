@@ -5,8 +5,8 @@ from frappe.tests.utils import FrappeTestCase
 from frappe.utils import nowdate
 
 from ifitwala_ed.api.policy_signature import (
+    get_policy_library,
     get_staff_policy_campaign_options,
-    get_staff_policy_library,
     get_staff_policy_signature_audience_rows,
     get_staff_policy_signature_dashboard,
     launch_staff_policy_campaign,
@@ -374,11 +374,7 @@ class TestPolicySignature(FrappeTestCase):
         self.created.append(("Policy Version", informational_version.name))
 
         frappe.set_user(self.user_one.name)
-        payload = get_staff_policy_library(
-            organization=self.organization.name,
-            school=self.school.name,
-            employee_group=self.employee_group.name,
-        )
+        payload = get_policy_library(organization=self.organization.name, school=self.school.name)
         rows = payload.get("rows") or []
         by_policy = {row.get("institutional_policy"): row for row in rows}
 
@@ -408,11 +404,7 @@ class TestPolicySignature(FrappeTestCase):
         self.created.append(("Policy Version", amendment.name))
 
         frappe.set_user(self.user_one.name)
-        updated_payload = get_staff_policy_library(
-            organization=self.organization.name,
-            school=self.school.name,
-            employee_group=self.employee_group.name,
-        )
+        updated_payload = get_policy_library(organization=self.organization.name, school=self.school.name)
         updated_rows = updated_payload.get("rows") or []
         updated_by_policy = {row.get("institutional_policy"): row for row in updated_rows}
         new_version_row = updated_by_policy.get(self.policy.name) or {}
@@ -465,7 +457,7 @@ class TestPolicySignature(FrappeTestCase):
         self.created.append(("Policy Version", parent_school_version.name))
 
         frappe.set_user(child_user.name)
-        payload = get_staff_policy_library(organization=self.organization.name, school="")
+        payload = get_policy_library(organization=self.organization.name, school="")
 
         self.assertEqual((payload.get("filters") or {}).get("school"), child_school.name)
         rows = payload.get("rows") or []
@@ -473,6 +465,90 @@ class TestPolicySignature(FrappeTestCase):
         inherited_row = by_policy.get(parent_school_policy.name) or {}
         self.assertEqual(inherited_row.get("policy_version"), parent_school_version.name)
         self.assertEqual(inherited_row.get("policy_school"), parent_school.name)
+
+    def test_policy_library_allows_academic_admin_to_browse_guardian_and_student_audiences(self):
+        self._assign_role(self.user_one.name, "Academic Admin")
+
+        guardian_policy = frappe.get_doc(
+            {
+                "doctype": "Institutional Policy",
+                "policy_key": f"guardian_policy_{frappe.generate_hash(length=8)}",
+                "policy_title": "Guardian Handbook",
+                "policy_category": "Handbooks",
+                "applies_to": [{"policy_audience": "Guardian"}],
+                "organization": self.organization.name,
+                "is_active": 1,
+            }
+        ).insert(ignore_permissions=True)
+        self.created.append(("Institutional Policy", guardian_policy.name))
+
+        guardian_version = frappe.get_doc(
+            {
+                "doctype": "Policy Version",
+                "institutional_policy": guardian_policy.name,
+                "version_label": "v1",
+                "policy_text": "<p>Guardian handbook.</p>",
+                "is_active": 1,
+            }
+        ).insert(ignore_permissions=True)
+        self.created.append(("Policy Version", guardian_version.name))
+
+        student_policy = frappe.get_doc(
+            {
+                "doctype": "Institutional Policy",
+                "policy_key": f"student_policy_{frappe.generate_hash(length=8)}",
+                "policy_title": "Student Conduct",
+                "policy_category": "Conduct & Behaviour",
+                "applies_to": [{"policy_audience": "Student"}],
+                "organization": self.organization.name,
+                "is_active": 1,
+            }
+        ).insert(ignore_permissions=True)
+        self.created.append(("Institutional Policy", student_policy.name))
+
+        student_version = frappe.get_doc(
+            {
+                "doctype": "Policy Version",
+                "institutional_policy": student_policy.name,
+                "version_label": "v1",
+                "policy_text": "<p>Student conduct.</p>",
+                "is_active": 1,
+            }
+        ).insert(ignore_permissions=True)
+        self.created.append(("Policy Version", student_version.name))
+
+        frappe.set_user(self.user_one.name)
+        payload = get_policy_library(
+            organization=self.organization.name,
+            school="",
+            audience="All",
+        )
+
+        self.assertTrue((payload.get("meta") or {}).get("can_manage_audiences"))
+        self.assertEqual((payload.get("filters") or {}).get("audience"), "All")
+        self.assertEqual((payload.get("filters") or {}).get("school"), None)
+
+        rows = payload.get("rows") or []
+        by_policy = {row.get("institutional_policy"): row for row in rows}
+
+        self.assertEqual(
+            (by_policy.get(self.policy.name) or {}).get("applies_to_tokens"),
+            ["Staff"],
+        )
+        self.assertEqual(
+            (by_policy.get(guardian_policy.name) or {}).get("applies_to_tokens"),
+            ["Guardian"],
+        )
+        self.assertEqual(
+            (by_policy.get(student_policy.name) or {}).get("applies_to_tokens"),
+            ["Student"],
+        )
+
+        counts = payload.get("counts") or {}
+        self.assertEqual(counts.get("total_policies"), 3)
+        self.assertEqual(counts.get("staff_policies"), 1)
+        self.assertEqual(counts.get("guardian_policies"), 1)
+        self.assertEqual(counts.get("student_policies"), 1)
 
     def test_dashboard_and_campaign_preview_include_guardian_and_student_audiences(self):
         guardian_user_one = make_user(roles=["Guardian"])

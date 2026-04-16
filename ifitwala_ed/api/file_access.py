@@ -20,7 +20,7 @@ from ifitwala_ed.admission.admission_utils import (
     has_scoped_staff_access_to_student_applicant,
     is_admissions_file_staff_user,
 )
-from ifitwala_ed.api.org_comm_utils import check_audience_match
+from ifitwala_ed.api.org_comm_utils import check_audience_match, expand_employee_visibility_context
 from ifitwala_ed.routing.policy import has_active_employee_profile
 
 ADMISSIONS_ATTACHMENT_DOCTYPES = {"Applicant Document Item", "Student Applicant", "Contact"}
@@ -421,6 +421,7 @@ def _require_org_communication_attachment_context(org_communication: str, row_na
         ["name", "school", "organization"],
         as_dict=True,
     )
+    employee = expand_employee_visibility_context(employee, roles)
     if not check_audience_match(resolved_org_communication, user, roles, employee, allow_owner=True):
         frappe.throw(_("You do not have permission to access this communication attachment."), frappe.PermissionError)
 

@@ -69,15 +69,13 @@ class TestStudentProfilePrintFormat(unittest.TestCase):
 
     def test_school_branding_tokens_are_present(self):
         for token in (
-            'frappe.get_cached_value("School", doc.anchor_school, ["school_name", "school_logo", "school_tagline"], as_dict=True)',
+            'frappe.db.get_value("School", doc.anchor_school, ["school_name", "school_logo", "school_tagline"], as_dict=True)',
             "school_meta.school_logo",
             "school_meta.school_tagline",
             "brand-mark",
             "brand-tagline",
         ):
-            self.assertIn(
-                token, self.html if "frappe.get_cached_value" in token or "school_meta" in token else self.css
-            )
+            self.assertIn(token, self.html if "frappe.db.get_value" in token or "school_meta" in token else self.css)
 
     def test_linked_contact_and_address_tokens_are_present(self):
         for token in (

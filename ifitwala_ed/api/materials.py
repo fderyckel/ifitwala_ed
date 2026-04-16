@@ -5,7 +5,7 @@ from typing import Any
 import frappe
 from frappe import _
 
-from ifitwala_ed.api.file_access import resolve_academic_file_open_url
+from ifitwala_ed.api.file_access import resolve_academic_file_open_url, resolve_academic_file_preview_url
 from ifitwala_ed.curriculum import materials as materials_domain
 from ifitwala_ed.utilities import governed_uploads
 
@@ -22,6 +22,12 @@ def _serialize_material(entry: dict[str, Any]) -> dict[str, Any]:
     material_type = entry.get("material_type")
     first_placement = (entry.get("placements") or [{}])[0]
     if material_type == materials_domain.MATERIAL_TYPE_FILE:
+        preview_url = resolve_academic_file_preview_url(
+            file_name=entry.get("file"),
+            file_url=entry.get("file_url"),
+            context_doctype="Material Placement" if first_placement.get("placement") else "Supporting Material",
+            context_name=first_placement.get("placement") or entry.get("material"),
+        )
         open_url = resolve_academic_file_open_url(
             file_name=entry.get("file"),
             file_url=entry.get("file_url"),
@@ -29,6 +35,7 @@ def _serialize_material(entry: dict[str, Any]) -> dict[str, Any]:
             context_name=first_placement.get("placement") or entry.get("material"),
         )
     else:
+        preview_url = None
         open_url = entry.get("reference_url")
 
     return {
@@ -39,6 +46,7 @@ def _serialize_material(entry: dict[str, Any]) -> dict[str, Any]:
         "modality": entry.get("modality"),
         "description": entry.get("description"),
         "reference_url": entry.get("reference_url"),
+        "preview_url": preview_url,
         "open_url": open_url,
         "file": entry.get("file"),
         "file_name": entry.get("file_name"),

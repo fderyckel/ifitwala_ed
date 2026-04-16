@@ -580,6 +580,82 @@ class TestFileAccessUrlContracts(FrappeTestCase):
         )
         self.assertEqual(grant_calls, ["issue_preview_grant"])
 
+    def test_preview_org_communication_attachment_expands_academic_admin_org_scope_without_default_school(self):
+        attachment_row = frappe._dict(
+            name="row-001",
+            file="/private/files/policy.pdf",
+            external_url=None,
+        )
+
+        class _CommDoc:
+            name = "COMM-0001"
+
+            def get(self, fieldname):
+                if fieldname == "attachments":
+                    return [attachment_row]
+                return []
+
+        comm_doc = _CommDoc()
+
+        def fake_get_value(doctype, filters=None, fieldname=None, as_dict=False):
+            if doctype == "Employee":
+                return {"name": "EMP-1", "school": None, "organization": "ORG-ROOT"}
+            if doctype == "Drive Binding":
+                return {"drive_file": "DRIVE-0001", "file": "FILE-0001"}
+            if doctype == "Drive File" and filters == "DRIVE-0001" and fieldname == "preview_status":
+                return "ready"
+            return None
+
+        with (
+            patch(
+                "ifitwala_ed.api.file_access._require_authenticated_user",
+                return_value="academic-admin@example.com",
+            ),
+            patch("ifitwala_ed.api.file_access.frappe.get_roles", return_value=["Academic Admin"]),
+            patch("ifitwala_ed.api.file_access.frappe.db.get_value", side_effect=fake_get_value),
+            patch(
+                "ifitwala_ed.api.org_comm_utils.get_descendant_organizations",
+                return_value=["ORG-ROOT", "ORG-CHILD"],
+            ),
+            patch(
+                "ifitwala_ed.api.org_comm_utils.frappe.get_all",
+                return_value=["SCH-ROOT", "SCH-CHILD"],
+            ),
+            patch("ifitwala_ed.api.file_access.frappe.get_doc", return_value=comm_doc),
+            patch(
+                "ifitwala_ed.api.file_access.check_audience_match",
+                return_value=True,
+            ) as audience_match_mock,
+            patch(
+                "ifitwala_ed.api.file_access._load_drive_access_callable",
+                return_value=lambda **_kwargs: {"url": "https://preview.example.com/policy.pdf"},
+            ),
+        ):
+            frappe.local.response = {}
+            preview_org_communication_attachment(
+                org_communication="COMM-0001",
+                row_name="row-001",
+            )
+
+        audience_match_mock.assert_called_once_with(
+            "COMM-0001",
+            "academic-admin@example.com",
+            ["Academic Admin"],
+            {
+                "name": "EMP-1",
+                "school": None,
+                "organization": "ORG-ROOT",
+                "organization_names": ["ORG-ROOT", "ORG-CHILD"],
+                "school_names": ["SCH-ROOT", "SCH-CHILD"],
+            },
+            allow_owner=True,
+        )
+        self.assertEqual(frappe.local.response.get("type"), "redirect")
+        self.assertEqual(
+            frappe.local.response.get("location"),
+            "https://preview.example.com/policy.pdf",
+        )
+
     def test_preview_org_communication_attachment_falls_back_to_download_when_preview_not_ready(self):
         attachment_row = frappe._dict(
             name="row-001",

@@ -3,9 +3,9 @@
 	<div class="analytics-shell space-y-5">
 		<header class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
 			<div>
-				<h1 class="type-h2 text-canopy">Staff Policies</h1>
+				<h1 class="type-h2 text-canopy">Policy Library</h1>
 				<p class="type-caption text-slate-500">
-					Consult policies in your scope and review what changed across versions.
+					{{ subtitleText }}
 				</p>
 			</div>
 		</header>
@@ -30,24 +30,24 @@
 				<select
 					v-model="filters.school"
 					class="h-9 min-w-[180px] rounded-md border px-2 text-sm"
-					:disabled="loading || !filters.organization || !options.schools.length"
+					:disabled="loading || !filters.organization"
 				>
+					<option v-if="canManageAudiences" value="">All schools</option>
 					<option v-for="school in options.schools" :key="school" :value="school">
 						{{ school }}
 					</option>
 				</select>
 			</div>
 
-			<div class="flex flex-col gap-1">
-				<label class="type-label">Employee Group</label>
+			<div v-if="canManageAudiences" class="flex flex-col gap-1">
+				<label class="type-label">Audience</label>
 				<select
-					v-model="filters.employee_group"
+					v-model="filters.audience"
 					class="h-9 min-w-[170px] rounded-md border px-2 text-sm"
 					:disabled="loading || !filters.organization"
 				>
-					<option value="">All groups</option>
-					<option v-for="group in options.employee_groups" :key="group" :value="group">
-						{{ group }}
+					<option v-for="audience in options.audiences" :key="audience" :value="audience">
+						{{ audienceLabel(audience) }}
 					</option>
 				</select>
 			</div>
@@ -63,24 +63,33 @@
 		</div>
 
 		<div v-else-if="loading && !rows.length" class="py-10 text-center text-sm text-slate-500">
-			Loading staff policies...
+			Loading policy library...
 		</div>
 
 		<div
 			v-else-if="!rows.length"
 			class="rounded-md border border-slate-200 bg-white px-4 py-3 text-sm text-slate-600"
 		>
-			No active staff policies found for the selected scope.
+			{{ emptyStateText }}
 		</div>
 
 		<section v-else class="grid grid-cols-1 gap-4 xl:grid-cols-2">
 			<article v-for="row in rows" :key="row.policy_version" class="analytics-card">
 				<div class="flex items-start justify-between gap-3">
 					<div class="min-w-0">
-						<p class="type-caption text-slate-500">
-							{{ row.policy_category || 'Policy' }}
-							<span v-if="row.version_label"> · {{ row.version_label }}</span>
-						</p>
+						<div class="flex flex-wrap items-center gap-2">
+							<p class="type-caption text-slate-500">
+								{{ row.policy_category || 'Policy' }}
+								<span v-if="row.version_label"> · {{ row.version_label }}</span>
+							</p>
+							<span
+								v-for="token in row.applies_to_tokens"
+								:key="`${row.policy_version}_${token}`"
+								class="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700"
+							>
+								{{ audienceLabel(token) }}
+							</span>
+						</div>
 						<h3 class="mt-1 type-h3 text-ink">
 							{{ row.policy_title || row.policy_key || row.policy_version }}
 						</h3>
@@ -96,12 +105,13 @@
 					<div class="shrink-0 flex flex-col items-end gap-2">
 						<span
 							class="rounded-full px-2.5 py-1 text-xs font-medium"
-							:class="statusClass(row.acknowledgement_status)"
+							:class="primaryBadgeClass(row)"
 						>
-							{{ statusLabel(row.acknowledgement_status) }}
+							{{ primaryBadgeLabel(row) }}
 						</span>
 						<span
 							v-if="
+								showStaffStatusMetrics &&
 								row.signature_required &&
 								row.acknowledgement_status === 'signed' &&
 								row.acknowledged_at
@@ -126,12 +136,12 @@
 							Open policy
 						</button>
 						<button
-							v-if="row.signature_required && canViewPolicySignatureAnalytics"
+							v-if="canViewPolicySignatureAnalytics"
 							type="button"
 							class="btn btn-quiet"
 							@click="openPolicySignatureAnalytics(row)"
 						>
-							Open signature tracking
+							Open acknowledgement tracking
 						</button>
 					</div>
 				</div>
@@ -152,8 +162,8 @@ import { createPolicySignatureService } from '@/lib/services/policySignature/pol
 import { getStaffHomeHeader } from '@/lib/services/staff/staffHomeService';
 
 import type {
-	Response as StaffPolicyLibraryResponse,
-	StaffPolicyLibraryRow,
+	Response as PolicyLibraryResponse,
+	PolicyLibraryRow,
 } from '@/types/contracts/policy_signature/get_staff_policy_library';
 
 const overlay = useOverlayStack();
@@ -162,53 +172,116 @@ const service = createPolicySignatureService();
 
 const loading = ref(false);
 const errorMessage = ref('');
-const payload = ref<StaffPolicyLibraryResponse | null>(null);
+const payload = ref<PolicyLibraryResponse | null>(null);
 const syncingFromServer = ref(false);
 const canViewPolicySignatureAnalytics = ref(false);
 
 const options = reactive({
 	organizations: [] as string[],
 	schools: [] as string[],
-	employee_groups: [] as string[],
+	audiences: [] as Array<'All' | 'Staff' | 'Guardian' | 'Student'>,
 });
 
 const filters = reactive({
 	organization: '',
 	school: '',
-	employee_group: '',
+	audience: 'Staff' as 'All' | 'Staff' | 'Guardian' | 'Student',
 });
 
-const rows = computed<StaffPolicyLibraryRow[]>(() => payload.value?.rows || []);
+const canManageAudiences = computed(() => Boolean(payload.value?.meta?.can_manage_audiences));
+const rows = computed<PolicyLibraryRow[]>(() => payload.value?.rows || []);
+const showStaffStatusMetrics = computed(() => filters.audience === 'Staff');
+
+const subtitleText = computed(() => {
+	if (canManageAudiences.value) {
+		return 'Browse active staff, guardian, and student policies in your organization scope and open acknowledgement tracking where needed.';
+	}
+	return 'Review staff policies in your current scope and open policy details or acknowledgement tracking.';
+});
+
+const emptyStateText = computed(() => {
+	if (showStaffStatusMetrics.value) {
+		return 'No active staff policies found for the selected scope.';
+	}
+	return 'No active policies found for the selected organization, school, and audience filters.';
+});
 
 const kpis = computed(() => {
 	const counts = payload.value?.counts;
 	if (!counts) return [];
+	if (showStaffStatusMetrics.value) {
+		return [
+			{ id: 'total', label: 'Policies', value: counts.total_policies },
+			{ id: 'informational', label: 'Informational', value: counts.informational },
+			{ id: 'signature_required', label: 'Signature Required', value: counts.signature_required },
+			{ id: 'signed', label: 'Signed', value: counts.signed },
+			{
+				id: 'pending',
+				label: 'Pending/New Version',
+				value: counts.pending + counts.new_version,
+				hint: `Pending ${counts.pending} · New ${counts.new_version}`,
+			},
+		];
+	}
 	return [
 		{ id: 'total', label: 'Policies', value: counts.total_policies },
-		{ id: 'informational', label: 'Informational', value: counts.informational },
-		{ id: 'signature_required', label: 'Signature Required', value: counts.signature_required },
-		{ id: 'signed', label: 'Signed', value: counts.signed },
-		{
-			id: 'pending',
-			label: 'Pending/New Version',
-			value: counts.pending + counts.new_version,
-			hint: `Pending ${counts.pending} · New ${counts.new_version}`,
-		},
+		{ id: 'organization_scoped', label: 'Organization-wide', value: counts.organization_scoped },
+		{ id: 'school_scoped', label: 'School-scoped', value: counts.school_scoped },
+		{ id: 'multi_audience', label: 'Multi-audience', value: counts.multi_audience },
 	];
 });
 
-function statusLabel(status: StaffPolicyLibraryRow['acknowledgement_status']) {
+function audienceLabel(audience: string) {
+	if (audience === 'Guardian') return 'Guardians';
+	if (audience === 'Student') return 'Students';
+	if (audience === 'Staff') return 'Staff';
+	return 'All audiences';
+}
+
+function statusLabel(status: PolicyLibraryRow['acknowledgement_status']) {
 	if (status === 'signed') return 'Signed';
 	if (status === 'new_version') return 'New version';
 	if (status === 'pending') return 'Signature pending';
 	return 'Informational';
 }
 
-function statusClass(status: StaffPolicyLibraryRow['acknowledgement_status']) {
+function statusClass(status: PolicyLibraryRow['acknowledgement_status']) {
 	if (status === 'signed') return 'bg-leaf/15 text-canopy';
 	if (status === 'new_version') return 'bg-sky/20 text-canopy';
 	if (status === 'pending') return 'bg-sand text-clay';
 	return 'bg-slate-100 text-slate-700';
+}
+
+function workflowLabel(row: PolicyLibraryRow) {
+	const tokens = Array.from(new Set(row.applies_to_tokens || []));
+	if (tokens.length > 1) return `${tokens.length} audiences`;
+	if (!tokens.length) return 'Policy in scope';
+	if (tokens[0] === 'Guardian') return 'Guardian Portal';
+	if (tokens[0] === 'Student') return 'Student Hub';
+	return 'Staff Workspace';
+}
+
+function workflowClass(row: PolicyLibraryRow) {
+	const tokens = Array.from(new Set(row.applies_to_tokens || []));
+	if (tokens.length > 1) return 'bg-jacaranda/10 text-jacaranda';
+	if (!tokens.length) return 'bg-slate-100 text-slate-700';
+	if (tokens[0] === 'Guardian') return 'bg-sky/20 text-canopy';
+	if (tokens[0] === 'Student') return 'bg-leaf/15 text-canopy';
+	return 'bg-slate-100 text-slate-700';
+}
+
+function primaryBadgeLabel(row: PolicyLibraryRow) {
+	if (showStaffStatusMetrics.value) {
+		return statusLabel(row.acknowledgement_status);
+	}
+	return workflowLabel(row);
+}
+
+function primaryBadgeClass(row: PolicyLibraryRow) {
+	if (showStaffStatusMetrics.value) {
+		return statusClass(row.acknowledgement_status);
+	}
+	return workflowClass(row);
 }
 
 function openPolicy(policyVersion: string) {
@@ -217,18 +290,16 @@ function openPolicy(policyVersion: string) {
 	overlay.open('staff-policy-inform', { policyVersion: value });
 }
 
-function openPolicySignatureAnalytics(row: StaffPolicyLibraryRow) {
+function openPolicySignatureAnalytics(row: PolicyLibraryRow) {
 	if (!canViewPolicySignatureAnalytics.value) return;
 	const policyVersion = String(row.policy_version || '').trim();
 	if (!policyVersion) return;
 
 	const organization = String(filters.organization || '').trim();
 	const school = String(filters.school || '').trim();
-	const employeeGroup = String(filters.employee_group || '').trim();
 	const query: Record<string, string> = { policy_version: policyVersion };
 	if (organization) query.organization = organization;
 	if (school) query.school = school;
-	if (employeeGroup) query.employee_group = employeeGroup;
 
 	router.push({
 		name: 'staff-policy-signature-analytics',
@@ -247,15 +318,16 @@ async function loadCapabilities() {
 	}
 }
 
-function normalizeFiltersFromPayload(next: StaffPolicyLibraryResponse) {
+function normalizeFiltersFromPayload(next: PolicyLibraryResponse) {
 	syncingFromServer.value = true;
 	options.organizations = [...(next.options?.organizations || [])];
 	options.schools = [...(next.options?.schools || [])];
-	options.employee_groups = [...(next.options?.employee_groups || [])];
+	options.audiences = [...(next.options?.audiences || [])];
 
 	filters.organization = String(next.filters?.organization || '').trim();
 	filters.school = String(next.filters?.school || '').trim();
-	filters.employee_group = String(next.filters?.employee_group || '').trim();
+	filters.audience =
+		(next.filters?.audience as 'All' | 'Staff' | 'Guardian' | 'Student' | undefined) || 'Staff';
 	syncingFromServer.value = false;
 }
 
@@ -266,12 +338,13 @@ async function refreshPolicyLibrary() {
 		const response = await service.getPolicyLibrary({
 			organization: filters.organization || null,
 			school: filters.school || null,
-			employee_group: filters.employee_group || null,
+			audience: filters.audience || 'Staff',
 		});
 		payload.value = response;
 		normalizeFiltersFromPayload(response);
 	} catch (err: unknown) {
-		const message = err instanceof Error && err.message ? err.message : 'Unable to load policies.';
+		const message =
+			err instanceof Error && err.message ? err.message : 'Unable to load policy library.';
 		errorMessage.value = message;
 	} finally {
 		loading.value = false;
@@ -287,7 +360,7 @@ function scheduleRefresh() {
 }
 
 watch(
-	() => [filters.organization, filters.school, filters.employee_group],
+	() => [filters.organization, filters.school, filters.audience],
 	() => {
 		if (syncingFromServer.value) return;
 		scheduleRefresh();

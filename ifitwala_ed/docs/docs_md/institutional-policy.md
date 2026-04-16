@@ -3,8 +3,8 @@ title: "Institutional Policy: Unified Governance for Your School"
 slug: institutional-policy
 category: Governance
 doc_order: 1
-version: "2.0.1"
-last_change_date: "2026-04-15"
+version: "2.0.2"
+last_change_date: "2026-04-16"
 summary: "Create and manage institutional policies that flow seamlessly across your organization—from staff signature campaigns to guardian portals, student hubs, and admissions workflows—all with comprehensive analytics and audit trails."
 seo_title: "Institutional Policy: Unified Governance for Your School"
 seo_description: "Learn how Ifitwala Ed's integrated policy governance connects staff campaigns, guardian acknowledgements, student policies, and admissions requirements in one unified system."
@@ -152,19 +152,22 @@ Staff sign policies through **Focus** (their task dashboard):
 
 Once signed, the ToDo auto-completes and the acknowledgement is recorded immutably.
 
-### 3. Staff Policy Library (Inform Overlay)
+### 3. Policy Library (Staff Workspace)
 
 Staff can browse policies anytime via:
 - **Morning Brief** policy links
 - **Org Communication** policy announcements
-- **Staff Policy Library** page
+- **Policy Library** page at `/hub/staff/policy-library`
 
 The **Policy Inform Overlay** provides:
 - Current policy text
 - Visual diff (if amended version)
 - Version history table
-- Acknowledgement status
+- Audience chips and neutral workflow labels for guardian/student policies
+- Staff acknowledgement status when the selected audience is `Staff`
 - Read-only, close-only interface
+
+For policy-admin roles such as **Academic Admin**, the Policy Library can browse `Staff`, `Guardian`, and `Student` policy audiences across the selected organization and school scope. Student and guardian acknowledgement still happens in their own portals.
 
 ### 4. Guardian Portal Policies
 
@@ -346,6 +349,7 @@ A: Yes, applicant-scoped policies appear in the admissions portal. They must ack
 - **Deletion**: Blocked by controller—use `is_active` instead
 - **SPA Surfaces:**
   - Staff Campaign Overlay: `/staff` → Set up campaign
+  - Policy Library: `/hub/staff/policy-library`
   - Staff Inform Overlay: Policy read-only viewer
   - Guardian Policies: `/hub/guardian/policies`
   - Student Policies: `/hub/student/policies`

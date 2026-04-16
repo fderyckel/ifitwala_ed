@@ -6,7 +6,7 @@
 {% set preferred_name = (doc.student_preferred_name or "").strip() %}
 {% set is_active = 1 if doc.enabled else 0 %}
 {% set generated_on = frappe.utils.formatdate(frappe.utils.nowdate()) %}
-{% set school_meta = frappe.get_cached_value("School", doc.anchor_school, ["school_name", "school_logo", "school_tagline"], as_dict=True) if doc.anchor_school else None %}
+{% set school_meta = frappe.db.get_value("School", doc.anchor_school, ["school_name", "school_logo", "school_tagline"], as_dict=True) if doc.anchor_school else None %}
 {% set brand_name = school_meta.school_name if school_meta and school_meta.school_name else (doc.get_formatted('anchor_school') if doc.anchor_school else "Ifitwala Ed") %}
 {% set brand_logo = school_meta.school_logo if school_meta and school_meta.school_logo else "" %}
 {% set brand_tagline = ((school_meta.school_tagline if school_meta and school_meta.school_tagline else "") or "").strip() %}

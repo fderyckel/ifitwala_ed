@@ -6,7 +6,7 @@
 import frappe
 from frappe import _
 
-from ifitwala_ed.utilities.employee_utils import get_ancestor_organizations
+from ifitwala_ed.utilities.employee_utils import get_ancestor_organizations, get_descendant_organizations
 from ifitwala_ed.utilities.school_tree import get_ancestor_schools, get_descendant_schools
 
 STAFF_ROLES = {
@@ -19,8 +19,47 @@ STAFF_ROLES = {
 }
 
 
+def _to_text(value) -> str:
+    return str(value or "").strip()
+
+
 def _as_bool(value) -> bool:
     return value in (1, "1", True)
+
+
+def expand_employee_visibility_context(employee: dict | None, roles) -> dict:
+    """Expand Academic Admin org/school visibility for archive-like permission checks."""
+    employee = dict(employee or {})
+    if "Academic Admin" not in (roles or []):
+        return employee
+
+    base_school = _to_text(employee.get("school"))
+    if base_school:
+        school_names = [school for school in (get_descendant_schools(base_school) or []) if _to_text(school)]
+        if school_names:
+            employee["school_names"] = school_names
+        return employee
+
+    base_organization = _to_text(employee.get("organization"))
+    if not base_organization:
+        return employee
+
+    organization_names = [org for org in (get_descendant_organizations(base_organization) or []) if _to_text(org)]
+    if organization_names:
+        employee["organization_names"] = organization_names
+
+    school_rows = frappe.get_all(
+        "School",
+        filters={"organization": ["in", organization_names]}
+        if organization_names
+        else {"organization": base_organization},
+        pluck="name",
+    )
+    school_names = [school for school in (school_rows or []) if _to_text(school)]
+    if school_names:
+        employee["school_names"] = school_names
+
+    return employee
 
 
 def _resolve_student_record_for_user(user_id: str) -> dict:

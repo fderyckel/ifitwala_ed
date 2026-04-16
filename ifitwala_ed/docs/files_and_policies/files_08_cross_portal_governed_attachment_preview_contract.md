@@ -2,8 +2,8 @@
 
 Status: Proposed canonical contract for cross-app implementation
 Date: 2026-04-16
-Code refs: `ifitwala_ed/api/file_access.py`, `ifitwala_ed/api/org_communication_attachments.py`, `ifitwala_ed/api/org_communication_archive.py`, `ifitwala_ed/api/materials.py`, `ifitwala_ed/api/teaching_plans_read_models.py`, `ifitwala_ed/ui-spa/AGENTS.md`
-Test refs: `ifitwala_ed/api/test_file_access.py`, `ifitwala_ed/api/test_org_communication_archive.py`, `ifitwala_ed/api/test_teaching_plans.py`
+Code refs: `ifitwala_ed/api/file_access.py`, `ifitwala_ed/api/org_communication_attachments.py`, `ifitwala_ed/api/org_communication_archive.py`, `ifitwala_ed/api/materials.py`, `ifitwala_ed/api/teaching_plans_read_models.py`, `ifitwala_ed/ui-spa/AGENTS.md`, `ifitwala_ed/ui-spa/src/components/tasks/CreateTaskDeliveryOverlay.vue`
+Test refs: `ifitwala_ed/api/test_file_access.py`, `ifitwala_ed/api/test_materials.py`, `ifitwala_ed/api/test_org_communication_archive.py`, `ifitwala_ed/api/test_teaching_plans.py`, `ifitwala_ed/ui-spa/src/components/tasks/__tests__/CreateTaskDeliveryOverlay.test.ts`
 Related current-state docs:
 
 - `ifitwala_ed/docs/high_concurrency_contract.md`
@@ -23,8 +23,8 @@ Related current-state docs:
 ## Current Implemented Baseline
 
 Status: Implemented current-state baseline
-Code refs: `ifitwala_ed/api/file_access.py`, `ifitwala_ed/api/org_communication_attachments.py`, `ifitwala_ed/api/materials.py`, `ifitwala_ed/api/teaching_plans_read_models.py`, `ifitwala_ed/ui-spa/src/pages/student/CourseDetail.vue`, `ifitwala_ed/ui-spa/src/components/learning/StudentLearningResourceCard.vue`
-Test refs: `ifitwala_ed/api/test_file_access.py`, `ifitwala_ed/api/test_org_communication_archive.py`, `ifitwala_ed/api/test_teaching_plans.py`, `ifitwala_ed/ui-spa/src/pages/student/__tests__/CourseDetail.test.ts`
+Code refs: `ifitwala_ed/api/file_access.py`, `ifitwala_ed/api/org_communication_attachments.py`, `ifitwala_ed/api/materials.py`, `ifitwala_ed/api/teaching_plans_read_models.py`, `ifitwala_ed/ui-spa/src/components/tasks/CreateTaskDeliveryOverlay.vue`, `ifitwala_ed/ui-spa/src/pages/student/CourseDetail.vue`, `ifitwala_ed/ui-spa/src/components/learning/StudentLearningResourceCard.vue`
+Test refs: `ifitwala_ed/api/test_file_access.py`, `ifitwala_ed/api/test_materials.py`, `ifitwala_ed/api/test_org_communication_archive.py`, `ifitwala_ed/api/test_teaching_plans.py`, `ifitwala_ed/ui-spa/src/components/tasks/__tests__/CreateTaskDeliveryOverlay.test.ts`, `ifitwala_ed/ui-spa/src/pages/student/__tests__/CourseDetail.test.ts`
 
 Today Ifitwala_Ed already enforces the correct broad shape for governed reads:
 
@@ -32,6 +32,7 @@ Today Ifitwala_Ed already enforces the correct broad shape for governed reads:
 - `open_org_communication_attachment(...)` re-checks communication visibility, then resolves a Drive grant just in time
 - Org Communication rows now also expose a stable `preview_url` route owned by Ed
 - staff, student, and guardian communication detail surfaces now render inline image previews and compact PDF preview tiles when those governed preview routes are available
+- the staff task creation overlay now renders inline image previews and compact PDF preview tiles for current task materials after a new reusable task is created
 - planning-material surfaces now also expose stable `preview_url` routes for governed file resources in the staff course-plan and class-planning workspaces
 - the student learning space now also exposes stable `preview_url` routes for governed file resources on `CourseDetail.vue`
 - student task-material chips remain lightweight, but they also prefer `preview_url` over `open_url` when preview is available
@@ -46,6 +47,7 @@ What still does not exist yet:
 Drive now has a narrow image-derivative foundation, but Ed should still treat preview as partial rollout:
 
 - Org Communication can use `preview_url` where Drive reports a ready preview, with file attachments rendering as image/PDF preview cards and links falling back to compact metadata cards
+- the staff task creation overlay can use `preview_url` where Drive reports a ready preview, while still keeping task-material actions inside the existing create flow
 - staff planning-material surfaces can use `preview_url` where Drive reports a ready preview
 - the student learning space can use `preview_url` where Drive reports a ready preview, with richer resource cards keeping `open_url` explicit and task chips staying lightweight
 - other surfaces should still be treated as open/download-only until their stable preview routes exist

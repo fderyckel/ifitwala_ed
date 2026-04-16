@@ -3,8 +3,8 @@ title: "Policy Version: The Living Legal Text"
 slug: policy-version
 category: Governance
 doc_order: 2
-version: "2.0.0"
-last_change_date: "2026-04-11"
+version: "2.0.1"
+last_change_date: "2026-04-16"
 summary: "Create versioned policy text with automatic diff tracking. When rules change, publish amendments that surface everywhere—from staff Focus tasks with inline change viewers to guardian and student portals—while preserving complete audit history."
 seo_title: "Policy Version: Versioned Legal Text with Diff Tracking"
 seo_description: "Learn how Policy Versions track changes, show diffs, and surface across staff, guardian, and student portals with automatic version management and audit trails."
@@ -213,7 +213,7 @@ Once activated, Policy Version text cannot be edited. This preserves audit integ
 The diff viewer appears in:
 - Staff Focus actions
 - Morning Brief policy overlays
-- Staff Policy Library
+- Policy Library in staff workspace
 
 ### What It Shows
 

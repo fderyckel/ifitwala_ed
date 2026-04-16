@@ -64,8 +64,20 @@ vi.mock('@/components/planning/PlanningRichTextField.vue', () => ({
 vi.mock('@/components/planning/PlanningResourcePanel.vue', () => ({
 	default: defineComponent({
 		name: 'PlanningResourcePanelStub',
-		setup() {
-			return () => h('div', 'Resource panel')
+		props: ['anchorDoctype', 'anchorName'],
+		setup(props, { emit }) {
+			return () =>
+				h(
+					'button',
+					{
+						type: 'button',
+						class: 'planning-resource-panel-stub',
+						'data-anchor-doctype': props.anchorDoctype || '',
+						'data-anchor-name': props.anchorName || '',
+						onClick: () => emit('changed'),
+					},
+					'Resource panel'
+				)
 		},
 	}),
 }))
@@ -317,6 +329,102 @@ describe('CoursePlanWorkspace page', () => {
 				onApply: expect.any(Function),
 			})
 		)
+	})
+
+	it('keeps governed resource panels anchored to the shared plan and selected unit', async () => {
+		getStaffCoursePlanSurfaceMock.mockResolvedValue({
+			meta: {
+				generated_at: '2026-04-13 10:00:00',
+				course_plan: 'COURSE-PLAN-1',
+			},
+			course_plan: {
+				course_plan: 'COURSE-PLAN-1',
+				record_modified: '2026-04-13 10:00:00',
+				title: 'Biology Semester 1 Plan',
+				course: 'COURSE-1',
+				course_name: 'Biology',
+				course_group: 'Science',
+				school: 'SCH-1',
+				academic_year: '2026-2027',
+				cycle_label: 'Semester 1',
+				plan_status: 'Active',
+				summary: '<p>Shared summary</p>',
+				can_manage_resources: 1,
+			},
+			resolved: {
+				unit_plan: 'UNIT-1',
+				quiz_question_bank: null,
+			},
+			resources: {
+				course_plan_resources: [],
+			},
+			field_options: {
+				academic_years: [],
+				programs: [{ value: 'MYP', label: 'MYP' }],
+			},
+			curriculum: {
+				units: [
+					{
+						unit_plan: 'UNIT-1',
+						record_modified: '2026-04-13 10:00:00',
+						title: 'Cells and Systems',
+						program: 'MYP',
+						unit_order: 10,
+						unit_status: 'Active',
+						is_published: 1,
+						overview: '',
+						essential_understanding: '',
+						misconceptions: '',
+						content: '',
+						skills: '',
+						concepts: '',
+						standards: [],
+						shared_reflections: [],
+						class_reflections: [],
+						shared_resources: [],
+					},
+				],
+				unit_count: 1,
+				timeline: {
+					status: 'blocked',
+					reason: 'missing_calendar',
+					message: 'Add a calendar first.',
+					scope: {},
+					terms: [],
+					holidays: [],
+					units: [],
+					summary: {
+						scheduled_unit_count: 0,
+						unscheduled_unit_count: 1,
+						overflow_unit_count: 0,
+						instructional_day_count: 0,
+					},
+				},
+			},
+			assessment: {
+				quiz_question_banks: [],
+				selected_quiz_question_bank: null,
+			},
+		})
+
+		mountPage()
+		await flushUi()
+
+		const coursePlanResourcePanel = document.querySelector(
+			'[data-anchor-doctype="Course Plan"]'
+		) as HTMLButtonElement | null
+		const unitResourcePanel = document.querySelector(
+			'[data-anchor-doctype="Unit Plan"]'
+		) as HTMLButtonElement | null
+
+		expect(coursePlanResourcePanel?.getAttribute('data-anchor-name')).toBe('COURSE-PLAN-1')
+		expect(unitResourcePanel?.getAttribute('data-anchor-name')).toBe('UNIT-1')
+
+		const initialLoadCount = getStaffCoursePlanSurfaceMock.mock.calls.length
+		coursePlanResourcePanel?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+		await flushUi()
+
+		expect(getStaffCoursePlanSurfaceMock).toHaveBeenCalledTimes(initialLoadCount + 1)
 	})
 
 	it('shows compact standard summary cards and expands details on click', async () => {

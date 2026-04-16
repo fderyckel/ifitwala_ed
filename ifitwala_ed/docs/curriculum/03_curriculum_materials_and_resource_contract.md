@@ -2,7 +2,7 @@
 
 Status: Canonical current-state contract
 Code refs: `ifitwala_ed/curriculum/doctype/supporting_material/supporting_material.json`, `ifitwala_ed/curriculum/doctype/material_placement/material_placement.json`, `ifitwala_ed/curriculum/materials.py`, `ifitwala_ed/api/materials.py`, `ifitwala_ed/api/teaching_plans.py`, `ifitwala_ed/api/file_access.py`, `ifitwala_ed/integrations/drive/bridge.py`, `ifitwala_ed/utilities/governed_uploads.py`, `ifitwala_ed/ui-spa/src/components/tasks/CreateTaskDeliveryOverlay.vue`, `ifitwala_ed/ui-spa/src/components/planning/PlanningResourcePanel.vue`, `ifitwala_ed/ui-spa/src/pages/staff/ClassPlanning.vue`, `ifitwala_ed/ui-spa/src/pages/staff/CoursePlanWorkspace.vue`, `ifitwala_ed/ui-spa/src/pages/student/CourseDetail.vue`
-Test refs: `ifitwala_ed/curriculum/doctype/supporting_material/test_supporting_material.py`, `ifitwala_ed/curriculum/doctype/material_placement/test_material_placement.py`, `ifitwala_ed/curriculum/test_materials.py`, `ifitwala_ed/api/test_teaching_plans.py`, `ifitwala_ed/api/test_file_access.py`, `ifitwala_ed/ui-spa/src/pages/student/__tests__/CourseDetail.test.ts`
+Test refs: `ifitwala_ed/curriculum/doctype/supporting_material/test_supporting_material.py`, `ifitwala_ed/curriculum/doctype/material_placement/test_material_placement.py`, `ifitwala_ed/curriculum/test_materials.py`, `ifitwala_ed/api/test_materials.py`, `ifitwala_ed/api/test_teaching_plans.py`, `ifitwala_ed/api/test_file_access.py`, `ifitwala_ed/ui-spa/src/components/tasks/__tests__/CreateTaskDeliveryOverlay.test.ts`, `ifitwala_ed/ui-spa/src/pages/student/__tests__/CourseDetail.test.ts`
 
 This is the canonical contract for reusable learning materials and resource sharing inside the curriculum stack.
 
@@ -93,7 +93,9 @@ Staff add materials where they already work:
 
 Current staff preview behavior:
 
+- governed file materials in the task creation overlay now prefer stable `preview_url` routes when available
 - governed file materials on the course-plan and class-planning workspaces now prefer stable `preview_url` routes when available
+- the task creation overlay now renders inline image previews and compact PDF preview tiles for current task materials after task creation
 - those workspaces render inline image thumbnails and compact PDF preview tiles for governed file resources
 - `open_url` remains the explicit original-file action and compatibility baseline
 

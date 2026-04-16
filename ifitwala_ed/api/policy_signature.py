@@ -16,7 +16,6 @@ from ifitwala_ed.governance.policy_utils import (
     get_policy_applies_to_token_map,
     get_policy_applies_to_tokens_for_policy,
     policy_applies_to,
-    policy_applies_to_filter_sql,
 )
 from ifitwala_ed.utilities.employee_utils import get_descendant_organizations, get_user_base_org
 from ifitwala_ed.utilities.html_sanitizer import sanitize_html
@@ -55,6 +54,8 @@ POLICY_SIGNATURE_AUDIENCE_WORKFLOW_DESCRIPTIONS = {
 POLICY_SIGNATURE_REGISTER_STATUS_ALL = "all"
 POLICY_SIGNATURE_REGISTER_STATUS_PENDING = "pending"
 POLICY_SIGNATURE_REGISTER_STATUS_SIGNED = "signed"
+POLICY_LIBRARY_AUDIENCE_ALL = "All"
+POLICY_LIBRARY_AUDIENCES = (POLICY_LIBRARY_AUDIENCE_ALL, *POLICY_SIGNATURE_AUDIENCE_ORDER)
 MULTIPLE_ORGANIZATIONS_LABEL = "Multiple organizations"
 MULTIPLE_SCHOOLS_LABEL = "Multiple schools"
 
@@ -66,6 +67,17 @@ def _policy_applies_to_staff(applies_to: str | None) -> bool:
 def _supported_policy_signature_audiences(applies_to_tokens) -> list[str]:
     tokens = set(applies_to_tokens or [])
     return [audience for audience in POLICY_SIGNATURE_AUDIENCE_ORDER if audience in tokens]
+
+
+def _normalize_policy_library_audience(*, value: str | None, can_manage_audiences: bool) -> str:
+    normalized_map = {audience.lower(): audience for audience in POLICY_LIBRARY_AUDIENCES}
+    normalized = normalized_map.get((value or "").strip().lower())
+    if normalized == POLICY_LIBRARY_AUDIENCE_ALL and can_manage_audiences:
+        return POLICY_LIBRARY_AUDIENCE_ALL
+    if normalized in POLICY_SIGNATURE_AUDIENCE_ORDER:
+        if can_manage_audiences or normalized == "Staff":
+            return normalized
+    return POLICY_LIBRARY_AUDIENCE_ALL if can_manage_audiences else "Staff"
 
 
 def _require_roles(allowed_roles: set[str] | frozenset[str]) -> tuple[str, set[str]]:
@@ -260,13 +272,15 @@ def _policy_options_for_scope(
     return options
 
 
-def _active_staff_policy_rows_for_context(
+def _active_policy_rows_for_context(
     *,
     context_organization: str,
     context_school: str | None,
+    audience: str | None = None,
 ) -> list[dict]:
     context_organization = (context_organization or "").strip()
     context_school = (context_school or "").strip()
+    audience = (audience or "").strip() or None
     if not context_organization:
         return []
 
@@ -274,12 +288,9 @@ def _active_staff_policy_rows_for_context(
     if not ancestor_orgs:
         return []
 
-    params: dict = {
-        "policy_organizations": tuple(ancestor_orgs),
-        "applies_to": "Staff",
-    }
+    params: dict = {"policy_organizations": tuple(ancestor_orgs)}
 
-    school_scope_clause = " AND (ifnull(ip.school, '') = '')"
+    school_scope_clause = ""
     if context_school:
         school_ancestors = get_school_ancestors_including_self(context_school)
         if school_ancestors:
@@ -309,7 +320,6 @@ def _active_staff_policy_rows_for_context(
         WHERE pv.is_active = 1
           AND ip.is_active = 1
           AND ip.organization IN %(policy_organizations)s
-          AND {policy_applies_to_filter_sql(policy_alias="ip", audience_placeholder="%(applies_to)s")}
           {school_scope_clause}
         ORDER BY ip.policy_title ASC, pv.modified DESC
         """,
@@ -317,7 +327,7 @@ def _active_staff_policy_rows_for_context(
         as_dict=True,
     )
 
-    return select_nearest_policy_rows_by_key(
+    rows = select_nearest_policy_rows_by_key(
         rows=rows,
         context_organization=context_organization,
         context_school=context_school or None,
@@ -325,6 +335,23 @@ def _active_staff_policy_rows_for_context(
         policy_organization_field="policy_organization",
         policy_school_field="policy_school",
     )
+
+    token_map = get_policy_applies_to_token_map(
+        [row.get("institutional_policy") for row in rows if row.get("institutional_policy")]
+    )
+
+    out = []
+    for row in rows:
+        tokens = _supported_policy_signature_audiences(
+            token_map.get((row.get("institutional_policy") or "").strip(), ())
+        )
+        if not tokens:
+            continue
+        if audience and audience not in tokens:
+            continue
+        row["applies_to_tokens"] = list(tokens)
+        out.append(row)
+    return out
 
 
 def get_active_employee_for_user(user: str | None = None) -> dict | None:
@@ -383,6 +410,53 @@ def get_policy_version_history_rows(institutional_policy: str | None) -> list[di
             }
         )
     return out
+
+
+def _build_policy_library_counts(rows: list[dict]) -> dict:
+    counts = {
+        "total_policies": len(rows),
+        "staff_policies": 0,
+        "guardian_policies": 0,
+        "student_policies": 0,
+        "organization_scoped": 0,
+        "school_scoped": 0,
+        "multi_audience": 0,
+        "signature_required": 0,
+        "informational": 0,
+        "signed": 0,
+        "pending": 0,
+        "new_version": 0,
+    }
+
+    for row in rows:
+        tokens = set(row.get("applies_to_tokens") or [])
+        if "Staff" in tokens:
+            counts["staff_policies"] += 1
+        if "Guardian" in tokens:
+            counts["guardian_policies"] += 1
+        if "Student" in tokens:
+            counts["student_policies"] += 1
+        if len(tokens) > 1:
+            counts["multi_audience"] += 1
+        if (row.get("policy_school") or "").strip():
+            counts["school_scoped"] += 1
+        else:
+            counts["organization_scoped"] += 1
+
+        if row.get("signature_required") is True:
+            counts["signature_required"] += 1
+
+        status = (row.get("acknowledgement_status") or "").strip()
+        if status == STAFF_POLICY_STATUS_INFO:
+            counts["informational"] += 1
+        elif status == STAFF_POLICY_STATUS_SIGNED:
+            counts["signed"] += 1
+        elif status == STAFF_POLICY_STATUS_PENDING:
+            counts["pending"] += 1
+        elif status == STAFF_POLICY_STATUS_NEW_VERSION:
+            counts["new_version"] += 1
+
+    return counts
 
 
 def _normalize_policy_names(policy_names: list[str]) -> list[str]:
@@ -1891,14 +1965,15 @@ def get_staff_policy_signature_dashboard(
 
 
 @frappe.whitelist()
-def get_staff_policy_library(
+def get_policy_library(
     *,
     organization: str | None = None,
     school: str | None = None,
-    employee_group: str | None = None,
+    audience: str | None = None,
 ):
     user, roles = _require_roles(POLICY_LIBRARY_ROLES)
     employee_row = get_active_employee_for_user(user)
+    can_manage_audiences = bool(roles & set(POLICY_SIGNATURE_ANALYTICS_ROLES))
 
     scoped_orgs = _policy_library_scope_organizations(
         user=user,
@@ -1908,25 +1983,26 @@ def get_staff_policy_library(
     organization_options = sorted({(org or "").strip() for org in scoped_orgs if (org or "").strip()})
     if not organization_options:
         return {
-            "meta": {"generated_at": now_datetime().isoformat(), "user": user, "employee": employee_row},
+            "meta": {
+                "generated_at": now_datetime().isoformat(),
+                "user": user,
+                "employee": employee_row,
+                "can_manage_audiences": can_manage_audiences,
+            },
             "filters": {
                 "organization": None,
                 "school": None,
-                "employee_group": None,
+                "audience": _normalize_policy_library_audience(
+                    value=audience,
+                    can_manage_audiences=can_manage_audiences,
+                ),
             },
             "options": {
                 "organizations": [],
                 "schools": [],
-                "employee_groups": [],
+                "audiences": list(POLICY_LIBRARY_AUDIENCES if can_manage_audiences else ("Staff",)),
             },
-            "counts": {
-                "total_policies": 0,
-                "signature_required": 0,
-                "informational": 0,
-                "signed": 0,
-                "pending": 0,
-                "new_version": 0,
-            },
+            "counts": _build_policy_library_counts([]),
             "rows": [],
         }
 
@@ -1936,56 +2012,67 @@ def get_staff_policy_library(
         selected_organization = organization_options[0]
     _ensure_organization_in_scope(selected_organization, organization_options)
 
-    organization_scope = get_descendant_organizations(selected_organization)
-    school_options = _school_options_for_scope(organization_scope)
+    selected_organization_scope = [selected_organization]
+    school_options = _school_options_for_scope(selected_organization_scope)
 
     employee_school = ((employee_row or {}).get("school") or "").strip()
-    selected_school = (school or "").strip() or employee_school
-    selected_school = (selected_school or "").strip()
+    selected_school = (school or "").strip()
     school_option_set = set(school_options)
 
     if selected_school and selected_school not in school_option_set:
         selected_school = ""
 
-    if not selected_school and school_options:
+    if not can_manage_audiences and not selected_school and school_options:
         selected_school = employee_school if employee_school in school_option_set else school_options[0]
 
     if selected_school:
-        _ensure_school_in_scope(school=selected_school, organization_scope=organization_scope)
+        _ensure_school_in_scope(school=selected_school, organization_scope=selected_organization_scope)
 
-    employee_group_options = _employee_group_options_for_scope(
-        organization_scope=organization_scope,
-        school=selected_school or None,
+    selected_audience = _normalize_policy_library_audience(
+        value=audience,
+        can_manage_audiences=can_manage_audiences,
     )
-    selected_employee_group = (employee_group or "").strip() or (employee_row or {}).get("employee_group") or ""
-    selected_employee_group = (selected_employee_group or "").strip()
-    if selected_employee_group and selected_employee_group not in set(employee_group_options):
-        selected_employee_group = ""
 
-    policy_rows = _active_staff_policy_rows_for_context(
+    policy_rows = _active_policy_rows_for_context(
         context_organization=selected_organization,
         context_school=selected_school or None,
+        audience=None if selected_audience == POLICY_LIBRARY_AUDIENCE_ALL else selected_audience,
     )
     policy_names = [(row.get("institutional_policy") or "").strip() for row in policy_rows]
 
-    required_policy_names = _signature_required_policy_names(policy_names)
-    signed_versions, acknowledged_policies, acknowledged_at_by_version = _user_acknowledgement_summary_for_policies(
-        user=user,
-        employee_name=(employee_row or {}).get("name"),
-        policy_names=policy_names,
-    )
+    required_policy_names: set[str] = set()
+    signed_versions: set[str] = set()
+    acknowledged_policies: set[str] = set()
+    acknowledged_at_by_version: dict[str, str] = {}
+    if selected_audience == "Staff":
+        required_policy_names = _signature_required_policy_names(policy_names)
+        (
+            signed_versions,
+            acknowledged_policies,
+            acknowledged_at_by_version,
+        ) = _user_acknowledgement_summary_for_policies(
+            user=user,
+            employee_name=(employee_row or {}).get("name"),
+            policy_names=policy_names,
+        )
 
     rows = []
     for row in policy_rows:
         policy_name = (row.get("institutional_policy") or "").strip()
         policy_version = (row.get("policy_version") or "").strip()
-        status = _policy_status_for_user(
-            policy_name=policy_name,
-            policy_version=policy_version,
-            required_policies=required_policy_names,
-            signed_versions=signed_versions,
-            acknowledged_policies=acknowledged_policies,
-        )
+        status = None
+        signature_required = None
+        acknowledged_at = None
+        if selected_audience == "Staff":
+            status = _policy_status_for_user(
+                policy_name=policy_name,
+                policy_version=policy_version,
+                required_policies=required_policy_names,
+                signed_versions=signed_versions,
+                acknowledged_policies=acknowledged_policies,
+            )
+            signature_required = policy_name in required_policy_names
+            acknowledged_at = acknowledged_at_by_version.get(policy_version)
         rows.append(
             {
                 "institutional_policy": policy_name,
@@ -2002,36 +2089,31 @@ def get_staff_policy_library(
                 "approved_on": str(row.get("approved_on")) if row.get("approved_on") else None,
                 "based_on_version": (row.get("based_on_version") or "").strip() or None,
                 "change_summary": (row.get("change_summary") or "").strip() or None,
-                "signature_required": policy_name in required_policy_names,
+                "applies_to_tokens": list(row.get("applies_to_tokens") or []),
+                "signature_required": signature_required,
                 "acknowledgement_status": status,
-                "acknowledged_at": acknowledged_at_by_version.get(policy_version),
+                "acknowledged_at": acknowledged_at,
             }
         )
 
-    counts = {
-        "total_policies": len(rows),
-        "signature_required": sum(1 for row in rows if row.get("signature_required")),
-        "informational": sum(1 for row in rows if row.get("acknowledgement_status") == STAFF_POLICY_STATUS_INFO),
-        "signed": sum(1 for row in rows if row.get("acknowledgement_status") == STAFF_POLICY_STATUS_SIGNED),
-        "pending": sum(1 for row in rows if row.get("acknowledgement_status") == STAFF_POLICY_STATUS_PENDING),
-        "new_version": sum(1 for row in rows if row.get("acknowledgement_status") == STAFF_POLICY_STATUS_NEW_VERSION),
-    }
+    counts = _build_policy_library_counts(rows)
 
     return {
         "meta": {
             "generated_at": now_datetime().isoformat(),
             "user": user,
             "employee": employee_row,
+            "can_manage_audiences": can_manage_audiences,
         },
         "filters": {
             "organization": selected_organization or None,
             "school": selected_school or None,
-            "employee_group": selected_employee_group or None,
+            "audience": selected_audience,
         },
         "options": {
             "organizations": organization_options,
             "schools": school_options,
-            "employee_groups": employee_group_options,
+            "audiences": list(POLICY_LIBRARY_AUDIENCES if can_manage_audiences else ("Staff",)),
         },
         "counts": counts,
         "rows": rows,

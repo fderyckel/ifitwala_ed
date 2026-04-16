@@ -11,6 +11,7 @@ export type Response = {
 	policy_key?: string | null;
 	policy_title?: string | null;
 	policy_label?: string | null;
+	applies_to_tokens?: Array<'Staff' | 'Guardian' | 'Student'>;
 	version_label?: string | null;
 	policy_organization?: string | null;
 	policy_school?: string | null;

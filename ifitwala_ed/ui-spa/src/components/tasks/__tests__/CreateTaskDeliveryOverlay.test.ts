@@ -66,6 +66,7 @@ const {
 			},
 			quiz_defaults: {},
 		},
+		taskMaterialsRows: [] as any[],
 	},
 }));
 
@@ -155,6 +156,15 @@ vi.mock('frappe-ui', async () => {
 					}
 					config.onSuccess?.(resourceState.createNewTaskResult);
 					return resourceState.createNewTaskResult;
+				},
+			};
+		}
+		if (config.url === 'ifitwala_ed.api.materials.list_task_materials') {
+			return {
+				loading: false,
+				submit: async () => {
+					config.onSuccess?.({ materials: resourceState.taskMaterialsRows });
+					return { materials: resourceState.taskMaterialsRows };
 				},
 			};
 		}
@@ -393,6 +403,7 @@ beforeEach(() => {
 		},
 		quiz_defaults: {},
 	};
+	resourceState.taskMaterialsRows = [];
 });
 
 afterEach(() => {
@@ -489,5 +500,55 @@ describe('CreateTaskDeliveryOverlay', () => {
 		expect(successText).toContain('Assigned work ready');
 		expect(successText).not.toContain('Add task materials');
 		expect(successText).toContain('Add any class-specific resources in Class Planning');
+	});
+
+	it('renders governed preview actions for current task materials after task creation', async () => {
+		resourceState.taskMaterialsRows = [
+			{
+				placement: 'PLACEMENT-IMG',
+				material: 'MAT-IMG',
+				title: 'Specimen photo',
+				material_type: 'File',
+				file_name: 'specimen-photo.png',
+				file_size: 4096,
+				preview_url: '/api/method/ifitwala_ed.api.file_access.preview_academic_file?file=FILE-IMG',
+				open_url: '/api/method/ifitwala_ed.api.file_access.download_academic_file?file=FILE-IMG',
+			},
+			{
+				placement: 'PLACEMENT-PDF',
+				material: 'MAT-PDF',
+				title: 'Lab guide',
+				material_type: 'File',
+				file_name: 'lab-guide.pdf',
+				file_size: 8192,
+				preview_url: '/api/method/ifitwala_ed.api.file_access.preview_academic_file?file=FILE-PDF',
+				open_url: '/api/method/ifitwala_ed.api.file_access.download_academic_file?file=FILE-PDF',
+			},
+		];
+
+		mountOverlay();
+		await flushUi();
+
+		await setInput('Assignment title', 'Microscope reflection');
+		await clickButton('Create');
+
+		expect(document.body.textContent || '').toContain('Current task materials');
+		const imagePreview = document.querySelector('[data-task-material-preview-kind="image"] img');
+		expect(imagePreview?.getAttribute('src')).toBe(
+			'/api/method/ifitwala_ed.api.file_access.preview_academic_file?file=FILE-IMG'
+		);
+
+		const pdfPreview = document.querySelector('[data-task-material-preview-kind="pdf"]');
+		expect(pdfPreview?.getAttribute('href')).toBe(
+			'/api/method/ifitwala_ed.api.file_access.preview_academic_file?file=FILE-PDF'
+		);
+
+		const openOriginalLinks = Array.from(document.querySelectorAll('a')).filter(anchor =>
+			(anchor.textContent || '').includes('Open original')
+		);
+		expect(openOriginalLinks.length).toBeGreaterThan(0);
+		expect(openOriginalLinks[0]?.getAttribute('href')).toContain(
+			'/api/method/ifitwala_ed.api.file_access.download_academic_file?file='
+		);
 	});
 });
