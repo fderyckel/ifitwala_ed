@@ -16,7 +16,7 @@
 			<div class="page-header__actions">
 				<RouterLink
 					:to="buildRouteLocation('admissions-status')"
-					class="rounded-full border border-border/70 bg-white px-4 py-2 type-caption text-ink/75"
+					class="if-button if-button--secondary"
 				>
 					{{ __('Review offer') }}
 				</RouterLink>
@@ -33,11 +33,7 @@
 		<div v-else-if="error" class="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3">
 			<p class="type-body-strong text-rose-900">{{ __('Unable to load course choices') }}</p>
 			<p class="mt-1 type-caption text-rose-900/80 whitespace-pre-wrap">{{ error }}</p>
-			<button
-				type="button"
-				class="mt-3 rounded-full border border-rose-200 bg-white px-4 py-2 type-caption text-rose-900"
-				@click="loadChoices"
-			>
+			<button type="button" class="if-button if-button--secondary mt-3" @click="loadChoices">
 				{{ __('Try again') }}
 			</button>
 		</div>
@@ -339,7 +335,7 @@
 				<div class="flex flex-wrap items-center gap-3">
 					<button
 						type="button"
-						class="rounded-full bg-ink px-5 py-2 type-caption text-white shadow-soft disabled:opacity-50"
+						class="if-button if-button--primary"
 						:disabled="!canEditChoices || saving || !summary?.has_courses"
 						@click="saveChoices"
 					>

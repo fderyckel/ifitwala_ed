@@ -11,13 +11,26 @@
 					</p>
 				</div>
 				<div class="flex items-center gap-2">
-					<button type="button" class="if-action" @click="scrollToSection('calendar')">
+					<button
+						type="button"
+						class="if-button if-button--quiet"
+						@click="scrollToSection('calendar')"
+					>
 						Calendar
 					</button>
-					<button type="button" class="if-action" @click="scrollToSection('quick-links')">
+					<button
+						type="button"
+						class="if-button if-button--quiet"
+						@click="scrollToSection('quick-links')"
+					>
 						Quick Links
 					</button>
-					<button type="button" class="if-action" :disabled="loadingHome" @click="loadHome">
+					<button
+						type="button"
+						class="if-button if-button--quiet"
+						:disabled="loadingHome"
+						@click="loadHome"
+					>
 						Refresh
 					</button>
 				</div>
@@ -46,7 +59,9 @@
 						waiting for your signature.
 					</p>
 				</div>
-				<RouterLink :to="{ name: 'student-policies' }" class="if-action">Open Policies</RouterLink>
+				<RouterLink :to="{ name: 'student-policies' }" class="if-button if-button--primary">
+					Open Policies
+				</RouterLink>
 			</div>
 			<div class="mt-4 grid gap-3 lg:grid-cols-3">
 				<article
@@ -79,7 +94,9 @@
 					<h2 class="type-h2 text-ink">{{ orientationTitle }}</h2>
 					<p class="mt-1 type-body text-ink/70">{{ orientationSubtitle }}</p>
 				</div>
-				<RouterLink :to="{ name: 'student-courses' }" class="if-action">My Courses</RouterLink>
+				<RouterLink :to="{ name: 'student-courses' }" class="if-button if-button--primary">
+					My Courses
+				</RouterLink>
 			</div>
 
 			<p v-if="daySummary" class="mt-4 type-caption text-ink/60">{{ daySummary }}</p>
@@ -100,7 +117,9 @@
 							{{ classSubtitle(currentClass) }}
 						</p>
 					</div>
-					<RouterLink :to="linkFor(currentClass.href)" class="if-action">Open Class</RouterLink>
+					<RouterLink :to="linkFor(currentClass.href)" class="if-button if-button--primary">
+						Open Class
+					</RouterLink>
 				</div>
 			</div>
 
@@ -113,7 +132,9 @@
 							{{ classSubtitle(nextClass) }}
 						</p>
 					</div>
-					<RouterLink :to="linkFor(nextClass.href)" class="if-action">Prepare</RouterLink>
+					<RouterLink :to="linkFor(nextClass.href)" class="if-button if-button--primary">
+						Prepare
+					</RouterLink>
 				</div>
 			</div>
 
@@ -136,11 +157,11 @@
 					<RouterLink
 						v-if="nextLearningStep.can_open && nextLearningStep.href"
 						:to="linkFor(nextLearningStep.href)"
-						class="if-action"
+						class="if-button if-button--primary"
 					>
 						{{ nextLearningStepButtonLabel }}
 					</RouterLink>
-					<button v-else type="button" class="if-action cursor-not-allowed opacity-60" disabled>
+					<button v-else type="button" class="if-button if-button--primary" disabled>
 						{{ nextLearningStepButtonLabel }}
 					</button>
 				</div>
@@ -218,7 +239,7 @@
 						Class, activity, and school updates stay connected to where they belong.
 					</p>
 				</div>
-				<RouterLink :to="linkFor(communicationsCenterHref)" class="if-action">
+				<RouterLink :to="linkFor(communicationsCenterHref)" class="if-button if-button--primary">
 					Open communication center
 				</RouterLink>
 			</div>
@@ -264,7 +285,9 @@
 					<p class="type-overline text-ink/60">Timeline</p>
 					<h2 class="type-h2 text-ink">Coming up</h2>
 				</div>
-				<RouterLink :to="{ name: 'student-courses' }" class="if-action">Open Courses</RouterLink>
+				<RouterLink :to="{ name: 'student-courses' }" class="if-button if-button--primary">
+					Open Courses
+				</RouterLink>
 			</div>
 
 			<div v-if="loadingHome" class="student-hub-section type-body text-ink/70">

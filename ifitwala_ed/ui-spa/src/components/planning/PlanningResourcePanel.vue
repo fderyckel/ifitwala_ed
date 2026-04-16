@@ -36,16 +36,12 @@
 				v-if="canManageResources"
 				:class="[panelSectionOffset, 'rounded-2xl border border-line-soft bg-surface-soft p-5']"
 			>
-				<div class="flex flex-wrap gap-2">
+				<div class="if-segmented flex-wrap">
 					<button
 						type="button"
 						data-resource-mode="link"
-						class="rounded-full border px-4 py-2 text-sm font-medium transition"
-						:class="
-							composerMode === 'link'
-								? 'border-leaf/60 bg-sky/20 text-ink'
-								: 'border-border/70 bg-white text-ink/70 hover:border-leaf/40'
-						"
+						class="if-segmented__item"
+						:class="{ 'if-segmented__item--active': composerMode === 'link' }"
 						@click="composerMode = 'link'"
 					>
 						Add link
@@ -53,12 +49,8 @@
 					<button
 						type="button"
 						data-resource-mode="file"
-						class="rounded-full border px-4 py-2 text-sm font-medium transition"
-						:class="
-							composerMode === 'file'
-								? 'border-leaf/60 bg-sky/20 text-ink'
-								: 'border-border/70 bg-white text-ink/70 hover:border-leaf/40'
-						"
+						class="if-segmented__item"
+						:class="{ 'if-segmented__item--active': composerMode === 'file' }"
 						@click="composerMode = 'file'"
 					>
 						Upload file
@@ -124,13 +116,14 @@
 				<div v-else class="mt-4 space-y-3">
 					<input ref="fileInput" type="file" class="hidden" @change="onFileSelected" />
 					<div class="flex flex-wrap items-center gap-3">
-						<Button
-							appearance="secondary"
+						<button
+							type="button"
+							class="if-button if-button--secondary"
 							data-resource-choose-file="true"
 							@click="fileInput?.click()"
 						>
 							Choose file
-						</Button>
+						</button>
 						<p class="type-caption text-ink/70">
 							{{ selectedFile?.name || 'No file selected yet.' }}
 						</p>
@@ -145,14 +138,22 @@
 				</div>
 
 				<div class="mt-4 flex justify-end">
-					<Button
-						appearance="primary"
-						:loading="submitting"
-						:disabled="!canSubmit"
+					<button
+						type="button"
+						class="if-button if-button--primary"
+						:disabled="!canSubmit || submitting"
 						@click="addResource"
 					>
-						{{ composerMode === 'link' ? 'Add link' : 'Upload file' }}
-					</Button>
+						{{
+							submitting
+								? composerMode === 'link'
+									? 'Adding…'
+									: 'Uploading…'
+								: composerMode === 'link'
+									? 'Add link'
+									: 'Upload file'
+						}}
+					</button>
 				</div>
 			</section>
 
@@ -270,14 +271,15 @@
 							>
 								Open original
 							</a>
-							<Button
+							<button
 								v-if="resource.placement && canManageResources"
-								appearance="secondary"
-								:loading="removingPlacement === resource.placement"
+								type="button"
+								class="if-button if-button--danger"
+								:disabled="removingPlacement === resource.placement"
 								@click="removeResource(resource.placement)"
 							>
-								Remove
-							</Button>
+								{{ removingPlacement === resource.placement ? 'Removing…' : 'Remove' }}
+							</button>
 						</div>
 					</div>
 				</article>
@@ -288,7 +290,7 @@
 
 <script setup lang="ts">
 import { computed, reactive, ref } from 'vue';
-import { Button, FormControl, toast } from 'frappe-ui';
+import { FormControl, toast } from 'frappe-ui';
 
 import {
 	createPlanningReferenceMaterial,

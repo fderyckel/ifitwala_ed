@@ -18,11 +18,7 @@
 		<div v-else-if="error" class="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3">
 			<p class="type-body-strong text-rose-900">{{ __('Unable to load messages') }}</p>
 			<p class="mt-1 type-caption text-rose-900/80 whitespace-pre-wrap">{{ error }}</p>
-			<button
-				type="button"
-				class="mt-3 rounded-full border border-rose-200 bg-white px-4 py-2 type-caption text-rose-900"
-				@click="loadMessages"
-			>
+			<button type="button" class="if-button if-button--secondary mt-3" @click="loadMessages">
 				{{ __('Try again') }}
 			</button>
 		</div>
@@ -82,7 +78,7 @@
 				<div class="mt-3 flex justify-end">
 					<button
 						type="button"
-						class="inline-flex items-center justify-center rounded-full border border-ink/10 bg-ink px-4 py-2 type-caption text-white shadow-soft transition hover:opacity-95 disabled:cursor-not-allowed disabled:opacity-50"
+						class="if-button if-button--primary"
 						:disabled="sending || !canSend"
 						@click="sendMessage"
 					>

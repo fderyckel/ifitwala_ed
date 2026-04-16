@@ -61,9 +61,6 @@ from ifitwala_ed.api.calendar_details import (
     get_student_group_event_details as _get_student_group_event_details,
 )
 from ifitwala_ed.api.calendar_prefs import (
-    debug_staff_calendar_window as _debug_staff_calendar_window,
-)
-from ifitwala_ed.api.calendar_prefs import (
     get_portal_calendar_prefs as _get_portal_calendar_prefs,
 )
 from ifitwala_ed.api.calendar_quick_create import (
@@ -303,11 +300,6 @@ def create_school_event_quick(
 
 
 @frappe.whitelist()
-def debug_staff_calendar_window(from_datetime: str | None = None, to_datetime: str | None = None):
-    return _debug_staff_calendar_window(from_datetime=from_datetime, to_datetime=to_datetime)
-
-
-@frappe.whitelist()
 def get_portal_calendar_prefs(from_datetime: str | None = None, to_datetime: str | None = None):
     return _get_portal_calendar_prefs(from_datetime=from_datetime, to_datetime=to_datetime)
 
@@ -335,7 +327,6 @@ __all__ = [
     "suggest_meeting_rooms",
     "create_meeting_quick",
     "create_school_event_quick",
-    "debug_staff_calendar_window",
     "get_portal_calendar_prefs",
     "_resolve_employee_for_user",
     "_system_tzinfo",

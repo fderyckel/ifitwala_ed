@@ -1167,10 +1167,9 @@ function onDetailContentClick(event: MouseEvent) {
 
 	const policyVersion = String(payload.policyVersion || '').trim();
 	if (!policyVersion) return;
+	const selectedCommunicationName = String(selectedComm.value?.name || '').trim();
 	const orgCommunication =
-		String(payload.orgCommunication || '').trim() ||
-		String(selectedComm.value?.name || '').trim() ||
-		null;
+		selectedCommunicationName || String(payload.orgCommunication || '').trim() || null;
 
 	overlay.open('staff-policy-inform', {
 		policyVersion,

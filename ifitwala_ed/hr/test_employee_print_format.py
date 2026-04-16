@@ -119,6 +119,7 @@ class TestEmployeePrintFormat(unittest.TestCase):
             ".status-pill",
             ".crm-grid",
             ".history-entry",
+            ".hero-card",
             ".profile-photo",
             "Employee Profile",
             "Linked Contact and Address",
@@ -260,7 +261,8 @@ class TestEmployeePrintFormat(unittest.TestCase):
         self.assertIn("ifitwala-letterhead-footer", rendered)
         self.assertIn("employee-profile--with-letterhead", rendered)
         self.assertIn("document-banner", rendered)
-        self.assertNotIn("profile-header", rendered)
+        self.assertIn("hero-card", rendered)
+        self.assertIn("John Neumann", rendered)
 
 
 class _FakeFrappeDB:

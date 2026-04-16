@@ -320,12 +320,7 @@ async function loadSlice(reset = false) {
 
 	await sliceResource.submit(payload);
 
-	let rows: any = sliceResource.data as any;
-
-	// In case frappe wrapped in { message: [...] }
-	if (rows && rows.message && Array.isArray(rows.message)) {
-		rows = rows.message;
-	}
+	const rows = sliceResource.data as any;
 
 	if (Array.isArray(rows) && rows.length) {
 		sliceRows.value = reset ? rows : [...sliceRows.value, ...rows];

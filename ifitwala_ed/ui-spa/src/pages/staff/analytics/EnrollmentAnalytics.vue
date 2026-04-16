@@ -288,9 +288,9 @@ const emptyDashboard: DashboardResponse = {
 };
 
 const dashboard = computed<DashboardResponse>(() => {
-	const raw = dashboardResource.data as any;
+	const raw = dashboardResource.data as DashboardResponse | null;
 	if (!raw) return emptyDashboard;
-	return (raw.message as DashboardResponse) || (raw as DashboardResponse) || emptyDashboard;
+	return raw;
 });
 
 const options = computed(() => dashboard.value.meta?.options || {});
@@ -595,8 +595,7 @@ async function loadDrilldown(reset = false) {
 		page_length: drawerPageLength,
 	};
 	await drilldownResource.submit(payload);
-	const raw = drilldownResource.data as any;
-	const data = raw?.message || raw || {};
+	const data = (drilldownResource.data as { rows?: any[]; total_count?: number } | null) || {};
 	const rows = Array.isArray(data.rows) ? data.rows : [];
 	const total = Number(data.total_count || 0);
 	drawerRows.value = reset ? rows : [...drawerRows.value, ...rows];

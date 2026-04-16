@@ -9,11 +9,7 @@
 				</p>
 			</div>
 			<div v-if="canManageCampaigns" class="page-header__actions">
-				<button
-					type="button"
-					class="inline-flex items-center gap-2 rounded-full bg-ink px-4 py-2 type-button-label text-white shadow-soft disabled:opacity-50"
-					@click="openCampaignOverlay"
-				>
+				<button type="button" class="if-button if-button--primary" @click="openCampaignOverlay">
 					<FeatherIcon name="plus" class="h-4 w-4" />
 					<span>Set up campaign</span>
 				</button>

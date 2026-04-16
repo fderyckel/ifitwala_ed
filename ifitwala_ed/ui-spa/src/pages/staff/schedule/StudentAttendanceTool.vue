@@ -11,9 +11,14 @@
 
 			<div class="page-header__actions">
 				<Badge :variant="statusVariant" :label="toolbarStatus" />
-				<Button appearance="primary" :disabled="!canApplyDefault" @click="applyDefaultCode">
+				<button
+					type="button"
+					class="if-button if-button--primary"
+					:disabled="!canApplyDefault"
+					@click="applyDefaultCode"
+				>
 					{{ __('Apply Default') }}
-				</Button>
+				</button>
 			</div>
 		</header>
 
@@ -87,9 +92,14 @@
 				</div>
 
 				<div class="flex items-center gap-2">
-					<Button appearance="minimal" :disabled="!canReload" @click="reloadRoster">
+					<button
+						type="button"
+						class="if-button if-button--quiet"
+						:disabled="!canReload"
+						@click="reloadRoster"
+					>
 						{{ __('Reload') }}
-					</Button>
+					</button>
 
 					<div v-if="saving || justSaved" class="flex items-center gap-2 text-xs text-ink/60">
 						<Spinner v-if="saving" class="h-4 w-4" />
@@ -138,14 +148,15 @@
 					</div>
 
 					<div class="flex items-center gap-2">
-						<Button
-							appearance="minimal"
-							icon="message-circle"
+						<button
+							type="button"
+							class="if-button if-button--quiet"
 							:disabled="!selectedDate || !filters.student_group || rosterLoading || bootLoading"
 							@click="toggleRemarkTips"
 						>
+							<FeatherIcon name="message-circle" class="h-4 w-4" />
 							{{ remarkTipsOpen ? __('Hide tips') : __('Remark tips') }}
-						</Button>
+						</button>
 					</div>
 				</div>
 
@@ -207,7 +218,7 @@
 <script setup lang="ts">
 import { computed, reactive, ref, onMounted, onBeforeUnmount, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { Button, FormControl, Badge, FeatherIcon, Spinner } from 'frappe-ui';
+import { FormControl, Badge, FeatherIcon, Spinner } from 'frappe-ui';
 
 import { __ } from '@/lib/i18n';
 import AttendanceCalendar from './student-attendance-tool/components/AttendanceCalendar.vue';

@@ -10,14 +10,14 @@
 				</p>
 			</div>
 			<div class="page-header__actions">
-				<Button
-					appearance="primary"
-					:loading="studentsLoading"
+				<button
+					type="button"
+					class="if-button if-button--quiet"
 					@click="reloadStudents"
-					:disabled="!filters.student_group"
+					:disabled="!filters.student_group || studentsLoading"
 				>
-					Reload
-				</Button>
+					{{ studentsLoading ? 'Reloading…' : 'Reload' }}
+				</button>
 			</div>
 		</header>
 
@@ -143,9 +143,14 @@
 
 			<!-- Load more -->
 			<div v-if="showLoadMore" class="mt-6 flex justify-center">
-				<Button appearance="primary" :loading="studentsLoading" @click="loadMore">
-					Load More
-				</Button>
+				<button
+					type="button"
+					class="if-button if-button--secondary"
+					:disabled="studentsLoading"
+					@click="loadMore"
+				>
+					{{ studentsLoading ? 'Loading…' : 'Load More' }}
+				</button>
 			</div>
 
 			<!-- Totals -->
@@ -196,15 +201,15 @@
 							>
 						</div>
 
-						<Button
+						<button
 							v-if="item.case_name"
-							size="sm"
-							appearance="minimal"
+							type="button"
+							class="if-action"
 							@click="openCase(item.case_name)"
 							:title="'Open Referral Case in Desk'"
 						>
 							View Case
-						</Button>
+						</button>
 					</div>
 
 					<!-- Meta row -->
@@ -229,7 +234,9 @@
 
 		<template #footer>
 			<div class="flex w-full justify-end">
-				<Button appearance="primary" @click="ssg.open = false">Close</Button>
+				<button type="button" class="if-button if-button--secondary" @click="ssg.open = false">
+					Close
+				</button>
 			</div>
 		</template>
 	</Dialog>
@@ -245,7 +252,13 @@
 		</template>
 		<template #footer>
 			<div class="flex w-full justify-end">
-				<Button appearance="primary" @click="medicalDialog.open = false">Close</Button>
+				<button
+					type="button"
+					class="if-button if-button--secondary"
+					@click="medicalDialog.open = false"
+				>
+					Close
+				</button>
 			</div>
 		</template>
 	</Dialog>
@@ -254,7 +267,7 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { nextTick } from 'vue';
-import { Button, FormControl, Badge, Dialog, FeatherIcon, call, toast } from 'frappe-ui';
+import { FormControl, Badge, Dialog, FeatherIcon, call, toast } from 'frappe-ui';
 
 type Filters = {
 	program: string | null;

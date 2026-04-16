@@ -21,11 +21,7 @@
 		<div v-else-if="error" class="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3">
 			<p class="type-body-strong text-rose-900">{{ __('Unable to load documents') }}</p>
 			<p class="mt-1 type-caption text-rose-900/80 whitespace-pre-wrap">{{ error }}</p>
-			<button
-				type="button"
-				class="mt-3 rounded-full border border-rose-200 bg-white px-4 py-2 type-caption text-rose-900"
-				@click="loadDocuments"
-			>
+			<button type="button" class="if-button if-button--secondary mt-3" @click="loadDocuments">
 				{{ __('Try again') }}
 			</button>
 		</div>
@@ -47,7 +43,7 @@
 					</div>
 					<button
 						type="button"
-						class="rounded-full bg-ink px-4 py-2 type-caption text-white shadow-soft disabled:opacity-50"
+						class="if-button if-button--primary"
 						:disabled="isReadOnly || !nextRequiredDoc"
 						@click="openNextRequired"
 					>
@@ -96,7 +92,7 @@
 					<div class="flex items-center gap-3">
 						<button
 							type="button"
-							class="rounded-full bg-ink px-4 py-2 type-caption text-white shadow-soft disabled:opacity-50"
+							class="if-button if-button--primary"
 							:disabled="isReadOnly || !doc.canAddItem"
 							@click="openUpload(doc, null)"
 						>
@@ -127,13 +123,13 @@
 									:href="item.file_url"
 									target="_blank"
 									rel="noopener"
-									class="rounded-full border border-border/70 bg-white px-3 py-1.5 type-caption text-ink/70"
+									class="if-action"
 								>
 									{{ __('View') }}
 								</a>
 								<button
 									type="button"
-									class="rounded-full border border-border/70 bg-white px-3 py-1.5 type-caption text-ink/70 disabled:opacity-50"
+									class="if-action"
 									:disabled="isReadOnly || !doc.canUpload"
 									@click="openUpload(doc, item)"
 								>

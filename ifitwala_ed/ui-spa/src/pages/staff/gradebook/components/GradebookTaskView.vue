@@ -20,30 +20,24 @@
 					<span class="text-xs font-medium uppercase tracking-wider text-ink/50"
 						>Visible to all:</span
 					>
-					<Button
-						size="sm"
-						appearance="minimal"
-						:class="
-							allStudentsVisible
-								? 'bg-sky/30 text-ink font-semibold'
-								: 'text-ink/60 hover:text-ink'
-						"
-						@click="toggleVisibilityGroup('student')"
-					>
-						Students
-					</Button>
-					<Button
-						size="sm"
-						appearance="minimal"
-						:class="
-							allGuardiansVisible
-								? 'bg-sky/30 text-ink font-semibold'
-								: 'text-ink/60 hover:text-ink'
-						"
-						@click="toggleVisibilityGroup('guardian')"
-					>
-						Guardians
-					</Button>
+					<div class="if-segmented">
+						<button
+							type="button"
+							class="if-segmented__item"
+							:class="{ 'if-segmented__item--active': allStudentsVisible }"
+							@click="toggleVisibilityGroup('student')"
+						>
+							Students
+						</button>
+						<button
+							type="button"
+							class="if-segmented__item"
+							:class="{ 'if-segmented__item--active': allGuardiansVisible }"
+							@click="toggleVisibilityGroup('guardian')"
+						>
+							Guardians
+						</button>
+					</div>
 				</div>
 			</div>
 		</div>
@@ -74,9 +68,14 @@
 			>
 				<p class="text-lg font-medium text-ink">No Students Assigned</p>
 				<p class="max-w-xs text-sm">This task has no students in the roster.</p>
-				<Button size="md" appearance="primary" :loading="rosterSyncing" @click="syncRoster"
-					>Sync roster</Button
+				<button
+					type="button"
+					class="if-button if-button--primary"
+					:disabled="rosterSyncing"
+					@click="syncRoster"
 				>
+					{{ rosterSyncing ? 'Syncing roster…' : 'Sync roster' }}
+				</button>
 			</div>
 
 			<div v-else class="space-y-6">
@@ -396,25 +395,33 @@
 								{{ formatDateTime(studentStates[student.task_student]?.updated_on) || 'Never' }}
 							</p>
 							<div class="flex gap-2">
-								<Button
+								<button
 									v-if="gradebook.task?.criteria && gradebook.criteria.length"
-									size="sm"
-									appearance="white"
-									:loading="studentStates[student.task_student]?.savingCriteria"
-									:disabled="!studentStates[student.task_student]?.dirtyCriteria"
+									type="button"
+									class="if-button if-button--secondary"
+									:disabled="
+										!studentStates[student.task_student]?.dirtyCriteria ||
+										studentStates[student.task_student]?.savingCriteria
+									"
 									@click="saveCriteria(student.task_student)"
 								>
-									Save Criteria
-								</Button>
-								<Button
-									size="sm"
-									appearance="primary"
-									:loading="studentStates[student.task_student]?.saving"
-									:disabled="!studentStates[student.task_student]?.dirty"
+									{{
+										studentStates[student.task_student]?.savingCriteria
+											? 'Saving Criteria…'
+											: 'Save Criteria'
+									}}
+								</button>
+								<button
+									type="button"
+									class="if-button if-button--primary"
+									:disabled="
+										!studentStates[student.task_student]?.dirty ||
+										studentStates[student.task_student]?.saving
+									"
 									@click="saveStudent(student.task_student)"
 								>
-									Save
-								</Button>
+									{{ studentStates[student.task_student]?.saving ? 'Saving…' : 'Save' }}
+								</button>
 							</div>
 						</div>
 					</article>
@@ -426,7 +433,7 @@
 
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, reactive, ref, watch } from 'vue';
-import { Badge, Button, FeatherIcon, FormControl, Spinner, toast } from 'frappe-ui';
+import { Badge, FeatherIcon, FormControl, Spinner, toast } from 'frappe-ui';
 import { createGradebookService } from '@/lib/services/gradebook/gradebookService';
 import type {
 	CriterionPayload,

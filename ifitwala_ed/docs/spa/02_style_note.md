@@ -459,7 +459,7 @@ Rules:
 * Overlay footers use one trailing primary submit when a commit exists. The paired dismiss action is secondary unless the footer is utility-only.
 * Route-level header actions should normally contain at most one primary button. Refresh, close, open settings, and similar utility actions should be quiet or secondary.
 * Staff / admin and student / guardian surfaces share the same action hierarchy and primary accent. The premium feel comes from the surrounding shell and surface treatment, not from per-portal CTA color forks.
-* Segmented view toggles and pills are not CTAs. Reuse shared pill / toggle primitives instead of inventing page-local “button-like” tabs.
+* Segmented view toggles and pills are not CTAs. Reuse shared pill / toggle primitives such as the shared SPA segmented control instead of inventing page-local “button-like” tabs.
 
 ---
 

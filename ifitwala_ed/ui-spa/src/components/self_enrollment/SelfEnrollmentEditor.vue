@@ -22,8 +22,15 @@
 					</div>
 				</div>
 				<div class="flex flex-wrap items-center gap-2">
-					<RouterLink class="if-action" :to="backTo">{{ backLabel }}</RouterLink>
-					<button type="button" class="if-action" :disabled="loading" @click="emit('refresh')">
+					<RouterLink class="if-button if-button--secondary" :to="backTo">{{
+						backLabel
+					}}</RouterLink>
+					<button
+						type="button"
+						class="if-button if-button--quiet"
+						:disabled="loading"
+						@click="emit('refresh')"
+					>
 						Refresh
 					</button>
 				</div>
@@ -345,7 +352,7 @@
 					<div class="flex flex-wrap items-center gap-2">
 						<button
 							type="button"
-							class="if-action"
+							class="if-button if-button--secondary"
 							:disabled="!canEdit || !hasUnsavedChanges || saving"
 							@click="emit('save', submitRows)"
 						>
@@ -353,7 +360,7 @@
 						</button>
 						<button
 							type="button"
-							class="if-action"
+							class="if-button if-button--primary"
 							:disabled="!canAttemptSubmit || submitting"
 							@click="emit('submit', submitRows)"
 						>

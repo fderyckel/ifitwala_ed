@@ -12,7 +12,7 @@
 			<div class="page-header__actions">
 				<button
 					type="button"
-					class="rounded-full bg-ink px-4 py-2 type-caption text-white shadow-soft disabled:opacity-50"
+					class="if-button if-button--primary"
 					:disabled="isReadOnly || loading"
 					@click="openEdit"
 				>
@@ -31,11 +31,7 @@
 		<div v-else-if="error" class="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3">
 			<p class="type-body-strong text-rose-900">{{ __('Unable to load health information') }}</p>
 			<p class="mt-1 type-caption text-rose-900/80 whitespace-pre-wrap">{{ error }}</p>
-			<button
-				type="button"
-				class="mt-3 rounded-full border border-rose-200 bg-white px-4 py-2 type-caption text-rose-900"
-				@click="loadHealth"
-			>
+			<button type="button" class="if-button if-button--secondary mt-3" @click="loadHealth">
 				{{ __('Try again') }}
 			</button>
 		</div>

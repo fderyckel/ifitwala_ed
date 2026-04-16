@@ -104,11 +104,11 @@ Rules:
 
 1. `get_student_center_snapshot(...)` returns exactly these top-level blocks: `meta`, `identity`, `kpis`, `learning`, `attendance`, `wellbeing`, `history`.
 2. `meta.current_academic_year` is copied from `identity.program_enrollment.academic_year`.
-3. `identity` is assembled from `Student`, the latest matching `Program Enrollment`, and `Student Group Student` joined to `Student Group`.
+3. `identity` is assembled from `Student`, the latest matching `Program Enrollment` inside the selected program subtree and selected school descendants, and `Student Group Student` joined to `Student Group`.
 4. `kpis` currently contains attendance, task, support, and placeholder academic summary values.
 5. `learning` is assembled from the legacy `Task Student` reader joined to `Task` and `Course`, plus `Program Enrollment Course` rows for current courses.
 6. If the legacy task reader tables are not installed on a site, task-derived KPI, learning, and history blocks must fail closed to empty task data instead of raising a `500`.
-7. `attendance` is assembled from `Student Attendance`, `Student Attendance Code`, and `Course`.
+7. `attendance` is assembled from `Student Attendance`, `Student Attendance Code`, and `Course`, and the snapshot returns attendance rows across available academic years so the SPA can apply `This year`, `Last year`, and `All years` client-side.
 8. `wellbeing.timeline` is event-only and merges visible `Student Log`, `Student Referral`, and `Student Patient Visit` rows, then sorts newest-first and trims to 30 items.
 9. `wellbeing.health_note` is a separate optional staff-facing card sourced from `Student Patient.medical_info`; it is not inserted into the date-sorted timeline.
 10. Referral rows in `wellbeing.timeline` must honor `Student Referral` server-side permission rules before they are returned to the SPA.

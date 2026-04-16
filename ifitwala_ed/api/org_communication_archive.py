@@ -364,49 +364,12 @@ def get_org_communication_feed(
     filters: dict | None = None,
     start: int | None = None,
     page_length: int | None = None,
-    limit_start: int = 0,
-    limit: int = 30,
-    # Legacy params (kept to avoid breaking older callers)
-    search_text: str | None = None,
-    status: str | None = None,
-    priority: str | None = None,
-    portal_surface: str | None = None,
-    communication_type: str | None = None,
-    date_range: str | None = None,
-    team: str | None = None,
-    student_group: str | None = None,
-    school: str | None = None,
-    organization: str | None = None,
-    activity_program_offering: str | None = None,
-    activity_student_group: str | None = None,
-    activity_booking: str | None = None,
-    only_with_interactions: int | None = None,
 ) -> dict:
     user = frappe.session.user
     roles = frappe.get_roles(user)
     employee, base_org, base_school, org_scope, school_scope = _get_archive_employee_context(user, roles)
 
-    # Merge legacy params into filters before normalization
     raw_filters = _parse_filters(filters)
-    legacy_overrides = {
-        "search_text": search_text,
-        "status": status,
-        "priority": priority,
-        "portal_surface": portal_surface,
-        "communication_type": communication_type,
-        "date_range": date_range,
-        "team": team,
-        "student_group": student_group,
-        "school": school,
-        "organization": organization,
-        "activity_program_offering": activity_program_offering,
-        "activity_student_group": activity_student_group,
-        "activity_booking": activity_booking,
-        "only_with_interactions": only_with_interactions,
-    }
-    for key, value in legacy_overrides.items():
-        if value is not None and key not in raw_filters:
-            raw_filters[key] = value
 
     filters_dict = _normalize_filters(raw_filters)
 
@@ -437,9 +400,8 @@ def get_org_communication_feed(
     filters_dict["team"] = filter_team_val
     filters_dict["school"] = filter_school_val
 
-    # Pagination params (start/page_length preferred over legacy limit_start/page_length)
-    offset = int(start if start is not None else limit_start or 0)
-    page_len = int(page_length if page_length is not None else limit or 30)
+    offset = int(start or 0)
+    page_len = int(page_length or 30)
 
     # Org guard
     org_guard: set[str] = set()
@@ -687,8 +649,6 @@ def get_org_communication_feed(
     return {
         "items": paged_items,
         "total_count": total_count,
-        "limit_start": offset,
-        "limit": page_len,
         "start": offset,
         "page_length": page_len,
         "has_more": (offset + page_len) < total_count,

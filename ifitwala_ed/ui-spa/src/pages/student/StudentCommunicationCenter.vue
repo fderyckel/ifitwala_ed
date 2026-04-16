@@ -12,16 +12,30 @@
 					</p>
 				</div>
 				<div class="flex items-center gap-2">
-					<RouterLink v-if="courseBackTo" :to="courseBackTo" class="if-action">
+					<RouterLink
+						v-if="courseBackTo"
+						:to="courseBackTo"
+						class="if-button if-button--secondary"
+					>
 						Back to course
 					</RouterLink>
-					<button v-if="hasCourseScope" type="button" class="if-action" @click="clearCourseScope">
+					<button
+						v-if="hasCourseScope"
+						type="button"
+						class="if-button if-button--secondary"
+						@click="clearCourseScope"
+					>
 						All communications
 					</button>
-					<RouterLink v-else :to="{ name: 'student-home' }" class="if-action">
+					<RouterLink v-else :to="{ name: 'student-home' }" class="if-button if-button--secondary">
 						Back to Home
 					</RouterLink>
-					<button type="button" class="if-action" :disabled="loading" @click="refreshFeed">
+					<button
+						type="button"
+						class="if-button if-button--quiet"
+						:disabled="loading"
+						@click="refreshFeed"
+					>
 						Refresh
 					</button>
 				</div>
@@ -35,17 +49,13 @@
 					<p class="mt-1 type-body-strong text-ink">{{ scopedContextLabel }}</p>
 					<p class="mt-1 type-caption text-ink/70">Most recent messages appear first.</p>
 				</div>
-				<div v-else class="flex flex-wrap gap-2">
+				<div v-else class="if-segmented flex-wrap">
 					<button
 						v-for="option in sourceOptions"
 						:key="option.value"
 						type="button"
-						class="rounded-full border px-4 py-2 text-sm font-semibold transition"
-						:class="
-							activeSource === option.value
-								? 'border-jacaranda bg-jacaranda/10 text-jacaranda'
-								: 'border-line-soft bg-white text-ink/70 hover:border-jacaranda/30 hover:text-ink'
-						"
+						class="if-segmented__item"
+						:class="{ 'if-segmented__item--active': activeSource === option.value }"
 						@click="selectSource(option.value)"
 					>
 						{{ option.label }}
@@ -195,7 +205,12 @@
 			</article>
 
 			<div v-if="hasMore" class="flex justify-center">
-				<button type="button" class="if-action" :disabled="loadingMore" @click="loadMore">
+				<button
+					type="button"
+					class="if-button if-button--secondary"
+					:disabled="loadingMore"
+					@click="loadMore"
+				>
 					{{ loadingMore ? 'Loading…' : 'Load more' }}
 				</button>
 			</div>

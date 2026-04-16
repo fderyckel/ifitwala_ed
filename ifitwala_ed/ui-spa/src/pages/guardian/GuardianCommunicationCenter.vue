@@ -11,8 +11,15 @@
 					</p>
 				</div>
 				<div class="flex items-center gap-2">
-					<RouterLink :to="{ name: 'guardian-home' }" class="if-action">Back to Home</RouterLink>
-					<button type="button" class="if-action" :disabled="loading" @click="refreshFeed">
+					<RouterLink :to="{ name: 'guardian-home' }" class="if-button if-button--secondary">
+						Back to Home
+					</RouterLink>
+					<button
+						type="button"
+						class="if-button if-button--quiet"
+						:disabled="loading"
+						@click="refreshFeed"
+					>
 						Refresh
 					</button>
 				</div>
@@ -34,17 +41,13 @@
 					</select>
 				</label>
 
-				<div class="flex flex-wrap gap-2">
+				<div class="if-segmented flex-wrap">
 					<button
 						v-for="option in sourceOptions"
 						:key="option.value"
 						type="button"
-						class="rounded-full border px-4 py-2 text-sm font-semibold transition"
-						:class="
-							activeSource === option.value
-								? 'border-jacaranda bg-jacaranda/10 text-jacaranda'
-								: 'border-line-soft bg-white text-ink/70 hover:border-jacaranda/30 hover:text-ink'
-						"
+						class="if-segmented__item"
+						:class="{ 'if-segmented__item--active': activeSource === option.value }"
 						@click="selectSource(option.value)"
 					>
 						{{ option.label }}
@@ -178,7 +181,12 @@
 			</article>
 
 			<div v-if="hasMore" class="flex justify-center">
-				<button type="button" class="if-action" :disabled="loadingMore" @click="loadMore">
+				<button
+					type="button"
+					class="if-button if-button--secondary"
+					:disabled="loadingMore"
+					@click="loadMore"
+				>
 					{{ loadingMore ? 'Loading…' : 'Load more' }}
 				</button>
 			</div>

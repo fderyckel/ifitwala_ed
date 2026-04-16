@@ -357,15 +357,19 @@ def _identity_block(student: str, program: str | None, school: str | None):
     )
 
     pe_filters = {"student": student}
-    if program:
-        pe_filters["program"] = program
-    if school:
+    program_scope = _get_program_subtree(program) if program else None
+    if program_scope:
+        pe_filters["program"] = ["in", program_scope]
+    school_scope = get_descendant_schools(school) if school else None
+    if school_scope:
+        pe_filters["school"] = ["in", school_scope]
+    elif school:
         pe_filters["school"] = school
 
-    program_enrollment = frappe.db.get_value(
+    program_enrollment_rows = frappe.get_all(
         "Program Enrollment",
-        pe_filters,
-        [
+        filters=pe_filters,
+        fields=[
             "name",
             "program",
             "program_offering",
@@ -374,9 +378,10 @@ def _identity_block(student: str, program: str | None, school: str | None):
             "archived",
             "school",
         ],
-        as_dict=True,
         order_by="enrollment_date desc",
+        limit=1,
     )
+    program_enrollment = (program_enrollment_rows or [None])[0]
 
     student_groups = frappe.db.sql(
         """
@@ -441,6 +446,22 @@ def _attendance_map():
     return code_map
 
 
+def _attendance_code_meta(code_map: dict[str, dict], attendance_code: str | None) -> dict[str, object]:
+    code = code_map.get(attendance_code, {})
+    code_value = code.get("attendance_code") or attendance_code
+    label = (code.get("attendance_code_name") or code_value or "").strip()
+    label_lower = label.lower()
+
+    return {
+        "attendance_code": code_value,
+        "attendance_code_name": label or code_value,
+        "count_as_present": bool(code.get("count_as_present")),
+        "is_late": bool(code.get("is_late")),
+        "is_excused": "excuse" in label_lower,
+        "color": code.get("color") or "#cbd5e1",
+    }
+
+
 def _attendance_block(student: str, academic_year: str | None):
     code_map = _attendance_map()
     filters = {"student": student}
@@ -470,21 +491,38 @@ def _attendance_block(student: str, academic_year: str | None):
     active_rows = whole_day_rows if whole_day_rows else block_rows
 
     total = len(active_rows)
-    present = sum(1 for r in active_rows if code_map.get(r.attendance_code, {}).get("count_as_present"))
-    late_total = sum(1 for r in active_rows if code_map.get(r.attendance_code, {}).get("is_late"))
+    present = 0
+    excused_total = 0
+    unexcused_total = 0
+    late_total = 0
+    for r in active_rows:
+        code_meta = _attendance_code_meta(code_map, r.attendance_code)
+        is_present = bool(code_meta["count_as_present"])
+        is_late = bool(code_meta["is_late"])
+        is_excused = bool(code_meta["is_excused"])
+
+        if is_present:
+            present += 1
+        elif is_excused:
+            excused_total += 1
+        elif not is_late:
+            unexcused_total += 1
+
+        if is_late:
+            late_total += 1
 
     all_day_heatmap = []
     for r in whole_day_rows:
-        code = code_map.get(r.attendance_code, {})
-        code_value = code.get("attendance_code") or r.attendance_code
+        code_meta = _attendance_code_meta(code_map, r.attendance_code)
         all_day_heatmap.append(
             {
                 "date": r.attendance_date,
-                "attendance_code": code_value,
-                "attendance_code_name": code.get("attendance_code_name") or code_value,
-                "count_as_present": code.get("count_as_present"),
-                "is_late": code.get("is_late"),
-                "color": code.get("color") or "#cbd5e1",
+                "attendance_code": code_meta["attendance_code"],
+                "attendance_code_name": code_meta["attendance_code_name"],
+                "count_as_present": code_meta["count_as_present"],
+                "is_late": code_meta["is_late"],
+                "is_excused": code_meta["is_excused"],
+                "color": code_meta["color"],
                 "academic_year": r.academic_year or academic_year,
             }
         )
@@ -498,15 +536,10 @@ def _attendance_block(student: str, academic_year: str | None):
                 week_label = getdate(r.attendance_date).strftime("%G-W%V")
             except Exception:  # noqa: E722 (guard against unexpected date formats)
                 week_label = ""
-        is_present = code_map.get(r.attendance_code, {}).get("count_as_present")
-        is_late = code_map.get(r.attendance_code, {}).get("is_late")
-        code_value = code_map.get(r.attendance_code, {}).get("attendance_code") or r.attendance_code
-        is_excused = False
-        meta = code_map.get(code_value, {})
-        if meta:
-            name_lower = (meta.get("attendance_code_name") or "").lower()
-            is_excused = "excuse" in name_lower
-        code_value = code_map.get(r.attendance_code, {}).get("attendance_code") or r.attendance_code
+        code_meta = _attendance_code_meta(code_map, r.attendance_code)
+        is_present = bool(code_meta["count_as_present"])
+        is_late = bool(code_meta["is_late"])
+        is_excused = bool(code_meta["is_excused"])
         entry = {
             "course": r.course or "General",
             "course_name": frappe.db.get_value("Course", r.course, "course_name") if r.course else "General",
@@ -516,7 +549,7 @@ def _attendance_block(student: str, academic_year: str | None):
             "late_sessions": 1 if is_late else 0,
             "unexcused_sessions": 1 if (not is_present and not is_excused and not is_late) else 0,
             "academic_year": r.academic_year or academic_year,
-            "attendance_code": code_value,
+            "attendance_code": code_meta["attendance_code"],
         }
         by_course_heatmap.append(entry)
 
@@ -535,20 +568,16 @@ def _attendance_block(student: str, academic_year: str | None):
                 "academic_year": r.academic_year or academic_year,
             },
         )
-        is_present = code_map.get(r.attendance_code, {}).get("count_as_present")
-        is_late = code_map.get(r.attendance_code, {}).get("is_late")
-        code_value = code_map.get(r.attendance_code, {}).get("attendance_code") or r.attendance_code
-        is_excused = False
-        meta = code_map.get(code_value, {})
-        if meta:
-            name_lower = (meta.get("attendance_code_name") or "").lower()
-            is_excused = "excuse" in name_lower
+        code_meta = _attendance_code_meta(code_map, r.attendance_code)
+        is_present = bool(code_meta["count_as_present"])
+        is_late = bool(code_meta["is_late"])
+        is_excused = bool(code_meta["is_excused"])
 
         if is_present:
             entry["present_sessions"] += 1
         elif is_excused:
             entry["excused_absent_sessions"] += 1
-        else:
+        elif not is_late:
             entry["unexcused_absent_sessions"] += 1
         if is_late:
             entry["late_sessions"] += 1
@@ -560,8 +589,8 @@ def _attendance_block(student: str, academic_year: str | None):
             "present_percentage": present / total if total else 0,
             "total_days": total,
             "present_days": present,
-            "excused_absences": 0,
-            "unexcused_absences": total - present,
+            "excused_absences": excused_total,
+            "unexcused_absences": unexcused_total,
             "late_count": late_total,
             "most_impacted_course": None,
         },
@@ -614,9 +643,10 @@ def _task_rows(student: str, program: str | None):
         WHERE ts.student = %(student)s
     """
     params = {"student": student}
-    if program:
-        sql += " AND (t.program = %(program)s OR t.program IS NULL)"
-        params["program"] = program
+    program_scope = _get_program_subtree(program) if program else None
+    if program_scope:
+        sql += " AND (t.program IN %(programs)s OR t.program IS NULL)"
+        params["programs"] = tuple(program_scope)
     return frappe.db.sql(sql, params, as_dict=True)
 
 
@@ -673,6 +703,7 @@ def _learning_block(student: str, program: str | None, academic_year: str | None
     recent_tasks = sorted(task_rows, key=_task_sort_key, reverse=True)[:10]
 
     # Current courses from Program Enrollment Course
+    program_scope = _get_program_subtree(program) if program else None
     pec_rows = frappe.db.sql(
         """
         SELECT pec.course, pec.course_name, pec.status, pec.term_start, pec.term_end
@@ -680,8 +711,8 @@ def _learning_block(student: str, program: str | None, academic_year: str | None
         LEFT JOIN `tabProgram Enrollment Course` pec ON pec.parent = pe.name
         WHERE pe.student = %(student)s {program_filter}
         ORDER BY pec.course_name
-        """.format(program_filter="AND pe.program = %(program)s" if program else ""),
-        {"student": student, "program": program} if program else {"student": student},
+        """.format(program_filter="AND pe.program IN %(programs)s" if program_scope else ""),
+        {"student": student, "programs": tuple(program_scope)} if program_scope else {"student": student},
         as_dict=True,
     )
 
@@ -1149,7 +1180,7 @@ def get_student_center_snapshot(student: str, school: str, program: str, view_mo
         "identity": identity,
         "kpis": _kpi_block(student, current_ay),
         "learning": _learning_block(student, program, current_ay),
-        "attendance": _attendance_block(student, current_ay),
+        "attendance": _attendance_block(student, None),
         "wellbeing": _wellbeing_block(student, current_ay),
         "history": _history_block(student, program),
     }

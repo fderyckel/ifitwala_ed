@@ -12,8 +12,15 @@
 					</p>
 				</div>
 				<div class="flex items-center gap-2">
-					<RouterLink class="if-action" :to="{ name: 'student-home' }">Back to Home</RouterLink>
-					<button type="button" class="if-action" :disabled="loading" @click="loadBoard">
+					<RouterLink class="if-button if-button--secondary" :to="{ name: 'student-home' }">
+						Back to Home
+					</RouterLink>
+					<button
+						type="button"
+						class="if-button if-button--quiet"
+						:disabled="loading"
+						@click="loadBoard"
+					>
 						Refresh
 					</button>
 				</div>

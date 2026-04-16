@@ -231,6 +231,10 @@ class TestOrgCommunicationArchiveFeed(FrappeTestCase):
             filter_school=None,
             allow_owner=True,
         )
+        self.assertEqual(result["start"], 0)
+        self.assertEqual(result["page_length"], 10)
+        self.assertNotIn("limit_start", result)
+        self.assertNotIn("limit", result)
         self.assertEqual([item["name"] for item in result["items"]], ["COMM-0002"])
 
     def test_get_feed_keeps_parent_organization_candidates_for_organization_audience(self):
@@ -290,6 +294,10 @@ class TestOrgCommunicationArchiveFeed(FrappeTestCase):
 
         self.assertIn("organization IN %(org_guard)s", captured["query"])
         self.assertEqual(set(captured["values"]["org_guard"]), {"ORG-CHILD", "ORG-ROOT"})
+        self.assertEqual(result["start"], 0)
+        self.assertEqual(result["page_length"], 10)
+        self.assertNotIn("limit_start", result)
+        self.assertNotIn("limit", result)
         self.assertEqual([item["name"] for item in result["items"]], ["COMM-ROOT"])
 
 

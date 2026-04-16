@@ -73,7 +73,7 @@
 					</div>
 					<RouterLink
 						:to="buildRouteLocation('admissions-course-choices')"
-						class="rounded-full border border-border/70 bg-white px-4 py-2 type-caption text-ink/75"
+						class="if-button if-button--secondary"
 					>
 						{{ needsCourseChoices ? __('Open course choices') : __('View course choices') }}
 					</RouterLink>
@@ -87,7 +87,7 @@
 				<button
 					v-if="enrollmentOffer.can_accept"
 					type="button"
-					class="rounded-full bg-canopy px-4 py-2 type-caption text-white disabled:opacity-60"
+					class="if-button if-button--primary"
 					:disabled="acceptOfferDisabled"
 					@click="acceptOffer"
 				>
@@ -96,7 +96,7 @@
 				<button
 					v-if="enrollmentOffer.can_decline"
 					type="button"
-					class="rounded-full border border-rose-200 bg-white px-4 py-2 type-caption text-rose-900 disabled:opacity-60"
+					class="if-button if-button--danger"
 					:disabled="offerLoading"
 					@click="declineOffer"
 				>
@@ -118,11 +118,7 @@
 				{{ __('Unable to load recommendation status') }}
 			</p>
 			<p class="mt-1 type-caption text-rose-900/80 whitespace-pre-wrap">{{ error }}</p>
-			<button
-				type="button"
-				class="mt-3 rounded-full border border-rose-200 bg-white px-4 py-2 type-caption text-rose-900"
-				@click="loadSnapshot"
-			>
+			<button type="button" class="if-button if-button--secondary mt-3" @click="loadSnapshot">
 				{{ __('Try again') }}
 			</button>
 		</div>

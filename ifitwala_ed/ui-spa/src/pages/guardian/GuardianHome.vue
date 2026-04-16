@@ -11,15 +11,18 @@
 					</p>
 				</div>
 				<div class="flex items-center gap-2">
-					<RouterLink class="if-action" :to="{ name: 'guardian-course-selection' }"
-						>Course Selection</RouterLink
+					<RouterLink
+						class="if-button if-button--secondary"
+						:to="{ name: 'guardian-course-selection' }"
 					>
-					<RouterLink class="if-action" :to="{ name: 'guardian-activities' }"
-						>Activity Booking</RouterLink
-					>
+						Course Selection
+					</RouterLink>
+					<RouterLink class="if-button if-button--secondary" :to="{ name: 'guardian-activities' }">
+						Activity Booking
+					</RouterLink>
 					<button
 						type="button"
-						class="if-action self-start"
+						class="if-button if-button--quiet self-start"
 						:disabled="loading"
 						@click="loadSnapshot"
 					>
@@ -62,9 +65,9 @@
 						waiting for your family action.
 					</p>
 				</div>
-				<RouterLink class="if-action" :to="{ name: 'guardian-policies' }"
-					>Open Policies</RouterLink
-				>
+				<RouterLink class="if-button if-button--primary" :to="{ name: 'guardian-policies' }">
+					Open Policies
+				</RouterLink>
 			</div>
 			<ul class="mt-4 space-y-2">
 				<li

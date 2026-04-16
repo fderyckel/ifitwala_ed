@@ -180,6 +180,8 @@ type Snapshot = {
 			attendance_code: string;
 			attendance_code_name?: string;
 			count_as_present?: boolean;
+			is_late?: boolean;
+			is_excused?: boolean;
 			color?: string;
 			academic_year?: string;
 		}[];
@@ -880,7 +882,7 @@ const breakdownRows = computed(() => {
 		}));
 });
 
-const attendanceKpi = computed(() => {
+const attendanceSummaryForScope = computed(() => {
 	if (attendanceKpiSource.value === 'by_course') {
 		const rows = breakdownRows.value;
 		const totals = rows.reduce(
@@ -896,21 +898,30 @@ const attendanceKpi = computed(() => {
 		const totalSessions = totals.present + totals.excused + totals.unexcused + totals.late;
 		return {
 			present_percentage: totalSessions ? totals.present / totalSessions : 0,
+			total_entries: totalSessions,
+			present: totals.present,
 			excused: totals.excused,
 			unexcused: totals.unexcused,
+			late: totals.late,
 		};
 	}
 
 	// Whole-day mode from heatmap rows
 	const rows = filteredAllDayHeatmap.value;
 	const present = rows.filter(r => r.count_as_present).length;
+	const excused = rows.filter(r => r.is_excused).length;
+	const late = rows.filter(r => r.is_late).length;
 	const total = rows.length;
+	const unexcused = rows.filter(r => !r.count_as_present && !r.is_excused && !r.is_late).length;
 	return {
 		present_percentage: total
 			? present / total
 			: snapshot.value.kpis.attendance.present_percentage,
-		excused: snapshot.value.kpis.attendance.excused_absences,
-		unexcused: total ? total - present : snapshot.value.kpis.attendance.unexcused_absences,
+		total_entries: total,
+		present,
+		excused: total ? excused : snapshot.value.kpis.attendance.excused_absences,
+		unexcused: total ? unexcused : snapshot.value.kpis.attendance.unexcused_absences,
+		late: total ? late : snapshot.value.kpis.attendance.late_count,
 	};
 });
 
@@ -934,9 +945,9 @@ const wellbeingTimelineNeedsScroll = computed(() => wellbeingTimeline.value.leng
 const kpiTiles = computed(() => [
 	{
 		label: 'Attendance',
-		value: `${formatPct(attendanceKpi.value.present_percentage)} present`,
-		sub: `${formatCount(attendanceKpi.value.unexcused || 0)} unexcused · ${formatCount(
-			attendanceKpi.value.excused || 0
+		value: `${formatPct(attendanceSummaryForScope.value.present_percentage)} present`,
+		sub: `${formatCount(attendanceSummaryForScope.value.unexcused || 0)} unexcused · ${formatCount(
+			attendanceSummaryForScope.value.excused || 0
 		)} excused`,
 		meta: '',
 		clickable: hasAllDayHeatmap.value && hasByCourseHeatmap.value,
@@ -1598,8 +1609,7 @@ function wellbeingTypeLabel(type: WellbeingTimelineItem['type']) {
 											<p class="mini-kpi-value">
 												{{
 													formatCount(
-														snapshot.attendance.summary.total_days -
-															snapshot.attendance.summary.present_days
+														attendanceSummaryForScope.excused + attendanceSummaryForScope.unexcused
 													)
 												}}
 											</p>
@@ -1607,7 +1617,7 @@ function wellbeingTypeLabel(type: WellbeingTimelineItem['type']) {
 										<div class="mini-kpi-card mini-kpi-card-alert">
 											<p class="mini-kpi-label">Unexcused absences</p>
 											<p class="mini-kpi-value text-[color:rgb(var(--flame-rgb))]">
-												{{ formatCount(snapshot.attendance.summary.unexcused_absences) }}
+												{{ formatCount(attendanceSummaryForScope.unexcused) }}
 											</p>
 										</div>
 										<div class="mini-kpi-card">

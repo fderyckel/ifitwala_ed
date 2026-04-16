@@ -13,7 +13,7 @@
 				<button
 					data-testid="admissions-profile-save"
 					type="button"
-					class="rounded-full bg-ink px-4 py-2 type-caption text-white shadow-soft disabled:opacity-50"
+					class="if-button if-button--primary"
 					:disabled="
 						isReadOnly ||
 						loading ||
@@ -40,11 +40,7 @@
 		<div v-else-if="error" class="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3">
 			<p class="type-body-strong text-rose-900">{{ __('Unable to load profile information') }}</p>
 			<p class="mt-1 type-caption text-rose-900/80 whitespace-pre-wrap">{{ error }}</p>
-			<button
-				type="button"
-				class="mt-3 rounded-full border border-rose-200 bg-surface px-4 py-2 type-caption text-rose-900"
-				@click="loadProfile"
-			>
+			<button type="button" class="if-button if-button--secondary mt-3" @click="loadProfile">
 				{{ __('Try again') }}
 			</button>
 		</div>
@@ -90,7 +86,7 @@
 						/>
 						<button
 							type="button"
-							class="rounded-full border border-border/70 bg-surface px-4 py-2 type-caption text-ink/70 disabled:opacity-50"
+							class="if-button if-button--secondary"
 							:disabled="isReadOnly || uploadingImage"
 							@click="openImagePicker"
 						>
@@ -98,7 +94,7 @@
 						</button>
 						<button
 							type="button"
-							class="rounded-full bg-ink px-4 py-2 type-caption text-white shadow-soft disabled:opacity-50"
+							class="if-button if-button--primary"
 							:disabled="isReadOnly || uploadingImage || !selectedImageFile"
 							@click="uploadSelectedImage"
 						>
@@ -360,7 +356,7 @@
 					</div>
 					<button
 						type="button"
-						class="rounded-full border border-border/70 bg-surface px-4 py-2 type-caption text-ink/70 disabled:opacity-50"
+						class="if-button if-button--secondary"
 						:disabled="isReadOnly || saving"
 						@click="addGuardianRow"
 					>
@@ -384,7 +380,7 @@
 							</p>
 							<button
 								type="button"
-								class="rounded-full border border-rose-200 bg-surface px-3 py-1 type-caption text-rose-700 disabled:opacity-50"
+								class="if-button if-button--danger"
 								:disabled="isReadOnly || saving"
 								@click="removeGuardianRow(idx)"
 							>
@@ -582,7 +578,7 @@
 									/>
 									<button
 										type="button"
-										class="rounded-full border border-border/70 bg-surface px-3 py-2 type-caption text-ink/70 disabled:opacity-50"
+										class="if-button if-button--secondary"
 										:disabled="isReadOnly || saving || uploadingGuardianImageIndex === idx"
 										@click="openGuardianImagePicker(idx)"
 									>
@@ -590,7 +586,7 @@
 									</button>
 									<button
 										type="button"
-										class="rounded-full bg-ink px-3 py-2 type-caption text-white shadow-soft disabled:opacity-50"
+										class="if-button if-button--primary"
 										:disabled="
 											isReadOnly ||
 											saving ||

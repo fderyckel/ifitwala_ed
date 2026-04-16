@@ -115,6 +115,55 @@
 			</div>
 		</div>
 	</div>
+
+	<div class="hero-card">
+		<div class="hero-main">
+			<div class="hero-kicker">Employee</div>
+			<h2>{{ frappe.utils.escape_html(full_name) }}</h2>
+			{% if preferred_name and preferred_name != full_name %}
+			<div class="preferred-name">Preferred name: {{ frappe.utils.escape_html(preferred_name) }}</div>
+			{% endif %}
+			<div class="hero-subtitle">
+				{% if doc.designation %}<span>{{ frappe.utils.escape_html(doc.get_formatted('designation')) }}</span>{% endif %}
+				{% if doc.organization %}<span>{{ frappe.utils.escape_html(doc.get_formatted('organization')) }}</span>{% endif %}
+				{% if doc.school %}<span>{{ frappe.utils.escape_html(doc.get_formatted('school')) }}</span>{% endif %}
+			</div>
+
+			<div class="hero-grid">
+				{% if doc.department %}
+				<div class="hero-item">
+					<div class="hero-label">Department</div>
+					<div class="hero-value">{{ text_value(doc.get_formatted('department') or doc.department) }}</div>
+				</div>
+				{% endif %}
+				{% if doc.employee_group %}
+				<div class="hero-item">
+					<div class="hero-label">Employee Group</div>
+					<div class="hero-value">{{ text_value(doc.get_formatted('employee_group') or doc.employee_group) }}</div>
+				</div>
+				{% endif %}
+				{% if doc.reports_to %}
+				<div class="hero-item">
+					<div class="hero-label">Reports To</div>
+					<div class="hero-value">{{ text_value(doc.get_formatted('reports_to') or doc.reports_to) }}</div>
+				</div>
+				{% endif %}
+				<div class="hero-item">
+					<div class="hero-label">Status</div>
+					<div class="hero-value">
+						<span class="status-pill {{ (status_text or 'unknown').lower().replace(' ', '-') }}">{{ text_value(status_text) }}</span>
+					</div>
+				</div>
+			</div>
+		</div>
+		<div class="hero-image">
+			{% if doc.employee_image %}
+			<img src="{{ frappe.utils.escape_html(doc.employee_image) }}" alt="{{ frappe.utils.escape_html(full_name) }}">
+			{% else %}
+			<div class="profile-photo profile-photo--fallback">No Image</div>
+			{% endif %}
+		</div>
+	</div>
 	{% endif %}
 
 	<div class="section-grid">
@@ -267,34 +316,38 @@
 						<span>{{ text_value(row.school) }}</span>
 					</div>
 				</div>
-				<div class="history-entry__grid">
-					<div class="history-entry__item">
-						<div class="history-entry__label">From Date</div>
-						<div class="history-entry__value">{{ text_value(frappe.utils.formatdate(row.from_date) if row.from_date else "") }}</div>
+				<div class="history-entry__details">
+					<div class="history-entry__column">
+						<div class="history-row">
+							<div class="history-entry__label">From Date</div>
+							<div class="history-entry__value">{{ text_value(frappe.utils.formatdate(row.from_date) if row.from_date else "") }}</div>
+						</div>
+						<div class="history-row">
+							<div class="history-entry__label">To Date</div>
+							<div class="history-entry__value">{{ text_value(frappe.utils.formatdate(row.to_date) if row.to_date else "") }}</div>
+						</div>
+						<div class="history-row">
+							<div class="history-entry__label">Is Current</div>
+							<div class="history-entry__value">{{ yes_no(row.is_current) }}</div>
+						</div>
 					</div>
-					<div class="history-entry__item">
-						<div class="history-entry__label">To Date</div>
-						<div class="history-entry__value">{{ text_value(frappe.utils.formatdate(row.to_date) if row.to_date else "") }}</div>
-					</div>
-					<div class="history-entry__item">
-						<div class="history-entry__label">Is Current</div>
-						<div class="history-entry__value">{{ yes_no(row.is_current) }}</div>
-					</div>
-					<div class="history-entry__item">
-						<div class="history-entry__label">Access Mode</div>
-						<div class="history-entry__value">{{ text_value(row.access_mode) }}</div>
-					</div>
-					<div class="history-entry__item">
-						<div class="history-entry__label">Role Profile</div>
-						<div class="history-entry__value">{{ text_value(row.role_profile) }}</div>
-					</div>
-					<div class="history-entry__item">
-						<div class="history-entry__label">Workspace Override</div>
-						<div class="history-entry__value">{{ text_value(row.workspace_override) }}</div>
-					</div>
-					<div class="history-entry__item">
-						<div class="history-entry__label">Priority</div>
-						<div class="history-entry__value">{{ text_value(row.priority) }}</div>
+					<div class="history-entry__column">
+						<div class="history-row">
+							<div class="history-entry__label">Access Mode</div>
+							<div class="history-entry__value">{{ text_value(row.access_mode) }}</div>
+						</div>
+						<div class="history-row">
+							<div class="history-entry__label">Role Profile</div>
+							<div class="history-entry__value">{{ text_value(row.role_profile) }}</div>
+						</div>
+						<div class="history-row">
+							<div class="history-entry__label">Workspace Override</div>
+							<div class="history-entry__value">{{ text_value(row.workspace_override) }}</div>
+						</div>
+						<div class="history-row">
+							<div class="history-entry__label">Priority</div>
+							<div class="history-entry__value">{{ text_value(row.priority) }}</div>
+						</div>
 					</div>
 				</div>
 				<div class="history-entry__note">

@@ -29,10 +29,10 @@ vi.mock('frappe-ui', async () => {
 	return {
 		createResource: ({ url }: { url: string }) => {
 			if (url.includes('get_enrollment_dashboard')) {
-				return createMockResource(() => ({ message: dashboardState.current }), dashboardSubmitMock);
+				return createMockResource(() => dashboardState.current, dashboardSubmitMock);
 			}
 			if (url.includes('get_enrollment_drilldown')) {
-				return createMockResource(() => ({ message: { rows: [], total_count: 0 } }), drilldownSubmitMock);
+				return createMockResource(() => ({ rows: [], total_count: 0 }), drilldownSubmitMock);
 			}
 			return createMockResource(() => ({}), vi.fn());
 		},

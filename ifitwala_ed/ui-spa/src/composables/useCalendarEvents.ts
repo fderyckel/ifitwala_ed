@@ -1,5 +1,5 @@
 // ifitwala_ed/ui-spa/src/composables/useCalendarEvents.ts
-import { call } from 'frappe-ui';
+import { apiMethod } from '@/resources/frappe';
 import { Ref, computed, ref } from 'vue';
 
 export type CalendarSource =
@@ -122,13 +122,6 @@ function clearCache(cacheKey: string) {
 	}
 }
 
-function unwrapResponse(response: unknown) {
-	if (response && typeof response === 'object' && 'message' in response) {
-		return (response as Record<string, unknown>).message;
-	}
-	return response;
-}
-
 export function useCalendarEvents(options: CalendarComposableOptions = {}) {
 	const role = options.role ?? 'staff';
 
@@ -165,14 +158,12 @@ export function useCalendarEvents(options: CalendarComposableOptions = {}) {
 		error.value = null;
 
 		try {
-			const payload = unwrapResponse(
-				await call('ifitwala_ed.api.calendar.get_staff_calendar', {
-					from_datetime: range.start,
-					to_datetime: range.end,
-					sources: Array.from(activeSources.value),
-					force_refresh: Boolean(opts.force),
-				})
-			) as CalendarPayload;
+			const payload = await apiMethod<CalendarPayload>('ifitwala_ed.api.calendar.get_staff_calendar', {
+				from_datetime: range.start,
+				to_datetime: range.end,
+				sources: Array.from(activeSources.value),
+				force_refresh: Boolean(opts.force),
+			});
 
 			if (payload) {
 				writeCache(cacheKey, payload);

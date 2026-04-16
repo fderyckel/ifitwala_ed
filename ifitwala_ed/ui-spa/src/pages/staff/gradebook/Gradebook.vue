@@ -12,27 +12,19 @@
 					</div>
 
 					<div class="page-header__actions">
-						<div class="inline-flex rounded-xl border border-border/70 bg-white p-1 shadow-sm">
+						<div class="if-segmented">
 							<button
 								type="button"
-								class="rounded-lg px-3 py-2 text-sm font-medium transition-all"
-								:class="
-									viewMode === 'task'
-										? 'bg-leaf text-white shadow-sm'
-										: 'text-ink/70 hover:text-ink'
-								"
+								class="if-segmented__item"
+								:class="{ 'if-segmented__item--active': viewMode === 'task' }"
 								@click="setViewMode('task')"
 							>
 								Task View
 							</button>
 							<button
 								type="button"
-								class="rounded-lg px-3 py-2 text-sm font-medium transition-all"
-								:class="
-									viewMode === 'overview'
-										? 'bg-leaf text-white shadow-sm'
-										: 'text-ink/70 hover:text-ink'
-								"
+								class="if-segmented__item"
+								:class="{ 'if-segmented__item--active': viewMode === 'overview' }"
 								:disabled="!selectedGroup"
 								@click="setViewMode('overview')"
 							>
@@ -116,15 +108,15 @@
 					</div>
 
 					<div class="ml-auto">
-						<Button
+						<button
 							v-if="hasActiveFilters"
-							appearance="minimal"
-							size="md"
-							icon="x"
+							type="button"
+							class="if-button if-button--quiet"
 							@click="resetFilters"
 						>
+							<FeatherIcon name="x" class="h-4 w-4" />
 							Reset
-						</Button>
+						</button>
 					</div>
 				</div>
 			</header>
@@ -139,13 +131,15 @@
 								<h2 class="text-sm font-semibold uppercase tracking-wide text-ink/70">
 									Student Groups
 								</h2>
-								<Button
-									size="sm"
-									appearance="minimal"
-									icon="refresh-cw"
-									:loading="groupsLoading"
+								<button
+									type="button"
+									class="if-button if-button--quiet if-button--icon"
+									:disabled="groupsLoading"
 									@click="reloadGroups()"
-								/>
+									aria-label="Reload groups"
+								>
+									<FeatherIcon name="refresh-cw" class="h-4 w-4" />
+								</button>
 							</div>
 						</div>
 
@@ -348,7 +342,7 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { useRoute, useRouter, type LocationQueryRaw } from 'vue-router';
-import { Badge, Button, FeatherIcon, FormControl, toast } from 'frappe-ui';
+import { Badge, FeatherIcon, FormControl, toast } from 'frappe-ui';
 import { createGradebookService } from '@/lib/services/gradebook/gradebookService';
 import { createStudentAttendanceService } from '@/lib/services/studentAttendance/studentAttendanceService';
 import type { FetchSchoolFilterContextResponse } from '@/types/contracts/studentAttendance';

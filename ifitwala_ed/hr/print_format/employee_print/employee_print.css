@@ -50,8 +50,12 @@
 }
 
 .ifitwala-print.employee-profile .document-banner {
-  display: table;
+  display: flex;
   width: 100%;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 18px;
+  flex-wrap: wrap;
   margin-bottom: 16px;
   padding: 0 0 14px;
   border-bottom: 1px solid var(--line);
@@ -59,24 +63,25 @@
 
 .ifitwala-print.employee-profile .document-banner__title-block,
 .ifitwala-print.employee-profile .document-banner__meta {
-  display: table-cell;
-  vertical-align: bottom;
+  display: block;
 }
 
 .ifitwala-print.employee-profile .document-banner__title-block {
-  width: 100%;
-  padding-right: 18px;
+  flex: 1 1 280px;
+  min-width: 0;
 }
 
 .ifitwala-print.employee-profile .document-banner__meta {
+  display: flex;
+  align-items: flex-end;
+  justify-content: flex-end;
+  gap: 18px;
+  flex-wrap: wrap;
   text-align: right;
-  white-space: nowrap;
 }
 
 .ifitwala-print.employee-profile .document-banner__meta-item {
-  display: inline-block;
-  margin-left: 18px;
-  vertical-align: bottom;
+  display: block;
 }
 
 .ifitwala-print.employee-profile .eyebrow,
@@ -113,6 +118,7 @@
 
 .ifitwala-print.employee-profile .profile-header__subline,
 .ifitwala-print.employee-profile .preferred-name,
+.ifitwala-print.employee-profile .hero-subtitle,
 .ifitwala-print.employee-profile .crm-panel__subtle,
 .ifitwala-print.employee-profile .empty-value,
 .ifitwala-print.employee-profile .empty-state {
@@ -138,6 +144,66 @@
 }
 
 .ifitwala-print.employee-profile .profile-header__subline span + span::before {
+  content: "•";
+  margin: 0 7px;
+  color: rgba(102, 112, 133, 0.55);
+}
+
+.ifitwala-print.employee-profile .hero-card {
+  display: table;
+  width: 100%;
+  margin-bottom: 18px;
+  page-break-inside: avoid;
+  break-inside: avoid;
+  border: 1px solid var(--line);
+  background: linear-gradient(180deg, rgba(248, 250, 251, 0.95), #ffffff 34px);
+}
+
+.ifitwala-print.employee-profile .hero-main,
+.ifitwala-print.employee-profile .hero-image {
+  display: table-cell;
+  vertical-align: top;
+  padding: 18px 20px;
+}
+
+.ifitwala-print.employee-profile .hero-image {
+  width: 128px;
+  text-align: right;
+}
+
+.ifitwala-print.employee-profile .hero-image img {
+  width: 86px;
+  height: 108px;
+  object-fit: cover;
+  border: 1px solid var(--line);
+  background: #fff;
+  box-shadow: 0 10px 20px rgba(23, 33, 43, 0.08);
+}
+
+.ifitwala-print.employee-profile h2 {
+  margin: 0;
+  color: #0f1720;
+  font-family: Baskerville, Georgia, serif;
+  font-size: 24px;
+  font-weight: 600;
+  line-height: 1.15;
+}
+
+.ifitwala-print.employee-profile .hero-kicker,
+.ifitwala-print.employee-profile .hero-label {
+  color: var(--muted);
+  font-size: 8.75px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.ifitwala-print.employee-profile .hero-subtitle {
+  margin-top: 6px;
+  font-size: 10px;
+}
+
+.ifitwala-print.employee-profile .hero-subtitle span + span::before {
   content: "•";
   margin: 0 7px;
   color: rgba(102, 112, 133, 0.55);
@@ -404,26 +470,48 @@
   color: rgba(102, 112, 133, 0.55);
 }
 
-.ifitwala-print.employee-profile .history-entry__grid {
+.ifitwala-print.employee-profile .history-entry__details {
   margin-top: 10px;
+  display: table;
+  width: 100%;
 }
 
-.ifitwala-print.employee-profile .history-entry__item {
-  display: inline-block;
-  width: 32.4%;
-  padding-right: 10px;
-  margin-bottom: 10px;
+.ifitwala-print.employee-profile .history-entry__column {
+  display: table-cell;
+  width: 50%;
   vertical-align: top;
 }
 
+.ifitwala-print.employee-profile .history-entry__column:first-child {
+  padding-right: 12px;
+}
+
+.ifitwala-print.employee-profile .history-entry__column + .history-entry__column {
+  padding-left: 12px;
+  border-left: 1px solid var(--soft-line);
+}
+
+.ifitwala-print.employee-profile .history-row {
+  display: grid;
+  grid-template-columns: 38% 1fr;
+  column-gap: 12px;
+  align-items: start;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--soft-line);
+}
+
+.ifitwala-print.employee-profile .history-entry__column .history-row:last-child {
+  border-bottom: none;
+}
+
 .ifitwala-print.employee-profile .history-entry__value {
-  margin-top: 3px;
   color: var(--ink);
   font-size: 10.5px;
   word-break: break-word;
 }
 
 .ifitwala-print.employee-profile .history-entry__note {
+  margin-top: 10px;
   padding-top: 8px;
   border-top: 1px solid var(--soft-line);
 }
@@ -441,6 +529,7 @@
   .ifitwala-print.employee-profile .document-banner__eyebrow,
   .ifitwala-print.employee-profile .document-banner__label,
   .ifitwala-print.employee-profile .hero-label,
+  .ifitwala-print.employee-profile .hero-kicker,
   .ifitwala-print.employee-profile .info-key,
   .ifitwala-print.employee-profile .history-entry__label {
     border: none !important;

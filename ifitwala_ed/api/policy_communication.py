@@ -248,7 +248,7 @@ def _is_policy_visible_via_org_communication(
     policy_school: str,
     org_communication: str,
 ) -> bool:
-    if not check_audience_match(org_communication, user, roles, employee):
+    if not check_audience_match(org_communication, user, roles, employee, allow_owner=True):
         return False
 
     communication_row = frappe.db.get_value(
@@ -518,7 +518,7 @@ def get_policy_inform_payload(
             org_communication=org_communication,
         ):
             frappe.throw(_("You do not have permission to view this policy."), frappe.PermissionError)
-    elif org_communication and not check_audience_match(org_communication, user, roles, employee):
+    elif org_communication and not check_audience_match(org_communication, user, roles, employee, allow_owner=True):
         frappe.throw(_("You do not have permission to view this communication."), frappe.PermissionError)
 
     policy_label = (

@@ -7,12 +7,14 @@ const {
 	getOrgCommunicationItemMock,
 	getOrgCommInteractionSummaryMock,
 	subscribeMock,
+	openOverlayMock,
 } = vi.hoisted(() => ({
 	getArchiveContextMock: vi.fn(),
 	getOrgCommunicationFeedMock: vi.fn(),
 	getOrgCommunicationItemMock: vi.fn(),
 	getOrgCommInteractionSummaryMock: vi.fn(),
 	subscribeMock: vi.fn(() => vi.fn()),
+	openOverlayMock: vi.fn(),
 }));
 
 vi.mock('frappe-ui', async () => {
@@ -88,7 +90,9 @@ vi.mock('frappe-ui', async () => {
 });
 
 vi.mock('@/composables/useOverlayStack', () => ({
-	useOverlayStack: () => ({}),
+	useOverlayStack: () => ({
+		open: openOverlayMock,
+	}),
 }));
 
 vi.mock('@/lib/services/orgCommunicationArchive/orgCommunicationArchiveService', () => ({
@@ -220,6 +224,7 @@ afterEach(() => {
 	getOrgCommunicationItemMock.mockReset();
 	getOrgCommInteractionSummaryMock.mockReset();
 	subscribeMock.mockClear();
+	openOverlayMock.mockReset();
 	while (cleanupFns.length) {
 		cleanupFns.pop()?.();
 	}
@@ -574,5 +579,54 @@ describe('OrgCommunicationArchive', () => {
 
 		expect(commentButton).toBeUndefined();
 		expect(document.body.querySelector('[data-testid="interaction-chips-stub"]')).not.toBeNull();
+	});
+
+	it('opens policy inform with the selected communication name instead of embedded title metadata', async () => {
+		getArchiveContextMock.mockResolvedValue({
+			my_teams: [],
+			my_groups: [],
+			schools: [],
+			organizations: [],
+			defaults: {
+				organization: null,
+				school: null,
+				team: null,
+			},
+		});
+		getOrgCommunicationFeedMock.mockResolvedValue({
+			items: [buildItem()],
+			has_more: false,
+			start: 0,
+			page_length: 10,
+		});
+		getOrgCommunicationItemMock.mockResolvedValue({
+			name: 'COMM-0001',
+			message_html:
+				'<p><a href="#policy-inform?policy_version=GOV-POL-VER-0003" data-policy-inform="1" data-policy-version="GOV-POL-VER-0003" data-org-communication="The Decree of the Ministry of Sartorial Suppression 2 - Version v1 update">Open Policy</a></p>',
+			attachments: [],
+		});
+		getOrgCommInteractionSummaryMock.mockResolvedValue({
+			'COMM-0001': {
+				counts: {},
+				self: null,
+				reaction_counts: {},
+				reactions_total: 0,
+				comments_total: 0,
+			},
+		});
+
+		mountArchive();
+		await flushUi();
+
+		const policyLink = document.querySelector('a[data-policy-inform="1"]') as HTMLAnchorElement | null;
+		expect(policyLink).not.toBeNull();
+
+		policyLink?.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
+		await flushUi();
+
+		expect(openOverlayMock).toHaveBeenCalledWith('staff-policy-inform', {
+			policyVersion: 'GOV-POL-VER-0003',
+			orgCommunication: 'COMM-0001',
+		});
 	});
 });

@@ -11,8 +11,15 @@
 					</p>
 				</div>
 				<div class="flex items-center gap-2">
-					<RouterLink class="if-action" :to="{ name: 'student-home' }">Back to Home</RouterLink>
-					<button type="button" class="if-action" :disabled="loading" @click="loadBoard">
+					<RouterLink class="if-button if-button--secondary" :to="{ name: 'student-home' }">
+						Back to Home
+					</RouterLink>
+					<button
+						type="button"
+						class="if-button if-button--quiet"
+						:disabled="loading"
+						@click="loadBoard"
+					>
 						Refresh
 					</button>
 				</div>
@@ -93,7 +100,7 @@
 								<button
 									v-if="booking.status === 'Offered' || booking.status === 'Waitlisted'"
 									type="button"
-									class="if-action"
+									class="if-button if-button--primary"
 									:disabled="actionLoading[booking.name]"
 									@click="confirmOffer(booking.name)"
 								>
@@ -102,7 +109,7 @@
 								<button
 									v-if="canCancel(booking.status)"
 									type="button"
-									class="if-action"
+									class="if-button if-button--danger"
 									:disabled="actionLoading[booking.name]"
 									@click="cancelBooking(booking.name)"
 								>
@@ -186,7 +193,7 @@
 								<div class="flex items-center gap-2">
 									<button
 										type="button"
-										class="if-action"
+										class="if-button if-button--primary"
 										:disabled="
 											submitLoading[offering.program_offering] || !canBookOffering(offering)
 										"

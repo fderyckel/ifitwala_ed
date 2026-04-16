@@ -196,10 +196,6 @@ const moreLoading = ref(false);
 const modalLoading = ref(false);
 const initialFocus = ref(null);
 
-function unwrap(resp) {
-	return resp && typeof resp === 'object' && 'message' in resp ? resp.message : resp;
-}
-
 // --- Color helpers (elegant, consistent with tokens) ---------------------------------
 const PALETTE = [
 	'var(--sky)', // sky
@@ -249,20 +245,13 @@ function formatTime(t) {
 	return `${H}:${M}`;
 }
 
-// --- Data fetching (GET, no CSRF) --------------------------------------------
+// --- Data fetching ------------------------------------------------------------
 async function fetchLogs() {
 	try {
-		const qs = new URLSearchParams({
-			start: String(start.value),
-			page_length: String(PAGE_LENGTH),
-		}).toString();
-
-		const r = await fetch(`/api/method/ifitwala_ed.api.student_log.get_student_logs?${qs}`, {
-			credentials: 'include',
+		const rows = await apiMethod('ifitwala_ed.api.student_log.get_student_logs', {
+			start: start.value,
+			page_length: PAGE_LENGTH,
 		});
-		if (!r.ok) throw new Error(`HTTP ${r.status}`);
-		const json = await r.json();
-		const rows = unwrap(json) || [];
 		if (!Array.isArray(rows)) throw new Error('Unexpected logs response');
 
 		logs.value.push(...rows);
@@ -279,13 +268,9 @@ async function openLogDetail(log) {
 	isModalOpen.value = true;
 	modalLoading.value = true;
 	try {
-		const q = new URLSearchParams({ log_name: log.name }).toString();
-		const r = await fetch(`/api/method/ifitwala_ed.api.student_log.get_student_log_detail?${q}`, {
-			credentials: 'include',
+		const full = await apiMethod('ifitwala_ed.api.student_log.get_student_log_detail', {
+			log_name: log.name,
 		});
-		if (!r.ok) throw new Error(`HTTP ${r.status}`);
-		const json = await r.json();
-		const full = unwrap(json);
 		if (full && typeof full === 'object') {
 			selectedLog.value = full;
 			try {
