@@ -8,6 +8,7 @@ from frappe.tests.utils import FrappeTestCase
 
 from ifitwala_ed.api.file_access import (
     build_academic_file_open_url,
+    build_academic_file_preview_url,
     build_admissions_file_open_url,
     build_employee_file_open_url,
     build_guardian_file_open_url,
@@ -19,8 +20,10 @@ from ifitwala_ed.api.file_access import (
     download_guardian_file,
     open_org_communication_attachment,
     open_public_website_media,
+    preview_academic_file,
     preview_org_communication_attachment,
     resolve_academic_file_open_url,
+    resolve_academic_file_preview_url,
     resolve_employee_file_open_url,
     resolve_guardian_file_open_url,
     resolve_public_website_media_url,
@@ -56,6 +59,20 @@ class TestFileAccessUrlContracts(FrappeTestCase):
         self.assertEqual((query.get("share_token") or [None])[0], "token-abc")
         self.assertEqual((query.get("viewer_email") or [None])[0], "viewer@example.com")
 
+    def test_build_academic_file_preview_url_supports_share_scope(self):
+        url = build_academic_file_preview_url(
+            file_name="FILE-ACADEMIC-1",
+            share_token="token-abc",
+            viewer_email="viewer@example.com",
+        )
+        parsed = urlparse(url)
+        query = parse_qs(parsed.query)
+
+        self.assertEqual(parsed.path, "/api/method/ifitwala_ed.api.file_access.preview_academic_file")
+        self.assertEqual((query.get("file") or [None])[0], "FILE-ACADEMIC-1")
+        self.assertEqual((query.get("share_token") or [None])[0], "token-abc")
+        self.assertEqual((query.get("viewer_email") or [None])[0], "viewer@example.com")
+
     def test_resolve_academic_file_open_url_keeps_external_links(self):
         external = "https://cdn.example.com/demo.pdf"
         self.assertEqual(
@@ -66,6 +83,17 @@ class TestFileAccessUrlContracts(FrappeTestCase):
                 context_name="STU-0001",
             ),
             external,
+        )
+
+    def test_resolve_academic_file_preview_url_prefers_stable_route_when_file_name_exists(self):
+        self.assertEqual(
+            resolve_academic_file_preview_url(
+                file_name="FILE-EXT",
+                file_url="https://cdn.example.com/demo.pdf",
+                context_doctype="Student",
+                context_name="STU-0001",
+            ),
+            "/api/method/ifitwala_ed.api.file_access.preview_academic_file?file=FILE-EXT&context_doctype=Student&context_name=STU-0001",
         )
 
     def test_build_guardian_file_open_url_includes_context(self):
@@ -360,6 +388,92 @@ class TestFileAccessUrlContracts(FrappeTestCase):
                     context_doctype="Supporting Material",
                     context_name="MAT-1",
                 )
+
+    def test_preview_academic_file_redirects_to_drive_preview_grant_when_ready(self):
+        file_row = {
+            "name": "FILE-MAT-1",
+            "file_url": "/private/files/Courses/COURSE-1/material.pdf",
+            "file_name": "material.pdf",
+            "is_private": 1,
+            "attached_to_doctype": "Supporting Material",
+            "attached_to_name": "MAT-1",
+        }
+        grant_calls = []
+
+        def fake_get_value(doctype, filters=None, fieldname=None, as_dict=False):
+            if doctype == "Drive File" and filters == {"file": "FILE-MAT-1"}:
+                return {"name": "DRIVE-0001", "preview_status": "ready"}
+            return None
+
+        def fake_load(attribute):
+            grant_calls.append(attribute)
+            return lambda **_kwargs: {"url": "https://preview.example.com/material.pdf"}
+
+        with (
+            patch("ifitwala_ed.api.file_access._resolve_any_file_row", return_value=file_row),
+            patch("ifitwala_ed.api.file_access._require_authenticated_user", return_value="student@example.com"),
+            patch(
+                "ifitwala_ed.api.file_access._resolve_supporting_material_context_for_file",
+                return_value=("MAT-1", "COURSE-1"),
+            ),
+            patch("ifitwala_ed.api.file_access._assert_internal_material_context", return_value=None),
+            patch("ifitwala_ed.curriculum.materials.user_can_read_supporting_material", return_value=True),
+            patch("ifitwala_ed.api.file_access.frappe.db.get_value", side_effect=fake_get_value),
+            patch("ifitwala_ed.api.file_access._load_drive_access_callable", side_effect=fake_load),
+        ):
+            frappe.local.response = {}
+            preview_academic_file(
+                file="FILE-MAT-1",
+                context_doctype="Supporting Material",
+                context_name="MAT-1",
+            )
+
+        self.assertEqual(frappe.local.response.get("type"), "redirect")
+        self.assertEqual(frappe.local.response.get("location"), "https://preview.example.com/material.pdf")
+        self.assertEqual(grant_calls, ["issue_preview_grant"])
+
+    def test_preview_academic_file_falls_back_to_download_grant_when_preview_not_ready(self):
+        file_row = {
+            "name": "FILE-MAT-1",
+            "file_url": "/private/files/Courses/COURSE-1/material.pdf",
+            "file_name": "material.pdf",
+            "is_private": 1,
+            "attached_to_doctype": "Supporting Material",
+            "attached_to_name": "MAT-1",
+        }
+        grant_calls = []
+
+        def fake_get_value(doctype, filters=None, fieldname=None, as_dict=False):
+            if doctype == "Drive File" and filters == {"file": "FILE-MAT-1"}:
+                return {"name": "DRIVE-0001", "preview_status": "pending"}
+            return None
+
+        def fake_load(attribute):
+            grant_calls.append(attribute)
+            return lambda **_kwargs: {"url": "https://download.example.com/material.pdf"}
+
+        with (
+            patch("ifitwala_ed.api.file_access._resolve_any_file_row", return_value=file_row),
+            patch("ifitwala_ed.api.file_access._require_authenticated_user", return_value="student@example.com"),
+            patch(
+                "ifitwala_ed.api.file_access._resolve_supporting_material_context_for_file",
+                return_value=("MAT-1", "COURSE-1"),
+            ),
+            patch("ifitwala_ed.api.file_access._assert_internal_material_context", return_value=None),
+            patch("ifitwala_ed.curriculum.materials.user_can_read_supporting_material", return_value=True),
+            patch("ifitwala_ed.api.file_access.frappe.db.get_value", side_effect=fake_get_value),
+            patch("ifitwala_ed.api.file_access._load_drive_access_callable", side_effect=fake_load),
+        ):
+            frappe.local.response = {}
+            preview_academic_file(
+                file="FILE-MAT-1",
+                context_doctype="Supporting Material",
+                context_name="MAT-1",
+            )
+
+        self.assertEqual(frappe.local.response.get("type"), "redirect")
+        self.assertEqual(frappe.local.response.get("location"), "https://download.example.com/material.pdf")
+        self.assertEqual(grant_calls, ["issue_download_grant"])
 
     def test_open_org_communication_attachment_redirects_to_drive_download_grant(self):
         attachment_row = frappe._dict(

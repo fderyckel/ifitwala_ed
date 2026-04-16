@@ -101,6 +101,30 @@ def build_academic_file_open_url(
     return f"/api/method/ifitwala_ed.api.file_access.download_academic_file?{urlencode(params)}"
 
 
+def build_academic_file_preview_url(
+    *,
+    file_name: str,
+    context_doctype: str | None = None,
+    context_name: str | None = None,
+    share_token: str | None = None,
+    viewer_email: str | None = None,
+) -> str:
+    resolved_file = (file_name or "").strip()
+    if not resolved_file:
+        return ""
+
+    params = {"file": resolved_file}
+    if (context_doctype or "").strip():
+        params["context_doctype"] = context_doctype.strip()
+    if (context_name or "").strip():
+        params["context_name"] = context_name.strip()
+    if (share_token or "").strip():
+        params["share_token"] = share_token.strip()
+    if (viewer_email or "").strip():
+        params["viewer_email"] = viewer_email.strip()
+    return f"/api/method/ifitwala_ed.api.file_access.preview_academic_file?{urlencode(params)}"
+
+
 def resolve_academic_file_open_url(
     *,
     file_name: str | None,
@@ -126,6 +150,30 @@ def resolve_academic_file_open_url(
         viewer_email=viewer_email,
     )
     return open_url or raw_url or None
+
+
+def resolve_academic_file_preview_url(
+    *,
+    file_name: str | None,
+    file_url: str | None,
+    context_doctype: str | None = None,
+    context_name: str | None = None,
+    share_token: str | None = None,
+    viewer_email: str | None = None,
+) -> str | None:
+    resolved_name = (file_name or "").strip()
+    if resolved_name:
+        preview_url = build_academic_file_preview_url(
+            file_name=resolved_name,
+            context_doctype=context_doctype,
+            context_name=context_name,
+            share_token=share_token,
+            viewer_email=viewer_email,
+        )
+        return preview_url or None
+
+    raw_url = (file_url or "").strip()
+    return raw_url or None
 
 
 def build_guardian_file_open_url(
@@ -701,7 +749,7 @@ def _resolve_drive_download_grant_url(file_name: str) -> str | None:
     return target_url or None
 
 
-def _resolve_public_website_media_grant_url(file_name: str) -> str | None:
+def _resolve_drive_preview_grant_url(file_name: str) -> str | None:
     drive_file = frappe.db.get_value(
         "Drive File",
         {"file": file_name},
@@ -712,15 +760,21 @@ def _resolve_public_website_media_grant_url(file_name: str) -> str | None:
         return None
 
     try:
-        if (drive_file.get("preview_status") or "").strip() == "ready":
-            grant = _load_drive_access_callable("issue_preview_grant")(drive_file_id=drive_file.get("name"))
-        else:
-            grant = _load_drive_access_callable("issue_download_grant")(drive_file_id=drive_file.get("name"))
+        grant_method = (
+            "issue_preview_grant"
+            if (drive_file.get("preview_status") or "").strip() == "ready"
+            else "issue_download_grant"
+        )
+        grant = _load_drive_access_callable(grant_method)(drive_file_id=drive_file.get("name"))
     except Exception:
         return None
 
     target_url = str((grant or {}).get("url") or "").strip()
     return target_url or None
+
+
+def _resolve_public_website_media_grant_url(file_name: str) -> str | None:
+    return _resolve_drive_preview_grant_url(file_name)
 
 
 def _assert_public_website_media_visible(file_row: dict) -> None:
@@ -1082,6 +1136,47 @@ def download_academic_file(
     if not file_name:
         frappe.throw(_("File is required."), frappe.ValidationError)
 
+    file_row = _resolve_authorized_academic_file(
+        file_name=file_name,
+        context_doctype=context_doctype,
+        context_name=context_name,
+        share_token=share_token,
+        viewer_email=viewer_email,
+    )
+
+    file_url = (file_row.get("file_url") or "").strip()
+    if file_url.startswith(("http://", "https://")):
+        frappe.local.response["type"] = "redirect"
+        frappe.local.response["location"] = file_url
+        return
+
+    content = _read_file_bytes(file_row)
+    if content is None:
+        target_url = _resolve_drive_download_grant_url(file_name)
+        if target_url:
+            frappe.local.response["type"] = "redirect"
+            frappe.local.response["location"] = target_url
+            return
+        frappe.throw(_("Could not read the file content."), frappe.DoesNotExistError)
+
+    filename = (file_row.get("file_name") or "").strip() or "document"
+    content_type = mimetypes.guess_type(filename)[0] or "application/octet-stream"
+
+    frappe.local.response["type"] = "download"
+    frappe.local.response["filename"] = filename
+    frappe.local.response["filecontent"] = content
+    frappe.local.response["display_content_as"] = "inline"
+    frappe.local.response["content_type"] = content_type
+
+
+def _resolve_authorized_academic_file(
+    *,
+    file_name: str,
+    context_doctype: str | None = None,
+    context_name: str | None = None,
+    share_token: str | None = None,
+    viewer_email: str | None = None,
+):
     token = (share_token or "").strip() or None
     if token:
         _assert_portfolio_share_file_access(
@@ -1089,50 +1184,79 @@ def download_academic_file(
             share_token=token,
             viewer_email=(viewer_email or "").strip() or None,
         )
-        file_row = _resolve_any_file_row(file_name)
-    else:
-        file_row = _resolve_any_file_row(file_name)
-        user = _require_authenticated_user()
-        material, material_course = _resolve_supporting_material_context_for_file(file_row)
-        if material:
-            if not material_course:
-                frappe.throw(_("Material file is missing course context."), frappe.ValidationError)
-            materials_domain = importlib.import_module("ifitwala_ed.curriculum.materials")
+        return _resolve_any_file_row(file_name)
 
-            placement_name = _assert_internal_material_context(
-                file_row=file_row,
-                context_doctype=context_doctype,
-                context_name=context_name,
-                material=material,
+    file_row = _resolve_any_file_row(file_name)
+    user = _require_authenticated_user()
+    material, material_course = _resolve_supporting_material_context_for_file(file_row)
+    if material:
+        if not material_course:
+            frappe.throw(_("Material file is missing course context."), frappe.ValidationError)
+        materials_domain = importlib.import_module("ifitwala_ed.curriculum.materials")
+
+        placement_name = _assert_internal_material_context(
+            file_row=file_row,
+            context_doctype=context_doctype,
+            context_name=context_name,
+            material=material,
+        )
+        if placement_name:
+            placement_row = frappe.db.get_value(
+                "Material Placement",
+                placement_name,
+                ["anchor_doctype", "anchor_name"],
+                as_dict=True,
             )
-            if placement_name:
-                placement_row = frappe.db.get_value(
-                    "Material Placement",
-                    placement_name,
-                    ["anchor_doctype", "anchor_name"],
-                    as_dict=True,
-                )
-                if not placement_row:
-                    frappe.throw(_("Material placement not found."), frappe.DoesNotExistError)
-                if not materials_domain.user_can_read_material_anchor(
-                    user,
-                    placement_row.get("anchor_doctype"),
-                    placement_row.get("anchor_name"),
-                ):
-                    frappe.throw(_("You do not have permission to access this file."), frappe.PermissionError)
-            elif not materials_domain.user_can_read_supporting_material(user, material, course=material_course):
+            if not placement_row:
+                frappe.throw(_("Material placement not found."), frappe.DoesNotExistError)
+            if not materials_domain.user_can_read_material_anchor(
+                user,
+                placement_row.get("anchor_doctype"),
+                placement_row.get("anchor_name"),
+            ):
                 frappe.throw(_("You do not have permission to access this file."), frappe.PermissionError)
-        else:
-            student, school = _resolve_student_context_for_file(file_row)
-            if not student:
-                frappe.throw(_("File is missing academic ownership context."), frappe.ValidationError)
-            _assert_internal_academic_context(
-                file_row=file_row,
-                context_doctype=context_doctype,
-                context_name=context_name,
-                student=student,
-            )
-            _assert_internal_student_access(user=user, student=student, school=school)
+        elif not materials_domain.user_can_read_supporting_material(user, material, course=material_course):
+            frappe.throw(_("You do not have permission to access this file."), frappe.PermissionError)
+        return file_row
+
+    student, school = _resolve_student_context_for_file(file_row)
+    if not student:
+        frappe.throw(_("File is missing academic ownership context."), frappe.ValidationError)
+    _assert_internal_academic_context(
+        file_row=file_row,
+        context_doctype=context_doctype,
+        context_name=context_name,
+        student=student,
+    )
+    _assert_internal_student_access(user=user, student=student, school=school)
+    return file_row
+
+
+@frappe.whitelist(allow_guest=True)
+def preview_academic_file(
+    file: str | None = None,
+    context_doctype: str | None = None,
+    context_name: str | None = None,
+    share_token: str | None = None,
+    viewer_email: str | None = None,
+):
+    file_name = (file or "").strip()
+    if not file_name:
+        frappe.throw(_("File is required."), frappe.ValidationError)
+
+    file_row = _resolve_authorized_academic_file(
+        file_name=file_name,
+        context_doctype=context_doctype,
+        context_name=context_name,
+        share_token=share_token,
+        viewer_email=viewer_email,
+    )
+
+    target_url = _resolve_drive_preview_grant_url(file_name)
+    if target_url:
+        frappe.local.response["type"] = "redirect"
+        frappe.local.response["location"] = target_url
+        return
 
     file_url = (file_row.get("file_url") or "").strip()
     if file_url.startswith(("http://", "https://")):

@@ -193,13 +193,22 @@
 						</div>
 						<div class="flex items-center gap-2">
 							<a
-								v-if="resource.open_url"
-								:href="resource.open_url"
+								v-if="primaryResourceUrl(resource)"
+								:href="primaryResourceUrl(resource) || undefined"
 								target="_blank"
 								rel="noreferrer"
 								class="if-action"
 							>
-								Open
+								{{ primaryResourceLabel(resource) }}
+							</a>
+							<a
+								v-if="showOpenOriginalAction(resource)"
+								:href="resource.open_url || undefined"
+								target="_blank"
+								rel="noreferrer"
+								class="if-action"
+							>
+								Open original
 							</a>
 							<Button
 								v-if="resource.placement && canManageResources"
@@ -436,5 +445,19 @@ function deriveTitleFromUrl(referenceUrl: string): string {
 	} catch {
 		return referenceUrl;
 	}
+}
+
+function primaryResourceUrl(resource: StaffPlanningMaterial): string | null {
+	return resource.preview_url || resource.open_url || null;
+}
+
+function primaryResourceLabel(resource: StaffPlanningMaterial): string {
+	return resource.preview_url ? 'Preview' : 'Open';
+}
+
+function showOpenOriginalAction(resource: StaffPlanningMaterial): boolean {
+	return Boolean(
+		resource.preview_url && resource.open_url && resource.open_url !== resource.preview_url
+	);
 }
 </script>

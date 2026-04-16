@@ -18,7 +18,10 @@ from ifitwala_ed.api import teaching_plans_shared as _shared_impl
 from ifitwala_ed.api import teaching_plans_staff as _staff_impl
 from ifitwala_ed.api import teaching_plans_student as _student_impl
 from ifitwala_ed.api import teaching_plans_timeline as _timeline_impl
-from ifitwala_ed.api.file_access import resolve_academic_file_open_url
+from ifitwala_ed.api.file_access import (
+    resolve_academic_file_open_url,
+    resolve_academic_file_preview_url,
+)
 from ifitwala_ed.api.student_groups import TRIAGE_ROLES, _instructor_group_names
 from ifitwala_ed.assessment import quiz_service
 from ifitwala_ed.curriculum import materials as materials_domain
@@ -45,6 +48,7 @@ _COMPAT_EXPORTS = (
     now_datetime,
     strip_html,
     resolve_academic_file_open_url,
+    resolve_academic_file_preview_url,
     quiz_service,
     materials_domain,
     governed_uploads,

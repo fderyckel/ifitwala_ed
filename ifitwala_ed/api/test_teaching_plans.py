@@ -17,6 +17,7 @@ def _teaching_plans_module():
 
     file_access_api = ModuleType("ifitwala_ed.api.file_access")
     file_access_api.resolve_academic_file_open_url = lambda **kwargs: "/open/resource"
+    file_access_api.resolve_academic_file_preview_url = lambda **kwargs: "/preview/resource"
 
     materials_domain = ModuleType("ifitwala_ed.curriculum.materials")
     materials_domain.MATERIAL_TYPE_FILE = "File"
@@ -468,13 +469,20 @@ class TestTeachingPlansApi(TestCase):
                     "GROUP-2",
                 )
 
-    def test_serialize_material_entry_uses_governed_open_url_for_file_material(self):
+    def test_serialize_material_entry_uses_governed_preview_and_open_urls_for_file_material(self):
         with _teaching_plans_module() as module:
-            with patch.object(
-                module,
-                "resolve_academic_file_open_url",
-                return_value="/api/method/ifitwala_ed.api.file_access.open_academic_file?f=FILE-1",
-            ) as resolve_open_url:
+            with (
+                patch.object(
+                    module,
+                    "resolve_academic_file_preview_url",
+                    return_value="/api/method/ifitwala_ed.api.file_access.preview_academic_file?f=FILE-1",
+                ) as resolve_preview_url,
+                patch.object(
+                    module,
+                    "resolve_academic_file_open_url",
+                    return_value="/api/method/ifitwala_ed.api.file_access.open_academic_file?f=FILE-1",
+                ) as resolve_open_url,
+            ):
                 payload = module._serialize_material_entry(
                     {
                         "material": "MAT-1",
@@ -495,11 +503,21 @@ class TestTeachingPlansApi(TestCase):
                     }
                 )
 
+        resolve_preview_url.assert_called_once_with(
+            file_name="FILE-1",
+            file_url="/private/files/lab.pdf",
+            context_doctype="Material Placement",
+            context_name="PLC-1",
+        )
         resolve_open_url.assert_called_once_with(
             file_name="FILE-1",
             file_url="/private/files/lab.pdf",
             context_doctype="Material Placement",
             context_name="PLC-1",
+        )
+        self.assertEqual(
+            payload["preview_url"],
+            "/api/method/ifitwala_ed.api.file_access.preview_academic_file?f=FILE-1",
         )
         self.assertEqual(
             payload["open_url"],

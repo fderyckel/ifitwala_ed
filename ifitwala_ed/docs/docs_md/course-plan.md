@@ -3,7 +3,7 @@ title: "Course Plan: Shared Curriculum Version For A Course"
 slug: course-plan
 category: Curriculum
 doc_order: 4
-version: "1.5.3"
+version: "1.5.4"
 last_change_date: "2026-04-16"
 summary: "Define the governed shared curriculum version for a course, including SPA-first creation from the course-plan index, cycle labeling, publication status, shared summary context, the calendar-aware curriculum timeline, and the governed workspace used to author units, quiz banks, and assignment-ready curriculum assets."
 seo_title: "Course Plan: Shared Curriculum Version For A Course"
@@ -120,6 +120,7 @@ Test refs: `ifitwala_ed/api/test_teaching_plans.py`, `ifitwala_ed/api/test_quiz.
 - The course-plan workspace now merges the governed-curriculum header and Quick Access into one top workspace-header card so shared context, quick actions, and section jumps stay together before the editable sections begin.
 - The selected-unit editor inside the staff course-plan workspace now groups unit setup, core narrative, learning focus, standards, reflections, and resources into distinct internal panels, keeps unit save actions visible both near the top of the editor and through a sticky save rail while staff scroll, and lets staff collapse long unit sections individually so the workspace starts cleaner.
 - Within the selected-unit editor, long rich-text authoring areas such as core narrative and learning focus now stack vertically instead of forcing multi-column reading for dense content.
+- Shared Plan Resources and Unit Resources in the staff course-plan workspace now surface governed `preview_url` routes for file attachments and keep `open_url` as the explicit original-file action; the route contract is stable, but the underlying file or derivative grant remains short-lived and server-resolved at request time.
 - Quiz banks remain course-level assessment assets in the current schema, but the staff course-plan workspace is the current SPA authoring surface for them.
 - Assignment handoff from the course-plan workspace must stay prefilled into the canonical task-delivery overlay rather than creating a parallel assignment path.
 

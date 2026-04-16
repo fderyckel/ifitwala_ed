@@ -93,7 +93,7 @@ async function flushUi() {
 	await nextTick();
 }
 
-function mountPanel() {
+function mountPanel(resources: Array<Record<string, unknown>> = []) {
 	const host = document.createElement('div');
 	document.body.appendChild(host);
 
@@ -108,7 +108,7 @@ function mountPanel() {
 					description: 'Governed materials for the selected unit.',
 					emptyMessage: 'No resources yet.',
 					blockedMessage: 'Save the unit first.',
-					resources: [],
+					resources,
 				});
 			},
 		})
@@ -176,5 +176,29 @@ describe('PlanningResourcePanel', () => {
 			})
 		);
 		expect(toastSuccessMock).toHaveBeenCalledWith('Resource shared successfully.');
+	});
+
+	it('prefers preview links for governed file resources and keeps an explicit original action', async () => {
+		mountPanel([
+			{
+				material: 'MAT-1',
+				title: 'Unit diagram',
+				material_type: 'File',
+				preview_url: '/api/method/ifitwala_ed.api.file_access.preview_academic_file?file=FILE-1',
+				open_url: '/api/method/ifitwala_ed.api.file_access.download_academic_file?file=FILE-1',
+			},
+		]);
+		await flushUi();
+
+		const actions = Array.from(document.querySelectorAll('a.if-action'));
+		expect(actions).toHaveLength(2);
+		expect(actions[0]?.textContent?.trim()).toBe('Preview');
+		expect(actions[0]?.getAttribute('href')).toBe(
+			'/api/method/ifitwala_ed.api.file_access.preview_academic_file?file=FILE-1'
+		);
+		expect(actions[1]?.textContent?.trim()).toBe('Open original');
+		expect(actions[1]?.getAttribute('href')).toBe(
+			'/api/method/ifitwala_ed.api.file_access.download_academic_file?file=FILE-1'
+		);
 	});
 });
