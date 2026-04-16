@@ -1,10 +1,10 @@
 <!-- ifitwala_ed/ui-spa/src/pages/staff/StaffPolicies.vue -->
 <template>
 	<div class="analytics-shell space-y-5">
-		<header class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-			<div>
-				<h1 class="type-h2 text-canopy">Policy Library</h1>
-				<p class="type-caption text-slate-500">
+		<header class="page-header">
+			<div class="page-header__intro">
+				<h1 class="type-h1 text-canopy">Policy Library</h1>
+				<p class="type-meta text-slate-token/80">
 					{{ subtitleText }}
 				</p>
 			</div>

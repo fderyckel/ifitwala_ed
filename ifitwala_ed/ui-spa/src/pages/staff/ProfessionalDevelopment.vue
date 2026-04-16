@@ -1,16 +1,16 @@
 <template>
 	<div class="staff-shell space-y-6">
 		<header class="card-surface p-5 sm:p-6">
-			<div class="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-				<div>
+			<div class="page-header">
+				<div class="page-header__intro">
 					<p class="type-overline text-ink/60">My Growth</p>
-					<h1 class="type-h1 text-ink">Professional Development</h1>
-					<p class="type-body text-ink/70">
+					<h1 class="type-h1 text-canopy">Professional Development</h1>
+					<p class="type-meta text-slate-token/80">
 						Track requests, budget fit, upcoming commitments, and completion follow-through inside
 						the academic year.
 					</p>
 				</div>
-				<div class="flex items-center gap-2">
+				<div class="page-header__actions">
 					<RouterLink class="if-action" :to="{ name: 'staff-home' }">Back to Home</RouterLink>
 					<button type="button" class="if-action" @click="openRequestOverlay()">
 						New request

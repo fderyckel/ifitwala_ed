@@ -1,50 +1,50 @@
 <template>
 	<section class="overflow-hidden rounded-[2rem] border border-line-soft bg-white shadow-soft">
 		<div class="course-plan-workspace-header">
-			<div class="grid gap-6 lg:grid-cols-[minmax(0,1fr),auto] lg:items-end">
-				<div class="space-y-4">
-					<RouterLink
-						:to="{ name: 'staff-course-plan-index' }"
-						class="inline-flex items-center gap-2 type-caption text-ink/70 transition hover:text-ink"
-					>
-						<span>←</span>
-						<span>Back to Course Plans</span>
-					</RouterLink>
-					<div>
+			<div class="space-y-4">
+				<RouterLink
+					:to="{ name: 'staff-course-plan-index' }"
+					class="inline-flex items-center gap-2 type-caption text-ink/70 transition hover:text-ink"
+				>
+					<span>←</span>
+					<span>Back to Course Plans</span>
+				</RouterLink>
+				<div class="page-header">
+					<div class="page-header__intro">
 						<p class="type-overline text-ink/60">Governed Curriculum</p>
-						<h1 class="mt-2 type-h1 text-ink">
+						<h1 class="mt-2 type-h1 text-canopy">
 							{{ surface?.course_plan.title || coursePlan || 'Course Plan' }}
 						</h1>
-						<p class="mt-2 max-w-3xl type-body text-ink/80">
+						<p class="mt-2 max-w-3xl type-meta text-slate-token/80">
 							Shape the shared course backbone, capture reusable unit guidance, and build quiz
 							banks teachers can assign without leaving the staff SPA.
 						</p>
 					</div>
-				</div>
-				<div class="flex flex-wrap gap-2 lg:justify-end">
-					<button
-						type="button"
-						class="chip cursor-pointer transition hover:border-jacaranda/40 hover:bg-sky/20 hover:text-ink"
-						@click="emit('jump-to-section', SECTION_IDS.overview)"
-					>
-						{{ surface?.course_plan.course_name || 'Course pending' }}
-					</button>
-					<button
-						type="button"
-						class="chip cursor-pointer transition hover:border-jacaranda/40 hover:bg-sky/20 hover:text-ink"
-						@click="emit('jump-to-section', SECTION_IDS.units)"
-					>
-						{{ surface?.curriculum.unit_count || 0 }} units
-					</button>
-					<button
-						type="button"
-						class="chip cursor-pointer transition hover:border-jacaranda/40 hover:bg-sky/20 hover:text-ink"
-						@click="emit('jump-to-section', SECTION_IDS.quizBanks)"
-					>
-						{{ surface?.assessment.quiz_question_banks.length || 0 }} quiz banks
-					</button>
-					<span class="chip">{{ surface?.course_plan.plan_status || 'Draft' }}</span>
-					<span class="chip">{{ canManagePlan ? 'Editable' : 'Read only' }}</span>
+					<div class="page-header__actions">
+						<button
+							type="button"
+							class="chip cursor-pointer transition hover:border-jacaranda/40 hover:bg-sky/20 hover:text-ink"
+							@click="emit('jump-to-section', SECTION_IDS.overview)"
+						>
+							{{ surface?.course_plan.course_name || 'Course pending' }}
+						</button>
+						<button
+							type="button"
+							class="chip cursor-pointer transition hover:border-jacaranda/40 hover:bg-sky/20 hover:text-ink"
+							@click="emit('jump-to-section', SECTION_IDS.units)"
+						>
+							{{ surface?.curriculum.unit_count || 0 }} units
+						</button>
+						<button
+							type="button"
+							class="chip cursor-pointer transition hover:border-jacaranda/40 hover:bg-sky/20 hover:text-ink"
+							@click="emit('jump-to-section', SECTION_IDS.quizBanks)"
+						>
+							{{ surface?.assessment.quiz_question_banks.length || 0 }} quiz banks
+						</button>
+						<span class="chip">{{ surface?.course_plan.plan_status || 'Draft' }}</span>
+						<span class="chip">{{ canManagePlan ? 'Editable' : 'Read only' }}</span>
+					</div>
 				</div>
 			</div>
 

@@ -2,10 +2,10 @@
 
 <template>
 	<div class="admissions-page">
-		<div class="flex flex-wrap items-start justify-between gap-4">
-			<div>
-				<p class="type-h2 text-ink">{{ __('Course choices') }}</p>
-				<p class="mt-1 type-caption text-ink/60">
+		<header class="page-header">
+			<div class="page-header__intro">
+				<h1 class="type-h1 text-ink">{{ __('Course choices') }}</h1>
+				<p class="type-meta text-ink/70">
 					{{
 						__(
 							'Choose optional courses from your program offering. Required courses stay visible for reference, and enrollment baskets show which requirement group each course can satisfy.'
@@ -13,13 +13,15 @@
 					}}
 				</p>
 			</div>
-			<RouterLink
-				:to="buildRouteLocation('admissions-status')"
-				class="rounded-full border border-border/70 bg-white px-4 py-2 type-caption text-ink/75"
-			>
-				{{ __('Review offer') }}
-			</RouterLink>
-		</div>
+			<div class="page-header__actions">
+				<RouterLink
+					:to="buildRouteLocation('admissions-status')"
+					class="rounded-full border border-border/70 bg-white px-4 py-2 type-caption text-ink/75"
+				>
+					{{ __('Review offer') }}
+				</RouterLink>
+			</div>
+		</header>
 
 		<div v-if="loading" class="rounded-2xl border border-border/70 bg-surface px-4 py-4">
 			<div class="flex items-center gap-3">

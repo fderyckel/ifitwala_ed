@@ -165,6 +165,7 @@ Rules:
 4. The virtual root organization `All Organizations` is explicitly excluded from brand fallback.
 5. Tagline fallback is school-only: current school, then ancestor schools. Organization tagline fallback is not part of the current schema contract.
 6. If no in-scope logo exists, the letterhead remains text-only. It must not borrow a sibling or site-global organization logo.
+7. App-owned custom Jinja print formats that are expected to participate in the standard Desk print flow must explicitly render the managed `letter_head` and `footer` when present. They must not render a competing full branding masthead on the same page when managed letterhead is active.
 
 ## 4. Schema-to-Print Workflow
 
@@ -275,6 +276,7 @@ It should be:
 - premium and institution-facing
 - safe under the standard `Student.print` permission contract
 - grounded in the Student schema already present in the repo
+- compatible with the managed default letterhead by switching from full local branding to a slim document banner when managed letterhead is active
 
 ### 7.2 Included Fields
 

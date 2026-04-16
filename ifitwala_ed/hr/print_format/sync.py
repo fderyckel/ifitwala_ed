@@ -3,6 +3,10 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+EMPLOYEE_PRINT_FORMAT_PATH = Path(__file__).resolve().parent / "employee_print" / "employee_print.json"
+EMPLOYEE_TEMPLATE_PATH = Path(__file__).resolve().parent / "employee_print" / "employee_print.html"
+EMPLOYEE_CSS_PATH = Path(__file__).resolve().parent / "employee_print" / "employee_print.css"
+
 STAFF_CALENDAR_PRINT_FORMAT_PATH = (
     Path(__file__).resolve().parent / "staff_calendar_print" / "staff_calendar_print.json"
 )
@@ -51,6 +55,51 @@ def load_staff_calendar_print_format_payload() -> dict:
 def get_staff_calendar_print_format_values() -> dict:
     payload = load_staff_calendar_print_format_payload()
     return {field: payload[field] for field in MANAGED_PRINT_FORMAT_FIELDS}
+
+
+def load_employee_print_format_payload() -> dict:
+    payload = json.loads(EMPLOYEE_PRINT_FORMAT_PATH.read_text(encoding="utf-8"))
+    payload["html"] = EMPLOYEE_TEMPLATE_PATH.read_text(encoding="utf-8").strip()
+    payload["css"] = EMPLOYEE_CSS_PATH.read_text(encoding="utf-8").strip()
+    return payload
+
+
+def get_employee_print_format_values() -> dict:
+    payload = load_employee_print_format_payload()
+    return {field: payload[field] for field in MANAGED_PRINT_FORMAT_FIELDS}
+
+
+def sync_employee_print_format() -> bool:
+    import frappe
+
+    payload = load_employee_print_format_payload()
+    values = get_employee_print_format_values()
+    name = payload["name"]
+
+    if frappe.db.exists("Print Format", name):
+        doc = frappe.get_doc("Print Format", name)
+        changed = False
+        for fieldname, value in values.items():
+            if doc.get(fieldname) != value:
+                doc.set(fieldname, value)
+                changed = True
+
+        if not changed:
+            return False
+
+        doc.flags.ignore_permissions = True
+        doc.save()
+        return True
+
+    doc = frappe.get_doc(
+        {
+            "doctype": "Print Format",
+            "name": name,
+            **values,
+        }
+    )
+    doc.insert(ignore_permissions=True)
+    return True
 
 
 def sync_staff_calendar_print_format() -> bool:

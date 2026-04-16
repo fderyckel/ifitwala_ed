@@ -468,8 +468,40 @@ const emptySnapshot: Snapshot = {
 	},
 };
 
+const snapshotErrorMessage = ref('');
+const avatarLoadFailed = ref(false);
+
 const snapshot = computed<Snapshot>(() => (snapshotResource.data as Snapshot) || emptySnapshot);
 const loadingSnapshot = computed(() => snapshotResource.loading);
+const hasSnapshotData = computed(() => Boolean(snapshot.value.meta.student));
+
+function describeResourceError(error: unknown, fallback: string) {
+	let message = '';
+
+	if (typeof error === 'string') {
+		message = error.trim();
+	} else if (error instanceof Error) {
+		message = error.message.trim();
+	} else if (error && typeof error === 'object' && 'message' in error) {
+		message =
+			typeof (error as { message?: unknown }).message === 'string'
+				? (error as { message: string }).message.trim()
+				: '';
+	}
+
+	if (
+		message &&
+		!/\/api\/method\/|Traceback|ProgrammingError|INTERNAL SERVER ERROR/i.test(message) &&
+		message.length <= 180
+	) {
+		return message;
+	}
+	return fallback;
+}
+
+function handleAvatarError() {
+	avatarLoadFailed.value = true;
+}
 
 let snapshotDebounce: number | undefined;
 function debounceSnapshot() {
@@ -483,17 +515,26 @@ async function loadSnapshot() {
 	if (!readyForSnapshot.value) return;
 	if (snapshotResource.loading) return; // small guard to avoid spam
 
-	await snapshotResource.submit({
-		student: filters.value.student,
-		school: filters.value.school,
-		program: filters.value.program,
-		view_mode: viewMode.value,
-	});
+	snapshotErrorMessage.value = '';
+	try {
+		await snapshotResource.submit({
+			student: filters.value.student,
+			school: filters.value.school,
+			program: filters.value.program,
+			view_mode: viewMode.value,
+		});
+	} catch (error) {
+		snapshotErrorMessage.value = describeResourceError(
+			error,
+			'Unable to load this student overview right now.'
+		);
+	}
 }
 
 watch(
 	[filters, viewMode],
 	() => {
+		snapshotErrorMessage.value = '';
 		debounceSnapshot();
 	},
 	{ deep: true }
@@ -502,6 +543,23 @@ watch(
 onMounted(() => {
 	if (readyForSnapshot.value) loadSnapshot();
 });
+
+watch(
+	() => readyForSnapshot.value,
+	ready => {
+		if (!ready) {
+			snapshotErrorMessage.value = '';
+		}
+	}
+);
+
+watch(
+	() => snapshot.value.identity.photo,
+	() => {
+		avatarLoadFailed.value = false;
+	},
+	{ immediate: true }
+);
 
 // local UI state
 const selectedCourse = ref<string | null>(null);
@@ -1272,7 +1330,27 @@ function wellbeingTypeLabel(type: WellbeingTimelineItem['type']) {
 					Loading snapshot…
 				</div>
 
+				<div
+					v-else-if="snapshotErrorMessage && !hasSnapshotData"
+					class="rounded-xl border border-rose-200 bg-rose-50 px-4 py-4 text-sm text-rose-900 shadow-sm"
+				>
+					<p class="font-semibold">Unable to load this student overview.</p>
+					<p class="mt-1 text-rose-800/90">
+						{{ snapshotErrorMessage }}
+					</p>
+					<p class="mt-2 text-xs text-rose-800/80">
+						Try reselecting the student. If the error persists, review the server logs for this
+						snapshot request.
+					</p>
+				</div>
+
 				<div v-else class="space-y-6">
+					<div
+						v-if="snapshotErrorMessage"
+						class="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 shadow-sm"
+					>
+						{{ snapshotErrorMessage }}
+					</div>
 					<!-- Band 1: Identity & Snapshot -->
 					<section
 						class="rounded-2xl border border-slate-200 bg-[rgb(var(--surface-rgb)/0.92)] px-4 py-5 shadow-sm"
@@ -1283,12 +1361,17 @@ function wellbeingTypeLabel(type: WellbeingTimelineItem['type']) {
 									class="flex h-16 w-16 items-center justify-center overflow-hidden rounded-2xl bg-slate-100 text-lg font-semibold text-slate-600"
 								>
 									<img
-										v-if="snapshot.identity.photo"
+										v-if="snapshot.identity.photo && !avatarLoadFailed"
 										:src="snapshot.identity.photo"
 										alt="Student avatar"
 										class="h-full w-full object-cover"
+										@error="handleAvatarError"
 									/>
-									<span v-else>{{ snapshot.identity.full_name?.[0] || '?' }}</span>
+									<span v-else>
+										{{
+											snapshot.identity.full_name?.[0] || snapshot.meta.student_name?.[0] || '?'
+										}}
+									</span>
 								</div>
 								<div class="space-y-1 text-sm text-slate-700">
 									<div class="flex flex-wrap items-center gap-2">

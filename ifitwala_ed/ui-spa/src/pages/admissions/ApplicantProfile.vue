@@ -2,31 +2,33 @@
 
 <template>
 	<div data-testid="admissions-profile-page" class="admissions-page">
-		<div class="flex flex-wrap items-start justify-between gap-4">
-			<div>
-				<p class="type-h2 text-ink">{{ __('Profile information') }}</p>
-				<p class="mt-1 type-caption text-ink/60">
+		<header class="page-header">
+			<div class="page-header__intro">
+				<h1 class="type-h1 text-ink">{{ __('Profile information') }}</h1>
+				<p class="type-meta text-ink/70">
 					{{ __('Provide core student profile details used at promotion time.') }}
 				</p>
 			</div>
-			<button
-				data-testid="admissions-profile-save"
-				type="button"
-				class="rounded-full bg-ink px-4 py-2 type-caption text-white shadow-soft disabled:opacity-50"
-				:disabled="
-					isReadOnly ||
-					loading ||
-					saving ||
-					uploadingImage ||
-					uploadingGuardianImageIndex !== null ||
-					Boolean(error)
-				"
-				@click="saveProfile"
-			>
-				<span v-if="saving">{{ __('Saving…') }}</span>
-				<span v-else>{{ __('Save profile') }}</span>
-			</button>
-		</div>
+			<div class="page-header__actions">
+				<button
+					data-testid="admissions-profile-save"
+					type="button"
+					class="rounded-full bg-ink px-4 py-2 type-caption text-white shadow-soft disabled:opacity-50"
+					:disabled="
+						isReadOnly ||
+						loading ||
+						saving ||
+						uploadingImage ||
+						uploadingGuardianImageIndex !== null ||
+						Boolean(error)
+					"
+					@click="saveProfile"
+				>
+					<span v-if="saving">{{ __('Saving…') }}</span>
+					<span v-else>{{ __('Save profile') }}</span>
+				</button>
+			</div>
+		</header>
 
 		<div v-if="loading" class="rounded-2xl border border-border/70 bg-surface px-4 py-4">
 			<div class="flex items-center gap-3">

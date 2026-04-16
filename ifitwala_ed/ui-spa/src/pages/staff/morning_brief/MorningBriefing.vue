@@ -2,13 +2,13 @@
 <template>
 	<div class="staff-shell min-w-0 space-y-8">
 		<!-- HEADER -->
-		<header class="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-			<div>
-				<h1 class="type-h1">Morning Briefing</h1>
-				<p class="type-meta mt-1 text-slate-token/80">Daily Operational &amp; Academic Pulse</p>
+		<header class="page-header">
+			<div class="page-header__intro">
+				<h1 class="type-h1 text-canopy">Morning Briefing</h1>
+				<p class="type-meta text-slate-token/80">Daily Operational &amp; Academic Pulse</p>
 			</div>
 
-			<div class="flex items-center gap-3 self-start sm:self-auto">
+			<div class="page-header__actions">
 				<div class="text-right">
 					<span class="section-header block mb-0.5">Today</span>
 					<span class="type-h3 text-ink">

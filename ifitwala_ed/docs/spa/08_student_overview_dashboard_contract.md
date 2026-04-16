@@ -106,16 +106,17 @@ Rules:
 2. `meta.current_academic_year` is copied from `identity.program_enrollment.academic_year`.
 3. `identity` is assembled from `Student`, the latest matching `Program Enrollment`, and `Student Group Student` joined to `Student Group`.
 4. `kpis` currently contains attendance, task, support, and placeholder academic summary values.
-5. `learning` is assembled from `Task Student` joined to `Task` and `Course`, plus `Program Enrollment Course` rows for current courses.
-6. `attendance` is assembled from `Student Attendance`, `Student Attendance Code`, and `Course`.
-7. `wellbeing.timeline` is event-only and merges visible `Student Log`, `Student Referral`, and `Student Patient Visit` rows, then sorts newest-first and trims to 30 items.
-8. `wellbeing.health_note` is a separate optional staff-facing card sourced from `Student Patient.medical_info`; it is not inserted into the date-sorted timeline.
-9. Referral rows in `wellbeing.timeline` must honor `Student Referral` server-side permission rules before they are returned to the SPA.
-10. Nurse visit rows in `wellbeing.timeline` must use `Student Patient Visit.note` only; `treatment` is not part of the dashboard timeline contract.
-11. `history.year_options` use `Program Enrollment.academic_year` as the canonical backbone.
-12. `history.academic_trend` is derived from task rows grouped by academic year.
-13. `history.attendance_trend` is derived from distinct `Student Attendance.academic_year` values.
-14. `history.reflection_flags` is currently returned as an empty list.
+5. `learning` is assembled from the legacy `Task Student` reader joined to `Task` and `Course`, plus `Program Enrollment Course` rows for current courses.
+6. If the legacy task reader tables are not installed on a site, task-derived KPI, learning, and history blocks must fail closed to empty task data instead of raising a `500`.
+7. `attendance` is assembled from `Student Attendance`, `Student Attendance Code`, and `Course`.
+8. `wellbeing.timeline` is event-only and merges visible `Student Log`, `Student Referral`, and `Student Patient Visit` rows, then sorts newest-first and trims to 30 items.
+9. `wellbeing.health_note` is a separate optional staff-facing card sourced from `Student Patient.medical_info`; it is not inserted into the date-sorted timeline.
+10. Referral rows in `wellbeing.timeline` must honor `Student Referral` server-side permission rules before they are returned to the SPA.
+11. Nurse visit rows in `wellbeing.timeline` must use `Student Patient Visit.note` only; `treatment` is not part of the dashboard timeline contract.
+12. `history.year_options` use `Program Enrollment.academic_year` as the canonical backbone.
+13. `history.academic_trend` is derived from task rows grouped by academic year.
+14. `history.attendance_trend` is derived from distinct `Student Attendance.academic_year` values.
+15. `history.reflection_flags` is currently returned as an empty list.
 
 ## 5. Query and Frappe v16 Contract Notes
 
@@ -134,7 +135,8 @@ Rules:
 2. History attendance-year queries must use simple field names plus `distinct=True`; raw select fragments such as `fields=["distinct academic_year as ay"]` are not part of the valid Frappe v16 contract.
 3. The student overview API must not rely on query syntax that Frappe rejects before business permission checks, because that produces false `403` responses in the SPA.
 4. The regression test module locks the safe distinct-query shape for both `get_filter_meta()` and `_history_block(...)`.
-5. This feature currently has no Redis snapshot cache, no ETag contract, and no background job fan-out; the snapshot is request-time computed.
+5. The task reader path must guard missing legacy task tables before issuing SQL so the page can still load on sites that have moved away from `Task Student`.
+6. This feature currently has no Redis snapshot cache, no ETag contract, and no background job fan-out; the snapshot is request-time computed.
 
 ## 6. Contract Matrix
 

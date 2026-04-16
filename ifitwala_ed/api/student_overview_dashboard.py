@@ -31,6 +31,7 @@ ALLOWED_STAFF_ROLES = {
     "Academic Staff",
     "Instructor",
 }
+TASK_READ_SOURCE_TABLES = ("Task Student", "Task", "Course")
 
 
 def _current_user() -> str:
@@ -607,7 +608,14 @@ def _attendance_block(student: str, academic_year: str | None):
     }
 
 
+def _task_read_source_available() -> bool:
+    return all(frappe.db.table_exists(doctype) for doctype in TASK_READ_SOURCE_TABLES)
+
+
 def _task_rows(student: str, program: str | None):
+    if not _task_read_source_available():
+        return []
+
     sql = """
         SELECT
             t.name as task,

@@ -1,36 +1,36 @@
 <template>
 	<div class="staff-shell space-y-6">
 		<section class="overflow-hidden rounded-[2rem] border border-line-soft bg-white shadow-soft">
-			<div class="grid gap-6 px-6 py-6 lg:grid-cols-[minmax(0,1fr),auto] lg:items-end">
-				<div class="space-y-4">
-					<RouterLink
-						:to="{ name: 'ClassHub', params: { studentGroup } }"
-						class="inline-flex items-center gap-2 type-caption text-ink/70 transition hover:text-ink"
-					>
-						<span>←</span>
-						<span>Back to Class Hub</span>
-					</RouterLink>
-					<div>
+			<div class="space-y-4 px-6 py-6">
+				<RouterLink
+					:to="{ name: 'ClassHub', params: { studentGroup } }"
+					class="inline-flex items-center gap-2 type-caption text-ink/70 transition hover:text-ink"
+				>
+					<span>←</span>
+					<span>Back to Class Hub</span>
+				</RouterLink>
+				<div class="page-header">
+					<div class="page-header__intro">
 						<p class="type-overline text-ink/60">Curriculum Planning</p>
-						<h1 class="mt-2 type-h1 text-ink">
+						<h1 class="mt-2 type-h1 text-canopy">
 							{{ surface?.group.title || studentGroup || 'Class Planning' }}
 						</h1>
-						<p class="mt-2 max-w-3xl type-body text-ink/80">
+						<p class="mt-2 max-w-3xl type-meta text-slate-token/80">
 							Keep the shared unit backbone intact while adapting pacing, session design, and
 							teaching moves for this class.
 						</p>
 					</div>
-				</div>
-				<div class="flex flex-wrap gap-2 lg:justify-end">
-					<span class="chip">{{ surface?.group.course || 'Course pending' }}</span>
-					<span class="chip">{{ surface?.curriculum.units.length || 0 }} units</span>
-					<span class="chip">{{ surface?.curriculum.session_count || 0 }} sessions</span>
-					<span class="chip"
-						>{{ surface?.curriculum.assigned_work_count || 0 }} assigned work</span
-					>
-					<span v-if="surface?.teaching_plan?.planning_status" class="chip">
-						{{ surface.teaching_plan.planning_status }}
-					</span>
+					<div class="page-header__actions">
+						<span class="chip">{{ surface?.group.course || 'Course pending' }}</span>
+						<span class="chip">{{ surface?.curriculum.units.length || 0 }} units</span>
+						<span class="chip">{{ surface?.curriculum.session_count || 0 }} sessions</span>
+						<span class="chip"
+							>{{ surface?.curriculum.assigned_work_count || 0 }} assigned work</span
+						>
+						<span v-if="surface?.teaching_plan?.planning_status" class="chip">
+							{{ surface.teaching_plan.planning_status }}
+						</span>
+					</div>
 				</div>
 			</div>
 		</section>

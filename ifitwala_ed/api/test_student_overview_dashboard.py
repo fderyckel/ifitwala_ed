@@ -12,6 +12,7 @@ from ifitwala_ed.api.student_overview_dashboard import (
     _history_block,
     _identity_block,
     _students_for_guardian,
+    _task_rows,
     _wellbeing_block,
     get_filter_meta,
     get_student_center_snapshot,
@@ -249,6 +250,27 @@ class TestStudentOverviewDashboard(IfitwalaFrappeTestCase):
                 },
             ],
         )
+
+    def test_task_rows_returns_empty_when_legacy_task_source_is_unavailable(self):
+        sql_called = False
+
+        def fake_sql(*args, **kwargs):
+            nonlocal sql_called
+            sql_called = True
+            return []
+
+        def fake_table_exists(doctype):
+            self.assertEqual(doctype, "Task Student")
+            return False
+
+        with (
+            patch("ifitwala_ed.api.student_overview_dashboard.frappe.db.table_exists", side_effect=fake_table_exists),
+            patch("ifitwala_ed.api.student_overview_dashboard.frappe.db.sql", side_effect=fake_sql),
+        ):
+            rows = _task_rows("STU-001", "PROG-001")
+
+        self.assertEqual(rows, [])
+        self.assertFalse(sql_called)
 
     def test_get_filter_meta_student_scope_uses_distinct_flag(self):
         def fake_get_all(doctype, **kwargs):

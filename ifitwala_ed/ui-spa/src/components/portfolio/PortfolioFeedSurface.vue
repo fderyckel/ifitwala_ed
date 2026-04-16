@@ -2,13 +2,15 @@
 <template>
 	<div class="space-y-6">
 		<header class="card-surface p-5 sm:p-6">
-			<div class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-				<div>
+			<div class="page-header">
+				<div class="page-header__intro">
 					<p class="type-overline text-ink/60">{{ portalLabel }}</p>
-					<h1 class="type-h1 text-ink">{{ title }}</h1>
-					<p class="type-body text-ink/70">{{ subtitle }}</p>
+					<h1 class="type-h1" :class="isStaff ? 'text-canopy' : 'text-ink'">{{ title }}</h1>
+					<p :class="isStaff ? 'type-meta text-slate-token/80' : 'type-body text-ink/70'">
+						{{ subtitle }}
+					</p>
 				</div>
-				<div class="flex flex-wrap items-center gap-2">
+				<div class="page-header__actions">
 					<button type="button" class="if-action" :disabled="loading" @click="refreshFeed">
 						Refresh
 					</button>

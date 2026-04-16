@@ -2,39 +2,43 @@
 	<div class="gradebook-shell min-h-full px-4 pb-8 pt-6 md:px-6 lg:px-8 xl:px-10">
 		<div class="mx-auto flex w-full max-w-[1640px] flex-col gap-6 xl:gap-8">
 			<header class="flex flex-col gap-5">
-				<div class="flex flex-wrap items-center justify-between gap-3">
-					<div class="space-y-1">
-						<h1 class="text-2xl font-semibold tracking-tight text-ink sm:text-3xl">Gradebook</h1>
-						<p class="max-w-3xl text-base text-ink/70">
+				<div class="page-header">
+					<div class="page-header__intro">
+						<h1 class="type-h1 text-canopy">Gradebook</h1>
+						<p class="type-meta text-slate-token/80">
 							Pick a student group, then switch between fast single-task grading and the full class
 							overview.
 						</p>
 					</div>
 
-					<div class="inline-flex rounded-xl border border-border/70 bg-white p-1 shadow-sm">
-						<button
-							type="button"
-							class="rounded-lg px-3 py-2 text-sm font-medium transition-all"
-							:class="
-								viewMode === 'task' ? 'bg-leaf text-white shadow-sm' : 'text-ink/70 hover:text-ink'
-							"
-							@click="setViewMode('task')"
-						>
-							Task View
-						</button>
-						<button
-							type="button"
-							class="rounded-lg px-3 py-2 text-sm font-medium transition-all"
-							:class="
-								viewMode === 'overview'
-									? 'bg-leaf text-white shadow-sm'
-									: 'text-ink/70 hover:text-ink'
-							"
-							:disabled="!selectedGroup"
-							@click="setViewMode('overview')"
-						>
-							Overview
-						</button>
+					<div class="page-header__actions">
+						<div class="inline-flex rounded-xl border border-border/70 bg-white p-1 shadow-sm">
+							<button
+								type="button"
+								class="rounded-lg px-3 py-2 text-sm font-medium transition-all"
+								:class="
+									viewMode === 'task'
+										? 'bg-leaf text-white shadow-sm'
+										: 'text-ink/70 hover:text-ink'
+								"
+								@click="setViewMode('task')"
+							>
+								Task View
+							</button>
+							<button
+								type="button"
+								class="rounded-lg px-3 py-2 text-sm font-medium transition-all"
+								:class="
+									viewMode === 'overview'
+										? 'bg-leaf text-white shadow-sm'
+										: 'text-ink/70 hover:text-ink'
+								"
+								:disabled="!selectedGroup"
+								@click="setViewMode('overview')"
+							>
+								Overview
+							</button>
+						</div>
 					</div>
 				</div>
 

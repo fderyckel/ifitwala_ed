@@ -2,16 +2,18 @@
 <template>
 	<div class="staff-shell min-w-0 space-y-6">
 		<!-- Header -->
-		<header class="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-			<div>
-				<h1 class="type-h1">Announcement Archive</h1>
-				<p class="type-meta text-slate-token/70">
+		<header class="page-header">
+			<div class="page-header__intro">
+				<h1 class="type-h1 text-canopy">Announcement Archive</h1>
+				<p class="type-meta text-slate-token/80">
 					All communications visible to you across your organisation
 				</p>
 			</div>
 
 			<!-- Date Range Toggles -->
-			<DateRangePills v-model="filters.date_range" :items="DATE_RANGES" />
+			<div class="page-header__actions">
+				<DateRangePills v-model="filters.date_range" :items="DATE_RANGES" />
+			</div>
 		</header>
 
 		<!-- Filters Bar -->

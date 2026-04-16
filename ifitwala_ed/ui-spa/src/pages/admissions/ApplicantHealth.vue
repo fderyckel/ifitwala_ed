@@ -2,22 +2,24 @@
 
 <template>
 	<div class="admissions-page">
-		<div class="flex flex-wrap items-start justify-between gap-4">
-			<div>
-				<p class="type-h2 text-ink">{{ __('Health information') }}</p>
-				<p class="mt-1 type-caption text-ink/60">
+		<header class="page-header">
+			<div class="page-header__intro">
+				<h1 class="type-h1 text-ink">{{ __('Health information') }}</h1>
+				<p class="type-meta text-ink/70">
 					{{ __('Provide complete medical details, including vaccination records.') }}
 				</p>
 			</div>
-			<button
-				type="button"
-				class="rounded-full bg-ink px-4 py-2 type-caption text-white shadow-soft disabled:opacity-50"
-				:disabled="isReadOnly || loading"
-				@click="openEdit"
-			>
-				{{ __('Edit') }}
-			</button>
-		</div>
+			<div class="page-header__actions">
+				<button
+					type="button"
+					class="rounded-full bg-ink px-4 py-2 type-caption text-white shadow-soft disabled:opacity-50"
+					:disabled="isReadOnly || loading"
+					@click="openEdit"
+				>
+					{{ __('Edit') }}
+				</button>
+			</div>
+		</header>
 
 		<div v-if="loading" class="rounded-2xl border border-border/70 bg-surface px-4 py-4">
 			<div class="flex items-center gap-3">

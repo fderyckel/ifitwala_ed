@@ -1,10 +1,10 @@
 <!-- ifitwala_ed/ui-spa/src/pages/staff/organization_chart/OrganizationChart.vue -->
 <template>
 	<div class="staff-shell org-chart-shell">
-		<header class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-			<div>
-				<h1 class="type-h2 text-canopy">Organization Chart</h1>
-				<p class="type-body text-slate-500 mt-1">
+		<header class="page-header">
+			<div class="page-header__intro">
+				<h1 class="type-h1 text-canopy">Organization Chart</h1>
+				<p class="type-meta text-slate-token/80">
 					Explore reporting lines across your organization.
 				</p>
 			</div>

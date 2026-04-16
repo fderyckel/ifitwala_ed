@@ -2,12 +2,14 @@
 
 <template>
 	<div class="admissions-page">
-		<div>
-			<p class="type-h2 text-ink">{{ __('Application status') }}</p>
-			<p class="mt-1 type-caption text-ink/60">
-				{{ __('Track the current status of your admissions application.') }}
-			</p>
-		</div>
+		<header class="page-header">
+			<div class="page-header__intro">
+				<h1 class="type-h1 text-ink">{{ __('Application status') }}</h1>
+				<p class="type-meta text-ink/70">
+					{{ __('Track the current status of your admissions application.') }}
+				</p>
+			</div>
+		</header>
 
 		<div class="rounded-2xl border border-border/70 bg-white px-4 py-4 shadow-soft">
 			<p class="type-body-strong text-ink">{{ __('Current status') }}</p>

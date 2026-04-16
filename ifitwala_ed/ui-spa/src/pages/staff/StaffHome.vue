@@ -7,23 +7,25 @@
 		     - Lightweight “welcome” + one high-signal shortcut (Morning Brief)
 		     - No data-heavy calls here (header is cached server-side)
 		   ============================================================ -->
-		<header class="staff-home__header">
-			<div>
-				<h1 class="type-h1">
+		<header class="page-header">
+			<div class="page-header__intro">
+				<h1 class="type-h1 text-ink">
 					{{ greeting }},
 					<span class="text-canopy">{{ firstName }}</span>
 				</h1>
 			</div>
 
 			<!-- Morning Brief opens in a new tab by design (teacher keeps Home open) -->
-			<RouterLink
-				:to="{ name: 'MorningBriefing' }"
-				target="_blank"
-				class="inline-flex items-center gap-2 rounded-full bg-jacaranda px-5 py-2.5 type-button-label text-white shadow-soft transition-transform hover:-translate-y-0.5 hover:shadow-strong"
-			>
-				<FeatherIcon name="sun" class="h-4 w-4 text-yellow-300" />
-				<span>Morning Brief</span>
-			</RouterLink>
+			<div class="page-header__actions">
+				<RouterLink
+					:to="{ name: 'MorningBriefing' }"
+					target="_blank"
+					class="inline-flex items-center gap-2 rounded-full bg-jacaranda px-5 py-2.5 type-button-label text-white shadow-soft transition-transform hover:-translate-y-0.5 hover:shadow-strong"
+				>
+					<FeatherIcon name="sun" class="h-4 w-4 text-yellow-300" />
+					<span>Morning Brief</span>
+				</RouterLink>
+			</div>
 		</header>
 
 		<!-- ============================================================
@@ -937,12 +939,6 @@ function openOrgCommunication() {
 </script>
 
 <style scoped>
-.staff-home__header {
-	display: flex;
-	flex-direction: column;
-	gap: 1rem;
-}
-
 .staff-home__primary-grid {
 	display: grid;
 	grid-template-columns: minmax(0, 1fr);
@@ -960,14 +956,6 @@ function openOrgCommunication() {
 	display: grid;
 	grid-template-columns: minmax(0, 1fr);
 	gap: 1rem;
-}
-
-@media (min-width: 640px) {
-	.staff-home__header {
-		flex-direction: row;
-		align-items: flex-end;
-		justify-content: space-between;
-	}
 }
 
 @media (min-width: 1024px) {

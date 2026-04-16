@@ -2,12 +2,14 @@
 
 <template>
 	<div class="admissions-page">
-		<div>
-			<p class="type-h2 text-ink">{{ __('Messages') }}</p>
-			<p class="mt-1 type-caption text-ink/60">
-				{{ __('Contact admissions directly from your application workspace.') }}
-			</p>
-		</div>
+		<header class="page-header">
+			<div class="page-header__intro">
+				<h1 class="type-h1 text-ink">{{ __('Messages') }}</h1>
+				<p class="type-meta text-ink/70">
+					{{ __('Contact admissions directly from your application workspace.') }}
+				</p>
+			</div>
+		</header>
 
 		<div v-if="loading" class="rounded-2xl border border-border/70 bg-surface px-4 py-4">
 			<p class="type-caption text-ink/65">{{ __('Loading messages...') }}</p>

@@ -1,19 +1,22 @@
 <!-- ifitwala_ed/ui-spa/src/pages/staff/admissions/AdmissionsCockpit.vue -->
 <template>
 	<div class="analytics-shell">
-		<header class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-			<div>
-				<h1 class="type-h2 text-canopy">Admissions Cockpit</h1>
-				<p class="type-caption text-slate-token/80">
+		<header class="page-header">
+			<div class="page-header__intro">
+				<h1 class="type-h1 text-canopy">Admissions Cockpit</h1>
+				<p class="type-meta text-slate-token/80">
 					Application progression and blockers (applicant-centered)
 				</p>
 			</div>
-			<button
-				class="fui-btn-primary rounded-full px-4 py-1.5 text-sm font-medium transition active:scale-95"
-				@click="refreshNow"
-			>
-				Refresh
-			</button>
+			<div class="page-header__actions">
+				<button
+					type="button"
+					class="fui-btn-primary rounded-full px-4 py-1.5 text-sm font-medium transition active:scale-95"
+					@click="refreshNow"
+				>
+					Refresh
+				</button>
+			</div>
 		</header>
 
 		<FiltersBar class="analytics-filters">

@@ -2,12 +2,14 @@
 
 <template>
 	<div data-testid="admissions-submit-page" class="admissions-page">
-		<div>
-			<p class="type-h2 text-ink">{{ __('Submit application') }}</p>
-			<p class="mt-1 type-caption text-ink/60">
-				{{ __('Confirm your application is ready for review.') }}
-			</p>
-		</div>
+		<header class="page-header">
+			<div class="page-header__intro">
+				<h1 class="type-h1 text-ink">{{ __('Submit application') }}</h1>
+				<p class="type-meta text-ink/70">
+					{{ __('Confirm your application is ready for review.') }}
+				</p>
+			</div>
+		</header>
 
 		<div v-if="loading" class="rounded-2xl border border-border/70 bg-surface px-4 py-4">
 			<div class="flex items-center gap-3">

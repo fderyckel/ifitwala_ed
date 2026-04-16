@@ -18,6 +18,10 @@
   box-sizing: border-box;
 }
 
+.ifitwala-print.student-profile--with-letterhead {
+  margin-top: 12px;
+}
+
 .ifitwala-print.student-profile .masthead {
   position: relative;
   margin-bottom: 18px;
@@ -83,6 +87,58 @@
   text-align: right;
 }
 
+.ifitwala-print.student-profile .document-banner {
+  display: table;
+  width: 100%;
+  margin-bottom: 16px;
+  padding: 0 0 14px;
+  border-bottom: 1px solid var(--line);
+}
+
+.ifitwala-print.student-profile .document-banner__title-block,
+.ifitwala-print.student-profile .document-banner__meta {
+  display: table-cell;
+  vertical-align: bottom;
+}
+
+.ifitwala-print.student-profile .document-banner__title-block {
+  width: 100%;
+  padding-right: 18px;
+}
+
+.ifitwala-print.student-profile .document-banner__meta {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.ifitwala-print.student-profile .document-banner__meta-item {
+  display: inline-block;
+  margin-left: 18px;
+  vertical-align: bottom;
+}
+
+.ifitwala-print.student-profile .document-banner__eyebrow,
+.ifitwala-print.student-profile .document-banner__label {
+  color: var(--muted);
+  font-size: 8.75px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.ifitwala-print.student-profile .document-banner__subtle {
+  margin-top: 5px;
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.ifitwala-print.student-profile .document-banner__value {
+  margin-top: 3px;
+  color: var(--ink);
+  font-size: 11px;
+  font-weight: 600;
+}
+
 .ifitwala-print.student-profile .eyebrow,
 .ifitwala-print.student-profile .hero-kicker,
 .ifitwala-print.student-profile .section-title,
@@ -92,7 +148,9 @@
 .ifitwala-print.student-profile .premium-table th,
 .ifitwala-print.student-profile .crm-panel__eyebrow,
 .ifitwala-print.student-profile .contact-chip__label,
-.ifitwala-print.student-profile .address-card__meta {
+.ifitwala-print.student-profile .address-card__meta,
+.ifitwala-print.student-profile .document-banner__eyebrow,
+.ifitwala-print.student-profile .document-banner__label {
   color: var(--muted);
   font-size: 8.75px;
   font-weight: 600;
@@ -115,6 +173,10 @@
 .ifitwala-print.student-profile h1 {
   font-size: 24px;
   margin-top: 1px;
+}
+
+.ifitwala-print.student-profile .document-banner h1 {
+  margin-top: 0;
 }
 
 .ifitwala-print.student-profile h2 {
@@ -408,7 +470,9 @@
 @media print {
   .ifitwala-print.student-profile .hero-label,
   .ifitwala-print.student-profile .info-key,
-  .ifitwala-print.student-profile .meta-key {
+  .ifitwala-print.student-profile .meta-key,
+  .ifitwala-print.student-profile .document-banner__label,
+  .ifitwala-print.student-profile .document-banner__eyebrow {
     border: none !important;
     outline: none !important;
     box-shadow: none !important;

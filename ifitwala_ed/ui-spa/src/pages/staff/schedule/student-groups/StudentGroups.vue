@@ -2,9 +2,14 @@
 	<!-- Page wrapper -->
 	<div class="staff-shell">
 		<!-- Header -->
-		<div class="flex items-center justify-between gap-3">
-			<h1 class="text-xl font-semibold tracking-tight">Student Group Cards</h1>
-			<div class="flex items-center gap-2">
+		<header class="page-header">
+			<div class="page-header__intro">
+				<h1 class="type-h1 text-canopy">Student Group Cards</h1>
+				<p class="type-meta text-slate-token/80">
+					Review the selected group and reload the current student card set from one workspace.
+				</p>
+			</div>
+			<div class="page-header__actions">
 				<Button
 					appearance="primary"
 					:loading="studentsLoading"
@@ -14,7 +19,7 @@
 					Reload
 				</Button>
 			</div>
-		</div>
+		</header>
 
 		<!-- Filters -->
 		<div class="ifit-filters mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">

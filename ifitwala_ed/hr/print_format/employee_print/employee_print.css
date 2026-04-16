@@ -1,0 +1,335 @@
+.ifitwala-print.employee-profile {
+  --ink: #17212b;
+  --muted: #667085;
+  --accent: #204a5d;
+  --accent-soft: #eef5f7;
+  --line: #d7dde3;
+  --soft-line: #ebeff3;
+  --warning: #8a3b12;
+  --highlight: #b9843b;
+  color: var(--ink);
+  font-family: "Avenir Next", "Helvetica Neue", Arial, sans-serif;
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.ifitwala-print.employee-profile,
+.ifitwala-print.employee-profile * {
+  box-sizing: border-box;
+}
+
+.ifitwala-print.employee-profile .profile-header,
+.ifitwala-print.employee-profile .section-card {
+  page-break-inside: avoid;
+  break-inside: avoid;
+  border: 1px solid var(--line);
+  background: linear-gradient(180deg, rgba(248, 250, 251, 0.95), #ffffff 34px);
+}
+
+.ifitwala-print.employee-profile .profile-header {
+  display: table;
+  width: 100%;
+  margin-bottom: 18px;
+  border-top: 5px solid var(--accent);
+}
+
+.ifitwala-print.employee-profile .profile-header__main,
+.ifitwala-print.employee-profile .profile-header__media {
+  display: table-cell;
+  vertical-align: top;
+  padding: 18px 20px;
+}
+
+.ifitwala-print.employee-profile .profile-header__media {
+  width: 146px;
+  text-align: right;
+}
+
+.ifitwala-print.employee-profile .eyebrow,
+.ifitwala-print.employee-profile .hero-label,
+.ifitwala-print.employee-profile .section-title,
+.ifitwala-print.employee-profile .info-key,
+.ifitwala-print.employee-profile .premium-table th,
+.ifitwala-print.employee-profile .crm-panel__eyebrow,
+.ifitwala-print.employee-profile .contact-chip__label,
+.ifitwala-print.employee-profile .address-card__meta,
+.ifitwala-print.employee-profile .profile-photo__caption {
+  color: var(--muted);
+  font-size: 8.75px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.ifitwala-print.employee-profile h1 {
+  margin: 2px 0 0;
+  color: #0f1720;
+  font-family: Baskerville, Georgia, serif;
+  font-size: 26px;
+  font-weight: 600;
+  line-height: 1.12;
+}
+
+.ifitwala-print.employee-profile .profile-header__subline,
+.ifitwala-print.employee-profile .preferred-name,
+.ifitwala-print.employee-profile .crm-panel__subtle,
+.ifitwala-print.employee-profile .empty-value,
+.ifitwala-print.employee-profile .empty-state {
+  color: var(--muted);
+}
+
+.ifitwala-print.employee-profile .profile-header__subline {
+  margin-top: 8px;
+  font-size: 10px;
+}
+
+.ifitwala-print.employee-profile .profile-header__subline span + span::before {
+  content: "•";
+  margin: 0 7px;
+  color: rgba(102, 112, 133, 0.55);
+}
+
+.ifitwala-print.employee-profile .preferred-name {
+  margin-top: 6px;
+  font-size: 10px;
+}
+
+.ifitwala-print.employee-profile .hero-grid {
+  margin-top: 18px;
+}
+
+.ifitwala-print.employee-profile .hero-item {
+  display: inline-block;
+  width: 49%;
+  margin-bottom: 12px;
+  padding-right: 12px;
+  vertical-align: top;
+}
+
+.ifitwala-print.employee-profile .hero-label {
+  margin-bottom: 2px;
+}
+
+.ifitwala-print.employee-profile .profile-photo,
+.ifitwala-print.employee-profile .profile-photo--fallback {
+  width: 92px;
+  height: 116px;
+  margin-left: auto;
+  border: 1px solid var(--line);
+  background: #fff;
+  box-shadow: 0 10px 20px rgba(23, 33, 43, 0.08);
+}
+
+.ifitwala-print.employee-profile .profile-photo img {
+  width: 92px;
+  height: 116px;
+  object-fit: cover;
+  display: block;
+}
+
+.ifitwala-print.employee-profile .profile-photo--fallback {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--muted);
+  font-family: Baskerville, Georgia, serif;
+  font-size: 16px;
+}
+
+.ifitwala-print.employee-profile .profile-photo__caption {
+  margin-top: 8px;
+}
+
+.ifitwala-print.employee-profile .status-pill {
+  display: inline-block;
+  min-width: 96px;
+  padding: 3px 10px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: rgba(32, 74, 93, 0.06);
+  text-align: center;
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.ifitwala-print.employee-profile .status-pill.left,
+.ifitwala-print.employee-profile .status-pill.suspended,
+.ifitwala-print.employee-profile .status-pill.temporary-leave {
+  color: var(--warning);
+  background: rgba(138, 59, 18, 0.06);
+}
+
+.ifitwala-print.employee-profile .section-grid {
+  margin: 0 -1.2%;
+}
+
+.ifitwala-print.employee-profile .section-grid::after {
+  content: "";
+  display: table;
+  clear: both;
+}
+
+.ifitwala-print.employee-profile .section-grid .section-card {
+  float: left;
+  width: 47.6%;
+  margin: 0 1.2% 18px;
+}
+
+.ifitwala-print.employee-profile .section-card {
+  margin-bottom: 18px;
+  padding: 14px 16px 12px;
+}
+
+.ifitwala-print.employee-profile .section-card.wide-card {
+  width: 100%;
+}
+
+.ifitwala-print.employee-profile .section-title {
+  margin-bottom: 12px;
+  padding-bottom: 7px;
+  border-bottom: 1px solid var(--line);
+}
+
+.ifitwala-print.employee-profile .info-table {
+  width: 100%;
+}
+
+.ifitwala-print.employee-profile .info-row {
+  display: grid;
+  grid-template-columns: 37% 1fr;
+  column-gap: 14px;
+  align-items: start;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--soft-line);
+}
+
+.ifitwala-print.employee-profile .info-row:last-child {
+  border-bottom: none;
+}
+
+.ifitwala-print.employee-profile .info-row--stacked {
+  grid-template-columns: 100%;
+}
+
+.ifitwala-print.employee-profile .info-row--stacked .info-key {
+  margin-bottom: 6px;
+}
+
+.ifitwala-print.employee-profile .crm-card {
+  background: linear-gradient(135deg, rgba(32, 74, 93, 0.05), #ffffff 36%);
+}
+
+.ifitwala-print.employee-profile .crm-grid {
+  display: table;
+  width: 100%;
+}
+
+.ifitwala-print.employee-profile .crm-panel {
+  display: table-cell;
+  width: 50%;
+  vertical-align: top;
+  padding-right: 16px;
+}
+
+.ifitwala-print.employee-profile .crm-panel + .crm-panel {
+  padding-left: 16px;
+  padding-right: 0;
+  border-left: 1px solid var(--soft-line);
+}
+
+.ifitwala-print.employee-profile .crm-panel__title {
+  margin-top: 5px;
+  color: var(--ink);
+  font-family: Baskerville, Georgia, serif;
+  font-size: 18px;
+  line-height: 1.2;
+}
+
+.ifitwala-print.employee-profile .crm-panel__subtle {
+  margin-top: 4px;
+  font-size: 10px;
+}
+
+.ifitwala-print.employee-profile .contact-list,
+.ifitwala-print.employee-profile .address-stack {
+  margin-top: 12px;
+}
+
+.ifitwala-print.employee-profile .contact-chip,
+.ifitwala-print.employee-profile .address-card {
+  margin-bottom: 10px;
+  padding: 9px 10px;
+  border: 1px solid var(--soft-line);
+  background: rgba(255, 255, 255, 0.82);
+}
+
+.ifitwala-print.employee-profile .contact-chip__label,
+.ifitwala-print.employee-profile .address-card__meta {
+  display: block;
+  margin-bottom: 4px;
+}
+
+.ifitwala-print.employee-profile .contact-chip__value,
+.ifitwala-print.employee-profile .address-card__title {
+  color: var(--ink);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.ifitwala-print.employee-profile .address-card__title {
+  font-family: Baskerville, Georgia, serif;
+  font-size: 16px;
+}
+
+.ifitwala-print.employee-profile .address-lines div + div {
+  margin-top: 2px;
+}
+
+.ifitwala-print.employee-profile .crm-empty,
+.ifitwala-print.employee-profile .empty-state {
+  padding: 10px 0 2px;
+}
+
+.ifitwala-print.employee-profile .premium-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 6px;
+}
+
+.ifitwala-print.employee-profile .premium-table th {
+  padding: 7px 8px;
+  border-bottom: 1px solid var(--line);
+  text-align: left;
+}
+
+.ifitwala-print.employee-profile .premium-table td {
+  padding: 9px 8px;
+  border-bottom: 1px solid var(--soft-line);
+  vertical-align: top;
+}
+
+.ifitwala-print.employee-profile .premium-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.ifitwala-print.employee-profile .history-table td,
+.ifitwala-print.employee-profile .history-table th {
+  font-size: 10px;
+}
+
+.ifitwala-print.employee-profile .exit-card {
+  border-color: rgba(138, 59, 18, 0.24);
+  background: linear-gradient(180deg, rgba(138, 59, 18, 0.05), #ffffff 34px);
+}
+
+@media print {
+  .ifitwala-print.employee-profile .section-grid .section-card {
+    width: 47.6%;
+  }
+
+  .ifitwala-print.employee-profile .profile-header {
+    margin-top: 0;
+  }
+}

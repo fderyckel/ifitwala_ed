@@ -2,10 +2,12 @@
 
 <template>
 	<div class="portal-page">
-		<div>
-			<h1 class="type-h1">Student Logs</h1>
-			<p class="type-meta mt-1">Notes shared with you by staff.</p>
-		</div>
+		<header class="page-header">
+			<div class="page-header__intro">
+				<h1 class="type-h1 text-ink">Student Logs</h1>
+				<p class="type-meta text-ink/70">Notes shared with you by staff.</p>
+			</div>
+		</header>
 
 		<!-- Initial loading -->
 		<div v-if="initialLoading" class="py-10 text-center type-meta">Loading logs…</div>

@@ -2,12 +2,14 @@
 
 <template>
 	<div class="admissions-overview">
-		<div class="admissions-overview__header">
-			<p class="type-h2 text-ink">{{ __('Overview') }}</p>
-			<p class="type-body text-ink/65">
-				{{ __('Track your application progress and next steps.') }}
-			</p>
-		</div>
+		<header class="admissions-overview__header page-header">
+			<div class="page-header__intro">
+				<h1 class="type-h1 text-ink">{{ __('Overview') }}</h1>
+				<p class="type-meta text-ink/70">
+					{{ __('Track your application progress and next steps.') }}
+				</p>
+			</div>
+		</header>
 
 		<div v-if="loading" class="admissions-overview__state-card">
 			<div class="admissions-overview__state-inline">

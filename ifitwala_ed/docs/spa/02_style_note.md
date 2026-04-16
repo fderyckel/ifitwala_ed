@@ -359,36 +359,42 @@ Vue templates **must use these**, not raw Tailwind text utilities.
 
 ### 6.3.1 Routed page headers are a shared contract
 
-Status: Shared primitive implemented; normalization still required for legacy staff-shell pages when touched
+Status: Implemented for staff routed pages and admissions applicant subpages
 
 Code refs:
 
 * `ui-spa/src/styles/components.css`
+* `ui-spa/src/pages/staff/StaffHome.vue`
 * `ui-spa/src/pages/staff/OrgCommunicationArchive.vue`
 * `ui-spa/src/pages/staff/morning_brief/MorningBriefing.vue`
 * `ui-spa/src/pages/staff/StaffPolicies.vue`
+* `ui-spa/src/pages/staff/organization_chart/OrganizationChart.vue`
+* `ui-spa/src/pages/staff/CoursePlanIndex.vue`
+* `ui-spa/src/pages/staff/ClassPlanning.vue`
+* `ui-spa/src/components/planning/course-plan-workspace/CoursePlanWorkspaceHeader.vue`
 * `ui-spa/src/pages/staff/analytics/AcademicLoad.vue`
 * `ui-spa/src/pages/staff/analytics/PolicySignatureAnalytics.vue`
 * `ui-spa/src/pages/staff/analytics/StudentOverview.vue`
 * `ui-spa/src/pages/staff/analytics/StudentDemographicAnalytics.vue`
+* `ui-spa/src/pages/admissions/ApplicantOverview.vue`
+* `ui-spa/src/pages/admissions/ApplicantProfile.vue`
+* `ui-spa/src/pages/admissions/ApplicantDocuments.vue`
+* `ui-spa/src/pages/admissions/ApplicantPolicies.vue`
+* `ui-spa/src/pages/admissions/ApplicantMessages.vue`
+* `ui-spa/src/pages/admissions/ApplicantStatus.vue`
 
 Test refs:
 
 * None
 
-Observed drift examples:
-
-* `ui-spa/src/pages/staff/OrgCommunicationArchive.vue` and `ui-spa/src/pages/staff/morning_brief/MorningBriefing.vue` use `type-h1`
-* `ui-spa/src/pages/staff/StaffPolicies.vue` still uses `type-h2`
-* analytics pages under `ui-spa/src/pages/staff/analytics/` now use the shared `page-header*` primitive and are the canonical reference
-
-Canonical target for route-level headers in `staff-shell` and `analytics-shell`:
+Canonical target for route-level headers in `staff-shell`, `analytics-shell`, and layout-owned
+admissions subpages:
 
 ```vue
 <header class="page-header">
   <div class="page-header__intro">
-    <h1 class="type-h1 text-canopy">Page title</h1>
-    <p class="type-meta text-slate-token/80">
+    <h1 class="type-h1 text-canopy|text-ink">Page title</h1>
+    <p class="type-meta text-slate-token/80|text-ink/70">
       One sentence that explains the page's operational purpose.
     </p>
   </div>
@@ -402,6 +408,7 @@ Rules:
 
 * The intro block is always left-aligned. Do not center it to "balance" actions, and do not right-align it.
 * Route-level titles use `<h1>` + `.type-h1`. `.type-h2` is for in-page section headings, not page titles.
+* Staff routed pages use `text-canopy` for the route title. Admissions applicant subpages use `text-ink` because `AdmissionsLayout` already owns the outer shell identity.
 * The subtitle / top explanation uses `.type-meta` when present and should normally stay to one sentence. If more operational context is needed, move it into chips, badges, or the first surface block below the header.
 * Do not use raw Tailwind typography utilities (`text-base`, `text-2xl`, `tracking-tight`, etc.) for routed page titles or subtitles when semantic helpers already exist.
 * Actions live in a separate trailing cluster. On mobile they stack below the intro; on desktop they sit to the right. The actions cluster must not change the intro alignment.
@@ -504,6 +511,7 @@ Rules:
 
 * Do not recreate page-wide gradients, max-widths, or shell padding inside routed pages when the layout already owns them
 * Do not replace a canonical shell with local `p-*`, `min-h-full`, or ad-hoc max-width wrappers just because one page looks acceptable in isolation
+* `AdmissionsLayout` owns the applicant identity header. Individual applicant routes still render one inner `page-header` block for the active subpage title and subtitle.
 * If a surface truly needs a new shell family, update `layout.css`, the owning layout component, and this note in the same approved change
 
 ---
