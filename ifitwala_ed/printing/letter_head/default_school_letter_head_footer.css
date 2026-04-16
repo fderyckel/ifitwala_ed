@@ -1,0 +1,89 @@
+.ifitwala-letterhead-footer {
+  color: #405261;
+  font-family: "Avenir Next", "Helvetica Neue", Arial, sans-serif;
+  margin-top: 14px;
+  padding-top: 8px;
+}
+
+.ifitwala-letterhead-footer,
+.ifitwala-letterhead-footer * {
+  box-sizing: border-box;
+}
+
+.ifitwala-letterhead-footer__rule {
+  position: relative;
+  height: 14px;
+  margin-bottom: 8px;
+}
+
+.ifitwala-letterhead-footer__rule::before {
+  content: "";
+  position: absolute;
+  top: 6px;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, rgba(168, 189, 199, 0.15) 0%, #d7dde3 18%, #204a5d 50%, #d7dde3 82%, rgba(168, 189, 199, 0.15) 100%);
+}
+
+.ifitwala-letterhead-footer__rule-mark {
+  position: absolute;
+  left: 50%;
+  top: 1px;
+  width: 10px;
+  height: 10px;
+  margin-left: -5px;
+  border: 1px solid rgba(32, 74, 93, 0.22);
+  background: linear-gradient(135deg, #ffffff, #eef5f7);
+  transform: rotate(45deg);
+}
+
+.ifitwala-letterhead-footer__meta {
+  display: table;
+  width: 100%;
+}
+
+.ifitwala-letterhead-footer__brand,
+.ifitwala-letterhead-footer__accent {
+  display: table-cell;
+  vertical-align: middle;
+}
+
+.ifitwala-letterhead-footer__brand {
+  font-size: 9px;
+  letter-spacing: 0.03em;
+  line-height: 1.4;
+}
+
+.ifitwala-letterhead-footer__name {
+  color: #17212b;
+  font-family: Baskerville, Georgia, serif;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.ifitwala-letterhead-footer__secondary,
+.ifitwala-letterhead-footer__tagline {
+  color: #667085;
+}
+
+.ifitwala-letterhead-footer__secondary::before,
+.ifitwala-letterhead-footer__tagline::before {
+  content: "•";
+  margin: 0 7px;
+  color: rgba(102, 112, 133, 0.55);
+}
+
+.ifitwala-letterhead-footer__accent {
+  width: 84px;
+  text-align: right;
+}
+
+.ifitwala-letterhead-footer__accent::before {
+  content: "";
+  display: inline-block;
+  width: 72px;
+  height: 6px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, rgba(32, 74, 93, 0.18), rgba(32, 74, 93, 0.05));
+}

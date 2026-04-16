@@ -92,10 +92,25 @@ graph TD
 
 **Why this matters:**
 
-1. **Inheritance:** A policy set at the `School` level automatically applies to all `Programs` within it.  A dashboard for a school applies to all the schools within it as well.
-2. **Scoped Analytics:** A Head of Department sees data strictly for their node in the tree.
-3. **Scalability:** The same system supports a single K-12 school or a multi-campus university group without re-architecture.
+**Why this matters:**
 
+1. **Hierarchical Permissions, Instantly**
+   Access flows down the tree. A user with rights to a parent node automatically sees all descendants—whether it's an `Organization` spanning multiple campuses, a `School` with grade-level subdivisions, or a `Department` with sub-teams. Sibling branches remain strictly isolated. This isn't filtering; it's architectural multi-tenancy.
+
+2. **Intelligent Inheritance**
+   Policies, assessment categories, and configurations cascade naturally. Set a policy at the `Organization` level and it governs all schools beneath it. Configure assessment categories on a parent `Program` (e.g., "High School") and child programs inherit them—until you override locally. Nearest-ancestor resolution means the system finds the right configuration without manual duplication.
+
+3. **Cross-Boundary Resource Sharing**
+   `Location` hierarchies (Campus → Building → Floor → Room) support explicit sharing rules. A theater or athletic facility can be shared with descendant schools while maintaining tenant isolation. Room utilization analytics aggregate across the location tree—see occupancy at the building level or drill down to individual rooms.
+
+4. **Delegated Authority & Approvals**
+   The `Employee` reporting hierarchy (`reports_to`) powers delegated workflows and the org chart. `Team` hierarchies enable recurring meetings that automatically include all members of a team and its sub-teams. Department trees mirror your organizational structure for approvals and escalations.
+
+5. **Roll-Up Analytics Without Reconciliation**
+   Dashboards aggregate naturally up the tree. A Principal sees school-wide enrollment trends; a Superintendent sees cross-campus insights. Attendance reports, enrollment analytics, and room utilization all respect the hierarchy—select a parent school, and data from all descendants roll up automatically. No manual spreadsheet consolidation.
+
+6. **From Single School to Global Federation**
+   The same architecture serves a single K-12 institution or a multi-national school group with dozens of campuses. Add nodes to the tree; the system scales without re-architecture. Organization trees handle legal entities; School trees handle academic operations—separate but aligned.
 ---
 
 ## 📅 The Time Engine: One Operational Reality

@@ -93,7 +93,10 @@ async function flushUi() {
 	await nextTick();
 }
 
-function mountPanel(resources: Array<Record<string, unknown>> = []) {
+function mountPanel(
+	resources: Array<Record<string, unknown>> = [],
+	props: Record<string, unknown> = {}
+) {
 	const host = document.createElement('div');
 	document.body.appendChild(host);
 
@@ -109,6 +112,7 @@ function mountPanel(resources: Array<Record<string, unknown>> = []) {
 					emptyMessage: 'No resources yet.',
 					blockedMessage: 'Save the unit first.',
 					resources,
+					...props,
 				});
 			},
 		})
@@ -200,5 +204,59 @@ describe('PlanningResourcePanel', () => {
 		expect(actions[1]?.getAttribute('href')).toBe(
 			'/api/method/ifitwala_ed.api.file_access.download_academic_file?file=FILE-1'
 		);
+	});
+
+	it('renders an inline image preview when attachment preview mode is enabled', async () => {
+		mountPanel(
+			[
+				{
+					material: 'MAT-IMG-1',
+					title: 'Cell structure diagram',
+					material_type: 'File',
+					file_name: 'diagram.webp',
+					preview_url: '/api/method/ifitwala_ed.api.file_access.preview_academic_file?file=FILE-IMG-1',
+					open_url: '/api/method/ifitwala_ed.api.file_access.download_academic_file?file=FILE-IMG-1',
+				},
+			],
+			{
+				enableAttachmentPreview: true,
+			}
+		);
+		await flushUi();
+
+		const previewSurface = document.querySelector('[data-resource-preview-kind="image"]');
+		expect(previewSurface).not.toBeNull();
+		const img = previewSurface?.querySelector('img');
+		expect(img?.getAttribute('src')).toBe(
+			'/api/method/ifitwala_ed.api.file_access.preview_academic_file?file=FILE-IMG-1'
+		);
+		expect(previewSurface?.textContent || '').toContain('Image preview');
+	});
+
+	it('renders a compact pdf preview tile when attachment preview mode is enabled', async () => {
+		mountPanel(
+			[
+				{
+					material: 'MAT-PDF-1',
+					title: 'Lab handout',
+					material_type: 'File',
+					file_name: 'handout.pdf',
+					preview_url: '/api/method/ifitwala_ed.api.file_access.preview_academic_file?file=FILE-PDF-1',
+					open_url: '/api/method/ifitwala_ed.api.file_access.download_academic_file?file=FILE-PDF-1',
+				},
+			],
+			{
+				enableAttachmentPreview: true,
+			}
+		);
+		await flushUi();
+
+		const previewSurface = document.querySelector('[data-resource-preview-kind="pdf"]');
+		expect(previewSurface).not.toBeNull();
+		expect(previewSurface?.getAttribute('href')).toBe(
+			'/api/method/ifitwala_ed.api.file_access.preview_academic_file?file=FILE-PDF-1'
+		);
+		expect(previewSurface?.textContent || '').toContain('PDF preview');
+		expect(previewSurface?.textContent || '').toContain('PDF');
 	});
 });

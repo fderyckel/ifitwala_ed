@@ -10,6 +10,8 @@ from jinja2 import Environment
 from ifitwala_ed.printing.letter_head import sync as letter_head_sync
 from ifitwala_ed.printing.letter_head.sync import (
     DEFAULT_SCHOOL_LETTER_HEAD_CSS_PATH,
+    DEFAULT_SCHOOL_LETTER_HEAD_FOOTER_CSS_PATH,
+    DEFAULT_SCHOOL_LETTER_HEAD_FOOTER_TEMPLATE_PATH,
     DEFAULT_SCHOOL_LETTER_HEAD_PATH,
     DEFAULT_SCHOOL_LETTER_HEAD_TEMPLATE_PATH,
     get_default_school_letter_head_values,
@@ -23,11 +25,15 @@ class TestDefaultSchoolLetterHead(unittest.TestCase):
         cls.payload = json.loads(DEFAULT_SCHOOL_LETTER_HEAD_PATH.read_text(encoding="utf-8"))
         cls.template = DEFAULT_SCHOOL_LETTER_HEAD_TEMPLATE_PATH.read_text(encoding="utf-8")
         cls.css = DEFAULT_SCHOOL_LETTER_HEAD_CSS_PATH.read_text(encoding="utf-8")
+        cls.footer_template = DEFAULT_SCHOOL_LETTER_HEAD_FOOTER_TEMPLATE_PATH.read_text(encoding="utf-8")
+        cls.footer_css = DEFAULT_SCHOOL_LETTER_HEAD_FOOTER_CSS_PATH.read_text(encoding="utf-8")
 
     def test_sync_module_targets_exported_paths(self):
         self.assertTrue(DEFAULT_SCHOOL_LETTER_HEAD_PATH.exists())
         self.assertTrue(DEFAULT_SCHOOL_LETTER_HEAD_TEMPLATE_PATH.exists())
         self.assertTrue(DEFAULT_SCHOOL_LETTER_HEAD_CSS_PATH.exists())
+        self.assertTrue(DEFAULT_SCHOOL_LETTER_HEAD_FOOTER_TEMPLATE_PATH.exists())
+        self.assertTrue(DEFAULT_SCHOOL_LETTER_HEAD_FOOTER_CSS_PATH.exists())
 
     def test_exported_metadata_matches_contract(self):
         self.assertEqual(self.payload["doctype"], "Letter Head")
@@ -50,6 +56,8 @@ class TestDefaultSchoolLetterHead(unittest.TestCase):
         self.assertEqual(values["is_default"], 1)
         self.assertIn("<style>", payload["content"])
         self.assertIn("ifitwala-letterhead__name", payload["content"])
+        self.assertIn("<style>", payload["footer"])
+        self.assertIn("ifitwala-letterhead-footer__name", payload["footer"])
 
     def test_sync_reconciles_new_insert_back_to_managed_html_state(self):
         fake_frappe = _FakeSyncFrappe()
@@ -82,6 +90,45 @@ class TestDefaultSchoolLetterHead(unittest.TestCase):
             "default_website_school",
         ):
             self.assertNotIn(token, self.template)
+            self.assertNotIn(token, self.footer_template)
+
+    def test_header_does_not_render_eyebrow_copy(self):
+        self.assertNotIn("Official Letterhead", self.template)
+
+    def test_footer_template_renders_brand_summary(self):
+        rendered = self._render_footer(
+            doc={"doctype": "Leave Application", "school": "SCH-CHILD"},
+            schools={
+                "SCH-PARENT": {
+                    "name": "SCH-PARENT",
+                    "school_name": "Lwitwala Academy",
+                    "school_tagline": "Learning with purpose",
+                    "organization": "ORG-CAMPUS",
+                    "lft": 1,
+                    "rgt": 4,
+                },
+                "SCH-CHILD": {
+                    "name": "SCH-CHILD",
+                    "school_name": "Lwitwala Academy Downtown",
+                    "school_tagline": "",
+                    "organization": "ORG-CAMPUS",
+                    "lft": 2,
+                    "rgt": 3,
+                },
+            },
+            organizations={
+                "ORG-CAMPUS": {
+                    "name": "ORG-CAMPUS",
+                    "organization_name": "Lwitwala Education Network",
+                    "lft": 10,
+                    "rgt": 11,
+                }
+            },
+        )
+
+        self.assertIn("Lwitwala Academy Downtown", rendered)
+        self.assertIn("Lwitwala Education Network", rendered)
+        self.assertIn("Learning with purpose", rendered)
 
     def test_renders_school_ancestor_logo_and_tagline(self):
         rendered = self._render(
@@ -233,8 +280,23 @@ class TestDefaultSchoolLetterHead(unittest.TestCase):
         ):
             self.assertIn(token, self.css)
 
+        for token in (
+            ".ifitwala-letterhead-footer",
+            ".ifitwala-letterhead-footer__rule",
+            ".ifitwala-letterhead-footer__name",
+            ".ifitwala-letterhead-footer__accent",
+        ):
+            self.assertIn(token, self.footer_css)
+
     def _render(self, *, doc, schools, organizations):
         template = Environment().from_string(self.template)
+        return template.render(
+            doc=doc,
+            frappe=_FakeFrappe(schools=schools, organizations=organizations),
+        )
+
+    def _render_footer(self, *, doc, schools, organizations):
+        template = Environment().from_string(self.footer_template)
         return template.render(
             doc=doc,
             frappe=_FakeFrappe(schools=schools, organizations=organizations),

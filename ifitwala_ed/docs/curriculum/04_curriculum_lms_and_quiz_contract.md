@@ -71,6 +71,12 @@ The student learning space currently renders:
 - shared course-plan resources
 - task-linked materials directly on assigned-work cards
 
+Current resource preview behavior in that workspace:
+
+- governed file resources prefer stable Ed-owned `preview_url` routes when preview is available
+- session resources plus unit, class, and shared course resource shelves render inline image previews and compact PDF preview tiles
+- task-linked material chips remain lightweight inside assigned-work cards and keep `Open original` separate through `open_url`
+
 This is the live LMS model.
 
 The old lesson-tree bootstrap is not the current source of truth for the student learning surface.

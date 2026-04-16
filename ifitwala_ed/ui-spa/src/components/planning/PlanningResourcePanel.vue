@@ -22,7 +22,7 @@
 
 		<template v-else>
 			<div
-				v-if="!canManageResources"
+				v-if="shouldShowReadOnlyNotice"
 				:class="[
 					panelSectionOffset,
 					'rounded-2xl border border-line-soft bg-surface-soft px-4 py-4',
@@ -169,6 +169,66 @@
 					:key="resource.placement || resource.material"
 					class="rounded-2xl border border-line-soft bg-surface-soft p-4"
 				>
+					<div v-if="showInlineImagePreview(resource)" class="mb-4">
+						<a
+							:href="primaryResourceUrl(resource) || undefined"
+							target="_blank"
+							rel="noreferrer"
+							class="group block overflow-hidden rounded-2xl border border-line-soft bg-white"
+							data-resource-preview-kind="image"
+						>
+							<img
+								:src="primaryResourceUrl(resource) || undefined"
+								:alt="resource.title"
+								class="h-44 w-full object-cover transition duration-200 group-hover:scale-[1.01]"
+								loading="lazy"
+							/>
+							<div
+								class="flex items-center justify-between border-t border-line-soft bg-white px-4 py-3"
+							>
+								<div>
+									<p class="text-xs font-semibold uppercase tracking-[0.18em] text-ink/45">
+										Image preview
+									</p>
+									<p class="mt-1 text-sm text-ink/80">
+										Open the governed preview without losing planning context.
+									</p>
+								</div>
+								<span class="chip">{{ resourceExtensionLabel(resource) }}</span>
+							</div>
+						</a>
+					</div>
+
+					<div v-else-if="showPdfPreviewTile(resource)" class="mb-4">
+						<a
+							:href="primaryResourceUrl(resource) || undefined"
+							target="_blank"
+							rel="noreferrer"
+							class="group block rounded-2xl border border-line-soft bg-white p-4 transition hover:border-jacaranda/30 hover:bg-jacaranda/5"
+							data-resource-preview-kind="pdf"
+						>
+							<div class="flex items-start justify-between gap-3">
+								<div>
+									<p class="text-xs font-semibold uppercase tracking-[0.18em] text-ink/45">
+										PDF preview
+									</p>
+									<p class="mt-2 text-base font-semibold text-ink">
+										{{ resource.title }}
+									</p>
+									<p class="mt-2 text-sm text-ink/75">
+										Open a compact governed preview for this PDF attachment.
+									</p>
+								</div>
+								<div class="rounded-2xl bg-clay/15 px-3 py-2 text-right">
+									<p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-clay">
+										{{ resourceExtensionLabel(resource) }}
+									</p>
+									<p class="mt-1 text-xs text-ink/60">Preview ready</p>
+								</div>
+							</div>
+						</a>
+					</div>
+
 					<div class="flex items-start justify-between gap-3">
 						<div class="min-w-0">
 							<div class="flex flex-wrap items-center gap-2">
@@ -249,12 +309,16 @@ const props = withDefaults(
 		blockedMessage: string;
 		canManage?: boolean;
 		readOnlyMessage?: string;
+		showReadOnlyNotice?: boolean;
 		resources: StaffPlanningMaterial[];
+		enableAttachmentPreview?: boolean;
 		hideHeader?: boolean;
 		embedded?: boolean;
 	}>(),
 	{
 		canManage: true,
+		showReadOnlyNotice: true,
+		enableAttachmentPreview: false,
 		hideHeader: false,
 		embedded: false,
 	}
@@ -296,6 +360,9 @@ const usageRoleOptions = [
 
 const hideHeader = computed(() => props.hideHeader);
 const canManageResources = computed(() => props.canManage !== false);
+const shouldShowReadOnlyNotice = computed(
+	() => !canManageResources.value && props.showReadOnlyNotice !== false
+);
 const panelClasses = computed(() =>
 	props.embedded ? 'space-y-0' : 'rounded-[2rem] border border-line-soft bg-white p-6 shadow-soft'
 );
@@ -451,6 +518,18 @@ function primaryResourceUrl(resource: StaffPlanningMaterial): string | null {
 	return resource.preview_url || resource.open_url || null;
 }
 
+function showInlineImagePreview(resource: StaffPlanningMaterial): boolean {
+	return Boolean(
+		props.enableAttachmentPreview && primaryResourceUrl(resource) && isImageResource(resource)
+	);
+}
+
+function showPdfPreviewTile(resource: StaffPlanningMaterial): boolean {
+	return Boolean(
+		props.enableAttachmentPreview && primaryResourceUrl(resource) && isPdfResource(resource)
+	);
+}
+
 function primaryResourceLabel(resource: StaffPlanningMaterial): string {
 	return resource.preview_url ? 'Preview' : 'Open';
 }
@@ -459,5 +538,27 @@ function showOpenOriginalAction(resource: StaffPlanningMaterial): boolean {
 	return Boolean(
 		resource.preview_url && resource.open_url && resource.open_url !== resource.preview_url
 	);
+}
+
+function isImageResource(resource: StaffPlanningMaterial): boolean {
+	return ['jpg', 'jpeg', 'png', 'webp'].includes(resourceExtension(resource));
+}
+
+function isPdfResource(resource: StaffPlanningMaterial): boolean {
+	return resourceExtension(resource) === 'pdf';
+}
+
+function resourceExtension(resource: StaffPlanningMaterial): string {
+	const rawName = String(resource.file_name || '').trim();
+	const lastDot = rawName.lastIndexOf('.');
+	if (!rawName || lastDot < 0 || lastDot === rawName.length - 1) {
+		return '';
+	}
+	return rawName.slice(lastDot + 1).toLowerCase();
+}
+
+function resourceExtensionLabel(resource: StaffPlanningMaterial): string {
+	const extension = resourceExtension(resource);
+	return extension ? extension.toUpperCase() : 'FILE';
 }
 </script>

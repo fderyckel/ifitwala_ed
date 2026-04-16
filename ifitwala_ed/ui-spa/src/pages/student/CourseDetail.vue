@@ -472,28 +472,11 @@
 									<span class="chip">{{ selectedSession.resources.length }}</span>
 								</div>
 								<div class="grid gap-3 lg:grid-cols-2">
-									<article
+									<StudentLearningResourceCard
 										v-for="resource in selectedSession.resources"
 										:key="resource.placement || resource.material"
-										class="rounded-2xl border border-line-soft bg-surface-soft p-4"
-									>
-										<p class="type-body-strong text-ink">{{ resource.title }}</p>
-										<p v-if="resource.description" class="mt-2 type-caption text-ink/70">
-											{{ resource.description }}
-										</p>
-										<p v-if="resource.placement_note" class="mt-2 type-caption text-ink/60">
-											{{ resource.placement_note }}
-										</p>
-										<a
-											v-if="resource.open_url"
-											:href="resource.open_url"
-											target="_blank"
-											rel="noreferrer"
-											class="mt-3 inline-flex text-sm font-medium text-jacaranda transition hover:text-jacaranda/80"
-										>
-											Open resource
-										</a>
-									</article>
+										:resource="resource"
+									/>
 								</div>
 							</div>
 
@@ -526,8 +509,8 @@
 													:key="resource.placement || resource.material"
 												>
 													<a
-														v-if="resource.open_url"
-														:href="resource.open_url"
+														v-if="resource.preview_url || resource.open_url"
+														:href="resource.preview_url || resource.open_url"
 														target="_blank"
 														rel="noreferrer"
 														class="inline-flex items-center rounded-full border border-line-soft bg-white px-3 py-1 text-xs font-medium text-ink transition hover:border-jacaranda/40 hover:bg-jacaranda/5"
@@ -802,8 +785,8 @@
 									:key="resource.placement || resource.material"
 								>
 									<a
-										v-if="resource.open_url"
-										:href="resource.open_url"
+										v-if="resource.preview_url || resource.open_url"
+										:href="resource.preview_url || resource.open_url"
 										target="_blank"
 										rel="noreferrer"
 										class="inline-flex items-center rounded-full border border-line-soft bg-white px-3 py-1 text-xs font-medium text-ink transition hover:border-jacaranda/40 hover:bg-jacaranda/5"
@@ -856,22 +839,12 @@
 						class="rounded-2xl border border-line-soft bg-surface-soft p-4"
 					>
 						<p class="type-body-strong text-ink">This unit</p>
-						<div class="mt-3 space-y-3">
-							<div
+						<div class="mt-3 grid gap-3">
+							<StudentLearningResourceCard
 								v-for="resource in selectedUnit.shared_resources"
 								:key="resource.placement || resource.material"
-							>
-								<p class="type-caption text-ink/70">{{ resource.title }}</p>
-								<a
-									v-if="resource.open_url"
-									:href="resource.open_url"
-									target="_blank"
-									rel="noreferrer"
-									class="mt-1 inline-flex text-sm font-medium text-jacaranda transition hover:text-jacaranda/80"
-								>
-									Open resource
-								</a>
-							</div>
+								:resource="resource"
+							/>
 						</div>
 					</article>
 
@@ -880,22 +853,12 @@
 						class="rounded-2xl border border-line-soft bg-surface-soft p-4"
 					>
 						<p class="type-body-strong text-ink">Your class</p>
-						<div class="mt-3 space-y-3">
-							<div
+						<div class="mt-3 grid gap-3">
+							<StudentLearningResourceCard
 								v-for="resource in learningSpace.resources.class_resources"
 								:key="resource.placement || resource.material"
-							>
-								<p class="type-caption text-ink/70">{{ resource.title }}</p>
-								<a
-									v-if="resource.open_url"
-									:href="resource.open_url"
-									target="_blank"
-									rel="noreferrer"
-									class="mt-1 inline-flex text-sm font-medium text-jacaranda transition hover:text-jacaranda/80"
-								>
-									Open resource
-								</a>
-							</div>
+								:resource="resource"
+							/>
 						</div>
 					</article>
 
@@ -904,22 +867,12 @@
 						class="rounded-2xl border border-line-soft bg-surface-soft p-4"
 					>
 						<p class="type-body-strong text-ink">Across this course</p>
-						<div class="mt-3 space-y-3">
-							<div
+						<div class="mt-3 grid gap-3">
+							<StudentLearningResourceCard
 								v-for="resource in learningSpace.resources.shared_resources"
 								:key="resource.placement || resource.material"
-							>
-								<p class="type-caption text-ink/70">{{ resource.title }}</p>
-								<a
-									v-if="resource.open_url"
-									:href="resource.open_url"
-									target="_blank"
-									rel="noreferrer"
-									class="mt-1 inline-flex text-sm font-medium text-jacaranda transition hover:text-jacaranda/80"
-								>
-									Open resource
-								</a>
-							</div>
+								:resource="resource"
+							/>
 						</div>
 					</article>
 				</div>
@@ -933,6 +886,7 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { toast } from 'frappe-ui';
 import { RouterLink, useRoute, useRouter } from 'vue-router';
 
+import StudentLearningResourceCard from '@/components/learning/StudentLearningResourceCard.vue';
 import { createReflectionEntry } from '@/lib/services/portfolio/portfolioService';
 import { getStudentLearningSpace } from '@/lib/services/student/studentLearningHubService';
 import type {

@@ -622,44 +622,52 @@
 														:disabled="submitting"
 													/>
 												</div>
-												<div class="space-y-1">
-													<label class="type-label">Publish from</label>
-													<input
-														v-model="form.publish_from"
-														type="datetime-local"
-														class="w-full rounded-2xl border border-border/80 bg-white px-3 py-2 text-sm text-ink shadow-sm focus:border-jacaranda/50 focus:ring-1 focus:ring-jacaranda/30"
-														:disabled="submitting"
-													/>
+												<div
+													class="if-org-communication-publish-window-grid grid grid-cols-1 gap-4 md:col-span-2 md:grid-cols-2"
+												>
+													<div class="space-y-1">
+														<label class="type-label">Publish from</label>
+														<input
+															v-model="form.publish_from"
+															type="datetime-local"
+															class="w-full rounded-2xl border border-border/80 bg-white px-3 py-2 text-sm text-ink shadow-sm focus:border-jacaranda/50 focus:ring-1 focus:ring-jacaranda/30"
+															:disabled="submitting"
+														/>
+													</div>
+													<div class="space-y-1">
+														<label class="type-label">Publish until</label>
+														<input
+															v-model="form.publish_to"
+															type="datetime-local"
+															class="w-full rounded-2xl border border-border/80 bg-white px-3 py-2 text-sm text-ink shadow-sm focus:border-jacaranda/50 focus:ring-1 focus:ring-jacaranda/30"
+															:disabled="submitting"
+														/>
+													</div>
 												</div>
-												<div class="space-y-1">
-													<label class="type-label">Publish until</label>
-													<input
-														v-model="form.publish_to"
-														type="datetime-local"
-														class="w-full rounded-2xl border border-border/80 bg-white px-3 py-2 text-sm text-ink shadow-sm focus:border-jacaranda/50 focus:ring-1 focus:ring-jacaranda/30"
-														:disabled="submitting"
-													/>
-												</div>
-												<div class="space-y-1">
-													<label class="type-label">
-														Brief start date
-														<span v-if="briefDatesRequired" class="text-rose-600">*</span>
-													</label>
-													<input
-														v-model="form.brief_start_date"
-														type="date"
-														class="w-full rounded-2xl border border-border/80 bg-white px-3 py-2 text-sm text-ink shadow-sm focus:border-jacaranda/50 focus:ring-1 focus:ring-jacaranda/30"
-														:disabled="submitting"
-													/>
-												</div>
-												<div class="space-y-1">
-													<label class="type-label">Brief end date</label>
-													<input
-														v-model="form.brief_end_date"
-														type="date"
-														class="w-full rounded-2xl border border-border/80 bg-white px-3 py-2 text-sm text-ink shadow-sm focus:border-jacaranda/50 focus:ring-1 focus:ring-jacaranda/30"
-														:disabled="submitting"
-													/>
+												<div
+													class="if-org-communication-brief-window-grid grid grid-cols-1 gap-4 md:col-span-2 md:grid-cols-2"
+												>
+													<div class="space-y-1">
+														<label class="type-label">
+															Brief start date
+															<span v-if="briefDatesRequired" class="text-rose-600">*</span>
+														</label>
+														<input
+															v-model="form.brief_start_date"
+															type="date"
+															class="w-full rounded-2xl border border-border/80 bg-white px-3 py-2 text-sm text-ink shadow-sm focus:border-jacaranda/50 focus:ring-1 focus:ring-jacaranda/30"
+															:disabled="submitting"
+														/>
+													</div>
+													<div class="space-y-1">
+														<label class="type-label">Brief end date</label>
+														<input
+															v-model="form.brief_end_date"
+															type="date"
+															class="w-full rounded-2xl border border-border/80 bg-white px-3 py-2 text-sm text-ink shadow-sm focus:border-jacaranda/50 focus:ring-1 focus:ring-jacaranda/30"
+															:disabled="submitting"
+														/>
+													</div>
 												</div>
 											</div>
 										</section>
@@ -867,33 +875,6 @@
 
 									<aside class="space-y-5">
 										<section
-											class="if-org-communication-ready-check overflow-hidden rounded-[32px] border border-canopy/10 bg-canopy bg-[linear-gradient(160deg,rgb(var(--canopy-rgb)/0.96),rgb(var(--ink-rgb)/0.92))] p-5 text-white shadow-soft"
-										>
-											<p class="type-overline text-white/65">Ready check</p>
-											<h3 class="mt-1 type-h3 text-white">{{ summaryTitle }}</h3>
-											<p class="mt-2 type-caption text-white/70">
-												{{ summarySubtitle }}
-											</p>
-
-											<div class="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-1">
-												<div class="rounded-2xl bg-white/10 px-4 py-3 backdrop-blur-sm">
-													<p class="type-caption text-white/60">
-														{{ isClassEventMode ? 'Delivery' : 'Publish action' }}
-													</p>
-													<p class="mt-1 type-body-strong text-white">
-														{{ publishActionStatus }} · {{ form.portal_surface }}
-													</p>
-												</div>
-												<div class="rounded-2xl bg-white/10 px-4 py-3 backdrop-blur-sm">
-													<p class="type-caption text-white/60">Issuing scope</p>
-													<p class="mt-1 type-body-strong text-white">
-														{{ issuingScopeLabel }}
-													</p>
-												</div>
-											</div>
-										</section>
-
-										<section
 											class="rounded-[28px] border border-border/70 bg-white p-5 shadow-soft"
 										>
 											<p class="type-overline text-ink/55">Interaction</p>
@@ -968,6 +949,33 @@
 												<p v-if="!audienceSummaryRows.length" class="type-caption text-ink/60">
 													Add at least one audience row.
 												</p>
+											</div>
+										</section>
+
+										<section
+											class="if-org-communication-ready-check overflow-hidden rounded-[32px] border border-canopy/10 bg-canopy bg-[linear-gradient(160deg,rgb(var(--canopy-rgb)/0.96),rgb(var(--ink-rgb)/0.92))] p-5 text-white shadow-soft"
+										>
+											<p class="type-overline text-white/65">Ready check</p>
+											<h3 class="mt-1 type-h3 text-white">{{ summaryTitle }}</h3>
+											<p class="mt-2 type-caption text-white/70">
+												{{ summarySubtitle }}
+											</p>
+
+											<div class="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-1">
+												<div class="rounded-2xl bg-white/10 px-4 py-3 backdrop-blur-sm">
+													<p class="type-caption text-white/60">
+														{{ isClassEventMode ? 'Delivery' : 'Publish action' }}
+													</p>
+													<p class="mt-1 type-body-strong text-white">
+														{{ publishActionStatus }} · {{ form.portal_surface }}
+													</p>
+												</div>
+												<div class="rounded-2xl bg-white/10 px-4 py-3 backdrop-blur-sm">
+													<p class="type-caption text-white/60">Issuing scope</p>
+													<p class="mt-1 type-body-strong text-white">
+														{{ issuingScopeLabel }}
+													</p>
+												</div>
 											</div>
 										</section>
 									</aside>

@@ -17,11 +17,11 @@ const {
 		routeState: {
 			query: {
 				student_group: 'GROUP-1',
+			},
+			hash: '',
 		},
-		hash: '',
-	},
-	routerReplaceMock: vi.fn(),
-}))
+		routerReplaceMock: vi.fn(),
+	}))
 
 vi.mock('vue-router', async () => {
 	const { defineComponent, h } = await import('vue')
@@ -160,8 +160,24 @@ function buildPayload(message: string | null = null): StudentLearningSpaceRespon
 			],
 		},
 		resources: {
-			shared_resources: [],
-			class_resources: [],
+			shared_resources: [
+				{
+					material: 'MAT-SHARED-1',
+					title: 'Course field guide',
+					file_name: 'field-guide.pdf',
+					preview_url: '/api/method/ifitwala_ed.api.file_access.preview_academic_file?file=FILE-SHARED-1',
+					open_url: '/api/method/ifitwala_ed.api.file_access.download_academic_file?file=FILE-SHARED-1',
+				},
+			],
+			class_resources: [
+				{
+					material: 'MAT-CLASS-1',
+					title: 'Class microscope labels',
+					file_name: 'microscope-labels.png',
+					preview_url: '/api/method/ifitwala_ed.api.file_access.preview_academic_file?file=FILE-CLASS-1',
+					open_url: '/api/method/ifitwala_ed.api.file_access.download_academic_file?file=FILE-CLASS-1',
+				},
+			],
 			general_assigned_work: [
 				{
 					task_delivery: 'TDL-QUIZ-1',
@@ -197,7 +213,15 @@ function buildPayload(message: string | null = null): StudentLearningSpaceRespon
 					content: 'Cell structures and microscopy evidence',
 					skills: 'Observation, note-taking, comparison',
 					concepts: 'Structure, function, systems',
-					shared_resources: [],
+					shared_resources: [
+						{
+							material: 'MAT-UNIT-1',
+							title: 'Cell gallery',
+							file_name: 'cell-gallery.webp',
+							preview_url: '/api/method/ifitwala_ed.api.file_access.preview_academic_file?file=FILE-UNIT-1',
+							open_url: '/api/method/ifitwala_ed.api.file_access.download_academic_file?file=FILE-UNIT-1',
+						},
+					],
 					assigned_work: [
 						{
 							task_delivery: 'TDL-QUIZ-1',
@@ -234,7 +258,9 @@ function buildPayload(message: string | null = null): StudentLearningSpaceRespon
 									material: 'MAT-1',
 									title: 'Microscope guide',
 									description: 'Use this guide during the station walk.',
-									open_url: '/files/microscope-guide.pdf',
+									file_name: 'microscope-guide.pdf',
+									preview_url: '/api/method/ifitwala_ed.api.file_access.preview_academic_file?file=FILE-1',
+									open_url: '/api/method/ifitwala_ed.api.file_access.download_academic_file?file=FILE-1',
 								},
 							],
 							assigned_work: [
@@ -402,6 +428,33 @@ describe('CourseDetail', () => {
 		expect(document.body.textContent).toContain('Learning Focus')
 		expect(document.body.textContent).toContain('Cells and Systems')
 		expect(document.body.textContent).toContain('Microscope evidence walk')
+	})
+
+	it('prefers governed preview routes for learning materials across the student workspace', async () => {
+		resetRouteState()
+		getStudentLearningSpaceMock.mockResolvedValue(buildPayload())
+
+		mountCourseDetail()
+		await flushUi()
+
+		const pdfPreview = document.querySelector('[data-learning-resource-kind="pdf"]')
+		expect(pdfPreview).toBeTruthy()
+		expect(pdfPreview?.getAttribute('href')).toBe(
+			'/api/method/ifitwala_ed.api.file_access.preview_academic_file?file=FILE-1'
+		)
+
+		const imagePreview = document.querySelector('[data-learning-resource-kind="image"] img')
+		expect(imagePreview?.getAttribute('src')).toBe(
+			'/api/method/ifitwala_ed.api.file_access.preview_academic_file?file=FILE-UNIT-1'
+		)
+
+		const openOriginalLinks = Array.from(document.querySelectorAll('a')).filter(anchor =>
+			(anchor.textContent || '').includes('Open original')
+		)
+		expect(openOriginalLinks.length).toBeGreaterThan(0)
+		expect(openOriginalLinks[0]?.getAttribute('href')).toContain(
+			'/api/method/ifitwala_ed.api.file_access.download_academic_file?file='
+		)
 	})
 
 	it('syncs section and session query state without reloading the bootstrap payload', async () => {

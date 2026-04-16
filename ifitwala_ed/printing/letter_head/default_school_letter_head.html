@@ -51,9 +51,8 @@
 				alt="{{ frappe.utils.escape_html(brand.name) }}"
 			>
 		</div>
-		{% endif %}
+	{% endif %}
 		<div class="ifitwala-letterhead__copy">
-			<div class="ifitwala-letterhead__eyebrow">Official Letterhead</div>
 			<div class="ifitwala-letterhead__name">{{ frappe.utils.escape_html(brand.name) }}</div>
 			{% if brand.secondary %}
 			<div class="ifitwala-letterhead__secondary">{{ frappe.utils.escape_html(brand.secondary) }}</div>

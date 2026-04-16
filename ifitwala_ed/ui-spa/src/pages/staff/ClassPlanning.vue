@@ -555,32 +555,21 @@
 								<h3 class="type-h3 text-ink">Shared Unit Resources</h3>
 								<span class="chip">{{ selectedUnit.shared_resources.length }}</span>
 							</div>
-							<div class="grid gap-3">
-								<article
-									v-for="resource in selectedUnit.shared_resources"
-									:key="resource.placement || resource.material"
-									class="rounded-2xl border border-line-soft bg-surface-soft p-4"
-								>
-									<div class="flex items-start justify-between gap-3">
-										<div class="min-w-0">
-											<p class="type-body-strong text-ink">{{ resource.title }}</p>
-											<p v-if="resource.description" class="mt-1 type-caption text-ink/70">
-												{{ resource.description }}
-											</p>
-										</div>
-										<span v-if="resource.usage_role" class="chip">{{ resource.usage_role }}</span>
-									</div>
-									<a
-										v-if="resource.open_url"
-										:href="resource.open_url"
-										target="_blank"
-										rel="noreferrer"
-										class="mt-3 inline-flex text-sm font-medium text-jacaranda transition hover:text-jacaranda/80"
-									>
-										Open resource
-									</a>
-								</article>
-							</div>
+							<PlanningResourcePanel
+								anchor-doctype="Unit Plan"
+								:anchor-name="selectedUnit.unit_plan"
+								:can-manage="false"
+								:show-read-only-notice="false"
+								eyebrow="Shared Unit Resources"
+								title="Shared resources for this unit"
+								description="Inherited governed materials from the shared unit backbone."
+								empty-message="No shared unit resources are attached to this unit."
+								blocked-message="Select a governed unit before reviewing shared unit resources."
+								:resources="selectedUnit.shared_resources"
+								enable-attachment-preview
+								hide-header
+								embedded
+							/>
 						</div>
 					</section>
 
@@ -594,6 +583,7 @@
 							empty-message="No class-wide resources shared yet."
 							blocked-message="Create the class teaching plan before sharing class resources."
 							:resources="surface.resources.class_resources"
+							enable-attachment-preview
 							@changed="loadSurface"
 						/>
 
@@ -956,6 +946,7 @@
 											empty-message="No session resources shared yet."
 											blocked-message="Create or select a class session before sharing session resources."
 											:resources="selectedSessionResources"
+											enable-attachment-preview
 											@changed="loadSurface"
 										/>
 

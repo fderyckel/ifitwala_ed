@@ -23,15 +23,17 @@ Related current-state docs:
 ## Current Implemented Baseline
 
 Status: Implemented current-state baseline
-Code refs: `ifitwala_ed/api/file_access.py`, `ifitwala_ed/api/org_communication_attachments.py`, `ifitwala_ed/api/materials.py`, `ifitwala_ed/api/teaching_plans_read_models.py`
-Test refs: `ifitwala_ed/api/test_file_access.py`, `ifitwala_ed/api/test_org_communication_archive.py`, `ifitwala_ed/api/test_teaching_plans.py`
+Code refs: `ifitwala_ed/api/file_access.py`, `ifitwala_ed/api/org_communication_attachments.py`, `ifitwala_ed/api/materials.py`, `ifitwala_ed/api/teaching_plans_read_models.py`, `ifitwala_ed/ui-spa/src/pages/student/CourseDetail.vue`, `ifitwala_ed/ui-spa/src/components/learning/StudentLearningResourceCard.vue`
+Test refs: `ifitwala_ed/api/test_file_access.py`, `ifitwala_ed/api/test_org_communication_archive.py`, `ifitwala_ed/api/test_teaching_plans.py`, `ifitwala_ed/ui-spa/src/pages/student/__tests__/CourseDetail.test.ts`
 
 Today Ifitwala_Ed already enforces the correct broad shape for governed reads:
 
 - business surfaces return server-owned `open_url` values instead of raw private paths
 - `open_org_communication_attachment(...)` re-checks communication visibility, then resolves a Drive grant just in time
 - Org Communication rows now also expose a stable `preview_url` route owned by Ed
-- learning-resource and student-learning surfaces return governed open URLs only
+- planning-material surfaces now also expose stable `preview_url` routes for governed file resources in the staff course-plan and class-planning workspaces
+- the student learning space now also exposes stable `preview_url` routes for governed file resources on `CourseDetail.vue`
+- student task-material chips remain lightweight, but they also prefer `preview_url` over `open_url` when preview is available
 - the SPA does not need to know storage paths or Drive object keys
 
 What still does not exist yet:
@@ -43,6 +45,8 @@ What still does not exist yet:
 Drive now has a narrow image-derivative foundation, but Ed should still treat preview as partial rollout:
 
 - Org Communication can use `preview_url` where Drive reports a ready preview
+- staff planning-material surfaces can use `preview_url` where Drive reports a ready preview
+- the student learning space can use `preview_url` where Drive reports a ready preview, while still keeping `open_url` explicit
 - other surfaces should still be treated as open/download-only until their stable preview routes exist
 
 ## Assessment Of The Proposal

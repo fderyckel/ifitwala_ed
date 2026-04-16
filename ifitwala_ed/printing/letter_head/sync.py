@@ -6,6 +6,10 @@ from pathlib import Path
 DEFAULT_SCHOOL_LETTER_HEAD_PATH = Path(__file__).resolve().parent / "default_school_letter_head.json"
 DEFAULT_SCHOOL_LETTER_HEAD_TEMPLATE_PATH = Path(__file__).resolve().parent / "default_school_letter_head.html"
 DEFAULT_SCHOOL_LETTER_HEAD_CSS_PATH = Path(__file__).resolve().parent / "default_school_letter_head.css"
+DEFAULT_SCHOOL_LETTER_HEAD_FOOTER_TEMPLATE_PATH = (
+    Path(__file__).resolve().parent / "default_school_letter_head_footer.html"
+)
+DEFAULT_SCHOOL_LETTER_HEAD_FOOTER_CSS_PATH = Path(__file__).resolve().parent / "default_school_letter_head_footer.css"
 
 MANAGED_LETTER_HEAD_FIELDS = (
     "align",
@@ -25,8 +29,10 @@ def load_default_school_letter_head_payload() -> dict:
     payload = json.loads(DEFAULT_SCHOOL_LETTER_HEAD_PATH.read_text(encoding="utf-8"))
     template = DEFAULT_SCHOOL_LETTER_HEAD_TEMPLATE_PATH.read_text(encoding="utf-8").strip()
     css = DEFAULT_SCHOOL_LETTER_HEAD_CSS_PATH.read_text(encoding="utf-8").strip()
+    footer_template = DEFAULT_SCHOOL_LETTER_HEAD_FOOTER_TEMPLATE_PATH.read_text(encoding="utf-8").strip()
+    footer_css = DEFAULT_SCHOOL_LETTER_HEAD_FOOTER_CSS_PATH.read_text(encoding="utf-8").strip()
     payload["content"] = f"<style>\n{css}\n</style>\n{template}"
-    payload["footer"] = (payload.get("footer") or "").strip()
+    payload["footer"] = f"<style>\n{footer_css}\n</style>\n{footer_template}"
     return payload
 
 

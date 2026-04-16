@@ -488,6 +488,38 @@ describe('OrgCommunicationQuickCreateModal', () => {
 		expect(readyCheckCard?.getAttribute('class') || '').toContain('bg-canopy');
 	});
 
+	it('keeps publish and brief date controls in dedicated two-column groups', async () => {
+		getOptionsMock.mockResolvedValue(interactiveThreadQuickCreateOptions);
+
+		mountModal();
+		await flushUi();
+
+		const publishWindowGrid = document.querySelector('.if-org-communication-publish-window-grid');
+		const briefWindowGrid = document.querySelector('.if-org-communication-brief-window-grid');
+
+		expect(publishWindowGrid?.textContent || '').toContain('Publish from');
+		expect(publishWindowGrid?.textContent || '').toContain('Publish until');
+		expect(publishWindowGrid?.getAttribute('class') || '').toContain('md:grid-cols-2');
+
+		expect(briefWindowGrid?.textContent || '').toContain('Brief start date');
+		expect(briefWindowGrid?.textContent || '').toContain('Brief end date');
+		expect(briefWindowGrid?.getAttribute('class') || '').toContain('md:grid-cols-2');
+	});
+
+	it('keeps the ready-check card at the bottom of the staff-home aside', async () => {
+		getOptionsMock.mockResolvedValue(quickCreateOptions);
+
+		mountModal();
+		await flushUi();
+
+		const readyCheckCard = document.querySelector('.if-org-communication-ready-check');
+		const previousSection = readyCheckCard?.previousElementSibling as HTMLElement | null;
+		const nextSection = readyCheckCard?.nextElementSibling as HTMLElement | null;
+
+		expect(previousSection?.textContent || '').toContain('Audience summary');
+		expect(nextSection).toBeNull();
+	});
+
 	it('submits organization staff rows as staff-only audiences', async () => {
 		getOptionsMock.mockResolvedValue(wideAudienceQuickCreateOptions);
 		createOrgCommunicationQuickMock.mockResolvedValue({

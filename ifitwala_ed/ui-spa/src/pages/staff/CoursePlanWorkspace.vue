@@ -354,6 +354,7 @@
 								blocked-message="Choose a course plan before sharing resources."
 								read-only-message="Only approved curriculum staff can edit shared course-plan resources."
 								:resources="surface.resources.course_plan_resources"
+								enable-attachment-preview
 								hide-header
 								embedded
 								@changed="loadSurface"
@@ -1534,6 +1535,7 @@
 								blocked-message="Save the unit plan before sharing unit resources."
 								read-only-message="Only approved curriculum staff can edit shared unit resources."
 								:resources="selectedUnit?.shared_resources || []"
+								enable-attachment-preview
 								hide-header
 								embedded
 								@changed="loadSurface"

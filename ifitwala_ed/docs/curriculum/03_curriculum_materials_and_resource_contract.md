@@ -91,6 +91,12 @@ Staff add materials where they already work:
 - course-plan workspace for shared course-plan and unit resources
 - class-planning workspace for class-wide and session-specific resources
 
+Current staff preview behavior:
+
+- governed file materials on the course-plan and class-planning workspaces now prefer stable `preview_url` routes when available
+- those workspaces render inline image thumbnails and compact PDF preview tiles for governed file resources
+- `open_url` remains the explicit original-file action and compatibility baseline
+
 This is the current source-of-truth workflow. Do not push teachers back into a generic Desk library as the primary authoring path.
 
 ## Student LMS Visibility
@@ -113,6 +119,12 @@ Resolution rule:
 - shared plan resources are fallback context
 - task materials travel with assigned work
 
+Current student preview behavior:
+
+- `CourseDetail.vue` prefers stable Ed-owned `preview_url` routes for governed file materials when the backend provides them
+- session resources plus unit, class, and shared course resource shelves now render inline image previews and compact PDF preview tiles
+- task-linked material chips stay lightweight inside assigned-work cards, but they also prefer `preview_url` over `open_url`
+
 The student surface must not require learners to hunt across unrelated pages just to collect the materials for a class.
 
 ## File Governance
@@ -127,6 +139,7 @@ Locked rules:
 
 - `Supporting Material` is the business owner inside Ifitwala_Ed
 - Drive remains the file authority
+- preview routes for file-backed materials must remain Ed-owned stable action routes, not raw file paths or cached grant URLs
 - open/download URLs must be server-resolved
 - raw private file paths are not a valid SPA contract
 - Ifitwala_Ed owns context, placement, and permission checks
@@ -154,7 +167,7 @@ Implemented now:
 - task-scoped link and file materials
 - shared course-plan and unit resource authoring
 - class-wide and session-specific resource authoring
-- student LMS resource shelves with governed open URLs
+- student LMS resource shelves with governed preview/open URLs and inline image or compact PDF preview where available
 
 Not implemented now:
 
