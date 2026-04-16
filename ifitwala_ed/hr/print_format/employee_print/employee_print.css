@@ -18,6 +18,10 @@
   box-sizing: border-box;
 }
 
+.ifitwala-print.employee-profile--with-letterhead {
+  margin-top: 12px;
+}
+
 .ifitwala-print.employee-profile .profile-header,
 .ifitwala-print.employee-profile .section-card {
   page-break-inside: avoid;
@@ -45,6 +49,36 @@
   text-align: right;
 }
 
+.ifitwala-print.employee-profile .document-banner {
+  display: table;
+  width: 100%;
+  margin-bottom: 16px;
+  padding: 0 0 14px;
+  border-bottom: 1px solid var(--line);
+}
+
+.ifitwala-print.employee-profile .document-banner__title-block,
+.ifitwala-print.employee-profile .document-banner__meta {
+  display: table-cell;
+  vertical-align: bottom;
+}
+
+.ifitwala-print.employee-profile .document-banner__title-block {
+  width: 100%;
+  padding-right: 18px;
+}
+
+.ifitwala-print.employee-profile .document-banner__meta {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.ifitwala-print.employee-profile .document-banner__meta-item {
+  display: inline-block;
+  margin-left: 18px;
+  vertical-align: bottom;
+}
+
 .ifitwala-print.employee-profile .eyebrow,
 .ifitwala-print.employee-profile .hero-label,
 .ifitwala-print.employee-profile .section-title,
@@ -53,7 +87,10 @@
 .ifitwala-print.employee-profile .crm-panel__eyebrow,
 .ifitwala-print.employee-profile .contact-chip__label,
 .ifitwala-print.employee-profile .address-card__meta,
-.ifitwala-print.employee-profile .profile-photo__caption {
+.ifitwala-print.employee-profile .profile-photo__caption,
+.ifitwala-print.employee-profile .document-banner__eyebrow,
+.ifitwala-print.employee-profile .document-banner__label,
+.ifitwala-print.employee-profile .history-entry__label {
   color: var(--muted);
   font-size: 8.75px;
   font-weight: 600;
@@ -70,12 +107,29 @@
   line-height: 1.12;
 }
 
+.ifitwala-print.employee-profile .document-banner h1 {
+  margin-top: 0;
+}
+
 .ifitwala-print.employee-profile .profile-header__subline,
 .ifitwala-print.employee-profile .preferred-name,
 .ifitwala-print.employee-profile .crm-panel__subtle,
 .ifitwala-print.employee-profile .empty-value,
 .ifitwala-print.employee-profile .empty-state {
   color: var(--muted);
+}
+
+.ifitwala-print.employee-profile .document-banner__subtle {
+  margin-top: 5px;
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.ifitwala-print.employee-profile .document-banner__value {
+  margin-top: 3px;
+  color: var(--ink);
+  font-size: 11px;
+  font-weight: 600;
 }
 
 .ifitwala-print.employee-profile .profile-header__subline {
@@ -314,9 +368,64 @@
   border-bottom: none;
 }
 
-.ifitwala-print.employee-profile .history-table td,
-.ifitwala-print.employee-profile .history-table th {
+.ifitwala-print.employee-profile .history-stack {
+  margin-top: 6px;
+}
+
+.ifitwala-print.employee-profile .history-entry {
+  margin-bottom: 12px;
+  padding: 12px 12px 10px;
+  border: 1px solid var(--soft-line);
+  background: rgba(255, 255, 255, 0.82);
+  page-break-inside: avoid;
+  break-inside: avoid;
+}
+
+.ifitwala-print.employee-profile .history-entry:last-child {
+  margin-bottom: 0;
+}
+
+.ifitwala-print.employee-profile .history-entry__title {
+  color: var(--ink);
+  font-family: Baskerville, Georgia, serif;
+  font-size: 17px;
+  line-height: 1.2;
+}
+
+.ifitwala-print.employee-profile .history-entry__subtitle {
+  margin-top: 4px;
+  color: var(--muted);
   font-size: 10px;
+}
+
+.ifitwala-print.employee-profile .history-entry__subtitle span + span::before {
+  content: "•";
+  margin: 0 7px;
+  color: rgba(102, 112, 133, 0.55);
+}
+
+.ifitwala-print.employee-profile .history-entry__grid {
+  margin-top: 10px;
+}
+
+.ifitwala-print.employee-profile .history-entry__item {
+  display: inline-block;
+  width: 32.4%;
+  padding-right: 10px;
+  margin-bottom: 10px;
+  vertical-align: top;
+}
+
+.ifitwala-print.employee-profile .history-entry__value {
+  margin-top: 3px;
+  color: var(--ink);
+  font-size: 10.5px;
+  word-break: break-word;
+}
+
+.ifitwala-print.employee-profile .history-entry__note {
+  padding-top: 8px;
+  border-top: 1px solid var(--soft-line);
 }
 
 .ifitwala-print.employee-profile .exit-card {
@@ -325,11 +434,19 @@
 }
 
 @media print {
-  .ifitwala-print.employee-profile .section-grid .section-card {
-    width: 47.6%;
-  }
-
   .ifitwala-print.employee-profile .profile-header {
     margin-top: 0;
+  }
+
+  .ifitwala-print.employee-profile .document-banner__eyebrow,
+  .ifitwala-print.employee-profile .document-banner__label,
+  .ifitwala-print.employee-profile .hero-label,
+  .ifitwala-print.employee-profile .info-key,
+  .ifitwala-print.employee-profile .history-entry__label {
+    border: none !important;
+    outline: none !important;
+    box-shadow: none !important;
+    background: transparent !important;
+    border-radius: 0 !important;
   }
 }

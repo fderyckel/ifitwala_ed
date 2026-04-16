@@ -37,14 +37,14 @@
 					<button
 						v-if="log?.name"
 						type="button"
-						class="btn btn-quiet"
+						class="if-action"
 						@click="openInDesk('Student Log', log.name)"
 					>
 						Open in Desk
 					</button>
 
 					<!-- Advisory: does NOT block closing or workflows -->
-					<button type="button" class="btn btn-quiet" @click="requestRefresh">Refresh</button>
+					<button type="button" class="if-action" @click="requestRefresh">Refresh</button>
 				</div>
 			</div>
 
@@ -80,7 +80,7 @@
 
 						<button
 							type="button"
-							class="btn btn-quiet"
+							class="if-action"
 							@click="openInDesk('Student Log Follow Up', fu.name)"
 						>
 							Open
@@ -128,11 +128,11 @@
 
 			<div class="mt-4 flex items-center justify-end gap-2">
 				<!-- A+: close must NEVER be blocked by busy -->
-				<button type="button" class="btn btn-quiet" @click="emitClose">Cancel</button>
+				<button type="button" class="if-button if-button--quiet" @click="emitClose">Cancel</button>
 
 				<button
 					type="button"
-					class="btn btn-primary"
+					class="if-button if-button--primary"
 					:disabled="busy || submittedOnce || !canSubmit"
 					@click="submitFollowUp"
 				>
@@ -174,11 +174,13 @@
 
 				<div class="mt-3 flex items-center justify-end gap-2">
 					<!-- A+: close must NEVER be blocked by busy -->
-					<button type="button" class="btn btn-quiet" @click="emitClose">Close</button>
+					<button type="button" class="if-button if-button--quiet" @click="emitClose">
+						Close
+					</button>
 
 					<button
 						type="button"
-						class="btn btn-primary"
+						class="if-button if-button--primary"
 						:disabled="busy || submittedOnce || reassignTo.trim().length < 3"
 						@click="reassignFollowUp"
 					>
@@ -196,7 +198,7 @@
 				<div class="mt-3 flex items-center justify-end gap-2">
 					<button
 						type="button"
-						class="btn btn-success"
+						class="if-button if-button--primary"
 						:disabled="busy || submittedOnce || !canComplete"
 						@click="completeParentLog"
 					>

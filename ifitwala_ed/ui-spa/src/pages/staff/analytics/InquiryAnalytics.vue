@@ -14,13 +14,7 @@
 					:items="DATE_RANGES"
 					@change="handleDatePresetChange"
 				/>
-				<button
-					type="button"
-					class="fui-btn-primary rounded-full px-4 py-1.5 text-sm font-medium transition active:scale-95"
-					@click="refresh"
-				>
-					Refresh
-				</button>
+				<button type="button" class="if-button if-button--quiet" @click="refresh">Refresh</button>
 			</div>
 		</header>
 

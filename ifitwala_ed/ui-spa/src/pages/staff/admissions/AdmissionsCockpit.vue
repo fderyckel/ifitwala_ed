@@ -9,11 +9,7 @@
 				</p>
 			</div>
 			<div class="page-header__actions">
-				<button
-					type="button"
-					class="fui-btn-primary rounded-full px-4 py-1.5 text-sm font-medium transition active:scale-95"
-					@click="refreshNow"
-				>
+				<button type="button" class="if-button if-button--quiet" @click="refreshNow">
 					Refresh
 				</button>
 			</div>

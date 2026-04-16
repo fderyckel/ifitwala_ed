@@ -114,10 +114,11 @@ class TestEmployeePrintFormat(unittest.TestCase):
 
         for token in (
             ".profile-header",
+            ".document-banner",
             ".section-card",
             ".status-pill",
             ".crm-grid",
-            ".premium-table",
+            ".history-entry",
             ".profile-photo",
             "Employee Profile",
             "Linked Contact and Address",
@@ -125,9 +126,18 @@ class TestEmployeePrintFormat(unittest.TestCase):
         ):
             self.assertIn(token, css if token.startswith(".") else html)
 
-        self.assertNotIn("brand-mark", html)
-        self.assertNotIn("school_logo", html)
-        self.assertNotIn("organization_logo", html)
+    def test_template_integrates_managed_letterhead_and_footer(self):
+        html = EMPLOYEE_TEMPLATE_PATH.read_text(encoding="utf-8")
+
+        for token in (
+            "using_managed_letterhead",
+            "{{ letter_head | safe }}",
+            "{{ footer | safe }}",
+            "no_letterhead",
+            "employee-profile--with-letterhead",
+            "document-banner",
+        ):
+            self.assertIn(token, html)
 
     def test_template_renders_expected_markup(self):
         html = EMPLOYEE_TEMPLATE_PATH.read_text(encoding="utf-8")
@@ -200,6 +210,9 @@ class TestEmployeePrintFormat(unittest.TestCase):
                     )
                 ],
             ),
+            letter_head="",
+            footer="",
+            no_letterhead=0,
         )
 
         for token in (
@@ -212,8 +225,42 @@ class TestEmployeePrintFormat(unittest.TestCase):
             "123 Campus Road",
             "Initial appointment",
             "Employee Image",
+            "history-entry",
         ):
             self.assertIn(token, rendered)
+
+    def test_template_renders_managed_letterhead_banner(self):
+        html = EMPLOYEE_TEMPLATE_PATH.read_text(encoding="utf-8")
+        template = Environment().from_string(html)
+
+        rendered = template.render(
+            frappe=_FakeFrappe(),
+            doc=_FakeEmployeeDoc(
+                name="HR-EMP-0002",
+                employee_first_name="John",
+                employee_middle_name="",
+                employee_last_name="Neumann",
+                employee_full_name="John Neumann",
+                employee_preferred_name="",
+                employee_gender="Male",
+                employee_professional_email="john@example.com",
+                date_of_joining="2026-03-24",
+                employment_status="Active",
+                designation="Assistant Principal",
+                organization="Ifitwala Roots Campus",
+                school="Ifitwala Secondary School",
+                employee_history=[],
+            ),
+            letter_head="<div class='ifitwala-letterhead'>Letterhead</div>",
+            footer="<div class='ifitwala-letterhead-footer'>Footer</div>",
+            no_letterhead=0,
+        )
+
+        self.assertIn("ifitwala-letterhead", rendered)
+        self.assertIn("ifitwala-letterhead-footer", rendered)
+        self.assertIn("employee-profile--with-letterhead", rendered)
+        self.assertIn("document-banner", rendered)
+        self.assertNotIn("profile-header", rendered)
 
 
 class _FakeFrappeDB:

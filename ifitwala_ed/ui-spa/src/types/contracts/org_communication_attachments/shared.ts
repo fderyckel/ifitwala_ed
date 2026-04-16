@@ -6,6 +6,7 @@ export type OrgCommunicationAttachmentRow = {
 	file_name?: string | null
 	file_size?: number | string | null
 	external_url?: string | null
+	preview_status?: 'pending' | 'ready' | 'failed' | 'not_applicable' | null
 	preview_url?: string | null
 	open_url?: string | null
 }

@@ -23,6 +23,7 @@
 {% set full_name = (doc.employee_full_name or ((doc.employee_first_name or "") ~ " " ~ (doc.employee_middle_name or "") ~ " " ~ (doc.employee_last_name or ""))).strip() or doc.name %}
 {% set preferred_name = (doc.employee_preferred_name or "").strip() %}
 {% set generated_on = frappe.utils.formatdate(frappe.utils.nowdate()) %}
+{% set using_managed_letterhead = 1 if (((letter_head or "") | string).strip()) and not no_letterhead else 0 %}
 {% set status_text = ((doc.get_formatted('employment_status') or doc.employment_status or "") | string).strip() %}
 {% set contact_name = ((doc.empl_primary_contact or frappe.db.get_value("Dynamic Link", {"link_doctype": "Employee", "link_name": doc.name, "parenttype": "Contact"}, "parent") or "") | string).strip() %}
 {% set contact_doc = frappe.get_doc("Contact", contact_name) if contact_name else None %}
@@ -37,7 +38,12 @@
 	{% set _ = address_map.update({row.name: row}) %}
 {% endfor %}
 
-<div class="ifitwala-print employee-profile">
+{% if using_managed_letterhead %}
+{{ letter_head | safe }}
+{% endif %}
+
+<div class="ifitwala-print employee-profile {{ 'employee-profile--with-letterhead' if using_managed_letterhead else 'employee-profile--standalone' }}">
+	{% if not using_managed_letterhead %}
 	<div class="profile-header">
 		<div class="profile-header__main">
 			<div class="eyebrow">Employee Profile</div>
@@ -85,6 +91,31 @@
 			{% endif %}
 		</div>
 	</div>
+	{% else %}
+	<div class="document-banner">
+		<div class="document-banner__title-block">
+			<div class="document-banner__eyebrow">Employee Record</div>
+			<h1>Employee Profile</h1>
+			<div class="document-banner__subtle">Generated on {{ frappe.utils.escape_html(generated_on) }}</div>
+		</div>
+		<div class="document-banner__meta">
+			<div class="document-banner__meta-item">
+				<div class="document-banner__label">Record</div>
+				<div class="document-banner__value">{{ frappe.utils.escape_html(doc.name) }}</div>
+			</div>
+			<div class="document-banner__meta-item">
+				<div class="document-banner__label">Status</div>
+				<div class="document-banner__value">
+					<span class="status-pill {{ (status_text or 'unknown').lower().replace(' ', '-') }}">{{ text_value(status_text) }}</span>
+				</div>
+			</div>
+			<div class="document-banner__meta-item">
+				<div class="document-banner__label">Joined</div>
+				<div class="document-banner__value">{{ text_value(doc.get_formatted('date_of_joining') or doc.date_of_joining) }}</div>
+			</div>
+		</div>
+	</div>
+	{% endif %}
 
 	<div class="section-grid">
 		<div class="section-card">
@@ -226,40 +257,53 @@
 	<div class="section-card wide-card">
 		<div class="section-title">Internal Work History</div>
 		{% if doc.employee_history and doc.employee_history|length %}
-		<table class="premium-table history-table">
-			<thead>
-				<tr>
-					<th>Designation</th>
-					<th>Organization</th>
-					<th>School</th>
-					<th>From Date</th>
-					<th>To Date</th>
-					<th>Is Current</th>
-					<th>Access Mode</th>
-					<th>Role Profile</th>
-					<th>Workspace Override</th>
-					<th>Priority</th>
-					<th>Note</th>
-				</tr>
-			</thead>
-			<tbody>
-				{% for row in doc.employee_history %}
-				<tr>
-					<td>{{ text_value(row.designation) }}</td>
-					<td>{{ text_value(row.organization) }}</td>
-					<td>{{ text_value(row.school) }}</td>
-					<td>{{ text_value(frappe.utils.formatdate(row.from_date) if row.from_date else "") }}</td>
-					<td>{{ text_value(frappe.utils.formatdate(row.to_date) if row.to_date else "") }}</td>
-					<td>{{ yes_no(row.is_current) }}</td>
-					<td>{{ text_value(row.access_mode) }}</td>
-					<td>{{ text_value(row.role_profile) }}</td>
-					<td>{{ text_value(row.workspace_override) }}</td>
-					<td>{{ text_value(row.priority) }}</td>
-					<td>{{ multiline_value(row.note) }}</td>
-				</tr>
-				{% endfor %}
-			</tbody>
-		</table>
+		<div class="history-stack">
+			{% for row in doc.employee_history %}
+			<div class="history-entry">
+				<div class="history-entry__heading">
+					<div class="history-entry__title">{{ text_value(row.designation) }}</div>
+					<div class="history-entry__subtitle">
+						<span>{{ text_value(row.organization) }}</span>
+						<span>{{ text_value(row.school) }}</span>
+					</div>
+				</div>
+				<div class="history-entry__grid">
+					<div class="history-entry__item">
+						<div class="history-entry__label">From Date</div>
+						<div class="history-entry__value">{{ text_value(frappe.utils.formatdate(row.from_date) if row.from_date else "") }}</div>
+					</div>
+					<div class="history-entry__item">
+						<div class="history-entry__label">To Date</div>
+						<div class="history-entry__value">{{ text_value(frappe.utils.formatdate(row.to_date) if row.to_date else "") }}</div>
+					</div>
+					<div class="history-entry__item">
+						<div class="history-entry__label">Is Current</div>
+						<div class="history-entry__value">{{ yes_no(row.is_current) }}</div>
+					</div>
+					<div class="history-entry__item">
+						<div class="history-entry__label">Access Mode</div>
+						<div class="history-entry__value">{{ text_value(row.access_mode) }}</div>
+					</div>
+					<div class="history-entry__item">
+						<div class="history-entry__label">Role Profile</div>
+						<div class="history-entry__value">{{ text_value(row.role_profile) }}</div>
+					</div>
+					<div class="history-entry__item">
+						<div class="history-entry__label">Workspace Override</div>
+						<div class="history-entry__value">{{ text_value(row.workspace_override) }}</div>
+					</div>
+					<div class="history-entry__item">
+						<div class="history-entry__label">Priority</div>
+						<div class="history-entry__value">{{ text_value(row.priority) }}</div>
+					</div>
+				</div>
+				<div class="history-entry__note">
+					<div class="history-entry__label">Note</div>
+					<div class="history-entry__value">{{ multiline_value(row.note) }}</div>
+				</div>
+			</div>
+			{% endfor %}
+		</div>
 		{% else %}
 		<div class="empty-state">No employee history rows are linked to this employee.</div>
 		{% endif %}
@@ -275,3 +319,7 @@
 		</div>
 	</div>
 </div>
+
+{% if using_managed_letterhead and ((footer or "") | string).strip() %}
+{{ footer | safe }}
+{% endif %}

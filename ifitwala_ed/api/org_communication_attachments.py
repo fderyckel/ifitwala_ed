@@ -81,6 +81,38 @@ def _get_attachment_row(doc, row_name: str):
     frappe.throw(_("Attachment row was not found: {0}").format(resolved_row_name), frappe.DoesNotExistError)
 
 
+def _get_attachment_preview_status(org_communication: str, row_name: str) -> str | None:
+    slot = f"{ORG_COMMUNICATION_ATTACHMENT_SLOT_PREFIX}{str(row_name or '').strip()}"
+    if not slot or not org_communication:
+        return None
+
+    drive_file_id = frappe.db.get_value(
+        "Drive Binding",
+        {
+            "binding_doctype": "Org Communication",
+            "binding_name": org_communication,
+            "binding_role": ORG_COMMUNICATION_ATTACHMENT_BINDING_ROLE,
+            "slot": slot,
+            "status": "active",
+        },
+        "drive_file",
+    )
+    if not drive_file_id:
+        drive_file_id = frappe.db.get_value(
+            "Drive File",
+            {
+                "owner_doctype": "Org Communication",
+                "owner_name": org_communication,
+                "slot": slot,
+                "status": "active",
+            },
+            "name",
+        )
+    if not drive_file_id:
+        return None
+    return _clean_text(frappe.db.get_value("Drive File", drive_file_id, "preview_status"))
+
+
 def serialize_org_communication_attachment_row(org_communication: str, row) -> dict[str, Any]:
     row_name = str(getattr(row, "name", "") or "").strip()
     file_url = str(getattr(row, "file", "") or "").strip()
@@ -105,6 +137,7 @@ def serialize_org_communication_attachment_row(org_communication: str, row) -> d
         )
 
     if file_url:
+        preview_status = _get_attachment_preview_status(org_communication, row_name)
         open_url = build_org_communication_attachment_open_url(
             org_communication=org_communication,
             row_name=row_name,
@@ -120,6 +153,7 @@ def serialize_org_communication_attachment_row(org_communication: str, row) -> d
             "description": description,
             "file_name": file_name or title,
             "file_size": file_size,
+            "preview_status": preview_status,
             "preview_url": preview_url,
             "open_url": open_url,
         }

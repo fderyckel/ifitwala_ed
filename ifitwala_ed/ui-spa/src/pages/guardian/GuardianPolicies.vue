@@ -1,7 +1,7 @@
 <!-- ifitwala_ed/ui-spa/src/pages/guardian/GuardianPolicies.vue -->
 <template>
 	<div class="portal-page">
-		<header class="card-surface p-5 sm:p-6">
+		<header class="card-surface policy-hero p-5 sm:p-6">
 			<div class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
 				<div>
 					<p class="type-overline text-ink/60">Guardian Portal</p>
@@ -22,18 +22,33 @@
 			</div>
 		</header>
 
-		<section class="grid grid-cols-1 gap-3 sm:grid-cols-3">
-			<article class="card-surface p-4">
-				<p class="type-caption">Total policies</p>
-				<p class="type-h3 text-ink">{{ counts.total_policies }}</p>
+		<section class="policy-summary" aria-label="Guardian policy summary">
+			<article class="card-surface policy-metric-card policy-metric-card--total p-4">
+				<div class="policy-metric-card__row">
+					<div>
+						<p class="type-caption text-ink/65">Total policies</p>
+						<p class="type-caption text-ink/50">Current family policy scope</p>
+					</div>
+					<p class="type-h2 text-ink">{{ counts.total_policies }}</p>
+				</div>
 			</article>
-			<article class="card-surface p-4">
-				<p class="type-caption">Acknowledged</p>
-				<p class="type-h3 text-ink">{{ counts.acknowledged_policies }}</p>
+			<article class="card-surface policy-metric-card policy-metric-card--acknowledged p-4">
+				<div class="policy-metric-card__row">
+					<div>
+						<p class="type-caption text-ink/65">Acknowledged</p>
+						<p class="type-caption text-ink/50">Already signed for this family</p>
+					</div>
+					<p class="type-h2 text-canopy">{{ counts.acknowledged_policies }}</p>
+				</div>
 			</article>
-			<article class="card-surface p-4">
-				<p class="type-caption">Pending</p>
-				<p class="type-h3 text-ink">{{ counts.pending_policies }}</p>
+			<article class="card-surface policy-metric-card policy-metric-card--pending p-4">
+				<div class="policy-metric-card__row">
+					<div>
+						<p class="type-caption text-ink/65">Pending</p>
+						<p class="type-caption text-ink/50">Still needs guardian action</p>
+					</div>
+					<p class="type-h2 text-clay">{{ counts.pending_policies }}</p>
+				</div>
 			</article>
 		</section>
 
@@ -54,8 +69,35 @@
 			</p>
 		</section>
 
-		<section v-else class="space-y-4">
-			<article v-for="row in rows" :key="row.policy_version" class="card-surface space-y-4 p-5">
+		<section v-else class="policy-list space-y-4">
+			<div class="card-surface policy-list-hero p-5">
+				<div class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+					<div>
+						<p class="type-overline text-canopy/75">Family Policy Progress</p>
+						<h2 class="type-h3 text-ink">Review and sign pending policy versions</h2>
+						<p class="type-caption text-ink/65">
+							Each card keeps the policy text, signature requirements, and current status in one
+							place so guardians do not have to jump between views.
+						</p>
+					</div>
+					<div class="flex flex-wrap gap-2">
+						<span class="chip">Total {{ counts.total_policies }}</span>
+						<span class="rounded-full bg-leaf/12 px-3 py-1 type-caption text-canopy">
+							Acknowledged {{ counts.acknowledged_policies }}
+						</span>
+						<span class="rounded-full bg-sand px-3 py-1 type-caption text-clay">
+							Pending {{ counts.pending_policies }}
+						</span>
+					</div>
+				</div>
+			</div>
+
+			<article
+				v-for="row in rows"
+				:key="row.policy_version"
+				class="card-surface policy-card space-y-4 p-5"
+				:class="row.is_acknowledged ? 'policy-card--acknowledged' : 'policy-card--pending'"
+			>
 				<div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
 					<div class="space-y-1">
 						<p class="type-caption text-ink/60">
@@ -71,19 +113,23 @@
 					</div>
 					<div class="flex flex-col items-start gap-2 sm:items-end">
 						<p
-							class="rounded-full px-3 py-1 type-caption"
-							:class="row.is_acknowledged ? 'bg-leaf/15 text-canopy' : 'bg-sand text-clay'"
+							class="policy-status-pill rounded-full px-3 py-1 type-caption"
+							:class="
+								row.is_acknowledged
+									? 'policy-status-pill--acknowledged'
+									: 'policy-status-pill--pending'
+							"
 						>
 							{{ row.is_acknowledged ? 'Acknowledged' : 'Pending acknowledgement' }}
 						</p>
-						<p v-if="row.is_acknowledged" class="type-caption text-ink/60">
+						<p v-if="row.is_acknowledged" class="type-caption text-canopy/75">
 							{{ row.acknowledged_at || 'Acknowledged' }}
 						</p>
 					</div>
 				</div>
 
 				<details
-					class="rounded-xl border border-line-soft bg-surface-soft p-4"
+					class="policy-detail-panel rounded-xl border border-line-soft bg-surface-soft p-4"
 					:open="!row.is_acknowledged"
 				>
 					<summary class="cursor-pointer type-body-strong text-ink">Open policy text</summary>
@@ -97,7 +143,7 @@
 
 				<div
 					v-if="!row.is_acknowledged"
-					class="rounded-xl border border-line-soft bg-surface-soft p-4 space-y-4"
+					class="policy-action-panel rounded-xl border border-line-soft bg-surface-soft p-4 space-y-4"
 				>
 					<div v-if="row.acknowledgement_clauses.length" class="space-y-3">
 						<div>
@@ -110,7 +156,7 @@
 							<label
 								v-for="clause in row.acknowledgement_clauses"
 								:key="clause.name"
-								class="flex items-start gap-3 rounded-xl border border-line-soft bg-white px-3 py-3"
+								class="policy-clause-row flex items-start gap-3 rounded-xl border border-line-soft bg-white px-3 py-3"
 							>
 								<input
 									:checked="isClauseChecked(row.policy_version, clause.name)"
@@ -196,7 +242,7 @@
 					<div class="flex justify-end">
 						<button
 							type="button"
-							class="if-action"
+							class="if-action policy-action-button"
 							:disabled="isRowBusy(row.policy_version)"
 							@click="acknowledgeRow(row)"
 						>
@@ -398,6 +444,169 @@ onMounted(() => {
 </script>
 
 <style scoped>
+.policy-hero {
+	position: relative;
+	overflow: hidden;
+	border-color: rgb(var(--sand-rgb) / 0.8);
+	background:
+		radial-gradient(circle at 0% 0%, rgb(var(--sand-rgb) / 0.72), transparent 38%),
+		radial-gradient(circle at 100% 0%, rgb(var(--jacaranda-rgb) / 0.16), transparent 40%),
+		radial-gradient(circle at 100% 100%, rgb(var(--leaf-rgb) / 0.12), transparent 42%),
+		linear-gradient(180deg, rgb(var(--surface-strong-rgb) / 0.98), rgb(var(--sky-rgb) / 0.84));
+	box-shadow: 0 16px 36px rgb(var(--ink-rgb) / 0.06);
+}
+
+.policy-summary {
+	display: grid;
+	grid-auto-flow: column;
+	grid-auto-columns: minmax(16rem, 1fr);
+	gap: 0.75rem;
+	overflow-x: auto;
+	padding-bottom: 0.25rem;
+}
+
+.policy-metric-card {
+	position: relative;
+	overflow: hidden;
+	min-width: 0;
+	border-color: rgb(var(--border-rgb) / 0.78);
+	background: linear-gradient(
+		180deg,
+		rgb(var(--surface-strong-rgb) / 0.98),
+		rgb(var(--surface-rgb) / 0.94)
+	);
+}
+
+.policy-metric-card::before {
+	content: '';
+	position: absolute;
+	inset: 0 auto auto 0;
+	height: 0.3rem;
+	width: 100%;
+}
+
+.policy-metric-card--total::before {
+	background: linear-gradient(90deg, rgb(var(--sand-rgb) / 1), rgb(var(--clay-rgb) / 0.78));
+}
+
+.policy-metric-card--acknowledged::before {
+	background: linear-gradient(90deg, rgb(var(--leaf-rgb) / 0.88), rgb(var(--canopy-rgb) / 0.82));
+}
+
+.policy-metric-card--pending::before {
+	background: linear-gradient(90deg, rgb(var(--clay-rgb) / 0.92), rgb(var(--flame-rgb) / 0.82));
+}
+
+.policy-metric-card__row {
+	display: flex;
+	align-items: flex-end;
+	justify-content: space-between;
+	gap: 1rem;
+}
+
+.policy-list-hero {
+	position: relative;
+	overflow: hidden;
+	border-color: rgb(var(--sand-rgb) / 0.74);
+	background:
+		radial-gradient(circle at 100% 0%, rgb(var(--sand-rgb) / 0.64), transparent 34%),
+		linear-gradient(180deg, rgb(var(--surface-strong-rgb) / 0.98), rgb(var(--surface-rgb) / 0.94));
+}
+
+.policy-card {
+	position: relative;
+	overflow: hidden;
+	transition:
+		border-color 120ms ease,
+		transform 120ms ease,
+		box-shadow 120ms ease;
+}
+
+.policy-card::before {
+	content: '';
+	position: absolute;
+	inset: 0 auto 0 0;
+	width: 0.35rem;
+}
+
+.policy-card:hover {
+	transform: translateY(-1px);
+	box-shadow: var(--shadow-soft);
+}
+
+.policy-card--acknowledged {
+	border-color: rgb(var(--leaf-rgb) / 0.16);
+	background:
+		radial-gradient(circle at 100% 0%, rgb(var(--leaf-rgb) / 0.08), transparent 36%),
+		rgb(var(--surface-rgb) / 0.95);
+}
+
+.policy-card--acknowledged::before {
+	background: linear-gradient(180deg, rgb(var(--leaf-rgb) / 0.84), rgb(var(--canopy-rgb) / 0.8));
+}
+
+.policy-card--acknowledged:hover {
+	border-color: rgb(var(--leaf-rgb) / 0.26);
+}
+
+.policy-card--pending {
+	border-color: rgb(var(--sand-rgb) / 0.94);
+	background:
+		radial-gradient(circle at 100% 0%, rgb(var(--sand-rgb) / 0.88), transparent 38%),
+		rgb(var(--surface-rgb) / 0.96);
+}
+
+.policy-card--pending::before {
+	background: linear-gradient(180deg, rgb(var(--clay-rgb) / 0.82), rgb(var(--flame-rgb) / 0.72));
+}
+
+.policy-card--pending:hover {
+	border-color: rgb(var(--clay-rgb) / 0.26);
+}
+
+.policy-status-pill--acknowledged {
+	background: rgb(var(--leaf-rgb) / 0.12);
+	color: rgb(var(--canopy-rgb) / 1);
+}
+
+.policy-status-pill--pending {
+	background: rgb(var(--sand-rgb) / 0.95);
+	color: rgb(var(--clay-rgb) / 1);
+}
+
+.policy-detail-panel {
+	background: linear-gradient(
+		180deg,
+		rgb(var(--surface-rgb) / 0.88),
+		rgb(var(--surface-strong-rgb) / 0.96)
+	);
+}
+
+.policy-action-panel {
+	border-color: rgb(var(--sand-rgb) / 0.9);
+	background:
+		radial-gradient(circle at 100% 0%, rgb(var(--sand-rgb) / 0.72), transparent 34%),
+		linear-gradient(180deg, rgb(var(--surface-strong-rgb) / 0.98), rgb(var(--surface-rgb) / 0.96));
+}
+
+.policy-clause-row {
+	transition:
+		border-color 120ms ease,
+		background-color 120ms ease,
+		transform 120ms ease;
+}
+
+.policy-clause-row:hover {
+	transform: translateY(-1px);
+	border-color: rgb(var(--clay-rgb) / 0.18);
+	background-color: rgb(var(--sand-rgb) / 0.22);
+}
+
+.policy-action-button {
+	border-color: rgb(var(--clay-rgb) / 0.2);
+	background-color: rgb(var(--surface-strong-rgb) / 0.96);
+}
+
 .policy-richtext :deep(.ql-editor) {
 	padding: 0;
 }
@@ -441,5 +650,14 @@ onMounted(() => {
 	font-size: 1.125rem;
 	font-weight: 600;
 	line-height: 1.4;
+}
+
+@media (min-width: 640px) {
+	.policy-summary {
+		grid-auto-flow: initial;
+		grid-template-columns: repeat(3, minmax(0, 1fr));
+		overflow: visible;
+		padding-bottom: 0;
+	}
 }
 </style>

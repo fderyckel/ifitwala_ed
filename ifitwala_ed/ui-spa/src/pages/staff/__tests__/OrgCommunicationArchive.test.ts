@@ -307,6 +307,7 @@ describe('OrgCommunicationArchive', () => {
 					title: 'Event photo',
 					file_name: 'event-photo.jpg',
 					file_size: 2048,
+					preview_status: 'ready',
 					preview_url: '/api/method/ifitwala_ed.api.file_access.preview_org_communication_attachment?row_name=ATT-IMAGE',
 					open_url: '/api/method/ifitwala_ed.api.file_access.open_org_communication_attachment?row_name=ATT-IMAGE',
 				},
@@ -316,6 +317,7 @@ describe('OrgCommunicationArchive', () => {
 					title: 'Agenda',
 					file_name: 'agenda.pdf',
 					file_size: 4096,
+					preview_status: 'ready',
 					preview_url: '/api/method/ifitwala_ed.api.file_access.preview_org_communication_attachment?row_name=ATT-PDF',
 					open_url: '/api/method/ifitwala_ed.api.file_access.open_org_communication_attachment?row_name=ATT-PDF',
 				},
@@ -344,14 +346,16 @@ describe('OrgCommunicationArchive', () => {
 		const imagePreview = document.querySelector('[data-communication-attachment-kind="image"] img');
 		expect(imagePreview?.getAttribute('src')).toContain('ATT-IMAGE');
 
-		const pdfPreview = document.querySelector('[data-communication-attachment-kind="pdf"]');
-		expect(pdfPreview?.getAttribute('href')).toContain('ATT-PDF');
+		const pdfPreview = document.querySelector('[data-communication-attachment-kind="pdf"] img');
+		expect(pdfPreview?.getAttribute('src')).toContain('ATT-PDF');
 
 		const openOriginalLinks = Array.from(document.querySelectorAll('a')).filter(anchor =>
 			(anchor.textContent || '').includes('Open original')
 		);
 		expect(openOriginalLinks.length).toBeGreaterThan(0);
 		expect(openOriginalLinks[0]?.getAttribute('href')).toContain('open_org_communication_attachment');
+		expect(document.body.textContent || '').toContain('Open PDF');
+		expect(document.body.textContent || '').toContain('Open preview image');
 		expect(document.body.textContent || '').toContain('Reference site');
 		expect(document.body.textContent || '').toContain('Open link');
 	});

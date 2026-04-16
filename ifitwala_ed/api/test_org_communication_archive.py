@@ -22,11 +22,18 @@ class TestOrgCommunicationArchiveItem(FrappeTestCase):
         }
 
         def fake_employee_lookup(doctype, filters, fields=None, as_dict=False):
-            self.assertEqual(doctype, "Employee")
-            self.assertEqual(filters, {"user_id": "staff@example.com"})
-            self.assertEqual(fields, ["name", "school", "organization"])
-            self.assertTrue(as_dict)
-            return {"name": "EMP-1", "school": "SCH-1", "organization": "ORG-1"}
+            if doctype == "Employee":
+                self.assertEqual(filters, {"user_id": "staff@example.com"})
+                self.assertEqual(fields, ["name", "school", "organization"])
+                self.assertTrue(as_dict)
+                return {"name": "EMP-1", "school": "SCH-1", "organization": "ORG-1"}
+            if doctype == "Drive Binding":
+                self.assertEqual(fields, "drive_file")
+                return "DF-0001"
+            if doctype == "Drive File" and fields == "preview_status":
+                self.assertEqual(filters, "DF-0001")
+                return "ready"
+            return None
 
         doc = SimpleNamespace(
             name="COMM-0001",
@@ -101,6 +108,7 @@ class TestOrgCommunicationArchiveItem(FrappeTestCase):
             result["attachments"][0]["preview_url"],
             "/api/method/ifitwala_ed.api.file_access.preview_org_communication_attachment?org_communication=COMM-0001&row_name=row-file",
         )
+        self.assertEqual(result["attachments"][0]["preview_status"], "ready")
         self.assertEqual(result["attachments"][1]["external_url"], "https://example.com/reference")
 
     def test_get_item_enriches_academic_admin_with_archive_scope(self):

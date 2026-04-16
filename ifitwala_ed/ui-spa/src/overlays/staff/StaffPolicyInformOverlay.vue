@@ -124,16 +124,17 @@
 									<div class="flex items-center justify-end gap-2">
 										<button
 											type="button"
-											class="btn btn-quiet"
-											:disabled="activeTab === 'changes' || !hasDiffHtml"
+											class="if-action"
+											:aria-pressed="activeTab === 'changes'"
+											:disabled="!hasDiffHtml"
 											@click="activeTab = 'changes'"
 										>
 											Changes
 										</button>
 										<button
 											type="button"
-											class="btn btn-quiet"
-											:disabled="activeTab === 'full'"
+											class="if-action"
+											:aria-pressed="activeTab === 'full'"
 											@click="activeTab = 'full'"
 										>
 											Full policy
@@ -231,7 +232,11 @@
 						</section>
 
 						<footer class="if-overlay__footer justify-end">
-							<button type="button" class="btn btn-quiet" @click="emitClose('programmatic')">
+							<button
+								type="button"
+								class="if-button if-button--quiet"
+								@click="emitClose('programmatic')"
+							>
 								Close
 							</button>
 						</footer>

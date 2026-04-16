@@ -418,6 +418,51 @@ Rules:
 
 ---
 
+### 6.3.2 Buttons use one hierarchy
+
+Status: Approved and partially implemented for shared SPA primitives, staff routed pages, and overlay footers
+
+Code refs:
+
+* `ui-spa/src/styles/components.css`
+* `ui-spa/src/pages/staff/StaffHome.vue`
+* `ui-spa/src/pages/staff/ProfessionalDevelopment.vue`
+* `ui-spa/src/pages/staff/StaffPolicies.vue`
+* `ui-spa/src/pages/staff/analytics/RoomUtilization.vue`
+* `ui-spa/src/pages/staff/analytics/AcademicLoad.vue`
+* `ui-spa/src/pages/staff/analytics/InquiryAnalytics.vue`
+* `ui-spa/src/pages/staff/admissions/AdmissionsCockpit.vue`
+* `ui-spa/src/overlays/staff/ProfessionalDevelopmentRequestOverlay.vue`
+* `ui-spa/src/overlays/staff/StaffPolicyInformOverlay.vue`
+* `ui-spa/src/overlays/admissions/AdmissionsWorkspaceOverlay.vue`
+
+Canonical intents:
+
+* **Primary** = highest-emphasis action in the current container
+* **Secondary** = alternate top-level action in the same container
+* **Subtle** = inline record / card / table action only
+* **Quiet** = chrome / utility only, never the only path for a business-critical workflow
+* **Danger** = destructive or irreversible only
+
+Color and token mapping:
+
+* Primary actions use `jacaranda`
+* `ink` remains the premium neutral anchor for text, borders, and structural emphasis; it is not the default CTA fill
+* Secondary actions use `surface-strong` + structural borders + `ink` text
+* Quiet actions stay transparent or lightly tinted with restrained `slate` / `ink` emphasis
+* Danger actions use `flame`
+* Positive state badges and workflow completion still use `leaf` + `canopy`; do not repurpose `leaf` as the default CTA color
+
+Rules:
+
+* `.if-action` is the subtle inline primitive. Do not use it for save, submit, approve, create, finalize, or other container-level commit actions.
+* Overlay footers use one trailing primary submit when a commit exists. The paired dismiss action is secondary unless the footer is utility-only.
+* Route-level header actions should normally contain at most one primary button. Refresh, close, open settings, and similar utility actions should be quiet or secondary.
+* Staff / admin and student / guardian surfaces share the same action hierarchy and primary accent. The premium feel comes from the surrounding shell and surface treatment, not from per-portal CTA color forks.
+* Segmented view toggles and pills are not CTAs. Reuse shared pill / toggle primitives instead of inventing page-local “button-like” tabs.
+
+---
+
 ### 6.4 Surfaces over colors
 
 Cards are surfaces, not boxes.

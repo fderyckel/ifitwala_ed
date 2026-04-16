@@ -20,7 +20,7 @@
 				<RouterLink
 					:to="{ name: 'MorningBriefing' }"
 					target="_blank"
-					class="inline-flex items-center gap-2 rounded-full bg-jacaranda px-5 py-2.5 type-button-label text-white shadow-soft transition-transform hover:-translate-y-0.5 hover:shadow-strong"
+					class="if-button if-button--primary"
 				>
 					<FeatherIcon name="sun" class="h-4 w-4 text-yellow-300" />
 					<span>Morning Brief</span>

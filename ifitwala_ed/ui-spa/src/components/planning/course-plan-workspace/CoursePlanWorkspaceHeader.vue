@@ -62,7 +62,7 @@
 					<div v-if="canManagePlan" class="flex flex-wrap gap-2">
 						<button
 							type="button"
-							class="if-action if-action--subtle"
+							class="if-action"
 							:disabled="!selectedUnit"
 							@click="emit('quick-edit-unit')"
 						>
@@ -70,7 +70,7 @@
 						</button>
 						<button
 							type="button"
-							class="if-action if-action--subtle"
+							class="if-action"
 							:disabled="!selectedUnit"
 							@click="emit('quick-upload-unit-file')"
 						>
@@ -78,17 +78,13 @@
 						</button>
 						<button
 							type="button"
-							class="if-action if-action--subtle"
+							class="if-action"
 							:disabled="!selectedUnit"
 							@click="emit('quick-add-reflection')"
 						>
 							Add Reflection
 						</button>
-						<button
-							type="button"
-							class="if-action if-action--subtle"
-							@click="emit('quick-start-quiz-bank')"
-						>
+						<button type="button" class="if-action" @click="emit('quick-start-quiz-bank')">
 							New Quiz Bank
 						</button>
 					</div>

@@ -132,13 +132,13 @@
 						<span v-if="row.effective_to"> → {{ formatLocalizedDate(row.effective_to) }}</span>
 					</p>
 					<div class="flex items-center gap-2">
-						<button type="button" class="btn btn-quiet" @click="openPolicy(row.policy_version)">
+						<button type="button" class="if-action" @click="openPolicy(row.policy_version)">
 							Open policy
 						</button>
 						<button
 							v-if="canViewPolicySignatureAnalytics"
 							type="button"
-							class="btn btn-quiet"
+							class="if-action"
 							@click="openPolicySignatureAnalytics(row)"
 						>
 							Open acknowledgement tracking

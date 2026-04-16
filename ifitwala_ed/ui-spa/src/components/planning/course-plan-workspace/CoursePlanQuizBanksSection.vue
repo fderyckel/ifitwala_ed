@@ -113,7 +113,7 @@
 						<button
 							v-if="canManagePlan && !creatingQuizQuestionBank && selectedQuizQuestionBank"
 							type="button"
-							class="if-action if-action--subtle"
+							class="if-action"
 							:disabled="!selectedQuizQuestionBank.is_published"
 							@click="emit('assign-quiz', selectedQuizQuestionBank)"
 						>
@@ -185,7 +185,7 @@
 							<button
 								v-if="canManagePlan"
 								type="button"
-								class="if-action if-action--subtle"
+								class="if-action"
 								@click="emit('add-question')"
 							>
 								Add Question
@@ -286,7 +286,7 @@
 										<button
 											v-if="canManagePlan && question.question_type !== 'True / False'"
 											type="button"
-											class="if-action if-action--subtle"
+											class="if-action"
 											@click="emit('add-option', question)"
 										>
 											Add Option
@@ -320,7 +320,7 @@
 											<button
 												v-if="canManagePlan && question.question_type !== 'True / False'"
 												type="button"
-												class="if-action if-action--subtle"
+												class="if-action"
 												@click="emit('remove-option', question, option.local_id)"
 											>
 												Remove
@@ -342,7 +342,7 @@
 								<div v-if="canManagePlan" class="mt-4 flex justify-end">
 									<button
 										type="button"
-										class="if-action if-action--subtle"
+										class="if-action"
 										@click="emit('remove-question', question.local_id)"
 									>
 										Remove Question
@@ -356,7 +356,7 @@
 						<button
 							v-if="creatingQuizQuestionBank"
 							type="button"
-							class="if-action if-action--subtle"
+							class="if-action"
 							@click="emit('cancel-new-bank')"
 						>
 							Cancel New Quiz Bank

@@ -131,6 +131,9 @@ class TestOrgCommunicationAttachmentsUnit(TestCase):
         file_access.build_org_communication_attachment_open_url = lambda *, org_communication, row_name: (
             f"/open/{org_communication}/{row_name}"
         )
+        file_access.build_org_communication_attachment_preview_url = lambda *, org_communication, row_name: (
+            f"/preview/{org_communication}/{row_name}"
+        )
 
         attachments_bridge = ModuleType("ifitwala_ed.setup.doctype.org_communication.attachments")
         attachments_bridge.ORG_COMMUNICATION_ATTACHMENT_BINDING_ROLE = "communication_attachment"
@@ -172,7 +175,8 @@ class TestOrgCommunicationAttachmentsUnit(TestCase):
                 "ifitwala_drive.api": drive_api_pkg,
                 "ifitwala_drive.api.communications": drive_api,
             }
-        ):
+        ) as frappe:
+            frappe.db.get_value = lambda *args, **kwargs: None
             module = import_fresh("ifitwala_ed.api.org_communication_attachments")
             response = module.upload_org_communication_attachment(org_communication="COMM-0001")
 
@@ -180,3 +184,55 @@ class TestOrgCommunicationAttachmentsUnit(TestCase):
         self.assertEqual(response["attachment"]["row_name"], "row-001")
         self.assertEqual(response["attachment"]["file_name"], "announcement.pdf")
         self.assertEqual(response["attachment"]["open_url"], "/open/COMM-0001/row-001")
+
+    def test_serialize_attachment_row_includes_preview_status_for_governed_file(self):
+        file_access = ModuleType("ifitwala_ed.api.file_access")
+        file_access.build_org_communication_attachment_open_url = lambda *, org_communication, row_name: (
+            f"/open/{org_communication}/{row_name}"
+        )
+        file_access.build_org_communication_attachment_preview_url = lambda *, org_communication, row_name: (
+            f"/preview/{org_communication}/{row_name}"
+        )
+
+        attachments_bridge = ModuleType("ifitwala_ed.setup.doctype.org_communication.attachments")
+        attachments_bridge.ORG_COMMUNICATION_ATTACHMENT_BINDING_ROLE = "communication_attachment"
+        attachments_bridge.ORG_COMMUNICATION_ATTACHMENT_SLOT_PREFIX = "communication_attachment__"
+        attachments_bridge.assert_org_communication_attachment_upload_access = lambda *_args, **_kwargs: None
+
+        governed_uploads = ModuleType("ifitwala_ed.utilities.governed_uploads")
+        governed_uploads._get_uploaded_file = lambda: ("announcement.pdf", b"file-bytes")
+        governed_uploads._resolve_upload_mime_type_hint = lambda filename=None: "application/pdf"
+        governed_uploads._drive_upload_and_finalize = lambda **kwargs: ({}, {}, SimpleNamespace(name="FILE-1"))
+
+        with stubbed_frappe(
+            extra_modules={
+                "ifitwala_ed.api.file_access": file_access,
+                "ifitwala_ed.setup.doctype.org_communication.attachments": attachments_bridge,
+                "ifitwala_ed.utilities.governed_uploads": governed_uploads,
+            }
+        ) as frappe:
+
+            def fake_get_value(doctype, filters=None, fieldname=None, as_dict=False):
+                if doctype == "Drive Binding":
+                    return "DF-0001"
+                if doctype == "Drive File" and filters == "DF-0001" and fieldname == "preview_status":
+                    return "ready"
+                return None
+
+            frappe.db.get_value = fake_get_value
+            module = import_fresh("ifitwala_ed.api.org_communication_attachments")
+            payload = module.serialize_org_communication_attachment_row(
+                "COMM-0001",
+                SimpleNamespace(
+                    name="row-001",
+                    file="/private/files/announcement.pdf",
+                    external_url=None,
+                    section_break_sbex="Announcement PDF",
+                    description=None,
+                    file_name="announcement.pdf",
+                    file_size=1024,
+                ),
+            )
+
+        self.assertEqual(payload["preview_status"], "ready")
+        self.assertEqual(payload["preview_url"], "/preview/COMM-0001/row-001")

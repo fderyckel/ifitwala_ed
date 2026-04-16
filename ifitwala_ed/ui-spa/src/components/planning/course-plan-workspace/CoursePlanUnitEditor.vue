@@ -76,7 +76,7 @@
 				<button
 					v-if="creatingUnit"
 					type="button"
-					class="if-action if-action--subtle course-plan-unit-inline-action"
+					class="if-action course-plan-unit-inline-action"
 					@click="emit('cancel-new-unit')"
 				>
 					Cancel New Unit
@@ -157,7 +157,7 @@
 							<button
 								v-if="creatingUnit"
 								type="button"
-								class="if-action if-action--subtle"
+								class="if-action"
 								@click="emit('cancel-new-unit')"
 							>
 								Cancel New Unit
@@ -601,7 +601,7 @@
 						<button
 							v-if="canManagePlan"
 							type="button"
-							class="if-action if-action--subtle"
+							class="if-action"
 							@click="emit('open-standards-overlay')"
 						>
 							Select Standards
@@ -838,7 +838,7 @@
 								<div v-if="canManagePlan" class="mt-4 flex justify-end">
 									<button
 										type="button"
-										class="if-action if-action--subtle"
+										class="if-action"
 										@click="emit('remove-standard', standard.local_id)"
 									>
 										Remove Standard
@@ -861,7 +861,7 @@
 						<button
 							v-if="canManagePlan"
 							type="button"
-							class="if-action if-action--subtle"
+							class="if-action"
 							@click="emit('add-reflection')"
 						>
 							Add Reflection
@@ -948,7 +948,7 @@
 						<div v-if="canManagePlan" class="mt-4 flex justify-end">
 							<button
 								type="button"
-								class="if-action if-action--subtle"
+								class="if-action"
 								@click="emit('remove-reflection', reflection.local_id)"
 							>
 								Remove Reflection
@@ -1036,7 +1036,7 @@
 					<button
 						v-if="creatingUnit"
 						type="button"
-						class="if-action if-action--subtle"
+						class="if-action"
 						@click="emit('cancel-new-unit')"
 					>
 						Cancel New Unit

@@ -196,7 +196,7 @@
 										unit_plan: selectedUnit?.unit_plan || undefined,
 									},
 								}"
-								class="if-action if-action--subtle"
+								class="if-action"
 							>
 								Open Shared Course Plan
 							</RouterLink>
@@ -637,11 +637,7 @@
 								<h2 class="mt-1 type-h3 text-ink">Plan what this class will actually do</h2>
 							</div>
 							<div class="flex flex-wrap gap-3">
-								<button
-									type="button"
-									class="if-action if-action--subtle"
-									@click="openAssignedWorkOverlay()"
-								>
+								<button type="button" class="if-action" @click="openAssignedWorkOverlay()">
 									Assign Work To This Class
 								</button>
 								<button type="button" class="if-action" @click="startNewSession">
@@ -863,7 +859,7 @@
 									<button
 										v-if="selectedSessionId"
 										type="button"
-										class="if-action if-action--subtle"
+										class="if-action"
 										@click="
 											openAssignedWorkOverlay({
 												unitPlan: selectedUnit?.unit_plan || null,

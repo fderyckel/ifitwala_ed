@@ -9,11 +9,7 @@
 				</p>
 			</div>
 			<div v-if="canViewAnalytics" class="page-header__actions">
-				<button
-					type="button"
-					class="rounded-full bg-canopy px-5 py-2 text-sm font-medium text-white transition-all hover:bg-leaf hover:shadow-md active:scale-95"
-					@click="refreshMetrics"
-				>
+				<button type="button" class="if-button if-button--quiet" @click="refreshMetrics">
 					Refresh Data
 				</button>
 			</div>
@@ -40,13 +36,15 @@
 				<div class="flex flex-wrap items-center gap-3">
 					<button
 						v-if="canOpenCreateEvent"
-						class="rounded-full border border-slate-200 bg-white px-5 py-2 text-sm font-medium text-ink transition-all hover:border-canopy/40 hover:text-canopy hover:shadow-sm active:scale-95"
+						type="button"
+						class="if-button if-button--secondary"
 						@click="openCreateEvent"
 					>
 						{{ eventQuickActionTitle }}
 					</button>
 					<button
-						class="fui-btn-primary rounded-full px-5 py-2 text-sm font-medium transition-all hover:shadow-md active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+						type="button"
+						class="if-button if-button--primary"
 						:disabled="
 							freeRoomsLoading ||
 							!availabilityFilters.date ||

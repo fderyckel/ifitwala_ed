@@ -15,7 +15,7 @@ Related current-state docs:
 ## Bottom Line
 
 - The proposal is directionally correct and matches the locked Ed/Drive split.
-- Do not over-model Phase 1. Image preview, optional PDF preview, clean status handling, and Org Communication first are enough.
+- Do not over-model Phase 1. Image preview, first-page PDF preview, clean status handling, and Org Communication first are enough.
 - The main correction is contract shape: cross-portal DTOs must carry stable server-owned action URLs, not pre-issued short-lived Drive grants.
 - Preview belongs in surface-owned Ed read models and authorization rules, not in a generic file browser or direct portal calls to Drive grant APIs.
 - Current `open_url` behavior remains the production baseline until derivative preview infrastructure exists in Drive and Ed routes are added deliberately.
@@ -30,8 +30,8 @@ Today Ifitwala_Ed already enforces the correct broad shape for governed reads:
 
 - business surfaces return server-owned `open_url` values instead of raw private paths
 - `open_org_communication_attachment(...)` re-checks communication visibility, then resolves a Drive grant just in time
-- Org Communication rows now also expose a stable `preview_url` route owned by Ed
-- staff, student, and guardian communication detail surfaces now render inline image previews and compact PDF preview tiles when those governed preview routes are available
+- Org Communication rows now also expose a stable `preview_url` route owned by Ed plus a `preview_status` hint for renderability
+- staff, student, and guardian communication detail surfaces now render inline image previews and full-width first-page PDF previews when those governed preview routes are ready, with clean fallback cards when they are not
 - the staff task creation overlay now renders inline image previews and compact PDF preview tiles for current task materials after a new reusable task is created
 - planning-material surfaces now also expose stable `preview_url` routes for governed file resources in the staff course-plan and class-planning workspaces
 - the student learning space now also exposes stable `preview_url` routes for governed file resources on `CourseDetail.vue`
@@ -44,9 +44,9 @@ What still does not exist yet:
 - broad Ed-owned preview routes for all governed surfaces
 - a shared SPA preview layer across the target surfaces
 
-Drive now has a narrow image-derivative foundation, but Ed should still treat preview as partial rollout:
+Drive now has a narrow image plus first-page PDF derivative foundation, but Ed should still treat preview as partial rollout:
 
-- Org Communication can use `preview_url` where Drive reports a ready preview, with file attachments rendering as image/PDF preview cards and links falling back to compact metadata cards
+- Org Communication can use `preview_url` where Drive reports a ready preview, with file attachments rendering as image or first-page PDF preview cards and links falling back to compact metadata cards
 - the staff task creation overlay can use `preview_url` where Drive reports a ready preview, while still keeping task-material actions inside the existing create flow
 - staff planning-material surfaces can use `preview_url` where Drive reports a ready preview
 - the student learning space can use `preview_url` where Drive reports a ready preview, with richer resource cards keeping `open_url` explicit and task chips staying lightweight
@@ -266,12 +266,12 @@ Phase 1: documentation and contract lock
 - keep current `open_url` behavior as baseline
 - lock the Ed/Drive ownership split in canonical docs in both repos
 - forbid portal-direct Drive grant calls for Ed-owned surfaces
-- keep Phase 1 media scope narrow: image preview first, optional PDF preview second, no broad media ambitions
+- keep Phase 1 media scope narrow: image preview plus first-page PDF preview, no broad media ambitions
 
 Phase 2: Drive dependency foundation
 
-- use the existing Drive image-derivative lifecycle and derivative-role grant resolution as the first foundation
-- keep PDF preview and wider media support deferred until the image path is stable
+- use the existing Drive image/PDF derivative lifecycle and derivative-role grant resolution as the first foundation
+- keep wider media support beyond images and first-page PDFs deferred until the narrow path is stable
 
 Phase 3: Ed service foundation
 

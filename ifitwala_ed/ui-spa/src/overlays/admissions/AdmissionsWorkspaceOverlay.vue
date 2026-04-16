@@ -473,7 +473,7 @@
 											<div class="mt-4 flex flex-wrap items-center justify-end gap-2">
 												<button
 													type="button"
-													class="if-action"
+													class="if-button if-button--secondary"
 													:disabled="!canEdit || submitting"
 													@click="saveDraft"
 												>
@@ -481,7 +481,7 @@
 												</button>
 												<button
 													type="button"
-													class="if-action if-action--primary"
+													class="if-button if-button--primary"
 													:disabled="!canEdit || submitting"
 													@click="submitFeedback"
 												>
@@ -708,7 +708,7 @@
 													<div class="mt-3 flex flex-wrap justify-end gap-2">
 														<button
 															type="button"
-															class="if-action"
+															class="if-button if-button--secondary"
 															:disabled="requirementSubmitting"
 															@click="cancelRequirementOverride"
 														>
@@ -716,7 +716,7 @@
 														</button>
 														<button
 															type="button"
-															class="if-action if-action--primary"
+															class="if-button if-button--primary"
 															:disabled="requirementSubmitting"
 															@click="submitRequirementOverride"
 														>
@@ -820,7 +820,7 @@
 															<div class="mt-3 flex flex-wrap justify-end gap-2">
 																<button
 																	type="button"
-																	class="if-action"
+																	class="if-button if-button--secondary"
 																	:disabled="submissionSubmitting"
 																	@click="cancelSubmissionDecision"
 																>
@@ -828,7 +828,7 @@
 																</button>
 																<button
 																	type="button"
-																	class="if-action if-action--primary"
+																	class="if-button if-button--primary"
 																	:disabled="submissionSubmitting"
 																	@click="submitSubmissionDecision"
 																>
@@ -967,7 +967,7 @@
 														<div class="mt-3 flex flex-wrap justify-end gap-2">
 															<button
 																type="button"
-																class="if-action"
+																class="if-button if-button--secondary"
 																:disabled="submissionSubmitting"
 																@click="cancelSubmissionDecision"
 															>
@@ -975,7 +975,7 @@
 															</button>
 															<button
 																type="button"
-																class="if-action if-action--primary"
+																class="if-button if-button--primary"
 																:disabled="submissionSubmitting"
 																@click="submitSubmissionDecision"
 															>
@@ -1312,7 +1312,7 @@
 															<div class="flex flex-wrap justify-end gap-2">
 																<button
 																	type="button"
-																	class="if-action"
+																	class="if-button if-button--secondary"
 																	:disabled="submissionSubmitting"
 																	@click="cancelSubmissionDecision"
 																>
@@ -1320,7 +1320,7 @@
 																</button>
 																<button
 																	type="button"
-																	class="if-action if-action--primary"
+																	class="if-button if-button--primary"
 																	:disabled="submissionSubmitting"
 																	@click="submitSubmissionDecision"
 																>
