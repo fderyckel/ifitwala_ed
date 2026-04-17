@@ -9,11 +9,12 @@ Important note:
 - This memo records approved product direction after the assessment audit.
 - It does not replace the canonical runtime contracts in `03_gradebook_notes.md`, `04_task_notes.md`, or `07_feedback_annotation_ecosystem_contract.md`.
 - When implementation lands, update the canonical runtime docs in the same change.
+- The release-visibility direction in this memo has been superseded by the canonical publication matrix in `07_feedback_annotation_ecosystem_contract.md` and the implementation detail in `09_feedback_records_and_publication_rfc.md`.
 
 ## Bottom Line
 
 Approved direction:
-- Students and guardians share one release state.
+- Release visibility guidance in this memo is superseded; see `07_feedback_annotation_ecosystem_contract.md` and `09_feedback_records_and_publication_rfc.md`.
 - `Binary` and `Completion` move onto the same contribution/audit workflow as other grading modes.
 - Rubric descriptors and levels remain globally reusable, but points stay delivery-local.
 - `Collect Work` stays inside the same assessment product, with a dedicated evidence inbox view that deep-links into the grading drawer.
@@ -24,6 +25,8 @@ The next step is not to build another grading surface. It is to harden the curre
 ## Approved Decisions
 
 ### 1. One Release State
+
+Status: Superseded by later canonical contract
 
 Decision:
 - Students and guardians share the same release state.

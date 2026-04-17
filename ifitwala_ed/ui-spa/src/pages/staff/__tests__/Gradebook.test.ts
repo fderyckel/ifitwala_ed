@@ -688,6 +688,65 @@ describe('Gradebook page', () => {
 		expect(document.body.textContent || '').toContain('Current runtime still uses one published state');
 	});
 
+	it('releases a selected batch of unreleased students from the task workspace', async () => {
+		mockGradebookFlow({
+			students: [
+				{
+					task_student: 'OUT-1',
+					student: 'STU-1',
+					student_name: 'Ada Lovelace',
+					student_id: 'S-001',
+					student_image: null,
+					status: 'Finalized',
+					procedural_status: null,
+					has_submission: 1,
+					has_new_submission: 0,
+					complete: 0,
+					mark_awarded: 14,
+					feedback: null,
+					visible_to_student: 0,
+					visible_to_guardian: 0,
+					updated_on: null,
+					criteria_scores: [],
+				},
+				{
+					task_student: 'OUT-2',
+					student: 'STU-2',
+					student_name: 'Grace Hopper',
+					student_id: 'S-002',
+					student_image: null,
+					status: 'Released',
+					procedural_status: null,
+					has_submission: 1,
+					has_new_submission: 0,
+					complete: 0,
+					mark_awarded: 18,
+					feedback: null,
+					visible_to_student: 1,
+					visible_to_guardian: 1,
+					updated_on: null,
+					criteria_scores: [],
+				},
+			],
+		});
+
+		mountPage();
+		await flushUi();
+		await openTask('Task 1');
+
+		const selectButton = document.querySelector('[data-select-unreleased]');
+		expect(selectButton).not.toBeNull();
+		selectButton!.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		await flushUi();
+
+		const releaseButton = document.querySelector('[data-release-selected]');
+		expect(releaseButton).not.toBeNull();
+		releaseButton!.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		await flushUi();
+
+		expect(publishOutcomesMock).toHaveBeenCalledWith({ outcome_ids: ['OUT-1'] });
+	});
+
 	it('renders criteria grading with criteria controls and comment box only when enabled', async () => {
 		mockGradebookFlow({
 			task: {

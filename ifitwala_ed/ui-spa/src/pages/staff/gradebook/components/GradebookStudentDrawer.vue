@@ -149,7 +149,10 @@
 						</div>
 					</div>
 
-					<div v-if="showsStatusControl(drawer.delivery)" class="space-y-1.5">
+					<div
+						v-if="showsStatusControl(drawer.delivery) && !drawer.outcome.is_published"
+						class="space-y-1.5"
+					>
 						<label class="block text-xs font-semibold uppercase tracking-[0.16em] text-ink/45">
 							Outcome Status
 						</label>
@@ -709,7 +712,6 @@ const statusOptions = [
 	{ label: 'Needs Review', value: 'Needs Review' },
 	{ label: 'Moderated', value: 'Moderated' },
 	{ label: 'Finalized', value: 'Finalized' },
-	{ label: 'Released', value: 'Released' },
 	{ label: 'Not Applicable', value: 'Not Applicable' },
 ];
 
@@ -838,7 +840,7 @@ function emitSaveMarking() {
 	const delivery = props.drawer?.delivery;
 	if (!delivery) return;
 
-	if (showsStatusControl(delivery)) {
+	if (showsStatusControl(delivery) && !props.drawer?.outcome.is_published) {
 		payload.status = form.status || null;
 	}
 	if (isPointsTask(delivery)) {

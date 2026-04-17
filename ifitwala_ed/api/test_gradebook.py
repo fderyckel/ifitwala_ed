@@ -690,8 +690,14 @@ class TestGradebookApi(TestCase):
 
             def fake_get_value(doctype, name, fieldname=None, as_dict=False):
                 if doctype == "Task Outcome":
-                    if fieldname == ["name", "task_delivery", "official_score"]:
-                        return {"name": "OUT-1", "task_delivery": "TDL-1", "official_score": None}
+                    if fieldname == ["name", "task_delivery", "official_score", "grading_status", "is_published"]:
+                        return {
+                            "name": "OUT-1",
+                            "task_delivery": "TDL-1",
+                            "official_score": None,
+                            "grading_status": "Not Started",
+                            "is_published": 0,
+                        }
                     return {
                         "name": "OUT-1",
                         "official_score": None,
@@ -735,3 +741,67 @@ class TestGradebookApi(TestCase):
             ],
         )
         self.assertEqual(payload["feedback"], "Focus on examples.")
+
+    def test_update_task_student_rejects_released_status_from_generic_status_save(self):
+        with stubbed_frappe(extra_modules=_gradebook_stub_modules()) as frappe:
+
+            def fake_get_value(doctype, name, fieldname=None, as_dict=False):
+                if doctype == "Task Outcome":
+                    if fieldname == ["name", "task_delivery", "official_score", "grading_status", "is_published"]:
+                        return {
+                            "name": "OUT-1",
+                            "task_delivery": "TDL-1",
+                            "official_score": None,
+                            "grading_status": "Finalized",
+                            "is_published": 0,
+                        }
+                if doctype == "Task Delivery":
+                    return {
+                        "name": "TDL-1",
+                        "student_group": "GRP-1",
+                        "delivery_mode": "Assess",
+                        "grading_mode": "Points",
+                        "allow_feedback": 0,
+                    }
+                return None
+
+            frappe.db.get_value = fake_get_value
+
+            module = _import_fresh_gradebook()
+            module.gradebook_support._can_write_gradebook = lambda: True
+            module.gradebook_support._assert_group_access = lambda student_group: None
+
+            with self.assertRaises(StubValidationError):
+                module.update_task_student("OUT-1", {"status": "Released"})
+
+    def test_update_task_student_rejects_status_change_while_outcome_is_released(self):
+        with stubbed_frappe(extra_modules=_gradebook_stub_modules()) as frappe:
+
+            def fake_get_value(doctype, name, fieldname=None, as_dict=False):
+                if doctype == "Task Outcome":
+                    if fieldname == ["name", "task_delivery", "official_score", "grading_status", "is_published"]:
+                        return {
+                            "name": "OUT-1",
+                            "task_delivery": "TDL-1",
+                            "official_score": None,
+                            "grading_status": "Released",
+                            "is_published": 1,
+                        }
+                if doctype == "Task Delivery":
+                    return {
+                        "name": "TDL-1",
+                        "student_group": "GRP-1",
+                        "delivery_mode": "Assess",
+                        "grading_mode": "Points",
+                        "allow_feedback": 0,
+                    }
+                return None
+
+            frappe.db.get_value = fake_get_value
+
+            module = _import_fresh_gradebook()
+            module.gradebook_support._can_write_gradebook = lambda: True
+            module.gradebook_support._assert_group_access = lambda student_group: None
+
+            with self.assertRaises(StubValidationError):
+                module.update_task_student("OUT-1", {"status": "Needs Review"})

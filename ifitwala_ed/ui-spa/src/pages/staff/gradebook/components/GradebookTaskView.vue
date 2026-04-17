@@ -72,7 +72,7 @@
 			<div v-else class="grid gap-5 xl:grid-cols-[minmax(21rem,24rem)_minmax(0,1fr)]">
 				<section class="rounded-2xl border border-border/70 bg-gray-50/40">
 					<div class="border-b border-border/60 px-5 py-4">
-						<div class="flex items-center justify-between gap-3">
+						<div class="flex flex-wrap items-start justify-between gap-3">
 							<div>
 								<h3 class="text-sm font-semibold uppercase tracking-[0.16em] text-ink/45">
 									Student Roster
@@ -81,78 +81,126 @@
 									{{ gradebook.task?.title || 'Task' }}
 								</p>
 							</div>
-							<div class="text-right text-xs text-ink/45">
-								<p>{{ gradebook.students.length }} students</p>
-								<p v-if="gradebook.task?.due_date">
-									Due {{ formatDate(gradebook.task?.due_date) }}
-								</p>
+							<div class="flex flex-col items-end gap-2">
+								<div class="text-right text-xs text-ink/45">
+									<p>{{ gradebook.students.length }} students</p>
+									<p v-if="gradebook.task?.due_date">
+										Due {{ formatDate(gradebook.task?.due_date) }}
+									</p>
+								</div>
+								<div class="flex flex-wrap justify-end gap-2">
+									<button
+										type="button"
+										class="if-button if-button--secondary"
+										:disabled="publishBusy || !unreleasedOutcomeIds.length"
+										data-select-unreleased
+										@click="selectAllUnreleased"
+									>
+										Select unreleased
+									</button>
+									<button
+										v-if="selectedBatchOutcomeIds.length"
+										type="button"
+										class="if-button if-button--secondary"
+										:disabled="publishBusy"
+										@click="clearBatchSelection"
+									>
+										Clear
+									</button>
+									<button
+										type="button"
+										class="if-button if-button--primary"
+										:disabled="publishBusy || !selectedReleasableOutcomeIds.length"
+										data-release-selected
+										@click="releaseSelectedOutcomes"
+									>
+										Release selected
+										<span v-if="selectedReleasableOutcomeIds.length">
+											({{ selectedReleasableOutcomeIds.length }})
+										</span>
+									</button>
+								</div>
 							</div>
 						</div>
 					</div>
 
 					<div class="max-h-[720px] space-y-2 overflow-y-auto p-3">
-						<button
+						<div
 							v-for="student in gradebook.students"
 							:key="student.task_student"
-							type="button"
-							class="w-full rounded-2xl border px-4 py-4 text-left transition"
-							:data-gradebook-student="student.student"
-							:class="
-								selectedOutcomeId === student.task_student
-									? 'border-leaf bg-sky/20 shadow-sm ring-1 ring-leaf/20'
-									: 'border-border/70 bg-white hover:border-leaf/40 hover:bg-sky/10'
-							"
-							@click="openStudent(student)"
+							class="flex items-start gap-3 rounded-2xl border border-border/70 bg-white px-4 py-4 transition hover:border-leaf/40 hover:bg-sky/10"
 						>
-							<div class="flex items-start gap-3">
-								<img
-									:src="student.student_image || DEFAULT_STUDENT_IMAGE"
-									alt=""
-									class="h-11 w-11 rounded-full border border-white bg-white object-cover shadow-sm"
-									loading="lazy"
-									@error="onImgError"
+							<div class="pt-1">
+								<input
+									:checked="isBatchSelected(student.task_student)"
+									:data-batch-select-outcome="student.task_student"
+									type="checkbox"
+									class="h-4 w-4 rounded border-border text-canopy"
+									@change="
+										toggleBatchSelection(
+											student.task_student,
+											($event.target as HTMLInputElement).checked
+										)
+									"
 								/>
-								<div class="min-w-0 flex-1">
-									<div class="flex items-start justify-between gap-3">
-										<div class="min-w-0">
-											<p class="truncate text-sm font-semibold text-ink">
-												{{ student.student_name }}
-											</p>
-											<p class="truncate text-xs text-ink/50">
-												{{ student.student_id || student.student }}
-											</p>
+							</div>
+							<button
+								type="button"
+								class="w-full rounded-xl px-1 text-left transition"
+								:data-gradebook-student="student.student"
+								:class="selectedOutcomeId === student.task_student ? 'bg-sky/10' : ''"
+								@click="openStudent(student)"
+							>
+								<div class="flex items-start gap-3">
+									<img
+										:src="student.student_image || DEFAULT_STUDENT_IMAGE"
+										alt=""
+										class="h-11 w-11 rounded-full border border-white bg-white object-cover shadow-sm"
+										loading="lazy"
+										@error="onImgError"
+									/>
+									<div class="min-w-0 flex-1">
+										<div class="flex items-start justify-between gap-3">
+											<div class="min-w-0">
+												<p class="truncate text-sm font-semibold text-ink">
+													{{ student.student_name }}
+												</p>
+												<p class="truncate text-xs text-ink/50">
+													{{ student.student_id || student.student }}
+												</p>
+											</div>
+											<FeatherIcon
+												name="chevron-right"
+												class="mt-0.5 h-4 w-4 shrink-0 text-ink/30"
+											/>
 										</div>
-										<FeatherIcon
-											name="chevron-right"
-											class="mt-0.5 h-4 w-4 shrink-0 text-ink/30"
-										/>
-									</div>
 
-									<div class="mt-3 grid gap-1 text-sm text-ink/65">
-										<p>Status: {{ student.status || '—' }}</p>
-										<p v-if="student.procedural_status">
-											Procedural: {{ student.procedural_status }}
-										</p>
-										<p>{{ studentResultSummary(student) }}</p>
-									</div>
+										<div class="mt-3 grid gap-1 text-sm text-ink/65">
+											<p>Status: {{ student.status || '—' }}</p>
+											<p v-if="student.procedural_status">
+												Procedural: {{ student.procedural_status }}
+											</p>
+											<p>{{ studentResultSummary(student) }}</p>
+										</div>
 
-									<div class="mt-3 flex flex-wrap gap-2">
-										<Badge v-if="student.has_new_submission" variant="subtle" theme="orange">
-											New evidence
-										</Badge>
-										<Badge v-if="student.visible_to_student" variant="subtle" theme="green">
-											Released
-										</Badge>
-										<Badge
-											v-if="student.has_submission && !student.has_new_submission"
-											variant="subtle"
-										>
-											Evidence linked
-										</Badge>
+										<div class="mt-3 flex flex-wrap gap-2">
+											<Badge v-if="student.has_new_submission" variant="subtle" theme="orange">
+												New evidence
+											</Badge>
+											<Badge v-if="student.visible_to_student" variant="subtle" theme="green">
+												Released
+											</Badge>
+											<Badge
+												v-if="student.has_submission && !student.has_new_submission"
+												variant="subtle"
+											>
+												Evidence linked
+											</Badge>
+										</div>
 									</div>
 								</div>
-							</div>
-						</button>
+							</button>
+						</div>
 					</div>
 				</section>
 
@@ -231,6 +279,7 @@ const drawerLoadVersion = ref(0);
 const markingBusy = ref(false);
 const submissionSeenBusy = ref(false);
 const publishBusy = ref(false);
+const selectedBatchOutcomeIds = ref<string[]>([]);
 
 const gradebook = reactive<TaskGradebookState>({
 	task: null,
@@ -244,6 +293,15 @@ const newEvidenceCount = computed(
 const releasedCount = computed(
 	() => gradebook.students.filter(student => student.visible_to_student).length
 );
+const unreleasedOutcomeIds = computed(() =>
+	gradebook.students
+		.filter(student => !student.visible_to_student)
+		.map(student => student.task_student)
+);
+const selectedReleasableOutcomeIds = computed(() => {
+	const releasable = new Set(unreleasedOutcomeIds.value);
+	return selectedBatchOutcomeIds.value.filter(outcomeId => releasable.has(outcomeId));
+});
 
 function showToast(title: string, appearance: 'danger' | 'success' | 'warning' = 'danger') {
 	const toastApi = toast as unknown as
@@ -276,6 +334,7 @@ function showSuccessToast(title: string) {
 function resetGradebook() {
 	gradebook.task = null;
 	gradebook.students = [];
+	selectedBatchOutcomeIds.value = [];
 	closeDrawer({ syncParent: true });
 }
 
@@ -292,6 +351,10 @@ async function loadGradebook(taskName: string) {
 
 		gradebook.task = payload.task;
 		gradebook.students = payload.students || [];
+		const visibleOutcomeIds = new Set(gradebook.students.map(student => student.task_student));
+		selectedBatchOutcomeIds.value = selectedBatchOutcomeIds.value.filter(outcomeId =>
+			visibleOutcomeIds.has(outcomeId)
+		);
 
 		if (selectedOutcomeId.value) {
 			const stillVisible = gradebook.students.find(
@@ -496,6 +559,58 @@ async function unpublishOutcome() {
 	} catch (error) {
 		console.error('Failed to unpublish outcome', error);
 		showDangerToast('Could not unrelease this outcome');
+	} finally {
+		publishBusy.value = false;
+	}
+}
+
+function isBatchSelected(outcomeId: string) {
+	return selectedBatchOutcomeIds.value.includes(outcomeId);
+}
+
+function toggleBatchSelection(outcomeId: string, checked: boolean) {
+	if (!outcomeId) return;
+	const next = new Set(selectedBatchOutcomeIds.value);
+	if (checked) {
+		next.add(outcomeId);
+	} else {
+		next.delete(outcomeId);
+	}
+	selectedBatchOutcomeIds.value = Array.from(next);
+}
+
+function clearBatchSelection() {
+	selectedBatchOutcomeIds.value = [];
+}
+
+function selectAllUnreleased() {
+	selectedBatchOutcomeIds.value = [...unreleasedOutcomeIds.value];
+}
+
+async function releaseSelectedOutcomes() {
+	const outcomeIds = selectedReleasableOutcomeIds.value;
+	if (!outcomeIds.length) {
+		showToast('Select at least one unreleased student.', 'warning');
+		return;
+	}
+
+	publishBusy.value = true;
+	try {
+		await gradebookService.publishOutcomes({ outcome_ids: outcomeIds });
+		showSuccessToast(
+			outcomeIds.length === 1
+				? 'Selected outcome released.'
+				: `Released ${outcomeIds.length} outcomes.`
+		);
+		clearBatchSelection();
+		if (!props.taskName) return;
+		await loadGradebook(props.taskName);
+		if (selectedOutcomeId.value && outcomeIds.includes(selectedOutcomeId.value)) {
+			await loadDrawer(selectedOutcomeId.value);
+		}
+	} catch (error) {
+		console.error('Failed to release selected outcomes', error);
+		showDangerToast('Could not release the selected outcomes');
 	} finally {
 		publishBusy.value = false;
 	}

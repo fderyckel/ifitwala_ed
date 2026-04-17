@@ -149,6 +149,17 @@ Current implementation baseline for the Evidence tab:
 * if no explicit version is requested, the selected submission defaults to the latest version
 * attachment rows in the selected submission resolve to server-owned `preview_url` / `open_url` routes; the SPA must never guess private file paths
 
+Future annotation contract for the drawer:
+
+* when selected evidence is a PDF, annotation lives inside the drawer workflow, not in a separate review app
+* first serious authoring version must support:
+
+  * text highlight + comment for text-readable PDFs
+  * point / area / page comment
+  * optional ink for handwritten or diagram-heavy work
+* first serious authoring version must also include a minimal comment bank / quickmarks flow
+* unreadable or scanned PDFs must be detected before rich text anchoring is assumed; reduced mode may allow area/page/ink comments until OCR/repair exists
+
 ---
 
 ### 1.3 Student-centric View (Secondary)
@@ -278,11 +289,24 @@ Finalization means: teacher commits an official outcome value.
 
 ### Flow H — Release / Return to Students
 
-Release means: students/guardians can see the official outcome + feedback.
+Release is one explicit product action on the outcome.
+For the current runtime, it means one shared student/family-visible release state.
 
-1. Teacher clicks **Release**
-2. Outcome grading_status becomes “Released”
-3. Student portal shows the outcome
+Canonical current contract:
+
+* nothing is visible until **Release**
+* student and guardian share the same release state
+* release is per outcome, so it supports:
+
+  * one student for one task
+  * a selected batch of students inside the current student group
+* release is not forced to be “all students at once” for the delivery
+
+Rules:
+
+* feedback and grade move through the same current release action
+* student and guardian share the same current release state
+* current runtime uses one `is_published` outcome state for release
 
 Release should support:
 
@@ -342,17 +366,19 @@ They see:
   * latest submission(s)
   * teacher’s contribution
   * optional compare contributions
+  * selected submission version context for all feedback and annotation work
 * Writes go through server APIs:
 
   * submit_contribution
   * set_official_outcome (policy-driven)
   * request_review / send_for_moderation
-  * release_outcome
+  * release actions split by content channel once the publication matrix ships
 
 * Gradebook API (`api/gradebook.py`) is the stable public RPC boundary; shared helper ownership lives in `api/gradebook_support.py`, and it does not compute grades.
 * Writes go to services; services may create Evidence Stub submissions when missing and `requires_submission = 1`.
 * Frontend can omit `task_submission` in grade actions; backend will attach to latest student submission if present, else create a stub when required.
 * Instructor-scoped users only see deliveries for taught student groups; course filters narrow scope but never broaden it.
+* Feedback and annotation records must bind to the selected submission version, not float across versions implicitly.
 
 **Canonical statement:** A Task Outcome always stores official results per criterion. Task totals are optional and only computed when the delivery strategy allows it.
 
@@ -632,8 +658,8 @@ All teacher-facing strings **must** come from translation keys.
 | Submit Contribution | **Mark as ready**                   | Avoid “submit” ambiguity                 |
 | Official Grade      | **Teacher grade**                   | Not “official”                           |
 | Moderation          | **Moderation**                      | Peer check, not peer grading             |
-| Is Published        | **Released to students**            | Binary mental model                      |
-| Published           | **Visible to students & guardians** | Explicit audience                        |
+| Release             | **Released**                        | One shared student/guardian release state |
+| Batch Release       | **Release selected**                | Release a selected subset inside the group |
 
 ### Forbidden Language (Never in UI)
 
@@ -668,7 +694,9 @@ Teachers have **only these actions**:
 
 * View student work
 * Write feedback
+* Anchor comments directly on the selected PDF/evidence when annotation is available
 * Select grade or criteria levels
+* Insert reusable quick comments from the comment bank
 * Autosave happens silently
 * Explicit action: **Mark as ready**
 
@@ -684,10 +712,8 @@ Teachers have **only these actions**:
 ### Release
 
 * Teacher explicitly clicks **Release**
-* Release controls visibility to:
-
-  * Students
-  * Guardians
+* Release makes the official outcome visible through one shared student/guardian state
+* Release supports one student or a selected batch inside the current student group
 * No automatic release
 
 ---
@@ -728,9 +754,14 @@ The system **must guarantee**:
   * reports
   * teacher review
 
+Reporting boundary:
+
+* reporting continues to read official truth from `Task Outcome` / `Task Outcome Criterion`
+* feedback records, replies, and feedback artifacts do **not** become reporting inputs
+
 ### External Visibility
 
-* Nothing is visible until **Release**
+* Nothing is visible until explicit release for that channel/audience
 * Release is:
 
   * explicit
@@ -741,6 +772,8 @@ UI must clearly distinguish:
 > “This is saved”
 > vs
 > “This is visible to students”
+> vs
+> “This grade is still hidden”
 
 ---
 

@@ -12,6 +12,7 @@ It defines how feedback and annotation must fit that runtime.
 Related docs:
 - `ifitwala_ed/docs/assessment/03_gradebook_notes.md`
 - `ifitwala_ed/docs/assessment/04_task_notes.md`
+- `ifitwala_ed/docs/assessment/09_feedback_records_and_publication_rfc.md`
 - `ifitwala_ed/docs/files_and_policies/files_01_architecture_notes.md`
 - `ifitwala_ed/docs/files_and_policies/files_07_education_file_semantics_and_cross_app_contract.md`
 - `ifitwala_ed/docs/files_and_policies/files_08_cross_portal_governed_attachment_preview_contract.md`
@@ -33,6 +34,8 @@ The product center is:
 
 PDF annotation is one evidence-review and anchoring surface inside that workflow.
 It is not the source of truth.
+Annotation is the teacher-facing feature.
+OCR is supporting infrastructure for unreadable or scanned PDFs.
 
 ---
 
@@ -68,6 +71,12 @@ The following decisions are non-negotiable for this feature family:
 6. Accessibility and OCR are platform rules for this feature family.
    They are not optional polish once annotation becomes a default workflow.
 7. AI-generated student-visible feedback is out of scope unless the workflow keeps a teacher approval step before publication.
+8. The first serious teacher authoring version must include a minimal comment bank.
+   Reusable comments and quickmarks are part of core teacher productivity, not late polish.
+9. Reporting and transcript truth remain owned by `Task Outcome` and `Task Outcome Criterion`.
+   Feedback records, replies, and feedback artifacts must not become reporting inputs.
+10. The future feedback domain must stay inside the assessment boundary.
+    Do not create a parallel mini-platform detached from gradebook, submissions, and outcomes.
 
 ---
 
@@ -155,7 +164,115 @@ It must never derive file URLs from storage paths or raw `file_url`.
 
 ---
 
-## 5. Phase 1 Implementation Contract
+## 5. Publication Matrix And Reporting Boundary
+
+Status: **Phase 0 locked, not yet implemented in runtime**
+
+Code refs:
+- `ifitwala_ed/api/outcome_publish.py`
+- `ifitwala_ed/api/gradebook_writes.py`
+- `ifitwala_ed/docs/assessment/03_gradebook_notes.md`
+- `ifitwala_ed/docs/assessment/04_task_notes.md`
+
+The feedback ecosystem must separate **what is released** from **to whom it is released**.
+
+Release channels:
+
+| Channel | Allowed audience reach | Notes |
+| --- | --- | --- |
+| Feedback | `none`, `student`, `student_and_guardian` | supports feedback-first release |
+| Grade / rubric outcome | `none`, `student`, `student_and_guardian` | may lag feedback release |
+
+Rules:
+
+- `student_and_guardian` always implies student visibility first.
+- Guardian visibility must never exceed student visibility for the same release channel.
+- Feedback may be released before grade.
+- Grade may remain hidden while feedback is visible.
+- Student and guardian surfaces must render only the channels released to that audience.
+- The current `Task Outcome.is_published` model is legacy baseline behavior only.
+  It must not be treated as the final release contract for feedback work.
+
+Reporting boundary:
+
+- Official academic truth for reporting remains `Task Outcome` and `Task Outcome Criterion`.
+- Structured feedback, anchored comments, replies, acknowledgements, and derived feedback artifacts are pedagogical workflow data, not reporting truth.
+- Release state governs portal visibility and workflow timing.
+  It does not redefine reporting ownership.
+
+---
+
+## 6. Feedback Version Binding And Artifact Invariants
+
+Status: **Phase 0 locked, not yet implemented in runtime**
+
+Code refs:
+- `ifitwala_ed/docs/assessment/04_task_notes.md`
+- `ifitwala_ed/api/task_submission.py`
+- `ifitwala_ed/assessment/task_submission_service.py`
+
+Every feedback object must bind to one selected evidence version.
+
+Rules:
+
+- Each feedback record binds to exactly one `Task Outcome`.
+- Each anchored feedback record also binds to one selected `Task Submission` version, or to an explicit teacher-created evidence stub when no learner upload exists.
+- Anchors resolve only inside that selected evidence version.
+- Resubmission creates a new evidence version; prior feedback remains historical, but becomes stale for current review unless a teacher explicitly carries it forward.
+- Derived feedback artifacts bind to one evidence version and one feedback publication snapshot.
+- Original learner evidence remains immutable.
+- Replacing a returned feedback artifact creates a new governed feedback artifact/version; it does not mutate the learner submission.
+
+---
+
+## 7. Annotation, Comment Bank, And OCR Contract
+
+Status: **Phase 0 locked, not yet implemented in runtime**
+
+Code refs:
+- `ifitwala_ed/docs/assessment/03_gradebook_notes.md`
+- `ifitwala_ed/docs/assessment/04_task_notes.md`
+
+The annotation product must be implemented as three coordinated layers:
+
+1. annotation workspace in the gradebook drawer
+2. structured feedback records inside the assessment boundary
+3. OCR and accessibility support for low-quality evidence
+
+Teacher-facing annotation minimum:
+
+- text highlight with anchored comment for text-readable PDFs
+- point comment
+- area comment
+- page comment
+- optional ink/freehand for handwritten or diagram-heavy work
+
+Teacher productivity minimum:
+
+- minimal comment bank or quickmarks in the first serious authoring version
+- scoped reusable comments at least by assignment or course
+- insertion from the drawer without leaving the grading flow
+
+Readability and OCR rules:
+
+- Text-readable PDFs support text highlight, search, copyable snippets, and quote-based anchoring.
+- Non-readable PDFs must be detected before rich text annotation is treated as available.
+- Until OCR or repair exists, unreadable PDFs may use reduced annotation mode:
+  - area comments
+  - page comments
+  - ink
+- Do not roll out annotation as if every PDF is text-readable.
+
+Accessibility minimum:
+
+- keyboard-first review and navigation
+- non-color-only meaning for states and badges
+- screen-reader legible comment and summary structure
+- clear jump behavior between feedback navigator and document anchors
+
+---
+
+## 8. Phase 1 Implementation Contract
 
 Status: **Implemented baseline in this change**
 
@@ -190,45 +307,34 @@ Phase 1 means the following is live:
 
 Phase 1 does **not** mean the structured feedback domain is complete.
 It is the drawer-first evidence and grading foundation.
+It also does **not** mean the release model is solved beyond the current legacy `is_published` baseline.
 
 ---
 
-## 6. Explicitly Deferred Beyond Phase 1
+## 9. Next Implementation Sequence
 
-Status: **Locked out of this implementation**
+Status: **Locked sequencing from current baseline**
 
-The following items are intentionally not treated as implemented by Phase 1:
+From the current drawer/evidence baseline, the next implementation sequence is:
 
-- a dedicated structured feedback doctype/domain for anchored comments and summary
-- independent feedback release and grade release states
-- student reply and clarification workflows
+1. structured feedback records and publication states inside the assessment boundary
+2. annotation authoring workflow plus minimal comment bank and readability detection/fallback
+3. student feedback navigator plus reply and clarification loop
+4. OCR hardening, derived artifacts/export, and feedback analytics
+
+See `09_feedback_records_and_publication_rfc.md` for the non-authoritative implementation RFC that translates this sequence into a Phase 2 design.
+
+The following remain out of current-baseline scope until those phases ship:
+
+- student-visible annotation navigation
 - revision planning and acted-on tracking
 - derived annotated PDF generation
-- OCR gate enforcement
-- student-visible annotation navigation
+- full OCR gate enforcement
 - AI-assisted comment generation
 
-If these move forward, update this contract and the task/runtime docs together.
-
 ---
 
-## 7. Accessibility And OCR Rule
-
-Status: **Required product rule, not yet implemented in task runtime**
-
-When annotation becomes a first-class authoring workflow, the platform must support:
-
-- machine-readable PDF text or explicit OCR gating
-- keyboard-first review and navigation
-- non-color-only status meaning
-- screen-reader legible comment and summary structure
-- governed student-facing routes for released feedback artifacts
-
-Until that work exists in code, the docs must continue to describe it as required future enforcement, not live runtime truth.
-
----
-
-## 8. Technical Notes (IT)
+## 10. Technical Notes (IT)
 
 Status: **Current implementation boundary**
 
@@ -245,3 +351,4 @@ Test refs:
 - Evidence review should reuse the existing selected-submission serialization path rather than inventing a new file-preview endpoint.
 - Task list or roster reads may remain separate from drawer bootstrap as long as the drawer itself does not fan out into multiple dependent requests.
 - The current release model in `Task Outcome.is_published` remains a baseline implementation detail, not the final feedback-release contract.
+- Future feedback records should be introduced adjacent to the task runtime and keyed by outcome plus evidence version, rather than hidden inside `Task Contribution`.

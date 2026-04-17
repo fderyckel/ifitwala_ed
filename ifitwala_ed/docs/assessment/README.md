@@ -25,5 +25,7 @@ Planning and audit notes:
   point-in-time audit, not a runtime contract
 - `08_assessment_gradebook_approved_direction_2026-04-17.md`
   approved product direction after the audit, not a runtime contract
+- `09_feedback_records_and_publication_rfc.md`
+  planned Phase 2 implementation RFC for the feedback domain and publication model
 - `gradebook_drawer_phases.md`
   planned roadmap; update the runtime docs above when phases ship

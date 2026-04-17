@@ -3,7 +3,7 @@
 Status: **Authoritative / Current Workspace Contract**
 Scope: `Task`, `Task Delivery`, `Task Outcome`, `Task Submission`, `Task Contribution`
 Audience: Product, Engineering, and coding agents
-Last updated: 2026-04-08
+Last updated: 2026-04-17
 
 This document defines the current task runtime contract in the workspace.
 It replaces older lesson-instance-era notes and removes future-state claims that are not yet true in code.
@@ -11,6 +11,7 @@ It replaces older lesson-instance-era notes and removes future-state claims that
 Related docs:
 - `ifitwala_ed/docs/assessment/01_assessment_notes.md`
 - `ifitwala_ed/docs/assessment/03_gradebook_notes.md`
+- `ifitwala_ed/docs/assessment/07_feedback_annotation_ecosystem_contract.md`
 - `ifitwala_ed/docs/assessment/05_term_reporting_notes.md`
 - `ifitwala_ed/docs/curriculum/01_curriculum_task_delivery_contract.md`
 
@@ -96,6 +97,11 @@ For criteria grading, official per-criterion truth lives in `Task Outcome Criter
 `Task Submission` is append-only evidence.
 Each new learner submission creates a new version.
 Teacher-created evidence stubs are allowed when grading needs an audit anchor without learner-uploaded evidence.
+
+Feedback-specific implication from the canonical feedback contract:
+
+- future structured feedback records and derived feedback artifacts must bind to a selected submission version or explicit evidence stub context
+- learner submissions remain immutable even when annotated return artifacts exist
 
 ### 1.5 Task Contribution
 

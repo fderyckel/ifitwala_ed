@@ -75,7 +75,47 @@ def _bulk_update_publish(outcome_ids, values):
         outcome_doc.is_published = values.get("is_published")
         outcome_doc.published_on = values.get("published_on")
         outcome_doc.published_by = values.get("published_by")
+        next_status = _next_grading_status(outcome_doc, publish_flag=bool(values.get("is_published")))
+        if next_status:
+            outcome_doc.grading_status = next_status
         outcome_doc.save(ignore_permissions=True)
+
+
+def _next_grading_status(outcome_doc, *, publish_flag: bool) -> str | None:
+    current_status = str(getattr(outcome_doc, "grading_status", "") or "").strip()
+
+    if publish_flag:
+        return "Released"
+
+    if current_status and current_status != "Released":
+        return current_status
+
+    return _resolve_unpublished_status(outcome_doc)
+
+
+def _resolve_unpublished_status(outcome_doc) -> str:
+    contribution_rows = frappe.get_all(
+        "Task Contribution",
+        filters={"task_outcome": outcome_doc.name, "status": "Submitted"},
+        fields=["contribution_type"],
+        order_by="submitted_on desc, modified desc",
+        limit=1,
+        ignore_permissions=True,
+    )
+    latest = contribution_rows[0] if contribution_rows else {}
+    if latest.get("contribution_type") == "Moderator":
+        return "Moderated"
+
+    delivery = frappe.db.get_value(
+        "Task Delivery",
+        getattr(outcome_doc, "task_delivery", None),
+        ["delivery_mode"],
+        as_dict=True,
+    )
+    if str((delivery or {}).get("delivery_mode") or "").strip() == "Assess":
+        return "Finalized"
+
+    return "Not Applicable"
 
 
 def _get_publish_summaries(outcome_ids):

@@ -7,6 +7,7 @@ import frappe
 from frappe import _
 from frappe.utils import now_datetime
 
+from ifitwala_ed.api import outcome_publish
 from ifitwala_ed.assessment import quiz_service, task_contribution_service, task_outcome_service
 
 
@@ -208,7 +209,7 @@ def update_task_student(api, task_student: str, updates=None, **kwargs):
     outcome_row = frappe.db.get_value(
         "Task Outcome",
         task_student,
-        ["name", "task_delivery", "official_score"],
+        ["name", "task_delivery", "official_score", "grading_status", "is_published"],
         as_dict=True,
     )
     if not outcome_row:
@@ -295,8 +296,13 @@ def update_task_student(api, task_student: str, updates=None, **kwargs):
 
     status_value = api._normalize_grading_status(payload.get("status")) if "status" in payload else None
     visibility_provided = "visible_to_student" in payload or "visible_to_guardian" in payload
+    is_published = api._bool_flag(outcome_row.get("is_published"))
     if status_value is not None and delivery_mode != "Assess":
         frappe.throw(_("Grading status can only be updated for assessed work."))
+    if status_value == "Released":
+        frappe.throw(_("Use the Release action to release outcomes."))
+    if status_value is not None and is_published:
+        frappe.throw(_("Unrelease this outcome before changing grading status."))
     if status_value is not None or complete_provided or visibility_provided:
         outcome_doc = frappe.get_doc("Task Outcome", task_student)
         if status_value is not None:
@@ -307,14 +313,20 @@ def update_task_student(api, task_student: str, updates=None, **kwargs):
             publish_flag = api._bool_flag(payload.get("visible_to_student")) or api._bool_flag(
                 payload.get("visible_to_guardian")
             )
-            outcome_doc.is_published = 1 if publish_flag else 0
-            if publish_flag:
-                outcome_doc.published_on = now_datetime()
-                outcome_doc.published_by = frappe.session.user
-            else:
-                outcome_doc.published_on = None
-                outcome_doc.published_by = None
-        outcome_doc.save(ignore_permissions=False)
+            if not publish_flag and not api._is_academic_adminish():
+                frappe.throw(_("Not permitted."), frappe.PermissionError)
+            if status_value is not None or complete_provided:
+                outcome_doc.save(ignore_permissions=False)
+            outcome_publish._bulk_update_publish(
+                [task_student],
+                {
+                    "is_published": 1 if publish_flag else 0,
+                    "published_on": now_datetime() if publish_flag else None,
+                    "published_by": frappe.session.user if publish_flag else None,
+                },
+            )
+        else:
+            outcome_doc.save(ignore_permissions=False)
 
     fresh = (
         frappe.db.get_value(
