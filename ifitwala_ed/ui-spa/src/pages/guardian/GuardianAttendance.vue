@@ -50,42 +50,42 @@
 		</header>
 
 		<section class="grid grid-cols-2 gap-3 lg:grid-cols-4">
-			<article class="card-surface p-4">
+			<article class="card-surface p-4" :class="summaryCardClass('tracked')">
 				<p class="type-caption">Tracked days</p>
-				<p class="type-h3 text-ink">{{ counts.tracked_days }}</p>
+				<p class="type-h3" :class="summaryValueClass('tracked')">{{ counts.tracked_days }}</p>
 			</article>
-			<article class="card-surface p-4">
+			<article class="card-surface p-4" :class="summaryCardClass('present')">
 				<p class="type-caption">On-track days</p>
-				<p class="type-h3 text-ink">{{ counts.present_days }}</p>
+				<p class="type-h3" :class="summaryValueClass('present')">{{ counts.present_days }}</p>
 			</article>
-			<article class="card-surface p-4">
+			<article class="card-surface p-4" :class="summaryCardClass('late')">
 				<p class="type-caption">Late days</p>
-				<p class="type-h3 text-amber-900">{{ counts.late_days }}</p>
+				<p class="type-h3" :class="summaryValueClass('late')">{{ counts.late_days }}</p>
 			</article>
-			<article class="card-surface p-4">
+			<article class="card-surface p-4" :class="summaryCardClass('absence')">
 				<p class="type-caption">Absence days</p>
-				<p class="type-h3 text-flame">{{ counts.absence_days }}</p>
+				<p class="type-h3" :class="summaryValueClass('absence')">{{ counts.absence_days }}</p>
 			</article>
 		</section>
 
 		<section class="card-surface p-5">
 			<h2 class="mb-3 type-h3 text-ink">How to read this view</h2>
 			<div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-				<div class="rounded-xl border border-line-soft bg-surface-soft p-4">
-					<div class="mb-2 h-8 w-8 rounded-lg border border-leaf/40 bg-leaf/15" />
-					<p class="type-body-strong text-ink">Green</p>
+				<div class="rounded-xl border border-moss/30 bg-moss/10 p-4">
+					<div class="mb-2 h-8 w-8 rounded-lg border border-moss/40 bg-moss/20" />
+					<p class="type-body-strong text-moss">Moss</p>
 					<p class="type-caption text-ink/70">Attendance is recorded as present for that day.</p>
 				</div>
-				<div class="rounded-xl border border-line-soft bg-surface-soft p-4">
-					<div class="mb-2 h-8 w-8 rounded-lg border border-amber-300 bg-amber-200/70" />
-					<p class="type-body-strong text-ink">Orange</p>
+				<div class="rounded-xl border border-jacaranda/30 bg-jacaranda/10 p-4">
+					<div class="mb-2 h-8 w-8 rounded-lg border border-jacaranda/40 bg-jacaranda/20" />
+					<p class="type-body-strong text-jacaranda">Jacaranda</p>
 					<p class="type-caption text-ink/70">
 						The day includes a late arrival or another tardy attendance signal.
 					</p>
 				</div>
-				<div class="rounded-xl border border-line-soft bg-surface-soft p-4">
-					<div class="mb-2 h-8 w-8 rounded-lg border border-flame/40 bg-flame/15" />
-					<p class="type-body-strong text-ink">Red</p>
+				<div class="rounded-xl border border-flame/30 bg-flame/10 p-4">
+					<div class="mb-2 h-8 w-8 rounded-lg border border-flame/40 bg-flame/20" />
+					<p class="type-body-strong text-flame">Flame</p>
 					<p class="type-caption text-ink/70">
 						The day includes an absence or other non-present code.
 					</p>
@@ -117,29 +117,37 @@
 
 		<section v-else class="space-y-4">
 			<article v-for="student in students" :key="student.student" class="card-surface p-5">
-				<div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+				<div class="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(34rem,38rem)] lg:items-start">
 					<div>
 						<h2 class="type-h3 text-ink">{{ student.student_name }}</h2>
 						<p class="type-caption text-ink/60">
 							Last {{ selectedDays }} days from {{ filters.start_date }} to {{ filters.end_date }}
 						</p>
 					</div>
-					<div class="grid grid-cols-2 gap-3 sm:grid-cols-4">
-						<div class="rounded-xl border border-line-soft bg-surface-soft px-3 py-2">
+					<div class="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:w-full">
+						<div class="rounded-xl border px-3 py-2" :class="summaryCardClass('tracked')">
 							<p class="type-caption">Tracked</p>
-							<p class="type-body-strong text-ink">{{ student.summary.tracked_days }}</p>
+							<p class="type-body-strong" :class="summaryValueClass('tracked')">
+								{{ student.summary.tracked_days }}
+							</p>
 						</div>
-						<div class="rounded-xl border border-line-soft bg-surface-soft px-3 py-2">
+						<div class="rounded-xl border px-3 py-2" :class="summaryCardClass('present')">
 							<p class="type-caption">On track</p>
-							<p class="type-body-strong text-ink">{{ student.summary.present_days }}</p>
+							<p class="type-body-strong" :class="summaryValueClass('present')">
+								{{ student.summary.present_days }}
+							</p>
 						</div>
-						<div class="rounded-xl border border-line-soft bg-surface-soft px-3 py-2">
+						<div class="rounded-xl border px-3 py-2" :class="summaryCardClass('late')">
 							<p class="type-caption">Late</p>
-							<p class="type-body-strong text-amber-900">{{ student.summary.late_days }}</p>
+							<p class="type-body-strong" :class="summaryValueClass('late')">
+								{{ student.summary.late_days }}
+							</p>
 						</div>
-						<div class="rounded-xl border border-line-soft bg-surface-soft px-3 py-2">
+						<div class="rounded-xl border px-3 py-2" :class="summaryCardClass('absence')">
 							<p class="type-caption">Absent</p>
-							<p class="type-body-strong text-flame">{{ student.summary.absence_days }}</p>
+							<p class="type-body-strong" :class="summaryValueClass('absence')">
+								{{ student.summary.absence_days }}
+							</p>
 						</div>
 					</div>
 				</div>
@@ -263,6 +271,8 @@ type CalendarMonth = {
 	cells: Array<CalendarCell | null>;
 };
 
+type SummaryTone = 'tracked' | 'present' | 'late' | 'absence';
+
 const weekdayLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
 const loading = ref(true);
@@ -347,13 +357,13 @@ function selectedDay(student: string): GuardianAttendanceDay | null {
 function cellClass(student: string, cell: CalendarCell): string {
 	const selected = isSelectedCell(student, cell.date) ? 'ring-2 ring-jacaranda' : '';
 	if (cell.state === 'present') {
-		return `border-leaf/40 bg-leaf/15 text-canopy ${selected}`.trim();
+		return `border-moss/35 bg-moss/15 text-ink ${selected}`.trim();
 	}
 	if (cell.state === 'late') {
-		return `border-amber-300 bg-amber-200/70 text-amber-900 ${selected}`.trim();
+		return `border-jacaranda/40 bg-jacaranda/12 text-jacaranda ${selected}`.trim();
 	}
 	if (cell.state === 'absence') {
-		return `border-flame/40 bg-flame/15 text-flame ${selected}`.trim();
+		return `border-flame/45 bg-flame/12 text-flame ${selected}`.trim();
 	}
 	return `border-line-soft bg-white text-ink/45 ${selected}`.trim();
 }
@@ -372,9 +382,23 @@ function detailStateLabel(state: GuardianAttendanceDay['state']): string {
 }
 
 function detailStateClass(state: GuardianAttendanceDay['state']): string {
-	if (state === 'late') return 'bg-amber-200/70 text-amber-900';
-	if (state === 'absence') return 'bg-flame/15 text-flame';
-	return 'bg-leaf/15 text-canopy';
+	if (state === 'late') return 'bg-jacaranda/12 text-jacaranda';
+	if (state === 'absence') return 'bg-flame/12 text-flame';
+	return 'bg-moss/15 text-ink';
+}
+
+function summaryCardClass(tone: SummaryTone): string {
+	if (tone === 'tracked') return 'border-jacaranda/20 bg-jacaranda/5';
+	if (tone === 'present') return 'border-moss/30 bg-moss/10';
+	if (tone === 'late') return 'border-jacaranda/30 bg-jacaranda/10';
+	return 'border-flame/30 bg-flame/10';
+}
+
+function summaryValueClass(tone: SummaryTone): string {
+	if (tone === 'tracked') return 'text-jacaranda';
+	if (tone === 'present') return 'text-ink';
+	if (tone === 'late') return 'text-jacaranda';
+	return 'text-flame';
 }
 
 function formatDetailDate(value: string): string {

@@ -410,7 +410,7 @@ const learningHighlights = computed(() => snapshot.value?.zones.learning_highlig
 const quickLinks = [
 	{
 		title: 'Communications',
-		description: 'Review family-wide school and class updates in one place.',
+		description: 'Review family-wide school events and school or class updates in one place.',
 		icon: 'message-square',
 		to: { name: 'guardian-communications' },
 	},

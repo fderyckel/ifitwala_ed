@@ -511,11 +511,33 @@ describe('OrgCommunicationQuickCreateModal', () => {
 
 		expect(publishWindowGrid?.textContent || '').toContain('Publish from');
 		expect(publishWindowGrid?.textContent || '').toContain('Publish until');
-		expect(publishWindowGrid?.getAttribute('class') || '').toContain('md:grid-cols-2');
+		expect(publishWindowGrid?.getAttribute('class') || '').toContain('sm:grid-cols-2');
 
 		expect(briefWindowGrid?.textContent || '').toContain('Brief start date');
 		expect(briefWindowGrid?.textContent || '').toContain('Brief end date');
-		expect(briefWindowGrid?.getAttribute('class') || '').toContain('md:grid-cols-2');
+		expect(briefWindowGrid?.getAttribute('class') || '').toContain('sm:grid-cols-2');
+	});
+
+	it('opens the native picker when a delivery date input is clicked', async () => {
+		getOptionsMock.mockResolvedValue(interactiveThreadQuickCreateOptions);
+
+		const showPickerMock = vi.fn();
+		Object.defineProperty(HTMLInputElement.prototype, 'showPicker', {
+			configurable: true,
+			value: showPickerMock,
+		});
+
+		mountModal();
+		await flushUi();
+
+		const publishInput = document.querySelector(
+			'.if-org-communication-publish-window-grid input[type="datetime-local"]'
+		) as HTMLInputElement | null;
+		publishInput?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+
+		expect(showPickerMock).toHaveBeenCalledTimes(1);
+
+		Reflect.deleteProperty(HTMLInputElement.prototype, 'showPicker');
 	});
 
 	it('keeps the ready-check card at the bottom of the staff-home aside', async () => {

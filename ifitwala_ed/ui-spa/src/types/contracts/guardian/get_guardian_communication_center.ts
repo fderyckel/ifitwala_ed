@@ -15,7 +15,21 @@ export type Request = {
 	page_length?: number | null
 }
 
-export type GuardianCommunicationCenterItem = {
+export type GuardianSchoolEventFeedItem = {
+	name: string
+	subject: string
+	school?: string | null
+	location?: string | null
+	event_type?: string | null
+	event_category?: string | null
+	description?: string | null
+	snippet?: string | null
+	starts_on?: string | null
+	ends_on?: string | null
+	all_day?: 0 | 1
+}
+
+export type GuardianOrgCommunicationCenterItem = {
 	kind: 'org_communication'
 	item_id: string
 	sort_at?: string | null
@@ -26,6 +40,21 @@ export type GuardianCommunicationCenterItem = {
 	is_unread: boolean
 	org_communication: OrgCommunicationListItem
 }
+
+export type GuardianSchoolEventCenterItem = {
+	kind: 'school_event'
+	item_id: string
+	sort_at?: string | null
+	source_type: 'school'
+	source_label: string
+	context_label?: string | null
+	matched_children: ChildRef[]
+	school_event: GuardianSchoolEventFeedItem
+}
+
+export type GuardianCommunicationCenterItem =
+	| GuardianOrgCommunicationCenterItem
+	| GuardianSchoolEventCenterItem
 
 export type Response = {
 	meta: {

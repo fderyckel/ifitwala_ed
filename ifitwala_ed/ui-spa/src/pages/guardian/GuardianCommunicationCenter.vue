@@ -6,8 +6,8 @@
 					<p class="type-overline text-ink/60">Guardian Portal</p>
 					<h1 class="type-h1 text-ink">Communication Center</h1>
 					<p class="type-body text-ink/70">
-						See school, class, activity, pastoral, and cohort updates for your family in one place,
-						then filter by child when needed.
+						See school events and school, class, activity, pastoral, and cohort updates for your
+						family in one place, then filter by child when needed.
 					</p>
 				</div>
 				<div class="flex items-center gap-2">
@@ -80,8 +80,8 @@
 			<p class="type-body text-ink/70">
 				{{
 					selectedStudent
-						? 'No communications match this child filter right now.'
-						: 'No communications match this view right now.'
+						? 'No updates or events match this child filter right now.'
+						: 'No updates or events match this view right now.'
 				}}
 			</p>
 		</section>
@@ -90,94 +90,138 @@
 			<article
 				v-for="item in items"
 				:key="item.item_id"
-				class="student-hub-section student-hub-section--warm"
+				class="student-hub-section"
+				:class="
+					item.kind === 'org_communication'
+						? 'student-hub-section--warm'
+						: 'student-hub-section--support'
+				"
 			>
-				<div class="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-					<div class="min-w-0">
-						<div class="flex flex-wrap items-center gap-2">
-							<p class="type-caption text-ink/60">{{ item.source_label }}</p>
-							<span class="chip">{{ item.org_communication.communication_type }}</span>
-							<span class="chip">{{ item.org_communication.priority }}</span>
-							<span
-								class="rounded-full px-3 py-1 text-xs font-semibold"
-								:class="item.is_unread ? 'bg-flame/15 text-flame' : 'bg-leaf/15 text-canopy'"
-							>
-								{{ item.is_unread ? 'Unread' : 'Seen' }}
-							</span>
+				<template v-if="item.kind === 'org_communication'">
+					<div class="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+						<div class="min-w-0">
+							<div class="flex flex-wrap items-center gap-2">
+								<p class="type-caption text-ink/60">{{ item.source_label }}</p>
+								<span class="chip">{{ item.org_communication.communication_type }}</span>
+								<span class="chip">{{ item.org_communication.priority }}</span>
+								<span
+									class="rounded-full px-3 py-1 text-xs font-semibold"
+									:class="item.is_unread ? 'bg-flame/15 text-flame' : 'bg-leaf/15 text-canopy'"
+								>
+									{{ item.is_unread ? 'Unread' : 'Seen' }}
+								</span>
+							</div>
+
+							<h2 class="mt-2 type-h3 text-ink">{{ item.org_communication.title }}</h2>
+							<p class="mt-2 type-caption text-ink/60">{{ metaLine(item) }}</p>
+							<p class="mt-3 type-body text-ink/80">{{ item.org_communication.snippet }}</p>
+
+							<div class="mt-4 flex flex-wrap gap-2">
+								<span
+									v-for="child in item.matched_children"
+									:key="`${item.item_id}-${child.student}`"
+									class="chip"
+								>
+									{{ child.full_name }}
+								</span>
+							</div>
 						</div>
 
-						<h2 class="mt-2 type-h3 text-ink">{{ item.org_communication.title }}</h2>
-						<p class="mt-2 type-caption text-ink/60">{{ metaLine(item) }}</p>
-						<p class="mt-3 type-body text-ink/80">{{ item.org_communication.snippet }}</p>
-
-						<div class="mt-4 flex flex-wrap gap-2">
-							<span
-								v-for="child in item.matched_children"
-								:key="`${item.item_id}-${child.student}`"
-								class="chip"
-							>
-								{{ child.full_name }}
-							</span>
+						<div class="flex flex-wrap gap-2">
+							<button type="button" class="if-action" @click="toggleOrgCommunication(item)">
+								{{ expandedItemId === item.item_id ? 'Hide update' : 'Read update' }}
+							</button>
 						</div>
 					</div>
 
-					<div class="flex flex-wrap gap-2">
-						<button type="button" class="if-action" @click="toggleOrgCommunication(item)">
-							{{ expandedItemId === item.item_id ? 'Hide update' : 'Read update' }}
+					<p v-if="actionError" class="mt-4 type-caption text-flame">{{ actionError }}</p>
+
+					<div
+						v-if="hasVisibleInteractionActions(item.org_communication)"
+						class="mt-4 flex flex-wrap items-center gap-3"
+					>
+						<InteractionEmojiChips
+							v-if="canReact(item.org_communication)"
+							:interaction="interactionFor(item.org_communication.name)"
+							:readonly="false"
+							:onReact="code => reactToCommunication(item.org_communication, code)"
+						/>
+						<button
+							v-if="canComment(item.org_communication)"
+							type="button"
+							class="if-action"
+							@click="openThread(item)"
+						>
+							{{ commentUiFor(item.org_communication).actionLabel }}
+							({{ interactionFor(item.org_communication.name).comments_total || 0 }})
 						</button>
 					</div>
-				</div>
 
-				<p v-if="actionError" class="mt-4 type-caption text-flame">{{ actionError }}</p>
-
-				<div
-					v-if="hasVisibleInteractionActions(item.org_communication)"
-					class="mt-4 flex flex-wrap items-center gap-3"
-				>
-					<InteractionEmojiChips
-						v-if="canReact(item.org_communication)"
-						:interaction="interactionFor(item.org_communication.name)"
-						:readonly="false"
-						:onReact="code => reactToCommunication(item.org_communication, code)"
-					/>
-					<button
-						v-if="canComment(item.org_communication)"
-						type="button"
-						class="if-action"
-						@click="openThread(item)"
+					<div
+						v-if="expandedItemId === item.item_id"
+						class="mt-5 student-hub-card student-hub-card--warm"
 					>
-						{{ commentUiFor(item.org_communication).actionLabel }}
-						({{ interactionFor(item.org_communication.name).comments_total || 0 }})
-					</button>
-				</div>
+						<p v-if="detailLoading[item.org_communication.name]" class="type-body text-ink/70">
+							Loading full update...
+						</p>
+						<p v-else-if="detailError[item.org_communication.name]" class="type-body text-flame">
+							{{ detailError[item.org_communication.name] }}
+						</p>
+						<div v-else-if="communicationDetail(item.org_communication.name)">
+							<div
+								class="prose prose-slate max-w-none"
+								v-html="communicationDetail(item.org_communication.name)?.message_html || ''"
+							></div>
 
-				<div
-					v-if="expandedItemId === item.item_id"
-					class="mt-5 student-hub-card student-hub-card--warm"
-				>
-					<p v-if="detailLoading[item.org_communication.name]" class="type-body text-ink/70">
-						Loading full update...
-					</p>
-					<p v-else-if="detailError[item.org_communication.name]" class="type-body text-flame">
-						{{ detailError[item.org_communication.name] }}
-					</p>
-					<div v-else-if="communicationDetail(item.org_communication.name)">
-						<div
-							class="prose prose-slate max-w-none"
-							v-html="communicationDetail(item.org_communication.name)?.message_html || ''"
-						></div>
-
-						<div
-							v-if="communicationDetail(item.org_communication.name)?.attachments?.length"
-							class="mt-5 space-y-2"
-						>
-							<p class="type-body-strong text-ink">Attachments</p>
-							<CommunicationAttachmentPreviewList
-								:attachments="communicationDetail(item.org_communication.name)?.attachments || []"
-							/>
+							<div
+								v-if="communicationDetail(item.org_communication.name)?.attachments?.length"
+								class="mt-5 space-y-2"
+							>
+								<p class="type-body-strong text-ink">Attachments</p>
+								<CommunicationAttachmentPreviewList
+									:attachments="
+										communicationDetail(item.org_communication.name)?.attachments || []
+									"
+								/>
+							</div>
 						</div>
 					</div>
-				</div>
+				</template>
+
+				<template v-else>
+					<div class="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+						<div class="min-w-0">
+							<div class="flex flex-wrap items-center gap-2">
+								<p class="type-caption text-ink/60">{{ item.source_label }}</p>
+								<span v-if="item.school_event.event_type" class="chip">
+									{{ item.school_event.event_type }}
+								</span>
+							</div>
+
+							<h2 class="mt-2 type-h3 text-ink">{{ item.school_event.subject }}</h2>
+							<p class="mt-2 type-caption text-ink/60">{{ schoolEventMetaLine(item) }}</p>
+							<p v-if="item.school_event.snippet" class="mt-3 type-body text-ink/80">
+								{{ item.school_event.snippet }}
+							</p>
+
+							<div class="mt-4 flex flex-wrap gap-2">
+								<span
+									v-for="child in item.matched_children"
+									:key="`${item.item_id}-${child.student}`"
+									class="chip"
+								>
+									{{ child.full_name }}
+								</span>
+							</div>
+						</div>
+
+						<div class="flex flex-wrap gap-2">
+							<button type="button" class="if-action" @click="openSchoolEvent(item)">
+								View event
+							</button>
+						</div>
+					</div>
+				</template>
 			</article>
 
 			<div v-if="hasMore" class="flex justify-center">
@@ -207,6 +251,13 @@
 			@submit="submitComment"
 			@update:comment="onCommentUpdate"
 		/>
+
+		<SchoolEventModal
+			:open="schoolEventOpen"
+			:event="selectedSchoolEvent"
+			@close="closeSchoolEvent"
+			@after-leave="resetSchoolEvent"
+		/>
 	</div>
 </template>
 
@@ -215,6 +266,8 @@ import { computed, onMounted, ref, watch } from 'vue';
 import { toast } from 'frappe-ui';
 import { RouterLink } from 'vue-router';
 
+import SchoolEventModal from '@/components/calendar/SchoolEventModal.vue';
+import type { SchoolEventDetails } from '@/components/calendar/schoolEventTypes';
 import CommentThreadDrawer from '@/components/CommentThreadDrawer.vue';
 import CommunicationAttachmentPreviewList from '@/components/communication/CommunicationAttachmentPreviewList.vue';
 import InteractionEmojiChips from '@/components/InteractionEmojiChips.vue';
@@ -225,6 +278,8 @@ import { createOrgCommunicationArchiveService } from '@/lib/services/orgCommunic
 import type { Response as OrgCommunicationDetailResponse } from '@/types/contracts/org_communication_archive/get_org_communication_item';
 import type {
 	GuardianCommunicationCenterItem,
+	GuardianOrgCommunicationCenterItem,
+	GuardianSchoolEventCenterItem,
 	GuardianCommunicationSource,
 	Response as GuardianCommunicationCenterResponse,
 } from '@/types/contracts/guardian/get_guardian_communication_center';
@@ -277,7 +332,9 @@ const threadLoading = ref(false);
 const commentSubmitting = ref(false);
 const threadRows = ref<InteractionThreadRow[]>([]);
 const commentValue = ref('');
-const selectedCommunication = ref<GuardianCommunicationCenterItem | null>(null);
+const selectedCommunication = ref<GuardianOrgCommunicationCenterItem | null>(null);
+const schoolEventOpen = ref(false);
+const selectedSchoolEvent = ref<SchoolEventDetails | null>(null);
 
 const children = computed(() => snapshot.value?.family.children ?? []);
 
@@ -381,12 +438,30 @@ function metaLine(item: GuardianCommunicationCenterItem) {
 	return parts.join(' · ');
 }
 
+function schoolEventMetaLine(item: GuardianSchoolEventCenterItem) {
+	const parts = [
+		childSummary(item),
+		item.school_event.location || '',
+		item.school_event.starts_on
+			? formatLocalizedDateTime(item.school_event.starts_on, {
+					fallback: item.school_event.starts_on,
+				})
+			: '',
+	].filter(Boolean);
+	return parts.join(' · ');
+}
+
 function communicationDetail(name: string) {
 	return detailMap.value[name] || null;
 }
 
 async function loadSummaries() {
-	const names = items.value.map(item => item.org_communication.name).filter(Boolean);
+	const names = items.value
+		.filter(
+			(item): item is GuardianOrgCommunicationCenterItem => item.kind === 'org_communication'
+		)
+		.map(item => item.org_communication.name)
+		.filter(Boolean);
 	if (!names.length) {
 		summaryMap.value = {};
 		return;
@@ -457,7 +532,7 @@ async function loadCommunicationDetail(name: string) {
 	}
 }
 
-async function markCommunicationRead(item: GuardianCommunicationCenterItem) {
+async function markCommunicationRead(item: GuardianOrgCommunicationCenterItem) {
 	const commName = item.org_communication.name;
 	if (!item.is_unread || readMarking.value[commName]) {
 		return;
@@ -475,7 +550,7 @@ async function markCommunicationRead(item: GuardianCommunicationCenterItem) {
 	}
 }
 
-async function toggleOrgCommunication(item: GuardianCommunicationCenterItem) {
+async function toggleOrgCommunication(item: GuardianOrgCommunicationCenterItem) {
 	actionError.value = '';
 	if (expandedItemId.value === item.item_id) {
 		expandedItemId.value = '';
@@ -512,7 +587,7 @@ async function reactToCommunication(
 	}
 }
 
-async function openThread(item: GuardianCommunicationCenterItem) {
+async function openThread(item: GuardianOrgCommunicationCenterItem) {
 	actionError.value = '';
 	if (!canComment(item.org_communication)) {
 		actionError.value = commentUiFor(item.org_communication).unavailableMessage;
@@ -585,6 +660,30 @@ async function submitComment() {
 	} finally {
 		commentSubmitting.value = false;
 	}
+}
+
+function openSchoolEvent(item: GuardianSchoolEventCenterItem) {
+	selectedSchoolEvent.value = {
+		name: item.school_event.name,
+		subject: item.school_event.subject,
+		school: item.school_event.school || null,
+		location: item.school_event.location || null,
+		event_category: item.school_event.event_category || null,
+		event_type: item.school_event.event_type || null,
+		description: item.school_event.description || null,
+		start: item.school_event.starts_on || null,
+		end: item.school_event.ends_on || null,
+		all_day: Boolean(item.school_event.all_day),
+	};
+	schoolEventOpen.value = true;
+}
+
+function closeSchoolEvent() {
+	schoolEventOpen.value = false;
+}
+
+function resetSchoolEvent() {
+	selectedSchoolEvent.value = null;
 }
 
 watch([selectedStudent, activeSource], () => {

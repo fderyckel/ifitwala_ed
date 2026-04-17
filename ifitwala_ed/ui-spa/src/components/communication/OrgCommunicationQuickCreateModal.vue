@@ -743,6 +743,9 @@
 														</option>
 													</select>
 												</div>
+											</div>
+
+											<div class="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
 												<div class="space-y-1">
 													<label class="type-label">Brief order</label>
 													<FormControl
@@ -752,61 +755,72 @@
 														:disabled="submitting"
 													/>
 												</div>
-												<div
-													class="if-org-communication-publish-window-grid grid grid-cols-1 gap-4 md:col-span-2 md:grid-cols-2"
-												>
-													<div class="space-y-1">
-														<label class="type-label">Publish from</label>
-														<input
-															v-model="form.publish_from"
-															type="datetime-local"
-															class="w-full rounded-2xl border border-border/80 bg-white px-3 py-2 text-sm text-ink shadow-sm focus:border-jacaranda/50 focus:ring-1 focus:ring-jacaranda/30"
-															:disabled="submitting"
-														/>
-													</div>
-													<div class="space-y-1">
-														<label class="type-label">Publish until</label>
-														<input
-															v-model="form.publish_to"
-															type="datetime-local"
-															class="w-full rounded-2xl border border-border/80 bg-white px-3 py-2 text-sm text-ink shadow-sm focus:border-jacaranda/50 focus:ring-1 focus:ring-jacaranda/30"
-															:disabled="submitting"
-														/>
-													</div>
+											</div>
+
+											<div
+												class="if-org-communication-publish-window-grid mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2"
+											>
+												<div class="space-y-1">
+													<label class="type-label">Publish from</label>
+													<input
+														v-model="form.publish_from"
+														type="datetime-local"
+														class="w-full rounded-2xl border border-border/80 bg-white px-3 py-2 text-sm text-ink shadow-sm focus:border-jacaranda/50 focus:ring-1 focus:ring-jacaranda/30"
+														:disabled="submitting"
+														@click="openNativeDatePicker"
+														@focus="openNativeDatePicker"
+													/>
 												</div>
-												<div
-													class="if-org-communication-brief-window-grid grid grid-cols-1 gap-4 md:col-span-2 md:grid-cols-2"
-												>
-													<div class="space-y-1">
-														<label class="type-label">
-															Brief start date
-															<span v-if="briefDatesRequired" class="text-rose-600">*</span>
-														</label>
-														<input
-															v-model="form.brief_start_date"
-															type="date"
-															class="w-full rounded-2xl border border-border/80 bg-white px-3 py-2 text-sm text-ink shadow-sm focus:border-jacaranda/50 focus:ring-1 focus:ring-jacaranda/30"
-															:disabled="submitting"
-														/>
-													</div>
-													<div class="space-y-1">
-														<label class="type-label">Brief end date</label>
-														<input
-															v-model="form.brief_end_date"
-															type="date"
-															class="w-full rounded-2xl border border-border/80 bg-white px-3 py-2 text-sm text-ink shadow-sm focus:border-jacaranda/50 focus:ring-1 focus:ring-jacaranda/30"
-															:disabled="submitting"
-														/>
-													</div>
+												<div class="space-y-1">
+													<label class="type-label">Publish until</label>
+													<input
+														v-model="form.publish_to"
+														type="datetime-local"
+														class="w-full rounded-2xl border border-border/80 bg-white px-3 py-2 text-sm text-ink shadow-sm focus:border-jacaranda/50 focus:ring-1 focus:ring-jacaranda/30"
+														:disabled="submitting"
+														@click="openNativeDatePicker"
+														@focus="openNativeDatePicker"
+													/>
 												</div>
-												<div
-													v-if="deliveryValidationMessage"
-													class="md:col-span-2 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3"
-												>
-													<p class="type-caption text-rose-900">
-														{{ deliveryValidationMessage }}
-													</p>
+											</div>
+
+											<div
+												class="if-org-communication-brief-window-grid mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2"
+											>
+												<div class="space-y-1">
+													<label class="type-label">
+														Brief start date
+														<span v-if="briefDatesRequired" class="text-rose-600">*</span>
+													</label>
+													<input
+														v-model="form.brief_start_date"
+														type="date"
+														class="w-full rounded-2xl border border-border/80 bg-white px-3 py-2 text-sm text-ink shadow-sm focus:border-jacaranda/50 focus:ring-1 focus:ring-jacaranda/30"
+														:disabled="submitting"
+														@click="openNativeDatePicker"
+														@focus="openNativeDatePicker"
+													/>
 												</div>
+												<div class="space-y-1">
+													<label class="type-label">Brief end date</label>
+													<input
+														v-model="form.brief_end_date"
+														type="date"
+														class="w-full rounded-2xl border border-border/80 bg-white px-3 py-2 text-sm text-ink shadow-sm focus:border-jacaranda/50 focus:ring-1 focus:ring-jacaranda/30"
+														:disabled="submitting"
+														@click="openNativeDatePicker"
+														@focus="openNativeDatePicker"
+													/>
+												</div>
+											</div>
+
+											<div
+												v-if="deliveryValidationMessage"
+												class="mt-4 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3"
+											>
+												<p class="type-caption text-rose-900">
+													{{ deliveryValidationMessage }}
+												</p>
 											</div>
 										</section>
 
@@ -1942,6 +1956,23 @@ function toggleRecipient(row: AudienceRowState, field: RecipientField, event: Ev
 
 function updateMessage(content: string) {
 	form.message = content;
+}
+
+function openNativeDatePicker(event: Event) {
+	const input = event.currentTarget as HTMLInputElement | null;
+	if (!input || input.disabled) return;
+
+	const pickerInput = input as HTMLInputElement & { showPicker?: () => void };
+	if (typeof pickerInput.showPicker === 'function') {
+		try {
+			pickerInput.showPicker();
+			return;
+		} catch {
+			// Ignore browsers that expose the method but reject imperative open calls.
+		}
+	}
+
+	input.focus();
 }
 
 function toFrappeDatetime(value: string) {

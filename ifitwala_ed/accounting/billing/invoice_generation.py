@@ -101,30 +101,36 @@ def reset_billing_rows_for_invoice(sales_invoice: str) -> None:
     rows = frappe.get_all(
         "Billing Schedule Row",
         filters={"sales_invoice": sales_invoice, "parenttype": "Billing Schedule"},
-        fields=["name", "parent"],
+        fields=["name", "parent", "billing_run"],
         limit=50000,
     )
     if not rows:
         return
 
     parent_names = set()
+    billing_run_names = set()
     for row in rows:
         frappe.db.set_value(
             "Billing Schedule Row",
             row.get("name"),
             {
-                "sales_invoice": "",
-                "billing_run": "",
+                "sales_invoice": None,
+                "billing_run": None,
                 "status": "Pending",
             },
             update_modified=False,
         )
         parent_names.add(row.get("parent"))
+        if row.get("billing_run"):
+            billing_run_names.add(row.get("billing_run"))
 
     from ifitwala_ed.accounting.doctype.billing_schedule.billing_schedule import refresh_billing_schedule
 
     for parent_name in parent_names:
         refresh_billing_schedule(parent_name)
+
+    for billing_run_name in billing_run_names:
+        _refresh_billing_run_after_invoice_reset(billing_run_name)
 
 
 def _get_schedule_target_rows(schedule_doc, row_ids: list[str] | None = None):
@@ -271,3 +277,33 @@ def _link_rows_to_invoice(*, row_refs: list[dict], sales_invoice: str, billing_r
 
     for parent_name in parent_names:
         refresh_billing_schedule(parent_name)
+
+
+def _refresh_billing_run_after_invoice_reset(billing_run: str) -> None:
+    if not billing_run:
+        return
+
+    run = frappe.get_doc("Billing Run", billing_run)
+    retained_items = []
+    for item in run.items or []:
+        sales_invoice = (getattr(item, "sales_invoice", None) or "").strip()
+        if not sales_invoice:
+            continue
+        invoice_state = frappe.db.get_value("Sales Invoice", sales_invoice, ["name", "docstatus"], as_dict=True)
+        if not invoice_state or int(invoice_state.get("docstatus") or 0) == 2:
+            continue
+        retained_items.append(
+            {
+                "account_holder": item.account_holder,
+                "period_key": item.period_key,
+                "sales_invoice": sales_invoice,
+                "billing_schedule_count": item.billing_schedule_count,
+                "billing_row_count": item.billing_row_count,
+                "grand_total": item.grand_total,
+            }
+        )
+
+    run.set("items", retained_items)
+    if not retained_items:
+        run.processed_on = None
+    run.save(ignore_permissions=True)

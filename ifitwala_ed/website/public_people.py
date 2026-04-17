@@ -23,7 +23,6 @@ def _get_employee_public_fields() -> list[str]:
     optional_fields = [
         "employee_preferred_name",
         "employee_image",
-        "bio",
         "small_bio",
         "show_public_profile_page",
         "public_profile_slug",
@@ -61,15 +60,7 @@ def _normalize_sort_order(value) -> int | None:
 
 
 def _resolve_full_bio(row: dict) -> str:
-    full_bio = (row.get("bio") or "").strip()
-    if full_bio:
-        return full_bio
-
-    employee_name = (row.get("name") or "").strip()
-    if not employee_name or not frappe.db.has_column("Employee", "bio"):
-        return ""
-
-    return str(frappe.db.get_value("Employee", employee_name, "bio") or "").strip()
+    return ""
 
 
 def _get_designation_map(designation_names: tuple[str, ...]) -> dict[str, dict]:

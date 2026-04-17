@@ -111,41 +111,6 @@ frappe.ui.form.on('Org Communication', {
 	},
 
 	setup_governed_attachment_upload(frm) {
-		const openUploader = async () => {
-			try {
-				if (frm.is_new() || frm.is_dirty()) {
-					await frm.save();
-				}
-			} catch (error) {
-				return;
-			}
-
-			if (!String(frm.doc.organization || '').trim()) {
-				frappe.msgprint({
-					title: __('Missing Organization'),
-					indicator: 'orange',
-					message: __('Set Organization on the communication before uploading governed attachments.')
-				});
-				return;
-			}
-
-			new frappe.ui.FileUploader({
-				method: 'ifitwala_ed.api.org_communication_attachments.upload_org_communication_attachment',
-				args: { org_communication: frm.doc.name },
-				doctype: 'Org Communication',
-				docname: frm.doc.name,
-				is_private: 1,
-				disable_private: true,
-				allow_multiple: false,
-				on_success() {
-					frm.reload_doc();
-				},
-				on_error() {
-					frappe.msgprint(__('Upload failed. Please try again.'));
-				},
-			});
-		};
-
 		const tableField = frm.get_field('attachments');
 		const attachmentContextMode = resolve_attachment_context_mode(frm);
 		const hasGovernedContext = attachmentContextMode !== 'missing-organization';
@@ -155,15 +120,25 @@ frappe.ui.form.on('Org Communication', {
 			tableField.grid.update_docfield_property(
 				'file',
 				'description',
-				__('Use the Upload Attachment action for governed files.')
+				get_org_communication_attachment_file_description()
 			);
 
 			tableField.grid.wrapper
 				.find('.grid-custom-buttons .org-communication-upload-btn')
 				.remove();
 
-			const $gridButton = tableField.grid.add_custom_button(__('Upload Attachment'), openUploader);
+			const $gridButton = tableField.grid.add_custom_button(
+				__('Upload Attachment'),
+				() => open_org_communication_attachment_uploader(frm)
+			);
 			$gridButton.addClass('org-communication-upload-btn');
+
+			(frm.doc.attachments || []).forEach(row => {
+				const rowName = String(row?.name || '').trim();
+				if (rowName) {
+					setup_org_communication_attachment_row(frm, rowName);
+				}
+			});
 		}
 
 		frm.set_df_property(
@@ -180,7 +155,17 @@ frappe.ui.form.on('Org Communication', {
 
 		frm.remove_custom_button(__('Upload Attachment'), __('Actions'));
 		frm.remove_custom_button(__('Upload Attachment'));
-		frm.add_custom_button(__('Upload Attachment'), openUploader, __('Actions'));
+		frm.add_custom_button(
+			__('Upload Attachment'),
+			() => open_org_communication_attachment_uploader(frm),
+			__('Actions')
+		);
+	},
+
+	attachments_add(frm, cdt, cdn) {
+		window.setTimeout(() => {
+			setup_org_communication_attachment_row(frm, cdn);
+		}, 0);
 	}
 });
 
@@ -249,6 +234,83 @@ function resolve_attachment_context_mode(frm) {
 	}
 
 	return 'organization';
+}
+
+async function open_org_communication_attachment_uploader(frm) {
+	try {
+		if (frm.is_new() || frm.is_dirty()) {
+			await frm.save();
+		}
+	} catch (error) {
+		return;
+	}
+
+	if (!String(frm.doc.organization || '').trim()) {
+		frappe.msgprint({
+			title: __('Missing Organization'),
+			indicator: 'orange',
+			message: __('Set Organization on the communication before uploading governed attachments.')
+		});
+		return;
+	}
+
+	new frappe.ui.FileUploader({
+		method: 'ifitwala_ed.api.org_communication_attachments.upload_org_communication_attachment',
+		args: { org_communication: frm.doc.name },
+		doctype: 'Org Communication',
+		docname: frm.doc.name,
+		is_private: 1,
+		disable_private: true,
+		allow_multiple: false,
+		on_success() {
+			frm.reload_doc();
+		},
+		on_error() {
+			frappe.msgprint(__('Upload failed. Please try again.'));
+		},
+	});
+}
+
+function get_org_communication_attachment_file_description() {
+	return __('Use the Upload Attachment action for governed files. External URLs can still be added manually.');
+}
+
+function setup_org_communication_attachment_row(frm, cdn) {
+	const grid = frm.fields_dict.attachments?.grid;
+	if (!grid || !cdn) return;
+
+	const gridRow = grid.get_row(cdn);
+	const gridForm = gridRow?.grid_form;
+	const fileField = get_grid_field(gridForm, 'file');
+	if (fileField?.df) {
+		fileField.df.read_only = 1;
+		fileField.df.description = get_org_communication_attachment_file_description();
+		fileField.refresh && fileField.refresh();
+	}
+
+	const rowWrapper = grid.grid_rows_by_docname?.[cdn]?.row;
+	if (!rowWrapper?.length || rowWrapper.find('.org-communication-row-upload-btn').length) {
+		return;
+	}
+
+	const $btn = $(
+		`<button type="button" class="btn btn-xs btn-default org-communication-row-upload-btn">
+			${__('Upload Attachment')}
+		</button>`
+	);
+	$btn.on('click', event => {
+		event.preventDefault();
+		event.stopPropagation();
+		void open_org_communication_attachment_uploader(frm);
+	});
+
+	const $actions = rowWrapper.find('.row-check, .row-index').last();
+	if ($actions.length) {
+		$actions.after($btn);
+		return;
+	}
+
+	rowWrapper.prepend($btn);
 }
 
 function should_show_activity_context(frm) {
@@ -558,6 +620,15 @@ frappe.ui.form.on('Org Communication Audience', {
 
 	student_group(frm) {
 		frm.trigger('setup_governed_attachment_upload');
+	}
+});
+
+frappe.ui.form.on('Attached Document', {
+	form_render(frm, cdt, cdn) {
+		if (frm.doctype !== 'Org Communication') {
+			return;
+		}
+		setup_org_communication_attachment_row(frm, cdn);
 	}
 });
 

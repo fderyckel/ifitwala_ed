@@ -42,7 +42,6 @@ Current public people rendering reads directly from `Employee` fields already pr
 - `employee_full_name`
 - `employee_preferred_name`
 - `designation`
-- `bio`
 - `small_bio`
 - `show_on_website`
 - `employee_image`
@@ -112,7 +111,7 @@ Current public payload includes:
 - resolved public bio
 - optional public email placeholder, currently `None`
 - optional public phone placeholder, currently `None`
-- full bio fallback from `Employee.bio`
+- full bio currently falls back to `Employee.small_bio`, because the current `Employee` schema does not provide a separate persisted long-form public bio field
 - `featured`
 - `sort_order`
 - `profile_slug`

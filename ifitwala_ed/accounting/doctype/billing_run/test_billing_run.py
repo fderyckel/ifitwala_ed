@@ -98,3 +98,8 @@ class TestBillingRun(AccountingTestMixin, FrappeTestCase):
             self.assertEqual(schedule.status, "Pending")
             self.assertEqual(schedule.rows[0].status, "Pending")
             self.assertFalse(schedule.rows[0].sales_invoice)
+
+        run.reload()
+        self.assertEqual(run.status, "Draft")
+        self.assertFalse(run.processed_on)
+        self.assertEqual(run.items, [])

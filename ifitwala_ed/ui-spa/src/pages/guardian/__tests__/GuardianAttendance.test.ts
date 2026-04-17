@@ -131,11 +131,15 @@ describe('GuardianAttendance', () => {
 			button.getAttribute('aria-label')?.includes('Amina Example on 2026-03-12')
 		) as HTMLButtonElement | undefined
 		expect(dayButton).toBeTruthy()
+		expect(dayButton?.className).toContain('bg-jacaranda/12')
 		dayButton?.click()
 		await flushUi()
 
 		const text = document.body.textContent || ''
 		expect(text).toContain('Family Attendance')
+		expect(text).toContain('Moss')
+		expect(text).toContain('Jacaranda')
+		expect(text).toContain('Flame')
 		expect(text).toContain('Late bus')
 		expect(text).toContain('Math')
 		expect(text).toContain('Late or tardy')

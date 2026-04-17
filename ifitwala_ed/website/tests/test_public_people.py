@@ -101,7 +101,7 @@ class TestPublicPeopleService(FrappeTestCase):
         employee.show_public_profile_page = 1
         employee.featured_on_website = 1
         employee.website_sort_order = 3
-        employee.bio = "Chloe leads interdisciplinary learning and advisory support."
+        employee.small_bio = "Chloe leads interdisciplinary learning and advisory support."
         employee.save(ignore_permissions=True)
 
         with patch(
@@ -127,7 +127,7 @@ class TestPublicPeopleService(FrappeTestCase):
         self.assertTrue(rows[0]["featured"])
         self.assertEqual(rows[0]["sort_order"], 3)
         self.assertEqual(person["employee"], employee.name)
-        self.assertEqual(person["full_bio"], employee.bio)
+        self.assertEqual(person["full_bio"], employee.small_bio)
 
     def test_public_people_disables_original_image_fallback_for_website_surfaces(self):
         organization = make_organization(prefix="Public People Image Org")

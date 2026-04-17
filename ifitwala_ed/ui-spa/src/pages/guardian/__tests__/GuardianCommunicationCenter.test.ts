@@ -46,6 +46,33 @@ vi.mock('vue-router', async () => {
 	}
 })
 
+vi.mock('@/components/calendar/SchoolEventModal.vue', async () => {
+	const { defineComponent, h } = await import('vue')
+
+	return {
+		default: defineComponent({
+			name: 'SchoolEventModalStub',
+			props: {
+				open: {
+					type: Boolean,
+					default: false,
+				},
+				event: {
+					type: Object,
+					required: false,
+					default: null,
+				},
+			},
+			setup(props) {
+				return () =>
+					props.open
+						? h('div', `School Event Modal ${props.event?.subject || ''}`.trim())
+						: null
+			},
+		}),
+	}
+})
+
 vi.mock('@/components/CommentThreadDrawer.vue', () => ({
 	default: defineComponent({
 		name: 'CommentThreadDrawerStub',
@@ -457,6 +484,76 @@ describe('GuardianCommunicationCenter', () => {
 			page_length: 24,
 		})
 		expect(document.body.textContent || '').toContain('Biology checkpoint')
+	})
+
+	it('renders school events in the same family feed and opens the event modal', async () => {
+		getGuardianCommunicationCenterMock.mockResolvedValue({
+			meta: {
+				generated_at: '2026-04-16T09:00:00',
+				source: 'all',
+				student: null,
+			},
+			family: {
+				children: [
+					{ student: 'STU-1', full_name: 'Amina Example', school: 'School One' },
+					{ student: 'STU-2', full_name: 'Noah Example', school: 'School One' },
+				],
+			},
+			summary: {
+				total_items: 1,
+				source_counts: { school: 1 },
+				unread_items: 0,
+			},
+			items: [
+				{
+					kind: 'school_event',
+					item_id: 'event::EVENT-1',
+					sort_at: '2026-04-18T08:00:00',
+					source_type: 'school',
+					source_label: 'School Event',
+					context_label: 'School One',
+					matched_children: [
+						{ student: 'STU-1', full_name: 'Amina Example', school: 'School One' },
+						{ student: 'STU-2', full_name: 'Noah Example', school: 'School One' },
+					],
+					school_event: {
+						name: 'EVENT-1',
+						subject: 'Spring Showcase',
+						school: 'School One',
+						location: 'Main Hall',
+						event_type: 'Performance',
+						event_category: 'Other',
+						description: '<p>Families are welcome.</p>',
+						snippet: 'Families are welcome.',
+						starts_on: '2026-04-18T08:00:00',
+						ends_on: '2026-04-18T10:00:00',
+						all_day: 0,
+					},
+				},
+			],
+			total_count: 1,
+			has_more: false,
+			start: 0,
+			page_length: 24,
+		})
+		getOrgCommInteractionSummaryMock.mockResolvedValue({})
+
+		mountGuardianCommunicationCenter()
+		await flushUi()
+
+		const text = document.body.textContent || ''
+		expect(text).toContain('Spring Showcase')
+		expect(text).toContain('Amina Example')
+		expect(text).toContain('Noah Example')
+
+		const viewEventButton = Array.from(document.querySelectorAll('button')).find(button =>
+			button.textContent?.includes('View event')
+		) as HTMLButtonElement | undefined
+		expect(viewEventButton).toBeTruthy()
+		viewEventButton?.click()
+		await flushUi()
+
+		expect(document.body.textContent || '').toContain('School Event Modal Spring Showcase')
 	})
 
 	it('shows ask-school semantics for private student q-and-a updates', async () => {

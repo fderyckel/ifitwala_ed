@@ -143,7 +143,7 @@ Rules:
 8. Guardian activity communication panels and `/guardian/communications` use the shared interaction service.
 9. `GuardianCommunicationCenter.vue` owns the guardian portal's family-wide org communication history and defaults to all linked children before any child filter is applied.
 10. Guardian communication rows must render once per `Org Communication` with the matched linked-child labels attached; the page must not duplicate the same communication once per child.
-11. Guardian communication center V1 is limited to `Org Communication` history; school-event history remains deferred.
+11. Guardian communication center may render school-event rows in the same family feed, but only `Org Communication` rows use the shared messaging interaction and read-state workflows.
 12. Applicant messages use the admissions service, which writes to the same canonical entry ledger.
 13. No surface may call any retired `Communication Interaction` API or schema artifact.
 
