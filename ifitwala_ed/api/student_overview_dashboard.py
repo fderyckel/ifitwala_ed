@@ -753,7 +753,7 @@ def _wellbeing_block(student: str, academic_year: str | None):
                 "date": r.date,
                 "academic_year": r.academic_year,
                 "title": r.log_type or "Log",
-                "summary": _preview_text(r.log),
+                "summary": _preview_text(r.log, limit=None),
                 "status": r.follow_up_status,
                 "is_sensitive": False,
             }
@@ -767,7 +767,7 @@ def _wellbeing_block(student: str, academic_year: str | None):
                 "date": r.date,
                 "academic_year": r.academic_year,
                 "title": r.referral_category or r.referral_source or "Referral",
-                "summary": _preview_text(r.referral_description),
+                "summary": _preview_text(r.referral_description, limit=None),
                 "status": None,
                 "is_sensitive": True,
             }
@@ -780,7 +780,7 @@ def _wellbeing_block(student: str, academic_year: str | None):
                 "name": r.name,
                 "date": r.date,
                 "title": "Nurse visit",
-                "summary": _preview_text(r.note),
+                "summary": _preview_text(r.note, limit=None),
                 "status": None,
                 "is_sensitive": True,
             }
@@ -807,11 +807,13 @@ def _wellbeing_block(student: str, academic_year: str | None):
     return {"timeline": timeline, "health_note": health_note, "metrics": metrics}
 
 
-def _preview_text(value: str | None, limit: int = 140) -> str | None:
+def _preview_text(value: str | None, limit: int | None = 140) -> str | None:
     text = strip_html(value or "").strip()
     if not text:
         return None
     compact = " ".join(text.split())
+    if limit is None:
+        return compact
     return compact[:limit]
 
 

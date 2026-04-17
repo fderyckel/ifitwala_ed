@@ -47,6 +47,34 @@ def _as_check(value) -> int:
     return 1 if cint(value or 0) else 0
 
 
+def _set_row_value(row, fieldname: str, value) -> None:
+    if isinstance(row, dict):
+        row[fieldname] = value
+        return
+    setattr(row, fieldname, value)
+
+
+def _normalize_audience_row_for_target_mode(row):
+    target_mode = _clean_text((row.get("target_mode") if isinstance(row, dict) else getattr(row, "target_mode", None)))
+    if target_mode == "Organization":
+        _set_row_value(row, "school", None)
+        _set_row_value(row, "team", None)
+        _set_row_value(row, "student_group", None)
+        _set_row_value(row, "include_descendants", 0)
+    elif target_mode == "School Scope":
+        _set_row_value(row, "team", None)
+        _set_row_value(row, "student_group", None)
+    elif target_mode == "Team":
+        _set_row_value(row, "school", None)
+        _set_row_value(row, "student_group", None)
+        _set_row_value(row, "include_descendants", 0)
+    elif target_mode == "Student Group":
+        _set_row_value(row, "school", None)
+        _set_row_value(row, "team", None)
+        _set_row_value(row, "include_descendants", 0)
+    return row
+
+
 def _field_options(doctype: str, fieldname: str) -> list[str]:
     field = frappe.get_meta(doctype).get_field(fieldname)
     if not field or not getattr(field, "options", None):
@@ -83,14 +111,9 @@ def _parse_audiences(audiences) -> list[dict]:
             "include_descendants": _as_check(raw_row.get("include_descendants")),
             "note": _clean_text(raw_row.get("note")),
         }
-        if row["target_mode"] == "Organization":
-            row["school"] = None
-            row["team"] = None
-            row["student_group"] = None
-            row["include_descendants"] = 0
         for fieldname in RECIPIENT_TOGGLE_FIELDS:
             row[fieldname] = _as_check(raw_row.get(fieldname))
-        cleaned_rows.append(row)
+        cleaned_rows.append(_normalize_audience_row_for_target_mode(row))
 
     return cleaned_rows
 
@@ -332,7 +355,8 @@ def create_org_communication_quick(
 
         doc.set("audiences", [])
         for row in _parse_audiences(audiences):
-            doc.append("audiences", row)
+            child_row = doc.append("audiences", row)
+            _normalize_audience_row_for_target_mode(child_row)
 
         if doc_name:
             doc.save()

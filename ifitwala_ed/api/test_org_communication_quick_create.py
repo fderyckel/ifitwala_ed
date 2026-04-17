@@ -236,6 +236,61 @@ class TestOrgCommunicationQuickCreate(FrappeTestCase):
         self.assertEqual(doc.insert_calls, 1)
         cache.set_value.assert_called_once()
 
+    def test_create_quick_normalizes_organization_audience_rows_before_insert(self):
+        doc = _DummyOrgCommunicationDoc()
+        cache = Mock()
+        cache.get_value.return_value = None
+        cache.lock.return_value = nullcontext()
+
+        with (
+            patch("ifitwala_ed.api.org_communication_quick_create.frappe.has_permission", return_value=True),
+            patch("ifitwala_ed.api.org_communication_quick_create.frappe.cache", return_value=cache),
+            patch("ifitwala_ed.api.org_communication_quick_create.frappe.new_doc", return_value=doc),
+        ):
+            result = org_communication_quick_create.create_org_communication_quick(
+                title="Org-wide staff update",
+                communication_type="Information",
+                status="Draft",
+                priority="Normal",
+                portal_surface="Everywhere",
+                organization="ORG-1",
+                school=None,
+                message="Attachment bootstrap draft",
+                interaction_mode="Staff Comments",
+                allow_private_notes=0,
+                allow_public_thread=0,
+                client_request_id="req-org-audience",
+                audiences=[
+                    {
+                        "target_mode": "Organization",
+                        "school": "SCH-1",
+                        "team": "TEAM-1",
+                        "student_group": "SG-1",
+                        "include_descendants": 1,
+                        "to_staff": 1,
+                    }
+                ],
+            )
+
+        self.assertEqual(result["status"], "created")
+        self.assertEqual(
+            doc.audiences,
+            [
+                {
+                    "target_mode": "Organization",
+                    "school": None,
+                    "team": None,
+                    "student_group": None,
+                    "include_descendants": 0,
+                    "note": None,
+                    "to_staff": 1,
+                    "to_students": 0,
+                    "to_guardians": 0,
+                }
+            ],
+        )
+        self.assertEqual(doc.insert_calls, 1)
+
     def test_create_quick_updates_existing_org_communication_when_name_is_provided(self):
         doc = _DummyOrgCommunicationDoc(name="COMM-EXISTING")
         cache = Mock()

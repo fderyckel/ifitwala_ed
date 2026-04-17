@@ -255,6 +255,52 @@ class TestStudentOverviewDashboard(IfitwalaFrappeTestCase):
         self.assertEqual(payload["metrics"]["referrals"]["active"], 3)
         self.assertEqual(payload["metrics"]["nurse_visits"]["this_term"], 5)
 
+    def test_wellbeing_block_preserves_full_timeline_summary_text(self):
+        long_log = (
+            '<p>Theo was observed attempting a "Silly Walk" in the main hallway between Period 2 and 3. '
+            "While his technique was high-quality, it caused a serious traffic slowdown and required a "
+            "follow-up conversation about timing, safety, and audience selection.</p>"
+        )
+
+        with (
+            patch(
+                "ifitwala_ed.api.student_overview_dashboard._get_visible_student_logs",
+                return_value=[
+                    frappe._dict(
+                        name="LOG-001",
+                        date="2026-03-02",
+                        academic_year="2025-2026",
+                        log_type="Behaviour",
+                        log=long_log,
+                        follow_up_status="Open",
+                        requires_follow_up=1,
+                    )
+                ],
+            ),
+            patch(
+                "ifitwala_ed.api.student_overview_dashboard._visible_student_log_support_counts",
+                return_value=(1, 1),
+            ),
+            patch("ifitwala_ed.api.student_overview_dashboard._get_visible_student_referrals", return_value=[]),
+            patch(
+                "ifitwala_ed.api.student_overview_dashboard._visible_student_referral_counts",
+                return_value=(0, 0),
+            ),
+            patch("ifitwala_ed.api.student_overview_dashboard._get_visible_student_nurse_visits", return_value=[]),
+            patch("ifitwala_ed.api.student_overview_dashboard._visible_student_nurse_visit_count", return_value=0),
+            patch("ifitwala_ed.api.student_overview_dashboard._get_student_health_note", return_value=None),
+        ):
+            payload = _wellbeing_block("STU-001", "2025-2026")
+
+        self.assertEqual(
+            payload["timeline"][0]["summary"],
+            (
+                'Theo was observed attempting a "Silly Walk" in the main hallway between Period 2 and 3. '
+                "While his technique was high-quality, it caused a serious traffic slowdown and required a "
+                "follow-up conversation about timing, safety, and audience selection."
+            ),
+        )
+
     def test_attendance_block_counts_excused_unexcused_and_late_correctly(self):
         def fake_get_all(doctype, **kwargs):
             if doctype == "Student Attendance Code":

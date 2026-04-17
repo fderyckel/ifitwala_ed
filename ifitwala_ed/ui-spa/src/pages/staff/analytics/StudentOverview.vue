@@ -563,10 +563,13 @@ const wellbeingScope = ref<'current' | 'last' | 'all'>('current');
 const wellbeingFilter = ref<'all' | 'student_log' | 'referral' | 'nurse_visit'>('all');
 const historyScope = ref<'current' | 'previous' | 'two_years' | 'all'>('all');
 const attendanceKpiSource = ref<'all_day' | 'by_course'>('all_day');
+const WELLBEING_VISIBLE_TIMELINE_ROWS = 10;
+const expandedWellbeingItems = ref<Record<string, boolean>>({});
 watch(
 	() => snapshot.value.meta?.student,
 	() => {
 		selectedCourse.value = null;
+		expandedWellbeingItems.value = {};
 	}
 );
 
@@ -586,6 +589,10 @@ watch(
 	{ immediate: true }
 );
 
+watch([wellbeingFilter, wellbeingScope], () => {
+	expandedWellbeingItems.value = {};
+});
+
 function formatPct(value: number | null | undefined, digits = 0) {
 	if (value == null || Number.isNaN(value)) return '0%';
 	return `${Math.round(Number(value) * 100 * 10 ** digits) / 10 ** digits}%`;
@@ -599,6 +606,14 @@ function formatCount(value: number | null | undefined) {
 function formatDate(value?: string | null) {
 	if (!value) return '';
 	return value.slice(0, 10);
+}
+
+function academicYearScopeLabel(scope?: string, fallback?: string | null) {
+	if (scope === 'current') return 'This academic year';
+	if (scope === 'previous' || scope === 'last') return 'Last academic year';
+	if (scope === 'two_years') return 'Last two academic years';
+	if (scope === 'all') return 'All academic years';
+	return fallback || scope || '';
 }
 
 const hasAllDayHeatmap = computed(
@@ -650,12 +665,15 @@ function toggleCourse(courseId: string) {
 function matchesYearScope(itemYear?: string | null, scope?: string) {
 	if (!scope || scope === 'all') return true;
 	if (!itemYear) return true;
-	if (scope === 'current') return itemYear === snapshot.value.meta.current_academic_year;
+	if (scope === 'current') {
+		const currentAcademicYear = snapshot.value.meta.current_academic_year;
+		return currentAcademicYear ? itemYear === currentAcademicYear : false;
+	}
 	if (scope === 'previous') {
 		const prev = snapshot.value.history.year_options.find(
 			y => y.key === 'previous'
 		)?.academic_year;
-		return prev ? itemYear === prev : true;
+		return prev ? itemYear === prev : false;
 	}
 	if (scope === 'two_years') {
 		const yrs =
@@ -666,7 +684,7 @@ function matchesYearScope(itemYear?: string | null, scope?: string) {
 		const prev = snapshot.value.history.year_options.find(
 			y => y.key === 'previous'
 		)?.academic_year;
-		return prev ? itemYear === prev : true;
+		return prev ? itemYear === prev : false;
 	}
 	return true;
 }
@@ -934,13 +952,20 @@ const wellbeingTimeline = computed(() => {
 	});
 });
 
+const wellbeingTimelineLead = computed(() =>
+	wellbeingTimeline.value.slice(0, WELLBEING_VISIBLE_TIMELINE_ROWS)
+);
+const wellbeingTimelineOverflow = computed(() =>
+	wellbeingTimeline.value.slice(WELLBEING_VISIBLE_TIMELINE_ROWS)
+);
+
 const wellbeingHealthNote = computed(() => {
 	const note = snapshot.value.wellbeing.health_note || null;
 	if (!note) return null;
 	return wellbeingFilter.value === 'all' || wellbeingFilter.value === 'nurse_visit' ? note : null;
 });
 
-const wellbeingTimelineNeedsScroll = computed(() => wellbeingTimeline.value.length > 5);
+const wellbeingTimelineNeedsScroll = computed(() => wellbeingTimelineOverflow.value.length > 0);
 
 const kpiTiles = computed(() => [
 	{
@@ -1006,6 +1031,12 @@ const wellbeingSeriesOption = computed(() => {
 });
 
 const historyYearOptions = computed(() => snapshot.value.history.year_options || []);
+const displayHistoryYearOptions = computed(() =>
+	historyYearOptions.value.map(option => ({
+		...option,
+		displayLabel: academicYearScopeLabel(option.key, option.label),
+	}))
+);
 const filteredAcademicTrend = computed(() => {
 	const data = snapshot.value.history.academic_trend || [];
 	return data.filter(row => matchesYearScope(row.academic_year, historyScope.value));
@@ -1102,6 +1133,26 @@ function wellbeingTypeLabel(type: WellbeingTimelineItem['type']) {
 	if (type === 'student_log') return 'Student log';
 	if (type === 'referral') return 'Referral';
 	return 'Nurse visit';
+}
+
+function wellbeingItemKey(item: WellbeingTimelineItem) {
+	return `${item.type}:${item.name}`;
+}
+
+function wellbeingSummaryNeedsToggle(summary?: string | null) {
+	return Boolean(summary && summary.trim().length > 180);
+}
+
+function isWellbeingExpanded(item: WellbeingTimelineItem) {
+	return Boolean(expandedWellbeingItems.value[wellbeingItemKey(item)]);
+}
+
+function toggleWellbeingExpanded(item: WellbeingTimelineItem) {
+	const key = wellbeingItemKey(item);
+	expandedWellbeingItems.value = {
+		...expandedWellbeingItems.value,
+		[key]: !expandedWellbeingItems.value[key],
+	};
 }
 </script>
 
@@ -1387,7 +1438,9 @@ function wellbeingTypeLabel(type: WellbeingTimelineItem['type']) {
 								<div>
 									<h3 class="text-sm font-semibold text-slate-800">Task Progress</h3>
 									<p class="text-[11px] text-slate-500">
-										Status distribution and completion by course ({{ taskYearScope }} year scope).
+										Status distribution and completion by course ({{
+											academicYearScopeLabel(taskYearScope)
+										}}).
 									</p>
 								</div>
 								<div class="flex items-center gap-2">
@@ -1403,13 +1456,7 @@ function wellbeingTypeLabel(type: WellbeingTimelineItem['type']) {
 										]"
 										@click="taskYearScope = scope as any"
 									>
-										{{
-											scope === 'current'
-												? 'This year'
-												: scope === 'previous'
-													? 'Last year'
-													: 'All years'
-										}}
+										{{ academicYearScopeLabel(scope as string) }}
 									</button>
 								</div>
 							</header>
@@ -1531,13 +1578,7 @@ function wellbeingTypeLabel(type: WellbeingTimelineItem['type']) {
 									]"
 									@click="attendanceScope = scope as any"
 								>
-									{{
-										scope === 'current'
-											? 'This year'
-											: scope === 'last'
-												? 'Last year'
-												: 'All years'
-									}}
+									{{ academicYearScopeLabel(scope as string) }}
 								</button>
 							</div>
 						</div>
@@ -1603,8 +1644,8 @@ function wellbeingTypeLabel(type: WellbeingTimelineItem['type']) {
 									/>
 									<p v-else class="type-empty">Switch to course view to see breakdown.</p>
 
-									<div class="grid grid-cols-1 gap-2 text-xs sm:grid-cols-3">
-										<div class="mini-kpi-card">
+									<div class="grid grid-cols-1 gap-2 text-xs md:grid-cols-3">
+										<div class="mini-kpi-card min-w-0">
 											<p class="mini-kpi-label">Total days absent</p>
 											<p class="mini-kpi-value">
 												{{
@@ -1614,13 +1655,13 @@ function wellbeingTypeLabel(type: WellbeingTimelineItem['type']) {
 												}}
 											</p>
 										</div>
-										<div class="mini-kpi-card mini-kpi-card-alert">
+										<div class="mini-kpi-card mini-kpi-card-alert min-w-0">
 											<p class="mini-kpi-label">Unexcused absences</p>
 											<p class="mini-kpi-value text-[color:rgb(var(--flame-rgb))]">
 												{{ formatCount(attendanceSummaryForScope.unexcused) }}
 											</p>
 										</div>
-										<div class="mini-kpi-card">
+										<div class="mini-kpi-card min-w-0">
 											<p class="mini-kpi-label">
 												{{
 													displayViewMode === 'student'
@@ -1670,9 +1711,9 @@ function wellbeingTypeLabel(type: WellbeingTimelineItem['type']) {
 										v-model="wellbeingScope"
 										class="h-8 rounded-md border border-slate-200 px-2 text-[11px]"
 									>
-										<option value="current">This year</option>
-										<option value="last">Last year</option>
-										<option value="all">All years</option>
+										<option value="current">This academic year</option>
+										<option value="last">Last academic year</option>
+										<option value="all">All academic years</option>
 									</select>
 								</div>
 							</header>
@@ -1713,11 +1754,12 @@ function wellbeingTypeLabel(type: WellbeingTimelineItem['type']) {
 									</div>
 								</div>
 								<p v-if="wellbeingTimelineNeedsScroll" class="mb-2 text-[11px] text-slate-500">
-									Showing the latest items first. Scroll for older wellbeing activity.
+									Showing the latest 10 items first. Scroll below for older wellbeing activity in
+									this dashboard view.
 								</p>
-								<div class="max-h-[32rem] space-y-3 overflow-y-auto pr-1">
+								<div class="space-y-3">
 									<div
-										v-for="item in wellbeingTimeline"
+										v-for="item in wellbeingTimelineLead"
 										:key="item.name"
 										class="flex items-start gap-3 rounded-xl border border-slate-200 bg-slate-50/70 px-3 py-2"
 									>
@@ -1729,13 +1771,23 @@ function wellbeingTypeLabel(type: WellbeingTimelineItem['type']) {
 												'bg-sky-500': item.type === 'nurse_visit',
 											}"
 										></div>
-										<div class="flex-1 text-sm text-slate-700">
-											<div class="flex items-center justify-between">
-												<div class="font-semibold text-slate-900">{{ item.title }}</div>
+										<div class="min-w-0 flex-1 text-sm text-slate-700">
+											<div class="flex items-start justify-between gap-3">
+												<div class="min-w-0 font-semibold text-slate-900">{{ item.title }}</div>
 												<span class="text-[11px] text-slate-500">{{ formatDate(item.date) }}</span>
 											</div>
-											<p v-if="item.summary" class="text-xs text-slate-500">{{ item.summary }}</p>
-											<div class="mt-1 flex items-center gap-2 text-[11px] text-slate-500">
+											<p
+												v-if="item.summary"
+												:class="[
+													'mt-1 break-words text-xs leading-relaxed text-slate-500',
+													isWellbeingExpanded(item) ? 'whitespace-pre-wrap' : 'line-clamp-2',
+												]"
+											>
+												{{ item.summary }}
+											</p>
+											<div
+												class="mt-1 flex flex-wrap items-center gap-2 text-[11px] text-slate-500"
+											>
 												<span class="rounded-full bg-white px-2 py-0.5 shadow-sm">
 													{{ wellbeingTypeLabel(item.type) }}
 												</span>
@@ -1745,6 +1797,14 @@ function wellbeingTypeLabel(type: WellbeingTimelineItem['type']) {
 												>
 													{{ item.status }}
 												</span>
+												<button
+													v-if="wellbeingSummaryNeedsToggle(item.summary)"
+													type="button"
+													class="rounded-full bg-white px-2 py-0.5 shadow-sm"
+													@click="toggleWellbeingExpanded(item)"
+												>
+													{{ isWellbeingExpanded(item) ? 'Show less' : 'Read more' }}
+												</button>
 												<button
 													type="button"
 													class="rounded-full bg-white px-2 py-0.5 shadow-sm"
@@ -1756,7 +1816,71 @@ function wellbeingTypeLabel(type: WellbeingTimelineItem['type']) {
 										</div>
 									</div>
 									<div
-										v-if="!wellbeingTimeline.length && !wellbeingHealthNote"
+										v-if="wellbeingTimelineOverflow.length"
+										class="max-h-[26rem] space-y-3 overflow-y-auto pr-1"
+									>
+										<div
+											v-for="item in wellbeingTimelineOverflow"
+											:key="`overflow-${item.name}`"
+											class="flex items-start gap-3 rounded-xl border border-slate-200 bg-slate-50/70 px-3 py-2"
+										>
+											<div
+												class="mt-1 h-2.5 w-2.5 rounded-full"
+												:class="{
+													'bg-emerald-500': item.type === 'student_log',
+													'bg-amber-500': item.type === 'referral',
+													'bg-sky-500': item.type === 'nurse_visit',
+												}"
+											></div>
+											<div class="min-w-0 flex-1 text-sm text-slate-700">
+												<div class="flex items-start justify-between gap-3">
+													<div class="min-w-0 font-semibold text-slate-900">{{ item.title }}</div>
+													<span class="text-[11px] text-slate-500">{{
+														formatDate(item.date)
+													}}</span>
+												</div>
+												<p
+													v-if="item.summary"
+													:class="[
+														'mt-1 break-words text-xs leading-relaxed text-slate-500',
+														isWellbeingExpanded(item) ? 'whitespace-pre-wrap' : 'line-clamp-2',
+													]"
+												>
+													{{ item.summary }}
+												</p>
+												<div
+													class="mt-1 flex flex-wrap items-center gap-2 text-[11px] text-slate-500"
+												>
+													<span class="rounded-full bg-white px-2 py-0.5 shadow-sm">
+														{{ wellbeingTypeLabel(item.type) }}
+													</span>
+													<span
+														v-if="item.status"
+														class="rounded-full bg-white px-2 py-0.5 shadow-sm"
+													>
+														{{ item.status }}
+													</span>
+													<button
+														v-if="wellbeingSummaryNeedsToggle(item.summary)"
+														type="button"
+														class="rounded-full bg-white px-2 py-0.5 shadow-sm"
+														@click="toggleWellbeingExpanded(item)"
+													>
+														{{ isWellbeingExpanded(item) ? 'Show less' : 'Read more' }}
+													</button>
+													<button
+														type="button"
+														class="rounded-full bg-white px-2 py-0.5 shadow-sm"
+														@click="openDeskDoc(item.doctype, item.name)"
+													>
+														Open
+													</button>
+												</div>
+											</div>
+										</div>
+									</div>
+									<div
+										v-if="!wellbeingTimelineLead.length && !wellbeingHealthNote"
 										class="text-xs text-slate-400"
 									>
 										No wellbeing items for this scope.
@@ -1776,8 +1900,8 @@ function wellbeingTypeLabel(type: WellbeingTimelineItem['type']) {
 								:option="wellbeingSeriesOption"
 							/>
 							<div v-else class="text-xs text-slate-400">No trend data yet.</div>
-							<div class="mt-3 grid grid-cols-1 gap-2 text-xs text-slate-600">
-								<div class="rounded-lg bg-slate-50/70 px-3 py-2">
+							<div class="mt-3 grid grid-cols-1 gap-2 text-xs text-slate-600 2xl:grid-cols-3">
+								<div class="min-w-0 rounded-lg bg-slate-50/70 px-3 py-2">
 									<p class="text-[11px] uppercase tracking-wide text-slate-500">
 										Open log follow-ups
 									</p>
@@ -1785,7 +1909,7 @@ function wellbeingTypeLabel(type: WellbeingTimelineItem['type']) {
 										{{ formatCount(snapshot.wellbeing.metrics.student_logs?.open_followups || 0) }}
 									</p>
 								</div>
-								<div class="rounded-lg bg-slate-50/70 px-3 py-2">
+								<div class="min-w-0 rounded-lg bg-slate-50/70 px-3 py-2">
 									<p class="text-[11px] uppercase tracking-wide text-slate-500">
 										Active referrals
 									</p>
@@ -1793,7 +1917,7 @@ function wellbeingTypeLabel(type: WellbeingTimelineItem['type']) {
 										{{ formatCount(snapshot.wellbeing.metrics.referrals?.active || 0) }}
 									</p>
 								</div>
-								<div class="rounded-lg bg-slate-50/70 px-3 py-2">
+								<div class="min-w-0 rounded-lg bg-slate-50/70 px-3 py-2">
 									<p class="text-[11px] uppercase tracking-wide text-slate-500">
 										Visible nurse visits
 									</p>
@@ -1814,7 +1938,7 @@ function wellbeingTypeLabel(type: WellbeingTimelineItem['type']) {
 							</div>
 							<div class="flex flex-wrap gap-2">
 								<button
-									v-for="opt in historyYearOptions"
+									v-for="opt in displayHistoryYearOptions"
 									:key="opt.key"
 									type="button"
 									:class="[
@@ -1825,7 +1949,7 @@ function wellbeingTypeLabel(type: WellbeingTimelineItem['type']) {
 									]"
 									@click="historyScope = opt.key as any"
 								>
-									{{ opt.label }}
+									{{ opt.displayLabel }}
 								</button>
 							</div>
 						</header>
