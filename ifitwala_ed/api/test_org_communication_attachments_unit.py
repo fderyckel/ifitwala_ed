@@ -236,3 +236,67 @@ class TestOrgCommunicationAttachmentsUnit(TestCase):
 
         self.assertEqual(payload["preview_status"], "ready")
         self.assertEqual(payload["preview_url"], "/preview/COMM-0001/row-001")
+
+    def test_attachment_context_lock_blocks_issuing_school_change_when_files_remain(self):
+        with stubbed_frappe():
+            attachments = import_fresh("ifitwala_ed.setup.doctype.org_communication.attachments")
+            before_doc = _FakeOrgCommunicationDoc(
+                name="COMM-LOCK-1",
+                organization="ORG-1",
+                school="SCH-1",
+                audiences=[],
+            )
+            current_doc = _FakeOrgCommunicationDoc(
+                name="COMM-LOCK-1",
+                organization="ORG-1",
+                school="SCH-2",
+                audiences=[],
+            )
+
+            with self.assertRaisesRegex(
+                Exception,
+                "Remove the governed files before changing issuing school",
+            ):
+                attachments.assert_org_communication_attachment_context_stable(current_doc, before_doc)
+
+    def test_attachment_context_lock_blocks_invalid_scope_change_when_files_remain(self):
+        with stubbed_frappe() as frappe:
+            attachments = import_fresh("ifitwala_ed.setup.doctype.org_communication.attachments")
+            frappe.db.get_value = lambda *args, **kwargs: None
+            before_doc = _FakeOrgCommunicationDoc(
+                name="COMM-LOCK-2",
+                organization="ORG-1",
+                school="SCH-1",
+                audiences=[],
+            )
+            current_doc = _FakeOrgCommunicationDoc(
+                name="COMM-LOCK-2",
+                organization="",
+                school="SCH-1",
+                audiences=[],
+            )
+
+            with self.assertRaisesRegex(
+                Exception,
+                "Remove the governed files before changing the attachment context",
+            ):
+                attachments.assert_org_communication_attachment_context_stable(current_doc, before_doc)
+
+    def test_attachment_context_lock_allows_scope_change_after_governed_files_are_removed(self):
+        with stubbed_frappe():
+            attachments = import_fresh("ifitwala_ed.setup.doctype.org_communication.attachments")
+            before_doc = _FakeOrgCommunicationDoc(
+                name="COMM-LOCK-3",
+                organization="ORG-1",
+                school="SCH-1",
+                audiences=[],
+            )
+            current_doc = _FakeOrgCommunicationDoc(
+                name="COMM-LOCK-3",
+                organization="ORG-1",
+                school="SCH-2",
+                audiences=[],
+            )
+            current_doc.attachments = []
+
+            attachments.assert_org_communication_attachment_context_stable(current_doc, before_doc)

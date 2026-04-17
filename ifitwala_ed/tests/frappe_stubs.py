@@ -38,7 +38,7 @@ def stubbed_frappe(extra_modules: dict[str, object] | None = None) -> Iterator[t
     frappe._ = lambda message: message
     frappe.PermissionError = StubPermissionError
     frappe.ValidationError = StubValidationError
-    frappe.throw = lambda message, exc=StubValidationError: _raise(exc, message)
+    frappe.throw = lambda message, exc=StubValidationError, **kwargs: _raise(exc, message)
     frappe.whitelist = _whitelist
     frappe.parse_json = lambda value: value
     frappe.session = types.SimpleNamespace(user="unit.test@example.com")

@@ -12,6 +12,7 @@ import frappe
 from frappe import _
 from frappe.utils import getdate, nowdate, strip_html
 
+from ifitwala_ed.api.courses import DONE_GRADING_STATUSES, DONE_SUBMISSION_STATUSES
 from ifitwala_ed.api.student_log_dashboard import get_authorized_schools
 from ifitwala_ed.students.doctype.student_log.student_log import get_student_log_visibility_predicate
 from ifitwala_ed.students.doctype.student_referral.student_referral import (
@@ -31,7 +32,6 @@ ALLOWED_STAFF_ROLES = {
     "Academic Staff",
     "Instructor",
 }
-TASK_READ_SOURCE_TABLES = ("Task Student", "Task", "Course")
 
 
 def _current_user() -> str:
@@ -727,42 +727,114 @@ def _attendance_block(
     }
 
 
-def _task_read_source_available() -> bool:
-    return all(frappe.db.table_exists(doctype) for doctype in TASK_READ_SOURCE_TABLES)
+def _task_is_completed(row) -> bool:
+    if int(row.get("complete") or 0) == 1:
+        return True
+
+    grading_status = str(row.get("grading_status") or "").strip()
+    if grading_status in DONE_GRADING_STATUSES:
+        return True
+
+    submission_status = str(row.get("submission_status") or "").strip()
+    if submission_status in DONE_SUBMISSION_STATUSES:
+        return True
+
+    if int(row.get("has_submission") or 0) == 1:
+        return True
+
+    return False
+
+
+def _task_is_missed(row) -> bool:
+    return str(row.get("procedural_status") or "").strip() == "Absent"
+
+
+def _task_status_label(row) -> str:
+    if _task_is_missed(row):
+        return "Missed"
+
+    grading_status = str(row.get("grading_status") or "").strip()
+    if int(row.get("complete") or 0) == 1:
+        return "Completed"
+    if grading_status in DONE_GRADING_STATUSES:
+        return grading_status
+
+    submission_status = str(row.get("submission_status") or "").strip()
+    if submission_status in DONE_SUBMISSION_STATUSES:
+        return submission_status
+
+    available_from = row.get("available_from")
+    due_date = row.get("due_date")
+    today = getdate(nowdate())
+    if due_date:
+        try:
+            due_day = getdate(due_date)
+            if due_day < today:
+                return "Overdue"
+            if due_day == today:
+                return "Due Today"
+            return "Upcoming"
+        except Exception:
+            pass
+
+    if available_from:
+        try:
+            if getdate(available_from) > today:
+                return "Not Yet Open"
+        except Exception:
+            pass
+
+    return "Open"
 
 
 def _task_rows(student: str, program: str | None):
-    if not _task_read_source_available():
-        return []
-
     sql = """
         SELECT
-            t.name as task,
+            td.task,
             t.title,
-            t.course,
-            c.course_name,
-            t.student_group,
-            t.delivery_type,
-            t.due_date,
-            t.program,
-            t.academic_year,
-            ts.status,
-            ts.complete,
-            ts.mark_awarded,
-            ts.visible_to_student,
-            ts.visible_to_guardian,
-            ts.updated_on
-        FROM `tabTask Student` ts
-        INNER JOIN `tabTask` t ON t.name = ts.parent
-        LEFT JOIN `tabCourse` c ON c.name = t.course
-        WHERE ts.student = %(student)s
+            COALESCE(td.course, o.course, sg.course, t.default_course) AS course,
+            COALESCE(c.course_name, td.course, o.course, sg.course, t.default_course) AS course_name,
+            td.student_group,
+            td.delivery_mode AS delivery_type,
+            td.available_from,
+            td.due_date,
+            td.lock_date,
+            COALESCE(o.program, sg.program) AS program,
+            COALESCE(o.academic_year, td.academic_year, sg.academic_year) AS academic_year,
+            o.submission_status,
+            o.grading_status,
+            o.procedural_status,
+            COALESCE(o.is_complete, 0) AS complete,
+            COALESCE(o.has_submission, 0) AS has_submission,
+            o.official_score AS mark_awarded,
+            td.max_points AS out_of,
+            COALESCE(o.is_published, 0) AS visible_to_student,
+            COALESCE(o.is_published, 0) AS visible_to_guardian,
+            COALESCE(o.modified, o.completed_on, td.modified) AS updated_on
+        FROM `tabTask Delivery` td
+        INNER JOIN `tabTask` t ON t.name = td.task
+        LEFT JOIN `tabStudent Group Student` sgs
+            ON sgs.parent = td.student_group
+           AND sgs.parenttype = 'Student Group'
+           AND sgs.student = %(student)s
+        LEFT JOIN `tabStudent Group` sg ON sg.name = td.student_group
+        LEFT JOIN `tabTask Outcome` o ON o.task_delivery = td.name AND o.student = %(student)s
+        LEFT JOIN `tabCourse` c ON c.name = COALESCE(td.course, o.course, sg.course, t.default_course)
+        WHERE td.docstatus = 1
+          AND COALESCE(t.is_archived, 0) = 0
+          AND (o.name IS NOT NULL OR COALESCE(sgs.active, 0) = 1)
     """
     params = {"student": student}
     program_scope = _get_program_subtree(program) if program else None
     if program_scope:
-        sql += " AND (t.program IN %(programs)s OR t.program IS NULL)"
+        sql += " AND COALESCE(o.program, sg.program) IN %(programs)s"
         params["programs"] = tuple(program_scope)
-    return frappe.db.sql(sql, params, as_dict=True)
+
+    rows = frappe.db.sql(sql, params, as_dict=True)
+    for row in rows:
+        row["status"] = _task_status_label(row)
+        row["complete"] = _task_is_completed(row)
+    return rows
 
 
 def _learning_block(student: str, program: str | None, academic_year: str | None, *, snapshot_ctx=None):
@@ -795,9 +867,9 @@ def _learning_block(student: str, program: str | None, academic_year: str | None
             },
         )
         entry["total_tasks"] += 1
-        if row.status in {"Graded", "Returned"} or row.complete:
+        if row.complete:
             entry["completed_tasks"] += 1
-        if row.status == "Missed":
+        if _task_is_missed(row):
             entry["missed_tasks"] += 1
 
     for entry in course_map.values():
@@ -1193,7 +1265,7 @@ def _history_block(student: str, program: str | None, *, snapshot_ctx=None):
     for ay in {r.academic_year for r in task_rows if r.academic_year}:
         yr_rows = [r for r in task_rows if r.academic_year == ay]
         total = len(yr_rows)
-        completed = sum(1 for r in yr_rows if r.status in {"Graded", "Returned"} or r.complete)
+        completed = sum(1 for r in yr_rows if r.complete)
         academic_trend.append(
             {
                 "academic_year": ay,
@@ -1220,13 +1292,16 @@ def _history_block(student: str, program: str | None, *, snapshot_ctx=None):
         ]
     )
     for ay in att_years:
-        stats = _attendance_block(
-            student,
-            ay,
-            attendance_rows=snapshot_ctx["attendance_rows"] if snapshot_ctx else None,
-            attendance_code_bundle=snapshot_ctx["attendance_code_bundle"] if snapshot_ctx else None,
-            course_name_map=snapshot_ctx["attendance_course_labels"] if snapshot_ctx else None,
-        )["summary"]
+        if snapshot_ctx:
+            stats = _attendance_block(
+                student,
+                ay,
+                attendance_rows=snapshot_ctx["attendance_rows"],
+                attendance_code_bundle=snapshot_ctx["attendance_code_bundle"],
+                course_name_map=snapshot_ctx["attendance_course_labels"],
+            )["summary"]
+        else:
+            stats = _attendance_block(student, ay)["summary"]
         attendance_trend.append(
             {
                 "academic_year": ay,
@@ -1265,13 +1340,13 @@ def _kpi_block(student: str, academic_year: str | None, *, snapshot_ctx=None):
     task_rows = _task_rows_for_academic_year(task_rows, academic_year)
 
     total_tasks = len(task_rows)
-    completed_tasks = sum(1 for r in task_rows if r.status in {"Graded", "Returned"} or r.complete)
+    completed_tasks = sum(1 for r in task_rows if r.complete)
     overdue_tasks = sum(
         1
         for r in task_rows
-        if r.due_date and getdate(r.due_date) < getdate(nowdate()) and r.status not in {"Graded", "Returned"}
+        if r.due_date and getdate(r.due_date) < getdate(nowdate()) and not r.complete and not _task_is_missed(r)
     )
-    missed_tasks = sum(1 for r in task_rows if r.status == "Missed")
+    missed_tasks = sum(1 for r in task_rows if _task_is_missed(r))
 
     return {
         "attendance": attendance_summary,

@@ -13,6 +13,7 @@ from ifitwala_ed.api.student_overview_dashboard import (
     _ensure_student_overview_access,
     _history_block,
     _identity_block,
+    _kpi_block,
     _students_for_guardian,
     _task_rows,
     _wellbeing_block,
@@ -518,26 +519,121 @@ class TestStudentOverviewDashboard(IfitwalaFrappeTestCase):
             ],
         )
 
-    def test_task_rows_returns_empty_when_legacy_task_source_is_unavailable(self):
-        sql_called = False
-
-        def fake_sql(*args, **kwargs):
-            nonlocal sql_called
-            sql_called = True
-            return []
-
-        def fake_table_exists(doctype):
-            self.assertEqual(doctype, "Task Student")
-            return False
+    def test_task_rows_reads_current_task_delivery_outcome_contract(self):
+        def fake_sql(query, params=None, as_dict=False):
+            self.assertIn("FROM `tabTask Delivery` td", query)
+            self.assertIn("LEFT JOIN `tabTask Outcome` o", query)
+            self.assertIn("INNER JOIN `tabStudent Group Student` sgs", query)
+            self.assertIn("COALESCE(o.program, sg.program) IN %(programs)s", query)
+            self.assertEqual(
+                params,
+                {
+                    "student": "STU-001",
+                    "programs": ("PROG-ROOT", "PROG-CHILD"),
+                },
+            )
+            self.assertTrue(as_dict)
+            return [
+                frappe._dict(
+                    task="TASK-1",
+                    title="Comparative essay",
+                    course="COURSE-1",
+                    course_name="Mathematics",
+                    student_group="SG-001",
+                    delivery_type="Assess",
+                    available_from="2026-02-01 08:00:00",
+                    due_date="2026-02-10 16:00:00",
+                    lock_date=None,
+                    program="PROG-CHILD",
+                    academic_year="2025-2026",
+                    submission_status="Submitted",
+                    grading_status="Not Started",
+                    procedural_status="None",
+                    complete=0,
+                    has_submission=1,
+                    mark_awarded=8,
+                    out_of=10,
+                    visible_to_student=1,
+                    visible_to_guardian=1,
+                    updated_on="2026-02-05 09:00:00",
+                )
+            ]
 
         with (
-            patch("ifitwala_ed.api.student_overview_dashboard.frappe.db.table_exists", side_effect=fake_table_exists),
+            patch("ifitwala_ed.api.student_overview_dashboard.frappe.db.get_value", return_value=(10, 20)),
+            patch(
+                "ifitwala_ed.api.student_overview_dashboard.frappe.get_all", return_value=["PROG-ROOT", "PROG-CHILD"]
+            ),
             patch("ifitwala_ed.api.student_overview_dashboard.frappe.db.sql", side_effect=fake_sql),
         ):
-            rows = _task_rows("STU-001", "PROG-001")
+            rows = _task_rows("STU-001", "PROG-ROOT")
 
-        self.assertEqual(rows, [])
-        self.assertFalse(sql_called)
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0]["status"], "Submitted")
+        self.assertTrue(rows[0]["complete"])
+        self.assertEqual(rows[0]["out_of"], 10)
+
+    def test_kpi_block_counts_completed_overdue_and_missed_from_current_task_outcomes(self):
+        snapshot_ctx = {
+            "attendance_rows": [],
+            "attendance_code_bundle": ({}, []),
+            "attendance_course_labels": {},
+            "task_rows_all": [
+                frappe._dict(
+                    task="TASK-1",
+                    academic_year="2025-2026",
+                    due_date="2026-04-10",
+                    procedural_status="Absent",
+                    complete=False,
+                    status="Missed",
+                ),
+                frappe._dict(
+                    task="TASK-2",
+                    academic_year="2025-2026",
+                    due_date="2026-04-20",
+                    procedural_status="None",
+                    complete=True,
+                    status="Completed",
+                ),
+                frappe._dict(
+                    task="TASK-3",
+                    academic_year="2025-2026",
+                    due_date="2026-04-12",
+                    procedural_status="None",
+                    complete=False,
+                    status="Overdue",
+                ),
+            ],
+            "support": {
+                "log_counts": (6, 2),
+                "referral_counts": (3, 1),
+                "nurse_visit_count": 4,
+            },
+        }
+
+        with (
+            patch(
+                "ifitwala_ed.api.student_overview_dashboard._attendance_block",
+                return_value={
+                    "summary": {
+                        "present_percentage": 0.92,
+                        "total_days": 12,
+                        "present_days": 11,
+                        "excused_absences": 0,
+                        "unexcused_absences": 1,
+                        "late_count": 1,
+                        "most_impacted_course": None,
+                    }
+                },
+            ),
+            patch("ifitwala_ed.api.student_overview_dashboard.nowdate", return_value="2026-04-17"),
+        ):
+            payload = _kpi_block("STU-001", "2025-2026", snapshot_ctx=snapshot_ctx)
+
+        self.assertEqual(payload["tasks"]["total_tasks"], 3)
+        self.assertEqual(payload["tasks"]["completed_tasks"], 1)
+        self.assertEqual(payload["tasks"]["overdue_tasks"], 1)
+        self.assertEqual(payload["tasks"]["missed_tasks"], 1)
 
     def test_get_filter_meta_student_scope_uses_distinct_flag(self):
         def fake_get_all(doctype, **kwargs):

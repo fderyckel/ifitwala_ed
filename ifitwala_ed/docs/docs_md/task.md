@@ -3,8 +3,8 @@ title: "Task: The Reusable Learning and Assessment Blueprint"
 slug: task
 category: Assessment
 doc_order: 4
-version: "1.8.1"
-last_change_date: "2026-04-16"
+version: "1.8.2"
+last_change_date: "2026-04-17"
 summary: "Author reusable learning tasks once, then deliver them to groups with the right grading mode, evidence expectations, and task-specific supporting materials."
 seo_title: "Task: The Reusable Learning and Assessment Blueprint"
 seo_description: "Author reusable learning tasks once, then deliver them to groups with the right grading mode, evidence expectations, and rubric strategy."
@@ -43,8 +43,8 @@ Test refs: None
 - Staff portal planning uses the create-task overlay at `ui-spa/src/components/tasks/CreateTaskDeliveryOverlay.vue`.
 - Task-specific reusable materials are shared through [**Supporting Material**](/docs/en/supporting-material/) and [**Material Placement**](/docs/en/material-placement/).
 - `ifitwala_ed/api/task.py` exposes `search_reusable_tasks`, `search_tasks`, `get_task_for_delivery`, and `create_task_delivery`.
-- Some analytics and briefing readers still reference legacy `Task` plus `Task Student` style paths:
-  - `ifitwala_ed/api/student_overview_dashboard.py`
+- Student Overview now reads the current `Task Delivery` plus `Task Outcome` model for learner analytics.
+- Some briefing readers still reference legacy `Task` plus `Task Student` style paths:
   - `ifitwala_ed/api/morning_brief.py`
 
 ## Lifecycle and Linked Documents
@@ -131,5 +131,5 @@ Test refs: `ifitwala_ed/utilities/test_governed_uploads_task_flows.py`
 ### Current Drift To Preserve In Review
 
 - The definition layer is stable, but downstream launch remains split across two services.
-- Legacy analytics readers still reference older structures; those reads must not be mistaken for the canonical gradebook contract.
+- Student Overview now reads the current `Task Delivery` plus `Task Outcome` contract, but some older briefing readers still reference legacy structures; those reads must not be mistaken for the canonical gradebook contract.
 - Any implementation change that alters task-launch behavior must update this page and the linked delivery/outcome docs in the same change.

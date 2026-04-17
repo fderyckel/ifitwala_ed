@@ -127,6 +127,28 @@ export async function api(method: string, payload?: any, httpMethod: HttpMethod 
 	return data?.message ?? data
 }
 
+export async function apiUpload<T>(method: string, formData: FormData): Promise<T> {
+	const csrf = await resolveCsrfToken()
+	const response = await fetch(`/api/method/${method}`, {
+		method: 'POST',
+		credentials: 'same-origin',
+		body: formData,
+		headers: csrf ? { 'X-Frappe-CSRF-Token': csrf } : undefined,
+	})
+
+	const data = await response.json().catch(() => ({}))
+	if (!response.ok || data?.exception || data?.exc) {
+		const serverMessages = parseServerMessages(data?._server_messages)
+		const message = serverMessages.join('\n') || data?.message || response.statusText
+		if ((response.status === 401 || response.status === 403) && isSessionFailureMessage(message || '')) {
+			redirectToLoginIfNeeded()
+		}
+		throw new Error(message || 'API request failed')
+	}
+
+	return (data?.message ?? data) as T
+}
+
 export function setCsrfToken(token: string) {
 	cachedCsrfToken = token
 	if (typeof window !== 'undefined') {

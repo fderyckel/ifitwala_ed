@@ -349,7 +349,7 @@ They see:
   * request_review / send_for_moderation
   * release_outcome
 
-* Gradebook API (`api/gradebook.py`) orchestrates only; it does not compute grades.
+* Gradebook API (`api/gradebook.py`) is the stable public RPC boundary; shared helper ownership lives in `api/gradebook_support.py`, and it does not compute grades.
 * Writes go to services; services may create Evidence Stub submissions when missing and `requires_submission = 1`.
 * Frontend can omit `task_submission` in grade actions; backend will attach to latest student submission if present, else create a stub when required.
 * Instructor-scoped users only see deliveries for taught student groups; course filters narrow scope but never broaden it.

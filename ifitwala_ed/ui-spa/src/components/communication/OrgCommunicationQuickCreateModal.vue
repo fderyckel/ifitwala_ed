@@ -170,7 +170,7 @@
 												<button
 													type="button"
 													class="rounded-full border border-border/80 bg-surface px-3 py-1.5 type-button-label text-ink transition hover:border-jacaranda hover:text-jacaranda"
-													:disabled="submitting || attachmentSubmitting"
+													:disabled="attachmentActionsDisabled"
 													@click="triggerAttachmentFilePicker"
 												>
 													Add file
@@ -178,7 +178,7 @@
 												<button
 													type="button"
 													class="rounded-full border border-border/80 bg-surface px-3 py-1.5 type-button-label text-ink transition hover:border-jacaranda hover:text-jacaranda"
-													:disabled="submitting || attachmentSubmitting"
+													:disabled="attachmentActionsDisabled"
 													@click="showLinkComposer = !showLinkComposer"
 												>
 													{{ showLinkComposer ? 'Close link' : 'Add link' }}
@@ -212,7 +212,7 @@
 														v-model="linkDraft.external_url"
 														type="text"
 														placeholder="https://example.com/resource.pdf"
-														:disabled="submitting || attachmentSubmitting"
+														:disabled="attachmentActionsDisabled"
 													/>
 												</div>
 												<div class="space-y-1">
@@ -221,7 +221,7 @@
 														v-model="linkDraft.title"
 														type="text"
 														placeholder="Optional display label"
-														:disabled="submitting || attachmentSubmitting"
+														:disabled="attachmentActionsDisabled"
 													/>
 												</div>
 											</div>
@@ -229,7 +229,7 @@
 												<button
 													type="button"
 													class="if-button if-button--secondary"
-													:disabled="submitting || attachmentSubmitting"
+													:disabled="attachmentActionsDisabled"
 													@click="resetLinkDraft"
 												>
 													Cancel
@@ -237,7 +237,7 @@
 												<button
 													type="button"
 													class="if-button if-button--primary"
-													:disabled="submitting || attachmentSubmitting || !linkDraftReady"
+													:disabled="attachmentActionsDisabled || !linkDraftReady"
 													@click="submitLinkAttachment"
 												>
 													Add link
@@ -554,7 +554,7 @@
 													<button
 														type="button"
 														class="rounded-full border border-border/80 bg-surface px-3 py-1.5 type-button-label text-ink transition hover:border-jacaranda hover:text-jacaranda"
-														:disabled="submitting || attachmentSubmitting"
+														:disabled="attachmentActionsDisabled"
 														@click="triggerAttachmentFilePicker"
 													>
 														Add file
@@ -562,7 +562,7 @@
 													<button
 														type="button"
 														class="rounded-full border border-border/80 bg-surface px-3 py-1.5 type-button-label text-ink transition hover:border-jacaranda hover:text-jacaranda"
-														:disabled="submitting || attachmentSubmitting"
+														:disabled="attachmentActionsDisabled"
 														@click="showLinkComposer = !showLinkComposer"
 													>
 														{{ showLinkComposer ? 'Close link' : 'Add link' }}
@@ -596,7 +596,7 @@
 															v-model="linkDraft.external_url"
 															type="text"
 															placeholder="https://example.com/resource.pdf"
-															:disabled="submitting || attachmentSubmitting"
+															:disabled="attachmentActionsDisabled"
 														/>
 													</div>
 													<div class="space-y-1">
@@ -605,7 +605,7 @@
 															v-model="linkDraft.title"
 															type="text"
 															placeholder="Optional display label"
-															:disabled="submitting || attachmentSubmitting"
+															:disabled="attachmentActionsDisabled"
 														/>
 													</div>
 												</div>
@@ -613,7 +613,7 @@
 													<button
 														type="button"
 														class="if-button if-button--secondary"
-														:disabled="submitting || attachmentSubmitting"
+														:disabled="attachmentActionsDisabled"
 														@click="resetLinkDraft"
 													>
 														Cancel
@@ -621,7 +621,7 @@
 													<button
 														type="button"
 														class="if-button if-button--primary"
-														:disabled="submitting || attachmentSubmitting || !linkDraftReady"
+														:disabled="attachmentActionsDisabled || !linkDraftReady"
 														@click="submitLinkAttachment"
 													>
 														Add link
@@ -1210,6 +1210,7 @@ import type { Response as OrgCommunicationQuickCreateOptionsResponse } from '@/t
 type CloseReason = 'backdrop' | 'esc' | 'programmatic';
 type EntryMode = 'staff-home' | 'class-event';
 type RecipientField = 'to_staff' | 'to_students' | 'to_guardians';
+type TopLevelErrorSource = '' | 'load' | 'submit' | 'attachment-precondition';
 type AudienceRowState = {
 	id: string;
 	target_mode: string;
@@ -1222,6 +1223,8 @@ type AudienceRowState = {
 	to_guardians: boolean;
 	note: string;
 };
+
+class AttachmentPreconditionError extends Error {}
 
 const props = defineProps<{
 	open: boolean;
@@ -1249,6 +1252,7 @@ const optionsLoading = ref(false);
 const submitting = ref(false);
 const attachmentSubmitting = ref(false);
 const errorMessage = ref('');
+const topLevelErrorSource = ref<TopLevelErrorSource>('');
 const attachmentErrorMessage = ref('');
 const options = ref<OrgCommunicationQuickCreateOptionsResponse | null>(null);
 const audienceRows = ref<AudienceRowState[]>([]);
@@ -1280,6 +1284,17 @@ const linkDraft = reactive({
 	title: '',
 	external_url: '',
 });
+
+function setTopLevelError(message: string, source: Exclude<TopLevelErrorSource, ''>) {
+	errorMessage.value = message;
+	topLevelErrorSource.value = source;
+}
+
+function clearTopLevelError(source?: Exclude<TopLevelErrorSource, ''>) {
+	if (source && topLevelErrorSource.value !== source) return;
+	errorMessage.value = '';
+	topLevelErrorSource.value = '';
+}
 
 const overlayStyle = computed(() => ({
 	zIndex: props.zIndex ?? 70,
@@ -1539,6 +1554,9 @@ const classEventContextCards = computed(() => [
 	},
 ]);
 const linkDraftReady = computed(() => Boolean(linkDraft.external_url.trim()));
+const attachmentActionsDisabled = computed(
+	() => submitting.value || attachmentSubmitting.value || optionsLoading.value || !options.value
+);
 
 const audienceSummaryRows = computed(() =>
 	audienceRows.value.map(row => {
@@ -1716,10 +1734,25 @@ watch(
 	() => props.open,
 	async open => {
 		if (!open) return;
-		errorMessage.value = '';
+		clearTopLevelError();
 		await bootstrap();
 	},
 	{ immediate: true }
+);
+
+watch(
+	[
+		() => form.title,
+		() => form.communication_type,
+		() => form.organization,
+		() => form.publish_from,
+		() => form.publish_to,
+		() => form.brief_start_date,
+		() => form.brief_end_date,
+	],
+	() => {
+		clearTopLevelError('attachment-precondition');
+	}
 );
 
 watch(
@@ -1796,8 +1829,10 @@ async function loadOptions() {
 	try {
 		options.value = await getOrgCommunicationQuickCreateOptions({});
 	} catch (error) {
-		errorMessage.value =
-			error instanceof Error ? error.message : 'Unable to load communication options.';
+		setTopLevelError(
+			error instanceof Error ? error.message : 'Unable to load communication options.',
+			'load'
+		);
 	} finally {
 		optionsLoading.value = false;
 	}
@@ -2143,18 +2178,32 @@ function formatFileSize(value: number | string | null | undefined) {
 
 async function ensureSavedDraft() {
 	if (savedCommunicationName.value) return savedCommunicationName.value;
-	const draftValidationError = draftValidationMessage.value;
+	const draftValidationError = getAttachmentDraftBlocker();
 	if (draftValidationError) {
-		throw new Error(draftValidationError);
+		throw new AttachmentPreconditionError(draftValidationError);
 	}
-	const response = await createOrgCommunicationQuick(buildPayload('Draft'));
-	savedCommunicationName.value = response.name;
-	return response.name;
+	try {
+		const response = await createOrgCommunicationQuick(buildPayload('Draft'));
+		savedCommunicationName.value = response.name;
+		return response.name;
+	} catch (error) {
+		throw new AttachmentPreconditionError(
+			error instanceof Error
+				? error.message
+				: 'Unable to save the draft before adding attachments.'
+		);
+	}
 }
 
 function triggerAttachmentFilePicker() {
-	if (attachmentSubmitting.value || submitting.value) return;
+	if (attachmentActionsDisabled.value) return;
 	attachmentErrorMessage.value = '';
+	const draftValidationError = getAttachmentDraftBlocker();
+	if (draftValidationError) {
+		setTopLevelError(draftValidationError, 'attachment-precondition');
+		return;
+	}
+	clearTopLevelError('attachment-precondition');
 	attachmentFileInput.value?.click();
 }
 
@@ -2167,6 +2216,7 @@ async function onAttachmentFileSelected(event: Event) {
 	attachmentErrorMessage.value = '';
 	try {
 		const orgCommunication = await ensureSavedDraft();
+		clearTopLevelError('attachment-precondition');
 		for (const file of files) {
 			const response = await uploadOrgCommunicationAttachment({
 				org_communication: orgCommunication,
@@ -2175,8 +2225,12 @@ async function onAttachmentFileSelected(event: Event) {
 			upsertAttachmentRow(response.attachment);
 		}
 	} catch (error) {
-		attachmentErrorMessage.value =
-			error instanceof Error ? error.message : 'Unable to upload the attachment.';
+		if (error instanceof AttachmentPreconditionError) {
+			setTopLevelError(error.message, 'attachment-precondition');
+		} else {
+			attachmentErrorMessage.value =
+				error instanceof Error ? error.message : 'Unable to upload the attachment.';
+		}
 	} finally {
 		attachmentSubmitting.value = false;
 		if (target) target.value = '';
@@ -2193,6 +2247,7 @@ async function submitLinkAttachment() {
 	attachmentErrorMessage.value = '';
 	try {
 		const orgCommunication = await ensureSavedDraft();
+		clearTopLevelError('attachment-precondition');
 		const response = await addOrgCommunicationLink({
 			org_communication: orgCommunication,
 			title: linkDraft.title.trim() || null,
@@ -2201,8 +2256,12 @@ async function submitLinkAttachment() {
 		upsertAttachmentRow(response.attachment);
 		resetLinkDraft();
 	} catch (error) {
-		attachmentErrorMessage.value =
-			error instanceof Error ? error.message : 'Unable to add the link.';
+		if (error instanceof AttachmentPreconditionError) {
+			setTopLevelError(error.message, 'attachment-precondition');
+		} else {
+			attachmentErrorMessage.value =
+				error instanceof Error ? error.message : 'Unable to add the link.';
+		}
 	} finally {
 		attachmentSubmitting.value = false;
 	}
@@ -2252,11 +2311,11 @@ async function submitWithStatus(statusOverride: string) {
 	const validationError =
 		statusOverride === 'Draft' ? draftValidationMessage.value : publishValidationMessage.value;
 	if (validationError) {
-		errorMessage.value = validationError;
+		setTopLevelError(validationError, 'submit');
 		return;
 	}
 
-	errorMessage.value = '';
+	clearTopLevelError();
 	submitting.value = true;
 
 	try {
@@ -2265,11 +2324,21 @@ async function submitWithStatus(statusOverride: string) {
 		emit('close', 'programmatic');
 		emit('done', response);
 	} catch (error) {
-		errorMessage.value =
-			error instanceof Error ? error.message : 'Unable to create communication.';
+		setTopLevelError(
+			error instanceof Error ? error.message : 'Unable to create communication.',
+			'submit'
+		);
 	} finally {
 		submitting.value = false;
 	}
+}
+
+function getAttachmentDraftBlocker() {
+	if (savedCommunicationName.value) return '';
+	if (optionsLoading.value || !options.value) {
+		return 'Communication options are still loading. Wait a moment, then try again.';
+	}
+	return draftValidationMessage.value;
 }
 </script>
 

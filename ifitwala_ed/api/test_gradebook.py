@@ -64,6 +64,13 @@ def _gradebook_stub_modules(task_contribution_service=None):
     }
 
 
+def _import_fresh_gradebook():
+    import_fresh("ifitwala_ed.api.gradebook_reads")
+    import_fresh("ifitwala_ed.api.gradebook_writes")
+    import_fresh("ifitwala_ed.api.gradebook_support")
+    return import_fresh("ifitwala_ed.api.gradebook")
+
+
 class TestGradebookApi(TestCase):
     def test_get_drawer_selects_requested_submission_version_and_serializes_preview_urls(self):
         with stubbed_frappe(extra_modules=_gradebook_stub_modules()) as frappe:
@@ -145,10 +152,10 @@ class TestGradebookApi(TestCase):
             frappe.db.get_value = fake_get_value
             frappe.get_all = fake_get_all
 
-            module = import_fresh("ifitwala_ed.api.gradebook")
-            module._can_read_gradebook = lambda: True
-            module._get_outcome_criteria_map = lambda outcome_ids: {"OUT-1": []}
-            module._select_my_contribution = lambda contributions: None
+            module = _import_fresh_gradebook()
+            module.gradebook_support._can_read_gradebook = lambda: True
+            module.gradebook_support._get_outcome_criteria_map = lambda outcome_ids: {"OUT-1": []}
+            module.gradebook_support._select_my_contribution = lambda contributions: None
 
             payload = module.get_drawer("OUT-1", version="1")
 
@@ -264,14 +271,14 @@ class TestGradebookApi(TestCase):
             frappe.db.get_value = fake_get_value
             frappe.get_all = fake_get_all
 
-            module = import_fresh("ifitwala_ed.api.gradebook")
-            module._can_read_gradebook = lambda: True
-            module._assert_group_access = lambda student_group: None
-            module._get_student_display_map = lambda student_ids: {
+            module = _import_fresh_gradebook()
+            module.gradebook_support._can_read_gradebook = lambda: True
+            module.gradebook_support._assert_group_access = lambda student_group: None
+            module.gradebook_support._get_student_display_map = lambda student_ids: {
                 "STU-1": "Ada Lovelace",
                 "STU-2": "Grace Hopper",
             }
-            module._get_student_meta_map = lambda student_ids: {
+            module.gradebook_support._get_student_meta_map = lambda student_ids: {
                 "STU-1": {"name": "STU-1", "student_id": "S-001", "student_image": None},
                 "STU-2": {"name": "STU-2", "student_id": "S-002", "student_image": None},
             }
@@ -344,9 +351,9 @@ class TestGradebookApi(TestCase):
                 (doctype, name, values, update_modified)
             )
 
-            module = import_fresh("ifitwala_ed.api.gradebook")
-            module._can_write_gradebook = lambda: True
-            module._assert_group_access = lambda student_group: None
+            module = _import_fresh_gradebook()
+            module.gradebook_support._can_write_gradebook = lambda: True
+            module.gradebook_support._assert_group_access = lambda student_group: None
 
             payload = module.save_task_quiz_manual_review(
                 "TDL-1",
@@ -385,9 +392,9 @@ class TestGradebookApi(TestCase):
             frappe.db.count = lambda doctype, filters=None: delivery.outcome_count
             frappe.get_doc = lambda doctype, name: delivery
 
-            module = import_fresh("ifitwala_ed.api.gradebook")
-            module._can_write_gradebook = lambda: True
-            module._assert_group_access = lambda student_group: None
+            module = _import_fresh_gradebook()
+            module.gradebook_support._can_write_gradebook = lambda: True
+            module.gradebook_support._assert_group_access = lambda student_group: None
 
             payload = module.repair_task_roster("TDL-0001")
 
@@ -430,9 +437,9 @@ class TestGradebookApi(TestCase):
 
             frappe.get_all = fake_get_all
 
-            module = import_fresh("ifitwala_ed.api.gradebook")
-            module._can_read_gradebook = lambda: True
-            module._assert_group_access = lambda student_group: None
+            module = _import_fresh_gradebook()
+            module.gradebook_support._can_read_gradebook = lambda: True
+            module.gradebook_support._assert_group_access = lambda student_group: None
 
             payload = module.fetch_group_tasks("GRP-1")
 
@@ -538,15 +545,17 @@ class TestGradebookApi(TestCase):
 
             frappe.get_all = fake_get_all
 
-            module = import_fresh("ifitwala_ed.api.gradebook")
-            module._can_read_gradebook = lambda: True
-            module._resolve_gradebook_scope = lambda school, academic_year, course: {
+            module = _import_fresh_gradebook()
+            module.gradebook_support._can_read_gradebook = lambda: True
+            module.gradebook_support._resolve_gradebook_scope = lambda school, academic_year, course: {
                 "courses": [course] if course else [],
                 "student_groups": ["GRP-1"],
             }
-            module._assert_group_access = lambda student_group: None
-            module._get_student_display_map = lambda student_ids: {"STU-1": "Ada Lovelace"}
-            module._get_student_meta_map = lambda student_ids: {"STU-1": {"student_id": "S-001", "student_image": None}}
+            module.gradebook_support._assert_group_access = lambda student_group: None
+            module.gradebook_support._get_student_display_map = lambda student_ids: {"STU-1": "Ada Lovelace"}
+            module.gradebook_support._get_student_meta_map = lambda student_ids: {
+                "STU-1": {"student_id": "S-001", "student_image": None}
+            }
 
             payload = module.get_grid(
                 {
@@ -619,9 +628,9 @@ class TestGradebookApi(TestCase):
 
             frappe.db.get_value = fake_get_value
 
-            module = import_fresh("ifitwala_ed.api.gradebook")
-            module._can_write_gradebook = lambda: True
-            module._assert_group_access = lambda student_group: None
+            module = _import_fresh_gradebook()
+            module.gradebook_support._can_write_gradebook = lambda: True
+            module.gradebook_support._assert_group_access = lambda student_group: None
 
             with self.assertRaises(StubValidationError):
                 module.update_task_student("OUT-1", {"feedback": "Needs a stronger explanation."})
@@ -664,10 +673,10 @@ class TestGradebookApi(TestCase):
             frappe.db.get_value = fake_get_value
             frappe.db.get_values = lambda *args, **kwargs: []
 
-            module = import_fresh("ifitwala_ed.api.gradebook")
-            module._can_write_gradebook = lambda: True
-            module._assert_group_access = lambda student_group: None
-            module._resolve_or_create_stub_submission_id = lambda task_student, payload: "SUB-1"
+            module = _import_fresh_gradebook()
+            module.gradebook_support._can_write_gradebook = lambda: True
+            module.gradebook_support._assert_group_access = lambda student_group: None
+            module.gradebook_support._resolve_or_create_stub_submission_id = lambda task_student, payload: "SUB-1"
 
             payload = module.update_task_student("OUT-1", {"feedback": "Focus on examples."})
 

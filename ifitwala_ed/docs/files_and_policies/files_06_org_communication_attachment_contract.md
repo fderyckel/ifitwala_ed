@@ -65,6 +65,7 @@ Rules:
 2. Multi-school fan-out communications without one authoritative school anchor remain organization-scoped for attachment governance.
 3. Team communications may resolve to school scope when the authoritative `Team.school` exists; otherwise they remain organization-scoped.
 4. Missing `organization` is a blocker and must be explained as such in the UI.
+5. After the first governed file exists, changing the authoritative attachment context is blocked until governed file rows are removed. This protects Drive governance from post-upload scope drift.
 
 ## 4. Storage Boundary
 
@@ -105,7 +106,7 @@ Rules:
 2. External links use only `ifitwala_ed.api.org_communication_attachments.add_org_communication_link`.
 3. Removal uses only `ifitwala_ed.api.org_communication_attachments.remove_org_communication_attachment`.
 4. Desk must save dirty communications before opening the governed uploader so the server resolves attachment context from persisted state.
-5. Desk must not claim that student-group context is required when organization or school communication contexts are valid.
+5. Desk must not claim that student-group, school, or organization routing locally. The server is the only authority for attachment context resolution.
 6. Raw Desk `Attach` remains non-canonical and is still rejected by controller validation for file rows.
 
 ## 6. Visibility and Attachment Action URL Contract

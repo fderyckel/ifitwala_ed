@@ -170,6 +170,64 @@ def resolve_org_communication_attachment_context(doc) -> dict[str, str | None]:
     }
 
 
+def has_org_communication_governed_file_attachments(doc) -> bool:
+    for row in _field_value(doc, "attachments") or []:
+        if _clean_link_value(_field_value(row, "file")):
+            return True
+    return False
+
+
+def _attachment_context_snapshot(doc) -> dict[str, str | None]:
+    context = resolve_org_communication_attachment_context(doc)
+    return {
+        "context_kind": _clean_link_value(context.get("context_kind")),
+        "organization": _clean_link_value(context.get("organization")),
+        "school": _clean_link_value(context.get("school")),
+        "course": _clean_link_value(context.get("course")),
+        "student_group": _clean_link_value(context.get("student_group")),
+    }
+
+
+def assert_org_communication_attachment_context_stable(doc, before_doc) -> None:
+    if not before_doc or not has_org_communication_governed_file_attachments(before_doc):
+        return
+    if not has_org_communication_governed_file_attachments(doc):
+        return
+
+    before_snapshot = _attachment_context_snapshot(before_doc)
+    try:
+        current_snapshot = _attachment_context_snapshot(doc)
+    except frappe.ValidationError:
+        frappe.throw(
+            _(
+                "This communication already has governed file attachments. Remove the governed files before changing the attachment context."
+            ),
+            title=_("Attachment Context Locked"),
+        )
+    if before_snapshot == current_snapshot:
+        return
+
+    changed_fields: list[str] = []
+    field_labels = {
+        "context_kind": _("attachment scope"),
+        "organization": _("organization"),
+        "school": _("issuing school"),
+        "course": _("course context"),
+        "student_group": _("student group"),
+    }
+    for fieldname, label in field_labels.items():
+        if before_snapshot.get(fieldname) != current_snapshot.get(fieldname):
+            changed_fields.append(label)
+
+    changed_summary = ", ".join(changed_fields) or _("attachment context")
+    frappe.throw(
+        _(
+            "This communication already has governed file attachments. Remove the governed files before changing {0}."
+        ).format(changed_summary),
+        title=_("Attachment Context Locked"),
+    )
+
+
 def _assert_attachment_row_exists(doc, row_key: str) -> None:
     if not row_key:
         frappe.throw(_("Org Communication attachment row key is required."))

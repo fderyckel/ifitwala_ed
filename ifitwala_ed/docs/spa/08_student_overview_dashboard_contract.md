@@ -23,7 +23,7 @@ Code refs:
 - `ifitwala_ed/ui-spa/src/pages/staff/ClassHub.vue`
 
 Test refs:
-- `None`
+- `ifitwala_ed/ui-spa/src/pages/staff/__tests__/StudentOverview.test.ts`
 
 Rules:
 
@@ -43,7 +43,7 @@ Code refs:
 
 Test refs:
 - `ifitwala_ed/api/test_student_overview_dashboard.py`
-- Frontend contract coverage: `None`
+- `ifitwala_ed/ui-spa/src/pages/staff/__tests__/StudentOverview.test.ts`
 
 Rules:
 
@@ -57,6 +57,7 @@ Rules:
 8. The student search API can support blank search on the server, but the current page only issues search requests when the user has typed a non-empty query.
 9. Snapshot reloads are debounced on the client and skipped while an in-flight snapshot request is already loading; this is a UX throttle, not a correctness guarantee.
 10. Task, attendance, wellbeing, and history year-scope controls refer to academic years, not calendar years.
+11. The top school/program/student controls must render inside the shared `FiltersBar` component.
 
 ## 3. Visibility and Scope Contract
 
@@ -107,8 +108,8 @@ Rules:
 2. `meta.current_academic_year` is copied from `identity.program_enrollment.academic_year`.
 3. `identity` is assembled from `Student`, the latest matching `Program Enrollment` inside the selected program subtree and selected school descendants, and `Student Group Student` joined to `Student Group`.
 4. `kpis` currently contains attendance, task, support, and placeholder academic summary values.
-5. `learning` is assembled from the legacy `Task Student` reader joined to `Task` and `Course`, plus `Program Enrollment Course` rows for current courses.
-6. If the legacy task reader tables are not installed on a site, task-derived KPI, learning, and history blocks must fail closed to empty task data instead of raising a `500`.
+5. `learning` is assembled from current `Task Delivery` rows scoped to the student through `Student Group Student`, left-joined to `Task Outcome`, `Student Group`, and `Course`, plus `Program Enrollment Course` rows for current courses.
+6. Task-derived KPI, learning, and history blocks now read the current `Task Delivery` / `Task Outcome` model; the snapshot no longer uses the legacy `Task Student` table.
 7. `attendance` is assembled from `Student Attendance`, `Student Attendance Code`, and `Course`, and the snapshot returns attendance rows across available academic years so the SPA can apply `This academic year`, `Last academic year`, and `All academic years` client-side.
 8. `wellbeing.timeline` is event-only and merges visible `Student Log`, `Student Referral`, and `Student Patient Visit` rows, then sorts newest-first and trims to 30 items.
 9. `wellbeing.timeline[].summary` returns stripped text for each capped row; the SPA owns collapse/expand behavior and renders the latest 10 timeline rows before older dashboard rows move into a scroll region.
@@ -137,7 +138,7 @@ Rules:
 2. History attendance-year queries must use simple field names plus `distinct=True`; raw select fragments such as `fields=["distinct academic_year as ay"]` are not part of the valid Frappe v16 contract.
 3. The student overview API must not rely on query syntax that Frappe rejects before business permission checks, because that produces false `403` responses in the SPA.
 4. The regression test module locks the safe distinct-query shape for both `get_filter_meta()` and `_history_block(...)`.
-5. The task reader path must guard missing legacy task tables before issuing SQL so the page can still load on sites that have moved away from `Task Student`.
+5. The task reader path must use the current `Task Delivery` / `Task Outcome` contract and must not reintroduce a `Task Student` compatibility read path.
 6. This feature currently has no Redis snapshot cache, no ETag contract, and no background job fan-out; the snapshot is request-time computed.
 
 ## 6. Contract Matrix
@@ -156,14 +157,14 @@ Code refs:
 
 Test refs:
 - `ifitwala_ed/api/test_student_overview_dashboard.py`
-- Frontend contract coverage: `None`
+- `ifitwala_ed/ui-spa/src/pages/staff/__tests__/StudentOverview.test.ts`
 
 | Concern | Canonical owner | Code refs | Test refs |
 | --- | --- | --- | --- |
-| Schema / DocType | `Student`, `Program Enrollment`, `Student Group Student`, `Student Group`, `Student Attendance`, `Student Attendance Code`, `Task`, `Task Student`, `Program Enrollment Course`, `Student Log`, `Student Referral`, `Student Patient`, `Student Patient Visit` | `ifitwala_ed/api/student_overview_dashboard.py` | `ifitwala_ed/api/test_student_overview_dashboard.py` |
+| Schema / DocType | `Student`, `Program Enrollment`, `Program Enrollment Course`, `Student Group`, `Student Group Student`, `Student Attendance`, `Student Attendance Code`, `Task`, `Task Delivery`, `Task Outcome`, `Student Log`, `Student Referral`, `Student Patient`, `Student Patient Visit` | `ifitwala_ed/api/student_overview_dashboard.py` | `ifitwala_ed/api/test_student_overview_dashboard.py` |
 | Controller / workflow logic | `student_overview_dashboard.py` block builders and scope checks | `ifitwala_ed/api/student_overview_dashboard.py` | `ifitwala_ed/api/test_student_overview_dashboard.py` |
 | API endpoints | `get_filter_meta`, `search_students`, `get_student_center_snapshot` | `ifitwala_ed/api/student_overview_dashboard.py` | `ifitwala_ed/api/test_student_overview_dashboard.py` |
-| SPA/UI surfaces | Staff analytics page and its named route | `ifitwala_ed/ui-spa/src/router/index.ts`, `ifitwala_ed/ui-spa/src/pages/staff/analytics/StudentOverview.vue` | `None` |
+| SPA/UI surfaces | Staff analytics page and its named route | `ifitwala_ed/ui-spa/src/router/index.ts`, `ifitwala_ed/ui-spa/src/pages/staff/analytics/StudentOverview.vue` | `ifitwala_ed/ui-spa/src/pages/staff/__tests__/StudentOverview.test.ts` |
 | Reports / dashboards / briefings | Staff Home and Class Hub entry points into Student Overview | `ifitwala_ed/ui-spa/src/pages/staff/StaffHome.vue`, `ifitwala_ed/ui-spa/src/pages/staff/ClassHub.vue` | `None` |
 | Scheduler / background jobs | None | None | None |
-| Tests | Backend regression coverage for Frappe v16-safe distinct queries | `ifitwala_ed/api/test_student_overview_dashboard.py` | `ifitwala_ed/api/test_student_overview_dashboard.py` |
+| Tests | Backend regression coverage for Frappe v16-safe distinct queries plus the Student Overview SPA shell contract | `ifitwala_ed/api/test_student_overview_dashboard.py`, `ifitwala_ed/ui-spa/src/pages/staff/__tests__/StudentOverview.test.ts` | `ifitwala_ed/api/test_student_overview_dashboard.py`, `ifitwala_ed/ui-spa/src/pages/staff/__tests__/StudentOverview.test.ts` |

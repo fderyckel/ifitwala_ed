@@ -129,6 +129,9 @@ class TestEmployeePrintFormat(unittest.TestCase):
             self.assertIn(token, css if token.startswith(".") else html)
 
         self.assertNotIn("Not provided", html)
+        self.assertIn('width="72"', html)
+        self.assertIn('height="92"', html)
+        self.assertIn("max-width:72px !important", html)
 
     def test_template_integrates_managed_letterhead_and_footer(self):
         html = EMPLOYEE_TEMPLATE_PATH.read_text(encoding="utf-8")

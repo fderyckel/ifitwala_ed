@@ -105,8 +105,8 @@
 
 		{% if doc.employee_image %}
 		<div class="profile-header__media">
-			<div class="profile-photo">
-				<img src="{{ frappe.utils.escape_html(doc.employee_image) }}" alt="{{ frappe.utils.escape_html(full_name) }}">
+			<div class="profile-photo" style="width:72px;height:92px;min-width:72px;max-width:72px;min-height:92px;max-height:92px;">
+				<img src="{{ frappe.utils.escape_html(doc.employee_image) }}" alt="{{ frappe.utils.escape_html(full_name) }}" width="72" height="92" style="display:block;width:72px !important;height:92px !important;min-width:72px !important;max-width:72px !important;min-height:92px !important;max-height:92px !important;object-fit:cover;">
 			</div>
 			<div class="profile-photo__caption">Employee Image</div>
 		</div>
@@ -185,8 +185,8 @@
 		</div>
 		{% if doc.employee_image %}
 		<div class="hero-image">
-			<div class="hero-image__frame">
-				<img src="{{ frappe.utils.escape_html(doc.employee_image) }}" alt="{{ frappe.utils.escape_html(full_name) }}">
+			<div class="hero-image__frame" style="width:72px;height:92px;min-width:72px;max-width:72px;min-height:92px;max-height:92px;">
+				<img src="{{ frappe.utils.escape_html(doc.employee_image) }}" alt="{{ frappe.utils.escape_html(full_name) }}" width="72" height="92" style="display:block;width:72px !important;height:92px !important;min-width:72px !important;max-width:72px !important;min-height:92px !important;max-height:92px !important;object-fit:cover;">
 			</div>
 		</div>
 		{% endif %}

@@ -14,6 +14,9 @@ from ifitwala_ed.curriculum.materials import validate_reference_url
 from ifitwala_ed.setup.doctype.org_communication.attachments import (
     ORG_COMMUNICATION_ATTACHMENT_BINDING_ROLE,
     ORG_COMMUNICATION_ATTACHMENT_SLOT_PREFIX,
+    assert_org_communication_attachment_context_stable,
+    has_org_communication_governed_file_attachments,
+    resolve_org_communication_attachment_context,
 )
 
 # --------------------------------------------------------------------
@@ -110,17 +113,19 @@ class OrgCommunication(Document):
         2. Enforce optional Issuing School based on user scope (node + descendants).
         3. Validate School<->Organization alignment when school is set.
         4. Handle date logic.
-        5. Validate audience rows.
-        6. Enforce audience role restrictions.
-        7. Enforce status + publish window rules.
-        8. Enforce portal_surface rules.
-        9. Enforce Class Announcement pattern.
+        5. Lock attachment governance context once governed files exist.
+        6. Validate audience rows.
+        7. Enforce audience role restrictions.
+        8. Enforce status + publish window rules.
+        9. Enforce portal_surface rules.
+        10. Enforce Class Announcement pattern.
         """
         self._resolve_and_validate_organization_scope()
         self._validate_and_enforce_issuing_school_scope()
         self._validate_school_organization_alignment()
         self._validate_activity_context_links()
         self._normalize_and_validate_dates()
+        self._validate_attachment_context_lock()
         self._validate_audiences()
         self._validate_attachments()
         self._enforce_role_restrictions_on_audiences()
@@ -611,6 +616,11 @@ class OrgCommunication(Document):
         if not rows:
             return
 
+        if has_org_communication_governed_file_attachments(self):
+            # Governed file rows require a resolvable authoritative context even when
+            # the attachment rows themselves are unchanged on this save.
+            resolve_org_communication_attachment_context(self)
+
         before = None if self.is_new() else self.get_doc_before_save()
         unchanged_rows = {}
         if before:
@@ -696,6 +706,13 @@ class OrgCommunication(Document):
                         "attachment action; raw Desk Attach is not supported here."
                     )
                 )
+
+    def _validate_attachment_context_lock(self):
+        before = None if self.is_new() else self.get_doc_before_save()
+        if not before:
+            return
+
+        assert_org_communication_attachment_context_stable(self, before)
 
     # ----------------------------------------------------------------
     # Status / publish window rules

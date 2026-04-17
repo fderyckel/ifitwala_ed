@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import importlib
 from typing import Any
 
 import frappe
@@ -10,6 +11,10 @@ from frappe import _
 
 from ifitwala_ed.api.file_access import resolve_academic_file_open_url, resolve_academic_file_preview_url
 from ifitwala_ed.assessment import task_submission_service
+
+
+def _frappe_module():
+    return importlib.import_module("frappe")
 
 
 @frappe.whitelist()
@@ -137,7 +142,8 @@ def _load_submission_file_name_map(submission_id: str) -> dict[str, str]:
     if not resolved_submission_id:
         return {}
 
-    file_rows = frappe.get_all(
+    current_frappe = _frappe_module()
+    file_rows = current_frappe.get_all(
         "File",
         filters={
             "attached_to_doctype": "Task Submission",
@@ -161,8 +167,9 @@ def _load_submission_preview_status_map(file_ids: list[str]) -> dict[str, str | 
     if not resolved_file_ids:
         return {}
 
+    current_frappe = _frappe_module()
     try:
-        rows = frappe.get_all(
+        rows = current_frappe.get_all(
             "Drive File",
             filters={"file": ["in", resolved_file_ids]},
             fields=["file", "preview_status"],
@@ -238,7 +245,8 @@ def _load_task_submission_attachment_rows(submission_id: str) -> list[dict[str, 
     if not resolved_submission_id:
         return []
 
-    attachment_rows = frappe.get_all(
+    current_frappe = _frappe_module()
+    attachment_rows = current_frappe.get_all(
         "Attached Document",
         filters={
             "parent": resolved_submission_id,

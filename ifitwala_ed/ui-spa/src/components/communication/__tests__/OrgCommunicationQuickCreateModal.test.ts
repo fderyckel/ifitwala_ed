@@ -1066,4 +1066,55 @@ describe('OrgCommunicationQuickCreateModal', () => {
 			external_url: 'https://example.com/policy.pdf',
 		});
 	});
+
+	it('routes draft-save blockers for attachment actions to the top action banner', async () => {
+		getOptionsMock.mockResolvedValue(quickCreateOptions);
+
+		mountModal({ title: '' });
+		await flushUi();
+
+		clickButton('Add link');
+		await flushUi();
+		setInputByPlaceholder('https://example.com/resource.pdf', 'https://example.com/policy.pdf');
+		setInputByPlaceholder('Optional display label', 'Policy PDF');
+		await flushUi();
+		clickButton('Add link');
+		await flushUi();
+
+		expect(createOrgCommunicationQuickMock).not.toHaveBeenCalled();
+		expect(addOrgCommunicationLinkMock).not.toHaveBeenCalled();
+		expect(document.querySelector('[role="alert"]')?.textContent || '').toContain('Title is required.');
+		expect(document.querySelector('p.type-caption.text-rose-900')).toBeNull();
+	});
+
+	it('keeps true attachment failures inside the attachment section', async () => {
+		getOptionsMock.mockResolvedValue(quickCreateOptions);
+		createOrgCommunicationQuickMock.mockResolvedValue({
+			ok: true,
+			status: 'created',
+			name: 'COMM-DRAFT-ATTACH-ERROR',
+			title: 'Weekly staff update',
+		});
+		addOrgCommunicationLinkMock.mockRejectedValue(new Error('Attachment policy rejected the link.'));
+
+		mountModal();
+		await flushUi();
+
+		clickRecipient('Students');
+		await flushUi();
+		clickButton('Add link');
+		await flushUi();
+		setInputByPlaceholder('https://example.com/resource.pdf', 'https://example.com/policy.pdf');
+		setInputByPlaceholder('Optional display label', 'Policy PDF');
+		await flushUi();
+		clickButton('Add link');
+		await flushUi();
+
+		expect(createOrgCommunicationQuickMock).toHaveBeenCalledTimes(1);
+		expect(addOrgCommunicationLinkMock).toHaveBeenCalledTimes(1);
+		expect(document.querySelector('[role="alert"]')).toBeNull();
+		expect(document.querySelector('p.type-caption.text-rose-900')?.textContent || '').toContain(
+			'Attachment policy rejected the link.'
+		);
+	});
 });

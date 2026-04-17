@@ -112,8 +112,7 @@ frappe.ui.form.on('Org Communication', {
 
 	setup_governed_attachment_upload(frm) {
 		const tableField = frm.get_field('attachments');
-		const attachmentContextMode = resolve_attachment_context_mode(frm);
-		const hasGovernedContext = attachmentContextMode !== 'missing-organization';
+		const hasGovernedContext = Boolean(String(frm.doc.organization || '').trim());
 
 		if (tableField?.grid) {
 			tableField.grid.update_docfield_property('file', 'read_only', 1);
@@ -146,11 +145,7 @@ frappe.ui.form.on('Org Communication', {
 			'description',
 			!hasGovernedContext
 				? __('Set Organization and save the communication before uploading governed files. External URLs can still be added manually.')
-				: attachmentContextMode === 'class'
-				? __('Use Upload Attachment for governed files. Class communications route attachments through the class context.')
-				: attachmentContextMode === 'school'
-				? __('Use Upload Attachment for governed files. School and team communications route attachments through the communication school context.')
-				: __('Use Upload Attachment for governed files. Organization-wide communications route attachments through the organization context.')
+				: __('Use Upload Attachment for governed files. The server resolves the authoritative communication context when the uploader opens. External URLs can still be added manually.')
 		);
 
 		frm.remove_custom_button(__('Upload Attachment'), __('Actions'));
@@ -189,51 +184,6 @@ function ensure_org_comm_context(frm) {
 
 function has_organization_audience(frm) {
 	return Boolean((frm.doc.audiences || []).some(row => (row.target_mode || '').trim() === 'Organization'));
-}
-
-function resolve_attachment_student_group(frm) {
-	const activityStudentGroup = (frm.doc.activity_student_group || '').trim();
-	if (activityStudentGroup) {
-		return activityStudentGroup;
-	}
-
-	const audienceRows = frm.doc.audiences || [];
-	const matchingRow = audienceRows.find(row =>
-		(row.target_mode || '').trim() === 'Student Group' && (row.student_group || '').trim()
-	);
-	return (matchingRow?.student_group || '').trim();
-}
-
-function resolve_attachment_context_mode(frm) {
-	if (!String(frm.doc.organization || '').trim()) {
-		return 'missing-organization';
-	}
-
-	if (resolve_attachment_student_group(frm)) {
-		return 'class';
-	}
-
-	if (String(frm.doc.school || '').trim()) {
-		return 'school';
-	}
-
-	const audienceRows = frm.doc.audiences || [];
-	const schoolRows = audienceRows.filter(row =>
-		(row.target_mode || '').trim() === 'School Scope' && String(row.school || '').trim()
-	);
-	const uniqueSchools = new Set(schoolRows.map(row => String(row.school || '').trim()).filter(Boolean));
-	if (uniqueSchools.size === 1) {
-		return 'school';
-	}
-
-	const hasTeamContext = audienceRows.some(row =>
-		(row.target_mode || '').trim() === 'Team' && String(row.team || '').trim()
-	);
-	if (hasTeamContext) {
-		return 'school';
-	}
-
-	return 'organization';
 }
 
 async function open_org_communication_attachment_uploader(frm) {

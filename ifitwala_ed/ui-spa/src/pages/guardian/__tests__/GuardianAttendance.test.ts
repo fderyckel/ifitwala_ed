@@ -132,14 +132,16 @@ describe('GuardianAttendance', () => {
 		) as HTMLButtonElement | undefined
 		expect(dayButton).toBeTruthy()
 		expect(dayButton?.className).toContain('bg-jacaranda/12')
+		expect(dayButton?.className).toContain('border-[1.5px]')
 		dayButton?.click()
 		await flushUi()
 
 		const text = document.body.textContent || ''
 		expect(text).toContain('Family Attendance')
-		expect(text).toContain('Moss')
-		expect(text).toContain('Jacaranda')
-		expect(text).toContain('Flame')
+		expect(text).toContain('On track')
+		expect(text).toContain('Late or tardy')
+		expect(text).toContain('Absent')
+		expect(text).toContain('No record')
 		expect(text).toContain('Late bus')
 		expect(text).toContain('Math')
 		expect(text).toContain('Late or tardy')

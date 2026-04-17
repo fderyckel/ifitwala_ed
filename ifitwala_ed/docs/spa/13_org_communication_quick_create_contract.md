@@ -162,6 +162,8 @@ Rules:
    - issuing school
 9. External links are allowed as attachment rows, but they remain explicit `https://` links and do not replace governed upload for local files.
 10. The archive/detail surface receives attachment rows with server-owned `open_url` values and optional server-owned `preview_url` values. The SPA must not construct or guess private media paths.
+11. Attachment actions that are blocked because the draft itself is not yet valid enough to save must surface in the overlay-level action banner, not in the attachment-local error region. The attachment error region is reserved for true upload/link/remove failures.
+12. Once a communication already has governed file attachments, changing the authoritative attachment context is blocked until those governed files are removed.
 
 ## 5. Overlay and Invalidation Contract
 

@@ -2,7 +2,7 @@
 
 import { createResource } from 'frappe-ui'
 
-import { api } from '@/lib/client'
+import { api, apiUpload } from '@/lib/client'
 import { SIGNAL_ORG_COMMUNICATION_INVALIDATE, uiSignals } from '@/lib/uiSignals'
 
 import type {
@@ -37,42 +37,6 @@ const createResourceQuick = createResource<CreateOrgCommunicationQuickResponse>(
 	method: 'POST',
 	auto: false,
 })
-
-function csrfToken(): string {
-	return (
-		((window as any)?.csrf_token as string | undefined) ||
-		((window as any)?.frappe?.csrf_token as string | undefined) ||
-		''
-	)
-}
-
-function parseServerMessages(raw: unknown): string[] {
-	if (typeof raw !== 'string' || !raw.trim()) {
-		return []
-	}
-
-	try {
-		const entries = JSON.parse(raw)
-		if (!Array.isArray(entries)) {
-			return []
-		}
-		return entries
-			.map((entry) => {
-				if (typeof entry !== 'string') {
-					return String(entry || '')
-				}
-				try {
-					const payload = JSON.parse(entry)
-					return typeof payload?.message === 'string' ? payload.message : entry
-				} catch {
-					return entry
-				}
-			})
-			.filter((message) => Boolean((message || '').trim()))
-	} catch {
-		return []
-	}
-}
 
 function emitInvalidate(name: string, reason: string) {
 	uiSignals.emit(SIGNAL_ORG_COMMUNICATION_INVALIDATE, {
@@ -138,25 +102,10 @@ export async function uploadOrgCommunicationAttachment(
 	if (payload.row_name?.trim()) formData.append('row_name', payload.row_name.trim())
 	formData.append('file', payload.file, payload.file.name)
 
-	const response = await fetch(
-		'/api/method/ifitwala_ed.api.org_communication_attachments.upload_org_communication_attachment',
-		{
-			method: 'POST',
-			credentials: 'same-origin',
-			body: formData,
-			headers: csrfToken() ? { 'X-Frappe-CSRF-Token': csrfToken() } : undefined,
-		}
+	const result = await apiUpload<UploadOrgCommunicationAttachmentResponse>(
+		'ifitwala_ed.api.org_communication_attachments.upload_org_communication_attachment',
+		formData
 	)
-
-	const data = await response.json().catch(() => ({}))
-	if (!response.ok || data?.exception || data?.exc) {
-		const serverMessages = parseServerMessages(data?._server_messages)
-		throw new Error(
-			serverMessages.join('\n') || data?.message || response.statusText || 'Upload failed.'
-		)
-	}
-
-	const result = (data?.message ?? data) as UploadOrgCommunicationAttachmentResponse
 	emitInvalidate(result.org_communication, 'org_communication_attachment')
 	return result
 }

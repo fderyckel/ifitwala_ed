@@ -2,6 +2,8 @@
 import { computed, onMounted, ref, watch } from 'vue';
 import { createResource } from 'frappe-ui';
 
+import FiltersBar from '@/components/filters/FiltersBar.vue';
+
 import { matchesAcademicYearScope } from './student-overview/academicYearScope';
 import { emptySnapshot, viewModeOptions } from './student-overview/constants';
 import { formatCount, formatPct } from './student-overview/formatters';
@@ -528,70 +530,88 @@ const kpiTiles = computed<KpiTile[]>(() => [
 			</div>
 		</header>
 
-		<section class="ifit-filters mt-4 mb-3 flex flex-wrap items-end gap-3">
-			<div class="flex w-48 flex-col gap-1">
-				<label class="type-label">School</label>
-				<select v-model="filters.school" class="h-9 rounded-md border px-2 text-xs">
-					<option value="">Select a school</option>
-					<option v-for="school in schools" :key="school.name" :value="school.name">
-						{{ school.label || school.name }}
-					</option>
-				</select>
-			</div>
-
-			<div class="flex w-48 flex-col gap-1">
-				<label class="type-label">Program</label>
-				<select v-model="filters.program" class="h-9 rounded-md border px-2 text-xs">
-					<option value="">Select</option>
-					<option v-for="program in programs" :key="program.name" :value="program.name">
-						{{ program.label || program.name }}
-					</option>
-				</select>
-			</div>
-
-			<div class="relative flex w-64 flex-col gap-1">
-				<label class="type-label">Student</label>
-				<div class="control-input flex h-9 items-center rounded-md border px-2">
-					<span class="mr-1 text-[11px] text-ink/60">🔍</span>
-					<input
-						v-model="studentSearch"
-						class="h-full w-full text-xs"
-						placeholder="Search student"
-						type="search"
-						@focus="openStudentDropdown"
-						@input="debounce(fetchStudents)"
-					/>
-					<button v-if="studentSearch" class="ml-1 text-[11px] text-ink/60" @click="clearStudent">
-						Clear
-					</button>
+		<FiltersBar class="analytics-filters" data-testid="student-overview-filter-bar">
+			<div
+				class="grid w-full gap-3 md:grid-cols-2 xl:grid-cols-[repeat(2,minmax(0,12rem))_minmax(0,16rem)]"
+			>
+				<div class="flex min-w-0 flex-col gap-1">
+					<label class="type-label">School</label>
+					<select
+						v-model="filters.school"
+						class="h-9 rounded-md border px-2 text-xs"
+						data-testid="student-overview-school-filter"
+					>
+						<option value="">Select a school</option>
+						<option v-for="school in schools" :key="school.name" :value="school.name">
+							{{ school.label || school.name }}
+						</option>
+					</select>
 				</div>
-				<div
-					v-if="studentDropdownOpen"
-					class="absolute top-full z-30 mt-1 max-h-56 w-full overflow-auto rounded-xl border border-border/80 bg-[rgb(var(--surface-rgb))] shadow-soft"
-				>
-					<div v-if="studentLoading" class="px-3 py-2 text-xs text-ink/70">Searching…</div>
-					<button
-						v-for="student in studentSuggestions"
-						:key="student.id"
-						type="button"
-						class="flex w-full items-start gap-2 px-3 py-2 text-left text-xs hover:bg-[rgb(var(--surface-rgb)/0.9)]"
-						@click="selectStudent(student)"
+
+				<div class="flex min-w-0 flex-col gap-1">
+					<label class="type-label">Program</label>
+					<select
+						v-model="filters.program"
+						class="h-9 rounded-md border px-2 text-xs"
+						data-testid="student-overview-program-filter"
 					>
-						<span class="font-semibold text-ink">{{ student.name }}</span>
-					</button>
+						<option value="">Select</option>
+						<option v-for="program in programs" :key="program.name" :value="program.name">
+							{{ program.label || program.name }}
+						</option>
+					</select>
+				</div>
+
+				<div class="relative flex min-w-0 flex-col gap-1">
+					<label class="type-label">Student</label>
+					<div class="control-input flex h-9 items-center rounded-md border px-2">
+						<span class="mr-1 text-[11px] text-ink/60">🔍</span>
+						<input
+							v-model="studentSearch"
+							class="h-full w-full text-xs"
+							data-testid="student-overview-student-search"
+							placeholder="Search student"
+							type="search"
+							@focus="openStudentDropdown"
+							@input="debounce(fetchStudents)"
+						/>
+						<button
+							v-if="studentSearch"
+							type="button"
+							class="ml-1 text-[11px] text-ink/60"
+							@click="clearStudent"
+						>
+							Clear
+						</button>
+					</div>
 					<div
-						v-if="!studentLoading && !studentSuggestions.length"
-						class="px-3 py-2 text-xs text-ink/60"
+						v-if="studentDropdownOpen"
+						class="absolute top-full z-30 mt-1 max-h-56 w-full overflow-auto rounded-xl border border-border/80 bg-[rgb(var(--surface-rgb))] shadow-soft"
 					>
-						{{
-							studentSearch
-								? 'No matches. Try a different name or ID.'
-								: 'Start typing to search for a student.'
-						}}
+						<div v-if="studentLoading" class="px-3 py-2 text-xs text-ink/70">Searching…</div>
+						<button
+							v-for="student in studentSuggestions"
+							:key="student.id"
+							type="button"
+							class="flex w-full items-start gap-2 px-3 py-2 text-left text-xs hover:bg-[rgb(var(--surface-rgb)/0.9)]"
+							@click="selectStudent(student)"
+						>
+							<span class="font-semibold text-ink">{{ student.name }}</span>
+						</button>
+						<div
+							v-if="!studentLoading && !studentSuggestions.length"
+							class="px-3 py-2 text-xs text-ink/60"
+						>
+							{{
+								studentSearch
+									? 'No matches. Try a different name or ID.'
+									: 'Start typing to search for a student.'
+							}}
+						</div>
 					</div>
 				</div>
 			</div>
-		</section>
+		</FiltersBar>
 
 		<section class="mt-4 space-y-4">
 			<div

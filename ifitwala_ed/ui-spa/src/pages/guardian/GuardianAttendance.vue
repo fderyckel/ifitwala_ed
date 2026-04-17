@@ -73,27 +73,27 @@
 			<div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
 				<div class="rounded-xl border border-moss/30 bg-moss/10 p-4">
 					<div class="mb-2 h-8 w-8 rounded-lg border border-moss/40 bg-moss/20" />
-					<p class="type-body-strong text-moss">Moss</p>
-					<p class="type-caption text-ink/70">Attendance is recorded as present for that day.</p>
+					<p class="text-lg font-semibold tracking-tight text-moss">On track</p>
+					<p class="type-body text-ink/75">Attendance is recorded as present for that day.</p>
 				</div>
 				<div class="rounded-xl border border-jacaranda/30 bg-jacaranda/10 p-4">
 					<div class="mb-2 h-8 w-8 rounded-lg border border-jacaranda/40 bg-jacaranda/20" />
-					<p class="type-body-strong text-jacaranda">Jacaranda</p>
-					<p class="type-caption text-ink/70">
+					<p class="text-lg font-semibold tracking-tight text-jacaranda">Late or tardy</p>
+					<p class="type-body text-ink/75">
 						The day includes a late arrival or another tardy attendance signal.
 					</p>
 				</div>
 				<div class="rounded-xl border border-flame/30 bg-flame/10 p-4">
 					<div class="mb-2 h-8 w-8 rounded-lg border border-flame/40 bg-flame/20" />
-					<p class="type-body-strong text-flame">Flame</p>
-					<p class="type-caption text-ink/70">
+					<p class="text-lg font-semibold tracking-tight text-flame">Absent</p>
+					<p class="type-body text-ink/75">
 						The day includes an absence or other non-present code.
 					</p>
 				</div>
 				<div class="rounded-xl border border-line-soft bg-surface-soft p-4">
 					<div class="mb-2 h-8 w-8 rounded-lg border border-dashed border-line-soft bg-white/70" />
-					<p class="type-body-strong text-ink">Grey</p>
-					<p class="type-caption text-ink/70">
+					<p class="text-lg font-semibold tracking-tight text-ink">No record</p>
+					<p class="type-body text-ink/75">
 						No attendance record is available for that date in this window.
 					</p>
 				</div>
@@ -125,27 +125,36 @@
 						</p>
 					</div>
 					<div class="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:w-full">
-						<div class="rounded-xl border px-3 py-2" :class="summaryCardClass('tracked')">
-							<p class="type-caption">Tracked</p>
-							<p class="type-body-strong" :class="summaryValueClass('tracked')">
+						<div class="rounded-xl border px-4 py-3" :class="summaryCardClass('tracked')">
+							<p class="text-sm font-semibold text-ink/80 sm:text-base">Tracked</p>
+							<p
+								class="mt-1 text-xl font-semibold sm:text-2xl"
+								:class="summaryValueClass('tracked')"
+							>
 								{{ student.summary.tracked_days }}
 							</p>
 						</div>
-						<div class="rounded-xl border px-3 py-2" :class="summaryCardClass('present')">
-							<p class="type-caption">On track</p>
-							<p class="type-body-strong" :class="summaryValueClass('present')">
+						<div class="rounded-xl border px-4 py-3" :class="summaryCardClass('present')">
+							<p class="text-sm font-semibold text-ink/80 sm:text-base">On track</p>
+							<p
+								class="mt-1 text-xl font-semibold sm:text-2xl"
+								:class="summaryValueClass('present')"
+							>
 								{{ student.summary.present_days }}
 							</p>
 						</div>
-						<div class="rounded-xl border px-3 py-2" :class="summaryCardClass('late')">
-							<p class="type-caption">Late</p>
-							<p class="type-body-strong" :class="summaryValueClass('late')">
+						<div class="rounded-xl border px-4 py-3" :class="summaryCardClass('late')">
+							<p class="text-sm font-semibold text-ink/80 sm:text-base">Late</p>
+							<p class="mt-1 text-xl font-semibold sm:text-2xl" :class="summaryValueClass('late')">
 								{{ student.summary.late_days }}
 							</p>
 						</div>
-						<div class="rounded-xl border px-3 py-2" :class="summaryCardClass('absence')">
-							<p class="type-caption">Absent</p>
-							<p class="type-body-strong" :class="summaryValueClass('absence')">
+						<div class="rounded-xl border px-4 py-3" :class="summaryCardClass('absence')">
+							<p class="text-sm font-semibold text-ink/80 sm:text-base">Absent</p>
+							<p
+								class="mt-1 text-xl font-semibold sm:text-2xl"
+								:class="summaryValueClass('absence')"
+							>
 								{{ student.summary.absence_days }}
 							</p>
 						</div>
@@ -182,13 +191,13 @@
 								<template v-for="(cell, index) in month.cells" :key="`${month.key}-${index}`">
 									<div
 										v-if="!cell"
-										class="aspect-square rounded-lg border border-dashed border-line-soft/60 bg-white/50"
+										class="aspect-square rounded-lg border-[1.5px] border-dashed border-line-soft/70 bg-white/50"
 										aria-hidden="true"
 									/>
 									<button
 										v-else
 										type="button"
-										class="aspect-square rounded-lg border px-2 py-1 text-left transition focus:outline-none focus:ring-2 focus:ring-jacaranda"
+										class="aspect-square rounded-lg border-[1.5px] px-2 py-1 text-left transition focus:outline-none focus:ring-2 focus:ring-jacaranda"
 										:class="cellClass(student.student, cell)"
 										:aria-label="cellAriaLabel(student.student_name, cell)"
 										:aria-pressed="isSelectedCell(student.student, cell.date) ? 'true' : 'false'"

@@ -289,8 +289,15 @@ def _refresh_billing_run_after_invoice_reset(billing_run: str) -> None:
         sales_invoice = (getattr(item, "sales_invoice", None) or "").strip()
         if not sales_invoice:
             continue
-        invoice_state = frappe.db.get_value("Sales Invoice", sales_invoice, ["name", "docstatus"], as_dict=True)
-        if not invoice_state or int(invoice_state.get("docstatus") or 0) == 2:
+        invoice_state = frappe.db.get_value(
+            "Sales Invoice",
+            sales_invoice,
+            ["name", "docstatus", "status"],
+            as_dict=True,
+        )
+        if not invoice_state:
+            continue
+        if int(invoice_state.get("docstatus") or 0) == 2 or (invoice_state.get("status") or "").strip() == "Cancelled":
             continue
         retained_items.append(
             {
