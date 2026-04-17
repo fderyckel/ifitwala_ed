@@ -261,7 +261,7 @@ function openDeskDoc(doctype?: string | null, name?: string | null) {
 				:option="wellbeingSeriesOption"
 			/>
 			<div v-else class="text-xs text-slate-400">No trend data yet.</div>
-			<div class="mt-3 grid grid-cols-1 gap-2 text-xs text-slate-600 lg:grid-cols-3">
+			<div class="student-overview-support-metric-grid mt-3 text-xs text-slate-600">
 				<div class="min-w-0 rounded-lg bg-slate-50/70 px-3 py-2">
 					<p class="text-[11px] uppercase tracking-wide text-slate-500">Open log follow-ups</p>
 					<p class="text-base font-semibold text-slate-900">
@@ -284,3 +284,17 @@ function openDeskDoc(doctype?: string | null, name?: string | null) {
 		</div>
 	</section>
 </template>
+
+<style scoped>
+.student-overview-support-metric-grid {
+	display: grid;
+	gap: 0.5rem;
+	grid-template-columns: minmax(0, 1fr);
+}
+
+@media (min-width: 1280px) {
+	.student-overview-support-metric-grid {
+		grid-template-columns: repeat(3, minmax(0, 1fr));
+	}
+}
+</style>

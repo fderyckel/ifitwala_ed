@@ -1180,6 +1180,7 @@ function onDetailContentClick(event: MouseEvent) {
 
 <style scoped>
 .org-archive__filters {
+	margin-top: -0.5rem;
 	margin-bottom: 0;
 }
 

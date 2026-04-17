@@ -334,6 +334,8 @@ const activeRiskThresholds = computed(() => risk.value?.thresholds || thresholds
 let loadRunId = 0;
 let reloadTimer: number | null = null;
 let disposeAttendanceInvalidate: (() => void) | null = null;
+let hydratingFilters = false;
+let filterContextRunId = 0;
 
 function isoDate(value: Date): string {
 	return value.toISOString().slice(0, 10);
@@ -396,7 +398,7 @@ function buildBasePayload(): Omit<AttendanceBaseParams, 'mode'> {
 }
 
 function scheduleReload() {
-	if (!filtersReady.value) return;
+	if (!filtersReady.value || hydratingFilters) return;
 	if (Boolean(filters.start_date) !== Boolean(filters.end_date)) {
 		actionError.value = 'Select both start and end dates for a calendar range.';
 		return;
@@ -410,21 +412,75 @@ function scheduleReload() {
 	}, 350);
 }
 
-async function loadStudentGroups() {
+async function loadPrograms(runId?: number) {
+	actionError.value = null;
+	try {
+		const scopedPrograms = await attendanceService.fetchPrograms({
+			school: filters.school,
+		});
+		if (runId !== undefined && runId !== filterContextRunId) return false;
+		programs.value = scopedPrograms;
+		if (filters.program && !scopedPrograms.some(program => program.name === filters.program)) {
+			filters.program = null;
+		}
+		return true;
+	} catch (error) {
+		if (runId !== undefined && runId !== filterContextRunId) return false;
+		programs.value = [];
+		filters.program = null;
+		filters.student_group = null;
+		actionError.value = formatError(error);
+		return false;
+	}
+}
+
+async function loadStudentGroups(runId?: number) {
 	actionError.value = null;
 	try {
 		const groups = await attendanceService.fetchStudentGroups({
 			school: filters.school,
 			program: filters.program,
 		});
+		if (runId !== undefined && runId !== filterContextRunId) return false;
 		studentGroups.value = groups;
 		if (filters.student_group && !groups.some(group => group.name === filters.student_group)) {
 			filters.student_group = null;
 		}
+		return true;
 	} catch (error) {
+		if (runId !== undefined && runId !== filterContextRunId) return false;
 		studentGroups.value = [];
 		filters.student_group = null;
 		actionError.value = formatError(error);
+		return false;
+	}
+}
+
+async function reloadFilterContext() {
+	const runId = ++filterContextRunId;
+	hydratingFilters = true;
+	try {
+		const programsLoaded = await loadPrograms(runId);
+		if (!programsLoaded) return;
+		await loadStudentGroups(runId);
+	} finally {
+		if (runId === filterContextRunId) {
+			await Promise.resolve();
+			hydratingFilters = false;
+		}
+	}
+}
+
+async function reloadStudentGroupContext() {
+	const runId = ++filterContextRunId;
+	hydratingFilters = true;
+	try {
+		await loadStudentGroups(runId);
+	} finally {
+		if (runId === filterContextRunId) {
+			await Promise.resolve();
+			hydratingFilters = false;
+		}
 	}
 }
 
@@ -432,9 +488,7 @@ async function initializeFilters() {
 	const schoolContext = await attendanceService.fetchSchoolContext();
 	schools.value = schoolContext.schools || [];
 	filters.school = schoolContext.default_school || schoolContext.schools?.[0]?.name || null;
-
-	programs.value = await attendanceService.fetchPrograms();
-	await loadStudentGroups();
+	await reloadFilterContext();
 }
 
 async function reloadDashboard() {
@@ -555,17 +609,25 @@ function onRiskRadarClick(event: unknown) {
 }
 
 watch(
-	() => [filters.school, filters.program],
-	() => {
-		if (!filtersReady.value) return;
-		void loadStudentGroups();
+	() => filters.school,
+	async () => {
+		if (!filtersReady.value || hydratingFilters) return;
+		await reloadFilterContext();
+		scheduleReload();
+	}
+);
+
+watch(
+	() => filters.program,
+	async () => {
+		if (!filtersReady.value || hydratingFilters) return;
+		await reloadStudentGroupContext();
+		scheduleReload();
 	}
 );
 
 watch(
 	() => [
-		filters.school,
-		filters.program,
 		filters.student_group,
 		filters.whole_day,
 		filters.activity_only,
@@ -574,6 +636,7 @@ watch(
 		preset.value,
 	],
 	() => {
+		if (hydratingFilters) return;
 		scheduleReload();
 	}
 );
@@ -609,6 +672,11 @@ onBeforeUnmount(() => {
 				</p>
 			</div>
 			<div class="page-header__actions">
+				<DateRangePills
+					:model-value="preset"
+					:items="presetItems"
+					@update:model-value="applyPreset"
+				/>
 				<StatsTile :label="roleHeading" :value="meta?.window_source || 'window'" tone="info" />
 			</div>
 		</header>
@@ -653,16 +721,6 @@ onBeforeUnmount(() => {
 						{{ group.student_group_name || group.name }}
 					</option>
 				</select>
-			</div>
-
-			<div class="flex flex-col gap-1">
-				<label class="type-label">Window</label>
-				<DateRangePills
-					:model-value="preset"
-					:items="presetItems"
-					size="sm"
-					@update:model-value="applyPreset"
-				/>
 			</div>
 
 			<div class="flex flex-col gap-1">

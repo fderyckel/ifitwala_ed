@@ -223,7 +223,43 @@ class TestAttendanceApi(TestCase):
         self.assertEqual(payload["default_academic_year"], "AY-2025")
         self.assertEqual(payload["student_groups"], [{"name": "SG-1", "academic_year": "AY-2025"}])
         self.assertEqual(payload["terms"], [{"name": "TERM-1"}])
+        mock_programs.assert_called_once_with(school="SCH-1")
         mock_terms.assert_called_once_with(academic_year="AY-2025", school="SCH-1")
+
+    @patch("ifitwala_ed.api.student_attendance._expand_school_scope")
+    @patch("ifitwala_ed.api.student_attendance.frappe.db.sql")
+    def test_fetch_active_programs_scopes_to_program_offering_lineage_for_selected_school(
+        self,
+        mock_sql,
+        mock_expand_school_scope,
+    ):
+        mock_expand_school_scope.return_value = ["SCH-1"]
+        mock_sql.return_value = [
+            frappe._dict({"name": "PROG-PARENT", "program_name": "Parent Program", "is_group": 1}),
+            frappe._dict({"name": "PROG-CHILD", "program_name": "Child Program", "is_group": 0}),
+            frappe._dict({"name": "PROG-SIBLING", "program_name": "Sibling Program", "is_group": 0}),
+        ]
+
+        rows = student_attendance.fetch_active_programs(school="SCH-1")
+
+        self.assertEqual([row["name"] for row in rows], ["PROG-PARENT", "PROG-CHILD", "PROG-SIBLING"])
+        self.assertIn("FROM `tabProgram Offering` po", mock_sql.call_args.args[0])
+        query_params = mock_sql.call_args.args[1]
+        self.assertEqual(query_params["school_scope"], ("SCH-1",))
+
+    @patch("ifitwala_ed.api.student_attendance._expand_school_scope")
+    @patch("ifitwala_ed.api.student_attendance.frappe.db.sql")
+    def test_fetch_active_programs_returns_empty_when_selected_school_is_out_of_scope(
+        self,
+        mock_sql,
+        mock_expand_school_scope,
+    ):
+        mock_expand_school_scope.return_value = []
+
+        rows = student_attendance.fetch_active_programs(school="SCH-1")
+
+        self.assertEqual(rows, [])
+        mock_sql.assert_not_called()
 
     @patch("ifitwala_ed.api.student_attendance._cached_context", side_effect=lambda _k, _r, builder: builder())
     @patch("ifitwala_ed.api.student_attendance.list_attendance_codes")
@@ -258,6 +294,7 @@ class TestAttendanceApi(TestCase):
         self.assertEqual(payload["default_student_group"], "SG-ONLY")
         self.assertEqual(payload["default_code"], "P")
         self.assertEqual(payload["attendance_codes"][0]["attendance_code_name"], "Present")
+        mock_programs.assert_called_once_with(school="SCH-1")
 
     @patch("ifitwala_ed.api.student_attendance._cached_context", side_effect=lambda _k, _r, builder: builder())
     @patch("ifitwala_ed.api.student_attendance.list_attendance_codes")
@@ -289,6 +326,7 @@ class TestAttendanceApi(TestCase):
         self.assertEqual(payload["attendance_codes"][0]["attendance_code"], "P")
         self.assertEqual(mock_codes.call_count, 2)
         self.assertEqual(mock_codes.call_args_list[1].kwargs, {"show_in_attendance_tool": None})
+        mock_programs.assert_called_once_with(school="SCH-1")
 
     @patch("ifitwala_ed.api.student_attendance._cached_context", side_effect=lambda _k, _r, builder: builder())
     @patch("ifitwala_ed.api.student_attendance.list_attendance_codes")
@@ -317,6 +355,7 @@ class TestAttendanceApi(TestCase):
         payload = student_attendance.fetch_attendance_tool_bootstrap()
 
         self.assertEqual(payload["default_code"], "P")
+        mock_programs.assert_called_once_with(school="SCH-1")
 
     @patch("ifitwala_ed.api.student_attendance.attendance_recorded_dates")
     @patch("ifitwala_ed.api.student_attendance.get_meeting_dates")

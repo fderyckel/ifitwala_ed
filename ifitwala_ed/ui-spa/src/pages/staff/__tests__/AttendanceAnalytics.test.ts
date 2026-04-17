@@ -15,4 +15,16 @@ describe('AttendanceAnalytics shell contract', () => {
 	it('does not override the shared analytics shell width', () => {
 		expect(attendanceAnalyticsSource).not.toMatch(/max-width:\s*none\s*;/);
 	});
+
+	it('requests programs from the selected school scope instead of globally', () => {
+		expect(attendanceAnalyticsSource).toMatch(/fetchPrograms\(\{\s*school:\s*filters\.school,?\s*\}\)/s);
+		expect(attendanceAnalyticsSource).not.toContain('programs.value = await attendanceService.fetchPrograms();');
+	});
+
+	it('keeps window presets in the page header actions instead of the filter grid', () => {
+		expect(attendanceAnalyticsSource).toMatch(
+			/page-header__actions">[\s\S]*<DateRangePills[\s\S]*:model-value="preset"[\s\S]*<\/div>/s
+		);
+		expect(attendanceAnalyticsSource).not.toMatch(/<label class="type-label">Window<\/label>/);
+	});
 });

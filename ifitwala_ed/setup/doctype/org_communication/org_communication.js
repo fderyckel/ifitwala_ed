@@ -694,7 +694,7 @@ function toggle_grid_field(field, show) {
 
 function get_allowed_recipient_fields(target_mode) {
 	if (target_mode === 'Organization') {
-		return ['to_staff'];
+		return ['to_staff', 'to_guardians'];
 	}
 	if (target_mode === 'Team') {
 		return ['to_staff'];
@@ -743,7 +743,8 @@ function apply_recipient_defaults(frm, cdt, cdn, row) {
 	}
 
 	if (target_mode === 'Organization') {
-		if (!values.to_staff) {
+		const has_any = ['to_staff', 'to_guardians'].some(fieldname => values[fieldname]);
+		if (!has_any) {
 			values.to_staff = true;
 			frappe.model.set_value(cdt, cdn, 'to_staff', 1);
 		}

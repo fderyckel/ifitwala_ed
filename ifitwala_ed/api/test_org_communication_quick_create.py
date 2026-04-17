@@ -170,6 +170,10 @@ class TestOrgCommunicationQuickCreate(FrappeTestCase):
 
         self.assertIn("Organization", payload["fields"]["audience_target_modes"])
         self.assertIn("Organization", payload["recipient_rules"])
+        self.assertEqual(
+            payload["recipient_rules"]["Organization"]["allowed_fields"],
+            ["to_guardians", "to_staff"],
+        )
 
     def test_create_quick_inserts_org_communication_and_appends_audiences(self):
         doc = _DummyOrgCommunicationDoc()

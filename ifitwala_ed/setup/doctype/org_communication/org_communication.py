@@ -34,7 +34,9 @@ WIDE_AUDIENCE_RECIPIENT_ROLES = {
     "Academic Assistant",
     "HR Manager",
     "Accounts Manager",
+    "Nurse",
 }
+WIDE_AUDIENCE_ROLE_LABEL = "Academic Admin, Academic Assistant, HR Manager, Accounts Manager, Nurse, or System Manager"
 
 AUDIENCE_TARGET_MODES = ("School Scope", "Organization", "Team", "Student Group")
 RECIPIENT_TOGGLE_FIELDS = ("to_staff", "to_students", "to_guardians")
@@ -45,7 +47,7 @@ RECIPIENT_TOGGLE_LABELS = {
 }
 TARGET_MODE_ALLOWED_RECIPIENTS = {
     "School Scope": {"to_staff", "to_students", "to_guardians"},
-    "Organization": {"to_staff"},
+    "Organization": {"to_staff", "to_guardians"},
     "Team": {"to_staff"},
     "Student Group": {"to_staff", "to_students", "to_guardians"},
 }
@@ -85,6 +87,10 @@ def _get_recipient_flags(row) -> dict[str, bool]:
 def _get_enabled_recipient_fields(row) -> set[str]:
     flags = _get_recipient_flags(row)
     return {field for field, enabled in flags.items() if enabled}
+
+
+def _allows_partial_audience_editing(doc) -> bool:
+    return str(_field_value(doc, "status") or "").strip() == "Draft"
 
 
 # --------------------------------------------------------------------
@@ -430,7 +436,10 @@ class OrgCommunication(Document):
         - For everyone: School Scope rows must be consistent with the parent
           Issuing School nested tree.
         """
+        allow_partial_audiences = _allows_partial_audience_editing(self)
         if not self.audiences:
+            if allow_partial_audiences:
+                return
             frappe.throw(
                 _("Please add at least one Audience for this communication."),
                 title=_("Missing Audience"),
@@ -468,6 +477,8 @@ class OrgCommunication(Document):
         for row in self.audiences:
             target_mode = (row.target_mode or "").strip()
             if not target_mode:
+                if allow_partial_audiences:
+                    continue
                 frappe.throw(
                     _("Target Mode is required for each Audience row."),
                     title=_("Missing Target Mode"),
@@ -481,6 +492,8 @@ class OrgCommunication(Document):
 
             if target_mode == "School Scope":
                 if not row.school:
+                    if allow_partial_audiences:
+                        continue
                     frappe.throw(
                         _("Audience row for School Scope must specify a School."),
                         title=_("Incomplete Audience"),
@@ -491,19 +504,23 @@ class OrgCommunication(Document):
                         _("Audience row for Organization cannot specify School, Team, or Student Group."),
                         title=_("Invalid Organization Audience"),
                     )
-                if self.school:
+                if self.school and not allow_partial_audiences:
                     frappe.throw(
                         _("Organization audience rows require a blank Issuing School."),
                         title=_("Invalid Organization Audience"),
                     )
             elif target_mode == "Team":
                 if not row.team:
+                    if allow_partial_audiences:
+                        continue
                     frappe.throw(
                         _("Audience row for Team must specify a Team."),
                         title=_("Incomplete Audience"),
                     )
             elif target_mode == "Student Group":
                 if not row.student_group:
+                    if allow_partial_audiences:
+                        continue
                     frappe.throw(
                         _("Audience row for Student Group must specify a Student Group."),
                         title=_("Incomplete Audience"),
@@ -511,6 +528,8 @@ class OrgCommunication(Document):
 
             enabled_recipients = _get_enabled_recipient_fields(row)
             if not enabled_recipients:
+                if allow_partial_audiences:
+                    continue
                 frappe.throw(
                     _("Audience row must include at least one Recipient toggle."),
                     title=_("Missing Recipients"),
@@ -560,6 +579,9 @@ class OrgCommunication(Document):
 
     def _enforce_role_restrictions_on_audiences(self):
         """Restrict wide staff/community audience rows to privileged roles."""
+        if _allows_partial_audience_editing(self):
+            return
+
         user = frappe.session.user
         is_wide_privileged = _user_has_any_role(user, WIDE_AUDIENCE_RECIPIENT_ROLES)
 
@@ -571,17 +593,15 @@ class OrgCommunication(Document):
             enabled_recipients = _get_enabled_recipient_fields(row)
             if target_mode == "School Scope" and enabled_recipients & {"to_staff"} and not is_wide_privileged:
                 frappe.throw(
-                    _(
-                        "You are not allowed to target Staff at School Scope. "
-                        "Only Academic Admin, Academic Assistant, HR Manager, Accounts Manager, or System Manager may do this."
+                    _("You are not allowed to target Staff at School Scope. Only {roles} may do this.").format(
+                        roles=WIDE_AUDIENCE_ROLE_LABEL
                     ),
                     title=_("Audience Not Allowed"),
                 )
             if target_mode == "Organization" and not is_wide_privileged:
                 frappe.throw(
-                    _(
-                        "You are not allowed to target Staff at Organization scope. "
-                        "Only Academic Admin, Academic Assistant, HR Manager, Accounts Manager, or System Manager may do this."
+                    _("You are not allowed to target Organization audiences. Only {roles} may do this.").format(
+                        roles=WIDE_AUDIENCE_ROLE_LABEL
                     ),
                     title=_("Audience Not Allowed"),
                 )

@@ -337,6 +337,135 @@ def _compute_age(dob: date | str | None) -> int | None:
     return max(years, 0)
 
 
+def _attendance_rows(student: str):
+    return frappe.get_all(
+        "Student Attendance",
+        filters={"student": student},
+        fields=[
+            "attendance_date",
+            "attendance_code",
+            "course",
+            "student_group",
+            "program",
+            "school",
+            "academic_year",
+            "whole_day",
+        ],
+        order_by="attendance_date asc",
+    )
+
+
+def _attendance_code_bundle():
+    rows = frappe.get_all(
+        "Student Attendance Code",
+        fields=[
+            "name",
+            "attendance_code",
+            "attendance_code_name",
+            "count_as_present",
+            "color",
+            "show_in_reports",
+            "display_order",
+        ],
+    )
+
+    code_map: dict[str, dict] = {}
+    report_codes = []
+    for row in rows:
+        label = (row.attendance_code_name or row.attendance_code or "").lower()
+        is_late = "late" in label or row.attendance_code == "L"
+        payload = {
+            **row,
+            "is_late": is_late,
+        }
+        code_map[row.name] = payload
+        if row.attendance_code:
+            code_map[row.attendance_code] = payload
+        if getattr(row, "show_in_reports", 0):
+            report_codes.append(
+                {
+                    "value": row.attendance_code,
+                    "label": row.attendance_code_name,
+                    "count_as_present": row.count_as_present,
+                    "color": row.color,
+                    "display_order": row.display_order,
+                }
+            )
+
+    report_codes.sort(
+        key=lambda row: (
+            row.get("display_order") if row.get("display_order") is not None else 9999,
+            row.get("label") or "",
+        )
+    )
+
+    for row in report_codes:
+        row.pop("display_order", None)
+
+    return code_map, report_codes
+
+
+def _course_name_map(course_names: list[str] | None):
+    names = sorted({(course or "").strip() for course in (course_names or []) if (course or "").strip()})
+    if not names:
+        return {}
+
+    rows = frappe.get_all(
+        "Course",
+        filters={"name": ["in", names]},
+        fields=["name", "course_name"],
+    )
+    return {row.name: (row.course_name or row.name) for row in rows}
+
+
+def _task_rows_for_academic_year(task_rows, academic_year: str | None):
+    if not academic_year:
+        return list(task_rows or [])
+    return [row for row in task_rows or [] if not row.academic_year or row.academic_year == academic_year]
+
+
+def _build_student_snapshot_context(student: str, program: str | None, current_academic_year: str | None):
+    task_rows_scoped = _task_rows(student, program)
+    task_rows_all = task_rows_scoped if not program else _task_rows(student, None)
+    attendance_rows = _attendance_rows(student)
+    attendance_code_bundle = _attendance_code_bundle()
+    course_labels = _course_name_map([row.course for row in attendance_rows if getattr(row, "course", None)])
+
+    attendance_years = sorted(
+        {row.academic_year for row in attendance_rows if getattr(row, "academic_year", None)},
+        reverse=True,
+    )
+
+    support = {
+        "logs": _get_visible_student_logs(student=student, academic_year=None, limit=20),
+        "log_counts": _visible_student_log_support_counts(student, current_academic_year),
+        "referrals": _get_visible_student_referrals(student=student, academic_year=None, limit=10),
+        "referral_counts": _visible_student_referral_counts(student),
+        "nurse_visits": _get_visible_student_nurse_visits(student=student, limit=10),
+        "nurse_visit_count": _visible_student_nurse_visit_count(student),
+        "health_note": _get_student_health_note(student),
+    }
+
+    program_enrollment_years = frappe.get_all(
+        "Program Enrollment",
+        filters={"student": student},
+        fields=["academic_year"],
+        distinct=True,
+        order_by="academic_year desc",
+    )
+
+    return {
+        "task_rows_scoped": task_rows_scoped,
+        "task_rows_all": task_rows_all,
+        "attendance_rows": attendance_rows,
+        "attendance_code_bundle": attendance_code_bundle,
+        "attendance_course_labels": course_labels,
+        "attendance_years": attendance_years,
+        "support": support,
+        "program_enrollment_years": program_enrollment_years,
+    }
+
+
 def _identity_block(student: str, program: str | None, school: str | None):
     student_doc = (
         frappe.db.get_value(
@@ -424,28 +553,6 @@ def _identity_block(student: str, program: str | None, school: str | None):
     }
 
 
-def _attendance_map():
-    rows = frappe.get_all(
-        "Student Attendance Code",
-        fields=["name", "attendance_code", "attendance_code_name", "count_as_present", "color"],
-    )
-
-    code_map: dict[str, dict] = {}
-    for r in rows:
-        # Lightweight late detection using code label/name
-        label = (r.attendance_code_name or r.attendance_code or "").lower()
-        is_late = "late" in label or r.attendance_code == "L"
-        payload = {
-            **r,
-            "is_late": is_late,
-        }
-        # Key by both docname and code so lookups by attendance_code work reliably
-        code_map[r.name] = payload
-        if r.attendance_code:
-            code_map[r.attendance_code] = payload
-    return code_map
-
-
 def _attendance_code_meta(code_map: dict[str, dict], attendance_code: str | None) -> dict[str, object]:
     code = code_map.get(attendance_code, {})
     code_value = code.get("attendance_code") or attendance_code
@@ -463,27 +570,44 @@ def _attendance_code_meta(code_map: dict[str, dict], attendance_code: str | None
     }
 
 
-def _attendance_block(student: str, academic_year: str | None):
-    code_map = _attendance_map()
-    filters = {"student": student}
-    if academic_year:
-        filters["academic_year"] = academic_year
+def _attendance_block(
+    student: str,
+    academic_year: str | None,
+    *,
+    attendance_rows=None,
+    attendance_code_bundle=None,
+    course_name_map=None,
+):
+    if attendance_code_bundle is None:
+        attendance_code_bundle = _attendance_code_bundle()
+    code_map, report_codes = attendance_code_bundle
 
-    rows = frappe.get_all(
-        "Student Attendance",
-        filters=filters,
-        fields=[
-            "attendance_date",
-            "attendance_code",
-            "course",
-            "student_group",
-            "program",
-            "school",
-            "academic_year",
-            "whole_day",
-        ],
-        order_by="attendance_date asc",
-    )
+    if attendance_rows is None:
+        if academic_year:
+            rows = frappe.get_all(
+                "Student Attendance",
+                filters={"student": student, "academic_year": academic_year},
+                fields=[
+                    "attendance_date",
+                    "attendance_code",
+                    "course",
+                    "student_group",
+                    "program",
+                    "school",
+                    "academic_year",
+                    "whole_day",
+                ],
+                order_by="attendance_date asc",
+            )
+        else:
+            rows = _attendance_rows(student)
+    else:
+        rows = list(attendance_rows or [])
+        if academic_year:
+            rows = [row for row in rows if row.academic_year == academic_year]
+
+    if course_name_map is None:
+        course_name_map = _course_name_map([row.course for row in rows if getattr(row, "course", None)])
 
     whole_day_rows = [r for r in rows if getattr(r, "whole_day", 0)]
     block_rows = [r for r in rows if not getattr(r, "whole_day", 0)]
@@ -543,7 +667,7 @@ def _attendance_block(student: str, academic_year: str | None):
         is_excused = bool(code_meta["is_excused"])
         entry = {
             "course": r.course or "General",
-            "course_name": frappe.db.get_value("Course", r.course, "course_name") if r.course else "General",
+            "course_name": course_name_map.get(r.course, r.course) if r.course else "General",
             "week_label": week_label,
             "present_sessions": 1 if is_present else 0,
             "absent_sessions": 1 if (not is_present and is_excused) else 0,
@@ -561,7 +685,7 @@ def _attendance_block(student: str, academic_year: str | None):
             course_key,
             {
                 "course": course_key,
-                "course_name": frappe.db.get_value("Course", r.course, "course_name") if r.course else "General",
+                "course_name": course_name_map.get(r.course, r.course) if r.course else "General",
                 "present_sessions": 0,
                 "excused_absent_sessions": 0,
                 "unexcused_absent_sessions": 0,
@@ -599,17 +723,7 @@ def _attendance_block(student: str, academic_year: str | None):
         "all_day_heatmap": all_day_heatmap,
         "by_course_heatmap": by_course_heatmap,
         "by_course_breakdown": by_course_breakdown,
-        "codes": frappe.get_all(
-            "Student Attendance Code",
-            fields=[
-                "attendance_code as value",
-                "attendance_code_name as label",
-                "count_as_present",
-                "color",
-            ],
-            filters={"show_in_reports": 1},
-            order_by="display_order asc, attendance_code_name asc",
-        ),
+        "codes": report_codes,
     }
 
 
@@ -651,25 +765,22 @@ def _task_rows(student: str, program: str | None):
     return frappe.db.sql(sql, params, as_dict=True)
 
 
-def _learning_block(student: str, program: str | None, academic_year: str | None):
-    task_rows = _task_rows(student, program)
+def _learning_block(student: str, program: str | None, academic_year: str | None, *, snapshot_ctx=None):
+    task_rows = snapshot_ctx["task_rows_scoped"] if snapshot_ctx else _task_rows(student, program)
+    scoped_task_rows = _task_rows_for_academic_year(task_rows, academic_year)
 
     # Status distribution
     status_distribution = []
-    if task_rows:
+    if scoped_task_rows:
         counter: Dict[str, int] = {}
-        for row in task_rows:
-            if academic_year and row.academic_year and row.academic_year != academic_year:
-                continue
+        for row in scoped_task_rows:
             key = row.status or "Assigned"
             counter[key] = counter.get(key, 0) + 1
         status_distribution = [{"status": k, "count": v, "year_scope": "current"} for k, v in counter.items()]
 
     # By course completion
     course_map: Dict[str, Dict[str, int]] = {}
-    for row in task_rows:
-        if academic_year and row.academic_year and row.academic_year != academic_year:
-            continue
+    for row in scoped_task_rows:
         key = row.course or "General"
         entry = course_map.setdefault(
             key,
@@ -701,7 +812,7 @@ def _learning_block(student: str, program: str | None, academic_year: str | None
         except Exception:
             return getdate("1900-01-01")
 
-    recent_tasks = sorted(task_rows, key=_task_sort_key, reverse=True)[:10]
+    recent_tasks = sorted(scoped_task_rows, key=_task_sort_key, reverse=True)[:10]
 
     # Current courses from Program Enrollment Course
     program_scope = _get_program_subtree(program) if program else None
@@ -717,12 +828,13 @@ def _learning_block(student: str, program: str | None, academic_year: str | None
         as_dict=True,
     )
 
+    completion_by_course = {course: entry["completion_rate"] for course, entry in course_map.items()}
     current_courses = [
         {
             "course": r.course,
             "course_name": r.course_name or r.course,
             "status": r.status or "current",
-            "completion_rate": next((e["completion_rate"] for e in course_map.values() if e["course"] == r.course), 0),
+            "completion_rate": completion_by_course.get(r.course, 0),
             "academic_summary": {},
         }
         for r in pec_rows
@@ -738,11 +850,16 @@ def _learning_block(student: str, program: str | None, academic_year: str | None
     }
 
 
-def _wellbeing_block(student: str, academic_year: str | None):
-    logs = _get_visible_student_logs(student=student, academic_year=None, limit=20)
-    referrals = _get_visible_student_referrals(student=student, academic_year=None, limit=10)
-    nurse = _get_visible_student_nurse_visits(student=student, limit=10)
-    health_note = _get_student_health_note(student)
+def _wellbeing_block(student: str, academic_year: str | None, *, snapshot_ctx=None):
+    support = snapshot_ctx["support"] if snapshot_ctx else None
+    logs = support["logs"] if support else _get_visible_student_logs(student=student, academic_year=None, limit=20)
+    referrals = (
+        support["referrals"]
+        if support
+        else _get_visible_student_referrals(student=student, academic_year=None, limit=10)
+    )
+    nurse = support["nurse_visits"] if support else _get_visible_student_nurse_visits(student=student, limit=10)
+    health_note = support["health_note"] if support else _get_student_health_note(student)
 
     timeline = []
     for r in logs:
@@ -788,9 +905,14 @@ def _wellbeing_block(student: str, academic_year: str | None):
         )
 
     timeline = sorted(timeline, key=lambda r: r.get("date") or "", reverse=True)[:30]
-    visible_logs_total, visible_logs_open_followups = _visible_student_log_support_counts(student, academic_year)
-    visible_referrals_total, visible_referrals_active = _visible_student_referral_counts(student)
-    visible_nurse_visits_total = _visible_student_nurse_visit_count(student)
+    if support:
+        visible_logs_total, visible_logs_open_followups = support["log_counts"]
+        visible_referrals_total, visible_referrals_active = support["referral_counts"]
+        visible_nurse_visits_total = support["nurse_visit_count"]
+    else:
+        visible_logs_total, visible_logs_open_followups = _visible_student_log_support_counts(student, academic_year)
+        visible_referrals_total, visible_referrals_active = _visible_student_referral_counts(student)
+        visible_nurse_visits_total = _visible_student_nurse_visit_count(student)
 
     metrics = {
         "student_logs": {
@@ -1042,14 +1164,18 @@ def _visible_student_log_support_counts(student: str, academic_year: str | None)
     return int(row[0].get("total_logs") or 0), int(row[0].get("open_followups") or 0)
 
 
-def _history_block(student: str, program: str | None):
+def _history_block(student: str, program: str | None, *, snapshot_ctx=None):
     # Use Program Enrollment academic years as a backbone
-    years = frappe.get_all(
-        "Program Enrollment",
-        filters={"student": student},
-        fields=["academic_year"],
-        distinct=True,
-        order_by="academic_year desc",
+    years = (
+        snapshot_ctx["program_enrollment_years"]
+        if snapshot_ctx
+        else frappe.get_all(
+            "Program Enrollment",
+            filters={"student": student},
+            fields=["academic_year"],
+            distinct=True,
+            order_by="academic_year desc",
+        )
     )
     year_options = []
     for idx, y in enumerate(years):
@@ -1063,7 +1189,7 @@ def _history_block(student: str, program: str | None):
     attendance_trend = []
 
     # Task completion per AY
-    task_rows = _task_rows(student, program)
+    task_rows = snapshot_ctx["task_rows_scoped"] if snapshot_ctx else _task_rows(student, program)
     for ay in {r.academic_year for r in task_rows if r.academic_year}:
         yr_rows = [r for r in task_rows if r.academic_year == ay]
         total = len(yr_rows)
@@ -1079,16 +1205,28 @@ def _history_block(student: str, program: str | None):
         )
 
     # Attendance per AY
-    att_years = frappe.get_all(
-        "Student Attendance",
-        filters={"student": student},
-        fields=["academic_year"],
-        distinct=True,
-        order_by="academic_year desc",
+    att_years = (
+        snapshot_ctx["attendance_years"]
+        if snapshot_ctx
+        else [
+            row.academic_year
+            for row in frappe.get_all(
+                "Student Attendance",
+                filters={"student": student},
+                fields=["academic_year"],
+                distinct=True,
+                order_by="academic_year desc",
+            )
+        ]
     )
-    for row in att_years:
-        ay = row.academic_year
-        stats = _attendance_block(student, ay)["summary"]
+    for ay in att_years:
+        stats = _attendance_block(
+            student,
+            ay,
+            attendance_rows=snapshot_ctx["attendance_rows"] if snapshot_ctx else None,
+            attendance_code_bundle=snapshot_ctx["attendance_code_bundle"] if snapshot_ctx else None,
+            course_name_map=snapshot_ctx["attendance_course_labels"] if snapshot_ctx else None,
+        )["summary"]
         attendance_trend.append(
             {
                 "academic_year": ay,
@@ -1107,14 +1245,24 @@ def _history_block(student: str, program: str | None):
     }
 
 
-def _kpi_block(student: str, academic_year: str | None):
-    attendance_summary = _attendance_block(student, academic_year)["summary"]
-    task_rows = _task_rows(student, None)
-    student_logs_total, student_logs_open_followups = _visible_student_log_support_counts(student, academic_year)
-    visible_referrals_total, visible_referrals_active = _visible_student_referral_counts(student)
-    visible_nurse_visits_total = _visible_student_nurse_visit_count(student)
-    if academic_year:
-        task_rows = [r for r in task_rows if not r.academic_year or r.academic_year == academic_year]
+def _kpi_block(student: str, academic_year: str | None, *, snapshot_ctx=None):
+    attendance_summary = _attendance_block(
+        student,
+        academic_year,
+        attendance_rows=snapshot_ctx["attendance_rows"] if snapshot_ctx else None,
+        attendance_code_bundle=snapshot_ctx["attendance_code_bundle"] if snapshot_ctx else None,
+        course_name_map=snapshot_ctx["attendance_course_labels"] if snapshot_ctx else None,
+    )["summary"]
+    task_rows = snapshot_ctx["task_rows_all"] if snapshot_ctx else _task_rows(student, None)
+    if snapshot_ctx:
+        student_logs_total, student_logs_open_followups = snapshot_ctx["support"]["log_counts"]
+        visible_referrals_total, visible_referrals_active = snapshot_ctx["support"]["referral_counts"]
+        visible_nurse_visits_total = snapshot_ctx["support"]["nurse_visit_count"]
+    else:
+        student_logs_total, student_logs_open_followups = _visible_student_log_support_counts(student, academic_year)
+        visible_referrals_total, visible_referrals_active = _visible_student_referral_counts(student)
+        visible_nurse_visits_total = _visible_student_nurse_visit_count(student)
+    task_rows = _task_rows_for_academic_year(task_rows, academic_year)
 
     total_tasks = len(task_rows)
     completed_tasks = sum(1 for r in task_rows if r.status in {"Graded", "Returned"} or r.complete)
@@ -1169,6 +1317,7 @@ def get_student_center_snapshot(student: str, school: str, program: str, view_mo
 
     identity = _identity_block(student, program, school)
     current_ay = identity.get("program_enrollment", {}).get("academic_year")
+    snapshot_ctx = _build_student_snapshot_context(student, program, current_ay)
 
     return {
         "meta": {
@@ -1181,9 +1330,15 @@ def get_student_center_snapshot(student: str, school: str, program: str, view_mo
             "permissions": _permissions_for_view(view_mode),
         },
         "identity": identity,
-        "kpis": _kpi_block(student, current_ay),
-        "learning": _learning_block(student, program, current_ay),
-        "attendance": _attendance_block(student, None),
-        "wellbeing": _wellbeing_block(student, current_ay),
-        "history": _history_block(student, program),
+        "kpis": _kpi_block(student, current_ay, snapshot_ctx=snapshot_ctx),
+        "learning": _learning_block(student, program, current_ay, snapshot_ctx=snapshot_ctx),
+        "attendance": _attendance_block(
+            student,
+            None,
+            attendance_rows=snapshot_ctx["attendance_rows"],
+            attendance_code_bundle=snapshot_ctx["attendance_code_bundle"],
+            course_name_map=snapshot_ctx["attendance_course_labels"],
+        ),
+        "wellbeing": _wellbeing_block(student, current_ay, snapshot_ctx=snapshot_ctx),
+        "history": _history_block(student, program, snapshot_ctx=snapshot_ctx),
     }

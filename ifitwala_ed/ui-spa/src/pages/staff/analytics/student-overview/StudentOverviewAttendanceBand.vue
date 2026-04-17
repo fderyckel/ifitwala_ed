@@ -143,7 +143,7 @@ const emit = defineEmits<{
 					/>
 					<p v-else class="type-empty">Switch to course view to see breakdown.</p>
 
-					<div class="grid grid-cols-1 gap-2 text-xs sm:grid-cols-3">
+					<div class="student-overview-mini-kpi-grid text-xs">
 						<div class="mini-kpi-card min-w-0">
 							<p class="mini-kpi-label">Total days absent</p>
 							<p class="mini-kpi-value">
@@ -179,3 +179,17 @@ const emit = defineEmits<{
 		</div>
 	</section>
 </template>
+
+<style scoped>
+.student-overview-mini-kpi-grid {
+	display: grid;
+	gap: 0.5rem;
+	grid-template-columns: minmax(0, 1fr);
+}
+
+@media (min-width: 1024px) {
+	.student-overview-mini-kpi-grid {
+		grid-template-columns: repeat(3, minmax(0, 1fr));
+	}
+}
+</style>

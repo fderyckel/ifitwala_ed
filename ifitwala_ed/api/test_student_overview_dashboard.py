@@ -3,12 +3,13 @@
 
 # ifitwala_ed/api/test_student_overview_dashboard.py
 
-from unittest.mock import patch
+from unittest.mock import call, patch
 
 import frappe
 
 from ifitwala_ed.api.student_overview_dashboard import (
     _attendance_block,
+    _build_student_snapshot_context,
     _ensure_student_overview_access,
     _history_block,
     _identity_block,
@@ -304,15 +305,6 @@ class TestStudentOverviewDashboard(IfitwalaFrappeTestCase):
     def test_attendance_block_counts_excused_unexcused_and_late_correctly(self):
         def fake_get_all(doctype, **kwargs):
             if doctype == "Student Attendance Code":
-                filters = kwargs.get("filters") or {}
-                if filters == {"show_in_reports": 1}:
-                    return [
-                        frappe._dict(value="P", label="Present", count_as_present=1, color="#22c55e"),
-                        frappe._dict(value="L", label="Late", count_as_present=1, color="#f59e0b"),
-                        frappe._dict(value="IA", label="Informed Absence", count_as_present=0, color="#94a3b8"),
-                        frappe._dict(value="A", label="Absent", count_as_present=0, color="#ef4444"),
-                    ]
-
                 return [
                     frappe._dict(
                         name="P",
@@ -320,9 +312,17 @@ class TestStudentOverviewDashboard(IfitwalaFrappeTestCase):
                         attendance_code_name="Present",
                         count_as_present=1,
                         color="#22c55e",
+                        show_in_reports=1,
+                        display_order=1,
                     ),
                     frappe._dict(
-                        name="L", attendance_code="L", attendance_code_name="Late", count_as_present=1, color="#f59e0b"
+                        name="L",
+                        attendance_code="L",
+                        attendance_code_name="Late",
+                        count_as_present=1,
+                        color="#f59e0b",
+                        show_in_reports=1,
+                        display_order=2,
                     ),
                     frappe._dict(
                         name="IA",
@@ -330,6 +330,8 @@ class TestStudentOverviewDashboard(IfitwalaFrappeTestCase):
                         attendance_code_name="Informed Absence",
                         count_as_present=0,
                         color="#94a3b8",
+                        show_in_reports=1,
+                        display_order=3,
                     ),
                     frappe._dict(
                         name="A",
@@ -337,6 +339,8 @@ class TestStudentOverviewDashboard(IfitwalaFrappeTestCase):
                         attendance_code_name="Absent",
                         count_as_present=0,
                         color="#ef4444",
+                        show_in_reports=1,
+                        display_order=4,
                     ),
                 ]
 
@@ -390,6 +394,55 @@ class TestStudentOverviewDashboard(IfitwalaFrappeTestCase):
                 "most_impacted_course": None,
             },
         )
+
+    def test_attendance_block_uses_batched_course_name_lookup(self):
+        def fake_get_all(doctype, **kwargs):
+            if doctype == "Student Attendance Code":
+                return [
+                    frappe._dict(
+                        name="P",
+                        attendance_code="P",
+                        attendance_code_name="Present",
+                        count_as_present=1,
+                        color="#22c55e",
+                        show_in_reports=1,
+                        display_order=1,
+                    )
+                ]
+
+            if doctype == "Student Attendance":
+                return [
+                    frappe._dict(
+                        attendance_date="2026-02-10",
+                        attendance_code="P",
+                        course="COURSE-1",
+                        academic_year="2025-2026",
+                        whole_day=0,
+                    ),
+                    frappe._dict(
+                        attendance_date="2026-02-11",
+                        attendance_code="P",
+                        course="COURSE-1",
+                        academic_year="2025-2026",
+                        whole_day=0,
+                    ),
+                ]
+
+            if doctype == "Course":
+                self.assertEqual(kwargs.get("filters"), {"name": ["in", ["COURSE-1"]]})
+                return [frappe._dict(name="COURSE-1", course_name="Mathematics")]
+
+            self.fail(f"Unexpected get_all doctype: {doctype}")
+
+        with (
+            patch("ifitwala_ed.api.student_overview_dashboard.frappe.get_all", side_effect=fake_get_all),
+            patch("ifitwala_ed.api.student_overview_dashboard.frappe.db.get_value") as get_value_mock,
+        ):
+            payload = _attendance_block("STU-001", "2025-2026")
+
+        self.assertFalse(get_value_mock.called)
+        self.assertEqual(payload["by_course_breakdown"][0]["course_name"], "Mathematics")
+        self.assertEqual(payload["by_course_heatmap"][0]["course_name"], "Mathematics")
 
     def test_history_block_uses_distinct_flag_for_attendance_years(self):
         def fake_get_all(doctype, **kwargs):
@@ -624,10 +677,20 @@ class TestStudentOverviewDashboard(IfitwalaFrappeTestCase):
                 "academic_year": "2025-2026",
             },
         }
+        snapshot_ctx = {
+            "attendance_rows": [],
+            "attendance_code_bundle": ({}, []),
+            "attendance_course_labels": {},
+            "support": {},
+        }
 
         with (
             patch("ifitwala_ed.api.student_overview_dashboard._ensure_can_view_student") as ensure_can_view,
             patch("ifitwala_ed.api.student_overview_dashboard._identity_block", return_value=identity),
+            patch(
+                "ifitwala_ed.api.student_overview_dashboard._build_student_snapshot_context",
+                return_value=snapshot_ctx,
+            ) as build_snapshot_context,
             patch(
                 "ifitwala_ed.api.student_overview_dashboard._kpi_block",
                 return_value={"attendance": {}, "tasks": {}, "academic": {}, "support": {}},
@@ -676,11 +739,18 @@ class TestStudentOverviewDashboard(IfitwalaFrappeTestCase):
             )
 
         ensure_can_view.assert_called_once_with("STU-001", "SCH-001", "PROG-001")
-        kpi_block.assert_called_once_with("STU-001", "2025-2026")
-        learning_block.assert_called_once_with("STU-001", "PROG-001", "2025-2026")
-        attendance_block.assert_called_once_with("STU-001", None)
-        wellbeing_block.assert_called_once_with("STU-001", "2025-2026")
-        history_block.assert_called_once_with("STU-001", "PROG-001")
+        build_snapshot_context.assert_called_once_with("STU-001", "PROG-001", "2025-2026")
+        kpi_block.assert_called_once_with("STU-001", "2025-2026", snapshot_ctx=snapshot_ctx)
+        learning_block.assert_called_once_with("STU-001", "PROG-001", "2025-2026", snapshot_ctx=snapshot_ctx)
+        attendance_block.assert_called_once_with(
+            "STU-001",
+            None,
+            attendance_rows=snapshot_ctx["attendance_rows"],
+            attendance_code_bundle=snapshot_ctx["attendance_code_bundle"],
+            course_name_map=snapshot_ctx["attendance_course_labels"],
+        )
+        wellbeing_block.assert_called_once_with("STU-001", "2025-2026", snapshot_ctx=snapshot_ctx)
+        history_block.assert_called_once_with("STU-001", "PROG-001", snapshot_ctx=snapshot_ctx)
 
         self.assertEqual(payload["meta"]["student"], "STU-001")
         self.assertEqual(payload["meta"]["student_name"], "Ada One")
@@ -692,3 +762,45 @@ class TestStudentOverviewDashboard(IfitwalaFrappeTestCase):
         self.assertFalse(payload["meta"]["permissions"]["can_view_nurse_details"])
         self.assertTrue(payload["meta"]["permissions"]["can_view_tasks"])
         self.assertTrue(payload["meta"]["permissions"]["can_view_attendance_details"])
+
+    def test_build_student_snapshot_context_loads_scoped_and_unscoped_task_rows_for_program_view(self):
+        task_rows_scoped = [frappe._dict(task="TASK-1", academic_year="2025-2026")]
+        task_rows_all = [
+            frappe._dict(task="TASK-1", academic_year="2025-2026"),
+            frappe._dict(task="TASK-2", academic_year="2024-2025"),
+        ]
+
+        with (
+            patch(
+                "ifitwala_ed.api.student_overview_dashboard._task_rows",
+                side_effect=[task_rows_scoped, task_rows_all],
+            ) as task_rows,
+            patch("ifitwala_ed.api.student_overview_dashboard._attendance_rows", return_value=[]),
+            patch(
+                "ifitwala_ed.api.student_overview_dashboard._attendance_code_bundle",
+                return_value=({}, []),
+            ),
+            patch("ifitwala_ed.api.student_overview_dashboard._course_name_map", return_value={}),
+            patch("ifitwala_ed.api.student_overview_dashboard._get_visible_student_logs", return_value=[]),
+            patch(
+                "ifitwala_ed.api.student_overview_dashboard._visible_student_log_support_counts",
+                return_value=(0, 0),
+            ),
+            patch("ifitwala_ed.api.student_overview_dashboard._get_visible_student_referrals", return_value=[]),
+            patch(
+                "ifitwala_ed.api.student_overview_dashboard._visible_student_referral_counts",
+                return_value=(0, 0),
+            ),
+            patch("ifitwala_ed.api.student_overview_dashboard._get_visible_student_nurse_visits", return_value=[]),
+            patch("ifitwala_ed.api.student_overview_dashboard._visible_student_nurse_visit_count", return_value=0),
+            patch("ifitwala_ed.api.student_overview_dashboard._get_student_health_note", return_value=None),
+            patch("ifitwala_ed.api.student_overview_dashboard.frappe.get_all", return_value=[]),
+        ):
+            ctx = _build_student_snapshot_context("STU-001", "PROG-001", "2025-2026")
+
+        self.assertEqual(
+            task_rows.call_args_list,
+            [call("STU-001", "PROG-001"), call("STU-001", None)],
+        )
+        self.assertIs(ctx["task_rows_scoped"], task_rows_scoped)
+        self.assertIs(ctx["task_rows_all"], task_rows_all)

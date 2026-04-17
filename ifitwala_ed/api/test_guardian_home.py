@@ -8,6 +8,7 @@ from frappe.tests.utils import FrappeTestCase
 
 from ifitwala_ed.api.guardian_home import (
     _assert_no_internal_schedule_keys,
+    _build_communication_bundle,
     _find_forbidden_keys,
     _resolve_chip_status,
     get_guardian_home_snapshot,
@@ -198,6 +199,67 @@ class TestGuardianHome(FrappeTestCase):
         self.assertEqual(attention_types[-1], "communication")
         self.assertCountEqual(attention_types[:2], ["student_log", "attendance"])
         leakage_mock.assert_called_once()
+
+    def test_build_communication_bundle_includes_organization_guardian_rows(self):
+        children = [
+            {
+                "student": "STU-0001",
+                "full_name": "Amina Example",
+                "school": "SCHOOL-CHILD",
+                "student_image_url": None,
+            }
+        ]
+        membership = {"STU-0001": set()}
+
+        with (
+            patch.object(
+                frappe.db,
+                "sql",
+                return_value=[
+                    {
+                        "name": "COMM-ORG",
+                        "title": "Health advisory",
+                        "organization": "ORG-ROOT",
+                        "publish_from": frappe.utils.get_datetime("2026-02-01 08:00:00"),
+                        "publish_to": None,
+                        "creation": frappe.utils.get_datetime("2026-02-01 07:00:00"),
+                        "activity_program_offering": None,
+                        "activity_booking": None,
+                        "activity_student_group": None,
+                    }
+                ],
+            ),
+            patch.object(
+                frappe,
+                "get_all",
+                return_value=[
+                    {
+                        "parent": "COMM-ORG",
+                        "target_mode": "Organization",
+                        "school": None,
+                        "student_group": None,
+                        "include_descendants": 0,
+                        "to_guardians": 1,
+                    }
+                ],
+            ),
+            patch("ifitwala_ed.api.guardian_home.get_seen_org_communication_names", return_value=[]),
+            patch(
+                "ifitwala_ed.api.guardian_home.get_school_organization_map",
+                return_value={"SCHOOL-CHILD": "ORG-CHILD"},
+            ),
+            patch("ifitwala_ed.api.guardian_home.get_ancestor_organizations", return_value=["ORG-ROOT"]),
+        ):
+            bundle = _build_communication_bundle(
+                anchor=date(2026, 2, 2),
+                user="guardian@example.com",
+                children=children,
+                membership=membership,
+            )
+
+        self.assertEqual(bundle["unread_count"], 1)
+        self.assertEqual(bundle["attention_items"][0]["communication"], "COMM-ORG")
+        self.assertEqual(bundle["recent_activity_items"][0]["communication"], "COMM-ORG")
 
     def test_resolve_chip_status_respects_availability_and_lock_window(self):
         anchor = date(2026, 2, 2)

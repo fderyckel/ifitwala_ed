@@ -172,23 +172,24 @@ Rules:
 1. Org Communication visibility is enforced server-side through `check_audience_match(...)`.
 2. Audience matching supports `School Scope`, `Organization`, `Team`, and `Student Group`.
 3. Student portal visibility for `Student Group` audiences matches active `Student Group Student` membership and still requires `to_students = 1`.
-4. Student portal visibility for `School Scope` audiences matches the student anchor-school and active student-group school context; `Organization` rows remain staff-only.
-5. Guardian portal visibility reuses the same audience matcher, but the server must hydrate the guardian's linked-student, student-group, and school context before evaluating the communication row.
-6. Admissions visibility is enforced server-side through the `Student Applicant` context guard.
-7. Guardian communication-center child filters may target only linked students; out-of-scope child filters must fail server-side instead of narrowing on the client.
-8. Unread/read state is derived from `Portal Read Receipt`.
-9. For guardian/activity summary logic, a user’s own interaction entry also counts as seen.
-10. Hidden rows never contribute to threads, comment counts, or unread counts.
-11. Staff archive and shared interaction endpoints may allow the `Org Communication.owner` to access their own authored communication when no explicit audience scope filter (`team`, `student_group`, `school`) is being enforced.
-12. Org Communication attachment open routes must enforce the same audience visibility contract as archive detail, including owner visibility for authored history.
-13. Staff archive `Academic Admin` visibility is school-cone first:
+4. Student portal visibility for `School Scope` audiences matches the student anchor-school and active student-group school context; `Organization` rows remain unavailable to students.
+5. Guardian portal visibility reuses the same audience matcher, but the server must hydrate the guardian's linked-student, student-group, school, and organization ancestry context before evaluating the communication row.
+6. `Organization` rows may target guardians when `to_guardians = 1`; matching is based on the linked students' schools and their ancestor organizations.
+7. Admissions visibility is enforced server-side through the `Student Applicant` context guard.
+8. Guardian communication-center child filters may target only linked students; out-of-scope child filters must fail server-side instead of narrowing on the client.
+9. Unread/read state is derived from `Portal Read Receipt`.
+10. For guardian/activity summary logic, a user’s own interaction entry also counts as seen.
+11. Hidden rows never contribute to threads, comment counts, or unread counts.
+12. Staff archive and shared interaction endpoints may allow the `Org Communication.owner` to access their own authored communication when no explicit audience scope filter (`team`, `student_group`, `school`) is being enforced.
+13. Org Communication attachment open routes must enforce the same audience visibility contract as archive detail, including owner visibility for authored history.
+14. Staff archive `Academic Admin` visibility is school-cone first:
     - when `Employee.school` exists, visible school-scoped and student-group communications must stay within that school plus its descendant schools
     - descendant-organization fallback does not widen archive visibility beyond that school cone
-14. Staff archive `Academic Admin` visibility falls back to organization scope only when no `Employee.school` is configured:
+15. Staff archive `Academic Admin` visibility falls back to organization scope only when no `Employee.school` is configured:
     - visible school-scoped and student-group communications may come from any school belonging to `Employee.organization` or its descendant organizations
     - organization-targeted staff rows may also resolve within that descendant-organization scope
-15. Shared org-communication interaction endpoints (`summary`, `thread`, `react`, `comment`, `mark read`) must use the same effective academic-admin visibility context as archive/detail so a visible communication never becomes non-interactive solely because the user has no default school.
-16. Within that effective scope, `Academic Admin` archive/detail and shared interaction visibility does not depend on recipient overlap (`to_staff` vs `to_students` / `to_guardians`); scoped student-group and school-scope communications remain readable and interactive for the admin lens.
+16. Shared org-communication interaction endpoints (`summary`, `thread`, `react`, `comment`, `mark read`) must use the same effective academic-admin visibility context as archive/detail so a visible communication never becomes non-interactive solely because the user has no default school.
+17. Within that effective scope, `Academic Admin` archive/detail and shared interaction visibility does not depend on recipient overlap (`to_staff` vs `to_students` / `to_guardians`); scoped student-group and school-scope communications remain readable and interactive for the admin lens.
 
 ## 5. Migration
 

@@ -25,11 +25,17 @@ export type FetchSchoolFilterContextResponse = {
 	}>
 }
 
-export type FetchActiveProgramsRequest = Record<string, never>
+export type FetchActiveProgramsRequest = {
+	school?: string | null
+}
 
 export type FetchActiveProgramsResponse = Array<{
 	name: string
 	program_name?: string | null
+	parent_program?: string | null
+	lft?: number | null
+	rgt?: number | null
+	is_group?: 0 | 1 | null
 }>
 
 export type AttendanceLedgerContextRequest = {

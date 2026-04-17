@@ -300,12 +300,12 @@ async function reloadLedger() {
 		const payload = buildPayload();
 		const response = await analyticsService.getLedger(payload);
 		if (runId !== loadRunId) return;
-		ledger.value = response;
-
 		const returnedTotalPages = response.pagination?.total_pages || 1;
 		if (page.value > returnedTotalPages) {
 			page.value = returnedTotalPages;
+			return;
 		}
+		ledger.value = response;
 	} catch (error) {
 		if (runId !== loadRunId) return;
 		pageError.value = formatError(error);
@@ -370,8 +370,19 @@ watch(
 );
 
 watch(
-	() => [page.value, pageLength.value, sortBy.value, sortOrder.value],
+	() => [page.value, sortBy.value, sortOrder.value],
 	() => {
+		scheduleReload();
+	}
+);
+
+watch(
+	() => pageLength.value,
+	() => {
+		if (page.value !== 1) {
+			page.value = 1;
+			return;
+		}
 		scheduleReload();
 	}
 );
@@ -396,6 +407,13 @@ onMounted(async () => {
 				<p class="type-meta text-slate-token/80">
 					Row-level attendance evidence for follow-up, compliance, and code integrity.
 				</p>
+			</div>
+			<div class="page-header__actions">
+				<DateRangePills
+					:model-value="preset"
+					:items="presetItems"
+					@update:model-value="applyPreset"
+				/>
 			</div>
 		</header>
 
@@ -459,16 +477,6 @@ onMounted(async () => {
 						{{ group.student_group_name || group.name }}
 					</option>
 				</select>
-			</div>
-
-			<div class="flex flex-col gap-1">
-				<label class="type-label">Window</label>
-				<DateRangePills
-					:model-value="preset"
-					:items="presetItems"
-					size="sm"
-					@update:model-value="applyPreset"
-				/>
 			</div>
 
 			<div class="flex flex-col gap-1">

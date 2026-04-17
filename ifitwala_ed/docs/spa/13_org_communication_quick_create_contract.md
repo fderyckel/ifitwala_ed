@@ -106,7 +106,7 @@ Rules:
 3. The SPA must not bypass or replace controller validation with generic `frappe.client.insert`.
 4. Role-based restrictions for wide-audience rows remain server-owned and are only mirrored in the SPA to make blocked actions obvious earlier:
    - `School Scope` rows targeting `Staff`
-   - `Organization` rows targeting `Staff`
+   - `Organization` rows
 5. `entryMode='class-event'` hard-locks these payload values even though they are hidden from the overlay:
    - `communication_type='Class Announcement'`
    - `portal_surface='Everywhere'`
@@ -119,6 +119,7 @@ Rules:
 8. The resolved audience may include staff, students, and/or guardians depending on the selected audience rows.
 9. `allow_private_notes` remains the school-side/private notes setting and must not be described in the UI or docs as recipient-visible thread sharing.
 10. Draft saves, including attachment auto-save, may omit Morning Brief dates temporarily; `brief_start_date` becomes required when the communication is scheduled or published with `portal_surface='Morning Brief' | 'Everywhere'`.
+11. Draft saves, including attachment auto-save, may also omit audience completion temporarily. Missing row scope selections, missing recipient toggles, and draft-only organization/issuing-school cleanup are enforced only when the communication is scheduled or published.
 
 ## 4. Quick-Create Attachment Contract
 
@@ -204,5 +205,6 @@ Test refs:
   - `School Scope`
   - `Team`
   - `Student Group`
-  - `Organization` for Academic Admin, Academic Assistant, HR Manager, Accounts Manager, and System Manager
+  - `Organization` for Academic Admin, Academic Assistant, HR Manager, Accounts Manager, Nurse, and System Manager
+- `Organization` rows may target `Staff` and/or `Guardians`; they still require a blank parent `Issuing School`.
 - Class-event mode preserves the legacy quick-create intent, but now uses the same named workflow and server-owned validation path as Staff Home quick create.

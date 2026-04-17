@@ -215,6 +215,82 @@ class TestOrgCommUtils(FrappeTestCase):
 
         self.assertTrue(matched)
 
+    def test_check_audience_match_allows_guardian_on_organization_row(self):
+        audiences = [
+            frappe._dict(
+                target_mode="Organization",
+                school=None,
+                include_descendants=0,
+                team=None,
+                student_group=None,
+                to_staff=0,
+                to_students=0,
+                to_guardians=1,
+            )
+        ]
+
+        with (
+            patch.object(org_comm_utils.frappe, "get_all", return_value=audiences),
+            patch.object(org_comm_utils.frappe, "get_cached_value", return_value="ORG-ROOT"),
+            patch(
+                "ifitwala_ed.api.org_comm_utils._get_cached_guardian_context",
+                return_value={
+                    "guardian_name": "GRD-0001",
+                    "student_names": {"STU-1"},
+                    "student_groups": set(),
+                    "school_names": {"SCH-1"},
+                    "organization_names": {"ORG-CHILD"},
+                },
+            ),
+            patch("ifitwala_ed.api.org_comm_utils.get_ancestor_organizations", return_value=["ORG-ROOT"]),
+        ):
+            matched = org_comm_utils.check_audience_match(
+                "COMM-GUARDIAN-ORG",
+                "guardian@example.com",
+                ["Guardian"],
+                frappe._dict(),
+            )
+
+        self.assertTrue(matched)
+
+    def test_check_audience_match_rejects_guardian_outside_organization_row(self):
+        audiences = [
+            frappe._dict(
+                target_mode="Organization",
+                school=None,
+                include_descendants=0,
+                team=None,
+                student_group=None,
+                to_staff=0,
+                to_students=0,
+                to_guardians=1,
+            )
+        ]
+
+        with (
+            patch.object(org_comm_utils.frappe, "get_all", return_value=audiences),
+            patch.object(org_comm_utils.frappe, "get_cached_value", return_value="ORG-ROOT"),
+            patch(
+                "ifitwala_ed.api.org_comm_utils._get_cached_guardian_context",
+                return_value={
+                    "guardian_name": "GRD-0001",
+                    "student_names": {"STU-1"},
+                    "student_groups": set(),
+                    "school_names": {"SCH-1"},
+                    "organization_names": {"ORG-SIBLING"},
+                },
+            ),
+            patch("ifitwala_ed.api.org_comm_utils.get_ancestor_organizations", return_value=["ORG-SIBLING"]),
+        ):
+            matched = org_comm_utils.check_audience_match(
+                "COMM-GUARDIAN-ORG",
+                "guardian@example.com",
+                ["Guardian"],
+                frappe._dict(),
+            )
+
+        self.assertFalse(matched)
+
     def test_check_audience_match_allows_academic_admin_descendant_school_scope(self):
         audiences = [
             frappe._dict(

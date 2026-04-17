@@ -12,8 +12,10 @@ from frappe.utils import add_days, get_datetime, getdate, now_datetime, strip_ht
 from frappe.utils.caching import redis_cache
 
 from ifitwala_ed.api import teaching_plans as teaching_plans_api
+from ifitwala_ed.api.org_comm_utils import get_school_organization_map
 from ifitwala_ed.api.org_communication_interactions import get_seen_org_communication_names
 from ifitwala_ed.schedule.schedule_utils import get_effective_schedule_for_ay, get_rotation_dates
+from ifitwala_ed.utilities.employee_utils import get_ancestor_organizations
 from ifitwala_ed.utilities.image_utils import apply_preferred_student_images
 from ifitwala_ed.utilities.school_tree import get_descendant_schools
 
@@ -1213,6 +1215,7 @@ def _build_communication_bundle(
         SELECT
             name,
             title,
+            organization,
             publish_from,
             publish_to,
             creation,
@@ -1236,7 +1239,22 @@ def _build_communication_bundle(
 
     child_groups = {group for groups in membership.values() for group in groups}
     child_schools = {child.get("school") for child in children if child.get("school")}
+    school_org_map = get_school_organization_map(child_schools)
+    child_organization_targets: set[str] = set()
+    for organization_name in {
+        school_org_map.get(str(school_name or "").strip())
+        for school_name in child_schools
+        if school_org_map.get(str(school_name or "").strip())
+    }:
+        if not organization_name:
+            continue
+        child_organization_targets.add(organization_name)
+        try:
+            child_organization_targets.update(get_ancestor_organizations(organization_name) or [])
+        except Exception:
+            continue
     candidate_names = [row.get("name") for row in candidates if row.get("name")]
+    candidate_org_by_name = {row.get("name"): row.get("organization") for row in candidates if row.get("name")}
     audience_rows = frappe.get_all(
         "Org Communication Audience",
         filters={"parent": ["in", candidate_names]},
@@ -1246,6 +1264,7 @@ def _build_communication_bundle(
     for row in audience_rows:
         parent = row.get("parent")
         if parent:
+            row["organization"] = candidate_org_by_name.get(parent)
             audience_by_comm[parent].append(row)
 
     descendants_cache: Dict[str, set[str]] = {}
@@ -1274,6 +1293,8 @@ def _build_communication_bundle(
                 aud_school=row.get("school"),
                 include_descendants=int(row.get("include_descendants") or 0) == 1,
             )
+        if mode == "Organization":
+            return bool(row.get("organization") and row.get("organization") in child_organization_targets)
         if mode == "Team":
             return False
 
@@ -1285,6 +1306,8 @@ def _build_communication_bundle(
                 aud_school=row.get("school"),
                 include_descendants=int(row.get("include_descendants") or 0) == 1,
             )
+        if row.get("organization"):
+            return row.get("organization") in child_organization_targets
         return False
 
     visible: List[Dict[str, Any]] = []

@@ -259,14 +259,30 @@ const wideAudienceQuickCreateOptions = {
 	recipient_rules: {
 		...quickCreateOptions.recipient_rules,
 		Organization: {
-			allowed_fields: ['to_staff'],
-			allowed_labels: ['Staff'],
+			allowed_fields: ['to_guardians', 'to_staff'],
+			allowed_labels: ['Guardians', 'Staff'],
 			default_fields: ['to_staff'],
 		},
 	},
 	permissions: {
 		can_create: true,
 		can_target_wide_school_scope: true,
+	},
+};
+
+const noDefaultSchoolQuickCreateOptions = {
+	...quickCreateOptions,
+	context: {
+		...quickCreateOptions.context,
+		default_school: null,
+		allowed_schools: ['SCH-1', 'SCH-2'],
+	},
+	references: {
+		...quickCreateOptions.references,
+		schools: [
+			{ name: 'SCH-1', school_name: 'Main School', abbr: 'MS', organization: 'ORG-1' },
+			{ name: 'SCH-2', school_name: 'South School', abbr: 'SS', organization: 'ORG-1' },
+		],
 	},
 };
 
@@ -324,12 +340,16 @@ function mountModal(props: Record<string, unknown> = {}) {
 }
 
 function clickRecipient(labelText: string) {
+	setCheckboxByLabel(labelText, true);
+}
+
+function setCheckboxByLabel(labelText: string, checked: boolean) {
 	const label = Array.from(document.querySelectorAll('label')).find(node =>
 		(node.textContent || '').includes(labelText)
 	);
 	const input = label?.querySelector('input[type="checkbox"]') as HTMLInputElement | null;
 	if (!input) return;
-	input.checked = true;
+	input.checked = checked;
 	input.dispatchEvent(new Event('change', { bubbles: true }));
 }
 
@@ -371,13 +391,17 @@ function setInputByPlaceholder(placeholder: string, value: string) {
 }
 
 function setSelectByLabel(labelText: string, value: string) {
-	const label = Array.from(document.querySelectorAll('label')).find(node =>
-		(node.textContent || '').includes(labelText)
-	);
-	const select = label?.parentElement?.querySelector('select') as HTMLSelectElement | null;
+	const select = getSelectByLabel(labelText);
 	if (!select) return;
 	select.value = value;
 	select.dispatchEvent(new Event('change', { bubbles: true }));
+}
+
+function getSelectByLabel(labelText: string) {
+	const label = Array.from(document.querySelectorAll('label')).find(node =>
+		(node.textContent || '').includes(labelText)
+	);
+	return label?.parentElement?.querySelector('select') as HTMLSelectElement | null;
 }
 
 afterEach(() => {
@@ -511,11 +535,11 @@ describe('OrgCommunicationQuickCreateModal', () => {
 
 		expect(publishWindowGrid?.textContent || '').toContain('Publish from');
 		expect(publishWindowGrid?.textContent || '').toContain('Publish until');
-		expect(publishWindowGrid?.getAttribute('class') || '').toContain('sm:grid-cols-2');
+		expect(publishWindowGrid?.getAttribute('class') || '').toContain('min-[480px]:grid-cols-2');
 
 		expect(briefWindowGrid?.textContent || '').toContain('Brief start date');
 		expect(briefWindowGrid?.textContent || '').toContain('Brief end date');
-		expect(briefWindowGrid?.getAttribute('class') || '').toContain('sm:grid-cols-2');
+		expect(briefWindowGrid?.getAttribute('class') || '').toContain('min-[480px]:grid-cols-2');
 	});
 
 	it('opens the native picker when a delivery date input is clicked', async () => {
@@ -584,6 +608,57 @@ describe('OrgCommunicationQuickCreateModal', () => {
 					to_guardians: 0,
 				}),
 			]);
+	});
+
+	it('clears the issuing school when an organization audience is selected', async () => {
+		getOptionsMock.mockResolvedValue(wideAudienceQuickCreateOptions);
+
+		mountModal();
+		await flushUi();
+
+		const issuingSchool = getSelectByLabel('Issuing school');
+		expect(issuingSchool?.value).toBe('SCH-1');
+
+		clickButton('Organization');
+		await flushUi();
+
+		expect(issuingSchool?.value).toBe('');
+		expect(issuingSchool?.disabled).toBe(true);
+	});
+
+	it('submits organization guardian rows without forcing staff recipients', async () => {
+		getOptionsMock.mockResolvedValue(wideAudienceQuickCreateOptions);
+		createOrgCommunicationQuickMock.mockResolvedValue({
+			ok: true,
+			status: 'created',
+			name: 'COMM-0005-GUARDIANS',
+			title: 'Weekly staff update',
+		});
+
+		mountModal();
+		await flushUi();
+
+		clickButton('Organization');
+		await flushUi();
+		setCheckboxByLabel('Guardians', true);
+		setCheckboxByLabel('Staff', false);
+		await flushUi();
+		clickButton('Publish');
+		await flushUi();
+
+		expect(createOrgCommunicationQuickMock).toHaveBeenCalledTimes(1);
+		expect(createOrgCommunicationQuickMock.mock.calls[0][0].audiences).toEqual([
+			expect.objectContaining({
+				target_mode: 'Organization',
+				school: null,
+				team: null,
+				student_group: null,
+				include_descendants: 0,
+				to_staff: 0,
+				to_students: 0,
+				to_guardians: 1,
+			}),
+		]);
 	});
 
 	it('renders a compact locked composer for class-event mode', async () => {
@@ -929,5 +1004,49 @@ describe('OrgCommunicationQuickCreateModal', () => {
 			})
 		);
 		expect(document.body.textContent || '').toContain('Policy PDF');
+	});
+
+	it('auto-saves a draft link before audience school or recipients are filled', async () => {
+		getOptionsMock.mockResolvedValue(noDefaultSchoolQuickCreateOptions);
+		createOrgCommunicationQuickMock.mockResolvedValue({
+			ok: true,
+			status: 'created',
+			name: 'COMM-DRAFT-INCOMPLETE-AUDIENCE',
+			title: 'Weekly staff update',
+		});
+		addOrgCommunicationLinkMock.mockResolvedValue({
+			ok: true,
+			org_communication: 'COMM-DRAFT-INCOMPLETE-AUDIENCE',
+			attachment: {
+				row_name: 'row-link-incomplete-audience',
+				kind: 'link',
+				title: 'Policy PDF',
+				external_url: 'https://example.com/policy.pdf',
+				open_url: 'https://example.com/policy.pdf',
+			},
+		});
+
+		mountModal();
+		await flushUi();
+
+		clickButton('Add link');
+		await flushUi();
+		setInputByPlaceholder('https://example.com/resource.pdf', 'https://example.com/policy.pdf');
+		setInputByPlaceholder('Optional display label', 'Policy PDF');
+		await flushUi();
+		clickButton('Add link');
+		await flushUi();
+
+		expect(createOrgCommunicationQuickMock).toHaveBeenCalledTimes(1);
+		expect(createOrgCommunicationQuickMock).toHaveBeenCalledWith(
+			expect.objectContaining({
+				status: 'Draft',
+			})
+		);
+		expect(addOrgCommunicationLinkMock).toHaveBeenCalledWith({
+			org_communication: 'COMM-DRAFT-INCOMPLETE-AUDIENCE',
+			title: 'Policy PDF',
+			external_url: 'https://example.com/policy.pdf',
+		});
 	});
 });

@@ -492,7 +492,7 @@
 													<select
 														v-model="form.school"
 														class="if-org-communication-native-select"
-														:disabled="submitting || schoolSelectionLocked"
+														:disabled="submitting || issuingSchoolSelectionLocked"
 													>
 														<option value="">No issuing school</option>
 														<option
@@ -760,7 +760,7 @@
 											</div>
 
 											<div
-												class="if-org-communication-publish-window-grid mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2"
+												class="if-org-communication-publish-window-grid mt-4 grid grid-cols-1 gap-4 min-[480px]:grid-cols-2"
 											>
 												<div class="space-y-1">
 													<label class="type-label">Publish from</label>
@@ -787,7 +787,7 @@
 											</div>
 
 											<div
-												class="if-org-communication-brief-window-grid mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2"
+												class="if-org-communication-brief-window-grid mt-4 grid grid-cols-1 gap-4 min-[480px]:grid-cols-2"
 											>
 												<div class="space-y-1">
 													<label class="type-label">
@@ -907,7 +907,7 @@
 															<select
 																v-model="row.school"
 																class="if-org-communication-native-select"
-																:disabled="submitting || schoolSelectionLocked"
+																:disabled="submitting || audienceSchoolSelectionLocked"
 															>
 																<option value="">Select school</option>
 																<option
@@ -932,11 +932,12 @@
 														</div>
 
 														<div v-else-if="row.target_mode === 'Organization'" class="space-y-1">
-															<label class="type-label">Organization staff</label>
+															<label class="type-label">Organization audience</label>
 															<p
 																class="rounded-2xl border border-border/70 bg-white px-3 py-3 type-caption text-ink/70"
 															>
-																Uses the selected organization. Staff without a School remain
+																Uses the selected organization. Staff without a School and
+																guardians linked to students in that organization tree remain
 																included.
 															</p>
 														</div>
@@ -1007,7 +1008,7 @@
 																class="type-caption text-amber-700"
 															>
 																School-scope Staff rows require Academic Admin, Academic Assistant,
-																HR Manager, Accounts Manager, or System Manager.
+																HR Manager, Accounts Manager, Nurse, or System Manager.
 															</p>
 															<p
 																v-else-if="
@@ -1015,8 +1016,8 @@
 																"
 																class="type-caption text-amber-700"
 															>
-																Organization staff rows require Academic Admin, Academic Assistant,
-																HR Manager, Accounts Manager, or System Manager.
+																Organization audience rows require Academic Admin, Academic
+																Assistant, HR Manager, Accounts Manager, Nurse, or System Manager.
 															</p>
 														</div>
 													</div>
@@ -1349,6 +1350,9 @@ const interactionModeOptions = computed(() => options.value?.fields.interaction_
 const audienceTargetModeOptions = computed(
 	() => options.value?.fields.audience_target_modes ?? []
 );
+const hasOrganizationAudience = computed(() =>
+	audienceRows.value.some(row => row.target_mode === 'Organization')
+);
 
 function getSelectOptionValue(option: string | { value?: string | null }) {
 	if (typeof option === 'string') return option;
@@ -1360,12 +1364,15 @@ function getSelectOptionLabel(option: string | { label?: string | null; value?: 
 	return String(option?.label ?? option?.value ?? '');
 }
 
-const schoolSelectionLocked = computed(() => {
+const audienceSchoolSelectionLocked = computed(() => {
 	if (isClassEventMode.value) return true;
 	if (!context.value) return false;
 	if (context.value.lock_to_default_school) return true;
 	return !context.value.can_select_school;
 });
+const issuingSchoolSelectionLocked = computed(
+	() => hasOrganizationAudience.value || audienceSchoolSelectionLocked.value
+);
 
 const recipientToggleDefinitions: Array<{ field: RecipientField; label: string }> = [
 	{ field: 'to_staff', label: 'Staff' },
@@ -1477,6 +1484,9 @@ const schoolHelpText = computed(() => {
 	if (!context.value) return 'Loading school scope...';
 	if (isClassEventMode.value)
 		return 'Class event entry keeps the issuing school aligned to the selected class.';
+	if (hasOrganizationAudience.value) {
+		return 'Leave Issuing School blank because Organization audience rows are organization-level.';
+	}
 	if (context.value.lock_to_default_school) {
 		return 'Issuing School is fixed to your default school when your school scope is locked.';
 	}
@@ -1599,6 +1609,7 @@ function getValidationMessage(draftMode = false) {
 	) {
 		return 'Publish From for a Scheduled communication must be in the future.';
 	}
+	if (draftMode) return '';
 	if (!audienceRows.value.length)
 		return 'Please add at least one Audience for this communication.';
 	for (const row of audienceRows.value) {
@@ -1619,7 +1630,7 @@ function getValidationMessage(draftMode = false) {
 			return 'You are not allowed to target Staff at School Scope from your current role.';
 		}
 		if (!canTargetWideSchoolScope.value && row.target_mode === 'Organization') {
-			return 'You are not allowed to target Staff at Organization scope from your current role.';
+			return 'You are not allowed to target Organization audiences from your current role.';
 		}
 	}
 	return '';
@@ -1712,12 +1723,14 @@ watch(
 watch(
 	() => form.organization,
 	organization => {
-		if (!organization || schoolSelectionLocked.value) return;
-		const currentSchoolAllowed = schoolSelectOptions.value.some(
-			option => option.value === form.school
-		);
-		if (!currentSchoolAllowed) {
-			form.school = '';
+		if (!organization) return;
+		if (!issuingSchoolSelectionLocked.value) {
+			const currentSchoolAllowed = schoolSelectOptions.value.some(
+				option => option.value === form.school
+			);
+			if (!currentSchoolAllowed) {
+				form.school = '';
+			}
 		}
 		for (const row of audienceRows.value) {
 			if (row.target_mode !== 'School Scope') continue;
@@ -1727,6 +1740,25 @@ watch(
 			if (!rowSchoolAllowed) row.school = form.school;
 		}
 	}
+);
+
+watch(
+	hasOrganizationAudience,
+	hasOrganizationTarget => {
+		if (hasOrganizationTarget) {
+			form.school = '';
+			return;
+		}
+		if (form.school || audienceSchoolSelectionLocked.value) return;
+		const defaultSchool =
+			(isClassEventMode.value ? '' : context.value?.default_school) ||
+			(schoolSelectOptions.value.length === 1 ? schoolSelectOptions.value[0]?.value : '') ||
+			'';
+		if (defaultSchool) {
+			form.school = defaultSchool;
+		}
+	},
+	{ immediate: true }
 );
 
 watch(
@@ -1911,7 +1943,9 @@ function applyAudienceDefaults(row: AudienceRowState) {
 	}
 
 	if (row.target_mode === 'Organization') {
-		row.to_staff = true;
+		if (!row.to_staff && !row.to_guardians) {
+			row.to_staff = true;
+		}
 		return;
 	}
 
@@ -1943,7 +1977,6 @@ function isRecipientDisabled(row: AudienceRowState, field: RecipientField) {
 	) {
 		return true;
 	}
-	if (row.target_mode === 'Organization' && field === 'to_staff') return true;
 	if (row.target_mode === 'Team' && field === 'to_staff') return true;
 	if (isClassEventMode.value && row.target_mode === 'Student Group' && field === 'to_students')
 		return true;

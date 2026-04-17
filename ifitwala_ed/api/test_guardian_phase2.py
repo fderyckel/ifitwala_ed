@@ -559,6 +559,49 @@ class TestGuardianCommunicationCenterPhase2(FrappeTestCase):
         self.assertEqual(payload["family"]["children"], children)
         self.assertEqual(payload["items"], school_event_items + org_items)
 
+    def test_fetch_candidate_rows_includes_organization_guardian_audiences(self):
+        captured: dict[str, object] = {}
+
+        def fake_sql(sql, values, as_dict=False):
+            captured["sql"] = sql
+            captured["values"] = values
+            return []
+
+        with (
+            patch("ifitwala_ed.api.guardian_communications._recent_start_date", return_value="2026-01-10"),
+            patch.object(guardian_communications.frappe.db, "sql", side_effect=fake_sql),
+        ):
+            rows = guardian_communications._fetch_candidate_rows(
+                target_groups=set(),
+                school_targets=set(),
+                organization_targets={"ORG-ROOT"},
+            )
+
+        self.assertEqual(rows, [])
+        self.assertIn("a.target_mode = 'Organization'", str(captured.get("sql") or ""))
+        self.assertEqual((captured.get("values") or {}).get("organization_targets"), ("ORG-ROOT",))
+
+    def test_matched_students_for_audience_allows_organization_targets(self):
+        matched_students, matched_groups = guardian_communications._matched_students_for_audience(
+            {
+                "target_mode": "Organization",
+                "to_guardians": 1,
+            },
+            context={
+                "student_names": ["STU-1", "STU-2"],
+                "eligible_organization_targets_by_student": {
+                    "STU-1": {"ORG-CHILD", "ORG-ROOT"},
+                    "STU-2": {"ORG-SIBLING"},
+                },
+            },
+            selected_student=None,
+            descendants_cache={},
+            comm_organization="ORG-ROOT",
+        )
+
+        self.assertEqual(matched_students, {"STU-1"})
+        self.assertEqual(matched_groups, set())
+
     def test_fetch_guardian_school_events_does_not_query_missing_event_type_column(self):
         children = [
             {"student": "STU-1", "full_name": "Amina Example", "school": "SCHOOL-1"},
