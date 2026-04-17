@@ -45,6 +45,9 @@ class _DummyOrgCommunicationDoc:
             return
         self.audiences = list(value or [])
 
+    def get(self, fieldname, default=None):
+        return getattr(self, fieldname, default)
+
     def insert(self):
         self.insert_calls += 1
         return self
@@ -55,6 +58,13 @@ class _DummyOrgCommunicationDoc:
 
     def check_permission(self, _ptype):
         return None
+
+
+class _StickyAudienceOrgCommunicationDoc(_DummyOrgCommunicationDoc):
+    def set(self, fieldname, value):
+        if fieldname == "audiences" and value == []:
+            return
+        super().set(fieldname, value)
 
 
 class TestOrgCommunicationQuickCreate(FrappeTestCase):
@@ -331,6 +341,149 @@ class TestOrgCommunicationQuickCreate(FrappeTestCase):
         self.assertEqual(doc.insert_calls, 0)
         has_permission_mock.assert_not_called()
         cache.set_value.assert_not_called()
+
+    def test_create_quick_clears_issuing_school_when_updating_to_organization_audience(self):
+        doc = _DummyOrgCommunicationDoc(name="COMM-EXISTING")
+        doc.school = "SCH-OLD"
+        cache = Mock()
+        cache.get_value.return_value = None
+        cache.lock.return_value = nullcontext()
+
+        with (
+            patch("ifitwala_ed.api.org_communication_quick_create.frappe.cache", return_value=cache),
+            patch("ifitwala_ed.api.org_communication_quick_create.frappe.get_doc", return_value=doc),
+        ):
+            result = org_communication_quick_create.create_org_communication_quick(
+                name="COMM-EXISTING",
+                title="Updated org audience",
+                communication_type="Information",
+                status="Published",
+                portal_surface="Everywhere",
+                organization="ORG-1",
+                school=None,
+                audiences=[
+                    {
+                        "target_mode": "Organization",
+                        "to_staff": 1,
+                    }
+                ],
+            )
+
+        self.assertEqual(result["status"], "updated")
+        self.assertIsNone(doc.school)
+        self.assertEqual(
+            doc.audiences,
+            [
+                {
+                    "target_mode": "Organization",
+                    "school": None,
+                    "team": None,
+                    "student_group": None,
+                    "include_descendants": 0,
+                    "note": None,
+                    "to_staff": 1,
+                    "to_students": 0,
+                    "to_guardians": 0,
+                }
+            ],
+        )
+
+    def test_create_quick_treats_nullish_strings_as_empty_in_organization_audience(self):
+        doc = _DummyOrgCommunicationDoc()
+        cache = Mock()
+        cache.get_value.return_value = None
+        cache.lock.return_value = nullcontext()
+
+        with (
+            patch("ifitwala_ed.api.org_communication_quick_create.frappe.has_permission", return_value=True),
+            patch("ifitwala_ed.api.org_communication_quick_create.frappe.cache", return_value=cache),
+            patch("ifitwala_ed.api.org_communication_quick_create.frappe.new_doc", return_value=doc),
+        ):
+            org_communication_quick_create.create_org_communication_quick(
+                title="Org audience with nullish strings",
+                communication_type="Information",
+                status="Published",
+                portal_surface="Everywhere",
+                organization="ORG-1",
+                school="null",
+                audiences=[
+                    {
+                        "target_mode": "Organization",
+                        "school": "null",
+                        "team": "undefined",
+                        "student_group": " NULL ",
+                        "include_descendants": 1,
+                        "to_guardians": 1,
+                    }
+                ],
+            )
+
+        self.assertIsNone(doc.school)
+        self.assertEqual(
+            doc.audiences,
+            [
+                {
+                    "target_mode": "Organization",
+                    "school": None,
+                    "team": None,
+                    "student_group": None,
+                    "include_descendants": 0,
+                    "note": None,
+                    "to_staff": 0,
+                    "to_students": 0,
+                    "to_guardians": 1,
+                }
+            ],
+        )
+
+    def test_create_quick_normalizes_all_in_memory_organization_rows_before_update_save(self):
+        doc = _StickyAudienceOrgCommunicationDoc(name="COMM-EXISTING")
+        doc.audiences = [
+            {
+                "target_mode": "Organization",
+                "school": "SCH-STALE",
+                "team": "TEAM-STALE",
+                "student_group": "SG-STALE",
+                "include_descendants": 1,
+                "note": "stale",
+                "to_staff": 1,
+                "to_students": 0,
+                "to_guardians": 0,
+            }
+        ]
+        cache = Mock()
+        cache.get_value.return_value = None
+        cache.lock.return_value = nullcontext()
+
+        with (
+            patch("ifitwala_ed.api.org_communication_quick_create.frappe.cache", return_value=cache),
+            patch("ifitwala_ed.api.org_communication_quick_create.frappe.get_doc", return_value=doc),
+        ):
+            org_communication_quick_create.create_org_communication_quick(
+                name="COMM-EXISTING",
+                title="Updated org audience",
+                communication_type="Information",
+                status="Published",
+                portal_surface="Everywhere",
+                organization="ORG-1",
+                audiences=[
+                    {
+                        "target_mode": "Organization",
+                        "to_staff": 1,
+                    }
+                ],
+            )
+
+        self.assertTrue(
+            all((row.get("school") if isinstance(row, dict) else row.school) is None for row in doc.audiences)
+        )
+        self.assertTrue(all((row.get("team") if isinstance(row, dict) else row.team) is None for row in doc.audiences))
+        self.assertTrue(
+            all(
+                (row.get("student_group") if isinstance(row, dict) else row.student_group) is None
+                for row in doc.audiences
+            )
+        )
 
     def test_create_quick_strips_stale_scope_fields_from_organization_audience(self):
         doc = _DummyOrgCommunicationDoc()

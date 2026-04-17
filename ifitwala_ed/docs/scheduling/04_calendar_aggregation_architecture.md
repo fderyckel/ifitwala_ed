@@ -84,7 +84,7 @@ Code refs:
 Test refs:
 - `ifitwala_ed/api/test_calendar.py`
 
-`api/calendar.py` is the locked public facade for staff calendar workflows.
+`api/calendar.py` is the locked public RPC boundary for staff calendar workflows.
 
 It keeps public API paths stable while implementation is split across:
 
@@ -95,6 +95,7 @@ It keeps public API paths stable while implementation is split across:
 - `calendar_prefs.py`
 
 Refactors may move implementation between those modules, but they must not silently drift the public API boundary without updating docs and dependent contracts.
+Internal Python code must import helpers from the owner modules directly rather than importing helper functions through `api/calendar.py`.
 
 ### 2.1 Shared staff-feed source model
 
@@ -482,9 +483,10 @@ Code refs:
 
 When refactoring calendar aggregation:
 
-1. Keep `api/calendar.py` as the stable public facade for staff-calendar workflows unless the API contract is explicitly changed.
-2. Keep source-specific visibility rules server-owned.
-3. Do not replace booking-backed staff class events with raw schedule expansion.
-4. Do not replace the Location Calendar with source-document hydration that leaks titles.
-5. Do not claim a cross-surface unified event model where the runtime still has staff-booking ids and student-schedule ids.
-6. Update this note together with code if student meetings, unified class-event ids, or source authority rules change.
+1. Keep `api/calendar.py` as the stable public RPC boundary for staff-calendar workflows unless the API contract is explicitly changed.
+2. Keep `api/calendar.py` thin: public whitelisted wrappers only, not a shared internal helper barrel.
+3. Keep source-specific visibility rules server-owned.
+4. Do not replace booking-backed staff class events with raw schedule expansion.
+5. Do not replace the Location Calendar with source-document hydration that leaks titles.
+6. Do not claim a cross-surface unified event model where the runtime still has staff-booking ids and student-schedule ids.
+7. Update this note together with code if student meetings, unified class-event ids, or source authority rules change.

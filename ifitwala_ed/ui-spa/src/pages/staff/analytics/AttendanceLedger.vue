@@ -400,7 +400,7 @@ onMounted(async () => {
 </script>
 
 <template>
-	<div class="analytics-shell attendance-ledger-shell">
+	<div class="analytics-shell">
 		<header class="page-header">
 			<div class="page-header__intro">
 				<h1 class="type-h1 text-canopy">Attendance Ledger</h1>
@@ -803,10 +803,6 @@ onMounted(async () => {
 </template>
 
 <style scoped>
-.attendance-ledger-shell {
-	max-width: none;
-}
-
 .attendance-ledger-grid {
 	grid-template-columns: minmax(0, 1fr);
 }

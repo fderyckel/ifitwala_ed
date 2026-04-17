@@ -6,12 +6,11 @@ from unittest.mock import patch
 import frappe
 from frappe.tests.utils import FrappeTestCase
 
-from ifitwala_ed.api.calendar import (
+from ifitwala_ed.api.calendar import get_staff_calendar
+from ifitwala_ed.api.calendar_core import _resolve_employee_for_user, _system_tzinfo
+from ifitwala_ed.api.calendar_staff_feed import (
     _collect_staff_holiday_events,
     _collect_student_group_events_from_bookings,
-    _resolve_employee_for_user,
-    _system_tzinfo,
-    get_staff_calendar,
 )
 from ifitwala_ed.school_settings.school_settings_utils import resolve_school_calendars_for_window
 

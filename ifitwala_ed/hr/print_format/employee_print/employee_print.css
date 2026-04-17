@@ -474,18 +474,21 @@
   color: rgba(102, 112, 133, 0.55);
 }
 
-.ifitwala-print.employee-profile .history-detail-grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 10px 12px;
+.ifitwala-print.employee-profile .history-detail-table {
+  width: 100%;
   margin-top: 10px;
+  border-collapse: collapse;
+  table-layout: fixed;
 }
 
-.ifitwala-print.employee-profile .history-detail-item {
-  min-width: 0;
+.ifitwala-print.employee-profile .history-detail-cell {
+  width: 33.333%;
   padding: 8px 9px;
   border: 1px solid var(--soft-line);
   background: rgba(248, 250, 251, 0.86);
+  vertical-align: top;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .ifitwala-print.employee-profile .history-entry__value {

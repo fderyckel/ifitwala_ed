@@ -1,5 +1,5 @@
 from unittest import TestCase
-from unittest.mock import patch
+from unittest.mock import call, patch
 
 import frappe
 
@@ -124,20 +124,15 @@ class TestProgramEnrollmentRequestOverview(TestCase):
         self.assertEqual(data[1]["students_requested"], 0)
 
     @patch(
-        "ifitwala_ed.schedule.report.program_enrollment_request_overview.program_enrollment_request_overview._get_live_choice_state",
-        side_effect=lambda request_name: (
-            {
+        "ifitwala_ed.schedule.report.program_enrollment_request_overview.program_enrollment_request_overview._get_live_choice_states",
+        return_value={
+            "PER-0001": {
                 "ready_for_submit": False,
                 "reasons": ["Choose at least one course in Language Group."],
             }
-            if request_name == "PER-0001"
-            else {
-                "ready_for_submit": True,
-                "reasons": [],
-            }
-        ),
+        },
     )
-    def test_build_window_tracker_view_surfaces_missing_and_problem_rows(self, _mock_live_choice_state):
+    def test_build_window_tracker_view_surfaces_missing_and_problem_rows(self, _mock_live_choice_states):
         window_rows = [
             {
                 "student": "STU-2",
@@ -196,6 +191,123 @@ class TestProgramEnrollmentRequestOverview(TestCase):
 
         self.assertEqual(by_student["STU-3"]["submission_status"], report.SUBMISSION_STATUS_SUBMITTED)
         self.assertEqual(by_student["STU-3"]["problem_status"], report.PROBLEM_STATUS_NEEDS_OVERRIDE)
+
+    def test_get_live_choice_states_uses_loaded_request_models_and_caches_offering_semantics(self):
+        requests = [
+            {
+                "name": "PER-0001",
+                "student": "STU-1",
+                "program_offering": "PO-1",
+                "program": "PROG-1",
+                "academic_year": "AY-2026",
+                "request_kind": "Academic",
+                "request_status": "Draft",
+                "validation_status": "Not Validated",
+                "submitted_on": None,
+                "courses": [
+                    {
+                        "course": "BIO",
+                        "required": 0,
+                        "applied_basket_group": "Language Group",
+                        "choice_rank": 1,
+                    }
+                ],
+            },
+            {
+                "name": "PER-0002",
+                "student": "STU-2",
+                "program_offering": "PO-1",
+                "program": "PROG-1",
+                "academic_year": "AY-2026",
+                "request_kind": "Academic",
+                "request_status": "Draft",
+                "validation_status": "Not Validated",
+                "submitted_on": None,
+                "courses": [
+                    {
+                        "course": "CHEM",
+                        "required": 0,
+                        "applied_basket_group": "",
+                        "choice_rank": 2,
+                    }
+                ],
+            },
+            {
+                "name": "PER-0003",
+                "student": "STU-3",
+                "program_offering": "PO-2",
+                "program": "PROG-2",
+                "academic_year": "AY-2026",
+                "request_kind": "Academic",
+                "request_status": "Approved",
+                "validation_status": "Valid",
+                "submitted_on": "2026-03-28 11:00:00",
+                "courses": [],
+            },
+        ]
+        offering_semantics = {"BIO": {"course_name": "Biology"}, "CHEM": {"course_name": "Chemistry"}}
+
+        def fake_choice_state(request_doc, *, can_edit, offering_semantics=None, required_basket_groups=None):
+            self.assertFalse(can_edit)
+            self.assertEqual(request_doc.status, "Draft")
+            self.assertTrue(request_doc.courses)
+            self.assertIsInstance(request_doc.courses[0], frappe._dict)
+            self.assertEqual(
+                offering_semantics, {"BIO": {"course_name": "Biology"}, "CHEM": {"course_name": "Chemistry"}}
+            )
+            self.assertIsNone(required_basket_groups)
+            return {
+                "summary": {"ready_for_submit": request_doc.name == "PER-0002"},
+                "validation": {
+                    "reasons": [] if request_doc.name == "PER-0002" else ["Choose at least one course in Group A."]
+                },
+            }
+
+        with (
+            patch(
+                "ifitwala_ed.schedule.report.program_enrollment_request_overview.program_enrollment_request_overview.get_offering_course_semantics",
+                return_value=offering_semantics,
+            ) as semantics_mock,
+            patch(
+                "ifitwala_ed.schedule.report.program_enrollment_request_overview.program_enrollment_request_overview.get_program_enrollment_request_choice_state",
+                side_effect=fake_choice_state,
+            ) as choice_state_mock,
+            patch(
+                "ifitwala_ed.schedule.report.program_enrollment_request_overview.program_enrollment_request_overview.frappe.get_doc"
+            ) as get_doc_mock,
+        ):
+            live_states = report._get_live_choice_states(requests)
+
+        semantics_mock.assert_called_once_with("PO-1")
+        self.assertEqual(
+            choice_state_mock.call_args_list,
+            [
+                call(
+                    report._choice_state_request_doc(requests[0]),
+                    can_edit=False,
+                    offering_semantics=offering_semantics,
+                ),
+                call(
+                    report._choice_state_request_doc(requests[1]),
+                    can_edit=False,
+                    offering_semantics=offering_semantics,
+                ),
+            ],
+        )
+        self.assertFalse(get_doc_mock.called)
+        self.assertEqual(
+            live_states,
+            {
+                "PER-0001": {
+                    "ready_for_submit": False,
+                    "reasons": ["Choose at least one course in Group A."],
+                },
+                "PER-0002": {
+                    "ready_for_submit": True,
+                    "reasons": [],
+                },
+            },
+        )
 
     @patch(
         "ifitwala_ed.schedule.report.program_enrollment_request_overview.program_enrollment_request_overview.frappe.db.sql",

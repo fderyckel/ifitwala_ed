@@ -380,14 +380,22 @@
 				{% endif %}
 
 				{% if history_fields.items %}
-				<div class="history-detail-grid">
-					{% for label, value in history_fields.items %}
-					<div class="history-detail-item">
-						<div class="history-entry__label">{{ label }}</div>
-						<div class="history-entry__value">{{ safe_text(value) }}</div>
-					</div>
+				<table class="history-detail-table">
+					<tbody>
+					{% for group in history_fields.items|batch(3, None) %}
+					<tr>
+						{% for item in group %}
+						<td class="history-detail-cell">
+							{% if item %}
+							<div class="history-entry__label">{{ item[0] }}</div>
+							<div class="history-entry__value">{{ safe_text(item[1]) }}</div>
+							{% endif %}
+						</td>
+						{% endfor %}
+					</tr>
 					{% endfor %}
-				</div>
+					</tbody>
+				</table>
 				{% endif %}
 
 				{% if history_note %}

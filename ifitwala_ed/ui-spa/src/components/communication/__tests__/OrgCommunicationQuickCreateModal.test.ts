@@ -542,6 +542,23 @@ describe('OrgCommunicationQuickCreateModal', () => {
 		expect(briefWindowGrid?.getAttribute('class') || '').toContain('min-[480px]:grid-cols-2');
 	});
 
+	it('keeps delivery select controls in a dedicated two-column group', async () => {
+		getOptionsMock.mockResolvedValue(interactiveThreadQuickCreateOptions);
+
+		mountModal();
+		await flushUi();
+
+		const deliverySelectGrid = document.querySelector(
+			'.if-org-communication-delivery-select-grid'
+		);
+
+		expect(deliverySelectGrid?.textContent || '').toContain('Priority');
+		expect(deliverySelectGrid?.textContent || '').toContain('Portal surface');
+		expect(deliverySelectGrid?.getAttribute('class') || '').toContain(
+			'min-[480px]:grid-cols-2'
+		);
+	});
+
 	it('opens the native picker when a delivery date input is clicked', async () => {
 		getOptionsMock.mockResolvedValue(interactiveThreadQuickCreateOptions);
 

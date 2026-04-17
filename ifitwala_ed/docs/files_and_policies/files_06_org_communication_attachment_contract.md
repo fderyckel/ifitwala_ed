@@ -69,8 +69,8 @@ Rules:
 ## 4. Storage Boundary
 
 **Status:** Implemented
-**Code refs:** `ifitwala_ed/setup/doctype/org_communication/attachments.py`, `ifitwala_ed/integrations/drive/org_communications.py`
-**Test refs:** `ifitwala_ed/api/test_org_communication_attachments_unit.py`
+**Code refs:** `ifitwala_ed/setup/doctype/org_communication/attachments.py`, `ifitwala_ed/integrations/drive/org_communications.py`, `ifitwala_drive/services/folders/resolution.py`, `ifitwala_drive/services/integration/ifitwala_ed_org_communications.py`
+**Test refs:** `ifitwala_ed/api/test_org_communication_attachments_unit.py`, `ifitwala_drive/tests/test_org_communication_attachment_upload_flow.py`
 
 Governed folder placement is determined by the resolved attachment context:
 

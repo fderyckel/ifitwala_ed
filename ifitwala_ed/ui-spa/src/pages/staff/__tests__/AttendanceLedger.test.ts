@@ -141,6 +141,12 @@ afterEach(() => {
 });
 
 describe('AttendanceLedger', () => {
+	it('does not override the shared analytics shell width', () => {
+		expect(attendanceLedgerSource).not.toMatch(/max-width:\s*none\s*;/);
+		expect(attendanceLedgerSource).toContain('class="analytics-shell"');
+		expect(attendanceLedgerSource).not.toContain('class="analytics-shell attendance-ledger-shell"');
+	});
+
 	it('keeps window presets in the page header actions instead of the filter grid', () => {
 		expect(attendanceLedgerSource).toMatch(
 			/page-header__actions">[\s\S]*<DateRangePills[\s\S]*:model-value="preset"[\s\S]*<\/div>/s

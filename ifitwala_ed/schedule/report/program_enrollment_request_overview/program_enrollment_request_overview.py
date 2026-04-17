@@ -340,6 +340,64 @@ def _build_student_label(row):
     return full_name or (row.get("student") or "")
 
 
+def _choice_state_request_doc(request):
+    request_doc = frappe._dict(
+        {
+            "name": (request.get("name") or "").strip(),
+            "student": (request.get("student") or "").strip(),
+            "program_offering": (request.get("program_offering") or "").strip(),
+            "program": (request.get("program") or "").strip(),
+            "academic_year": (request.get("academic_year") or "").strip(),
+            "status": (request.get("request_status") or "").strip(),
+            "validation_status": (request.get("validation_status") or "").strip(),
+            "submitted_on": request.get("submitted_on"),
+            "submitted_by": (request.get("submitted_by") or "").strip() or None,
+            "request_kind": (request.get("request_kind") or DEFAULT_REQUEST_KIND).strip() or DEFAULT_REQUEST_KIND,
+        }
+    )
+    request_doc["courses"] = [
+        frappe._dict(
+            {
+                "course": (course_row.get("course") or "").strip(),
+                "required": 1 if cint(course_row.get("required")) == 1 else 0,
+                "applied_basket_group": (course_row.get("applied_basket_group") or "").strip(),
+                "choice_rank": course_row.get("choice_rank"),
+            }
+        )
+        for course_row in request.get("courses") or []
+        if (course_row.get("course") or "").strip()
+    ]
+    return request_doc
+
+
+def _get_live_choice_states(requests):
+    live_choice_states = {}
+    offering_semantics_cache = {}
+
+    for request in requests or []:
+        request_name = (request.get("name") or "").strip()
+        if not request_name or (request.get("request_status") or "").strip() != "Draft":
+            continue
+
+        offering_name = (request.get("program_offering") or "").strip()
+        if offering_name not in offering_semantics_cache:
+            offering_semantics_cache[offering_name] = (
+                get_offering_course_semantics(offering_name) if offering_name else {}
+            )
+
+        choice_state = get_program_enrollment_request_choice_state(
+            _choice_state_request_doc(request),
+            can_edit=False,
+            offering_semantics=offering_semantics_cache[offering_name],
+        )
+        live_choice_states[request_name] = {
+            "ready_for_submit": bool((choice_state.get("summary") or {}).get("ready_for_submit")),
+            "reasons": list((choice_state.get("validation") or {}).get("reasons") or []),
+        }
+
+    return live_choice_states
+
+
 def _apply_post_dedupe_filters(requests, filters):
     output = []
     for request in requests or []:
@@ -487,18 +545,13 @@ def _build_window_tracker_view(window_rows, requests, filters):
     ]
 
     requests_by_name = {request.get("name"): request for request in requests or [] if request.get("name")}
-    live_choice_states = {}
+    live_choice_states = _get_live_choice_states(requests)
     data = []
 
     for window_row in window_rows or []:
         request_name = (window_row.get("program_enrollment_request") or "").strip()
         request = requests_by_name.get(request_name)
-        live_choice_state = None
-        if request_name and request and (request.get("request_status") or "").strip() == "Draft":
-            live_choice_state = live_choice_states.get(request_name)
-            if live_choice_state is None:
-                live_choice_state = _get_live_choice_state(request_name)
-                live_choice_states[request_name] = live_choice_state
+        live_choice_state = live_choice_states.get(request_name) if request_name else None
 
         row = _build_window_tracker_row(window_row, request, live_choice_state)
         if _tracker_row_matches_filters(row, filters):
@@ -609,19 +662,6 @@ def _window_problem_state(request, live_choice_state):
         )
 
     return "", ""
-
-
-def _get_live_choice_state(request_name):
-    if not request_name:
-        return {"ready_for_submit": False, "reasons": []}
-
-    # Only draft tracker rows compute live blockers; other report modes stay request-snapshot based.
-    request = frappe.get_doc("Program Enrollment Request", request_name)
-    choice_state = get_program_enrollment_request_choice_state(request, can_edit=False)
-    return {
-        "ready_for_submit": bool((choice_state.get("summary") or {}).get("ready_for_submit")),
-        "reasons": list((choice_state.get("validation") or {}).get("reasons") or []),
-    }
 
 
 def _compact_messages(messages):

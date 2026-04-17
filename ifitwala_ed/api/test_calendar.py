@@ -8,13 +8,6 @@ import frappe
 
 from ifitwala_ed.api import calendar_quick_create
 from ifitwala_ed.api.calendar import (
-    CAL_MIN_DURATION,
-    _attach_duration,
-    _coerce_time,
-    _resolve_sg_schedule_context,
-    _student_group_memberships,
-    _system_tzinfo,
-    _time_to_str,
     create_meeting_quick,
     create_school_event_quick,
     get_meeting_team_attendees,
@@ -22,6 +15,15 @@ from ifitwala_ed.api.calendar import (
     suggest_meeting_rooms,
     suggest_meeting_slots,
 )
+from ifitwala_ed.api.calendar_core import (
+    CAL_MIN_DURATION,
+    _attach_duration,
+    _coerce_time,
+    _student_group_memberships,
+    _system_tzinfo,
+    _time_to_str,
+)
+from ifitwala_ed.api.calendar_details import _resolve_sg_schedule_context
 from ifitwala_ed.api.calendar_staff_feed import _collect_meeting_events
 
 
@@ -412,7 +414,7 @@ class TestCalendarApi(TestCase):
     def test_search_meeting_attendees_facade_delegates_new_contract(self):
         expected = {"results": [{"value": "student@example.com"}], "notes": ["note"]}
 
-        with patch("ifitwala_ed.api.calendar._search_meeting_attendees", return_value=expected) as mocked:
+        with patch("ifitwala_ed.api.calendar_quick_create.search_meeting_attendees", return_value=expected) as mocked:
             payload = search_meeting_attendees(
                 query="stu",
                 attendee_kinds=["employee", "student"],
@@ -429,7 +431,7 @@ class TestCalendarApi(TestCase):
     def test_get_meeting_team_attendees_facade_delegates_new_contract(self):
         expected = {"team": "TEAM-1", "results": [{"value": "staff@example.com"}]}
 
-        with patch("ifitwala_ed.api.calendar._get_meeting_team_attendees", return_value=expected) as mocked:
+        with patch("ifitwala_ed.api.calendar_quick_create.get_meeting_team_attendees", return_value=expected) as mocked:
             payload = get_meeting_team_attendees(team="TEAM-1")
 
         mocked.assert_called_once_with(team="TEAM-1")
@@ -450,7 +452,7 @@ class TestCalendarApi(TestCase):
             "attendees": [],
         }
 
-        with patch("ifitwala_ed.api.calendar._suggest_meeting_slots", return_value=expected) as mocked:
+        with patch("ifitwala_ed.api.calendar_quick_create.suggest_meeting_slots", return_value=expected) as mocked:
             payload = suggest_meeting_slots(
                 attendees=[{"user": "student@example.com", "kind": "student"}],
                 duration_minutes=45,
@@ -479,7 +481,7 @@ class TestCalendarApi(TestCase):
     def test_suggest_meeting_rooms_facade_delegates_new_contract(self):
         expected = {"rooms": [{"value": "ROOM-1"}], "notes": []}
 
-        with patch("ifitwala_ed.api.calendar._suggest_meeting_rooms", return_value=expected) as mocked:
+        with patch("ifitwala_ed.api.calendar_quick_create.suggest_meeting_rooms", return_value=expected) as mocked:
             payload = suggest_meeting_rooms(
                 school="SCHOOL-1",
                 date="2026-02-01",

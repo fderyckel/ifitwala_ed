@@ -712,7 +712,9 @@
 												</p>
 											</div>
 
-											<div class="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
+											<div
+												class="if-org-communication-delivery-select-grid mt-4 grid grid-cols-1 gap-4 min-[480px]:grid-cols-2"
+											>
 												<div class="space-y-1">
 													<label class="type-label">Priority</label>
 													<select

@@ -27,4 +27,8 @@ describe('AttendanceAnalytics shell contract', () => {
 		);
 		expect(attendanceAnalyticsSource).not.toMatch(/<label class="type-label">Window<\/label>/);
 	});
+
+	it('maps heatmap colors from the attendance ratio dimension', () => {
+		expect(attendanceAnalyticsSource).toMatch(/visualMap:\s*\{[\s\S]*dimension:\s*2,/s);
+	});
 });

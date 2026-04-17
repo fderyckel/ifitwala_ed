@@ -32,6 +32,7 @@ import type {
 } from '@/types/contracts/studentAttendance';
 
 type ChartOption = Record<string, unknown>;
+type HeatmapSeriesPoint = [number, number, number, number, number];
 
 type WindowPreset = 'term' | AttendanceDatePreset;
 type RiskBucket = 'critical' | 'warning' | 'ok';
@@ -150,7 +151,7 @@ const heatmapOption = computed<ChartOption>(() => {
 				cell.expected > 0 ? Number(((cell.present / cell.expected) * 100).toFixed(2)) : 0;
 			return [xIdx, yIdx, ratio, cell.present, cell.expected];
 		})
-		.filter((row): row is [number, number, number, number, number] => !!row);
+		.filter((row): row is HeatmapSeriesPoint => !!row);
 
 	const maxRatio = Math.max(100, ...seriesData.map(row => row[2]));
 
@@ -171,6 +172,7 @@ const heatmapOption = computed<ChartOption>(() => {
 		},
 		visualMap: {
 			show: true,
+			dimension: 2,
 			min: 0,
 			max: maxRatio,
 			orient: 'vertical',
@@ -183,7 +185,20 @@ const heatmapOption = computed<ChartOption>(() => {
 				color: ['#dff4ea', '#97d7b8', '#53b587', '#1f8d5b'],
 			},
 		},
-		tooltip: { trigger: 'item' },
+		tooltip: {
+			trigger: 'item',
+			formatter: (params: { value?: HeatmapSeriesPoint }) => {
+				const value = params.value;
+				if (!value) return '';
+				const [xIdx, yIdx, ratio, present, expected] = value;
+				return [
+					x[xIdx] || '',
+					yLabels[yIdx] || '',
+					`${ratio}% integrity`,
+					`${present}/${expected} present`,
+				].join('<br>');
+			},
+		},
 		series: [
 			{
 				type: 'heatmap',

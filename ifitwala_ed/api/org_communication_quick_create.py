@@ -20,13 +20,18 @@ from ifitwala_ed.setup.doctype.org_communication.org_communication import (
 )
 
 IDEMPOTENCY_TTL_SECONDS = 900
+NULLISH_TEXT_VALUES = {"null", "undefined"}
 
 
 def _clean_text(value) -> str | None:
     if value is None:
         return None
     text = str(value).strip()
-    return text or None
+    if not text:
+        return None
+    if text.lower() in NULLISH_TEXT_VALUES:
+        return None
+    return text
 
 
 def _parse_json_arg(value, *, fallback):
@@ -52,6 +57,20 @@ def _set_row_value(row, fieldname: str, value) -> None:
         row[fieldname] = value
         return
     setattr(row, fieldname, value)
+
+
+def _request_includes_arg(fieldname: str) -> bool:
+    form_dict = getattr(getattr(frappe, "local", None), "form_dict", None)
+    if form_dict is None:
+        return False
+    try:
+        return fieldname in form_dict
+    except TypeError:
+        return False
+
+
+def _should_apply_arg(fieldname: str, value) -> bool:
+    return value is not None or _request_includes_arg(fieldname)
 
 
 def _normalize_audience_row_for_target_mode(row):
@@ -328,34 +347,40 @@ def create_org_communication_quick(
             doc.priority = priority
         if portal_surface is not None:
             doc.portal_surface = portal_surface
-        if publish_from is not None:
+        if _should_apply_arg("publish_from", publish_from):
             doc.publish_from = _clean_text(publish_from)
-        if publish_to is not None:
+        if _should_apply_arg("publish_to", publish_to):
             doc.publish_to = _clean_text(publish_to)
-        if brief_start_date is not None:
+        if _should_apply_arg("brief_start_date", brief_start_date):
             doc.brief_start_date = _clean_text(brief_start_date)
-        if brief_end_date is not None:
+        if _should_apply_arg("brief_end_date", brief_end_date):
             doc.brief_end_date = _clean_text(brief_end_date)
-        if brief_order not in (None, ""):
-            doc.brief_order = cint(brief_order)
-        if organization is not None:
+        if _should_apply_arg("brief_order", brief_order):
+            doc.brief_order = cint(brief_order) if brief_order not in (None, "") else None
+        if _should_apply_arg("organization", organization):
             doc.organization = _clean_text(organization)
-        if school is not None:
+        if _should_apply_arg("school", school):
             doc.school = _clean_text(school)
-        if message is not None:
+        if _should_apply_arg("message", message):
             doc.message = message
-        if internal_note is not None:
+        if _should_apply_arg("internal_note", internal_note):
             doc.internal_note = internal_note
-        if interaction_mode is not None:
+        if _should_apply_arg("interaction_mode", interaction_mode):
             doc.interaction_mode = interaction_mode
         if allow_private_notes is not None:
             doc.allow_private_notes = _as_check(allow_private_notes)
         if allow_public_thread is not None:
             doc.allow_public_thread = _as_check(allow_public_thread)
 
+        parsed_audiences = _parse_audiences(audiences)
+        if any(row.get("target_mode") == "Organization" for row in parsed_audiences):
+            doc.school = None
+
         doc.set("audiences", [])
-        for row in _parse_audiences(audiences):
+        for row in parsed_audiences:
             child_row = doc.append("audiences", row)
+            _normalize_audience_row_for_target_mode(child_row)
+        for child_row in doc.get("audiences") or []:
             _normalize_audience_row_for_target_mode(child_row)
 
         if doc_name:

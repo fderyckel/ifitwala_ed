@@ -284,9 +284,14 @@ def _live_validation_state(request, *, offering_semantics: dict[str, dict]) -> t
     return engine_payload, live_status, ready_for_submit, deduped_messages
 
 
-def get_effective_program_enrollment_request_rows(request) -> list[dict]:
+def get_effective_program_enrollment_request_rows(
+    request,
+    *,
+    offering_semantics: dict[str, dict] | None = None,
+) -> list[dict]:
     explicit_rows = _normalize_rows(request.get("courses") or [])
-    offering_semantics = get_offering_course_semantics((request.program_offering or "").strip())
+    if offering_semantics is None:
+        offering_semantics = get_offering_course_semantics((request.program_offering or "").strip())
     effective_rows = []
     seen = set()
 
@@ -323,14 +328,22 @@ def get_effective_program_enrollment_request_rows(request) -> list[dict]:
     return effective_rows
 
 
-def get_program_enrollment_request_choice_state(request, *, can_edit: bool) -> dict:
+def get_program_enrollment_request_choice_state(
+    request,
+    *,
+    can_edit: bool,
+    offering_semantics: dict[str, dict] | None = None,
+    required_basket_groups: list[str] | None = None,
+) -> dict:
     offering_name = (request.program_offering or "").strip()
-    offering_semantics = get_offering_course_semantics(offering_name) if offering_name else {}
+    if offering_semantics is None:
+        offering_semantics = get_offering_course_semantics(offering_name) if offering_name else {}
     explicit_rows = _normalize_rows(request.get("courses") or [])
     explicit_by_course = {row["course"]: row for row in explicit_rows}
-    effective_rows = get_effective_program_enrollment_request_rows(request)
+    effective_rows = get_effective_program_enrollment_request_rows(request, offering_semantics=offering_semantics)
     effective_by_course = {row["course"]: row for row in effective_rows}
-    required_basket_groups = _required_offering_basket_groups(offering_name)
+    if required_basket_groups is None:
+        required_basket_groups = _required_offering_basket_groups(offering_name)
     basket_result = (
         evaluate_basket_selection(program_offering=offering_name, requested_courses=effective_rows)
         if offering_name
