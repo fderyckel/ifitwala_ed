@@ -169,8 +169,15 @@ def get_drawer(api, outcome_id: str, submission_id: str | None = None, version: 
     outcome_fields = [
         "name",
         "task_delivery",
+        "student",
         "grading_status",
         "procedural_status",
+        "has_submission",
+        "has_new_submission",
+        "is_complete",
+        "is_published",
+        "published_on",
+        "published_by",
         "official_score",
         "official_grade",
         "official_grade_value",
@@ -179,6 +186,20 @@ def get_drawer(api, outcome_id: str, submission_id: str | None = None, version: 
     outcome_doc = frappe.db.get_value("Task Outcome", outcome_id, outcome_fields, as_dict=True)
     if not outcome_doc:
         frappe.throw(_("Task Outcome not found."))
+
+    delivery = api._resolve_delivery(outcome_doc.get("task_delivery"))
+    api._assert_group_access(delivery.get("student_group"))
+    task_row = frappe.db.get_value(
+        "Task",
+        delivery.get("task"),
+        ["name", "title", "task_type"],
+        as_dict=True,
+    ) or {"name": delivery.get("task"), "title": delivery.get("task")}
+    delivery_criteria = api._build_delivery_criteria_payload(delivery)
+
+    student_id = outcome_doc.get("student")
+    student_meta = api._get_student_meta_map([student_id]).get(student_id, {}) if student_id else {}
+    student_display = api._get_student_display_map([student_id]).get(student_id, student_id) if student_id else None
 
     outcome_criteria = api._get_outcome_criteria_map({outcome_id}).get(outcome_id, [])
 
@@ -256,10 +277,39 @@ def get_drawer(api, outcome_id: str, submission_id: str | None = None, version: 
         )
 
     return {
+        "delivery": {
+            "name": delivery.get("name"),
+            "task": task_row.get("name"),
+            "title": task_row.get("title") or task_row.get("name"),
+            "task_type": task_row.get("task_type"),
+            "student_group": delivery.get("student_group"),
+            "due_date": delivery.get("due_date"),
+            "delivery_mode": delivery.get("delivery_mode"),
+            "grading_mode": delivery.get("grading_mode"),
+            "allow_feedback": 1 if api._bool_flag(delivery.get("allow_feedback")) else 0,
+            "rubric_scoring_strategy": delivery.get("rubric_scoring_strategy") or None,
+            "max_points": api._coerce_float(delivery.get("max_points")),
+            "criteria": delivery_criteria,
+        },
+        "student": {
+            "student": student_id,
+            "student_name": student_meta.get("student_preferred_name")
+            or student_meta.get("student_full_name")
+            or student_display
+            or student_id,
+            "student_id": student_meta.get("student_id"),
+            "student_image": student_meta.get("student_image"),
+        },
         "outcome": {
             "outcome_id": outcome_doc.get("name"),
             "grading_status": outcome_doc.get("grading_status"),
             "procedural_status": outcome_doc.get("procedural_status"),
+            "has_submission": api._bool_flag(outcome_doc.get("has_submission")),
+            "has_new_submission": api._bool_flag(outcome_doc.get("has_new_submission")),
+            "is_complete": api._bool_flag(outcome_doc.get("is_complete")),
+            "is_published": api._bool_flag(outcome_doc.get("is_published")),
+            "published_on": outcome_doc.get("published_on"),
+            "published_by": outcome_doc.get("published_by"),
             "official": {
                 "score": outcome_doc.get("official_score"),
                 "grade": outcome_doc.get("official_grade"),
@@ -272,13 +322,30 @@ def get_drawer(api, outcome_id: str, submission_id: str | None = None, version: 
         "selected_submission": selected_submission,
         "submission_versions": submission_versions,
         "my_contribution": {
+            "name": my_contribution.get("name"),
             "status": my_contribution.get("status"),
+            "contribution_type": my_contribution.get("contribution_type"),
+            "task_submission": my_contribution.get("task_submission"),
+            "is_stale": api._bool_flag(my_contribution.get("is_stale")),
+            "score": api._coerce_float(my_contribution.get("score")),
+            "grade": my_contribution.get("grade"),
+            "grade_value": api._coerce_float(my_contribution.get("grade_value")),
             "criteria": my_criteria,
             "feedback": my_contribution.get("feedback"),
+            "submitted_on": my_contribution.get("submitted_on"),
+            "modified": my_contribution.get("modified"),
         }
         if my_contribution
         else None,
         "moderation_history": moderation_history,
+        "allowed_actions": {
+            "can_edit_marking": api._can_write_gradebook(),
+            "can_mark_submission_seen": api._can_write_gradebook() or api._is_academic_adminish(),
+            "can_publish": api._can_write_gradebook() or api._is_academic_adminish(),
+            "can_unpublish": api._is_academic_adminish(),
+            "can_moderate": api._is_academic_adminish(),
+            "show_review_tab": api._is_academic_adminish(),
+        },
         "submissions": submissions,
         "contributions": contributions,
     }
@@ -439,6 +506,9 @@ def get_task_gradebook(api, task: str):
             "name",
             "student",
             "grading_status",
+            "procedural_status",
+            "has_submission",
+            "has_new_submission",
             "is_complete",
             "official_score",
             "official_feedback",
@@ -503,6 +573,9 @@ def get_task_gradebook(api, task: str):
                 "student_id": meta.get("student_id"),
                 "student_image": meta.get("student_image"),
                 "status": outcome.get("grading_status"),
+                "procedural_status": outcome.get("procedural_status"),
+                "has_submission": int(outcome.get("has_submission") or 0),
+                "has_new_submission": int(outcome.get("has_new_submission") or 0),
                 "complete": int(outcome.get("is_complete") or 0),
                 "mark_awarded": api._coerce_float(outcome.get("official_score")),
                 "feedback": outcome.get("official_feedback"),

@@ -1,10 +1,25 @@
 import type { TaskSummary } from '@/types/contracts/gradebook/fetch_group_tasks'
 import type { Delivery } from '@/types/contracts/gradebook/get_grid'
+import type { DeliveryPayload } from '@/types/contracts/gradebook/get_drawer'
 import type { TaskPayload } from '@/types/contracts/gradebook/get_task_gradebook'
 
 export const DEFAULT_STUDENT_IMAGE = '/assets/ifitwala_ed/images/default_student_image.png'
 
-type TaskLike = TaskPayload | TaskSummary | Delivery | null | undefined
+type TaskLikeShape = {
+	grading_mode?: 'None' | 'Completion' | 'Binary' | 'Points' | 'Criteria' | null
+	allow_feedback?: 0 | 1 | boolean | null
+	rubric_scoring_strategy?: 'Sum Total' | 'Separate Criteria' | null
+	max_points?: number | null
+	task_type?: string | null
+	delivery_type?: string | null
+	delivery_mode?: string | null
+	points?: 0 | 1
+	binary?: 0 | 1
+	criteria?: 0 | 1
+	observations?: 0 | 1
+}
+
+type TaskLike = TaskPayload | TaskSummary | Delivery | DeliveryPayload | TaskLikeShape | null | undefined
 
 function resolveDeliveryMode(task?: TaskLike | Record<string, unknown> | null) {
 	if (!task) return null
@@ -70,7 +85,7 @@ export function showsStatusControl(task?: TaskLike) {
 	return resolveDeliveryMode(task) === 'Assess'
 }
 
-export function showMaxPointsPill(task?: TaskPayload | null) {
+export function showMaxPointsPill(task?: TaskLike) {
 	return isPointsTask(task) && task?.max_points !== null && task?.max_points !== undefined
 }
 

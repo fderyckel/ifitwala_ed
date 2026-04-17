@@ -80,13 +80,36 @@ class TestGradebookApi(TestCase):
                     return {
                         "name": "OUT-1",
                         "task_delivery": "TDL-1",
+                        "student": "STU-1",
                         "grading_status": "Needs Review",
                         "procedural_status": "Submitted",
+                        "has_submission": 1,
+                        "has_new_submission": 1,
+                        "is_complete": 0,
+                        "is_published": 0,
+                        "published_on": None,
+                        "published_by": None,
                         "official_score": 8,
                         "official_grade": "B",
                         "official_grade_value": 8,
                         "official_feedback": "Review latest evidence",
                     }
+                if doctype == "Task Delivery" and name == "TDL-1":
+                    return {
+                        "name": "TDL-1",
+                        "task": "TASK-1",
+                        "student_group": "GRP-1",
+                        "due_date": "2026-04-03 10:00:00",
+                        "delivery_mode": "Assess",
+                        "grading_mode": "Points",
+                        "allow_feedback": 1,
+                        "max_points": 20,
+                        "quiz_pass_percentage": None,
+                        "rubric_version": None,
+                        "rubric_scoring_strategy": None,
+                    }
+                if doctype == "Task" and name == "TASK-1":
+                    return {"name": "TASK-1", "title": "Source Analysis", "task_type": "Assignment"}
                 return None
 
             def fake_get_all(doctype, filters=None, fields=None, order_by=None, limit=0, pluck=None):
@@ -154,11 +177,29 @@ class TestGradebookApi(TestCase):
 
             module = _import_fresh_gradebook()
             module.gradebook_support._can_read_gradebook = lambda: True
+            module.gradebook_support._can_write_gradebook = lambda: True
             module.gradebook_support._get_outcome_criteria_map = lambda outcome_ids: {"OUT-1": []}
             module.gradebook_support._select_my_contribution = lambda contributions: None
+            module.gradebook_support._get_student_display_map = lambda student_ids: {"STU-1": "Ada Lovelace"}
+            module.gradebook_support._get_student_meta_map = lambda student_ids: {
+                "STU-1": {
+                    "name": "STU-1",
+                    "student_id": "S-001",
+                    "student_image": None,
+                }
+            }
+            module.gradebook_support._build_delivery_criteria_payload = lambda delivery: []
 
             payload = module.get_drawer("OUT-1", version="1")
 
+        self.assertEqual(payload["delivery"]["title"], "Source Analysis")
+        self.assertEqual(payload["delivery"]["delivery_mode"], "Assess")
+        self.assertEqual(payload["student"]["student_name"], "Ada Lovelace")
+        self.assertEqual(payload["student"]["student_id"], "S-001")
+        self.assertTrue(payload["outcome"]["has_submission"])
+        self.assertTrue(payload["outcome"]["has_new_submission"])
+        self.assertFalse(payload["outcome"]["is_published"])
+        self.assertTrue(payload["allowed_actions"]["can_edit_marking"])
         self.assertEqual(payload["latest_submission"]["submission_id"], "TSU-2026-00002")
         self.assertFalse(payload["latest_submission"]["is_selected"])
         self.assertEqual(payload["selected_submission"]["submission_id"], "TSU-2026-00001")

@@ -64,8 +64,9 @@ Rules:
 1. Attachments must no longer require a `Student Group` audience by default.
 2. Multi-school fan-out communications without one authoritative school anchor remain organization-scoped for attachment governance.
 3. Team communications may resolve to school scope when the authoritative `Team.school` exists; otherwise they remain organization-scoped.
-4. Missing `organization` is a blocker and must be explained as such in the UI.
-5. After the first governed file exists, changing the authoritative attachment context is blocked until governed file rows are removed. This protects Drive governance from post-upload scope drift.
+4. Partial class context must fail closed. If a communication resolves `student_group` context without authoritative `course` and `school`, upload must be rejected with an explicit validation error instead of falling through to school or organization folder routing.
+5. Missing `organization` is a blocker and must be explained as such in the UI.
+6. After the first governed file exists, changing the authoritative attachment context is blocked until governed file rows are removed. This protects Drive governance from post-upload scope drift.
 
 ## 4. Storage Boundary
 

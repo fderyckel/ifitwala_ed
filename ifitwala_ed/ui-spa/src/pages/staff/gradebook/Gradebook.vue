@@ -322,6 +322,7 @@
 					v-if="viewMode === 'task'"
 					:task-name="selectedTask?.name || null"
 					:focus-student="focusedStudent"
+					@select-student="onTaskViewSelectStudent"
 				/>
 				<GradebookOverviewView
 					v-else
@@ -835,6 +836,11 @@ function onOverviewOpenTask(payload: { taskName: string; student: string }) {
 		switchMode: true,
 		focusStudent: payload.student,
 	});
+}
+
+function onTaskViewSelectStudent(student: string | null) {
+	focusedStudent.value = student;
+	updateRouteStudent(student);
 }
 
 watch(derivedGroups, newList => {

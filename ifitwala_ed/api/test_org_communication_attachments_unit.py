@@ -126,6 +126,29 @@ class TestOrgCommunicationAttachmentsUnit(TestCase):
         self.assertEqual(override["subfolder"], "ORG-ROOT/Communications/COMM-0003/Attachments")
         self.assertEqual(override["file_category"], "Organization Communication Attachment")
 
+    def test_build_upload_contract_rejects_incomplete_class_context(self):
+        with stubbed_frappe():
+            org_doc = _FakeOrgCommunicationDoc(
+                name="COMM-0004",
+                organization="ORG-1",
+                school="SCH-1",
+                audiences=[],
+            )
+            attachments = import_fresh("ifitwala_ed.setup.doctype.org_communication.attachments")
+            attachments.resolve_org_communication_attachment_context = lambda _doc: {
+                "context_kind": "student_group",
+                "organization": "ORG-1",
+                "school": "SCH-1",
+                "course": None,
+                "student_group": "SG-1",
+            }
+
+            with self.assertRaisesRegex(
+                Exception,
+                "Org Communication attachment class context is incomplete",
+            ):
+                attachments.build_org_communication_attachment_upload_contract(org_doc)
+
     def test_upload_endpoint_unpacks_drive_tuple_and_uses_session_row_name(self):
         file_access = ModuleType("ifitwala_ed.api.file_access")
         file_access.build_org_communication_attachment_open_url = lambda *, org_communication, row_name: (

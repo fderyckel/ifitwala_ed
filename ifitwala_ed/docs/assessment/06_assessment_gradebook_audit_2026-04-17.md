@@ -17,7 +17,8 @@ Important note:
 
 The core assessment data model is stronger than the current teacher UX.
 `Task -> Task Delivery -> Task Outcome -> Task Submission -> Task Contribution` is a solid foundation, and governed submission evidence is already more mature than many LMS implementations.
-What is still missing is the product layer that makes those primitives feel like one coherent teacher workflow, especially for attachments/evidence review, criteria authoring, release governance, and mode-specific grading behavior.
+The drawer-first baseline is now live, including evidence review, attachment preview/open actions, comments, compare context, and release actions.
+What is still missing is the product refinement that turns that baseline into a premium day-to-day workflow: cleaner release semantics, mode-consistent auditability, first-class criteria setup and scoring, collect-work evidence inbox patterns, and richer moderation/teacher-speed flows.
 
 ## Audit Basis
 
@@ -26,6 +27,7 @@ Docs reviewed:
 - `ifitwala_ed/docs/assessment/03_gradebook_notes.md`
 - `ifitwala_ed/docs/assessment/04_task_notes.md`
 - `ifitwala_ed/docs/assessment/05_term_reporting_notes.md`
+- `ifitwala_ed/docs/assessment/07_feedback_annotation_ecosystem_contract.md`
 - `ifitwala_ed/docs/assessment/gradebook_drawer_phases.md`
 - `ifitwala_ed/docs/docs_md/task-delivery.md`
 - `ifitwala_ed/docs/docs_md/task-outcome.md`
@@ -53,6 +55,7 @@ Code reviewed:
 - `ifitwala_ed/api/outcome_publish.py`
 - `ifitwala_ed/ui-spa/src/pages/staff/gradebook/Gradebook.vue`
 - `ifitwala_ed/ui-spa/src/pages/staff/gradebook/components/GradebookTaskView.vue`
+- `ifitwala_ed/ui-spa/src/pages/staff/gradebook/components/GradebookStudentDrawer.vue`
 - `ifitwala_ed/ui-spa/src/pages/staff/gradebook/components/GradebookOverviewView.vue`
 - `ifitwala_ed/ui-spa/src/pages/staff/gradebook/components/GradebookQuizManualReview.vue`
 - `ifitwala_ed/ui-spa/src/components/tasks/CreateTaskDeliveryOverlay.vue`
@@ -79,31 +82,33 @@ Market reference points reviewed, official sources only:
 | Runtime assessment model | Strong | The repo has a clear separation between reusable task definition, class-scoped delivery, per-student outcome, evidence, and teacher judgment. |
 | Official truth ownership | Strong | `Task Outcome` and `Task Outcome Criterion` are the derived truth layer, and the gradebook API rejects direct `official_*` writes from clients. |
 | Evidence governance | Strong backend | `Task Submission` is append-only, versioned, and exposes governed `preview_url` / `open_url` links instead of raw private file paths. |
+| Drawer foundation | Strong current baseline | The staff gradebook now opens one student at a time in `GradebookStudentDrawer`, with marking, evidence, official result, compare context, and release actions in one workspace. |
+| Feedback and annotation direction | Strong contract baseline | `07_feedback_annotation_ecosystem_contract.md` now locks the drawer-centered feedback/annotation architecture and keeps file governance explicit. |
 | Quiz exception handling | Useful partial | Assessed quiz attempts already have a distinct manual-review path for open-ended questions. |
 | Reporting boundary | Architecturally solid | Term reporting is clearly separated from mutable gradebook state. |
 | Multi-tenant and hot-path direction | Mostly solid | Gradebook reads are denormalized and roster materialization is bulk/idempotent. |
 
 ## Missing / Left To Do
 
-1. `Gradebook` is still missing the promised drawer-first teacher workflow.
-Code refs: `ifitwala_ed/api/gradebook_reads.py`, `ifitwala_ed/api/test_gradebook.py`, `ifitwala_ed/ui-spa/src/pages/staff/gradebook/components/GradebookTaskView.vue`, `ifitwala_ed/docs/assessment/gradebook_drawer_phases.md`
+1. The drawer foundation is shipped, but the premium teacher workflow is not complete yet.
+Code refs: `ifitwala_ed/api/gradebook_reads.py`, `ifitwala_ed/api/test_gradebook.py`, `ifitwala_ed/ui-spa/src/pages/staff/gradebook/components/GradebookTaskView.vue`, `ifitwala_ed/ui-spa/src/pages/staff/gradebook/components/GradebookStudentDrawer.vue`, `ifitwala_ed/docs/assessment/07_feedback_annotation_ecosystem_contract.md`
 
-The backend already exposes `get_drawer(...)` with selected submission, version summaries, official result, and moderation history. The staff SPA does not use it. The live teacher experience is still an inline card editor plus a separate quiz-review panel, so evidence review, comments, criteria, moderation, compare, and release are not unified.
+The staff SPA now uses `get_drawer(...)` and surfaces marking, evidence, official result, compare, and release in one drawer. The remaining gap is not drawer existence; it is workflow maturity. The current drawer still relies on legacy mutation semantics, lacks the future structured feedback domain, and does not yet deliver the fastest possible teacher flow for collect-work, moderation, or rubric-heavy marking.
 
 2. Draft-vs-official grading semantics are drifting from the documented contract.
 Code refs: `ifitwala_ed/docs/assessment/01_assessment_notes.md`, `ifitwala_ed/docs/assessment/03_gradebook_notes.md`, `ifitwala_ed/api/gradebook_writes.py`, `ifitwala_ed/api/gradebook.py`, `ifitwala_ed/ui-spa/src/pages/staff/gradebook/components/GradebookTaskView.vue`
 
 The notes say autosave should use draft contributions and keep evidence separate until a deliberate teacher action. The live SPA autosaves through `update_task_student(...)`, which calls `submit_contribution(...)`, recomputes official truth immediately, and can create teacher evidence stubs. That is a real workflow mismatch, not just a copy issue.
 
-3. Attachment and evidence review are implemented on the server but still absent from the main teacher UI.
-Code refs: `ifitwala_ed/api/task_submission.py`, `ifitwala_ed/api/gradebook_reads.py`, `ifitwala_ed/api/test_task_submission.py`, `ifitwala_ed/ui-spa/src/pages/staff/gradebook/components/GradebookTaskView.vue`
+3. Attachment and evidence review baseline is live, but the premium annotation/feedback workflow is still incomplete.
+Code refs: `ifitwala_ed/api/task_submission.py`, `ifitwala_ed/api/gradebook_reads.py`, `ifitwala_ed/api/test_task_submission.py`, `ifitwala_ed/ui-spa/src/pages/staff/gradebook/components/GradebookStudentDrawer.vue`, `ifitwala_ed/docs/assessment/07_feedback_annotation_ecosystem_contract.md`
 
-Teachers currently cannot review submission versions, governed attachment previews, or stale-evidence context from the primary gradebook flow. This is the clearest gap behind the current “attachments” complaint.
+Teachers can now review submission versions, open governed attachment previews, inspect stale/new-evidence context, and grade from the primary drawer flow. The remaining gap behind the “attachments” complaint is now narrower: no dedicated structured feedback domain yet, no anchored annotation workflow yet, no derived feedback artifact flow yet, and no collect-work evidence inbox optimized for high-volume review.
 
-4. `Collect Work` is not treated as a first-class teacher mode yet.
-Code refs: `ifitwala_ed/api/gradebook_reads.py`, `ifitwala_ed/ui-spa/src/pages/staff/gradebook/components/GradebookTaskView.vue`, `ifitwala_ed/docs/assessment/03_gradebook_notes.md`
+4. `Collect Work` still needs a dedicated evidence-inbox experience even though the drawer now exposes evidence review.
+Code refs: `ifitwala_ed/api/gradebook_reads.py`, `ifitwala_ed/ui-spa/src/pages/staff/gradebook/components/GradebookTaskView.vue`, `ifitwala_ed/ui-spa/src/pages/staff/gradebook/components/GradebookStudentDrawer.vue`, `ifitwala_ed/docs/assessment/03_gradebook_notes.md`
 
-The overview grid can show `Submitted` or `Awaiting`, but task view does not expose submission status, latest evidence, attachment preview, or version history. For collect-only work, the live UI mostly degrades to comments + visibility toggles.
+The task workspace now exposes submission status, latest evidence, attachment preview, and version history through the drawer. The remaining gap is product shape: collect-work is still roster-first rather than evidence-first. A premium assessment surface should add a dedicated evidence inbox for submitted/missing/late/new-evidence scanning with deep links into the drawer.
 
 5. Criteria authoring is still not first-class in the quick task setup flow.
 Code refs: `ifitwala_ed/ui-spa/src/components/tasks/CreateTaskDeliveryOverlay.vue`, `ifitwala_ed/assessment/task_creation_service.py`, `ifitwala_ed/api/task.py`, `ifitwala_ed/docs/assessment/gradebook_drawer_phases.md`
@@ -120,10 +125,10 @@ Code refs: `ifitwala_ed/assessment/doctype/task/task.json`, `ifitwala_ed/assessm
 
 The data model supports grade scales, and outcome services can resolve symbolic grades. The live setup flow does not expose grade-scale selection, and the task-gradebook payload does not surface symbolic grade output as a first-class teacher-facing value.
 
-8. Release semantics are fragmented.
-Code refs: `ifitwala_ed/api/outcome_publish.py`, `ifitwala_ed/api/gradebook_writes.py`, `ifitwala_ed/assessment/doctype/task_outcome/task_outcome.py`, `ifitwala_ed/ui-spa/src/pages/staff/gradebook/components/GradebookTaskView.vue`
+8. Release semantics are closer to the right product shape now, but the contract is still split between grading status and publication state.
+Code refs: `ifitwala_ed/api/outcome_publish.py`, `ifitwala_ed/api/gradebook_writes.py`, `ifitwala_ed/assessment/doctype/task_outcome/task_outcome.py`, `ifitwala_ed/ui-spa/src/pages/staff/gradebook/components/GradebookStudentDrawer.vue`
 
-The current UI presents a grading-status dropdown plus separate “Visible to Student” and “Visible to Guardian” checkboxes. The backend, however, stores one `Task Outcome.is_published` flag and maps both visibility toggles to that same flag. It is currently possible to drift into states like `Released` without publication, or publication without a clear named release action.
+The current drawer already uses one explicit `Release` / `Unrelease` action, which is directionally correct. The remaining gap is contract clarity: `grading_status` and `is_published` are still separate concepts, and the runtime still allows states like `Finalized` or `Released` to drift away from the one publication flag unless the workflow is normalized.
 
 9. Boolean and completion grading do not have the same audit path as points and criteria.
 Code refs: `ifitwala_ed/assessment/doctype/task_contribution/task_contribution.json`, `ifitwala_ed/api/gradebook_writes.py`, `ifitwala_ed/assessment/doctype/task_outcome/task_outcome.py`
@@ -150,17 +155,19 @@ Code refs: `ifitwala_ed/assessment/doctype/task_contribution/test_task_contribut
 
 The high-risk behaviors are only partially covered: contribution precedence, moderation transitions, boolean-mode audit behavior, release-state consistency, rubric score math, stale evidence review, and grade-scale rendering all need deeper regression tests.
 
-## Highest-Leverage Decisions To Make Next
+## Resolved Product Directions
 
-1. Decide whether autosave is truly a draft-only action or whether autosave should be allowed to mutate official truth.
-2. Decide whether release is one product action or two audience-specific actions.
-3. Decide whether criteria levels need canonical numeric points, or whether criteria scoring will always require separate per-criterion point entry.
-4. Decide whether completion/binary assessment must be auditable through contributions or can remain an outcome-direct write path.
+The following follow-up decisions were resolved after the initial audit review:
+
+1. Students and guardians should share one release state.
+2. `Binary` and `Completion` should move onto the same contribution/audit contract as other grading modes, while `Task Outcome.is_complete` remains derived official truth.
+3. Rubric descriptors and levels should stay globally reusable, but numeric point mapping should remain delivery-local.
+4. `Collect Work` should stay inside the same assessment product, with a dedicated evidence inbox view that deep-links into the grading drawer.
 
 ## 10 Suggestions To Make This A Top-Tier Assessment Module
 
-1. Ship one unified grading drawer and make it the only rich grading workspace.
-Why: Canvas wins teacher trust with a focused grading workspace, and your own backend already has most of the drawer payload. A right-side drawer with evidence, rubric, official result, compare, and release will make the module feel premium quickly.
+1. Finish the shipped drawer into the premium teacher workspace.
+Why: The drawer now exists and is the correct product anchor. The next move is to harden its workflow quality so it becomes the default high-trust grading surface for evidence, rubric work, compare, and release.
 
 2. Separate `Draft`, `Ready`, `Finalized`, and `Released` as explicit teacher states.
 Why: Right now autosave and official truth are too close together. A top-tier workflow should autosave teacher thinking into draft contributions, then require an explicit “Mark ready” or “Finalize” step, and a separate governed “Release” step.
@@ -181,8 +188,8 @@ Why: Canvas differentiates with its Learning Mastery Gradebook. Ifitwala_Ed shou
    - outcome / standards mastery view
 This would be a major product differentiator for schools running competency, IB, or standards-based models.
 
-6. Turn evidence review into a premium experience.
-Why: Competitors win when grading is evidence-first. The drawer should show:
+6. Turn the current evidence tab into a premium evidence workflow.
+Why: Competitors win when grading is evidence-first. The next step is to build on the existing drawer baseline so it shows:
    - latest submission preview
    - prior versions
    - “new evidence since you graded” warnings
@@ -218,19 +225,13 @@ Why: Google Classroom is pushing analytics, originality, and SIS sync. Ifitwala_
 
 ## Recommended Build Sequence
 
-1. Deliver the drawer and switch staff grading to `get_drawer(...)`, `save_draft(...)`, `submit_contribution(...)`, and named release actions.
-2. Add evidence review and governed attachment preview in the drawer.
-3. Make criteria authoring/scoring first-class in task setup and task grading.
-4. Fix release semantics and audience visibility so the UI matches one server-owned contract.
-5. Add moderation / compare / bulk operations after the drawer contract is stable.
-6. Add mastery-gradebook and analytics once the day-to-day grading loop is fast and coherent.
-
-## Open Questions Worth Resolving Before More UI Work
-
-- Should guardians and students always share the same release state, or do you truly want separate audience visibility?
-- Should `Binary` and `Completion` keep using `is_complete`, or should they get a richer contribution/audit contract?
-- Do you want rubric levels to own points globally, or should points remain delivery-local?
-- Do you want `Collect Work` to live inside the same gradebook, or should it have a dedicated evidence inbox view with gradebook deep-linking?
+1. Normalize release semantics so one release action owns visibility for both students and guardians.
+2. Move `Binary` and `Completion` onto contribution-based writes while keeping `Task Outcome.is_complete` derived.
+3. Add delivery-local rubric point mapping so criteria selection produces reliable score consequences.
+4. Add a collect-work evidence inbox on top of the existing drawer/evidence baseline.
+5. Make criteria authoring/scoring first-class in task setup and task grading.
+6. Add moderation / compare / bulk operations after the drawer contract is stable.
+7. Add mastery-gradebook and analytics once the day-to-day grading loop is fast and coherent.
 
 ## Audit Conclusion
 
@@ -244,8 +245,8 @@ The repo is already strong on:
 - denormalized outcome reads
 - reporting separation
 
-The module becomes top-tier when the product catches up with the model:
-- one drawer
+The module becomes top-tier when the shipped drawer matures into the full product contract:
+- one drawer-centered workflow
 - one explicit draft/finalize/release workflow
 - true criteria authoring and scoring
 - premium evidence review

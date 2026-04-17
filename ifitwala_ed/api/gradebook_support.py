@@ -425,7 +425,7 @@ def _get_contribution_criteria(contribution_id):
             "parenttype": "Task Contribution",
             "parentfield": "rubric_scores",
         },
-        fields=["assessment_criteria", "level", "level_points"],
+        fields=["assessment_criteria", "level", "level_points", "feedback"],
         order_by="idx asc",
         limit=0,
     )
@@ -434,6 +434,7 @@ def _get_contribution_criteria(contribution_id):
             "criteria": row.get("assessment_criteria"),
             "level": row.get("level"),
             "points": row.get("level_points"),
+            "feedback": row.get("feedback"),
         }
         for row in rows
     ]

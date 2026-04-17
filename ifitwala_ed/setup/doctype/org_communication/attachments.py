@@ -43,6 +43,29 @@ def _clean_link_value(value: str | None) -> str | None:
     return resolved or None
 
 
+def _assert_complete_class_attachment_context(context: dict[str, Any] | None) -> None:
+    resolved = dict(context or {})
+    course = _clean_link_value(resolved.get("course"))
+    student_group = _clean_link_value(resolved.get("student_group"))
+    school = _clean_link_value(resolved.get("school"))
+    if not course and not student_group:
+        return
+
+    missing_fields: list[str] = []
+    if not course:
+        missing_fields.append(_("course"))
+    if not student_group:
+        missing_fields.append(_("student group"))
+    if not school:
+        missing_fields.append(_("issuing school"))
+    if not missing_fields:
+        return
+
+    frappe.throw(
+        _("Org Communication attachment class context is incomplete. Missing {0}.").format(", ".join(missing_fields))
+    )
+
+
 def _get_doc(name: str, *, permission_type: str | None = None):
     if not frappe.db.exists("Org Communication", name):
         frappe.throw(_("Org Communication does not exist: {0}").format(name))
@@ -141,13 +164,15 @@ def resolve_org_communication_attachment_context(doc) -> dict[str, str | None]:
         if not organization:
             frappe.throw(_("Org Communication attachments require an organization."))
 
-        return {
+        context = {
             "context_kind": "student_group",
             "organization": organization,
             "school": school,
             "course": course,
             "student_group": student_group,
         }
+        _assert_complete_class_attachment_context(context)
+        return context
 
     team_context = _resolve_team_attachment_context(doc)
     school = (
@@ -247,6 +272,7 @@ def build_org_communication_attachment_upload_contract(
         frappe.throw(_("Save the Org Communication before attaching governed files."))
 
     context = resolve_org_communication_attachment_context(doc)
+    _assert_complete_class_attachment_context(context)
     row_key = _normalize_row_key(row_name)
     if row_name and require_existing_row:
         _assert_attachment_row_exists(doc, row_key)
@@ -317,6 +343,7 @@ def get_org_communication_context_override(owner_name: str | None, slot: str | N
 
     doc = _get_doc(owner_name)
     context = resolve_org_communication_attachment_context(doc)
+    _assert_complete_class_attachment_context(context)
     if context["context_kind"] == "student_group":
         return {
             "root_folder": "Home/Courses",

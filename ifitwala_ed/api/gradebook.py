@@ -20,7 +20,7 @@ from __future__ import annotations
 
 import frappe
 
-from ifitwala_ed.api import gradebook_reads, gradebook_support, gradebook_writes
+from ifitwala_ed.api import gradebook_reads, gradebook_support, gradebook_writes, outcome_publish
 
 
 @frappe.whitelist()
@@ -121,6 +121,16 @@ def update_task_student(task_student: str, updates=None, **kwargs):
     return gradebook_writes.update_task_student(gradebook_support, task_student, updates=updates, **kwargs)
 
 
+@frappe.whitelist()
+def publish_outcomes(payload=None, **kwargs):
+    return outcome_publish.publish_outcomes(payload=payload, **kwargs)
+
+
+@frappe.whitelist()
+def unpublish_outcomes(payload=None, **kwargs):
+    return outcome_publish.unpublish_outcomes(payload=payload, **kwargs)
+
+
 __all__ = [
     "get_grid",
     "get_drawer",
@@ -136,4 +146,6 @@ __all__ = [
     "save_task_quiz_manual_review",
     "repair_task_roster",
     "update_task_student",
+    "publish_outcomes",
+    "unpublish_outcomes",
 ]

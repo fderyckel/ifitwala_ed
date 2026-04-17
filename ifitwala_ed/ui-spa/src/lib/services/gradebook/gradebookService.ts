@@ -12,6 +12,10 @@ import type {
 	Response as FetchGroupTasksResponse,
 } from '@/types/contracts/gradebook/fetch_group_tasks'
 import type {
+	Request as GetDrawerRequest,
+	Response as GetDrawerResponse,
+} from '@/types/contracts/gradebook/get_drawer'
+import type {
 	Request as GetGridRequest,
 	Response as GetGridResponse,
 } from '@/types/contracts/gradebook/get_grid'
@@ -23,6 +27,14 @@ import type {
 	Request as GetTaskQuizManualReviewRequest,
 	Response as GetTaskQuizManualReviewResponse,
 } from '@/types/contracts/gradebook/get_task_quiz_manual_review'
+import type {
+	Request as MarkNewSubmissionSeenRequest,
+	Response as MarkNewSubmissionSeenResponse,
+} from '@/types/contracts/gradebook/mark_new_submission_seen'
+import type {
+	Request as PublishOutcomesRequest,
+	Response as PublishOutcomesResponse,
+} from '@/types/contracts/gradebook/publish_outcomes'
 import type {
 	Request as RepairTaskRosterRequest,
 	Response as RepairTaskRosterResponse,
@@ -51,6 +63,12 @@ export function createGradebookService() {
 
 	const getGridResource = createResource<GetGridResponse>({
 		url: 'ifitwala_ed.api.gradebook.get_grid',
+		method: 'POST',
+		auto: false,
+	})
+
+	const getDrawerResource = createResource<GetDrawerResponse>({
+		url: 'ifitwala_ed.api.gradebook.get_drawer',
 		method: 'POST',
 		auto: false,
 	})
@@ -85,6 +103,24 @@ export function createGradebookService() {
 		auto: false,
 	})
 
+	const markNewSubmissionSeenResource = createResource<MarkNewSubmissionSeenResponse>({
+		url: 'ifitwala_ed.api.gradebook.mark_new_submission_seen',
+		method: 'POST',
+		auto: false,
+	})
+
+	const publishOutcomesResource = createResource<PublishOutcomesResponse>({
+		url: 'ifitwala_ed.api.gradebook.publish_outcomes',
+		method: 'POST',
+		auto: false,
+	})
+
+	const unpublishOutcomesResource = createResource<PublishOutcomesResponse>({
+		url: 'ifitwala_ed.api.gradebook.unpublish_outcomes',
+		method: 'POST',
+		auto: false,
+	})
+
 	async function fetchGroups(payload: FetchGroupsRequest = {}): Promise<FetchGroupsResponse> {
 		return fetchGroupsResource.submit(payload)
 	}
@@ -95,6 +131,10 @@ export function createGradebookService() {
 
 	async function getGrid(payload: GetGridRequest): Promise<GetGridResponse> {
 		return getGridResource.submit(payload)
+	}
+
+	async function getDrawer(payload: GetDrawerRequest): Promise<GetDrawerResponse> {
+		return getDrawerResource.submit(payload)
 	}
 
 	async function getTaskGradebook(
@@ -131,14 +171,36 @@ export function createGradebookService() {
 		return response
 	}
 
+	async function markNewSubmissionSeen(
+		payload: MarkNewSubmissionSeenRequest,
+	): Promise<MarkNewSubmissionSeenResponse> {
+		return markNewSubmissionSeenResource.submit(payload)
+	}
+
+	async function publishOutcomes(
+		payload: PublishOutcomesRequest,
+	): Promise<PublishOutcomesResponse> {
+		return publishOutcomesResource.submit(payload)
+	}
+
+	async function unpublishOutcomes(
+		payload: PublishOutcomesRequest,
+	): Promise<PublishOutcomesResponse> {
+		return unpublishOutcomesResource.submit(payload)
+	}
+
 	return {
 		fetchGroups,
 		fetchGroupTasks,
 		getGrid,
+		getDrawer,
 		getTaskGradebook,
 		repairTaskRoster,
 		getTaskQuizManualReview,
 		saveTaskQuizManualReview,
 		updateTaskStudent,
+		markNewSubmissionSeen,
+		publishOutcomes,
+		unpublishOutcomes,
 	}
 }

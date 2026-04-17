@@ -8,11 +8,15 @@ const {
 	fetchSchoolContextMock,
 	fetchGroupsMock,
 	fetchGroupTasksMock,
+	getDrawerMock,
 	getGridMock,
 	getTaskGradebookMock,
 	getTaskQuizManualReviewMock,
+	markNewSubmissionSeenMock,
+	publishOutcomesMock,
 	repairTaskRosterMock,
 	saveTaskQuizManualReviewMock,
+	unpublishOutcomesMock,
 	updateTaskStudentMock,
 } = vi.hoisted(() => ({
 	routeState: {
@@ -23,11 +27,15 @@ const {
 	fetchSchoolContextMock: vi.fn(),
 	fetchGroupsMock: vi.fn(),
 	fetchGroupTasksMock: vi.fn(),
+	getDrawerMock: vi.fn(),
 	getGridMock: vi.fn(),
 	getTaskGradebookMock: vi.fn(),
 	getTaskQuizManualReviewMock: vi.fn(),
+	markNewSubmissionSeenMock: vi.fn(),
+	publishOutcomesMock: vi.fn(),
 	repairTaskRosterMock: vi.fn(),
 	saveTaskQuizManualReviewMock: vi.fn(),
+	unpublishOutcomesMock: vi.fn(),
 	updateTaskStudentMock: vi.fn(),
 }));
 
@@ -169,11 +177,15 @@ vi.mock('@/lib/services/gradebook/gradebookService', () => ({
 	createGradebookService: () => ({
 		fetchGroups: fetchGroupsMock,
 		fetchGroupTasks: fetchGroupTasksMock,
+		getDrawer: getDrawerMock,
 		getGrid: getGridMock,
 		getTaskGradebook: getTaskGradebookMock,
 		getTaskQuizManualReview: getTaskQuizManualReviewMock,
+		markNewSubmissionSeen: markNewSubmissionSeenMock,
+		publishOutcomes: publishOutcomesMock,
 		repairTaskRoster: repairTaskRosterMock,
 		saveTaskQuizManualReview: saveTaskQuizManualReviewMock,
+		unpublishOutcomes: unpublishOutcomesMock,
 		updateTaskStudent: updateTaskStudentMock,
 	}),
 }));
@@ -218,6 +230,7 @@ function mockGradebookFlow(options?: {
 	task?: Record<string, unknown>;
 	students?: Array<Record<string, unknown>>;
 	criteria?: Array<Record<string, unknown>>;
+	drawer?: Record<string, unknown>;
 }) {
 	const group = {
 		name: 'SG-1',
@@ -255,6 +268,9 @@ function mockGradebookFlow(options?: {
 			student_id: 'S-001',
 			student_image: null,
 			status: 'Not Started',
+			procedural_status: null,
+			has_submission: 0,
+			has_new_submission: 0,
 			complete: 0,
 			mark_awarded: null,
 			feedback: null,
@@ -300,6 +316,85 @@ function mockGradebookFlow(options?: {
 		criteria: options?.criteria || [],
 		students,
 	});
+	getDrawerMock.mockResolvedValue({
+		delivery: {
+			name: String(task.name),
+			task: 'TASK-1',
+			title: String(task.title),
+			task_type: (task.task_type as string | null) || 'Assignment',
+			student_group: group.name,
+			due_date: task.due_date as string | null,
+			delivery_mode: (task.delivery_type as string | null) || 'Assess',
+			grading_mode: task.grading_mode as string | null,
+			allow_feedback: task.allow_feedback as 0 | 1,
+			rubric_scoring_strategy: task.rubric_scoring_strategy as
+				| 'Sum Total'
+				| 'Separate Criteria'
+				| null,
+			max_points: task.max_points as number | null,
+			criteria:
+				(options?.criteria || []).map(criterion => ({
+					assessment_criteria: String(criterion.assessment_criteria),
+					criteria_name: String(criterion.criteria_name),
+					criteria_weighting:
+						typeof criterion.criteria_weighting === 'number'
+							? criterion.criteria_weighting
+							: null,
+					levels: Array.isArray(criterion.levels) ? criterion.levels : [],
+				})) || [],
+		},
+		student: {
+			student: String(students[0].student),
+			student_name: String(students[0].student_name),
+			student_id: (students[0].student_id as string | null) || null,
+			student_image: (students[0].student_image as string | null) || null,
+		},
+		outcome: {
+			outcome_id: String(students[0].task_student),
+			grading_status: (students[0].status as string | null) || 'Not Started',
+			procedural_status: (students[0].procedural_status as string | null) || null,
+			has_submission: Boolean(students[0].has_submission),
+			has_new_submission: Boolean(students[0].has_new_submission),
+			is_complete: Boolean(students[0].complete),
+			is_published: Boolean(students[0].visible_to_student),
+			published_on: null,
+			published_by: null,
+			official: {
+				score: (students[0].mark_awarded as number | null) || null,
+				grade: null,
+				grade_value: null,
+				feedback: (students[0].feedback as string | null) || null,
+			},
+			criteria: (students[0].criteria_scores as Array<Record<string, unknown>>).map(row => ({
+				criteria: String(row.assessment_criteria),
+				level: (row.level as string | null) || null,
+				points: (row.level_points as number | null) || null,
+			})),
+		},
+		latest_submission: null,
+		selected_submission: null,
+		submission_versions: [],
+		my_contribution: null,
+		moderation_history: [],
+		allowed_actions: {
+			can_edit_marking: true,
+			can_mark_submission_seen: true,
+			can_publish: true,
+			can_unpublish: true,
+			can_moderate: false,
+			show_review_tab: false,
+		},
+		submissions: [],
+		contributions: [],
+		...options?.drawer,
+	});
+	markNewSubmissionSeenMock.mockResolvedValue({ ok: true, outcome: 'OUT-1', has_new_submission: 0 });
+	publishOutcomesMock.mockResolvedValue({
+		outcomes: [{ outcome_id: 'OUT-1', is_published: true, published_on: null, published_by: null }],
+	});
+	unpublishOutcomesMock.mockResolvedValue({
+		outcomes: [{ outcome_id: 'OUT-1', is_published: false, published_on: null, published_by: null }],
+	});
 
 	return { group, task };
 }
@@ -310,6 +405,15 @@ async function openTask(title: string) {
 	);
 	expect(taskButton).not.toBeNull();
 	taskButton!.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+	await flushUi();
+}
+
+async function openStudentDrawer(studentName = 'Ada Lovelace') {
+	const studentButton = Array.from(document.querySelectorAll('button')).find(button =>
+		(button.textContent || '').includes(studentName)
+	);
+	expect(studentButton).not.toBeNull();
+	studentButton!.dispatchEvent(new MouseEvent('click', { bubbles: true }));
 	await flushUi();
 }
 
@@ -347,8 +451,12 @@ afterEach(() => {
 	getGridMock.mockReset();
 	getTaskGradebookMock.mockReset();
 	getTaskQuizManualReviewMock.mockReset();
+	getDrawerMock.mockReset();
+	markNewSubmissionSeenMock.mockReset();
+	publishOutcomesMock.mockReset();
 	repairTaskRosterMock.mockReset();
 	saveTaskQuizManualReviewMock.mockReset();
+	unpublishOutcomesMock.mockReset();
 	updateTaskStudentMock.mockReset();
 	while (cleanupFns.length) cleanupFns.pop()?.();
 	document.body.innerHTML = '';
@@ -526,8 +634,10 @@ describe('Gradebook page', () => {
 		mountPage();
 		await flushUi();
 		await openTask('Binary check');
+		await openStudentDrawer();
 
 		const text = document.body.textContent || '';
+		expect(getDrawerMock).toHaveBeenCalledWith({ outcome_id: 'OUT-1', submission_id: null, version: null });
 		expect(text).toContain('Yes / No');
 		expect(text).toContain('Yes');
 		expect(text).toContain('No');
@@ -551,6 +661,7 @@ describe('Gradebook page', () => {
 		mountPage();
 		await flushUi();
 		await openTask('Completion check');
+		await openStudentDrawer();
 
 		const text = document.body.textContent || '';
 		expect(text).toContain('Complete');
@@ -558,27 +669,23 @@ describe('Gradebook page', () => {
 		expect(text).not.toContain('Yes / No');
 	});
 
-	it('renders student visibility checkboxes inline in the student header', async () => {
+	it('shows release controls inside the official result tab', async () => {
 		mockGradebookFlow();
 
 		mountPage();
 		await flushUi();
 		await openTask('Task 1');
+		await openStudentDrawer();
 
-		const studentName = Array.from(document.querySelectorAll('p')).find(node =>
-			(node.textContent || '').includes('Ada Lovelace')
+		const officialTab = Array.from(document.querySelectorAll('button')).find(button =>
+			(button.textContent || '').includes('Official Result')
 		);
-		expect(studentName).not.toBeNull();
+		expect(officialTab).not.toBeNull();
+		officialTab!.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		await flushUi();
 
-		const studentHeader = studentName?.closest('div.border-b');
-		expect(studentHeader).not.toBeNull();
-
-		const visibilityRow = studentHeader?.querySelector('.gradebook-student-visibility');
-		expect(visibilityRow).not.toBeNull();
-		expect(visibilityRow?.textContent || '').toContain('Visible to Student');
-		expect(visibilityRow?.textContent || '').toContain('Visible to Guardian');
-		expect(visibilityRow?.querySelectorAll('input[type="checkbox"]').length).toBe(2);
-		expect(document.body.textContent || '').not.toContain('Visibility');
+		expect(document.body.textContent || '').toContain('Release');
+		expect(document.body.textContent || '').toContain('Current runtime still uses one published state');
 	});
 
 	it('renders criteria grading with criteria controls and comment box only when enabled', async () => {
@@ -609,6 +716,9 @@ describe('Gradebook page', () => {
 					student_id: 'S-001',
 					student_image: null,
 					status: 'Not Started',
+					procedural_status: null,
+					has_submission: 0,
+					has_new_submission: 0,
 					complete: 0,
 					mark_awarded: null,
 					feedback: 'Strong reflection.',
@@ -630,6 +740,7 @@ describe('Gradebook page', () => {
 		mountPage();
 		await flushUi();
 		await openTask('Rubric task');
+		await openStudentDrawer();
 
 		const text = document.body.textContent || '';
 		expect(text).toContain('Criteria Breakdown');
