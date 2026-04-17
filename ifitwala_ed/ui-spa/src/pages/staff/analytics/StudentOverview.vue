@@ -1644,7 +1644,7 @@ function toggleWellbeingExpanded(item: WellbeingTimelineItem) {
 									/>
 									<p v-else class="type-empty">Switch to course view to see breakdown.</p>
 
-									<div class="grid grid-cols-1 gap-2 text-xs md:grid-cols-3">
+									<div class="grid grid-cols-1 gap-2 text-xs sm:grid-cols-3">
 										<div class="mini-kpi-card min-w-0">
 											<p class="mini-kpi-label">Total days absent</p>
 											<p class="mini-kpi-value">
@@ -1900,7 +1900,7 @@ function toggleWellbeingExpanded(item: WellbeingTimelineItem) {
 								:option="wellbeingSeriesOption"
 							/>
 							<div v-else class="text-xs text-slate-400">No trend data yet.</div>
-							<div class="mt-3 grid grid-cols-1 gap-2 text-xs text-slate-600 2xl:grid-cols-3">
+							<div class="mt-3 grid grid-cols-1 gap-2 text-xs text-slate-600 lg:grid-cols-3">
 								<div class="min-w-0 rounded-lg bg-slate-50/70 px-3 py-2">
 									<p class="text-[11px] uppercase tracking-wide text-slate-500">
 										Open log follow-ups

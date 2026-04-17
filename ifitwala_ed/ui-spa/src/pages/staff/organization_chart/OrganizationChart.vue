@@ -26,24 +26,24 @@
 				</div>
 
 				<div class="org-chart-toolbar__actions">
-					<Button
-						appearance="primary"
-						class="org-chart-action type-button-label"
+					<button
+						type="button"
+						class="if-button if-button--primary org-chart-action type-button-label"
 						:disabled="!canExpandAll"
 						@click="expandAll"
 					>
 						<FeatherIcon name="maximize-2" class="h-4 w-4" />
 						<span>Expand all</span>
-					</Button>
-					<Button
-						appearance="secondary"
-						class="org-chart-action type-button-label"
+					</button>
+					<button
+						type="button"
+						class="if-button if-button--secondary org-chart-action type-button-label"
 						:disabled="!expandedView"
 						@click="collapseAll"
 					>
 						<FeatherIcon name="minimize-2" class="h-4 w-4" />
 						<span>Collapse</span>
-					</Button>
+					</button>
 				</div>
 			</FiltersBar>
 
@@ -141,7 +141,7 @@
 
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
-import { Button, FeatherIcon, FormControl } from 'frappe-ui';
+import { FeatherIcon, FormControl } from 'frappe-ui';
 
 import OrgChartNodeCard from '@/components/org-chart/OrgChartNodeCard.vue';
 import FiltersBar from '@/components/filters/FiltersBar.vue';

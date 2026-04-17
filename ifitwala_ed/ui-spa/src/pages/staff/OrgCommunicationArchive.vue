@@ -1,6 +1,6 @@
 <!-- ifitwala_ed/ui-spa/src/pages/staff/OrgCommunicationArchive.vue -->
 <template>
-	<div class="staff-shell min-w-0 space-y-6">
+	<div class="staff-shell min-w-0 space-y-4">
 		<!-- Header -->
 		<header class="page-header">
 			<div class="page-header__intro">
@@ -17,7 +17,7 @@
 		</header>
 
 		<!-- Filters Bar -->
-		<FiltersBar class="analytics-filters">
+		<FiltersBar class="analytics-filters org-archive__filters">
 			<!-- Organization -->
 			<div v-if="organizationOptions.length > 0" class="flex flex-col gap-1">
 				<label class="type-label">Organization</label>
@@ -1179,6 +1179,10 @@ function onDetailContentClick(event: MouseEvent) {
 </script>
 
 <style scoped>
+.org-archive__filters {
+	margin-bottom: 0;
+}
+
 .org-archive__grid {
 	min-height: 0;
 }

@@ -226,21 +226,22 @@
 												</div>
 											</div>
 											<div class="mt-3 flex flex-wrap justify-end gap-2">
-												<Button
-													appearance="secondary"
+												<button
+													type="button"
+													class="if-button if-button--secondary"
 													:disabled="submitting || attachmentSubmitting"
 													@click="resetLinkDraft"
 												>
 													Cancel
-												</Button>
-												<Button
-													appearance="primary"
-													:loading="attachmentSubmitting"
+												</button>
+												<button
+													type="button"
+													class="if-button if-button--primary"
 													:disabled="submitting || attachmentSubmitting || !linkDraftReady"
 													@click="submitLinkAttachment"
 												>
 													Add link
-												</Button>
+												</button>
 											</div>
 										</div>
 
@@ -609,21 +610,22 @@
 													</div>
 												</div>
 												<div class="mt-3 flex flex-wrap justify-end gap-2">
-													<Button
-														appearance="secondary"
+													<button
+														type="button"
+														class="if-button if-button--secondary"
 														:disabled="submitting || attachmentSubmitting"
 														@click="resetLinkDraft"
 													>
 														Cancel
-													</Button>
-													<Button
-														appearance="primary"
-														:loading="attachmentSubmitting"
+													</button>
+													<button
+														type="button"
+														class="if-button if-button--primary"
 														:disabled="submitting || attachmentSubmitting || !linkDraftReady"
 														@click="submitLinkAttachment"
 													>
 														Add link
-													</Button>
+													</button>
 												</div>
 											</div>
 
@@ -1143,29 +1145,30 @@
 								</div>
 
 								<footer class="if-overlay__footer flex flex-wrap items-center justify-end gap-2">
-									<Button
-										appearance="secondary"
+									<button
+										type="button"
+										class="if-button if-button--secondary"
 										:disabled="submitting"
 										@click="handleClose('programmatic')"
 									>
 										Cancel
-									</Button>
-									<Button
+									</button>
+									<button
 										v-if="!isClassEventMode"
-										appearance="secondary"
+										type="button"
+										class="if-button if-button--secondary"
 										:disabled="draftSubmitDisabled"
 										@click="submitDraft"
 									>
 										Save as draft
-									</Button>
-									<Button
-										appearance="primary"
-										:loading="submitting"
-										:disabled="publishSubmitDisabled"
+									</button>
+									<button
 										type="submit"
+										class="if-button if-button--primary"
+										:disabled="publishSubmitDisabled"
 									>
 										{{ primarySubmitLabel }}
-									</Button>
+									</button>
 								</footer>
 							</form>
 						</div>
@@ -1185,7 +1188,7 @@ import {
 	TransitionChild,
 	TransitionRoot,
 } from '@headlessui/vue';
-import { Button, FeatherIcon, FormControl, Spinner, TextEditor } from 'frappe-ui';
+import { FeatherIcon, FormControl, Spinner, TextEditor } from 'frappe-ui';
 
 import {
 	addOrgCommunicationLink,

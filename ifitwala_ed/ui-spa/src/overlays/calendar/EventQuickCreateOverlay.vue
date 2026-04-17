@@ -929,21 +929,22 @@
 						<footer
 							class="if-overlay__footer flex flex-wrap items-center justify-end gap-2 px-6 pb-6"
 						>
-							<Button
-								appearance="secondary"
+							<button
+								type="button"
+								class="if-button if-button--secondary"
 								:disabled="submitting"
 								@click="emitClose('programmatic')"
 							>
 								Cancel
-							</Button>
-							<Button
-								appearance="primary"
-								:loading="submitting"
+							</button>
+							<button
+								type="button"
+								class="if-button if-button--primary"
 								:disabled="submitting"
 								@click="submit"
 							>
 								{{ submitLabel }}
-							</Button>
+							</button>
 						</footer>
 					</DialogPanel>
 				</TransitionChild>
@@ -961,7 +962,7 @@ import {
 	TransitionChild,
 	TransitionRoot,
 } from '@headlessui/vue';
-import { Button, FeatherIcon, FormControl, Spinner } from 'frappe-ui';
+import { FeatherIcon, FormControl, Spinner } from 'frappe-ui';
 
 import { formatHumanDateTimeFields } from '@/lib/datetime';
 import {

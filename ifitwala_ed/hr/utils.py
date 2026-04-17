@@ -24,7 +24,7 @@ from frappe.utils import (
     today,
 )
 
-from ifitwala_ed.utilities.school_tree import get_school_lineage
+from ifitwala_ed.utilities.school_tree import get_ancestor_schools
 
 EARNED_LEAVE_CHUNK_SIZE = 100
 EARNED_LEAVE_DISPATCH_LOCK_KEY = "ifitwala_ed:scheduler:earned_leave:dispatch"
@@ -225,7 +225,7 @@ def _scope_staff_calendar_candidates(candidates, employee_school: str | None):
         return []
 
     if employee_school:
-        school_chain = get_school_lineage(employee_school)
+        school_chain = get_ancestor_schools(employee_school) or [employee_school]
         school_rank = {school: idx for idx, school in enumerate(school_chain)}
         scoped = [row for row in candidates if (row.get("school") or "").strip() in school_rank]
         scoped.sort(
@@ -244,6 +244,18 @@ def _scope_staff_calendar_candidates(candidates, employee_school: str | None):
         )
 
     return []
+
+
+def _linked_staff_calendar_from_candidates(candidates, calendar_name: str | None):
+    calendar_name = (calendar_name or "").strip()
+    if not calendar_name:
+        return None
+
+    for row in candidates or []:
+        if (row.get("name") or "").strip() == calendar_name:
+            return row
+
+    return None
 
 
 def resolve_staff_calendar_for_employee(
@@ -282,6 +294,12 @@ def resolve_staff_calendar_for_employee(
         end_date=end_date,
         ignore_calendar_name=ignore_calendar_name,
     )
+    if not linked_calendar:
+        linked_calendar = _linked_staff_calendar_from_candidates(candidates, ctx.current_holiday_lis)
+        if linked_calendar and _calendar_overlaps_window(linked_calendar, start_date, end_date):
+            linked_calendar["resolution"] = "employee_link"
+            return linked_calendar
+
     scoped = _scope_staff_calendar_candidates(candidates, ctx.school)
     if scoped:
         scoped[0]["resolution"] = "matched_scope"
@@ -324,6 +342,12 @@ def resolve_current_staff_calendar_for_employee(
         employee_group,
         ignore_calendar_name=ignore_calendar_name,
     )
+    if not linked_calendar:
+        linked_calendar = _linked_staff_calendar_from_candidates(candidates, ctx.current_holiday_lis)
+        if linked_calendar and _calendar_overlaps_window(linked_calendar, current_date, current_date):
+            linked_calendar["resolution"] = "employee_link"
+            return linked_calendar
+
     scoped = _scope_staff_calendar_candidates(candidates, ctx.school)
 
     active_candidates = [row for row in scoped if _calendar_overlaps_window(row, current_date, current_date)]

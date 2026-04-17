@@ -32,7 +32,6 @@ from ifitwala_ed.admission.admission_utils import (
     ensure_contact_for_email,
     ensure_inquiry_contact,
     get_applicant_scope_ancestors,
-    get_contact_email_options,
     get_contact_primary_email,
     has_complete_applicant_document_type_classification,
     is_applicant_document_type_in_scope,
@@ -2991,6 +2990,36 @@ def _resolve_applicant_contact(
     return contact_name or None
 
 
+def _invite_contact_email_options(contact_name: str | None) -> list[str]:
+    contact_name = (contact_name or "").strip()
+    if not contact_name:
+        return []
+
+    rows = frappe.get_all(
+        "Contact Email",
+        filters={"parent": contact_name},
+        fields=["email_id", "is_primary", "idx"],
+        order_by="is_primary desc, idx asc, creation asc",
+        ignore_permissions=True,
+    )
+    emails: list[str] = []
+    seen: set[str] = set()
+    for row in rows:
+        normalized = normalize_email_value(row.get("email_id"))
+        if not normalized or normalized in seen:
+            continue
+        seen.add(normalized)
+        emails.append(normalized)
+    return emails
+
+
+def _invite_contact_primary_email(contact_name: str | None) -> str | None:
+    options = _invite_contact_email_options(contact_name)
+    if options:
+        return options[0]
+    return get_contact_primary_email(contact_name)
+
+
 def _require_family_workspace_mode() -> None:
     if not is_family_workspace_enabled():
         frappe.throw(
@@ -3213,7 +3242,7 @@ def get_invite_email_options(*, student_applicant: str | None = None) -> dict:
             seen.add(value)
             emails.append(value)
 
-    for value in get_contact_email_options(contact_name):
+    for value in _invite_contact_email_options(contact_name):
         if value and value not in seen:
             seen.add(value)
             emails.append(value)
@@ -3260,7 +3289,7 @@ def invite_applicant(*, student_applicant: str | None = None, email: str | None 
     contact_name = _resolve_applicant_contact(applicant, invite_email=email, allow_create=True)
     if not contact_name:
         frappe.throw(_("Unable to resolve Applicant Contact for this invite."))
-    primary_contact_email = get_contact_primary_email(contact_name) or email
+    primary_contact_email = _invite_contact_primary_email(contact_name) or email
 
     if applicant.applicant_user:
         user_doc = frappe.get_doc("User", linked_user)
@@ -3295,7 +3324,7 @@ def invite_applicant(*, student_applicant: str | None = None, email: str | None 
     if frappe.db.exists("User", email):
         user_doc = frappe.get_doc("User", email)
         existing_roles = {row.role for row in (user_doc.roles or [])}
-        non_portal_roles = existing_roles - {ADMISSIONS_ROLE}
+        non_portal_roles = existing_roles - {ADMISSIONS_ROLE, "All", "Guest", "Desk User"}
         if non_portal_roles:
             frappe.throw(_("User already has non-admissions roles and cannot be invited."))
     else:
@@ -3306,6 +3335,8 @@ def invite_applicant(*, student_applicant: str | None = None, email: str | None 
                 "first_name": applicant.first_name or email,
                 "last_name": applicant.last_name or "",
                 "enabled": 1,
+                "username": email,
+                "user_type": "Website User",
             }
         )
         user_doc.append("roles", {"role": ADMISSIONS_ROLE})

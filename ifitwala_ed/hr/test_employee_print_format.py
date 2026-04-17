@@ -120,6 +120,7 @@ class TestEmployeePrintFormat(unittest.TestCase):
             ".crm-grid",
             ".history-entry",
             ".hero-card",
+            ".history-detail-table",
             ".profile-photo",
             "Employee Profile",
             "Linked Contact and Address",

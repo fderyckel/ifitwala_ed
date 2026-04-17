@@ -353,13 +353,14 @@
 														placeholder="Search by title"
 													/>
 												</div>
-												<Button
-													appearance="secondary"
+												<button
+													type="button"
+													class="if-button if-button--quiet"
 													:disabled="!form.student_group || taskLibraryLoading"
 													@click="loadReusableTasks"
 												>
 													Refresh library
-												</Button>
+												</button>
 											</div>
 
 											<div
@@ -677,9 +678,13 @@
 											v-if="errorRecovery === 'open-class-planning' && form.student_group"
 											class="mt-3"
 										>
-											<Button appearance="secondary" @click="openClassPlanning">
+											<button
+												type="button"
+												class="if-button if-button--secondary"
+												@click="openClassPlanning"
+											>
 												Open class planning
-											</Button>
+											</button>
 										</div>
 									</div>
 								</template>
@@ -822,9 +827,13 @@
 												@change="onMaterialFileSelected"
 											/>
 											<div class="flex flex-wrap items-center gap-3">
-												<Button appearance="secondary" @click="materialFileInput?.click()">
+												<button
+													type="button"
+													class="if-button if-button--secondary"
+													@click="materialFileInput?.click()"
+												>
 													Choose file
-												</Button>
+												</button>
 												<p class="type-caption text-ink/70">
 													{{ selectedMaterialFile?.name || 'No file selected yet.' }}
 												</p>
@@ -839,14 +848,22 @@
 										</div>
 
 										<div class="flex justify-end">
-											<Button
-												appearance="primary"
-												:loading="materialSubmitting"
-												:disabled="!canAddMaterial"
+											<button
+												type="button"
+												class="if-button if-button--primary"
+												:disabled="!canAddMaterial || materialSubmitting"
 												@click="addMaterial"
 											>
-												{{ materialComposerMode === 'link' ? 'Add link' : 'Upload file' }}
-											</Button>
+												{{
+													materialSubmitting
+														? materialComposerMode === 'link'
+															? 'Adding…'
+															: 'Uploading…'
+														: materialComposerMode === 'link'
+															? 'Add link'
+															: 'Upload file'
+												}}
+											</button>
 										</div>
 									</section>
 
@@ -989,13 +1006,14 @@
 														>
 															Open original
 														</a>
-														<Button
-															appearance="secondary"
-															:loading="removingPlacement === material.placement"
+														<button
+															type="button"
+															class="if-button if-button--danger"
+															:disabled="removingPlacement === material.placement"
 															@click="removeMaterial(material.placement)"
 														>
 															Remove
-														</Button>
+														</button>
 													</div>
 												</div>
 											</article>
@@ -1007,18 +1025,22 @@
 
 						<!-- Footer -->
 						<div class="if-overlay__footer">
-							<Button appearance="secondary" @click="emitClose('programmatic')">
+							<button
+								type="button"
+								class="if-button if-button--secondary"
+								@click="emitClose('programmatic')"
+							>
 								{{ createdTask ? 'Done' : 'Cancel' }}
-							</Button>
-							<Button
+							</button>
+							<button
 								v-if="!createdTask"
-								appearance="primary"
-								:loading="submitting"
+								type="button"
+								class="if-button if-button--primary"
 								:disabled="!canSubmit"
 								@click="submit"
 							>
 								{{ submitLabel }}
-							</Button>
+							</button>
 						</div>
 					</DialogPanel>
 				</TransitionChild>
@@ -1036,7 +1058,7 @@ import {
 	TransitionChild,
 	TransitionRoot,
 } from '@headlessui/vue';
-import { Button, FormControl, createResource, toast, FeatherIcon } from 'frappe-ui';
+import { FormControl, createResource, toast, FeatherIcon } from 'frappe-ui';
 import { useRouter } from 'vue-router';
 import { SIGNAL_TASK_DELIVERY_CREATED, uiSignals } from '@/lib/uiSignals';
 import type {

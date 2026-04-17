@@ -158,7 +158,9 @@
 		</div>
 		<div class="hero-image">
 			{% if doc.employee_image %}
-			<img src="{{ frappe.utils.escape_html(doc.employee_image) }}" alt="{{ frappe.utils.escape_html(full_name) }}">
+			<div class="hero-image__frame">
+				<img src="{{ frappe.utils.escape_html(doc.employee_image) }}" alt="{{ frappe.utils.escape_html(full_name) }}">
+			</div>
 			{% else %}
 			<div class="profile-photo profile-photo--fallback">No Image</div>
 			{% endif %}
@@ -316,40 +318,34 @@
 						<span>{{ text_value(row.school) }}</span>
 					</div>
 				</div>
-				<div class="history-entry__details">
-					<div class="history-entry__column">
-						<div class="history-row">
-							<div class="history-entry__label">From Date</div>
-							<div class="history-entry__value">{{ text_value(frappe.utils.formatdate(row.from_date) if row.from_date else "") }}</div>
-						</div>
-						<div class="history-row">
-							<div class="history-entry__label">To Date</div>
-							<div class="history-entry__value">{{ text_value(frappe.utils.formatdate(row.to_date) if row.to_date else "") }}</div>
-						</div>
-						<div class="history-row">
-							<div class="history-entry__label">Is Current</div>
-							<div class="history-entry__value">{{ yes_no(row.is_current) }}</div>
-						</div>
-					</div>
-					<div class="history-entry__column">
-						<div class="history-row">
-							<div class="history-entry__label">Access Mode</div>
-							<div class="history-entry__value">{{ text_value(row.access_mode) }}</div>
-						</div>
-						<div class="history-row">
-							<div class="history-entry__label">Role Profile</div>
-							<div class="history-entry__value">{{ text_value(row.role_profile) }}</div>
-						</div>
-						<div class="history-row">
-							<div class="history-entry__label">Workspace Override</div>
-							<div class="history-entry__value">{{ text_value(row.workspace_override) }}</div>
-						</div>
-						<div class="history-row">
-							<div class="history-entry__label">Priority</div>
-							<div class="history-entry__value">{{ text_value(row.priority) }}</div>
-						</div>
-					</div>
-				</div>
+				<table class="history-detail-table">
+					<tbody>
+						<tr>
+							<th>From Date</th>
+							<td>{{ text_value(frappe.utils.formatdate(row.from_date) if row.from_date else "") }}</td>
+							<th>Access Mode</th>
+							<td>{{ text_value(row.access_mode) }}</td>
+						</tr>
+						<tr>
+							<th>To Date</th>
+							<td>{{ text_value(frappe.utils.formatdate(row.to_date) if row.to_date else "") }}</td>
+							<th>Role Profile</th>
+							<td>{{ text_value(row.role_profile) }}</td>
+						</tr>
+						<tr>
+							<th>Is Current</th>
+							<td>{{ yes_no(row.is_current) }}</td>
+							<th>Workspace Override</th>
+							<td>{{ text_value(row.workspace_override) }}</td>
+						</tr>
+						<tr>
+							<th>Priority</th>
+							<td>{{ text_value(row.priority) }}</td>
+							<th></th>
+							<td></td>
+						</tr>
+					</tbody>
+				</table>
 				<div class="history-entry__note">
 					<div class="history-entry__label">Note</div>
 					<div class="history-entry__value">{{ multiline_value(row.note) }}</div>
