@@ -280,6 +280,18 @@ const interactiveThreadQuickCreateOptions = {
 	},
 };
 
+const everywhereQuickCreateOptions = {
+	...quickCreateOptions,
+	defaults: {
+		...quickCreateOptions.defaults,
+		portal_surface: 'Everywhere',
+	},
+	fields: {
+		...quickCreateOptions.fields,
+		portal_surfaces: ['Desk', 'Everywhere'],
+	},
+};
+
 async function flushUi() {
 	await Promise.resolve();
 	await nextTick();
@@ -689,6 +701,78 @@ describe('OrgCommunicationQuickCreateModal', () => {
 					}),
 				],
 			});
+	});
+
+	it('lets staff-home save a draft before brief dates are filled for everywhere surface', async () => {
+		getOptionsMock.mockResolvedValue(everywhereQuickCreateOptions);
+		createOrgCommunicationQuickMock.mockResolvedValue({
+			ok: true,
+			status: 'created',
+			name: 'COMM-DRAFT-EVERYWHERE',
+			title: 'Weekly staff update',
+		});
+
+		mountModal();
+		await flushUi();
+
+		clickRecipient('Guardians');
+		await flushUi();
+		clickButton('Save as draft');
+		await flushUi();
+
+		expect(createOrgCommunicationQuickMock).toHaveBeenCalledTimes(1);
+		expect(createOrgCommunicationQuickMock.mock.calls[0][0]).toMatchObject({
+			status: 'Draft',
+			portal_surface: 'Everywhere',
+			brief_start_date: null,
+		});
+	});
+
+	it('auto-saves a staff-home link draft before brief dates are filled for everywhere surface', async () => {
+		getOptionsMock.mockResolvedValue(everywhereQuickCreateOptions);
+		createOrgCommunicationQuickMock.mockResolvedValue({
+			ok: true,
+			status: 'created',
+			name: 'COMM-DRAFT-EVERYWHERE-LINK',
+			title: 'Weekly staff update',
+		});
+		addOrgCommunicationLinkMock.mockResolvedValue({
+			ok: true,
+			org_communication: 'COMM-DRAFT-EVERYWHERE-LINK',
+			attachment: {
+				row_name: 'row-link-everywhere',
+				kind: 'link',
+				title: 'Health advisory',
+				external_url: 'https://example.com/health-advisory',
+				open_url: 'https://example.com/health-advisory',
+			},
+		});
+
+		mountModal();
+		await flushUi();
+
+		clickRecipient('Guardians');
+		await flushUi();
+		clickButton('Add link');
+		await flushUi();
+		setInputByPlaceholder('https://example.com/resource.pdf', 'https://example.com/health-advisory');
+		setInputByPlaceholder('Optional display label', 'Health advisory');
+		await flushUi();
+		clickButton('Add link');
+		await flushUi();
+
+		expect(createOrgCommunicationQuickMock).toHaveBeenCalledTimes(1);
+		expect(createOrgCommunicationQuickMock.mock.calls[0][0]).toMatchObject({
+			status: 'Draft',
+			portal_surface: 'Everywhere',
+			brief_start_date: null,
+		});
+		expect(addOrgCommunicationLinkMock).toHaveBeenCalledWith({
+			org_communication: 'COMM-DRAFT-EVERYWHERE-LINK',
+			title: 'Health advisory',
+			external_url: 'https://example.com/health-advisory',
+		});
+		expect(document.body.textContent || '').toContain('Health advisory');
 	});
 
 	it('auto-saves a class-event draft before adding a link attachment and publishes by update', async () => {

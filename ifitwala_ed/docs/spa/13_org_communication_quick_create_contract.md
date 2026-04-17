@@ -118,6 +118,7 @@ Rules:
 7. In this contract, `allow_public_thread` means recipient-visible shared audience thread entries for the communication's resolved audience, not public web visibility.
 8. The resolved audience may include staff, students, and/or guardians depending on the selected audience rows.
 9. `allow_private_notes` remains the school-side/private notes setting and must not be described in the UI or docs as recipient-visible thread sharing.
+10. Draft saves, including attachment auto-save, may omit Morning Brief dates temporarily; `brief_start_date` becomes required when the communication is scheduled or published with `portal_surface='Morning Brief' | 'Everywhere'`.
 
 ## 4. Quick-Create Attachment Contract
 

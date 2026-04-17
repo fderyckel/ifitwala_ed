@@ -592,3 +592,52 @@ class TestOrgCommunication(FrappeTestCase):
         self.assertEqual(ctx.get("allowed_schools"), ["SCH-ORG-A"])
         self.assertEqual(ctx.get("lock_to_default_school"), False)
         self.assertEqual(ctx.get("can_select_school"), True)
+
+    def test_privileged_context_uses_org_scope_schools_when_default_school_missing(self):
+        with (
+            patch(
+                "ifitwala_ed.setup.doctype.org_communication.org_communication._get_school_scope_tree",
+                return_value=(None, []),
+            ),
+            patch(
+                "ifitwala_ed.setup.doctype.org_communication.org_communication._user_has_any_role",
+                return_value=True,
+            ),
+            patch(
+                "ifitwala_ed.setup.doctype.org_communication.org_communication._get_org_scope_schools_for_user",
+                return_value=["SCH-ORG-A", "SCH-ORG-B"],
+            ),
+            patch(
+                "ifitwala_ed.setup.doctype.org_communication.org_communication._resolve_user_base_org",
+                return_value="ORG-ROOT",
+            ),
+            patch(
+                "ifitwala_ed.setup.doctype.org_communication.org_communication._resolve_user_org_scope",
+                return_value=["ORG-ROOT", "ORG-CHILD"],
+            ),
+        ):
+            ctx = org_communication_controller.get_org_communication_context()
+
+        self.assertEqual(ctx.get("allowed_schools"), ["SCH-ORG-A", "SCH-ORG-B"])
+        self.assertEqual(ctx.get("default_organization"), "ORG-ROOT")
+        self.assertEqual(ctx.get("allowed_organizations"), ["ORG-ROOT", "ORG-CHILD"])
+        self.assertEqual(ctx.get("can_select_school"), True)
+
+    def test_draft_can_skip_brief_start_date_for_everywhere_surface(self):
+        doc = frappe._dict(
+            status="Draft",
+            portal_surface="Everywhere",
+            brief_start_date=None,
+        )
+
+        org_communication_controller.OrgCommunication._enforce_portal_surface_rules(doc)
+
+    def test_published_everywhere_requires_brief_start_date(self):
+        doc = frappe._dict(
+            status="Published",
+            portal_surface="Everywhere",
+            brief_start_date=None,
+        )
+
+        with self.assertRaises(frappe.ValidationError):
+            org_communication_controller.OrgCommunication._enforce_portal_surface_rules(doc)

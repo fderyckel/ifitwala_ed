@@ -723,8 +723,9 @@ class OrgCommunication(Document):
     def _enforce_portal_surface_rules(self):
         """Ensure portal_surface is compatible with brief dates."""
         portal_surface = (self.portal_surface or "").strip()
+        status = (self.status or "").strip()
 
-        if portal_surface in {"Morning Brief", "Everywhere"}:
+        if portal_surface in {"Morning Brief", "Everywhere"} and status in {"Published", "Scheduled"}:
             if not self.brief_start_date:
                 frappe.throw(
                     _("Brief Start Date is required when Portal Surface is Morning Brief or Everywhere."),
@@ -982,11 +983,10 @@ def get_org_communication_context() -> dict:
     if not org_scope and base_org:
         org_scope = _get_descendant_organizations_uncached(base_org)
 
-    # For non-privileged users without a default school, allow selecting from
-    # schools inside their effective organization scope.
+    # When no default school is configured, school selection comes from the
+    # effective organization scope so org-scoped admins can still target a
+    # specific school from quick-create.
     if default_school:
-        allowed_schools = school_tree
-    elif is_privileged:
         allowed_schools = school_tree
     else:
         allowed_schools = _get_org_scope_schools_for_user(user)

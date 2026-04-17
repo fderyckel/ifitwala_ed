@@ -1191,10 +1191,6 @@ onBeforeUnmount(() => {
 </template>
 
 <style scoped>
-.attendance-analytics-shell {
-	max-width: none;
-}
-
 .attendance-analytics-grid {
 	grid-template-columns: minmax(0, 1fr);
 }

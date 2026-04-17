@@ -799,6 +799,14 @@
 														/>
 													</div>
 												</div>
+												<div
+													v-if="deliveryValidationMessage"
+													class="md:col-span-2 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3"
+												>
+													<p class="type-caption text-rose-900">
+														{{ deliveryValidationMessage }}
+													</p>
+												</div>
 											</div>
 										</section>
 
@@ -825,6 +833,15 @@
 												>
 													Add audience
 												</button>
+											</div>
+
+											<div
+												v-if="audienceValidationMessage"
+												class="mt-4 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3"
+											>
+												<p class="type-caption text-rose-900">
+													{{ audienceValidationMessage }}
+												</p>
 											</div>
 
 											<div class="mt-4 space-y-4">
@@ -1122,7 +1139,7 @@
 									<Button
 										v-if="!isClassEventMode"
 										appearance="secondary"
-										:disabled="submitDisabled"
+										:disabled="draftSubmitDisabled"
 										@click="submitDraft"
 									>
 										Save as draft
@@ -1130,7 +1147,7 @@
 									<Button
 										appearance="primary"
 										:loading="submitting"
-										:disabled="submitDisabled"
+										:disabled="publishSubmitDisabled"
 										type="submit"
 									>
 										{{ primarySubmitLabel }}
@@ -1537,7 +1554,7 @@ function getValidationMessage(draftMode = false) {
 	if (!form.communication_type) return 'Communication type is required.';
 	if (!draftMode && !form.status) return 'Status is required.';
 	if (!form.organization) return 'Organization is required.';
-	if (briefDatesRequired.value && !form.brief_start_date) {
+	if (!draftMode && briefDatesRequired.value && !form.brief_start_date) {
 		return 'Brief Start Date is required when Portal Surface is Morning Brief or Everywhere.';
 	}
 	if (
@@ -1591,11 +1608,52 @@ function getValidationMessage(draftMode = false) {
 	return '';
 }
 
-const validationMessage = computed(() => getValidationMessage(false));
+const publishValidationMessage = computed(() => getValidationMessage(false));
+const draftValidationMessage = computed(() => getValidationMessage(true));
 
-const submitDisabled = computed(
+const deliveryValidationMessage = computed(() => {
+	const message = publishValidationMessage.value;
+	if (!message) return '';
+	if (
+		message.startsWith('Brief Start Date') ||
+		message.startsWith('Brief End Date') ||
+		message.startsWith('Publish Until') ||
+		message.startsWith('Publish From') ||
+		message.startsWith('Scheduled communications')
+	) {
+		return message;
+	}
+	return '';
+});
+
+const audienceValidationMessage = computed(() => {
+	const message = draftValidationMessage.value || publishValidationMessage.value;
+	if (!message) return '';
+	if (
+		message.startsWith('Please add at least one Audience') ||
+		message.startsWith('Target Mode') ||
+		message.startsWith('Audience row') ||
+		message.startsWith('You are not allowed to target Staff')
+	) {
+		return message;
+	}
+	return '';
+});
+
+const draftSubmitDisabled = computed(
 	() =>
-		submitting.value || optionsLoading.value || !options.value || Boolean(validationMessage.value)
+		submitting.value ||
+		optionsLoading.value ||
+		!options.value ||
+		Boolean(draftValidationMessage.value)
+);
+
+const publishSubmitDisabled = computed(
+	() =>
+		submitting.value ||
+		optionsLoading.value ||
+		!options.value ||
+		Boolean(publishValidationMessage.value)
 );
 
 function emitAfterLeave() {
@@ -2016,7 +2074,7 @@ function formatFileSize(value: number | string | null | undefined) {
 
 async function ensureSavedDraft() {
 	if (savedCommunicationName.value) return savedCommunicationName.value;
-	const draftValidationError = getValidationMessage(true);
+	const draftValidationError = draftValidationMessage.value;
 	if (draftValidationError) {
 		throw new Error(draftValidationError);
 	}
@@ -2122,7 +2180,8 @@ async function submitPublish() {
 }
 
 async function submitWithStatus(statusOverride: string) {
-	const validationError = getValidationMessage(false);
+	const validationError =
+		statusOverride === 'Draft' ? draftValidationMessage.value : publishValidationMessage.value;
 	if (validationError) {
 		errorMessage.value = validationError;
 		return;

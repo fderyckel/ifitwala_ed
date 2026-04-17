@@ -451,13 +451,14 @@ def _attendance_code_meta(code_map: dict[str, dict], attendance_code: str | None
     code_value = code.get("attendance_code") or attendance_code
     label = (code.get("attendance_code_name") or code_value or "").strip()
     label_lower = label.lower()
+    is_excused = "excuse" in label_lower or "informed" in label_lower
 
     return {
         "attendance_code": code_value,
         "attendance_code_name": label or code_value,
         "count_as_present": bool(code.get("count_as_present")),
         "is_late": bool(code.get("is_late")),
-        "is_excused": "excuse" in label_lower,
+        "is_excused": is_excused,
         "color": code.get("color") or "#cbd5e1",
     }
 
