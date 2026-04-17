@@ -133,6 +133,14 @@ describe('GuardianAttendance', () => {
 		expect(dayButton).toBeTruthy()
 		expect(dayButton?.className).toContain('bg-jacaranda/12')
 		expect(dayButton?.className).toContain('border-[1.5px]')
+
+		const onTrackCard = document.querySelector('.border-\\[rgb\\(var\\(--moss-rgb\\)\\/0\\.55\\)\\]') as HTMLElement | null
+		const lateCard = document.querySelector('.border-\\[rgb\\(var\\(--jacaranda-rgb\\)\\/0\\.55\\)\\]') as HTMLElement | null
+		const absentCard = document.querySelector('.border-\\[rgb\\(var\\(--flame-rgb\\)\\/0\\.55\\)\\]') as HTMLElement | null
+		expect(onTrackCard?.textContent).toContain('On track')
+		expect(lateCard?.textContent).toContain('Late or tardy')
+		expect(absentCard?.textContent).toContain('Absent')
+
 		dayButton?.click()
 		await flushUi()
 

@@ -10,6 +10,9 @@ from ifitwala_ed.admission.admission_utils import ADMISSIONS_ROLES
 from ifitwala_ed.api.attendance import ADMIN_ROLES, COUNSELOR_ROLES, INSTRUCTOR_ROLES
 from ifitwala_ed.api.enrollment_analytics import ALLOWED_ANALYTICS_ROLES as ENROLLMENT_ANALYTICS_ROLES
 from ifitwala_ed.api.inquiry import ALLOWED_ANALYTICS_ROLES as INQUIRY_ANALYTICS_ROLES
+from ifitwala_ed.api.org_communication_quick_create import (
+    get_org_communication_quick_create_capability,
+)
 from ifitwala_ed.api.policy_signature import (
     POLICY_LIBRARY_ROLES,
     POLICY_SIGNATURE_ANALYTICS_ROLES,
@@ -92,7 +95,12 @@ def _resolve_staff_first_name(user: str, user_first_name: str | None, user_full_
     return "Staff"
 
 
-def _build_staff_home_capabilities(roles: set[str], user: str | None = None) -> dict[str, bool]:
+def _build_staff_home_capabilities(
+    roles: set[str],
+    user: str | None = None,
+    *,
+    org_communication_quick_action_state: dict[str, bool | str | None] | None = None,
+) -> dict[str, bool]:
     attendance_roles = set(ADMIN_ROLES) | set(COUNSELOR_ROLES) | set(INSTRUCTOR_ROLES)
     has_instructor_role = ROLE_INSTRUCTOR in roles
     has_academic_staff_role = ROLE_ACADEMIC_STAFF in roles
@@ -100,7 +108,12 @@ def _build_staff_home_capabilities(roles: set[str], user: str | None = None) -> 
     if user:
         can_create_meeting = bool(frappe.has_permission("Meeting", ptype="create", user=user))
         can_create_school_event = bool(frappe.has_permission("School Event", ptype="create", user=user))
-        can_create_org_communication = bool(frappe.has_permission("Org Communication", ptype="create", user=user))
+        org_communication_quick_action_state = (
+            org_communication_quick_action_state
+            if org_communication_quick_action_state is not None
+            else get_org_communication_quick_create_capability(user=user)
+        )
+        can_create_org_communication = bool(org_communication_quick_action_state.get("enabled"))
     else:
         can_create_meeting = bool(roles & set(MEETING_CREATE_ROLES))
         can_create_school_event = bool(roles & set(SCHOOL_EVENT_CREATE_ROLES))
@@ -267,7 +280,7 @@ def get_staff_home_header():
         frappe.throw(_("You must be logged in."), frappe.PermissionError)
 
     cache = frappe.cache()
-    cache_key = f"staff_home:header:v5:{user}"
+    cache_key = f"staff_home:header:v6:{user}"
     cached = cache.get_value(cache_key)
     if cached:
         try:
@@ -281,12 +294,20 @@ def get_staff_home_header():
 
     first_name = _resolve_staff_first_name(user, row.first_name, row.full_name)
     roles = set(frappe.get_roles(user))
+    org_communication_quick_action_state = get_org_communication_quick_create_capability(user=user)
 
     payload = {
         "user": row.name,
         "first_name": first_name,
         "full_name": row.full_name,
-        "capabilities": _build_staff_home_capabilities(roles, user=user),
+        "capabilities": _build_staff_home_capabilities(
+            roles,
+            user=user,
+            org_communication_quick_action_state=org_communication_quick_action_state,
+        ),
+        "quick_actions": {
+            "org_communication": org_communication_quick_action_state,
+        },
     }
 
     cache.set_value(cache_key, frappe.as_json(payload), expires_in_sec=CACHE_TTL_SECONDS)

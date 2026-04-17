@@ -49,6 +49,8 @@ import {
 	addOrgCommunicationLink,
 	createOrgCommunicationQuick,
 	removeOrgCommunicationAttachment,
+	searchOrgCommunicationStudentGroups,
+	searchOrgCommunicationTeams,
 	uploadOrgCommunicationAttachment,
 } from '@/lib/services/orgCommunicationQuickCreateService'
 
@@ -134,6 +136,50 @@ describe('orgCommunicationQuickCreateService', () => {
 			names: ['COMM-LINK-1'],
 			reason: 'org_communication_attachment',
 		})
+	})
+
+	it('searchOrgCommunicationTeams calls the canonical quick-create team search endpoint', async () => {
+		apiMock.mockResolvedValue({
+			results: [{ name: 'TEAM-1', team_name: 'Operations', team_code: 'OPS' }],
+		})
+
+		await searchOrgCommunicationTeams({
+			query: 'ops',
+			organization: 'ORG-1',
+			school: 'SCH-1',
+			limit: 8,
+		})
+
+		expect(apiMock).toHaveBeenCalledWith(
+			'ifitwala_ed.api.org_communication_quick_create.search_org_communication_teams',
+			{
+				query: 'ops',
+				organization: 'ORG-1',
+				school: 'SCH-1',
+				limit: 8,
+			}
+		)
+	})
+
+	it('searchOrgCommunicationStudentGroups calls the canonical quick-create student-group search endpoint', async () => {
+		apiMock.mockResolvedValue({
+			results: [{ name: 'SG-1', student_group_name: 'Grade 6 Math' }],
+		})
+
+		await searchOrgCommunicationStudentGroups({
+			query: 'math',
+			school: 'SCH-1',
+			limit: 8,
+		})
+
+		expect(apiMock).toHaveBeenCalledWith(
+			'ifitwala_ed.api.org_communication_quick_create.search_org_communication_student_groups',
+			{
+				query: 'math',
+				school: 'SCH-1',
+				limit: 8,
+			}
+		)
 	})
 
 	it('removeOrgCommunicationAttachment emits invalidate after remove success', async () => {

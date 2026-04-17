@@ -407,6 +407,11 @@ def sync_current_staff_calendar_for_employee(
 
 
 def get_holiday_list_for_employee(employee, organization=None, raise_exception=True):
+    ctx = _get_employee_context(employee)
+    linked_calendar = (ctx.get("current_holiday_lis") or "").strip() if ctx else ""
+    if linked_calendar:
+        return linked_calendar
+
     calendar_row = resolve_current_staff_calendar_for_employee(employee)
     if calendar_row:
         return calendar_row.get("name")
@@ -419,12 +424,19 @@ def get_holiday_list_for_employee(employee, organization=None, raise_exception=T
 def get_holidays_for_employee(employee, start_date, end_date, raise_exception=True, only_non_weekly=False):
     start_date = getdate(start_date)
     end_date = getdate(end_date)
-    calendar_row = resolve_staff_calendar_for_employee(employee, start_date=start_date, end_date=end_date)
+    ctx = _get_employee_context(employee)
+    linked_calendar = (ctx.get("current_holiday_lis") or "").strip() if ctx else ""
+    calendar_name = linked_calendar
+
+    calendar_row = None
+    if not calendar_name:
+        calendar_row = resolve_staff_calendar_for_employee(employee, start_date=start_date, end_date=end_date)
+        calendar_name = (calendar_row or {}).get("name")
 
     holidays = []
-    if calendar_row:
+    if calendar_name:
         filters = {
-            "parent": calendar_row.get("name"),
+            "parent": calendar_name,
             "holiday_date": ("between", [start_date, end_date]),
         }
         if only_non_weekly:

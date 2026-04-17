@@ -71,3 +71,40 @@ class TestPortalIdentity(FrappeTestCase):
         self.assertEqual(payload["email"], "guardian@example.com")
         self.assertIsNone(payload["image_url"])
         image_mock.assert_not_called()
+
+
+class TestStaffHomeHeader(FrappeTestCase):
+    def test_get_staff_home_header_includes_disabled_org_communication_quick_action_state(self):
+        cache = frappe.cache()
+
+        with (
+            patch("ifitwala_ed.api.portal.frappe.session", frappe._dict({"user": "staff@example.com"})),
+            patch("ifitwala_ed.api.portal.frappe.cache", return_value=cache),
+            patch.object(cache, "get_value", return_value=None),
+            patch.object(cache, "set_value"),
+            patch(
+                "ifitwala_ed.api.portal.frappe.db.get_value",
+                return_value={
+                    "name": "staff@example.com",
+                    "first_name": "Mali",
+                    "full_name": "Mali Bangkok",
+                },
+            ),
+            patch("ifitwala_ed.api.portal.frappe.get_roles", return_value=["Employee"]),
+            patch("ifitwala_ed.api.portal._resolve_staff_first_name", return_value="Mali"),
+            patch(
+                "ifitwala_ed.api.portal.get_org_communication_quick_create_capability",
+                return_value={
+                    "enabled": False,
+                    "blocked_reason": "Set a default organization first.",
+                },
+            ),
+        ):
+            payload = portal.get_staff_home_header()
+
+        self.assertEqual(payload["first_name"], "Mali")
+        self.assertFalse(payload["capabilities"]["quick_action_org_communication"])
+        self.assertEqual(
+            payload["quick_actions"]["org_communication"]["blocked_reason"],
+            "Set a default organization first.",
+        )

@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import date
-from typing import Dict, Iterable, List, Optional, Tuple
+from typing import Dict, Iterable, List, Optional
 
 import frappe
 from frappe import _
@@ -17,6 +17,18 @@ from ifitwala_ed.schedule.schedule_utils import get_effective_schedule_for_ay, g
 from ifitwala_ed.schedule.student_group_scheduling import get_school_for_student_group
 
 COURSE_PLACEHOLDER = "/assets/ifitwala_ed/images/course_placeholder.jpg"
+COURSE_SCHEDULE_CACHE_PREFIX = "ifw:course_schedule:"
+COURSE_SCHEDULE_TERM_PREFIX = f"{COURSE_SCHEDULE_CACHE_PREFIX}term:"
+COURSE_SCHEDULE_ROTATION_PREFIX = f"{COURSE_SCHEDULE_CACHE_PREFIX}rotation:"
+COURSE_SCHEDULE_DEPENDENT_PREFIXES = (
+    COURSE_SCHEDULE_CACHE_PREFIX,
+    "ifw:eff_sched_ay:",
+    "effective_schedule::",
+)
+COURSE_SCHEDULE_CACHE_TTL = 21600
+COURSE_SCHEDULE_CACHE_MISS = "__none__"
+EFFECTIVE_SCHEDULE_AY_PREFIX = "ifw:eff_sched_ay:"
+EFFECTIVE_SCHEDULE_CALENDAR_PREFIX = "effective_schedule::"
 
 
 @dataclass(slots=True)
@@ -93,22 +105,55 @@ def _fetch_student_course_groups(student: str) -> List[frappe._dict]:
     )
 
 
-def _within_term(term_name: Optional[str], today: date, cache: Dict[str, dict]) -> bool:
+def _course_schedule_cache():
+    return frappe.cache()
+
+
+def _cache_key_for_term(term_name: str) -> str:
+    return f"{COURSE_SCHEDULE_TERM_PREFIX}{term_name}"
+
+
+def _cache_key_for_rotation(schedule_name: str, academic_year: str) -> str:
+    return f"{COURSE_SCHEDULE_ROTATION_PREFIX}{schedule_name}:{academic_year}"
+
+
+def _cache_shared_value(key: str, value):
+    cached_value = value if value is not None else COURSE_SCHEDULE_CACHE_MISS
+    _course_schedule_cache().set_value(key, cached_value, expires_in_sec=COURSE_SCHEDULE_CACHE_TTL)
+
+
+def _get_cached_shared_value(key: str):
+    cached = _course_schedule_cache().get_value(key)
+    if cached == COURSE_SCHEDULE_CACHE_MISS:
+        return True, None
+    if cached is not None:
+        return True, cached
+    return False, None
+
+
+def _get_term_window(term_name: str) -> dict:
+    found, cached = _get_cached_shared_value(_cache_key_for_term(term_name))
+    if found:
+        return cached or {}
+
+    info = (
+        frappe.db.get_value(
+            "Term",
+            term_name,
+            ["term_start_date", "term_end_date"],
+            as_dict=True,
+        )
+        or None
+    )
+    _cache_shared_value(_cache_key_for_term(term_name), info)
+    return info or {}
+
+
+def _within_term(term_name: Optional[str], today: date) -> bool:
     if not term_name:
         return True
 
-    if term_name not in cache:
-        cache[term_name] = (
-            frappe.db.get_value(
-                "Term",
-                term_name,
-                ["term_start_date", "term_end_date"],
-                as_dict=True,
-            )
-            or {}
-        )
-
-    info = cache[term_name]
+    info = _get_term_window(term_name)
     start, end = info.get("term_start_date"), info.get("term_end_date")
     if start and today < getdate(start):
         return False
@@ -119,7 +164,6 @@ def _within_term(term_name: Optional[str], today: date, cache: Dict[str, dict]) 
 
 def _resolve_schedule_name(
     row: frappe._dict,
-    schedule_cache: Dict[Tuple[str, str], Optional[str]],
 ) -> Optional[str]:
     # 1) Explicit schedule on the group wins
     if row.get("school_schedule"):
@@ -133,31 +177,163 @@ def _resolve_schedule_name(
     if not base_school:
         return None
 
-    key = (row.academic_year, base_school)
-    if key not in schedule_cache:
-        schedule_cache[key] = get_effective_schedule_for_ay(
-            row.academic_year,
-            base_school,
-        )
+    return get_effective_schedule_for_ay(
+        row.academic_year,
+        base_school,
+    )
 
-    return schedule_cache[key]
+
+def _get_rotation_lookup(schedule_name: str, academic_year: str) -> Dict[str, int]:
+    key = _cache_key_for_rotation(schedule_name, academic_year)
+    found, cached = _get_cached_shared_value(key)
+    if found:
+        return cached or {}
+
+    rot_dates = (
+        get_rotation_dates(
+            schedule_name,
+            academic_year,
+            include_holidays=False,
+        )
+        or []
+    )
+    rotation_lookup = {rd["date"].isoformat(): int(rd["rotation_day"]) for rd in rot_dates}
+    _cache_shared_value(key, rotation_lookup or None)
+    return rotation_lookup
 
 
 def _rotation_day_for(
     schedule_name: str,
     academic_year: str,
     today_iso: str,
-    cache: Dict[Tuple[str, str], Dict[str, int]],
 ) -> Optional[int]:
-    key = (schedule_name, academic_year)
-    if key not in cache:
-        rot_dates = get_rotation_dates(
-            schedule_name,
-            academic_year,
-            include_holidays=False,
-        )
-        cache[key] = {rd["date"].isoformat(): int(rd["rotation_day"]) for rd in rot_dates}
-    return cache[key].get(today_iso)
+    return _get_rotation_lookup(schedule_name, academic_year).get(today_iso)
+
+
+def _delete_cache_prefix(prefix: str) -> None:
+    cache = _course_schedule_cache()
+    for key in cache.get_keys(f"{prefix}*"):
+        cache.delete_value(key)
+
+
+def _delete_cache_key(key: str | None) -> None:
+    if key:
+        _course_schedule_cache().delete_value(key)
+
+
+def _doc_value(doc, fieldname: str) -> str:
+    value = getattr(doc, fieldname, None)
+    if value is None and isinstance(doc, dict):
+        value = doc.get(fieldname)
+    return (value or "").strip()
+
+
+def _academic_year_for_calendar(calendar_name: str) -> str:
+    if not calendar_name:
+        return ""
+    return (frappe.db.get_value("School Calendar", calendar_name, "academic_year") or "").strip()
+
+
+def _schedule_names_for_calendar(calendar_name: str) -> list[str]:
+    if not calendar_name:
+        return []
+    rows = frappe.get_all(
+        "School Schedule",
+        filters={"school_calendar": calendar_name},
+        fields=["name"],
+    )
+    return [(row.get("name") or "").strip() for row in rows or [] if (row.get("name") or "").strip()]
+
+
+def _calendar_names_for_academic_year(academic_year: str) -> list[str]:
+    if not academic_year:
+        return []
+    rows = frappe.get_all(
+        "School Calendar",
+        filters={"academic_year": academic_year},
+        fields=["name"],
+    )
+    return [(row.get("name") or "").strip() for row in rows or [] if (row.get("name") or "").strip()]
+
+
+def _delete_term_window_cache(term_name: str) -> None:
+    _delete_cache_key(_cache_key_for_term(term_name))
+
+
+def _delete_rotation_caches_for_schedule(schedule_name: str) -> None:
+    if schedule_name:
+        _delete_cache_prefix(f"{COURSE_SCHEDULE_ROTATION_PREFIX}{schedule_name}:")
+
+
+def _delete_rotation_caches_for_calendar(calendar_name: str) -> None:
+    for schedule_name in _schedule_names_for_calendar(calendar_name):
+        _delete_rotation_caches_for_schedule(schedule_name)
+
+
+def _delete_rotation_caches_for_academic_year(academic_year: str) -> None:
+    for calendar_name in _calendar_names_for_academic_year(academic_year):
+        _delete_rotation_caches_for_calendar(calendar_name)
+
+
+def _delete_effective_schedule_caches_for_calendar(calendar_name: str) -> None:
+    if calendar_name:
+        _delete_cache_prefix(f"{EFFECTIVE_SCHEDULE_CALENDAR_PREFIX}{calendar_name}::")
+
+
+def _delete_effective_schedule_caches_for_academic_year(academic_year: str) -> None:
+    if academic_year:
+        _delete_cache_prefix(f"{EFFECTIVE_SCHEDULE_AY_PREFIX}{academic_year}:")
+
+
+def invalidate_course_schedule_cache(doc=None, _=None):
+    """
+    Clear shared course-schedule inputs plus the schedule-resolution keys this
+    endpoint depends on.
+    """
+    if doc is not None:
+        doctype = _doc_value(doc, "doctype")
+        if doctype == "Term":
+            _delete_term_window_cache(_doc_value(doc, "name"))
+            return
+
+        if doctype == "School Schedule":
+            schedule_name = _doc_value(doc, "name")
+            calendar_name = _doc_value(doc, "school_calendar")
+            academic_year = _academic_year_for_calendar(calendar_name)
+            _delete_rotation_caches_for_schedule(schedule_name)
+            _delete_effective_schedule_caches_for_calendar(calendar_name)
+            _delete_effective_schedule_caches_for_academic_year(academic_year)
+            return
+
+        if doctype == "School Calendar":
+            calendar_name = _doc_value(doc, "name")
+            academic_year = _doc_value(doc, "academic_year") or _academic_year_for_calendar(calendar_name)
+            _delete_rotation_caches_for_calendar(calendar_name)
+            _delete_effective_schedule_caches_for_calendar(calendar_name)
+            _delete_effective_schedule_caches_for_academic_year(academic_year)
+            return
+
+        if doctype in {"School Calendar Holiday", "School Calendar Holidays"}:
+            calendar_name = _doc_value(doc, "parent")
+            academic_year = _academic_year_for_calendar(calendar_name)
+            _delete_rotation_caches_for_calendar(calendar_name)
+            _delete_effective_schedule_caches_for_calendar(calendar_name)
+            _delete_effective_schedule_caches_for_academic_year(academic_year)
+            return
+
+        if doctype == "Academic Year":
+            academic_year = _doc_value(doc, "name")
+            _delete_rotation_caches_for_academic_year(academic_year)
+            _delete_effective_schedule_caches_for_academic_year(academic_year)
+            return
+
+        if doctype == "School":
+            _delete_cache_prefix(EFFECTIVE_SCHEDULE_AY_PREFIX)
+            _delete_cache_prefix(EFFECTIVE_SCHEDULE_CALENDAR_PREFIX)
+            return
+
+    for prefix in COURSE_SCHEDULE_DEPENDENT_PREFIXES:
+        _delete_cache_prefix(prefix)
 
 
 def _time_to_str(raw: Optional[object]) -> Optional[str]:
@@ -218,16 +394,12 @@ def get_today_courses() -> dict:
             "courses": [],
         }
 
-    schedule_cache: Dict[Tuple[str, str], Optional[str]] = {}
-    rotation_cache: Dict[Tuple[str, str], Dict[str, int]] = {}
-    term_cache: Dict[str, dict] = {}
-
     active_groups: Dict[str, dict] = {}
     for row in groups:
-        if not _within_term(row.get("term"), today_dt, term_cache):
+        if not _within_term(row.get("term"), today_dt):
             continue
 
-        schedule_name = _resolve_schedule_name(row, schedule_cache)
+        schedule_name = _resolve_schedule_name(row)
 
         if not schedule_name:
             continue
@@ -236,7 +408,6 @@ def get_today_courses() -> dict:
             schedule_name,
             row.academic_year,
             today_iso,
-            rotation_cache,
         )
         if not rotation_day:
             continue

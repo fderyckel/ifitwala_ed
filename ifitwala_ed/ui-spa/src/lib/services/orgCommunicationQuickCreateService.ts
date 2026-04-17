@@ -25,6 +25,14 @@ import type {
 	Request as GetOrgCommunicationQuickCreateOptionsRequest,
 	Response as GetOrgCommunicationQuickCreateOptionsResponse,
 } from '@/types/contracts/org_communication_quick_create/get_org_communication_quick_create_options'
+import type {
+	Request as SearchOrgCommunicationStudentGroupsRequest,
+	Response as SearchOrgCommunicationStudentGroupsResponse,
+} from '@/types/contracts/org_communication_quick_create/search_org_communication_student_groups'
+import type {
+	Request as SearchOrgCommunicationTeamsRequest,
+	Response as SearchOrgCommunicationTeamsResponse,
+} from '@/types/contracts/org_communication_quick_create/search_org_communication_teams'
 
 const getOptionsResource = createResource<GetOrgCommunicationQuickCreateOptionsResponse>({
 	url: 'ifitwala_ed.api.org_communication_quick_create.get_org_communication_quick_create_options',
@@ -70,6 +78,21 @@ export async function createOrgCommunicationQuick(
 		emitInvalidate(response.name, 'quick_create')
 	}
 	return response
+}
+
+export async function searchOrgCommunicationTeams(
+	payload: SearchOrgCommunicationTeamsRequest
+): Promise<SearchOrgCommunicationTeamsResponse> {
+	return api('ifitwala_ed.api.org_communication_quick_create.search_org_communication_teams', payload)
+}
+
+export async function searchOrgCommunicationStudentGroups(
+	payload: SearchOrgCommunicationStudentGroupsRequest
+): Promise<SearchOrgCommunicationStudentGroupsResponse> {
+	return api(
+		'ifitwala_ed.api.org_communication_quick_create.search_org_communication_student_groups',
+		payload
+	)
 }
 
 export async function addOrgCommunicationLink(

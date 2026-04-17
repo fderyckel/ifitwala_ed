@@ -301,6 +301,7 @@ class TestPortalCalendar(FrappeTestCase):
         doc = frappe.get_doc(
             {
                 "doctype": "Staff Calendar",
+                "staff_calendar_name": f"Portal Staff Calendar {frappe.generate_hash(length=6).upper()}",
                 "school": school,
                 "employee_group": employee_group,
                 "from_date": date(2025, 9, 1),

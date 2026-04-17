@@ -523,7 +523,8 @@ class TestStudentOverviewDashboard(IfitwalaFrappeTestCase):
         def fake_sql(query, params=None, as_dict=False):
             self.assertIn("FROM `tabTask Delivery` td", query)
             self.assertIn("LEFT JOIN `tabTask Outcome` o", query)
-            self.assertIn("INNER JOIN `tabStudent Group Student` sgs", query)
+            self.assertIn("LEFT JOIN `tabStudent Group Student` sgs", query)
+            self.assertIn("(o.name IS NOT NULL OR COALESCE(sgs.active, 0) = 1)", query)
             self.assertIn("COALESCE(o.program, sg.program) IN %(programs)s", query)
             self.assertEqual(
                 params,

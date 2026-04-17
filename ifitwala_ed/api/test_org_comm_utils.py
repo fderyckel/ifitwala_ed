@@ -108,7 +108,15 @@ class TestOrgCommUtils(FrappeTestCase):
             )
         ]
 
-        with patch.object(org_comm_utils.frappe, "get_all", return_value=audiences):
+        def fake_get_cached_value(doctype, name, fieldname):
+            if doctype == "Student Group" and name == "SG-1" and fieldname == "school":
+                return "SCH-1"
+            return None
+
+        with (
+            patch.object(org_comm_utils.frappe, "get_all", return_value=audiences),
+            patch.object(org_comm_utils.frappe, "get_cached_value", side_effect=fake_get_cached_value),
+        ):
             matched = org_comm_utils.check_audience_match(
                 "COMM-SG",
                 "academic-admin@example.com",

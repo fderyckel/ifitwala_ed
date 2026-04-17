@@ -2990,6 +2990,94 @@ def _resolve_applicant_contact(
     return contact_name or None
 
 
+def _contact_linked_to_user(user_name: str | None) -> str | None:
+    user_name = (user_name or "").strip()
+    if not user_name:
+        return None
+
+    contact_name = (frappe.db.get_value("Contact", {"user": user_name}, "name") or "").strip()
+    if contact_name:
+        return contact_name
+
+    contact_name = (
+        frappe.db.get_value(
+            "Dynamic Link",
+            {
+                "parenttype": "Contact",
+                "parentfield": "links",
+                "link_doctype": "User",
+                "link_name": user_name,
+            },
+            "parent",
+        )
+        or ""
+    ).strip()
+    return contact_name or None
+
+
+def _contact_linked_to_applicant(contact_name: str | None) -> str | None:
+    contact_name = (contact_name or "").strip()
+    if not contact_name:
+        return None
+
+    applicant_name = (
+        frappe.db.get_value(
+            "Dynamic Link",
+            {
+                "parenttype": "Contact",
+                "parentfield": "links",
+                "parent": contact_name,
+                "link_doctype": "Student Applicant",
+            },
+            "link_name",
+        )
+        or ""
+    ).strip()
+    return applicant_name or None
+
+
+def _canonical_applicant_contact_for_invite(
+    applicant_doc,
+    *,
+    user_doc=None,
+    contact_name: str | None = None,
+    invite_email: str | None = None,
+    allow_create: bool = False,
+) -> str | None:
+    current_contact = (applicant_doc.get("applicant_contact") or "").strip()
+    if current_contact:
+        return current_contact
+
+    invite_email = normalize_email_value(invite_email)
+    candidate_names: list[str] = []
+    for candidate in (
+        _contact_linked_to_user(getattr(user_doc, "name", None) if user_doc else None),
+        (frappe.db.get_value("Contact Email", {"email_id": invite_email}, "parent") or "").strip()
+        if invite_email
+        else "",
+        (contact_name or "").strip(),
+    ):
+        candidate = (candidate or "").strip()
+        if not candidate or candidate in candidate_names:
+            continue
+        linked_applicant = _contact_linked_to_applicant(candidate)
+        if linked_applicant and linked_applicant != applicant_doc.name:
+            frappe.throw(_("Invite email is linked to a different Contact."))
+        candidate_names.append(candidate)
+
+    if candidate_names:
+        return candidate_names[0]
+
+    if allow_create and invite_email:
+        return ensure_contact_for_email(
+            first_name=applicant_doc.get("first_name"),
+            last_name=applicant_doc.get("last_name"),
+            email=invite_email,
+        )
+
+    return None
+
+
 def _invite_contact_email_options(contact_name: str | None) -> list[str]:
     contact_name = (contact_name or "").strip()
     if not contact_name:
@@ -3229,7 +3317,17 @@ def get_invite_email_options(*, student_applicant: str | None = None) -> dict:
         frappe.throw(_("student_applicant is required."))
 
     applicant = frappe.get_doc("Student Applicant", student_applicant)
-    contact_name = _resolve_applicant_contact(applicant, allow_create=False)
+    contact_name = _canonical_applicant_contact_for_invite(
+        applicant,
+        user_doc=frappe.get_doc("User", applicant.applicant_user)
+        if applicant.applicant_user and frappe.db.exists("User", applicant.applicant_user)
+        else None,
+        contact_name=_resolve_applicant_contact(applicant, allow_create=False),
+        invite_email=normalize_email_value(applicant.get("portal_account_email"))
+        or normalize_email_value(applicant.get("applicant_email"))
+        or normalize_email_value(applicant.get("applicant_user")),
+        allow_create=False,
+    )
 
     emails: list[str] = []
     seen: set[str] = set()
@@ -3286,14 +3384,22 @@ def invite_applicant(*, student_applicant: str | None = None, email: str | None 
         if linked_user != email:
             frappe.throw(_("Applicant already linked to a different user."))
 
-    contact_name = _resolve_applicant_contact(applicant, invite_email=email, allow_create=True)
-    if not contact_name:
-        frappe.throw(_("Unable to resolve Applicant Contact for this invite."))
-    primary_contact_email = _invite_contact_primary_email(contact_name) or email
+    contact_name = _resolve_applicant_contact(applicant, invite_email=email, allow_create=False)
 
     if applicant.applicant_user:
         user_doc = frappe.get_doc("User", linked_user)
         _ensure_admissions_applicant_role(user_doc)
+        contact_name = _canonical_applicant_contact_for_invite(
+            applicant,
+            user_doc=user_doc,
+            contact_name=contact_name,
+            invite_email=email,
+            allow_create=True,
+        )
+        if not contact_name:
+            frappe.throw(_("Unable to resolve Applicant Contact for this invite."))
+        upsert_contact_email(contact_name, email, set_primary_if_missing=True)
+        primary_contact_email = _invite_contact_primary_email(contact_name) or email
 
         applicant.flags.from_applicant_invite = True
         applicant.flags.from_contact_sync = True
@@ -3343,6 +3449,17 @@ def invite_applicant(*, student_applicant: str | None = None, email: str | None 
         user_doc.insert(ignore_permissions=True)
 
     _ensure_admissions_applicant_role(user_doc)
+    contact_name = _canonical_applicant_contact_for_invite(
+        applicant,
+        user_doc=user_doc,
+        contact_name=contact_name,
+        invite_email=email,
+        allow_create=True,
+    )
+    if not contact_name:
+        frappe.throw(_("Unable to resolve Applicant Contact for this invite."))
+    upsert_contact_email(contact_name, email, set_primary_if_missing=True)
+    primary_contact_email = _invite_contact_primary_email(contact_name) or email
 
     existing_link = frappe.db.get_value(
         "Student Applicant",

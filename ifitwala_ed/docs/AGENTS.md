@@ -48,6 +48,22 @@ Canonical docs must be clearly usable by:
 - coding agents
 - future maintainers
 
+## 1.1 Documentation Routing Index Rule
+
+When a docs folder contains multiple current notes or a mix of canonical and historical/proposal material, maintain a local `README.md` index.
+
+That index must:
+
+- say what the folder covers
+- identify the current canonical docs
+- give a recommended read order
+- call out non-authoritative files explicitly
+
+The index is navigation only.
+Do not restate full contracts inside it.
+
+When a folder has a `README.md`, agents should read it before scanning individual docs.
+
 ---
 
 ## 2. Status Marker Rule
@@ -69,6 +85,7 @@ If a section cannot point to code or tests, say so explicitly.
 When approved implementation changes behavior:
 
 - update the relevant canonical doc in the same change
+- update the local docs-folder `README.md` too when the canonical set or read order changed
 - do not silently leave stale behavior text
 - do not delete old contract text unless it is truly superseded
 - if old content is replaced, mark it deprecated or point to the replacement

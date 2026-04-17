@@ -81,1071 +81,83 @@
 							</div>
 
 							<form v-else class="space-y-5" @submit.prevent="submit">
-								<div v-if="isClassEventMode" class="space-y-5">
-									<section class="rounded-[28px] border border-border/70 bg-white p-5 shadow-soft">
-										<div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-											<div class="space-y-1">
-												<p class="type-overline text-ink/55">Class event</p>
-												<div class="flex flex-wrap items-center gap-2">
-													<h3 class="type-h3 text-ink">Locked context</h3>
-													<span class="rounded-full bg-sky/25 px-3 py-1 type-caption text-canopy">
-														Auto applied
-													</span>
-												</div>
-												<p class="type-caption text-ink/65">
-													The selected class event keeps scope, history, and archive context in
-													sync automatically.
-												</p>
-											</div>
-										</div>
+								<input
+									ref="attachmentFileInput"
+									type="file"
+									class="hidden"
+									multiple
+									@change="onAttachmentFileSelected"
+								/>
 
-										<div
-											class="if-class-event-context-card mt-4 grid grid-cols-1 gap-2.5 sm:grid-cols-2"
-										>
-											<div
-												v-for="(item, index) in classEventContextCards"
-												:key="item.label"
-												class="if-class-event-context-pill"
-												:class="`if-class-event-context-pill--${index}`"
-											>
-												<span class="if-class-event-context-pill__label">
-													{{ item.label }}
-												</span>
-												<p class="min-w-0 type-body-strong text-ink">
-													{{ item.value }}
-												</p>
-											</div>
-										</div>
-									</section>
+								<OrgCommunicationQuickCreateClassEventComposer
+									v-if="isClassEventMode"
+									:class-event-context-cards="classEventContextCards"
+									:form="form"
+									:submitting="submitting"
+									:status-options="statusOptions"
+									:message-editor-buttons="messageEditorButtons"
+									:class-event-audience-row="classEventAudienceRow"
+									:attachment-section="attachmentSectionState"
+									@update-message="updateMessage"
+									@trigger-file-picker="triggerAttachmentFilePicker"
+									@toggle-link-composer="toggleLinkComposer"
+									@reset-link-draft="resetLinkDraft"
+									@submit-link="submitLinkAttachment"
+									@delete-attachment="deleteAttachment"
+								/>
 
-									<section class="rounded-[28px] border border-border/70 bg-white p-5 shadow-soft">
-										<div class="space-y-1">
-											<p class="type-overline text-ink/55">Message</p>
-											<h3 class="type-h3 text-ink">Announcement</h3>
-											<p class="type-caption text-ink/65">
-												Write the announcement once. Class context, issuing scope, and thread rules
-												are applied automatically.
-											</p>
-										</div>
-
-										<div class="mt-4 space-y-1">
-											<label class="type-label">Title</label>
-											<FormControl
-												v-model="form.title"
-												type="text"
-												placeholder="Class announcement"
-												:disabled="submitting"
-											/>
-										</div>
-
-										<div class="mt-4 space-y-1">
-											<label class="type-label">Message</label>
-											<div
-												class="if-org-communication-message-editor overflow-hidden rounded-2xl border border-border/80 bg-white shadow-sm"
-											>
-												<TextEditor
-													:content="form.message"
-													placeholder="Share the update, reminder, or call to action."
-													:editable="!submitting"
-													:fixed-menu="messageEditorButtons"
-													editor-class="prose prose-sm max-w-none min-h-[14rem] bg-white px-4 py-3 text-sm text-ink focus:outline-none"
-													@change="updateMessage"
-												/>
-											</div>
-										</div>
-									</section>
-
-									<section class="rounded-[28px] border border-border/70 bg-white p-5 shadow-soft">
-										<div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-											<div class="space-y-1">
-												<p class="type-overline text-ink/55">Attachments</p>
-												<h3 class="type-h3 text-ink">Files and links</h3>
-												<p class="type-caption text-ink/65">
-													Add a governed file or a link without leaving this class flow. The first
-													attachment saves a draft automatically so the communication owns the file
-													history.
-												</p>
-											</div>
-											<div class="flex flex-wrap gap-2">
-												<button
-													type="button"
-													class="rounded-full border border-border/80 bg-surface px-3 py-1.5 type-button-label text-ink transition hover:border-jacaranda hover:text-jacaranda"
-													:disabled="attachmentActionsDisabled"
-													@click="triggerAttachmentFilePicker"
-												>
-													Add file
-												</button>
-												<button
-													type="button"
-													class="rounded-full border border-border/80 bg-surface px-3 py-1.5 type-button-label text-ink transition hover:border-jacaranda hover:text-jacaranda"
-													:disabled="attachmentActionsDisabled"
-													@click="showLinkComposer = !showLinkComposer"
-												>
-													{{ showLinkComposer ? 'Close link' : 'Add link' }}
-												</button>
-											</div>
-										</div>
-
-										<input
-											ref="attachmentFileInput"
-											type="file"
-											class="hidden"
-											multiple
-											@change="onAttachmentFileSelected"
-										/>
-
-										<div
-											v-if="attachmentErrorMessage"
-											class="mt-4 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3"
-										>
-											<p class="type-caption text-rose-900">{{ attachmentErrorMessage }}</p>
-										</div>
-
-										<div
-											v-if="showLinkComposer"
-											class="mt-4 rounded-[24px] border border-border/70 bg-surface-soft/70 p-4"
-										>
-											<div class="grid grid-cols-1 gap-3">
-												<div class="space-y-1">
-													<label class="type-label">Link URL</label>
-													<FormControl
-														v-model="linkDraft.external_url"
-														type="text"
-														placeholder="https://example.com/resource.pdf"
-														:disabled="attachmentActionsDisabled"
-													/>
-												</div>
-												<div class="space-y-1">
-													<label class="type-label">Link label</label>
-													<FormControl
-														v-model="linkDraft.title"
-														type="text"
-														placeholder="Optional display label"
-														:disabled="attachmentActionsDisabled"
-													/>
-												</div>
-											</div>
-											<div class="mt-3 flex flex-wrap justify-end gap-2">
-												<button
-													type="button"
-													class="if-button if-button--secondary"
-													:disabled="attachmentActionsDisabled"
-													@click="resetLinkDraft"
-												>
-													Cancel
-												</button>
-												<button
-													type="button"
-													class="if-button if-button--primary"
-													:disabled="attachmentActionsDisabled || !linkDraftReady"
-													@click="submitLinkAttachment"
-												>
-													Add link
-												</button>
-											</div>
-										</div>
-
-										<div class="mt-4 space-y-3">
-											<div
-												v-for="attachment in attachmentRows"
-												:key="attachment.row_name"
-												class="flex flex-col gap-3 rounded-2xl border border-border/70 bg-surface-soft/70 px-4 py-3 sm:flex-row sm:items-center sm:justify-between"
-											>
-												<div class="min-w-0">
-													<p class="type-body-strong text-ink">{{ attachment.title }}</p>
-													<p class="mt-1 truncate type-caption text-ink/60">
-														{{ formatAttachmentMeta(attachment) }}
-													</p>
-												</div>
-												<div class="flex flex-wrap gap-2">
-													<a
-														v-if="attachment.preview_url || attachment.open_url"
-														:href="attachment.preview_url || attachment.open_url"
-														target="_blank"
-														rel="noopener noreferrer"
-														class="rounded-full border border-border/80 bg-white px-3 py-1.5 type-button-label text-ink transition hover:border-jacaranda hover:text-jacaranda"
-													>
-														Open
-													</a>
-													<button
-														type="button"
-														class="rounded-full border border-border/80 bg-white px-3 py-1.5 type-button-label text-slate-token transition hover:border-rose-300 hover:text-rose-700"
-														:disabled="submitting || attachmentSubmitting"
-														@click="deleteAttachment(attachment)"
-													>
-														Remove
-													</button>
-												</div>
-											</div>
-											<p v-if="!attachmentRows.length" class="type-caption text-ink/60">
-												No attachments yet. Keep it light: add only the file or link teachers and
-												families actually need.
-											</p>
-										</div>
-									</section>
-
-									<section class="rounded-[28px] border border-border/70 bg-white p-5 shadow-soft">
-										<div class="space-y-1">
-											<p class="type-overline text-ink/55">Delivery</p>
-											<h3 class="type-h3 text-ink">Send options</h3>
-											<p class="type-caption text-ink/65">
-												Pick whether to save this draft, schedule it, or publish it now. Students
-												in the selected class are always included.
-											</p>
-										</div>
-
-										<div class="mt-4 flex flex-wrap gap-2">
-											<button
-												v-for="statusOption in statusOptions"
-												:key="statusOption"
-												type="button"
-												class="rounded-full px-3 py-1.5 type-button-label transition"
-												:class="
-													form.status === statusOption
-														? 'bg-jacaranda text-white'
-														: 'bg-slate-100 text-slate-token hover:bg-slate-200'
-												"
-												:disabled="submitting"
-												@click="form.status = statusOption"
-											>
-												{{ statusOption }}
-											</button>
-										</div>
-
-										<div v-if="form.status === 'Scheduled'" class="mt-4 space-y-1">
-											<label class="type-label">Publish from</label>
-											<input
-												v-model="form.publish_from"
-												type="datetime-local"
-												class="w-full rounded-2xl border border-border/80 bg-white px-3 py-2 text-sm text-ink shadow-sm focus:border-jacaranda/50 focus:ring-1 focus:ring-jacaranda/30"
-												:disabled="submitting"
-											/>
-											<p class="type-caption text-ink/55">
-												Schedule when this announcement should become visible.
-											</p>
-										</div>
-
-										<div
-											class="mt-4 rounded-[24px] border border-border/70 bg-surface-soft/70 p-4"
-										>
-											<div class="space-y-1">
-												<p class="type-overline text-ink/55">Recipients</p>
-												<h4 class="type-h4 text-ink">Audience</h4>
-											</div>
-
-											<div
-												class="if-class-event-audience-grid mt-4 grid grid-cols-1 gap-3 min-[480px]:grid-cols-2"
-											>
-												<div
-													class="flex h-full items-start gap-3 rounded-2xl border border-border/70 bg-white px-4 py-3 type-caption text-ink/75"
-												>
-													<input
-														checked
-														type="checkbox"
-														class="mt-0.5 rounded border-slate-300 text-jacaranda"
-														disabled
-													/>
-													<div>
-														<p class="type-body-strong text-ink">Students</p>
-														<p class="mt-1 type-caption text-ink/65">
-															The selected student group is always included.
-														</p>
-													</div>
-												</div>
-
-												<label
-													v-if="classEventAudienceRow"
-													class="flex h-full cursor-pointer items-start gap-3 rounded-2xl border border-border/70 bg-white px-4 py-3 type-caption text-ink/75"
-												>
-													<input
-														v-model="classEventAudienceRow.to_guardians"
-														type="checkbox"
-														class="mt-0.5 rounded border-slate-300 text-jacaranda"
-														:disabled="submitting"
-													/>
-													<div>
-														<p class="type-body-strong text-ink">Visible to guardians</p>
-														<p class="mt-1 type-caption text-ink/65">
-															Turn this on only when guardians should also receive the class
-															announcement.
-														</p>
-													</div>
-												</label>
-											</div>
-										</div>
-									</section>
-
-									<details class="rounded-[28px] border border-border/70 bg-white p-5 shadow-soft">
-										<summary class="cursor-pointer list-none">
-											<div
-												class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between"
-											>
-												<div class="space-y-1">
-													<p class="type-overline text-ink/55">Staff note</p>
-													<h3 class="type-h3 text-ink">Internal note</h3>
-													<p class="type-caption text-ink/65">
-														Optional context for staff managing this communication later.
-													</p>
-												</div>
-												<span
-													class="rounded-full border border-border/80 bg-surface px-3 py-1.5 type-caption text-ink/65"
-												>
-													Optional
-												</span>
-											</div>
-										</summary>
-
-										<div class="mt-4 space-y-1">
-											<label class="type-label">Internal note</label>
-											<FormControl
-												v-model="form.internal_note"
-												type="textarea"
-												:rows="3"
-												placeholder="Optional staff note for managing this communication."
-												:disabled="submitting"
-											/>
-										</div>
-									</details>
-								</div>
-
-								<div
+								<OrgCommunicationQuickCreateStaffHomeComposer
 									v-else
-									class="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1.5fr)_minmax(22rem,0.9fr)]"
-								>
-									<div class="space-y-5">
-										<section
-											class="rounded-[28px] border border-border/70 bg-white p-5 shadow-soft"
-										>
-											<div
-												class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between"
-											>
-												<div class="space-y-1">
-													<p class="type-overline text-ink/55">Message</p>
-													<h3 class="type-h3 text-ink">Core details</h3>
-													<p class="type-caption text-ink/65">
-														Use the same organization, school, delivery, and audience rules as
-														Desk, without leaving the staff shell.
-													</p>
-												</div>
-												<span
-													v-if="isClassEventMode"
-													class="rounded-full bg-sky/25 px-3 py-1.5 type-caption text-canopy"
-												>
-													Class event context locked
-												</span>
-											</div>
-
-											<div
-												class="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]"
-											>
-												<div class="space-y-1">
-													<label class="type-label">Title</label>
-													<FormControl
-														v-model="form.title"
-														type="text"
-														placeholder="Weekly staff update"
-														:disabled="submitting"
-													/>
-												</div>
-
-												<div class="space-y-1">
-													<label class="type-label">Communication type</label>
-													<select
-														v-model="form.communication_type"
-														class="if-org-communication-native-select"
-														:disabled="submitting || isClassEventMode"
-													>
-														<option
-															v-for="option in communicationTypeOptions"
-															:key="getSelectOptionValue(option)"
-															:value="getSelectOptionValue(option)"
-														>
-															{{ getSelectOptionLabel(option) }}
-														</option>
-													</select>
-												</div>
-											</div>
-
-											<div class="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
-												<div class="space-y-1">
-													<label class="type-label">Organization</label>
-													<select
-														v-model="form.organization"
-														class="if-org-communication-native-select"
-														:disabled="submitting || isClassEventMode"
-													>
-														<option
-															v-for="option in organizationSelectOptions"
-															:key="getSelectOptionValue(option)"
-															:value="getSelectOptionValue(option)"
-														>
-															{{ getSelectOptionLabel(option) }}
-														</option>
-													</select>
-													<p class="type-caption text-ink/55">
-														{{ organizationHelpText }}
-													</p>
-												</div>
-
-												<div class="space-y-1">
-													<label class="type-label">Issuing school</label>
-													<select
-														v-model="form.school"
-														class="if-org-communication-native-select"
-														:disabled="submitting || issuingSchoolSelectionLocked"
-													>
-														<option value="">No issuing school</option>
-														<option
-															v-for="option in schoolSelectOptions"
-															:key="getSelectOptionValue(option)"
-															:value="getSelectOptionValue(option)"
-														>
-															{{ getSelectOptionLabel(option) }}
-														</option>
-													</select>
-													<p class="type-caption text-ink/55">
-														{{ schoolHelpText }}
-													</p>
-												</div>
-											</div>
-
-											<div class="mt-4 space-y-1">
-												<label class="type-label">Message</label>
-												<div
-													class="if-org-communication-message-editor overflow-hidden rounded-2xl border border-border/80 bg-white shadow-sm"
-												>
-													<TextEditor
-														:content="form.message"
-														placeholder="Share the update, call to action, or announcement."
-														:editable="!submitting"
-														:fixed-menu="messageEditorButtons"
-														editor-class="prose prose-sm max-w-none min-h-[14rem] bg-white px-4 py-3 text-sm text-ink focus:outline-none"
-														@change="updateMessage"
-													/>
-												</div>
-											</div>
-
-											<div class="mt-4 space-y-1">
-												<label class="type-label">Internal note</label>
-												<FormControl
-													v-model="form.internal_note"
-													type="textarea"
-													:rows="3"
-													placeholder="Optional staff note for managing this communication."
-													:disabled="submitting"
-												/>
-											</div>
-										</section>
-
-										<section
-											class="rounded-[28px] border border-border/70 bg-white p-5 shadow-soft"
-										>
-											<div
-												class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between"
-											>
-												<div class="space-y-1">
-													<p class="type-overline text-ink/55">Attachments</p>
-													<h3 class="type-h3 text-ink">Files and links</h3>
-													<p class="type-caption text-ink/65">
-														{{ attachmentSectionHelpText }}
-													</p>
-												</div>
-												<div class="flex flex-wrap gap-2">
-													<button
-														type="button"
-														class="rounded-full border border-border/80 bg-surface px-3 py-1.5 type-button-label text-ink transition hover:border-jacaranda hover:text-jacaranda"
-														:disabled="attachmentActionsDisabled"
-														@click="triggerAttachmentFilePicker"
-													>
-														Add file
-													</button>
-													<button
-														type="button"
-														class="rounded-full border border-border/80 bg-surface px-3 py-1.5 type-button-label text-ink transition hover:border-jacaranda hover:text-jacaranda"
-														:disabled="attachmentActionsDisabled"
-														@click="showLinkComposer = !showLinkComposer"
-													>
-														{{ showLinkComposer ? 'Close link' : 'Add link' }}
-													</button>
-												</div>
-											</div>
-
-											<input
-												ref="attachmentFileInput"
-												type="file"
-												class="hidden"
-												multiple
-												@change="onAttachmentFileSelected"
-											/>
-
-											<div
-												v-if="attachmentErrorMessage"
-												class="mt-4 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3"
-											>
-												<p class="type-caption text-rose-900">{{ attachmentErrorMessage }}</p>
-											</div>
-
-											<div
-												v-if="showLinkComposer"
-												class="mt-4 rounded-[24px] border border-border/70 bg-surface-soft/70 p-4"
-											>
-												<div class="grid grid-cols-1 gap-3">
-													<div class="space-y-1">
-														<label class="type-label">Link URL</label>
-														<FormControl
-															v-model="linkDraft.external_url"
-															type="text"
-															placeholder="https://example.com/resource.pdf"
-															:disabled="attachmentActionsDisabled"
-														/>
-													</div>
-													<div class="space-y-1">
-														<label class="type-label">Link label</label>
-														<FormControl
-															v-model="linkDraft.title"
-															type="text"
-															placeholder="Optional display label"
-															:disabled="attachmentActionsDisabled"
-														/>
-													</div>
-												</div>
-												<div class="mt-3 flex flex-wrap justify-end gap-2">
-													<button
-														type="button"
-														class="if-button if-button--secondary"
-														:disabled="attachmentActionsDisabled"
-														@click="resetLinkDraft"
-													>
-														Cancel
-													</button>
-													<button
-														type="button"
-														class="if-button if-button--primary"
-														:disabled="attachmentActionsDisabled || !linkDraftReady"
-														@click="submitLinkAttachment"
-													>
-														Add link
-													</button>
-												</div>
-											</div>
-
-											<div class="mt-4 space-y-3">
-												<div
-													v-for="attachment in attachmentRows"
-													:key="attachment.row_name"
-													class="flex flex-col gap-3 rounded-2xl border border-border/70 bg-surface-soft/70 px-4 py-3 sm:flex-row sm:items-center sm:justify-between"
-												>
-													<div class="min-w-0">
-														<p class="type-body-strong text-ink">{{ attachment.title }}</p>
-														<p class="mt-1 truncate type-caption text-ink/60">
-															{{ formatAttachmentMeta(attachment) }}
-														</p>
-													</div>
-													<div class="flex flex-wrap gap-2">
-														<a
-															v-if="attachment.preview_url || attachment.open_url"
-															:href="attachment.preview_url || attachment.open_url"
-															target="_blank"
-															rel="noopener noreferrer"
-															class="rounded-full border border-border/80 bg-white px-3 py-1.5 type-button-label text-ink transition hover:border-jacaranda hover:text-jacaranda"
-														>
-															Open
-														</a>
-														<button
-															type="button"
-															class="rounded-full border border-border/80 bg-white px-3 py-1.5 type-button-label text-slate-token transition hover:border-rose-300 hover:text-rose-700"
-															:disabled="submitting || attachmentSubmitting"
-															@click="deleteAttachment(attachment)"
-														>
-															Remove
-														</button>
-													</div>
-												</div>
-												<p v-if="!attachmentRows.length" class="type-caption text-ink/60">
-													No attachments yet. Keep it light: add only the file or link teachers and
-													families actually need.
-												</p>
-											</div>
-										</section>
-
-										<section
-											class="rounded-[28px] border border-border/70 bg-white p-5 shadow-soft"
-										>
-											<div class="space-y-1">
-												<p class="type-overline text-ink/55">Delivery</p>
-												<h3 class="type-h3 text-ink">Publishing and surfaces</h3>
-												<p class="type-caption text-ink/65">
-													{{
-														isClassEventMode
-															? 'Choose whether this is saved as a draft, scheduled, or published immediately.'
-															: 'Publish will send now or schedule from Publish from. Save as draft keeps the communication editable.'
-													}}
-												</p>
-											</div>
-
-											<div v-if="isClassEventMode" class="mt-4 flex flex-wrap gap-2">
-												<button
-													v-for="statusOption in statusOptions"
-													:key="statusOption"
-													type="button"
-													class="rounded-full px-3 py-1.5 type-button-label transition"
-													:class="
-														form.status === statusOption
-															? 'bg-jacaranda text-white'
-															: 'bg-slate-100 text-slate-token hover:bg-slate-200'
-													"
-													:disabled="submitting"
-													@click="form.status = statusOption"
-												>
-													{{ statusOption }}
-												</button>
-											</div>
-											<div
-												v-else
-												class="mt-4 rounded-2xl border border-sky/30 bg-sky/10 px-4 py-3"
-											>
-												<p class="type-caption text-canopy">
-													Publish action status:
-													<span class="type-body-strong text-canopy">
-														{{ publishActionStatus }}
-													</span>
-												</p>
-											</div>
-
-											<div
-												class="if-org-communication-delivery-select-grid mt-4 grid grid-cols-1 gap-4 min-[480px]:grid-cols-2"
-											>
-												<div class="space-y-1">
-													<label class="type-label">Priority</label>
-													<select
-														v-model="form.priority"
-														class="if-org-communication-native-select"
-														:disabled="submitting"
-													>
-														<option
-															v-for="option in priorityOptions"
-															:key="getSelectOptionValue(option)"
-															:value="getSelectOptionValue(option)"
-														>
-															{{ getSelectOptionLabel(option) }}
-														</option>
-													</select>
-												</div>
-												<div class="space-y-1">
-													<label class="type-label">Portal surface</label>
-													<select
-														v-model="form.portal_surface"
-														class="if-org-communication-native-select"
-														:disabled="submitting"
-													>
-														<option
-															v-for="option in portalSurfaceOptions"
-															:key="getSelectOptionValue(option)"
-															:value="getSelectOptionValue(option)"
-														>
-															{{ getSelectOptionLabel(option) }}
-														</option>
-													</select>
-												</div>
-											</div>
-
-											<div class="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
-												<div class="space-y-1">
-													<label class="type-label">Brief order</label>
-													<FormControl
-														v-model="form.brief_order"
-														type="number"
-														placeholder="Optional"
-														:disabled="submitting"
-													/>
-												</div>
-											</div>
-
-											<div
-												class="if-org-communication-publish-window-grid mt-4 grid grid-cols-1 gap-4 min-[480px]:grid-cols-2"
-											>
-												<div class="space-y-1">
-													<label class="type-label">Publish from</label>
-													<input
-														v-model="form.publish_from"
-														type="datetime-local"
-														class="w-full rounded-2xl border border-border/80 bg-white px-3 py-2 text-sm text-ink shadow-sm focus:border-jacaranda/50 focus:ring-1 focus:ring-jacaranda/30"
-														:disabled="submitting"
-														@click="openNativeDatePicker"
-														@focus="openNativeDatePicker"
-													/>
-												</div>
-												<div class="space-y-1">
-													<label class="type-label">Publish until</label>
-													<input
-														v-model="form.publish_to"
-														type="datetime-local"
-														class="w-full rounded-2xl border border-border/80 bg-white px-3 py-2 text-sm text-ink shadow-sm focus:border-jacaranda/50 focus:ring-1 focus:ring-jacaranda/30"
-														:disabled="submitting"
-														@click="openNativeDatePicker"
-														@focus="openNativeDatePicker"
-													/>
-												</div>
-											</div>
-
-											<div
-												class="if-org-communication-brief-window-grid mt-4 grid grid-cols-1 gap-4 min-[480px]:grid-cols-2"
-											>
-												<div class="space-y-1">
-													<label class="type-label">
-														Brief start date
-														<span v-if="briefDatesRequired" class="text-rose-600">*</span>
-													</label>
-													<input
-														v-model="form.brief_start_date"
-														type="date"
-														class="w-full rounded-2xl border border-border/80 bg-white px-3 py-2 text-sm text-ink shadow-sm focus:border-jacaranda/50 focus:ring-1 focus:ring-jacaranda/30"
-														:disabled="submitting"
-														@click="openNativeDatePicker"
-														@focus="openNativeDatePicker"
-													/>
-												</div>
-												<div class="space-y-1">
-													<label class="type-label">Brief end date</label>
-													<input
-														v-model="form.brief_end_date"
-														type="date"
-														class="w-full rounded-2xl border border-border/80 bg-white px-3 py-2 text-sm text-ink shadow-sm focus:border-jacaranda/50 focus:ring-1 focus:ring-jacaranda/30"
-														:disabled="submitting"
-														@click="openNativeDatePicker"
-														@focus="openNativeDatePicker"
-													/>
-												</div>
-											</div>
-
-											<div
-												v-if="deliveryValidationMessage"
-												class="mt-4 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3"
-											>
-												<p class="type-caption text-rose-900">
-													{{ deliveryValidationMessage }}
-												</p>
-											</div>
-										</section>
-
-										<section
-											class="rounded-[28px] border border-border/70 bg-white p-5 shadow-soft"
-										>
-											<div
-												class="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between"
-											>
-												<div class="space-y-1">
-													<p class="type-overline text-ink/55">Audience</p>
-													<h3 class="type-h3 text-ink">Targeting</h3>
-													<p class="type-caption text-ink/65">
-														Choose one or more audience rows. Recipient toggles follow the same
-														target-mode rules as Desk.
-													</p>
-												</div>
-												<button
-													v-if="!isClassEventMode"
-													type="button"
-													class="rounded-full border border-border/80 bg-surface px-3 py-1.5 type-button-label text-ink transition hover:border-jacaranda hover:text-jacaranda"
-													:disabled="submitting"
-													@click="addAudienceRow()"
-												>
-													Add audience
-												</button>
-											</div>
-
-											<div
-												v-if="audienceValidationMessage"
-												class="mt-4 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3"
-											>
-												<p class="type-caption text-rose-900">
-													{{ audienceValidationMessage }}
-												</p>
-											</div>
-
-											<div class="mt-4 space-y-4">
-												<div
-													v-for="(row, index) in audienceRows"
-													:key="row.id"
-													class="rounded-[24px] border border-border/70 bg-surface-soft/70 p-4"
-												>
-													<div
-														class="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between"
-													>
-														<div class="space-y-1">
-															<p class="type-caption text-ink/55">Audience row {{ index + 1 }}</p>
-															<div class="flex flex-wrap gap-2">
-																<button
-																	v-for="targetMode in audienceTargetModeOptions"
-																	:key="targetMode"
-																	type="button"
-																	class="rounded-full px-3 py-1.5 type-button-label transition"
-																	:class="
-																		row.target_mode === targetMode
-																			? 'bg-ink text-white'
-																			: 'bg-white text-slate-token hover:bg-slate-100'
-																	"
-																	:disabled="submitting || isAudienceTargetLocked(row)"
-																	@click="setAudienceTargetMode(row, targetMode)"
-																>
-																	{{ targetMode }}
-																</button>
-															</div>
-														</div>
-
-														<button
-															v-if="!isClassEventMode && audienceRows.length > 1"
-															type="button"
-															class="rounded-full border border-border/80 bg-white px-3 py-1.5 type-button-label text-slate-token transition hover:border-rose-300 hover:text-rose-700"
-															:disabled="submitting"
-															@click="removeAudienceRow(row.id)"
-														>
-															Remove
-														</button>
-													</div>
-
-													<div class="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
-														<div v-if="row.target_mode === 'School Scope'" class="space-y-1">
-															<label class="type-label">Audience school</label>
-															<select
-																v-model="row.school"
-																class="if-org-communication-native-select"
-																:disabled="submitting || audienceSchoolSelectionLocked"
-															>
-																<option value="">Select school</option>
-																<option
-																	v-for="option in schoolSelectOptions"
-																	:key="getSelectOptionValue(option)"
-																	:value="getSelectOptionValue(option)"
-																>
-																	{{ getSelectOptionLabel(option) }}
-																</option>
-															</select>
-															<label
-																class="mt-2 inline-flex cursor-pointer items-center gap-2 type-caption text-ink/70"
-															>
-																<input
-																	v-model="row.include_descendants"
-																	type="checkbox"
-																	class="rounded border-slate-300 text-jacaranda"
-																	:disabled="submitting"
-																/>
-																Include descendant schools
-															</label>
-														</div>
-
-														<div v-else-if="row.target_mode === 'Organization'" class="space-y-1">
-															<label class="type-label">Organization audience</label>
-															<p
-																class="rounded-2xl border border-border/70 bg-white px-3 py-3 type-caption text-ink/70"
-															>
-																Uses the selected organization. Staff without a School and
-																guardians linked to students in that organization tree remain
-																included.
-															</p>
-														</div>
-
-														<div v-else-if="row.target_mode === 'Team'" class="space-y-1">
-															<label class="type-label">Team</label>
-															<select
-																v-model="row.team"
-																class="if-org-communication-native-select"
-																:disabled="submitting"
-															>
-																<option value="">Select team</option>
-																<option
-																	v-for="option in teamSelectOptions"
-																	:key="getSelectOptionValue(option)"
-																	:value="getSelectOptionValue(option)"
-																>
-																	{{ getSelectOptionLabel(option) }}
-																</option>
-															</select>
-														</div>
-
-														<div v-else class="space-y-1">
-															<label class="type-label">Student group</label>
-															<select
-																v-model="row.student_group"
-																class="if-org-communication-native-select"
-																:disabled="submitting || isClassEventMode"
-															>
-																<option value="">Select student group</option>
-																<option
-																	v-for="option in studentGroupSelectOptions"
-																	:key="getSelectOptionValue(option)"
-																	:value="getSelectOptionValue(option)"
-																>
-																	{{ getSelectOptionLabel(option) }}
-																</option>
-															</select>
-														</div>
-
-														<div class="space-y-2">
-															<label class="type-label">Recipients</label>
-															<div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
-																<label
-																	v-for="recipient in recipientToggleDefinitions"
-																	:key="recipient.field"
-																	class="flex items-center gap-2 rounded-2xl border border-border/70 bg-white px-3 py-2 type-caption text-ink/75"
-																	:class="
-																		isRecipientDisabled(row, recipient.field) ? 'opacity-55' : ''
-																	"
-																>
-																	<input
-																		:checked="Boolean(row[recipient.field])"
-																		type="checkbox"
-																		class="rounded border-slate-300 text-jacaranda"
-																		:disabled="
-																			submitting || isRecipientDisabled(row, recipient.field)
-																		"
-																		@change="toggleRecipient(row, recipient.field, $event)"
-																	/>
-																	<span>{{ recipient.label }}</span>
-																</label>
-															</div>
-															<p
-																v-if="
-																	row.target_mode === 'School Scope' && !canTargetWideSchoolScope
-																"
-																class="type-caption text-amber-700"
-															>
-																School-scope Staff rows require Academic Admin, Academic Assistant,
-																HR Manager, Accounts Manager, Nurse, or System Manager.
-															</p>
-															<p
-																v-else-if="
-																	row.target_mode === 'Organization' && !canTargetWideSchoolScope
-																"
-																class="type-caption text-amber-700"
-															>
-																Organization audience rows require Academic Admin, Academic
-																Assistant, HR Manager, Accounts Manager, Nurse, or System Manager.
-															</p>
-														</div>
-													</div>
-
-													<div class="mt-4 space-y-1">
-														<label class="type-label">Row note</label>
-														<FormControl
-															v-model="row.note"
-															type="textarea"
-															:rows="2"
-															placeholder="Optional note for this audience row."
-															:disabled="submitting"
-														/>
-													</div>
-												</div>
-											</div>
-										</section>
-									</div>
-
-									<aside class="space-y-5">
-										<section
-											class="rounded-[28px] border border-border/70 bg-white p-5 shadow-soft"
-										>
-											<p class="type-overline text-ink/55">Interaction</p>
-											<h3 class="mt-1 type-h3 text-ink">Interaction settings</h3>
-											<div class="mt-4 space-y-4">
-												<div class="space-y-1">
-													<label class="type-label">Interaction mode</label>
-													<select
-														v-model="form.interaction_mode"
-														class="if-org-communication-native-select"
-														:disabled="submitting"
-													>
-														<option
-															v-for="option in interactionModeOptions"
-															:key="getSelectOptionValue(option)"
-															:value="getSelectOptionValue(option)"
-														>
-															{{ getSelectOptionLabel(option) }}
-														</option>
-													</select>
-												</div>
-												<label
-													class="flex cursor-pointer items-start gap-3 rounded-2xl border border-border/70 bg-surface-soft px-4 py-3 type-caption text-ink/75"
-												>
-													<input
-														v-model="form.allow_private_notes"
-														type="checkbox"
-														class="mt-0.5 rounded border-slate-300 text-jacaranda"
-														:disabled="submitting || privateNotesDisabled"
-													/>
-													<span>
-														<span class="block"> Let teachers and staff reply privately. </span>
-														<span class="mt-1 block text-[11px] text-ink/60">
-															{{ privateNotesHelpText }}
-														</span>
-													</span>
-												</label>
-												<label
-													class="flex cursor-pointer items-start gap-3 rounded-2xl border border-border/70 bg-surface-soft px-4 py-3 type-caption text-ink/75"
-												>
-													<input
-														v-model="form.allow_public_thread"
-														type="checkbox"
-														class="mt-0.5 rounded border-slate-300 text-jacaranda"
-														:disabled="submitting || publicThreadDisabled"
-													/>
-													<span>
-														<span class="block">
-															Let students or families reply in the shared thread.
-														</span>
-														<span class="mt-1 block text-[11px] text-ink/60">
-															{{ publicThreadHelpText }}
-														</span>
-													</span>
-												</label>
-											</div>
-										</section>
-
-										<section
-											class="rounded-[28px] border border-border/70 bg-white p-5 shadow-soft"
-										>
-											<p class="type-overline text-ink/55">Audience summary</p>
-											<div class="mt-4 space-y-3">
-												<div
-													v-for="item in audienceSummaryRows"
-													:key="item.id"
-													class="rounded-2xl border border-border/70 bg-surface-soft px-4 py-3"
-												>
-													<p class="type-body-strong text-ink">{{ item.scope }}</p>
-													<p class="mt-1 type-caption text-ink/65">{{ item.recipients }}</p>
-												</div>
-												<p v-if="!audienceSummaryRows.length" class="type-caption text-ink/60">
-													Add at least one audience row.
-												</p>
-											</div>
-										</section>
-
-										<section
-											class="if-org-communication-ready-check overflow-hidden rounded-[32px] border border-canopy/10 bg-canopy bg-[linear-gradient(160deg,rgb(var(--canopy-rgb)/0.96),rgb(var(--ink-rgb)/0.92))] p-5 text-white shadow-soft"
-										>
-											<p class="type-overline text-white/65">Ready check</p>
-											<h3 class="mt-1 type-h3 text-white">{{ summaryTitle }}</h3>
-											<p class="mt-2 type-caption text-white/70">
-												{{ summarySubtitle }}
-											</p>
-
-											<div class="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-1">
-												<div class="rounded-2xl bg-white/10 px-4 py-3 backdrop-blur-sm">
-													<p class="type-caption text-white/60">
-														{{ isClassEventMode ? 'Delivery' : 'Publish action' }}
-													</p>
-													<p class="mt-1 type-body-strong text-white">
-														{{ publishActionStatus }} · {{ form.portal_surface }}
-													</p>
-												</div>
-												<div class="rounded-2xl bg-white/10 px-4 py-3 backdrop-blur-sm">
-													<p class="type-caption text-white/60">Issuing scope</p>
-													<p class="mt-1 type-body-strong text-white">
-														{{ issuingScopeLabel }}
-													</p>
-												</div>
-											</div>
-										</section>
-									</aside>
-								</div>
+									:form="form"
+									:submitting="submitting"
+									:communication-type-options="communicationTypeOptions"
+									:organization-select-options="organizationSelectOptions"
+									:school-select-options="schoolSelectOptions"
+									:priority-options="priorityOptions"
+									:portal-surface-options="portalSurfaceOptions"
+									:interaction-mode-options="interactionModeOptions"
+									:audience-presets="audiencePresets"
+									:organization-help-text="organizationHelpText"
+									:school-help-text="schoolHelpText"
+									:issuing-school-selection-locked="issuingSchoolSelectionLocked"
+									:audience-school-selection-locked="audienceSchoolSelectionLocked"
+									:brief-dates-required="briefDatesRequired"
+									:delivery-validation-message="deliveryValidationMessage"
+									:audience-validation-message="audienceValidationMessage"
+									:publish-action-status="publishActionStatus"
+									:private-notes-disabled="privateNotesDisabled"
+									:public-thread-disabled="publicThreadDisabled"
+									:private-notes-help-text="privateNotesHelpText"
+									:public-thread-help-text="publicThreadHelpText"
+									:audience-rows="audienceRows"
+									:recipient-toggle-definitions="recipientToggleDefinitions"
+									:can-target-wide-school-scope="canTargetWideSchoolScope"
+									:audience-summary-rows="audienceSummaryRows"
+									:get-audience-row-title="getAudienceRowTitle"
+									:get-audience-row-description="getAudienceRowDescription"
+									:get-audience-search-items="getAudienceSearchItems"
+									:summary-title="summaryTitle"
+									:summary-subtitle="summarySubtitle"
+									:issuing-scope-label="issuingScopeLabel"
+									:message-editor-buttons="messageEditorButtons"
+									:attachment-section="attachmentSectionState"
+									:get-select-option-value="getSelectOptionValue"
+									:get-select-option-label="getSelectOptionLabel"
+									:add-audience-preset="addAudiencePreset"
+									:remove-audience-row="removeAudienceRow"
+									:is-recipient-disabled="isRecipientDisabled"
+									:toggle-recipient="toggleRecipient"
+									:search-audience-targets="searchAudienceTargets"
+									:select-audience-search-item="selectAudienceSearchItem"
+									:clear-audience-search-selection="clearAudienceSearchSelection"
+									:update-message="updateMessage"
+									:open-native-date-picker="openNativeDatePicker"
+									@trigger-file-picker="triggerAttachmentFilePicker"
+									@toggle-link-composer="toggleLinkComposer"
+									@reset-link-draft="resetLinkDraft"
+									@submit-link="submitLinkAttachment"
+									@delete-attachment="deleteAttachment"
+								/>
 
 								<footer class="if-overlay__footer flex flex-wrap items-center justify-end gap-2">
 									<button
@@ -1191,13 +203,15 @@ import {
 	TransitionChild,
 	TransitionRoot,
 } from '@headlessui/vue';
-import { FeatherIcon, FormControl, Spinner, TextEditor } from 'frappe-ui';
+import { FeatherIcon, Spinner } from 'frappe-ui';
 
 import {
 	addOrgCommunicationLink,
 	createOrgCommunicationQuick,
 	getOrgCommunicationQuickCreateOptions,
 	removeOrgCommunicationAttachment,
+	searchOrgCommunicationStudentGroups,
+	searchOrgCommunicationTeams,
 	uploadOrgCommunicationAttachment,
 } from '@/lib/services/orgCommunicationQuickCreateService';
 import type { OrgCommunicationAttachmentRow } from '@/types/contracts/org_communication_attachments/shared';
@@ -1205,24 +219,28 @@ import type {
 	Request as CreateOrgCommunicationQuickRequest,
 	OrgCommunicationQuickAudienceRow,
 } from '@/types/contracts/org_communication_quick_create/create_org_communication_quick';
-import type { Response as OrgCommunicationQuickCreateOptionsResponse } from '@/types/contracts/org_communication_quick_create/get_org_communication_quick_create_options';
+import type {
+	OrgCommunicationAudiencePreset,
+	OrgCommunicationQuickReferenceStudentGroup,
+	OrgCommunicationQuickReferenceTeam,
+	Response as OrgCommunicationQuickCreateOptionsResponse,
+} from '@/types/contracts/org_communication_quick_create/get_org_communication_quick_create_options';
+import OrgCommunicationQuickCreateClassEventComposer from '@/components/communication/OrgCommunicationQuickCreateClassEventComposer.vue';
+import OrgCommunicationQuickCreateStaffHomeComposer from '@/components/communication/OrgCommunicationQuickCreateStaffHomeComposer.vue';
+import type {
+	AttachmentSectionState,
+	AudienceRowState,
+	AudienceSummaryRow,
+	ClassEventContextCard,
+	AudienceTargetSearchItem,
+	MessageEditorButton,
+	RecipientField,
+	RecipientToggleDefinition,
+} from '@/components/communication/orgCommunicationQuickCreateTypes';
 
 type CloseReason = 'backdrop' | 'esc' | 'programmatic';
 type EntryMode = 'staff-home' | 'class-event';
-type RecipientField = 'to_staff' | 'to_students' | 'to_guardians';
 type TopLevelErrorSource = '' | 'load' | 'submit' | 'attachment-precondition';
-type AudienceRowState = {
-	id: string;
-	target_mode: string;
-	school: string;
-	team: string;
-	student_group: string;
-	include_descendants: boolean;
-	to_staff: boolean;
-	to_students: boolean;
-	to_guardians: boolean;
-	note: string;
-};
 
 class AttachmentPreconditionError extends Error {}
 
@@ -1310,6 +328,7 @@ const canTargetWideSchoolScope = computed(() =>
 	Boolean(options.value?.permissions?.can_target_wide_school_scope)
 );
 const context = computed(() => options.value?.context ?? null);
+const audiencePresets = computed(() => options.value?.audience_presets ?? []);
 
 const organizationSelectOptions = computed(() => {
 	const rows = options.value?.references.organizations ?? [];
@@ -1332,41 +351,11 @@ const schoolSelectOptions = computed(() => {
 	}));
 });
 
-const teamSelectOptions = computed(() => {
-	const rows = (options.value?.references.teams ?? []).filter(row => {
-		if (form.school && row.school) return row.school === form.school;
-		if (form.organization && row.organization) return row.organization === form.organization;
-		return true;
-	});
-	return rows.map(row => ({
-		label: row.team_code
-			? `${row.team_code} · ${row.team_name || row.name}`
-			: row.team_name || row.name,
-		value: row.name,
-	}));
-});
-
-const studentGroupSelectOptions = computed(() => {
-	const rows = (options.value?.references.student_groups ?? []).filter(row => {
-		if (!form.school) return true;
-		return !row.school || row.school === form.school;
-	});
-	return rows.map(row => ({
-		label: row.student_group_abbreviation
-			? `${row.student_group_abbreviation} · ${row.student_group_name || row.name}`
-			: row.student_group_name || row.name,
-		value: row.name,
-	}));
-});
-
 const communicationTypeOptions = computed(() => options.value?.fields.communication_types ?? []);
 const statusOptions = computed(() => options.value?.fields.statuses ?? []);
 const priorityOptions = computed(() => options.value?.fields.priorities ?? []);
 const portalSurfaceOptions = computed(() => options.value?.fields.portal_surfaces ?? []);
 const interactionModeOptions = computed(() => options.value?.fields.interaction_modes ?? []);
-const audienceTargetModeOptions = computed(
-	() => options.value?.fields.audience_target_modes ?? []
-);
 const hasOrganizationAudience = computed(() =>
 	audienceRows.value.some(row => row.target_mode === 'Organization')
 );
@@ -1381,6 +370,53 @@ function getSelectOptionLabel(option: string | { label?: string | null; value?: 
 	return String(option?.label ?? option?.value ?? '');
 }
 
+function getSchoolOptionLabel(name: string | null | undefined) {
+	return (
+		schoolSelectOptions.value.find(option => option.value === name)?.label || String(name || '')
+	);
+}
+
+function getOrganizationOptionLabel(name: string | null | undefined) {
+	return (
+		organizationSelectOptions.value.find(option => option.value === name)?.label ||
+		String(name || '')
+	);
+}
+
+function buildTeamSearchItem(row: OrgCommunicationQuickReferenceTeam): AudienceTargetSearchItem {
+	const label = row.team_code
+		? `${row.team_code} · ${row.team_name || row.name}`
+		: row.team_name || row.name;
+	const description =
+		getSchoolOptionLabel(row.school) || getOrganizationOptionLabel(row.organization) || 'Team';
+	return {
+		value: row.name,
+		label,
+		description,
+	};
+}
+
+function buildStudentGroupSearchItem(
+	row: OrgCommunicationQuickReferenceStudentGroup
+): AudienceTargetSearchItem {
+	const label = row.student_group_abbreviation
+		? `${row.student_group_abbreviation} · ${row.student_group_name || row.name}`
+		: row.student_group_name || row.name;
+	const description = getSchoolOptionLabel(row.school) || row.group_based_on || 'Student group';
+	return {
+		value: row.name,
+		label,
+		description,
+	};
+}
+
+const suggestedTeamItems = computed(() =>
+	(options.value?.suggested_targets?.teams ?? []).map(buildTeamSearchItem)
+);
+const suggestedStudentGroupItems = computed(() =>
+	(options.value?.suggested_targets?.student_groups ?? []).map(buildStudentGroupSearchItem)
+);
+
 const audienceSchoolSelectionLocked = computed(() => {
 	if (isClassEventMode.value) return true;
 	if (!context.value) return false;
@@ -1391,12 +427,12 @@ const issuingSchoolSelectionLocked = computed(
 	() => hasOrganizationAudience.value || audienceSchoolSelectionLocked.value
 );
 
-const recipientToggleDefinitions: Array<{ field: RecipientField; label: string }> = [
+const recipientToggleDefinitions: RecipientToggleDefinition[] = [
 	{ field: 'to_staff', label: 'Staff' },
 	{ field: 'to_students', label: 'Students' },
 	{ field: 'to_guardians', label: 'Guardians' },
 ];
-const messageEditorButtons = [
+const messageEditorButtons: MessageEditorButton[] = [
 	'Paragraph',
 	['Heading 2', 'Heading 3'],
 	'Separator',
@@ -1519,11 +555,10 @@ const classEventAudienceRow = computed(() => {
 	return audienceRows.value[0] ?? null;
 });
 const classEventStudentGroupLabel = computed(() => {
-	const studentGroupName = classEventAudienceRow.value?.student_group || props.studentGroup;
-	if (!studentGroupName) return 'Selected student group';
+	const studentGroupLabel = classEventAudienceRow.value?.student_group_label;
+	if (studentGroupLabel) return studentGroupLabel;
 	return (
-		studentGroupSelectOptions.value.find(option => option.value === studentGroupName)?.label ||
-		studentGroupName
+		classEventAudienceRow.value?.student_group || props.studentGroup || 'Selected student group'
 	);
 });
 const classEventScheduleLabel = computed(() => {
@@ -1535,7 +570,7 @@ const attachmentSectionHelpText = computed(() =>
 		? 'Add a governed file or a link without leaving this class flow. The first attachment saves a draft automatically so the communication owns the file history.'
 		: 'Add a governed file or a link without leaving Staff Home. The first attachment saves a draft automatically so the communication owns the file history.'
 );
-const classEventContextCards = computed(() => [
+const classEventContextCards = computed<ClassEventContextCard[]>(() => [
 	{
 		label: 'Course',
 		value: props.courseLabel || summaryTitle.value,
@@ -1558,31 +593,17 @@ const attachmentActionsDisabled = computed(
 	() => submitting.value || attachmentSubmitting.value || optionsLoading.value || !options.value
 );
 
-const audienceSummaryRows = computed(() =>
+const audienceSummaryRows = computed<AudienceSummaryRow[]>(() =>
 	audienceRows.value.map(row => {
 		let scope = row.target_mode;
 		if (row.target_mode === 'School Scope') {
-			scope =
-				schoolSelectOptions.value.find(option => option.value === row.school)?.label ||
-				row.school ||
-				'School scope';
+			scope = getSchoolOptionLabel(row.school) || row.school || 'School scope';
 		} else if (row.target_mode === 'Team') {
-			scope =
-				teamSelectOptions.value.find(option => option.value === row.team)?.label ||
-				row.team ||
-				'Team';
+			scope = row.team_label || row.team || 'Team';
 		} else if (row.target_mode === 'Organization') {
-			scope =
-				organizationSelectOptions.value.find(option => option.value === form.organization)
-					?.label ||
-				form.organization ||
-				'Organization';
+			scope = getOrganizationOptionLabel(form.organization) || form.organization || 'Organization';
 		} else if (row.target_mode === 'Student Group') {
-			scope =
-				studentGroupSelectOptions.value.find(option => option.value === row.student_group)
-					?.label ||
-				row.student_group ||
-				'Student group';
+			scope = row.student_group_label || row.student_group || 'Student group';
 		}
 		const recipients = recipientToggleDefinitions
 			.filter(recipient => Boolean(row[recipient.field]))
@@ -1595,6 +616,17 @@ const audienceSummaryRows = computed(() =>
 		};
 	})
 );
+
+const attachmentSectionState = computed<AttachmentSectionState>(() => ({
+	helpText: attachmentSectionHelpText.value,
+	attachmentRows: attachmentRows.value,
+	attachmentErrorMessage: attachmentErrorMessage.value,
+	attachmentActionsDisabled: attachmentActionsDisabled.value,
+	removeDisabled: submitting.value || attachmentSubmitting.value,
+	showLinkComposer: showLinkComposer.value,
+	linkDraft,
+	linkDraftReady: linkDraftReady.value,
+}));
 
 function getValidationMessage(draftMode = false) {
 	if (!form.title.trim()) return 'Title is required.';
@@ -1827,7 +859,9 @@ async function loadOptions() {
 	if (optionsLoading.value) return;
 	optionsLoading.value = true;
 	try {
-		options.value = await getOrgCommunicationQuickCreateOptions({});
+		options.value = await getOrgCommunicationQuickCreateOptions({
+			prefill_student_group: props.studentGroup || null,
+		});
 	} catch (error) {
 		setTopLevelError(
 			error instanceof Error ? error.message : 'Unable to load communication options.',
@@ -1892,10 +926,17 @@ function initializeForm() {
 	linkDraft.external_url = '';
 
 	if (isClassEventMode.value) {
+		const classEventTarget = (options.value?.suggested_targets?.student_groups ?? []).find(
+			row => row.name === props.studentGroup
+		);
 		audienceRows.value = [
 			createAudienceRow({
+				preset_key: 'class_event',
 				target_mode: 'Student Group',
 				student_group: props.studentGroup || '',
+				student_group_label: classEventTarget
+					? buildStudentGroupSearchItem(classEventTarget).label
+					: props.studentGroup || '',
 				to_students: true,
 				to_guardians: false,
 				to_staff: false,
@@ -1904,59 +945,40 @@ function initializeForm() {
 		return;
 	}
 
-	audienceRows.value = [
-		createAudienceRow({
-			target_mode: 'School Scope',
-			school: form.school,
-			include_descendants: true,
-		}),
-	];
+	audienceRows.value = [];
 }
 
 function createAudienceRow(seed: Partial<AudienceRowState> = {}): AudienceRowState {
 	const targetMode = seed.target_mode || 'School Scope';
 	const row: AudienceRowState = {
 		id: `aud_${Date.now()}_${Math.random().toString(16).slice(2)}`,
+		preset_key: seed.preset_key || '',
 		target_mode: targetMode,
 		school: seed.school || '',
 		team: seed.team || '',
+		team_label: seed.team_label || '',
 		student_group: seed.student_group || '',
+		student_group_label: seed.student_group_label || '',
 		include_descendants:
 			targetMode === 'School Scope' ? Boolean(seed.include_descendants ?? true) : false,
 		to_staff: Boolean(seed.to_staff ?? false),
 		to_students: Boolean(seed.to_students ?? false),
 		to_guardians: Boolean(seed.to_guardians ?? false),
 		note: seed.note || '',
+		search_kind:
+			seed.search_kind ??
+			(targetMode === 'Team' ? 'team' : targetMode === 'Student Group' ? 'student_group' : null),
+		search_query: seed.search_query || '',
+		search_results: seed.search_results ? [...seed.search_results] : [],
+		search_loading: Boolean(seed.search_loading ?? false),
+		search_message: seed.search_message || '',
 	};
 	applyAudienceDefaults(row);
 	return row;
 }
 
-function addAudienceRow() {
-	audienceRows.value.push(
-		createAudienceRow({
-			target_mode: 'School Scope',
-			school: form.school,
-			include_descendants: true,
-		})
-	);
-}
-
 function removeAudienceRow(rowId: string) {
 	audienceRows.value = audienceRows.value.filter(row => row.id !== rowId);
-}
-
-function isAudienceTargetLocked(row: AudienceRowState) {
-	return isClassEventMode.value && row.student_group === props.studentGroup;
-}
-
-function setAudienceTargetMode(row: AudienceRowState, targetMode: string) {
-	row.target_mode = targetMode;
-	row.school = targetMode === 'School Scope' ? form.school || row.school : '';
-	row.team = targetMode === 'Team' ? row.team : '';
-	row.student_group = targetMode === 'Student Group' ? row.student_group : '';
-	row.include_descendants = targetMode === 'School Scope';
-	applyAudienceDefaults(row);
 }
 
 function allowedRecipientFields(targetMode: string): RecipientField[] {
@@ -2004,6 +1026,39 @@ function applyAudienceDefaults(row: AudienceRowState) {
 	}
 }
 
+function applyAudiencePreset(row: AudienceRowState, preset: OrgCommunicationAudiencePreset) {
+	row.preset_key = preset.key;
+	for (const recipient of recipientToggleDefinitions) {
+		row[recipient.field] = preset.default_fields.includes(recipient.field);
+	}
+	applyAudienceDefaults(row);
+	if (row.search_kind === 'team') {
+		row.search_results = suggestedTeamItems.value.slice(0, 8);
+		row.search_message = row.search_results.length
+			? 'Choose a suggested team or search by name.'
+			: 'Search for the team you want to reach.';
+	}
+	if (row.search_kind === 'student_group') {
+		row.search_results = suggestedStudentGroupItems.value.slice(0, 8);
+		row.search_message = row.search_results.length
+			? 'Choose a suggested class or search by name.'
+			: 'Search for the class or student group you want to reach.';
+	}
+}
+
+function addAudiencePreset(presetKey: string) {
+	const preset = audiencePresets.value.find(option => option.key === presetKey);
+	if (!preset) return;
+	const row = createAudienceRow({
+		preset_key: preset.key,
+		target_mode: preset.target_mode,
+		school: preset.target_mode === 'School Scope' ? form.school : '',
+		include_descendants: preset.target_mode === 'School Scope',
+	});
+	applyAudiencePreset(row, preset);
+	audienceRows.value.push(row);
+}
+
 function isRecipientDisabled(row: AudienceRowState, field: RecipientField) {
 	const allowed = new Set(allowedRecipientFields(row.target_mode));
 	if (!allowed.has(field)) return true;
@@ -2025,6 +1080,154 @@ function toggleRecipient(row: AudienceRowState, field: RecipientField, event: Ev
 	if (!target) return;
 	row[field] = target.checked;
 	applyAudienceDefaults(row);
+}
+
+function getAudienceSearchItems(row: AudienceRowState) {
+	if (row.search_query.trim().length >= 2) {
+		return row.search_results;
+	}
+	if (row.search_kind === 'team')
+		return row.search_results.length ? row.search_results : suggestedTeamItems.value;
+	if (row.search_kind === 'student_group') {
+		return row.search_results.length ? row.search_results : suggestedStudentGroupItems.value;
+	}
+	return [];
+}
+
+function getAudiencePreset(row: AudienceRowState) {
+	return audiencePresets.value.find(option => option.key === row.preset_key) || null;
+}
+
+function getAudienceRecipientSummary(row: AudienceRowState) {
+	return recipientToggleDefinitions
+		.filter(recipient => Boolean(row[recipient.field]))
+		.map(recipient => recipient.label)
+		.join(', ');
+}
+
+function getAudienceRowTitle(row: AudienceRowState) {
+	return (
+		getAudiencePreset(row)?.label ||
+		(row.target_mode === 'Team'
+			? 'Team audience'
+			: row.target_mode === 'Student Group'
+				? 'Class or student group'
+				: row.target_mode === 'Organization'
+					? 'Organization-wide'
+					: 'School audience')
+	);
+}
+
+function getAudienceRowDescription(row: AudienceRowState) {
+	if (row.target_mode === 'School Scope') {
+		const schoolLabel = getSchoolOptionLabel(row.school) || 'selected school scope';
+		const recipients = getAudienceRecipientSummary(row) || 'Choose recipients';
+		return `${schoolLabel} · ${recipients}`;
+	}
+	if (row.target_mode === 'Team') {
+		const teamLabel = row.team_label || 'Choose a team';
+		return `${teamLabel} · Staff`;
+	}
+	if (row.target_mode === 'Student Group') {
+		const studentGroupLabel = row.student_group_label || 'Choose a class or student group';
+		const recipients = getAudienceRecipientSummary(row) || 'Choose recipients';
+		return `${studentGroupLabel} · ${recipients}`;
+	}
+	const recipients = getAudienceRecipientSummary(row) || 'Choose recipients';
+	return `${getOrganizationOptionLabel(form.organization) || form.organization || 'Organization'} · ${recipients}`;
+}
+
+function clearAudienceSearchSelection(row: AudienceRowState) {
+	if (row.search_kind === 'team') {
+		row.team = '';
+		row.team_label = '';
+		row.search_results = suggestedTeamItems.value.slice(0, 8);
+		row.search_message = row.search_results.length
+			? 'Choose a suggested team or search by name.'
+			: 'Search for the team you want to reach.';
+		return;
+	}
+	if (row.search_kind === 'student_group') {
+		row.student_group = '';
+		row.student_group_label = '';
+		row.search_results = suggestedStudentGroupItems.value.slice(0, 8);
+		row.search_message = row.search_results.length
+			? 'Choose a suggested class or search by name.'
+			: 'Search for the class or student group you want to reach.';
+	}
+}
+
+function selectAudienceSearchItem(row: AudienceRowState, item: AudienceTargetSearchItem) {
+	if (row.search_kind === 'team') {
+		row.team = item.value;
+		row.team_label = item.label;
+	}
+	if (row.search_kind === 'student_group') {
+		row.student_group = item.value;
+		row.student_group_label = item.label;
+	}
+	row.search_message = `${item.label} selected.`;
+}
+
+async function searchAudienceTargets(row: AudienceRowState) {
+	if (row.search_loading) return;
+	const query = row.search_query.trim();
+	if (row.search_kind === 'team') {
+		if (query.length < 2) {
+			row.search_results = suggestedTeamItems.value.slice(0, 8);
+			row.search_message = row.search_results.length
+				? 'Choose a suggested team or type at least 2 characters to search.'
+				: 'Type at least 2 characters to search teams.';
+			return;
+		}
+		row.search_loading = true;
+		row.search_message = '';
+		try {
+			const response = await searchOrgCommunicationTeams({
+				query,
+				organization: form.organization || null,
+				school: form.school || null,
+				limit: 8,
+			});
+			row.search_results = (response.results || []).map(buildTeamSearchItem);
+			row.search_message = row.search_results.length ? '' : 'No teams match that search yet.';
+		} catch (error) {
+			row.search_results = [];
+			row.search_message = error instanceof Error ? error.message : 'Unable to search teams.';
+		} finally {
+			row.search_loading = false;
+		}
+		return;
+	}
+	if (row.search_kind === 'student_group') {
+		if (query.length < 2) {
+			row.search_results = suggestedStudentGroupItems.value.slice(0, 8);
+			row.search_message = row.search_results.length
+				? 'Choose a suggested class or type at least 2 characters to search.'
+				: 'Type at least 2 characters to search classes.';
+			return;
+		}
+		row.search_loading = true;
+		row.search_message = '';
+		try {
+			const response = await searchOrgCommunicationStudentGroups({
+				query,
+				organization: form.organization || null,
+				school: form.school || null,
+				limit: 8,
+			});
+			row.search_results = (response.results || []).map(buildStudentGroupSearchItem);
+			row.search_message = row.search_results.length
+				? ''
+				: 'No classes or student groups match that search yet.';
+		} catch (error) {
+			row.search_results = [];
+			row.search_message =
+				error instanceof Error ? error.message : 'Unable to search classes or student groups.';
+		} finally {
+			row.search_loading = false;
+		}
+	}
 }
 
 function updateMessage(content: string) {
@@ -2151,29 +1354,14 @@ function removeAttachmentRow(rowName: string) {
 	attachmentRows.value = attachmentRows.value.filter(row => row.row_name !== rowName);
 }
 
+function toggleLinkComposer() {
+	showLinkComposer.value = !showLinkComposer.value;
+}
+
 function resetLinkDraft() {
 	linkDraft.title = '';
 	linkDraft.external_url = '';
 	showLinkComposer.value = false;
-}
-
-function formatAttachmentMeta(attachment: OrgCommunicationAttachmentRow) {
-	if (attachment.kind === 'link') {
-		return attachment.external_url || 'External link';
-	}
-	const parts = [attachment.file_name];
-	if (attachment.file_size) {
-		parts.push(formatFileSize(attachment.file_size));
-	}
-	return parts.filter(Boolean).join(' · ') || 'Governed file';
-}
-
-function formatFileSize(value: number | string | null | undefined) {
-	const size = typeof value === 'number' ? value : Number(value || 0);
-	if (!Number.isFinite(size) || size <= 0) return '';
-	if (size < 1024) return `${size} B`;
-	if (size < 1024 * 1024) return `${(size / 1024).toFixed(1)} KB`;
-	return `${(size / (1024 * 1024)).toFixed(1)} MB`;
 }
 
 async function ensureSavedDraft() {
@@ -2341,92 +1529,3 @@ function getAttachmentDraftBlocker() {
 	return draftValidationMessage.value;
 }
 </script>
-
-<style scoped>
-.if-org-communication-native-select {
-	width: 100%;
-	appearance: none;
-	border-radius: 1rem;
-	border: 1px solid rgb(var(--border-rgb) / 0.8);
-	background-color: rgb(var(--surface-rgb));
-	background-image:
-		linear-gradient(45deg, transparent 50%, rgb(var(--ink-rgb) / 0.55) 50%),
-		linear-gradient(135deg, rgb(var(--ink-rgb) / 0.55) 50%, transparent 50%);
-	background-position:
-		calc(100% - 1.1rem) calc(50% - 0.12rem),
-		calc(100% - 0.8rem) calc(50% - 0.12rem);
-	background-repeat: no-repeat;
-	background-size:
-		0.4rem 0.4rem,
-		0.4rem 0.4rem;
-	box-shadow: var(--shadow-soft);
-	color: rgb(var(--ink-rgb));
-	font-size: 0.875rem;
-	line-height: 1.25rem;
-	padding: 0.625rem 2.5rem 0.625rem 0.875rem;
-	transition:
-		border-color 120ms ease,
-		box-shadow 120ms ease,
-		background-color 120ms ease;
-}
-
-.if-org-communication-native-select:focus {
-	border-color: rgb(var(--jacaranda-rgb) / 0.5);
-	box-shadow:
-		var(--shadow-soft),
-		0 0 0 1px rgb(var(--jacaranda-rgb) / 0.3);
-	outline: none;
-}
-
-.if-org-communication-native-select:disabled {
-	cursor: not-allowed;
-	background-color: rgb(var(--surface-rgb) / 0.8);
-	color: rgb(var(--ink-rgb) / 0.5);
-	opacity: 0.8;
-}
-
-.if-class-event-context-pill {
-	display: flex;
-	min-width: 0;
-	flex-wrap: wrap;
-	align-items: center;
-	gap: 0.625rem;
-	border-radius: 1.25rem;
-	border: 1px solid rgb(var(--border-rgb) / 0.72);
-	background: rgb(var(--surface-rgb) / 0.66);
-	padding: 0.75rem 0.875rem;
-}
-
-.if-class-event-context-pill__label {
-	display: inline-flex;
-	align-items: center;
-	justify-content: center;
-	border-radius: 9999px;
-	padding: 0.25rem 0.625rem;
-	font-size: 0.6875rem;
-	font-weight: 700;
-	letter-spacing: 0.16em;
-	line-height: 1;
-	text-transform: uppercase;
-}
-
-.if-class-event-context-pill--0 .if-class-event-context-pill__label {
-	background: rgb(var(--jacaranda-rgb) / 0.14);
-	color: rgb(var(--jacaranda-rgb) / 1);
-}
-
-.if-class-event-context-pill--1 .if-class-event-context-pill__label {
-	background: rgb(var(--leaf-rgb) / 0.14);
-	color: rgb(var(--canopy-rgb) / 1);
-}
-
-.if-class-event-context-pill--2 .if-class-event-context-pill__label {
-	background: rgb(var(--sky-rgb) / 0.24);
-	color: rgb(var(--canopy-rgb) / 1);
-}
-
-.if-class-event-context-pill--3 .if-class-event-context-pill__label {
-	background: rgb(var(--slate-rgb) / 0.14);
-	color: rgb(var(--slate-rgb) / 0.9);
-}
-</style>

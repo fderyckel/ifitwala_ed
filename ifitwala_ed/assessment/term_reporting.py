@@ -189,10 +189,19 @@ def aggregate_outcomes_to_course_results(
 ) -> Dict[Tuple[str, str], AggregateRow]:
     pe_by_name = _load_program_enrollments(ctx)
     pe_by_student_course = _load_program_enrollment_courses(pe_by_name)
+    outcome_rows = list(outcomes)
+    criteria_points_by_outcome = _load_outcome_criteria_points_map(
+        [
+            outcome.name
+            for outcome in outcome_rows
+            if (outcome.grading_mode or "").strip() == "Criteria"
+            and (outcome.rubric_scoring_strategy or "Sum Total").strip() != "Sum Total"
+        ]
+    )
 
     aggregates: Dict[Tuple[str, str], AggregateRow] = {}
 
-    for outcome in outcomes:
+    for outcome in outcome_rows:
         info = pe_by_student_course.get((outcome.student, outcome.course))
         if not info:
             continue
@@ -216,7 +225,11 @@ def aggregate_outcomes_to_course_results(
             )
             aggregates[key] = aggregate
 
-        apply_result = _apply_procedural_policy(outcome, ctx)
+        apply_result = _apply_procedural_policy(
+            outcome,
+            ctx,
+            criteria_points_by_outcome=criteria_points_by_outcome,
+        )
         if not apply_result:
             continue
 
@@ -239,12 +252,20 @@ def aggregate_outcomes_to_course_results(
     return aggregates
 
 
-def _apply_procedural_policy(outcome: OutcomeRow, ctx: dict):
+def _apply_procedural_policy(
+    outcome: OutcomeRow,
+    ctx: dict,
+    *,
+    criteria_points_by_outcome: Optional[Dict[str, List[dict]]] = None,
+):
     status = (outcome.procedural_status or "").strip()
     if status == "None":
         status = ""
 
-    numeric_value, weight, note = _score_for_outcome(outcome)
+    numeric_value, weight, note = _score_for_outcome(
+        outcome,
+        criteria_points_by_outcome=criteria_points_by_outcome,
+    )
 
     if status == "Excused" and ctx.get("exclude_excused", True):
         return None
@@ -272,13 +293,21 @@ def _apply_procedural_policy(outcome: OutcomeRow, ctx: dict):
     return numeric_value, weight, note
 
 
-def _score_for_outcome(outcome: OutcomeRow):
+def _score_for_outcome(
+    outcome: OutcomeRow,
+    *,
+    criteria_points_by_outcome: Optional[Dict[str, List[dict]]] = None,
+):
     if (outcome.grading_mode or "").strip() == "Criteria":
         strategy = (outcome.rubric_scoring_strategy or "Sum Total").strip() or "Sum Total"
         if strategy == "Sum Total":
             return _numeric_value_from_outcome(outcome), 1.0, None
 
-        criteria_rows = _load_outcome_criteria_points(outcome.name)
+        criteria_rows = (
+            list((criteria_points_by_outcome or {}).get(outcome.name) or [])
+            if criteria_points_by_outcome is not None
+            else _load_outcome_criteria_points(outcome.name)
+        )
         note = "Criteria-only outcome"
         if not criteria_rows:
             note = "Criteria-only outcome (no criterion scores)"
@@ -319,6 +348,45 @@ def _load_outcome_criteria_points(outcome_id: str):
     )
 
 
+def _load_outcome_criteria_points_map(outcome_ids: List[str]) -> Dict[str, List[dict]]:
+    ordered_ids = []
+    seen = set()
+    for outcome_id in outcome_ids or []:
+        normalized = (outcome_id or "").strip()
+        if not normalized or normalized in seen:
+            continue
+        seen.add(normalized)
+        ordered_ids.append(normalized)
+
+    if not ordered_ids:
+        return {}
+
+    rows = frappe.get_all(
+        "Task Outcome Criterion",
+        filters={
+            "parent": ("in", ordered_ids),
+            "parenttype": "Task Outcome",
+            "parentfield": "official_criteria",
+        },
+        fields=["parent", "assessment_criteria", "level_points"],
+        order_by="parent asc, idx asc",
+    )
+
+    grouped = {outcome_id: [] for outcome_id in ordered_ids}
+    for row in rows or []:
+        parent = (row.get("parent") or "").strip()
+        if not parent or parent not in grouped:
+            continue
+        grouped[parent].append(
+            {
+                "assessment_criteria": row.get("assessment_criteria"),
+                "level_points": row.get("level_points"),
+            }
+        )
+
+    return grouped
+
+
 @redis_cache(ttl=86400)
 def _grade_scale_intervals(grade_scale: str) -> List[Tuple[float, str]]:
     rows = frappe.db.get_values(
@@ -356,6 +424,165 @@ def _grade_label_from_score(grade_scale: Optional[str], numeric_score: Optional[
     return label
 
 
+def _course_term_result_payload(ctx: dict, aggregate: AggregateRow) -> dict:
+    numeric_score = aggregate.numeric_total / aggregate.scored_weight if aggregate.scored_weight > 0 else None
+    grade_scale = None if aggregate.grade_scale_conflict else aggregate.grade_scale
+    grade_value = _grade_label_from_score(grade_scale, numeric_score)
+
+    note_flags = list(aggregate.note_flags)
+    if aggregate.grade_scale_conflict:
+        note_flags.append("Grade scale mismatch")
+    internal_note = "; ".join(sorted(set(flag for flag in note_flags if flag)))
+
+    return {
+        "reporting_cycle": ctx["name"],
+        "student": aggregate.student,
+        "program_enrollment": aggregate.program_enrollment,
+        "course": aggregate.course,
+        "program": aggregate.program,
+        "academic_year": aggregate.academic_year,
+        "school": aggregate.school,
+        "term": ctx["term"],
+        "grade_scale": grade_scale,
+        "numeric_score": numeric_score,
+        "grade_value": grade_value,
+        "task_counted": aggregate.task_counted,
+        "total_weight": aggregate.scored_weight,
+        "internal_note": internal_note or None,
+    }
+
+
+def _course_term_result_reset_payload() -> dict:
+    return {
+        "numeric_score": None,
+        "grade_value": None,
+        "task_counted": 0,
+        "total_weight": 0,
+        "internal_note": "No eligible outcomes",
+    }
+
+
+def _row_matches_payload(row, payload: dict) -> bool:
+    for field, value in payload.items():
+        if getattr(row, field, None) != value:
+            return False
+    return True
+
+
+def _apply_payload_to_doc(doc, payload: dict) -> None:
+    for field, value in payload.items():
+        setattr(doc, field, value)
+
+
+def _student_term_report_header_payload(ctx: dict, student: str, program_enrollment: str, pe_meta: dict) -> dict:
+    payload = {
+        "reporting_cycle": ctx["name"],
+        "student": student,
+        "program_enrollment": program_enrollment,
+        "term": ctx["term"],
+    }
+
+    pe = pe_meta.get(program_enrollment)
+    if pe:
+        payload["program"] = pe.program
+        payload["academic_year"] = pe.academic_year
+        payload["school"] = pe.school
+
+    return payload
+
+
+def _student_term_report_course_payloads(rows: List[dict], course_meta: dict) -> List[dict]:
+    payloads = []
+    for row in rows:
+        course = course_meta.get(row.course)
+        payloads.append(
+            {
+                "course_term_result": row.name,
+                "course": row.course,
+                "course_name": getattr(course, "course_name", None) if course else None,
+                "grade_value": row.override_grade_value or row.grade_value,
+                "numeric_score": row.numeric_score,
+                "is_override": 1 if row.override_grade_value else 0,
+                "teacher_comment": row.teacher_comment,
+            }
+        )
+    return payloads
+
+
+def _load_existing_student_term_reports(reporting_cycle: str, program_enrollment_names: List[str]) -> dict:
+    if not program_enrollment_names:
+        return {}
+
+    existing_rows = frappe.get_all(
+        "Student Term Report",
+        filters={
+            "reporting_cycle": reporting_cycle,
+            "program_enrollment": ("in", program_enrollment_names),
+        },
+        fields=[
+            "name",
+            "reporting_cycle",
+            "student",
+            "program_enrollment",
+            "program",
+            "academic_year",
+            "school",
+            "term",
+        ],
+    )
+    if not existing_rows:
+        return {}
+
+    report_names = [row.name for row in existing_rows if row.name]
+    child_rows = frappe.get_all(
+        "Student Term Report Course",
+        filters={
+            "parent": ("in", report_names),
+            "parenttype": "Student Term Report",
+        },
+        fields=[
+            "parent",
+            "course_term_result",
+            "course",
+            "course_name",
+            "grade_value",
+            "numeric_score",
+            "is_override",
+            "teacher_comment",
+        ],
+        order_by="parent asc, idx asc",
+    )
+
+    courses_by_parent: Dict[str, List[dict]] = defaultdict(list)
+    for row in child_rows:
+        courses_by_parent[row.parent].append(
+            {
+                "course_term_result": row.course_term_result,
+                "course": row.course,
+                "course_name": row.course_name,
+                "grade_value": row.grade_value,
+                "numeric_score": row.numeric_score,
+                "is_override": row.is_override,
+                "teacher_comment": row.teacher_comment,
+            }
+        )
+
+    return {
+        (row.student, row.program_enrollment): {
+            "row": row,
+            "courses": courses_by_parent.get(row.name, []),
+        }
+        for row in existing_rows
+        if row.student and row.program_enrollment
+    }
+
+
+def _student_term_report_matches(existing_report: dict, header_payload: dict, course_payloads: List[dict]) -> bool:
+    if not _row_matches_payload(existing_report["row"], header_payload):
+        return False
+    return existing_report.get("courses") == course_payloads
+
+
 def upsert_course_term_results(ctx: dict, aggregates: Dict[Tuple[str, str], AggregateRow]):
     existing_rows = frappe.get_all(
         "Course Term Result",
@@ -374,6 +601,7 @@ def upsert_course_term_results(ctx: dict, aggregates: Dict[Tuple[str, str], Aggr
             "program",
             "academic_year",
             "school",
+            "term",
         ],
     )
 
@@ -385,45 +613,15 @@ def upsert_course_term_results(ctx: dict, aggregates: Dict[Tuple[str, str], Aggr
     created = 0
 
     for key, aggregate in aggregates.items():
-        numeric_score = aggregate.numeric_total / aggregate.scored_weight if aggregate.scored_weight > 0 else None
-        grade_scale = None if aggregate.grade_scale_conflict else aggregate.grade_scale
-        grade_value = _grade_label_from_score(grade_scale, numeric_score)
-
-        note_flags = list(aggregate.note_flags)
-        if aggregate.grade_scale_conflict:
-            note_flags.append("Grade scale mismatch")
-        internal_note = "; ".join(sorted(set(flag for flag in note_flags if flag)))
-
-        payload = {
-            "reporting_cycle": ctx["name"],
-            "student": aggregate.student,
-            "program_enrollment": aggregate.program_enrollment,
-            "course": aggregate.course,
-            "program": aggregate.program,
-            "academic_year": aggregate.academic_year,
-            "school": aggregate.school,
-            "term": ctx["term"],
-            "grade_scale": grade_scale,
-            "numeric_score": numeric_score,
-            "grade_value": grade_value,
-            "task_counted": aggregate.task_counted,
-            "total_weight": aggregate.scored_weight,
-            "internal_note": internal_note or None,
-        }
+        payload = _course_term_result_payload(ctx, aggregate)
 
         existing = existing_by_key.get(key)
         if existing:
-            changed = False
-            for field, value in payload.items():
-                if getattr(existing, field, None) != value:
-                    changed = True
-                    break
-            if not changed:
+            if _row_matches_payload(existing, payload):
                 continue
 
             doc = frappe.get_doc("Course Term Result", existing.name)
-            for field, value in payload.items():
-                setattr(doc, field, value)
+            _apply_payload_to_doc(doc, payload)
             doc.calculated_on = now_datetime()
             doc.calculated_by = frappe.session.user
             doc.save(ignore_permissions=True)
@@ -440,28 +638,16 @@ def upsert_course_term_results(ctx: dict, aggregates: Dict[Tuple[str, str], Aggr
     remaining_keys = set(existing_by_key.keys()) - set(aggregates.keys())
     for key in remaining_keys:
         row = existing_by_key[key]
+        reset_payload = _course_term_result_reset_payload()
+        if _row_matches_payload(row, reset_payload):
+            continue
+
         doc = frappe.get_doc("Course Term Result", row.name)
-        changed = False
-        if doc.numeric_score is not None:
-            doc.numeric_score = None
-            changed = True
-        if doc.grade_value:
-            doc.grade_value = None
-            changed = True
-        if doc.task_counted:
-            doc.task_counted = 0
-            changed = True
-        if doc.total_weight:
-            doc.total_weight = 0
-            changed = True
-        if doc.internal_note != "No eligible outcomes":
-            doc.internal_note = "No eligible outcomes"
-            changed = True
-        if changed:
-            doc.calculated_on = now_datetime()
-            doc.calculated_by = frappe.session.user
-            doc.save(ignore_permissions=True)
-            updated += 1
+        _apply_payload_to_doc(doc, reset_payload)
+        doc.calculated_on = now_datetime()
+        doc.calculated_by = frappe.session.user
+        doc.save(ignore_permissions=True)
+        updated += 1
 
     return {"updated": updated, "created": created, "buckets": len(aggregates)}
 
@@ -522,44 +708,31 @@ def generate_student_term_reports(reporting_cycle: str):
         key = (row.student, row.program_enrollment)
         grouped[key].append(row)
 
+    existing_reports = _load_existing_student_term_reports(ctx["name"], list(pe_names))
     report_count = 0
     for (student, pe_name), rows in grouped.items():
         if not pe_name:
             continue
 
-        existing_name = frappe.db.get_value(
-            "Student Term Report",
-            {"reporting_cycle": ctx["name"], "student": student, "program_enrollment": pe_name},
-            "name",
-        )
+        header_payload = _student_term_report_header_payload(ctx, student, pe_name, pe_meta)
+        course_payloads = _student_term_report_course_payloads(rows, course_meta)
+        existing_report = existing_reports.get((student, pe_name))
 
-        if existing_name:
-            report = frappe.get_doc("Student Term Report", existing_name)
+        if existing_report and _student_term_report_matches(existing_report, header_payload, course_payloads):
+            report_count += 1
+            continue
+
+        if existing_report:
+            report = frappe.get_doc("Student Term Report", existing_report["row"].name)
         else:
             report = frappe.new_doc("Student Term Report")
 
-        report.reporting_cycle = ctx["name"]
-        report.student = student
-        report.program_enrollment = pe_name
-
-        pe = pe_meta.get(pe_name)
-        if pe:
-            report.program = pe.program
-            report.academic_year = pe.academic_year
-            report.school = pe.school
-
-        report.term = ctx["term"]
+        _apply_payload_to_doc(report, header_payload)
         report.set("courses", [])
-        for row in rows:
+        for payload in course_payloads:
             course_row = report.append("courses", {})
-            course_row.course_term_result = row.name
-            course_row.course = row.course
-            course = course_meta.get(row.course)
-            course_row.course_name = getattr(course, "course_name", None) if course else None
-            course_row.grade_value = row.override_grade_value or row.grade_value
-            course_row.numeric_score = row.numeric_score
-            course_row.is_override = 1 if row.override_grade_value else 0
-            course_row.teacher_comment = row.teacher_comment
+            for field, value in payload.items():
+                setattr(course_row, field, value)
 
         report.save(ignore_permissions=True)
         report_count += 1

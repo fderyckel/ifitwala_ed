@@ -27,6 +27,23 @@ They are contract surfaces for real workflows.
 - This Codex session runs on the user's local machine for this repo.
 - Do not add stock explanations about missing `frappe` in `.venv`, missing `bench` on `PATH`, or the shell not being the remote server unless a specific attempted command is blocked and that exact blocker matters.
 
+## 0.2 Documentation Routing Protocol
+
+Before changing API behavior, read the canonical docs in this order:
+
+1. `ifitwala_ed/docs/README.md`
+2. the relevant docs-folder `README.md` when one exists
+3. the feature's canonical runtime contract
+
+Always check these cross-cutting notes when relevant:
+
+- `ifitwala_ed/docs/high_concurrency_contract.md` for hot paths, dashboards, bootstrap endpoints, caching, and async boundaries
+- `ifitwala_ed/docs/nested_scope_contract.md` for hierarchy-aware scope, descendant inclusion, or location/school visibility
+- `ifitwala_ed/docs/files_and_policies/README.md` for governed file/image routes
+- `ifitwala_ed/docs/testing/README.md` and `ifitwala_ed/docs/testing/01_test_strategy.md` before deciding test scope
+
+Treat proposal, audit, history, and implementation-companion notes as non-authoritative unless they explicitly declare themselves the current runtime contract.
+
 ---
 
 ## 1. Endpoint Design Rules

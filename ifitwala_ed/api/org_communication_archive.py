@@ -7,7 +7,11 @@ import frappe
 from frappe import _
 from frappe.utils import add_days, getdate, strip_html, today
 
-from ifitwala_ed.api.org_comm_utils import build_audience_summary, check_audience_match
+from ifitwala_ed.api.org_comm_utils import (
+    build_audience_summary,
+    check_audience_match,
+    expand_employee_visibility_context,
+)
 from ifitwala_ed.api.org_communication_attachments import serialize_org_communication_attachment_row
 from ifitwala_ed.utilities.employee_utils import (
     get_ancestor_organizations,
@@ -110,6 +114,18 @@ def _get_scope(user: str, employee: dict | None):
     return base_org, base_school, org_scope, school_scope
 
 
+def _get_linked_employee(user: str) -> dict:
+    return (
+        frappe.db.get_value(
+            "Employee",
+            {"user_id": user},
+            ["name", "school", "organization"],
+            as_dict=True,
+        )
+        or {}
+    )
+
+
 def _get_archive_employee_context(user: str, roles: list[str]):
     """Return archive visibility context plus base org/school scopes.
 
@@ -117,12 +133,7 @@ def _get_archive_employee_context(user: str, roles: list[str]):
     - with Employee.school: school cone only
     - without Employee.school: organization descendant fallback
     """
-    employee = frappe.db.get_value(
-        "Employee",
-        {"user_id": user},
-        ["name", "school", "organization"],
-        as_dict=True,
-    )
+    employee = _get_linked_employee(user)
 
     base_org, base_school, org_scope, school_scope = _get_scope(user, employee)
 
@@ -136,6 +147,13 @@ def _get_archive_employee_context(user: str, roles: list[str]):
             archive_employee["school_names"] = school_names
 
     return archive_employee, base_org, base_school, org_scope, school_scope
+
+
+def _get_item_employee_context(user: str, roles: list[str]) -> dict:
+    employee = _get_linked_employee(user)
+    if not employee:
+        return {}
+    return expand_employee_visibility_context(employee, roles)
 
 
 def _get_archive_organization_scope(*, base_org: str | None, org_scope: list[str] | None) -> list[str]:
@@ -330,7 +348,7 @@ def get_org_communication_item(name=None):
 
     # Keep detail visibility aligned with the feed endpoint or users can see a
     # row in the archive list but lose the full body in the detail pane.
-    employee, _base_org, _base_school, _org_scope, _school_scope = _get_archive_employee_context(user, roles)
+    employee = _get_item_employee_context(user, roles)
 
     # NOTE: check_audience_match MUST be updated to use Team Member doctype
     # and not Employee.department. (This is the real underlying bug.)

@@ -140,6 +140,28 @@ Drift is a bug.
   - risks
   - explicit approval
 
+### 2.1.1 Documentation Routing Protocol
+
+When starting non-trivial work, find the canonical doc before designing or editing.
+
+Read in this order:
+
+1. nearest applicable `AGENTS.md`
+2. `ifitwala_ed/docs/README.md`
+3. the relevant docs-folder `README.md` when one exists
+4. the feature's canonical contract doc(s)
+5. cross-cutting contracts such as:
+   - `ifitwala_ed/docs/high_concurrency_contract.md`
+   - `ifitwala_ed/docs/nested_scope_contract.md`
+   - `ifitwala_ed/docs/testing/01_test_strategy.md`
+
+Routing rules:
+
+- Prefer docs that explicitly say `Canonical`, `Active`, `Locked`, or that include concrete `Status`, `Code refs`, and `Test refs`.
+- Treat `proposal`, `audit`, `history`, `phase`, and `notes` files as non-authoritative unless the file itself says it is the current canonical/runtime contract.
+- Treat `ifitwala_ed/docs/docs_md/` as end-user and DocType-facing guidance, not as the default source for runtime architecture, unless a feature contract explicitly points there.
+- If a folder has a `README.md`, use it as the navigation index rather than scanning file names and guessing authority.
+
 ### 2.2 Legacy Code Policy
 
 During development:
@@ -239,10 +261,21 @@ Rules:
   - `frappe.db.get_value`
   - `frappe.db.get_values`
   - `frappe.get_all`
-  - Query Builder
-  - parameterized SQL
+- Query Builder
+- parameterized SQL
 - Never interpolate SQL strings manually.
 - Never use broad queries when indexed scoped queries are available.
+
+### 5.2.1 Read-Plan Discipline For Hot Paths
+
+When touching dashboards, reports, page-init endpoints, or other hot read surfaces:
+
+- identify every helper the endpoint calls and what each helper reads
+- collapse duplicated stable reads into one shared preload context when multiple blocks need the same inputs
+- do not accept "same data, different helper" as a reason to reread the database
+- when replacing per-row `get_doc(...)` work with preloaded rows, verify the downstream helper's full field contract first
+- batched/preloaded substitutes must include every field later used by validation, equality, sorting, permissions, and derived state
+- add targeted tests that fail if the hot path falls back to per-row `get_doc(...)`, `frappe.db.get_value(...)`, or equivalent repeated reads
 
 ---
 
@@ -316,6 +349,22 @@ Cache keys must include relevant scope:
 
 Stale cache without an invalidation strategy is a bug.
 
+For every new shared cache, agents must define and verify:
+
+- exact key shape
+- scope dimensions
+- owner invalidator function
+- dependent caches/helpers that must also be invalidated
+- mutation hooks that trigger invalidation
+
+Rules:
+
+- do not replace request-local dict caches on hot paths with Redis caches unless invalidation ownership is explicit
+- do not stop at the cache you added; also clear dependent helper caches such as ancestor-chain or effective-resolution caches
+- avoid prefix-wide or global cache wipes as the default invalidation strategy in multi-tenant domains
+- if broad invalidation is temporarily unavoidable, call it out explicitly as a concession and say what narrower ownership is still missing
+- cache changes must include tests for both reuse and invalidation
+
 ---
 
 ## 6. High-Concurrency Mandate (Non-Negotiable)
@@ -347,6 +396,13 @@ Avoid:
 - per-row email/network side effects in requests
 - unbounded scheduler sweeps
 - oversized transactions
+
+When an endpoint returns multiple blocks or panels:
+
+- write down which inputs are shared across blocks
+- preload shared stable inputs once
+- pass the shared inputs through explicitly instead of letting each block query independently
+- keep permissions and tenant scoping enforced before preload fan-out, not after payload assembly
 
 ### 6.2 Scheduler & Job Rules
 
@@ -380,6 +436,12 @@ Optimize:
 - cacheability
 - batching
 - idempotency
+
+Hot-path write changes must also follow these rules:
+
+- if you skip `save()` for unchanged rows, verify the target controller/hooks do not provide required side effects for that path
+- compare equality against the full payload the controller cares about, not a partial subset
+- add regression coverage for the no-op path and the changed path
 
 ---
 

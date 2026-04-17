@@ -139,9 +139,10 @@
 					</button>
 
 					<button
-						v-if="userCapabilities.quick_action_org_communication"
+						v-if="showOrgCommunicationQuickAction"
 						type="button"
-						class="action-tile group w-full min-w-0"
+						class="action-tile group w-full min-w-0 disabled:cursor-not-allowed disabled:opacity-70"
+						:disabled="!orgCommunicationQuickActionState.enabled"
 						@click="openOrgCommunication"
 					>
 						<div class="action-tile__icon shrink-0">
@@ -151,8 +152,11 @@
 							<p class="type-body-strong text-ink transition-colors group-hover:text-jacaranda">
 								Create communication
 							</p>
-							<p class="truncate type-caption text-slate-token/70">
-								Publish to staff, a student group, or your wider school community
+							<p
+								class="type-caption text-slate-token/70"
+								:class="orgCommunicationQuickActionState.blocked_reason ? '' : 'truncate'"
+							>
+								{{ orgCommunicationQuickActionSubtitle }}
 							</p>
 						</div>
 						<FeatherIcon
@@ -328,6 +332,7 @@ import { useOverlayStack } from '@/composables/useOverlayStack';
 import { createClassHubService } from '@/lib/classHubService';
 import {
 	getStaffHomeHeader,
+	type StaffHomeQuickActionState,
 	listFocusItems,
 	type StaffHomeHeader,
 } from '@/lib/services/staff/staffHomeService';
@@ -384,13 +389,32 @@ const userCapabilities = computed<Record<string, boolean>>(
 	() => userDoc.value?.capabilities ?? {}
 );
 
+const orgCommunicationQuickActionState = computed<StaffHomeQuickActionState>(() => ({
+	enabled:
+		userDoc.value?.quick_actions?.org_communication?.enabled ??
+		Boolean(userCapabilities.value.quick_action_org_communication),
+	blocked_reason: userDoc.value?.quick_actions?.org_communication?.blocked_reason ?? null,
+}));
+
+const showOrgCommunicationQuickAction = computed(
+	() =>
+		Boolean(userCapabilities.value.quick_action_org_communication) ||
+		Boolean(orgCommunicationQuickActionState.value.blocked_reason)
+);
+
+const orgCommunicationQuickActionSubtitle = computed(
+	() =>
+		orgCommunicationQuickActionState.value.blocked_reason ||
+		'Publish to staff, a student group, or your wider school community'
+);
+
 /* QUICK ACTIONS ------------------------------------------------ */
 const hasVisibleQuickActions = computed(
 	() =>
 		Boolean(userCapabilities.value.quick_action_class_hub) ||
 		Boolean(userCapabilities.value.quick_action_create_event) ||
 		Boolean(userCapabilities.value.quick_action_student_log) ||
-		Boolean(userCapabilities.value.quick_action_org_communication)
+		showOrgCommunicationQuickAction.value
 );
 
 /* FOCUS -------------------------------------------------------- */
@@ -920,6 +944,17 @@ function openStudentLog() {
 }
 
 function openOrgCommunication() {
+	if (!orgCommunicationQuickActionState.value.enabled) {
+		toast.create({
+			title: 'Communication unavailable',
+			text:
+				orgCommunicationQuickActionState.value.blocked_reason ||
+				'You cannot create communications from Staff Home right now.',
+			icon: 'info',
+		});
+		return;
+	}
+
 	overlay.open('org-communication-quick-create', {
 		entryMode: 'staff-home',
 		sourceLabel: 'Staff Home',

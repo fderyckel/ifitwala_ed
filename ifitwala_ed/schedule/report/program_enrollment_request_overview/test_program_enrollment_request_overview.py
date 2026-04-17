@@ -1,5 +1,5 @@
 from unittest import TestCase
-from unittest.mock import call, patch
+from unittest.mock import patch
 
 import frappe
 
@@ -192,7 +192,7 @@ class TestProgramEnrollmentRequestOverview(TestCase):
         self.assertEqual(by_student["STU-3"]["submission_status"], report.SUBMISSION_STATUS_SUBMITTED)
         self.assertEqual(by_student["STU-3"]["problem_status"], report.PROBLEM_STATUS_NEEDS_OVERRIDE)
 
-    def test_get_live_choice_states_uses_loaded_request_models_and_caches_offering_semantics(self):
+    def test_get_live_choice_states_delegates_to_batched_choice_state_helper(self):
         requests = [
             {
                 "name": "PER-0001",
@@ -245,69 +245,25 @@ class TestProgramEnrollmentRequestOverview(TestCase):
                 "courses": [],
             },
         ]
-        offering_semantics = {"BIO": {"course_name": "Biology"}, "CHEM": {"course_name": "Chemistry"}}
+        expected = {
+            "PER-0001": {
+                "ready_for_submit": False,
+                "reasons": ["Choose at least one course in Group A."],
+            },
+            "PER-0002": {
+                "ready_for_submit": True,
+                "reasons": [],
+            },
+        }
 
-        def fake_choice_state(request_doc, *, can_edit, offering_semantics=None, required_basket_groups=None):
-            self.assertFalse(can_edit)
-            self.assertEqual(request_doc.status, "Draft")
-            self.assertTrue(request_doc.courses)
-            self.assertIsInstance(request_doc.courses[0], frappe._dict)
-            self.assertEqual(
-                offering_semantics, {"BIO": {"course_name": "Biology"}, "CHEM": {"course_name": "Chemistry"}}
-            )
-            self.assertIsNone(required_basket_groups)
-            return {
-                "summary": {"ready_for_submit": request_doc.name == "PER-0002"},
-                "validation": {
-                    "reasons": [] if request_doc.name == "PER-0002" else ["Choose at least one course in Group A."]
-                },
-            }
-
-        with (
-            patch(
-                "ifitwala_ed.schedule.report.program_enrollment_request_overview.program_enrollment_request_overview.get_offering_course_semantics",
-                return_value=offering_semantics,
-            ) as semantics_mock,
-            patch(
-                "ifitwala_ed.schedule.report.program_enrollment_request_overview.program_enrollment_request_overview.get_program_enrollment_request_choice_state",
-                side_effect=fake_choice_state,
-            ) as choice_state_mock,
-            patch(
-                "ifitwala_ed.schedule.report.program_enrollment_request_overview.program_enrollment_request_overview.frappe.get_doc"
-            ) as get_doc_mock,
-        ):
+        with patch(
+            "ifitwala_ed.schedule.report.program_enrollment_request_overview.program_enrollment_request_overview.get_program_enrollment_request_live_choice_states",
+            return_value=expected,
+        ) as batch_helper_mock:
             live_states = report._get_live_choice_states(requests)
 
-        semantics_mock.assert_called_once_with("PO-1")
-        self.assertEqual(
-            choice_state_mock.call_args_list,
-            [
-                call(
-                    report._choice_state_request_doc(requests[0]),
-                    can_edit=False,
-                    offering_semantics=offering_semantics,
-                ),
-                call(
-                    report._choice_state_request_doc(requests[1]),
-                    can_edit=False,
-                    offering_semantics=offering_semantics,
-                ),
-            ],
-        )
-        self.assertFalse(get_doc_mock.called)
-        self.assertEqual(
-            live_states,
-            {
-                "PER-0001": {
-                    "ready_for_submit": False,
-                    "reasons": ["Choose at least one course in Group A."],
-                },
-                "PER-0002": {
-                    "ready_for_submit": True,
-                    "reasons": [],
-                },
-            },
-        )
+        batch_helper_mock.assert_called_once_with(requests)
+        self.assertEqual(live_states, expected)
 
     @patch(
         "ifitwala_ed.schedule.report.program_enrollment_request_overview.program_enrollment_request_overview.frappe.db.sql",

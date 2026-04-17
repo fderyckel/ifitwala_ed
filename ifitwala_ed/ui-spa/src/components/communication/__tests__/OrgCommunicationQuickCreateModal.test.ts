@@ -6,12 +6,16 @@ const {
 	createOrgCommunicationQuickMock,
 	getOptionsMock,
 	removeOrgCommunicationAttachmentMock,
+	searchOrgCommunicationStudentGroupsMock,
+	searchOrgCommunicationTeamsMock,
 	uploadOrgCommunicationAttachmentMock,
 } = vi.hoisted(() => ({
 	addOrgCommunicationLinkMock: vi.fn(),
 	createOrgCommunicationQuickMock: vi.fn(),
 	getOptionsMock: vi.fn(),
 	removeOrgCommunicationAttachmentMock: vi.fn(),
+	searchOrgCommunicationStudentGroupsMock: vi.fn(),
+	searchOrgCommunicationTeamsMock: vi.fn(),
 	uploadOrgCommunicationAttachmentMock: vi.fn(),
 }));
 
@@ -180,6 +184,8 @@ vi.mock('@/lib/services/orgCommunicationQuickCreateService', () => ({
 	createOrgCommunicationQuick: createOrgCommunicationQuickMock,
 	getOrgCommunicationQuickCreateOptions: getOptionsMock,
 	removeOrgCommunicationAttachment: removeOrgCommunicationAttachmentMock,
+	searchOrgCommunicationStudentGroups: searchOrgCommunicationStudentGroupsMock,
+	searchOrgCommunicationTeams: searchOrgCommunicationTeamsMock,
 	uploadOrgCommunicationAttachment: uploadOrgCommunicationAttachmentMock,
 }));
 
@@ -231,9 +237,37 @@ const quickCreateOptions = {
 			default_fields: ['to_students', 'to_guardians'],
 		},
 	},
+	audience_presets: [
+		{
+			key: 'whole_school_families',
+			label: 'Whole school families',
+			description: 'Send to students and guardians in the selected school scope.',
+			target_mode: 'School Scope',
+			default_fields: ['to_students', 'to_guardians'],
+			picker_kind: null,
+		},
+		{
+			key: 'one_team',
+			label: 'One team',
+			description: 'Choose one team and send the communication to its staff members.',
+			target_mode: 'Team',
+			default_fields: ['to_staff'],
+			picker_kind: 'team',
+		},
+		{
+			key: 'one_student_group',
+			label: 'One class or student group',
+			description: 'Choose one class and send to students plus guardians by default.',
+			target_mode: 'Student Group',
+			default_fields: ['to_students', 'to_guardians'],
+			picker_kind: 'student_group',
+		},
+	],
 	references: {
 		organizations: [{ name: 'ORG-1', organization_name: 'Root Org', abbr: 'RO' }],
 		schools: [{ name: 'SCH-1', school_name: 'Main School', abbr: 'MS', organization: 'ORG-1' }],
+	},
+	suggested_targets: {
 		teams: [],
 		student_groups: [
 			{
@@ -264,6 +298,27 @@ const wideAudienceQuickCreateOptions = {
 			default_fields: ['to_staff'],
 		},
 	},
+	audience_presets: [
+		quickCreateOptions.audience_presets[0],
+		{
+			key: 'whole_school_staff',
+			label: 'Whole school staff',
+			description: 'Reach staff across the selected school scope.',
+			target_mode: 'School Scope',
+			default_fields: ['to_staff'],
+			picker_kind: null,
+		},
+		quickCreateOptions.audience_presets[1],
+		quickCreateOptions.audience_presets[2],
+		{
+			key: 'organization_wide',
+			label: 'Organization-wide',
+			description: 'Reach staff or guardians across the selected organization tree.',
+			target_mode: 'Organization',
+			default_fields: ['to_staff'],
+			picker_kind: null,
+		},
+	],
 	permissions: {
 		can_create: true,
 		can_target_wide_school_scope: true,
@@ -339,10 +394,6 @@ function mountModal(props: Record<string, unknown> = {}) {
 	});
 }
 
-function clickRecipient(labelText: string) {
-	setCheckboxByLabel(labelText, true);
-}
-
 function setCheckboxByLabel(labelText: string, checked: boolean) {
 	const label = Array.from(document.querySelectorAll('label')).find(node =>
 		(node.textContent || '').includes(labelText)
@@ -358,6 +409,16 @@ function clickButton(labelText: string) {
 		(node.textContent || '').includes(labelText)
 	);
 	button?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+}
+
+async function addSchoolFamiliesAudience() {
+	clickButton('Whole school families');
+	await flushUi();
+}
+
+async function addOrganizationWideAudience() {
+	clickButton('Organization-wide');
+	await flushUi();
 }
 
 function setPublishFrom(value: string) {
@@ -409,6 +470,8 @@ afterEach(() => {
 	createOrgCommunicationQuickMock.mockReset();
 	getOptionsMock.mockReset();
 	removeOrgCommunicationAttachmentMock.mockReset();
+	searchOrgCommunicationStudentGroupsMock.mockReset();
+	searchOrgCommunicationTeamsMock.mockReset();
 	uploadOrgCommunicationAttachmentMock.mockReset();
 	while (cleanupFns.length) cleanupFns.pop()?.();
 	document.body.innerHTML = '';
@@ -427,8 +490,7 @@ describe('OrgCommunicationQuickCreateModal', () => {
 		mountModal();
 		await flushUi();
 
-		clickRecipient('Students');
-		await flushUi();
+		await addSchoolFamiliesAudience();
 		clickButton('Publish');
 		await flushUi();
 
@@ -451,8 +513,7 @@ describe('OrgCommunicationQuickCreateModal', () => {
 		mountModal();
 		await flushUi();
 
-		clickRecipient('Students');
-		await flushUi();
+		await addSchoolFamiliesAudience();
 		clickButton('Save as draft');
 		await flushUi();
 
@@ -475,7 +536,7 @@ describe('OrgCommunicationQuickCreateModal', () => {
 		mountModal();
 		await flushUi();
 
-		clickRecipient('Students');
+		await addSchoolFamiliesAudience();
 		setPublishFrom('2099-03-21T09:30');
 		await flushUi();
 		clickButton('Publish');
@@ -502,8 +563,7 @@ describe('OrgCommunicationQuickCreateModal', () => {
 		await flushUi();
 
 		setRichMessage('<p><strong>Important</strong> update</p><ul><li>Agenda</li></ul>');
-		clickRecipient('Students');
-		await flushUi();
+		await addSchoolFamiliesAudience();
 		clickButton('Publish');
 		await flushUi();
 
@@ -595,6 +655,55 @@ describe('OrgCommunicationQuickCreateModal', () => {
 		expect(nextSection).toBeNull();
 	});
 
+	it('searches and selects a student-group audience from the workflow preset', async () => {
+		getOptionsMock.mockResolvedValue(quickCreateOptions);
+		searchOrgCommunicationStudentGroupsMock.mockResolvedValue({
+			results: [
+				{
+					name: 'SG-SEARCH-1',
+					student_group_name: 'Grade 7 History',
+					student_group_abbreviation: 'G7 Hist',
+					school: 'SCH-1',
+				},
+			],
+		});
+		createOrgCommunicationQuickMock.mockResolvedValue({
+			ok: true,
+			status: 'created',
+			name: 'COMM-SEARCH-1',
+			title: 'Weekly staff update',
+		});
+
+		mountModal();
+		await flushUi();
+
+		clickButton('One class or student group');
+		await flushUi();
+		setInputByPlaceholder('Type a class, course, or student group', 'History');
+		clickButton('Search');
+		await flushUi();
+		clickButton('G7 Hist · Grade 7 History');
+		await flushUi();
+		clickButton('Publish');
+		await flushUi();
+
+		expect(searchOrgCommunicationStudentGroupsMock).toHaveBeenCalledWith({
+			query: 'History',
+			organization: 'ORG-1',
+			school: 'SCH-1',
+			limit: 8,
+		});
+		expect(createOrgCommunicationQuickMock).toHaveBeenCalledTimes(1);
+		expect(createOrgCommunicationQuickMock.mock.calls[0][0].audiences).toEqual([
+			expect.objectContaining({
+				target_mode: 'Student Group',
+				student_group: 'SG-SEARCH-1',
+				to_students: 1,
+				to_guardians: 1,
+			}),
+		]);
+	});
+
 	it('submits organization staff rows as staff-only audiences', async () => {
 		getOptionsMock.mockResolvedValue(wideAudienceQuickCreateOptions);
 		createOrgCommunicationQuickMock.mockResolvedValue({
@@ -607,8 +716,7 @@ describe('OrgCommunicationQuickCreateModal', () => {
 		mountModal();
 		await flushUi();
 
-		clickButton('Organization');
-		await flushUi();
+		await addOrganizationWideAudience();
 		clickButton('Publish');
 		await flushUi();
 
@@ -636,8 +744,7 @@ describe('OrgCommunicationQuickCreateModal', () => {
 		const issuingSchool = getSelectByLabel('Issuing school');
 		expect(issuingSchool?.value).toBe('SCH-1');
 
-		clickButton('Organization');
-		await flushUi();
+		await addOrganizationWideAudience();
 
 		expect(issuingSchool?.value).toBe('');
 		expect(issuingSchool?.disabled).toBe(true);
@@ -655,8 +762,7 @@ describe('OrgCommunicationQuickCreateModal', () => {
 		mountModal();
 		await flushUi();
 
-		clickButton('Organization');
-		await flushUi();
+		await addOrganizationWideAudience();
 		setCheckboxByLabel('Guardians', true);
 		setCheckboxByLabel('Staff', false);
 		await flushUi();
@@ -829,8 +935,7 @@ describe('OrgCommunicationQuickCreateModal', () => {
 		mountModal();
 		await flushUi();
 
-		clickRecipient('Guardians');
-		await flushUi();
+		await addSchoolFamiliesAudience();
 		clickButton('Save as draft');
 		await flushUi();
 
@@ -865,8 +970,7 @@ describe('OrgCommunicationQuickCreateModal', () => {
 		mountModal();
 		await flushUi();
 
-		clickRecipient('Guardians');
-		await flushUi();
+		await addSchoolFamiliesAudience();
 		clickButton('Add link');
 		await flushUi();
 		setInputByPlaceholder('https://example.com/resource.pdf', 'https://example.com/health-advisory');
@@ -989,8 +1093,7 @@ describe('OrgCommunicationQuickCreateModal', () => {
 		mountModal();
 		await flushUi();
 
-		clickRecipient('Students');
-		await flushUi();
+		await addSchoolFamiliesAudience();
 		clickButton('Add link');
 		await flushUi();
 		setInputByPlaceholder('https://example.com/resource.pdf', 'https://example.com/policy.pdf');
@@ -1100,8 +1203,7 @@ describe('OrgCommunicationQuickCreateModal', () => {
 		mountModal();
 		await flushUi();
 
-		clickRecipient('Students');
-		await flushUi();
+		await addSchoolFamiliesAudience();
 		clickButton('Add link');
 		await flushUi();
 		setInputByPlaceholder('https://example.com/resource.pdf', 'https://example.com/policy.pdf');

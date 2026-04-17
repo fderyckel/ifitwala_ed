@@ -242,17 +242,27 @@ def _collect_staff_holiday_events(
     default_color = "#64748B"
 
     cal = _resolve_staff_calendar_for_employee(employee_id, start_date, end_date)
-    if cal:
-        holiday_rows = frappe.get_all(
-            "Staff Calendar Holidays",
-            filters={
-                "parent": cal["name"],
-                "holiday_date": ["between", [start_date, end_date]],
-            },
-            fields=["holiday_date", "description", "color", "weekly_off"],
-            order_by="holiday_date asc",
-            ignore_permissions=True,
+    if cal is not None:
+        calendar_name = (cal.get("name") or "").strip() if hasattr(cal, "get") else ""
+        if not calendar_name:
+            return []
+
+        holiday_rows = (
+            frappe.get_all(
+                "Staff Calendar Holidays",
+                filters={
+                    "parent": calendar_name,
+                    "holiday_date": ["between", [start_date, end_date]],
+                },
+                fields=["holiday_date", "description", "color", "weekly_off"],
+                order_by="holiday_date asc",
+                ignore_permissions=True,
+            )
+            or []
         )
+        if not holiday_rows:
+            return []
+
         events: List[CalendarEvent] = []
         for row in holiday_rows:
             hd = getdate(row.get("holiday_date"))
@@ -266,7 +276,7 @@ def _collect_staff_holiday_events(
 
             events.append(
                 CalendarEvent(
-                    id=f"staff_holiday::{cal['name']}::{hd.isoformat()}",
+                    id=f"staff_holiday::{calendar_name}::{hd.isoformat()}",
                     title=title,
                     start=start_dt,
                     end=end_dt,
@@ -274,7 +284,7 @@ def _collect_staff_holiday_events(
                     color=color,
                     all_day=True,
                     meta={
-                        "staff_calendar": cal["name"],
+                        "staff_calendar": calendar_name,
                         "holiday_date": hd.isoformat(),
                         "weekly_off": int(row.get("weekly_off") or 0),
                         "employee_group": cal.get("employee_group"),

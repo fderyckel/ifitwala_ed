@@ -161,13 +161,14 @@ class TestOrgCommunicationVisibilityGuards(FrappeTestCase):
                 return_value={"name": "EMP-1", "school": None, "organization": "ORG-ROOT"},
             ),
             patch(
-                "ifitwala_ed.api.org_communication_interactions.get_descendant_organizations",
-                return_value=["ORG-ROOT", "ORG-CHILD"],
-            ),
-            patch.object(
-                org_communication_interactions.frappe,
-                "get_all",
-                return_value=["SCH-ROOT", "SCH-CHILD"],
+                "ifitwala_ed.api.org_communication_interactions.expand_employee_visibility_context",
+                return_value={
+                    "name": "EMP-1",
+                    "school": None,
+                    "organization": "ORG-ROOT",
+                    "organization_names": ["ORG-ROOT", "ORG-CHILD"],
+                    "school_names": ["SCH-ROOT", "SCH-CHILD"],
+                },
             ),
         ):
             user, roles, employee = org_communication_interactions._actor_context()

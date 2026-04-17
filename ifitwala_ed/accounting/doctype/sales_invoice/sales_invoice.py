@@ -459,6 +459,7 @@ class SalesInvoice(Document):
                 "paid_amount": 0,
                 "status": "Cancelled",
             },
+            update_modified=False,
         )
         reset_billing_rows_for_invoice(self.name)
         sync_payment_requests_for_invoice(self.name)

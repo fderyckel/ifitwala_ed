@@ -1000,7 +1000,7 @@ def _get_allowed_organizations_for_user(user: str | None = None) -> list[str]:
 
 
 @frappe.whitelist()
-def get_org_communication_context() -> dict:
+def get_org_communication_context(user: str | None = None) -> dict:
     """Context for client-side UX:
 
     - default_school: where the user "sits" in the nestedset
@@ -1009,7 +1009,7 @@ def get_org_communication_context() -> dict:
       * org-scope schools when no default_school for non-privileged users
     - is_privileged: can choose Issuing School (Academic Admin, Academic Assistant, System Manager)
     """
-    user = frappe.session.user
+    user = user or frappe.session.user
     default_school, school_tree = _get_school_scope_tree(user)
     is_privileged = _user_has_any_role(user, ELEVATED_WIDE_AUDIENCE_ROLES)
 

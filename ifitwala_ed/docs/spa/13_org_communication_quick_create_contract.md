@@ -19,6 +19,8 @@ Code refs:
 - `ifitwala_ed/ui-spa/src/pages/staff/StaffHome.vue`
 - `ifitwala_ed/ui-spa/src/components/calendar/ClassEventModal.vue`
 - `ifitwala_ed/ui-spa/src/components/communication/OrgCommunicationQuickCreateModal.vue`
+- `ifitwala_ed/ui-spa/src/components/communication/OrgCommunicationQuickCreateClassEventComposer.vue`
+- `ifitwala_ed/ui-spa/src/components/communication/OrgCommunicationQuickCreateStaffHomeComposer.vue`
 - `ifitwala_ed/ui-spa/src/overlays/OverlayHost.vue`
 
 Test refs:
@@ -46,6 +48,8 @@ Rules:
    - a single guardian-visibility toggle
    - optional internal note
 10. In `entryMode='class-event'`, organization, issuing school, communication type, interaction settings, and the full audience builder remain payload-owned but are not shown as editable UI controls.
+11. Staff Home quick-action discoverability for this overlay must be driven by a server-owned quick-create capability, not bare DocType create permission.
+12. When generic create permission exists but organization scope is missing, Staff Home keeps the `Create communication` tile visible in a disabled state with an actionable explanation instead of opening the overlay optimistically.
 
 ## 2. API and Payload Contract
 
@@ -57,6 +61,8 @@ Code refs:
 - `ifitwala_ed/ui-spa/src/lib/services/orgCommunicationQuickCreateService.ts`
 - `ifitwala_ed/ui-spa/src/types/contracts/org_communication_quick_create/get_org_communication_quick_create_options.ts`
 - `ifitwala_ed/ui-spa/src/types/contracts/org_communication_quick_create/create_org_communication_quick.ts`
+- `ifitwala_ed/ui-spa/src/types/contracts/org_communication_quick_create/search_org_communication_teams.ts`
+- `ifitwala_ed/ui-spa/src/types/contracts/org_communication_quick_create/search_org_communication_student_groups.ts`
 - `ifitwala_ed/ui-spa/src/types/contracts/org_communication_attachments/*`
 
 Test refs:
@@ -70,6 +76,8 @@ Rules:
 1. The SPA must use named POST endpoints only:
    - `ifitwala_ed.api.org_communication_quick_create.get_org_communication_quick_create_options`
    - `ifitwala_ed.api.org_communication_quick_create.create_org_communication_quick`
+   - `ifitwala_ed.api.org_communication_quick_create.search_org_communication_teams`
+   - `ifitwala_ed.api.org_communication_quick_create.search_org_communication_student_groups`
    - `ifitwala_ed.api.org_communication_attachments.upload_org_communication_attachment`
    - `ifitwala_ed.api.org_communication_attachments.add_org_communication_link`
    - `ifitwala_ed.api.org_communication_attachments.remove_org_communication_attachment`
@@ -78,12 +86,15 @@ Rules:
    - organization and school authoring scope
    - allowed communication/status/priority/surface/interaction options
    - recipient rules per audience target mode
-   - reference lists for organizations, schools, teams, and student groups
+   - workflow-first audience presets
+   - bounded suggested teams and student groups for the current user/scope
+   - reference lists for organizations and schools only
 4. `create_org_communication_quick(...)` is the canonical SPA mutation path for saving class-event and Staff Home quick-create state.
 5. When `name` is omitted, `create_org_communication_quick(...)` creates a new `Org Communication`.
 6. When `name` is provided, `create_org_communication_quick(...)` updates that existing `Org Communication` through the same controller validations.
 7. Create requests support `client_request_id` and return semantic success as `status='created' | 'updated' | 'already_processed'`.
-6. Response `name` is the internal `Org Communication` record id. Visible `title` remains user-authored display text and is not required to be unique.
+8. Response `name` is the internal `Org Communication` record id. Visible `title` remains user-authored display text and is not required to be unique.
+9. Team and student-group lookup beyond the bounded suggested targets must use the named search endpoints above; the overlay must not bootstrap the full visible team or student-group universe into the page payload.
 
 ## 3. Validation and Scope Ownership
 
@@ -107,19 +118,23 @@ Rules:
 4. Role-based restrictions for wide-audience rows remain server-owned and are only mirrored in the SPA to make blocked actions obvious earlier:
    - `School Scope` rows targeting `Staff`
    - `Organization` rows
-5. `entryMode='class-event'` hard-locks these payload values even though they are hidden from the overlay:
+5. In `entryMode='staff-home'`, audience authoring is workflow-first:
+   - preset cards such as whole-school, team, class/student-group, and organization-wide
+   - search-first target lookup for team and student-group rows
+   - advanced row grammar kept out of the default path
+6. `entryMode='class-event'` hard-locks these payload values even though they are hidden from the overlay:
    - `communication_type='Class Announcement'`
    - `portal_surface='Everywhere'`
    - `interaction_mode='None'`
    - `allow_private_notes=0`
    - `allow_public_thread=0`
    - one `Student Group` audience row with `to_students=1`
-6. In `entryMode='class-event'`, guardian visibility starts unchecked and is controlled only by the single exposed guardian toggle.
-7. In this contract, `allow_public_thread` means recipient-visible shared audience thread entries for the communication's resolved audience, not public web visibility.
-8. The resolved audience may include staff, students, and/or guardians depending on the selected audience rows.
-9. `allow_private_notes` remains the school-side/private notes setting and must not be described in the UI or docs as recipient-visible thread sharing.
-10. Draft saves, including attachment auto-save, may omit Morning Brief dates temporarily; `brief_start_date` becomes required when the communication is scheduled or published with `portal_surface='Morning Brief' | 'Everywhere'`.
-11. Draft saves, including attachment auto-save, may also omit audience completion temporarily. Missing row scope selections, missing recipient toggles, and draft-only organization/issuing-school cleanup are enforced only when the communication is scheduled or published.
+7. In `entryMode='class-event'`, guardian visibility starts unchecked and is controlled only by the single exposed guardian toggle.
+8. In this contract, `allow_public_thread` means recipient-visible shared audience thread entries for the communication's resolved audience, not public web visibility.
+9. The resolved audience may include staff, students, and/or guardians depending on the selected audience rows.
+10. `allow_private_notes` remains the school-side/private notes setting and must not be described in the UI or docs as recipient-visible thread sharing.
+11. Draft saves, including attachment auto-save, may omit Morning Brief dates temporarily; `brief_start_date` becomes required when the communication is scheduled or published with `portal_surface='Morning Brief' | 'Everywhere'`.
+12. Draft saves, including attachment auto-save, may also omit audience completion temporarily. Missing row scope selections, missing recipient toggles, and draft-only organization/issuing-school cleanup are enforced only when the communication is scheduled or published.
 
 ## 4. Quick-Create Attachment Contract
 
@@ -134,6 +149,7 @@ Code refs:
 - `ifitwala_drive/services/integration/ifitwala_ed_org_communications.py`
 - `ifitwala_drive/services/folders/resolution.py`
 - `ifitwala_ed/ui-spa/src/components/communication/OrgCommunicationQuickCreateModal.vue`
+- `ifitwala_ed/ui-spa/src/components/communication/OrgCommunicationQuickCreateAttachmentSection.vue`
 - `ifitwala_ed/ui-spa/src/pages/staff/OrgCommunicationArchive.vue`
 
 Test refs:
@@ -171,6 +187,9 @@ Status: Implemented
 
 Code refs:
 - `ifitwala_ed/ui-spa/src/components/communication/OrgCommunicationQuickCreateModal.vue`
+- `ifitwala_ed/ui-spa/src/components/communication/OrgCommunicationQuickCreateClassEventComposer.vue`
+- `ifitwala_ed/ui-spa/src/components/communication/OrgCommunicationQuickCreateStaffHomeComposer.vue`
+- `ifitwala_ed/ui-spa/src/components/communication/OrgCommunicationQuickCreateAttachmentSection.vue`
 - `ifitwala_ed/ui-spa/src/lib/services/orgCommunicationQuickCreateService.ts`
 - `ifitwala_ed/ui-spa/src/lib/uiSignals.ts`
 - `ifitwala_ed/ui-spa/src/pages/staff/OrgCommunicationArchive.vue`
@@ -187,6 +206,7 @@ Rules:
 4. Refresh owners such as the archive page remain responsible for reloading their own org-communication data.
 5. Staff Home quick-create must not rely on the DocType default status to decide the primary action.
 6. Attachment create/remove mutations also emit `SIGNAL_ORG_COMMUNICATION_INVALIDATE` for the owning communication record.
+7. `OrgCommunicationQuickCreateModal.vue` remains the workflow shell and owns bootstrap, validation, attachment precondition routing, save/publish mutations, and overlay close/invalidation behavior. Mode-specific composer components and the shared attachment section are presentation boundaries only and must not introduce alternate transport, business logic, or refresh ownership.
 
 ## 6. Technical Notes (IT)
 
@@ -195,6 +215,8 @@ Status: Implemented
 Code refs:
 - `ifitwala_ed/api/org_communication_quick_create.py`
 - `ifitwala_ed/ui-spa/src/components/communication/OrgCommunicationQuickCreateModal.vue`
+- `ifitwala_ed/ui-spa/src/components/communication/OrgCommunicationQuickCreateClassEventComposer.vue`
+- `ifitwala_ed/ui-spa/src/components/communication/OrgCommunicationQuickCreateStaffHomeComposer.vue`
 
 Test refs:
 - `ifitwala_ed/api/test_org_communication_quick_create.py`

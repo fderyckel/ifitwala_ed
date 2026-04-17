@@ -174,6 +174,8 @@ class TestInviteApplicant(FrappeTestCase):
         frappe.clear_cache(user="Administrator")
         self.staff_user = self._create_admissions_staff_user()
         frappe.set_user(self.staff_user)
+        if _admission_settings_has_field("admissions_access_mode"):
+            self._set_admissions_access_mode("Single Applicant Workspace")
         self.organization = self._create_organization()
         self.school = self._create_school(self.organization)
         self._create_employee_for_user(self.staff_user, self.organization, self.school)

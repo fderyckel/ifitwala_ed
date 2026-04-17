@@ -27,6 +27,26 @@ The SPA is a UX shell. It is not the source of truth.
 - This Codex session runs on the user's local machine for this repository.
 - Do not add generic closeout notes about missing `frappe`, missing `bench`, or shell `PATH` differences unless a specific command failed and the exact failure is necessary to explain what could not be verified.
 
+## 0.2 Documentation Routing Protocol
+
+Before changing SPA behavior, read the canonical docs in this order:
+
+1. `ifitwala_ed/docs/README.md`
+2. `ifitwala_ed/docs/spa/README.md`
+3. `ifitwala_ed/docs/spa/01_spa_architecture_and_rules.md`
+4. `ifitwala_ed/docs/spa/02_style_note.md` when touching styling, tokens, shells, or layout primitives
+5. `ifitwala_ed/docs/spa/03_overlay_and_workflow.md` when touching overlays or workflow-triggering UI
+6. the relevant feature contract in `ifitwala_ed/docs/spa/`
+
+Also check these cross-cutting notes when relevant:
+
+- `ifitwala_ed/docs/high_concurrency_contract.md` for bootstrap/request-shape changes
+- `ifitwala_ed/docs/nested_scope_contract.md` for hierarchy-aware analytics or scoped views
+- `ifitwala_ed/docs/files_and_policies/README.md` for governed/private media surfaces
+- `ifitwala_ed/docs/testing/README.md` and `ifitwala_ed/docs/testing/01_test_strategy.md` before deciding test scope
+
+Treat proposal, audit, history, and implementation-companion notes as non-authoritative unless they explicitly declare themselves the current runtime contract.
+
 ---
 
 ## 1. UX Rules (Non-Negotiable)

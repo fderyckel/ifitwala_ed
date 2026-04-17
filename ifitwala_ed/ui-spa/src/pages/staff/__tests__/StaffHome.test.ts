@@ -233,4 +233,41 @@ describe('StaffHome', () => {
 		expect(analyticsCategories?.textContent || '').toContain('Room Occupancy');
 		expect(analyticsCategories?.textContent || '').not.toContain('Bus & Route Load');
 	});
+
+	it('keeps create communication visible but disabled when org scope is missing', async () => {
+		getStaffHomeHeaderMock.mockResolvedValue({
+			first_name: 'Mali',
+			full_name: 'Mali Bangkok',
+			capabilities: {
+				quick_action_org_communication: false,
+			},
+			quick_actions: {
+				org_communication: {
+					enabled: false,
+					blocked_reason:
+						'Set a default organization or ask an administrator to grant your organization scope before creating communications.',
+				},
+			},
+		});
+		listFocusItemsMock.mockResolvedValue([]);
+
+		mountStaffHome();
+		await flushUi();
+
+		const quickActions = document.querySelector('[data-testid="staff-home-quick-actions"]');
+		const createCommunicationButton = Array.from(
+			quickActions?.querySelectorAll('button') || []
+		).find(button => (button.textContent || '').includes('Create communication')) as
+			| HTMLButtonElement
+			| undefined;
+
+		expect(quickActions?.textContent || '').toContain('Create communication');
+		expect(quickActions?.textContent || '').toContain('Set a default organization');
+		expect(createCommunicationButton?.disabled).toBe(true);
+
+		createCommunicationButton?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		await flushUi();
+
+		expect(overlayOpenMock).not.toHaveBeenCalled();
+	});
 });

@@ -11,7 +11,7 @@ from frappe import _
 from frappe.utils import cint
 
 from ifitwala_ed.schedule.basket_group_utils import get_offering_course_semantics
-from ifitwala_ed.schedule.program_enrollment_request_choice import get_program_enrollment_request_choice_state
+from ifitwala_ed.schedule.program_enrollment_request_choice import get_program_enrollment_request_live_choice_states
 from ifitwala_ed.school_settings.school_settings_utils import get_allowed_schools
 
 VIEW_MODE_MATRIX = "Student x Course Matrix"
@@ -340,62 +340,8 @@ def _build_student_label(row):
     return full_name or (row.get("student") or "")
 
 
-def _choice_state_request_doc(request):
-    request_doc = frappe._dict(
-        {
-            "name": (request.get("name") or "").strip(),
-            "student": (request.get("student") or "").strip(),
-            "program_offering": (request.get("program_offering") or "").strip(),
-            "program": (request.get("program") or "").strip(),
-            "academic_year": (request.get("academic_year") or "").strip(),
-            "status": (request.get("request_status") or "").strip(),
-            "validation_status": (request.get("validation_status") or "").strip(),
-            "submitted_on": request.get("submitted_on"),
-            "submitted_by": (request.get("submitted_by") or "").strip() or None,
-            "request_kind": (request.get("request_kind") or DEFAULT_REQUEST_KIND).strip() or DEFAULT_REQUEST_KIND,
-        }
-    )
-    request_doc["courses"] = [
-        frappe._dict(
-            {
-                "course": (course_row.get("course") or "").strip(),
-                "required": 1 if cint(course_row.get("required")) == 1 else 0,
-                "applied_basket_group": (course_row.get("applied_basket_group") or "").strip(),
-                "choice_rank": course_row.get("choice_rank"),
-            }
-        )
-        for course_row in request.get("courses") or []
-        if (course_row.get("course") or "").strip()
-    ]
-    return request_doc
-
-
 def _get_live_choice_states(requests):
-    live_choice_states = {}
-    offering_semantics_cache = {}
-
-    for request in requests or []:
-        request_name = (request.get("name") or "").strip()
-        if not request_name or (request.get("request_status") or "").strip() != "Draft":
-            continue
-
-        offering_name = (request.get("program_offering") or "").strip()
-        if offering_name not in offering_semantics_cache:
-            offering_semantics_cache[offering_name] = (
-                get_offering_course_semantics(offering_name) if offering_name else {}
-            )
-
-        choice_state = get_program_enrollment_request_choice_state(
-            _choice_state_request_doc(request),
-            can_edit=False,
-            offering_semantics=offering_semantics_cache[offering_name],
-        )
-        live_choice_states[request_name] = {
-            "ready_for_submit": bool((choice_state.get("summary") or {}).get("ready_for_submit")),
-            "reasons": list((choice_state.get("validation") or {}).get("reasons") or []),
-        }
-
-    return live_choice_states
+    return get_program_enrollment_request_live_choice_states(requests)
 
 
 def _apply_post_dedupe_filters(requests, filters):

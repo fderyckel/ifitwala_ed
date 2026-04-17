@@ -140,6 +140,17 @@ class TestAnalyticsPermissions(FrappeTestCase):
         self.assertTrue(caps.get("quick_action_create_event"))
         self.assertTrue(caps.get("quick_action_org_communication"))
 
+    def test_staff_home_org_communication_capability_respects_quick_create_state(self):
+        caps = _build_staff_home_capabilities(
+            {"Employee"},
+            user="staff@example.com",
+            org_communication_quick_action_state={
+                "enabled": False,
+                "blocked_reason": "Set a default organization first.",
+            },
+        )
+        self.assertFalse(caps.get("quick_action_org_communication"))
+
     def test_staff_home_quick_actions_for_school_event_roles(self):
         caps = _build_staff_home_capabilities({"Academic Admin"})
         self.assertFalse(caps.get("quick_action_create_meeting"))

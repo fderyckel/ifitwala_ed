@@ -78,7 +78,7 @@ class TestOrgCommunicationQuickCreate(FrappeTestCase):
         ).insert(ignore_permissions=True)
         return organization.name
 
-    def test_get_options_returns_context_and_reference_lists(self):
+    def test_get_options_returns_context_and_suggested_targets(self):
         with (
             patch("ifitwala_ed.api.org_communication_quick_create.frappe.has_permission", return_value=True),
             patch(
@@ -124,11 +124,11 @@ class TestOrgCommunicationQuickCreate(FrappeTestCase):
                 return_value=[{"name": "SCH-1", "school_name": "Main School", "abbr": "MS", "organization": "ORG-1"}],
             ),
             patch(
-                "ifitwala_ed.api.org_communication_quick_create._get_reference_teams",
+                "ifitwala_ed.api.org_communication_quick_create._get_team_suggestions",
                 return_value=[{"name": "TEAM-1", "team_name": "Ops", "team_code": "OPS", "school": "SCH-1"}],
             ),
             patch(
-                "ifitwala_ed.api.org_communication_quick_create._get_reference_student_groups",
+                "ifitwala_ed.api.org_communication_quick_create._get_student_group_suggestions",
                 return_value=[
                     {
                         "name": "SG-1",
@@ -148,8 +148,11 @@ class TestOrgCommunicationQuickCreate(FrappeTestCase):
         self.assertEqual(payload["fields"]["statuses"], ["Draft", "Scheduled", "Published"])
         self.assertEqual(payload["references"]["organizations"][0]["name"], "ORG-1")
         self.assertEqual(payload["references"]["schools"][0]["name"], "SCH-1")
-        self.assertEqual(payload["references"]["teams"][0]["name"], "TEAM-1")
-        self.assertEqual(payload["references"]["student_groups"][0]["name"], "SG-1")
+        self.assertEqual(payload["suggested_targets"]["teams"][0]["name"], "TEAM-1")
+        self.assertEqual(payload["suggested_targets"]["student_groups"][0]["name"], "SG-1")
+        self.assertEqual(payload["audience_presets"][0]["key"], "whole_school_families")
+        self.assertTrue(payload["permissions"]["can_create"])
+        self.assertIsNone(payload["permissions"]["blocked_reason"])
         self.assertFalse(payload["permissions"]["can_target_wide_school_scope"])
         self.assertNotIn("Organization", payload["fields"]["audience_target_modes"])
 
@@ -172,8 +175,8 @@ class TestOrgCommunicationQuickCreate(FrappeTestCase):
             patch("ifitwala_ed.api.org_communication_quick_create._field_options", return_value=[]),
             patch("ifitwala_ed.api.org_communication_quick_create._get_reference_organizations", return_value=[]),
             patch("ifitwala_ed.api.org_communication_quick_create._get_reference_schools", return_value=[]),
-            patch("ifitwala_ed.api.org_communication_quick_create._get_reference_teams", return_value=[]),
-            patch("ifitwala_ed.api.org_communication_quick_create._get_reference_student_groups", return_value=[]),
+            patch("ifitwala_ed.api.org_communication_quick_create._get_team_suggestions", return_value=[]),
+            patch("ifitwala_ed.api.org_communication_quick_create._get_student_group_suggestions", return_value=[]),
             patch("ifitwala_ed.api.org_communication_quick_create._user_has_any_role", return_value=True),
         ):
             payload = org_communication_quick_create.get_org_communication_quick_create_options()
@@ -184,6 +187,161 @@ class TestOrgCommunicationQuickCreate(FrappeTestCase):
             payload["recipient_rules"]["Organization"]["allowed_fields"],
             ["to_guardians", "to_staff"],
         )
+        self.assertIn("organization_wide", {row["key"] for row in payload["audience_presets"]})
+
+    def test_get_quick_create_capability_blocks_missing_org_scope(self):
+        with (
+            patch("ifitwala_ed.api.org_communication_quick_create.frappe.has_permission", return_value=True),
+            patch(
+                "ifitwala_ed.api.org_communication_quick_create.get_org_communication_context",
+                return_value={
+                    "default_school": None,
+                    "default_organization": None,
+                    "allowed_schools": [],
+                    "allowed_organizations": [],
+                    "is_privileged": False,
+                    "can_select_school": False,
+                    "lock_to_default_school": False,
+                },
+            ),
+        ):
+            payload = org_communication_quick_create.get_org_communication_quick_create_capability(
+                user="staff@example.com"
+            )
+
+        self.assertFalse(payload["enabled"])
+        self.assertIn("Set a default organization", payload["blocked_reason"])
+
+    def test_get_options_marks_quick_create_blocked_when_org_scope_missing(self):
+        with (
+            patch("ifitwala_ed.api.org_communication_quick_create.frappe.has_permission", return_value=True),
+            patch(
+                "ifitwala_ed.api.org_communication_quick_create.get_org_communication_context",
+                return_value={
+                    "default_school": None,
+                    "default_organization": None,
+                    "allowed_schools": [],
+                    "allowed_organizations": [],
+                    "is_privileged": False,
+                    "can_select_school": False,
+                    "lock_to_default_school": False,
+                },
+            ),
+            patch("ifitwala_ed.api.org_communication_quick_create._field_default", return_value=None),
+            patch("ifitwala_ed.api.org_communication_quick_create._field_options", return_value=[]),
+            patch("ifitwala_ed.api.org_communication_quick_create._get_reference_organizations", return_value=[]),
+            patch("ifitwala_ed.api.org_communication_quick_create._get_reference_schools", return_value=[]),
+            patch("ifitwala_ed.api.org_communication_quick_create._get_team_suggestions", return_value=[]),
+            patch("ifitwala_ed.api.org_communication_quick_create._get_student_group_suggestions", return_value=[]),
+            patch("ifitwala_ed.api.org_communication_quick_create._user_has_any_role", return_value=False),
+        ):
+            payload = org_communication_quick_create.get_org_communication_quick_create_options()
+
+        self.assertFalse(payload["permissions"]["can_create"])
+        self.assertIn("Set a default organization", payload["permissions"]["blocked_reason"])
+
+    def test_search_org_communication_teams_respects_selected_school_scope(self):
+        cache = Mock()
+        cache.get_value.return_value = None
+
+        with (
+            patch(
+                "ifitwala_ed.api.org_communication_quick_create._ensure_quick_create_access",
+                return_value={"enabled": True},
+            ),
+            patch(
+                "ifitwala_ed.api.org_communication_quick_create.get_org_communication_context",
+                return_value={
+                    "default_school": "SCH-1",
+                    "default_organization": "ORG-1",
+                    "allowed_schools": ["SCH-1"],
+                    "allowed_organizations": ["ORG-1"],
+                    "is_privileged": False,
+                    "can_select_school": True,
+                    "lock_to_default_school": False,
+                },
+            ),
+            patch("ifitwala_ed.api.org_communication_quick_create.frappe.cache", return_value=cache),
+            patch(
+                "ifitwala_ed.api.org_communication_quick_create.frappe.get_all",
+                return_value=[
+                    {
+                        "name": "TEAM-1",
+                        "team_name": "Operations",
+                        "team_code": "OPS",
+                        "school": "SCH-1",
+                        "organization": "ORG-1",
+                    }
+                ],
+            ) as mocked_get_all,
+        ):
+            payload = org_communication_quick_create.search_org_communication_teams(
+                query="ops",
+                school="SCH-1",
+                organization="ORG-1",
+                limit=8,
+            )
+
+        self.assertEqual(payload["results"][0]["name"], "TEAM-1")
+        mocked_get_all.assert_called_once_with(
+            "Team",
+            filters={"enabled": 1, "school": ["in", ("SCH-1",)]},
+            or_filters=[
+                ["Team", "name", "like", "%ops%"],
+                ["Team", "team_name", "like", "%ops%"],
+                ["Team", "team_code", "like", "%ops%"],
+            ],
+            fields=["name", "team_name", "team_code", "school", "organization"],
+            order_by="team_name asc, name asc",
+            limit=8,
+        )
+
+    def test_search_org_communication_student_groups_expands_org_scope_to_school_scope(self):
+        cache = Mock()
+        cache.get_value.return_value = None
+
+        with (
+            patch(
+                "ifitwala_ed.api.org_communication_quick_create._ensure_quick_create_access",
+                return_value={"enabled": True},
+            ),
+            patch(
+                "ifitwala_ed.api.org_communication_quick_create.get_org_communication_context",
+                return_value={
+                    "default_school": None,
+                    "default_organization": "ORG-1",
+                    "allowed_schools": [],
+                    "allowed_organizations": ["ORG-1"],
+                    "is_privileged": True,
+                    "can_select_school": True,
+                    "lock_to_default_school": False,
+                },
+            ),
+            patch("ifitwala_ed.api.org_communication_quick_create.frappe.cache", return_value=cache),
+            patch(
+                "ifitwala_ed.api.org_communication_quick_create.frappe.get_all",
+                side_effect=[
+                    ["SCH-1", "SCH-2"],
+                    [
+                        {
+                            "name": "SG-1",
+                            "student_group_name": "Grade 6 Math",
+                            "student_group_abbreviation": "G6 Math",
+                            "school": "SCH-1",
+                            "group_based_on": "Course",
+                        }
+                    ],
+                ],
+            ) as mocked_get_all,
+        ):
+            payload = org_communication_quick_create.search_org_communication_student_groups(
+                query="math",
+                organization="ORG-1",
+                limit=8,
+            )
+
+        self.assertEqual(payload["results"][0]["name"], "SG-1")
+        self.assertEqual(mocked_get_all.call_count, 2)
 
     def test_create_quick_inserts_org_communication_and_appends_audiences(self):
         doc = _DummyOrgCommunicationDoc()
@@ -527,7 +685,6 @@ class TestOrgCommunicationQuickCreate(FrappeTestCase):
                     "to_staff": 1,
                     "to_students": 0,
                     "to_guardians": 0,
-                    "to_community": 0,
                 }
             ],
         )

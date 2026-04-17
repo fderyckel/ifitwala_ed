@@ -1,6 +1,8 @@
 // ui-spa/src/types/contracts/org_communication_quick_create/get_org_communication_quick_create_options.ts
 
-export type Request = Record<string, never>
+export type Request = {
+	prefill_student_group?: string | null
+}
 
 export type OrgCommunicationQuickContext = {
 	default_school: string | null
@@ -66,19 +68,32 @@ export type OrgCommunicationQuickReferenceStudentGroup = {
 	group_based_on?: string | null
 }
 
+export type OrgCommunicationAudiencePreset = {
+	key: string
+	label: string
+	description: string
+	target_mode: string
+	default_fields: string[]
+	picker_kind?: 'team' | 'student_group' | null
+}
+
 export type Response = {
 	context: OrgCommunicationQuickContext
 	defaults: OrgCommunicationQuickDefaults
 	fields: OrgCommunicationQuickFields
 	recipient_rules: Record<string, OrgCommunicationRecipientRule>
+	audience_presets: OrgCommunicationAudiencePreset[]
 	references: {
 		organizations: OrgCommunicationQuickReferenceOrganization[]
 		schools: OrgCommunicationQuickReferenceSchool[]
+	}
+	suggested_targets: {
 		teams: OrgCommunicationQuickReferenceTeam[]
 		student_groups: OrgCommunicationQuickReferenceStudentGroup[]
 	}
 	permissions: {
 		can_create: boolean
+		blocked_reason?: string | null
 		can_target_wide_school_scope: boolean
 	}
 }
