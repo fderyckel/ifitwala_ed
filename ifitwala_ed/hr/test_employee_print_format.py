@@ -120,13 +120,15 @@ class TestEmployeePrintFormat(unittest.TestCase):
             ".crm-grid",
             ".history-entry",
             ".hero-card",
-            ".history-detail-table",
+            ".history-detail-grid",
             ".profile-photo",
             "Employee Profile",
             "Linked Contact and Address",
             "Internal Work History",
         ):
             self.assertIn(token, css if token.startswith(".") else html)
+
+        self.assertNotIn("Not provided", html)
 
     def test_template_integrates_managed_letterhead_and_footer(self):
         html = EMPLOYEE_TEMPLATE_PATH.read_text(encoding="utf-8")
@@ -230,6 +232,8 @@ class TestEmployeePrintFormat(unittest.TestCase):
             "history-entry",
         ):
             self.assertIn(token, rendered)
+
+        self.assertNotIn("Not provided", rendered)
 
     def test_template_renders_managed_letterhead_banner(self):
         html = EMPLOYEE_TEMPLATE_PATH.read_text(encoding="utf-8")

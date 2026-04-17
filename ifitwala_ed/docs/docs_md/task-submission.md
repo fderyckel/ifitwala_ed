@@ -3,8 +3,8 @@ title: "Task Submission: Versioned Student Evidence with Governance"
 slug: task-submission
 category: Assessment
 doc_order: 8
-version: "1.1.1"
-last_change_date: "2026-03-23"
+version: "1.2.0"
+last_change_date: "2026-04-17"
 summary: "Capture append-only student evidence (files, text, links), enforce versioning, and keep outcomes and portfolio workflows synchronized."
 seo_title: "Task Submission: Versioned Student Evidence with Governance"
 seo_description: "Capture append-only student evidence (files, text, links), enforce versioning, and keep outcomes and portfolio workflows synchronized."
@@ -17,6 +17,19 @@ Code refs: `ifitwala_ed/assessment/doctype/task_submission/task_submission.json`
 Test refs: `ifitwala_ed/assessment/doctype/task_submission/test_task_submission.py`, `ifitwala_ed/api/test_task_submission.py`
 
 `Task Submission` is the governed evidence layer for task work. Students can submit and resubmit over time, and every version is preserved for grading, moderation, and audit.
+
+## Permission Matrix
+
+Status: Implemented
+Code refs: `ifitwala_ed/api/task_submission.py`, `ifitwala_ed/api/gradebook.py`, `ifitwala_ed/api/file_access.py`
+Test refs: `ifitwala_ed/api/test_task_submission.py`, `ifitwala_ed/api/test_gradebook.py`
+
+| Role / Surface | What they can do |
+| --- | --- |
+| Student portal | Create or resubmit their own evidence through the governed upload flow and read the latest permitted submission payload through the student-facing API. |
+| Staff gradebook | Read version summaries and one selected submission version inside the gradebook drawer, with server-owned preview/open routes resolved per attachment. |
+| Guardian portal | No direct `Task Submission` authoring surface. Visibility stays mediated through released outcome and other guardian-authorized workflows. |
+| Administrators / academic staff | Access remains server-scoped and follows the same outcome, student, and school visibility checks as the owning assessment surface. |
 
 ## Before You Start (Prerequisites)
 
@@ -51,6 +64,17 @@ Test refs: `ifitwala_ed/assessment/doctype/task_submission/test_task_submission.
 2. Each resubmission creates a new `version` rather than mutating prior evidence.
 3. Submission insertion updates the parent outcome state (`has_submission`, `has_new_submission`, submission status).
 4. Contribution flows resolve against a real or stub submission version for grading integrity.
+
+## Evidence Review And Preview
+
+Status: Implemented current-state baseline
+Code refs: `ifitwala_ed/api/task_submission.py`, `ifitwala_ed/api/gradebook_reads.py`, `ifitwala_ed/api/file_access.py`
+Test refs: `ifitwala_ed/api/test_task_submission.py`, `ifitwala_ed/api/test_gradebook.py`
+
+- The student-side latest-submission read now returns governed attachment rows with stable `preview_url` and `open_url` values instead of raw private file paths.
+- The staff gradebook drawer now supports strict version selection: it returns a version list summary plus one selected submission payload for the requested version, defaulting to the latest version when no selection is provided.
+- Attachment preview is still governed by the owning submission and student scope. The SPA must not guess file paths or bypass the server-owned route contract.
+- Preview remains additive to open/download. When no ready derivative exists, the preview route may degrade to the canonical file while still preserving permission checks.
 
 ## Related Docs
 

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import types
 from unittest import TestCase
+from urllib.parse import parse_qs, urlparse
 
 from ifitwala_ed.tests.frappe_stubs import StubValidationError, import_fresh, stubbed_frappe
 
@@ -34,8 +35,24 @@ def _gradebook_stub_modules(task_contribution_service=None):
     quiz_service = types.ModuleType("ifitwala_ed.assessment.quiz_service")
     quiz_service.MANUAL_TYPES = {"Essay"}
     quiz_service.refresh_attempt = lambda *args, **kwargs: {"attempt": {"name": args[0] if args else "QAT-1"}}
+    file_access = types.ModuleType("ifitwala_ed.api.file_access")
+    file_access.resolve_academic_file_open_url = (
+        lambda *, file_name, file_url, context_doctype=None, context_name=None, **kwargs: (
+            f"/api/method/ifitwala_ed.api.file_access.download_academic_file?file={file_name}&context_doctype={context_doctype}&context_name={context_name}"
+            if file_name
+            else file_url
+        )
+    )
+    file_access.resolve_academic_file_preview_url = (
+        lambda *, file_name, file_url, context_doctype=None, context_name=None, **kwargs: (
+            f"/api/method/ifitwala_ed.api.file_access.preview_academic_file?file={file_name}&context_doctype={context_doctype}&context_name={context_name}"
+            if file_name
+            else file_url
+        )
+    )
 
     return {
+        "ifitwala_ed.api.file_access": file_access,
         "ifitwala_ed.assessment.quiz_service": quiz_service,
         "ifitwala_ed.assessment.task_contribution_service": task_contribution_service
         or types.ModuleType("ifitwala_ed.assessment.task_contribution_service"),
@@ -48,6 +65,114 @@ def _gradebook_stub_modules(task_contribution_service=None):
 
 
 class TestGradebookApi(TestCase):
+    def test_get_drawer_selects_requested_submission_version_and_serializes_preview_urls(self):
+        with stubbed_frappe(extra_modules=_gradebook_stub_modules()) as frappe:
+
+            def fake_get_value(doctype, name, fieldname=None, as_dict=False):
+                if doctype == "Task Outcome" and name == "OUT-1":
+                    return {
+                        "name": "OUT-1",
+                        "task_delivery": "TDL-1",
+                        "grading_status": "Needs Review",
+                        "procedural_status": "Submitted",
+                        "official_score": 8,
+                        "official_grade": "B",
+                        "official_grade_value": 8,
+                        "official_feedback": "Review latest evidence",
+                    }
+                return None
+
+            def fake_get_all(doctype, filters=None, fields=None, order_by=None, limit=0, pluck=None):
+                if doctype == "Task Submission":
+                    return [
+                        {
+                            "name": "TSU-2026-00002",
+                            "version": 2,
+                            "submitted_on": "2026-04-02 10:00:00",
+                            "submitted_by": "student@example.com",
+                            "is_late": 0,
+                            "is_cloned": 0,
+                            "cloned_from": "",
+                            "submission_origin": "Student Upload",
+                            "is_stub": 0,
+                            "evidence_note": "Latest evidence",
+                            "link_url": "",
+                            "text_content": "Version 2",
+                        },
+                        {
+                            "name": "TSU-2026-00001",
+                            "version": 1,
+                            "submitted_on": "2026-04-01 09:00:00",
+                            "submitted_by": "student@example.com",
+                            "is_late": 0,
+                            "is_cloned": 0,
+                            "cloned_from": "",
+                            "submission_origin": "Student Upload",
+                            "is_stub": 0,
+                            "evidence_note": "Original evidence",
+                            "link_url": "",
+                            "text_content": "Version 1",
+                        },
+                    ]
+                if doctype == "Task Contribution":
+                    return []
+                if doctype == "Attached Document":
+                    self.assertEqual(filters.get("parent"), "TSU-2026-00001")
+                    return [
+                        {
+                            "name": "ATT-OLD-1",
+                            "file": "/private/files/submission-v1.pdf",
+                            "external_url": "",
+                            "description": "First upload",
+                            "public": 0,
+                            "file_name": "submission-v1.pdf",
+                            "file_size": 512,
+                        }
+                    ]
+                if doctype == "File":
+                    self.assertEqual(filters.get("attached_to_name"), "TSU-2026-00001")
+                    return [
+                        {
+                            "name": "FILE-SUB-0001",
+                            "file_url": "/private/files/submission-v1.pdf",
+                            "creation": "2026-04-01 09:00:00",
+                        }
+                    ]
+                if doctype == "Drive File":
+                    return [{"file": "FILE-SUB-0001", "preview_status": "pending"}]
+                return []
+
+            frappe.db.get_value = fake_get_value
+            frappe.get_all = fake_get_all
+
+            module = import_fresh("ifitwala_ed.api.gradebook")
+            module._can_read_gradebook = lambda: True
+            module._get_outcome_criteria_map = lambda outcome_ids: {"OUT-1": []}
+            module._select_my_contribution = lambda contributions: None
+
+            payload = module.get_drawer("OUT-1", version="1")
+
+        self.assertEqual(payload["latest_submission"]["submission_id"], "TSU-2026-00002")
+        self.assertFalse(payload["latest_submission"]["is_selected"])
+        self.assertEqual(payload["selected_submission"]["submission_id"], "TSU-2026-00001")
+        self.assertEqual(payload["selected_submission"]["version"], 1)
+        self.assertEqual(payload["selected_submission"]["evidence_note"], "Original evidence")
+        self.assertEqual(payload["submission_versions"][0]["submission_id"], "TSU-2026-00001")
+        self.assertTrue(payload["submission_versions"][0]["is_selected"])
+        self.assertFalse(payload["submission_versions"][1]["is_selected"])
+
+        attachment = payload["selected_submission"]["attachments"][0]
+        self.assertEqual(attachment["preview_status"], "pending")
+        self.assertEqual(
+            urlparse(attachment["open_url"]).path,
+            "/api/method/ifitwala_ed.api.file_access.download_academic_file",
+        )
+        preview_parsed = urlparse(attachment["preview_url"])
+        preview_query = parse_qs(preview_parsed.query)
+        self.assertEqual(preview_parsed.path, "/api/method/ifitwala_ed.api.file_access.preview_academic_file")
+        self.assertEqual((preview_query.get("file") or [None])[0], "FILE-SUB-0001")
+        self.assertEqual((preview_query.get("context_name") or [None])[0], "TSU-2026-00001")
+
     def test_get_task_quiz_manual_review_groups_manual_rows_by_question(self):
         with stubbed_frappe(extra_modules=_gradebook_stub_modules()) as frappe:
 

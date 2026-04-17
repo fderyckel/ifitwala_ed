@@ -158,7 +158,9 @@ def get_grid(api, filters=None, **kwargs):
     }
 
 
-def get_drawer(api, outcome_id: str):
+def get_drawer(api, outcome_id: str, submission_id: str | None = None, version: int | str | None = None):
+    from ifitwala_ed.api import task_submission as task_submission_api
+
     api._require(outcome_id, "Task Outcome")
 
     if not api._can_read_gradebook():
@@ -230,25 +232,28 @@ def get_drawer(api, outcome_id: str):
         my_criteria = api._get_contribution_criteria(my_contribution.get("name"))
 
     moderation_history = api._build_moderation_history(contributions)
+    selected_submission_row = task_submission_api.select_task_submission_row(
+        submissions,
+        submission_id=submission_id,
+        version=version,
+    )
+    selected_submission = None
+    if selected_submission_row:
+        selected_submission = task_submission_api.serialize_task_submission_evidence(selected_submission_row)
+    selected_submission_id = (selected_submission or {}).get("submission_id")
     submission_versions = [
-        {
-            "submission_id": row.get("name"),
-            "version": row.get("version"),
-            "submitted_on": row.get("submitted_on"),
-            "origin": row.get("submission_origin"),
-            "is_stub": api._bool_flag(row.get("is_stub")),
-        }
+        task_submission_api.build_task_submission_version_summary(
+            row,
+            is_selected=(row.get("name") == selected_submission_id),
+        )
         for row in sorted(submissions, key=lambda r: r.get("version") or 0)
     ]
     latest_submission = submissions[0] if submissions else None
     if latest_submission:
-        latest_submission = {
-            "submission_id": latest_submission.get("name"),
-            "version": latest_submission.get("version"),
-            "submitted_on": latest_submission.get("submitted_on"),
-            "origin": latest_submission.get("submission_origin"),
-            "is_stub": api._bool_flag(latest_submission.get("is_stub")),
-        }
+        latest_submission = task_submission_api.build_task_submission_version_summary(
+            latest_submission,
+            is_selected=(latest_submission.get("name") == selected_submission_id),
+        )
 
     return {
         "outcome": {
@@ -264,6 +269,7 @@ def get_drawer(api, outcome_id: str):
             "criteria": outcome_criteria,
         },
         "latest_submission": latest_submission,
+        "selected_submission": selected_submission,
         "submission_versions": submission_versions,
         "my_contribution": {
             "status": my_contribution.get("status"),

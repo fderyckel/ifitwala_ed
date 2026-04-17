@@ -1,9 +1,9 @@
 # Cross-Portal Governed Attachment Preview Contract
 
 Status: Proposed canonical contract for cross-app implementation
-Date: 2026-04-16
-Code refs: `ifitwala_ed/api/file_access.py`, `ifitwala_ed/api/org_communication_attachments.py`, `ifitwala_ed/api/org_communication_archive.py`, `ifitwala_ed/api/materials.py`, `ifitwala_ed/api/teaching_plans_read_models.py`, `ifitwala_ed/ui-spa/AGENTS.md`, `ifitwala_ed/ui-spa/src/components/tasks/CreateTaskDeliveryOverlay.vue`
-Test refs: `ifitwala_ed/api/test_file_access.py`, `ifitwala_ed/api/test_materials.py`, `ifitwala_ed/api/test_org_communication_archive.py`, `ifitwala_ed/api/test_teaching_plans.py`, `ifitwala_ed/ui-spa/src/components/tasks/__tests__/CreateTaskDeliveryOverlay.test.ts`
+Date: 2026-04-17
+Code refs: `ifitwala_ed/api/file_access.py`, `ifitwala_ed/api/gradebook_reads.py`, `ifitwala_ed/api/org_communication_attachments.py`, `ifitwala_ed/api/org_communication_archive.py`, `ifitwala_ed/api/materials.py`, `ifitwala_ed/api/task_submission.py`, `ifitwala_ed/api/teaching_plans_read_models.py`, `ifitwala_ed/ui-spa/AGENTS.md`, `ifitwala_ed/ui-spa/src/components/tasks/CreateTaskDeliveryOverlay.vue`
+Test refs: `ifitwala_ed/api/test_file_access.py`, `ifitwala_ed/api/test_gradebook.py`, `ifitwala_ed/api/test_materials.py`, `ifitwala_ed/api/test_org_communication_archive.py`, `ifitwala_ed/api/test_task_submission.py`, `ifitwala_ed/api/test_teaching_plans.py`, `ifitwala_ed/ui-spa/src/components/tasks/__tests__/CreateTaskDeliveryOverlay.test.ts`
 Related current-state docs:
 
 - `ifitwala_ed/docs/high_concurrency_contract.md`
@@ -50,6 +50,7 @@ Drive now has a narrow image plus first-page PDF derivative foundation, but Ed s
 - the staff task creation overlay can use `preview_url` where Drive reports a ready preview, while still keeping task-material actions inside the existing create flow
 - staff planning-material surfaces can use `preview_url` where Drive reports a ready preview
 - the student learning space can use `preview_url` where Drive reports a ready preview, with richer resource cards keeping `open_url` explicit and task chips staying lightweight
+- the task-submission evidence surface now returns stable `preview_url` and `open_url` values for selected submission attachments, with version summaries remaining bounded inside the gradebook drawer contract
 - other surfaces should still be treated as open/download-only until their stable preview routes exist
 
 ## Assessment Of The Proposal

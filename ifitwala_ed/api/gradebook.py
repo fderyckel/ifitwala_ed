@@ -44,8 +44,8 @@ def get_grid(filters=None, **kwargs):
 
 
 @frappe.whitelist()
-def get_drawer(outcome_id: str):
-    return gradebook_reads.get_drawer(_API_MODULE, outcome_id)
+def get_drawer(outcome_id: str, submission_id: str | None = None, version: int | str | None = None):
+    return gradebook_reads.get_drawer(_API_MODULE, outcome_id, submission_id=submission_id, version=version)
 
 
 @frappe.whitelist()

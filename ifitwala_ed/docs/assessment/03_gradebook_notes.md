@@ -3,7 +3,7 @@
 Status: **UX LOCK DRAFT (Thin)**
 Audience: Product + Engineering + Codex agents
 Goal: A teacher should grade and return work with **minimum clicks** and **zero doctype awareness**.
-Last updated: 2026-04-11
+Last updated: 2026-04-17
 
 ---
 
@@ -143,6 +143,12 @@ If there is no submission:
 * System auto‑creates an Evidence Stub submission behind the scenes when `requires_submission = 1`
 * Optional note field (e.g., “Paper collected in class”)
 
+Current implementation baseline for the Evidence tab:
+
+* drawer bootstrap returns one **selected submission** payload plus a bounded **submission version summary** list
+* if no explicit version is requested, the selected submission defaults to the latest version
+* attachment rows in the selected submission resolve to server-owned `preview_url` / `open_url` routes; the SPA must never guess private file paths
+
 ---
 
 ### 1.3 Student-centric View (Secondary)
@@ -219,6 +225,7 @@ Teacher clicks cell → Drawer shows:
 
 * Latest submission version (default)
 * Previous versions accessible via History
+* Each selected version keeps its own governed attachment preview/open routes
 
 Policy toggle:
 
