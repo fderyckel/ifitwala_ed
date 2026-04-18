@@ -5,6 +5,7 @@ const {
 	routeState,
 	replaceMock,
 	toastMock,
+	fetchMock,
 	fetchSchoolContextMock,
 	fetchGroupsMock,
 	fetchGroupTasksMock,
@@ -14,6 +15,8 @@ const {
 	getTaskQuizManualReviewMock,
 	markNewSubmissionSeenMock,
 	publishOutcomesMock,
+	pdfGlobalWorkerOptions,
+	getDocumentMock,
 	repairTaskRosterMock,
 	saveTaskQuizManualReviewMock,
 	unpublishOutcomesMock,
@@ -24,6 +27,10 @@ const {
 	},
 	replaceMock: vi.fn(() => Promise.resolve()),
 	toastMock: vi.fn(),
+	fetchMock: vi.fn(async () => ({
+		ok: true,
+		arrayBuffer: async () => new ArrayBuffer(16),
+	})),
 	fetchSchoolContextMock: vi.fn(),
 	fetchGroupsMock: vi.fn(),
 	fetchGroupTasksMock: vi.fn(),
@@ -33,11 +40,45 @@ const {
 	getTaskQuizManualReviewMock: vi.fn(),
 	markNewSubmissionSeenMock: vi.fn(),
 	publishOutcomesMock: vi.fn(),
+	pdfGlobalWorkerOptions: { workerSrc: '' },
+	getDocumentMock: vi.fn(() => {
+		const renderTask = {
+			cancel: vi.fn(),
+			promise: Promise.resolve(),
+		};
+		const page = {
+			getViewport: vi.fn(({ scale }: { scale: number }) => ({
+				width: 640 * scale,
+				height: 860 * scale,
+			})),
+			render: vi.fn(() => renderTask),
+		};
+		return {
+			promise: Promise.resolve({
+				numPages: 2,
+				getPage: vi.fn(async () => page),
+				destroy: vi.fn(async () => undefined),
+			}),
+			destroy: vi.fn(),
+		};
+	}),
 	repairTaskRosterMock: vi.fn(),
 	saveTaskQuizManualReviewMock: vi.fn(),
 	unpublishOutcomesMock: vi.fn(),
 	updateTaskStudentMock: vi.fn(),
 }));
+
+vi.stubGlobal('fetch', fetchMock);
+
+if (typeof HTMLCanvasElement !== 'undefined') {
+	Object.defineProperty(HTMLCanvasElement.prototype, 'getContext', {
+		configurable: true,
+		value: vi.fn(() => ({
+			setTransform: vi.fn(),
+			clearRect: vi.fn(),
+		})),
+	});
+}
 
 vi.mock('vue-router', () => ({
 	useRoute: () => routeState,
@@ -171,6 +212,15 @@ vi.mock('frappe-ui', () => ({
 		},
 	}),
 	toast: toastMock,
+}));
+
+vi.mock('pdfjs-dist/legacy/build/pdf.mjs', () => ({
+	GlobalWorkerOptions: pdfGlobalWorkerOptions,
+	getDocument: getDocumentMock,
+}));
+
+vi.mock('pdfjs-dist/legacy/build/pdf.worker.min.mjs?url', () => ({
+	default: '/mock-pdf-worker.min.mjs',
 }));
 
 vi.mock('@/lib/services/gradebook/gradebookService', () => ({
@@ -452,9 +502,15 @@ afterEach(() => {
 	routeState.query = {};
 	replaceMock.mockClear();
 	toastMock.mockClear();
+	fetchMock.mockReset();
+	fetchMock.mockResolvedValue({
+		ok: true,
+		arrayBuffer: async () => new ArrayBuffer(16),
+	});
 	fetchSchoolContextMock.mockReset();
 	fetchGroupsMock.mockReset();
 	fetchGroupTasksMock.mockReset();
+	getDocumentMock.mockClear();
 	getGridMock.mockReset();
 	getTaskGradebookMock.mockReset();
 	getTaskQuizManualReviewMock.mockReset();
@@ -804,11 +860,19 @@ describe('Gradebook page', () => {
 		const text = document.body.textContent || '';
 		expect(text).toContain('Annotation Surface');
 		expect(text).toContain('PDF Workspace');
-		expect(text).toContain('pdf.js surface pending install');
+		expect(text).toContain('Read-only pdf.js viewer');
 		expect(text).toContain('Reduced mode');
 		expect(text).toContain('Source PDF:');
 		expect(text).toContain('essay.pdf');
-		expect(text).toContain('Preview not available yet');
+		expect(text).toContain('Page 1 of 2');
+		expect(text).toContain('100%');
+		expect(getDocumentMock).toHaveBeenCalled();
+		expect(fetchMock).toHaveBeenCalledWith(
+			'/api/method/ifitwala_ed.api.file_access.download_academic_file?file=FILE-TASK-1',
+			expect.objectContaining({
+				credentials: 'include',
+			})
+		);
 
 		const previewLink = Array.from(document.querySelectorAll('a')).find(link =>
 			(link.textContent || '').includes('Try preview')

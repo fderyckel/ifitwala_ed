@@ -183,6 +183,7 @@ Rules:
 13. For `entryMode='staff-home'`, once at least one governed file attachment exists, the overlay must lock the scope-driving controls that can change attachment context: organization, issuing school, audience-row scope selection, and audience target lookup/reset actions. Recipient toggles and message content remain editable.
 14. For `entryMode='staff-home'`, the first governed file fixes attachment context based on the persisted draft state at upload time. If `issuing school` is populated at that moment, the draft is attachment-governed as school-scoped even if a later audience change would otherwise be organization-wide. Users intending organization-scoped governed files must clear issuing school before the first governed file upload.
 15. For staff-home users who can target both school-level and organization-level audiences, the first governed file action must be blocked until they either choose an audience workflow or clear `issuing school`. The overlay must not silently auto-save a school-scoped governed draft just because `issuing school` was prefilled from user context.
+16. For organization-scoped locked drafts (`issuing school` blank at first governed file), compatible `Organization` audiences remain valid. The overlay must tell wide-scope users to choose `Organization-wide` rather than showing only a generic lock warning.
 
 ## 5. Overlay and Invalidation Contract
 

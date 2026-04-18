@@ -298,7 +298,7 @@
 					class="mt-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3"
 				>
 					<p class="type-caption text-amber-900">
-						Attachment scope is locked while governed files remain attached.
+						{{ attachmentContextLockMessage }}
 					</p>
 				</div>
 
@@ -313,7 +313,7 @@
 
 				<div class="mt-4 space-y-4">
 					<p v-if="!audienceRows.length" class="type-caption text-ink/60">
-						Choose an audience workflow above. You can add more than one audience when needed.
+						{{ audienceEmptyStateMessage }}
 					</p>
 
 					<div
@@ -721,6 +721,7 @@ defineProps<{
 	audienceSchoolSelectionLocked: boolean;
 	attachmentContextLocked: boolean;
 	attachmentContextLockMessage: string;
+	audienceEmptyStateMessage: string;
 	briefDatesRequired: boolean;
 	deliveryValidationMessage: string;
 	audienceValidationMessage: string;

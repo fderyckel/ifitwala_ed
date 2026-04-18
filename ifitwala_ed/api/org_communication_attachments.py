@@ -6,11 +6,7 @@ from typing import Any
 import frappe
 from frappe import _
 
-from ifitwala_ed.api.file_access import (
-    build_org_communication_attachment_open_url,
-    build_org_communication_attachment_preview_url,
-    build_org_communication_attachment_thumbnail_url,
-)
+from ifitwala_ed.api import file_access as file_access_api
 from ifitwala_ed.setup.doctype.org_communication.attachments import (
     ORG_COMMUNICATION_ATTACHMENT_BINDING_ROLE,
     ORG_COMMUNICATION_ATTACHMENT_SLOT_PREFIX,
@@ -114,6 +110,15 @@ def _get_attachment_preview_status(org_communication: str, row_name: str) -> str
     return _clean_text(frappe.db.get_value("Drive File", drive_file_id, "preview_status"))
 
 
+def _build_attachment_thumbnail_url(org_communication: str, row_name: str, preview_url: str | None) -> str | None:
+    thumbnail_builder = getattr(file_access_api, "build_org_communication_attachment_thumbnail_url", None)
+    if callable(thumbnail_builder):
+        return thumbnail_builder(org_communication=org_communication, row_name=row_name)
+
+    # Older unit-test stubs may only provide preview/open builders.
+    return preview_url
+
+
 def serialize_org_communication_attachment_row(org_communication: str, row) -> dict[str, Any]:
     row_name = str(getattr(row, "name", "") or "").strip()
     file_url = str(getattr(row, "file", "") or "").strip()
@@ -139,18 +144,15 @@ def serialize_org_communication_attachment_row(org_communication: str, row) -> d
 
     if file_url:
         preview_status = _get_attachment_preview_status(org_communication, row_name)
-        open_url = build_org_communication_attachment_open_url(
+        open_url = file_access_api.build_org_communication_attachment_open_url(
             org_communication=org_communication,
             row_name=row_name,
         )
-        preview_url = build_org_communication_attachment_preview_url(
+        preview_url = file_access_api.build_org_communication_attachment_preview_url(
             org_communication=org_communication,
             row_name=row_name,
         )
-        thumbnail_url = build_org_communication_attachment_thumbnail_url(
-            org_communication=org_communication,
-            row_name=row_name,
-        )
+        thumbnail_url = _build_attachment_thumbnail_url(org_communication, row_name, preview_url)
         return {
             "row_name": row_name,
             "kind": "file",

@@ -80,6 +80,7 @@ Silent no-op behavior is a defect.
   - freeze the scope-driving controls
   - explain the remediation in-product
   - block final submit before the request leaves the browser
+- If that lock still leaves a valid forward path (for example an organization-scoped draft may still add an `Organization` audience), the overlay copy must name the still-allowed next action. Do not show only a generic locked warning when the user can still complete the workflow safely.
 - If the first successful mutation would lock an ambiguous or defaulted scope (for example a prefilled issuing school that is only one of several valid communication scopes), block before that first mutation and force the user to make scope intent explicit.
 
 If an overlay works from one entry point but fails from another, treat it as a design bug.

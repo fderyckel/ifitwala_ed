@@ -126,6 +126,7 @@
 									:brief-dates-required="briefDatesRequired"
 									:delivery-validation-message="deliveryValidationMessage"
 									:audience-validation-message="audienceValidationMessage"
+									:audience-empty-state-message="audienceEmptyStateMessage"
 									:publish-action-status="publishActionStatus"
 									:private-notes-disabled="privateNotesDisabled"
 									:public-thread-disabled="publicThreadDisabled"
@@ -381,24 +382,46 @@ const hasGovernedFileAttachments = computed(() =>
 const attachmentContextLocked = computed(() =>
 	Boolean(savedCommunicationName.value && hasGovernedFileAttachments.value)
 );
-const attachmentContextLockMessage = computed(
-	() =>
-		'Governed files are already attached to this draft. Remove the governed files before changing organization, issuing school, or audience scope.'
-);
+const lockedAttachmentSchoolLabel = computed(() => {
+	const school =
+		lockedAttachmentContextSnapshot.value?.school ||
+		(attachmentContextLocked.value ? buildAttachmentContextSnapshot().school : '');
+	return school ? getSchoolOptionLabel(school) || school : '';
+});
+const attachmentContextLockMessage = computed(() => {
+	if (lockedAttachmentSchoolLabel.value) {
+		return `Governed files are already attached for ${lockedAttachmentSchoolLabel.value}. Remove the governed files before changing organization, issuing school, or audience scope.`;
+	}
+	if (canTargetWideSchoolScope.value) {
+		return 'Governed files are already attached for this organization-scoped draft. You can still add an Organization-wide audience, but you must remove the governed files before switching to school, team, or student-group scope.';
+	}
+	return 'Governed files are already attached for this organization-scoped draft. Remove the governed files before changing organization, issuing school, or audience scope.';
+});
+const audienceEmptyStateMessage = computed(() => {
+	if (!attachmentContextLocked.value) {
+		return 'Choose an audience workflow above. You can add more than one audience when needed.';
+	}
+	if (lockedAttachmentSchoolLabel.value) {
+		return `This draft is already locked to ${lockedAttachmentSchoolLabel.value}. Add a school audience for that school, or remove the governed files before switching scope.`;
+	}
+	if (canTargetWideSchoolScope.value) {
+		return 'This draft is already locked to organization scope. Choose Organization-wide above to reach staff across your organization tree.';
+	}
+	return 'This draft is already locked to organization scope. Organization-wide audiences are unavailable for your current role.';
+});
 
 function getAttachmentContextLockMessageForTarget(targetLabel: string) {
-	const lockedSnapshot = lockedAttachmentContextSnapshot.value;
-	const lockedSchoolLabel = lockedSnapshot?.school
-		? getSchoolOptionLabel(lockedSnapshot.school) || lockedSnapshot.school
-		: '';
-	if (targetLabel === 'Organization-wide' && lockedSchoolLabel) {
-		return `This draft's governed files are locked to ${lockedSchoolLabel}. Remove the governed files, clear Issuing School, choose Organization-wide, then attach the files again.`;
+	if (targetLabel === 'Organization-wide' && lockedAttachmentSchoolLabel.value) {
+		return `This draft's governed files are locked to ${lockedAttachmentSchoolLabel.value}. Remove the governed files, clear Issuing School, choose Organization-wide, then attach the files again.`;
 	}
-	if (targetLabel === 'School Scope' && !lockedSchoolLabel) {
+	if (targetLabel === 'School Scope' && !lockedAttachmentSchoolLabel.value) {
 		return 'This draft already has organization-scoped governed files. Remove the governed files before switching to a school-scoped audience.';
 	}
-	if ((targetLabel === 'Team' || targetLabel === 'Student Group') && lockedSchoolLabel) {
-		return `This draft's governed files are locked to ${lockedSchoolLabel}. Remove the governed files before switching to a ${targetLabel.toLowerCase()} audience.`;
+	if (
+		(targetLabel === 'Team' || targetLabel === 'Student Group') &&
+		lockedAttachmentSchoolLabel.value
+	) {
+		return `This draft's governed files are locked to ${lockedAttachmentSchoolLabel.value}. Remove the governed files before switching to a ${targetLabel.toLowerCase()} audience.`;
 	}
 	return attachmentContextLockMessage.value;
 }
@@ -811,14 +834,13 @@ const audienceValidationMessage = computed(() => {
 	const message = draftValidationMessage.value || publishValidationMessage.value;
 	if (!message) return '';
 	if (message.startsWith('Please add at least one Audience') && attachmentContextLocked.value) {
-		const lockedSchoolLabel = lockedAttachmentContextSnapshot.value?.school
-			? getSchoolOptionLabel(lockedAttachmentContextSnapshot.value.school) ||
-				lockedAttachmentContextSnapshot.value.school
-			: '';
-		if (lockedSchoolLabel) {
-			return `Governed files are already attached for ${lockedSchoolLabel}. Add a school audience for that school, or remove the governed files before switching to Organization-wide.`;
+		if (lockedAttachmentSchoolLabel.value) {
+			return `Governed files are already attached for ${lockedAttachmentSchoolLabel.value}. Add a school audience for that school, or remove the governed files before switching to Organization-wide.`;
 		}
-		return 'Governed files are already attached for this organization-scoped draft. Add an Organization-wide audience, or remove the governed files before switching to a narrower scope.';
+		if (canTargetWideSchoolScope.value) {
+			return 'Governed files are already attached for this organization-scoped draft. Choose Organization-wide above to reach staff across your organization tree, or remove the governed files before switching to a narrower scope.';
+		}
+		return 'Governed files are already attached for this organization-scoped draft. Organization-wide audiences are unavailable for your current role.';
 	}
 	if (
 		message.startsWith('Please add at least one Audience') ||

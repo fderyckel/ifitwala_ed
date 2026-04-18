@@ -341,6 +341,22 @@ const noDefaultSchoolQuickCreateOptions = {
 	},
 };
 
+const wideAudienceNoDefaultSchoolQuickCreateOptions = {
+	...wideAudienceQuickCreateOptions,
+	context: {
+		...wideAudienceQuickCreateOptions.context,
+		default_school: null,
+		allowed_schools: ['SCH-1', 'SCH-2'],
+	},
+	references: {
+		...wideAudienceQuickCreateOptions.references,
+		schools: [
+			{ name: 'SCH-1', school_name: 'Main School', abbr: 'MS', organization: 'ORG-1' },
+			{ name: 'SCH-2', school_name: 'South School', abbr: 'SS', organization: 'ORG-1' },
+		],
+	},
+};
+
 const interactiveThreadQuickCreateOptions = {
 	...quickCreateOptions,
 	fields: {
@@ -1196,7 +1212,7 @@ describe('OrgCommunicationQuickCreateModal', () => {
 		);
 	});
 
-	it('locks scope-driving controls after a governed file attachment is added', async () => {
+	it('locks top-level scope controls after a governed file attachment is added but keeps compatible audience presets available', async () => {
 		getOptionsMock.mockResolvedValue(wideAudienceQuickCreateOptions);
 		createOrgCommunicationQuickMock.mockResolvedValue({
 			ok: true,
@@ -1230,9 +1246,9 @@ describe('OrgCommunicationQuickCreateModal', () => {
 		const organizationWideButton = Array.from(document.querySelectorAll('button')).find(node =>
 			(node.textContent || '').includes('Organization-wide')
 		) as HTMLButtonElement | undefined;
-		expect(organizationWideButton?.disabled).toBe(true);
+		expect(organizationWideButton?.disabled).toBe(false);
 		expect(document.body.textContent || '').toContain(
-			'Governed files are already attached to this draft.'
+			'Governed files are already attached for Main School.'
 		);
 	});
 
@@ -1268,6 +1284,42 @@ describe('OrgCommunicationQuickCreateModal', () => {
 		expect(document.querySelector('[role="alert"]')?.textContent || '').toContain(
 			"Remove the governed files, clear Issuing School, choose Organization-wide, then attach the files again."
 		);
+	});
+
+	it('lets wide-scope users add an organization-wide audience after an organization-scoped governed file is attached', async () => {
+		getOptionsMock.mockResolvedValue(wideAudienceNoDefaultSchoolQuickCreateOptions);
+		createOrgCommunicationQuickMock.mockResolvedValue({
+			ok: true,
+			status: 'created',
+			name: 'COMM-DRAFT-FILE-ORG-SCOPE',
+			title: 'Weekly staff update',
+		});
+		uploadOrgCommunicationAttachmentMock.mockResolvedValue({
+			ok: true,
+			org_communication: 'COMM-DRAFT-FILE-ORG-SCOPE',
+			attachment: {
+				row_name: 'row-file-org-scope',
+				kind: 'file',
+				title: 'Policy PDF',
+				file_name: 'policy.pdf',
+				file_size: 1024,
+				open_url: 'https://example.com/files/policy.pdf',
+			},
+		});
+
+		mountModal();
+		await flushUi();
+
+		await uploadGovernedFile();
+		await addOrganizationWideAudience();
+
+		expect(createOrgCommunicationQuickMock).toHaveBeenCalledTimes(1);
+		expect(uploadOrgCommunicationAttachmentMock).toHaveBeenCalledTimes(1);
+		expect(document.body.textContent || '').toContain(
+			'This draft is already locked to organization scope. Choose Organization-wide above to reach staff across your organization tree.'
+		);
+		expect(document.body.textContent || '').toContain('Root Org · Staff');
+		expect(document.querySelector('[role="alert"]')).toBeNull();
 	});
 
 	it('blocks publish client-side when scope changes after a governed file attachment is added', async () => {

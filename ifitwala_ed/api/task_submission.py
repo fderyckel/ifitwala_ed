@@ -18,6 +18,14 @@ def _frappe_module():
     return importlib.import_module("frappe")
 
 
+def _translate_literal(message: str) -> str:
+    current_frappe = _frappe_module()
+    translator = getattr(current_frappe, "_", None)
+    if callable(translator):
+        return translator(message)
+    return message
+
+
 @frappe.whitelist()
 def create_or_resubmit(payload=None, **kwargs):
     _require_authenticated()
@@ -348,23 +356,23 @@ def _build_annotation_readiness_payload(
     primary_pdf = next((row for row in attachments if _attachment_is_pdf(row)), None)
     if not primary_pdf:
         if _clean_text(submission_row.get("text_content")):
-            title = _("PDF annotation does not apply to this version")
-            message = _(
+            title = _translate_literal("PDF annotation does not apply to this version")
+            message = _translate_literal(
                 "This submission version is text-based. Keep feedback in the marking panel until a governed PDF evidence version exists."
             )
         elif _clean_text(submission_row.get("link_url")):
-            title = _("PDF annotation does not apply to this version")
-            message = _(
+            title = _translate_literal("PDF annotation does not apply to this version")
+            message = _translate_literal(
                 "This submission version points to linked evidence. Keep review in the drawer and open the linked source directly when needed."
             )
         elif attachments:
-            title = _("No governed PDF evidence on this version")
-            message = _(
+            title = _translate_literal("No governed PDF evidence on this version")
+            message = _translate_literal(
                 "This submission version has attachments, but none are governed PDFs. PDF annotation does not apply to this evidence version."
             )
         else:
-            title = _("No governed PDF evidence on this version")
-            message = _(
+            title = _translate_literal("No governed PDF evidence on this version")
+            message = _translate_literal(
                 "This submission version does not include a governed PDF attachment. Continue grading in the drawer."
             )
         return {
@@ -383,36 +391,36 @@ def _build_annotation_readiness_payload(
     if preview_status == "ready":
         mode = "reduced"
         reason_code = "pdf_preview_ready"
-        title = _("Reduced PDF review mode")
-        message = _(
+        title = _translate_literal("Reduced PDF review mode")
+        message = _translate_literal(
             "This governed PDF has a preview surface, but text-anchored annotation is not available in the current runtime yet. Review the preview or open the source PDF, then keep marking in the drawer."
         )
     elif preview_status == "pending":
         mode = "reduced"
         reason_code = "pdf_preview_pending"
-        title = _("Reduced PDF review mode")
-        message = _(
+        title = _translate_literal("Reduced PDF review mode")
+        message = _translate_literal(
             "This governed PDF is still generating its preview. Text-anchored annotation is not available in the current runtime yet, so use the source PDF plus drawer marking for now."
         )
     elif preview_status == "failed":
         mode = "unavailable"
         reason_code = "pdf_preview_failed"
-        title = _("PDF preview unavailable")
-        message = _(
+        title = _translate_literal("PDF preview unavailable")
+        message = _translate_literal(
             "This governed PDF can still be opened, but its preview could not be generated. Keep review action-led for now and continue marking in the drawer."
         )
     elif preview_status == "not_applicable":
         mode = "unavailable"
         reason_code = "pdf_preview_not_applicable"
-        title = _("PDF preview unavailable")
-        message = _(
+        title = _translate_literal("PDF preview unavailable")
+        message = _translate_literal(
             "This governed PDF does not currently expose a preview surface. Open the source PDF directly and continue marking in the drawer."
         )
     else:
         mode = "reduced"
         reason_code = "pdf_preview_unknown"
-        title = _("Reduced PDF review mode")
-        message = _(
+        title = _translate_literal("Reduced PDF review mode")
+        message = _translate_literal(
             "This governed PDF can be opened for review, but preview/readability metadata is not ready yet. Continue with the source PDF and the drawer marking workflow."
         )
 

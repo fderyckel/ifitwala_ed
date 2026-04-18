@@ -14,6 +14,7 @@ from frappe import _
 from frappe.utils import get_datetime, now_datetime
 
 from ifitwala_ed.api import course_schedule as course_schedule_api
+from ifitwala_ed.api import portal as portal_api
 from ifitwala_ed.api import student_communications as student_communications_api
 from ifitwala_ed.api.student_policy import get_student_policy_home_summary
 
@@ -770,8 +771,6 @@ def get_courses_data(academic_year: str | None = None) -> dict:
 def get_student_hub_home() -> dict[str, Any]:
     student_name = _require_student_name_for_session_user()
     anchor_dt = now_datetime()
-
-    from ifitwala_ed.api import portal as portal_api
 
     identity = portal_api.get_student_portal_identity()
     schedule = course_schedule_api.get_today_courses()
