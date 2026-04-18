@@ -86,3 +86,9 @@ The metrics script is informational by default and can be enforced with environm
 
 7. Private media contracts must stay server-owned.
 - SPA and website consumers should receive server-resolved display URLs, never raw private paths, and regressions here should be fixed at the API/display-contract layer.
+
+8. Multi-step overlays must test first-mutation lock behavior.
+- If a workflow auto-saves drafts, uploads governed files, or otherwise locks server invariants after an intermediate step, add SPA regression coverage for:
+  - the first mutation that activates the lock
+  - the affected controls becoming non-editable or otherwise guarded
+  - final submit being blocked client-side with actionable remediation when stale state would violate the lock

@@ -736,6 +736,14 @@ Teachers have **only these actions**:
 - Autosave happens silently
 - Explicit action: **Mark as ready**
 
+Feedback workspace expectations:
+
+- The selected evidence version stays obvious while the teacher writes
+- Anchored comments and summary writing happen in one drawer workspace
+- Summary defaults should help the teacher synthesize strengths, improvements, and next steps
+- Annotation navigation should focus one thread at a time rather than encourage unmanaged comment scatter
+- Ink is optional support, not the primary grading path
+
 ### Moderation (Teacher-to-Teacher)
 
 - Moderator can:
@@ -833,6 +841,9 @@ No numbers unless teacher opens the cell.
 - Calm
 - No distractions
 - One mental task at a time
+- Evidence review, anchored feedback, and summary synthesis stay in the same workspace
+- Save state and release state must remain visually distinct
+- Student-facing feedback quality depends on synthesis, not just annotation count
 
 ---
 

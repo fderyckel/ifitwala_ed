@@ -3,7 +3,7 @@
 Status: **Planned implementation RFC / non-authoritative until canonical runtime docs are updated**
 Audience: Product, Engineering, UX, and coding agents
 Scope: Phase 2 design for structured feedback records, publication states, version binding, drawer integration, annotation readiness, and minimal comment-bank scope
-Last updated: 2026-04-17
+Last updated: 2026-04-18
 
 Important note:
 
@@ -151,6 +151,67 @@ Design rules:
 - one teacher action may write both grading input and feedback, but the server must preserve their separate ownership
 - feedback records must never be the only place where official score or completion truth lives
 
+### 3.1 Data-shape discipline before schema approval
+
+The Phase 2 implementation should stay strict about structure even before final DocType names are approved.
+
+Rules:
+
+- do not use one generic opaque JSON blob for all annotation or reply state
+- if JSON-capable fields are used for anchors or bodies, the shapes must still be explicit, kind-discriminated, and validated
+- reply history must not be stored as one `messages` blob; each message/reply should remain a first-class feedback record with author and timestamp identity
+- payload discipline belongs in the server contract, not only in frontend TypeScript
+
+Recommended minimum anchor families:
+
+- `text_quote`
+- `point`
+- `rect`
+- `path`
+
+Recommended minimum payload expectations:
+
+- `text_quote`: page, normalized rects, quoted text, and selector offsets when available
+- `point`: page plus normalized `x` / `y`
+- `rect`: page plus normalized `x` / `y` / `w` / `h`
+- `path`: page plus normalized stroke points and committed width/style metadata
+
+Illustrative examples:
+
+```json
+{
+  "kind": "text_quote",
+  "page": 2,
+  "rects": [
+    { "x": 0.104, "y": 0.331, "w": 0.418, "h": 0.024 }
+  ],
+  "quote": "This claim needs evidence",
+  "selector": { "start_offset": 1204, "end_offset": 1231 }
+}
+```
+
+```json
+{
+  "kind": "point",
+  "page": 3,
+  "x": 0.62,
+  "y": 0.48
+}
+```
+
+```json
+{
+  "kind": "path",
+  "page": 1,
+  "strokes": [
+    {
+      "points": [[0.21, 0.33], [0.215, 0.335], [0.22, 0.341]],
+      "width": 0.004
+    }
+  ]
+}
+```
+
 ---
 
 ## 4. Publication Model
@@ -276,6 +337,19 @@ Concurrency rule:
 - the drawer remains one bounded bootstrap read plus named mutations
 - do not add per-tab waterfalls or client polling loops for feedback blocks
 
+### 6.1 Hot-path mutation discipline
+
+Teacher-facing autosave should not degrade server correctness or request shape.
+
+Rules:
+
+- keep mutations explicit and outcome-scoped even when the UI presents them as autosave
+- debounce text/comment draft persistence
+- do not persist one database write per pointer move or per intermediate stroke segment
+- commit ink/path payloads on stroke end or bounded idle windows
+- keep annotation writes page/version scoped so later reloads and invalidation stay bounded
+- when a single interaction edits multiple feedback records, prefer one named bounded mutation over a client waterfall
+
 ---
 
 ## 7. Drive Boundary And Cross-App File Execution
@@ -345,6 +419,12 @@ Rules:
 - OCR or repair may later upgrade an evidence version from reduced mode to text-readable mode, but the product should not block all review until that happens
 - default Phase 2 path: detect readability synchronously, enqueue OCR/repair asynchronously where supported, and keep reduced-mode review available while that work is pending
 
+Device constraints:
+
+- ink should remain optional support for handwritten or diagram-heavy review, not the only viable marking path
+- Safari/iPad pointer quirks, inconsistent pressure, and palm-rejection imperfections should be treated as expected runtime noise
+- typed comments, point comments, and summary authoring must stay first-class on touch devices even when ink quality is imperfect
+
 ---
 
 ## 9. Minimal Comment Bank Scope
@@ -375,6 +455,17 @@ Minimum design constraints:
 - do not require shared departmental or global banks for the first usable version
 
 Follow-on enhancements may include richer sharing and conversion workflows, but insertion and small-scope reuse are the minimum for Phase 2/3 teacher adoption.
+
+### 9.1 Student-facing synthesis rule
+
+Released feedback should feel coherent to the learner, not merely complete to the teacher.
+
+Minimum product expectations:
+
+- student-visible surfaces foreground concise synthesis before dense annotation detail
+- summary structure should default to strengths, improvements, and next steps or an equivalent feedforward framing
+- annotation navigation should emphasize focused threads and active context rather than a flat wall of ungrouped comments
+- student replies, when enabled later, should attach to those focused feedback records rather than reopen detached side channels
 
 ---
 

@@ -181,6 +181,7 @@ Rules:
 11. Attachment actions that are blocked because the draft itself is not yet valid enough to save must surface in the overlay-level action banner, not in the attachment-local error region. The attachment error region is reserved for true upload/link/remove failures.
 12. Once a communication already has governed file attachments, changing the authoritative attachment context is blocked until those governed files are removed.
 13. For `entryMode='staff-home'`, once at least one governed file attachment exists, the overlay must lock the scope-driving controls that can change attachment context: organization, issuing school, audience-row scope selection, and audience target lookup/reset actions. Recipient toggles and message content remain editable.
+14. For `entryMode='staff-home'`, the first governed file fixes attachment context based on the persisted draft state at upload time. If `issuing school` is populated at that moment, the draft is attachment-governed as school-scoped even if a later audience change would otherwise be organization-wide. Users intending organization-scoped governed files must clear issuing school before the first governed file upload.
 
 ## 5. Overlay and Invalidation Contract
 

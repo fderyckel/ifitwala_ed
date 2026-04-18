@@ -3,7 +3,7 @@
 Status: **Authoritative feature contract**
 Scope: Gradebook drawer feedback workflow, submission evidence review, returned feedback artifacts, and student-facing released feedback surfaces
 Audience: Product, Engineering, UX, and coding agents
-Last updated: 2026-04-17
+Last updated: 2026-04-18
 
 This document is the canonical product and architecture contract for feedback and annotation work in assessment.
 It does not replace the task runtime contract in `04_task_notes.md`.
@@ -270,6 +270,20 @@ Teacher productivity minimum:
 - insertion from the drawer without leaving the grading flow
 - first-version default scope is teacher-owned entries with optional course or assignment relevance; broader shared banks come later
 
+Structured feedback record minimum:
+
+- feedback items, summary records, and reply history remain first-class assessment records
+- conversation history must not collapse into one opaque message blob
+- each reply/message keeps author, timestamp, visibility/workflow state, and parent thread identity
+
+Annotation payload discipline:
+
+- anchor/body payloads may use JSON-capable storage, but the contract must define explicit shapes per annotation kind rather than one untyped catch-all blob
+- minimum anchor families are text quote, point, rect/area, and path/ink
+- text-readable anchors should preserve page, normalized rect coordinates, quote text, and selector offsets when available
+- ink/path payloads must persist committed normalized stroke points plus width/style metadata, not raw pointer-move streams
+- payloads should be kind-discriminated or versioned so validation and later migrations stay tractable
+
 Readability and OCR rules:
 
 - Text-readable PDFs support text highlight, search, copyable snippets, and quote-based anchoring.
@@ -282,12 +296,32 @@ Readability and OCR rules:
 - the default OCR path is asynchronous enhancement after readability detection, not a synchronous review blocker
 - Do not roll out annotation as if every PDF is text-readable.
 
+Hot-path write discipline:
+
+- autosave may improve UX, but the server contract remains named, bounded mutations
+- debounce draft/comment saves rather than treating each keystroke as an immediate authoritative write
+- never write one DB row or document save per pointer move
+- ink writes should commit on stroke end or bounded idle windows
+- payloads and writes must stay outcome/version/page scoped so the drawer remains concurrency-safe
+
+Stylus and device constraint:
+
+- ink is supportive, not foundational
+- highlight/comment and typed summary flows must remain first-class without stylus support
+- Safari/iPad pointer quirks, inconsistent pressure, and palm-rejection noise must not define the core review path
+
 Accessibility minimum:
 
 - keyboard-first review and navigation
 - non-color-only meaning for states and badges
 - screen-reader legible comment and summary structure
 - clear jump behavior between feedback navigator and document anchors
+
+Student-facing feedback UX minimum:
+
+- released feedback should foreground a concise synthesis with strengths, improvements, and next steps
+- student-visible navigation should focus threads and context, not dump a flat wall of disjoint comments
+- annotations support the summary; they do not replace synthesis
 
 ---
 

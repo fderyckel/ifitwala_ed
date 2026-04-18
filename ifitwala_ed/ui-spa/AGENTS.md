@@ -76,6 +76,10 @@ Silent no-op behavior is a defect.
 - Overlays must support explicit entry-point modes when applicable:
   1. prefilled/locked context mode
   2. selection-required mode
+- If a server-owned invariant becomes locked after the first successful mutation in a multi-step overlay (for example first governed file upload, first publish, or first bound selection), the overlay must mirror that lock immediately:
+  - freeze the scope-driving controls
+  - explain the remediation in-product
+  - block final submit before the request leaves the browser
 
 If an overlay works from one entry point but fails from another, treat it as a design bug.
 
