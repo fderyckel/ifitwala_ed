@@ -214,6 +214,8 @@ describe('PlanningResourcePanel', () => {
 					title: 'Cell structure diagram',
 					material_type: 'File',
 					file_name: 'diagram.webp',
+					thumbnail_url:
+						'/api/method/ifitwala_ed.api.file_access.thumbnail_academic_file?file=FILE-IMG-1',
 					preview_url: '/api/method/ifitwala_ed.api.file_access.preview_academic_file?file=FILE-IMG-1',
 					open_url: '/api/method/ifitwala_ed.api.file_access.download_academic_file?file=FILE-IMG-1',
 				},
@@ -228,7 +230,7 @@ describe('PlanningResourcePanel', () => {
 		expect(previewSurface).not.toBeNull();
 		const img = previewSurface?.querySelector('img');
 		expect(img?.getAttribute('src')).toBe(
-			'/api/method/ifitwala_ed.api.file_access.preview_academic_file?file=FILE-IMG-1'
+			'/api/method/ifitwala_ed.api.file_access.thumbnail_academic_file?file=FILE-IMG-1'
 		);
 		expect(previewSurface?.textContent || '').toContain('Image preview');
 	});

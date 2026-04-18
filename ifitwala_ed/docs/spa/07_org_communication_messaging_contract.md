@@ -95,8 +95,9 @@ Rules:
 2. Clients must not assemble messaging behavior from generic CRUD calls.
 3. Admissions endpoints remain context-specific wrappers over the same canonical entry/read-state model.
 4. `get_org_communication_item` must expose full-body HTML as `message_html`, not `message`, so the SPA transport envelope unwrapping cannot collide with the domain payload.
-5. `get_org_communication_item` may expose attachment rows for archive/detail rendering, but governed file rows must be returned with server-owned action URLs such as `open_url` and optional `preview_url`, never raw private paths.
-6. When `preview_url` is available, archive/detail surfaces may render inline image previews and full-width first-page PDF previews only when `preview_status` reports a ready preview asset; link rows and non-ready PDFs must stay action-led rather than attempting generic web-page preview scraping.
+5. `get_org_communication_item` may expose attachment rows for archive/detail rendering, but governed file rows must be returned with server-owned action URLs such as `open_url`, optional `preview_url`, and optional `thumbnail_url`, never raw private paths.
+6. When `thumbnail_url` is available, archive/detail surfaces may render inline image cards from that route while keeping `preview_url` as the richer governed preview action.
+7. Full-width first-page PDF previews still come from `preview_url` only when `preview_status` reports a ready preview asset; link rows and non-ready PDFs must stay action-led rather than attempting generic web-page preview scraping.
 
 ## 3. Surface Matrix
 

@@ -10,6 +10,10 @@ class ResizeObserverStub {
 
 vi.stubGlobal('ResizeObserver', ResizeObserverStub)
 
+if (typeof window !== 'undefined' && !window.HTMLElement.prototype.scrollIntoView) {
+	window.HTMLElement.prototype.scrollIntoView = vi.fn()
+}
+
 afterEach(() => {
 	const w = window as any
 	delete w.__ifit_overlay_state

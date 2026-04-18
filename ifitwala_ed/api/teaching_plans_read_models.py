@@ -7,6 +7,12 @@ def serialize_material_entry(api, entry: dict[str, Any]) -> dict[str, Any]:
     placement = (entry.get("placements") or [{}])[0]
     material_type = entry.get("material_type")
     if material_type == api.materials_domain.MATERIAL_TYPE_FILE:
+        thumbnail_url = api.resolve_academic_file_thumbnail_url(
+            file_name=entry.get("file"),
+            file_url=entry.get("file_url"),
+            context_doctype="Material Placement" if placement.get("placement") else "Supporting Material",
+            context_name=placement.get("placement") or entry.get("material"),
+        )
         preview_url = api.resolve_academic_file_preview_url(
             file_name=entry.get("file"),
             file_url=entry.get("file_url"),
@@ -20,6 +26,7 @@ def serialize_material_entry(api, entry: dict[str, Any]) -> dict[str, Any]:
             context_name=placement.get("placement") or entry.get("material"),
         )
     else:
+        thumbnail_url = None
         preview_url = None
         open_url = entry.get("reference_url")
 
@@ -30,6 +37,7 @@ def serialize_material_entry(api, entry: dict[str, Any]) -> dict[str, Any]:
         "modality": entry.get("modality"),
         "description": entry.get("description"),
         "reference_url": entry.get("reference_url"),
+        "thumbnail_url": thumbnail_url,
         "preview_url": preview_url,
         "open_url": open_url,
         "file_name": entry.get("file_name"),

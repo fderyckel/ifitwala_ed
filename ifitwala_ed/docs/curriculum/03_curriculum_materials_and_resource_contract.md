@@ -94,9 +94,9 @@ Staff add materials where they already work:
 Current staff preview behavior:
 
 - governed file materials in the task creation overlay now prefer stable `preview_url` routes when available
-- governed file materials on the course-plan and class-planning workspaces now prefer stable `preview_url` routes when available
+- governed file materials on the course-plan and class-planning workspaces now expose stable `thumbnail_url` routes for inline image cards plus stable `preview_url` routes for richer preview/open behavior
 - the task creation overlay now renders inline image previews and compact PDF preview tiles for current task materials after task creation
-- those workspaces render inline image thumbnails and compact PDF preview tiles for governed file resources
+- those workspaces render inline image thumbnails from `thumbnail_url` and compact PDF preview tiles from `preview_url` for governed file resources
 - `open_url` remains the explicit original-file action and compatibility baseline
 
 This is the current source-of-truth workflow. Do not push teachers back into a generic Desk library as the primary authoring path.

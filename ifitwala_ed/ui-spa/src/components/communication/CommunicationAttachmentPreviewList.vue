@@ -7,14 +7,14 @@
 		>
 			<div v-if="showInlineImagePreview(attachment)" class="mb-4">
 				<a
-					:href="attachment.preview_url || undefined"
+					:href="attachment.preview_url || attachment.open_url || undefined"
 					target="_blank"
 					rel="noreferrer"
 					class="group block overflow-hidden rounded-2xl border border-line-soft bg-white"
 					data-communication-attachment-kind="image"
 				>
 					<img
-						:src="attachment.preview_url || undefined"
+						:src="imagePreviewUrl(attachment) || undefined"
 						:alt="attachmentLabel(attachment)"
 						class="h-40 w-full object-cover transition duration-200 group-hover:scale-[1.01]"
 						loading="lazy"
@@ -197,8 +197,12 @@ function primaryAttachmentUrl(attachment: OrgCommunicationAttachmentRow): string
 	return attachment.preview_url || attachment.open_url || attachment.external_url || null;
 }
 
+function imagePreviewUrl(attachment: OrgCommunicationAttachmentRow): string | null {
+	return attachment.thumbnail_url || attachment.preview_url || null;
+}
+
 function showInlineImagePreview(attachment: OrgCommunicationAttachmentRow): boolean {
-	return Boolean(attachment.preview_url && isImageAttachment(attachment));
+	return Boolean(imagePreviewUrl(attachment) && isImageAttachment(attachment));
 }
 
 function showPdfInlinePreview(attachment: OrgCommunicationAttachmentRow): boolean {

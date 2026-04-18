@@ -9,6 +9,7 @@ from frappe import _
 from ifitwala_ed.api.file_access import (
     build_org_communication_attachment_open_url,
     build_org_communication_attachment_preview_url,
+    build_org_communication_attachment_thumbnail_url,
 )
 from ifitwala_ed.setup.doctype.org_communication.attachments import (
     ORG_COMMUNICATION_ATTACHMENT_BINDING_ROLE,
@@ -146,6 +147,10 @@ def serialize_org_communication_attachment_row(org_communication: str, row) -> d
             org_communication=org_communication,
             row_name=row_name,
         )
+        thumbnail_url = build_org_communication_attachment_thumbnail_url(
+            org_communication=org_communication,
+            row_name=row_name,
+        )
         return {
             "row_name": row_name,
             "kind": "file",
@@ -154,6 +159,7 @@ def serialize_org_communication_attachment_row(org_communication: str, row) -> d
             "file_name": file_name or title,
             "file_size": file_size,
             "preview_status": preview_status,
+            "thumbnail_url": thumbnail_url,
             "preview_url": preview_url,
             "open_url": open_url,
         }

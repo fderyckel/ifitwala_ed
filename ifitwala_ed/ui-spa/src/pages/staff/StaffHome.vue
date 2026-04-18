@@ -323,7 +323,7 @@
 
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
-import { useRouter, type RouteLocationRaw } from 'vue-router';
+import { RouterLink, useRouter, type RouteLocationRaw } from 'vue-router';
 import { FeatherIcon, toast } from 'frappe-ui';
 
 import ScheduleCalendar from '@/components/calendar/ScheduleCalendar.vue';

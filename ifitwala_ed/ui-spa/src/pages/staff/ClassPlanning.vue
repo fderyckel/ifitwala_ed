@@ -1007,7 +1007,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, reactive, ref, watch } from 'vue';
 import { toast } from 'frappe-ui';
-import { useRoute, useRouter } from 'vue-router';
+import { RouterLink, useRoute, useRouter } from 'vue-router';
 
 import PlanningResourcePanel from '@/components/planning/PlanningResourcePanel.vue';
 import { useOverlayStack } from '@/composables/useOverlayStack';

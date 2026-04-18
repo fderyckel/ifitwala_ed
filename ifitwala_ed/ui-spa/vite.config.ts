@@ -8,6 +8,10 @@ import Components from 'unplugin-vue-components/vite'
 import Icons from 'unplugin-icons/vite'
 import IconsResolver from 'unplugin-icons/resolver'
 
+const buildStamp =
+	process.env.IFITWALA_UI_BUILD_ID ||
+	new Date().toISOString().replace(/[-:.TZ]/g, '').slice(0, 14)
+
 export default defineConfig({
 	plugins: [
 		vue(),
@@ -20,7 +24,9 @@ export default defineConfig({
 	base: '/assets/ifitwala_ed/vite/',
 	build: {
 		outDir: path.resolve(__dirname, '../public/vite'),
-		emptyOutDir: true,
+		// Keep older hashed assets available so already-cached portal chunks do not
+		// request missing CSS/JS files during a fresh deploy.
+		emptyOutDir: false,
 		manifest: true,
 		sourcemap: false,
 		rollupOptions: {
@@ -29,9 +35,9 @@ export default defineConfig({
 				'src/apps/admissions/main.ts': path.resolve(__dirname, 'src/apps/admissions/main.ts'),
 			},
 			output: {
-				entryFileNames: 'assets/[name].[hash].js',
-				chunkFileNames: 'assets/[name].[hash].js',
-				assetFileNames: 'assets/[name].[hash][extname]',
+				entryFileNames: `assets/[name].${buildStamp}.[hash].js`,
+				chunkFileNames: `assets/[name].${buildStamp}.[hash].js`,
+				assetFileNames: `assets/[name].${buildStamp}.[hash][extname]`,
 			}
 		}
 	}

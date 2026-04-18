@@ -71,9 +71,17 @@
 		<section class="card-surface p-5">
 			<h2 class="mb-3 type-h3 text-ink">How to read this view</h2>
 			<div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-				<div class="rounded-xl border-2 border-[rgb(var(--moss-rgb)/0.55)] bg-moss/10 p-4">
-					<div class="mb-2 h-8 w-8 rounded-lg border border-moss/40 bg-moss/20" />
-					<p class="text-lg font-semibold tracking-tight text-moss">On track</p>
+				<div
+					class="rounded-xl border-2 bg-moss/10 p-4"
+					style="border-color: rgb(var(--moss-rgb) / 0.72)"
+				>
+					<div
+						class="mb-2 h-8 w-8 rounded-lg border bg-moss/20"
+						style="border-color: rgb(var(--moss-rgb) / 0.52)"
+					/>
+					<p class="text-lg font-semibold tracking-tight" style="color: rgb(var(--moss-rgb) / 1)">
+						On track
+					</p>
 					<p class="type-body text-ink/75">Attendance is recorded as present for that day.</p>
 				</div>
 				<div
@@ -201,6 +209,7 @@
 										type="button"
 										class="aspect-square rounded-lg border-2 px-2 py-1 text-left transition focus:outline-none focus:ring-2 focus:ring-jacaranda"
 										:class="cellClass(student.student, cell)"
+										:style="cellStyle(cell)"
 										:aria-label="cellAriaLabel(student.student_name, cell)"
 										:aria-pressed="isSelectedCell(student.student, cell.date) ? 'true' : 'false'"
 										:disabled="!cell.hasDetails"
@@ -368,7 +377,7 @@ function selectedDay(student: string): GuardianAttendanceDay | null {
 function cellClass(student: string, cell: CalendarCell): string {
 	const selected = isSelectedCell(student, cell.date) ? 'ring-2 ring-jacaranda' : '';
 	if (cell.state === 'present') {
-		return `border-moss/35 bg-moss/15 text-ink ${selected}`.trim();
+		return `bg-moss/15 text-ink ${selected}`.trim();
 	}
 	if (cell.state === 'late') {
 		return `border-jacaranda/40 bg-jacaranda/12 text-jacaranda ${selected}`.trim();
@@ -377,6 +386,15 @@ function cellClass(student: string, cell: CalendarCell): string {
 		return `border-flame/45 bg-flame/12 text-flame ${selected}`.trim();
 	}
 	return `border-line-soft bg-white text-ink/45 ${selected}`.trim();
+}
+
+function cellStyle(cell: CalendarCell): Record<string, string> | undefined {
+	if (cell.state === 'present') {
+		return {
+			borderColor: 'rgb(var(--moss-rgb) / 0.72)',
+		};
+	}
+	return undefined;
 }
 
 function cellAriaLabel(studentName: string, cell: CalendarCell): string {

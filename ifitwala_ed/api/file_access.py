@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+import hashlib
 import importlib
 import mimetypes
 import os
+from types import SimpleNamespace
 from urllib.parse import urlencode
 
 import frappe
@@ -41,6 +43,7 @@ CONTEXT_STUDENT = "Student"
 CONTEXT_GUARDIAN = "Guardian"
 CONTEXT_EMPLOYEE = "Employee"
 CONTEXT_ORG_COMMUNICATION = "Org Communication"
+_THUMBNAIL_REDIRECT_CACHE_TTL_SECONDS = 240
 
 
 def _is_external_url(value: str | None) -> bool:
@@ -151,6 +154,30 @@ def build_academic_file_preview_url(
     return f"/api/method/ifitwala_ed.api.file_access.preview_academic_file?{urlencode(params)}"
 
 
+def build_academic_file_thumbnail_url(
+    *,
+    file_name: str,
+    context_doctype: str | None = None,
+    context_name: str | None = None,
+    share_token: str | None = None,
+    viewer_email: str | None = None,
+) -> str:
+    resolved_file = (file_name or "").strip()
+    if not resolved_file:
+        return ""
+
+    params = {"file": resolved_file}
+    if (context_doctype or "").strip():
+        params["context_doctype"] = context_doctype.strip()
+    if (context_name or "").strip():
+        params["context_name"] = context_name.strip()
+    if (share_token or "").strip():
+        params["share_token"] = share_token.strip()
+    if (viewer_email or "").strip():
+        params["viewer_email"] = viewer_email.strip()
+    return f"/api/method/ifitwala_ed.api.file_access.thumbnail_academic_file?{urlencode(params)}"
+
+
 def resolve_academic_file_open_url(
     *,
     file_name: str | None,
@@ -198,6 +225,32 @@ def resolve_academic_file_preview_url(
             viewer_email=viewer_email,
         )
         return preview_url or None
+
+    if _is_external_url(raw_url) or _is_public_site_file_url(raw_url):
+        return raw_url or None
+    return None
+
+
+def resolve_academic_file_thumbnail_url(
+    *,
+    file_name: str | None,
+    file_url: str | None,
+    context_doctype: str | None = None,
+    context_name: str | None = None,
+    share_token: str | None = None,
+    viewer_email: str | None = None,
+) -> str | None:
+    raw_url = (file_url or "").strip()
+    resolved_name = (file_name or "").strip() or _resolve_file_name_from_url(raw_url) or ""
+    if resolved_name:
+        thumbnail_url = build_academic_file_thumbnail_url(
+            file_name=resolved_name,
+            context_doctype=context_doctype,
+            context_name=context_name,
+            share_token=share_token,
+            viewer_email=viewer_email,
+        )
+        return thumbnail_url or None
 
     if _is_external_url(raw_url) or _is_public_site_file_url(raw_url):
         return raw_url or None
@@ -312,6 +365,21 @@ def build_org_communication_attachment_preview_url(
         return ""
 
     return "/api/method/ifitwala_ed.api.file_access.preview_org_communication_attachment?" + urlencode(
+        {"org_communication": resolved_org_communication, "row_name": resolved_row_name}
+    )
+
+
+def build_org_communication_attachment_thumbnail_url(
+    *,
+    org_communication: str,
+    row_name: str,
+) -> str:
+    resolved_org_communication = (org_communication or "").strip()
+    resolved_row_name = (row_name or "").strip()
+    if not resolved_org_communication or not resolved_row_name:
+        return ""
+
+    return "/api/method/ifitwala_ed.api.file_access.thumbnail_org_communication_attachment?" + urlencode(
         {"org_communication": resolved_org_communication, "row_name": resolved_row_name}
     )
 
@@ -433,6 +501,63 @@ def _load_drive_access_callable(attribute: str):
     frappe.throw(_("Ifitwala Drive access method is unavailable: {0}").format(attribute))
 
 
+def _ensure_response_headers() -> dict:
+    if not hasattr(frappe, "local") or frappe.local is None:
+        frappe.local = SimpleNamespace()
+    if not hasattr(frappe.local, "response") or frappe.local.response is None:
+        frappe.local.response = {}
+
+    headers = frappe.local.response.get("headers")
+    if not isinstance(headers, dict):
+        headers = {}
+        frappe.local.response["headers"] = headers
+    return headers
+
+
+def _set_thumbnail_cache_headers() -> None:
+    headers = _ensure_response_headers()
+    headers["Cache-Control"] = f"private, max-age={_THUMBNAIL_REDIRECT_CACHE_TTL_SECONDS}, must-revalidate"
+
+
+def _get_shared_cache():
+    cache_factory = getattr(frappe, "cache", None)
+    if not callable(cache_factory):
+        return None
+    try:
+        return cache_factory()
+    except Exception:
+        return None
+
+
+def _thumbnail_redirect_cache_key(
+    *,
+    drive_file_id: str,
+    current_version: str | None,
+    derivative_role: str,
+    surface_parts: list[str | None],
+) -> str | None:
+    resolved_drive_file_id = str(drive_file_id or "").strip()
+    resolved_version = str(current_version or "").strip()
+    if not resolved_drive_file_id or not resolved_version:
+        return None
+
+    raw_scope = "|".join(str(part or "").strip() or "-" for part in surface_parts)
+    scope_hash = hashlib.sha256(raw_scope.encode("utf-8")).hexdigest()[:24]
+    return f"ifitwala_ed:preview_thumbnail:{resolved_drive_file_id}:{resolved_version}:{derivative_role}:{scope_hash}"
+
+
+def _resolve_drive_file_delivery_row(file_name: str) -> dict | None:
+    drive_file = frappe.db.get_value(
+        "Drive File",
+        {"file": file_name},
+        ["name", "preview_status", "current_version"],
+        as_dict=True,
+    )
+    if not drive_file or not drive_file.get("name"):
+        return None
+    return drive_file
+
+
 def _require_org_communication_attachment_context(org_communication: str, row_name: str):
     resolved_org_communication = (org_communication or "").strip()
     resolved_row_name = (row_name or "").strip()
@@ -504,15 +629,29 @@ def _resolve_drive_file_grant_target_url(
     drive_file_id: str,
     file_id: str,
     prefer_preview: bool = False,
+    derivative_role: str | None = None,
 ) -> str:
-    grant_method = "issue_download_grant"
-    if prefer_preview:
-        preview_status = frappe.db.get_value("Drive File", drive_file_id, "preview_status")
-        if preview_status == "ready":
-            grant_method = "issue_preview_grant"
+    target_url = ""
+    explicit_derivative_role = (derivative_role or "").strip()
+    if prefer_preview and explicit_derivative_role:
+        try:
+            grant = _load_drive_access_callable("issue_preview_grant")(
+                drive_file_id=drive_file_id,
+                derivative_role=explicit_derivative_role,
+            )
+            target_url = str((grant or {}).get("url") or "").strip()
+        except Exception:
+            target_url = ""
 
-    grant = _load_drive_access_callable(grant_method)(drive_file_id=drive_file_id)
-    target_url = str((grant or {}).get("url") or "").strip()
+    if not target_url:
+        grant_method = "issue_download_grant"
+        if prefer_preview:
+            preview_status = frappe.db.get_value("Drive File", drive_file_id, "preview_status")
+            if preview_status == "ready":
+                grant_method = "issue_preview_grant"
+        grant = _load_drive_access_callable(grant_method)(drive_file_id=drive_file_id)
+        target_url = str((grant or {}).get("url") or "").strip()
+
     if target_url:
         return target_url
 
@@ -522,6 +661,48 @@ def _resolve_drive_file_grant_target_url(
         return target_url
 
     frappe.throw(_("Could not resolve an attachment open URL."), frappe.DoesNotExistError)
+
+
+def _resolve_cached_thumbnail_target_url(
+    *,
+    drive_file_id: str,
+    file_id: str,
+    surface_parts: list[str | None],
+) -> str:
+    drive_file_row = (
+        frappe.db.get_value(
+            "Drive File",
+            drive_file_id,
+            ["name", "current_version"],
+            as_dict=True,
+        )
+        or {}
+    )
+    cache_key = _thumbnail_redirect_cache_key(
+        drive_file_id=str(drive_file_row.get("name") or drive_file_id),
+        current_version=drive_file_row.get("current_version"),
+        derivative_role="thumb",
+        surface_parts=surface_parts,
+    )
+    shared_cache = _get_shared_cache()
+    if cache_key and shared_cache is not None:
+        cached_url = str(shared_cache.get_value(cache_key) or "").strip()
+        if cached_url:
+            return cached_url
+
+    target_url = _resolve_drive_file_grant_target_url(
+        drive_file_id=drive_file_id,
+        file_id=file_id,
+        prefer_preview=True,
+        derivative_role="thumb",
+    )
+    if cache_key and shared_cache is not None and target_url:
+        shared_cache.set_value(
+            cache_key,
+            target_url,
+            expires_in_sec=_THUMBNAIL_REDIRECT_CACHE_TTL_SECONDS,
+        )
+    return target_url
 
 
 def _resolve_guardian_from_file(file_row: dict) -> str:
@@ -760,17 +941,49 @@ def _read_file_bytes(file_row: dict) -> bytes | None:
         return handle.read()
 
 
+def _respond_with_inline_file(file_row: dict, *, cache_headers: bool = False) -> bool:
+    content = _read_file_bytes(file_row)
+    if content is None:
+        return False
+
+    if cache_headers:
+        _set_thumbnail_cache_headers()
+
+    filename = (file_row.get("file_name") or "").strip() or "document"
+    content_type = mimetypes.guess_type(filename)[0] or "application/octet-stream"
+
+    frappe.local.response["type"] = "download"
+    frappe.local.response["filename"] = filename
+    frappe.local.response["filecontent"] = content
+    frappe.local.response["display_content_as"] = "inline"
+    frappe.local.response["content_type"] = content_type
+    return True
+
+
+def _respond_with_redirect_or_inline_file(
+    *,
+    file_row: dict,
+    target_url: str | None,
+    cache_headers: bool = False,
+) -> bool:
+    resolved_target_url = str(target_url or "").strip()
+    if resolved_target_url and not resolved_target_url.startswith("/private/"):
+        if cache_headers:
+            _set_thumbnail_cache_headers()
+        frappe.local.response["type"] = "redirect"
+        frappe.local.response["location"] = resolved_target_url
+        return True
+
+    return _respond_with_inline_file(file_row, cache_headers=cache_headers)
+
+
 def _resolve_drive_download_grant_url(file_name: str) -> str | None:
-    drive_file = frappe.db.get_value(
-        "Drive File",
-        {"file": file_name},
-        "name",
-    )
+    drive_file = _resolve_drive_file_delivery_row(file_name)
     if not drive_file:
         return None
 
     try:
-        grant = _load_drive_access_callable("issue_download_grant")(drive_file_id=drive_file)
+        grant = _load_drive_access_callable("issue_download_grant")(drive_file_id=drive_file.get("name"))
     except Exception:
         return None
 
@@ -778,23 +991,25 @@ def _resolve_drive_download_grant_url(file_name: str) -> str | None:
     return target_url or None
 
 
-def _resolve_drive_preview_grant_url(file_name: str) -> str | None:
-    drive_file = frappe.db.get_value(
-        "Drive File",
-        {"file": file_name},
-        ["name", "preview_status"],
-        as_dict=True,
-    )
+def _resolve_drive_preview_grant_url(file_name: str, *, derivative_role: str | None = None) -> str | None:
+    drive_file = _resolve_drive_file_delivery_row(file_name)
     if not drive_file or not drive_file.get("name"):
         return None
 
     try:
-        grant_method = (
-            "issue_preview_grant"
-            if (drive_file.get("preview_status") or "").strip() == "ready"
-            else "issue_download_grant"
-        )
-        grant = _load_drive_access_callable(grant_method)(drive_file_id=drive_file.get("name"))
+        explicit_derivative_role = (derivative_role or "").strip()
+        if explicit_derivative_role:
+            grant = _load_drive_access_callable("issue_preview_grant")(
+                drive_file_id=drive_file.get("name"),
+                derivative_role=explicit_derivative_role,
+            )
+        else:
+            grant_method = (
+                "issue_preview_grant"
+                if (drive_file.get("preview_status") or "").strip() == "ready"
+                else "issue_download_grant"
+            )
+            grant = _load_drive_access_callable(grant_method)(drive_file_id=drive_file.get("name"))
     except Exception:
         return None
 
@@ -1075,14 +1290,16 @@ def open_org_communication_attachment(
         frappe.throw(_("Attachment file is missing."), frappe.DoesNotExistError)
 
     drive_file_id, file_id = _resolve_org_communication_drive_file(doc.name, str(row_name or "").strip())
+    file_row = _resolve_any_file_row(file_id)
     target_url = _resolve_drive_file_grant_target_url(
         drive_file_id=drive_file_id,
         file_id=file_id,
         prefer_preview=False,
     )
+    if _respond_with_redirect_or_inline_file(file_row=file_row, target_url=target_url):
+        return
 
-    frappe.local.response["type"] = "redirect"
-    frappe.local.response["location"] = target_url
+    frappe.throw(_("Could not resolve the attachment."), frappe.DoesNotExistError)
 
 
 @frappe.whitelist()
@@ -1103,14 +1320,46 @@ def preview_org_communication_attachment(
         frappe.throw(_("Attachment file is missing."), frappe.DoesNotExistError)
 
     drive_file_id, file_id = _resolve_org_communication_drive_file(doc.name, str(row_name or "").strip())
+    file_row = _resolve_any_file_row(file_id)
     target_url = _resolve_drive_file_grant_target_url(
         drive_file_id=drive_file_id,
         file_id=file_id,
         prefer_preview=True,
     )
+    if _respond_with_redirect_or_inline_file(file_row=file_row, target_url=target_url):
+        return
 
-    frappe.local.response["type"] = "redirect"
-    frappe.local.response["location"] = target_url
+    frappe.throw(_("Could not resolve the attachment preview."), frappe.DoesNotExistError)
+
+
+@frappe.whitelist()
+def thumbnail_org_communication_attachment(
+    org_communication: str | None = None,
+    row_name: str | None = None,
+):
+    doc, target_row = _require_org_communication_attachment_context(
+        str(org_communication or "").strip(),
+        str(row_name or "").strip(),
+    )
+
+    if str(getattr(target_row, "external_url", "") or "").strip():
+        frappe.throw(_("External links do not support governed thumbnails."), frappe.ValidationError)
+
+    file_url = str(getattr(target_row, "file", "") or "").strip()
+    if not file_url:
+        frappe.throw(_("Attachment file is missing."), frappe.DoesNotExistError)
+
+    drive_file_id, file_id = _resolve_org_communication_drive_file(doc.name, str(row_name or "").strip())
+    file_row = _resolve_any_file_row(file_id)
+    target_url = _resolve_cached_thumbnail_target_url(
+        drive_file_id=drive_file_id,
+        file_id=file_id,
+        surface_parts=["org_communication", doc.name, str(row_name or "").strip()],
+    )
+    if _respond_with_redirect_or_inline_file(file_row=file_row, target_url=target_url, cache_headers=True):
+        return
+
+    frappe.throw(_("Could not resolve the attachment thumbnail."), frappe.DoesNotExistError)
 
 
 @frappe.whitelist(allow_guest=True)
@@ -1305,6 +1554,73 @@ def preview_academic_file(
     filename = (file_row.get("file_name") or "").strip() or "document"
     content_type = mimetypes.guess_type(filename)[0] or "application/octet-stream"
 
+    frappe.local.response["type"] = "download"
+    frappe.local.response["filename"] = filename
+    frappe.local.response["filecontent"] = content
+    frappe.local.response["display_content_as"] = "inline"
+    frappe.local.response["content_type"] = content_type
+
+
+@frappe.whitelist(allow_guest=True)
+def thumbnail_academic_file(
+    file: str | None = None,
+    context_doctype: str | None = None,
+    context_name: str | None = None,
+    share_token: str | None = None,
+    viewer_email: str | None = None,
+):
+    file_name = (file or "").strip()
+    if not file_name:
+        frappe.throw(_("File is required."), frappe.ValidationError)
+
+    file_row = _resolve_authorized_academic_file(
+        file_name=file_name,
+        context_doctype=context_doctype,
+        context_name=context_name,
+        share_token=share_token,
+        viewer_email=viewer_email,
+    )
+
+    drive_file = _resolve_drive_file_delivery_row(file_name)
+    if drive_file and drive_file.get("name"):
+        target_url = _resolve_cached_thumbnail_target_url(
+            drive_file_id=drive_file.get("name"),
+            file_id=file_name,
+            surface_parts=[
+                "academic",
+                context_doctype,
+                context_name,
+                share_token,
+                viewer_email,
+                file_name,
+            ],
+        )
+        _set_thumbnail_cache_headers()
+        frappe.local.response["type"] = "redirect"
+        frappe.local.response["location"] = target_url
+        return
+
+    file_url = (file_row.get("file_url") or "").strip()
+    if file_url.startswith(("http://", "https://")):
+        _set_thumbnail_cache_headers()
+        frappe.local.response["type"] = "redirect"
+        frappe.local.response["location"] = file_url
+        return
+
+    content = _read_file_bytes(file_row)
+    if content is None:
+        target_url = _resolve_drive_download_grant_url(file_name)
+        if target_url:
+            _set_thumbnail_cache_headers()
+            frappe.local.response["type"] = "redirect"
+            frappe.local.response["location"] = target_url
+            return
+        frappe.throw(_("Could not read the file content."), frappe.DoesNotExistError)
+
+    filename = (file_row.get("file_name") or "").strip() or "document"
+    content_type = mimetypes.guess_type(filename)[0] or "application/octet-stream"
+
+    _set_thumbnail_cache_headers()
     frappe.local.response["type"] = "download"
     frappe.local.response["filename"] = filename
     frappe.local.response["filecontent"] = content

@@ -36,6 +36,7 @@ export type StudentLearningMaterial = {
 	modality?: string | null
 	description?: string | null
 	reference_url?: string | null
+	thumbnail_url?: string | null
 	preview_url?: string | null
 	open_url?: string | null
 	file_name?: string | null

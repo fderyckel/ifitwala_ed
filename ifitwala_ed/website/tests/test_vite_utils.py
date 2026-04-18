@@ -67,6 +67,51 @@ class TestViteUtils(unittest.TestCase):
             ],
         )
 
+    def test_get_vite_assets_accepts_build_versioned_filenames(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            manifest_path = os.path.join(temp_dir, "manifest.json")
+            with open(manifest_path, "w", encoding="utf-8") as handle:
+                json.dump(
+                    {
+                        "src/apps/portal/main.ts": {
+                            "file": "assets/main.20260418083000.AAAAAAAA.js",
+                            "isEntry": True,
+                            "css": ["assets/main.20260418083000.AAAAAAAA.css"],
+                            "imports": ["_shared.20260418083000.BBBBBBBB.js"],
+                        },
+                        "_shared.20260418083000.BBBBBBBB.js": {
+                            "file": "assets/shared.20260418083000.BBBBBBBB.js",
+                            "css": ["assets/shared.20260418083000.BBBBBBBB.css"],
+                        },
+                    },
+                    handle,
+                )
+
+            js_entry, css_urls, preload_urls = vite_utils.get_vite_assets(
+                app_name="ifitwala_ed",
+                manifest_paths=[manifest_path],
+                public_base="/assets/ifitwala_ed/vite/",
+                entry_keys=["src/apps/portal/main.ts"],
+            )
+
+        self.assertEqual(
+            js_entry,
+            "/assets/ifitwala_ed/vite/assets/main.20260418083000.AAAAAAAA.js",
+        )
+        self.assertEqual(
+            css_urls,
+            [
+                "/assets/ifitwala_ed/vite/assets/main.20260418083000.AAAAAAAA.css",
+                "/assets/ifitwala_ed/vite/assets/shared.20260418083000.BBBBBBBB.css",
+            ],
+        )
+        self.assertEqual(
+            preload_urls,
+            [
+                "/assets/ifitwala_ed/vite/assets/shared.20260418083000.BBBBBBBB.js",
+            ],
+        )
+
     def test_load_manifest_reuses_last_good_manifest_during_partial_write(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             manifest_path = os.path.join(temp_dir, "manifest.json")

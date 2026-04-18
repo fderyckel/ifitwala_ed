@@ -18,6 +18,7 @@ def _teaching_plans_module():
     file_access_api = ModuleType("ifitwala_ed.api.file_access")
     file_access_api.resolve_academic_file_open_url = lambda **kwargs: "/open/resource"
     file_access_api.resolve_academic_file_preview_url = lambda **kwargs: "/preview/resource"
+    file_access_api.resolve_academic_file_thumbnail_url = lambda **kwargs: "/thumbnail/resource"
 
     materials_domain = ModuleType("ifitwala_ed.curriculum.materials")
     materials_domain.MATERIAL_TYPE_FILE = "File"
@@ -474,6 +475,11 @@ class TestTeachingPlansApi(TestCase):
             with (
                 patch.object(
                     module,
+                    "resolve_academic_file_thumbnail_url",
+                    return_value="/api/method/ifitwala_ed.api.file_access.thumbnail_academic_file?f=FILE-1",
+                ) as resolve_thumbnail_url,
+                patch.object(
+                    module,
                     "resolve_academic_file_preview_url",
                     return_value="/api/method/ifitwala_ed.api.file_access.preview_academic_file?f=FILE-1",
                 ) as resolve_preview_url,
@@ -503,6 +509,12 @@ class TestTeachingPlansApi(TestCase):
                     }
                 )
 
+        resolve_thumbnail_url.assert_called_once_with(
+            file_name="FILE-1",
+            file_url="/private/files/lab.pdf",
+            context_doctype="Material Placement",
+            context_name="PLC-1",
+        )
         resolve_preview_url.assert_called_once_with(
             file_name="FILE-1",
             file_url="/private/files/lab.pdf",
@@ -514,6 +526,10 @@ class TestTeachingPlansApi(TestCase):
             file_url="/private/files/lab.pdf",
             context_doctype="Material Placement",
             context_name="PLC-1",
+        )
+        self.assertEqual(
+            payload["thumbnail_url"],
+            "/api/method/ifitwala_ed.api.file_access.thumbnail_academic_file?f=FILE-1",
         )
         self.assertEqual(
             payload["preview_url"],

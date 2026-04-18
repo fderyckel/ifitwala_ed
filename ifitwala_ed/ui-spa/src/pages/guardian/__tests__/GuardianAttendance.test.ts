@@ -130,16 +130,25 @@ describe('GuardianAttendance', () => {
 		const dayButton = Array.from(document.querySelectorAll('button')).find(button =>
 			button.getAttribute('aria-label')?.includes('Amina Example on 2026-03-12')
 		) as HTMLButtonElement | undefined
+		const presentDayButton = Array.from(document.querySelectorAll('button')).find(button =>
+			button.getAttribute('aria-label')?.includes('Amina Example on 2026-03-13')
+		) as HTMLButtonElement | undefined
 		expect(dayButton).toBeTruthy()
+		expect(presentDayButton).toBeTruthy()
 		expect(dayButton?.className).toContain('bg-jacaranda/12')
 		expect(dayButton?.className).toContain('border-2')
 
-		const onTrackCard = document.querySelector('.border-\\[rgb\\(var\\(--moss-rgb\\)\\/0\\.55\\)\\]') as HTMLElement | null
+		const onTrackLabel = Array.from(document.querySelectorAll('p')).find(node =>
+			node.textContent?.trim() === 'On track'
+		) as HTMLElement | undefined
+		const onTrackCard = onTrackLabel?.closest('div') as HTMLElement | null
 		const lateCard = document.querySelector('.border-\\[rgb\\(var\\(--jacaranda-rgb\\)\\/0\\.55\\)\\]') as HTMLElement | null
 		const absentCard = document.querySelector('.border-\\[rgb\\(var\\(--flame-rgb\\)\\/0\\.55\\)\\]') as HTMLElement | null
 		expect(onTrackCard?.textContent).toContain('On track')
+		expect(onTrackCard?.getAttribute('style')).toContain('--moss-rgb')
 		expect(lateCard?.textContent).toContain('Late or tardy')
 		expect(absentCard?.textContent).toContain('Absent')
+		expect(presentDayButton?.getAttribute('style')).toContain('--moss-rgb')
 
 		dayButton?.click()
 		await flushUi()

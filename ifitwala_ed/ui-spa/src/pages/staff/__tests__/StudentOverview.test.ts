@@ -99,6 +99,15 @@ vi.mock('@/components/analytics/AnalyticsChart.vue', () => ({
 	}),
 }));
 
+vi.mock('@/components/analytics/StackedBarChart.vue', () => ({
+	default: defineComponent({
+		name: 'StackedBarChartStub',
+		setup() {
+			return () => h('div', { 'data-testid': 'stacked-bar-chart' });
+		},
+	}),
+}));
+
 import StudentOverview from '@/pages/staff/analytics/StudentOverview.vue';
 
 const cleanupFns: Array<() => void> = [];

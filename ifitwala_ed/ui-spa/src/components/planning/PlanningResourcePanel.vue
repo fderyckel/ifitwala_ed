@@ -179,7 +179,7 @@
 							data-resource-preview-kind="image"
 						>
 							<img
-								:src="primaryResourceUrl(resource) || undefined"
+								:src="imagePreviewUrl(resource) || undefined"
 								:alt="resource.title"
 								class="h-44 w-full object-cover transition duration-200 group-hover:scale-[1.01]"
 								loading="lazy"
@@ -520,9 +520,13 @@ function primaryResourceUrl(resource: StaffPlanningMaterial): string | null {
 	return resource.preview_url || resource.open_url || null;
 }
 
+function imagePreviewUrl(resource: StaffPlanningMaterial): string | null {
+	return resource.thumbnail_url || primaryResourceUrl(resource);
+}
+
 function showInlineImagePreview(resource: StaffPlanningMaterial): boolean {
 	return Boolean(
-		props.enableAttachmentPreview && primaryResourceUrl(resource) && isImageResource(resource)
+		props.enableAttachmentPreview && imagePreviewUrl(resource) && isImageResource(resource)
 	);
 }
 

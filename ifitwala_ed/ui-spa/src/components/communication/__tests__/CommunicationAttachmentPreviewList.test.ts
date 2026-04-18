@@ -45,6 +45,8 @@ describe('CommunicationAttachmentPreviewList', () => {
 				title: 'Family handbook',
 				file_name: 'handbook.pdf',
 				preview_status: 'ready',
+				thumbnail_url:
+					'/api/method/ifitwala_ed.api.file_access.thumbnail_org_communication_attachment?row_name=ATT-PDF-READY',
 				preview_url: '/api/method/ifitwala_ed.api.file_access.preview_org_communication_attachment?row_name=ATT-PDF-READY',
 				open_url: '/api/method/ifitwala_ed.api.file_access.open_org_communication_attachment?row_name=ATT-PDF-READY',
 			},
@@ -65,6 +67,8 @@ describe('CommunicationAttachmentPreviewList', () => {
 				title: 'Policy update',
 				file_name: 'policy.pdf',
 				preview_status: 'pending',
+				thumbnail_url:
+					'/api/method/ifitwala_ed.api.file_access.thumbnail_org_communication_attachment?row_name=ATT-PDF-PENDING',
 				preview_url: '/api/method/ifitwala_ed.api.file_access.preview_org_communication_attachment?row_name=ATT-PDF-PENDING',
 				open_url: '/api/method/ifitwala_ed.api.file_access.open_org_communication_attachment?row_name=ATT-PDF-PENDING',
 			},
