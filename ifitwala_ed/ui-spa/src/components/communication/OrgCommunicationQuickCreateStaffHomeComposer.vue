@@ -283,7 +283,7 @@
 						:key="preset.key"
 						type="button"
 						class="rounded-[24px] border border-border/70 bg-surface-soft/70 px-4 py-4 text-left transition hover:-translate-y-0.5 hover:border-jacaranda/50 hover:bg-white"
-						:disabled="submitting || attachmentContextLocked"
+						:disabled="submitting"
 						@click="addAudiencePreset(preset.key)"
 					>
 						<p class="type-body-strong text-ink">{{ preset.label }}</p>

@@ -278,11 +278,11 @@ describe('PolicySignatureAnalytics', () => {
 		expect(text).toContain('Community Handbook');
 		expect(text).toContain('Guardians');
 		expect(text).toContain('Students');
-		expect(text).toContain('Portal tracking only');
+		expect(text).toContain('Portal acknowledgement flow');
 		expect(text).toContain('Employee Group filtering narrows staff results only.');
 
 		const setupButton = Array.from(document.querySelectorAll('button')).find(button =>
-			(button.textContent || '').includes('Set up campaign')
+			(button.textContent || '').includes('Set up staff campaign')
 		);
 		setupButton?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
 		await flushUi();
@@ -291,6 +291,18 @@ describe('PolicySignatureAnalytics', () => {
 			organization: 'ORG-1',
 			school: 'SCH-1',
 			employee_group: 'GROUP-1',
+			policy_version: 'VER-1',
+		});
+
+		const familyButton = Array.from(document.querySelectorAll('button')).find(button =>
+			(button.textContent || '').includes('Publish family campaign')
+		);
+		familyButton?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		await flushUi();
+
+		expect(overlayOpenMock).toHaveBeenCalledWith('staff-family-policy-campaign', {
+			organization: 'ORG-1',
+			school: 'SCH-1',
 			policy_version: 'VER-1',
 		});
 	});

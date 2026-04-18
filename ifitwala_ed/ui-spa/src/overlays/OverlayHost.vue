@@ -57,6 +57,7 @@ import AnalyticsExpandOverlay from '@/overlays/analytics/AnalyticsExpandOverlay.
 import OrganizationChartPersonOverlay from '@/overlays/staff/OrganizationChartPersonOverlay.vue';
 import StaffPolicyInformOverlay from '@/overlays/staff/StaffPolicyInformOverlay.vue';
 import StaffPolicyCampaignOverlay from '@/overlays/staff/StaffPolicyCampaignOverlay.vue';
+import FamilyPolicyCampaignOverlay from '@/overlays/staff/FamilyPolicyCampaignOverlay.vue';
 import ProfessionalDevelopmentRequestOverlay from '@/overlays/staff/ProfessionalDevelopmentRequestOverlay.vue';
 import ProfessionalDevelopmentCompletionOverlay from '@/overlays/staff/ProfessionalDevelopmentCompletionOverlay.vue';
 import ClassHubGroupPickerOverlay from '@/components/overlays/class-hub/ClassHubGroupPickerOverlay.vue';
@@ -204,6 +205,8 @@ function resolveComponent(type: OverlayType) {
 			return StaffPolicyInformOverlay;
 		case 'staff-policy-signature-campaign':
 			return StaffPolicyCampaignOverlay;
+		case 'staff-family-policy-campaign':
+			return FamilyPolicyCampaignOverlay;
 		case 'staff-professional-development-request':
 			return ProfessionalDevelopmentRequestOverlay;
 		case 'staff-professional-development-completion':

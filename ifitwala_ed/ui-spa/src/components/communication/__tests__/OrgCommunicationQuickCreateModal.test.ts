@@ -1182,6 +1182,20 @@ describe('OrgCommunicationQuickCreateModal', () => {
 		});
 	});
 
+	it('blocks the first governed file upload until wide-scope users choose audience or clear issuing school', async () => {
+		getOptionsMock.mockResolvedValue(wideAudienceQuickCreateOptions);
+
+		mountModal();
+		await flushUi();
+		await uploadGovernedFile();
+
+		expect(createOrgCommunicationQuickMock).not.toHaveBeenCalled();
+		expect(uploadOrgCommunicationAttachmentMock).not.toHaveBeenCalled();
+		expect(document.querySelector('[role="alert"]')?.textContent || '').toContain(
+			'Choose an audience or clear Issuing School before adding governed files.'
+		);
+	});
+
 	it('locks scope-driving controls after a governed file attachment is added', async () => {
 		getOptionsMock.mockResolvedValue(wideAudienceQuickCreateOptions);
 		createOrgCommunicationQuickMock.mockResolvedValue({
@@ -1219,6 +1233,40 @@ describe('OrgCommunicationQuickCreateModal', () => {
 		expect(organizationWideButton?.disabled).toBe(true);
 		expect(document.body.textContent || '').toContain(
 			'Governed files are already attached to this draft.'
+		);
+	});
+
+	it('explains how to switch to organization-wide after a school-scoped governed file is attached', async () => {
+		getOptionsMock.mockResolvedValue(wideAudienceQuickCreateOptions);
+		createOrgCommunicationQuickMock.mockResolvedValue({
+			ok: true,
+			status: 'created',
+			name: 'COMM-DRAFT-FILE-ORG-MESSAGE',
+			title: 'Weekly staff update',
+		});
+		uploadOrgCommunicationAttachmentMock.mockResolvedValue({
+			ok: true,
+			org_communication: 'COMM-DRAFT-FILE-ORG-MESSAGE',
+			attachment: {
+				row_name: 'row-file-org-message',
+				kind: 'file',
+				title: 'Policy PDF',
+				file_name: 'policy.pdf',
+				file_size: 1024,
+				open_url: 'https://example.com/files/policy.pdf',
+			},
+		});
+
+		mountModal();
+		await flushUi();
+
+		await addSchoolFamiliesAudience();
+		await uploadGovernedFile();
+		clickButton('Organization-wide');
+		await flushUi();
+
+		expect(document.querySelector('[role="alert"]')?.textContent || '').toContain(
+			"Remove the governed files, clear Issuing School, choose Organization-wide, then attach the files again."
 		);
 	});
 

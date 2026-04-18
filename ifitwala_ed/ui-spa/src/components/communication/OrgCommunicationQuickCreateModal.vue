@@ -386,6 +386,23 @@ const attachmentContextLockMessage = computed(
 		'Governed files are already attached to this draft. Remove the governed files before changing organization, issuing school, or audience scope.'
 );
 
+function getAttachmentContextLockMessageForTarget(targetLabel: string) {
+	const lockedSnapshot = lockedAttachmentContextSnapshot.value;
+	const lockedSchoolLabel = lockedSnapshot?.school
+		? getSchoolOptionLabel(lockedSnapshot.school) || lockedSnapshot.school
+		: '';
+	if (targetLabel === 'Organization-wide' && lockedSchoolLabel) {
+		return `This draft's governed files are locked to ${lockedSchoolLabel}. Remove the governed files, clear Issuing School, choose Organization-wide, then attach the files again.`;
+	}
+	if (targetLabel === 'School Scope' && !lockedSchoolLabel) {
+		return 'This draft already has organization-scoped governed files. Remove the governed files before switching to a school-scoped audience.';
+	}
+	if ((targetLabel === 'Team' || targetLabel === 'Student Group') && lockedSchoolLabel) {
+		return `This draft's governed files are locked to ${lockedSchoolLabel}. Remove the governed files before switching to a ${targetLabel.toLowerCase()} audience.`;
+	}
+	return attachmentContextLockMessage.value;
+}
+
 function getSelectOptionValue(option: string | { value?: string | null }) {
 	if (typeof option === 'string') return option;
 	return String(option?.value ?? '');
@@ -793,6 +810,16 @@ const deliveryValidationMessage = computed(() => {
 const audienceValidationMessage = computed(() => {
 	const message = draftValidationMessage.value || publishValidationMessage.value;
 	if (!message) return '';
+	if (message.startsWith('Please add at least one Audience') && attachmentContextLocked.value) {
+		const lockedSchoolLabel = lockedAttachmentContextSnapshot.value?.school
+			? getSchoolOptionLabel(lockedAttachmentContextSnapshot.value.school) ||
+				lockedAttachmentContextSnapshot.value.school
+			: '';
+		if (lockedSchoolLabel) {
+			return `Governed files are already attached for ${lockedSchoolLabel}. Add a school audience for that school, or remove the governed files before switching to Organization-wide.`;
+		}
+		return 'Governed files are already attached for this organization-scoped draft. Add an Organization-wide audience, or remove the governed files before switching to a narrower scope.';
+	}
 	if (
 		message.startsWith('Please add at least one Audience') ||
 		message.startsWith('Target Mode') ||
@@ -1156,11 +1183,38 @@ function applyAudiencePreset(row: AudienceRowState, preset: OrgCommunicationAudi
 
 function addAudiencePreset(presetKey: string) {
 	if (attachmentContextLocked.value) {
-		setTopLevelError(attachmentContextLockMessage.value, 'attachment-context-lock');
-		return;
+		const preset = audiencePresets.value.find(option => option.key === presetKey);
+		if (!preset) return;
+		if (preset.target_mode === 'School Scope' && lockedAttachmentContextSnapshot.value?.school) {
+			clearTopLevelError('attachment-context-lock');
+		} else if (
+			preset.target_mode === 'Organization' &&
+			!lockedAttachmentContextSnapshot.value?.school
+		) {
+			clearTopLevelError('attachment-context-lock');
+		} else {
+			setTopLevelError(
+				getAttachmentContextLockMessageForTarget(
+					preset.target_mode === 'Organization' ? 'Organization-wide' : preset.target_mode
+				),
+				'attachment-context-lock'
+			);
+			return;
+		}
 	}
 	const preset = audiencePresets.value.find(option => option.key === presetKey);
 	if (!preset) return;
+	if (
+		attachmentContextLocked.value &&
+		preset.target_mode !== 'School Scope' &&
+		preset.target_mode !== 'Organization'
+	) {
+		setTopLevelError(
+			getAttachmentContextLockMessageForTarget(preset.target_mode),
+			'attachment-context-lock'
+		);
+		return;
+	}
 	const row = createAudienceRow({
 		preset_key: preset.key,
 		target_mode: preset.target_mode,
@@ -1650,6 +1704,14 @@ function getAttachmentDraftBlocker() {
 	if (savedCommunicationName.value) return '';
 	if (optionsLoading.value || !options.value) {
 		return 'Communication options are still loading. Wait a moment, then try again.';
+	}
+	if (
+		!isClassEventMode.value &&
+		canTargetWideSchoolScope.value &&
+		!audienceRows.value.length &&
+		form.school
+	) {
+		return 'Choose an audience or clear Issuing School before adding governed files. The first governed file locks attachment scope.';
 	}
 	return draftValidationMessage.value;
 }

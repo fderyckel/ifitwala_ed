@@ -53,7 +53,14 @@
 		</section>
 
 		<section v-else class="space-y-4">
-			<article v-for="row in rows" :key="row.policy_version" class="card-surface space-y-4 p-5">
+			<article
+				v-for="row in rows"
+				:key="row.policy_version"
+				class="card-surface space-y-4 p-5 transition-shadow"
+				:class="isFocusedPolicy(row.policy_version) ? 'ring-2 ring-jacaranda/35 shadow-soft' : ''"
+				:data-policy-version="row.policy_version"
+				:data-policy-focused="isFocusedPolicy(row.policy_version) ? 'true' : 'false'"
+			>
 				<div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
 					<div class="space-y-1">
 						<p class="type-caption text-ink/60">
@@ -82,7 +89,7 @@
 
 				<details
 					class="rounded-xl border border-line-soft bg-surface-soft p-4"
-					:open="!row.is_acknowledged"
+					:open="!row.is_acknowledged || isFocusedPolicy(row.policy_version)"
 				>
 					<summary class="cursor-pointer type-body-strong text-ink">Open policy text</summary>
 					<div
@@ -212,7 +219,8 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue';
+import { computed, nextTick, onMounted, ref } from 'vue';
+import { useRoute } from 'vue-router';
 import { toast } from 'frappe-ui';
 
 import {
@@ -235,6 +243,7 @@ const attestationByVersion = ref<Record<string, boolean>>({});
 const checkedClausesByVersion = ref<Record<string, string[]>>({});
 const submitAttempts = ref<Record<string, boolean>>({});
 const signatureTouched = ref<Record<string, boolean>>({});
+const route = useRoute();
 
 const counts = computed(
 	() =>
@@ -245,6 +254,9 @@ const counts = computed(
 		}
 );
 const rows = computed<StudentPolicyRow[]>(() => overview.value?.rows ?? []);
+const focusedPolicyVersion = computed(() =>
+	typeof route.query.policy_version === 'string' ? route.query.policy_version.trim() : ''
+);
 
 function normalizeName(value: string): string {
 	return value.trim().replace(/\s+/g, ' ').toLowerCase();
@@ -256,6 +268,10 @@ function trustedHtml(html: string): string {
 
 function isRowBusy(policyVersion: string): boolean {
 	return Boolean(busyRows.value[policyVersion]);
+}
+
+function isFocusedPolicy(policyVersion: string): boolean {
+	return Boolean(focusedPolicyVersion.value && focusedPolicyVersion.value === policyVersion);
 }
 
 function selectedClauseNames(policyVersion: string): string[] {
@@ -307,12 +323,23 @@ function resetRowState() {
 	signatureTouched.value = {};
 }
 
+async function focusRequestedPolicy() {
+	if (!focusedPolicyVersion.value) return;
+	await nextTick();
+	const target = Array.from(document.querySelectorAll<HTMLElement>('[data-policy-version]')).find(
+		element => element.dataset.policyVersion === focusedPolicyVersion.value
+	);
+	if (!target || typeof target.scrollIntoView !== 'function') return;
+	target.scrollIntoView({ block: 'start', behavior: 'smooth' });
+}
+
 async function loadOverview() {
 	loading.value = true;
 	errorMessage.value = '';
 	try {
 		overview.value = await getStudentPolicyOverview();
 		resetRowState();
+		await focusRequestedPolicy();
 	} catch (error) {
 		const message = error instanceof Error ? error.message : String(error || '');
 		errorMessage.value = message || 'Unknown error';

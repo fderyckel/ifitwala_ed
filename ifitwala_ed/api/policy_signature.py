@@ -2,9 +2,12 @@
 
 from __future__ import annotations
 
+from html import escape
+from urllib.parse import quote
+
 import frappe
 from frappe import _
-from frappe.utils import getdate, now_datetime
+from frappe.utils import get_datetime, getdate, now_datetime
 
 from ifitwala_ed.governance.policy_scope_utils import (
     get_organization_ancestors_including_self,
@@ -48,9 +51,10 @@ POLICY_SIGNATURE_AUDIENCE_LABELS = {
 }
 POLICY_SIGNATURE_AUDIENCE_WORKFLOW_DESCRIPTIONS = {
     "Staff": "Staff campaigns create internal signature tasks for eligible employees.",
-    "Guardian": "Guardians acknowledge this policy in Guardian Portal; no staff tasks are created.",
-    "Student": "Students acknowledge this policy in Student Hub; no staff tasks are created.",
+    "Guardian": "Family campaigns publish guardian portal alerts; guardians acknowledge the policy in Guardian Portal.",
+    "Student": "Family campaigns publish student portal alerts; students acknowledge the policy in Student Hub.",
 }
+POLICY_FAMILY_CAMPAIGN_AUDIENCE_ORDER = ("Guardian", "Student")
 POLICY_SIGNATURE_REGISTER_STATUS_ALL = "all"
 POLICY_SIGNATURE_REGISTER_STATUS_PENDING = "pending"
 POLICY_SIGNATURE_REGISTER_STATUS_SIGNED = "signed"
@@ -67,6 +71,11 @@ def _policy_applies_to_staff(applies_to: str | None) -> bool:
 def _supported_policy_signature_audiences(applies_to_tokens) -> list[str]:
     tokens = set(applies_to_tokens or [])
     return [audience for audience in POLICY_SIGNATURE_AUDIENCE_ORDER if audience in tokens]
+
+
+def _supported_family_policy_campaign_audiences(applies_to_tokens) -> list[str]:
+    tokens = set(applies_to_tokens or [])
+    return [audience for audience in POLICY_FAMILY_CAMPAIGN_AUDIENCE_ORDER if audience in tokens]
 
 
 def _normalize_policy_library_audience(*, value: str | None, can_manage_audiences: bool) -> str:
@@ -270,6 +279,20 @@ def _policy_options_for_scope(
         options.append(row)
 
     return options
+
+
+def _family_policy_options_for_scope(
+    *,
+    organization: str | None,
+    organization_scope: list[str],
+    school: str | None,
+) -> list[dict]:
+    rows = _policy_options_for_scope(
+        organization=organization,
+        organization_scope=organization_scope,
+        school=school,
+    )
+    return [row for row in rows if _supported_family_policy_campaign_audiences(row.get("applies_to_tokens"))]
 
 
 def _active_policy_rows_for_context(
@@ -1196,6 +1219,489 @@ def _idempotency_key(*, user: str, scope: str, client_request_id: str, suffix: s
 
 def _lock_key(*, user: str, scope: str, suffix: str) -> str:
     return f"ifitwala_ed:lock:policy_signature:{user}:{suffix}:{scope}"
+
+
+def _family_campaign_school_targets(*, organization: str, school: str | None) -> list[str]:
+    organization = (organization or "").strip()
+    school = (school or "").strip()
+    if not organization:
+        return []
+
+    if school:
+        school_scope = {
+            (school_name or "").strip() for school_name in (get_descendant_schools(school) or []) if school_name
+        }
+        school_scope.add(school)
+        return sorted(school_scope)
+
+    organization_scope = {
+        (organization_name or "").strip()
+        for organization_name in (get_descendant_organizations(organization) or [])
+        if organization_name
+    }
+    organization_scope.add(organization)
+    if not organization_scope:
+        return []
+
+    school_rows = frappe.get_all(
+        "School",
+        filters={"organization": ["in", tuple(sorted(organization_scope))]},
+        pluck="name",
+    )
+    return sorted({(school_name or "").strip() for school_name in school_rows if (school_name or "").strip()})
+
+
+def _family_campaign_audience_rows(*, audience: str, school: str | None, school_targets: list[str]) -> list[dict]:
+    flags = {
+        "to_staff": 0,
+        "to_students": 1 if audience == "Student" else 0,
+        "to_guardians": 1 if audience == "Guardian" else 0,
+    }
+    selected_school = (school or "").strip()
+    if selected_school:
+        return [
+            {
+                "target_mode": "School Scope",
+                "school": selected_school,
+                "include_descendants": 1,
+                **flags,
+            }
+        ]
+
+    return [
+        {
+            "target_mode": "School Scope",
+            "school": school_name,
+            "include_descendants": 0,
+            **flags,
+        }
+        for school_name in school_targets
+    ]
+
+
+def _family_policy_portal_href(*, audience: str, policy_version: str) -> str:
+    policy_version = quote((policy_version or "").strip())
+    if audience == "Guardian":
+        return f"/hub/guardian/policies?policy_version={policy_version}"
+    return f"/hub/student/policies?policy_version={policy_version}"
+
+
+def _family_policy_campaign_title(*, policy_row: dict, audience: str, override_title: str | None = None) -> str:
+    custom_title = (override_title or "").strip()
+    if custom_title:
+        return custom_title
+
+    audience_label = _("Guardian") if audience == "Guardian" else _("Student")
+    policy_label = (
+        (policy_row.get("policy_title") or "").strip()
+        or (policy_row.get("policy_key") or "").strip()
+        or (policy_row.get("institutional_policy") or "").strip()
+        or (policy_row.get("policy_version") or "").strip()
+    )
+    version_label = (policy_row.get("version_label") or "").strip()
+    if version_label:
+        return _("{audience_label} policy acknowledgement: {policy_label} ({version_label})").format(
+            audience_label=audience_label,
+            policy_label=policy_label,
+            version_label=version_label,
+        )
+    return _("{audience_label} policy acknowledgement: {policy_label}").format(
+        audience_label=audience_label,
+        policy_label=policy_label,
+    )
+
+
+def _family_policy_campaign_custom_message_html(message: str | None) -> str:
+    text = (message or "").strip()
+    if not text:
+        return ""
+    return f"<p>{escape(text).replace(chr(10), '<br>')}</p>"
+
+
+def _family_policy_campaign_message_html(*, policy_row: dict, audience: str, message: str | None = None) -> str:
+    policy_label = (
+        (policy_row.get("policy_title") or "").strip()
+        or (policy_row.get("policy_key") or "").strip()
+        or (policy_row.get("institutional_policy") or "").strip()
+        or (policy_row.get("policy_version") or "").strip()
+    )
+    version_label = (policy_row.get("version_label") or "").strip()
+    change_summary = (policy_row.get("change_summary") or "").strip()
+    portal_label = _("Guardian Portal") if audience == "Guardian" else _("Student Hub")
+    action_label = _("Open Guardian Policies") if audience == "Guardian" else _("Open Student Policies")
+    action_href = _family_policy_portal_href(
+        audience=audience,
+        policy_version=(policy_row.get("policy_version") or "").strip(),
+    )
+
+    parts = [
+        f"<h3>{escape(policy_label)}" + (f" - {escape(version_label)}" if version_label else "") + "</h3>",
+    ]
+    custom_message_html = _family_policy_campaign_custom_message_html(message)
+    if custom_message_html:
+        parts.append(custom_message_html)
+    if change_summary:
+        parts.append(f"<p><strong>{escape(_('Summary'))}</strong><br>{escape(change_summary)}</p>")
+    parts.append(
+        f"<p>{escape(_('Please review the full policy text and acknowledge it in {portal_label}.').format(portal_label=portal_label))}</p>"
+    )
+    parts.append(
+        '<div class="mt-3 flex flex-wrap justify-end gap-2">'
+        + f'<a href="{action_href}" data-policy-version="{escape((policy_row.get("policy_version") or "").strip())}" class="btn btn-primary">'
+        + escape(action_label)
+        + "</a>"
+        + "</div>"
+    )
+    return "".join(parts)
+
+
+def _normalize_family_policy_campaign_audiences(
+    audiences, *, supported_audiences: list[str] | None = None
+) -> list[str]:
+    values = audiences
+    if isinstance(values, str):
+        raw = values.strip()
+        if raw.startswith("["):
+            try:
+                values = frappe.parse_json(raw)
+            except Exception:
+                values = [raw]
+        elif raw:
+            values = [value.strip() for value in raw.split(",")]
+        else:
+            values = []
+
+    if not isinstance(values, (list, tuple, set)):
+        frappe.throw(_("Select at least one family audience."))
+
+    normalized_map = {
+        "guardian": "Guardian",
+        "guardians": "Guardian",
+        "student": "Student",
+        "students": "Student",
+    }
+    normalized: list[str] = []
+    seen: set[str] = set()
+    for value in values:
+        audience = normalized_map.get((str(value or "")).strip().lower())
+        if not audience or audience in seen:
+            continue
+        normalized.append(audience)
+        seen.add(audience)
+
+    if not normalized:
+        frappe.throw(_("Select at least one family audience."))
+
+    if supported_audiences is not None:
+        supported = set(supported_audiences or [])
+        unsupported = [audience for audience in normalized if audience not in supported]
+        if unsupported:
+            frappe.throw(_("Selected Policy Version does not apply to the requested family audience."))
+
+    return normalized
+
+
+def _family_campaign_preview_payload(*, policy_row: dict, organization: str, school: str | None) -> dict:
+    dashboard_payload = _build_policy_signature_dashboard_payload(
+        policy_row=policy_row,
+        organization=organization,
+        school=school,
+        employee_group=None,
+        limit=25,
+    )
+    sections = [
+        section
+        for section in (dashboard_payload.get("audiences") or [])
+        if (section.get("audience") or "").strip() in set(POLICY_FAMILY_CAMPAIGN_AUDIENCE_ORDER)
+    ]
+    return {
+        "family_audiences": _supported_family_policy_campaign_audiences(policy_row.get("applies_to_tokens")),
+        "school_target_count": len(_family_campaign_school_targets(organization=organization, school=school)),
+        "audience_previews": [
+            {
+                "audience": section.get("audience"),
+                "audience_label": section.get("audience_label"),
+                "workflow_description": section.get("workflow_description"),
+                "eligible_targets": int((section.get("summary") or {}).get("eligible_targets") or 0),
+                "signed": int((section.get("summary") or {}).get("signed") or 0),
+                "pending": int((section.get("summary") or {}).get("pending") or 0),
+                "completion_pct": float((section.get("summary") or {}).get("completion_pct") or 0),
+                "skipped_scope": int((section.get("summary") or {}).get("skipped_scope") or 0),
+            }
+            for section in sections
+        ],
+    }
+
+
+@frappe.whitelist()
+def get_family_policy_campaign_options(
+    *,
+    organization: str | None = None,
+    school: str | None = None,
+    policy_version: str | None = None,
+):
+    user, roles = _require_roles(POLICY_SIGNATURE_MANAGER_ROLES)
+    scoped_orgs = _manager_scope_organizations(user=user, roles=roles)
+
+    organization = (organization or "").strip() or None
+    school = (school or "").strip() or None
+    policy_version = (policy_version or "").strip() or None
+
+    if organization:
+        _ensure_organization_in_scope(organization, scoped_orgs)
+
+    org_scope = get_descendant_organizations(organization) if organization else scoped_orgs
+    if organization and organization not in set(org_scope or []):
+        org_scope = sorted({organization, *(org_scope or [])})
+    _ensure_school_in_scope(school=school, organization_scope=org_scope)
+
+    organization_options = sorted(scoped_orgs)
+    school_options = _school_options_for_scope(org_scope)
+    policy_options = _family_policy_options_for_scope(
+        organization=organization,
+        organization_scope=org_scope,
+        school=school,
+    )
+
+    preview = {
+        "family_audiences": [],
+        "school_target_count": len(_family_campaign_school_targets(organization=organization, school=school))
+        if organization
+        else 0,
+        "audience_previews": [],
+    }
+    if organization and policy_version:
+        policy_row = get_policy_version_context(
+            policy_version,
+            require_active=True,
+        )
+        if _policy_scope_applies_to_context(policy_row=policy_row, organization=organization, school=school):
+            preview = _family_campaign_preview_payload(
+                policy_row=policy_row,
+                organization=organization,
+                school=school,
+            )
+
+    return {
+        "options": {
+            "organizations": organization_options,
+            "schools": school_options,
+            "policies": policy_options,
+        },
+        "preview": preview,
+    }
+
+
+@frappe.whitelist()
+def publish_family_policy_campaign(
+    *,
+    policy_version: str | None = None,
+    organization: str | None = None,
+    school: str | None = None,
+    audiences=None,
+    title: str | None = None,
+    message: str | None = None,
+    publish_to: str | None = None,
+    client_request_id: str | None = None,
+):
+    user, roles = _require_roles(POLICY_SIGNATURE_MANAGER_ROLES)
+
+    policy_version = (policy_version or "").strip()
+    organization = (organization or "").strip()
+    school = (school or "").strip() or None
+    title = (title or "").strip() or None
+    message = (message or "").strip() or None
+    client_request_id = (client_request_id or "").strip() or None
+
+    if not policy_version:
+        frappe.throw(_("policy_version is required."))
+    if not organization:
+        frappe.throw(_("organization is required."))
+
+    publish_to_value = get_datetime(publish_to) if publish_to else None
+
+    scoped_orgs = _manager_scope_organizations(user=user, roles=roles)
+    _ensure_organization_in_scope(organization, scoped_orgs)
+    org_scope = get_descendant_organizations(organization)
+    if organization not in set(org_scope or []):
+        org_scope = sorted({organization, *(org_scope or [])})
+    _ensure_school_in_scope(school=school, organization_scope=org_scope)
+
+    policy_row = get_policy_version_context(
+        policy_version,
+        require_active=True,
+    )
+    if not _policy_scope_applies_to_context(policy_row=policy_row, organization=organization, school=school):
+        frappe.throw(_("Selected policy scope does not apply to the selected Organization or School."))
+
+    supported_audiences = _supported_family_policy_campaign_audiences(policy_row.get("applies_to_tokens"))
+    if not supported_audiences:
+        frappe.throw(_("Selected Policy Version does not apply to Students or Guardians."))
+
+    selected_audiences = _normalize_family_policy_campaign_audiences(
+        audiences,
+        supported_audiences=supported_audiences,
+    )
+
+    school_targets = _family_campaign_school_targets(organization=organization, school=school)
+    if not school_targets:
+        frappe.throw(_("No schools are available in the selected family campaign scope."))
+
+    preview = _family_campaign_preview_payload(
+        policy_row=policy_row,
+        organization=organization,
+        school=school,
+    )
+    preview_by_audience = {
+        (row.get("audience") or "").strip(): row
+        for row in (preview.get("audience_previews") or [])
+        if (row.get("audience") or "").strip()
+    }
+    selected_pending = sum(
+        int((preview_by_audience.get(audience) or {}).get("pending") or 0) for audience in selected_audiences
+    )
+    if selected_pending <= 0:
+        frappe.throw(_("Selected family audiences are already fully acknowledged in this scope."))
+
+    campaign_scope = "|".join(
+        [
+            policy_version,
+            organization,
+            school or "",
+            ",".join(selected_audiences),
+            title or "",
+            message or "",
+            publish_to_value.isoformat() if publish_to_value else "",
+        ]
+    )
+
+    cache = frappe.cache()
+    if client_request_id:
+        existing = cache.get_value(
+            _idempotency_key(
+                user=user,
+                scope=campaign_scope,
+                client_request_id=client_request_id,
+                suffix="family_publish",
+            )
+        )
+        if existing:
+            try:
+                parsed = frappe.parse_json(existing)
+            except Exception:
+                parsed = None
+            if isinstance(parsed, dict):
+                return {
+                    **parsed,
+                    "status": "already_processed",
+                    "idempotent": True,
+                }
+
+    with cache.lock(
+        _lock_key(user=user, scope=campaign_scope, suffix="family_publish"),
+        timeout=15,
+    ):
+        if client_request_id:
+            existing = cache.get_value(
+                _idempotency_key(
+                    user=user,
+                    scope=campaign_scope,
+                    client_request_id=client_request_id,
+                    suffix="family_publish",
+                )
+            )
+            if existing:
+                try:
+                    parsed = frappe.parse_json(existing)
+                except Exception:
+                    parsed = None
+                if isinstance(parsed, dict):
+                    return {
+                        **parsed,
+                        "status": "already_processed",
+                        "idempotent": True,
+                    }
+
+        publish_from_value = now_datetime()
+        created_communications: list[dict] = []
+        for audience in selected_audiences:
+            audience_label = POLICY_SIGNATURE_AUDIENCE_LABELS.get(audience) or audience
+            communication_title = _family_policy_campaign_title(
+                policy_row=policy_row,
+                audience=audience,
+                override_title=title,
+            )
+            communication_doc = frappe.get_doc(
+                {
+                    "doctype": "Org Communication",
+                    "title": communication_title,
+                    "communication_type": "Policy Procedure",
+                    "status": "Published",
+                    "priority": "Normal",
+                    "portal_surface": "Portal Feed",
+                    "publish_from": publish_from_value,
+                    "publish_to": publish_to_value,
+                    "school": school or "",
+                    "organization": organization,
+                    "message": _family_policy_campaign_message_html(
+                        policy_row=policy_row,
+                        audience=audience,
+                        message=message,
+                    ),
+                    "internal_note": _(
+                        "Family policy campaign from Policy Version {policy_version} for {audience_label}."
+                    ).format(
+                        policy_version=policy_version,
+                        audience_label=audience_label,
+                    ),
+                    "audiences": _family_campaign_audience_rows(
+                        audience=audience,
+                        school=school,
+                        school_targets=school_targets,
+                    ),
+                }
+            )
+            communication_doc.insert()
+            created_communications.append(
+                {
+                    "audience": audience,
+                    "audience_label": audience_label,
+                    "org_communication": communication_doc.name,
+                    "title": communication_doc.title,
+                    "href": _family_policy_portal_href(audience=audience, policy_version=policy_version),
+                    "pending": int((preview_by_audience.get(audience) or {}).get("pending") or 0),
+                }
+            )
+
+        result = {
+            "ok": True,
+            "idempotent": False,
+            "status": "processed",
+            "policy_version": policy_version,
+            "organization": organization,
+            "school": school,
+            "audiences": selected_audiences,
+            "counts": {
+                "published": len(created_communications),
+                "pending": selected_pending,
+                "school_targets": len(school_targets),
+            },
+            "communications": created_communications,
+        }
+
+        if client_request_id:
+            cache.set_value(
+                _idempotency_key(
+                    user=user,
+                    scope=campaign_scope,
+                    client_request_id=client_request_id,
+                    suffix="family_publish",
+                ),
+                frappe.as_json(result),
+                expires_in_sec=60 * 15,
+            )
+
+        return result
 
 
 @frappe.whitelist()

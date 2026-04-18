@@ -9,9 +9,17 @@
 				</p>
 			</div>
 			<div v-if="canManageCampaigns" class="page-header__actions">
-				<button type="button" class="if-button if-button--primary" @click="openCampaignOverlay">
+				<button type="button" class="if-button if-button--secondary" @click="openCampaignOverlay">
 					<FeatherIcon name="plus" class="h-4 w-4" />
-					<span>Set up campaign</span>
+					<span>Set up staff campaign</span>
+				</button>
+				<button
+					type="button"
+					class="if-button if-button--primary"
+					@click="openFamilyCampaignOverlay"
+				>
+					<FeatherIcon name="send" class="h-4 w-4" />
+					<span>Publish family campaign</span>
 				</button>
 			</div>
 		</header>
@@ -181,7 +189,9 @@
 							"
 						>
 							{{
-								section.supports_campaign_launch ? 'Staff tasks available' : 'Portal tracking only'
+								section.supports_campaign_launch
+									? 'Staff tasks available'
+									: 'Portal acknowledgement flow'
 							}}
 						</div>
 						<div
@@ -1110,6 +1120,14 @@ function openCampaignOverlay() {
 		organization: filters.organization || '',
 		school: filters.school || '',
 		employee_group: filters.employee_group || '',
+		policy_version: filters.policy_version || '',
+	});
+}
+
+function openFamilyCampaignOverlay() {
+	overlay.open('staff-family-policy-campaign', {
+		organization: filters.organization || '',
+		school: filters.school || '',
 		policy_version: filters.policy_version || '',
 	});
 }

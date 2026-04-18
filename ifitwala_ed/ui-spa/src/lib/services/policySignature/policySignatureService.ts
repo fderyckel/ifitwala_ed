@@ -9,9 +9,17 @@ import type {
 	Response as GetCampaignOptionsResponse,
 } from '@/types/contracts/policy_signature/get_staff_policy_campaign_options';
 import type {
+	Request as GetFamilyCampaignOptionsRequest,
+	Response as GetFamilyCampaignOptionsResponse,
+} from '@/types/contracts/policy_signature/get_family_policy_campaign_options';
+import type {
 	Request as LaunchCampaignRequest,
 	Response as LaunchCampaignResponse,
 } from '@/types/contracts/policy_signature/launch_staff_policy_campaign';
+import type {
+	Request as PublishFamilyCampaignRequest,
+	Response as PublishFamilyCampaignResponse,
+} from '@/types/contracts/policy_signature/publish_family_policy_campaign';
 import type {
 	Request as GetDashboardRequest,
 	Response as GetDashboardResponse,
@@ -34,6 +42,18 @@ export function createPolicySignatureService() {
 
 	const launchCampaignResource = createResource<LaunchCampaignResponse>({
 		url: 'ifitwala_ed.api.policy_signature.launch_staff_policy_campaign',
+		method: 'POST',
+		auto: false,
+	});
+
+	const getFamilyCampaignOptionsResource = createResource<GetFamilyCampaignOptionsResponse>({
+		url: 'ifitwala_ed.api.policy_signature.get_family_policy_campaign_options',
+		method: 'POST',
+		auto: false,
+	});
+
+	const publishFamilyCampaignResource = createResource<PublishFamilyCampaignResponse>({
+		url: 'ifitwala_ed.api.policy_signature.publish_family_policy_campaign',
 		method: 'POST',
 		auto: false,
 	});
@@ -70,6 +90,18 @@ export function createPolicySignatureService() {
 		return result;
 	}
 
+	async function getFamilyCampaignOptions(
+		payload: GetFamilyCampaignOptionsRequest = {}
+	): Promise<GetFamilyCampaignOptionsResponse> {
+		return getFamilyCampaignOptionsResource.submit(payload);
+	}
+
+	async function publishFamilyCampaign(
+		payload: PublishFamilyCampaignRequest
+	): Promise<PublishFamilyCampaignResponse> {
+		return publishFamilyCampaignResource.submit(payload);
+	}
+
 	async function getDashboard(payload: GetDashboardRequest): Promise<GetDashboardResponse> {
 		return getDashboardResource.submit(payload);
 	}
@@ -87,6 +119,8 @@ export function createPolicySignatureService() {
 	return {
 		getCampaignOptions,
 		launchCampaign,
+		getFamilyCampaignOptions,
+		publishFamilyCampaign,
 		getDashboard,
 		getAudienceRows,
 		getPolicyLibrary,

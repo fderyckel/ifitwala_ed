@@ -10,6 +10,9 @@ const { getStudentPolicyOverviewMock, acknowledgeStudentPolicyMock, toastSuccess
 		toastSuccessMock: vi.fn(),
 		toastErrorMock: vi.fn(),
 	}))
+const { routeQueryMock } = vi.hoisted(() => ({
+	routeQueryMock: {} as Record<string, unknown>,
+}))
 
 vi.mock('frappe-ui', () => ({
 	toast: {
@@ -21,6 +24,12 @@ vi.mock('frappe-ui', () => ({
 vi.mock('@/lib/services/studentPolicy/studentPolicyService', () => ({
 	getStudentPolicyOverview: getStudentPolicyOverviewMock,
 	acknowledgeStudentPolicy: acknowledgeStudentPolicyMock,
+}))
+
+vi.mock('vue-router', () => ({
+	useRoute: () => ({
+		query: routeQueryMock,
+	}),
 }))
 
 import StudentPolicies from '@/pages/student/StudentPolicies.vue'
@@ -58,6 +67,9 @@ afterEach(() => {
 	acknowledgeStudentPolicyMock.mockReset()
 	toastSuccessMock.mockReset()
 	toastErrorMock.mockReset()
+	Object.keys(routeQueryMock).forEach((key) => {
+		delete routeQueryMock[key]
+	})
 	while (cleanupFns.length) {
 		cleanupFns.pop()?.()
 	}
@@ -212,5 +224,73 @@ describe('StudentPolicies', () => {
 		})
 		expect(getStudentPolicyOverviewMock).toHaveBeenCalledTimes(2)
 		expect(toastSuccessMock).toHaveBeenCalled()
+	})
+
+	it('focuses the requested policy version from the route query', async () => {
+		routeQueryMock.policy_version = 'VER-2'
+		getStudentPolicyOverviewMock.mockResolvedValue({
+			meta: {
+				generated_at: '2026-04-13T09:00:00',
+				student: { name: 'STU-0001' },
+			},
+			identity: { student: 'STU-0001', user: 'student@example.com' },
+			counts: {
+				total_policies: 2,
+				acknowledged_policies: 1,
+				pending_policies: 1,
+			},
+			rows: [
+				{
+					policy_name: 'POL-1',
+					policy_key: 'student_handbook',
+					policy_title: 'Student Handbook',
+					policy_category: 'Handbooks',
+					policy_version: 'VER-1',
+					version_label: '2026',
+					organization: 'ORG-1',
+					school: 'SCHOOL-1',
+					description: '',
+					policy_text: '<p>Policy text</p>',
+					effective_from: '',
+					effective_to: '',
+					approved_on: '',
+					expected_signature_name: 'Amina Example',
+					acknowledgement_clauses: [],
+					ack_context_doctype: 'Student',
+					ack_context_name: 'STU-0001',
+					is_acknowledged: true,
+					acknowledged_at: '2026-04-13 09:01:00',
+					acknowledged_by: 'student@example.com',
+				},
+				{
+					policy_name: 'POL-2',
+					policy_key: 'device_policy',
+					policy_title: 'Device Policy',
+					policy_category: 'Operations',
+					policy_version: 'VER-2',
+					version_label: '2026',
+					organization: 'ORG-1',
+					school: 'SCHOOL-1',
+					description: 'Focus this policy.',
+					policy_text: '<p>Device policy</p>',
+					effective_from: '',
+					effective_to: '',
+					approved_on: '',
+					expected_signature_name: 'Amina Example',
+					acknowledgement_clauses: [],
+					ack_context_doctype: 'Student',
+					ack_context_name: 'STU-0001',
+					is_acknowledged: false,
+					acknowledged_at: '',
+					acknowledged_by: '',
+				},
+			],
+		})
+
+		mountStudentPolicies()
+		await flushUi()
+
+		const focusedRow = document.querySelector('[data-policy-version="VER-2"]')
+		expect(focusedRow?.getAttribute('data-policy-focused')).toBe('true')
 	})
 })
