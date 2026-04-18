@@ -73,7 +73,7 @@ Current workspace reality:
 - the live drawer runtime now has a partial annotation-readiness contract for the selected evidence version:
   - governed PDF attachments expose preview status plus file-type hints from Drive metadata
   - the selected submission returns a server-owned annotation-readiness summary
-  - governed PDFs render inside an Ifitwala-owned read-only `pdf.js` drawer workspace over Ed-owned preview/open routes, with page navigation and zoom on the governed source PDF
+  - governed PDFs render inside an Ifitwala-owned `pdf.js` drawer workspace over Ed-owned preview/open routes, with page navigation, zoom, and session-local point / area / page draft annotation state on the governed source PDF
   - the Evidence tab distinguishes reduced PDF review, preview-unavailable fallback, and non-PDF states without guessing in Vue
 
 - the live drawer runtime still does **not** support text-anchored comments, OCR-driven upgrades, or structured feedback records

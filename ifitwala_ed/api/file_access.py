@@ -971,7 +971,8 @@ def _respond_with_inline_file(file_row: dict, *, cache_headers: bool = False) ->
 
 def _respond_with_redirect_or_inline_file(
     *,
-    file_row: dict,
+    file_row: dict | None = None,
+    file_id: str | None = None,
     target_url: str | None,
     cache_headers: bool = False,
 ) -> bool:
@@ -983,7 +984,13 @@ def _respond_with_redirect_or_inline_file(
         frappe.local.response["location"] = resolved_target_url
         return True
 
-    return _respond_with_inline_file(file_row, cache_headers=cache_headers)
+    resolved_file_row = file_row
+    if resolved_file_row is None and str(file_id or "").strip():
+        resolved_file_row = _resolve_any_file_row(str(file_id or "").strip())
+    if resolved_file_row is None:
+        return False
+
+    return _respond_with_inline_file(resolved_file_row, cache_headers=cache_headers)
 
 
 def _resolve_drive_download_grant_url(file_name: str) -> str | None:
@@ -1299,13 +1306,12 @@ def open_org_communication_attachment(
         frappe.throw(_("Attachment file is missing."), frappe.DoesNotExistError)
 
     drive_file_id, file_id = _resolve_org_communication_drive_file(doc.name, str(row_name or "").strip())
-    file_row = _resolve_any_file_row(file_id)
     target_url = _resolve_drive_file_grant_target_url(
         drive_file_id=drive_file_id,
         file_id=file_id,
         prefer_preview=False,
     )
-    if _respond_with_redirect_or_inline_file(file_row=file_row, target_url=target_url):
+    if _respond_with_redirect_or_inline_file(file_id=file_id, target_url=target_url):
         return
 
     frappe.throw(_("Could not resolve the attachment."), frappe.DoesNotExistError)
@@ -1329,13 +1335,12 @@ def preview_org_communication_attachment(
         frappe.throw(_("Attachment file is missing."), frappe.DoesNotExistError)
 
     drive_file_id, file_id = _resolve_org_communication_drive_file(doc.name, str(row_name or "").strip())
-    file_row = _resolve_any_file_row(file_id)
     target_url = _resolve_drive_file_grant_target_url(
         drive_file_id=drive_file_id,
         file_id=file_id,
         prefer_preview=True,
     )
-    if _respond_with_redirect_or_inline_file(file_row=file_row, target_url=target_url):
+    if _respond_with_redirect_or_inline_file(file_id=file_id, target_url=target_url):
         return
 
     frappe.throw(_("Could not resolve the attachment preview."), frappe.DoesNotExistError)
@@ -1359,13 +1364,12 @@ def thumbnail_org_communication_attachment(
         frappe.throw(_("Attachment file is missing."), frappe.DoesNotExistError)
 
     drive_file_id, file_id = _resolve_org_communication_drive_file(doc.name, str(row_name or "").strip())
-    file_row = _resolve_any_file_row(file_id)
     target_url = _resolve_cached_thumbnail_target_url(
         drive_file_id=drive_file_id,
         file_id=file_id,
         surface_parts=["org_communication", doc.name, str(row_name or "").strip()],
     )
-    if _respond_with_redirect_or_inline_file(file_row=file_row, target_url=target_url, cache_headers=True):
+    if _respond_with_redirect_or_inline_file(file_id=file_id, target_url=target_url, cache_headers=True):
         return
 
     frappe.throw(_("Could not resolve the attachment thumbnail."), frappe.DoesNotExistError)

@@ -864,6 +864,11 @@ describe('Gradebook page', () => {
 		expect(text).toContain('Reduced mode');
 		expect(text).toContain('Source PDF:');
 		expect(text).toContain('essay.pdf');
+		expect(text).toContain('Session-local annotation drafts');
+		expect(text).toContain('Point comment');
+		expect(text).toContain('Area comment');
+		expect(text).toContain('Add page comment');
+		expect(text).toContain('Local drafts only');
 		expect(text).toContain('Page 1 of 2');
 		expect(text).toContain('100%');
 		expect(getDocumentMock).toHaveBeenCalled();

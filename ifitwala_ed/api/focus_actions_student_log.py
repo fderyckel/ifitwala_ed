@@ -36,9 +36,12 @@ def submit_student_log_follow_up(
     - focus_item_id belongs to session user
     - action_type is the submit action
     - doc-level permission enforced on the Student Log
+    - only the current assignee can submit the focus follow-up action
     - log not Completed
     - idempotent against rapid double submits
-    - creates + submits Student Log Follow Up (so your controller side effects run)
+    - creates + submits Student Log Follow Up through the workflow endpoint
+      (so controller side effects run even when the assignee lacks raw
+      Student Log Follow Up DocType create/submit role access)
     """
     user = _require_login()
 
@@ -76,13 +79,11 @@ def submit_student_log_follow_up(
     if not frappe.has_permission(STUDENT_LOG_DOCTYPE, ptype="read", doc=log_doc):
         frappe.throw(_("You are not permitted to view this log."), frappe.PermissionError)
 
-    # State guard
-    if (log_doc.follow_up_status or "").lower() == "completed":
-        frappe.throw(_("This Student Log is already <b>Completed</b>."))
-
     cache = _cache()
 
-    # Idempotency (schema-free)
+    # Idempotency must short-circuit before assignee/state checks because
+    # a successful first submit closes the open ToDo and creates a submitted
+    # follow-up row, which would otherwise make the replay look unauthorized.
     if client_request_id:
         key = _idempotency_key(user, focus_item_id, client_request_id, "submit_follow_up")
         existing = cache.get_value(key)
@@ -94,6 +95,21 @@ def submit_student_log_follow_up(
                 "log_name": log_name,
                 "follow_up_name": existing,
             }
+
+    # State guard
+    if (log_doc.follow_up_status or "").lower() == "completed":
+        frappe.throw(_("This Student Log is already <b>Completed</b>."))
+
+    current_assignee = frappe.db.get_value(
+        "ToDo",
+        {"reference_type": STUDENT_LOG_DOCTYPE, "reference_name": log_name, "status": "Open"},
+        "allocated_to",
+    )
+    if (current_assignee or "").strip() != user:
+        frappe.throw(_("Only the current assignee can submit this follow-up."), frappe.PermissionError)
+
+    if frappe.db.exists(FOLLOW_UP_DOCTYPE, {"student_log": log_name, "docstatus": 1}):
+        frappe.throw(_("A submitted follow-up already exists for this Student Log."))
 
     lock_name = _lock_key(user, focus_item_id, "submit_follow_up")
     with cache.lock(lock_name, timeout=10):
@@ -110,6 +126,17 @@ def submit_student_log_follow_up(
                     "follow_up_name": existing,
                 }
 
+        current_assignee = frappe.db.get_value(
+            "ToDo",
+            {"reference_type": STUDENT_LOG_DOCTYPE, "reference_name": log_name, "status": "Open"},
+            "allocated_to",
+        )
+        if (current_assignee or "").strip() != user:
+            frappe.throw(_("Only the current assignee can submit this follow-up."), frappe.PermissionError)
+
+        if frappe.db.exists(FOLLOW_UP_DOCTYPE, {"student_log": log_name, "docstatus": 1}):
+            frappe.throw(_("A submitted follow-up already exists for this Student Log."))
+
         # Create + submit follow-up: triggers your StudentLogFollowUp controller side effects
         fu = frappe.get_doc(
             {
@@ -118,7 +145,9 @@ def submit_student_log_follow_up(
                 "follow_up": follow_up,
             }
         )
-        fu.insert(ignore_permissions=False)
+        fu.flags.ignore_permissions = True
+        fu.insert(ignore_permissions=True)
+        fu.flags.ignore_permissions = True
         fu.submit()
 
         if client_request_id:

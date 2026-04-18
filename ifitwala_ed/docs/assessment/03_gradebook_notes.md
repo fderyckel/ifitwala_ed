@@ -153,7 +153,7 @@ Current implementation baseline for the Evidence tab:
 - attachment rows in the selected submission resolve to server-owned `preview_url` / `open_url` routes; the SPA must never guess private file paths
 - attachment rows now also carry preview status plus file-type hints from governed Drive metadata where available
 - selected submission payload now includes a server-owned annotation-readiness summary for the currently selected version
-- governed PDF evidence now renders inside an Ifitwala-owned read-only `pdf.js` drawer workspace over those server-owned preview/open routes, with page navigation and zoom on the governed source PDF
+- governed PDF evidence now renders inside an Ifitwala-owned `pdf.js` drawer workspace over those server-owned preview/open routes, with page navigation, zoom, and session-local point / area / page draft annotation state on the governed source PDF
 - Evidence tab now distinguishes:
   - governed PDF reduced-review state
   - preview-unavailable PDF fallback state
@@ -161,7 +161,7 @@ Current implementation baseline for the Evidence tab:
 
 Current partial annotation-readiness baseline:
 
-- current runtime can render governed source PDFs read-only inside the drawer and fall back to preview/open actions when that source render is unavailable
+- current runtime can render governed source PDFs inside the drawer, support session-local point / area / page draft annotations there, and fall back to preview/open actions when the source render is unavailable
 - current runtime does **not** yet support text-anchored comments, OCR-driven upgrades, or structured feedback records
 
 Future annotation contract for the drawer:

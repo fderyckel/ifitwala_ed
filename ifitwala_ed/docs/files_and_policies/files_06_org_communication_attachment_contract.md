@@ -128,3 +128,4 @@ Rules:
 7. Archive/detail surfaces may render inline image cards from `thumbnail_url` when present, while `preview_url` remains the richer governed preview/open action and the PDF first-page route.
 8. Thumbnail routes may use short-lived Ed-side redirect caching plus private browser cache headers, but the SPA still receives only stable Ed-owned action URLs rather than provider grants.
 9. External links and non-ready PDFs must still degrade to action-led metadata cards instead of blank embeds or raw-path guesses.
+10. Open, preview, and thumbnail routes must not require a secondary `File` row lookup when a safe Drive grant URL is already resolved; `File` fallback exists only for inline streaming when the resolved target is a raw private path or no safe redirect target exists.

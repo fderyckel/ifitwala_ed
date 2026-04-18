@@ -291,14 +291,18 @@ def get_staff_home_header():
     if not row:
         frappe.throw(_("User not found."), frappe.DoesNotExistError)
 
-    first_name = _resolve_staff_first_name(user, row.first_name, row.full_name)
+    row_name = row.get("name") if isinstance(row, dict) else row.name
+    row_first_name = row.get("first_name") if isinstance(row, dict) else row.first_name
+    row_full_name = row.get("full_name") if isinstance(row, dict) else row.full_name
+
+    first_name = _resolve_staff_first_name(user, row_first_name, row_full_name)
     roles = set(frappe.get_roles(user))
     org_communication_quick_action_state = get_org_communication_quick_create_capability(user=user)
 
     payload = {
-        "user": row.name,
+        "user": row_name,
         "first_name": first_name,
-        "full_name": row.full_name,
+        "full_name": row_full_name,
         "capabilities": _build_staff_home_capabilities(
             roles,
             user=user,
