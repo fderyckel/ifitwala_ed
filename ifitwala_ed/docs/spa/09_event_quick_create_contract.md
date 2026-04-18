@@ -15,7 +15,7 @@ If implementation changes this workflow, update this document in the same change
 
 ## 1. Surface and Entry-Point Modes
 
-Status: Partial
+Status: Implemented core behavior, partial entry-point coverage
 
 Code refs:
 - `ifitwala_ed/ui-spa/src/overlays/calendar/EventQuickCreateOverlay.vue`

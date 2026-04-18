@@ -24,11 +24,11 @@ Current live behavior:
 - guardian home uses `learning_highlights` cards with a family-safe current theme, upcoming step, and a talk-at-home prompt
 - the guardian child brief now foregrounds current theme, next class experience, upcoming learning experiences, and helpful-at-home resources
 
-## Why This Proposal Exists
+## Why This Note Exists
 
-Status: Proposed
+Status: Active
 Code refs: `ifitwala_ed/ui-spa/src/pages/student/CourseDetail.vue`, `ifitwala_ed/ui-spa/src/pages/guardian/GuardianHome.vue`, `ifitwala_ed/ui-spa/src/pages/guardian/GuardianStudentShell.vue`
-Test refs: None yet
+Test refs: `ifitwala_ed/ui-spa/src/pages/student/__tests__/CourseDetail.test.ts`, `ifitwala_ed/ui-spa/src/pages/guardian/__tests__/GuardianHome.test.ts`, `ifitwala_ed/ui-spa/src/pages/guardian/__tests__/GuardianStudentShell.test.ts`
 
 The educator-centered curriculum model is now live on the backend and staff surfaces:
 
@@ -49,9 +49,9 @@ Rules:
 
 ## Student Product Goal
 
-Status: Proposed
+Status: Implemented direction
 Code refs: `ifitwala_ed/ui-spa/src/pages/student/CourseDetail.vue`, `ifitwala_ed/ui-spa/src/pages/student/StudentQuiz.vue`
-Test refs: None yet
+Test refs: `ifitwala_ed/ui-spa/src/pages/student/__tests__/CourseDetail.test.ts`
 
 The student portal should answer four questions immediately:
 
@@ -64,9 +64,9 @@ The student should not be asked to interpret curriculum management concepts.
 
 ## Guardian Product Goal
 
-Status: Proposed
+Status: Implemented direction
 Code refs: `ifitwala_ed/ui-spa/src/pages/guardian/GuardianHome.vue`, `ifitwala_ed/ui-spa/src/pages/guardian/GuardianStudentShell.vue`, `ifitwala_ed/api/guardian_home.py`
-Test refs: None yet
+Test refs: `ifitwala_ed/api/test_guardian_home.py`, `ifitwala_ed/ui-spa/src/pages/guardian/__tests__/GuardianHome.test.ts`, `ifitwala_ed/ui-spa/src/pages/guardian/__tests__/GuardianStudentShell.test.ts`
 
 The guardian portal should answer four questions immediately:
 
@@ -79,9 +79,9 @@ The guardian should not need to parse daily lesson mechanics or internal school 
 
 ## Student Experience Principles
 
-Status: Proposed
+Status: Implemented direction
 Code refs: `ifitwala_ed/docs/curriculum/04_curriculum_lms_and_quiz_contract.md`, `ifitwala_ed/ui-spa/src/types/contracts/student_learning/get_student_learning_space.ts`
-Test refs: None yet
+Test refs: `ifitwala_ed/ui-spa/src/pages/student/__tests__/CourseDetail.test.ts`
 
 Rules:
 
@@ -91,13 +91,13 @@ Rules:
 4. Keep standards available only as optional learning-goal context, not as the main information layer.
 5. Hide all teacher-only fields and planning-state language.
 
-## Proposed Student Page Structure
+## Student Page Structure
 
-Status: Proposed
+Status: Implemented baseline
 Code refs: `ifitwala_ed/ui-spa/src/pages/student/CourseDetail.vue`, `ifitwala_ed/ui-spa/src/types/contracts/student_learning/get_student_learning_space.ts`
-Test refs: None yet
+Test refs: `ifitwala_ed/ui-spa/src/pages/student/__tests__/CourseDetail.test.ts`
 
-`CourseDetail.vue` should be reorganized into these zones:
+`CourseDetail.vue` is now organized around these zones:
 
 ### 1. Learning Focus
 
@@ -185,15 +185,15 @@ Contents:
 - additional shared resources
 - completed or older assigned work
 
-## Proposed Student Read Model Changes
+## Student Read Model Shape
 
-Status: Proposed
+Status: Implemented baseline
 Code refs: `ifitwala_ed/api/teaching_plans.py`, `ifitwala_ed/ui-spa/src/types/contracts/student_learning/get_student_learning_space.ts`
-Test refs: None yet
+Test refs: `ifitwala_ed/api/test_teaching_plans.py`, `ifitwala_ed/ui-spa/src/pages/student/__tests__/CourseDetail.test.ts`
 
-The student surface should keep one bounded bootstrap through `get_student_learning_space`.
+The student surface keeps one bounded bootstrap through `get_student_learning_space`.
 
-Instead of only returning raw structural groupings, the response should add derived student-facing sections:
+The current response includes derived student-facing sections:
 
 - `focus`
 - `next_actions`
@@ -202,7 +202,7 @@ Instead of only returning raw structural groupings, the response should add deri
 - `selected_unit`
 - `selected_session`
 
-Proposed additions:
+Current additions:
 
 ```ts
 type StudentLearningFocus = {
@@ -229,9 +229,9 @@ Rules:
 
 ## Student Visibility Rules
 
-Status: Proposed
+Status: Implemented
 Code refs: `ifitwala_ed/api/teaching_plans.py`, `ifitwala_ed/ui-spa/src/types/contracts/student_learning/get_student_learning_space.ts`
-Test refs: None yet
+Test refs: `ifitwala_ed/api/test_teaching_plans.py`, `ifitwala_ed/ui-spa/src/pages/student/__tests__/CourseDetail.test.ts`
 
 Students may see:
 
@@ -264,9 +264,9 @@ Students must not see:
 
 ## Guardian Experience Principles
 
-Status: Proposed
+Status: Implemented direction
 Code refs: `ifitwala_ed/api/guardian_home.py`, `ifitwala_ed/docs/spa/guardian_portal/01_guardian_product.md`, `ifitwala_ed/docs/spa/guardian_portal/03_visibility_contract.md`
-Test refs: None yet
+Test refs: `ifitwala_ed/api/test_guardian_home.py`, `ifitwala_ed/ui-spa/src/pages/guardian/__tests__/GuardianHome.test.ts`, `ifitwala_ed/ui-spa/src/pages/guardian/__tests__/GuardianStudentShell.test.ts`
 
 Rules:
 
@@ -276,13 +276,13 @@ Rules:
 4. Guardians do not see draft curriculum truth, daily teaching mechanics, or staff-only reflections.
 5. Guardian curriculum visibility must be separately filtered server-side and must not reuse the student LMS payload wholesale.
 
-## Proposed Guardian Home Additions
+## Guardian Home Learning Highlights
 
-Status: Proposed
+Status: Implemented
 Code refs: `ifitwala_ed/api/guardian_home.py`, `ifitwala_ed/ui-spa/src/pages/guardian/GuardianHome.vue`, `ifitwala_ed/ui-spa/src/types/contracts/guardian/get_guardian_home_snapshot.ts`
-Test refs: None yet
+Test refs: `ifitwala_ed/api/test_guardian_home.py`, `ifitwala_ed/ui-spa/src/pages/guardian/__tests__/GuardianHome.test.ts`
 
-Add a fifth family-home zone:
+Implemented family-home zone:
 
 - `learning_highlights`
 
@@ -301,17 +301,17 @@ Contents per child:
 
 This zone belongs on guardian home because it answers "what are my children learning?" without requiring a drill-down first.
 
-## Proposed Guardian Child Page
+## Guardian Child Learning Brief
 
-Status: Proposed
+Status: Implemented
 Code refs: `ifitwala_ed/ui-spa/src/pages/guardian/GuardianStudentShell.vue`
-Test refs: None yet
+Test refs: `ifitwala_ed/api/test_guardian_home.py`, `ifitwala_ed/ui-spa/src/pages/guardian/__tests__/GuardianStudentShell.test.ts`
 
-The child drill-down should add a curriculum-aware section called:
+The child drill-down now exposes a curriculum-aware section called:
 
 - `Learning Now`
 
-This section should be grouped by course and show:
+This section is grouped by course and shows:
 
 - course title
 - current unit title
@@ -328,29 +328,29 @@ It should not show:
 - quiz runtime controls
 - raw standards tables by default
 
-## Proposed Guardian Endpoints
+## Guardian Endpoints
 
-Status: Proposed
+Status: Implemented
 Code refs: `ifitwala_ed/api/guardian_home.py`, `ifitwala_ed/docs/high_concurrency_contract.md`
-Test refs: None yet
+Test refs: `ifitwala_ed/api/test_guardian_home.py`
 
-Two bounded contracts are recommended:
+Two bounded contracts are now live:
 
-### 1. Extend `get_guardian_home_snapshot`
+### 1. `get_guardian_home_snapshot`
 
-Add:
+Includes:
 
 - `zones.learning_highlights`
 
 This keeps family home on one bounded bootstrap.
 
-### 2. Add `get_guardian_student_learning_brief(student_id)`
+### 2. `get_guardian_student_learning_brief(student_id)`
 
 Purpose:
 
 - provide a deeper curriculum-aware child briefing without forcing guardian home to carry every course detail for every child
 
-Proposed response:
+Current response shape:
 
 ```ts
 type GuardianStudentLearningBrief = {
@@ -385,9 +385,9 @@ Rules:
 
 ## Guardian Visibility Rules
 
-Status: Proposed
+Status: Implemented
 Code refs: `ifitwala_ed/api/guardian_home.py`, `ifitwala_ed/docs/spa/guardian_portal/03_visibility_contract.md`
-Test refs: None yet
+Test refs: `ifitwala_ed/api/test_guardian_home.py`, `ifitwala_ed/ui-spa/src/pages/guardian/__tests__/GuardianHome.test.ts`, `ifitwala_ed/ui-spa/src/pages/guardian/__tests__/GuardianStudentShell.test.ts`
 
 Guardians may see:
 
@@ -413,9 +413,9 @@ Guardians must not see:
 
 ## Source Hierarchy For Both Audiences
 
-Status: Proposed
+Status: Active
 Code refs: `ifitwala_ed/api/teaching_plans.py`, `ifitwala_ed/api/guardian_home.py`
-Test refs: None yet
+Test refs: `ifitwala_ed/api/test_teaching_plans.py`, `ifitwala_ed/api/test_guardian_home.py`
 
 Resolution order should remain:
 
@@ -428,23 +428,22 @@ But the visible shaping must differ by audience:
 - student = operational learning context
 - guardian = summarized awareness context
 
-## Implementation Sequence
+## Remaining Polish Sequence
 
-Status: Proposed
+Status: Active
 Code refs: `ifitwala_ed/ui-spa/src/pages/student/CourseDetail.vue`, `ifitwala_ed/ui-spa/src/pages/guardian/GuardianHome.vue`, `ifitwala_ed/ui-spa/src/pages/guardian/GuardianStudentShell.vue`
-Test refs: None yet
+Test refs: `ifitwala_ed/ui-spa/src/pages/student/__tests__/CourseDetail.test.ts`, `ifitwala_ed/ui-spa/src/pages/guardian/__tests__/GuardianHome.test.ts`, `ifitwala_ed/ui-spa/src/pages/guardian/__tests__/GuardianStudentShell.test.ts`
 
 Recommended order:
 
-1. Reframe the student course page around `Learning Focus`, `Next Actions`, `Jump to`, `Session Journey`, and a lower `This Unit` summary.
-2. Extend the student read model with server-derived focus and next-action helpers.
-3. Add `learning_highlights` to guardian home.
-4. Add a guardian child learning-brief endpoint and redesign the child drill-down around `Learning Now`.
-5. Validate permission and sibling-isolation rules for every new guardian curriculum field.
+1. Keep extending the student course workspace without reintroducing planning-heavy language or a second task page.
+2. Refine the bounded student read model only when the UI needs additional server-derived guidance.
+3. Improve guardian summaries and support prompts without turning guardian pages into a second LMS.
+4. Preserve permission and sibling-isolation rules for every guardian-facing curriculum field.
 
 ## Optional Future Authoring
 
-Status: Proposed
+Status: Active
 Code refs: `ifitwala_ed/curriculum/doctype/unit_plan/unit_plan.json`, `ifitwala_ed/curriculum/doctype/class_session/class_session.json`
 Test refs: None yet
 
@@ -459,11 +458,11 @@ These should stay optional and must not block teacher workflow.
 
 ## Non-Goals
 
-Status: Proposed
+Status: Active
 Code refs: `ifitwala_ed/docs/spa/guardian_portal/03_visibility_contract.md`, `ifitwala_ed/docs/high_concurrency_contract.md`
 Test refs: None yet
 
-This proposal does not recommend:
+This note does not recommend:
 
 - a second student LMS tree
 - exposing staff planning semantics to students or guardians
@@ -473,7 +472,7 @@ This proposal does not recommend:
 
 ## Related Docs
 
-Status: Proposed
+Status: Active
 Code refs: None
 Test refs: None yet
 

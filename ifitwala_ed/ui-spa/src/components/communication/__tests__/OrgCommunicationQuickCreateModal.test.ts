@@ -1212,6 +1212,91 @@ describe('OrgCommunicationQuickCreateModal', () => {
 		);
 	});
 
+	it('requires an explicit team selection before the first governed file upload and then allows the team flow', async () => {
+		getOptionsMock.mockResolvedValue(quickCreateOptions);
+		searchOrgCommunicationTeamsMock.mockResolvedValue({
+			results: [
+				{
+					name: 'TEAM-ISS',
+					team_name: 'ISS Teachers',
+					team_code: 'ISS',
+					school: 'SCH-1',
+					organization: 'ORG-1',
+				},
+			],
+		});
+		createOrgCommunicationQuickMock.mockResolvedValue({
+			ok: true,
+			status: 'created',
+			name: 'COMM-DRAFT-TEAM-ATTACHMENT',
+			title: 'Weekly staff update',
+		});
+		uploadOrgCommunicationAttachmentMock.mockResolvedValue({
+			ok: true,
+			org_communication: 'COMM-DRAFT-TEAM-ATTACHMENT',
+			attachment: {
+				row_name: 'row-file-team-attachment',
+				kind: 'file',
+				title: 'Policy PDF',
+				file_name: 'policy.pdf',
+				file_size: 1024,
+				open_url: 'https://example.com/files/policy.pdf',
+			},
+		});
+
+		mountModal();
+		await flushUi();
+
+		await uploadGovernedFile();
+
+		expect(createOrgCommunicationQuickMock).not.toHaveBeenCalled();
+		expect(uploadOrgCommunicationAttachmentMock).not.toHaveBeenCalled();
+		expect(document.querySelector('[role="alert"]')?.textContent || '').toContain(
+			'Choose an audience before adding governed files.'
+		);
+
+		clickButton('One team');
+		await flushUi();
+		await uploadGovernedFile();
+
+		expect(createOrgCommunicationQuickMock).not.toHaveBeenCalled();
+		expect(uploadOrgCommunicationAttachmentMock).not.toHaveBeenCalled();
+		expect(document.querySelector('[role="alert"]')?.textContent || '').toContain(
+			'Select the team before adding governed files.'
+		);
+
+		setInputByPlaceholder('Type a team name or code', 'ISS');
+		clickButton('Search');
+		await flushUi();
+		clickButton('ISS · ISS Teachers');
+		await flushUi();
+		await uploadGovernedFile();
+
+		expect(searchOrgCommunicationTeamsMock).toHaveBeenCalledWith({
+			query: 'ISS',
+			organization: 'ORG-1',
+			school: 'SCH-1',
+			limit: 8,
+		});
+		expect(createOrgCommunicationQuickMock).toHaveBeenCalledTimes(1);
+		expect(createOrgCommunicationQuickMock).toHaveBeenCalledWith(
+			expect.objectContaining({
+				status: 'Draft',
+				audiences: [
+					expect.objectContaining({
+						target_mode: 'Team',
+						team: 'TEAM-ISS',
+						to_staff: 1,
+					}),
+				],
+			})
+		);
+		expect(uploadOrgCommunicationAttachmentMock).toHaveBeenCalledWith({
+			org_communication: 'COMM-DRAFT-TEAM-ATTACHMENT',
+			file: expect.any(File),
+		});
+	});
+
 	it('locks top-level scope controls after a governed file attachment is added but keeps compatible audience presets available', async () => {
 		getOptionsMock.mockResolvedValue(wideAudienceQuickCreateOptions);
 		createOrgCommunicationQuickMock.mockResolvedValue({

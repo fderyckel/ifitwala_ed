@@ -243,6 +243,7 @@ import type {
 
 type CloseReason = 'backdrop' | 'esc' | 'programmatic';
 type EntryMode = 'staff-home' | 'class-event';
+type AttachmentDraftPurpose = 'governed-file' | 'link';
 type TopLevelErrorSource =
 	| ''
 	| 'load'
@@ -930,6 +931,7 @@ watch(
 		() => form.title,
 		() => form.communication_type,
 		() => form.organization,
+		() => form.school,
 		() => form.publish_from,
 		() => form.publish_to,
 		() => form.brief_start_date,
@@ -996,6 +998,24 @@ watch(
 		if (!['Structured Feedback', 'Student Q&A'].includes(mode)) {
 			form.allow_public_thread = false;
 		}
+	}
+);
+
+watch(
+	() =>
+		audienceRows.value
+			.map(row =>
+				[
+					row.target_mode,
+					row.school,
+					row.team,
+					row.student_group,
+					row.include_descendants ? '1' : '0',
+				].join(':')
+			)
+			.join('|'),
+	() => {
+		clearTopLevelError('attachment-precondition');
 	}
 );
 
@@ -1564,12 +1584,12 @@ function resetLinkDraft() {
 	showLinkComposer.value = false;
 }
 
-async function ensureSavedDraft() {
-	if (savedCommunicationName.value) return savedCommunicationName.value;
-	const draftValidationError = getAttachmentDraftBlocker();
+async function ensureSavedDraft(purpose: AttachmentDraftPurpose) {
+	const draftValidationError = getAttachmentDraftBlocker(purpose);
 	if (draftValidationError) {
 		throw new AttachmentPreconditionError(draftValidationError);
 	}
+	if (savedCommunicationName.value) return savedCommunicationName.value;
 	try {
 		const response = await createOrgCommunicationQuick(buildPayload('Draft'));
 		savedCommunicationName.value = response.name;
@@ -1586,7 +1606,7 @@ async function ensureSavedDraft() {
 function triggerAttachmentFilePicker() {
 	if (attachmentActionsDisabled.value) return;
 	attachmentErrorMessage.value = '';
-	const draftValidationError = getAttachmentDraftBlocker();
+	const draftValidationError = getAttachmentDraftBlocker('governed-file');
 	if (draftValidationError) {
 		setTopLevelError(draftValidationError, 'attachment-precondition');
 		return;
@@ -1603,7 +1623,7 @@ async function onAttachmentFileSelected(event: Event) {
 	attachmentSubmitting.value = true;
 	attachmentErrorMessage.value = '';
 	try {
-		const orgCommunication = await ensureSavedDraft();
+		const orgCommunication = await ensureSavedDraft('governed-file');
 		clearTopLevelError('attachment-precondition');
 		for (const file of files) {
 			const response = await uploadOrgCommunicationAttachment({
@@ -1634,7 +1654,7 @@ async function submitLinkAttachment() {
 	attachmentSubmitting.value = true;
 	attachmentErrorMessage.value = '';
 	try {
-		const orgCommunication = await ensureSavedDraft();
+		const orgCommunication = await ensureSavedDraft('link');
 		clearTopLevelError('attachment-precondition');
 		const response = await addOrgCommunicationLink({
 			org_communication: orgCommunication,
@@ -1722,20 +1742,40 @@ async function submitWithStatus(statusOverride: string) {
 	}
 }
 
-function getAttachmentDraftBlocker() {
-	if (savedCommunicationName.value) return '';
+function getGovernedFileDraftScopeBlocker() {
+	if (isClassEventMode.value || hasGovernedFileAttachments.value) return '';
+	if (!audienceRows.value.length) {
+		if (canTargetWideSchoolScope.value && form.school) {
+			return 'Choose an audience or clear Issuing School before adding governed files. The first governed file locks attachment scope.';
+		}
+		return 'Choose an audience before adding governed files. The first governed file locks attachment scope.';
+	}
+	for (const row of audienceRows.value) {
+		if (row.target_mode === 'School Scope' && !row.school) {
+			return 'Select the school before adding governed files. The first governed file locks attachment scope.';
+		}
+		if (row.target_mode === 'Team' && !row.team) {
+			return 'Select the team before adding governed files. The first governed file locks attachment scope.';
+		}
+		if (row.target_mode === 'Student Group' && !row.student_group) {
+			return 'Select the class or student group before adding governed files. The first governed file locks attachment scope.';
+		}
+	}
+	return '';
+}
+
+function getAttachmentDraftBlocker(purpose: AttachmentDraftPurpose) {
 	if (optionsLoading.value || !options.value) {
 		return 'Communication options are still loading. Wait a moment, then try again.';
 	}
-	if (
-		!isClassEventMode.value &&
-		canTargetWideSchoolScope.value &&
-		!audienceRows.value.length &&
-		form.school
-	) {
-		return 'Choose an audience or clear Issuing School before adding governed files. The first governed file locks attachment scope.';
+	const draftValidationError = draftValidationMessage.value;
+	if (draftValidationError) {
+		return draftValidationError;
 	}
-	return draftValidationMessage.value;
+	if (purpose === 'governed-file') {
+		return getGovernedFileDraftScopeBlocker();
+	}
+	return '';
 }
 
 function resolveActionErrorMessage(error: unknown) {

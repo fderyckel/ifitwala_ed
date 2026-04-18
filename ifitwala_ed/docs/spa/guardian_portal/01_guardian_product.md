@@ -3,13 +3,13 @@
 Status: Active
 Audience: Humans, coding agents
 Scope: `/hub/guardian` portal namespace
-Last updated: 2026-04-17
+Last updated: 2026-04-18
 
 This document is the canonical product contract for the guardian portal rooted at `/hub/guardian`.
 
 ## 1. Product Promise
 
-Status: Partial
+Status: Implemented baseline
 
 Code refs:
 - `ifitwala_ed/hooks.py`
@@ -33,6 +33,7 @@ Rules:
 4. The portal is an awareness surface, not a live gradebook or a staff tool.
 5. Any curriculum-aware expansion must stay a family briefing layer, not a second student LMS.
 6. Curriculum visibility now includes `learning_highlights` on Guardian Home and a child-level learning brief on `/guardian/students/:student_id`.
+7. The current product remains family-first even though `Guardian Portfolio` is still a narrower showcase surface than the rest of the portal.
 
 ## 2. User Model And Interaction Model
 

@@ -1,9 +1,9 @@
 # Enrolled Student Durable Policy Acknowledgement Contract
 
 ## Purpose And Scope
-Status: Planned
-Code refs: `ifitwala_ed/governance/doctype/institutional_policy/institutional_policy.json`, `ifitwala_ed/governance/doctype/policy_version/policy_version.py`, `ifitwala_ed/governance/doctype/policy_acknowledgement/policy_acknowledgement.py`, `ifitwala_ed/api/guardian_policy.py`, `ifitwala_ed/ui-spa/src/pages/guardian/GuardianPolicies.vue`, `ifitwala_ed/ui-spa/src/router/index.ts`
-Test refs: `ifitwala_ed/api/test_guardian_phase2.py`, `ifitwala_ed/ui-spa/src/pages/guardian/__tests__/GuardianPolicies.test.ts`
+Status: Active
+Code refs: `ifitwala_ed/governance/doctype/institutional_policy/institutional_policy.json`, `ifitwala_ed/governance/doctype/policy_version/policy_version.py`, `ifitwala_ed/governance/doctype/policy_acknowledgement/policy_acknowledgement.py`, `ifitwala_ed/api/guardian_policy.py`, `ifitwala_ed/api/student_policy.py`, `ifitwala_ed/ui-spa/src/pages/guardian/GuardianPolicies.vue`, `ifitwala_ed/ui-spa/src/pages/student/StudentPolicies.vue`, `ifitwala_ed/ui-spa/src/router/index.ts`
+Test refs: `ifitwala_ed/api/test_guardian_phase2.py`, `ifitwala_ed/api/test_student_policy.py`, `ifitwala_ed/ui-spa/src/pages/guardian/__tests__/GuardianPolicies.test.ts`, `ifitwala_ed/ui-spa/src/pages/student/__tests__/StudentPolicies.test.ts`
 
 This document is the canonical contract for durable, versioned policy acknowledgement after a student is enrolled.
 
@@ -32,12 +32,12 @@ Current state:
 6. Staff analytics can publish family policy campaigns that create portal communications for selected `Guardian` and `Student` audiences without creating staff tasks.
 7. Family campaign links deep-link into `/hub/guardian/policies` and `/hub/student/policies` with `policy_version` focus so families land on the exact policy card they still need to review.
 
-## Problem Statement
-Status: Planned
+## Current Runtime Constraints
+Status: Active
 Code refs: `ifitwala_ed/ui-spa/src/pages/guardian/GuardianHome.vue`, `ifitwala_ed/api/guardian_home.py`, `ifitwala_ed/ui-spa/src/pages/student/StudentHome.vue`, `ifitwala_ed/ui-spa/src/router/index.ts`
-Test refs: None
+Test refs: `ifitwala_ed/api/test_guardian_home.py`, `ifitwala_ed/ui-spa/src/pages/guardian/__tests__/GuardianHome.test.ts`, `ifitwala_ed/ui-spa/src/pages/student/__tests__/StudentHome.test.ts`
 
-Product gaps to close:
+Runtime guardrails:
 
 1. Family campaign publication must stay aligned with durable acknowledgement truth and must not create a second request/decision layer.
 2. Policies that apply to both `Student` and `Guardian` still need clear dual-obligation reporting and communication copy.
@@ -45,9 +45,9 @@ Product gaps to close:
 4. Campaign copy and portal deep-links must keep families in the acknowledgement flow they already use instead of redirecting them to Desk-style review surfaces.
 
 ## Reuse Model
-Status: Planned
+Status: Implemented
 Code refs: `ifitwala_ed/ui-spa/src/overlays/admissions/ApplicantPolicyAcknowledgeOverlay.vue`, `ifitwala_ed/ui-spa/src/components/focus/StaffPolicyAcknowledgeAction.vue`, `ifitwala_ed/api/admissions_portal.py`, `ifitwala_ed/api/guardian_policy.py`
-Test refs: `ifitwala_ed/api/test_admissions_portal.py`, `ifitwala_ed/api/test_focus_policy_signature.py`, `ifitwala_ed/api/test_guardian_phase2.py`
+Test refs: `ifitwala_ed/api/test_admissions_portal.py`, `ifitwala_ed/api/test_focus_policy_signature.py`, `ifitwala_ed/api/test_guardian_phase2.py`, `ifitwala_ed/api/test_student_policy.py`
 
 Rules:
 
@@ -58,9 +58,9 @@ Rules:
 5. The first slice should prefer a shared portal-facing signature component over duplicating guardian and student form logic.
 
 ## Audience And Obligation Contract
-Status: Planned
+Status: Implemented
 Code refs: `ifitwala_ed/governance/doctype/institutional_policy/institutional_policy.json`, `ifitwala_ed/governance/policy_utils.py`, `ifitwala_ed/governance/doctype/policy_acknowledgement/policy_acknowledgement.py`
-Test refs: None
+Test refs: `ifitwala_ed/api/test_guardian_phase2.py`, `ifitwala_ed/api/test_student_policy.py`
 
 Rules:
 
@@ -71,9 +71,9 @@ Rules:
 5. If the product later needs “either/or” completion, that must be documented as a separate signer-rule contract before implementation.
 
 ## UX Contract
-Status: Planned
+Status: Implemented
 Code refs: `ifitwala_ed/ui-spa/src/pages/guardian/GuardianHome.vue`, `ifitwala_ed/ui-spa/src/pages/guardian/GuardianPolicies.vue`, `ifitwala_ed/ui-spa/src/pages/student/StudentHome.vue`, `ifitwala_ed/ui-spa/src/components/PortalSidebar.vue`, `ifitwala_ed/ui-spa/src/router/index.ts`
-Test refs: None
+Test refs: `ifitwala_ed/ui-spa/src/pages/guardian/__tests__/GuardianHome.test.ts`, `ifitwala_ed/ui-spa/src/pages/guardian/__tests__/GuardianPolicies.test.ts`, `ifitwala_ed/ui-spa/src/pages/student/__tests__/StudentHome.test.ts`, `ifitwala_ed/ui-spa/src/pages/student/__tests__/StudentPolicies.test.ts`
 
 Rules:
 
@@ -91,9 +91,9 @@ Rules:
 6. Guardian and student durable policy pages should feel like sibling surfaces, not unrelated implementations.
 
 ## Permission And Visibility Contract
-Status: Planned
+Status: Implemented
 Code refs: `ifitwala_ed/api/guardian_policy.py`, `ifitwala_ed/governance/doctype/policy_acknowledgement/policy_acknowledgement.py`, `ifitwala_ed/governance/policy_utils.py`
-Test refs: `ifitwala_ed/api/test_guardian_phase2.py`, `ifitwala_ed/governance/doctype/policy_acknowledgement/test_policy_acknowledgement.py`
+Test refs: `ifitwala_ed/api/test_guardian_phase2.py`, `ifitwala_ed/api/test_student_policy.py`, `ifitwala_ed/governance/doctype/policy_acknowledgement/test_policy_acknowledgement.py`
 
 Rules:
 
@@ -104,7 +104,7 @@ Rules:
 5. A user who can view a student in another workflow but lacks signing authority must not receive a policy action for that child.
 
 ## API And Data Contract
-Status: Partial
+Status: Implemented
 Code refs: `ifitwala_ed/api/guardian_policy.py`, `ifitwala_ed/api/student_policy.py`, `ifitwala_ed/api/policy_signature.py`, `ifitwala_ed/governance/doctype/policy_acknowledgement/policy_acknowledgement.py`, `ifitwala_ed/ui-spa/src/types/contracts/guardian/get_guardian_policy_overview.ts`, `ifitwala_ed/ui-spa/src/types/contracts/student/get_student_policy_overview.ts`, `ifitwala_ed/ui-spa/src/types/contracts/policy_signature/get_family_policy_campaign_options.ts`, `ifitwala_ed/ui-spa/src/types/contracts/policy_signature/publish_family_policy_campaign.ts`
 Test refs: `ifitwala_ed/api/test_guardian_phase2.py`, `ifitwala_ed/api/test_student_policy.py`, `ifitwala_ed/api/test_policy_family_campaign.py`
 
@@ -140,9 +140,9 @@ Rules:
 7. Publishing a family campaign does not create `ToDo` rows, does not snapshot compliance targets, and does not replace `Policy Acknowledgement` as evidence.
 
 ## Home Surface And Concurrency Contract
-Status: Planned
+Status: Implemented
 Code refs: `ifitwala_ed/api/guardian_home.py`, `ifitwala_ed/ui-spa/src/types/contracts/guardian/get_guardian_home_snapshot.ts`, `ifitwala_ed/ui-spa/src/pages/student/StudentHome.vue`, `ifitwala_ed/docs/high_concurrency_contract.md`
-Test refs: None
+Test refs: `ifitwala_ed/api/test_guardian_home.py`, `ifitwala_ed/ui-spa/src/pages/guardian/__tests__/GuardianHome.test.ts`, `ifitwala_ed/ui-spa/src/pages/student/__tests__/StudentHome.test.ts`
 
 Rules:
 
@@ -153,7 +153,7 @@ Rules:
 5. The home integration must stay lightweight enough for hot-path portal loads.
 
 ## Out Of Scope
-Status: Planned
+Status: Active
 Code refs: `ifitwala_ed/docs/files_and_policies/policy_04_family_signature_and_consent_contract.md`, `ifitwala_ed/docs/files_and_policies/policy_05_phase2a_guardian_first_implementation_plan.md`
 Test refs: None
 
@@ -165,23 +165,26 @@ Not in this contract:
 4. A new schema field for enrolled-student signer rules.
 5. Student co-sign for mutable consent or event permission flows.
 
-## Delivery Plan
-Status: Planned
-Code refs: `ifitwala_ed/ui-spa/src/pages/guardian/GuardianPolicies.vue`, `ifitwala_ed/ui-spa/src/pages/student/StudentHome.vue`, `ifitwala_ed/ui-spa/src/components/PortalSidebar.vue`, `ifitwala_ed/api/guardian_home.py`
-Test refs: None
+## Implementation Reality
+Status: Implemented
+Code refs: `ifitwala_ed/api/guardian_policy.py`, `ifitwala_ed/api/student_policy.py`, `ifitwala_ed/api/guardian_home.py`, `ifitwala_ed/ui-spa/src/components/PortalSidebar.vue`, `ifitwala_ed/ui-spa/src/pages/guardian/GuardianPolicies.vue`, `ifitwala_ed/ui-spa/src/pages/student/StudentPolicies.vue`, `ifitwala_ed/ui-spa/src/pages/guardian/GuardianHome.vue`, `ifitwala_ed/ui-spa/src/pages/student/StudentHome.vue`
+Test refs: `ifitwala_ed/api/test_guardian_home.py`, `ifitwala_ed/api/test_guardian_phase2.py`, `ifitwala_ed/api/test_student_policy.py`, `ifitwala_ed/ui-spa/src/pages/guardian/__tests__/GuardianHome.test.ts`, `ifitwala_ed/ui-spa/src/pages/guardian/__tests__/GuardianPolicies.test.ts`, `ifitwala_ed/ui-spa/src/pages/student/__tests__/StudentHome.test.ts`, `ifitwala_ed/ui-spa/src/pages/student/__tests__/StudentPolicies.test.ts`
 
-Recommended sequence:
+Implemented now:
 
-1. Document the enrolled-student durable acknowledgement contract and correct portal behavior drift.
-2. Add student durable policy API endpoints and contract types.
-3. Add `/student/policies` and student sidebar navigation.
-4. Add pending durable policy attention/counts to Student Home.
-5. Extend Guardian Home with pending durable policy attention/counts.
-6. Extract a shared portal durable-policy signing component if duplication becomes material.
-7. Add backend and SPA regression coverage for both portals.
+1. Student durable policy API endpoints and contract types are live.
+2. `/student/policies` and student sidebar navigation are live.
+3. Guardian and Student Home both surface pending durable policy counts and action links through bounded bootstrap payloads.
+4. Guardian and student policy pages support deep-link focus with `policy_version`.
+5. Backend and SPA regression coverage exist for both portal audiences.
+
+Still intentionally separate:
+
+1. Durable acknowledgement continues to use audience-specific pages and APIs rather than one merged portal surface.
+2. Mutable family consent remains outside this contract.
 
 ## Risks
-Status: Planned
+Status: Active
 Code refs: `ifitwala_ed/governance/doctype/policy_acknowledgement/policy_acknowledgement.py`, `ifitwala_ed/api/guardian_policy.py`, `ifitwala_ed/ui-spa/src/pages/guardian/GuardianPolicies.vue`
 Test refs: None
 
@@ -194,16 +197,16 @@ Risks:
 5. If family campaign publication starts being treated as the obligation itself, reporting will drift away from durable acknowledgement truth.
 
 ## Contract Matrix
-Status: Planned
-Code refs: `ifitwala_ed/governance/doctype/institutional_policy/institutional_policy.json`, `ifitwala_ed/governance/doctype/policy_version/policy_version.py`, `ifitwala_ed/governance/doctype/policy_acknowledgement/policy_acknowledgement.py`, `ifitwala_ed/api/guardian_policy.py`, `ifitwala_ed/api/guardian_home.py`, `ifitwala_ed/ui-spa/src/router/index.ts`, `ifitwala_ed/ui-spa/src/components/PortalSidebar.vue`, `ifitwala_ed/ui-spa/src/pages/guardian/GuardianPolicies.vue`, `ifitwala_ed/ui-spa/src/pages/guardian/GuardianHome.vue`, `ifitwala_ed/ui-spa/src/pages/student/StudentHome.vue`
-Test refs: `ifitwala_ed/api/test_guardian_phase2.py`, `ifitwala_ed/ui-spa/src/pages/guardian/__tests__/GuardianPolicies.test.ts`
+Status: Implemented
+Code refs: `ifitwala_ed/governance/doctype/institutional_policy/institutional_policy.json`, `ifitwala_ed/governance/doctype/policy_version/policy_version.py`, `ifitwala_ed/governance/doctype/policy_acknowledgement/policy_acknowledgement.py`, `ifitwala_ed/api/guardian_policy.py`, `ifitwala_ed/api/student_policy.py`, `ifitwala_ed/api/policy_signature.py`, `ifitwala_ed/api/guardian_home.py`, `ifitwala_ed/ui-spa/src/router/index.ts`, `ifitwala_ed/ui-spa/src/components/PortalSidebar.vue`, `ifitwala_ed/ui-spa/src/pages/guardian/GuardianPolicies.vue`, `ifitwala_ed/ui-spa/src/pages/student/StudentPolicies.vue`, `ifitwala_ed/ui-spa/src/pages/guardian/GuardianHome.vue`, `ifitwala_ed/ui-spa/src/pages/student/StudentHome.vue`
+Test refs: `ifitwala_ed/api/test_guardian_home.py`, `ifitwala_ed/api/test_guardian_phase2.py`, `ifitwala_ed/api/test_student_policy.py`, `ifitwala_ed/api/test_policy_family_campaign.py`, `ifitwala_ed/ui-spa/src/pages/guardian/__tests__/GuardianHome.test.ts`, `ifitwala_ed/ui-spa/src/pages/guardian/__tests__/GuardianPolicies.test.ts`, `ifitwala_ed/ui-spa/src/pages/student/__tests__/StudentHome.test.ts`, `ifitwala_ed/ui-spa/src/pages/student/__tests__/StudentPolicies.test.ts`
 
-| Layer | Current owner | Planned enrolled-student durable acknowledgement extension | Status |
+| Layer | Current owner | Current enrolled-student durable acknowledgement runtime | Status |
 |---|---|---|---|
-| Schema / DocType | `Institutional Policy`, `Policy Version`, `Policy Acknowledgement` | Reuse existing versioned acknowledgement model; no new DocTypes in first slice | Planned |
-| Controller / workflow logic | `policy_acknowledgement.py`, `guardian_policy.py`, `student_policy.py`, `policy_signature.py` | Guardian and student portal acknowledgement flows stay distinct, while staff family campaigns publish portal notices only | Partial |
-| API endpoints | `get_guardian_policy_overview`, `acknowledge_guardian_policy`, `get_student_policy_overview`, `acknowledge_student_policy`, `get_family_policy_campaign_options`, `publish_family_policy_campaign` | Named durable policy APIs plus staff-side family campaign publication | Partial |
-| SPA / UI surfaces | Guardian and student durable policy pages plus home attention cards | Staff analytics can publish family campaigns and portal pages honor `policy_version` deep-link focus | Partial |
-| Reports / dashboards | Existing durable acknowledgement evidence plus staff policy analytics | Portal counts and analytics remain version-acknowledgement focused; family campaign publication is notification-only | Partial |
-| Scheduler / background jobs | None | None required for the first durable acknowledgement slice | Planned |
-| Tests | Guardian backend and SPA coverage | Add student portal coverage and home-surface regressions | Planned |
+| Schema / DocType | `Institutional Policy`, `Policy Version`, `Policy Acknowledgement` | Reuses the existing versioned acknowledgement model; no extra durable-policy DocTypes are required in the current slice | Implemented |
+| Controller / workflow logic | `policy_acknowledgement.py`, `guardian_policy.py`, `student_policy.py`, `policy_signature.py` | Guardian and student portal acknowledgement flows stay distinct, while staff family campaigns publish portal notices only | Implemented |
+| API endpoints | `get_guardian_policy_overview`, `acknowledge_guardian_policy`, `get_student_policy_overview`, `acknowledge_student_policy`, `get_family_policy_campaign_options`, `publish_family_policy_campaign` | Named durable policy APIs plus staff-side family campaign publication | Implemented |
+| SPA / UI surfaces | Guardian and student durable policy pages plus home attention cards | Staff analytics can publish family campaigns and portal pages honor `policy_version` deep-link focus | Implemented |
+| Reports / dashboards | Existing durable acknowledgement evidence plus staff policy analytics | Portal counts and analytics remain version-acknowledgement focused; family campaign publication is notification-only | Implemented |
+| Scheduler / background jobs | None | None required for the current durable acknowledgement scope | Implemented |
+| Tests | Guardian and student backend coverage, portal coverage, and home-surface regressions | Durable acknowledgement, home summaries, and family campaign publication are covered in backend and SPA tests | Implemented |
