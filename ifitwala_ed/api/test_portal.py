@@ -43,7 +43,11 @@ class TestPortalIdentity(FrappeTestCase):
         self.assertEqual(payload["full_name"], "Mina Dar")
         self.assertEqual(payload["email"], "guardian@example.com")
         self.assertEqual(payload["image_url"], "/files/guardian-thumb.webp")
-        image_mock.assert_called_once_with("GRD-0001", original_url="/private/files/guardian-original.png")
+        image_mock.assert_called_once_with(
+            "GRD-0001",
+            original_url="/private/files/guardian-original.png",
+            fallback_to_original=False,
+        )
 
     def test_get_guardian_portal_identity_falls_back_to_user_identity_when_guardian_row_missing(self):
         with (

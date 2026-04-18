@@ -131,3 +131,107 @@ class TestGuardianImageUtils(FrappeTestCase):
             "/api/method/ifitwala_ed.api.file_access.download_guardian_file"
             "?file=FILE-THUMB&context_doctype=Guardian&context_name=GRD-0001",
         )
+
+    def test_ensure_guardian_profile_image_reuses_current_governed_source_and_syncs_field(self):
+        guardian_doc = frappe._dict({"name": "GRD-0001", "organization": "ORG-0001"})
+        current_file_doc = frappe._dict(
+            {
+                "name": "FILE-GRD-CURRENT",
+                "file_url": "/private/files/guardian-current.png",
+            }
+        )
+        classification = {
+            "primary_subject_type": "Guardian",
+            "primary_subject_id": "GRD-0001",
+            "data_class": "identity_image",
+            "purpose": "guardian_profile_display",
+            "retention_policy": "until_school_exit_plus_6m",
+            "slot": "profile_image",
+            "organization": "ORG-0001",
+            "school": None,
+        }
+
+        with (
+            patch(
+                "ifitwala_ed.utilities.image_utils._get_current_governed_profile_file", return_value=current_file_doc
+            ),
+            patch("ifitwala_ed.utilities.image_utils.frappe.get_doc", return_value=guardian_doc),
+            patch("ifitwala_ed.integrations.drive.media.build_guardian_image_contract", return_value=classification),
+            patch("ifitwala_ed.utilities.image_utils._generate_guardian_derivatives") as generate_derivatives,
+            patch("ifitwala_ed.utilities.image_utils.frappe.db.set_value") as set_value,
+        ):
+            image_url = image_utils.ensure_guardian_profile_image("GRD-0001")
+
+        self.assertEqual(image_url, "/private/files/guardian-current.png")
+        generate_derivatives.assert_called_once_with(current_file_doc)
+        set_value.assert_called_once_with(
+            "Guardian",
+            "GRD-0001",
+            {
+                "guardian_image": "/private/files/guardian-current.png",
+                "organization": "ORG-0001",
+            },
+            update_modified=False,
+        )
+
+    def test_ensure_guardian_profile_image_classifies_existing_guardian_file_when_unclassified(self):
+        guardian_doc = frappe._dict({"name": "GRD-0001", "organization": "ORG-0001"})
+        source_file_doc = frappe._dict(
+            {
+                "name": "FILE-GRD-0001",
+                "attached_to_doctype": "Guardian",
+                "attached_to_name": "GRD-0001",
+                "attached_to_field": "guardian_image",
+                "file_url": "/private/files/guardian-source.png",
+                "file_name": "guardian-source.png",
+            }
+        )
+        classification = {
+            "primary_subject_type": "Guardian",
+            "primary_subject_id": "GRD-0001",
+            "data_class": "identity_image",
+            "purpose": "guardian_profile_display",
+            "retention_policy": "until_school_exit_plus_6m",
+            "slot": "profile_image",
+            "organization": "ORG-0001",
+            "school": None,
+        }
+
+        def fake_get_value(doctype, filters, fieldname, as_dict=False):
+            if doctype == "File Classification" and filters == {
+                "primary_subject_type": "Guardian",
+                "primary_subject_id": "GRD-0001",
+                "slot": "profile_image",
+                "is_current_version": 1,
+            }:
+                return None
+            if doctype == "File Classification" and filters == {"file": "FILE-GRD-0001"}:
+                return None
+            raise AssertionError(f"Unexpected get_value call: {doctype} {filters} {fieldname}")
+
+        with (
+            patch("ifitwala_ed.utilities.image_utils.frappe.get_doc", return_value=guardian_doc),
+            patch("ifitwala_ed.integrations.drive.media.build_guardian_image_contract", return_value=classification),
+            patch("ifitwala_ed.utilities.image_utils.frappe.db.get_value", side_effect=fake_get_value),
+            patch("ifitwala_ed.utilities.image_utils._resolve_unique_file_doc_by_url", return_value=source_file_doc),
+            patch(
+                "ifitwala_ed.utilities.file_dispatcher.classify_existing_file", return_value=source_file_doc
+            ) as classify_file,
+            patch("ifitwala_ed.utilities.image_utils.frappe.db.set_value") as set_value,
+        ):
+            image_url = image_utils.ensure_guardian_profile_image(
+                "GRD-0001",
+                original_url="/private/files/guardian-source.png",
+            )
+
+        self.assertEqual(image_url, "/private/files/guardian-source.png")
+        classify_file.assert_called_once()
+        set_value.assert_called_once_with(
+            "Guardian",
+            "GRD-0001",
+            {
+                "guardian_image": "/private/files/guardian-source.png",
+                "organization": "ORG-0001",
+            },
+            update_modified=False,
+        )

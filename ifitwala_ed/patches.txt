@@ -22,3 +22,4 @@ ifitwala_ed.patches.publish_default_school_letter_head
 ifitwala_ed.patches.backfill_default_chart_of_accounts
 ifitwala_ed.patches.backfill_standard_account_types
 ifitwala_ed.patches.backfill_default_leave_types
+ifitwala_ed.patches.backfill_guardian_profile_images

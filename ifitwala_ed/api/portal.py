@@ -238,6 +238,7 @@ def _resolve_guardian_row_for_user(user: str):
         guardian["guardian_image"] = get_preferred_guardian_image_url(
             guardian.get("name"),
             original_url=guardian.get("guardian_image"),
+            fallback_to_original=False,
         )
     return guardian
 

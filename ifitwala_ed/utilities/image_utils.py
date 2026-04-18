@@ -677,12 +677,14 @@ def get_preferred_guardian_image_url(
     *,
     original_url: str | None = None,
     slots: Sequence[str] = GUARDIAN_VARIANT_PRIORITY,
+    fallback_to_original: bool = True,
 ) -> str | None:
     return _get_preferred_governed_image_url(
         "Guardian",
         guardian_name,
         original_url=original_url,
         slots=slots,
+        fallback_to_original=fallback_to_original,
     )
 
 
@@ -709,6 +711,199 @@ def apply_preferred_guardian_images(
         image_field=image_field,
         slots=slots,
     )
+
+
+def _read_managed_file_bytes(file_doc, *, log_label: str) -> bytes | None:
+    if not file_doc:
+        return None
+
+    original_path = _resolve_governed_original_path(file_doc)
+    if original_path and os.path.exists(original_path):
+        try:
+            with open(original_path, "rb") as handle:
+                return handle.read()
+        except OSError:
+            return None
+
+    return _download_drive_original(file_doc, log_title=f"{log_label} Image Download Failed")
+
+
+def _get_current_governed_profile_file(*, primary_subject_type: str, subject_name: str) -> object | None:
+    resolved_subject = str(subject_name or "").strip()
+    if not resolved_subject:
+        return None
+
+    file_name = frappe.db.get_value(
+        "File Classification",
+        {
+            "primary_subject_type": primary_subject_type,
+            "primary_subject_id": resolved_subject,
+            "slot": "profile_image",
+            "is_current_version": 1,
+        },
+        "file",
+    )
+    if not file_name:
+        return None
+    if not frappe.db.exists("File", file_name):
+        return None
+    return frappe.get_doc("File", file_name)
+
+
+def _resolve_unique_file_doc_by_url(file_url: str | None) -> object | None:
+    raw_url = str(file_url or "").strip()
+    if not raw_url:
+        return None
+
+    matches = frappe.get_all(
+        "File",
+        filters={"file_url": raw_url},
+        fields=["name"],
+        limit=2,
+    )
+    if len(matches) != 1:
+        return None
+
+    return frappe.get_doc("File", matches[0]["name"])
+
+
+def _sync_guardian_profile_image_field(*, guardian_name: str, file_url: str | None, organization: str | None) -> None:
+    resolved_guardian = str(guardian_name or "").strip()
+    resolved_url = str(file_url or "").strip()
+    resolved_organization = str(organization or "").strip()
+    if not resolved_guardian or not resolved_url:
+        return
+
+    frappe.db.set_value(
+        "Guardian",
+        resolved_guardian,
+        {
+            "guardian_image": resolved_url,
+            "organization": resolved_organization or None,
+        },
+        update_modified=False,
+    )
+
+
+def ensure_guardian_profile_image(
+    guardian_name: str | None,
+    *,
+    original_url: str | None = None,
+    source_file_name: str | None = None,
+    organization: str | None = None,
+    upload_source: str = "API",
+) -> str | None:
+    resolved_guardian = str(guardian_name or "").strip()
+    if not resolved_guardian:
+        return None
+
+    current_file_doc = _get_current_governed_profile_file(
+        primary_subject_type="Guardian",
+        subject_name=resolved_guardian,
+    )
+
+    if current_file_doc:
+        current_classification = _get_file_classification(current_file_doc)
+        _generate_guardian_derivatives(current_file_doc)
+        _sync_guardian_profile_image_field(
+            guardian_name=resolved_guardian,
+            file_url=current_file_doc.file_url,
+            organization=(current_classification.organization if current_classification else organization),
+        )
+        return current_file_doc.file_url
+
+    guardian_doc = frappe.get_doc("Guardian", resolved_guardian)
+    if organization and not (guardian_doc.organization or "").strip():
+        guardian_doc.organization = organization
+
+    from ifitwala_ed.integrations.drive.media import build_guardian_image_contract
+    from ifitwala_ed.utilities import file_dispatcher
+
+    classification = build_guardian_image_contract(guardian_doc)
+    classification["upload_source"] = upload_source
+
+    source_file_doc = None
+    resolved_source_file_name = str(source_file_name or "").strip()
+    if resolved_source_file_name and frappe.db.exists("File", resolved_source_file_name):
+        source_file_doc = frappe.get_doc("File", resolved_source_file_name)
+    else:
+        raw_url = str(original_url or "").strip()
+        if raw_url:
+            guardian_file_name = frappe.db.get_value(
+                "File",
+                {
+                    "attached_to_doctype": "Guardian",
+                    "attached_to_name": resolved_guardian,
+                    "file_url": raw_url,
+                },
+                "name",
+            )
+            if guardian_file_name:
+                source_file_doc = frappe.get_doc("File", guardian_file_name)
+            else:
+                source_file_doc = _resolve_unique_file_doc_by_url(raw_url)
+
+    if not source_file_doc:
+        return None
+
+    attached_to_field = (getattr(source_file_doc, "attached_to_field", None) or "").strip()
+    source_classification_name = frappe.db.get_value("File Classification", {"file": source_file_doc.name}, "name")
+    if (
+        source_file_doc.attached_to_doctype == "Guardian"
+        and source_file_doc.attached_to_name == resolved_guardian
+        and not source_classification_name
+        and attached_to_field in {"", "guardian_image"}
+    ):
+        if not attached_to_field:
+            frappe.db.set_value(
+                "File", source_file_doc.name, "attached_to_field", "guardian_image", update_modified=False
+            )
+            source_file_doc.attached_to_field = "guardian_image"
+        current_file_doc = file_dispatcher.classify_existing_file(
+            file_doc=source_file_doc,
+            classification=classification,
+        )
+    else:
+        content = _read_managed_file_bytes(source_file_doc, log_label="Guardian")
+        if not content:
+            frappe.log_error(
+                frappe.as_json(
+                    {
+                        "error": "guardian_profile_image_source_unreadable",
+                        "guardian": resolved_guardian,
+                        "source_file": source_file_doc.name,
+                        "source_file_url": source_file_doc.file_url,
+                    },
+                    indent=2,
+                ),
+                "Guardian Profile Image Sync Failed",
+            )
+            return None
+
+        filename = (source_file_doc.file_name or "").strip() or os.path.basename(
+            source_file_doc.file_url or "guardian_profile_image"
+        )
+        current_file_doc = file_dispatcher.create_and_classify_file(
+            file_kwargs={
+                "attached_to_doctype": "Guardian",
+                "attached_to_name": resolved_guardian,
+                "attached_to_field": "guardian_image",
+                "file_name": filename,
+                "content": content,
+                "is_private": 1,
+            },
+            classification={
+                **classification,
+                "source_file": source_file_doc.name,
+            },
+        )
+
+    _sync_guardian_profile_image_field(
+        guardian_name=resolved_guardian,
+        file_url=current_file_doc.file_url,
+        organization=classification.get("organization"),
+    )
+    return current_file_doc.file_url
 
 
 def _generate_governed_profile_derivatives(file_doc, *, doctype: str, fieldname: str, log_label: str):

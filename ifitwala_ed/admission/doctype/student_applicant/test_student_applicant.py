@@ -2,11 +2,13 @@
 # Copyright (c) 2024, fdR and Contributors
 # See license.txt
 
+import io
 from unittest.mock import patch
 from urllib.parse import parse_qs, urlparse
 
 import frappe
 from frappe.tests.utils import FrappeTestCase
+from PIL import Image
 
 from ifitwala_ed.admission.doctype.student_applicant.student_applicant import academic_year_intent_query
 
@@ -1243,6 +1245,108 @@ class TestStudentApplicant(FrappeTestCase):
                 )
             )
         )
+
+    def test_upgrade_identity_promotes_guardian_image_into_governed_guardian_profile_image(self):
+        applicant = self._create_student_applicant(student_joining_date=frappe.utils.nowdate())
+        self._create_applicant_health_profile(applicant.name)
+
+        guardian_email = f"guardian-image-{frappe.generate_hash(length=8)}@example.com"
+        applicant.append(
+            "guardians",
+            {
+                "relationship": "Mother",
+                "can_consent": 1,
+                "is_primary_guardian": 1,
+                "guardian_first_name": "Image",
+                "guardian_last_name": "Guardian",
+                "guardian_email": guardian_email,
+                "guardian_mobile_phone": "+14155550157",
+                "guardian_gender": "Female",
+            },
+        )
+        applicant.save(ignore_permissions=True)
+
+        guardian_row = applicant.get("guardians")[0]
+        image_buffer = io.BytesIO()
+        Image.new("RGB", (1200, 1200), color=(20, 80, 140)).save(image_buffer, "PNG")
+        source_file = frappe.get_doc(
+            {
+                "doctype": "File",
+                "attached_to_doctype": "Student Applicant Guardian",
+                "attached_to_name": guardian_row.name,
+                "attached_to_field": "guardian_image",
+                "file_name": "guardian-source.png",
+                "is_private": 1,
+                "content": image_buffer.getvalue(),
+            }
+        ).insert(ignore_permissions=True)
+        self._created.append(("File", source_file.name))
+
+        guardian_row.guardian_image = source_file.file_url
+        applicant.save(ignore_permissions=True)
+        self._advance_applicant_to_approved(applicant)
+
+        student_name = applicant.promote_to_student()
+        self._created.append(("Student", student_name))
+
+        original_exists = frappe.db.exists
+
+        def exists_with_enrollment(doctype, filters=None, *args, **kwargs):
+            if doctype == "Program Enrollment" and isinstance(filters, dict):
+                if filters.get("student") == student_name and int(filters.get("archived") or 0) == 0:
+                    return "PE-MOCK-0003"
+            return original_exists(doctype, filters, *args, **kwargs)
+
+        with patch.object(frappe.db, "exists", side_effect=exists_with_enrollment):
+            result = applicant.upgrade_identity()
+
+        self.assertTrue(result.get("ok"))
+
+        guardian_name = frappe.db.get_value("Guardian", {"guardian_email": guardian_email}, "name")
+        self.assertTrue(bool(guardian_name))
+        self._created.append(("Guardian", guardian_name))
+
+        guardian_doc = frappe.get_doc("Guardian", guardian_name)
+        profile_classification_name = frappe.db.get_value(
+            "File Classification",
+            {
+                "primary_subject_type": "Guardian",
+                "primary_subject_id": guardian_name,
+                "slot": "profile_image",
+                "is_current_version": 1,
+            },
+            "name",
+        )
+        self.assertTrue(bool(profile_classification_name))
+        self._created.append(("File Classification", profile_classification_name))
+
+        profile_classification = frappe.get_doc("File Classification", profile_classification_name)
+        self.assertEqual(profile_classification.purpose, "guardian_profile_display")
+        self.assertEqual(profile_classification.source_file, source_file.name)
+
+        profile_file = frappe.get_doc("File", profile_classification.file)
+        self._created.append(("File", profile_file.name))
+        self.assertEqual(profile_file.attached_to_doctype, "Guardian")
+        self.assertEqual(profile_file.attached_to_name, guardian_name)
+        self.assertEqual(profile_file.attached_to_field, "guardian_image")
+        self.assertEqual(guardian_doc.guardian_image, profile_file.file_url)
+
+        derivative_rows = frappe.get_all(
+            "File Classification",
+            filters={
+                "primary_subject_type": "Guardian",
+                "primary_subject_id": guardian_name,
+                "source_file": profile_file.name,
+            },
+            fields=["name", "slot", "file"],
+        )
+        derivative_slots = {row["slot"] for row in derivative_rows}
+        self.assertTrue(
+            {"profile_image_thumb", "profile_image_card", "profile_image_medium"}.issubset(derivative_slots)
+        )
+        for row in derivative_rows:
+            self._created.append(("File Classification", row["name"]))
+            self._created.append(("File", row["file"]))
 
     def test_promote_to_student_carries_non_signing_guardian_authority(self):
         guardian = self._create_guardian(

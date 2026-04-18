@@ -607,9 +607,9 @@ Server-side enforcement:
 
 ---
 
-## Governed derivative images (Employee only)
+## Governed derivative images (Employee, Guardian, Student)
 
-Employee profile images must generate **governed derivatives** for UI use.
+Employee, Guardian, and Student profile images must generate **governed derivatives** for UI use.
 
 ### Sizes (locked)
 
@@ -637,7 +637,15 @@ Each derivative is a **real File + File Classification** with:
 
 * No derivative may exist without classification
 * Derivative generation is **idempotent** per source file
-* Employee derivatives are limited to the three sizes above (no hero)
+* Profile-image derivatives are limited to the three sizes above (no hero)
+
+### Guardian profile images
+
+Guardian profile images follow the same derivative contract:
+
+* canonical derivative slots: `profile_image_thumb`, `profile_image_card`, `profile_image_medium`
+* guardian portal/avatar consumers must resolve derivatives canonically and must not prefer the original full-size image when a derivative exists
+* when admissions guardian photos are promoted into durable `Guardian` records, the runtime must materialize a Guardian-owned governed `profile_image` source and generate the canonical derivatives from that source
 
 ---
 

@@ -41,6 +41,7 @@ from ifitwala_ed.governance.policy_utils import (
     has_applicant_policy_acknowledgement,
 )
 from ifitwala_ed.utilities import file_dispatcher
+from ifitwala_ed.utilities.image_utils import ensure_guardian_profile_image
 from ifitwala_ed.utilities.school_tree import get_school_scope_for_academic_year
 
 FAMILY_ROLES = {ADMISSIONS_FAMILY_ROLE}
@@ -996,6 +997,11 @@ class StudentApplicant(Document):
         last_name = (row.get("guardian_last_name") or "").strip()
         email = normalize_email_value(row.get("guardian_email"))
         mobile = (row.get("guardian_mobile_phone") or "").strip()
+        source_guardian_image = (row.get("guardian_image") or "").strip()
+        source_file_name = self._resolve_applicant_guardian_image_source_file_name(
+            guardian_row_name=(row.get("name") or "").strip(),
+            guardian_image=source_guardian_image,
+        )
 
         if not first_name:
             frappe.throw(_("Guardian first name is required in applicant guardians."))
@@ -1049,6 +1055,12 @@ class StudentApplicant(Document):
             if changed:
                 guardian.save(ignore_permissions=True)
 
+            self._sync_guardian_profile_image_from_applicant_row(
+                guardian=guardian,
+                source_guardian_image=source_guardian_image,
+                source_file_name=source_file_name,
+            )
+
             contact_name = (row.get("contact") or "").strip() or None
             if not contact_name:
                 contact_name = (
@@ -1081,11 +1093,77 @@ class StudentApplicant(Document):
             }
         ).insert(ignore_permissions=True)
 
+        self._sync_guardian_profile_image_from_applicant_row(
+            guardian=guardian,
+            source_guardian_image=source_guardian_image,
+            source_file_name=source_file_name,
+        )
+
         return {
             "guardian": guardian,
             "relationship": row.get("relationship") or "Other",
             "contact": (row.get("contact") or "").strip() or None,
         }
+
+    def _resolve_applicant_guardian_image_source_file_name(
+        self,
+        *,
+        guardian_row_name: str | None,
+        guardian_image: str | None,
+    ) -> str | None:
+        resolved_row_name = (guardian_row_name or "").strip()
+        resolved_image = (guardian_image or "").strip()
+        if not resolved_row_name or not resolved_image:
+            return None
+
+        file_name = frappe.db.get_value(
+            "File",
+            {
+                "attached_to_doctype": "Student Applicant Guardian",
+                "attached_to_name": resolved_row_name,
+                "file_url": resolved_image,
+            },
+            "name",
+        )
+        resolved_file_name = (file_name or "").strip()
+        return resolved_file_name or None
+
+    def _sync_guardian_profile_image_from_applicant_row(
+        self,
+        *,
+        guardian,
+        source_guardian_image: str | None,
+        source_file_name: str | None,
+    ) -> None:
+        if not (source_guardian_image or "").strip():
+            return
+
+        try:
+            synced_url = ensure_guardian_profile_image(
+                guardian.name,
+                original_url=source_guardian_image,
+                source_file_name=source_file_name,
+                organization=self.organization,
+                upload_source="API",
+            )
+            if synced_url:
+                guardian.guardian_image = synced_url
+                if self.organization:
+                    guardian.organization = self.organization
+        except Exception:
+            frappe.log_error(
+                frappe.as_json(
+                    {
+                        "error": "guardian_profile_image_sync_failed",
+                        "student_applicant": self.name,
+                        "guardian": getattr(guardian, "name", None),
+                        "source_guardian_image": source_guardian_image,
+                        "source_file_name": source_file_name,
+                    },
+                    indent=2,
+                ),
+                "Guardian Profile Image Sync Failed",
+            )
 
     def _ensure_guardian_contact_links(self, *, guardian, student, contact_name: str | None = None):
         resolved_contact = (contact_name or "").strip()
