@@ -180,6 +180,8 @@ For queued jobs and scheduler work:
 - failures must be isolated
 - execution must be observable
 - overlap/replay risk must be considered
+- semantic queue labels are not enough by themselves; every `frappe.enqueue(...)` call must target a runtime-valid queue or normalize to one at the enqueue boundary
+- if a mutation endpoint enqueues post-finalize or post-save work, missing custom worker topology must not become a browser-visible failure unless the workflow contract explicitly says the mutation is blocked
 
 Schedulers should dispatch chunks, not process giant workloads inline.
 

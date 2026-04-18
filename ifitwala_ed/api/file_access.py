@@ -43,6 +43,25 @@ CONTEXT_EMPLOYEE = "Employee"
 CONTEXT_ORG_COMMUNICATION = "Org Communication"
 
 
+def _is_external_url(value: str | None) -> bool:
+    raw = (value or "").strip()
+    return raw.startswith(("http://", "https://"))
+
+
+def _is_public_site_file_url(value: str | None) -> bool:
+    raw = (value or "").strip()
+    return raw.startswith("/files/")
+
+
+def _resolve_file_name_from_url(file_url: str | None) -> str | None:
+    raw_url = (file_url or "").strip()
+    if not raw_url or _is_external_url(raw_url):
+        return None
+    resolved = frappe.db.get_value("File", {"file_url": raw_url}, "name")
+    resolved_name = (resolved or "").strip()
+    return resolved_name or None
+
+
 def build_admissions_file_open_url(
     *,
     file_name: str,
@@ -69,12 +88,12 @@ def resolve_admissions_file_open_url(
     context_name: str | None = None,
 ) -> str | None:
     raw_url = (file_url or "").strip()
-    if raw_url.startswith(("http://", "https://")):
+    if _is_external_url(raw_url):
         return raw_url
 
-    resolved_name = (file_name or "").strip()
+    resolved_name = (file_name or "").strip() or _resolve_file_name_from_url(raw_url) or ""
     if not resolved_name:
-        return raw_url or None
+        return raw_url if _is_public_site_file_url(raw_url) else None
 
     open_url = build_admissions_file_open_url(
         file_name=resolved_name,
@@ -142,12 +161,12 @@ def resolve_academic_file_open_url(
     viewer_email: str | None = None,
 ) -> str | None:
     raw_url = (file_url or "").strip()
-    if raw_url.startswith(("http://", "https://")):
+    if _is_external_url(raw_url):
         return raw_url
 
-    resolved_name = (file_name or "").strip()
+    resolved_name = (file_name or "").strip() or _resolve_file_name_from_url(raw_url) or ""
     if not resolved_name:
-        return raw_url or None
+        return raw_url if _is_public_site_file_url(raw_url) else None
 
     open_url = build_academic_file_open_url(
         file_name=resolved_name,
@@ -168,7 +187,8 @@ def resolve_academic_file_preview_url(
     share_token: str | None = None,
     viewer_email: str | None = None,
 ) -> str | None:
-    resolved_name = (file_name or "").strip()
+    raw_url = (file_url or "").strip()
+    resolved_name = (file_name or "").strip() or _resolve_file_name_from_url(raw_url) or ""
     if resolved_name:
         preview_url = build_academic_file_preview_url(
             file_name=resolved_name,
@@ -179,8 +199,9 @@ def resolve_academic_file_preview_url(
         )
         return preview_url or None
 
-    raw_url = (file_url or "").strip()
-    return raw_url or None
+    if _is_external_url(raw_url) or _is_public_site_file_url(raw_url):
+        return raw_url or None
+    return None
 
 
 def build_guardian_file_open_url(
@@ -209,12 +230,12 @@ def resolve_guardian_file_open_url(
     context_name: str | None = None,
 ) -> str | None:
     raw_url = (file_url or "").strip()
-    if raw_url.startswith(("http://", "https://")):
+    if _is_external_url(raw_url):
         return raw_url
 
-    resolved_name = (file_name or "").strip()
+    resolved_name = (file_name or "").strip() or _resolve_file_name_from_url(raw_url) or ""
     if not resolved_name:
-        return raw_url or None
+        return raw_url if _is_public_site_file_url(raw_url) else None
 
     open_url = build_guardian_file_open_url(
         file_name=resolved_name,
@@ -250,12 +271,12 @@ def resolve_employee_file_open_url(
     context_name: str | None = None,
 ) -> str | None:
     raw_url = (file_url or "").strip()
-    if raw_url.startswith(("http://", "https://")):
+    if _is_external_url(raw_url):
         return raw_url
 
-    resolved_name = (file_name or "").strip()
+    resolved_name = (file_name or "").strip() or _resolve_file_name_from_url(raw_url) or ""
     if not resolved_name:
-        return raw_url or None
+        return raw_url if _is_public_site_file_url(raw_url) else None
 
     open_url = build_employee_file_open_url(
         file_name=resolved_name,

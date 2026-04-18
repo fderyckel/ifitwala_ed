@@ -75,15 +75,16 @@
 						<div class="flex flex-wrap items-start justify-between gap-3">
 							<div>
 								<h3 class="text-sm font-semibold uppercase tracking-[0.16em] text-ink/45">
-									Student Roster
+									{{ hasEvidenceInbox ? 'Evidence Inbox' : 'Student Roster' }}
 								</h3>
 								<p class="mt-1 text-sm text-ink/60">
-									{{ gradebook.task?.title || 'Task' }}
+									{{ evidenceIntroLabel }}
 								</p>
 							</div>
 							<div class="flex flex-col items-end gap-2">
 								<div class="text-right text-xs text-ink/45">
-									<p>{{ gradebook.students.length }} students</p>
+									<p>{{ visibleStudents.length }} shown</p>
+									<p v-if="hasEvidenceInbox">{{ gradebook.students.length }} total students</p>
 									<p v-if="gradebook.task?.due_date">
 										Due {{ formatDate(gradebook.task?.due_date) }}
 									</p>
@@ -124,9 +125,35 @@
 						</div>
 					</div>
 
+					<div v-if="hasEvidenceInbox" class="border-b border-border/60 bg-white/90 px-5 py-3">
+						<div class="flex flex-wrap items-center gap-2">
+							<button
+								v-for="option in evidenceFilterOptions"
+								:key="option.id"
+								type="button"
+								class="rounded-full border px-3 py-1.5 text-sm font-medium transition"
+								:class="
+									activeEvidenceFilter === option.id
+										? 'border-leaf bg-sky/20 text-ink'
+										: 'border-border/70 bg-white text-ink/65 hover:border-leaf/40 hover:text-ink'
+								"
+								:data-evidence-filter="option.id"
+								@click="setEvidenceFilter(option.id)"
+							>
+								{{ option.label }} ({{ option.count }})
+							</button>
+						</div>
+					</div>
+
 					<div class="max-h-[720px] space-y-2 overflow-y-auto p-3">
 						<div
-							v-for="student in gradebook.students"
+							v-if="!visibleStudents.length"
+							class="rounded-2xl border border-dashed border-border/70 bg-gray-50/40 p-6 text-center text-sm text-ink/60"
+						>
+							No students match this evidence filter.
+						</div>
+						<div
+							v-for="student in visibleStudents"
 							:key="student.task_student"
 							class="flex items-start gap-3 rounded-2xl border border-border/70 bg-white px-4 py-4 transition hover:border-leaf/40 hover:bg-sky/10"
 						>
@@ -177,6 +204,9 @@
 
 										<div class="mt-3 grid gap-1 text-sm text-ink/65">
 											<p>Status: {{ student.status || '—' }}</p>
+											<p v-if="student.submission_status">
+												Submission: {{ student.submission_status }}
+											</p>
 											<p v-if="student.procedural_status">
 												Procedural: {{ student.procedural_status }}
 											</p>
@@ -211,12 +241,18 @@
 					:marking-busy="markingBusy"
 					:submission-seen-busy="submissionSeenBusy"
 					:publish-busy="publishBusy"
+					:show-sequence-controls="Boolean(drawer && visibleStudents.length > 1)"
+					:can-go-previous="canGoPrevious"
+					:can-go-next="canGoNext"
+					:sequence-label="sequenceLabel"
 					@close="closeDrawer"
 					@switch-version="switchSubmissionVersion"
 					@save-marking="saveDrawerMarking"
 					@mark-submission-seen="markSubmissionSeen"
 					@publish="publishOutcome"
 					@unpublish="unpublishOutcome"
+					@go-previous="openRelativeStudent(-1)"
+					@go-next="openRelativeStudent(1)"
 				/>
 			</div>
 		</div>
@@ -244,6 +280,7 @@ import {
 	formatDate,
 	formatPoints,
 	isAssessedQuizTask,
+	isCollectWorkTask,
 	isCriteriaTask,
 	isPointsTask,
 	showMaxPointsPill,
@@ -255,6 +292,8 @@ interface TaskGradebookState {
 	task: TaskPayload | null;
 	students: StudentRow[];
 }
+
+type EvidenceFilter = 'all' | 'new_evidence' | 'missing' | 'submitted' | 'late';
 
 const props = defineProps<{
 	taskName: string | null;
@@ -293,6 +332,48 @@ const newEvidenceCount = computed(
 const releasedCount = computed(
 	() => gradebook.students.filter(student => student.visible_to_student).length
 );
+const hasEvidenceInbox = computed(() => isCollectWorkTask(gradebook.task));
+const evidenceCounts = computed(() => ({
+	all: gradebook.students.length,
+	new_evidence: gradebook.students.filter(student => student.has_new_submission).length,
+	missing: gradebook.students.filter(student => isMissingEvidence(student)).length,
+	submitted: gradebook.students.filter(student => isSubmittedEvidence(student)).length,
+	late: gradebook.students.filter(student => isLateEvidence(student)).length,
+}));
+const activeEvidenceFilter = ref<EvidenceFilter>('all');
+const evidenceFilterOptions = computed(() => [
+	{ id: 'all' as EvidenceFilter, label: 'All', count: evidenceCounts.value.all },
+	{
+		id: 'new_evidence' as EvidenceFilter,
+		label: 'New Evidence',
+		count: evidenceCounts.value.new_evidence,
+	},
+	{ id: 'missing' as EvidenceFilter, label: 'Missing', count: evidenceCounts.value.missing },
+	{
+		id: 'submitted' as EvidenceFilter,
+		label: 'Submitted',
+		count: evidenceCounts.value.submitted,
+	},
+	{ id: 'late' as EvidenceFilter, label: 'Late', count: evidenceCounts.value.late },
+]);
+const visibleStudents = computed(() => {
+	const rows = [...gradebook.students];
+	if (!hasEvidenceInbox.value) {
+		return rows;
+	}
+
+	const filtered = rows.filter(student =>
+		studentMatchesEvidenceFilter(student, activeEvidenceFilter.value)
+	);
+	return filtered.sort((left, right) => {
+		const leftRank = evidencePriority(left);
+		const rightRank = evidencePriority(right);
+		if (leftRank !== rightRank) return leftRank - rightRank;
+		return String(left.student_name || left.student).localeCompare(
+			String(right.student_name || right.student)
+		);
+	});
+});
 const unreleasedOutcomeIds = computed(() =>
 	gradebook.students
 		.filter(student => !student.visible_to_student)
@@ -301,6 +382,29 @@ const unreleasedOutcomeIds = computed(() =>
 const selectedReleasableOutcomeIds = computed(() => {
 	const releasable = new Set(unreleasedOutcomeIds.value);
 	return selectedBatchOutcomeIds.value.filter(outcomeId => releasable.has(outcomeId));
+});
+const selectedVisibleIndex = computed(() =>
+	visibleStudents.value.findIndex(student => student.task_student === selectedOutcomeId.value)
+);
+const canGoPrevious = computed(() => selectedVisibleIndex.value > 0);
+const canGoNext = computed(
+	() =>
+		selectedVisibleIndex.value >= 0 &&
+		selectedVisibleIndex.value < visibleStudents.value.length - 1
+);
+const evidenceIntroLabel = computed(() => {
+	if (!gradebook.task?.title) return 'Task';
+	if (!hasEvidenceInbox.value) return gradebook.task.title;
+	return `${gradebook.task.title} · new evidence first, then late, missing, and submitted work.`;
+});
+const sequenceLabel = computed(() => {
+	if (!drawer.value || selectedVisibleIndex.value < 0 || visibleStudents.value.length < 2) {
+		return null;
+	}
+	if (hasEvidenceInbox.value) {
+		return `Inbox ${selectedVisibleIndex.value + 1} of ${visibleStudents.value.length}`;
+	}
+	return `Student ${selectedVisibleIndex.value + 1} of ${visibleStudents.value.length}`;
 });
 
 function showToast(title: string, appearance: 'danger' | 'success' | 'warning' = 'danger') {
@@ -335,6 +439,7 @@ function resetGradebook() {
 	gradebook.task = null;
 	gradebook.students = [];
 	selectedBatchOutcomeIds.value = [];
+	activeEvidenceFilter.value = 'all';
 	closeDrawer({ syncParent: true });
 }
 
@@ -351,6 +456,7 @@ async function loadGradebook(taskName: string) {
 
 		gradebook.task = payload.task;
 		gradebook.students = payload.students || [];
+		syncEvidenceFilter();
 		const visibleOutcomeIds = new Set(gradebook.students.map(student => student.task_student));
 		selectedBatchOutcomeIds.value = selectedBatchOutcomeIds.value.filter(outcomeId =>
 			visibleOutcomeIds.has(outcomeId)
@@ -434,6 +540,14 @@ async function openStudent(student: StudentRow) {
 	selectedStudentId.value = student.student;
 	emit('select-student', student.student);
 	await loadDrawer(student.task_student);
+}
+
+async function openRelativeStudent(offset: number) {
+	const currentIndex = selectedVisibleIndex.value;
+	if (currentIndex < 0) return;
+	const target = visibleStudents.value[currentIndex + offset];
+	if (!target) return;
+	await openStudent(target);
 }
 
 function closeDrawer(options: { syncParent?: boolean } = {}) {
@@ -587,6 +701,10 @@ function selectAllUnreleased() {
 	selectedBatchOutcomeIds.value = [...unreleasedOutcomeIds.value];
 }
 
+function setEvidenceFilter(filter: EvidenceFilter) {
+	activeEvidenceFilter.value = filter;
+}
+
 async function releaseSelectedOutcomes() {
 	const outcomeIds = selectedReleasableOutcomeIds.value;
 	if (!outcomeIds.length) {
@@ -635,6 +753,63 @@ function studentResultSummary(student: StudentRow) {
 		return `Score ${formatPoints(student.mark_awarded)}`;
 	}
 	return student.feedback ? 'Comment saved' : 'No result yet';
+}
+
+function isLateEvidence(student: StudentRow) {
+	return student.submission_status === 'Late';
+}
+
+function isMissingEvidence(student: StudentRow) {
+	return !student.has_submission && !student.complete;
+}
+
+function isSubmittedEvidence(student: StudentRow) {
+	if (!student.has_submission) return false;
+	return !isLateEvidence(student);
+}
+
+function studentMatchesEvidenceFilter(student: StudentRow, filter: EvidenceFilter) {
+	switch (filter) {
+		case 'new_evidence':
+			return Boolean(student.has_new_submission);
+		case 'missing':
+			return isMissingEvidence(student);
+		case 'submitted':
+			return isSubmittedEvidence(student);
+		case 'late':
+			return isLateEvidence(student);
+		case 'all':
+		default:
+			return true;
+	}
+}
+
+function evidencePriority(student: StudentRow) {
+	if (student.has_new_submission) return 0;
+	if (isLateEvidence(student)) return 1;
+	if (isMissingEvidence(student)) return 2;
+	if (isSubmittedEvidence(student)) return 3;
+	return 4;
+}
+
+function pickDefaultEvidenceFilter(): EvidenceFilter {
+	if (evidenceCounts.value.new_evidence) return 'new_evidence';
+	if (evidenceCounts.value.late) return 'late';
+	if (evidenceCounts.value.missing) return 'missing';
+	if (evidenceCounts.value.submitted) return 'submitted';
+	return 'all';
+}
+
+function syncEvidenceFilter() {
+	if (!hasEvidenceInbox.value) {
+		activeEvidenceFilter.value = 'all';
+		return;
+	}
+	const currentCount = evidenceCounts.value[activeEvidenceFilter.value];
+	if (currentCount > 0) {
+		return;
+	}
+	activeEvidenceFilter.value = pickDefaultEvidenceFilter();
 }
 
 function onImgError(event: Event) {

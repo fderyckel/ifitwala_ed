@@ -57,14 +57,42 @@
 						</div>
 					</div>
 
-					<button
-						type="button"
-						class="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-border/70 bg-white text-ink/65 transition hover:border-border hover:text-ink"
-						aria-label="Close grading drawer"
-						@click="emit('close')"
-					>
-						<FeatherIcon name="x" class="h-4 w-4" />
-					</button>
+					<div class="flex shrink-0 items-center gap-2">
+						<div
+							v-if="sequenceLabel"
+							class="hidden rounded-full border border-border/70 bg-white px-3 py-1 text-xs font-medium text-ink/55 lg:inline-flex"
+						>
+							{{ sequenceLabel }}
+						</div>
+						<button
+							v-if="showSequenceControls"
+							type="button"
+							class="inline-flex h-9 w-9 items-center justify-center rounded-full border border-border/70 bg-white text-ink/65 transition hover:border-border hover:text-ink disabled:cursor-not-allowed disabled:opacity-50"
+							:disabled="!canGoPrevious"
+							aria-label="Open previous student"
+							@click="emit('go-previous')"
+						>
+							<FeatherIcon name="chevron-left" class="h-4 w-4" />
+						</button>
+						<button
+							v-if="showSequenceControls"
+							type="button"
+							class="inline-flex h-9 w-9 items-center justify-center rounded-full border border-border/70 bg-white text-ink/65 transition hover:border-border hover:text-ink disabled:cursor-not-allowed disabled:opacity-50"
+							:disabled="!canGoNext"
+							aria-label="Open next student"
+							@click="emit('go-next')"
+						>
+							<FeatherIcon name="chevron-right" class="h-4 w-4" />
+						</button>
+						<button
+							type="button"
+							class="inline-flex h-9 w-9 items-center justify-center rounded-full border border-border/70 bg-white text-ink/65 transition hover:border-border hover:text-ink"
+							aria-label="Close grading drawer"
+							@click="emit('close')"
+						>
+							<FeatherIcon name="x" class="h-4 w-4" />
+						</button>
+					</div>
 				</div>
 
 				<div class="mt-4 flex flex-wrap gap-2">
@@ -410,6 +438,66 @@
 						</div>
 
 						<div
+							v-if="drawer.selected_submission.annotation_readiness"
+							class="rounded-2xl border border-border/70 bg-white p-4"
+						>
+							<div class="flex flex-wrap items-start justify-between gap-3">
+								<div class="min-w-0">
+									<p class="text-xs font-semibold uppercase tracking-[0.16em] text-ink/45">
+										Annotation Surface
+									</p>
+									<h3 class="mt-2 text-sm font-semibold text-ink">
+										{{ drawer.selected_submission.annotation_readiness.title }}
+									</h3>
+									<p class="mt-2 text-sm text-ink/70">
+										{{ drawer.selected_submission.annotation_readiness.message }}
+									</p>
+								</div>
+								<div class="flex flex-wrap gap-2">
+									<Badge variant="subtle">
+										{{ annotationModeLabel(drawer.selected_submission.annotation_readiness) }}
+									</Badge>
+									<Badge
+										v-if="drawer.selected_submission.annotation_readiness.preview_status"
+										variant="subtle"
+									>
+										Preview
+										{{ drawer.selected_submission.annotation_readiness.preview_status }}
+									</Badge>
+								</div>
+							</div>
+							<p
+								v-if="drawer.selected_submission.annotation_readiness.attachment_file_name"
+								class="mt-3 text-sm text-ink/60"
+							>
+								Source PDF:
+								{{ drawer.selected_submission.annotation_readiness.attachment_file_name }}
+							</p>
+							<div class="mt-4 flex flex-wrap gap-2">
+								<a
+									v-if="drawer.selected_submission.annotation_readiness.preview_url"
+									class="if-button if-button--secondary"
+									:href="drawer.selected_submission.annotation_readiness.preview_url || undefined"
+									target="_blank"
+									rel="noreferrer"
+								>
+									{{
+										annotationPreviewActionLabel(drawer.selected_submission.annotation_readiness)
+									}}
+								</a>
+								<a
+									v-if="drawer.selected_submission.annotation_readiness.open_url"
+									class="if-button if-button--secondary"
+									:href="drawer.selected_submission.annotation_readiness.open_url || undefined"
+									target="_blank"
+									rel="noreferrer"
+								>
+									Open source PDF
+								</a>
+							</div>
+						</div>
+
+						<div
 							v-if="drawer.selected_submission.text_content"
 							class="rounded-2xl border border-border/70 bg-white p-4"
 						>
@@ -487,6 +575,51 @@
 											>
 												Open
 											</a>
+										</div>
+									</div>
+
+									<div
+										v-if="isPdfAttachment(attachment)"
+										class="mt-4 overflow-hidden rounded-2xl border border-border/70 bg-white"
+									>
+										<div
+											class="flex items-start justify-between gap-3 border-b border-border/60 px-4 py-4"
+										>
+											<div class="min-w-0">
+												<p class="text-xs font-semibold uppercase tracking-[0.16em] text-ink/45">
+													PDF evidence
+												</p>
+												<p class="mt-2 text-sm font-semibold text-ink">
+													{{ attachment.file_name || 'PDF attachment' }}
+												</p>
+												<p class="mt-2 text-sm text-ink/70">
+													{{ pdfPreviewMessage(attachment) }}
+												</p>
+											</div>
+											<Badge variant="subtle">
+												{{
+													showPdfInlinePreview(attachment) ? 'First page ready' : 'Open source PDF'
+												}}
+											</Badge>
+										</div>
+										<div v-if="showPdfInlinePreview(attachment)" class="bg-gray-50/40 p-3">
+											<img
+												:src="attachment.preview_url || undefined"
+												:alt="`${attachment.file_name || 'PDF attachment'} first-page preview`"
+												class="h-72 w-full rounded-xl bg-white object-contain"
+												loading="lazy"
+											/>
+										</div>
+										<div
+											v-else
+											class="flex min-h-40 items-center justify-center bg-gray-50/40 px-6 py-8 text-center"
+										>
+											<div>
+												<p class="text-sm font-semibold text-ink">Preview not available yet</p>
+												<p class="mt-2 text-sm text-ink/70">
+													{{ pdfPreviewFallbackMessage(attachment) }}
+												</p>
+											</div>
 										</div>
 									</div>
 								</div>
@@ -688,6 +821,14 @@ type CriterionFormRow = {
 	feedback: string;
 };
 
+type SubmissionAttachmentRow = NonNullable<
+	NonNullable<GetDrawerResponse['selected_submission']>['attachments']
+>[number];
+
+type AnnotationReadinessPayload = NonNullable<
+	NonNullable<GetDrawerResponse['selected_submission']>['annotation_readiness']
+>;
+
 const props = defineProps<{
 	loading: boolean;
 	drawer: GetDrawerResponse | null;
@@ -695,6 +836,10 @@ const props = defineProps<{
 	markingBusy?: boolean;
 	submissionSeenBusy?: boolean;
 	publishBusy?: boolean;
+	showSequenceControls?: boolean;
+	canGoPrevious?: boolean;
+	canGoNext?: boolean;
+	sequenceLabel?: string | null;
 }>();
 
 const emit = defineEmits<{
@@ -704,6 +849,8 @@ const emit = defineEmits<{
 	(e: 'mark-submission-seen'): void;
 	(e: 'publish'): void;
 	(e: 'unpublish'): void;
+	(e: 'go-previous'): void;
+	(e: 'go-next'): void;
 }>();
 
 const statusOptions = [
@@ -918,6 +1065,62 @@ function formatBytes(value?: number | null) {
 	const kb = value / 1024;
 	if (kb < 1024) return `${kb.toFixed(1)} KB`;
 	return `${(kb / 1024).toFixed(1)} MB`;
+}
+
+function attachmentExtension(attachment: SubmissionAttachmentRow): string {
+	const explicitExtension = String(attachment.extension || '')
+		.trim()
+		.toLowerCase();
+	if (explicitExtension) return explicitExtension;
+	const rawName = String(attachment.file_name || '').trim();
+	const lastDot = rawName.lastIndexOf('.');
+	if (!rawName || lastDot < 0 || lastDot === rawName.length - 1) {
+		return '';
+	}
+	return rawName.slice(lastDot + 1).toLowerCase();
+}
+
+function isPdfAttachment(attachment: SubmissionAttachmentRow): boolean {
+	return (
+		attachment.kind === 'file' &&
+		(attachment.mime_type === 'application/pdf' || attachmentExtension(attachment) === 'pdf')
+	);
+}
+
+function showPdfInlinePreview(attachment: SubmissionAttachmentRow): boolean {
+	return Boolean(
+		attachment.preview_url && isPdfAttachment(attachment) && attachment.preview_status === 'ready'
+	);
+}
+
+function pdfPreviewMessage(attachment: SubmissionAttachmentRow): string {
+	if (showPdfInlinePreview(attachment)) {
+		return 'Governed first-page preview is ready for this PDF evidence.';
+	}
+	return 'Open the governed source PDF while inline preview is unavailable.';
+}
+
+function pdfPreviewFallbackMessage(attachment: SubmissionAttachmentRow): string {
+	if (attachment.preview_status === 'pending') {
+		return 'Preview generation is still processing. Open the source PDF to review the full document now.';
+	}
+	if (attachment.preview_status === 'failed') {
+		return 'Preview generation failed for this PDF. Open the source PDF to continue review.';
+	}
+	if (attachment.preview_status === 'not_applicable') {
+		return 'This PDF does not currently expose a preview derivative. Open the source PDF to continue review.';
+	}
+	return 'Open the source PDF to continue review from this drawer.';
+}
+
+function annotationModeLabel(readiness: AnnotationReadinessPayload): string {
+	if (readiness.mode === 'reduced') return 'Reduced mode';
+	if (readiness.mode === 'unavailable') return 'Preview fallback';
+	return 'Not applicable';
+}
+
+function annotationPreviewActionLabel(readiness: AnnotationReadinessPayload): string {
+	return readiness.preview_status === 'ready' ? 'Open preview' : 'Try preview';
 }
 
 function onImgError(event: Event) {

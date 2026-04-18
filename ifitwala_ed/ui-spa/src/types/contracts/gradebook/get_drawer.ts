@@ -51,10 +51,12 @@ export type SubmissionAttachment = {
 	file_size?: number | null
 	description?: string | null
 	public?: boolean
-	preview_status?: 'pending' | 'ready' | 'failed' | 'unsupported' | null
+	preview_status?: 'pending' | 'ready' | 'failed' | 'unsupported' | 'not_applicable' | null
 	preview_url?: string | null
 	open_url?: string | null
 	external_url?: string | null
+	mime_type?: string | null
+	extension?: string | null
 }
 
 export type SubmissionEvidence = {
@@ -70,6 +72,17 @@ export type SubmissionEvidence = {
 	text_content?: string | null
 	link_url?: string | null
 	attachments: SubmissionAttachment[]
+	annotation_readiness?: {
+		mode: 'reduced' | 'unavailable' | 'not_applicable'
+		reason_code: string
+		title: string
+		message: string
+		attachment_row_name?: string | null
+		attachment_file_name?: string | null
+		preview_status?: 'pending' | 'ready' | 'failed' | 'unsupported' | 'not_applicable' | null
+		preview_url?: string | null
+		open_url?: string | null
+	} | null
 }
 
 export type OutcomePayload = {
@@ -103,6 +116,7 @@ export type ContributionPayload = {
 	status: string
 	is_stale: number | boolean
 	task_submission?: string | null
+	judgment_code?: string | null
 	score?: number | null
 	grade?: string | null
 	grade_value?: number | null
@@ -118,6 +132,7 @@ export type MyContributionPayload = {
 	contribution_type: string
 	task_submission?: string | null
 	is_stale: boolean
+	judgment_code?: string | null
 	score?: number | null
 	grade?: string | null
 	grade_value?: number | null

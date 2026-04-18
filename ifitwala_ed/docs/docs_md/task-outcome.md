@@ -3,9 +3,9 @@ title: "Task Outcome: The Official Student-Level Assessment Record"
 slug: task-outcome
 category: Assessment
 doc_order: 7
-version: "1.2.0"
-last_change_date: "2026-03-12"
-summary: "Maintain one authoritative outcome per student per delivery, with official scores, criterion truth, statuses, and publication controls."
+version: "1.3.0"
+last_change_date: "2026-04-17"
+summary: "Maintain one authoritative outcome per student per delivery, with official scores, criterion truth, derived boolean completion state, statuses, and publication controls."
 seo_title: "Task Outcome: The Official Student-Level Assessment Record"
 seo_description: "Maintain one authoritative outcome per student per delivery, with official scores, criterion truth, statuses, and publication controls."
 ---
@@ -103,6 +103,7 @@ Test refs: `ifitwala_ed/assessment/doctype/task_outcome/test_task_outcome.py`
 - `on_update()` records info comments when official values are edited directly.
 - `task_outcome_service.py` is the canonical official-truth recompute layer.
 - `api/gradebook.py` and reporting readers consume outcome truth and outcome criterion truth rather than computing totals client-side.
+- For assessed `Completion` and `Binary` work, `Task Outcome.is_complete` is derived from the selected `Task Contribution.judgment_code`; `Assign Only` remains the direct procedural completion path.
 
 ### Current Constraints To Preserve In Review
 

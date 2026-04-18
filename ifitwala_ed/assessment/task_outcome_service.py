@@ -47,6 +47,7 @@ def _recompute_official_outcome_internal(outcome_id, policy=None):
         [
             "name",
             "contribution_type",
+            "judgment_code",
             "score",
             "grade",
             "grade_value",
@@ -77,6 +78,7 @@ def _recompute_official_outcome_internal(outcome_id, policy=None):
             "official_grade": None,
             "official_grade_value": None,
             "official_feedback": None,
+            "is_complete": 0,
             "grading_status": "Not Applicable" if not require_grading else "Not Started",
         }
         if was_published:
@@ -98,6 +100,17 @@ def _recompute_official_outcome_internal(outcome_id, policy=None):
             rubric_scoring_strategy=rubric_strategy,
             rubric_version=rubric_version,
             has_rubric_scores=has_rubric_scores,
+        )
+        if was_published:
+            _clear_outcome_publish(outcome_id)
+        return result
+
+    if grading_mode in {"Binary", "Completion"}:
+        result = _apply_boolean_official_fields(
+            outcome_id=outcome_id,
+            require_grading=require_grading,
+            grading_mode=grading_mode,
+            contribution=selected,
         )
         if was_published:
             _clear_outcome_publish(outcome_id)
@@ -248,6 +261,35 @@ def _apply_non_criteria_official_fields(outcome_id, grade_scale, require_grading
     official_fields["grading_status"] = grading_status
     frappe.db.set_value("Task Outcome", outcome_id, official_fields, update_modified=True)
 
+    return {"outcome": outcome_id, "grading_status": grading_status}
+
+
+def _apply_boolean_official_fields(outcome_id, require_grading, grading_mode, contribution):
+    current_is_complete = _current_completion_state(outcome_id)
+    judgment_code = (contribution.get("judgment_code") or "").strip()
+    judgment_map = {
+        "Binary": {"yes": 1, "no": 0},
+        "Completion": {"complete": 1, "incomplete": 0},
+    }
+
+    is_complete = current_is_complete
+    if judgment_code:
+        is_complete = judgment_map.get(grading_mode, {}).get(judgment_code, current_is_complete)
+
+    updates = {
+        "official_score": None,
+        "official_grade": None,
+        "official_grade_value": None,
+        "official_feedback": contribution.get("feedback"),
+        "is_complete": is_complete,
+    }
+
+    grading_status = "Moderated" if contribution.get("contribution_type") == "Moderator" else None
+    if not grading_status:
+        grading_status = "Finalized" if require_grading else "Not Applicable"
+
+    updates["grading_status"] = grading_status
+    frappe.db.set_value("Task Outcome", outcome_id, updates, update_modified=True)
     return {"outcome": outcome_id, "grading_status": grading_status}
 
 
@@ -431,6 +473,13 @@ def _current_official_grading_fields(outcome_id):
         )
         or {}
     )
+
+
+def _current_completion_state(outcome_id):
+    if not outcome_id:
+        return 0
+    value = frappe.db.get_value("Task Outcome", outcome_id, "is_complete")
+    return 1 if int(value or 0) == 1 else 0
 
 
 def _clear_outcome_criteria(outcome_id):

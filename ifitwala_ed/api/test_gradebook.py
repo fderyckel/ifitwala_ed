@@ -169,7 +169,15 @@ class TestGradebookApi(TestCase):
                         }
                     ]
                 if doctype == "Drive File":
-                    return [{"file": "FILE-SUB-0001", "preview_status": "pending"}]
+                    return [
+                        {
+                            "file": "FILE-SUB-0001",
+                            "preview_status": "pending",
+                            "current_version": "DFV-SUB-0001",
+                        }
+                    ]
+                if doctype == "Drive File Version":
+                    return [{"name": "DFV-SUB-0001", "mime_type": "application/pdf"}]
                 return []
 
             frappe.db.get_value = fake_get_value
@@ -211,6 +219,8 @@ class TestGradebookApi(TestCase):
 
         attachment = payload["selected_submission"]["attachments"][0]
         self.assertEqual(attachment["preview_status"], "pending")
+        self.assertEqual(attachment["mime_type"], "application/pdf")
+        self.assertEqual(attachment["extension"], "pdf")
         self.assertEqual(
             urlparse(attachment["open_url"]).path,
             "/api/method/ifitwala_ed.api.file_access.download_academic_file",
@@ -220,6 +230,11 @@ class TestGradebookApi(TestCase):
         self.assertEqual(preview_parsed.path, "/api/method/ifitwala_ed.api.file_access.preview_academic_file")
         self.assertEqual((preview_query.get("file") or [None])[0], "FILE-SUB-0001")
         self.assertEqual((preview_query.get("context_name") or [None])[0], "TSU-2026-00001")
+        self.assertEqual(payload["selected_submission"]["annotation_readiness"]["mode"], "reduced")
+        self.assertEqual(
+            payload["selected_submission"]["annotation_readiness"]["reason_code"],
+            "pdf_preview_pending",
+        )
 
     def test_get_task_quiz_manual_review_groups_manual_rows_by_question(self):
         with stubbed_frappe(extra_modules=_gradebook_stub_modules()) as frappe:
@@ -741,6 +756,151 @@ class TestGradebookApi(TestCase):
             ],
         )
         self.assertEqual(payload["feedback"], "Focus on examples.")
+
+    def test_update_task_student_routes_assessed_completion_to_contribution_judgment(self):
+        submitted_payloads = []
+
+        task_contribution_service = types.ModuleType("ifitwala_ed.assessment.task_contribution_service")
+        task_contribution_service.submit_contribution = lambda payload, contributor=None: (
+            submitted_payloads.append((payload, contributor)) or {"contribution": "TCO-1"}
+        )
+
+        with stubbed_frappe(
+            extra_modules=_gradebook_stub_modules(task_contribution_service=task_contribution_service)
+        ) as frappe:
+
+            def fake_get_value(doctype, name, fieldname=None, as_dict=False):
+                if doctype == "Task Outcome":
+                    if fieldname == ["name", "task_delivery", "official_score", "grading_status", "is_published"]:
+                        return {
+                            "name": "OUT-1",
+                            "task_delivery": "TDL-1",
+                            "official_score": None,
+                            "grading_status": "Not Started",
+                            "is_published": 0,
+                        }
+                    return {
+                        "name": "OUT-1",
+                        "official_score": None,
+                        "official_feedback": "Marked complete.",
+                        "grading_status": "Finalized",
+                        "is_complete": 1,
+                        "is_published": 0,
+                        "modified": "2026-04-17 18:05:00",
+                    }
+                if doctype == "Task Delivery":
+                    return {
+                        "name": "TDL-1",
+                        "student_group": "GRP-1",
+                        "delivery_mode": "Assess",
+                        "grading_mode": "Completion",
+                        "allow_feedback": 1,
+                    }
+                return None
+
+            frappe.db.get_value = fake_get_value
+
+            module = _import_fresh_gradebook()
+            module.gradebook_support._can_write_gradebook = lambda: True
+            module.gradebook_support._assert_group_access = lambda student_group: None
+            module.gradebook_support._resolve_or_create_stub_submission_id = lambda task_student, payload: "SUB-1"
+
+            payload = module.update_task_student("OUT-1", {"complete": 1, "feedback": "Marked complete."})
+
+        self.assertEqual(
+            submitted_payloads,
+            [
+                (
+                    {
+                        "task_outcome": "OUT-1",
+                        "feedback": "Marked complete.",
+                        "judgment_code": "complete",
+                        "task_submission": "SUB-1",
+                    },
+                    "unit.test@example.com",
+                )
+            ],
+        )
+        self.assertEqual(payload["complete"], 1)
+        self.assertEqual(payload["feedback"], "Marked complete.")
+
+    def test_update_task_student_keeps_assign_only_completion_on_direct_outcome_path(self):
+        submitted_payloads = []
+        saved_values = []
+
+        task_contribution_service = types.ModuleType("ifitwala_ed.assessment.task_contribution_service")
+        task_contribution_service.submit_contribution = lambda payload, contributor=None: submitted_payloads.append(
+            (payload, contributor)
+        )
+
+        class _FakeOutcomeDoc:
+            def __init__(self):
+                self.grading_status = None
+                self.is_complete = 0
+
+            def save(self, ignore_permissions=False):
+                saved_values.append(
+                    {
+                        "grading_status": self.grading_status,
+                        "is_complete": self.is_complete,
+                        "ignore_permissions": ignore_permissions,
+                    }
+                )
+
+        with stubbed_frappe(
+            extra_modules=_gradebook_stub_modules(task_contribution_service=task_contribution_service)
+        ) as frappe:
+
+            def fake_get_value(doctype, name, fieldname=None, as_dict=False):
+                if doctype == "Task Outcome":
+                    if fieldname == ["name", "task_delivery", "official_score", "grading_status", "is_published"]:
+                        return {
+                            "name": "OUT-1",
+                            "task_delivery": "TDL-1",
+                            "official_score": None,
+                            "grading_status": "Not Started",
+                            "is_published": 0,
+                        }
+                    return {
+                        "name": "OUT-1",
+                        "official_score": None,
+                        "official_feedback": None,
+                        "grading_status": "Not Started",
+                        "is_complete": 1,
+                        "is_published": 0,
+                        "modified": "2026-04-17 18:10:00",
+                    }
+                if doctype == "Task Delivery":
+                    return {
+                        "name": "TDL-1",
+                        "student_group": "GRP-1",
+                        "delivery_mode": "Assign Only",
+                        "grading_mode": "Completion",
+                        "allow_feedback": 0,
+                    }
+                return None
+
+            frappe.db.get_value = fake_get_value
+            frappe.get_doc = lambda doctype, name: _FakeOutcomeDoc()
+
+            module = _import_fresh_gradebook()
+            module.gradebook_support._can_write_gradebook = lambda: True
+            module.gradebook_support._assert_group_access = lambda student_group: None
+
+            payload = module.update_task_student("OUT-1", {"complete": 1})
+
+        self.assertEqual(submitted_payloads, [])
+        self.assertEqual(
+            saved_values,
+            [
+                {
+                    "grading_status": None,
+                    "is_complete": 1,
+                    "ignore_permissions": False,
+                }
+            ],
+        )
+        self.assertEqual(payload["complete"], 1)
 
     def test_update_task_student_rejects_released_status_from_generic_status_save(self):
         with stubbed_frappe(extra_modules=_gradebook_stub_modules()) as frappe:

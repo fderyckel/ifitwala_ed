@@ -391,14 +391,17 @@ import {
 	type EditableQuizQuestion,
 	type QuizBankFormState,
 } from '@/lib/planning/coursePlanWorkspace';
-import type { StaffCoursePlanQuizQuestionBank } from '@/types/contracts/staff_teaching/get_staff_course_plan_surface';
+import type {
+	StaffCoursePlanQuizQuestionBank,
+	StaffCoursePlanQuizQuestionBankSummary,
+} from '@/types/contracts/staff_teaching/get_staff_course_plan_surface';
 
 defineProps<{
 	collapsed: boolean;
 	canManagePlan: boolean;
 	creatingQuizQuestionBank: boolean;
 	showQuizBankEditor: boolean;
-	quizQuestionBanks: StaffCoursePlanQuizQuestionBank[];
+	quizQuestionBanks: StaffCoursePlanQuizQuestionBankSummary[];
 	selectedQuizQuestionBank: StaffCoursePlanQuizQuestionBank | null;
 	selectedQuizBankLabel: string;
 	quizBankForm: QuizBankFormState;

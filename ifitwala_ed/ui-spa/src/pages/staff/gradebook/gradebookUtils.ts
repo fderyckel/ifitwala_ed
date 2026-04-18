@@ -67,6 +67,10 @@ export function isCriteriaTask(task?: TaskLike) {
 	return task?.grading_mode === 'Criteria'
 }
 
+export function isCollectWorkTask(task?: TaskLike) {
+	return resolveDeliveryMode(task) === 'Collect Work'
+}
+
 export function supportsFeedback(task?: TaskLike) {
 	return Boolean(task?.allow_feedback)
 }

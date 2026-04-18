@@ -326,6 +326,15 @@ SPA and backend work must preserve:
 - surface-specific visibility contracts for governed file/image reads
 - server-resolved display/open URLs for private media instead of raw private paths
 
+## 5.4.1 Async Queue Boundary Rule
+
+When Ed code relies on Drive or any async follow-up work:
+
+- internal queue labels are not automatically valid Frappe runtime queues
+- any `frappe.enqueue(...)` queue must either be a standard queue (`short`, `default`, `long`), a documented custom runtime queue, or be normalized to a runtime-valid queue at the enqueue boundary
+- user-visible mutation success must not be lost merely because deferred enrichment selected an undeployed semantic queue label
+- if a change adds or renames queue labels, update the canonical docs/runbook in the same change and add regression coverage for the enqueue boundary
+
 ### 5.3 Caching Rules
 
 Shared or stable data should use Redis-backed caching where safe:

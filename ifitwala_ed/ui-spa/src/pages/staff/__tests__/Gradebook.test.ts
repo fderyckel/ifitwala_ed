@@ -688,6 +688,121 @@ describe('Gradebook page', () => {
 		expect(document.body.textContent || '').toContain('Current runtime still uses one published state');
 	});
 
+	it('shows reduced PDF review state in the evidence tab without guessing file paths', async () => {
+		mockGradebookFlow({
+			students: [
+				{
+					task_student: 'OUT-1',
+					student: 'STU-1',
+					student_name: 'Ada Lovelace',
+					student_id: 'S-001',
+					student_image: null,
+					status: 'Needs Review',
+					procedural_status: 'Submitted',
+					has_submission: 1,
+					has_new_submission: 1,
+					complete: 0,
+					mark_awarded: 12,
+					feedback: null,
+					visible_to_student: 0,
+					visible_to_guardian: 0,
+					updated_on: null,
+					criteria_scores: [],
+				},
+			],
+			drawer: {
+				latest_submission: {
+					submission_id: 'TSU-1',
+					version: 2,
+					submitted_on: '2026-04-03 10:00:00',
+					origin: 'Student Upload',
+					is_stub: false,
+					is_selected: true,
+				},
+				selected_submission: {
+					submission_id: 'TSU-1',
+					version: 2,
+					submitted_on: '2026-04-03 10:00:00',
+					submitted_by: 'student@example.com',
+					origin: 'Student Upload',
+					is_stub: false,
+					evidence_note: 'Essay PDF',
+					is_cloned: false,
+					cloned_from: null,
+					text_content: null,
+					link_url: null,
+					attachments: [
+						{
+							row_name: 'ATT-1',
+							kind: 'file',
+							file: '/api/method/ifitwala_ed.api.file_access.download_academic_file?file=FILE-TASK-1',
+							file_name: 'essay.pdf',
+							file_size: 256,
+							description: 'Essay PDF',
+							preview_status: 'pending',
+							preview_url:
+								'/api/method/ifitwala_ed.api.file_access.preview_academic_file?file=FILE-TASK-1',
+							open_url:
+								'/api/method/ifitwala_ed.api.file_access.download_academic_file?file=FILE-TASK-1',
+							mime_type: 'application/pdf',
+							extension: 'pdf',
+						},
+					],
+					annotation_readiness: {
+						mode: 'reduced',
+						reason_code: 'pdf_preview_pending',
+						title: 'Reduced PDF review mode',
+						message:
+							'This governed PDF is still generating its preview. Text-anchored annotation is not available in the current runtime yet, so use the source PDF plus drawer marking for now.',
+						attachment_row_name: 'ATT-1',
+						attachment_file_name: 'essay.pdf',
+						preview_status: 'pending',
+						preview_url:
+							'/api/method/ifitwala_ed.api.file_access.preview_academic_file?file=FILE-TASK-1',
+						open_url:
+							'/api/method/ifitwala_ed.api.file_access.download_academic_file?file=FILE-TASK-1',
+					},
+				},
+				submission_versions: [
+					{
+						submission_id: 'TSU-1',
+						version: 2,
+						submitted_on: '2026-04-03 10:00:00',
+						origin: 'Student Upload',
+						is_stub: false,
+						is_selected: true,
+					},
+				],
+			},
+		});
+
+		mountPage();
+		await flushUi();
+		await openTask('Task 1');
+		await openStudentDrawer();
+
+		const evidenceTab = Array.from(document.querySelectorAll('button')).find(button =>
+			(button.textContent || '').includes('Evidence')
+		);
+		expect(evidenceTab).not.toBeNull();
+		evidenceTab!.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		await flushUi();
+
+		const text = document.body.textContent || '';
+		expect(text).toContain('Annotation Surface');
+		expect(text).toContain('Reduced mode');
+		expect(text).toContain('Source PDF:');
+		expect(text).toContain('essay.pdf');
+		expect(text).toContain('Preview not available yet');
+
+		const previewLink = Array.from(document.querySelectorAll('a')).find(link =>
+			(link.textContent || '').includes('Try preview')
+		);
+		expect(previewLink?.getAttribute('href')).toContain(
+			'/api/method/ifitwala_ed.api.file_access.preview_academic_file'
+		);
+	});
+
 	it('releases a selected batch of unreleased students from the task workspace', async () => {
 		mockGradebookFlow({
 			students: [

@@ -17,6 +17,11 @@ Related docs:
 - `ifitwala_ed/docs/files_and_policies/files_07_education_file_semantics_and_cross_app_contract.md`
 - `ifitwala_ed/docs/files_and_policies/files_08_cross_portal_governed_attachment_preview_contract.md`
 - `ifitwala_ed/docs/high_concurrency_contract.md`
+- `ifitwala_drive/ifitwala_drive/docs/02_system_architecture.md`
+- `ifitwala_drive/ifitwala_drive/docs/04_coupling_with_ifiwala_ed.md`
+- `ifitwala_drive/ifitwala_drive/docs/05_optionC_design_lock.md`
+- `ifitwala_drive/ifitwala_drive/docs/06_api_contracts.md`
+- `ifitwala_drive/ifitwala_drive/docs/21_cross_portal_governed_attachment_preview_contract.md`
 
 ---
 
@@ -155,12 +160,21 @@ Current governed contract that feedback and annotation work must preserve:
 
 - submission evidence uses `assessment_submission`
 - returned or marked artifacts use `assessment_feedback`
+- all governed file writes go through the Ifitwala_drive boundary, not direct business-logic `File.insert()` paths
 - file actions resolve to stable Ed-owned `preview_url`, `open_url`, and `download_url` values when available
 - submission version history stays bounded in gradebook/evidence surfaces
 - file transport and permission checks remain server-owned
 
 The SPA may render previews and actions from the returned DTO.
 It must never derive file URLs from storage paths or raw `file_url`.
+Ifitwala_Ed remains the workflow and portal-authorization authority.
+Ifitwala_drive remains the governed file-platform authority for upload sessions, versions, canonical references, preview derivatives, and short-lived grants.
+
+For Ed-owned staff, student, and guardian surfaces:
+
+- the SPA must not call Drive grant APIs directly
+- Ed-owned routes authorize the business surface first, then call Drive to issue the grant or redirect
+- preview and download behavior must stay aligned with the cross-portal governed preview contract
 
 ---
 
@@ -189,6 +203,8 @@ Rules:
 - Guardian visibility must never exceed student visibility for the same release channel.
 - Feedback may be released before grade.
 - Grade may remain hidden while feedback is visible.
+- Either release channel may be released independently.
+- Product-preferred shortcuts are `release feedback` and `release both`; grade-only release remains an explicit action rather than the default shortcut.
 - Student and guardian surfaces must render only the channels released to that audience.
 - The current `Task Outcome.is_published` model is legacy baseline behavior only.
   It must not be treated as the final release contract for feedback work.
@@ -252,6 +268,7 @@ Teacher productivity minimum:
 - minimal comment bank or quickmarks in the first serious authoring version
 - scoped reusable comments at least by assignment or course
 - insertion from the drawer without leaving the grading flow
+- first-version default scope is teacher-owned entries with optional course or assignment relevance; broader shared banks come later
 
 Readability and OCR rules:
 
@@ -261,6 +278,8 @@ Readability and OCR rules:
   - area comments
   - page comments
   - ink
+- reduced-mode comments still create structured feedback records with coarse anchors; they must not exist only as flattened artifact marks
+- the default OCR path is asynchronous enhancement after readability detection, not a synchronous review blocker
 - Do not roll out annotation as if every PDF is text-readable.
 
 Accessibility minimum:

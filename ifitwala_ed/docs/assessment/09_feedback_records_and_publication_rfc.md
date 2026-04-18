@@ -20,6 +20,11 @@ Related docs:
 - `ifitwala_ed/docs/assessment/08_assessment_gradebook_approved_direction_2026-04-17.md`
 - `ifitwala_ed/docs/high_concurrency_contract.md`
 - `ifitwala_ed/docs/files_and_policies/files_07_education_file_semantics_and_cross_app_contract.md`
+- `ifitwala_drive/ifitwala_drive/docs/02_system_architecture.md`
+- `ifitwala_drive/ifitwala_drive/docs/04_coupling_with_ifiwala_ed.md`
+- `ifitwala_drive/ifitwala_drive/docs/05_optionC_design_lock.md`
+- `ifitwala_drive/ifitwala_drive/docs/06_api_contracts.md`
+- `ifitwala_drive/ifitwala_drive/docs/21_cross_portal_governed_attachment_preview_contract.md`
 
 ---
 
@@ -64,7 +69,12 @@ Current workspace reality:
 - the current release model still collapses to one `Task Outcome.is_published` state
 - there is no first-class feedback record layer yet
 - there is no minimal comment bank yet
-- there is no annotation-readiness or OCR fallback contract in the live drawer runtime
+- the live drawer runtime now has a partial annotation-readiness contract for the selected evidence version:
+
+  - governed PDF attachments expose preview status plus file-type hints from Drive metadata
+  - the selected submission returns a server-owned annotation-readiness summary
+  - the Evidence tab distinguishes reduced PDF review, preview-unavailable fallback, and non-PDF states without guessing in Vue
+- the live drawer runtime still does **not** support text-anchored comments, OCR-driven upgrades, or structured feedback records
 
 Why Phase 2 exists:
 
@@ -101,14 +111,18 @@ Non-goals:
 
 ## 3. Recommended Assessment-Owned Feedback Model
 
-Status: **Planned target model**
+Status: **Partial baseline implemented; target model still extends beyond this**
 
 Code refs:
 
 - `ifitwala_ed/docs/assessment/04_task_notes.md`
 - `ifitwala_ed/docs/assessment/07_feedback_annotation_ecosystem_contract.md`
 
-Test refs: None yet
+Test refs:
+
+- `ifitwala_ed/api/test_gradebook.py`
+- `ifitwala_ed/api/test_task_submission.py`
+- `ifitwala_ed/ui-spa/src/pages/staff/__tests__/Gradebook.test.ts`
 
 The feedback layer should stay inside assessment and should be reasoned about as a small set of conceptual records.
 
@@ -159,6 +173,7 @@ Invariants:
 
 - guardian visibility never exceeds student visibility for the same channel
 - feedback may be visible while grade remains hidden
+- grade may also be released without feedback when policy requires it; the system must still keep that release explicit
 - release decisions are explicit and reversible until reporting or institutional lock rules prevent reversal
 - publication changes must be audit-tracked server-side
 - student and guardian surfaces render only what the publication model authorizes for that audience
@@ -166,7 +181,8 @@ Invariants:
 Teacher-facing implication:
 
 - the drawer should eventually expose distinct actions for releasing or hiding feedback and grade
-- the product may still offer a combined “release both” shortcut, but combined release is convenience, not truth
+- the preferred shortcuts are `release feedback` and `release both`
+- grade-only release remains available as an explicit path, but should not be the default shortcut unless policy requires it
 
 Implementation rule:
 
@@ -259,7 +275,43 @@ Concurrency rule:
 
 ---
 
-## 7. Annotation Readiness And OCR Fallback
+## 7. Drive Boundary And Cross-App File Execution
+
+Status: **Locked constraint from Drive architecture**
+
+Code refs:
+
+- `ifitwala_ed/api/task_submission.py`
+- `ifitwala_ed/docs/files_and_policies/files_08_cross_portal_governed_attachment_preview_contract.md`
+- `ifitwala_drive/ifitwala_drive/docs/02_system_architecture.md`
+- `ifitwala_drive/ifitwala_drive/docs/04_coupling_with_ifiwala_ed.md`
+- `ifitwala_drive/ifitwala_drive/docs/06_api_contracts.md`
+- `ifitwala_drive/ifitwala_drive/docs/21_cross_portal_governed_attachment_preview_contract.md`
+
+Test refs: None yet
+
+Phase 2 feedback and annotation work must preserve the Drive boundary:
+
+- Ifitwala_Ed owns business meaning, workflow, and portal authorization.
+- Ifitwala_drive owns governed upload sessions, file classification, slot/version execution, canonical references, preview derivatives, and short-lived grants.
+- All new governed file writes for submission evidence or returned feedback artifacts must go through Drive-era service boundaries.
+- The assessment feedback layer must never assume raw storage paths, bucket structure, or direct file-object URLs.
+
+Portal and SPA rule:
+
+- Ed-owned SPA surfaces must not call Drive grant APIs directly.
+- Ed-owned server routes validate the business surface first, then call Drive for preview/download/open grants or redirects.
+- Drawer DTOs may expose Ed-owned preview/open URLs, but those URLs remain presentation-safe wrappers over Drive execution.
+
+Implication for returned feedback artifacts:
+
+- the feedback layer may reference governed artifacts classified under `assessment_feedback`
+- artifact generation and replacement still execute through the Drive boundary
+- preview readiness for those artifacts depends on Drive derivative lifecycle, not on ad hoc annotation code inside Ed
+
+---
+
+## 8. Annotation Readiness And OCR Fallback
 
 Status: **Planned target model**
 
@@ -286,11 +338,13 @@ Rules:
 - preview availability and annotation readiness are different concerns
 - unreadable PDFs should still be previewable when governed file access allows it
 - the SPA must not render highlight-based tools before the server marks the evidence readable
+- reduced-mode area, point, page, or ink comments still create structured feedback records with coarse anchors; they must not live only as artifact paint
 - OCR or repair may later upgrade an evidence version from reduced mode to text-readable mode, but the product should not block all review until that happens
+- default Phase 2 path: detect readability synchronously, enqueue OCR/repair asynchronously where supported, and keep reduced-mode review available while that work is pending
 
 ---
 
-## 8. Minimal Comment Bank Scope
+## 9. Minimal Comment Bank Scope
 
 Status: **Planned target model**
 
@@ -308,18 +362,20 @@ Minimum product expectations:
 - teachers can insert reusable comments without leaving the drawer
 - comment-bank entries are scoped enough to stay relevant to the current teaching context
 - the drawer supports quick insertion into anchored comments, summary text, or general feedback areas where appropriate
+- first-version default scope is teacher-owned entries with optional course and assignment relevance
 
 Minimum design constraints:
 
 - do not require a large taxonomy or institutional setup before the feature is usable
 - do not make comment banks a separate app or detached settings module for day-one use
 - do not block feedback authoring when no reusable comments exist
+- do not require shared departmental or global banks for the first usable version
 
 Follow-on enhancements may include richer sharing and conversion workflows, but insertion and small-scope reuse are the minimum for Phase 2/3 teacher adoption.
 
 ---
 
-## 9. Security, Scope, And Reporting Constraints
+## 10. Security, Scope, And Reporting Constraints
 
 Status: **Locked constraints for implementation**
 
@@ -338,29 +394,30 @@ Constraints:
 
 - all feedback reads and writes must reuse the same group/course/role scope model already enforced for gradebook access
 - no student or guardian surface may read feedback or artifacts through raw file paths
+- no new governed artifact flow may bypass the Drive execution boundary even if the file is conceptually "owned" by assessment
 - publication state must be enforced server-side, not trusted from SPA UI conditions
 - reporting and transcript logic must continue to read official truth only from `Task Outcome` and `Task Outcome Criterion`
 - analytics over feedback are allowed later, but they remain secondary read models and do not redefine official truth
 
 ---
 
-## 10. Open Decisions Before Schema Or API Approval
+## 11. Resolved Defaults Before Schema Or API Approval
 
-Status: **Requires explicit approval**
+Status: **Locked implementation baseline unless later policy overrides it**
 
 Code refs: None yet
 Test refs: None yet
 
-The following decisions should be made explicitly before schema or endpoint design begins:
+These defaults should guide schema and endpoint design:
 
-1. Whether grade may ever be released without feedback, or whether feedback-first is only a supported path rather than a required policy.
-2. Whether the first comment bank is personal-only, course-scoped, assignment-scoped, or some bounded combination of those scopes.
-3. Whether reduced-mode ink or area comments must already create full structured anchors in Phase 2, or whether some reduced-mode annotations may stay artifact-only until richer anchoring exists.
-4. Whether OCR/repair is automatic for eligible PDFs or a flagged asynchronous enhancement path.
+1. Feedback-first release is supported, and grade-only release is also supported as an explicit path.
+2. The first comment bank is teacher-owned with optional course and assignment relevance; broader sharing is later scope.
+3. Reduced-mode comments still create structured feedback records with coarse anchors and do not stay artifact-only.
+4. OCR/repair is an asynchronous enhancement path after readability detection; it does not block reduced-mode review by default.
 
 ---
 
-## 11. Recommended Implementation Sequence
+## 12. Recommended Implementation Sequence
 
 Status: **Planned**
 
@@ -373,7 +430,7 @@ Test refs: None yet
 
 Recommended order from the current baseline:
 
-1. Approve this RFC and resolve the open decisions above.
+1. Use the resolved defaults above as the Phase 2 implementation baseline.
 2. Define the bounded drawer feedback read model without final schema naming in code yet.
 3. Define the feedback draft and publication mutation contract inside assessment.
 4. Add minimal comment-bank read/write support.
@@ -386,7 +443,7 @@ The key sequencing rule is:
 
 ---
 
-## 12. Technical Notes (IT)
+## 13. Technical Notes (IT)
 
 Status: **Implementation guidance**
 

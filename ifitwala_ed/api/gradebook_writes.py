@@ -229,7 +229,8 @@ def update_task_student(api, task_student: str, updates=None, **kwargs):
     grading_mode = (delivery_row.get("grading_mode") or "").strip()
     delivery_mode = (delivery_row.get("delivery_mode") or "").strip()
     allow_feedback = api._bool_flag(delivery_row.get("allow_feedback"))
-    boolean_mode = grading_mode in {"Binary", "Completion"} or delivery_mode == "Assign Only"
+    assessed_boolean_mode = delivery_mode == "Assess" and grading_mode in {"Binary", "Completion"}
+    assign_only_mode = delivery_mode == "Assign Only"
     score_provided = "mark_awarded" in payload and payload.get("mark_awarded") not in (None, "")
     feedback_provided = "feedback" in payload
     criteria_provided = isinstance(payload.get("criteria_scores"), list)
@@ -241,13 +242,13 @@ def update_task_student(api, task_student: str, updates=None, **kwargs):
     if criteria_provided and grading_mode != "Criteria":
         frappe.throw(_("Criteria scores can only be recorded for criteria grading."))
 
-    if complete_provided and not boolean_mode:
+    if complete_provided and not (assessed_boolean_mode or assign_only_mode):
         frappe.throw(_("Completion can only be recorded for completion, binary, or assign-only work."))
 
     if feedback_provided and not allow_feedback:
         frappe.throw(_("Comments are not enabled for this delivery."))
 
-    if score_provided or feedback_provided or criteria_provided:
+    if score_provided or feedback_provided or criteria_provided or (complete_provided and assessed_boolean_mode):
         contribution_payload = {"task_outcome": task_student}
         if score_provided:
             contribution_payload["score"] = payload.get("mark_awarded")
@@ -256,6 +257,18 @@ def update_task_student(api, task_student: str, updates=None, **kwargs):
 
         if feedback_provided:
             contribution_payload["feedback"] = payload.get("feedback")
+
+        if assessed_boolean_mode and complete_provided:
+            is_complete = 1 if api._bool_flag(payload.get("complete")) else 0
+            contribution_payload["judgment_code"] = (
+                "complete"
+                if grading_mode == "Completion" and is_complete
+                else "incomplete"
+                if grading_mode == "Completion"
+                else "yes"
+                if is_complete
+                else "no"
+            )
 
         if criteria_provided:
             rubric_scores = []
@@ -297,17 +310,18 @@ def update_task_student(api, task_student: str, updates=None, **kwargs):
     status_value = api._normalize_grading_status(payload.get("status")) if "status" in payload else None
     visibility_provided = "visible_to_student" in payload or "visible_to_guardian" in payload
     is_published = api._bool_flag(outcome_row.get("is_published"))
+    direct_complete_write = complete_provided and assign_only_mode
     if status_value is not None and delivery_mode != "Assess":
         frappe.throw(_("Grading status can only be updated for assessed work."))
     if status_value == "Released":
         frappe.throw(_("Use the Release action to release outcomes."))
     if status_value is not None and is_published:
         frappe.throw(_("Unrelease this outcome before changing grading status."))
-    if status_value is not None or complete_provided or visibility_provided:
+    if status_value is not None or direct_complete_write or visibility_provided:
         outcome_doc = frappe.get_doc("Task Outcome", task_student)
         if status_value is not None:
             outcome_doc.grading_status = status_value
-        if complete_provided:
+        if direct_complete_write:
             outcome_doc.is_complete = 1 if api._bool_flag(payload.get("complete")) else 0
         if visibility_provided:
             publish_flag = api._bool_flag(payload.get("visible_to_student")) or api._bool_flag(
@@ -315,7 +329,7 @@ def update_task_student(api, task_student: str, updates=None, **kwargs):
             )
             if not publish_flag and not api._is_academic_adminish():
                 frappe.throw(_("Not permitted."), frappe.PermissionError)
-            if status_value is not None or complete_provided:
+            if status_value is not None or direct_complete_write:
                 outcome_doc.save(ignore_permissions=False)
             outcome_publish._bulk_update_publish(
                 [task_student],

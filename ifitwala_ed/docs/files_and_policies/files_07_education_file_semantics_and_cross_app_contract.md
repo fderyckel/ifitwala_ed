@@ -25,6 +25,7 @@ Recent upload failures show the same root problem:
 2. current workflow builders in `ifitwala_ed` hand-author `purpose`, `slot`, `binding_role`, and retention values in many places
 3. `ifitwala_drive` correctly enforces the current governed contract, but `ifitwala_ed` can drift silently until a browser upload fails
 4. current semantics are not education-driven enough, especially for reusable teaching files
+5. async follow-up work such as preview or derivative scheduling can still break browser uploads if semantic queue labels are treated as if they were guaranteed live Frappe worker queues
 
 The concrete example is `Supporting Material`:
 
@@ -223,6 +224,18 @@ Option B:
 - Ed exports a machine-readable contract snapshot consumed by Drive
 
 Either way, Drive should validate against the same canonical workflow spec that Ed used to create the session.
+
+## Runtime Queue Topology Is Part Of The Upload Contract
+
+Workflow authors must treat queue/runtime topology as part of the governed upload contract, not as an operator afterthought.
+
+Rules:
+
+- Drive may store semantic queue classes internally for processing intent
+- enqueue-time queue names must still be valid for the active Frappe site runtime
+- if custom Drive worker queues are required for isolation, that requirement must be explicit in the canonical docs and runbook
+- otherwise the enqueue boundary must normalize semantic queue classes to runtime-valid standard queues
+- create-session/finalize-path regression coverage should exercise not just classification and folder routing, but also post-finalize async handoff
 
 ## Contract-Versioned Upload Sessions
 

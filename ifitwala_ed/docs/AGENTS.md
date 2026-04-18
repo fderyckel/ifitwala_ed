@@ -122,6 +122,7 @@ Canonical feature docs should explicitly state, where relevant:
 - multi-tenant isolation expectations
 - concurrency/performance expectations
 - queue/cache/realtime expectations when those are part of the design
+- whether queue names are semantic-only or must exist in the live worker topology, and where enqueue-time normalization or fallback ownership lives
 - permission-matrix expectations for governed file/image access when a surface exposes private media
 
 Do not leave these as implicit assumptions for critical workflows.

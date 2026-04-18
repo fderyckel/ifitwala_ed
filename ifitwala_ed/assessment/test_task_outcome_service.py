@@ -8,6 +8,209 @@ from ifitwala_ed.tests.frappe_stubs import import_fresh, stubbed_frappe
 
 
 class TestTaskOutcomeService(TestCase):
+    def test_completion_judgment_contribution_updates_is_complete_and_clears_scalar_fields(self):
+        updates = []
+
+        with stubbed_frappe() as frappe:
+
+            def fake_get_value(doctype, name, fieldname=None, as_dict=False):
+                if doctype == "Task Outcome" and fieldname == [
+                    "task_delivery",
+                    "grade_scale",
+                    "is_published",
+                ]:
+                    return {
+                        "task_delivery": "TDL-1",
+                        "grade_scale": None,
+                        "is_published": 0,
+                    }
+                if doctype == "Task Delivery":
+                    return {
+                        "grading_mode": "Completion",
+                        "require_grading": 1,
+                        "rubric_scoring_strategy": None,
+                        "grade_scale": None,
+                        "rubric_version": None,
+                    }
+                if doctype == "Task Outcome" and fieldname == "is_complete":
+                    return 0
+                return None
+
+            def fake_get_values(doctype, filters=None, fieldname=None, order_by=None, as_dict=False):
+                if doctype == "Task Contribution":
+                    return [
+                        {
+                            "name": "TCO-1",
+                            "contribution_type": "Self",
+                            "judgment_code": "complete",
+                            "score": None,
+                            "grade": None,
+                            "grade_value": None,
+                            "feedback": "Observed completion.",
+                            "moderation_action": None,
+                            "modified": "2026-04-17 17:30:00",
+                        }
+                    ]
+                return []
+
+            frappe.db.get_value = fake_get_value
+            frappe.db.get_values = fake_get_values
+            frappe.db.set_value = lambda doctype, name, values, update_modified=True: updates.append(
+                (doctype, name, values, update_modified)
+            )
+
+            module = import_fresh("ifitwala_ed.assessment.task_outcome_service")
+            payload = module.apply_official_outcome_from_contributions("OUT-1")
+
+        self.assertEqual(payload, {"outcome": "OUT-1", "grading_status": "Finalized"})
+        self.assertEqual(
+            updates,
+            [
+                (
+                    "Task Outcome",
+                    "OUT-1",
+                    {
+                        "official_score": None,
+                        "official_grade": None,
+                        "official_grade_value": None,
+                        "official_feedback": "Observed completion.",
+                        "is_complete": 1,
+                        "grading_status": "Finalized",
+                    },
+                    True,
+                )
+            ],
+        )
+
+    def test_feedback_only_completion_contribution_preserves_current_is_complete(self):
+        updates = []
+
+        with stubbed_frappe() as frappe:
+
+            def fake_get_value(doctype, name, fieldname=None, as_dict=False):
+                if doctype == "Task Outcome" and fieldname == [
+                    "task_delivery",
+                    "grade_scale",
+                    "is_published",
+                ]:
+                    return {
+                        "task_delivery": "TDL-1",
+                        "grade_scale": None,
+                        "is_published": 0,
+                    }
+                if doctype == "Task Delivery":
+                    return {
+                        "grading_mode": "Completion",
+                        "require_grading": 1,
+                        "rubric_scoring_strategy": None,
+                        "grade_scale": None,
+                        "rubric_version": None,
+                    }
+                if doctype == "Task Outcome" and fieldname == "is_complete":
+                    return 1
+                return None
+
+            def fake_get_values(doctype, filters=None, fieldname=None, order_by=None, as_dict=False):
+                if doctype == "Task Contribution":
+                    return [
+                        {
+                            "name": "TCO-1",
+                            "contribution_type": "Self",
+                            "judgment_code": None,
+                            "score": None,
+                            "grade": None,
+                            "grade_value": None,
+                            "feedback": "Comment only refresh.",
+                            "moderation_action": None,
+                            "modified": "2026-04-17 17:35:00",
+                        }
+                    ]
+                return []
+
+            frappe.db.get_value = fake_get_value
+            frappe.db.get_values = fake_get_values
+            frappe.db.set_value = lambda doctype, name, values, update_modified=True: updates.append(
+                (doctype, name, values, update_modified)
+            )
+
+            module = import_fresh("ifitwala_ed.assessment.task_outcome_service")
+            payload = module.apply_official_outcome_from_contributions("OUT-1")
+
+        self.assertEqual(payload, {"outcome": "OUT-1", "grading_status": "Finalized"})
+        self.assertEqual(
+            updates,
+            [
+                (
+                    "Task Outcome",
+                    "OUT-1",
+                    {
+                        "official_score": None,
+                        "official_grade": None,
+                        "official_grade_value": None,
+                        "official_feedback": "Comment only refresh.",
+                        "is_complete": 1,
+                        "grading_status": "Finalized",
+                    },
+                    True,
+                )
+            ],
+        )
+
+    def test_missing_boolean_contributions_reset_is_complete(self):
+        updates = []
+
+        with stubbed_frappe() as frappe:
+
+            def fake_get_value(doctype, name, fieldname=None, as_dict=False):
+                if doctype == "Task Outcome" and fieldname == [
+                    "task_delivery",
+                    "grade_scale",
+                    "is_published",
+                ]:
+                    return {
+                        "task_delivery": "TDL-1",
+                        "grade_scale": None,
+                        "is_published": 0,
+                    }
+                if doctype == "Task Delivery":
+                    return {
+                        "grading_mode": "Binary",
+                        "require_grading": 1,
+                        "rubric_scoring_strategy": None,
+                        "grade_scale": None,
+                        "rubric_version": None,
+                    }
+                return None
+
+            frappe.db.get_value = fake_get_value
+            frappe.db.get_values = lambda *args, **kwargs: []
+            frappe.db.set_value = lambda doctype, name, values, update_modified=True: updates.append(
+                (doctype, name, values, update_modified)
+            )
+
+            module = import_fresh("ifitwala_ed.assessment.task_outcome_service")
+            payload = module.apply_official_outcome_from_contributions("OUT-1")
+
+        self.assertEqual(payload, {"outcome": "OUT-1", "grading_status": "Not Started"})
+        self.assertEqual(
+            updates,
+            [
+                (
+                    "Task Outcome",
+                    "OUT-1",
+                    {
+                        "official_score": None,
+                        "official_grade": None,
+                        "official_grade_value": None,
+                        "official_feedback": None,
+                        "is_complete": 0,
+                        "grading_status": "Not Started",
+                    },
+                    True,
+                )
+            ],
+        )
+
     def test_criteria_feedback_only_contribution_preserves_existing_rubric_fields(self):
         updates = []
         delete_calls = []
@@ -52,6 +255,7 @@ class TestTaskOutcomeService(TestCase):
                         {
                             "name": "TCO-1",
                             "contribution_type": "Self",
+                            "judgment_code": None,
                             "score": None,
                             "grade": None,
                             "grade_value": None,

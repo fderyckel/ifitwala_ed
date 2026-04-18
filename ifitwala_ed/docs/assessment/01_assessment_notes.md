@@ -158,6 +158,15 @@ When `points = 1` and `criteria = 0`:
 * Official score is stored on **Task Outcome**
 * Grade Scale is resolved at delivery time (policy‑driven)
 
+### Completion and Binary Tasks
+
+When grading mode is `Completion` or `Binary`:
+
+* Teacher judgment is stored on **Task Contribution** as `judgment_code`
+* Optional comments still live on the same contribution row
+* `Task Outcome.is_complete` is derived official truth for the selected contribution
+* `Assign Only` remains the procedural exception and may update `Task Outcome.is_complete` directly
+
 ---
 
 ## 4.5 Source of truth / layers

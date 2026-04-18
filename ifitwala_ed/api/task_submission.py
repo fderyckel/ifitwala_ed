@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import importlib
+import mimetypes
 from typing import Any
 
 import frappe
@@ -162,26 +163,77 @@ def _load_submission_file_name_map(submission_id: str) -> dict[str, str]:
     return file_name_by_url
 
 
-def _load_submission_preview_status_map(file_ids: list[str]) -> dict[str, str | None]:
+def _load_submission_drive_file_meta_map(file_ids: list[str]) -> dict[str, dict[str, str | None]]:
     resolved_file_ids = [file_id for file_id in dict.fromkeys(file_ids) if _clean_text(file_id)]
     if not resolved_file_ids:
         return {}
 
     current_frappe = _frappe_module()
     try:
-        rows = current_frappe.get_all(
+        drive_rows = current_frappe.get_all(
             "Drive File",
             filters={"file": ["in", resolved_file_ids]},
-            fields=["file", "preview_status"],
+            fields=["file", "preview_status", "current_version"],
             limit=0,
         )
     except Exception:
         return {}
+
+    current_version_ids = [
+        current_version
+        for current_version in (_clean_text(row.get("current_version")) for row in (drive_rows or []))
+        if current_version
+    ]
+    mime_type_by_version: dict[str, str | None] = {}
+    if current_version_ids:
+        try:
+            version_rows = current_frappe.get_all(
+                "Drive File Version",
+                filters={"name": ["in", current_version_ids]},
+                fields=["name", "mime_type"],
+                limit=0,
+            )
+        except Exception:
+            version_rows = []
+        mime_type_by_version = {
+            _clean_text(row.get("name")): _clean_text(row.get("mime_type"))
+            for row in version_rows
+            if _clean_text(row.get("name"))
+        }
+
     return {
-        _clean_text(row.get("file")): _clean_text(row.get("preview_status"))
-        for row in rows
+        _clean_text(row.get("file")): {
+            "preview_status": _clean_text(row.get("preview_status")),
+            "mime_type": mime_type_by_version.get(_clean_text(row.get("current_version"))),
+        }
+        for row in drive_rows
         if _clean_text(row.get("file"))
     }
+
+
+def _guess_mime_type(*, file_name: str | None = None, file_url: str | None = None) -> str | None:
+    for candidate in (file_name, file_url):
+        resolved = _clean_text(candidate)
+        if not resolved:
+            continue
+        guessed = mimetypes.guess_type(resolved)[0]
+        if guessed:
+            return guessed
+    return None
+
+
+def _extract_file_extension(*, file_name: str | None = None, file_url: str | None = None) -> str | None:
+    for candidate in (file_name, file_url):
+        resolved = _clean_text(candidate)
+        if not resolved:
+            continue
+        last_segment = resolved.rsplit("/", 1)[-1]
+        if "." not in last_segment:
+            continue
+        extension = last_segment.rsplit(".", 1)[-1].strip().lower()
+        if extension:
+            return extension
+    return None
 
 
 def _serialize_task_submission_attachment_row(
@@ -189,7 +241,7 @@ def _serialize_task_submission_attachment_row(
     *,
     submission_id: str,
     file_name_by_url: dict[str, str],
-    preview_status_by_file: dict[str, str | None],
+    drive_file_meta_by_file: dict[str, dict[str, str | None]],
 ) -> dict[str, Any]:
     file_url = _clean_text(attachment_row.get("file"))
     external_url = _clean_text(attachment_row.get("external_url"))
@@ -200,6 +252,12 @@ def _serialize_task_submission_attachment_row(
 
     if file_url:
         resolved_file_id = file_name_by_url.get(file_url)
+        drive_file_meta = drive_file_meta_by_file.get(resolved_file_id) or {}
+        mime_type = _clean_text(drive_file_meta.get("mime_type")) or _guess_mime_type(
+            file_name=file_name,
+            file_url=file_url,
+        )
+        extension = _extract_file_extension(file_name=file_name, file_url=file_url)
         open_url = resolve_academic_file_open_url(
             file_name=resolved_file_id,
             file_url=file_url,
@@ -220,10 +278,12 @@ def _serialize_task_submission_attachment_row(
             "file_size": file_size,
             "description": description,
             "public": _bool_flag(attachment_row.get("public")),
-            "preview_status": preview_status_by_file.get(resolved_file_id),
+            "preview_status": _clean_text(drive_file_meta.get("preview_status")),
             "preview_url": preview_url,
             "open_url": open_url,
             "external_url": None,
+            "mime_type": mime_type,
+            "extension": extension,
         }
     return {
         "row_name": row_name,
@@ -237,6 +297,8 @@ def _serialize_task_submission_attachment_row(
         "preview_url": None,
         "open_url": external_url,
         "external_url": external_url,
+        "mime_type": None,
+        "extension": None,
     }
 
 
@@ -258,16 +320,110 @@ def _load_task_submission_attachment_rows(submission_id: str) -> list[dict[str, 
         limit=0,
     )
     file_name_by_url = _load_submission_file_name_map(resolved_submission_id)
-    preview_status_by_file = _load_submission_preview_status_map(list(file_name_by_url.values()))
+    drive_file_meta_by_file = _load_submission_drive_file_meta_map(list(file_name_by_url.values()))
     return [
         _serialize_task_submission_attachment_row(
             row,
             submission_id=resolved_submission_id,
             file_name_by_url=file_name_by_url,
-            preview_status_by_file=preview_status_by_file,
+            drive_file_meta_by_file=drive_file_meta_by_file,
         )
         for row in attachment_rows
     ]
+
+
+def _attachment_is_pdf(attachment_row: dict[str, Any]) -> bool:
+    if _clean_text(attachment_row.get("mime_type")) == "application/pdf":
+        return True
+    return _extract_file_extension(file_name=attachment_row.get("file_name")) == "pdf"
+
+
+def _build_annotation_readiness_payload(
+    submission_row: dict[str, Any],
+    attachments: list[dict[str, Any]],
+) -> dict[str, Any]:
+    primary_pdf = next((row for row in attachments if _attachment_is_pdf(row)), None)
+    if not primary_pdf:
+        if _clean_text(submission_row.get("text_content")):
+            title = _("PDF annotation does not apply to this version")
+            message = _(
+                "This submission version is text-based. Keep feedback in the marking panel until a governed PDF evidence version exists."
+            )
+        elif _clean_text(submission_row.get("link_url")):
+            title = _("PDF annotation does not apply to this version")
+            message = _(
+                "This submission version points to linked evidence. Keep review in the drawer and open the linked source directly when needed."
+            )
+        elif attachments:
+            title = _("No governed PDF evidence on this version")
+            message = _(
+                "This submission version has attachments, but none are governed PDFs. PDF annotation does not apply to this evidence version."
+            )
+        else:
+            title = _("No governed PDF evidence on this version")
+            message = _(
+                "This submission version does not include a governed PDF attachment. Continue grading in the drawer."
+            )
+        return {
+            "mode": "not_applicable",
+            "reason_code": "no_pdf_attachment",
+            "title": title,
+            "message": message,
+            "attachment_row_name": None,
+            "attachment_file_name": None,
+            "preview_status": None,
+            "preview_url": None,
+            "open_url": None,
+        }
+
+    preview_status = _clean_text(primary_pdf.get("preview_status"))
+    if preview_status == "ready":
+        mode = "reduced"
+        reason_code = "pdf_preview_ready"
+        title = _("Reduced PDF review mode")
+        message = _(
+            "This governed PDF has a preview surface, but text-anchored annotation is not available in the current runtime yet. Review the preview or open the source PDF, then keep marking in the drawer."
+        )
+    elif preview_status == "pending":
+        mode = "reduced"
+        reason_code = "pdf_preview_pending"
+        title = _("Reduced PDF review mode")
+        message = _(
+            "This governed PDF is still generating its preview. Text-anchored annotation is not available in the current runtime yet, so use the source PDF plus drawer marking for now."
+        )
+    elif preview_status == "failed":
+        mode = "unavailable"
+        reason_code = "pdf_preview_failed"
+        title = _("PDF preview unavailable")
+        message = _(
+            "This governed PDF can still be opened, but its preview could not be generated. Keep review action-led for now and continue marking in the drawer."
+        )
+    elif preview_status == "not_applicable":
+        mode = "unavailable"
+        reason_code = "pdf_preview_not_applicable"
+        title = _("PDF preview unavailable")
+        message = _(
+            "This governed PDF does not currently expose a preview surface. Open the source PDF directly and continue marking in the drawer."
+        )
+    else:
+        mode = "reduced"
+        reason_code = "pdf_preview_unknown"
+        title = _("Reduced PDF review mode")
+        message = _(
+            "This governed PDF can be opened for review, but preview/readability metadata is not ready yet. Continue with the source PDF and the drawer marking workflow."
+        )
+
+    return {
+        "mode": mode,
+        "reason_code": reason_code,
+        "title": title,
+        "message": message,
+        "attachment_row_name": _clean_text(primary_pdf.get("row_name")),
+        "attachment_file_name": _clean_text(primary_pdf.get("file_name")),
+        "preview_status": preview_status,
+        "preview_url": _clean_text(primary_pdf.get("preview_url")),
+        "open_url": _clean_text(primary_pdf.get("open_url")),
+    }
 
 
 def serialize_task_submission_evidence(submission_row: dict[str, Any]) -> dict[str, Any]:
@@ -275,6 +431,7 @@ def serialize_task_submission_evidence(submission_row: dict[str, Any]) -> dict[s
     if not submission_id:
         frappe.throw(_("Task Submission is missing identity."), frappe.ValidationError)
 
+    attachments = _load_task_submission_attachment_rows(submission_id)
     return {
         "submission_id": submission_id,
         "version": submission_row.get("version"),
@@ -287,7 +444,8 @@ def serialize_task_submission_evidence(submission_row: dict[str, Any]) -> dict[s
         "cloned_from": _clean_text(submission_row.get("cloned_from")),
         "text_content": submission_row.get("text_content"),
         "link_url": _clean_text(submission_row.get("link_url")),
-        "attachments": _load_task_submission_attachment_rows(submission_id),
+        "attachments": attachments,
+        "annotation_readiness": _build_annotation_readiness_payload(submission_row, attachments),
     }
 
 

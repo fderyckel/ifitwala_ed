@@ -267,7 +267,7 @@ def _get_existing_draft(data, outcome_id, contributor, contribution_type):
 
 
 def _apply_payload_fields(doc, data):
-    for fieldname in ("score", "grade", "feedback", "moderation_action"):
+    for fieldname in ("score", "grade", "feedback", "moderation_action", "judgment_code"):
         if fieldname in data:
             setattr(doc, fieldname, data.get(fieldname))
 

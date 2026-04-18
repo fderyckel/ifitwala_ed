@@ -55,6 +55,13 @@ class TestTaskSubmissionApi(FrappeTestCase):
                 {
                     "file": "FILE-TASK-0001",
                     "preview_status": "ready",
+                    "current_version": "DFV-TASK-0001",
+                }
+            ],
+            [
+                {
+                    "name": "DFV-TASK-0001",
+                    "mime_type": "application/pdf",
                 }
             ],
         ]
@@ -82,4 +89,8 @@ class TestTaskSubmissionApi(FrappeTestCase):
         self.assertEqual(preview_parsed.path, "/api/method/ifitwala_ed.api.file_access.preview_academic_file")
         self.assertEqual((preview_query.get("file") or [None])[0], "FILE-TASK-0001")
         self.assertEqual(attachments[0].get("preview_status"), "ready")
+        self.assertEqual(attachments[0].get("mime_type"), "application/pdf")
+        self.assertEqual(attachments[0].get("extension"), "pdf")
         self.assertEqual((attachments[0].get("open_url") or "").strip(), secure_url)
+        self.assertEqual(payload.get("annotation_readiness", {}).get("mode"), "reduced")
+        self.assertEqual(payload.get("annotation_readiness", {}).get("reason_code"), "pdf_preview_ready")

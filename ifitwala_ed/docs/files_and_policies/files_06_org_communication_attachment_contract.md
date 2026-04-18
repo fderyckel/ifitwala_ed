@@ -94,6 +94,7 @@ Rules:
 1. The UI must not guess any attachment path.
 2. The upload/finalize session must be revalidated against the authoritative communication context before file finalization.
 3. Class-event communication keeps its existing course/student-group placement; the broader contract adds school and organization context rather than replacing governance with raw attachments.
+4. Post-finalize preview/derivative scheduling remains Drive-owned deferred enrichment and must enqueue onto a runtime-valid worker queue. Drive may keep semantic queue classes internally, but org communication uploads must not fail because a semantic queue label was sent directly into Frappe without runtime validation or fallback.
 
 ## 5. UX and Mutation Rules
 

@@ -108,6 +108,8 @@ Feedback-specific implication from the canonical feedback contract:
 `Task Contribution` stores teacher-authored grading input.
 It does not replace the outcome row directly in the UI contract.
 The official result is derived from eligible contributions, not entered straight into the gradebook payload.
+For assessed `Completion` and `Binary` deliveries, the contribution row carries `judgment_code`; `Task Outcome.is_complete`
+remains the derived official truth rather than the primary write path.
 
 ---
 
@@ -297,6 +299,13 @@ When grading is not criteria-based, the selected contribution writes:
 
 through the outcome truth service.
 
+For assessed `Completion` and `Binary` grading, the selected contribution instead writes:
+
+- `official_feedback`
+- derived `is_complete`
+
+using `Task Contribution.judgment_code`.
+
 ### 3.4 Quiz runtime exception
 
 Assessed quiz attempts update outcome truth directly in `quiz_service.py`.
@@ -313,6 +322,9 @@ Current write boundary for assessed quiz manual review:
 
 The gradebook API must not accept `official_*` writes from clients.
 Client-facing grading routes create or update contributions and let the outcome truth pipeline recompute official results.
+Current explicit exception:
+
+- `Assign Only` completion tracking may still write `Task Outcome.is_complete` directly because it is not part of the assessed grading audit path
 
 ---
 

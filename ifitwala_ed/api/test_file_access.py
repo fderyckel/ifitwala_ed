@@ -96,6 +96,62 @@ class TestFileAccessUrlContracts(FrappeTestCase):
             "/api/method/ifitwala_ed.api.file_access.preview_academic_file?file=FILE-EXT&context_doctype=Student&context_name=STU-0001",
         )
 
+    def test_resolve_academic_file_open_url_recovers_file_name_from_file_url_for_private_files(self):
+        with patch("ifitwala_ed.api.file_access.frappe.db.get_value", return_value="FILE-ACADEMIC-1") as get_value:
+            url = resolve_academic_file_open_url(
+                file_name=None,
+                file_url="/private/files/submission.pdf",
+                context_doctype="Task Submission",
+                context_name="TSU-0001",
+            )
+
+        parsed = urlparse(url or "")
+        query = parse_qs(parsed.query)
+        self.assertEqual(parsed.path, "/api/method/ifitwala_ed.api.file_access.download_academic_file")
+        self.assertEqual((query.get("file") or [None])[0], "FILE-ACADEMIC-1")
+        self.assertEqual((query.get("context_doctype") or [None])[0], "Task Submission")
+        self.assertEqual((query.get("context_name") or [None])[0], "TSU-0001")
+        get_value.assert_called_once_with("File", {"file_url": "/private/files/submission.pdf"}, "name")
+
+    def test_resolve_academic_file_preview_url_recovers_file_name_from_file_url_for_private_files(self):
+        with patch("ifitwala_ed.api.file_access.frappe.db.get_value", return_value="FILE-ACADEMIC-1") as get_value:
+            url = resolve_academic_file_preview_url(
+                file_name=None,
+                file_url="/private/files/submission.pdf",
+                context_doctype="Task Submission",
+                context_name="TSU-0001",
+            )
+
+        parsed = urlparse(url or "")
+        query = parse_qs(parsed.query)
+        self.assertEqual(parsed.path, "/api/method/ifitwala_ed.api.file_access.preview_academic_file")
+        self.assertEqual((query.get("file") or [None])[0], "FILE-ACADEMIC-1")
+        self.assertEqual((query.get("context_doctype") or [None])[0], "Task Submission")
+        self.assertEqual((query.get("context_name") or [None])[0], "TSU-0001")
+        get_value.assert_called_once_with("File", {"file_url": "/private/files/submission.pdf"}, "name")
+
+    def test_resolve_academic_file_open_url_never_leaks_unresolved_private_file_urls(self):
+        with patch("ifitwala_ed.api.file_access.frappe.db.get_value", return_value=None):
+            self.assertIsNone(
+                resolve_academic_file_open_url(
+                    file_name=None,
+                    file_url="/private/files/submission.pdf",
+                    context_doctype="Task Submission",
+                    context_name="TSU-0001",
+                )
+            )
+
+    def test_resolve_academic_file_preview_url_never_leaks_unresolved_private_file_urls(self):
+        with patch("ifitwala_ed.api.file_access.frappe.db.get_value", return_value=None):
+            self.assertIsNone(
+                resolve_academic_file_preview_url(
+                    file_name=None,
+                    file_url="/private/files/submission.pdf",
+                    context_doctype="Task Submission",
+                    context_name="TSU-0001",
+                )
+            )
+
     def test_build_guardian_file_open_url_includes_context(self):
         url = build_guardian_file_open_url(
             file_name="FILE-GRD-1",

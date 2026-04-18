@@ -144,23 +144,42 @@ class TaskContribution(Document):
         requires_grading = int(delivery.get("require_grading") or 0)
         allow_feedback = int(delivery.get("allow_feedback") or 0) == 1
         has_feedback = bool((self.feedback or "").strip())
+        has_score = self.score not in (None, "")
+        has_grade = bool((self.grade or "").strip())
+        has_rubric_scores = bool(self.get("rubric_scores"))
+        judgment_code = (self.judgment_code or "").strip()
 
         if has_feedback and not allow_feedback:
             frappe.throw(_("Comments are not enabled for this delivery."))
 
         if not requires_grading:
-            if self.score not in (None, "") or (self.grade or "").strip():
+            if has_score or has_grade or judgment_code:
                 frappe.throw(_("Ungraded deliveries only allow feedback contributions."))
-            if self.get("rubric_scores"):
+            if has_rubric_scores:
                 frappe.throw(_("Ungraded deliveries only allow feedback contributions."))
             return
 
-        if grading_mode == "Points" and self.score in (None, "") and not has_feedback:
+        if judgment_code and grading_mode not in {"Binary", "Completion"}:
+            frappe.throw(_("Judgment Code is only valid for binary and completion grading."))
+
+        if grading_mode == "Points" and not has_score and not has_feedback:
             frappe.throw(_("Score or comment is required for points grading."))
 
+        if grading_mode in {"Binary", "Completion"}:
+            if has_score or has_grade or has_rubric_scores:
+                frappe.throw(_("Binary and completion grading only allow a judgment and optional comment."))
+            allowed_codes = {"Binary": {"yes", "no"}, "Completion": {"complete", "incomplete"}}.get(
+                grading_mode,
+                set(),
+            )
+            if judgment_code and judgment_code not in allowed_codes:
+                frappe.throw(_("Judgment Code is not valid for this grading mode."))
+            if not judgment_code and not has_feedback:
+                frappe.throw(_("Judgment or comment is required for binary and completion grading."))
+            return
+
         if grading_mode == "Criteria":
-            rows = self.get("rubric_scores") or []
-            if not rows and not has_feedback:
+            if not has_rubric_scores and not has_feedback:
                 frappe.throw(_("Rubric scores or comment are required for criteria grading."))
 
     def _validate_submission_requirement(self):

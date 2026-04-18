@@ -148,6 +148,18 @@ Current implementation baseline for the Evidence tab:
 * drawer bootstrap returns one **selected submission** payload plus a bounded **submission version summary** list
 * if no explicit version is requested, the selected submission defaults to the latest version
 * attachment rows in the selected submission resolve to server-owned `preview_url` / `open_url` routes; the SPA must never guess private file paths
+* attachment rows now also carry preview status plus file-type hints from governed Drive metadata where available
+* selected submission payload now includes a server-owned annotation-readiness summary for the currently selected version
+* Evidence tab now distinguishes:
+
+  * governed PDF reduced-review state
+  * preview-unavailable PDF fallback state
+  * non-PDF / not-applicable evidence state
+
+Current partial annotation-readiness baseline:
+
+* current runtime can surface governed PDF preview readiness and action-led fallback inside the drawer
+* current runtime does **not** yet support text-anchored comments, OCR-driven upgrades, or structured feedback records
 
 Future annotation contract for the drawer:
 
@@ -158,7 +170,10 @@ Future annotation contract for the drawer:
   * point / area / page comment
   * optional ink for handwritten or diagram-heavy work
 * first serious authoring version must also include a minimal comment bank / quickmarks flow
+* first version comment bank defaults to teacher-owned entries with optional course or assignment relevance
 * unreadable or scanned PDFs must be detected before rich text anchoring is assumed; reduced mode may allow area/page/ink comments until OCR/repair exists
+* reduced-mode comments still create structured feedback records; they do not live only as flattened artifact marks
+* OCR/repair is an asynchronous enhancement path by default and must not block reduced-mode review
 
 ---
 
@@ -289,7 +304,7 @@ Finalization means: teacher commits an official outcome value.
 
 ### Flow H — Release / Return to Students
 
-Release is one explicit product action on the outcome.
+Release is one explicit product action on the outcome today.
 For the current runtime, it means one shared student/family-visible release state.
 
 Canonical current contract:
@@ -307,6 +322,16 @@ Rules:
 * feedback and grade move through the same current release action
 * student and guardian share the same current release state
 * current runtime uses one `is_published` outcome state for release
+
+Locked target contract after the publication matrix ships:
+
+* feedback and grade become separate release channels
+* feedback-first and grade-only release are both supported as explicit actions
+* preferred shortcuts are:
+
+  * release feedback
+  * release both
+* guardian visibility never outruns student visibility for the same channel
 
 Release should support:
 
@@ -375,10 +400,13 @@ They see:
   * release actions split by content channel once the publication matrix ships
 
 * Gradebook API (`api/gradebook.py`) is the stable public RPC boundary; shared helper ownership lives in `api/gradebook_support.py`, and it does not compute grades.
+* Any governed upload, replace, or returned-feedback artifact flow behind this surface must execute through the Ifitwala_drive boundary, not through direct business-logic file writes.
 * Writes go to services; services may create Evidence Stub submissions when missing and `requires_submission = 1`.
 * Frontend can omit `task_submission` in grade actions; backend will attach to latest student submission if present, else create a stub when required.
 * Instructor-scoped users only see deliveries for taught student groups; course filters narrow scope but never broaden it.
 * Feedback and annotation records must bind to the selected submission version, not float across versions implicitly.
+* The selected submission payload is responsible for server-owned annotation-readiness state for the current evidence version; Vue must not guess PDF readiness from raw file paths.
+* For Ed-owned staff/student/guardian surfaces, the SPA must not call Drive grant APIs directly; Ed-owned routes authorize the business surface first, then issue Drive-backed preview/open/download access.
 
 **Canonical statement:** A Task Outcome always stores official results per criterion. Task totals are optional and only computed when the delivery strategy allows it.
 
@@ -644,6 +672,9 @@ The system **must never expose**:
 ## 2. Vocabulary & Language Lock (i18n-Friendly)
 
 All teacher-facing strings **must** come from translation keys.
+
+Current runtime still exposes one release action.
+The release vocabulary below describes the target language once channel-based release ships.
 
 ### Canonical Teacher Vocabulary
 
