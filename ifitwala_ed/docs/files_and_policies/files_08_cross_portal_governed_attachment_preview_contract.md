@@ -1,7 +1,7 @@
 # Cross-Portal Governed Attachment Preview Contract
 
 Status: Proposed canonical contract for cross-app implementation
-Date: 2026-04-17
+Date: 2026-04-18
 Code refs: `ifitwala_ed/api/file_access.py`, `ifitwala_ed/api/gradebook_reads.py`, `ifitwala_ed/api/org_communication_attachments.py`, `ifitwala_ed/api/org_communication_archive.py`, `ifitwala_ed/api/materials.py`, `ifitwala_ed/api/task_submission.py`, `ifitwala_ed/api/teaching_plans_read_models.py`, `ifitwala_ed/ui-spa/AGENTS.md`, `ifitwala_ed/ui-spa/src/components/tasks/CreateTaskDeliveryOverlay.vue`
 Test refs: `ifitwala_ed/api/test_file_access.py`, `ifitwala_ed/api/test_gradebook.py`, `ifitwala_ed/api/test_materials.py`, `ifitwala_ed/api/test_org_communication_archive.py`, `ifitwala_ed/api/test_task_submission.py`, `ifitwala_ed/api/test_teaching_plans.py`, `ifitwala_ed/ui-spa/src/components/tasks/__tests__/CreateTaskDeliveryOverlay.test.ts`
 Related current-state docs:
@@ -131,6 +131,34 @@ Why this is locked:
 - short-lived delivery grants should be issued just in time, not at page load
 - current Ed governed file access already follows this pattern and should remain the migration baseline
 - the underlying Drive delivery grant is still short-lived and must be resolved at request time
+
+## Thumbnail And Cache Direction
+
+Status: Proposed target refinement
+Code refs: `ifitwala_ed/api/file_access.py`, `ifitwala_ed/api/org_communication_attachments.py`, `ifitwala_ed/api/teaching_plans_read_models.py`, `ifitwala_ed/ui-spa/src/components/communication/CommunicationAttachmentPreviewList.vue`, `ifitwala_ed/ui-spa/src/components/planning/PlanningResourcePanel.vue`, `ifitwala_ed/ui-spa/src/components/tasks/CreateTaskDeliveryOverlay.vue`
+Test refs: None yet
+
+Current pain point:
+
+- image-card surfaces are currently using `preview_url` directly for `<img src>`, so the same governed route is serving both lightweight thumbnail needs and richer preview/open behavior
+- those preview routes are authorization-first Ed action routes, not dedicated thumbnail-delivery contracts
+- the proposal should not "cache page bootstrap grants"; it should split thumbnail delivery from richer preview delivery while keeping Ed as the permission gate
+
+Refined direction:
+
+- add an additive `thumbnail_url` field for governed file DTOs
+- `thumbnail_url` is for inline card/list images only
+- `preview_url` remains the richer preview action
+- `open_url` remains the original-file compatibility baseline and explicit fallback
+- Ed-owned thumbnail routes may use short-lived `frappe.cache()` entries for resolved redirect targets only, never for raw file bytes and never for DTO-embedded provider URLs
+- cache keys must include at least `drive_file`, current version identity, derivative role, and the relevant surface/context dimensions so tenant and portal scope cannot leak
+- cache TTL must stay shorter than the underlying Drive grant lifetime
+
+Initial rollout target:
+
+- Org Communication archive/detail image cards first
+- planning-material surfaces second via the shared `PlanningResourcePanel.vue` path that covers course-plan, unit-plan, and class-planning resource cards
+- task-material image cards can follow after the same contract is stable on those two higher-value surfaces
 
 ## Shared DTO Direction
 
@@ -277,7 +305,8 @@ Phase 2: Drive dependency foundation
 Phase 3: Ed service foundation
 
 - add a shared Ed attachment preview builder service
-- add stable preview/open/download routes that re-check surface authorization and then resolve Drive grants
+- add stable thumbnail/preview/open/download routes that re-check surface authorization and then resolve Drive grants
+- allow short-lived Ed-side caching only for resolved thumbnail redirect targets; do not embed provider grant URLs in bootstrap DTOs
 - keep route ownership explicit by surface or shared Ed file-access helpers
 
 Phase 4: shared SPA layer
@@ -288,7 +317,8 @@ Phase 4: shared SPA layer
 Phase 5: rollout order
 
 - Org Communication first
-- supporting materials and task resources second
+- supporting-material planning surfaces next, specifically course-plan, unit-plan, and class-planning cards via the existing shared planning resource panel
+- task resources after the planning surface contract is stable
 - task submissions, feedback, and stricter version-aware evidence surfaces after the foundation is stable
 
 Phase 6: regression protection
@@ -310,3 +340,4 @@ This proposal does not authorize:
 - Office conversion scope in Phase 1
 - replacing all current governed file-open routes in one pass
 - portal contracts that depend on expiring provider URLs embedded at page bootstrap time
+- aggressive idle-time deletion of current-version preview derivatives in Phase 1; cleanup should focus first on stale replaced derivatives plus deterministic erasure cleanup

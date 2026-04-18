@@ -649,7 +649,7 @@ describe('Gradebook page', () => {
 			submission_id: null,
 			version: null,
 		});
-		expect(text).toContain('Yes / No');
+		expect(text).toContain('Yes/No');
 		expect(text).toContain('Yes');
 		expect(text).toContain('No');
 		expect(text).not.toContain('Points Awarded');
@@ -691,7 +691,7 @@ describe('Gradebook page', () => {
 		const officialTab = Array.from(document.querySelectorAll('button')).find(button =>
 			(button.textContent || '').includes('Official Result')
 		);
-		expect(officialTab).not.toBeNull();
+		expect(officialTab).toBeTruthy();
 		officialTab!.dispatchEvent(new MouseEvent('click', { bubbles: true }));
 		await flushUi();
 
@@ -797,7 +797,7 @@ describe('Gradebook page', () => {
 		const evidenceTab = Array.from(document.querySelectorAll('button')).find(button =>
 			(button.textContent || '').includes('Evidence')
 		);
-		expect(evidenceTab).not.toBeNull();
+		expect(evidenceTab).toBeTruthy();
 		evidenceTab!.dispatchEvent(new MouseEvent('click', { bubbles: true }));
 		await flushUi();
 

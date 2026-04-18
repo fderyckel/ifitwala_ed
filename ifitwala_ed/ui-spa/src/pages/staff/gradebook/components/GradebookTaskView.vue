@@ -590,7 +590,9 @@ async function scrollToSelectedStudent(targetStudent = selectedStudentId.value) 
 		`[data-gradebook-student="${targetStudent}"]`
 	);
 	if (!target) return;
-	target.scrollIntoView({ block: 'center', behavior: 'smooth' });
+	if (typeof target.scrollIntoView === 'function') {
+		target.scrollIntoView({ block: 'center', behavior: 'smooth' });
+	}
 }
 
 async function refreshCurrentSelection(

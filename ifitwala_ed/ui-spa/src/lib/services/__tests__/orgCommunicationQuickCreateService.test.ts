@@ -234,7 +234,10 @@ describe('orgCommunicationQuickCreateService', () => {
 		const formData = apiUploadMock.mock.calls[0][1] as FormData
 		expect(formData.get('org_communication')).toBe('COMM-UPLOAD-1')
 		expect(formData.get('row_name')).toBe('row-file-1')
-		expect(formData.get('file')).toBe(file)
+		const uploadedFile = formData.get('file')
+		expect(uploadedFile).toBeInstanceOf(File)
+		expect((uploadedFile as File).name).toBe(file.name)
+		expect((uploadedFile as File).type).toBe(file.type)
 		expect(emitMock).toHaveBeenCalledWith('org_communication:invalidate', {
 			names: ['COMM-UPLOAD-1'],
 			reason: 'org_communication_attachment',

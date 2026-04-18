@@ -1,14 +1,8 @@
-import { readFileSync } from 'node:fs';
-
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createApp, defineComponent, h, nextTick, type App } from 'vue';
+import studentOverviewSource from '../analytics/StudentOverview.vue?raw';
 
 import { emptySnapshot } from '@/pages/staff/analytics/student-overview/constants';
-
-const studentOverviewSource = readFileSync(
-	new URL('../analytics/StudentOverview.vue', import.meta.url),
-	'utf8'
-);
 
 const {
 	filterMetaState,

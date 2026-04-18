@@ -132,7 +132,7 @@ describe('GuardianAttendance', () => {
 		) as HTMLButtonElement | undefined
 		expect(dayButton).toBeTruthy()
 		expect(dayButton?.className).toContain('bg-jacaranda/12')
-		expect(dayButton?.className).toContain('border-[1.5px]')
+		expect(dayButton?.className).toContain('border-2')
 
 		const onTrackCard = document.querySelector('.border-\\[rgb\\(var\\(--moss-rgb\\)\\/0\\.55\\)\\]') as HTMLElement | null
 		const lateCard = document.querySelector('.border-\\[rgb\\(var\\(--jacaranda-rgb\\)\\/0\\.55\\)\\]') as HTMLElement | null

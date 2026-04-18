@@ -50,14 +50,32 @@ vi.mock('vue-router', async () => {
 vi.mock('@/components/planning/PlanningResourcePanel.vue', () => ({
 	default: defineComponent({
 		name: 'PlanningResourcePanelStub',
-		props: [
-			'title',
-			'anchorDoctype',
-			'anchorName',
-			'enableAttachmentPreview',
-			'canManage',
-			'showReadOnlyNotice',
-		],
+		props: {
+			title: {
+				type: String,
+				default: '',
+			},
+			anchorDoctype: {
+				type: String,
+				default: '',
+			},
+			anchorName: {
+				type: String,
+				default: '',
+			},
+			enableAttachmentPreview: {
+				type: Boolean,
+				default: false,
+			},
+			canManage: {
+				type: Boolean,
+				default: true,
+			},
+			showReadOnlyNotice: {
+				type: Boolean,
+				default: true,
+			},
+		},
 		setup(props) {
 			return () =>
 				h(

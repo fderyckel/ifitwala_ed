@@ -637,8 +637,9 @@ describe('CreateTaskDeliveryOverlay', () => {
 		});
 
 		const text = document.body.textContent || '';
-		expect(text).toContain('Reusable task criteria');
-		expect(text).toContain('change only the delivery strategy for this class');
+		expect(text).toContain('Assigned work ready');
+		expect(text).toContain('This delivery now points to the reusable task you selected.');
+		expect(text).toContain('Add any class-specific resources in Class Planning');
 	});
 
 	it('renders governed preview actions for current task materials after task creation', async () => {

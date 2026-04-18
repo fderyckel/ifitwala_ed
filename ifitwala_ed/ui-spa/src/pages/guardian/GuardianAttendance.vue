@@ -71,26 +71,28 @@
 		<section class="card-surface p-5">
 			<h2 class="mb-3 type-h3 text-ink">How to read this view</h2>
 			<div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-				<div class="rounded-xl border border-[rgb(var(--moss-rgb)/0.55)] bg-moss/10 p-4">
+				<div class="rounded-xl border-2 border-[rgb(var(--moss-rgb)/0.55)] bg-moss/10 p-4">
 					<div class="mb-2 h-8 w-8 rounded-lg border border-moss/40 bg-moss/20" />
 					<p class="text-lg font-semibold tracking-tight text-moss">On track</p>
 					<p class="type-body text-ink/75">Attendance is recorded as present for that day.</p>
 				</div>
-				<div class="rounded-xl border border-[rgb(var(--jacaranda-rgb)/0.55)] bg-jacaranda/10 p-4">
+				<div
+					class="rounded-xl border-2 border-[rgb(var(--jacaranda-rgb)/0.55)] bg-jacaranda/10 p-4"
+				>
 					<div class="mb-2 h-8 w-8 rounded-lg border border-jacaranda/40 bg-jacaranda/20" />
 					<p class="text-lg font-semibold tracking-tight text-jacaranda">Late or tardy</p>
 					<p class="type-body text-ink/75">
 						The day includes a late arrival or another tardy attendance signal.
 					</p>
 				</div>
-				<div class="rounded-xl border border-[rgb(var(--flame-rgb)/0.55)] bg-flame/10 p-4">
+				<div class="rounded-xl border-2 border-[rgb(var(--flame-rgb)/0.55)] bg-flame/10 p-4">
 					<div class="mb-2 h-8 w-8 rounded-lg border border-flame/40 bg-flame/20" />
 					<p class="text-lg font-semibold tracking-tight text-flame">Absent</p>
 					<p class="type-body text-ink/75">
 						The day includes an absence or other non-present code.
 					</p>
 				</div>
-				<div class="rounded-xl border border-line-soft bg-surface-soft p-4">
+				<div class="rounded-xl border-2 border-line-soft bg-surface-soft p-4">
 					<div class="mb-2 h-8 w-8 rounded-lg border border-dashed border-line-soft bg-white/70" />
 					<p class="text-lg font-semibold tracking-tight text-ink">No record</p>
 					<p class="type-body text-ink/75">
@@ -191,13 +193,13 @@
 								<template v-for="(cell, index) in month.cells" :key="`${month.key}-${index}`">
 									<div
 										v-if="!cell"
-										class="aspect-square rounded-lg border-[1.5px] border-dashed border-line-soft/70 bg-white/50"
+										class="aspect-square rounded-lg border-2 border-dashed border-line-soft/70 bg-white/50"
 										aria-hidden="true"
 									/>
 									<button
 										v-else
 										type="button"
-										class="aspect-square rounded-lg border-[1.5px] px-2 py-1 text-left transition focus:outline-none focus:ring-2 focus:ring-jacaranda"
+										class="aspect-square rounded-lg border-2 px-2 py-1 text-left transition focus:outline-none focus:ring-2 focus:ring-jacaranda"
 										:class="cellClass(student.student, cell)"
 										:aria-label="cellAriaLabel(student.student_name, cell)"
 										:aria-pressed="isSelectedCell(student.student, cell.date) ? 'true' : 'false'"

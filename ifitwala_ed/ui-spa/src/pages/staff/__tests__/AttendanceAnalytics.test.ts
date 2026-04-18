@@ -1,11 +1,5 @@
-import { readFileSync } from 'node:fs';
-
 import { describe, expect, it } from 'vitest';
-
-const attendanceAnalyticsSource = readFileSync(
-	new URL('../analytics/AttendanceAnalytics.vue', import.meta.url),
-	'utf8'
-);
+import attendanceAnalyticsSource from '../analytics/AttendanceAnalytics.vue?raw';
 
 describe('AttendanceAnalytics shell contract', () => {
 	it('mounts in the canonical analytics shell', () => {

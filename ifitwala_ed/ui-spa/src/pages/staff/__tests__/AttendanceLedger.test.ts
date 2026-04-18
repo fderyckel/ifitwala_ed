@@ -1,6 +1,6 @@
-import { readFileSync } from 'node:fs';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createApp, defineComponent, h, nextTick, type App } from 'vue';
+import attendanceLedgerSource from '../analytics/AttendanceLedger.vue?raw';
 
 const { fetchAttendanceLedgerContextMock, getLedgerMock } = vi.hoisted(() => ({
 	fetchAttendanceLedgerContextMock: vi.fn(),
@@ -58,11 +58,6 @@ vi.mock('@/components/filters/DateRangePills.vue', () => ({
 }));
 
 import AttendanceLedger from '@/pages/staff/analytics/AttendanceLedger.vue';
-
-const attendanceLedgerSource = readFileSync(
-	new URL('../analytics/AttendanceLedger.vue', import.meta.url),
-	'utf8'
-);
 
 const cleanupFns: Array<() => void> = [];
 
