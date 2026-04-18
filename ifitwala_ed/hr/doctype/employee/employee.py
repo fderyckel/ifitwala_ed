@@ -190,7 +190,11 @@ class Employee(NestedSet):
         self._ensure_primary_contact()
 
         prev = self.get_doc_before_save() or {}
-        if (prev.get("current_holiday_lis") or None) != (self.current_holiday_lis or None):
+        prev_holiday = (
+            prev.get("current_holiday_lis") if hasattr(prev, "get") else getattr(prev, "current_holiday_lis", None)
+        )
+        current_holiday = getattr(self, "current_holiday_lis", None)
+        if (prev_holiday or None) != (current_holiday or None):
             invalidate_staff_portal_calendar_cache(self.name)
 
         # ---------------------------------------------------------
