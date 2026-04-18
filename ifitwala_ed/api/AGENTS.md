@@ -84,6 +84,7 @@ Do not let the client assemble important workflows out of generic document mutat
 - Keep request and response structures explicit and auditable.
 - For governed file/image reads, return a server-owned display/open URL for private media instead of exposing raw private paths.
 - A governed private-media route must never set `frappe.local.response["location"]` to a raw `/private/...` path; if no safe redirect target exists, stream the file inline from the API route instead.
+- Shared file-delivery helpers must return only a safe redirect target or `None`; route handlers own the final inline/private-media fallback behavior.
 
 If contract behavior changes, docs must be updated with code.
 

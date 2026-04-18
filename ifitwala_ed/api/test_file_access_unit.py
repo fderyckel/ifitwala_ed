@@ -122,14 +122,87 @@ class TestFileAccessUnit(TestCase):
 
         self.assertIsNone(url)
 
+    def test_resolve_drive_file_grant_target_url_hides_raw_private_file_fallback(self):
+        with _file_access_module() as (file_access, frappe):
+
+            def fake_get_value(doctype, filters, fieldname=None, as_dict=False):
+                if doctype == "File":
+                    self.assertEqual(filters, "FILE-EMP-1")
+                    self.assertEqual(fieldname, "file_url")
+                    return "/private/files/secret.pdf"
+                return None
+
+            frappe.db.get_value = fake_get_value
+            file_access._load_drive_access_callable = lambda attribute: lambda **kwargs: {"url": ""}
+
+            target_url = file_access._resolve_drive_file_grant_target_url(
+                drive_file_id="DRIVE-FILE-1",
+                file_id="FILE-EMP-1",
+            )
+
+        self.assertIsNone(target_url)
+
+    def test_resolve_drive_file_grant_target_url_keeps_public_fallback(self):
+        with _file_access_module() as (file_access, frappe):
+
+            def fake_get_value(doctype, filters, fieldname=None, as_dict=False):
+                if doctype == "File":
+                    self.assertEqual(filters, "FILE-EMP-1")
+                    self.assertEqual(fieldname, "file_url")
+                    return "/files/public-brochure.pdf"
+                return None
+
+            frappe.db.get_value = fake_get_value
+            file_access._load_drive_access_callable = lambda attribute: lambda **kwargs: {"url": ""}
+
+            target_url = file_access._resolve_drive_file_grant_target_url(
+                drive_file_id="DRIVE-FILE-1",
+                file_id="FILE-EMP-1",
+            )
+
+        self.assertEqual(target_url, "/files/public-brochure.pdf")
+
+    def test_resolve_cached_thumbnail_target_url_ignores_unsafe_cached_private_path(self):
+        with _file_access_module() as (file_access, frappe):
+            cache_writes: list[tuple[str, str, int | None]] = []
+
+            class _FakeCache:
+                def get_value(self, key):
+                    return "/private/files/stale-thumb.webp"
+
+                def set_value(self, key, value, expires_in_sec=None):
+                    cache_writes.append((key, value, expires_in_sec))
+
+            def fake_get_value(doctype, filters, fieldname=None, as_dict=False):
+                self.assertEqual(doctype, "Drive File")
+                self.assertEqual(filters, "DRIVE-FILE-1")
+                self.assertEqual(fieldname, ["name", "current_version"])
+                self.assertTrue(as_dict)
+                return {"name": "DRIVE-FILE-1", "current_version": "VER-1"}
+
+            frappe.db.get_value = fake_get_value
+            frappe.cache = lambda: _FakeCache()
+            file_access._resolve_drive_file_grant_target_url = lambda **kwargs: "https://thumb.example.com/fresh.webp"
+
+            target_url = file_access._resolve_cached_thumbnail_target_url(
+                drive_file_id="DRIVE-FILE-1",
+                file_id="FILE-EMP-1",
+                surface_parts=["org_communication", "COMM-1", "row-1"],
+            )
+
+        self.assertEqual(target_url, "https://thumb.example.com/fresh.webp")
+        self.assertEqual(len(cache_writes), 1)
+        self.assertEqual(cache_writes[0][1], "https://thumb.example.com/fresh.webp")
+
     def test_resolve_drive_download_grant_url_returns_signed_url(self):
         with _file_access_module() as (file_access, frappe):
 
             def fake_get_value(doctype, filters, fieldname=None, as_dict=False):
                 self.assertEqual(doctype, "Drive File")
                 self.assertEqual(filters, {"file": "FILE-EMP-1"})
-                self.assertEqual(fieldname, "name")
-                return "DRIVE-FILE-1"
+                self.assertEqual(fieldname, ["name", "preview_status", "current_version"])
+                self.assertTrue(as_dict)
+                return {"name": "DRIVE-FILE-1", "preview_status": None, "current_version": "VER-1"}
 
             frappe.db.get_value = fake_get_value
             file_access._load_drive_access_callable = lambda attribute: (
@@ -150,8 +223,9 @@ class TestFileAccessUnit(TestCase):
             def fake_get_value(doctype, filters, fieldname=None, as_dict=False):
                 if doctype == "Drive File":
                     self.assertEqual(filters, {"file": "FILE-EMP-1"})
-                    self.assertEqual(fieldname, "name")
-                    return "DRIVE-FILE-1"
+                    self.assertEqual(fieldname, ["name", "preview_status", "current_version"])
+                    self.assertTrue(as_dict)
+                    return {"name": "DRIVE-FILE-1", "preview_status": None, "current_version": "VER-1"}
                 return None
 
             frappe.db.get_value = fake_get_value

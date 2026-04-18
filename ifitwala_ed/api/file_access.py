@@ -7,7 +7,7 @@ import importlib
 import mimetypes
 import os
 from types import SimpleNamespace
-from urllib.parse import urlencode
+from urllib.parse import urlencode, urlparse
 
 import frappe
 from frappe import _
@@ -54,6 +54,15 @@ def _is_external_url(value: str | None) -> bool:
 def _is_public_site_file_url(value: str | None) -> bool:
     raw = (value or "").strip()
     return raw.startswith("/files/")
+
+
+def _is_raw_private_redirect_target(value: str | None) -> bool:
+    raw = (value or "").strip()
+    if not raw:
+        return False
+
+    path = str(urlparse(raw).path or raw).strip()
+    return path.startswith("/private/") or path.startswith("private/")
 
 
 def _resolve_file_name_from_url(file_url: str | None) -> str | None:
@@ -630,7 +639,7 @@ def _resolve_drive_file_grant_target_url(
     file_id: str,
     prefer_preview: bool = False,
     derivative_role: str | None = None,
-) -> str:
+) -> str | None:
     target_url = ""
     explicit_derivative_role = (derivative_role or "").strip()
     if prefer_preview and explicit_derivative_role:
@@ -652,15 +661,15 @@ def _resolve_drive_file_grant_target_url(
         grant = _load_drive_access_callable(grant_method)(drive_file_id=drive_file_id)
         target_url = str((grant or {}).get("url") or "").strip()
 
-    if target_url:
+    if target_url and not _is_raw_private_redirect_target(target_url):
         return target_url
 
     fallback_url = frappe.db.get_value("File", file_id, "file_url")
     target_url = str(fallback_url or "").strip()
-    if target_url:
+    if target_url and not _is_raw_private_redirect_target(target_url):
         return target_url
 
-    frappe.throw(_("Could not resolve an attachment open URL."), frappe.DoesNotExistError)
+    return None
 
 
 def _resolve_cached_thumbnail_target_url(
@@ -668,7 +677,7 @@ def _resolve_cached_thumbnail_target_url(
     drive_file_id: str,
     file_id: str,
     surface_parts: list[str | None],
-) -> str:
+) -> str | None:
     drive_file_row = (
         frappe.db.get_value(
             "Drive File",
@@ -687,7 +696,7 @@ def _resolve_cached_thumbnail_target_url(
     shared_cache = _get_shared_cache()
     if cache_key and shared_cache is not None:
         cached_url = str(shared_cache.get_value(cache_key) or "").strip()
-        if cached_url:
+        if cached_url and not _is_raw_private_redirect_target(cached_url):
             return cached_url
 
     target_url = _resolve_drive_file_grant_target_url(
@@ -967,7 +976,7 @@ def _respond_with_redirect_or_inline_file(
     cache_headers: bool = False,
 ) -> bool:
     resolved_target_url = str(target_url or "").strip()
-    if resolved_target_url and not resolved_target_url.startswith("/private/"):
+    if resolved_target_url and not _is_raw_private_redirect_target(resolved_target_url):
         if cache_headers:
             _set_thumbnail_cache_headers()
         frappe.local.response["type"] = "redirect"
@@ -1595,10 +1604,12 @@ def thumbnail_academic_file(
                 file_name,
             ],
         )
-        _set_thumbnail_cache_headers()
-        frappe.local.response["type"] = "redirect"
-        frappe.local.response["location"] = target_url
-        return
+        if target_url and _respond_with_redirect_or_inline_file(
+            file_row=file_row,
+            target_url=target_url,
+            cache_headers=True,
+        ):
+            return
 
     file_url = (file_row.get("file_url") or "").strip()
     if file_url.startswith(("http://", "https://")):

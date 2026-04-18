@@ -1229,6 +1229,45 @@ class TestFileAccessUrlContracts(FrappeTestCase):
             "private, max-age=240, must-revalidate",
         )
 
+    def test_thumbnail_academic_file_streams_inline_when_safe_thumb_target_is_unavailable(self):
+        file_row = {
+            "name": "FILE-MAT-1",
+            "file_url": "/private/files/Courses/COURSE-1/material.png",
+            "file_name": "material.png",
+            "is_private": 1,
+            "attached_to_doctype": "Supporting Material",
+            "attached_to_name": "MAT-1",
+        }
+
+        def fake_get_value(doctype, filters=None, fieldname=None, as_dict=False):
+            if doctype == "Drive File" and filters == {"file": "FILE-MAT-1"}:
+                return {"name": "DRIVE-0001", "preview_status": "ready", "current_version": "DFV-0001"}
+            return None
+
+        with (
+            patch("ifitwala_ed.api.file_access._resolve_authorized_academic_file", return_value=file_row),
+            patch("ifitwala_ed.api.file_access.frappe.db.get_value", side_effect=fake_get_value),
+            patch("ifitwala_ed.api.file_access._resolve_cached_thumbnail_target_url", return_value=None),
+            patch("ifitwala_ed.api.file_access._read_file_bytes", return_value=b"material-bytes"),
+        ):
+            frappe.local.response = {}
+            thumbnail_academic_file(
+                file="FILE-MAT-1",
+                context_doctype="Supporting Material",
+                context_name="MAT-1",
+            )
+
+        self.assertEqual(frappe.local.response.get("type"), "download")
+        self.assertEqual(frappe.local.response.get("filename"), "material.png")
+        self.assertEqual(frappe.local.response.get("filecontent"), b"material-bytes")
+        self.assertEqual(frappe.local.response.get("display_content_as"), "inline")
+        self.assertEqual(frappe.local.response.get("content_type"), "image/png")
+        self.assertEqual(
+            (frappe.local.response.get("headers") or {}).get("Cache-Control"),
+            "private, max-age=240, must-revalidate",
+        )
+        self.assertIsNone(frappe.local.response.get("location"))
+
     def test_open_public_website_media_streams_private_logo_for_guest(self):
         file_row = {
             "name": "FILE-PUBLIC-1",
