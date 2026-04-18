@@ -113,16 +113,18 @@ Test refs: `ifitwala_ed/ui-spa/src/pages/staff/__tests__/StaffPolicies.test.ts`
 
 ## Policy Signature Analytics Surface
 Status: Implemented
-Code refs: `ifitwala_ed/api/policy_signature.py`, `ifitwala_ed/ui-spa/src/pages/staff/analytics/PolicySignatureAnalytics.vue`, `ifitwala_ed/ui-spa/src/overlays/staff/StaffPolicyCampaignOverlay.vue`
-Test refs: `ifitwala_ed/api/test_policy_signature.py`, `ifitwala_ed/ui-spa/src/pages/staff/__tests__/PolicySignatureAnalytics.test.ts`
+Code refs: `ifitwala_ed/api/policy_signature.py`, `ifitwala_ed/ui-spa/src/pages/staff/analytics/PolicySignatureAnalytics.vue`, `ifitwala_ed/ui-spa/src/overlays/staff/StaffPolicyCampaignOverlay.vue`, `ifitwala_ed/ui-spa/src/overlays/staff/FamilyPolicyCampaignOverlay.vue`
+Test refs: `ifitwala_ed/api/test_policy_signature.py`, `ifitwala_ed/api/test_policy_family_campaign.py`, `ifitwala_ed/ui-spa/src/pages/staff/__tests__/PolicySignatureAnalytics.test.ts`
 
 1. The analytics page still shows acknowledgement status across supported audiences on the selected policy version:
    - `Staff`
    - `Guardian`
    - `Student`
-2. Staff remains the only audience that can launch internal signature tasks from the campaign overlay.
-3. Guardian and student rows remain portal-tracking only.
-4. The dashboard bootstrap remains a bounded summary read and large audience browsing still uses the server-backed audience register.
+2. Staff campaign launch remains staff-task only and continues to create internal signature `ToDo` rows for eligible employees.
+3. A separate family campaign overlay may publish student and guardian portal communications for the selected organization/school scope.
+4. Family campaign publication creates one `Org Communication` per selected family audience and deep-links to the exact portal policy page with `policy_version`.
+5. Guardian and student acknowledgement truth remains portal `Policy Acknowledgement` evidence. Family campaigns do not create tasks or a second compliance source.
+6. The dashboard bootstrap remains a bounded summary read and large audience browsing still uses the server-backed audience register.
 
 ## Contract Matrix
 Status: Implemented
@@ -132,9 +134,9 @@ Test refs: `ifitwala_ed/api/test_policy_signature.py`, `ifitwala_ed/api/test_ana
 | Layer | Contract | Status |
 |---|---|---|
 | Schema / DocType | Reuse `Institutional Policy`, `Policy Version`, `Policy Acknowledgement`, `Employee` | Implemented |
-| Controller / workflow logic | Cross-audience browsing remains library-only; actionable acknowledgement flows stay in Focus, Guardian Portal, Student Hub, and Admissions | Implemented |
-| API endpoints | `get_policy_library`, `get_policy_inform_payload`, `get_staff_policy_signature_dashboard`, `get_staff_policy_signature_audience_rows` | Implemented |
-| SPA / UI surfaces | `/staff/policies`, `/staff/analytics/policy-signatures`, existing policy-inform overlay | Implemented |
+| Controller / workflow logic | Cross-audience browsing remains library-first; actionable acknowledgement flows stay in Focus, Guardian Portal, Student Hub, and Admissions, with family campaigns publishing portal notices only | Implemented |
+| API endpoints | `get_policy_library`, `get_policy_inform_payload`, `get_staff_policy_signature_dashboard`, `get_staff_policy_signature_audience_rows`, `get_family_policy_campaign_options`, `publish_family_policy_campaign` | Implemented |
+| SPA / UI surfaces | `/staff/policies`, `/staff/analytics/policy-signatures`, existing policy-inform overlay, separate staff and family campaign overlays | Implemented |
 | Reports / dashboards | Staff Home link integration with capability gate plus on-demand audience register for high-volume policy analytics | Implemented |
 | Scheduler / background jobs | None | Implemented |
 | Tests | Backend and SPA regression coverage for cross-audience browsing and staff-mode status flow | Implemented |

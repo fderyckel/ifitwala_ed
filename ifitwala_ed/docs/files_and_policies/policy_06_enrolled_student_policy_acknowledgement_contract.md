@@ -18,18 +18,19 @@ Rules:
 5. The first implementation slice must improve product discoverability before adding new policy authoring complexity.
 
 ## Current Reality
-Status: Partial
-Code refs: `ifitwala_ed/api/guardian_policy.py`, `ifitwala_ed/ui-spa/src/pages/guardian/GuardianPolicies.vue`, `ifitwala_ed/ui-spa/src/pages/guardian/GuardianHome.vue`, `ifitwala_ed/ui-spa/src/components/PortalSidebar.vue`, `ifitwala_ed/ui-spa/src/router/index.ts`, `ifitwala_ed/ui-spa/src/pages/student/StudentHome.vue`
-Test refs: `ifitwala_ed/api/test_guardian_phase2.py`, `ifitwala_ed/ui-spa/src/pages/guardian/__tests__/GuardianPolicies.test.ts`
+Status: Implemented
+Code refs: `ifitwala_ed/api/guardian_policy.py`, `ifitwala_ed/api/student_policy.py`, `ifitwala_ed/ui-spa/src/pages/guardian/GuardianPolicies.vue`, `ifitwala_ed/ui-spa/src/pages/student/StudentPolicies.vue`, `ifitwala_ed/ui-spa/src/pages/guardian/GuardianHome.vue`, `ifitwala_ed/ui-spa/src/pages/student/StudentHome.vue`, `ifitwala_ed/ui-spa/src/components/PortalSidebar.vue`, `ifitwala_ed/ui-spa/src/router/index.ts`
+Test refs: `ifitwala_ed/api/test_guardian_phase2.py`, `ifitwala_ed/api/test_student_policy.py`, `ifitwala_ed/ui-spa/src/pages/guardian/__tests__/GuardianPolicies.test.ts`, `ifitwala_ed/ui-spa/src/pages/student/__tests__/StudentPolicies.test.ts`
 
 Current state:
 
 1. Guardian durable acknowledgement is implemented on `/guardian/policies`.
 2. Guardian policy visibility is filtered from linked students with signer authority via `Student Guardian.can_consent`, and that enrolled signer flag must be granted only to primary guardians.
 3. Guardian acknowledgement evidence is stored as immutable `Policy Acknowledgement` rows on guardian self-context.
-4. Guardian Home and the guardian sidebar link to the policies page, but Guardian Home does not yet surface pending policy work as an attention card or count.
-5. The student portal has no route, page, menu item, or home attention surface for policy acknowledgement.
-6. The acknowledgement controller already supports `acknowledged_for = Student` with `context_doctype = Student`, but there is no named enrolled-student student workflow wired in the portal.
+4. Student durable acknowledgement is implemented on `/student/policies` with its own named portal APIs.
+5. Guardian Home and Student Home already surface pending policy work as attention cards and counts.
+6. Staff analytics can publish family policy campaigns that create portal communications for selected `Guardian` and `Student` audiences without creating staff tasks.
+7. Family campaign links deep-link into `/hub/guardian/policies` and `/hub/student/policies` with `policy_version` focus so families land on the exact policy card they still need to review.
 
 ## Problem Statement
 Status: Planned
@@ -38,10 +39,10 @@ Test refs: None
 
 Product gaps to close:
 
-1. Families can complete guardian acknowledgements only if they discover the dedicated page themselves.
-2. Students cannot currently sign enrolled-student durable policies in `/hub/student`.
-3. Policies that apply to both `Student` and `Guardian` do not yet have an explicit enrolled-student portal contract.
-4. The current implementation is page-first, not action-first, which conflicts with the family UX rule that required signatures must surface on landing surfaces.
+1. Family campaign publication must stay aligned with durable acknowledgement truth and must not create a second request/decision layer.
+2. Policies that apply to both `Student` and `Guardian` still need clear dual-obligation reporting and communication copy.
+3. Family reminders remain a repeat publication workflow around unresolved durable obligations, not a mutable consent scheduler.
+4. Campaign copy and portal deep-links must keep families in the acknowledgement flow they already use instead of redirecting them to Desk-style review surfaces.
 
 ## Reuse Model
 Status: Planned
@@ -103,19 +104,40 @@ Rules:
 5. A user who can view a student in another workflow but lacks signing authority must not receive a policy action for that child.
 
 ## API And Data Contract
-Status: Planned
-Code refs: `ifitwala_ed/api/guardian_policy.py`, `ifitwala_ed/governance/doctype/policy_acknowledgement/policy_acknowledgement.py`, `ifitwala_ed/ui-spa/src/types/contracts/guardian/get_guardian_policy_overview.ts`
-Test refs: `ifitwala_ed/api/test_guardian_phase2.py`
+Status: Partial
+Code refs: `ifitwala_ed/api/guardian_policy.py`, `ifitwala_ed/api/student_policy.py`, `ifitwala_ed/api/policy_signature.py`, `ifitwala_ed/governance/doctype/policy_acknowledgement/policy_acknowledgement.py`, `ifitwala_ed/ui-spa/src/types/contracts/guardian/get_guardian_policy_overview.ts`, `ifitwala_ed/ui-spa/src/types/contracts/student/get_student_policy_overview.ts`, `ifitwala_ed/ui-spa/src/types/contracts/policy_signature/get_family_policy_campaign_options.ts`, `ifitwala_ed/ui-spa/src/types/contracts/policy_signature/publish_family_policy_campaign.ts`
+Test refs: `ifitwala_ed/api/test_guardian_phase2.py`, `ifitwala_ed/api/test_student_policy.py`, `ifitwala_ed/api/test_policy_family_campaign.py`
 
 Rules:
 
 1. Durable acknowledgement remains an append-only `Policy Acknowledgement` insert with typed-signature evidence.
-2. The first student slice should add named student APIs instead of making the SPA assemble generic CRUD.
-3. Recommended first endpoints:
+2. Student durable acknowledgement uses named student APIs instead of generic CRUD:
    - `get_student_policy_overview`
    - `acknowledge_student_policy`
-4. Guardian APIs may remain separate in the first slice if that avoids risky refactors.
-5. Shared helper code is allowed, but the first slice must not stall on a backend unification refactor.
+3. Guardian durable acknowledgement continues to use separate guardian APIs:
+   - `get_guardian_policy_overview`
+   - `acknowledge_guardian_policy`
+4. Family campaign publication for durable policies is a staff-side notification workflow only:
+   - `get_family_policy_campaign_options`
+   - `publish_family_policy_campaign`
+5. Family campaign publication reuses `Org Communication` for portal notices and must not create a new durable policy evidence model.
+
+## Staff Family Campaign Contract
+Status: Implemented
+Code refs: `ifitwala_ed/api/policy_signature.py`, `ifitwala_ed/ui-spa/src/pages/staff/analytics/PolicySignatureAnalytics.vue`, `ifitwala_ed/ui-spa/src/overlays/staff/FamilyPolicyCampaignOverlay.vue`, `ifitwala_ed/ui-spa/src/pages/guardian/GuardianPolicies.vue`, `ifitwala_ed/ui-spa/src/pages/student/StudentPolicies.vue`
+Test refs: `ifitwala_ed/api/test_policy_family_campaign.py`, `ifitwala_ed/ui-spa/src/pages/staff/__tests__/PolicySignatureAnalytics.test.ts`, `ifitwala_ed/ui-spa/src/pages/guardian/__tests__/GuardianPolicies.test.ts`, `ifitwala_ed/ui-spa/src/pages/student/__tests__/StudentPolicies.test.ts`
+
+Rules:
+
+1. Family campaigns are allowed only for active `Policy Version` rows that apply to `Guardian`, `Student`, or both.
+2. Publication scope is staff-selected organization/school scope and remains server-owned.
+3. Family campaigns create one `Org Communication` per selected family audience so copy and portal CTA stay audience-specific.
+4. Organization-wide family publication fans out to school-scope audience rows for every school in the selected organization tree.
+5. School-scoped family publication uses one school-scope audience row with descendants enabled for the selected school branch.
+6. Campaign CTA must deep-link to the exact policy page with `policy_version` query focus:
+   - `/hub/guardian/policies?policy_version=...`
+   - `/hub/student/policies?policy_version=...`
+7. Publishing a family campaign does not create `ToDo` rows, does not snapshot compliance targets, and does not replace `Policy Acknowledgement` as evidence.
 
 ## Home Surface And Concurrency Contract
 Status: Planned
@@ -169,6 +191,7 @@ Risks:
 2. If home cards are implemented with extra client requests, portal hot paths will regress.
 3. If student and guardian policy surfaces diverge too far, policy UX will become harder to teach and support.
 4. If guardian pages start exposing student-only obligations, the audience model on `Institutional Policy` will lose meaning.
+5. If family campaign publication starts being treated as the obligation itself, reporting will drift away from durable acknowledgement truth.
 
 ## Contract Matrix
 Status: Planned
@@ -178,9 +201,9 @@ Test refs: `ifitwala_ed/api/test_guardian_phase2.py`, `ifitwala_ed/ui-spa/src/pa
 | Layer | Current owner | Planned enrolled-student durable acknowledgement extension | Status |
 |---|---|---|---|
 | Schema / DocType | `Institutional Policy`, `Policy Version`, `Policy Acknowledgement` | Reuse existing versioned acknowledgement model; no new DocTypes in first slice | Planned |
-| Controller / workflow logic | `policy_acknowledgement.py`, `guardian_policy.py` | Add student portal durable acknowledgement workflow and keep guardian workflow discoverable | Planned |
-| API endpoints | `get_guardian_policy_overview`, `acknowledge_guardian_policy` | Add named student durable policy endpoints and home count integration | Planned |
-| SPA / UI surfaces | Guardian policy page only | Add student page and action-first home surfacing in both portals | Planned |
-| Reports / dashboards | Existing durable acknowledgement evidence only | Portal counts and status chips remain version-acknowledgement focused | Planned |
+| Controller / workflow logic | `policy_acknowledgement.py`, `guardian_policy.py`, `student_policy.py`, `policy_signature.py` | Guardian and student portal acknowledgement flows stay distinct, while staff family campaigns publish portal notices only | Partial |
+| API endpoints | `get_guardian_policy_overview`, `acknowledge_guardian_policy`, `get_student_policy_overview`, `acknowledge_student_policy`, `get_family_policy_campaign_options`, `publish_family_policy_campaign` | Named durable policy APIs plus staff-side family campaign publication | Partial |
+| SPA / UI surfaces | Guardian and student durable policy pages plus home attention cards | Staff analytics can publish family campaigns and portal pages honor `policy_version` deep-link focus | Partial |
+| Reports / dashboards | Existing durable acknowledgement evidence plus staff policy analytics | Portal counts and analytics remain version-acknowledgement focused; family campaign publication is notification-only | Partial |
 | Scheduler / background jobs | None | None required for the first durable acknowledgement slice | Planned |
 | Tests | Guardian backend and SPA coverage | Add student portal coverage and home-surface regressions | Planned |
