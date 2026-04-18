@@ -313,6 +313,7 @@ const drawerErrorMessage = ref<string | null>(null);
 const drawer = ref<GetDrawerResponse | null>(null);
 const selectedOutcomeId = ref<string | null>(null);
 const selectedStudentId = ref<string | null>(null);
+const pendingDrawerOutcomeId = ref<string | null>(null);
 const gradebookLoadVersion = ref(0);
 const drawerLoadVersion = ref(0);
 const markingBusy = ref(false);
@@ -509,6 +510,7 @@ async function loadDrawer(
 ) {
 	const version = drawerLoadVersion.value + 1;
 	drawerLoadVersion.value = version;
+	pendingDrawerOutcomeId.value = outcomeId;
 	drawerLoading.value = true;
 	drawerErrorMessage.value = null;
 
@@ -531,6 +533,9 @@ async function loadDrawer(
 	} finally {
 		if (drawerLoadVersion.value === version) {
 			drawerLoading.value = false;
+			if (pendingDrawerOutcomeId.value === outcomeId) {
+				pendingDrawerOutcomeId.value = null;
+			}
 		}
 	}
 }
@@ -538,6 +543,7 @@ async function loadDrawer(
 async function openStudent(student: StudentRow) {
 	selectedOutcomeId.value = student.task_student;
 	selectedStudentId.value = student.student;
+	pendingDrawerOutcomeId.value = student.task_student;
 	emit('select-student', student.student);
 	await loadDrawer(student.task_student);
 }
@@ -553,6 +559,7 @@ async function openRelativeStudent(offset: number) {
 function closeDrawer(options: { syncParent?: boolean } = {}) {
 	selectedOutcomeId.value = null;
 	selectedStudentId.value = null;
+	pendingDrawerOutcomeId.value = null;
 	drawer.value = null;
 	drawerErrorMessage.value = null;
 	if (options.syncParent !== false) {
@@ -574,9 +581,15 @@ async function applyFocusedStudent() {
 		return;
 	}
 
-	if (selectedOutcomeId.value === match.task_student && drawer.value) {
-		await scrollToSelectedStudent(match.student);
-		return;
+	if (selectedOutcomeId.value === match.task_student) {
+		selectedStudentId.value = match.student;
+		if (drawer.value && pendingDrawerOutcomeId.value !== match.task_student) {
+			await scrollToSelectedStudent(match.student);
+			return;
+		}
+		if (drawerLoading.value || pendingDrawerOutcomeId.value === match.task_student) {
+			return;
+		}
 	}
 
 	selectedStudentId.value = match.student;

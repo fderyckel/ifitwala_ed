@@ -83,6 +83,7 @@ Do not let the client assemble important workflows out of generic document mutat
 - Do not silently change endpoint contracts.
 - Keep request and response structures explicit and auditable.
 - For governed file/image reads, return a server-owned display/open URL for private media instead of exposing raw private paths.
+- A governed private-media route must never set `frappe.local.response["location"]` to a raw `/private/...` path; if no safe redirect target exists, stream the file inline from the API route instead.
 
 If contract behavior changes, docs must be updated with code.
 

@@ -567,6 +567,7 @@ Never swallow framework exceptions in permission or visibility logic.
 - Atomic routing only
 - No URL guessing in the UI
 - No raw private file URLs in SPA/API display contracts
+- Governed private-media read routes must never emit raw `/private/...` redirect targets; they must stream inline content or redirect only to a server-owned/public/external URL explicitly allowed by the surface contract
 - Each governed read surface must define who may open the resolved display URL
 - Any change to governed file/image visibility must update permission tests in the same change
 - Deterministic derivative slots

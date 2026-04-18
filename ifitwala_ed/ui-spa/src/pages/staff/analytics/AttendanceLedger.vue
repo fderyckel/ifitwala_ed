@@ -379,10 +379,7 @@ watch(
 watch(
 	() => pageLength.value,
 	() => {
-		if (page.value !== 1) {
-			page.value = 1;
-			return;
-		}
+		page.value = 1;
 		scheduleReload();
 	}
 );

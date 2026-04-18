@@ -102,7 +102,7 @@ export function scoreSummaryLabel(task?: TaskLike) {
 }
 
 export function booleanControlLabel(task?: TaskLike) {
-	return isBinaryTask(task) ? 'Yes / No' : 'Completion'
+	return isBinaryTask(task) ? 'Yes/No' : 'Completion'
 }
 
 export function booleanPositiveLabel(task?: TaskLike) {

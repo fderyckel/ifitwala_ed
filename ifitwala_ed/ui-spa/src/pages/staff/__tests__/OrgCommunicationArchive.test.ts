@@ -58,6 +58,10 @@ vi.mock('frappe-ui', async () => {
 					type: [String, Number, Boolean, Object],
 					default: null,
 				},
+				type: {
+					type: String,
+					default: 'text',
+				},
 				options: {
 					type: Array,
 					default: () => [],

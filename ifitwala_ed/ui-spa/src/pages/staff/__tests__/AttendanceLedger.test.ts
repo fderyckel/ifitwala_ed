@@ -110,6 +110,12 @@ async function flushReloadTimer() {
 	await flushUi();
 }
 
+async function waitForEnabled(button: HTMLButtonElement | undefined) {
+	for (let index = 0; index < 6 && button?.disabled; index += 1) {
+		await flushUi();
+	}
+}
+
 function mountLedger() {
 	const host = document.createElement('div');
 	document.body.appendChild(host);
@@ -181,8 +187,10 @@ describe('AttendanceLedger', () => {
 			button.textContent?.includes('Next')
 		) as HTMLButtonElement | undefined;
 		expect(nextButton).toBeTruthy();
+		await waitForEnabled(nextButton);
+		expect(nextButton?.disabled).toBe(false);
 
-		nextButton?.click();
+		nextButton?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
 		await flushUi();
 		await flushReloadTimer();
 

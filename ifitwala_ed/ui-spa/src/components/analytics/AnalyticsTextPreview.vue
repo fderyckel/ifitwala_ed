@@ -1,6 +1,7 @@
 <template>
 	<div
 		ref="triggerRef"
+		v-bind="attrs"
 		class="analytics-text-preview"
 		:class="{ 'analytics-text-preview--interactive': isOverflowing }"
 		:tabindex="isOverflowing ? 0 : undefined"
@@ -42,7 +43,11 @@
 </template>
 
 <script setup lang="ts">
-import { nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { nextTick, onBeforeUnmount, onMounted, ref, useAttrs, watch } from 'vue';
+
+defineOptions({
+	inheritAttrs: false,
+});
 
 const props = withDefaults(
 	defineProps<{
@@ -55,6 +60,8 @@ const props = withDefaults(
 		previewWidth: 560,
 	}
 );
+
+const attrs = useAttrs();
 
 const triggerRef = ref<HTMLElement | null>(null);
 const contentRef = ref<HTMLElement | null>(null);

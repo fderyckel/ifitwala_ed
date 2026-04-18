@@ -653,7 +653,7 @@ describe('Gradebook page', () => {
 		expect(text).toContain('Yes');
 		expect(text).toContain('No');
 		expect(text).not.toContain('Points Awarded');
-		expect(text).not.toContain('Comment');
+		expect(document.querySelector('textarea')).toBeNull();
 	});
 
 	it('renders completion grading with complete copy instead of yes/no copy', async () => {
