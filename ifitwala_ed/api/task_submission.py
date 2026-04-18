@@ -335,6 +335,9 @@ def _load_task_submission_attachment_rows(submission_id: str) -> list[dict[str, 
 def _attachment_is_pdf(attachment_row: dict[str, Any]) -> bool:
     if _clean_text(attachment_row.get("mime_type")) == "application/pdf":
         return True
+    explicit_extension = _clean_text(attachment_row.get("extension"))
+    if explicit_extension:
+        return explicit_extension.lower() == "pdf"
     return _extract_file_extension(file_name=attachment_row.get("file_name")) == "pdf"
 
 

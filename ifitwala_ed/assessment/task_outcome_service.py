@@ -321,8 +321,8 @@ def _apply_criteria_official_fields(
             "official_feedback": official_feedback,
         }
     else:
-        weights = _load_rubric_weights(rubric_version) if rubric_version else {}
-        total_points = _sum_contribution_criterion_points(contribution.get("name"), weights)
+        rubric_meta = _load_rubric_criterion_meta(rubric_version) if rubric_version else {}
+        total_points = _sum_contribution_criterion_points(contribution.get("name"), rubric_meta)
         grade_symbol = _grade_symbol_from_score(grade_scale, total_points) if grade_scale else None
         grade_value = resolve_grade_symbol(grade_scale, grade_symbol) if grade_symbol and grade_scale else None
         updates = {
@@ -363,7 +363,7 @@ def _grade_symbol_from_score(grade_scale, numeric_score):
     return selected
 
 
-def _sum_contribution_criterion_points(contribution_name, weights=None):
+def _sum_contribution_criterion_points(contribution_name, rubric_meta=None):
     if not contribution_name:
         return 0.0
 
@@ -380,12 +380,37 @@ def _sum_contribution_criterion_points(contribution_name, weights=None):
         )
         or []
     )
+
+    if _supports_weighted_rubric_totals(rubric_meta):
+        points_by_criteria = {}
+        for row in rows:
+            criteria = row.get("assessment_criteria")
+            if not criteria:
+                continue
+            try:
+                points_by_criteria[criteria] = float(row.get("level_points") or 0)
+            except Exception:
+                points_by_criteria[criteria] = 0.0
+
+        total = 0.0
+        for criteria, meta in (rubric_meta or {}).items():
+            try:
+                weighting = float(meta.get("criteria_weighting") or 0)
+                max_points = float(meta.get("criteria_max_points") or 0)
+                level_points = float(points_by_criteria.get(criteria) or 0)
+            except Exception:
+                continue
+            if max_points <= 0 or weighting <= 0:
+                continue
+            total += (level_points / max_points) * weighting
+        return total
+
     total = 0.0
     for row in rows:
         criteria = row.get("assessment_criteria")
         weight = 1.0
-        if weights and criteria in weights:
-            weight = weights.get(criteria) or 1.0
+        if rubric_meta and criteria in rubric_meta:
+            weight = (rubric_meta.get(criteria) or {}).get("criteria_weighting") or 1.0
         try:
             total += float(row.get("level_points") or 0) * float(weight or 1.0)
         except Exception:
@@ -506,7 +531,7 @@ def _clear_outcome_publish(outcome_id):
     )
 
 
-def _load_rubric_weights(rubric_version):
+def _load_rubric_criterion_meta(rubric_version):
     if not rubric_version:
         return {}
 
@@ -518,16 +543,37 @@ def _load_rubric_weights(rubric_version):
                 "parenttype": "Task Rubric Version",
                 "parentfield": "criteria",
             },
-            ["assessment_criteria", "criteria_weighting"],
+            ["assessment_criteria", "criteria_weighting", "criteria_max_points"],
             as_dict=True,
         )
         or []
     )
     return {
-        row.get("assessment_criteria"): row.get("criteria_weighting") or 1.0
+        row.get("assessment_criteria"): {
+            "criteria_weighting": row.get("criteria_weighting"),
+            "criteria_max_points": row.get("criteria_max_points"),
+        }
         for row in rows
         if row.get("assessment_criteria")
     }
+
+
+def _supports_weighted_rubric_totals(rubric_meta):
+    if not rubric_meta:
+        return False
+
+    total_weight = 0.0
+    for meta in rubric_meta.values():
+        try:
+            weighting = float(meta.get("criteria_weighting") or 0)
+            max_points = float(meta.get("criteria_max_points") or 0)
+        except Exception:
+            return False
+        if weighting <= 0 or max_points <= 0:
+            return False
+        total_weight += weighting
+
+    return abs(total_weight - 100.0) <= 0.01
 
 
 def mark_new_submission_seen(outcome_id):

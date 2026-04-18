@@ -22,6 +22,7 @@ const {
 	searchReusableTaskCalls: [] as any[],
 	getReusableTaskCalls: [] as any[],
 	resourceState: {
+		courseCriteriaRows: [] as any[],
 		createNewTaskResult: {
 			task: 'TASK-NEW-1',
 			task_delivery: 'TDL-NEW-1',
@@ -61,8 +62,13 @@ const {
 			grading_defaults: {
 				default_allow_feedback: 1,
 				default_grading_mode: 'Completion',
+				default_rubric_scoring_strategy: null,
 				default_max_points: null,
 				default_grade_scale: null,
+			},
+			criteria_defaults: {
+				rubric_scoring_strategy: null,
+				criteria_rows: [],
 			},
 			quiz_defaults: {},
 		},
@@ -132,6 +138,15 @@ vi.mock('frappe-ui', async () => {
 					getReusableTaskCalls.push(payload);
 					config.onSuccess?.(resourceState.reusableTaskDetail);
 					return resourceState.reusableTaskDetail;
+				},
+			};
+		}
+		if (config.url === 'ifitwala_ed.api.task.list_course_assessment_criteria') {
+			return {
+				loading: false,
+				submit: async () => {
+					config.onSuccess?.(resourceState.courseCriteriaRows);
+					return resourceState.courseCriteriaRows;
 				},
 			};
 		}
@@ -330,6 +345,14 @@ async function setInput(placeholder: string, value: string) {
 	await flushUi();
 }
 
+async function setSelect(selector: string, value: string) {
+	const select = document.querySelector(selector) as HTMLSelectElement | null;
+	expect(select).not.toBeNull();
+	select!.value = value;
+	select!.dispatchEvent(new Event('change', { bubbles: true }));
+	await flushUi();
+}
+
 function mountOverlay(props: Record<string, unknown> = {}) {
 	const host = document.createElement('div');
 	document.body.appendChild(host);
@@ -398,11 +421,17 @@ beforeEach(() => {
 		grading_defaults: {
 			default_allow_feedback: 1,
 			default_grading_mode: 'Completion',
+			default_rubric_scoring_strategy: null,
 			default_max_points: null,
 			default_grade_scale: null,
 		},
+		criteria_defaults: {
+			rubric_scoring_strategy: null,
+			criteria_rows: [],
+		},
 		quiz_defaults: {},
 	};
+	resourceState.courseCriteriaRows = [];
 	resourceState.taskMaterialsRows = [];
 });
 
@@ -500,6 +529,116 @@ describe('CreateTaskDeliveryOverlay', () => {
 		expect(successText).toContain('Assigned work ready');
 		expect(successText).not.toContain('Add task materials');
 		expect(successText).toContain('Add any class-specific resources in Class Planning');
+	});
+
+	it('creates a criteria task with course criteria and a local rubric strategy', async () => {
+		resourceState.courseCriteriaRows = [
+			{
+				assessment_criteria: 'CRIT-ANALYSIS',
+				criteria_name: 'Analysis',
+				criteria_weighting: 40,
+				criteria_max_points: 8,
+				levels: [{ level: '1' }, { level: '2' }, { level: '3' }, { level: '4' }],
+			},
+			{
+				assessment_criteria: 'CRIT-COMMUNICATION',
+				criteria_name: 'Communication',
+				criteria_weighting: 60,
+				criteria_max_points: 10,
+				levels: [{ level: '1' }, { level: '2' }, { level: '3' }, { level: '4' }],
+			},
+		];
+
+		mountOverlay();
+		await flushUi();
+
+		await setInput('Assignment title', 'Essay checkpoint');
+		await clickButton('Collect and assess');
+		await clickButton('Yes');
+		await clickButton('Criteria');
+		await setSelect('[data-rubric-strategy-select="true"]', 'Sum Total');
+		await setSelect('[data-criteria-library-select="true"]', 'CRIT-ANALYSIS');
+		await clickButton('Add criterion');
+		await setSelect('[data-criteria-library-select="true"]', 'CRIT-COMMUNICATION');
+		await clickButton('Add criterion');
+		await clickButton('Create');
+
+		expect(createNewTaskCalls).toHaveLength(1);
+		expect(createNewTaskCalls[0]).toMatchObject({
+			title: 'Essay checkpoint',
+			student_group: 'GRP-1',
+			delivery_mode: 'Assess',
+			grading_mode: 'Criteria',
+			rubric_scoring_strategy: 'Sum Total',
+			criteria_rows: [
+				{
+					assessment_criteria: 'CRIT-ANALYSIS',
+					criteria_weighting: 40,
+					criteria_max_points: 8,
+				},
+				{
+					assessment_criteria: 'CRIT-COMMUNICATION',
+					criteria_weighting: 60,
+					criteria_max_points: 10,
+				},
+			],
+		});
+	});
+
+	it('reuses criteria tasks while allowing only the local delivery strategy to change', async () => {
+		resourceState.reusableTaskDetail = {
+			name: 'TASK-SHARED-1',
+			title: 'Shared essay rubric',
+			instructions: 'Write and justify your position.',
+			task_type: 'Assignment',
+			default_course: 'COURSE-1',
+			unit_plan: 'UNIT-1',
+			owner: 'colleague@example.com',
+			is_template: 1,
+			visibility_scope: 'shared',
+			default_delivery_mode: 'Assess',
+			grading_defaults: {
+				default_allow_feedback: 1,
+				default_grading_mode: 'Criteria',
+				default_rubric_scoring_strategy: 'Sum Total',
+				default_max_points: null,
+				default_grade_scale: null,
+			},
+			criteria_defaults: {
+				rubric_scoring_strategy: 'Sum Total',
+				criteria_rows: [
+					{
+						assessment_criteria: 'CRIT-ANALYSIS',
+						criteria_name: 'Analysis',
+						criteria_weighting: 40,
+						criteria_max_points: 8,
+						levels: [{ level: '1' }, { level: '2' }, { level: '3' }, { level: '4' }],
+					},
+				],
+			},
+			quiz_defaults: {},
+		};
+
+		mountOverlay();
+		await flushUi();
+
+		await clickButton('Reuse existing task');
+		await clickButton('Shared reading response');
+		await setSelect('[data-rubric-strategy-select="true"]', 'Separate Criteria');
+		await clickButton('Assign existing task');
+
+		expect(assignExistingTaskCalls).toHaveLength(1);
+		expect(assignExistingTaskCalls[0]).toMatchObject({
+			task: 'TASK-SHARED-1',
+			student_group: 'GRP-1',
+			delivery_mode: 'Assess',
+			grading_mode: 'Criteria',
+			rubric_scoring_strategy: 'Separate Criteria',
+		});
+
+		const text = document.body.textContent || '';
+		expect(text).toContain('Reusable task criteria');
+		expect(text).toContain('change only the delivery strategy for this class');
 	});
 
 	it('renders governed preview actions for current task materials after task creation', async () => {

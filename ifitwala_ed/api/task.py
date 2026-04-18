@@ -41,6 +41,15 @@ def _normalize_positive_int(value, *, default: int, label: str) -> int:
     return normalized
 
 
+def _normalize_optional_float(value):
+    if value in (None, ""):
+        return None
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
+
+
 def _normalize_search_scope(scope) -> str:
     normalized = _normalize_text(scope).lower() or "all"
     if normalized not in TASK_LIBRARY_SCOPES:
@@ -123,6 +132,7 @@ def _task_library_row(task: str) -> dict:
             "default_delivery_mode",
             "default_allow_feedback",
             "default_grading_mode",
+            "default_rubric_scoring_strategy",
             "default_max_points",
             "default_grade_scale",
             "quiz_question_bank",
@@ -162,6 +172,102 @@ def _assert_task_reusable_for_course(task_row: dict, course: str) -> str:
         _("Only the task author can reuse this task until it is shared with the course task library."),
         frappe.PermissionError,
     )
+
+
+def _load_assessment_criteria_meta(criteria_ids: list[str]) -> tuple[dict[str, dict], dict[str, list[dict]]]:
+    ids = [criteria_id for criteria_id in dict.fromkeys(criteria_ids or []) if _normalize_text(criteria_id)]
+    if not ids:
+        return {}, {}
+
+    meta_rows = frappe.get_all(
+        "Assessment Criteria",
+        filters={"name": ["in", ids]},
+        fields=["name", "assessment_criteria", "maximum_mark"],
+        limit=0,
+    )
+    meta_map = {row.get("name"): row for row in meta_rows if row.get("name")}
+
+    level_rows = frappe.get_all(
+        "Assessment Criteria Level",
+        filters={
+            "parent": ["in", ids],
+            "parenttype": "Assessment Criteria",
+            "parentfield": "levels",
+        },
+        fields=["parent", "achievement_level"],
+        order_by="idx asc",
+        limit=0,
+    )
+    levels_map: dict[str, list[dict]] = {}
+    for row in level_rows or []:
+        parent = _normalize_text(row.get("parent"))
+        level = _normalize_text(row.get("achievement_level"))
+        if not parent or not level:
+            continue
+        levels_map.setdefault(parent, []).append({"level": level})
+
+    return meta_map, levels_map
+
+
+def _hydrate_criteria_rows(rows: list[dict] | None) -> list[dict]:
+    normalized_rows = [row for row in (rows or []) if _normalize_text((row or {}).get("assessment_criteria"))]
+    criteria_ids = [_normalize_text(row.get("assessment_criteria")) for row in normalized_rows]
+    meta_map, levels_map = _load_assessment_criteria_meta(criteria_ids)
+
+    payload = []
+    for row in normalized_rows:
+        criteria_id = _normalize_text(row.get("assessment_criteria"))
+        meta = meta_map.get(criteria_id) or {}
+        criteria_name = (
+            _normalize_text(row.get("criteria_name")) or _normalize_text(meta.get("assessment_criteria")) or criteria_id
+        )
+        criteria_max_points = _normalize_optional_float(row.get("criteria_max_points"))
+        if criteria_max_points is None:
+            criteria_max_points = _normalize_optional_float(meta.get("maximum_mark"))
+        payload.append(
+            {
+                "assessment_criteria": criteria_id,
+                "criteria_name": criteria_name,
+                "criteria_weighting": _normalize_optional_float(row.get("criteria_weighting")),
+                "criteria_max_points": criteria_max_points,
+                "levels": levels_map.get(criteria_id, []),
+            }
+        )
+    return payload
+
+
+def _get_course_assessment_criteria(course: str) -> list[dict]:
+    rows = frappe.get_all(
+        "Course Assessment Criteria",
+        filters={
+            "parent": course,
+            "parenttype": "Course",
+            "parentfield": "assessment_criteria",
+        },
+        fields=["assessment_criteria", "criteria_name", "criteria_weighting"],
+        order_by="idx asc",
+        limit=0,
+    )
+    return _hydrate_criteria_rows(rows)
+
+
+def _get_task_criteria_defaults(task_name: str) -> list[dict]:
+    task_name = _normalize_text(task_name)
+    if not task_name:
+        return []
+
+    rows = frappe.get_all(
+        "Task Template Criterion",
+        filters={
+            "parent": task_name,
+            "parenttype": "Task",
+            "parentfield": "task_criteria",
+        },
+        fields=["assessment_criteria", "criteria_weighting", "criteria_max_points"],
+        order_by="idx asc",
+        limit=0,
+    )
+    return _hydrate_criteria_rows(rows)
 
 
 def _build_task_search_conditions(
@@ -328,8 +434,13 @@ def get_task_for_delivery(task, student_group=None, course=None):
         "grading_defaults": {
             "default_allow_feedback": task_row.get("default_allow_feedback"),
             "default_grading_mode": task_row.get("default_grading_mode"),
+            "default_rubric_scoring_strategy": task_row.get("default_rubric_scoring_strategy"),
             "default_max_points": task_row.get("default_max_points"),
             "default_grade_scale": task_row.get("default_grade_scale"),
+        },
+        "criteria_defaults": {
+            "rubric_scoring_strategy": task_row.get("default_rubric_scoring_strategy"),
+            "criteria_rows": _get_task_criteria_defaults(task_row.get("name")),
         },
         "default_delivery_mode": task_row.get("default_delivery_mode"),
         "quiz_defaults": {
@@ -340,6 +451,13 @@ def get_task_for_delivery(task, student_group=None, course=None):
             "quiz_pass_percentage": task_row.get("quiz_pass_percentage"),
         },
     }
+
+
+@frappe.whitelist()
+def list_course_assessment_criteria(student_group=None, course=None):
+    resolved_course = _resolve_task_library_course(student_group=student_group, course=course)
+    _assert_task_library_access(resolved_course, action_label="configure criteria for this course")
+    return _get_course_assessment_criteria(resolved_course)
 
 
 @frappe.whitelist()

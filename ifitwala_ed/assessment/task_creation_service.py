@@ -21,6 +21,54 @@ def _parse_options(doctype, fieldname):
     return [opt.strip() for opt in field.options.split("\n") if opt.strip()]
 
 
+def _normalize_criteria_rows(criteria_rows) -> list[dict]:
+    if criteria_rows in (None, "", []):
+        return []
+    if isinstance(criteria_rows, str):
+        criteria_rows = frappe.parse_json(criteria_rows)
+    if not isinstance(criteria_rows, list):
+        frappe.throw(_("Criteria rows must be a list."))
+
+    normalized = []
+    seen = set()
+    for row in criteria_rows:
+        if not isinstance(row, dict):
+            frappe.throw(_("Each criteria row must be a dict."))
+
+        criteria_name = (row.get("assessment_criteria") or "").strip()
+        if not criteria_name:
+            frappe.throw(_("Each criteria row requires an Assessment Criteria link."))
+        if criteria_name in seen:
+            frappe.throw(_("Duplicate Assessment Criteria in task setup are not allowed."))
+        seen.add(criteria_name)
+
+        try:
+            criteria_max_points = float(row.get("criteria_max_points") or 0)
+        except (TypeError, ValueError):
+            frappe.throw(_("Criteria max points must be a valid number."))
+        if criteria_max_points <= 0:
+            frappe.throw(_("Each criteria row requires max points greater than 0."))
+
+        criteria_weighting = row.get("criteria_weighting")
+        if criteria_weighting in (None, ""):
+            normalized_weighting = None
+        else:
+            try:
+                normalized_weighting = float(criteria_weighting)
+            except (TypeError, ValueError):
+                frappe.throw(_("Criteria weighting must be a valid number."))
+
+        normalized.append(
+            {
+                "assessment_criteria": criteria_name,
+                "criteria_weighting": normalized_weighting,
+                "criteria_max_points": criteria_max_points,
+            }
+        )
+
+    return normalized
+
+
 def _validate_payload(payload: dict) -> dict:
     allowed_keys = {
         "title",
@@ -38,6 +86,8 @@ def _validate_payload(payload: dict) -> dict:
         "allow_late_submission",
         "group_submission",
         "grading_mode",
+        "rubric_scoring_strategy",
+        "criteria_rows",
         "allow_feedback",
         "max_points",
         "grade_scale",
@@ -95,6 +145,31 @@ def _validate_payload(payload: dict) -> dict:
     if grade_scale and grading_mode in (None, "None"):
         frappe.throw(_("Grade scale is only allowed when grading is enabled."))
 
+    criteria_rows = _normalize_criteria_rows(payload.get("criteria_rows"))
+    rubric_scoring_strategy = payload.get("rubric_scoring_strategy")
+    if rubric_scoring_strategy in ("", None):
+        rubric_scoring_strategy = None
+
+    if grading_mode == "Criteria":
+        strategy_options = set(_parse_options("Task Delivery", "rubric_scoring_strategy"))
+        resolved_strategy = rubric_scoring_strategy or "Sum Total"
+        if resolved_strategy not in strategy_options:
+            frappe.throw(_("Invalid rubric scoring strategy: {strategy}").format(strategy=resolved_strategy))
+        if not criteria_rows:
+            frappe.throw(_("At least one criteria row is required for criteria grading."))
+        if resolved_strategy == "Sum Total":
+            total_weight = sum(float(row.get("criteria_weighting") or 0) for row in criteria_rows)
+            if abs(total_weight - 100.0) > 0.01:
+                frappe.throw(
+                    _("Criteria weighting for Sum Total must add up to 100%. Current total: {total:.2f}%.").format(
+                        total=total_weight
+                    )
+                )
+        rubric_scoring_strategy = resolved_strategy
+    else:
+        criteria_rows = []
+        rubric_scoring_strategy = None
+
     return {
         "title": title,
         "instructions": payload.get("instructions"),
@@ -111,6 +186,8 @@ def _validate_payload(payload: dict) -> dict:
         "allow_late_submission": payload.get("allow_late_submission"),
         "group_submission": payload.get("group_submission"),
         "grading_mode": grading_mode,
+        "rubric_scoring_strategy": rubric_scoring_strategy,
+        "criteria_rows": criteria_rows,
         "allow_feedback": to_check_value(payload.get("allow_feedback")),
         "max_points": payload.get("max_points"),
         "grade_scale": grade_scale,
@@ -139,6 +216,8 @@ def create_task_and_delivery(
     class_session=None,
     unit_plan=None,
     grading_mode=None,
+    rubric_scoring_strategy=None,
+    criteria_rows=None,
     allow_feedback=None,
     max_points=None,
     grade_scale=None,
@@ -175,6 +254,8 @@ def create_task_and_delivery(
         "allow_late_submission": allow_late_submission,
         "group_submission": group_submission,
         "grading_mode": grading_mode,
+        "rubric_scoring_strategy": rubric_scoring_strategy,
+        "criteria_rows": criteria_rows,
         "allow_feedback": allow_feedback,
         "max_points": max_points,
         "grade_scale": grade_scale,
@@ -247,6 +328,17 @@ def create_task_and_delivery(
         task.default_allow_feedback = to_check_value(data.get("allow_feedback"))
         if data.get("task_type") != "Quiz" and task.default_grading_mode == "Points":
             task.default_max_points = data["max_points"]
+        if task.default_grading_mode == "Criteria":
+            task.default_rubric_scoring_strategy = data.get("rubric_scoring_strategy") or "Sum Total"
+            for row in data.get("criteria_rows") or []:
+                task.append(
+                    "task_criteria",
+                    {
+                        "assessment_criteria": row.get("assessment_criteria"),
+                        "criteria_weighting": row.get("criteria_weighting"),
+                        "criteria_max_points": row.get("criteria_max_points"),
+                    },
+                )
 
         if data.get("grade_scale") and data["grading_mode"] not in (None, "None"):
             task.default_grade_scale = data["grade_scale"]
@@ -279,6 +371,8 @@ def create_task_and_delivery(
             delivery.grading_mode = data["grading_mode"]
         if data.get("grading_mode") == "Points":
             delivery.max_points = data["max_points"]
+        if data.get("grading_mode") == "Criteria":
+            delivery.rubric_scoring_strategy = data.get("rubric_scoring_strategy")
         if data.get("grade_scale"):
             delivery.grade_scale = data["grade_scale"]
 

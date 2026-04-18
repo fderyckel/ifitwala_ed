@@ -10,6 +10,7 @@ from frappe.tests.utils import FrappeTestCase
 
 from ifitwala_ed.api.portal import _build_staff_home_capabilities
 from ifitwala_ed.api.student_demographics_dashboard import _get_demographics_access_context
+from ifitwala_ed.api.student_overview_roles import ALLOWED_STAFF_ROLES as STUDENT_OVERVIEW_STAFF_ROLES
 
 
 class TestAnalyticsPermissions(FrappeTestCase):
@@ -102,6 +103,12 @@ class TestAnalyticsPermissions(FrappeTestCase):
     def test_staff_home_student_overview_capability_for_instructor(self):
         caps = _build_staff_home_capabilities({"Instructor"})
         self.assertTrue(caps.get("analytics_student_overview"))
+
+    def test_student_overview_staff_roles_match_staff_home_capability_contract(self):
+        self.assertIn("Instructor", STUDENT_OVERVIEW_STAFF_ROLES)
+        self.assertNotIn("Academic Assistant", STUDENT_OVERVIEW_STAFF_ROLES)
+        self.assertTrue(_build_staff_home_capabilities({"Instructor"}).get("analytics_student_overview"))
+        self.assertFalse(_build_staff_home_capabilities({"Academic Assistant"}).get("analytics_student_overview"))
 
     def test_staff_home_academic_load_capability_is_hidden_from_instructor(self):
         caps = _build_staff_home_capabilities({"Instructor"})

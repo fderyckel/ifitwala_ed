@@ -269,6 +269,7 @@ function mockGradebookFlow(options?: {
 			student_image: null,
 			status: 'Not Started',
 			procedural_status: null,
+			submission_status: null,
 			has_submission: 0,
 			has_new_submission: 0,
 			complete: 0,
@@ -337,9 +338,7 @@ function mockGradebookFlow(options?: {
 					assessment_criteria: String(criterion.assessment_criteria),
 					criteria_name: String(criterion.criteria_name),
 					criteria_weighting:
-						typeof criterion.criteria_weighting === 'number'
-							? criterion.criteria_weighting
-							: null,
+						typeof criterion.criteria_weighting === 'number' ? criterion.criteria_weighting : null,
 					levels: Array.isArray(criterion.levels) ? criterion.levels : [],
 				})) || [],
 		},
@@ -388,12 +387,20 @@ function mockGradebookFlow(options?: {
 		contributions: [],
 		...options?.drawer,
 	});
-	markNewSubmissionSeenMock.mockResolvedValue({ ok: true, outcome: 'OUT-1', has_new_submission: 0 });
+	markNewSubmissionSeenMock.mockResolvedValue({
+		ok: true,
+		outcome: 'OUT-1',
+		has_new_submission: 0,
+	});
 	publishOutcomesMock.mockResolvedValue({
-		outcomes: [{ outcome_id: 'OUT-1', is_published: true, published_on: null, published_by: null }],
+		outcomes: [
+			{ outcome_id: 'OUT-1', is_published: true, published_on: null, published_by: null },
+		],
 	});
 	unpublishOutcomesMock.mockResolvedValue({
-		outcomes: [{ outcome_id: 'OUT-1', is_published: false, published_on: null, published_by: null }],
+		outcomes: [
+			{ outcome_id: 'OUT-1', is_published: false, published_on: null, published_by: null },
+		],
 	});
 
 	return { group, task };
@@ -637,7 +644,11 @@ describe('Gradebook page', () => {
 		await openStudentDrawer();
 
 		const text = document.body.textContent || '';
-		expect(getDrawerMock).toHaveBeenCalledWith({ outcome_id: 'OUT-1', submission_id: null, version: null });
+		expect(getDrawerMock).toHaveBeenCalledWith({
+			outcome_id: 'OUT-1',
+			submission_id: null,
+			version: null,
+		});
 		expect(text).toContain('Yes / No');
 		expect(text).toContain('Yes');
 		expect(text).toContain('No');
@@ -685,7 +696,9 @@ describe('Gradebook page', () => {
 		await flushUi();
 
 		expect(document.body.textContent || '').toContain('Release');
-		expect(document.body.textContent || '').toContain('Current runtime still uses one published state');
+		expect(document.body.textContent || '').toContain(
+			'Current runtime still uses one published state'
+		);
 	});
 
 	it('shows reduced PDF review state in the evidence tab without guessing file paths', async () => {
@@ -790,6 +803,8 @@ describe('Gradebook page', () => {
 
 		const text = document.body.textContent || '';
 		expect(text).toContain('Annotation Surface');
+		expect(text).toContain('PDF Workspace');
+		expect(text).toContain('pdf.js surface pending install');
 		expect(text).toContain('Reduced mode');
 		expect(text).toContain('Source PDF:');
 		expect(text).toContain('essay.pdf');
@@ -860,6 +875,220 @@ describe('Gradebook page', () => {
 		await flushUi();
 
 		expect(publishOutcomesMock).toHaveBeenCalledWith({ outcome_ids: ['OUT-1'] });
+	});
+
+	it('turns collect-work tasks into an evidence inbox sorted by evidence priority', async () => {
+		mockGradebookFlow({
+			task: {
+				title: 'Science Journal',
+				grading_mode: 'None',
+				allow_feedback: 1,
+				points: 0,
+				binary: 0,
+				criteria: 0,
+				observations: 1,
+				max_points: null,
+				delivery_type: 'Collect Work',
+			},
+			students: [
+				{
+					task_student: 'OUT-4',
+					student: 'STU-4',
+					student_name: 'Katherine Johnson',
+					student_id: 'S-004',
+					student_image: null,
+					status: 'Not Started',
+					procedural_status: 'Submitted',
+					submission_status: 'Submitted',
+					has_submission: 1,
+					has_new_submission: 0,
+					complete: 0,
+					mark_awarded: null,
+					feedback: null,
+					visible_to_student: 0,
+					visible_to_guardian: 0,
+					updated_on: null,
+					criteria_scores: [],
+				},
+				{
+					task_student: 'OUT-2',
+					student: 'STU-2',
+					student_name: 'Grace Hopper',
+					student_id: 'S-002',
+					student_image: null,
+					status: 'Not Started',
+					procedural_status: null,
+					submission_status: null,
+					has_submission: 0,
+					has_new_submission: 0,
+					complete: 0,
+					mark_awarded: null,
+					feedback: null,
+					visible_to_student: 0,
+					visible_to_guardian: 0,
+					updated_on: null,
+					criteria_scores: [],
+				},
+				{
+					task_student: 'OUT-3',
+					student: 'STU-3',
+					student_name: 'Alan Turing',
+					student_id: 'S-003',
+					student_image: null,
+					status: 'Needs Review',
+					procedural_status: 'Submitted',
+					submission_status: 'Late',
+					has_submission: 1,
+					has_new_submission: 0,
+					complete: 0,
+					mark_awarded: null,
+					feedback: null,
+					visible_to_student: 0,
+					visible_to_guardian: 0,
+					updated_on: null,
+					criteria_scores: [],
+				},
+				{
+					task_student: 'OUT-1',
+					student: 'STU-1',
+					student_name: 'Ada Lovelace',
+					student_id: 'S-001',
+					student_image: null,
+					status: 'Needs Review',
+					procedural_status: 'Submitted',
+					submission_status: 'Late',
+					has_submission: 1,
+					has_new_submission: 1,
+					complete: 0,
+					mark_awarded: null,
+					feedback: null,
+					visible_to_student: 0,
+					visible_to_guardian: 0,
+					updated_on: null,
+					criteria_scores: [],
+				},
+			],
+		});
+
+		mountPage();
+		await flushUi();
+		await openTask('Science Journal');
+
+		const text = document.body.textContent || '';
+		expect(text).toContain('Evidence Inbox');
+		expect(text).toContain('New Evidence (1)');
+		expect(text).toContain('Missing (1)');
+		expect(text).toContain('Late (2)');
+
+		const studentButtons = Array.from(
+			document.querySelectorAll<HTMLElement>('[data-gradebook-student]')
+		);
+		expect(studentButtons).toHaveLength(4);
+		expect(studentButtons.map(button => button.textContent || '')).toEqual([
+			expect.stringContaining('Ada Lovelace'),
+			expect.stringContaining('Alan Turing'),
+			expect.stringContaining('Grace Hopper'),
+			expect.stringContaining('Katherine Johnson'),
+		]);
+		expect(studentButtons[0]?.textContent || '').toContain('Submission: Late');
+	});
+
+	it('navigates the collect-work drawer against the current evidence queue order', async () => {
+		mockGradebookFlow({
+			task: {
+				title: 'Reading Log',
+				grading_mode: 'None',
+				allow_feedback: 1,
+				points: 0,
+				binary: 0,
+				criteria: 0,
+				observations: 1,
+				max_points: null,
+				delivery_type: 'Collect Work',
+			},
+			students: [
+				{
+					task_student: 'OUT-3',
+					student: 'STU-3',
+					student_name: 'Grace Hopper',
+					student_id: 'S-003',
+					student_image: null,
+					status: 'Not Started',
+					procedural_status: 'Submitted',
+					submission_status: 'Submitted',
+					has_submission: 1,
+					has_new_submission: 0,
+					complete: 0,
+					mark_awarded: null,
+					feedback: null,
+					visible_to_student: 0,
+					visible_to_guardian: 0,
+					updated_on: null,
+					criteria_scores: [],
+				},
+				{
+					task_student: 'OUT-2',
+					student: 'STU-2',
+					student_name: 'Alan Turing',
+					student_id: 'S-002',
+					student_image: null,
+					status: 'Needs Review',
+					procedural_status: 'Submitted',
+					submission_status: 'Late',
+					has_submission: 1,
+					has_new_submission: 0,
+					complete: 0,
+					mark_awarded: null,
+					feedback: null,
+					visible_to_student: 0,
+					visible_to_guardian: 0,
+					updated_on: null,
+					criteria_scores: [],
+				},
+				{
+					task_student: 'OUT-1',
+					student: 'STU-1',
+					student_name: 'Ada Lovelace',
+					student_id: 'S-001',
+					student_image: null,
+					status: 'Needs Review',
+					procedural_status: 'Submitted',
+					submission_status: 'Late',
+					has_submission: 1,
+					has_new_submission: 1,
+					complete: 0,
+					mark_awarded: null,
+					feedback: null,
+					visible_to_student: 0,
+					visible_to_guardian: 0,
+					updated_on: null,
+					criteria_scores: [],
+				},
+			],
+		});
+
+		mountPage();
+		await flushUi();
+		await openTask('Reading Log');
+		await openStudentDrawer('Ada Lovelace');
+
+		expect(getDrawerMock.mock.calls[0]?.[0]).toEqual({
+			outcome_id: 'OUT-1',
+			submission_id: null,
+			version: null,
+		});
+
+		const nextButton = document.querySelector('button[aria-label="Open next student"]');
+		expect(nextButton).not.toBeNull();
+		nextButton!.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		await flushUi();
+
+		expect(getDrawerMock.mock.calls[1]?.[0]).toEqual({
+			outcome_id: 'OUT-2',
+			submission_id: null,
+			version: null,
+		});
+		expect(document.body.textContent || '').toContain('Inbox 2 of 3');
 	});
 
 	it('renders criteria grading with criteria controls and comment box only when enabled', async () => {

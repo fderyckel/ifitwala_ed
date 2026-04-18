@@ -180,6 +180,7 @@ Rules:
 10. The archive/detail surface receives attachment rows with server-owned `open_url` values and optional server-owned `preview_url` values. The SPA must not construct or guess private media paths.
 11. Attachment actions that are blocked because the draft itself is not yet valid enough to save must surface in the overlay-level action banner, not in the attachment-local error region. The attachment error region is reserved for true upload/link/remove failures.
 12. Once a communication already has governed file attachments, changing the authoritative attachment context is blocked until those governed files are removed.
+13. For `entryMode='staff-home'`, once at least one governed file attachment exists, the overlay must lock the scope-driving controls that can change attachment context: organization, issuing school, audience-row scope selection, and audience target lookup/reset actions. Recipient toggles and message content remain editable.
 
 ## 5. Overlay and Invalidation Contract
 

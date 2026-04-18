@@ -236,6 +236,66 @@ class TestGradebookApi(TestCase):
             "pdf_preview_pending",
         )
 
+    def test_get_task_gradebook_includes_submission_status_for_evidence_inbox_routing(self):
+        with stubbed_frappe(extra_modules=_gradebook_stub_modules()) as frappe:
+
+            def fake_get_value(doctype, name, fieldname=None, as_dict=False):
+                if doctype == "Task Delivery" and name == "TDL-1":
+                    return {
+                        "name": "TDL-1",
+                        "task": "TASK-1",
+                        "student_group": "GRP-1",
+                        "due_date": "2026-04-03 10:00:00",
+                        "delivery_mode": "Collect Work",
+                        "grading_mode": "None",
+                        "allow_feedback": 1,
+                        "max_points": None,
+                        "rubric_version": None,
+                        "rubric_scoring_strategy": None,
+                    }
+                if doctype == "Task" and name == "TASK-1":
+                    return {"name": "TASK-1", "title": "Science Journal", "task_type": "Assignment"}
+                return None
+
+            def fake_get_all(doctype, filters=None, fields=None, order_by=None, limit=0, pluck=None):
+                if doctype == "Task Outcome":
+                    return [
+                        {
+                            "name": "OUT-1",
+                            "student": "STU-1",
+                            "grading_status": "Not Started",
+                            "procedural_status": "Submitted",
+                            "submission_status": "Late",
+                            "has_submission": 1,
+                            "has_new_submission": 1,
+                            "is_complete": 0,
+                            "official_score": None,
+                            "official_feedback": None,
+                            "is_published": 0,
+                            "modified": "2026-04-18 10:10:00",
+                        }
+                    ]
+                return []
+
+            frappe.db.get_value = fake_get_value
+            frappe.get_all = fake_get_all
+
+            module = _import_fresh_gradebook()
+            module.gradebook_support._can_read_gradebook = lambda: True
+            module.gradebook_support._assert_group_access = lambda student_group: None
+            module.gradebook_support._get_student_display_map = lambda student_ids: {"STU-1": "Ada Lovelace"}
+            module.gradebook_support._get_student_meta_map = lambda student_ids: {
+                "STU-1": {"name": "STU-1", "student_id": "S-001", "student_image": None}
+            }
+            module.gradebook_support._build_delivery_criteria_payload = lambda delivery: []
+            module.gradebook_support._get_outcome_criteria_rows = lambda outcome_ids: {}
+
+            payload = module.get_task_gradebook("TDL-1")
+
+        self.assertEqual(payload["task"]["delivery_type"], "Collect Work")
+        self.assertEqual(payload["students"][0]["submission_status"], "Late")
+        self.assertEqual(payload["students"][0]["has_new_submission"], 1)
+
     def test_get_task_quiz_manual_review_groups_manual_rows_by_question(self):
         with stubbed_frappe(extra_modules=_gradebook_stub_modules()) as frappe:
 

@@ -595,7 +595,7 @@
 										</div>
 
 										<div v-if="gradingEnabled" class="space-y-4">
-											<div class="grid gap-3 md:grid-cols-3">
+											<div class="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
 												<button
 													v-for="option in gradingOptions"
 													:key="option.value"
@@ -624,10 +624,225 @@
 												/>
 											</div>
 
-											<p class="text-xs text-ink/60">
-												Criteria grading is configured from the full Task record because it
-												requires Task Criteria and a rubric strategy.
-											</p>
+											<div
+												v-if="form.grading_mode === 'Criteria'"
+												class="space-y-4 rounded-2xl border border-border/70 bg-surface-soft p-4"
+											>
+												<div class="grid gap-4 md:grid-cols-[220px_minmax(0,1fr)]">
+													<div class="space-y-1">
+														<label class="type-label">Rubric strategy</label>
+														<FormControl
+															v-model="form.rubric_scoring_strategy"
+															type="select"
+															:options="rubricScoringStrategyOptions"
+															option-label="label"
+															option-value="value"
+															placeholder="Select strategy"
+															data-rubric-strategy-select="true"
+														/>
+													</div>
+													<div
+														class="rounded-2xl border border-dashed border-border/80 bg-white/70 px-4 py-3 text-sm text-ink/70"
+													>
+														<p class="font-medium text-ink">
+															Criteria stay reusable. Scoring stays local.
+														</p>
+														<p class="mt-1 text-xs">
+															`Sum Total` computes one task total from weighted criterion points.
+															`Separate Criteria` keeps the task criterion-by-criterion with no
+															task total.
+														</p>
+													</div>
+												</div>
+
+												<div
+													v-if="taskMode === 'create'"
+													class="space-y-4 rounded-2xl border border-border/70 bg-white p-4"
+												>
+													<div class="flex items-start justify-between gap-3">
+														<div>
+															<p class="text-sm font-semibold text-ink">Task criteria</p>
+															<p class="mt-1 text-xs text-ink/60">
+																Choose from this course's assessment criteria, then set the local
+																weighting and max points that this task will snapshot.
+															</p>
+														</div>
+														<span class="chip">{{ taskCriteriaRows.length }} selected</span>
+													</div>
+
+													<div class="grid gap-3 md:grid-cols-[minmax(0,1fr)_auto] md:items-end">
+														<div class="space-y-1">
+															<label class="type-label">Add course criterion</label>
+															<FormControl
+																v-model="criteriaLibrarySelection"
+																type="select"
+																:options="availableCriteriaOptions"
+																option-label="label"
+																option-value="value"
+																:disabled="criteriaLibraryLoading || !form.student_group"
+																placeholder="Select a criterion"
+																data-criteria-library-select="true"
+															/>
+														</div>
+														<button
+															type="button"
+															class="if-button if-button--secondary"
+															:disabled="!criteriaLibrarySelection"
+															data-add-task-criterion="true"
+															@click="addTaskCriterion"
+														>
+															Add criterion
+														</button>
+													</div>
+
+													<div
+														v-if="criteriaLibraryError"
+														class="rounded-xl border border-flame/30 bg-flame/10 px-4 py-3 text-sm text-flame"
+													>
+														{{ criteriaLibraryError }}
+													</div>
+
+													<div
+														v-else-if="criteriaLibraryLoading && !courseCriteriaLibrary.length"
+														class="rounded-xl border border-dashed border-border/80 bg-slate-50 px-4 py-3 text-sm text-ink/70"
+													>
+														Loading course criteria...
+													</div>
+
+													<div
+														v-else-if="!courseCriteriaLibrary.length"
+														class="rounded-xl border border-dashed border-border/80 bg-slate-50 px-4 py-3 text-sm text-ink/70"
+													>
+														No course assessment criteria are configured for this class yet.
+													</div>
+
+													<div
+														v-else-if="!taskCriteriaRows.length"
+														class="rounded-xl border border-dashed border-border/80 bg-slate-50 px-4 py-3 text-sm text-ink/70"
+													>
+														Add at least one criterion to create a criteria-based task.
+													</div>
+
+													<div v-else class="space-y-3">
+														<div
+															v-for="row in taskCriteriaRows"
+															:key="row.assessment_criteria"
+															class="rounded-2xl border border-border/70 bg-slate-50/70 p-4"
+														>
+															<div class="flex items-start justify-between gap-3">
+																<div>
+																	<p class="text-sm font-semibold text-ink">
+																		{{ row.criteria_name || row.assessment_criteria }}
+																	</p>
+																	<p class="mt-1 text-xs text-ink/60">
+																		{{ row.assessment_criteria }}
+																		<span v-if="row.levels?.length">
+																			· Levels:
+																			{{ row.levels.map(level => level.level).join(' · ') }}
+																		</span>
+																	</p>
+																</div>
+																<button
+																	type="button"
+																	class="text-xs font-medium text-flame transition hover:text-flame/80"
+																	@click="removeTaskCriterion(row.assessment_criteria)"
+																>
+																	Remove
+																</button>
+															</div>
+
+															<div class="mt-3 grid gap-3 md:grid-cols-2">
+																<div class="space-y-1">
+																	<label class="type-label">Weighting (%)</label>
+																	<FormControl
+																		v-model="row.criteria_weighting"
+																		type="number"
+																		:min="0"
+																		:step="0.1"
+																		placeholder="e.g. 25"
+																	/>
+																</div>
+																<div class="space-y-1">
+																	<label class="type-label">Max points</label>
+																	<FormControl
+																		v-model="row.criteria_max_points"
+																		type="number"
+																		:min="0"
+																		:step="0.1"
+																		placeholder="e.g. 8"
+																	/>
+																</div>
+															</div>
+														</div>
+													</div>
+
+													<p
+														v-if="
+															form.rubric_scoring_strategy === 'Sum Total' &&
+															taskCriteriaRows.length
+														"
+														class="text-xs"
+														:class="criteriaWeightingLooksReady ? 'text-ink/60' : 'text-clay'"
+													>
+														Current weighting total: {{ criteriaWeightTotalLabel }}%. Sum Total
+														works best when the course weighting adds to 100%.
+													</p>
+												</div>
+
+												<div
+													v-else
+													class="space-y-3 rounded-2xl border border-border/70 bg-white p-4"
+												>
+													<div class="flex items-start justify-between gap-3">
+														<div>
+															<p class="text-sm font-semibold text-ink">Reusable task criteria</p>
+															<p class="mt-1 text-xs text-ink/60">
+																This reusable task already owns its criteria rows. You can review
+																them here and change only the delivery strategy for this class.
+															</p>
+														</div>
+														<span class="chip">{{ activeCriteriaRows.length }} criteria</span>
+													</div>
+
+													<div
+														v-if="!activeCriteriaRows.length"
+														class="rounded-xl border border-flame/30 bg-flame/10 px-4 py-3 text-sm text-flame"
+													>
+														This reusable task is marked as criteria-based but does not carry task
+														criteria yet.
+													</div>
+
+													<div v-else class="space-y-3">
+														<div
+															v-for="row in activeCriteriaRows"
+															:key="row.assessment_criteria"
+															class="rounded-2xl border border-border/70 bg-slate-50/70 p-4"
+														>
+															<div class="flex flex-wrap items-start justify-between gap-3">
+																<div>
+																	<p class="text-sm font-semibold text-ink">
+																		{{ row.criteria_name || row.assessment_criteria }}
+																	</p>
+																	<p class="mt-1 text-xs text-ink/60">
+																		{{ row.assessment_criteria }}
+																	</p>
+																</div>
+																<div class="flex flex-wrap gap-2 text-xs text-ink/60">
+																	<span v-if="row.criteria_weighting != null" class="chip">
+																		{{ row.criteria_weighting }}%
+																	</span>
+																	<span v-if="row.criteria_max_points != null" class="chip">
+																		{{ row.criteria_max_points }} pts
+																	</span>
+																</div>
+															</div>
+															<p v-if="row.levels?.length" class="mt-2 text-xs text-ink/60">
+																Levels: {{ row.levels.map(level => level.level).join(' · ') }}
+															</p>
+														</div>
+													</div>
+												</div>
+											</div>
 										</div>
 
 										<div class="space-y-2">
@@ -1064,7 +1279,9 @@ import { SIGNAL_TASK_DELIVERY_CREATED, uiSignals } from '@/lib/uiSignals';
 import type {
 	CreateTaskDeliveryInput,
 	CreateTaskDeliveryPayload,
+	CourseAssessmentCriteriaOption,
 	ReusableTaskSummary,
+	TaskCriteriaRow,
 	TaskForDeliveryPayload,
 	TaskLibraryScope,
 } from '@/types/tasks';
@@ -1155,6 +1372,7 @@ const taskTypeOptions = [
 
 type TaskComposerMode = 'create' | 'reuse';
 type DeliveryMode = CreateTaskDeliveryInput['delivery_mode'];
+type RubricScoringStrategy = NonNullable<CreateTaskDeliveryInput['rubric_scoring_strategy']>;
 type TaskMaterialRow = {
 	placement: string;
 	material: string;
@@ -1189,6 +1407,15 @@ const gradingOptions = [
 	{ label: 'Points', value: 'Points', help: 'Score work with a numeric total.' },
 	{ label: 'Complete / Not complete', value: 'Completion', help: 'Track completion only.' },
 	{ label: 'Yes / No', value: 'Binary', help: 'Simple yes or no grading.' },
+	{
+		label: 'Criteria',
+		value: 'Criteria',
+		help: 'Assess with reusable criteria and a local rubric strategy.',
+	},
+];
+const rubricScoringStrategyOptions: Array<{ label: string; value: RubricScoringStrategy }> = [
+	{ label: 'Sum Total', value: 'Sum Total' },
+	{ label: 'Separate Criteria', value: 'Separate Criteria' },
 ];
 const materialModalityOptions = [
 	{ label: 'Read', value: 'Read' },
@@ -1221,6 +1448,7 @@ type FormState = {
 	group_submission: boolean;
 	share_with_course_team: boolean;
 	grading_mode: string;
+	rubric_scoring_strategy: '' | RubricScoringStrategy;
 	allow_feedback: boolean;
 	max_points: string;
 };
@@ -1251,6 +1479,7 @@ const form = reactive<FormState>({
 	group_submission: false,
 	share_with_course_team: false,
 	grading_mode: '',
+	rubric_scoring_strategy: '',
 	allow_feedback: false,
 	max_points: '',
 });
@@ -1271,6 +1500,11 @@ const taskLibraryQuery = ref('');
 const taskLibraryError = ref('');
 const selectedReusableTaskName = ref('');
 const selectedReusableTaskDetails = ref<TaskForDeliveryPayload | null>(null);
+const courseCriteriaLibrary = ref<CourseAssessmentCriteriaOption[]>([]);
+const criteriaLibraryLoadedForGroup = ref('');
+const criteriaLibraryError = ref('');
+const criteriaLibrarySelection = ref('');
+const taskCriteriaRows = ref<TaskCriteriaRow[]>([]);
 
 function unwrapMessage<T>(res: any): T | undefined {
 	if (res && typeof res === 'object' && 'message' in res) return (res as any).message;
@@ -1361,6 +1595,26 @@ const getReusableTaskResource = createResource({
 		);
 	},
 });
+const listCourseAssessmentCriteriaResource = createResource({
+	url: 'ifitwala_ed.api.task.list_course_assessment_criteria',
+	method: 'POST',
+	auto: false,
+	transform: unwrapMessage,
+	onSuccess: (rows: any) => {
+		courseCriteriaLibrary.value = normalizeCriteriaRows(Array.isArray(rows) ? rows : []);
+		criteriaLibraryLoadedForGroup.value = form.student_group;
+		criteriaLibraryError.value = '';
+	},
+	onError: (err: any) => {
+		console.error('[CreateTaskDeliveryOverlay] listCourseAssessmentCriteria:error', err);
+		courseCriteriaLibrary.value = [];
+		criteriaLibraryLoadedForGroup.value = '';
+		criteriaLibraryError.value = extractTaskActionErrorMessage(
+			err,
+			'Unable to load course assessment criteria right now.'
+		);
+	},
+});
 
 const groupOptions = computed(() =>
 	groups.value.map(row => ({
@@ -1390,6 +1644,13 @@ const submitLabel = computed(() =>
 const selectedReusableTask = computed(
 	() => reusableTasks.value.find(row => row.name === selectedReusableTaskName.value) || null
 );
+const activeCriteriaRows = computed(() =>
+	taskMode.value === 'create'
+		? taskCriteriaRows.value
+		: normalizeCriteriaRows(
+				selectedReusableTaskDetails.value?.criteria_defaults?.criteria_rows || []
+			)
+);
 const activeTaskType = computed(() =>
 	taskMode.value === 'reuse'
 		? selectedReusableTaskDetails.value?.task_type || selectedReusableTask.value?.task_type || ''
@@ -1398,6 +1659,30 @@ const activeTaskType = computed(() =>
 const showLateSubmission = computed(() => form.delivery_mode !== 'Assign Only');
 const isQuizTask = computed(() => activeTaskType.value === 'Quiz');
 const canEditTaskMaterials = computed(() => createdTaskMode.value === 'create');
+const criteriaLibraryLoading = computed(() => listCourseAssessmentCriteriaResource.loading);
+const availableCriteriaOptions = computed(() =>
+	courseCriteriaLibrary.value
+		.filter(
+			row =>
+				!taskCriteriaRows.value.some(
+					selected => selected.assessment_criteria === row.assessment_criteria
+				)
+		)
+		.map(row => ({
+			label: row.criteria_name || row.assessment_criteria,
+			value: row.assessment_criteria,
+		}))
+);
+const criteriaWeightTotal = computed(() =>
+	activeCriteriaRows.value.reduce(
+		(total, row) => total + coerceOptionalNumber(row.criteria_weighting),
+		0
+	)
+);
+const criteriaWeightingLooksReady = computed(
+	() => Math.abs(criteriaWeightTotal.value - 100) <= 0.01
+);
+const criteriaWeightTotalLabel = computed(() => formatWeightTotal(criteriaWeightTotal.value));
 
 watch(
 	() => form.delivery_mode,
@@ -1416,6 +1701,10 @@ const canSubmit = computed(() => {
 		if (!gradingEnabled.value) return true;
 		if (!form.grading_mode) return false;
 		if (form.grading_mode === 'Points' && !String(form.max_points || '').trim()) return false;
+		if (form.grading_mode === 'Criteria') {
+			if (!form.rubric_scoring_strategy) return false;
+			if (!activeCriteriaRows.value.length) return false;
+		}
 		return true;
 	}
 	if (!form.title.trim()) return false;
@@ -1423,6 +1712,10 @@ const canSubmit = computed(() => {
 	if (!gradingEnabled.value) return true;
 	if (!form.grading_mode) return false;
 	if (form.grading_mode === 'Points' && !String(form.max_points || '').trim()) return false;
+	if (form.grading_mode === 'Criteria') {
+		if (!form.rubric_scoring_strategy) return false;
+		if (!taskCriteriaRows.value.length) return false;
+	}
 	return true;
 });
 const canAddMaterial = computed(() => {
@@ -1484,6 +1777,7 @@ function initializeForm() {
 	form.group_submission = false;
 	form.share_with_course_team = false;
 	form.grading_mode = '';
+	form.rubric_scoring_strategy = '';
 	form.allow_feedback = false;
 	form.max_points = '';
 	gradingEnabled.value = false;
@@ -1494,6 +1788,11 @@ function initializeForm() {
 	taskLibraryError.value = '';
 	selectedReusableTaskName.value = '';
 	selectedReusableTaskDetails.value = null;
+	courseCriteriaLibrary.value = [];
+	criteriaLibraryLoadedForGroup.value = '';
+	criteriaLibraryError.value = '';
+	criteriaLibrarySelection.value = '';
+	taskCriteriaRows.value = [];
 	resetMaterialComposer();
 }
 
@@ -1505,6 +1804,7 @@ function resetDeliveryFields() {
 	form.allow_late_submission = false;
 	form.group_submission = false;
 	form.grading_mode = '';
+	form.rubric_scoring_strategy = '';
 	form.allow_feedback = false;
 	form.max_points = '';
 	gradingEnabled.value = false;
@@ -1524,6 +1824,8 @@ function setTaskMode(nextMode: TaskComposerMode) {
 		taskLibraryError.value = '';
 		selectedReusableTaskName.value = '';
 		selectedReusableTaskDetails.value = null;
+		taskCriteriaRows.value = [];
+		criteriaLibrarySelection.value = '';
 		form.title = props.prefillTitle || '';
 		form.instructions = '';
 		form.task_type = props.prefillTaskType || '';
@@ -1542,6 +1844,8 @@ function setTaskMode(nextMode: TaskComposerMode) {
 	form.quiz_time_limit_minutes = '';
 	form.quiz_max_attempts = '';
 	form.quiz_pass_percentage = '';
+	taskCriteriaRows.value = [];
+	criteriaLibrarySelection.value = '';
 	void loadReusableTasks();
 }
 
@@ -1558,6 +1862,7 @@ function setGradingEnabled(value: boolean) {
 	gradingEnabled.value = value;
 	if (!value) {
 		form.grading_mode = '';
+		form.rubric_scoring_strategy = '';
 		form.max_points = '';
 	}
 }
@@ -1569,6 +1874,7 @@ watch(
 			form.delivery_mode = 'Assign Only';
 			gradingEnabled.value = false;
 			form.grading_mode = '';
+			form.rubric_scoring_strategy = '';
 			form.max_points = '';
 			if (taskMode.value === 'create') return;
 			return;
@@ -1585,8 +1891,26 @@ watch(
 );
 
 watch(
+	() => [props.open, taskMode.value, form.student_group, form.grading_mode] as const,
+	([isOpen, mode, studentGroup, gradingMode]) => {
+		if (!isOpen) return;
+		if (mode !== 'create') return;
+		if (gradingMode !== 'Criteria') return;
+		if (!studentGroup) return;
+		void ensureCourseCriteriaLibraryLoaded();
+	},
+	{ immediate: true }
+);
+
+watch(
 	() => form.student_group,
 	(studentGroup, previousGroup) => {
+		if (studentGroup !== previousGroup) {
+			courseCriteriaLibrary.value = [];
+			criteriaLibraryLoadedForGroup.value = '';
+			criteriaLibrarySelection.value = '';
+			criteriaLibraryError.value = '';
+		}
 		if (!props.open || taskMode.value !== 'reuse') return;
 		if (!studentGroup) {
 			reusableTasks.value = [];
@@ -1637,6 +1961,69 @@ function toFrappeDatetime(value: string) {
 		return `${date} ${hour}:${minute}:${second}`;
 	}
 	return value;
+}
+
+function coerceOptionalNumber(value: unknown) {
+	const parsed = Number(value);
+	return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function isEmptyFieldValue(value: unknown) {
+	return value === null || value === undefined || value === '';
+}
+
+function formatWeightTotal(value: number) {
+	return Number.isInteger(value) ? String(value) : value.toFixed(2).replace(/\.?0+$/, '');
+}
+
+function normalizeCriteriaRows(rows: TaskCriteriaRow[] | null | undefined) {
+	return (rows || [])
+		.map(row => ({
+			assessment_criteria: String(row?.assessment_criteria || '').trim(),
+			criteria_name: String(row?.criteria_name || row?.assessment_criteria || '').trim(),
+			criteria_weighting: isEmptyFieldValue(row?.criteria_weighting)
+				? null
+				: row?.criteria_weighting,
+			criteria_max_points: isEmptyFieldValue(row?.criteria_max_points)
+				? null
+				: row?.criteria_max_points,
+			levels: Array.isArray(row?.levels)
+				? row.levels
+						.map(level => ({ level: String(level?.level || '').trim() }))
+						.filter(level => Boolean(level.level))
+				: [],
+		}))
+		.filter(row => Boolean(row.assessment_criteria));
+}
+
+async function ensureCourseCriteriaLibraryLoaded(force = false) {
+	if (taskMode.value !== 'create' || !form.student_group) return;
+	if (!force && criteriaLibraryLoadedForGroup.value === form.student_group) return;
+	await listCourseAssessmentCriteriaResource.submit({
+		student_group: form.student_group,
+	});
+}
+
+function addTaskCriterion() {
+	const criteriaName = criteriaLibrarySelection.value;
+	if (!criteriaName) return;
+	const match = courseCriteriaLibrary.value.find(row => row.assessment_criteria === criteriaName);
+	if (!match) return;
+	if (taskCriteriaRows.value.some(row => row.assessment_criteria === criteriaName)) {
+		criteriaLibrarySelection.value = '';
+		return;
+	}
+	taskCriteriaRows.value = [...taskCriteriaRows.value, ...normalizeCriteriaRows([match])];
+	if (!form.rubric_scoring_strategy) {
+		form.rubric_scoring_strategy = 'Sum Total';
+	}
+	criteriaLibrarySelection.value = '';
+}
+
+function removeTaskCriterion(criteriaName: string) {
+	taskCriteriaRows.value = taskCriteriaRows.value.filter(
+		row => row.assessment_criteria !== criteriaName
+	);
 }
 
 /**
@@ -1808,18 +2195,20 @@ function applyReusableTaskDefaults(task: TaskForDeliveryPayload) {
 	form.delivery_mode = (task.default_delivery_mode as DeliveryMode) || 'Assign Only';
 	form.allow_feedback = Boolean(task.grading_defaults?.default_allow_feedback);
 	form.max_points = '';
+	form.rubric_scoring_strategy = '';
 
 	const defaultGradingMode = task.grading_defaults?.default_grading_mode || '';
-	if (
-		task.task_type !== 'Quiz' &&
-		defaultGradingMode &&
-		defaultGradingMode !== 'None' &&
-		defaultGradingMode !== 'Criteria'
-	) {
+	if (task.task_type !== 'Quiz' && defaultGradingMode && defaultGradingMode !== 'None') {
 		gradingEnabled.value = true;
 		form.grading_mode = defaultGradingMode;
 		if (defaultGradingMode === 'Points' && task.grading_defaults?.default_max_points != null) {
 			form.max_points = String(task.grading_defaults.default_max_points);
+		}
+		if (defaultGradingMode === 'Criteria') {
+			form.rubric_scoring_strategy =
+				task.criteria_defaults?.rubric_scoring_strategy ||
+				task.grading_defaults?.default_rubric_scoring_strategy ||
+				'Sum Total';
 		}
 	} else {
 		gradingEnabled.value = false;
@@ -2059,6 +2448,10 @@ async function submit() {
 			if (!form.grading_mode) missing.push('Grading mode');
 			if (form.grading_mode === 'Points' && !String(form.max_points || '').trim())
 				missing.push('Max points');
+			if (form.grading_mode === 'Criteria') {
+				if (!form.rubric_scoring_strategy) missing.push('Rubric strategy');
+				if (!activeCriteriaRows.value.length) missing.push('Task criteria');
+			}
 		}
 
 		const msg = missing.length
@@ -2099,6 +2492,9 @@ async function submit() {
 		} else if (gradingEnabled.value) {
 			deliveryPayload.grading_mode = form.grading_mode;
 			if (form.grading_mode === 'Points') deliveryPayload.max_points = form.max_points;
+			if (form.grading_mode === 'Criteria') {
+				deliveryPayload.rubric_scoring_strategy = form.rubric_scoring_strategy;
+			}
 		} else {
 			deliveryPayload.grading_mode = 'None';
 		}
@@ -2125,6 +2521,18 @@ async function submit() {
 				if (form.quiz_max_attempts) payload.quiz_max_attempts = form.quiz_max_attempts as any;
 				if (form.quiz_pass_percentage)
 					payload.quiz_pass_percentage = form.quiz_pass_percentage as any;
+			}
+			if (form.grading_mode === 'Criteria') {
+				payload.rubric_scoring_strategy = form.rubric_scoring_strategy || undefined;
+				payload.criteria_rows = taskCriteriaRows.value.map(row => ({
+					assessment_criteria: row.assessment_criteria,
+					criteria_weighting: isEmptyFieldValue(row.criteria_weighting)
+						? null
+						: row.criteria_weighting,
+					criteria_max_points: isEmptyFieldValue(row.criteria_max_points)
+						? null
+						: row.criteria_max_points,
+				}));
 			}
 			res = await createTaskResource.submit(payload);
 		}

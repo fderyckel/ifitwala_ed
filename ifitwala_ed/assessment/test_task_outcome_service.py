@@ -300,3 +300,189 @@ class TestTaskOutcomeService(TestCase):
                 )
             ],
         )
+
+    def test_criteria_sum_total_uses_weighted_local_max_points(self):
+        updates = []
+
+        with stubbed_frappe() as frappe:
+
+            def fake_get_value(doctype, name, fieldname=None, as_dict=False):
+                if doctype == "Task Outcome" and fieldname == [
+                    "task_delivery",
+                    "grade_scale",
+                    "is_published",
+                ]:
+                    return {
+                        "task_delivery": "TDL-1",
+                        "grade_scale": None,
+                        "is_published": 0,
+                    }
+                if doctype == "Task Delivery":
+                    return {
+                        "grading_mode": "Criteria",
+                        "require_grading": 1,
+                        "rubric_scoring_strategy": "Sum Total",
+                        "grade_scale": None,
+                        "rubric_version": "TRV-1",
+                    }
+                return None
+
+            def fake_get_values(doctype, filters=None, fieldname=None, order_by=None, as_dict=False):
+                if doctype == "Task Contribution":
+                    return [
+                        {
+                            "name": "TCO-1",
+                            "contribution_type": "Self",
+                            "judgment_code": None,
+                            "score": None,
+                            "grade": None,
+                            "grade_value": None,
+                            "feedback": "Strong evidence.",
+                            "moderation_action": None,
+                            "modified": "2026-04-18 09:30:00",
+                        }
+                    ]
+                if doctype == "Task Contribution Criterion":
+                    return [
+                        {
+                            "assessment_criteria": "CRIT-ANALYSIS",
+                            "level": "6",
+                            "level_points": 6,
+                            "feedback": "Analysis is clear.",
+                        },
+                        {
+                            "assessment_criteria": "CRIT-COMMUNICATION",
+                            "level": "9",
+                            "level_points": 9,
+                            "feedback": "Communication is strong.",
+                        },
+                    ]
+                if doctype == "Task Rubric Criterion":
+                    return [
+                        {
+                            "assessment_criteria": "CRIT-ANALYSIS",
+                            "criteria_weighting": 40,
+                            "criteria_max_points": 8,
+                        },
+                        {
+                            "assessment_criteria": "CRIT-COMMUNICATION",
+                            "criteria_weighting": 60,
+                            "criteria_max_points": 10,
+                        },
+                    ]
+                return []
+
+            frappe.db.get_value = fake_get_value
+            frappe.db.get_values = fake_get_values
+            frappe.db.set_value = lambda doctype, name, values, update_modified=True: updates.append(
+                (doctype, name, values, update_modified)
+            )
+            frappe.db.delete = lambda *args, **kwargs: None
+            frappe.db.bulk_insert = lambda *args, **kwargs: None
+            frappe.generate_hash = lambda length=10: "HASHEDROW"
+
+            module = import_fresh("ifitwala_ed.assessment.task_outcome_service")
+            payload = module.apply_official_outcome_from_contributions("OUT-1")
+
+        self.assertEqual(payload, {"outcome": "OUT-1", "grading_status": "Finalized"})
+        self.assertEqual(
+            updates[-1],
+            (
+                "Task Outcome",
+                "OUT-1",
+                {
+                    "official_score": 84.0,
+                    "official_grade": None,
+                    "official_grade_value": None,
+                    "official_feedback": "Strong evidence.",
+                    "grading_status": "Finalized",
+                },
+                True,
+            ),
+        )
+
+    def test_criteria_sum_total_preserves_legacy_weight_multipliers_when_weights_are_not_percentages(self):
+        updates = []
+
+        with stubbed_frappe() as frappe:
+
+            def fake_get_value(doctype, name, fieldname=None, as_dict=False):
+                if doctype == "Task Outcome" and fieldname == [
+                    "task_delivery",
+                    "grade_scale",
+                    "is_published",
+                ]:
+                    return {
+                        "task_delivery": "TDL-1",
+                        "grade_scale": None,
+                        "is_published": 0,
+                    }
+                if doctype == "Task Delivery":
+                    return {
+                        "grading_mode": "Criteria",
+                        "require_grading": 1,
+                        "rubric_scoring_strategy": "Sum Total",
+                        "grade_scale": None,
+                        "rubric_version": "TRV-1",
+                    }
+                return None
+
+            def fake_get_values(doctype, filters=None, fieldname=None, order_by=None, as_dict=False):
+                if doctype == "Task Contribution":
+                    return [
+                        {
+                            "name": "TCO-1",
+                            "contribution_type": "Self",
+                            "judgment_code": None,
+                            "score": None,
+                            "grade": None,
+                            "grade_value": None,
+                            "feedback": "Legacy rubric payload.",
+                            "moderation_action": None,
+                            "modified": "2026-04-18 09:30:00",
+                        }
+                    ]
+                if doctype == "Task Contribution Criterion":
+                    return [
+                        {
+                            "assessment_criteria": "CRIT-ANALYSIS",
+                            "level": "4",
+                            "level_points": 4,
+                            "feedback": None,
+                        },
+                        {
+                            "assessment_criteria": "CRIT-COMMUNICATION",
+                            "level": "3",
+                            "level_points": 3,
+                            "feedback": None,
+                        },
+                    ]
+                if doctype == "Task Rubric Criterion":
+                    return [
+                        {
+                            "assessment_criteria": "CRIT-ANALYSIS",
+                            "criteria_weighting": 1,
+                            "criteria_max_points": 8,
+                        },
+                        {
+                            "assessment_criteria": "CRIT-COMMUNICATION",
+                            "criteria_weighting": 2,
+                            "criteria_max_points": 10,
+                        },
+                    ]
+                return []
+
+            frappe.db.get_value = fake_get_value
+            frappe.db.get_values = fake_get_values
+            frappe.db.set_value = lambda doctype, name, values, update_modified=True: updates.append(
+                (doctype, name, values, update_modified)
+            )
+            frappe.db.delete = lambda *args, **kwargs: None
+            frappe.db.bulk_insert = lambda *args, **kwargs: None
+            frappe.generate_hash = lambda length=10: "HASHEDROW"
+
+            module = import_fresh("ifitwala_ed.assessment.task_outcome_service")
+            payload = module.apply_official_outcome_from_contributions("OUT-1")
+
+        self.assertEqual(payload, {"outcome": "OUT-1", "grading_status": "Finalized"})
+        self.assertEqual(updates[-1][2]["official_score"], 10.0)

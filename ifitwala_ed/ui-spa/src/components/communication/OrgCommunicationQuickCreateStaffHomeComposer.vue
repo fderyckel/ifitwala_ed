@@ -48,7 +48,7 @@
 						<select
 							v-model="form.organization"
 							class="if-org-communication-native-select"
-							:disabled="submitting"
+							:disabled="submitting || attachmentContextLocked"
 						>
 							<option
 								v-for="option in organizationSelectOptions"
@@ -68,7 +68,7 @@
 						<select
 							v-model="form.school"
 							class="if-org-communication-native-select"
-							:disabled="submitting || issuingSchoolSelectionLocked"
+							:disabled="submitting || issuingSchoolSelectionLocked || attachmentContextLocked"
 						>
 							<option value="">No issuing school</option>
 							<option
@@ -83,6 +83,15 @@
 							{{ schoolHelpText }}
 						</p>
 					</div>
+				</div>
+
+				<div
+					v-if="attachmentContextLocked"
+					class="mt-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3"
+				>
+					<p class="type-caption text-amber-900">
+						{{ attachmentContextLockMessage }}
+					</p>
 				</div>
 
 				<div class="mt-4 space-y-1">
@@ -274,7 +283,7 @@
 						:key="preset.key"
 						type="button"
 						class="rounded-[24px] border border-border/70 bg-surface-soft/70 px-4 py-4 text-left transition hover:-translate-y-0.5 hover:border-jacaranda/50 hover:bg-white"
-						:disabled="submitting"
+						:disabled="submitting || attachmentContextLocked"
 						@click="addAudiencePreset(preset.key)"
 					>
 						<p class="type-body-strong text-ink">{{ preset.label }}</p>
@@ -282,6 +291,15 @@
 							{{ preset.description }}
 						</p>
 					</button>
+				</div>
+
+				<div
+					v-if="attachmentContextLocked"
+					class="mt-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3"
+				>
+					<p class="type-caption text-amber-900">
+						Attachment scope is locked while governed files remain attached.
+					</p>
 				</div>
 
 				<div
@@ -315,7 +333,7 @@
 							<button
 								type="button"
 								class="rounded-full border border-border/80 bg-white px-3 py-1.5 type-button-label text-slate-token transition hover:border-rose-300 hover:text-rose-700"
-								:disabled="submitting"
+								:disabled="submitting || attachmentContextLocked"
 								@click="removeAudienceRow(row.id)"
 							>
 								Remove
@@ -331,7 +349,9 @@
 								<select
 									v-model="row.school"
 									class="if-org-communication-native-select"
-									:disabled="submitting || audienceSchoolSelectionLocked"
+									:disabled="
+										submitting || audienceSchoolSelectionLocked || attachmentContextLocked
+									"
 								>
 									<option value="">Select school</option>
 									<option
@@ -349,7 +369,7 @@
 										v-model="row.include_descendants"
 										type="checkbox"
 										class="rounded border-slate-300 text-jacaranda"
-										:disabled="submitting"
+										:disabled="submitting || attachmentContextLocked"
 									/>
 									Include descendant schools
 								</label>
@@ -404,7 +424,7 @@
 												? 'Type a team name or code'
 												: 'Type a class, course, or student group'
 										"
-										:disabled="submitting || row.search_loading"
+										:disabled="submitting || row.search_loading || attachmentContextLocked"
 										@keydown.enter.prevent="searchAudienceTargets(row)"
 									/>
 								</div>
@@ -413,7 +433,7 @@
 									<button
 										type="button"
 										class="if-button if-button--secondary"
-										:disabled="submitting || row.search_loading"
+										:disabled="submitting || row.search_loading || attachmentContextLocked"
 										@click="searchAudienceTargets(row)"
 									>
 										{{ row.search_loading ? 'Searching...' : 'Search' }}
@@ -422,7 +442,7 @@
 										v-if="row.team || row.student_group"
 										type="button"
 										class="rounded-full border border-border/80 bg-white px-3 py-1.5 type-button-label text-slate-token transition hover:border-rose-300 hover:text-rose-700"
-										:disabled="submitting"
+										:disabled="submitting || attachmentContextLocked"
 										@click="clearAudienceSearchSelection(row)"
 									>
 										Clear
@@ -458,7 +478,7 @@
 											? 'border-jacaranda bg-jacaranda/5'
 											: 'border-border/70 bg-white hover:border-jacaranda/50'
 									"
-									:disabled="submitting"
+									:disabled="submitting || attachmentContextLocked"
 									@click="selectAudienceSearchItem(row, item)"
 								>
 									<p class="type-body-strong text-ink">{{ item.label }}</p>
@@ -699,6 +719,8 @@ defineProps<{
 	schoolHelpText: string;
 	issuingSchoolSelectionLocked: boolean;
 	audienceSchoolSelectionLocked: boolean;
+	attachmentContextLocked: boolean;
+	attachmentContextLockMessage: string;
 	briefDatesRequired: boolean;
 	deliveryValidationMessage: string;
 	audienceValidationMessage: string;

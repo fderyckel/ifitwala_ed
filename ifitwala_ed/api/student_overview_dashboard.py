@@ -14,24 +14,13 @@ from frappe.utils import getdate, nowdate, strip_html
 
 from ifitwala_ed.api.courses import DONE_GRADING_STATUSES, DONE_SUBMISSION_STATUSES
 from ifitwala_ed.api.student_log_dashboard import get_authorized_schools
+from ifitwala_ed.api.student_overview_roles import ALLOWED_STAFF_ROLES
 from ifitwala_ed.students.doctype.student_log.student_log import get_student_log_visibility_predicate
 from ifitwala_ed.students.doctype.student_referral.student_referral import (
     get_permission_query_conditions as get_student_referral_permission_query_conditions,
 )
 from ifitwala_ed.utilities.image_utils import get_preferred_student_image_url
 from ifitwala_ed.utilities.school_tree import get_descendant_schools
-
-ALLOWED_STAFF_ROLES = {
-    "Academic Admin",
-    "Counselor",
-    "Curriculum Coordinator",
-    "Attendance",
-    "Pastoral Lead",
-    "System Manager",
-    "Administrator",
-    "Academic Staff",
-    "Instructor",
-}
 
 
 def _current_user() -> str:

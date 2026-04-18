@@ -632,12 +632,16 @@ def _build_delivery_criteria_payload(delivery):
             "parenttype": "Task Rubric Version",
             "parentfield": "criteria",
         },
-        fields=["assessment_criteria", "criteria_name", "criteria_weighting"],
+        fields=["assessment_criteria", "criteria_name", "criteria_weighting", "criteria_max_points"],
         order_by="idx asc",
         limit=0,
     )
-    criteria_ids = [row.get("assessment_criteria") for row in rows if row.get("assessment_criteria")]
-    levels_map = _get_assessment_levels_map(criteria_ids)
+    criteria_meta = {
+        row.get("assessment_criteria"): {"criteria_max_points": _coerce_float(row.get("criteria_max_points"))}
+        for row in rows
+        if row.get("assessment_criteria")
+    }
+    levels_map = _get_assessment_levels_map(criteria_meta)
 
     out = []
     for row in rows:
@@ -656,7 +660,7 @@ def _build_delivery_criteria_payload(delivery):
 
 
 def _get_assessment_levels_map(criteria_ids):
-    ids = [criteria_id for criteria_id in dict.fromkeys(criteria_ids or []) if criteria_id]
+    ids = [criteria_id for criteria_id in dict.fromkeys((criteria_ids or {}).keys()) if criteria_id]
     if not ids:
         return {}
 
@@ -677,8 +681,60 @@ def _get_assessment_levels_map(criteria_ids):
         level = row.get("achievement_level")
         if not parent or not level:
             continue
-        levels.setdefault(parent, []).append({"level": level, "points": 0})
-    return levels
+        levels.setdefault(parent, []).append(level)
+    return {
+        criteria_id: _build_level_point_rows(criteria_id, level_rows, criteria_ids)
+        for criteria_id, level_rows in levels.items()
+    }
+
+
+def _build_level_point_rows(criteria_id, level_rows, criteria_meta):
+    rows = [str(level or "").strip() for level in (level_rows or []) if str(level or "").strip()]
+    if not rows:
+        return []
+
+    meta = criteria_meta.get(criteria_id) or {}
+    max_points = _coerce_float(meta.get("criteria_max_points"))
+    numeric_rows = [_parse_numeric_level(level) for level in rows]
+    if all(value is not None for value in numeric_rows):
+        max_level = max(value for value in numeric_rows if value is not None)
+        scale = 1.0
+        if max_points is not None and max_points > 0 and max_level > 0:
+            scale = max_points / max_level
+        return [
+            {"level": level, "points": _normalize_derived_points((value or 0) * scale)}
+            for level, value in zip(rows, numeric_rows)
+        ]
+
+    if max_points is not None and max_points > 0:
+        divisor = float(len(rows) or 1)
+        return [
+            {
+                "level": level,
+                "points": _normalize_derived_points(max_points * ((index + 1) / divisor)),
+            }
+            for index, level in enumerate(rows)
+        ]
+
+    return [{"level": level, "points": 0} for level in rows]
+
+
+def _parse_numeric_level(value):
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _normalize_derived_points(value):
+    try:
+        numeric = float(value)
+    except (TypeError, ValueError):
+        return 0
+    rounded = round(numeric, 2)
+    if abs(rounded - round(rounded)) < 1e-9:
+        return int(round(rounded))
+    return rounded
 
 
 def _get_outcome_criteria_rows(outcome_ids):

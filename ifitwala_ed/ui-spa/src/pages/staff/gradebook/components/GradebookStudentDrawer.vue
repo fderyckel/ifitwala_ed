@@ -538,7 +538,12 @@
 									:key="attachment.row_name || attachment.file_name || attachment.open_url"
 									class="rounded-2xl border border-border/70 bg-gray-50/40 p-4"
 								>
-									<div class="flex flex-wrap items-start justify-between gap-3">
+									<GradebookPdfWorkspace
+										v-if="isPdfAttachment(attachment)"
+										:attachment="attachment"
+										:annotation-readiness="annotationReadinessForAttachment(attachment)"
+									/>
+									<div v-else class="flex flex-wrap items-start justify-between gap-3">
 										<div class="min-w-0">
 											<p class="truncate text-sm font-semibold text-ink">
 												{{ attachment.file_name || 'Attachment' }}
@@ -575,51 +580,6 @@
 											>
 												Open
 											</a>
-										</div>
-									</div>
-
-									<div
-										v-if="isPdfAttachment(attachment)"
-										class="mt-4 overflow-hidden rounded-2xl border border-border/70 bg-white"
-									>
-										<div
-											class="flex items-start justify-between gap-3 border-b border-border/60 px-4 py-4"
-										>
-											<div class="min-w-0">
-												<p class="text-xs font-semibold uppercase tracking-[0.16em] text-ink/45">
-													PDF evidence
-												</p>
-												<p class="mt-2 text-sm font-semibold text-ink">
-													{{ attachment.file_name || 'PDF attachment' }}
-												</p>
-												<p class="mt-2 text-sm text-ink/70">
-													{{ pdfPreviewMessage(attachment) }}
-												</p>
-											</div>
-											<Badge variant="subtle">
-												{{
-													showPdfInlinePreview(attachment) ? 'First page ready' : 'Open source PDF'
-												}}
-											</Badge>
-										</div>
-										<div v-if="showPdfInlinePreview(attachment)" class="bg-gray-50/40 p-3">
-											<img
-												:src="attachment.preview_url || undefined"
-												:alt="`${attachment.file_name || 'PDF attachment'} first-page preview`"
-												class="h-72 w-full rounded-xl bg-white object-contain"
-												loading="lazy"
-											/>
-										</div>
-										<div
-											v-else
-											class="flex min-h-40 items-center justify-center bg-gray-50/40 px-6 py-8 text-center"
-										>
-											<div>
-												<p class="text-sm font-semibold text-ink">Preview not available yet</p>
-												<p class="mt-2 text-sm text-ink/70">
-													{{ pdfPreviewFallbackMessage(attachment) }}
-												</p>
-											</div>
 										</div>
 									</div>
 								</div>
@@ -791,6 +751,7 @@ import { Badge, FeatherIcon, FormControl, Spinner } from 'frappe-ui';
 
 import type { Request as UpdateTaskStudentRequest } from '@/types/contracts/gradebook/update_task_student';
 import type { Response as GetDrawerResponse } from '@/types/contracts/gradebook/get_drawer';
+import GradebookPdfWorkspace from './GradebookPdfWorkspace.vue';
 import {
 	DEFAULT_STUDENT_IMAGE,
 	booleanControlLabel,
@@ -1067,6 +1028,20 @@ function formatBytes(value?: number | null) {
 	return `${(kb / 1024).toFixed(1)} MB`;
 }
 
+function annotationReadinessForAttachment(
+	attachment: SubmissionAttachmentRow
+): AnnotationReadinessPayload | null {
+	const readiness = props.drawer?.selected_submission?.annotation_readiness;
+	if (!readiness) return null;
+	if (readiness.attachment_row_name && attachment.row_name) {
+		return readiness.attachment_row_name === attachment.row_name ? readiness : null;
+	}
+	if (readiness.attachment_file_name && attachment.file_name) {
+		return readiness.attachment_file_name === attachment.file_name ? readiness : null;
+	}
+	return null;
+}
+
 function attachmentExtension(attachment: SubmissionAttachmentRow): string {
 	const explicitExtension = String(attachment.extension || '')
 		.trim()
@@ -1085,32 +1060,6 @@ function isPdfAttachment(attachment: SubmissionAttachmentRow): boolean {
 		attachment.kind === 'file' &&
 		(attachment.mime_type === 'application/pdf' || attachmentExtension(attachment) === 'pdf')
 	);
-}
-
-function showPdfInlinePreview(attachment: SubmissionAttachmentRow): boolean {
-	return Boolean(
-		attachment.preview_url && isPdfAttachment(attachment) && attachment.preview_status === 'ready'
-	);
-}
-
-function pdfPreviewMessage(attachment: SubmissionAttachmentRow): string {
-	if (showPdfInlinePreview(attachment)) {
-		return 'Governed first-page preview is ready for this PDF evidence.';
-	}
-	return 'Open the governed source PDF while inline preview is unavailable.';
-}
-
-function pdfPreviewFallbackMessage(attachment: SubmissionAttachmentRow): string {
-	if (attachment.preview_status === 'pending') {
-		return 'Preview generation is still processing. Open the source PDF to review the full document now.';
-	}
-	if (attachment.preview_status === 'failed') {
-		return 'Preview generation failed for this PDF. Open the source PDF to continue review.';
-	}
-	if (attachment.preview_status === 'not_applicable') {
-		return 'This PDF does not currently expose a preview derivative. Open the source PDF to continue review.';
-	}
-	return 'Open the source PDF to continue review from this drawer.';
 }
 
 function annotationModeLabel(readiness: AnnotationReadinessPayload): string {

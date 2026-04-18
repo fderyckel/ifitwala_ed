@@ -458,6 +458,18 @@ function setSelectByLabel(labelText: string, value: string) {
 	select.dispatchEvent(new Event('change', { bubbles: true }));
 }
 
+async function uploadGovernedFile(name = 'policy.pdf', type = 'application/pdf') {
+	const input = document.querySelector('input[type="file"]') as HTMLInputElement | null;
+	if (!input) return;
+	const file = new File(['governed-bytes'], name, { type });
+	Object.defineProperty(input, 'files', {
+		configurable: true,
+		value: [file],
+	});
+	input.dispatchEvent(new Event('change', { bubbles: true }));
+	await flushUi();
+}
+
 function getSelectByLabel(labelText: string) {
 	const label = Array.from(document.querySelectorAll('label')).find(node =>
 		(node.textContent || '').includes(labelText)
@@ -1168,6 +1180,98 @@ describe('OrgCommunicationQuickCreateModal', () => {
 			title: 'Policy PDF',
 			external_url: 'https://example.com/policy.pdf',
 		});
+	});
+
+	it('locks scope-driving controls after a governed file attachment is added', async () => {
+		getOptionsMock.mockResolvedValue(wideAudienceQuickCreateOptions);
+		createOrgCommunicationQuickMock.mockResolvedValue({
+			ok: true,
+			status: 'created',
+			name: 'COMM-DRAFT-FILE-LOCK',
+			title: 'Weekly staff update',
+		});
+		uploadOrgCommunicationAttachmentMock.mockResolvedValue({
+			ok: true,
+			org_communication: 'COMM-DRAFT-FILE-LOCK',
+			attachment: {
+				row_name: 'row-file-lock',
+				kind: 'file',
+				title: 'Policy PDF',
+				file_name: 'policy.pdf',
+				file_size: 1024,
+				open_url: 'https://example.com/files/policy.pdf',
+			},
+		});
+
+		mountModal();
+		await flushUi();
+
+		await addSchoolFamiliesAudience();
+		await uploadGovernedFile();
+
+		expect(createOrgCommunicationQuickMock).toHaveBeenCalledTimes(1);
+		expect(uploadOrgCommunicationAttachmentMock).toHaveBeenCalledTimes(1);
+		expect(getSelectByLabel('Organization')?.disabled).toBe(true);
+		expect(getSelectByLabel('Issuing school')?.disabled).toBe(true);
+		const organizationWideButton = Array.from(document.querySelectorAll('button')).find(node =>
+			(node.textContent || '').includes('Organization-wide')
+		) as HTMLButtonElement | undefined;
+		expect(organizationWideButton?.disabled).toBe(true);
+		expect(document.body.textContent || '').toContain(
+			'Governed files are already attached to this draft.'
+		);
+	});
+
+	it('blocks publish client-side when scope changes after a governed file attachment is added', async () => {
+		const multiOrgOptions = {
+			...quickCreateOptions,
+			context: {
+				...quickCreateOptions.context,
+				allowed_organizations: ['ORG-1', 'ORG-2'],
+			},
+			references: {
+				...quickCreateOptions.references,
+				organizations: [
+					...quickCreateOptions.references.organizations,
+					{ name: 'ORG-2', organization_name: 'Second Org', abbr: 'ORG2' },
+				],
+			},
+		};
+		getOptionsMock.mockResolvedValue(multiOrgOptions);
+		createOrgCommunicationQuickMock.mockResolvedValue({
+			ok: true,
+			status: 'created',
+			name: 'COMM-DRAFT-FILE-BLOCK',
+			title: 'Weekly staff update',
+		});
+		uploadOrgCommunicationAttachmentMock.mockResolvedValue({
+			ok: true,
+			org_communication: 'COMM-DRAFT-FILE-BLOCK',
+			attachment: {
+				row_name: 'row-file-block',
+				kind: 'file',
+				title: 'Policy PDF',
+				file_name: 'policy.pdf',
+				file_size: 1024,
+				open_url: 'https://example.com/files/policy.pdf',
+			},
+		});
+
+		mountModal();
+		await flushUi();
+
+		await addSchoolFamiliesAudience();
+		await uploadGovernedFile();
+
+		setSelectByLabel('Organization', 'ORG-2');
+		await flushUi();
+		clickButton('Publish');
+		await flushUi();
+
+		expect(createOrgCommunicationQuickMock).toHaveBeenCalledTimes(1);
+		expect(document.querySelector('[role="alert"]')?.textContent || '').toContain(
+			'Remove the governed files before changing organization, issuing school, or audience scope.'
+		);
 	});
 
 	it('routes draft-save blockers for attachment actions to the top action banner', async () => {

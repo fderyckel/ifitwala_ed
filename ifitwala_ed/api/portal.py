@@ -23,9 +23,7 @@ from ifitwala_ed.api.student_demographics_dashboard import (
     ALLOWED_ANALYTICS_ROLES as STUDENT_DEMOGRAPHICS_ANALYTICS_ROLES,
 )
 from ifitwala_ed.api.student_log_dashboard import ALLOWED_ANALYTICS_ROLES as WELLBEING_ANALYTICS_ROLES
-from ifitwala_ed.api.student_overview_dashboard import (
-    ALLOWED_STAFF_ROLES as STUDENT_OVERVIEW_STAFF_ROLES,
-)
+from ifitwala_ed.api.student_overview_roles import ALLOWED_STAFF_ROLES as STUDENT_OVERVIEW_STAFF_ROLES
 from ifitwala_ed.api.users import STAFF_ROLES
 from ifitwala_ed.utilities.image_utils import (
     get_preferred_guardian_image_url,

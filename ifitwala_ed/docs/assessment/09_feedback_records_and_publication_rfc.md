@@ -61,6 +61,7 @@ Test refs:
 
 - `ifitwala_ed/api/test_gradebook.py`
 - `ifitwala_ed/ui-spa/src/pages/staff/__tests__/Gradebook.test.ts`
+- `ifitwala_ed/api/test_task_submission_unit.py`
 
 Current workspace reality:
 
@@ -70,10 +71,11 @@ Current workspace reality:
 - there is no first-class feedback record layer yet
 - there is no minimal comment bank yet
 - the live drawer runtime now has a partial annotation-readiness contract for the selected evidence version:
-
   - governed PDF attachments expose preview status plus file-type hints from Drive metadata
   - the selected submission returns a server-owned annotation-readiness summary
+  - governed PDFs render inside an Ifitwala-owned drawer workspace shell over Ed-owned preview/open routes
   - the Evidence tab distinguishes reduced PDF review, preview-unavailable fallback, and non-PDF states without guessing in Vue
+
 - the live drawer runtime still does **not** support text-anchored comments, OCR-driven upgrades, or structured feedback records
 
 Why Phase 2 exists:
@@ -122,17 +124,18 @@ Test refs:
 
 - `ifitwala_ed/api/test_gradebook.py`
 - `ifitwala_ed/api/test_task_submission.py`
+- `ifitwala_ed/api/test_task_submission_unit.py`
 - `ifitwala_ed/ui-spa/src/pages/staff/__tests__/Gradebook.test.ts`
 
 The feedback layer should stay inside assessment and should be reasoned about as a small set of conceptual records.
 
-| Conceptual record | Owns | Must know | Must not replace |
-| --- | --- | --- | --- |
-| Feedback item | one atomic teacher feedback record | outcome, selected evidence version, optional anchor, feedback intent, optional rubric link, visibility/workflow state | `Task Contribution`, `Task Outcome` |
-| Feedback summary | overall teacher summary for one review context | strengths, priorities, next steps, summary text, selected evidence version | official outcome truth |
-| Feedback response thread | learner or teacher follow-up on one feedback item or summary point | author, timestamp, reply state, acknowledgement or acted-on state | moderation or reporting truth |
-| Feedback publication view | release state for feedback and grade channels | channel, audience reach, release timing, audit actor | official score storage |
-| Feedback artifact linkage | optional link to returned annotated/exported artifact | governed artifact reference, selected evidence version, publication snapshot | learner submission |
+| Conceptual record         | Owns                                                               | Must know                                                                                                             | Must not replace                    |
+| ------------------------- | ------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------- | ----------------------------------- |
+| Feedback item             | one atomic teacher feedback record                                 | outcome, selected evidence version, optional anchor, feedback intent, optional rubric link, visibility/workflow state | `Task Contribution`, `Task Outcome` |
+| Feedback summary          | overall teacher summary for one review context                     | strengths, priorities, next steps, summary text, selected evidence version                                            | official outcome truth              |
+| Feedback response thread  | learner or teacher follow-up on one feedback item or summary point | author, timestamp, reply state, acknowledgement or acted-on state                                                     | moderation or reporting truth       |
+| Feedback publication view | release state for feedback and grade channels                      | channel, audience reach, release timing, audit actor                                                                  | official score storage              |
+| Feedback artifact linkage | optional link to returned annotated/exported artifact              | governed artifact reference, selected evidence version, publication snapshot                                          | learner submission                  |
 
 Recommended aggregate boundary:
 
@@ -164,9 +167,9 @@ Test refs: None yet
 
 Phase 2 should replace the current single-bit publish model with two explicit publication channels:
 
-| Channel | Allowed states |
-| --- | --- |
-| Feedback | hidden, visible to student, visible to student and guardian |
+| Channel                | Allowed states                                              |
+| ---------------------- | ----------------------------------------------------------- |
+| Feedback               | hidden, visible to student, visible to student and guardian |
 | Grade / rubric outcome | hidden, visible to student, visible to student and guardian |
 
 Invariants:
@@ -244,24 +247,24 @@ Phase 2 should extend the current bounded drawer model instead of introducing a 
 
 Recommended read-model responsibilities:
 
-| Drawer concern | Owner | Notes |
-| --- | --- | --- |
-| Delivery policy and student identity | current gradebook drawer bootstrap | already live |
-| Selected evidence version and governed file actions | current task-submission serialization path | already live |
-| Feedback records and summary for selected version | future assessment feedback read layer | add as bounded drawer block |
-| Publication state for feedback and grade channels | future publication read layer inside assessment | must be explicit, not inferred |
-| Annotation readiness | server-owned readability/OCR status for selected evidence version | do not guess in Vue |
-| Comment bank entries relevant to the current teacher context | future comment-bank read layer | keep bounded and scoped |
+| Drawer concern                                               | Owner                                                             | Notes                          |
+| ------------------------------------------------------------ | ----------------------------------------------------------------- | ------------------------------ |
+| Delivery policy and student identity                         | current gradebook drawer bootstrap                                | already live                   |
+| Selected evidence version and governed file actions          | current task-submission serialization path                        | already live                   |
+| Feedback records and summary for selected version            | future assessment feedback read layer                             | add as bounded drawer block    |
+| Publication state for feedback and grade channels            | future publication read layer inside assessment                   | must be explicit, not inferred |
+| Annotation readiness                                         | server-owned readability/OCR status for selected evidence version | do not guess in Vue            |
+| Comment bank entries relevant to the current teacher context | future comment-bank read layer                                    | keep bounded and scoped        |
 
 Recommended mutation responsibilities:
 
-| Mutation category | Owner | Notes |
-| --- | --- | --- |
-| Save grading input | existing contribution/outcome services | current path remains |
-| Save feedback draft | future assessment feedback write layer | separate from official grade truth |
-| Change publication state | future named publication operations | separate feedback and grade channels |
-| Save or update comment-bank entries | future comment-bank write layer | scoped teacher productivity feature |
-| Mark reply / acknowledgement / acted-on state | future feedback response operations | not a reporting write |
+| Mutation category                             | Owner                                  | Notes                                |
+| --------------------------------------------- | -------------------------------------- | ------------------------------------ |
+| Save grading input                            | existing contribution/outcome services | current path remains                 |
+| Save feedback draft                           | future assessment feedback write layer | separate from official grade truth   |
+| Change publication state                      | future named publication operations    | separate feedback and grade channels |
+| Save or update comment-bank entries           | future comment-bank write layer        | scoped teacher productivity feature  |
+| Mark reply / acknowledgement / acted-on state | future feedback response operations    | not a reporting write                |
 
 Coordination rule:
 
@@ -327,10 +330,10 @@ Annotation should behave according to server-known readiness of the selected evi
 
 Readiness modes:
 
-| Mode | Teacher capability |
-| --- | --- |
-| Text-readable | text highlight, anchored comments, search, quote-based anchoring |
-| Unreadable but previewable | area comments, page comments, ink, governed preview/open |
+| Mode                         | Teacher capability                                                            |
+| ---------------------------- | ----------------------------------------------------------------------------- |
+| Text-readable                | text highlight, anchored comments, search, quote-based anchoring              |
+| Unreadable but previewable   | area comments, page comments, ink, governed preview/open                      |
 | Unavailable / broken preview | clear inline reason, governed fallback action, no fake annotation affordances |
 
 Rules:

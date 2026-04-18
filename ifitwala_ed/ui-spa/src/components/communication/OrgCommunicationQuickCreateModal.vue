@@ -121,6 +121,8 @@
 									:school-help-text="schoolHelpText"
 									:issuing-school-selection-locked="issuingSchoolSelectionLocked"
 									:audience-school-selection-locked="audienceSchoolSelectionLocked"
+									:attachment-context-locked="attachmentContextLocked"
+									:attachment-context-lock-message="attachmentContextLockMessage"
 									:brief-dates-required="briefDatesRequired"
 									:delivery-validation-message="deliveryValidationMessage"
 									:audience-validation-message="audienceValidationMessage"
@@ -240,7 +242,20 @@ import type {
 
 type CloseReason = 'backdrop' | 'esc' | 'programmatic';
 type EntryMode = 'staff-home' | 'class-event';
-type TopLevelErrorSource = '' | 'load' | 'submit' | 'attachment-precondition';
+type TopLevelErrorSource =
+	| ''
+	| 'load'
+	| 'submit'
+	| 'attachment-precondition'
+	| 'attachment-context-lock';
+
+type AttachmentContextSnapshot = {
+	organization: string;
+	school: string;
+	studentGroup: string;
+	team: string;
+	schoolScopeSchool: string;
+};
 
 class AttachmentPreconditionError extends Error {}
 
@@ -277,6 +292,7 @@ const audienceRows = ref<AudienceRowState[]>([]);
 const attachmentRows = ref<OrgCommunicationAttachmentRow[]>([]);
 const savedCommunicationName = ref('');
 const showLinkComposer = ref(false);
+const lockedAttachmentContextSnapshot = ref<AttachmentContextSnapshot | null>(null);
 
 const form = reactive({
 	title: '',
@@ -359,6 +375,16 @@ const interactionModeOptions = computed(() => options.value?.fields.interaction_
 const hasOrganizationAudience = computed(() =>
 	audienceRows.value.some(row => row.target_mode === 'Organization')
 );
+const hasGovernedFileAttachments = computed(() =>
+	attachmentRows.value.some(row => row.kind === 'file')
+);
+const attachmentContextLocked = computed(() =>
+	Boolean(savedCommunicationName.value && hasGovernedFileAttachments.value)
+);
+const attachmentContextLockMessage = computed(
+	() =>
+		'Governed files are already attached to this draft. Remove the governed files before changing organization, issuing school, or audience scope.'
+);
 
 function getSelectOptionValue(option: string | { value?: string | null }) {
 	if (typeof option === 'string') return option;
@@ -380,6 +406,46 @@ function getOrganizationOptionLabel(name: string | null | undefined) {
 	return (
 		organizationSelectOptions.value.find(option => option.value === name)?.label ||
 		String(name || '')
+	);
+}
+
+function normalizeAttachmentContextValue(value: string | null | undefined) {
+	return String(value || '').trim();
+}
+
+function getUniqueAudienceContextValue(
+	targetMode: AudienceRowState['target_mode'],
+	field: 'school' | 'team' | 'student_group'
+) {
+	const values = audienceRows.value
+		.filter(row => row.target_mode === targetMode)
+		.map(row => normalizeAttachmentContextValue(row[field]))
+		.filter(Boolean);
+	const uniqueValues = Array.from(new Set(values));
+	return uniqueValues.length === 1 ? uniqueValues[0] : '';
+}
+
+function buildAttachmentContextSnapshot(): AttachmentContextSnapshot {
+	return {
+		organization: normalizeAttachmentContextValue(form.organization),
+		school: normalizeAttachmentContextValue(form.school),
+		studentGroup: getUniqueAudienceContextValue('Student Group', 'student_group'),
+		team: getUniqueAudienceContextValue('Team', 'team'),
+		schoolScopeSchool: getUniqueAudienceContextValue('School Scope', 'school'),
+	};
+}
+
+function attachmentContextSnapshotsMatch(
+	left: AttachmentContextSnapshot | null,
+	right: AttachmentContextSnapshot | null
+) {
+	if (!left || !right) return left === right;
+	return (
+		left.organization === right.organization &&
+		left.school === right.school &&
+		left.studentGroup === right.studentGroup &&
+		left.team === right.team &&
+		left.schoolScopeSchool === right.schoolScopeSchool
 	);
 }
 
@@ -418,13 +484,17 @@ const suggestedStudentGroupItems = computed(() =>
 );
 
 const audienceSchoolSelectionLocked = computed(() => {
+	if (attachmentContextLocked.value) return true;
 	if (isClassEventMode.value) return true;
 	if (!context.value) return false;
 	if (context.value.lock_to_default_school) return true;
 	return !context.value.can_select_school;
 });
 const issuingSchoolSelectionLocked = computed(
-	() => hasOrganizationAudience.value || audienceSchoolSelectionLocked.value
+	() =>
+		attachmentContextLocked.value ||
+		hasOrganizationAudience.value ||
+		audienceSchoolSelectionLocked.value
 );
 
 const recipientToggleDefinitions: RecipientToggleDefinition[] = [
@@ -537,6 +607,9 @@ const schoolHelpText = computed(() => {
 	if (!context.value) return 'Loading school scope...';
 	if (isClassEventMode.value)
 		return 'Class event entry keeps the issuing school aligned to the selected class.';
+	if (attachmentContextLocked.value) {
+		return 'Issuing scope is locked while governed files remain attached to this draft.';
+	}
 	if (hasOrganizationAudience.value) {
 		return 'Leave Issuing School blank because Organization audience rows are organization-level.';
 	}
@@ -549,6 +622,17 @@ const schoolHelpText = computed(() => {
 			: 'Optional issuing school from your organization scope.';
 	}
 	return 'No issuing school scope is configured. Use organization-level communication or ask admin to configure school scope.';
+});
+const attachmentContextChangedSinceLock = computed(() => {
+	if (!attachmentContextLocked.value || !lockedAttachmentContextSnapshot.value) return false;
+	return !attachmentContextSnapshotsMatch(
+		lockedAttachmentContextSnapshot.value,
+		buildAttachmentContextSnapshot()
+	);
+});
+const attachmentContextLockBlocker = computed(() => {
+	if (!attachmentContextChangedSinceLock.value) return '';
+	return attachmentContextLockMessage.value;
 });
 const classEventAudienceRow = computed(() => {
 	if (!isClassEventMode.value) return null;
@@ -773,6 +857,26 @@ watch(
 );
 
 watch(
+	attachmentContextLocked,
+	locked => {
+		if (locked) {
+			if (!lockedAttachmentContextSnapshot.value) {
+				lockedAttachmentContextSnapshot.value = buildAttachmentContextSnapshot();
+			}
+			return;
+		}
+		lockedAttachmentContextSnapshot.value = null;
+	},
+	{ immediate: true }
+);
+
+watch(attachmentContextLockBlocker, blocker => {
+	if (!blocker) {
+		clearTopLevelError('attachment-context-lock');
+	}
+});
+
+watch(
 	[
 		() => form.title,
 		() => form.communication_type,
@@ -978,6 +1082,10 @@ function createAudienceRow(seed: Partial<AudienceRowState> = {}): AudienceRowSta
 }
 
 function removeAudienceRow(rowId: string) {
+	if (attachmentContextLocked.value) {
+		setTopLevelError(attachmentContextLockMessage.value, 'attachment-context-lock');
+		return;
+	}
 	audienceRows.value = audienceRows.value.filter(row => row.id !== rowId);
 }
 
@@ -1047,6 +1155,10 @@ function applyAudiencePreset(row: AudienceRowState, preset: OrgCommunicationAudi
 }
 
 function addAudiencePreset(presetKey: string) {
+	if (attachmentContextLocked.value) {
+		setTopLevelError(attachmentContextLockMessage.value, 'attachment-context-lock');
+		return;
+	}
 	const preset = audiencePresets.value.find(option => option.key === presetKey);
 	if (!preset) return;
 	const row = createAudienceRow({
@@ -1138,6 +1250,10 @@ function getAudienceRowDescription(row: AudienceRowState) {
 }
 
 function clearAudienceSearchSelection(row: AudienceRowState) {
+	if (attachmentContextLocked.value) {
+		setTopLevelError(attachmentContextLockMessage.value, 'attachment-context-lock');
+		return;
+	}
 	if (row.search_kind === 'team') {
 		row.team = '';
 		row.team_label = '';
@@ -1158,6 +1274,10 @@ function clearAudienceSearchSelection(row: AudienceRowState) {
 }
 
 function selectAudienceSearchItem(row: AudienceRowState, item: AudienceTargetSearchItem) {
+	if (attachmentContextLocked.value) {
+		setTopLevelError(attachmentContextLockMessage.value, 'attachment-context-lock');
+		return;
+	}
 	if (row.search_kind === 'team') {
 		row.team = item.value;
 		row.team_label = item.label;
@@ -1170,6 +1290,10 @@ function selectAudienceSearchItem(row: AudienceRowState, item: AudienceTargetSea
 }
 
 async function searchAudienceTargets(row: AudienceRowState) {
+	if (attachmentContextLocked.value) {
+		setTopLevelError(attachmentContextLockMessage.value, 'attachment-context-lock');
+		return;
+	}
 	if (row.search_loading) return;
 	const query = row.search_query.trim();
 	if (row.search_kind === 'team') {
@@ -1377,7 +1501,7 @@ async function ensureSavedDraft() {
 	} catch (error) {
 		throw new AttachmentPreconditionError(
 			error instanceof Error
-				? error.message
+				? resolveActionErrorMessage(error)
 				: 'Unable to save the draft before adding attachments.'
 		);
 	}
@@ -1502,6 +1626,10 @@ async function submitWithStatus(statusOverride: string) {
 		setTopLevelError(validationError, 'submit');
 		return;
 	}
+	if (attachmentContextLockBlocker.value) {
+		setTopLevelError(attachmentContextLockBlocker.value, 'attachment-context-lock');
+		return;
+	}
 
 	clearTopLevelError();
 	submitting.value = true;
@@ -1512,10 +1640,7 @@ async function submitWithStatus(statusOverride: string) {
 		emit('close', 'programmatic');
 		emit('done', response);
 	} catch (error) {
-		setTopLevelError(
-			error instanceof Error ? error.message : 'Unable to create communication.',
-			'submit'
-		);
+		setTopLevelError(resolveActionErrorMessage(error), 'submit');
 	} finally {
 		submitting.value = false;
 	}
@@ -1527,5 +1652,16 @@ function getAttachmentDraftBlocker() {
 		return 'Communication options are still loading. Wait a moment, then try again.';
 	}
 	return draftValidationMessage.value;
+}
+
+function resolveActionErrorMessage(error: unknown) {
+	const fallback = error instanceof Error ? error.message : 'Unable to create communication.';
+	if (
+		fallback.includes('governed file attachments') &&
+		fallback.includes('Remove the governed files before changing')
+	) {
+		return attachmentContextLockMessage.value;
+	}
+	return fallback;
 }
 </script>

@@ -153,6 +153,9 @@ Current workspace reality:
 - `is_template` now controls explicit course-library sharing for reusable tasks. It does not promote work into governed curriculum or common-assessment baseline space.
 - The class-owned context currently lives on required `Task Delivery.class_teaching_plan` and optional `Task Delivery.class_session`.
 - `api/task.py::search_reusable_tasks()` and `api/task.py::search_tasks()` now resolve one course-scoped reusable-task library at a time. They return only tasks the current user owns for that course or tasks explicitly shared with the course team.
+- `api/task.py::list_course_assessment_criteria()` now resolves the same course scope and exposes the course-owned criteria library to the task overlay.
+- `ui-spa/src/components/tasks/CreateTaskDeliveryOverlay.vue` now supports criteria authoring for new tasks directly in the main task flow, using course criteria rows plus task-local weighting and max-points metadata.
+- Reusing an existing criteria task now carries `criteria_defaults` and the default rubric strategy back to the overlay, while keeping the criteria rows themselves on the reusable task definition.
 - `api/task.py::create_task_delivery()` now supports the assign-existing path. Reusing a task creates a new class-scoped delivery only; it does not rewrite the reusable task definition.
 - Same-teacher reuse across groups or school years stays available through task ownership. Cross-teacher reuse requires explicit course-library sharing.
 - Cross-surface dependency: staff Morning Brief instructor widgets in `ifitwala_ed/api/morning_brief.py` read overdue grading state from `Task Delivery` and `Task Outcome`, so any change to task ownership, delivery due-date semantics, grading-required flags, or outcome completion statuses must update Morning Brief code and `ifitwala_ed/api/test_morning_brief.py` in the same change.
@@ -287,6 +290,9 @@ When `grading_mode = "Criteria"`:
 - official criterion rows are copied into `Task Outcome Criterion`
 - `rubric_scoring_strategy = "Separate Criteria"` clears task-level totals and grade fields
 - `rubric_scoring_strategy = "Sum Total"` computes task-level totals and optional grade-scale resolution
+- if the rubric snapshot carries positive `criteria_max_points` on every criterion and the criterion weightings total `100`, the official total is the weighted normalized result:
+  `sum((criterion level_points / criteria_max_points) * criteria_weighting)`
+- if a legacy rubric snapshot does not meet that contract, the runtime falls back to the older weighted raw-point behavior so historical tasks do not silently change meaning
 
 ### 3.3 Non-criteria grading behavior
 
