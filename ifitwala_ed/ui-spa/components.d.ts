@@ -51,6 +51,7 @@ declare module 'vue' {
     MeetingEventModal: typeof import('./src/components/calendar/MeetingEventModal.vue')['default']
     MyTeachingPanel: typeof import('./src/components/class-hub/MyTeachingPanel.vue')['default']
     OrgChartNodeCard: typeof import('./src/components/org-chart/OrgChartNodeCard.vue')['default']
+    OrgCommunicationQuickCreateAttachmentActions: typeof import('./src/components/communication/OrgCommunicationQuickCreateAttachmentActions.vue')['default']
     OrgCommunicationQuickCreateAttachmentSection: typeof import('./src/components/communication/OrgCommunicationQuickCreateAttachmentSection.vue')['default']
     OrgCommunicationQuickCreateClassEventComposer: typeof import('./src/components/communication/OrgCommunicationQuickCreateClassEventComposer.vue')['default']
     OrgCommunicationQuickCreateModal: typeof import('./src/components/communication/OrgCommunicationQuickCreateModal.vue')['default']
