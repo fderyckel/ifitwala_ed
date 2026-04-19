@@ -15,6 +15,7 @@
 						v-if="taskRailCollapsed"
 						type="button"
 						class="if-button if-button--secondary"
+						aria-label="Expand task rail"
 						@click="toggleTaskRail()"
 					>
 						<FeatherIcon name="chevrons-right" class="h-4 w-4" />
@@ -151,7 +152,7 @@
 		</div>
 
 		<div class="grid min-w-0 gap-6 xl:gap-8" :class="taskRailGridClass">
-			<aside class="min-w-0 lg:sticky lg:top-6 lg:self-start">
+			<aside v-if="!taskRailCollapsed" class="min-w-0 lg:sticky lg:top-6 lg:self-start">
 				<section
 					class="flex flex-col overflow-hidden rounded-2xl border border-border bg-white shadow-sm transition-all"
 				>
@@ -194,49 +195,7 @@
 						</div>
 					</div>
 
-					<div v-if="taskRailCollapsed" class="px-4 py-4 lg:px-3 lg:py-5">
-						<div class="space-y-3 lg:hidden">
-							<div class="rounded-2xl border border-border/70 bg-gray-50/70 px-4 py-4">
-								<p class="text-xs font-semibold uppercase tracking-[0.16em] text-ink/45">
-									Current class
-								</p>
-								<p class="mt-2 text-sm font-semibold text-ink">
-									{{ selectedGroup?.label || 'Choose a student group above.' }}
-								</p>
-								<p v-if="selectedTask" class="mt-1 text-xs text-ink/55">
-									Task: {{ selectedTask.title }}
-								</p>
-							</div>
-						</div>
-
-						<div class="hidden min-h-[18rem] flex-col items-center gap-4 lg:flex">
-							<div class="space-y-1 text-center">
-								<p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-ink/45">
-									Tasks
-								</p>
-								<p class="text-xs text-ink/55">
-									{{ derivedTasks.length || taskSummaries.length || 0 }}
-								</p>
-							</div>
-							<div class="h-px w-full bg-border/60" />
-							<div class="space-y-1 text-center">
-								<p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-ink/45">
-									View
-								</p>
-								<p class="text-xs text-ink/55">
-									{{ viewMode === 'task' ? 'Task' : 'Overview' }}
-								</p>
-							</div>
-							<div
-								v-if="selectedTask"
-								class="w-full rounded-2xl border border-border/70 bg-sky/10 px-2 py-3 text-center text-[11px] font-medium leading-4 text-ink/70"
-							>
-								{{ selectedTask.title }}
-							</div>
-						</div>
-					</div>
-
-					<div v-else class="flex flex-1 flex-col">
+					<div class="flex flex-1 flex-col">
 						<div class="border-b border-border/50 bg-sky/5 px-4 py-4">
 							<p class="text-xs font-semibold uppercase tracking-[0.16em] text-ink/45">
 								Current class
@@ -641,9 +600,7 @@ const taskRailSummary = computed(() => {
 });
 
 const taskRailGridClass = computed(() =>
-	taskRailCollapsed.value
-		? 'lg:grid-cols-[4.75rem_minmax(0,1fr)]'
-		: 'lg:grid-cols-[minmax(17.5rem,18.75rem)_minmax(0,1fr)]'
+	taskRailCollapsed.value ? 'grid-cols-1' : 'lg:grid-cols-[minmax(17.5rem,18.75rem)_minmax(0,1fr)]'
 );
 
 const taskRailToggleLabel = computed(() =>
