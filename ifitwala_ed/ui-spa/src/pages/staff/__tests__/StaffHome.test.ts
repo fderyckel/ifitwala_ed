@@ -186,6 +186,7 @@ describe('StaffHome', () => {
 		const exploreLinks = document.querySelector('[data-testid="staff-home-explore-links"]');
 
 		expect(quickActions?.textContent || '').toContain('Schedule meeting');
+		expect(quickActions?.textContent || '').toContain('Schedule team meeting');
 		expect(quickActions?.textContent || '').toContain('Add student log');
 		expect(quickActions?.textContent || '').toContain('Create communication');
 		expect(quickActions?.textContent || '').not.toContain('Create task');
@@ -209,6 +210,57 @@ describe('StaffHome', () => {
 			prefillStudentGroup: null,
 			prefillDueDate: null,
 			prefillAvailableFrom: null,
+		});
+	});
+
+	it('opens explicit ad-hoc and team meeting quick actions with the matching overlay mode', async () => {
+		getStaffHomeHeaderMock.mockResolvedValue({
+			first_name: 'Kis',
+			full_name: 'Kis Bangkok',
+			capabilities: {
+				quick_action_create_event: true,
+				quick_action_create_meeting: true,
+				quick_action_create_school_event: false,
+			},
+		});
+		listFocusItemsMock.mockResolvedValue([]);
+
+		mountStaffHome();
+		await flushUi();
+
+		const quickActionButtons = Array.from(
+			document.querySelectorAll('[data-testid="staff-home-quick-actions"] button')
+		);
+		const adHocButton = quickActionButtons.find(
+			button =>
+				(button.textContent || '').includes('Schedule meeting') &&
+				!(button.textContent || '').includes('Schedule team meeting')
+		);
+		const teamButton = quickActionButtons.find(button =>
+			(button.textContent || '').includes('Schedule team meeting')
+		);
+
+		expect(adHocButton).toBeDefined();
+		expect(teamButton).toBeDefined();
+
+		adHocButton?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		await flushUi();
+
+		expect(overlayOpenMock).toHaveBeenCalledWith('event-quick-create', {
+			eventType: 'meeting',
+			lockEventType: true,
+			meetingMode: 'ad_hoc',
+		});
+
+		overlayOpenMock.mockClear();
+
+		teamButton?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		await flushUi();
+
+		expect(overlayOpenMock).toHaveBeenCalledWith('event-quick-create', {
+			eventType: 'meeting',
+			lockEventType: true,
+			meetingMode: 'team',
 		});
 	});
 

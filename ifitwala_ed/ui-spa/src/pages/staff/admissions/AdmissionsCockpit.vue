@@ -158,6 +158,9 @@
 									>
 										{{ item.application_status }}
 									</span>
+									<span v-if="item.aep?.has_plan" :class="aepPillClass(item.aep?.status)">
+										AEP · {{ item.aep?.status || 'Plan' }}
+									</span>
 									<span :class="pillClass(item.readiness.profile_ok)">Profile</span>
 									<span :class="pillClass(item.readiness.documents_ok)">Docs</span>
 									<span :class="pillClass(item.readiness.recommendations_ok)"
@@ -177,6 +180,73 @@
 									>
 										Comms · {{ item.comms?.unread_count || 0 }}
 									</span>
+								</div>
+
+								<div
+									v-if="item.aep?.has_plan"
+									class="mb-2 rounded-md border border-slate-200 bg-slate-50 px-3 py-2"
+								>
+									<div class="flex items-start justify-between gap-3">
+										<div class="min-w-0">
+											<p class="text-xs font-semibold text-slate-900">Enrollment Plan</p>
+											<p class="text-xs text-slate-token/80">
+												{{ item.aep?.name }}
+												<span v-if="item.aep?.status">· {{ item.aep?.status }}</span>
+											</p>
+											<p
+												v-if="item.aep?.status === 'Offer Sent' && item.aep?.offer_expires_on"
+												class="text-xs text-slate-token/80"
+											>
+												Offer expires {{ formatDateOnly(item.aep.offer_expires_on) }}
+											</p>
+										</div>
+										<div class="flex flex-wrap justify-end gap-2">
+											<button
+												v-if="item.aep?.can_send_offer"
+												type="button"
+												class="rounded-md border border-slate-200 bg-white px-2 py-1 text-xs font-semibold text-canopy hover:border-canopy disabled:cursor-not-allowed disabled:opacity-60"
+												:disabled="isAepActionPending(item.aep?.name, 'send_offer')"
+												@click="sendEnrollmentOffer(item)"
+											>
+												{{
+													isAepActionPending(item.aep?.name, 'send_offer')
+														? 'Sending...'
+														: 'Send Offer'
+												}}
+											</button>
+											<button
+												v-if="item.aep?.can_hydrate_request"
+												type="button"
+												class="rounded-md border border-slate-200 bg-white px-2 py-1 text-xs font-semibold text-canopy hover:border-canopy disabled:cursor-not-allowed disabled:opacity-60"
+												:disabled="isAepActionPending(item.aep?.name, 'hydrate_request')"
+												@click="hydrateEnrollmentRequest(item)"
+											>
+												{{
+													isAepActionPending(item.aep?.name, 'hydrate_request')
+														? 'Hydrating...'
+														: 'Hydrate Request'
+												}}
+											</button>
+											<a
+												v-if="item.aep?.program_enrollment_request_url"
+												:href="item.aep.program_enrollment_request_url"
+												target="_blank"
+												rel="noopener noreferrer"
+												class="rounded-md border border-slate-200 bg-white px-2 py-1 text-xs font-semibold text-canopy hover:border-canopy"
+											>
+												Open Request
+											</a>
+											<a
+												v-if="item.aep?.open_url"
+												:href="item.aep.open_url"
+												target="_blank"
+												rel="noopener noreferrer"
+												class="rounded-md border border-slate-200 bg-white px-2 py-1 text-xs font-semibold text-canopy hover:border-canopy"
+											>
+												Open Plan
+											</a>
+										</div>
+									</div>
 								</div>
 
 								<div
@@ -402,7 +472,9 @@ import KpiRow from '@/components/analytics/KpiRow.vue';
 import {
 	getAdmissionsCaseThread,
 	getAdmissionsCockpitData,
+	hydrateAdmissionsCockpitRequest,
 	markAdmissionsCaseRead,
+	sendAdmissionsCockpitOffer,
 	sendAdmissionsCaseMessage,
 	type AdmissionsCaseMessage,
 } from '@/lib/admission';
@@ -456,6 +528,18 @@ type CockpitCardTarget = {
 	workspace_document_item?: string | null;
 };
 
+type CockpitAepSummary = {
+	has_plan: boolean;
+	name?: string | null;
+	status?: string | null;
+	open_url?: string | null;
+	offer_expires_on?: string | null;
+	program_enrollment_request?: string | null;
+	program_enrollment_request_url?: string | null;
+	can_send_offer: boolean;
+	can_hydrate_request: boolean;
+};
+
 type CockpitCard = {
 	name: string;
 	display_name: string;
@@ -463,6 +547,7 @@ type CockpitCard = {
 	ready: boolean;
 	school: string;
 	program_offering?: string;
+	aep?: CockpitAepSummary;
 	interviews?: CockpitInterviewSummary;
 	top_blockers: CockpitCardTarget[];
 	readiness: {
@@ -528,6 +613,7 @@ const threadDraft = ref('');
 const threadInternalNote = ref(false);
 const threadSending = ref(false);
 const threadSendError = ref('');
+const pendingAepActionKey = ref('');
 
 const filters = ref({
 	organization: '',
@@ -616,6 +702,20 @@ function reviewStageClass(item: CockpitCard) {
 		: 'rounded-full border border-amber-300 bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-800';
 }
 
+function aepPillClass(status?: string | null) {
+	const resolvedStatus = String(status || '').trim();
+	if (resolvedStatus === 'Hydrated') {
+		return 'rounded-full border border-emerald-300 bg-emerald-100 px-2 py-0.5 text-xs font-semibold text-emerald-700';
+	}
+	if (resolvedStatus === 'Offer Sent' || resolvedStatus === 'Offer Accepted') {
+		return 'rounded-full border border-blue-300 bg-blue-50 px-2 py-0.5 text-xs font-semibold text-blue-700';
+	}
+	if (resolvedStatus === 'Committee Approved' || resolvedStatus === 'Ready for Committee') {
+		return 'rounded-full border border-amber-300 bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-800';
+	}
+	return 'rounded-full border border-slate-200 bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-token';
+}
+
 function filteredItems(items: CockpitCard[]) {
 	if (!activeBlocker.value) {
 		return items;
@@ -653,6 +753,31 @@ function formatDate(value?: string | null) {
 		return value;
 	}
 	return date.toLocaleString();
+}
+
+function formatDateOnly(value?: string | null) {
+	if (!value) {
+		return '—';
+	}
+	const date = new Date(value);
+	if (Number.isNaN(date.getTime())) {
+		return value;
+	}
+	return date.toLocaleDateString();
+}
+
+function aepActionKey(
+	planName?: string | null,
+	action: 'send_offer' | 'hydrate_request' = 'send_offer'
+) {
+	return `${String(planName || '').trim()}:${action}`;
+}
+
+function isAepActionPending(
+	planName?: string | null,
+	action: 'send_offer' | 'hydrate_request' = 'send_offer'
+) {
+	return pendingAepActionKey.value === aepActionKey(planName, action);
 }
 
 function formatInterviewSchedule(interview?: CockpitInterviewLatest | null) {
@@ -785,6 +910,52 @@ function openCreateInterview(card: CockpitCard) {
 
 	const url = buildNewInterviewUrl(applicantName);
 	window.open(url, '_blank', 'noopener,noreferrer');
+}
+
+async function sendEnrollmentOffer(card: CockpitCard) {
+	const planName = String(card?.aep?.name || '').trim();
+	if (!planName) {
+		error.value = 'Enrollment plan reference is missing for offer send.';
+		return;
+	}
+
+	const key = aepActionKey(planName, 'send_offer');
+	pendingAepActionKey.value = key;
+	error.value = '';
+
+	try {
+		await sendAdmissionsCockpitOffer({ applicant_enrollment_plan: planName });
+		await refreshNow();
+	} catch (err: any) {
+		error.value = err?.message || 'Could not send the enrollment offer.';
+	} finally {
+		if (pendingAepActionKey.value === key) {
+			pendingAepActionKey.value = '';
+		}
+	}
+}
+
+async function hydrateEnrollmentRequest(card: CockpitCard) {
+	const planName = String(card?.aep?.name || '').trim();
+	if (!planName) {
+		error.value = 'Enrollment plan reference is missing for request hydration.';
+		return;
+	}
+
+	const key = aepActionKey(planName, 'hydrate_request');
+	pendingAepActionKey.value = key;
+	error.value = '';
+
+	try {
+		await hydrateAdmissionsCockpitRequest({ applicant_enrollment_plan: planName });
+		await refreshNow();
+	} catch (err: any) {
+		error.value = err?.message || 'Could not hydrate the enrollment request.';
+	} finally {
+		if (pendingAepActionKey.value === key) {
+			pendingAepActionKey.value = '';
+		}
+	}
 }
 
 async function loadThread(card: CockpitCard, markRead: boolean = true) {

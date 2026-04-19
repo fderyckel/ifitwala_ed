@@ -183,15 +183,21 @@ afterEach(() => {
 });
 
 describe('RoomUtilization', () => {
-	it('opens the event quick create overlay with the selected school prefilled', async () => {
+	it('opens the ad-hoc and team meeting quick-create entry points with the selected school prefilled', async () => {
 		mountRoomUtilization();
 		await flushUi();
 
-		const createEventButton = Array.from(document.querySelectorAll('button')).find(button =>
-			(button.textContent || '').includes('Schedule meeting')
+		const createEventButton = Array.from(document.querySelectorAll('button')).find(
+			button =>
+				(button.textContent || '').includes('Schedule meeting') &&
+				!(button.textContent || '').includes('Schedule team meeting')
+		);
+		const createTeamMeetingButton = Array.from(document.querySelectorAll('button')).find(button =>
+			(button.textContent || '').includes('Schedule team meeting')
 		);
 
 		expect(createEventButton).toBeDefined();
+		expect(createTeamMeetingButton).toBeDefined();
 		createEventButton?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
 		await flushUi();
 
@@ -199,6 +205,18 @@ describe('RoomUtilization', () => {
 			eventType: 'meeting',
 			lockEventType: true,
 			meetingMode: 'ad_hoc',
+			prefillSchool: 'ISS',
+		});
+
+		overlayOpenMock.mockClear();
+
+		createTeamMeetingButton?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		await flushUi();
+
+		expect(overlayOpenMock).toHaveBeenCalledWith('event-quick-create', {
+			eventType: 'meeting',
+			lockEventType: true,
+			meetingMode: 'team',
 			prefillSchool: 'ISS',
 		});
 	});

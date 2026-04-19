@@ -114,6 +114,29 @@
 						/>
 					</button>
 
+					<button
+						v-if="canOpenTeamMeetingQuickAction"
+						type="button"
+						class="action-tile group w-full min-w-0"
+						@click="openCreateTeamMeeting"
+					>
+						<div class="action-tile__icon shrink-0">
+							<FeatherIcon name="users" class="h-6 w-6" />
+						</div>
+						<div class="flex-1 min-w-0">
+							<p class="type-body-strong text-ink transition-colors group-hover:text-jacaranda">
+								Schedule team meeting
+							</p>
+							<p class="truncate type-caption text-slate-token/70">
+								Start from a team and keep its core attendee roster locked to context
+							</p>
+						</div>
+						<FeatherIcon
+							name="chevron-right"
+							class="h-4 w-4 shrink-0 text-slate-token/40 transition-colors group-hover:text-jacaranda"
+						/>
+					</button>
+
 					<!-- Create student log uses overlay stack -->
 					<button
 						v-if="userCapabilities.quick_action_student_log"
@@ -848,17 +871,23 @@ const greeting = computed(() => {
 	return hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
 });
 
+const canCreateMeeting = computed(() =>
+	Boolean(userCapabilities.value.quick_action_create_meeting)
+);
+const canCreateSchoolEvent = computed(() =>
+	Boolean(userCapabilities.value.quick_action_create_school_event)
+);
+const canOpenTeamMeetingQuickAction = computed(
+	() => Boolean(userCapabilities.value.quick_action_create_event) && canCreateMeeting.value
+);
+
 const eventQuickActionTitle = computed(() => {
-	const canCreateMeeting = Boolean(userCapabilities.value.quick_action_create_meeting);
-	const canCreateSchoolEvent = Boolean(userCapabilities.value.quick_action_create_school_event);
-	if (canCreateMeeting && !canCreateSchoolEvent) return 'Schedule meeting';
+	if (canCreateMeeting.value && !canCreateSchoolEvent.value) return 'Schedule meeting';
 	return 'Create event';
 });
 
 const eventQuickActionSubtitle = computed(() => {
-	const canCreateMeeting = Boolean(userCapabilities.value.quick_action_create_meeting);
-	const canCreateSchoolEvent = Boolean(userCapabilities.value.quick_action_create_school_event);
-	if (canCreateMeeting && !canCreateSchoolEvent) {
+	if (canCreateMeeting.value && !canCreateSchoolEvent.value) {
 		return 'Find a common time and invite colleagues, students, or guardians';
 	}
 	return 'Create a meeting or school event';
@@ -908,10 +937,7 @@ async function openClassHubQuickAction() {
 
 /* OVERLAY: Event Quick Create --------------------------------- */
 function openCreateEvent() {
-	const canCreateMeeting = Boolean(userCapabilities.value.quick_action_create_meeting);
-	const canCreateSchoolEvent = Boolean(userCapabilities.value.quick_action_create_school_event);
-
-	if (!canCreateMeeting && !canCreateSchoolEvent) {
+	if (!canCreateMeeting.value && !canCreateSchoolEvent.value) {
 		toast.create({
 			title: 'Not available',
 			text: 'You do not have permission to create events.',
@@ -920,13 +946,30 @@ function openCreateEvent() {
 		return;
 	}
 
-	const lockEventType = canCreateMeeting !== canCreateSchoolEvent;
-	const eventType = canCreateMeeting ? 'meeting' : 'school_event';
+	const lockEventType = canCreateMeeting.value !== canCreateSchoolEvent.value;
+	const eventType = canCreateMeeting.value ? 'meeting' : 'school_event';
 
 	overlay.open('event-quick-create', {
 		eventType: lockEventType ? eventType : null,
 		lockEventType,
 		meetingMode: 'ad_hoc',
+	});
+}
+
+function openCreateTeamMeeting() {
+	if (!canCreateMeeting.value) {
+		toast.create({
+			title: 'Not available',
+			text: 'You do not have permission to schedule meetings.',
+			icon: 'info',
+		});
+		return;
+	}
+
+	overlay.open('event-quick-create', {
+		eventType: 'meeting',
+		lockEventType: true,
+		meetingMode: 'team',
 	});
 }
 

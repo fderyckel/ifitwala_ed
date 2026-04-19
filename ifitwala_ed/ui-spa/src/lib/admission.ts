@@ -1,132 +1,174 @@
 // ifitwala_ed/ui-spa/src/lib/admission.ts
 
-import { api } from './client'
+import { api } from './client';
 
 export const ADMISSION_API = {
-  dashboard: 'ifitwala_ed.api.inquiry.get_dashboard_data',
-  admissionsCockpit: 'ifitwala_ed.api.admission_cockpit.get_admissions_cockpit_data',
-  admissionsCaseThread: 'ifitwala_ed.api.admissions_communication.get_admissions_case_thread',
-  admissionsCaseMessageSend: 'ifitwala_ed.api.admissions_communication.send_admissions_case_message',
-  admissionsCaseMarkRead: 'ifitwala_ed.api.admissions_communication.mark_admissions_case_thread_read',
-  inquiryTypes: 'ifitwala_ed.api.inquiry.get_inquiry_types',
-  organizations: 'ifitwala_ed.api.inquiry.get_inquiry_organizations',
-  schools: 'ifitwala_ed.api.inquiry.get_inquiry_schools',
-  // Reusing the existing link query if needed, though often we just want a simple list for dropdowns
-  academicYears: 'ifitwala_ed.api.inquiry.academic_year_link_query',
-  users: 'ifitwala_ed.api.inquiry.admission_user_link_query',
-}
+	dashboard: 'ifitwala_ed.api.inquiry.get_dashboard_data',
+	admissionsCockpit: 'ifitwala_ed.api.admission_cockpit.get_admissions_cockpit_data',
+	admissionsCockpitSendOffer: 'ifitwala_ed.api.admission_cockpit.send_admissions_cockpit_offer',
+	admissionsCockpitHydrateRequest:
+		'ifitwala_ed.api.admission_cockpit.hydrate_admissions_cockpit_request',
+	admissionsCaseThread: 'ifitwala_ed.api.admissions_communication.get_admissions_case_thread',
+	admissionsCaseMessageSend:
+		'ifitwala_ed.api.admissions_communication.send_admissions_case_message',
+	admissionsCaseMarkRead:
+		'ifitwala_ed.api.admissions_communication.mark_admissions_case_thread_read',
+	inquiryTypes: 'ifitwala_ed.api.inquiry.get_inquiry_types',
+	organizations: 'ifitwala_ed.api.inquiry.get_inquiry_organizations',
+	schools: 'ifitwala_ed.api.inquiry.get_inquiry_schools',
+	// Reusing the existing link query if needed, though often we just want a simple list for dropdowns
+	academicYears: 'ifitwala_ed.api.inquiry.academic_year_link_query',
+	users: 'ifitwala_ed.api.inquiry.admission_user_link_query',
+};
 
 export type DashboardFilters = {
-  date_mode?: 'preset' | 'custom' | 'academic_year'
-  date_preset?: string
-  from_date?: string
-  to_date?: string
-  academic_year?: string
-  type_of_inquiry?: string
-  assigned_to?: string
-  assignment_lane?: 'Admission' | 'Staff' | ''
-  sla_status?: string // 'Overdue', 'Due Today', 'Upcoming'
-  organization?: string
-  school?: string
-}
+	date_mode?: 'preset' | 'custom' | 'academic_year';
+	date_preset?: string;
+	from_date?: string;
+	to_date?: string;
+	academic_year?: string;
+	type_of_inquiry?: string;
+	assigned_to?: string;
+	assignment_lane?: 'Admission' | 'Staff' | '';
+	sla_status?: string; // 'Overdue', 'Due Today', 'Upcoming'
+	organization?: string;
+	school?: string;
+};
 
 export function getInquiryDashboardData(filters: DashboardFilters = {}) {
-  return api(ADMISSION_API.dashboard, { filters })
+	return api(ADMISSION_API.dashboard, { filters });
 }
 
 export type AdmissionsCockpitFilters = {
-  organization?: string
-  school?: string
-  assigned_to_me?: number
-  include_terminal?: number
-  application_statuses?: string[]
-  limit?: number
-}
+	organization?: string;
+	school?: string;
+	assigned_to_me?: number;
+	include_terminal?: number;
+	application_statuses?: string[];
+	limit?: number;
+};
 
 export function getAdmissionsCockpitData(filters: AdmissionsCockpitFilters = {}) {
-  return api(ADMISSION_API.admissionsCockpit, { filters })
+	return api(ADMISSION_API.admissionsCockpit, { filters });
+}
+
+export type AdmissionsCockpitAepActionRequest = {
+	applicant_enrollment_plan: string;
+};
+
+export type AdmissionsCockpitAepActionResponse = {
+	ok: boolean;
+	applicant_enrollment_plan: string;
+	status: string;
+	open_url?: string | null;
+	program_enrollment_request?: string | null;
+	program_enrollment_request_url?: string | null;
+	created?: boolean;
+};
+
+export function sendAdmissionsCockpitOffer(payload: AdmissionsCockpitAepActionRequest) {
+	return api(
+		ADMISSION_API.admissionsCockpitSendOffer,
+		payload
+	) as Promise<AdmissionsCockpitAepActionResponse>;
+}
+
+export function hydrateAdmissionsCockpitRequest(payload: AdmissionsCockpitAepActionRequest) {
+	return api(
+		ADMISSION_API.admissionsCockpitHydrateRequest,
+		payload
+	) as Promise<AdmissionsCockpitAepActionResponse>;
 }
 
 export type AdmissionsCaseThreadRequest = {
-  context_doctype: 'Student Applicant'
-  context_name: string
-  limit_start?: number
-  limit?: number
-}
+	context_doctype: 'Student Applicant';
+	context_name: string;
+	limit_start?: number;
+	limit?: number;
+};
 
 export type AdmissionsCaseMessage = {
-  name: string
-  user: string
-  full_name: string
-  body: string
-  direction: 'ApplicantToStaff' | 'StaffToApplicant' | 'Internal'
-  visibility: string
-  applicant_visible: boolean
-  created_at?: string | null
-  modified_at?: string | null
-}
+	name: string;
+	user: string;
+	full_name: string;
+	body: string;
+	direction: 'ApplicantToStaff' | 'StaffToApplicant' | 'Internal';
+	visibility: string;
+	applicant_visible: boolean;
+	created_at?: string | null;
+	modified_at?: string | null;
+};
 
 export type AdmissionsCaseThreadResponse = {
-  thread_name?: string | null
-  messages: AdmissionsCaseMessage[]
-  unread_count: number
-}
+	thread_name?: string | null;
+	messages: AdmissionsCaseMessage[];
+	unread_count: number;
+};
 
 export function getAdmissionsCaseThread(payload: AdmissionsCaseThreadRequest) {
-  return api(ADMISSION_API.admissionsCaseThread, payload) as Promise<AdmissionsCaseThreadResponse>
+	return api(ADMISSION_API.admissionsCaseThread, payload) as Promise<AdmissionsCaseThreadResponse>;
 }
 
 export type SendAdmissionsCaseMessageRequest = {
-  context_doctype: 'Student Applicant'
-  context_name: string
-  body: string
-  applicant_visible?: number
-  client_request_id?: string
-}
+	context_doctype: 'Student Applicant';
+	context_name: string;
+	body: string;
+	applicant_visible?: number;
+	client_request_id?: string;
+};
 
 export type SendAdmissionsCaseMessageResponse = {
-  thread_name: string
-  message: AdmissionsCaseMessage
-}
+	thread_name: string;
+	message: AdmissionsCaseMessage;
+};
 
 export function sendAdmissionsCaseMessage(payload: SendAdmissionsCaseMessageRequest) {
-  return api(ADMISSION_API.admissionsCaseMessageSend, payload) as Promise<SendAdmissionsCaseMessageResponse>
+	return api(
+		ADMISSION_API.admissionsCaseMessageSend,
+		payload
+	) as Promise<SendAdmissionsCaseMessageResponse>;
 }
 
-export function markAdmissionsCaseRead(payload: { context_doctype: 'Student Applicant'; context_name: string }) {
-  return api(ADMISSION_API.admissionsCaseMarkRead, payload) as Promise<{ ok: boolean; thread_name?: string | null }>
+export function markAdmissionsCaseRead(payload: {
+	context_doctype: 'Student Applicant';
+	context_name: string;
+}) {
+	return api(ADMISSION_API.admissionsCaseMarkRead, payload) as Promise<{
+		ok: boolean;
+		thread_name?: string | null;
+	}>;
 }
 
 export function getInquiryTypes() {
-  return api(ADMISSION_API.inquiryTypes)
+	return api(ADMISSION_API.inquiryTypes);
 }
 
 export function searchAcademicYears(txt: string) {
-  return api(ADMISSION_API.academicYears, {
-    doctype: 'Academic Year',
-    txt,
-    searchfield: 'name',
-    start: 0,
-    page_len: 20,
-    filters: {},
-  })
+	return api(ADMISSION_API.academicYears, {
+		doctype: 'Academic Year',
+		txt,
+		searchfield: 'name',
+		start: 0,
+		page_len: 20,
+		filters: {},
+	});
 }
 
 export function searchAdmissionUsers(txt: string) {
-  return api(ADMISSION_API.users, {
-    doctype: 'User',
-    txt,
-    searchfield: 'full_name',
-    start: 0,
-    page_len: 20,
-    filters: {},
-  })
+	return api(ADMISSION_API.users, {
+		doctype: 'User',
+		txt,
+		searchfield: 'full_name',
+		start: 0,
+		page_len: 20,
+		filters: {},
+	});
 }
 
 export function getInquiryOrganizations() {
-  return api(ADMISSION_API.organizations)
+	return api(ADMISSION_API.organizations);
 }
 
 export function getInquirySchools() {
-  return api(ADMISSION_API.schools)
+	return api(ADMISSION_API.schools);
 }

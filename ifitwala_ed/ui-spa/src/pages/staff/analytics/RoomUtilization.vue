@@ -43,6 +43,14 @@
 						{{ eventQuickActionTitle }}
 					</button>
 					<button
+						v-if="canCreateMeeting"
+						type="button"
+						class="if-button if-button--quiet"
+						@click="openCreateTeamMeeting"
+					>
+						Schedule team meeting
+					</button>
+					<button
 						type="button"
 						class="if-button if-button--primary"
 						:disabled="
@@ -1168,6 +1176,17 @@ function openCreateEvent() {
 		eventType: lockEventType ? eventType : null,
 		lockEventType,
 		meetingMode: 'ad_hoc',
+		prefillSchool: selectedSchool.value || null,
+	});
+}
+
+function openCreateTeamMeeting() {
+	if (!canCreateMeeting.value) return;
+
+	overlay.open('event-quick-create', {
+		eventType: 'meeting',
+		lockEventType: true,
+		meetingMode: 'team',
 		prefillSchool: selectedSchool.value || null,
 	});
 }

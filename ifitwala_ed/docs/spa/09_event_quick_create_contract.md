@@ -15,7 +15,7 @@ If implementation changes this workflow, update this document in the same change
 
 ## 1. Surface and Entry-Point Modes
 
-Status: Implemented core behavior, partial entry-point coverage
+Status: Implemented
 
 Code refs:
 - `ifitwala_ed/ui-spa/src/overlays/calendar/EventQuickCreateOverlay.vue`
@@ -25,18 +25,19 @@ Code refs:
 - `ifitwala_ed/ui-spa/src/composables/useOverlayStack.ts`
 
 Test refs:
-- `None`
+- `ifitwala_ed/ui-spa/src/pages/staff/__tests__/StaffHome.test.ts`
+- `ifitwala_ed/ui-spa/src/pages/staff/__tests__/RoomUtilization.test.ts`
 
 Rules:
 
 1. The canonical overlay type is `event-quick-create`.
 2. The overlay supports `eventType='meeting' | 'school_event'` and `lockEventType` so entry points can preselect or lock the workflow.
 3. The meeting workflow also supports explicit `meetingMode='ad_hoc' | 'team'`.
-4. `meetingMode='ad_hoc'` is the attendee-first workflow used by Staff Home.
+4. `meetingMode='ad_hoc'` is the attendee-first workflow used by Staff Home and Room Utilization.
 5. `meetingMode='team'` is the team-owned workflow contract where team attendees are hydrated from the server and locked by context inside the overlay.
-6. Staff Home and Room Utilization both open the overlay in `meetingMode='ad_hoc'`; Room Utilization should prefill the currently selected school when one is in scope.
+6. Staff Home and Room Utilization both keep their existing `meetingMode='ad_hoc'` launcher; Room Utilization must prefill the currently selected school when one is in scope.
 7. Entry-point copy remains permission-sensitive: use `Schedule meeting` when the user can create meetings but not school events; otherwise use `Create event`.
-8. No SPA team-owned entry point is wired to open `meetingMode='team'` yet, so the entry-point matrix is still partial even though the mode contract is implemented.
+8. Staff Home and Room Utilization also expose an explicit `Schedule team meeting` launcher that opens the same overlay in `meetingMode='team'`.
 
 ## 2. API and Payload Contract
 
@@ -181,15 +182,16 @@ Code refs:
 
 Test refs:
 - `ifitwala_ed/api/test_calendar.py`
-- Frontend contract coverage: `None`
+- `ifitwala_ed/ui-spa/src/pages/staff/__tests__/StaffHome.test.ts`
+- `ifitwala_ed/ui-spa/src/pages/staff/__tests__/RoomUtilization.test.ts`
 
 | Concern | Canonical owner | Code refs | Test refs |
 | --- | --- | --- | --- |
 | Schema / DocType | `Meeting`, `Meeting Participant`, `School Event` | `setup/doctype/meeting/meeting.json`, `setup/doctype/meeting_participant/meeting_participant.json`, `setup/doctype/school_event/school_event.json` | `ifitwala_ed/api/test_calendar.py` |
 | Controller / workflow logic | `calendar_quick_create.py` plus `Meeting` controller invariants | `ifitwala_ed/api/calendar_quick_create.py`, `setup/doctype/meeting/meeting.py` | `ifitwala_ed/api/test_calendar.py` |
 | API endpoints | `calendar.py` facade over quick-create methods | `ifitwala_ed/api/calendar.py`, `ifitwala_ed/api/calendar_quick_create.py` | `ifitwala_ed/api/test_calendar.py` |
-| SPA/UI surfaces | Staff Home quick action plus `EventQuickCreateOverlay` | `ui-spa/src/pages/staff/StaffHome.vue`, `ui-spa/src/overlays/calendar/EventQuickCreateOverlay.vue` | `None` |
-| Reports / dashboards / briefings | Staff Home quick-action copy and overlay entry point | `ui-spa/src/pages/staff/StaffHome.vue` | `None` |
+| SPA/UI surfaces | Staff Home and Room Utilization quick actions plus `EventQuickCreateOverlay` | `ui-spa/src/pages/staff/StaffHome.vue`, `ui-spa/src/pages/staff/analytics/RoomUtilization.vue`, `ui-spa/src/overlays/calendar/EventQuickCreateOverlay.vue` | `ui-spa/src/pages/staff/__tests__/StaffHome.test.ts`, `ui-spa/src/pages/staff/__tests__/RoomUtilization.test.ts` |
+| Reports / dashboards / briefings | Staff Home and Room Utilization quick-action copy and overlay entry points | `ui-spa/src/pages/staff/StaffHome.vue`, `ui-spa/src/pages/staff/analytics/RoomUtilization.vue` | `ui-spa/src/pages/staff/__tests__/StaffHome.test.ts`, `ui-spa/src/pages/staff/__tests__/RoomUtilization.test.ts` |
 | Scheduler / background jobs | None | None | None |
 | Tests | Calendar facade and quick-create regression coverage | `ifitwala_ed/api/test_calendar.py` | `ifitwala_ed/api/test_calendar.py` |
 

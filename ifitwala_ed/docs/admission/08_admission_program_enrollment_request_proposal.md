@@ -122,25 +122,28 @@ Current runtime meaning:
 
 ## 7. Admissions Hub / Staff Workflow Impact
 
-Status: Partial
-Code refs: `ifitwala_ed/admission/doctype/student_applicant/student_applicant.js`
-Test refs: `None`
+Status: Implemented
+Code refs: `ifitwala_ed/admission/doctype/student_applicant/student_applicant.js`, `ifitwala_ed/admission/doctype/applicant_enrollment_plan/applicant_enrollment_plan.py`, `ifitwala_ed/api/admission_cockpit.py`, `ifitwala_ed/ui-spa/src/pages/staff/admissions/AdmissionsCockpit.vue`
+Test refs: `ifitwala_ed/api/test_admission_cockpit.py`, `ifitwala_ed/ui-spa/src/pages/staff/__tests__/AdmissionsCockpit.test.ts`
 
 Implemented in-product staff path:
 
 - `Student Applicant` Desk form exposes `Manage Enrollment Plan`
 - `Applicant Enrollment Plan` Desk form exposes actions for committee-ready, committee-approved, send-offer, hydrate-request
+- `Admissions Cockpit` cards expose latest `Applicant Enrollment Plan` status as card-level AEP chips
+- `Admissions Cockpit` cards expose `Send Offer` and `Hydrate Request` quick actions when the latest plan status allows them
+- `Admissions Cockpit` cards link directly to the latest AEP and hydrated `Program Enrollment Request` when present
 
-Not yet implemented in cockpit payload/UI:
+Current cockpit shape:
 
-- dedicated AEP status columns/chips in `Admissions Cockpit`
-- explicit cockpit quick actions for send offer / hydrate request
+- admissions kanban columns still follow applicant progression stages
+- AEP visibility is implemented as card-level state and quick actions, not as a separate AEP lane model
 
 ## 8. Contract Matrix
 
-Status: Partial
-Code refs: `ifitwala_ed/admission/doctype/applicant_enrollment_plan/applicant_enrollment_plan.py`, `ifitwala_ed/admission/doctype/student_applicant/student_applicant.py`, `ifitwala_ed/api/admissions_portal.py`, `ifitwala_ed/schedule/doctype/program_enrollment_request/program_enrollment_request.json`, `ifitwala_ed/ui-spa/src/pages/admissions/ApplicantStatus.vue`
-Test refs: `ifitwala_ed/admission/doctype/student_applicant/test_student_applicant.py`, `ifitwala_ed/api/test_admissions_portal.py`
+Status: Implemented
+Code refs: `ifitwala_ed/admission/doctype/applicant_enrollment_plan/applicant_enrollment_plan.py`, `ifitwala_ed/admission/doctype/student_applicant/student_applicant.py`, `ifitwala_ed/api/admissions_portal.py`, `ifitwala_ed/api/admission_cockpit.py`, `ifitwala_ed/schedule/doctype/program_enrollment_request/program_enrollment_request.json`, `ifitwala_ed/ui-spa/src/pages/admissions/ApplicantStatus.vue`, `ifitwala_ed/ui-spa/src/pages/staff/admissions/AdmissionsCockpit.vue`
+Test refs: `ifitwala_ed/admission/doctype/student_applicant/test_student_applicant.py`, `ifitwala_ed/api/test_admissions_portal.py`, `ifitwala_ed/api/test_admission_cockpit.py`, `ifitwala_ed/ui-spa/src/pages/staff/__tests__/AdmissionsCockpit.test.ts`
 
 | Area | Runtime owner | Primary surfaces | State |
 | --- | --- | --- | --- |
@@ -150,4 +153,4 @@ Test refs: `ifitwala_ed/admission/doctype/student_applicant/test_student_applica
 | Draft PER hydration | `hydrate_program_enrollment_request_from_applicant_plan()` | Desk applicant form / AEP form | Implemented |
 | Automatic identity upgrade trigger | `ProgramEnrollment.on_update()` -> `auto_upgrade_identity_for_student()` | First active `Program Enrollment` transition | Implemented |
 | PER provenance fields | `Program Enrollment Request` schema | Desk PER form, downstream audit | Implemented |
-| Admissions Cockpit AEP visualization | `ifitwala_ed.api.admission_cockpit`, `AdmissionsCockpit.vue` | `/staff/admissions/cockpit` | Planned |
+| Admissions Cockpit AEP visualization and quick actions | `ifitwala_ed.api.admission_cockpit`, `AdmissionsCockpit.vue` | `/staff/admissions/cockpit` | Implemented |

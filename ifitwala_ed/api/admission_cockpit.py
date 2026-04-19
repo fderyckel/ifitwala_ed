@@ -29,6 +29,7 @@ from ifitwala_ed.utilities.school_tree import get_descendant_schools
 ALLOWED_COCKPIT_ROLES = ADMISSIONS_ROLES | {"Academic Admin", "System Manager", "Administrator"}
 TERMINAL_STATUSES = {"Rejected", "Withdrawn", "Promoted"}
 COCKPIT_CACHE_TTL_SECONDS = 120
+COCKPIT_CACHE_PREFIX = "admissions:cockpit:v2:"
 
 KANBAN_COLUMNS = [
     ("draft", "Draft"),
@@ -268,6 +269,16 @@ def _empty_readiness_snapshot() -> dict:
             "latest_submitted_on": None,
         },
     }
+
+
+def invalidate_admissions_cockpit_cache() -> None:
+    cache = frappe.cache()
+    get_keys = getattr(cache, "get_keys", None)
+    if not callable(get_keys):
+        return
+
+    for key in get_keys(f"{COCKPIT_CACHE_PREFIX}*"):
+        cache.delete_value(key)
 
 
 def _build_profile_state(applicant_row: dict) -> dict:
@@ -751,6 +762,93 @@ def _build_policy_state(applicant_rows: list[dict], applicant_names: list[str]) 
     return out
 
 
+def _build_applicant_enrollment_plan_state(applicant_names: list[str]) -> dict[str, dict]:
+    normalized_applicants = list(dict.fromkeys(name for name in applicant_names if _to_text(name)))
+    state_by_applicant = {
+        applicant_name: {
+            "has_plan": False,
+            "name": None,
+            "status": None,
+            "open_url": None,
+            "offer_expires_on": None,
+            "program_enrollment_request": None,
+            "program_enrollment_request_url": None,
+            "can_send_offer": False,
+            "can_hydrate_request": False,
+        }
+        for applicant_name in normalized_applicants
+    }
+
+    if not normalized_applicants or not frappe.db.table_exists("Applicant Enrollment Plan"):
+        return state_by_applicant
+
+    plan_rows = frappe.get_all(
+        "Applicant Enrollment Plan",
+        filters={"student_applicant": ["in", normalized_applicants]},
+        fields=[
+            "name",
+            "student_applicant",
+            "status",
+            "offer_expires_on",
+            "program_enrollment_request",
+            "creation",
+            "modified",
+        ],
+        order_by="creation desc, modified desc",
+        limit=10000,
+    )
+
+    latest_by_applicant: dict[str, dict] = {}
+    request_names: set[str] = set()
+    for row in plan_rows:
+        applicant_name = _to_text(row.get("student_applicant"))
+        if not applicant_name or applicant_name in latest_by_applicant:
+            continue
+
+        latest_by_applicant[applicant_name] = row
+
+        request_name = _to_text(row.get("program_enrollment_request"))
+        if request_name:
+            request_names.add(request_name)
+
+    existing_request_names: set[str] = set()
+    if request_names and frappe.db.table_exists("Program Enrollment Request"):
+        existing_request_names = set(
+            frappe.get_all(
+                "Program Enrollment Request",
+                filters={"name": ["in", sorted(request_names)]},
+                pluck="name",
+            )
+        )
+
+    for applicant_name in normalized_applicants:
+        row = latest_by_applicant.get(applicant_name)
+        if not row:
+            continue
+
+        plan_name = _to_text(row.get("name"))
+        status = _to_text(row.get("status")) or None
+        request_name = _to_text(row.get("program_enrollment_request"))
+        if request_name and existing_request_names and request_name not in existing_request_names:
+            request_name = ""
+
+        state_by_applicant[applicant_name] = {
+            "has_plan": bool(plan_name),
+            "name": plan_name or None,
+            "status": status,
+            "open_url": _doc_url("Applicant Enrollment Plan", plan_name) if plan_name else None,
+            "offer_expires_on": row.get("offer_expires_on"),
+            "program_enrollment_request": request_name or None,
+            "program_enrollment_request_url": (
+                _doc_url("Program Enrollment Request", request_name) if request_name else None
+            ),
+            "can_send_offer": status == "Committee Approved",
+            "can_hydrate_request": status == "Offer Accepted" and not request_name,
+        }
+
+    return state_by_applicant
+
+
 def _build_health_requirement_by_school(applicant_rows: list[dict]) -> dict[str, bool]:
     school_names = sorted({_to_text(row.get("school")) for row in applicant_rows if _to_text(row.get("school"))})
     if not school_names:
@@ -1133,7 +1231,53 @@ def _empty_payload(organizations: list[str], schools: list[str]) -> dict:
 
 def _cache_key_for_payload(payload: dict) -> str:
     digest = hashlib.sha1(json.dumps(payload, sort_keys=True, separators=(",", ":")).encode("utf-8")).hexdigest()
-    return f"admissions:cockpit:v2:{digest}"
+    return f"{COCKPIT_CACHE_PREFIX}{digest}"
+
+
+def _require_applicant_enrollment_plan_name(applicant_enrollment_plan: str) -> str:
+    plan_name = _to_text(applicant_enrollment_plan)
+    if not plan_name:
+        frappe.throw(_("Applicant Enrollment Plan is required."))
+    return plan_name
+
+
+@frappe.whitelist()
+def send_admissions_cockpit_offer(applicant_enrollment_plan: str):
+    _ensure_cockpit_access()
+    plan_name = _require_applicant_enrollment_plan_name(applicant_enrollment_plan)
+    plan = frappe.get_doc("Applicant Enrollment Plan", plan_name)
+    result = plan.send_offer() or {}
+    invalidate_admissions_cockpit_cache()
+    return {
+        "ok": bool(result.get("ok")),
+        "applicant_enrollment_plan": plan.name,
+        "status": _to_text(result.get("status")) or _to_text(plan.status),
+        "open_url": _doc_url("Applicant Enrollment Plan", plan.name),
+    }
+
+
+@frappe.whitelist()
+def hydrate_admissions_cockpit_request(applicant_enrollment_plan: str):
+    _ensure_cockpit_access()
+    plan_name = _require_applicant_enrollment_plan_name(applicant_enrollment_plan)
+    from ifitwala_ed.admission.doctype.applicant_enrollment_plan.applicant_enrollment_plan import (
+        hydrate_program_enrollment_request_from_applicant_plan,
+    )
+
+    result = hydrate_program_enrollment_request_from_applicant_plan(plan_name) or {}
+    request_name = _to_text(result.get("name"))
+    plan_status = _to_text(frappe.db.get_value("Applicant Enrollment Plan", plan_name, "status"))
+    invalidate_admissions_cockpit_cache()
+    return {
+        "ok": True,
+        "applicant_enrollment_plan": plan_name,
+        "status": plan_status or "Hydrated",
+        "program_enrollment_request": request_name or None,
+        "program_enrollment_request_url": _doc_url("Program Enrollment Request", request_name)
+        if request_name
+        else None,
+        "created": bool(result.get("created")),
+    }
 
 
 @frappe.whitelist()
@@ -1326,6 +1470,17 @@ def get_admissions_cockpit_data(filters=None):
         frappe.logger("admissions_cockpit", allow_site=True).exception("Admissions cockpit interview summary failed.")
         interview_summary_by_applicant = {}
 
+    enrollment_plan_state_by_applicant: dict[str, dict]
+    try:
+        enrollment_plan_state_by_applicant = _build_applicant_enrollment_plan_state(
+            [_to_text(row.get("name")) for row in applicant_rows if _to_text(row.get("name"))]
+        )
+    except Exception:
+        frappe.logger("admissions_cockpit", allow_site=True).exception(
+            "Admissions cockpit enrollment plan summary failed."
+        )
+        enrollment_plan_state_by_applicant = {}
+
     columns = {col_id: {"id": col_id, "title": title, "items": []} for col_id, title in KANBAN_COLUMNS}
     blocker_counts = {key: 0 for key in BLOCKER_LABELS}
     counts = {
@@ -1346,6 +1501,17 @@ def get_admissions_cockpit_data(filters=None):
         snapshot = readiness_by_applicant.get(applicant_name) or _empty_readiness_snapshot()
         comms_summary = comms_summary_by_applicant.get(applicant_name) or {}
         recommendations = snapshot.get("recommendations") or {}
+        enrollment_plan = enrollment_plan_state_by_applicant.get(applicant_name) or {
+            "has_plan": False,
+            "name": None,
+            "status": None,
+            "open_url": None,
+            "offer_expires_on": None,
+            "program_enrollment_request": None,
+            "program_enrollment_request_url": None,
+            "can_send_offer": False,
+            "can_hydrate_request": False,
+        }
 
         ready = bool(snapshot.get("ready"))
         stage = _resolve_stage(_to_text(row.get("application_status")), ready)
@@ -1426,6 +1592,7 @@ def get_admissions_cockpit_data(filters=None):
             "blockers": blockers,
             "issues": [str(item) for item in (snapshot.get("issues") or [])],
             "open_url": _doc_url("Student Applicant", applicant_name),
+            "aep": enrollment_plan,
             "interviews": interview_summary_by_applicant.get(applicant_name)
             or {
                 "count": 0,

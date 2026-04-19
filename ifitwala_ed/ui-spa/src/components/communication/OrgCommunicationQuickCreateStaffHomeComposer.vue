@@ -1,272 +1,9 @@
 <template>
 	<div class="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1.5fr)_minmax(22rem,0.9fr)]">
 		<div class="space-y-5">
-			<section class="rounded-[28px] border border-border/70 bg-white p-5 shadow-soft">
-				<div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-					<div class="space-y-1">
-						<p class="type-overline text-ink/55">Message</p>
-						<h3 class="type-h3 text-ink">Core details</h3>
-						<p class="type-caption text-ink/65">
-							Use the same organization, school, delivery, and audience rules as Desk, without
-							leaving the staff shell.
-						</p>
-					</div>
-				</div>
-
-				<div class="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
-					<div class="space-y-1">
-						<label class="type-label">Title</label>
-						<FormControl
-							v-model="form.title"
-							type="text"
-							placeholder="Weekly staff update"
-							:disabled="submitting"
-						/>
-					</div>
-
-					<div class="space-y-1">
-						<label class="type-label">Communication type</label>
-						<select
-							v-model="form.communication_type"
-							class="if-org-communication-native-select"
-							:disabled="submitting"
-						>
-							<option
-								v-for="option in communicationTypeOptions"
-								:key="getSelectOptionValue(option)"
-								:value="getSelectOptionValue(option)"
-							>
-								{{ getSelectOptionLabel(option) }}
-							</option>
-						</select>
-					</div>
-				</div>
-
-				<div class="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
-					<div class="space-y-1">
-						<label class="type-label">Organization</label>
-						<select
-							v-model="form.organization"
-							class="if-org-communication-native-select"
-							:disabled="submitting || attachmentContextLocked"
-						>
-							<option
-								v-for="option in organizationSelectOptions"
-								:key="getSelectOptionValue(option)"
-								:value="getSelectOptionValue(option)"
-							>
-								{{ getSelectOptionLabel(option) }}
-							</option>
-						</select>
-						<p class="type-caption text-ink/55">
-							{{ organizationHelpText }}
-						</p>
-					</div>
-
-					<div class="space-y-1">
-						<label class="type-label">Issuing school</label>
-						<select
-							v-model="form.school"
-							class="if-org-communication-native-select"
-							:disabled="submitting || issuingSchoolSelectionLocked || attachmentContextLocked"
-						>
-							<option value="">No issuing school</option>
-							<option
-								v-for="option in schoolSelectOptions"
-								:key="getSelectOptionValue(option)"
-								:value="getSelectOptionValue(option)"
-							>
-								{{ getSelectOptionLabel(option) }}
-							</option>
-						</select>
-						<p class="type-caption text-ink/55">
-							{{ schoolHelpText }}
-						</p>
-					</div>
-				</div>
-
-				<div
-					v-if="attachmentContextLocked"
-					class="mt-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3"
-				>
-					<p class="type-caption text-amber-900">
-						{{ attachmentContextLockMessage }}
-					</p>
-				</div>
-
-				<div class="mt-4 space-y-1">
-					<label class="type-label">Message</label>
-					<div
-						class="if-org-communication-message-editor overflow-hidden rounded-2xl border border-border/80 bg-white shadow-sm"
-					>
-						<TextEditor
-							:content="form.message"
-							placeholder="Share the update, call to action, or announcement."
-							:editable="!submitting"
-							:fixed-menu="messageEditorButtons"
-							editor-class="prose prose-sm max-w-none min-h-[14rem] bg-white px-4 py-3 text-sm text-ink focus:outline-none"
-							@change="updateMessage"
-						/>
-					</div>
-				</div>
-
-				<div class="mt-4 space-y-1">
-					<label class="type-label">Internal note</label>
-					<FormControl
-						v-model="form.internal_note"
-						type="textarea"
-						:rows="3"
-						placeholder="Optional staff note for managing this communication."
-						:disabled="submitting"
-					/>
-				</div>
-			</section>
-
-			<OrgCommunicationQuickCreateAttachmentSection
-				v-bind="attachmentSection"
-				@trigger-file-picker="emit('trigger-file-picker')"
-				@toggle-link-composer="emit('toggle-link-composer')"
-				@reset-link-draft="emit('reset-link-draft')"
-				@submit-link="emit('submit-link')"
-				@delete-attachment="emit('delete-attachment', $event)"
-			/>
-
-			<section class="rounded-[28px] border border-border/70 bg-white p-5 shadow-soft">
-				<div class="space-y-1">
-					<p class="type-overline text-ink/55">Delivery</p>
-					<h3 class="type-h3 text-ink">Publishing and surfaces</h3>
-					<p class="type-caption text-ink/65">
-						Publish will send now or schedule from Publish from. Save as draft keeps the
-						communication editable.
-					</p>
-				</div>
-
-				<div class="mt-4 rounded-2xl border border-sky/30 bg-sky/10 px-4 py-3">
-					<p class="type-caption text-canopy">
-						Publish action status:
-						<span class="type-body-strong text-canopy">
-							{{ publishActionStatus }}
-						</span>
-					</p>
-				</div>
-
-				<div
-					class="if-org-communication-delivery-select-grid mt-4 grid grid-cols-1 gap-4 min-[480px]:grid-cols-2"
-				>
-					<div class="space-y-1">
-						<label class="type-label">Priority</label>
-						<select
-							v-model="form.priority"
-							class="if-org-communication-native-select"
-							:disabled="submitting"
-						>
-							<option
-								v-for="option in priorityOptions"
-								:key="getSelectOptionValue(option)"
-								:value="getSelectOptionValue(option)"
-							>
-								{{ getSelectOptionLabel(option) }}
-							</option>
-						</select>
-					</div>
-					<div class="space-y-1">
-						<label class="type-label">Portal surface</label>
-						<select
-							v-model="form.portal_surface"
-							class="if-org-communication-native-select"
-							:disabled="submitting"
-						>
-							<option
-								v-for="option in portalSurfaceOptions"
-								:key="getSelectOptionValue(option)"
-								:value="getSelectOptionValue(option)"
-							>
-								{{ getSelectOptionLabel(option) }}
-							</option>
-						</select>
-					</div>
-				</div>
-
-				<div class="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
-					<div class="space-y-1">
-						<label class="type-label">Brief order</label>
-						<FormControl
-							v-model="form.brief_order"
-							type="number"
-							placeholder="Optional"
-							:disabled="submitting"
-						/>
-					</div>
-				</div>
-
-				<div
-					class="if-org-communication-publish-window-grid mt-4 grid grid-cols-1 gap-4 min-[480px]:grid-cols-2"
-				>
-					<div class="space-y-1">
-						<label class="type-label">Publish from</label>
-						<input
-							v-model="form.publish_from"
-							type="datetime-local"
-							class="w-full rounded-2xl border border-border/80 bg-white px-3 py-2 text-sm text-ink shadow-sm focus:border-jacaranda/50 focus:ring-1 focus:ring-jacaranda/30"
-							:disabled="submitting"
-							@click="openNativeDatePicker"
-							@focus="openNativeDatePicker"
-						/>
-					</div>
-					<div class="space-y-1">
-						<label class="type-label">Publish until</label>
-						<input
-							v-model="form.publish_to"
-							type="datetime-local"
-							class="w-full rounded-2xl border border-border/80 bg-white px-3 py-2 text-sm text-ink shadow-sm focus:border-jacaranda/50 focus:ring-1 focus:ring-jacaranda/30"
-							:disabled="submitting"
-							@click="openNativeDatePicker"
-							@focus="openNativeDatePicker"
-						/>
-					</div>
-				</div>
-
-				<div
-					class="if-org-communication-brief-window-grid mt-4 grid grid-cols-1 gap-4 min-[480px]:grid-cols-2"
-				>
-					<div class="space-y-1">
-						<label class="type-label">
-							Brief start date
-							<span v-if="briefDatesRequired" class="text-rose-600">*</span>
-						</label>
-						<input
-							v-model="form.brief_start_date"
-							type="date"
-							class="w-full rounded-2xl border border-border/80 bg-white px-3 py-2 text-sm text-ink shadow-sm focus:border-jacaranda/50 focus:ring-1 focus:ring-jacaranda/30"
-							:disabled="submitting"
-							@click="openNativeDatePicker"
-							@focus="openNativeDatePicker"
-						/>
-					</div>
-					<div class="space-y-1">
-						<label class="type-label">Brief end date</label>
-						<input
-							v-model="form.brief_end_date"
-							type="date"
-							class="w-full rounded-2xl border border-border/80 bg-white px-3 py-2 text-sm text-ink shadow-sm focus:border-jacaranda/50 focus:ring-1 focus:ring-jacaranda/30"
-							:disabled="submitting"
-							@click="openNativeDatePicker"
-							@focus="openNativeDatePicker"
-						/>
-					</div>
-				</div>
-
-				<div
-					v-if="deliveryValidationMessage"
-					class="mt-4 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3"
-				>
-					<p class="type-caption text-rose-900">
-						{{ deliveryValidationMessage }}
-					</p>
-				</div>
-			</section>
-
-			<section class="rounded-[28px] border border-border/70 bg-white p-5 shadow-soft">
+			<section
+				class="if-org-communication-audience-section rounded-[28px] border border-border/70 bg-white p-5 shadow-soft"
+			>
 				<div class="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
 					<div class="space-y-1">
 						<p class="type-overline text-ink/55">Audience</p>
@@ -277,7 +14,9 @@
 					</div>
 				</div>
 
-				<div class="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
+				<div
+					class="if-org-communication-audience-preset-grid mt-4 grid grid-cols-1 gap-3 md:grid-cols-2"
+				>
 					<button
 						v-for="preset in audiencePresets"
 						:key="preset.key"
@@ -311,11 +50,14 @@
 					</p>
 				</div>
 
-				<div class="mt-4 space-y-4">
-					<p v-if="!audienceRows.length" class="type-caption text-ink/60">
-						{{ audienceEmptyStateMessage }}
-					</p>
+				<p v-if="!audienceRows.length" class="mt-4 type-caption text-ink/60">
+					{{ audienceEmptyStateMessage }}
+				</p>
 
+				<div
+					v-if="audienceRows.length"
+					class="if-org-communication-audience-rows-grid mt-4 grid grid-cols-1 gap-4 xl:grid-cols-2"
+				>
 					<div
 						v-for="(row, index) in audienceRows"
 						:key="row.id"
@@ -566,6 +308,275 @@
 							</div>
 						</details>
 					</div>
+				</div>
+			</section>
+
+			<section
+				class="if-org-communication-core-details-section rounded-[28px] border border-border/70 bg-white p-5 shadow-soft"
+			>
+				<div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+					<div class="space-y-1">
+						<p class="type-overline text-ink/55">Message</p>
+						<h3 class="type-h3 text-ink">Core details</h3>
+						<p class="type-caption text-ink/65">
+							Use the same organization, school, delivery, and audience rules as Desk, without
+							leaving the staff shell.
+						</p>
+					</div>
+				</div>
+
+				<div class="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+					<div class="space-y-1">
+						<label class="type-label">Title</label>
+						<FormControl
+							v-model="form.title"
+							type="text"
+							placeholder="Weekly staff update"
+							:disabled="submitting"
+						/>
+					</div>
+
+					<div class="space-y-1">
+						<label class="type-label">Communication type</label>
+						<select
+							v-model="form.communication_type"
+							class="if-org-communication-native-select"
+							:disabled="submitting"
+						>
+							<option
+								v-for="option in communicationTypeOptions"
+								:key="getSelectOptionValue(option)"
+								:value="getSelectOptionValue(option)"
+							>
+								{{ getSelectOptionLabel(option) }}
+							</option>
+						</select>
+					</div>
+				</div>
+
+				<div
+					class="if-org-communication-core-scope-grid mt-4 grid grid-cols-1 gap-4 md:grid-cols-2"
+				>
+					<div class="space-y-1">
+						<label class="type-label">Organization</label>
+						<select
+							v-model="form.organization"
+							class="if-org-communication-native-select"
+							:disabled="submitting || attachmentContextLocked"
+						>
+							<option
+								v-for="option in organizationSelectOptions"
+								:key="getSelectOptionValue(option)"
+								:value="getSelectOptionValue(option)"
+							>
+								{{ getSelectOptionLabel(option) }}
+							</option>
+						</select>
+						<p class="type-caption text-ink/55">
+							{{ organizationHelpText }}
+						</p>
+					</div>
+
+					<div class="space-y-1">
+						<label class="type-label">Issuing school</label>
+						<select
+							v-model="form.school"
+							class="if-org-communication-native-select"
+							:disabled="submitting || issuingSchoolSelectionLocked || attachmentContextLocked"
+						>
+							<option value="">No issuing school</option>
+							<option
+								v-for="option in schoolSelectOptions"
+								:key="getSelectOptionValue(option)"
+								:value="getSelectOptionValue(option)"
+							>
+								{{ getSelectOptionLabel(option) }}
+							</option>
+						</select>
+						<p class="type-caption text-ink/55">
+							{{ schoolHelpText }}
+						</p>
+					</div>
+				</div>
+
+				<div
+					v-if="attachmentContextLocked"
+					class="mt-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3"
+				>
+					<p class="type-caption text-amber-900">
+						{{ attachmentContextLockMessage }}
+					</p>
+				</div>
+
+				<div class="mt-4 space-y-1">
+					<label class="type-label">Message</label>
+					<div
+						class="if-org-communication-message-editor overflow-hidden rounded-2xl border border-border/80 bg-white shadow-sm"
+					>
+						<TextEditor
+							:content="form.message"
+							placeholder="Share the update, call to action, or announcement."
+							:editable="!submitting"
+							:fixed-menu="messageEditorButtons"
+							editor-class="prose prose-sm max-w-none min-h-[14rem] bg-white px-4 py-3 text-sm text-ink focus:outline-none"
+							@change="updateMessage"
+						/>
+					</div>
+				</div>
+
+				<div class="mt-4 space-y-1">
+					<label class="type-label">Internal note</label>
+					<FormControl
+						v-model="form.internal_note"
+						type="textarea"
+						:rows="3"
+						placeholder="Optional staff note for managing this communication."
+						:disabled="submitting"
+					/>
+				</div>
+			</section>
+
+			<OrgCommunicationQuickCreateAttachmentSection
+				v-bind="attachmentSection"
+				@trigger-file-picker="emit('trigger-file-picker')"
+				@toggle-link-composer="emit('toggle-link-composer')"
+				@reset-link-draft="emit('reset-link-draft')"
+				@submit-link="emit('submit-link')"
+				@delete-attachment="emit('delete-attachment', $event)"
+			/>
+
+			<section class="rounded-[28px] border border-border/70 bg-white p-5 shadow-soft">
+				<div class="space-y-1">
+					<p class="type-overline text-ink/55">Delivery</p>
+					<h3 class="type-h3 text-ink">Publishing and surfaces</h3>
+					<p class="type-caption text-ink/65">
+						Publish will send now or schedule from Publish from. Save as draft keeps the
+						communication editable.
+					</p>
+				</div>
+
+				<div class="mt-4 rounded-2xl border border-sky/30 bg-sky/10 px-4 py-3">
+					<p class="type-caption text-canopy">
+						Publish action status:
+						<span class="type-body-strong text-canopy">
+							{{ publishActionStatus }}
+						</span>
+					</p>
+				</div>
+
+				<div
+					class="if-org-communication-delivery-select-grid mt-4 grid grid-cols-1 gap-4 min-[480px]:grid-cols-2"
+				>
+					<div class="space-y-1">
+						<label class="type-label">Priority</label>
+						<select
+							v-model="form.priority"
+							class="if-org-communication-native-select"
+							:disabled="submitting"
+						>
+							<option
+								v-for="option in priorityOptions"
+								:key="getSelectOptionValue(option)"
+								:value="getSelectOptionValue(option)"
+							>
+								{{ getSelectOptionLabel(option) }}
+							</option>
+						</select>
+					</div>
+					<div class="space-y-1">
+						<label class="type-label">Portal surface</label>
+						<select
+							v-model="form.portal_surface"
+							class="if-org-communication-native-select"
+							:disabled="submitting"
+						>
+							<option
+								v-for="option in portalSurfaceOptions"
+								:key="getSelectOptionValue(option)"
+								:value="getSelectOptionValue(option)"
+							>
+								{{ getSelectOptionLabel(option) }}
+							</option>
+						</select>
+					</div>
+				</div>
+
+				<div class="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
+					<div class="space-y-1">
+						<label class="type-label">Brief order</label>
+						<FormControl
+							v-model="form.brief_order"
+							type="number"
+							placeholder="Optional"
+							:disabled="submitting"
+						/>
+					</div>
+				</div>
+
+				<div
+					class="if-org-communication-publish-window-grid mt-4 grid grid-cols-1 gap-4 min-[480px]:grid-cols-2"
+				>
+					<div class="space-y-1">
+						<label class="type-label">Publish from</label>
+						<input
+							v-model="form.publish_from"
+							type="datetime-local"
+							class="w-full rounded-2xl border border-border/80 bg-white px-3 py-2 text-sm text-ink shadow-sm focus:border-jacaranda/50 focus:ring-1 focus:ring-jacaranda/30"
+							:disabled="submitting"
+							@click="openNativeDatePicker"
+							@focus="openNativeDatePicker"
+						/>
+					</div>
+					<div class="space-y-1">
+						<label class="type-label">Publish until</label>
+						<input
+							v-model="form.publish_to"
+							type="datetime-local"
+							class="w-full rounded-2xl border border-border/80 bg-white px-3 py-2 text-sm text-ink shadow-sm focus:border-jacaranda/50 focus:ring-1 focus:ring-jacaranda/30"
+							:disabled="submitting"
+							@click="openNativeDatePicker"
+							@focus="openNativeDatePicker"
+						/>
+					</div>
+				</div>
+
+				<div
+					class="if-org-communication-brief-window-grid mt-4 grid grid-cols-1 gap-4 min-[480px]:grid-cols-2"
+				>
+					<div class="space-y-1">
+						<label class="type-label">
+							Brief start date
+							<span v-if="briefDatesRequired" class="text-rose-600">*</span>
+						</label>
+						<input
+							v-model="form.brief_start_date"
+							type="date"
+							class="w-full rounded-2xl border border-border/80 bg-white px-3 py-2 text-sm text-ink shadow-sm focus:border-jacaranda/50 focus:ring-1 focus:ring-jacaranda/30"
+							:disabled="submitting"
+							@click="openNativeDatePicker"
+							@focus="openNativeDatePicker"
+						/>
+					</div>
+					<div class="space-y-1">
+						<label class="type-label">Brief end date</label>
+						<input
+							v-model="form.brief_end_date"
+							type="date"
+							class="w-full rounded-2xl border border-border/80 bg-white px-3 py-2 text-sm text-ink shadow-sm focus:border-jacaranda/50 focus:ring-1 focus:ring-jacaranda/30"
+							:disabled="submitting"
+							@click="openNativeDatePicker"
+							@focus="openNativeDatePicker"
+						/>
+					</div>
+				</div>
+
+				<div
+					v-if="deliveryValidationMessage"
+					class="mt-4 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3"
+				>
+					<p class="type-caption text-rose-900">
+						{{ deliveryValidationMessage }}
+					</p>
 				</div>
 			</section>
 		</div>

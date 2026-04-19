@@ -647,6 +647,48 @@ describe('OrgCommunicationQuickCreateModal', () => {
 		);
 	});
 
+	it('renders audience before core details and keeps the audience and scope grids responsive', async () => {
+		getOptionsMock.mockResolvedValue(quickCreateOptions);
+
+		mountModal();
+		await flushUi();
+
+		const audienceSection = document.querySelector(
+			'.if-org-communication-audience-section'
+		) as HTMLElement | null;
+		const coreDetailsSection = document.querySelector(
+			'.if-org-communication-core-details-section'
+		) as HTMLElement | null;
+		const audiencePresetGrid = document.querySelector(
+			'.if-org-communication-audience-preset-grid'
+		) as HTMLElement | null;
+		const coreScopeGrid = document.querySelector(
+			'.if-org-communication-core-scope-grid'
+		) as HTMLElement | null;
+
+		expect(audienceSection).toBeTruthy();
+		expect(coreDetailsSection).toBeTruthy();
+		expect(
+			Boolean(
+				audienceSection &&
+					coreDetailsSection &&
+					(audienceSection.compareDocumentPosition(coreDetailsSection) &
+						Node.DOCUMENT_POSITION_FOLLOWING) !==
+						0
+			)
+		).toBe(true);
+		expect(audiencePresetGrid?.getAttribute('class') || '').toContain('md:grid-cols-2');
+		expect(audiencePresetGrid?.getAttribute('class') || '').not.toContain('xl:grid-cols-3');
+		expect(coreScopeGrid?.getAttribute('class') || '').toContain('md:grid-cols-2');
+
+		await addSchoolFamiliesAudience();
+
+		const audienceRowsGrid = document.querySelector(
+			'.if-org-communication-audience-rows-grid'
+		) as HTMLElement | null;
+		expect(audienceRowsGrid?.getAttribute('class') || '').toContain('xl:grid-cols-2');
+	});
+
 	it('opens the native picker when a delivery date input is clicked', async () => {
 		getOptionsMock.mockResolvedValue(interactiveThreadQuickCreateOptions);
 

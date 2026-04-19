@@ -10,7 +10,11 @@ import frappe
 from frappe.tests.utils import FrappeTestCase
 
 from ifitwala_ed.admission.admission_utils import get_applicant_document_slot_spec
-from ifitwala_ed.api.admission_cockpit import get_admissions_cockpit_data
+from ifitwala_ed.api.admission_cockpit import (
+    get_admissions_cockpit_data,
+    hydrate_admissions_cockpit_request,
+    send_admissions_cockpit_offer,
+)
 from ifitwala_ed.api.admissions_portal import upload_applicant_document
 from ifitwala_ed.api.admissions_review import (
     review_applicant_document_submission,
@@ -176,6 +180,71 @@ class TestAdmissionCockpit(FrappeTestCase):
             )
         )
 
+    def test_cockpit_card_exposes_committee_approved_enrollment_plan_state(self):
+        context = self._create_offer_plan(status="Committee Approved")
+
+        card = self._get_cockpit_card(self.applicant.name)
+        aep = card.get("aep") or {}
+
+        self.assertTrue(bool(aep.get("has_plan")))
+        self.assertEqual(aep.get("name"), context["plan"].name)
+        self.assertEqual(aep.get("status"), "Committee Approved")
+        self.assertTrue(bool(aep.get("open_url")))
+        self.assertTrue(bool(aep.get("can_send_offer")))
+        self.assertFalse(bool(aep.get("can_hydrate_request")))
+        self.assertFalse(aep.get("program_enrollment_request"))
+
+    def test_send_admissions_cockpit_offer_advances_plan_status(self):
+        context = self._create_offer_plan(status="Committee Approved")
+
+        frappe.set_user(self.staff_user.name)
+        with patch("ifitwala_ed.api.admission_cockpit.invalidate_admissions_cockpit_cache") as invalidate_mock:
+            result = send_admissions_cockpit_offer(context["plan"].name)
+
+        context["plan"].reload()
+
+        self.assertTrue(bool(result.get("ok")))
+        self.assertEqual(result.get("applicant_enrollment_plan"), context["plan"].name)
+        self.assertEqual(result.get("status"), "Offer Sent")
+        self.assertEqual(context["plan"].status, "Offer Sent")
+        invalidate_mock.assert_called_once()
+
+    def test_hydrate_admissions_cockpit_request_returns_request_link(self):
+        context = self._create_offer_plan(status="Offer Accepted")
+        expected_request = f"PER-COCKPIT-{frappe.generate_hash(length=6)}"
+
+        def _fake_hydrate(plan_name: str):
+            self.assertEqual(plan_name, context["plan"].name)
+            frappe.db.set_value(
+                "Applicant Enrollment Plan",
+                plan_name,
+                {
+                    "status": "Hydrated",
+                    "program_enrollment_request": expected_request,
+                },
+                update_modified=False,
+            )
+            return {"name": expected_request, "created": True}
+
+        frappe.set_user(self.staff_user.name)
+        with (
+            patch(
+                "ifitwala_ed.admission.doctype.applicant_enrollment_plan.applicant_enrollment_plan.hydrate_program_enrollment_request_from_applicant_plan",
+                side_effect=_fake_hydrate,
+            ) as hydrate_mock,
+            patch("ifitwala_ed.api.admission_cockpit.invalidate_admissions_cockpit_cache") as invalidate_mock,
+        ):
+            result = hydrate_admissions_cockpit_request(context["plan"].name)
+
+        self.assertTrue(bool(result.get("ok")))
+        self.assertEqual(result.get("applicant_enrollment_plan"), context["plan"].name)
+        self.assertEqual(result.get("status"), "Hydrated")
+        self.assertEqual(result.get("program_enrollment_request"), expected_request)
+        self.assertIn("/desk/program-enrollment-request/", result.get("program_enrollment_request_url") or "")
+        self.assertTrue(bool(result.get("created")))
+        hydrate_mock.assert_called_once_with(context["plan"].name)
+        invalidate_mock.assert_called_once()
+
     def _ensure_role(self, role_name: str):
         if frappe.db.exists("Role", role_name):
             return
@@ -290,6 +359,96 @@ class TestAdmissionCockpit(FrappeTestCase):
         ).insert(ignore_permissions=True)
         self._created.append(("Applicant Document Type", document_type.name))
         return document_type.name
+
+    def _create_offer_plan(self, *, status: str):
+        academic_year = frappe.get_doc(
+            {
+                "doctype": "Academic Year",
+                "academic_year_name": f"AY {frappe.generate_hash(length=6)}",
+                "school": self.school,
+                "year_start_date": "2025-08-01",
+                "year_end_date": "2026-06-30",
+                "archived": 0,
+                "visible_to_admission": 1,
+            }
+        ).insert(ignore_permissions=True)
+        self._created.append(("Academic Year", academic_year.name))
+
+        grade_scale = frappe.get_doc(
+            {
+                "doctype": "Grade Scale",
+                "grade_scale_name": f"Scale {frappe.generate_hash(length=6)}",
+                "boundaries": [
+                    {"grade_code": "B-", "boundary_interval": 70},
+                    {"grade_code": "C", "boundary_interval": 60},
+                ],
+            }
+        ).insert(ignore_permissions=True)
+        self._created.append(("Grade Scale", grade_scale.name))
+
+        required_course = frappe.get_doc(
+            {
+                "doctype": "Course",
+                "course_name": f"Offer Course {frappe.generate_hash(length=6)}",
+                "status": "Active",
+            }
+        ).insert(ignore_permissions=True)
+        self._created.append(("Course", required_course.name))
+
+        program = frappe.get_doc(
+            {
+                "doctype": "Program",
+                "program_name": f"Program {frappe.generate_hash(length=6)}",
+                "grade_scale": grade_scale.name,
+                "courses": [{"course": required_course.name, "level": "None"}],
+            }
+        ).insert(ignore_permissions=True)
+        self._created.append(("Program", program.name))
+
+        offering = frappe.get_doc(
+            {
+                "doctype": "Program Offering",
+                "program": program.name,
+                "school": self.school,
+                "offering_title": f"Offering {frappe.generate_hash(length=6)}",
+                "offering_academic_years": [{"academic_year": academic_year.name}],
+                "offering_courses": [
+                    {
+                        "course": required_course.name,
+                        "course_name": required_course.course_name,
+                        "required": 1,
+                        "start_academic_year": academic_year.name,
+                        "end_academic_year": academic_year.name,
+                    }
+                ],
+            }
+        ).insert(ignore_permissions=True)
+        self._created.append(("Program Offering", offering.name))
+
+        self.applicant.db_set("application_status", "Approved", update_modified=False)
+        self.applicant.db_set("academic_year", academic_year.name, update_modified=False)
+        self.applicant.db_set("program", program.name, update_modified=False)
+        self.applicant.db_set("program_offering", offering.name, update_modified=False)
+        self.applicant.reload()
+
+        plan = frappe.get_doc(
+            {
+                "doctype": "Applicant Enrollment Plan",
+                "student_applicant": self.applicant.name,
+                "academic_year": academic_year.name,
+                "program": program.name,
+                "program_offering": offering.name,
+                "status": status,
+            }
+        ).insert(ignore_permissions=True)
+        self._created.append(("Applicant Enrollment Plan", plan.name))
+        return {
+            "plan": plan,
+            "academic_year": academic_year,
+            "program": program,
+            "offering": offering,
+            "required_course": required_course,
+        }
 
     def _upload_submission(self, *, document_type: str, item_key: str) -> dict:
         frappe.set_user(self.applicant_user.name)
