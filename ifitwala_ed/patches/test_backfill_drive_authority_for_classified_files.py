@@ -112,7 +112,7 @@ class TestBackfillDriveAuthorityForClassifiedFiles(TestCase):
                     }
 
             def fake_create_drive_file_artifacts(*, upload_session_doc, file_id, storage_artifact, binding_role=None):
-                del binding_role
+                self.assertIsNone(binding_role)
                 drive_file = _FakeDoc(
                     {
                         "doctype": "Drive File",
@@ -135,6 +135,7 @@ class TestBackfillDriveAuthorityForClassifiedFiles(TestCase):
                 lambda: FakeStorage(),
                 lambda **kwargs: "files/aa/bb/backfilled.png",
             )
+            module._resolve_binding_role = lambda upload_session_doc: None
 
             module.execute()
 
@@ -221,8 +222,88 @@ class TestBackfillDriveAuthorityForClassifiedFiles(TestCase):
                 lambda: FakeStorage(),
                 lambda **kwargs: "files/cc/dd/backfilled.docx",
             )
+            module._resolve_binding_role = lambda upload_session_doc: "submission_artifact"
 
             module.execute()
 
             drive_file = docs[("Drive File", "DF-0002")]
             self.assertEqual(drive_file.status, "superseded")
+
+    def test_execute_backfills_binding_role_for_material_rows(self):
+        with _patch_module() as (module, frappe, docs):
+            classification_row = {
+                "name": "FC-0003",
+                "file": "FILE-0003",
+                "attached_doctype": "Supporting Material",
+                "attached_name": "MAT-0001",
+                "primary_subject_type": "Organization",
+                "primary_subject_id": "ORG-0001",
+                "data_class": "academic",
+                "purpose": "learning_resource",
+                "retention_policy": "until_program_end_plus_1y",
+                "slot": "material_file",
+                "organization": "ORG-0001",
+                "school": "SCH-0001",
+                "is_current_version": 1,
+                "legal_hold": 0,
+                "erasure_state": "active",
+                "upload_source": "SPA",
+                "owner": "Administrator",
+            }
+            file_row = {
+                "name": "FILE-0003",
+                "file_url": "/private/files/material.pdf",
+                "file_name": "material.pdf",
+                "file_size": 789,
+                "is_private": 1,
+                "attached_to_doctype": "Supporting Material",
+                "attached_to_name": "MAT-0001",
+                "owner": "Administrator",
+            }
+
+            module._load_classification_rows = lambda: [classification_row]
+            module._load_file_rows = lambda file_names: {"FILE-0003": file_row}
+            module._load_existing_drive_files = lambda file_names: set()
+            module._read_file_bytes = lambda row: b"material"
+
+            class FakeStorage:
+                backend_name = "local"
+
+                def write_final_object(self, *, object_key, content, mime_type=None):
+                    del content, mime_type
+                    return {
+                        "object_key": object_key,
+                        "storage_backend": "local",
+                        "file_url": f"/private/files/ifitwala_drive/{object_key}",
+                    }
+
+            observed = {}
+
+            def fake_create_drive_file_artifacts(*, upload_session_doc, file_id, storage_artifact, binding_role=None):
+                del upload_session_doc, file_id, storage_artifact
+                observed["binding_role"] = binding_role
+                docs[("Drive File", "DF-0003")] = _FakeDoc(
+                    {
+                        "doctype": "Drive File",
+                        "name": "DF-0003",
+                        "storage_backend": "local",
+                        "storage_object_key": "files/ee/ff/backfilled.pdf",
+                    },
+                    docs,
+                )
+                return {
+                    "drive_file_id": "DF-0003",
+                    "drive_file_version_id": "DFV-0003",
+                    "canonical_ref": "drv:ORG-0001:DF-0003",
+                }
+
+            module._load_drive_dependencies = lambda: (
+                fake_create_drive_file_artifacts,
+                lambda: FakeStorage(),
+                lambda **kwargs: "files/ee/ff/backfilled.pdf",
+            )
+            module._resolve_binding_role = lambda upload_session_doc: "general_reference"
+
+            module.execute()
+
+            self.assertEqual(observed["binding_role"], "general_reference")

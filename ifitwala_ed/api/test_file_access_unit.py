@@ -99,6 +99,21 @@ class TestFileAccessUnit(TestCase):
         self.assertEqual((query.get("context_doctype") or [None])[0], "Task Submission")
         self.assertEqual((query.get("context_name") or [None])[0], "TSU-0001")
 
+    def test_resolve_academic_file_open_url_keeps_requested_derivative_role(self):
+        with _file_access_module() as (file_access, _frappe):
+            url = file_access.resolve_academic_file_open_url(
+                file_name="FILE-ACADEMIC-1",
+                file_url="/private/files/submission.pdf",
+                context_doctype="Student",
+                context_name="STU-0001",
+                derivative_role="card",
+            )
+
+        parsed = urlparse(url or "")
+        query = parse_qs(parsed.query)
+        self.assertEqual(parsed.path, "/api/method/ifitwala_ed.api.file_access.download_academic_file")
+        self.assertEqual((query.get("derivative_role") or [None])[0], "card")
+
     def test_resolve_academic_file_preview_url_recovers_file_name_from_private_file_url(self):
         with _file_access_module() as (file_access, frappe):
 
@@ -201,6 +216,21 @@ class TestFileAccessUnit(TestCase):
             )
 
         self.assertEqual(target_url, "/files/public-brochure.pdf")
+
+    def test_resolve_employee_file_open_url_keeps_requested_derivative_role(self):
+        with _file_access_module() as (file_access, _frappe):
+            url = file_access.resolve_employee_file_open_url(
+                file_name="FILE-EMP-1",
+                file_url="/private/files/employee.png",
+                context_doctype="Employee",
+                context_name="EMP-0001",
+                derivative_role="thumb",
+            )
+
+        parsed = urlparse(url or "")
+        query = parse_qs(parsed.query)
+        self.assertEqual(parsed.path, "/api/method/ifitwala_ed.api.file_access.download_employee_file")
+        self.assertEqual((query.get("derivative_role") or [None])[0], "thumb")
 
     def test_resolve_drive_file_grant_target_url_strict_derivative_skips_public_original_fallback(self):
         with _file_access_module() as (file_access, frappe):

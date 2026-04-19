@@ -43,6 +43,7 @@ _FILE_FIELDS = [
 _OWNER_FROM_ATTACHMENT = {"Task Submission", "Task", "Supporting Material", "Org Communication"}
 _OWNER_FROM_SUBJECT = {"Employee", "Guardian", "Student", "Student Applicant"}
 _VALID_UPLOAD_SOURCES = {"Desk", "SPA", "API", "Job"}
+_BINDING_ELIGIBLE_STATUSES = {"active", "blocked"}
 
 
 def _load_drive_dependencies():
@@ -256,6 +257,13 @@ def _resolve_status(classification_row: dict[str, Any]) -> str:
     return "active"
 
 
+def _resolve_binding_role(upload_session_doc) -> str | None:
+    from ifitwala_ed.integrations.drive import bridge
+
+    contract = bridge.resolve_finalize_contract(upload_session_doc)
+    return str(contract.get("binding_role") or "").strip() or None
+
+
 def _persist_drive_metadata(
     *,
     upload_session_doc,
@@ -303,6 +311,7 @@ def _backfill_single_row(
     content = _read_file_bytes(file_row)
     content_hash = _resolve_content_hash(classification_row, content)
     size_bytes = int(file_row.get("file_size") or 0) or len(content)
+    resolved_status = _resolve_status(classification_row)
 
     storage = get_storage_backend()
     object_key = build_upload_object_key(
@@ -329,7 +338,9 @@ def _backfill_single_row(
         upload_session_doc=upload_session_doc,
         file_id=file_row["name"],
         storage_artifact=storage_artifact,
-        binding_role=None,
+        binding_role=(
+            _resolve_binding_role(upload_session_doc) if resolved_status in _BINDING_ELIGIBLE_STATUSES else None
+        ),
     )
     _persist_drive_metadata(
         upload_session_doc=upload_session_doc,

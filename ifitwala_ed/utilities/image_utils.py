@@ -3,7 +3,10 @@
 
 # ifitwala_ed/utilities/image_utils.py
 
+from __future__ import annotations
+
 import io
+import mimetypes
 import os
 import re
 from collections.abc import Iterable, Sequence
@@ -20,7 +23,6 @@ from ifitwala_ed.integrations.drive.authority import (
     get_current_drive_files_for_slots,
     get_drive_file_for_file,
     is_governed_file,
-    supersede_drive_files_for_slots,
 )
 
 PROFILE_IMAGE_VARIANT_SLOTS = (
@@ -30,7 +32,11 @@ PROFILE_IMAGE_VARIANT_SLOTS = (
     "profile_image",
 )
 PROFILE_IMAGE_VARIANT_PRIORITY = PROFILE_IMAGE_VARIANT_SLOTS
-PROFILE_IMAGE_VARIANT_SIZES = {"thumb": 160, "card": 400, "medium": 960}
+PROFILE_IMAGE_VARIANT_ROLE_MAP = {
+    "profile_image_thumb": "thumb",
+    "profile_image_card": "card",
+    "profile_image_medium": "viewer_preview",
+}
 
 EMPLOYEE_VARIANT_SLOTS = PROFILE_IMAGE_VARIANT_SLOTS
 
@@ -301,12 +307,19 @@ def _resolve_governed_display_url(
     *,
     file_name: str | None,
     file_url: str | None,
+    derivative_role: str | None = None,
 ) -> str | None:
     raw_url = str(file_url or "").strip()
     if not raw_url:
         return None
 
-    if raw_url.startswith("/files/") and not raw_url.startswith("/files/ifitwala_drive/"):
+    explicit_derivative_role = str(derivative_role or "").strip() or None
+
+    if (
+        not explicit_derivative_role
+        and raw_url.startswith("/files/")
+        and not raw_url.startswith("/files/ifitwala_drive/")
+    ):
         return raw_url
 
     resolved_subject = str(subject_name or "").strip()
@@ -316,41 +329,35 @@ def _resolve_governed_display_url(
     if primary_subject_type == "Student":
         from ifitwala_ed.api.file_access import resolve_academic_file_open_url
 
-        return (
-            resolve_academic_file_open_url(
-                file_name=file_name,
-                file_url=raw_url,
-                context_doctype="Student",
-                context_name=resolved_subject,
-            )
-            or raw_url
-        )
+        return resolve_academic_file_open_url(
+            file_name=file_name,
+            file_url=raw_url,
+            context_doctype="Student",
+            context_name=resolved_subject,
+            derivative_role=explicit_derivative_role,
+        ) or (raw_url if not explicit_derivative_role else None)
 
     if primary_subject_type == "Guardian":
         from ifitwala_ed.api.file_access import resolve_guardian_file_open_url
 
-        return (
-            resolve_guardian_file_open_url(
-                file_name=file_name,
-                file_url=raw_url,
-                context_doctype="Guardian",
-                context_name=resolved_subject,
-            )
-            or raw_url
-        )
+        return resolve_guardian_file_open_url(
+            file_name=file_name,
+            file_url=raw_url,
+            context_doctype="Guardian",
+            context_name=resolved_subject,
+            derivative_role=explicit_derivative_role,
+        ) or (raw_url if not explicit_derivative_role else None)
 
     if primary_subject_type == "Employee":
         from ifitwala_ed.api.file_access import resolve_employee_file_open_url
 
-        return (
-            resolve_employee_file_open_url(
-                file_name=file_name,
-                file_url=raw_url,
-                context_doctype="Employee",
-                context_name=resolved_subject,
-            )
-            or raw_url
-        )
+        return resolve_employee_file_open_url(
+            file_name=file_name,
+            file_url=raw_url,
+            context_doctype="Employee",
+            context_name=resolved_subject,
+            derivative_role=explicit_derivative_role,
+        ) or (raw_url if not explicit_derivative_role else None)
 
     return raw_url
 
@@ -402,8 +409,8 @@ def _get_governed_image_variants_map(
     rows = get_current_drive_files_for_slots(
         primary_subject_type=primary_subject_type,
         primary_subject_ids=names,
-        slots=slots,
-        fields=["primary_subject_id", "slot", "file"],
+        slots=("profile_image",),
+        fields=["name", "primary_subject_id", "slot", "file", "current_version"],
         statuses=("active",),
     )
     if not rows:
@@ -420,12 +427,41 @@ def _get_governed_image_variants_map(
     )
     file_map = {row["name"]: row for row in files}
 
+    derivative_roles = sorted(
+        {PROFILE_IMAGE_VARIANT_ROLE_MAP[slot] for slot in (slots or []) if slot in PROFILE_IMAGE_VARIANT_ROLE_MAP}
+    )
+    ready_roles_by_drive_file: dict[str, set[str]] = {}
+    if derivative_roles:
+        drive_file_ids = [str(row.get("name") or "").strip() for row in rows if str(row.get("name") or "").strip()]
+        current_versions = [
+            str(row.get("current_version") or "").strip()
+            for row in rows
+            if str(row.get("current_version") or "").strip()
+        ]
+        if drive_file_ids and current_versions:
+            derivative_rows = frappe.get_all(
+                "Drive File Derivative",
+                filters={
+                    "drive_file": ("in", drive_file_ids),
+                    "drive_file_version": ("in", current_versions),
+                    "derivative_role": ("in", derivative_roles),
+                    "status": "ready",
+                },
+                fields=["drive_file", "derivative_role"],
+            )
+            for derivative_row in derivative_rows or []:
+                drive_file_id = str(derivative_row.get("drive_file") or "").strip()
+                derivative_role = str(derivative_row.get("derivative_role") or "").strip()
+                if not drive_file_id or not derivative_role:
+                    continue
+                ready_roles_by_drive_file.setdefault(drive_file_id, set()).add(derivative_role)
+
     variants: dict[str, dict[str, str]] = {}
     for row in rows:
         subject_name = row.get("primary_subject_id")
-        slot = row.get("slot")
+        drive_file_id = str(row.get("name") or "").strip()
         file_name = row.get("file")
-        if not (subject_name and slot and file_name):
+        if not (subject_name and file_name):
             continue
 
         file_row = file_map.get(file_name)
@@ -435,23 +471,32 @@ def _get_governed_image_variants_map(
         file_url = (file_row.get("file_url") or "").strip()
         if not file_url:
             continue
-        if not file_url_is_accessible(
-            file_url,
-            file_name=file_name,
-            is_private=file_row.get("is_private"),
-        ):
-            continue
 
-        display_url = _resolve_governed_display_url(
-            primary_subject_type,
-            subject_name,
-            file_name=file_name,
-            file_url=file_url,
-        )
-        if not display_url:
-            continue
+        subject_variants = variants.setdefault(subject_name, {})
+        if "profile_image" in slots:
+            original_display_url = _resolve_governed_display_url(
+                primary_subject_type,
+                subject_name,
+                file_name=file_name,
+                file_url=file_url,
+            )
+            if original_display_url:
+                subject_variants["profile_image"] = original_display_url
 
-        variants.setdefault(subject_name, {})[slot] = display_url
+        ready_roles = ready_roles_by_drive_file.get(drive_file_id, set())
+        for slot in slots:
+            derivative_role = PROFILE_IMAGE_VARIANT_ROLE_MAP.get(slot)
+            if not derivative_role or derivative_role not in ready_roles:
+                continue
+            display_url = _resolve_governed_display_url(
+                primary_subject_type,
+                subject_name,
+                file_name=file_name,
+                file_url=file_url,
+                derivative_role=derivative_role,
+            )
+            if display_url:
+                subject_variants[slot] = display_url
 
     return variants
 
@@ -899,70 +944,35 @@ def _generate_governed_profile_derivatives(
     log_label: str,
     refresh_derivative_slots: bool = False,
 ):
+    del log_label, refresh_derivative_slots
     if not file_doc or file_doc.attached_to_doctype != doctype:
         return
 
     if file_doc.attached_to_field and file_doc.attached_to_field != fieldname:
         return
 
-    filename = os.path.basename(file_doc.file_url or file_doc.file_name or "")
-    if filename.startswith(("hero_", "medium_", "card_", "thumb_")):
-        return
-
     drive_file_row = _get_drive_file_row(file_doc)
     if not drive_file_row or drive_file_row.get("slot") != "profile_image":
         return
 
-    if not file_doc.file_url:
+    current_version = str(drive_file_row.get("current_version") or "").strip()
+    if not current_version:
         return
 
-    original_path = _resolve_governed_original_path(file_doc)
-    original_content = None
-    if not original_path or not os.path.exists(original_path):
-        original_content = _download_drive_original(file_doc, log_title=f"{log_label} Image Download Failed")
-    if (not original_path or not os.path.exists(original_path)) and not original_content:
-        frappe.log_error(
-            f"{log_label} image missing on disk for file {file_doc.name}: {file_doc.file_url}",
-            f"{log_label} Image Resize",
-        )
+    mime_type = frappe.db.get_value("Drive File Version", current_version, "mime_type")
+    if not mime_type:
+        mime_type = mimetypes.guess_type(file_doc.file_name or file_doc.file_url or "")[0]
+
+    try:
+        from ifitwala_drive.services.files.derivatives import sync_preview_pipeline_for_current_version
+    except Exception:
         return
 
-    base_filename = os.path.splitext(filename)[0]
-    slug_base = slugify(base_filename)
-    if not slug_base:
-        return
-
-    from ifitwala_ed.integrations.drive.content_uploads import upload_content_via_drive
-
-    if refresh_derivative_slots:
-        supersede_drive_files_for_slots(
-            primary_subject_type=str(drive_file_row.get("primary_subject_type") or ""),
-            primary_subject_id=str(drive_file_row.get("primary_subject_id") or ""),
-            slots=[f"profile_image_{size_label}" for size_label in PROFILE_IMAGE_VARIANT_SIZES],
-        )
-
-    for size_label, width in PROFILE_IMAGE_VARIANT_SIZES.items():
-        if _governed_derivative_exists(file_doc.name, str(drive_file_row.get("slot") or ""), size_label):
-            continue
-
-        if original_path and os.path.exists(original_path):
-            content = _render_resized_bytes(original_path, width)
-        else:
-            content = _render_resized_content(original_content or b"", width)
-        if not content:
-            continue
-
-        session_payload = _build_governed_derivative_session_payload(
-            drive_file_row,
-            size_label,
-        )
-
-        upload_content_via_drive(
-            session_payload=session_payload,
-            file_name=f"{size_label}_{slug_base}.webp",
-            content=content,
-            attached_field=getattr(file_doc, "attached_to_field", None),
-        )
+    drive_file_doc = frappe.get_doc("Drive File", drive_file_row.get("name"))
+    sync_preview_pipeline_for_current_version(
+        drive_file_doc=drive_file_doc,
+        mime_type=mime_type,
+    )
 
 
 def _generate_employee_derivatives(file_doc, *, refresh_derivative_slots: bool = False):

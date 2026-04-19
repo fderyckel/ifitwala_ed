@@ -123,6 +123,7 @@ def build_academic_file_open_url(
     context_name: str | None = None,
     share_token: str | None = None,
     viewer_email: str | None = None,
+    derivative_role: str | None = None,
 ) -> str:
     resolved_file = (file_name or "").strip()
     if not resolved_file:
@@ -137,6 +138,8 @@ def build_academic_file_open_url(
         params["share_token"] = share_token.strip()
     if (viewer_email or "").strip():
         params["viewer_email"] = viewer_email.strip()
+    if (derivative_role or "").strip():
+        params["derivative_role"] = derivative_role.strip()
     return f"/api/method/ifitwala_ed.api.file_access.download_academic_file?{urlencode(params)}"
 
 
@@ -237,6 +240,7 @@ def resolve_academic_file_open_url(
     context_name: str | None = None,
     share_token: str | None = None,
     viewer_email: str | None = None,
+    derivative_role: str | None = None,
 ) -> str | None:
     raw_url = (file_url or "").strip()
     if _is_external_url(raw_url):
@@ -252,6 +256,7 @@ def resolve_academic_file_open_url(
         context_name=context_name,
         share_token=share_token,
         viewer_email=viewer_email,
+        derivative_role=derivative_role,
     )
     return open_url or raw_url or None
 
@@ -321,6 +326,7 @@ def build_guardian_file_open_url(
     file_name: str,
     context_doctype: str | None = None,
     context_name: str | None = None,
+    derivative_role: str | None = None,
 ) -> str:
     resolved_file = (file_name or "").strip()
     if not resolved_file:
@@ -331,6 +337,8 @@ def build_guardian_file_open_url(
         params["context_doctype"] = context_doctype.strip()
     if (context_name or "").strip():
         params["context_name"] = context_name.strip()
+    if (derivative_role or "").strip():
+        params["derivative_role"] = derivative_role.strip()
     return f"/api/method/ifitwala_ed.api.file_access.download_guardian_file?{urlencode(params)}"
 
 
@@ -340,6 +348,7 @@ def resolve_guardian_file_open_url(
     file_url: str | None,
     context_doctype: str | None = None,
     context_name: str | None = None,
+    derivative_role: str | None = None,
 ) -> str | None:
     raw_url = (file_url or "").strip()
     if _is_external_url(raw_url):
@@ -353,6 +362,7 @@ def resolve_guardian_file_open_url(
         file_name=resolved_name,
         context_doctype=context_doctype,
         context_name=context_name,
+        derivative_role=derivative_role,
     )
     return open_url or raw_url or None
 
@@ -362,6 +372,7 @@ def build_employee_file_open_url(
     file_name: str,
     context_doctype: str | None = None,
     context_name: str | None = None,
+    derivative_role: str | None = None,
 ) -> str:
     resolved_file = (file_name or "").strip()
     if not resolved_file:
@@ -372,6 +383,8 @@ def build_employee_file_open_url(
         params["context_doctype"] = context_doctype.strip()
     if (context_name or "").strip():
         params["context_name"] = context_name.strip()
+    if (derivative_role or "").strip():
+        params["derivative_role"] = derivative_role.strip()
     return f"/api/method/ifitwala_ed.api.file_access.download_employee_file?{urlencode(params)}"
 
 
@@ -381,6 +394,7 @@ def resolve_employee_file_open_url(
     file_url: str | None,
     context_doctype: str | None = None,
     context_name: str | None = None,
+    derivative_role: str | None = None,
 ) -> str | None:
     raw_url = (file_url or "").strip()
     if _is_external_url(raw_url):
@@ -394,6 +408,7 @@ def resolve_employee_file_open_url(
         file_name=resolved_name,
         context_doctype=context_doctype,
         context_name=context_name,
+        derivative_role=derivative_role,
     )
     return open_url or raw_url or None
 
@@ -1600,6 +1615,7 @@ def download_academic_file(
     context_name: str | None = None,
     share_token: str | None = None,
     viewer_email: str | None = None,
+    derivative_role: str | None = None,
 ):
     file_name = (file or "").strip()
     if not file_name:
@@ -1618,6 +1634,11 @@ def download_academic_file(
         frappe.local.response["type"] = "redirect"
         frappe.local.response["location"] = file_url
         return
+
+    if (derivative_role or "").strip():
+        target_url = _resolve_drive_preview_grant_url(file_name, derivative_role=derivative_role)
+        if target_url and _respond_with_redirect_or_inline_file(file_row=file_row, target_url=target_url):
+            return
 
     content = _read_file_bytes(file_row)
     if content is None:
@@ -1797,6 +1818,7 @@ def download_guardian_file(
     file: str | None = None,
     context_doctype: str | None = None,
     context_name: str | None = None,
+    derivative_role: str | None = None,
 ):
     user = _require_authenticated_user()
     file_name = (file or "").strip()
@@ -1817,6 +1839,11 @@ def download_guardian_file(
         frappe.local.response["type"] = "redirect"
         frappe.local.response["location"] = file_url
         return
+
+    if (derivative_role or "").strip():
+        target_url = _resolve_drive_preview_grant_url(file_name, derivative_role=derivative_role)
+        if target_url and _respond_with_redirect_or_inline_file(file_row=file_row, target_url=target_url):
+            return
 
     content = _read_file_bytes(file_row)
     if content is None:
@@ -1842,6 +1869,7 @@ def download_employee_file(
     file: str | None = None,
     context_doctype: str | None = None,
     context_name: str | None = None,
+    derivative_role: str | None = None,
 ):
     user = _require_authenticated_user()
     file_name = (file or "").strip()
@@ -1862,6 +1890,11 @@ def download_employee_file(
         frappe.local.response["type"] = "redirect"
         frappe.local.response["location"] = file_url
         return
+
+    if (derivative_role or "").strip():
+        target_url = _resolve_drive_preview_grant_url(file_name, derivative_role=derivative_role)
+        if target_url and _respond_with_redirect_or_inline_file(file_row=file_row, target_url=target_url):
+            return
 
     content = _read_file_bytes(file_row)
     if content is None:

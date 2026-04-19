@@ -119,26 +119,31 @@ Target fix:
 
 ### 2.5 Derivatives exist in two systems
 
-Current code:
+Previous drift:
 
 - `ifitwala_ed/utilities/image_utils.py`
 - `ifitwala_drive/services/files/derivatives.py`
 
-Observed behavior:
+Corrected behavior:
 
-- Ed generates governed profile-image variants synchronously
-- Drive also has a derivative system and async preview pipeline
+- Drive is now the only derivative authority
+- Ed no longer creates governed sibling `File` rows for profile-image variants
+- Ed still exposes compatibility variant keys such as `profile_image_thumb`, `profile_image_card`, and `profile_image_medium`, but those keys now resolve to derivative roles on the current `profile_image` Drive file:
+  - `profile_image_thumb` -> `thumb`
+  - `profile_image_card` -> `card`
+  - `profile_image_medium` -> `viewer_preview`
 
-Why this is wrong:
+Why the old model was wrong:
 
 - duplicate derivative logic
 - duplicate storage concerns
 - request-path heaviness
 
-Target fix:
+Implemented fix:
 
-- Drive becomes the only derivative authority
+- Drive is the only derivative authority
 - Ed synchronous derivative generation is removed
+- profile-image derivative scheduling now goes through the Drive preview pipeline
 
 ### 2.6 Read paths still probe storage directly
 
@@ -238,6 +243,7 @@ Required outcomes:
 
 - Drive becomes sole derivative authority
 - Ed read paths stop probing storage directly
+- completed in code for governed profile-image surfaces and Drive-backed derivative routing
 
 ## 5. Relationship to the canonical architecture
 

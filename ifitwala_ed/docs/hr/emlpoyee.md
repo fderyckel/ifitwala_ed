@@ -116,13 +116,19 @@ Frontend form logic:
 
 Backend linkage:
 - file: `ifitwala_ed/hr/doctype/employee/employee.py`
-- `ifitwala_ed.utilities.image_utils` owns canonical Employee image variant resolution and Drive-aware derivative generation.
-- governed Employee uploads create classified WebP derivatives with slots:
+- `ifitwala_ed.utilities.image_utils` owns canonical Employee image variant resolution and Drive-aware derivative scheduling.
+- governed Employee uploads create one canonical governed `profile_image` Drive file.
+- Drive generates the actual derivative artifacts for that file using derivative roles:
+  - `thumb`
+  - `card`
+  - `viewer_preview`
+- Ed still exposes compatibility variant keys:
   - `profile_image_thumb`
   - `profile_image_card`
   - `profile_image_medium`
+  These are resolved from Drive derivative roles, not from separate governed derivative files.
 - `Employee.employee_image` remains the latest canonical Employee image reference.
-- consumers that need a smaller image must resolve the classified variants instead of guessing file paths.
+- consumers that need a smaller image must resolve the canonical compatibility variants instead of guessing file paths.
 - `update_user()` syncs linked `User.user_image` from the preferred Employee variant (`thumb` first, then `card`, `medium`, original).
 
 Current read consumers using canonical variant resolution:
@@ -136,7 +142,8 @@ Org chart visibility contract:
 - the staff org chart defaults to `All Organizations`, not the viewer's base organization
 - employee image access for the org chart is available to any authenticated active employee; base-organization scope does not gate employee thumbnails on that surface
 - the org chart surface resolves Employee image derivatives in this order: `profile_image_thumb` -> `profile_image_card` -> `profile_image_medium`; it must not fall back to the original full-size image on that surface
-- when a governed Employee derivative is stored in `ifitwala_drive` instead of local disk, the org chart still resolves it through the named Employee file route, which may redirect to a Drive-issued download URL after the employee-access check passes
+- those compatibility variant keys resolve to Drive derivative roles (`thumb`, `card`, `viewer_preview`) on the current governed `profile_image` file
+- when a governed Employee derivative is stored in `ifitwala_drive`, the org chart still resolves it through the named Employee file route, which may redirect to a Drive-issued derivative grant URL after the employee-access check passes
 - changes to employee image display permissions must update both the employee image route tests and the org chart consumer contract tests in the same change
 
 This keeps Employee image governance and User avatar synchronization aligned.
