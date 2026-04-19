@@ -121,6 +121,19 @@ import GuardianCommunicationCenter from '@/pages/guardian/GuardianCommunicationC
 
 const cleanupFns: Array<() => void> = []
 
+function buildAttachmentPreview(overrides: Record<string, unknown> = {}) {
+	return {
+		item_id: 'ATT-1',
+		owner_doctype: 'Org Communication',
+		owner_name: 'COMM-1',
+		file_id: 'FILE-1',
+		display_name: 'Attachment',
+		kind: 'other',
+		preview_mode: 'icon_only',
+		...overrides,
+	}
+}
+
 async function flushUi() {
 	await Promise.resolve()
 	await nextTick()
@@ -354,6 +367,19 @@ describe('GuardianCommunicationCenter', () => {
 						'/api/method/ifitwala_ed.api.file_access.thumbnail_org_communication_attachment?row_name=ATT-IMAGE',
 					preview_url: '/api/method/ifitwala_ed.api.file_access.preview_org_communication_attachment?row_name=ATT-IMAGE',
 					open_url: '/api/method/ifitwala_ed.api.file_access.open_org_communication_attachment?row_name=ATT-IMAGE',
+					attachment_preview: buildAttachmentPreview({
+						item_id: 'ATT-IMAGE',
+						display_name: 'Poster',
+						kind: 'image',
+						extension: 'webp',
+						preview_mode: 'thumbnail_image',
+						thumbnail_url:
+							'/api/method/ifitwala_ed.api.file_access.thumbnail_org_communication_attachment?row_name=ATT-IMAGE',
+						preview_url:
+							'/api/method/ifitwala_ed.api.file_access.preview_org_communication_attachment?row_name=ATT-IMAGE',
+						open_url:
+							'/api/method/ifitwala_ed.api.file_access.open_org_communication_attachment?row_name=ATT-IMAGE',
+					}),
 				},
 				{
 					row_name: 'ATT-LINK',
@@ -361,6 +387,14 @@ describe('GuardianCommunicationCenter', () => {
 					title: 'School site',
 					external_url: 'https://example.com/school',
 					open_url: 'https://example.com/school',
+					attachment_preview: buildAttachmentPreview({
+						item_id: 'ATT-LINK',
+						display_name: 'School site',
+						kind: 'link',
+						preview_mode: 'external_link',
+						link_url: 'https://example.com/school',
+						open_url: 'https://example.com/school',
+					}),
 				},
 			],
 		})

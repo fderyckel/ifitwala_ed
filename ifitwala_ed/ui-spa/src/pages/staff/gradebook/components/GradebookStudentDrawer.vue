@@ -561,45 +561,27 @@
 										@update:items="onFeedbackItemsChanged"
 										@save-comment-bank-entry="emitSaveCommentBankEntry"
 									/>
-									<div v-else class="flex flex-wrap items-start justify-between gap-3">
-										<div class="min-w-0">
-											<p class="truncate text-sm font-semibold text-ink">
-												{{ attachment.file_name || 'Attachment' }}
-											</p>
-											<p v-if="attachment.description" class="mt-1 text-sm text-ink/60">
-												{{ attachment.description }}
-											</p>
-											<div class="mt-2 flex flex-wrap gap-2">
-												<Badge variant="subtle">{{ attachment.kind }}</Badge>
-												<Badge v-if="attachment.preview_status" variant="subtle">
-													Preview {{ attachment.preview_status }}
-												</Badge>
-												<Badge v-if="attachment.file_size" variant="subtle">
-													{{ formatBytes(attachment.file_size) }}
-												</Badge>
-											</div>
-										</div>
-										<div class="flex flex-wrap gap-2">
-											<a
-												v-if="attachment.preview_url"
-												class="if-button if-button--secondary"
-												:href="attachment.preview_url || undefined"
-												target="_blank"
-												rel="noreferrer"
-											>
-												Preview
-											</a>
-											<a
-												v-if="attachment.open_url"
-												class="if-button if-button--secondary"
-												:href="attachment.open_url || undefined"
-												target="_blank"
-												rel="noreferrer"
-											>
-												Open
-											</a>
-										</div>
-									</div>
+									<AttachmentPreviewCard
+										v-else-if="attachment.attachment_preview"
+										:attachment="attachment.attachment_preview"
+										variant="evidence"
+										:title="
+											attachment.attachment_preview.display_name ||
+											attachment.file_name ||
+											'Attachment'
+										"
+										:description="attachment.description || null"
+									>
+										<template #badges>
+											<Badge variant="subtle">{{ attachment.kind }}</Badge>
+											<Badge v-if="attachment.preview_status" variant="subtle">
+												Preview {{ attachment.preview_status }}
+											</Badge>
+											<Badge v-if="attachment.file_size" variant="subtle">
+												{{ formatBytes(attachment.file_size) }}
+											</Badge>
+										</template>
+									</AttachmentPreviewCard>
 								</div>
 							</div>
 						</div>
@@ -996,6 +978,7 @@
 import { computed, reactive, ref, watch } from 'vue';
 import { Badge, FeatherIcon, FormControl, Spinner } from 'frappe-ui';
 
+import AttachmentPreviewCard from '@/components/attachments/AttachmentPreviewCard.vue';
 import type { CommentBankScopeMode } from '@/types/contracts/gradebook/comment_bank';
 import type {
 	FeedbackIntent,

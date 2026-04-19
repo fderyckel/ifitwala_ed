@@ -93,6 +93,19 @@ async function flushUi() {
 	await nextTick();
 }
 
+function buildAttachmentPreview(overrides: Record<string, unknown> = {}) {
+	return {
+		item_id: 'MAT-1',
+		owner_doctype: 'Supporting Material',
+		owner_name: 'MAT-1',
+		file_id: 'FILE-1',
+		display_name: 'Resource',
+		kind: 'other',
+		preview_mode: 'icon_only',
+		...overrides,
+	};
+}
+
 function mountPanel(
 	resources: Array<Record<string, unknown>> = [],
 	props: Record<string, unknown> = {}
@@ -190,6 +203,16 @@ describe('PlanningResourcePanel', () => {
 				material_type: 'File',
 				preview_url: '/api/method/ifitwala_ed.api.file_access.preview_academic_file?file=FILE-1',
 				open_url: '/api/method/ifitwala_ed.api.file_access.download_academic_file?file=FILE-1',
+				attachment_preview: buildAttachmentPreview({
+					item_id: 'MAT-1',
+					display_name: 'Unit diagram',
+					kind: 'other',
+					preview_mode: 'icon_only',
+					preview_url:
+						'/api/method/ifitwala_ed.api.file_access.preview_academic_file?file=FILE-1',
+					open_url:
+						'/api/method/ifitwala_ed.api.file_access.download_academic_file?file=FILE-1',
+				}),
 			},
 		]);
 		await flushUi();
@@ -218,6 +241,19 @@ describe('PlanningResourcePanel', () => {
 						'/api/method/ifitwala_ed.api.file_access.thumbnail_academic_file?file=FILE-IMG-1',
 					preview_url: '/api/method/ifitwala_ed.api.file_access.preview_academic_file?file=FILE-IMG-1',
 					open_url: '/api/method/ifitwala_ed.api.file_access.download_academic_file?file=FILE-IMG-1',
+					attachment_preview: buildAttachmentPreview({
+						item_id: 'MAT-IMG-1',
+						display_name: 'Cell structure diagram',
+						kind: 'image',
+						extension: 'webp',
+						preview_mode: 'thumbnail_image',
+						thumbnail_url:
+							'/api/method/ifitwala_ed.api.file_access.thumbnail_academic_file?file=FILE-IMG-1',
+						preview_url:
+							'/api/method/ifitwala_ed.api.file_access.preview_academic_file?file=FILE-IMG-1',
+						open_url:
+							'/api/method/ifitwala_ed.api.file_access.download_academic_file?file=FILE-IMG-1',
+					}),
 				},
 			],
 			{
@@ -245,6 +281,17 @@ describe('PlanningResourcePanel', () => {
 					file_name: 'class-map.png',
 					preview_url: '/api/method/ifitwala_ed.api.file_access.preview_academic_file?file=FILE-IMG-2',
 					open_url: '/api/method/ifitwala_ed.api.file_access.download_academic_file?file=FILE-IMG-2',
+					attachment_preview: buildAttachmentPreview({
+						item_id: 'MAT-IMG-2',
+						display_name: 'Class map',
+						kind: 'image',
+						extension: 'png',
+						preview_mode: 'icon_only',
+						preview_url:
+							'/api/method/ifitwala_ed.api.file_access.preview_academic_file?file=FILE-IMG-2',
+						open_url:
+							'/api/method/ifitwala_ed.api.file_access.download_academic_file?file=FILE-IMG-2',
+					}),
 				},
 			],
 			{
@@ -270,6 +317,19 @@ describe('PlanningResourcePanel', () => {
 						'/api/method/ifitwala_ed.api.file_access.thumbnail_academic_file?file=FILE-IMG-3',
 					preview_url: '/api/method/ifitwala_ed.api.file_access.preview_academic_file?file=FILE-IMG-3',
 					open_url: '/api/method/ifitwala_ed.api.file_access.download_academic_file?file=FILE-IMG-3',
+					attachment_preview: buildAttachmentPreview({
+						item_id: 'MAT-IMG-3',
+						display_name: 'Lab setup photo',
+						kind: 'image',
+						extension: 'webp',
+						preview_mode: 'thumbnail_image',
+						thumbnail_url:
+							'/api/method/ifitwala_ed.api.file_access.thumbnail_academic_file?file=FILE-IMG-3',
+						preview_url:
+							'/api/method/ifitwala_ed.api.file_access.preview_academic_file?file=FILE-IMG-3',
+						open_url:
+							'/api/method/ifitwala_ed.api.file_access.download_academic_file?file=FILE-IMG-3',
+					}),
 				},
 			],
 			{
@@ -301,6 +361,17 @@ describe('PlanningResourcePanel', () => {
 					file_name: 'handout.pdf',
 					preview_url: '/api/method/ifitwala_ed.api.file_access.preview_academic_file?file=FILE-PDF-1',
 					open_url: '/api/method/ifitwala_ed.api.file_access.download_academic_file?file=FILE-PDF-1',
+					attachment_preview: buildAttachmentPreview({
+						item_id: 'MAT-PDF-1',
+						display_name: 'Lab handout',
+						kind: 'pdf',
+						extension: 'pdf',
+						preview_mode: 'pdf_embed',
+						preview_url:
+							'/api/method/ifitwala_ed.api.file_access.preview_academic_file?file=FILE-PDF-1',
+						open_url:
+							'/api/method/ifitwala_ed.api.file_access.download_academic_file?file=FILE-PDF-1',
+					}),
 				},
 			],
 			{

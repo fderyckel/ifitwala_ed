@@ -12,6 +12,19 @@ async function flushUi() {
 	await nextTick();
 }
 
+function buildAttachmentPreview(overrides: Record<string, unknown> = {}) {
+	return {
+		item_id: 'ATT-1',
+		owner_doctype: 'Org Communication',
+		owner_name: 'COMM-1',
+		file_id: 'FILE-1',
+		display_name: 'Attachment',
+		kind: 'other',
+		preview_mode: 'icon_only',
+		...overrides,
+	};
+}
+
 function mountPreviewList(attachments: Array<Record<string, unknown>>) {
 	const host = document.createElement('div');
 	document.body.appendChild(host);
@@ -51,6 +64,20 @@ describe('CommunicationAttachmentPreviewList', () => {
 					'/api/method/ifitwala_ed.api.file_access.preview_org_communication_attachment?row_name=ATT-IMG-READY',
 				open_url:
 					'/api/method/ifitwala_ed.api.file_access.open_org_communication_attachment?row_name=ATT-IMG-READY',
+				attachment_preview: buildAttachmentPreview({
+					item_id: 'ATT-IMG-READY',
+					display_name: 'Event poster',
+					kind: 'image',
+					extension: 'jpg',
+					preview_mode: 'thumbnail_image',
+					preview_status: 'ready',
+					thumbnail_url:
+						'/api/method/ifitwala_ed.api.file_access.thumbnail_org_communication_attachment?row_name=ATT-IMG-READY',
+					preview_url:
+						'/api/method/ifitwala_ed.api.file_access.preview_org_communication_attachment?row_name=ATT-IMG-READY',
+					open_url:
+						'/api/method/ifitwala_ed.api.file_access.open_org_communication_attachment?row_name=ATT-IMG-READY',
+				}),
 			},
 		]);
 		await flushUi();
@@ -77,6 +104,18 @@ describe('CommunicationAttachmentPreviewList', () => {
 					'/api/method/ifitwala_ed.api.file_access.preview_org_communication_attachment?row_name=ATT-IMG-VIEWER-READY',
 				open_url:
 					'/api/method/ifitwala_ed.api.file_access.open_org_communication_attachment?row_name=ATT-IMG-VIEWER-READY',
+				attachment_preview: buildAttachmentPreview({
+					item_id: 'ATT-IMG-VIEWER-READY',
+					display_name: 'Campus photo',
+					kind: 'image',
+					extension: 'png',
+					preview_mode: 'inline_image',
+					preview_status: 'ready',
+					preview_url:
+						'/api/method/ifitwala_ed.api.file_access.preview_org_communication_attachment?row_name=ATT-IMG-VIEWER-READY',
+					open_url:
+						'/api/method/ifitwala_ed.api.file_access.open_org_communication_attachment?row_name=ATT-IMG-VIEWER-READY',
+				}),
 			},
 		]);
 		await flushUi();
@@ -100,6 +139,18 @@ describe('CommunicationAttachmentPreviewList', () => {
 					'/api/method/ifitwala_ed.api.file_access.preview_org_communication_attachment?row_name=ATT-IMG-PENDING',
 				open_url:
 					'/api/method/ifitwala_ed.api.file_access.open_org_communication_attachment?row_name=ATT-IMG-PENDING',
+				attachment_preview: buildAttachmentPreview({
+					item_id: 'ATT-IMG-PENDING',
+					display_name: 'Campus photo',
+					kind: 'image',
+					extension: 'png',
+					preview_mode: 'icon_only',
+					preview_status: 'pending',
+					preview_url:
+						'/api/method/ifitwala_ed.api.file_access.preview_org_communication_attachment?row_name=ATT-IMG-PENDING',
+					open_url:
+						'/api/method/ifitwala_ed.api.file_access.open_org_communication_attachment?row_name=ATT-IMG-PENDING',
+				}),
 			},
 		]);
 		await flushUi();
@@ -122,6 +173,19 @@ describe('CommunicationAttachmentPreviewList', () => {
 					'/api/method/ifitwala_ed.api.file_access.preview_org_communication_attachment?row_name=ATT-IMG-BROKEN',
 				open_url:
 					'/api/method/ifitwala_ed.api.file_access.open_org_communication_attachment?row_name=ATT-IMG-BROKEN',
+				attachment_preview: buildAttachmentPreview({
+					item_id: 'ATT-IMG-BROKEN',
+					display_name: 'Athletics banner',
+					kind: 'image',
+					extension: 'webp',
+					preview_mode: 'thumbnail_image',
+					thumbnail_url:
+						'/api/method/ifitwala_ed.api.file_access.thumbnail_org_communication_attachment?row_name=ATT-IMG-BROKEN',
+					preview_url:
+						'/api/method/ifitwala_ed.api.file_access.preview_org_communication_attachment?row_name=ATT-IMG-BROKEN',
+					open_url:
+						'/api/method/ifitwala_ed.api.file_access.open_org_communication_attachment?row_name=ATT-IMG-BROKEN',
+				}),
 			},
 		]);
 		await flushUi();
@@ -151,6 +215,18 @@ describe('CommunicationAttachmentPreviewList', () => {
 					'/api/method/ifitwala_ed.api.file_access.thumbnail_org_communication_attachment?row_name=ATT-PDF-READY',
 				preview_url: '/api/method/ifitwala_ed.api.file_access.preview_org_communication_attachment?row_name=ATT-PDF-READY',
 				open_url: '/api/method/ifitwala_ed.api.file_access.open_org_communication_attachment?row_name=ATT-PDF-READY',
+				attachment_preview: buildAttachmentPreview({
+					item_id: 'ATT-PDF-READY',
+					display_name: 'Family handbook',
+					kind: 'pdf',
+					extension: 'pdf',
+					preview_mode: 'pdf_embed',
+					preview_status: 'ready',
+					preview_url:
+						'/api/method/ifitwala_ed.api.file_access.preview_org_communication_attachment?row_name=ATT-PDF-READY',
+					open_url:
+						'/api/method/ifitwala_ed.api.file_access.open_org_communication_attachment?row_name=ATT-PDF-READY',
+				}),
 			},
 		]);
 		await flushUi();
@@ -173,6 +249,18 @@ describe('CommunicationAttachmentPreviewList', () => {
 					'/api/method/ifitwala_ed.api.file_access.thumbnail_org_communication_attachment?row_name=ATT-PDF-PENDING',
 				preview_url: '/api/method/ifitwala_ed.api.file_access.preview_org_communication_attachment?row_name=ATT-PDF-PENDING',
 				open_url: '/api/method/ifitwala_ed.api.file_access.open_org_communication_attachment?row_name=ATT-PDF-PENDING',
+				attachment_preview: buildAttachmentPreview({
+					item_id: 'ATT-PDF-PENDING',
+					display_name: 'Policy update',
+					kind: 'pdf',
+					extension: 'pdf',
+					preview_mode: 'pdf_embed',
+					preview_status: 'pending',
+					preview_url:
+						'/api/method/ifitwala_ed.api.file_access.preview_org_communication_attachment?row_name=ATT-PDF-PENDING',
+					open_url:
+						'/api/method/ifitwala_ed.api.file_access.open_org_communication_attachment?row_name=ATT-PDF-PENDING',
+				}),
 			},
 		]);
 		await flushUi();

@@ -67,6 +67,19 @@ import CourseDetail from '@/pages/student/CourseDetail.vue'
 
 const cleanupFns: Array<() => void> = []
 
+function buildAttachmentPreview(overrides: Record<string, unknown> = {}) {
+	return {
+		item_id: 'MAT-1',
+		owner_doctype: 'Supporting Material',
+		owner_name: 'MAT-1',
+		file_id: 'FILE-1',
+		display_name: 'Resource',
+		kind: 'other',
+		preview_mode: 'icon_only',
+		...overrides,
+	}
+}
+
 function buildPayload(message: string | null = null): StudentLearningSpaceResponse {
 	return {
 		meta: {
@@ -167,6 +180,17 @@ function buildPayload(message: string | null = null): StudentLearningSpaceRespon
 					file_name: 'field-guide.pdf',
 					preview_url: '/api/method/ifitwala_ed.api.file_access.preview_academic_file?file=FILE-SHARED-1',
 					open_url: '/api/method/ifitwala_ed.api.file_access.download_academic_file?file=FILE-SHARED-1',
+					attachment_preview: buildAttachmentPreview({
+						item_id: 'MAT-SHARED-1',
+						display_name: 'Course field guide',
+						kind: 'pdf',
+						extension: 'pdf',
+						preview_mode: 'pdf_embed',
+						preview_url:
+							'/api/method/ifitwala_ed.api.file_access.preview_academic_file?file=FILE-SHARED-1',
+						open_url:
+							'/api/method/ifitwala_ed.api.file_access.download_academic_file?file=FILE-SHARED-1',
+					}),
 				},
 			],
 			class_resources: [
@@ -178,6 +202,19 @@ function buildPayload(message: string | null = null): StudentLearningSpaceRespon
 						'/api/method/ifitwala_ed.api.file_access.thumbnail_academic_file?file=FILE-CLASS-1',
 					preview_url: '/api/method/ifitwala_ed.api.file_access.preview_academic_file?file=FILE-CLASS-1',
 					open_url: '/api/method/ifitwala_ed.api.file_access.download_academic_file?file=FILE-CLASS-1',
+					attachment_preview: buildAttachmentPreview({
+						item_id: 'MAT-CLASS-1',
+						display_name: 'Class microscope labels',
+						kind: 'image',
+						extension: 'png',
+						preview_mode: 'thumbnail_image',
+						thumbnail_url:
+							'/api/method/ifitwala_ed.api.file_access.thumbnail_academic_file?file=FILE-CLASS-1',
+						preview_url:
+							'/api/method/ifitwala_ed.api.file_access.preview_academic_file?file=FILE-CLASS-1',
+						open_url:
+							'/api/method/ifitwala_ed.api.file_access.download_academic_file?file=FILE-CLASS-1',
+					}),
 				},
 			],
 			general_assigned_work: [
@@ -224,6 +261,19 @@ function buildPayload(message: string | null = null): StudentLearningSpaceRespon
 								'/api/method/ifitwala_ed.api.file_access.thumbnail_academic_file?file=FILE-UNIT-1',
 							preview_url: '/api/method/ifitwala_ed.api.file_access.preview_academic_file?file=FILE-UNIT-1',
 							open_url: '/api/method/ifitwala_ed.api.file_access.download_academic_file?file=FILE-UNIT-1',
+							attachment_preview: buildAttachmentPreview({
+								item_id: 'MAT-UNIT-1',
+								display_name: 'Cell gallery',
+								kind: 'image',
+								extension: 'webp',
+								preview_mode: 'thumbnail_image',
+								thumbnail_url:
+									'/api/method/ifitwala_ed.api.file_access.thumbnail_academic_file?file=FILE-UNIT-1',
+								preview_url:
+									'/api/method/ifitwala_ed.api.file_access.preview_academic_file?file=FILE-UNIT-1',
+								open_url:
+									'/api/method/ifitwala_ed.api.file_access.download_academic_file?file=FILE-UNIT-1',
+							}),
 						},
 					],
 					assigned_work: [
@@ -265,6 +315,17 @@ function buildPayload(message: string | null = null): StudentLearningSpaceRespon
 									file_name: 'microscope-guide.pdf',
 									preview_url: '/api/method/ifitwala_ed.api.file_access.preview_academic_file?file=FILE-1',
 									open_url: '/api/method/ifitwala_ed.api.file_access.download_academic_file?file=FILE-1',
+									attachment_preview: buildAttachmentPreview({
+										item_id: 'MAT-1',
+										display_name: 'Microscope guide',
+										kind: 'pdf',
+										extension: 'pdf',
+										preview_mode: 'pdf_embed',
+										preview_url:
+											'/api/method/ifitwala_ed.api.file_access.preview_academic_file?file=FILE-1',
+										open_url:
+											'/api/method/ifitwala_ed.api.file_access.download_academic_file?file=FILE-1',
+									}),
 								},
 							],
 							assigned_work: [

@@ -559,6 +559,18 @@ def _load_drive_access_callable(attribute: str):
     frappe.throw(_("Ifitwala Drive access method is unavailable: {0}").format(attribute))
 
 
+def _load_drive_communications_callable(attribute: str):
+    try:
+        drive_api = importlib.import_module("ifitwala_drive.api.communications")
+    except ImportError:
+        return None
+
+    callable_obj = getattr(drive_api, attribute, None)
+    if callable(callable_obj):
+        return callable_obj
+    return None
+
+
 def _ensure_response_headers() -> dict:
     if not hasattr(frappe, "local") or frappe.local is None:
         frappe.local = SimpleNamespace()
@@ -732,6 +744,7 @@ def _resolve_cached_thumbnail_target_url(
     file_id: str,
     surface_parts: list[str | None],
     strict_derivative: bool = False,
+    target_resolver=None,
 ) -> str | None:
     drive_file_row = (
         frappe.db.get_value(
@@ -754,13 +767,16 @@ def _resolve_cached_thumbnail_target_url(
         if cached_url and not _is_raw_private_redirect_target(cached_url):
             return cached_url
 
-    target_url = _resolve_drive_file_grant_target_url(
-        drive_file_id=drive_file_id,
-        file_id=file_id,
-        prefer_preview=True,
-        derivative_role="thumb",
-        strict_derivative=strict_derivative,
-    )
+    if callable(target_resolver):
+        target_url = target_resolver()
+    else:
+        target_url = _resolve_drive_file_grant_target_url(
+            drive_file_id=drive_file_id,
+            file_id=file_id,
+            prefer_preview=True,
+            derivative_role="thumb",
+            strict_derivative=strict_derivative,
+        )
     if cache_key and shared_cache is not None and target_url:
         shared_cache.set_value(
             cache_key,
@@ -768,6 +784,90 @@ def _resolve_cached_thumbnail_target_url(
             expires_in_sec=_THUMBNAIL_REDIRECT_CACHE_TTL_SECONDS,
         )
     return target_url
+
+
+def _request_org_communication_attachment_grant(
+    *,
+    method_name: str,
+    org_communication: str,
+    row_name: str,
+    drive_file_id: str,
+    derivative_role: str | None = None,
+):
+    grant_callable = _load_drive_communications_callable(method_name)
+    if callable(grant_callable):
+        payload = {
+            "org_communication": str(org_communication or "").strip(),
+            "row_name": str(row_name or "").strip(),
+        }
+        explicit_derivative_role = (derivative_role or "").strip()
+        if explicit_derivative_role:
+            payload["derivative_role"] = explicit_derivative_role
+        return grant_callable(**payload)
+
+    generic_method = "issue_preview_grant" if "preview" in method_name else "issue_download_grant"
+    payload = {"drive_file_id": drive_file_id}
+    explicit_derivative_role = (derivative_role or "").strip()
+    if generic_method == "issue_preview_grant" and explicit_derivative_role:
+        payload["derivative_role"] = explicit_derivative_role
+    return _load_drive_access_callable(generic_method)(**payload)
+
+
+def _resolve_org_communication_attachment_grant_target_url(
+    *,
+    org_communication: str,
+    row_name: str,
+    drive_file_id: str,
+    file_id: str,
+    prefer_preview: bool = False,
+    derivative_role: str | None = None,
+    strict_derivative: bool = False,
+) -> str | None:
+    target_url = ""
+    explicit_derivative_role = (derivative_role or "").strip()
+    resolved_org_communication = str(org_communication or "").strip()
+    resolved_row_name = str(row_name or "").strip()
+
+    if prefer_preview and explicit_derivative_role:
+        try:
+            grant = _request_org_communication_attachment_grant(
+                method_name="issue_org_communication_attachment_preview_grant",
+                org_communication=resolved_org_communication,
+                row_name=resolved_row_name,
+                drive_file_id=drive_file_id,
+                derivative_role=explicit_derivative_role,
+            )
+            target_url = str((grant or {}).get("url") or "").strip()
+        except Exception:
+            target_url = ""
+        if strict_derivative:
+            if target_url and not _is_raw_private_redirect_target(target_url):
+                return target_url
+            return None
+
+    if not target_url:
+        grant_method = "issue_org_communication_attachment_download_grant"
+        if prefer_preview:
+            preview_status = frappe.db.get_value("Drive File", drive_file_id, "preview_status")
+            if preview_status == "ready":
+                grant_method = "issue_org_communication_attachment_preview_grant"
+        grant = _request_org_communication_attachment_grant(
+            method_name=grant_method,
+            org_communication=resolved_org_communication,
+            row_name=resolved_row_name,
+            drive_file_id=drive_file_id,
+        )
+        target_url = str((grant or {}).get("url") or "").strip()
+
+    if target_url and not _is_raw_private_redirect_target(target_url):
+        return target_url
+
+    fallback_url = frappe.db.get_value("File", file_id, "file_url")
+    target_url = str(fallback_url or "").strip()
+    if target_url and not _is_raw_private_redirect_target(target_url):
+        return target_url
+
+    return None
 
 
 def _resolve_guardian_from_file(file_row: dict) -> str:

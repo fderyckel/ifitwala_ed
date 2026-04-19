@@ -121,7 +121,7 @@ Rules:
 
 1. Attachment reads must continue to enforce the same communication visibility contract as archive/detail reads.
 2. Authorized viewers receive server-owned action URLs only.
-3. File rows expose stable Ed-owned `open_url` values, stable Ed-owned `preview_url` values for richer preview flows, optional stable Ed-owned `thumbnail_url` values for inline image cards only when a ready `thumb` derivative exists, a `preview_status` hint so SPA surfaces know when the preview route resolves a renderable preview asset instead of the original file, and an additive nested `attachment_preview` block carrying the shared cross-surface preview DTO.
+3. File rows expose stable Ed-owned `open_url` values, stable Ed-owned `preview_url` values for richer preview flows, optional stable Ed-owned `thumbnail_url` values for inline image cards only when a ready `thumb` derivative exists, a `preview_status` hint so SPA surfaces know when the preview route resolves a renderable preview asset instead of the original file, and an additive nested `attachment_preview` block carrying the shared cross-surface preview DTO now consumed by the shared SPA attachment-preview card layer.
 4. Those stable routes are not durable storage URLs; Drive grants remain short-lived and are resolved at request time.
 5. Private file URLs must never be constructed in the client.
 6. Authored-history owner access remains aligned with the existing `allow_owner=True` attachment-open rule.

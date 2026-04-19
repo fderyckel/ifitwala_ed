@@ -23,8 +23,8 @@ Related current-state docs:
 ## Current Implemented Baseline
 
 Status: Implemented current-state baseline
-Code refs: `ifitwala_ed/api/file_access.py`, `ifitwala_ed/api/org_communication_attachments.py`, `ifitwala_ed/api/materials.py`, `ifitwala_ed/api/teaching_plans_read_models.py`, `ifitwala_ed/ui-spa/src/components/tasks/CreateTaskDeliveryOverlay.vue`, `ifitwala_ed/ui-spa/src/pages/student/CourseDetail.vue`, `ifitwala_ed/ui-spa/src/components/learning/StudentLearningResourceCard.vue`
-Test refs: `ifitwala_ed/api/test_file_access.py`, `ifitwala_ed/api/test_materials.py`, `ifitwala_ed/api/test_org_communication_archive.py`, `ifitwala_ed/api/test_teaching_plans.py`, `ifitwala_ed/ui-spa/src/components/tasks/__tests__/CreateTaskDeliveryOverlay.test.ts`, `ifitwala_ed/ui-spa/src/pages/student/__tests__/CourseDetail.test.ts`
+Code refs: `ifitwala_ed/api/file_access.py`, `ifitwala_ed/api/org_communication_attachments.py`, `ifitwala_ed/api/materials.py`, `ifitwala_ed/api/teaching_plans_read_models.py`, `ifitwala_ed/ui-spa/src/components/attachments/AttachmentPreviewCard.vue`, `ifitwala_ed/ui-spa/src/components/communication/CommunicationAttachmentPreviewList.vue`, `ifitwala_ed/ui-spa/src/components/planning/PlanningResourcePanel.vue`, `ifitwala_ed/ui-spa/src/components/learning/StudentLearningResourceCard.vue`, `ifitwala_ed/ui-spa/src/pages/staff/gradebook/components/GradebookStudentDrawer.vue`, `ifitwala_ed/ui-spa/src/components/tasks/CreateTaskDeliveryOverlay.vue`, `ifitwala_ed/ui-spa/src/pages/student/CourseDetail.vue`
+Test refs: `ifitwala_ed/api/test_file_access.py`, `ifitwala_ed/api/test_materials.py`, `ifitwala_ed/api/test_org_communication_archive.py`, `ifitwala_ed/api/test_teaching_plans.py`, `ifitwala_ed/ui-spa/src/components/attachments/__tests__/AttachmentPreviewCard.test.ts`, `ifitwala_ed/ui-spa/src/components/communication/__tests__/CommunicationAttachmentPreviewList.test.ts`, `ifitwala_ed/ui-spa/src/components/planning/__tests__/PlanningResourcePanel.test.ts`, `ifitwala_ed/ui-spa/src/components/tasks/__tests__/CreateTaskDeliveryOverlay.test.ts`, `ifitwala_ed/ui-spa/src/pages/student/__tests__/CourseDetail.test.ts`, `ifitwala_ed/ui-spa/src/pages/staff/__tests__/OrgCommunicationArchive.test.ts`, `ifitwala_ed/ui-spa/src/pages/guardian/__tests__/GuardianCommunicationCenter.test.ts`
 
 Today Ifitwala_Ed already enforces the correct broad shape for governed reads:
 
@@ -35,6 +35,7 @@ Today Ifitwala_Ed already enforces the correct broad shape for governed reads:
 - the staff task creation overlay now renders inline image previews and compact PDF preview tiles for current task materials after a new reusable task is created
 - planning-material surfaces now also expose stable `preview_url` routes for governed file resources in the staff course-plan and class-planning workspaces
 - the student learning space now also exposes stable `preview_url` routes for governed file resources on `CourseDetail.vue`
+- current target surfaces now consume the nested `attachment_preview` DTO through one shared display-only SPA card layer, with thin communication, planning, student-learning, and evidence adapters around it
 - student task-material chips remain lightweight, but they also prefer `preview_url` over `open_url` when preview is available
 - the SPA does not need to know storage paths or Drive object keys
 
@@ -42,7 +43,7 @@ What still does not exist yet:
 
 - a top-level shared cross-portal attachment preview row contract across all surfaces
 - broad Ed-owned preview routes for all governed surfaces
-- a shared SPA preview layer across the target surfaces
+- one fully unified list / gallery / drawer system across every governed preview surface
 
 Drive now has a narrow image plus first-page PDF derivative foundation, but Ed should still treat preview as partial rollout:
 

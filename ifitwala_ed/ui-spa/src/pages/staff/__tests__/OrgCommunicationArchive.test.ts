@@ -169,6 +169,19 @@ import OrgCommunicationArchive from '@/pages/staff/OrgCommunicationArchive.vue';
 
 const cleanupFns: Array<() => void> = [];
 
+function buildAttachmentPreview(overrides: Record<string, unknown> = {}) {
+	return {
+		item_id: 'ATT-1',
+		owner_doctype: 'Org Communication',
+		owner_name: 'COMM-1',
+		file_id: 'FILE-1',
+		display_name: 'Attachment',
+		kind: 'other',
+		preview_mode: 'icon_only',
+		...overrides,
+	};
+}
+
 async function flushUi() {
 	await Promise.resolve();
 	await nextTick();
@@ -321,6 +334,20 @@ describe('OrgCommunicationArchive', () => {
 						'/api/method/ifitwala_ed.api.file_access.thumbnail_org_communication_attachment?row_name=ATT-IMAGE',
 					preview_url: '/api/method/ifitwala_ed.api.file_access.preview_org_communication_attachment?row_name=ATT-IMAGE',
 					open_url: '/api/method/ifitwala_ed.api.file_access.open_org_communication_attachment?row_name=ATT-IMAGE',
+					attachment_preview: buildAttachmentPreview({
+						item_id: 'ATT-IMAGE',
+						display_name: 'Event photo',
+						kind: 'image',
+						extension: 'jpg',
+						preview_mode: 'thumbnail_image',
+						preview_status: 'ready',
+						thumbnail_url:
+							'/api/method/ifitwala_ed.api.file_access.thumbnail_org_communication_attachment?row_name=ATT-IMAGE',
+						preview_url:
+							'/api/method/ifitwala_ed.api.file_access.preview_org_communication_attachment?row_name=ATT-IMAGE',
+						open_url:
+							'/api/method/ifitwala_ed.api.file_access.open_org_communication_attachment?row_name=ATT-IMAGE',
+					}),
 				},
 				{
 					row_name: 'ATT-PDF',
@@ -331,6 +358,18 @@ describe('OrgCommunicationArchive', () => {
 					preview_status: 'ready',
 					preview_url: '/api/method/ifitwala_ed.api.file_access.preview_org_communication_attachment?row_name=ATT-PDF',
 					open_url: '/api/method/ifitwala_ed.api.file_access.open_org_communication_attachment?row_name=ATT-PDF',
+					attachment_preview: buildAttachmentPreview({
+						item_id: 'ATT-PDF',
+						display_name: 'Agenda',
+						kind: 'pdf',
+						extension: 'pdf',
+						preview_mode: 'pdf_embed',
+						preview_status: 'ready',
+						preview_url:
+							'/api/method/ifitwala_ed.api.file_access.preview_org_communication_attachment?row_name=ATT-PDF',
+						open_url:
+							'/api/method/ifitwala_ed.api.file_access.open_org_communication_attachment?row_name=ATT-PDF',
+					}),
 				},
 				{
 					row_name: 'ATT-LINK',
@@ -338,6 +377,14 @@ describe('OrgCommunicationArchive', () => {
 					title: 'Reference site',
 					external_url: 'https://example.com/reference',
 					open_url: 'https://example.com/reference',
+					attachment_preview: buildAttachmentPreview({
+						item_id: 'ATT-LINK',
+						display_name: 'Reference site',
+						kind: 'link',
+						preview_mode: 'external_link',
+						link_url: 'https://example.com/reference',
+						open_url: 'https://example.com/reference',
+					}),
 				},
 			],
 		});

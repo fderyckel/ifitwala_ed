@@ -154,6 +154,7 @@ Current implementation baseline for the Evidence tab:
 - attachment rows in the selected submission resolve to server-owned `preview_url` / `open_url` routes; the SPA must never guess private file paths
 - attachment rows now also carry preview status plus file-type hints from governed Drive metadata where available
 - attachment rows now also carry an additive nested `attachment_preview` block with the shared cross-surface preview DTO
+- non-PDF evidence cards in the drawer now consume that nested preview DTO through the shared display-only SPA attachment preview card, while the governed PDF workspace remains a separate specialized surface
 - selected submission payload now includes a server-owned annotation-readiness summary for the currently selected version
 - drawer bootstrap now also returns one bounded **feedback workspace** block for the selected submission version, including summary text, structured anchored items, and explicit feedback/grade publication state
 - drawer bootstrap now also returns one bounded **comment bank** block for the current outcome context, filtered server-side for the current teacher plus course / task / criterion relevance
