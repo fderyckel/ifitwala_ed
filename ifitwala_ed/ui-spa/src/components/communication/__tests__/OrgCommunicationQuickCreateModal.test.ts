@@ -193,6 +193,34 @@ import OrgCommunicationQuickCreateModal from '@/components/communication/OrgComm
 
 const cleanupFns: Array<() => void> = [];
 
+const quickCreateDeliveryRules = {
+	brief_portal_surfaces: ['Morning Brief', 'Everywhere'],
+	profiles: {
+		undecided: {
+			allowed_portal_surfaces: ['Desk', 'Morning Brief', 'Portal Feed', 'Everywhere'],
+			preferred_portal_surface: 'Desk',
+			help_text: 'Choose the audience first to narrow delivery surfaces to the ones that match that communication.',
+		},
+		staff_only: {
+			allowed_portal_surfaces: ['Desk', 'Morning Brief', 'Everywhere'],
+			preferred_portal_surface: 'Desk',
+			help_text: 'Staff-only communications can publish to Desk, Morning Brief, or Everywhere.',
+		},
+		portal_only: {
+			allowed_portal_surfaces: ['Portal Feed'],
+			preferred_portal_surface: 'Portal Feed',
+			help_text:
+				'Student and guardian audiences publish through Portal Feed. Morning Brief dates are not used for portal-only communications.',
+		},
+		mixed: {
+			allowed_portal_surfaces: ['Portal Feed', 'Everywhere'],
+			preferred_portal_surface: 'Everywhere',
+			help_text:
+				'Communications that include both staff and portal recipients can publish to Portal Feed or Everywhere.',
+		},
+	},
+};
+
 const quickCreateOptions = {
 	context: {
 		default_school: 'SCH-1',
@@ -216,7 +244,7 @@ const quickCreateOptions = {
 		communication_types: ['Information'],
 		statuses: ['Draft', 'Scheduled', 'Published'],
 		priorities: ['Normal'],
-		portal_surfaces: ['Desk'],
+		portal_surfaces: ['Desk', 'Morning Brief', 'Portal Feed', 'Everywhere'],
 		interaction_modes: ['None'],
 		audience_target_modes: ['School Scope', 'Team', 'Student Group'],
 	},
@@ -282,6 +310,7 @@ const quickCreateOptions = {
 		can_create: true,
 		can_target_wide_school_scope: false,
 	},
+	delivery_rules: quickCreateDeliveryRules,
 };
 
 const wideAudienceQuickCreateOptions = {
@@ -365,18 +394,43 @@ const interactiveThreadQuickCreateOptions = {
 		portal_surfaces: ['Desk', 'Morning Brief'],
 		priorities: ['Normal', 'High'],
 	},
+	delivery_rules: {
+		...quickCreateDeliveryRules,
+		profiles: {
+			...quickCreateDeliveryRules.profiles,
+			undecided: {
+				...quickCreateDeliveryRules.profiles.undecided,
+				allowed_portal_surfaces: ['Desk', 'Morning Brief'],
+			},
+			staff_only: {
+				...quickCreateDeliveryRules.profiles.staff_only,
+				allowed_portal_surfaces: ['Desk', 'Morning Brief'],
+			},
+			portal_only: {
+				...quickCreateDeliveryRules.profiles.portal_only,
+				allowed_portal_surfaces: [],
+				preferred_portal_surface: '',
+			},
+			mixed: {
+				...quickCreateDeliveryRules.profiles.mixed,
+				allowed_portal_surfaces: [],
+				preferred_portal_surface: '',
+			},
+		},
+	},
 };
 
-const everywhereQuickCreateOptions = {
-	...quickCreateOptions,
+const wideAudienceEverywhereQuickCreateOptions = {
+	...wideAudienceQuickCreateOptions,
 	defaults: {
-		...quickCreateOptions.defaults,
+		...wideAudienceQuickCreateOptions.defaults,
 		portal_surface: 'Everywhere',
 	},
 	fields: {
-		...quickCreateOptions.fields,
-		portal_surfaces: ['Desk', 'Everywhere'],
+		...wideAudienceQuickCreateOptions.fields,
+		portal_surfaces: ['Desk', 'Morning Brief', 'Portal Feed', 'Everywhere'],
 	},
+	delivery_rules: quickCreateDeliveryRules,
 };
 
 async function flushUi() {
@@ -429,6 +483,11 @@ function clickButton(labelText: string) {
 
 async function addSchoolFamiliesAudience() {
 	clickButton('Whole school families');
+	await flushUi();
+}
+
+async function addWholeSchoolStaffAudience() {
+	clickButton('Whole school staff');
 	await flushUi();
 }
 
@@ -617,6 +676,8 @@ describe('OrgCommunicationQuickCreateModal', () => {
 
 		mountModal();
 		await flushUi();
+		setSelectByLabel('Portal surface', 'Morning Brief');
+		await flushUi();
 
 		const publishWindowGrid = document.querySelector('.if-org-communication-publish-window-grid');
 		const briefWindowGrid = document.querySelector('.if-org-communication-brief-window-grid');
@@ -645,6 +706,29 @@ describe('OrgCommunicationQuickCreateModal', () => {
 		expect(deliverySelectGrid?.getAttribute('class') || '').toContain(
 			'min-[480px]:grid-cols-2'
 		);
+	});
+
+	it('narrows portal surfaces and hides brief-only fields for portal-only audiences', async () => {
+		getOptionsMock.mockResolvedValue(quickCreateOptions);
+
+		mountModal();
+		await flushUi();
+
+		clickButton('One class or student group');
+		await flushUi();
+
+		const portalSurfaceSelect = getSelectByLabel('Portal surface');
+		const portalSurfaceValues = Array.from(portalSurfaceSelect?.options || []).map(
+			option => option.value
+		);
+		const text = document.body.textContent || '';
+
+		expect(portalSurfaceValues).toEqual(['Portal Feed']);
+		expect(portalSurfaceSelect?.value).toBe('Portal Feed');
+		expect(text).not.toContain('Brief start date');
+		expect(text).not.toContain('Brief end date');
+		expect(text).not.toContain('Brief order');
+		expect(text).toContain('Student and guardian audiences publish through Portal Feed');
 	});
 
 	it('renders scope and audience before core details and attachments, and keeps the workflow grids responsive', async () => {
@@ -1009,7 +1093,7 @@ describe('OrgCommunicationQuickCreateModal', () => {
 			title: '25-26-G6-Math1/IIS 2025-2026',
 			communication_type: 'Class Announcement',
 			status: 'Published',
-			portal_surface: 'Everywhere',
+			portal_surface: 'Portal Feed',
 			organization: 'ORG-1',
 			school: 'SCH-1',
 			interaction_mode: 'None',
@@ -1028,7 +1112,7 @@ describe('OrgCommunicationQuickCreateModal', () => {
 	});
 
 	it('lets staff-home save a draft before brief dates are filled for everywhere surface', async () => {
-		getOptionsMock.mockResolvedValue(everywhereQuickCreateOptions);
+		getOptionsMock.mockResolvedValue(wideAudienceEverywhereQuickCreateOptions);
 		createOrgCommunicationQuickMock.mockResolvedValue({
 			ok: true,
 			status: 'created',
@@ -1039,7 +1123,7 @@ describe('OrgCommunicationQuickCreateModal', () => {
 		mountModal();
 		await flushUi();
 
-		await addSchoolFamiliesAudience();
+		await addWholeSchoolStaffAudience();
 		clickButton('Save as draft');
 		await flushUi();
 
@@ -1052,7 +1136,7 @@ describe('OrgCommunicationQuickCreateModal', () => {
 	});
 
 	it('auto-saves a staff-home link draft before brief dates are filled for everywhere surface', async () => {
-		getOptionsMock.mockResolvedValue(everywhereQuickCreateOptions);
+		getOptionsMock.mockResolvedValue(wideAudienceEverywhereQuickCreateOptions);
 		createOrgCommunicationQuickMock.mockResolvedValue({
 			ok: true,
 			status: 'created',
@@ -1074,7 +1158,7 @@ describe('OrgCommunicationQuickCreateModal', () => {
 		mountModal();
 		await flushUi();
 
-		await addSchoolFamiliesAudience();
+		await addWholeSchoolStaffAudience();
 		clickButton('Add link');
 		await flushUi();
 		setInputByPlaceholder('https://example.com/resource.pdf', 'https://example.com/health-advisory');

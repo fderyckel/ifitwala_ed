@@ -1,3 +1,4 @@
+import type { CommentBankPayload } from './comment_bank'
 import type { FeedbackWorkspacePayload } from './feedback_workspace'
 
 export type Request = {
@@ -156,6 +157,7 @@ export type Response = {
 	latest_submission?: SubmissionVersionSummary | null
 	selected_submission?: SubmissionEvidence | null
 	feedback_workspace?: FeedbackWorkspacePayload | null
+	comment_bank?: CommentBankPayload | null
 	submission_versions: SubmissionVersionSummary[]
 	my_contribution?: MyContributionPayload | null
 	moderation_history: Array<{

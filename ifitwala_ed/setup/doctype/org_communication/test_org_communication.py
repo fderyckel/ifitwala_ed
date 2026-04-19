@@ -715,3 +715,59 @@ class TestOrgCommunication(FrappeTestCase):
 
         with self.assertRaises(frappe.ValidationError):
             org_communication_controller.OrgCommunication._enforce_portal_surface_rules(doc)
+
+    def test_published_portal_only_audience_rejects_everywhere_surface(self):
+        doc = frappe._dict(
+            status="Published",
+            portal_surface="Everywhere",
+            brief_start_date="2026-04-19",
+            audiences=[
+                frappe._dict(
+                    target_mode="Student Group",
+                    student_group="SG-1",
+                    to_students=1,
+                    to_guardians=0,
+                    to_staff=0,
+                )
+            ],
+        )
+
+        with self.assertRaises(frappe.ValidationError):
+            org_communication_controller.OrgCommunication._enforce_portal_surface_rules(doc)
+
+    def test_published_portal_only_audience_allows_portal_feed(self):
+        doc = frappe._dict(
+            status="Published",
+            portal_surface="Portal Feed",
+            brief_start_date=None,
+            audiences=[
+                frappe._dict(
+                    target_mode="Student Group",
+                    student_group="SG-1",
+                    to_students=1,
+                    to_guardians=0,
+                    to_staff=0,
+                )
+            ],
+        )
+
+        org_communication_controller.OrgCommunication._enforce_portal_surface_rules(doc)
+
+    def test_published_mixed_audience_rejects_morning_brief_only_surface(self):
+        doc = frappe._dict(
+            status="Published",
+            portal_surface="Morning Brief",
+            brief_start_date="2026-04-19",
+            audiences=[
+                frappe._dict(
+                    target_mode="School Scope",
+                    school="SCH-1",
+                    to_students=1,
+                    to_guardians=0,
+                    to_staff=1,
+                )
+            ],
+        )
+
+        with self.assertRaises(frappe.ValidationError):
+            org_communication_controller.OrgCommunication._enforce_portal_surface_rules(doc)

@@ -3,7 +3,7 @@
 Status: **Planned implementation RFC / non-authoritative until canonical runtime docs are updated**
 Audience: Product, Engineering, UX, and coding agents
 Scope: Phase 2 design for structured feedback records, publication states, version binding, drawer integration, annotation readiness, and minimal comment-bank scope
-Last updated: 2026-04-18
+Last updated: 2026-04-19
 
 Important note:
 
@@ -69,14 +69,15 @@ Current workspace reality:
 - evidence is already versioned and governed through Ed-owned preview/open routes
 - the current release model still collapses to one `Task Outcome.is_published` state
 - there is now a first-class assessment feedback workspace per selected submission version in the drawer runtime
-- there is no minimal comment bank yet
+- there is now a minimal teacher-owned comment bank in the drawer runtime, with personal / course / task scope and optional criterion linkage
 - the live drawer runtime now has a partial annotation-readiness contract for the selected evidence version:
   - governed PDF attachments expose preview status plus file-type hints from Drive metadata
   - the selected submission returns a server-owned annotation-readiness summary
   - governed PDFs render inside an Ifitwala-owned `pdf.js` drawer workspace over Ed-owned preview/open routes, with page navigation, zoom, and version-bound point / area / page draft feedback anchors on the governed source PDF
+  - the drawer now exposes item-level editing for draft note body, intent, workflow state, and criterion linkage
   - the Evidence tab distinguishes reduced PDF review, preview-unavailable fallback, and non-PDF states without guessing in Vue
 
-- the live drawer runtime still does **not** support text-anchored comments, OCR-driven upgrades, replies, or comment-bank insertion
+- the live drawer runtime still does **not** support text-anchored comments, OCR-driven upgrades, replies, or shared course-team comment banks
 - feedback draft and publication changes now flow through named drawer mutations instead of session-only UI state, but student/guardian portals still rely on the legacy `Task Outcome.is_published` release path
 
 Why Phase 2 exists:

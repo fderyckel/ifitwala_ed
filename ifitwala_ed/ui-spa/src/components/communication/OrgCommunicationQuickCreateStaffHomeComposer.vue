@@ -507,10 +507,13 @@
 								{{ getSelectOptionLabel(option) }}
 							</option>
 						</select>
+						<p class="type-caption text-ink/55">
+							{{ deliveryHelpText }}
+						</p>
 					</div>
 				</div>
 
-				<div class="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
+				<div v-if="showBriefFields" class="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
 					<div class="space-y-1">
 						<label class="type-label">Brief order</label>
 						<FormControl
@@ -550,6 +553,7 @@
 				</div>
 
 				<div
+					v-if="showBriefFields"
 					class="if-org-communication-brief-window-grid mt-4 grid grid-cols-1 gap-4 min-[480px]:grid-cols-2"
 				>
 					<div class="space-y-1">
@@ -744,6 +748,8 @@ defineProps<{
 	attachmentContextLockMessage: string;
 	audienceEmptyStateMessage: string;
 	briefDatesRequired: boolean;
+	showBriefFields: boolean;
+	deliveryHelpText: string;
 	deliveryValidationMessage: string;
 	audienceValidationMessage: string;
 	publishActionStatus: string;
@@ -826,5 +832,12 @@ const emit = defineEmits<{
 	background-color: rgb(var(--surface-rgb) / 0.8);
 	color: rgb(var(--ink-rgb) / 0.5);
 	opacity: 0.8;
+}
+
+@media (min-width: 640px) {
+	.if-org-communication-core-scope-grid,
+	.if-org-communication-audience-preset-grid {
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+	}
 }
 </style>

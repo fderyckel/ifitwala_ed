@@ -77,6 +77,23 @@ export type OrgCommunicationAudiencePreset = {
 	picker_kind?: 'team' | 'student_group' | null
 }
 
+export type OrgCommunicationQuickDeliveryProfileKey =
+	| 'undecided'
+	| 'staff_only'
+	| 'portal_only'
+	| 'mixed'
+
+export type OrgCommunicationQuickDeliveryProfile = {
+	allowed_portal_surfaces: string[]
+	preferred_portal_surface: string
+	help_text: string
+}
+
+export type OrgCommunicationQuickDeliveryRules = {
+	brief_portal_surfaces: string[]
+	profiles: Record<OrgCommunicationQuickDeliveryProfileKey, OrgCommunicationQuickDeliveryProfile>
+}
+
 export type Response = {
 	context: OrgCommunicationQuickContext
 	defaults: OrgCommunicationQuickDefaults
@@ -96,4 +113,5 @@ export type Response = {
 		blocked_reason?: string | null
 		can_target_wide_school_scope: boolean
 	}
+	delivery_rules: OrgCommunicationQuickDeliveryRules
 }

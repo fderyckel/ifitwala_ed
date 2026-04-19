@@ -554,8 +554,12 @@
 										:attachment="attachment"
 										:annotation-readiness="annotationReadinessForAttachment(attachment)"
 										:items="feedbackForm.items"
+										:comment-bank="drawer.comment_bank"
+										:criteria-options="feedbackCriteriaOptions"
+										:comment-bank-busy="commentBankBusy"
 										:disabled="!drawer.allowed_actions.can_edit_feedback"
 										@update:items="onFeedbackItemsChanged"
+										@save-comment-bank-entry="emitSaveCommentBankEntry"
 									/>
 									<div v-else class="flex flex-wrap items-start justify-between gap-3">
 										<div class="min-w-0">
@@ -992,7 +996,9 @@
 import { computed, reactive, ref, watch } from 'vue';
 import { Badge, FeatherIcon, FormControl, Spinner } from 'frappe-ui';
 
+import type { CommentBankScopeMode } from '@/types/contracts/gradebook/comment_bank';
 import type {
+	FeedbackIntent,
 	FeedbackVisibility,
 	FeedbackWorkspaceItem,
 } from '@/types/contracts/gradebook/feedback_workspace';
@@ -1043,6 +1049,7 @@ const props = defineProps<{
 	errorMessage?: string | null;
 	markingBusy?: boolean;
 	feedbackBusy?: boolean;
+	commentBankBusy?: boolean;
 	publicationBusy?: boolean;
 	submissionSeenBusy?: boolean;
 	publishBusy?: boolean;
@@ -1081,6 +1088,16 @@ const emit = defineEmits<{
 		}
 	): void;
 	(
+		e: 'save-comment-bank-entry',
+		payload: {
+			outcome_id: string;
+			body: string;
+			feedback_intent: FeedbackIntent;
+			assessment_criteria?: string | null;
+			scope_mode: CommentBankScopeMode;
+		}
+	): void;
+	(
 		e: 'moderator-action',
 		payload: {
 			action: 'Approve' | 'Adjust' | 'Return to Grader';
@@ -1108,6 +1125,12 @@ const publicationOptions: Array<{ label: string; value: FeedbackVisibility }> = 
 	{ label: 'Student only', value: 'student' },
 	{ label: 'Student and guardian', value: 'student_and_guardian' },
 ];
+const feedbackCriteriaOptions = computed(() =>
+	(props.drawer?.delivery.criteria || []).map(row => ({
+		label: row.criteria_name || row.assessment_criteria,
+		value: row.assessment_criteria,
+	}))
+);
 
 const currentTab = ref<DrawerTab>('marking');
 const form = reactive({
@@ -1356,6 +1379,23 @@ function emitSaveFeedbackPublication() {
 		submission_id: submissionId,
 		feedback_visibility: feedbackForm.publication.feedback_visibility,
 		grade_visibility: feedbackForm.publication.grade_visibility,
+	});
+}
+
+function emitSaveCommentBankEntry(payload: {
+	body: string;
+	feedback_intent: FeedbackIntent;
+	assessment_criteria?: string | null;
+	scope_mode: CommentBankScopeMode;
+}) {
+	const outcomeId = props.drawer?.outcome.outcome_id;
+	if (!outcomeId) return;
+	emit('save-comment-bank-entry', {
+		outcome_id: outcomeId,
+		body: payload.body,
+		feedback_intent: payload.feedback_intent,
+		assessment_criteria: payload.assessment_criteria || null,
+		scope_mode: payload.scope_mode,
 	});
 }
 

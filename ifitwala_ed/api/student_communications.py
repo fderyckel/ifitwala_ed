@@ -402,6 +402,7 @@ def _fetch_student_org_communications(
     if not audience_clauses:
         return []
 
+    conditions.append("IFNULL(oc.portal_surface, 'Everywhere') IN ('Everywhere', 'Portal Feed')")
     conditions.append("(" + " OR ".join(clause.strip() for clause in audience_clauses) + ")")
 
     if activity_offerings:

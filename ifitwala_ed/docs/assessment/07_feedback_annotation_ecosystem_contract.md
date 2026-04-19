@@ -3,7 +3,7 @@
 Status: **Authoritative feature contract**
 Scope: Gradebook drawer feedback workflow, submission evidence review, returned feedback artifacts, and student-facing released feedback surfaces
 Audience: Product, Engineering, UX, and coding agents
-Last updated: 2026-04-18
+Last updated: 2026-04-19
 
 This document is the canonical product and architecture contract for feedback and annotation work in assessment.
 It does not replace the task runtime contract in `04_task_notes.md`.
@@ -244,11 +244,15 @@ Rules:
 
 ## 7. Annotation, Comment Bank, And OCR Contract
 
-Status: **Phase 0 locked, not yet implemented in runtime**
+Status: **Partial baseline implemented**
 
 Code refs:
 - `ifitwala_ed/docs/assessment/03_gradebook_notes.md`
 - `ifitwala_ed/docs/assessment/04_task_notes.md`
+- `ifitwala_ed/assessment/task_feedback_service.py`
+- `ifitwala_ed/assessment/task_feedback_comment_bank_service.py`
+- `ifitwala_ed/ui-spa/src/pages/staff/gradebook/components/GradebookStudentDrawer.vue`
+- `ifitwala_ed/ui-spa/src/pages/staff/gradebook/components/GradebookPdfWorkspace.vue`
 
 The annotation product must be implemented as three coordinated layers:
 
@@ -270,6 +274,14 @@ Teacher productivity minimum:
 - scoped reusable comments at least by assignment or course
 - insertion from the drawer without leaving the grading flow
 - first-version default scope is teacher-owned entries with optional course or assignment relevance; broader shared banks come later
+
+Current runtime baseline:
+
+- the drawer now supports point / area / page structured feedback drafts on governed PDFs
+- the selected feedback item can now edit note body, intent, workflow state, and linked criterion inside the drawer
+- the drawer now exposes a minimal teacher-owned comment bank with personal / course / task scope and optional criterion linkage
+- teachers can insert a reusable comment into the selected feedback item and promote a one-off anchored note into the personal comment bank without leaving the drawer
+- text-anchored comments, OCR-driven upgrades, and shared course-team comment banks remain later work
 
 Structured feedback record minimum:
 

@@ -240,6 +240,7 @@
 					:error-message="drawerErrorMessage"
 					:marking-busy="markingBusy"
 					:feedback-busy="feedbackBusy"
+					:comment-bank-busy="commentBankBusy"
 					:publication-busy="publicationBusy"
 					:submission-seen-busy="submissionSeenBusy"
 					:publish-busy="publishBusy"
@@ -252,6 +253,7 @@
 					@switch-version="switchSubmissionVersion"
 					@save-marking="saveDrawerMarking"
 					@save-feedback-draft="saveFeedbackDraft"
+					@save-comment-bank-entry="saveFeedbackCommentBankEntry"
 					@save-feedback-publication="saveFeedbackPublication"
 					@moderator-action="runModeratorAction"
 					@mark-submission-seen="markSubmissionSeen"
@@ -270,6 +272,7 @@ import { computed, nextTick, reactive, ref, watch } from 'vue';
 import { Badge, FeatherIcon, Spinner, toast } from 'frappe-ui';
 
 import { createGradebookService } from '@/lib/services/gradebook/gradebookService';
+import type { CommentBankScopeMode } from '@/types/contracts/gradebook/comment_bank';
 import type { FeedbackWorkspaceItem } from '@/types/contracts/gradebook/feedback_workspace';
 import type { Response as GetDrawerResponse } from '@/types/contracts/gradebook/get_drawer';
 import type { Request as ModeratorActionRequest } from '@/types/contracts/gradebook/moderator_action';
@@ -327,6 +330,7 @@ const gradebookLoadVersion = ref(0);
 const drawerLoadVersion = ref(0);
 const markingBusy = ref(false);
 const feedbackBusy = ref(false);
+const commentBankBusy = ref(false);
 const publicationBusy = ref(false);
 const submissionSeenBusy = ref(false);
 const publishBusy = ref(false);
@@ -869,6 +873,26 @@ async function saveFeedbackDraft(payload: {
 		showDangerToast('Could not save feedback draft');
 	} finally {
 		feedbackBusy.value = false;
+	}
+}
+
+async function saveFeedbackCommentBankEntry(payload: {
+	outcome_id: string;
+	body: string;
+	feedback_intent: FeedbackWorkspaceItem['intent'];
+	assessment_criteria?: string | null;
+	scope_mode: CommentBankScopeMode;
+}) {
+	commentBankBusy.value = true;
+	try {
+		await gradebookService.saveFeedbackCommentBankEntry(payload);
+		showSuccessToast('Reusable comment saved.');
+		await refreshCurrentSelection(currentDrawerSelection());
+	} catch (error) {
+		console.error('Failed to save reusable comment', error);
+		showDangerToast('Could not save this reusable comment');
+	} finally {
+		commentBankBusy.value = false;
 	}
 }
 

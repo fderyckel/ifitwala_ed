@@ -85,6 +85,7 @@ Rules:
 3. `get_org_communication_quick_create_options()` is the canonical source for:
    - organization and school authoring scope
    - allowed communication/status/priority/surface/interaction options
+   - delivery rules per audience cohort for portal surfaces and Morning Brief fields
    - recipient rules per audience target mode
    - workflow-first audience presets
    - bounded suggested teams and student groups for the current user/scope
@@ -124,7 +125,7 @@ Rules:
    - advanced row grammar kept out of the default path
 6. `entryMode='class-event'` hard-locks these payload values even though they are hidden from the overlay:
    - `communication_type='Class Announcement'`
-   - `portal_surface='Everywhere'`
+   - `portal_surface='Portal Feed'`
    - `interaction_mode='None'`
    - `allow_private_notes=0`
    - `allow_public_thread=0`
@@ -134,7 +135,12 @@ Rules:
 9. The resolved audience may include staff, students, and/or guardians depending on the selected audience rows.
 10. `allow_private_notes` remains the school-side/private notes setting and must not be described in the UI or docs as recipient-visible thread sharing.
 11. Draft saves, including attachment auto-save, may omit Morning Brief dates temporarily; `brief_start_date` becomes required when the communication is scheduled or published with `portal_surface='Morning Brief' | 'Everywhere'`.
-12. Draft saves, including attachment auto-save, may also omit audience completion temporarily. Missing row scope selections, missing recipient toggles, and draft-only organization/issuing-school cleanup are enforced only when the communication is scheduled or published.
+12. In `entryMode='staff-home'`, delivery surfaces are audience-aware:
+   - staff-only recipients => `Desk`, `Morning Brief`, or `Everywhere`
+   - portal-only recipients (`Students` and/or `Guardians`, no `Staff`) => `Portal Feed`
+   - mixed staff + portal recipients => `Portal Feed` or `Everywhere`
+13. In `entryMode='staff-home'`, Morning Brief-only controls (`Brief order`, `Brief start date`, `Brief end date`) render only when the currently selected portal surface includes Morning Brief semantics.
+14. Draft saves, including attachment auto-save, may also omit audience completion temporarily. Missing row scope selections, missing recipient toggles, and draft-only organization/issuing-school cleanup are enforced only when the communication is scheduled or published.
 
 ## 4. Quick-Create Attachment Contract
 

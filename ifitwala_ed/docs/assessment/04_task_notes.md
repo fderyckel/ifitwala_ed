@@ -3,7 +3,7 @@
 Status: **Authoritative / Current Workspace Contract**
 Scope: `Task`, `Task Delivery`, `Task Outcome`, `Task Submission`, `Task Contribution`
 Audience: Product, Engineering, and coding agents
-Last updated: 2026-04-17
+Last updated: 2026-04-19
 
 This document defines the current task runtime contract in the workspace.
 It replaces older lesson-instance-era notes and removes future-state claims that are not yet true in code.
@@ -102,6 +102,7 @@ Feedback-specific implication from the canonical feedback contract:
 
 - future structured feedback records and derived feedback artifacts must bind to a selected submission version or explicit evidence stub context
 - learner submissions remain immutable even when annotated return artifacts exist
+- the current assessment runtime now also exposes one version-bound feedback workspace plus one teacher-owned comment-bank context through the gradebook drawer, but those remain feedback-side productivity layers rather than official outcome truth
 
 ### 1.5 Task Contribution
 
@@ -110,6 +111,12 @@ It does not replace the outcome row directly in the UI contract.
 The official result is derived from eligible contributions, not entered straight into the gradebook payload.
 For assessed `Completion` and `Binary` deliveries, the contribution row carries `judgment_code`; `Task Outcome.is_complete`
 remains the derived official truth rather than the primary write path.
+
+Feedback-specific implication:
+
+- reusable feedback comments and anchored feedback items remain adjacent assessment records
+- they may link to rubric criteria and selected submission versions
+- they must not replace `Task Contribution` as grading input or `Task Outcome` as official result truth
 
 ---
 

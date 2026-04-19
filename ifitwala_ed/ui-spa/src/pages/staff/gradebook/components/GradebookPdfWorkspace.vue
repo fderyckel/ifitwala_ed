@@ -357,6 +357,133 @@
 						placeholder="Capture the draft teaching note for this feedback anchor."
 						@input="onSelectedDraftCommentChanged"
 					/>
+					<div class="mt-4 grid gap-3">
+						<div class="grid gap-3 md:grid-cols-2">
+							<div class="space-y-1.5">
+								<label class="block text-xs font-semibold uppercase tracking-[0.16em] text-ink/45">
+									Intent
+								</label>
+								<FormControl
+									type="select"
+									:options="feedbackIntentOptions"
+									option-label="label"
+									option-value="value"
+									:model-value="selectedDraft.intent"
+									:disabled="props.disabled"
+									@update:modelValue="onSelectedDraftIntentChanged"
+								/>
+							</div>
+							<div class="space-y-1.5">
+								<label class="block text-xs font-semibold uppercase tracking-[0.16em] text-ink/45">
+									Workflow state
+								</label>
+								<FormControl
+									type="select"
+									:options="feedbackWorkflowOptions"
+									option-label="label"
+									option-value="value"
+									:model-value="selectedDraft.workflow_state"
+									:disabled="props.disabled"
+									@update:modelValue="onSelectedDraftWorkflowStateChanged"
+								/>
+							</div>
+						</div>
+
+						<div class="space-y-1.5">
+							<label class="block text-xs font-semibold uppercase tracking-[0.16em] text-ink/45">
+								Linked criterion
+							</label>
+							<FormControl
+								type="select"
+								:options="criterionOptionsWithBlank"
+								option-label="label"
+								option-value="value"
+								:model-value="selectedDraft.assessment_criteria || ''"
+								:disabled="props.disabled || !criterionOptionsWithBlank.length"
+								@update:modelValue="onSelectedDraftCriterionChanged"
+							/>
+						</div>
+					</div>
+
+					<div class="mt-4 rounded-2xl border border-border/70 bg-white/80 p-4">
+						<div class="flex items-start justify-between gap-3">
+							<div>
+								<p class="text-xs font-semibold uppercase tracking-[0.16em] text-ink/45">
+									Reusable comments
+								</p>
+								<h5 class="mt-1 text-sm font-semibold text-ink">Comment bank</h5>
+								<p class="mt-2 text-sm text-ink/65">
+									Insert a reusable note into this draft, or promote the current draft note into
+									your personal bank.
+								</p>
+							</div>
+							<Badge variant="subtle">{{ commentBankCountLabel }}</Badge>
+						</div>
+
+						<div class="mt-4 grid gap-3 md:grid-cols-[minmax(0,1fr)_auto] md:items-end">
+							<div class="space-y-1.5">
+								<label class="block text-xs font-semibold uppercase tracking-[0.16em] text-ink/45">
+									Save scope
+								</label>
+								<FormControl
+									type="select"
+									:options="commentBankScopeOptions"
+									option-label="label"
+									option-value="value"
+									:model-value="selectedCommentBankScope"
+									:disabled="props.disabled || commentBankSaveDisabled"
+									@update:modelValue="onCommentBankScopeChanged"
+								/>
+							</div>
+							<button
+								type="button"
+								class="if-button if-button--secondary"
+								:disabled="commentBankSaveDisabled"
+								@click="emitSaveSelectedDraftToCommentBank"
+							>
+								{{ props.commentBankBusy ? 'Saving…' : 'Add to comment bank' }}
+							</button>
+						</div>
+
+						<div class="mt-4 space-y-2">
+							<button
+								v-for="entry in suggestedCommentBankEntries"
+								:key="entry.id"
+								type="button"
+								class="w-full rounded-2xl border border-border/70 bg-white px-3 py-3 text-left transition hover:border-border hover:bg-gray-50"
+								:disabled="props.disabled"
+								@click="applyCommentBankEntry(entry.id)"
+							>
+								<div class="flex items-start justify-between gap-3">
+									<div class="min-w-0">
+										<p class="text-sm font-semibold text-ink">{{ entry.label }}</p>
+										<div class="mt-2 flex flex-wrap gap-2">
+											<Badge variant="subtle">{{ commentBankScopeLabel(entry.scope_mode) }}</Badge>
+											<Badge v-if="entry.assessment_criteria_label" variant="subtle">
+												{{ entry.assessment_criteria_label }}
+											</Badge>
+											<Badge
+												v-for="reason in entry.match_reasons"
+												:key="`${entry.id}-${reason}`"
+												variant="subtle"
+											>
+												{{ commentBankReasonLabel(reason) }}
+											</Badge>
+										</div>
+									</div>
+									<span class="text-xs font-semibold text-canopy">Use</span>
+								</div>
+								<p class="mt-2 text-sm text-ink/70">{{ entry.body }}</p>
+							</button>
+
+							<div
+								v-if="!suggestedCommentBankEntries.length"
+								class="rounded-2xl border border-dashed border-border/70 bg-gray-50/40 px-4 py-5 text-sm text-ink/65"
+							>
+								No reusable comments match this drawer context yet.
+							</div>
+						</div>
+					</div>
 					<p class="mt-3 text-xs text-ink/55">
 						{{ selectedDraftAnchorSummary }}
 					</p>
@@ -367,7 +494,7 @@
 </template>
 
 <script setup lang="ts">
-import { Badge, Spinner } from 'frappe-ui';
+import { Badge, FormControl, Spinner } from 'frappe-ui';
 import {
 	computed,
 	nextTick,
@@ -380,6 +507,11 @@ import {
 import { GlobalWorkerOptions, getDocument } from 'pdfjs-dist/legacy/build/pdf.mjs';
 import pdfWorkerUrl from 'pdfjs-dist/legacy/build/pdf.worker.min.mjs?url';
 
+import type {
+	CommentBankEntry,
+	CommentBankPayload,
+	CommentBankScopeMode,
+} from '@/types/contracts/gradebook/comment_bank';
 import type { FeedbackWorkspaceItem } from '@/types/contracts/gradebook/feedback_workspace';
 import type { Response as GetDrawerResponse } from '@/types/contracts/gradebook/get_drawer';
 
@@ -432,11 +564,23 @@ const props = defineProps<{
 	attachment: SubmissionAttachmentRow;
 	annotationReadiness?: AnnotationReadinessPayload | null;
 	items?: FeedbackWorkspaceItem[];
+	commentBank?: CommentBankPayload | null;
+	criteriaOptions?: Array<{ label: string; value: string }>;
+	commentBankBusy?: boolean;
 	disabled?: boolean;
 }>();
 
 const emit = defineEmits<{
 	(e: 'update:items', payload: FeedbackWorkspaceItem[]): void;
+	(
+		e: 'save-comment-bank-entry',
+		payload: {
+			body: string;
+			feedback_intent: FeedbackWorkspaceItem['intent'];
+			assessment_criteria?: string | null;
+			scope_mode: CommentBankScopeMode;
+		}
+	): void;
 }>();
 
 const canvasRef = ref<HTMLCanvasElement | null>(null);
@@ -456,6 +600,45 @@ const selectedDraftId = ref<string | null>(null);
 const pendingRect = ref<PendingRectDraft | null>(null);
 const draftSequence = ref(0);
 const ignoreNextSurfaceClick = ref(false);
+const selectedCommentBankScope = ref<CommentBankScopeMode>('task');
+
+const feedbackIntentOptions: Array<{ label: string; value: FeedbackWorkspaceItem['intent'] }> = [
+	{ label: 'Strength', value: 'strength' },
+	{ label: 'Issue', value: 'issue' },
+	{ label: 'Question', value: 'question' },
+	{ label: 'Next step', value: 'next_step' },
+	{ label: 'Rubric evidence', value: 'rubric_evidence' },
+];
+
+const feedbackWorkflowOptions: Array<{
+	label: string;
+	value: FeedbackWorkspaceItem['workflow_state'];
+}> = [
+	{ label: 'Draft', value: 'draft' },
+	{ label: 'Published', value: 'published' },
+	{ label: 'Acknowledged', value: 'acknowledged' },
+	{ label: 'Resolved', value: 'resolved' },
+];
+
+const commentBankScopeOptions = computed<Array<{ label: string; value: CommentBankScopeMode }>>(
+	() => {
+		const options: Array<{ label: string; value: CommentBankScopeMode }> = [
+			{ label: 'Personal', value: 'personal' },
+		];
+		if (props.commentBank?.context.course) {
+			options.push({ label: 'This course', value: 'course' });
+		}
+		if (props.commentBank?.context.task) {
+			options.push({ label: 'This task', value: 'task' });
+		}
+		return options;
+	}
+);
+
+const criterionOptionsWithBlank = computed(() => {
+	const rows = props.criteriaOptions || [];
+	return [{ label: 'No linked criterion', value: '' }, ...rows];
+});
 
 const sourcePdfUrl = computed(
 	() => props.attachment.open_url || props.annotationReadiness?.open_url || null
@@ -501,6 +684,10 @@ const selectedDraft = computed(
 const draftCountLabel = computed(() => {
 	const count = draftAnnotations.value.length;
 	return count === 1 ? '1 draft' : `${count} drafts`;
+});
+const commentBankCountLabel = computed(() => {
+	const count = props.commentBank?.entries.length || 0;
+	return count === 1 ? '1 entry' : `${count} entries`;
 });
 
 const pointDraftsForCurrentPage = computed(() =>
@@ -614,6 +801,28 @@ const selectedDraftAnchorSummary = computed(() => {
 	}
 	return 'Page-level draft with no local coordinate anchor yet.';
 });
+const commentBankEntries = computed(() => props.commentBank?.entries || []);
+const selectedDraftCriteria = computed(() => selectedDraft.value?.assessment_criteria || null);
+const suggestedCommentBankEntries = computed(() => {
+	const selectedCriteria = selectedDraftCriteria.value;
+	const entries = [...commentBankEntries.value];
+	entries.sort((left, right) => {
+		const leftCriteriaMatch =
+			Boolean(selectedCriteria) && left.assessment_criteria === selectedCriteria ? 1 : 0;
+		const rightCriteriaMatch =
+			Boolean(selectedCriteria) && right.assessment_criteria === selectedCriteria ? 1 : 0;
+		if (leftCriteriaMatch !== rightCriteriaMatch) return rightCriteriaMatch - leftCriteriaMatch;
+		return Number(right.match_score || 0) - Number(left.match_score || 0);
+	});
+	return entries;
+});
+const commentBankSaveDisabled = computed(
+	() =>
+		Boolean(props.disabled) ||
+		Boolean(props.commentBankBusy) ||
+		!selectedDraft.value ||
+		!selectedDraft.value.comment.trim()
+);
 
 const fallbackMessage = computed(() => {
 	if (viewerError.value) {
@@ -805,6 +1014,12 @@ function rectStyle(rect?: AnnotationRect, dashed = false): CSSProperties {
 	};
 }
 
+function supportsOverlayItem(item: FeedbackWorkspaceItem): item is FeedbackWorkspaceItem & {
+	kind: 'point' | 'rect' | 'page';
+} {
+	return item.kind === 'point' || item.kind === 'rect' || item.kind === 'page';
+}
+
 function cloneFeedbackItems(items: FeedbackWorkspaceItem[]): FeedbackWorkspaceItem[] {
 	return items.map(item => ({
 		...item,
@@ -880,30 +1095,22 @@ function feedbackItemsFromDrafts(drafts: DraftAnnotation[]): FeedbackWorkspaceIt
 }
 
 function draftsFromFeedbackItems(items: FeedbackWorkspaceItem[]): DraftAnnotation[] {
-	return items
-		.filter(
-			(
-				item
-			): item is FeedbackWorkspaceItem & {
-				kind: 'point' | 'rect' | 'page';
-			} => item.kind === 'point' || item.kind === 'rect' || item.kind === 'page'
-		)
-		.map(item => ({
-			id: item.id || nextDraftId(),
-			kind: item.kind,
-			page: item.page,
-			comment: item.comment || '',
-			intent: item.intent || 'issue',
-			workflow_state: item.workflow_state || 'draft',
-			assessment_criteria: item.assessment_criteria || null,
-			author: item.author || null,
-			point: item.kind === 'point' && 'point' in item.anchor ? item.anchor.point : undefined,
-			rect: item.kind === 'rect' && 'rect' in item.anchor ? item.anchor.rect : undefined,
-		}));
+	return items.filter(supportsOverlayItem).map(item => ({
+		id: item.id || nextDraftId(),
+		kind: item.kind,
+		page: item.page,
+		comment: item.comment || '',
+		intent: item.intent || 'issue',
+		workflow_state: item.workflow_state || 'draft',
+		assessment_criteria: item.assessment_criteria || null,
+		author: item.author || null,
+		point: item.kind === 'point' && 'point' in item.anchor ? item.anchor.point : undefined,
+		rect: item.kind === 'rect' && 'rect' in item.anchor ? item.anchor.rect : undefined,
+	}));
 }
 
 function syncDraftsFromProps() {
-	const nextItems = cloneFeedbackItems(props.items || []);
+	const nextItems = cloneFeedbackItems((props.items || []).filter(supportsOverlayItem));
 	const nextSignature = feedbackItemsSignature(nextItems);
 	const currentSignature = feedbackItemsSignature(feedbackItemsFromDrafts(draftAnnotations.value));
 	if (nextSignature === currentSignature) return;
@@ -917,7 +1124,13 @@ function syncDraftsFromProps() {
 }
 
 function emitItemsUpdate() {
-	emit('update:items', cloneFeedbackItems(feedbackItemsFromDrafts(draftAnnotations.value)));
+	const passthroughItems = cloneFeedbackItems(
+		(props.items || []).filter(item => !supportsOverlayItem(item))
+	);
+	emit(
+		'update:items',
+		cloneFeedbackItems([...feedbackItemsFromDrafts(draftAnnotations.value), ...passthroughItems])
+	);
 }
 
 function nextDraftId() {
@@ -1032,10 +1245,76 @@ function cancelPendingRect() {
 function onSelectedDraftCommentChanged(event: Event) {
 	if (!selectedDraft.value) return;
 	const nextComment = (event.target as HTMLTextAreaElement).value;
+	updateSelectedDraft({ comment: nextComment });
+}
+
+function updateSelectedDraft(patch: Partial<DraftAnnotation>) {
+	if (!selectedDraft.value) return;
 	draftAnnotations.value = draftAnnotations.value.map(draft =>
-		draft.id === selectedDraft.value?.id ? { ...draft, comment: nextComment } : draft
+		draft.id === selectedDraft.value?.id ? { ...draft, ...patch } : draft
 	);
 	emitItemsUpdate();
+}
+
+function onSelectedDraftIntentChanged(value: unknown) {
+	updateSelectedDraft({ intent: String(value || 'issue') as FeedbackWorkspaceItem['intent'] });
+}
+
+function onSelectedDraftWorkflowStateChanged(value: unknown) {
+	updateSelectedDraft({
+		workflow_state: String(value || 'draft') as FeedbackWorkspaceItem['workflow_state'],
+	});
+}
+
+function onSelectedDraftCriterionChanged(value: unknown) {
+	const nextValue = String(value || '').trim();
+	updateSelectedDraft({ assessment_criteria: nextValue || null });
+}
+
+function applyCommentBankEntry(entryId: string) {
+	const entry = commentBankEntries.value.find(row => row.id === entryId);
+	if (!entry || !selectedDraft.value || props.disabled) return;
+	updateSelectedDraft({
+		comment: entry.body,
+		intent: entry.intent,
+		assessment_criteria: entry.assessment_criteria || null,
+	});
+}
+
+function commentBankScopeLabel(scopeMode: CommentBankScopeMode) {
+	if (scopeMode === 'task') return 'Task';
+	if (scopeMode === 'course') return 'Course';
+	return 'Personal';
+}
+
+function commentBankReasonLabel(reason: string) {
+	if (reason === 'criterion') return 'Criterion match';
+	if (reason === 'task') return 'Task match';
+	if (reason === 'course') return 'Course match';
+	return 'General';
+}
+
+function defaultCommentBankScope(): CommentBankScopeMode {
+	if (props.commentBank?.context.task) return 'task';
+	if (props.commentBank?.context.course) return 'course';
+	return 'personal';
+}
+
+function onCommentBankScopeChanged(value: unknown) {
+	const resolved = String(value || '').trim();
+	if (resolved === 'personal' || resolved === 'course' || resolved === 'task') {
+		selectedCommentBankScope.value = resolved;
+	}
+}
+
+function emitSaveSelectedDraftToCommentBank() {
+	if (!selectedDraft.value || commentBankSaveDisabled.value) return;
+	emit('save-comment-bank-entry', {
+		body: selectedDraft.value.comment.trim(),
+		feedback_intent: selectedDraft.value.intent,
+		assessment_criteria: selectedDraft.value.assessment_criteria || null,
+		scope_mode: selectedCommentBankScope.value || defaultCommentBankScope(),
+	});
 }
 
 function removeSelectedDraft() {
@@ -1180,6 +1459,17 @@ watch(
 		syncDraftsFromProps();
 		zoomFactor.value = 1;
 		void loadPdfDocument();
+	},
+	{ immediate: true }
+);
+
+watch(
+	[() => props.commentBank?.context.task || null, () => props.commentBank?.context.course || null],
+	() => {
+		const availableScopes = new Set(commentBankScopeOptions.value.map(option => option.value));
+		if (!availableScopes.has(selectedCommentBankScope.value)) {
+			selectedCommentBankScope.value = defaultCommentBankScope();
+		}
 	},
 	{ immediate: true }
 );

@@ -155,6 +155,14 @@ class TestOrgCommunicationQuickCreate(FrappeTestCase):
         self.assertIsNone(payload["permissions"]["blocked_reason"])
         self.assertFalse(payload["permissions"]["can_target_wide_school_scope"])
         self.assertNotIn("Organization", payload["fields"]["audience_target_modes"])
+        self.assertEqual(
+            payload["delivery_rules"]["profiles"]["portal_only"]["allowed_portal_surfaces"],
+            ["Portal Feed"],
+        )
+        self.assertEqual(
+            payload["delivery_rules"]["profiles"]["mixed"]["allowed_portal_surfaces"],
+            ["Portal Feed", "Everywhere"],
+        )
 
     def test_get_options_includes_organization_mode_for_wide_audience_roles(self):
         with (

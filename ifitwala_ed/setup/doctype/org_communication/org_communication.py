@@ -54,6 +54,28 @@ TARGET_MODE_ALLOWED_RECIPIENTS = {
     "Team": {"to_staff"},
     "Student Group": {"to_staff", "to_students", "to_guardians"},
 }
+BRIEF_PORTAL_SURFACES = ("Morning Brief", "Everywhere")
+DELIVERY_PROFILE_ALLOWED_PORTAL_SURFACES = {
+    "staff_only": {"Desk", "Morning Brief", "Everywhere"},
+    "portal_only": {"Portal Feed"},
+    "mixed": {"Portal Feed", "Everywhere"},
+}
+DELIVERY_PROFILE_PREFERRED_PORTAL_SURFACES = {
+    "undecided": ("Everywhere", "Desk", "Portal Feed", "Morning Brief"),
+    "staff_only": ("Everywhere", "Desk", "Morning Brief"),
+    "portal_only": ("Portal Feed",),
+    "mixed": ("Everywhere", "Portal Feed"),
+}
+DELIVERY_PROFILE_HELP_TEXT = {
+    "undecided": _("Choose the audience first to narrow delivery surfaces to the ones that match that communication."),
+    "staff_only": _("Staff-only communications can publish to Desk, Morning Brief, or Everywhere."),
+    "portal_only": _(
+        "Student and guardian audiences publish through Portal Feed. Morning Brief dates are not used for portal-only communications."
+    ),
+    "mixed": _(
+        "Communications that include both staff and portal recipients can publish to Portal Feed or Everywhere."
+    ),
+}
 ORG_COMMUNICATION_NAME_PATTERN = "ORG-COMM-.YY.-.MM.-.#####"
 
 
@@ -94,6 +116,64 @@ def _get_enabled_recipient_fields(row) -> set[str]:
 
 def _allows_partial_audience_editing(doc) -> bool:
     return str(_field_value(doc, "status") or "").strip() == "Draft"
+
+
+def resolve_org_communication_delivery_profile(audiences) -> str:
+    has_staff = False
+    has_portal = False
+
+    for row in audiences or []:
+        enabled_recipients = _get_enabled_recipient_fields(row)
+        if enabled_recipients & {"to_staff"}:
+            has_staff = True
+        if enabled_recipients & {"to_students", "to_guardians"}:
+            has_portal = True
+
+    if has_staff and has_portal:
+        return "mixed"
+    if has_portal:
+        return "portal_only"
+    if has_staff:
+        return "staff_only"
+    return "undecided"
+
+
+def get_org_communication_allowed_portal_surfaces(profile: str) -> set[str]:
+    return set(DELIVERY_PROFILE_ALLOWED_PORTAL_SURFACES.get(profile, set()))
+
+
+def get_org_communication_delivery_rules(*, portal_surfaces: list[str], default_surface: str | None) -> dict:
+    available_surfaces = [str(surface or "").strip() for surface in portal_surfaces if str(surface or "").strip()]
+    default_value = str(default_surface or "").strip()
+
+    def _pick_preferred_surface(profile: str, allowed_surfaces: list[str]) -> str:
+        if not allowed_surfaces:
+            return ""
+        if default_value and default_value in allowed_surfaces:
+            return default_value
+        preferred_order = DELIVERY_PROFILE_PREFERRED_PORTAL_SURFACES.get(profile, ())
+        for candidate in preferred_order:
+            if candidate in allowed_surfaces:
+                return candidate
+        return allowed_surfaces[0]
+
+    profiles: dict[str, dict[str, object]] = {}
+    for profile in ("undecided", "staff_only", "portal_only", "mixed"):
+        if profile == "undecided":
+            allowed_surfaces = list(available_surfaces)
+        else:
+            allowed_set = get_org_communication_allowed_portal_surfaces(profile)
+            allowed_surfaces = [surface for surface in available_surfaces if surface in allowed_set]
+        profiles[profile] = {
+            "allowed_portal_surfaces": allowed_surfaces,
+            "preferred_portal_surface": _pick_preferred_surface(profile, allowed_surfaces),
+            "help_text": DELIVERY_PROFILE_HELP_TEXT.get(profile, ""),
+        }
+
+    return {
+        "brief_portal_surfaces": [surface for surface in available_surfaces if surface in set(BRIEF_PORTAL_SURFACES)],
+        "profiles": profiles,
+    }
 
 
 # --------------------------------------------------------------------
@@ -761,8 +841,31 @@ class OrgCommunication(Document):
         """Ensure portal_surface is compatible with brief dates."""
         portal_surface = (self.portal_surface or "").strip()
         status = (self.status or "").strip()
+        delivery_profile = resolve_org_communication_delivery_profile(_field_value(self, "audiences") or [])
 
-        if portal_surface in {"Morning Brief", "Everywhere"} and status in {"Published", "Scheduled"}:
+        if not _allows_partial_audience_editing(self) and delivery_profile != "undecided":
+            allowed_surfaces = get_org_communication_allowed_portal_surfaces(delivery_profile)
+            if allowed_surfaces and portal_surface and portal_surface not in allowed_surfaces:
+                if delivery_profile == "portal_only":
+                    frappe.throw(
+                        _("Student and guardian audiences must use Portal Feed instead of {surface}.").format(
+                            surface=portal_surface
+                        ),
+                        title=_("Invalid Portal Surface"),
+                    )
+                if delivery_profile == "mixed":
+                    frappe.throw(
+                        _(
+                            "Audiences that include both staff and portal recipients must use Portal Feed or Everywhere."
+                        ),
+                        title=_("Invalid Portal Surface"),
+                    )
+                frappe.throw(
+                    _("Staff-only audiences must use Desk, Morning Brief, or Everywhere."),
+                    title=_("Invalid Portal Surface"),
+                )
+
+        if portal_surface in set(BRIEF_PORTAL_SURFACES) and status in {"Published", "Scheduled"}:
             if not self.brief_start_date:
                 frappe.throw(
                     _("Brief Start Date is required when Portal Surface is Morning Brief or Everywhere."),

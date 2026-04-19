@@ -124,6 +124,8 @@
 									:attachment-context-locked="attachmentContextLocked"
 									:attachment-context-lock-message="attachmentContextLockMessage"
 									:brief-dates-required="briefDatesRequired"
+									:show-brief-fields="briefSurfaceSelected"
+									:delivery-help-text="deliveryHelpText"
 									:delivery-validation-message="deliveryValidationMessage"
 									:audience-validation-message="audienceValidationMessage"
 									:audience-empty-state-message="audienceEmptyStateMessage"
@@ -224,6 +226,7 @@ import type {
 } from '@/types/contracts/org_communication_quick_create/create_org_communication_quick';
 import type {
 	OrgCommunicationAudiencePreset,
+	OrgCommunicationQuickDeliveryProfileKey,
 	OrgCommunicationQuickReferenceStudentGroup,
 	OrgCommunicationQuickReferenceTeam,
 	Response as OrgCommunicationQuickCreateOptionsResponse,
@@ -244,6 +247,7 @@ import type {
 type CloseReason = 'backdrop' | 'esc' | 'programmatic';
 type EntryMode = 'staff-home' | 'class-event';
 type AttachmentDraftPurpose = 'governed-file' | 'link';
+const CLASS_EVENT_PORTAL_SURFACE = 'Portal Feed';
 type TopLevelErrorSource =
 	| ''
 	| 'load'
@@ -258,6 +262,23 @@ type AttachmentContextSnapshot = {
 	team: string;
 	schoolScopeSchool: string;
 };
+
+function resolveAudienceDeliveryProfileKey(
+	rows: AudienceRowState[]
+): OrgCommunicationQuickDeliveryProfileKey {
+	let hasStaffRecipients = false;
+	let hasPortalRecipients = false;
+
+	for (const row of rows) {
+		if (row.to_staff) hasStaffRecipients = true;
+		if (row.to_students || row.to_guardians) hasPortalRecipients = true;
+	}
+
+	if (hasStaffRecipients && hasPortalRecipients) return 'mixed';
+	if (hasPortalRecipients) return 'portal_only';
+	if (hasStaffRecipients) return 'staff_only';
+	return 'undecided';
+}
 
 class AttachmentPreconditionError extends Error {}
 
@@ -372,8 +393,35 @@ const schoolSelectOptions = computed(() => {
 const communicationTypeOptions = computed(() => options.value?.fields.communication_types ?? []);
 const statusOptions = computed(() => options.value?.fields.statuses ?? []);
 const priorityOptions = computed(() => options.value?.fields.priorities ?? []);
-const portalSurfaceOptions = computed(() => options.value?.fields.portal_surfaces ?? []);
+const allPortalSurfaceOptions = computed(() => options.value?.fields.portal_surfaces ?? []);
+const deliveryRules = computed(() => options.value?.delivery_rules ?? null);
+const deliveryProfileKey = computed<OrgCommunicationQuickDeliveryProfileKey>(() => {
+	if (isClassEventMode.value) return 'portal_only';
+	return resolveAudienceDeliveryProfileKey(audienceRows.value);
+});
+const activeDeliveryProfile = computed(
+	() => deliveryRules.value?.profiles?.[deliveryProfileKey.value] ?? null
+);
+const portalSurfaceOptions = computed(() => {
+	const allowedSurfaces = activeDeliveryProfile.value?.allowed_portal_surfaces ?? [];
+	if (!allowedSurfaces.length) return allPortalSurfaceOptions.value;
+	return allPortalSurfaceOptions.value.filter(option => allowedSurfaces.includes(option));
+});
 const interactionModeOptions = computed(() => options.value?.fields.interaction_modes ?? []);
+const briefPortalSurfaces = computed(() => deliveryRules.value?.brief_portal_surfaces ?? []);
+const briefSurfaceSelected = computed(() =>
+	briefPortalSurfaces.value.includes(String(form.portal_surface || '').trim())
+);
+const deliveryHelpText = computed(() => activeDeliveryProfile.value?.help_text || '');
+const deliverySurfaceSelectionMessage = computed(() => {
+	const allowedSurfaces = activeDeliveryProfile.value?.allowed_portal_surfaces ?? [];
+	const currentSurface = String(form.portal_surface || '').trim();
+	if (!currentSurface || !allowedSurfaces.length || deliveryProfileKey.value === 'undecided') {
+		return '';
+	}
+	if (allowedSurfaces.includes(currentSurface)) return '';
+	return deliveryHelpText.value || 'Choose a portal surface that matches the selected audience.';
+});
 const hasOrganizationAudience = computed(() =>
 	audienceRows.value.some(row => row.target_mode === 'Organization')
 );
@@ -605,9 +653,7 @@ const issuingScopeLabel = computed(() => {
 	if (orgOption) return orgOption.label;
 	return 'No issuing scope selected';
 });
-const briefDatesRequired = computed(() =>
-	['Morning Brief', 'Everywhere'].includes(String(form.portal_surface || '').trim())
-);
+const briefDatesRequired = computed(() => briefSurfaceSelected.value);
 const privateNotesDisabled = computed(
 	() => !['Structured Feedback'].includes(String(form.interaction_mode || '').trim())
 );
@@ -765,6 +811,7 @@ function getValidationMessage(draftMode = false) {
 	if (!form.communication_type) return 'Communication type is required.';
 	if (!draftMode && !form.status) return 'Status is required.';
 	if (!form.organization) return 'Organization is required.';
+	if (deliverySurfaceSelectionMessage.value) return deliverySurfaceSelectionMessage.value;
 	if (!draftMode && briefDatesRequired.value && !form.brief_start_date) {
 		return 'Brief Start Date is required when Portal Surface is Morning Brief or Everywhere.';
 	}
@@ -831,7 +878,10 @@ const deliveryValidationMessage = computed(() => {
 		message.startsWith('Brief End Date') ||
 		message.startsWith('Publish Until') ||
 		message.startsWith('Publish From') ||
-		message.startsWith('Scheduled communications')
+		message.startsWith('Scheduled communications') ||
+		message.startsWith('Student and guardian audiences') ||
+		message.startsWith('Audiences that include both staff') ||
+		message.startsWith('Staff-only audiences')
 	) {
 		return message;
 	}
@@ -1008,6 +1058,23 @@ watch(
 	}
 );
 
+watch([activeDeliveryProfile, () => form.portal_surface], ([profile, currentSurface]) => {
+	if (!profile) return;
+	const allowedSurfaces = profile.allowed_portal_surfaces ?? [];
+	const currentValue = String(currentSurface || '').trim();
+	if (!allowedSurfaces.length || !currentValue || allowedSurfaces.includes(currentValue)) {
+		return;
+	}
+	const nextSurface = profile.preferred_portal_surface || allowedSurfaces[0] || '';
+	if (!nextSurface || nextSurface === currentValue) return;
+	form.portal_surface = nextSurface;
+	if (!briefPortalSurfaces.value.includes(nextSurface)) {
+		form.brief_start_date = '';
+		form.brief_end_date = '';
+		form.brief_order = '';
+	}
+});
+
 watch(
 	() =>
 		audienceRows.value
@@ -1077,11 +1144,13 @@ function initializeForm() {
 		: defaults.communication_type;
 	form.status = isClassEventMode.value ? 'Published' : defaults.status;
 	form.priority = defaults.priority;
-	form.portal_surface = isClassEventMode.value ? 'Everywhere' : defaults.portal_surface;
+	form.portal_surface = isClassEventMode.value
+		? CLASS_EVENT_PORTAL_SURFACE
+		: defaults.portal_surface;
 	form.publish_from = formatDateTimeInput(new Date());
 	form.publish_to = '';
-	form.brief_start_date = props.sessionDate || '';
-	form.brief_end_date = props.sessionDate || '';
+	form.brief_start_date = isClassEventMode.value ? '' : props.sessionDate || '';
+	form.brief_end_date = isClassEventMode.value ? '' : props.sessionDate || '';
 	form.brief_order = '';
 	form.organization = defaultOrganization;
 	form.school = defaultSchool;
@@ -1550,7 +1619,7 @@ function buildPayload(statusOverride?: string): CreateOrgCommunicationQuickReque
 		communication_type: classEventMode ? 'Class Announcement' : form.communication_type,
 		status: statusOverride || form.status,
 		priority: form.priority,
-		portal_surface: classEventMode ? 'Everywhere' : form.portal_surface,
+		portal_surface: classEventMode ? CLASS_EVENT_PORTAL_SURFACE : form.portal_surface,
 		publish_from: toFrappeDatetime(form.publish_from),
 		publish_to: toFrappeDatetime(form.publish_to),
 		brief_start_date: briefStartDate,

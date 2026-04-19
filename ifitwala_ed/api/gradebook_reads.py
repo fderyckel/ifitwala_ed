@@ -160,7 +160,7 @@ def get_grid(api, filters=None, **kwargs):
 
 def get_drawer(api, outcome_id: str, submission_id: str | None = None, version: int | str | None = None):
     from ifitwala_ed.api import task_submission as task_submission_api
-    from ifitwala_ed.assessment import task_feedback_service
+    from ifitwala_ed.assessment import task_feedback_comment_bank_service, task_feedback_service
 
     api._require(outcome_id, "Task Outcome")
 
@@ -270,6 +270,10 @@ def get_drawer(api, outcome_id: str, submission_id: str | None = None, version: 
             outcome_id,
             selected_submission_id,
         )
+    comment_bank = task_feedback_comment_bank_service.build_comment_bank_payload(
+        outcome_id,
+        actor=frappe.session.user,
+    )
     submission_versions = [
         task_submission_api.build_task_submission_version_summary(
             row,
@@ -329,6 +333,7 @@ def get_drawer(api, outcome_id: str, submission_id: str | None = None, version: 
         "latest_submission": latest_submission,
         "selected_submission": selected_submission,
         "feedback_workspace": feedback_workspace,
+        "comment_bank": comment_bank,
         "submission_versions": submission_versions,
         "my_contribution": {
             "name": my_contribution.get("name"),

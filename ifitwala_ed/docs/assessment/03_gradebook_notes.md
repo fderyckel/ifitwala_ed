@@ -3,7 +3,7 @@
 Status: **UX LOCK DRAFT (Thin)**
 Audience: Product + Engineering + Codex agents
 Goal: A teacher should grade and return work with **minimum clicks** and **zero doctype awareness**.
-Last updated: 2026-04-18
+Last updated: 2026-04-19
 
 ---
 
@@ -155,7 +155,9 @@ Current implementation baseline for the Evidence tab:
 - attachment rows now also carry preview status plus file-type hints from governed Drive metadata where available
 - selected submission payload now includes a server-owned annotation-readiness summary for the currently selected version
 - drawer bootstrap now also returns one bounded **feedback workspace** block for the selected submission version, including summary text, structured anchored items, and explicit feedback/grade publication state
+- drawer bootstrap now also returns one bounded **comment bank** block for the current outcome context, filtered server-side for the current teacher plus course / task / criterion relevance
 - feedback draft and publication changes now use named drawer mutations: `save_feedback_draft` and `save_feedback_publication`
+- reusable feedback comments now save through a named drawer mutation: `save_feedback_comment_bank_entry`
 - current runtime moderation is now routed through named server mutations from the drawer Review tab: `Approve`, `Adjust`, and `Return to Grader`
 - governed PDF evidence now renders inside an Ifitwala-owned `pdf.js` drawer workspace over those server-owned preview/open routes, with page navigation, zoom, and version-bound point / area / page draft feedback anchors on the governed source PDF
 - Evidence tab now distinguishes:
@@ -165,8 +167,9 @@ Current implementation baseline for the Evidence tab:
 
 Current partial annotation-readiness baseline:
 
-- current runtime can render governed source PDFs inside the drawer, support point / area / page structured feedback drafts for the selected submission version there, and fall back to preview/open actions when the source render is unavailable
-- current runtime does **not** yet support text-anchored comments, OCR-driven upgrades, student feedback navigation, replies, or comment-bank insertion
+- current runtime can render governed source PDFs inside the drawer, support point / area / page structured feedback drafts for the selected submission version there, edit draft note / intent / workflow / criterion linkage in place, and fall back to preview/open actions when the source render is unavailable
+- current runtime now supports a minimal teacher-owned comment bank in the drawer, including insertion into the selected feedback item and promotion of a one-off draft note into a reusable entry with personal / course / task scope
+- current runtime does **not** yet support text-anchored comments, OCR-driven upgrades, student feedback navigation, replies, or shared course-team comment banks
 
 Future annotation contract for the drawer:
 
@@ -176,8 +179,8 @@ Future annotation contract for the drawer:
   - point / area / page comment
   - optional ink for handwritten or diagram-heavy work
 
-- first serious authoring version must also include a minimal comment bank / quickmarks flow
-- first version comment bank defaults to teacher-owned entries with optional course or assignment relevance
+- first serious authoring version now includes a minimal comment bank / quickmarks flow inside the drawer
+- current runtime comment-bank scope is teacher-owned first, with personal / course / task relevance and optional criterion linkage
 - unreadable or scanned PDFs must be detected before rich text anchoring is assumed; reduced mode may allow area/page/ink comments until OCR/repair exists
 - reduced-mode comments still create structured feedback records; they do not live only as flattened artifact marks
 - OCR/repair is an asynchronous enhancement path by default and must not block reduced-mode review

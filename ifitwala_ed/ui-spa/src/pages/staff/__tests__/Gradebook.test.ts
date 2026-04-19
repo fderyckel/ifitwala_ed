@@ -20,6 +20,7 @@ const {
 	getDocumentMock,
 	repairTaskRosterMock,
 	saveFeedbackDraftMock,
+	saveFeedbackCommentBankEntryMock,
 	saveFeedbackPublicationMock,
 	saveDraftMock,
 	saveTaskQuizManualReviewMock,
@@ -70,6 +71,7 @@ const {
 	}),
 	repairTaskRosterMock: vi.fn(),
 	saveFeedbackDraftMock: vi.fn(),
+	saveFeedbackCommentBankEntryMock: vi.fn(),
 	saveFeedbackPublicationMock: vi.fn(),
 	saveDraftMock: vi.fn(),
 	saveTaskQuizManualReviewMock: vi.fn(),
@@ -246,6 +248,7 @@ vi.mock('@/lib/services/gradebook/gradebookService', () => ({
 		publishOutcomes: publishOutcomesMock,
 		repairTaskRoster: repairTaskRosterMock,
 		saveFeedbackDraft: saveFeedbackDraftMock,
+		saveFeedbackCommentBankEntry: saveFeedbackCommentBankEntryMock,
 		saveFeedbackPublication: saveFeedbackPublicationMock,
 		saveDraft: saveDraftMock,
 		saveTaskQuizManualReview: saveTaskQuizManualReviewMock,
@@ -616,6 +619,7 @@ afterEach(() => {
 	publishOutcomesMock.mockReset();
 	repairTaskRosterMock.mockReset();
 	saveDraftMock.mockReset();
+	saveFeedbackCommentBankEntryMock.mockReset();
 	saveTaskQuizManualReviewMock.mockReset();
 	submitContributionMock.mockReset();
 	unpublishOutcomesMock.mockReset();

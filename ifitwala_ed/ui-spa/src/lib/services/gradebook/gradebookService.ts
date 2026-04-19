@@ -52,6 +52,10 @@ import type {
 	Response as SaveFeedbackDraftResponse,
 } from '@/types/contracts/gradebook/save_feedback_draft'
 import type {
+	Request as SaveFeedbackCommentBankEntryRequest,
+	Response as SaveFeedbackCommentBankEntryResponse,
+} from '@/types/contracts/gradebook/save_feedback_comment_bank_entry'
+import type {
 	Request as SaveFeedbackPublicationRequest,
 	Response as SaveFeedbackPublicationResponse,
 } from '@/types/contracts/gradebook/save_feedback_publication'
@@ -107,6 +111,12 @@ export function createGradebookService() {
 
 	const saveFeedbackPublicationResource = createResource<SaveFeedbackPublicationResponse>({
 		url: 'ifitwala_ed.api.gradebook.save_feedback_publication',
+		method: 'POST',
+		auto: false,
+	})
+
+	const saveFeedbackCommentBankEntryResource = createResource<SaveFeedbackCommentBankEntryResponse>({
+		url: 'ifitwala_ed.api.gradebook.save_feedback_comment_bank_entry',
 		method: 'POST',
 		auto: false,
 	})
@@ -203,6 +213,12 @@ export function createGradebookService() {
 		return saveFeedbackPublicationResource.submit(payload)
 	}
 
+	async function saveFeedbackCommentBankEntry(
+		payload: SaveFeedbackCommentBankEntryRequest,
+	): Promise<SaveFeedbackCommentBankEntryResponse> {
+		return saveFeedbackCommentBankEntryResource.submit(payload)
+	}
+
 	async function submitContribution(
 		payload: SubmitContributionRequest,
 	): Promise<SubmitContributionResponse> {
@@ -274,6 +290,7 @@ export function createGradebookService() {
 		getDrawer,
 		saveDraft,
 		saveFeedbackDraft,
+		saveFeedbackCommentBankEntry,
 		saveFeedbackPublication,
 		submitContribution,
 		moderatorAction,

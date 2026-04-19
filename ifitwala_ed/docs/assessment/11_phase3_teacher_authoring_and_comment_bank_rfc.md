@@ -1,6 +1,6 @@
 # Ifitwala_Ed — Phase 3 Teacher Authoring And Comment-Bank RFC
 
-Status: **Planned implementation RFC / non-authoritative until canonical runtime docs are updated**
+Status: **Implemented execution RFC / non-authoritative after runtime docs update**
 Audience: Product, Engineering, UX, and coding agents
 Scope: Phase 3 teacher authoring, minimal comment bank, rubric-linked feedback authoring, and curriculum-aware relevance inside the existing assessment drawer
 Last updated: 2026-04-19
@@ -69,15 +69,14 @@ Phase 2 already provides:
 - explicit feedback and grade visibility state in the drawer runtime
 - a governed `pdf.js` drawer workspace with page navigation, zoom, and draft point / area / page anchors
 
-Phase 2 still does **not** provide:
+Phase 3 now adds:
 
 - teacher-speed reusable comments
-- quick insertion from a comment bank
-- a completed authoring UI for each feedback item's intent, criterion linkage, and reusable note flow
-- curriculum-aware relevance hints for feedback reuse
-- student-facing navigator or reply loop
+- quick insertion from a bounded drawer comment bank
+- item-level authoring for each feedback item's intent, criterion linkage, and workflow state
+- personal / course / task relevance for reusable comments
 
-Phase 3 starts from that exact baseline.
+Phase 3 still does **not** provide the student-facing navigator or reply loop.
 
 ---
 

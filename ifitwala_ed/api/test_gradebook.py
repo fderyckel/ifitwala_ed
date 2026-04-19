@@ -34,7 +34,11 @@ class _FakeDelivery:
         return {"eligible_students": 3, "outcomes_created": 3}
 
 
-def _gradebook_stub_modules(task_contribution_service=None, task_feedback_service=None):
+def _gradebook_stub_modules(
+    task_contribution_service=None,
+    task_feedback_service=None,
+    task_feedback_comment_bank_service=None,
+):
     image_utils = types.ModuleType("ifitwala_ed.utilities.image_utils")
     image_utils.apply_preferred_student_images = lambda rows: rows
     quiz_service = types.ModuleType("ifitwala_ed.assessment.quiz_service")
@@ -69,6 +73,29 @@ def _gradebook_stub_modules(task_contribution_service=None, task_feedback_servic
         feedback_service.save_feedback_workspace_draft = lambda payload, actor=None: payload
     if not hasattr(feedback_service, "save_feedback_publication"):
         feedback_service.save_feedback_publication = lambda payload, actor=None: payload
+    comment_bank_service = task_feedback_comment_bank_service or types.ModuleType(
+        "ifitwala_ed.assessment.task_feedback_comment_bank_service"
+    )
+    if not hasattr(comment_bank_service, "build_comment_bank_payload"):
+        comment_bank_service.build_comment_bank_payload = lambda outcome_id, actor=None: {
+            "context": {
+                "course": None,
+                "task": None,
+                "task_title": None,
+                "criteria": [],
+            },
+            "entries": [],
+        }
+    if not hasattr(comment_bank_service, "save_comment_bank_entry"):
+        comment_bank_service.save_comment_bank_entry = lambda payload, actor=None: {
+            "context": {
+                "course": None,
+                "task": None,
+                "task_title": None,
+                "criteria": [],
+            },
+            "entries": [],
+        }
     file_access = types.ModuleType("ifitwala_ed.api.file_access")
     file_access.resolve_academic_file_open_url = (
         lambda *, file_name, file_url, context_doctype=None, context_name=None, **kwargs: (
@@ -90,6 +117,7 @@ def _gradebook_stub_modules(task_contribution_service=None, task_feedback_servic
         "ifitwala_ed.assessment.quiz_service": quiz_service,
         "ifitwala_ed.assessment.task_contribution_service": task_contribution_service
         or types.ModuleType("ifitwala_ed.assessment.task_contribution_service"),
+        "ifitwala_ed.assessment.task_feedback_comment_bank_service": comment_bank_service,
         "ifitwala_ed.assessment.task_feedback_service": feedback_service,
         "ifitwala_ed.assessment.task_outcome_service": types.ModuleType("ifitwala_ed.assessment.task_outcome_service"),
         "ifitwala_ed.assessment.task_submission_service": types.ModuleType(
@@ -251,6 +279,7 @@ class TestGradebookApi(TestCase):
         self.assertNotIn("submissions", payload)
         self.assertEqual(payload["feedback_workspace"]["task_submission"], "TSU-2026-00001")
         self.assertEqual(payload["feedback_workspace"]["publication"]["feedback_visibility"], "hidden")
+        self.assertEqual(payload["comment_bank"]["entries"], [])
         self.assertEqual(payload["submission_versions"][0]["submission_id"], "TSU-2026-00001")
         self.assertTrue(payload["submission_versions"][0]["is_selected"])
         self.assertFalse(payload["submission_versions"][1]["is_selected"])
@@ -415,6 +444,74 @@ class TestGradebookApi(TestCase):
         self.assertEqual(saved_payloads[0][0]["grade_visibility"], "hidden")
         self.assertEqual(saved_payloads[0][1], "unit.test@example.com")
         self.assertEqual(response["feedback_workspace"]["publication"]["feedback_visibility"], "student")
+
+    def test_save_feedback_comment_bank_entry_uses_named_comment_bank_service(self):
+        comment_bank_service = types.ModuleType("ifitwala_ed.assessment.task_feedback_comment_bank_service")
+        saved_payloads = []
+        comment_bank_service.build_comment_bank_payload = lambda outcome_id, actor=None: {"context": {}, "entries": []}
+        comment_bank_service.save_comment_bank_entry = lambda payload, actor=None: (
+            saved_payloads.append((payload, actor))
+            or {
+                "context": {
+                    "course": "CRS-1",
+                    "task": "TASK-1",
+                    "task_title": "Essay",
+                    "criteria": [],
+                },
+                "entries": [
+                    {
+                        "id": "BANK-1",
+                        "label": "Use evidence",
+                        "body": "Use a stronger quotation here.",
+                        "intent": "issue",
+                        "scope_mode": "task",
+                        "course": "CRS-1",
+                        "task": "TASK-1",
+                        "assessment_criteria": None,
+                        "assessment_criteria_label": None,
+                        "match_reasons": ["task"],
+                        "match_score": 4,
+                    }
+                ],
+            }
+        )
+
+        with stubbed_frappe(
+            extra_modules=_gradebook_stub_modules(task_feedback_comment_bank_service=comment_bank_service)
+        ) as frappe:
+
+            def fake_get_value(doctype, name, fieldname=None, as_dict=False):
+                if doctype == "Task Outcome" and name == "OUT-1":
+                    return {"task_delivery": "TDL-1"}
+                if doctype == "Task Delivery" and name == "TDL-1":
+                    return {
+                        "name": "TDL-1",
+                        "student_group": "GRP-1",
+                        "task": "TASK-1",
+                        "delivery_mode": "Assess",
+                        "grading_mode": "Criteria",
+                        "allow_feedback": 1,
+                    }
+                return None
+
+            frappe.db.get_value = fake_get_value
+
+            module = _import_fresh_gradebook()
+            module.gradebook_support._can_write_gradebook = lambda: True
+            module.gradebook_support._assert_group_access = lambda student_group: None
+
+            response = module.save_feedback_comment_bank_entry(
+                {
+                    "outcome_id": "OUT-1",
+                    "body": "Use a stronger quotation here.",
+                    "feedback_intent": "issue",
+                    "scope_mode": "task",
+                }
+            )
+
+        self.assertEqual(saved_payloads[0][0]["outcome_id"], "OUT-1")
+        self.assertEqual(saved_payloads[0][1], "unit.test@example.com")
+        self.assertEqual(response["comment_bank"]["entries"][0]["scope_mode"], "task")
 
     def test_submit_contribution_uses_named_service_and_resolves_submission(self):
         submitted_payloads = []

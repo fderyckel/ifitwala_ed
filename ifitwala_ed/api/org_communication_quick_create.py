@@ -18,6 +18,7 @@ from ifitwala_ed.setup.doctype.org_communication.org_communication import (
     WIDE_AUDIENCE_RECIPIENT_ROLES,
     _user_has_any_role,
     get_org_communication_context,
+    get_org_communication_delivery_rules,
 )
 
 IDEMPOTENCY_TTL_SECONDS = 900
@@ -494,6 +495,8 @@ def get_org_communication_quick_create_options(prefill_student_group: str | None
     resolved_school_names = [row.get("name") for row in reference_schools if row.get("name")]
     can_target_wide_school_scope = _user_has_any_role(user, WIDE_AUDIENCE_RECIPIENT_ROLES)
     preferred_school = _clean_text(context.get("default_school"))
+    portal_surface_options = _field_options("Org Communication", "portal_surface")
+    portal_surface_default = _field_default("Org Communication", "portal_surface") or "Everywhere"
     available_target_modes = [
         target_mode
         for target_mode in AUDIENCE_TARGET_MODES
@@ -506,7 +509,7 @@ def get_org_communication_quick_create_options(prefill_student_group: str | None
             "communication_type": _field_default("Org Communication", "communication_type") or "Information",
             "status": _field_default("Org Communication", "status") or "Draft",
             "priority": _field_default("Org Communication", "priority") or "Normal",
-            "portal_surface": _field_default("Org Communication", "portal_surface") or "Everywhere",
+            "portal_surface": portal_surface_default,
             "interaction_mode": _field_default("Org Communication", "interaction_mode") or "None",
             "allow_private_notes": _as_check(_field_default("Org Communication", "allow_private_notes")),
             "allow_public_thread": _as_check(_field_default("Org Communication", "allow_public_thread")),
@@ -515,7 +518,7 @@ def get_org_communication_quick_create_options(prefill_student_group: str | None
             "communication_types": _field_options("Org Communication", "communication_type"),
             "statuses": [value for value in _field_options("Org Communication", "status") if value != "Archived"],
             "priorities": _field_options("Org Communication", "priority"),
-            "portal_surfaces": _field_options("Org Communication", "portal_surface"),
+            "portal_surfaces": portal_surface_options,
             "interaction_modes": _field_options("Org Communication", "interaction_mode"),
             "audience_target_modes": available_target_modes,
         },
@@ -564,6 +567,10 @@ def get_org_communication_quick_create_options(prefill_student_group: str | None
             "blocked_reason": capability.get("blocked_reason"),
             "can_target_wide_school_scope": can_target_wide_school_scope,
         },
+        "delivery_rules": get_org_communication_delivery_rules(
+            portal_surfaces=portal_surface_options,
+            default_surface=portal_surface_default,
+        ),
     }
 
 
