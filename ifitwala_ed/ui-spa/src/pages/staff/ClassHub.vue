@@ -14,7 +14,11 @@
 				</p>
 			</div>
 			<RouterLink
-				:to="{ name: 'staff-class-planning', params: { studentGroup } }"
+				:to="{
+					name: 'staff-class-planning',
+					params: { studentGroup },
+					query: { unit_plan: currentBundle.session.unit_plan || undefined },
+				}"
 				class="if-action inline-flex"
 			>
 				Open Class Planning

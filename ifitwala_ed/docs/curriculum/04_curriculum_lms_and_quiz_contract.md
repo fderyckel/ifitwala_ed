@@ -41,6 +41,8 @@ Current product behavior:
 - the learning-space bootstrap exposes only bounded class-update summary data, not an inline message feed
 - `CourseDetail.vue` stays learning-first and exposes a single `Class Updates` handoff into the filtered student Communication Center
 - the server resolves `learning.focus`, `learning.next_actions`, `learning.reflection_entries`, `learning.selected_context`, and `learning.unit_navigation`
+- `learning.focus` and `learning.selected_context` come from the shared current-curriculum resolver, which prefers live session truth, single in-progress class-unit truth, then calendar-backed unit truth before falling back to dated session heuristics
+- when the current date lands inside a weekend or holiday gap between scheduled units, the previous scheduled unit remains current until the next scheduled unit begins
 - the student page stays learning-first and does not expose shared-plan management labels
 - non-quiz assigned work opens back into `CourseDetail.vue` as the task workspace; quiz work launches `StudentQuiz.vue` only for attempt runtime
 

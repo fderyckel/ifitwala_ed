@@ -92,6 +92,7 @@
 							<p class="type-overline text-ink/60">Unit {{ unit.unit_order || '—' }}</p>
 							<p class="timeline-label__title type-body-strong text-ink">{{ unit.title }}</p>
 							<div class="mt-2 flex flex-wrap gap-2">
+								<span v-if="unit.is_current" class="chip chip--current">Current</span>
 								<span v-if="unit.duration_label" class="chip">{{ unit.duration_label }}</span>
 								<span v-if="unit.unit_status" class="chip">{{ unit.unit_status }}</span>
 							</div>
@@ -289,6 +290,11 @@ function spanStyle(start?: string | null, end?: string | null, minWidthPercent =
 }
 
 function barClass(unit: StaffCoursePlanTimelineUnit) {
+	if (unit.is_current) {
+		return unit.schedule_state === 'overflow'
+			? 'timeline-bar--current-overflow'
+			: 'timeline-bar--current';
+	}
 	if (unit.schedule_state === 'overflow') {
 		return 'timeline-bar--overflow';
 	}
@@ -551,6 +557,32 @@ function barClass(unit: StaffCoursePlanTimelineUnit) {
 .timeline-bar--overflow {
 	border-color: rgb(var(--clay-rgb) / 0.65);
 	background: linear-gradient(90deg, rgb(var(--sand-rgb) / 0.75), rgb(var(--clay-rgb) / 0.26));
+}
+
+.timeline-bar--current {
+	border-color: rgb(var(--jacaranda-rgb) / 0.42);
+	background: linear-gradient(
+		90deg,
+		rgb(var(--jacaranda-rgb) / 0.34),
+		rgb(var(--canopy-rgb) / 0.22)
+	);
+	box-shadow: 0 0 0 2px rgb(var(--jacaranda-rgb) / 0.12);
+}
+
+.timeline-bar--current-overflow {
+	border-color: rgb(var(--jacaranda-rgb) / 0.42);
+	background: linear-gradient(
+		90deg,
+		rgb(var(--jacaranda-rgb) / 0.34),
+		rgb(var(--clay-rgb) / 0.26)
+	);
+	box-shadow: 0 0 0 2px rgb(var(--jacaranda-rgb) / 0.12);
+}
+
+.chip--current {
+	border-color: rgb(var(--jacaranda-rgb) / 0.18);
+	background: rgb(var(--jacaranda-rgb) / 0.08);
+	color: rgb(var(--jacaranda-rgb));
 }
 
 .timeline-note {

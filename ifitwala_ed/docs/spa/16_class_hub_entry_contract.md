@@ -131,5 +131,8 @@ Test refs:
   - Class Hub -> run live class workflows, including the student picker
 - Class Hub teaching scope is server-owned and may be satisfied either by explicit instructor assignment on the Student Group or by authoritative teaching bookings materialized for that employee from the schedule.
 - The Class Hub route is still class-scoped, but live runtime now resolves the active `Class Teaching Plan` for that class and operates on real `Class Session` records instead of demo session state.
+- Class Hub planning handoffs must deep-link to `staff-class-planning` with `unit_plan` when the current session or current unit is known so the teacher lands on the right unit context directly.
+- When no dated session exists, Class Hub must resolve the current unit from the shared current-curriculum resolver before showing a bundle message or creating a minimal session.
 - `Start Session` must reuse the dated `Class Session` when one already exists for the target date. It may create a minimal in-progress `Class Session` only when the class already has a valid class teaching plan and governed unit backbone.
+- If the shared resolver cannot determine a current unit, Class Hub must show an actionable blocked state instead of guessing a first unit.
 - The chooser overlay supports `Esc`, backdrop close, and explicit close button behavior through the shared overlay host contract.

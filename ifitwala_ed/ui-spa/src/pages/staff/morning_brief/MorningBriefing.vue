@@ -45,7 +45,7 @@
 								<div class="flex flex-wrap items-center gap-2">
 									<h2 class="section-header text-canopy/70">Morning Messages</h2>
 									<span
-										class="inline-flex items-center rounded-full border border-white/70 bg-[rgb(var(--surface-strong-rgb)/0.76)] px-3 py-1 text-[11px] font-semibold text-slate-token/74"
+										class="inline-flex items-center rounded-full border border-[rgb(var(--surface-strong-rgb)/0.72)] bg-[rgb(var(--surface-strong-rgb)/0.76)] px-3 py-1 text-[11px] font-semibold text-slate-token/74"
 									>
 										{{ announcementCountLabel }}
 									</span>
@@ -69,7 +69,7 @@
 								:class="
 									showUnreadOnly
 										? 'border-jacaranda/30 bg-jacaranda/10 text-jacaranda shadow-sm'
-										: 'border-border/60 bg-white/70 text-slate-token/80 hover:bg-surface-soft'
+										: 'border-border/60 bg-[rgb(var(--surface-strong-rgb)/0.7)] text-slate-token/80 hover:bg-surface-soft'
 								"
 								@click="showUnreadOnly = !showUnreadOnly"
 							>
@@ -83,7 +83,7 @@
 								:key="item.name"
 								:data-name="item.name"
 								data-testid="morning-announcement-card"
-								class="rounded-[1.75rem] border border-white/70 bg-[linear-gradient(180deg,rgb(var(--surface-strong-rgb)/0.88),rgb(var(--sand-rgb)/0.76))] p-4 shadow-[0_14px_32px_rgb(var(--ink-rgb)/0.04)] sm:p-5"
+								class="rounded-[1.75rem] border border-[rgb(var(--surface-strong-rgb)/0.72)] bg-[linear-gradient(180deg,rgb(var(--surface-strong-rgb)/0.88),rgb(var(--sand-rgb)/0.76))] p-4 shadow-[0_14px_32px_rgb(var(--ink-rgb)/0.04)] sm:p-5"
 							>
 								<div class="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
 									<div class="min-w-0 flex-1">
@@ -135,7 +135,7 @@
 										>
 											<div
 												v-if="hasVisibleAnnouncementActions(item)"
-												class="inline-flex items-center gap-2 rounded-full border border-white/80 bg-[rgb(var(--surface-strong-rgb)/0.8)] px-3 py-1.5"
+												class="inline-flex items-center gap-2 rounded-full border border-[rgb(var(--surface-strong-rgb)/0.8)] bg-[rgb(var(--surface-strong-rgb)/0.8)] px-3 py-1.5"
 											>
 												<span>Reactions {{ getInteractionStatsFor(item).reactions_total }}</span>
 												<span class="h-3 w-px bg-border/70"></span>
@@ -191,7 +191,7 @@
 							<button
 								v-if="showUnreadOnly"
 								type="button"
-								class="mt-3 inline-flex items-center rounded-full border border-border/60 bg-white/75 px-3 py-1 text-xs font-semibold text-slate-token/78 transition-colors hover:bg-surface-soft"
+								class="mt-3 inline-flex items-center rounded-full border border-border/60 bg-[rgb(var(--surface-strong-rgb)/0.75)] px-3 py-1 text-xs font-semibold text-slate-token/78 transition-colors hover:bg-surface-soft"
 								@click="showUnreadOnly = false"
 							>
 								Show all updates
@@ -255,7 +255,7 @@
 									v-model="clinicVolumeView"
 									:items="clinicVolumeViewOptions"
 									size="sm"
-									wrap-class="bg-white/70"
+									wrap-class="bg-[rgb(var(--surface-strong-rgb)/0.7)]"
 									@click.stop
 								/>
 							</div>
@@ -355,7 +355,7 @@
 										</div>
 										<div
 											v-if="log.status_color === 'red'"
-											class="absolute -right-1 -top-1 h-3 w-3 rounded-full bg-flame ring-2 ring-white"
+											class="absolute -right-1 -top-1 h-3 w-3 rounded-full bg-flame ring-2 ring-[rgb(var(--surface-strong-rgb)/1)]"
 										></div>
 									</div>
 
@@ -406,7 +406,7 @@
 				>
 					<div class="space-y-4">
 						<div
-							class="inline-flex w-fit items-center gap-2 rounded-full border border-white/70 bg-[rgb(var(--surface-strong-rgb)/0.72)] px-3 py-1 shadow-[0_8px_24px_rgb(var(--ink-rgb)/0.04)] backdrop-blur-sm"
+							class="inline-flex w-fit items-center gap-2 rounded-full border border-[rgb(var(--surface-strong-rgb)/0.72)] bg-[rgb(var(--surface-strong-rgb)/0.72)] px-3 py-1 shadow-[0_8px_24px_rgb(var(--ink-rgb)/0.04)] backdrop-blur-sm"
 						>
 							<div
 								class="flex h-6 w-6 items-center justify-center rounded-full bg-[rgb(var(--canopy-rgb)/0.08)] text-canopy"
@@ -432,7 +432,7 @@
 
 					<div class="grid gap-2.5 sm:grid-cols-3 lg:grid-cols-1 xl:grid-cols-3">
 						<div
-							class="rounded-[1.35rem] border border-white/70 bg-[rgb(var(--surface-strong-rgb)/0.74)] p-3 shadow-[0_10px_28px_rgb(var(--ink-rgb)/0.04)] backdrop-blur-sm"
+							class="rounded-[1.35rem] border border-[rgb(var(--surface-strong-rgb)/0.72)] bg-[rgb(var(--surface-strong-rgb)/0.74)] p-3 shadow-[0_10px_28px_rgb(var(--ink-rgb)/0.04)] backdrop-blur-sm"
 						>
 							<p class="type-overline text-slate-token/58">In View</p>
 							<p class="mt-2 text-2xl font-semibold tracking-tight text-canopy">
@@ -484,10 +484,10 @@
 								<li
 									v-for="emp in widgets.data.staff_birthdays"
 									:key="emp.name"
-									class="flex items-center gap-3 rounded-2xl border border-white/75 bg-[rgb(var(--surface-strong-rgb)/0.82)] px-3 py-3 shadow-[0_8px_18px_rgb(var(--ink-rgb)/0.04)]"
+									class="flex items-center gap-3 rounded-2xl border border-[rgb(var(--surface-strong-rgb)/0.76)] bg-[rgb(var(--surface-strong-rgb)/0.82)] px-3 py-3 shadow-[0_8px_18px_rgb(var(--ink-rgb)/0.04)]"
 								>
 									<div
-										class="h-10 w-10 overflow-hidden rounded-full bg-white shadow-[var(--shadow-soft)] ring-1 ring-[rgb(var(--clay-rgb)/0.12)]"
+										class="h-10 w-10 overflow-hidden rounded-full bg-[rgb(var(--surface-strong-rgb)/1)] shadow-[var(--shadow-soft)] ring-1 ring-[rgb(var(--clay-rgb)/0.12)]"
 									>
 										<img v-if="emp.image" :src="emp.image" class="h-full w-full object-cover" />
 										<div
@@ -537,10 +537,10 @@
 								<li
 									v-for="stu in widgets.data.my_student_birthdays"
 									:key="stu.first_name + stu.last_name"
-									class="flex items-center gap-3 rounded-2xl border border-white/75 bg-[rgb(var(--surface-strong-rgb)/0.82)] px-3 py-3 shadow-[0_8px_18px_rgb(var(--ink-rgb)/0.04)]"
+									class="flex items-center gap-3 rounded-2xl border border-[rgb(var(--surface-strong-rgb)/0.76)] bg-[rgb(var(--surface-strong-rgb)/0.82)] px-3 py-3 shadow-[0_8px_18px_rgb(var(--ink-rgb)/0.04)]"
 								>
 									<div
-										class="h-10 w-10 overflow-hidden rounded-full bg-white shadow-[var(--shadow-soft)] ring-1 ring-[rgb(var(--jacaranda-rgb)/0.12)]"
+										class="h-10 w-10 overflow-hidden rounded-full bg-[rgb(var(--surface-strong-rgb)/1)] shadow-[var(--shadow-soft)] ring-1 ring-[rgb(var(--jacaranda-rgb)/0.12)]"
 									>
 										<img v-if="stu.image" :src="stu.image" class="h-full w-full object-cover" />
 										<div
@@ -1245,7 +1245,7 @@ function formatAnnouncementDate(value?: string | null): string {
 function getPriorityClasses(priority: OrgPriority): string {
 	switch (priority) {
 		case 'Critical':
-			return 'bg-flame text-white ring-2 ring-flame/30';
+			return 'bg-flame text-[rgb(var(--surface-strong-rgb)/1)] ring-2 ring-flame/30';
 		case 'High':
 			return 'bg-jacaranda/5 ring-1 ring-jacaranda/30';
 		case 'Low':

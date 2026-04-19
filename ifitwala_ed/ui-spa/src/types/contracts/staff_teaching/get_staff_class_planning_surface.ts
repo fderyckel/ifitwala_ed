@@ -162,6 +162,7 @@ export type Response = {
 	resolved: {
 		class_teaching_plan?: string | null
 		course_plan?: string | null
+		unit_plan?: string | null
 		can_initialize: number
 		requires_course_plan_selection: number
 	}

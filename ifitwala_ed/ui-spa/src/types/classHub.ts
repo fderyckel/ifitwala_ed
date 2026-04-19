@@ -117,7 +117,7 @@ export type ClassHubBundle = {
   pulse_items: Array<{
     id: string
     label: string
-    route?: { name: string; params?: Record<string, any> }
+    route?: { name: string; params?: Record<string, any>; query?: Record<string, any> | null }
   }>
   follow_up_items: Array<{
     id: string

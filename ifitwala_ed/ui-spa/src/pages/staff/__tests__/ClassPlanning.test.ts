@@ -158,11 +158,21 @@ function mountPage() {
 	});
 }
 
+function resetRouteState() {
+	routeState.params = {
+		studentGroup: 'GROUP-1',
+	};
+	routeState.query = {
+		class_teaching_plan: 'CLASS-PLAN-1',
+	};
+}
+
 afterEach(() => {
 	getStaffClassPlanningSurfaceMock.mockReset();
 	routerReplaceMock.mockReset();
 	routerPushMock.mockReset();
 	overlayOpenMock.mockReset();
+	resetRouteState();
 	while (cleanupFns.length) cleanupFns.pop()?.();
 	document.body.innerHTML = '';
 });
@@ -263,10 +273,214 @@ describe('ClassPlanning page', () => {
 			panels.map(panel => [panel.getAttribute('data-title') || '', panel])
 		);
 
-		expect(byTitle['Shared resources for this unit']?.getAttribute('data-enable-preview')).toBe('1');
+		expect(byTitle['Shared resources for this unit']?.getAttribute('data-enable-preview')).toBe(
+			'1'
+		);
 		expect(byTitle['Shared resources for this unit']?.getAttribute('data-can-manage')).toBe('0');
-		expect(byTitle['Shared resources for this unit']?.getAttribute('data-show-read-only-notice')).toBe('0');
-		expect(byTitle['Shared across this class plan']?.getAttribute('data-enable-preview')).toBe('1');
-		expect(byTitle['Materials for this class session']?.getAttribute('data-enable-preview')).toBe('1');
+		expect(
+			byTitle['Shared resources for this unit']?.getAttribute('data-show-read-only-notice')
+		).toBe('0');
+		expect(byTitle['Shared across this class plan']?.getAttribute('data-enable-preview')).toBe(
+			'1'
+		);
+		expect(byTitle['Materials for this class session']?.getAttribute('data-enable-preview')).toBe(
+			'1'
+		);
+	});
+
+	it('defaults to the server-resolved current unit instead of the first class unit', async () => {
+		getStaffClassPlanningSurfaceMock.mockResolvedValue({
+			meta: {
+				generated_at: '2026-04-16 09:00:00',
+				student_group: 'GROUP-1',
+			},
+			group: {
+				student_group: 'GROUP-1',
+				title: 'Biology A',
+				course: 'COURSE-1',
+				academic_year: '2026-2027',
+			},
+			course_plans: [],
+			class_teaching_plans: [
+				{
+					class_teaching_plan: 'CLASS-PLAN-1',
+					title: 'Biology A Plan',
+					course_plan: 'COURSE-PLAN-1',
+					planning_status: 'Active',
+				},
+			],
+			resolved: {
+				class_teaching_plan: 'CLASS-PLAN-1',
+				course_plan: 'COURSE-PLAN-1',
+				unit_plan: 'UNIT-2',
+				can_initialize: 1,
+				requires_course_plan_selection: 0,
+			},
+			teaching_plan: {
+				class_teaching_plan: 'CLASS-PLAN-1',
+				title: 'Biology A Plan',
+				course_plan: 'COURSE-PLAN-1',
+				planning_status: 'Active',
+				team_note: '',
+			},
+			resources: {
+				shared_resources: [],
+				class_resources: [],
+				general_assigned_work: [],
+			},
+			curriculum: {
+				units: [
+					{
+						unit_plan: 'UNIT-1',
+						title: 'Cells',
+						pacing_status: 'Not Started',
+						teacher_focus: 'Review cells',
+						pacing_note: '',
+						prior_to_the_unit: '',
+						during_the_unit: '',
+						what_work_well: '',
+						what_didnt_work_well: '',
+						changes_suggestions: '',
+						standards: [],
+						shared_resources: [],
+						assigned_work: [],
+						shared_reflections: [],
+						class_reflections: [],
+						governed_required: 1,
+						sessions: [],
+					},
+					{
+						unit_plan: 'UNIT-2',
+						title: 'Scientific Method',
+						pacing_status: 'In Progress',
+						teacher_focus: 'Run controlled investigations',
+						pacing_note: '',
+						prior_to_the_unit: '',
+						during_the_unit: '',
+						what_work_well: '',
+						what_didnt_work_well: '',
+						changes_suggestions: '',
+						standards: [],
+						shared_resources: [],
+						assigned_work: [],
+						shared_reflections: [],
+						class_reflections: [],
+						governed_required: 1,
+						sessions: [],
+					},
+				],
+				session_count: 0,
+				assigned_work_count: 0,
+			},
+		});
+
+		mountPage();
+		await flushUi();
+
+		const teacherFocusInput = document.querySelector(
+			'input[placeholder="What matters most for this class inside the unit"]'
+		) as HTMLInputElement | null;
+
+		expect(teacherFocusInput?.value).toBe('Run controlled investigations');
+	});
+
+	it('keeps an explicit route unit override ahead of the resolved current unit', async () => {
+		routeState.query = {
+			class_teaching_plan: 'CLASS-PLAN-1',
+			unit_plan: 'UNIT-1',
+		};
+		getStaffClassPlanningSurfaceMock.mockResolvedValue({
+			meta: {
+				generated_at: '2026-04-16 09:00:00',
+				student_group: 'GROUP-1',
+			},
+			group: {
+				student_group: 'GROUP-1',
+				title: 'Biology A',
+				course: 'COURSE-1',
+				academic_year: '2026-2027',
+			},
+			course_plans: [],
+			class_teaching_plans: [
+				{
+					class_teaching_plan: 'CLASS-PLAN-1',
+					title: 'Biology A Plan',
+					course_plan: 'COURSE-PLAN-1',
+					planning_status: 'Active',
+				},
+			],
+			resolved: {
+				class_teaching_plan: 'CLASS-PLAN-1',
+				course_plan: 'COURSE-PLAN-1',
+				unit_plan: 'UNIT-2',
+				can_initialize: 1,
+				requires_course_plan_selection: 0,
+			},
+			teaching_plan: {
+				class_teaching_plan: 'CLASS-PLAN-1',
+				title: 'Biology A Plan',
+				course_plan: 'COURSE-PLAN-1',
+				planning_status: 'Active',
+				team_note: '',
+			},
+			resources: {
+				shared_resources: [],
+				class_resources: [],
+				general_assigned_work: [],
+			},
+			curriculum: {
+				units: [
+					{
+						unit_plan: 'UNIT-1',
+						title: 'Cells',
+						pacing_status: 'Not Started',
+						teacher_focus: 'Review cells',
+						pacing_note: '',
+						prior_to_the_unit: '',
+						during_the_unit: '',
+						what_work_well: '',
+						what_didnt_work_well: '',
+						changes_suggestions: '',
+						standards: [],
+						shared_resources: [],
+						assigned_work: [],
+						shared_reflections: [],
+						class_reflections: [],
+						governed_required: 1,
+						sessions: [],
+					},
+					{
+						unit_plan: 'UNIT-2',
+						title: 'Scientific Method',
+						pacing_status: 'In Progress',
+						teacher_focus: 'Run controlled investigations',
+						pacing_note: '',
+						prior_to_the_unit: '',
+						during_the_unit: '',
+						what_work_well: '',
+						what_didnt_work_well: '',
+						changes_suggestions: '',
+						standards: [],
+						shared_resources: [],
+						assigned_work: [],
+						shared_reflections: [],
+						class_reflections: [],
+						governed_required: 1,
+						sessions: [],
+					},
+				],
+				session_count: 0,
+				assigned_work_count: 0,
+			},
+		});
+
+		mountPage();
+		await flushUi();
+
+		const teacherFocusInput = document.querySelector(
+			'input[placeholder="What matters most for this class inside the unit"]'
+		) as HTMLInputElement | null;
+
+		expect(teacherFocusInput?.value).toBe('Review cells');
 	});
 });

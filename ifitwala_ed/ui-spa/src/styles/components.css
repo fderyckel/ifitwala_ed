@@ -597,6 +597,160 @@
 		box-shadow: inset 0 0 0 1px rgb(var(--jacaranda-rgb) / 0.12);
 	}
 
+	.portal-select {
+		width: 100%;
+		border-radius: var(--radius-xl);
+		border: 1px solid rgb(var(--border-rgb) / 0.9);
+		background: linear-gradient(
+			180deg,
+			rgb(var(--surface-strong-rgb) / 0.98),
+			rgb(var(--surface-rgb) / 0.92)
+		);
+		color: rgb(var(--ink-rgb) / 1);
+		padding: 0.6rem 0.9rem;
+		font-size: 0.95rem;
+		line-height: 1.4;
+		box-shadow: 0 8px 18px rgb(var(--ink-rgb) / 0.04);
+		transition:
+			border-color 150ms ease,
+			box-shadow 150ms ease,
+			background 150ms ease;
+	}
+
+	.portal-select:hover {
+		border-color: rgb(var(--jacaranda-rgb) / 0.24);
+	}
+
+	.portal-select:focus,
+	.portal-select:focus-visible {
+		outline: none;
+		border-color: rgb(var(--jacaranda-rgb) / 0.55);
+		box-shadow: 0 0 0 3px rgb(var(--jacaranda-rgb) / 0.18);
+		background: rgb(var(--surface-strong-rgb) / 0.98);
+	}
+
+	.portal-select:disabled {
+		cursor: not-allowed;
+		opacity: 0.7;
+	}
+
+	.portal-choice-row {
+		display: flex;
+		align-items: flex-start;
+		gap: 0.75rem;
+		border-radius: var(--radius-xl);
+		border: 1px solid rgb(var(--border-rgb) / 0.86);
+		background: linear-gradient(
+			180deg,
+			rgb(var(--surface-strong-rgb) / 0.98),
+			rgb(var(--surface-rgb) / 0.9)
+		);
+		padding: 0.9rem 1rem;
+		box-shadow: inset 0 1px 0 rgb(var(--surface-strong-rgb) / 0.66);
+		transition:
+			border-color 140ms ease,
+			box-shadow 140ms ease,
+			background 140ms ease;
+	}
+
+	.portal-choice-row--focus {
+		border-color: rgb(var(--jacaranda-rgb) / 0.32);
+		background: linear-gradient(
+			180deg,
+			rgb(var(--jacaranda-rgb) / 0.11),
+			rgb(var(--surface-strong-rgb) / 0.94)
+		);
+		box-shadow: 0 12px 24px rgb(var(--jacaranda-rgb) / 0.1);
+	}
+
+	.portal-choice-row--success {
+		border-color: rgb(var(--leaf-rgb) / 0.28);
+		background: linear-gradient(
+			180deg,
+			rgb(var(--leaf-rgb) / 0.1),
+			rgb(var(--surface-strong-rgb) / 0.95)
+		);
+		box-shadow: 0 12px 24px rgb(var(--leaf-rgb) / 0.08);
+	}
+
+	.portal-chip-link {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		border-radius: 9999px;
+		border: 1px solid rgb(var(--border-rgb) / 0.88);
+		background: rgb(var(--surface-strong-rgb) / 0.96);
+		padding: 0.35rem 0.8rem;
+		font-size: 0.75rem;
+		font-weight: 600;
+		line-height: 1;
+		color: rgb(var(--ink-rgb) / 0.82);
+		text-decoration: none;
+		transition:
+			border-color 140ms ease,
+			background 140ms ease,
+			color 140ms ease,
+			transform 140ms ease,
+			box-shadow 140ms ease;
+	}
+
+	.portal-chip-link:hover {
+		border-color: rgb(var(--jacaranda-rgb) / 0.28);
+		background: rgb(var(--jacaranda-rgb) / 0.08);
+		color: rgb(var(--jacaranda-rgb) / 1);
+		transform: translateY(-1px);
+		box-shadow: 0 10px 22px rgb(var(--jacaranda-rgb) / 0.1);
+	}
+
+	.portal-chip-link:focus-visible {
+		outline: none;
+		box-shadow: var(--focus-ring);
+	}
+
+	.portal-richtext .ql-editor {
+		padding: 0;
+	}
+
+	.portal-richtext p + p {
+		margin-top: 0.75rem;
+	}
+
+	.portal-richtext ul {
+		list-style-type: disc;
+		padding-inline-start: 1.5rem;
+	}
+
+	.portal-richtext ol {
+		list-style-type: decimal;
+		padding-inline-start: 1.5rem;
+	}
+
+	.portal-richtext li {
+		margin: 0.25rem 0;
+	}
+
+	.portal-richtext a,
+	.portal-richtext u {
+		text-decoration: underline;
+		text-underline-offset: 0.14em;
+	}
+
+	.portal-richtext a {
+		color: rgb(var(--jacaranda-rgb) / 1);
+	}
+
+	.portal-richtext h2 {
+		font-size: 1.25rem;
+		font-weight: 600;
+		line-height: 1.35;
+	}
+
+	.portal-richtext h3 {
+		font-size: 1.125rem;
+		font-weight: 600;
+		line-height: 1.4;
+	}
+
 	/* ============================================================
      ADMISSIONS OVERVIEW (APPLICANT PORTAL)
      ============================================================ */
@@ -2683,6 +2837,66 @@
 		background: rgb(var(--surface-rgb) / 0.88);
 	}
 
+	.if-banner {
+		@apply rounded-2xl border px-4 py-3 shadow-sm;
+		border-color: rgb(var(--border-rgb) / 0.72);
+		background: linear-gradient(
+			180deg,
+			rgb(var(--surface-strong-rgb) / 0.98),
+			rgb(var(--surface-rgb) / 0.92)
+		);
+	}
+
+	.if-banner--danger {
+		border-color: rgb(var(--flame-rgb) / 0.3);
+		background: linear-gradient(
+			180deg,
+			rgb(var(--flame-rgb) / 0.06),
+			rgb(var(--surface-strong-rgb) / 0.98)
+		);
+	}
+
+	.if-banner__title {
+		color: rgb(var(--ink-rgb) / 0.96);
+	}
+
+	.if-banner__body {
+		color: rgb(var(--ink-rgb) / 0.72);
+	}
+
+	.if-feed-card {
+		@apply rounded-2xl border p-4 shadow-sm;
+		border-color: rgb(var(--border-rgb) / 0.76);
+		background: linear-gradient(
+			180deg,
+			rgb(var(--surface-strong-rgb) / 0.98),
+			rgb(var(--surface-rgb) / 0.9)
+		);
+		transition:
+			background 120ms ease,
+			border-color 120ms ease,
+			box-shadow 120ms ease,
+			transform 120ms ease;
+	}
+
+	.if-feed-card--interactive:hover {
+		border-color: rgb(var(--jacaranda-rgb) / 0.22);
+		background: linear-gradient(
+			180deg,
+			rgb(var(--surface-strong-rgb) / 0.98),
+			rgb(var(--sky-rgb) / 0.74)
+		);
+		box-shadow: 0 14px 28px rgb(var(--ink-rgb) / 0.08);
+		transform: translateY(-1px);
+	}
+
+	.if-feed-card--interactive:focus-visible {
+		outline: none;
+		box-shadow:
+			var(--focus-ring),
+			0 14px 28px rgb(var(--ink-rgb) / 0.08);
+	}
+
 	.paper-card-frosted {
 		background: linear-gradient(180deg, rgb(var(--sky-rgb) / 0.92), rgb(var(--sand-rgb) / 0.9));
 		@apply border rounded-2xl shadow-sm backdrop-blur-md;
@@ -2711,6 +2925,24 @@
 		background: rgb(var(--flame-rgb) / 0.15);
 		color: rgb(var(--flame-rgb) / 1);
 		border-color: transparent;
+	}
+
+	.chip-focus {
+		background: rgb(var(--jacaranda-rgb) / 0.1);
+		color: rgb(var(--jacaranda-rgb) / 1);
+		border-color: rgb(var(--jacaranda-rgb) / 0.2);
+	}
+
+	.chip-warm {
+		background: rgb(var(--sand-rgb) / 0.86);
+		color: rgb(var(--clay-rgb) / 1);
+		border-color: rgb(var(--clay-rgb) / 0.18);
+	}
+
+	.chip-success {
+		background: rgb(var(--leaf-rgb) / 0.08);
+		color: rgb(var(--canopy-rgb) / 1);
+		border-color: rgb(var(--leaf-rgb) / 0.2);
 	}
 
 	.inline-chip--health {

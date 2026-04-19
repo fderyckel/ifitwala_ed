@@ -1,5 +1,5 @@
 <template>
-	<div class="portal-page">
+	<div class="portal-page student-hub-page">
 		<div>
 			<RouterLink
 				:to="backRoute"
@@ -10,20 +10,17 @@
 			</RouterLink>
 		</div>
 
-		<section
-			v-if="errorMessage"
-			class="card-surface border border-flame/30 bg-[var(--flame)]/5 p-5"
-		>
-			<p class="type-body-strong text-flame">Could not open this quiz.</p>
-			<p class="mt-2 type-caption text-ink/70">{{ errorMessage }}</p>
+		<section v-if="errorMessage" class="if-banner if-banner--danger">
+			<p class="if-banner__title type-body-strong text-flame">Could not open this quiz.</p>
+			<p class="if-banner__body mt-2 type-caption">{{ errorMessage }}</p>
 		</section>
 
-		<section v-else-if="loading" class="card-surface p-5">
+		<section v-else-if="loading" class="student-hub-section">
 			<p class="type-body text-ink/70">Loading quiz...</p>
 		</section>
 
 		<template v-else-if="sessionPayload">
-			<header class="card-surface p-6">
+			<header class="student-hub-hero">
 				<div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
 					<div>
 						<p class="type-overline text-ink/60">
@@ -38,20 +35,23 @@
 						</p>
 					</div>
 					<div class="flex flex-wrap gap-2">
-						<span class="chip">{{ sessionPayload.session.status }}</span>
-						<span v-if="sessionPayload.session.pass_percentage != null" class="chip">
+						<span class="chip chip-focus">{{ sessionPayload.session.status }}</span>
+						<span v-if="sessionPayload.session.pass_percentage != null" class="chip chip-warm">
 							Pass at {{ sessionPayload.session.pass_percentage }}%
 						</span>
-						<span v-if="timeRemainingLabel" class="chip">{{ timeRemainingLabel }}</span>
+						<span v-if="timeRemainingLabel" class="chip chip-warm">{{ timeRemainingLabel }}</span>
 					</div>
 				</div>
 			</header>
 
-			<section v-if="sessionPayload.mode === 'attempt'" class="card-surface p-6">
+			<section
+				v-if="sessionPayload.mode === 'attempt'"
+				class="student-hub-section student-hub-section--focus"
+			>
 				<div class="mb-5 flex flex-wrap gap-3">
 					<button
 						type="button"
-						class="if-action"
+						class="if-button if-button--secondary"
 						:disabled="saving || submitting"
 						@click="saveProgress"
 					>
@@ -59,7 +59,7 @@
 					</button>
 					<button
 						type="button"
-						class="if-action"
+						class="if-button if-button--primary"
 						:disabled="submitting || saving"
 						@click="submitQuiz"
 					>
@@ -73,17 +73,13 @@
 					<article
 						v-for="item in sessionPayload.items || []"
 						:key="item.item_id"
-						class="rounded-2xl border border-line-soft bg-surface-soft p-5"
+						class="student-hub-card student-hub-card--neutral p-5"
 					>
 						<p class="type-overline text-ink/60">Question {{ item.position }}</p>
 						<div class="mt-2 type-body text-ink quiz-richtext" v-html="item.prompt_html || ''" />
 
 						<div v-if="isChoiceType(item.question_type)" class="mt-4 space-y-3">
-							<label
-								v-for="option in item.options"
-								:key="option.id"
-								class="flex items-start gap-3 rounded-xl border border-line-soft bg-white p-3"
-							>
+							<label v-for="option in item.options" :key="option.id" class="portal-choice-row">
 								<input
 									v-if="item.question_type === 'Multiple Answer'"
 									type="checkbox"
@@ -105,7 +101,7 @@
 							<textarea
 								:value="textResponse(item.item_id)"
 								rows="4"
-								class="w-full rounded-2xl border border-line-soft bg-white px-4 py-3 type-body text-ink outline-none focus:border-jacaranda"
+								class="if-textarea"
 								:placeholder="
 									item.question_type === 'Essay'
 										? 'Write your response here'
@@ -120,16 +116,16 @@
 				</div>
 			</section>
 
-			<section v-else-if="sessionPayload.review" class="card-surface p-6">
+			<section v-else-if="sessionPayload.review" class="student-hub-section">
 				<div class="mb-5 flex flex-wrap gap-2">
-					<span class="chip">Status {{ sessionPayload.review.attempt.status }}</span>
+					<span class="chip chip-focus">Status {{ sessionPayload.review.attempt.status }}</span>
 					<span v-if="sessionPayload.review.attempt.score != null" class="chip">
 						Score {{ sessionPayload.review.attempt.score }}
 					</span>
 					<span v-if="sessionPayload.review.attempt.percentage != null" class="chip">
 						{{ sessionPayload.review.attempt.percentage }}%
 					</span>
-					<span v-if="sessionPayload.review.attempt.requires_manual_review" class="chip">
+					<span v-if="sessionPayload.review.attempt.requires_manual_review" class="chip chip-warm">
 						Awaiting manual review
 					</span>
 				</div>
@@ -138,7 +134,7 @@
 					<article
 						v-for="item in sessionPayload.review.items"
 						:key="item.item_id"
-						class="rounded-2xl border border-line-soft bg-surface-soft p-5"
+						class="student-hub-card student-hub-card--neutral p-5"
 					>
 						<p class="type-overline text-ink/60">Question {{ item.position }}</p>
 						<div class="mt-2 type-body text-ink quiz-richtext" v-html="item.prompt_html || ''" />
@@ -147,13 +143,13 @@
 							<div
 								v-for="option in item.options"
 								:key="option.id"
-								class="rounded-xl border bg-white p-3"
+								class="portal-choice-row"
 								:class="
 									item.correct_option_ids.includes(option.id)
-										? 'border-emerald-400'
+										? 'portal-choice-row--success'
 										: item.selected_option_ids.includes(option.id)
-											? 'border-jacaranda'
-											: 'border-line-soft'
+											? 'portal-choice-row--focus'
+											: ''
 								"
 							>
 								<p class="type-body text-ink">{{ option.text }}</p>
@@ -162,7 +158,7 @@
 
 						<div
 							v-else-if="item.response_text"
-							class="mt-4 rounded-xl border border-line-soft bg-white p-4"
+							class="mt-4 student-hub-card student-hub-card--neutral p-4"
 						>
 							<p class="type-caption text-ink/60">Your response</p>
 							<p class="mt-2 type-body text-ink">{{ item.response_text }}</p>
@@ -173,7 +169,7 @@
 						</p>
 						<div
 							v-if="item.explanation_html"
-							class="mt-4 rounded-xl border border-line-soft bg-white p-4 type-body text-ink quiz-richtext"
+							class="mt-4 student-hub-card student-hub-card--focus p-4 type-body text-ink quiz-richtext"
 							v-html="item.explanation_html"
 						/>
 					</article>

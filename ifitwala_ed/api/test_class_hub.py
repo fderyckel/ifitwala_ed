@@ -187,6 +187,23 @@ class TestClassHub(FrappeTestCase):
         self.assertEqual(payload["today_items"][0]["overlay"], "QuickEvidence")
         self.assertEqual(payload["now"]["block_label"], "Block 2")
 
+    def test_build_pulse_items_carry_unit_query_for_class_planning(self):
+        payload = class_hub._build_pulse_items(
+            student_group="SG-0001",
+            current_session={
+                "class_session": "CLS-001",
+                "unit_plan": "UP-001",
+                "resources": [{"title": "Observation sheet"}],
+            },
+            current_unit={"unit_plan": "UP-001"},
+            task_items=[{"id": "TD-001", "title": "Exit ticket", "payload": {}}],
+            date_iso="2026-04-02",
+        )
+
+        self.assertEqual(payload[0]["route"]["name"], "staff-class-planning")
+        self.assertEqual(payload[0]["route"]["query"], {"unit_plan": "UP-001"})
+        self.assertEqual(payload[1]["route"]["query"], {"unit_plan": "UP-001"})
+
     def test_assert_instructor_uses_canonical_group_membership_helper(self):
         with (
             patch("ifitwala_ed.api.class_hub.frappe.db.exists", return_value=True),
@@ -323,6 +340,16 @@ class TestClassHub(FrappeTestCase):
         with (
             patch("ifitwala_ed.api.class_hub._assert_instructor"),
             patch("ifitwala_ed.api.class_hub._resolve_runtime_context", return_value=runtime),
+            patch("ifitwala_ed.api.class_hub.planning.get_course_plan_row", return_value={"name": "CP-001"}),
+            patch(
+                "ifitwala_ed.api.class_hub.teaching_plans_api._resolve_current_curriculum_unit",
+                return_value={
+                    "unit_plan": "UP-001",
+                    "unit": runtime["units"][0],
+                    "source": "in_progress_unit",
+                    "timeline": None,
+                },
+            ),
             patch(
                 "ifitwala_ed.api.class_hub.teaching_plans_api.save_class_session",
                 return_value={"class_session": "CLS-NEW", "session_status": "In Progress"},
@@ -338,6 +365,33 @@ class TestClassHub(FrappeTestCase):
         self.assertEqual(kwargs["title"], "Matter and Change")
         self.assertEqual(kwargs["session_status"], "In Progress")
         self.assertEqual(kwargs["session_date"], "2026-04-02")
+
+    def test_start_session_blocks_when_current_unit_cannot_be_resolved(self):
+        runtime = _runtime_context(
+            units=[
+                {
+                    "unit_plan": "UP-001",
+                    "title": "Matter and Change",
+                    "teacher_focus": "Explain change using evidence.",
+                    "essential_understanding": None,
+                    "pacing_status": "Not Started",
+                    "assigned_work": [],
+                    "sessions": [],
+                }
+            ]
+        )
+
+        with (
+            patch("ifitwala_ed.api.class_hub._assert_instructor"),
+            patch("ifitwala_ed.api.class_hub._resolve_runtime_context", return_value=runtime),
+            patch("ifitwala_ed.api.class_hub.planning.get_course_plan_row", return_value={"name": "CP-001"}),
+            patch(
+                "ifitwala_ed.api.class_hub.teaching_plans_api._resolve_current_curriculum_unit",
+                return_value={"unit_plan": None, "unit": None, "source": "none", "timeline": None},
+            ),
+        ):
+            with self.assertRaises(class_hub.frappe.ValidationError):
+                class_hub.start_session("SG-0001", date="2026-04-02")
 
     def test_start_session_reuses_existing_class_session_for_date(self):
         runtime = _runtime_context(

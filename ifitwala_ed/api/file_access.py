@@ -1004,7 +1004,9 @@ def _resolve_drive_download_grant_url(file_name: str) -> str | None:
         return None
 
     target_url = str((grant or {}).get("url") or "").strip()
-    return target_url or None
+    if target_url and not _is_raw_private_redirect_target(target_url):
+        return target_url
+    return None
 
 
 def _resolve_drive_preview_grant_url(file_name: str, *, derivative_role: str | None = None) -> str | None:
@@ -1030,7 +1032,9 @@ def _resolve_drive_preview_grant_url(file_name: str, *, derivative_role: str | N
         return None
 
     target_url = str((grant or {}).get("url") or "").strip()
-    return target_url or None
+    if target_url and not _is_raw_private_redirect_target(target_url):
+        return target_url
+    return None
 
 
 def _resolve_public_website_media_grant_url(file_name: str) -> str | None:
@@ -1544,9 +1548,7 @@ def preview_academic_file(
     )
 
     target_url = _resolve_drive_preview_grant_url(file_name)
-    if target_url:
-        frappe.local.response["type"] = "redirect"
-        frappe.local.response["location"] = target_url
+    if target_url and _respond_with_redirect_or_inline_file(file_row=file_row, target_url=target_url):
         return
 
     file_url = (file_row.get("file_url") or "").strip()
@@ -1558,9 +1560,7 @@ def preview_academic_file(
     content = _read_file_bytes(file_row)
     if content is None:
         target_url = _resolve_drive_download_grant_url(file_name)
-        if target_url:
-            frappe.local.response["type"] = "redirect"
-            frappe.local.response["location"] = target_url
+        if target_url and _respond_with_redirect_or_inline_file(file_row=file_row, target_url=target_url):
             return
         frappe.throw(_("Could not read the file content."), frappe.DoesNotExistError)
 

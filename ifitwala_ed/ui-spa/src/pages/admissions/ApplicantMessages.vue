@@ -11,34 +11,28 @@
 			</div>
 		</header>
 
-		<div v-if="loading" class="rounded-2xl border border-border/70 bg-surface px-4 py-4">
+		<div v-if="loading" class="card-panel px-4 py-4">
 			<p class="type-caption text-ink/65">{{ __('Loading messages...') }}</p>
 		</div>
 
-		<div v-else-if="error" class="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3">
-			<p class="type-body-strong text-rose-900">{{ __('Unable to load messages') }}</p>
-			<p class="mt-1 type-caption text-rose-900/80 whitespace-pre-wrap">{{ error }}</p>
+		<div v-else-if="error" class="if-banner if-banner--danger">
+			<p class="if-banner__title type-body-strong">{{ __('Unable to load messages') }}</p>
+			<p class="if-banner__body mt-1 whitespace-pre-wrap type-caption">{{ error }}</p>
 			<button type="button" class="if-button if-button--secondary mt-3" @click="loadMessages">
 				{{ __('Try again') }}
 			</button>
 		</div>
 
 		<div v-else class="space-y-4">
-			<div class="rounded-2xl border border-border/70 bg-white px-4 py-4 shadow-soft">
+			<div class="paper-card px-4 py-4">
 				<div class="mb-3 flex items-center justify-between">
 					<p class="type-body-strong text-ink">{{ __('Conversation') }}</p>
-					<p
-						v-if="unreadCount > 0"
-						class="rounded-full border border-amber-300 bg-amber-100 px-2 py-1 type-caption text-amber-900"
-					>
+					<p v-if="unreadCount > 0" class="chip chip-warm">
 						{{ __('Unread: {0}').replace('{0}', String(unreadCount)) }}
 					</p>
 				</div>
 
-				<div
-					v-if="!messages.length"
-					class="rounded-xl border border-dashed border-border/70 bg-surface/40 px-4 py-4"
-				>
+				<div v-if="!messages.length" class="card-surface-muted rounded-xl border-dashed px-4 py-4">
 					<p class="type-caption text-ink/65">
 						{{ __('No messages yet. Send a message if you need help from admissions.') }}
 					</p>
@@ -48,7 +42,7 @@
 					<article
 						v-for="message in messages"
 						:key="message.name"
-						class="rounded-xl border px-3 py-2"
+						class="if-feed-card px-3 py-2"
 						:class="messageClass(message.direction)"
 					>
 						<div class="flex items-center justify-between gap-3">
@@ -62,7 +56,7 @@
 				</div>
 			</div>
 
-			<div class="rounded-2xl border border-border/70 bg-white px-4 py-4 shadow-soft">
+			<div class="paper-card px-4 py-4">
 				<p class="type-body-strong text-ink">{{ __('Send a message') }}</p>
 				<textarea
 					v-model="draftBody"
@@ -74,7 +68,9 @@
 				<p class="mt-1 type-caption text-ink/55">
 					{{ __('{0} / 300').replace('{0}', String(draftBody.length)) }}
 				</p>
-				<p v-if="sendError" class="mt-2 type-caption text-rose-700">{{ sendError }}</p>
+				<div v-if="sendError" class="if-banner if-banner--danger mt-3">
+					<p class="if-banner__body type-caption">{{ sendError }}</p>
+				</div>
 				<div class="mt-3 flex justify-end">
 					<button
 						type="button"

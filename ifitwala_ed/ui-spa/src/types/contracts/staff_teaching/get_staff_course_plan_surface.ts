@@ -35,6 +35,7 @@ export type StaffCoursePlanTimelineUnit = {
 	duration_weeks?: number | null
 	unit_status?: string | null
 	is_published?: number
+	is_current?: number
 	start_date?: string | null
 	end_date?: string | null
 	instructional_day_count?: number | null

@@ -1,6 +1,6 @@
 <!-- ifitwala_ed/ui-spa/src/pages/student/CourseDetail.vue -->
 <template>
-	<div class="portal-page">
+	<div class="portal-page student-hub-page">
 		<div>
 			<RouterLink
 				:to="{ name: 'student-courses' }"
@@ -11,20 +11,19 @@
 			</RouterLink>
 		</div>
 
-		<section
-			v-if="errorMessage"
-			class="rounded-2xl border border-flame/30 bg-[var(--flame)]/5 px-5 py-4"
-		>
-			<p class="type-body-strong text-flame">Could not load this learning space.</p>
-			<p class="mt-1 type-caption text-ink/70">{{ errorMessage }}</p>
+		<section v-if="errorMessage" class="if-banner if-banner--danger">
+			<p class="if-banner__title type-body-strong text-flame">
+				Could not load this learning space.
+			</p>
+			<p class="if-banner__body mt-1 type-caption">{{ errorMessage }}</p>
 		</section>
 
-		<section v-else-if="loading && !learningSpace" class="card-surface p-6">
+		<section v-else-if="loading && !learningSpace" class="student-hub-section">
 			<p class="type-body text-ink/70">Loading learning space...</p>
 		</section>
 
 		<template v-else-if="learningSpace">
-			<header class="card-surface overflow-hidden">
+			<header class="student-hub-hero overflow-hidden">
 				<div class="grid gap-5 p-5 sm:gap-6 sm:p-6 xl:grid-cols-[minmax(0,9rem),minmax(0,1fr)]">
 					<div class="flex justify-center xl:justify-start">
 						<div
@@ -109,14 +108,12 @@
 
 			<section
 				v-if="learningSpace.message"
-				class="rounded-2xl border border-line-soft bg-surface-soft px-5 py-4"
+				class="student-hub-section student-hub-section--warm px-5 py-4"
 			>
 				<p class="type-body text-ink/80">{{ learningSpace.message }}</p>
 			</section>
 
-			<section
-				class="sticky top-4 z-20 rounded-[1.5rem] border border-white/70 bg-white/90 p-3 shadow-[0_18px_45px_-28px_rgba(33,53,71,0.45)] backdrop-blur-xl sm:p-4"
-			>
+			<section class="sticky top-4 z-20 paper-card-frosted p-3 sm:p-4">
 				<div class="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
 					<div class="flex flex-wrap gap-2">
 						<button
@@ -129,32 +126,29 @@
 						</button>
 						<button
 							type="button"
-							class="inline-flex items-center justify-center rounded-full border border-line-soft bg-white px-4 py-2 text-sm font-semibold text-ink transition hover:border-jacaranda/40 hover:bg-jacaranda/5"
+							class="if-button if-button--secondary"
 							@click="jumpToSection(SECTION_IDS.assignedWork)"
 						>
 							Assignments
 						</button>
 						<button
 							type="button"
-							class="inline-flex items-center justify-center rounded-full border border-line-soft bg-white px-4 py-2 text-sm font-semibold text-ink transition hover:border-jacaranda/40 hover:bg-jacaranda/5"
+							class="if-button if-button--secondary"
 							@click="jumpToSection(SECTION_IDS.resources)"
 						>
 							Resources
 						</button>
 						<RouterLink
 							:to="classUpdatesHref"
-							class="inline-flex items-center justify-center gap-2 rounded-full border px-4 py-2 text-sm font-semibold transition"
+							class="if-button"
 							:class="
 								courseUpdateSummary.unread_count || courseUpdateSummary.has_high_priority
-									? 'border-jacaranda/40 bg-jacaranda/5 text-jacaranda'
-									: 'border-line-soft bg-white text-ink hover:border-jacaranda/40 hover:bg-jacaranda/5'
+									? 'if-button--primary'
+									: 'if-button--secondary'
 							"
 						>
 							<span>Class Updates</span>
-							<span
-								v-if="classUpdatesBadge"
-								class="rounded-full bg-white/90 px-2 py-0.5 text-xs font-semibold text-jacaranda"
-							>
+							<span v-if="classUpdatesBadge" class="chip chip-focus px-2 py-0.5">
 								{{ classUpdatesBadge }}
 							</span>
 						</RouterLink>
@@ -162,18 +156,14 @@
 
 					<nav
 						aria-label="Jump to course sections"
-						class="flex gap-2 overflow-x-auto pb-1 xl:flex-wrap xl:justify-end xl:overflow-visible xl:pb-0"
+						class="if-segmented overflow-x-auto pb-1 xl:flex-wrap xl:justify-end xl:overflow-visible xl:pb-0"
 					>
 						<button
 							v-for="section in learningSections"
 							:key="section.id"
 							type="button"
-							class="shrink-0 rounded-full border px-4 py-2 text-sm font-semibold transition"
-							:class="
-								activeSectionId === section.id
-									? 'border-jacaranda bg-jacaranda/10 text-jacaranda'
-									: 'border-line-soft bg-white text-ink/70 hover:border-jacaranda/30 hover:text-ink'
-							"
+							class="if-segmented__item shrink-0"
+							:class="activeSectionId === section.id ? 'if-segmented__item--active' : ''"
 							@click="jumpToSection(section.id)"
 						>
 							{{ section.label }}
@@ -248,7 +238,7 @@
 						</button>
 						<button
 							type="button"
-							class="inline-flex items-center justify-center rounded-full border border-line-soft bg-white px-4 py-2 text-sm font-semibold text-ink transition hover:border-jacaranda/40 hover:bg-jacaranda/5"
+							class="if-button if-button--secondary"
 							@click="jumpToSection(SECTION_IDS.assignedWork)"
 						>
 							Open assignments
@@ -513,7 +503,7 @@
 														:href="resource.preview_url || resource.open_url"
 														target="_blank"
 														rel="noreferrer"
-														class="inline-flex items-center rounded-full border border-line-soft bg-white px-3 py-1 text-xs font-medium text-ink transition hover:border-jacaranda/40 hover:bg-jacaranda/5"
+														class="portal-chip-link"
 													>
 														{{ resource.title }}
 													</a>
@@ -613,7 +603,7 @@
 								<article
 									v-for="standard in selectedUnit.standards"
 									:key="`${selectedUnit.unit_plan}-${standard.standard_code}-${standard.standard_description}`"
-									class="rounded-2xl border border-line-soft bg-white p-4"
+									class="student-hub-card student-hub-card--neutral p-4"
 								>
 									<div class="flex flex-wrap items-center gap-2">
 										<p class="type-body-strong text-ink">
@@ -687,10 +677,7 @@
 									<span class="chip">{{ reflectionEntries.length }}</span>
 								</div>
 
-								<div
-									v-if="!reflectionEntries.length"
-									class="mt-4 rounded-2xl border border-dashed border-line-soft bg-white p-4"
-								>
+								<div v-if="!reflectionEntries.length" class="mt-4 student-hub-empty">
 									<p class="type-body text-ink/70">
 										Your reflections will appear here after you save them.
 									</p>
@@ -700,7 +687,7 @@
 									<article
 										v-for="entry in reflectionEntries"
 										:key="entry.name"
-										class="rounded-2xl border border-line-soft bg-white p-4"
+										class="student-hub-card student-hub-card--neutral p-4"
 									>
 										<div class="flex flex-wrap items-center gap-2">
 											<p class="type-body-strong text-ink">
@@ -789,7 +776,7 @@
 										:href="resource.preview_url || resource.open_url"
 										target="_blank"
 										rel="noreferrer"
-										class="inline-flex items-center rounded-full border border-line-soft bg-white px-3 py-1 text-xs font-medium text-ink transition hover:border-jacaranda/40 hover:bg-jacaranda/5"
+										class="portal-chip-link"
 									>
 										{{ resource.title }}
 									</a>

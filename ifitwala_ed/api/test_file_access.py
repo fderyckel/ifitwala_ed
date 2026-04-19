@@ -604,6 +604,38 @@ class TestFileAccessUrlContracts(FrappeTestCase):
         self.assertEqual(frappe.local.response.get("location"), "https://download.example.com/material.pdf")
         self.assertEqual(grant_calls, ["issue_download_grant"])
 
+    def test_preview_academic_file_streams_inline_when_preview_target_is_raw_private_path(self):
+        file_row = {
+            "name": "FILE-MAT-1",
+            "file_url": "/private/files/Courses/COURSE-1/material.pdf",
+            "file_name": "material.pdf",
+            "is_private": 1,
+            "attached_to_doctype": "Supporting Material",
+            "attached_to_name": "MAT-1",
+        }
+
+        with (
+            patch("ifitwala_ed.api.file_access._resolve_authorized_academic_file", return_value=file_row),
+            patch(
+                "ifitwala_ed.api.file_access._resolve_drive_preview_grant_url",
+                return_value="/private/files/ifitwala_drive/derivatives/aa/bb/pdf_page_1.png",
+            ),
+            patch("ifitwala_ed.api.file_access._read_file_bytes", return_value=b"material-bytes"),
+        ):
+            frappe.local.response = {}
+            preview_academic_file(
+                file="FILE-MAT-1",
+                context_doctype="Supporting Material",
+                context_name="MAT-1",
+            )
+
+        self.assertEqual(frappe.local.response.get("type"), "download")
+        self.assertEqual(frappe.local.response.get("filename"), "material.pdf")
+        self.assertEqual(frappe.local.response.get("filecontent"), b"material-bytes")
+        self.assertEqual(frappe.local.response.get("display_content_as"), "inline")
+        self.assertEqual(frappe.local.response.get("content_type"), "application/pdf")
+        self.assertIsNone(frappe.local.response.get("location"))
+
     def test_open_org_communication_attachment_redirects_to_drive_download_grant(self):
         attachment_row = frappe._dict(
             name="row-001",

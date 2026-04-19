@@ -23,6 +23,7 @@ Current live behavior:
 - student-facing surfaces now hide shared-plan management labels and raw planning-state language
 - guardian home uses `learning_highlights` cards with a family-safe current theme, upcoming step, and a talk-at-home prompt
 - the guardian child brief now foregrounds current theme, next class experience, upcoming learning experiences, and helpful-at-home resources
+- student, guardian, and staff learning surfaces now default from the same server-owned current-curriculum resolver instead of opening the first unit by guess
 
 ## Why This Note Exists
 
@@ -85,7 +86,7 @@ Test refs: `ifitwala_ed/ui-spa/src/pages/student/__tests__/CourseDetail.test.ts`
 
 Rules:
 
-1. Default the student to the current or next meaningful learning context, not the first curriculum row.
+1. Default the student to the server-resolved current or next meaningful learning context, not the first curriculum row.
 2. Show only student-safe content from `Unit Plan`, `Class Session`, `Class Session Activity`, and `Task Delivery`.
 3. Put action before reference: next work, next session, and next quiz launch come before full-unit reading.
 4. Keep standards available only as optional learning-goal context, not as the main information layer.
@@ -226,6 +227,7 @@ Rules:
 1. These are read-model conveniences only; they do not create new curriculum truth.
 2. They must be server-resolved, not assembled from multiple client calls.
 3. Selection precedence should remain class-owned data first, shared plan fallback second.
+4. `selected_context` is the canonical default open state for the student page and should come from the shared current-curriculum resolver rather than a client-side first-unit guess.
 
 ## Student Visibility Rules
 
@@ -275,6 +277,7 @@ Rules:
 3. Guardians see big themes, major experiences, and support-at-home context.
 4. Guardians do not see draft curriculum truth, daily teaching mechanics, or staff-only reflections.
 5. Guardian curriculum visibility must be separately filtered server-side and must not reuse the student LMS payload wholesale.
+6. The guardian-facing current unit or theme should still come from the same server-owned current-curriculum resolver before the guardian-safe summary shaping is applied.
 
 ## Guardian Home Learning Highlights
 
@@ -422,6 +425,14 @@ Resolution order should remain:
 1. class-owned teaching context
 2. shared unit/course-plan fallback
 3. explicit unavailable or awaiting-publication state
+
+Current-unit precedence inside that hierarchy should remain:
+
+1. live session truth
+2. exactly one class unit marked `In Progress`
+3. calendar-backed unit timing from duration plus school calendar
+4. exact-date or nearest session fallback
+5. explicit blocked state when no deterministic current unit exists
 
 But the visible shaping must differ by audience:
 

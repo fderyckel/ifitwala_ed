@@ -144,6 +144,10 @@ def _timeline_duration_weeks(value: str | None) -> int | None:
     return _timeline_impl.timeline_duration_weeks(_module(), value)
 
 
+def _coerce_curriculum_anchor_date(value: Any | None = None) -> date:
+    return _timeline_impl.coerce_curriculum_anchor_date(_module(), value)
+
+
 def _resolve_course_plan_timeline_scope(
     course_plan_row: dict[str, Any],
     *,
@@ -197,6 +201,38 @@ def _build_course_plan_timeline(
         course_plan_row,
         units,
         student_group=student_group,
+    )
+
+
+def _resolve_timeline_current_unit(
+    timeline: dict[str, Any],
+    *,
+    anchor_date: Any | None = None,
+) -> dict[str, Any] | None:
+    return _timeline_impl.resolve_timeline_current_unit(
+        _module(),
+        timeline,
+        anchor_date=anchor_date,
+    )
+
+
+def _resolve_current_curriculum_unit(
+    units: list[dict[str, Any]],
+    *,
+    course_plan_row: dict[str, Any] | None = None,
+    student_group: str | None = None,
+    class_unit_rows: list[Any] | None = None,
+    anchor_date: Any | None = None,
+    allow_live_session: bool = True,
+) -> dict[str, Any]:
+    return _timeline_impl.resolve_current_curriculum_unit(
+        _module(),
+        units,
+        course_plan_row=course_plan_row,
+        student_group=student_group,
+        class_unit_rows=class_unit_rows,
+        anchor_date=anchor_date,
+        allow_live_session=allow_live_session,
     )
 
 
@@ -456,16 +492,36 @@ def _flatten_assigned_work(
     return _student_impl.flatten_assigned_work(_module(), units, general_assigned_work)
 
 
-def _resolve_student_learning_focus(units: list[dict[str, Any]]) -> tuple[dict[str, Any] | None, dict[str, Any] | None]:
-    return _student_impl.resolve_student_learning_focus(_module(), units)
+def _resolve_student_learning_focus(
+    units: list[dict[str, Any]],
+    preferred_unit_plan: str | None = None,
+    *,
+    anchor_date: Any | None = None,
+) -> tuple[dict[str, Any] | None, dict[str, Any] | None]:
+    return _student_impl.resolve_student_learning_focus(
+        _module(),
+        units,
+        preferred_unit_plan,
+        anchor_date=anchor_date,
+    )
 
 
 def _build_student_focus_statement(unit: dict[str, Any] | None, session: dict[str, Any] | None) -> str | None:
     return _student_impl.build_student_focus_statement(_module(), unit, session)
 
 
-def _build_student_learning_focus(units: list[dict[str, Any]]) -> dict[str, Any]:
-    return _student_impl.build_student_learning_focus(_module(), units)
+def _build_student_learning_focus(
+    units: list[dict[str, Any]],
+    current_unit_plan: str | None = None,
+    *,
+    anchor_date: Any | None = None,
+) -> dict[str, Any]:
+    return _student_impl.build_student_learning_focus(
+        _module(),
+        units,
+        current_unit_plan,
+        anchor_date=anchor_date,
+    )
 
 
 def _build_student_unit_navigation(
@@ -486,12 +542,17 @@ def _build_student_learning_sections(
     units: list[dict[str, Any]],
     general_assigned_work: list[dict[str, Any]] | None,
     reflection_entries: list[dict[str, Any]] | None = None,
+    current_unit_plan: str | None = None,
+    *,
+    anchor_date: Any | None = None,
 ) -> dict[str, Any]:
     return _student_impl.build_student_learning_sections(
         _module(),
         units,
         general_assigned_work,
         reflection_entries,
+        current_unit_plan,
+        anchor_date=anchor_date,
     )
 
 

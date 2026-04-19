@@ -131,14 +131,19 @@ Current workspace reality:
 ## Resolution Rules For Read Surfaces
 
 Status: Implemented
-Code refs: `ifitwala_ed/api/teaching_plans.py`, `ifitwala_ed/api/class_hub.py`, `ifitwala_ed/ui-spa/src/pages/staff/ClassPlanning.vue`, `ifitwala_ed/ui-spa/src/pages/student/CourseDetail.vue`
-Test refs: `ifitwala_ed/api/test_teaching_plans.py`, `ifitwala_ed/ui-spa/src/lib/services/student/__tests__/studentLearningHubService.test.ts`, `ifitwala_ed/ui-spa/src/pages/student/__tests__/CourseDetail.test.ts`
+Code refs: `ifitwala_ed/api/teaching_plans.py`, `ifitwala_ed/api/teaching_plans_timeline.py`, `ifitwala_ed/api/class_hub.py`, `ifitwala_ed/ui-spa/src/pages/staff/ClassPlanning.vue`, `ifitwala_ed/ui-spa/src/pages/staff/CoursePlanWorkspace.vue`, `ifitwala_ed/ui-spa/src/pages/student/CourseDetail.vue`
+Test refs: `ifitwala_ed/api/test_teaching_plans.py`, `ifitwala_ed/api/test_class_hub.py`, `ifitwala_ed/ui-spa/src/lib/services/student/__tests__/studentLearningHubService.test.ts`, `ifitwala_ed/ui-spa/src/pages/student/__tests__/CourseDetail.test.ts`, `ifitwala_ed/ui-spa/src/pages/staff/__tests__/CoursePlanWorkspace.test.ts`, `ifitwala_ed/ui-spa/src/pages/staff/__tests__/ClassPlanning.test.ts`
 
 Read surfaces must resolve in this order:
 
-1. class-owned planning and class-owned sessions
-2. shared course-plan and unit-plan fallback
-3. explicit unavailable state when neither is ready
+1. explicit class truth:
+   in-progress `Class Session`, or exactly one class unit marked `In Progress`
+2. calendar truth:
+   shared unit sequence resolved from `Unit Plan.duration`, the academic-year window, and the resolved school calendar with weekends and holidays applied
+3. dated class truth:
+   exact-date session, then nearest dated or undated session inside the resolved unit context
+4. shared course-plan and unit-plan fallback when no class teaching plan is available
+5. explicit blocked or unavailable state when neither current class truth nor calendar truth can resolve a unit
 
 Non-negotiable rules:
 
@@ -146,6 +151,9 @@ Non-negotiable rules:
 - no client-side reconstruction of curriculum ownership
 - one bounded bootstrap per page mode where practical
 - no silent fallback to Desk when the SPA or LMS owns the workflow
+- the current-unit resolver is server-owned and must be reused across student, guardian, staff course-plan, staff class-planning, and Class Hub surfaces
+- between two scheduled units, weekends and holiday gaps keep the previous scheduled unit current until the next scheduled unit actually starts
+- route or query overrides may change what the user is viewing, but default opening context must come from the shared resolver rather than a first-unit guess
 
 ## Permissions And Scope
 

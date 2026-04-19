@@ -1091,6 +1091,9 @@ const studentGroup = computed(() => String(route.params.studentGroup || '').trim
 const requestedPlan = computed(() =>
 	typeof route.query.class_teaching_plan === 'string' ? route.query.class_teaching_plan : ''
 );
+const requestedUnit = computed(() =>
+	typeof route.query.unit_plan === 'string' ? route.query.unit_plan : ''
+);
 
 const selectedUnit = computed<StaffPlanningUnit | null>(() => {
 	return (
@@ -1166,6 +1169,12 @@ function selectUnit(unitPlan: string) {
 	const firstSession = unit?.sessions[0] || null;
 	selectedSessionId.value = firstSession?.class_session || '';
 	syncSessionForm(firstSession);
+	void router.replace({
+		query: {
+			...route.query,
+			unit_plan: unitPlan || undefined,
+		},
+	});
 }
 
 function selectSession(classSession: string) {
@@ -1218,10 +1227,22 @@ function applySurfaceSelection(payload: StaffClassPlanningSurfaceResponse) {
 		draftCoursePlan.value = payload.course_plans[0].course_plan;
 	}
 
+	const requestedUnitPlan = String(requestedUnit.value || '').trim();
+	const resolvedUnitPlan = String(payload.resolved.unit_plan || '').trim();
 	const currentUnitStillExists = payload.curriculum.units.some(
 		unit => unit.unit_plan === selectedUnitPlan.value
 	);
-	if (!currentUnitStillExists) {
+	if (
+		requestedUnitPlan &&
+		payload.curriculum.units.some(unit => unit.unit_plan === requestedUnitPlan)
+	) {
+		selectedUnitPlan.value = requestedUnitPlan;
+	} else if (
+		resolvedUnitPlan &&
+		payload.curriculum.units.some(unit => unit.unit_plan === resolvedUnitPlan)
+	) {
+		selectedUnitPlan.value = resolvedUnitPlan;
+	} else if (!currentUnitStillExists) {
 		selectedUnitPlan.value = payload.curriculum.units[0]?.unit_plan || '';
 	}
 
@@ -1396,6 +1417,14 @@ watch(
 		loadSurface();
 	},
 	{ immediate: true }
+);
+
+watch(
+	() => requestedUnit.value,
+	() => {
+		if (!surface.value) return;
+		applySurfaceSelection(surface.value);
+	}
 );
 
 const unsubscribeTaskDeliveryCreated = uiSignals.subscribe<TaskDeliveryCreatedSignal>(

@@ -1,7 +1,7 @@
 <!-- ifitwala_ed/ui-spa/src/pages/student/StudentActivities.vue -->
 <template>
-	<div class="space-y-6">
-		<header class="card-surface p-5 sm:p-6">
+	<div class="portal-page student-hub-page">
+		<header class="student-hub-hero">
 			<div class="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
 				<div>
 					<p class="type-overline text-ink/60">Student Activities</p>
@@ -48,13 +48,13 @@
 		<section v-if="loading" class="card-surface p-5">
 			<p class="type-body text-ink/70">Loading activity board...</p>
 		</section>
-		<section v-else-if="errorMessage" class="card-surface p-5">
-			<p class="type-body-strong text-flame">Could not load activity board.</p>
-			<p class="type-body text-ink/70">{{ errorMessage }}</p>
+		<section v-else-if="errorMessage" class="if-banner if-banner--danger">
+			<p class="if-banner__title type-body-strong text-flame">Could not load activity board.</p>
+			<p class="if-banner__body type-body">{{ errorMessage }}</p>
 		</section>
 
 		<template v-else>
-			<section id="communication-center" class="card-surface p-5">
+			<section id="communication-center" class="student-hub-section student-hub-section--focus">
 				<div class="mb-3 flex items-center justify-between gap-3">
 					<h2 class="type-h3 text-ink">My Bookings</h2>
 					<p class="type-caption text-ink/60">Humanized statuses are shown for clarity.</p>
@@ -63,11 +63,7 @@
 					No bookings yet. Choose an activity below.
 				</p>
 				<ul v-else class="space-y-2">
-					<li
-						v-for="booking in studentBookings"
-						:key="booking.name"
-						class="rounded-lg border border-line-soft bg-surface-soft p-3"
-					>
+					<li v-for="booking in studentBookings" :key="booking.name" class="if-feed-card">
 						<div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
 							<div>
 								<p class="type-body-strong text-ink">
@@ -121,7 +117,7 @@
 				</ul>
 			</section>
 
-			<section class="space-y-4">
+			<section class="student-hub-section student-hub-section--support space-y-4">
 				<div class="flex items-center justify-between gap-3">
 					<h2 class="type-h3 text-ink">Available Activities</h2>
 					<p class="type-caption text-ink/60">
@@ -158,7 +154,7 @@
 
 								<div
 									v-if="!canBookOffering(offering)"
-									class="rounded-lg border border-line-soft bg-surface-soft p-3 type-caption text-ink/70"
+									class="student-hub-card student-hub-card--neutral p-3 type-caption text-ink/70"
 								>
 									Booking is not currently open for student self-booking.
 								</div>
@@ -172,7 +168,7 @@
 										<span class="type-label">Choice {{ idx + 1 }}</span>
 										<select
 											v-model="choiceState[offering.program_offering][idx]"
-											class="rounded-lg border border-line-soft bg-white px-3 py-2 type-body text-ink"
+											class="portal-select"
 										>
 											<option value="">Select section</option>
 											<option
@@ -216,13 +212,10 @@
 				</div>
 			</section>
 
-			<section class="card-surface p-5">
+			<section class="student-hub-section">
 				<div class="mb-3 flex items-center justify-between gap-3">
 					<h2 class="type-h3 text-ink">Communication Center</h2>
-					<select
-						v-model="centerOffering"
-						class="rounded-lg border border-line-soft bg-white px-3 py-2 type-caption text-ink"
-					>
+					<select v-model="centerOffering" class="portal-select max-w-xs">
 						<option
 							v-for="offering in offerings"
 							:key="`center-${offering.program_offering}`"

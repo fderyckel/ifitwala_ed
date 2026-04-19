@@ -213,6 +213,44 @@ class TestFileAccessUnit(TestCase):
 
         self.assertEqual(target_url, "https://signed.example.com/DRIVE-FILE-1")
 
+    def test_resolve_drive_download_grant_url_hides_raw_private_target(self):
+        with _file_access_module() as (file_access, frappe):
+
+            def fake_get_value(doctype, filters, fieldname=None, as_dict=False):
+                self.assertEqual(doctype, "Drive File")
+                self.assertEqual(filters, {"file": "FILE-EMP-1"})
+                self.assertEqual(fieldname, ["name", "preview_status", "current_version"])
+                self.assertTrue(as_dict)
+                return {"name": "DRIVE-FILE-1", "preview_status": None, "current_version": "VER-1"}
+
+            frappe.db.get_value = fake_get_value
+            file_access._load_drive_access_callable = lambda attribute: (
+                lambda drive_file_id: {"url": "/private/files/ifitwala_drive/files/aa/bb/document.pdf"}
+            )
+
+            target_url = file_access._resolve_drive_download_grant_url("FILE-EMP-1")
+
+        self.assertIsNone(target_url)
+
+    def test_resolve_drive_preview_grant_url_hides_raw_private_target(self):
+        with _file_access_module() as (file_access, frappe):
+
+            def fake_get_value(doctype, filters, fieldname=None, as_dict=False):
+                self.assertEqual(doctype, "Drive File")
+                self.assertEqual(filters, {"file": "FILE-EMP-1"})
+                self.assertEqual(fieldname, ["name", "preview_status", "current_version"])
+                self.assertTrue(as_dict)
+                return {"name": "DRIVE-FILE-1", "preview_status": "ready", "current_version": "VER-1"}
+
+            frappe.db.get_value = fake_get_value
+            file_access._load_drive_access_callable = lambda attribute: (
+                lambda drive_file_id: {"url": "/private/files/ifitwala_drive/derivatives/aa/bb/pdf_page_1.png"}
+            )
+
+            target_url = file_access._resolve_drive_preview_grant_url("FILE-EMP-1")
+
+        self.assertIsNone(target_url)
+
     def test_download_employee_file_redirects_to_drive_grant_when_local_bytes_missing(self):
         with _file_access_module() as (file_access, frappe):
             file_access.has_active_employee_profile = lambda **kwargs: True

@@ -90,6 +90,14 @@ def build_staff_bundle(
         class_teaching_plan=doc.name,
         assigned_work=assigned_work,
     )
+    course_plan_row = api.planning.get_course_plan_row(doc.course_plan)
+    current_unit = api._resolve_current_curriculum_unit(
+        decorated_units,
+        course_plan_row=course_plan_row,
+        student_group=student_group,
+        class_unit_rows=doc.get("units") or [],
+        anchor_date=api.now_datetime(),
+    )
 
     payload["teaching_plan"] = {
         "class_teaching_plan": doc.name,
@@ -99,6 +107,7 @@ def build_staff_bundle(
         "team_note": doc.team_note,
     }
     payload["resolved"]["course_plan"] = doc.course_plan
+    payload["resolved"]["unit_plan"] = current_unit.get("unit_plan")
     payload["resources"] = resource_bundle
     payload["curriculum"] = {
         "units": decorated_units,
@@ -142,11 +151,22 @@ def build_staff_course_plan_bundle(
         materials_by_anchor,
         unit_rows=unit_rows,
     )
+    timeline = api._build_course_plan_timeline(
+        course_plan_row,
+        units,
+        student_group=api.planning.normalize_text(student_group) or None,
+    )
+    timeline_current_unit = next(
+        (row for row in (timeline.get("units") or []) if int(row.get("is_current") or 0) == 1),
+        None,
+    )
     selected_unit = api.planning.normalize_text(unit_plan)
     if selected_unit and not any(row.get("unit_plan") == selected_unit for row in units):
         api.frappe.throw(api._("Selected unit plan does not belong to this course plan."), api.frappe.PermissionError)
     if not selected_unit and units:
-        selected_unit = units[0].get("unit_plan")
+        selected_unit = api.planning.normalize_text((timeline_current_unit or {}).get("unit_plan")) or units[0].get(
+            "unit_plan"
+        )
     selected_unit_row = next((row for row in units if row.get("unit_plan") == selected_unit), None)
     selected_programs = [
         api.planning.normalize_text(selected_unit_row.get("program")) if selected_unit_row else "",
@@ -208,11 +228,7 @@ def build_staff_course_plan_bundle(
         "curriculum": {
             "units": units,
             "unit_count": len(units),
-            "timeline": api._build_course_plan_timeline(
-                course_plan_row,
-                units,
-                student_group=api.planning.normalize_text(student_group) or None,
-            ),
+            "timeline": timeline,
         },
         "assessment": {
             "quiz_question_banks": quiz_question_banks,
