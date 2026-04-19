@@ -227,6 +227,7 @@ Required outcomes:
 
 - Drive metadata becomes sole governance authority
 - completed in code
+- cleanup patch `ifitwala_ed.patches.backfill_drive_authority_for_classified_files` materializes authoritative Drive rows for historical governed files before deletion
 - cleanup patch `ifitwala_ed.patches.remove_file_classification_rows` removes historical rows only after matching `Drive File` coverage exists
 
 ### Phase 5
