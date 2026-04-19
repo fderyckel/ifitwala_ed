@@ -797,6 +797,16 @@ def ensure_guardian_profile_image(
     if not resolved_guardian:
         return None
 
+    guardian_doc = None
+
+    def _load_guardian_doc():
+        nonlocal guardian_doc
+        if guardian_doc is None:
+            guardian_doc = frappe.get_doc("Guardian", resolved_guardian)
+            if organization and not (guardian_doc.organization or "").strip():
+                guardian_doc.organization = organization
+        return guardian_doc
+
     current_file_doc = _get_current_governed_profile_file(
         primary_subject_type="Guardian",
         subject_name=resolved_guardian,
@@ -804,17 +814,20 @@ def ensure_guardian_profile_image(
 
     if current_file_doc:
         current_classification = _get_file_classification(current_file_doc)
+        resolved_organization = (
+            getattr(current_classification, "organization", None) if current_classification else None
+        ) or organization
+        if not str(resolved_organization or "").strip():
+            resolved_organization = getattr(_load_guardian_doc(), "organization", None)
         _generate_guardian_derivatives(current_file_doc)
         _sync_guardian_profile_image_field(
             guardian_name=resolved_guardian,
             file_url=current_file_doc.file_url,
-            organization=(current_classification.organization if current_classification else organization),
+            organization=resolved_organization,
         )
         return current_file_doc.file_url
 
-    guardian_doc = frappe.get_doc("Guardian", resolved_guardian)
-    if organization and not (guardian_doc.organization or "").strip():
-        guardian_doc.organization = organization
+    guardian_doc = _load_guardian_doc()
 
     from ifitwala_ed.integrations.drive.media import build_guardian_image_contract
     from ifitwala_ed.utilities import file_dispatcher
@@ -829,19 +842,20 @@ def ensure_guardian_profile_image(
     else:
         raw_url = str(original_url or "").strip()
         if raw_url:
-            guardian_file_name = frappe.db.get_value(
-                "File",
-                {
-                    "attached_to_doctype": "Guardian",
-                    "attached_to_name": resolved_guardian,
-                    "file_url": raw_url,
-                },
-                "name",
-            )
-            if guardian_file_name:
-                source_file_doc = frappe.get_doc("File", guardian_file_name)
-            else:
-                source_file_doc = _resolve_unique_file_doc_by_url(raw_url)
+            source_file_doc = _resolve_unique_file_doc_by_url(raw_url)
+            if not source_file_doc:
+                guardian_matches = frappe.get_all(
+                    "File",
+                    filters={
+                        "attached_to_doctype": "Guardian",
+                        "attached_to_name": resolved_guardian,
+                        "file_url": raw_url,
+                    },
+                    fields=["name"],
+                    limit=2,
+                )
+                if len(guardian_matches) == 1:
+                    source_file_doc = frappe.get_doc("File", guardian_matches[0]["name"])
 
     if not source_file_doc:
         return None

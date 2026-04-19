@@ -40,12 +40,12 @@ Used by:
 				>
 					<DialogPanel class="if-overlay__panel">
 						<!-- Header -->
-						<div class="if-overlay__header px-6 pt-6">
-							<div class="min-w-0">
+						<div class="meeting-modal__header">
+							<div class="meeting-modal__headline min-w-0">
 								<DialogTitle class="type-h2 text-ink">
 									{{ step === 'review' ? __('Review student note') : __('New student note') }}
 								</DialogTitle>
-								<p class="mt-1 type-caption text-ink/60">
+								<p class="type-caption text-ink/60">
 									{{
 										step === 'review'
 											? __('Once submitted, this note cannot be edited.')
@@ -54,22 +54,22 @@ Used by:
 												: __('Search across your school.')
 									}}
 								</p>
-								<span
-									class="mt-2 inline-flex items-center rounded-full border border-border/70 bg-[rgb(var(--surface-strong-rgb))] px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-ink/70"
-								>
+								<span class="student-log-create__source-pill if-pill type-badge-label mt-2">
 									{{ sourcePillLabel }}
 								</span>
 							</div>
 
-							<button
-								ref="closeBtnEl"
-								type="button"
-								class="if-overlay__close"
-								@click="emitClose('programmatic')"
-								aria-label="Close"
-							>
-								<FeatherIcon name="x" class="h-5 w-5" />
-							</button>
+							<div class="meeting-modal__header-actions">
+								<button
+									ref="closeBtnEl"
+									type="button"
+									class="if-overlay__icon-button"
+									@click="emitClose('programmatic')"
+									aria-label="Close"
+								>
+									<FeatherIcon name="x" class="h-5 w-5" />
+								</button>
+							</div>
 						</div>
 
 						<!-- Body -->
@@ -430,13 +430,11 @@ Used by:
 							<!-- REVIEW STEP -->
 							<template v-else>
 								<section class="space-y-3">
-									<div
-										class="rounded-2xl border border-border/70 bg-white px-5 py-4 shadow-soft space-y-4"
-									>
+									<div class="student-log-create__review-card card-panel p-5 space-y-4">
 										<!-- Student + Type -->
 										<div class="flex items-start justify-between gap-4">
 											<div class="min-w-0">
-												<p class="type-caption text-ink/55">{{ __('Student') }}</p>
+												<p class="type-label">{{ __('Student') }}</p>
 												<div class="mt-1 flex items-center gap-3 min-w-0">
 													<img
 														v-if="selectedStudentImage"
@@ -461,7 +459,7 @@ Used by:
 											</div>
 
 											<div class="text-right shrink-0">
-												<p class="type-caption text-ink/55">{{ __('Type') }}</p>
+												<p class="type-label">{{ __('Type') }}</p>
 												<p class="mt-1 type-body-strong text-ink">
 													{{ selectedLogTypeLabel || form.log_type || '—' }}
 												</p>
@@ -470,11 +468,9 @@ Used by:
 
 										<!-- Note preview -->
 										<div class="space-y-1">
-											<p class="type-caption text-ink/55">{{ __('Note') }}</p>
-											<div
-												class="rounded-xl border border-border/60 bg-[rgb(var(--surface-strong-rgb))] px-4 py-3"
-											>
-												<p class="text-sm text-ink/90 whitespace-pre-wrap">
+											<p class="type-label">{{ __('Note') }}</p>
+											<div class="card-surface px-4 py-3">
+												<p class="type-body text-ink/90 whitespace-pre-wrap">
 													{{ reviewNotePreview || '—' }}
 												</p>
 											</div>
@@ -485,17 +481,17 @@ Used by:
 
 										<!-- Visibility + Follow-up summary -->
 										<div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-											<div class="rounded-xl border border-border/60 bg-white px-4 py-3">
-												<p class="type-caption text-ink/55">{{ __('Visibility') }}</p>
-												<ul class="mt-2 space-y-1 text-sm text-ink/85">
+											<div class="card-surface px-4 py-3">
+												<p class="type-label">{{ __('Visibility') }}</p>
+												<ul class="mt-2 space-y-2">
 													<li class="flex items-center justify-between gap-3">
-														<span class="text-ink/70">{{ __('Student') }}</span>
+														<span class="type-caption text-ink/70">{{ __('Student') }}</span>
 														<span class="type-body-strong text-ink">{{
 															form.visible_to_student ? __('Yes') : __('No')
 														}}</span>
 													</li>
 													<li class="flex items-center justify-between gap-3">
-														<span class="text-ink/70">{{ __('Parents') }}</span>
+														<span class="type-caption text-ink/70">{{ __('Parents') }}</span>
 														<span class="type-body-strong text-ink">{{
 															form.visible_to_guardians ? __('Yes') : __('No')
 														}}</span>
@@ -503,23 +499,25 @@ Used by:
 												</ul>
 											</div>
 
-											<div class="rounded-xl border border-border/60 bg-white px-4 py-3">
-												<p class="type-caption text-ink/55">{{ __('Follow-up') }}</p>
-												<div class="mt-2 text-sm text-ink/85 space-y-1">
+											<div class="card-surface px-4 py-3">
+												<p class="type-label">{{ __('Follow-up') }}</p>
+												<div class="mt-2 space-y-2">
 													<p>
-														<span class="text-ink/70">{{ __('Needs follow-up') }}:</span>
+														<span class="type-caption text-ink/70"
+															>{{ __('Needs follow-up') }}:</span
+														>
 														<span class="type-body-strong text-ink ml-1">{{
 															form.requires_follow_up ? __('Yes') : __('No')
 														}}</span>
 													</p>
 													<p v-if="form.requires_follow_up">
-														<span class="text-ink/70">{{ __('Next step') }}:</span>
+														<span class="type-caption text-ink/70">{{ __('Next step') }}:</span>
 														<span class="type-body-strong text-ink ml-1">{{
 															selectedNextStepLabel || form.next_step || '—'
 														}}</span>
 													</p>
 													<p v-if="form.requires_follow_up">
-														<span class="text-ink/70">{{ __('Assigned to') }}:</span>
+														<span class="type-caption text-ink/70">{{ __('Assigned to') }}:</span>
 														<span class="type-body-strong text-ink ml-1">{{
 															selectedAssigneeLabel || form.follow_up_person || '—'
 														}}</span>
@@ -536,16 +534,16 @@ Used by:
 						<div class="if-overlay__footer">
 							<!-- EDIT FOOTER -->
 							<div v-if="step !== 'review'" class="w-full flex flex-col items-stretch gap-2">
-								<Button
-									variant="solid"
-									class="w-full"
-									:loading="submitting"
+								<button
+									type="button"
+									class="if-button if-button--primary w-full"
 									:disabled="!canSubmit || submitting"
 									@click="goReview"
 								>
-									<template #prefix><FeatherIcon name="eye" class="h-4 w-4" /></template>
+									<Spinner v-if="submitting" class="h-4 w-4" />
+									<FeatherIcon v-else name="eye" class="h-4 w-4" />
 									{{ __('Review & submit') }}
-								</Button>
+								</button>
 
 								<p class="type-caption text-ink/50 whitespace-normal leading-snug">
 									{{ footerHint }}
@@ -555,21 +553,26 @@ Used by:
 							<!-- REVIEW FOOTER -->
 							<div v-else class="w-full flex flex-col gap-3">
 								<div class="flex items-center gap-3">
-									<Button variant="outline" class="flex-1" :disabled="submitting" @click="goEdit">
-										<template #prefix><FeatherIcon name="edit-2" class="h-4 w-4" /></template>
+									<button
+										type="button"
+										class="if-button if-button--secondary flex-1"
+										:disabled="submitting"
+										@click="goEdit"
+									>
+										<FeatherIcon name="edit-2" class="h-4 w-4" />
 										{{ __('Go back and edit') }}
-									</Button>
+									</button>
 
-									<Button
-										variant="solid"
-										class="flex-1"
-										:loading="submitting"
+									<button
+										type="button"
+										class="if-button if-button--primary flex-1"
 										:disabled="!canSubmit || submitting"
 										@click="submit"
 									>
-										<template #prefix><FeatherIcon name="send" class="h-4 w-4" /></template>
+										<Spinner v-if="submitting" class="h-4 w-4" />
+										<FeatherIcon v-else name="send" class="h-4 w-4" />
 										{{ __('Confirm & submit') }}
-									</Button>
+									</button>
 								</div>
 
 								<p class="type-caption text-ink/50 whitespace-normal leading-snug">
@@ -597,7 +600,7 @@ import {
 	TransitionChild,
 	TransitionRoot,
 } from '@headlessui/vue';
-import { Button, FormControl, FeatherIcon, Spinner } from 'frappe-ui';
+import { FormControl, FeatherIcon, Spinner } from 'frappe-ui';
 import { __ } from '@/lib/i18n';
 import { createStudentLogService } from '@/lib/services/studentLog/studentLogService';
 import { useOverlayStack } from '@/composables/useOverlayStack';

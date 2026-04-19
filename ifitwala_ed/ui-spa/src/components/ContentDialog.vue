@@ -78,6 +78,45 @@
 									</div>
 								</div>
 
+								<section
+									v-if="showAttachmentSection"
+									class="rounded-[1.35rem] border border-border/70 bg-white/95 p-4 shadow-soft"
+								>
+									<div class="flex items-start gap-3">
+										<div
+											class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-surface-soft text-slate-token/70"
+										>
+											<FeatherIcon name="paperclip" class="h-4 w-4" />
+										</div>
+										<div class="min-w-0 flex-1">
+											<p class="text-sm font-semibold text-ink">{{ __('Attachments') }}</p>
+											<p class="mt-1 text-xs text-slate-token/75">
+												{{
+													__(
+														'Preview governed files from this announcement without leaving the briefing.'
+													)
+												}}
+											</p>
+										</div>
+									</div>
+
+									<p
+										v-if="attachmentsLoading"
+										class="mt-4 rounded-2xl border border-dashed border-border/70 bg-surface-soft/70 px-4 py-3 text-sm text-slate-token/80"
+									>
+										{{ __('Loading attachments...') }}
+									</p>
+									<p
+										v-else-if="attachmentsError"
+										class="mt-4 rounded-2xl border border-flame/20 bg-flame/5 px-4 py-3 text-sm text-flame"
+									>
+										{{ attachmentsError }}
+									</p>
+									<div v-else-if="attachmentItems.length" class="mt-4">
+										<CommunicationAttachmentPreviewList :attachments="attachmentItems" />
+									</div>
+								</section>
+
 								<section v-if="showInteractions" class="content-dialog__interaction-panel">
 									<div class="content-dialog__interaction-header">
 										<div>
@@ -158,8 +197,10 @@ import {
 	extractPolicyInformLinkFromClickEvent,
 	type PolicyInformLinkPayload,
 } from '@/utils/policyInformLink';
+import type { OrgCommunicationAttachmentRow } from '@/types/contracts/org_communication_attachments/shared';
 import type { InteractionSummary } from '@/types/morning_brief';
 import type { ReactionCode } from '@/types/interactions';
+import CommunicationAttachmentPreviewList from '@/components/communication/CommunicationAttachmentPreviewList.vue';
 import InteractionEmojiChips from '@/components/InteractionEmojiChips.vue';
 
 defineOptions({
@@ -177,6 +218,9 @@ const props = defineProps<{
 	interaction?: InteractionSummary;
 	showInteractions?: boolean;
 	showComments?: boolean;
+	attachments?: OrgCommunicationAttachmentRow[];
+	attachmentsLoading?: boolean;
+	attachmentsError?: string;
 }>();
 
 const emit = defineEmits<{
@@ -206,8 +250,12 @@ const interaction = computed<InteractionSummary>(() => ({
 
 const stats = computed(() => getInteractionStats(interaction.value));
 const contentHtml = computed(() => props.content || '');
+const attachmentItems = computed<OrgCommunicationAttachmentRow[]>(() => props.attachments || []);
 const commentCount = computed(() => stats.value.comments_total ?? 0);
 const showCommentsAction = computed(() => props.showComments !== false);
+const showAttachmentSection = computed(() =>
+	Boolean(props.attachmentsLoading || props.attachmentsError || attachmentItems.value.length)
+);
 const interactionDescription = computed(() =>
 	showCommentsAction.value
 		? __('Acknowledge, react, or continue the discussion without leaving the briefing.')

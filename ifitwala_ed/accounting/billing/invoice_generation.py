@@ -284,31 +284,64 @@ def _refresh_billing_run_after_invoice_reset(billing_run: str) -> None:
         return
 
     run = frappe.get_doc("Billing Run", billing_run)
+    retained_row_links = frappe.get_all(
+        "Billing Schedule Row",
+        filters={
+            "billing_run": billing_run,
+            "parenttype": "Billing Schedule",
+            "sales_invoice": ["is", "set"],
+        },
+        fields=["sales_invoice", "period_key", "parent"],
+        order_by="sales_invoice asc, parent asc, idx asc",
+        limit=50000,
+    )
+
     retained_items = []
-    for item in run.items or []:
-        sales_invoice = (getattr(item, "sales_invoice", None) or "").strip()
-        if not sales_invoice:
-            continue
-        invoice_state = frappe.db.get_value(
-            "Sales Invoice",
-            sales_invoice,
-            ["name", "docstatus", "status"],
-            as_dict=True,
+    if retained_row_links:
+        invoice_names = sorted(
+            {(row.get("sales_invoice") or "").strip() for row in retained_row_links if row.get("sales_invoice")}
         )
-        if not invoice_state:
-            continue
-        if int(invoice_state.get("docstatus") or 0) == 2 or (invoice_state.get("status") or "").strip() == "Cancelled":
-            continue
-        retained_items.append(
-            {
-                "account_holder": item.account_holder,
-                "period_key": item.period_key,
-                "sales_invoice": sales_invoice,
-                "billing_schedule_count": item.billing_schedule_count,
-                "billing_row_count": item.billing_row_count,
-                "grand_total": item.grand_total,
-            }
-        )
+        invoice_map = {
+            row.get("name"): row
+            for row in frappe.get_all(
+                "Sales Invoice",
+                filters={"name": ["in", invoice_names]},
+                fields=["name", "account_holder", "grand_total", "docstatus", "status"],
+                limit=max(len(invoice_names), 1),
+            )
+        }
+
+        grouped_links: dict[str, list[dict]] = {}
+        for row in retained_row_links:
+            sales_invoice = (row.get("sales_invoice") or "").strip()
+            if not sales_invoice:
+                continue
+            grouped_links.setdefault(sales_invoice, []).append(row)
+
+        for sales_invoice in invoice_names:
+            invoice_state = invoice_map.get(sales_invoice)
+            if not invoice_state:
+                continue
+            if (
+                int(invoice_state.get("docstatus") or 0) == 2
+                or (invoice_state.get("status") or "").strip() == "Cancelled"
+            ):
+                continue
+
+            linked_rows = grouped_links.get(sales_invoice) or []
+            if not linked_rows:
+                continue
+
+            retained_items.append(
+                {
+                    "account_holder": invoice_state.get("account_holder"),
+                    "period_key": (linked_rows[0].get("period_key") or "").strip(),
+                    "sales_invoice": sales_invoice,
+                    "billing_schedule_count": len({row.get("parent") for row in linked_rows if row.get("parent")}),
+                    "billing_row_count": len(linked_rows),
+                    "grand_total": money(invoice_state.get("grand_total") or 0),
+                }
+            )
 
     run.set("items", retained_items)
     if not retained_items:

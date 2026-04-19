@@ -65,6 +65,26 @@ vi.mock('@/components/InteractionEmojiChips.vue', () => ({
 	}),
 }));
 
+vi.mock('@/components/communication/CommunicationAttachmentPreviewList.vue', () => ({
+	default: defineComponent({
+		name: 'CommunicationAttachmentPreviewListStub',
+		props: {
+			attachments: {
+				type: Array,
+				default: () => [],
+			},
+		},
+		setup(props) {
+			return () =>
+				h(
+					'div',
+					{ 'data-testid': 'communication-attachment-preview-list-stub' },
+					`attachments:${props.attachments.length}`
+				);
+		},
+	}),
+}));
+
 import ContentDialog from '@/components/ContentDialog.vue';
 
 const cleanupFns: Array<() => void> = [];
@@ -79,6 +99,9 @@ function mountDialog(
 	options: {
 		showInteractions?: boolean;
 		showComments?: boolean;
+		attachments?: Array<Record<string, unknown>>;
+		attachmentsLoading?: boolean;
+		attachmentsError?: string;
 	} = {}
 ) {
 	const host = document.createElement('div');
@@ -95,6 +118,9 @@ function mountDialog(
 					content,
 					showInteractions: options.showInteractions ?? true,
 					showComments: options.showComments,
+					attachments: options.attachments || [],
+					attachmentsLoading: options.attachmentsLoading ?? false,
+					attachmentsError: options.attachmentsError || '',
 					interaction: {
 						counts: {},
 						self: null,
@@ -158,5 +184,31 @@ describe('ContentDialog', () => {
 		expect(text).not.toContain('Comments');
 		expect(text).toContain('Acknowledge or react without leaving the briefing.');
 		expect(document.body.querySelector('[data-testid="interaction-chips-stub"]')).not.toBeNull();
+	});
+
+	it('renders governed attachment previews when announcement attachments are provided', async () => {
+		mountDialog('<p>Hello world</p>', {
+			attachments: [
+				{
+					row_name: 'row-file',
+					kind: 'file',
+					title: 'Policy PDF',
+					file_name: 'policy.pdf',
+					preview_status: 'ready',
+					preview_url:
+						'/api/method/ifitwala_ed.api.file_access.preview_org_communication_attachment?row_name=row-file',
+					open_url:
+						'/api/method/ifitwala_ed.api.file_access.open_org_communication_attachment?row_name=row-file',
+				},
+			],
+		});
+
+		await flushUi();
+
+		expect(document.body.textContent || '').toContain('Attachments');
+		expect(
+			document.body.querySelector('[data-testid="communication-attachment-preview-list-stub"]')
+				?.textContent || ''
+		).toContain('attachments:1');
 	});
 });

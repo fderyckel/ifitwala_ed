@@ -16,6 +16,8 @@ If Morning Brief behavior changes, update this note with the code.
 2. Morning Brief cards may summarize sensitive domains, but the SPA is never the permission boundary. Server endpoints own visibility.
 3. Cards must fail clearly. If a card cannot resolve required context, the user must see why and what to fix next.
 4. Drill-down overlays must preserve the context of the card that launched them instead of reopening in a different default mode.
+5. Announcement attachments are drill-down detail, not page-bootstrap payload. The page may load governed attachment metadata only after the user opens a specific announcement.
+6. Announcement drill-downs must reuse the Org Communication detail endpoint and governed attachment preview/open URLs. Morning Brief must not construct raw file paths or bypass the shared attachment preview contract.
 
 ---
 
@@ -56,6 +58,7 @@ If Morning Brief behavior changes, update this note with the code.
 1. Morning Brief page-init must not add a request waterfall for clinic volume range toggles; the card summary should switch locally from the bootstrap payload.
 2. The clinic history overlay may fetch its own trend data on open, but the request must stay bounded by an explicit time range.
 3. Weekend and holiday filtering must be derived from canonical calendar helpers, not from repeated per-row document loads.
+4. Opening an announcement may trigger one bounded detail read for that announcement's body/attachments, but Morning Brief must not prefetch attachment DTOs for the whole announcement list.
 
 ---
 

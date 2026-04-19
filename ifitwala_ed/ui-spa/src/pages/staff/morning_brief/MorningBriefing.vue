@@ -661,11 +661,15 @@
 		<!-- CONTENT DIALOG -->
 		<ContentDialog
 			v-model="isContentDialogOpen"
+			:title="dialogContentTitle"
 			:subtitle="dialogContent.subtitle"
-			:content="dialogContent.content"
+			:content="dialogContentBody"
 			:image="dialogContent.image"
 			:image-fallback="dialogContent.imageFallback"
 			:badge="dialogContent.badge"
+			:attachments="dialogContentAttachments"
+			:attachments-loading="dialogContentAttachmentsLoading"
+			:attachments-error="dialogContentAttachmentsError"
 			:show-interactions="showInteractionsForActive"
 			:show-comments="showCommentsForActive"
 			:interaction="
@@ -761,6 +765,7 @@ import { createResource, FeatherIcon, toast } from 'frappe-ui';
 import { useOverlayStack } from '@/composables/useOverlayStack';
 import { formatLocalizedDateTime } from '@/lib/datetime';
 import { createCommunicationInteractionService } from '@/lib/services/communicationInteraction/communicationInteractionService';
+import { createOrgCommunicationArchiveService } from '@/lib/services/orgCommunicationArchive/orgCommunicationArchiveService';
 import { SIGNAL_ORG_COMMUNICATION_INVALIDATE, uiSignals } from '@/lib/uiSignals';
 import ContentDialog from '@/components/ContentDialog.vue';
 import GenericListDialog from '@/components/analytics/GenericListDialog.vue';
@@ -781,6 +786,7 @@ import {
 	type StudentLogDetail,
 } from '@/types/morning_brief';
 import type { InteractionSummary, ReactionCode } from '@/types/morning_brief';
+import type { Response as OrgCommunicationItemResponse } from '@/types/contracts/org_communication_archive/get_org_communication_item';
 import {
 	getAudienceInteractionCapabilities,
 	ORG_COMMUNICATION_VIEWERS,
@@ -835,9 +841,13 @@ const showCommentsForActive = computed(
 );
 const newComment = ref<string>('');
 const interactionService = createCommunicationInteractionService();
+const archiveService = createOrgCommunicationArchiveService();
 const interactionSummaryData = ref<InteractionSummaryMap>({});
 const interactionThreadRows = ref<InteractionThreadRow[]>([]);
 const interactionThreadLoading = ref(false);
+const announcementDetailData = ref<Record<string, OrgCommunicationItemResponse | null>>({});
+const announcementDetailLoading = ref<Record<string, boolean>>({});
+const announcementDetailError = ref<Record<string, string>>({});
 let disposeOrgCommunicationInvalidate: (() => void) | null = null;
 
 const criticalIncidentsList = createResource<StudentLogDetail[]>({
@@ -881,6 +891,36 @@ const spotlightAnnouncements = computed<Announcement[]>(() =>
 const currentSpotlight = computed<Announcement | null>(
 	() => spotlightAnnouncements.value[spotlightIndex.value] || null
 );
+const activeAnnouncementDetail = computed<OrgCommunicationItemResponse | null>(() => {
+	const activeName = activeCommunication.value?.name;
+	if (!activeName) return null;
+	return announcementDetailData.value[activeName] || null;
+});
+const dialogContentTitle = computed<string>(() => {
+	const detailTitle = activeAnnouncementDetail.value?.title;
+	if (typeof detailTitle === 'string' && detailTitle.trim()) {
+		return detailTitle.trim();
+	}
+	return dialogContent.value.title;
+});
+const dialogContentBody = computed<string>(() => {
+	const detailBody = activeAnnouncementDetail.value?.message_html;
+	if (typeof detailBody === 'string' && detailBody.trim()) {
+		return detailBody.trim();
+	}
+	return dialogContent.value.content;
+});
+const dialogContentAttachments = computed(() => activeAnnouncementDetail.value?.attachments || []);
+const dialogContentAttachmentsLoading = computed<boolean>(() => {
+	const activeName = activeCommunication.value?.name;
+	if (!activeName) return false;
+	return Boolean(announcementDetailLoading.value[activeName]);
+});
+const dialogContentAttachmentsError = computed<string>(() => {
+	const activeName = activeCommunication.value?.name;
+	if (!activeName) return '';
+	return announcementDetailError.value[activeName] || '';
+});
 
 function syncCriticalIncidentsOverlayState(): void {
 	criticalIncidentsOverlayState.items = Array.isArray(criticalIncidentsList.data)
@@ -1109,6 +1149,40 @@ function openAnnouncement(news: Announcement): void {
 		badge: news.type,
 	};
 	isContentDialogOpen.value = true;
+	void loadAnnouncementDetail(news.name);
+}
+
+async function loadAnnouncementDetail(name: string): Promise<void> {
+	const resolvedName = String(name || '').trim();
+	if (!resolvedName || announcementDetailLoading.value[resolvedName]) {
+		return;
+	}
+	if (announcementDetailData.value[resolvedName]) {
+		return;
+	}
+
+	announcementDetailError.value[resolvedName] = '';
+	announcementDetailLoading.value[resolvedName] = true;
+
+	try {
+		announcementDetailData.value[resolvedName] = await archiveService.getOrgCommunicationItem({
+			name: resolvedName,
+		});
+	} catch (err) {
+		const message =
+			err instanceof Error
+				? err.message
+				: 'Could not load attachments for this announcement. Close and reopen it to retry.';
+		announcementDetailError.value[resolvedName] = message;
+		toast({
+			title: 'Unable to load announcement detail',
+			text: message,
+			icon: 'alert-circle',
+			appearance: 'danger',
+		});
+	} finally {
+		announcementDetailLoading.value[resolvedName] = false;
+	}
 }
 
 function getInteractionFor(item: Announcement): InteractionSummary {

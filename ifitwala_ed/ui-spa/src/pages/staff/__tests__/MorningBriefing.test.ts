@@ -5,6 +5,7 @@ const {
 	createResourceMock,
 	widgetsPayloadRef,
 	getOrgCommInteractionSummaryMock,
+	getOrgCommunicationItemMock,
 	subscribeMock,
 } = vi.hoisted(() => ({
 		createResourceMock: vi.fn(),
@@ -12,6 +13,7 @@ const {
 			current: null as Record<string, unknown> | null,
 		},
 		getOrgCommInteractionSummaryMock: vi.fn(),
+		getOrgCommunicationItemMock: vi.fn(),
 		subscribeMock: vi.fn(() => vi.fn()),
 	}));
 
@@ -67,6 +69,12 @@ vi.mock('@/lib/services/communicationInteraction/communicationInteractionService
 	}),
 }));
 
+vi.mock('@/lib/services/orgCommunicationArchive/orgCommunicationArchiveService', () => ({
+	createOrgCommunicationArchiveService: () => ({
+		getOrgCommunicationItem: getOrgCommunicationItemMock,
+	}),
+}));
+
 vi.mock('@/lib/uiSignals', () => ({
 	uiSignals: {
 		subscribe: subscribeMock,
@@ -77,8 +85,55 @@ vi.mock('@/lib/uiSignals', () => ({
 vi.mock('@/components/ContentDialog.vue', () => ({
 	default: defineComponent({
 		name: 'ContentDialogStub',
-		setup() {
-			return () => null;
+		props: {
+			modelValue: {
+				type: Boolean,
+				default: false,
+			},
+			title: {
+				type: String,
+				default: '',
+			},
+			content: {
+				type: String,
+				default: '',
+			},
+			attachments: {
+				type: Array,
+				default: () => [],
+			},
+			attachmentsLoading: {
+				type: Boolean,
+				default: false,
+			},
+			attachmentsError: {
+				type: String,
+				default: '',
+			},
+		},
+		setup(props) {
+			return () =>
+				props.modelValue
+					? h('div', { 'data-testid': 'content-dialog-stub' }, [
+							h('div', { 'data-testid': 'content-dialog-title' }, props.title),
+							h('div', { 'data-testid': 'content-dialog-content', innerHTML: props.content }),
+							h(
+								'div',
+								{ 'data-testid': 'content-dialog-attachments-count' },
+								String((props.attachments || []).length)
+							),
+							h(
+								'div',
+								{ 'data-testid': 'content-dialog-attachments-loading' },
+								String(props.attachmentsLoading)
+							),
+							h(
+								'div',
+								{ 'data-testid': 'content-dialog-attachments-error' },
+								props.attachmentsError
+							),
+						])
+					: null;
 		},
 	}),
 }));
@@ -170,6 +225,13 @@ function buildAnnouncement(options?: {
 	};
 }
 
+function clickButtonWithText(text: string) {
+	const button = Array.from(document.querySelectorAll('button')).find(button =>
+		(button.textContent || '').includes(text)
+	);
+	button?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+}
+
 function mountMorningBriefing() {
 	const host = document.createElement('div');
 	document.body.appendChild(host);
@@ -193,6 +255,7 @@ afterEach(() => {
 	createResourceMock.mockClear();
 	widgetsPayloadRef.current = null;
 	getOrgCommInteractionSummaryMock.mockReset();
+	getOrgCommunicationItemMock.mockReset();
 	subscribeMock.mockClear();
 	while (cleanupFns.length) {
 		cleanupFns.pop()?.();
@@ -245,5 +308,79 @@ describe('MorningBriefing', () => {
 		const buttons = Array.from(document.querySelectorAll('button'));
 		expect(buttons.some(button => (button.textContent || '').includes('Reactions'))).toBe(false);
 		expect(buttons.some(button => (button.textContent || '').includes('Comments'))).toBe(false);
+	});
+
+	it('loads governed announcement attachments on demand when an announcement is opened', async () => {
+		let resolveDetail: ((value: Record<string, unknown>) => void) | null = null;
+		getOrgCommunicationItemMock.mockImplementation(
+			() =>
+				new Promise(resolve => {
+					resolveDetail = resolve;
+				})
+		);
+		widgetsPayloadRef.current = {
+			announcements: [buildAnnouncement({ allowPublicThread: 'false' })],
+			today_label: 'Monday',
+		};
+		getOrgCommInteractionSummaryMock.mockResolvedValue({
+			'COMM-0001': {
+				counts: {},
+				self: null,
+				reaction_counts: {},
+				reactions_total: 1,
+				comments_total: 2,
+			},
+		});
+
+		mountMorningBriefing();
+		await flushUi();
+
+		expect(getOrgCommunicationItemMock).not.toHaveBeenCalled();
+
+		clickButtonWithText('Read full announcement');
+		await flushUi();
+
+		expect(getOrgCommunicationItemMock).toHaveBeenCalledWith({ name: 'COMM-0001' });
+		expect(
+			document.querySelector('[data-testid="content-dialog-title"]')?.textContent || ''
+		).toContain('High priority update');
+		expect(
+			document.querySelector('[data-testid="content-dialog-attachments-loading"]')?.textContent
+		).toBe('true');
+		expect(
+			document.querySelector('[data-testid="content-dialog-attachments-count"]')?.textContent
+		).toBe('0');
+
+		resolveDetail?.({
+			name: 'COMM-0001',
+			title: 'High priority update',
+			message_html: '<p>Full detail body</p>',
+			communication_type: 'Information',
+			priority: 'High',
+			publish_from: '2026-04-19 08:00:00',
+			attachments: [
+				{
+					row_name: 'row-file',
+					kind: 'file',
+					title: 'Policy PDF',
+					file_name: 'policy.pdf',
+					preview_status: 'ready',
+					thumbnail_url: '/api/method/ifitwala_ed.api.file_access.thumbnail_org_communication_attachment?row_name=row-file',
+					preview_url: '/api/method/ifitwala_ed.api.file_access.preview_org_communication_attachment?row_name=row-file',
+					open_url: '/api/method/ifitwala_ed.api.file_access.open_org_communication_attachment?row_name=row-file',
+				},
+			],
+		});
+		await flushUi();
+
+		expect(
+			document.querySelector('[data-testid="content-dialog-attachments-loading"]')?.textContent
+		).toBe('false');
+		expect(
+			document.querySelector('[data-testid="content-dialog-attachments-count"]')?.textContent
+		).toBe('1');
+		expect(
+			document.querySelector('[data-testid="content-dialog-content"]')?.innerHTML || ''
+		).toContain('Full detail body');
 	});
 });
