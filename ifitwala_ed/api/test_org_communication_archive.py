@@ -30,9 +30,21 @@ class TestOrgCommunicationArchiveItem(FrappeTestCase):
             if doctype == "Drive Binding":
                 self.assertEqual(fields, "drive_file")
                 return "DF-0001"
-            if doctype == "Drive File" and fields == "preview_status":
+            if doctype == "Drive File" and fields == ["preview_status", "current_version"]:
                 self.assertEqual(filters, "DF-0001")
-                return "ready"
+                self.assertTrue(as_dict)
+                return {"preview_status": "ready", "current_version": "DFV-0001"}
+            if doctype == "Drive File Derivative" and fields == "name":
+                self.assertEqual(
+                    filters,
+                    {
+                        "drive_file": "DF-0001",
+                        "drive_file_version": "DFV-0001",
+                        "derivative_role": "thumb",
+                        "status": "ready",
+                    },
+                )
+                return "DFD-0001"
             return None
 
         doc = SimpleNamespace(

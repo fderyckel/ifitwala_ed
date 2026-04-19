@@ -879,3 +879,9 @@ def get_guardian_communication_center(
         "start": offset,
         "page_length": page_len,
     }
+
+
+def get_guardian_portal_communication_unread_count() -> int:
+    context = _resolve_guardian_communication_context()
+    items = _fetch_guardian_org_communications(context)
+    return sum(1 for item in items if item.get("is_unread"))

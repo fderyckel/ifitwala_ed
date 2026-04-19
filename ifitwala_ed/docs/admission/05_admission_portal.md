@@ -887,6 +887,7 @@ No business logic.
 * Maintain student profile fields required for promotion
 * Upload/update applicant-owned student image
 * Optionally maintain one-or-more guardian intake rows when enabled in `Admission Settings.show_guardians_in_admissions_profile`
+* Show inline upload progress for applicant and guardian image uploads so families can see that large files are still moving
 
 **Reads**
 
@@ -926,6 +927,7 @@ No business logic.
 
 * Upload & view applicant-owned documents
 * Excludes recommendation evidence collected from external referees
+* Show inline upload progress inside the upload overlay rather than relying only on disabled buttons or generic busy text
 
 **Reads**
 
@@ -1017,6 +1019,7 @@ Overlay rules:
 * closes immediately
 * emits invalidation
 * no toasts inside overlay
+* upload overlays must keep progress feedback visible while the browser prepares/sends the file and while the server finalizes the governed upload
 
 ---
 

@@ -2,14 +2,17 @@
 
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
-const { apiMethodMock } = vi.hoisted(() => ({
+const { apiMethodMock, apiUploadMock } = vi.hoisted(() => ({
 	apiMethodMock: vi.fn(),
+	apiUploadMock: vi.fn(),
 }))
-
-const fetchMock = vi.fn()
 
 vi.mock('@/resources/frappe', () => ({
 	apiMethod: apiMethodMock,
+}))
+
+vi.mock('@/lib/client', () => ({
+	apiUpload: apiUploadMock,
 }))
 
 import {
@@ -29,9 +32,7 @@ import {
 describe('staffTeachingService', () => {
 	afterEach(() => {
 		apiMethodMock.mockReset()
-		fetchMock.mockReset()
-		vi.unstubAllGlobals()
-		delete (window as Window & { csrf_token?: string }).csrf_token
+		apiUploadMock.mockReset()
 	})
 
 	it('uses the canonical method for planning link resources', async () => {
@@ -244,36 +245,33 @@ describe('staffTeachingService', () => {
 	})
 
 	it('uploads planning resource files through the class-planning endpoint', async () => {
-		fetchMock.mockResolvedValue({
-			ok: true,
-			json: vi.fn().mockResolvedValue({
-				message: {
-					placement: 'MAT-PLC-1',
-					resource: { material: 'MAT-1', title: 'Graphic organizer' },
-				},
-			}),
+		apiUploadMock.mockResolvedValue({
+			placement: 'MAT-PLC-1',
+			resource: { material: 'MAT-1', title: 'Graphic organizer' },
 		})
-		vi.stubGlobal('fetch', fetchMock)
-		Object.assign(window, { csrf_token: 'csrf-123' })
 
 		const file = new File(['worksheet'], 'organizer.pdf', { type: 'application/pdf' })
+		const onProgress = vi.fn()
 		await uploadPlanningMaterialFile({
 			anchor_doctype: 'Class Session',
 			anchor_name: 'CLASS-SESSION-1',
 			title: 'Graphic organizer',
 			file,
 			modality: 'Use',
+		}, {
+			onProgress,
 		})
 
-		expect(fetchMock).toHaveBeenCalledWith(
-			'/api/method/ifitwala_ed.api.teaching_plans.upload_planning_material_file',
-			expect.objectContaining({
-				method: 'POST',
-				credentials: 'same-origin',
-				headers: { 'X-Frappe-CSRF-Token': 'csrf-123' },
-				body: expect.any(FormData),
-			})
+		expect(apiUploadMock).toHaveBeenCalledWith(
+			'ifitwala_ed.api.teaching_plans.upload_planning_material_file',
+			expect.any(FormData),
+			{ onProgress }
 		)
+		const formData = apiUploadMock.mock.calls[0][1] as FormData
+		expect(formData.get('anchor_doctype')).toBe('Class Session')
+		expect(formData.get('anchor_name')).toBe('CLASS-SESSION-1')
+		expect(formData.get('title')).toBe('Graphic organizer')
+		expect(formData.get('modality')).toBe('Use')
 	})
 
 	it('uses the canonical method when removing planning resources', async () => {

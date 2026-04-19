@@ -78,10 +78,10 @@ def _get_attachment_row(doc, row_name: str):
     frappe.throw(_("Attachment row was not found: {0}").format(resolved_row_name), frappe.DoesNotExistError)
 
 
-def _get_attachment_preview_status(org_communication: str, row_name: str) -> str | None:
+def _get_attachment_preview_meta(org_communication: str, row_name: str) -> dict[str, Any]:
     slot = f"{ORG_COMMUNICATION_ATTACHMENT_SLOT_PREFIX}{str(row_name or '').strip()}"
     if not slot or not org_communication:
-        return None
+        return {"preview_status": None, "thumbnail_ready": False}
 
     drive_file_id = frappe.db.get_value(
         "Drive Binding",
@@ -106,8 +106,41 @@ def _get_attachment_preview_status(org_communication: str, row_name: str) -> str
             "name",
         )
     if not drive_file_id:
-        return None
-    return _clean_text(frappe.db.get_value("Drive File", drive_file_id, "preview_status"))
+        return {"preview_status": None, "thumbnail_ready": False}
+
+    drive_file = (
+        frappe.db.get_value(
+            "Drive File",
+            drive_file_id,
+            ["preview_status", "current_version"],
+            as_dict=True,
+        )
+        or {}
+    )
+    preview_status = _clean_text(drive_file.get("preview_status"))
+    current_version = _clean_text(drive_file.get("current_version"))
+    thumbnail_ready = False
+
+    if preview_status == "ready" and current_version:
+        thumbnail_ready = bool(
+            _clean_text(
+                frappe.db.get_value(
+                    "Drive File Derivative",
+                    {
+                        "drive_file": drive_file_id,
+                        "drive_file_version": current_version,
+                        "derivative_role": "thumb",
+                        "status": "ready",
+                    },
+                    "name",
+                )
+            )
+        )
+
+    return {
+        "preview_status": preview_status,
+        "thumbnail_ready": thumbnail_ready,
+    }
 
 
 def _build_attachment_thumbnail_url(org_communication: str, row_name: str, preview_url: str | None) -> str | None:
@@ -143,7 +176,8 @@ def serialize_org_communication_attachment_row(org_communication: str, row) -> d
         )
 
     if file_url:
-        preview_status = _get_attachment_preview_status(org_communication, row_name)
+        preview_meta = _get_attachment_preview_meta(org_communication, row_name)
+        preview_status = preview_meta.get("preview_status")
         open_url = file_access_api.build_org_communication_attachment_open_url(
             org_communication=org_communication,
             row_name=row_name,
@@ -152,7 +186,11 @@ def serialize_org_communication_attachment_row(org_communication: str, row) -> d
             org_communication=org_communication,
             row_name=row_name,
         )
-        thumbnail_url = _build_attachment_thumbnail_url(org_communication, row_name, preview_url)
+        thumbnail_url = (
+            _build_attachment_thumbnail_url(org_communication, row_name, preview_url)
+            if preview_meta.get("thumbnail_ready")
+            else None
+        )
         return {
             "row_name": row_name,
             "kind": "file",

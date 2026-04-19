@@ -20,6 +20,7 @@ export type Response = {
 	summary: {
 		total_items: number
 		source_counts: Record<string, number>
+		unread_items: number
 	}
 	items: StudentCommunicationCenterItem[]
 	total_count: number

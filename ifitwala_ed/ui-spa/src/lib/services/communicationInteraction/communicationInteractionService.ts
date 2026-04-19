@@ -7,6 +7,7 @@
  * Semantics:
  * - reactToOrgCommunication → emits SIGNAL_ORG_COMMUNICATION_INVALIDATE
  * - postOrgCommunicationComment → emits SIGNAL_ORG_COMMUNICATION_INVALIDATE
+ * - markOrgCommunicationRead → emits SIGNAL_ORG_COMMUNICATION_INVALIDATE
  *
  * Page responsibility:
  * - call semantic method
@@ -148,7 +149,13 @@ export function createCommunicationInteractionService() {
   async function markOrgCommunicationRead(
     payload: MarkOrgCommunicationReadRequest
   ): Promise<MarkOrgCommunicationReadResponse> {
-    return markReadResource.submit(payload)
+    const response = await markReadResource.submit(payload)
+    if (response?.ok || response?.read_at) {
+      uiSignals.emit(SIGNAL_ORG_COMMUNICATION_INVALIDATE, {
+        names: [payload.org_communication],
+      })
+    }
+    return response
   }
 
   return {

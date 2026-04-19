@@ -64,6 +64,7 @@
 
 				<div class="flex flex-wrap gap-2">
 					<span class="chip">Total {{ totalCount }}</span>
+					<span class="chip">Unread {{ unreadCount }}</span>
 					<span v-for="chip in summaryChips" :key="chip.label" class="chip">
 						{{ chip.label }} {{ chip.count }}
 					</span>
@@ -111,6 +112,12 @@
 								<p class="type-caption text-ink/60">{{ item.source_label }}</p>
 								<span class="chip">{{ item.org_communication.communication_type }}</span>
 								<span class="chip">{{ item.org_communication.priority }}</span>
+								<span
+									class="rounded-full px-3 py-1 text-xs font-semibold"
+									:class="item.is_unread ? 'bg-flame/15 text-flame' : 'bg-leaf/15 text-canopy'"
+								>
+									{{ item.is_unread ? 'Unread' : 'Seen' }}
+								</span>
 							</div>
 							<h2 class="mt-2 type-h3 text-ink">{{ item.org_communication.title }}</h2>
 							<p class="mt-2 type-caption text-ink/60">{{ metaLine(item) }}</p>
@@ -291,6 +298,7 @@ const sourceOptions: Array<{ value: SourceFilter; label: string }> = [
 
 const items = ref<StudentCommunicationCenterItem[]>([]);
 const totalCount = ref(0);
+const unreadCount = ref(0);
 const hasMore = ref(false);
 const loading = ref(false);
 const loadingMore = ref(false);
@@ -302,6 +310,7 @@ const summaryMap = ref<InteractionSummaryMap>({});
 const detailMap = ref<Record<string, OrgCommunicationDetailResponse | null>>({});
 const detailLoading = ref<Record<string, boolean>>({});
 const detailError = ref<Record<string, string>>({});
+const readMarking = ref<Record<string, boolean>>({});
 const threadOpen = ref(false);
 const threadLoading = ref(false);
 const commentSubmitting = ref(false);
@@ -505,6 +514,7 @@ async function loadFeed(reset = true) {
 		});
 		summaryCounts.value = response.summary.source_counts || {};
 		totalCount.value = response.total_count || 0;
+		unreadCount.value = response.summary.unread_items || 0;
 		hasMore.value = Boolean(response.has_more);
 		items.value = reset ? response.items || [] : [...items.value, ...(response.items || [])];
 		await loadSummaries();
@@ -564,6 +574,24 @@ async function loadCommunicationDetail(name: string) {
 	}
 }
 
+async function markCommunicationRead(item: StudentOrgCommunicationCenterItem) {
+	const commName = item.org_communication.name;
+	if (!item.is_unread || readMarking.value[commName]) {
+		return;
+	}
+	readMarking.value[commName] = true;
+	try {
+		await interactionService.markOrgCommunicationRead({ org_communication: commName });
+		item.is_unread = false;
+		unreadCount.value = Math.max(0, unreadCount.value - 1);
+	} catch (error) {
+		const message = error instanceof Error ? error.message : String(error || '');
+		toast.error(message || 'Could not mark this update as read.');
+	} finally {
+		readMarking.value[commName] = false;
+	}
+}
+
 async function toggleOrgCommunication(item: StudentOrgCommunicationCenterItem) {
 	actionError.value = '';
 	if (expandedItemId.value === item.item_id) {
@@ -572,6 +600,7 @@ async function toggleOrgCommunication(item: StudentOrgCommunicationCenterItem) {
 	}
 	expandedItemId.value = item.item_id;
 	await loadCommunicationDetail(item.org_communication.name);
+	await markCommunicationRead(item);
 }
 
 async function reactToCommunication(

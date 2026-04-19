@@ -142,7 +142,7 @@ def get_school_event_details(event: str):
         "school": doc.school,
         "location": doc.location,
         "event_category": doc.event_category,
-        "event_type": doc.event_type,
+        "event_type": getattr(doc, "event_type", None),
         "all_day": bool(doc.all_day),
         "color": color,
         "description": doc.description or "",

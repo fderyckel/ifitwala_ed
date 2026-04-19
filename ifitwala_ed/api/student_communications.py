@@ -305,8 +305,10 @@ def _serialize_org_communication_item(
     *,
     context: dict[str, Any],
     matched_student_group: str | None,
+    unread_names: set[str] | None = None,
 ) -> dict[str, Any]:
     context_meta = _resolve_org_comm_context(row, context, matched_student_group)
+    unread_set = unread_names or set()
     item = {
         "name": row.get("name"),
         "title": row.get("title"),
@@ -340,6 +342,7 @@ def _serialize_org_communication_item(
         "context_label": context_meta.get("context_label"),
         "href": context_meta.get("href"),
         "href_label": context_meta.get("href_label"),
+        "is_unread": row.get("name") in unread_set,
         "org_communication": item,
     }
 
@@ -441,6 +444,14 @@ def _fetch_student_org_communications(
         [row.get("name") for row in (candidates or []) if row.get("name")],
         set(context.get("group_names") or []),
     )
+    visible_names = [row.get("name") for row in (candidates or []) if row.get("name")]
+    seen_names = set(
+        get_seen_org_communication_names(
+            user=context.get("user"),
+            communication_names=visible_names,
+        )
+    )
+    unread_names = {name for name in visible_names if name and name not in seen_names}
 
     visible_items: list[dict[str, Any]] = []
     for row in candidates or []:
@@ -456,6 +467,7 @@ def _fetch_student_org_communications(
                 row,
                 context=context,
                 matched_student_group=matched_groups.get(row.get("name")),
+                unread_names=unread_names,
             )
         )
 
@@ -504,6 +516,12 @@ def _course_communication_summary(*, user: str, items: list[dict[str, Any]]) -> 
         },
         seen_names,
     )
+
+
+def get_student_portal_communication_unread_count(student_name: str | None = None) -> int:
+    context = _resolve_student_context(student_name)
+    items = _fetch_student_org_communications(context, include_school_scope=True)
+    return sum(1 for item in items if item.get("is_unread"))
 
 
 def _get_student_course_communication_items(
@@ -809,6 +827,7 @@ def get_student_communication_center(
         "summary": {
             "total_items": len(items),
             "source_counts": dict(summary_counts),
+            "unread_items": sum(1 for row in items if row.get("is_unread")),
         },
         "items": paged_items,
         "total_count": len(items),

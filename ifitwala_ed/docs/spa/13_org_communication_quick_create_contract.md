@@ -193,6 +193,7 @@ Rules:
 17. For organization-scoped locked drafts (`issuing school` blank at first governed file), compatible `Organization` audiences remain valid. The overlay must tell wide-scope users to choose `Organization-wide` rather than showing only a generic lock warning.
 18. In `entryMode='staff-home'`, the composer must surface the scope-driving controls (`Organization`, `Issuing school`) and audience builder before the attachment section so users resolve attachment intent before the first governed-file auto-save path.
 19. In `entryMode='staff-home'`, the primary `Add file` and `Add link` controls must live with the message composer after `Scope`, while the lower attachment section remains an explicit review/remove list for the attached rows. This reduces modal sprawl without collapsing governed attachments into the rich-text body.
+20. Governed file uploads must surface inline progress in the attachment action region while the browser is sending bytes and must keep a visible finishing state after byte upload completes but before the server confirms attachment success. Disabled controls alone are not sufficient feedback.
 
 ## 5. Overlay and Invalidation Contract
 

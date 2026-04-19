@@ -177,6 +177,7 @@ class TestGradebookApi(TestCase):
 
             def fake_get_all(doctype, filters=None, fields=None, order_by=None, limit=0, pluck=None):
                 if doctype == "Task Submission":
+                    self.assertNotIn("attachments", fields or [])
                     return [
                         {
                             "name": "TSU-2026-00002",

@@ -5,8 +5,9 @@ from unittest import TestCase
 from unittest.mock import patch
 
 import frappe
+import pytz
 
-from ifitwala_ed.api import calendar_quick_create
+from ifitwala_ed.api import calendar_details, calendar_quick_create
 from ifitwala_ed.api.calendar import (
     create_meeting_quick,
     create_school_event_quick,
@@ -344,6 +345,42 @@ class TestCalendarApi(TestCase):
 
         self.assertEqual(len(events), 1)
         self.assertEqual(events[0].color, "#112233")
+
+    def test_get_school_event_details_tolerates_missing_event_type_field(self):
+        doc = _FakeDoc(
+            {
+                "subject": "Assembly",
+                "school": "SCHOOL-1",
+                "location": "Hall",
+                "event_category": "Other",
+                "all_day": 0,
+                "color": None,
+                "description": "<p>Bring your planner.</p>",
+                "starts_on": "2026-04-10 08:00:00",
+                "ends_on": "2026-04-10 09:00:00",
+                "reference_type": None,
+                "reference_name": None,
+                "docstatus": 0,
+            },
+            "SE-0001",
+        )
+
+        with (
+            patch("ifitwala_ed.api.calendar_details.frappe.session", frappe._dict({"user": "teacher@example.com"})),
+            patch("ifitwala_ed.api.calendar_details.frappe.get_doc", return_value=doc),
+            patch("ifitwala_ed.api.calendar_details._school_event_access_allowed", return_value=True),
+            patch(
+                "ifitwala_ed.api.calendar_details._system_tzinfo",
+                return_value=pytz.timezone("Asia/Bangkok"),
+            ),
+        ):
+            payload = calendar_details.get_school_event_details("SE-0001")
+
+        self.assertEqual(payload["name"], "SE-0001")
+        self.assertEqual(payload["subject"], "Assembly")
+        self.assertEqual(payload["event_category"], "Other")
+        self.assertIsNone(payload["event_type"])
+        self.assertEqual(payload["timezone"], "Asia/Bangkok")
 
     def test_create_school_event_quick_defaults_custom_users_to_session_user(self):
         cache = _DummyCache()

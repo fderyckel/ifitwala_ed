@@ -220,7 +220,6 @@ def get_drawer(api, outcome_id: str, submission_id: str | None = None, version: 
             "evidence_note",
             "link_url",
             "text_content",
-            "attachments",
         ],
         order_by="version desc",
         limit=20,

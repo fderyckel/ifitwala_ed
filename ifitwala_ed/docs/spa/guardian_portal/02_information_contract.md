@@ -3,7 +3,7 @@
 Status: Active
 Audience: Humans, coding agents
 Scope: `/hub/guardian` family information surfaces
-Last updated: 2026-04-17
+Last updated: 2026-04-19
 
 This document defines the canonical information contract for Guardian Home plus the Phase-2 guardian policy, finance, and monitoring surfaces.
 
@@ -49,7 +49,8 @@ Rules:
 1. Guardian Home shows the portal heading, the configured school-day window, and a refresh action.
 2. The summary cards show `unread_communications`, `unread_visible_student_logs`, `upcoming_due_tasks`, and `upcoming_assessments`.
 3. Quick links route guardians to communications, course selection, activities, policies, finance, monitoring, portfolio, and the family snapshot.
-4. The landing page remains a briefing surface; navigation is secondary.
+4. The guardian portal shell may surface an unread communication badge on the `Communications` rail item using the same unread org-communication count shown by the family snapshot.
+5. The landing page remains a briefing surface; navigation is secondary.
 
 ## 3. Home Zone Order And Content
 
@@ -189,7 +190,7 @@ Rules:
 3. Feed rows render once per domain record and expose the linked-child labels matched by the server.
 4. Org communication rows keep their shared interaction, detail, and read-state behavior.
 5. School-event rows are visibility-only items in this surface and open the event detail modal from the bootstrap payload instead of using the org communication interaction workflow.
-6. Opening an org communication detail must call `mark_org_communication_read` so the unread state stays aligned with Guardian Home.
+6. Opening an org communication detail must call `mark_org_communication_read` so the unread state stays aligned with Guardian Home and the guardian shell badge.
 
 ## 9. Attendance Surface
 

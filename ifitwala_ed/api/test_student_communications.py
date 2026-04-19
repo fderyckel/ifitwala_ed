@@ -122,6 +122,7 @@ class TestStudentCommunicationsApi(TestCase):
                     "item_id": "org::COMM-1",
                     "sort_at": "2026-04-10T09:00:00",
                     "source_type": "course",
+                    "is_unread": True,
                     "org_communication": {"name": "COMM-1", "priority": "Normal"},
                 },
                 {
@@ -129,6 +130,7 @@ class TestStudentCommunicationsApi(TestCase):
                     "item_id": "org::COMM-2",
                     "sort_at": "2026-04-09T09:00:00",
                     "source_type": "course",
+                    "is_unread": True,
                     "org_communication": {"name": "COMM-2", "priority": "Critical"},
                 },
             ]
@@ -153,9 +155,11 @@ class TestStudentCommunicationsApi(TestCase):
         self.assertEqual(payload["meta"]["student_group"], "GROUP-1")
         self.assertEqual(payload["meta"]["item"], "org::COMM-2")
         self.assertEqual(payload["summary"]["source_counts"], {"course": 2})
+        self.assertEqual(payload["summary"]["unread_items"], 2)
         self.assertEqual(payload["total_count"], 2)
         self.assertEqual(len(payload["items"]), 1)
         self.assertEqual(payload["items"][0]["item_id"], "org::COMM-2")
+        self.assertTrue(payload["items"][0]["is_unread"])
 
     def test_fetch_student_org_communications_limits_to_feed_surfaces(self):
         with _student_communications_module() as module:

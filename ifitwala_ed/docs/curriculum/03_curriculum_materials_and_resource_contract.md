@@ -90,6 +90,7 @@ Staff add materials where they already work:
 - task creation overlay for task-scoped materials
 - course-plan workspace for shared course-plan and unit resources
 - class-planning workspace for class-wide and session-specific resources
+- file-upload authoring on those surfaces must show inline upload feedback while the browser is preparing/sending the selected file and must keep a visible finishing state until the governed response returns
 
 Current staff preview behavior:
 

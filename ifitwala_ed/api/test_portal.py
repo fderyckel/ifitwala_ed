@@ -76,6 +76,24 @@ class TestPortalIdentity(FrappeTestCase):
         self.assertIsNone(payload["image_url"])
         image_mock.assert_not_called()
 
+    def test_get_student_portal_chrome_returns_unread_communication_count(self):
+        with patch(
+            "ifitwala_ed.api.portal.student_communications_api.get_student_portal_communication_unread_count",
+            return_value=4,
+        ):
+            payload = portal.get_student_portal_chrome()
+
+        self.assertEqual(payload, {"counts": {"unread_communications": 4}})
+
+    def test_get_guardian_portal_chrome_returns_unread_communication_count(self):
+        with patch(
+            "ifitwala_ed.api.portal.guardian_communications_api.get_guardian_portal_communication_unread_count",
+            return_value=3,
+        ):
+            payload = portal.get_guardian_portal_chrome()
+
+        self.assertEqual(payload, {"counts": {"unread_communications": 3}})
+
 
 class TestStaffHomeHeader(FrappeTestCase):
     def test_get_staff_home_header_includes_disabled_org_communication_quick_action_state(self):

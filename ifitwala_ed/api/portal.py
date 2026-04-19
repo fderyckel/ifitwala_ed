@@ -7,6 +7,8 @@ import frappe
 from frappe import _
 
 from ifitwala_ed.admission.admission_utils import ADMISSIONS_ROLES
+from ifitwala_ed.api import guardian_communications as guardian_communications_api
+from ifitwala_ed.api import student_communications as student_communications_api
 from ifitwala_ed.api.attendance import ADMIN_ROLES, COUNSELOR_ROLES, INSTRUCTOR_ROLES
 from ifitwala_ed.api.enrollment_analytics import ALLOWED_ANALYTICS_ROLES as ENROLLMENT_ANALYTICS_ROLES
 from ifitwala_ed.api.inquiry import ALLOWED_ANALYTICS_ROLES as INQUIRY_ANALYTICS_ROLES
@@ -386,3 +388,23 @@ def get_guardian_portal_identity():
     }
 
     return payload
+
+
+def _build_portal_chrome_payload(*, unread_communications: int) -> dict[str, dict[str, int]]:
+    return {
+        "counts": {
+            "unread_communications": max(int(unread_communications or 0), 0),
+        }
+    }
+
+
+@frappe.whitelist()
+def get_student_portal_chrome():
+    unread_count = student_communications_api.get_student_portal_communication_unread_count()
+    return _build_portal_chrome_payload(unread_communications=unread_count)
+
+
+@frappe.whitelist()
+def get_guardian_portal_chrome():
+    unread_count = guardian_communications_api.get_guardian_portal_communication_unread_count()
+    return _build_portal_chrome_payload(unread_communications=unread_count)

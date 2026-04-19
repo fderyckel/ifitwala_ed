@@ -209,6 +209,7 @@ describe('orgCommunicationQuickCreateService', () => {
 
 	it('uploadOrgCommunicationAttachment uses shared multipart transport and emits invalidate', async () => {
 		const file = new File(['pdf-bytes'], 'policy.pdf', { type: 'application/pdf' })
+		const onProgress = vi.fn()
 		apiUploadMock.mockResolvedValue({
 			ok: true,
 			org_communication: 'COMM-UPLOAD-1',
@@ -224,12 +225,15 @@ describe('orgCommunicationQuickCreateService', () => {
 			org_communication: 'COMM-UPLOAD-1',
 			row_name: 'row-file-1',
 			file,
+		}, {
+			onProgress,
 		})
 
 		expect(apiUploadMock).toHaveBeenCalledTimes(1)
 		expect(apiUploadMock).toHaveBeenCalledWith(
 			'ifitwala_ed.api.org_communication_attachments.upload_org_communication_attachment',
-			expect.any(FormData)
+			expect.any(FormData),
+			{ onProgress }
 		)
 		const formData = apiUploadMock.mock.calls[0][1] as FormData
 		expect(formData.get('org_communication')).toBe('COMM-UPLOAD-1')

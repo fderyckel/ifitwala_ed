@@ -235,6 +235,62 @@ describe('PlanningResourcePanel', () => {
 		expect(previewSurface?.textContent || '').toContain('Image preview');
 	});
 
+	it('keeps image resources action-led when no thumbnail_url is available', async () => {
+		mountPanel(
+			[
+				{
+					material: 'MAT-IMG-2',
+					title: 'Class map',
+					material_type: 'File',
+					file_name: 'class-map.png',
+					preview_url: '/api/method/ifitwala_ed.api.file_access.preview_academic_file?file=FILE-IMG-2',
+					open_url: '/api/method/ifitwala_ed.api.file_access.download_academic_file?file=FILE-IMG-2',
+				},
+			],
+			{
+				enableAttachmentPreview: true,
+			}
+		);
+		await flushUi();
+
+		expect(document.querySelector('[data-resource-preview-kind="image"] img')).toBeNull();
+		expect(document.body.textContent || '').toContain('Preview');
+		expect(document.body.textContent || '').toContain('Open original');
+	});
+
+	it('falls back to actions when the governed image thumbnail fails to load', async () => {
+		mountPanel(
+			[
+				{
+					material: 'MAT-IMG-3',
+					title: 'Lab setup photo',
+					material_type: 'File',
+					file_name: 'lab-setup.webp',
+					thumbnail_url:
+						'/api/method/ifitwala_ed.api.file_access.thumbnail_academic_file?file=FILE-IMG-3',
+					preview_url: '/api/method/ifitwala_ed.api.file_access.preview_academic_file?file=FILE-IMG-3',
+					open_url: '/api/method/ifitwala_ed.api.file_access.download_academic_file?file=FILE-IMG-3',
+				},
+			],
+			{
+				enableAttachmentPreview: true,
+			}
+		);
+		await flushUi();
+
+		const imagePreview = document.querySelector(
+			'[data-resource-preview-kind="image"] img'
+		) as HTMLImageElement | null;
+		expect(imagePreview).not.toBeNull();
+
+		imagePreview?.dispatchEvent(new Event('error'));
+		await flushUi();
+
+		expect(document.querySelector('[data-resource-preview-kind="image"] img')).toBeNull();
+		expect(document.body.textContent || '').toContain('Preview');
+		expect(document.body.textContent || '').toContain('Open original');
+	});
+
 	it('renders a compact pdf preview tile when attachment preview mode is enabled', async () => {
 		mountPanel(
 			[

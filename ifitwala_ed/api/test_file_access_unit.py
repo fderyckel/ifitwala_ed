@@ -217,6 +217,55 @@ class TestFileAccessUnit(TestCase):
         self.assertEqual(len(cache_writes), 1)
         self.assertEqual(cache_writes[0][1], "https://thumb.example.com/fresh.webp")
 
+    def test_thumbnail_academic_file_fails_closed_without_ready_thumb_target(self):
+        with _file_access_module() as (file_access, frappe):
+            thumbnail_requests: list[dict] = []
+            frappe.local.response = {}
+            file_access._resolve_authorized_academic_file = lambda **kwargs: {
+                "name": "FILE-ACADEMIC-1",
+                "file_url": "/private/files/material.png",
+                "file_name": "material.png",
+                "is_private": 1,
+            }
+            file_access._resolve_drive_file_delivery_row = lambda file_name: {
+                "name": "DRIVE-FILE-1",
+                "preview_status": "ready",
+                "current_version": "VER-1",
+            }
+
+            def fake_resolve_cached_thumbnail_target_url(**kwargs):
+                thumbnail_requests.append(kwargs)
+                return None
+
+            file_access._resolve_cached_thumbnail_target_url = fake_resolve_cached_thumbnail_target_url
+
+            with self.assertRaises(frappe.DoesNotExistError):
+                file_access.thumbnail_academic_file(
+                    file="FILE-ACADEMIC-1",
+                    context_doctype="Material Placement",
+                    context_name="MAT-PLC-0001",
+                )
+
+        self.assertEqual(
+            thumbnail_requests,
+            [
+                {
+                    "drive_file_id": "DRIVE-FILE-1",
+                    "file_id": "FILE-ACADEMIC-1",
+                    "surface_parts": [
+                        "academic",
+                        "Material Placement",
+                        "MAT-PLC-0001",
+                        None,
+                        None,
+                        "FILE-ACADEMIC-1",
+                    ],
+                    "strict_derivative": True,
+                }
+            ],
+        )
+        self.assertEqual(frappe.local.response, {})
+
     def test_resolve_drive_download_grant_url_returns_signed_url(self):
         with _file_access_module() as (file_access, frappe):
 

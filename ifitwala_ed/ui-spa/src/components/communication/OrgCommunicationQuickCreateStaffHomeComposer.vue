@@ -425,6 +425,8 @@
 						:show-link-composer="attachmentSection.showLinkComposer"
 						:link-draft="attachmentSection.linkDraft"
 						:link-draft-ready="attachmentSection.linkDraftReady"
+						:upload-progress="attachmentSection.uploadProgress"
+						:upload-progress-label="attachmentSection.uploadProgressLabel"
 						@trigger-file-picker="emit('trigger-file-picker')"
 						@toggle-link-composer="emit('toggle-link-composer')"
 						@reset-link-draft="emit('reset-link-draft')"

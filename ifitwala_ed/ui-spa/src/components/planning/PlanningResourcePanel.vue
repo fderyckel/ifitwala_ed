@@ -188,6 +188,7 @@
 								:alt="resource.title"
 								class="h-44 w-full object-cover transition duration-200 group-hover:scale-[1.01]"
 								loading="lazy"
+								@error="markImagePreviewFailed(resource)"
 							/>
 							<div
 								class="flex items-center justify-between border-t border-line-soft bg-white px-4 py-3"
@@ -344,6 +345,7 @@ const errorMessage = ref('');
 const selectedFile = ref<File | null>(null);
 const fileInput = ref<HTMLInputElement | null>(null);
 const uploadProgress = ref<UploadProgressState | null>(null);
+const failedImagePreviewKeys = ref<Record<string, boolean>>({});
 
 const form = reactive({
 	title: '',
@@ -539,13 +541,31 @@ function primaryResourceUrl(resource: StaffPlanningMaterial): string | null {
 	return resource.preview_url || resource.open_url || null;
 }
 
+function imagePreviewKey(resource: StaffPlanningMaterial): string {
+	return `${resource.placement || resource.material}:${resource.thumbnail_url || ''}`;
+}
+
+function markImagePreviewFailed(resource: StaffPlanningMaterial): void {
+	failedImagePreviewKeys.value = {
+		...failedImagePreviewKeys.value,
+		[imagePreviewKey(resource)]: true,
+	};
+}
+
+function hasImagePreviewFailure(resource: StaffPlanningMaterial): boolean {
+	return Boolean(failedImagePreviewKeys.value[imagePreviewKey(resource)]);
+}
+
 function imagePreviewUrl(resource: StaffPlanningMaterial): string | null {
-	return resource.thumbnail_url || primaryResourceUrl(resource);
+	return resource.thumbnail_url || null;
 }
 
 function showInlineImagePreview(resource: StaffPlanningMaterial): boolean {
 	return Boolean(
-		props.enableAttachmentPreview && imagePreviewUrl(resource) && isImageResource(resource)
+		props.enableAttachmentPreview &&
+		imagePreviewUrl(resource) &&
+		isImageResource(resource) &&
+		!hasImagePreviewFailure(resource)
 	);
 }
 

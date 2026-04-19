@@ -1451,10 +1451,15 @@ describe('OrgCommunicationQuickCreateModal', () => {
 				],
 			})
 		);
-		expect(uploadOrgCommunicationAttachmentMock).toHaveBeenCalledWith({
-			org_communication: 'COMM-DRAFT-TEAM-ATTACHMENT',
-			file: expect.any(File),
-		});
+		expect(uploadOrgCommunicationAttachmentMock).toHaveBeenCalledWith(
+			{
+				org_communication: 'COMM-DRAFT-TEAM-ATTACHMENT',
+				file: expect.any(File),
+			},
+			{
+				onProgress: expect.any(Function),
+			}
+		);
 	});
 
 	it('locks top-level scope controls after a governed file attachment is added but keeps compatible audience presets available', async () => {

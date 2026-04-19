@@ -1597,7 +1597,7 @@ def thumbnail_academic_file(
     if not file_name:
         frappe.throw(_("File is required."), frappe.ValidationError)
 
-    file_row = _resolve_authorized_academic_file(
+    _resolve_authorized_academic_file(
         file_name=file_name,
         context_doctype=context_doctype,
         context_name=context_name,
@@ -1618,40 +1618,15 @@ def thumbnail_academic_file(
                 viewer_email,
                 file_name,
             ],
+            strict_derivative=True,
         )
-        if target_url and _respond_with_redirect_or_inline_file(
-            file_row=file_row,
-            target_url=target_url,
-            cache_headers=True,
-        ):
-            return
-
-    file_url = (file_row.get("file_url") or "").strip()
-    if file_url.startswith(("http://", "https://")):
-        _set_thumbnail_cache_headers()
-        frappe.local.response["type"] = "redirect"
-        frappe.local.response["location"] = file_url
-        return
-
-    content = _read_file_bytes(file_row)
-    if content is None:
-        target_url = _resolve_drive_download_grant_url(file_name)
         if target_url:
             _set_thumbnail_cache_headers()
             frappe.local.response["type"] = "redirect"
             frappe.local.response["location"] = target_url
             return
-        frappe.throw(_("Could not read the file content."), frappe.DoesNotExistError)
 
-    filename = (file_row.get("file_name") or "").strip() or "document"
-    content_type = mimetypes.guess_type(filename)[0] or "application/octet-stream"
-
-    _set_thumbnail_cache_headers()
-    frappe.local.response["type"] = "download"
-    frappe.local.response["filename"] = filename
-    frappe.local.response["filecontent"] = content
-    frappe.local.response["display_content_as"] = "inline"
-    frappe.local.response["content_type"] = content_type
+    frappe.throw(_("Could not resolve the attachment thumbnail."), frappe.DoesNotExistError)
 
 
 @frappe.whitelist()

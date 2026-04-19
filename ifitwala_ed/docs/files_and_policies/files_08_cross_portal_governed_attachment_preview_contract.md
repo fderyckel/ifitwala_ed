@@ -136,18 +136,19 @@ Why this is locked:
 
 Status: Proposed target refinement
 Code refs: `ifitwala_ed/api/file_access.py`, `ifitwala_ed/api/org_communication_attachments.py`, `ifitwala_ed/api/teaching_plans_read_models.py`, `ifitwala_ed/ui-spa/src/components/communication/CommunicationAttachmentPreviewList.vue`, `ifitwala_ed/ui-spa/src/components/planning/PlanningResourcePanel.vue`, `ifitwala_ed/ui-spa/src/components/tasks/CreateTaskDeliveryOverlay.vue`
-Test refs: None yet
+Test refs: `ifitwala_ed/api/test_file_access.py`, `ifitwala_ed/api/test_file_access_unit.py`, `ifitwala_ed/ui-spa/src/components/communication/__tests__/CommunicationAttachmentPreviewList.test.ts`
 
 Current pain point:
 
-- image-card surfaces are currently using `preview_url` directly for `<img src>`, so the same governed route is serving both lightweight thumbnail needs and richer preview/open behavior
+- Org Communication now uses `thumbnail_url` only for inline image cards, and its thumbnail route fails closed when no safe `thumb` derivative is ready
+- other governed image-card surfaces still need to complete that same split instead of relying on richer preview/open routes for `<img src>`
 - those preview routes are authorization-first Ed action routes, not dedicated thumbnail-delivery contracts
 - the proposal should not "cache page bootstrap grants"; it should split thumbnail delivery from richer preview delivery while keeping Ed as the permission gate
 
 Refined direction:
 
 - add an additive `thumbnail_url` field for governed file DTOs
-- `thumbnail_url` is for inline card/list images only
+- `thumbnail_url` is for inline card/list images only and should be omitted until the requested thumbnail derivative is actually ready
 - `preview_url` remains the richer preview action
 - `open_url` remains the original-file compatibility baseline and explicit fallback
 - Ed-owned thumbnail routes may use short-lived `frappe.cache()` entries for resolved redirect targets only, never for raw file bytes and never for DTO-embedded provider URLs

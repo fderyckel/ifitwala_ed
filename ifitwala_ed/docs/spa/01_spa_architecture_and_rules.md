@@ -319,14 +319,16 @@ State ownership:
 
 1. `PortalLayout` owns `isMobileSidebarOpen`.
 2. `PortalLayout` owns `isDesktopRailExpanded`.
-3. `PortalLayout` owns contextual-sidebar visibility (`showStudentContextSidebar`) based on route name and active portal section.
-4. Desktop rail preference persists per section (`student` / `guardian`) via explicit local storage keys.
-5. Route changes must close only the mobile drawer.
+3. `PortalLayout` owns unread portal-chrome badge state for student and guardian navigation items; shell badges must refresh from a lightweight shell-owned payload, not from page bootstrap payloads.
+4. `PortalLayout` owns contextual-sidebar visibility (`showStudentContextSidebar`) based on route name and active portal section.
+5. Desktop rail preference persists per section (`student` / `guardian`) via explicit local storage keys.
+6. Route changes must close only the mobile drawer.
 
 Accessibility and UX invariants:
 
 * Rail toggle must expose `aria-expanded`.
 * Collapsed rail must preserve accessible labels (screen reader-visible text + tooltip on hover/focus).
+* Collapsed rail unread badges may degrade from numeric pills to dots, but the accessible label must still announce the unread communication count.
 * Active navigation must include a non-color cue in addition to color.
 * Motion for rail transitions must respect `prefers-reduced-motion`.
 
