@@ -64,6 +64,40 @@ describe('AttachmentPreviewCard', () => {
 		expect(document.body.textContent || '').toContain('Open original');
 	});
 
+	it('retries planning image previews with preview_url when the thumbnail fails', async () => {
+		mountCard({
+			variant: 'planning',
+			title: 'Lab setup photo',
+			attachment: {
+				item_id: 'ATT-IMG-2',
+				kind: 'image',
+				preview_mode: 'thumbnail_image',
+				extension: 'webp',
+				thumbnail_url:
+					'/api/method/ifitwala_ed.api.file_access.thumbnail_academic_file?file=FILE-IMG-2',
+				preview_url:
+					'/api/method/ifitwala_ed.api.file_access.preview_academic_file?file=FILE-IMG-2',
+				open_url:
+					'/api/method/ifitwala_ed.api.file_access.download_academic_file?file=FILE-IMG-2',
+			},
+		});
+		await flushUi();
+
+		const previewImage = document.querySelector(
+			'[data-resource-preview-kind="image"] img'
+		) as HTMLImageElement | null;
+		expect(previewImage?.getAttribute('src')).toContain('thumbnail_academic_file');
+
+		previewImage?.dispatchEvent(new Event('error'));
+		await flushUi();
+
+		const retriedImage = document.querySelector(
+			'[data-resource-preview-kind="image"] img'
+		) as HTMLImageElement | null;
+		expect(retriedImage?.getAttribute('src')).toContain('preview_academic_file');
+		expect(document.body.textContent || '').toContain('Open original');
+	});
+
 	it('keeps communication pdf behavior on the full preview surface', async () => {
 		mountCard({
 			variant: 'communication',

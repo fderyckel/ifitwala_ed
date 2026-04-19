@@ -246,6 +246,9 @@ def handle_file_after_insert(doc, method=None):
     All governed uploads MUST go through the dispatcher API.
     This hook only finalizes files that already have File Classification.
     """
+    if getattr(doc.flags, "drive_compat_projection", False):
+        return
+
     from ifitwala_ed.utilities import file_management, image_utils
 
     # Step 1: routing / versioning / move to final folder
@@ -268,6 +271,9 @@ def handle_file_on_update(doc, method=None):
     All governed uploads MUST go through the dispatcher API.
     This hook only finalizes files that already have File Classification.
     """
+    if getattr(doc.flags, "drive_compat_projection", False):
+        return
+
     from ifitwala_ed.utilities import file_management, image_utils
 
     try:

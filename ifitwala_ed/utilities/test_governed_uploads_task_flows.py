@@ -55,21 +55,11 @@ class _FakeDoc:
 
 
 class TestGovernedUploadTaskFlows(TestCase):
-    def test_drive_upload_and_finalize_injects_idempotency_key_for_strict_wrapper(self):
-        storage_calls = []
-        uploads_api = SimpleNamespace(finalize_upload_session=lambda **kwargs: {"file_id": "FILE-EMP-0001"})
-        storage_base = SimpleNamespace(
-            get_storage_backend=lambda _backend: SimpleNamespace(
-                write_temporary_object=lambda *, object_key, content: storage_calls.append((object_key, content))
-            )
-        )
-        session_doc = _FakeDoc(
-            name="DUS-EMP-1",
-            storage_backend="drive_test",
-            tmp_object_key="tmp/employee-photo.png",
-            status="pending",
-            received_size_bytes=None,
-            error_log="old-error",
+    def test_drive_upload_and_finalize_injects_idempotency_key_and_uses_drive_owned_ingest(self):
+        ingest_calls = []
+        uploads_api = SimpleNamespace(
+            ingest_upload_session_content=lambda **kwargs: ingest_calls.append(kwargs),
+            finalize_upload_session=lambda **kwargs: {"file_id": "FILE-EMP-0001"},
         )
         file_doc = SimpleNamespace(name="FILE-EMP-0001")
         observed = {}
@@ -96,9 +86,6 @@ class TestGovernedUploadTaskFlows(TestCase):
             return {"upload_session_id": "DUS-EMP-1"}
 
         def fake_get_doc(doctype, name):
-            if doctype == "Drive Upload Session":
-                self.assertEqual(name, "DUS-EMP-1")
-                return session_doc
             if doctype == "File":
                 self.assertEqual(name, "FILE-EMP-0001")
                 return file_doc
@@ -118,13 +105,7 @@ class TestGovernedUploadTaskFlows(TestCase):
             )
 
             with (
-                patch.object(
-                    governed_uploads,
-                    "_load_drive_module",
-                    side_effect=lambda module_name: (
-                        uploads_api if module_name == "ifitwala_drive.api.uploads" else storage_base
-                    ),
-                ),
+                patch.object(governed_uploads, "_load_drive_module", return_value=uploads_api),
                 patch.object(governed_uploads.frappe, "get_doc", side_effect=fake_get_doc),
             ):
                 session_response, finalize_response, returned_file_doc = governed_uploads._drive_upload_and_finalize(
@@ -139,11 +120,10 @@ class TestGovernedUploadTaskFlows(TestCase):
         self.assertEqual(observed["expected_size_bytes"], len(b"employee-content"))
         self.assertEqual(observed["idempotency_key"], expected_idempotency_key)
         self.assertEqual(observed["upload_source"], "Desk")
-        self.assertEqual(storage_calls, [("tmp/employee-photo.png", b"employee-content")])
-        self.assertEqual(session_doc.status, "uploaded")
-        self.assertEqual(session_doc.received_size_bytes, len(b"employee-content"))
-        self.assertIsNone(session_doc.error_log)
-        self.assertEqual(session_doc.saved, 1)
+        self.assertEqual(
+            ingest_calls,
+            [{"upload_session_id": "DUS-EMP-1", "content": b"employee-content"}],
+        )
         self.assertEqual(session_response["upload_session_id"], "DUS-EMP-1")
         self.assertEqual(finalize_response["file_id"], "FILE-EMP-0001")
         self.assertIs(returned_file_doc, file_doc)

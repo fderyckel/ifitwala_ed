@@ -305,7 +305,7 @@ describe('PlanningResourcePanel', () => {
 		expect(document.body.textContent || '').toContain('Open original');
 	});
 
-	it('falls back to actions when the governed image thumbnail fails to load', async () => {
+	it('retries the governed preview inline when the image thumbnail fails to load', async () => {
 		mountPanel(
 			[
 				{
@@ -346,8 +346,12 @@ describe('PlanningResourcePanel', () => {
 		imagePreview?.dispatchEvent(new Event('error'));
 		await flushUi();
 
-		expect(document.querySelector('[data-resource-preview-kind="image"] img')).toBeNull();
-		expect(document.body.textContent || '').toContain('Preview');
+		const retriedImage = document.querySelector(
+			'[data-resource-preview-kind="image"] img'
+		) as HTMLImageElement | null;
+		expect(retriedImage?.getAttribute('src')).toBe(
+			'/api/method/ifitwala_ed.api.file_access.preview_academic_file?file=FILE-IMG-3'
+		);
 		expect(document.body.textContent || '').toContain('Open original');
 	});
 

@@ -1,742 +1,301 @@
-# Files & Documents Architecture — Ifitwala_Ed
+# Files And Documents Architecture — Ifitwala_Ed
 
-> **Status:** LOCKED (v1)
->
-> This document defines the **authoritative architecture** for file and document management in Ifitwala_Ed.
-> All current and future implementations **must conform**.
->
-> This note is written to be:
->
-> * GDPR-compliant by design
-> * Multi‑school & multi‑organization safe
-> * Superior to typical EdTech SaaS platforms
-> * Compatible with Frappe today, not trapped by it
+Status: LOCKED target architecture
+Date: 2026-04-19
+Code refs:
+- `ifitwala_ed/utilities/governed_uploads.py`
+- `ifitwala_ed/integrations/drive/bridge.py`
+- `ifitwala_ed/api/file_access.py`
+Test refs: Pending as part of the boundary refactor
 
----
+## Bottom line
 
-## 0. Scope and intent
+- `ifitwala_drive` is the sole governance and execution authority for governed files and media.
+- `ifitwala_ed` remains the workflow, permission, tenant-scope, and surface-visibility authority.
+- `File Classification` is not part of the target architecture and must be removed during the refactor.
+- Any temporary compatibility projection into Frappe-native rows is non-authoritative and must be removable.
 
-This architecture governs **all files uploaded anywhere** in Ifitwala_Ed:
+## 1. Scope
 
-* Student uploads (tasks, assignments, evidence)
-* Staff uploads (contracts, reports, observations)
-* Admissions documents
-* Safeguarding materials
-* Meeting attachments
-* System‑generated files
+This architecture governs all governed file/media flows in Ifitwala_Ed:
 
-It applies equally to:
+- task resources and task submissions
+- admissions documents and profile images
+- employee, student, guardian, school, and organization media
+- org communication attachments
+- future portfolio, journal, and similar governed uploads
 
-* Desk
-* SPA (students, guardians, staff)
-* Web Forms
-* Background jobs
-* Imports
+It applies across:
 
-There are **no exceptions**.
+- Desk
+- SPA
+- web/portal flows
+- background jobs
+- imports and automation
 
-Organization-owned reusable public media is governed by the canonical extension documented in:
+There are no governed-flow exceptions.
 
-* `ifitwala_ed/docs/files_and_policies/files_05_organization_media_governance.md`
+## 2. Core decision
 
-That contract is intentionally defined at the organization level first, with school scoping and nested inheritance layered on top.
+Ed no longer owns governed file execution.
 
----
+Target model:
 
-## 1. Core principles (non‑negotiable)
+- Ed decides what a file means in product context.
+- Drive decides how the file is uploaded, stored, versioned, derived, previewed, granted, and erased.
 
-### 1.1 File ≠ Business Document
+Implications:
 
-* A **File** is storage + metadata
-* A **Business Document** gives meaning (Student, Task, Inquiry, Employee, Referral…)
+- no new governed flow may write bytes outside Drive
+- no new governed flow may move or rename Drive-managed objects from Ed
+- no new governed flow may create derivatives outside Drive
+- no new governed flow may treat `File Classification` as authority
 
-Files **never exist on their own**.
-Every file is owned by **exactly one business document**.
+## 3. Non-negotiable invariants
 
----
+### 3.1 One authoritative owner
 
-### 1.2 No orphan files
+Every governed file has exactly one authoritative business-document owner.
 
-A valid file **must always**:
+Owner is never:
 
-* Be attached to a doctype + docname
-* Live in a deterministic folder
-* Be relocatable without duplication
-* Be deletable without side effects
+- the uploader
+- the current user
+- the human subject of the file unless that subject document is the owning business record
 
-If a file cannot be deterministically resolved, it is considered a **bug**.
+### 3.2 Slot semantics are mandatory
 
----
+Every governed file must have one resolved slot.
 
-### 1.3 Deterministic over convenience
+Slots control:
 
-User experience must **never** override:
+- replacement behavior
+- versioning
+- retention
+- downstream workflow meaning
+- deletion scope
 
-* Traceability
-* Deletability
-* Compliance
+### 3.3 No orphan governed files
 
-Files are stored where the **system decides**, not where the user chooses.
+Every governed file must resolve:
 
----
+- owner doctype/name
+- attached target when the product surface needs one
+- primary subject
+- organization
+- school when required by the owner workflow
+- purpose
+- retention policy
+- slot
 
-## 2. Canonical classification model
+### 3.4 File content is not the business record
 
-Every file **must be classifiable** by the following dimensions:
+Deleting or erasing file content must not break:
 
-| Dimension           | Required | Purpose                 |
-| ------------------- | -------- | ----------------------- |
-| Organization        | Yes      | Multi‑org separation    |
-| School (tree‑aware) | Yes*     | Visibility & governance |
-| Business domain     | Yes      | Functional grouping     |
-| Owning document     | Yes      | Lifecycle control       |
+- grades
+- analytics
+- admissions decisions
+- structured academic history
+- operational records that reference the file
 
-*Exception: org‑level employees and guardian-owned profile media may omit `school` when the governing record is organization-scoped.
-If any other dimension is missing, the upload is invalid.
+### 3.5 No raw path assumptions
 
----
+No Ed code or UI surface may:
 
-## 3. Canonical logical storage model
+- guess storage paths
+- persist storage paths as product truth
+- use `/private/...` paths as the primary browser contract
 
-> This is a **logical model**. Physical storage may change later (FS → S3 → GCS).
-> The architecture must also tolerate future separation of application runtime, database, and storage bucket without changing business contracts.
+Only server-owned routes, canonical refs, and Drive-issued grants are valid contracts.
 
-```
-Home/
-  Organizations/
-    {ORG_ID}/
-      Schools/
-        {SCHOOL_ID}/
-          {DOMAIN}/
-            {ENTITY_ID}/
-              {SLOT}/
-                file_v{n}.{ext}
-```
+### 3.6 Heavy file work stays off the request path
 
-### Examples
+The request path may do:
 
-**Student task submission**
+- permission checks
+- workflow validation
+- upload session creation
+- blob finalize
+- canonical file/version/binding creation
+- post-finalize business mutation
 
-```
-.../Students/STU-2025-00012/Tasks/TASK-00087/submission/
-```
+The request path may not do:
 
-**Employee contract**
+- synchronous derivative generation
+- repeated disk probes for read paths
+- storage traversal to discover display URLs
+- long loops over governed files
 
-```
-.../Employees/EMP-00045/contracts/
-```
+### 3.7 Folder trees are navigation, not governance truth
 
-**Admissions documents**
+Folders may support:
 
-```
-.../Admissions/INQ-2026-00123/identity/
-```
+- browse UX
+- reuse
+- search organization
 
----
+Folders do not determine:
 
-## 4. Slots (critical concept)
+- ownership
+- scope
+- permissions
+- slot meaning
+- retention
 
-Files are not identified by filenames.
-They are identified by **slots**.
+## 4. Authority split
 
-### 4.1 What is a slot
+| Layer | Authority |
+| --- | --- |
+| `ifitwala_ed` | workflow semantics, tenant scope, permission checks, workflow-specific viewer rules, workflow-specific post-finalize mutation |
+| `ifitwala_drive` | upload sessions, blob ingress, storage keys, finalize, canonical refs, versions, bindings, derivatives, grants, audit, erasure execution |
+| Transitional compatibility only | Frappe-native `File` rows or other projections still needed during migration |
 
-A slot represents the **semantic purpose** of a file:
+Important:
 
-* `profile_photo`
-* `passport`
-* `contract`
-* `submission`
-* `feedback`
-* `evidence`
-* `attachment`
+- transitional compatibility rows are not governance truth
+- new features must not be designed around transitional rows
 
-Slots are **defined by the owning domain**, not by users.
+## 5. Canonical governed-file model
 
----
+### 5.1 `Drive Upload Session`
 
-### 4.2 Slot behavior
+Drive owns upload session lifecycle and stores the resolved contract needed for finalize.
 
-Each slot:
+At minimum the session persists:
 
-* May allow 1 file (replace)
-* May allow N versions
-* Has a retention policy
-* Has a data classification
+- `workflow_id`
+- `contract_version`
+- resolved owner doctype/name
+- resolved attached doctype/name/field when applicable
+- resolved subject data
+- resolved governance data: purpose, retention, slot, organization, school
+- upload strategy and temporary object key
+- expected size, filename, MIME hint, status
 
-Slots make deletion, versioning, and compliance **tractable**.
+### 5.2 `Drive File`
 
----
+The governed file identity.
 
-## 5. File metadata (GDPR‑critical)
+It owns:
 
-Every File **must carry** the following metadata:
+- canonical ref
+- owner
+- slot
+- organization/school scope
+- current version pointer
+- active lifecycle state
 
-### 5.1 Data subject
+### 5.3 `Drive File Version`
 
-```
-data_subject_type: student | guardian | staff
-data_subject_id: <ID>
-```
+Immutable blob version rows.
 
-This is mandatory for GDPR resolution.
+Drive versioning is per governed file/slot, not per raw `File` row.
 
----
+### 5.4 `Drive Binding`
 
-### 5.2 Data classification
+The surface-facing binding between a governed file and a business surface or surface row.
 
-```
-data_class:
-  - academic
-  - assessment
-  - safeguarding
-  - administrative
-  - identity_image
-  - legal
-  - operational
-```
+Bindings exist for product reuse and retrieval.
+They are not a second governance system.
 
-Classification is explicit. There is no inference.
+### 5.5 `Drive File Derivative`
 
----
+The only derivative/preview authority.
 
-### 5.3 Retention policy
+Profile-image sizes, thumbnails, viewer previews, and similar artifacts belong here.
 
-```
-retention_policy:
-  - until_program_end + 1y
-  - until_school_exit + 6m
-  - employment_duration_plus_grace
-  - fixed_7y
-  - immediate_on_request
-```
+### 5.6 Transitional compatibility rows
 
-Retention is **machine‑readable**, not policy text.
+If a Frappe-native projection is still temporarily required during migration:
 
----
+- it is derived from Drive metadata
+- it must not own storage movement
+- it must not own derivative generation
+- it must not own governance decisions
 
-## 6. Versioning model
+`File Classification` is explicitly outside the target model and must be removed.
 
-* Versioning is **per slot**
-* Old versions are soft‑hidden
-* Version caps are enforced per slot
-* No branching
-* No diffs
+## 6. Canonical upload execution model
 
-If versioning is disabled, replacement is destructive.
+1. Ed resolves the governed workflow context and authorizes the actor.
+2. Drive creates the upload session from the authoritative workflow spec.
+3. The browser uploads bytes to the Drive-issued target.
+4. For local/proxy mode only, bytes go through Drive `upload_session_blob`.
+5. Drive finalizes the upload:
+   - validates session state
+   - validates bytes and MIME
+   - finalizes the object into governed storage
+   - creates `Drive File`, `Drive File Version`, and `Drive Binding`
+6. Drive triggers the workflow-specific post-finalize mutation in Ed.
+7. Drive enqueues derivatives, previews, scans, and other heavy follow-up work asynchronously.
 
----
+Forbidden patterns:
 
-## 7. Dispatcher rule (single gateway)
+- Ed writing temporary objects into Drive storage
+- Ed mutating `Drive Upload Session` directly
+- Drive importing Ed dispatcher/file-routing internals to finish the create path
 
-> **All file writes go through the dispatcher.**
+## 7. Canonical read and display model
 
-There are no direct `File.insert()` calls in business logic.
+For private governed files:
 
-### 7.1 Dispatcher responsibilities
+1. Ed authorizes the surface-specific read/open action.
+2. Drive resolves the correct artifact for download or preview.
+3. The browser receives a short-lived grant or a server-owned route response.
 
-* Resolve organization
-* Resolve school + descendants
-* Resolve domain root
-* Enforce slot rules
-* Apply versioning
-* Attach to owning document
-* Return canonical File record
+Rules:
 
-The dispatcher is the **only authority** on storage decisions.
+- no raw `/private/...` path as the primary product contract
+- no synchronous disk probing in list surfaces
+- no per-surface reinvention of derivative selection
 
-This includes future organization-owned public media flows. UI and renderer code must consume canonical URLs or governed references only; they must not depend on local filesystem layout.
+## 8. Storage model
 
----
+Drive owns:
 
-## 8. Permissions & visibility
+- storage backend choice
+- storage object key
+- temporary object handling
+- final object placement
 
-| Layer              | Responsibility                    |
-| ------------------ | --------------------------------- |
-| Frappe permissions | Who can see the owning document   |
-| File logic         | Who can upload / replace / delete |
-| UI                 | What actions are shown            |
+Ed must not:
 
-**Key rule**
+- rename Drive-managed storage objects
+- move Drive-managed blobs into Ed folder trees
+- rewrite object identity after finalize
 
-> If you cannot see the owning document, you cannot see the file.
+Folder hints and browse organization are allowed only as Drive-owned read models.
 
-No parallel ACL system exists for files.
+## 9. Derivatives and media variants
 
----
+Only Drive generates and stores governed derivatives.
 
-## 9. Tasks & student uploads
+That includes:
 
-### 9.1 Separation of concerns
+- profile image variants
+- thumbnails
+- viewer previews
+- future PDF/image preview artifacts
 
-* **Grades / analytics** are permanent
-* **File content** is disposable
+Ed must not create governed sibling `File` rows for derivatives.
 
-Deleting a student’s files **must not** break:
+## 10. End-state rule for `File Classification`
 
-* Assessment records
-* Aggregated analytics
-* Reports
+`File Classification` was part of the earlier Ed-local governance model.
 
----
+It is not part of the target architecture.
 
-### 9.2 Task submission storage
+Phase target:
 
-Each submission:
+- stop treating it as authority
+- stop adding new behavior that depends on it
+- migrate existing governed semantics into Drive-owned metadata
+- remove the DocType and patch existing records as part of the refactor
 
-* Is stored under the student
-* References Task + Student Group
-* Uses a dedicated `submission` slot
+## 11. Current runtime note
 
-This allows:
+Current code does not fully conform to this document.
 
-* Per‑task deletion
-* Full student erasure
-* Retention‑based cleanup
+The current-runtime leaks and remediation order are documented in:
 
----
-
-## 10. GDPR erasure model
-
-Deletion is a **workflow**, not a function call.
-
-### 10.1 Erasure workflow stages
-
-1. Scope identification
-2. File resolution
-3. Legal hold check
-4. Physical deletion
-5. Version invalidation
-6. Minimal audit trail
-
-No content survives deletion.
-
----
-
-### 10.2 Audit trail (minimal)
-
-Allowed to keep:
-
-* Subject ID
-* Date
-* Categories deleted
-* Request origin
-
-Forbidden to keep:
-
-* File names
-* Content
-* Recoverable versions
-
----
-
-## 11. Backups & crypto‑erasure (forward design)
-
-### 11.1 Known limitation
-
-Historical backups cannot be reliably purged.
-
-### 11.2 Designed solution
-
-* Encrypt files per school or data subject
-* On erasure: destroy the key
-* Backups become cryptographically useless
-
-The architecture must **allow this later** even if not implemented now.
-
----
-
-## 12. What is explicitly out of scope
-
-* User‑managed folder browsing
-* Drive‑like UX
-* Cross‑school file sharing
-* Shared files without ownership
-* Client‑side storage decisions
-
----
-
-## 13. Compliance stance
-
-Ifitwala_Ed is designed so that it can truthfully state:
-
-> *We know exactly what data we hold, why we hold it, how long we keep it, and we can erase it without breaking academic integrity.*
-
-This is a **competitive advantage**, not just compliance.
-
----
-
-## 14. Implementation guardrails
-
-Any code that:
-
-* Bypasses the dispatcher
-* Stores files without metadata
-* Creates orphan files
-* Violates retention rules
-
-Is considered **architecturally invalid** and must be refactored.
-
----
-
-## 15. Next execution track (locked)
-
-We proceed in this exact order:
-
-1. Add `File Classification` Doctype (single, system-wide)
-2. Enforce dispatcher-only uploads (all surfaces)
-3. Separate grades / analytics from file content
-4. Implement GDPR erasure workflow
-5. Prepare crypto-erase capability (design-ready)
-
-No feature work proceeds that violates this sequence.
-
----
-
-## 16. Decision lock
-
-**Architecture decision:**
-
-* File governance uses **one system-wide `File Classification` Doctype**
-* No domain-specific subclasses in v1
-* Schema must remain extensible without breaking contracts
-
-This decision is **locked for v1**.
-
----
-
-**End of authoritative note.**
-
-
-
-
-
-
-
-
-
-
-
-
-
-## Why this choice is correct (brief, practical)
-
-This supports **real school reality** without breaking GDPR logic:
-
-* Group assignments (3–5 students, one submission)
-* Siblings (documents referencing more than one child)
-* Safeguarding notes involving multiple students
-* Parent–student joint documents
-
-At the same time:
-
-* **One primary subject** keeps erasure deterministic
-* Secondary subjects are **referential**, not ownership chaos
-* No ambiguity about *who “owns” deletion authority*
-
-This aligns with how serious SaaS systems model *data controllers vs data subjects*.
-
----
-
-# STEP 1 — `File Classification` Doctype (AUTHORITATIVE)
-
-Below is the **locked v1 schema**.
-This is the backbone. Everything else builds on this.
-
----
-
-## 1. Doctype: `File Classification`
-
-**Type:** Standard (not Single)
-**Cardinality:** 1:1 with `File` (mandatory)
-
----
-
-## 2. Core identity fields
-
-### 🔑 File linkage (mandatory)
-
-| Field              | Type        | Notes                |
-| ------------------ | ----------- | -------------------- |
-| `file`             | Link → File | **Required**, unique |
-| `attached_doctype` | Data        | Cached from File     |
-| `attached_name`    | Data        | Cached from File     |
-
-> We denormalize `attached_*` for fast queries and GDPR sweeps.
-
-### 🛡️ Integrity & Lineage (New)
-
-| Field          | Type        | Notes                                |
-| -------------- | ----------- | ------------------------------------ |
-| `content_hash` | Data        | SHA-256 (tamper proofing)            |
-| `source_file`  | Link → File | Parent file (for thumbnails/derivs)  |
-
-> `content_hash` must be calculated by dispatcher on upload.
-> Derived files (e.g. thumb/card/medium) are **full Files** with their own classifications.
-> They must set `source_file` and use explicit derivative slots (e.g. `profile_image_thumb`).
-
-## 3. Data subject model (GDPR-critical)
-
-### 3.1 Primary subject (mandatory)
-
-| Field                  | Type                                    |
-| ---------------------- | --------------------------------------- |
-| `primary_subject_type` | Select (`Student`, `Guardian`, `Employee`, `Student Applicant`) |
-| `primary_subject_id`   | Dynamic Link                                                     |
-
-**Rules**
-
-* Exactly **one** primary subject
-* Primary subject determines:
-
-  * Erasure authority
-  * Retention countdown
-  * Crypto-erase scope (future)
-
----
-
-### 3.2 Secondary subjects (optional)
-
-Child table: **`File Classification Subject`**
-
-| Field          | Type                                            |
-| -------------- | ----------------------------------------------- |
-| `subject_type` | Select (Same as primary)                        |
-| `subject_id`   | Dynamic Link                                    |
-| `role`         | Select (`co-owner`, `referenced`, `contextual`) |
-
-**Rules**
-
-* Secondary subjects:
-
-  * Do **not** control deletion
-  * Are included in *impact analysis*
-* Used for:
-
-  * Group work
-  * Multi-student references
-  * Safeguarding context
-
----
-
-## 4. Data classification & purpose
-
-| Field        | Type   | Required |
-| ------------ | ------ | -------- |
-| `data_class` | Select | ✅        |
-| `purpose`    | Select | ✅        |
-
-### `data_class` (locked values)
-
-```
-academic
-assessment
-safeguarding
-administrative
-identity_image
-legal
-operational
-```
-
-### `purpose` (machine-readable)
-
-```
-text
-identification_document
-contract
-assessment_submission
-assessment_feedback
-safeguarding_evidence
-medical_record
-visa_document
-policy_acknowledgement
-background_check
-learning_resource
-academic_report
-employee_profile_display
-guardian_profile_display
-student_profile_display
-applicant_profile_display
-organization_public_media
-portfolio_evidence
-journal_attachment
-portfolio_export
-journal_export
-administrative
-other
-```
-
-> **GDPR rule:**
-> If `purpose` expires → deletion must be possible.
-
----
-
-## 5. Retention & deletion control
-
-| Field              | Type   | Required     |
-| ------------------ | ------ | ------------ |
-| `retention_policy` | Select | ✅            |
-| `retention_until`  | Date   | ⛔ (computed) |
-| `legal_hold`       | Check  | ⛔            |
-| `erasure_state`    | Select | ⛔            |
-
-### `retention_policy` (v1)
-
-```
-until_program_end_plus_1y
-until_school_exit_plus_6m
-employment_duration_plus_grace
-fixed_7y
-immediate_on_request
-```
-
-`retention_until` is computed when a File Retention Policy is configured; otherwise it remains empty until a later governance job sets it.
-
-### `erasure_state`
-
-```
-active
-pending
-blocked_legal
-erased
-```
-
----
-
-## 6. Slot & versioning awareness
-
-| Field                | Type  | Required |
-| -------------------- | ----- | -------- |
-| `slot`               | Data  | ✅        |
-| `version_number`     | Int   | ⛔        |
-| `is_current_version` | Check | ⛔        |
-
-> Versioning remains **slot-based**, enforced by dispatcher.
-
----
-
-## 7. Organization & school anchoring
-
-| Field          | Type                | Required |
-| -------------- | ------------------- | -------- |
-| `organization` | Link → Organization | ✅        |
-| `school`       | Link → School       | ✅*       |
-
-**Rules**
-
-* `school` must be in the allowed subtree
-* `school` may be blank for org‑level Employees without a school assignment
-* Cached here for:
-
-  * Fast GDPR queries
-  * School-scoped erasure
-  * Backup key scoping (future)
-
----
-
-## 8. Origin Context (Security)
-
-| Field           | Type   | Notes                            |
-| --------------- | ------ | -------------------------------- |
-| `upload_source` | Select | `Desk`, `SPA`, `API`, `Job`      |
-| `ip_address`    | Data   | Captured at upload time          |
-
-> Critical for forensics (who uploaded what from where).
-
----
-
-## 9. Invariants (non-negotiable)
-
-1. A `File` **cannot exist** without a `File Classification`
-2. Dispatcher **must create both atomically**
-3. Direct `File.insert()` without classification = **bug**
-4. Deletion checks:
-
-   * `legal_hold = 1` → hard block
-   * `erasure_state != active` → no writes
-5. Secondary subjects never override primary subject rights
-
----
-
-## 10. Dispatcher enforcement (preview)
-
-When a file is uploaded, dispatcher must receive:
-
-```python
-{
-  file,
-  slot,
-  primary_subject_type,
-  primary_subject_id,
-  secondary_subjects=[],
-  data_class,
-  purpose,
-  retention_policy,
-  organization,
-  retention_policy,
-  organization,
-  school,
-  upload_source  // Inferred by dispatcher
-}
-```
-
-Missing any **mandatory** field → reject upload.
-
----
-
-## 11. Why this is superior (explicitly)
-
-With this model, you can:
-
-* Delete **all data for one student** deterministically
-* Delete **only task files**, keep grades
-* Answer regulators in minutes, not weeks
-* Add crypto-erase later without refactor
-* Handle edge cases without schema hacks
-
-Most ed platforms **cannot** do this cleanly.
-
----
-
-
-
-## Admissions File Ownership (Authoritative Rule)
-
-All files uploaded during the admissions process are **owned by the Student Applicant**.
-
-This includes:
-- child-related documents (passport, transcripts, reports, health records)
-- parent / guardian documents (IDs, consent forms, declarations)
-
-### Canonical Rule
-
-During admissions (all phases prior to promotion):
-
-owner_doctype = "Student Applicant"
-owner_name = <student_applicant.name>
-
-
-There are **no exceptions**.
-
-### Explicit Prohibitions
-
-Admissions files MUST NOT:
-- be owned by Student
-- be owned by Guardian
-- be re-linked or moved on promotion
-- be duplicated during promotion
-
-### Rationale
-
-- Student and Guardian records do not exist during admissions
-- The Student Applicant is the sole legal intake container
-- Admissions files are decision evidence, not operational student records
-- This guarantees clean GDPR erasure and auditability
-
-### Promotion Boundary
-
-Promotion from Applicant → Student:
-- does **not** move, copy, or reassign files
-- freezes Applicant files as historical admissions artefacts
-- operational records must never depend on admissions file ownership
+- `ifitwala_ed/docs/files_and_policies/files_03_implementation.md`

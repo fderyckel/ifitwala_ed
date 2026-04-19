@@ -235,7 +235,6 @@ def _get_drive_media_callable(attribute: str):
 
 def _drive_upload_and_finalize(*, create_session_callable, payload: dict, content: bytes):
     drive_uploads_api = _load_drive_module("ifitwala_drive.api.uploads")
-    storage_base = _load_drive_module("ifitwala_drive.services.storage.base")
 
     if "idempotency_key" not in payload:
         payload = {
@@ -248,14 +247,14 @@ def _drive_upload_and_finalize(*, create_session_callable, payload: dict, conten
     if not upload_session_id:
         frappe.throw(_("Drive did not return an upload_session_id."))
 
-    session_doc = frappe.get_doc("Drive Upload Session", upload_session_id)
-    storage = storage_base.get_storage_backend(getattr(session_doc, "storage_backend", None))
-    storage.write_temporary_object(object_key=session_doc.tmp_object_key, content=content)
-
-    session_doc.status = "uploaded"
-    session_doc.received_size_bytes = len(content)
-    session_doc.error_log = None
-    session_doc.save(ignore_permissions=True)
+    ingest_upload_session_content = getattr(drive_uploads_api, "ingest_upload_session_content", None)
+    if not callable(ingest_upload_session_content):
+        frappe.throw(
+            _(
+                "Ifitwala Drive is missing ingest_upload_session_content. Deploy or restart the Drive app so the updated upload API is available."
+            )
+        )
+    ingest_upload_session_content(upload_session_id=upload_session_id, content=content)
 
     finalize_response = drive_uploads_api.finalize_upload_session(
         upload_session_id=upload_session_id,

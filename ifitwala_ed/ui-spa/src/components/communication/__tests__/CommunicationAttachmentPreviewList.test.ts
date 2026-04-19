@@ -160,7 +160,7 @@ describe('CommunicationAttachmentPreviewList', () => {
 		expect(document.body.textContent || '').toContain('Open original');
 	});
 
-	it('drops back to actions when an inline thumbnail fails to load', async () => {
+	it('retries the governed preview image when an inline thumbnail fails to load', async () => {
 		mountPreviewList([
 			{
 				row_name: 'ATT-IMG-BROKEN',
@@ -198,8 +198,12 @@ describe('CommunicationAttachmentPreviewList', () => {
 		imagePreview?.dispatchEvent(new Event('error'));
 		await flushUi();
 
-		expect(document.querySelector('[data-communication-attachment-kind="image"] img')).toBeNull();
-		expect(document.body.textContent || '').toContain('Preview');
+		const retriedImage = document.querySelector(
+			'[data-communication-attachment-kind="image"] img'
+		) as HTMLImageElement | null;
+		expect(retriedImage?.getAttribute('src')).toBe(
+			'/api/method/ifitwala_ed.api.file_access.preview_org_communication_attachment?row_name=ATT-IMG-BROKEN'
+		);
 		expect(document.body.textContent || '').toContain('Open original');
 	});
 

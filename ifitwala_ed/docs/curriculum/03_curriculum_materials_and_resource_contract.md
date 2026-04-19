@@ -99,7 +99,7 @@ Current staff preview behavior:
 - those current material rows now also carry an additive nested `attachment_preview` block with the shared cross-surface preview DTO
 - those planning workspaces now consume that nested preview DTO through the shared display-only SPA attachment preview card
 - the task creation overlay now renders inline image thumbnails from `thumbnail_url` and compact PDF preview tiles from `preview_url` for current task materials after task creation
-- those workspaces render inline image thumbnails from `thumbnail_url` and compact PDF preview tiles from `preview_url` for governed file resources
+- those workspaces render inline image previews from `thumbnail_url` and automatically retry the governed `preview_url` inline when the thumbnail route cannot be delivered, while `preview_url` continues to power the compact PDF preview tiles
 - `open_url` remains the explicit original-file action and compatibility baseline
 
 This is the current source-of-truth workflow. Do not push teachers back into a generic Desk library as the primary authoring path.

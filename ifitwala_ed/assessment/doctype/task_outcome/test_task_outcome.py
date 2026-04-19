@@ -3,13 +3,23 @@
 
 # ifitwala_ed/assessment/doctype/task_outcome/test_task_outcome.py
 
+import types
 from unittest import TestCase
 
-from ifitwala_ed.assessment.doctype.task_outcome.task_outcome import _unique_index_exists
+from ifitwala_ed.tests.frappe_stubs import import_fresh, stubbed_frappe
+
+
+def _import_task_outcome_module():
+    task_outcome_service = types.ModuleType("ifitwala_ed.assessment.task_outcome_service")
+    task_outcome_service.resolve_grade_symbol = lambda *_args, **_kwargs: 1
+
+    with stubbed_frappe(extra_modules={"ifitwala_ed.assessment.task_outcome_service": task_outcome_service}):
+        return import_fresh("ifitwala_ed.assessment.doctype.task_outcome.task_outcome")
 
 
 class TestTaskOutcome(TestCase):
     def test_unique_index_exists_matches_ordered_columns(self):
+        module = _import_task_outcome_module()
         rows = [
             {
                 "Key_name": "uniq_task_outcome_delivery_student",
@@ -25,9 +35,10 @@ class TestTaskOutcome(TestCase):
             },
         ]
 
-        self.assertTrue(_unique_index_exists(rows, ["task_delivery", "student"]))
+        self.assertTrue(module._unique_index_exists(rows, ["task_delivery", "student"]))
 
     def test_unique_index_exists_ignores_non_unique_index(self):
+        module = _import_task_outcome_module()
         rows = [
             {
                 "Key_name": "idx_task_outcome_delivery_student",
@@ -43,4 +54,70 @@ class TestTaskOutcome(TestCase):
             },
         ]
 
-        self.assertFalse(_unique_index_exists(rows, ["task_delivery", "student"]))
+        self.assertFalse(module._unique_index_exists(rows, ["task_delivery", "student"]))
+
+    def test_backfill_denorm_fields_only_reads_supported_task_delivery_columns(self):
+        task_outcome_service = types.ModuleType("ifitwala_ed.assessment.task_outcome_service")
+        task_outcome_service.resolve_grade_symbol = lambda *_args, **_kwargs: 1
+
+        with stubbed_frappe(
+            extra_modules={"ifitwala_ed.assessment.task_outcome_service": task_outcome_service}
+        ) as frappe:
+            available_fields = {
+                "Task Outcome": {
+                    "task_delivery",
+                    "student",
+                    "task",
+                    "student_group",
+                    "course",
+                    "academic_year",
+                    "school",
+                },
+                "Task Delivery": {
+                    "task",
+                    "student_group",
+                    "course",
+                    "academic_year",
+                    "school",
+                    "grade_scale",
+                },
+            }
+            captured: dict[str, object] = {}
+
+            def fake_meta(doctype):
+                return types.SimpleNamespace(
+                    get_field=lambda fieldname: object() if fieldname in available_fields.get(doctype, set()) else None
+                )
+
+            def fake_get_value(doctype, name, fieldname=None, as_dict=False):
+                captured["doctype"] = doctype
+                captured["name"] = name
+                captured["fieldname"] = fieldname
+                captured["as_dict"] = as_dict
+                return {
+                    "task": "TASK-1",
+                    "course": "COURSE-1",
+                }
+
+            frappe.get_meta = fake_meta
+            frappe.db.get_value = fake_get_value
+
+            module = import_fresh("ifitwala_ed.assessment.doctype.task_outcome.task_outcome")
+            outcome = module.TaskOutcome()
+            outcome.doctype = "Task Outcome"
+            outcome.task_delivery = "TDL-1"
+            outcome.student = "STU-1"
+            outcome.task = None
+            outcome.student_group = "GRP-1"
+            outcome.course = None
+            outcome.academic_year = "AY-2025-2026"
+            outcome.school = "SCHOOL-1"
+
+            outcome._backfill_denorm_fields()
+
+        self.assertEqual(captured["doctype"], "Task Delivery")
+        self.assertEqual(captured["name"], "TDL-1")
+        self.assertEqual(captured["fieldname"], ["task", "course"])
+        self.assertTrue(captured["as_dict"])
+        self.assertEqual(outcome.task, "TASK-1")
+        self.assertEqual(outcome.course, "COURSE-1")

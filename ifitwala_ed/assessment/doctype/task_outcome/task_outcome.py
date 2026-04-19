@@ -59,6 +59,10 @@ class TaskOutcome(Document):
             fields.append("grade_scale")
         return fields
 
+    def _delivery_backfillable_fields(self, fieldnames):
+        delivery_meta = frappe.get_meta("Task Delivery")
+        return [field for field in fieldnames if delivery_meta.get_field(field)]
+
     def _backfill_denorm_fields(self):
         required = self._identity_fields()
         optional = self._optional_denorm_fields()
@@ -67,21 +71,22 @@ class TaskOutcome(Document):
         if not missing_required and not missing_optional:
             return
 
-        delivery_fields = list({*required, *optional})
-        if not delivery_fields:
-            return
+        requested_fields = missing_required + missing_optional
+        delivery_fields = self._delivery_backfillable_fields(requested_fields)
 
-        delivery = (
-            frappe.db.get_value(
-                "Task Delivery",
-                self.task_delivery,
-                delivery_fields,
-                as_dict=True,
+        delivery = {}
+        if delivery_fields:
+            delivery = (
+                frappe.db.get_value(
+                    "Task Delivery",
+                    self.task_delivery,
+                    delivery_fields,
+                    as_dict=True,
+                )
+                or {}
             )
-            or {}
-        )
 
-        for field in missing_required + missing_optional:
+        for field in delivery_fields:
             if not getattr(self, field, None) and delivery.get(field):
                 setattr(self, field, delivery.get(field))
 

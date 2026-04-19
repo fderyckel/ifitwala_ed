@@ -13,7 +13,7 @@
 					:alt="titleToUse"
 					:class="imagePreviewClass"
 					loading="lazy"
-					@error="imagePreviewFailed = true"
+					@error="handleImagePreviewError"
 				/>
 				<div
 					class="flex items-center justify-between border-t border-line-soft bg-white px-4 py-3"
@@ -187,6 +187,7 @@ const props = withDefaults(
 
 const slots = useSlots();
 const imagePreviewFailed = ref(false);
+const imagePreviewUsesFallbackUrl = ref(false);
 
 const titleToUse = computed(() => {
 	const explicitTitle = String(props.title || '').trim();
@@ -235,6 +236,9 @@ const compactPdfBody = computed(() => {
 });
 const inlineImageUrl = computed(() => {
 	if (props.attachment.kind !== 'image') return null;
+	if (imagePreviewUsesFallbackUrl.value && props.attachment.preview_url) {
+		return props.attachment.preview_url;
+	}
 	if (props.attachment.thumbnail_url) {
 		return props.attachment.thumbnail_url;
 	}
@@ -246,6 +250,14 @@ const inlineImageUrl = computed(() => {
 		return props.attachment.preview_url;
 	}
 	return null;
+});
+const canRetryInlineImageWithPreview = computed(() => {
+	return Boolean(
+		props.attachment.kind === 'image' &&
+		props.attachment.thumbnail_url &&
+		props.attachment.preview_url &&
+		props.attachment.preview_url !== props.attachment.thumbnail_url
+	);
 });
 const showInlineImagePreview = computed(() => {
 	return Boolean(mediaPreviewEnabled.value && inlineImageUrl.value && !imagePreviewFailed.value);
@@ -346,9 +358,10 @@ const kindDataAttribute = computed(() => {
 
 watch(
 	() =>
-		`${props.attachment.item_id || props.attachment.file_id || props.attachment.display_name || ''}:${inlineImageUrl.value || ''}`,
+		`${props.attachment.item_id || props.attachment.file_id || props.attachment.display_name || ''}:${props.attachment.thumbnail_url || ''}:${props.attachment.preview_url || ''}`,
 	() => {
 		imagePreviewFailed.value = false;
+		imagePreviewUsesFallbackUrl.value = false;
 	}
 );
 
@@ -357,5 +370,19 @@ function kindDataAttrs(kind: 'image' | 'pdf'): Record<string, string> {
 	return {
 		[kindDataAttribute.value]: kind,
 	};
+}
+
+function handleImagePreviewError() {
+	if (
+		!imagePreviewUsesFallbackUrl.value &&
+		props.attachment.thumbnail_url &&
+		inlineImageUrl.value === props.attachment.thumbnail_url &&
+		canRetryInlineImageWithPreview.value
+	) {
+		imagePreviewUsesFallbackUrl.value = true;
+		return;
+	}
+
+	imagePreviewFailed.value = true;
 }
 </script>
