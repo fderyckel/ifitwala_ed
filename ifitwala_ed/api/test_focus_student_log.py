@@ -5,9 +5,12 @@ from frappe.tests.utils import FrappeTestCase
 from frappe.utils import cint
 
 from ifitwala_ed.api.focus import (
+    ACTION_STUDENT_LOG_REVIEW,
     ACTION_STUDENT_LOG_SUBMIT,
     build_focus_item_id,
     get_focus_context,
+    list_focus_items,
+    review_student_log_outcome,
     submit_student_log_follow_up,
 )
 from ifitwala_ed.tests.factories.organization import make_organization, make_school
@@ -56,16 +59,8 @@ class TestFocusStudentLog(FrappeTestCase):
         self.assertEqual((ctx.get("log") or {}).get("date"), "2026-04-01")
         self.assertEqual((ctx.get("log") or {}).get("time"), "10:15:00")
 
-    def test_submit_student_log_follow_up_allows_assignee_without_follow_up_doctype_role(self):
+    def test_submit_student_log_follow_up_allows_current_assignee(self):
         fixture = self._make_follow_up_focus_fixture()
-
-        self.assertFalse(
-            frappe.has_permission(
-                "Student Log Follow Up",
-                ptype="create",
-                user=fixture["assignee"],
-            )
-        )
 
         frappe.set_user(fixture["assignee"])
         result = submit_student_log_follow_up(
@@ -149,6 +144,90 @@ class TestFocusStudentLog(FrappeTestCase):
             fields=["name"],
         )
         self.assertEqual(len(submitted_rows), 1)
+
+    def test_review_reassign_reopens_a_new_assignee_cycle(self):
+        fixture = self._make_follow_up_focus_fixture()
+
+        frappe.set_user(fixture["assignee"])
+        first = submit_student_log_follow_up(
+            focus_item_id=fixture["focus_item_id"],
+            follow_up="Spoke with the student and logged the first quick intervention.",
+            client_request_id=f"focus-fu-{frappe.generate_hash(length=8)}",
+        )
+        self._created.append(("Student Log Follow Up", first["follow_up_name"]))
+
+        frappe.set_user(fixture["author"])
+        review_items = [
+            item
+            for item in list_focus_items(limit=20)
+            if item.get("reference_name") == fixture["log_name"]
+            and item.get("action_type") == ACTION_STUDENT_LOG_REVIEW
+        ]
+        self.assertEqual(len(review_items), 1)
+
+        second_assignee = make_user()
+        self._created.append(("User", second_assignee.name))
+        self._ensure_role(second_assignee.name, "Instructor")
+        frappe.defaults.set_user_default("school", fixture["school"], user=second_assignee.name)
+
+        result = review_student_log_outcome(
+            focus_item_id=build_focus_item_id(
+                "student_log",
+                "Student Log",
+                fixture["log_name"],
+                ACTION_STUDENT_LOG_REVIEW,
+                fixture["author"],
+            ),
+            decision="reassign",
+            follow_up_person=second_assignee.name,
+            client_request_id=f"focus-review-{frappe.generate_hash(length=8)}",
+        )
+        self.assertEqual(result["status"], "processed")
+        self.assertEqual(
+            frappe.db.get_value("Student Log", fixture["log_name"], "follow_up_person"),
+            second_assignee.name,
+        )
+        self.assertEqual(
+            frappe.db.get_value("Student Log", fixture["log_name"], "follow_up_status"),
+            "Open",
+        )
+
+        author_items_after_reassign = [
+            item
+            for item in list_focus_items(limit=20)
+            if item.get("reference_name") == fixture["log_name"]
+            and item.get("action_type") == ACTION_STUDENT_LOG_REVIEW
+        ]
+        self.assertEqual(author_items_after_reassign, [])
+
+        frappe.set_user(second_assignee.name)
+        second_assignee_items = [
+            item
+            for item in list_focus_items(limit=20)
+            if item.get("reference_name") == fixture["log_name"]
+            and item.get("action_type") == ACTION_STUDENT_LOG_SUBMIT
+        ]
+        self.assertEqual(len(second_assignee_items), 1)
+
+        second = submit_student_log_follow_up(
+            focus_item_id=build_focus_item_id(
+                "student_log",
+                "Student Log",
+                fixture["log_name"],
+                ACTION_STUDENT_LOG_SUBMIT,
+                second_assignee.name,
+            ),
+            follow_up="Logged the second quick follow-up after reassignment to continue the case.",
+            client_request_id=f"focus-fu-{frappe.generate_hash(length=8)}",
+        )
+        self._created.append(("Student Log Follow Up", second["follow_up_name"]))
+
+        submitted_rows = frappe.get_all(
+            "Student Log Follow Up",
+            filters={"student_log": fixture["log_name"], "docstatus": 1},
+            fields=["name"],
+        )
+        self.assertEqual(len(submitted_rows), 2)
 
     def _ensure_role(self, user: str, role: str) -> None:
         if not frappe.db.exists("Role", role):
@@ -235,6 +314,7 @@ class TestFocusStudentLog(FrappeTestCase):
                 assignee.name,
             ),
             "log_name": log.name,
+            "school": school.name,
         }
 
     def _make_student(self):

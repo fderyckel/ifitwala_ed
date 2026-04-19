@@ -208,6 +208,19 @@
 		transform: translateY(0) scale(1);
 	}
 
+	.tippy-box[data-theme~='link-editor'] {
+		overflow: hidden;
+		border: 1px solid rgb(var(--border-rgb) / 0.9);
+		border-radius: 1rem;
+		background-color: rgb(var(--surface-strong-rgb) / 1);
+		box-shadow: var(--shadow-overlay);
+		color: rgb(var(--ink-rgb) / 1);
+	}
+
+	.tippy-box[data-theme~='link-editor'] .tippy-content {
+		padding: 0;
+	}
+
 	/* Legacy Frappe UI dialogs (kept until they migrate to overlay stack). */
 	.fui-dialog-backdrop {
 		background: rgb(var(--shade-rgb) / 0.4);

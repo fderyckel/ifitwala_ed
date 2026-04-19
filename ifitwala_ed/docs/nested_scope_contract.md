@@ -33,6 +33,10 @@ Test refs:
 - `ifitwala_ed/students/report/attendance_report/test_attendance_report.py`
 - `ifitwala_ed/schedule/report/enrollment_trend_report/test_enrollment_trend_report.py`
 - `ifitwala_ed/schedule/report/enrollment_report/test_enrollment_report.py`
+- `ifitwala_ed/students/report/case_entries_activity_log/test_case_entries_activity_log.py`
+- `ifitwala_ed/accounting/report/student_attribution/test_student_attribution.py`
+- `ifitwala_ed/accounting/report/trial_balance/test_trial_balance.py`
+- `ifitwala_ed/accounting/report/aged_receivables/test_aged_receivables.py`
 - `ifitwala_ed/school_settings/test_school_settings_utils.py`
 - `ifitwala_ed/school_settings/doctype/term/test_term.py`
 - `ifitwala_ed/api/test_room_utilization.py`
@@ -115,7 +119,10 @@ Test refs:
 - `ifitwala_ed/schedule/report/enrollment_report/test_enrollment_report.py`
 - `ifitwala_ed/school_settings/test_school_settings_utils.py`
 - `ifitwala_ed/api/test_room_utilization.py`
-- `None for the remaining items`
+- `ifitwala_ed/students/report/case_entries_activity_log/test_case_entries_activity_log.py`
+- `ifitwala_ed/accounting/report/student_attribution/test_student_attribution.py`
+- `ifitwala_ed/accounting/report/trial_balance/test_trial_balance.py`
+- `ifitwala_ed/accounting/report/aged_receivables/test_aged_receivables.py`
 
 | Concern | Status | Decision | Priority | Code refs | Test refs |
 | --- | --- | --- | --- | --- | --- |
@@ -124,7 +131,10 @@ Test refs:
 | Enrollment Report helper parity | Implemented | Keep descendant-aware helper intersection contract | P0 complete | `school_settings/school_settings_utils.py`, `schedule/report/enrollment_report/enrollment_report.py` | `school_settings/test_school_settings_utils.py`, `schedule/report/enrollment_report/test_enrollment_report.py` |
 | Term DocType parent-school visibility | Implemented | Scripted permissions keep descendant subtree visibility and nearest-ancestor academic-year fallback for the user's branch | P1 complete | `school_settings/doctype/term/term.py` | `school_settings/doctype/term/test_term.py` |
 | Ancestor-shared location visibility | Implemented | Allow ancestor-school facilities only through explicit location-level sharing while preserving sibling isolation | P0 complete | `utilities/location_utils.py`, `api/room_utilization.py`, `api/calendar_quick_create.py` | `stock/doctype/location/test_location.py`, `api/test_room_utilization.py` |
-| Remaining report exact-match sweep | Planned | Review each report against owner docs before changing semantics | P1 | `students/report/case_entries_activity_log/case_entries_activity_log.py`, `accounting/report/trial_balance/trial_balance.py`, `accounting/report/aged_receivables/aged_receivables.py`, `accounting/report/student_attribution/student_attribution.py` | None |
+| Case Entries Activity Log school filter parity | Implemented | Use descendant-aware school scope intersected with the caller's visible branch via `get_allowed_schools(...)` | P1 complete | `students/report/case_entries_activity_log/case_entries_activity_log.py`, `school_settings/school_settings_utils.py` | `students/report/case_entries_activity_log/test_case_entries_activity_log.py` |
+| Trial Balance school-dimension semantics | Implemented | Keep exact-match `GL Entry.school` filtering; descendant inheritance is not part of legal trial-balance semantics | P1 complete | `accounting/report/trial_balance/trial_balance.py`, `docs/accounting/accounting_notes.md` | `accounting/report/trial_balance/test_trial_balance.py` |
+| Aged Receivables school-dimension semantics | Partial | Keep exact-match invoice-line existence filtering until the owner contract decides whether the report should stay invoice-level or become line-aware | P1 | `accounting/report/aged_receivables/aged_receivables.py`, `docs/accounting/accounting_notes.md`, `docs/accounting/fees_full_cycle_note.md` | `accounting/report/aged_receivables/test_aged_receivables.py` |
+| Student Attribution school filter parity | Implemented | Expand the selected school to its descendant branch on `Sales Invoice Item.school` while keeping `Organization` as the legal scope anchor | P1 complete | `accounting/report/student_attribution/student_attribution.py`, `docs/accounting/accounting_notes.md`, `docs/accounting/fees_full_cycle_note.md` | `accounting/report/student_attribution/test_student_attribution.py` |
 | Location descendant-capacity enforcement | Implemented | Parent locations now validate capacity against their descendant booking scope | P1 complete | `stock/doctype/location/location.py`, `utilities/location_utils.py` | `stock/doctype/location/test_location.py` |
 | Auto-default school on record creation | Implemented | New `Course`, `Term`, and `Program Enrollment` forms prefill the user's default school when empty | P1 complete | `curriculum/doctype/course/course.js`, `school_settings/doctype/term/term.js`, `schedule/doctype/program_enrollment/program_enrollment.js` | None |
 | Program assessment fallback vs copy button | Implemented | Empty child Programs now resolve assessment categories from the nearest ancestor while preserving explicit local rows and the copy action | P1 complete | `curriculum/doctype/program/program.py`, `curriculum/doctype/program/program.js` | `curriculum/doctype/program/test_program.py` |
@@ -160,6 +170,10 @@ Test refs:
 - `ifitwala_ed/students/report/attendance_report/test_attendance_report.py`
 - `ifitwala_ed/schedule/report/enrollment_trend_report/test_enrollment_trend_report.py`
 - `ifitwala_ed/schedule/report/enrollment_report/test_enrollment_report.py`
+- `ifitwala_ed/students/report/case_entries_activity_log/test_case_entries_activity_log.py`
+- `ifitwala_ed/accounting/report/student_attribution/test_student_attribution.py`
+- `ifitwala_ed/accounting/report/trial_balance/test_trial_balance.py`
+- `ifitwala_ed/accounting/report/aged_receivables/test_aged_receivables.py`
 - `ifitwala_ed/school_settings/test_school_settings_utils.py`
 - `ifitwala_ed/api/test_room_utilization.py`
 - `ifitwala_ed/stock/doctype/location/test_location.py`
@@ -172,7 +186,7 @@ Test refs:
 | DocType scripted permissions | Term visibility keeps descendant subtree access plus nearest-ancestor fallback per academic year for the user's branch | `school_settings/doctype/term/term.py` | `school_settings/doctype/term/test_term.py` |
 | API endpoints | Analytics and rooming endpoints that honor descendant scope plus explicit ancestor-sharing | `api/enrollment_analytics.py`, `api/student_overview_dashboard.py`, `api/room_utilization.py`, `api/calendar_quick_create.py` | `api/test_room_utilization.py` plus existing endpoint tests outside this contract |
 | SPA / UI surfaces | Tree-aware analytics/report entry points plus default-school prefill and inherited Program assessment-category hinting | `docs/spa/06_analytics_pages.md`, `curriculum/doctype/program/program.js`, `curriculum/doctype/course/course.js`, `school_settings/doctype/term/term.js`, `schedule/doctype/program_enrollment/program_enrollment.js` | None |
-| Reports / dashboards / briefings | Attendance, Enrollment Trend, Enrollment Report implemented; remaining reports under contract review | `students/report/attendance_report/attendance_report.py`, `schedule/report/enrollment_trend_report/enrollment_trend_report.py`, `schedule/report/enrollment_report/enrollment_report.py`, review set listed in §3 | Report tests listed above |
+| Reports / dashboards / briefings | Attendance, Enrollment Trend, Enrollment Report, Case Entries Activity Log, and Student Attribution are implemented; Trial Balance exact-match semantics are locked; Aged Receivables still needs an owner decision on invoice-vs-line school semantics | `students/report/attendance_report/attendance_report.py`, `students/report/case_entries_activity_log/case_entries_activity_log.py`, `schedule/report/enrollment_trend_report/enrollment_trend_report.py`, `schedule/report/enrollment_report/enrollment_report.py`, `accounting/report/student_attribution/student_attribution.py`, `accounting/report/trial_balance/trial_balance.py`, `accounting/report/aged_receivables/aged_receivables.py` | Report tests listed above |
 | Scheduler / background jobs | None currently required for scope parity; location fix must remain request-bounded | None | None |
 | Tests | School-tree helper and report query-contract regression coverage | `utilities/test_school_tree.py`, `students/report/attendance_report/test_attendance_report.py`, `schedule/report/enrollment_trend_report/test_enrollment_trend_report.py`, `schedule/report/enrollment_report/test_enrollment_report.py`, `school_settings/test_school_settings_utils.py` | Same |
 

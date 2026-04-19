@@ -27,5 +27,7 @@ Planning and audit notes:
   approved product direction after the audit, not a runtime contract
 - `09_feedback_records_and_publication_rfc.md`
   planned Phase 2 implementation RFC for the feedback domain and publication model
+- `10_quiz_runtime_and_teacher_entered_assessment_spec_2026-04-19.md`
+  proposed design spec for converging native quiz review into the drawer and making teacher-graded paper quizzes first-class
 - `gradebook_drawer_phases.md`
   planned roadmap; update the runtime docs above when phases ship

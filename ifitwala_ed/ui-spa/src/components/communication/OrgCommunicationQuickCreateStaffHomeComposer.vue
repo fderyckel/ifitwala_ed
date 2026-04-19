@@ -6,10 +6,56 @@
 			>
 				<div class="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
 					<div class="space-y-1">
-						<p class="type-overline text-ink/55">Audience</p>
-						<h3 class="type-h3 text-ink">Targeting</h3>
+						<p class="type-overline text-ink/55">Scope</p>
+						<h3 class="type-h3 text-ink">Audience and routing</h3>
 						<p class="type-caption text-ink/65">
-							Start from a real communication workflow, then fine-tune recipients only when needed.
+							Set the issuing scope first, then choose the audience workflow. Governed files will
+							lock to this resolved context after the first upload.
+						</p>
+					</div>
+				</div>
+
+				<div
+					class="if-org-communication-scope-grid if-org-communication-core-scope-grid mt-4 grid grid-cols-1 gap-4 md:grid-cols-2"
+				>
+					<div class="space-y-1">
+						<label class="type-label">Organization</label>
+						<select
+							v-model="form.organization"
+							class="if-org-communication-native-select"
+							:disabled="submitting || attachmentContextLocked"
+						>
+							<option
+								v-for="option in organizationSelectOptions"
+								:key="getSelectOptionValue(option)"
+								:value="getSelectOptionValue(option)"
+							>
+								{{ getSelectOptionLabel(option) }}
+							</option>
+						</select>
+						<p class="type-caption text-ink/55">
+							{{ organizationHelpText }}
+						</p>
+					</div>
+
+					<div class="space-y-1">
+						<label class="type-label">Issuing school</label>
+						<select
+							v-model="form.school"
+							class="if-org-communication-native-select"
+							:disabled="submitting || issuingSchoolSelectionLocked || attachmentContextLocked"
+						>
+							<option value="">No issuing school</option>
+							<option
+								v-for="option in schoolSelectOptions"
+								:key="getSelectOptionValue(option)"
+								:value="getSelectOptionValue(option)"
+							>
+								{{ getSelectOptionLabel(option) }}
+							</option>
+						</select>
+						<p class="type-caption text-ink/55">
+							{{ schoolHelpText }}
 						</p>
 					</div>
 				</div>
@@ -319,8 +365,7 @@
 						<p class="type-overline text-ink/55">Message</p>
 						<h3 class="type-h3 text-ink">Core details</h3>
 						<p class="type-caption text-ink/65">
-							Use the same organization, school, delivery, and audience rules as Desk, without
-							leaving the staff shell.
+							Capture the title, message, and note once the communication scope is set.
 						</p>
 					</div>
 				</div>
@@ -354,60 +399,6 @@
 					</div>
 				</div>
 
-				<div
-					class="if-org-communication-core-scope-grid mt-4 grid grid-cols-1 gap-4 md:grid-cols-2"
-				>
-					<div class="space-y-1">
-						<label class="type-label">Organization</label>
-						<select
-							v-model="form.organization"
-							class="if-org-communication-native-select"
-							:disabled="submitting || attachmentContextLocked"
-						>
-							<option
-								v-for="option in organizationSelectOptions"
-								:key="getSelectOptionValue(option)"
-								:value="getSelectOptionValue(option)"
-							>
-								{{ getSelectOptionLabel(option) }}
-							</option>
-						</select>
-						<p class="type-caption text-ink/55">
-							{{ organizationHelpText }}
-						</p>
-					</div>
-
-					<div class="space-y-1">
-						<label class="type-label">Issuing school</label>
-						<select
-							v-model="form.school"
-							class="if-org-communication-native-select"
-							:disabled="submitting || issuingSchoolSelectionLocked || attachmentContextLocked"
-						>
-							<option value="">No issuing school</option>
-							<option
-								v-for="option in schoolSelectOptions"
-								:key="getSelectOptionValue(option)"
-								:value="getSelectOptionValue(option)"
-							>
-								{{ getSelectOptionLabel(option) }}
-							</option>
-						</select>
-						<p class="type-caption text-ink/55">
-							{{ schoolHelpText }}
-						</p>
-					</div>
-				</div>
-
-				<div
-					v-if="attachmentContextLocked"
-					class="mt-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3"
-				>
-					<p class="type-caption text-amber-900">
-						{{ attachmentContextLockMessage }}
-					</p>
-				</div>
-
 				<div class="mt-4 space-y-1">
 					<label class="type-label">Message</label>
 					<div
@@ -424,6 +415,23 @@
 					</div>
 				</div>
 
+				<div
+					class="if-org-communication-message-attachment-actions mt-4 rounded-[24px] border border-border/70 bg-surface-soft/70 p-4"
+				>
+					<OrgCommunicationQuickCreateAttachmentActions
+						:help-text="attachmentSection.helpText"
+						:attachment-error-message="attachmentSection.attachmentErrorMessage"
+						:attachment-actions-disabled="attachmentSection.attachmentActionsDisabled"
+						:show-link-composer="attachmentSection.showLinkComposer"
+						:link-draft="attachmentSection.linkDraft"
+						:link-draft-ready="attachmentSection.linkDraftReady"
+						@trigger-file-picker="emit('trigger-file-picker')"
+						@toggle-link-composer="emit('toggle-link-composer')"
+						@reset-link-draft="emit('reset-link-draft')"
+						@submit-link="emit('submit-link')"
+					/>
+				</div>
+
 				<div class="mt-4 space-y-1">
 					<label class="type-label">Internal note</label>
 					<FormControl
@@ -438,6 +446,7 @@
 
 			<OrgCommunicationQuickCreateAttachmentSection
 				v-bind="attachmentSection"
+				:show-actions="false"
 				@trigger-file-picker="emit('trigger-file-picker')"
 				@toggle-link-composer="emit('toggle-link-composer')"
 				@reset-link-draft="emit('reset-link-draft')"
@@ -685,6 +694,7 @@
 <script setup lang="ts">
 import { FormControl, TextEditor } from 'frappe-ui';
 
+import OrgCommunicationQuickCreateAttachmentActions from './OrgCommunicationQuickCreateAttachmentActions.vue';
 import OrgCommunicationQuickCreateAttachmentSection from './OrgCommunicationQuickCreateAttachmentSection.vue';
 import type { OrgCommunicationAttachmentRow } from '@/types/contracts/org_communication_attachments/shared';
 import type { OrgCommunicationAudiencePreset } from '@/types/contracts/org_communication_quick_create/get_org_communication_quick_create_options';

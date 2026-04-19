@@ -40,7 +40,7 @@
     "eslint": "^9.39.2",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-prettier": "^5.5.4",
-    "eslint-plugin-vue": "^10.6.2",
+    "eslint-plugin-vue": "^9.32.0",
     "postcss": "^8.5.4",
     "postcss-import": "^16.1.1",
     "prettier": "^3.7.4",
@@ -48,7 +48,8 @@
     "rollup-plugin-copy": "^3.5.0",
     "rollup-plugin-postcss": "^4.0.2",
     "sass": "^1.97.1",
-    "tailwindcss": "^4.1.18"
+    "tailwindcss": "^4.1.18",
+    "vue-eslint-parser": "^9.4.3"
   },
   "dependencies": {
     "@popperjs/core": "^2.11.8",

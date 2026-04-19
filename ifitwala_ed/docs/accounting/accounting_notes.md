@@ -412,6 +412,12 @@ Accounting:
 * Income by Offering / Program
 * School / Program filtered ledger reporting
 
+### 14.1 School-Dimension Filter Semantics
+
+- `Trial Balance` keeps exact-match filtering on `GL Entry.school`. Parent-school selection does not roll up descendants because legal accounting reporting remains organization-scoped first.
+- `Student Attribution` is descendant-aware on `Sales Invoice Item.school`. Selecting a parent school includes invoice lines from descendant schools in that same branch.
+- `Aged Receivables` currently keeps exact-match school filtering through invoice-line existence checks. That remains the current contract until owner docs decide whether the report should stay invoice-level or become line-aware.
+
 ---
 
 ## 15. Non‑Goals (Phase 0)

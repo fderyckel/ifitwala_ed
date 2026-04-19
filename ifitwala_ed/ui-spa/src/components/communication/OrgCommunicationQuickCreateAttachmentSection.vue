@@ -1,82 +1,27 @@
 <template>
-	<section class="rounded-[28px] border border-border/70 bg-white p-5 shadow-soft">
-		<div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-			<div class="space-y-1">
-				<p class="type-overline text-ink/55">Attachments</p>
-				<h3 class="type-h3 text-ink">Files and links</h3>
-				<p class="type-caption text-ink/65">
-					{{ helpText }}
-				</p>
-			</div>
-			<div class="flex flex-wrap gap-2">
-				<button
-					type="button"
-					class="rounded-full border border-border/80 bg-surface px-3 py-1.5 type-button-label text-ink transition hover:border-jacaranda hover:text-jacaranda"
-					:disabled="attachmentActionsDisabled"
-					@click="emit('trigger-file-picker')"
-				>
-					Add file
-				</button>
-				<button
-					type="button"
-					class="rounded-full border border-border/80 bg-surface px-3 py-1.5 type-button-label text-ink transition hover:border-jacaranda hover:text-jacaranda"
-					:disabled="attachmentActionsDisabled"
-					@click="emit('toggle-link-composer')"
-				>
-					{{ showLinkComposer ? 'Close link' : 'Add link' }}
-				</button>
-			</div>
-		</div>
+	<section
+		class="if-org-communication-attachment-section rounded-[28px] border border-border/70 bg-white p-5 shadow-soft"
+	>
+		<OrgCommunicationQuickCreateAttachmentActions
+			v-if="showActions"
+			:help-text="helpText"
+			:attachment-error-message="attachmentErrorMessage"
+			:attachment-actions-disabled="attachmentActionsDisabled"
+			:show-link-composer="showLinkComposer"
+			:link-draft="linkDraft"
+			:link-draft-ready="linkDraftReady"
+			@trigger-file-picker="emit('trigger-file-picker')"
+			@toggle-link-composer="emit('toggle-link-composer')"
+			@reset-link-draft="emit('reset-link-draft')"
+			@submit-link="emit('submit-link')"
+		/>
 
-		<div
-			v-if="attachmentErrorMessage"
-			class="mt-4 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3"
-		>
-			<p class="type-caption text-rose-900">{{ attachmentErrorMessage }}</p>
-		</div>
-
-		<div
-			v-if="showLinkComposer"
-			class="mt-4 rounded-[24px] border border-border/70 bg-surface-soft/70 p-4"
-		>
-			<div class="grid grid-cols-1 gap-3">
-				<div class="space-y-1">
-					<label class="type-label">Link URL</label>
-					<FormControl
-						v-model="linkDraft.external_url"
-						type="text"
-						placeholder="https://example.com/resource.pdf"
-						:disabled="attachmentActionsDisabled"
-					/>
-				</div>
-				<div class="space-y-1">
-					<label class="type-label">Link label</label>
-					<FormControl
-						v-model="linkDraft.title"
-						type="text"
-						placeholder="Optional display label"
-						:disabled="attachmentActionsDisabled"
-					/>
-				</div>
-			</div>
-			<div class="mt-3 flex flex-wrap justify-end gap-2">
-				<button
-					type="button"
-					class="if-button if-button--secondary"
-					:disabled="attachmentActionsDisabled"
-					@click="emit('reset-link-draft')"
-				>
-					Cancel
-				</button>
-				<button
-					type="button"
-					class="if-button if-button--primary"
-					:disabled="attachmentActionsDisabled || !linkDraftReady"
-					@click="emit('submit-link')"
-				>
-					Add link
-				</button>
-			</div>
+		<div v-else class="space-y-1">
+			<p class="type-overline text-ink/55">Attachments</p>
+			<h3 class="type-h3 text-ink">Files and links</h3>
+			<p class="type-caption text-ink/65">
+				Review the files and links already attached to this communication.
+			</p>
 		</div>
 
 		<div class="mt-4 space-y-3">
@@ -112,30 +57,38 @@
 				</div>
 			</div>
 			<p v-if="!attachmentRows.length" class="type-caption text-ink/60">
-				No attachments yet. Keep it light: add only the file or link teachers and families actually
-				need.
+				{{
+					showActions
+						? 'No attachments yet. Keep it light: add only the file or link teachers and families actually need.'
+						: 'No attachments yet. Add a file or link from the message section above when this communication needs one.'
+				}}
 			</p>
 		</div>
 	</section>
 </template>
 
 <script setup lang="ts">
-import { FormControl } from 'frappe-ui';
-
 import type { OrgCommunicationAttachmentRow } from '@/types/contracts/org_communication_attachments/shared';
 
+import OrgCommunicationQuickCreateAttachmentActions from './OrgCommunicationQuickCreateAttachmentActions.vue';
 import type { LinkDraftState } from './orgCommunicationQuickCreateTypes';
 
-defineProps<{
-	helpText: string;
-	attachmentRows: OrgCommunicationAttachmentRow[];
-	attachmentErrorMessage: string;
-	attachmentActionsDisabled: boolean;
-	removeDisabled: boolean;
-	showLinkComposer: boolean;
-	linkDraft: LinkDraftState;
-	linkDraftReady: boolean;
-}>();
+withDefaults(
+	defineProps<{
+		helpText: string;
+		attachmentRows: OrgCommunicationAttachmentRow[];
+		attachmentErrorMessage: string;
+		attachmentActionsDisabled: boolean;
+		removeDisabled: boolean;
+		showLinkComposer: boolean;
+		linkDraft: LinkDraftState;
+		linkDraftReady: boolean;
+		showActions?: boolean;
+	}>(),
+	{
+		showActions: true,
+	}
+);
 
 const emit = defineEmits<{
 	(e: 'trigger-file-picker'): void;

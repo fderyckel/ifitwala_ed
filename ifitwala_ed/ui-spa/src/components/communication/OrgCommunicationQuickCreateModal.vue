@@ -391,16 +391,16 @@ const lockedAttachmentSchoolLabel = computed(() => {
 });
 const attachmentContextLockMessage = computed(() => {
 	if (lockedAttachmentSchoolLabel.value) {
-		return `Governed files are already attached for ${lockedAttachmentSchoolLabel.value}. Remove the governed files before changing organization, issuing school, or audience scope.`;
+		return `Governed files are already attached for ${lockedAttachmentSchoolLabel.value}. Remove the governed files before changing Organization, Issuing school, or Audience in Scope above.`;
 	}
 	if (canTargetWideSchoolScope.value) {
-		return 'Governed files are already attached for this organization-scoped draft. You can still add an Organization-wide audience, but you must remove the governed files before switching to school, team, or student-group scope.';
+		return 'Governed files are already attached for this organization-scoped draft. You can still add an Organization-wide audience in Scope above, but you must remove the governed files before switching to school, team, or student-group scope.';
 	}
-	return 'Governed files are already attached for this organization-scoped draft. Remove the governed files before changing organization, issuing school, or audience scope.';
+	return 'Governed files are already attached for this organization-scoped draft. Remove the governed files before changing Organization, Issuing school, or Audience in Scope above.';
 });
 const audienceEmptyStateMessage = computed(() => {
 	if (!attachmentContextLocked.value) {
-		return 'Choose an audience workflow above. You can add more than one audience when needed.';
+		return 'Choose an audience workflow in Scope above. You can add more than one audience when needed.';
 	}
 	if (lockedAttachmentSchoolLabel.value) {
 		return `This draft is already locked to ${lockedAttachmentSchoolLabel.value}. Add a school audience for that school, or remove the governed files before switching scope.`;
@@ -690,11 +690,18 @@ const classEventScheduleLabel = computed(() => {
 	const parts = [props.sessionDate, props.sessionTimeLabel].filter(Boolean);
 	return parts.length ? parts.join(' · ') : 'Selected class event';
 });
-const attachmentSectionHelpText = computed(() =>
-	isClassEventMode.value
-		? 'Add a governed file or a link without leaving this class flow. The first attachment saves a draft automatically so the communication owns the file history.'
-		: 'Add a governed file or a link without leaving Staff Home. The first attachment saves a draft automatically so the communication owns the file history.'
-);
+const attachmentSectionHelpText = computed(() => {
+	if (isClassEventMode.value) {
+		return 'Add a governed file or a link without leaving this class flow. The first attachment saves a draft automatically so the communication owns the file history.';
+	}
+	if (attachmentContextLocked.value) {
+		if (lockedAttachmentSchoolLabel.value) {
+			return `This draft is locked to ${lockedAttachmentSchoolLabel.value}. Add more files or links for that scope here, then review or remove attached rows below.`;
+		}
+		return 'This draft is locked to organization scope. Add more files or links for that scope here, then review or remove attached rows below.';
+	}
+	return 'Finish Scope above, then add a governed file or a link here. The first governed file auto-saves a draft and locks that scope; review attached rows below.';
+});
 const classEventContextCards = computed<ClassEventContextCard[]>(() => [
 	{
 		label: 'Course',
@@ -1746,19 +1753,19 @@ function getGovernedFileDraftScopeBlocker() {
 	if (isClassEventMode.value || hasGovernedFileAttachments.value) return '';
 	if (!audienceRows.value.length) {
 		if (canTargetWideSchoolScope.value && form.school) {
-			return 'Choose an audience or clear Issuing School before adding governed files. The first governed file locks attachment scope.';
+			return 'Finish Scope above before adding governed files. Choose an audience workflow or clear Issuing School first. The first governed file auto-saves a draft and locks that scope.';
 		}
-		return 'Choose an audience before adding governed files. The first governed file locks attachment scope.';
+		return 'Finish Scope above before adding governed files. Choose an audience workflow first. The first governed file auto-saves a draft and locks that scope.';
 	}
 	for (const row of audienceRows.value) {
 		if (row.target_mode === 'School Scope' && !row.school) {
-			return 'Select the school before adding governed files. The first governed file locks attachment scope.';
+			return 'Finish Scope above before adding governed files. Select the school for the audience row first. The first governed file auto-saves a draft and locks that scope.';
 		}
 		if (row.target_mode === 'Team' && !row.team) {
-			return 'Select the team before adding governed files. The first governed file locks attachment scope.';
+			return 'Finish Scope above before adding governed files. Select the team first. The first governed file auto-saves a draft and locks that scope.';
 		}
 		if (row.target_mode === 'Student Group' && !row.student_group) {
-			return 'Select the class or student group before adding governed files. The first governed file locks attachment scope.';
+			return 'Finish Scope above before adding governed files. Select the class or student group first. The first governed file auto-saves a draft and locks that scope.';
 		}
 	}
 	return '';

@@ -264,11 +264,11 @@ Appears when:
 
 * `Student Log.requires_follow_up=1`, and
 * a follow-up person is assigned (single assignee policy), and
-* no submitted follow-up exists yet for the current “active cycle”.
+* an OPEN `ToDo` exists for the current assignee on that log.
 
 Disappears when:
 
-* the assignee submits a `Student Log Follow Up` (docstatus=1)
+* the assignee submits a `Student Log Follow Up` (docstatus=1) for the current OPEN assignment
 
 Handoff:
 
@@ -279,6 +279,7 @@ Handoff:
 Appears when:
 
 * a follow-up is submitted for the log, and
+* no OPEN follow-up `ToDo` remains for the log, and
 * the log is not yet in terminal state.
 
 Disappears when:
@@ -292,7 +293,8 @@ Author review items can auto-resolve after a timeout.
 
 Source of truth:
 
-* `School.default_follow_up_due_in_days`
+* `Student Log Next Step.auto_close_after_days` when set
+* otherwise `School.default_follow_up_due_in_days`
 
 Behavior:
 

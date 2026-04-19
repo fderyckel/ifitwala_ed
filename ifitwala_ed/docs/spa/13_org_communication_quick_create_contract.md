@@ -185,6 +185,8 @@ Rules:
 15. Before the first governed file upload in `entryMode='staff-home'`, the overlay must require an explicit attachment-driving audience context. A blank audience list, an incomplete `Team` target, an incomplete `Student Group` target, or a `School Scope` row without its school selection must be blocked in-product before the draft auto-save runs.
 16. For staff-home users who can target both school-level and organization-level audiences, a prefilled `issuing school` is still ambiguous until they either choose an audience workflow or clear `issuing school`. The overlay must not silently auto-save a school-scoped governed draft just because `issuing school` was prefilled from user context.
 17. For organization-scoped locked drafts (`issuing school` blank at first governed file), compatible `Organization` audiences remain valid. The overlay must tell wide-scope users to choose `Organization-wide` rather than showing only a generic lock warning.
+18. In `entryMode='staff-home'`, the composer must surface the scope-driving controls (`Organization`, `Issuing school`) and audience builder before the attachment section so users resolve attachment intent before the first governed-file auto-save path.
+19. In `entryMode='staff-home'`, the primary `Add file` and `Add link` controls must live with the message composer after `Scope`, while the lower attachment section remains an explicit review/remove list for the attached rows. This reduces modal sprawl without collapsing governed attachments into the rich-text body.
 
 ## 5. Overlay and Invalidation Contract
 

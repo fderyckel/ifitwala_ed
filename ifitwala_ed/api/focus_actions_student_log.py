@@ -36,7 +36,7 @@ def submit_student_log_follow_up(
     - focus_item_id belongs to session user
     - action_type is the submit action
     - doc-level permission enforced on the Student Log
-    - only the current assignee can submit the focus follow-up action
+    - only the current assignee for the active cycle can submit the focus follow-up action
     - log not Completed
     - idempotent against rapid double submits
     - creates + submits Student Log Follow Up through the workflow endpoint
@@ -108,9 +108,6 @@ def submit_student_log_follow_up(
     if (current_assignee or "").strip() != user:
         frappe.throw(_("Only the current assignee can submit this follow-up."), frappe.PermissionError)
 
-    if frappe.db.exists(FOLLOW_UP_DOCTYPE, {"student_log": log_name, "docstatus": 1}):
-        frappe.throw(_("A submitted follow-up already exists for this Student Log."))
-
     lock_name = _lock_key(user, focus_item_id, "submit_follow_up")
     with cache.lock(lock_name, timeout=10):
         # re-check inside lock
@@ -133,9 +130,6 @@ def submit_student_log_follow_up(
         )
         if (current_assignee or "").strip() != user:
             frappe.throw(_("Only the current assignee can submit this follow-up."), frappe.PermissionError)
-
-        if frappe.db.exists(FOLLOW_UP_DOCTYPE, {"student_log": log_name, "docstatus": 1}):
-            frappe.throw(_("A submitted follow-up already exists for this Student Log."))
 
         # Create + submit follow-up: triggers your StudentLogFollowUp controller side effects
         fu = frappe.get_doc(

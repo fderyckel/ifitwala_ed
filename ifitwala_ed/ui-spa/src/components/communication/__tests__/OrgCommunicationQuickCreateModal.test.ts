@@ -647,7 +647,7 @@ describe('OrgCommunicationQuickCreateModal', () => {
 		);
 	});
 
-	it('renders audience before core details and keeps the audience and scope grids responsive', async () => {
+	it('renders scope and audience before core details and attachments, and keeps the workflow grids responsive', async () => {
 		getOptionsMock.mockResolvedValue(quickCreateOptions);
 
 		mountModal();
@@ -659,12 +659,21 @@ describe('OrgCommunicationQuickCreateModal', () => {
 		const coreDetailsSection = document.querySelector(
 			'.if-org-communication-core-details-section'
 		) as HTMLElement | null;
+		const attachmentSection = document.querySelector(
+			'.if-org-communication-attachment-section'
+		) as HTMLElement | null;
 		const audiencePresetGrid = document.querySelector(
 			'.if-org-communication-audience-preset-grid'
 		) as HTMLElement | null;
 		const coreScopeGrid = document.querySelector(
 			'.if-org-communication-core-scope-grid'
 		) as HTMLElement | null;
+		const messageAttachmentActions = document.querySelector(
+			'.if-org-communication-message-attachment-actions'
+		) as HTMLElement | null;
+		const addFileButton = Array.from(document.querySelectorAll('button')).find(
+			button => button.textContent?.trim() === 'Add file'
+		) as HTMLButtonElement | undefined;
 
 		expect(audienceSection).toBeTruthy();
 		expect(coreDetailsSection).toBeTruthy();
@@ -677,6 +686,31 @@ describe('OrgCommunicationQuickCreateModal', () => {
 						0
 			)
 		).toBe(true);
+		expect(
+			Boolean(
+				coreDetailsSection &&
+					attachmentSection &&
+					(coreDetailsSection.compareDocumentPosition(attachmentSection) &
+						Node.DOCUMENT_POSITION_FOLLOWING) !==
+						0
+			)
+		).toBe(true);
+		expect(Boolean(audienceSection && coreScopeGrid && audienceSection.contains(coreScopeGrid))).toBe(
+			true
+		);
+		expect(
+			Boolean(
+				coreDetailsSection &&
+					messageAttachmentActions &&
+					coreDetailsSection.contains(messageAttachmentActions)
+			)
+		).toBe(true);
+		expect(
+			Boolean(coreDetailsSection && addFileButton && coreDetailsSection.contains(addFileButton))
+		).toBe(true);
+		expect(
+			Boolean(attachmentSection && addFileButton && attachmentSection.contains(addFileButton))
+		).toBe(false);
 		expect(audiencePresetGrid?.getAttribute('class') || '').toContain('md:grid-cols-2');
 		expect(audiencePresetGrid?.getAttribute('class') || '').not.toContain('xl:grid-cols-3');
 		expect(coreScopeGrid?.getAttribute('class') || '').toContain('md:grid-cols-2');
@@ -1250,7 +1284,7 @@ describe('OrgCommunicationQuickCreateModal', () => {
 		expect(createOrgCommunicationQuickMock).not.toHaveBeenCalled();
 		expect(uploadOrgCommunicationAttachmentMock).not.toHaveBeenCalled();
 		expect(document.querySelector('[role="alert"]')?.textContent || '').toContain(
-			'Choose an audience or clear Issuing School before adding governed files.'
+			'Finish Scope above before adding governed files. Choose an audience workflow or clear Issuing School first.'
 		);
 	});
 
@@ -1294,7 +1328,7 @@ describe('OrgCommunicationQuickCreateModal', () => {
 		expect(createOrgCommunicationQuickMock).not.toHaveBeenCalled();
 		expect(uploadOrgCommunicationAttachmentMock).not.toHaveBeenCalled();
 		expect(document.querySelector('[role="alert"]')?.textContent || '').toContain(
-			'Choose an audience before adding governed files.'
+			'Finish Scope above before adding governed files. Choose an audience workflow first.'
 		);
 
 		clickButton('One team');
@@ -1304,7 +1338,7 @@ describe('OrgCommunicationQuickCreateModal', () => {
 		expect(createOrgCommunicationQuickMock).not.toHaveBeenCalled();
 		expect(uploadOrgCommunicationAttachmentMock).not.toHaveBeenCalled();
 		expect(document.querySelector('[role="alert"]')?.textContent || '').toContain(
-			'Select the team before adding governed files.'
+			'Finish Scope above before adding governed files. Select the team first.'
 		);
 
 		setInputByPlaceholder('Type a team name or code', 'ISS');
@@ -1375,7 +1409,7 @@ describe('OrgCommunicationQuickCreateModal', () => {
 		) as HTMLButtonElement | undefined;
 		expect(organizationWideButton?.disabled).toBe(false);
 		expect(document.body.textContent || '').toContain(
-			'Governed files are already attached for Main School.'
+			'Governed files are already attached for MS · Main School.'
 		);
 	});
 
@@ -1437,13 +1471,14 @@ describe('OrgCommunicationQuickCreateModal', () => {
 		mountModal();
 		await flushUi();
 
+		await addOrganizationWideAudience();
 		await uploadGovernedFile();
 		await addOrganizationWideAudience();
 
 		expect(createOrgCommunicationQuickMock).toHaveBeenCalledTimes(1);
 		expect(uploadOrgCommunicationAttachmentMock).toHaveBeenCalledTimes(1);
 		expect(document.body.textContent || '').toContain(
-			'This draft is already locked to organization scope. Choose Organization-wide above to reach staff across your organization tree.'
+			'You can still add an Organization-wide audience in Scope above'
 		);
 		expect(document.body.textContent || '').toContain('Root Org · Staff');
 		expect(document.querySelector('[role="alert"]')).toBeNull();
@@ -1497,7 +1532,7 @@ describe('OrgCommunicationQuickCreateModal', () => {
 
 		expect(createOrgCommunicationQuickMock).toHaveBeenCalledTimes(1);
 		expect(document.querySelector('[role="alert"]')?.textContent || '').toContain(
-			'Remove the governed files before changing organization, issuing school, or audience scope.'
+			'Remove the governed files before changing Organization, Issuing school, or Audience in Scope above.'
 		);
 	});
 

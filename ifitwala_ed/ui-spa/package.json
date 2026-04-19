@@ -4,6 +4,9 @@
 	"private": true,
 	"type": "module",
 	"license": "MIT",
+	"resolutions": {
+		"rollup": "npm:@rollup/wasm-node@4.54.0"
+	},
 	"engines": {
 		"node": ">=18"
 	},
