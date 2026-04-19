@@ -125,7 +125,7 @@ Rules:
 4. Those stable routes are not durable storage URLs; Drive grants remain short-lived and are resolved at request time.
 5. Private file URLs must never be constructed in the client.
 6. Authored-history owner access remains aligned with the existing `allow_owner=True` attachment-open rule.
-7. Archive/detail surfaces may render inline image cards from `thumbnail_url` when present, while `preview_url` remains the richer governed preview/open action and the PDF first-page route.
+7. Archive/detail surfaces may render inline image cards from `thumbnail_url` only; if the thumbnail is missing or fails to load, the surface must fall back to an action-led card rather than using `preview_url` or the original file as an inline image source.
 8. Thumbnail routes may use short-lived Ed-side redirect caching plus private browser cache headers, but the SPA still receives only stable Ed-owned action URLs rather than provider grants.
 9. External links and non-ready PDFs must still degrade to action-led metadata cards instead of blank embeds or raw-path guesses.
-10. Open, preview, and thumbnail routes must not require a secondary `File` row lookup when a safe Drive grant URL is already resolved; `File` fallback exists only for inline streaming when the resolved target is a raw private path or no safe redirect target exists.
+10. Open and preview routes must not require a secondary `File` row lookup when a safe Drive grant URL is already resolved; `File` fallback exists only for inline streaming when the resolved target is a raw private path or no safe redirect target exists. Thumbnail routes for Org Communication must fail closed when no safe `thumb` derivative grant exists and must never stream or redirect to the original file.

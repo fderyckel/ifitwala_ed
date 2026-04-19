@@ -639,6 +639,7 @@ def _resolve_drive_file_grant_target_url(
     file_id: str,
     prefer_preview: bool = False,
     derivative_role: str | None = None,
+    strict_derivative: bool = False,
 ) -> str | None:
     target_url = ""
     explicit_derivative_role = (derivative_role or "").strip()
@@ -651,6 +652,10 @@ def _resolve_drive_file_grant_target_url(
             target_url = str((grant or {}).get("url") or "").strip()
         except Exception:
             target_url = ""
+        if strict_derivative:
+            if target_url and not _is_raw_private_redirect_target(target_url):
+                return target_url
+            return None
 
     if not target_url:
         grant_method = "issue_download_grant"
@@ -677,6 +682,7 @@ def _resolve_cached_thumbnail_target_url(
     drive_file_id: str,
     file_id: str,
     surface_parts: list[str | None],
+    strict_derivative: bool = False,
 ) -> str | None:
     drive_file_row = (
         frappe.db.get_value(
@@ -704,6 +710,7 @@ def _resolve_cached_thumbnail_target_url(
         file_id=file_id,
         prefer_preview=True,
         derivative_role="thumb",
+        strict_derivative=strict_derivative,
     )
     if cache_key and shared_cache is not None and target_url:
         shared_cache.set_value(
@@ -1372,8 +1379,12 @@ def thumbnail_org_communication_attachment(
         drive_file_id=drive_file_id,
         file_id=file_id,
         surface_parts=["org_communication", doc.name, str(row_name or "").strip()],
+        strict_derivative=True,
     )
-    if _respond_with_redirect_or_inline_file(file_id=file_id, target_url=target_url, cache_headers=True):
+    if target_url:
+        _set_thumbnail_cache_headers()
+        frappe.local.response["type"] = "redirect"
+        frappe.local.response["location"] = target_url
         return
 
     frappe.throw(_("Could not resolve the attachment thumbnail."), frappe.DoesNotExistError)

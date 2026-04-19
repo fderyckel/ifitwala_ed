@@ -37,6 +37,83 @@ afterEach(() => {
 });
 
 describe('CommunicationAttachmentPreviewList', () => {
+	it('renders inline image cards from thumbnail_url only', async () => {
+		mountPreviewList([
+			{
+				row_name: 'ATT-IMG-READY',
+				kind: 'file',
+				title: 'Event poster',
+				file_name: 'poster.jpg',
+				thumbnail_url:
+					'/api/method/ifitwala_ed.api.file_access.thumbnail_org_communication_attachment?row_name=ATT-IMG-READY',
+				preview_url:
+					'/api/method/ifitwala_ed.api.file_access.preview_org_communication_attachment?row_name=ATT-IMG-READY',
+				open_url:
+					'/api/method/ifitwala_ed.api.file_access.open_org_communication_attachment?row_name=ATT-IMG-READY',
+			},
+		]);
+		await flushUi();
+
+		const imageLink = document.querySelector(
+			'[data-communication-attachment-kind="image"]'
+		) as HTMLAnchorElement | null;
+		const imagePreview = imageLink?.querySelector('img');
+
+		expect(imagePreview?.getAttribute('src')).toContain('thumbnail_org_communication_attachment');
+		expect(imagePreview?.getAttribute('src')).toContain('ATT-IMG-READY');
+		expect(imageLink?.getAttribute('href')).toContain('preview_org_communication_attachment');
+	});
+
+	it('keeps image attachments action-led when no thumbnail_url is available', async () => {
+		mountPreviewList([
+			{
+				row_name: 'ATT-IMG-NO-THUMB',
+				kind: 'file',
+				title: 'Campus photo',
+				file_name: 'campus.png',
+				preview_url:
+					'/api/method/ifitwala_ed.api.file_access.preview_org_communication_attachment?row_name=ATT-IMG-NO-THUMB',
+				open_url:
+					'/api/method/ifitwala_ed.api.file_access.open_org_communication_attachment?row_name=ATT-IMG-NO-THUMB',
+			},
+		]);
+		await flushUi();
+
+		expect(document.querySelector('[data-communication-attachment-kind="image"] img')).toBeNull();
+		expect(document.body.textContent || '').toContain('Preview');
+		expect(document.body.textContent || '').toContain('Open original');
+	});
+
+	it('drops back to actions when an inline thumbnail fails to load', async () => {
+		mountPreviewList([
+			{
+				row_name: 'ATT-IMG-BROKEN',
+				kind: 'file',
+				title: 'Athletics banner',
+				file_name: 'banner.webp',
+				thumbnail_url:
+					'/api/method/ifitwala_ed.api.file_access.thumbnail_org_communication_attachment?row_name=ATT-IMG-BROKEN',
+				preview_url:
+					'/api/method/ifitwala_ed.api.file_access.preview_org_communication_attachment?row_name=ATT-IMG-BROKEN',
+				open_url:
+					'/api/method/ifitwala_ed.api.file_access.open_org_communication_attachment?row_name=ATT-IMG-BROKEN',
+			},
+		]);
+		await flushUi();
+
+		const imagePreview = document.querySelector(
+			'[data-communication-attachment-kind="image"] img'
+		) as HTMLImageElement | null;
+		expect(imagePreview).not.toBeNull();
+
+		imagePreview?.dispatchEvent(new Event('error'));
+		await flushUi();
+
+		expect(document.querySelector('[data-communication-attachment-kind="image"] img')).toBeNull();
+		expect(document.body.textContent || '').toContain('Preview');
+		expect(document.body.textContent || '').toContain('Open original');
+	});
+
 	it('renders a first-page image preview for PDFs only when the governed preview is ready', async () => {
 		mountPreviewList([
 			{

@@ -1,4 +1,5 @@
 import type { OrgCommunicationAttachmentRow } from '@/types/contracts/org_communication_attachments/shared';
+import type { UploadProgressState } from '@/lib/uploadProgress';
 
 export type QuickCreateSelectOption = string | { label?: string | null; value?: string | null };
 export type MessageEditorButton = string | string[];
@@ -62,4 +63,6 @@ export type AttachmentSectionState = {
 	showLinkComposer: boolean;
 	linkDraft: LinkDraftState;
 	linkDraftReady: boolean;
+	uploadProgress: UploadProgressState | null;
+	uploadProgressLabel: string;
 };

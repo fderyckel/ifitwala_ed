@@ -188,14 +188,12 @@ const studentMenu: MenuItem[] = [
 ];
 
 const guardianMenu: MenuItem[] = [
-	{ label: 'Family Snapshot', icon: 'home', to: { name: 'guardian-home' } },
 	{ label: 'Communications', icon: 'message-square', to: { name: 'guardian-communications' } },
-	{ label: 'Course Selection', icon: 'check-square', to: { name: 'guardian-course-selection' } },
-	{ label: 'Activities', icon: 'star', to: { name: 'guardian-activities' } },
 	{ label: 'Attendance', icon: 'calendar', to: { name: 'guardian-attendance' } },
-	{ label: 'Policies', icon: 'shield', to: { name: 'guardian-policies' } },
-	{ label: 'Finance', icon: 'credit-card', to: { name: 'guardian-finance' } },
+	{ label: 'Activities', icon: 'star', to: { name: 'guardian-activities' } },
 	{ label: 'Monitoring', icon: 'file-text', to: { name: 'guardian-monitoring' } },
+	{ label: 'Finance', icon: 'credit-card', to: { name: 'guardian-finance' } },
+	{ label: 'Policies', icon: 'shield', to: { name: 'guardian-policies' } },
 	{ label: 'Showcase Portfolio', icon: 'layers', to: { name: 'guardian-portfolio' } },
 ];
 
@@ -228,7 +226,7 @@ const sidebarLabel = computed(() => {
 });
 
 const homeLabel = computed(() => {
-	if (props.activeSection === 'guardian') return 'Guardian Home';
+	if (props.activeSection === 'guardian') return 'Family Snapshot';
 	return 'Student Home';
 });
 

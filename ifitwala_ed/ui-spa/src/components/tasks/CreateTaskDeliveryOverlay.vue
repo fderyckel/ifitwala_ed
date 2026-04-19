@@ -1053,6 +1053,11 @@
 													{{ selectedMaterialFile?.name || 'No file selected yet.' }}
 												</p>
 											</div>
+											<InlineUploadStatus
+												v-if="materialUploadProgress"
+												:label="materialUploadProgressLabel"
+												:progress="materialUploadProgress"
+											/>
 										</div>
 
 										<div
@@ -1275,7 +1280,10 @@ import {
 } from '@headlessui/vue';
 import { FormControl, createResource, toast, FeatherIcon } from 'frappe-ui';
 import { useRouter } from 'vue-router';
+import InlineUploadStatus from '@/components/feedback/InlineUploadStatus.vue';
+import { apiUpload } from '@/lib/client';
 import { SIGNAL_TASK_DELIVERY_CREATED, uiSignals } from '@/lib/uiSignals';
+import type { UploadProgressState } from '@/lib/uploadProgress';
 import type {
 	CreateTaskDeliveryInput,
 	CreateTaskDeliveryPayload,
@@ -1331,6 +1339,7 @@ const materialError = ref('');
 const selectedMaterialFile = ref<File | null>(null);
 const materialFileInput = ref<HTMLInputElement | null>(null);
 const removingPlacement = ref<string | null>(null);
+const materialUploadProgress = ref<UploadProgressState | null>(null);
 
 const initialFocus = ref<HTMLElement | null>(null);
 
@@ -2337,6 +2346,12 @@ function onMaterialFileSelected(event: Event) {
 	}
 }
 
+const materialUploadProgressLabel = computed(() =>
+	selectedMaterialFile.value?.name
+		? `Uploading ${selectedMaterialFile.value.name}`
+		: 'Uploading file'
+);
+
 async function uploadTaskMaterialFileRequest(task: string): Promise<TaskMaterialRow> {
 	if (!selectedMaterialFile.value) {
 		throw new Error('Please choose a file first.');
@@ -2353,25 +2368,15 @@ async function uploadTaskMaterialFileRequest(task: string): Promise<TaskMaterial
 	formData.append('usage_role', materialForm.usage_role);
 	formData.append('file', selectedMaterialFile.value, selectedMaterialFile.value.name);
 
-	const csrfToken =
-		((window as any)?.csrf_token as string | undefined) ||
-		((window as any)?.frappe?.csrf_token as string | undefined) ||
-		'';
-	const response = await fetch('/api/method/ifitwala_ed.api.materials.upload_task_material_file', {
-		method: 'POST',
-		credentials: 'same-origin',
-		body: formData,
-		headers: csrfToken ? { 'X-Frappe-CSRF-Token': csrfToken } : undefined,
-	});
-
-	const data = await response.json().catch(() => ({}));
-	if (!response.ok || data?.exception || data?.exc) {
-		const serverMessages = parseServerMessages(data?._server_messages);
-		throw new Error(
-			serverMessages.join('\n') || data?.message || response.statusText || 'Upload failed.'
-		);
-	}
-	return (data?.message ?? data) as TaskMaterialRow;
+	return apiUpload<TaskMaterialRow>(
+		'ifitwala_ed.api.materials.upload_task_material_file',
+		formData,
+		{
+			onProgress: progress => {
+				materialUploadProgress.value = progress;
+			},
+		}
+	);
 }
 
 async function addMaterial() {
@@ -2410,6 +2415,7 @@ async function addMaterial() {
 		materialError.value = message;
 		toast.create({ appearance: 'danger', message });
 	} finally {
+		materialUploadProgress.value = null;
 		materialSubmitting.value = false;
 	}
 }

@@ -243,6 +243,7 @@ import type {
 	RecipientField,
 	RecipientToggleDefinition,
 } from '@/components/communication/orgCommunicationQuickCreateTypes';
+import type { UploadProgressState } from '@/lib/uploadProgress';
 
 type CloseReason = 'backdrop' | 'esc' | 'programmatic';
 type EntryMode = 'staff-home' | 'class-event';
@@ -310,6 +311,8 @@ const attachmentSubmitting = ref(false);
 const errorMessage = ref('');
 const topLevelErrorSource = ref<TopLevelErrorSource>('');
 const attachmentErrorMessage = ref('');
+const attachmentUploadProgress = ref<UploadProgressState | null>(null);
+const attachmentUploadProgressLabel = ref('');
 const options = ref<OrgCommunicationQuickCreateOptionsResponse | null>(null);
 const audienceRows = ref<AudienceRowState[]>([]);
 const attachmentRows = ref<OrgCommunicationAttachmentRow[]>([]);
@@ -804,6 +807,8 @@ const attachmentSectionState = computed<AttachmentSectionState>(() => ({
 	showLinkComposer: showLinkComposer.value,
 	linkDraft,
 	linkDraftReady: linkDraftReady.value,
+	uploadProgress: attachmentUploadProgress.value,
+	uploadProgressLabel: attachmentUploadProgressLabel.value,
 }));
 
 function getValidationMessage(draftMode = false) {
@@ -1701,11 +1706,22 @@ async function onAttachmentFileSelected(event: Event) {
 	try {
 		const orgCommunication = await ensureSavedDraft('governed-file');
 		clearTopLevelError('attachment-precondition');
-		for (const file of files) {
-			const response = await uploadOrgCommunicationAttachment({
-				org_communication: orgCommunication,
-				file,
-			});
+		for (const [index, file] of files.entries()) {
+			attachmentUploadProgressLabel.value =
+				files.length > 1
+					? `Uploading ${file.name} (${index + 1} of ${files.length})`
+					: `Uploading ${file.name}`;
+			const response = await uploadOrgCommunicationAttachment(
+				{
+					org_communication: orgCommunication,
+					file,
+				},
+				{
+					onProgress: progress => {
+						attachmentUploadProgress.value = progress;
+					},
+				}
+			);
 			upsertAttachmentRow(response.attachment);
 		}
 	} catch (error) {
@@ -1716,6 +1732,8 @@ async function onAttachmentFileSelected(event: Event) {
 				error instanceof Error ? error.message : 'Unable to upload the attachment.';
 		}
 	} finally {
+		attachmentUploadProgress.value = null;
+		attachmentUploadProgressLabel.value = '';
 		attachmentSubmitting.value = false;
 		if (target) target.value = '';
 	}

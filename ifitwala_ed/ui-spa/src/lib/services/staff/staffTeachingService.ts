@@ -1,5 +1,7 @@
 // ui-spa/src/lib/services/staff/staffTeachingService.ts
 
+import { apiUpload } from '@/lib/client'
+import type { UploadProgressCallback } from '@/lib/uploadProgress'
 import { apiMethod } from '@/resources/frappe'
 
 import type {
@@ -234,38 +236,6 @@ export type RemovePlanningMaterialResponse = {
 	removed: number
 }
 
-function parseServerMessages(raw: unknown): string[] {
-	if (typeof raw !== 'string' || !raw.trim()) {
-		return []
-	}
-	try {
-		const entries = JSON.parse(raw)
-		if (!Array.isArray(entries)) return []
-		return entries
-			.map((entry: unknown) => {
-				if (typeof entry !== 'string') return String(entry || '')
-				try {
-					const payload = JSON.parse(entry)
-					return typeof payload?.message === 'string' ? payload.message : entry
-				} catch {
-					return entry
-				}
-			})
-			.filter((message: string) => Boolean((message || '').trim()))
-	} catch {
-		return []
-	}
-}
-
-function csrfToken(): string {
-	if (typeof window === 'undefined') return ''
-	return (
-		(window as Window & { csrf_token?: string }).csrf_token ||
-		(window as Window & { frappe?: { csrf_token?: string } }).frappe?.csrf_token ||
-		''
-	)
-}
-
 export async function getStaffClassPlanningSurface(
 	payload: GetStaffClassPlanningSurfaceRequest
 ): Promise<GetStaffClassPlanningSurfaceResponse> {
@@ -359,7 +329,8 @@ export async function createPlanningReferenceMaterial(
 }
 
 export async function uploadPlanningMaterialFile(
-	payload: UploadPlanningMaterialFileRequest
+	payload: UploadPlanningMaterialFileRequest,
+	options: { onProgress?: UploadProgressCallback } = {}
 ): Promise<UploadPlanningMaterialFileResponse> {
 	const formData = new FormData()
 	formData.append('anchor_doctype', payload.anchor_doctype)
@@ -372,21 +343,11 @@ export async function uploadPlanningMaterialFile(
 	if (payload.usage_role) formData.append('usage_role', payload.usage_role)
 	formData.append('file', payload.file, payload.file.name)
 
-	const response = await fetch(`/api/method/${METHODS.uploadPlanningMaterialFile}`, {
-		method: 'POST',
-		credentials: 'same-origin',
-		body: formData,
-		headers: csrfToken() ? { 'X-Frappe-CSRF-Token': csrfToken() } : undefined,
-	})
-
-	const data = await response.json().catch(() => ({}))
-	if (!response.ok || data?.exception || data?.exc) {
-		const serverMessages = parseServerMessages(data?._server_messages)
-		throw new Error(
-			serverMessages.join('\n') || data?.message || response.statusText || 'Upload failed.'
-		)
-	}
-	return (data?.message ?? data) as UploadPlanningMaterialFileResponse
+	return apiUpload<UploadPlanningMaterialFileResponse>(
+		METHODS.uploadPlanningMaterialFile,
+		formData,
+		options
+	)
 }
 
 export async function removePlanningMaterial(

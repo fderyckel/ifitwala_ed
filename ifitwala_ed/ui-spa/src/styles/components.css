@@ -993,6 +993,222 @@
 		color: rgb(var(--slate-rgb) / 0.85);
 	}
 
+	.admissions-card {
+		border-radius: 1.35rem;
+		border: 1px solid rgb(var(--sand-rgb) / 0.64);
+		background:
+			radial-gradient(circle at 0% 0%, rgb(var(--leaf-rgb) / 0.12), transparent 58%),
+			radial-gradient(circle at 100% 0%, rgb(var(--jacaranda-rgb) / 0.1), transparent 62%),
+			rgb(var(--surface-rgb) / 0.94);
+		box-shadow: var(--shadow-soft);
+		padding: 1rem;
+	}
+
+	.admissions-card--plain {
+		background: linear-gradient(
+			180deg,
+			rgb(var(--surface-strong-rgb) / 0.98),
+			rgb(var(--surface-rgb) / 0.94)
+		);
+	}
+
+	.admissions-card--subtle {
+		border-color: rgb(var(--border-rgb) / 0.78);
+		background: rgb(var(--surface-rgb) / 0.9);
+	}
+
+	.admissions-card--warm {
+		border-color: rgb(var(--clay-rgb) / 0.24);
+		background:
+			radial-gradient(circle at 100% 0%, rgb(var(--sand-rgb) / 0.92), transparent 58%),
+			linear-gradient(180deg, rgb(var(--surface-strong-rgb) / 0.97), rgb(var(--sand-rgb) / 0.72));
+	}
+
+	.admissions-card--success {
+		border-color: rgb(var(--leaf-rgb) / 0.24);
+		background:
+			radial-gradient(circle at 0% 0%, rgb(var(--leaf-rgb) / 0.14), transparent 56%),
+			linear-gradient(180deg, rgb(var(--surface-strong-rgb) / 0.97), rgb(var(--leaf-rgb) / 0.08));
+	}
+
+	.admissions-state-card {
+		border-radius: var(--radius-xl);
+		border: 1px solid rgb(var(--sand-rgb) / 0.68);
+		background:
+			radial-gradient(circle at 0% 0%, rgb(var(--sky-rgb) / 0.56), transparent 64%),
+			rgb(var(--surface-rgb) / 0.92);
+		padding: 1rem;
+	}
+
+	.admissions-state-inline {
+		display: flex;
+		align-items: center;
+		gap: 0.7rem;
+	}
+
+	.admissions-detail-grid {
+		display: grid;
+		gap: 0.75rem;
+	}
+
+	.admissions-detail-card {
+		border-radius: 1rem;
+		border: 1px solid rgb(var(--sand-rgb) / 0.62);
+		background: rgb(var(--surface-rgb) / 0.9);
+		padding: 0.85rem 0.95rem;
+	}
+
+	.admissions-input {
+		width: 100%;
+		border-radius: var(--radius-xl);
+		border: 1px solid rgb(var(--border-rgb) / 0.88);
+		background: rgb(var(--surface-strong-rgb) / 0.96);
+		color: rgb(var(--ink-rgb) / 1);
+		padding: 0.55rem 0.8rem;
+		font-size: 0.95rem;
+		line-height: 1.4;
+		box-shadow: inset 0 1px 0 rgb(var(--surface-rgb) / 0.62);
+		transition:
+			border-color 140ms ease,
+			box-shadow 140ms ease,
+			background 140ms ease;
+	}
+
+	.admissions-input:hover {
+		border-color: rgb(var(--jacaranda-rgb) / 0.26);
+	}
+
+	.admissions-input:focus,
+	.admissions-input:focus-visible {
+		outline: none;
+		border-color: rgb(var(--jacaranda-rgb) / 0.48);
+		box-shadow: 0 0 0 3px rgb(var(--jacaranda-rgb) / 0.16);
+		background: rgb(var(--surface-strong-rgb) / 0.98);
+	}
+
+	.admissions-input:disabled {
+		cursor: not-allowed;
+		opacity: 0.78;
+		background: rgb(var(--surface-rgb) / 0.9);
+	}
+
+	.admissions-checkbox {
+		height: 1rem;
+		width: 1rem;
+		border-radius: 0.35rem;
+		border: 1px solid rgb(var(--border-rgb) / 0.88);
+		accent-color: rgb(var(--canopy-rgb) / 1);
+	}
+
+	.admissions-photo-frame {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		overflow: hidden;
+		border-radius: 1rem;
+		border: 1px solid rgb(var(--sand-rgb) / 0.62);
+		background:
+			radial-gradient(circle at 0% 0%, rgb(var(--sky-rgb) / 0.52), transparent 68%),
+			rgb(var(--surface-rgb) / 0.92);
+	}
+
+	.admissions-action-list {
+		display: flex;
+		flex-direction: column;
+		gap: 0.75rem;
+	}
+
+	.admissions-action-link {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 0.8rem;
+		border-radius: 1rem;
+		border: 1px solid rgb(var(--clay-rgb) / 0.24);
+		background: linear-gradient(
+			90deg,
+			rgb(var(--sand-rgb) / 0.76) 0,
+			rgb(var(--sand-rgb) / 0.76) 0.25rem,
+			rgb(var(--surface-strong-rgb) / 0.98) 0.25rem
+		);
+		padding: 0.85rem 0.95rem;
+		color: rgb(var(--clay-rgb) / 1);
+		text-decoration: none;
+		transition:
+			transform 120ms ease,
+			box-shadow 120ms ease,
+			border-color 120ms ease;
+	}
+
+	.admissions-action-link:hover {
+		transform: translateY(-1px);
+		border-color: rgb(var(--clay-rgb) / 0.38);
+		box-shadow: 0 10px 22px rgb(var(--clay-rgb) / 0.1);
+	}
+
+	.admissions-action-link:focus-visible {
+		outline: none;
+		box-shadow: var(--focus-ring);
+	}
+
+	.admissions-status-pill {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		border-radius: 9999px;
+		border: 1px solid transparent;
+		padding: 0.28rem 0.72rem;
+		white-space: nowrap;
+	}
+
+	.admissions-status-pill--quiet {
+		border-color: rgb(var(--border-rgb) / 0.9);
+		background: rgb(var(--surface-strong-rgb) / 0.88);
+		color: rgb(var(--ink-rgb) / 0.72);
+	}
+
+	.admissions-status-pill--warm {
+		border-color: rgb(var(--clay-rgb) / 0.32);
+		background: rgb(var(--sand-rgb) / 0.74);
+		color: rgb(var(--clay-rgb) / 1);
+	}
+
+	.admissions-status-pill--success {
+		border-color: rgb(var(--leaf-rgb) / 0.38);
+		background: rgb(var(--leaf-rgb) / 0.12);
+		color: rgb(var(--canopy-rgb) / 1);
+	}
+
+	.admissions-status-dot {
+		display: inline-flex;
+		height: 0.65rem;
+		width: 0.65rem;
+		flex-shrink: 0;
+		border-radius: 9999px;
+	}
+
+	.admissions-status-dot--complete {
+		background: rgb(var(--leaf-rgb) / 1);
+	}
+
+	.admissions-status-dot--in-progress {
+		background: rgb(var(--clay-rgb) / 1);
+	}
+
+	.admissions-status-dot--pending {
+		background: rgb(var(--border-rgb) / 1);
+	}
+
+	.admissions-checklist-row {
+		display: flex;
+		align-items: center;
+		gap: 0.65rem;
+		border-radius: 0.95rem;
+		border: 1px solid rgb(var(--sand-rgb) / 0.6);
+		background: rgb(var(--surface-rgb) / 0.88);
+		padding: 0.7rem 0.85rem;
+	}
+
 	@media (max-width: 767px) {
 		.admissions-overview__completion-card {
 			flex-direction: column;

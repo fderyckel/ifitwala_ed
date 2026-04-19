@@ -35,6 +35,12 @@
 			<p class="type-caption text-rose-900">{{ attachmentErrorMessage }}</p>
 		</div>
 
+		<InlineUploadStatus
+			v-if="uploadProgress"
+			:label="uploadProgressLabel"
+			:progress="uploadProgress"
+		/>
+
 		<div
 			v-if="showLinkComposer"
 			class="rounded-[24px] border border-border/70 bg-surface-soft/70 p-4"
@@ -84,6 +90,8 @@
 <script setup lang="ts">
 import { FormControl } from 'frappe-ui';
 
+import InlineUploadStatus from '@/components/feedback/InlineUploadStatus.vue';
+import type { UploadProgressState } from '@/lib/uploadProgress';
 import type { LinkDraftState } from './orgCommunicationQuickCreateTypes';
 
 defineProps<{
@@ -93,6 +101,8 @@ defineProps<{
 	showLinkComposer: boolean;
 	linkDraft: LinkDraftState;
 	linkDraftReady: boolean;
+	uploadProgress: UploadProgressState | null;
+	uploadProgressLabel: string;
 }>();
 
 const emit = defineEmits<{

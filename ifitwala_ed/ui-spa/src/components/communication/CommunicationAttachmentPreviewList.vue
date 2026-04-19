@@ -18,6 +18,7 @@
 						:alt="attachmentLabel(attachment)"
 						class="h-40 w-full object-cover transition duration-200 group-hover:scale-[1.01]"
 						loading="lazy"
+						@error="markImagePreviewFailed(attachment)"
 					/>
 					<div
 						class="flex items-center justify-between border-t border-line-soft bg-white px-4 py-3"
@@ -137,11 +138,15 @@
 </template>
 
 <script setup lang="ts">
+import { ref } from 'vue';
+
 import type { OrgCommunicationAttachmentRow } from '@/types/contracts/org_communication_attachments/shared';
 
 defineProps<{
 	attachments: OrgCommunicationAttachmentRow[];
 }>();
+
+const failedImagePreviewKeys = ref<Record<string, boolean>>({});
 
 function attachmentCardClasses(attachment: OrgCommunicationAttachmentRow): string[] {
 	return [
@@ -190,6 +195,21 @@ function previewStatus(
 	return attachment.preview_status || null;
 }
 
+function imagePreviewKey(attachment: OrgCommunicationAttachmentRow): string {
+	return `${attachment.row_name}:${attachment.thumbnail_url || ''}`;
+}
+
+function markImagePreviewFailed(attachment: OrgCommunicationAttachmentRow): void {
+	failedImagePreviewKeys.value = {
+		...failedImagePreviewKeys.value,
+		[imagePreviewKey(attachment)]: true,
+	};
+}
+
+function hasImagePreviewFailure(attachment: OrgCommunicationAttachmentRow): boolean {
+	return Boolean(failedImagePreviewKeys.value[imagePreviewKey(attachment)]);
+}
+
 function primaryAttachmentUrl(attachment: OrgCommunicationAttachmentRow): string | null {
 	if (isPdfAttachment(attachment)) {
 		return attachment.open_url || attachment.preview_url || null;
@@ -198,11 +218,15 @@ function primaryAttachmentUrl(attachment: OrgCommunicationAttachmentRow): string
 }
 
 function imagePreviewUrl(attachment: OrgCommunicationAttachmentRow): string | null {
-	return attachment.thumbnail_url || attachment.preview_url || null;
+	return attachment.thumbnail_url || null;
 }
 
 function showInlineImagePreview(attachment: OrgCommunicationAttachmentRow): boolean {
-	return Boolean(imagePreviewUrl(attachment) && isImageAttachment(attachment));
+	return Boolean(
+		imagePreviewUrl(attachment) &&
+		isImageAttachment(attachment) &&
+		!hasImagePreviewFailure(attachment)
+	);
 }
 
 function showPdfInlinePreview(attachment: OrgCommunicationAttachmentRow): boolean {

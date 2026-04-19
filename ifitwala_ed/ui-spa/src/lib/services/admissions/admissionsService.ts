@@ -2,7 +2,9 @@
 
 import { createResource } from 'frappe-ui'
 
+import { apiPostWithProgress } from '@/lib/client'
 import { uiSignals, SIGNAL_ADMISSIONS_PORTAL_INVALIDATE } from '@/lib/uiSignals'
+import type { UploadProgressCallback } from '@/lib/uploadProgress'
 
 import type { Request as SessionRequest, Response as SessionResponse } from '@/types/contracts/admissions/get_admissions_session'
 import type { Request as SnapshotRequest, Response as SnapshotResponse } from '@/types/contracts/admissions/get_applicant_snapshot'
@@ -84,26 +86,8 @@ export function createAdmissionsService() {
     auto: false,
   })
 
-  const uploadApplicantProfileImageResource = createResource<UploadApplicantProfileImageResponse>({
-    url: 'ifitwala_ed.api.admissions_portal.upload_applicant_profile_image',
-    method: 'POST',
-    auto: false,
-  })
-
-  const uploadApplicantGuardianImageResource = createResource<UploadApplicantGuardianImageResponse>({
-    url: 'ifitwala_ed.api.admissions_portal.upload_applicant_guardian_image',
-    method: 'POST',
-    auto: false,
-  })
-
   const documentsResource = createResource<DocumentsResponse>({
     url: 'ifitwala_ed.api.admissions_portal.list_applicant_documents',
-    method: 'POST',
-    auto: false,
-  })
-
-  const uploadDocumentResource = createResource<UploadDocumentResponse>({
-    url: 'ifitwala_ed.api.admissions_portal.upload_applicant_document',
     method: 'POST',
     auto: false,
   })
@@ -203,17 +187,27 @@ export function createAdmissionsService() {
   }
 
   async function uploadApplicantProfileImage(
-    payload: UploadApplicantProfileImageRequest
+    payload: UploadApplicantProfileImageRequest,
+    options: { onProgress?: UploadProgressCallback } = {}
   ): Promise<UploadApplicantProfileImageResponse> {
-    const result = await uploadApplicantProfileImageResource.submit(payload)
+    const result = await apiPostWithProgress<UploadApplicantProfileImageResponse>(
+      'ifitwala_ed.api.admissions_portal.upload_applicant_profile_image',
+      payload,
+      options
+    )
     uiSignals.emit(SIGNAL_ADMISSIONS_PORTAL_INVALIDATE)
     return result
   }
 
   async function uploadApplicantGuardianImage(
-    payload: UploadApplicantGuardianImageRequest
+    payload: UploadApplicantGuardianImageRequest,
+    options: { onProgress?: UploadProgressCallback } = {}
   ): Promise<UploadApplicantGuardianImageResponse> {
-    const result = await uploadApplicantGuardianImageResource.submit(payload)
+    const result = await apiPostWithProgress<UploadApplicantGuardianImageResponse>(
+      'ifitwala_ed.api.admissions_portal.upload_applicant_guardian_image',
+      payload,
+      options
+    )
     return result
   }
 
@@ -225,8 +219,15 @@ export function createAdmissionsService() {
     return documentTypesResource.submit(payload)
   }
 
-  async function uploadDocument(payload: UploadDocumentRequest): Promise<UploadDocumentResponse> {
-    const result = await uploadDocumentResource.submit(payload)
+  async function uploadDocument(
+    payload: UploadDocumentRequest,
+    options: { onProgress?: UploadProgressCallback } = {}
+  ): Promise<UploadDocumentResponse> {
+    const result = await apiPostWithProgress<UploadDocumentResponse>(
+      'ifitwala_ed.api.admissions_portal.upload_applicant_document',
+      payload,
+      options
+    )
     uiSignals.emit(SIGNAL_ADMISSIONS_PORTAL_INVALIDATE)
     return result
   }

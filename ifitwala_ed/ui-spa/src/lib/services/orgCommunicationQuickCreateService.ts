@@ -4,6 +4,7 @@ import { createResource } from 'frappe-ui'
 
 import { api, apiUpload } from '@/lib/client'
 import { SIGNAL_ORG_COMMUNICATION_INVALIDATE, uiSignals } from '@/lib/uiSignals'
+import type { UploadProgressCallback } from '@/lib/uploadProgress'
 
 import type {
 	Request as CreateOrgCommunicationQuickRequest,
@@ -118,7 +119,8 @@ export async function removeOrgCommunicationAttachment(
 }
 
 export async function uploadOrgCommunicationAttachment(
-	payload: UploadOrgCommunicationAttachmentRequest
+	payload: UploadOrgCommunicationAttachmentRequest,
+	options: { onProgress?: UploadProgressCallback } = {}
 ): Promise<UploadOrgCommunicationAttachmentResponse> {
 	const formData = new FormData()
 	formData.append('org_communication', payload.org_communication)
@@ -127,7 +129,8 @@ export async function uploadOrgCommunicationAttachment(
 
 	const result = await apiUpload<UploadOrgCommunicationAttachmentResponse>(
 		'ifitwala_ed.api.org_communication_attachments.upload_org_communication_attachment',
-		formData
+		formData,
+		options
 	)
 	emitInvalidate(result.org_communication, 'org_communication_attachment')
 	return result

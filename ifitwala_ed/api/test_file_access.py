@@ -1136,18 +1136,12 @@ class TestFileAccessUrlContracts(FrappeTestCase):
         self.assertEqual(frappe.local.response.get("content_type"), "image/png")
         self.assertIsNone(frappe.local.response.get("location"))
 
-    def test_thumbnail_org_communication_attachment_streams_inline_when_target_is_raw_private_path(self):
+    def test_thumbnail_org_communication_attachment_fails_closed_when_safe_thumb_target_is_unavailable(self):
         attachment_row = frappe._dict(
             name="row-001",
             file="/private/files/policy.png",
             external_url=None,
         )
-        file_row = {
-            "name": "FILE-0001",
-            "file_url": "/private/files/policy.png",
-            "file_name": "policy.png",
-            "is_private": 1,
-        }
 
         class _CommDoc:
             name = "COMM-0001"
@@ -1174,27 +1168,17 @@ class TestFileAccessUrlContracts(FrappeTestCase):
             patch("ifitwala_ed.api.file_access.frappe.get_doc", return_value=comm_doc),
             patch(
                 "ifitwala_ed.api.file_access._resolve_cached_thumbnail_target_url",
-                return_value="/private/files/policy.png",
+                return_value=None,
             ),
-            patch("ifitwala_ed.api.file_access._resolve_any_file_row", return_value=file_row),
-            patch("ifitwala_ed.api.file_access._read_file_bytes", return_value=b"thumb-bytes"),
         ):
             frappe.local.response = {}
-            thumbnail_org_communication_attachment(
-                org_communication="COMM-0001",
-                row_name="row-001",
-            )
+            with self.assertRaises(frappe.DoesNotExistError):
+                thumbnail_org_communication_attachment(
+                    org_communication="COMM-0001",
+                    row_name="row-001",
+                )
 
-        self.assertEqual(frappe.local.response.get("type"), "download")
-        self.assertEqual(frappe.local.response.get("filename"), "policy.png")
-        self.assertEqual(frappe.local.response.get("filecontent"), b"thumb-bytes")
-        self.assertEqual(frappe.local.response.get("display_content_as"), "inline")
-        self.assertEqual(frappe.local.response.get("content_type"), "image/png")
-        self.assertEqual(
-            (frappe.local.response.get("headers") or {}).get("Cache-Control"),
-            "private, max-age=240, must-revalidate",
-        )
-        self.assertIsNone(frappe.local.response.get("location"))
+        self.assertEqual(frappe.local.response, {})
 
     def test_thumbnail_academic_file_uses_thumb_grant_and_private_cache_headers(self):
         file_row = {

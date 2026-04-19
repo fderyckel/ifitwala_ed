@@ -10,6 +10,8 @@
 			:show-link-composer="showLinkComposer"
 			:link-draft="linkDraft"
 			:link-draft-ready="linkDraftReady"
+			:upload-progress="uploadProgress"
+			:upload-progress-label="uploadProgressLabel"
 			@trigger-file-picker="emit('trigger-file-picker')"
 			@toggle-link-composer="emit('toggle-link-composer')"
 			@reset-link-draft="emit('reset-link-draft')"
@@ -69,6 +71,7 @@
 
 <script setup lang="ts">
 import type { OrgCommunicationAttachmentRow } from '@/types/contracts/org_communication_attachments/shared';
+import type { UploadProgressState } from '@/lib/uploadProgress';
 
 import OrgCommunicationQuickCreateAttachmentActions from './OrgCommunicationQuickCreateAttachmentActions.vue';
 import type { LinkDraftState } from './orgCommunicationQuickCreateTypes';
@@ -83,6 +86,8 @@ withDefaults(
 		showLinkComposer: boolean;
 		linkDraft: LinkDraftState;
 		linkDraftReady: boolean;
+		uploadProgress: UploadProgressState | null;
+		uploadProgressLabel: string;
 		showActions?: boolean;
 	}>(),
 	{

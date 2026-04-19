@@ -73,6 +73,12 @@
 								<p class="mt-2 type-caption text-ink/55">
 									{{ selectedFile?.name || __('Choose a file to upload.') }}
 								</p>
+								<InlineUploadStatus
+									v-if="uploadProgress"
+									class="mt-3"
+									:label="uploadProgressLabel"
+									:progress="uploadProgress"
+								/>
 							</div>
 
 							<div class="rounded-2xl border border-border/70 bg-white px-4 py-4 shadow-soft">
@@ -150,8 +156,10 @@ import {
 } from '@headlessui/vue';
 import { FeatherIcon, Spinner } from 'frappe-ui';
 
+import InlineUploadStatus from '@/components/feedback/InlineUploadStatus.vue';
 import { useOverlayStack } from '@/composables/useOverlayStack';
 import { __ } from '@/lib/i18n';
+import { readFileAsBase64, type UploadProgressState } from '@/lib/uploadProgress';
 import { createAdmissionsService } from '@/lib/services/admissions/admissionsService';
 
 type CloseReason = 'backdrop' | 'esc' | 'programmatic';
@@ -179,6 +187,7 @@ const submitting = ref(false);
 const errorMessage = ref('');
 const selectedFile = ref<File | null>(null);
 const itemLabelValue = ref('');
+const uploadProgress = ref<UploadProgressState | null>(null);
 
 const fileInput = ref<HTMLInputElement | null>(null);
 
@@ -190,6 +199,11 @@ const isReadOnly = computed(() => Boolean(props.readOnly));
 const documentLabel = computed(() => props.documentLabel || '');
 const description = computed(() => props.description || '');
 const mode = computed(() => (props.mode === 'replace' ? 'replace' : 'add'));
+const uploadProgressLabel = computed(() =>
+	selectedFile.value?.name
+		? __('Uploading {0}').replace('{0}', selectedFile.value.name)
+		: __('Uploading file')
+);
 
 function setError(err: unknown, fallback: string) {
 	const raw =
@@ -229,6 +243,7 @@ function normalizeUploadErrorMessage(raw: string, fallback: string): string {
 function resetForm() {
 	selectedFile.value = null;
 	itemLabelValue.value = (props.itemLabel || '').trim();
+	uploadProgress.value = null;
 	if (fileInput.value) fileInput.value.value = '';
 }
 
@@ -283,19 +298,6 @@ function onFileSelected(event: Event) {
 	selectedFile.value = file;
 }
 
-async function readAsBase64(file: File): Promise<string> {
-	return new Promise((resolve, reject) => {
-		const reader = new FileReader();
-		reader.onerror = () => reject(new Error('Unable to read file'));
-		reader.onload = () => {
-			const result = typeof reader.result === 'string' ? reader.result : '';
-			const parts = result.split(',');
-			resolve(parts.length > 1 ? parts[1] : result);
-		};
-		reader.readAsDataURL(file);
-	});
-}
-
 async function submit() {
 	if (isReadOnly.value) {
 		setError('', __('This application is read-only.'));
@@ -314,23 +316,33 @@ async function submit() {
 	submitting.value = true;
 	clearError();
 	try {
-		const content = await readAsBase64(selectedFile.value);
-		const clientRequestId = `admissions_upload_${Date.now()}_${Math.random().toString(16).slice(2)}`;
-		await service.uploadDocument({
-			student_applicant: props.studentApplicant || undefined,
-			document_type: props.documentType,
-			applicant_document_item: props.applicantDocumentItem || null,
-			item_key: mode.value === 'replace' ? props.itemKey || null : null,
-			item_label: trimmedItemLabel,
-			client_request_id: clientRequestId,
-			file_name: selectedFile.value.name,
-			content,
+		const content = await readFileAsBase64(selectedFile.value, progress => {
+			uploadProgress.value = progress;
 		});
+		const clientRequestId = `admissions_upload_${Date.now()}_${Math.random().toString(16).slice(2)}`;
+		await service.uploadDocument(
+			{
+				student_applicant: props.studentApplicant || undefined,
+				document_type: props.documentType,
+				applicant_document_item: props.applicantDocumentItem || null,
+				item_key: mode.value === 'replace' ? props.itemKey || null : null,
+				item_label: trimmedItemLabel,
+				client_request_id: clientRequestId,
+				file_name: selectedFile.value.name,
+				content,
+			},
+			{
+				onProgress: progress => {
+					uploadProgress.value = progress;
+				},
+			}
+		);
 		emitClose('programmatic');
 		emit('done');
 	} catch (err) {
 		setError(err, __('Unable to upload document.'));
 	} finally {
+		uploadProgress.value = null;
 		submitting.value = false;
 	}
 }

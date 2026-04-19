@@ -128,6 +128,11 @@
 							{{ selectedFile?.name || 'No file selected yet.' }}
 						</p>
 					</div>
+					<InlineUploadStatus
+						v-if="uploadProgress"
+						:label="uploadProgressLabel"
+						:progress="uploadProgress"
+					/>
 				</div>
 
 				<div
@@ -292,6 +297,8 @@
 import { computed, reactive, ref } from 'vue';
 import { FormControl, toast } from 'frappe-ui';
 
+import InlineUploadStatus from '@/components/feedback/InlineUploadStatus.vue';
+import type { UploadProgressState } from '@/lib/uploadProgress';
 import {
 	createPlanningReferenceMaterial,
 	removePlanningMaterial,
@@ -336,6 +343,7 @@ const removingPlacement = ref<string | null>(null);
 const errorMessage = ref('');
 const selectedFile = ref<File | null>(null);
 const fileInput = ref<HTMLInputElement | null>(null);
+const uploadProgress = ref<UploadProgressState | null>(null);
 
 const form = reactive({
 	title: '',
@@ -382,6 +390,9 @@ const canSubmit = computed(() => {
 		? Boolean(normalizeReferenceUrl(form.reference_url))
 		: Boolean(selectedFile.value) && Boolean(form.title.trim());
 });
+const uploadProgressLabel = computed(() =>
+	selectedFile.value?.name ? `Uploading ${selectedFile.value.name}` : 'Uploading file'
+);
 
 function resetDraftFields() {
 	form.title = '';
@@ -440,16 +451,23 @@ async function addResource() {
 				placement_note: form.placement_note.trim() || undefined,
 			});
 		} else if (selectedFile.value) {
-			await uploadPlanningMaterialFile({
-				anchor_doctype: props.anchorDoctype,
-				anchor_name: props.anchorName,
-				title: form.title.trim(),
-				file: selectedFile.value,
-				description: form.description.trim() || undefined,
-				modality: form.modality,
-				usage_role: form.usage_role,
-				placement_note: form.placement_note.trim() || undefined,
-			});
+			await uploadPlanningMaterialFile(
+				{
+					anchor_doctype: props.anchorDoctype,
+					anchor_name: props.anchorName,
+					title: form.title.trim(),
+					file: selectedFile.value,
+					description: form.description.trim() || undefined,
+					modality: form.modality,
+					usage_role: form.usage_role,
+					placement_note: form.placement_note.trim() || undefined,
+				},
+				{
+					onProgress: progress => {
+						uploadProgress.value = progress;
+					},
+				}
+			);
 		}
 		resetDraftFields();
 		emit('changed');
@@ -460,6 +478,7 @@ async function addResource() {
 		errorMessage.value = message;
 		toast.error(message);
 	} finally {
+		uploadProgress.value = null;
 		submitting.value = false;
 	}
 }

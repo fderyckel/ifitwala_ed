@@ -162,6 +162,29 @@ class TestFileAccessUnit(TestCase):
 
         self.assertEqual(target_url, "/files/public-brochure.pdf")
 
+    def test_resolve_drive_file_grant_target_url_strict_derivative_skips_public_original_fallback(self):
+        with _file_access_module() as (file_access, frappe):
+
+            def fake_get_value(doctype, filters, fieldname=None, as_dict=False):
+                if doctype == "File":
+                    self.assertEqual(filters, "FILE-EMP-1")
+                    self.assertEqual(fieldname, "file_url")
+                    return "/files/public-brochure.pdf"
+                return None
+
+            frappe.db.get_value = fake_get_value
+            file_access._load_drive_access_callable = lambda attribute: lambda **kwargs: {"url": ""}
+
+            target_url = file_access._resolve_drive_file_grant_target_url(
+                drive_file_id="DRIVE-FILE-1",
+                file_id="FILE-EMP-1",
+                prefer_preview=True,
+                derivative_role="thumb",
+                strict_derivative=True,
+            )
+
+        self.assertIsNone(target_url)
+
     def test_resolve_cached_thumbnail_target_url_ignores_unsafe_cached_private_path(self):
         with _file_access_module() as (file_access, frappe):
             cache_writes: list[tuple[str, str, int | None]] = []
