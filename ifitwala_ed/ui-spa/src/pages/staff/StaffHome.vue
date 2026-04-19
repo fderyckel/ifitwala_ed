@@ -114,29 +114,6 @@
 						/>
 					</button>
 
-					<button
-						v-if="canOpenTeamMeetingQuickAction"
-						type="button"
-						class="action-tile group w-full min-w-0"
-						@click="openCreateTeamMeeting"
-					>
-						<div class="action-tile__icon shrink-0">
-							<FeatherIcon name="users" class="h-6 w-6" />
-						</div>
-						<div class="flex-1 min-w-0">
-							<p class="type-body-strong text-ink transition-colors group-hover:text-jacaranda">
-								Schedule team meeting
-							</p>
-							<p class="truncate type-caption text-slate-token/70">
-								Start from a team and keep its core attendee roster locked to context
-							</p>
-						</div>
-						<FeatherIcon
-							name="chevron-right"
-							class="h-4 w-4 shrink-0 text-slate-token/40 transition-colors group-hover:text-jacaranda"
-						/>
-					</button>
-
 					<!-- Create student log uses overlay stack -->
 					<button
 						v-if="userCapabilities.quick_action_student_log"
@@ -877,10 +854,6 @@ const canCreateMeeting = computed(() =>
 const canCreateSchoolEvent = computed(() =>
 	Boolean(userCapabilities.value.quick_action_create_school_event)
 );
-const canOpenTeamMeetingQuickAction = computed(
-	() => Boolean(userCapabilities.value.quick_action_create_event) && canCreateMeeting.value
-);
-
 const eventQuickActionTitle = computed(() => {
 	if (canCreateMeeting.value && !canCreateSchoolEvent.value) return 'Schedule meeting';
 	return 'Create event';
@@ -953,23 +926,6 @@ function openCreateEvent() {
 		eventType: lockEventType ? eventType : null,
 		lockEventType,
 		meetingMode: 'ad_hoc',
-	});
-}
-
-function openCreateTeamMeeting() {
-	if (!canCreateMeeting.value) {
-		toast.create({
-			title: 'Not available',
-			text: 'You do not have permission to schedule meetings.',
-			icon: 'info',
-		});
-		return;
-	}
-
-	overlay.open('event-quick-create', {
-		eventType: 'meeting',
-		lockEventType: true,
-		meetingMode: 'team',
 	});
 }
 

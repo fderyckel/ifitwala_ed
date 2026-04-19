@@ -37,7 +37,7 @@ Rules:
 5. `meetingMode='team'` is the team-owned workflow contract where team attendees are hydrated from the server and locked by context inside the overlay.
 6. Staff Home and Room Utilization both keep their existing `meetingMode='ad_hoc'` launcher; Room Utilization must prefill the currently selected school when one is in scope.
 7. Entry-point copy remains permission-sensitive: use `Schedule meeting` when the user can create meetings but not school events; otherwise use `Create event`.
-8. Staff Home and Room Utilization also expose an explicit `Schedule team meeting` launcher that opens the same overlay in `meetingMode='team'`.
+8. Room Utilization exposes an explicit `Schedule team meeting` launcher that opens the same overlay in `meetingMode='team'`.
 
 ## 2. API and Payload Contract
 
@@ -229,5 +229,5 @@ Test refs:
   - meeting writes invalidate student-feed cache in the mutation path
   - affected student users receive `student_calendar:invalidate` after commit so open student portals refresh without manual action
 - Current entry-point reality:
-  - Staff Home is wired.
-  - explicit team-mode SPA entry points are not wired yet.
+  - Staff Home is wired for the ad-hoc meeting launcher.
+  - Room Utilization is wired for both the ad-hoc and explicit team-mode launchers.

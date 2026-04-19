@@ -11,6 +11,65 @@ from ifitwala_ed.tests.base import IfitwalaFrappeTestCase
 
 
 class TestMorningBrief(IfitwalaFrappeTestCase):
+    def test_get_daily_bulletin_orders_newest_first_and_exposes_unread_state(self):
+        captured = {}
+
+        def fake_sql(query, values=None, as_dict=False, **kwargs):
+            captured["query"] = query
+            captured["values"] = values
+            captured["as_dict"] = as_dict
+            return [
+                frappe._dict(
+                    name="COMM-NEW",
+                    title="Newest",
+                    message="<p>New</p>",
+                    communication_type="Information",
+                    priority="Normal",
+                    brief_end_date=None,
+                    brief_start_date="2026-04-19",
+                    interaction_mode="Staff Comments",
+                    allow_private_notes=0,
+                    allow_public_thread=0,
+                ),
+                frappe._dict(
+                    name="COMM-OLD",
+                    title="Older",
+                    message="<p>Old</p>",
+                    communication_type="Reminder",
+                    priority="High",
+                    brief_end_date=None,
+                    brief_start_date="2026-04-17",
+                    interaction_mode="Staff Comments",
+                    allow_private_notes=0,
+                    allow_public_thread=0,
+                ),
+            ]
+
+        with (
+            patch.object(morning_brief, "today", return_value="2026-04-19"),
+            patch.object(morning_brief.frappe.db, "sql", side_effect=fake_sql),
+            patch.object(
+                morning_brief.frappe.db,
+                "get_value",
+                return_value=frappe._dict(name="EMP-0001", school="SCH-1", organization="ORG-1"),
+            ),
+            patch.object(morning_brief, "check_audience_match", return_value=True),
+            patch.object(
+                morning_brief,
+                "get_seen_org_communication_names",
+                return_value={"COMM-OLD"},
+            ),
+        ):
+            rows = morning_brief.get_daily_bulletin("staff@example.com", ["Academic Staff"])
+
+        self.assertTrue(captured["as_dict"])
+        self.assertEqual(captured["values"], (date(2026, 4, 19), date(2026, 4, 19)))
+        self.assertIn("ORDER BY brief_start_date DESC, creation DESC", captured["query"])
+        self.assertEqual([row["name"] for row in rows], ["COMM-NEW", "COMM-OLD"])
+        self.assertEqual(rows[0]["brief_start_date"], "2026-04-19")
+        self.assertTrue(rows[0]["is_unread"])
+        self.assertFalse(rows[1]["is_unread"])
+
     def test_get_pending_grading_tasks_uses_task_delivery_schema(self):
         captured = {}
 

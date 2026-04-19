@@ -13,6 +13,7 @@ Related docs:
 - `ifitwala_ed/docs/assessment/03_gradebook_notes.md`
 - `ifitwala_ed/docs/assessment/04_task_notes.md`
 - `ifitwala_ed/docs/assessment/09_feedback_records_and_publication_rfc.md`
+- `ifitwala_ed/docs/assessment/11_phase3_teacher_authoring_and_comment_bank_rfc.md`
 - `ifitwala_ed/docs/files_and_policies/files_01_architecture_notes.md`
 - `ifitwala_ed/docs/files_and_policies/files_07_education_file_semantics_and_cross_app_contract.md`
 - `ifitwala_ed/docs/files_and_policies/files_08_cross_portal_governed_attachment_preview_contract.md`

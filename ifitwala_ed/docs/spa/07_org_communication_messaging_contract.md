@@ -33,6 +33,7 @@ Rules:
 2. `Communication Interaction Entry` is the only runtime ledger for reactions, comments, and thread rows.
 3. `Portal Read Receipt` is the only runtime read-state ledger.
 4. `Communication Interaction` is removed from the schema and runtime contract.
+5. `Portal Read Receipt` is a generic cross-doctype read-state ledger. Surfaces may project it through domain-specific workflow APIs, but they must not invent parallel per-surface read-state tables for the same concern.
 
 ## 1.1 Audience and Visibility Terms
 

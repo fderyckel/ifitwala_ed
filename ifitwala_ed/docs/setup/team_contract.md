@@ -95,7 +95,7 @@ Rules:
 1. `EventQuickCreateOverlay` supports a team scheduling mode via `meetingMode='team'`.
 2. In team mode, the selected team is part of the workflow contract and team attendees are hydrated from the named endpoint `get_meeting_team_attendees`.
 3. Team attendees loaded from team mode are locked by context inside the overlay because the meeting submit path also persists the `team` field server-side.
-4. Staff Home keeps its existing ad-hoc event launcher and also exposes an explicit `Schedule team meeting` quick action that opens quick create in `meetingMode='team'`.
+4. Staff Home keeps its existing ad-hoc event launcher; the overlay still supports selecting a team to bulk-add attendees without a separate Staff Home quick action.
 5. Room Utilization keeps its existing ad-hoc launcher and also exposes a `Schedule team meeting` entry point that carries the selected school into the team scheduling flow.
 
 ## 5. Contract Matrix

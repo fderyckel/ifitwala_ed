@@ -10,6 +10,7 @@ from frappe import _
 from frappe.utils import add_days, formatdate, getdate, now_datetime, strip_html, today
 
 from ifitwala_ed.api.org_comm_utils import check_audience_match
+from ifitwala_ed.api.org_communication_interactions import get_seen_org_communication_names
 from ifitwala_ed.schedule.schedule_utils import get_weekend_days_for_calendar
 from ifitwala_ed.school_settings.school_settings_utils import resolve_school_calendars_for_window
 from ifitwala_ed.students.doctype.student_log.student_log import get_student_log_visibility_predicate
@@ -113,7 +114,7 @@ def get_daily_bulletin(user, roles):
 			FROM `tabOrg Communication Audience` aud
 			WHERE aud.parent = `tabOrg Communication`.name
 		)
-		ORDER BY priority DESC, brief_order ASC, creation DESC
+		ORDER BY brief_start_date DESC, creation DESC
 		LIMIT 50
 	"""
     comms = frappe.db.sql(sql, (system_today, system_today), as_dict=True)
@@ -141,11 +142,19 @@ def get_daily_bulletin(user, roles):
                     "content": c.message or "",
                     "type": c.communication_type,
                     "priority": c.priority,
+                    "brief_start_date": c.brief_start_date,
                     "interaction_mode": c.interaction_mode,
                     "allow_public_thread": c.allow_public_thread,
                     "allow_private_notes": c.allow_private_notes,
                 }
             )
+
+    seen_names = get_seen_org_communication_names(
+        user=user,
+        communication_names=[row["name"] for row in visible_comms],
+    )
+    for row in visible_comms:
+        row["is_unread"] = row["name"] not in seen_names
 
     return visible_comms
 

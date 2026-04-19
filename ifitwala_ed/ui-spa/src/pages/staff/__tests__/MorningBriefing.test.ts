@@ -6,6 +6,7 @@ const {
 	widgetsPayloadRef,
 	getOrgCommInteractionSummaryMock,
 	getOrgCommunicationItemMock,
+	markOrgCommunicationReadMock,
 	subscribeMock,
 } = vi.hoisted(() => ({
 		createResourceMock: vi.fn(),
@@ -14,26 +15,27 @@ const {
 		},
 		getOrgCommInteractionSummaryMock: vi.fn(),
 		getOrgCommunicationItemMock: vi.fn(),
+		markOrgCommunicationReadMock: vi.fn(),
 		subscribeMock: vi.fn(() => vi.fn()),
 	}));
 
 vi.mock('frappe-ui', async () => {
-	const { defineComponent, h } = await import('vue');
+	const { defineComponent, h, reactive } = await import('vue');
 
 	createResourceMock.mockImplementation((config: { url?: string; auto?: boolean }) => {
 		if (config.url === 'ifitwala_ed.api.morning_brief.get_briefing_widgets') {
-			return {
+			return reactive({
 				data: widgetsPayloadRef.current,
 				loading: false,
 				reload: vi.fn(),
-			};
+			});
 		}
 
-		return {
+		return reactive({
 			data: [],
 			loading: false,
 			reload: vi.fn(),
-		};
+		});
 	});
 
 	return {
@@ -66,6 +68,7 @@ vi.mock('@/lib/services/communicationInteraction/communicationInteractionService
 		getCommunicationThread: vi.fn(),
 		reactToOrgCommunication: vi.fn(),
 		postOrgCommunicationComment: vi.fn(),
+		markOrgCommunicationRead: markOrgCommunicationReadMock,
 	}),
 }));
 
@@ -210,15 +213,21 @@ async function flushUi() {
 }
 
 function buildAnnouncement(options?: {
+	name?: string;
+	title?: string;
 	allowPublicThread?: string | boolean | number;
 	interactionMode?: string;
+	briefStartDate?: string;
+	isUnread?: boolean;
 }) {
 	return {
-		name: 'COMM-0001',
-		title: 'High priority update',
+		name: options?.name || 'COMM-0001',
+		title: options?.title || 'High priority update',
 		content: '<p>Shared update body</p>',
 		type: 'Information',
 		priority: 'High',
+		brief_start_date: options?.briefStartDate || '2026-04-19',
+		is_unread: options?.isUnread ?? true,
 		interaction_mode: options?.interactionMode || 'Staff Comments',
 		allow_public_thread: options?.allowPublicThread ?? 0,
 		allow_private_notes: 0,
@@ -256,6 +265,7 @@ afterEach(() => {
 	widgetsPayloadRef.current = null;
 	getOrgCommInteractionSummaryMock.mockReset();
 	getOrgCommunicationItemMock.mockReset();
+	markOrgCommunicationReadMock.mockReset();
 	subscribeMock.mockClear();
 	while (cleanupFns.length) {
 		cleanupFns.pop()?.();
@@ -283,7 +293,7 @@ describe('MorningBriefing', () => {
 		await flushUi();
 
 		const buttons = Array.from(document.querySelectorAll('button'));
-		expect(buttons.some(button => (button.textContent || '').includes('Reactions'))).toBe(true);
+		expect(buttons.some(button => (button.textContent || '').includes('Acknowledge'))).toBe(true);
 		expect(buttons.some(button => (button.textContent || '').includes('Comments'))).toBe(true);
 	});
 
@@ -308,6 +318,49 @@ describe('MorningBriefing', () => {
 		const buttons = Array.from(document.querySelectorAll('button'));
 		expect(buttons.some(button => (button.textContent || '').includes('Reactions'))).toBe(false);
 		expect(buttons.some(button => (button.textContent || '').includes('Comments'))).toBe(false);
+	});
+
+	it('supports unread-only filtering and keeps the payload order intact in the rendered stack', async () => {
+		widgetsPayloadRef.current = {
+			announcements: [
+				buildAnnouncement({
+					name: 'COMM-0002',
+					title: 'Newest message',
+					briefStartDate: '2026-04-19',
+					isUnread: true,
+				}),
+				buildAnnouncement({
+					name: 'COMM-0001',
+					title: 'Older message',
+					briefStartDate: '2026-04-18',
+					isUnread: false,
+				}),
+			],
+			today_label: 'Monday',
+		};
+		getOrgCommInteractionSummaryMock.mockResolvedValue({
+			'COMM-0001': { counts: {}, self: null, reaction_counts: {}, reactions_total: 0, comments_total: 0 },
+			'COMM-0002': { counts: {}, self: null, reaction_counts: {}, reactions_total: 1, comments_total: 0 },
+		});
+
+		mountMorningBriefing();
+		await flushUi();
+
+		const titles = Array.from(
+			document.querySelectorAll('[data-testid="morning-announcement-title"]')
+		).map(node => node.textContent || '');
+		expect(titles).toEqual(['Newest message', 'Older message']);
+		expect(
+			document.querySelector('[data-testid="morning-announcements-unread-count"]')?.textContent || ''
+		).toContain('1 unread');
+
+		clickButtonWithText('Unread only');
+		await flushUi();
+
+		const unreadTitles = Array.from(
+			document.querySelectorAll('[data-testid="morning-announcement-title"]')
+		).map(node => node.textContent || '');
+		expect(unreadTitles).toEqual(['Newest message']);
 	});
 
 	it('loads governed announcement attachments on demand when an announcement is opened', async () => {
@@ -336,14 +389,19 @@ describe('MorningBriefing', () => {
 		await flushUi();
 
 		expect(getOrgCommunicationItemMock).not.toHaveBeenCalled();
+		expect(markOrgCommunicationReadMock).not.toHaveBeenCalled();
 
-		clickButtonWithText('Read full announcement');
+		clickButtonWithText('Open update');
 		await flushUi();
 
 		expect(getOrgCommunicationItemMock).toHaveBeenCalledWith({ name: 'COMM-0001' });
+		expect(markOrgCommunicationReadMock).toHaveBeenCalledWith({ org_communication: 'COMM-0001' });
 		expect(
 			document.querySelector('[data-testid="content-dialog-title"]')?.textContent || ''
 		).toContain('High priority update');
+		expect(
+			document.querySelector('[data-testid="morning-announcement-status"]')?.textContent || ''
+		).toContain('Read');
 		expect(
 			document.querySelector('[data-testid="content-dialog-attachments-loading"]')?.textContent
 		).toBe('true');

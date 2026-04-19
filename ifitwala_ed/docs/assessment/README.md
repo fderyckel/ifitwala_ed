@@ -29,5 +29,7 @@ Planning and audit notes:
   planned Phase 2 implementation RFC for the feedback domain and publication model
 - `10_quiz_runtime_and_teacher_entered_assessment_spec_2026-04-19.md`
   proposed design spec for converging native quiz review into the drawer and making teacher-graded paper quizzes first-class
+- `11_phase3_teacher_authoring_and_comment_bank_rfc.md`
+  planned Phase 3 execution RFC for teacher authoring, reusable comments, and curriculum-aware feedback relevance
 - `gradebook_drawer_phases.md`
   planned roadmap; update the runtime docs above when phases ship
