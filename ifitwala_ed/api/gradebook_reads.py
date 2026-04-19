@@ -160,6 +160,7 @@ def get_grid(api, filters=None, **kwargs):
 
 def get_drawer(api, outcome_id: str, submission_id: str | None = None, version: int | str | None = None):
     from ifitwala_ed.api import task_submission as task_submission_api
+    from ifitwala_ed.assessment import task_feedback_service
 
     api._require(outcome_id, "Task Outcome")
 
@@ -263,6 +264,12 @@ def get_drawer(api, outcome_id: str, submission_id: str | None = None, version: 
     if selected_submission_row:
         selected_submission = task_submission_api.serialize_task_submission_evidence(selected_submission_row)
     selected_submission_id = (selected_submission or {}).get("submission_id")
+    feedback_workspace = None
+    if selected_submission_id:
+        feedback_workspace = task_feedback_service.build_feedback_workspace_payload(
+            outcome_id,
+            selected_submission_id,
+        )
     submission_versions = [
         task_submission_api.build_task_submission_version_summary(
             row,
@@ -321,6 +328,7 @@ def get_drawer(api, outcome_id: str, submission_id: str | None = None, version: 
         },
         "latest_submission": latest_submission,
         "selected_submission": selected_submission,
+        "feedback_workspace": feedback_workspace,
         "submission_versions": submission_versions,
         "my_contribution": {
             "name": my_contribution.get("name"),
@@ -342,13 +350,14 @@ def get_drawer(api, outcome_id: str, submission_id: str | None = None, version: 
         "moderation_history": moderation_history,
         "allowed_actions": {
             "can_edit_marking": api._can_write_gradebook(),
+            "can_edit_feedback": api._can_write_gradebook(),
             "can_mark_submission_seen": api._can_write_gradebook() or api._is_academic_adminish(),
             "can_publish": api._can_write_gradebook() or api._is_academic_adminish(),
             "can_unpublish": api._is_academic_adminish(),
+            "can_manage_feedback_publication": api._can_write_gradebook() or api._is_academic_adminish(),
             "can_moderate": api._is_academic_adminish(),
             "show_review_tab": api._is_academic_adminish(),
         },
-        "submissions": submissions,
         "contributions": contributions,
     }
 

@@ -14,11 +14,16 @@ const {
 	getTaskGradebookMock,
 	getTaskQuizManualReviewMock,
 	markNewSubmissionSeenMock,
+	moderatorActionMock,
 	publishOutcomesMock,
 	pdfGlobalWorkerOptions,
 	getDocumentMock,
 	repairTaskRosterMock,
+	saveFeedbackDraftMock,
+	saveFeedbackPublicationMock,
+	saveDraftMock,
 	saveTaskQuizManualReviewMock,
+	submitContributionMock,
 	unpublishOutcomesMock,
 	updateTaskStudentMock,
 } = vi.hoisted(() => ({
@@ -39,6 +44,7 @@ const {
 	getTaskGradebookMock: vi.fn(),
 	getTaskQuizManualReviewMock: vi.fn(),
 	markNewSubmissionSeenMock: vi.fn(),
+	moderatorActionMock: vi.fn(),
 	publishOutcomesMock: vi.fn(),
 	pdfGlobalWorkerOptions: { workerSrc: '' },
 	getDocumentMock: vi.fn(() => {
@@ -63,7 +69,11 @@ const {
 		};
 	}),
 	repairTaskRosterMock: vi.fn(),
+	saveFeedbackDraftMock: vi.fn(),
+	saveFeedbackPublicationMock: vi.fn(),
+	saveDraftMock: vi.fn(),
 	saveTaskQuizManualReviewMock: vi.fn(),
+	submitContributionMock: vi.fn(),
 	unpublishOutcomesMock: vi.fn(),
 	updateTaskStudentMock: vi.fn(),
 }));
@@ -232,9 +242,14 @@ vi.mock('@/lib/services/gradebook/gradebookService', () => ({
 		getTaskGradebook: getTaskGradebookMock,
 		getTaskQuizManualReview: getTaskQuizManualReviewMock,
 		markNewSubmissionSeen: markNewSubmissionSeenMock,
+		moderatorAction: moderatorActionMock,
 		publishOutcomes: publishOutcomesMock,
 		repairTaskRoster: repairTaskRosterMock,
+		saveFeedbackDraft: saveFeedbackDraftMock,
+		saveFeedbackPublication: saveFeedbackPublicationMock,
+		saveDraft: saveDraftMock,
 		saveTaskQuizManualReview: saveTaskQuizManualReviewMock,
+		submitContribution: submitContributionMock,
 		unpublishOutcomes: unpublishOutcomesMock,
 		updateTaskStudent: updateTaskStudentMock,
 	}),
@@ -422,18 +437,20 @@ function mockGradebookFlow(options?: {
 		},
 		latest_submission: null,
 		selected_submission: null,
+		feedback_workspace: null,
 		submission_versions: [],
 		my_contribution: null,
 		moderation_history: [],
 		allowed_actions: {
 			can_edit_marking: true,
+			can_edit_feedback: true,
 			can_mark_submission_seen: true,
 			can_publish: true,
 			can_unpublish: true,
+			can_manage_feedback_publication: true,
 			can_moderate: false,
 			show_review_tab: false,
 		},
-		submissions: [],
 		contributions: [],
 		...options?.drawer,
 	});
@@ -451,6 +468,85 @@ function mockGradebookFlow(options?: {
 		outcomes: [
 			{ outcome_id: 'OUT-1', is_published: false, published_on: null, published_by: null },
 		],
+	});
+	saveDraftMock.mockResolvedValue({
+		result: {
+			contribution: 'TCN-DR-1',
+			status: 'Draft',
+			task_outcome: 'OUT-1',
+			task_submission: null,
+		},
+		outcome: null,
+	});
+	saveFeedbackDraftMock.mockResolvedValue({
+		feedback_workspace: {
+			workspace_id: 'TFW-1',
+			task_outcome: 'OUT-1',
+			task_submission: 'TSU-1',
+			submission_version: 2,
+			summary: {
+				overall: '',
+				strengths: '',
+				improvements: '',
+				next_steps: '',
+			},
+			items: [],
+			publication: {
+				feedback_visibility: 'hidden',
+				grade_visibility: 'hidden',
+				derived_from_legacy_outcome: false,
+				legacy_outcome_published: false,
+				legacy_published_on: null,
+				legacy_published_by: null,
+			},
+			modified: null,
+			modified_by: null,
+		},
+	});
+	saveFeedbackPublicationMock.mockResolvedValue({
+		feedback_workspace: {
+			workspace_id: 'TFW-1',
+			task_outcome: 'OUT-1',
+			task_submission: 'TSU-1',
+			submission_version: 2,
+			summary: {
+				overall: '',
+				strengths: '',
+				improvements: '',
+				next_steps: '',
+			},
+			items: [],
+			publication: {
+				feedback_visibility: 'student',
+				grade_visibility: 'hidden',
+				derived_from_legacy_outcome: false,
+				legacy_outcome_published: false,
+				legacy_published_on: null,
+				legacy_published_by: null,
+			},
+			modified: null,
+			modified_by: null,
+		},
+	});
+	submitContributionMock.mockResolvedValue({
+		ok: true,
+		outcome_update: { outcome: 'OUT-1', grading_status: 'Finalized' },
+		result: {
+			contribution: 'TCN-1',
+			status: 'Submitted',
+			task_outcome: 'OUT-1',
+			task_submission: null,
+		},
+	});
+	moderatorActionMock.mockResolvedValue({
+		ok: true,
+		outcome_update: { outcome: 'OUT-1', grading_status: 'Moderated' },
+		result: {
+			contribution: 'TCN-MOD-1',
+			status: 'Submitted',
+			task_outcome: 'OUT-1',
+			task_submission: null,
+		},
 	});
 
 	return { group, task };
@@ -516,9 +612,12 @@ afterEach(() => {
 	getTaskQuizManualReviewMock.mockReset();
 	getDrawerMock.mockReset();
 	markNewSubmissionSeenMock.mockReset();
+	moderatorActionMock.mockReset();
 	publishOutcomesMock.mockReset();
 	repairTaskRosterMock.mockReset();
+	saveDraftMock.mockReset();
 	saveTaskQuizManualReviewMock.mockReset();
+	submitContributionMock.mockReset();
 	unpublishOutcomesMock.mockReset();
 	updateTaskStudentMock.mockReset();
 	while (cleanupFns.length) cleanupFns.pop()?.();
@@ -752,8 +851,9 @@ describe('Gradebook page', () => {
 		await flushUi();
 
 		expect(document.body.textContent || '').toContain('Release');
+		expect(document.body.textContent || '').toContain('Assessment Publication Channels');
 		expect(document.body.textContent || '').toContain(
-			'Current runtime still uses one published state'
+			'Current student/guardian portals still follow the legacy outcome release path'
 		);
 	});
 
@@ -832,6 +932,29 @@ describe('Gradebook page', () => {
 							'/api/method/ifitwala_ed.api.file_access.download_academic_file?file=FILE-TASK-1',
 					},
 				},
+				feedback_workspace: {
+					workspace_id: 'TFW-1',
+					task_outcome: 'OUT-1',
+					task_submission: 'TSU-1',
+					submission_version: 2,
+					summary: {
+						overall: 'Lead with the strongest claim.',
+						strengths: '',
+						improvements: '',
+						next_steps: '',
+					},
+					items: [],
+					publication: {
+						feedback_visibility: 'hidden',
+						grade_visibility: 'hidden',
+						derived_from_legacy_outcome: false,
+						legacy_outcome_published: false,
+						legacy_published_on: null,
+						legacy_published_by: null,
+					},
+					modified: null,
+					modified_by: null,
+				},
 				submission_versions: [
 					{
 						submission_id: 'TSU-1',
@@ -864,11 +987,13 @@ describe('Gradebook page', () => {
 		expect(text).toContain('Reduced mode');
 		expect(text).toContain('Source PDF:');
 		expect(text).toContain('essay.pdf');
-		expect(text).toContain('Session-local annotation drafts');
+		expect(text).toContain('Selected-submission feedback drafts');
 		expect(text).toContain('Point comment');
 		expect(text).toContain('Area comment');
 		expect(text).toContain('Add page comment');
-		expect(text).toContain('Local drafts only');
+		expect(text).toContain('Drawer feedback draft items');
+		expect(text).toContain('Version-bound feedback workspace');
+		expect(text).toContain('Save Feedback Draft');
 		expect(text).toContain('Page 1 of 2');
 		expect(text).toContain('100%');
 		expect(getDocumentMock).toHaveBeenCalled();
@@ -884,6 +1009,107 @@ describe('Gradebook page', () => {
 		);
 		expect(previewLink?.getAttribute('href')).toContain(
 			'/api/method/ifitwala_ed.api.file_access.preview_academic_file'
+		);
+	});
+
+	it('uses explicit contribution and moderation mutations from the drawer', async () => {
+		mockGradebookFlow({
+			task: {
+				allow_feedback: 1,
+			},
+			students: [
+				{
+					task_student: 'OUT-1',
+					student: 'STU-1',
+					student_name: 'Ada Lovelace',
+					student_id: 'S-001',
+					student_image: null,
+					status: 'Needs Review',
+					procedural_status: 'Submitted',
+					submission_status: 'Submitted',
+					has_submission: 1,
+					has_new_submission: 0,
+					complete: 0,
+					mark_awarded: 8,
+					feedback: 'Current official feedback',
+					visible_to_student: 0,
+					visible_to_guardian: 0,
+					updated_on: null,
+					criteria_scores: [],
+				},
+			],
+			drawer: {
+				latest_submission: {
+					submission_id: 'TSU-2',
+					version: 2,
+					submitted_on: '2026-04-02 10:00:00',
+					origin: 'Student Upload',
+					is_stub: false,
+					is_selected: true,
+				},
+				allowed_actions: {
+					can_edit_marking: true,
+					can_mark_submission_seen: true,
+					can_publish: true,
+					can_unpublish: true,
+					can_moderate: true,
+					show_review_tab: true,
+				},
+			},
+		});
+
+		mountPage();
+		await flushUi();
+		await openTask('Task 1');
+		await openStudentDrawer();
+
+		const pointsInput = Array.from(document.querySelectorAll('input')).find(
+			input => (input as HTMLInputElement).type === 'number'
+		) as HTMLInputElement | undefined;
+		expect(pointsInput).toBeDefined();
+		pointsInput!.value = '12';
+		pointsInput!.dispatchEvent(new Event('input', { bubbles: true }));
+		await flushUi();
+
+		const saveButton = Array.from(document.querySelectorAll('button')).find(button =>
+			(button.textContent || '').includes('Save Marking')
+		);
+		expect(saveButton).not.toBeNull();
+		saveButton!.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		await flushUi();
+
+		expect(submitContributionMock).toHaveBeenCalledWith(
+			expect.objectContaining({
+				task_outcome: 'OUT-1',
+				task_submission: 'TSU-2',
+				score: 12,
+				feedback: 'Current official feedback',
+			})
+		);
+		expect(updateTaskStudentMock).not.toHaveBeenCalled();
+
+		const reviewTab = Array.from(document.querySelectorAll('button')).find(button =>
+			(button.textContent || '').includes('Review')
+		);
+		expect(reviewTab).not.toBeNull();
+		reviewTab!.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		await flushUi();
+
+		const approveButton = Array.from(document.querySelectorAll('button')).find(button =>
+			(button.textContent || '').includes('Approve')
+		);
+		expect(approveButton).not.toBeNull();
+		approveButton!.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		await flushUi();
+
+		expect(moderatorActionMock).toHaveBeenCalledWith(
+			expect.objectContaining({
+				task_outcome: 'OUT-1',
+				task_submission: 'TSU-2',
+				action: 'Approve',
+				score: 12,
+				feedback: 'Current official feedback',
+			})
 		);
 	});
 

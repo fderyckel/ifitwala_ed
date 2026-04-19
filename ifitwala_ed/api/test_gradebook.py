@@ -6,7 +6,12 @@ import types
 from unittest import TestCase
 from urllib.parse import parse_qs, urlparse
 
-from ifitwala_ed.tests.frappe_stubs import StubValidationError, import_fresh, stubbed_frappe
+from ifitwala_ed.tests.frappe_stubs import (
+    StubPermissionError,
+    StubValidationError,
+    import_fresh,
+    stubbed_frappe,
+)
 
 
 class _FakeDelivery:
@@ -29,12 +34,41 @@ class _FakeDelivery:
         return {"eligible_students": 3, "outcomes_created": 3}
 
 
-def _gradebook_stub_modules(task_contribution_service=None):
+def _gradebook_stub_modules(task_contribution_service=None, task_feedback_service=None):
     image_utils = types.ModuleType("ifitwala_ed.utilities.image_utils")
     image_utils.apply_preferred_student_images = lambda rows: rows
     quiz_service = types.ModuleType("ifitwala_ed.assessment.quiz_service")
     quiz_service.MANUAL_TYPES = {"Essay"}
     quiz_service.refresh_attempt = lambda *args, **kwargs: {"attempt": {"name": args[0] if args else "QAT-1"}}
+    feedback_service = task_feedback_service or types.ModuleType("ifitwala_ed.assessment.task_feedback_service")
+    if not hasattr(feedback_service, "build_feedback_workspace_payload"):
+        feedback_service.build_feedback_workspace_payload = lambda outcome_id, submission_id, include_defaults=True: {
+            "workspace_id": None,
+            "task_outcome": outcome_id,
+            "task_submission": submission_id,
+            "submission_version": 1,
+            "summary": {
+                "overall": "",
+                "strengths": "",
+                "improvements": "",
+                "next_steps": "",
+            },
+            "items": [],
+            "publication": {
+                "feedback_visibility": "hidden",
+                "grade_visibility": "hidden",
+                "derived_from_legacy_outcome": True,
+                "legacy_outcome_published": False,
+                "legacy_published_on": None,
+                "legacy_published_by": None,
+            },
+            "modified": None,
+            "modified_by": None,
+        }
+    if not hasattr(feedback_service, "save_feedback_workspace_draft"):
+        feedback_service.save_feedback_workspace_draft = lambda payload, actor=None: payload
+    if not hasattr(feedback_service, "save_feedback_publication"):
+        feedback_service.save_feedback_publication = lambda payload, actor=None: payload
     file_access = types.ModuleType("ifitwala_ed.api.file_access")
     file_access.resolve_academic_file_open_url = (
         lambda *, file_name, file_url, context_doctype=None, context_name=None, **kwargs: (
@@ -56,6 +90,7 @@ def _gradebook_stub_modules(task_contribution_service=None):
         "ifitwala_ed.assessment.quiz_service": quiz_service,
         "ifitwala_ed.assessment.task_contribution_service": task_contribution_service
         or types.ModuleType("ifitwala_ed.assessment.task_contribution_service"),
+        "ifitwala_ed.assessment.task_feedback_service": feedback_service,
         "ifitwala_ed.assessment.task_outcome_service": types.ModuleType("ifitwala_ed.assessment.task_outcome_service"),
         "ifitwala_ed.assessment.task_submission_service": types.ModuleType(
             "ifitwala_ed.assessment.task_submission_service"
@@ -213,6 +248,9 @@ class TestGradebookApi(TestCase):
         self.assertEqual(payload["selected_submission"]["submission_id"], "TSU-2026-00001")
         self.assertEqual(payload["selected_submission"]["version"], 1)
         self.assertEqual(payload["selected_submission"]["evidence_note"], "Original evidence")
+        self.assertNotIn("submissions", payload)
+        self.assertEqual(payload["feedback_workspace"]["task_submission"], "TSU-2026-00001")
+        self.assertEqual(payload["feedback_workspace"]["publication"]["feedback_visibility"], "hidden")
         self.assertEqual(payload["submission_versions"][0]["submission_id"], "TSU-2026-00001")
         self.assertTrue(payload["submission_versions"][0]["is_selected"])
         self.assertFalse(payload["submission_versions"][1]["is_selected"])
@@ -235,6 +273,255 @@ class TestGradebookApi(TestCase):
             payload["selected_submission"]["annotation_readiness"]["reason_code"],
             "pdf_preview_pending",
         )
+
+    def test_save_feedback_draft_uses_named_feedback_service(self):
+        saved_payloads = []
+
+        feedback_service = types.ModuleType("ifitwala_ed.assessment.task_feedback_service")
+        feedback_service.build_feedback_workspace_payload = lambda *args, **kwargs: None
+        feedback_service.save_feedback_workspace_draft = lambda payload, actor=None: (
+            saved_payloads.append((payload, actor))
+            or {
+                "workspace_id": "TFW-1",
+                "task_outcome": payload["outcome_id"],
+                "task_submission": payload["submission_id"],
+                "submission_version": 2,
+                "summary": payload.get("summary") or {},
+                "items": payload.get("items") or [],
+                "publication": {
+                    "feedback_visibility": "hidden",
+                    "grade_visibility": "hidden",
+                    "derived_from_legacy_outcome": False,
+                    "legacy_outcome_published": False,
+                    "legacy_published_on": None,
+                    "legacy_published_by": None,
+                },
+                "modified": None,
+                "modified_by": actor,
+            }
+        )
+        feedback_service.save_feedback_publication = lambda payload, actor=None: payload
+
+        with stubbed_frappe(extra_modules=_gradebook_stub_modules(task_feedback_service=feedback_service)) as frappe:
+
+            def fake_get_value(doctype, name, fieldname=None, as_dict=False):
+                if doctype == "Task Outcome" and name == "OUT-1":
+                    return {"task_delivery": "TDL-1"}
+                if doctype == "Task Delivery" and name == "TDL-1":
+                    return {
+                        "name": "TDL-1",
+                        "student_group": "GRP-1",
+                        "task": "TASK-1",
+                        "delivery_mode": "Assess",
+                        "grading_mode": "Points",
+                        "allow_feedback": 1,
+                    }
+                return None
+
+            frappe.db.get_value = fake_get_value
+
+            module = _import_fresh_gradebook()
+            module.gradebook_support._can_write_gradebook = lambda: True
+            module.gradebook_support._assert_group_access = lambda student_group: None
+
+            response = module.save_feedback_draft(
+                {
+                    "outcome_id": "OUT-1",
+                    "submission_id": "TSU-1",
+                    "summary": {"overall": "Prioritise the thesis."},
+                    "items": [
+                        {
+                            "kind": "page",
+                            "page": 1,
+                            "comment": "Start with a clearer claim.",
+                            "intent": "next_step",
+                            "workflow_state": "draft",
+                            "anchor": {"kind": "page", "page": 1},
+                        }
+                    ],
+                }
+            )
+
+        self.assertEqual(saved_payloads[0][0]["submission_id"], "TSU-1")
+        self.assertEqual(saved_payloads[0][1], "unit.test@example.com")
+        self.assertEqual(response["feedback_workspace"]["workspace_id"], "TFW-1")
+        self.assertEqual(response["feedback_workspace"]["summary"]["overall"], "Prioritise the thesis.")
+
+    def test_save_feedback_publication_uses_named_feedback_service(self):
+        saved_payloads = []
+
+        feedback_service = types.ModuleType("ifitwala_ed.assessment.task_feedback_service")
+        feedback_service.build_feedback_workspace_payload = lambda *args, **kwargs: None
+        feedback_service.save_feedback_workspace_draft = lambda payload, actor=None: payload
+        feedback_service.save_feedback_publication = lambda payload, actor=None: (
+            saved_payloads.append((payload, actor))
+            or {
+                "workspace_id": "TFW-1",
+                "task_outcome": payload["outcome_id"],
+                "task_submission": payload["submission_id"],
+                "submission_version": 2,
+                "summary": {
+                    "overall": "",
+                    "strengths": "",
+                    "improvements": "",
+                    "next_steps": "",
+                },
+                "items": [],
+                "publication": {
+                    "feedback_visibility": payload["feedback_visibility"],
+                    "grade_visibility": payload["grade_visibility"],
+                    "derived_from_legacy_outcome": False,
+                    "legacy_outcome_published": False,
+                    "legacy_published_on": None,
+                    "legacy_published_by": None,
+                },
+                "modified": None,
+                "modified_by": actor,
+            }
+        )
+
+        with stubbed_frappe(extra_modules=_gradebook_stub_modules(task_feedback_service=feedback_service)) as frappe:
+
+            def fake_get_value(doctype, name, fieldname=None, as_dict=False):
+                if doctype == "Task Outcome" and name == "OUT-1":
+                    return {"task_delivery": "TDL-1"}
+                if doctype == "Task Delivery" and name == "TDL-1":
+                    return {
+                        "name": "TDL-1",
+                        "student_group": "GRP-1",
+                        "task": "TASK-1",
+                        "delivery_mode": "Assess",
+                        "grading_mode": "Points",
+                        "allow_feedback": 1,
+                    }
+                return None
+
+            frappe.db.get_value = fake_get_value
+
+            module = _import_fresh_gradebook()
+            module.gradebook_support._can_write_gradebook = lambda: True
+            module.gradebook_support._assert_group_access = lambda student_group: None
+
+            response = module.save_feedback_publication(
+                {
+                    "outcome_id": "OUT-1",
+                    "submission_id": "TSU-1",
+                    "feedback_visibility": "student",
+                    "grade_visibility": "hidden",
+                }
+            )
+
+        self.assertEqual(saved_payloads[0][0]["feedback_visibility"], "student")
+        self.assertEqual(saved_payloads[0][0]["grade_visibility"], "hidden")
+        self.assertEqual(saved_payloads[0][1], "unit.test@example.com")
+        self.assertEqual(response["feedback_workspace"]["publication"]["feedback_visibility"], "student")
+
+    def test_submit_contribution_uses_named_service_and_resolves_submission(self):
+        submitted_payloads = []
+
+        task_contribution_service = types.ModuleType("ifitwala_ed.assessment.task_contribution_service")
+        task_contribution_service.submit_contribution = lambda payload, contributor=None: (
+            submitted_payloads.append((payload, contributor))
+            or {
+                "contribution": "TCO-1",
+                "status": "Submitted",
+                "task_outcome": payload.get("task_outcome"),
+                "task_submission": payload.get("task_submission"),
+                "outcome_update": {"outcome": payload.get("task_outcome"), "grading_status": "Finalized"},
+            }
+        )
+
+        with stubbed_frappe(extra_modules=_gradebook_stub_modules(task_contribution_service=task_contribution_service)):
+            module = _import_fresh_gradebook()
+            module.gradebook_support._can_write_gradebook = lambda: True
+            module.gradebook_support._resolve_or_create_stub_submission_id = lambda outcome_id, data: "SUB-1"
+
+            payload = module.submit_contribution(
+                task_outcome="OUT-1",
+                score=12,
+                feedback="Strong evidence.",
+            )
+
+        self.assertEqual(
+            submitted_payloads,
+            [
+                (
+                    {
+                        "task_outcome": "OUT-1",
+                        "score": 12,
+                        "feedback": "Strong evidence.",
+                        "task_submission": "SUB-1",
+                    },
+                    "unit.test@example.com",
+                )
+            ],
+        )
+        self.assertTrue(payload["ok"])
+        self.assertEqual(payload["result"]["task_submission"], "SUB-1")
+        self.assertEqual(payload["outcome_update"]["grading_status"], "Finalized")
+
+    def test_moderator_action_requires_adminish_role(self):
+        task_contribution_service = types.ModuleType("ifitwala_ed.assessment.task_contribution_service")
+        task_contribution_service.apply_moderator_action = lambda payload, contributor=None: {
+            "contribution": "TCO-MOD-1",
+            "status": "Submitted",
+            "task_outcome": payload.get("task_outcome"),
+            "task_submission": payload.get("task_submission"),
+            "outcome_update": {"outcome": payload.get("task_outcome"), "grading_status": "Moderated"},
+        }
+
+        with stubbed_frappe(extra_modules=_gradebook_stub_modules(task_contribution_service=task_contribution_service)):
+            module = _import_fresh_gradebook()
+            module.gradebook_support._is_academic_adminish = lambda: False
+
+            with self.assertRaises(StubPermissionError):
+                module.moderator_action(task_outcome="OUT-1", action="Approve")
+
+    def test_moderator_action_uses_named_service_and_preserves_action(self):
+        moderation_payloads = []
+
+        task_contribution_service = types.ModuleType("ifitwala_ed.assessment.task_contribution_service")
+        task_contribution_service.apply_moderator_action = lambda payload, contributor=None: (
+            moderation_payloads.append((payload, contributor))
+            or {
+                "contribution": "TCO-MOD-1",
+                "status": "Submitted",
+                "task_outcome": payload.get("task_outcome"),
+                "task_submission": payload.get("task_submission"),
+                "outcome_update": {"outcome": payload.get("task_outcome"), "grading_status": "Moderated"},
+            }
+        )
+
+        with stubbed_frappe(extra_modules=_gradebook_stub_modules(task_contribution_service=task_contribution_service)):
+            module = _import_fresh_gradebook()
+            module.gradebook_support._is_academic_adminish = lambda: True
+            module.gradebook_support._resolve_or_create_stub_submission_id = lambda outcome_id, data: "SUB-MOD-1"
+
+            payload = module.moderator_action(
+                task_outcome="OUT-1",
+                action="Adjust",
+                score=14,
+                feedback="Adjusted after review.",
+            )
+
+        self.assertEqual(
+            moderation_payloads,
+            [
+                (
+                    {
+                        "task_outcome": "OUT-1",
+                        "action": "Adjust",
+                        "score": 14,
+                        "feedback": "Adjusted after review.",
+                        "task_submission": "SUB-MOD-1",
+                    },
+                    "unit.test@example.com",
+                )
+            ],
+        )
+        self.assertTrue(payload["ok"])
+        self.assertEqual(payload["result"]["task_submission"], "SUB-MOD-1")
+        self.assertEqual(payload["outcome_update"]["grading_status"], "Moderated")
 
     def test_get_task_gradebook_includes_submission_status_for_evidence_inbox_routing(self):
         with stubbed_frappe(extra_modules=_gradebook_stub_modules()) as frappe:

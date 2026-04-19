@@ -75,7 +75,11 @@ fake_nestedset = types.ModuleType("frappe.utils.nestedset")
 fake_nestedset.get_descendants_of = lambda *args, **kwargs: []
 
 fake_school_tree = types.ModuleType("ifitwala_ed.utilities.school_tree")
+fake_school_tree.ParentRuleViolation = RuntimeError
+fake_school_tree.get_ancestor_schools = lambda *args, **kwargs: []
 fake_school_tree.get_descendant_schools = lambda *args, **kwargs: []
+fake_school_tree.get_descendant_school_scope = lambda *args, **kwargs: []
+fake_school_tree.get_school_lineage = lambda *args, **kwargs: []
 
 fake_frappe.utils = fake_utils
 

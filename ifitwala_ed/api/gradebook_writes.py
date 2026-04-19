@@ -8,7 +8,12 @@ from frappe import _
 from frappe.utils import now_datetime
 
 from ifitwala_ed.api import outcome_publish
-from ifitwala_ed.assessment import quiz_service, task_contribution_service, task_outcome_service
+from ifitwala_ed.assessment import (
+    quiz_service,
+    task_contribution_service,
+    task_feedback_service,
+    task_outcome_service,
+)
 
 
 def save_draft(api, payload=None, **kwargs):
@@ -27,6 +32,34 @@ def save_draft(api, payload=None, **kwargs):
         "result": result,
         "outcome": api._get_outcome_summary(outcome_id),
     }
+
+
+def save_feedback_draft(api, payload=None, **kwargs):
+    if not api._can_write_gradebook():
+        frappe.throw(_("Not permitted."), frappe.PermissionError)
+
+    data = api._normalize_payload(payload, kwargs)
+    outcome_id = api._get_payload_value(data, "outcome_id", "task_outcome")
+    submission_id = api._get_payload_value(data, "submission_id", "task_submission")
+    api._require(outcome_id, "Task Outcome")
+    api._require(submission_id, "Task Submission")
+    _assert_outcome_access(api, outcome_id)
+    result = task_feedback_service.save_feedback_workspace_draft(data, actor=frappe.session.user)
+    return {"feedback_workspace": result}
+
+
+def save_feedback_publication(api, payload=None, **kwargs):
+    if not api._can_write_gradebook() and not api._is_academic_adminish():
+        frappe.throw(_("Not permitted."), frappe.PermissionError)
+
+    data = api._normalize_payload(payload, kwargs)
+    outcome_id = api._get_payload_value(data, "outcome_id", "task_outcome")
+    submission_id = api._get_payload_value(data, "submission_id", "task_submission")
+    api._require(outcome_id, "Task Outcome")
+    api._require(submission_id, "Task Submission")
+    _assert_outcome_access(api, outcome_id)
+    result = task_feedback_service.save_feedback_publication(data, actor=frappe.session.user)
+    return {"feedback_workspace": result}
 
 
 def submit_contribution(api, payload=None, **kwargs):
@@ -369,3 +402,11 @@ def update_task_student(api, task_student: str, updates=None, **kwargs):
         "visible_to_guardian": int(fresh.get("is_published") or 0),
         "updated_on": fresh.get("modified"),
     }
+
+
+def _assert_outcome_access(api, outcome_id: str):
+    outcome_row = frappe.db.get_value("Task Outcome", outcome_id, ["task_delivery"], as_dict=True)
+    if not outcome_row:
+        frappe.throw(_("Task Outcome not found."))
+    delivery = api._resolve_delivery(outcome_row.get("task_delivery"))
+    api._assert_group_access(delivery.get("student_group"))

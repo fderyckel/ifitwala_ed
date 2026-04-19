@@ -68,19 +68,20 @@ Current workspace reality:
 - one bounded drawer bootstrap exists for delivery, student, outcome, selected evidence, version summaries, contribution context, and allowed actions
 - evidence is already versioned and governed through Ed-owned preview/open routes
 - the current release model still collapses to one `Task Outcome.is_published` state
-- there is no first-class feedback record layer yet
+- there is now a first-class assessment feedback workspace per selected submission version in the drawer runtime
 - there is no minimal comment bank yet
 - the live drawer runtime now has a partial annotation-readiness contract for the selected evidence version:
   - governed PDF attachments expose preview status plus file-type hints from Drive metadata
   - the selected submission returns a server-owned annotation-readiness summary
-  - governed PDFs render inside an Ifitwala-owned `pdf.js` drawer workspace over Ed-owned preview/open routes, with page navigation, zoom, and session-local point / area / page draft annotation state on the governed source PDF
+  - governed PDFs render inside an Ifitwala-owned `pdf.js` drawer workspace over Ed-owned preview/open routes, with page navigation, zoom, and version-bound point / area / page draft feedback anchors on the governed source PDF
   - the Evidence tab distinguishes reduced PDF review, preview-unavailable fallback, and non-PDF states without guessing in Vue
 
-- the live drawer runtime still does **not** support text-anchored comments, OCR-driven upgrades, or structured feedback records
+- the live drawer runtime still does **not** support text-anchored comments, OCR-driven upgrades, replies, or comment-bank insertion
+- feedback draft and publication changes now flow through named drawer mutations instead of session-only UI state, but student/guardian portals still rely on the legacy `Task Outcome.is_published` release path
 
 Why Phase 2 exists:
 
-- the current drawer is a good grading/evidence shell, but not yet a true feedback workspace
+- the current drawer is now a bounded feedback workspace, but it still needs the remaining teacher productivity and student-facing layers
 - the product now needs explicit feedback ownership, publication rules, and version binding before annotation UI expands
 
 ---
@@ -216,7 +217,7 @@ Illustrative examples:
 
 ## 4. Publication Model
 
-Status: **Planned target model**
+Status: **Partially implemented in staff drawer runtime; target model still extends further**
 
 Code refs:
 
@@ -226,7 +227,7 @@ Code refs:
 
 Test refs: None yet
 
-Phase 2 should replace the current single-bit publish model with two explicit publication channels:
+Phase 2 introduces two explicit publication channels inside assessment:
 
 | Channel                | Allowed states                                              |
 | ---------------------- | ----------------------------------------------------------- |
@@ -244,7 +245,8 @@ Invariants:
 
 Teacher-facing implication:
 
-- the drawer should eventually expose distinct actions for releasing or hiding feedback and grade
+- the drawer now stores and edits distinct feedback and grade visibility states per selected submission version
+- the current portal-visible release button still flows through the legacy outcome publish path until student and guardian surfaces consume the new channels
 - the preferred shortcuts are `release feedback` and `release both`
 - grade-only release remains available as an explicit path, but should not be the default shortcut unless policy requires it
 
@@ -257,7 +259,7 @@ Implementation rule:
 
 ## 5. Version Binding And Stale Feedback Behavior
 
-Status: **Planned target model**
+Status: **Partially implemented**
 
 Code refs:
 
@@ -273,7 +275,7 @@ Feedback must bind to the selected evidence version, not float across a learner'
 
 Rules:
 
-- when a teacher opens a specific submission version in the drawer, new feedback authored in that context binds to that version
+- when a teacher opens a specific submission version in the drawer, new feedback authored in that context now binds to that version
 - switching the selected version changes the authoring context; it does not silently retarget existing feedback
 - when a learner resubmits, prior feedback remains historical and visible in history/audit views
 - resubmission marks earlier feedback stale for current review unless a teacher explicitly reuses or carries it forward
@@ -289,7 +291,7 @@ Product implication:
 
 ## 6. Drawer Read And Write Responsibilities
 
-Status: **Planned target model**
+Status: **Partially implemented**
 
 Code refs:
 
@@ -312,8 +314,8 @@ Recommended read-model responsibilities:
 | ------------------------------------------------------------ | ----------------------------------------------------------------- | ------------------------------ |
 | Delivery policy and student identity                         | current gradebook drawer bootstrap                                | already live                   |
 | Selected evidence version and governed file actions          | current task-submission serialization path                        | already live                   |
-| Feedback records and summary for selected version            | future assessment feedback read layer                             | add as bounded drawer block    |
-| Publication state for feedback and grade channels            | future publication read layer inside assessment                   | must be explicit, not inferred |
+| Feedback records and summary for selected version            | assessment feedback workspace read layer                          | now live as bounded drawer block |
+| Publication state for feedback and grade channels            | assessment feedback publication read layer                        | explicit in drawer runtime     |
 | Annotation readiness                                         | server-owned readability/OCR status for selected evidence version | do not guess in Vue            |
 | Comment bank entries relevant to the current teacher context | future comment-bank read layer                                    | keep bounded and scoped        |
 
@@ -322,8 +324,8 @@ Recommended mutation responsibilities:
 | Mutation category                             | Owner                                  | Notes                                |
 | --------------------------------------------- | -------------------------------------- | ------------------------------------ |
 | Save grading input                            | existing contribution/outcome services | current path remains                 |
-| Save feedback draft                           | future assessment feedback write layer | separate from official grade truth   |
-| Change publication state                      | future named publication operations    | separate feedback and grade channels |
+| Save feedback draft                           | assessment feedback write layer        | live named mutation                  |
+| Change publication state                      | assessment publication write layer     | live named mutation                  |
 | Save or update comment-bank entries           | future comment-bank write layer        | scoped teacher productivity feature  |
 | Mark reply / acknowledgement / acted-on state | future feedback response operations    | not a reporting write                |
 

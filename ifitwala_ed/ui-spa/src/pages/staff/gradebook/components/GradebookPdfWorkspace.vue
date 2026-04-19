@@ -112,7 +112,7 @@
 					<p class="text-xs font-semibold uppercase tracking-[0.16em] text-ink/45">
 						Draft Overlay
 					</p>
-					<h4 class="mt-1 text-sm font-semibold text-ink">Session-local annotation drafts</h4>
+					<h4 class="mt-1 text-sm font-semibold text-ink">Selected-submission feedback drafts</h4>
 					<p class="mt-2 text-sm text-ink/70">
 						{{ overlayGuidance }}
 					</p>
@@ -276,14 +276,14 @@
 						<p class="text-xs font-semibold uppercase tracking-[0.16em] text-ink/45">
 							Draft Annotations
 						</p>
-						<h4 class="mt-1 text-sm font-semibold text-ink">Local drafts only</h4>
+						<h4 class="mt-1 text-sm font-semibold text-ink">Drawer feedback draft items</h4>
 					</div>
 					<Badge variant="subtle">{{ draftCountLabel }}</Badge>
 				</div>
 
 				<p class="mt-2 text-sm text-ink/70">
-					These overlays stay inside this drawer session only until structured feedback records
-					land.
+					These anchors belong to the selected-submission feedback draft and save through the
+					drawer workspace mutation.
 				</p>
 
 				<div class="mt-4 space-y-2">
@@ -353,7 +353,8 @@
 						id="gradebook-pdf-draft-note"
 						class="mt-2 min-h-28 w-full rounded-2xl border border-border/70 bg-white px-3 py-3 text-sm text-ink shadow-sm outline-none transition focus:border-canopy/50 focus:ring-2 focus:ring-canopy/20"
 						:value="selectedDraft.comment"
-						placeholder="Capture the draft teaching note for this local annotation anchor."
+						:disabled="props.disabled"
+						placeholder="Capture the draft teaching note for this feedback anchor."
 						@input="onSelectedDraftCommentChanged"
 					/>
 					<p class="mt-3 text-xs text-ink/55">
@@ -379,6 +380,7 @@ import {
 import { GlobalWorkerOptions, getDocument } from 'pdfjs-dist/legacy/build/pdf.mjs';
 import pdfWorkerUrl from 'pdfjs-dist/legacy/build/pdf.worker.min.mjs?url';
 
+import type { FeedbackWorkspaceItem } from '@/types/contracts/gradebook/feedback_workspace';
 import type { Response as GetDrawerResponse } from '@/types/contracts/gradebook/get_drawer';
 
 GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
@@ -414,6 +416,10 @@ type DraftAnnotation = {
 	kind: 'point' | 'rect' | 'page';
 	page: number;
 	comment: string;
+	intent: FeedbackWorkspaceItem['intent'];
+	workflow_state: FeedbackWorkspaceItem['workflow_state'];
+	assessment_criteria?: string | null;
+	author?: string | null;
 	point?: AnnotationPoint;
 	rect?: AnnotationRect;
 };
@@ -425,6 +431,12 @@ type PendingRectDraft = {
 const props = defineProps<{
 	attachment: SubmissionAttachmentRow;
 	annotationReadiness?: AnnotationReadinessPayload | null;
+	items?: FeedbackWorkspaceItem[];
+	disabled?: boolean;
+}>();
+
+const emit = defineEmits<{
+	(e: 'update:items', payload: FeedbackWorkspaceItem[]): void;
 }>();
 
 const canvasRef = ref<HTMLCanvasElement | null>(null);
@@ -457,7 +469,9 @@ const showInlinePreviewFallback = computed(
 );
 
 const hasRenderedPage = computed(() => pageCount.value > 0 && !viewerError.value);
-const canAnnotateCurrentPage = computed(() => hasRenderedPage.value && pageCount.value > 0);
+const canAnnotateCurrentPage = computed(
+	() => hasRenderedPage.value && pageCount.value > 0 && !props.disabled
+);
 
 const previewActionLabel = computed(() =>
 	props.attachment.preview_status === 'ready' ? 'Open preview' : 'Try preview'
@@ -530,7 +544,7 @@ const showViewerLoadingBanner = computed(
 
 const workspaceMessage = computed(() => {
 	if (draftAnnotations.value.length) {
-		return `Session-local point, area, and page draft annotations are available for this governed PDF. ${draftCountLabel.value} currently active.`;
+		return `Point, area, and page feedback drafts are active for this selected submission version. ${draftCountLabel.value} currently in the drawer draft workspace.`;
 	}
 	if (props.annotationReadiness?.message) {
 		return props.annotationReadiness.message;
@@ -545,8 +559,11 @@ const workspaceMessage = computed(() => {
 });
 
 const overlayGuidance = computed(() => {
+	if (props.disabled) {
+		return 'Feedback editing is currently locked for this drawer context.';
+	}
 	if (!canAnnotateCurrentPage.value) {
-		return 'The source PDF viewer must finish loading before local point, area, or page drafts are available.';
+		return 'The source PDF viewer must finish loading before point, area, or page feedback drafts are available.';
 	}
 	if (selectedTool.value === 'point') {
 		return 'Click once on the page to drop a draft point comment anchor.';
@@ -557,7 +574,7 @@ const overlayGuidance = computed(() => {
 	if (draftAnnotations.value.length) {
 		return 'Select a draft on the page or from the right panel to keep refining its note.';
 	}
-	return 'Use point, area, or page comments to draft local annotation anchors before structured feedback persistence lands.';
+	return 'Use point, area, or page comments to draft anchored feedback for the selected submission version.';
 });
 
 const overlayCursorClass = computed(() => {
@@ -578,10 +595,13 @@ const viewerEmptyTitle = computed(() =>
 );
 
 const emptyDraftMessage = computed(() => {
-	if (!canAnnotateCurrentPage.value) {
-		return 'Draft annotations unlock after the governed PDF finishes loading in the drawer.';
+	if (props.disabled) {
+		return 'Feedback editing is disabled in this drawer state.';
 	}
-	return 'Choose Point comment, Area comment, or Add page comment to start a session-local draft.';
+	if (!canAnnotateCurrentPage.value) {
+		return 'Feedback drafts unlock after the governed PDF finishes loading in the drawer.';
+	}
+	return 'Choose Point comment, Area comment, or Add page comment to start a feedback draft.';
 });
 
 const selectedDraftAnchorSummary = computed(() => {
@@ -692,12 +712,10 @@ function clearCanvas() {
 	canvas.style.height = '0px';
 }
 
-function resetDraftState() {
+function resetDraftUiState() {
 	selectedTool.value = 'browse';
-	draftAnnotations.value = [];
 	selectedDraftId.value = null;
 	pendingRect.value = null;
-	draftSequence.value = 0;
 	ignoreNextSurfaceClick.value = false;
 }
 
@@ -787,6 +805,121 @@ function rectStyle(rect?: AnnotationRect, dashed = false): CSSProperties {
 	};
 }
 
+function cloneFeedbackItems(items: FeedbackWorkspaceItem[]): FeedbackWorkspaceItem[] {
+	return items.map(item => ({
+		...item,
+		anchor: JSON.parse(JSON.stringify(item.anchor)),
+	}));
+}
+
+function feedbackItemsSignature(items: FeedbackWorkspaceItem[]) {
+	return JSON.stringify(items);
+}
+
+function feedbackItemsFromDrafts(drafts: DraftAnnotation[]): FeedbackWorkspaceItem[] {
+	return drafts.map(draft => {
+		if (draft.kind === 'point' && draft.point) {
+			return {
+				id: draft.id,
+				kind: 'point',
+				page: draft.page,
+				intent: draft.intent,
+				workflow_state: draft.workflow_state,
+				comment: draft.comment,
+				anchor: {
+					kind: 'point',
+					page: draft.page,
+					point: {
+						x: draft.point.x,
+						y: draft.point.y,
+					},
+				},
+				assessment_criteria: draft.assessment_criteria || null,
+				author: draft.author || null,
+			};
+		}
+
+		if (draft.kind === 'rect' && draft.rect) {
+			return {
+				id: draft.id,
+				kind: 'rect',
+				page: draft.page,
+				intent: draft.intent,
+				workflow_state: draft.workflow_state,
+				comment: draft.comment,
+				anchor: {
+					kind: 'rect',
+					page: draft.page,
+					rect: {
+						x: draft.rect.x,
+						y: draft.rect.y,
+						width: draft.rect.width,
+						height: draft.rect.height,
+					},
+				},
+				assessment_criteria: draft.assessment_criteria || null,
+				author: draft.author || null,
+			};
+		}
+
+		return {
+			id: draft.id,
+			kind: 'page',
+			page: draft.page,
+			intent: draft.intent,
+			workflow_state: draft.workflow_state,
+			comment: draft.comment,
+			anchor: {
+				kind: 'page',
+				page: draft.page,
+			},
+			assessment_criteria: draft.assessment_criteria || null,
+			author: draft.author || null,
+		};
+	});
+}
+
+function draftsFromFeedbackItems(items: FeedbackWorkspaceItem[]): DraftAnnotation[] {
+	return items
+		.filter(
+			(
+				item
+			): item is FeedbackWorkspaceItem & {
+				kind: 'point' | 'rect' | 'page';
+			} => item.kind === 'point' || item.kind === 'rect' || item.kind === 'page'
+		)
+		.map(item => ({
+			id: item.id || nextDraftId(),
+			kind: item.kind,
+			page: item.page,
+			comment: item.comment || '',
+			intent: item.intent || 'issue',
+			workflow_state: item.workflow_state || 'draft',
+			assessment_criteria: item.assessment_criteria || null,
+			author: item.author || null,
+			point: item.kind === 'point' && 'point' in item.anchor ? item.anchor.point : undefined,
+			rect: item.kind === 'rect' && 'rect' in item.anchor ? item.anchor.rect : undefined,
+		}));
+}
+
+function syncDraftsFromProps() {
+	const nextItems = cloneFeedbackItems(props.items || []);
+	const nextSignature = feedbackItemsSignature(nextItems);
+	const currentSignature = feedbackItemsSignature(feedbackItemsFromDrafts(draftAnnotations.value));
+	if (nextSignature === currentSignature) return;
+	draftAnnotations.value = draftsFromFeedbackItems(nextItems);
+	selectedDraftId.value = draftAnnotations.value[0]?.id || null;
+	draftSequence.value = draftAnnotations.value.reduce((maxValue, draft) => {
+		const match = /draft-(\d+)$/.exec(draft.id);
+		const numeric = match ? Number(match[1]) : 0;
+		return Math.max(maxValue, Number.isFinite(numeric) ? numeric : 0);
+	}, 0);
+}
+
+function emitItemsUpdate() {
+	emit('update:items', cloneFeedbackItems(feedbackItemsFromDrafts(draftAnnotations.value)));
+}
+
 function nextDraftId() {
 	draftSequence.value += 1;
 	return `draft-${draftSequence.value}`;
@@ -814,6 +947,7 @@ function addDraft(draft: Omit<DraftAnnotation, 'id'>) {
 	draftAnnotations.value = [...draftAnnotations.value, nextDraft];
 	selectedDraftId.value = nextDraft.id;
 	selectedTool.value = 'browse';
+	emitItemsUpdate();
 }
 
 function addPageCommentDraft() {
@@ -822,6 +956,8 @@ function addPageCommentDraft() {
 		kind: 'page',
 		page: currentPage.value,
 		comment: '',
+		intent: 'issue',
+		workflow_state: 'draft',
 	});
 }
 
@@ -843,6 +979,8 @@ function handleSurfaceClick(event: MouseEvent) {
 		page: currentPage.value,
 		point,
 		comment: '',
+		intent: 'issue',
+		workflow_state: 'draft',
 	});
 }
 
@@ -882,6 +1020,8 @@ function handleSurfacePointerUp(event: PointerEvent) {
 		page: currentPage.value,
 		rect: nextRect,
 		comment: '',
+		intent: 'issue',
+		workflow_state: 'draft',
 	});
 }
 
@@ -895,6 +1035,7 @@ function onSelectedDraftCommentChanged(event: Event) {
 	draftAnnotations.value = draftAnnotations.value.map(draft =>
 		draft.id === selectedDraft.value?.id ? { ...draft, comment: nextComment } : draft
 	);
+	emitItemsUpdate();
 }
 
 function removeSelectedDraft() {
@@ -903,6 +1044,7 @@ function removeSelectedDraft() {
 	draftAnnotations.value = draftAnnotations.value.filter(draft => draft.id !== removedId);
 	selectedDraftId.value = draftAnnotations.value[0]?.id || null;
 	selectedTool.value = 'browse';
+	emitItemsUpdate();
 }
 
 async function loadPdfDocument() {
@@ -1034,11 +1176,20 @@ function handleWindowResize() {
 watch(
 	[() => props.attachment.row_name ?? null, sourcePdfUrl],
 	() => {
-		resetDraftState();
+		resetDraftUiState();
+		syncDraftsFromProps();
 		zoomFactor.value = 1;
 		void loadPdfDocument();
 	},
 	{ immediate: true }
+);
+
+watch(
+	() => props.items,
+	() => {
+		syncDraftsFromProps();
+	},
+	{ deep: true, immediate: true }
 );
 
 watch([currentPage, zoomFactor], () => {

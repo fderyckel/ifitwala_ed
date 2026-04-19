@@ -239,8 +239,11 @@
 					:drawer="drawer"
 					:error-message="drawerErrorMessage"
 					:marking-busy="markingBusy"
+					:feedback-busy="feedbackBusy"
+					:publication-busy="publicationBusy"
 					:submission-seen-busy="submissionSeenBusy"
 					:publish-busy="publishBusy"
+					:moderation-busy="moderationBusy"
 					:show-sequence-controls="Boolean(drawer && visibleStudents.length > 1)"
 					:can-go-previous="canGoPrevious"
 					:can-go-next="canGoNext"
@@ -248,6 +251,9 @@
 					@close="closeDrawer"
 					@switch-version="switchSubmissionVersion"
 					@save-marking="saveDrawerMarking"
+					@save-feedback-draft="saveFeedbackDraft"
+					@save-feedback-publication="saveFeedbackPublication"
+					@moderator-action="runModeratorAction"
 					@mark-submission-seen="markSubmissionSeen"
 					@publish="publishOutcome"
 					@unpublish="unpublishOutcome"
@@ -264,7 +270,10 @@ import { computed, nextTick, reactive, ref, watch } from 'vue';
 import { Badge, FeatherIcon, Spinner, toast } from 'frappe-ui';
 
 import { createGradebookService } from '@/lib/services/gradebook/gradebookService';
+import type { FeedbackWorkspaceItem } from '@/types/contracts/gradebook/feedback_workspace';
 import type { Response as GetDrawerResponse } from '@/types/contracts/gradebook/get_drawer';
+import type { Request as ModeratorActionRequest } from '@/types/contracts/gradebook/moderator_action';
+import type { Request as SubmitContributionRequest } from '@/types/contracts/gradebook/submit_contribution';
 import type {
 	Response as GetTaskGradebookResponse,
 	TaskPayload,
@@ -317,8 +326,11 @@ const pendingDrawerOutcomeId = ref<string | null>(null);
 const gradebookLoadVersion = ref(0);
 const drawerLoadVersion = ref(0);
 const markingBusy = ref(false);
+const feedbackBusy = ref(false);
+const publicationBusy = ref(false);
 const submissionSeenBusy = ref(false);
 const publishBusy = ref(false);
+const moderationBusy = ref(false);
 const selectedBatchOutcomeIds = ref<string[]>([]);
 
 const gradebook = reactive<TaskGradebookState>({
@@ -619,14 +631,112 @@ async function refreshCurrentSelection(
 	await loadDrawer(nextOutcomeId, options);
 }
 
+function currentDrawerSelection() {
+	return {
+		submissionId: drawer.value?.selected_submission?.submission_id ?? null,
+		version: drawer.value?.selected_submission?.version ?? null,
+	};
+}
+
+function hasOwnUpdateKey<T extends object, K extends keyof T>(value: T, key: K): boolean {
+	return Object.prototype.hasOwnProperty.call(value, key);
+}
+
+function isAssessedBooleanDelivery(drawerPayload: GetDrawerResponse): boolean {
+	return (
+		drawerPayload.delivery.delivery_mode === 'Assess' &&
+		(drawerPayload.delivery.grading_mode === 'Binary' ||
+			drawerPayload.delivery.grading_mode === 'Completion')
+	);
+}
+
+function buildContributionRequest(
+	drawerPayload: GetDrawerResponse,
+	updates: UpdateTaskStudentRequest['updates'],
+	options: { action?: ModeratorActionRequest['action'] } = {}
+): SubmitContributionRequest | ModeratorActionRequest | null {
+	const request: Partial<SubmitContributionRequest & ModeratorActionRequest> = {
+		task_outcome: drawerPayload.outcome.outcome_id,
+	};
+	const latestSubmissionId = drawerPayload.latest_submission?.submission_id || null;
+	if (latestSubmissionId) {
+		request.task_submission = latestSubmissionId;
+	}
+	if (options.action) {
+		request.action = options.action;
+	}
+
+	let hasContributionFields = false;
+	if (hasOwnUpdateKey(updates, 'mark_awarded')) {
+		request.score = updates.mark_awarded ?? null;
+		hasContributionFields = true;
+	}
+	if (hasOwnUpdateKey(updates, 'feedback')) {
+		request.feedback = updates.feedback ?? null;
+		hasContributionFields = true;
+	}
+	if (updates.criteria_scores?.length) {
+		request.rubric_scores = updates.criteria_scores;
+		hasContributionFields = true;
+	}
+	if (hasOwnUpdateKey(updates, 'complete') && isAssessedBooleanDelivery(drawerPayload)) {
+		const isComplete = Boolean(updates.complete);
+		request.judgment_code =
+			drawerPayload.delivery.grading_mode === 'Completion'
+				? isComplete
+					? 'complete'
+					: 'incomplete'
+				: isComplete
+					? 'yes'
+					: 'no';
+		hasContributionFields = true;
+	}
+
+	if (!hasContributionFields && !options.action) {
+		return null;
+	}
+
+	return request as SubmitContributionRequest | ModeratorActionRequest;
+}
+
+function buildDirectOutcomeUpdates(
+	drawerPayload: GetDrawerResponse,
+	updates: UpdateTaskStudentRequest['updates']
+): UpdateTaskStudentRequest['updates'] {
+	const directUpdates: UpdateTaskStudentRequest['updates'] = {};
+	const currentStatus = drawerPayload.outcome.grading_status || 'Not Started';
+	if (
+		hasOwnUpdateKey(updates, 'status') &&
+		drawerPayload.delivery.delivery_mode === 'Assess' &&
+		updates.status !== currentStatus
+	) {
+		directUpdates.status = updates.status ?? null;
+	}
+	if (
+		hasOwnUpdateKey(updates, 'complete') &&
+		drawerPayload.delivery.delivery_mode === 'Assign Only' &&
+		Boolean(updates.complete) !== Boolean(drawerPayload.outcome.is_complete)
+	) {
+		directUpdates.complete = updates.complete ?? null;
+	}
+	return directUpdates;
+}
+
 async function saveDrawerMarking(updates: UpdateTaskStudentRequest['updates']) {
-	if (!selectedOutcomeId.value) return;
+	if (!selectedOutcomeId.value || !drawer.value) return;
 	markingBusy.value = true;
 	try {
-		await gradebookService.updateTaskStudent({
-			task_student: selectedOutcomeId.value,
-			updates,
-		});
+		const contributionRequest = buildContributionRequest(drawer.value, updates);
+		const directUpdates = buildDirectOutcomeUpdates(drawer.value, updates);
+		if (contributionRequest) {
+			await gradebookService.submitContribution(contributionRequest as SubmitContributionRequest);
+		}
+		if (Object.keys(directUpdates).length) {
+			await gradebookService.updateTaskStudent({
+				task_student: selectedOutcomeId.value,
+				updates: directUpdates,
+			});
+		}
 		showSuccessToast('Marking saved.');
 		await refreshCurrentSelection();
 	} catch (error) {
@@ -634,6 +744,78 @@ async function saveDrawerMarking(updates: UpdateTaskStudentRequest['updates']) {
 		showDangerToast('Could not save marking changes');
 	} finally {
 		markingBusy.value = false;
+	}
+}
+
+async function saveFeedbackDraft(payload: {
+	outcome_id: string;
+	submission_id: string;
+	summary: {
+		overall: string;
+		strengths: string;
+		improvements: string;
+		next_steps: string;
+	};
+	items: FeedbackWorkspaceItem[];
+}) {
+	feedbackBusy.value = true;
+	try {
+		await gradebookService.saveFeedbackDraft(payload);
+		showSuccessToast('Feedback draft saved.');
+		await refreshCurrentSelection(currentDrawerSelection());
+	} catch (error) {
+		console.error('Failed to save feedback draft', error);
+		showDangerToast('Could not save feedback draft');
+	} finally {
+		feedbackBusy.value = false;
+	}
+}
+
+async function saveFeedbackPublication(payload: {
+	outcome_id: string;
+	submission_id: string;
+	feedback_visibility: 'hidden' | 'student' | 'student_and_guardian';
+	grade_visibility: 'hidden' | 'student' | 'student_and_guardian';
+}) {
+	publicationBusy.value = true;
+	try {
+		await gradebookService.saveFeedbackPublication(payload);
+		showSuccessToast('Publication state saved.');
+		await refreshCurrentSelection(currentDrawerSelection());
+	} catch (error) {
+		console.error('Failed to save feedback publication state', error);
+		showDangerToast('Could not save publication state');
+	} finally {
+		publicationBusy.value = false;
+	}
+}
+
+async function runModeratorAction(payload: {
+	action: ModeratorActionRequest['action'];
+	updates: UpdateTaskStudentRequest['updates'];
+}) {
+	if (!selectedOutcomeId.value || !drawer.value) return;
+	const request = buildContributionRequest(drawer.value, payload.updates, {
+		action: payload.action,
+	}) as ModeratorActionRequest | null;
+	if (!request) return;
+
+	moderationBusy.value = true;
+	try {
+		await gradebookService.moderatorAction(request);
+		const successMessage =
+			payload.action === 'Return to Grader'
+				? 'Outcome returned to grader.'
+				: payload.action === 'Adjust'
+					? 'Moderation adjustment applied.'
+					: 'Outcome approved by moderator.';
+		showSuccessToast(successMessage);
+		await refreshCurrentSelection();
+	} catch (error) {
+		console.error('Failed to apply moderation action', error);
+		showDangerToast('Could not apply moderation action');
+	} finally {
+		moderationBusy.value = false;
 	}
 }
 

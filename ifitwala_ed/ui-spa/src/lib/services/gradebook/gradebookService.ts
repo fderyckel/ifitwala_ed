@@ -16,6 +16,10 @@ import type {
 	Response as GetDrawerResponse,
 } from '@/types/contracts/gradebook/get_drawer'
 import type {
+	Request as ModeratorActionRequest,
+	Response as ModeratorActionResponse,
+} from '@/types/contracts/gradebook/moderator_action'
+import type {
 	Request as GetGridRequest,
 	Response as GetGridResponse,
 } from '@/types/contracts/gradebook/get_grid'
@@ -40,9 +44,25 @@ import type {
 	Response as RepairTaskRosterResponse,
 } from '@/types/contracts/gradebook/repair_task_roster'
 import type {
+	Request as SaveDraftRequest,
+	Response as SaveDraftResponse,
+} from '@/types/contracts/gradebook/save_draft'
+import type {
+	Request as SaveFeedbackDraftRequest,
+	Response as SaveFeedbackDraftResponse,
+} from '@/types/contracts/gradebook/save_feedback_draft'
+import type {
+	Request as SaveFeedbackPublicationRequest,
+	Response as SaveFeedbackPublicationResponse,
+} from '@/types/contracts/gradebook/save_feedback_publication'
+import type {
 	Request as SaveTaskQuizManualReviewRequest,
 	Response as SaveTaskQuizManualReviewResponse,
 } from '@/types/contracts/gradebook/save_task_quiz_manual_review'
+import type {
+	Request as SubmitContributionRequest,
+	Response as SubmitContributionResponse,
+} from '@/types/contracts/gradebook/submit_contribution'
 import type {
 	Request as UpdateTaskStudentRequest,
 	Response as UpdateTaskStudentResponse,
@@ -69,6 +89,36 @@ export function createGradebookService() {
 
 	const getDrawerResource = createResource<GetDrawerResponse>({
 		url: 'ifitwala_ed.api.gradebook.get_drawer',
+		method: 'POST',
+		auto: false,
+	})
+
+	const saveDraftResource = createResource<SaveDraftResponse>({
+		url: 'ifitwala_ed.api.gradebook.save_draft',
+		method: 'POST',
+		auto: false,
+	})
+
+	const saveFeedbackDraftResource = createResource<SaveFeedbackDraftResponse>({
+		url: 'ifitwala_ed.api.gradebook.save_feedback_draft',
+		method: 'POST',
+		auto: false,
+	})
+
+	const saveFeedbackPublicationResource = createResource<SaveFeedbackPublicationResponse>({
+		url: 'ifitwala_ed.api.gradebook.save_feedback_publication',
+		method: 'POST',
+		auto: false,
+	})
+
+	const submitContributionResource = createResource<SubmitContributionResponse>({
+		url: 'ifitwala_ed.api.gradebook.submit_contribution',
+		method: 'POST',
+		auto: false,
+	})
+
+	const moderatorActionResource = createResource<ModeratorActionResponse>({
+		url: 'ifitwala_ed.api.gradebook.moderator_action',
 		method: 'POST',
 		auto: false,
 	})
@@ -137,6 +187,34 @@ export function createGradebookService() {
 		return getDrawerResource.submit(payload)
 	}
 
+	async function saveDraft(payload: SaveDraftRequest): Promise<SaveDraftResponse> {
+		return saveDraftResource.submit(payload)
+	}
+
+	async function saveFeedbackDraft(
+		payload: SaveFeedbackDraftRequest,
+	): Promise<SaveFeedbackDraftResponse> {
+		return saveFeedbackDraftResource.submit(payload)
+	}
+
+	async function saveFeedbackPublication(
+		payload: SaveFeedbackPublicationRequest,
+	): Promise<SaveFeedbackPublicationResponse> {
+		return saveFeedbackPublicationResource.submit(payload)
+	}
+
+	async function submitContribution(
+		payload: SubmitContributionRequest,
+	): Promise<SubmitContributionResponse> {
+		return submitContributionResource.submit(payload)
+	}
+
+	async function moderatorAction(
+		payload: ModeratorActionRequest,
+	): Promise<ModeratorActionResponse> {
+		return moderatorActionResource.submit(payload)
+	}
+
 	async function getTaskGradebook(
 		payload: GetTaskGradebookRequest,
 	): Promise<GetTaskGradebookResponse> {
@@ -194,6 +272,11 @@ export function createGradebookService() {
 		fetchGroupTasks,
 		getGrid,
 		getDrawer,
+		saveDraft,
+		saveFeedbackDraft,
+		saveFeedbackPublication,
+		submitContribution,
+		moderatorAction,
 		getTaskGradebook,
 		repairTaskRoster,
 		getTaskQuizManualReview,

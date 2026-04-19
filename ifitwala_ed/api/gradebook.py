@@ -44,6 +44,16 @@ def save_draft(payload=None, **kwargs):
 
 
 @frappe.whitelist()
+def save_feedback_draft(payload=None, **kwargs):
+    return gradebook_writes.save_feedback_draft(gradebook_support, payload=payload, **kwargs)
+
+
+@frappe.whitelist()
+def save_feedback_publication(payload=None, **kwargs):
+    return gradebook_writes.save_feedback_publication(gradebook_support, payload=payload, **kwargs)
+
+
+@frappe.whitelist()
 def submit_contribution(payload=None, **kwargs):
     return gradebook_writes.submit_contribution(gradebook_support, payload=payload, **kwargs)
 
@@ -135,6 +145,8 @@ __all__ = [
     "get_grid",
     "get_drawer",
     "save_draft",
+    "save_feedback_draft",
+    "save_feedback_publication",
     "submit_contribution",
     "save_contribution_draft",
     "moderator_action",

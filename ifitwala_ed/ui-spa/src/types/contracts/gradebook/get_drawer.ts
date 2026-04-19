@@ -1,3 +1,5 @@
+import type { FeedbackWorkspacePayload } from './feedback_workspace'
+
 export type Request = {
 	outcome_id: string
 	submission_id?: string | null
@@ -153,6 +155,7 @@ export type Response = {
 	outcome: OutcomePayload
 	latest_submission?: SubmissionVersionSummary | null
 	selected_submission?: SubmissionEvidence | null
+	feedback_workspace?: FeedbackWorkspacePayload | null
 	submission_versions: SubmissionVersionSummary[]
 	my_contribution?: MyContributionPayload | null
 	moderation_history: Array<{
@@ -162,12 +165,13 @@ export type Response = {
 	}>
 	allowed_actions: {
 		can_edit_marking: boolean
+		can_edit_feedback: boolean
 		can_mark_submission_seen: boolean
 		can_publish: boolean
 		can_unpublish: boolean
+		can_manage_feedback_publication: boolean
 		can_moderate: boolean
 		show_review_tab: boolean
 	}
-	submissions?: Array<Record<string, unknown>>
 	contributions: ContributionPayload[]
 }

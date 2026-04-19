@@ -178,6 +178,17 @@
 					</div>
 
 					<div
+						v-if="isViewingHistoricalSubmission"
+						class="rounded-2xl border border-sand/70 bg-sand/20 p-4 text-sm text-clay"
+					>
+						<p class="font-semibold text-ink">Viewing an earlier evidence version</p>
+						<p class="mt-1 text-clay/90">
+							Save Marking still records against {{ latestSubmissionLabel }}. Use the Evidence tab
+							to inspect history without changing the latest-version grading target.
+						</p>
+					</div>
+
+					<div
 						v-if="showsStatusControl(drawer.delivery) && !drawer.outcome.is_published"
 						class="space-y-1.5"
 					>
@@ -542,6 +553,9 @@
 										v-if="isPdfAttachment(attachment)"
 										:attachment="attachment"
 										:annotation-readiness="annotationReadinessForAttachment(attachment)"
+										:items="feedbackForm.items"
+										:disabled="!drawer.allowed_actions.can_edit_feedback"
+										@update:items="onFeedbackItemsChanged"
 									/>
 									<div v-else class="flex flex-wrap items-start justify-between gap-3">
 										<div class="min-w-0">
@@ -583,6 +597,114 @@
 										</div>
 									</div>
 								</div>
+							</div>
+						</div>
+
+						<div
+							v-if="drawer.selected_submission"
+							class="rounded-2xl border border-border/70 bg-white p-4"
+						>
+							<div class="flex flex-wrap items-start justify-between gap-3">
+								<div class="min-w-0">
+									<p class="text-xs font-semibold uppercase tracking-[0.16em] text-ink/45">
+										Feedback Draft
+									</p>
+									<h3 class="mt-2 text-sm font-semibold text-ink">
+										Version-bound feedback workspace
+									</h3>
+									<p class="mt-2 text-sm text-ink/70">
+										Summary and anchored comments bind to
+										{{ selectedSubmissionLabel }} and stay separate from official grade truth.
+									</p>
+								</div>
+								<div class="flex flex-wrap gap-2">
+									<Badge variant="subtle">
+										{{ feedbackForm.items.length }}
+										{{ feedbackForm.items.length === 1 ? 'item' : 'items' }}
+									</Badge>
+									<Badge v-if="drawer.feedback_workspace?.modified" variant="subtle">
+										Updated {{ formatDateTime(drawer.feedback_workspace.modified) }}
+									</Badge>
+								</div>
+							</div>
+
+							<div class="mt-4 grid gap-4 lg:grid-cols-2">
+								<div class="space-y-1.5 lg:col-span-2">
+									<label
+										class="block text-xs font-semibold uppercase tracking-[0.16em] text-ink/45"
+									>
+										Overall Summary
+									</label>
+									<FormControl
+										type="textarea"
+										rows="3"
+										placeholder="Summarize what matters most in this submission draft."
+										:model-value="feedbackForm.summary.overall"
+										@update:modelValue="feedbackForm.summary.overall = String($event || '')"
+									/>
+								</div>
+
+								<div class="space-y-1.5">
+									<label
+										class="block text-xs font-semibold uppercase tracking-[0.16em] text-ink/45"
+									>
+										Strengths
+									</label>
+									<FormControl
+										type="textarea"
+										rows="3"
+										placeholder="Capture the strongest evidence first."
+										:model-value="feedbackForm.summary.strengths"
+										@update:modelValue="feedbackForm.summary.strengths = String($event || '')"
+									/>
+								</div>
+
+								<div class="space-y-1.5">
+									<label
+										class="block text-xs font-semibold uppercase tracking-[0.16em] text-ink/45"
+									>
+										Improvements
+									</label>
+									<FormControl
+										type="textarea"
+										rows="3"
+										placeholder="Call out the main gaps to address."
+										:model-value="feedbackForm.summary.improvements"
+										@update:modelValue="feedbackForm.summary.improvements = String($event || '')"
+									/>
+								</div>
+
+								<div class="space-y-1.5 lg:col-span-2">
+									<label
+										class="block text-xs font-semibold uppercase tracking-[0.16em] text-ink/45"
+									>
+										Next Steps
+									</label>
+									<FormControl
+										type="textarea"
+										rows="3"
+										placeholder="State the next actions the student should take."
+										:model-value="feedbackForm.summary.next_steps"
+										@update:modelValue="feedbackForm.summary.next_steps = String($event || '')"
+									/>
+								</div>
+							</div>
+
+							<div
+								class="mt-4 flex items-center justify-between gap-3 border-t border-border/60 pt-4"
+							>
+								<p class="text-xs text-ink/45">
+									Save one bounded draft for this selected submission version after updating
+									summary text or anchored comments.
+								</p>
+								<button
+									type="button"
+									class="if-button if-button--primary"
+									:disabled="feedbackBusy || !feedbackDraftDirty || !canSaveFeedbackDraft"
+									@click="emitSaveFeedbackDraft"
+								>
+									{{ feedbackBusy ? 'Saving…' : 'Save Feedback Draft' }}
+								</button>
 							</div>
 						</div>
 					</div>
@@ -648,6 +770,75 @@
 									{{ formatPoints(criterion.points) }}
 								</span>
 							</div>
+						</div>
+					</div>
+
+					<div
+						v-if="drawer.selected_submission"
+						class="rounded-2xl border border-border/70 bg-white p-4"
+					>
+						<div class="flex flex-wrap items-start justify-between gap-3">
+							<div>
+								<h3 class="text-sm font-semibold text-ink">Assessment Publication Channels</h3>
+								<p class="mt-1 text-sm text-ink/60">
+									These explicit feedback and grade visibility states are stored per selected
+									submission version. Current student/guardian portals still follow the legacy
+									outcome release path until the feedback navigator lands.
+								</p>
+							</div>
+							<Badge
+								v-if="drawer.feedback_workspace?.publication.derived_from_legacy_outcome"
+								variant="subtle"
+							>
+								Derived from legacy release
+							</Badge>
+						</div>
+
+						<div class="mt-4 grid gap-4 md:grid-cols-2">
+							<div class="space-y-1.5">
+								<label class="block text-xs font-semibold uppercase tracking-[0.16em] text-ink/45">
+									Feedback Visibility
+								</label>
+								<FormControl
+									type="select"
+									:options="publicationOptions"
+									option-label="label"
+									option-value="value"
+									:model-value="feedbackForm.publication.feedback_visibility"
+									@update:modelValue="onPublicationVisibilityChanged('feedback', $event)"
+								/>
+							</div>
+
+							<div class="space-y-1.5">
+								<label class="block text-xs font-semibold uppercase tracking-[0.16em] text-ink/45">
+									Grade Visibility
+								</label>
+								<FormControl
+									type="select"
+									:options="publicationOptions"
+									option-label="label"
+									option-value="value"
+									:model-value="feedbackForm.publication.grade_visibility"
+									@update:modelValue="onPublicationVisibilityChanged('grade', $event)"
+								/>
+							</div>
+						</div>
+
+						<div
+							class="mt-4 flex items-center justify-between gap-3 border-t border-border/60 pt-4"
+						>
+							<p class="text-xs text-ink/45">
+								Stored channel state is audit-friendly and separate from the current one-bit
+								outcome release.
+							</p>
+							<button
+								type="button"
+								class="if-button if-button--secondary"
+								:disabled="publicationBusy || !publicationDirty || !canSaveFeedbackPublication"
+								@click="emitSaveFeedbackPublication"
+							>
+								{{ publicationBusy ? 'Saving…' : 'Save Publication State' }}
+							</button>
 						</div>
 					</div>
 
@@ -723,6 +914,52 @@
 
 				<div v-else-if="currentTab === 'review'" class="space-y-3">
 					<div
+						v-if="drawer.allowed_actions.can_moderate"
+						class="rounded-2xl border border-border/70 bg-white p-4"
+					>
+						<div class="flex flex-wrap items-start justify-between gap-3">
+							<div>
+								<h3 class="text-sm font-semibold text-ink">Moderation Actions</h3>
+								<p class="mt-1 text-sm text-ink/60">
+									Approve or Adjust applies the current My Marking values as the moderated outcome.
+									Return to Grader leaves official truth unchanged and sends the outcome back to In
+									Progress.
+								</p>
+								<p v-if="isViewingHistoricalSubmission" class="mt-2 text-sm text-clay">
+									You are reviewing {{ selectedSubmissionLabel }}. Moderation actions still target
+									{{ latestSubmissionLabel }}.
+								</p>
+							</div>
+							<div class="flex flex-wrap gap-2">
+								<button
+									type="button"
+									class="if-button if-button--secondary"
+									:disabled="moderationBusy"
+									@click="emitModeratorAction('Approve')"
+								>
+									{{ moderationBusy ? 'Updating…' : 'Approve' }}
+								</button>
+								<button
+									type="button"
+									class="if-button if-button--secondary"
+									:disabled="moderationBusy"
+									@click="emitModeratorAction('Adjust')"
+								>
+									{{ moderationBusy ? 'Updating…' : 'Adjust' }}
+								</button>
+								<button
+									type="button"
+									class="if-button if-button--primary"
+									:disabled="moderationBusy"
+									@click="emitModeratorAction('Return to Grader')"
+								>
+									{{ moderationBusy ? 'Updating…' : 'Return to Grader' }}
+								</button>
+							</div>
+						</div>
+					</div>
+
+					<div
 						v-if="!drawer.moderation_history.length"
 						class="rounded-2xl border border-dashed border-border/70 bg-gray-50/40 p-6 text-sm text-ink/60"
 					>
@@ -749,6 +986,10 @@
 import { computed, reactive, ref, watch } from 'vue';
 import { Badge, FeatherIcon, FormControl, Spinner } from 'frappe-ui';
 
+import type {
+	FeedbackVisibility,
+	FeedbackWorkspaceItem,
+} from '@/types/contracts/gradebook/feedback_workspace';
 import type { Request as UpdateTaskStudentRequest } from '@/types/contracts/gradebook/update_task_student';
 import type { Response as GetDrawerResponse } from '@/types/contracts/gradebook/get_drawer';
 import GradebookPdfWorkspace from './GradebookPdfWorkspace.vue';
@@ -795,8 +1036,11 @@ const props = defineProps<{
 	drawer: GetDrawerResponse | null;
 	errorMessage?: string | null;
 	markingBusy?: boolean;
+	feedbackBusy?: boolean;
+	publicationBusy?: boolean;
 	submissionSeenBusy?: boolean;
 	publishBusy?: boolean;
+	moderationBusy?: boolean;
 	showSequenceControls?: boolean;
 	canGoPrevious?: boolean;
 	canGoNext?: boolean;
@@ -807,6 +1051,36 @@ const emit = defineEmits<{
 	(e: 'close'): void;
 	(e: 'switch-version', payload: { submissionId?: string | null; version?: number | null }): void;
 	(e: 'save-marking', payload: UpdateTaskStudentRequest['updates']): void;
+	(
+		e: 'save-feedback-draft',
+		payload: {
+			outcome_id: string;
+			submission_id: string;
+			summary: {
+				overall: string;
+				strengths: string;
+				improvements: string;
+				next_steps: string;
+			};
+			items: FeedbackWorkspaceItem[];
+		}
+	): void;
+	(
+		e: 'save-feedback-publication',
+		payload: {
+			outcome_id: string;
+			submission_id: string;
+			feedback_visibility: FeedbackVisibility;
+			grade_visibility: FeedbackVisibility;
+		}
+	): void;
+	(
+		e: 'moderator-action',
+		payload: {
+			action: 'Approve' | 'Adjust' | 'Return to Grader';
+			updates: UpdateTaskStudentRequest['updates'];
+		}
+	): void;
 	(e: 'mark-submission-seen'): void;
 	(e: 'publish'): void;
 	(e: 'unpublish'): void;
@@ -823,6 +1097,12 @@ const statusOptions = [
 	{ label: 'Not Applicable', value: 'Not Applicable' },
 ];
 
+const publicationOptions: Array<{ label: string; value: FeedbackVisibility }> = [
+	{ label: 'Hidden', value: 'hidden' },
+	{ label: 'Student only', value: 'student' },
+	{ label: 'Student and guardian', value: 'student_and_guardian' },
+];
+
 const currentTab = ref<DrawerTab>('marking');
 const form = reactive({
 	status: 'Not Started',
@@ -832,6 +1112,21 @@ const form = reactive({
 	criteria: [] as CriterionFormRow[],
 });
 const baseline = ref('');
+const feedbackForm = reactive({
+	summary: {
+		overall: '',
+		strengths: '',
+		improvements: '',
+		next_steps: '',
+	},
+	items: [] as FeedbackWorkspaceItem[],
+	publication: {
+		feedback_visibility: 'hidden' as FeedbackVisibility,
+		grade_visibility: 'hidden' as FeedbackVisibility,
+	},
+});
+const feedbackDraftBaseline = ref('');
+const publicationBaseline = ref('');
 
 const visibleTabs = computed(() => {
 	const base = [
@@ -847,11 +1142,50 @@ const visibleTabs = computed(() => {
 });
 
 const isDirty = computed(() => baseline.value !== serializeCurrentForm());
+const feedbackDraftDirty = computed(
+	() =>
+		feedbackDraftBaseline.value !==
+		JSON.stringify({
+			summary: feedbackForm.summary,
+			items: feedbackForm.items,
+		})
+);
+const publicationDirty = computed(
+	() =>
+		publicationBaseline.value !==
+		JSON.stringify({
+			feedback_visibility: feedbackForm.publication.feedback_visibility,
+			grade_visibility: feedbackForm.publication.grade_visibility,
+		})
+);
+const canSaveFeedbackDraft = computed(
+	() =>
+		Boolean(props.drawer?.selected_submission?.submission_id) &&
+		Boolean(props.drawer?.allowed_actions.can_edit_feedback)
+);
+const canSaveFeedbackPublication = computed(
+	() =>
+		Boolean(props.drawer?.selected_submission?.submission_id) &&
+		Boolean(props.drawer?.allowed_actions.can_manage_feedback_publication)
+);
 
 const selectedSubmissionLabel = computed(() => {
 	const row = props.drawer?.selected_submission;
 	if (!row) return 'No digital submission';
 	return `Version ${row.version}${row.is_stub ? ' (stub)' : ''}`;
+});
+
+const latestSubmissionLabel = computed(() => {
+	const row = props.drawer?.latest_submission;
+	if (!row) return 'the latest submission';
+	return `Version ${row.version}${row.is_stub ? ' (stub)' : ''}`;
+});
+
+const isViewingHistoricalSubmission = computed(() => {
+	const selected = props.drawer?.selected_submission;
+	const latest = props.drawer?.latest_submission;
+	if (!selected || !latest) return false;
+	return selected.submission_id !== latest.submission_id;
 });
 
 watch(visibleTabs, tabs => {
@@ -890,6 +1224,7 @@ function resetForm(drawer: GetDrawerResponse | null) {
 	);
 	form.criteria = buildCriterionFormRows(drawer);
 	baseline.value = serializeCurrentForm();
+	resetFeedbackForm(drawer);
 }
 
 function buildCriterionFormRows(drawer: GetDrawerResponse): CriterionFormRow[] {
@@ -936,6 +1271,33 @@ function serializeCurrentForm() {
 	});
 }
 
+function resetFeedbackForm(drawer: GetDrawerResponse | null) {
+	const workspace = drawer?.feedback_workspace;
+	feedbackForm.summary.overall = workspace?.summary.overall || '';
+	feedbackForm.summary.strengths = workspace?.summary.strengths || '';
+	feedbackForm.summary.improvements = workspace?.summary.improvements || '';
+	feedbackForm.summary.next_steps = workspace?.summary.next_steps || '';
+	feedbackForm.items = cloneFeedbackItems(workspace?.items || []);
+	feedbackForm.publication.feedback_visibility =
+		workspace?.publication.feedback_visibility || 'hidden';
+	feedbackForm.publication.grade_visibility = workspace?.publication.grade_visibility || 'hidden';
+	feedbackDraftBaseline.value = JSON.stringify({
+		summary: feedbackForm.summary,
+		items: feedbackForm.items,
+	});
+	publicationBaseline.value = JSON.stringify({
+		feedback_visibility: feedbackForm.publication.feedback_visibility,
+		grade_visibility: feedbackForm.publication.grade_visibility,
+	});
+}
+
+function cloneFeedbackItems(items: FeedbackWorkspaceItem[]): FeedbackWorkspaceItem[] {
+	return items.map(item => ({
+		...item,
+		anchor: JSON.parse(JSON.stringify(item.anchor)),
+	}));
+}
+
 function emitVersion(row: NonNullable<GetDrawerResponse['latest_submission']>) {
 	emit('switch-version', {
 		submissionId: row.submission_id,
@@ -944,9 +1306,58 @@ function emitVersion(row: NonNullable<GetDrawerResponse['latest_submission']>) {
 }
 
 function emitSaveMarking() {
+	emit('save-marking', buildMarkingPayload());
+}
+
+function emitSaveFeedbackDraft() {
+	const outcomeId = props.drawer?.outcome.outcome_id;
+	const submissionId = props.drawer?.selected_submission?.submission_id;
+	if (!outcomeId || !submissionId) return;
+	emit('save-feedback-draft', {
+		outcome_id: outcomeId,
+		submission_id: submissionId,
+		summary: {
+			overall: feedbackForm.summary.overall,
+			strengths: feedbackForm.summary.strengths,
+			improvements: feedbackForm.summary.improvements,
+			next_steps: feedbackForm.summary.next_steps,
+		},
+		items: cloneFeedbackItems(feedbackForm.items),
+	});
+}
+
+function emitSaveFeedbackPublication() {
+	const outcomeId = props.drawer?.outcome.outcome_id;
+	const submissionId = props.drawer?.selected_submission?.submission_id;
+	if (!outcomeId || !submissionId) return;
+	emit('save-feedback-publication', {
+		outcome_id: outcomeId,
+		submission_id: submissionId,
+		feedback_visibility: feedbackForm.publication.feedback_visibility,
+		grade_visibility: feedbackForm.publication.grade_visibility,
+	});
+}
+
+function normalizePublicationVisibility(value: unknown): FeedbackVisibility {
+	const resolved = String(value || 'hidden').trim();
+	if (resolved === 'student' || resolved === 'student_and_guardian' || resolved === 'hidden') {
+		return resolved;
+	}
+	return 'hidden';
+}
+
+function onPublicationVisibilityChanged(channel: 'feedback' | 'grade', value: unknown) {
+	if (channel === 'feedback') {
+		feedbackForm.publication.feedback_visibility = normalizePublicationVisibility(value);
+		return;
+	}
+	feedbackForm.publication.grade_visibility = normalizePublicationVisibility(value);
+}
+
+function buildMarkingPayload(): UpdateTaskStudentRequest['updates'] {
 	const payload: UpdateTaskStudentRequest['updates'] = {};
 	const delivery = props.drawer?.delivery;
-	if (!delivery) return;
+	if (!delivery) return payload;
 
 	if (showsStatusControl(delivery) && !props.drawer?.outcome.is_published) {
 		payload.status = form.status || null;
@@ -973,7 +1384,14 @@ function emitSaveMarking() {
 			payload.criteria_scores = criteriaScores;
 		}
 	}
-	emit('save-marking', payload);
+	return payload;
+}
+
+function emitModeratorAction(action: 'Approve' | 'Adjust' | 'Return to Grader') {
+	emit('moderator-action', {
+		action,
+		updates: buildMarkingPayload(),
+	});
 }
 
 function onPointsChanged(value: unknown) {
@@ -1070,6 +1488,10 @@ function annotationModeLabel(readiness: AnnotationReadinessPayload): string {
 
 function annotationPreviewActionLabel(readiness: AnnotationReadinessPayload): string {
 	return readiness.preview_status === 'ready' ? 'Open preview' : 'Try preview';
+}
+
+function onFeedbackItemsChanged(items: FeedbackWorkspaceItem[]) {
+	feedbackForm.items = cloneFeedbackItems(items);
 }
 
 function onImgError(event: Event) {

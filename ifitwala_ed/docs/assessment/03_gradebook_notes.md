@@ -150,10 +150,14 @@ Current implementation baseline for the Evidence tab:
 
 - drawer bootstrap returns one **selected submission** payload plus a bounded **submission version summary** list
 - if no explicit version is requested, the selected submission defaults to the latest version
+- if an older evidence version is selected for review, current marking and moderation writes still target the latest submission version for that outcome
 - attachment rows in the selected submission resolve to server-owned `preview_url` / `open_url` routes; the SPA must never guess private file paths
 - attachment rows now also carry preview status plus file-type hints from governed Drive metadata where available
 - selected submission payload now includes a server-owned annotation-readiness summary for the currently selected version
-- governed PDF evidence now renders inside an Ifitwala-owned `pdf.js` drawer workspace over those server-owned preview/open routes, with page navigation, zoom, and session-local point / area / page draft annotation state on the governed source PDF
+- drawer bootstrap now also returns one bounded **feedback workspace** block for the selected submission version, including summary text, structured anchored items, and explicit feedback/grade publication state
+- feedback draft and publication changes now use named drawer mutations: `save_feedback_draft` and `save_feedback_publication`
+- current runtime moderation is now routed through named server mutations from the drawer Review tab: `Approve`, `Adjust`, and `Return to Grader`
+- governed PDF evidence now renders inside an Ifitwala-owned `pdf.js` drawer workspace over those server-owned preview/open routes, with page navigation, zoom, and version-bound point / area / page draft feedback anchors on the governed source PDF
 - Evidence tab now distinguishes:
   - governed PDF reduced-review state
   - preview-unavailable PDF fallback state
@@ -161,8 +165,8 @@ Current implementation baseline for the Evidence tab:
 
 Current partial annotation-readiness baseline:
 
-- current runtime can render governed source PDFs inside the drawer, support session-local point / area / page draft annotations there, and fall back to preview/open actions when the source render is unavailable
-- current runtime does **not** yet support text-anchored comments, OCR-driven upgrades, or structured feedback records
+- current runtime can render governed source PDFs inside the drawer, support point / area / page structured feedback drafts for the selected submission version there, and fall back to preview/open actions when the source render is unavailable
+- current runtime does **not** yet support text-anchored comments, OCR-driven upgrades, student feedback navigation, replies, or comment-bank insertion
 
 Future annotation contract for the drawer:
 
@@ -314,7 +318,7 @@ Finalization means: teacher commits an official outcome value.
 ### Flow H — Release / Return to Students
 
 Release is one explicit product action on the outcome today.
-For the current runtime, it means one shared student/family-visible release state.
+For the current portal runtime, it still means one shared student/family-visible release state.
 
 Canonical current contract:
 
@@ -331,6 +335,7 @@ Rules:
 - feedback and grade move through the same current release action
 - student and guardian share the same current release state
 - current runtime uses one `is_published` outcome state for release
+- the staff drawer now also stores explicit assessment-owned feedback and grade publication states per selected submission version, but those channel states are not yet consumed by student/guardian portals
 
 Locked target contract after the publication matrix ships:
 
@@ -636,6 +641,7 @@ If you want the next increment, I’ll write the exact modal copy (button labels
 
 - Autosave uses Draft Contributions, not Submissions. Draft save must never create evidence stubs and must never flip has_new_submission.
 - save_draft() is idempotent: it upserts the current user's draft for an outcome and returns the draft id.
+- current drawer saves should prefer named contribution mutations for marking and moderator review, while direct `update_task_student(...)` writes remain the compatibility path for status-only and assign-only outcome updates.
 
 ---
 
@@ -678,7 +684,7 @@ The system **must never expose**:
 
 All teacher-facing strings **must** come from translation keys.
 
-Current runtime still exposes one release action.
+Current runtime still exposes one portal release action.
 The release vocabulary below describes the target language once channel-based release ships.
 
 ### Canonical Teacher Vocabulary
