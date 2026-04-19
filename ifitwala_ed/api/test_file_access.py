@@ -676,7 +676,11 @@ class TestFileAccessUrlContracts(FrappeTestCase):
             patch("ifitwala_ed.api.file_access.frappe.db.get_value", side_effect=fake_get_value),
             patch("ifitwala_ed.api.file_access.check_audience_match", return_value=True),
             patch("ifitwala_ed.api.file_access.frappe.get_doc", return_value=comm_doc),
-            patch("ifitwala_ed.api.file_access._load_drive_access_callable", side_effect=fake_load),
+            patch("ifitwala_ed.api.file_access._load_drive_communications_callable", side_effect=fake_load),
+            patch(
+                "ifitwala_ed.api.file_access._load_drive_access_callable",
+                side_effect=AssertionError("generic Drive grant path should not be used"),
+            ),
         ):
             frappe.local.response = {}
             open_org_communication_attachment(
@@ -689,7 +693,7 @@ class TestFileAccessUrlContracts(FrappeTestCase):
             frappe.local.response.get("location"),
             "https://download.example.com/policy.pdf",
         )
-        self.assertEqual(grant_calls, ["issue_download_grant"])
+        self.assertEqual(grant_calls, ["issue_org_communication_attachment_download_grant"])
 
     def test_preview_org_communication_attachment_redirects_to_drive_preview_grant_when_ready(self):
         attachment_row = frappe._dict(
@@ -728,7 +732,11 @@ class TestFileAccessUrlContracts(FrappeTestCase):
             patch("ifitwala_ed.api.file_access.frappe.db.get_value", side_effect=fake_get_value),
             patch("ifitwala_ed.api.file_access.check_audience_match", return_value=True),
             patch("ifitwala_ed.api.file_access.frappe.get_doc", return_value=comm_doc),
-            patch("ifitwala_ed.api.file_access._load_drive_access_callable", side_effect=fake_load),
+            patch("ifitwala_ed.api.file_access._load_drive_communications_callable", side_effect=fake_load),
+            patch(
+                "ifitwala_ed.api.file_access._load_drive_access_callable",
+                side_effect=AssertionError("generic Drive grant path should not be used"),
+            ),
         ):
             frappe.local.response = {}
             preview_org_communication_attachment(
@@ -741,7 +749,66 @@ class TestFileAccessUrlContracts(FrappeTestCase):
             frappe.local.response.get("location"),
             "https://preview.example.com/policy.pdf",
         )
-        self.assertEqual(grant_calls, ["issue_preview_grant"])
+        self.assertEqual(grant_calls, ["issue_org_communication_attachment_preview_grant"])
+
+    def test_preview_org_communication_attachment_allows_guardian_via_org_communication_wrapper(self):
+        attachment_row = frappe._dict(
+            name="row-001",
+            file="/private/files/policy.png",
+            external_url=None,
+        )
+
+        class _CommDoc:
+            name = "COMM-0001"
+
+            def get(self, fieldname):
+                if fieldname == "attachments":
+                    return [attachment_row]
+                return []
+
+        comm_doc = _CommDoc()
+        grant_calls = []
+
+        def fake_get_value(doctype, filters=None, fieldname=None, as_dict=False):
+            if doctype == "Employee":
+                return None
+            if doctype == "Drive Binding":
+                return {"drive_file": "DRIVE-0001", "file": "FILE-0001"}
+            if doctype == "Drive File" and filters == "DRIVE-0001" and fieldname == "preview_status":
+                return "ready"
+            return None
+
+        def fake_load(attribute):
+            grant_calls.append(attribute)
+            return lambda **_kwargs: {"url": "https://preview.example.com/policy.png"}
+
+        with (
+            patch(
+                "ifitwala_ed.api.file_access._require_authenticated_user",
+                return_value="guardian@example.com",
+            ),
+            patch("ifitwala_ed.api.file_access.frappe.get_roles", return_value=["Guardian"]),
+            patch("ifitwala_ed.api.file_access.frappe.db.get_value", side_effect=fake_get_value),
+            patch("ifitwala_ed.api.file_access.check_audience_match", return_value=True),
+            patch("ifitwala_ed.api.file_access.frappe.get_doc", return_value=comm_doc),
+            patch("ifitwala_ed.api.file_access._load_drive_communications_callable", side_effect=fake_load),
+            patch(
+                "ifitwala_ed.api.file_access._load_drive_access_callable",
+                side_effect=AssertionError("generic Drive grant path should not be used"),
+            ),
+        ):
+            frappe.local.response = {}
+            preview_org_communication_attachment(
+                org_communication="COMM-0001",
+                row_name="row-001",
+            )
+
+        self.assertEqual(frappe.local.response.get("type"), "redirect")
+        self.assertEqual(
+            frappe.local.response.get("location"),
+            "https://preview.example.com/policy.png",
+        )
+        self.assertEqual(grant_calls, ["issue_org_communication_attachment_preview_grant"])
 
     def test_thumbnail_org_communication_attachment_uses_thumb_grant_and_reuses_cache(self):
         attachment_row = frappe._dict(
@@ -782,7 +849,7 @@ class TestFileAccessUrlContracts(FrappeTestCase):
             return None
 
         def fake_load(attribute):
-            self.assertEqual(attribute, "issue_preview_grant")
+            self.assertEqual(attribute, "issue_org_communication_attachment_preview_grant")
 
             def _grant(**kwargs):
                 grant_requests.append(kwargs)
@@ -797,7 +864,11 @@ class TestFileAccessUrlContracts(FrappeTestCase):
             patch("ifitwala_ed.api.file_access.check_audience_match", return_value=True),
             patch("ifitwala_ed.api.file_access.frappe.get_doc", return_value=comm_doc),
             patch("ifitwala_ed.api.file_access.frappe.cache", return_value=cache),
-            patch("ifitwala_ed.api.file_access._load_drive_access_callable", side_effect=fake_load),
+            patch("ifitwala_ed.api.file_access._load_drive_communications_callable", side_effect=fake_load),
+            patch(
+                "ifitwala_ed.api.file_access._load_drive_access_callable",
+                side_effect=AssertionError("generic Drive grant path should not be used"),
+            ),
         ):
             frappe.local.response = {}
             thumbnail_org_communication_attachment(
@@ -817,7 +888,7 @@ class TestFileAccessUrlContracts(FrappeTestCase):
 
         self.assertEqual(
             grant_requests,
-            [{"drive_file_id": "DRIVE-0001", "derivative_role": "thumb"}],
+            [{"org_communication": "COMM-0001", "row_name": "row-001", "derivative_role": "thumb"}],
         )
 
     def test_thumbnail_org_communication_attachment_cache_rotates_when_current_version_changes(self):
@@ -860,7 +931,7 @@ class TestFileAccessUrlContracts(FrappeTestCase):
             return None
 
         def fake_load(attribute):
-            self.assertEqual(attribute, "issue_preview_grant")
+            self.assertEqual(attribute, "issue_org_communication_attachment_preview_grant")
 
             def _grant(**kwargs):
                 grant_requests.append(kwargs)
@@ -875,7 +946,11 @@ class TestFileAccessUrlContracts(FrappeTestCase):
             patch("ifitwala_ed.api.file_access.check_audience_match", return_value=True),
             patch("ifitwala_ed.api.file_access.frappe.get_doc", return_value=comm_doc),
             patch("ifitwala_ed.api.file_access.frappe.cache", return_value=cache),
-            patch("ifitwala_ed.api.file_access._load_drive_access_callable", side_effect=fake_load),
+            patch("ifitwala_ed.api.file_access._load_drive_communications_callable", side_effect=fake_load),
+            patch(
+                "ifitwala_ed.api.file_access._load_drive_access_callable",
+                side_effect=AssertionError("generic Drive grant path should not be used"),
+            ),
         ):
             frappe.local.response = {}
             thumbnail_org_communication_attachment(
@@ -893,8 +968,8 @@ class TestFileAccessUrlContracts(FrappeTestCase):
         self.assertEqual(
             grant_requests,
             [
-                {"drive_file_id": "DRIVE-0001", "derivative_role": "thumb"},
-                {"drive_file_id": "DRIVE-0001", "derivative_role": "thumb"},
+                {"org_communication": "COMM-0001", "row_name": "row-001", "derivative_role": "thumb"},
+                {"org_communication": "COMM-0001", "row_name": "row-001", "derivative_role": "thumb"},
             ],
         )
 
@@ -945,8 +1020,12 @@ class TestFileAccessUrlContracts(FrappeTestCase):
                 return_value=True,
             ) as audience_match_mock,
             patch(
-                "ifitwala_ed.api.file_access._load_drive_access_callable",
+                "ifitwala_ed.api.file_access._load_drive_communications_callable",
                 return_value=lambda **_kwargs: {"url": "https://preview.example.com/policy.pdf"},
+            ),
+            patch(
+                "ifitwala_ed.api.file_access._load_drive_access_callable",
+                side_effect=AssertionError("generic Drive grant path should not be used"),
             ),
         ):
             frappe.local.response = {}
@@ -1011,7 +1090,11 @@ class TestFileAccessUrlContracts(FrappeTestCase):
             patch("ifitwala_ed.api.file_access.frappe.db.get_value", side_effect=fake_get_value),
             patch("ifitwala_ed.api.file_access.check_audience_match", return_value=True),
             patch("ifitwala_ed.api.file_access.frappe.get_doc", return_value=comm_doc),
-            patch("ifitwala_ed.api.file_access._load_drive_access_callable", side_effect=fake_load),
+            patch("ifitwala_ed.api.file_access._load_drive_communications_callable", side_effect=fake_load),
+            patch(
+                "ifitwala_ed.api.file_access._load_drive_access_callable",
+                side_effect=AssertionError("generic Drive grant path should not be used"),
+            ),
         ):
             frappe.local.response = {}
             preview_org_communication_attachment(
@@ -1024,7 +1107,7 @@ class TestFileAccessUrlContracts(FrappeTestCase):
             frappe.local.response.get("location"),
             "https://download.example.com/policy.pdf",
         )
-        self.assertEqual(grant_calls, ["issue_download_grant"])
+        self.assertEqual(grant_calls, ["issue_org_communication_attachment_download_grant"])
 
     def test_open_org_communication_attachment_streams_inline_when_target_is_raw_private_path(self):
         attachment_row = frappe._dict(
@@ -1063,7 +1146,7 @@ class TestFileAccessUrlContracts(FrappeTestCase):
             patch("ifitwala_ed.api.file_access.check_audience_match", return_value=True),
             patch("ifitwala_ed.api.file_access.frappe.get_doc", return_value=comm_doc),
             patch(
-                "ifitwala_ed.api.file_access._resolve_drive_file_grant_target_url",
+                "ifitwala_ed.api.file_access._resolve_org_communication_attachment_grant_target_url",
                 return_value="/private/files/policy.pdf",
             ),
             patch("ifitwala_ed.api.file_access._resolve_any_file_row", return_value=file_row),
@@ -1119,7 +1202,7 @@ class TestFileAccessUrlContracts(FrappeTestCase):
             patch("ifitwala_ed.api.file_access.check_audience_match", return_value=True),
             patch("ifitwala_ed.api.file_access.frappe.get_doc", return_value=comm_doc),
             patch(
-                "ifitwala_ed.api.file_access._resolve_drive_file_grant_target_url",
+                "ifitwala_ed.api.file_access._resolve_org_communication_attachment_grant_target_url",
                 return_value="/private/files/policy.png",
             ),
             patch("ifitwala_ed.api.file_access._resolve_any_file_row", return_value=file_row),

@@ -257,6 +257,98 @@ class TestFileAccessUnit(TestCase):
         self.assertEqual(len(cache_writes), 1)
         self.assertEqual(cache_writes[0][1], "https://thumb.example.com/fresh.webp")
 
+    def test_request_org_communication_attachment_grant_prefers_communications_wrapper(self):
+        with _file_access_module() as (file_access, _frappe):
+            grant_calls: list[tuple[str, dict]] = []
+            generic_calls: list[tuple[str, dict]] = []
+
+            def fake_communications_loader(attribute):
+                def _grant(**kwargs):
+                    grant_calls.append((attribute, kwargs))
+                    return {"url": "https://preview.example.com/policy.png"}
+
+                return _grant
+
+            def fake_generic_loader(attribute):
+                def _grant(**kwargs):
+                    generic_calls.append((attribute, kwargs))
+                    return {"url": "https://generic.example.com/policy.png"}
+
+                return _grant
+
+            file_access._load_drive_communications_callable = fake_communications_loader
+            file_access._load_drive_access_callable = fake_generic_loader
+
+            grant = file_access._request_org_communication_attachment_grant(
+                method_name="issue_org_communication_attachment_preview_grant",
+                org_communication="COMM-0001",
+                row_name="row-001",
+                drive_file_id="DRIVE-FILE-1",
+                derivative_role="thumb",
+            )
+
+        self.assertEqual(grant, {"url": "https://preview.example.com/policy.png"})
+        self.assertEqual(
+            grant_calls,
+            [
+                (
+                    "issue_org_communication_attachment_preview_grant",
+                    {
+                        "org_communication": "COMM-0001",
+                        "row_name": "row-001",
+                        "derivative_role": "thumb",
+                    },
+                )
+            ],
+        )
+        self.assertEqual(generic_calls, [])
+
+    def test_resolve_org_communication_attachment_grant_target_url_uses_preview_wrapper_when_ready(self):
+        with _file_access_module() as (file_access, frappe):
+            grant_calls: list[tuple[str, dict]] = []
+
+            def fake_get_value(doctype, filters, fieldname=None, as_dict=False):
+                if doctype == "Drive File":
+                    self.assertEqual(filters, "DRIVE-FILE-1")
+                    self.assertEqual(fieldname, "preview_status")
+                    return "ready"
+                self.fail(f"Unexpected get_value call: {(doctype, filters, fieldname, as_dict)}")
+
+            def fake_communications_loader(attribute):
+                def _grant(**kwargs):
+                    grant_calls.append((attribute, kwargs))
+                    return {"url": "https://preview.example.com/policy.pdf"}
+
+                return _grant
+
+            frappe.db.get_value = fake_get_value
+            file_access._load_drive_communications_callable = fake_communications_loader
+            file_access._load_drive_access_callable = lambda attribute: self.fail(
+                f"Generic Drive grant path should not be used: {attribute}"
+            )
+
+            target_url = file_access._resolve_org_communication_attachment_grant_target_url(
+                org_communication="COMM-0001",
+                row_name="row-001",
+                drive_file_id="DRIVE-FILE-1",
+                file_id="FILE-0001",
+                prefer_preview=True,
+            )
+
+        self.assertEqual(target_url, "https://preview.example.com/policy.pdf")
+        self.assertEqual(
+            grant_calls,
+            [
+                (
+                    "issue_org_communication_attachment_preview_grant",
+                    {
+                        "org_communication": "COMM-0001",
+                        "row_name": "row-001",
+                    },
+                )
+            ],
+        )
+
     def test_thumbnail_academic_file_fails_closed_without_ready_thumb_target(self):
         with _file_access_module() as (file_access, frappe):
             thumbnail_requests: list[dict] = []

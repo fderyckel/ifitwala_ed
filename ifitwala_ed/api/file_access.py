@@ -1450,9 +1450,11 @@ def open_org_communication_attachment(
     org_communication: str | None = None,
     row_name: str | None = None,
 ):
+    resolved_org_communication = str(org_communication or "").strip()
+    resolved_row_name = str(row_name or "").strip()
     doc, target_row = _require_org_communication_attachment_context(
-        str(org_communication or "").strip(),
-        str(row_name or "").strip(),
+        resolved_org_communication,
+        resolved_row_name,
     )
 
     external_url = str(getattr(target_row, "external_url", "") or "").strip()
@@ -1465,8 +1467,10 @@ def open_org_communication_attachment(
     if not file_url:
         frappe.throw(_("Attachment file is missing."), frappe.DoesNotExistError)
 
-    drive_file_id, file_id = _resolve_org_communication_drive_file(doc.name, str(row_name or "").strip())
-    target_url = _resolve_drive_file_grant_target_url(
+    drive_file_id, file_id = _resolve_org_communication_drive_file(doc.name, resolved_row_name)
+    target_url = _resolve_org_communication_attachment_grant_target_url(
+        org_communication=doc.name,
+        row_name=resolved_row_name,
         drive_file_id=drive_file_id,
         file_id=file_id,
         prefer_preview=False,
@@ -1482,9 +1486,11 @@ def preview_org_communication_attachment(
     org_communication: str | None = None,
     row_name: str | None = None,
 ):
+    resolved_org_communication = str(org_communication or "").strip()
+    resolved_row_name = str(row_name or "").strip()
     doc, target_row = _require_org_communication_attachment_context(
-        str(org_communication or "").strip(),
-        str(row_name or "").strip(),
+        resolved_org_communication,
+        resolved_row_name,
     )
 
     if str(getattr(target_row, "external_url", "") or "").strip():
@@ -1494,8 +1500,10 @@ def preview_org_communication_attachment(
     if not file_url:
         frappe.throw(_("Attachment file is missing."), frappe.DoesNotExistError)
 
-    drive_file_id, file_id = _resolve_org_communication_drive_file(doc.name, str(row_name or "").strip())
-    target_url = _resolve_drive_file_grant_target_url(
+    drive_file_id, file_id = _resolve_org_communication_drive_file(doc.name, resolved_row_name)
+    target_url = _resolve_org_communication_attachment_grant_target_url(
+        org_communication=doc.name,
+        row_name=resolved_row_name,
         drive_file_id=drive_file_id,
         file_id=file_id,
         prefer_preview=True,
@@ -1511,9 +1519,11 @@ def thumbnail_org_communication_attachment(
     org_communication: str | None = None,
     row_name: str | None = None,
 ):
+    resolved_org_communication = str(org_communication or "").strip()
+    resolved_row_name = str(row_name or "").strip()
     doc, target_row = _require_org_communication_attachment_context(
-        str(org_communication or "").strip(),
-        str(row_name or "").strip(),
+        resolved_org_communication,
+        resolved_row_name,
     )
 
     if str(getattr(target_row, "external_url", "") or "").strip():
@@ -1523,12 +1533,21 @@ def thumbnail_org_communication_attachment(
     if not file_url:
         frappe.throw(_("Attachment file is missing."), frappe.DoesNotExistError)
 
-    drive_file_id, file_id = _resolve_org_communication_drive_file(doc.name, str(row_name or "").strip())
+    drive_file_id, file_id = _resolve_org_communication_drive_file(doc.name, resolved_row_name)
     target_url = _resolve_cached_thumbnail_target_url(
         drive_file_id=drive_file_id,
         file_id=file_id,
-        surface_parts=["org_communication", doc.name, str(row_name or "").strip()],
+        surface_parts=["org_communication", doc.name, resolved_row_name],
         strict_derivative=True,
+        target_resolver=lambda: _resolve_org_communication_attachment_grant_target_url(
+            org_communication=doc.name,
+            row_name=resolved_row_name,
+            drive_file_id=drive_file_id,
+            file_id=file_id,
+            prefer_preview=True,
+            derivative_role="thumb",
+            strict_derivative=True,
+        ),
     )
     if target_url:
         _set_thumbnail_cache_headers()

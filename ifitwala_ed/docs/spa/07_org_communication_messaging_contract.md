@@ -97,8 +97,9 @@ Rules:
 3. Admissions endpoints remain context-specific wrappers over the same canonical entry/read-state model.
 4. `get_org_communication_item` must expose full-body HTML as `message_html`, not `message`, so the SPA transport envelope unwrapping cannot collide with the domain payload.
 5. `get_org_communication_item` may expose attachment rows for archive/detail rendering, but governed file rows must be returned with server-owned action URLs such as `open_url`, optional `preview_url`, and optional `thumbnail_url` only when a ready thumbnail derivative exists, never raw private paths.
-6. Archive/detail surfaces must prefer `thumbnail_url` for inline image cards. When that thumbnail is missing but `preview_status` is `ready`, the SPA may use `preview_url` as the inline fallback because it resolves the governed preview derivative, not the original file. Otherwise the attachment must stay action-led.
-7. Full-width first-page PDF previews still come from `preview_url` only when `preview_status` reports a ready preview asset; link rows and non-ready PDFs must stay action-led rather than attempting generic web-page preview scraping.
+6. For student and guardian portals, those Ed-owned attachment routes remain the authorization boundary. Drive grant issuance must reuse the Org Communication-specific server wrapper after Ed audience authorization rather than relying on direct `Org Communication` doctype role permissions on the end user.
+7. Archive/detail surfaces must prefer `thumbnail_url` for inline image cards. When that thumbnail is missing but `preview_status` is `ready`, the SPA may use `preview_url` as the inline fallback because it resolves the governed preview derivative, not the original file. Otherwise the attachment must stay action-led.
+8. Full-width first-page PDF previews still come from `preview_url` only when `preview_status` reports a ready preview asset; link rows and non-ready PDFs must stay action-led rather than attempting generic web-page preview scraping.
 
 ## 3. Surface Matrix
 
