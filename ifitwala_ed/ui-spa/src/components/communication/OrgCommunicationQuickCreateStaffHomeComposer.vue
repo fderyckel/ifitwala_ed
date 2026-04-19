@@ -16,7 +16,7 @@
 				</div>
 
 				<div
-					class="if-org-communication-scope-grid if-org-communication-core-scope-grid mt-4 grid grid-cols-1 gap-4 md:grid-cols-2"
+					class="if-org-communication-scope-grid if-org-communication-core-scope-grid mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2"
 				>
 					<div class="space-y-1">
 						<label class="type-label">Organization</label>
@@ -61,7 +61,7 @@
 				</div>
 
 				<div
-					class="if-org-communication-audience-preset-grid mt-4 grid grid-cols-1 gap-3 md:grid-cols-2"
+					class="if-org-communication-audience-preset-grid mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2"
 				>
 					<button
 						v-for="preset in audiencePresets"

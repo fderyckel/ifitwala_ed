@@ -774,7 +774,7 @@
 					</div>
 
 					<div
-						v-if="drawer.selected_submission"
+						v-if="showPublicationSection"
 						class="rounded-2xl border border-border/70 bg-white p-4"
 					>
 						<div class="flex flex-wrap items-start justify-between gap-3">
@@ -782,8 +782,12 @@
 								<h3 class="text-sm font-semibold text-ink">Assessment Publication Channels</h3>
 								<p class="mt-1 text-sm text-ink/60">
 									These explicit feedback and grade visibility states are stored per selected
-									submission version. Current student/guardian portals still follow the legacy
-									outcome release path until the feedback navigator lands.
+									submission version.
+									<span v-if="publicationContextMissing">
+										Select a submission version to change them.
+									</span>
+									Current student/guardian portals still follow the legacy outcome release path
+									until the feedback navigator lands.
 								</p>
 							</div>
 							<Badge
@@ -805,6 +809,7 @@
 									option-label="label"
 									option-value="value"
 									:model-value="feedbackForm.publication.feedback_visibility"
+									:disabled="publicationControlsDisabled"
 									@update:modelValue="onPublicationVisibilityChanged('feedback', $event)"
 								/>
 							</div>
@@ -819,6 +824,7 @@
 									option-label="label"
 									option-value="value"
 									:model-value="feedbackForm.publication.grade_visibility"
+									:disabled="publicationControlsDisabled"
 									@update:modelValue="onPublicationVisibilityChanged('grade', $event)"
 								/>
 							</div>
@@ -1167,6 +1173,21 @@ const canSaveFeedbackPublication = computed(
 	() =>
 		Boolean(props.drawer?.selected_submission?.submission_id) &&
 		Boolean(props.drawer?.allowed_actions.can_manage_feedback_publication)
+);
+const showPublicationSection = computed(
+	() =>
+		Boolean(props.drawer?.allowed_actions.can_manage_feedback_publication) ||
+		Boolean(props.drawer?.feedback_workspace) ||
+		Boolean(props.drawer?.selected_submission)
+);
+const publicationContextMissing = computed(
+	() => !props.drawer?.selected_submission?.submission_id
+);
+const publicationControlsDisabled = computed(
+	() =>
+		Boolean(props.publicationBusy) ||
+		publicationContextMissing.value ||
+		!canSaveFeedbackPublication.value
 );
 
 const selectedSubmissionLabel = computed(() => {

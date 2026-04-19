@@ -638,6 +638,84 @@ function currentDrawerSelection() {
 	};
 }
 
+type StudentRowPatch = {
+	status?: string | null;
+	procedural_status?: string | null;
+	mark_awarded?: number | null;
+	feedback?: string | null;
+	complete?: boolean | 0 | 1 | null;
+	visible_to_student?: boolean | 0 | 1 | null;
+	visible_to_guardian?: boolean | 0 | 1 | null;
+};
+
+function patchStudentRow(outcomeId: string, patch: StudentRowPatch) {
+	const row = gradebook.students.find(student => student.task_student === outcomeId);
+	if (!row) return;
+	if (Object.prototype.hasOwnProperty.call(patch, 'status')) {
+		row.status = patch.status ?? null;
+	}
+	if (Object.prototype.hasOwnProperty.call(patch, 'procedural_status')) {
+		row.procedural_status = patch.procedural_status ?? null;
+	}
+	if (Object.prototype.hasOwnProperty.call(patch, 'mark_awarded')) {
+		row.mark_awarded = patch.mark_awarded ?? null;
+	}
+	if (Object.prototype.hasOwnProperty.call(patch, 'feedback')) {
+		row.feedback = patch.feedback ?? null;
+	}
+	if (Object.prototype.hasOwnProperty.call(patch, 'complete')) {
+		row.complete = patch.complete ? 1 : 0;
+	}
+	if (Object.prototype.hasOwnProperty.call(patch, 'visible_to_student')) {
+		row.visible_to_student = patch.visible_to_student ? 1 : 0;
+	}
+	if (Object.prototype.hasOwnProperty.call(patch, 'visible_to_guardian')) {
+		row.visible_to_guardian = patch.visible_to_guardian ? 1 : 0;
+	}
+}
+
+function applyOutcomeUpdateToStudentRow(
+	outcomeId: string,
+	outcomeUpdate: Record<string, unknown> | null | undefined
+) {
+	if (!outcomeUpdate) return;
+	const patch: StudentRowPatch = {};
+	if (typeof outcomeUpdate.grading_status === 'string') {
+		patch.status = outcomeUpdate.grading_status;
+	}
+	if (
+		typeof outcomeUpdate.procedural_status === 'string' ||
+		outcomeUpdate.procedural_status === null
+	) {
+		patch.procedural_status =
+			(outcomeUpdate.procedural_status as string | null | undefined) ?? null;
+	}
+	if (typeof outcomeUpdate.official_score === 'number' || outcomeUpdate.official_score === null) {
+		patch.mark_awarded = (outcomeUpdate.official_score as number | null | undefined) ?? null;
+	}
+	if (
+		typeof outcomeUpdate.official_feedback === 'string' ||
+		outcomeUpdate.official_feedback === null
+	) {
+		patch.feedback = (outcomeUpdate.official_feedback as string | null | undefined) ?? null;
+	}
+	if (
+		typeof outcomeUpdate.is_complete === 'number' ||
+		typeof outcomeUpdate.is_complete === 'boolean'
+	) {
+		patch.complete = Boolean(outcomeUpdate.is_complete);
+	}
+	if (
+		typeof outcomeUpdate.is_published === 'number' ||
+		typeof outcomeUpdate.is_published === 'boolean'
+	) {
+		const isPublished = Boolean(outcomeUpdate.is_published);
+		patch.visible_to_student = isPublished;
+		patch.visible_to_guardian = isPublished;
+	}
+	patchStudentRow(outcomeId, patch);
+}
+
 function hasOwnUpdateKey<T extends object, K extends keyof T>(value: T, key: K): boolean {
 	return Object.prototype.hasOwnProperty.call(value, key);
 }
@@ -728,17 +806,40 @@ async function saveDrawerMarking(updates: UpdateTaskStudentRequest['updates']) {
 	try {
 		const contributionRequest = buildContributionRequest(drawer.value, updates);
 		const directUpdates = buildDirectOutcomeUpdates(drawer.value, updates);
+		let contributionResponse: Awaited<
+			ReturnType<typeof gradebookService.submitContribution>
+		> | null = null;
 		if (contributionRequest) {
-			await gradebookService.submitContribution(contributionRequest as SubmitContributionRequest);
+			contributionResponse = await gradebookService.submitContribution(
+				contributionRequest as SubmitContributionRequest
+			);
+			applyOutcomeUpdateToStudentRow(selectedOutcomeId.value, contributionResponse.outcome_update);
 		}
 		if (Object.keys(directUpdates).length) {
 			await gradebookService.updateTaskStudent({
 				task_student: selectedOutcomeId.value,
 				updates: directUpdates,
 			});
+			patchStudentRow(selectedOutcomeId.value, {
+				status: directUpdates.status ?? undefined,
+				complete:
+					typeof directUpdates.complete === 'boolean'
+						? directUpdates.complete
+						: directUpdates.complete == null
+							? undefined
+							: Boolean(directUpdates.complete),
+			});
+		}
+		if (hasOwnUpdateKey(updates, 'mark_awarded') || hasOwnUpdateKey(updates, 'feedback')) {
+			patchStudentRow(selectedOutcomeId.value, {
+				mark_awarded: hasOwnUpdateKey(updates, 'mark_awarded')
+					? (updates.mark_awarded ?? null)
+					: undefined,
+				feedback: hasOwnUpdateKey(updates, 'feedback') ? (updates.feedback ?? null) : undefined,
+			});
 		}
 		showSuccessToast('Marking saved.');
-		await refreshCurrentSelection();
+		await loadDrawer(selectedOutcomeId.value, currentDrawerSelection());
 	} catch (error) {
 		console.error('Failed to save marking', error);
 		showDangerToast('Could not save marking changes');
@@ -802,7 +903,21 @@ async function runModeratorAction(payload: {
 
 	moderationBusy.value = true;
 	try {
-		await gradebookService.moderatorAction(request);
+		const response = await gradebookService.moderatorAction(request);
+		applyOutcomeUpdateToStudentRow(selectedOutcomeId.value, response.outcome_update);
+		if (
+			hasOwnUpdateKey(payload.updates, 'mark_awarded') ||
+			hasOwnUpdateKey(payload.updates, 'feedback')
+		) {
+			patchStudentRow(selectedOutcomeId.value, {
+				mark_awarded: hasOwnUpdateKey(payload.updates, 'mark_awarded')
+					? (payload.updates.mark_awarded ?? null)
+					: undefined,
+				feedback: hasOwnUpdateKey(payload.updates, 'feedback')
+					? (payload.updates.feedback ?? null)
+					: undefined,
+			});
+		}
 		const successMessage =
 			payload.action === 'Return to Grader'
 				? 'Outcome returned to grader.'
@@ -810,7 +925,7 @@ async function runModeratorAction(payload: {
 					? 'Moderation adjustment applied.'
 					: 'Outcome approved by moderator.';
 		showSuccessToast(successMessage);
-		await refreshCurrentSelection();
+		await loadDrawer(selectedOutcomeId.value, currentDrawerSelection());
 	} catch (error) {
 		console.error('Failed to apply moderation action', error);
 		showDangerToast('Could not apply moderation action');

@@ -711,9 +711,9 @@ describe('OrgCommunicationQuickCreateModal', () => {
 		expect(
 			Boolean(attachmentSection && addFileButton && attachmentSection.contains(addFileButton))
 		).toBe(false);
-		expect(audiencePresetGrid?.getAttribute('class') || '').toContain('md:grid-cols-2');
+		expect(audiencePresetGrid?.getAttribute('class') || '').toContain('sm:grid-cols-2');
 		expect(audiencePresetGrid?.getAttribute('class') || '').not.toContain('xl:grid-cols-3');
-		expect(coreScopeGrid?.getAttribute('class') || '').toContain('md:grid-cols-2');
+		expect(coreScopeGrid?.getAttribute('class') || '').toContain('sm:grid-cols-2');
 
 		await addSchoolFamiliesAudience();
 

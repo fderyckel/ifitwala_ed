@@ -326,6 +326,12 @@ class StudentLog(Document):
             expected_role = None
             if self.next_step:
                 expected_role = frappe.get_value("Student Log Next Step", self.next_step, "associated_role")
+            if (
+                self.is_new()
+                or not self.name
+                or not frappe.db.exists("Student Log Follow Up", {"student_log": self.name, "docstatus": 1})
+            ):
+                self.follow_up_role = expected_role or None
 
             # If a person is chosen pre-submit, ensure ToDo reflects that (single open)
             if self.follow_up_person and not self.is_new():
@@ -793,8 +799,10 @@ def assign_follow_up(log_name: str, user: str):
             title=_("Outside School Branch"),
         )
 
-    # Role guard (target): assignee must have required role (fallback 'Academic Staff')
-    required_role = sl.follow_up_role or "Academic Staff"
+    # Keep Next Step role routing authoritative even for older rows where
+    # follow_up_role was never mirrored onto the Student Log itself.
+    required_role = sl.follow_up_role or frappe.get_value("Student Log Next Step", sl.next_step, "associated_role")
+    required_role = required_role or "Academic Staff"
     if required_role and required_role not in set(frappe.get_roles(user)):
         frappe.throw(
             _("Assignee must have the role: {role}.").format(role=required_role),
@@ -848,6 +856,8 @@ def assign_follow_up(log_name: str, user: str):
 
     # Mirror assignee on the parent
     frappe.db.set_value("Student Log", sl.name, "follow_up_person", user)
+    if (sl.follow_up_role or "") != (required_role or ""):
+        frappe.db.set_value("Student Log", sl.name, "follow_up_role", required_role)
 
     # Recompute status cheaply for the new active cycle.
     new_status = "Open"
