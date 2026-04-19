@@ -1,3 +1,4 @@
+import type { AttachmentPreviewItem, AttachmentPreviewStatus } from '@/types/contracts/attachments/shared'
 import type { CommentBankPayload } from './comment_bank'
 import type { FeedbackWorkspacePayload } from './feedback_workspace'
 
@@ -54,12 +55,13 @@ export type SubmissionAttachment = {
 	file_size?: number | null
 	description?: string | null
 	public?: boolean
-	preview_status?: 'pending' | 'ready' | 'failed' | 'unsupported' | 'not_applicable' | null
+	preview_status?: AttachmentPreviewStatus
 	preview_url?: string | null
 	open_url?: string | null
 	external_url?: string | null
 	mime_type?: string | null
 	extension?: string | null
+	attachment_preview?: AttachmentPreviewItem | null
 }
 
 export type SubmissionEvidence = {
@@ -82,7 +84,7 @@ export type SubmissionEvidence = {
 		message: string
 		attachment_row_name?: string | null
 		attachment_file_name?: string | null
-		preview_status?: 'pending' | 'ready' | 'failed' | 'unsupported' | 'not_applicable' | null
+		preview_status?: AttachmentPreviewStatus
 		preview_url?: string | null
 		open_url?: string | null
 	} | null

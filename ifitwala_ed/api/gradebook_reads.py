@@ -259,9 +259,15 @@ def get_drawer(api, outcome_id: str, submission_id: str | None = None, version: 
         submission_id=submission_id,
         version=version,
     )
+    latest_submission = submissions[0] if submissions else None
     selected_submission = None
     if selected_submission_row:
-        selected_submission = task_submission_api.serialize_task_submission_evidence(selected_submission_row)
+        selected_submission = task_submission_api.serialize_task_submission_evidence(
+            selected_submission_row,
+            is_latest_version=bool(
+                latest_submission and selected_submission_row.get("name") == latest_submission.get("name")
+            ),
+        )
     selected_submission_id = (selected_submission or {}).get("submission_id")
     feedback_workspace = None
     if selected_submission_id:
@@ -280,7 +286,6 @@ def get_drawer(api, outcome_id: str, submission_id: str | None = None, version: 
         )
         for row in sorted(submissions, key=lambda r: r.get("version") or 0)
     ]
-    latest_submission = submissions[0] if submissions else None
     if latest_submission:
         latest_submission = task_submission_api.build_task_submission_version_summary(
             latest_submission,

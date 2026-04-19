@@ -61,6 +61,10 @@ class TestTaskMaterialSerialization(TestCase):
         self.assertEqual(payload["preview_url"], "/preview/material")
         self.assertEqual(payload["open_url"], "/open/material")
         self.assertEqual(payload["placement"], "PLACEMENT-1")
+        self.assertEqual(payload["attachment_preview"]["owner_doctype"], "Material Placement")
+        self.assertEqual(payload["attachment_preview"]["owner_name"], "PLACEMENT-1")
+        self.assertEqual(payload["attachment_preview"]["kind"], "pdf")
+        self.assertEqual(payload["attachment_preview"]["download_url"], "/open/material")
 
     def test_serialize_task_material_keeps_reference_links_previewless(self):
         with _materials_module() as materials_api:
@@ -78,3 +82,5 @@ class TestTaskMaterialSerialization(TestCase):
         self.assertIsNone(payload["thumbnail_url"])
         self.assertIsNone(payload["preview_url"])
         self.assertEqual(payload["open_url"], "https://example.com/article")
+        self.assertEqual(payload["attachment_preview"]["kind"], "link")
+        self.assertEqual(payload["attachment_preview"]["preview_mode"], "external_link")

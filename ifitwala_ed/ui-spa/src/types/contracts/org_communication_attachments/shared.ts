@@ -1,3 +1,5 @@
+import type { AttachmentPreviewItem } from '@/types/contracts/attachments/shared'
+
 export type OrgCommunicationAttachmentRow = {
 	row_name: string
 	kind: 'file' | 'link'
@@ -10,4 +12,5 @@ export type OrgCommunicationAttachmentRow = {
 	thumbnail_url?: string | null
 	preview_url?: string | null
 	open_url?: string | null
+	attachment_preview?: AttachmentPreviewItem | null
 }

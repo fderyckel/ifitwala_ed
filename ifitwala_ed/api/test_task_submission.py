@@ -92,5 +92,8 @@ class TestTaskSubmissionApi(FrappeTestCase):
         self.assertEqual(attachments[0].get("mime_type"), "application/pdf")
         self.assertEqual(attachments[0].get("extension"), "pdf")
         self.assertEqual((attachments[0].get("open_url") or "").strip(), secure_url)
+        self.assertEqual(attachments[0].get("attachment_preview", {}).get("owner_doctype"), "Task Submission")
+        self.assertEqual(attachments[0].get("attachment_preview", {}).get("kind"), "pdf")
+        self.assertTrue(attachments[0].get("attachment_preview", {}).get("is_latest_version"))
         self.assertEqual(payload.get("annotation_readiness", {}).get("mode"), "reduced")
         self.assertEqual(payload.get("annotation_readiness", {}).get("reason_code"), "pdf_preview_ready")

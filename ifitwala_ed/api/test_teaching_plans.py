@@ -681,6 +681,13 @@ class TestTeachingPlansApi(TestCase):
             "/api/method/ifitwala_ed.api.file_access.open_academic_file?f=FILE-1",
         )
         self.assertNotIn("file_url", payload)
+        self.assertEqual(payload["attachment_preview"]["owner_doctype"], "Material Placement")
+        self.assertEqual(payload["attachment_preview"]["owner_name"], "PLC-1")
+        self.assertEqual(payload["attachment_preview"]["kind"], "pdf")
+        self.assertEqual(
+            payload["attachment_preview"]["download_url"],
+            "/api/method/ifitwala_ed.api.file_access.open_academic_file?f=FILE-1",
+        )
 
     def test_get_student_learning_space_logs_payload_metrics(self):
         with _teaching_plans_module() as module:

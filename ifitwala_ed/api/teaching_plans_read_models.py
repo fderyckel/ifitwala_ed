@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from typing import Any
 
+from ifitwala_ed.api.attachment_previews import build_attachment_preview_item, extract_file_extension
+
 
 def _material_thumbnail_ready_map(api, entries: list[dict[str, Any]]) -> dict[str, bool]:
     file_names = [
@@ -21,7 +23,10 @@ def serialize_material_entry(
 ) -> dict[str, Any]:
     placement = (entry.get("placements") or [{}])[0]
     material_type = entry.get("material_type")
+    owner_doctype = "Material Placement" if placement.get("placement") else "Supporting Material"
+    owner_name = placement.get("placement") or entry.get("material")
     if material_type == api.materials_domain.MATERIAL_TYPE_FILE:
+        resolved_file_id = entry.get("file")
         resolved_file_name = str(entry.get("file") or "").strip()
         thumbnail_url = api.resolve_academic_file_thumbnail_url(
             file_name=entry.get("file"),
@@ -46,10 +51,33 @@ def serialize_material_entry(
             context_doctype="Material Placement" if placement.get("placement") else "Supporting Material",
             context_name=placement.get("placement") or entry.get("material"),
         )
+        attachment_preview = build_attachment_preview_item(
+            item_id=owner_name,
+            owner_doctype=owner_doctype,
+            owner_name=owner_name,
+            file_id=resolved_file_id,
+            display_name=entry.get("title"),
+            description=entry.get("description"),
+            extension=extract_file_extension(file_name=entry.get("file_name"), file_url=entry.get("file_url")),
+            size_bytes=entry.get("file_size"),
+            thumbnail_url=thumbnail_url,
+            preview_url=preview_url,
+            open_url=open_url,
+            download_url=open_url,
+        )
     else:
         thumbnail_url = None
         preview_url = None
         open_url = entry.get("reference_url")
+        attachment_preview = build_attachment_preview_item(
+            item_id=owner_name,
+            owner_doctype=owner_doctype,
+            owner_name=owner_name,
+            link_url=entry.get("reference_url"),
+            display_name=entry.get("title"),
+            description=entry.get("description"),
+            open_url=open_url,
+        )
 
     return {
         "material": entry.get("material"),
@@ -68,6 +96,7 @@ def serialize_material_entry(
         "usage_role": placement.get("usage_role"),
         "placement_note": placement.get("placement_note"),
         "placement_order": placement.get("placement_order"),
+        "attachment_preview": attachment_preview,
     }
 
 

@@ -1,5 +1,7 @@
 // ui-spa/src/types/contracts/staff_teaching/get_staff_class_planning_surface.ts
 
+import type { AttachmentPreviewItem } from '@/types/contracts/attachments/shared'
+
 export type Request = {
 	student_group: string
 	class_teaching_plan?: string
@@ -48,6 +50,7 @@ export type StaffPlanningMaterial = {
 	usage_role?: string | null
 	placement_note?: string | null
 	placement_order?: number | null
+	attachment_preview?: AttachmentPreviewItem | null
 }
 
 export type StaffAssignedWork = {

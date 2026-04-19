@@ -40,7 +40,7 @@ Today Ifitwala_Ed already enforces the correct broad shape for governed reads:
 
 What still does not exist yet:
 
-- a shared cross-portal attachment preview DTO
+- a top-level shared cross-portal attachment preview row contract across all surfaces
 - broad Ed-owned preview routes for all governed surfaces
 - a shared SPA preview layer across the target surfaces
 
@@ -164,11 +164,11 @@ Initial rollout target:
 
 ## Shared DTO Direction
 
-Status: Proposed target contract
-Code refs: `ifitwala_ed/api/org_communication_attachments.py`, `ifitwala_ed/api/materials.py`, `ifitwala_ed/api/teaching_plans_read_models.py`
-Test refs: None yet
+Status: Implemented additively, not yet the top-level row contract
+Code refs: `ifitwala_ed/api/attachment_previews.py`, `ifitwala_ed/api/org_communication_attachments.py`, `ifitwala_ed/api/materials.py`, `ifitwala_ed/api/teaching_plans_read_models.py`, `ifitwala_ed/api/task_submission.py`
+Test refs: `ifitwala_ed/api/test_attachment_previews.py`, `ifitwala_ed/api/test_gradebook.py`, `ifitwala_ed/api/test_materials.py`, `ifitwala_ed/api/test_org_communication_attachments_unit.py`, `ifitwala_ed/api/test_teaching_plans.py`
 
-The shared DTO should be one cross-portal shape, but it should represent surface-resolved metadata and stable actions, not storage delivery internals.
+The shared DTO is now implemented as one cross-portal shape built by a shared Ed-side helper, but it is currently exposed additively as a nested `attachment_preview` block on existing surface rows. This avoids breaking current surface-specific contracts while giving future shared SPA components one canonical preview object to consume.
 
 ```ts
 export type AttachmentPreviewItem = {
@@ -245,6 +245,7 @@ DTO rules:
 - `thumbnail_url` should stay lightweight and optional
 - `preview_url` should be used only when a richer preview action exists
 - `open_url` remains the current compatibility baseline during rollout
+- current surfaces may still keep their legacy top-level fields (`kind`, `material_type`, `title`, `reference_url`, and similar) while also exposing the nested shared DTO during convergence
 
 ## Surface Endpoint Rule
 

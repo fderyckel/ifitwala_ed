@@ -4,12 +4,16 @@
 from __future__ import annotations
 
 import importlib
-import mimetypes
 from typing import Any
 
 import frappe
 from frappe import _
 
+from ifitwala_ed.api.attachment_previews import (
+    build_attachment_preview_item,
+    extract_file_extension,
+    guess_mime_type,
+)
 from ifitwala_ed.api.file_access import resolve_academic_file_open_url, resolve_academic_file_preview_url
 from ifitwala_ed.assessment import task_submission_service
 
@@ -66,7 +70,7 @@ def get_latest_submission(outcome_id=None):
     if not rows:
         return None
 
-    return serialize_task_submission_evidence(rows[0])
+    return serialize_task_submission_evidence(rows[0], is_latest_version=True)
 
 
 def _clean_text(value) -> str | None:
@@ -219,37 +223,14 @@ def _load_submission_drive_file_meta_map(file_ids: list[str]) -> dict[str, dict[
     }
 
 
-def _guess_mime_type(*, file_name: str | None = None, file_url: str | None = None) -> str | None:
-    for candidate in (file_name, file_url):
-        resolved = _clean_text(candidate)
-        if not resolved:
-            continue
-        guessed = mimetypes.guess_type(resolved)[0]
-        if guessed:
-            return guessed
-    return None
-
-
-def _extract_file_extension(*, file_name: str | None = None, file_url: str | None = None) -> str | None:
-    for candidate in (file_name, file_url):
-        resolved = _clean_text(candidate)
-        if not resolved:
-            continue
-        last_segment = resolved.rsplit("/", 1)[-1]
-        if "." not in last_segment:
-            continue
-        extension = last_segment.rsplit(".", 1)[-1].strip().lower()
-        if extension:
-            return extension
-    return None
-
-
 def _serialize_task_submission_attachment_row(
     attachment_row: dict[str, Any],
     *,
     submission_id: str,
     file_name_by_url: dict[str, str],
     drive_file_meta_by_file: dict[str, dict[str, str | None]],
+    is_latest_version: bool | None = None,
+    version_label: str | None = None,
 ) -> dict[str, Any]:
     file_url = _clean_text(attachment_row.get("file"))
     external_url = _clean_text(attachment_row.get("external_url"))
@@ -261,11 +242,11 @@ def _serialize_task_submission_attachment_row(
     if file_url:
         resolved_file_id = file_name_by_url.get(file_url)
         drive_file_meta = drive_file_meta_by_file.get(resolved_file_id) or {}
-        mime_type = _clean_text(drive_file_meta.get("mime_type")) or _guess_mime_type(
+        mime_type = _clean_text(drive_file_meta.get("mime_type")) or guess_mime_type(
             file_name=file_name,
             file_url=file_url,
         )
-        extension = _extract_file_extension(file_name=file_name, file_url=file_url)
+        extension = extract_file_extension(file_name=file_name, file_url=file_url)
         open_url = resolve_academic_file_open_url(
             file_name=resolved_file_id,
             file_url=file_url,
@@ -277,6 +258,23 @@ def _serialize_task_submission_attachment_row(
             file_url=file_url,
             context_doctype="Task Submission",
             context_name=submission_id,
+        )
+        attachment_preview = build_attachment_preview_item(
+            item_id=row_name or resolved_file_id or file_name,
+            owner_doctype="Task Submission",
+            owner_name=submission_id,
+            file_id=resolved_file_id,
+            display_name=file_name or resolved_file_id,
+            description=description,
+            mime_type=mime_type,
+            extension=extension,
+            size_bytes=file_size,
+            preview_status=_clean_text(drive_file_meta.get("preview_status")),
+            preview_url=preview_url,
+            open_url=open_url,
+            download_url=open_url,
+            is_latest_version=is_latest_version,
+            version_label=version_label,
         )
         return {
             "row_name": row_name,
@@ -292,7 +290,19 @@ def _serialize_task_submission_attachment_row(
             "external_url": None,
             "mime_type": mime_type,
             "extension": extension,
+            "attachment_preview": attachment_preview,
         }
+    attachment_preview = build_attachment_preview_item(
+        item_id=row_name or external_url or file_name,
+        owner_doctype="Task Submission",
+        owner_name=submission_id,
+        link_url=external_url,
+        display_name=file_name or description or external_url,
+        description=description,
+        open_url=external_url,
+        is_latest_version=is_latest_version,
+        version_label=version_label,
+    )
     return {
         "row_name": row_name,
         "kind": "link" if external_url else "other",
@@ -307,10 +317,16 @@ def _serialize_task_submission_attachment_row(
         "external_url": external_url,
         "mime_type": None,
         "extension": None,
+        "attachment_preview": attachment_preview,
     }
 
 
-def _load_task_submission_attachment_rows(submission_id: str) -> list[dict[str, Any]]:
+def _load_task_submission_attachment_rows(
+    submission_id: str,
+    *,
+    is_latest_version: bool | None = None,
+    version_label: str | None = None,
+) -> list[dict[str, Any]]:
     resolved_submission_id = _clean_text(submission_id)
     if not resolved_submission_id:
         return []
@@ -335,6 +351,8 @@ def _load_task_submission_attachment_rows(submission_id: str) -> list[dict[str, 
             submission_id=resolved_submission_id,
             file_name_by_url=file_name_by_url,
             drive_file_meta_by_file=drive_file_meta_by_file,
+            is_latest_version=is_latest_version,
+            version_label=version_label,
         )
         for row in attachment_rows
     ]
@@ -346,7 +364,7 @@ def _attachment_is_pdf(attachment_row: dict[str, Any]) -> bool:
     explicit_extension = _clean_text(attachment_row.get("extension"))
     if explicit_extension:
         return explicit_extension.lower() == "pdf"
-    return _extract_file_extension(file_name=attachment_row.get("file_name")) == "pdf"
+    return extract_file_extension(file_name=attachment_row.get("file_name")) == "pdf"
 
 
 def _build_annotation_readiness_payload(
@@ -437,12 +455,22 @@ def _build_annotation_readiness_payload(
     }
 
 
-def serialize_task_submission_evidence(submission_row: dict[str, Any]) -> dict[str, Any]:
+def serialize_task_submission_evidence(
+    submission_row: dict[str, Any],
+    *,
+    is_latest_version: bool | None = None,
+) -> dict[str, Any]:
     submission_id = _clean_text(submission_row.get("name"))
     if not submission_id:
         frappe.throw(_("Task Submission is missing identity."), frappe.ValidationError)
 
-    attachments = _load_task_submission_attachment_rows(submission_id)
+    version_value = submission_row.get("version")
+    version_label = f"Version {version_value}" if version_value not in (None, "") else None
+    attachments = _load_task_submission_attachment_rows(
+        submission_id,
+        is_latest_version=is_latest_version,
+        version_label=version_label,
+    )
     return {
         "submission_id": submission_id,
         "version": submission_row.get("version"),

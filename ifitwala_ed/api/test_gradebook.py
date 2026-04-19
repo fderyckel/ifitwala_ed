@@ -289,6 +289,11 @@ class TestGradebookApi(TestCase):
         self.assertEqual(attachment["preview_status"], "pending")
         self.assertEqual(attachment["mime_type"], "application/pdf")
         self.assertEqual(attachment["extension"], "pdf")
+        self.assertEqual(attachment["attachment_preview"]["owner_doctype"], "Task Submission")
+        self.assertEqual(attachment["attachment_preview"]["owner_name"], "TSU-2026-00001")
+        self.assertEqual(attachment["attachment_preview"]["kind"], "pdf")
+        self.assertFalse(attachment["attachment_preview"]["is_latest_version"])
+        self.assertEqual(attachment["attachment_preview"]["version_label"], "Version 1")
         self.assertEqual(
             urlparse(attachment["open_url"]).path,
             "/api/method/ifitwala_ed.api.file_access.download_academic_file",

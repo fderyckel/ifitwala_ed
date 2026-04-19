@@ -1,5 +1,7 @@
 // ui-spa/src/types/contracts/student_learning/get_student_learning_space.ts
 
+import type { AttachmentPreviewItem } from '@/types/contracts/attachments/shared'
+
 export type Request = {
 	course_id: string
 	student_group?: string
@@ -46,6 +48,7 @@ export type StudentLearningMaterial = {
 	usage_role?: string | null
 	placement_note?: string | null
 	placement_order?: number | null
+	attachment_preview?: AttachmentPreviewItem | null
 }
 
 export type StudentQuizDeliveryState = {

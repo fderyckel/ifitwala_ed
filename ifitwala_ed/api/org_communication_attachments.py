@@ -7,6 +7,7 @@ import frappe
 from frappe import _
 
 from ifitwala_ed.api import file_access as file_access_api
+from ifitwala_ed.api.attachment_previews import build_attachment_preview_item, extract_file_extension
 from ifitwala_ed.setup.doctype.org_communication.attachments import (
     ORG_COMMUNICATION_ATTACHMENT_BINDING_ROLE,
     ORG_COMMUNICATION_ATTACHMENT_SLOT_PREFIX,
@@ -191,6 +192,20 @@ def serialize_org_communication_attachment_row(org_communication: str, row) -> d
             if preview_meta.get("thumbnail_ready")
             else None
         )
+        attachment_preview = build_attachment_preview_item(
+            item_id=row_name,
+            owner_doctype="Org Communication",
+            owner_name=org_communication,
+            display_name=title,
+            description=description,
+            extension=extract_file_extension(file_name=file_name, file_url=file_url),
+            size_bytes=file_size,
+            preview_status=preview_status,
+            thumbnail_url=thumbnail_url,
+            preview_url=preview_url,
+            open_url=open_url,
+            download_url=open_url,
+        )
         return {
             "row_name": row_name,
             "kind": "file",
@@ -202,8 +217,18 @@ def serialize_org_communication_attachment_row(org_communication: str, row) -> d
             "thumbnail_url": thumbnail_url,
             "preview_url": preview_url,
             "open_url": open_url,
+            "attachment_preview": attachment_preview,
         }
 
+    attachment_preview = build_attachment_preview_item(
+        item_id=row_name,
+        owner_doctype="Org Communication",
+        owner_name=org_communication,
+        link_url=external_url,
+        display_name=title,
+        description=description,
+        open_url=external_url,
+    )
     return {
         "row_name": row_name,
         "kind": "link",
@@ -211,6 +236,7 @@ def serialize_org_communication_attachment_row(org_communication: str, row) -> d
         "description": description,
         "external_url": external_url or None,
         "open_url": external_url or None,
+        "attachment_preview": attachment_preview,
     }
 
 

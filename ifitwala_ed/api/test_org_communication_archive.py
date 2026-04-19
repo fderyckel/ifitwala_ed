@@ -129,7 +129,10 @@ class TestOrgCommunicationArchiveItem(FrappeTestCase):
             "/api/method/ifitwala_ed.api.file_access.preview_org_communication_attachment?org_communication=COMM-0001&row_name=row-file",
         )
         self.assertEqual(result["attachments"][0]["preview_status"], "ready")
+        self.assertEqual(result["attachments"][0]["attachment_preview"]["owner_doctype"], "Org Communication")
+        self.assertEqual(result["attachments"][0]["attachment_preview"]["kind"], "pdf")
         self.assertEqual(result["attachments"][1]["external_url"], "https://example.com/reference")
+        self.assertEqual(result["attachments"][1]["attachment_preview"]["kind"], "link")
 
     def test_get_item_enriches_academic_admin_with_archive_scope(self):
         doc = SimpleNamespace(

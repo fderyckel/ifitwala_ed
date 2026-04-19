@@ -5,6 +5,7 @@ from typing import Any
 import frappe
 from frappe import _
 
+from ifitwala_ed.api.attachment_previews import build_attachment_preview_item, extract_file_extension
 from ifitwala_ed.api.file_access import (
     get_academic_file_thumbnail_ready_map,
     resolve_academic_file_open_url,
@@ -35,7 +36,10 @@ def _material_thumbnail_ready_map(entries: list[dict[str, Any]]) -> dict[str, bo
 def _serialize_material(entry: dict[str, Any], *, thumbnail_ready_map: dict[str, bool] | None = None) -> dict[str, Any]:
     material_type = entry.get("material_type")
     first_placement = (entry.get("placements") or [{}])[0]
+    owner_doctype = "Material Placement" if first_placement.get("placement") else "Supporting Material"
+    owner_name = first_placement.get("placement") or entry.get("material")
     if material_type == materials_domain.MATERIAL_TYPE_FILE:
+        resolved_file_id = entry.get("file")
         resolved_file_name = str(entry.get("file") or "").strip()
         thumbnail_url = resolve_academic_file_thumbnail_url(
             file_name=entry.get("file"),
@@ -60,10 +64,33 @@ def _serialize_material(entry: dict[str, Any], *, thumbnail_ready_map: dict[str,
             context_doctype="Material Placement" if first_placement.get("placement") else "Supporting Material",
             context_name=first_placement.get("placement") or entry.get("material"),
         )
+        attachment_preview = build_attachment_preview_item(
+            item_id=owner_name,
+            owner_doctype=owner_doctype,
+            owner_name=owner_name,
+            file_id=resolved_file_id,
+            display_name=entry.get("title"),
+            description=entry.get("description"),
+            extension=extract_file_extension(file_name=entry.get("file_name"), file_url=entry.get("file_url")),
+            size_bytes=entry.get("file_size"),
+            thumbnail_url=thumbnail_url,
+            preview_url=preview_url,
+            open_url=open_url,
+            download_url=open_url,
+        )
     else:
         thumbnail_url = None
         preview_url = None
         open_url = entry.get("reference_url")
+        attachment_preview = build_attachment_preview_item(
+            item_id=owner_name,
+            owner_doctype=owner_doctype,
+            owner_name=owner_name,
+            link_url=entry.get("reference_url"),
+            display_name=entry.get("title"),
+            description=entry.get("description"),
+            open_url=open_url,
+        )
 
     return {
         "material": entry.get("material"),
@@ -80,6 +107,7 @@ def _serialize_material(entry: dict[str, Any], *, thumbnail_ready_map: dict[str,
         "file_name": entry.get("file_name"),
         "file_size": entry.get("file_size"),
         "placements": entry.get("placements") or [],
+        "attachment_preview": attachment_preview,
     }
 
 
