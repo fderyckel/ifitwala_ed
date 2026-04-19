@@ -18,6 +18,7 @@ declare module 'vue' {
     AnalyticsChart: typeof import('./src/components/analytics/AnalyticsChart.vue')['default']
     AnalyticsTextPreview: typeof import('./src/components/analytics/AnalyticsTextPreview.vue')['default']
     ApplicantReviewAssignmentAction: typeof import('./src/components/focus/ApplicantReviewAssignmentAction.vue')['default']
+    AttachmentPreviewCard: typeof import('./src/components/attachments/AttachmentPreviewCard.vue')['default']
     ClassEventModal: typeof import('./src/components/calendar/ClassEventModal.vue')['default']
     ClassHubGroupPickerOverlay: typeof import('./src/components/overlays/class-hub/ClassHubGroupPickerOverlay.vue')['default']
     ClassHubHeader: typeof import('./src/components/class-hub/ClassHubHeader.vue')['default']
