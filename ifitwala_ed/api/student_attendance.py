@@ -18,6 +18,7 @@ from ifitwala_ed.schedule.attendance_utils import (
     get_meeting_dates,
     list_attendance_codes,
     previous_status_map,
+    resolve_student_group_schedule_name,
 )
 from ifitwala_ed.schedule.schedule_utils import get_weekend_days_for_calendar
 from ifitwala_ed.utilities.school_tree import _is_adminish, get_school_lineage, get_user_default_school
@@ -526,8 +527,7 @@ def get_weekend_days(student_group: str | None = None) -> list[int]:
     if not student_group:
         return get_weekend_days_for_calendar(None)
 
-    # Resolve School Schedule → School Calendar
-    schedule_name = frappe.db.get_value("Student Group", student_group, "school_schedule")
+    schedule_name = resolve_student_group_schedule_name(student_group)
     if not schedule_name:
         return get_weekend_days_for_calendar(None)
 

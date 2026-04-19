@@ -13,6 +13,35 @@ from ifitwala_ed.schedule import attendance_utils
 
 
 class TestAttendanceUtils(FrappeTestCase):
+    def test_fetch_blocks_for_day_uses_effective_schedule_when_group_schedule_missing(self):
+        att_date = nowdate()
+        sg = _student_group_stub(school_schedule=None)
+
+        with (
+            patch.object(attendance_utils.frappe, "get_cached_doc", return_value=sg),
+            patch.object(attendance_utils, "get_school_for_student_group", return_value="SCH-001"),
+            patch.object(
+                attendance_utils,
+                "get_effective_schedule_for_ay",
+                return_value="SCH-SCHED-FALLBACK",
+            ) as effective_schedule_mock,
+            patch.object(
+                attendance_utils,
+                "get_rotation_dates",
+                return_value=[{"date": getdate(att_date), "rotation_day": 2}],
+            ) as rotation_dates_mock,
+            patch.object(
+                attendance_utils.frappe,
+                "get_all",
+                return_value=[SimpleNamespace(block_number=3), SimpleNamespace(block_number=4)],
+            ),
+        ):
+            result = attendance_utils.fetch_blocks_for_day("SG-001", att_date)
+
+        self.assertEqual(result, [3, 4])
+        effective_schedule_mock.assert_called_once_with(sg.academic_year, "SCH-001")
+        rotation_dates_mock.assert_called_once_with("SCH-SCHED-FALLBACK", sg.academic_year, include_holidays=False)
+
     def test_bulk_upsert_attendance_calls_get_current_term_with_school_and_ay(self):
         att_date = nowdate()
         payload = [_attendance_payload(att_date)]
@@ -161,12 +190,47 @@ class TestAttendanceUtils(FrappeTestCase):
         self.assertEqual(result, {"created": 1, "updated": 0})
         bulk_insert_mock.assert_called_once()
 
+    def test_bulk_upsert_attendance_uses_effective_schedule_when_group_schedule_missing(self):
+        att_date = nowdate()
+        payload = [_attendance_payload(att_date)]
+        sg = _student_group_stub(school_schedule=None)
 
-def _student_group_stub() -> SimpleNamespace:
+        with (
+            patch.object(attendance_utils.frappe, "session", SimpleNamespace(user="test.user@example.com")),
+            patch.object(attendance_utils.frappe, "get_roles", return_value=["Academic Admin"]),
+            patch.object(attendance_utils.frappe, "get_cached_doc", return_value=sg),
+            patch.object(attendance_utils, "get_school_for_student_group", return_value="SCH-001"),
+            patch.object(attendance_utils, "get_current_term", return_value=None),
+            patch.object(
+                attendance_utils,
+                "get_effective_schedule_for_ay",
+                return_value="SCH-SCHED-FALLBACK",
+            ) as effective_schedule_mock,
+            patch.object(attendance_utils.frappe, "get_all", return_value=[]),
+            patch.object(attendance_utils.frappe.db, "get_value", return_value=None),
+            patch.object(
+                attendance_utils,
+                "get_rotation_dates",
+                return_value=[{"date": getdate(att_date), "rotation_day": 1}],
+            ) as rotation_dates_mock,
+            patch.object(attendance_utils, "get_meeting_dates", return_value=[att_date]),
+            patch.object(attendance_utils.frappe.db, "sql", return_value=[]),
+            patch.object(attendance_utils.frappe.db, "bulk_insert") as bulk_insert_mock,
+            patch.object(attendance_utils.frappe.db, "commit"),
+        ):
+            result = attendance_utils.bulk_upsert_attendance(payload)
+
+        self.assertEqual(result, {"created": 1, "updated": 0})
+        effective_schedule_mock.assert_called_once_with(sg.academic_year, "SCH-001")
+        rotation_dates_mock.assert_called_once_with("SCH-SCHED-FALLBACK", sg.academic_year, include_holidays=False)
+        bulk_insert_mock.assert_called_once()
+
+
+def _student_group_stub(*, school_schedule="SCH-SCHED-001") -> SimpleNamespace:
     return SimpleNamespace(
         name="SG-001",
         academic_year="AY-2025",
-        school_schedule="SCH-SCHED-001",
+        school_schedule=school_schedule,
         term="TERM-001",
         program="PROG-001",
         course="COURSE-001",

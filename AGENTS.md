@@ -631,6 +631,14 @@ Before considering work done, verify:
 
 If a critical assumption cannot be verified from the workspace, stop and say exactly what is missing.
 
+### 15.1 Test Isolation Rules
+
+- Test modules must be import-safe under Frappe test discovery.
+- Never mutate `sys.modules`, `frappe.db`, `frappe.session`, or other framework globals at module scope in `test_*.py`.
+- Never install fake modules or global stubs during test-module import.
+- Scope stubs/monkeypatches inside the test, fixture, or context manager and restore them automatically.
+- A test that passes in isolation but contaminates later imports or framework cleanup is broken.
+
 ---
 
 ## 16. Frappe Security Model (Learned)

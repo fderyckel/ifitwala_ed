@@ -17,6 +17,26 @@ from ifitwala_ed.api.attendance import (
 
 
 class TestAttendanceApi(TestCase):
+    @patch("ifitwala_ed.api.student_attendance.get_weekend_days_for_calendar")
+    @patch("ifitwala_ed.api.student_attendance.resolve_student_group_schedule_name")
+    @patch("ifitwala_ed.api.student_attendance.frappe.db.get_value")
+    def test_get_weekend_days_uses_effective_schedule_when_group_schedule_missing(
+        self,
+        mock_get_value,
+        mock_resolve_schedule,
+        mock_get_weekend_days_for_calendar,
+    ):
+        mock_resolve_schedule.return_value = "SCH-SCHED-FALLBACK"
+        mock_get_value.return_value = "CAL-001"
+        mock_get_weekend_days_for_calendar.return_value = [5, 6]
+
+        result = student_attendance.get_weekend_days("SG-001")
+
+        self.assertEqual(result, [5, 6])
+        mock_resolve_schedule.assert_called_once_with("SG-001")
+        mock_get_value.assert_called_once_with("School Schedule", "SCH-SCHED-FALLBACK", "school_calendar")
+        mock_get_weekend_days_for_calendar.assert_called_once_with("CAL-001")
+
     @patch("ifitwala_ed.api.attendance._resolve_school_threshold_defaults")
     def test_normalize_thresholds_uses_school_defaults_not_client_override(self, mock_defaults):
         mock_defaults.return_value = (92.0, 81.0)
