@@ -5,7 +5,12 @@ from typing import Any
 import frappe
 from frappe import _
 
-from ifitwala_ed.api.file_access import resolve_academic_file_open_url, resolve_academic_file_preview_url
+from ifitwala_ed.api.file_access import (
+    get_academic_file_thumbnail_ready_map,
+    resolve_academic_file_open_url,
+    resolve_academic_file_preview_url,
+    resolve_academic_file_thumbnail_url,
+)
 from ifitwala_ed.curriculum import materials as materials_domain
 from ifitwala_ed.utilities import governed_uploads
 
@@ -18,10 +23,31 @@ def _normalize_payload(value) -> dict[str, Any]:
     return value
 
 
-def _serialize_material(entry: dict[str, Any]) -> dict[str, Any]:
+def _material_thumbnail_ready_map(entries: list[dict[str, Any]]) -> dict[str, bool]:
+    file_names = [
+        str(entry.get("file") or "").strip()
+        for entry in entries or []
+        if entry.get("material_type") == materials_domain.MATERIAL_TYPE_FILE and str(entry.get("file") or "").strip()
+    ]
+    return get_academic_file_thumbnail_ready_map(file_names)
+
+
+def _serialize_material(entry: dict[str, Any], *, thumbnail_ready_map: dict[str, bool] | None = None) -> dict[str, Any]:
     material_type = entry.get("material_type")
     first_placement = (entry.get("placements") or [{}])[0]
     if material_type == materials_domain.MATERIAL_TYPE_FILE:
+        resolved_file_name = str(entry.get("file") or "").strip()
+        thumbnail_url = resolve_academic_file_thumbnail_url(
+            file_name=entry.get("file"),
+            file_url=entry.get("file_url"),
+            context_doctype="Material Placement" if first_placement.get("placement") else "Supporting Material",
+            context_name=first_placement.get("placement") or entry.get("material"),
+            thumbnail_ready=(
+                thumbnail_ready_map.get(resolved_file_name)
+                if thumbnail_ready_map is not None and resolved_file_name
+                else None
+            ),
+        )
         preview_url = resolve_academic_file_preview_url(
             file_name=entry.get("file"),
             file_url=entry.get("file_url"),
@@ -35,6 +61,7 @@ def _serialize_material(entry: dict[str, Any]) -> dict[str, Any]:
             context_name=first_placement.get("placement") or entry.get("material"),
         )
     else:
+        thumbnail_url = None
         preview_url = None
         open_url = entry.get("reference_url")
 
@@ -46,6 +73,7 @@ def _serialize_material(entry: dict[str, Any]) -> dict[str, Any]:
         "modality": entry.get("modality"),
         "description": entry.get("description"),
         "reference_url": entry.get("reference_url"),
+        "thumbnail_url": thumbnail_url,
         "preview_url": preview_url,
         "open_url": open_url,
         "file": entry.get("file"),
@@ -55,10 +83,12 @@ def _serialize_material(entry: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def _serialize_task_material(entry: dict[str, Any]) -> dict[str, Any]:
+def _serialize_task_material(
+    entry: dict[str, Any], *, thumbnail_ready_map: dict[str, bool] | None = None
+) -> dict[str, Any]:
     placement = (entry.get("placements") or [{}])[0]
     return {
-        **_serialize_material(entry),
+        **_serialize_material(entry, thumbnail_ready_map=thumbnail_ready_map),
         "placement": placement.get("placement"),
         "origin": placement.get("origin"),
         "usage_role": placement.get("usage_role"),
@@ -78,9 +108,9 @@ def _require_task_write(task: str):
 @frappe.whitelist()
 def list_task_materials(task: str) -> dict[str, Any]:
     task_doc = _require_task_write(task)
-    materials = [
-        _serialize_task_material(entry) for entry in materials_domain.list_anchor_materials("Task", task_doc.name)
-    ]
+    rows = materials_domain.list_anchor_materials("Task", task_doc.name)
+    thumbnail_ready_map = _material_thumbnail_ready_map(rows)
+    materials = [_serialize_task_material(entry, thumbnail_ready_map=thumbnail_ready_map) for entry in rows]
     return {
         "task": task_doc.name,
         "materials": materials,
@@ -116,7 +146,7 @@ def create_task_reference_material(payload=None, **kwargs) -> dict[str, Any]:
     if not created:
         frappe.throw(_("Material was created but could not be reloaded."))
 
-    serialized = _serialize_task_material(created)
+    serialized = _serialize_task_material(created, thumbnail_ready_map=_material_thumbnail_ready_map(materials))
     serialized["placement"] = placement.name
     return serialized
 
@@ -168,7 +198,7 @@ def upload_task_material_file(
     if not created:
         frappe.throw(_("Material upload succeeded but the task material could not be reloaded."))
 
-    serialized = _serialize_task_material(created)
+    serialized = _serialize_task_material(created, thumbnail_ready_map=_material_thumbnail_ready_map(materials))
     serialized["placement"] = placement.name
     return serialized
 

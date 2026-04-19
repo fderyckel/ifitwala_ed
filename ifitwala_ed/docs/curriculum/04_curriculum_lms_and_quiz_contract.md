@@ -75,8 +75,8 @@ The student learning space currently renders:
 
 Current resource preview behavior in that workspace:
 
-- governed file resources prefer stable Ed-owned `preview_url` routes when preview is available
-- session resources plus unit, class, and shared course resource shelves render inline image previews and compact PDF preview tiles
+- governed file resources prefer optional stable Ed-owned `thumbnail_url` routes for inline image cards plus stable `preview_url` routes for richer preview/open behavior
+- session resources plus unit, class, and shared course resource shelves render inline image thumbnails from `thumbnail_url` and compact PDF preview tiles from `preview_url`
 - task-linked material chips remain lightweight inside assigned-work cards and prefer `preview_url` without turning each task card into a document viewer
 
 This is the live LMS model.

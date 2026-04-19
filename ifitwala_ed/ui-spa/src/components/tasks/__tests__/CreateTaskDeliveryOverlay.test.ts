@@ -651,6 +651,8 @@ describe('CreateTaskDeliveryOverlay', () => {
 				material_type: 'File',
 				file_name: 'specimen-photo.png',
 				file_size: 4096,
+				thumbnail_url:
+					'/api/method/ifitwala_ed.api.file_access.thumbnail_academic_file?file=FILE-IMG',
 				preview_url: '/api/method/ifitwala_ed.api.file_access.preview_academic_file?file=FILE-IMG',
 				open_url: '/api/method/ifitwala_ed.api.file_access.download_academic_file?file=FILE-IMG',
 			},
@@ -675,7 +677,7 @@ describe('CreateTaskDeliveryOverlay', () => {
 		expect(document.body.textContent || '').toContain('Current task materials');
 		const imagePreview = document.querySelector('[data-task-material-preview-kind="image"] img');
 		expect(imagePreview?.getAttribute('src')).toBe(
-			'/api/method/ifitwala_ed.api.file_access.preview_academic_file?file=FILE-IMG'
+			'/api/method/ifitwala_ed.api.file_access.thumbnail_academic_file?file=FILE-IMG'
 		);
 
 		const pdfPreview = document.querySelector('[data-task-material-preview-kind="pdf"]');

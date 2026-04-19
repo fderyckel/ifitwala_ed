@@ -10,8 +10,12 @@ from ifitwala_ed.tests.frappe_stubs import import_fresh, stubbed_frappe
 @contextmanager
 def _materials_module():
     file_access = ModuleType("ifitwala_ed.api.file_access")
+    file_access.get_academic_file_thumbnail_ready_map = lambda file_names: {
+        file_name: True for file_name in file_names or []
+    }
     file_access.resolve_academic_file_open_url = lambda **kwargs: "/open/material"
     file_access.resolve_academic_file_preview_url = lambda **kwargs: "/preview/material"
+    file_access.resolve_academic_file_thumbnail_url = lambda **kwargs: "/thumbnail/material"
 
     materials_domain = ModuleType("ifitwala_ed.curriculum.materials")
     materials_domain.MATERIAL_TYPE_FILE = "File"
@@ -53,6 +57,7 @@ class TestTaskMaterialSerialization(TestCase):
                 }
             )
 
+        self.assertEqual(payload["thumbnail_url"], "/thumbnail/material")
         self.assertEqual(payload["preview_url"], "/preview/material")
         self.assertEqual(payload["open_url"], "/open/material")
         self.assertEqual(payload["placement"], "PLACEMENT-1")
@@ -70,5 +75,6 @@ class TestTaskMaterialSerialization(TestCase):
                 }
             )
 
+        self.assertIsNone(payload["thumbnail_url"])
         self.assertIsNone(payload["preview_url"])
         self.assertEqual(payload["open_url"], "https://example.com/article")

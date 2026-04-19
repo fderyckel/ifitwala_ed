@@ -174,6 +174,8 @@ function buildPayload(message: string | null = null): StudentLearningSpaceRespon
 					material: 'MAT-CLASS-1',
 					title: 'Class microscope labels',
 					file_name: 'microscope-labels.png',
+					thumbnail_url:
+						'/api/method/ifitwala_ed.api.file_access.thumbnail_academic_file?file=FILE-CLASS-1',
 					preview_url: '/api/method/ifitwala_ed.api.file_access.preview_academic_file?file=FILE-CLASS-1',
 					open_url: '/api/method/ifitwala_ed.api.file_access.download_academic_file?file=FILE-CLASS-1',
 				},
@@ -218,6 +220,8 @@ function buildPayload(message: string | null = null): StudentLearningSpaceRespon
 							material: 'MAT-UNIT-1',
 							title: 'Cell gallery',
 							file_name: 'cell-gallery.webp',
+							thumbnail_url:
+								'/api/method/ifitwala_ed.api.file_access.thumbnail_academic_file?file=FILE-UNIT-1',
 							preview_url: '/api/method/ifitwala_ed.api.file_access.preview_academic_file?file=FILE-UNIT-1',
 							open_url: '/api/method/ifitwala_ed.api.file_access.download_academic_file?file=FILE-UNIT-1',
 						},
@@ -445,7 +449,7 @@ describe('CourseDetail', () => {
 
 		const imagePreview = document.querySelector('[data-learning-resource-kind="image"] img')
 		expect(imagePreview?.getAttribute('src')).toBe(
-			'/api/method/ifitwala_ed.api.file_access.preview_academic_file?file=FILE-UNIT-1'
+			'/api/method/ifitwala_ed.api.file_access.thumbnail_academic_file?file=FILE-UNIT-1'
 		)
 
 		const openOriginalLinks = Array.from(document.querySelectorAll('a')).filter(anchor =>

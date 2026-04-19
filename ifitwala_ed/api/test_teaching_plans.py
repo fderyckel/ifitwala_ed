@@ -16,6 +16,9 @@ def _teaching_plans_module():
     student_groups_api._instructor_group_names = lambda user: []
 
     file_access_api = ModuleType("ifitwala_ed.api.file_access")
+    file_access_api.get_academic_file_thumbnail_ready_map = lambda file_names: {
+        file_name: True for file_name in file_names or []
+    }
     file_access_api.resolve_academic_file_open_url = lambda **kwargs: "/open/resource"
     file_access_api.resolve_academic_file_preview_url = lambda **kwargs: "/preview/resource"
     file_access_api.resolve_academic_file_thumbnail_url = lambda **kwargs: "/thumbnail/resource"
@@ -642,7 +645,8 @@ class TestTeachingPlansApi(TestCase):
                                 "placement_order": 10,
                             }
                         ],
-                    }
+                    },
+                    thumbnail_ready_map={"FILE-1": True},
                 )
 
         resolve_thumbnail_url.assert_called_once_with(
@@ -650,6 +654,7 @@ class TestTeachingPlansApi(TestCase):
             file_url="/private/files/lab.pdf",
             context_doctype="Material Placement",
             context_name="PLC-1",
+            thumbnail_ready=True,
         )
         resolve_preview_url.assert_called_once_with(
             file_name="FILE-1",

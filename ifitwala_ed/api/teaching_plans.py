@@ -19,6 +19,7 @@ from ifitwala_ed.api import teaching_plans_staff as _staff_impl
 from ifitwala_ed.api import teaching_plans_student as _student_impl
 from ifitwala_ed.api import teaching_plans_timeline as _timeline_impl
 from ifitwala_ed.api.file_access import (
+    get_academic_file_thumbnail_ready_map,
     resolve_academic_file_open_url,
     resolve_academic_file_preview_url,
     resolve_academic_file_thumbnail_url,
@@ -48,6 +49,7 @@ _COMPAT_EXPORTS = (
     getdate,
     now_datetime,
     strip_html,
+    get_academic_file_thumbnail_ready_map,
     resolve_academic_file_open_url,
     resolve_academic_file_preview_url,
     resolve_academic_file_thumbnail_url,
@@ -350,8 +352,10 @@ def _build_course_plan_creation_access(user: str, roles: set[str]) -> dict[str, 
     return _shared_impl.build_course_plan_creation_access(_module(), user, roles)
 
 
-def _serialize_material_entry(entry: dict[str, Any]) -> dict[str, Any]:
-    return _read_models_impl.serialize_material_entry(_module(), entry)
+def _serialize_material_entry(
+    entry: dict[str, Any], *, thumbnail_ready_map: dict[str, bool] | None = None
+) -> dict[str, Any]:
+    return _read_models_impl.serialize_material_entry(_module(), entry, thumbnail_ready_map=thumbnail_ready_map)
 
 
 def _fetch_course_quiz_question_banks(course: str | None) -> list[dict[str, Any]]:

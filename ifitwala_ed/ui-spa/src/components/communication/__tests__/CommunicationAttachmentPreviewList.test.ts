@@ -37,13 +37,14 @@ afterEach(() => {
 });
 
 describe('CommunicationAttachmentPreviewList', () => {
-	it('renders inline image cards from thumbnail_url only', async () => {
+	it('prefers thumbnail_url for inline image cards when it is available', async () => {
 		mountPreviewList([
 			{
 				row_name: 'ATT-IMG-READY',
 				kind: 'file',
 				title: 'Event poster',
 				file_name: 'poster.jpg',
+				preview_status: 'ready',
 				thumbnail_url:
 					'/api/method/ifitwala_ed.api.file_access.thumbnail_org_communication_attachment?row_name=ATT-IMG-READY',
 				preview_url:
@@ -64,17 +65,41 @@ describe('CommunicationAttachmentPreviewList', () => {
 		expect(imageLink?.getAttribute('href')).toContain('preview_org_communication_attachment');
 	});
 
-	it('keeps image attachments action-led when no thumbnail_url is available', async () => {
+	it('renders inline image cards from preview_url when the richer preview is ready and no thumbnail exists yet', async () => {
 		mountPreviewList([
 			{
-				row_name: 'ATT-IMG-NO-THUMB',
+				row_name: 'ATT-IMG-VIEWER-READY',
 				kind: 'file',
 				title: 'Campus photo',
 				file_name: 'campus.png',
+				preview_status: 'ready',
 				preview_url:
-					'/api/method/ifitwala_ed.api.file_access.preview_org_communication_attachment?row_name=ATT-IMG-NO-THUMB',
+					'/api/method/ifitwala_ed.api.file_access.preview_org_communication_attachment?row_name=ATT-IMG-VIEWER-READY',
 				open_url:
-					'/api/method/ifitwala_ed.api.file_access.open_org_communication_attachment?row_name=ATT-IMG-NO-THUMB',
+					'/api/method/ifitwala_ed.api.file_access.open_org_communication_attachment?row_name=ATT-IMG-VIEWER-READY',
+			},
+		]);
+		await flushUi();
+
+		const imagePreview = document.querySelector(
+			'[data-communication-attachment-kind="image"] img'
+		) as HTMLImageElement | null;
+		expect(imagePreview?.getAttribute('src')).toContain('preview_org_communication_attachment');
+		expect(imagePreview?.getAttribute('src')).toContain('ATT-IMG-VIEWER-READY');
+	});
+
+	it('keeps image attachments action-led when neither a thumbnail nor a ready preview derivative exists', async () => {
+		mountPreviewList([
+			{
+				row_name: 'ATT-IMG-PENDING',
+				kind: 'file',
+				title: 'Campus photo',
+				file_name: 'campus.png',
+				preview_status: 'pending',
+				preview_url:
+					'/api/method/ifitwala_ed.api.file_access.preview_org_communication_attachment?row_name=ATT-IMG-PENDING',
+				open_url:
+					'/api/method/ifitwala_ed.api.file_access.open_org_communication_attachment?row_name=ATT-IMG-PENDING',
 			},
 		]);
 		await flushUi();

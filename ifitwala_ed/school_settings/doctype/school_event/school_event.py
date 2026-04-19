@@ -54,11 +54,12 @@ class SchoolEvent(Document):
         self.validate_custom_users_require_participants()
         self.apply_event_color_from_audience()
 
+    def after_insert(self):
+        self.sync_employee_bookings()
+        self.sync_location_booking()
+
     def on_update(self):
         self.validate_date()
-
-    def after_save(self):
-        # Keep employee bookings in sync when the event changes
         self.sync_employee_bookings()
         self.sync_location_booking()
 

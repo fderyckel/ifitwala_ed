@@ -3,15 +3,36 @@ from __future__ import annotations
 from typing import Any
 
 
-def serialize_material_entry(api, entry: dict[str, Any]) -> dict[str, Any]:
+def _material_thumbnail_ready_map(api, entries: list[dict[str, Any]]) -> dict[str, bool]:
+    file_names = [
+        str(entry.get("file") or "").strip()
+        for entry in entries or []
+        if entry.get("material_type") == api.materials_domain.MATERIAL_TYPE_FILE
+        and str(entry.get("file") or "").strip()
+    ]
+    return api.get_academic_file_thumbnail_ready_map(file_names)
+
+
+def serialize_material_entry(
+    api,
+    entry: dict[str, Any],
+    *,
+    thumbnail_ready_map: dict[str, bool] | None = None,
+) -> dict[str, Any]:
     placement = (entry.get("placements") or [{}])[0]
     material_type = entry.get("material_type")
     if material_type == api.materials_domain.MATERIAL_TYPE_FILE:
+        resolved_file_name = str(entry.get("file") or "").strip()
         thumbnail_url = api.resolve_academic_file_thumbnail_url(
             file_name=entry.get("file"),
             file_url=entry.get("file_url"),
             context_doctype="Material Placement" if placement.get("placement") else "Supporting Material",
             context_name=placement.get("placement") or entry.get("material"),
+            thumbnail_ready=(
+                thumbnail_ready_map.get(resolved_file_name)
+                if thumbnail_ready_map is not None and resolved_file_name
+                else None
+            ),
         )
         preview_url = api.resolve_academic_file_preview_url(
             file_name=entry.get("file"),
@@ -193,7 +214,8 @@ def reload_anchor_material(api, anchor_doctype: str, anchor_name: str, material_
     created = next((row for row in rows if row.get("material") == material_name), None)
     if not created:
         api.frappe.throw(api._("Material was created but could not be reloaded."))
-    return api._serialize_material_entry(created)
+    thumbnail_ready_map = _material_thumbnail_ready_map(api, rows)
+    return api._serialize_material_entry(created, thumbnail_ready_map=thumbnail_ready_map)
 
 
 def fetch_material_map(
@@ -201,8 +223,13 @@ def fetch_material_map(
     anchor_refs: list[tuple[str, str]],
 ) -> dict[tuple[str, str], list[dict[str, Any]]]:
     material_map = api.materials_domain.list_materials_for_anchors(anchor_refs)
+    thumbnail_ready_map = _material_thumbnail_ready_map(
+        api,
+        [entry for entries in material_map.values() for entry in (entries or [])],
+    )
     return {
-        anchor: [api._serialize_material_entry(entry) for entry in entries] for anchor, entries in material_map.items()
+        anchor: [api._serialize_material_entry(entry, thumbnail_ready_map=thumbnail_ready_map) for entry in entries]
+        for anchor, entries in material_map.items()
     }
 
 

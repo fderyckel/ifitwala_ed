@@ -1125,10 +1125,11 @@
 														data-task-material-preview-kind="image"
 													>
 														<img
-															:src="primaryMaterialUrl(material) || undefined"
+															:src="imagePreviewUrl(material) || undefined"
 															:alt="material.title"
 															class="h-40 w-full object-cover transition duration-200 group-hover:scale-[1.01]"
 															loading="lazy"
+															@error="markMaterialImagePreviewFailed(material)"
 														/>
 														<div
 															class="flex items-center justify-between border-t border-line-soft bg-white px-4 py-3"
@@ -1340,6 +1341,7 @@ const selectedMaterialFile = ref<File | null>(null);
 const materialFileInput = ref<HTMLInputElement | null>(null);
 const removingPlacement = ref<string | null>(null);
 const materialUploadProgress = ref<UploadProgressState | null>(null);
+const failedMaterialImagePreviewKeys = ref<Record<string, boolean>>({});
 
 const initialFocus = ref<HTMLElement | null>(null);
 
@@ -1390,6 +1392,7 @@ type TaskMaterialRow = {
 	modality?: 'Read' | 'Watch' | 'Listen' | 'Use' | null;
 	description?: string | null;
 	reference_url?: string | null;
+	thumbnail_url?: string | null;
 	preview_url?: string | null;
 	open_url?: string | null;
 	file_name?: string | null;
@@ -2305,9 +2308,31 @@ function primaryMaterialUrl(material: TaskMaterialRow) {
 	return material.preview_url || material.open_url || material.reference_url || null;
 }
 
+function materialImagePreviewKey(material: TaskMaterialRow) {
+	return `${material.placement}:${material.thumbnail_url || ''}`;
+}
+
+function markMaterialImagePreviewFailed(material: TaskMaterialRow) {
+	failedMaterialImagePreviewKeys.value = {
+		...failedMaterialImagePreviewKeys.value,
+		[materialImagePreviewKey(material)]: true,
+	};
+}
+
+function hasMaterialImagePreviewFailure(material: TaskMaterialRow) {
+	return Boolean(failedMaterialImagePreviewKeys.value[materialImagePreviewKey(material)]);
+}
+
+function imagePreviewUrl(material: TaskMaterialRow) {
+	return material.thumbnail_url || null;
+}
+
 function showInlineImagePreview(material: TaskMaterialRow) {
 	return Boolean(
-		material.preview_url && primaryMaterialUrl(material) && isImageMaterial(material)
+		imagePreviewUrl(material) &&
+		!hasMaterialImagePreviewFailure(material) &&
+		primaryMaterialUrl(material) &&
+		isImageMaterial(material)
 	);
 }
 

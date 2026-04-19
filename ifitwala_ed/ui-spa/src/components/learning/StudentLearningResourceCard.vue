@@ -9,10 +9,11 @@
 				data-learning-resource-kind="image"
 			>
 				<img
-					:src="primaryResourceUrl || undefined"
+					:src="imagePreviewUrl || undefined"
 					:alt="resource.title"
 					class="h-40 w-full object-cover transition duration-200 group-hover:scale-[1.01]"
 					loading="lazy"
+					@error="markImagePreviewFailed"
 				/>
 				<div
 					class="flex items-center justify-between border-t border-line-soft bg-white px-4 py-3"
@@ -101,7 +102,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, ref, watch } from 'vue';
 
 import type { StudentLearningMaterial } from '@/types/contracts/student_learning/get_student_learning_space';
 
@@ -109,9 +110,12 @@ const props = defineProps<{
 	resource: StudentLearningMaterial;
 }>();
 
+const imagePreviewFailed = ref(false);
+
 const primaryResourceUrl = computed(
 	() => props.resource.preview_url || props.resource.open_url || null
 );
+const imagePreviewUrl = computed(() => props.resource.thumbnail_url || null);
 const primaryActionLabel = computed(() => (props.resource.preview_url ? 'Preview' : 'Open'));
 const showOpenOriginalAction = computed(() =>
 	Boolean(
@@ -136,11 +140,24 @@ const resourceExtensionLabel = computed(() => {
 
 const showInlineImagePreview = computed(() => {
 	return Boolean(
-		primaryResourceUrl.value && ['jpg', 'jpeg', 'png', 'webp'].includes(resourceExtension.value)
+		imagePreviewUrl.value &&
+		!imagePreviewFailed.value &&
+		['jpg', 'jpeg', 'png', 'webp'].includes(resourceExtension.value)
 	);
 });
 
 const showPdfPreviewTile = computed(() => {
 	return Boolean(primaryResourceUrl.value && resourceExtension.value === 'pdf');
 });
+
+watch(
+	() => props.resource.thumbnail_url,
+	() => {
+		imagePreviewFailed.value = false;
+	}
+);
+
+function markImagePreviewFailed() {
+	imagePreviewFailed.value = true;
+}
 </script>

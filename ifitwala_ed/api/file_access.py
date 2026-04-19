@@ -187,6 +187,47 @@ def build_academic_file_thumbnail_url(
     return f"/api/method/ifitwala_ed.api.file_access.thumbnail_academic_file?{urlencode(params)}"
 
 
+def get_academic_file_thumbnail_ready_map(file_names: list[str] | tuple[str, ...] | set[str]) -> dict[str, bool]:
+    cleaned = sorted({str(file_name or "").strip() for file_name in (file_names or []) if str(file_name or "").strip()})
+    if not cleaned:
+        return {}
+
+    rows = (
+        frappe.db.sql(
+            """
+        SELECT
+            df.file,
+            df.preview_status,
+            df.current_version,
+            dfd.name AS derivative_name
+        FROM `tabDrive File` df
+        LEFT JOIN `tabDrive File Derivative` dfd
+          ON dfd.drive_file = df.name
+         AND dfd.drive_file_version = df.current_version
+         AND dfd.derivative_role = 'thumb'
+         AND dfd.status = 'ready'
+        WHERE df.file IN %(file_names)s
+        """,
+            {"file_names": tuple(cleaned)},
+            as_dict=True,
+        )
+        or []
+    )
+
+    ready_map = {file_name: False for file_name in cleaned}
+    for row in rows:
+        file_name = str((row or {}).get("file") or "").strip()
+        if not file_name or file_name not in ready_map:
+            continue
+        ready_map[file_name] = ready_map[file_name] or bool(
+            str((row or {}).get("preview_status") or "").strip() == "ready"
+            and str((row or {}).get("current_version") or "").strip()
+            and str((row or {}).get("derivative_name") or "").strip()
+        )
+
+    return ready_map
+
+
 def resolve_academic_file_open_url(
     *,
     file_name: str | None,
@@ -248,10 +289,18 @@ def resolve_academic_file_thumbnail_url(
     context_name: str | None = None,
     share_token: str | None = None,
     viewer_email: str | None = None,
+    thumbnail_ready: bool | None = None,
 ) -> str | None:
     raw_url = (file_url or "").strip()
     resolved_name = (file_name or "").strip() or _resolve_file_name_from_url(raw_url) or ""
     if resolved_name:
+        resolved_thumbnail_ready = (
+            thumbnail_ready
+            if thumbnail_ready is not None
+            else get_academic_file_thumbnail_ready_map([resolved_name]).get(resolved_name, False)
+        )
+        if not resolved_thumbnail_ready:
+            return None
         thumbnail_url = build_academic_file_thumbnail_url(
             file_name=resolved_name,
             context_doctype=context_doctype,

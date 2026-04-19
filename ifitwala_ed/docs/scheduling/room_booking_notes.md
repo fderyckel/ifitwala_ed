@@ -142,7 +142,7 @@ Location Booking is updated only by write-triggered materialization.
 
 ### 5.2 School Event
 
-* after_save / on_update: upsert Location Booking for event location
+* after_insert / on_update: upsert Location Booking for event location
 * on cancel/delete: remove the Location Booking row
 
 ### 5.3 Teaching

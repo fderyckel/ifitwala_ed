@@ -46,6 +46,34 @@ def _file_access_module():
 
 
 class TestFileAccessUnit(TestCase):
+    def test_get_academic_file_thumbnail_ready_map_marks_only_ready_thumb_derivatives(self):
+        with _file_access_module() as (file_access, frappe):
+
+            def fake_sql(query, values=None, as_dict=False):
+                self.assertIn("tabDrive File", query)
+                self.assertTrue(as_dict)
+                self.assertEqual(values, {"file_names": ("FILE-READY", "FILE-WAITING")})
+                return [
+                    {
+                        "file": "FILE-READY",
+                        "preview_status": "ready",
+                        "current_version": "VER-1",
+                        "derivative_name": "DERIV-1",
+                    },
+                    {
+                        "file": "FILE-WAITING",
+                        "preview_status": "pending",
+                        "current_version": "VER-2",
+                        "derivative_name": "",
+                    },
+                ]
+
+            frappe.db.sql = fake_sql
+
+            ready_map = file_access.get_academic_file_thumbnail_ready_map(["FILE-READY", "FILE-WAITING"])
+
+        self.assertEqual(ready_map, {"FILE-READY": True, "FILE-WAITING": False})
+
     def test_resolve_academic_file_open_url_recovers_file_name_from_private_file_url(self):
         with _file_access_module() as (file_access, frappe):
 
@@ -95,6 +123,18 @@ class TestFileAccessUnit(TestCase):
         self.assertEqual((query.get("file") or [None])[0], "FILE-ACADEMIC-1")
         self.assertEqual((query.get("context_doctype") or [None])[0], "Task Submission")
         self.assertEqual((query.get("context_name") or [None])[0], "TSU-0001")
+
+    def test_resolve_academic_file_thumbnail_url_hides_internal_file_without_ready_thumb(self):
+        with _file_access_module() as (file_access, _frappe):
+            url = file_access.resolve_academic_file_thumbnail_url(
+                file_name="FILE-ACADEMIC-1",
+                file_url="/private/files/submission.png",
+                context_doctype="Task Submission",
+                context_name="TSU-0001",
+                thumbnail_ready=False,
+            )
+
+        self.assertIsNone(url)
 
     def test_resolve_academic_file_open_url_hides_unresolved_private_file_url(self):
         with _file_access_module() as (file_access, frappe):

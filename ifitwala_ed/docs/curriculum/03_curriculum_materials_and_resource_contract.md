@@ -94,9 +94,9 @@ Staff add materials where they already work:
 
 Current staff preview behavior:
 
-- governed file materials in the task creation overlay now prefer stable `preview_url` routes when available
+- governed file materials in the task creation overlay now expose `thumbnail_url` only when a ready `thumb` derivative exists, alongside stable `preview_url` routes for richer preview/open behavior
 - governed file materials on the course-plan and class-planning workspaces now expose stable `thumbnail_url` routes for inline image cards plus stable `preview_url` routes for richer preview/open behavior
-- the task creation overlay now renders inline image previews and compact PDF preview tiles for current task materials after task creation
+- the task creation overlay now renders inline image thumbnails from `thumbnail_url` and compact PDF preview tiles from `preview_url` for current task materials after task creation
 - those workspaces render inline image thumbnails from `thumbnail_url` and compact PDF preview tiles from `preview_url` for governed file resources
 - `open_url` remains the explicit original-file action and compatibility baseline
 
@@ -124,8 +124,8 @@ Resolution rule:
 
 Current student preview behavior:
 
-- `CourseDetail.vue` prefers stable Ed-owned `preview_url` routes for governed file materials when the backend provides them
-- session resources plus unit, class, and shared course resource shelves now render inline image previews and compact PDF preview tiles
+- `CourseDetail.vue` uses optional `thumbnail_url` for inline governed image cards and stable Ed-owned `preview_url` routes for richer preview/open behavior
+- session resources plus unit, class, and shared course resource shelves now render inline image thumbnails from `thumbnail_url` and compact PDF preview tiles from `preview_url`
 - task-linked material chips stay lightweight inside assigned-work cards, but they also prefer `preview_url` over `open_url`
 
 The student surface must not require learners to hunt across unrelated pages just to collect the materials for a class.

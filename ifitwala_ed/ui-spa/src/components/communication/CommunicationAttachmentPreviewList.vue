@@ -196,7 +196,7 @@ function previewStatus(
 }
 
 function imagePreviewKey(attachment: OrgCommunicationAttachmentRow): string {
-	return `${attachment.row_name}:${attachment.thumbnail_url || ''}`;
+	return `${attachment.row_name}:${imagePreviewUrl(attachment) || ''}`;
 }
 
 function markImagePreviewFailed(attachment: OrgCommunicationAttachmentRow): void {
@@ -218,7 +218,13 @@ function primaryAttachmentUrl(attachment: OrgCommunicationAttachmentRow): string
 }
 
 function imagePreviewUrl(attachment: OrgCommunicationAttachmentRow): string | null {
-	return attachment.thumbnail_url || null;
+	if (attachment.thumbnail_url) {
+		return attachment.thumbnail_url;
+	}
+	if (previewStatus(attachment) === 'ready' && attachment.preview_url) {
+		return attachment.preview_url;
+	}
+	return null;
 }
 
 function showInlineImagePreview(attachment: OrgCommunicationAttachmentRow): boolean {

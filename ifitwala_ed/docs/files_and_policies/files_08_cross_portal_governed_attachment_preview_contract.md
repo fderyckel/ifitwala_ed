@@ -140,7 +140,8 @@ Test refs: `ifitwala_ed/api/test_file_access.py`, `ifitwala_ed/api/test_file_acc
 
 Current pain point:
 
-- Org Communication now uses `thumbnail_url` only for inline image cards, and its thumbnail route fails closed when no safe `thumb` derivative is ready
+- Org Communication now prefers `thumbnail_url` for inline image cards, and its thumbnail route fails closed when no safe `thumb` derivative is ready
+- when the richer image preview derivative is already ready but the smaller `thumb` derivative is still missing, Org Communication detail surfaces may fall back to `preview_url` inline instead of hiding the image completely
 - other governed image-card surfaces still need to complete that same split instead of relying on richer preview/open routes for `<img src>`
 - those preview routes are authorization-first Ed action routes, not dedicated thumbnail-delivery contracts
 - the proposal should not "cache page bootstrap grants"; it should split thumbnail delivery from richer preview delivery while keeping Ed as the permission gate

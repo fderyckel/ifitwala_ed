@@ -122,6 +122,7 @@ class TestFileAccessUrlContracts(FrappeTestCase):
                 file_url="https://cdn.example.com/demo.pdf",
                 context_doctype="Student",
                 context_name="STU-0001",
+                thumbnail_ready=True,
             ),
             "/api/method/ifitwala_ed.api.file_access.thumbnail_academic_file?file=FILE-EXT&context_doctype=Student&context_name=STU-0001",
         )
@@ -167,6 +168,7 @@ class TestFileAccessUrlContracts(FrappeTestCase):
                 file_url="/private/files/submission.pdf",
                 context_doctype="Task Submission",
                 context_name="TSU-0001",
+                thumbnail_ready=True,
             )
 
         parsed = urlparse(url or "")
