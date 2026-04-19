@@ -548,7 +548,7 @@ Canonical shell ownership:
 
 * **Staff workspace pages** use `staff-shell`
 * **Staff analytics pages** use `analytics-shell`
-* **Gradebook** uses its approved gradebook shell
+* **Gradebook** is a staff workspace page and uses `staff-shell`; any denser grading layout belongs inside the page body, not as a separate outer shell family
 * **Student / Guardian routed pages** rely on `PortalLayout` for the outer background and shell; page roots should usually use the shared `portal-page` rhythm helper (or equivalent rhythm-only structure), not page-wide shell styling
 * **Admissions routed pages** rely on `AdmissionsLayout` for chrome and outer surfaces; page roots should usually use the shared `admissions-page` rhythm helper (or an equivalent named page class), not page-local shell padding
 

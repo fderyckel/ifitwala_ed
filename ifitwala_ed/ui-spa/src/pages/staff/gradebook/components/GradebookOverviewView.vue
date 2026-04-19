@@ -78,18 +78,18 @@
 				</div>
 
 				<div class="overflow-x-auto rounded-xl border border-border/70">
-					<table class="min-w-[920px] border-collapse">
+					<table class="min-w-[860px] border-collapse">
 						<thead class="bg-gray-50/80">
 							<tr class="align-top">
 								<th
-									class="sticky left-0 z-20 min-w-[220px] border-b border-r border-border/70 bg-gray-50/95 px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-ink/50"
+									class="sticky left-0 z-20 min-w-[200px] border-b border-r border-border/70 bg-gray-50/95 px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-ink/50"
 								>
 									Student
 								</th>
 								<th
 									v-for="delivery in deliveries"
 									:key="delivery.delivery_id"
-									class="min-w-[170px] border-b border-border/70 px-4 py-3 text-left align-top"
+									class="min-w-[156px] border-b border-border/70 px-3 py-3 text-left align-top"
 									:class="delivery.delivery_id === selectedTaskName ? 'bg-sky/10' : ''"
 								>
 									<div class="space-y-1">
@@ -132,7 +132,7 @@
 								>
 									<button
 										type="button"
-										class="flex min-h-[104px] w-full flex-col items-start justify-between rounded-lg border px-3 py-3 text-left transition-all"
+										class="flex min-h-[96px] w-full flex-col items-start justify-between rounded-lg border px-3 py-3 text-left transition-all"
 										:class="cellClass(student.student, delivery.delivery_id)"
 										@click="openCell(student.student, delivery.delivery_id)"
 									>

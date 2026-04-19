@@ -35,8 +35,12 @@ class TestGuardianImageUtils(FrappeTestCase):
                 "is_private": 0,
             }
         )
-        classification = frappe._dict(
+        drive_file = frappe._dict(
             {
+                "owner_doctype": "Guardian",
+                "owner_name": "GRD-0001",
+                "attached_doctype": "Guardian",
+                "attached_name": "GRD-0001",
                 "primary_subject_type": "Guardian",
                 "primary_subject_id": "GRD-0001",
                 "data_class": "identity_image",
@@ -44,21 +48,22 @@ class TestGuardianImageUtils(FrappeTestCase):
                 "retention_policy": "until_school_exit_plus_6m",
                 "slot": "profile_image",
                 "organization": "ORG-0001",
+                "folder": None,
+                "is_private": 0,
                 "school": None,
                 "upload_source": "Desk",
-                "secondary_subjects": [],
             }
         )
 
         with (
-            patch("ifitwala_ed.utilities.image_utils._get_file_classification", return_value=classification),
+            patch("ifitwala_ed.utilities.image_utils._get_drive_file_row", return_value=drive_file),
             patch("ifitwala_ed.utilities.image_utils._governed_derivative_exists", return_value=False),
-            patch("ifitwala_ed.utilities.file_dispatcher.create_and_classify_file") as create_and_classify,
+            patch("ifitwala_ed.integrations.drive.content_uploads.upload_content_via_drive") as upload_content,
         ):
             image_utils._generate_guardian_derivatives(file_doc)
 
-        self.assertEqual(create_and_classify.call_count, 3)
-        created_slots = {call.kwargs["classification"]["slot"] for call in create_and_classify.call_args_list}
+        self.assertEqual(upload_content.call_count, 3)
+        created_slots = {call.kwargs["session_payload"]["slot"] for call in upload_content.call_args_list}
         self.assertEqual(
             created_slots,
             {"profile_image_thumb", "profile_image_card", "profile_image_medium"},
@@ -140,7 +145,10 @@ class TestGuardianImageUtils(FrappeTestCase):
                 "file_url": "/private/files/guardian-current.png",
             }
         )
-        classification = {
+        drive_file = {
+            "organization": "ORG-0001",
+        }
+        contract = {
             "primary_subject_type": "Guardian",
             "primary_subject_id": "GRD-0001",
             "data_class": "identity_image",
@@ -155,8 +163,9 @@ class TestGuardianImageUtils(FrappeTestCase):
             patch(
                 "ifitwala_ed.utilities.image_utils._get_current_governed_profile_file", return_value=current_file_doc
             ),
+            patch("ifitwala_ed.utilities.image_utils._get_drive_file_row", return_value=drive_file),
             patch("ifitwala_ed.utilities.image_utils.frappe.get_doc", return_value=guardian_doc),
-            patch("ifitwala_ed.integrations.drive.media.build_guardian_image_contract", return_value=classification),
+            patch("ifitwala_ed.integrations.drive.media.build_guardian_image_contract", return_value=contract),
             patch("ifitwala_ed.utilities.image_utils._generate_guardian_derivatives") as generate_derivatives,
             patch("ifitwala_ed.utilities.image_utils.frappe.db.set_value") as set_value,
         ):
@@ -174,7 +183,7 @@ class TestGuardianImageUtils(FrappeTestCase):
             update_modified=False,
         )
 
-    def test_ensure_guardian_profile_image_classifies_existing_guardian_file_when_unclassified(self):
+    def test_ensure_guardian_profile_image_uploads_drive_managed_copy_when_source_exists(self):
         guardian_doc = frappe._dict({"name": "GRD-0001", "organization": "ORG-0001"})
         source_file_doc = frappe._dict(
             {
@@ -186,7 +195,7 @@ class TestGuardianImageUtils(FrappeTestCase):
                 "file_name": "guardian-source.png",
             }
         )
-        classification = {
+        contract = {
             "primary_subject_type": "Guardian",
             "primary_subject_id": "GRD-0001",
             "data_class": "identity_image",
@@ -196,36 +205,34 @@ class TestGuardianImageUtils(FrappeTestCase):
             "organization": "ORG-0001",
             "school": None,
         }
-
-        def fake_get_value(doctype, filters, fieldname, as_dict=False):
-            if doctype == "File Classification" and filters == {
-                "primary_subject_type": "Guardian",
-                "primary_subject_id": "GRD-0001",
-                "slot": "profile_image",
-                "is_current_version": 1,
-            }:
-                return None
-            if doctype == "File Classification" and filters == {"file": "FILE-GRD-0001"}:
-                return None
-            raise AssertionError(f"Unexpected get_value call: {doctype} {filters} {fieldname}")
+        uploaded_file_doc = frappe._dict(
+            {
+                "name": "FILE-GRD-UPLOADED",
+                "file_url": "/private/files/guardian-source.png",
+            }
+        )
 
         with (
+            patch("ifitwala_ed.utilities.image_utils._get_current_governed_profile_file", return_value=None),
             patch("ifitwala_ed.utilities.image_utils.frappe.get_doc", return_value=guardian_doc),
-            patch("ifitwala_ed.integrations.drive.media.build_guardian_image_contract", return_value=classification),
-            patch("ifitwala_ed.utilities.image_utils.frappe.db.get_value", side_effect=fake_get_value),
+            patch("ifitwala_ed.integrations.drive.media.build_guardian_image_contract", return_value=contract),
             patch("ifitwala_ed.utilities.image_utils._resolve_unique_file_doc_by_url", return_value=source_file_doc),
+            patch("ifitwala_ed.utilities.image_utils._read_managed_file_bytes", return_value=b"guardian-bytes"),
             patch(
-                "ifitwala_ed.utilities.file_dispatcher.classify_existing_file", return_value=source_file_doc
-            ) as classify_file,
+                "ifitwala_ed.integrations.drive.content_uploads.upload_content_via_drive",
+                return_value=({}, {}, uploaded_file_doc),
+            ) as upload_content,
+            patch("ifitwala_ed.utilities.image_utils._load_drive_module") as load_drive_module,
             patch("ifitwala_ed.utilities.image_utils.frappe.db.set_value") as set_value,
         ):
+            load_drive_module.return_value = frappe._dict({"upload_guardian_image": object()})
             image_url = image_utils.ensure_guardian_profile_image(
                 "GRD-0001",
                 original_url="/private/files/guardian-source.png",
             )
 
         self.assertEqual(image_url, "/private/files/guardian-source.png")
-        classify_file.assert_called_once()
+        upload_content.assert_called_once()
         set_value.assert_called_once_with(
             "Guardian",
             "GRD-0001",

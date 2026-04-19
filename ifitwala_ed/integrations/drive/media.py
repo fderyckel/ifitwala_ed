@@ -187,6 +187,28 @@ def validate_media_finalize_context(upload_session_doc) -> dict[str, Any] | None
 def run_media_post_finalize(upload_session_doc, created_file) -> dict[str, Any]:
     file_url = getattr(created_file, "file_url", None) or frappe.db.get_value("File", created_file.name, "file_url")
     slot = upload_session_doc.intended_slot or ""
+    should_refresh_profile_derivatives = slot == _PROFILE_IMAGE_SLOT
+    image_utils = None
+
+    def _refresh_profile_derivatives():
+        nonlocal image_utils
+        if not should_refresh_profile_derivatives:
+            return
+        if image_utils is None:
+            try:
+                from ifitwala_ed.utilities import image_utils as image_utils_module
+            except Exception:
+                log_error = getattr(frappe, "log_error", None)
+                get_traceback = getattr(frappe, "get_traceback", None)
+                if callable(log_error):
+                    log_error(
+                        get_traceback() if callable(get_traceback) else "Derivative refresh import failed.",
+                        "Drive Media Derivative Refresh Failed",
+                    )
+                return
+
+            image_utils = image_utils_module
+        image_utils.handle_governed_file_after_classification(created_file)
 
     if upload_session_doc.owner_doctype == "Employee":
         frappe.db.set_value(
@@ -196,6 +218,7 @@ def run_media_post_finalize(upload_session_doc, created_file) -> dict[str, Any]:
             file_url,
             update_modified=False,
         )
+        _refresh_profile_derivatives()
         return {"file_url": file_url}
 
     if upload_session_doc.owner_doctype == "Student":
@@ -210,6 +233,7 @@ def run_media_post_finalize(upload_session_doc, created_file) -> dict[str, Any]:
         student_doc.student_image = file_url
         if hasattr(student_doc, "sync_student_contact_image"):
             student_doc.sync_student_contact_image()
+        _refresh_profile_derivatives()
         return {"file_url": file_url}
 
     if upload_session_doc.owner_doctype == "Guardian":
@@ -222,6 +246,7 @@ def run_media_post_finalize(upload_session_doc, created_file) -> dict[str, Any]:
             },
             update_modified=False,
         )
+        _refresh_profile_derivatives()
         return {"file_url": file_url}
 
     if upload_session_doc.owner_doctype != "Organization":

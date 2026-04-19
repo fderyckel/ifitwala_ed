@@ -40,7 +40,6 @@ from ifitwala_ed.governance.policy_utils import (
     get_applicant_policy_status,
     has_applicant_policy_acknowledgement,
 )
-from ifitwala_ed.utilities import file_dispatcher
 from ifitwala_ed.utilities.image_utils import ensure_guardian_profile_image
 from ifitwala_ed.utilities.school_tree import get_school_scope_for_academic_year
 
@@ -1496,33 +1495,28 @@ class StudentApplicant(Document):
             file_row.get("file_url") or f"vaccination_{index + 1}.png"
         )
 
-        file_doc = file_dispatcher.create_and_classify_file(
-            file_kwargs={
-                "attached_to_doctype": "Student Patient",
-                "attached_to_name": student_patient.name,
-                "attached_to_field": "vaccinations",
-                "file_name": filename,
-                "content": content,
-                "is_private": 1 if file_row.get("is_private") else 0,
-            },
-            classification={
+        from ifitwala_ed.integrations.drive.content_uploads import upload_content_via_drive
+
+        _session_response, _finalize_response, file_doc = upload_content_via_drive(
+            session_payload={
+                "owner_doctype": "Student Patient",
+                "owner_name": student_patient.name,
+                "attached_doctype": "Student Patient",
+                "attached_name": student_patient.name,
+                "organization": self.organization,
+                "school": self.school,
                 "primary_subject_type": "Student",
                 "primary_subject_id": student_patient.student,
                 "data_class": "safeguarding",
                 "purpose": "medical_record",
                 "retention_policy": "until_school_exit_plus_6m",
                 "slot": slot,
-                "organization": self.organization,
-                "school": self.school,
-                "source_file": file_row.get("name"),
+                "is_private": 1 if file_row.get("is_private") else 0,
                 "upload_source": "API",
             },
-            context_override={
-                "root_folder": "Home/Students",
-                "subfolder": f"{student_patient.student}/Health",
-                "file_category": "Student Health",
-                "logical_key": slot,
-            },
+            file_name=filename,
+            content=content,
+            attached_field="vaccinations",
         )
         return file_doc.file_url
 
@@ -1579,27 +1573,18 @@ class StudentApplicant(Document):
             return None
 
         filename = file_row.get("file_name") or os.path.basename(file_row.get("file_url") or "applicant_image")
-        file_doc = file_dispatcher.create_and_classify_file(
-            file_kwargs={
-                "attached_to_doctype": "Student",
-                "attached_to_name": student.name,
-                "attached_to_field": "student_image",
-                "file_name": filename,
-                "content": content,
-                "is_private": 1,
-            },
-            classification={
-                "primary_subject_type": "Student",
-                "primary_subject_id": student.name,
-                "data_class": "identity_image",
-                "purpose": "student_profile_display",
-                "retention_policy": "until_school_exit_plus_6m",
-                "slot": "profile_image",
-                "organization": self.organization,
-                "school": self.school,
-                "source_file": file_row.get("name"),
+        from ifitwala_ed.integrations.drive.content_uploads import upload_content_via_drive
+        from ifitwala_ed.utilities.governed_uploads import _load_drive_module
+
+        drive_media_api = _load_drive_module("ifitwala_drive.api.media")
+        _session_response, _finalize_response, file_doc = upload_content_via_drive(
+            create_session_callable=drive_media_api.upload_student_image,
+            session_payload={
+                "student": student.name,
                 "upload_source": "API",
             },
+            file_name=filename,
+            content=content,
         )
 
         frappe.db.set_value(
@@ -1718,26 +1703,27 @@ class StudentApplicant(Document):
                 filename = source.get("file_name") or os.path.basename(source.get("file_url") or "document")
 
                 try:
-                    file_dispatcher.create_and_classify_file(
-                        file_kwargs={
-                            "attached_to_doctype": "Student",
-                            "attached_to_name": student.name,
-                            "file_name": filename,
-                            "content": content,
-                            "is_private": 1 if source.get("is_private") else 0,
-                        },
-                        classification={
+                    from ifitwala_ed.integrations.drive.content_uploads import upload_content_via_drive
+
+                    upload_content_via_drive(
+                        session_payload={
+                            "owner_doctype": "Student",
+                            "owner_name": student.name,
+                            "attached_doctype": "Student",
+                            "attached_name": student.name,
+                            "organization": self.organization,
+                            "school": self.school,
                             "primary_subject_type": "Student",
                             "primary_subject_id": student.name,
                             "data_class": slot_spec["data_class"],
                             "purpose": slot_spec["purpose"],
                             "retention_policy": slot_spec["retention_policy"],
                             "slot": slot_key,
-                            "organization": self.organization,
-                            "school": self.school,
-                            "source_file": source.get("name"),
+                            "is_private": 1 if source.get("is_private") else 0,
                             "upload_source": "API",
                         },
+                        file_name=filename,
+                        content=content,
                     )
                     copied_count += 1
                 except Exception:

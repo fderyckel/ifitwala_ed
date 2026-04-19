@@ -115,7 +115,8 @@ def upload_applicant_document(
         response = {
             "file": file_doc.name,
             "file_url": file_doc.file_url,
-            "classification": finalize_response.get("classification"),
+            "drive_file_id": finalize_response.get("drive_file_id"),
+            "canonical_ref": finalize_response.get("canonical_ref"),
             "applicant_document": finalize_response.get("applicant_document") or doc.name,
             "applicant_document_item": finalize_response.get("applicant_document_item") or item_doc.name,
             "item_key": finalize_response.get("item_key") or item_doc.item_key,
@@ -165,7 +166,8 @@ def upload_applicant_profile_image(
     return {
         "file": file_doc.name,
         "file_url": file_doc.file_url,
-        "classification": finalize_response.get("classification"),
+        "drive_file_id": finalize_response.get("drive_file_id"),
+        "canonical_ref": finalize_response.get("canonical_ref"),
         "student_applicant": finalize_response.get("student_applicant") or student_applicant,
         "slot": finalize_response.get("slot"),
     }
@@ -214,7 +216,8 @@ def upload_applicant_guardian_image(
     return {
         "file": file_doc.name,
         "file_url": file_doc.file_url,
-        "classification": finalize_response.get("classification"),
+        "drive_file_id": finalize_response.get("drive_file_id"),
+        "canonical_ref": finalize_response.get("canonical_ref"),
         "student_applicant": finalize_response.get("student_applicant") or student_applicant,
         "guardian_row_name": finalize_response.get("guardian_row_name") or guardian_row_name,
         "slot": finalize_response.get("slot"),
@@ -270,7 +273,8 @@ def upload_applicant_health_vaccination_proof(
     return {
         "file": file_doc.name,
         "file_url": file_doc.file_url,
-        "classification": finalize_response.get("classification"),
+        "drive_file_id": finalize_response.get("drive_file_id"),
+        "canonical_ref": finalize_response.get("canonical_ref"),
         "student_applicant": finalize_response.get("student_applicant") or student_applicant,
         "applicant_health_profile": finalize_response.get("applicant_health_profile") or applicant_health_profile,
         "slot": finalize_response.get("slot"),

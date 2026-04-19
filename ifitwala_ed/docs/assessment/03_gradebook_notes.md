@@ -59,6 +59,7 @@ Secondary filters (collapsed by default):
 UX rule:
 
 - Prevent “filter spaghetti” by collapsing advanced filters and showing active filter chips.
+- Student-group selection lives in this top context bar; do not duplicate it as a second permanent left-side browser.
 
 #### B) Delivery List (left rail or top row selector)
 
@@ -66,6 +67,8 @@ Default: show Deliveries within the chosen time scope.
 
 - Displays: task title, due date, mode badge, status counts (e.g., Missing 3)
 - Select one Delivery → renders grid
+- On desktop, the delivery list may live in a narrow collapsible left rail so the grading workspace keeps most of the page width.
+- When the rail is collapsed, the current class and selected delivery must still remain obvious in-page.
 
 Why:
 

@@ -4,22 +4,25 @@ Status: Current runtime and gap register
 Date: 2026-04-19
 Code refs:
 - `ifitwala_ed/utilities/governed_uploads.py`
-- `ifitwala_ed/utilities/file_dispatcher.py`
 - `ifitwala_ed/utilities/file_management.py`
 - `ifitwala_ed/utilities/image_utils.py`
+- `ifitwala_ed/integrations/drive/authority.py`
+- `ifitwala_ed/integrations/drive/content_uploads.py`
 - `ifitwala_ed/integrations/drive/bridge.py`
 - `ifitwala_drive/api/uploads.py`
 - `ifitwala_drive/services/uploads/finalize.py`
 Test refs:
 - `ifitwala_drive/tests/test_task_submission_upload_flow.py`
+- `ifitwala_drive/tests/test_media_and_admissions_wrappers.py`
 - `ifitwala_ed/utilities/test_governed_uploads_task_flows.py`
-- `ifitwala_ed/utilities/test_file_dispatcher_hooks.py`
+- `ifitwala_ed/admission/test_admissions_portal_uploads_unit.py`
 
 ## Bottom line
 
 - The locked architecture is Drive-owned governed execution with Ed-owned workflow semantics.
 - Ingress and finalize now conform to that boundary.
-- Current runtime still has remaining migration gaps after finalize.
+- Authority collapse is now implemented in runtime code.
+- `File Classification` is no longer a live runtime authority or projection path.
 - This file documents the remaining non-conforming behavior so agents stop copying it into new work.
 - New work must follow `files_01_architecture_notes.md`, not the accidental patterns listed here.
 
@@ -36,7 +39,7 @@ Today the system already has substantial Drive-based infrastructure:
 - grant issuance
 
 The main boundary leaks at ingress and finalize are now sealed.
-The remaining problems are compatibility baggage and read/derivative cleanup.
+The remaining problems are read/derivative cleanup and historical-data removal.
 
 ## 2. Boundary status and remaining non-conforming behaviors
 
@@ -69,39 +72,30 @@ Current code:
 Current behavior:
 
 - Drive finalization creates the native `File` compatibility projection itself
-- Drive may still create a temporary `File Classification` projection from authoritative upload-session metadata
-- Ed legacy `File` hooks explicitly skip routing and derivative side effects for Drive compatibility rows
+- Drive no longer creates `File Classification` rows
+- Ed `File` hooks now point directly at `image_utils` and no longer route or rename governed files
 
 Why this is acceptable only as a transition:
 
 - Drive now owns the finalize execution boundary
-- compatibility projections still exist only to keep current surfaces running until Phase 4
+- the native `File` projection still exists only to keep current surfaces running until later cleanup
 
 Rules:
 
 - do not reintroduce Drive -> Ed dispatcher/file-routing imports
 - do not treat compatibility projections as governance authority
 
-### 2.3 Ed can physically remap Drive-managed storage after finalize
+### 2.3 Resolved: Ed no longer remaps finalized Drive storage
 
-Current code:
+Current behavior:
 
-- `ifitwala_ed/utilities/file_management.py::route_uploaded_file`
-- `ifitwala_drive/services/storage/local.py::finalize_temporary_object`
+- governed finalize leaves storage identity under Drive-owned object keys
+- Ed no longer routes or renames governed files after finalize
+- `file_management.py` now retains only the governed-upload gate and task-submission folder helper
 
-Observed behavior:
+Outcome:
 
-- Drive local storage finalizes to a Drive-owned object key under `/private/files/ifitwala_drive/...`
-- Ed routing logic can then rename/move the file into an Ed folder path and rewrite `File.file_url`
-
-Why this is wrong:
-
-- storage object identity belongs to Drive
-- Ed-side moves can desynchronize object keys from actual blob location
-
-Target fix:
-
-- Ed never renames or routes Drive-managed storage objects
+- Phase 4 removed the last live Ed-side file-routing path for governed uploads
 - Drive object keys remain authoritative after finalize
 
 ### 2.4 Governance truth is duplicated
@@ -109,9 +103,8 @@ Target fix:
 Current duplicated authorities include:
 
 - `Drive Upload Session.intended_*`
-- `File Classification`
 - `Drive File`
-- in some places `File` custom fields
+- native `File` compatibility rows for legacy surfaces
 
 Why this is wrong:
 
@@ -122,7 +115,7 @@ Why this is wrong:
 Target fix:
 
 - Drive metadata becomes sole governance authority
-- `File Classification` is removed
+- historical `File Classification` rows are removed by migration patch once every row has matching Drive authority
 
 ### 2.5 Derivatives exist in two systems
 
@@ -233,7 +226,8 @@ Collapse authority.
 Required outcomes:
 
 - Drive metadata becomes sole governance authority
-- `File Classification` is migrated off and removed
+- completed in code
+- cleanup patch `ifitwala_ed.patches.remove_file_classification_rows` removes historical rows only after matching `Drive File` coverage exists
 
 ### Phase 5
 

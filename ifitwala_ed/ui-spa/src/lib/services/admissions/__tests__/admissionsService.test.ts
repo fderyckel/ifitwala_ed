@@ -47,7 +47,8 @@ describe('admissionsService uploads', () => {
 		apiPostWithProgressMock.mockResolvedValue({
 			file: 'FILE-1',
 			file_url: '/private/files/evidence.pdf',
-			classification: 'administrative',
+			drive_file_id: 'DRV-FILE-1',
+			canonical_ref: 'drv:ORG-1:DRV-FILE-1',
 			applicant_document: 'APP-DOC-1',
 			applicant_document_item: 'ROW-1',
 			item_key: 'passport',

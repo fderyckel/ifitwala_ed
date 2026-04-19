@@ -1423,32 +1423,33 @@ def _dispatch_export_file(
     file_name: str,
     content: bytes,
 ):
-    from ifitwala_ed.utilities import file_dispatcher
+    from ifitwala_ed.integrations.drive.content_uploads import upload_content_via_drive
 
     organization = frappe.db.get_value("School", school, "organization")
     if not organization:
         frappe.throw(_("Organization is required for exports."))
 
-    return file_dispatcher.create_and_classify_file(
-        file_kwargs={
-            "attached_to_doctype": "Student",
-            "attached_to_name": student,
-            "is_private": 1,
-            "file_name": file_name,
-            "content": content,
-        },
-        classification={
+    _session_response, _finalize_response, file_doc = upload_content_via_drive(
+        session_payload={
+            "owner_doctype": "Student",
+            "owner_name": student,
+            "attached_doctype": "Student",
+            "attached_name": student,
+            "organization": organization,
+            "school": school,
             "primary_subject_type": "Student",
             "primary_subject_id": student,
             "data_class": "academic",
             "purpose": purpose,
             "retention_policy": "immediate_on_request",
             "slot": slot,
-            "organization": organization,
-            "school": school,
+            "is_private": 1,
             "upload_source": "API",
         },
+        file_name=file_name,
+        content=content,
     )
+    return file_doc
 
 
 @frappe.whitelist()

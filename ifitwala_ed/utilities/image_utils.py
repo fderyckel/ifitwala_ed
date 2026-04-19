@@ -15,6 +15,14 @@ import frappe
 from frappe import _
 from PIL import Image
 
+from ifitwala_ed.integrations.drive.authority import (
+    get_current_drive_file_for_slot,
+    get_current_drive_files_for_slots,
+    get_drive_file_for_file,
+    is_governed_file,
+    supersede_drive_files_for_slots,
+)
+
 PROFILE_IMAGE_VARIANT_SLOTS = (
     "profile_image_thumb",
     "profile_image_card",
@@ -41,29 +49,11 @@ def slugify(text):
     return re.sub(r"[^a-z0-9]+", "_", text.lower()).strip("_")
 
 
-def _get_file_classification(file_doc):
+def _get_drive_file_row(file_doc, *, statuses=("active", "processing", "blocked")):
     if not file_doc:
         return None
 
-    name = frappe.db.get_value("File Classification", {"file": file_doc.name}, "name")
-    if not name:
-        return None
-
-    return frappe.get_doc("File Classification", name)
-
-
-def _get_secondary_subjects(fc_doc):
-    if not fc_doc:
-        return []
-
-    return [
-        {
-            "subject_type": row.subject_type,
-            "subject_id": row.subject_id,
-            "role": row.role,
-        }
-        for row in (fc_doc.secondary_subjects or [])
-    ]
+    return get_drive_file_for_file(file_doc.name, statuses=statuses)
 
 
 def _render_resized_bytes(original_path, width, quality=75):
@@ -171,30 +161,39 @@ def file_url_is_accessible(
     return bool(candidate and os.path.exists(candidate))
 
 
-def _build_governed_derivative_classification(fc_doc, slot_suffix, source_file):
+def _build_governed_derivative_session_payload(drive_file_row, slot_suffix):
     return {
-        "primary_subject_type": fc_doc.primary_subject_type,
-        "primary_subject_id": fc_doc.primary_subject_id,
-        "data_class": fc_doc.data_class,
-        "purpose": fc_doc.purpose,
-        "retention_policy": fc_doc.retention_policy,
-        "slot": f"{fc_doc.slot}_{slot_suffix}",
-        "organization": fc_doc.organization,
-        "school": fc_doc.school,
-        "upload_source": fc_doc.upload_source or "Desk",
-        "source_file": source_file,
+        "owner_doctype": drive_file_row.get("owner_doctype"),
+        "owner_name": drive_file_row.get("owner_name"),
+        "attached_doctype": drive_file_row.get("attached_doctype"),
+        "attached_name": drive_file_row.get("attached_name"),
+        "organization": drive_file_row.get("organization"),
+        "school": drive_file_row.get("school"),
+        "folder": drive_file_row.get("folder"),
+        "primary_subject_type": drive_file_row.get("primary_subject_type"),
+        "primary_subject_id": drive_file_row.get("primary_subject_id"),
+        "data_class": drive_file_row.get("data_class"),
+        "purpose": drive_file_row.get("purpose"),
+        "retention_policy": drive_file_row.get("retention_policy"),
+        "slot": f"{drive_file_row.get('slot')}_{slot_suffix}",
+        "is_private": drive_file_row.get("is_private"),
+        "upload_source": drive_file_row.get("upload_source") or "Desk",
     }
-
-
-def _build_employee_derivative_classification(fc_doc, slot_suffix, source_file):
-    return _build_governed_derivative_classification(fc_doc, slot_suffix, source_file)
 
 
 def _governed_derivative_exists(source_file, slot_base, slot_suffix):
     slot = f"{slot_base}_{slot_suffix}"
-    return frappe.db.exists(
-        "File Classification",
-        {"source_file": source_file, "slot": slot},
+    drive_file = _get_drive_file_row(frappe._dict({"name": source_file}))
+    if not drive_file:
+        return False
+    return bool(
+        get_current_drive_file_for_slot(
+            primary_subject_type=str(drive_file.get("primary_subject_type") or ""),
+            primary_subject_id=str(drive_file.get("primary_subject_id") or ""),
+            slot=slot,
+            fields=["name"],
+            statuses=("active",),
+        )
     )
 
 
@@ -400,15 +399,12 @@ def _get_governed_image_variants_map(
     if not names:
         return {}
 
-    rows = frappe.get_all(
-        "File Classification",
-        filters={
-            "primary_subject_type": primary_subject_type,
-            "primary_subject_id": ("in", names),
-            "slot": ("in", list(slots)),
-            "is_current_version": 1,
-        },
+    rows = get_current_drive_files_for_slots(
+        primary_subject_type=primary_subject_type,
+        primary_subject_ids=names,
+        slots=slots,
         fields=["primary_subject_id", "slot", "file"],
+        statuses=("active",),
     )
     if not rows:
         return {}
@@ -733,16 +729,14 @@ def _get_current_governed_profile_file(*, primary_subject_type: str, subject_nam
     if not resolved_subject:
         return None
 
-    file_name = frappe.db.get_value(
-        "File Classification",
-        {
-            "primary_subject_type": primary_subject_type,
-            "primary_subject_id": resolved_subject,
-            "slot": "profile_image",
-            "is_current_version": 1,
-        },
-        "file",
+    drive_file = get_current_drive_file_for_slot(
+        primary_subject_type=primary_subject_type,
+        primary_subject_id=resolved_subject,
+        slot="profile_image",
+        fields=["file"],
+        statuses=("active",),
     )
+    file_name = (drive_file or {}).get("file")
     if not file_name:
         return None
     if not frappe.db.exists("File", file_name):
@@ -813,10 +807,8 @@ def ensure_guardian_profile_image(
     )
 
     if current_file_doc:
-        current_classification = _get_file_classification(current_file_doc)
-        resolved_organization = (
-            getattr(current_classification, "organization", None) if current_classification else None
-        ) or organization
+        current_drive_file = _get_drive_file_row(current_file_doc)
+        resolved_organization = (current_drive_file or {}).get("organization") or organization
         if not str(resolved_organization or "").strip():
             resolved_organization = getattr(_load_guardian_doc(), "organization", None)
         _generate_guardian_derivatives(current_file_doc)
@@ -829,11 +821,12 @@ def ensure_guardian_profile_image(
 
     guardian_doc = _load_guardian_doc()
 
+    from ifitwala_ed.integrations.drive.content_uploads import upload_content_via_drive
     from ifitwala_ed.integrations.drive.media import build_guardian_image_contract
-    from ifitwala_ed.utilities import file_dispatcher
+    from ifitwala_ed.utilities.governed_uploads import _load_drive_module
 
-    classification = build_guardian_image_contract(guardian_doc)
-    classification["upload_source"] = upload_source
+    contract = build_guardian_image_contract(guardian_doc)
+    contract["upload_source"] = upload_source
 
     source_file_doc = None
     resolved_source_file_name = str(source_file_name or "").strip()
@@ -860,67 +853,52 @@ def ensure_guardian_profile_image(
     if not source_file_doc:
         return None
 
-    attached_to_field = (getattr(source_file_doc, "attached_to_field", None) or "").strip()
-    source_classification_name = frappe.db.get_value("File Classification", {"file": source_file_doc.name}, "name")
-    if (
-        source_file_doc.attached_to_doctype == "Guardian"
-        and source_file_doc.attached_to_name == resolved_guardian
-        and not source_classification_name
-        and attached_to_field in {"", "guardian_image"}
-    ):
-        if not attached_to_field:
-            frappe.db.set_value(
-                "File", source_file_doc.name, "attached_to_field", "guardian_image", update_modified=False
-            )
-            source_file_doc.attached_to_field = "guardian_image"
-        current_file_doc = file_dispatcher.classify_existing_file(
-            file_doc=source_file_doc,
-            classification=classification,
+    content = _read_managed_file_bytes(source_file_doc, log_label="Guardian")
+    if not content:
+        frappe.log_error(
+            frappe.as_json(
+                {
+                    "error": "guardian_profile_image_source_unreadable",
+                    "guardian": resolved_guardian,
+                    "source_file": source_file_doc.name,
+                    "source_file_url": source_file_doc.file_url,
+                },
+                indent=2,
+            ),
+            "Guardian Profile Image Sync Failed",
         )
-    else:
-        content = _read_managed_file_bytes(source_file_doc, log_label="Guardian")
-        if not content:
-            frappe.log_error(
-                frappe.as_json(
-                    {
-                        "error": "guardian_profile_image_source_unreadable",
-                        "guardian": resolved_guardian,
-                        "source_file": source_file_doc.name,
-                        "source_file_url": source_file_doc.file_url,
-                    },
-                    indent=2,
-                ),
-                "Guardian Profile Image Sync Failed",
-            )
-            return None
+        return None
 
-        filename = (source_file_doc.file_name or "").strip() or os.path.basename(
-            source_file_doc.file_url or "guardian_profile_image"
-        )
-        current_file_doc = file_dispatcher.create_and_classify_file(
-            file_kwargs={
-                "attached_to_doctype": "Guardian",
-                "attached_to_name": resolved_guardian,
-                "attached_to_field": "guardian_image",
-                "file_name": filename,
-                "content": content,
-                "is_private": 1,
-            },
-            classification={
-                **classification,
-                "source_file": source_file_doc.name,
-            },
-        )
+    filename = (source_file_doc.file_name or "").strip() or os.path.basename(
+        source_file_doc.file_url or "guardian_profile_image"
+    )
+    drive_media_api = _load_drive_module("ifitwala_drive.api.media")
+    _session_response, _finalize_response, current_file_doc = upload_content_via_drive(
+        create_session_callable=drive_media_api.upload_guardian_image,
+        session_payload={
+            "guardian": guardian_doc.name,
+            "upload_source": upload_source,
+        },
+        file_name=filename,
+        content=content,
+    )
 
     _sync_guardian_profile_image_field(
         guardian_name=resolved_guardian,
         file_url=current_file_doc.file_url,
-        organization=classification.get("organization"),
+        organization=contract.get("organization"),
     )
     return current_file_doc.file_url
 
 
-def _generate_governed_profile_derivatives(file_doc, *, doctype: str, fieldname: str, log_label: str):
+def _generate_governed_profile_derivatives(
+    file_doc,
+    *,
+    doctype: str,
+    fieldname: str,
+    log_label: str,
+    refresh_derivative_slots: bool = False,
+):
     if not file_doc or file_doc.attached_to_doctype != doctype:
         return
 
@@ -931,8 +909,8 @@ def _generate_governed_profile_derivatives(file_doc, *, doctype: str, fieldname:
     if filename.startswith(("hero_", "medium_", "card_", "thumb_")):
         return
 
-    fc_doc = _get_file_classification(file_doc)
-    if not fc_doc or fc_doc.slot != "profile_image":
+    drive_file_row = _get_drive_file_row(file_doc)
+    if not drive_file_row or drive_file_row.get("slot") != "profile_image":
         return
 
     if not file_doc.file_url:
@@ -954,12 +932,17 @@ def _generate_governed_profile_derivatives(file_doc, *, doctype: str, fieldname:
     if not slug_base:
         return
 
-    from ifitwala_ed.utilities import file_dispatcher
+    from ifitwala_ed.integrations.drive.content_uploads import upload_content_via_drive
 
-    secondary_subjects = _get_secondary_subjects(fc_doc)
+    if refresh_derivative_slots:
+        supersede_drive_files_for_slots(
+            primary_subject_type=str(drive_file_row.get("primary_subject_type") or ""),
+            primary_subject_id=str(drive_file_row.get("primary_subject_id") or ""),
+            slots=[f"profile_image_{size_label}" for size_label in PROFILE_IMAGE_VARIANT_SIZES],
+        )
 
     for size_label, width in PROFILE_IMAGE_VARIANT_SIZES.items():
-        if _governed_derivative_exists(file_doc.name, fc_doc.slot, size_label):
+        if _governed_derivative_exists(file_doc.name, str(drive_file_row.get("slot") or ""), size_label):
             continue
 
         if original_path and os.path.exists(original_path):
@@ -969,50 +952,46 @@ def _generate_governed_profile_derivatives(file_doc, *, doctype: str, fieldname:
         if not content:
             continue
 
-        classification = _build_governed_derivative_classification(
-            fc_doc,
+        session_payload = _build_governed_derivative_session_payload(
+            drive_file_row,
             size_label,
-            file_doc.name,
         )
 
-        file_dispatcher.create_and_classify_file(
-            file_kwargs={
-                "attached_to_doctype": file_doc.attached_to_doctype,
-                "attached_to_name": file_doc.attached_to_name,
-                "attached_to_field": file_doc.attached_to_field,
-                "file_name": f"{size_label}_{slug_base}.webp",
-                "content": content,
-                "is_private": int(file_doc.is_private or 0),
-            },
-            classification=classification,
-            secondary_subjects=secondary_subjects,
+        upload_content_via_drive(
+            session_payload=session_payload,
+            file_name=f"{size_label}_{slug_base}.webp",
+            content=content,
+            attached_field=getattr(file_doc, "attached_to_field", None),
         )
 
 
-def _generate_employee_derivatives(file_doc):
+def _generate_employee_derivatives(file_doc, *, refresh_derivative_slots: bool = False):
     _generate_governed_profile_derivatives(
         file_doc,
         doctype="Employee",
         fieldname="employee_image",
         log_label="Employee",
+        refresh_derivative_slots=refresh_derivative_slots,
     )
 
 
-def _generate_student_derivatives(file_doc):
+def _generate_student_derivatives(file_doc, *, refresh_derivative_slots: bool = False):
     _generate_governed_profile_derivatives(
         file_doc,
         doctype="Student",
         fieldname="student_image",
         log_label="Student",
+        refresh_derivative_slots=refresh_derivative_slots,
     )
 
 
-def _generate_guardian_derivatives(file_doc):
+def _generate_guardian_derivatives(file_doc, *, refresh_derivative_slots: bool = False):
     _generate_governed_profile_derivatives(
         file_doc,
         doctype="Guardian",
         fieldname="guardian_image",
         log_label="Guardian",
+        refresh_derivative_slots=refresh_derivative_slots,
     )
 
 
@@ -1100,13 +1079,13 @@ def handle_file_after_insert(doc, method=None):
     """Hook: create WebP variants after a File is inserted."""
     # Governed Employee images should only be processed once classified.
     if doc.attached_to_doctype == "Employee":
-        if not frappe.db.exists("File Classification", {"file": doc.name}):
+        if not is_governed_file(doc.name):
             return
         _generate_employee_derivatives(doc)
         return
 
     if doc.attached_to_doctype == "Student":
-        if frappe.db.exists("File Classification", {"file": doc.name}):
+        if is_governed_file(doc.name):
             _generate_student_derivatives(doc)
             return
 
@@ -1116,7 +1095,7 @@ def handle_file_after_insert(doc, method=None):
             return
 
     if doc.attached_to_doctype == "Guardian":
-        if not frappe.db.exists("File Classification", {"file": doc.name}):
+        if not is_governed_file(doc.name):
             return
         _generate_guardian_derivatives(doc)
         return
@@ -1164,13 +1143,13 @@ def handle_governed_file_after_classification(file_doc):
     if not file_doc:
         return
     if file_doc.attached_to_doctype == "Employee":
-        _generate_employee_derivatives(file_doc)
+        _generate_employee_derivatives(file_doc, refresh_derivative_slots=True)
         return
     if file_doc.attached_to_doctype == "Student":
-        _generate_student_derivatives(file_doc)
+        _generate_student_derivatives(file_doc, refresh_derivative_slots=True)
         return
     if file_doc.attached_to_doctype == "Guardian":
-        _generate_guardian_derivatives(file_doc)
+        _generate_guardian_derivatives(file_doc, refresh_derivative_slots=True)
 
 
 # ────────────────────────────────────────────────────────────────────────────

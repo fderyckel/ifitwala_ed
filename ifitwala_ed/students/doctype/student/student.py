@@ -58,6 +58,7 @@ from ifitwala_ed.governance.policy_utils import (
     MEDIA_CONSENT_POLICY_KEY,
     has_applicant_policy_acknowledgement,
 )
+from ifitwala_ed.integrations.drive.authority import is_governed_file
 
 
 class Student(Document):
@@ -261,7 +262,7 @@ class Student(Document):
                 {"file_url": self.student_image, "attached_to_doctype": "Student", "attached_to_name": self.name},
                 "name",
             )
-            if file_name and frappe.db.exists("File Classification", {"file": file_name}):
+            if file_name and is_governed_file(file_name):
                 return
 
             student_id = self.name

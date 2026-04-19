@@ -76,7 +76,11 @@ class TestAdmissionsPortalUploadMimeHints(TestCase):
                     "_drive_upload_and_finalize",
                     return_value=(
                         {"upload_session_id": "DUS-0001"},
-                        {"classification": "CLS-0001", "slot": "profile_image"},
+                        {
+                            "drive_file_id": "DRV-FILE-0001",
+                            "canonical_ref": "drv:ORG-1:DRV-FILE-0001",
+                            "slot": "profile_image",
+                        },
                         file_doc,
                     ),
                 ) as bridge,
@@ -90,7 +94,8 @@ class TestAdmissionsPortalUploadMimeHints(TestCase):
         resolve_mime_type.assert_called_once_with(filename="profile.jpg", explicit=None)
         bridge.assert_called_once()
         self.assertEqual(bridge.call_args.kwargs["payload"]["mime_type_hint"], "image/jpeg")
-        self.assertEqual(payload["classification"], "CLS-0001")
+        self.assertEqual(payload["drive_file_id"], "DRV-FILE-0001")
+        self.assertEqual(payload["canonical_ref"], "drv:ORG-1:DRV-FILE-0001")
 
     def test_upload_applicant_profile_image_ignores_multipart_hint_and_falls_back_to_filename(self):
         fake_drive_api = SimpleNamespace(upload_applicant_profile_image=object())
@@ -110,7 +115,11 @@ class TestAdmissionsPortalUploadMimeHints(TestCase):
                     "_drive_upload_and_finalize",
                     return_value=(
                         {"upload_session_id": "DUS-0002"},
-                        {"classification": "CLS-0002", "slot": "profile_image"},
+                        {
+                            "drive_file_id": "DRV-FILE-0002",
+                            "canonical_ref": "drv:ORG-1:DRV-FILE-0002",
+                            "slot": "profile_image",
+                        },
                         file_doc,
                     ),
                 ) as bridge,
@@ -125,4 +134,5 @@ class TestAdmissionsPortalUploadMimeHints(TestCase):
         resolve_mime_type.assert_called_once_with(filename="profile.png", explicit="multipart/form-data")
         bridge.assert_called_once()
         self.assertEqual(bridge.call_args.kwargs["payload"]["mime_type_hint"], "image/png")
-        self.assertEqual(payload["classification"], "CLS-0002")
+        self.assertEqual(payload["drive_file_id"], "DRV-FILE-0002")
+        self.assertEqual(payload["canonical_ref"], "drv:ORG-1:DRV-FILE-0002")

@@ -23,6 +23,7 @@ from ifitwala_ed.admission.admission_utils import (
     is_admissions_file_staff_user,
 )
 from ifitwala_ed.api.org_comm_utils import check_audience_match
+from ifitwala_ed.integrations.drive.authority import get_drive_file_for_file
 from ifitwala_ed.routing.policy import has_active_employee_profile
 
 _org_comm_utils = importlib.import_module("ifitwala_ed.api.org_comm_utils")
@@ -523,24 +524,22 @@ def _resolve_any_file_row(file_name: str) -> dict:
 
 def _resolve_public_website_media_row(file_name: str) -> dict:
     file_row = _resolve_any_file_row(file_name)
-    classification = frappe.db.get_value(
-        "File Classification",
-        {
-            "file": file_name,
-            "primary_subject_type": "Organization",
-            "purpose": "organization_public_media",
-            "is_current_version": 1,
-        },
-        ["name", "organization", "school"],
-        as_dict=True,
+    drive_file = get_drive_file_for_file(
+        file_name,
+        fields=["name", "organization", "school", "primary_subject_type", "purpose"],
+        statuses=("active",),
     )
-    if not classification:
+    if not drive_file:
+        frappe.throw(_("This file is not published for public website use."), frappe.PermissionError)
+    if (drive_file.get("primary_subject_type") or "").strip() != "Organization":
+        frappe.throw(_("This file is not published for public website use."), frappe.PermissionError)
+    if (drive_file.get("purpose") or "").strip() != "organization_public_media":
         frappe.throw(_("This file is not published for public website use."), frappe.PermissionError)
     file_row.update(
         {
-            "classification": classification.get("name"),
-            "organization": (classification.get("organization") or "").strip(),
-            "school": (classification.get("school") or "").strip(),
+            "drive_file_id": drive_file.get("name"),
+            "organization": (drive_file.get("organization") or "").strip(),
+            "school": (drive_file.get("school") or "").strip(),
         }
     )
     return file_row
@@ -873,14 +872,13 @@ def _resolve_org_communication_attachment_grant_target_url(
 def _resolve_guardian_from_file(file_row: dict) -> str:
     file_name = (file_row.get("name") or "").strip()
     if file_name:
-        classification = frappe.db.get_value(
-            "File Classification",
-            {"file": file_name},
-            ["primary_subject_type", "primary_subject_id"],
-            as_dict=True,
+        drive_file = get_drive_file_for_file(
+            file_name,
+            fields=["primary_subject_type", "primary_subject_id"],
+            statuses=("active", "processing", "blocked"),
         )
-        if classification and (classification.get("primary_subject_type") or "").strip() == CONTEXT_GUARDIAN:
-            resolved = (classification.get("primary_subject_id") or "").strip()
+        if drive_file and (drive_file.get("primary_subject_type") or "").strip() == CONTEXT_GUARDIAN:
+            resolved = (drive_file.get("primary_subject_id") or "").strip()
             if resolved:
                 return resolved
 
@@ -895,14 +893,13 @@ def _resolve_guardian_from_file(file_row: dict) -> str:
 def _resolve_employee_from_file(file_row: dict) -> str:
     file_name = (file_row.get("name") or "").strip()
     if file_name:
-        classification = frappe.db.get_value(
-            "File Classification",
-            {"file": file_name},
-            ["primary_subject_type", "primary_subject_id"],
-            as_dict=True,
+        drive_file = get_drive_file_for_file(
+            file_name,
+            fields=["primary_subject_type", "primary_subject_id"],
+            statuses=("active", "processing", "blocked"),
         )
-        if classification and (classification.get("primary_subject_type") or "").strip() == CONTEXT_EMPLOYEE:
-            resolved = (classification.get("primary_subject_id") or "").strip()
+        if drive_file and (drive_file.get("primary_subject_type") or "").strip() == CONTEXT_EMPLOYEE:
+            resolved = (drive_file.get("primary_subject_id") or "").strip()
             if resolved:
                 return resolved
 
@@ -967,14 +964,13 @@ def _assert_guardian_file_access(
 def _resolve_student_applicant_from_file(file_row: dict) -> str:
     file_name = (file_row.get("name") or "").strip()
     if file_name:
-        classification = frappe.db.get_value(
-            "File Classification",
-            {"file": file_name},
-            ["primary_subject_type", "primary_subject_id"],
-            as_dict=True,
+        drive_file = get_drive_file_for_file(
+            file_name,
+            fields=["primary_subject_type", "primary_subject_id"],
+            statuses=("active", "processing", "blocked"),
         )
-        if classification and (classification.get("primary_subject_type") or "").strip() == "Student Applicant":
-            resolved = (classification.get("primary_subject_id") or "").strip()
+        if drive_file and (drive_file.get("primary_subject_type") or "").strip() == "Student Applicant":
+            resolved = (drive_file.get("primary_subject_id") or "").strip()
             if resolved:
                 return resolved
 
@@ -1237,16 +1233,15 @@ def _resolve_student_context_for_file(file_row: dict) -> tuple[str | None, str |
     if not file_name:
         return None, None
 
-    classification = frappe.db.get_value(
-        "File Classification",
-        {"file": file_name},
-        ["primary_subject_type", "primary_subject_id", "school"],
-        as_dict=True,
+    drive_file = get_drive_file_for_file(
+        file_name,
+        fields=["primary_subject_type", "primary_subject_id", "school"],
+        statuses=("active", "processing", "blocked"),
     )
-    if classification and (classification.get("primary_subject_type") or "").strip() == "Student":
+    if drive_file and (drive_file.get("primary_subject_type") or "").strip() == "Student":
         return (
-            (classification.get("primary_subject_id") or "").strip() or None,
-            (classification.get("school") or "").strip() or None,
+            (drive_file.get("primary_subject_id") or "").strip() or None,
+            (drive_file.get("school") or "").strip() or None,
         )
 
     attached_to_doctype = (file_row.get("attached_to_doctype") or "").strip()

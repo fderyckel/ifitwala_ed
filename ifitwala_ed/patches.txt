@@ -24,3 +24,4 @@ ifitwala_ed.patches.backfill_standard_account_types
 ifitwala_ed.patches.backfill_default_leave_types
 ifitwala_ed.patches.backfill_guardian_profile_images
 ifitwala_ed.patches.backfill_location_bookings_for_calendar_events
+ifitwala_ed.patches.remove_file_classification_rows

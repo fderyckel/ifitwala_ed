@@ -14,7 +14,8 @@ export type Request = {
 export type Response = {
   file: string
   file_url: string
-  classification: string
+  drive_file_id?: string | null
+  canonical_ref?: string | null
   applicant_document: string
   applicant_document_item: string
   item_key: string

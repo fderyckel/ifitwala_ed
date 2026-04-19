@@ -11,6 +11,7 @@ from ifitwala_ed.governance.policy_scope_utils import (
     get_organization_ancestors_including_self,
     get_school_ancestors_including_self,
 )
+from ifitwala_ed.integrations.drive.authority import get_drive_file_for_file
 from ifitwala_ed.utilities.file_classification_contract import (
     ORGANIZATION_MEDIA_DATA_CLASS,
     ORGANIZATION_MEDIA_FILE_CATEGORY,
@@ -134,12 +135,12 @@ def get_visible_organization_media_for_school(*, school: str) -> list[dict]:
         return []
 
     rows = frappe.get_all(
-        "File Classification",
+        "Drive File",
         filters={
             "primary_subject_type": ORGANIZATION_MEDIA_SUBJECT_TYPE,
             "purpose": ORGANIZATION_MEDIA_PURPOSE,
             "organization": ["in", org_chain],
-            "is_current_version": 1,
+            "status": "active",
         },
         fields=[
             "name",
@@ -203,12 +204,12 @@ def get_owned_organization_media_for_organization(*, organization: str, school: 
         validate_school_belongs_to_organization(organization=organization, school=school)
 
     rows = frappe.get_all(
-        "File Classification",
+        "Drive File",
         filters={
             "primary_subject_type": ORGANIZATION_MEDIA_SUBJECT_TYPE,
             "purpose": ORGANIZATION_MEDIA_PURPOSE,
             "organization": organization,
-            "is_current_version": 1,
+            "status": "active",
         },
         fields=[
             "name",
@@ -261,15 +262,9 @@ def get_governed_organization_media(file_name: str | None) -> dict | None:
     file_name = _normalize(file_name)
     if not file_name:
         return None
-    row = frappe.db.get_value(
-        "File Classification",
-        {
-            "file": file_name,
-            "primary_subject_type": ORGANIZATION_MEDIA_SUBJECT_TYPE,
-            "purpose": ORGANIZATION_MEDIA_PURPOSE,
-            "is_current_version": 1,
-        },
-        [
+    row = get_drive_file_for_file(
+        file_name,
+        fields=[
             "name",
             "file",
             "organization",
@@ -277,10 +272,14 @@ def get_governed_organization_media(file_name: str | None) -> dict | None:
             "slot",
             "attached_doctype",
             "attached_name",
+            "primary_subject_type",
+            "purpose",
         ],
-        as_dict=True,
+        statuses=("active",),
     )
-    if not row:
+    if not row or _normalize(row.get("primary_subject_type")) != ORGANIZATION_MEDIA_SUBJECT_TYPE:
+        return None
+    if _normalize(row.get("purpose")) != ORGANIZATION_MEDIA_PURPOSE:
         return None
 
     file_row = frappe.db.get_value("File", file_name, ["file_url", "file_name", "is_private"], as_dict=True) or {}
@@ -323,7 +322,7 @@ def _serialize_media_rows(rows: list[dict]) -> list[dict]:
         organization = _normalize(row.get("organization"))
         items.append(
             {
-                "classification": row.get("name"),
+                "drive_file_id": row.get("name"),
                 "file": row.get("file"),
                 "file_url": row.get("file_url"),
                 "file_name": row.get("file_name"),

@@ -397,20 +397,18 @@ class TestFileAccessUrlContracts(FrappeTestCase):
             "attached_to_name": "EMP-0001",
         }
 
-        def fake_get_value(doctype, filters, fieldname, as_dict=False):
-            if doctype == "File Classification":
-                return frappe._dict(
+        with (
+            patch("ifitwala_ed.api.file_access._require_authenticated_user", return_value="staff@example.com"),
+            patch("ifitwala_ed.api.file_access._resolve_any_file_row", return_value=file_row),
+            patch(
+                "ifitwala_ed.api.file_access.get_drive_file_for_file",
+                return_value=frappe._dict(
                     {
                         "primary_subject_type": "Employee",
                         "primary_subject_id": "EMP-0001",
                     }
-                )
-            return None
-
-        with (
-            patch("ifitwala_ed.api.file_access._require_authenticated_user", return_value="staff@example.com"),
-            patch("ifitwala_ed.api.file_access._resolve_any_file_row", return_value=file_row),
-            patch("ifitwala_ed.api.file_access.frappe.db.get_value", side_effect=fake_get_value),
+                ),
+            ),
             patch("ifitwala_ed.api.file_access.frappe.db.exists", return_value=True),
             patch("ifitwala_ed.api.file_access.has_active_employee_profile", return_value=True),
             patch("ifitwala_ed.api.file_access._read_file_bytes", return_value=b"employee-bytes"),
@@ -437,20 +435,18 @@ class TestFileAccessUrlContracts(FrappeTestCase):
             "attached_to_name": "EMP-0001",
         }
 
-        def fake_get_value(doctype, filters, fieldname, as_dict=False):
-            if doctype == "File Classification":
-                return frappe._dict(
+        with (
+            patch("ifitwala_ed.api.file_access._require_authenticated_user", return_value="staff@example.com"),
+            patch("ifitwala_ed.api.file_access._resolve_any_file_row", return_value=file_row),
+            patch(
+                "ifitwala_ed.api.file_access.get_drive_file_for_file",
+                return_value=frappe._dict(
                     {
                         "primary_subject_type": "Employee",
                         "primary_subject_id": "EMP-0001",
                     }
-                )
-            return None
-
-        with (
-            patch("ifitwala_ed.api.file_access._require_authenticated_user", return_value="staff@example.com"),
-            patch("ifitwala_ed.api.file_access._resolve_any_file_row", return_value=file_row),
-            patch("ifitwala_ed.api.file_access.frappe.db.get_value", side_effect=fake_get_value),
+                ),
+            ),
             patch("ifitwala_ed.api.file_access.frappe.db.exists", return_value=True),
             patch("ifitwala_ed.api.file_access.has_active_employee_profile", return_value=False),
         ):

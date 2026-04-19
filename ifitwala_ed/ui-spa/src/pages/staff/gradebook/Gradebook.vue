@@ -1,136 +1,174 @@
 <template>
-	<div class="gradebook-shell min-h-full px-4 pb-8 pt-6 md:px-6 lg:px-8 xl:px-10">
-		<div class="mx-auto flex w-full max-w-[1640px] flex-col gap-6 xl:gap-8">
-			<header class="flex flex-col gap-5">
-				<div class="page-header">
-					<div class="page-header__intro">
-						<h1 class="type-h1 text-canopy">Gradebook</h1>
-						<p class="type-meta text-slate-token/80">
-							Pick a student group, then switch between fast single-task grading and the full class
-							overview.
-						</p>
-					</div>
-
-					<div class="page-header__actions">
-						<div class="if-segmented">
-							<button
-								type="button"
-								class="if-segmented__item"
-								:class="{ 'if-segmented__item--active': viewMode === 'task' }"
-								@click="setViewMode('task')"
-							>
-								Task View
-							</button>
-							<button
-								type="button"
-								class="if-segmented__item"
-								:class="{ 'if-segmented__item--active': viewMode === 'overview' }"
-								:disabled="!selectedGroup"
-								@click="setViewMode('overview')"
-							>
-								Overview
-							</button>
-						</div>
-					</div>
+	<div class="staff-shell gradebook-shell min-w-0 space-y-6">
+		<header class="flex flex-col gap-5">
+			<div class="page-header">
+				<div class="page-header__intro">
+					<h1 class="type-h1 text-canopy">Gradebook</h1>
+					<p class="type-meta text-slate-token/80">
+						Pick a student group, then switch between fast single-task grading and the full class
+						overview.
+					</p>
 				</div>
 
-				<div
-					class="surface-toolbar ifit-filters flex items-center gap-2 overflow-x-auto no-scrollbar rounded-2xl border border-border/80 bg-white/90 px-4 py-3 shadow-sm backdrop-blur sm:px-5"
-				>
-					<div class="w-48 shrink-0">
-						<FormControl
-							type="select"
-							size="md"
-							:options="schoolOptions"
-							option-label="school_name"
-							option-value="name"
-							:model-value="filters.school"
-							:disabled="schoolsLoading || !schoolOptions.length"
-							placeholder="School"
-							@update:modelValue="onSchoolSelected"
-						/>
-					</div>
-
-					<div class="w-36 shrink-0">
-						<FormControl
-							type="select"
-							size="md"
-							:options="yearOptions"
-							option-label="label"
-							option-value="value"
-							:model-value="filters.academic_year"
-							:disabled="!yearOptions.length"
-							placeholder="Year"
-							@update:modelValue="onYearSelected"
-						/>
-					</div>
-
-					<div class="w-40 shrink-0">
-						<FormControl
-							type="select"
-							size="md"
-							:options="programOptions"
-							option-label="label"
-							option-value="value"
-							:model-value="filters.program"
-							:disabled="!programOptions.length"
-							placeholder="Program"
-							@update:modelValue="onProgramSelected"
-						/>
-					</div>
-
-					<div class="w-40 shrink-0">
-						<FormControl
-							type="select"
-							size="md"
-							:options="courseOptions"
-							option-label="label"
-							option-value="value"
-							:model-value="filters.course"
-							:disabled="!courseOptions.length"
-							placeholder="Course"
-							@update:modelValue="onCourseSelected"
-						/>
-					</div>
-
-					<div class="w-48 shrink-0">
-						<FormControl
-							type="select"
-							size="md"
-							:options="groupPickerOptions"
-							option-label="label"
-							option-value="value"
-							:model-value="selectedGroup?.name || null"
-							:disabled="!groupPickerOptions.length"
-							placeholder="Select group"
-							@update:modelValue="onGroupSelectedFromToolbar"
-						/>
-					</div>
-
-					<div class="ml-auto">
+				<div class="page-header__actions">
+					<button
+						v-if="taskRailCollapsed"
+						type="button"
+						class="if-button if-button--secondary"
+						@click="toggleTaskRail()"
+					>
+						<FeatherIcon name="chevrons-right" class="h-4 w-4" />
+						Tasks
+					</button>
+					<div class="if-segmented">
 						<button
-							v-if="hasActiveFilters"
 							type="button"
-							class="if-button if-button--quiet"
-							@click="resetFilters"
+							class="if-segmented__item"
+							:class="{ 'if-segmented__item--active': viewMode === 'task' }"
+							@click="setViewMode('task')"
 						>
-							<FeatherIcon name="x" class="h-4 w-4" />
-							Reset
+							Task View
+						</button>
+						<button
+							type="button"
+							class="if-segmented__item"
+							:class="{ 'if-segmented__item--active': viewMode === 'overview' }"
+							:disabled="!selectedGroup"
+							@click="setViewMode('overview')"
+						>
+							Overview
 						</button>
 					</div>
 				</div>
-			</header>
+			</div>
 
-			<div class="grid gap-6 xl:gap-8 lg:grid-cols-[minmax(21rem,1fr)_minmax(0,2fr)]">
-				<div class="flex flex-col gap-6 xl:gap-8">
-					<section
-						class="flex flex-col overflow-hidden rounded-2xl border border-border bg-white shadow-sm transition-all hover:shadow-md"
+			<div
+				class="surface-toolbar ifit-filters flex items-center gap-2 overflow-x-auto no-scrollbar rounded-2xl border border-border/80 bg-white/90 px-4 py-3 shadow-sm backdrop-blur sm:px-5"
+			>
+				<div class="w-48 shrink-0">
+					<FormControl
+						type="select"
+						size="md"
+						:options="schoolOptions"
+						option-label="school_name"
+						option-value="name"
+						:model-value="filters.school"
+						:disabled="schoolsLoading || !schoolOptions.length"
+						placeholder="School"
+						@update:modelValue="onSchoolSelected"
+					/>
+				</div>
+
+				<div class="w-36 shrink-0">
+					<FormControl
+						type="select"
+						size="md"
+						:options="yearOptions"
+						option-label="label"
+						option-value="value"
+						:model-value="filters.academic_year"
+						:disabled="!yearOptions.length"
+						placeholder="Year"
+						@update:modelValue="onYearSelected"
+					/>
+				</div>
+
+				<div class="w-40 shrink-0">
+					<FormControl
+						type="select"
+						size="md"
+						:options="programOptions"
+						option-label="label"
+						option-value="value"
+						:model-value="filters.program"
+						:disabled="!programOptions.length"
+						placeholder="Program"
+						@update:modelValue="onProgramSelected"
+					/>
+				</div>
+
+				<div class="w-40 shrink-0">
+					<FormControl
+						type="select"
+						size="md"
+						:options="courseOptions"
+						option-label="label"
+						option-value="value"
+						:model-value="filters.course"
+						:disabled="!courseOptions.length"
+						placeholder="Course"
+						@update:modelValue="onCourseSelected"
+					/>
+				</div>
+
+				<div class="w-48 shrink-0">
+					<FormControl
+						type="select"
+						size="md"
+						:options="groupPickerOptions"
+						option-label="label"
+						option-value="value"
+						:model-value="selectedGroup?.name || null"
+						:disabled="!groupPickerOptions.length"
+						placeholder="Select group"
+						@update:modelValue="onGroupSelectedFromToolbar"
+					/>
+				</div>
+
+				<div class="ml-auto">
+					<button
+						v-if="hasActiveFilters"
+						type="button"
+						class="if-button if-button--quiet"
+						@click="resetFilters"
 					>
-						<div class="border-b border-border/50 bg-gray-50/50 px-4 py-3">
-							<div class="flex items-center justify-between gap-2">
-								<h2 class="text-sm font-semibold uppercase tracking-wide text-ink/70">
-									Student Groups
+						<FeatherIcon name="x" class="h-4 w-4" />
+						Reset
+					</button>
+				</div>
+			</div>
+		</header>
+
+		<div
+			v-if="selectedGroup || selectedTask"
+			class="flex flex-wrap items-center gap-2 rounded-2xl border border-border/70 bg-white/85 px-4 py-3 shadow-sm"
+		>
+			<Badge v-if="selectedGroup" variant="subtle">
+				{{ selectedGroup.label }}
+			</Badge>
+			<Badge v-if="selectedGroupMeta" variant="subtle">
+				{{ selectedGroupMeta }}
+			</Badge>
+			<Badge v-if="selectedTask" variant="subtle">
+				{{ selectedTask.title }}
+			</Badge>
+			<p
+				v-if="selectedTask && viewMode === 'overview'"
+				class="text-xs font-medium uppercase tracking-[0.16em] text-ink/45"
+			>
+				Quick-grade jump stays one click away
+			</p>
+		</div>
+
+		<div class="grid min-w-0 gap-6 xl:gap-8" :class="taskRailGridClass">
+			<aside class="min-w-0 lg:sticky lg:top-6 lg:self-start">
+				<section
+					class="flex flex-col overflow-hidden rounded-2xl border border-border bg-white shadow-sm transition-all"
+				>
+					<div class="border-b border-border/50 bg-gray-50/60 px-4 py-4">
+						<div class="flex items-start justify-between gap-3">
+							<div class="min-w-0">
+								<p class="text-xs font-semibold uppercase tracking-[0.18em] text-ink/45">
+									Task Rail
+								</p>
+								<h2 class="mt-1 text-base font-semibold text-ink">
+									{{ selectedGroup ? 'Assignments' : 'Choose a class' }}
 								</h2>
+								<p class="mt-1 text-sm text-ink/60">
+									{{ taskRailSummary }}
+								</p>
+							</div>
+							<div class="flex items-center gap-2">
 								<button
 									type="button"
 									class="if-button if-button--quiet if-button--icon"
@@ -140,82 +178,83 @@
 								>
 									<FeatherIcon name="refresh-cw" class="h-4 w-4" />
 								</button>
+								<button
+									type="button"
+									class="if-button if-button--quiet if-button--icon"
+									:aria-expanded="!taskRailCollapsed"
+									:aria-label="taskRailToggleLabel"
+									@click="toggleTaskRail()"
+								>
+									<FeatherIcon
+										:name="taskRailCollapsed ? 'chevrons-right' : 'chevrons-left'"
+										class="h-4 w-4"
+									/>
+								</button>
 							</div>
 						</div>
+					</div>
 
-						<div class="flex-1 space-y-2 overflow-y-auto p-4" style="max-height: 24rem">
-							<div v-if="groupsLoading" class="space-y-2">
-								<div
-									v-for="n in 6"
-									:key="`group-skeleton-${n}`"
-									class="h-14 animate-pulse rounded-lg bg-gray-100"
-								/>
-							</div>
-							<div
-								v-else-if="!derivedGroups.length"
-								class="flex flex-col items-center justify-center rounded-lg border border-dashed border-border/80 bg-gray-50/50 p-6 text-center text-sm text-ink/60"
-							>
-								<FeatherIcon name="users" class="mb-2 h-8 w-8 text-ink/20" />
-								<p>No groups match filters.</p>
-							</div>
-							<ul v-else class="space-y-2">
-								<li v-for="group in derivedGroups" :key="group.name">
-									<button
-										type="button"
-										class="relative w-full rounded-lg border px-4 py-3 text-left transition-all"
-										:class="[
-											selectedGroup?.name === group.name
-												? 'border-leaf bg-sky/20 text-ink shadow-sm ring-1 ring-leaf/20'
-												: 'border-transparent bg-gray-50 hover:bg-gray-100 hover:text-ink',
-										]"
-										@click="selectGroup(group)"
-									>
-										<div class="flex items-center justify-between gap-2">
-											<p
-												class="truncate text-sm font-semibold"
-												:class="selectedGroup?.name === group.name ? 'text-ink' : 'text-ink/80'"
-											>
-												{{ group.label }}
-											</p>
-											<span
-												v-if="group.program || group.course"
-												class="inline-flex shrink-0 items-center rounded-full px-2 py-0.5 text-[10px] uppercase tracking-wider"
-												:class="
-													selectedGroup?.name === group.name
-														? 'bg-white/60 text-ink/70'
-														: 'bg-gray-200/60 text-ink/50'
-												"
-											>
-												{{ [group.program, group.course].filter(Boolean).join(' • ') }}
-											</span>
-										</div>
-										<p v-if="group.cohort" class="mt-1 truncate text-xs text-ink/50">
-											Cohort {{ group.cohort }}
-										</p>
-									</button>
-								</li>
-							</ul>
-						</div>
-					</section>
-
-					<section
-						class="flex flex-col overflow-hidden rounded-2xl border border-border bg-white shadow-sm transition-all hover:shadow-md"
-					>
-						<div class="border-b border-border/50 bg-gray-50/50 px-4 py-3">
-							<div class="flex items-center justify-between gap-2">
-								<div>
-									<h2 class="text-sm font-semibold uppercase tracking-wide text-ink/70">Tasks</h2>
-									<p class="text-xs text-ink/50" v-if="selectedGroup">{{ selectedGroup.label }}</p>
-								</div>
-								<p class="text-xs text-ink/45" v-if="viewMode === 'overview'">
-									Select one to quick-grade
+					<div v-if="taskRailCollapsed" class="px-4 py-4 lg:px-3 lg:py-5">
+						<div class="space-y-3 lg:hidden">
+							<div class="rounded-2xl border border-border/70 bg-gray-50/70 px-4 py-4">
+								<p class="text-xs font-semibold uppercase tracking-[0.16em] text-ink/45">
+									Current class
+								</p>
+								<p class="mt-2 text-sm font-semibold text-ink">
+									{{ selectedGroup?.label || 'Choose a student group above.' }}
+								</p>
+								<p v-if="selectedTask" class="mt-1 text-xs text-ink/55">
+									Task: {{ selectedTask.title }}
 								</p>
 							</div>
 						</div>
 
+						<div class="hidden min-h-[18rem] flex-col items-center gap-4 lg:flex">
+							<div class="space-y-1 text-center">
+								<p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-ink/45">
+									Tasks
+								</p>
+								<p class="text-xs text-ink/55">
+									{{ derivedTasks.length || taskSummaries.length || 0 }}
+								</p>
+							</div>
+							<div class="h-px w-full bg-border/60" />
+							<div class="space-y-1 text-center">
+								<p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-ink/45">
+									View
+								</p>
+								<p class="text-xs text-ink/55">
+									{{ viewMode === 'task' ? 'Task' : 'Overview' }}
+								</p>
+							</div>
+							<div
+								v-if="selectedTask"
+								class="w-full rounded-2xl border border-border/70 bg-sky/10 px-2 py-3 text-center text-[11px] font-medium leading-4 text-ink/70"
+							>
+								{{ selectedTask.title }}
+							</div>
+						</div>
+					</div>
+
+					<div v-else class="flex flex-1 flex-col">
+						<div class="border-b border-border/50 bg-sky/5 px-4 py-4">
+							<p class="text-xs font-semibold uppercase tracking-[0.16em] text-ink/45">
+								Current class
+							</p>
+							<p class="mt-2 text-sm font-semibold text-ink">
+								{{ selectedGroup?.label || 'Pick a student group from the filters above.' }}
+							</p>
+							<p class="mt-1 text-xs text-ink/55">
+								{{
+									selectedGroupMeta ||
+									'School, year, program, course, and class stay in the top context bar.'
+								}}
+							</p>
+						</div>
+
 						<div
 							v-if="selectedGroup && (taskSummaries.length || derivedTasks.length)"
-							class="border-b border-border/50 bg-white px-4 py-2"
+							class="border-b border-border/50 bg-white px-4 py-3"
 						>
 							<div class="grid grid-cols-2 gap-2">
 								<FormControl
@@ -250,7 +289,11 @@
 								<p>Select a group above.</p>
 							</div>
 
-							<div v-else class="space-y-3 overflow-y-auto pr-1" style="max-height: 26rem">
+							<div
+								v-else
+								class="space-y-3 overflow-y-auto pr-1 lg:max-h-[calc(100vh-21rem)]"
+								style="max-height: 32rem"
+							>
 								<div v-if="tasksLoading" class="space-y-2">
 									<div
 										v-for="n in 4"
@@ -274,7 +317,7 @@
 									<li v-for="task in derivedTasks" :key="task.name">
 										<button
 											type="button"
-											class="w-full rounded-lg border px-4 py-3 text-left transition-all"
+											class="w-full rounded-xl border px-4 py-3 text-left transition-all"
 											:class="[
 												selectedTask?.name === task.name
 													? 'border-leaf bg-sky/20 text-ink shadow-sm ring-1 ring-leaf/20'
@@ -315,9 +358,11 @@
 								</ul>
 							</div>
 						</div>
-					</section>
-				</div>
+					</div>
+				</section>
+			</aside>
 
+			<div class="min-w-0">
 				<GradebookTaskView
 					v-if="viewMode === 'task'"
 					:task-name="selectedTask?.name || null"
@@ -380,6 +425,7 @@ const tasksLoading = ref(false);
 const selectedTask = ref<TaskSummary | null>(null);
 const viewMode = ref<'task' | 'overview'>(currentRouteView());
 const focusedStudent = ref<string | null>(currentRouteStudent());
+const taskRailCollapsed = ref(false);
 
 function showToast(title: string, appearance: 'danger' | 'success' | 'warning' = 'danger') {
 	const toastApi = toast as unknown as
@@ -551,6 +597,15 @@ const hasActiveFilters = computed(() => {
 	return Boolean(filters.school || filters.academic_year || filters.program || filters.course);
 });
 
+const selectedGroupMeta = computed(() => {
+	const group = selectedGroup.value;
+	if (!group) return '';
+
+	return [group.program, group.course, group.cohort ? `Cohort ${group.cohort}` : null]
+		.filter(Boolean)
+		.join(' • ');
+});
+
 const derivedTasks = computed(() => {
 	let list = taskSummaries.value;
 	if (filters.task_type) {
@@ -561,6 +616,39 @@ const derivedTasks = computed(() => {
 	}
 	return list;
 });
+
+const taskRailSummary = computed(() => {
+	if (!selectedGroup.value) {
+		return 'Keep class context in the top bar, then open one delivery at a time for grading.';
+	}
+
+	if (tasksLoading.value) {
+		return 'Loading deliveries for this class.';
+	}
+
+	const totalTasks = taskSummaries.value.length;
+	const visibleTasks = derivedTasks.value.length;
+
+	if (!totalTasks) {
+		return 'No deliveries are currently assigned to this class.';
+	}
+
+	if (!filters.task_type && !filters.delivery_type) {
+		return `${totalTasks} deliveries ready in this class.`;
+	}
+
+	return `${visibleTasks} of ${totalTasks} deliveries match the current task filters.`;
+});
+
+const taskRailGridClass = computed(() =>
+	taskRailCollapsed.value
+		? 'lg:grid-cols-[4.75rem_minmax(0,1fr)]'
+		: 'lg:grid-cols-[minmax(17.5rem,18.75rem)_minmax(0,1fr)]'
+);
+
+const taskRailToggleLabel = computed(() =>
+	taskRailCollapsed.value ? 'Expand task rail' : 'Collapse task rail'
+);
 
 const taskTypeOptions = computed(() => {
 	const types = new Set(taskSummaries.value.map(task => task.task_type).filter(Boolean));
@@ -626,6 +714,10 @@ function resetFilters() {
 	filters.program = null;
 	filters.course = null;
 	void loadGroups();
+}
+
+function toggleTaskRail() {
+	taskRailCollapsed.value = !taskRailCollapsed.value;
 }
 
 function syncFiltersToGroup(group: GroupSummary) {
@@ -705,6 +797,7 @@ function applyRouteTaskFromQuery(taskList: TaskSummary[] = taskSummaries.value) 
 	const match = taskList.find(task => task.name === target) || null;
 	if (match) {
 		selectedTask.value = match;
+		taskRailCollapsed.value = true;
 		pendingRouteTask.value = null;
 		return;
 	}
@@ -814,6 +907,7 @@ function selectTask(
 	options: { switchMode?: boolean; focusStudent?: string | null } = {}
 ) {
 	selectedTask.value = task;
+	taskRailCollapsed.value = Boolean(task);
 	updateRouteTask(task?.name || null);
 
 	if (options.switchMode !== false && task) {
@@ -904,6 +998,7 @@ watch(
 	groupName => {
 		taskSummaries.value = [];
 		selectedTask.value = null;
+		taskRailCollapsed.value = false;
 		if (groupName) {
 			void loadTasks(groupName);
 		} else {

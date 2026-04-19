@@ -35,8 +35,12 @@ class TestStudentImageUtils(FrappeTestCase):
                 "is_private": 0,
             }
         )
-        classification = frappe._dict(
+        drive_file = frappe._dict(
             {
+                "owner_doctype": "Student",
+                "owner_name": "STU-0001",
+                "attached_doctype": "Student",
+                "attached_name": "STU-0001",
                 "primary_subject_type": "Student",
                 "primary_subject_id": "STU-0001",
                 "data_class": "identity_image",
@@ -45,25 +49,26 @@ class TestStudentImageUtils(FrappeTestCase):
                 "slot": "profile_image",
                 "organization": "ORG-0001",
                 "school": "SCH-0001",
+                "folder": None,
+                "is_private": 0,
                 "upload_source": "Desk",
-                "secondary_subjects": [],
             }
         )
 
         with (
-            patch("ifitwala_ed.utilities.image_utils._get_file_classification", return_value=classification),
+            patch("ifitwala_ed.utilities.image_utils._get_drive_file_row", return_value=drive_file),
             patch("ifitwala_ed.utilities.image_utils._governed_derivative_exists", return_value=False),
-            patch("ifitwala_ed.utilities.file_dispatcher.create_and_classify_file") as create_and_classify,
+            patch("ifitwala_ed.integrations.drive.content_uploads.upload_content_via_drive") as upload_content,
         ):
             image_utils._generate_student_derivatives(file_doc)
 
-        self.assertEqual(create_and_classify.call_count, 3)
-        created_slots = {call.kwargs["classification"]["slot"] for call in create_and_classify.call_args_list}
+        self.assertEqual(upload_content.call_count, 3)
+        created_slots = {call.kwargs["session_payload"]["slot"] for call in upload_content.call_args_list}
         self.assertEqual(
             created_slots,
             {"profile_image_thumb", "profile_image_card", "profile_image_medium"},
         )
-        created_names = {call.kwargs["file_kwargs"]["file_name"] for call in create_and_classify.call_args_list}
+        created_names = {call.kwargs["file_name"] for call in upload_content.call_args_list}
         self.assertEqual(
             created_names,
             {"thumb_student_source.webp", "card_student_source.webp", "medium_student_source.webp"},

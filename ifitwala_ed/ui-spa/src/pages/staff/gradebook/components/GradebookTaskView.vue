@@ -69,9 +69,9 @@
 				:task-name="taskName"
 			/>
 
-			<div v-else class="grid gap-5 xl:grid-cols-[minmax(21rem,24rem)_minmax(0,1fr)]">
+			<div v-else class="grid gap-5 xl:grid-cols-[minmax(17.5rem,19rem)_minmax(0,1fr)]">
 				<section class="rounded-2xl border border-border/70 bg-gray-50/40">
-					<div class="border-b border-border/60 px-5 py-4">
+					<div class="border-b border-border/60 px-4 py-4">
 						<div class="flex flex-wrap items-start justify-between gap-3">
 							<div>
 								<h3 class="text-sm font-semibold uppercase tracking-[0.16em] text-ink/45">
@@ -125,7 +125,7 @@
 						</div>
 					</div>
 
-					<div v-if="hasEvidenceInbox" class="border-b border-border/60 bg-white/90 px-5 py-3">
+					<div v-if="hasEvidenceInbox" class="border-b border-border/60 bg-white/90 px-4 py-3">
 						<div class="flex flex-wrap items-center gap-2">
 							<button
 								v-for="option in evidenceFilterOptions"
@@ -145,7 +145,7 @@
 						</div>
 					</div>
 
-					<div class="max-h-[720px] space-y-2 overflow-y-auto p-3">
+					<div class="max-h-[720px] space-y-2 overflow-y-auto p-2.5">
 						<div
 							v-if="!visibleStudents.length"
 							class="rounded-2xl border border-dashed border-border/70 bg-gray-50/40 p-6 text-center text-sm text-ink/60"
@@ -155,7 +155,7 @@
 						<div
 							v-for="student in visibleStudents"
 							:key="student.task_student"
-							class="flex items-start gap-3 rounded-2xl border border-border/70 bg-white px-4 py-4 transition hover:border-leaf/40 hover:bg-sky/10"
+							class="flex items-start gap-3 rounded-2xl border border-border/70 bg-white px-3.5 py-4 transition hover:border-leaf/40 hover:bg-sky/10"
 						>
 							<div class="pt-1">
 								<input

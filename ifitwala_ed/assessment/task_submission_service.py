@@ -108,55 +108,31 @@ def create_student_submission(payload, user=None, uploaded_files=None):
 
 
 def _attach_submission_files(submission_doc, outcome_row, uploaded_files, upload_source=None):
-    from ifitwala_ed.utilities import file_dispatcher, file_management
+    from ifitwala_ed.integrations.drive.content_uploads import upload_content_via_drive
+    from ifitwala_ed.utilities.governed_uploads import _load_drive_module
 
     student = outcome_row.get("student")
-    school = outcome_row.get("school")
-    task_name = outcome_row.get("task") or submission_doc.name
 
     if not student:
-        frappe.throw(_("Student is required for file classification."))
-    if not school:
-        frappe.throw(_("School is required for file classification."))
-
-    organization = frappe.db.get_value("School", school, "organization")
-    if not organization:
-        frappe.throw(_("Organization is required for file classification."))
-
-    settings = file_management.get_settings()
-    context_override = file_management.build_task_submission_context(
-        student=student,
-        task_name=task_name,
-        settings=settings,
-    )
+        frappe.throw(_("Student is required for governed submission uploads."))
 
     source = upload_source or "API"
+    drive_submissions_api = _load_drive_module("ifitwala_drive.api.submissions")
     for upload in uploaded_files:
         file_name = upload.get("file_name") or upload.get("filename")
         content = upload.get("content")
         if not file_name or not content:
             frappe.throw(_("Uploaded files must include file_name and content."))
 
-        file_doc = file_dispatcher.create_and_classify_file(
-            file_kwargs={
-                "attached_to_doctype": "Task Submission",
-                "attached_to_name": submission_doc.name,
-                "is_private": 1,
-                "file_name": file_name,
-                "content": content,
-            },
-            classification={
-                "primary_subject_type": "Student",
-                "primary_subject_id": student,
-                "data_class": "academic",
-                "purpose": "assessment_submission",
-                "retention_policy": "until_program_end_plus_1y",
-                "slot": "submission",
-                "organization": organization,
-                "school": school,
+        _session_response, _finalize_response, file_doc = upload_content_via_drive(
+            create_session_callable=drive_submissions_api.upload_task_submission_artifact,
+            session_payload={
+                "task_submission": submission_doc.name,
+                "student": student,
                 "upload_source": source,
             },
-            context_override=context_override,
+            file_name=file_name,
+            content=content,
         )
 
         submission_doc.append(

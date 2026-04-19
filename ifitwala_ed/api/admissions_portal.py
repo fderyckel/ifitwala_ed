@@ -57,6 +57,7 @@ from ifitwala_ed.governance.policy_utils import (
     ADMISSIONS_POLICY_MODE_FAMILY,
     get_applicant_policy_status,
 )
+from ifitwala_ed.integrations.drive.authority import get_drive_file_for_file
 from ifitwala_ed.utilities.html_sanitizer import sanitize_html
 
 INVALID_SESSION_USERS = {"guest", "none", "null", "undefined"}
@@ -825,15 +826,14 @@ def _resolve_guardian_image_file(*, applicant_name: str, guardian_image: str | N
 def _file_is_scoped_to_applicant(*, file_row: dict, applicant_name: str) -> bool:
     file_name = _as_text(file_row.get("name")).strip()
     if file_name:
-        classification = frappe.db.get_value(
-            "File Classification",
-            {"file": file_name},
-            ["primary_subject_type", "primary_subject_id"],
-            as_dict=True,
+        drive_file = get_drive_file_for_file(
+            file_name,
+            fields=["primary_subject_type", "primary_subject_id"],
+            statuses=("active", "processing", "blocked"),
         )
-        if classification and (
-            _as_text(classification.get("primary_subject_type")).strip() == "Student Applicant"
-            and _as_text(classification.get("primary_subject_id")).strip() == applicant_name
+        if drive_file and (
+            _as_text(drive_file.get("primary_subject_type")).strip() == "Student Applicant"
+            and _as_text(drive_file.get("primary_subject_id")).strip() == applicant_name
         ):
             return True
 
@@ -907,11 +907,15 @@ def _rehome_guardian_image_to_contact(
         update_modified=False,
     )
 
-    classification_name = frappe.db.get_value("File Classification", {"file": file_row.get("name")}, "name")
-    if classification_name:
+    drive_file = get_drive_file_for_file(
+        file_row.get("name"),
+        fields=["name"],
+        statuses=("active", "processing", "blocked"),
+    )
+    if drive_file and drive_file.get("name"):
         frappe.db.set_value(
-            "File Classification",
-            classification_name,
+            "Drive File",
+            drive_file.get("name"),
             {
                 "attached_doctype": "Contact",
                 "attached_name": resolved_contact,
@@ -2012,7 +2016,8 @@ def upload_applicant_profile_image(
         "file_url": upload_result.get("file_url"),
         "file_name": normalized_file_name,
         "file_size": len(normalized_content),
-        "classification": upload_result.get("classification"),
+        "drive_file_id": upload_result.get("drive_file_id"),
+        "canonical_ref": upload_result.get("canonical_ref"),
     }
 
 
@@ -2070,7 +2075,8 @@ def upload_applicant_guardian_image(
         "file_url": upload_result.get("file_url"),
         "file_name": normalized_file_name,
         "file_size": len(normalized_content),
-        "classification": upload_result.get("classification"),
+        "drive_file_id": upload_result.get("drive_file_id"),
+        "canonical_ref": upload_result.get("canonical_ref"),
     }
 
 

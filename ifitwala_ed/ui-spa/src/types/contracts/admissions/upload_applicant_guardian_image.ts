@@ -13,5 +13,6 @@ export type Response = {
   file_url: string
   file_name: string
   file_size?: number | null
-  classification?: string | null
+  drive_file_id?: string | null
+  canonical_ref?: string | null
 }

@@ -241,23 +241,13 @@ def _classify_file_doc(
 
 def handle_file_after_insert(doc, method=None):
     """
-    Legacy safety-net hooks.
-
-    All governed uploads MUST go through the dispatcher API.
-    This hook only finalizes files that already have File Classification.
+    Legacy file hook kept only for non-governed image handling.
     """
     if getattr(doc.flags, "drive_compat_projection", False):
         return
 
-    from ifitwala_ed.utilities import file_management, image_utils
+    from ifitwala_ed.utilities import image_utils
 
-    # Step 1: routing / versioning / move to final folder
-    try:
-        file_management.route_uploaded_file(doc, method)
-    except Exception:
-        frappe.log_error(frappe.get_traceback(), "File Routing Failed")
-
-    # Step 2: image-specific handling (your existing behaviour)
     try:
         image_utils.handle_file_after_insert(doc, method)
     except Exception:
@@ -266,20 +256,12 @@ def handle_file_after_insert(doc, method=None):
 
 def handle_file_on_update(doc, method=None):
     """
-    Legacy safety-net hooks.
-
-    All governed uploads MUST go through the dispatcher API.
-    This hook only finalizes files that already have File Classification.
+    Legacy file hook kept only for non-governed image handling.
     """
     if getattr(doc.flags, "drive_compat_projection", False):
         return
 
-    from ifitwala_ed.utilities import file_management, image_utils
-
-    try:
-        file_management.route_uploaded_file(doc, method)
-    except Exception:
-        frappe.log_error(frappe.get_traceback(), "File Routing Failed (on_update)")
+    from ifitwala_ed.utilities import image_utils
 
     try:
         image_utils.handle_file_on_update(doc, method)

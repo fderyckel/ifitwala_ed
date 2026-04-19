@@ -15,6 +15,7 @@ from typing import Tuple
 import frappe
 from frappe import _
 
+from ifitwala_ed.integrations.drive.authority import get_drive_file_for_file
 from ifitwala_ed.utilities.image_utils import (
     EMPLOYEE_VARIANT_PRIORITY,
     file_url_is_accessible,
@@ -691,12 +692,12 @@ def get_governed_status(doctype: str, name: str, fieldname: str | None = None):
     if not file_name:
         return {"has_file": 0, "governed": 0}
 
-    classification = frappe.db.get_value("File Classification", {"file": file_name}, "name")
+    drive_file = get_drive_file_for_file(file_name, fields=["name"], statuses=None)
     return {
         "has_file": 1,
         "file": file_name,
-        "classification": classification,
-        "governed": 1 if classification else 0,
+        "drive_file_id": (drive_file or {}).get("name"),
+        "governed": 1 if drive_file else 0,
     }
 
 

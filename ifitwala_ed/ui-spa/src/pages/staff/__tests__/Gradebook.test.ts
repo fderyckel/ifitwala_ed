@@ -717,6 +717,36 @@ describe('Gradebook page', () => {
 		expect(document.body.textContent || '').toContain('Ada Lovelace');
 	});
 
+	it('mounts inside the shared staff shell and lets teachers collapse the task rail', async () => {
+		mockGradebookFlow();
+
+		mountPage();
+		await flushUi();
+
+		expect(document.querySelector('.staff-shell')).not.toBeNull();
+		expect(document.body.textContent || '').toContain('Task 1');
+
+		const collapseButton = document.querySelector(
+			'button[aria-label="Collapse task rail"]'
+		) as HTMLButtonElement | null;
+		expect(collapseButton).not.toBeNull();
+		collapseButton?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		await flushUi();
+
+		expect(document.querySelector('button[aria-label="Expand task rail"]')).not.toBeNull();
+		expect(document.body.textContent || '').not.toContain('Task 1');
+
+		const reopenButton = Array.from(document.querySelectorAll('button')).find(button =>
+			(button.textContent || '').includes('Tasks')
+		);
+		expect(reopenButton).not.toBeNull();
+		reopenButton?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		await flushUi();
+
+		expect(document.querySelector('button[aria-label="Collapse task rail"]')).not.toBeNull();
+		expect(document.body.textContent || '').toContain('Task 1');
+	});
+
 	it('loads the overview grid only after the teacher switches modes', async () => {
 		mockGradebookFlow();
 		getGridMock.mockResolvedValue({
