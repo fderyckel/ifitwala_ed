@@ -454,6 +454,10 @@ class TestCoursesApi(TestCase):
             payload["learning"]["work_board"]["now"][0]["href"]["query"]["class_session"],
             "CLASS-SESSION-1",
         )
+        self.assertEqual(
+            payload["learning"]["work_board"]["now"][0]["href"]["query"]["task_delivery"],
+            "TD-1",
+        )
         self.assertEqual(payload["learning"]["timeline"][0]["items"][0]["kind"], "scheduled_class")
 
     def test_build_work_item_href_preserves_class_session_context(self):
@@ -463,6 +467,7 @@ class TestCoursesApi(TestCase):
                 "student_group": "GROUP-1",
                 "unit_plan": "UNIT-1",
                 "class_session": "SESSION-3",
+                "task_delivery": "TD-17",
             }
         )
 
@@ -475,6 +480,7 @@ class TestCoursesApi(TestCase):
                     "student_group": "GROUP-1",
                     "unit_plan": "UNIT-1",
                     "class_session": "SESSION-3",
+                    "task_delivery": "TD-17",
                 },
             },
         )

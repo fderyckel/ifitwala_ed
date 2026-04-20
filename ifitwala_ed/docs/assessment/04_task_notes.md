@@ -401,7 +401,8 @@ Client code must not recompute totals or criteria summaries independently.
 ### 5.2 Student LMS surface
 
 Students receive assigned work through LMS-facing course and work-board payloads.
-Those payloads expose assignment timing, status, required class-planning context, and optional `class_session` context without exposing internal grading doctypes as the primary mental model.
+Those payloads expose assignment timing, status, task outcome identity, submission-required flags, required class-planning context, and optional `class_session` context without exposing internal grading doctypes as the primary mental model.
+The bounded LMS bootstrap may carry task summary state, but latest submission evidence should stay lazy-loaded per selected task rather than being embedded for every assigned-work row.
 
 ---
 

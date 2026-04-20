@@ -479,7 +479,12 @@
 									<article
 										v-for="item in selectedSession.assigned_work"
 										:key="item.task_delivery"
-										class="rounded-2xl border border-line-soft bg-surface-soft p-4"
+										class="rounded-2xl border p-4"
+										:class="
+											isSelectedAssignedWork(item)
+												? 'border-jacaranda/40 bg-white shadow-sm'
+												: 'border-line-soft bg-surface-soft'
+										"
 									>
 										<div class="flex flex-wrap items-center gap-2">
 											<p class="type-body-strong text-ink">{{ item.title }}</p>
@@ -740,6 +745,189 @@
 					<span class="chip">{{ displayedAssignedWork.length }}</span>
 				</div>
 
+				<section
+					v-if="selectedTaskWorkspace"
+					class="mt-5 rounded-3xl border border-jacaranda/20 bg-white p-5 shadow-sm"
+				>
+					<div class="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+						<div>
+							<p class="type-overline text-ink/60">Task Workspace</p>
+							<h3 class="mt-2 type-h3 text-ink">{{ selectedTaskWorkspace.title }}</h3>
+							<p
+								v-if="assignedWorkContextLine(selectedTaskWorkspace)"
+								class="mt-2 type-caption text-ink/70"
+							>
+								{{ assignedWorkContextLine(selectedTaskWorkspace) }}
+							</p>
+							<p
+								v-if="assignedWorkTimingLabel(selectedTaskWorkspace)"
+								class="mt-1 type-caption text-ink/60"
+							>
+								{{ assignedWorkTimingLabel(selectedTaskWorkspace) }}
+							</p>
+						</div>
+						<div class="flex flex-wrap gap-2">
+							<span v-if="selectedTaskWorkspace.task_type" class="chip">
+								{{ selectedTaskWorkspace.task_type }}
+							</span>
+							<span v-if="assignedWorkStatusLabel(selectedTaskWorkspace)" class="chip">
+								{{ assignedWorkStatusLabel(selectedTaskWorkspace) }}
+							</span>
+							<span v-if="selectedTaskWorkspace.requires_submission" class="chip">
+								Submission
+							</span>
+						</div>
+					</div>
+
+					<p class="mt-3 type-body text-ink/75">{{ selectedTaskWorkspaceNote }}</p>
+
+					<div
+						v-if="selectedTaskWorkspace.instructions_html"
+						class="mt-4 rounded-2xl border border-line-soft bg-surface-soft p-4"
+					>
+						<p class="type-caption text-ink/60">Instructions</p>
+						<div
+							class="mt-3 prose prose-sm max-w-none text-ink/80"
+							v-html="selectedTaskWorkspace.instructions_html"
+						/>
+					</div>
+
+					<div v-if="selectedTaskWorkspace.materials.length" class="mt-4 space-y-3">
+						<div class="flex items-center justify-between gap-3">
+							<p class="type-caption text-ink/60">Attachments</p>
+							<span class="chip">{{ selectedTaskWorkspace.materials.length }}</span>
+						</div>
+						<div class="grid gap-3 lg:grid-cols-2">
+							<StudentLearningResourceCard
+								v-for="resource in selectedTaskWorkspace.materials"
+								:key="resource.placement || resource.material"
+								:resource="resource"
+							/>
+						</div>
+					</div>
+
+					<div class="mt-5 grid gap-4 xl:grid-cols-[minmax(0,1fr),minmax(0,1fr)]">
+						<section class="rounded-2xl border border-line-soft bg-surface-soft p-4">
+							<div class="flex items-center justify-between gap-3">
+								<p class="type-body-strong text-ink">Latest submission</p>
+								<span v-if="selectedTaskSubmission" class="chip">
+									Version {{ selectedTaskSubmission.version }}
+								</span>
+							</div>
+							<p v-if="selectedTaskSubmissionLoading" class="mt-3 type-body text-ink/70">
+								Loading your latest submission...
+							</p>
+							<p v-else-if="selectedTaskSubmissionError" class="mt-3 type-body text-flame">
+								{{ selectedTaskSubmissionError }}
+							</p>
+							<template v-else-if="selectedTaskWorkspace.requires_submission">
+								<div v-if="selectedTaskSubmission" class="mt-3 space-y-3">
+									<p class="type-caption text-ink/70">
+										Submitted {{ formatSubmissionTimestamp(selectedTaskSubmission.submitted_on) }}
+									</p>
+									<div
+										v-if="selectedTaskSubmission.text_content"
+										class="rounded-2xl border border-line-soft bg-white p-3"
+									>
+										<p class="type-caption text-ink/60">Written response</p>
+										<p class="mt-2 whitespace-pre-wrap type-body text-ink/80">
+											{{ selectedTaskSubmission.text_content }}
+										</p>
+									</div>
+									<div
+										v-if="selectedTaskSubmission.link_url"
+										class="rounded-2xl border border-line-soft bg-white p-3"
+									>
+										<p class="type-caption text-ink/60">Linked evidence</p>
+										<a
+											:href="selectedTaskSubmission.link_url"
+											target="_blank"
+											rel="noreferrer"
+											class="mt-2 inline-flex break-all type-body text-jacaranda underline"
+										>
+											{{ selectedTaskSubmission.link_url }}
+										</a>
+									</div>
+									<div
+										v-if="selectedTaskSubmission.attachments.length"
+										class="rounded-2xl border border-line-soft bg-white p-3"
+									>
+										<p class="type-caption text-ink/60">Attachments</p>
+										<div class="mt-2 space-y-2">
+											<div
+												v-for="attachment in selectedTaskSubmission.attachments"
+												:key="attachment.row_name || attachment.open_url || attachment.file_name"
+												class="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-line-soft px-3 py-2"
+											>
+												<p class="type-caption text-ink/80">
+													{{ attachment.file_name || attachment.description || 'Attachment' }}
+												</p>
+												<a
+													v-if="attachment.open_url"
+													:href="attachment.open_url"
+													target="_blank"
+													rel="noreferrer"
+													class="type-caption text-jacaranda underline"
+												>
+													Open
+												</a>
+											</div>
+										</div>
+									</div>
+								</div>
+								<p v-else class="mt-3 type-body text-ink/70">
+									No submission has been recorded yet.
+								</p>
+							</template>
+							<p v-else class="mt-3 type-body text-ink/70">
+								This task stays in your course workspace, but it does not require a submission.
+							</p>
+						</section>
+
+						<section class="rounded-2xl border border-line-soft bg-surface-soft p-4">
+							<p class="type-body-strong text-ink">
+								{{ submissionButtonLabel }}
+							</p>
+							<p class="mt-2 type-caption text-ink/70">
+								Written responses and links are supported in this workspace.
+							</p>
+							<p v-if="selectedTaskSubmissionBlocker" class="mt-3 type-body text-ink/70">
+								{{ selectedTaskSubmissionBlocker }}
+							</p>
+							<form v-else class="mt-3 space-y-3" @submit.prevent="submitSelectedTaskWorkspace">
+								<label class="block space-y-2">
+									<span class="type-caption text-ink/70">Written response</span>
+									<textarea
+										v-model="submissionTextDraft"
+										rows="6"
+										class="if-input min-h-[9rem] w-full"
+										placeholder="Summarize your work, reflection, or answer."
+										@input="submissionDirty = true"
+									/>
+								</label>
+								<label class="block space-y-2">
+									<span class="type-caption text-ink/70">Link to your work</span>
+									<input
+										v-model="submissionLinkDraft"
+										type="url"
+										class="if-input w-full"
+										placeholder="https://example.com/your-work"
+										@input="submissionDirty = true"
+									/>
+								</label>
+								<p v-if="submissionError" class="type-caption text-flame">
+									{{ submissionError }}
+								</p>
+								<div class="flex flex-wrap items-center gap-3">
+									<button type="submit" class="if-action" :disabled="submissionSaving">
+										{{ submissionSaving ? 'Saving...' : submissionButtonLabel }}
+									</button>
+								</div>
+							</form>
+						</section>
+					</div>
+				</section>
+
 				<div
 					v-if="!displayedAssignedWork.length"
 					class="mt-5 rounded-2xl border border-dashed border-line-soft p-4"
@@ -753,7 +941,12 @@
 					<article
 						v-for="item in displayedAssignedWork"
 						:key="item.task_delivery"
-						class="rounded-2xl border border-line-soft bg-surface-soft p-4"
+						class="rounded-2xl border p-4"
+						:class="
+							isSelectedAssignedWork(item)
+								? 'border-jacaranda/40 bg-white shadow-sm'
+								: 'border-line-soft bg-surface-soft'
+						"
 					>
 						<div class="flex flex-wrap items-center gap-2">
 							<p class="type-body-strong text-ink">{{ item.title }}</p>
@@ -884,6 +1077,10 @@ import { RouterLink, useRoute, useRouter } from 'vue-router';
 import StudentLearningResourceCard from '@/components/learning/StudentLearningResourceCard.vue';
 import { createReflectionEntry } from '@/lib/services/portfolio/portfolioService';
 import { getStudentLearningSpace } from '@/lib/services/student/studentLearningHubService';
+import {
+	getStudentTaskSubmission,
+	submitStudentTaskSubmission,
+} from '@/lib/services/student/studentTaskSubmissionService';
 import type {
 	Response as StudentLearningSpaceResponse,
 	StudentAssignedWork,
@@ -893,6 +1090,7 @@ import type {
 	StudentLearningSession,
 	StudentLearningUnit,
 } from '@/types/contracts/student_learning/get_student_learning_space';
+import type { Response as StudentTaskSubmissionResponse } from '@/types/contracts/student_learning/get_student_task_submission';
 
 const PLACEHOLDER =
 	'data:image/svg+xml;charset=UTF-8,' +
@@ -926,6 +1124,7 @@ const props = defineProps<{
 	student_group?: string;
 	unit_plan?: string;
 	class_session?: string;
+	task_delivery?: string;
 }>();
 
 const router = useRouter();
@@ -936,12 +1135,22 @@ const loading = ref(false);
 const errorMessage = ref('');
 const selectedUnitPlan = ref('');
 const selectedSessionId = ref('');
+const selectedTaskDelivery = ref('');
 const loadToken = ref(0);
 const activeSectionId = ref<LearningSectionId>(SECTION_IDS.focus);
 const scrollFrame = ref<number | null>(null);
 const reflectionBody = ref('');
 const reflectionError = ref('');
 const reflectionSaving = ref(false);
+const selectedTaskSubmission = ref<StudentTaskSubmissionResponse>(null);
+const selectedTaskSubmissionLoading = ref(false);
+const selectedTaskSubmissionError = ref('');
+const selectedTaskSubmissionToken = ref(0);
+const submissionTextDraft = ref('');
+const submissionLinkDraft = ref('');
+const submissionDirty = ref(false);
+const submissionError = ref('');
+const submissionSaving = ref(false);
 
 const learningFocus = computed(() => learningSpace.value?.learning.focus || {});
 const nextActions = computed(() => learningSpace.value?.learning.next_actions || []);
@@ -969,11 +1178,48 @@ const selectedSession = computed<StudentLearningSession | null>(() => {
 	);
 });
 
+const selectedAssignedWork = computed<StudentAssignedWork | null>(() => {
+	return findAssignedWorkByDelivery(selectedTaskDelivery.value);
+});
+
+const selectedTaskWorkspace = computed<StudentAssignedWork | null>(() => {
+	if (!selectedAssignedWork.value || isQuizAssignedWork(selectedAssignedWork.value)) {
+		return null;
+	}
+	return selectedAssignedWork.value;
+});
+
 const displayedAssignedWork = computed<StudentAssignedWork[]>(() => {
 	if (selectedUnit.value) {
 		return dedupeAssignedWork(selectedUnit.value.assigned_work || []);
 	}
 	return dedupeAssignedWork(learningSpace.value?.resources.general_assigned_work || []);
+});
+
+const selectedTaskWorkspaceNote = computed(() => {
+	if (!selectedTaskWorkspace.value) return '';
+	if (!selectedTaskWorkspace.value.requires_submission) {
+		return 'Review the task brief here. No submission is required for this task.';
+	}
+	if (selectedTaskWorkspace.value.allow_late_submission) {
+		return 'Submit a written response or link here. Late submission remains available after the due date.';
+	}
+	return 'Submit a written response or link here.';
+});
+
+const selectedTaskSubmissionBlocker = computed(() => {
+	if (!selectedTaskWorkspace.value) return '';
+	if (!selectedTaskWorkspace.value.requires_submission) {
+		return 'This task does not require a submission.';
+	}
+	if (!selectedTaskWorkspace.value.task_outcome) {
+		return 'Your submission workspace is not ready yet. Refresh this page or contact your teacher if the problem continues.';
+	}
+	return '';
+});
+
+const submissionButtonLabel = computed(() => {
+	return selectedTaskSubmission.value ? 'Resubmit task' : 'Submit task';
 });
 
 const resolvedClassLabel = computed(() => {
@@ -1101,7 +1347,11 @@ async function jumpToSection(sectionId: LearningSectionId) {
 	scrollToSection(sectionId);
 }
 
-async function replaceLearningContextRoute(unitPlan: string, classSession: string) {
+async function replaceLearningContextRoute(
+	unitPlan: string,
+	classSession: string,
+	taskDelivery: string
+) {
 	const nextStudentGroup =
 		learningSpace.value?.access.resolved_student_group || props.student_group || '';
 	const nextQuery = {
@@ -1109,11 +1359,13 @@ async function replaceLearningContextRoute(unitPlan: string, classSession: strin
 		student_group: nextStudentGroup || undefined,
 		unit_plan: unitPlan || undefined,
 		class_session: classSession || undefined,
+		task_delivery: taskDelivery || undefined,
 	};
 	if (
 		String(route.query.student_group || '').trim() === nextStudentGroup &&
 		String(route.query.unit_plan || '').trim() === unitPlan &&
-		String(route.query.class_session || '').trim() === classSession
+		String(route.query.class_session || '').trim() === classSession &&
+		String(route.query.task_delivery || '').trim() === taskDelivery
 	) {
 		return;
 	}
@@ -1126,18 +1378,35 @@ async function replaceLearningContextRoute(unitPlan: string, classSession: strin
 function applySelection(payload: StudentLearningSpaceResponse) {
 	const requestedSession = String(props.class_session || '').trim();
 	const requestedUnit = String(props.unit_plan || '').trim();
+	const requestedTask = String(props.task_delivery || '').trim();
 	const defaultUnit = String(payload.learning.selected_context.unit_plan || '').trim();
 	const defaultSession = String(payload.learning.selected_context.class_session || '').trim();
+	const defaultTask = String(payload.learning.selected_context.task_delivery || '').trim();
 	const requestedSessionUnit = requestedSession
 		? payload.curriculum.units.find(unit =>
 				unit.sessions.some(session => session.class_session === requestedSession)
 			)
 		: null;
+	const requestedTaskItem = requestedTask
+		? findAssignedWorkInPayload(payload, requestedTask)
+		: null;
+	const defaultTaskItem = defaultTask ? findAssignedWorkInPayload(payload, defaultTask) : null;
+	const taskAnchoredUnitPlan = String(
+		requestedTaskItem?.unit_plan || defaultTaskItem?.unit_plan || ''
+	).trim();
+	const taskAnchoredSession = String(
+		requestedTaskItem?.class_session || defaultTaskItem?.class_session || ''
+	).trim();
 
 	const currentUnitStillExists = payload.curriculum.units.some(
 		unit => unit.unit_plan === selectedUnitPlan.value
 	);
-	if (requestedSessionUnit) {
+	if (
+		taskAnchoredUnitPlan &&
+		payload.curriculum.units.some(unit => unit.unit_plan === taskAnchoredUnitPlan)
+	) {
+		selectedUnitPlan.value = taskAnchoredUnitPlan;
+	} else if (requestedSessionUnit) {
 		selectedUnitPlan.value = requestedSessionUnit.unit_plan;
 	} else if (
 		requestedUnit &&
@@ -1158,10 +1427,15 @@ function applySelection(payload: StudentLearningSpaceResponse) {
 	const requestedSessionStillExists = !!unit?.sessions.some(
 		session => session.class_session === requestedSession
 	);
+	const anchoredTaskSessionStillExists = !!unit?.sessions.some(
+		session => session.class_session === taskAnchoredSession
+	);
 	const currentSessionStillExists = !!unit?.sessions.some(
 		session => session.class_session === selectedSessionId.value
 	);
-	if (requestedSessionStillExists) {
+	if (anchoredTaskSessionStillExists) {
+		selectedSessionId.value = taskAnchoredSession;
+	} else if (requestedSessionStillExists) {
 		selectedSessionId.value = requestedSession;
 	} else if (
 		defaultSession &&
@@ -1170,6 +1444,22 @@ function applySelection(payload: StudentLearningSpaceResponse) {
 		selectedSessionId.value = defaultSession;
 	} else if (!currentSessionStillExists) {
 		selectedSessionId.value = unit?.sessions[0]?.class_session || '';
+	}
+
+	const currentSelectedTask = selectedTaskDelivery.value
+		? findAssignedWorkInPayload(payload, selectedTaskDelivery.value)
+		: null;
+	if (requestedTaskItem) {
+		selectedTaskDelivery.value = requestedTaskItem.task_delivery;
+	} else if (defaultTaskItem) {
+		selectedTaskDelivery.value = defaultTaskItem.task_delivery;
+	} else if (
+		currentSelectedTask &&
+		taskBelongsToUnit(currentSelectedTask, selectedUnitPlan.value)
+	) {
+		selectedTaskDelivery.value = currentSelectedTask.task_delivery;
+	} else {
+		selectedTaskDelivery.value = '';
 	}
 }
 
@@ -1212,7 +1502,12 @@ async function selectUnit(unitPlan: string) {
 	selectedSessionId.value =
 		learningSpace.value?.curriculum.units.find(unit => unit.unit_plan === unitPlan)?.sessions[0]
 			?.class_session || '';
-	await replaceLearningContextRoute(selectedUnitPlan.value, selectedSessionId.value);
+	selectedTaskDelivery.value = '';
+	await replaceLearningContextRoute(
+		selectedUnitPlan.value,
+		selectedSessionId.value,
+		selectedTaskDelivery.value
+	);
 	await nextTick();
 	await jumpToSection(
 		selectedSessionId.value ? SECTION_IDS.sessionJourney : SECTION_IDS.unitOverview
@@ -1227,7 +1522,12 @@ async function selectSession(classSession: string) {
 		selectedUnitPlan.value = parentUnit.unit_plan;
 	}
 	selectedSessionId.value = classSession;
-	await replaceLearningContextRoute(selectedUnitPlan.value, selectedSessionId.value);
+	selectedTaskDelivery.value = '';
+	await replaceLearningContextRoute(
+		selectedUnitPlan.value,
+		selectedSessionId.value,
+		selectedTaskDelivery.value
+	);
 	await nextTick();
 	await jumpToSection(SECTION_IDS.sessionJourney);
 }
@@ -1244,6 +1544,34 @@ function dedupeAssignedWork(items: StudentAssignedWork[]) {
 		seen.add(key);
 		return true;
 	});
+}
+
+function findAssignedWorkInPayload(
+	payload: StudentLearningSpaceResponse | null,
+	taskDelivery?: string | null
+) {
+	const target = String(taskDelivery || '').trim();
+	if (!payload || !target) return null;
+	for (const item of payload.resources.general_assigned_work || []) {
+		if (String(item.task_delivery || '').trim() === target) return item;
+	}
+	for (const unit of payload.curriculum.units || []) {
+		for (const item of unit.assigned_work || []) {
+			if (String(item.task_delivery || '').trim() === target) return item;
+		}
+		for (const session of unit.sessions || []) {
+			for (const item of session.assigned_work || []) {
+				if (String(item.task_delivery || '').trim() === target) return item;
+			}
+		}
+	}
+	return null;
+}
+
+function taskBelongsToUnit(item: StudentAssignedWork, unitPlan?: string | null) {
+	const target = String(unitPlan || '').trim();
+	if (!target) return false;
+	return String(item.unit_plan || '').trim() === target;
 }
 
 function findUnitByPlan(unitPlan?: string | null) {
@@ -1263,22 +1591,13 @@ function findSessionById(classSession?: string | null) {
 }
 
 function findAssignedWorkByDelivery(taskDelivery?: string | null) {
-	const target = String(taskDelivery || '').trim();
-	if (!target) return null;
-	for (const item of learningSpace.value?.resources.general_assigned_work || []) {
-		if (String(item.task_delivery || '').trim() === target) return item;
-	}
-	for (const unit of learningSpace.value?.curriculum.units || []) {
-		for (const item of unit.assigned_work || []) {
-			if (String(item.task_delivery || '').trim() === target) return item;
-		}
-		for (const session of unit.sessions || []) {
-			for (const item of session.assigned_work || []) {
-				if (String(item.task_delivery || '').trim() === target) return item;
-			}
-		}
-	}
-	return null;
+	return findAssignedWorkInPayload(learningSpace.value, taskDelivery);
+}
+
+function isSelectedAssignedWork(item: StudentAssignedWork) {
+	return (
+		String(item.task_delivery || '').trim() === String(selectedTaskDelivery.value || '').trim()
+	);
 }
 
 function sessionTimingLabel(session: StudentLearningSession) {
@@ -1377,9 +1696,178 @@ function assignedWorkContextLine(item: StudentAssignedWork) {
 
 function assignedWorkActionLabel(item: StudentAssignedWork) {
 	if (isQuizAssignedWork(item)) return quizActionLabel(item);
+	if (isSelectedAssignedWork(item)) return 'Workspace open';
 	if (item.class_session) return 'Open task workspace';
 	if (item.unit_plan) return 'Open unit workspace';
 	return 'Open course workspace';
+}
+
+function formatSubmissionTimestamp(value?: string | null) {
+	const text = String(value || '').trim();
+	if (!text) return '';
+	const normalized = text.replace(' ', 'T');
+	const parsed = new Date(normalized);
+	if (Number.isNaN(parsed.getTime())) return text;
+	return parsed.toLocaleString(undefined, {
+		year: 'numeric',
+		month: 'short',
+		day: 'numeric',
+		hour: 'numeric',
+		minute: '2-digit',
+	});
+}
+
+function seedSubmissionDraft(submission: StudentTaskSubmissionResponse) {
+	submissionTextDraft.value = submission?.text_content || '';
+	submissionLinkDraft.value = submission?.link_url || '';
+	submissionDirty.value = false;
+	submissionError.value = '';
+}
+
+function resetSelectedTaskSubmissionState() {
+	selectedTaskSubmission.value = null;
+	selectedTaskSubmissionError.value = '';
+	selectedTaskSubmissionLoading.value = false;
+	seedSubmissionDraft(null);
+}
+
+async function openAssignedWorkWorkspace(item: StudentAssignedWork) {
+	if (item.unit_plan) {
+		selectedUnitPlan.value = item.unit_plan;
+	}
+	if (item.class_session) {
+		selectedSessionId.value = item.class_session;
+	} else if (item.unit_plan) {
+		selectedSessionId.value =
+			learningSpace.value?.curriculum.units.find(unit => unit.unit_plan === item.unit_plan)
+				?.sessions[0]?.class_session || '';
+	}
+	selectedTaskDelivery.value = item.task_delivery;
+	await replaceLearningContextRoute(
+		selectedUnitPlan.value,
+		selectedSessionId.value,
+		selectedTaskDelivery.value
+	);
+	await nextTick();
+	await jumpToSection(SECTION_IDS.assignedWork);
+}
+
+async function loadSelectedTaskSubmission() {
+	const task = selectedTaskWorkspace.value;
+	const ticket = selectedTaskSubmissionToken.value + 1;
+	selectedTaskSubmissionToken.value = ticket;
+
+	if (!task) {
+		resetSelectedTaskSubmissionState();
+		return;
+	}
+	if (!task.requires_submission) {
+		resetSelectedTaskSubmissionState();
+		return;
+	}
+	if (!task.task_outcome) {
+		selectedTaskSubmission.value = null;
+		selectedTaskSubmissionLoading.value = false;
+		selectedTaskSubmissionError.value = '';
+		seedSubmissionDraft(null);
+		return;
+	}
+
+	selectedTaskSubmissionLoading.value = true;
+	selectedTaskSubmissionError.value = '';
+	try {
+		const payload = await getStudentTaskSubmission({
+			outcome_id: task.task_outcome,
+		});
+		if (ticket !== selectedTaskSubmissionToken.value) return;
+		selectedTaskSubmission.value = payload;
+		if (!submissionDirty.value) {
+			seedSubmissionDraft(payload);
+		}
+	} catch (error) {
+		if (ticket !== selectedTaskSubmissionToken.value) return;
+		selectedTaskSubmission.value = null;
+		selectedTaskSubmissionError.value =
+			error instanceof Error ? error.message : 'Could not load your latest submission.';
+		if (!submissionDirty.value) {
+			seedSubmissionDraft(null);
+		}
+	} finally {
+		if (ticket === selectedTaskSubmissionToken.value) {
+			selectedTaskSubmissionLoading.value = false;
+		}
+	}
+}
+
+function patchAssignedWorkStatus(taskDelivery: string, submissionStatus: string) {
+	if (!learningSpace.value) return;
+	const updateItems = (items: StudentAssignedWork[]) =>
+		items.map(item =>
+			item.task_delivery === taskDelivery
+				? {
+						...item,
+						submission_status: submissionStatus,
+					}
+				: item
+		);
+
+	learningSpace.value = {
+		...learningSpace.value,
+		resources: {
+			...learningSpace.value.resources,
+			general_assigned_work: updateItems(
+				learningSpace.value.resources.general_assigned_work || []
+			),
+		},
+		curriculum: {
+			...learningSpace.value.curriculum,
+			units: (learningSpace.value.curriculum.units || []).map(unit => ({
+				...unit,
+				assigned_work: updateItems(unit.assigned_work || []),
+				sessions: (unit.sessions || []).map(session => ({
+					...session,
+					assigned_work: updateItems(session.assigned_work || []),
+				})),
+			})),
+		},
+	};
+}
+
+async function submitSelectedTaskWorkspace() {
+	const task = selectedTaskWorkspace.value;
+	if (!task?.requires_submission || !task.task_outcome) {
+		return;
+	}
+
+	const textContent = submissionTextDraft.value.trim();
+	const linkUrl = submissionLinkDraft.value.trim();
+	if (!textContent && !linkUrl) {
+		submissionError.value = 'Add a written response or link before submitting.';
+		return;
+	}
+
+	const isResubmission = Boolean(selectedTaskSubmission.value);
+	submissionSaving.value = true;
+	submissionError.value = '';
+	try {
+		const response = await submitStudentTaskSubmission({
+			task_outcome: task.task_outcome,
+			text_content: textContent || undefined,
+			link_url: linkUrl || undefined,
+		});
+		patchAssignedWorkStatus(
+			task.task_delivery,
+			response.outcome_flags?.submission_status || (isResubmission ? 'Resubmitted' : 'Submitted')
+		);
+		submissionDirty.value = false;
+		await loadSelectedTaskSubmission();
+		toast.success(isResubmission ? 'Task resubmitted.' : 'Task submitted.');
+	} catch (error) {
+		submissionError.value = error instanceof Error ? error.message : 'Could not submit this task.';
+		toast.error(submissionError.value);
+	} finally {
+		submissionSaving.value = false;
+	}
 }
 
 const reflectionPrompt = computed(() => {
@@ -1471,6 +1959,13 @@ async function saveReflection() {
 }
 
 async function handleNextAction(action: StudentLearningNextAction) {
+	if (action.task_delivery) {
+		const item = findAssignedWorkByDelivery(action.task_delivery);
+		if (item && !isQuizAssignedWork(item)) {
+			await openAssignedWorkWorkspace(item);
+			return;
+		}
+	}
 	if (action.unit_plan) {
 		await selectUnit(action.unit_plan);
 	}
@@ -1484,19 +1979,13 @@ async function handleNextAction(action: StudentLearningNextAction) {
 }
 
 async function focusAssignedWork(item: StudentAssignedWork) {
-	if (item.unit_plan) {
-		await selectUnit(item.unit_plan);
-	}
-	if (item.class_session) {
-		await selectSession(item.class_session);
-		return;
-	}
-	await jumpToSection(item.unit_plan ? SECTION_IDS.unitOverview : SECTION_IDS.assignedWork);
+	await openAssignedWorkWorkspace(item);
 }
 
 async function handleStudentGroupChange(event: Event) {
 	const target = event.target as HTMLSelectElement | null;
 	const value = String(target?.value || '').trim();
+	selectedTaskDelivery.value = '';
 	await router.replace({
 		query: {
 			student_group: value || undefined,
@@ -1514,7 +2003,7 @@ watch(
 );
 
 watch(
-	() => [props.unit_plan, props.class_session],
+	() => [props.unit_plan, props.class_session, props.task_delivery],
 	async () => {
 		if (!learningSpace.value) return;
 		applySelection(learningSpace.value);
@@ -1527,6 +2016,13 @@ watch(
 		} else {
 			requestActiveSectionSync();
 		}
+	}
+);
+
+watch(
+	() => selectedTaskWorkspace.value?.task_delivery || '',
+	() => {
+		loadSelectedTaskSubmission();
 	}
 );
 

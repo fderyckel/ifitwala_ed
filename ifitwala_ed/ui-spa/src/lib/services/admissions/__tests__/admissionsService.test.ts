@@ -46,7 +46,10 @@ describe('admissionsService uploads', () => {
 		const onProgress = vi.fn()
 		apiPostWithProgressMock.mockResolvedValue({
 			file: 'FILE-1',
-			file_url: '/private/files/evidence.pdf',
+			open_url: '/api/method/ifitwala_ed.api.file_access.download_admissions_file?file=FILE-1',
+			preview_url: '/api/method/ifitwala_ed.api.file_access.preview_admissions_file?file=FILE-1',
+			thumbnail_url: null,
+			preview_status: 'pending',
 			drive_file_id: 'DRV-FILE-1',
 			canonical_ref: 'drv:ORG-1:DRV-FILE-1',
 			applicant_document: 'APP-DOC-1',

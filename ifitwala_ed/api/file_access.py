@@ -46,6 +46,8 @@ CONTEXT_GUARDIAN = "Guardian"
 CONTEXT_EMPLOYEE = "Employee"
 CONTEXT_ORG_COMMUNICATION = "Org Communication"
 _THUMBNAIL_REDIRECT_CACHE_TTL_SECONDS = 240
+EMPLOYEE_PROFILE_IMAGE_PURPOSE = "employee_profile_display"
+EMPLOYEE_PROFILE_IMAGE_SLOT = "profile_image"
 
 
 def _is_external_url(value: str | None) -> bool:
@@ -780,6 +782,18 @@ def _load_drive_communications_callable(attribute: str):
     return None
 
 
+def _load_drive_media_callable(attribute: str):
+    try:
+        from ifitwala_drive.api import media as drive_api
+    except ImportError:
+        return None
+
+    callable_obj = getattr(drive_api, attribute, None)
+    if callable(callable_obj):
+        return callable_obj
+    return None
+
+
 def _ensure_response_headers() -> dict:
     if not hasattr(frappe, "local") or frappe.local is None:
         frappe.local = SimpleNamespace()
@@ -1048,6 +1062,84 @@ def _request_org_communication_attachment_grant(
     return _load_drive_access_callable(generic_method)(**payload)
 
 
+def _request_employee_image_grant(
+    *,
+    method_name: str,
+    employee: str,
+    file_id: str,
+    drive_file_id: str,
+    derivative_role: str | None = None,
+):
+    grant_callable = _load_drive_media_callable(method_name)
+    if callable(grant_callable):
+        payload = {
+            "employee": str(employee or "").strip(),
+            "file_id": str(file_id or "").strip(),
+        }
+        explicit_derivative_role = (derivative_role or "").strip()
+        if explicit_derivative_role:
+            payload["derivative_role"] = explicit_derivative_role
+        return grant_callable(**payload)
+
+    generic_method = "issue_preview_grant" if "preview" in method_name else "issue_download_grant"
+    payload = {"drive_file_id": drive_file_id}
+    explicit_derivative_role = (derivative_role or "").strip()
+    if generic_method == "issue_preview_grant" and explicit_derivative_role:
+        payload["derivative_role"] = explicit_derivative_role
+    return _load_drive_access_callable(generic_method)(**payload)
+
+
+def _resolve_employee_image_grant_target_url(
+    *,
+    employee: str,
+    file_id: str,
+    drive_file_id: str,
+    prefer_preview: bool = False,
+    derivative_role: str | None = None,
+    strict_derivative: bool = False,
+) -> str | None:
+    target_url = ""
+    explicit_derivative_role = (derivative_role or "").strip()
+    resolved_employee = str(employee or "").strip()
+    resolved_file_id = str(file_id or "").strip()
+
+    if prefer_preview and explicit_derivative_role:
+        try:
+            grant = _request_employee_image_grant(
+                method_name="issue_employee_image_preview_grant",
+                employee=resolved_employee,
+                file_id=resolved_file_id,
+                drive_file_id=drive_file_id,
+                derivative_role=explicit_derivative_role,
+            )
+            target_url = str((grant or {}).get("url") or "").strip()
+        except Exception:
+            target_url = ""
+        if strict_derivative:
+            if target_url and not _is_raw_private_redirect_target(target_url):
+                return target_url
+            return None
+
+    if not target_url:
+        grant_method = "issue_employee_image_download_grant"
+        if prefer_preview:
+            preview_status = frappe.db.get_value("Drive File", drive_file_id, "preview_status")
+            if preview_status == "ready":
+                grant_method = "issue_employee_image_preview_grant"
+        grant = _request_employee_image_grant(
+            method_name=grant_method,
+            employee=resolved_employee,
+            file_id=resolved_file_id,
+            drive_file_id=drive_file_id,
+        )
+        target_url = str((grant or {}).get("url") or "").strip()
+
+    if target_url and not _is_raw_private_redirect_target(target_url):
+        return target_url
+
+    return None
+
+
 def _resolve_org_communication_attachment_grant_target_url(
     *,
     org_communication: str,
@@ -1142,6 +1234,64 @@ def _resolve_employee_from_file(file_row: dict) -> str:
     frappe.throw(_("File is missing employee ownership context."), frappe.ValidationError)
 
 
+def _resolve_employee_profile_image_access(
+    *,
+    user: str,
+    file_name: str,
+    context_doctype: str | None = None,
+    context_name: str | None = None,
+    strict: bool = False,
+) -> dict | None:
+    file_row = _resolve_any_file_row(file_name)
+    file_employee = _resolve_employee_from_file(file_row)
+    _assert_employee_file_access(
+        user=user,
+        file_employee=file_employee,
+        context_doctype=context_doctype,
+        context_name=context_name,
+    )
+
+    drive_file = get_drive_file_for_file(
+        file_name,
+        fields=[
+            "name",
+            "owner_doctype",
+            "owner_name",
+            "primary_subject_type",
+            "primary_subject_id",
+            "purpose",
+            "slot",
+        ],
+        statuses=("active", "processing", "blocked"),
+    )
+    if not drive_file:
+        if strict:
+            frappe.throw(_("Employee image access requires an active governed profile image."), frappe.PermissionError)
+        return None
+
+    if (
+        str(drive_file.get("purpose") or "").strip() != EMPLOYEE_PROFILE_IMAGE_PURPOSE
+        or str(drive_file.get("slot") or "").strip() != EMPLOYEE_PROFILE_IMAGE_SLOT
+    ):
+        if strict:
+            frappe.throw(_("Employee image access is limited to governed profile images."), frappe.PermissionError)
+        return None
+
+    if (
+        str(drive_file.get("owner_doctype") or "").strip() != CONTEXT_EMPLOYEE
+        or str(drive_file.get("owner_name") or "").strip() != file_employee
+        or str(drive_file.get("primary_subject_type") or "").strip() != CONTEXT_EMPLOYEE
+        or str(drive_file.get("primary_subject_id") or "").strip() != file_employee
+    ):
+        frappe.throw(_("Employee image ownership is invalid."), frappe.PermissionError)
+
+    return {
+        "file_row": file_row,
+        "file_employee": file_employee,
+        "drive_file_id": str(drive_file.get("name") or "").strip(),
+    }
+
+
 def _assert_employee_file_access(
     *, user: str, file_employee: str, context_doctype: str | None, context_name: str | None
 ) -> None:
@@ -1165,6 +1315,15 @@ def _assert_employee_file_access(
         return
 
     frappe.throw(_("You do not have permission to access this employee file."), frappe.PermissionError)
+
+
+def _assert_employee_owner_doc_read(file_employee: str) -> None:
+    if not frappe.db.exists("Employee", file_employee):
+        frappe.throw(_("Employee not found."), frappe.DoesNotExistError)
+
+    employee_doc = frappe.get_doc("Employee", file_employee)
+    if hasattr(employee_doc, "check_permission"):
+        employee_doc.check_permission("read")
 
 
 def _assert_guardian_file_access(
@@ -1217,6 +1376,14 @@ def _resolve_student_applicant_from_file(file_row: dict) -> str:
             if applicant_document
             else None
         )
+    elif attached_to_doctype == "Applicant Health Profile":
+        student_applicant = frappe.db.get_value("Applicant Health Profile", attached_to_name, "student_applicant")
+    elif attached_to_doctype == "Student Applicant Guardian":
+        student_applicant = frappe.db.get_value(
+            "Student Applicant Guardian",
+            attached_to_name,
+            "parent",
+        )
     elif attached_to_doctype == "Student Applicant":
         student_applicant = attached_to_name
     else:
@@ -1226,6 +1393,80 @@ def _resolve_student_applicant_from_file(file_row: dict) -> str:
     if not resolved:
         frappe.throw(_("File is missing admissions ownership context."), frappe.ValidationError)
     return resolved
+
+
+def _resolve_student_applicant_from_drive_file(drive_file_row: dict) -> str:
+    if (drive_file_row.get("primary_subject_type") or "").strip() == "Student Applicant":
+        resolved = (drive_file_row.get("primary_subject_id") or "").strip()
+        if resolved:
+            return resolved
+
+    attached_doctype = (drive_file_row.get("attached_doctype") or "").strip()
+    attached_name = (drive_file_row.get("attached_name") or "").strip()
+    if not attached_name:
+        frappe.throw(_("Drive File is missing admissions ownership context."), frappe.ValidationError)
+
+    if attached_doctype == "Applicant Document Item":
+        applicant_document = frappe.db.get_value("Applicant Document Item", attached_name, "applicant_document")
+        student_applicant = (
+            frappe.db.get_value("Applicant Document", applicant_document, "student_applicant")
+            if applicant_document
+            else None
+        )
+    elif attached_doctype == "Applicant Health Profile":
+        student_applicant = frappe.db.get_value("Applicant Health Profile", attached_name, "student_applicant")
+    elif attached_doctype == "Student Applicant Guardian":
+        student_applicant = frappe.db.get_value("Student Applicant Guardian", attached_name, "parent")
+    elif attached_doctype == "Student Applicant":
+        student_applicant = attached_name
+    else:
+        student_applicant = None
+
+    resolved = (student_applicant or "").strip()
+    if not resolved:
+        frappe.throw(_("Drive File is missing admissions ownership context."), frappe.ValidationError)
+    return resolved
+
+
+def _resolve_authorized_admissions_file_target(
+    *,
+    user: str,
+    file_name: str | None = None,
+    drive_file_id: str | None = None,
+    canonical_ref: str | None = None,
+    context_doctype: str | None = None,
+    context_name: str | None = None,
+) -> tuple[dict | None, dict | None]:
+    resolved_drive_file = _resolve_drive_file_delivery_row(
+        file_name,
+        drive_file_id=drive_file_id,
+        canonical_ref=canonical_ref,
+    )
+    if resolved_drive_file and resolved_drive_file.get("name"):
+        file_student_applicant = _resolve_student_applicant_from_drive_file(resolved_drive_file)
+        _assert_context_permission(
+            user=user,
+            file_student_applicant=file_student_applicant,
+            context_doctype=context_doctype,
+            context_name=context_name,
+        )
+        resolved_file_name = (resolved_drive_file.get("file") or "").strip()
+        file_row = _resolve_any_file_row(resolved_file_name) if resolved_file_name else None
+        return file_row, resolved_drive_file
+
+    resolved_file_name = (file_name or "").strip()
+    if not resolved_file_name:
+        frappe.throw(_("File is required."), frappe.ValidationError)
+
+    file_row = _resolve_file_row(resolved_file_name)
+    file_student_applicant = _resolve_student_applicant_from_file(file_row)
+    _assert_context_permission(
+        user=user,
+        file_student_applicant=file_student_applicant,
+        context_doctype=context_doctype,
+        context_name=context_name,
+    )
+    return file_row, _resolve_drive_file_delivery_row(resolved_file_name)
 
 
 def _is_student_applicant_self_user(*, student_applicant: str, user: str) -> bool:
@@ -1597,24 +1838,22 @@ def _assert_portfolio_share_file_access(*, file_name: str, share_token: str, vie
 @frappe.whitelist()
 def download_admissions_file(
     file: str | None = None,
+    drive_file_id: str | None = None,
+    canonical_ref: str | None = None,
     context_doctype: str | None = None,
     context_name: str | None = None,
 ):
     user = _require_authenticated_user()
-    file_name = (file or "").strip()
-    if not file_name:
-        frappe.throw(_("File is required."), frappe.ValidationError)
-
-    file_row = _resolve_file_row(file_name)
-    file_student_applicant = _resolve_student_applicant_from_file(file_row)
-    _assert_context_permission(
+    file_row, drive_file = _resolve_authorized_admissions_file_target(
         user=user,
-        file_student_applicant=file_student_applicant,
+        file_name=(file or "").strip() or None,
+        drive_file_id=drive_file_id,
+        canonical_ref=canonical_ref,
         context_doctype=context_doctype,
         context_name=context_name,
     )
 
-    file_url = (file_row.get("file_url") or "").strip()
+    file_url = str((file_row or {}).get("file_url") or "").strip()
     if file_url.startswith(("http://", "https://")):
         frappe.local.response["type"] = "redirect"
         frappe.local.response["location"] = file_url
@@ -1625,11 +1864,105 @@ def download_admissions_file(
         frappe.local.response["location"] = file_url
         return
 
-    target_url = _resolve_drive_download_grant_url(file_name)
+    target_url = _resolve_drive_download_grant_url(
+        (file_row or {}).get("name"),
+        drive_file_id=(drive_file or {}).get("name") or drive_file_id,
+        canonical_ref=canonical_ref,
+    )
     if _respond_with_redirect_target(target_url=target_url):
         return
 
     frappe.throw(_("Could not resolve the file content."), frappe.DoesNotExistError)
+
+
+@frappe.whitelist()
+def preview_admissions_file(
+    file: str | None = None,
+    drive_file_id: str | None = None,
+    canonical_ref: str | None = None,
+    context_doctype: str | None = None,
+    context_name: str | None = None,
+):
+    user = _require_authenticated_user()
+    file_row, drive_file = _resolve_authorized_admissions_file_target(
+        user=user,
+        file_name=(file or "").strip() or None,
+        drive_file_id=drive_file_id,
+        canonical_ref=canonical_ref,
+        context_doctype=context_doctype,
+        context_name=context_name,
+    )
+
+    target_url = _resolve_drive_preview_grant_url(
+        (file_row or {}).get("name"),
+        drive_file_id=(drive_file or {}).get("name") or drive_file_id,
+        canonical_ref=canonical_ref,
+    )
+    if _respond_with_redirect_target(target_url=target_url):
+        return
+
+    file_url = str((file_row or {}).get("file_url") or "").strip()
+    if file_url.startswith(("http://", "https://")):
+        frappe.local.response["type"] = "redirect"
+        frappe.local.response["location"] = file_url
+        return
+
+    if _is_public_site_file_url(file_url):
+        frappe.local.response["type"] = "redirect"
+        frappe.local.response["location"] = file_url
+        return
+
+    target_url = _resolve_drive_download_grant_url(
+        (file_row or {}).get("name"),
+        drive_file_id=(drive_file or {}).get("name") or drive_file_id,
+        canonical_ref=canonical_ref,
+    )
+    if _respond_with_redirect_target(target_url=target_url):
+        return
+
+    frappe.throw(_("Could not resolve the file content."), frappe.DoesNotExistError)
+
+
+@frappe.whitelist()
+def thumbnail_admissions_file(
+    file: str | None = None,
+    drive_file_id: str | None = None,
+    canonical_ref: str | None = None,
+    context_doctype: str | None = None,
+    context_name: str | None = None,
+):
+    user = _require_authenticated_user()
+    file_row, drive_file = _resolve_authorized_admissions_file_target(
+        user=user,
+        file_name=(file or "").strip() or None,
+        drive_file_id=drive_file_id,
+        canonical_ref=canonical_ref,
+        context_doctype=context_doctype,
+        context_name=context_name,
+    )
+    resolved_drive_file = drive_file or {}
+    resolved_drive_file_id = str(resolved_drive_file.get("name") or drive_file_id or "").strip()
+    if not resolved_drive_file_id:
+        frappe.throw(_("Drive file is required."), frappe.DoesNotExistError)
+
+    target_url = _resolve_cached_thumbnail_target_url(
+        drive_file_id=resolved_drive_file_id,
+        file_id=str((file_row or {}).get("name") or resolved_drive_file.get("file") or resolved_drive_file_id).strip(),
+        surface_parts=[
+            "admissions",
+            context_doctype,
+            context_name,
+            resolved_drive_file_id,
+        ],
+        strict_derivative=True,
+    )
+    if target_url:
+        _set_thumbnail_cache_headers()
+        frappe.local.response["type"] = "redirect"
+        frappe.local.response["location"] = target_url
+        return
+
+    frappe.throw(_("Could not resolve the attachment thumbnail."), frappe.DoesNotExistError)
 
 
 @frappe.whitelist()
@@ -2029,14 +2362,27 @@ def download_employee_file(
     if not file_name:
         frappe.throw(_("File is required."), frappe.ValidationError)
 
-    file_row = _resolve_any_file_row(file_name)
-    file_employee = _resolve_employee_from_file(file_row)
-    _assert_employee_file_access(
+    employee_image_context = _resolve_employee_profile_image_access(
         user=user,
-        file_employee=file_employee,
+        file_name=file_name,
         context_doctype=context_doctype,
         context_name=context_name,
+        strict=False,
     )
+    if employee_image_context:
+        file_row = employee_image_context["file_row"]
+        file_employee = employee_image_context["file_employee"]
+        drive_file_id = employee_image_context["drive_file_id"]
+    else:
+        file_row = _resolve_any_file_row(file_name)
+        file_employee = _resolve_employee_from_file(file_row)
+        _assert_employee_file_access(
+            user=user,
+            file_employee=file_employee,
+            context_doctype=context_doctype,
+            context_name=context_name,
+        )
+        _assert_employee_owner_doc_read(file_employee)
 
     file_url = (file_row.get("file_url") or "").strip()
     if file_url.startswith(("http://", "https://")):
@@ -2045,7 +2391,17 @@ def download_employee_file(
         return
 
     if (derivative_role or "").strip():
-        target_url = _resolve_drive_preview_grant_url(file_name, derivative_role=derivative_role)
+        target_url = (
+            _resolve_employee_image_grant_target_url(
+                employee=file_employee,
+                file_id=file_name,
+                drive_file_id=drive_file_id,
+                prefer_preview=True,
+                derivative_role=derivative_role,
+            )
+            if employee_image_context
+            else _resolve_drive_preview_grant_url(file_name, derivative_role=derivative_role)
+        )
         if _respond_with_redirect_target(target_url=target_url):
             return
 
@@ -2054,7 +2410,15 @@ def download_employee_file(
         frappe.local.response["location"] = file_url
         return
 
-    target_url = _resolve_drive_download_grant_url(file_name)
+    target_url = (
+        _resolve_employee_image_grant_target_url(
+            employee=file_employee,
+            file_id=file_name,
+            drive_file_id=drive_file_id,
+        )
+        if employee_image_context
+        else _resolve_drive_download_grant_url(file_name)
+    )
     if _respond_with_redirect_target(target_url=target_url):
         return
 

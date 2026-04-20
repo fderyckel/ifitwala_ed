@@ -3,7 +3,7 @@
 
 from unittest import TestCase
 
-from ifitwala_ed.tests.frappe_stubs import StubPermissionError, import_fresh, stubbed_frappe
+from ifitwala_ed.tests.frappe_stubs import StubPermissionError, StubValidationError, import_fresh, stubbed_frappe
 
 
 class TestTaskSubmissionService(TestCase):
@@ -53,6 +53,37 @@ class TestTaskSubmissionService(TestCase):
                     {"task_outcome": "OUT-1", "text_content": "My answer"},
                     user="student@example.com",
                     expected_student="STU-SELF",
+                )
+
+    def test_create_student_submission_rejects_tasks_that_do_not_require_submission(self):
+        with stubbed_frappe() as frappe:
+
+            def fake_get_value(doctype, name, fieldnames=None, **kwargs):
+                if doctype == "Task Outcome":
+                    return {
+                        "student": "STU-1",
+                        "student_group": "GRP-1",
+                        "course": "COURSE-1",
+                        "academic_year": "AY-1",
+                        "school": "SCH-1",
+                        "task_delivery": "TD-1",
+                        "task": "TASK-1",
+                    }
+                if doctype == "Task Delivery":
+                    return {
+                        "requires_submission": 0,
+                    }
+                return None
+
+            frappe.db.get_value = fake_get_value
+
+            module = import_fresh("ifitwala_ed.assessment.task_submission_service")
+
+            with self.assertRaises(StubValidationError):
+                module.create_student_submission(
+                    {"task_outcome": "OUT-1", "text_content": "My answer"},
+                    user="student@example.com",
+                    expected_student="STU-1",
                 )
 
 

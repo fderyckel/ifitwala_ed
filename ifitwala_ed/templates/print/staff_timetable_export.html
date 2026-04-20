@@ -25,6 +25,9 @@
 					<div class="timetable-header__copy">
 						<div class="timetable-header__kicker">{{ _("Ifitwala Timetable") }}</div>
 						<div class="timetable-header__brand-name">{{ brand.brand_name }}</div>
+						{% if brand.tagline %}
+						<div class="timetable-header__tagline">{{ brand.tagline }}</div>
+						{% endif %}
 						{% if brand.secondary_brand %}
 						<div class="timetable-header__brand-secondary">{{ brand.secondary_brand }}</div>
 						{% endif %}
@@ -67,12 +70,24 @@
 					<div class="timetable-summary__value">{{ week.page_label }}</div>
 				</td>
 				<td class="timetable-summary__count-cell">
+					<div class="timetable-summary__count-copy">{{ _("Weekly snapshot") }}</div>
 					<div class="timetable-counts">
 						{% for card in count_cards %}
 						<span class="timetable-count timetable-count--{{ card.source_class }}">
 							{{ card.label }} {{ card.value }}
 						</span>
 						{% endfor %}
+					</div>
+					<div class="timetable-summary__taskpad">
+						<div class="timetable-summary__taskpad-label">{{ _("Weekly priorities") }}</div>
+						<div class="taskpad-line">
+							<span class="taskpad-line__checkbox"></span>
+							<span class="taskpad-line__rule"></span>
+						</div>
+						<div class="taskpad-line">
+							<span class="taskpad-line__checkbox"></span>
+							<span class="taskpad-line__rule"></span>
+						</div>
 					</div>
 				</td>
 			</tr>
@@ -138,7 +153,7 @@
 									{% endfor %}
 								{% elif day.in_window %}
 								<div class="day-panel__empty">
-									<div class="day-panel__empty-copy">{{ _("Open planning space") }}</div>
+									<div class="day-panel__empty-copy">{{ _("No fixed timed commitments") }}</div>
 									<div class="day-panel__rule"></div>
 									<div class="day-panel__rule"></div>
 									<div class="day-panel__rule"></div>
@@ -147,6 +162,19 @@
 								<div class="day-panel__outside">{{ _("Outside selected range") }}</div>
 								{% endif %}
 							</div>
+							{% if day.in_window %}
+							<div class="day-panel__planning">
+								<div class="day-panel__section-label">{{ _("Open planning space") }}</div>
+								<div class="planning-line">
+									<span class="planning-line__checkbox"></span>
+									<span class="planning-line__rule"></span>
+								</div>
+								<div class="planning-line">
+									<span class="planning-line__checkbox"></span>
+									<span class="planning-line__rule"></span>
+								</div>
+							</div>
+							{% endif %}
 						</div>
 					</td>
 					{% endfor %}

@@ -682,7 +682,6 @@ type ArrayWidgetKey =
 	| 'attendance_trend'
 	| 'my_absent_students';
 
-// State for Dialog
 const isContentDialogOpen = ref<boolean>(false);
 const overlay = useOverlayStack();
 const dialogContent = ref<DialogContent>({
@@ -694,7 +693,6 @@ const dialogContent = ref<DialogContent>({
 	badge: '',
 });
 
-// State for new dialogs
 const showClinicHistory = ref<boolean>(false);
 const showInteractionDrawer = ref<boolean>(false);
 const activeCommunication = ref<Announcement | null>(null);
@@ -743,10 +741,10 @@ const clinicHistoryRangeOptions = [
 ] as const;
 type ClinicVolumeView = (typeof clinicVolumeViewOptions)[number]['value'];
 const clinicVolumeView = ref<ClinicVolumeView>('3D');
+const activeAnnouncementName = computed<string>(() => activeCommunication.value?.name || '');
 const activeAnnouncementDetail = computed<OrgCommunicationItemResponse | null>(() => {
-	const activeName = activeCommunication.value?.name;
-	if (!activeName) return null;
-	return announcementDetailData.value[activeName] || null;
+	if (!activeAnnouncementName.value) return null;
+	return announcementDetailData.value[activeAnnouncementName.value] || null;
 });
 const dialogContentTitle = computed<string>(() => {
 	const detailTitle = activeAnnouncementDetail.value?.title;
@@ -763,16 +761,16 @@ const dialogContentBody = computed<string>(() => {
 	return dialogContent.value.content;
 });
 const dialogContentAttachments = computed(() => activeAnnouncementDetail.value?.attachments || []);
-const dialogContentAttachmentsLoading = computed<boolean>(() => {
-	const activeName = activeCommunication.value?.name;
-	if (!activeName) return false;
-	return Boolean(announcementDetailLoading.value[activeName]);
-});
-const dialogContentAttachmentsError = computed<string>(() => {
-	const activeName = activeCommunication.value?.name;
-	if (!activeName) return '';
-	return announcementDetailError.value[activeName] || '';
-});
+const dialogContentAttachmentsLoading = computed<boolean>(() =>
+	Boolean(
+		activeAnnouncementName.value && announcementDetailLoading.value[activeAnnouncementName.value]
+	)
+);
+const dialogContentAttachmentsError = computed<string>(() =>
+	activeAnnouncementName.value
+		? announcementDetailError.value[activeAnnouncementName.value] || ''
+		: ''
+);
 const unreadAnnouncementCount = computed(
 	() => (widgets.data?.announcements || []).filter(item => item.is_unread).length
 );

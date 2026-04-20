@@ -140,11 +140,11 @@ Current read consumers using canonical variant resolution:
 
 Org chart visibility contract:
 - the staff org chart defaults to `All Organizations`, not the viewer's base organization
-- employee image access for the org chart is available to any authenticated active employee; base-organization scope does not gate employee thumbnails on that surface
+- employee profile-image access for the org chart and Morning Brief staff-birthday surface is available to any authenticated active employee; base-organization scope does not gate those thumbnail/card reads
 - the org chart surface resolves Employee image derivatives in this order: `profile_image_thumb` -> `profile_image_card` -> `profile_image_medium`; it must not fall back to the original full-size image on that surface
 - those compatibility variant keys resolve to Drive derivative roles (`thumb`, `card`, `viewer_preview`) on the current governed `profile_image` file
-- when a governed Employee derivative is stored in `ifitwala_drive`, the org chart still resolves it through the named Employee file route, which may redirect to a Drive-issued derivative grant URL after the employee-access check passes
-- changes to employee image display permissions must update both the employee image route tests and the org chart consumer contract tests in the same change
+- when a governed Employee derivative is stored in `ifitwala_drive`, staff image consumers still resolve it through the named Employee file route, which now keeps Ed as the permission boundary for governed profile-image grants instead of relying on raw `Employee` DocType read access in Drive
+- changes to employee image display permissions must update the employee image route tests and the affected consumer contract tests in the same change
 
 This keeps Employee image governance and User avatar synchronization aligned.
 

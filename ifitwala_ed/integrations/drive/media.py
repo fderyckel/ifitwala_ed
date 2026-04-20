@@ -45,6 +45,34 @@ def build_employee_image_contract(employee_doc) -> dict[str, Any]:
     }
 
 
+def assert_employee_image_read_access(employee: str, *, file_name: str) -> dict[str, Any]:
+    from ifitwala_ed.api.file_access import (
+        _require_authenticated_user,
+        _resolve_employee_profile_image_access,
+    )
+
+    resolved_employee = str(employee or "").strip()
+    resolved_file_name = str(file_name or "").strip()
+    if not resolved_employee:
+        frappe.throw(_("Employee is required."), frappe.ValidationError)
+    if not resolved_file_name:
+        frappe.throw(_("File is required."), frappe.ValidationError)
+
+    user = _require_authenticated_user()
+    context = _resolve_employee_profile_image_access(
+        user=user,
+        file_name=resolved_file_name,
+        context_doctype="Employee",
+        context_name=resolved_employee,
+        strict=True,
+    )
+    return {
+        "employee": context["file_employee"],
+        "file_id": str((context.get("file_row") or {}).get("name") or resolved_file_name).strip(),
+        "drive_file_id": context["drive_file_id"],
+    }
+
+
 def build_student_image_contract(student_doc) -> dict[str, Any]:
     school = getattr(student_doc, "anchor_school", None)
     if not school:

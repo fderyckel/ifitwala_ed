@@ -122,12 +122,15 @@ Required visual grammar:
 
 - top ribbon
 - warm paper-toned background
+- school logo and school tagline when present
 - serif-led title treatment
 - muted metadata blocks
 - weekly day columns with soft panel treatment
 - all-day strip for holidays and all-day events
 - source-specific event cards for timed commitments
 - empty-day planning space when no timed commitments exist
+- compact weekly priorities checklist area
+- daily open planning space lines on in-window days where layout allows
 
 The document may borrow brand context from the employee school or organization, but it must stay within the current employee/event scope and must not guess cross-tenant branding.
 
@@ -145,6 +148,7 @@ Rules:
 2. Export implementation details live in `api/calendar_export.py`.
 3. The response is an inline `application/pdf` download payload.
 4. The filename pattern is `staff-timetable-<preset>-<start_date>.pdf`.
+5. The PDF renderer must enforce A4 landscape at generation time rather than relying on CSS print hints alone.
 
 ## 8. Performance Contract
 

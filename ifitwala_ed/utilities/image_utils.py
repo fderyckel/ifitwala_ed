@@ -825,9 +825,10 @@ def ensure_guardian_profile_image(
 
     guardian_doc = _load_guardian_doc()
 
+    from ifitwala_drive.api.media import upload_guardian_image
+
     from ifitwala_ed.integrations.drive.content_uploads import upload_content_via_drive
     from ifitwala_ed.integrations.drive.media import build_guardian_image_contract
-    from ifitwala_ed.utilities.governed_uploads import _load_drive_module
 
     contract = build_guardian_image_contract(guardian_doc)
     contract["upload_source"] = upload_source
@@ -876,9 +877,8 @@ def ensure_guardian_profile_image(
     filename = (source_file_doc.file_name or "").strip() or os.path.basename(
         source_file_doc.file_url or "guardian_profile_image"
     )
-    drive_media_api = _load_drive_module("ifitwala_drive.api.media")
     _session_response, _finalize_response, current_file_doc = upload_content_via_drive(
-        create_session_callable=drive_media_api.upload_guardian_image,
+        create_session_callable=upload_guardian_image,
         session_payload={
             "guardian": guardian_doc.name,
             "upload_source": upload_source,

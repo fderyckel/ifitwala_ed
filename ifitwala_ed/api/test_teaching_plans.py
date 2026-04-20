@@ -175,6 +175,8 @@ class TestTeachingPlansApi(TestCase):
                             "class_session": "SESSION-1",
                             "delivery_mode": "Assign Only",
                             "grading_mode": "None",
+                            "requires_submission": 0,
+                            "allow_late_submission": 0,
                             "available_from": None,
                             "due_date": "2026-04-10 09:00:00",
                             "lock_date": None,
@@ -197,6 +199,7 @@ class TestTeachingPlansApi(TestCase):
                     "get_all",
                     return_value=[
                         {
+                            "name": "OUT-1",
                             "task_delivery": "TDL-1",
                             "submission_status": "Submitted",
                             "grading_status": "Not Applicable",
@@ -235,6 +238,9 @@ class TestTeachingPlansApi(TestCase):
 
         self.assertEqual(payload[0]["task_delivery"], "TDL-1")
         self.assertEqual(payload[0]["submission_status"], "Submitted")
+        self.assertEqual(payload[0]["task_outcome"], "OUT-1")
+        self.assertEqual(payload[0]["requires_submission"], 0)
+        self.assertEqual(payload[0]["allow_late_submission"], 0)
         self.assertEqual(payload[0]["quiz_state"]["can_continue"], 1)
         self.assertEqual(payload[0]["quiz_state"]["status_label"], "In Progress")
         self.assertEqual(payload[0]["instructions_html"], "<p>Bring your notes.</p>")
@@ -336,7 +342,20 @@ class TestTeachingPlansApi(TestCase):
                                 "status_label": "In Progress",
                             },
                             "materials": [],
-                        }
+                        },
+                        {
+                            "task_delivery": "TDL-2",
+                            "task": "TASK-2",
+                            "task_outcome": "OUT-2",
+                            "title": "Cell comparison reflection",
+                            "task_type": "Written Response",
+                            "unit_plan": "UNIT-1",
+                            "class_session": "SESSION-1",
+                            "requires_submission": 1,
+                            "allow_late_submission": 1,
+                            "submission_status": "Not Submitted",
+                            "materials": [],
+                        },
                     ],
                 ),
                 patch.object(
@@ -359,7 +378,20 @@ class TestTeachingPlansApi(TestCase):
                                     "status_label": "In Progress",
                                 },
                                 "materials": [],
-                            }
+                            },
+                            {
+                                "task_delivery": "TDL-2",
+                                "task": "TASK-2",
+                                "task_outcome": "OUT-2",
+                                "title": "Cell comparison reflection",
+                                "task_type": "Written Response",
+                                "unit_plan": "UNIT-1",
+                                "class_session": "SESSION-1",
+                                "requires_submission": 1,
+                                "allow_late_submission": 1,
+                                "submission_status": "Not Submitted",
+                                "materials": [],
+                            },
                         ],
                     },
                 ),
@@ -401,6 +433,7 @@ class TestTeachingPlansApi(TestCase):
         self.assertEqual(payload["learning"]["focus"]["current_session"]["class_session"], "SESSION-1")
         self.assertEqual(payload["learning"]["selected_context"]["unit_plan"], "UNIT-1")
         self.assertEqual(payload["learning"]["selected_context"]["class_session"], "SESSION-1")
+        self.assertEqual(payload["learning"]["selected_context"]["task_delivery"], "TDL-2")
         self.assertEqual(payload["learning"]["reflection_entries"][0]["name"], "REF-1")
         self.assertEqual(payload["learning"]["reflection_entries"][0]["class_session"], "SESSION-1")
         self.assertEqual(payload["learning"]["next_actions"][0]["kind"], "quiz")

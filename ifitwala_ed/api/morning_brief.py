@@ -35,20 +35,14 @@ def get_briefing_widgets():
 
     widgets = {}
 
-    # Use site timezone (from System Settings) and normal Gregorian date
     site_now = now_datetime()
-    # site_today = getdate(site_now)  # noqa: F841
     widgets["today_label"] = site_now.strftime("%A, %d %B %Y")
 
-    # 1. TOP: ORGANIZATIONAL COMMUNICATION
     widgets["announcements"] = get_daily_bulletin(user, roles)
 
-    # 2. BOTTOM: STAFF BIRTHDAYS
-    # Visible to all staff roles
     if any(r in roles for r in ["Academic Staff", "Employee", "System Manager", "Instructor"]):
         widgets["staff_birthdays"] = get_staff_birthdays()
 
-    # 3. ANALYTICS
     if _can_view_clinic_metrics(user):
         widgets["clinic_volume"] = get_clinic_activity()
 
@@ -56,7 +50,6 @@ def get_briefing_widgets():
         widgets["admissions_pulse"] = get_admissions_pulse()
         widgets["critical_incidents"] = get_critical_incidents_count()
 
-    # 4. INSTRUCTOR CONTEXT
     my_groups = []
     if "Instructor" in roles:
         my_groups = get_my_student_groups(user)
@@ -64,16 +57,12 @@ def get_briefing_widgets():
             widgets["grading_velocity"] = get_pending_grading_tasks(my_groups)
             widgets["my_student_birthdays"] = get_my_student_birthdays(my_groups)
 
-    # 5. LOGS FEED (Admin & Leads)
     if "Academic Admin" in roles or "System Manager" in roles or "Pastoral Lead" in roles:
         widgets["student_logs"] = get_recent_student_logs(user)
 
-    # 6. ATTENDANCE PULSE
-    # Admin: 30-day trend
     if "Academic Admin" in roles or "System Manager" in roles or "Academic Assistant" in roles:
         widgets["attendance_trend"] = get_attendance_trend(user)
 
-    # Instructor: My absent students today
     if "Instructor" in roles:
         if not my_groups:
             my_groups = get_my_student_groups(user)
@@ -83,15 +72,9 @@ def get_briefing_widgets():
     return widgets
 
 
-# ==============================================================================
-# SECTION 1: DAILY BULLETIN (Org Communication)
-# ==============================================================================
-
-
 def get_daily_bulletin(user, roles):
     system_today = getdate(today())
 
-    # Use SQL to handle OR condition for brief_end_date (>= today OR NULL)
     sql = """
 		SELECT
 			name,
@@ -129,10 +112,6 @@ def get_daily_bulletin(user, roles):
     visible_comms = []
 
     for c in comms:
-        # Expiry Check (Already filtered in query, but double check)
-        if c.brief_end_date and getdate(c.brief_end_date) < system_today:
-            continue
-
         if check_audience_match(c.name, user, roles, employee):
             visible_comms.append(
                 {
@@ -157,11 +136,6 @@ def get_daily_bulletin(user, roles):
         row["is_unread"] = row["name"] not in seen_names
 
     return visible_comms
-
-
-# ==============================================================================
-# SECTION 2: ANALYTICS (Admin & Instructor)
-# ==============================================================================
 
 
 def _can_view_clinic_metrics(user: str) -> bool:
@@ -739,14 +713,9 @@ def get_recent_student_logs(user):
     return formatted_logs
 
 
-# ==============================================================================
-# SECTION 4: COMMUNITY PULSE (Birthdays)
-# ==============================================================================
-
-
 def get_staff_birthdays():
     """
-    Active employees with birthdays today or next 3 days.
+    Active employees with birthdays within the current +/-4 day briefing window.
     Handles year wrap-around (e.g. Dec 31 -> Jan 2).
     """
     start_md = formatdate(add_days(today(), -4), "MM-dd")
@@ -785,17 +754,15 @@ def get_my_student_birthdays(group_names):
     if not group_names:
         return []
 
-    groups_formatted = "', '".join(group_names)
-
     start_md = formatdate(add_days(today(), -4), "MM-dd")
     end_md = formatdate(add_days(today(), 4), "MM-dd")
 
     # Handle year wrap (Dec→Jan)
-    condition = "DATE_FORMAT(s.student_date_of_birth, '%%m-%%d') BETWEEN %s AND %s"
+    condition = "DATE_FORMAT(s.student_date_of_birth, '%%m-%%d') BETWEEN %(start_md)s AND %(end_md)s"
     if start_md > end_md:
         condition = (
-            "(DATE_FORMAT(s.student_date_of_birth, '%%m-%%d') >= %s "
-            "OR DATE_FORMAT(s.student_date_of_birth, '%%m-%%d') <= %s)"
+            "(DATE_FORMAT(s.student_date_of_birth, '%%m-%%d') >= %(start_md)s "
+            "OR DATE_FORMAT(s.student_date_of_birth, '%%m-%%d') <= %(end_md)s)"
         )
 
     sql = f"""
@@ -807,20 +774,23 @@ def get_my_student_birthdays(group_names):
 			s.student_date_of_birth AS date_of_birth
 		FROM `tabStudent Group Student` sgs
 		INNER JOIN `tabStudent` s ON sgs.student = s.name
-		WHERE sgs.parent IN ('{groups_formatted}')
+		WHERE sgs.parent IN %(group_names)s
 			AND sgs.active = 1
 			AND s.student_date_of_birth IS NOT NULL
 			AND {condition}
 		ORDER BY DATE_FORMAT(s.student_date_of_birth, '%%%%m-%%%%d') ASC
 	"""
 
-    rows = frappe.db.sql(sql, (start_md, end_md), as_dict=True)
+    rows = frappe.db.sql(
+        sql,
+        {
+            "group_names": tuple(group_names),
+            "start_md": start_md,
+            "end_md": end_md,
+        },
+        as_dict=True,
+    )
     return apply_preferred_student_images(rows, student_field="student", image_field="image")
-
-
-# ==============================================================================
-# SECTION 5: ATTENDANCE PULSE
-# ==============================================================================
 
 
 def get_attendance_trend(user):
@@ -874,11 +844,9 @@ def get_my_absent_students(group_names):
     if not group_names:
         return []
 
-    groups_formatted = "', '".join(group_names)
     site_today = today()
 
-    # Use site date instead of DB CURDATE()
-    sql = f"""
+    sql = """
 		SELECT
 			sa.student_name,
 			sa.attendance_code,
@@ -889,13 +857,20 @@ def get_my_absent_students(group_names):
 		FROM `tabStudent Attendance` sa
 		INNER JOIN `tabStudent` s ON sa.student = s.name
 		INNER JOIN `tabStudent Attendance Code` sac ON sa.attendance_code = sac.name
-		WHERE sa.attendance_date = '{site_today}'
-		AND sa.student_group IN ('{groups_formatted}')
+		WHERE sa.attendance_date = %(site_today)s
+		AND sa.student_group IN %(group_names)s
 		AND sa.docstatus = 1
 		AND sac.count_as_present = 0
 	"""
 
-    return frappe.db.sql(sql, as_dict=True)
+    return frappe.db.sql(
+        sql,
+        {
+            "site_today": site_today,
+            "group_names": tuple(group_names),
+        },
+        as_dict=True,
+    )
 
 
 @frappe.whitelist()

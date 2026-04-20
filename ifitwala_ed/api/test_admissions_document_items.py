@@ -252,15 +252,9 @@ class TestAdmissionsDocumentItems(FrappeTestCase):
                 file_doc,
             )
 
-        with (
-            patch(
-                "ifitwala_ed.admission.admissions_portal._load_drive_module",
-                return_value=fake_drive_admissions,
-            ),
-            patch(
-                "ifitwala_ed.admission.admissions_portal._drive_upload_and_finalize",
-                side_effect=_fake_drive_upload_and_finalize,
-            ),
+        with patch(
+            "ifitwala_ed.admission.admissions_portal._drive_upload_and_finalize",
+            side_effect=_fake_drive_upload_and_finalize,
         ):
             yield
 

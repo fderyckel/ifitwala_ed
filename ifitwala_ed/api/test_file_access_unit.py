@@ -52,6 +52,54 @@ def _file_access_module():
 
 
 class TestFileAccessUnit(TestCase):
+    def test_resolve_admissions_file_open_url_prefers_drive_identity_without_file_lookup(self):
+        with _file_access_module() as (file_access, frappe):
+            frappe.db.get_value = lambda *args, **kwargs: (_ for _ in ()).throw(
+                AssertionError("unexpected file lookup")
+            )
+
+            url = file_access.resolve_admissions_file_open_url(
+                file_name=None,
+                file_url=None,
+                drive_file_id="DRIVE-FILE-1",
+                canonical_ref="drv:ORG-1:DRIVE-FILE-1",
+                context_doctype="Student Applicant",
+                context_name="APPL-0001",
+            )
+
+        parsed = urlparse(url or "")
+        query = parse_qs(parsed.query)
+        self.assertEqual(parsed.path, "/api/method/ifitwala_ed.api.file_access.download_admissions_file")
+        self.assertEqual((query.get("drive_file_id") or [None])[0], "DRIVE-FILE-1")
+        self.assertEqual((query.get("context_name") or [None])[0], "APPL-0001")
+
+    def test_resolve_admissions_file_thumbnail_url_requires_ready_thumbnail(self):
+        with _file_access_module() as (file_access, _frappe):
+            ready_url = file_access.resolve_admissions_file_thumbnail_url(
+                file_name=None,
+                file_url=None,
+                drive_file_id="DRIVE-FILE-2",
+                canonical_ref="drv:ORG-1:DRIVE-FILE-2",
+                context_doctype="Student Applicant",
+                context_name="APPL-0001",
+                thumbnail_ready=True,
+            )
+            missing_url = file_access.resolve_admissions_file_thumbnail_url(
+                file_name=None,
+                file_url=None,
+                drive_file_id="DRIVE-FILE-2",
+                canonical_ref="drv:ORG-1:DRIVE-FILE-2",
+                context_doctype="Student Applicant",
+                context_name="APPL-0001",
+                thumbnail_ready=False,
+            )
+
+        parsed = urlparse(ready_url or "")
+        query = parse_qs(parsed.query)
+        self.assertEqual(parsed.path, "/api/method/ifitwala_ed.api.file_access.thumbnail_admissions_file")
+        self.assertEqual((query.get("drive_file_id") or [None])[0], "DRIVE-FILE-2")
+        self.assertIsNone(missing_url)
+
     def test_get_academic_file_thumbnail_ready_map_marks_only_ready_thumb_derivatives(self):
         with _file_access_module() as (file_access, frappe):
 
@@ -415,7 +463,20 @@ class TestFileAccessUnit(TestCase):
             def fake_get_value(doctype, filters, fieldname=None, as_dict=False):
                 self.assertEqual(doctype, "Drive File")
                 self.assertEqual(filters, {"file": "FILE-EMP-1"})
-                self.assertEqual(fieldname, ["name", "preview_status", "current_version"])
+                self.assertEqual(
+                    fieldname,
+                    [
+                        "name",
+                        "file",
+                        "canonical_ref",
+                        "preview_status",
+                        "current_version",
+                        "primary_subject_type",
+                        "primary_subject_id",
+                        "attached_doctype",
+                        "attached_name",
+                    ],
+                )
                 self.assertTrue(as_dict)
                 return {"name": "DRIVE-FILE-1", "preview_status": None, "current_version": "VER-1"}
 
@@ -434,7 +495,20 @@ class TestFileAccessUnit(TestCase):
             def fake_get_value(doctype, filters, fieldname=None, as_dict=False):
                 self.assertEqual(doctype, "Drive File")
                 self.assertEqual(filters, {"file": "FILE-EMP-1"})
-                self.assertEqual(fieldname, ["name", "preview_status", "current_version"])
+                self.assertEqual(
+                    fieldname,
+                    [
+                        "name",
+                        "file",
+                        "canonical_ref",
+                        "preview_status",
+                        "current_version",
+                        "primary_subject_type",
+                        "primary_subject_id",
+                        "attached_doctype",
+                        "attached_name",
+                    ],
+                )
                 self.assertTrue(as_dict)
                 return {"name": "DRIVE-FILE-1", "preview_status": None, "current_version": "VER-1"}
 
@@ -453,7 +527,20 @@ class TestFileAccessUnit(TestCase):
             def fake_get_value(doctype, filters, fieldname=None, as_dict=False):
                 self.assertEqual(doctype, "Drive File")
                 self.assertEqual(filters, {"file": "FILE-EMP-1"})
-                self.assertEqual(fieldname, ["name", "preview_status", "current_version"])
+                self.assertEqual(
+                    fieldname,
+                    [
+                        "name",
+                        "file",
+                        "canonical_ref",
+                        "preview_status",
+                        "current_version",
+                        "primary_subject_type",
+                        "primary_subject_id",
+                        "attached_doctype",
+                        "attached_name",
+                    ],
+                )
                 self.assertTrue(as_dict)
                 return {"name": "DRIVE-FILE-1", "preview_status": "ready", "current_version": "VER-1"}
 
@@ -466,22 +553,21 @@ class TestFileAccessUnit(TestCase):
 
         self.assertIsNone(target_url)
 
-    def test_download_employee_file_redirects_to_drive_grant_for_private_file(self):
+    def test_download_employee_file_redirects_to_employee_image_preview_grant_for_private_file(self):
         with _file_access_module() as (file_access, frappe):
             file_access.has_active_employee_profile = lambda **kwargs: True
             frappe.session.user = "staff@example.com"
             frappe.local.response = {}
             frappe.db.exists = lambda doctype, name=None: doctype == "Employee" and name == "EMP-0001"
-
-            def fake_get_value(doctype, filters, fieldname=None, as_dict=False):
-                if doctype == "Drive File":
-                    self.assertEqual(filters, {"file": "FILE-EMP-1"})
-                    self.assertEqual(fieldname, ["name", "preview_status", "current_version"])
-                    self.assertTrue(as_dict)
-                    return {"name": "DRIVE-FILE-1", "preview_status": None, "current_version": "VER-1"}
-                return None
-
-            frappe.db.get_value = fake_get_value
+            file_access.get_drive_file_for_file = lambda file_name, **kwargs: {
+                "name": "DRIVE-FILE-1",
+                "owner_doctype": "Employee",
+                "owner_name": "EMP-0001",
+                "primary_subject_type": "Employee",
+                "primary_subject_id": "EMP-0001",
+                "purpose": "employee_profile_display",
+                "slot": "profile_image",
+            }
             file_access._resolve_any_file_row = lambda file_name: {
                 "name": file_name,
                 "file_url": "/private/files/ifitwala_drive/files/aa/bb/thumb_employee.webp",
@@ -490,14 +576,18 @@ class TestFileAccessUnit(TestCase):
                 "attached_to_doctype": "Employee",
                 "attached_to_name": "EMP-0001",
             }
-            file_access._load_drive_access_callable = lambda attribute: (
-                lambda drive_file_id: {"url": "https://signed.example.com/thumb_employee.webp"}
+            file_access._load_drive_media_callable = lambda attribute: (
+                lambda employee, file_id: {"url": "https://signed.example.com/thumb_employee.webp"}
+            )
+            file_access._load_drive_access_callable = lambda attribute: self.fail(
+                "generic drive grant path should not be used for employee profile images"
             )
 
             file_access.download_employee_file(
                 file="FILE-EMP-1",
                 context_doctype="Employee",
                 context_name="EMP-0001",
+                derivative_role="thumb",
             )
 
         self.assertEqual(frappe.local.response.get("type"), "redirect")
@@ -513,13 +603,15 @@ class TestFileAccessUnit(TestCase):
             frappe.session.user = "staff@example.com"
             frappe.local.response = {}
             frappe.db.exists = lambda doctype, name=None: doctype == "Employee" and name == "EMP-0001"
-
-            def fake_get_value(doctype, filters, fieldname=None, as_dict=False):
-                if doctype == "Drive File":
-                    return "DRIVE-FILE-1"
-                return None
-
-            frappe.db.get_value = fake_get_value
+            file_access.get_drive_file_for_file = lambda file_name, **kwargs: {
+                "name": "DRIVE-FILE-1",
+                "owner_doctype": "Employee",
+                "owner_name": "EMP-0001",
+                "primary_subject_type": "Employee",
+                "primary_subject_id": "EMP-0001",
+                "purpose": "employee_profile_display",
+                "slot": "profile_image",
+            }
             file_access._resolve_any_file_row = lambda file_name: {
                 "name": file_name,
                 "file_url": "/private/files/ifitwala_drive/files/aa/bb/thumb_employee.webp",
@@ -528,6 +620,9 @@ class TestFileAccessUnit(TestCase):
                 "attached_to_doctype": "Employee",
                 "attached_to_name": "EMP-0001",
             }
+            file_access._load_drive_media_callable = lambda attribute: (
+                lambda employee, file_id: drive_grant_calls.append(file_id) or {"url": "https://signed.example.com/x"}
+            )
             file_access._load_drive_access_callable = lambda attribute: (
                 lambda drive_file_id: drive_grant_calls.append(drive_file_id) or {"url": "https://signed.example.com/x"}
             )

@@ -15,6 +15,14 @@ from ifitwala_ed.api.calendar_core import _resolve_employee_for_user, _system_tz
 
 TEMPLATE_PATH = "ifitwala_ed/templates/print/staff_timetable_export.html"
 CSS_PATH = Path(__file__).resolve().parents[1] / "templates" / "print" / "staff_timetable_export.css"
+PDF_OPTIONS = {
+    "page-size": "A4",
+    "orientation": "Landscape",
+    "margin-top": "9mm",
+    "margin-right": "10mm",
+    "margin-bottom": "9mm",
+    "margin-left": "10mm",
+}
 
 DEFAULT_EXPORT_SOURCES = ("student_group", "meeting", "school_event", "staff_holiday")
 DEFAULT_EXPORT_PRESET = "this_week"
@@ -97,7 +105,7 @@ def _build_export_filename(window: dict[str, Any]) -> str:
 def _render_staff_timetable_pdf(html: str) -> bytes:
     from frappe.utils.pdf import get_pdf
 
-    return get_pdf(html)
+    return get_pdf(html, options=PDF_OPTIONS)
 
 
 def _render_staff_timetable_export_html(context: dict[str, Any]) -> str:
@@ -165,7 +173,7 @@ def _resolve_brand_context(*, employee: dict[str, Any] | None, events: list[dict
         frappe.db.get_value(
             "School",
             school_name,
-            ["school_name", "school_logo", "organization"],
+            ["school_name", "school_logo", "school_tagline", "organization"],
             as_dict=True,
         )
         if school_name
@@ -197,6 +205,7 @@ def _resolve_brand_context(*, employee: dict[str, Any] | None, events: list[dict
     return {
         "brand_name": brand_name,
         "secondary_brand": secondary_brand,
+        "tagline": ((school_meta or {}).get("school_tagline") or "").strip(),
         "logo_url": _absolute_media_url((school_meta or {}).get("school_logo"))
         or _absolute_media_url((org_meta or {}).get("organization_logo"))
         or "",

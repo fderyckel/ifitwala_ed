@@ -53,6 +53,7 @@ def create_student_submission(payload, user=None, uploaded_files=None, expected_
             frappe.throw(_("You do not have access to this submission."), frappe.PermissionError)
     if not outcome_row:
         frappe.throw(_("Task Outcome not found."))
+    _assert_submission_allowed(outcome_row)
 
     text_content = (data.get("text_content") or "").strip()
     link_url = (data.get("link_url") or "").strip()
@@ -112,8 +113,9 @@ def create_student_submission(payload, user=None, uploaded_files=None, expected_
 
 
 def _attach_submission_files(submission_doc, outcome_row, uploaded_files, upload_source=None):
+    from ifitwala_drive.api.submissions import upload_task_submission_artifact
+
     from ifitwala_ed.integrations.drive.content_uploads import upload_content_via_drive
-    from ifitwala_ed.utilities.governed_uploads import _load_drive_module
 
     student = outcome_row.get("student")
 
@@ -121,7 +123,6 @@ def _attach_submission_files(submission_doc, outcome_row, uploaded_files, upload
         frappe.throw(_("Student is required for governed submission uploads."))
 
     source = upload_source or "API"
-    drive_submissions_api = _load_drive_module("ifitwala_drive.api.submissions")
     for upload in uploaded_files:
         file_name = upload.get("file_name") or upload.get("filename")
         content = upload.get("content")
@@ -129,7 +130,7 @@ def _attach_submission_files(submission_doc, outcome_row, uploaded_files, upload
             frappe.throw(_("Uploaded files must include file_name and content."))
 
         _session_response, _finalize_response, file_doc = upload_content_via_drive(
-            create_session_callable=drive_submissions_api.upload_task_submission_artifact,
+            create_session_callable=upload_task_submission_artifact,
             session_payload={
                 "task_submission": submission_doc.name,
                 "student": student,
@@ -148,6 +149,23 @@ def _attach_submission_files(submission_doc, outcome_row, uploaded_files, upload
                 "public": 0,
             },
         )
+
+
+def _assert_submission_allowed(outcome_row):
+    task_delivery = (outcome_row or {}).get("task_delivery")
+    if not task_delivery:
+        frappe.throw(_("This task does not accept submissions."))
+
+    delivery_row = frappe.db.get_value(
+        "Task Delivery",
+        task_delivery,
+        ["requires_submission"],
+        as_dict=True,
+    )
+    if not delivery_row:
+        frappe.throw(_("This task does not accept submissions."))
+    if int(delivery_row.get("requires_submission") or 0) != 1:
+        frappe.throw(_("This task does not accept submissions."))
 
 
 def stamp_submission_context(submission_doc, outcome_row):

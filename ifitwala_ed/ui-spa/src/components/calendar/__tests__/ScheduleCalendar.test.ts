@@ -165,6 +165,23 @@ afterEach(() => {
 });
 
 describe('ScheduleCalendar export action', () => {
+	it('renders the staff calendar time grid with taller hourly slots while keeping the calendar shell bounded', async () => {
+		originalOpen = window.open;
+		window.open = vi.fn() as typeof window.open;
+		fetchPrefsMock.mockResolvedValue({
+			weekendDays: [0, 6],
+			defaultSlotMin: '07:00:00',
+			defaultSlotMax: '17:00:00',
+		});
+
+		mountScheduleCalendar();
+		await flushUi();
+
+		const viewport = document.querySelector('[style*="--if-calendar-time-slot-height"]') as HTMLElement | null;
+		expect(viewport).toBeTruthy();
+		expect(viewport?.style.getPropertyValue('--if-calendar-time-slot-height')).toBe('96px');
+	});
+
 	it('surfaces the print action in the header controls and shows the export presets', async () => {
 		originalOpen = window.open;
 		window.open = vi.fn() as typeof window.open;

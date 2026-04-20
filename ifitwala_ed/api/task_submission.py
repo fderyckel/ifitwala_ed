@@ -14,7 +14,12 @@ from ifitwala_ed.api.attachment_previews import (
     extract_file_extension,
     guess_mime_type,
 )
-from ifitwala_ed.api.file_access import resolve_academic_file_open_url, resolve_academic_file_preview_url
+from ifitwala_ed.api.file_access import (
+    get_drive_file_thumbnail_ready_map,
+    resolve_academic_file_open_url,
+    resolve_academic_file_preview_url,
+    resolve_academic_file_thumbnail_url,
+)
 from ifitwala_ed.assessment import task_submission_service
 
 
@@ -180,7 +185,7 @@ def _load_submission_file_name_map(submission_id: str) -> dict[str, str]:
     return file_name_by_url
 
 
-def _load_submission_drive_file_meta_map(file_ids: list[str]) -> dict[str, dict[str, str | None]]:
+def _load_submission_drive_file_meta_map(file_ids: list[str]) -> dict[str, dict[str, Any]]:
     resolved_file_ids = [file_id for file_id in dict.fromkeys(file_ids) if _clean_text(file_id)]
     if not resolved_file_ids:
         return {}
@@ -190,7 +195,7 @@ def _load_submission_drive_file_meta_map(file_ids: list[str]) -> dict[str, dict[
         drive_rows = current_frappe.get_all(
             "Drive File",
             filters={"file": ["in", resolved_file_ids]},
-            fields=["file", "preview_status", "current_version"],
+            fields=["name", "file", "canonical_ref", "preview_status", "current_version"],
             limit=0,
         )
     except Exception:
@@ -218,10 +223,17 @@ def _load_submission_drive_file_meta_map(file_ids: list[str]) -> dict[str, dict[
             if _clean_text(row.get("name"))
         }
 
+    thumbnail_ready_map = get_drive_file_thumbnail_ready_map(
+        [_clean_text(row.get("name")) for row in drive_rows if _clean_text(row.get("name"))]
+    )
+
     return {
         _clean_text(row.get("file")): {
+            "drive_file_id": _clean_text(row.get("name")),
+            "canonical_ref": _clean_text(row.get("canonical_ref")),
             "preview_status": _clean_text(row.get("preview_status")),
             "mime_type": mime_type_by_version.get(_clean_text(row.get("current_version"))),
+            "thumbnail_ready": thumbnail_ready_map.get(_clean_text(row.get("name")), False),
         }
         for row in drive_rows
         if _clean_text(row.get("file"))
@@ -233,7 +245,7 @@ def _serialize_task_submission_attachment_row(
     *,
     submission_id: str,
     file_name_by_url: dict[str, str],
-    drive_file_meta_by_file: dict[str, dict[str, str | None]],
+    drive_file_meta_by_file: dict[str, dict[str, Any]],
     is_latest_version: bool | None = None,
     version_label: str | None = None,
 ) -> dict[str, Any]:
@@ -247,6 +259,7 @@ def _serialize_task_submission_attachment_row(
     if file_url:
         resolved_file_id = file_name_by_url.get(file_url)
         drive_file_meta = drive_file_meta_by_file.get(resolved_file_id) or {}
+        resolved_drive_file_id = _clean_text(drive_file_meta.get("drive_file_id"))
         mime_type = _clean_text(drive_file_meta.get("mime_type")) or guess_mime_type(
             file_name=file_name,
             file_url=file_url,
@@ -264,17 +277,25 @@ def _serialize_task_submission_attachment_row(
             context_doctype="Task Submission",
             context_name=submission_id,
         )
+        thumbnail_url = resolve_academic_file_thumbnail_url(
+            file_name=resolved_file_id,
+            file_url=file_url,
+            context_doctype="Task Submission",
+            context_name=submission_id,
+            thumbnail_ready=bool(drive_file_meta.get("thumbnail_ready")),
+        )
         attachment_preview = build_attachment_preview_item(
-            item_id=row_name or resolved_file_id or file_name,
+            item_id=row_name or resolved_drive_file_id or resolved_file_id or file_name,
             owner_doctype="Task Submission",
             owner_name=submission_id,
-            file_id=resolved_file_id,
+            file_id=resolved_drive_file_id or resolved_file_id,
             display_name=file_name or resolved_file_id,
             description=description,
             mime_type=mime_type,
             extension=extension,
             size_bytes=file_size,
             preview_status=_clean_text(drive_file_meta.get("preview_status")),
+            thumbnail_url=thumbnail_url,
             preview_url=preview_url,
             open_url=open_url,
             download_url=open_url,
@@ -290,6 +311,7 @@ def _serialize_task_submission_attachment_row(
             "description": description,
             "public": _bool_flag(attachment_row.get("public")),
             "preview_status": _clean_text(drive_file_meta.get("preview_status")),
+            "thumbnail_url": thumbnail_url,
             "preview_url": preview_url,
             "open_url": open_url,
             "external_url": None,
@@ -317,6 +339,7 @@ def _serialize_task_submission_attachment_row(
         "description": description,
         "public": _bool_flag(attachment_row.get("public")),
         "preview_status": None,
+        "thumbnail_url": None,
         "preview_url": None,
         "open_url": external_url,
         "external_url": external_url,

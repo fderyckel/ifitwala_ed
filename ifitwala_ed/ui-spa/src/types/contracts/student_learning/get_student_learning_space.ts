@@ -70,6 +70,7 @@ export type StudentQuizDeliveryState = {
 export type StudentAssignedWork = {
 	task_delivery: string
 	task: string
+	task_outcome?: string | null
 	title: string
 	instructions_html?: string | null
 	task_type?: string | null
@@ -77,6 +78,8 @@ export type StudentAssignedWork = {
 	class_session?: string | null
 	delivery_mode?: string | null
 	grading_mode?: string | null
+	requires_submission?: number
+	allow_late_submission?: number
 	available_from?: string | null
 	due_date?: string | null
 	lock_date?: string | null
@@ -217,6 +220,7 @@ export type Response = {
 		selected_context: {
 			unit_plan?: string | null
 			class_session?: string | null
+			task_delivery?: string | null
 		}
 		unit_navigation: StudentLearningNavigationUnit[]
 	}

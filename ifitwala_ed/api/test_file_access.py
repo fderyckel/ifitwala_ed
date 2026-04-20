@@ -391,7 +391,7 @@ class TestFileAccessUrlContracts(FrappeTestCase):
                     context_name="GRD-0001",
                 )
 
-    def test_download_employee_file_redirects_to_drive_grant_for_scoped_staff(self):
+    def test_download_employee_file_uses_employee_image_preview_grant_for_profile_images(self):
         file_row = {
             "name": "FILE-EMP-1",
             "file_url": "/private/files/Employee/EMP-0001/thumb_employee.webp",
@@ -400,24 +400,34 @@ class TestFileAccessUrlContracts(FrappeTestCase):
             "attached_to_doctype": "Employee",
             "attached_to_name": "EMP-0001",
         }
+        drive_file = frappe._dict(
+            {
+                "name": "DRIVE-FILE-1",
+                "owner_doctype": "Employee",
+                "owner_name": "EMP-0001",
+                "primary_subject_type": "Employee",
+                "primary_subject_id": "EMP-0001",
+                "purpose": "employee_profile_display",
+                "slot": "profile_image",
+            }
+        )
+
+        def fake_media_loader(attribute):
+            self.assertEqual(attribute, "issue_employee_image_preview_grant")
+            return lambda employee, file_id: {
+                "url": f"https://signed.example.com/{employee}/{file_id}/thumb_employee.webp"
+            }
 
         with (
             patch("ifitwala_ed.api.file_access._require_authenticated_user", return_value="staff@example.com"),
             patch("ifitwala_ed.api.file_access._resolve_any_file_row", return_value=file_row),
-            patch(
-                "ifitwala_ed.api.file_access.get_drive_file_for_file",
-                return_value=frappe._dict(
-                    {
-                        "primary_subject_type": "Employee",
-                        "primary_subject_id": "EMP-0001",
-                    }
-                ),
-            ),
+            patch("ifitwala_ed.api.file_access.get_drive_file_for_file", return_value=drive_file),
             patch("ifitwala_ed.api.file_access.frappe.db.exists", return_value=True),
             patch("ifitwala_ed.api.file_access.has_active_employee_profile", return_value=True),
+            patch("ifitwala_ed.api.file_access._load_drive_media_callable", side_effect=fake_media_loader),
             patch(
-                "ifitwala_ed.api.file_access._resolve_drive_download_grant_url",
-                return_value="https://signed.example.com/thumb_employee.webp",
+                "ifitwala_ed.api.file_access._load_drive_access_callable",
+                side_effect=AssertionError("generic drive grant path should not be used for employee profile images"),
             ),
         ):
             frappe.local.response = {}
@@ -425,13 +435,54 @@ class TestFileAccessUrlContracts(FrappeTestCase):
                 file="FILE-EMP-1",
                 context_doctype="Employee",
                 context_name="EMP-0001",
+                derivative_role="thumb",
             )
 
         self.assertEqual(frappe.local.response.get("type"), "redirect")
         self.assertEqual(
             frappe.local.response.get("location"),
-            "https://signed.example.com/thumb_employee.webp",
+            "https://signed.example.com/EMP-0001/FILE-EMP-1/thumb_employee.webp",
         )
+
+    def test_download_employee_file_non_profile_file_requires_employee_read_permission(self):
+        file_row = {
+            "name": "FILE-EMP-1",
+            "file_url": "/private/files/Employee/EMP-0001/employment_contract.pdf",
+            "file_name": "employment_contract.pdf",
+            "is_private": 1,
+            "attached_to_doctype": "Employee",
+            "attached_to_name": "EMP-0001",
+        }
+        drive_file = frappe._dict(
+            {
+                "name": "DRIVE-FILE-1",
+                "owner_doctype": "Employee",
+                "owner_name": "EMP-0001",
+                "primary_subject_type": "Employee",
+                "primary_subject_id": "EMP-0001",
+                "purpose": "contract",
+                "slot": "employment_contract",
+            }
+        )
+
+        class _EmployeeDoc:
+            def check_permission(self, permission_type=None):
+                raise frappe.PermissionError("employee read denied")
+
+        with (
+            patch("ifitwala_ed.api.file_access._require_authenticated_user", return_value="staff@example.com"),
+            patch("ifitwala_ed.api.file_access._resolve_any_file_row", return_value=file_row),
+            patch("ifitwala_ed.api.file_access.get_drive_file_for_file", return_value=drive_file),
+            patch("ifitwala_ed.api.file_access.frappe.db.exists", return_value=True),
+            patch("ifitwala_ed.api.file_access.has_active_employee_profile", return_value=True),
+            patch("ifitwala_ed.api.file_access.frappe.get_doc", return_value=_EmployeeDoc()),
+        ):
+            with self.assertRaises(frappe.PermissionError):
+                download_employee_file(
+                    file="FILE-EMP-1",
+                    context_doctype="Employee",
+                    context_name="EMP-0001",
+                )
 
     def test_download_employee_file_denies_non_employee_user(self):
         file_row = {
@@ -450,8 +501,13 @@ class TestFileAccessUrlContracts(FrappeTestCase):
                 "ifitwala_ed.api.file_access.get_drive_file_for_file",
                 return_value=frappe._dict(
                     {
+                        "name": "DRIVE-FILE-1",
+                        "owner_doctype": "Employee",
+                        "owner_name": "EMP-0001",
                         "primary_subject_type": "Employee",
                         "primary_subject_id": "EMP-0001",
+                        "purpose": "employee_profile_display",
+                        "slot": "profile_image",
                     }
                 ),
             ),

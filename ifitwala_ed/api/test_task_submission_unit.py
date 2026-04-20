@@ -23,6 +23,16 @@ def _task_submission_stub_modules():
             else file_url
         )
     )
+    file_access.resolve_academic_file_thumbnail_url = (
+        lambda *, file_name, file_url, context_doctype=None, context_name=None, **kwargs: (
+            f"/api/method/ifitwala_ed.api.file_access.thumbnail_academic_file?file={file_name}&context_doctype={context_doctype}&context_name={context_name}"
+            if file_name and kwargs.get("thumbnail_ready")
+            else None
+        )
+    )
+    file_access.get_drive_file_thumbnail_ready_map = lambda drive_file_ids: {
+        str(drive_file_id): True for drive_file_id in (drive_file_ids or []) if drive_file_id
+    }
     courses = types.ModuleType("ifitwala_ed.api.courses")
     courses._require_student_name_for_session_user = lambda: "STU-1"
     task_submission_service = types.ModuleType("ifitwala_ed.assessment.task_submission_service")
@@ -83,7 +93,9 @@ class TestTaskSubmissionApiUnit(TestCase):
                 if doctype == "Drive File":
                     return [
                         {
+                            "name": "DRIVE-FILE-1",
                             "file": "FILE-TASK-0001",
+                            "canonical_ref": "drv:ORG-1:DRIVE-FILE-1",
                             "preview_status": "ready",
                             "current_version": "DFV-TASK-0001",
                         }
@@ -127,6 +139,10 @@ class TestTaskSubmissionApiUnit(TestCase):
         )
         self.assertEqual((secure_query.get("context_name") or [None])[0], "TSU-2026-00001")
         self.assertEqual((preview_query.get("file") or [None])[0], "FILE-TASK-0001")
+        self.assertEqual(
+            (parse_qs(urlparse(attachments[0].get("thumbnail_url") or "").query).get("file") or [None])[0],
+            "FILE-TASK-0001",
+        )
 
     def test_get_latest_submission_detects_pdf_from_extension_when_mime_and_filename_are_missing(self):
         with stubbed_frappe(extra_modules=_task_submission_stub_modules()) as frappe:
@@ -172,6 +188,7 @@ class TestTaskSubmissionApiUnit(TestCase):
                 if doctype == "Drive File":
                     return [
                         {
+                            "name": "DRIVE-FILE-2",
                             "file": "FILE-TASK-0002",
                             "preview_status": "pending",
                             "current_version": "DFV-TASK-0002",

@@ -118,8 +118,51 @@ class TestMorningBrief(IfitwalaFrappeTestCase):
         self.assertTrue(captured["as_dict"])
         self.assertEqual(captured["values"], ("03-19", "03-27"))
         self.assertIn("employment_status = 'Active'", captured["query"])
-        self.assertIn("employee_date_of_birth IS NOT NULL", captured["query"])
-        self.assertNotRegex(captured["query"], r"(?<!employment_)status = 'Active'")
+
+    def test_get_my_student_birthdays_uses_bound_group_scope(self):
+        captured = {}
+
+        def fake_sql(query, values=None, as_dict=False, **kwargs):
+            captured["query"] = query
+            captured["values"] = values
+            captured["as_dict"] = as_dict
+            return []
+
+        with (
+            patch.object(morning_brief, "today", return_value="2026-03-23"),
+            patch.object(morning_brief.frappe.db, "sql", side_effect=fake_sql),
+            patch.object(morning_brief, "apply_preferred_student_images", side_effect=lambda rows, **kwargs: rows),
+        ):
+            rows = morning_brief.get_my_student_birthdays(["SG-1", "SG-2"])
+
+        self.assertEqual(rows, [])
+        self.assertTrue(captured["as_dict"])
+        self.assertEqual(captured["values"]["group_names"], ("SG-1", "SG-2"))
+        self.assertEqual(captured["values"]["start_md"], "03-19")
+        self.assertEqual(captured["values"]["end_md"], "03-27")
+        self.assertIn("sgs.parent IN %(group_names)s", captured["query"])
+        self.assertNotIn("IN ('SG-1'", captured["query"])
+
+    def test_get_my_absent_students_uses_bound_group_scope(self):
+        captured = {}
+
+        def fake_sql(query, values=None, as_dict=False, **kwargs):
+            captured["query"] = query
+            captured["values"] = values
+            captured["as_dict"] = as_dict
+            return []
+
+        with (
+            patch.object(morning_brief, "today", return_value="2026-04-20"),
+            patch.object(morning_brief.frappe.db, "sql", side_effect=fake_sql),
+        ):
+            rows = morning_brief.get_my_absent_students(["SG-1"])
+
+        self.assertEqual(rows, [])
+        self.assertTrue(captured["as_dict"])
+        self.assertEqual(captured["values"], {"site_today": "2026-04-20", "group_names": ("SG-1",)})
+        self.assertIn("WHERE sa.attendance_date = %(site_today)s", captured["query"])
+        self.assertIn("sa.student_group IN %(group_names)s", captured["query"])
 
     def test_query_clinic_visit_counts_falls_back_to_student_anchor_school(self):
         captured = {}

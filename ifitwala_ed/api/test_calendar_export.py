@@ -6,7 +6,10 @@ import frappe
 import pytz
 
 from ifitwala_ed.api.calendar_export import (
+    PDF_OPTIONS,
     _build_timetable_weeks,
+    _render_staff_timetable_pdf,
+    _resolve_brand_context,
     _resolve_staff_timetable_window,
     export_staff_timetable_pdf,
 )
@@ -72,6 +75,37 @@ class TestCalendarExport(TestCase):
         self.assertEqual([event["title"] for event in tuesday["timed_events"]], ["Math 7A", "Leadership Meeting"])
         self.assertEqual(tuesday["timed_events"][0]["time_label"], "08:00 - 08:45")
         self.assertEqual(len(wednesday["all_day_events"]), 1)
+
+    def test_resolve_brand_context_includes_school_tagline_when_present(self):
+        with patch("ifitwala_ed.api.calendar_export.frappe.db.get_value") as mock_get_value:
+            mock_get_value.side_effect = [
+                {
+                    "school_name": "Lwitwala International School",
+                    "school_logo": "https://school.example/logo.png",
+                    "school_tagline": "Learning with purpose",
+                    "organization": "ORG-1",
+                },
+                {
+                    "organization_name": "Ifitwala Education Group",
+                    "organization_logo": "https://org.example/logo.png",
+                },
+            ]
+
+            brand = _resolve_brand_context(
+                employee={"school": "SCHOOL-1", "organization": "ORG-1"},
+                events=[],
+            )
+
+        self.assertEqual(brand["brand_name"], "Lwitwala International School")
+        self.assertEqual(brand["tagline"], "Learning with purpose")
+        self.assertEqual(brand["logo_url"], "https://school.example/logo.png")
+
+    def test_render_staff_timetable_pdf_passes_landscape_options(self):
+        with patch("frappe.utils.pdf.get_pdf", return_value=b"%PDF-landscape") as get_pdf_mock:
+            result = _render_staff_timetable_pdf("<html />")
+
+        self.assertEqual(result, b"%PDF-landscape")
+        get_pdf_mock.assert_called_once_with("<html />", options=PDF_OPTIONS)
 
     def test_export_staff_timetable_pdf_sets_inline_pdf_response(self):
         with (

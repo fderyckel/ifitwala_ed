@@ -340,6 +340,48 @@ def build_student_next_actions(
     return [row[2] for row in actions[:4]]
 
 
+def resolve_student_selected_task(
+    api,
+    units: list[dict[str, Any]],
+    general_assigned_work: list[dict[str, Any]] | None,
+    *,
+    current_unit_plan: str | None = None,
+    current_session_id: str | None = None,
+) -> dict[str, Any] | None:
+    normalized_unit_plan = api.planning.normalize_text(current_unit_plan)
+    normalized_session_id = api.planning.normalize_text(current_session_id)
+
+    def first_non_quiz(items: list[dict[str, Any]] | None) -> dict[str, Any] | None:
+        for item in items or []:
+            if api.planning.normalize_text(item.get("task_type")).lower() == "quiz":
+                continue
+            if api.planning.normalize_text(item.get("task_delivery")):
+                return item
+        return None
+
+    if normalized_session_id:
+        for _unit, session in api._iter_learning_sessions(units):
+            if api.planning.normalize_text(session.get("class_session")) != normalized_session_id:
+                continue
+            selected = first_non_quiz(session.get("assigned_work"))
+            if selected:
+                return selected
+
+    if normalized_unit_plan:
+        for unit in units or []:
+            if api.planning.normalize_text(unit.get("unit_plan")) != normalized_unit_plan:
+                continue
+            selected = first_non_quiz(unit.get("assigned_work"))
+            if selected:
+                return selected
+            for session in unit.get("sessions") or []:
+                selected = first_non_quiz(session.get("assigned_work"))
+                if selected:
+                    return selected
+
+    return first_non_quiz(api._flatten_assigned_work(units, general_assigned_work))
+
+
 def build_student_learning_sections(
     api,
     units: list[dict[str, Any]],
@@ -356,6 +398,13 @@ def build_student_learning_sections(
     )
     current_unit_plan = api.planning.normalize_text((focus.get("current_unit") or {}).get("unit_plan"))
     current_session = focus.get("current_session") or {}
+    selected_task = resolve_student_selected_task(
+        api,
+        units,
+        general_assigned_work,
+        current_unit_plan=current_unit_plan,
+        current_session_id=api.planning.normalize_text(current_session.get("class_session")),
+    )
     return {
         "focus": focus,
         "next_actions": api._build_student_next_actions(units, general_assigned_work),
@@ -363,6 +412,7 @@ def build_student_learning_sections(
         "selected_context": {
             "unit_plan": current_unit_plan or None,
             "class_session": api.planning.normalize_text(current_session.get("class_session")) or None,
+            "task_delivery": api.planning.normalize_text((selected_task or {}).get("task_delivery")) or None,
         },
         "unit_navigation": api._build_student_unit_navigation(units, current_unit_plan),
     }

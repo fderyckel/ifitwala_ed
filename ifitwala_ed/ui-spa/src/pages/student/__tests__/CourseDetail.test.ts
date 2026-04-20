@@ -7,12 +7,16 @@ import type { Response as StudentLearningSpaceResponse } from '@/types/contracts
 
 const {
 	getStudentLearningSpaceMock,
+	getStudentTaskSubmissionMock,
+	submitStudentTaskSubmissionMock,
 	createReflectionEntryMock,
 	routeState,
 	routerReplaceMock,
 } =
 	vi.hoisted(() => ({
 		getStudentLearningSpaceMock: vi.fn(),
+		getStudentTaskSubmissionMock: vi.fn(),
+		submitStudentTaskSubmissionMock: vi.fn(),
 		createReflectionEntryMock: vi.fn(),
 		routeState: {
 			query: {
@@ -52,6 +56,11 @@ vi.mock('@/lib/services/student/studentLearningHubService', () => ({
 	getStudentLearningSpace: getStudentLearningSpaceMock,
 }))
 
+vi.mock('@/lib/services/student/studentTaskSubmissionService', () => ({
+	getStudentTaskSubmission: getStudentTaskSubmissionMock,
+	submitStudentTaskSubmission: submitStudentTaskSubmissionMock,
+}))
+
 vi.mock('@/lib/services/portfolio/portfolioService', () => ({
 	createReflectionEntry: createReflectionEntryMock,
 }))
@@ -76,6 +85,25 @@ function buildAttachmentPreview(overrides: Record<string, unknown> = {}) {
 		display_name: 'Resource',
 		kind: 'other',
 		preview_mode: 'icon_only',
+		...overrides,
+	}
+}
+
+function buildLatestSubmission(overrides: Record<string, unknown> = {}) {
+	return {
+		submission_id: 'TSU-1',
+		version: 1,
+		submitted_on: '2026-04-01 12:30:00',
+		submitted_by: 'student@example.com',
+		origin: 'Student Upload',
+		is_stub: false,
+		evidence_note: null,
+		is_cloned: false,
+		cloned_from: null,
+		text_content: 'Initial lab reflection',
+		link_url: 'https://example.com/lab-reflection',
+		attachments: [],
+		annotation_readiness: null,
 		...overrides,
 	}
 }
@@ -146,6 +174,7 @@ function buildPayload(message: string | null = null): StudentLearningSpaceRespon
 			selected_context: {
 				unit_plan: 'UNIT-PLAN-1',
 				class_session: 'CLASS-SESSION-1',
+				task_delivery: 'TDL-WRITE-1',
 			},
 			reflection_entries: [
 				{
@@ -167,7 +196,7 @@ function buildPayload(message: string | null = null): StudentLearningSpaceRespon
 					title: 'Cells and Systems',
 					unit_order: 1,
 					session_count: 2,
-					assigned_work_count: 1,
+					assigned_work_count: 2,
 					is_current: 1,
 				},
 			],
@@ -254,15 +283,32 @@ function buildPayload(message: string | null = null): StudentLearningSpaceRespon
 										'/api/method/ifitwala_ed.api.file_access.download_academic_file?file=FILE-TASK-1',
 								}),
 							},
-						],
-					},
-				],
+							],
+						},
+						{
+							task_delivery: 'TDL-WRITE-1',
+							task: 'TASK-WRITE-1',
+							task_outcome: 'OUT-WRITE-1',
+							title: 'Lab reflection write-up',
+							instructions_html:
+								'<p>Summarize your microscope evidence and link your final write-up.</p>',
+							task_type: 'Written Response',
+							unit_plan: 'UNIT-PLAN-1',
+							class_session: 'CLASS-SESSION-1',
+							delivery_mode: 'Collect Work',
+							grading_mode: 'None',
+							requires_submission: 1,
+							allow_late_submission: 1,
+							submission_status: 'Not Submitted',
+							materials: [],
+						},
+					],
 		},
 		curriculum: {
 			counts: {
 				units: 1,
 				sessions: 2,
-				assigned_work: 1,
+				assigned_work: 2,
 			},
 			units: [
 				{
@@ -338,6 +384,23 @@ function buildPayload(message: string | null = null): StudentLearningSpaceRespon
 										}),
 									},
 								],
+							},
+							{
+								task_delivery: 'TDL-WRITE-1',
+								task: 'TASK-WRITE-1',
+								task_outcome: 'OUT-WRITE-1',
+								title: 'Lab reflection write-up',
+								instructions_html:
+									'<p>Summarize your microscope evidence and link your final write-up.</p>',
+								task_type: 'Written Response',
+								unit_plan: 'UNIT-PLAN-1',
+								class_session: 'CLASS-SESSION-1',
+								delivery_mode: 'Collect Work',
+								grading_mode: 'None',
+								requires_submission: 1,
+								allow_late_submission: 1,
+								submission_status: 'Not Submitted',
+								materials: [],
 							},
 						],
 					standards: [
@@ -415,6 +478,23 @@ function buildPayload(message: string | null = null): StudentLearningSpaceRespon
 											},
 										],
 									},
+									{
+										task_delivery: 'TDL-WRITE-1',
+										task: 'TASK-WRITE-1',
+										task_outcome: 'OUT-WRITE-1',
+										title: 'Lab reflection write-up',
+										instructions_html:
+											'<p>Summarize your microscope evidence and link your final write-up.</p>',
+										task_type: 'Written Response',
+										unit_plan: 'UNIT-PLAN-1',
+										class_session: 'CLASS-SESSION-1',
+										delivery_mode: 'Collect Work',
+										grading_mode: 'None',
+										requires_submission: 1,
+										allow_late_submission: 1,
+										submission_status: 'Not Submitted',
+										materials: [],
+									},
 								],
 							activities: [
 								{
@@ -465,7 +545,15 @@ function resetRouteState() {
 	})
 }
 
-function mountCourseDetail() {
+function mountCourseDetail(
+	propOverrides: Partial<{
+		course_id: string
+		student_group: string
+		unit_plan: string
+		class_session: string
+		task_delivery: string
+	}> = {}
+) {
 	const host = document.createElement('div')
 	document.body.appendChild(host)
 	window.HTMLElement.prototype.scrollIntoView = vi.fn()
@@ -473,7 +561,11 @@ function mountCourseDetail() {
 	const app: App = createApp(
 		defineComponent({
 			render() {
-				return h(CourseDetail, { course_id: 'COURSE-1', student_group: 'GROUP-1' })
+				return h(CourseDetail, {
+					course_id: 'COURSE-1',
+					student_group: 'GROUP-1',
+					...propOverrides,
+				})
 			},
 		})
 	)
@@ -487,6 +579,8 @@ function mountCourseDetail() {
 
 afterEach(() => {
 	getStudentLearningSpaceMock.mockReset()
+	getStudentTaskSubmissionMock.mockReset()
+	submitStudentTaskSubmissionMock.mockReset()
 	createReflectionEntryMock.mockReset()
 	routerReplaceMock.mockReset()
 	resetRouteState()
@@ -500,6 +594,7 @@ describe('CourseDetail', () => {
 	it('renders the class-aware learning space shell', async () => {
 		resetRouteState()
 		getStudentLearningSpaceMock.mockResolvedValue(buildPayload())
+		getStudentTaskSubmissionMock.mockResolvedValue(buildLatestSubmission())
 
 		mountCourseDetail()
 		await flushUi()
@@ -519,6 +614,8 @@ describe('CourseDetail', () => {
 		expect(document.body.textContent).toContain('Assigned Work')
 		expect(document.body.textContent).toContain('Resources for this session')
 		expect(document.body.textContent).toContain('Work connected to this class')
+		expect(document.body.textContent).toContain('Task Workspace')
+		expect(document.body.textContent).toContain('Lab reflection write-up')
 		expect(document.body.textContent).toContain('Reflection & Journal')
 		expect(document.body.textContent).toContain('Recent entries')
 		expect(document.body.textContent).toContain(
@@ -527,15 +624,18 @@ describe('CourseDetail', () => {
 		expect(document.body.textContent).toContain('Structure and function are linked in living systems.')
 		expect(document.body.textContent).toContain('Microscope evidence walk')
 		expect(document.body.textContent).toContain('Observation walk')
-			expect(document.body.textContent).toContain('Continue Cell Structure Checkpoint')
-			expect(document.body.textContent).toContain('Cell Structure Checkpoint')
-			expect(document.body.textContent).toContain('Review the microscope guide, then answer the checkpoint questions.')
-			expect(document.body.textContent).toContain('Checkpoint worksheet')
-			expect(document.body.textContent).not.toContain('Messages connected to this class')
+		expect(document.body.textContent).toContain('Continue Cell Structure Checkpoint')
+		expect(document.body.textContent).toContain('Cell Structure Checkpoint')
+		expect(document.body.textContent).toContain(
+			'Review the microscope guide, then answer the checkpoint questions.'
+		)
+		expect(document.body.textContent).toContain('Checkpoint worksheet')
+		expect(document.body.textContent).not.toContain('Messages connected to this class')
 		expect(document.body.textContent).not.toContain('Microscope materials are ready')
 		expect(document.body.textContent).not.toContain('Class plan published')
 		expect(document.body.textContent).not.toContain('Planning not published')
 		expect(document.body.textContent).not.toContain('Teacher note')
+		expect(getStudentTaskSubmissionMock).toHaveBeenCalledWith({ outcome_id: 'OUT-WRITE-1' })
 
 		const headerImage = document.querySelector('header img')
 		expect(headerImage).toBeTruthy()
@@ -550,6 +650,76 @@ describe('CourseDetail', () => {
 		expect(classUpdatesHref).toContain('"source":"course"')
 		expect(classUpdatesHref).toContain('"course_id":"COURSE-1"')
 		expect(classUpdatesHref).toContain('"student_group":"GROUP-1"')
+	})
+
+	it('loads and resubmits the selected non-quiz task workspace', async () => {
+		resetRouteState()
+		getStudentLearningSpaceMock.mockResolvedValue(buildPayload())
+		getStudentTaskSubmissionMock
+			.mockResolvedValueOnce(buildLatestSubmission())
+			.mockResolvedValueOnce(
+				buildLatestSubmission({
+					submission_id: 'TSU-2',
+					version: 2,
+					text_content: 'Updated lab reflection',
+					link_url: 'https://example.com/updated-reflection',
+				})
+			)
+		submitStudentTaskSubmissionMock.mockResolvedValue({
+			submission_id: 'TSU-2',
+			version: 2,
+			outcome_flags: {
+				has_submission: true,
+				has_new_submission: true,
+				submission_status: 'Resubmitted',
+			},
+		})
+
+		mountCourseDetail({
+			unit_plan: 'UNIT-PLAN-1',
+			class_session: 'CLASS-SESSION-1',
+			task_delivery: 'TDL-WRITE-1',
+		})
+		await flushUi()
+
+		const responseArea = document.querySelector(
+			'textarea[placeholder="Summarize your work, reflection, or answer."]'
+		) as HTMLTextAreaElement | null
+		const linkField = document.querySelector(
+			'input[placeholder="https://example.com/your-work"]'
+		) as HTMLInputElement | null
+
+		expect(responseArea?.value).toBe('Initial lab reflection')
+		expect(linkField?.value).toBe('https://example.com/lab-reflection')
+
+		if (!responseArea || !linkField) {
+			throw new Error('Expected task submission fields to be rendered.')
+		}
+
+		responseArea.value = 'Updated lab reflection'
+		responseArea.dispatchEvent(new Event('input', { bubbles: true }))
+		linkField.value = 'https://example.com/updated-reflection'
+		linkField.dispatchEvent(new Event('input', { bubbles: true }))
+		await flushUi()
+
+		const submitButton = Array.from(document.querySelectorAll('button')).find(button =>
+			button.textContent?.includes('Resubmit task')
+		)
+		expect(submitButton).toBeTruthy()
+		submitButton?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+		await flushUi()
+
+		expect(submitStudentTaskSubmissionMock).toHaveBeenCalledWith({
+			task_outcome: 'OUT-WRITE-1',
+			text_content: 'Updated lab reflection',
+			link_url: 'https://example.com/updated-reflection',
+		})
+		expect(getStudentTaskSubmissionMock).toHaveBeenNthCalledWith(2, {
+			outcome_id: 'OUT-WRITE-1',
+		})
+		expect(document.body.textContent).toContain('Version 2')
+		expect(document.body.textContent).toContain('Updated lab reflection')
+		expect(document.body.textContent).toContain('Resubmitted')
 	})
 
 	it('keeps the learning space visible when shared-plan messaging is present', async () => {

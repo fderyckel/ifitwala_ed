@@ -16,13 +16,22 @@ def _admissions_portal_module():
 
     governed_uploads = ModuleType("ifitwala_ed.utilities.governed_uploads")
     governed_uploads._drive_upload_and_finalize = lambda **kwargs: None
-    governed_uploads._load_drive_module = lambda module_name: None
     governed_uploads._resolve_upload_mime_type_hint = lambda **kwargs: None
+
+    drive_admissions_api = ModuleType("ifitwala_drive.api.admissions")
+    drive_admissions_api.upload_applicant_document = object()
+    drive_admissions_api.upload_applicant_profile_image = object()
+    drive_admissions_api.upload_applicant_guardian_image = object()
+
+    drive_api = ModuleType("ifitwala_drive.api")
+    drive_api.admissions = drive_admissions_api
 
     with stubbed_frappe(
         extra_modules={
             "ifitwala_ed.admission.admission_utils": admission_utils,
             "ifitwala_ed.utilities.governed_uploads": governed_uploads,
+            "ifitwala_drive.api": drive_api,
+            "ifitwala_drive.api.admissions": drive_admissions_api,
         }
     ) as frappe:
         frappe.request = None
@@ -60,7 +69,6 @@ def _load_real_mime_type_resolver():
 
 class TestAdmissionsPortalUploadMimeHints(TestCase):
     def test_upload_applicant_profile_image_uses_resolved_mime_type_hint(self):
-        fake_drive_api = SimpleNamespace(upload_applicant_profile_image=object())
         file_doc = SimpleNamespace(name="FILE-0001", file_url="/private/files/profile.jpg")
 
         with _admissions_portal_module() as admissions_portal:
@@ -70,7 +78,6 @@ class TestAdmissionsPortalUploadMimeHints(TestCase):
                     "_resolve_upload_mime_type_hint",
                     return_value="image/jpeg",
                 ) as resolve_mime_type,
-                patch.object(admissions_portal, "_load_drive_module", return_value=fake_drive_api),
                 patch.object(
                     admissions_portal,
                     "_drive_upload_and_finalize",
@@ -98,7 +105,6 @@ class TestAdmissionsPortalUploadMimeHints(TestCase):
         self.assertEqual(payload["canonical_ref"], "drv:ORG-1:DRV-FILE-0001")
 
     def test_upload_applicant_profile_image_ignores_multipart_hint_and_falls_back_to_filename(self):
-        fake_drive_api = SimpleNamespace(upload_applicant_profile_image=object())
         file_doc = SimpleNamespace(name="FILE-0002", file_url="/private/files/profile.png")
         real_resolver = _load_real_mime_type_resolver()
 
@@ -109,7 +115,6 @@ class TestAdmissionsPortalUploadMimeHints(TestCase):
                     "_resolve_upload_mime_type_hint",
                     wraps=real_resolver,
                 ) as resolve_mime_type,
-                patch.object(admissions_portal, "_load_drive_module", return_value=fake_drive_api),
                 patch.object(
                     admissions_portal,
                     "_drive_upload_and_finalize",

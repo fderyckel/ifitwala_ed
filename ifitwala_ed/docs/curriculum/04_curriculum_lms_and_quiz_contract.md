@@ -79,6 +79,8 @@ Current resource preview behavior in that workspace:
 - session resources plus unit, class, and shared course resource shelves render inline image thumbnails from `thumbnail_url` and compact PDF preview tiles from `preview_url`
 - assigned-work rows now also include sanitized `instructions_html` so `CourseDetail.vue` remains the canonical student task-reading surface for non-quiz work
 - task-linked materials render inside that task brief through the shared learning attachment card, with in-place preview plus download actions driven by the governed preview DTO
+- non-quiz task context is deep-linkable through the course route query, and the selected task workspace lives inside `CourseDetail.vue` rather than on a second student task page
+- latest student submission evidence stays lazy-loaded per selected task so the learning-space bootstrap remains bounded; the bootstrap must not inline full submission histories or per-task evidence bodies for every assigned row
 
 This is the live LMS model.
 
@@ -102,7 +104,7 @@ Code refs: `ifitwala_ed/api/courses.py`, `ifitwala_ed/api/student_communications
 Test refs: `ifitwala_ed/api/test_courses.py`, `ifitwala_ed/ui-spa/src/pages/student/__tests__/StudentHome.test.ts`
 
 - `get_student_hub_home()` is allowed to link into the student course page, but it must route into the exact class-owned context when that context is known.
-- Work-board, next-step, and timeline links should preserve `student_group`, `unit_plan`, and `class_session` whenever the source row has them.
+- Work-board, next-step, and timeline links should preserve `student_group`, `unit_plan`, `class_session`, and `task_delivery` whenever the source row has them.
 - `get_student_hub_home()` may also expose bounded communication highlights, but those highlights must still link students back into the owning course, activity, or Communication Center context instead of creating a second inbox on Home.
 - `StudentHome.vue` should hand students into `CourseDetail.vue`; it must not become a competing second LMS tree.
 - `CourseDetail.vue` remains the canonical workspace for non-quiz assigned work, session flow, materials, and class-context review; it does not render class messages inline.
@@ -118,9 +120,11 @@ Test refs: `ifitwala_ed/assessment/doctype/task_delivery/test_task_delivery.py`,
 - `Task` remains the reusable work definition.
 - `Task Delivery` remains the class-scoped assigned-work runtime object.
 - LMS assigned work is resolved through `Class Teaching Plan` and optional `Class Session` context.
-- Task materials and sanitized task instructions are serialized with the assigned-work payload.
+- Task materials, sanitized task instructions, `task_outcome`, `requires_submission`, and `allow_late_submission` are serialized with the student assigned-work payload.
 - Student quiz deliveries now include bounded quiz-launch state in the learning-space payload.
 - `CourseDetail.vue` is the canonical student reading and launch surface for assigned work; quiz-backed work hands off to `StudentQuiz.vue` only for the attempt runtime.
+- Non-quiz task cards open a selected task workspace inside `CourseDetail.vue`, not a second student task page.
+- That workspace may lazily read the latest student submission and support text/link submit or resubmit when the delivery requires submission.
 - The dedicated student quiz page remains the attempt and review runtime after launch.
 
 ## Native Quiz Contract

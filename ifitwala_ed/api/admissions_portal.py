@@ -44,7 +44,13 @@ from ifitwala_ed.admission.doctype.applicant_enrollment_plan.applicant_enrollmen
     get_applicant_enrollment_choice_state,
     get_latest_applicant_enrollment_plan,
 )
-from ifitwala_ed.api.file_access import resolve_admissions_file_open_url
+from ifitwala_ed.api.attachment_previews import build_attachment_preview_item, extract_file_extension
+from ifitwala_ed.api.file_access import (
+    get_drive_file_thumbnail_ready_map,
+    resolve_admissions_file_open_url,
+    resolve_admissions_file_preview_url,
+    resolve_admissions_file_thumbnail_url,
+)
 from ifitwala_ed.api.recommendation_intake import (
     get_recommendation_status_for_applicant,
     get_recommendation_template_rows_for_applicant,
@@ -57,7 +63,11 @@ from ifitwala_ed.governance.policy_utils import (
     ADMISSIONS_POLICY_MODE_FAMILY,
     get_applicant_policy_status,
 )
-from ifitwala_ed.integrations.drive.authority import get_drive_file_for_file
+from ifitwala_ed.integrations.drive.authority import (
+    get_current_drive_file_for_slot,
+    get_current_drive_files_for_attachments,
+    get_drive_file_for_file,
+)
 from ifitwala_ed.utilities.html_sanitizer import sanitize_html
 
 INVALID_SESSION_USERS = {"guest", "none", "null", "undefined"}
@@ -786,6 +796,7 @@ def _serialize_applicant_guardians(applicant) -> list[dict]:
             elif fieldname == "guardian_image":
                 payload[fieldname] = _guardian_image_open_url(
                     applicant_name=applicant.name,
+                    guardian_row_name=_as_text(row.get("name")).strip(),
                     guardian_image=_as_text(row.get(fieldname)).strip(),
                 )
             else:
@@ -794,10 +805,61 @@ def _serialize_applicant_guardians(applicant) -> list[dict]:
     return rows
 
 
-def _resolve_guardian_image_file(*, applicant_name: str, guardian_image: str | None) -> dict | None:
+def _guardian_profile_image_slot(guardian_row_name: str) -> str:
+    return f"guardian_profile_image__{frappe.scrub((guardian_row_name or '').strip())[:80]}"
+
+
+def _resolve_applicant_profile_image_drive_file(*, applicant_name: str) -> dict | None:
+    return get_current_drive_file_for_slot(
+        primary_subject_type="Student Applicant",
+        primary_subject_id=applicant_name,
+        slot="profile_image",
+        attached_doctype="Student Applicant",
+        attached_name=applicant_name,
+        fields=["name", "file", "canonical_ref"],
+        statuses=("active", "processing", "blocked"),
+    )
+
+
+def _resolve_guardian_image_drive_file(*, applicant_name: str, guardian_row_name: str | None) -> dict | None:
+    resolved_guardian_row_name = _as_text(guardian_row_name).strip()
+    if not resolved_guardian_row_name:
+        return None
+    return get_current_drive_file_for_slot(
+        primary_subject_type="Student Applicant",
+        primary_subject_id=applicant_name,
+        slot=_guardian_profile_image_slot(resolved_guardian_row_name),
+        attached_doctype="Student Applicant Guardian",
+        attached_name=resolved_guardian_row_name,
+        fields=["name", "file", "canonical_ref"],
+        statuses=("active", "processing", "blocked"),
+    )
+
+
+def _resolve_guardian_image_file(
+    *,
+    applicant_name: str,
+    guardian_row_name: str | None = None,
+    guardian_image: str | None,
+) -> dict | None:
     image_value = _as_text(guardian_image).strip()
     if not image_value:
         return None
+
+    drive_file = _resolve_guardian_image_drive_file(
+        applicant_name=applicant_name,
+        guardian_row_name=guardian_row_name,
+    )
+    file_name = _as_text((drive_file or {}).get("file")).strip()
+    if file_name:
+        row = frappe.db.get_value(
+            "File",
+            file_name,
+            ["name", "file_url", "attached_to_doctype", "attached_to_name", "attached_to_field"],
+            as_dict=True,
+        )
+        if row and _file_is_scoped_to_applicant(file_row=row, applicant_name=applicant_name):
+            return row
 
     file_name = ""
     if "download_admissions_file" in image_value:
@@ -852,10 +914,13 @@ def _applicant_image_open_url(*, applicant_name: str, applicant_image: str | Non
     if not image_value:
         return ""
 
+    drive_file = _resolve_applicant_profile_image_drive_file(applicant_name=applicant_name) or {}
     return (
         resolve_admissions_file_open_url(
-            file_name=None,
+            file_name=drive_file.get("file"),
             file_url=image_value,
+            drive_file_id=drive_file.get("name"),
+            canonical_ref=drive_file.get("canonical_ref"),
             context_doctype="Student Applicant",
             context_name=applicant_name,
         )
@@ -863,17 +928,35 @@ def _applicant_image_open_url(*, applicant_name: str, applicant_image: str | Non
     )
 
 
-def _guardian_image_open_url(*, applicant_name: str, guardian_image: str | None) -> str:
+def _guardian_image_open_url(
+    *,
+    applicant_name: str,
+    guardian_row_name: str | None = None,
+    guardian_image: str | None,
+) -> str:
     image_value = _as_text(guardian_image).strip()
     if not image_value:
         return ""
 
-    file_row = _resolve_guardian_image_file(applicant_name=applicant_name, guardian_image=image_value)
+    drive_file = (
+        _resolve_guardian_image_drive_file(
+            applicant_name=applicant_name,
+            guardian_row_name=guardian_row_name,
+        )
+        or {}
+    )
+    file_row = _resolve_guardian_image_file(
+        applicant_name=applicant_name,
+        guardian_row_name=guardian_row_name,
+        guardian_image=image_value,
+    )
     if not file_row:
         return (
             resolve_admissions_file_open_url(
-                file_name=None,
+                file_name=drive_file.get("file"),
                 file_url=image_value,
+                drive_file_id=drive_file.get("name"),
+                canonical_ref=drive_file.get("canonical_ref"),
                 context_doctype="Student Applicant",
                 context_name=applicant_name,
             )
@@ -884,6 +967,8 @@ def _guardian_image_open_url(*, applicant_name: str, guardian_image: str | None)
         resolve_admissions_file_open_url(
             file_name=file_row.get("name"),
             file_url=file_row.get("file_url"),
+            drive_file_id=drive_file.get("name"),
+            canonical_ref=drive_file.get("canonical_ref"),
             context_doctype="Student Applicant",
             context_name=applicant_name,
         )
@@ -2044,6 +2129,8 @@ def upload_applicant_profile_image(
         "image_url": resolve_admissions_file_open_url(
             file_name=upload_result.get("file"),
             file_url=upload_result.get("file_url"),
+            drive_file_id=upload_result.get("drive_file_id"),
+            canonical_ref=upload_result.get("canonical_ref"),
             context_doctype="Student Applicant",
             context_name=applicant.name,
         ),
@@ -2108,6 +2195,8 @@ def upload_applicant_guardian_image(
         "image_url": resolve_admissions_file_open_url(
             file_name=upload_result.get("file"),
             file_url=upload_result.get("file_url"),
+            drive_file_id=upload_result.get("drive_file_id"),
+            canonical_ref=upload_result.get("canonical_ref"),
             context_doctype="Student Applicant",
             context_name=applicant.name,
         ),
@@ -2320,6 +2409,94 @@ def update_applicant_health(
     }
 
 
+def _load_drive_version_mime_map(version_ids: list[str]) -> dict[str, str]:
+    resolved_version_ids = [version_id for version_id in dict.fromkeys(version_ids) if _as_text(version_id).strip()]
+    if not resolved_version_ids:
+        return {}
+
+    rows = frappe.get_all(
+        "Drive File Version",
+        filters={"name": ["in", resolved_version_ids]},
+        fields=["name", "mime_type"],
+        limit=0,
+    )
+    return {
+        _as_text(row.get("name")).strip(): _as_text(row.get("mime_type")).strip()
+        for row in rows
+        if _as_text(row.get("name")).strip()
+    }
+
+
+def _serialize_applicant_document_attachment(
+    *,
+    latest_drive_file: dict,
+    student_applicant_name: str,
+    thumbnail_ready_map: dict[str, bool],
+    version_mime_map: dict[str, str],
+) -> dict:
+    drive_file_id = _as_text(latest_drive_file.get("name")).strip()
+    compatibility_file_id = _as_text(latest_drive_file.get("file")).strip()
+    canonical_ref = _as_text(latest_drive_file.get("canonical_ref")).strip() or None
+    file_name = (
+        _as_text(latest_drive_file.get("display_name")).strip()
+        or _as_text(latest_drive_file.get("file_name")).strip()
+        or compatibility_file_id
+    )
+    preview_status = _as_text(latest_drive_file.get("preview_status")).strip() or None
+    open_url = resolve_admissions_file_open_url(
+        file_name=compatibility_file_id or None,
+        file_url=None,
+        drive_file_id=drive_file_id,
+        canonical_ref=canonical_ref,
+        context_doctype="Student Applicant",
+        context_name=student_applicant_name,
+    )
+    preview_url = resolve_admissions_file_preview_url(
+        file_name=compatibility_file_id or None,
+        file_url=None,
+        drive_file_id=drive_file_id,
+        canonical_ref=canonical_ref,
+        context_doctype="Student Applicant",
+        context_name=student_applicant_name,
+        preview_ready=preview_status == "ready",
+    )
+    thumbnail_url = resolve_admissions_file_thumbnail_url(
+        file_name=compatibility_file_id or None,
+        file_url=None,
+        drive_file_id=drive_file_id,
+        canonical_ref=canonical_ref,
+        context_doctype="Student Applicant",
+        context_name=student_applicant_name,
+        thumbnail_ready=thumbnail_ready_map.get(drive_file_id, False),
+    )
+    mime_type = version_mime_map.get(_as_text(latest_drive_file.get("current_version")).strip())
+    attachment_preview = build_attachment_preview_item(
+        item_id=drive_file_id or compatibility_file_id or file_name,
+        owner_doctype="Student Applicant",
+        owner_name=student_applicant_name,
+        file_id=drive_file_id or compatibility_file_id,
+        display_name=file_name,
+        mime_type=mime_type,
+        extension=extract_file_extension(file_name=file_name, file_url=None),
+        preview_status=preview_status,
+        thumbnail_url=thumbnail_url,
+        preview_url=preview_url,
+        open_url=open_url,
+        download_url=open_url,
+    )
+    return {
+        "drive_file_id": drive_file_id or None,
+        "canonical_ref": canonical_ref,
+        "file_name": file_name or None,
+        "uploaded_at": latest_drive_file.get("creation"),
+        "open_url": open_url,
+        "preview_url": preview_url,
+        "thumbnail_url": thumbnail_url,
+        "preview_status": preview_status,
+        "attachment_preview": attachment_preview,
+    }
+
+
 @frappe.whitelist()
 def list_applicant_documents(student_applicant: str | None = None):
     user = _require_admissions_applicant()
@@ -2369,22 +2546,43 @@ def list_applicant_documents(student_applicant: str | None = None):
     )
     item_names = [row_item.get("name") for row_item in item_rows if row_item.get("name")]
 
-    latest_file_by_item: dict[str, dict] = {}
+    latest_drive_file_by_item: dict[str, dict] = {}
     if item_names:
-        item_file_rows = frappe.get_all(
-            "File",
-            filters={
-                "attached_to_doctype": "Applicant Document Item",
-                "attached_to_name": ["in", item_names],
-            },
-            fields=["name", "attached_to_name", "file_url", "file_name", "creation"],
-            order_by="creation desc",
+        drive_rows = get_current_drive_files_for_attachments(
+            attached_doctype="Applicant Document Item",
+            attached_names=item_names,
+            fields=[
+                "name",
+                "attached_name",
+                "file",
+                "canonical_ref",
+                "display_name",
+                "preview_status",
+                "current_version",
+                "creation",
+            ],
+            statuses=("active", "processing", "blocked"),
         )
-        for row_file in item_file_rows:
-            parent = row_file.get("attached_to_name")
-            if not parent or parent in latest_file_by_item:
+        for drive_row in drive_rows:
+            parent = drive_row.get("attached_name")
+            if not parent or parent in latest_drive_file_by_item:
                 continue
-            latest_file_by_item[parent] = row_file
+            latest_drive_file_by_item[parent] = drive_row
+
+    drive_thumbnail_ready_map = get_drive_file_thumbnail_ready_map(
+        [
+            _as_text(row_drive.get("name")).strip()
+            for row_drive in latest_drive_file_by_item.values()
+            if _as_text(row_drive.get("name")).strip()
+        ]
+    )
+    drive_version_mime_map = _load_drive_version_mime_map(
+        [
+            _as_text(row_drive.get("current_version")).strip()
+            for row_drive in latest_drive_file_by_item.values()
+            if _as_text(row_drive.get("current_version")).strip()
+        ]
+    )
 
     doc_type_names = sorted({doc.get("document_type") for doc in documents if doc.get("document_type")})
     doc_type_meta: dict[str, dict] = {}
@@ -2409,7 +2607,27 @@ def list_applicant_documents(student_applicant: str | None = None):
         parent = row_item.get("applicant_document")
         if not parent:
             continue
-        latest_file = latest_file_by_item.get(row_item.get("name"), {})
+        latest_drive_file = latest_drive_file_by_item.get(row_item.get("name"), {})
+        attachment = (
+            _serialize_applicant_document_attachment(
+                latest_drive_file=latest_drive_file,
+                student_applicant_name=student_applicant_name,
+                thumbnail_ready_map=drive_thumbnail_ready_map,
+                version_mime_map=drive_version_mime_map,
+            )
+            if latest_drive_file
+            else {
+                "drive_file_id": None,
+                "canonical_ref": None,
+                "file_name": None,
+                "uploaded_at": None,
+                "open_url": None,
+                "preview_url": None,
+                "thumbnail_url": None,
+                "preview_status": None,
+                "attachment_preview": None,
+            }
+        )
         items_by_document.setdefault(parent, []).append(
             {
                 "name": row_item.get("name"),
@@ -2418,14 +2636,15 @@ def list_applicant_documents(student_applicant: str | None = None):
                 "review_status": row_item.get("review_status") or "Pending",
                 "reviewed_by": row_item.get("reviewed_by"),
                 "reviewed_on": row_item.get("reviewed_on"),
-                "uploaded_at": latest_file.get("creation"),
-                "file_url": resolve_admissions_file_open_url(
-                    file_name=latest_file.get("name"),
-                    file_url=latest_file.get("file_url"),
-                    context_doctype="Student Applicant",
-                    context_name=student_applicant_name,
-                ),
-                "file_name": latest_file.get("file_name"),
+                "uploaded_at": attachment.get("uploaded_at"),
+                "open_url": attachment.get("open_url"),
+                "preview_url": attachment.get("preview_url"),
+                "thumbnail_url": attachment.get("thumbnail_url"),
+                "preview_status": attachment.get("preview_status"),
+                "file_name": attachment.get("file_name"),
+                "drive_file_id": attachment.get("drive_file_id"),
+                "canonical_ref": attachment.get("canonical_ref"),
+                "attachment_preview": attachment.get("attachment_preview"),
             }
         )
 
@@ -2436,7 +2655,7 @@ def list_applicant_documents(student_applicant: str | None = None):
         items = items_by_document.get(doc_name, [])
 
         latest_uploaded_at = None
-        latest_file_url = None
+        latest_open_url = None
         if items:
             sorted_items = sorted(
                 items,
@@ -2444,23 +2663,23 @@ def list_applicant_documents(student_applicant: str | None = None):
                 reverse=True,
             )
             latest_uploaded_at = sorted_items[0].get("uploaded_at")
-            latest_file_url = sorted_items[0].get("file_url")
+            latest_open_url = sorted_items[0].get("open_url")
 
         is_required = bool(type_meta.get("is_required"))
         is_repeatable = bool(type_meta.get("is_repeatable"))
         required_count = _portal_required_document_count(type_meta)
-        uploaded_count = len([item for item in items if item.get("file_url")])
+        uploaded_count = len([item for item in items if item.get("open_url")])
         approved_count = len(
-            [item for item in items if item.get("file_url") and item.get("review_status") == "Approved"]
+            [item for item in items if item.get("open_url") and item.get("review_status") == "Approved"]
         )
         rejected_count = len(
-            [item for item in items if item.get("file_url") and item.get("review_status") == "Rejected"]
+            [item for item in items if item.get("open_url") and item.get("review_status") == "Rejected"]
         )
         pending_count = len(
             [
                 item
                 for item in items
-                if item.get("file_url")
+                if item.get("open_url")
                 and (item.get("review_status") or "Pending").strip() not in {"Approved", "Rejected"}
             ]
         )
@@ -2504,7 +2723,7 @@ def list_applicant_documents(student_applicant: str | None = None):
                 "reviewed_by": doc.get("reviewed_by"),
                 "reviewed_on": doc.get("reviewed_on"),
                 "uploaded_at": latest_uploaded_at,
-                "file_url": latest_file_url,
+                "open_url": latest_open_url,
                 "items": items,
             }
         )
@@ -2731,7 +2950,58 @@ def upload_applicant_document(
     if file_name:
         payload["file_name"] = file_name
 
-    return admission_api.upload_applicant_document(**payload)
+    upload_result = admission_api.upload_applicant_document(**payload)
+    resolved_drive_file_id = _as_text(upload_result.get("drive_file_id")).strip() or None
+    resolved_canonical_ref = _as_text(upload_result.get("canonical_ref")).strip() or None
+    preview_status = (
+        _as_text(frappe.db.get_value("Drive File", resolved_drive_file_id, "preview_status")).strip()
+        if resolved_drive_file_id
+        else ""
+    )
+    thumbnail_ready = (
+        get_drive_file_thumbnail_ready_map([resolved_drive_file_id]).get(resolved_drive_file_id, False)
+        if resolved_drive_file_id
+        else False
+    )
+    open_url = resolve_admissions_file_open_url(
+        file_name=upload_result.get("file"),
+        file_url=upload_result.get("file_url"),
+        drive_file_id=resolved_drive_file_id,
+        canonical_ref=resolved_canonical_ref,
+        context_doctype="Student Applicant",
+        context_name=row.get("name"),
+    )
+    preview_url = resolve_admissions_file_preview_url(
+        file_name=upload_result.get("file"),
+        file_url=upload_result.get("file_url"),
+        drive_file_id=resolved_drive_file_id,
+        canonical_ref=resolved_canonical_ref,
+        context_doctype="Student Applicant",
+        context_name=row.get("name"),
+        preview_ready=preview_status == "ready",
+    )
+    thumbnail_url = resolve_admissions_file_thumbnail_url(
+        file_name=upload_result.get("file"),
+        file_url=upload_result.get("file_url"),
+        drive_file_id=resolved_drive_file_id,
+        canonical_ref=resolved_canonical_ref,
+        context_doctype="Student Applicant",
+        context_name=row.get("name"),
+        thumbnail_ready=thumbnail_ready,
+    )
+    return {
+        "file": upload_result.get("file"),
+        "open_url": open_url,
+        "preview_url": preview_url,
+        "thumbnail_url": thumbnail_url,
+        "preview_status": preview_status or None,
+        "drive_file_id": resolved_drive_file_id,
+        "canonical_ref": resolved_canonical_ref,
+        "applicant_document": upload_result.get("applicant_document"),
+        "applicant_document_item": upload_result.get("applicant_document_item"),
+        "item_key": upload_result.get("item_key"),
+        "item_label": upload_result.get("item_label"),
+    }
 
 
 @frappe.whitelist()

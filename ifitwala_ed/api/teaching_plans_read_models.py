@@ -279,6 +279,8 @@ def fetch_assigned_work(
             td.class_session,
             td.delivery_mode,
             td.grading_mode,
+            td.requires_submission,
+            td.allow_late_submission,
             td.available_from,
             td.due_date,
             td.lock_date,
@@ -313,7 +315,7 @@ def fetch_assigned_work(
                 "student": student_name,
                 "task_delivery": ["in", [row["task_delivery"] for row in rows if row.get("task_delivery")] or [""]],
             },
-            fields=["task_delivery", "submission_status", "grading_status", "is_complete", "is_published"],
+            fields=["name", "task_delivery", "submission_status", "grading_status", "is_complete", "is_published"],
             limit=0,
         )
         outcomes_by_delivery = {row.get("task_delivery"): row for row in outcome_rows or [] if row.get("task_delivery")}
@@ -350,6 +352,8 @@ def fetch_assigned_work(
             "class_session": row.get("class_session"),
             "delivery_mode": row.get("delivery_mode"),
             "grading_mode": row.get("grading_mode"),
+            "requires_submission": int(row.get("requires_submission") or 0),
+            "allow_late_submission": int(row.get("allow_late_submission") or 0),
             "available_from": api._serialize_scalar(row.get("available_from")),
             "due_date": api._serialize_scalar(row.get("due_date")),
             "lock_date": api._serialize_scalar(row.get("lock_date")),
@@ -357,6 +361,7 @@ def fetch_assigned_work(
         }
         if audience == "student":
             outcome = outcomes_by_delivery.get(row.get("task_delivery"), {})
+            item["task_outcome"] = outcome.get("name")
             item["submission_status"] = outcome.get("submission_status")
             item["grading_status"] = outcome.get("grading_status")
             item["is_complete"] = int(outcome.get("is_complete") or 0) if outcome else 0

@@ -85,6 +85,8 @@ const routes: RouteRecordRaw[] = [
       unit_plan: typeof route.query.unit_plan === 'string' ? route.query.unit_plan : '',
       class_session:
         typeof route.query.class_session === 'string' ? route.query.class_session : '',
+      task_delivery:
+        typeof route.query.task_delivery === 'string' ? route.query.task_delivery : '',
     }),
     meta: { layout: 'student' },
   },

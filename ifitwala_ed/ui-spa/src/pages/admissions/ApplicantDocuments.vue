@@ -107,7 +107,26 @@
 						:key="`${doc.key}:${item.name || item.item_key}`"
 						class="rounded-xl border border-border/60 bg-surface/50 px-3 py-3"
 					>
-						<div class="flex flex-wrap items-start justify-between gap-3">
+						<AttachmentPreviewCard
+							v-if="item.attachment_preview"
+							:attachment="item.attachment_preview"
+							variant="planning"
+							:title="item.item_label || item.item_key"
+							:chips="[itemStatusLabel(item)]"
+							:meta-text="item.uploaded_at ? `${__('Uploaded')}: ${item.uploaded_at}` : ''"
+						>
+							<template #extra-actions>
+								<button
+									type="button"
+									class="if-action"
+									:disabled="isReadOnly || !doc.canUpload"
+									@click="openUpload(doc, item)"
+								>
+									{{ __('Replace') }}
+								</button>
+							</template>
+						</AttachmentPreviewCard>
+						<div v-else class="flex flex-wrap items-start justify-between gap-3">
 							<div>
 								<p class="type-body-strong text-ink">{{ item.item_label || item.item_key }}</p>
 								<p class="mt-1 type-caption" :class="statusToneFor(itemStatusKey(item))">
@@ -119,8 +138,8 @@
 							</div>
 							<div class="flex items-center gap-2">
 								<a
-									v-if="item.file_url"
-									:href="item.file_url"
+									v-if="item.open_url"
+									:href="item.open_url"
 									target="_blank"
 									rel="noopener"
 									class="if-action"
@@ -164,12 +183,14 @@
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import { Spinner } from 'frappe-ui';
 
+import AttachmentPreviewCard from '@/components/attachments/AttachmentPreviewCard.vue';
 import { createAdmissionsService } from '@/lib/services/admissions/admissionsService';
 import { useOverlayStack } from '@/composables/useOverlayStack';
 import { useAdmissionsSession } from '@/composables/useAdmissionsSession';
 import { __ } from '@/lib/i18n';
 import { uiSignals, SIGNAL_ADMISSIONS_PORTAL_INVALIDATE } from '@/lib/uiSignals';
 import type { ApplicantDocument } from '@/types/contracts/admissions/types';
+import type { AttachmentPreviewItem } from '@/types/contracts/attachments/shared';
 import type { Response as DocumentTypesResponse } from '@/types/contracts/admissions/list_applicant_document_types';
 import type { Response as DocumentsResponse } from '@/types/contracts/admissions/list_applicant_documents';
 
@@ -191,8 +212,14 @@ type DisplayItem = {
 	item_label: string;
 	review_status: string;
 	uploaded_at?: string | null;
-	file_url?: string | null;
+	open_url?: string | null;
+	preview_url?: string | null;
+	thumbnail_url?: string | null;
+	preview_status?: string | null;
 	file_name?: string | null;
+	drive_file_id?: string | null;
+	canonical_ref?: string | null;
+	attachment_preview?: AttachmentPreviewItem | null;
 };
 
 type DisplayDocument = {
@@ -216,7 +243,7 @@ type DisplayDocument = {
 };
 
 function itemStatusKey(item: DisplayItem): string {
-	if (!item.file_url) return 'missing';
+	if (!item.open_url) return 'missing';
 	if (item.review_status === 'Approved') return 'approved';
 	if (item.review_status === 'Rejected') return 'rejected';
 	return 'pending';
@@ -333,8 +360,14 @@ const displayDocuments = computed<DisplayDocument[]>(() => {
 			item_label: String(row.item_label || ''),
 			review_status: String(row.review_status || 'Pending'),
 			uploaded_at: row.uploaded_at || null,
-			file_url: row.file_url || null,
+			open_url: row.open_url || null,
+			preview_url: row.preview_url || null,
+			thumbnail_url: row.thumbnail_url || null,
+			preview_status: row.preview_status || null,
 			file_name: row.file_name || null,
+			drive_file_id: row.drive_file_id || null,
+			canonical_ref: row.canonical_ref || null,
+			attachment_preview: row.attachment_preview || null,
 		}));
 
 		const requiredCount =
@@ -348,14 +381,14 @@ const displayDocuments = computed<DisplayDocument[]>(() => {
 		const uploadedCount =
 			typeof doc?.uploaded_count === 'number'
 				? doc.uploaded_count
-				: documentItems.filter(row => Boolean(row.file_url)).length;
+				: documentItems.filter(row => Boolean(row.open_url)).length;
 		const approvedCount =
 			typeof doc?.approved_count === 'number'
 				? doc.approved_count
-				: documentItems.filter(row => Boolean(row.file_url) && row.review_status === 'Approved')
+				: documentItems.filter(row => Boolean(row.open_url) && row.review_status === 'Approved')
 						.length;
 		const hasRejected = documentItems.some(
-			row => Boolean(row.file_url) && row.review_status === 'Rejected'
+			row => Boolean(row.open_url) && row.review_status === 'Rejected'
 		);
 		const fallbackSummary = summarizeDocumentStatus({
 			is_required: Boolean(docType.is_required),
@@ -407,12 +440,18 @@ const displayDocuments = computed<DisplayDocument[]>(() => {
 			item_label: String(row.item_label || ''),
 			review_status: String(row.review_status || 'Pending'),
 			uploaded_at: row.uploaded_at || null,
-			file_url: row.file_url || null,
+			open_url: row.open_url || null,
+			preview_url: row.preview_url || null,
+			thumbnail_url: row.thumbnail_url || null,
+			preview_status: row.preview_status || null,
 			file_name: row.file_name || null,
+			drive_file_id: row.drive_file_id || null,
+			canonical_ref: row.canonical_ref || null,
+			attachment_preview: row.attachment_preview || null,
 		}));
-		const uploadedCount = documentItems.filter(row => Boolean(row.file_url)).length;
+		const uploadedCount = documentItems.filter(row => Boolean(row.open_url)).length;
 		const approvedCount = documentItems.filter(
-			row => Boolean(row.file_url) && row.review_status === 'Approved'
+			row => Boolean(row.open_url) && row.review_status === 'Approved'
 		).length;
 		items.push({
 			key: doc.document_type,

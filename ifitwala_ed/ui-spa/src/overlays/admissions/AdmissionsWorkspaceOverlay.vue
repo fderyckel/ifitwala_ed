@@ -536,12 +536,12 @@
 														class="type-caption text-ink/75"
 													>
 														<button
-															v-if="item.file_url"
+															v-if="item.open_url"
 															type="button"
 															class="underline"
 															@click="
 																openWorkspaceFile(
-																	item.file_url,
+																	item.open_url,
 																	item.item_label || item.file_name || 'submitted file'
 																)
 															"
@@ -756,12 +756,12 @@
 																	{{ formatSubmissionMeta(item) }}
 																</p>
 																<button
-																	v-if="item.file_url"
+																	v-if="item.open_url"
 																	type="button"
 																	class="mt-2 inline-flex text-sm font-medium text-canopy underline"
 																	@click="
 																		openWorkspaceFile(
-																			item.file_url,
+																			item.open_url,
 																			item.file_name || item.item_label || 'submitted file'
 																		)
 																	"
@@ -879,12 +879,12 @@
 																{{ formatSubmissionMeta(row) }}
 															</p>
 															<button
-																v-if="row.file_url"
+																v-if="row.open_url"
 																type="button"
 																class="mt-2 inline-flex text-sm font-medium text-canopy underline"
 																@click="
 																	openWorkspaceFile(
-																		row.file_url,
+																		row.open_url,
 																		row.file_name || row.label || 'submitted file'
 																	)
 																"
@@ -1220,12 +1220,12 @@
 																{{ recommendationReview.recommendation.item_label }}
 															</span>
 															<button
-																v-if="recommendationReview.recommendation.file_url"
+																v-if="recommendationReview.recommendation.open_url"
 																type="button"
 																class="text-sm font-medium text-canopy underline"
 																@click="
 																	openWorkspaceFile(
-																		recommendationReview.recommendation.file_url,
+																		recommendationReview.recommendation.open_url,
 																		recommendationReview.recommendation.file_name ||
 																			'recommendation attachment'
 																	)
@@ -1704,7 +1704,13 @@ const recommendationReviewItem = computed<ApplicantWorkspaceDocumentItem | null>
 		reviewed_by: recommendation?.reviewed_by || null,
 		reviewed_on: recommendation?.reviewed_on || null,
 		file_name: recommendation?.file_name || null,
-		file_url: recommendation?.file_url || null,
+		open_url: recommendation?.open_url || null,
+		preview_url: recommendation?.preview_url || null,
+		thumbnail_url: recommendation?.thumbnail_url || null,
+		preview_status: recommendation?.preview_status || null,
+		drive_file_id: recommendation?.drive_file_id || null,
+		canonical_ref: recommendation?.canonical_ref || null,
+		attachment_preview: recommendation?.attachment_preview || null,
 	};
 });
 const nextPendingRecommendationRow = computed<RecommendationReviewRow | null>(() => {
