@@ -389,6 +389,7 @@ def _get_governed_image_variants_map(
         "File",
         filters={"name": ("in", file_names)},
         fields=["name", "file_url", "is_private"],
+        limit=0,
     )
     file_map = {row["name"]: row for row in files}
 
@@ -413,6 +414,7 @@ def _get_governed_image_variants_map(
                     "status": "ready",
                 },
                 fields=["drive_file", "derivative_role"],
+                limit=0,
             )
             for derivative_row in derivative_rows or []:
                 drive_file_id = str(derivative_row.get("drive_file") or "").strip()

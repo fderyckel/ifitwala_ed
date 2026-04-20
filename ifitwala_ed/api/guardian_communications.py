@@ -536,13 +536,36 @@ def _selected_or_all_students(context: dict[str, Any], selected_student: str | N
     return list(context.get("student_names") or [])
 
 
+def _students_for_school_scope(
+    context: dict[str, Any],
+    *,
+    selected_student: str | None,
+    selected_school: str | None = None,
+) -> list[str]:
+    relevant_students = _selected_or_all_students(context, selected_student)
+    school_name = str(selected_school or "").strip()
+    if not school_name:
+        return [student for student in relevant_students if student]
+
+    return [
+        student
+        for student in relevant_students
+        if school_name in set((context.get("student_school_names") or {}).get(student) or [])
+    ]
+
+
 def _event_students_matching_school(
     context: dict[str, Any],
     *,
     selected_student: str | None,
+    selected_school: str | None = None,
     event_school: str | None,
 ) -> set[str]:
-    relevant_students = _selected_or_all_students(context, selected_student)
+    relevant_students = _students_for_school_scope(
+        context,
+        selected_student=selected_student,
+        selected_school=selected_school,
+    )
     school_name = str(event_school or "").strip()
     if not school_name:
         return {student for student in relevant_students if student}
@@ -559,6 +582,7 @@ def _matched_students_for_school_event_audience(
     *,
     context: dict[str, Any],
     selected_student: str | None,
+    selected_school: str | None = None,
     explicit_participant_events: set[str],
 ) -> set[str]:
     audience_type = str(audience_row.get("audience_type") or "").strip()
@@ -566,6 +590,7 @@ def _matched_students_for_school_event_audience(
     eligible_students = _event_students_matching_school(
         context,
         selected_student=selected_student,
+        selected_school=selected_school,
         event_school=event_row.get("school"),
     )
     if not eligible_students:
@@ -603,19 +628,29 @@ def _fetch_guardian_school_events(
     context: dict[str, Any],
     *,
     selected_student: str | None = None,
+    start_date=None,
+    end_date=None,
+    selected_school: str | None = None,
 ) -> list[dict[str, Any]]:
     target_schools = {
         school_name
-        for student in _selected_or_all_students(context, selected_student)
+        for student in _students_for_school_scope(
+            context,
+            selected_student=selected_student,
+            selected_school=selected_school,
+        )
         for school_name in set((context.get("student_school_names") or {}).get(student) or [])
         if school_name
     }
     if not target_schools and not context.get("user"):
         return []
 
+    window_start = getdate(start_date) if start_date else _recent_start_date()
+    window_end = getdate(end_date) if end_date else None
+
     conditions = [
         "se.docstatus < 2",
-        "COALESCE(se.ends_on, se.starts_on) >= %(recent_start)s",
+        "COALESCE(se.ends_on, se.starts_on) >= %(window_start)s",
         "("
         "EXISTS ("
         "    SELECT 1 FROM `tabSchool Event Participant` sep"
@@ -626,9 +661,12 @@ def _fetch_guardian_school_events(
         " OR COALESCE(se.school, '') = ''" + (" OR se.school IN %(target_schools)s" if target_schools else "") + ")",
     ]
     values: dict[str, Any] = {
-        "recent_start": _recent_start_date(),
+        "window_start": window_start,
         "user": context.get("user"),
     }
+    if window_end:
+        conditions.append("se.starts_on < %(window_end_exclusive)s")
+        values["window_end_exclusive"] = add_days(window_end, 1)
     if target_schools:
         values["target_schools"] = tuple(sorted(target_schools))
 
@@ -696,6 +734,7 @@ def _fetch_guardian_school_events(
                     audience_row,
                     context=context,
                     selected_student=selected_student,
+                    selected_school=selected_school,
                     explicit_participant_events=explicit_participant_events,
                 )
             )

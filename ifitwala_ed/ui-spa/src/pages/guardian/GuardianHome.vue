@@ -96,11 +96,13 @@
 		<section class="card-surface p-5">
 			<h2 class="mb-3 type-h3 text-ink">Quick Links</h2>
 			<div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-				<RouterLink
+				<component
 					v-for="item in quickLinks"
 					:key="item.title"
-					:to="item.to"
-					class="action-tile group"
+					:is="item.to ? RouterLink : 'button'"
+					v-bind="item.to ? { to: item.to } : { type: 'button' }"
+					class="action-tile group text-left"
+					@click="item.onClick?.()"
 				>
 					<div class="action-tile__icon">
 						<FeatherIcon :name="item.icon" class="h-5 w-5" />
@@ -112,7 +114,7 @@
 						<p class="truncate type-caption text-ink/70">{{ item.description }}</p>
 					</div>
 					<FeatherIcon name="chevron-right" class="h-4 w-4 text-ink/40" />
-				</RouterLink>
+				</component>
 			</div>
 		</section>
 
@@ -367,6 +369,7 @@ import { computed, onMounted, ref } from 'vue';
 import { RouterLink } from 'vue-router';
 import { FeatherIcon } from 'frappe-ui';
 
+import { useOverlayStack } from '@/composables/useOverlayStack';
 import { getGuardianHomeSnapshot } from '@/lib/services/guardianHome/guardianHomeService';
 
 import type { DueTaskChip } from '@/types/contracts/guardian/get_guardian_home_snapshot';
@@ -375,6 +378,7 @@ import type { Response as GuardianHomeSnapshot } from '@/types/contracts/guardia
 const loading = ref<boolean>(true);
 const errorMessage = ref<string>('');
 const snapshot = ref<GuardianHomeSnapshot | null>(null);
+const overlay = useOverlayStack();
 
 const meta = computed(
 	() =>
@@ -407,7 +411,17 @@ const prepItems = computed(() => snapshot.value?.zones.preparation_and_support ?
 const recentActivity = computed(() => snapshot.value?.zones.recent_activity ?? []);
 const learningHighlights = computed(() => snapshot.value?.zones.learning_highlights ?? []);
 
+function openGuardianCalendar() {
+	overlay.open('guardian-calendar', {});
+}
+
 const quickLinks = [
+	{
+		title: 'School Calendar',
+		description: 'Open a larger monthly view of family school holidays and school events.',
+		icon: 'calendar',
+		onClick: openGuardianCalendar,
+	},
 	{
 		title: 'Communications',
 		description: 'Review family-wide school events and school or class updates in one place.',

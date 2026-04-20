@@ -46,6 +46,7 @@ import MeetingEventModal from '@/components/calendar/MeetingEventModal.vue';
 import SchoolEventModal from '@/components/calendar/SchoolEventModal.vue';
 import ClassEventModal from '@/components/calendar/ClassEventModal.vue';
 import EventQuickCreateOverlay from '@/overlays/calendar/EventQuickCreateOverlay.vue';
+import GuardianCalendarOverlay from '@/overlays/guardian/GuardianCalendarOverlay.vue';
 import QuickClassSessionOverlay from '@/overlays/planning/QuickClassSessionOverlay.vue';
 import OrgCommunicationQuickCreateOverlay from '@/components/communication/OrgCommunicationQuickCreateModal.vue';
 import AttendanceRemarkOverlay from '@/overlays/attendance/AttendanceRemarkOverlay.vue';
@@ -181,6 +182,8 @@ function resolveComponent(type: OverlayType) {
 			return CreateTaskDeliveryOverlay;
 		case 'quick-class-session':
 			return QuickClassSessionOverlay;
+		case 'guardian-calendar':
+			return GuardianCalendarOverlay;
 		case 'event-quick-create':
 			return EventQuickCreateOverlay;
 		case 'meeting-event':

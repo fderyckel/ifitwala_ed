@@ -4,6 +4,7 @@ import { computed, reactive } from 'vue'
 export type OverlayType =
   | 'create-task'
   | 'quick-class-session'
+  | 'guardian-calendar'
   | 'event-quick-create'
   | 'meeting-event'
   | 'school-event'

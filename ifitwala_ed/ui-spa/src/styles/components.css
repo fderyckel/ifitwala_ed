@@ -67,6 +67,10 @@
 		max-width: 40rem;
 	}
 
+	.if-overlay__panel--xl {
+		max-width: 80rem;
+	}
+
 	/* Canonical right-side drawer / sheet variants. */
 	.if-overlay__wrap--drawer {
 		justify-content: flex-end;

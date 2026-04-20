@@ -46,6 +46,84 @@ def _image_utils_module():
 
 
 class TestImageUtilsUnit(TestCase):
+    def test_apply_preferred_student_images_uses_unbounded_variant_queries_for_large_rosters(self):
+        with _image_utils_module() as (image_utils, frappe):
+            student_ids = [f"STU-{index:04d}" for index in range(1, 26)]
+            rows = [
+                {
+                    "name": student_id,
+                    "student_image": f"/private/files/{student_id.lower()}.png",
+                }
+                for student_id in student_ids
+            ]
+            file_rows = [
+                {
+                    "name": f"FILE-{student_id}",
+                    "file_url": f"/private/files/{student_id.lower()}.png",
+                    "is_private": 1,
+                }
+                for student_id in student_ids
+            ]
+            derivative_rows = [
+                {
+                    "drive_file": f"DRIVE-{student_id}",
+                    "derivative_role": "thumb",
+                }
+                for student_id in student_ids
+            ]
+            file_limits = []
+            derivative_limits = []
+
+            image_utils.get_current_drive_files_for_slots = lambda **kwargs: [
+                {
+                    "name": f"DRIVE-{student_id}",
+                    "primary_subject_id": student_id,
+                    "slot": "profile_image",
+                    "file": f"FILE-{student_id}",
+                    "current_version": f"DFV-{student_id}",
+                }
+                for student_id in student_ids
+            ]
+
+            def fake_get_all(doctype, filters=None, fields=None, limit=None, order_by=None):
+                del filters, fields, order_by
+                if doctype == "File":
+                    file_limits.append(limit)
+                    return file_rows if limit == 0 else file_rows[:20]
+                if doctype == "Drive File Derivative":
+                    derivative_limits.append(limit)
+                    return derivative_rows if limit == 0 else derivative_rows[:20]
+                raise AssertionError(f"Unexpected get_all doctype: {doctype}")
+
+            frappe.get_all = fake_get_all
+
+            def fake_resolve_display_url(
+                primary_subject_type,
+                subject_name,
+                *,
+                file_name,
+                file_url,
+                drive_file_id=None,
+                canonical_ref=None,
+                derivative_role=None,
+            ):
+                del primary_subject_type, file_url, drive_file_id, canonical_ref
+                suffix = derivative_role or "original"
+                return f"/resolved/{subject_name}/{file_name}/{suffix}"
+
+            with (
+                patch.object(image_utils, "_resolve_governed_display_url", side_effect=fake_resolve_display_url),
+                patch.object(image_utils, "_resolve_original_governed_image_url", return_value="/resolved/original"),
+            ):
+                image_utils.apply_preferred_student_images(rows, student_field="name", image_field="student_image")
+
+        self.assertEqual(file_limits, [0])
+        self.assertEqual(derivative_limits, [0])
+        self.assertEqual(
+            rows[-1]["student_image"],
+            "/resolved/STU-0025/FILE-STU-0025/thumb",
+        )
+
     def test_get_preferred_employee_image_url_uses_ready_drive_derivative_role(self):
         with _image_utils_module() as (image_utils, frappe):
             image_utils.get_current_drive_files_for_slots = lambda **kwargs: [

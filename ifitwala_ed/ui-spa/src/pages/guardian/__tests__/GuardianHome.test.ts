@@ -3,8 +3,9 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { createApp, defineComponent, h, nextTick, type App } from 'vue'
 
-const { getGuardianHomeSnapshotMock } = vi.hoisted(() => ({
+const { getGuardianHomeSnapshotMock, overlayOpenMock } = vi.hoisted(() => ({
 	getGuardianHomeSnapshotMock: vi.fn(),
+	overlayOpenMock: vi.fn(),
 }))
 
 vi.mock('frappe-ui', async () => {
@@ -50,6 +51,12 @@ vi.mock('@/lib/services/guardianHome/guardianHomeService', () => ({
 	getGuardianHomeSnapshot: getGuardianHomeSnapshotMock,
 }))
 
+vi.mock('@/composables/useOverlayStack', () => ({
+	useOverlayStack: () => ({
+		open: overlayOpenMock,
+	}),
+}))
+
 import GuardianHome from '@/pages/guardian/GuardianHome.vue'
 
 const cleanupFns: Array<() => void> = []
@@ -82,6 +89,7 @@ function mountGuardianHome() {
 
 afterEach(() => {
 	getGuardianHomeSnapshotMock.mockReset()
+	overlayOpenMock.mockReset()
 	while (cleanupFns.length) {
 		cleanupFns.pop()?.()
 	}
@@ -205,6 +213,7 @@ describe('GuardianHome', () => {
 		expect(getGuardianHomeSnapshotMock).toHaveBeenCalledWith({ school_days: 7 })
 		const text = document.body.textContent || ''
 		expect(text).toContain('Family Snapshot')
+		expect(text).toContain('School Calendar')
 		expect(text).toContain('Communications')
 		expect(text).toContain('Policies need your acknowledgement')
 		expect(text).toContain('Family Handbook')
@@ -235,5 +244,48 @@ describe('GuardianHome', () => {
 		const text = document.body.textContent || ''
 		expect(text).toContain('Could not load guardian home snapshot.')
 		expect(text).toContain('Network failed')
+	})
+
+	it('opens the guardian calendar overlay from the quick-link grid', async () => {
+		getGuardianHomeSnapshotMock.mockResolvedValue({
+			meta: {
+				generated_at: '2026-03-13T09:00:00',
+				anchor_date: '2026-03-13',
+				school_days: 7,
+				guardian: { name: 'GRD-0001' },
+			},
+			family: {
+				children: [],
+			},
+			policies: {
+				pending_count: 0,
+				items: [],
+			},
+			zones: {
+				family_timeline: [],
+				attention_needed: [],
+				preparation_and_support: [],
+				recent_activity: [],
+				learning_highlights: [],
+			},
+			counts: {
+				unread_communications: 0,
+				unread_visible_student_logs: 0,
+				upcoming_due_tasks: 0,
+				upcoming_assessments: 0,
+			},
+		})
+
+		mountGuardianHome()
+		await flushUi()
+
+		const calendarButton = Array.from(document.querySelectorAll('button')).find(button =>
+			(button.textContent || '').includes('School Calendar')
+		)
+		expect(calendarButton).toBeTruthy()
+
+		calendarButton?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+
+		expect(overlayOpenMock).toHaveBeenCalledWith('guardian-calendar', {})
 	})
 })

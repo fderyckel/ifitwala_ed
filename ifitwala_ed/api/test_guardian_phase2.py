@@ -667,7 +667,7 @@ class TestGuardianCommunicationCenterPhase2(FrappeTestCase):
         self.assertEqual(
             captured.get("values"),
             {
-                "recent_start": "2026-01-10",
+                "window_start": "2026-01-10",
                 "user": "guardian@example.com",
                 "target_schools": ("SCHOOL-1", "SCHOOL-2"),
             },
