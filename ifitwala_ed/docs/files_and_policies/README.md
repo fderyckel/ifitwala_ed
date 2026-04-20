@@ -15,11 +15,13 @@ Governed-file read order:
    current runtime behavior, boundary leaks, and remediation order
 3. `files_07_education_file_semantics_and_cross_app_contract.md`
    locked workflow/spec contract between Ed and Drive
-4. `files_02_GDPR.md`
+4. `files_08_cross_portal_governed_attachment_preview_contract.md`
+   canonical preview/open/thumbnail DTO and route contract for governed file/image surfaces
+5. `files_02_GDPR.md`
    canonical erasure and retention contract
-5. `files_05_organization_media_governance.md`
+6. `files_05_organization_media_governance.md`
    surface-specific governed organization media rules
-6. `files_06_org_communication_attachment_contract.md`
+7. `files_06_org_communication_attachment_contract.md`
    surface-specific governed attachment rules
 
 Rules after the Phase 1 docs reset:
@@ -51,5 +53,4 @@ Planned future-policy docs:
 
 Non-authoritative notes:
 
-- `files_08_cross_portal_governed_attachment_preview_contract.md`
 - `audit_policy.md`

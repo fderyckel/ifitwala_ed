@@ -190,39 +190,11 @@ def _sync_linked_employee_user_image(employee_name: str, *, original_url: str | 
     user_doc.save(ignore_permissions=True)
 
 
-def _load_drive_module(module_name: str):
+def _get_drive_media_callable(attribute: str):
     try:
-        if module_name == "ifitwala_drive.api.uploads":
-            from ifitwala_drive.api import uploads as drive_uploads_api
-
-            return drive_uploads_api
-        if module_name == "ifitwala_drive.api.media":
-            from ifitwala_drive.api import media as drive_media_api
-
-            return drive_media_api
-        if module_name == "ifitwala_drive.api.admissions":
-            from ifitwala_drive.api import admissions as drive_admissions_api
-
-            return drive_admissions_api
-        if module_name == "ifitwala_drive.api.submissions":
-            from ifitwala_drive.api import submissions as drive_submissions_api
-
-            return drive_submissions_api
-        if module_name == "ifitwala_drive.api.resources":
-            from ifitwala_drive.api import resources as drive_resources_api
-
-            return drive_resources_api
-        if module_name == "ifitwala_drive.api.materials":
-            from ifitwala_drive.api import materials as drive_materials_api
-
-            return drive_materials_api
+        from ifitwala_drive.api import media as drive_media_api
     except ImportError as exc:
         frappe.throw(_("Ifitwala Drive is required for governed upload execution: {0}").format(exc))
-    frappe.throw(_("Unsupported Ifitwala Drive module request: {0}").format(module_name))
-
-
-def _get_drive_media_callable(attribute: str):
-    drive_media_api = _load_drive_module("ifitwala_drive.api.media")
     create_session_callable = getattr(drive_media_api, attribute, None)
     if create_session_callable:
         return create_session_callable
@@ -235,7 +207,10 @@ def _get_drive_media_callable(attribute: str):
 
 
 def _drive_upload_and_finalize(*, create_session_callable, payload: dict, content: bytes):
-    drive_uploads_api = _load_drive_module("ifitwala_drive.api.uploads")
+    try:
+        from ifitwala_drive.api import uploads as drive_uploads_api
+    except ImportError as exc:
+        frappe.throw(_("Ifitwala Drive is required for governed upload execution: {0}").format(exc))
 
     if "idempotency_key" not in payload:
         payload = {
@@ -270,7 +245,18 @@ def _drive_upload_and_finalize(*, create_session_callable, payload: dict, conten
 
 def _build_drive_idempotency_key(*, payload: dict, content: bytes) -> str:
     content_hash = hashlib.sha256(content or b"").hexdigest()
+    workflow_id = str(payload.get("workflow_id") or "").strip()
+    workflow_payload = payload.get("workflow_payload")
+    if isinstance(workflow_payload, str):
+        try:
+            workflow_payload = json.loads(workflow_payload)
+        except Exception:
+            workflow_payload = {"raw": workflow_payload}
+    if not isinstance(workflow_payload, dict):
+        workflow_payload = {}
     seed_parts = [
+        workflow_id,
+        json.dumps(workflow_payload, sort_keys=True, separators=(",", ":")),
         str(payload.get("task_submission") or "").strip(),
         str(payload.get("task") or "").strip(),
         str(payload.get("material") or "").strip(),
@@ -278,12 +264,14 @@ def _build_drive_idempotency_key(*, payload: dict, content: bytes) -> str:
         str(payload.get("applicant_health_profile") or "").strip(),
         str(payload.get("employee") or "").strip(),
         str(payload.get("student") or "").strip(),
+        str(payload.get("student_patient") or "").strip(),
         str(payload.get("organization") or "").strip(),
         str(payload.get("school") or "").strip(),
         str(payload.get("row_name") or "").strip(),
         str(payload.get("guardian_row_name") or "").strip(),
         str(payload.get("document_type") or "").strip(),
         str(payload.get("item_key") or "").strip(),
+        str(payload.get("source_applicant_document_item") or "").strip(),
         str(payload.get("filename_original") or "").strip(),
         content_hash,
     ]
@@ -398,7 +386,10 @@ def upload_applicant_image(student_applicant: str | None = None, **_kwargs):
 
     filename, content = _get_uploaded_file()
     mime_type_hint = _resolve_upload_mime_type_hint(filename=filename)
-    drive_admissions_api = _load_drive_module("ifitwala_drive.api.admissions")
+    try:
+        from ifitwala_drive.api import admissions as drive_admissions_api
+    except ImportError as exc:
+        frappe.throw(_("Ifitwala Drive is required for governed upload execution: {0}").format(exc))
     _session_response, _finalize_response, file_doc = _drive_upload_and_finalize(
         create_session_callable=drive_admissions_api.upload_applicant_profile_image,
         payload={
@@ -425,7 +416,10 @@ def upload_task_submission_attachment(task_submission: str | None = None, **_kwa
 
     filename, content = _get_uploaded_file()
     mime_type_hint = _resolve_upload_mime_type_hint(filename=filename)
-    drive_submissions_api = _load_drive_module("ifitwala_drive.api.submissions")
+    try:
+        from ifitwala_drive.api import submissions as drive_submissions_api
+    except ImportError as exc:
+        frappe.throw(_("Ifitwala Drive is required for governed upload execution: {0}").format(exc))
 
     _session_response, _finalize_response, file_doc = _drive_upload_and_finalize(
         create_session_callable=drive_submissions_api.upload_task_submission_artifact,
@@ -453,7 +447,10 @@ def upload_task_resource(task: str | None = None, row_name: str | None = None, *
 
     filename, content = _get_uploaded_file()
     mime_type_hint = _resolve_upload_mime_type_hint(filename=filename)
-    drive_resources_api = _load_drive_module("ifitwala_drive.api.resources")
+    try:
+        from ifitwala_drive.api import resources as drive_resources_api
+    except ImportError as exc:
+        frappe.throw(_("Ifitwala Drive is required for governed upload execution: {0}").format(exc))
 
     session_response, finalize_response, file_doc = _drive_upload_and_finalize(
         create_session_callable=drive_resources_api.upload_task_resource,
@@ -484,7 +481,10 @@ def upload_supporting_material_file(material: str | None = None, **_kwargs):
 
     filename, content = _get_uploaded_file()
     mime_type_hint = _resolve_upload_mime_type_hint(filename=filename)
-    drive_materials_api = _load_drive_module("ifitwala_drive.api.materials")
+    try:
+        from ifitwala_drive.api import materials as drive_materials_api
+    except ImportError as exc:
+        frappe.throw(_("Ifitwala Drive is required for governed upload execution: {0}").format(exc))
 
     _session_response, _finalize_response, file_doc = _drive_upload_and_finalize(
         create_session_callable=drive_materials_api.upload_supporting_material,
@@ -548,7 +548,10 @@ def upload_school_gallery_image(school: str | None = None, row_name: str | None 
 
     filename, content = _get_uploaded_file()
     mime_type_hint = _resolve_upload_mime_type_hint(filename=filename)
-    drive_media_api = _load_drive_module("ifitwala_drive.api.media")
+    try:
+        from ifitwala_drive.api import media as drive_media_api
+    except ImportError as exc:
+        frappe.throw(_("Ifitwala Drive is required for governed upload execution: {0}").format(exc))
 
     session_response, finalize_response, file_doc = _drive_upload_and_finalize(
         create_session_callable=drive_media_api.upload_school_gallery_image,
@@ -611,7 +614,10 @@ def upload_organization_media_asset(
         media_key=_derive_generic_media_key(filename=filename, media_key=media_key),
     )
     mime_type_hint = _resolve_upload_mime_type_hint(filename=filename)
-    drive_media_api = _load_drive_module("ifitwala_drive.api.media")
+    try:
+        from ifitwala_drive.api import media as drive_media_api
+    except ImportError as exc:
+        frappe.throw(_("Ifitwala Drive is required for governed upload execution: {0}").format(exc))
     _session_response, _finalize_response, file_doc = _drive_upload_and_finalize(
         create_session_callable=drive_media_api.upload_organization_media_asset,
         payload={

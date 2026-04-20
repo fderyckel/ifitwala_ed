@@ -162,6 +162,16 @@ Routing rules:
 - Treat `ifitwala_ed/docs/docs_md/` as end-user and DocType-facing guidance, not as the default source for runtime architecture, unless a feature contract explicitly points there.
 - If a folder has a `README.md`, use it as the navigation index rather than scanning file names and guessing authority.
 
+For any change involving governed uploads, links vs files, private-media open/download URLs, picture thumbnails, image/PDF preview, or attachment DTOs, read these exact docs before editing:
+
+1. `ifitwala_ed/docs/files_and_policies/README.md`
+2. `ifitwala_ed/docs/files_and_policies/files_01_architecture_notes.md`
+3. `ifitwala_ed/docs/files_and_policies/files_03_implementation.md`
+4. `ifitwala_ed/docs/files_and_policies/files_07_education_file_semantics_and_cross_app_contract.md`
+5. `ifitwala_ed/docs/files_and_policies/files_08_cross_portal_governed_attachment_preview_contract.md`
+6. the relevant surface note such as `files_05_organization_media_governance.md`, `files_06_org_communication_attachment_contract.md`, or `docs/admission/03_portal_files_gdpr.md`
+7. `../ifitwala_drive/ifitwala_drive/docs/06_api_contracts.md` when touching the Ed/Drive seam
+
 ### 2.2 Legacy Code Policy
 
 During development:

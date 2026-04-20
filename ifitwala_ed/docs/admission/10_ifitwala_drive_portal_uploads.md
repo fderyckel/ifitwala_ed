@@ -224,7 +224,8 @@ Authoritative contract:
 Post-finalize:
 
 * update `Student Applicant.applicant_image`
-* return `file_url` and classification id to the SPA
+* keep the compatibility `File.file_url` on `Student Applicant.applicant_image`
+* return a server-owned admissions `image_url` plus `drive_file_id` and `canonical_ref` to the SPA
 
 ### Applicant guardian image contract
 

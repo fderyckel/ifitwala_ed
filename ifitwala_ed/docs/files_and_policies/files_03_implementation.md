@@ -221,7 +221,7 @@ Implemented fix:
 Remaining cleanup:
 
 - some wrapper-specific service modules still exist for public ergonomics
-- the generic `create_upload_session` API still accepts the older explicit governance fields during transition
+- a few historical finalize sessions may still rely on workflow detection fallback instead of persisted workflow metadata
 - some historical audit/discussion notes may still mention the retired `File Classification` and Ed-side derivative model and must not be treated as runtime design guidance
 
 ## 3. Rules for new work during remaining cleanup
@@ -233,6 +233,7 @@ Until the remaining cleanup lands:
 - do not add new Ed-side derivative generation
 - do not add new routing/rename logic for Drive-managed objects
 - do not add new anonymous upload payloads that omit `workflow_id`
+- do not return raw storage-shaped `/private/...` values to SPA/API consumers when a server-owned open/preview URL is required by the surface contract
 - do not reintroduce reload fallback wrappers, `sys.path` import rescue, or hidden cross-app service imports
 
 ## 4. Remediation order

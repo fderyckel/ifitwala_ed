@@ -111,6 +111,15 @@ Docs must be explicit enough that a coding agent can tell:
 
 If a doc is too vague to guide safe implementation, improve the doc first.
 
+For the governed file/link/attachment architecture specifically, keep the canonical read path explicit in docs:
+
+- `files_and_policies/README.md`
+- `files_and_policies/files_01_architecture_notes.md`
+- `files_and_policies/files_03_implementation.md`
+- `files_and_policies/files_07_education_file_semantics_and_cross_app_contract.md`
+- `files_and_policies/files_08_cross_portal_governed_attachment_preview_contract.md`
+- `../ifitwala_drive/ifitwala_drive/docs/06_api_contracts.md` when the note describes the Ed/Drive seam
+
 ---
 
 ## 5. Product / Security / Concurrency Coverage Rule

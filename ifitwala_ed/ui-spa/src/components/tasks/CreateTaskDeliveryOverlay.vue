@@ -147,11 +147,10 @@
 
 											<div class="space-y-1">
 												<label class="type-label">Instructions</label>
-												<FormControl
+												<PlanningRichTextField
 													v-model="form.instructions"
-													type="textarea"
-													:rows="4"
 													placeholder="Share directions, resources, or expectations..."
+													min-height-class="min-h-[11rem]"
 												/>
 											</div>
 
@@ -450,10 +449,10 @@
 													</span>
 												</div>
 												<p
-													v-if="selectedReusableTaskDetails.instructions"
-													class="mt-3 text-sm text-ink/70"
+													v-if="selectedReusableTaskInstructionsPreview"
+													class="mt-3 whitespace-pre-line text-sm text-ink/70"
 												>
-													{{ selectedReusableTaskDetails.instructions }}
+													{{ selectedReusableTaskInstructionsPreview }}
 												</p>
 												<p class="mt-3 text-xs text-ink/60">
 													Task definition edits and task materials stay on the reusable task. Use
@@ -1282,6 +1281,7 @@ import {
 import { FormControl, createResource, toast, FeatherIcon } from 'frappe-ui';
 import { useRouter } from 'vue-router';
 import InlineUploadStatus from '@/components/feedback/InlineUploadStatus.vue';
+import PlanningRichTextField from '@/components/planning/PlanningRichTextField.vue';
 import { apiUpload } from '@/lib/client';
 import { SIGNAL_TASK_DELIVERY_CREATED, uiSignals } from '@/lib/uiSignals';
 import type { UploadProgressState } from '@/lib/uploadProgress';
@@ -1656,6 +1656,9 @@ const submitLabel = computed(() =>
 const selectedReusableTask = computed(
 	() => reusableTasks.value.find(row => row.name === selectedReusableTaskName.value) || null
 );
+const selectedReusableTaskInstructionsPreview = computed(() =>
+	buildRichTextPreview(selectedReusableTaskDetails.value?.instructions)
+);
 const activeCriteriaRows = computed(() =>
 	taskMode.value === 'create'
 		? taskCriteriaRows.value
@@ -1963,6 +1966,34 @@ function formatDateTimeInput(date: Date) {
 	const hours = String(date.getHours()).padStart(2, '0');
 	const minutes = String(date.getMinutes()).padStart(2, '0');
 	return `${year}-${month}-${day}T${hours}:${minutes}`;
+}
+
+function decodeHtmlEntities(value: string) {
+	if (typeof document === 'undefined') return value;
+	const textarea = document.createElement('textarea');
+	textarea.innerHTML = value;
+	return textarea.value;
+}
+
+function buildRichTextPreview(value: string | null | undefined) {
+	const rawValue = String(value || '');
+	if (!rawValue.trim()) return '';
+
+	const withLineBreaks = rawValue
+		.replace(/<style[\s\S]*?<\/style>/gi, ' ')
+		.replace(/<script[\s\S]*?<\/script>/gi, ' ')
+		.replace(/<br\s*\/?>/gi, '\n')
+		.replace(/<li[^>]*>/gi, '• ')
+		.replace(/<\/(p|div|li|h1|h2|h3|h4|h5|h6|blockquote)>/gi, '\n');
+
+	return decodeHtmlEntities(withLineBreaks)
+		.replace(/<[^>]*>/g, ' ')
+		.replace(/&nbsp;|&#160;/gi, ' ')
+		.replace(/[ \t]+\n/g, '\n')
+		.replace(/\n[ \t]+/g, '\n')
+		.replace(/\n{3,}/g, '\n\n')
+		.replace(/[ \t]{2,}/g, ' ')
+		.trim();
 }
 
 function toFrappeDatetime(value: string) {

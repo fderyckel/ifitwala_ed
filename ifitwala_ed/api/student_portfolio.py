@@ -1417,34 +1417,17 @@ def _render_reflection_pdf_html(rows: List[Dict[str, Any]], title: str) -> str:
 def _dispatch_export_file(
     *,
     student: str,
-    school: str,
-    purpose: str,
-    slot: str,
+    export_kind: str,
     file_name: str,
     content: bytes,
 ):
     from ifitwala_ed.integrations.drive.content_uploads import upload_content_via_drive
 
-    organization = frappe.db.get_value("School", school, "organization")
-    if not organization:
-        frappe.throw(_("Organization is required for exports."))
-
     _session_response, _finalize_response, file_doc = upload_content_via_drive(
-        session_payload={
-            "owner_doctype": "Student",
-            "owner_name": student,
-            "attached_doctype": "Student",
-            "attached_name": student,
-            "organization": organization,
-            "school": school,
-            "primary_subject_type": "Student",
-            "primary_subject_id": student,
-            "data_class": "academic",
-            "purpose": purpose,
-            "retention_policy": "immediate_on_request",
-            "slot": slot,
-            "is_private": 1,
-            "upload_source": "API",
+        workflow_id="student.export_file",
+        workflow_payload={
+            "student": student,
+            "export_kind": export_kind,
         },
         file_name=file_name,
         content=content,
@@ -1476,9 +1459,7 @@ def export_portfolio_pdf(payload=None, **kwargs):
     pdf_content = get_pdf(html)
     file_doc = _dispatch_export_file(
         student=student,
-        school=school,
-        purpose="portfolio_export",
-        slot="portfolio_export_pdf",
+        export_kind="portfolio",
         file_name=f"portfolio-export-{student}-{today()}.pdf",
         content=pdf_content,
     )
@@ -1519,9 +1500,7 @@ def export_reflection_pdf(payload=None, **kwargs):
     pdf_content = get_pdf(html)
     file_doc = _dispatch_export_file(
         student=student,
-        school=school,
-        purpose="journal_export",
-        slot="journal_export_pdf",
+        export_kind="journal",
         file_name=f"reflection-export-{student}-{today()}.pdf",
         content=pdf_content,
     )

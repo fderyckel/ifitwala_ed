@@ -11,7 +11,6 @@ from frappe.utils import cint, now_datetime
 from ifitwala_ed.admission.admission_utils import get_applicant_document_slot_spec
 from ifitwala_ed.utilities.governed_uploads import (
     _drive_upload_and_finalize,
-    _load_drive_module,
     _resolve_upload_mime_type_hint,
 )
 
@@ -89,7 +88,10 @@ def upload_applicant_document(
             if cached:
                 return frappe.parse_json(cached)
 
-        drive_admissions_api = _load_drive_module("ifitwala_drive.api.admissions")
+        try:
+            from ifitwala_drive.api import admissions as drive_admissions_api
+        except ImportError as exc:
+            frappe.throw(_("Ifitwala Drive is required for governed upload execution: {0}").format(exc))
 
         _session_response, finalize_response, file_doc = _drive_upload_and_finalize(
             create_session_callable=drive_admissions_api.upload_applicant_document,
@@ -147,7 +149,10 @@ def upload_applicant_profile_image(
     if source not in ALLOWED_UPLOAD_SOURCES:
         frappe.throw(_("Invalid upload_source."))
 
-    drive_admissions_api = _load_drive_module("ifitwala_drive.api.admissions")
+    try:
+        from ifitwala_drive.api import admissions as drive_admissions_api
+    except ImportError as exc:
+        frappe.throw(_("Ifitwala Drive is required for governed upload execution: {0}").format(exc))
     _session_response, finalize_response, file_doc = _drive_upload_and_finalize(
         create_session_callable=drive_admissions_api.upload_applicant_profile_image,
         payload={
@@ -196,7 +201,10 @@ def upload_applicant_guardian_image(
     if source not in ALLOWED_UPLOAD_SOURCES:
         frappe.throw(_("Invalid upload_source."))
 
-    drive_admissions_api = _load_drive_module("ifitwala_drive.api.admissions")
+    try:
+        from ifitwala_drive.api import admissions as drive_admissions_api
+    except ImportError as exc:
+        frappe.throw(_("Ifitwala Drive is required for governed upload execution: {0}").format(exc))
     _session_response, finalize_response, file_doc = _drive_upload_and_finalize(
         create_session_callable=drive_admissions_api.upload_applicant_guardian_image,
         payload={
@@ -250,7 +258,10 @@ def upload_applicant_health_vaccination_proof(
     if source not in ALLOWED_UPLOAD_SOURCES:
         frappe.throw(_("Invalid upload_source."))
 
-    drive_admissions_api = _load_drive_module("ifitwala_drive.api.admissions")
+    try:
+        from ifitwala_drive.api import admissions as drive_admissions_api
+    except ImportError as exc:
+        frappe.throw(_("Ifitwala Drive is required for governed upload execution: {0}").format(exc))
     _session_response, finalize_response, file_doc = _drive_upload_and_finalize(
         create_session_callable=drive_admissions_api.upload_applicant_health_vaccination_proof,
         payload={

@@ -943,7 +943,7 @@ async function uploadGuardianImage(index: number) {
 				},
 			}
 		);
-		const fileUrl = String(payload.file_url || '').trim();
+		const fileUrl = String(payload.image_url || '').trim();
 		if (!fileUrl) {
 			throw new Error(__('Unable to upload guardian image.'));
 		}
@@ -1119,7 +1119,7 @@ async function uploadSelectedImage() {
 				},
 			}
 		);
-		applicantImage.value = (payload.file_url || '').trim();
+		applicantImage.value = (payload.image_url || '').trim();
 		selectedImageFile.value = null;
 		if (imageInput.value) imageInput.value.value = '';
 		await loadProfile();

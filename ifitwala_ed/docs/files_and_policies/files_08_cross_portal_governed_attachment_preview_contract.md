@@ -1,6 +1,6 @@
 # Cross-Portal Governed Attachment Preview Contract
 
-Status: Proposed canonical contract for cross-app implementation
+Status: Canonical current runtime contract
 Date: 2026-04-18
 Code refs: `ifitwala_ed/api/file_access.py`, `ifitwala_ed/api/gradebook_reads.py`, `ifitwala_ed/api/org_communication_attachments.py`, `ifitwala_ed/api/org_communication_archive.py`, `ifitwala_ed/api/materials.py`, `ifitwala_ed/api/task_submission.py`, `ifitwala_ed/api/teaching_plans_read_models.py`, `ifitwala_ed/ui-spa/AGENTS.md`, `ifitwala_ed/ui-spa/src/components/tasks/CreateTaskDeliveryOverlay.vue`
 Test refs: `ifitwala_ed/api/test_file_access.py`, `ifitwala_ed/api/test_gradebook.py`, `ifitwala_ed/api/test_materials.py`, `ifitwala_ed/api/test_org_communication_archive.py`, `ifitwala_ed/api/test_task_submission.py`, `ifitwala_ed/api/test_teaching_plans.py`, `ifitwala_ed/ui-spa/src/components/tasks/__tests__/CreateTaskDeliveryOverlay.test.ts`
@@ -14,11 +14,10 @@ Related current-state docs:
 
 ## Bottom Line
 
-- The proposal is directionally correct and matches the locked Ed/Drive split.
-- Do not over-model Phase 1. Image preview, first-page PDF preview, clean status handling, and Org Communication first are enough.
-- The main correction is contract shape: cross-portal DTOs must carry stable server-owned action URLs, not pre-issued short-lived Drive grants.
-- Preview belongs in surface-owned Ed read models and authorization rules, not in a generic file browser or direct portal calls to Drive grant APIs.
-- Current `open_url` behavior remains the production baseline until derivative preview infrastructure exists in Drive and Ed routes are added deliberately.
+- Current runtime uses stable Ed-owned `open_url`, `preview_url`, and `thumbnail_url` fields instead of storage paths or bootstrap-time signed grants.
+- Preview remains a business-surface contract owned by Ed authorization and DTO assembly, not a generic browser/file-system concern.
+- Drive remains responsible for derivative generation and short-lived preview/download grants.
+- Historical proposal/review sections below are retained for provenance, but the implemented-runtime sections in this note are the authority for new work.
 
 ## Current Implemented Baseline
 
@@ -55,7 +54,7 @@ Drive now has a narrow image plus first-page PDF derivative foundation, but Ed s
 - the task-submission evidence surface now returns stable `preview_url` and `open_url` values for selected submission attachments, with version summaries remaining bounded inside the gradebook drawer contract
 - other surfaces should still be treated as open/download-only until their stable preview routes exist
 
-## Assessment Of The Proposal
+## Historical Review Notes
 
 Status: Review result
 Code refs: `ifitwala_ed/api/file_access.py`, `ifitwala_ed/api/org_communication_attachments.py`, `ifitwala_ed/ui-spa/AGENTS.md`
@@ -79,7 +78,7 @@ What must change before the architecture is locked:
 
 ## Canonical Ed Ownership
 
-Status: Proposed target contract
+Status: Implemented ownership rule
 Code refs: `ifitwala_ed/api/file_access.py`, `ifitwala_ed/api/org_communication_archive.py`, `ifitwala_ed/api/materials.py`, `ifitwala_ed/api/teaching_plans_read_models.py`
 Test refs: `ifitwala_ed/api/test_file_access.py`, `ifitwala_ed/api/test_org_communication_archive.py`, `ifitwala_ed/api/test_teaching_plans.py`
 
@@ -104,7 +103,7 @@ Rule:
 
 ## Stable URL Contract
 
-Status: Proposed target contract
+Status: Implemented current contract
 Code refs: `ifitwala_ed/api/file_access.py`
 Test refs: `ifitwala_ed/api/test_file_access.py`
 

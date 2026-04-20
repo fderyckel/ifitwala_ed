@@ -678,12 +678,16 @@ def _build_profile_payload(applicant) -> dict:
     profile = _serialize_applicant_profile(applicant)
     completeness = _profile_completeness(profile)
     guardians_enabled = _guardians_feature_enabled()
+    applicant_name = _as_text(applicant.get("name")).strip()
     return {
         "profile": profile,
         "completeness": completeness,
         "application_context": _application_context_payload(applicant),
         "options": _profile_reference_options(),
-        "applicant_image": _as_text(applicant.get("applicant_image")).strip(),
+        "applicant_image": _applicant_image_open_url(
+            applicant_name=applicant_name,
+            applicant_image=applicant.get("applicant_image"),
+        ),
         "record_modified": _as_text(applicant.get("modified")).strip(),
         "guardian_section_enabled": guardians_enabled,
         "guardians": _serialize_applicant_guardians(applicant) if guardians_enabled else [],
@@ -843,6 +847,22 @@ def _file_is_scoped_to_applicant(*, file_row: dict, applicant_name: str) -> bool
     )
 
 
+def _applicant_image_open_url(*, applicant_name: str, applicant_image: str | None) -> str:
+    image_value = _as_text(applicant_image).strip()
+    if not image_value:
+        return ""
+
+    return (
+        resolve_admissions_file_open_url(
+            file_name=None,
+            file_url=image_value,
+            context_doctype="Student Applicant",
+            context_name=applicant_name,
+        )
+        or ""
+    )
+
+
 def _guardian_image_open_url(*, applicant_name: str, guardian_image: str | None) -> str:
     image_value = _as_text(guardian_image).strip()
     if not image_value:
@@ -850,7 +870,15 @@ def _guardian_image_open_url(*, applicant_name: str, guardian_image: str | None)
 
     file_row = _resolve_guardian_image_file(applicant_name=applicant_name, guardian_image=image_value)
     if not file_row:
-        return image_value
+        return (
+            resolve_admissions_file_open_url(
+                file_name=None,
+                file_url=image_value,
+                context_doctype="Student Applicant",
+                context_name=applicant_name,
+            )
+            or ""
+        )
 
     return (
         resolve_admissions_file_open_url(
@@ -859,7 +887,7 @@ def _guardian_image_open_url(*, applicant_name: str, guardian_image: str | None)
             context_doctype="Student Applicant",
             context_name=applicant_name,
         )
-        or _as_text(file_row.get("file_url")).strip()
+        or ""
     )
 
 
@@ -2013,7 +2041,12 @@ def upload_applicant_profile_image(
     return {
         "ok": True,
         "file": upload_result.get("file"),
-        "file_url": upload_result.get("file_url"),
+        "image_url": resolve_admissions_file_open_url(
+            file_name=upload_result.get("file"),
+            file_url=upload_result.get("file_url"),
+            context_doctype="Student Applicant",
+            context_name=applicant.name,
+        ),
         "file_name": normalized_file_name,
         "file_size": len(normalized_content),
         "drive_file_id": upload_result.get("drive_file_id"),
@@ -2072,7 +2105,12 @@ def upload_applicant_guardian_image(
     return {
         "ok": True,
         "file": upload_result.get("file"),
-        "file_url": upload_result.get("file_url"),
+        "image_url": resolve_admissions_file_open_url(
+            file_name=upload_result.get("file"),
+            file_url=upload_result.get("file_url"),
+            context_doctype="Student Applicant",
+            context_name=applicant.name,
+        ),
         "file_name": normalized_file_name,
         "file_size": len(normalized_content),
         "drive_file_id": upload_result.get("drive_file_id"),

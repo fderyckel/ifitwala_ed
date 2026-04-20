@@ -40,6 +40,10 @@ from ifitwala_ed.governance.policy_utils import (
     get_applicant_policy_status,
     has_applicant_policy_acknowledgement,
 )
+from ifitwala_ed.integrations.drive.authority import (
+    get_current_drive_file_for_slot,
+    get_drive_file_for_file,
+)
 from ifitwala_ed.utilities.image_utils import ensure_guardian_profile_image
 from ifitwala_ed.utilities.school_tree import get_school_scope_for_academic_year
 
@@ -1470,27 +1474,34 @@ class StudentApplicant(Document):
         if proof_url.startswith("http"):
             return proof_url
 
-        file_row = frappe.db.get_value(
-            "File",
-            {
-                "file_url": proof_url,
-                "attached_to_doctype": "Applicant Health Profile",
-                "attached_to_name": profile.name,
-            },
-            ["name", "file_url", "file_name", "is_private"],
-            as_dict=True,
-        )
-        if not file_row:
-            return proof_url
-
-        content = self._read_file_bytes(file_row)
-        if not content:
-            return proof_url
-
         vaccine = frappe.scrub(vaccination_row.get("vaccine_name") or "")
         date_value = frappe.scrub(str(vaccination_row.get("date") or ""))
         slot_key = "_".join(part for part in [vaccine, date_value] if part) or f"row_{index + 1}"
         slot = f"health_vaccination_proof_{slot_key[:80]}"
+        drive_file = get_current_drive_file_for_slot(
+            primary_subject_type="Student Applicant",
+            primary_subject_id=self.name,
+            slot=slot,
+            organization=self.organization,
+            school=self.school,
+            attached_doctype="Applicant Health Profile",
+            attached_name=profile.name,
+            fields=["file"],
+            statuses=("active", "processing", "blocked"),
+        )
+        file_name = str((drive_file or {}).get("file") or "").strip()
+        file_row = (
+            frappe.db.get_value("File", file_name, ["name", "file_url", "file_name", "is_private"], as_dict=True)
+            if file_name
+            else None
+        )
+        if not file_row:
+            return ""
+
+        content = self._read_file_bytes(file_row)
+        if not content:
+            return ""
+
         filename = file_row.get("file_name") or os.path.basename(
             file_row.get("file_url") or f"vaccination_{index + 1}.png"
         )
@@ -1498,25 +1509,15 @@ class StudentApplicant(Document):
         from ifitwala_ed.integrations.drive.content_uploads import upload_content_via_drive
 
         _session_response, _finalize_response, file_doc = upload_content_via_drive(
-            session_payload={
-                "owner_doctype": "Student Patient",
-                "owner_name": student_patient.name,
-                "attached_doctype": "Student Patient",
-                "attached_name": student_patient.name,
-                "organization": self.organization,
-                "school": self.school,
-                "primary_subject_type": "Student",
-                "primary_subject_id": student_patient.student,
-                "data_class": "safeguarding",
-                "purpose": "medical_record",
-                "retention_policy": "until_school_exit_plus_6m",
-                "slot": slot,
-                "is_private": 1 if file_row.get("is_private") else 0,
-                "upload_source": "API",
+            workflow_id="student_patient.vaccination_proof",
+            workflow_payload={
+                "student_patient": student_patient.name,
+                "vaccine_name": vaccination_row.get("vaccine_name"),
+                "date": vaccination_row.get("date"),
+                "row_index": index,
             },
             file_name=filename,
             content=content,
-            attached_field="vaccinations",
         )
         return file_doc.file_url
 
@@ -1532,16 +1533,36 @@ class StudentApplicant(Document):
         if not self.applicant_image:
             return None
 
-        file_row = frappe.db.get_value(
-            "File",
-            {
-                "file_url": self.applicant_image,
-                "attached_to_doctype": "Student Applicant",
-                "attached_to_name": self.name,
-            },
-            ["name", "file_url", "file_name", "is_private"],
-            as_dict=True,
+        drive_file = get_current_drive_file_for_slot(
+            primary_subject_type="Student Applicant",
+            primary_subject_id=self.name,
+            slot="profile_image",
+            organization=self.organization,
+            school=self.school,
+            attached_doctype="Student Applicant",
+            attached_name=self.name,
+            fields=["file"],
+            statuses=("active", "processing", "blocked"),
         )
+        file_name = str((drive_file or {}).get("file") or "").strip()
+        file_row = (
+            frappe.db.get_value("File", file_name, ["name", "file_url", "file_name", "is_private"], as_dict=True)
+            if file_name
+            else None
+        )
+        if not file_row:
+            file_rows = frappe.get_all(
+                "File",
+                filters={
+                    "attached_to_doctype": "Student Applicant",
+                    "attached_to_name": self.name,
+                    "attached_to_field": "applicant_image",
+                },
+                fields=["name", "file_url", "file_name", "is_private"],
+                order_by="modified desc, creation desc",
+                limit=1,
+            )
+            file_row = file_rows[0] if file_rows else None
         if not file_row:
             frappe.log_error(
                 frappe.as_json(
@@ -1561,7 +1582,7 @@ class StudentApplicant(Document):
             frappe.log_error(
                 frappe.as_json(
                     {
-                        "error": "applicant_image_missing_on_disk",
+                        "error": "applicant_image_source_unreadable",
                         "student_applicant": self.name,
                         "file": file_row.get("name"),
                         "file_url": file_row.get("file_url"),
@@ -1573,10 +1594,10 @@ class StudentApplicant(Document):
             return None
 
         filename = file_row.get("file_name") or os.path.basename(file_row.get("file_url") or "applicant_image")
-        from ifitwala_ed.integrations.drive.content_uploads import upload_content_via_drive
-        from ifitwala_ed.utilities.governed_uploads import _load_drive_module
+        from ifitwala_drive.api import media as drive_media_api
 
-        drive_media_api = _load_drive_module("ifitwala_drive.api.media")
+        from ifitwala_ed.integrations.drive.content_uploads import upload_content_via_drive
+
         _session_response, _finalize_response, file_doc = upload_content_via_drive(
             create_session_callable=drive_media_api.upload_student_image,
             session_payload={
@@ -1698,29 +1719,17 @@ class StudentApplicant(Document):
                         )
                     )
                     continue
-                item_key = (item.get("item_key") or item.get("name") or "item").strip()
-                slot_key = f"admissions_{frappe.scrub(doc_type_code or 'document')}_{frappe.scrub(item_key)[:80]}"
                 filename = source.get("file_name") or os.path.basename(source.get("file_url") or "document")
 
                 try:
                     from ifitwala_ed.integrations.drive.content_uploads import upload_content_via_drive
 
                     upload_content_via_drive(
-                        session_payload={
-                            "owner_doctype": "Student",
-                            "owner_name": student.name,
-                            "attached_doctype": "Student",
-                            "attached_name": student.name,
-                            "organization": self.organization,
-                            "school": self.school,
-                            "primary_subject_type": "Student",
-                            "primary_subject_id": student.name,
-                            "data_class": slot_spec["data_class"],
-                            "purpose": slot_spec["purpose"],
-                            "retention_policy": slot_spec["retention_policy"],
-                            "slot": slot_key,
-                            "is_private": 1 if source.get("is_private") else 0,
-                            "upload_source": "API",
+                        workflow_id="student.promoted_admissions_document",
+                        workflow_payload={
+                            "student": student.name,
+                            "student_applicant": self.name,
+                            "source_applicant_document_item": item.get("name"),
                         },
                         file_name=filename,
                         content=content,
@@ -1739,22 +1748,28 @@ class StudentApplicant(Document):
         return copied_count
 
     def _read_file_bytes(self, file_row):
-        file_url = (file_row.get("file_url") or "").strip()
-        if not file_url or file_url.startswith("http"):
+        file_name = str(file_row.get("name") or "").strip()
+        if not file_name:
             return None
 
-        rel_path = file_url.lstrip("/")
-        if rel_path.startswith("private/") or rel_path.startswith("public/"):
-            abs_path = frappe.utils.get_site_path(rel_path)
-        else:
-            base = "private" if file_row.get("is_private") else "public"
-            abs_path = frappe.utils.get_site_path(base, rel_path)
-
-        if not os.path.exists(abs_path):
+        drive_file = get_drive_file_for_file(
+            file_name,
+            fields=["storage_backend", "storage_object_key"],
+            statuses=("active", "processing", "blocked", "superseded"),
+        )
+        if not drive_file or not str(drive_file.get("storage_object_key") or "").strip():
             return None
 
-        with open(abs_path, "rb") as handle:
-            return handle.read()
+        try:
+            from ifitwala_drive.services.storage.base import get_storage_backend
+        except ImportError:
+            return None
+
+        storage = get_storage_backend(drive_file.get("storage_backend"))
+        try:
+            return storage.read_final_object(object_key=drive_file.get("storage_object_key"))
+        except Exception:
+            return None
 
     # ---------------------------------------------------------------------
     # System Manager override (terminal states only)

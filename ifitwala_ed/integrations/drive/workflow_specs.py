@@ -462,6 +462,57 @@ def _validate_applicant_health_finalize_context(upload_session_doc) -> Optional[
     return admissions.validate_applicant_health_finalize_context(upload_session_doc)
 
 
+def _resolve_student_export_session_context(payload: dict[str, Any]) -> dict[str, Any]:
+    from ifitwala_ed.integrations.drive import student_artifacts
+
+    return student_artifacts.get_student_export_context(payload)
+
+
+def _resolve_student_patient_vaccination_session_context(payload: dict[str, Any]) -> dict[str, Any]:
+    from ifitwala_ed.integrations.drive import student_artifacts
+
+    return student_artifacts.get_student_patient_vaccination_context(payload)
+
+
+def _resolve_promoted_admissions_document_session_context(payload: dict[str, Any]) -> dict[str, Any]:
+    from ifitwala_ed.integrations.drive import student_artifacts
+
+    return student_artifacts.get_promoted_admissions_document_context(payload)
+
+
+def _resolve_student_artifact_attached_field_override(upload_session_doc) -> str | None:
+    from ifitwala_ed.integrations.drive import student_artifacts
+
+    return student_artifacts.get_student_artifact_attached_field_override(upload_session_doc)
+
+
+def _validate_student_export_finalize_context(upload_session_doc) -> Optional[dict[str, Any]]:
+    if getattr(upload_session_doc, "owner_doctype", None) != "Student":
+        return None
+
+    from ifitwala_ed.integrations.drive import student_artifacts
+
+    return student_artifacts.validate_student_export_finalize_context(upload_session_doc)
+
+
+def _validate_student_patient_vaccination_finalize_context(upload_session_doc) -> Optional[dict[str, Any]]:
+    if getattr(upload_session_doc, "owner_doctype", None) != "Student Patient":
+        return None
+
+    from ifitwala_ed.integrations.drive import student_artifacts
+
+    return student_artifacts.validate_student_patient_vaccination_finalize_context(upload_session_doc)
+
+
+def _validate_promoted_admissions_document_finalize_context(upload_session_doc) -> Optional[dict[str, Any]]:
+    if getattr(upload_session_doc, "owner_doctype", None) != "Student":
+        return None
+
+    from ifitwala_ed.integrations.drive import student_artifacts
+
+    return student_artifacts.validate_promoted_admissions_document_finalize_context(upload_session_doc)
+
+
 _WORKFLOW_SPECS: tuple[GovernedUploadSpec, ...] = (
     GovernedUploadSpec(
         workflow_id="task.submission",
@@ -532,6 +583,36 @@ _WORKFLOW_SPECS: tuple[GovernedUploadSpec, ...] = (
         resolve_context_override=_no_context_override,
         resolve_binding_role=_no_binding_role,
         run_post_finalize=_resolve_admissions_post_finalize,
+    ),
+    GovernedUploadSpec(
+        workflow_id="student.export_file",
+        contract_version=_WORKFLOW_CONTRACT_VERSION,
+        resolve_session_context=_resolve_student_export_session_context,
+        validate_finalize_context=_validate_student_export_finalize_context,
+        resolve_attached_field_override=_no_attached_field_override,
+        resolve_context_override=_no_context_override,
+        resolve_binding_role=_no_binding_role,
+        run_post_finalize=_noop_post_finalize,
+    ),
+    GovernedUploadSpec(
+        workflow_id="student_patient.vaccination_proof",
+        contract_version=_WORKFLOW_CONTRACT_VERSION,
+        resolve_session_context=_resolve_student_patient_vaccination_session_context,
+        validate_finalize_context=_validate_student_patient_vaccination_finalize_context,
+        resolve_attached_field_override=_resolve_student_artifact_attached_field_override,
+        resolve_context_override=_no_context_override,
+        resolve_binding_role=_no_binding_role,
+        run_post_finalize=_noop_post_finalize,
+    ),
+    GovernedUploadSpec(
+        workflow_id="student.promoted_admissions_document",
+        contract_version=_WORKFLOW_CONTRACT_VERSION,
+        resolve_session_context=_resolve_promoted_admissions_document_session_context,
+        validate_finalize_context=_validate_promoted_admissions_document_finalize_context,
+        resolve_attached_field_override=_no_attached_field_override,
+        resolve_context_override=_no_context_override,
+        resolve_binding_role=_no_binding_role,
+        run_post_finalize=_noop_post_finalize,
     ),
     GovernedUploadSpec(
         workflow_id="org_communication.attachment",

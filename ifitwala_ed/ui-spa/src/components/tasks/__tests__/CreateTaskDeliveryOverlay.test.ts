@@ -298,6 +298,23 @@ vi.mock('frappe-ui', async () => {
 				};
 			},
 		}),
+		TextEditor: defineComponent({
+			name: 'TextEditorStub',
+			props: ['content', 'placeholder', 'editable', 'editorClass'],
+			emits: ['change'],
+			setup(props, { emit }) {
+				return () =>
+					h('textarea', {
+						value: props.content ?? '',
+						placeholder: props.placeholder,
+						disabled: props.editable === false,
+						'data-text-editor': 'true',
+						class: props.editorClass,
+						onInput: (event: Event) =>
+							emit('change', (event.target as HTMLTextAreaElement).value),
+					});
+			},
+		}),
 		FeatherIcon: defineComponent({
 			name: 'FeatherIconStub',
 			setup() {
@@ -342,6 +359,14 @@ async function setInput(placeholder: string, value: string) {
 	expect(input).not.toBeNull();
 	input!.value = value;
 	input!.dispatchEvent(new Event('input', { bubbles: true }));
+	await flushUi();
+}
+
+async function setTextEditor(value: string) {
+	const editor = document.querySelector('[data-text-editor="true"]') as HTMLTextAreaElement | null;
+	expect(editor).not.toBeNull();
+	editor!.value = value;
+	editor!.dispatchEvent(new Event('input', { bubbles: true }));
 	await flushUi();
 }
 
@@ -489,6 +514,21 @@ describe('CreateTaskDeliveryOverlay', () => {
 		});
 	});
 
+	it('submits rich-text task instructions from Step 1', async () => {
+		mountOverlay();
+		await flushUi();
+
+		await setInput('Assignment title', 'Microscope reflection');
+		await setTextEditor('<p>Bring <strong>two observations</strong> and one question.</p>');
+		await clickButton('Create');
+
+		expect(createNewTaskCalls).toHaveLength(1);
+		expect(createNewTaskCalls[0]).toMatchObject({
+			title: 'Microscope reflection',
+			instructions: '<p>Bring <strong>two observations</strong> and one question.</p>',
+		});
+	});
+
 	it('assigns an existing reusable task without reopening the task-material editor', async () => {
 		mountOverlay();
 		await flushUi();
@@ -529,6 +569,25 @@ describe('CreateTaskDeliveryOverlay', () => {
 		expect(successText).toContain('Assigned work ready');
 		expect(successText).not.toContain('Add task materials');
 		expect(successText).toContain('Add any class-specific resources in Class Planning');
+	});
+
+	it('renders reusable-task instructions without exposing literal html tags', async () => {
+		resourceState.reusableTaskDetail = {
+			...resourceState.reusableTaskDetail,
+			instructions: '<p>Annotate the article.</p><ul><li>Quote evidence</li></ul>',
+		};
+
+		mountOverlay();
+		await flushUi();
+
+		await clickButton('Reuse existing task');
+		await clickButton('Shared reading response');
+
+		const text = document.body.textContent || '';
+		expect(text).toContain('Annotate the article.');
+		expect(text).toContain('Quote evidence');
+		expect(text).not.toContain('<p>');
+		expect(text).not.toContain('<li>');
 	});
 
 	it('creates a criteria task with course criteria and a local rubric strategy', async () => {

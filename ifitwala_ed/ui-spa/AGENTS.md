@@ -43,7 +43,14 @@ Also check these cross-cutting notes when relevant:
 - `ifitwala_ed/docs/high_concurrency_contract.md` for bootstrap/request-shape changes
 - `ifitwala_ed/docs/nested_scope_contract.md` for hierarchy-aware analytics or scoped views
 - `ifitwala_ed/docs/files_and_policies/README.md` for governed/private media surfaces
+- `ifitwala_ed/docs/files_and_policies/files_08_cross_portal_governed_attachment_preview_contract.md` for preview/open/thumbnail DTO rules
 - `ifitwala_ed/docs/testing/README.md` and `ifitwala_ed/docs/testing/01_test_strategy.md` before deciding test scope
+
+If the SPA change touches uploads, attachment cards, thumbnails, preview modals/cards, or private-media links, also read:
+
+- `ifitwala_ed/docs/files_and_policies/files_03_implementation.md`
+- `ifitwala_ed/docs/files_and_policies/files_07_education_file_semantics_and_cross_app_contract.md`
+- `ifitwala_ed/docs/files_and_policies/files_06_org_communication_attachment_contract.md` when the surface is communication
 
 Treat proposal, audit, history, and implementation-companion notes as non-authoritative unless they explicitly declare themselves the current runtime contract.
 

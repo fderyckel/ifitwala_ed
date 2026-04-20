@@ -10,7 +10,7 @@ export type Request = {
 export type Response = {
   ok: boolean
   file: string
-  file_url: string
+  image_url: string
   file_name: string
   file_size?: number | null
   drive_file_id?: string | null

@@ -1367,13 +1367,28 @@ class TestSubmitApplication(FrappeTestCase):
         self.assertFalse((file_row.get("attached_to_field") or "").strip())
 
     def test_get_applicant_profile_includes_applicant_image(self):
-        image_url = f"/private/files/applicant-{frappe.generate_hash(length=6)}.png"
-        self.applicant.db_set("applicant_image", image_url, update_modified=False)
+        file_doc = frappe.get_doc(
+            {
+                "doctype": "File",
+                "attached_to_doctype": "Student Applicant",
+                "attached_to_name": self.applicant.name,
+                "attached_to_field": "applicant_image",
+                "file_name": f"applicant-{frappe.generate_hash(length=6)}.png",
+                "is_private": 1,
+                "content": b"applicant-image",
+            }
+        ).insert(ignore_permissions=True)
+        self._created.append(("File", file_doc.name))
+        self.applicant.db_set("applicant_image", file_doc.file_url, update_modified=False)
         self.applicant.reload()
 
         frappe.set_user(self.applicant_user)
         profile_payload = get_applicant_profile(student_applicant=self.applicant.name)
-        self.assertEqual(profile_payload.get("applicant_image"), image_url)
+        secure_url = str(profile_payload.get("applicant_image") or "").strip()
+        self.assertTrue(secure_url)
+        self.assertNotIn("/private/files/", secure_url)
+        self.assertIn("download_admissions_file", secure_url)
+        self.assertIn(f"file={file_doc.name}", secure_url)
 
     def test_upload_applicant_profile_image_denies_other_applicant(self):
         other = self._create_applicant(self.organization, self.school, applicant_user="")
@@ -1424,7 +1439,7 @@ class TestSubmitApplication(FrappeTestCase):
             )
 
         self.assertTrue(payload.get("ok"))
-        self.assertTrue(str(payload.get("file_url") or "").startswith("/private/files/applicant-"))
+        self.assertIn("download_admissions_file", str(payload.get("image_url") or ""))
         self.assertTrue(str(payload.get("drive_file_id") or "").startswith("DRV-FILE-"))
         self.assertTrue(str(payload.get("canonical_ref") or "").startswith(f"drv:{self.organization}:"))
         self.assertEqual(captured["student_applicant"], self.applicant.name)
@@ -1480,6 +1495,7 @@ class TestSubmitApplication(FrappeTestCase):
         self.assertTrue(payload.get("ok"))
         self.assertTrue(str(payload.get("drive_file_id") or "").startswith("DRV-FILE-"))
         self.assertTrue(str(payload.get("canonical_ref") or "").startswith(f"drv:{self.organization}:"))
+        self.assertIn("download_admissions_file", str(payload.get("image_url") or ""))
         self.assertEqual(captured["student_applicant"], self.applicant.name)
         self.assertEqual(captured["upload_source"], "SPA")
         self.assertTrue(captured["file_name"].startswith("applicant_profile_image_"))
@@ -1575,7 +1591,7 @@ class TestSubmitApplication(FrappeTestCase):
             )
 
         self.assertTrue(payload.get("ok"))
-        self.assertTrue(str(payload.get("file_url") or "").startswith("/private/files/guardian-"))
+        self.assertIn("download_admissions_file", str(payload.get("image_url") or ""))
         self.assertTrue(str(payload.get("drive_file_id") or "").startswith("DRV-FILE-"))
         self.assertTrue(str(payload.get("canonical_ref") or "").startswith(f"drv:{self.organization}:"))
         self.assertEqual(captured["student_applicant"], self.applicant.name)
@@ -1648,6 +1664,7 @@ class TestSubmitApplication(FrappeTestCase):
         self.assertTrue(payload.get("ok"))
         self.assertTrue(str(payload.get("drive_file_id") or "").startswith("DRV-FILE-"))
         self.assertTrue(str(payload.get("canonical_ref") or "").startswith(f"drv:{self.organization}:"))
+        self.assertIn("download_admissions_file", str(payload.get("image_url") or ""))
         self.assertEqual(captured["student_applicant"], self.applicant.name)
         self.assertEqual(captured["guardian_row_name"], guardian_row_name)
         self.assertEqual(captured["upload_source"], "SPA")

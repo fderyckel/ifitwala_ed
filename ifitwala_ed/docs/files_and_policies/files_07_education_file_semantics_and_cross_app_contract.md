@@ -190,13 +190,13 @@ This lets the apps converge on one narrow boundary instead of many stringly wrap
 
 ## 9. End-state rule for `File Classification`
 
-`File Classification` may exist temporarily while the codebase is migrated.
+`File Classification` is not part of the live cross-app contract.
 
-But:
+Current rule:
 
-- it is not part of the target cross-app contract
-- new workflow semantics must not be authored into it
-- the refactor should end with a patch-driven migration away from it and removal of the DocType
+- runtime code must not create, read, or depend on `File Classification`
+- the cleanup refactor ends with patch-driven migration away from it and DocType removal
+- any remaining mention of `File Classification` should now exist only in historical notes or migration commentary
 
 ## 10. Current-runtime note
 
