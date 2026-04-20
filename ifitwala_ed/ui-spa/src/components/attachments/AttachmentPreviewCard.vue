@@ -148,13 +148,13 @@
 				Open preview image
 			</a>
 			<a
-				v-if="showOpenOriginalAction"
-				:href="attachment.open_url || undefined"
+				v-if="showSecondaryFileAction"
+				:href="secondaryFileActionUrl || undefined"
 				target="_blank"
 				rel="noreferrer"
 				:class="actionClass"
 			>
-				{{ openOriginalLabel }}
+				{{ secondaryFileActionLabel }}
 			</a>
 			<slot name="extra-actions" />
 		</div>
@@ -304,9 +304,15 @@ const primaryActionLabel = computed(() => {
 	}
 	return props.attachment.kind === 'link' ? 'Open link' : 'Open';
 });
-const showOpenOriginalAction = computed(() => {
-	if (!props.attachment.preview_url || !props.attachment.open_url) return false;
-	if (props.attachment.open_url === props.attachment.preview_url) return false;
+const secondaryFileActionUrl = computed(() => {
+	if (props.variant === 'learning') {
+		return props.attachment.download_url || props.attachment.open_url || null;
+	}
+	return props.attachment.open_url || null;
+});
+const showSecondaryFileAction = computed(() => {
+	if (!props.attachment.preview_url || !secondaryFileActionUrl.value) return false;
+	if (secondaryFileActionUrl.value === props.attachment.preview_url) return false;
 	if (props.variant === 'communication' && props.attachment.kind === 'pdf') return false;
 	return true;
 });
@@ -322,6 +328,10 @@ const showSecondaryPreviewAction = computed(() => {
 const openOriginalLabel = computed(() =>
 	props.variant === 'evidence' ? 'Open' : 'Open original'
 );
+const secondaryFileActionLabel = computed(() => {
+	if (props.variant === 'learning') return 'Download';
+	return openOriginalLabel.value;
+});
 const actionClass = computed(() =>
 	props.variant === 'evidence' ? 'if-button if-button--secondary' : 'if-action'
 );
@@ -330,7 +340,7 @@ const hasActionRow = computed(() => {
 	return Boolean(
 		primaryActionUrl.value ||
 		showSecondaryPreviewAction.value ||
-		showOpenOriginalAction.value ||
+		showSecondaryFileAction.value ||
 		hasExtraActions.value
 	);
 });

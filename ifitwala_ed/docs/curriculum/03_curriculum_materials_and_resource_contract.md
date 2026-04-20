@@ -98,7 +98,9 @@ Current staff preview behavior:
 - governed file materials on the course-plan and class-planning workspaces now expose stable `thumbnail_url` routes for inline image cards plus stable `preview_url` routes for richer preview/open behavior
 - those current material rows now also carry an additive nested `attachment_preview` block with the shared cross-surface preview DTO
 - those planning workspaces now consume that nested preview DTO through the shared display-only SPA attachment preview card
-- the task creation overlay now renders inline image thumbnails from `thumbnail_url` and compact PDF preview tiles from `preview_url` for current task materials after task creation
+- the task creation overlay now keeps teachers in one continuous flow: create the task delivery first, then add governed task attachments inline before the overlay closes and the class-planning surface refreshes once
+- that governed attachment step is currently restricted to PDF and image uploads (`pdf`, `jpg`, `jpeg`, `png`, `webp`) plus reference links
+- the task creation overlay now renders current task attachments through the shared SPA attachment preview card instead of a task-specific preview fragment
 - those workspaces render inline image previews from `thumbnail_url` and automatically retry the governed `preview_url` inline when the thumbnail route cannot be delivered, while `preview_url` continues to power the compact PDF preview tiles
 - `open_url` remains the explicit original-file action and compatibility baseline
 
@@ -130,7 +132,7 @@ Current student preview behavior:
 - those resource rows now also carry an additive nested `attachment_preview` block with the shared cross-surface preview DTO
 - `CourseDetail.vue` now consumes that nested preview DTO through the shared display-only SPA attachment preview card
 - session resources plus unit, class, and shared course resource shelves now render inline image thumbnails from `thumbnail_url` and compact PDF preview tiles from `preview_url`
-- task-linked material chips stay lightweight inside assigned-work cards, but they also prefer `preview_url` over `open_url`
+- task-linked materials now render directly inside the assigned-work brief with preview and download actions so students can read the task and access its attachments in one place
 
 The student surface must not require learners to hunt across unrelated pages just to collect the materials for a class.
 

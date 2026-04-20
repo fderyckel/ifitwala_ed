@@ -1,0 +1,110 @@
+from datetime import date, datetime
+from unittest import TestCase
+from unittest.mock import patch
+
+import frappe
+import pytz
+
+from ifitwala_ed.api.calendar_export import (
+    _build_timetable_weeks,
+    _resolve_staff_timetable_window,
+    export_staff_timetable_pdf,
+)
+
+
+class TestCalendarExport(TestCase):
+    def test_resolve_staff_timetable_window_uses_next_calendar_month_for_month_preset(self):
+        window = _resolve_staff_timetable_window("next_month", date(2026, 4, 20))
+
+        self.assertEqual(window["preset"], "next_month")
+        self.assertEqual(window["start_date"], date(2026, 5, 1))
+        self.assertEqual(window["end_date_exclusive"], date(2026, 6, 1))
+
+    def test_resolve_staff_timetable_window_expands_current_week_for_two_week_preset(self):
+        window = _resolve_staff_timetable_window("next_2_weeks", date(2026, 4, 22))
+
+        self.assertEqual(window["start_date"], date(2026, 4, 20))
+        self.assertEqual(window["end_date_exclusive"], date(2026, 5, 4))
+
+    def test_build_timetable_weeks_expands_multi_day_events_and_sorts_timed_events(self):
+        tzinfo = pytz.timezone("UTC")
+        weeks = _build_timetable_weeks(
+            events=[
+                {
+                    "title": "Spring Festival",
+                    "start": "2026-05-05T00:00:00+00:00",
+                    "end": "2026-05-07T00:00:00+00:00",
+                    "allDay": True,
+                    "source": "school_event",
+                    "color": "#2A9D8F",
+                    "meta": {"location": "Main Hall"},
+                },
+                {
+                    "title": "Math 7A",
+                    "start": "2026-05-05T08:00:00+00:00",
+                    "end": "2026-05-05T08:45:00+00:00",
+                    "allDay": False,
+                    "source": "student_group",
+                    "color": "#2563EB",
+                    "meta": {"location": "Room 201"},
+                },
+                {
+                    "title": "Leadership Meeting",
+                    "start": "2026-05-05T13:00:00+00:00",
+                    "end": "2026-05-05T14:00:00+00:00",
+                    "allDay": False,
+                    "source": "meeting",
+                    "color": "#7C3AED",
+                    "meta": {"location": "Board Room"},
+                },
+            ],
+            start_date=date(2026, 5, 5),
+            end_date_exclusive=date(2026, 5, 8),
+            tzinfo=tzinfo,
+        )
+
+        self.assertEqual(len(weeks), 1)
+        tuesday = next(day for day in weeks[0]["days"] if day["iso"] == "2026-05-05")
+        wednesday = next(day for day in weeks[0]["days"] if day["iso"] == "2026-05-06")
+
+        self.assertEqual(len(tuesday["all_day_events"]), 1)
+        self.assertEqual(tuesday["all_day_events"][0]["title"], "Spring Festival")
+        self.assertEqual([event["title"] for event in tuesday["timed_events"]], ["Math 7A", "Leadership Meeting"])
+        self.assertEqual(tuesday["timed_events"][0]["time_label"], "08:00 - 08:45")
+        self.assertEqual(len(wednesday["all_day_events"]), 1)
+
+    def test_export_staff_timetable_pdf_sets_inline_pdf_response(self):
+        with (
+            patch("ifitwala_ed.api.calendar_export._system_tzinfo", return_value=pytz.timezone("UTC")),
+            patch("ifitwala_ed.api.calendar_export.now_datetime", return_value=datetime(2026, 4, 20, 9, 0, 0)),
+            patch(
+                "ifitwala_ed.api.calendar_export._resolve_employee_for_user",
+                return_value={
+                    "employee_full_name": "Ada Staff",
+                    "designation": "Teacher",
+                    "employee_group": "Academic Staff",
+                    "school": "SCHOOL-1",
+                    "organization": "ORG-1",
+                },
+            ),
+            patch(
+                "ifitwala_ed.api.calendar_export.calendar_staff_feed.get_staff_calendar",
+                return_value={"events": [], "counts": {}},
+            ),
+            patch(
+                "ifitwala_ed.api.calendar_export._build_staff_timetable_context",
+                return_value={"weeks": [], "count_cards": []},
+            ),
+            patch("ifitwala_ed.api.calendar_export._render_staff_timetable_export_html", return_value="<html />"),
+            patch("ifitwala_ed.api.calendar_export._render_staff_timetable_pdf", return_value=b"%PDF-test"),
+        ):
+            frappe.local.response = {}
+            frappe.session.user = "staff@example.com"
+
+            export_staff_timetable_pdf("next_2_weeks")
+
+        self.assertEqual(frappe.local.response.get("type"), "download")
+        self.assertEqual(frappe.local.response.get("display_content_as"), "inline")
+        self.assertEqual(frappe.local.response.get("content_type"), "application/pdf")
+        self.assertEqual(frappe.local.response.get("filecontent"), b"%PDF-test")
+        self.assertIn("staff-timetable-next_2_weeks-2026-04-20.pdf", frappe.local.response.get("filename"))

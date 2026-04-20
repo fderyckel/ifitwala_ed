@@ -19,6 +19,7 @@ import frappe
 
 from ifitwala_ed.api import (
     calendar_details,
+    calendar_export,
     calendar_prefs,
     calendar_quick_create,
     calendar_staff_feed,
@@ -212,6 +213,11 @@ def get_portal_calendar_prefs(from_datetime: str | None = None, to_datetime: str
     return calendar_prefs.get_portal_calendar_prefs(from_datetime=from_datetime, to_datetime=to_datetime)
 
 
+@frappe.whitelist()
+def export_staff_timetable_pdf(preset: str | None = None):
+    return calendar_export.export_staff_timetable_pdf(preset=preset)
+
+
 __all__ = [
     "get_staff_calendar",
     "get_meeting_details",
@@ -225,4 +231,5 @@ __all__ = [
     "create_meeting_quick",
     "create_school_event_quick",
     "get_portal_calendar_prefs",
+    "export_staff_timetable_pdf",
 ]

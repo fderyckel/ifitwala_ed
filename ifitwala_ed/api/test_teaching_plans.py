@@ -184,12 +184,14 @@ class TestTeachingPlansApi(TestCase):
                             "quiz_max_attempts": 2,
                             "quiz_pass_percentage": 70,
                             "title": "Cells Checkpoint",
+                            "instructions": "<p>Bring your notes.</p><script>alert(1)</script>",
                             "task_type": "Quiz",
                             "unit_plan": "UNIT-1",
                         }
                     ],
                 ),
                 patch.object(module, "_fetch_material_map", return_value={}),
+                patch.object(module._read_models_impl, "sanitize_html", return_value="<p>Bring your notes.</p>"),
                 patch.object(
                     module.frappe,
                     "get_all",
@@ -235,6 +237,7 @@ class TestTeachingPlansApi(TestCase):
         self.assertEqual(payload[0]["submission_status"], "Submitted")
         self.assertEqual(payload[0]["quiz_state"]["can_continue"], 1)
         self.assertEqual(payload[0]["quiz_state"]["status_label"], "In Progress")
+        self.assertEqual(payload[0]["instructions_html"], "<p>Bring your notes.</p>")
 
     def test_get_student_learning_space_includes_focus_and_next_actions(self):
         with _teaching_plans_module() as module:

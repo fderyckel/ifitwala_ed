@@ -1,8 +1,9 @@
 # Staff Timetable PDF Proposal
 
-Status: Proposal, non-authoritative
+Status: Historical proposal, superseded by `03_staff_timetable_export_contract.md`
 
 Code refs:
+- `ifitwala_ed/docs/printing/03_staff_timetable_export_contract.md`
 - `ifitwala_ed/docs/printing/01_print_system_contract.md`
 - `ifitwala_ed/docs/scheduling/04_calendar_aggregation_architecture.md`
 - `ifitwala_ed/api/calendar.py`

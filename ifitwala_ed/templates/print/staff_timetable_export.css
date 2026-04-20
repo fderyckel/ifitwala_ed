@@ -1,0 +1,404 @@
+@page {
+  size: A4 landscape;
+  margin: 9mm 10mm;
+}
+
+body.staff-timetable-export {
+  margin: 0;
+  padding: 0;
+  background: #f6f2ea;
+  color: #17212b;
+  font-family: "Avenir Next", "Helvetica Neue", Arial, sans-serif;
+  font-size: 10px;
+  line-height: 1.35;
+}
+
+.staff-timetable-export,
+.staff-timetable-export * {
+  box-sizing: border-box;
+}
+
+.timetable-page {
+  page-break-after: always;
+  break-after: page;
+}
+
+.timetable-page:last-child {
+  page-break-after: auto;
+  break-after: auto;
+}
+
+.timetable-page__ribbon {
+  height: 4px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #214756 0%, #537d88 58%, #aebfc5 100%);
+  margin-bottom: 9px;
+}
+
+.timetable-header,
+.timetable-summary,
+.timetable-board {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.timetable-header {
+  margin-bottom: 7px;
+}
+
+.timetable-header td {
+  vertical-align: top;
+}
+
+.timetable-header__brand {
+  width: 33%;
+}
+
+.timetable-header__title-block {
+  width: 34%;
+  text-align: center;
+  padding: 0 10px;
+}
+
+.timetable-header__meta {
+  width: 33%;
+  text-align: right;
+}
+
+.timetable-header__logo-shell,
+.timetable-header__copy {
+  display: inline-block;
+  vertical-align: middle;
+}
+
+.timetable-header__logo-shell {
+  width: 62px;
+  margin-right: 10px;
+}
+
+.timetable-header__logo {
+  display: block;
+  width: 56px;
+  height: 56px;
+  object-fit: contain;
+  border: 1px solid rgba(33, 71, 86, 0.14);
+  border-radius: 16px;
+  background: #ffffff;
+  padding: 7px;
+}
+
+.timetable-header__kicker,
+.timetable-header__meta-label,
+.timetable-summary__label,
+.timetable-board__weekday,
+.day-panel__section-label,
+.event-card__badge,
+.all-day-chip__label {
+  color: #667085;
+  font-size: 7.5px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.timetable-header__brand-name,
+.timetable-header__title,
+.timetable-week-label__title {
+  color: #0f1720;
+  font-family: Baskerville, Georgia, serif;
+}
+
+.timetable-header__brand-name {
+  font-size: 20px;
+  line-height: 1.05;
+}
+
+.timetable-header__brand-secondary,
+.timetable-header__range,
+.timetable-header__meta-value,
+.timetable-week-label__copy,
+.timetable-footer,
+.day-panel__outside,
+.day-panel__empty-copy,
+.event-card__location,
+.all-day-chip__meta {
+  color: #667085;
+}
+
+.timetable-header__brand-secondary {
+  margin-top: 3px;
+  font-size: 8.5px;
+}
+
+.timetable-header__title {
+  font-size: 24px;
+  line-height: 1.02;
+}
+
+.timetable-header__subtitle {
+  margin-top: 3px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #214756;
+}
+
+.timetable-header__range {
+  margin-top: 4px;
+  font-size: 9px;
+}
+
+.timetable-header__meta-label {
+  margin-top: 4px;
+}
+
+.timetable-header__meta-label:first-child {
+  margin-top: 0;
+}
+
+.timetable-header__meta-value {
+  font-size: 9px;
+}
+
+.timetable-summary {
+  margin-bottom: 7px;
+}
+
+.timetable-summary td {
+  padding: 6px 7px;
+  vertical-align: top;
+  border: 1px solid #d8ddd9;
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.timetable-summary__value {
+  margin-top: 2px;
+  font-size: 10px;
+  font-weight: 600;
+  color: #17212b;
+}
+
+.timetable-summary__count-cell {
+  width: 32%;
+}
+
+.timetable-count {
+  display: inline-block;
+  margin: 1px 4px 1px 0;
+  padding: 3px 7px;
+  border-radius: 999px;
+  border: 1px solid #d8ddd9;
+  font-size: 8px;
+  font-weight: 700;
+  background: #ffffff;
+}
+
+.timetable-count--class {
+  background: #eef4f7;
+  border-color: #bcd3dc;
+  color: #214756;
+}
+
+.timetable-count--meeting {
+  background: #f7f0e6;
+  border-color: #d8c5ab;
+  color: #725a3f;
+}
+
+.timetable-count--school {
+  background: #edf6ef;
+  border-color: #bad5c0;
+  color: #2f6b43;
+}
+
+.timetable-count--holiday {
+  background: #fbf4df;
+  border-color: #dfc786;
+  color: #7c6330;
+}
+
+.timetable-week-label {
+  margin-bottom: 6px;
+  padding: 0 2px;
+}
+
+.timetable-week-label__title {
+  font-size: 16px;
+}
+
+.timetable-week-label__copy {
+  font-size: 9px;
+}
+
+.timetable-board {
+  table-layout: fixed;
+}
+
+.timetable-board__head {
+  padding: 0 4px 6px;
+  text-align: left;
+}
+
+.timetable-board__head--muted {
+  color: #9ca3af;
+}
+
+.timetable-board__date {
+  margin-top: 1px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #17212b;
+}
+
+.timetable-board__head--muted .timetable-board__date {
+  color: #98a2b3;
+}
+
+.timetable-board__cell {
+  padding: 0 4px;
+  vertical-align: top;
+}
+
+.day-panel {
+  min-height: 150mm;
+  padding: 8px;
+  border: 1px solid rgba(214, 219, 215, 0.95);
+  border-radius: 14px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(249, 246, 240, 0.92));
+}
+
+.timetable-board__cell--weekend .day-panel {
+  background:
+    linear-gradient(180deg, rgba(252, 250, 245, 0.98), rgba(248, 244, 236, 0.92));
+}
+
+.timetable-board__cell--muted .day-panel {
+  background: #f0ece5;
+  border-style: dashed;
+}
+
+.day-panel__heading {
+  margin-bottom: 6px;
+  font-size: 8.5px;
+  font-weight: 700;
+  color: #4d6570;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.day-panel__all-day {
+  margin-bottom: 7px;
+}
+
+.all-day-chip {
+  margin-bottom: 4px;
+  padding: 5px 6px;
+  border-radius: 10px;
+  border: 1px solid rgba(209, 215, 223, 0.9);
+  background: rgba(255, 255, 255, 0.88);
+}
+
+.all-day-chip__title {
+  display: block;
+  margin-top: 1px;
+  font-size: 9px;
+  font-weight: 700;
+  color: #17212b;
+}
+
+.all-day-chip__meta {
+  display: block;
+  margin-top: 1px;
+  font-size: 8px;
+}
+
+.day-panel__timeline {
+  min-height: 118mm;
+}
+
+.event-card {
+  margin-bottom: 5px;
+  padding: 6px 7px 7px;
+  border: 1px solid rgba(216, 221, 217, 0.95);
+  border-left: 4px solid var(--event-accent, #667085);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.96);
+}
+
+.event-card--class {
+  background: rgba(238, 244, 247, 0.88);
+}
+
+.event-card--meeting {
+  background: rgba(247, 240, 230, 0.82);
+}
+
+.event-card--school {
+  background: rgba(237, 246, 239, 0.84);
+}
+
+.event-card--holiday {
+  background: rgba(251, 244, 223, 0.84);
+}
+
+.event-card__meta-row {
+  overflow: hidden;
+  margin-bottom: 3px;
+}
+
+.event-card__badge {
+  float: left;
+  color: #4d6570;
+}
+
+.event-card__time {
+  float: right;
+  font-size: 8.5px;
+  font-weight: 700;
+  color: #214756;
+}
+
+.event-card__title {
+  clear: both;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1.25;
+  color: #17212b;
+}
+
+.event-card__location {
+  margin-top: 2px;
+  font-size: 8.25px;
+}
+
+.day-panel__empty {
+  padding-top: 12px;
+}
+
+.day-panel__empty-copy {
+  margin-bottom: 8px;
+  font-size: 8.5px;
+}
+
+.day-panel__rule {
+  height: 14px;
+  margin-bottom: 7px;
+  border-bottom: 1px dashed rgba(137, 148, 160, 0.38);
+}
+
+.day-panel__outside {
+  padding-top: 12px;
+  font-size: 8.5px;
+}
+
+.timetable-footer {
+  margin-top: 7px;
+  padding: 0 2px;
+  font-size: 8.5px;
+}
+
+@media print {
+  body.staff-timetable-export {
+    background: #ffffff;
+  }
+}

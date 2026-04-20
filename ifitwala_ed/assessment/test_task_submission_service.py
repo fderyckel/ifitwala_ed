@@ -3,7 +3,7 @@
 
 from unittest import TestCase
 
-from ifitwala_ed.tests.frappe_stubs import import_fresh, stubbed_frappe
+from ifitwala_ed.tests.frappe_stubs import StubPermissionError, import_fresh, stubbed_frappe
 
 
 class TestTaskSubmissionService(TestCase):
@@ -33,6 +33,27 @@ class TestTaskSubmissionService(TestCase):
             module = import_fresh("ifitwala_ed.assessment.task_submission_service")
 
             self.assertEqual(module.get_next_submission_version("OUT-1"), 1)
+
+    def test_create_student_submission_rejects_mismatched_expected_student(self):
+        with stubbed_frappe() as frappe:
+            frappe.db.get_value = lambda *args, **kwargs: {
+                "student": "STU-OTHER",
+                "student_group": "GRP-1",
+                "course": "COURSE-1",
+                "academic_year": "AY-1",
+                "school": "SCH-1",
+                "task_delivery": "TD-1",
+                "task": "TASK-1",
+            }
+
+            module = import_fresh("ifitwala_ed.assessment.task_submission_service")
+
+            with self.assertRaises(StubPermissionError):
+                module.create_student_submission(
+                    {"task_outcome": "OUT-1", "text_content": "My answer"},
+                    user="student@example.com",
+                    expected_student="STU-SELF",
+                )
 
 
 class TestTaskContributionService(TestCase):

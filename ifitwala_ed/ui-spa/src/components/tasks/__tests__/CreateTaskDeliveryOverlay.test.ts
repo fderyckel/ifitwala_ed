@@ -6,7 +6,7 @@ const MISSING_ACTIVE_PLAN_MESSAGE =
 
 const {
 	routerPushMock,
-	toastCreateMock,
+	emitTaskDeliveryCreatedSignalMock,
 	closeMock,
 	createNewTaskCalls,
 	assignExistingTaskCalls,
@@ -15,7 +15,7 @@ const {
 	resourceState,
 } = vi.hoisted(() => ({
 	routerPushMock: vi.fn(),
-	toastCreateMock: vi.fn(),
+	emitTaskDeliveryCreatedSignalMock: vi.fn(),
 	closeMock: vi.fn(),
 	createNewTaskCalls: [] as any[],
 	assignExistingTaskCalls: [] as any[],
@@ -102,6 +102,10 @@ vi.mock('vue-router', () => ({
 	useRouter: () => ({
 		push: routerPushMock,
 	}),
+}));
+
+vi.mock('@/lib/services/tasks/taskDeliveryWorkflowService', () => ({
+	emitTaskDeliveryCreatedSignal: emitTaskDeliveryCreatedSignalMock,
 }));
 
 vi.mock('frappe-ui', async () => {
@@ -315,18 +319,15 @@ vi.mock('frappe-ui', async () => {
 					});
 			},
 		}),
-		FeatherIcon: defineComponent({
-			name: 'FeatherIconStub',
-			setup() {
-				return () => h('span');
-			},
-		}),
-		createResource,
-		toast: {
-			create: toastCreateMock,
-		},
-	};
-});
+			FeatherIcon: defineComponent({
+				name: 'FeatherIconStub',
+				setup() {
+					return () => h('span');
+				},
+			}),
+			createResource,
+		};
+	});
 
 import CreateTaskDeliveryOverlay from '@/components/tasks/CreateTaskDeliveryOverlay.vue';
 
@@ -462,7 +463,7 @@ beforeEach(() => {
 
 afterEach(() => {
 	routerPushMock.mockReset();
-	toastCreateMock.mockReset();
+	emitTaskDeliveryCreatedSignalMock.mockReset();
 	closeMock.mockReset();
 	while (cleanupFns.length) cleanupFns.pop()?.();
 	document.body.innerHTML = '';
@@ -527,9 +528,10 @@ describe('CreateTaskDeliveryOverlay', () => {
 			title: 'Microscope reflection',
 			instructions: '<p>Bring <strong>two observations</strong> and one question.</p>',
 		});
+		expect(emitTaskDeliveryCreatedSignalMock).not.toHaveBeenCalled();
 	});
 
-	it('assigns an existing reusable task without reopening the task-material editor', async () => {
+	it('assigns an existing reusable task and closes immediately after success', async () => {
 		mountOverlay();
 		await flushUi();
 
@@ -564,11 +566,15 @@ describe('CreateTaskDeliveryOverlay', () => {
 			allow_feedback: 1,
 		});
 		expect(createNewTaskCalls).toHaveLength(0);
-
-		const successText = document.body.textContent || '';
-		expect(successText).toContain('Assigned work ready');
-		expect(successText).not.toContain('Add task materials');
-		expect(successText).toContain('Add any class-specific resources in Class Planning');
+		expect(closeMock).toHaveBeenCalledWith('programmatic');
+		expect(emitTaskDeliveryCreatedSignalMock).toHaveBeenCalledWith({
+			task: 'TASK-SHARED-1',
+			task_delivery: 'TDL-SHARED-1',
+			student_group: 'GRP-1',
+			class_teaching_plan: null,
+			unit_plan: null,
+			class_session: null,
+		});
 	});
 
 	it('renders reusable-task instructions without exposing literal html tags', async () => {
@@ -694,14 +700,10 @@ describe('CreateTaskDeliveryOverlay', () => {
 			grading_mode: 'Criteria',
 			rubric_scoring_strategy: 'Separate Criteria',
 		});
-
-		const text = document.body.textContent || '';
-		expect(text).toContain('Assigned work ready');
-		expect(text).toContain('This delivery now points to the reusable task you selected.');
-		expect(text).toContain('Add any class-specific resources in Class Planning');
+		expect(closeMock).toHaveBeenCalledWith('programmatic');
 	});
 
-	it('renders governed preview actions for current task materials after task creation', async () => {
+	it('renders governed preview actions for current task attachments after task creation', async () => {
 		resourceState.taskMaterialsRows = [
 			{
 				placement: 'PLACEMENT-IMG',
@@ -714,6 +716,22 @@ describe('CreateTaskDeliveryOverlay', () => {
 					'/api/method/ifitwala_ed.api.file_access.thumbnail_academic_file?file=FILE-IMG',
 				preview_url: '/api/method/ifitwala_ed.api.file_access.preview_academic_file?file=FILE-IMG',
 				open_url: '/api/method/ifitwala_ed.api.file_access.download_academic_file?file=FILE-IMG',
+				attachment_preview: {
+					item_id: 'PLACEMENT-IMG',
+					owner_doctype: 'Material Placement',
+					owner_name: 'PLACEMENT-IMG',
+					file_id: 'FILE-IMG',
+					display_name: 'Specimen photo',
+					kind: 'image',
+					preview_mode: 'thumbnail_image',
+					extension: 'png',
+					thumbnail_url:
+						'/api/method/ifitwala_ed.api.file_access.thumbnail_academic_file?file=FILE-IMG',
+					preview_url:
+						'/api/method/ifitwala_ed.api.file_access.preview_academic_file?file=FILE-IMG',
+					open_url:
+						'/api/method/ifitwala_ed.api.file_access.download_academic_file?file=FILE-IMG',
+				},
 			},
 			{
 				placement: 'PLACEMENT-PDF',
@@ -724,6 +742,20 @@ describe('CreateTaskDeliveryOverlay', () => {
 				file_size: 8192,
 				preview_url: '/api/method/ifitwala_ed.api.file_access.preview_academic_file?file=FILE-PDF',
 				open_url: '/api/method/ifitwala_ed.api.file_access.download_academic_file?file=FILE-PDF',
+				attachment_preview: {
+					item_id: 'PLACEMENT-PDF',
+					owner_doctype: 'Material Placement',
+					owner_name: 'PLACEMENT-PDF',
+					file_id: 'FILE-PDF',
+					display_name: 'Lab guide',
+					kind: 'pdf',
+					preview_mode: 'pdf_embed',
+					extension: 'pdf',
+					preview_url:
+						'/api/method/ifitwala_ed.api.file_access.preview_academic_file?file=FILE-PDF',
+					open_url:
+						'/api/method/ifitwala_ed.api.file_access.download_academic_file?file=FILE-PDF',
+				},
 			},
 		];
 
@@ -733,13 +765,14 @@ describe('CreateTaskDeliveryOverlay', () => {
 		await setInput('Assignment title', 'Microscope reflection');
 		await clickButton('Create');
 
-		expect(document.body.textContent || '').toContain('Current task materials');
-		const imagePreview = document.querySelector('[data-task-material-preview-kind="image"] img');
+		expect(document.body.textContent || '').toContain('Current task attachments');
+		expect(document.body.textContent || '').toContain('Add task attachments');
+		const imagePreview = document.querySelector('[data-resource-preview-kind="image"] img');
 		expect(imagePreview?.getAttribute('src')).toBe(
 			'/api/method/ifitwala_ed.api.file_access.thumbnail_academic_file?file=FILE-IMG'
 		);
 
-		const pdfPreview = document.querySelector('[data-task-material-preview-kind="pdf"]');
+		const pdfPreview = document.querySelector('[data-resource-preview-kind="pdf"]');
 		expect(pdfPreview?.getAttribute('href')).toBe(
 			'/api/method/ifitwala_ed.api.file_access.preview_academic_file?file=FILE-PDF'
 		);
@@ -751,5 +784,29 @@ describe('CreateTaskDeliveryOverlay', () => {
 		expect(openOriginalLinks[0]?.getAttribute('href')).toContain(
 			'/api/method/ifitwala_ed.api.file_access.download_academic_file?file='
 		);
+	});
+
+	it('commits the create flow only when the teacher finishes the attachment step', async () => {
+		mountOverlay();
+		await flushUi();
+
+		await setInput('Assignment title', 'Microscope reflection');
+		await clickButton('Create');
+
+		expect(closeMock).not.toHaveBeenCalled();
+		expect(emitTaskDeliveryCreatedSignalMock).not.toHaveBeenCalled();
+		expect(document.body.textContent || '').toContain('Finish with attachments');
+
+		await clickButton('Finish');
+
+		expect(emitTaskDeliveryCreatedSignalMock).toHaveBeenCalledWith({
+			task: 'TASK-NEW-1',
+			task_delivery: 'TDL-NEW-1',
+			student_group: 'GRP-1',
+			class_teaching_plan: null,
+			unit_plan: null,
+			class_session: null,
+		});
+		expect(closeMock).toHaveBeenCalledWith('programmatic');
 	});
 });

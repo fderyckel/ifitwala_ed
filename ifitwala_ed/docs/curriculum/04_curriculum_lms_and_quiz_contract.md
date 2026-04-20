@@ -77,7 +77,8 @@ Current resource preview behavior in that workspace:
 
 - governed file resources prefer optional stable Ed-owned `thumbnail_url` routes for inline image cards plus stable `preview_url` routes for richer preview/open behavior
 - session resources plus unit, class, and shared course resource shelves render inline image thumbnails from `thumbnail_url` and compact PDF preview tiles from `preview_url`
-- task-linked material chips remain lightweight inside assigned-work cards and prefer `preview_url` without turning each task card into a document viewer
+- assigned-work rows now also include sanitized `instructions_html` so `CourseDetail.vue` remains the canonical student task-reading surface for non-quiz work
+- task-linked materials render inside that task brief through the shared learning attachment card, with in-place preview plus download actions driven by the governed preview DTO
 
 This is the live LMS model.
 
@@ -117,9 +118,9 @@ Test refs: `ifitwala_ed/assessment/doctype/task_delivery/test_task_delivery.py`,
 - `Task` remains the reusable work definition.
 - `Task Delivery` remains the class-scoped assigned-work runtime object.
 - LMS assigned work is resolved through `Class Teaching Plan` and optional `Class Session` context.
-- Task materials are serialized with the assigned-work payload.
+- Task materials and sanitized task instructions are serialized with the assigned-work payload.
 - Student quiz deliveries now include bounded quiz-launch state in the learning-space payload.
-- `CourseDetail.vue` is now the canonical student launch surface for quiz-backed assigned work.
+- `CourseDetail.vue` is the canonical student reading and launch surface for assigned work; quiz-backed work hands off to `StudentQuiz.vue` only for the attempt runtime.
 - The dedicated student quiz page remains the attempt and review runtime after launch.
 
 ## Native Quiz Contract

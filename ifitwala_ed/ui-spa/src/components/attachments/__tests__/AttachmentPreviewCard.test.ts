@@ -122,6 +122,31 @@ describe('AttachmentPreviewCard', () => {
 		expect(document.body.textContent || '').toContain('Open preview image');
 	});
 
+	it('shows preview and download actions for learning attachments', async () => {
+		mountCard({
+			variant: 'learning',
+			title: 'Lab guide',
+			attachment: {
+				item_id: 'ATT-LEARNING-PDF-1',
+				kind: 'pdf',
+				preview_mode: 'pdf_embed',
+				preview_status: 'ready',
+				extension: 'pdf',
+				preview_url: '/preview/learning-pdf-1',
+				open_url: '/open/learning-pdf-1',
+				download_url: '/download/learning-pdf-1',
+			},
+		});
+		await flushUi();
+
+		const actions = Array.from(document.querySelectorAll('a.if-action'));
+		expect(actions.map(action => action.textContent?.trim())).toContain('Preview');
+		expect(actions.map(action => action.textContent?.trim())).toContain('Download');
+		expect(actions.find(action => action.textContent?.trim() === 'Download')?.getAttribute('href')).toBe(
+			'/download/learning-pdf-1'
+		);
+	});
+
 	it('uses button-style preview and open actions for evidence cards', async () => {
 		mountCard({
 			variant: 'evidence',

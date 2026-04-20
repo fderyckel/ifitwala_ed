@@ -217,22 +217,46 @@ function buildPayload(message: string | null = null): StudentLearningSpaceRespon
 					}),
 				},
 			],
-			general_assigned_work: [
-				{
-					task_delivery: 'TDL-QUIZ-1',
-					task: 'TASK-QUIZ-1',
-					title: 'Cell Structure Checkpoint',
-					task_type: 'Quiz',
-					unit_plan: 'UNIT-PLAN-1',
-					class_session: 'CLASS-SESSION-1',
-					submission_status: 'Submitted',
-					quiz_state: {
-						can_continue: 1,
-						status_label: 'In Progress',
+				general_assigned_work: [
+					{
+						task_delivery: 'TDL-QUIZ-1',
+						task: 'TASK-QUIZ-1',
+						title: 'Cell Structure Checkpoint',
+						instructions_html:
+							'<p>Review the microscope guide, then answer the checkpoint questions.</p>',
+						task_type: 'Quiz',
+						unit_plan: 'UNIT-PLAN-1',
+						class_session: 'CLASS-SESSION-1',
+						submission_status: 'Submitted',
+						quiz_state: {
+							can_continue: 1,
+							status_label: 'In Progress',
+						},
+						materials: [
+							{
+								material: 'MAT-TASK-1',
+								title: 'Checkpoint worksheet',
+								description: 'Download the worksheet before you start.',
+								file_name: 'checkpoint-worksheet.pdf',
+								preview_url:
+									'/api/method/ifitwala_ed.api.file_access.preview_academic_file?file=FILE-TASK-1',
+								open_url:
+									'/api/method/ifitwala_ed.api.file_access.download_academic_file?file=FILE-TASK-1',
+								attachment_preview: buildAttachmentPreview({
+									item_id: 'MAT-TASK-1',
+									display_name: 'Checkpoint worksheet',
+									kind: 'pdf',
+									extension: 'pdf',
+									preview_mode: 'pdf_embed',
+									preview_url:
+										'/api/method/ifitwala_ed.api.file_access.preview_academic_file?file=FILE-TASK-1',
+									open_url:
+										'/api/method/ifitwala_ed.api.file_access.download_academic_file?file=FILE-TASK-1',
+								}),
+							},
+						],
 					},
-					materials: [],
-				},
-			],
+				],
 		},
 		curriculum: {
 			counts: {
@@ -276,22 +300,46 @@ function buildPayload(message: string | null = null): StudentLearningSpaceRespon
 							}),
 						},
 					],
-					assigned_work: [
-						{
-							task_delivery: 'TDL-QUIZ-1',
-							task: 'TASK-QUIZ-1',
-							title: 'Cell Structure Checkpoint',
-							task_type: 'Quiz',
-							unit_plan: 'UNIT-PLAN-1',
-							class_session: 'CLASS-SESSION-1',
-							submission_status: 'Submitted',
-							quiz_state: {
-								can_continue: 1,
-								status_label: 'In Progress',
+						assigned_work: [
+							{
+								task_delivery: 'TDL-QUIZ-1',
+								task: 'TASK-QUIZ-1',
+								title: 'Cell Structure Checkpoint',
+								instructions_html:
+									'<p>Review the microscope guide, then answer the checkpoint questions.</p>',
+								task_type: 'Quiz',
+								unit_plan: 'UNIT-PLAN-1',
+								class_session: 'CLASS-SESSION-1',
+								submission_status: 'Submitted',
+								quiz_state: {
+									can_continue: 1,
+									status_label: 'In Progress',
+								},
+								materials: [
+									{
+										material: 'MAT-TASK-1',
+										title: 'Checkpoint worksheet',
+										description: 'Download the worksheet before you start.',
+										file_name: 'checkpoint-worksheet.pdf',
+										preview_url:
+											'/api/method/ifitwala_ed.api.file_access.preview_academic_file?file=FILE-TASK-1',
+										open_url:
+											'/api/method/ifitwala_ed.api.file_access.download_academic_file?file=FILE-TASK-1',
+										attachment_preview: buildAttachmentPreview({
+											item_id: 'MAT-TASK-1',
+											display_name: 'Checkpoint worksheet',
+											kind: 'pdf',
+											extension: 'pdf',
+											preview_mode: 'pdf_embed',
+											preview_url:
+												'/api/method/ifitwala_ed.api.file_access.preview_academic_file?file=FILE-TASK-1',
+											open_url:
+												'/api/method/ifitwala_ed.api.file_access.download_academic_file?file=FILE-TASK-1',
+										}),
+									},
+								],
 							},
-							materials: [],
-						},
-					],
+						],
 					standards: [
 						{
 							standard_code: 'STD-1',
@@ -328,22 +376,46 @@ function buildPayload(message: string | null = null): StudentLearningSpaceRespon
 									}),
 								},
 							],
-							assigned_work: [
-								{
-									task_delivery: 'TDL-QUIZ-1',
-									task: 'TASK-QUIZ-1',
-									title: 'Cell Structure Checkpoint',
-									task_type: 'Quiz',
-									unit_plan: 'UNIT-PLAN-1',
-									class_session: 'CLASS-SESSION-1',
-									submission_status: 'Submitted',
-									quiz_state: {
-										can_continue: 1,
-										status_label: 'In Progress',
+								assigned_work: [
+									{
+										task_delivery: 'TDL-QUIZ-1',
+										task: 'TASK-QUIZ-1',
+										title: 'Cell Structure Checkpoint',
+										instructions_html:
+											'<p>Review the microscope guide, then answer the checkpoint questions.</p>',
+										task_type: 'Quiz',
+										unit_plan: 'UNIT-PLAN-1',
+										class_session: 'CLASS-SESSION-1',
+										submission_status: 'Submitted',
+										quiz_state: {
+											can_continue: 1,
+											status_label: 'In Progress',
+										},
+										materials: [
+											{
+												material: 'MAT-TASK-1',
+												title: 'Checkpoint worksheet',
+												description: 'Download the worksheet before you start.',
+												file_name: 'checkpoint-worksheet.pdf',
+												preview_url:
+													'/api/method/ifitwala_ed.api.file_access.preview_academic_file?file=FILE-TASK-1',
+												open_url:
+													'/api/method/ifitwala_ed.api.file_access.download_academic_file?file=FILE-TASK-1',
+												attachment_preview: buildAttachmentPreview({
+													item_id: 'MAT-TASK-1',
+													display_name: 'Checkpoint worksheet',
+													kind: 'pdf',
+													extension: 'pdf',
+													preview_mode: 'pdf_embed',
+													preview_url:
+														'/api/method/ifitwala_ed.api.file_access.preview_academic_file?file=FILE-TASK-1',
+													open_url:
+														'/api/method/ifitwala_ed.api.file_access.download_academic_file?file=FILE-TASK-1',
+												}),
+											},
+										],
 									},
-									materials: [],
-								},
-							],
+								],
 							activities: [
 								{
 									title: 'Observation walk',
@@ -455,9 +527,11 @@ describe('CourseDetail', () => {
 		expect(document.body.textContent).toContain('Structure and function are linked in living systems.')
 		expect(document.body.textContent).toContain('Microscope evidence walk')
 		expect(document.body.textContent).toContain('Observation walk')
-		expect(document.body.textContent).toContain('Continue Cell Structure Checkpoint')
-		expect(document.body.textContent).toContain('Cell Structure Checkpoint')
-		expect(document.body.textContent).not.toContain('Messages connected to this class')
+			expect(document.body.textContent).toContain('Continue Cell Structure Checkpoint')
+			expect(document.body.textContent).toContain('Cell Structure Checkpoint')
+			expect(document.body.textContent).toContain('Review the microscope guide, then answer the checkpoint questions.')
+			expect(document.body.textContent).toContain('Checkpoint worksheet')
+			expect(document.body.textContent).not.toContain('Messages connected to this class')
 		expect(document.body.textContent).not.toContain('Microscope materials are ready')
 		expect(document.body.textContent).not.toContain('Class plan published')
 		expect(document.body.textContent).not.toContain('Planning not published')
@@ -513,14 +587,14 @@ describe('CourseDetail', () => {
 			'/api/method/ifitwala_ed.api.file_access.thumbnail_academic_file?file=FILE-UNIT-1'
 		)
 
-		const openOriginalLinks = Array.from(document.querySelectorAll('a')).filter(anchor =>
-			(anchor.textContent || '').includes('Open original')
-		)
-		expect(openOriginalLinks.length).toBeGreaterThan(0)
-		expect(openOriginalLinks[0]?.getAttribute('href')).toContain(
-			'/api/method/ifitwala_ed.api.file_access.download_academic_file?file='
-		)
-	})
+			const downloadLinks = Array.from(document.querySelectorAll('a')).filter(anchor =>
+				(anchor.textContent || '').includes('Download')
+			)
+			expect(downloadLinks.length).toBeGreaterThan(0)
+			expect(downloadLinks[0]?.getAttribute('href')).toContain(
+				'/api/method/ifitwala_ed.api.file_access.download_academic_file?file='
+			)
+		})
 
 	it('syncs section and session query state without reloading the bootstrap payload', async () => {
 		resetRouteState()

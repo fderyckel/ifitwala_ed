@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import mimetypes
+import os
 from typing import Any
 
 import frappe
@@ -14,6 +16,14 @@ from ifitwala_ed.api.file_access import (
 )
 from ifitwala_ed.curriculum import materials as materials_domain
 from ifitwala_ed.utilities import governed_uploads
+
+ALLOWED_TASK_ATTACHMENT_EXTENSIONS = {"jpg", "jpeg", "png", "webp", "pdf"}
+ALLOWED_TASK_ATTACHMENT_MIME_TYPES = {
+    "image/jpeg",
+    "image/png",
+    "image/webp",
+    "application/pdf",
+}
 
 
 def _normalize_payload(value) -> dict[str, Any]:
@@ -111,6 +121,29 @@ def _serialize_material(entry: dict[str, Any], *, thumbnail_ready_map: dict[str,
     }
 
 
+def _assert_supported_task_attachment_upload():
+    request = getattr(frappe, "request", None)
+    uploaded = getattr(request, "files", {}).get("file") if request and getattr(request, "files", None) else None
+    if not uploaded:
+        frappe.throw(_("No file uploaded."))
+
+    filename = str(getattr(uploaded, "filename", None) or getattr(uploaded, "name", None) or "").strip()
+    extension = os.path.splitext(filename)[1].lower().lstrip(".")
+    mime_type = (
+        str(getattr(uploaded, "mimetype", None) or getattr(uploaded, "content_type", None) or "").strip().lower()
+    )
+    normalized_mime_type = mime_type.split(";", 1)[0].strip() if mime_type else ""
+    guessed_mime_type, _encoding = mimetypes.guess_type(filename)
+    resolved_mime_type = normalized_mime_type or str(guessed_mime_type or "").strip().lower()
+
+    if extension in ALLOWED_TASK_ATTACHMENT_EXTENSIONS:
+        return
+    if resolved_mime_type in ALLOWED_TASK_ATTACHMENT_MIME_TYPES:
+        return
+
+    frappe.throw(_("Task attachments support PDF, JPG, PNG, and WEBP files only."))
+
+
 def _serialize_task_material(
     entry: dict[str, Any], *, thumbnail_ready_map: dict[str, bool] | None = None
 ) -> dict[str, Any]:
@@ -188,16 +221,19 @@ def upload_task_material_file(
     usage_role: str | None = None,
     placement_note: str | None = None,
 ):
-    task_name = (task or frappe.form_dict.get("task") or "").strip()
-    title = (title or frappe.form_dict.get("title") or "").strip()
-    description = description if description is not None else frappe.form_dict.get("description")
-    modality = modality if modality is not None else frappe.form_dict.get("modality")
-    usage_role = usage_role if usage_role is not None else frappe.form_dict.get("usage_role")
-    placement_note = placement_note if placement_note is not None else frappe.form_dict.get("placement_note")
+    form_dict = getattr(frappe, "form_dict", None) or {}
+
+    task_name = (task or form_dict.get("task") or "").strip()
+    title = (title or form_dict.get("title") or "").strip()
+    description = description if description is not None else form_dict.get("description")
+    modality = modality if modality is not None else form_dict.get("modality")
+    usage_role = usage_role if usage_role is not None else form_dict.get("usage_role")
+    placement_note = placement_note if placement_note is not None else form_dict.get("placement_note")
 
     _require_task_write(task_name)
     if not title:
         frappe.throw(_("Title is required."))
+    _assert_supported_task_attachment_upload()
 
     frappe.db.savepoint("upload_task_material_file")
     try:

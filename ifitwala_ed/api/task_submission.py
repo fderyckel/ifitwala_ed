@@ -34,11 +34,15 @@ def _translate_literal(message: str) -> str:
 def create_or_resubmit(payload=None, **kwargs):
     _require_authenticated()
     data = _normalize_payload(payload, kwargs)
+    outcome_id = _clean_text(data.get("task_outcome") or data.get("outcome"))
+    _require(outcome_id, "Task Outcome")
+    student = _require_student_outcome_access(outcome_id)
     uploaded_files = _extract_uploaded_files()
     result = task_submission_service.create_student_submission(
         data,
         user=frappe.session.user,
         uploaded_files=uploaded_files,
+        expected_student=student,
     )
     return result
 
@@ -47,6 +51,7 @@ def create_or_resubmit(payload=None, **kwargs):
 def get_latest_submission(outcome_id=None):
     _require_authenticated()
     _require(outcome_id, "Task Outcome")
+    _require_student_outcome_access(outcome_id)
 
     rows = frappe.get_all(
         "Task Submission",
@@ -506,6 +511,16 @@ def _require_authenticated():
     user = frappe.session.user
     if not user or user == "Guest":
         frappe.throw(_("Not permitted."), frappe.PermissionError)
+
+
+def _require_student_outcome_access(outcome_id: str) -> str:
+    from ifitwala_ed.api import courses as courses_api
+
+    student = courses_api._require_student_name_for_session_user()
+    outcome_student = _clean_text(frappe.db.get_value("Task Outcome", outcome_id, "student"))
+    if outcome_student != student:
+        frappe.throw(_("You do not have access to this submission."), frappe.PermissionError)
+    return student
 
 
 def _extract_uploaded_files():

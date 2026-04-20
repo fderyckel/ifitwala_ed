@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Any
 
 from ifitwala_ed.api.attachment_previews import build_attachment_preview_item, extract_file_extension
+from ifitwala_ed.utilities.html_sanitizer import sanitize_html
 
 
 def _material_thumbnail_ready_map(api, entries: list[dict[str, Any]]) -> dict[str, bool]:
@@ -287,6 +288,7 @@ def fetch_assigned_work(
             td.quiz_max_attempts,
             td.quiz_pass_percentage,
             t.title,
+            t.instructions,
             t.task_type,
             t.unit_plan
         FROM `tabTask Delivery` td
@@ -342,6 +344,7 @@ def fetch_assigned_work(
             "task_delivery": row.get("task_delivery"),
             "task": row.get("task"),
             "title": row.get("title") or row.get("task"),
+            "instructions_html": sanitize_html(row.get("instructions") or "", allow_headings_from="h3"),
             "task_type": row.get("task_type"),
             "unit_plan": row.get("unit_plan"),
             "class_session": row.get("class_session"),

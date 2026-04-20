@@ -21,10 +21,20 @@ from ifitwala_ed.admission.admission_utils import (
 )
 from ifitwala_ed.api.org_comm_utils import check_audience_match, expand_employee_visibility_context
 from ifitwala_ed.curriculum import materials as materials_domain
-from ifitwala_ed.integrations.drive.authority import get_drive_file_for_file
+from ifitwala_ed.integrations.drive.authority import (
+    get_drive_file_by_canonical_ref,
+    get_drive_file_by_id,
+    get_drive_file_for_file,
+)
 from ifitwala_ed.routing.policy import has_active_employee_profile
 
-ADMISSIONS_ATTACHMENT_DOCTYPES = {"Applicant Document Item", "Student Applicant", "Contact"}
+ADMISSIONS_ATTACHMENT_DOCTYPES = {
+    "Applicant Document Item",
+    "Applicant Health Profile",
+    "Student Applicant",
+    "Student Applicant Guardian",
+    "Contact",
+}
 CONTEXT_STUDENT_APPLICANT = "Student Applicant"
 CONTEXT_APPLICANT_INTERVIEW = "Applicant Interview"
 CONTEXT_TASK_SUBMISSION = "Task Submission"
@@ -66,28 +76,97 @@ def _resolve_file_name_from_url(file_url: str | None) -> str | None:
     return resolved_name or None
 
 
-def build_admissions_file_open_url(
+def _build_file_action_params(
     *,
-    file_name: str,
+    file_name: str | None = None,
+    drive_file_id: str | None = None,
+    canonical_ref: str | None = None,
     context_doctype: str | None = None,
     context_name: str | None = None,
-) -> str:
+) -> dict[str, str]:
+    params: dict[str, str] = {}
     resolved_file = (file_name or "").strip()
-    if not resolved_file:
-        return ""
-
-    params = {"file": resolved_file}
+    resolved_drive_file_id = (drive_file_id or "").strip()
+    resolved_canonical_ref = (canonical_ref or "").strip()
+    if resolved_file:
+        params["file"] = resolved_file
+    if resolved_drive_file_id:
+        params["drive_file_id"] = resolved_drive_file_id
+    elif resolved_canonical_ref:
+        params["canonical_ref"] = resolved_canonical_ref
     if (context_doctype or "").strip():
         params["context_doctype"] = context_doctype.strip()
     if (context_name or "").strip():
         params["context_name"] = context_name.strip()
+    return params
+
+
+def build_admissions_file_open_url(
+    *,
+    file_name: str | None = None,
+    drive_file_id: str | None = None,
+    canonical_ref: str | None = None,
+    context_doctype: str | None = None,
+    context_name: str | None = None,
+) -> str:
+    params = _build_file_action_params(
+        file_name=file_name,
+        drive_file_id=drive_file_id,
+        canonical_ref=canonical_ref,
+        context_doctype=context_doctype,
+        context_name=context_name,
+    )
+    if not params:
+        return ""
     return f"/api/method/ifitwala_ed.api.file_access.download_admissions_file?{urlencode(params)}"
+
+
+def build_admissions_file_preview_url(
+    *,
+    file_name: str | None = None,
+    drive_file_id: str | None = None,
+    canonical_ref: str | None = None,
+    context_doctype: str | None = None,
+    context_name: str | None = None,
+) -> str:
+    params = _build_file_action_params(
+        file_name=file_name,
+        drive_file_id=drive_file_id,
+        canonical_ref=canonical_ref,
+        context_doctype=context_doctype,
+        context_name=context_name,
+    )
+    if not params:
+        return ""
+    return f"/api/method/ifitwala_ed.api.file_access.preview_admissions_file?{urlencode(params)}"
+
+
+def build_admissions_file_thumbnail_url(
+    *,
+    file_name: str | None = None,
+    drive_file_id: str | None = None,
+    canonical_ref: str | None = None,
+    context_doctype: str | None = None,
+    context_name: str | None = None,
+) -> str:
+    params = _build_file_action_params(
+        file_name=file_name,
+        drive_file_id=drive_file_id,
+        canonical_ref=canonical_ref,
+        context_doctype=context_doctype,
+        context_name=context_name,
+    )
+    if not params:
+        return ""
+    return f"/api/method/ifitwala_ed.api.file_access.thumbnail_admissions_file?{urlencode(params)}"
 
 
 def resolve_admissions_file_open_url(
     *,
     file_name: str | None,
     file_url: str | None,
+    drive_file_id: str | None = None,
+    canonical_ref: str | None = None,
     context_doctype: str | None = None,
     context_name: str | None = None,
 ) -> str | None:
@@ -95,16 +174,93 @@ def resolve_admissions_file_open_url(
     if _is_external_url(raw_url):
         return raw_url
 
-    resolved_name = (file_name or "").strip() or _resolve_file_name_from_url(raw_url) or ""
-    if not resolved_name:
+    resolved_name = (file_name or "").strip()
+    resolved_drive_file_id = (drive_file_id or "").strip()
+    resolved_canonical_ref = (canonical_ref or "").strip()
+    if not resolved_name and not resolved_drive_file_id and not resolved_canonical_ref:
+        resolved_name = _resolve_file_name_from_url(raw_url) or ""
+    if not (resolved_name or resolved_drive_file_id or resolved_canonical_ref):
         return raw_url if _is_public_site_file_url(raw_url) else None
 
     open_url = build_admissions_file_open_url(
         file_name=resolved_name,
+        drive_file_id=resolved_drive_file_id,
+        canonical_ref=resolved_canonical_ref,
         context_doctype=context_doctype,
         context_name=context_name,
     )
     return open_url or raw_url or None
+
+
+def resolve_admissions_file_preview_url(
+    *,
+    file_name: str | None,
+    file_url: str | None,
+    drive_file_id: str | None = None,
+    canonical_ref: str | None = None,
+    context_doctype: str | None = None,
+    context_name: str | None = None,
+    preview_ready: bool | None = None,
+) -> str | None:
+    raw_url = (file_url or "").strip()
+    if _is_external_url(raw_url):
+        return raw_url
+
+    resolved_name = (file_name or "").strip()
+    resolved_drive_file_id = (drive_file_id or "").strip()
+    resolved_canonical_ref = (canonical_ref or "").strip()
+    if not resolved_name and not resolved_drive_file_id and not resolved_canonical_ref:
+        resolved_name = _resolve_file_name_from_url(raw_url) or ""
+
+    if not (resolved_name or resolved_drive_file_id or resolved_canonical_ref):
+        return raw_url if _is_public_site_file_url(raw_url) else None
+
+    if preview_ready is False:
+        return None
+
+    preview_url = build_admissions_file_preview_url(
+        file_name=resolved_name,
+        drive_file_id=resolved_drive_file_id,
+        canonical_ref=resolved_canonical_ref,
+        context_doctype=context_doctype,
+        context_name=context_name,
+    )
+    return preview_url or None
+
+
+def resolve_admissions_file_thumbnail_url(
+    *,
+    file_name: str | None,
+    file_url: str | None,
+    drive_file_id: str | None = None,
+    canonical_ref: str | None = None,
+    context_doctype: str | None = None,
+    context_name: str | None = None,
+    thumbnail_ready: bool | None = None,
+) -> str | None:
+    raw_url = (file_url or "").strip()
+    if _is_external_url(raw_url):
+        return None
+
+    resolved_name = (file_name or "").strip()
+    resolved_drive_file_id = (drive_file_id or "").strip()
+    resolved_canonical_ref = (canonical_ref or "").strip()
+    if not resolved_name and not resolved_drive_file_id and not resolved_canonical_ref:
+        resolved_name = _resolve_file_name_from_url(raw_url) or ""
+
+    if not (resolved_name or resolved_drive_file_id or resolved_canonical_ref):
+        return None
+    if thumbnail_ready is False:
+        return None
+
+    thumbnail_url = build_admissions_file_thumbnail_url(
+        file_name=resolved_name,
+        drive_file_id=resolved_drive_file_id,
+        canonical_ref=resolved_canonical_ref,
+        context_doctype=context_doctype,
+        context_name=context_name,
+    )
+    return thumbnail_url or None
 
 
 def build_academic_file_open_url(
@@ -220,6 +376,54 @@ def get_academic_file_thumbnail_ready_map(file_names: list[str] | tuple[str, ...
             and str((row or {}).get("derivative_name") or "").strip()
         )
 
+    return ready_map
+
+
+def get_drive_file_thumbnail_ready_map(
+    drive_file_ids: list[str] | tuple[str, ...] | set[str],
+) -> dict[str, bool]:
+    cleaned = sorted(
+        {
+            str(drive_file_id or "").strip()
+            for drive_file_id in (drive_file_ids or [])
+            if str(drive_file_id or "").strip()
+        }
+    )
+    if not cleaned:
+        return {}
+
+    rows = (
+        frappe.db.sql(
+            """
+        SELECT
+            df.name,
+            df.preview_status,
+            df.current_version,
+            dfd.name AS derivative_name
+        FROM `tabDrive File` df
+        LEFT JOIN `tabDrive File Derivative` dfd
+          ON dfd.drive_file = df.name
+         AND dfd.drive_file_version = df.current_version
+         AND dfd.derivative_role = 'thumb'
+         AND dfd.status = 'ready'
+        WHERE df.name IN %(drive_file_ids)s
+        """,
+            {"drive_file_ids": tuple(cleaned)},
+            as_dict=True,
+        )
+        or []
+    )
+
+    ready_map = {drive_file_id: False for drive_file_id in cleaned}
+    for row in rows:
+        drive_file_id = str((row or {}).get("name") or "").strip()
+        if not drive_file_id or drive_file_id not in ready_map:
+            continue
+        ready_map[drive_file_id] = ready_map[drive_file_id] or bool(
+            str((row or {}).get("preview_status") or "").strip() == "ready"
+            and str((row or {}).get("current_version") or "").strip()
+            and str((row or {}).get("derivative_name") or "").strip()
+        )
     return ready_map
 
 
@@ -621,11 +825,42 @@ def _thumbnail_redirect_cache_key(
     return f"ifitwala_ed:preview_thumbnail:{resolved_drive_file_id}:{resolved_version}:{derivative_role}:{scope_hash}"
 
 
-def _resolve_drive_file_delivery_row(file_name: str) -> dict | None:
+def _resolve_drive_file_delivery_row(
+    file_name: str | None = None,
+    *,
+    drive_file_id: str | None = None,
+    canonical_ref: str | None = None,
+) -> dict | None:
+    fields = [
+        "name",
+        "file",
+        "canonical_ref",
+        "preview_status",
+        "current_version",
+        "primary_subject_type",
+        "primary_subject_id",
+        "attached_doctype",
+        "attached_name",
+    ]
+    if (drive_file_id or "").strip():
+        return get_drive_file_by_id(
+            drive_file_id,
+            fields=fields,
+            statuses=("active", "processing", "blocked"),
+        )
+    if (canonical_ref or "").strip():
+        return get_drive_file_by_canonical_ref(
+            canonical_ref,
+            fields=fields,
+            statuses=("active", "processing", "blocked"),
+        )
+    resolved_file_name = (file_name or "").strip()
+    if not resolved_file_name:
+        return None
     drive_file = frappe.db.get_value(
         "Drive File",
-        {"file": file_name},
-        ["name", "preview_status", "current_version"],
+        {"file": resolved_file_name},
+        fields,
         as_dict=True,
     )
     if not drive_file or not drive_file.get("name"):
@@ -1090,8 +1325,17 @@ def _respond_with_redirect_target(*, target_url: str | None, cache_headers: bool
     return False
 
 
-def _resolve_drive_download_grant_url(file_name: str) -> str | None:
-    drive_file = _resolve_drive_file_delivery_row(file_name)
+def _resolve_drive_download_grant_url(
+    file_name: str | None = None,
+    *,
+    drive_file_id: str | None = None,
+    canonical_ref: str | None = None,
+) -> str | None:
+    drive_file = _resolve_drive_file_delivery_row(
+        file_name,
+        drive_file_id=drive_file_id,
+        canonical_ref=canonical_ref,
+    )
     if not drive_file:
         return None
 
@@ -1106,8 +1350,18 @@ def _resolve_drive_download_grant_url(file_name: str) -> str | None:
     return None
 
 
-def _resolve_drive_preview_grant_url(file_name: str, *, derivative_role: str | None = None) -> str | None:
-    drive_file = _resolve_drive_file_delivery_row(file_name)
+def _resolve_drive_preview_grant_url(
+    file_name: str | None = None,
+    *,
+    drive_file_id: str | None = None,
+    canonical_ref: str | None = None,
+    derivative_role: str | None = None,
+) -> str | None:
+    drive_file = _resolve_drive_file_delivery_row(
+        file_name,
+        drive_file_id=drive_file_id,
+        canonical_ref=canonical_ref,
+    )
     if not drive_file or not drive_file.get("name"):
         return None
 

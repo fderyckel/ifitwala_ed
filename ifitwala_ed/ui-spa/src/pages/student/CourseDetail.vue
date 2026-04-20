@@ -491,23 +491,27 @@
 										<p v-if="item.due_date" class="mt-2 type-caption text-ink/70">
 											Due {{ item.due_date }}
 										</p>
-										<div v-if="item.materials.length" class="mt-4 space-y-2">
-											<p class="type-caption text-ink/60">What you may need</p>
-											<div class="flex flex-wrap gap-2">
-												<template
+										<div
+											v-if="item.instructions_html"
+											class="mt-4 rounded-2xl border border-line-soft bg-white p-4"
+										>
+											<p class="type-caption text-ink/60">Instructions</p>
+											<div
+												class="mt-3 prose prose-sm max-w-none text-ink/80"
+												v-html="item.instructions_html"
+											/>
+										</div>
+										<div v-if="item.materials.length" class="mt-4 space-y-3">
+											<div class="flex items-center justify-between gap-3">
+												<p class="type-caption text-ink/60">Attachments</p>
+												<span class="chip">{{ item.materials.length }}</span>
+											</div>
+											<div class="grid gap-3 lg:grid-cols-2">
+												<StudentLearningResourceCard
 													v-for="resource in item.materials"
 													:key="resource.placement || resource.material"
-												>
-													<a
-														v-if="resource.preview_url || resource.open_url"
-														:href="resource.preview_url || resource.open_url"
-														target="_blank"
-														rel="noreferrer"
-														class="portal-chip-link"
-													>
-														{{ resource.title }}
-													</a>
-												</template>
+													:resource="resource"
+												/>
 											</div>
 										</div>
 										<div class="mt-3 flex flex-wrap gap-2">
@@ -764,23 +768,27 @@
 						<p v-if="assignedWorkContextLine(item)" class="mt-1 type-caption text-ink/60">
 							{{ assignedWorkContextLine(item) }}
 						</p>
-						<div v-if="item.materials.length" class="mt-4 space-y-2">
-							<p class="type-caption text-ink/60">What you may need</p>
-							<div class="flex flex-wrap gap-2">
-								<template
+						<div
+							v-if="item.instructions_html"
+							class="mt-4 rounded-2xl border border-line-soft bg-white p-4"
+						>
+							<p class="type-caption text-ink/60">Instructions</p>
+							<div
+								class="mt-3 prose prose-sm max-w-none text-ink/80"
+								v-html="item.instructions_html"
+							/>
+						</div>
+						<div v-if="item.materials.length" class="mt-4 space-y-3">
+							<div class="flex items-center justify-between gap-3">
+								<p class="type-caption text-ink/60">Attachments</p>
+								<span class="chip">{{ item.materials.length }}</span>
+							</div>
+							<div class="grid gap-3 lg:grid-cols-2">
+								<StudentLearningResourceCard
 									v-for="resource in item.materials"
 									:key="resource.placement || resource.material"
-								>
-									<a
-										v-if="resource.preview_url || resource.open_url"
-										:href="resource.preview_url || resource.open_url"
-										target="_blank"
-										rel="noreferrer"
-										class="portal-chip-link"
-									>
-										{{ resource.title }}
-									</a>
-								</template>
+									:resource="resource"
+								/>
 							</div>
 						</div>
 						<div class="mt-3 flex flex-wrap gap-2">

@@ -4,7 +4,7 @@ import types
 from unittest import TestCase
 from urllib.parse import parse_qs, urlparse
 
-from ifitwala_ed.tests.frappe_stubs import import_fresh, stubbed_frappe
+from ifitwala_ed.tests.frappe_stubs import StubPermissionError, import_fresh, stubbed_frappe
 
 
 def _task_submission_stub_modules():
@@ -23,18 +23,25 @@ def _task_submission_stub_modules():
             else file_url
         )
     )
+    courses = types.ModuleType("ifitwala_ed.api.courses")
+    courses._require_student_name_for_session_user = lambda: "STU-1"
+    task_submission_service = types.ModuleType("ifitwala_ed.assessment.task_submission_service")
+    task_submission_service.create_student_submission = lambda *args, **kwargs: {
+        "submission_id": "TSU-1",
+        "version": 1,
+    }
 
     return {
         "ifitwala_ed.api.file_access": file_access,
-        "ifitwala_ed.assessment.task_submission_service": types.ModuleType(
-            "ifitwala_ed.assessment.task_submission_service"
-        ),
+        "ifitwala_ed.api.courses": courses,
+        "ifitwala_ed.assessment.task_submission_service": task_submission_service,
     }
 
 
 class TestTaskSubmissionApiUnit(TestCase):
     def test_get_latest_submission_includes_annotation_readiness_for_governed_pdf(self):
         with stubbed_frappe(extra_modules=_task_submission_stub_modules()) as frappe:
+            frappe.db.get_value = lambda doctype, name, fieldname, **kwargs: "STU-1"
 
             def fake_get_all(doctype, filters=None, fields=None, order_by=None, limit=0, pluck=None):
                 if doctype == "Task Submission":
@@ -123,6 +130,7 @@ class TestTaskSubmissionApiUnit(TestCase):
 
     def test_get_latest_submission_detects_pdf_from_extension_when_mime_and_filename_are_missing(self):
         with stubbed_frappe(extra_modules=_task_submission_stub_modules()) as frappe:
+            frappe.db.get_value = lambda doctype, name, fieldname, **kwargs: "STU-1"
 
             def fake_get_all(doctype, filters=None, fields=None, order_by=None, limit=0, pluck=None):
                 if doctype == "Task Submission":
@@ -186,3 +194,46 @@ class TestTaskSubmissionApiUnit(TestCase):
         self.assertEqual(attachments[0].get("mime_type"), "application/pdf")
         self.assertEqual(payload.get("annotation_readiness", {}).get("mode"), "reduced")
         self.assertEqual(payload.get("annotation_readiness", {}).get("reason_code"), "pdf_preview_pending")
+
+    def test_get_latest_submission_rejects_unowned_outcome(self):
+        with stubbed_frappe(extra_modules=_task_submission_stub_modules()) as frappe:
+            frappe.db.get_value = lambda doctype, name, fieldname, **kwargs: "STU-OTHER"
+
+            module = import_fresh("ifitwala_ed.api.task_submission")
+            module._require_authenticated = lambda: None
+            frappe.get_all = lambda *args, **kwargs: (_ for _ in ()).throw(AssertionError("unexpected get_all"))
+
+            with self.assertRaises(StubPermissionError):
+                module.get_latest_submission(outcome_id="TOUT-0003")
+
+    def test_create_or_resubmit_passes_expected_student_to_service(self):
+        with stubbed_frappe(extra_modules=_task_submission_stub_modules()) as frappe:
+            seen = {}
+
+            def fake_get_value(doctype, name, fieldname, **kwargs):
+                self.assertEqual(doctype, "Task Outcome")
+                self.assertEqual(name, "TOUT-0004")
+                self.assertEqual(fieldname, "student")
+                return "STU-1"
+
+            def fake_create_student_submission(payload, user=None, uploaded_files=None, expected_student=None):
+                seen["payload"] = payload
+                seen["user"] = user
+                seen["uploaded_files"] = uploaded_files
+                seen["expected_student"] = expected_student
+                return {"submission_id": "TSU-0004", "version": 2}
+
+            frappe.db.get_value = fake_get_value
+            frappe.request = None
+
+            module = import_fresh("ifitwala_ed.api.task_submission")
+            module._require_authenticated = lambda: None
+            module.task_submission_service.create_student_submission = fake_create_student_submission
+
+            payload = module.create_or_resubmit(payload={"task_outcome": "TOUT-0004", "text_content": "Draft"})
+
+        self.assertEqual(payload["submission_id"], "TSU-0004")
+        self.assertEqual(seen["payload"]["task_outcome"], "TOUT-0004")
+        self.assertEqual(seen["user"], "unit.test@example.com")
+        self.assertEqual(seen["uploaded_files"], [])
+        self.assertEqual(seen["expected_student"], "STU-1")

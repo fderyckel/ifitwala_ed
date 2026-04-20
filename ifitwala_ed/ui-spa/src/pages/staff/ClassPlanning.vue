@@ -1027,18 +1027,10 @@ import type {
 	StaffPlanningSession,
 	StaffPlanningUnit,
 } from '@/types/contracts/staff_teaching/get_staff_class_planning_surface';
+import type { TaskDeliveryCreatedSignal } from '@/types/tasks';
 
 type EditableActivity = StaffPlanningActivity & {
 	local_id: number;
-};
-
-type TaskDeliveryCreatedSignal = {
-	task?: string;
-	task_delivery?: string;
-	student_group?: string | null;
-	class_teaching_plan?: string | null;
-	unit_plan?: string | null;
-	class_session?: string | null;
 };
 
 const route = useRoute();

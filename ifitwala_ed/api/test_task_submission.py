@@ -10,13 +10,16 @@ from ifitwala_ed.api.task_submission import get_latest_submission
 
 class TestTaskSubmissionApi(FrappeTestCase):
     @patch("ifitwala_ed.api.task_submission._require_authenticated")
+    @patch("ifitwala_ed.api.task_submission._require_student_outcome_access")
     @patch("ifitwala_ed.api.task_submission.frappe.get_all")
     def test_get_latest_submission_serializes_governed_preview_and_open_urls(
         self,
         mock_get_all,
+        mock_require_outcome_access,
         mock_require_authenticated,
     ):
         mock_require_authenticated.return_value = None
+        mock_require_outcome_access.return_value = "STU-0001"
         mock_get_all.side_effect = [
             [
                 {

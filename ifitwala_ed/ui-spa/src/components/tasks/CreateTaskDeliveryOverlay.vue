@@ -27,7 +27,7 @@
 				leave-from="if-overlay__fade-to"
 				leave-to="if-overlay__fade-from"
 			>
-				<div class="if-overlay__backdrop" @click="emitClose('backdrop')" />
+				<div class="if-overlay__backdrop" @click="requestClose('backdrop')" />
 			</TransitionChild>
 
 			<div class="if-overlay__wrap">
@@ -47,7 +47,7 @@
 							class="sr-only"
 							aria-hidden="true"
 							tabindex="0"
-							@click="emitClose('programmatic')"
+							@click="requestClose('programmatic')"
 						>
 							Close
 						</button>
@@ -62,7 +62,7 @@
 								type="button"
 								class="if-overlay__icon-button"
 								aria-label="Close"
-								@click="emitClose('programmatic')"
+								@click="requestClose('programmatic')"
 							>
 								<FeatherIcon name="x" class="h-5 w-5" />
 							</button>
@@ -278,6 +278,9 @@
 												>
 													No classes available for your role yet.
 												</p>
+												<p v-if="groupLoadError" class="type-caption text-flame">
+													{{ groupLoadError }}
+												</p>
 
 												<div
 													v-if="props.prefillUnitPlan || props.prefillClassSession"
@@ -327,6 +330,9 @@
 													class="type-caption text-slate-token/70"
 												>
 													No classes available for your role yet.
+												</p>
+												<p v-if="groupLoadError" class="type-caption text-flame">
+													{{ groupLoadError }}
 												</p>
 											</div>
 
@@ -906,18 +912,12 @@
 								<template v-else>
 									<section class="card-panel space-y-4 p-5">
 										<div class="flex items-center gap-3">
-											<span class="chip">Created</span>
-											<h3 class="type-h3 text-ink">Assigned work ready</h3>
+											<span class="chip">Step 6</span>
+											<h3 class="type-h3 text-ink">Finish with attachments</h3>
 										</div>
-										<p v-if="canEditTaskMaterials" class="type-body text-ink/80">
-											Add supporting materials while you are still in the task flow. Shared plan
-											content stays in curriculum planning; these are separately openable materials
-											for students.
-										</p>
-										<p v-else class="type-body text-ink/80">
-											This delivery now points to the reusable task you selected. Add any
-											class-specific resources in Class Planning rather than editing shared task
-											materials from this assign flow.
+										<p class="type-body text-ink/80">
+											The task and delivery are ready. Add any governed PDF or image attachments
+											now, then finish this flow once. The class refresh happens after you close.
 										</p>
 										<div class="grid gap-3 md:grid-cols-3">
 											<div class="rounded-2xl border border-line-soft bg-surface-soft p-4">
@@ -941,9 +941,13 @@
 
 									<section v-if="canEditTaskMaterials" class="card-panel space-y-4 p-5">
 										<div class="flex items-center gap-3">
-											<span class="chip">Materials</span>
-											<h3 class="type-h3 text-ink">Add task materials</h3>
+											<span class="chip">Attachments</span>
+											<h3 class="type-h3 text-ink">Add task attachments</h3>
 										</div>
+										<p class="type-caption text-ink/70">
+											Use governed PDF or image attachments here so students can preview and
+											download them from the task brief.
+										</p>
 
 										<div class="flex flex-wrap gap-2">
 											<button
@@ -954,7 +958,7 @@
 														? 'border-leaf/60 bg-sky/20 text-ink'
 														: 'border-border/70 bg-white text-ink/70 hover:border-leaf/40'
 												"
-												@click="materialComposerMode = 'link'"
+												@click="setMaterialComposerMode('link')"
 											>
 												Add link
 											</button>
@@ -966,9 +970,9 @@
 														? 'border-leaf/60 bg-sky/20 text-ink'
 														: 'border-border/70 bg-white text-ink/70 hover:border-leaf/40'
 												"
-												@click="materialComposerMode = 'file'"
+												@click="setMaterialComposerMode('file')"
 											>
-												Upload file
+												Upload attachment
 											</button>
 										</div>
 
@@ -1037,6 +1041,7 @@
 											<input
 												ref="materialFileInput"
 												type="file"
+												accept=".pdf,.jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp,application/pdf"
 												class="hidden"
 												@change="onMaterialFileSelected"
 											/>
@@ -1046,12 +1051,15 @@
 													class="if-button if-button--secondary"
 													@click="materialFileInput?.click()"
 												>
-													Choose file
+													Choose PDF or image
 												</button>
 												<p class="type-caption text-ink/70">
 													{{ selectedMaterialFile?.name || 'No file selected yet.' }}
 												</p>
 											</div>
+											<p class="type-caption text-ink/60">
+												Supported formats: PDF, JPG, PNG, and WEBP.
+											</p>
 											<InlineUploadStatus
 												v-if="materialUploadProgress"
 												:label="materialUploadProgressLabel"
@@ -1059,6 +1067,12 @@
 											/>
 										</div>
 
+										<div
+											v-if="materialNotice"
+											class="rounded-xl border border-canopy/30 bg-canopy/10 px-4 py-3 text-sm text-canopy"
+										>
+											{{ materialNotice }}
+										</div>
 										<div
 											v-if="materialError"
 											class="rounded-xl border border-flame/30 bg-flame/10 px-4 py-3 text-sm text-flame"
@@ -1080,7 +1094,7 @@
 															: 'Uploading…'
 														: materialComposerMode === 'link'
 															? 'Add link'
-															: 'Upload file'
+															: 'Upload attachment'
 												}}
 											</button>
 										</div>
@@ -1089,8 +1103,8 @@
 									<section v-if="canEditTaskMaterials" class="card-panel space-y-4 p-5">
 										<div class="flex items-center justify-between gap-3">
 											<div class="flex items-center gap-3">
-												<span class="chip">Shared</span>
-												<h3 class="type-h3 text-ink">Current task materials</h3>
+												<span class="chip">Current</span>
+												<h3 class="type-h3 text-ink">Current task attachments</h3>
 											</div>
 											<span class="chip">{{ taskMaterials.length }} items</span>
 										</div>
@@ -1099,106 +1113,50 @@
 											v-if="materialsLoading"
 											class="rounded-xl border border-line-soft bg-surface-soft px-4 py-3 text-sm text-ink/70"
 										>
-											Loading materials...
+											Loading attachments...
 										</div>
 
 										<div
 											v-else-if="!taskMaterials.length"
 											class="rounded-xl border border-dashed border-border/80 bg-slate-50 px-4 py-3 text-sm text-ink/70"
 										>
-											No materials shared on this task yet.
+											No attachments shared on this task yet.
 										</div>
 
-										<div v-else class="space-y-3">
+										<div v-else class="grid gap-3 lg:grid-cols-2">
 											<article
 												v-for="material in taskMaterials"
 												:key="material.placement"
 												class="rounded-2xl border border-line-soft bg-surface-soft p-4"
 											>
-												<div v-if="showInlineImagePreview(material)" class="mb-4">
-													<a
-														:href="primaryMaterialUrl(material) || undefined"
-														target="_blank"
-														rel="noreferrer"
-														class="group block overflow-hidden rounded-2xl border border-line-soft bg-white"
-														data-task-material-preview-kind="image"
-													>
-														<img
-															:src="imagePreviewUrl(material) || undefined"
-															:alt="material.title"
-															class="h-40 w-full object-cover transition duration-200 group-hover:scale-[1.01]"
-															loading="lazy"
-															@error="markMaterialImagePreviewFailed(material)"
-														/>
-														<div
-															class="flex items-center justify-between border-t border-line-soft bg-white px-4 py-3"
+												<AttachmentPreviewCard
+													v-if="material.attachment_preview"
+													:attachment="material.attachment_preview"
+													variant="planning"
+													:title="material.title"
+													:description="material.description || null"
+													:meta-text="materialMetaText(material) || null"
+													:chips="materialChips(material)"
+												>
+													<template #extra-actions>
+														<button
+															type="button"
+															class="if-button if-button--danger"
+															:disabled="removingPlacement === material.placement"
+															@click="removeMaterial(material.placement)"
 														>
-															<div>
-																<p
-																	class="text-xs font-semibold uppercase tracking-[0.18em] text-ink/45"
-																>
-																	Image preview
-																</p>
-																<p class="mt-1 text-sm text-ink/80">
-																	Open the governed preview for this task material.
-																</p>
-															</div>
-															<span class="chip">{{ materialExtensionLabel(material) }}</span>
-														</div>
-													</a>
-												</div>
-
-												<div v-else-if="showPdfPreviewTile(material)" class="mb-4">
-													<a
-														:href="primaryMaterialUrl(material) || undefined"
-														target="_blank"
-														rel="noreferrer"
-														class="group block rounded-2xl border border-line-soft bg-white p-4 transition hover:border-jacaranda/30 hover:bg-jacaranda/5"
-														data-task-material-preview-kind="pdf"
-													>
-														<div class="flex items-start justify-between gap-3">
-															<div>
-																<p
-																	class="text-xs font-semibold uppercase tracking-[0.18em] text-ink/45"
-																>
-																	PDF preview
-																</p>
-																<p class="mt-2 text-base font-semibold text-ink">
-																	{{ material.title }}
-																</p>
-																<p class="mt-2 text-sm text-ink/75">
-																	Open a compact governed preview for this task material.
-																</p>
-															</div>
-															<div class="rounded-2xl bg-clay/15 px-3 py-2 text-right">
-																<p
-																	class="text-[11px] font-semibold uppercase tracking-[0.18em] text-clay"
-																>
-																	{{ materialExtensionLabel(material) }}
-																</p>
-																<p class="mt-1 text-xs text-ink/60">Preview ready</p>
-															</div>
-														</div>
-													</a>
-												</div>
-
-												<div class="flex items-start justify-between gap-3">
+															Remove
+														</button>
+													</template>
+												</AttachmentPreviewCard>
+												<div v-else class="space-y-3">
 													<div class="min-w-0">
 														<div class="flex flex-wrap items-center gap-2">
 															<p class="type-body-strong text-ink">{{ material.title }}</p>
 															<span class="chip">{{ material.material_type }}</span>
-															<span v-if="material.usage_role" class="chip">
-																{{ material.usage_role }}
-															</span>
 														</div>
 														<p v-if="material.description" class="mt-2 type-caption text-ink/70">
 															{{ material.description }}
-														</p>
-														<p
-															v-if="material.placement_note"
-															class="mt-2 type-caption text-ink/70"
-														>
-															{{ material.placement_note }}
 														</p>
 														<p
 															v-if="material.file_name || material.reference_url"
@@ -1207,25 +1165,7 @@
 															{{ material.file_name || material.reference_url }}
 														</p>
 													</div>
-													<div class="flex items-center gap-2">
-														<a
-															v-if="primaryMaterialUrl(material)"
-															:href="primaryMaterialUrl(material) || undefined"
-															target="_blank"
-															rel="noreferrer"
-															class="if-action"
-														>
-															{{ primaryMaterialActionLabel(material) }}
-														</a>
-														<a
-															v-if="showMaterialOpenOriginalAction(material)"
-															:href="material.open_url || undefined"
-															target="_blank"
-															rel="noreferrer"
-															class="if-action"
-														>
-															Open original
-														</a>
+													<div class="flex justify-end">
 														<button
 															type="button"
 															class="if-button if-button--danger"
@@ -1246,11 +1186,12 @@
 						<!-- Footer -->
 						<div class="if-overlay__footer">
 							<button
+								v-if="!createdTask"
 								type="button"
 								class="if-button if-button--secondary"
-								@click="emitClose('programmatic')"
+								@click="requestClose('programmatic')"
 							>
-								{{ createdTask ? 'Done' : 'Cancel' }}
+								Cancel
 							</button>
 							<button
 								v-if="!createdTask"
@@ -1260,6 +1201,15 @@
 								@click="submit"
 							>
 								{{ submitLabel }}
+							</button>
+							<button
+								v-else
+								type="button"
+								class="if-button if-button--primary"
+								:disabled="isWorkflowBusy"
+								@click="requestClose('programmatic')"
+							>
+								Finish
 							</button>
 						</div>
 					</DialogPanel>
@@ -1278,18 +1228,21 @@ import {
 	TransitionChild,
 	TransitionRoot,
 } from '@headlessui/vue';
-import { FormControl, createResource, toast, FeatherIcon } from 'frappe-ui';
+import { FormControl, createResource, FeatherIcon } from 'frappe-ui';
 import { useRouter } from 'vue-router';
+import AttachmentPreviewCard from '@/components/attachments/AttachmentPreviewCard.vue';
 import InlineUploadStatus from '@/components/feedback/InlineUploadStatus.vue';
 import PlanningRichTextField from '@/components/planning/PlanningRichTextField.vue';
 import { apiUpload } from '@/lib/client';
-import { SIGNAL_TASK_DELIVERY_CREATED, uiSignals } from '@/lib/uiSignals';
+import { emitTaskDeliveryCreatedSignal } from '@/lib/services/tasks/taskDeliveryWorkflowService';
 import type { UploadProgressState } from '@/lib/uploadProgress';
+import type { AttachmentPreviewItem } from '@/types/contracts/attachments/shared';
 import type {
 	CreateTaskDeliveryInput,
 	CreateTaskDeliveryPayload,
 	CourseAssessmentCriteriaOption,
 	ReusableTaskSummary,
+	TaskDeliveryCreatedSignal,
 	TaskCriteriaRow,
 	TaskForDeliveryPayload,
 	TaskLibraryScope,
@@ -1334,14 +1287,16 @@ const errorMessage = ref('');
 const errorRecovery = ref<ErrorRecoveryAction>(null);
 const createdTask = ref<CreateTaskDeliveryPayload | null>(null);
 const taskMaterials = ref<TaskMaterialRow[]>([]);
+const groupLoadError = ref('');
 const materialComposerMode = ref<'link' | 'file'>('link');
 const materialSubmitting = ref(false);
 const materialError = ref('');
+const materialNotice = ref('');
 const selectedMaterialFile = ref<File | null>(null);
 const materialFileInput = ref<HTMLInputElement | null>(null);
 const removingPlacement = ref<string | null>(null);
 const materialUploadProgress = ref<UploadProgressState | null>(null);
-const failedMaterialImagePreviewKeys = ref<Record<string, boolean>>({});
+const workflowCommitted = ref(false);
 
 const initialFocus = ref<HTMLElement | null>(null);
 
@@ -1363,7 +1318,7 @@ function onDialogClose(_payload: unknown) {
 
 function onKeydown(e: KeyboardEvent) {
 	if (!props.open) return;
-	if (e.key === 'Escape') emitClose('esc');
+	if (e.key === 'Escape') requestClose('esc');
 }
 
 const taskTypeOptions = [
@@ -1399,6 +1354,7 @@ type TaskMaterialRow = {
 	file_size?: number | string | null;
 	usage_role?: 'Required' | 'Reference' | 'Template' | 'Example' | null;
 	placement_note?: string | null;
+	attachment_preview?: AttachmentPreviewItem | null;
 };
 
 const deliveryOptions: Array<{ label: string; value: DeliveryMode; help: string }> = [
@@ -1534,10 +1490,11 @@ const groupResource = createResource({
 	transform: unwrapMessage,
 	onSuccess: (rows: any) => {
 		groups.value = Array.isArray(rows) ? rows : [];
+		groupLoadError.value = '';
 	},
 	onError: () => {
 		groups.value = [];
-		toast.create({ appearance: 'danger', message: 'Unable to load classes right now.' });
+		groupLoadError.value = 'Unable to load classes right now.';
 	},
 });
 
@@ -1649,7 +1606,10 @@ const selectedGroupLabel = computed(() => {
 	return match?.label || '';
 });
 
-const dialogTitle = computed(() => (taskMode.value === 'reuse' ? 'Reuse task' : 'Create task'));
+const dialogTitle = computed(() => {
+	if (createdTask.value && canEditTaskMaterials.value) return 'Finish task setup';
+	return taskMode.value === 'reuse' ? 'Reuse task' : 'Create task';
+});
 const submitLabel = computed(() =>
 	taskMode.value === 'reuse' ? 'Assign existing task' : 'Create'
 );
@@ -1675,6 +1635,9 @@ const showLateSubmission = computed(() => form.delivery_mode !== 'Assign Only');
 const isQuizTask = computed(() => activeTaskType.value === 'Quiz');
 const canEditTaskMaterials = computed(() => createdTaskMode.value === 'create');
 const criteriaLibraryLoading = computed(() => listCourseAssessmentCriteriaResource.loading);
+const isWorkflowBusy = computed(
+	() => submitting.value || materialSubmitting.value || Boolean(removingPlacement.value)
+);
 const availableCriteriaOptions = computed(() =>
 	courseCriteriaLibrary.value
 		.filter(
@@ -1798,6 +1761,8 @@ function initializeForm() {
 	gradingEnabled.value = false;
 	errorMessage.value = '';
 	errorRecovery.value = null;
+	workflowCommitted.value = false;
+	groupLoadError.value = '';
 	reusableTasks.value = [];
 	taskLibraryQuery.value = '';
 	taskLibraryError.value = '';
@@ -2306,85 +2271,11 @@ function resetMaterialComposer() {
 	materialComposerMode.value = 'link';
 	materialSubmitting.value = false;
 	materialError.value = '';
+	materialNotice.value = '';
 	taskMaterials.value = [];
 	removingPlacement.value = null;
+	materialUploadProgress.value = null;
 	resetMaterialDraftFields();
-}
-
-function materialExtension(material: TaskMaterialRow) {
-	const rawName = String(material.file_name || '').trim();
-	const lastDot = rawName.lastIndexOf('.');
-	if (!rawName || lastDot < 0 || lastDot === rawName.length - 1) {
-		return '';
-	}
-	return rawName.slice(lastDot + 1).toLowerCase();
-}
-
-function materialExtensionLabel(material: TaskMaterialRow) {
-	return materialExtension(material) ? materialExtension(material).toUpperCase() : 'FILE';
-}
-
-function isImageMaterial(material: TaskMaterialRow) {
-	return (
-		material.material_type === 'File' &&
-		['jpg', 'jpeg', 'png', 'webp'].includes(materialExtension(material))
-	);
-}
-
-function isPdfMaterial(material: TaskMaterialRow) {
-	return material.material_type === 'File' && materialExtension(material) === 'pdf';
-}
-
-function primaryMaterialUrl(material: TaskMaterialRow) {
-	return material.preview_url || material.open_url || material.reference_url || null;
-}
-
-function materialImagePreviewKey(material: TaskMaterialRow) {
-	return `${material.placement}:${material.thumbnail_url || ''}`;
-}
-
-function markMaterialImagePreviewFailed(material: TaskMaterialRow) {
-	failedMaterialImagePreviewKeys.value = {
-		...failedMaterialImagePreviewKeys.value,
-		[materialImagePreviewKey(material)]: true,
-	};
-}
-
-function hasMaterialImagePreviewFailure(material: TaskMaterialRow) {
-	return Boolean(failedMaterialImagePreviewKeys.value[materialImagePreviewKey(material)]);
-}
-
-function imagePreviewUrl(material: TaskMaterialRow) {
-	return material.thumbnail_url || null;
-}
-
-function showInlineImagePreview(material: TaskMaterialRow) {
-	return Boolean(
-		imagePreviewUrl(material) &&
-		!hasMaterialImagePreviewFailure(material) &&
-		primaryMaterialUrl(material) &&
-		isImageMaterial(material)
-	);
-}
-
-function showPdfPreviewTile(material: TaskMaterialRow) {
-	return Boolean(material.preview_url && primaryMaterialUrl(material) && isPdfMaterial(material));
-}
-
-function primaryMaterialActionLabel(material: TaskMaterialRow) {
-	if (material.preview_url) {
-		return 'Preview';
-	}
-	return material.material_type === 'Reference Link' ? 'Open link' : 'Open';
-}
-
-function showMaterialOpenOriginalAction(material: TaskMaterialRow) {
-	return Boolean(
-		material.material_type === 'File' &&
-		material.preview_url &&
-		material.open_url &&
-		material.open_url !== material.preview_url
-	);
 }
 
 async function loadTaskMaterials() {
@@ -2392,11 +2283,20 @@ async function loadTaskMaterials() {
 	await listTaskMaterialsResource.submit({ task: createdTask.value.task });
 }
 
+function setMaterialComposerMode(nextMode: 'link' | 'file') {
+	if (materialComposerMode.value === nextMode) return;
+	materialComposerMode.value = nextMode;
+	materialError.value = '';
+	materialNotice.value = '';
+	materialUploadProgress.value = null;
+}
+
 function onMaterialFileSelected(event: Event) {
 	const target = event.target as HTMLInputElement | null;
 	const file = target?.files?.[0] || null;
 	selectedMaterialFile.value = file;
 	materialError.value = '';
+	materialNotice.value = '';
 	if (file && !materialForm.title.trim()) {
 		materialForm.title = file.name;
 	}
@@ -2405,7 +2305,7 @@ function onMaterialFileSelected(event: Event) {
 const materialUploadProgressLabel = computed(() =>
 	selectedMaterialFile.value?.name
 		? `Uploading ${selectedMaterialFile.value.name}`
-		: 'Uploading file'
+		: 'Uploading attachment'
 );
 
 async function uploadTaskMaterialFileRequest(task: string): Promise<TaskMaterialRow> {
@@ -2441,12 +2341,13 @@ async function addMaterial() {
 		materialError.value =
 			materialComposerMode.value === 'link'
 				? 'Please provide a title and link.'
-				: 'Please provide a title and choose a file.';
+				: 'Please provide a title and choose a PDF or image attachment.';
 		return;
 	}
 
 	materialSubmitting.value = true;
 	materialError.value = '';
+	materialNotice.value = '';
 	try {
 		if (materialComposerMode.value === 'link') {
 			await createTaskReferenceMaterialResource.submit({
@@ -2464,12 +2365,14 @@ async function addMaterial() {
 
 		await loadTaskMaterials();
 		resetMaterialDraftFields();
-		toast.create({ appearance: 'success', message: 'Material added to the task.' });
+		materialNotice.value =
+			materialComposerMode.value === 'link'
+				? 'Link added to this task.'
+				: 'Attachment added to this task.';
 	} catch (error) {
 		const message =
 			error instanceof Error ? error.message : 'Unable to add the material right now.';
 		materialError.value = message;
-		toast.create({ appearance: 'danger', message });
 	} finally {
 		materialUploadProgress.value = null;
 		materialSubmitting.value = false;
@@ -2479,21 +2382,67 @@ async function addMaterial() {
 async function removeMaterial(placement: string) {
 	if (!createdTask.value || !placement) return;
 	removingPlacement.value = placement;
+	materialError.value = '';
+	materialNotice.value = '';
 	try {
 		await removeTaskMaterialResource.submit({
 			task: createdTask.value.task,
 			placement,
 		});
 		await loadTaskMaterials();
-		toast.create({ appearance: 'success', message: 'Material removed from this task.' });
+		materialNotice.value = 'Attachment removed from this task.';
 	} catch (error) {
 		const message =
 			error instanceof Error ? error.message : 'Unable to remove this material right now.';
 		materialError.value = message;
-		toast.create({ appearance: 'danger', message });
 	} finally {
 		removingPlacement.value = null;
 	}
+}
+
+function materialMetaText(material: TaskMaterialRow) {
+	return [material.placement_note, material.file_name || material.reference_url]
+		.filter(Boolean)
+		.join(' · ');
+}
+
+function materialChips(material: TaskMaterialRow) {
+	return [material.usage_role || null, material.material_type || null].filter(Boolean) as string[];
+}
+
+function buildTaskDeliveryCreatedSignal(
+	payload: CreateTaskDeliveryPayload
+): TaskDeliveryCreatedSignal {
+	return {
+		task: payload.task,
+		task_delivery: payload.task_delivery,
+		student_group: form.student_group || null,
+		class_teaching_plan: props.prefillClassTeachingPlan || null,
+		unit_plan: props.prefillUnitPlan || null,
+		class_session: props.prefillClassSession || null,
+	};
+}
+
+function commitWorkflowSuccess(payload: CreateTaskDeliveryPayload) {
+	if (workflowCommitted.value) return;
+	workflowCommitted.value = true;
+	emit('created', payload);
+	emitTaskDeliveryCreatedSignal(buildTaskDeliveryCreatedSignal(payload));
+}
+
+function requestClose(reason: CloseReason = 'programmatic') {
+	if (isWorkflowBusy.value) {
+		if (createdTask.value) {
+			materialError.value = 'Wait until the current attachment update finishes before closing.';
+		} else {
+			errorMessage.value = 'Please wait while the task workflow finishes saving.';
+		}
+		return;
+	}
+	if (createdTask.value) {
+		commitWorkflowSuccess(createdTask.value);
+	}
+	emitClose(reason);
 }
 
 async function submit() {
@@ -2521,7 +2470,6 @@ async function submit() {
 			: 'Please complete the required fields.';
 		errorMessage.value = msg;
 		errorRecovery.value = null;
-		toast.create({ appearance: 'warning', message: msg });
 		return;
 	}
 
@@ -2602,34 +2550,20 @@ async function submit() {
 
 		if (!out?.task || !out?.task_delivery) throw new Error('Unexpected server response.');
 
-		emit('created', out);
-		uiSignals.emit(SIGNAL_TASK_DELIVERY_CREATED, {
-			task: out.task,
-			task_delivery: out.task_delivery,
-			student_group: form.student_group || null,
-			class_teaching_plan: props.prefillClassTeachingPlan || null,
-			unit_plan: props.prefillUnitPlan || null,
-			class_session: props.prefillClassSession || null,
-		});
+		if (taskMode.value === 'reuse') {
+			commitWorkflowSuccess(out);
+			emitClose('programmatic');
+			return;
+		}
 		createdTask.value = out;
 		createdTaskMode.value = taskMode.value;
-		if (taskMode.value === 'create') {
-			await loadTaskMaterials();
-		}
-		toast.create({
-			appearance: 'success',
-			message:
-				taskMode.value === 'create'
-					? 'Task created. Add materials or close when done.'
-					: 'Assigned work created for this class.',
-		});
+		await loadTaskMaterials();
 	} catch (error) {
 		console.error('[CreateTaskDeliveryOverlay] submit:error', error);
 		const rawMessage = extractTaskActionErrorMessage(error);
 		const normalized = normalizeTaskActionError(rawMessage);
 		errorMessage.value = normalized.message;
 		errorRecovery.value = normalized.recovery;
-		toast.create({ appearance: 'danger', message: normalized.message });
 	} finally {
 		submitting.value = false;
 	}

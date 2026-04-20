@@ -71,6 +71,7 @@ export type StudentAssignedWork = {
 	task_delivery: string
 	task: string
 	title: string
+	instructions_html?: string | null
 	task_type?: string | null
 	unit_plan?: string | null
 	class_session?: string | null

@@ -6,6 +6,7 @@ Active with known implementation split. Canonical note for how portal calendar f
 
 Code refs:
 - `ifitwala_ed/api/calendar.py`
+- `ifitwala_ed/api/calendar_export.py`
 - `ifitwala_ed/api/calendar_core.py`
 - `ifitwala_ed/api/calendar_staff_feed.py`
 - `ifitwala_ed/api/calendar_details.py`
@@ -18,6 +19,7 @@ Code refs:
 Test refs:
 - `ifitwala_ed/api/test_portal_calendar.py`
 - `ifitwala_ed/api/test_calendar.py`
+- `ifitwala_ed/api/test_calendar_export.py`
 - `ifitwala_ed/api/test_student_calendar.py`
 - `ifitwala_ed/api/test_room_utilization.py`
 
@@ -84,7 +86,7 @@ Code refs:
 Test refs:
 - `ifitwala_ed/api/test_calendar.py`
 
-`api/calendar.py` is the locked public RPC boundary for staff calendar workflows.
+`api/calendar.py` is the locked public RPC boundary for staff calendar workflows, including timetable export.
 
 It keeps public API paths stable while implementation is split across:
 
@@ -93,6 +95,7 @@ It keeps public API paths stable while implementation is split across:
 - `calendar_details.py`
 - `calendar_quick_create.py`
 - `calendar_prefs.py`
+- `calendar_export.py`
 
 Refactors may move implementation between those modules, but they must not silently drift the public API boundary without updating docs and dependent contracts.
 Internal Python code must import helpers from the owner modules directly rather than importing helper functions through `api/calendar.py`.
@@ -109,6 +112,12 @@ The canonical staff feed sources are defined in `calendar_core.py`:
 `_normalize_sources(...)` owns source filtering and default ordering.
 
 Clients must not invent additional source labels client-side.
+
+### 2.2 Staff timetable export stays on the same boundary
+
+`export_staff_timetable_pdf(...)` is part of the same public boundary.
+
+It is a read-only print/export surface for the logged-in staff user and must remain documented together with the staff feed rather than drifting into a separate ad hoc endpoint family.
 
 ---
 
@@ -187,6 +196,16 @@ Staff calendar payloads are cached in Redis using a key built from:
 - normalized source list
 
 This cache is owned by the calendar feed, not by the SPA.
+
+### 3.5 Staff timetable export reuses the staff feed contract
+
+The premium staff timetable PDF export is not a separate source assembler.
+
+Rules:
+
+1. The export must reuse the same staff-feed source authority and visibility rules documented above.
+2. The export may reshape the payload into weekly print spreads, but it must not widen or narrow event inclusion ad hoc.
+3. The export is server-rendered for print and must not depend on client-side per-event detail waterfalls.
 
 ---
 

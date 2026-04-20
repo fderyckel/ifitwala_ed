@@ -2,7 +2,13 @@
 
 import re
 
-from frappe.utils import sanitize_html as frappe_sanitize_html
+try:
+    from frappe.utils import sanitize_html as frappe_sanitize_html
+except (ImportError, AttributeError):
+
+    def frappe_sanitize_html(value, **kwargs):
+        return value or ""
+
 
 _HEADING_RE = re.compile(r"<(\/?)(h[1-6])\b", re.IGNORECASE)
 

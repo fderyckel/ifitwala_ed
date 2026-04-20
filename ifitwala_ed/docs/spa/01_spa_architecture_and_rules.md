@@ -397,6 +397,8 @@ Rules:
 * **Services** must not toast. They call endpoints and emit `*_invalidate` signals **only after confirmed semantic success**.
 * **Refresh Owners** (pages or shell-level listeners) subscribe to `uiSignals`, decide when to refetch, and may optionally show a “Saved” toast **after refetch success**.
 
+Approved multi-step overlays may keep the overlay open after an intermediate mutation only when that mutation does not yet complete the user-visible workflow. In that case the overlay must still avoid toasts, `uiSignals`, and parent refetch at the midpoint, must lock or preserve the scope-driving context for the remaining steps, and must commit the refresh-owner handoff only once when the teacher finishes the workflow and closes the overlay.
+
 This prevents:
 
 * toast/runtime coupling (“toast unavailable”)

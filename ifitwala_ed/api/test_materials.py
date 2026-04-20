@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 from contextlib import contextmanager
+from io import BytesIO
 from types import ModuleType
 from unittest import TestCase
+from unittest.mock import patch
 
 from ifitwala_ed.tests.frappe_stubs import import_fresh, stubbed_frappe
 
@@ -84,3 +86,24 @@ class TestTaskMaterialSerialization(TestCase):
         self.assertEqual(payload["open_url"], "https://example.com/article")
         self.assertEqual(payload["attachment_preview"]["kind"], "link")
         self.assertEqual(payload["attachment_preview"]["preview_mode"], "external_link")
+
+    def test_upload_task_material_file_rejects_non_pdf_and_non_image_uploads(self):
+        with _materials_module() as materials_api:
+            upload = type(
+                "Upload",
+                (),
+                {
+                    "filename": "checkpoint-notes.docx",
+                    "mimetype": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                    "stream": BytesIO(b"fake-docx"),
+                },
+            )()
+            materials_api.frappe.request = type("Request", (), {"files": {"file": upload}})()
+
+            with (
+                patch.object(materials_api, "_require_task_write", return_value=object()),
+                self.assertRaises(Exception) as ctx,
+            ):
+                materials_api.upload_task_material_file(task="TASK-1", title="Checkpoint notes")
+
+        self.assertIn("Task attachments support PDF, JPG, PNG, and WEBP files only.", str(ctx.exception))

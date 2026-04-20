@@ -27,7 +27,7 @@ def get_next_submission_version(outcome_id):
     return max_version + 1
 
 
-def create_student_submission(payload, user=None, uploaded_files=None):
+def create_student_submission(payload, user=None, uploaded_files=None, expected_student=None):
     data = _normalize_payload(payload)
     outcome_id = _get_payload_value(data, "task_outcome", "outcome")
     if not outcome_id:
@@ -47,6 +47,10 @@ def create_student_submission(payload, user=None, uploaded_files=None):
         ],
         as_dict=True,
     )
+    if expected_student:
+        actual_student = (outcome_row or {}).get("student")
+        if not actual_student or str(actual_student).strip() != str(expected_student).strip():
+            frappe.throw(_("You do not have access to this submission."), frappe.PermissionError)
     if not outcome_row:
         frappe.throw(_("Task Outcome not found."))
 

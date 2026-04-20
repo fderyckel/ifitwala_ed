@@ -6,6 +6,15 @@ export type CreateTaskDeliveryPayload = {
 	outcomes_created?: number;
 };
 
+export type TaskDeliveryCreatedSignal = {
+	task: string;
+	task_delivery: string;
+	student_group: string | null;
+	class_teaching_plan: string | null;
+	unit_plan: string | null;
+	class_session: string | null;
+};
+
 export type TaskLibraryScope = 'all' | 'mine' | 'shared';
 
 export type TaskCriteriaRow = {

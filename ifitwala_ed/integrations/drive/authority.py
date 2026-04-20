@@ -103,6 +103,54 @@ def get_drive_file_for_file(
     return rows[0] if rows else None
 
 
+def get_drive_file_by_id(
+    drive_file_id: str | None,
+    *,
+    fields: Sequence[str] | None = None,
+    statuses: Sequence[str] | None = None,
+) -> dict | None:
+    resolved_drive_file_id = _clean_text(drive_file_id)
+    if not resolved_drive_file_id:
+        return None
+
+    filters: dict[str, object] = {"name": resolved_drive_file_id}
+    if statuses:
+        filters["status"] = ["in", list(statuses)]
+
+    rows = _get_all_rows(
+        "Drive File",
+        filters=filters,
+        fields=_ordered_fields(fields),
+        order_by="modified desc, creation desc",
+        limit=1,
+    )
+    return rows[0] if rows else None
+
+
+def get_drive_file_by_canonical_ref(
+    canonical_ref: str | None,
+    *,
+    fields: Sequence[str] | None = None,
+    statuses: Sequence[str] | None = None,
+) -> dict | None:
+    resolved_canonical_ref = _clean_text(canonical_ref)
+    if not resolved_canonical_ref:
+        return None
+
+    filters: dict[str, object] = {"canonical_ref": resolved_canonical_ref}
+    if statuses:
+        filters["status"] = ["in", list(statuses)]
+
+    rows = _get_all_rows(
+        "Drive File",
+        filters=filters,
+        fields=_ordered_fields(fields),
+        order_by="modified desc, creation desc",
+        limit=1,
+    )
+    return rows[0] if rows else None
+
+
 def is_governed_file(file_name: str | None) -> bool:
     return bool(get_drive_file_for_file(file_name, fields=("name",), statuses=None))
 
@@ -185,6 +233,63 @@ def get_current_drive_files_for_slots(
         if key in seen:
             continue
         seen.add(key)
+        current_rows.append(row)
+    return current_rows
+
+
+def get_current_drive_file_for_attachment(
+    *,
+    attached_doctype: str,
+    attached_name: str,
+    fields: Sequence[str] | None = None,
+    statuses: Sequence[str] | None = ("active",),
+) -> dict | None:
+    rows = get_current_drive_files_for_attachments(
+        attached_doctype=attached_doctype,
+        attached_names=[attached_name],
+        fields=fields,
+        statuses=statuses,
+    )
+    return rows[0] if rows else None
+
+
+def get_current_drive_files_for_attachments(
+    *,
+    attached_doctype: str,
+    attached_names: Sequence[str] | Iterable[str],
+    fields: Sequence[str] | None = None,
+    statuses: Sequence[str] | None = ("active",),
+) -> list[dict]:
+    resolved_doctype = _clean_text(attached_doctype)
+    resolved_names = [_clean_text(value) for value in (attached_names or [])]
+    resolved_names = [value for value in resolved_names if value]
+    if not resolved_doctype or not resolved_names:
+        return []
+
+    filters: dict[str, object] = {
+        "attached_doctype": resolved_doctype,
+        "attached_name": ["in", resolved_names],
+    }
+    if statuses:
+        filters["status"] = ["in", list(statuses)]
+
+    rows = _get_all_rows(
+        "Drive File",
+        filters=filters,
+        fields=_ordered_fields(fields),
+        order_by="modified desc, creation desc",
+        limit=0,
+    )
+    if not rows:
+        return []
+
+    current_rows: list[dict] = []
+    seen: set[str] = set()
+    for row in rows:
+        attached_name = _clean_text(row.get("attached_name"))
+        if not attached_name or attached_name in seen:
+            continue
+        seen.add(attached_name)
         current_rows.append(row)
     return current_rows
 
