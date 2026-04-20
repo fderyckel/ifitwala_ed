@@ -120,6 +120,7 @@ Target fix:
 
 - Drive metadata becomes sole governance authority
 - current governed DTO surfaces such as admissions documents, staff admissions review, org communication, planning, learning, and task evidence must resolve `open_url` / `preview_url` / `thumbnail_url` from Drive identity, not by rediscovering `File.file_url`
+- staff Morning Brief attachment previews and employee birthday images follow the same rule: org-communication previews resolve by governed attachment slot, and Employee image reads must survive compatibility `File` rotation by resolving the current governed profile-image authority first
 - historical `File Classification` rows are removed by migration patch once every row has matching Drive authority
 - the retired `File Classification` DocTypes are then removed by an explicit schema-retirement patch
 

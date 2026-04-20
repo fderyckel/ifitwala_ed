@@ -243,15 +243,20 @@ def _resolve_governed_display_url(
     *,
     file_name: str | None,
     file_url: str | None,
+    drive_file_id: str | None = None,
+    canonical_ref: str | None = None,
     derivative_role: str | None = None,
 ) -> str | None:
     raw_url = str(file_url or "").strip()
-    if not raw_url:
+    resolved_drive_file_id = str(drive_file_id or "").strip() or None
+    resolved_canonical_ref = str(canonical_ref or "").strip() or None
+    resolved_file_name = str(file_name or "").strip() or None
+    if not raw_url and not resolved_file_name and not resolved_drive_file_id and not resolved_canonical_ref:
         return None
 
     explicit_derivative_role = str(derivative_role or "").strip() or None
 
-    if not explicit_derivative_role and _is_directly_displayable_file_url(raw_url):
+    if raw_url and not explicit_derivative_role and _is_directly_displayable_file_url(raw_url):
         return raw_url
 
     resolved_subject = str(subject_name or "").strip()
@@ -262,7 +267,7 @@ def _resolve_governed_display_url(
         from ifitwala_ed.api.file_access import resolve_academic_file_open_url
 
         resolved_url = resolve_academic_file_open_url(
-            file_name=file_name,
+            file_name=resolved_file_name,
             file_url=raw_url,
             context_doctype="Student",
             context_name=resolved_subject,
@@ -276,7 +281,7 @@ def _resolve_governed_display_url(
         from ifitwala_ed.api.file_access import resolve_guardian_file_open_url
 
         resolved_url = resolve_guardian_file_open_url(
-            file_name=file_name,
+            file_name=resolved_file_name,
             file_url=raw_url,
             context_doctype="Guardian",
             context_name=resolved_subject,
@@ -290,8 +295,10 @@ def _resolve_governed_display_url(
         from ifitwala_ed.api.file_access import resolve_employee_file_open_url
 
         resolved_url = resolve_employee_file_open_url(
-            file_name=file_name,
+            file_name=resolved_file_name,
             file_url=raw_url,
+            drive_file_id=resolved_drive_file_id,
+            canonical_ref=resolved_canonical_ref,
             context_doctype="Employee",
             context_name=resolved_subject,
             derivative_role=explicit_derivative_role,
@@ -321,11 +328,14 @@ def _resolve_original_governed_image_url(
         )
         current_file_url = str(getattr(current_file_doc, "file_url", "") or "").strip()
         if current_file_doc and current_file_url:
+            drive_file_row = _get_drive_file_row(current_file_doc) or {}
             resolved_current_url = _resolve_governed_display_url(
                 primary_subject_type,
                 resolved_subject,
                 file_name=current_file_doc.name,
                 file_url=current_file_url,
+                drive_file_id=drive_file_row.get("name"),
+                canonical_ref=drive_file_row.get("canonical_ref"),
             )
             if resolved_current_url:
                 return resolved_current_url
@@ -365,7 +375,7 @@ def _get_governed_image_variants_map(
         primary_subject_type=primary_subject_type,
         primary_subject_ids=names,
         slots=("profile_image",),
-        fields=["name", "primary_subject_id", "slot", "file", "current_version"],
+        fields=["name", "primary_subject_id", "slot", "file", "current_version", "canonical_ref"],
         statuses=("active",),
     )
     if not rows:
@@ -419,13 +429,9 @@ def _get_governed_image_variants_map(
         if not (subject_name and file_name):
             continue
 
-        file_row = file_map.get(file_name)
-        if not file_row:
-            continue
-
+        file_row = file_map.get(file_name) or {}
         file_url = (file_row.get("file_url") or "").strip()
-        if not file_url:
-            continue
+        canonical_ref = str(row.get("canonical_ref") or "").strip() or None
 
         subject_variants = variants.setdefault(subject_name, {})
         if "profile_image" in slots:
@@ -434,6 +440,8 @@ def _get_governed_image_variants_map(
                 subject_name,
                 file_name=file_name,
                 file_url=file_url,
+                drive_file_id=drive_file_id or None,
+                canonical_ref=canonical_ref,
             )
             if original_display_url:
                 subject_variants["profile_image"] = original_display_url
@@ -448,6 +456,8 @@ def _get_governed_image_variants_map(
                 subject_name,
                 file_name=file_name,
                 file_url=file_url,
+                drive_file_id=drive_file_id or None,
+                canonical_ref=canonical_ref,
                 derivative_role=derivative_role,
             )
             if display_url:

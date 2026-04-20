@@ -270,6 +270,29 @@ class TestFileAccessUnit(TestCase):
         self.assertEqual(parsed.path, "/api/method/ifitwala_ed.api.file_access.download_employee_file")
         self.assertEqual((query.get("derivative_role") or [None])[0], "thumb")
 
+    def test_resolve_employee_file_open_url_prefers_drive_identity_without_file_lookup(self):
+        with _file_access_module() as (file_access, frappe):
+            frappe.db.get_value = lambda *args, **kwargs: (_ for _ in ()).throw(
+                AssertionError("unexpected compatibility file lookup")
+            )
+
+            url = file_access.resolve_employee_file_open_url(
+                file_name=None,
+                file_url=None,
+                drive_file_id="DRIVE-FILE-EMP-1",
+                canonical_ref="drv:ORG-1:DRIVE-FILE-EMP-1",
+                context_doctype="Employee",
+                context_name="EMP-0001",
+                derivative_role="card",
+            )
+
+        parsed = urlparse(url or "")
+        query = parse_qs(parsed.query)
+        self.assertEqual(parsed.path, "/api/method/ifitwala_ed.api.file_access.download_employee_file")
+        self.assertEqual((query.get("drive_file_id") or [None])[0], "DRIVE-FILE-EMP-1")
+        self.assertEqual((query.get("context_name") or [None])[0], "EMP-0001")
+        self.assertEqual((query.get("derivative_role") or [None])[0], "card")
+
     def test_resolve_drive_file_grant_target_url_strict_derivative_returns_none_without_safe_grant(self):
         with _file_access_module() as (file_access, frappe):
             file_access._load_drive_access_callable = lambda attribute: lambda **kwargs: {"url": ""}
@@ -408,6 +431,47 @@ class TestFileAccessUnit(TestCase):
             ],
         )
 
+    def test_preview_org_communication_attachment_works_without_compatibility_file_on_binding(self):
+        with _file_access_module() as (file_access, frappe):
+            frappe.session.user = "staff@example.com"
+            frappe.local.response = {}
+            frappe.get_roles = lambda user: ["Employee"]
+            file_access.check_audience_match = lambda *args, **kwargs: True
+
+            attachment_row = SimpleNamespace(
+                name="row-001",
+                external_url="",
+                file="/private/files/ifitwala_drive/files/aa/bb/policy.pdf",
+            )
+            doc = SimpleNamespace(name="COMM-0001", attachments=[attachment_row])
+            doc.get = lambda fieldname, default=None: getattr(doc, fieldname, default)
+            frappe.get_doc = lambda doctype, name: doc
+
+            def fake_get_value(doctype, filters, fieldname=None, as_dict=False):
+                if doctype == "Employee":
+                    return {"name": "EMP-0001", "school": "SCHOOL-1", "organization": "ORG-1"}
+                if doctype == "Drive Binding":
+                    return {"drive_file": "DRIVE-FILE-1", "file": ""}
+                if doctype == "Drive File" and filters == "DRIVE-FILE-1" and fieldname == "preview_status":
+                    return "ready"
+                return None
+
+            frappe.db.get_value = fake_get_value
+            file_access._load_drive_communications_callable = lambda attribute: (
+                lambda **kwargs: {"url": "https://preview.example.com/policy.pdf"}
+            )
+
+            file_access.preview_org_communication_attachment(
+                org_communication="COMM-0001",
+                row_name="row-001",
+            )
+
+        self.assertEqual(frappe.local.response.get("type"), "redirect")
+        self.assertEqual(
+            frappe.local.response.get("location"),
+            "https://preview.example.com/policy.pdf",
+        )
+
     def test_thumbnail_academic_file_fails_closed_without_ready_thumb_target(self):
         with _file_access_module() as (file_access, frappe):
             thumbnail_requests: list[dict] = []
@@ -471,10 +535,14 @@ class TestFileAccessUnit(TestCase):
                         "canonical_ref",
                         "preview_status",
                         "current_version",
+                        "owner_doctype",
+                        "owner_name",
                         "primary_subject_type",
                         "primary_subject_id",
                         "attached_doctype",
                         "attached_name",
+                        "purpose",
+                        "slot",
                     ],
                 )
                 self.assertTrue(as_dict)
@@ -503,10 +571,14 @@ class TestFileAccessUnit(TestCase):
                         "canonical_ref",
                         "preview_status",
                         "current_version",
+                        "owner_doctype",
+                        "owner_name",
                         "primary_subject_type",
                         "primary_subject_id",
                         "attached_doctype",
                         "attached_name",
+                        "purpose",
+                        "slot",
                     ],
                 )
                 self.assertTrue(as_dict)
@@ -535,10 +607,14 @@ class TestFileAccessUnit(TestCase):
                         "canonical_ref",
                         "preview_status",
                         "current_version",
+                        "owner_doctype",
+                        "owner_name",
                         "primary_subject_type",
                         "primary_subject_id",
                         "attached_doctype",
                         "attached_name",
+                        "purpose",
+                        "slot",
                     ],
                 )
                 self.assertTrue(as_dict)
@@ -594,6 +670,52 @@ class TestFileAccessUnit(TestCase):
         self.assertEqual(
             frappe.local.response.get("location"),
             "https://signed.example.com/thumb_employee.webp",
+        )
+
+    def test_download_employee_file_falls_back_to_current_governed_profile_when_requested_file_is_stale(self):
+        with _file_access_module() as (file_access, frappe):
+            file_access.has_active_employee_profile = lambda **kwargs: True
+            frappe.session.user = "staff@example.com"
+            frappe.local.response = {}
+            frappe.db.exists = lambda doctype, name=None: doctype == "Employee" and name == "EMP-0001"
+            file_access._resolve_employee_profile_image_access = lambda **kwargs: (_ for _ in ()).throw(
+                frappe.DoesNotExistError("File not found.")
+            )
+            file_access.get_current_drive_file_for_slot = lambda **kwargs: {
+                "name": "DRIVE-FILE-EMP-1",
+                "file": "FILE-EMP-CURRENT",
+                "owner_doctype": "Employee",
+                "owner_name": "EMP-0001",
+                "attached_doctype": "Employee",
+                "attached_name": "EMP-0001",
+                "primary_subject_type": "Employee",
+                "primary_subject_id": "EMP-0001",
+                "purpose": "employee_profile_display",
+                "slot": "profile_image",
+            }
+            file_access._get_any_file_row = lambda file_name: {
+                "name": "FILE-EMP-CURRENT",
+                "file_url": "/private/files/ifitwala_drive/files/aa/bb/profile.webp",
+                "file_name": "profile.webp",
+                "is_private": 1,
+                "attached_to_doctype": "Employee",
+                "attached_to_name": "EMP-0001",
+            }
+            file_access._load_drive_media_callable = lambda attribute: (
+                lambda employee, file_id, **kwargs: {"url": "https://signed.example.com/profile.webp"}
+            )
+
+            file_access.download_employee_file(
+                file="FILE-EMP-STALE",
+                context_doctype="Employee",
+                context_name="EMP-0001",
+                derivative_role="thumb",
+            )
+
+        self.assertEqual(frappe.local.response.get("type"), "redirect")
+        self.assertEqual(
+            frappe.local.response.get("location"),
+            "https://signed.example.com/profile.webp",
         )
 
     def test_download_employee_file_still_enforces_employee_access_before_drive_grant(self):

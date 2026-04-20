@@ -271,6 +271,7 @@ Forbidden patterns:
 Examples of acceptable surface owners:
 
 - org communication archive/detail
+- staff Morning Brief announcement detail, which consumes the same org-communication attachment DTO and must resolve preview/open routes from the governed attachment slot rather than from a compatibility `File` lookup
 - student learning space resource shelves
 - future task-submission review detail
 - future guardian-facing reporting/document surfaces
