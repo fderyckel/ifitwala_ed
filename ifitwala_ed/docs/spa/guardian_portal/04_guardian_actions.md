@@ -1,9 +1,9 @@
-# Guardian Portal Actions Contract (v0.3)
+# Guardian Portal Actions Contract (v0.4)
 
 Status: Active
 Audience: Humans, coding agents
 Scope: Guardian-initiated actions inside `/hub/guardian`
-Last updated: 2026-04-17
+Last updated: 2026-04-20
 
 This document defines what guardians can currently do through the guardian portal and what remains planned.
 
@@ -41,11 +41,14 @@ Code refs:
 - `ifitwala_ed/ui-spa/src/pages/guardian/GuardianCourseSelection.vue`
 - `ifitwala_ed/ui-spa/src/pages/guardian/GuardianCourseSelectionDetail.vue`
 - `ifitwala_ed/ui-spa/src/pages/guardian/GuardianActivities.vue`
+- `ifitwala_ed/api/guardian_calendar.py`
 - `ifitwala_ed/api/guardian_communications.py`
 - `ifitwala_ed/api/guardian_policy.py`
 - `ifitwala_ed/api/guardian_attendance.py`
 - `ifitwala_ed/api/guardian_finance.py`
 - `ifitwala_ed/api/guardian_monitoring.py`
+- `ifitwala_ed/ui-spa/src/pages/guardian/GuardianHome.vue`
+- `ifitwala_ed/ui-spa/src/overlays/guardian/GuardianCalendarOverlay.vue`
 - `ifitwala_ed/ui-spa/src/pages/guardian/GuardianCommunicationCenter.vue`
 - `ifitwala_ed/ui-spa/src/pages/guardian/GuardianPolicies.vue`
 - `ifitwala_ed/ui-spa/src/pages/guardian/GuardianAttendance.vue`
@@ -58,7 +61,10 @@ Test refs:
 - `ifitwala_ed/api/test_self_enrollment.py`
 - `ifitwala_ed/api/test_activity_booking.py`
 - `ifitwala_ed/api/test_guardian_phase2.py`
+- `ifitwala_ed/api/test_guardian_calendar.py`
+- `ifitwala_ed/ui-spa/src/pages/guardian/__tests__/GuardianHome.test.ts`
 - `ifitwala_ed/ui-spa/src/pages/guardian/__tests__/GuardianCommunicationCenter.test.ts`
+- `ifitwala_ed/ui-spa/src/overlays/guardian/__tests__/GuardianCalendarOverlay.test.ts`
 
 Implemented guardian actions:
 
@@ -75,6 +81,7 @@ Implemented guardian actions:
 8. Use `/guardian/finance` to review authorized invoices and payment history for the family.
 9. Use `/guardian/monitoring` to review family-wide guardian-visible logs and published results with optional child filtering, then mark visible logs as seen.
 10. Use `/guardian/communications` to review family-wide org communications and school events, optionally narrow to one linked child, open full messages, open event details, mark org communications as seen, and, when the communication mode allows it, react or comment through the shared named interaction workflows.
+11. Use the `School Calendar` quick link on Guardian Home to open a large monthly overlay, move between months, filter by linked child or family school, include or exclude holidays and school events, review the selected-day agenda, and open school-event detail when an event item exposes it.
 
 ## 3. Planned But Not Wired On `/hub/guardian`
 
@@ -124,12 +131,14 @@ Code refs:
 - `ifitwala_ed/api/self_enrollment.py`
 - `ifitwala_ed/api/activity_booking.py`
 - `ifitwala_ed/api/guardian_home.py`
+- `ifitwala_ed/api/guardian_calendar.py`
 - `ifitwala_ed/api/guardian_communications.py`
 - `ifitwala_ed/api/guardian_policy.py`
 - `ifitwala_ed/api/guardian_attendance.py`
 - `ifitwala_ed/api/guardian_finance.py`
 - `ifitwala_ed/api/guardian_monitoring.py`
 - `ifitwala_ed/ui-spa/src/pages/guardian/GuardianHome.vue`
+- `ifitwala_ed/ui-spa/src/overlays/guardian/GuardianCalendarOverlay.vue`
 - `ifitwala_ed/ui-spa/src/pages/guardian/GuardianCommunicationCenter.vue`
 - `ifitwala_ed/ui-spa/src/pages/guardian/GuardianCourseSelection.vue`
 - `ifitwala_ed/ui-spa/src/pages/guardian/GuardianCourseSelectionDetail.vue`
@@ -146,15 +155,18 @@ Test refs:
 - `ifitwala_ed/api/test_activity_booking.py`
 - `ifitwala_ed/api/test_guardian_home.py`
 - `ifitwala_ed/api/test_guardian_phase2.py`
+- `ifitwala_ed/api/test_guardian_calendar.py`
+- `ifitwala_ed/ui-spa/src/pages/guardian/__tests__/GuardianHome.test.ts`
 - `ifitwala_ed/ui-spa/src/pages/guardian/__tests__/GuardianCommunicationCenter.test.ts`
 - `ifitwala_ed/ui-spa/src/pages/guardian/__tests__/GuardianCourseSelection.test.ts`
+- `ifitwala_ed/ui-spa/src/overlays/guardian/__tests__/GuardianCalendarOverlay.test.ts`
 
 | Concern | Canonical owner | Code refs | Test refs |
 | --- | --- | --- | --- |
 | Schema / DocType | Guardian links, guardian-visible school events, selection-window rows, activity booking lifecycle records, policy acknowledgements, account holders, invoices, and payments | `students/doctype/guardian/*`, `students/doctype/student_guardian/*`, `students/doctype/guardian_student/*`, `school_settings/doctype/school_event/*`, `school_settings/doctype/school_event_audience/*`, `school_settings/doctype/school_event_participant/*`, `schedule/doctype/program_offering_selection_window/*`, `schedule/doctype/program_enrollment_request/*`, `governance/doctype/policy_acknowledgement/*`, `accounting/doctype/account_holder/*`, `accounting/doctype/sales_invoice/*`, `accounting/doctype/payment_entry/*`, activity booking doctypes reached via `api/activity_booking.py` | `api/test_self_enrollment.py`, `api/test_activity_booking.py`, `api/test_guardian_phase2.py` |
-| Controller / workflow logic | Guardian course-selection workflows, activity booking workflows, guardian snapshot reads, guardian communication-center reads, guardian policy acknowledgement, guardian attendance visibility, guardian finance visibility, guardian monitoring reads and mark-read actions | `api/self_enrollment.py`, `api/activity_booking.py`, `api/guardian_home.py`, `api/guardian_communications.py`, `api/guardian_policy.py`, `api/guardian_attendance.py`, `api/guardian_finance.py`, `api/guardian_monitoring.py` | `api/test_self_enrollment.py`, `api/test_activity_booking.py`, `api/test_guardian_home.py`, `api/test_guardian_phase2.py` |
-| API endpoints | Guardian course-selection workflow endpoints plus activity booking, guardian snapshot, guardian communication-center, policy, attendance, finance, and monitoring endpoints | `api/self_enrollment.py`, `api/activity_booking.py`, `api/guardian_home.py`, `api/guardian_communications.py`, `api/guardian_policy.py`, `api/guardian_attendance.py`, `api/guardian_finance.py`, `api/guardian_monitoring.py` | `api/test_self_enrollment.py`, `api/test_activity_booking.py`, `api/test_guardian_home.py`, `api/test_guardian_phase2.py` |
-| SPA / UI surfaces | Guardian Home, Guardian Communication Center, student drill-down, course selection, activities, attendance, policies, finance, monitoring, portfolio | `ui-spa/src/pages/guardian/*` | `ui-spa/src/pages/guardian/__tests__/GuardianCommunicationCenter.test.ts`, `ui-spa/src/pages/guardian/__tests__/GuardianCourseSelection.test.ts`, `ui-spa/src/pages/guardian/__tests__/GuardianPolicies.test.ts`, `ui-spa/src/pages/guardian/__tests__/GuardianAttendance.test.ts`, `ui-spa/src/pages/guardian/__tests__/GuardianFinance.test.ts`, `ui-spa/src/pages/guardian/__tests__/GuardianMonitoring.test.ts` |
-| Reports / dashboards / briefings | Guardian Home summary cards, communication-center communication and event summaries, course-selection board summaries, activity board summaries, attendance summary cards, finance summary cards, monitoring summary cards | `ui-spa/src/pages/guardian/GuardianHome.vue`, `ui-spa/src/pages/guardian/GuardianCommunicationCenter.vue`, `ui-spa/src/pages/guardian/GuardianCourseSelection.vue`, `ui-spa/src/pages/guardian/GuardianActivities.vue`, `ui-spa/src/pages/guardian/GuardianAttendance.vue`, `ui-spa/src/pages/guardian/GuardianFinance.vue`, `ui-spa/src/pages/guardian/GuardianMonitoring.vue` | `api/test_self_enrollment.py`, `api/test_activity_booking.py`, `api/test_guardian_phase2.py` |
+| Controller / workflow logic | Guardian course-selection workflows, activity booking workflows, guardian snapshot reads, guardian calendar overlay reads, guardian communication-center reads, guardian policy acknowledgement, guardian attendance visibility, guardian finance visibility, guardian monitoring reads and mark-read actions | `api/self_enrollment.py`, `api/activity_booking.py`, `api/guardian_home.py`, `api/guardian_calendar.py`, `api/guardian_communications.py`, `api/guardian_policy.py`, `api/guardian_attendance.py`, `api/guardian_finance.py`, `api/guardian_monitoring.py` | `api/test_self_enrollment.py`, `api/test_activity_booking.py`, `api/test_guardian_home.py`, `api/test_guardian_calendar.py`, `api/test_guardian_phase2.py` |
+| API endpoints | Guardian course-selection workflow endpoints plus activity booking, guardian snapshot, guardian calendar overlay, guardian communication-center, policy, attendance, finance, and monitoring endpoints | `api/self_enrollment.py`, `api/activity_booking.py`, `api/guardian_home.py`, `api/guardian_calendar.py`, `api/guardian_communications.py`, `api/guardian_policy.py`, `api/guardian_attendance.py`, `api/guardian_finance.py`, `api/guardian_monitoring.py` | `api/test_self_enrollment.py`, `api/test_activity_booking.py`, `api/test_guardian_home.py`, `api/test_guardian_calendar.py`, `api/test_guardian_phase2.py` |
+| SPA / UI surfaces | Guardian Home, Guardian Calendar Overlay, Guardian Communication Center, student drill-down, course selection, activities, attendance, policies, finance, monitoring, portfolio | `ui-spa/src/pages/guardian/*`, `ui-spa/src/overlays/guardian/GuardianCalendarOverlay.vue` | `ui-spa/src/pages/guardian/__tests__/GuardianHome.test.ts`, `ui-spa/src/overlays/guardian/__tests__/GuardianCalendarOverlay.test.ts`, `ui-spa/src/pages/guardian/__tests__/GuardianCommunicationCenter.test.ts`, `ui-spa/src/pages/guardian/__tests__/GuardianCourseSelection.test.ts`, `ui-spa/src/pages/guardian/__tests__/GuardianPolicies.test.ts`, `ui-spa/src/pages/guardian/__tests__/GuardianAttendance.test.ts`, `ui-spa/src/pages/guardian/__tests__/GuardianFinance.test.ts`, `ui-spa/src/pages/guardian/__tests__/GuardianMonitoring.test.ts` |
+| Reports / dashboards / briefings | Guardian Home summary cards, the home-launched school-calendar month view, communication-center communication and event summaries, course-selection board summaries, activity board summaries, attendance summary cards, finance summary cards, monitoring summary cards | `ui-spa/src/pages/guardian/GuardianHome.vue`, `ui-spa/src/overlays/guardian/GuardianCalendarOverlay.vue`, `ui-spa/src/pages/guardian/GuardianCommunicationCenter.vue`, `ui-spa/src/pages/guardian/GuardianCourseSelection.vue`, `ui-spa/src/pages/guardian/GuardianActivities.vue`, `ui-spa/src/pages/guardian/GuardianAttendance.vue`, `ui-spa/src/pages/guardian/GuardianFinance.vue`, `ui-spa/src/pages/guardian/GuardianMonitoring.vue` | `api/test_self_enrollment.py`, `api/test_activity_booking.py`, `api/test_guardian_calendar.py`, `api/test_guardian_phase2.py` |
 | Scheduler / background jobs | None documented for guardian actions in this contract | None | None |
 | Tests | Guardian course-selection backend coverage, activity booking backend coverage, guardian snapshot backend coverage, and guardian Phase-2 regression coverage | `api/test_self_enrollment.py`, `api/test_activity_booking.py`, `api/test_guardian_home.py`, `api/test_guardian_phase2.py` | Implemented |
