@@ -29,12 +29,14 @@ PROFILE_IMAGE_VARIANT_SLOTS = (
     "profile_image_medium",
     "profile_image",
 )
+PROFILE_IMAGE_THUMB_ONLY_SLOTS = ("profile_image_thumb",)
 PROFILE_IMAGE_VARIANT_PRIORITY = PROFILE_IMAGE_VARIANT_SLOTS
 PROFILE_IMAGE_VARIANT_ROLE_MAP = {
     "profile_image_thumb": "thumb",
     "profile_image_card": "card",
     "profile_image_medium": "viewer_preview",
 }
+_PREVIEW_SYNC_REQUEST_TTL_SECONDS = 300
 
 EMPLOYEE_VARIANT_SLOTS = PROFILE_IMAGE_VARIANT_SLOTS
 
@@ -328,14 +330,11 @@ def _resolve_original_governed_image_url(
         )
         current_file_url = str(getattr(current_file_doc, "file_url", "") or "").strip()
         if current_file_doc and current_file_url:
-            drive_file_row = _get_drive_file_row(current_file_doc) or {}
             resolved_current_url = _resolve_governed_display_url(
                 primary_subject_type,
                 resolved_subject,
                 file_name=current_file_doc.name,
                 file_url=current_file_url,
-                drive_file_id=drive_file_row.get("name"),
-                canonical_ref=drive_file_row.get("canonical_ref"),
             )
             if resolved_current_url:
                 return resolved_current_url
@@ -360,11 +359,72 @@ def _resolve_original_governed_image_url(
     )
 
 
+def _preview_sync_request_cache_key(
+    *,
+    drive_file_id: str,
+    current_version: str,
+    derivative_roles: Sequence[str],
+) -> str:
+    role_signature = ",".join(sorted({str(role or "").strip() for role in derivative_roles if str(role or "").strip()}))
+    return f"ifitwala_ed:profile_image_preview_sync:v1:{drive_file_id}:{current_version}:{role_signature}"
+
+
+def _request_missing_preview_derivatives(
+    *,
+    rows: Sequence[dict],
+    derivative_roles: Sequence[str],
+    ready_roles_by_drive_file: dict[str, set[str]],
+) -> None:
+    requested_roles = [str(role or "").strip() for role in (derivative_roles or []) if str(role or "").strip()]
+    if not requested_roles:
+        return
+
+    try:
+        from ifitwala_drive.services.files.derivatives import sync_preview_pipeline_for_current_version
+    except Exception:
+        return
+
+    cache = frappe.cache() if hasattr(frappe, "cache") else None
+    cache_get = getattr(cache, "get_value", None)
+    cache_set = getattr(cache, "set_value", None)
+
+    for row in rows or []:
+        drive_file_id = str(row.get("name") or "").strip()
+        current_version = str(row.get("current_version") or "").strip()
+        if not drive_file_id or not current_version:
+            continue
+
+        ready_roles = ready_roles_by_drive_file.get(drive_file_id, set())
+        if all(role in ready_roles for role in requested_roles):
+            continue
+
+        cache_key = _preview_sync_request_cache_key(
+            drive_file_id=drive_file_id,
+            current_version=current_version,
+            derivative_roles=requested_roles,
+        )
+        if callable(cache_get) and cache_get(cache_key):
+            continue
+
+        try:
+            drive_file_doc = frappe.get_doc("Drive File", drive_file_id)
+            mime_type = frappe.db.get_value("Drive File Version", current_version, "mime_type")
+            sync_preview_pipeline_for_current_version(
+                drive_file_doc=drive_file_doc,
+                mime_type=mime_type,
+            )
+            if callable(cache_set):
+                cache_set(cache_key, 1, expires_in_sec=_PREVIEW_SYNC_REQUEST_TTL_SECONDS)
+        except Exception:
+            frappe.log_error(frappe.get_traceback(), "Profile Image Preview Sync Request Failed")
+
+
 def _get_governed_image_variants_map(
     primary_subject_type: str,
     subject_names: Sequence[str] | Iterable[str],
     *,
     slots: Sequence[str],
+    request_missing_derivatives: bool = False,
 ) -> dict[str, dict[str, str]]:
     names = [str(name or "").strip() for name in (subject_names or [])]
     names = [name for name in names if name]
@@ -422,6 +482,12 @@ def _get_governed_image_variants_map(
                 if not drive_file_id or not derivative_role:
                     continue
                 ready_roles_by_drive_file.setdefault(drive_file_id, set()).add(derivative_role)
+        if request_missing_derivatives:
+            _request_missing_preview_derivatives(
+                rows=rows,
+                derivative_roles=derivative_roles,
+                ready_roles_by_drive_file=ready_roles_by_drive_file,
+            )
 
     variants: dict[str, dict[str, str]] = {}
     for row in rows:
@@ -540,12 +606,18 @@ def _apply_preferred_governed_images(
     image_field: str,
     slots: Sequence[str],
     fallback_to_original: bool = True,
+    request_missing_derivatives: bool = False,
 ) -> list[dict]:
     if not rows:
         return rows
 
     subject_names = [row.get(subject_field) for row in rows if row.get(subject_field)]
-    variants = _get_governed_image_variants_map(primary_subject_type, subject_names, slots=slots)
+    variants = _get_governed_image_variants_map(
+        primary_subject_type,
+        subject_names,
+        slots=slots,
+        request_missing_derivatives=request_missing_derivatives,
+    )
 
     for row in rows:
         subject_name = row.get(subject_field)
@@ -670,6 +742,7 @@ def apply_preferred_student_images(
     image_field: str = "student_image",
     slots: Sequence[str] = STUDENT_VARIANT_PRIORITY,
     fallback_to_original: bool = True,
+    request_missing_derivatives: bool = False,
 ) -> list[dict]:
     return _apply_preferred_governed_images(
         rows,
@@ -678,6 +751,7 @@ def apply_preferred_student_images(
         image_field=image_field,
         slots=slots,
         fallback_to_original=fallback_to_original,
+        request_missing_derivatives=request_missing_derivatives,
     )
 
 

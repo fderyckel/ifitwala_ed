@@ -24,6 +24,16 @@ from ifitwala_ed.api.calendar_core import (
 from ifitwala_ed.utilities.school_tree import get_ancestor_schools
 
 
+def _format_detail_datetime_label(value) -> str | None:
+    if not value:
+        return None
+
+    try:
+        return format_datetime(value)
+    except Exception:
+        return value.isoformat() if hasattr(value, "isoformat") else str(value)
+
+
 def get_meeting_details(meeting: str):
     """
     Return a rich payload for a single Meeting that can be rendered inside
@@ -84,8 +94,8 @@ def get_meeting_details(meeting: str):
         "date": doc.date,
         "start": start_dt.isoformat() if start_dt else None,
         "end": end_dt.isoformat() if end_dt else None,
-        "start_label": format_datetime(start_dt) if start_dt else None,
-        "end_label": format_datetime(end_dt) if end_dt else None,
+        "start_label": _format_detail_datetime_label(start_dt),
+        "end_label": _format_detail_datetime_label(end_dt),
         "location": doc.location,
         "virtual_link": doc.virtual_meeting_link,
         "meeting_category": doc.meeting_category,
@@ -148,8 +158,8 @@ def get_school_event_details(event: str):
         "description": doc.description or "",
         "start": start_dt.isoformat() if start_dt else None,
         "end": end_dt.isoformat() if end_dt else None,
-        "start_label": format_datetime(start_dt) if start_dt else None,
-        "end_label": format_datetime(end_dt) if end_dt else None,
+        "start_label": _format_detail_datetime_label(start_dt),
+        "end_label": _format_detail_datetime_label(end_dt),
         "reference_type": doc.reference_type,
         "reference_name": doc.reference_name,
         "timezone": tzinfo.zone,
@@ -247,8 +257,8 @@ def get_student_group_event_details(
         "location_missing_reason": context.get("location_missing_reason"),
         "start": start_dt.isoformat() if start_dt else None,
         "end": end_dt.isoformat() if end_dt else None,
-        "start_label": format_datetime(start_dt) if start_dt else None,
-        "end_label": format_datetime(end_dt) if end_dt else None,
+        "start_label": _format_detail_datetime_label(start_dt),
+        "end_label": _format_detail_datetime_label(end_dt),
         "timezone": tzinfo.zone,
         "_debug": context.get("_debug") if debug_booking else None,
     }

@@ -205,9 +205,12 @@ class TestCalendarExport(TestCase):
             patch("ifitwala_ed.api.calendar_export._render_staff_timetable_pdf", return_value=b"%PDF-test"),
         ):
             frappe.local.response = {}
-            frappe.session.user = "staff@example.com"
-
-            export_staff_timetable_pdf("next_2_weeks")
+            previous_user = getattr(frappe.session, "user", None)
+            try:
+                frappe.session.user = "staff@example.com"
+                export_staff_timetable_pdf("next_2_weeks")
+            finally:
+                frappe.session.user = previous_user
 
         self.assertEqual(frappe.local.response.get("type"), "download")
         self.assertEqual(frappe.local.response.get("display_content_as"), "inline")

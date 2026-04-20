@@ -2944,27 +2944,40 @@ def download_academic_file(
         share_token=share_token,
         viewer_email=viewer_email,
     )
+    attached_to_doctype = str((file_row or {}).get("attached_to_doctype") or "").strip()
+    attached_to_name = str((file_row or {}).get("attached_to_name") or "").strip()
+    attached_to_field = str((file_row or {}).get("attached_to_field") or "").strip()
     student_image_context = None
     if not (share_token or "").strip():
         user = _require_authenticated_user()
-        try:
-            student_image_context = _resolve_student_profile_image_access(
-                user=user,
-                file_name=file_name,
-                context_doctype=context_doctype,
-                context_name=context_name,
-                strict=False,
+        student_image_request = attached_to_doctype == CONTEXT_STUDENT and (
+            attached_to_field == "student_image"
+            or (
+                explicit_derivative_role
+                and resolved_context_doctype == CONTEXT_STUDENT
+                and resolved_context_name
+                and attached_to_name == resolved_context_name
             )
-        except frappe.DoesNotExistError:
-            student_image_context = None
+        )
+        if student_image_request:
+            try:
+                student_image_context = _resolve_student_profile_image_access(
+                    user=user,
+                    file_name=file_name,
+                    context_doctype=context_doctype,
+                    context_name=context_name,
+                    strict=False,
+                )
+            except frappe.DoesNotExistError:
+                student_image_context = None
 
         if (
             not student_image_context
             and resolved_context_doctype == CONTEXT_STUDENT
             and resolved_context_name
-            and str((file_row or {}).get("attached_to_doctype") or "").strip() == CONTEXT_STUDENT
-            and str((file_row or {}).get("attached_to_name") or "").strip() == resolved_context_name
-            and str((file_row or {}).get("attached_to_field") or "").strip() == "student_image"
+            and attached_to_doctype == CONTEXT_STUDENT
+            and attached_to_name == resolved_context_name
+            and attached_to_field == "student_image"
         ):
             drive_file_row = _resolve_current_student_profile_drive_file(resolved_context_name)
             student_image_context = _resolve_student_profile_image_access_from_drive_file(
@@ -3285,25 +3298,38 @@ def download_guardian_file(
         frappe.throw(_("File is required."), frappe.ValidationError)
 
     file_row = _resolve_any_file_row(file_name)
+    attached_to_doctype = str((file_row or {}).get("attached_to_doctype") or "").strip()
+    attached_to_name = str((file_row or {}).get("attached_to_name") or "").strip()
+    attached_to_field = str((file_row or {}).get("attached_to_field") or "").strip()
     guardian_image_context = None
-    try:
-        guardian_image_context = _resolve_guardian_profile_image_access(
-            user=user,
-            file_name=file_name,
-            context_doctype=context_doctype,
-            context_name=context_name,
-            strict=False,
+    guardian_image_request = attached_to_doctype == CONTEXT_GUARDIAN and (
+        attached_to_field == "guardian_image"
+        or (
+            explicit_derivative_role
+            and resolved_context_doctype == CONTEXT_GUARDIAN
+            and resolved_context_name
+            and attached_to_name == resolved_context_name
         )
-    except frappe.DoesNotExistError:
-        guardian_image_context = None
+    )
+    if guardian_image_request:
+        try:
+            guardian_image_context = _resolve_guardian_profile_image_access(
+                user=user,
+                file_name=file_name,
+                context_doctype=context_doctype,
+                context_name=context_name,
+                strict=False,
+            )
+        except frappe.DoesNotExistError:
+            guardian_image_context = None
 
     if (
         not guardian_image_context
         and resolved_context_doctype == CONTEXT_GUARDIAN
         and resolved_context_name
-        and str((file_row or {}).get("attached_to_doctype") or "").strip() == CONTEXT_GUARDIAN
-        and str((file_row or {}).get("attached_to_name") or "").strip() == resolved_context_name
-        and str((file_row or {}).get("attached_to_field") or "").strip() == "guardian_image"
+        and attached_to_doctype == CONTEXT_GUARDIAN
+        and attached_to_name == resolved_context_name
+        and attached_to_field == "guardian_image"
     ):
         drive_file_row = _resolve_current_guardian_profile_drive_file(resolved_context_name)
         guardian_image_context = _resolve_guardian_profile_image_access_from_drive_file(
@@ -3398,6 +3424,7 @@ def download_employee_file(
     resolved_canonical_ref = (canonical_ref or "").strip()
     resolved_context_doctype = (context_doctype or "").strip()
     resolved_context_name = (context_name or "").strip()
+    explicit_derivative_role = (derivative_role or "").strip()
 
     employee_image_context = None
     if resolved_drive_file_id or resolved_canonical_ref:
@@ -3413,7 +3440,7 @@ def download_employee_file(
             context_name=context_name,
             strict=False,
         )
-    elif file_name:
+    elif file_name and explicit_derivative_role:
         try:
             employee_image_context = _resolve_employee_profile_image_access(
                 user=user,
@@ -3425,7 +3452,12 @@ def download_employee_file(
         except frappe.DoesNotExistError:
             employee_image_context = None
 
-    if not employee_image_context and resolved_context_doctype == CONTEXT_EMPLOYEE and resolved_context_name:
+    if (
+        not employee_image_context
+        and explicit_derivative_role
+        and resolved_context_doctype == CONTEXT_EMPLOYEE
+        and resolved_context_name
+    ):
         drive_file_row = _resolve_current_employee_profile_drive_file(resolved_context_name)
         employee_image_context = _resolve_employee_profile_image_access_from_drive_file(
             user=user,
@@ -3458,21 +3490,21 @@ def download_employee_file(
         frappe.local.response["location"] = file_url
         return
 
-    if (derivative_role or "").strip():
+    if explicit_derivative_role:
         target_url = (
             _resolve_employee_image_grant_target_url(
                 employee=file_employee,
                 file_id=str((file_row or {}).get("name") or file_name or "").strip(),
                 drive_file_id=resolved_drive_file_id,
                 prefer_preview=True,
-                derivative_role=derivative_role,
+                derivative_role=explicit_derivative_role,
             )
             if employee_image_context
             else _resolve_drive_preview_grant_url(
                 file_name or None,
                 drive_file_id=resolved_drive_file_id or None,
                 canonical_ref=resolved_canonical_ref or None,
-                derivative_role=derivative_role,
+                derivative_role=explicit_derivative_role,
             )
         )
         if _respond_with_delivery_target(target_url=target_url):

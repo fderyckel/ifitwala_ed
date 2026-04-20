@@ -9,7 +9,12 @@ import frappe
 from frappe import _
 
 from ifitwala_ed.assessment import quiz_service, task_submission_service
-from ifitwala_ed.utilities.image_utils import apply_preferred_student_images
+from ifitwala_ed.utilities.image_utils import (
+    PROFILE_IMAGE_THUMB_ONLY_SLOTS,
+    apply_preferred_student_images,
+)
+
+GRADEBOOK_STUDENT_IMAGE_SLOTS = PROFILE_IMAGE_THUMB_ONLY_SLOTS
 
 
 def _normalize_filters(filters, kwargs):
@@ -788,7 +793,9 @@ def _get_student_meta_map(student_ids):
         rows,
         student_field="name",
         image_field="student_image",
+        slots=GRADEBOOK_STUDENT_IMAGE_SLOTS,
         fallback_to_original=False,
+        request_missing_derivatives=True,
     )
     return {row.get("name"): row for row in rows if row.get("name")}
 

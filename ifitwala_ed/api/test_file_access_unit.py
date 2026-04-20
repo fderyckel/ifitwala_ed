@@ -856,6 +856,9 @@ class TestFileAccessUnit(TestCase):
             }
             file_access._resolve_guardian_from_file = lambda file_row: "GRD-0001"
             file_access._assert_guardian_file_access = lambda **kwargs: None
+            file_access.get_drive_file_for_file = lambda *args, **kwargs: self.fail(
+                "generic guardian file delivery should not probe guardian profile-image authority"
+            )
             file_access._resolve_drive_download_grant_url = lambda *args, **kwargs: (
                 "/private/files/ifitwala_drive/files/aa/bb/guardian.webp"
             )
