@@ -218,6 +218,23 @@ Phase 4 continues to treat assessment as the source of truth for:
 Curriculum and LMS surfaces remain consumers and handoff points.
 They must not become the source of truth for feedback records or release logic.
 
+### 4.5 Governed file ownership for Phase 4
+
+Phase 4 must reuse the existing governed file split instead of inventing a new assessment file purpose.
+
+Rules:
+
+- immutable learner evidence remains `assessment_submission`
+- returned marked or exported feedback files remain `assessment_feedback`
+- the student navigator should default to the immutable `assessment_submission` evidence surface when a governed file surface is authorized and available
+- released structured feedback is layered onto that evidence context through assessment-owned records
+- `assessment_feedback` is an optional derived artifact for download, export, print, or exceptional fallback; it is not the default in-product viewer input
+
+Engineering rule:
+
+- do not make student or guardian feedback reading depend on derived artifact generation before the released feedback can be consumed
+- do not collapse evidence and returned-feedback semantics into one portal file contract
+
 ---
 
 ## 5. Recommended Student Feedback Navigator
@@ -289,6 +306,13 @@ Must:
 - support jump-back from the document to the selected feedback entry
 
 The student should never be dropped directly into the document as the first experience.
+
+Default file-surface rule:
+
+- the navigator document surface should render the bound immutable `assessment_submission` evidence by default when that evidence has an authorized governed preview/open surface
+- released structured feedback remains the primary product layer and is rendered in navigator UI and overlay/context form, not as flattened document truth
+- `assessment_feedback` derived artifacts may be offered as optional returned files or exports, but they are not the primary viewer input for Phase 4
+- when no governed submission preview is available, the navigator should remain summary-first and may degrade to metadata-only or explicit open/download actions instead of blocking the released feedback experience
 
 ### 5.2 Premium UI rules
 
@@ -423,6 +447,12 @@ Guardian assessment feedback should route from:
 
 The guardian route should open the same released-feedback detail in read-only guardian mode rather than a separate bespoke workflow.
 
+Guardian file-access rule:
+
+- guardian mode must resolve its own surface-authorized file DTO; it must not inherit student-authorized file actions implicitly
+- when feedback is guardian-visible but the underlying evidence or artifact file surface is not guardian-authorized, the guardian detail must degrade cleanly to text-only or metadata-only released feedback
+- guardian read-only access to a document pane is allowed only when the governed surface explicitly authorizes that file read for guardian context
+
 ### 8.3 Read-model shape rule
 
 Phase 4 should use:
@@ -435,6 +465,12 @@ It should **not**:
 - dump full feedback detail into `get_student_learning_space()`
 - dump full feedback detail into guardian monitoring snapshots
 - fetch each comment, thread, or artifact through client waterfalls
+
+File DTO rule:
+
+- the navigator detail payload should reuse the existing governed attachment preview contract and shared `attachment_preview` DTO direction rather than inventing an assessment-only file transport shape
+- stable Ed-owned `open_url`, `preview_url`, and `thumbnail_url` actions should remain the file/action contract when present
+- additive rollout remains valid: some released assessment contexts may still be open/download-only until richer governed preview routes exist
 
 ---
 
@@ -463,6 +499,8 @@ Phase 4 must follow these request-shape rules:
    The detail payload should include summary, priorities, comment list, reply thread state, and authorized file/display actions together.
 6. File access remains Ed-owned and governed.
    No raw private paths and no direct Drive grant calls from the SPA.
+7. The file block must stay purpose-aware.
+   Use `assessment_submission` as the default viewer input and keep `assessment_feedback` as optional derived artifact behavior rather than a second source of truth.
 
 Hot-path implication:
 

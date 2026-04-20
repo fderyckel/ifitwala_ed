@@ -73,6 +73,35 @@ def assert_employee_image_read_access(employee: str, *, file_name: str) -> dict[
     }
 
 
+def assert_student_image_read_access(student: str, *, file_name: str) -> dict[str, Any]:
+    from ifitwala_ed.api.file_access import (
+        _require_authenticated_user,
+        _resolve_student_profile_image_access,
+    )
+
+    resolved_student = str(student or "").strip()
+    resolved_file_name = str(file_name or "").strip()
+    if not resolved_student:
+        frappe.throw(_("Student is required."), frappe.ValidationError)
+    if not resolved_file_name:
+        frappe.throw(_("File is required."), frappe.ValidationError)
+
+    user = _require_authenticated_user()
+    context = _resolve_student_profile_image_access(
+        user=user,
+        file_name=resolved_file_name,
+        context_doctype="Student",
+        context_name=resolved_student,
+        strict=True,
+    )
+    return {
+        "student": context["file_student"],
+        "school": context.get("school"),
+        "file_id": str((context.get("file_row") or {}).get("name") or resolved_file_name).strip(),
+        "drive_file_id": context["drive_file_id"],
+    }
+
+
 def build_student_image_contract(student_doc) -> dict[str, Any]:
     school = getattr(student_doc, "anchor_school", None)
     if not school:
@@ -115,6 +144,34 @@ def build_guardian_image_contract(guardian_doc) -> dict[str, Any]:
         "purpose": "guardian_profile_display",
         "retention_policy": "until_school_exit_plus_6m",
         "slot": _PROFILE_IMAGE_SLOT,
+    }
+
+
+def assert_guardian_image_read_access(guardian: str, *, file_name: str) -> dict[str, Any]:
+    from ifitwala_ed.api.file_access import (
+        _require_authenticated_user,
+        _resolve_guardian_profile_image_access,
+    )
+
+    resolved_guardian = str(guardian or "").strip()
+    resolved_file_name = str(file_name or "").strip()
+    if not resolved_guardian:
+        frappe.throw(_("Guardian is required."), frappe.ValidationError)
+    if not resolved_file_name:
+        frappe.throw(_("File is required."), frappe.ValidationError)
+
+    user = _require_authenticated_user()
+    context = _resolve_guardian_profile_image_access(
+        user=user,
+        file_name=resolved_file_name,
+        context_doctype="Guardian",
+        context_name=resolved_guardian,
+        strict=True,
+    )
+    return {
+        "guardian": context["file_guardian"],
+        "file_id": str((context.get("file_row") or {}).get("name") or resolved_file_name).strip(),
+        "drive_file_id": context["drive_file_id"],
     }
 
 

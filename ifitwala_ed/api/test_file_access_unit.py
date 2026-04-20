@@ -231,7 +231,7 @@ class TestFileAccessUnit(TestCase):
 
         self.assertIsNone(url)
 
-    def test_resolve_drive_file_grant_target_url_hides_raw_private_grant_target(self):
+    def test_resolve_drive_file_grant_target_url_keeps_local_private_grant_target_for_delivery(self):
         with _file_access_module() as (file_access, frappe):
             file_access._load_drive_access_callable = lambda attribute: (
                 lambda **kwargs: {"url": "/private/files/secret.pdf"}
@@ -242,7 +242,7 @@ class TestFileAccessUnit(TestCase):
                 file_id="FILE-EMP-1",
             )
 
-        self.assertIsNone(target_url)
+        self.assertEqual(target_url, "/private/files/secret.pdf")
 
     def test_resolve_drive_file_grant_target_url_returns_none_without_safe_grant(self):
         with _file_access_module() as (file_access, frappe):
@@ -616,6 +616,297 @@ class TestFileAccessUnit(TestCase):
             ],
         )
 
+    def test_download_admissions_file_accepts_local_drive_delivery_target(self):
+        with _file_access_module() as (file_access, frappe):
+            delivery_requests: list[dict] = []
+            frappe.local.response = {}
+            frappe.session.user = "staff@example.com"
+            file_access._resolve_authorized_admissions_file_target = lambda **kwargs: (
+                {
+                    "name": "FILE-ADM-1",
+                    "file_url": "/private/files/admissions.pdf",
+                    "file_name": "admissions.pdf",
+                    "is_private": 1,
+                },
+                {"name": "DRIVE-FILE-ADM-1"},
+            )
+            file_access._resolve_drive_download_grant_url = lambda *args, **kwargs: (
+                "/private/files/ifitwala_drive/files/aa/bb/admissions.pdf"
+            )
+            file_access._respond_with_delivery_target = lambda **kwargs: delivery_requests.append(kwargs) or True
+
+            file_access.download_admissions_file(
+                file="FILE-ADM-1",
+                context_doctype="Student Applicant",
+                context_name="APPL-0001",
+            )
+
+        self.assertEqual(
+            delivery_requests,
+            [{"target_url": "/private/files/ifitwala_drive/files/aa/bb/admissions.pdf"}],
+        )
+
+    def test_thumbnail_admissions_file_accepts_local_drive_delivery_target(self):
+        with _file_access_module() as (file_access, frappe):
+            delivery_requests: list[dict] = []
+            frappe.local.response = {}
+            frappe.session.user = "staff@example.com"
+            file_access._resolve_authorized_admissions_file_target = lambda **kwargs: (
+                {
+                    "name": "FILE-ADM-1",
+                    "file_url": "/private/files/admissions.png",
+                    "file_name": "admissions.png",
+                    "is_private": 1,
+                },
+                {"name": "DRIVE-FILE-ADM-1", "file": "FILE-ADM-1"},
+            )
+            file_access._resolve_cached_thumbnail_target_url = lambda **kwargs: (
+                "/private/files/ifitwala_drive/derivatives/aa/bb/admissions_thumb.png"
+            )
+            file_access._respond_with_delivery_target = lambda **kwargs: delivery_requests.append(kwargs) or True
+
+            file_access.thumbnail_admissions_file(
+                file="FILE-ADM-1",
+                context_doctype="Student Applicant",
+                context_name="APPL-0001",
+            )
+
+        self.assertEqual(
+            delivery_requests,
+            [
+                {
+                    "target_url": "/private/files/ifitwala_drive/derivatives/aa/bb/admissions_thumb.png",
+                    "cache_headers": True,
+                }
+            ],
+        )
+
+    def test_download_guardian_file_accepts_local_drive_delivery_target(self):
+        with _file_access_module() as (file_access, frappe):
+            delivery_requests: list[dict] = []
+            frappe.local.response = {}
+            frappe.session.user = "guardian@example.com"
+            file_access._resolve_any_file_row = lambda file_name: {
+                "name": file_name,
+                "file_url": "/private/files/guardian.webp",
+                "file_name": "guardian.webp",
+                "is_private": 1,
+                "attached_to_doctype": "Guardian",
+                "attached_to_name": "GRD-0001",
+            }
+            file_access._resolve_guardian_from_file = lambda file_row: "GRD-0001"
+            file_access._assert_guardian_file_access = lambda **kwargs: None
+            file_access._resolve_drive_download_grant_url = lambda *args, **kwargs: (
+                "/private/files/ifitwala_drive/files/aa/bb/guardian.webp"
+            )
+            file_access._respond_with_delivery_target = lambda **kwargs: delivery_requests.append(kwargs) or True
+
+            file_access.download_guardian_file(
+                file="FILE-GRD-1",
+                context_doctype="Guardian",
+                context_name="GRD-0001",
+            )
+
+        self.assertEqual(
+            delivery_requests,
+            [{"target_url": "/private/files/ifitwala_drive/files/aa/bb/guardian.webp"}],
+        )
+
+    def test_download_guardian_file_uses_guardian_image_preview_grant_for_profile_images(self):
+        with _file_access_module() as (file_access, frappe):
+            frappe.local.response = {}
+            frappe.session.user = "guardian@example.com"
+            file_access._resolve_any_file_row = lambda file_name: {
+                "name": file_name,
+                "file_url": "/private/files/guardian_thumb.webp",
+                "file_name": "guardian_thumb.webp",
+                "is_private": 1,
+                "attached_to_doctype": "Guardian",
+                "attached_to_name": "GRD-0001",
+                "attached_to_field": "guardian_image",
+            }
+            file_access.get_drive_file_for_file = lambda file_name, **kwargs: {
+                "name": "DRIVE-GRD-1",
+                "owner_doctype": "Guardian",
+                "owner_name": "GRD-0001",
+                "primary_subject_type": "Guardian",
+                "primary_subject_id": "GRD-0001",
+                "purpose": "guardian_profile_display",
+                "slot": "profile_image",
+            }
+            file_access._load_drive_media_callable = lambda attribute: (
+                self.assertEqual(attribute, "issue_guardian_image_preview_grant")
+                or (
+                    lambda guardian, file_id, derivative_role=None: {"url": "https://signed.example.com/guardian-thumb"}
+                )
+            )
+            file_access._load_drive_access_callable = lambda attribute: self.fail(
+                "generic drive grant path should not be used for guardian profile images"
+            )
+            frappe.db.get_value = lambda doctype, filters, fieldname=None, as_dict=False: (
+                "GRD-0001" if doctype == "Guardian" else None
+            )
+
+            file_access.download_guardian_file(
+                file="FILE-GRD-IMG-1",
+                context_doctype="Guardian",
+                context_name="GRD-0001",
+                derivative_role="thumb",
+            )
+
+        self.assertEqual(frappe.local.response.get("type"), "redirect")
+        self.assertEqual(frappe.local.response.get("location"), "https://signed.example.com/guardian-thumb")
+
+    def test_download_academic_file_uses_student_image_preview_grant_for_profile_images(self):
+        with _file_access_module() as (file_access, frappe):
+            frappe.local.response = {}
+            frappe.session.user = "staff@example.com"
+            file_access._resolve_authorized_academic_file = lambda **kwargs: {
+                "name": "FILE-STU-IMG-1",
+                "file_url": "/private/files/student_thumb.webp",
+                "file_name": "student_thumb.webp",
+                "is_private": 1,
+                "attached_to_doctype": "Student",
+                "attached_to_name": "STU-0001",
+                "attached_to_field": "student_image",
+            }
+            file_access._resolve_any_file_row = lambda file_name: {
+                "name": file_name,
+                "file_url": "/private/files/student_thumb.webp",
+                "file_name": "student_thumb.webp",
+                "is_private": 1,
+                "attached_to_doctype": "Student",
+                "attached_to_name": "STU-0001",
+                "attached_to_field": "student_image",
+            }
+            file_access.get_drive_file_for_file = lambda file_name, **kwargs: {
+                "name": "DRIVE-STU-1",
+                "owner_doctype": "Student",
+                "owner_name": "STU-0001",
+                "primary_subject_type": "Student",
+                "primary_subject_id": "STU-0001",
+                "purpose": "student_profile_display",
+                "slot": "profile_image",
+                "school": "SCH-0001",
+            }
+            file_access._assert_internal_student_access = lambda **kwargs: None
+            file_access._load_drive_media_callable = lambda attribute: (
+                self.assertEqual(attribute, "issue_student_image_preview_grant")
+                or (lambda student, file_id, derivative_role=None: {"url": "https://signed.example.com/student-thumb"})
+            )
+            file_access._load_drive_access_callable = lambda attribute: self.fail(
+                "generic drive grant path should not be used for student profile images"
+            )
+
+            file_access.download_academic_file(
+                file="FILE-STU-IMG-1",
+                context_doctype="Student",
+                context_name="STU-0001",
+                derivative_role="thumb",
+            )
+
+        self.assertEqual(frappe.local.response.get("type"), "redirect")
+        self.assertEqual(frappe.local.response.get("location"), "https://signed.example.com/student-thumb")
+
+    def test_download_academic_file_falls_back_to_current_student_profile_image_when_old_file_binding_rotated(self):
+        with _file_access_module() as (file_access, frappe):
+            frappe.local.response = {}
+            frappe.session.user = "staff@example.com"
+            file_access._resolve_authorized_academic_file = lambda **kwargs: {
+                "name": "FILE-STALE-STU-IMG",
+                "file_url": "/private/files/student_old.webp",
+                "file_name": "student_old.webp",
+                "is_private": 1,
+                "attached_to_doctype": "Student",
+                "attached_to_name": "STU-0001",
+                "attached_to_field": "student_image",
+            }
+            file_access._resolve_student_profile_image_access = lambda **kwargs: None
+            file_access._resolve_current_student_profile_drive_file = lambda student: {
+                "name": "DRIVE-STU-CURRENT",
+                "file": "FILE-CURRENT-STU-IMG",
+            }
+            file_access._resolve_student_profile_image_access_from_drive_file = lambda **kwargs: {
+                "file_row": {
+                    "name": "FILE-CURRENT-STU-IMG",
+                    "file_url": "/private/files/student_current.webp",
+                    "file_name": "student_current.webp",
+                    "is_private": 1,
+                    "attached_to_doctype": "Student",
+                    "attached_to_name": "STU-0001",
+                    "attached_to_field": "student_image",
+                },
+                "file_student": "STU-0001",
+                "school": "SCH-0001",
+                "drive_file_id": "DRIVE-STU-CURRENT",
+            }
+            file_access._respond_with_delivery_target = lambda **kwargs: (
+                frappe.local.response.update({"type": "redirect", "location": kwargs["target_url"]}) or True
+            )
+
+            def fake_student_target(**kwargs):
+                self.assertEqual(kwargs["file_id"], "FILE-CURRENT-STU-IMG")
+                self.assertEqual(kwargs["drive_file_id"], "DRIVE-STU-CURRENT")
+                self.assertEqual(kwargs["student"], "STU-0001")
+                self.assertEqual(kwargs["derivative_role"], "thumb")
+                self.assertTrue(kwargs["prefer_preview"])
+                return "https://signed.example.com/current-student-thumb"
+
+            file_access._resolve_student_image_grant_target_url = fake_student_target
+
+            file_access.download_academic_file(
+                file="FILE-STALE-STU-IMG",
+                context_doctype="Student",
+                context_name="STU-0001",
+                derivative_role="thumb",
+            )
+
+        self.assertEqual(frappe.local.response.get("type"), "redirect")
+        self.assertEqual(
+            frappe.local.response.get("location"),
+            "https://signed.example.com/current-student-thumb",
+        )
+
+    def test_open_public_website_media_accepts_local_drive_delivery_target(self):
+        with _file_access_module() as (file_access, frappe):
+            delivery_requests: list[dict] = []
+            frappe.local.response = {}
+            file_access._resolve_public_website_media_row = lambda file_name: {
+                "name": file_name,
+                "file_url": "/private/files/logo.webp",
+                "file_name": "logo.webp",
+                "is_private": 1,
+            }
+            file_access._assert_public_website_media_visible = lambda file_row: None
+            file_access._resolve_public_website_media_grant_url = lambda file_name: (
+                "/private/files/ifitwala_drive/files/aa/bb/logo.webp"
+            )
+            file_access._respond_with_delivery_target = lambda **kwargs: delivery_requests.append(kwargs) or True
+
+            file_access.open_public_website_media(file="FILE-PUBLIC-1")
+
+        self.assertEqual(
+            delivery_requests,
+            [{"target_url": "/private/files/ifitwala_drive/files/aa/bb/logo.webp"}],
+        )
+
+    def test_resolve_supporting_material_grant_target_url_keeps_local_private_target_for_delivery(self):
+        with _file_access_module() as (file_access, frappe):
+            frappe.db.get_value = lambda *args, **kwargs: "ready"
+            file_access._request_supporting_material_grant = lambda **kwargs: {
+                "url": "/private/files/ifitwala_drive/files/aa/bb/material.pdf"
+            }
+
+            target_url = file_access._resolve_supporting_material_grant_target_url(
+                material="MAT-0001",
+                placement=None,
+                drive_file_id="DRIVE-FILE-MAT-1",
+                file_id="FILE-MAT-1",
+                prefer_preview=True,
+            )
+
+        self.assertEqual(target_url, "/private/files/ifitwala_drive/files/aa/bb/material.pdf")
+
     def test_resolve_drive_download_grant_url_returns_signed_url(self):
         with _file_access_module() as (file_access, frappe):
 
@@ -652,7 +943,7 @@ class TestFileAccessUnit(TestCase):
 
         self.assertEqual(target_url, "https://signed.example.com/DRIVE-FILE-1")
 
-    def test_resolve_drive_download_grant_url_hides_raw_private_target(self):
+    def test_resolve_drive_download_grant_url_keeps_local_private_target_for_delivery(self):
         with _file_access_module() as (file_access, frappe):
 
             def fake_get_value(doctype, filters, fieldname=None, as_dict=False):
@@ -686,9 +977,9 @@ class TestFileAccessUnit(TestCase):
 
             target_url = file_access._resolve_drive_download_grant_url("FILE-EMP-1")
 
-        self.assertIsNone(target_url)
+        self.assertEqual(target_url, "/private/files/ifitwala_drive/files/aa/bb/document.pdf")
 
-    def test_resolve_drive_preview_grant_url_hides_raw_private_target(self):
+    def test_resolve_drive_preview_grant_url_keeps_local_private_target_for_delivery(self):
         with _file_access_module() as (file_access, frappe):
 
             def fake_get_value(doctype, filters, fieldname=None, as_dict=False):
@@ -722,7 +1013,7 @@ class TestFileAccessUnit(TestCase):
 
             target_url = file_access._resolve_drive_preview_grant_url("FILE-EMP-1")
 
-        self.assertIsNone(target_url)
+        self.assertEqual(target_url, "/private/files/ifitwala_drive/derivatives/aa/bb/pdf_page_1.png")
 
     def test_download_employee_file_redirects_to_employee_image_preview_grant_for_private_file(self):
         with _file_access_module() as (file_access, frappe):

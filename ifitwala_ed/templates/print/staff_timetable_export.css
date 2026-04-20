@@ -45,8 +45,10 @@ body.staff-timetable-export {
 }
 
 .timetable-page {
-  height: 188mm;
+  height: 182mm;
   overflow: hidden;
+  page-break-inside: avoid;
+  break-inside: avoid-page;
   page-break-after: always;
   break-after: page;
 }
@@ -60,7 +62,7 @@ body.staff-timetable-export {
   height: 5px;
   border-radius: 999px;
   background: linear-gradient(90deg, var(--if-accent) 0%, #4d7a88 58%, #a8bdc7 100%);
-  margin-bottom: 9px;
+  margin-bottom: 6px;
 }
 
 .timetable-header,
@@ -70,7 +72,7 @@ body.staff-timetable-export {
 }
 
 .timetable-header {
-  margin-bottom: 4mm;
+  margin-bottom: 2.5mm;
 }
 
 .timetable-header td {
@@ -150,7 +152,7 @@ body.staff-timetable-export {
 }
 
 .timetable-header__brand-name {
-  font-size: 20px;
+  font-size: 18px;
   line-height: 1.05;
 }
 
@@ -178,7 +180,7 @@ body.staff-timetable-export {
 }
 
 .timetable-header__title {
-  font-size: 24px;
+  font-size: 22px;
   line-height: 1.02;
 }
 
@@ -233,25 +235,27 @@ body.staff-timetable-export {
 }
 
 .timetable-week-label {
-  margin-bottom: 3mm;
+  margin-bottom: 2mm;
   padding: 0 2px;
 }
 
 .timetable-week-label__title {
-  font-size: 16px;
+  font-size: 14px;
 }
 
 .timetable-week-label__copy {
-  font-size: 8.5px;
+  font-size: 8px;
 }
 
 .timetable-board {
   table-layout: fixed;
-  margin-bottom: 3mm;
+  margin-bottom: 2mm;
+  page-break-inside: avoid;
+  break-inside: avoid-page;
 }
 
 .timetable-board__head {
-  padding: 0 4px 5px;
+  padding: 0 4px 4px;
   text-align: left;
   background: linear-gradient(180deg, rgba(237, 245, 247, 0.84), rgba(255, 255, 255, 0));
 }
@@ -273,15 +277,15 @@ body.staff-timetable-export {
 }
 
 .timetable-board__cell {
-  height: 112mm;
+  height: 104mm;
   padding: 0 3px;
   vertical-align: top;
 }
 
 .day-panel {
   position: relative;
-  height: 112mm;
-  padding: 7px 7px 25mm;
+  height: 104mm;
+  padding: 6px 6px 22mm;
   border: 1px solid rgba(226, 232, 240, 0.98);
   border-top: 3px solid rgba(32, 74, 93, 0.26);
   border-radius: 14px;
@@ -307,8 +311,8 @@ body.staff-timetable-export {
 }
 
 .day-panel__heading {
-  margin-bottom: 6px;
-  font-size: 8.5px;
+  margin-bottom: 5px;
+  font-size: 8px;
   font-weight: 700;
   color: var(--if-accent);
   text-transform: uppercase;
@@ -316,12 +320,12 @@ body.staff-timetable-export {
 }
 
 .day-panel__all-day {
-  margin-bottom: 7px;
+  margin-bottom: 5px;
 }
 
 .all-day-chip {
-  margin-bottom: 4px;
-  padding: 5px 6px;
+  margin-bottom: 3px;
+  padding: 4px 5px;
   border-radius: 10px;
   border: 1px solid rgba(226, 232, 240, 0.9);
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(237, 245, 247, 0.82));
@@ -330,7 +334,7 @@ body.staff-timetable-export {
 .all-day-chip__title {
   display: block;
   margin-top: 1px;
-  font-size: 9px;
+  font-size: 8.5px;
   font-weight: 700;
   color: var(--if-ink);
   overflow-wrap: anywhere;
@@ -339,7 +343,7 @@ body.staff-timetable-export {
 .all-day-chip__meta {
   display: block;
   margin-top: 1px;
-  font-size: 8px;
+  font-size: 7.5px;
 }
 
 .day-panel__timeline {
@@ -347,8 +351,8 @@ body.staff-timetable-export {
 }
 
 .event-card {
-  margin-bottom: 5px;
-  padding: 6px 7px 7px;
+  margin-bottom: 4px;
+  padding: 5px 6px 6px;
   border: 1px solid rgba(226, 232, 240, 0.95);
   border-left: 4px solid var(--event-accent, #667085);
   border-radius: 12px;
@@ -374,7 +378,7 @@ body.staff-timetable-export {
 
 .event-card__meta-row {
   overflow: hidden;
-  margin-bottom: 3px;
+  margin-bottom: 2px;
 }
 
 .event-card__badge {
@@ -384,16 +388,16 @@ body.staff-timetable-export {
 
 .event-card__time {
   float: right;
-  font-size: 8.5px;
+  font-size: 8px;
   font-weight: 700;
   color: var(--if-accent);
 }
 
 .event-card__title {
   clear: both;
-  font-size: 10px;
+  font-size: 9.25px;
   font-weight: 700;
-  line-height: 1.25;
+  line-height: 1.18;
   color: var(--if-ink);
   overflow-wrap: anywhere;
   word-break: break-word;
@@ -401,19 +405,19 @@ body.staff-timetable-export {
 
 .event-card__location {
   margin-top: 2px;
-  font-size: 8.25px;
+  font-size: 7.5px;
 }
 
 .day-panel__outside {
-  padding-top: 12px;
-  font-size: 8.5px;
+  padding-top: 10px;
+  font-size: 8px;
 }
 
 .day-panel__planning {
   position: absolute;
-  left: 7px;
-  right: 7px;
-  bottom: 7px;
+  left: 6px;
+  right: 6px;
+  bottom: 6px;
 }
 
 .planning-line__checkbox {
@@ -426,6 +430,8 @@ body.staff-timetable-export {
 
 .timetable-notes {
   padding: 0 2px;
+  page-break-inside: avoid;
+  break-inside: avoid-page;
 }
 
 .timetable-notes__label {
@@ -433,7 +439,7 @@ body.staff-timetable-export {
 }
 
 .timetable-notes__line {
-  height: 6mm;
+  height: 4.6mm;
   border-bottom: 1px solid rgba(71, 85, 105, 0.28);
 }
 

@@ -368,6 +368,59 @@ class TestFileAccessUrlContracts(FrappeTestCase):
             "https://signed.example.com/thumb_guardian.webp",
         )
 
+    def test_download_guardian_file_uses_guardian_image_preview_grant_for_profile_images(self):
+        file_row = {
+            "name": "FILE-GRD-IMG-1",
+            "file_url": "/private/files/Guardian/GRD-0001/thumb_guardian.webp",
+            "file_name": "thumb_guardian.webp",
+            "is_private": 1,
+            "attached_to_doctype": "Guardian",
+            "attached_to_name": "GRD-0001",
+            "attached_to_field": "guardian_image",
+        }
+        drive_file = frappe._dict(
+            {
+                "name": "DRIVE-GRD-1",
+                "owner_doctype": "Guardian",
+                "owner_name": "GRD-0001",
+                "primary_subject_type": "Guardian",
+                "primary_subject_id": "GRD-0001",
+                "purpose": "guardian_profile_display",
+                "slot": "profile_image",
+            }
+        )
+
+        def fake_media_loader(attribute):
+            self.assertEqual(attribute, "issue_guardian_image_preview_grant")
+            return lambda guardian, file_id, derivative_role=None: {
+                "url": f"https://signed.example.com/{guardian}/{file_id}/{derivative_role}.webp"
+            }
+
+        with (
+            patch("ifitwala_ed.api.file_access._require_authenticated_user", return_value="guardian@example.com"),
+            patch("ifitwala_ed.api.file_access._resolve_any_file_row", return_value=file_row),
+            patch("ifitwala_ed.api.file_access.get_drive_file_for_file", return_value=drive_file),
+            patch("ifitwala_ed.api.file_access.frappe.db.get_value", return_value="GRD-0001"),
+            patch("ifitwala_ed.api.file_access._load_drive_media_callable", side_effect=fake_media_loader),
+            patch(
+                "ifitwala_ed.api.file_access._load_drive_access_callable",
+                side_effect=AssertionError("generic drive grant path should not be used for guardian profile images"),
+            ),
+        ):
+            frappe.local.response = {}
+            download_guardian_file(
+                file="FILE-GRD-IMG-1",
+                context_doctype="Guardian",
+                context_name="GRD-0001",
+                derivative_role="thumb",
+            )
+
+        self.assertEqual(frappe.local.response.get("type"), "redirect")
+        self.assertEqual(
+            frappe.local.response.get("location"),
+            "https://signed.example.com/GRD-0001/FILE-GRD-IMG-1/thumb.webp",
+        )
+
     def test_download_guardian_file_denies_other_guardian(self):
         file_row = {
             "name": "FILE-GRD-1",
@@ -554,6 +607,126 @@ class TestFileAccessUrlContracts(FrappeTestCase):
 
         self.assertEqual(frappe.local.response.get("type"), "redirect")
         self.assertEqual(frappe.local.response.get("location"), "https://signed.example.com/material.pdf")
+
+    def test_download_academic_file_uses_student_image_preview_grant_for_profile_images(self):
+        file_row = {
+            "name": "FILE-STU-IMG-1",
+            "file_url": "/private/files/Student/STU-0001/thumb_student.webp",
+            "file_name": "thumb_student.webp",
+            "is_private": 1,
+            "attached_to_doctype": "Student",
+            "attached_to_name": "STU-0001",
+            "attached_to_field": "student_image",
+        }
+        drive_file = frappe._dict(
+            {
+                "name": "DRIVE-STU-1",
+                "owner_doctype": "Student",
+                "owner_name": "STU-0001",
+                "primary_subject_type": "Student",
+                "primary_subject_id": "STU-0001",
+                "purpose": "student_profile_display",
+                "slot": "profile_image",
+                "school": "SCH-0001",
+            }
+        )
+
+        def fake_media_loader(attribute):
+            self.assertEqual(attribute, "issue_student_image_preview_grant")
+            return lambda student, file_id, derivative_role=None: {
+                "url": f"https://signed.example.com/{student}/{file_id}/{derivative_role}.webp"
+            }
+
+        with (
+            patch("ifitwala_ed.api.file_access._resolve_authorized_academic_file", return_value=file_row),
+            patch("ifitwala_ed.api.file_access._require_authenticated_user", return_value="staff@example.com"),
+            patch("ifitwala_ed.api.file_access._resolve_any_file_row", return_value=file_row),
+            patch("ifitwala_ed.api.file_access.get_drive_file_for_file", return_value=drive_file),
+            patch("ifitwala_ed.api.file_access._assert_internal_student_access"),
+            patch("ifitwala_ed.api.file_access._load_drive_media_callable", side_effect=fake_media_loader),
+            patch(
+                "ifitwala_ed.api.file_access._load_drive_access_callable",
+                side_effect=AssertionError("generic drive grant path should not be used for student profile images"),
+            ),
+        ):
+            frappe.local.response = {}
+            download_academic_file(
+                file="FILE-STU-IMG-1",
+                context_doctype="Student",
+                context_name="STU-0001",
+                derivative_role="thumb",
+            )
+
+        self.assertEqual(frappe.local.response.get("type"), "redirect")
+        self.assertEqual(
+            frappe.local.response.get("location"),
+            "https://signed.example.com/STU-0001/FILE-STU-IMG-1/thumb.webp",
+        )
+
+    def test_download_academic_file_falls_back_to_current_student_profile_image_when_old_file_binding_rotated(self):
+        requested_file_row = {
+            "name": "FILE-STALE-STU-IMG",
+            "file_url": "/private/files/Student/STU-0001/old_student.webp",
+            "file_name": "old_student.webp",
+            "is_private": 1,
+            "attached_to_doctype": "Student",
+            "attached_to_name": "STU-0001",
+            "attached_to_field": "student_image",
+        }
+        current_file_row = {
+            "name": "FILE-CURRENT-STU-IMG",
+            "file_url": "/private/files/Student/STU-0001/current_student.webp",
+            "file_name": "current_student.webp",
+            "is_private": 1,
+            "attached_to_doctype": "Student",
+            "attached_to_name": "STU-0001",
+            "attached_to_field": "student_image",
+        }
+        current_context = {
+            "file_row": current_file_row,
+            "file_student": "STU-0001",
+            "school": "SCH-0001",
+            "drive_file_id": "DRIVE-STU-CURRENT",
+        }
+
+        with (
+            patch("ifitwala_ed.api.file_access._resolve_authorized_academic_file", return_value=requested_file_row),
+            patch("ifitwala_ed.api.file_access._require_authenticated_user", return_value="staff@example.com"),
+            patch("ifitwala_ed.api.file_access._resolve_student_profile_image_access", return_value=None),
+            patch(
+                "ifitwala_ed.api.file_access._resolve_current_student_profile_drive_file",
+                return_value={"name": "DRIVE-STU-CURRENT", "file": "FILE-CURRENT-STU-IMG"},
+            ),
+            patch(
+                "ifitwala_ed.api.file_access._resolve_student_profile_image_access_from_drive_file",
+                return_value=current_context,
+            ) as resolve_current,
+            patch(
+                "ifitwala_ed.api.file_access._resolve_student_image_grant_target_url",
+                return_value="https://signed.example.com/STU-0001/FILE-CURRENT-STU-IMG/thumb.webp",
+            ) as resolve_target,
+        ):
+            frappe.local.response = {}
+            download_academic_file(
+                file="FILE-STALE-STU-IMG",
+                context_doctype="Student",
+                context_name="STU-0001",
+                derivative_role="thumb",
+            )
+
+        resolve_current.assert_called_once()
+        resolve_target.assert_called_once_with(
+            student="STU-0001",
+            file_id="FILE-CURRENT-STU-IMG",
+            drive_file_id="DRIVE-STU-CURRENT",
+            prefer_preview=True,
+            derivative_role="thumb",
+        )
+        self.assertEqual(frappe.local.response.get("type"), "redirect")
+        self.assertEqual(
+            frappe.local.response.get("location"),
+            "https://signed.example.com/STU-0001/FILE-CURRENT-STU-IMG/thumb.webp",
+        )
 
     def test_download_academic_file_denies_supporting_material_outside_scope(self):
         file_row = {

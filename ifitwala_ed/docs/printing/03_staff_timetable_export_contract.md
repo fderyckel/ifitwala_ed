@@ -32,7 +32,7 @@ The export lives on the existing staff calendar surface and supports:
 - `Next month`
 
 All outputs render as weekly timetable spreads so timed classes, meetings, events, and holidays remain readable on paper.
-Each weekly spread must fit on exactly one page.
+Each weekly spread, including the notes rail, must fit on exactly one physical page.
 
 ## 2. Surface Contract
 
