@@ -59,12 +59,16 @@ Status: Implemented
 Code refs:
 
 - `ifitwala_ed/api/guardian_home.py`
+- `ifitwala_ed/api/guardian_calendar.py`
 - `ifitwala_ed/ui-spa/src/pages/guardian/GuardianHome.vue`
+- `ifitwala_ed/ui-spa/src/overlays/guardian/GuardianCalendarOverlay.vue`
 - `ifitwala_ed/ui-spa/src/types/contracts/guardian/get_guardian_home_snapshot.ts`
+- `ifitwala_ed/ui-spa/src/types/contracts/guardian/get_guardian_calendar_overlay.ts`
 
 Test refs:
 
 - `ifitwala_ed/api/test_guardian_home.py`
+- `ifitwala_ed/api/test_guardian_calendar.py`
 - `ifitwala_ed/ui-spa/src/pages/guardian/__tests__/GuardianHome.test.ts`
 
 Rules:
@@ -247,12 +251,16 @@ Status: Implemented
 Code refs:
 
 - `ifitwala_ed/api/guardian_home.py`
+- `ifitwala_ed/api/guardian_calendar.py`
 - `ifitwala_ed/ui-spa/src/pages/guardian/GuardianHome.vue`
+- `ifitwala_ed/ui-spa/src/overlays/guardian/GuardianCalendarOverlay.vue`
 - `ifitwala_ed/ui-spa/src/types/contracts/guardian/get_guardian_home_snapshot.ts`
+- `ifitwala_ed/ui-spa/src/types/contracts/guardian/get_guardian_calendar_overlay.ts`
 
 Test refs:
 
 - `ifitwala_ed/api/test_guardian_home.py`
+- `ifitwala_ed/api/test_guardian_calendar.py`
 
 Rules:
 
@@ -260,9 +268,10 @@ Rules:
 2. Guardian surfaces must not expose live gradebook rows, staff-only notes, or sibling comparison data.
 3. Guardian finance does not create or submit payments in Phase 2; it remains a read-only visibility surface.
 4. School-event rows inside `/guardian/communications` do not create guardian unread/read-state.
-5. Any new information block on `/hub/guardian` must be added to this document before it is treated as canonical.
+5. The calendar overlay does not expose class timetables, meetings, attendance, or assignment dates in v1.
+6. Any new information block on `/hub/guardian` must be added to this document before it is treated as canonical.
 
-## 11. Contract Matrix
+## 12. Contract Matrix
 
 Status: Implemented
 
