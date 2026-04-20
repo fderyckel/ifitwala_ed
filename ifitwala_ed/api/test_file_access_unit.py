@@ -472,6 +472,78 @@ class TestFileAccessUnit(TestCase):
             "https://preview.example.com/policy.pdf",
         )
 
+    def test_open_org_communication_attachment_fails_closed_when_target_is_raw_private_path(self):
+        with _file_access_module() as (file_access, frappe):
+            frappe.session.user = "staff@example.com"
+            frappe.local.response = {}
+            frappe.get_roles = lambda user: ["Employee"]
+            file_access.check_audience_match = lambda *args, **kwargs: True
+
+            attachment_row = SimpleNamespace(
+                name="row-001",
+                external_url="",
+                file="/private/files/policy.pdf",
+            )
+            doc = SimpleNamespace(name="COMM-0001", attachments=[attachment_row])
+            doc.get = lambda fieldname, default=None: getattr(doc, fieldname, default)
+            frappe.get_doc = lambda doctype, name: doc
+
+            def fake_get_value(doctype, filters, fieldname=None, as_dict=False):
+                if doctype == "Employee":
+                    return {"name": "EMP-0001", "school": "SCHOOL-1", "organization": "ORG-1"}
+                if doctype == "Drive Binding":
+                    return {"drive_file": "DRIVE-FILE-1", "file": "FILE-0001"}
+                return None
+
+            frappe.db.get_value = fake_get_value
+            file_access._resolve_org_communication_attachment_grant_target_url = lambda **kwargs: (
+                "/private/files/policy.pdf"
+            )
+
+            with self.assertRaises(frappe.DoesNotExistError):
+                file_access.open_org_communication_attachment(
+                    org_communication="COMM-0001",
+                    row_name="row-001",
+                )
+
+        self.assertEqual(frappe.local.response, {})
+
+    def test_preview_org_communication_attachment_fails_closed_when_target_is_raw_private_path(self):
+        with _file_access_module() as (file_access, frappe):
+            frappe.session.user = "staff@example.com"
+            frappe.local.response = {}
+            frappe.get_roles = lambda user: ["Employee"]
+            file_access.check_audience_match = lambda *args, **kwargs: True
+
+            attachment_row = SimpleNamespace(
+                name="row-001",
+                external_url="",
+                file="/private/files/policy.png",
+            )
+            doc = SimpleNamespace(name="COMM-0001", attachments=[attachment_row])
+            doc.get = lambda fieldname, default=None: getattr(doc, fieldname, default)
+            frappe.get_doc = lambda doctype, name: doc
+
+            def fake_get_value(doctype, filters, fieldname=None, as_dict=False):
+                if doctype == "Employee":
+                    return {"name": "EMP-0001", "school": "SCHOOL-1", "organization": "ORG-1"}
+                if doctype == "Drive Binding":
+                    return {"drive_file": "DRIVE-FILE-1", "file": "FILE-0001"}
+                return None
+
+            frappe.db.get_value = fake_get_value
+            file_access._resolve_org_communication_attachment_grant_target_url = lambda **kwargs: (
+                "/private/files/policy.png"
+            )
+
+            with self.assertRaises(frappe.DoesNotExistError):
+                file_access.preview_org_communication_attachment(
+                    org_communication="COMM-0001",
+                    row_name="row-001",
+                )
+
+        self.assertEqual(frappe.local.response, {})
+
     def test_thumbnail_academic_file_fails_closed_without_ready_thumb_target(self):
         with _file_access_module() as (file_access, frappe):
             thumbnail_requests: list[dict] = []
@@ -757,6 +829,46 @@ class TestFileAccessUnit(TestCase):
         self.assertEqual(frappe.local.response.get("type"), "redirect")
         self.assertEqual(frappe.local.response.get("location"), "https://signed.example.com/guardian-thumb")
 
+    def test_download_guardian_file_fails_closed_when_requested_thumb_is_unavailable(self):
+        with _file_access_module() as (file_access, frappe):
+            frappe.local.response = {}
+            frappe.session.user = "guardian@example.com"
+            file_access._resolve_any_file_row = lambda file_name: {
+                "name": file_name,
+                "file_url": "/private/files/guardian_original.webp",
+                "file_name": "guardian_original.webp",
+                "is_private": 1,
+                "attached_to_doctype": "Guardian",
+                "attached_to_name": "GRD-0001",
+                "attached_to_field": "guardian_image",
+            }
+            file_access.get_drive_file_for_file = lambda file_name, **kwargs: {
+                "name": "DRIVE-GRD-1",
+                "owner_doctype": "Guardian",
+                "owner_name": "GRD-0001",
+                "primary_subject_type": "Guardian",
+                "primary_subject_id": "GRD-0001",
+                "purpose": "guardian_profile_display",
+                "slot": "profile_image",
+            }
+            frappe.db.get_value = lambda doctype, filters, fieldname=None, as_dict=False: (
+                "GRD-0001" if doctype == "Guardian" else None
+            )
+            file_access._resolve_guardian_image_grant_target_url = lambda **kwargs: (
+                self.assertTrue(kwargs["strict_derivative"]) or None
+            )
+            file_access._resolve_drive_download_grant_url = lambda *args, **kwargs: self.fail(
+                "guardian derivative miss must not fall back to the original file"
+            )
+
+            with self.assertRaises(frappe.DoesNotExistError):
+                file_access.download_guardian_file(
+                    file="FILE-GRD-IMG-1",
+                    context_doctype="Guardian",
+                    context_name="GRD-0001",
+                    derivative_role="thumb",
+                )
+
     def test_download_academic_file_uses_student_image_preview_grant_for_profile_images(self):
         with _file_access_module() as (file_access, frappe):
             frappe.local.response = {}
@@ -808,6 +920,54 @@ class TestFileAccessUnit(TestCase):
         self.assertEqual(frappe.local.response.get("type"), "redirect")
         self.assertEqual(frappe.local.response.get("location"), "https://signed.example.com/student-thumb")
 
+    def test_download_academic_file_fails_closed_when_requested_thumb_is_unavailable_for_student_image(self):
+        with _file_access_module() as (file_access, frappe):
+            frappe.local.response = {}
+            frappe.session.user = "staff@example.com"
+            file_access._resolve_authorized_academic_file = lambda **kwargs: {
+                "name": "FILE-STU-IMG-1",
+                "file_url": "/private/files/student_original.webp",
+                "file_name": "student_original.webp",
+                "is_private": 1,
+                "attached_to_doctype": "Student",
+                "attached_to_name": "STU-0001",
+                "attached_to_field": "student_image",
+            }
+            file_access._resolve_any_file_row = lambda file_name: {
+                "name": file_name,
+                "file_url": "/private/files/student_original.webp",
+                "file_name": "student_original.webp",
+                "is_private": 1,
+                "attached_to_doctype": "Student",
+                "attached_to_name": "STU-0001",
+                "attached_to_field": "student_image",
+            }
+            file_access.get_drive_file_for_file = lambda file_name, **kwargs: {
+                "name": "DRIVE-STU-1",
+                "owner_doctype": "Student",
+                "owner_name": "STU-0001",
+                "primary_subject_type": "Student",
+                "primary_subject_id": "STU-0001",
+                "purpose": "student_profile_display",
+                "slot": "profile_image",
+                "school": "SCH-0001",
+            }
+            file_access._assert_internal_student_access = lambda **kwargs: None
+            file_access._resolve_student_image_grant_target_url = lambda **kwargs: (
+                self.assertTrue(kwargs["strict_derivative"]) or None
+            )
+            file_access._resolve_drive_download_grant_url = lambda *args, **kwargs: self.fail(
+                "student derivative miss must not fall back to the original file"
+            )
+
+            with self.assertRaises(frappe.DoesNotExistError):
+                file_access.download_academic_file(
+                    file="FILE-STU-IMG-1",
+                    context_doctype="Student",
+                    context_name="STU-0001",
+                    derivative_role="thumb",
+                )
+
     def test_download_academic_file_falls_back_to_current_student_profile_image_when_old_file_binding_rotated(self):
         with _file_access_module() as (file_access, frappe):
             frappe.local.response = {}
@@ -850,6 +1010,7 @@ class TestFileAccessUnit(TestCase):
                 self.assertEqual(kwargs["student"], "STU-0001")
                 self.assertEqual(kwargs["derivative_role"], "thumb")
                 self.assertTrue(kwargs["prefer_preview"])
+                self.assertTrue(kwargs["strict_derivative"])
                 return "https://signed.example.com/current-student-thumb"
 
             file_access._resolve_student_image_grant_target_url = fake_student_target

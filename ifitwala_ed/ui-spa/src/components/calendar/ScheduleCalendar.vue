@@ -105,6 +105,24 @@
 					</p>
 				</div>
 
+				<label
+					class="mt-4 flex items-start gap-3 rounded-2xl border border-[rgb(var(--sand-rgb)/0.58)] bg-white/82 px-3 py-3 shadow-soft"
+					for="staff-timetable-export-weekends"
+				>
+					<input
+						id="staff-timetable-export-weekends"
+						v-model="exportIncludeWeekends"
+						type="checkbox"
+						class="mt-0.5 h-4 w-4 rounded-[0.35rem] border border-[rgb(var(--border-rgb)/0.88)] accent-[rgb(var(--canopy-rgb)/1)]"
+					/>
+					<span class="min-w-0">
+						<span class="type-body-strong block text-ink">Include weekends</span>
+						<span class="type-caption text-slate-token/72">
+							Unchecked prints a tighter Monday to Friday spread.
+						</span>
+					</span>
+				</label>
+
 				<div class="schedule-calendar__export-grid mt-4">
 					<button
 						v-for="preset in exportPresets"
@@ -272,6 +290,7 @@ const subtitle = computed(() => {
 
 const exportPresets = STAFF_TIMETABLE_EXPORT_PRESETS;
 const exportPanelOpen = ref(false);
+const exportIncludeWeekends = ref(true);
 const exportError = ref('');
 
 const calendarRef = ref<InstanceType<typeof FullCalendar> | null>(null);
@@ -465,7 +484,11 @@ function toggleExportPanel() {
 
 function openTimetableExport(preset: StaffTimetableExportPreset) {
 	exportError.value = '';
-	const opened = window.open(buildStaffTimetableExportUrl(preset), '_blank', 'noopener');
+	const opened = window.open(
+		buildStaffTimetableExportUrl(preset, exportIncludeWeekends.value),
+		'_blank',
+		'noopener'
+	);
 	if (!opened) {
 		const message = 'Allow pop-ups to open the timetable PDF.';
 		exportError.value = message;

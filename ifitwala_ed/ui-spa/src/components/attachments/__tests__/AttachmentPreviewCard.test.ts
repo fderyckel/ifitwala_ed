@@ -98,6 +98,30 @@ describe('AttachmentPreviewCard', () => {
 		expect(document.body.textContent || '').toContain('Open original');
 	});
 
+	it('renders planning image previews from preview_url when no thumbnail is available', async () => {
+		mountCard({
+			variant: 'planning',
+			title: 'Lab setup photo',
+			attachment: {
+				item_id: 'ATT-IMG-3',
+				kind: 'image',
+				preview_mode: 'inline_image',
+				extension: 'png',
+				preview_url:
+					'/api/method/ifitwala_ed.api.file_access.preview_academic_file?file=FILE-IMG-3',
+				open_url:
+					'/api/method/ifitwala_ed.api.file_access.download_academic_file?file=FILE-IMG-3',
+			},
+		});
+		await flushUi();
+
+		const previewSurface = document.querySelector('[data-resource-preview-kind="image"]');
+		expect(previewSurface).not.toBeNull();
+		expect(previewSurface?.querySelector('img')?.getAttribute('src')).toContain(
+			'preview_academic_file'
+		);
+	});
+
 	it('keeps communication pdf behavior on the full preview surface', async () => {
 		mountCard({
 			variant: 'communication',
@@ -120,6 +144,29 @@ describe('AttachmentPreviewCard', () => {
 		expect(pdfSurface?.querySelector('img')?.getAttribute('src')).toContain('ATT-PDF-1');
 		expect(document.body.textContent || '').toContain('Open PDF');
 		expect(document.body.textContent || '').toContain('Open preview image');
+	});
+
+	it('renders planning pdf previews inline from the governed preview image', async () => {
+		mountCard({
+			variant: 'planning',
+			title: 'Family handbook',
+			attachment: {
+				item_id: 'ATT-PDF-PLAN-1',
+				kind: 'pdf',
+				preview_mode: 'pdf_embed',
+				preview_status: 'ready',
+				extension: 'pdf',
+				preview_url:
+					'/api/method/ifitwala_ed.api.file_access.preview_academic_file?file=FILE-PDF-1',
+				open_url:
+					'/api/method/ifitwala_ed.api.file_access.download_academic_file?file=FILE-PDF-1',
+			},
+		});
+		await flushUi();
+
+		const pdfSurface = document.querySelector('[data-resource-preview-kind="pdf"]');
+		expect(pdfSurface?.querySelector('img')?.getAttribute('src')).toContain('FILE-PDF-1');
+		expect(document.body.textContent || '').toContain('Open original');
 	});
 
 	it('shows preview and download actions for learning attachments', async () => {

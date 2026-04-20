@@ -501,23 +501,6 @@ def _prepare_profile_image_upload(
     return _profile_image_output_filename(filename_prefix), normalized_bytes
 
 
-def _ensure_file_on_disk(file_doc) -> None:
-    if not file_doc or not file_doc.file_url:
-        frappe.throw(_("File URL missing after upload."))
-    if file_doc.file_url.startswith("http"):
-        return
-
-    rel_path = file_doc.file_url.lstrip("/")
-    if rel_path.startswith("private/") or rel_path.startswith("public/"):
-        abs_path = frappe.utils.get_site_path(rel_path)
-    else:
-        base = "private" if file_doc.is_private else "public"
-        abs_path = frappe.utils.get_site_path(base, rel_path)
-
-    if not os.path.exists(abs_path):
-        frappe.throw(_("File could not be finalized on disk. Please retry the upload."))
-
-
 def _build_applicant_display_name(row: dict) -> str:
     parts = [
         _as_text(row.get("first_name")).strip(),
@@ -978,69 +961,6 @@ def _guardian_image_open_url(
     )
 
 
-def _rehome_guardian_image_to_contact(
-    *,
-    applicant_name: str,
-    guardian_image: str | None,
-    contact_name: str | None,
-) -> str:
-    resolved_contact = _as_text(contact_name).strip()
-    if not resolved_contact:
-        return _as_text(guardian_image).strip()
-
-    file_row = _resolve_guardian_image_file(applicant_name=applicant_name, guardian_image=guardian_image)
-    if not file_row:
-        return _as_text(guardian_image).strip()
-
-    attached_doctype = _as_text(file_row.get("attached_to_doctype")).strip()
-    attached_name = _as_text(file_row.get("attached_to_name")).strip()
-    attached_field = _as_text(file_row.get("attached_to_field")).strip()
-    if attached_doctype == "Contact" and attached_name == resolved_contact:
-        return _as_text(file_row.get("file_url")).strip()
-
-    row_parent = ""
-    if attached_doctype == "Student Applicant Guardian" and attached_name:
-        row_parent = _as_text(frappe.db.get_value("Student Applicant Guardian", attached_name, "parent")).strip()
-
-    can_rehome_from_applicant = attached_doctype == "Student Applicant" and attached_name == applicant_name
-    can_rehome_from_guardian_row = attached_doctype == "Student Applicant Guardian" and row_parent == applicant_name
-
-    if not can_rehome_from_applicant and not can_rehome_from_guardian_row:
-        return _as_text(file_row.get("file_url")).strip() or _as_text(guardian_image).strip()
-
-    if attached_field == "applicant_image":
-        return _as_text(file_row.get("file_url")).strip() or _as_text(guardian_image).strip()
-
-    frappe.db.set_value(
-        "File",
-        file_row.get("name"),
-        {
-            "attached_to_doctype": "Contact",
-            "attached_to_name": resolved_contact,
-            "attached_to_field": None,
-        },
-        update_modified=False,
-    )
-
-    drive_file = get_drive_file_for_file(
-        file_row.get("name"),
-        fields=["name"],
-        statuses=("active", "processing", "blocked"),
-    )
-    if drive_file and drive_file.get("name"):
-        frappe.db.set_value(
-            "Drive File",
-            drive_file.get("name"),
-            {
-                "attached_doctype": "Contact",
-                "attached_name": resolved_contact,
-            },
-            update_modified=False,
-        )
-
-    return _as_text(file_row.get("file_url")).strip() or _as_text(guardian_image).strip()
-
-
 def _parse_guardians_payload(guardians) -> list[dict] | None:
     if guardians is None:
         return None
@@ -1360,11 +1280,7 @@ def _apply_guardians_to_applicant(*, applicant, guardians_payload: list[dict]):
             row_payload=row,
             existing_contact_name=existing_contact_name,
         )
-        row["guardian_image"] = _rehome_guardian_image_to_contact(
-            applicant_name=applicant.name,
-            guardian_image=row.get("guardian_image"),
-            contact_name=row.get("contact"),
-        )
+        row["guardian_image"] = _as_text(row.get("guardian_image")).strip()
 
         if not _as_text(row.get("guardian_full_name")).strip():
             row["guardian_full_name"] = " ".join(

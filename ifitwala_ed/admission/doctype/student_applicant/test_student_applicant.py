@@ -354,6 +354,92 @@ class TestStudentApplicant(FrappeTestCase):
         for row in drive_bindings:
             self._created.append(("Drive Binding", row["name"]))
 
+    def test_copy_promotable_documents_prefers_current_drive_attachment_over_latest_file_row(self):
+        doc_type = self._create_applicant_document_type(code="application_form")
+        applicant = self._create_student_applicant(student_joining_date=frappe.utils.nowdate())
+
+        frappe.set_user("Administrator")
+        try:
+            applicant_doc = frappe.get_doc(
+                {
+                    "doctype": "Applicant Document",
+                    "student_applicant": applicant.name,
+                    "document_type": doc_type,
+                    "review_status": "Approved",
+                }
+            ).insert(ignore_permissions=True)
+        finally:
+            frappe.set_user(self.staff_user.name)
+        self._created.append(("Applicant Document", applicant_doc.name))
+
+        item = frappe.get_doc(
+            {
+                "doctype": "Applicant Document Item",
+                "applicant_document": applicant_doc.name,
+                "item_key": "application_form",
+                "item_label": "Application Form",
+                "review_status": "Approved",
+            }
+        ).insert(ignore_permissions=True)
+        self._created.append(("Applicant Document Item", item.name))
+
+        current_source = frappe.get_doc(
+            {
+                "doctype": "File",
+                "attached_to_doctype": "Applicant Document Item",
+                "attached_to_name": item.name,
+                "file_name": "current-source.txt",
+                "is_private": 1,
+                "content": b"current-source",
+            }
+        ).insert(ignore_permissions=True)
+        self._created.append(("File", current_source.name))
+
+        newer_compatibility_row = frappe.get_doc(
+            {
+                "doctype": "File",
+                "attached_to_doctype": "Applicant Document Item",
+                "attached_to_name": item.name,
+                "file_name": "stale-newer-row.txt",
+                "is_private": 1,
+                "content": b"stale-newer-row",
+            }
+        ).insert(ignore_permissions=True)
+        self._created.append(("File", newer_compatibility_row.name))
+
+        student = frappe._dict(name="STU-NEW")
+        seen_sources = []
+        upload_calls = []
+
+        def fake_read_file_bytes(file_row):
+            seen_sources.append(file_row.get("name"))
+            return b"promoted-bytes"
+
+        def fake_upload_content_via_drive(**kwargs):
+            upload_calls.append(kwargs)
+
+        with (
+            patch(
+                "ifitwala_ed.admission.doctype.student_applicant.student_applicant.get_current_drive_files_for_attachments",
+                return_value=[{"attached_name": item.name, "file": current_source.name}],
+            ),
+            patch.object(applicant, "_read_file_bytes", side_effect=fake_read_file_bytes),
+            patch(
+                "ifitwala_ed.integrations.drive.content_uploads.upload_content_via_drive",
+                side_effect=fake_upload_content_via_drive,
+            ),
+        ):
+            copied_count = applicant._copy_promotable_documents_to_student(student)
+
+        self.assertEqual(copied_count, 1)
+        self.assertEqual(seen_sources, [current_source.name])
+        self.assertEqual(len(upload_calls), 1)
+        self.assertEqual(upload_calls[0].get("file_name"), "current-source.txt")
+        self.assertEqual(
+            (upload_calls[0].get("workflow_payload") or {}).get("source_applicant_document_item"),
+            item.name,
+        )
+
     def test_required_document_type_from_parent_school_applies_to_child_school_applicant(self):
         code = f"parent_req_{frappe.generate_hash(length=6)}"
         doc_type = self._create_applicant_document_type(

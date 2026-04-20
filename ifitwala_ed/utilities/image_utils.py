@@ -1005,7 +1005,7 @@ def handle_file_after_insert(doc, method=None):
     if not (doc.file_url and doc.attached_to_doctype):
         return
 
-    allowed_doctypes = ["Employee", "Student", "School", "Course", "Program", "Blog Post"]
+    allowed_doctypes = ["Student", "School", "Course", "Program", "Blog Post"]
     if doc.attached_to_doctype not in allowed_doctypes:
         return
 

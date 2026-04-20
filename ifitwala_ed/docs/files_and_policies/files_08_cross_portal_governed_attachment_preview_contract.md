@@ -155,6 +155,7 @@ Refined direction:
 - `thumbnail_url` is for inline card/list images only and should be omitted until the requested thumbnail derivative is actually ready
 - `preview_url` remains the richer preview action
 - `open_url` remains the original-file compatibility baseline and explicit fallback
+- image card surfaces may fall back to `preview_url` inline when `thumbnail_url` is absent or when the thumbnail delivery route fails, so a missing `thumb` derivative does not blank the whole card while Drive catches up
 - Ed-owned thumbnail routes may use short-lived `frappe.cache()` entries for resolved redirect targets only, never for raw file bytes and never for DTO-embedded provider URLs
 - cache keys must include at least `drive_file`, current version identity, derivative role, and the relevant surface/context dimensions so tenant and portal scope cannot leak
 - cache TTL must stay shorter than the underlying Drive grant lifetime

@@ -42,6 +42,7 @@ from ifitwala_ed.governance.policy_utils import (
 )
 from ifitwala_ed.integrations.drive.authority import (
     get_current_drive_file_for_slot,
+    get_current_drive_files_for_attachments,
     get_drive_file_for_file,
 )
 from ifitwala_ed.utilities.image_utils import ensure_guardian_profile_image
@@ -1650,21 +1651,35 @@ class StudentApplicant(Document):
             items_by_doc.setdefault(row_item.get("applicant_document"), []).append(row_item)
 
         item_names = [row_item.get("name") for row_item in item_rows if row_item.get("name")]
-        latest_file_by_item = {}
+        current_file_by_item = {}
         if item_names:
-            file_rows = frappe.get_all(
-                "File",
-                filters={
-                    "attached_to_doctype": "Applicant Document Item",
-                    "attached_to_name": ["in", item_names],
-                },
-                fields=["name", "attached_to_name", "file_url", "file_name", "is_private", "creation"],
-                order_by="creation desc",
+            drive_rows = get_current_drive_files_for_attachments(
+                attached_doctype="Applicant Document Item",
+                attached_names=item_names,
+                fields=["attached_name", "file"],
+                statuses=("active", "processing", "blocked"),
             )
-            for file_row in file_rows:
-                parent = file_row.get("attached_to_name")
-                if parent and parent not in latest_file_by_item:
-                    latest_file_by_item[parent] = file_row
+            file_names = []
+            file_name_by_item = {}
+            for drive_row in drive_rows:
+                parent = drive_row.get("attached_name")
+                file_name = drive_row.get("file")
+                if not (parent and file_name) or parent in file_name_by_item:
+                    continue
+                file_name_by_item[parent] = file_name
+                file_names.append(file_name)
+
+            if file_names:
+                file_rows = frappe.get_all(
+                    "File",
+                    filters={"name": ["in", file_names]},
+                    fields=["name", "file_url", "file_name", "is_private"],
+                )
+                file_row_by_name = {row.get("name"): row for row in file_rows if row.get("name")}
+                for parent, file_name in file_name_by_item.items():
+                    file_row = file_row_by_name.get(file_name)
+                    if file_row:
+                        current_file_by_item[parent] = file_row
 
         document_type_names = sorted({row.get("document_type") for row in docs if row.get("document_type")})
         document_type_map = {}
@@ -1705,7 +1720,7 @@ class StudentApplicant(Document):
                 continue
 
             for item in item_group:
-                source = latest_file_by_item.get(item.get("name"))
+                source = current_file_by_item.get(item.get("name"))
                 if not source:
                     copy_errors.append(
                         _("Missing file for Applicant Document Item {0}.").format(item.get("name") or _("Unknown"))

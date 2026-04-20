@@ -101,7 +101,7 @@ Current staff preview behavior:
 - the task creation overlay now lets teachers queue governed task attachments while writing the task itself, then persists those queued attachments automatically during the create action so the workflow still feels like one compose step
 - that governed task-attachment flow is currently restricted to PDF and image uploads (`pdf`, `jpg`, `jpeg`, `png`, `webp`) plus reference links
 - the task creation overlay now renders current task attachments through the shared SPA attachment preview card instead of a task-specific preview fragment
-- those workspaces render inline image previews from `thumbnail_url` and automatically retry the governed `preview_url` inline when the thumbnail route cannot be delivered, while `preview_url` continues to power the compact PDF preview tiles
+- those workspaces render inline image previews from `thumbnail_url`, fall back to the governed `preview_url` inline when the thumbnail is absent or the thumbnail route cannot be delivered, and use `preview_url` for first-page PDF preview tiles
 - `open_url` remains the explicit original-file action and compatibility baseline
 
 This is the current source-of-truth workflow. Do not push teachers back into a generic Desk library as the primary authoring path.
@@ -131,7 +131,7 @@ Current student preview behavior:
 - `CourseDetail.vue` uses optional `thumbnail_url` for inline governed image cards and stable Ed-owned `preview_url` routes for richer preview/open behavior
 - those resource rows now also carry an additive nested `attachment_preview` block with the shared cross-surface preview DTO
 - `CourseDetail.vue` now consumes that nested preview DTO through the shared display-only SPA attachment preview card
-- session resources plus unit, class, and shared course resource shelves now render inline image thumbnails from `thumbnail_url` and compact PDF preview tiles from `preview_url`
+- session resources plus unit, class, and shared course resource shelves now render inline image thumbnails from `thumbnail_url`, fall back to `preview_url` inline when needed, and show first-page PDF preview tiles from `preview_url`
 - task-linked materials now render directly inside the assigned-work brief with preview and download actions so students can read the task and access its attachments in one place
 
 The student surface must not require learners to hunt across unrelated pages just to collect the materials for a class.

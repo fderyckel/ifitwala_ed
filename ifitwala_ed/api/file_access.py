@@ -2771,12 +2771,6 @@ def open_org_communication_attachment(
     if _respond_with_delivery_target(target_url=target_url):
         return
 
-    if _is_raw_private_redirect_target(file_url) and _respond_with_local_file_content(
-        file_url=file_url,
-        is_private=True,
-    ):
-        return
-
     frappe.throw(_("Could not resolve the attachment."), frappe.DoesNotExistError)
 
 
@@ -2808,12 +2802,6 @@ def preview_org_communication_attachment(
         prefer_preview=True,
     )
     if _respond_with_delivery_target(target_url=target_url):
-        return
-
-    if _is_raw_private_redirect_target(file_url) and _respond_with_local_file_content(
-        file_url=file_url,
-        is_private=True,
-    ):
         return
 
     if _is_public_site_file_url(file_url):
@@ -2903,6 +2891,7 @@ def download_academic_file(
     derivative_role: str | None = None,
 ):
     file_name = (file or "").strip()
+    explicit_derivative_role = (derivative_role or "").strip()
     resolved_context_doctype = (context_doctype or "").strip()
     resolved_context_name = (context_name or "").strip()
     user = None
@@ -2970,14 +2959,15 @@ def download_academic_file(
         frappe.local.response["location"] = file_url
         return
 
-    if (derivative_role or "").strip():
+    if explicit_derivative_role:
         target_url = (
             _resolve_student_image_grant_target_url(
                 student=student,
                 file_id=str((file_row or {}).get("name") or file_name).strip(),
                 drive_file_id=resolved_drive_file_id,
                 prefer_preview=True,
-                derivative_role=derivative_role,
+                derivative_role=explicit_derivative_role,
+                strict_derivative=True,
             )
             if student_image_context
             else _resolve_supporting_material_grant_target_url(
@@ -2986,13 +2976,15 @@ def download_academic_file(
                 drive_file_id=str((material_drive_file or {}).get("name") or "").strip(),
                 file_id=str((material_drive_file or {}).get("file") or file_name).strip(),
                 prefer_preview=True,
-                derivative_role=derivative_role,
+                derivative_role=explicit_derivative_role,
             )
             if material and material_drive_file and material_drive_file.get("name")
-            else _resolve_drive_preview_grant_url(file_name, derivative_role=derivative_role)
+            else _resolve_drive_preview_grant_url(file_name, derivative_role=explicit_derivative_role)
         )
         if _respond_with_delivery_target(target_url=target_url):
             return
+        if student_image_context:
+            frappe.throw(_("Could not resolve the file content."), frappe.DoesNotExistError)
 
     if _is_public_site_file_url(file_url):
         frappe.local.response["type"] = "redirect"
@@ -3245,6 +3237,7 @@ def download_guardian_file(
 ):
     user = _require_authenticated_user()
     file_name = (file or "").strip()
+    explicit_derivative_role = (derivative_role or "").strip()
     resolved_context_doctype = (context_doctype or "").strip()
     resolved_context_name = (context_name or "").strip()
     if not file_name:
@@ -3300,20 +3293,23 @@ def download_guardian_file(
         frappe.local.response["location"] = file_url
         return
 
-    if (derivative_role or "").strip():
+    if explicit_derivative_role:
         target_url = (
             _resolve_guardian_image_grant_target_url(
                 guardian=file_guardian,
                 file_id=str((file_row or {}).get("name") or file_name).strip(),
                 drive_file_id=resolved_drive_file_id,
                 prefer_preview=True,
-                derivative_role=derivative_role,
+                derivative_role=explicit_derivative_role,
+                strict_derivative=True,
             )
             if guardian_image_context
-            else _resolve_drive_preview_grant_url(file_name, derivative_role=derivative_role)
+            else _resolve_drive_preview_grant_url(file_name, derivative_role=explicit_derivative_role)
         )
         if _respond_with_delivery_target(target_url=target_url):
             return
+        if guardian_image_context:
+            frappe.throw(_("Could not resolve the file content."), frappe.DoesNotExistError)
 
     if _is_public_site_file_url(file_url):
         frappe.local.response["type"] = "redirect"

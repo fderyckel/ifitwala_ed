@@ -82,6 +82,40 @@ class TestCalendarExport(TestCase):
         self.assertEqual(tuesday["timed_events"][0]["time_label"], "08:00 - 08:45")
         self.assertEqual(len(wednesday["all_day_events"]), 1)
 
+    def test_build_timetable_weeks_can_hide_weekend_columns(self):
+        tzinfo = pytz.timezone("UTC")
+        weeks = _build_timetable_weeks(
+            events=[
+                {
+                    "title": "Friday Meeting",
+                    "start": "2026-05-08T09:00:00+00:00",
+                    "end": "2026-05-08T09:30:00+00:00",
+                    "allDay": False,
+                    "source": "meeting",
+                    "color": "#7C3AED",
+                    "meta": {"location": "Library"},
+                },
+                {
+                    "title": "Saturday Open House",
+                    "start": "2026-05-09T09:00:00+00:00",
+                    "end": "2026-05-09T12:00:00+00:00",
+                    "allDay": False,
+                    "source": "school_event",
+                    "color": "#2A9D8F",
+                    "meta": {"location": "Courtyard"},
+                },
+            ],
+            start_date=date(2026, 5, 4),
+            end_date_exclusive=date(2026, 5, 11),
+            tzinfo=tzinfo,
+            include_weekends=False,
+        )
+
+        self.assertEqual(len(weeks), 1)
+        self.assertEqual([day["weekday_short"] for day in weeks[0]["days"]], ["Mon", "Tue", "Wed", "Thu", "Fri"])
+        self.assertEqual(weeks[0]["event_count"], 1)
+        self.assertNotIn("2026-05-09", [day["iso"] for day in weeks[0]["days"]])
+
     def test_resolve_brand_context_falls_back_to_parent_school_logo_and_tagline(self):
         with (
             patch(

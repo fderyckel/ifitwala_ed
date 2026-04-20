@@ -214,8 +214,14 @@ def get_portal_calendar_prefs(from_datetime: str | None = None, to_datetime: str
 
 
 @frappe.whitelist()
-def export_staff_timetable_pdf(preset: str | None = None):
-    return calendar_export.export_staff_timetable_pdf(preset=preset)
+def export_staff_timetable_pdf(
+    preset: str | None = None,
+    include_weekends: object | None = None,
+):
+    return calendar_export.export_staff_timetable_pdf(
+        preset=preset,
+        include_weekends=include_weekends,
+    )
 
 
 __all__ = [

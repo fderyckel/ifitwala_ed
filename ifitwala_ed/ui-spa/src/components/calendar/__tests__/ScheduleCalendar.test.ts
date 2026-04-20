@@ -202,6 +202,7 @@ describe('ScheduleCalendar export action', () => {
 		await flushUi();
 
 		expect(document.body.textContent || '').toContain('Choose a timetable range');
+		expect(document.body.textContent || '').toContain('Include weekends');
 		expect(document.body.textContent || '').toContain('This week');
 		expect(document.body.textContent || '').toContain('Next 2 weeks');
 		expect(document.body.textContent || '').toContain('Next month');
@@ -232,11 +233,50 @@ describe('ScheduleCalendar export action', () => {
 		await flushUi();
 
 		expect(window.open).toHaveBeenCalledWith(
-			'/api/method/ifitwala_ed.api.calendar.export_staff_timetable_pdf?preset=next_2_weeks',
+			'/api/method/ifitwala_ed.api.calendar.export_staff_timetable_pdf?preset=next_2_weeks&include_weekends=1',
 			'_blank',
 			'noopener'
 		);
 		expect(document.body.textContent || '').not.toContain('Choose a timetable range');
+	});
+
+	it('lets the staff user exclude weekends from the pdf export', async () => {
+		originalOpen = window.open;
+		window.open = vi.fn(() => ({ closed: false } as Window)) as typeof window.open;
+		fetchPrefsMock.mockResolvedValue({
+			weekendDays: [0, 6],
+			defaultSlotMin: '07:00:00',
+			defaultSlotMax: '17:00:00',
+		});
+
+		mountScheduleCalendar();
+		await flushUi();
+
+		const printButton = Array.from(document.querySelectorAll('button')).find(button =>
+			(button.textContent || '').includes('Print timetable')
+		);
+		printButton?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		await flushUi();
+
+		const checkbox = document.querySelector('input[type="checkbox"]') as HTMLInputElement | null;
+		expect(checkbox).toBeTruthy();
+		if (!checkbox) return;
+
+		checkbox.checked = false;
+		checkbox.dispatchEvent(new Event('change', { bubbles: true }));
+		await flushUi();
+
+		const presetButton = Array.from(document.querySelectorAll('button')).find(button =>
+			(button.textContent || '').includes('This week')
+		);
+		presetButton?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		await flushUi();
+
+		expect(window.open).toHaveBeenCalledWith(
+			'/api/method/ifitwala_ed.api.calendar.export_staff_timetable_pdf?preset=this_week&include_weekends=0',
+			'_blank',
+			'noopener'
+		);
 	});
 
 	it('shows an actionable error when the browser blocks the pdf tab', async () => {

@@ -271,7 +271,7 @@ describe('PlanningResourcePanel', () => {
 		expect(previewSurface?.textContent || '').toContain('Image preview');
 	});
 
-	it('keeps image resources action-led when no thumbnail_url is available', async () => {
+	it('renders image resources from preview_url when no thumbnail_url is available', async () => {
 		mountPanel(
 			[
 				{
@@ -300,7 +300,10 @@ describe('PlanningResourcePanel', () => {
 		);
 		await flushUi();
 
-		expect(document.querySelector('[data-resource-preview-kind="image"] img')).toBeNull();
+		const imagePreview = document.querySelector('[data-resource-preview-kind="image"] img');
+		expect(imagePreview?.getAttribute('src')).toBe(
+			'/api/method/ifitwala_ed.api.file_access.preview_academic_file?file=FILE-IMG-2'
+		);
 		expect(document.body.textContent || '').toContain('Preview');
 		expect(document.body.textContent || '').toContain('Open original');
 	});
@@ -387,6 +390,9 @@ describe('PlanningResourcePanel', () => {
 		const previewSurface = document.querySelector('[data-resource-preview-kind="pdf"]');
 		expect(previewSurface).not.toBeNull();
 		expect(previewSurface?.getAttribute('href')).toBe(
+			'/api/method/ifitwala_ed.api.file_access.preview_academic_file?file=FILE-PDF-1'
+		);
+		expect(previewSurface?.querySelector('img')?.getAttribute('src')).toBe(
 			'/api/method/ifitwala_ed.api.file_access.preview_academic_file?file=FILE-PDF-1'
 		);
 		expect(previewSurface?.textContent || '').toContain('PDF preview');

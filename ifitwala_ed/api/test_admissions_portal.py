@@ -1306,7 +1306,7 @@ class TestSubmitApplication(FrappeTestCase):
                 ],
             )
 
-    def test_update_applicant_profile_rehomes_legacy_guardian_image_attachment(self):
+    def test_update_applicant_profile_preserves_legacy_guardian_image_attachment_scope(self):
         self._set_guardians_section_setting(1)
 
         contact = frappe.get_doc(
@@ -1362,9 +1362,9 @@ class TestSubmitApplication(FrappeTestCase):
             ["attached_to_doctype", "attached_to_name", "attached_to_field"],
             as_dict=True,
         )
-        self.assertEqual(file_row.get("attached_to_doctype"), "Contact")
-        self.assertEqual(file_row.get("attached_to_name"), contact.name)
-        self.assertFalse((file_row.get("attached_to_field") or "").strip())
+        self.assertEqual(file_row.get("attached_to_doctype"), "Student Applicant")
+        self.assertEqual(file_row.get("attached_to_name"), self.applicant.name)
+        self.assertEqual((file_row.get("attached_to_field") or "").strip(), "guardians")
 
     def test_get_applicant_profile_includes_applicant_image(self):
         file_doc = frappe.get_doc(

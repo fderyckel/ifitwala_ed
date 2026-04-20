@@ -50,7 +50,7 @@ Rules:
 
 Clicking `Print timetable` opens a lightweight export panel on the calendar card.
 
-The panel offers the three supported presets and short helper copy for each range.
+The panel offers the three supported presets, short helper copy for each range, and an `Include weekends` checkbox.
 
 Choosing a preset opens the PDF in a new tab using the server-owned export endpoint.
 
@@ -104,7 +104,8 @@ Rules:
 2. `next_2_weeks` means the current Monday plus fourteen days, rendered as two weekly spreads.
 3. `next_month` means the next calendar month only, from the first day of next month to the first day of the following month.
 4. Every preset renders as weekly spreads, even when the selected window starts or ends mid-week.
-5. Days outside the selected window may appear as muted cells so each page preserves a stable Monday to Sunday timetable structure.
+5. Days outside the selected window may appear as muted cells so each page preserves a stable weekday or full-week timetable structure.
+6. When `Include weekends` is unchecked, each weekly spread renders Monday to Friday only and weekend events are intentionally excluded from the page.
 
 ## 6. Print Composition Contract
 

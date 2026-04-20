@@ -24,7 +24,13 @@ export const STAFF_TIMETABLE_EXPORT_PRESETS: Array<{
 	},
 ];
 
-export function buildStaffTimetableExportUrl(preset: StaffTimetableExportPreset): string {
-	const params = new URLSearchParams({ preset });
+export function buildStaffTimetableExportUrl(
+	preset: StaffTimetableExportPreset,
+	includeWeekends = true
+): string {
+	const params = new URLSearchParams({
+		preset,
+		include_weekends: includeWeekends ? '1' : '0',
+	});
 	return `/api/method/${STAFF_TIMETABLE_EXPORT_METHOD}?${params.toString()}`;
 }

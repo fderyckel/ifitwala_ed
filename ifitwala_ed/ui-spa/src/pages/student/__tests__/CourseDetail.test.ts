@@ -839,6 +839,9 @@ describe('CourseDetail', () => {
 		expect(pdfPreview?.getAttribute('href')).toBe(
 			'/api/method/ifitwala_ed.api.file_access.preview_academic_file?file=FILE-1'
 		)
+		expect(pdfPreview?.querySelector('img')?.getAttribute('src')).toBe(
+			'/api/method/ifitwala_ed.api.file_access.preview_academic_file?file=FILE-1'
+		)
 
 		const imagePreview = document.querySelector('[data-learning-resource-kind="image"] img')
 		expect(imagePreview?.getAttribute('src')).toBe(

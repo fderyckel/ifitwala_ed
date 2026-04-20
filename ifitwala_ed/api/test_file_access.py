@@ -421,6 +421,58 @@ class TestFileAccessUrlContracts(FrappeTestCase):
             "https://signed.example.com/GRD-0001/FILE-GRD-IMG-1/thumb.webp",
         )
 
+    def test_download_guardian_file_fails_closed_when_requested_thumb_is_unavailable(self):
+        file_row = {
+            "name": "FILE-GRD-IMG-1",
+            "file_url": "/private/files/Guardian/GRD-0001/original_guardian.webp",
+            "file_name": "original_guardian.webp",
+            "is_private": 1,
+            "attached_to_doctype": "Guardian",
+            "attached_to_name": "GRD-0001",
+            "attached_to_field": "guardian_image",
+        }
+        drive_file = frappe._dict(
+            {
+                "name": "DRIVE-GRD-1",
+                "owner_doctype": "Guardian",
+                "owner_name": "GRD-0001",
+                "primary_subject_type": "Guardian",
+                "primary_subject_id": "GRD-0001",
+                "purpose": "guardian_profile_display",
+                "slot": "profile_image",
+            }
+        )
+
+        with (
+            patch("ifitwala_ed.api.file_access._require_authenticated_user", return_value="guardian@example.com"),
+            patch("ifitwala_ed.api.file_access._resolve_any_file_row", return_value=file_row),
+            patch("ifitwala_ed.api.file_access.get_drive_file_for_file", return_value=drive_file),
+            patch("ifitwala_ed.api.file_access.frappe.db.get_value", return_value="GRD-0001"),
+            patch(
+                "ifitwala_ed.api.file_access._resolve_guardian_image_grant_target_url", return_value=None
+            ) as resolve_target,
+            patch(
+                "ifitwala_ed.api.file_access._resolve_drive_download_grant_url",
+                side_effect=AssertionError("guardian derivative miss must not fall back to the original file"),
+            ),
+        ):
+            with self.assertRaises(frappe.DoesNotExistError):
+                download_guardian_file(
+                    file="FILE-GRD-IMG-1",
+                    context_doctype="Guardian",
+                    context_name="GRD-0001",
+                    derivative_role="thumb",
+                )
+
+        resolve_target.assert_called_once_with(
+            guardian="GRD-0001",
+            file_id="FILE-GRD-IMG-1",
+            drive_file_id="DRIVE-GRD-1",
+            prefer_preview=True,
+            derivative_role="thumb",
+            strict_derivative=True,
+        )
+
     def test_download_guardian_file_denies_other_guardian(self):
         file_row = {
             "name": "FILE-GRD-1",
@@ -663,6 +715,60 @@ class TestFileAccessUrlContracts(FrappeTestCase):
             "https://signed.example.com/STU-0001/FILE-STU-IMG-1/thumb.webp",
         )
 
+    def test_download_academic_file_fails_closed_when_requested_thumb_is_unavailable_for_student_image(self):
+        file_row = {
+            "name": "FILE-STU-IMG-1",
+            "file_url": "/private/files/Student/STU-0001/original_student.webp",
+            "file_name": "original_student.webp",
+            "is_private": 1,
+            "attached_to_doctype": "Student",
+            "attached_to_name": "STU-0001",
+            "attached_to_field": "student_image",
+        }
+        drive_file = frappe._dict(
+            {
+                "name": "DRIVE-STU-1",
+                "owner_doctype": "Student",
+                "owner_name": "STU-0001",
+                "primary_subject_type": "Student",
+                "primary_subject_id": "STU-0001",
+                "purpose": "student_profile_display",
+                "slot": "profile_image",
+                "school": "SCH-0001",
+            }
+        )
+
+        with (
+            patch("ifitwala_ed.api.file_access._resolve_authorized_academic_file", return_value=file_row),
+            patch("ifitwala_ed.api.file_access._require_authenticated_user", return_value="staff@example.com"),
+            patch("ifitwala_ed.api.file_access._resolve_any_file_row", return_value=file_row),
+            patch("ifitwala_ed.api.file_access.get_drive_file_for_file", return_value=drive_file),
+            patch("ifitwala_ed.api.file_access._assert_internal_student_access"),
+            patch(
+                "ifitwala_ed.api.file_access._resolve_student_image_grant_target_url", return_value=None
+            ) as resolve_target,
+            patch(
+                "ifitwala_ed.api.file_access._resolve_drive_download_grant_url",
+                side_effect=AssertionError("student derivative miss must not fall back to the original file"),
+            ),
+        ):
+            with self.assertRaises(frappe.DoesNotExistError):
+                download_academic_file(
+                    file="FILE-STU-IMG-1",
+                    context_doctype="Student",
+                    context_name="STU-0001",
+                    derivative_role="thumb",
+                )
+
+        resolve_target.assert_called_once_with(
+            student="STU-0001",
+            file_id="FILE-STU-IMG-1",
+            drive_file_id="DRIVE-STU-1",
+            prefer_preview=True,
+            derivative_role="thumb",
+            strict_derivative=True,
+        )
+
     def test_download_academic_file_falls_back_to_current_student_profile_image_when_old_file_binding_rotated(self):
         requested_file_row = {
             "name": "FILE-STALE-STU-IMG",
@@ -721,6 +827,7 @@ class TestFileAccessUrlContracts(FrappeTestCase):
             drive_file_id="DRIVE-STU-CURRENT",
             prefer_preview=True,
             derivative_role="thumb",
+            strict_derivative=True,
         )
         self.assertEqual(frappe.local.response.get("type"), "redirect")
         self.assertEqual(

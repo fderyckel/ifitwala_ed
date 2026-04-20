@@ -31,6 +31,37 @@
 			</a>
 		</div>
 
+		<div v-else-if="showInlinePdfPreview" class="mb-1">
+			<a
+				:href="primaryActionUrl || undefined"
+				target="_blank"
+				rel="noreferrer"
+				class="group block overflow-hidden rounded-2xl border border-line-soft bg-white"
+				v-bind="kindDataAttrs('pdf')"
+			>
+				<img
+					:src="attachment.preview_url || undefined"
+					:alt="`${titleToUse} first page preview`"
+					class="h-56 w-full bg-white object-contain"
+					loading="lazy"
+					@error="handlePdfPreviewError"
+				/>
+				<div
+					class="flex items-center justify-between border-t border-line-soft bg-white px-4 py-3"
+				>
+					<div>
+						<p class="text-xs font-semibold uppercase tracking-[0.18em] text-ink/45">
+							PDF preview
+						</p>
+						<p class="mt-1 text-sm text-ink/80">
+							{{ compactPdfBody }}
+						</p>
+					</div>
+					<span class="chip">{{ extensionLabel }}</span>
+				</div>
+			</a>
+		</div>
+
 		<div v-else-if="showPdfPreviewSurface" class="mb-1">
 			<div
 				v-if="variant === 'communication'"
@@ -188,6 +219,7 @@ const props = withDefaults(
 const slots = useSlots();
 const imagePreviewFailed = ref(false);
 const imagePreviewUsesFallbackUrl = ref(false);
+const pdfPreviewFailed = ref(false);
 
 const titleToUse = computed(() => {
 	const explicitTitle = String(props.title || '').trim();
@@ -242,11 +274,7 @@ const inlineImageUrl = computed(() => {
 	if (props.attachment.thumbnail_url) {
 		return props.attachment.thumbnail_url;
 	}
-	if (
-		props.variant === 'communication' &&
-		props.attachment.preview_status === 'ready' &&
-		props.attachment.preview_url
-	) {
+	if (props.attachment.preview_url) {
 		return props.attachment.preview_url;
 	}
 	return null;
@@ -269,6 +297,16 @@ const previewStatusAllowsPdf = computed(() => {
 	}
 	return true;
 });
+const showInlinePdfPreview = computed(() => {
+	return Boolean(
+		props.variant !== 'communication' &&
+		mediaPreviewEnabled.value &&
+		props.attachment.kind === 'pdf' &&
+		props.attachment.preview_url &&
+		previewStatusAllowsPdf.value &&
+		!pdfPreviewFailed.value
+	);
+});
 const showCommunicationPdfPreview = computed(() => {
 	return Boolean(
 		props.variant === 'communication' &&
@@ -281,7 +319,7 @@ const showCommunicationPdfPreview = computed(() => {
 const showPdfPreviewSurface = computed(() => {
 	if (!mediaPreviewEnabled.value || props.attachment.kind !== 'pdf') return false;
 	if (props.variant === 'communication') return true;
-	return previewStatusAllowsPdf.value;
+	return Boolean(props.attachment.preview_url || props.attachment.open_url);
 });
 const primaryActionUrl = computed(() => {
 	if (props.variant === 'communication' && props.attachment.kind === 'pdf') {
@@ -372,6 +410,7 @@ watch(
 	() => {
 		imagePreviewFailed.value = false;
 		imagePreviewUsesFallbackUrl.value = false;
+		pdfPreviewFailed.value = false;
 	}
 );
 
@@ -394,5 +433,9 @@ function handleImagePreviewError() {
 	}
 
 	imagePreviewFailed.value = true;
+}
+
+function handlePdfPreviewError() {
+	pdfPreviewFailed.value = true;
 }
 </script>

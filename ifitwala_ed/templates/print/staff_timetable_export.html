@@ -51,20 +51,6 @@
 			</tr>
 		</table>
 
-		<div class="timetable-week-label">
-			<div class="timetable-week-label__title">{{ week.range_label }}</div>
-			<div class="timetable-week-label__copy">
-				{% if week.total_pages > 1 %}
-					{{ week.page_label }}{% if week.event_count %} · {% endif %}
-				{% endif %}
-				{% if week.event_count %}
-					{{ _("{0} scheduled item(s)").format(week.event_count) }}
-				{% else %}
-					{{ _("Open week") }}
-				{% endif %}
-			</div>
-		</div>
-
 		<table class="timetable-board" cellspacing="0" cellpadding="0">
 			<thead>
 				<tr>

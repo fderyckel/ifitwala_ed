@@ -8,7 +8,7 @@ from typing import Any
 import frappe
 import pytz
 from frappe import _
-from frappe.utils import add_to_date, get_datetime, get_url, now_datetime
+from frappe.utils import add_to_date, cint, get_datetime, get_url, now_datetime
 
 from ifitwala_ed.api import calendar_staff_feed
 from ifitwala_ed.api.calendar_core import _resolve_employee_for_user, _system_tzinfo
@@ -52,7 +52,10 @@ SOURCE_SORT = {
 }
 
 
-def export_staff_timetable_pdf(preset: str | None = None):
+def export_staff_timetable_pdf(
+    preset: str | None = None,
+    include_weekends: object | None = None,
+):
     user = frappe.session.user
     if not user or user == "Guest":
         frappe.throw(_("Please sign in to view your calendar."), frappe.PermissionError)
@@ -60,6 +63,7 @@ def export_staff_timetable_pdf(preset: str | None = None):
     tzinfo = _system_tzinfo()
     local_now = _localize_datetime(now_datetime(), tzinfo)
     window = _resolve_staff_timetable_window(preset, local_now.date())
+    include_weekends_flag = _coerce_checkbox_flag(include_weekends, default=True)
 
     employee = _resolve_employee_for_user(
         user,
@@ -87,6 +91,7 @@ def export_staff_timetable_pdf(preset: str | None = None):
         window=window,
         tzinfo=tzinfo,
         generated_at=local_now,
+        include_weekends=include_weekends_flag,
     )
     html = _render_staff_timetable_export_html(context)
     pdf_content = _render_staff_timetable_pdf(html)
@@ -121,6 +126,7 @@ def _build_staff_timetable_context(
     window: dict[str, Any],
     tzinfo: pytz.BaseTzInfo,
     generated_at: datetime,
+    include_weekends: bool,
 ) -> dict[str, Any]:
     events = payload.get("events") or []
     brand = _resolve_brand_context(employee=employee, events=events)
@@ -129,6 +135,7 @@ def _build_staff_timetable_context(
         start_date=window["start_date"],
         end_date_exclusive=window["end_date_exclusive"],
         tzinfo=tzinfo,
+        include_weekends=include_weekends,
     )
 
     return {
@@ -324,6 +331,7 @@ def _build_timetable_weeks(
     start_date: date,
     end_date_exclusive: date,
     tzinfo: pytz.BaseTzInfo,
+    include_weekends: bool = True,
 ) -> list[dict[str, Any]]:
     all_day_by_date: dict[date, list[dict[str, Any]]] = defaultdict(list)
     timed_by_date: dict[date, list[dict[str, Any]]] = defaultdict(list)
@@ -344,12 +352,13 @@ def _build_timetable_weeks(
     weeks = []
     current_week_start = first_week_start
     total_pages = ((last_week_start - first_week_start).days // 7) + 1
+    display_day_offsets = range(7) if include_weekends else range(5)
     page_number = 1
     while current_week_start <= last_week_start:
         week_days = []
         event_count = 0
         week_range_end = current_week_start + timedelta(days=6)
-        for offset in range(7):
+        for offset in display_day_offsets:
             current_day = current_week_start + timedelta(days=offset)
             all_day_events = sorted(
                 all_day_by_date.get(current_day, []),
@@ -366,7 +375,7 @@ def _build_timetable_weeks(
                     "weekday_short": current_day.strftime("%a"),
                     "weekday_long": current_day.strftime("%A"),
                     "date_label": current_day.strftime("%d %b"),
-                    "is_weekend": offset >= 5,
+                    "is_weekend": current_day.weekday() >= 5,
                     "in_window": start_date <= current_day < end_date_exclusive,
                     "all_day_events": all_day_events,
                     "timed_events": timed_events,
@@ -451,6 +460,20 @@ def _append_event_to_day_buckets(
                 }
             )
         segment_day += timedelta(days=1)
+
+
+def _coerce_checkbox_flag(value: object | None, *, default: bool) -> bool:
+    if value in (None, ""):
+        return default
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, str):
+        lowered = value.strip().lower()
+        if lowered in {"1", "true", "yes", "on"}:
+            return True
+        if lowered in {"0", "false", "no", "off"}:
+            return False
+    return bool(cint(value))
 
 
 def _coerce_export_datetime(value: str | None, tzinfo: pytz.BaseTzInfo) -> datetime | None:
