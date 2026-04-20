@@ -32,7 +32,10 @@ from frappe.utils import getdate, now_datetime, nowdate
 from ifitwala_ed.schedule.schedule_utils import get_effective_schedule_for_ay, get_rotation_dates
 from ifitwala_ed.schedule.student_group_scheduling import get_school_for_student_group
 from ifitwala_ed.school_settings.doctype.term.term import get_current_term
-from ifitwala_ed.utilities.image_utils import apply_preferred_student_images
+from ifitwala_ed.utilities.image_utils import (
+    PROFILE_IMAGE_THUMB_ONLY_SLOTS,
+    apply_preferred_student_images,
+)
 
 ATT_CODE_FIELD = "attendance_code"
 ATT_CODE_DOCTYPE = "Student Attendance Code"
@@ -43,6 +46,7 @@ LIMIT_DEFAULT = 30  # UI paging only
 DEFAULT_PAGE_LEN = 25
 
 MEETING_DATES_TTL = 24 * 60 * 60  # 1 day
+ATTENDANCE_ROSTER_IMAGE_SLOTS = PROFILE_IMAGE_THUMB_ONLY_SLOTS
 
 
 # ---------------------------------------------------------------------
@@ -112,7 +116,9 @@ def get_student_group_students(
         rows,
         student_field="student",
         image_field="student_image",
+        slots=ATTENDANCE_ROSTER_IMAGE_SLOTS,
         fallback_to_original=False,
+        request_missing_derivatives=True,
     )
 
 
