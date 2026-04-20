@@ -1,7 +1,7 @@
 # Cross-Portal Governed Attachment Preview Contract
 
 Status: Canonical current runtime contract
-Date: 2026-04-18
+Date: 2026-04-20
 Code refs: `ifitwala_ed/api/file_access.py`, `ifitwala_ed/api/gradebook_reads.py`, `ifitwala_ed/api/org_communication_attachments.py`, `ifitwala_ed/api/org_communication_archive.py`, `ifitwala_ed/api/materials.py`, `ifitwala_ed/api/task_submission.py`, `ifitwala_ed/api/teaching_plans_read_models.py`, `ifitwala_ed/ui-spa/AGENTS.md`, `ifitwala_ed/ui-spa/src/components/tasks/CreateTaskDeliveryOverlay.vue`
 Test refs: `ifitwala_ed/api/test_file_access.py`, `ifitwala_ed/api/test_gradebook.py`, `ifitwala_ed/api/test_materials.py`, `ifitwala_ed/api/test_org_communication_archive.py`, `ifitwala_ed/api/test_task_submission.py`, `ifitwala_ed/api/test_teaching_plans.py`, `ifitwala_ed/ui-spa/src/components/tasks/__tests__/CreateTaskDeliveryOverlay.test.ts`
 Related current-state docs:
@@ -31,7 +31,7 @@ Today Ifitwala_Ed already enforces the correct broad shape for governed reads:
 - `open_org_communication_attachment(...)` re-checks communication visibility, then resolves a Drive grant just in time
 - governed open/preview routes now fail closed when no safe public/external/Drive target exists; when the resolved Drive/local target is an in-site private path, Ed serves it inline instead of redirecting the browser to a raw `/private/...` URL
 - Org Communication rows now also expose a stable `preview_url` route owned by Ed plus a `preview_status` hint for renderability
-- staff, student, and guardian communication detail surfaces now render inline image previews and full-width first-page PDF previews when those governed preview routes are ready, with clean fallback cards when they are not
+- staff, student, and guardian communication detail surfaces now render inline image previews plus small first-page PDF card previews from `thumbnail_url`, keep `preview_url` as the richer preview action, and still degrade to clean fallback cards when those governed routes are not ready
 - the staff task creation overlay now lets teachers queue task attachments during task composition and uses the shared preview card for current task attachments when a created task remains open for attachment recovery
 - planning-material surfaces now also expose stable `preview_url` routes for governed file resources in the staff course-plan and class-planning workspaces
 - planning-material preview and thumbnail routes now resolve governed grants through a material-scoped Drive wrapper after Ed authorizes the placement/material context, so `Material Placement` visibility no longer depends on direct `Supporting Material` DocType read permission
@@ -48,11 +48,11 @@ What still does not exist yet:
 
 Drive now has a narrow image plus first-page PDF derivative foundation, but Ed should still treat preview as partial rollout:
 
-- Org Communication can use `preview_url` where Drive reports a ready preview, with file attachments rendering as image or first-page PDF preview cards and links falling back to compact metadata cards
+- Org Communication can use `thumbnail_url` for inline image and PDF card previews where Drive reports the card derivative ready, keep `preview_url` for richer preview actions, and fall back to compact metadata cards when neither preview route is ready
 - admissions applicant document surfaces and staff admissions review/readiness surfaces now also return stable `open_url`, `preview_url`, `thumbnail_url`, and nested `attachment_preview` DTOs for governed applicant evidence
 - the staff task creation overlay can use `preview_url` where Drive reports a ready preview, while still keeping task-material actions inside the existing create flow
-- staff planning-material surfaces can use `preview_url` where Drive reports a ready preview
-- the student learning space can use `preview_url` where Drive reports a ready preview, with richer resource cards keeping `open_url` explicit and assigned-work attachments now using the same governed preview DTO
+- staff planning-material surfaces can use `thumbnail_url` for inline image/PDF card previews and keep `preview_url` for richer preview actions
+- the student learning space can use `thumbnail_url` for inline image/PDF card previews where Drive reports the card derivative ready, keep `preview_url` for richer preview actions, and keep `open_url` explicit while assigned-work attachments use the same governed preview DTO
 - the task-submission evidence surface now returns stable `preview_url` and `open_url` values for selected submission attachments, with version summaries remaining bounded inside the gradebook drawer contract
 - other surfaces should still be treated as open/download-only until their stable preview routes exist
 
@@ -143,7 +143,7 @@ Test refs: `ifitwala_ed/api/test_file_access.py`, `ifitwala_ed/api/test_file_acc
 
 Current pain point:
 
-- Org Communication now prefers `thumbnail_url` for inline image cards, and its thumbnail route fails closed when no safe `thumb` derivative is ready
+- Org Communication now prefers `thumbnail_url` for inline card previews, and its thumbnail route fails closed when no safe card derivative is ready (`thumb` for images, `pdf_card` for PDFs)
 - when the richer image preview derivative is already ready but the smaller `thumb` derivative is still missing, Org Communication detail surfaces may fall back to `preview_url` inline instead of hiding the image completely
 - governed applicant-document and staff admissions review DTOs now expose the same split, even where the first UI cut still uses explicit open actions instead of inline cards
 - those preview routes are authorization-first Ed action routes, not dedicated thumbnail-delivery contracts
@@ -152,10 +152,10 @@ Current pain point:
 Refined direction:
 
 - add an additive `thumbnail_url` field for governed file DTOs
-- `thumbnail_url` is for inline card/list images only and should be omitted until the requested thumbnail derivative is actually ready
+- `thumbnail_url` is for inline card/list previews and should be omitted until the requested card-sized derivative is actually ready
 - `preview_url` remains the richer preview action
 - `open_url` remains the original-file compatibility baseline and explicit fallback
-- image card surfaces may fall back to `preview_url` inline when `thumbnail_url` is absent or when the thumbnail delivery route fails, so a missing `thumb` derivative does not blank the whole card while Drive catches up
+- image and PDF card surfaces may fall back to `preview_url` inline when `thumbnail_url` is absent or when the thumbnail delivery route fails, so a missing card derivative does not blank the whole card while Drive catches up
 - Ed-owned thumbnail routes may use short-lived `frappe.cache()` entries for resolved redirect targets only, never for raw file bytes and never for DTO-embedded provider URLs
 - cache keys must include at least `drive_file`, current version identity, derivative role, and the relevant surface/context dimensions so tenant and portal scope cannot leak
 - cache TTL must stay shorter than the underlying Drive grant lifetime
@@ -246,7 +246,7 @@ DTO rules:
 
 - URL fields are stable server-owned surface actions or `null`
 - the DTO is already filtered for the current viewer; the SPA must not infer hidden attachments
-- `thumbnail_url` should stay lightweight and optional
+- `thumbnail_url` should stay lightweight and optional, using `thumb` for images and `pdf_card` for PDF first-page card previews
 - `preview_url` should be used only when a richer preview action exists
 - `open_url` remains the current compatibility baseline during rollout
 - current surfaces may still keep their legacy top-level fields (`kind`, `material_type`, `title`, `reference_url`, and similar) while also exposing the nested shared DTO during convergence

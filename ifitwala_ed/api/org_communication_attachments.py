@@ -99,6 +99,8 @@ def _get_attachment_preview_meta(org_communication: str, row_name: str) -> dict[
     thumbnail_ready = False
 
     if preview_status == "ready" and current_version:
+        mime_type = _clean_text(frappe.db.get_value("Drive File Version", current_version, "mime_type"))
+        derivative_role = "pdf_card" if mime_type == "application/pdf" else "thumb"
         thumbnail_ready = bool(
             _clean_text(
                 frappe.db.get_value(
@@ -106,7 +108,7 @@ def _get_attachment_preview_meta(org_communication: str, row_name: str) -> dict[
                     {
                         "drive_file": drive_file_id,
                         "drive_file_version": current_version,
-                        "derivative_role": "thumb",
+                        "derivative_role": derivative_role,
                         "status": "ready",
                     },
                     "name",

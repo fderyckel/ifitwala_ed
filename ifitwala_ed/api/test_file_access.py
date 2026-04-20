@@ -127,57 +127,48 @@ class TestFileAccessUrlContracts(FrappeTestCase):
             "/api/method/ifitwala_ed.api.file_access.thumbnail_academic_file?file=FILE-EXT&context_doctype=Student&context_name=STU-0001",
         )
 
-    def test_resolve_academic_file_open_url_recovers_file_name_from_file_url_for_private_files(self):
-        with patch("ifitwala_ed.api.file_access.frappe.db.get_value", return_value="FILE-ACADEMIC-1") as get_value:
-            url = resolve_academic_file_open_url(
-                file_name=None,
-                file_url="/private/files/submission.pdf",
-                context_doctype="Task Submission",
-                context_name="TSU-0001",
+    def test_resolve_academic_file_open_url_requires_explicit_file_name_for_private_files(self):
+        with patch(
+            "ifitwala_ed.api.file_access.frappe.db.get_value",
+            side_effect=AssertionError("unexpected compatibility file lookup"),
+        ):
+            self.assertIsNone(
+                resolve_academic_file_open_url(
+                    file_name=None,
+                    file_url="/private/files/submission.pdf",
+                    context_doctype="Task Submission",
+                    context_name="TSU-0001",
+                )
             )
 
-        parsed = urlparse(url or "")
-        query = parse_qs(parsed.query)
-        self.assertEqual(parsed.path, "/api/method/ifitwala_ed.api.file_access.download_academic_file")
-        self.assertEqual((query.get("file") or [None])[0], "FILE-ACADEMIC-1")
-        self.assertEqual((query.get("context_doctype") or [None])[0], "Task Submission")
-        self.assertEqual((query.get("context_name") or [None])[0], "TSU-0001")
-        get_value.assert_called_once_with("File", {"file_url": "/private/files/submission.pdf"}, "name")
-
-    def test_resolve_academic_file_preview_url_recovers_file_name_from_file_url_for_private_files(self):
-        with patch("ifitwala_ed.api.file_access.frappe.db.get_value", return_value="FILE-ACADEMIC-1") as get_value:
-            url = resolve_academic_file_preview_url(
-                file_name=None,
-                file_url="/private/files/submission.pdf",
-                context_doctype="Task Submission",
-                context_name="TSU-0001",
+    def test_resolve_academic_file_preview_url_requires_explicit_file_name_for_private_files(self):
+        with patch(
+            "ifitwala_ed.api.file_access.frappe.db.get_value",
+            side_effect=AssertionError("unexpected compatibility file lookup"),
+        ):
+            self.assertIsNone(
+                resolve_academic_file_preview_url(
+                    file_name=None,
+                    file_url="/private/files/submission.pdf",
+                    context_doctype="Task Submission",
+                    context_name="TSU-0001",
+                )
             )
 
-        parsed = urlparse(url or "")
-        query = parse_qs(parsed.query)
-        self.assertEqual(parsed.path, "/api/method/ifitwala_ed.api.file_access.preview_academic_file")
-        self.assertEqual((query.get("file") or [None])[0], "FILE-ACADEMIC-1")
-        self.assertEqual((query.get("context_doctype") or [None])[0], "Task Submission")
-        self.assertEqual((query.get("context_name") or [None])[0], "TSU-0001")
-        get_value.assert_called_once_with("File", {"file_url": "/private/files/submission.pdf"}, "name")
-
-    def test_resolve_academic_file_thumbnail_url_recovers_file_name_from_file_url_for_private_files(self):
-        with patch("ifitwala_ed.api.file_access.frappe.db.get_value", return_value="FILE-ACADEMIC-1") as get_value:
-            url = resolve_academic_file_thumbnail_url(
-                file_name=None,
-                file_url="/private/files/submission.pdf",
-                context_doctype="Task Submission",
-                context_name="TSU-0001",
-                thumbnail_ready=True,
+    def test_resolve_academic_file_thumbnail_url_requires_explicit_file_name_for_private_files(self):
+        with patch(
+            "ifitwala_ed.api.file_access.frappe.db.get_value",
+            side_effect=AssertionError("unexpected compatibility file lookup"),
+        ):
+            self.assertIsNone(
+                resolve_academic_file_thumbnail_url(
+                    file_name=None,
+                    file_url="/private/files/submission.pdf",
+                    context_doctype="Task Submission",
+                    context_name="TSU-0001",
+                    thumbnail_ready=True,
+                )
             )
-
-        parsed = urlparse(url or "")
-        query = parse_qs(parsed.query)
-        self.assertEqual(parsed.path, "/api/method/ifitwala_ed.api.file_access.thumbnail_academic_file")
-        self.assertEqual((query.get("file") or [None])[0], "FILE-ACADEMIC-1")
-        self.assertEqual((query.get("context_doctype") or [None])[0], "Task Submission")
-        self.assertEqual((query.get("context_name") or [None])[0], "TSU-0001")
-        get_value.assert_called_once_with("File", {"file_url": "/private/files/submission.pdf"}, "name")
 
     def test_resolve_academic_file_open_url_never_leaks_unresolved_private_file_urls(self):
         with patch("ifitwala_ed.api.file_access.frappe.db.get_value", return_value=None):
@@ -1284,6 +1275,84 @@ class TestFileAccessUrlContracts(FrappeTestCase):
             [{"org_communication": "COMM-0001", "row_name": "row-001", "derivative_role": "thumb"}],
         )
 
+    def test_thumbnail_org_communication_attachment_uses_pdf_card_derivative_for_pdf_rows(self):
+        attachment_row = frappe._dict(
+            name="row-001",
+            file="/private/files/policy.pdf",
+            external_url=None,
+        )
+
+        class _CommDoc:
+            name = "COMM-0001"
+
+            def get(self, fieldname):
+                if fieldname == "attachments":
+                    return [attachment_row]
+                return []
+
+        class _FakeCache:
+            def __init__(self):
+                self.values = {}
+
+            def get_value(self, key):
+                return self.values.get(key)
+
+            def set_value(self, key, value, expires_in_sec=None):
+                self.values[key] = value
+
+        comm_doc = _CommDoc()
+        cache = _FakeCache()
+        grant_requests = []
+
+        def fake_get_value(doctype, filters=None, fieldname=None, as_dict=False):
+            if doctype == "Employee":
+                return {"name": "EMP-1", "school": "SCH-1", "organization": "ORG-1"}
+            if doctype == "Drive Binding":
+                return {"drive_file": "DRIVE-0001", "file": "FILE-0001"}
+            if doctype == "Drive File" and filters == "DRIVE-0001" and fieldname == ["name", "current_version"]:
+                return {"name": "DRIVE-0001", "current_version": "DFV-0001"}
+            if doctype == "Drive File Version" and filters == "DFV-0001" and fieldname == "mime_type":
+                return "application/pdf"
+            return None
+
+        def fake_load(attribute):
+            self.assertEqual(attribute, "issue_org_communication_attachment_preview_grant")
+
+            def _grant(**kwargs):
+                grant_requests.append(kwargs)
+                return {"url": "https://thumb.example.com/policy-card.jpg"}
+
+            return _grant
+
+        with (
+            patch("ifitwala_ed.api.file_access._require_authenticated_user", return_value="staff@example.com"),
+            patch("ifitwala_ed.api.file_access.frappe.get_roles", return_value=["Academic Staff"]),
+            patch("ifitwala_ed.api.file_access.frappe.db.get_value", side_effect=fake_get_value),
+            patch("ifitwala_ed.api.file_access.check_audience_match", return_value=True),
+            patch("ifitwala_ed.api.file_access.frappe.get_doc", return_value=comm_doc),
+            patch("ifitwala_ed.api.file_access.frappe.cache", return_value=cache),
+            patch("ifitwala_ed.api.file_access._load_drive_communications_callable", side_effect=fake_load),
+            patch(
+                "ifitwala_ed.api.file_access._load_drive_access_callable",
+                side_effect=AssertionError("generic Drive grant path should not be used"),
+            ),
+        ):
+            frappe.local.response = {}
+            thumbnail_org_communication_attachment(
+                org_communication="COMM-0001",
+                row_name="row-001",
+            )
+
+        self.assertEqual(
+            grant_requests,
+            [{"org_communication": "COMM-0001", "row_name": "row-001", "derivative_role": "pdf_card"}],
+        )
+        self.assertEqual(frappe.local.response.get("type"), "redirect")
+        self.assertEqual(
+            frappe.local.response.get("location"),
+            "https://thumb.example.com/policy-card.jpg",
+        )
+
     def test_thumbnail_org_communication_attachment_cache_rotates_when_current_version_changes(self):
         attachment_row = frappe._dict(
             name="row-001",
@@ -1693,6 +1762,73 @@ class TestFileAccessUrlContracts(FrappeTestCase):
         self.assertEqual(
             frappe.local.response.get("location"),
             "https://thumb.example.com/material-thumb.webp",
+        )
+        self.assertEqual(
+            (frappe.local.response.get("headers") or {}).get("Cache-Control"),
+            "private, max-age=240, must-revalidate",
+        )
+
+    def test_thumbnail_academic_file_uses_pdf_card_derivative_for_pdf_material(self):
+        file_row = {
+            "name": "FILE-MAT-1",
+            "file_url": "/private/files/Courses/COURSE-1/handout.pdf",
+            "file_name": "handout.pdf",
+            "is_private": 1,
+            "attached_to_doctype": "Supporting Material",
+            "attached_to_name": "MAT-1",
+        }
+
+        class _FakeCache:
+            def __init__(self):
+                self.values = {}
+
+            def get_value(self, key):
+                return self.values.get(key)
+
+            def set_value(self, key, value, expires_in_sec=None):
+                self.values[key] = value
+
+        grant_requests = []
+
+        def fake_get_value(doctype, filters=None, fieldname=None, as_dict=False):
+            if doctype == "Drive File" and filters == {"file": "FILE-MAT-1"}:
+                return {"name": "DRIVE-0001", "preview_status": "ready", "current_version": "DFV-0001"}
+            if doctype == "Drive File" and filters == "DRIVE-0001" and fieldname == ["name", "current_version"]:
+                return {"name": "DRIVE-0001", "current_version": "DFV-0001"}
+            if doctype == "Drive File Version" and filters == "DFV-0001" and fieldname == "mime_type":
+                return "application/pdf"
+            return None
+
+        def fake_load(attribute):
+            self.assertEqual(attribute, "issue_preview_grant")
+
+            def _grant(**kwargs):
+                grant_requests.append(kwargs)
+                return {"url": "https://thumb.example.com/material-card.jpg"}
+
+            return _grant
+
+        with (
+            patch("ifitwala_ed.api.file_access._resolve_authorized_academic_file", return_value=file_row),
+            patch("ifitwala_ed.api.file_access.frappe.db.get_value", side_effect=fake_get_value),
+            patch("ifitwala_ed.api.file_access.frappe.cache", return_value=_FakeCache()),
+            patch("ifitwala_ed.api.file_access._load_drive_access_callable", side_effect=fake_load),
+        ):
+            frappe.local.response = {}
+            thumbnail_academic_file(
+                file="FILE-MAT-1",
+                context_doctype="Supporting Material",
+                context_name="MAT-1",
+            )
+
+        self.assertEqual(
+            grant_requests,
+            [{"drive_file_id": "DRIVE-0001", "derivative_role": "pdf_card"}],
+        )
+        self.assertEqual(frappe.local.response.get("type"), "redirect")
+        self.assertEqual(
+            frappe.local.response.get("location"),
+            "https://thumb.example.com/material-card.jpg",
         )
         self.assertEqual(
             (frappe.local.response.get("headers") or {}).get("Cache-Control"),

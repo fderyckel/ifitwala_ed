@@ -9,25 +9,32 @@ from ifitwala_ed.tests.frappe_stubs import StubPermissionError, import_fresh, st
 
 def _task_submission_stub_modules():
     file_access = types.ModuleType("ifitwala_ed.api.file_access")
+
+    def _raw_stub_url(file_url):
+        resolved = (file_url or "").strip()
+        if resolved.startswith(("http://", "https://", "/files/")):
+            return resolved
+        return None
+
     file_access.resolve_academic_file_open_url = (
         lambda *, file_name, file_url, context_doctype=None, context_name=None, **kwargs: (
             f"/api/method/ifitwala_ed.api.file_access.download_academic_file?file={file_name}&context_doctype={context_doctype}&context_name={context_name}"
             if file_name
-            else file_url
+            else _raw_stub_url(file_url)
         )
     )
     file_access.resolve_academic_file_preview_url = (
         lambda *, file_name, file_url, context_doctype=None, context_name=None, **kwargs: (
             f"/api/method/ifitwala_ed.api.file_access.preview_academic_file?file={file_name}&context_doctype={context_doctype}&context_name={context_name}"
             if file_name
-            else file_url
+            else _raw_stub_url(file_url)
         )
     )
     file_access.resolve_academic_file_thumbnail_url = (
         lambda *, file_name, file_url, context_doctype=None, context_name=None, **kwargs: (
             f"/api/method/ifitwala_ed.api.file_access.thumbnail_academic_file?file={file_name}&context_doctype={context_doctype}&context_name={context_name}"
             if file_name and kwargs.get("thumbnail_ready")
-            else None
+            else (None if file_name else _raw_stub_url(file_url))
         )
     )
     file_access.get_drive_file_thumbnail_ready_map = lambda drive_file_ids: {

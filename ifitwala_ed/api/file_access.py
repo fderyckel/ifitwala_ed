@@ -55,6 +55,9 @@ STUDENT_PROFILE_IMAGE_PURPOSE = "student_profile_display"
 GUARDIAN_PROFILE_IMAGE_PURPOSE = "guardian_profile_display"
 PROFILE_IMAGE_SLOT = "profile_image"
 EMPLOYEE_PROFILE_IMAGE_SLOT = PROFILE_IMAGE_SLOT
+CARD_IMAGE_DERIVATIVE_ROLE = "thumb"
+CARD_PDF_DERIVATIVE_ROLE = "pdf_card"
+PDF_MIME_TYPE = "application/pdf"
 
 
 def _is_external_url(value: str | None) -> bool:
@@ -92,6 +95,32 @@ def _guess_filename_from_url(file_url: str | None) -> str | None:
     path = unquote(str(urlparse(raw_url).path or raw_url).strip())
     filename = os.path.basename(path)
     return filename or None
+
+
+def _resolve_card_preview_derivative_role_for_mime_type(mime_type: str | None) -> str:
+    resolved_mime_type = str(mime_type or "").strip().lower()
+    if resolved_mime_type == PDF_MIME_TYPE:
+        return CARD_PDF_DERIVATIVE_ROLE
+    return CARD_IMAGE_DERIVATIVE_ROLE
+
+
+def _resolve_card_preview_derivative_role_for_drive_file(drive_file_id: str | None) -> str:
+    resolved_drive_file_id = str(drive_file_id or "").strip()
+    if not resolved_drive_file_id:
+        return CARD_IMAGE_DERIVATIVE_ROLE
+
+    drive_file_row = (
+        frappe.db.get_value(
+            "Drive File",
+            resolved_drive_file_id,
+            ["name", "current_version"],
+            as_dict=True,
+        )
+        or {}
+    )
+    current_version = str((drive_file_row or {}).get("current_version") or "").strip()
+    mime_type = frappe.db.get_value("Drive File Version", current_version, "mime_type") if current_version else None
+    return _resolve_card_preview_derivative_role_for_mime_type(mime_type)
 
 
 def _resolve_local_site_file_path(file_url: str | None, *, is_private: int | bool | None = None) -> str | None:
@@ -430,10 +459,15 @@ def get_academic_file_thumbnail_ready_map(file_names: list[str] | tuple[str, ...
             df.current_version,
             dfd.name AS derivative_name
         FROM `tabDrive File` df
+        LEFT JOIN `tabDrive File Version` dfv
+          ON dfv.name = df.current_version
         LEFT JOIN `tabDrive File Derivative` dfd
           ON dfd.drive_file = df.name
          AND dfd.drive_file_version = df.current_version
-         AND dfd.derivative_role = 'thumb'
+         AND dfd.derivative_role = CASE
+             WHEN COALESCE(dfv.mime_type, '') = 'application/pdf' THEN 'pdf_card'
+             ELSE 'thumb'
+         END
          AND dfd.status = 'ready'
         WHERE df.file IN %(file_names)s
         """,
@@ -479,10 +513,15 @@ def get_drive_file_thumbnail_ready_map(
             df.current_version,
             dfd.name AS derivative_name
         FROM `tabDrive File` df
+        LEFT JOIN `tabDrive File Version` dfv
+          ON dfv.name = df.current_version
         LEFT JOIN `tabDrive File Derivative` dfd
           ON dfd.drive_file = df.name
          AND dfd.drive_file_version = df.current_version
-         AND dfd.derivative_role = 'thumb'
+         AND dfd.derivative_role = CASE
+             WHEN COALESCE(dfv.mime_type, '') = 'application/pdf' THEN 'pdf_card'
+             ELSE 'thumb'
+         END
          AND dfd.status = 'ready'
         WHERE df.name IN %(drive_file_ids)s
         """,
@@ -519,7 +558,7 @@ def resolve_academic_file_open_url(
     if _is_external_url(raw_url):
         return raw_url
 
-    resolved_name = (file_name or "").strip() or _resolve_file_name_from_url(raw_url) or ""
+    resolved_name = (file_name or "").strip()
     if not resolved_name:
         return raw_url if _is_public_site_file_url(raw_url) else None
 
@@ -544,7 +583,7 @@ def resolve_academic_file_preview_url(
     viewer_email: str | None = None,
 ) -> str | None:
     raw_url = (file_url or "").strip()
-    resolved_name = (file_name or "").strip() or _resolve_file_name_from_url(raw_url) or ""
+    resolved_name = (file_name or "").strip()
     if resolved_name:
         preview_url = build_academic_file_preview_url(
             file_name=resolved_name,
@@ -571,7 +610,7 @@ def resolve_academic_file_thumbnail_url(
     thumbnail_ready: bool | None = None,
 ) -> str | None:
     raw_url = (file_url or "").strip()
-    resolved_name = (file_name or "").strip() or _resolve_file_name_from_url(raw_url) or ""
+    resolved_name = (file_name or "").strip()
     if resolved_name:
         resolved_thumbnail_ready = (
             thumbnail_ready
@@ -1127,6 +1166,7 @@ def _resolve_cached_thumbnail_target_url(
     drive_file_id: str,
     file_id: str,
     surface_parts: list[str | None],
+    derivative_role: str | None = None,
     strict_derivative: bool = False,
     target_resolver=None,
 ) -> str | None:
@@ -1139,10 +1179,13 @@ def _resolve_cached_thumbnail_target_url(
         )
         or {}
     )
+    resolved_derivative_role = (derivative_role or "").strip() or _resolve_card_preview_derivative_role_for_drive_file(
+        drive_file_row.get("name") or drive_file_id
+    )
     cache_key = _thumbnail_redirect_cache_key(
         drive_file_id=str(drive_file_row.get("name") or drive_file_id),
         current_version=drive_file_row.get("current_version"),
-        derivative_role="thumb",
+        derivative_role=resolved_derivative_role,
         surface_parts=surface_parts,
     )
     shared_cache = _get_shared_cache()
@@ -1158,7 +1201,7 @@ def _resolve_cached_thumbnail_target_url(
             drive_file_id=drive_file_id,
             file_id=file_id,
             prefer_preview=True,
-            derivative_role="thumb",
+            derivative_role=resolved_derivative_role,
             strict_derivative=strict_derivative,
         )
     if cache_key and shared_cache is not None and target_url:
@@ -2714,6 +2757,7 @@ def thumbnail_admissions_file(
     resolved_drive_file_id = str(resolved_drive_file.get("name") or drive_file_id or "").strip()
     if not resolved_drive_file_id:
         frappe.throw(_("Drive file is required."), frappe.DoesNotExistError)
+    derivative_role = _resolve_card_preview_derivative_role_for_drive_file(resolved_drive_file_id)
 
     target_url = _resolve_cached_thumbnail_target_url(
         drive_file_id=resolved_drive_file_id,
@@ -2724,6 +2768,7 @@ def thumbnail_admissions_file(
             context_name,
             resolved_drive_file_id,
         ],
+        derivative_role=derivative_role,
         strict_derivative=True,
     )
     if target_url:
@@ -2832,10 +2877,12 @@ def thumbnail_org_communication_attachment(
         frappe.throw(_("Attachment file is missing."), frappe.DoesNotExistError)
 
     drive_file_id, file_id = _resolve_org_communication_drive_file(doc.name, resolved_row_name)
+    derivative_role = _resolve_card_preview_derivative_role_for_drive_file(drive_file_id)
     target_url = _resolve_cached_thumbnail_target_url(
         drive_file_id=drive_file_id,
         file_id=file_id,
         surface_parts=["org_communication", doc.name, resolved_row_name],
+        derivative_role=derivative_role,
         strict_derivative=True,
         target_resolver=lambda: _resolve_org_communication_attachment_grant_target_url(
             org_communication=doc.name,
@@ -2843,7 +2890,7 @@ def thumbnail_org_communication_attachment(
             drive_file_id=drive_file_id,
             file_id=file_id,
             prefer_preview=True,
-            derivative_role="thumb",
+            derivative_role=derivative_role,
             strict_derivative=True,
         ),
     )
@@ -3193,6 +3240,7 @@ def thumbnail_academic_file(
         _resolve_current_material_drive_file(material) if material else _resolve_drive_file_delivery_row(file_name)
     )
     if drive_file and drive_file.get("name"):
+        derivative_role = _resolve_card_preview_derivative_role_for_drive_file(drive_file.get("name"))
         target_url = _resolve_cached_thumbnail_target_url(
             drive_file_id=drive_file.get("name"),
             file_id=str((drive_file or {}).get("file") or file_name).strip(),
@@ -3204,6 +3252,7 @@ def thumbnail_academic_file(
                 viewer_email,
                 file_name,
             ],
+            derivative_role=derivative_role,
             strict_derivative=True,
             target_resolver=(
                 (
@@ -3213,7 +3262,7 @@ def thumbnail_academic_file(
                         drive_file_id=drive_file.get("name"),
                         file_id=str((drive_file or {}).get("file") or file_name).strip(),
                         prefer_preview=True,
-                        derivative_role="thumb",
+                        derivative_role=derivative_role,
                         strict_derivative=True,
                     )
                 )

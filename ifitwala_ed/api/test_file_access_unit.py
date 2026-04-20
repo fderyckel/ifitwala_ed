@@ -128,16 +128,9 @@ class TestFileAccessUnit(TestCase):
 
         self.assertEqual(ready_map, {"FILE-READY": True, "FILE-WAITING": False})
 
-    def test_resolve_academic_file_open_url_recovers_file_name_from_private_file_url(self):
+    def test_resolve_academic_file_open_url_requires_explicit_file_name_for_private_files(self):
         with _file_access_module() as (file_access, frappe):
-
-            def fake_get_value(doctype, filters, fieldname=None, as_dict=False):
-                self.assertEqual(doctype, "File")
-                self.assertEqual(filters, {"file_url": "/private/files/submission.pdf"})
-                self.assertEqual(fieldname, "name")
-                return "FILE-ACADEMIC-1"
-
-            frappe.db.get_value = fake_get_value
+            frappe.db.get_value = lambda *args, **kwargs: self.fail("unexpected compatibility file lookup")
 
             url = file_access.resolve_academic_file_open_url(
                 file_name=None,
@@ -146,12 +139,7 @@ class TestFileAccessUnit(TestCase):
                 context_name="TSU-0001",
             )
 
-        parsed = urlparse(url or "")
-        query = parse_qs(parsed.query)
-        self.assertEqual(parsed.path, "/api/method/ifitwala_ed.api.file_access.download_academic_file")
-        self.assertEqual((query.get("file") or [None])[0], "FILE-ACADEMIC-1")
-        self.assertEqual((query.get("context_doctype") or [None])[0], "Task Submission")
-        self.assertEqual((query.get("context_name") or [None])[0], "TSU-0001")
+        self.assertIsNone(url)
 
     def test_resolve_academic_file_open_url_keeps_requested_derivative_role(self):
         with _file_access_module() as (file_access, _frappe):
@@ -168,16 +156,9 @@ class TestFileAccessUnit(TestCase):
         self.assertEqual(parsed.path, "/api/method/ifitwala_ed.api.file_access.download_academic_file")
         self.assertEqual((query.get("derivative_role") or [None])[0], "card")
 
-    def test_resolve_academic_file_preview_url_recovers_file_name_from_private_file_url(self):
+    def test_resolve_academic_file_preview_url_requires_explicit_file_name_for_private_files(self):
         with _file_access_module() as (file_access, frappe):
-
-            def fake_get_value(doctype, filters, fieldname=None, as_dict=False):
-                self.assertEqual(doctype, "File")
-                self.assertEqual(filters, {"file_url": "/private/files/submission.pdf"})
-                self.assertEqual(fieldname, "name")
-                return "FILE-ACADEMIC-1"
-
-            frappe.db.get_value = fake_get_value
+            frappe.db.get_value = lambda *args, **kwargs: self.fail("unexpected compatibility file lookup")
 
             url = file_access.resolve_academic_file_preview_url(
                 file_name=None,
@@ -186,12 +167,21 @@ class TestFileAccessUnit(TestCase):
                 context_name="TSU-0001",
             )
 
-        parsed = urlparse(url or "")
-        query = parse_qs(parsed.query)
-        self.assertEqual(parsed.path, "/api/method/ifitwala_ed.api.file_access.preview_academic_file")
-        self.assertEqual((query.get("file") or [None])[0], "FILE-ACADEMIC-1")
-        self.assertEqual((query.get("context_doctype") or [None])[0], "Task Submission")
-        self.assertEqual((query.get("context_name") or [None])[0], "TSU-0001")
+        self.assertIsNone(url)
+
+    def test_resolve_academic_file_thumbnail_url_requires_explicit_file_name_for_private_files(self):
+        with _file_access_module() as (file_access, frappe):
+            frappe.db.get_value = lambda *args, **kwargs: self.fail("unexpected compatibility file lookup")
+
+            url = file_access.resolve_academic_file_thumbnail_url(
+                file_name=None,
+                file_url="/private/files/submission.pdf",
+                context_doctype="Task Submission",
+                context_name="TSU-0001",
+                thumbnail_ready=True,
+            )
+
+        self.assertIsNone(url)
 
     def test_resolve_academic_file_thumbnail_url_hides_internal_file_without_ready_thumb(self):
         with _file_access_module() as (file_access, _frappe):
@@ -319,11 +309,16 @@ class TestFileAccessUnit(TestCase):
                     cache_writes.append((key, value, expires_in_sec))
 
             def fake_get_value(doctype, filters, fieldname=None, as_dict=False):
-                self.assertEqual(doctype, "Drive File")
-                self.assertEqual(filters, "DRIVE-FILE-1")
-                self.assertEqual(fieldname, ["name", "current_version"])
-                self.assertTrue(as_dict)
-                return {"name": "DRIVE-FILE-1", "current_version": "VER-1"}
+                if doctype == "Drive File":
+                    self.assertEqual(filters, "DRIVE-FILE-1")
+                    self.assertEqual(fieldname, ["name", "current_version"])
+                    self.assertTrue(as_dict)
+                    return {"name": "DRIVE-FILE-1", "current_version": "VER-1"}
+                if doctype == "Drive File Version":
+                    self.assertEqual(filters, "VER-1")
+                    self.assertEqual(fieldname, "mime_type")
+                    return "image/png"
+                self.fail(f"Unexpected get_value call: {(doctype, filters, fieldname, as_dict)}")
 
             frappe.db.get_value = fake_get_value
             frappe.cache = lambda: _FakeCache()
@@ -338,6 +333,57 @@ class TestFileAccessUnit(TestCase):
         self.assertEqual(target_url, "https://thumb.example.com/fresh.webp")
         self.assertEqual(len(cache_writes), 1)
         self.assertEqual(cache_writes[0][1], "https://thumb.example.com/fresh.webp")
+
+    def test_resolve_cached_thumbnail_target_url_uses_pdf_card_derivative_for_pdf_files(self):
+        with _file_access_module() as (file_access, frappe):
+            derivative_requests: list[dict[str, str | bool]] = []
+
+            class _FakeCache:
+                def get_value(self, key):
+                    return None
+
+                def set_value(self, key, value, expires_in_sec=None):
+                    return None
+
+            def fake_get_value(doctype, filters, fieldname=None, as_dict=False):
+                if doctype == "Drive File":
+                    self.assertEqual(filters, "DRIVE-FILE-PDF-1")
+                    self.assertEqual(fieldname, ["name", "current_version"])
+                    self.assertTrue(as_dict)
+                    return {"name": "DRIVE-FILE-PDF-1", "current_version": "VER-PDF-1"}
+                if doctype == "Drive File Version":
+                    self.assertEqual(filters, "VER-PDF-1")
+                    self.assertEqual(fieldname, "mime_type")
+                    return "application/pdf"
+                self.fail(f"Unexpected get_value call: {(doctype, filters, fieldname, as_dict)}")
+
+            def fake_resolve_drive_file_grant_target_url(**kwargs):
+                derivative_requests.append(kwargs)
+                return "https://thumb.example.com/fresh-pdf-card.jpg"
+
+            frappe.db.get_value = fake_get_value
+            frappe.cache = lambda: _FakeCache()
+            file_access._resolve_drive_file_grant_target_url = fake_resolve_drive_file_grant_target_url
+
+            target_url = file_access._resolve_cached_thumbnail_target_url(
+                drive_file_id="DRIVE-FILE-PDF-1",
+                file_id="FILE-PDF-1",
+                surface_parts=["academic", "Task Submission", "TSU-1", None, None, "FILE-PDF-1"],
+            )
+
+        self.assertEqual(target_url, "https://thumb.example.com/fresh-pdf-card.jpg")
+        self.assertEqual(
+            derivative_requests,
+            [
+                {
+                    "drive_file_id": "DRIVE-FILE-PDF-1",
+                    "file_id": "FILE-PDF-1",
+                    "prefer_preview": True,
+                    "derivative_role": "pdf_card",
+                    "strict_derivative": False,
+                }
+            ],
+        )
 
     def test_request_org_communication_attachment_grant_prefers_communications_wrapper(self):
         with _file_access_module() as (file_access, _frappe):
@@ -587,6 +633,7 @@ class TestFileAccessUnit(TestCase):
                         None,
                         "FILE-ACADEMIC-1",
                     ],
+                    "derivative_role": "thumb",
                     "strict_derivative": True,
                     "target_resolver": None,
                 }

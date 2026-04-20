@@ -24,6 +24,8 @@ Surface-wide rules:
 
 Feature contracts:
 
+- `guardian_portal/README.md`
+  guardian-portal product, information, visibility, action, and proposal notes
 - `07_org_communication_messaging_contract.md`
 - `08_student_overview_dashboard_contract.md`
 - `09_event_quick_create_contract.md`

@@ -34,13 +34,17 @@ class TestOrgCommunicationArchiveItem(FrappeTestCase):
                 self.assertEqual(filters, "DF-0001")
                 self.assertTrue(as_dict)
                 return {"preview_status": "ready", "current_version": "DFV-0001"}
+            if doctype == "Drive File Version":
+                self.assertEqual(filters, "DFV-0001")
+                self.assertEqual(fields, "mime_type")
+                return "application/pdf"
             if doctype == "Drive File Derivative" and fields == "name":
                 self.assertEqual(
                     filters,
                     {
                         "drive_file": "DF-0001",
                         "drive_file_version": "DFV-0001",
-                        "derivative_role": "thumb",
+                        "derivative_role": "pdf_card",
                         "status": "ready",
                     },
                 )

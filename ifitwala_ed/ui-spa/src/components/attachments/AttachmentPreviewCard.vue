@@ -40,7 +40,7 @@
 				v-bind="kindDataAttrs('pdf')"
 			>
 				<img
-					:src="attachment.preview_url || undefined"
+					:src="inlinePdfUrl || undefined"
 					:alt="`${titleToUse} first page preview`"
 					class="h-56 w-full bg-white object-contain"
 					loading="lazy"
@@ -91,7 +91,7 @@
 				</div>
 				<div v-if="showCommunicationPdfPreview" class="bg-surface-soft/60 p-3">
 					<img
-						:src="attachment.preview_url || undefined"
+						:src="inlinePdfUrl || undefined"
 						:alt="`${titleToUse} first page preview`"
 						class="h-80 w-full rounded-xl bg-white object-contain"
 						loading="lazy"
@@ -290,8 +290,18 @@ const canRetryInlineImageWithPreview = computed(() => {
 const showInlineImagePreview = computed(() => {
 	return Boolean(mediaPreviewEnabled.value && inlineImageUrl.value && !imagePreviewFailed.value);
 });
+const inlinePdfUrl = computed(() => {
+	if (props.attachment.kind !== 'pdf') return null;
+	if (props.attachment.thumbnail_url) {
+		return props.attachment.thumbnail_url;
+	}
+	if (props.attachment.preview_url) {
+		return props.attachment.preview_url;
+	}
+	return null;
+});
 const previewStatusAllowsPdf = computed(() => {
-	if (!props.attachment.preview_url) return false;
+	if (!inlinePdfUrl.value && !props.attachment.preview_url) return false;
 	if (props.attachment.preview_status && props.attachment.preview_status !== 'ready') {
 		return false;
 	}
@@ -302,7 +312,7 @@ const showInlinePdfPreview = computed(() => {
 		props.variant !== 'communication' &&
 		mediaPreviewEnabled.value &&
 		props.attachment.kind === 'pdf' &&
-		props.attachment.preview_url &&
+		inlinePdfUrl.value &&
 		previewStatusAllowsPdf.value &&
 		!pdfPreviewFailed.value
 	);
@@ -312,7 +322,7 @@ const showCommunicationPdfPreview = computed(() => {
 		props.variant === 'communication' &&
 		mediaPreviewEnabled.value &&
 		props.attachment.kind === 'pdf' &&
-		props.attachment.preview_url &&
+		inlinePdfUrl.value &&
 		props.attachment.preview_status === 'ready'
 	);
 });

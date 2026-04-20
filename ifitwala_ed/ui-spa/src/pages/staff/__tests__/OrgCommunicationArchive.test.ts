@@ -356,6 +356,8 @@ describe('OrgCommunicationArchive', () => {
 					file_name: 'agenda.pdf',
 					file_size: 4096,
 					preview_status: 'ready',
+					thumbnail_url:
+						'/api/method/ifitwala_ed.api.file_access.thumbnail_org_communication_attachment?row_name=ATT-PDF',
 					preview_url: '/api/method/ifitwala_ed.api.file_access.preview_org_communication_attachment?row_name=ATT-PDF',
 					open_url: '/api/method/ifitwala_ed.api.file_access.open_org_communication_attachment?row_name=ATT-PDF',
 					attachment_preview: buildAttachmentPreview({
@@ -365,6 +367,8 @@ describe('OrgCommunicationArchive', () => {
 						extension: 'pdf',
 						preview_mode: 'pdf_embed',
 						preview_status: 'ready',
+						thumbnail_url:
+							'/api/method/ifitwala_ed.api.file_access.thumbnail_org_communication_attachment?row_name=ATT-PDF',
 						preview_url:
 							'/api/method/ifitwala_ed.api.file_access.preview_org_communication_attachment?row_name=ATT-PDF',
 						open_url:

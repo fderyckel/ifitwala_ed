@@ -132,6 +132,8 @@ describe('AttachmentPreviewCard', () => {
 				preview_mode: 'pdf_embed',
 				preview_status: 'ready',
 				extension: 'pdf',
+				thumbnail_url:
+					'/api/method/ifitwala_ed.api.file_access.thumbnail_org_communication_attachment?row_name=ATT-PDF-1',
 				preview_url:
 					'/api/method/ifitwala_ed.api.file_access.preview_org_communication_attachment?row_name=ATT-PDF-1',
 				open_url:
@@ -141,12 +143,14 @@ describe('AttachmentPreviewCard', () => {
 		await flushUi();
 
 		const pdfSurface = document.querySelector('[data-communication-attachment-kind="pdf"]');
-		expect(pdfSurface?.querySelector('img')?.getAttribute('src')).toContain('ATT-PDF-1');
+		expect(pdfSurface?.querySelector('img')?.getAttribute('src')).toContain(
+			'thumbnail_org_communication_attachment'
+		);
 		expect(document.body.textContent || '').toContain('Open PDF');
 		expect(document.body.textContent || '').toContain('Open preview image');
 	});
 
-	it('renders planning pdf previews inline from the governed preview image', async () => {
+	it('renders planning pdf previews inline from the governed thumbnail image when available', async () => {
 		mountCard({
 			variant: 'planning',
 			title: 'Family handbook',
@@ -156,6 +160,8 @@ describe('AttachmentPreviewCard', () => {
 				preview_mode: 'pdf_embed',
 				preview_status: 'ready',
 				extension: 'pdf',
+				thumbnail_url:
+					'/api/method/ifitwala_ed.api.file_access.thumbnail_academic_file?file=FILE-PDF-1',
 				preview_url:
 					'/api/method/ifitwala_ed.api.file_access.preview_academic_file?file=FILE-PDF-1',
 				open_url:
@@ -165,7 +171,9 @@ describe('AttachmentPreviewCard', () => {
 		await flushUi();
 
 		const pdfSurface = document.querySelector('[data-resource-preview-kind="pdf"]');
-		expect(pdfSurface?.querySelector('img')?.getAttribute('src')).toContain('FILE-PDF-1');
+		expect(pdfSurface?.querySelector('img')?.getAttribute('src')).toContain(
+			'thumbnail_academic_file'
+		);
 		expect(document.body.textContent || '').toContain('Open original');
 	});
 

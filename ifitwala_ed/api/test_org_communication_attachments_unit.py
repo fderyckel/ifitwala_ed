@@ -248,6 +248,8 @@ class TestOrgCommunicationAttachmentsUnit(TestCase):
                     and as_dict
                 ):
                     return {"preview_status": "ready", "current_version": "DFV-0001"}
+                if doctype == "Drive File Version" and filters == "DFV-0001" and fieldname == "mime_type":
+                    return "application/pdf"
                 if doctype == "Drive File Derivative" and fieldname == "name":
                     return "DFD-0001"
                 return None
@@ -316,6 +318,8 @@ class TestOrgCommunicationAttachmentsUnit(TestCase):
                     and as_dict
                 ):
                     return {"preview_status": "ready", "current_version": "DFV-0001"}
+                if doctype == "Drive File Version" and filters == "DFV-0001" and fieldname == "mime_type":
+                    return "application/pdf"
                 if doctype == "Drive File Derivative" and fieldname == "name":
                     return None
                 return None
