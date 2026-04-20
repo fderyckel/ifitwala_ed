@@ -21,6 +21,8 @@ body.staff-timetable-export {
 }
 
 .timetable-page {
+  height: 188mm;
+  overflow: hidden;
   page-break-after: always;
   break-after: page;
 }
@@ -38,14 +40,13 @@ body.staff-timetable-export {
 }
 
 .timetable-header,
-.timetable-summary,
 .timetable-board {
   width: 100%;
   border-collapse: collapse;
 }
 
 .timetable-header {
-  margin-bottom: 7px;
+  margin-bottom: 4mm;
 }
 
 .timetable-header td {
@@ -74,26 +75,30 @@ body.staff-timetable-export {
 }
 
 .timetable-header__logo-shell {
-  width: 62px;
+  width: 68px;
+  height: 68px;
   margin-right: 10px;
-}
-
-.timetable-header__logo {
-  display: block;
-  width: 56px;
-  height: 56px;
-  object-fit: contain;
+  padding: 6px;
+  line-height: 54px;
   border: 1px solid rgba(33, 71, 86, 0.14);
   border-radius: 16px;
   background: #ffffff;
-  padding: 7px;
+  text-align: center;
+}
+
+.timetable-header__logo {
+  display: inline-block;
+  width: auto;
+  max-width: 56px;
+  max-height: 56px;
+  height: auto;
+  margin-top: 0;
+  vertical-align: middle;
 }
 
 .timetable-header__kicker,
 .timetable-header__meta-label,
-.timetable-summary__count-copy,
-.timetable-summary__taskpad-label,
-.timetable-summary__label,
+.timetable-notes__label,
 .timetable-board__weekday,
 .day-panel__section-label,
 .event-card__badge,
@@ -122,9 +127,8 @@ body.staff-timetable-export {
 .timetable-header__range,
 .timetable-header__meta-value,
 .timetable-week-label__copy,
-.timetable-footer,
+.timetable-notes__line,
 .day-panel__outside,
-.day-panel__empty-copy,
 .event-card__location,
 .all-day-chip__meta {
   color: #667085;
@@ -170,89 +174,18 @@ body.staff-timetable-export {
   font-size: 9px;
 }
 
-.timetable-summary {
-  margin-bottom: 7px;
-}
-
-.timetable-summary td {
-  padding: 6px 7px;
-  vertical-align: top;
-  border: 1px solid #d8ddd9;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.9), rgba(245, 239, 229, 0.92));
-}
-
-.timetable-summary__value {
-  margin-top: 2px;
-  font-size: 10px;
-  font-weight: 600;
-  color: #17212b;
-}
-
-.timetable-summary__count-cell {
-  width: 32%;
-}
-
-.timetable-summary__count-copy {
-  margin-bottom: 4px;
-}
-
-.timetable-count {
-  display: inline-block;
-  margin: 1px 4px 1px 0;
-  padding: 3px 7px;
-  border-radius: 999px;
-  border: 1px solid #d8ddd9;
-  font-size: 8px;
-  font-weight: 700;
-  background: #ffffff;
-}
-
-.timetable-count--class {
-  background: #eef4f7;
-  border-color: #bcd3dc;
-  color: #214756;
-}
-
-.timetable-count--meeting {
-  background: #f7f0e6;
-  border-color: #d8c5ab;
-  color: #725a3f;
-}
-
-.timetable-count--school {
-  background: #edf6ef;
-  border-color: #bad5c0;
-  color: #2f6b43;
-}
-
-.timetable-count--holiday {
-  background: #fbf4df;
-  border-color: #dfc786;
-  color: #7c6330;
-}
-
-.timetable-summary__taskpad {
-  margin-top: 6px;
-  padding-top: 6px;
-  border-top: 1px solid rgba(216, 221, 217, 0.95);
-}
-
-.taskpad-line,
 .planning-line {
   display: table;
   width: 100%;
-  margin-top: 4px;
+  margin-top: 3px;
 }
 
-.taskpad-line__checkbox,
-.taskpad-line__rule,
 .planning-line__checkbox,
 .planning-line__rule {
   display: table-cell;
   vertical-align: middle;
 }
 
-.taskpad-line__checkbox,
 .planning-line__checkbox {
   width: 13px;
   height: 13px;
@@ -261,18 +194,13 @@ body.staff-timetable-export {
   background: rgba(255, 255, 255, 0.9);
 }
 
-.taskpad-line__rule,
 .planning-line__rule {
   height: 13px;
   border-bottom: 1px dashed rgba(84, 103, 119, 0.42);
 }
 
-.taskpad-line__rule {
-  padding-left: 6px;
-}
-
 .timetable-week-label {
-  margin-bottom: 6px;
+  margin-bottom: 3mm;
   padding: 0 2px;
 }
 
@@ -281,15 +209,16 @@ body.staff-timetable-export {
 }
 
 .timetable-week-label__copy {
-  font-size: 9px;
+  font-size: 8.5px;
 }
 
 .timetable-board {
   table-layout: fixed;
+  margin-bottom: 3mm;
 }
 
 .timetable-board__head {
-  padding: 4px 4px 7px;
+  padding: 0 4px 5px;
   text-align: left;
   background: linear-gradient(180deg, rgba(245, 236, 217, 0.78), rgba(249, 245, 237, 0));
 }
@@ -311,19 +240,26 @@ body.staff-timetable-export {
 }
 
 .timetable-board__cell {
-  padding: 0 4px;
+  height: 112mm;
+  padding: 0 3px;
   vertical-align: top;
 }
 
 .day-panel {
-  min-height: 142mm;
-  padding: 8px;
+  position: relative;
+  height: 112mm;
+  padding: 7px 7px 25mm;
   border: 1px solid rgba(202, 210, 214, 0.98);
   border-top: 3px solid rgba(33, 71, 86, 0.38);
   border-radius: 14px;
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.99), rgba(249, 243, 232, 0.94));
   box-shadow: 0 8px 18px rgba(23, 33, 43, 0.04);
+}
+
+.day-panel__content {
+  height: 100%;
+  overflow: hidden;
 }
 
 .timetable-board__cell--weekend .day-panel {
@@ -373,7 +309,7 @@ body.staff-timetable-export {
 }
 
 .day-panel__timeline {
-  min-height: 108mm;
+  min-height: 0;
 }
 
 .event-card {
@@ -432,30 +368,16 @@ body.staff-timetable-export {
   font-size: 8.25px;
 }
 
-.day-panel__empty {
-  padding-top: 12px;
-}
-
-.day-panel__empty-copy {
-  margin-bottom: 8px;
-  font-size: 8.5px;
-}
-
-.day-panel__rule {
-  height: 14px;
-  margin-bottom: 7px;
-  border-bottom: 1px dashed rgba(137, 148, 160, 0.38);
-}
-
 .day-panel__outside {
   padding-top: 12px;
   font-size: 8.5px;
 }
 
 .day-panel__planning {
-  margin-top: 8px;
-  padding-top: 6px;
-  border-top: 1px solid rgba(212, 218, 222, 0.96);
+  position: absolute;
+  left: 7px;
+  right: 7px;
+  bottom: 7px;
 }
 
 .planning-line__checkbox {
@@ -466,10 +388,17 @@ body.staff-timetable-export {
   padding-left: 6px;
 }
 
-.timetable-footer {
-  margin-top: 7px;
+.timetable-notes {
   padding: 0 2px;
-  font-size: 8.5px;
+}
+
+.timetable-notes__label {
+  margin-bottom: 1px;
+}
+
+.timetable-notes__line {
+  height: 6mm;
+  border-bottom: 1px solid rgba(137, 148, 160, 0.52);
 }
 
 @media print {

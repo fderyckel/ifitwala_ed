@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import hashlib
+import mimetypes
+import os
 from types import SimpleNamespace
-from urllib.parse import urlencode, urlparse
+from urllib.parse import unquote, urlencode, urlparse
 
 import frappe
 from frappe import _
@@ -76,6 +78,75 @@ def _resolve_file_name_from_url(file_url: str | None) -> str | None:
     resolved = frappe.db.get_value("File", {"file_url": raw_url}, "name")
     resolved_name = (resolved or "").strip()
     return resolved_name or None
+
+
+def _guess_filename_from_url(file_url: str | None) -> str | None:
+    raw_url = (file_url or "").strip()
+    if not raw_url:
+        return None
+    path = unquote(str(urlparse(raw_url).path or raw_url).strip())
+    filename = os.path.basename(path)
+    return filename or None
+
+
+def _resolve_local_site_file_path(file_url: str | None, *, is_private: int | bool | None = None) -> str | None:
+    raw_url = (file_url or "").strip()
+    if not raw_url or _is_external_url(raw_url):
+        return None
+
+    path = unquote(str(urlparse(raw_url).path or raw_url).strip())
+    if not path:
+        return None
+
+    rel_path = path.lstrip("/")
+    if rel_path.startswith("private/") or rel_path.startswith("public/"):
+        abs_path = frappe.utils.get_site_path(rel_path)
+    else:
+        base = "private" if frappe.utils.cint(is_private) else "public"
+        abs_path = frappe.utils.get_site_path(base, rel_path)
+
+    return abs_path if os.path.exists(abs_path) else None
+
+
+def _respond_with_local_file_content(
+    *,
+    file_url: str | None,
+    filename: str | None = None,
+    is_private: int | bool | None = None,
+    cache_headers: bool = False,
+) -> bool:
+    abs_path = _resolve_local_site_file_path(file_url, is_private=is_private)
+    if not abs_path:
+        return False
+
+    with open(abs_path, "rb") as handle:
+        content = handle.read()
+
+    resolved_filename = str(filename or _guess_filename_from_url(file_url) or "document").strip() or "document"
+    content_type = mimetypes.guess_type(resolved_filename)[0] or "application/octet-stream"
+
+    if cache_headers:
+        _set_thumbnail_cache_headers()
+
+    frappe.local.response["type"] = "download"
+    frappe.local.response["filename"] = resolved_filename
+    frappe.local.response["filecontent"] = content
+    frappe.local.response["display_content_as"] = "inline"
+    frappe.local.response["content_type"] = content_type
+    return True
+
+
+def _respond_with_delivery_target(*, target_url: str | None, cache_headers: bool = False) -> bool:
+    resolved_target_url = str(target_url or "").strip()
+    if not resolved_target_url:
+        return False
+    if _is_raw_private_redirect_target(resolved_target_url):
+        return _respond_with_local_file_content(
+            file_url=resolved_target_url,
+            is_private=True,
+            cache_headers=cache_headers,
+        )
+    return _respond_with_redirect_target(target_url=resolved_target_url, cache_headers=cache_headers)
 
 
 def _build_file_action_params(
@@ -1116,9 +1187,7 @@ def _resolve_employee_image_grant_target_url(
         except Exception:
             target_url = ""
         if strict_derivative:
-            if target_url and not _is_raw_private_redirect_target(target_url):
-                return target_url
-            return None
+            return target_url or None
 
     if not target_url:
         grant_method = "issue_employee_image_download_grant"
@@ -1134,10 +1203,7 @@ def _resolve_employee_image_grant_target_url(
         )
         target_url = str((grant or {}).get("url") or "").strip()
 
-    if target_url and not _is_raw_private_redirect_target(target_url):
-        return target_url
-
-    return None
+    return target_url or None
 
 
 def _resolve_org_communication_attachment_grant_target_url(
@@ -1168,9 +1234,7 @@ def _resolve_org_communication_attachment_grant_target_url(
         except Exception:
             target_url = ""
         if strict_derivative:
-            if target_url and not _is_raw_private_redirect_target(target_url):
-                return target_url
-            return None
+            return target_url or None
 
     if not target_url:
         grant_method = "issue_org_communication_attachment_download_grant"
@@ -1186,10 +1250,7 @@ def _resolve_org_communication_attachment_grant_target_url(
         )
         target_url = str((grant or {}).get("url") or "").strip()
 
-    if target_url and not _is_raw_private_redirect_target(target_url):
-        return target_url
-
-    return None
+    return target_url or None
 
 
 def _resolve_guardian_from_file(file_row: dict) -> str:
@@ -2000,7 +2061,13 @@ def open_org_communication_attachment(
         file_id=file_id,
         prefer_preview=False,
     )
-    if _respond_with_redirect_target(target_url=target_url):
+    if _respond_with_delivery_target(target_url=target_url):
+        return
+
+    if _is_raw_private_redirect_target(file_url) and _respond_with_local_file_content(
+        file_url=file_url,
+        is_private=True,
+    ):
         return
 
     frappe.throw(_("Could not resolve the attachment."), frappe.DoesNotExistError)
@@ -2033,7 +2100,13 @@ def preview_org_communication_attachment(
         file_id=file_id,
         prefer_preview=True,
     )
-    if _respond_with_redirect_target(target_url=target_url):
+    if _respond_with_delivery_target(target_url=target_url):
+        return
+
+    if _is_raw_private_redirect_target(file_url) and _respond_with_local_file_content(
+        file_url=file_url,
+        is_private=True,
+    ):
         return
 
     if _is_public_site_file_url(file_url):
@@ -2080,10 +2153,8 @@ def thumbnail_org_communication_attachment(
         ),
     )
     if target_url:
-        _set_thumbnail_cache_headers()
-        frappe.local.response["type"] = "redirect"
-        frappe.local.response["location"] = target_url
-        return
+        if _respond_with_delivery_target(target_url=target_url, cache_headers=True):
+            return
 
     frappe.throw(_("Could not resolve the attachment thumbnail."), frappe.DoesNotExistError)
 
@@ -2402,7 +2473,7 @@ def download_employee_file(
             if employee_image_context
             else _resolve_drive_preview_grant_url(file_name, derivative_role=derivative_role)
         )
-        if _respond_with_redirect_target(target_url=target_url):
+        if _respond_with_delivery_target(target_url=target_url):
             return
 
     if _is_public_site_file_url(file_url):
@@ -2419,7 +2490,18 @@ def download_employee_file(
         if employee_image_context
         else _resolve_drive_download_grant_url(file_name)
     )
-    if _respond_with_redirect_target(target_url=target_url):
+    if _respond_with_delivery_target(target_url=target_url):
+        return
+
+    if (
+        employee_image_context
+        and _is_raw_private_redirect_target(file_url)
+        and _respond_with_local_file_content(
+            file_url=file_url,
+            filename=file_row.get("file_name"),
+            is_private=file_row.get("is_private"),
+        )
+    ):
         return
 
     frappe.throw(_("Could not resolve the file content."), frappe.DoesNotExistError)

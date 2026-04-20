@@ -172,6 +172,11 @@ For any change involving governed uploads, links vs files, private-media open/do
 6. the relevant surface note such as `files_05_organization_media_governance.md`, `files_06_org_communication_attachment_contract.md`, or `docs/admission/03_portal_files_gdpr.md`
 7. `../ifitwala_drive/ifitwala_drive/docs/06_api_contracts.md` when touching the Ed/Drive seam
 
+If the surface is admissions-specific, also read:
+
+- `ifitwala_ed/docs/admission/05_admission_portal.md`
+- `ifitwala_ed/docs/admission/10_ifitwala_drive_portal_uploads.md`
+
 ### 2.2 Legacy Code Policy
 
 During development:

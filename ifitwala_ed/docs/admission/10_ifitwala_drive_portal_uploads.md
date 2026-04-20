@@ -57,6 +57,8 @@ Notes:
 
 * this is the correct pattern
 * scope, slot, purpose, retention, organization, and school are resolved server-side
+* SPA-facing responses now return server-owned admissions `open_url` / `preview_url` / `thumbnail_url` fields plus `drive_file_id` and `canonical_ref`
+* compatibility `File.file_url` may still exist internally, but it is not the portal contract
 
 ### 2. Applicant health vaccination proof upload
 

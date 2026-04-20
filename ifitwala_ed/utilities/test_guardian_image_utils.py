@@ -114,16 +114,15 @@ class TestGuardianImageUtils(FrappeTestCase):
             patch("ifitwala_ed.utilities.image_utils._get_current_governed_profile_file", return_value=None),
             patch("ifitwala_ed.utilities.image_utils.frappe.get_doc", return_value=guardian_doc),
             patch("ifitwala_ed.integrations.drive.media.build_guardian_image_contract", return_value=contract),
+            patch("ifitwala_drive.api.media.upload_guardian_image", new=object()),
             patch("ifitwala_ed.utilities.image_utils._resolve_unique_file_doc_by_url", return_value=source_file_doc),
             patch("ifitwala_ed.utilities.image_utils._read_managed_file_bytes", return_value=b"guardian-bytes"),
             patch(
                 "ifitwala_ed.integrations.drive.content_uploads.upload_content_via_drive",
                 return_value=({}, {}, uploaded_file_doc),
             ) as upload_content,
-            patch("ifitwala_ed.utilities.image_utils._load_drive_module") as load_drive_module,
             patch("ifitwala_ed.utilities.image_utils.frappe.db.set_value") as set_value,
         ):
-            load_drive_module.return_value = frappe._dict({"upload_guardian_image": object()})
             image_url = image_utils.ensure_guardian_profile_image(
                 "GRD-0001",
                 original_url="/private/files/guardian-source.png",

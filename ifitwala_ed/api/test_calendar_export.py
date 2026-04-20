@@ -76,28 +76,60 @@ class TestCalendarExport(TestCase):
         self.assertEqual(tuesday["timed_events"][0]["time_label"], "08:00 - 08:45")
         self.assertEqual(len(wednesday["all_day_events"]), 1)
 
-    def test_resolve_brand_context_includes_school_tagline_when_present(self):
-        with patch("ifitwala_ed.api.calendar_export.frappe.db.get_value") as mock_get_value:
+    def test_resolve_brand_context_falls_back_to_parent_school_logo_and_tagline(self):
+        with (
+            patch(
+                "ifitwala_ed.api.calendar_export.get_ancestor_schools", return_value=["SCHOOL-CHILD", "SCHOOL-PARENT"]
+            ),
+            patch("ifitwala_ed.api.calendar_export.get_ancestor_organizations", return_value=["ORG-1"]),
+            patch("ifitwala_ed.api.calendar_export.frappe.db.get_value") as mock_get_value,
+            patch("ifitwala_ed.api.calendar_export.frappe.get_all") as mock_get_all,
+        ):
             mock_get_value.side_effect = [
                 {
+                    "name": "SCHOOL-CHILD",
                     "school_name": "Lwitwala International School",
-                    "school_logo": "https://school.example/logo.png",
-                    "school_tagline": "Learning with purpose",
+                    "school_logo": "",
+                    "school_tagline": "",
                     "organization": "ORG-1",
                 },
                 {
+                    "name": "ORG-1",
                     "organization_name": "Ifitwala Education Group",
                     "organization_logo": "https://org.example/logo.png",
                 },
             ]
+            mock_get_all.side_effect = [
+                [
+                    {
+                        "name": "SCHOOL-CHILD",
+                        "school_name": "Lwitwala International School",
+                        "school_logo": "",
+                        "school_tagline": "",
+                    },
+                    {
+                        "name": "SCHOOL-PARENT",
+                        "school_name": "Ifitwala Secondary School",
+                        "school_logo": "https://school.example/logo.png",
+                        "school_tagline": "Where talent meets opportunities",
+                    },
+                ],
+                [
+                    {
+                        "name": "ORG-1",
+                        "organization_name": "Ifitwala Education Group",
+                        "organization_logo": "https://org.example/logo.png",
+                    }
+                ],
+            ]
 
             brand = _resolve_brand_context(
-                employee={"school": "SCHOOL-1", "organization": "ORG-1"},
+                employee={"school": "SCHOOL-CHILD", "organization": "ORG-1"},
                 events=[],
             )
 
         self.assertEqual(brand["brand_name"], "Lwitwala International School")
-        self.assertEqual(brand["tagline"], "Learning with purpose")
+        self.assertEqual(brand["tagline"], "Where talent meets opportunities")
         self.assertEqual(brand["logo_url"], "https://school.example/logo.png")
 
     def test_render_staff_timetable_pdf_passes_landscape_options(self):

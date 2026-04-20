@@ -6,19 +6,25 @@ const MISSING_ACTIVE_PLAN_MESSAGE =
 
 const {
 	routerPushMock,
+	apiUploadMock,
 	emitTaskDeliveryCreatedSignalMock,
 	closeMock,
 	createNewTaskCalls,
+	createTaskReferenceMaterialCalls,
 	assignExistingTaskCalls,
+	uploadedTaskMaterialCalls,
 	searchReusableTaskCalls,
 	getReusableTaskCalls,
 	resourceState,
 } = vi.hoisted(() => ({
 	routerPushMock: vi.fn(),
+	apiUploadMock: vi.fn(),
 	emitTaskDeliveryCreatedSignalMock: vi.fn(),
 	closeMock: vi.fn(),
 	createNewTaskCalls: [] as any[],
+	createTaskReferenceMaterialCalls: [] as any[],
 	assignExistingTaskCalls: [] as any[],
+	uploadedTaskMaterialCalls: [] as any[],
 	searchReusableTaskCalls: [] as any[],
 	getReusableTaskCalls: [] as any[],
 	resourceState: {
@@ -108,6 +114,10 @@ vi.mock('@/lib/services/tasks/taskDeliveryWorkflowService', () => ({
 	emitTaskDeliveryCreatedSignal: emitTaskDeliveryCreatedSignalMock,
 }));
 
+vi.mock('@/lib/client', () => ({
+	apiUpload: apiUploadMock,
+}));
+
 vi.mock('frappe-ui', async () => {
 	const { defineComponent, h } = await import('vue');
 
@@ -184,6 +194,16 @@ vi.mock('frappe-ui', async () => {
 				submit: async () => {
 					config.onSuccess?.({ materials: resourceState.taskMaterialsRows });
 					return { materials: resourceState.taskMaterialsRows };
+				},
+			};
+		}
+		if (config.url === 'ifitwala_ed.api.materials.create_task_reference_material') {
+			return {
+				loading: false,
+				submit: async (payload: any) => {
+					createTaskReferenceMaterialCalls.push(payload);
+					config.onSuccess?.(payload);
+					return payload;
 				},
 			};
 		}
@@ -405,9 +425,22 @@ function mountOverlay(props: Record<string, unknown> = {}) {
 
 beforeEach(() => {
 	createNewTaskCalls.length = 0;
+	createTaskReferenceMaterialCalls.length = 0;
 	assignExistingTaskCalls.length = 0;
+	uploadedTaskMaterialCalls.length = 0;
 	searchReusableTaskCalls.length = 0;
 	getReusableTaskCalls.length = 0;
+	apiUploadMock.mockReset();
+	apiUploadMock.mockImplementation(async (url: string, formData: FormData) => {
+		uploadedTaskMaterialCalls.push({ url, formData });
+		return {
+			placement: 'PLACEMENT-UPLOADED-1',
+			material: 'MAT-UPLOADED-1',
+			title: String(formData.get('title') || ''),
+			material_type: 'File',
+			file_name: 'lab-guide.pdf',
+		};
+	});
 	resourceState.createNewTaskResult = {
 		task: 'TASK-NEW-1',
 		task_delivery: 'TDL-NEW-1',
@@ -463,6 +496,7 @@ beforeEach(() => {
 
 afterEach(() => {
 	routerPushMock.mockReset();
+	apiUploadMock.mockReset();
 	emitTaskDeliveryCreatedSignalMock.mockReset();
 	closeMock.mockReset();
 	while (cleanupFns.length) cleanupFns.pop()?.();
@@ -528,7 +562,25 @@ describe('CreateTaskDeliveryOverlay', () => {
 			title: 'Microscope reflection',
 			instructions: '<p>Bring <strong>two observations</strong> and one question.</p>',
 		});
-		expect(emitTaskDeliveryCreatedSignalMock).not.toHaveBeenCalled();
+		expect(emitTaskDeliveryCreatedSignalMock).toHaveBeenCalledWith({
+			task: 'TASK-NEW-1',
+			task_delivery: 'TDL-NEW-1',
+			student_group: 'GRP-1',
+			class_teaching_plan: null,
+			unit_plan: null,
+			class_session: null,
+		});
+		expect(closeMock).toHaveBeenCalledWith('programmatic');
+	});
+
+	it('shows the attachment composer inside the main create step', async () => {
+		mountOverlay();
+		await flushUi();
+
+		const text = document.body.textContent || '';
+		expect(text).toContain('Include files or links with this task');
+		expect(text).toContain('Queue file or image');
+		expect(text).toContain('Attachments saved with this task');
 	});
 
 	it('assigns an existing reusable task and closes immediately after success', async () => {
@@ -703,102 +755,44 @@ describe('CreateTaskDeliveryOverlay', () => {
 		expect(closeMock).toHaveBeenCalledWith('programmatic');
 	});
 
-	it('renders governed preview actions for current task attachments after task creation', async () => {
-		resourceState.taskMaterialsRows = [
-			{
-				placement: 'PLACEMENT-IMG',
-				material: 'MAT-IMG',
-				title: 'Specimen photo',
-				material_type: 'File',
-				file_name: 'specimen-photo.png',
-				file_size: 4096,
-				thumbnail_url:
-					'/api/method/ifitwala_ed.api.file_access.thumbnail_academic_file?file=FILE-IMG',
-				preview_url: '/api/method/ifitwala_ed.api.file_access.preview_academic_file?file=FILE-IMG',
-				open_url: '/api/method/ifitwala_ed.api.file_access.download_academic_file?file=FILE-IMG',
-				attachment_preview: {
-					item_id: 'PLACEMENT-IMG',
-					owner_doctype: 'Material Placement',
-					owner_name: 'PLACEMENT-IMG',
-					file_id: 'FILE-IMG',
-					display_name: 'Specimen photo',
-					kind: 'image',
-					preview_mode: 'thumbnail_image',
-					extension: 'png',
-					thumbnail_url:
-						'/api/method/ifitwala_ed.api.file_access.thumbnail_academic_file?file=FILE-IMG',
-					preview_url:
-						'/api/method/ifitwala_ed.api.file_access.preview_academic_file?file=FILE-IMG',
-					open_url:
-						'/api/method/ifitwala_ed.api.file_access.download_academic_file?file=FILE-IMG',
-				},
-			},
-			{
-				placement: 'PLACEMENT-PDF',
-				material: 'MAT-PDF',
-				title: 'Lab guide',
-				material_type: 'File',
-				file_name: 'lab-guide.pdf',
-				file_size: 8192,
-				preview_url: '/api/method/ifitwala_ed.api.file_access.preview_academic_file?file=FILE-PDF',
-				open_url: '/api/method/ifitwala_ed.api.file_access.download_academic_file?file=FILE-PDF',
-				attachment_preview: {
-					item_id: 'PLACEMENT-PDF',
-					owner_doctype: 'Material Placement',
-					owner_name: 'PLACEMENT-PDF',
-					file_id: 'FILE-PDF',
-					display_name: 'Lab guide',
-					kind: 'pdf',
-					preview_mode: 'pdf_embed',
-					extension: 'pdf',
-					preview_url:
-						'/api/method/ifitwala_ed.api.file_access.preview_academic_file?file=FILE-PDF',
-					open_url:
-						'/api/method/ifitwala_ed.api.file_access.download_academic_file?file=FILE-PDF',
-				},
-			},
-		];
-
+	it('uploads queued file attachments as part of the create flow', async () => {
 		mountOverlay();
 		await flushUi();
+
+		await clickButton('Queue file or image');
+
+		const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement | null;
+		expect(fileInput).not.toBeNull();
+		const file = new File(['pdf-bytes'], 'lab-guide.pdf', { type: 'application/pdf' });
+		Object.defineProperty(fileInput!, 'files', {
+			value: [file],
+			configurable: true,
+		});
+		fileInput!.dispatchEvent(new Event('change', { bubbles: true }));
+		await flushUi();
+		await clickButton('Queue attachment');
 
 		await setInput('Assignment title', 'Microscope reflection');
 		await clickButton('Create');
 
-		expect(document.body.textContent || '').toContain('Current task attachments');
-		expect(document.body.textContent || '').toContain('Add task attachments');
-		const imagePreview = document.querySelector('[data-resource-preview-kind="image"] img');
-		expect(imagePreview?.getAttribute('src')).toBe(
-			'/api/method/ifitwala_ed.api.file_access.thumbnail_academic_file?file=FILE-IMG'
+		expect(createNewTaskCalls).toHaveLength(1);
+		expect(apiUploadMock).toHaveBeenCalledTimes(1);
+		expect(uploadedTaskMaterialCalls[0].url).toBe(
+			'ifitwala_ed.api.materials.upload_task_material_file'
 		);
-
-		const pdfPreview = document.querySelector('[data-resource-preview-kind="pdf"]');
-		expect(pdfPreview?.getAttribute('href')).toBe(
-			'/api/method/ifitwala_ed.api.file_access.preview_academic_file?file=FILE-PDF'
-		);
-
-		const openOriginalLinks = Array.from(document.querySelectorAll('a')).filter(anchor =>
-			(anchor.textContent || '').includes('Open original')
-		);
-		expect(openOriginalLinks.length).toBeGreaterThan(0);
-		expect(openOriginalLinks[0]?.getAttribute('href')).toContain(
-			'/api/method/ifitwala_ed.api.file_access.download_academic_file?file='
-		);
+		expect(uploadedTaskMaterialCalls[0].formData.get('task')).toBe('TASK-NEW-1');
+		expect(uploadedTaskMaterialCalls[0].formData.get('title')).toBe('lab-guide.pdf');
+		expect(closeMock).toHaveBeenCalledWith('programmatic');
 	});
 
-	it('commits the create flow only when the teacher finishes the attachment step', async () => {
+	it('closes immediately after creating the task when nothing is queued', async () => {
 		mountOverlay();
 		await flushUi();
 
 		await setInput('Assignment title', 'Microscope reflection');
 		await clickButton('Create');
 
-		expect(closeMock).not.toHaveBeenCalled();
-		expect(emitTaskDeliveryCreatedSignalMock).not.toHaveBeenCalled();
-		expect(document.body.textContent || '').toContain('Finish with attachments');
-
-		await clickButton('Finish');
-
+		expect(createNewTaskCalls).toHaveLength(1);
 		expect(emitTaskDeliveryCreatedSignalMock).toHaveBeenCalledWith({
 			task: 'TASK-NEW-1',
 			task_delivery: 'TDL-NEW-1',

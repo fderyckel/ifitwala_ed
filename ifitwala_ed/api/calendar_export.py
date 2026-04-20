@@ -12,6 +12,8 @@ from frappe.utils import add_to_date, format_date, get_datetime, get_url, now_da
 
 from ifitwala_ed.api import calendar_staff_feed
 from ifitwala_ed.api.calendar_core import _resolve_employee_for_user, _system_tzinfo
+from ifitwala_ed.utilities.employee_utils import get_ancestor_organizations
+from ifitwala_ed.utilities.school_tree import get_ancestor_schools
 
 TEMPLATE_PATH = "ifitwala_ed/templates/print/staff_timetable_export.html"
 CSS_PATH = Path(__file__).resolve().parents[1] / "templates" / "print" / "staff_timetable_export.css"
@@ -129,7 +131,6 @@ def _build_staff_timetable_context(
         end_date_exclusive=window["end_date_exclusive"],
         tzinfo=tzinfo,
     )
-    count_cards = _build_count_cards(payload.get("counts") or {})
 
     return {
         "css": CSS_PATH.read_text(encoding="utf-8"),
@@ -138,28 +139,13 @@ def _build_staff_timetable_context(
             (employee or {}).get("employee_full_name") or frappe.db.get_value("User", user, "full_name") or user
         ),
         "designation": (employee or {}).get("designation") or "",
-        "employee_group": (employee or {}).get("employee_group") or "",
         "preset_label": window["preset_label"],
         "range_label": window["range_label"],
         "generated_on": generated_at.strftime("%d %b %Y %H:%M"),
         "week_count": len(weeks),
-        "count_cards": count_cards,
         "weeks": weeks,
         "has_events": any(week.get("event_count") for week in weeks),
     }
-
-
-def _build_count_cards(counts: dict[str, Any]) -> list[dict[str, Any]]:
-    cards = []
-    for source in DEFAULT_EXPORT_SOURCES:
-        cards.append(
-            {
-                "label": SOURCE_LABELS[source],
-                "value": int(counts.get(source) or 0),
-                "source_class": SOURCE_CLASSES[source],
-            }
-        )
-    return cards
 
 
 def _resolve_brand_context(*, employee: dict[str, Any] | None, events: list[dict[str, Any]]) -> dict[str, str]:
@@ -173,7 +159,7 @@ def _resolve_brand_context(*, employee: dict[str, Any] | None, events: list[dict
         frappe.db.get_value(
             "School",
             school_name,
-            ["school_name", "school_logo", "school_tagline", "organization"],
+            ["name", "school_name", "school_logo", "school_tagline", "organization"],
             as_dict=True,
         )
         if school_name
@@ -186,12 +172,14 @@ def _resolve_brand_context(*, employee: dict[str, Any] | None, events: list[dict
         frappe.db.get_value(
             "Organization",
             organization_name,
-            ["organization_name", "organization_logo"],
+            ["name", "organization_name", "organization_logo"],
             as_dict=True,
         )
         if organization_name and organization_name != "All Organizations"
         else None
     )
+    school_lineage = _get_school_brand_lineage(school_name)
+    organization_lineage = _get_organization_brand_lineage(organization_name)
 
     brand_name = (school_meta or {}).get("school_name") or (org_meta or {}).get("organization_name") or "Ifitwala Ed"
     secondary_brand = ""
@@ -202,16 +190,60 @@ def _resolve_brand_context(*, employee: dict[str, Any] | None, events: list[dict
     ):
         secondary_brand = (org_meta.get("organization_name") or "").strip()
 
+    logo_url = ""
+    tagline = ""
+    for row in school_lineage:
+        if not logo_url:
+            logo_url = _absolute_media_url(row.get("school_logo"))
+        if not tagline and (row.get("school_tagline") or "").strip():
+            tagline = (row.get("school_tagline") or "").strip()
+        if logo_url and tagline:
+            break
+
+    if not logo_url:
+        for row in organization_lineage:
+            logo_url = _absolute_media_url(row.get("organization_logo"))
+            if logo_url:
+                break
+
     return {
         "brand_name": brand_name,
         "secondary_brand": secondary_brand,
-        "tagline": ((school_meta or {}).get("school_tagline") or "").strip(),
-        "logo_url": _absolute_media_url((school_meta or {}).get("school_logo"))
-        or _absolute_media_url((org_meta or {}).get("organization_logo"))
-        or "",
+        "tagline": tagline,
+        "logo_url": logo_url,
         "school_label": (school_meta or {}).get("school_name") or school_name or "",
         "organization_label": (org_meta or {}).get("organization_name") or organization_name or "",
     }
+
+
+def _get_school_brand_lineage(school_name: str | None) -> list[dict[str, Any]]:
+    lineage = list(get_ancestor_schools(school_name) or [])
+    if not lineage:
+        return []
+
+    rows = frappe.get_all(
+        "School",
+        filters={"name": ["in", lineage]},
+        fields=["name", "school_name", "school_logo", "school_tagline"],
+        limit=max(len(lineage), 20),
+    )
+    row_map = {row["name"]: row for row in rows}
+    return [row_map[name] for name in lineage if name in row_map]
+
+
+def _get_organization_brand_lineage(organization_name: str | None) -> list[dict[str, Any]]:
+    lineage = [name for name in (get_ancestor_organizations(organization_name) or []) if name != "All Organizations"]
+    if not lineage:
+        return []
+
+    rows = frappe.get_all(
+        "Organization",
+        filters={"name": ["in", lineage]},
+        fields=["name", "organization_name", "organization_logo"],
+        limit=max(len(lineage), 20),
+    )
+    row_map = {row["name"]: row for row in rows}
+    return [row_map[name] for name in lineage if name in row_map]
 
 
 def _infer_school_from_events(events: list[dict[str, Any]]) -> str:

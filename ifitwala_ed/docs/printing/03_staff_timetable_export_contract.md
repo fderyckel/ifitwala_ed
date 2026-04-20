@@ -32,6 +32,7 @@ The export lives on the existing staff calendar surface and supports:
 - `Next month`
 
 All outputs render as weekly timetable spreads so timed classes, meetings, events, and holidays remain readable on paper.
+Each weekly spread must fit on exactly one page.
 
 ## 2. Surface Contract
 
@@ -122,15 +123,14 @@ Required visual grammar:
 
 - top ribbon
 - warm paper-toned background
-- school logo and school tagline when present
+- school logo and school tagline when present, with logo fallback through the school ancestor chain before organization fallback
 - serif-led title treatment
-- muted metadata blocks
 - weekly day columns with soft panel treatment
 - all-day strip for holidays and all-day events
 - source-specific event cards for timed commitments
-- empty-day planning space when no timed commitments exist
-- compact weekly priorities checklist area
-- daily open planning space lines on in-window days where layout allows
+- no separate summary slab between the header and the weekly board
+- daily planning checkbox lines anchored to the bottom of each in-window day cell
+- bottom notes rail with three writing lines
 
 The document may borrow brand context from the employee school or organization, but it must stay within the current employee/event scope and must not guess cross-tenant branding.
 

@@ -23,13 +23,16 @@ def _admissions_portal_module():
     drive_admissions_api.upload_applicant_profile_image = object()
     drive_admissions_api.upload_applicant_guardian_image = object()
 
+    drive_root = ModuleType("ifitwala_drive")
     drive_api = ModuleType("ifitwala_drive.api")
     drive_api.admissions = drive_admissions_api
+    drive_root.api = drive_api
 
     with stubbed_frappe(
         extra_modules={
             "ifitwala_ed.admission.admission_utils": admission_utils,
             "ifitwala_ed.utilities.governed_uploads": governed_uploads,
+            "ifitwala_drive": drive_root,
             "ifitwala_drive.api": drive_api,
             "ifitwala_drive.api.admissions": drive_admissions_api,
         }

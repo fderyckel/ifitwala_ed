@@ -1741,6 +1741,8 @@ async function openAssignedWorkWorkspace(item: StudentAssignedWork) {
 		selectedSessionId.value =
 			learningSpace.value?.curriculum.units.find(unit => unit.unit_plan === item.unit_plan)
 				?.sessions[0]?.class_session || '';
+	} else {
+		selectedSessionId.value = '';
 	}
 	selectedTaskDelivery.value = item.task_delivery;
 	await replaceLearningContextRoute(
@@ -2022,6 +2024,8 @@ watch(
 watch(
 	() => selectedTaskWorkspace.value?.task_delivery || '',
 	() => {
+		submissionDirty.value = false;
+		submissionError.value = '';
 		loadSelectedTaskSubmission();
 	}
 );

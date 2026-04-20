@@ -79,7 +79,7 @@ Rules:
 
 - slot meaning is resolved server-side
 - callers must not invent path-like storage identity from the slot
-- UI code may store the returned `file`, `file_url`, and surface-specific reference fields, but not storage keys
+- UI code may store the returned `file`, server-owned `open_url` / `preview_url` / `thumbnail_url`, and surface-specific reference fields, but not storage keys
 
 ---
 
@@ -165,7 +165,7 @@ Implemented now:
 Organization-media readers must resolve from:
 
 - `Drive File` for authority and scope
-- native `File` for returned `file_url`, `file_name`, and privacy flags
+- native `File` only when a surface still needs the Frappe file id or filename compatibility projection
 
 They must not:
 

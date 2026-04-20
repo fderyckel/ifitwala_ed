@@ -51,55 +51,16 @@
 			</tr>
 		</table>
 
-		<table class="timetable-summary" cellspacing="0" cellpadding="0">
-			<tr>
-				<td>
-					<div class="timetable-summary__label">{{ _("School") }}</div>
-					<div class="timetable-summary__value">{{ brand.school_label or _("Not assigned") }}</div>
-				</td>
-				<td>
-					<div class="timetable-summary__label">{{ _("Organization") }}</div>
-					<div class="timetable-summary__value">{{ brand.organization_label or _("Not assigned") }}</div>
-				</td>
-				<td>
-					<div class="timetable-summary__label">{{ _("Employee Group") }}</div>
-					<div class="timetable-summary__value">{{ employee_group or _("Not assigned") }}</div>
-				</td>
-				<td>
-					<div class="timetable-summary__label">{{ _("Spread") }}</div>
-					<div class="timetable-summary__value">{{ week.page_label }}</div>
-				</td>
-				<td class="timetable-summary__count-cell">
-					<div class="timetable-summary__count-copy">{{ _("Weekly snapshot") }}</div>
-					<div class="timetable-counts">
-						{% for card in count_cards %}
-						<span class="timetable-count timetable-count--{{ card.source_class }}">
-							{{ card.label }} {{ card.value }}
-						</span>
-						{% endfor %}
-					</div>
-					<div class="timetable-summary__taskpad">
-						<div class="timetable-summary__taskpad-label">{{ _("Weekly priorities") }}</div>
-						<div class="taskpad-line">
-							<span class="taskpad-line__checkbox"></span>
-							<span class="taskpad-line__rule"></span>
-						</div>
-						<div class="taskpad-line">
-							<span class="taskpad-line__checkbox"></span>
-							<span class="taskpad-line__rule"></span>
-						</div>
-					</div>
-				</td>
-			</tr>
-		</table>
-
 		<div class="timetable-week-label">
 			<div class="timetable-week-label__title">{{ week.range_label }}</div>
 			<div class="timetable-week-label__copy">
+				{% if week.total_pages > 1 %}
+					{{ week.page_label }}{% if week.event_count %} · {% endif %}
+				{% endif %}
 				{% if week.event_count %}
-					{{ _("{0} scheduled item(s) in this spread").format(week.event_count) }}
+					{{ _("{0} scheduled item(s)").format(week.event_count) }}
 				{% else %}
-					{{ _("No scheduled commitments in this spread.") }}
+					{{ _("Open week") }}
 				{% endif %}
 			</div>
 		</div>
@@ -120,51 +81,45 @@
 					{% for day in week.days %}
 					<td class="timetable-board__cell{{ ' timetable-board__cell--muted' if not day.in_window else '' }}{{ ' timetable-board__cell--weekend' if day.is_weekend else '' }}">
 						<div class="day-panel">
-							<div class="day-panel__heading">{{ day.weekday_long }}</div>
+							<div class="day-panel__content">
+								<div class="day-panel__heading">{{ day.weekday_long }}</div>
 
-							{% if day.all_day_events %}
-							<div class="day-panel__all-day">
-								<div class="day-panel__section-label">{{ _("All-day") }}</div>
-								{% for event in day.all_day_events %}
-								<div class="all-day-chip all-day-chip--{{ event.source_class }}" style="--event-accent: {{ event.color }};">
-									<span class="all-day-chip__label">{{ event.source_label }}</span>
-									<span class="all-day-chip__title">{{ event.title }}</span>
-									{% if event.location %}
-									<span class="all-day-chip__meta">{{ event.location }}</span>
+								{% if day.all_day_events %}
+								<div class="day-panel__all-day">
+									<div class="day-panel__section-label">{{ _("All-day") }}</div>
+									{% for event in day.all_day_events %}
+									<div class="all-day-chip all-day-chip--{{ event.source_class }}" style="--event-accent: {{ event.color }};">
+										<span class="all-day-chip__label">{{ event.source_label }}</span>
+										<span class="all-day-chip__title">{{ event.title }}</span>
+										{% if event.location %}
+										<span class="all-day-chip__meta">{{ event.location }}</span>
+										{% endif %}
+									</div>
+									{% endfor %}
+								</div>
+								{% endif %}
+
+								<div class="day-panel__timeline">
+									{% if day.timed_events %}
+										{% for event in day.timed_events %}
+										<article class="event-card event-card--{{ event.source_class }}" style="--event-accent: {{ event.color }};">
+											<div class="event-card__meta-row">
+												<span class="event-card__badge">{{ event.source_label }}</span>
+												<span class="event-card__time">{{ event.time_label }}</span>
+											</div>
+											<div class="event-card__title">{{ event.title }}</div>
+											{% if event.location %}
+											<div class="event-card__location">{{ event.location }}</div>
+											{% endif %}
+										</article>
+										{% endfor %}
+									{% elif not day.in_window %}
+									<div class="day-panel__outside">{{ _("Outside selected range") }}</div>
 									{% endif %}
 								</div>
-								{% endfor %}
-							</div>
-							{% endif %}
-
-							<div class="day-panel__timeline">
-								{% if day.timed_events %}
-									{% for event in day.timed_events %}
-									<article class="event-card event-card--{{ event.source_class }}" style="--event-accent: {{ event.color }};">
-										<div class="event-card__meta-row">
-											<span class="event-card__badge">{{ event.source_label }}</span>
-											<span class="event-card__time">{{ event.time_label }}</span>
-										</div>
-										<div class="event-card__title">{{ event.title }}</div>
-										{% if event.location %}
-										<div class="event-card__location">{{ event.location }}</div>
-										{% endif %}
-									</article>
-									{% endfor %}
-								{% elif day.in_window %}
-								<div class="day-panel__empty">
-									<div class="day-panel__empty-copy">{{ _("No fixed timed commitments") }}</div>
-									<div class="day-panel__rule"></div>
-									<div class="day-panel__rule"></div>
-									<div class="day-panel__rule"></div>
-								</div>
-								{% else %}
-								<div class="day-panel__outside">{{ _("Outside selected range") }}</div>
-								{% endif %}
 							</div>
 							{% if day.in_window %}
 							<div class="day-panel__planning">
-								<div class="day-panel__section-label">{{ _("Open planning space") }}</div>
 								<div class="planning-line">
 									<span class="planning-line__checkbox"></span>
 									<span class="planning-line__rule"></span>
@@ -182,8 +137,11 @@
 			</tbody>
 		</table>
 
-		<div class="timetable-footer">
-			{{ _("Prepared from Ifitwala Ed as a print-ready weekly planning sheet.") }}
+		<div class="timetable-notes">
+			<div class="timetable-notes__label">{{ _("Notes") }}</div>
+			<div class="timetable-notes__line"></div>
+			<div class="timetable-notes__line"></div>
+			<div class="timetable-notes__line"></div>
 		</div>
 	</section>
 	{% endfor %}

@@ -714,7 +714,10 @@ ApplicantDocument {
   reviewed_by: string | null
   reviewed_on: datetime | null
   uploaded_at: datetime
-  file_url: string | null
+  open_url: string | null
+  preview_url: string | null
+  thumbnail_url: string | null
+  preview_status: 'pending' | 'ready' | 'failed' | 'unsupported' | null
   items: ApplicantDocumentSubmission[]
 }
 
@@ -726,7 +729,10 @@ ApplicantDocumentSubmission {
   reviewed_by: string | null
   reviewed_on: datetime | null
   uploaded_at: datetime
-  file_url: string
+  open_url: string | null
+  preview_url: string | null
+  thumbnail_url: string | null
+  preview_status: 'pending' | 'ready' | 'failed' | 'unsupported' | null
   file_name: string | null
 }
 ```
@@ -1437,13 +1443,16 @@ export type ApplicantDocument = {
   document_type: string
   review_status: 'Pending' | 'Approved' | 'Rejected'
   uploaded_at: string
-  file_url: string        // Signed or private URL, server-generated
+  open_url: string | null
+  preview_url: string | null
+  thumbnail_url: string | null
+  preview_status: 'pending' | 'ready' | 'failed' | 'unsupported' | null
 }
 ```
 
 **Rules**
 
-* `file_url` must be directly usable for preview/download
+* `open_url`, `preview_url`, and `thumbnail_url` are stable server-owned admissions routes or `null`
 * Frontend never queries `File` directly
 * All file access is mediated by this DTO
 
@@ -1553,7 +1562,9 @@ invite_applicant(
 
 * Applicant files are accessed **only** via:
 
-  * `ApplicantDocument.file_url`
+  * `ApplicantDocument.open_url`
+  * optional `ApplicantDocument.preview_url`
+  * optional `ApplicantDocument.thumbnail_url`
 * No generic `/files` browsing
 * No shared access across applicants
 * File routing follows `files_01_architecture_notes.md`

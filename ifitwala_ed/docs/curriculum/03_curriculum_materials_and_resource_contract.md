@@ -98,8 +98,8 @@ Current staff preview behavior:
 - governed file materials on the course-plan and class-planning workspaces now expose stable `thumbnail_url` routes for inline image cards plus stable `preview_url` routes for richer preview/open behavior
 - those current material rows now also carry an additive nested `attachment_preview` block with the shared cross-surface preview DTO
 - those planning workspaces now consume that nested preview DTO through the shared display-only SPA attachment preview card
-- the task creation overlay now keeps teachers in one continuous flow: create the task delivery first, then add governed task attachments inline before the overlay closes and the class-planning surface refreshes once
-- that governed attachment step is currently restricted to PDF and image uploads (`pdf`, `jpg`, `jpeg`, `png`, `webp`) plus reference links
+- the task creation overlay now lets teachers queue governed task attachments while writing the task itself, then persists those queued attachments automatically during the create action so the workflow still feels like one compose step
+- that governed task-attachment flow is currently restricted to PDF and image uploads (`pdf`, `jpg`, `jpeg`, `png`, `webp`) plus reference links
 - the task creation overlay now renders current task attachments through the shared SPA attachment preview card instead of a task-specific preview fragment
 - those workspaces render inline image previews from `thumbnail_url` and automatically retry the governed `preview_url` inline when the thumbnail route cannot be delivered, while `preview_url` continues to power the compact PDF preview tiles
 - `open_url` remains the explicit original-file action and compatibility baseline

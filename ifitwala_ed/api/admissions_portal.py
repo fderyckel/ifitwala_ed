@@ -915,10 +915,11 @@ def _applicant_image_open_url(*, applicant_name: str, applicant_image: str | Non
         return ""
 
     drive_file = _resolve_applicant_profile_image_drive_file(applicant_name=applicant_name) or {}
+    fallback_file_url = None if drive_file.get("name") or drive_file.get("canonical_ref") else image_value
     return (
         resolve_admissions_file_open_url(
             file_name=drive_file.get("file"),
-            file_url=image_value,
+            file_url=fallback_file_url,
             drive_file_id=drive_file.get("name"),
             canonical_ref=drive_file.get("canonical_ref"),
             context_doctype="Student Applicant",
@@ -951,10 +952,11 @@ def _guardian_image_open_url(
         guardian_image=image_value,
     )
     if not file_row:
+        fallback_file_url = None if drive_file.get("name") or drive_file.get("canonical_ref") else image_value
         return (
             resolve_admissions_file_open_url(
                 file_name=drive_file.get("file"),
-                file_url=image_value,
+                file_url=fallback_file_url,
                 drive_file_id=drive_file.get("name"),
                 canonical_ref=drive_file.get("canonical_ref"),
                 context_doctype="Student Applicant",
@@ -966,7 +968,7 @@ def _guardian_image_open_url(
     return (
         resolve_admissions_file_open_url(
             file_name=file_row.get("name"),
-            file_url=file_row.get("file_url"),
+            file_url=None if drive_file.get("name") or drive_file.get("canonical_ref") else file_row.get("file_url"),
             drive_file_id=drive_file.get("name"),
             canonical_ref=drive_file.get("canonical_ref"),
             context_doctype="Student Applicant",
@@ -2128,7 +2130,7 @@ def upload_applicant_profile_image(
         "file": upload_result.get("file"),
         "image_url": resolve_admissions_file_open_url(
             file_name=upload_result.get("file"),
-            file_url=upload_result.get("file_url"),
+            file_url=None,
             drive_file_id=upload_result.get("drive_file_id"),
             canonical_ref=upload_result.get("canonical_ref"),
             context_doctype="Student Applicant",
@@ -2194,7 +2196,7 @@ def upload_applicant_guardian_image(
         "file": upload_result.get("file"),
         "image_url": resolve_admissions_file_open_url(
             file_name=upload_result.get("file"),
-            file_url=upload_result.get("file_url"),
+            file_url=None,
             drive_file_id=upload_result.get("drive_file_id"),
             canonical_ref=upload_result.get("canonical_ref"),
             context_doctype="Student Applicant",
@@ -2965,7 +2967,7 @@ def upload_applicant_document(
     )
     open_url = resolve_admissions_file_open_url(
         file_name=upload_result.get("file"),
-        file_url=upload_result.get("file_url"),
+        file_url=None,
         drive_file_id=resolved_drive_file_id,
         canonical_ref=resolved_canonical_ref,
         context_doctype="Student Applicant",
@@ -2973,7 +2975,7 @@ def upload_applicant_document(
     )
     preview_url = resolve_admissions_file_preview_url(
         file_name=upload_result.get("file"),
-        file_url=upload_result.get("file_url"),
+        file_url=None,
         drive_file_id=resolved_drive_file_id,
         canonical_ref=resolved_canonical_ref,
         context_doctype="Student Applicant",
@@ -2982,7 +2984,7 @@ def upload_applicant_document(
     )
     thumbnail_url = resolve_admissions_file_thumbnail_url(
         file_name=upload_result.get("file"),
-        file_url=upload_result.get("file_url"),
+        file_url=None,
         drive_file_id=resolved_drive_file_id,
         canonical_ref=resolved_canonical_ref,
         context_doctype="Student Applicant",

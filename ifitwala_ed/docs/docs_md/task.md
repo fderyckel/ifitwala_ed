@@ -123,8 +123,8 @@ Test refs: `ifitwala_ed/utilities/test_governed_uploads_task_flows.py`
 - `assessment/task_creation_service.py` supports the overlay path that creates both `Task` and `Task Delivery` in one transaction.
 - `api/task.py::search_reusable_tasks()` resolves one course-scoped task library at a time and returns only the current user's own tasks plus tasks explicitly shared with that course team.
 - `api/task.py::create_task_delivery()` now owns the assign-existing-task flow and validates that private tasks stay private until shared.
-- The task overlay now treats create-and-assign as the first step of one continuous workflow, then transitions into a governed task-attachment step before the teacher closes the overlay.
-- That attachment step supports governed PDF and image uploads only, uses the shared SPA attachment preview card, and keeps the class-planning page refresh deferred until the teacher finishes and closes the overlay once.
+- The task overlay now lets teachers queue task links and governed PDF or image attachments while they write the task instructions, instead of hiding attachment authoring behind a later step.
+- The create action persists the task, delivery, and any queued attachments in one flow, then refreshes class planning once on final success; the post-create attachment panel remains only as a recovery path if a queued upload needs retry.
 - The task overlay does not expose task-material editing after reusing an existing task, because class-local delivery work must not silently mutate a shared reusable definition.
 - No current workflow may treat a task created from one class/session flow as silently promoted shared curriculum just because it is reusable later.
 

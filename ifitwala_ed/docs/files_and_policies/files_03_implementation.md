@@ -108,7 +108,7 @@ Current duplicated authorities include:
 
 - `Drive Upload Session.intended_*`
 - `Drive File`
-- native `File` compatibility rows for legacy surfaces
+- native `File` compatibility rows for migration and legacy storage references only
 
 Why this is wrong:
 
@@ -119,6 +119,7 @@ Why this is wrong:
 Target fix:
 
 - Drive metadata becomes sole governance authority
+- current governed DTO surfaces such as admissions documents, staff admissions review, org communication, planning, learning, and task evidence must resolve `open_url` / `preview_url` / `thumbnail_url` from Drive identity, not by rediscovering `File.file_url`
 - historical `File Classification` rows are removed by migration patch once every row has matching Drive authority
 - the retired `File Classification` DocTypes are then removed by an explicit schema-retirement patch
 

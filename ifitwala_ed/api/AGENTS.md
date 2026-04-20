@@ -48,6 +48,8 @@ If the API change touches uploads, attachment links, previews, thumbnails, or pr
 - `ifitwala_ed/docs/files_and_policies/files_01_architecture_notes.md`
 - `ifitwala_ed/docs/files_and_policies/files_03_implementation.md`
 - `ifitwala_ed/docs/files_and_policies/files_07_education_file_semantics_and_cross_app_contract.md`
+- `ifitwala_ed/docs/admission/05_admission_portal.md` when the surface is admissions/applicant-facing or staff admissions review
+- `ifitwala_ed/docs/admission/10_ifitwala_drive_portal_uploads.md` when the change touches admissions uploads or applicant images
 - `../ifitwala_drive/ifitwala_drive/docs/06_api_contracts.md`
 
 Treat proposal, audit, history, and implementation-companion notes as non-authoritative unless they explicitly declare themselves the current runtime contract.

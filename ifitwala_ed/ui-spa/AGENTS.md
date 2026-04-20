@@ -51,6 +51,8 @@ If the SPA change touches uploads, attachment cards, thumbnails, preview modals/
 - `ifitwala_ed/docs/files_and_policies/files_03_implementation.md`
 - `ifitwala_ed/docs/files_and_policies/files_07_education_file_semantics_and_cross_app_contract.md`
 - `ifitwala_ed/docs/files_and_policies/files_06_org_communication_attachment_contract.md` when the surface is communication
+- `ifitwala_ed/docs/admission/05_admission_portal.md` when the surface is admissions/applicant-facing or staff admissions review
+- `ifitwala_ed/docs/admission/10_ifitwala_drive_portal_uploads.md` when the change touches admissions uploads, applicant images, or applicant document previews
 
 Treat proposal, audit, history, and implementation-companion notes as non-authoritative unless they explicitly declare themselves the current runtime contract.
 

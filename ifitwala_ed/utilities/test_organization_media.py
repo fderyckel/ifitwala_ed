@@ -472,8 +472,13 @@ class TestOrganizationMedia(FrappeTestCase):
 
         with (
             patch(
-                "ifitwala_ed.utilities.governed_uploads._load_drive_module",
-                return_value=fake_drive_media,
+                "ifitwala_drive.api.media.upload_organization_media_asset",
+                new=fake_drive_media.upload_organization_media_asset,
+            ),
+            patch("ifitwala_drive.api.media.upload_organization_logo", new=fake_drive_media.upload_organization_logo),
+            patch("ifitwala_drive.api.media.upload_school_logo", new=fake_drive_media.upload_school_logo),
+            patch(
+                "ifitwala_drive.api.media.upload_school_gallery_image", new=fake_drive_media.upload_school_gallery_image
             ),
             patch(
                 "ifitwala_ed.utilities.governed_uploads._drive_upload_and_finalize",

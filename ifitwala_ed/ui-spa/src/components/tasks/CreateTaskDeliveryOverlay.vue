@@ -154,6 +154,222 @@
 												/>
 											</div>
 
+											<section
+												class="space-y-4 rounded-2xl border border-line-soft bg-surface-soft p-4"
+											>
+												<div class="flex items-center gap-3">
+													<span class="chip">Attachments</span>
+													<div>
+														<h4 class="type-body-strong text-ink">
+															Include files or links with this task
+														</h4>
+														<p class="type-caption text-ink/70">
+															Queue attachments while you write the task. They upload automatically
+															when you create it.
+														</p>
+													</div>
+												</div>
+
+												<div class="flex flex-wrap gap-2">
+													<button
+														type="button"
+														class="rounded-full border px-4 py-2 text-sm font-medium transition"
+														:class="
+															materialComposerMode === 'link'
+																? 'border-leaf/60 bg-sky/20 text-ink'
+																: 'border-border/70 bg-white text-ink/70 hover:border-leaf/40'
+														"
+														@click="setMaterialComposerMode('link')"
+													>
+														Add link
+													</button>
+													<button
+														type="button"
+														class="rounded-full border px-4 py-2 text-sm font-medium transition"
+														:class="
+															materialComposerMode === 'file'
+																? 'border-leaf/60 bg-sky/20 text-ink'
+																: 'border-border/70 bg-white text-ink/70 hover:border-leaf/40'
+														"
+														@click="setMaterialComposerMode('file')"
+													>
+														Queue file or image
+													</button>
+												</div>
+
+												<div class="grid gap-4 md:grid-cols-2">
+													<div class="space-y-1">
+														<label class="type-label">Attachment title</label>
+														<FormControl
+															v-model="materialForm.title"
+															type="text"
+															placeholder="Material title"
+														/>
+													</div>
+													<div class="space-y-1">
+														<label class="type-label">How students use it</label>
+														<FormControl
+															v-model="materialForm.modality"
+															type="select"
+															:options="materialModalityOptions"
+															option-label="label"
+															option-value="value"
+														/>
+													</div>
+												</div>
+
+												<div class="grid gap-4 md:grid-cols-2">
+													<div class="space-y-1">
+														<label class="type-label">Usage role</label>
+														<FormControl
+															v-model="materialForm.usage_role"
+															type="select"
+															:options="materialUsageRoleOptions"
+															option-label="label"
+															option-value="value"
+														/>
+													</div>
+													<div class="space-y-1">
+														<label class="type-label">Teacher note</label>
+														<FormControl
+															v-model="materialForm.placement_note"
+															type="text"
+															placeholder="Optional note for students"
+														/>
+													</div>
+												</div>
+
+												<div class="space-y-1">
+													<label class="type-label">Description</label>
+													<FormControl
+														v-model="materialForm.description"
+														type="textarea"
+														:rows="3"
+														placeholder="Optional context about this material"
+													/>
+												</div>
+
+												<div v-if="materialComposerMode === 'link'" class="space-y-1">
+													<label class="type-label">Reference URL</label>
+													<FormControl
+														v-model="materialForm.reference_url"
+														type="text"
+														placeholder="https://..."
+													/>
+												</div>
+
+												<div v-else class="space-y-3">
+													<input
+														ref="materialFileInput"
+														type="file"
+														accept=".pdf,.jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp,application/pdf"
+														class="hidden"
+														@change="onMaterialFileSelected"
+													/>
+													<div class="flex flex-wrap items-center gap-3">
+														<button
+															type="button"
+															class="if-button if-button--secondary"
+															@click="materialFileInput?.click()"
+														>
+															Choose PDF or image
+														</button>
+														<p class="type-caption text-ink/70">
+															{{ selectedMaterialFile?.name || 'No file selected yet.' }}
+														</p>
+													</div>
+													<p class="type-caption text-ink/60">
+														Supported formats: PDF, JPG, PNG, and WEBP.
+													</p>
+												</div>
+
+												<div
+													v-if="materialNotice"
+													class="rounded-xl border border-canopy/30 bg-canopy/10 px-4 py-3 text-sm text-canopy"
+												>
+													{{ materialNotice }}
+												</div>
+												<div
+													v-if="materialError"
+													class="rounded-xl border border-flame/30 bg-flame/10 px-4 py-3 text-sm text-flame"
+												>
+													{{ materialError }}
+												</div>
+
+												<div class="flex justify-end">
+													<button
+														type="button"
+														class="if-button if-button--primary"
+														:disabled="!canSaveMaterialDraft || materialSubmitting"
+														@click="addMaterial"
+													>
+														{{ materialComposerButtonLabel }}
+													</button>
+												</div>
+
+												<div
+													class="space-y-3 rounded-2xl border border-dashed border-border/80 bg-white p-4"
+												>
+													<div class="flex items-center justify-between gap-3">
+														<div class="flex items-center gap-3">
+															<span class="chip">Queued</span>
+															<h4 class="type-body-strong text-ink">
+																Attachments saved with this task
+															</h4>
+														</div>
+														<span class="chip">{{ queuedTaskAttachments.length }} items</span>
+													</div>
+
+													<div
+														v-if="!queuedTaskAttachments.length"
+														class="rounded-xl border border-dashed border-border/70 bg-slate-50 px-4 py-3 text-sm text-ink/70"
+													>
+														Add files, images, or links here and they will be attached when you
+														create the task.
+													</div>
+
+													<div v-else class="grid gap-3 lg:grid-cols-2">
+														<article
+															v-for="draft in queuedTaskAttachments"
+															:key="draft.id"
+															class="space-y-3 rounded-2xl border border-line-soft bg-surface-soft p-4"
+														>
+															<div class="space-y-2">
+																<div class="flex flex-wrap items-center gap-2">
+																	<p class="type-body-strong text-ink">{{ draft.title }}</p>
+																	<span class="chip">
+																		{{
+																			draft.mode === 'file' ? 'File attachment' : 'Reference link'
+																		}}
+																	</span>
+																</div>
+																<p v-if="draft.description" class="type-caption text-ink/70">
+																	{{ draft.description }}
+																</p>
+																<p class="type-caption text-ink/70">
+																	{{ queuedTaskAttachmentMeta(draft) }}
+																</p>
+																<p
+																	class="type-caption"
+																	:class="draft.error ? 'text-flame' : 'text-ink/60'"
+																>
+																	{{ queuedTaskAttachmentStatus(draft) }}
+																</p>
+															</div>
+															<div class="flex justify-end">
+																<button
+																	type="button"
+																	class="if-button if-button--danger"
+																	@click="removeQueuedTaskAttachment(draft.id)"
+																>
+																	Remove
+																</button>
+															</div>
+														</article>
+													</div>
+												</div>
+											</section>
+
 											<div
 												v-if="props.prefillQuizQuestionBankLabel || props.prefillUnitPlan"
 												class="flex flex-wrap gap-2"
@@ -912,12 +1128,18 @@
 								<template v-else>
 									<section class="card-panel space-y-4 p-5">
 										<div class="flex items-center gap-3">
-											<span class="chip">Step 6</span>
-											<h3 class="type-h3 text-ink">Finish with attachments</h3>
+											<span class="chip">Review</span>
+											<h3 class="type-h3 text-ink">Finish task setup</h3>
 										</div>
 										<p class="type-body text-ink/80">
-											The task and delivery are ready. Add any governed PDF or image attachments
-											now, then finish this flow once. The class refresh happens after you close.
+											The task and delivery are ready.
+											<span v-if="hasQueuedTaskAttachments">
+												Some queued attachments still need attention below. Retry or remove them,
+												then finish this flow once.
+											</span>
+											<span v-else>
+												You can add or review governed attachments here before you finish.
+											</span>
 										</p>
 										<div class="grid gap-3 md:grid-cols-3">
 											<div class="rounded-2xl border border-line-soft bg-surface-soft p-4">
@@ -936,6 +1158,68 @@
 													{{ createdTask.outcomes_created ?? '—' }}
 												</p>
 											</div>
+										</div>
+									</section>
+
+									<section
+										v-if="canEditTaskMaterials && hasQueuedTaskAttachments"
+										class="card-panel space-y-4 p-5"
+									>
+										<div class="flex items-center justify-between gap-3">
+											<div class="flex items-center gap-3">
+												<span class="chip">Pending</span>
+												<h3 class="type-h3 text-ink">Queued attachments</h3>
+											</div>
+											<button
+												type="button"
+												class="if-button if-button--secondary"
+												:disabled="materialSubmitting"
+												@click="retryQueuedTaskAttachments"
+											>
+												Retry attachments
+											</button>
+										</div>
+										<p class="type-caption text-ink/70">
+											These were queued before the task was created. Retry them here or remove any
+											attachment you no longer want.
+										</p>
+
+										<div class="grid gap-3 lg:grid-cols-2">
+											<article
+												v-for="draft in queuedTaskAttachments"
+												:key="draft.id"
+												class="space-y-3 rounded-2xl border border-line-soft bg-surface-soft p-4"
+											>
+												<div class="space-y-2">
+													<div class="flex flex-wrap items-center gap-2">
+														<p class="type-body-strong text-ink">{{ draft.title }}</p>
+														<span class="chip">
+															{{ draft.mode === 'file' ? 'File attachment' : 'Reference link' }}
+														</span>
+													</div>
+													<p v-if="draft.description" class="type-caption text-ink/70">
+														{{ draft.description }}
+													</p>
+													<p class="type-caption text-ink/70">
+														{{ queuedTaskAttachmentMeta(draft) }}
+													</p>
+													<p
+														class="type-caption"
+														:class="draft.error ? 'text-flame' : 'text-ink/60'"
+													>
+														{{ queuedTaskAttachmentStatus(draft) }}
+													</p>
+												</div>
+												<div class="flex justify-end">
+													<button
+														type="button"
+														class="if-button if-button--danger"
+														@click="removeQueuedTaskAttachment(draft.id)"
+													>
+														Remove
+													</button>
+												</div>
+											</article>
 										</div>
 									</section>
 
@@ -1084,18 +1368,10 @@
 											<button
 												type="button"
 												class="if-button if-button--primary"
-												:disabled="!canAddMaterial || materialSubmitting"
+												:disabled="!canSaveMaterialDraft || materialSubmitting"
 												@click="addMaterial"
 											>
-												{{
-													materialSubmitting
-														? materialComposerMode === 'link'
-															? 'Adding…'
-															: 'Uploading…'
-														: materialComposerMode === 'link'
-															? 'Add link'
-															: 'Upload attachment'
-												}}
+												{{ materialComposerButtonLabel }}
 											</button>
 										</div>
 									</section>
@@ -1209,7 +1485,7 @@
 								:disabled="isWorkflowBusy"
 								@click="requestClose('programmatic')"
 							>
-								Finish
+								{{ finishLabel }}
 							</button>
 						</div>
 					</DialogPanel>
@@ -1266,6 +1542,9 @@ const props = defineProps<{
 
 type CloseReason = 'backdrop' | 'esc' | 'programmatic';
 type ErrorRecoveryAction = 'open-class-planning' | null;
+type MaterialComposerMode = 'link' | 'file';
+type MaterialModality = 'Read' | 'Watch' | 'Listen' | 'Use';
+type MaterialUsageRole = 'Required' | 'Reference' | 'Template' | 'Example';
 
 const MISSING_ACTIVE_PLAN_MESSAGE =
 	'This class needs an active Class Teaching Plan before assigned work can be created.';
@@ -1288,7 +1567,7 @@ const errorRecovery = ref<ErrorRecoveryAction>(null);
 const createdTask = ref<CreateTaskDeliveryPayload | null>(null);
 const taskMaterials = ref<TaskMaterialRow[]>([]);
 const groupLoadError = ref('');
-const materialComposerMode = ref<'link' | 'file'>('link');
+const materialComposerMode = ref<MaterialComposerMode>('link');
 const materialSubmitting = ref(false);
 const materialError = ref('');
 const materialNotice = ref('');
@@ -1296,6 +1575,8 @@ const selectedMaterialFile = ref<File | null>(null);
 const materialFileInput = ref<HTMLInputElement | null>(null);
 const removingPlacement = ref<string | null>(null);
 const materialUploadProgress = ref<UploadProgressState | null>(null);
+const queuedTaskAttachments = ref<TaskMaterialDraft[]>([]);
+const currentMaterialUploadLabel = ref('Uploading attachment');
 const workflowCommitted = ref(false);
 
 const initialFocus = ref<HTMLElement | null>(null);
@@ -1339,6 +1620,18 @@ const taskTypeOptions = [
 type TaskComposerMode = 'create' | 'reuse';
 type DeliveryMode = CreateTaskDeliveryInput['delivery_mode'];
 type RubricScoringStrategy = NonNullable<CreateTaskDeliveryInput['rubric_scoring_strategy']>;
+type TaskMaterialDraft = {
+	id: string;
+	mode: MaterialComposerMode;
+	title: string;
+	description: string;
+	reference_url: string;
+	modality: MaterialModality;
+	usage_role: MaterialUsageRole;
+	placement_note: string;
+	file: File | null;
+	error: string | null;
+};
 type TaskMaterialRow = {
 	placement: string;
 	material: string;
@@ -1424,8 +1717,8 @@ type MaterialFormState = {
 	title: string;
 	description: string;
 	reference_url: string;
-	modality: 'Read' | 'Watch' | 'Listen' | 'Use';
-	usage_role: 'Required' | 'Reference' | 'Template' | 'Example';
+	modality: MaterialModality;
+	usage_role: MaterialUsageRole;
 	placement_note: string;
 };
 
@@ -1634,6 +1927,7 @@ const activeTaskType = computed(() =>
 const showLateSubmission = computed(() => form.delivery_mode !== 'Assign Only');
 const isQuizTask = computed(() => activeTaskType.value === 'Quiz');
 const canEditTaskMaterials = computed(() => createdTaskMode.value === 'create');
+const hasQueuedTaskAttachments = computed(() => queuedTaskAttachments.value.length > 0);
 const criteriaLibraryLoading = computed(() => listCourseAssessmentCriteriaResource.loading);
 const isWorkflowBusy = computed(
 	() => submitting.value || materialSubmitting.value || Boolean(removingPlacement.value)
@@ -1696,12 +1990,24 @@ const canSubmit = computed(() => {
 	}
 	return true;
 });
-const canAddMaterial = computed(() => {
-	if (!createdTask.value || materialSubmitting.value) return false;
+const canSaveMaterialDraft = computed(() => {
+	if (materialSubmitting.value) return false;
 	if (!materialForm.title.trim()) return false;
 	if (materialComposerMode.value === 'link') return Boolean(materialForm.reference_url.trim());
 	return Boolean(selectedMaterialFile.value);
 });
+const materialComposerButtonLabel = computed(() => {
+	if (materialSubmitting.value) {
+		return materialComposerMode.value === 'link' ? 'Adding…' : 'Uploading…';
+	}
+	if (createdTask.value) {
+		return materialComposerMode.value === 'link' ? 'Add link now' : 'Upload attachment now';
+	}
+	return materialComposerMode.value === 'link' ? 'Queue link' : 'Queue attachment';
+});
+const finishLabel = computed(() =>
+	hasQueuedTaskAttachments.value ? 'Retry attachments and finish' : 'Finish'
+);
 
 watch(
 	() => props.open,
@@ -2272,9 +2578,11 @@ function resetMaterialComposer() {
 	materialSubmitting.value = false;
 	materialError.value = '';
 	materialNotice.value = '';
+	queuedTaskAttachments.value = [];
 	taskMaterials.value = [];
 	removingPlacement.value = null;
 	materialUploadProgress.value = null;
+	currentMaterialUploadLabel.value = 'Uploading attachment';
 	resetMaterialDraftFields();
 }
 
@@ -2302,27 +2610,86 @@ function onMaterialFileSelected(event: Event) {
 	}
 }
 
-const materialUploadProgressLabel = computed(() =>
-	selectedMaterialFile.value?.name
-		? `Uploading ${selectedMaterialFile.value.name}`
-		: 'Uploading attachment'
-);
+const materialUploadProgressLabel = computed(() => currentMaterialUploadLabel.value);
 
-async function uploadTaskMaterialFileRequest(task: string): Promise<TaskMaterialRow> {
-	if (!selectedMaterialFile.value) {
+let taskMaterialDraftSeed = 0;
+
+function nextTaskMaterialDraftId() {
+	taskMaterialDraftSeed += 1;
+	return `task-material-draft-${taskMaterialDraftSeed}`;
+}
+
+function buildTaskMaterialDraft(): TaskMaterialDraft {
+	return {
+		id: nextTaskMaterialDraftId(),
+		mode: materialComposerMode.value,
+		title: materialForm.title.trim(),
+		description: materialForm.description.trim(),
+		reference_url: materialForm.reference_url.trim(),
+		modality: materialForm.modality,
+		usage_role: materialForm.usage_role,
+		placement_note: materialForm.placement_note.trim(),
+		file: selectedMaterialFile.value,
+		error: null,
+	};
+}
+
+function queuedTaskAttachmentMeta(draft: TaskMaterialDraft) {
+	const source =
+		draft.mode === 'file' ? draft.file?.name || 'Selected attachment' : draft.reference_url;
+	return [draft.usage_role, draft.modality, source].filter(Boolean).join(' · ');
+}
+
+function queuedTaskAttachmentStatus(draft: TaskMaterialDraft) {
+	if (draft.error) return draft.error;
+	return createdTask.value
+		? 'This attachment still needs to be added to the task.'
+		: 'This attachment will be added when you create the task.';
+}
+
+function removeQueuedTaskAttachment(draftId: string) {
+	queuedTaskAttachments.value = queuedTaskAttachments.value.filter(draft => draft.id !== draftId);
+	if (!queuedTaskAttachments.value.length) {
+		materialError.value = '';
+	}
+}
+
+function queueTaskMaterialDraft() {
+	if (!canSaveMaterialDraft.value) {
+		materialError.value =
+			materialComposerMode.value === 'link'
+				? 'Please provide a title and link.'
+				: 'Please provide a title and choose a PDF or image attachment.';
+		return;
+	}
+
+	const draft = buildTaskMaterialDraft();
+	queuedTaskAttachments.value = [...queuedTaskAttachments.value, draft];
+	resetMaterialDraftFields();
+	materialError.value = '';
+	materialNotice.value =
+		draft.mode === 'link' ? 'Link queued with this task.' : 'Attachment queued with this task.';
+}
+
+async function uploadTaskMaterialFileRequest(
+	task: string,
+	draft: TaskMaterialDraft
+): Promise<TaskMaterialRow> {
+	if (!draft.file) {
 		throw new Error('Please choose a file first.');
 	}
 
 	const formData = new FormData();
 	formData.append('task', task);
-	formData.append('title', materialForm.title.trim());
-	if (materialForm.description.trim())
-		formData.append('description', materialForm.description.trim());
-	if (materialForm.placement_note.trim())
-		formData.append('placement_note', materialForm.placement_note.trim());
-	formData.append('modality', materialForm.modality);
-	formData.append('usage_role', materialForm.usage_role);
-	formData.append('file', selectedMaterialFile.value, selectedMaterialFile.value.name);
+	formData.append('title', draft.title);
+	if (draft.description) formData.append('description', draft.description);
+	if (draft.placement_note) formData.append('placement_note', draft.placement_note);
+	formData.append('modality', draft.modality);
+	formData.append('usage_role', draft.usage_role);
+	formData.append('file', draft.file, draft.file.name);
+	currentMaterialUploadLabel.value = draft.file?.name
+		? `Uploading ${draft.file.name}`
+		: 'Uploading attachment';
 
 	return apiUpload<TaskMaterialRow>(
 		'ifitwala_ed.api.materials.upload_task_material_file',
@@ -2335,9 +2702,83 @@ async function uploadTaskMaterialFileRequest(task: string): Promise<TaskMaterial
 	);
 }
 
+async function persistTaskMaterialDraft(task: string, draft: TaskMaterialDraft) {
+	if (draft.mode === 'link') {
+		await createTaskReferenceMaterialResource.submit({
+			task,
+			title: draft.title,
+			reference_url: draft.reference_url,
+			description: draft.description || undefined,
+			modality: draft.modality,
+			usage_role: draft.usage_role,
+			placement_note: draft.placement_note || undefined,
+		});
+		return;
+	}
+	await uploadTaskMaterialFileRequest(task, draft);
+}
+
+async function persistQueuedTaskAttachments(task: string) {
+	if (!queuedTaskAttachments.value.length) return true;
+
+	const pendingDrafts = [...queuedTaskAttachments.value];
+	const failedDrafts: TaskMaterialDraft[] = [];
+	materialSubmitting.value = true;
+	materialError.value = '';
+	materialNotice.value = '';
+
+	for (const draft of pendingDrafts) {
+		try {
+			await persistTaskMaterialDraft(task, draft);
+			queuedTaskAttachments.value = queuedTaskAttachments.value.filter(
+				entry => entry.id !== draft.id
+			);
+		} catch (error) {
+			const message =
+				error instanceof Error ? error.message : 'Unable to add this attachment right now.';
+			failedDrafts.push({ ...draft, error: message });
+			queuedTaskAttachments.value = queuedTaskAttachments.value.map(entry =>
+				entry.id === draft.id ? { ...entry, error: message } : entry
+			);
+		} finally {
+			materialUploadProgress.value = null;
+			currentMaterialUploadLabel.value = 'Uploading attachment';
+		}
+	}
+
+	materialSubmitting.value = false;
+	if (failedDrafts.length) {
+		materialNotice.value =
+			failedDrafts.length < pendingDrafts.length ? 'Some queued attachments were added.' : '';
+		materialError.value =
+			failedDrafts.length === 1
+				? 'The task was created, but 1 queued attachment still needs attention.'
+				: `The task was created, but ${failedDrafts.length} queued attachments still need attention.`;
+		return false;
+	}
+
+	materialNotice.value =
+		pendingDrafts.length === 1
+			? 'Queued attachment added to this task.'
+			: `${pendingDrafts.length} queued attachments added to this task.`;
+	return true;
+}
+
+async function retryQueuedTaskAttachments() {
+	if (!createdTask.value || !queuedTaskAttachments.value.length) return;
+	const attachmentsReady = await persistQueuedTaskAttachments(createdTask.value.task);
+	await loadTaskMaterials();
+	if (attachmentsReady) {
+		materialNotice.value = 'All queued attachments have been added. You can finish now.';
+	}
+}
+
 async function addMaterial() {
-	if (!createdTask.value) return;
-	if (!canAddMaterial.value) {
+	if (!createdTask.value) {
+		queueTaskMaterialDraft();
+		return;
+	}
+	if (!canSaveMaterialDraft.value) {
 		materialError.value =
 			materialComposerMode.value === 'link'
 				? 'Please provide a title and link.'
@@ -2349,26 +2790,13 @@ async function addMaterial() {
 	materialError.value = '';
 	materialNotice.value = '';
 	try {
-		if (materialComposerMode.value === 'link') {
-			await createTaskReferenceMaterialResource.submit({
-				task: createdTask.value.task,
-				title: materialForm.title.trim(),
-				reference_url: materialForm.reference_url.trim(),
-				description: materialForm.description.trim() || undefined,
-				modality: materialForm.modality,
-				usage_role: materialForm.usage_role,
-				placement_note: materialForm.placement_note.trim() || undefined,
-			});
-		} else {
-			await uploadTaskMaterialFileRequest(createdTask.value.task);
-		}
+		const draft = buildTaskMaterialDraft();
+		await persistTaskMaterialDraft(createdTask.value.task, draft);
 
 		await loadTaskMaterials();
 		resetMaterialDraftFields();
 		materialNotice.value =
-			materialComposerMode.value === 'link'
-				? 'Link added to this task.'
-				: 'Attachment added to this task.';
+			draft.mode === 'link' ? 'Link added to this task.' : 'Attachment added to this task.';
 	} catch (error) {
 		const message =
 			error instanceof Error ? error.message : 'Unable to add the material right now.';
@@ -2430,7 +2858,7 @@ function commitWorkflowSuccess(payload: CreateTaskDeliveryPayload) {
 	emitTaskDeliveryCreatedSignal(buildTaskDeliveryCreatedSignal(payload));
 }
 
-function requestClose(reason: CloseReason = 'programmatic') {
+async function requestClose(reason: CloseReason = 'programmatic') {
 	if (isWorkflowBusy.value) {
 		if (createdTask.value) {
 			materialError.value = 'Wait until the current attachment update finishes before closing.';
@@ -2440,6 +2868,11 @@ function requestClose(reason: CloseReason = 'programmatic') {
 		return;
 	}
 	if (createdTask.value) {
+		if (queuedTaskAttachments.value.length) {
+			const attachmentsReady = await persistQueuedTaskAttachments(createdTask.value.task);
+			await loadTaskMaterials();
+			if (!attachmentsReady) return;
+		}
 		commitWorkflowSuccess(createdTask.value);
 	}
 	emitClose(reason);
@@ -2557,6 +2990,12 @@ async function submit() {
 		}
 		createdTask.value = out;
 		createdTaskMode.value = taskMode.value;
+		const attachmentsReady = await persistQueuedTaskAttachments(out.task);
+		if (attachmentsReady) {
+			commitWorkflowSuccess(out);
+			emitClose('programmatic');
+			return;
+		}
 		await loadTaskMaterials();
 	} catch (error) {
 		console.error('[CreateTaskDeliveryOverlay] submit:error', error);
