@@ -38,7 +38,6 @@ from ifitwala_ed.governance.policy_utils import (
     ensure_policy_audience_records,
     institutional_policy_db_has_column,
 )
-from ifitwala_ed.utilities import file_dispatcher
 
 
 def _admission_settings_has_field(fieldname: str) -> bool:
@@ -1321,31 +1320,20 @@ class TestSubmitApplication(FrappeTestCase):
         self.applicant.db_set("applicant_contact", contact.name, update_modified=False)
         self.applicant.reload()
 
-        file_doc = file_dispatcher.create_and_classify_file(
-            file_kwargs={
+        file_doc = frappe.get_doc(
+            {
+                "doctype": "File",
                 "attached_to_doctype": "Student Applicant",
                 "attached_to_name": self.applicant.name,
                 "attached_to_field": "guardians",
                 "file_name": "guardian.png",
                 "content": base64.b64decode(self._tiny_png_base64()),
                 "is_private": 1,
-            },
-            classification={
-                "primary_subject_type": "Student Applicant",
-                "primary_subject_id": self.applicant.name,
-                "data_class": "identity_image",
-                "purpose": "applicant_profile_display",
-                "retention_policy": "until_school_exit_plus_6m",
-                "slot": "guardian_profile_image",
-                "organization": self.organization,
-                "school": self.school,
-                "upload_source": "SPA",
-            },
+            }
         )
+        file_doc.flags.governed_upload = True
+        file_doc.insert(ignore_permissions=True)
         self._created.append(("File", file_doc.name))
-        classification_name = frappe.db.get_value("File Classification", {"file": file_doc.name}, "name")
-        self.assertTrue(bool(classification_name))
-        self._created.append(("File Classification", classification_name))
 
         frappe.set_user(self.applicant_user)
         payload = update_applicant_profile(
@@ -1377,15 +1365,6 @@ class TestSubmitApplication(FrappeTestCase):
         self.assertEqual(file_row.get("attached_to_doctype"), "Contact")
         self.assertEqual(file_row.get("attached_to_name"), contact.name)
         self.assertFalse((file_row.get("attached_to_field") or "").strip())
-
-        classification_row = frappe.db.get_value(
-            "File Classification",
-            classification_name,
-            ["attached_doctype", "attached_name"],
-            as_dict=True,
-        )
-        self.assertEqual(classification_row.get("attached_doctype"), "Contact")
-        self.assertEqual(classification_row.get("attached_name"), contact.name)
 
     def test_get_applicant_profile_includes_applicant_image(self):
         image_url = f"/private/files/applicant-{frappe.generate_hash(length=6)}.png"
@@ -1424,10 +1403,12 @@ class TestSubmitApplication(FrappeTestCase):
 
         def _capture_drive_upload(**kwargs):
             captured.update(kwargs)
+            drive_file_id = f"DRV-FILE-{frappe.generate_hash(length=6)}"
             return {
                 "file": f"FILE-{frappe.generate_hash(length=8)}",
                 "file_url": f"/private/files/applicant-{frappe.generate_hash(length=6)}.jpg",
-                "classification": f"FC-{frappe.generate_hash(length=6)}",
+                "drive_file_id": drive_file_id,
+                "canonical_ref": f"drv:{self.organization}:{drive_file_id}",
                 "student_applicant": kwargs.get("student_applicant"),
             }
 
@@ -1444,6 +1425,8 @@ class TestSubmitApplication(FrappeTestCase):
 
         self.assertTrue(payload.get("ok"))
         self.assertTrue(str(payload.get("file_url") or "").startswith("/private/files/applicant-"))
+        self.assertTrue(str(payload.get("drive_file_id") or "").startswith("DRV-FILE-"))
+        self.assertTrue(str(payload.get("canonical_ref") or "").startswith(f"drv:{self.organization}:"))
         self.assertEqual(captured["student_applicant"], self.applicant.name)
         self.assertEqual(captured["upload_source"], "SPA")
         self.assertTrue(captured["file_name"].startswith("applicant_profile_image_"))
@@ -1460,10 +1443,12 @@ class TestSubmitApplication(FrappeTestCase):
 
         def _capture_drive_upload(**kwargs):
             captured.update(kwargs)
+            drive_file_id = f"DRV-FILE-{frappe.generate_hash(length=6)}"
             return {
                 "file": f"FILE-{frappe.generate_hash(length=8)}",
                 "file_url": f"/private/files/applicant-{frappe.generate_hash(length=6)}.jpg",
-                "classification": f"FC-{frappe.generate_hash(length=6)}",
+                "drive_file_id": drive_file_id,
+                "canonical_ref": f"drv:{self.organization}:{drive_file_id}",
                 "student_applicant": kwargs.get("student_applicant"),
             }
 
@@ -1493,6 +1478,8 @@ class TestSubmitApplication(FrappeTestCase):
             )
 
         self.assertTrue(payload.get("ok"))
+        self.assertTrue(str(payload.get("drive_file_id") or "").startswith("DRV-FILE-"))
+        self.assertTrue(str(payload.get("canonical_ref") or "").startswith(f"drv:{self.organization}:"))
         self.assertEqual(captured["student_applicant"], self.applicant.name)
         self.assertEqual(captured["upload_source"], "SPA")
         self.assertTrue(captured["file_name"].startswith("applicant_profile_image_"))
@@ -1565,10 +1552,12 @@ class TestSubmitApplication(FrappeTestCase):
 
         def _capture_drive_upload(**kwargs):
             captured.update(kwargs)
+            drive_file_id = f"DRV-FILE-{frappe.generate_hash(length=6)}"
             return {
                 "file": f"FILE-{frappe.generate_hash(length=8)}",
                 "file_url": f"/private/files/guardian-{frappe.generate_hash(length=6)}.jpg",
-                "classification": f"FC-{frappe.generate_hash(length=6)}",
+                "drive_file_id": drive_file_id,
+                "canonical_ref": f"drv:{self.organization}:{drive_file_id}",
                 "student_applicant": kwargs.get("student_applicant"),
                 "guardian_row_name": kwargs.get("guardian_row_name"),
             }
@@ -1587,6 +1576,8 @@ class TestSubmitApplication(FrappeTestCase):
 
         self.assertTrue(payload.get("ok"))
         self.assertTrue(str(payload.get("file_url") or "").startswith("/private/files/guardian-"))
+        self.assertTrue(str(payload.get("drive_file_id") or "").startswith("DRV-FILE-"))
+        self.assertTrue(str(payload.get("canonical_ref") or "").startswith(f"drv:{self.organization}:"))
         self.assertEqual(captured["student_applicant"], self.applicant.name)
         self.assertEqual(captured["guardian_row_name"], guardian_row_name)
         self.assertEqual(captured["upload_source"], "SPA")
@@ -1618,10 +1609,12 @@ class TestSubmitApplication(FrappeTestCase):
 
         def _capture_drive_upload(**kwargs):
             captured.update(kwargs)
+            drive_file_id = f"DRV-FILE-{frappe.generate_hash(length=6)}"
             return {
                 "file": f"FILE-{frappe.generate_hash(length=8)}",
                 "file_url": f"/private/files/guardian-{frappe.generate_hash(length=6)}.jpg",
-                "classification": f"FC-{frappe.generate_hash(length=6)}",
+                "drive_file_id": drive_file_id,
+                "canonical_ref": f"drv:{self.organization}:{drive_file_id}",
                 "student_applicant": kwargs.get("student_applicant"),
                 "guardian_row_name": kwargs.get("guardian_row_name"),
             }
@@ -1653,6 +1646,8 @@ class TestSubmitApplication(FrappeTestCase):
             )
 
         self.assertTrue(payload.get("ok"))
+        self.assertTrue(str(payload.get("drive_file_id") or "").startswith("DRV-FILE-"))
+        self.assertTrue(str(payload.get("canonical_ref") or "").startswith(f"drv:{self.organization}:"))
         self.assertEqual(captured["student_applicant"], self.applicant.name)
         self.assertEqual(captured["guardian_row_name"], guardian_row_name)
         self.assertEqual(captured["upload_source"], "SPA")
@@ -1675,10 +1670,12 @@ class TestSubmitApplication(FrappeTestCase):
 
         def _capture_drive_upload(**kwargs):
             captured.update(kwargs)
+            drive_file_id = f"DRV-FILE-{frappe.generate_hash(length=6)}"
             return {
                 "file": f"FILE-{frappe.generate_hash(length=8)}",
                 "file_url": f"/private/files/health-proof-{frappe.generate_hash(length=6)}.png",
-                "classification": f"FC-{frappe.generate_hash(length=6)}",
+                "drive_file_id": drive_file_id,
+                "canonical_ref": f"drv:{self.organization}:{drive_file_id}",
                 "student_applicant": kwargs.get("student_applicant"),
                 "applicant_health_profile": kwargs.get("applicant_health_profile"),
             }

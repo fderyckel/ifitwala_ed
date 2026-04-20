@@ -2001,7 +2001,7 @@ def upload_applicant_profile_image(
 
     applicant = frappe.get_doc("Student Applicant", applicant_name)
     if not applicant.get("organization") or not applicant.get("school"):
-        frappe.throw(_("Organization and School are required for file classification."))
+        frappe.throw(_("Organization and School are required for governed admissions uploads."))
 
     upload_result = admission_api.upload_applicant_profile_image(
         student_applicant=applicant.name,
@@ -2059,7 +2059,7 @@ def upload_applicant_guardian_image(
 
     applicant = frappe.get_doc("Student Applicant", applicant_name)
     if not applicant.get("organization") or not applicant.get("school"):
-        frappe.throw(_("Organization and School are required for file classification."))
+        frappe.throw(_("Organization and School are required for governed admissions uploads."))
 
     upload_result = admission_api.upload_applicant_guardian_image(
         student_applicant=applicant.name,

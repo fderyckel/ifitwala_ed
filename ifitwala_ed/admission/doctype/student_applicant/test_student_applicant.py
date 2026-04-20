@@ -322,19 +322,37 @@ class TestStudentApplicant(FrappeTestCase):
         for name in copied_file_names:
             self._created.append(("File", name))
 
-        copied_classifications = frappe.get_all(
-            "File Classification",
-            filters={
-                "primary_subject_type": "Student",
-                "primary_subject_id": student_name,
-                "source_file": source_file.name,
-            },
+        copied_drive_rows = frappe.get_all(
+            "Drive File",
+            filters={"file": ["in", copied_file_names]},
+            fields=["name", "file", "primary_subject_type", "primary_subject_id", "attached_doctype", "attached_name"],
+        )
+        self.assertTrue(copied_drive_rows)
+        self.assertTrue(set(copied_file_names).issubset({row["file"] for row in copied_drive_rows}))
+        for row in copied_drive_rows:
+            self.assertEqual(row.get("primary_subject_type"), "Student")
+            self.assertEqual(row.get("primary_subject_id"), student_name)
+            self.assertEqual(row.get("attached_doctype"), "Student")
+            self.assertEqual(row.get("attached_name"), student_name)
+            self._created.append(("Drive File", row["name"]))
+
+        drive_file_names = [row["name"] for row in copied_drive_rows if row.get("name")]
+        drive_versions = frappe.get_all(
+            "Drive File Version",
+            filters={"drive_file": ["in", drive_file_names]},
             fields=["name"],
         )
-        copied_classification_names = [row["name"] for row in copied_classifications]
-        self.assertTrue(copied_classification_names)
-        for name in copied_classification_names:
-            self._created.append(("File Classification", name))
+        self.assertTrue(drive_versions)
+        for row in drive_versions:
+            self._created.append(("Drive File Version", row["name"]))
+
+        drive_bindings = frappe.get_all(
+            "Drive Binding",
+            filters={"drive_file": ["in", drive_file_names]},
+            fields=["name"],
+        )
+        for row in drive_bindings:
+            self._created.append(("Drive Binding", row["name"]))
 
     def test_required_document_type_from_parent_school_applies_to_child_school_applicant(self):
         code = f"parent_req_{frappe.generate_hash(length=6)}"
@@ -1307,24 +1325,27 @@ class TestStudentApplicant(FrappeTestCase):
         self._created.append(("Guardian", guardian_name))
 
         guardian_doc = frappe.get_doc("Guardian", guardian_name)
-        profile_classification_name = frappe.db.get_value(
-            "File Classification",
-            {
+        profile_drive_file = frappe.get_all(
+            "Drive File",
+            filters={
                 "primary_subject_type": "Guardian",
                 "primary_subject_id": guardian_name,
                 "slot": "profile_image",
-                "is_current_version": 1,
+                "status": "active",
             },
-            "name",
+            fields=["name", "file", "purpose", "attached_doctype", "attached_name", "current_version"],
+            limit=1,
         )
-        self.assertTrue(bool(profile_classification_name))
-        self._created.append(("File Classification", profile_classification_name))
+        self.assertEqual(len(profile_drive_file), 1)
+        profile_drive_row = profile_drive_file[0]
+        self._created.append(("Drive File", profile_drive_row["name"]))
+        self.assertEqual(profile_drive_row.get("purpose"), "guardian_profile_display")
+        self.assertEqual(profile_drive_row.get("attached_doctype"), "Guardian")
+        self.assertEqual(profile_drive_row.get("attached_name"), guardian_name)
+        self.assertTrue(bool(profile_drive_row.get("current_version")))
+        self._created.append(("Drive File Version", profile_drive_row["current_version"]))
 
-        profile_classification = frappe.get_doc("File Classification", profile_classification_name)
-        self.assertEqual(profile_classification.purpose, "guardian_profile_display")
-        self.assertEqual(profile_classification.source_file, source_file.name)
-
-        profile_file = frappe.get_doc("File", profile_classification.file)
+        profile_file = frappe.get_doc("File", profile_drive_row["file"])
         self._created.append(("File", profile_file.name))
         self.assertEqual(profile_file.attached_to_doctype, "Guardian")
         self.assertEqual(profile_file.attached_to_name, guardian_name)
@@ -1332,21 +1353,16 @@ class TestStudentApplicant(FrappeTestCase):
         self.assertEqual(guardian_doc.guardian_image, profile_file.file_url)
 
         derivative_rows = frappe.get_all(
-            "File Classification",
+            "Drive File Derivative",
             filters={
-                "primary_subject_type": "Guardian",
-                "primary_subject_id": guardian_name,
-                "source_file": profile_file.name,
+                "drive_file": profile_drive_row["name"],
             },
-            fields=["name", "slot", "file"],
+            fields=["name", "derivative_role"],
         )
-        derivative_slots = {row["slot"] for row in derivative_rows}
-        self.assertTrue(
-            {"profile_image_thumb", "profile_image_card", "profile_image_medium"}.issubset(derivative_slots)
-        )
+        derivative_roles = {row["derivative_role"] for row in derivative_rows}
+        self.assertTrue({"thumb", "card", "viewer_preview"}.issubset(derivative_roles))
         for row in derivative_rows:
-            self._created.append(("File Classification", row["name"]))
-            self._created.append(("File", row["file"]))
+            self._created.append(("Drive File Derivative", row["name"]))
 
     def test_promote_to_student_carries_non_signing_guardian_authority(self):
         guardian = self._create_guardian(

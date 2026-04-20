@@ -330,8 +330,9 @@ In both modes, access is enforced **server-side**, not via UI hiding.
 
 ### 9.2 GDPR alignment (baseline)
 
-* All uploads are linked to Student Applicant
-* File Classification primary subject is **Student Applicant**
+* All applicant-side portal uploads are anchored to `Student Applicant`
+* Authoritative governed metadata lives on `Drive File`, with primary subject **Student Applicant**
+* Native `File` rows remain compatibility projections only
 * All files are deletable via Applicant purge
 * No documents live directly on User
 * Files are never moved or re-linked on promotion
@@ -554,12 +555,13 @@ ApplicantProfilePayload {
   * personal/work emails must pass email validation
   * mobile/work phones must pass phone validation
 * Profile image upload is applicant-scoped and mutable-status only.
-* Profile image upload must route through dispatcher classification:
+* Profile image upload must route through the admissions Drive-governed upload contract:
   * `data_class = identity_image`
   * `purpose = applicant_profile_display`
   * `retention_policy = until_school_exit_plus_6m`
   * `slot = profile_image`
   * `upload_source = SPA`
+  * response includes the compatibility `File` projection plus `drive_file_id` and `canonical_ref`
 * Applicant and guardian portal photo uploads accept only `JPG`, `JPEG`, or `PNG`.
 * Upload validation is server-owned:
   * file extension allowlist is enforced
@@ -738,7 +740,7 @@ ApplicantDocumentSubmission {
 * Non-repeatable requirements reuse the existing submission row on replacement
 * Repeatable requirements may allocate additional submission rows
 * No direct file uploads to `Student Applicant` or `Applicant Document`
-* File Classification primary subject is always **Student Applicant**
+* Authoritative `Drive File.primary_subject_type` is always **Student Applicant** for applicant-side evidence uploads
 * Recommendation-template target document types are excluded from applicant document reads and uploads; applicants track referee progress only via `/admissions/status`
 
 ---

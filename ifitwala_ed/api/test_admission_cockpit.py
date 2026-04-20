@@ -9,7 +9,6 @@ from unittest.mock import patch
 import frappe
 from frappe.tests.utils import FrappeTestCase
 
-from ifitwala_ed.admission.admission_utils import get_applicant_document_slot_spec
 from ifitwala_ed.api.admission_cockpit import (
     get_admissions_cockpit_data,
     hydrate_admissions_cockpit_request,
@@ -20,7 +19,6 @@ from ifitwala_ed.api.admissions_review import (
     review_applicant_document_submission,
     set_document_requirement_override,
 )
-from ifitwala_ed.utilities import file_dispatcher
 
 
 class TestAdmissionCockpit(FrappeTestCase):
@@ -504,35 +502,27 @@ class TestAdmissionCockpit(FrappeTestCase):
 
         def _fake_drive_upload_and_finalize(*, create_session_callable, payload, content):
             self.assertIs(create_session_callable, fake_drive_admissions.upload_applicant_document)
-            slot_spec = get_applicant_document_slot_spec(document_type=payload["document_type"])
-            item_slot_key = f"{slot_spec['slot']}_{frappe.scrub(payload['item_key'])[:80]}"
-            file_doc = file_dispatcher.create_and_classify_file(
-                file_kwargs={
+            file_doc = frappe.get_doc(
+                {
+                    "doctype": "File",
                     "attached_to_doctype": "Applicant Document Item",
                     "attached_to_name": payload["applicant_document_item"],
                     "file_name": payload["filename_original"],
                     "content": content,
                     "is_private": 1,
-                },
-                classification={
-                    "primary_subject_type": "Student Applicant",
-                    "primary_subject_id": payload["student_applicant"],
-                    "data_class": slot_spec["data_class"],
-                    "purpose": slot_spec["purpose"],
-                    "retention_policy": slot_spec["retention_policy"],
-                    "slot": item_slot_key,
-                    "organization": self.organization,
-                    "school": self.school,
-                    "upload_source": payload.get("upload_source") or "SPA",
-                },
+                }
             )
-            classification_name = frappe.db.get_value("File Classification", {"file": file_doc.name}, "name")
+            file_doc.flags.governed_upload = True
+            file_doc.insert(ignore_permissions=True)
+            self._created.append(("File", file_doc.name))
+            drive_file_id = f"DRV-{file_doc.name}"
             return (
                 {"upload_session_id": "DUS-TEST"},
                 {
                     "file_id": file_doc.name,
                     "file_url": file_doc.file_url,
-                    "classification": classification_name,
+                    "drive_file_id": drive_file_id,
+                    "canonical_ref": f"drv:{self.organization}:{drive_file_id}",
                     "applicant_document": payload["applicant_document"],
                     "applicant_document_item": payload["applicant_document_item"],
                     "item_key": payload["item_key"],
