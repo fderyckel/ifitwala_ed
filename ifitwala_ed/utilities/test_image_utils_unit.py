@@ -124,6 +124,27 @@ class TestImageUtilsUnit(TestCase):
             "/resolved/STU-0025/FILE-STU-0025/thumb",
         )
 
+    def test_get_preferred_student_image_url_can_skip_original_fallback(self):
+        with _image_utils_module() as (image_utils, _frappe):
+            original_url = "/private/files/student/original.png"
+
+            with (
+                patch.object(image_utils, "_get_governed_image_variants_map", return_value={"STU-0001": {}}),
+                patch.object(
+                    image_utils,
+                    "_resolve_original_governed_image_url",
+                    return_value=original_url,
+                ) as resolve_original,
+            ):
+                image_url = image_utils.get_preferred_student_image_url(
+                    "STU-0001",
+                    original_url=original_url,
+                    fallback_to_original=False,
+                )
+
+        resolve_original.assert_not_called()
+        self.assertIsNone(image_url)
+
     def test_get_preferred_employee_image_url_uses_ready_drive_derivative_role(self):
         with _image_utils_module() as (image_utils, frappe):
             image_utils.get_current_drive_files_for_slots = lambda **kwargs: [

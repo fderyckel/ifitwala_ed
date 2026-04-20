@@ -157,6 +157,7 @@ Implemented fix:
 - Drive is the only derivative authority
 - Ed synchronous derivative generation is removed
 - profile-image derivative scheduling now goes through the Drive preview pipeline
+- small student roster/avatar surfaces such as gradebook, attendance, and student-log lookup now consume governed profile-image derivatives only and do not fall back to original-file URLs when no derivative is ready
 
 ### 2.6 Resolved: governed profile-image reads no longer probe storage directly
 

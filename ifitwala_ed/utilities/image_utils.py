@@ -643,12 +643,14 @@ def get_preferred_student_image_url(
     *,
     original_url: str | None = None,
     slots: Sequence[str] = STUDENT_VARIANT_PRIORITY,
+    fallback_to_original: bool = True,
 ) -> str | None:
     return _get_preferred_governed_image_url(
         "Student",
         student_name,
         original_url=original_url,
         slots=slots,
+        fallback_to_original=fallback_to_original,
     )
 
 
@@ -667,6 +669,7 @@ def apply_preferred_student_images(
     student_field: str = "student",
     image_field: str = "student_image",
     slots: Sequence[str] = STUDENT_VARIANT_PRIORITY,
+    fallback_to_original: bool = True,
 ) -> list[dict]:
     return _apply_preferred_governed_images(
         rows,
@@ -674,6 +677,7 @@ def apply_preferred_student_images(
         subject_field=student_field,
         image_field=image_field,
         slots=slots,
+        fallback_to_original=fallback_to_original,
     )
 
 

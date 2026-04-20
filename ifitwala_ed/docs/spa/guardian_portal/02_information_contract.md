@@ -1,9 +1,9 @@
-# Guardian Home Information Contract (v0.3)
+# Guardian Home Information Contract (v0.4)
 
 Status: Active
 Audience: Humans, coding agents
 Scope: `/hub/guardian` family information surfaces
-Last updated: 2026-04-19
+Last updated: 2026-04-20
 
 This document defines the canonical information contract for Guardian Home plus the Phase-2 guardian policy, finance, and monitoring surfaces.
 
@@ -48,7 +48,7 @@ Rules:
 
 1. Guardian Home shows the portal heading, the configured school-day window, and a refresh action.
 2. The summary cards show `unread_communications`, `unread_visible_student_logs`, `upcoming_due_tasks`, and `upcoming_assessments`.
-3. Quick links route guardians to communications, course selection, activities, policies, finance, monitoring, portfolio, and the family snapshot.
+3. Quick links route guardians to communications, course selection, activities, attendance, policies, finance, monitoring, portfolio, and the family snapshot, and launch the `School Calendar` monthly overlay from Guardian Home.
 4. The guardian portal shell may surface an unread communication badge on the `Communications` rail item using the same unread org-communication count shown by the family snapshot.
 5. The landing page remains a briefing surface; navigation is secondary.
 
@@ -214,7 +214,33 @@ Rules:
 3. Attendance cells summarize each recorded day as `present`, `late`, or `absence`, and clicking a day reveals plain-language details for that day only.
 4. Attendance detail may expose time, attendance code, course, location, and remark, but it must not expose `rotation_day` or `block_number`.
 
-## 10. Explicit Exclusions
+## 10. School Calendar Overlay
+
+Status: Implemented
+
+Code refs:
+
+- `ifitwala_ed/api/guardian_calendar.py`
+- `ifitwala_ed/api/guardian_communications.py`
+- `ifitwala_ed/ui-spa/src/types/contracts/guardian/get_guardian_calendar_overlay.ts`
+- `ifitwala_ed/ui-spa/src/lib/services/guardianCalendar/guardianCalendarService.ts`
+- `ifitwala_ed/ui-spa/src/overlays/guardian/GuardianCalendarOverlay.vue`
+
+Test refs:
+
+- `ifitwala_ed/api/test_guardian_calendar.py`
+- `ifitwala_ed/ui-spa/src/lib/services/guardianCalendar/__tests__/guardianCalendarService.test.ts`
+- `ifitwala_ed/ui-spa/src/overlays/guardian/__tests__/GuardianCalendarOverlay.test.ts`
+
+Rules:
+
+1. The `School Calendar` quick link on Guardian Home opens one canonical payload: `get_guardian_calendar_overlay`.
+2. The overlay payload is month-scoped and includes the family child list, filter options, summary counts, and one merged `items` collection of `holiday` and `school_event` rows.
+3. The overlay is read-only and stays family-first by default, with optional child and school filters plus `Show holidays` and `Show school events` toggles.
+4. Item rows expose matched child labels from the server and may expose one `open_target` only for school-event detail.
+5. Holiday rows stay inline to the overlay agenda; school-event rows may open the existing school-event detail overlay.
+
+## 11. Explicit Exclusions
 
 Status: Implemented
 

@@ -17,8 +17,5 @@ Read in this order:
    server-enforced guardian visibility rules
 4. `04_guardian_actions.md`
    guardian-initiated action boundaries
-
-Non-authoritative proposal:
-
 5. `05_guardian_calendar_overlay_proposal.md`
-   proposal for a family-facing monthly school-calendar overlay launched from Guardian Home
+   canonical contract for the family-facing monthly school-calendar overlay launched from Guardian Home

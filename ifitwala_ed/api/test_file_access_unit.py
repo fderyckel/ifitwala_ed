@@ -100,6 +100,47 @@ class TestFileAccessUnit(TestCase):
         self.assertEqual((query.get("drive_file_id") or [None])[0], "DRIVE-FILE-2")
         self.assertIsNone(missing_url)
 
+    def test_resolve_admissions_file_open_url_requires_explicit_identity_for_private_files(self):
+        with _file_access_module() as (file_access, frappe):
+            frappe.db.get_value = lambda *args, **kwargs: self.fail("unexpected compatibility file lookup")
+
+            self.assertIsNone(
+                file_access.resolve_admissions_file_open_url(
+                    file_name=None,
+                    file_url="/private/files/applicant.png",
+                    context_doctype="Student Applicant",
+                    context_name="APPL-0001",
+                )
+            )
+
+    def test_resolve_admissions_file_preview_url_requires_explicit_identity_for_private_files(self):
+        with _file_access_module() as (file_access, frappe):
+            frappe.db.get_value = lambda *args, **kwargs: self.fail("unexpected compatibility file lookup")
+
+            self.assertIsNone(
+                file_access.resolve_admissions_file_preview_url(
+                    file_name=None,
+                    file_url="/private/files/applicant.png",
+                    context_doctype="Student Applicant",
+                    context_name="APPL-0001",
+                    preview_ready=True,
+                )
+            )
+
+    def test_resolve_admissions_file_thumbnail_url_requires_explicit_identity_for_private_files(self):
+        with _file_access_module() as (file_access, frappe):
+            frappe.db.get_value = lambda *args, **kwargs: self.fail("unexpected compatibility file lookup")
+
+            self.assertIsNone(
+                file_access.resolve_admissions_file_thumbnail_url(
+                    file_name=None,
+                    file_url="/private/files/applicant.png",
+                    context_doctype="Student Applicant",
+                    context_name="APPL-0001",
+                    thumbnail_ready=True,
+                )
+            )
+
     def test_get_academic_file_thumbnail_ready_map_marks_only_ready_thumb_derivatives(self):
         with _file_access_module() as (file_access, frappe):
 

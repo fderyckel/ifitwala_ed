@@ -284,8 +284,6 @@ def resolve_admissions_file_open_url(
     resolved_name = (file_name or "").strip()
     resolved_drive_file_id = (drive_file_id or "").strip()
     resolved_canonical_ref = (canonical_ref or "").strip()
-    if not resolved_name and not resolved_drive_file_id and not resolved_canonical_ref:
-        resolved_name = _resolve_file_name_from_url(raw_url) or ""
     if not (resolved_name or resolved_drive_file_id or resolved_canonical_ref):
         return raw_url if _is_public_site_file_url(raw_url) else None
 
@@ -316,9 +314,6 @@ def resolve_admissions_file_preview_url(
     resolved_name = (file_name or "").strip()
     resolved_drive_file_id = (drive_file_id or "").strip()
     resolved_canonical_ref = (canonical_ref or "").strip()
-    if not resolved_name and not resolved_drive_file_id and not resolved_canonical_ref:
-        resolved_name = _resolve_file_name_from_url(raw_url) or ""
-
     if not (resolved_name or resolved_drive_file_id or resolved_canonical_ref):
         return raw_url if _is_public_site_file_url(raw_url) else None
 
@@ -352,9 +347,6 @@ def resolve_admissions_file_thumbnail_url(
     resolved_name = (file_name or "").strip()
     resolved_drive_file_id = (drive_file_id or "").strip()
     resolved_canonical_ref = (canonical_ref or "").strip()
-    if not resolved_name and not resolved_drive_file_id and not resolved_canonical_ref:
-        resolved_name = _resolve_file_name_from_url(raw_url) or ""
-
     if not (resolved_name or resolved_drive_file_id or resolved_canonical_ref):
         return None
     if thumbnail_ready is False:

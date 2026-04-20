@@ -784,7 +784,12 @@ def _get_student_meta_map(student_ids):
         fields=fields,
         limit=0,
     )
-    apply_preferred_student_images(rows, student_field="name", image_field="student_image")
+    apply_preferred_student_images(
+        rows,
+        student_field="name",
+        image_field="student_image",
+        fallback_to_original=False,
+    )
     return {row.get("name"): row for row in rows if row.get("name")}
 
 

@@ -892,16 +892,65 @@ def _file_is_scoped_to_applicant(*, file_row: dict, applicant_name: str) -> bool
     )
 
 
+def _resolve_applicant_profile_image_file(*, applicant_name: str, applicant_image: str | None) -> dict | None:
+    image_value = _as_text(applicant_image).strip()
+    if not image_value:
+        return None
+
+    drive_file = _resolve_applicant_profile_image_drive_file(applicant_name=applicant_name)
+    file_name = _as_text((drive_file or {}).get("file")).strip()
+    if file_name:
+        row = frappe.db.get_value(
+            "File",
+            file_name,
+            ["name", "file_url", "attached_to_doctype", "attached_to_name", "attached_to_field"],
+            as_dict=True,
+        )
+        if row and _file_is_scoped_to_applicant(file_row=row, applicant_name=applicant_name):
+            return row
+
+    file_name = ""
+    if "download_admissions_file" in image_value:
+        parsed = urlparse(image_value)
+        file_name = _as_text((parse_qs(parsed.query).get("file") or [""])[0]).strip()
+    if file_name:
+        row = frappe.db.get_value(
+            "File",
+            file_name,
+            ["name", "file_url", "attached_to_doctype", "attached_to_name", "attached_to_field"],
+            as_dict=True,
+        )
+        if row and _file_is_scoped_to_applicant(file_row=row, applicant_name=applicant_name):
+            return row
+
+    file_rows = frappe.get_all(
+        "File",
+        filters={"file_url": image_value},
+        fields=["name", "file_url", "attached_to_doctype", "attached_to_name", "attached_to_field"],
+        order_by="creation desc",
+        limit=5,
+    )
+    for row in file_rows:
+        if _file_is_scoped_to_applicant(file_row=row, applicant_name=applicant_name):
+            return row
+
+    return None
+
+
 def _applicant_image_open_url(*, applicant_name: str, applicant_image: str | None) -> str:
     image_value = _as_text(applicant_image).strip()
     if not image_value:
         return ""
 
     drive_file = _resolve_applicant_profile_image_drive_file(applicant_name=applicant_name) or {}
-    fallback_file_url = None if drive_file.get("name") or drive_file.get("canonical_ref") else image_value
+    file_row = _resolve_applicant_profile_image_file(
+        applicant_name=applicant_name,
+        applicant_image=image_value,
+    )
+    fallback_file_url = None if (drive_file.get("name") or drive_file.get("canonical_ref") or file_row) else image_value
     return (
         resolve_admissions_file_open_url(
-            file_name=drive_file.get("file"),
+            file_name=(file_row or {}).get("name") or drive_file.get("file"),
             file_url=fallback_file_url,
             drive_file_id=drive_file.get("name"),
             canonical_ref=drive_file.get("canonical_ref"),

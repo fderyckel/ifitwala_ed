@@ -108,7 +108,12 @@ def get_student_group_students(
         {"sg": student_group, "limit": page_length, "offset": start},
         as_dict=True,
     )
-    return apply_preferred_student_images(rows, student_field="student", image_field="student_image")
+    return apply_preferred_student_images(
+        rows,
+        student_field="student",
+        image_field="student_image",
+        fallback_to_original=False,
+    )
 
 
 @frappe.whitelist()

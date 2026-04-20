@@ -64,3 +64,20 @@ class TestStudentImageUtils(FrappeTestCase):
             rows[0]["student_image"],
             "/api/method/ifitwala_ed.api.file_access.download_academic_file?file=FILE-ORIGINAL&context_doctype=Student&context_name=STU-0001",
         )
+
+    def test_apply_preferred_student_images_can_skip_original_fallback(self):
+        rows = [{"name": "STU-0001", "student_image": "/private/files/student/original_student.png"}]
+
+        with (
+            patch("ifitwala_ed.utilities.image_utils._get_governed_image_variants_map", return_value={"STU-0001": {}}),
+            patch("ifitwala_ed.utilities.image_utils._resolve_original_governed_image_url") as resolve_original,
+        ):
+            image_utils.apply_preferred_student_images(
+                rows,
+                student_field="name",
+                image_field="student_image",
+                fallback_to_original=False,
+            )
+
+        resolve_original.assert_not_called()
+        self.assertIsNone(rows[0]["student_image"])

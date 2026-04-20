@@ -156,6 +156,7 @@ Refined direction:
 - `preview_url` remains the richer preview action
 - `open_url` remains the original-file compatibility baseline and explicit fallback
 - image and PDF card surfaces may fall back to `preview_url` inline when `thumbnail_url` is absent or when the thumbnail delivery route fails, so a missing card derivative does not blank the whole card while Drive catches up
+- if Drive determines that an explicit card derivative is stale for the current version/render spec, Ed thumbnail routes should treat it the same as missing and let the SPA fall back to `preview_url` instead of serving an undersized legacy artifact
 - Ed-owned thumbnail routes may use short-lived `frappe.cache()` entries for resolved redirect targets only, never for raw file bytes and never for DTO-embedded provider URLs
 - cache keys must include at least `drive_file`, current version identity, derivative role, and the relevant surface/context dimensions so tenant and portal scope cannot leak
 - cache TTL must stay shorter than the underlying Drive grant lifetime

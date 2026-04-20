@@ -170,6 +170,56 @@ class TestFileAccessUrlContracts(FrappeTestCase):
                 )
             )
 
+    def test_resolve_admissions_file_open_url_requires_explicit_identity_for_private_files(self):
+        with patch(
+            "ifitwala_ed.api.file_access.frappe.db.get_value",
+            side_effect=AssertionError("unexpected compatibility file lookup"),
+        ):
+            from ifitwala_ed.api.file_access import resolve_admissions_file_open_url
+
+            self.assertIsNone(
+                resolve_admissions_file_open_url(
+                    file_name=None,
+                    file_url="/private/files/applicant.png",
+                    context_doctype="Student Applicant",
+                    context_name="APPL-0001",
+                )
+            )
+
+    def test_resolve_admissions_file_preview_url_requires_explicit_identity_for_private_files(self):
+        with patch(
+            "ifitwala_ed.api.file_access.frappe.db.get_value",
+            side_effect=AssertionError("unexpected compatibility file lookup"),
+        ):
+            from ifitwala_ed.api.file_access import resolve_admissions_file_preview_url
+
+            self.assertIsNone(
+                resolve_admissions_file_preview_url(
+                    file_name=None,
+                    file_url="/private/files/applicant.png",
+                    context_doctype="Student Applicant",
+                    context_name="APPL-0001",
+                    preview_ready=True,
+                )
+            )
+
+    def test_resolve_admissions_file_thumbnail_url_requires_explicit_identity_for_private_files(self):
+        with patch(
+            "ifitwala_ed.api.file_access.frappe.db.get_value",
+            side_effect=AssertionError("unexpected compatibility file lookup"),
+        ):
+            from ifitwala_ed.api.file_access import resolve_admissions_file_thumbnail_url
+
+            self.assertIsNone(
+                resolve_admissions_file_thumbnail_url(
+                    file_name=None,
+                    file_url="/private/files/applicant.png",
+                    context_doctype="Student Applicant",
+                    context_name="APPL-0001",
+                    thumbnail_ready=True,
+                )
+            )
+
     def test_resolve_academic_file_open_url_never_leaks_unresolved_private_file_urls(self):
         with patch("ifitwala_ed.api.file_access.frappe.db.get_value", return_value=None):
             self.assertIsNone(
