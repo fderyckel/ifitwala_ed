@@ -51,6 +51,7 @@ Current domain indexes:
 - `curriculum/README.md`
 - `enrollment/README.md`
 - `files_and_policies/README.md`
+- `printing/README.md`
 - `scheduling/README.md`
 - `spa/README.md`
 - `testing/README.md`
