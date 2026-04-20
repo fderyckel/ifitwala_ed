@@ -133,8 +133,7 @@
 
 			<!-- Calendar shell with rounded corners + clipping and breathing room -->
 			<div
-				class="relative mt-6 overflow-hidden rounded-2xl border border-[rgb(var(--border-rgb)/0.95)] bg-white p-2 shadow-soft sm:p-4"
-				style="--if-calendar-time-slot-height: 96px"
+				class="schedule-calendar__viewport relative mt-6 overflow-hidden rounded-2xl border border-[rgb(var(--border-rgb)/0.95)] bg-white p-2 shadow-soft sm:p-4"
 			>
 				<FullCalendar ref="calendarRef" :options="calendarOptions" class="calendar-shell" />
 

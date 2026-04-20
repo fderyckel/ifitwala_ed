@@ -8,6 +8,7 @@ import pytz
 from ifitwala_ed.api.calendar_export import (
     PDF_OPTIONS,
     _build_timetable_weeks,
+    _format_date_span,
     _render_staff_timetable_pdf,
     _resolve_brand_context,
     _resolve_staff_timetable_window,
@@ -28,6 +29,11 @@ class TestCalendarExport(TestCase):
 
         self.assertEqual(window["start_date"], date(2026, 4, 20))
         self.assertEqual(window["end_date_exclusive"], date(2026, 5, 4))
+
+    def test_format_date_span_uses_human_readable_ordinal_dates(self):
+        label = _format_date_span(date(2026, 4, 20), date(2026, 5, 3))
+
+        self.assertEqual(label, "20th April to 3rd May 2026")
 
     def test_build_timetable_weeks_expands_multi_day_events_and_sorts_timed_events(self):
         tzinfo = pytz.timezone("UTC")

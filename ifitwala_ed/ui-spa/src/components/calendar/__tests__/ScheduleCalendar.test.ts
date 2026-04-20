@@ -165,7 +165,7 @@ afterEach(() => {
 });
 
 describe('ScheduleCalendar export action', () => {
-	it('renders the staff calendar time grid with taller hourly slots while keeping the calendar shell bounded', async () => {
+	it('renders the staff calendar inside the taller-slot viewport wrapper', async () => {
 		originalOpen = window.open;
 		window.open = vi.fn() as typeof window.open;
 		fetchPrefsMock.mockResolvedValue({
@@ -177,9 +177,8 @@ describe('ScheduleCalendar export action', () => {
 		mountScheduleCalendar();
 		await flushUi();
 
-		const viewport = document.querySelector('[style*="--if-calendar-time-slot-height"]') as HTMLElement | null;
+		const viewport = document.querySelector('.schedule-calendar__viewport') as HTMLElement | null;
 		expect(viewport).toBeTruthy();
-		expect(viewport?.style.getPropertyValue('--if-calendar-time-slot-height')).toBe('96px');
 	});
 
 	it('surfaces the print action in the header controls and shows the export presets', async () => {

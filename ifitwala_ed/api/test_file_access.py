@@ -696,6 +696,61 @@ class TestFileAccessUrlContracts(FrappeTestCase):
 
         self.assertEqual(frappe.local.response, {})
 
+    def test_preview_academic_file_uses_material_grant_wrapper_for_material_placement(self):
+        file_row = {
+            "name": "FILE-MAT-1",
+            "file_url": "/private/files/Courses/COURSE-1/material.pdf",
+            "file_name": "material.pdf",
+            "is_private": 1,
+            "attached_to_doctype": "Supporting Material",
+            "attached_to_name": "MAT-1",
+        }
+        wrapper_calls = []
+
+        with (
+            patch("ifitwala_ed.api.file_access._resolve_authorized_academic_file", return_value=file_row),
+            patch(
+                "ifitwala_ed.api.file_access._resolve_supporting_material_context_for_file",
+                return_value=("MAT-1", "COURSE-1"),
+            ),
+            patch("ifitwala_ed.api.file_access._assert_internal_material_context", return_value="MAT-PLC-1"),
+            patch(
+                "ifitwala_ed.api.file_access._resolve_current_material_drive_file",
+                return_value={"name": "DRIVE-0001", "file": "FILE-CURRENT-1"},
+            ),
+            patch("ifitwala_ed.api.file_access._load_drive_materials_callable") as load_materials,
+            patch(
+                "ifitwala_ed.api.file_access._load_drive_access_callable",
+                side_effect=AssertionError("generic Drive grant path should not be used"),
+            ),
+        ):
+            load_materials.side_effect = lambda attribute: (
+                lambda **kwargs: (
+                    wrapper_calls.append((attribute, kwargs)) or {"url": "https://preview.example.com/material.pdf"}
+                )
+            )
+            frappe.local.response = {}
+            preview_academic_file(
+                file="FILE-MAT-1",
+                context_doctype="Material Placement",
+                context_name="MAT-PLC-1",
+            )
+
+        self.assertEqual(frappe.local.response.get("type"), "redirect")
+        self.assertEqual(frappe.local.response.get("location"), "https://preview.example.com/material.pdf")
+        self.assertEqual(
+            wrapper_calls,
+            [
+                (
+                    "issue_supporting_material_preview_grant",
+                    {
+                        "material": "MAT-1",
+                        "placement": "MAT-PLC-1",
+                    },
+                )
+            ],
+        )
+
     def test_open_org_communication_attachment_redirects_to_drive_download_grant(self):
         attachment_row = frappe._dict(
             name="row-001",
@@ -1353,6 +1408,90 @@ class TestFileAccessUrlContracts(FrappeTestCase):
         self.assertEqual(
             grant_requests,
             [{"drive_file_id": "DRIVE-0001", "derivative_role": "thumb"}],
+        )
+        self.assertEqual(frappe.local.response.get("type"), "redirect")
+        self.assertEqual(
+            frappe.local.response.get("location"),
+            "https://thumb.example.com/material-thumb.webp",
+        )
+        self.assertEqual(
+            (frappe.local.response.get("headers") or {}).get("Cache-Control"),
+            "private, max-age=240, must-revalidate",
+        )
+
+    def test_thumbnail_academic_file_uses_material_thumb_grant_wrapper(self):
+        file_row = {
+            "name": "FILE-MAT-1",
+            "file_url": "/private/files/Courses/COURSE-1/material.png",
+            "file_name": "material.png",
+            "is_private": 1,
+            "attached_to_doctype": "Supporting Material",
+            "attached_to_name": "MAT-1",
+        }
+
+        class _FakeCache:
+            def __init__(self):
+                self.values = {}
+
+            def get_value(self, key):
+                return self.values.get(key)
+
+            def set_value(self, key, value, expires_in_sec=None):
+                self.values[key] = value
+
+        wrapper_calls = []
+
+        def fake_get_value(doctype, filters=None, fieldname=None, as_dict=False):
+            if doctype == "Drive File" and filters == "DRIVE-0001" and fieldname == ["name", "current_version"]:
+                return {"name": "DRIVE-0001", "current_version": "DFV-0001"}
+            if doctype == "Drive File" and filters == "DRIVE-0001" and fieldname == "preview_status":
+                return "ready"
+            return None
+
+        with (
+            patch("ifitwala_ed.api.file_access._resolve_authorized_academic_file", return_value=file_row),
+            patch(
+                "ifitwala_ed.api.file_access._resolve_supporting_material_context_for_file",
+                return_value=("MAT-1", "COURSE-1"),
+            ),
+            patch("ifitwala_ed.api.file_access._assert_internal_material_context", return_value="MAT-PLC-1"),
+            patch(
+                "ifitwala_ed.api.file_access._resolve_current_material_drive_file",
+                return_value={"name": "DRIVE-0001", "file": "FILE-CURRENT-1", "current_version": "DFV-0001"},
+            ),
+            patch("ifitwala_ed.api.file_access.frappe.db.get_value", side_effect=fake_get_value),
+            patch("ifitwala_ed.api.file_access.frappe.cache", return_value=_FakeCache()),
+            patch("ifitwala_ed.api.file_access._load_drive_materials_callable") as load_materials,
+            patch(
+                "ifitwala_ed.api.file_access._load_drive_access_callable",
+                side_effect=AssertionError("generic Drive grant path should not be used"),
+            ),
+        ):
+            load_materials.side_effect = lambda attribute: (
+                lambda **kwargs: (
+                    wrapper_calls.append((attribute, kwargs))
+                    or {"url": "https://thumb.example.com/material-thumb.webp"}
+                )
+            )
+            frappe.local.response = {}
+            thumbnail_academic_file(
+                file="FILE-MAT-1",
+                context_doctype="Material Placement",
+                context_name="MAT-PLC-1",
+            )
+
+        self.assertEqual(
+            wrapper_calls,
+            [
+                (
+                    "issue_supporting_material_preview_grant",
+                    {
+                        "material": "MAT-1",
+                        "placement": "MAT-PLC-1",
+                        "derivative_role": "thumb",
+                    },
+                )
+            ],
         )
         self.assertEqual(frappe.local.response.get("type"), "redirect")
         self.assertEqual(

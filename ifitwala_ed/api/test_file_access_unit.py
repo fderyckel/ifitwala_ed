@@ -516,10 +516,105 @@ class TestFileAccessUnit(TestCase):
                         "FILE-ACADEMIC-1",
                     ],
                     "strict_derivative": True,
+                    "target_resolver": None,
                 }
             ],
         )
         self.assertEqual(frappe.local.response, {})
+
+    def test_download_academic_file_accepts_local_drive_delivery_target(self):
+        with _file_access_module() as (file_access, frappe):
+            delivery_requests: list[dict] = []
+            frappe.local.response = {}
+            file_access._resolve_authorized_academic_file = lambda **kwargs: {
+                "name": "FILE-ACADEMIC-1",
+                "file_url": "/private/files/student.webp",
+                "file_name": "student.webp",
+                "is_private": 1,
+                "attached_to_doctype": "Student",
+                "attached_to_name": "STU-0001",
+            }
+            file_access._resolve_drive_download_grant_url = lambda file_name=None, **kwargs: (
+                "/private/files/ifitwala_drive/files/aa/bb/student.webp"
+            )
+            file_access._respond_with_delivery_target = lambda **kwargs: delivery_requests.append(kwargs) or True
+
+            file_access.download_academic_file(
+                file="FILE-ACADEMIC-1",
+                context_doctype="Student",
+                context_name="STU-0001",
+            )
+
+        self.assertEqual(
+            delivery_requests,
+            [{"target_url": "/private/files/ifitwala_drive/files/aa/bb/student.webp"}],
+        )
+
+    def test_preview_academic_file_accepts_local_drive_delivery_target(self):
+        with _file_access_module() as (file_access, frappe):
+            delivery_requests: list[dict] = []
+            frappe.local.response = {}
+            file_access._resolve_authorized_academic_file = lambda **kwargs: {
+                "name": "FILE-ACADEMIC-1",
+                "file_url": "/private/files/student.webp",
+                "file_name": "student.webp",
+                "is_private": 1,
+                "attached_to_doctype": "Student",
+                "attached_to_name": "STU-0001",
+            }
+            file_access._resolve_drive_preview_grant_url = lambda file_name=None, **kwargs: (
+                "/private/files/ifitwala_drive/files/aa/bb/student.webp"
+            )
+            file_access._respond_with_delivery_target = lambda **kwargs: delivery_requests.append(kwargs) or True
+
+            file_access.preview_academic_file(
+                file="FILE-ACADEMIC-1",
+                context_doctype="Student",
+                context_name="STU-0001",
+            )
+
+        self.assertEqual(
+            delivery_requests,
+            [{"target_url": "/private/files/ifitwala_drive/files/aa/bb/student.webp"}],
+        )
+
+    def test_thumbnail_academic_file_accepts_local_drive_delivery_target(self):
+        with _file_access_module() as (file_access, frappe):
+            delivery_requests: list[dict] = []
+            frappe.local.response = {}
+            file_access._resolve_authorized_academic_file = lambda **kwargs: {
+                "name": "FILE-ACADEMIC-1",
+                "file_url": "/private/files/student.webp",
+                "file_name": "student.webp",
+                "is_private": 1,
+                "attached_to_doctype": "Student",
+                "attached_to_name": "STU-0001",
+            }
+            file_access._resolve_drive_file_delivery_row = lambda file_name: {
+                "name": "DRIVE-FILE-1",
+                "preview_status": "ready",
+                "current_version": "VER-1",
+            }
+            file_access._resolve_cached_thumbnail_target_url = lambda **kwargs: (
+                "/private/files/ifitwala_drive/derivatives/aa/bb/student_thumb.webp"
+            )
+            file_access._respond_with_delivery_target = lambda **kwargs: delivery_requests.append(kwargs) or True
+
+            file_access.thumbnail_academic_file(
+                file="FILE-ACADEMIC-1",
+                context_doctype="Student",
+                context_name="STU-0001",
+            )
+
+        self.assertEqual(
+            delivery_requests,
+            [
+                {
+                    "target_url": "/private/files/ifitwala_drive/derivatives/aa/bb/student_thumb.webp",
+                    "cache_headers": True,
+                }
+            ],
+        )
 
     def test_resolve_drive_download_grant_url_returns_signed_url(self):
         with _file_access_module() as (file_access, frappe):

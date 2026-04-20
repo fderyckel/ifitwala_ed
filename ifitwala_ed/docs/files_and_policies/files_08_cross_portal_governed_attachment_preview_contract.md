@@ -29,11 +29,12 @@ Today Ifitwala_Ed already enforces the correct broad shape for governed reads:
 
 - business surfaces return server-owned `open_url` values instead of raw private paths
 - `open_org_communication_attachment(...)` re-checks communication visibility, then resolves a Drive grant just in time
-- governed open/preview routes now fail closed when no safe public/external/Drive target exists; they no longer stream local private bytes as a fallback
+- governed open/preview routes now fail closed when no safe public/external/Drive target exists; when the resolved Drive/local target is an in-site private path, Ed serves it inline instead of redirecting the browser to a raw `/private/...` URL
 - Org Communication rows now also expose a stable `preview_url` route owned by Ed plus a `preview_status` hint for renderability
 - staff, student, and guardian communication detail surfaces now render inline image previews and full-width first-page PDF previews when those governed preview routes are ready, with clean fallback cards when they are not
 - the staff task creation overlay now lets teachers queue task attachments during task composition and uses the shared preview card for current task attachments when a created task remains open for attachment recovery
 - planning-material surfaces now also expose stable `preview_url` routes for governed file resources in the staff course-plan and class-planning workspaces
+- planning-material preview and thumbnail routes now resolve governed grants through a material-scoped Drive wrapper after Ed authorizes the placement/material context, so `Material Placement` visibility no longer depends on direct `Supporting Material` DocType read permission
 - the student learning space now also exposes stable `preview_url` routes for governed file resources on `CourseDetail.vue`
 - current target surfaces now consume the nested `attachment_preview` DTO through one shared display-only SPA card layer, with thin communication, planning, student-learning, and evidence adapters around it
 - student task attachments now render inside the assigned-work brief through the shared learning attachment card, with preview and download actions driven by the governed preview DTO

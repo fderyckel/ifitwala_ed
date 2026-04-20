@@ -8,8 +8,11 @@ Code refs:
 - `ifitwala_ed/utilities/image_utils.py`
 - `ifitwala_ed/integrations/drive/authority.py`
 - `ifitwala_ed/integrations/drive/content_uploads.py`
+- `ifitwala_ed/integrations/drive/tasks.py`
 - `ifitwala_ed/integrations/drive/bridge.py`
 - `ifitwala_ed/integrations/drive/workflow_specs.py`
+- `ifitwala_ed/api/task_submission.py`
+- `ifitwala_ed/assessment/task_submission_service.py`
 - `ifitwala_drive/api/uploads.py`
 - `ifitwala_drive/services/uploads/finalize.py`
 Test refs:
@@ -19,6 +22,9 @@ Test refs:
 - `ifitwala_ed/utilities/test_image_utils_unit.py`
 - `ifitwala_ed/utilities/test_governed_uploads_task_flows.py`
 - `ifitwala_ed/admission/test_admissions_portal_uploads_unit.py`
+- `ifitwala_ed/api/test_task_submission_unit.py`
+- `ifitwala_ed/assessment/test_task_submission_service.py`
+- `ifitwala_ed/integrations/drive/test_tasks.py`
 
 ## Bottom line
 
@@ -174,7 +180,7 @@ Implemented fix:
 - read/open/display decisions come from Drive metadata and grants
 - Ed list surfaces stop probing disk for governed profile-image delivery
 
-### 2.7 Resolved: governed delivery routes no longer stream local private bytes
+### 2.7 Resolved: governed delivery routes no longer emit raw private redirects
 
 Current code:
 
@@ -182,12 +188,13 @@ Current code:
 
 Current behavior:
 
-- governed private-media routes now redirect only to:
+- governed private-media routes now either:
   - explicit external URLs allowed by the surface contract
   - explicit public `/files/...` URLs allowed by the surface contract
   - just-in-time safe Drive grant targets
-- unsafe raw `/private/...` grant targets fail closed
-- Ed no longer falls back to local file reads for admissions, academic, guardian, employee, org-communication, or public-website governed media routes
+  - inline streamed content when the resolved Drive/local grant target is an in-site private path
+- governed private-media routes must never emit raw `/private/...` redirect targets back to the browser
+- Ed no longer probes local disk to rediscover file reality before choosing a governed delivery path for admissions, academic, guardian, employee, org-communication, or public-website media routes
 
 Why the old model was wrong:
 
@@ -198,7 +205,7 @@ Why the old model was wrong:
 Implemented fix:
 
 - governed delivery routes now resolve only from safe public/external targets or Drive grants
-- raw private redirect targets are rejected instead of streamed from local disk
+- when a local-storage Drive grant resolves to an in-site private path, Ed serves it inline instead of redirecting the browser to a raw `/private/...` URL
 
 ### 2.8 Workflow semantics are too stringly-typed
 
@@ -225,6 +232,27 @@ Remaining cleanup:
 - some wrapper-specific service modules still exist for public ergonomics
 - a few historical finalize sessions may still rely on workflow detection fallback instead of persisted workflow metadata
 - some historical audit/discussion notes may still mention the retired `File Classification` and Ed-side derivative model and must not be treated as runtime design guidance
+
+### 2.9 Resolved: student task submission uploads now follow the governed append-only path
+
+Current code:
+
+- `ifitwala_ed/api/task_submission.py`
+- `ifitwala_ed/assessment/task_submission_service.py`
+- `ifitwala_ed/integrations/drive/tasks.py`
+- `ifitwala_ed/integrations/drive/content_uploads.py`
+
+Previous drift:
+
+- student portal uploads depended on generic `Task Submission.write` checks even though Student ACLs do not grant that permission
+- the student submission service tried to finalize governed files before the new `Task Submission` owner row existed
+
+Implemented fix:
+
+- student text, link, and file evidence now all go through the same `create_or_resubmit` business endpoint
+- when files are present, Ed inserts the new append-only `Task Submission` row first, then finalizes governed files against that persisted owner, then saves attachment rows on that version
+- the `task.submission` workflow now preserves staff write checks but also allows the current student when the session student matches `Task Submission.student`
+- the fix does not broaden Student DocType metadata permissions, and portal clients still do not call Drive APIs directly
 
 ## 3. Rules for new work during remaining cleanup
 
@@ -306,7 +334,7 @@ Required outcomes:
 
 - completed in code
 - governed read/open routes resolve only to safe public/external targets or Drive grants
-- raw private redirect targets fail closed instead of streaming local private bytes
+- raw private redirect targets are never emitted to the browser; local in-site private grant targets are served inline
 
 ### Phase 8
 

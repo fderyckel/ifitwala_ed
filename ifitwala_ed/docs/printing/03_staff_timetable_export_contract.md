@@ -124,6 +124,7 @@ Required visual grammar:
 - top ribbon
 - warm paper-toned background
 - school logo and school tagline when present, with logo fallback through the school ancestor chain before organization fallback
+- human-readable date ranges such as `20th April to 3rd May 2026`
 - serif-led title treatment
 - weekly day columns with soft panel treatment
 - all-day strip for holidays and all-day events
@@ -131,6 +132,7 @@ Required visual grammar:
 - no separate summary slab between the header and the weekly board
 - daily planning checkbox lines anchored to the bottom of each in-window day cell
 - bottom notes rail with three writing lines
+- Unicode-capable font fallbacks so Thai and other non-Latin content remain printable
 
 The document may borrow brand context from the employee school or organization, but it must stay within the current employee/event scope and must not guess cross-tenant branding.
 

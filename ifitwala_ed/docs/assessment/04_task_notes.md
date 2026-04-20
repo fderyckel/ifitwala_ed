@@ -3,7 +3,7 @@
 Status: **Authoritative / Current Workspace Contract**
 Scope: `Task`, `Task Delivery`, `Task Outcome`, `Task Submission`, `Task Contribution`
 Audience: Product, Engineering, and coding agents
-Last updated: 2026-04-19
+Last updated: 2026-04-20
 
 This document defines the current task runtime contract in the workspace.
 It replaces older lesson-instance-era notes and removes future-state claims that are not yet true in code.
@@ -349,15 +349,27 @@ Code refs:
 - `ifitwala_ed/assessment/doctype/task_submission/task_submission.py`
 - `ifitwala_ed/assessment/task_submission_service.py`
 - `ifitwala_ed/api/gradebook.py`
+- `ifitwala_ed/api/task_submission.py`
+- `ifitwala_ed/integrations/drive/tasks.py`
+- `ifitwala_ed/integrations/drive/content_uploads.py`
 
 Test refs:
 - `ifitwala_ed/assessment/doctype/task_submission/test_task_submission.py`
+- `ifitwala_ed/api/test_task_submission_unit.py`
+- `ifitwala_ed/assessment/test_task_submission_service.py`
+- `ifitwala_ed/integrations/drive/test_tasks.py`
 
 ### 4.1 Append-only evidence
 
 Learner evidence is append-only.
 Existing evidence cannot be overwritten in place.
 New evidence creates a new submission version.
+
+Student portal implication:
+
+- `ifitwala_ed.api.task_submission.create_or_resubmit` is the canonical student mutation path for text, links, and raw uploaded files
+- if governed files are present, the runtime inserts the new `Task Submission` owner row first, finalizes governed files against that persisted submission version, then saves attachment rows on that same version
+- the portal must not mutate attachment rows on an existing submission version in place
 
 ### 4.2 Student evidence effects
 
@@ -367,6 +379,8 @@ Student-originated evidence:
 - sets `has_new_submission = 1`
 - updates `submission_status`
 - marks prior contributions stale when newer evidence exists
+- may include text content, link evidence, governed file attachments, or a combination of those evidence types
+- file evidence uses the task-submission governed upload workflow; it does not require broad Student write permission on the `Task Submission` DocType
 
 ### 4.3 Teacher evidence stubs
 
@@ -403,6 +417,7 @@ Client code must not recompute totals or criteria summaries independently.
 Students receive assigned work through LMS-facing course and work-board payloads.
 Those payloads expose assignment timing, status, task outcome identity, submission-required flags, required class-planning context, and optional `class_session` context without exposing internal grading doctypes as the primary mental model.
 The bounded LMS bootstrap may carry task summary state, but latest submission evidence should stay lazy-loaded per selected task rather than being embedded for every assigned-work row.
+When a delivery requires submission, the selected LMS task workspace may submit text, link, and governed file evidence through the same business endpoint, and the read model must return Ed-owned attachment DTOs with stable `open_url` / `preview_url` values instead of raw private file paths.
 
 ---
 

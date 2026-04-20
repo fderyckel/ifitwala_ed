@@ -713,13 +713,101 @@ describe('CourseDetail', () => {
 			task_outcome: 'OUT-WRITE-1',
 			text_content: 'Updated lab reflection',
 			link_url: 'https://example.com/updated-reflection',
-		})
+			files: undefined,
+		}, expect.objectContaining({
+			onProgress: expect.any(Function),
+		}))
 		expect(getStudentTaskSubmissionMock).toHaveBeenNthCalledWith(2, {
 			outcome_id: 'OUT-WRITE-1',
 		})
 		expect(document.body.textContent).toContain('Version 2')
 		expect(document.body.textContent).toContain('Updated lab reflection')
 		expect(document.body.textContent).toContain('Resubmitted')
+	})
+
+	it('supports document upload in the selected task workspace', async () => {
+		resetRouteState()
+		getStudentLearningSpaceMock.mockResolvedValue(buildPayload())
+		getStudentTaskSubmissionMock
+			.mockResolvedValueOnce(buildLatestSubmission())
+			.mockResolvedValueOnce(
+				buildLatestSubmission({
+					submission_id: 'TSU-3',
+					version: 2,
+					text_content: 'Updated lab reflection',
+					link_url: 'https://example.com/final-reflection',
+					attachments: [
+						{
+							row_name: 'ATT-1',
+							kind: 'file',
+							file_name: 'lab-report.pdf',
+							open_url:
+								'/api/method/ifitwala_ed.api.file_access.download_academic_file?file=FILE-UPLOAD-1',
+							preview_url:
+								'/api/method/ifitwala_ed.api.file_access.preview_academic_file?file=FILE-UPLOAD-1',
+						},
+					],
+				})
+			)
+		submitStudentTaskSubmissionMock.mockImplementation(async (_payload, options) => {
+			options?.onProgress?.({
+				phase: 'uploading',
+				loaded: 50,
+				total: 100,
+				percent: 50,
+			})
+			return {
+				submission_id: 'TSU-3',
+				version: 2,
+				outcome_flags: {
+					has_submission: true,
+					has_new_submission: true,
+					submission_status: 'Resubmitted',
+				},
+			}
+		})
+
+		mountCourseDetail({
+			unit_plan: 'UNIT-PLAN-1',
+			class_session: 'CLASS-SESSION-1',
+			task_delivery: 'TDL-WRITE-1',
+		})
+		await flushUi()
+
+		const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement | null
+		expect(fileInput).toBeTruthy()
+		if (!fileInput) {
+			throw new Error('Expected task submission file input to be rendered.')
+		}
+
+		const file = new File(['evidence'], 'lab-report.pdf', { type: 'application/pdf' })
+		Object.defineProperty(fileInput, 'files', {
+			value: [file],
+			configurable: true,
+		})
+		fileInput.dispatchEvent(new Event('change', { bubbles: true }))
+		await flushUi()
+
+		expect(document.body.textContent).toContain('Selected files')
+		expect(document.body.textContent).toContain('lab-report.pdf')
+
+		const submitButton = Array.from(document.querySelectorAll('button')).find(button =>
+			button.textContent?.includes('Resubmit task')
+		)
+		expect(submitButton).toBeTruthy()
+		submitButton?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+		await flushUi()
+
+		expect(submitStudentTaskSubmissionMock).toHaveBeenCalledWith({
+			task_outcome: 'OUT-WRITE-1',
+			text_content: 'Initial lab reflection',
+			link_url: 'https://example.com/lab-reflection',
+			files: [file],
+		}, expect.objectContaining({
+			onProgress: expect.any(Function),
+		}))
+		expect(document.body.textContent).toContain('Version 2')
+		expect(document.body.textContent).toContain('lab-report.pdf')
 	})
 
 	it('keeps the learning space visible when shared-plan messaging is present', async () => {

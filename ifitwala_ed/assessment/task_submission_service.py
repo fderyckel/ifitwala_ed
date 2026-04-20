@@ -80,12 +80,12 @@ def create_student_submission(payload, user=None, uploaded_files=None, expected_
     doc.link_url = link_url or None
     if data.get("evidence_note"):
         doc.evidence_note = data.get("evidence_note")
-    if has_uploads:
-        doc.set_new_name()
-        _attach_submission_files(doc, outcome_row, uploaded_files, data.get("upload_source"))
 
     stamp_submission_context(doc, outcome_row)
     doc.insert(ignore_permissions=True)
+    if has_uploads:
+        _attach_submission_files(doc, outcome_row, uploaded_files, data.get("upload_source"))
+        doc.save(ignore_permissions=True)
 
     submission_status = "Submitted" if next_version == 1 else "Resubmitted"
     frappe.db.set_value(

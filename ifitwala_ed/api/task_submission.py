@@ -525,9 +525,34 @@ def _normalize_payload(payload, kwargs):
     data = payload if payload is not None else kwargs
     if isinstance(data, str):
         data = frappe.parse_json(data)
+    if data is None:
+        data = {}
     if not isinstance(data, dict):
         frappe.throw(_("Payload must be a dict."))
+    for key, value in _extract_form_payload().items():
+        if data.get(key) in (None, ""):
+            data[key] = value
     return data
+
+
+def _extract_form_payload() -> dict[str, Any]:
+    form_dict = getattr(frappe, "form_dict", None)
+    if not form_dict or not hasattr(form_dict, "get"):
+        return {}
+
+    payload: dict[str, Any] = {}
+    for fieldname in (
+        "task_outcome",
+        "outcome",
+        "text_content",
+        "link_url",
+        "evidence_note",
+        "upload_source",
+    ):
+        value = form_dict.get(fieldname)
+        if value not in (None, ""):
+            payload[fieldname] = value
+    return payload
 
 
 def _require_authenticated():

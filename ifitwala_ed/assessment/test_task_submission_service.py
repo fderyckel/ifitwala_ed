@@ -86,6 +86,89 @@ class TestTaskSubmissionService(TestCase):
                     expected_student="STU-1",
                 )
 
+    def test_create_student_submission_inserts_owner_before_attaching_uploaded_files(self):
+        with stubbed_frappe() as frappe:
+            order = []
+            outcome_updates = {}
+
+            class FakeSubmissionDoc:
+                def __init__(self):
+                    self.name = None
+                    self.attachments = []
+
+                def append(self, fieldname, value):
+                    if fieldname == "attachments":
+                        self.attachments.append(value)
+
+                def insert(self, ignore_permissions=False):
+                    order.append("insert")
+                    self.name = "TSU-NEW"
+                    return self
+
+                def save(self, ignore_permissions=False):
+                    order.append("save")
+                    return self
+
+            def fake_get_value(doctype, name, fieldnames=None, **kwargs):
+                if doctype == "Task Outcome":
+                    return {
+                        "student": "STU-1",
+                        "student_group": "GRP-1",
+                        "course": "COURSE-1",
+                        "academic_year": "AY-1",
+                        "school": "SCH-1",
+                        "task_delivery": "TD-1",
+                        "task": "TASK-1",
+                    }
+                if doctype == "Task Delivery":
+                    return {
+                        "requires_submission": 1,
+                    }
+                return None
+
+            frappe.db.get_value = fake_get_value
+            frappe.db.get_all = lambda *args, **kwargs: [{"max_version": None}]
+            frappe.db.set_value = lambda doctype, name, values, update_modified=True: outcome_updates.update(values)
+            frappe.new_doc = lambda doctype: FakeSubmissionDoc()
+
+            module = import_fresh("ifitwala_ed.assessment.task_submission_service")
+            module.mark_contributions_stale = lambda *args, **kwargs: None
+
+            def fake_attach(submission_doc, outcome_row, uploaded_files, upload_source=None):
+                order.append("attach")
+                self.assertEqual(submission_doc.name, "TSU-NEW")
+                self.assertEqual(outcome_row.get("student"), "STU-1")
+                self.assertEqual(uploaded_files, [{"file_name": "lab-report.pdf", "content": b"pdf"}])
+                submission_doc.append(
+                    "attachments",
+                    {
+                        "file": "/private/files/lab-report.pdf",
+                        "file_name": "lab-report.pdf",
+                        "file_size": 3,
+                        "public": 0,
+                    },
+                )
+
+            module._attach_submission_files = fake_attach
+
+            result = module.create_student_submission(
+                {"task_outcome": "OUT-1", "text_content": "My answer"},
+                user="student@example.com",
+                uploaded_files=[{"file_name": "lab-report.pdf", "content": b"pdf"}],
+                expected_student="STU-1",
+            )
+
+        self.assertEqual(result["submission_id"], "TSU-NEW")
+        self.assertEqual(order, ["insert", "attach", "save"])
+        self.assertEqual(
+            outcome_updates,
+            {
+                "has_submission": 1,
+                "has_new_submission": 1,
+                "submission_status": "Submitted",
+            },
+        )
+
 
 class TestTaskContributionService(TestCase):
     def test_get_latest_submission_version_uses_aggregate_field_dict(self):

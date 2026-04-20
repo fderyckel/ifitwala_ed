@@ -2,6 +2,7 @@ export type Request = {
 	task_outcome: string
 	text_content?: string | null
 	link_url?: string | null
+	files?: File[] | null
 }
 
 export type Response = {

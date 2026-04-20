@@ -8,7 +8,7 @@ from typing import Any
 import frappe
 import pytz
 from frappe import _
-from frappe.utils import add_to_date, format_date, get_datetime, get_url, now_datetime
+from frappe.utils import add_to_date, get_datetime, get_url, now_datetime
 
 from ifitwala_ed.api import calendar_staff_feed
 from ifitwala_ed.api.calendar_core import _resolve_employee_for_user, _system_tzinfo
@@ -67,7 +67,6 @@ def export_staff_timetable_pdf(preset: str | None = None):
             "name",
             "employee_full_name",
             "designation",
-            "employee_group",
             "school",
             "organization",
         ],
@@ -303,10 +302,20 @@ def _start_of_week(value: date) -> date:
 
 
 def _format_date_span(start_date: date, end_date: date) -> str:
-    return _("{start} to {end}").format(
-        start=format_date(start_date),
-        end=format_date(end_date),
-    )
+    start_label = _format_pretty_date(start_date, include_year=start_date.year != end_date.year)
+    end_label = _format_pretty_date(end_date, include_year=True)
+    return _("{start} to {end}").format(start=start_label, end=end_label)
+
+
+def _format_pretty_date(value: date, *, include_year: bool) -> str:
+    day = value.day
+    suffix = "th"
+    if day % 100 not in (11, 12, 13):
+        suffix = {1: "st", 2: "nd", 3: "rd"}.get(day % 10, "th")
+    month_name = value.strftime("%B")
+    if include_year:
+        return f"{day}{suffix} {month_name} {value.year}"
+    return f"{day}{suffix} {month_name}"
 
 
 def _build_timetable_weeks(

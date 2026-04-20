@@ -889,7 +889,7 @@
 								{{ submissionButtonLabel }}
 							</p>
 							<p class="mt-2 type-caption text-ink/70">
-								Written responses and links are supported in this workspace.
+								Written responses, links, and document uploads are supported in this workspace.
 							</p>
 							<p v-if="selectedTaskSubmissionBlocker" class="mt-3 type-body text-ink/70">
 								{{ selectedTaskSubmissionBlocker }}
@@ -915,6 +915,46 @@
 										@input="submissionDirty = true"
 									/>
 								</label>
+								<label class="block space-y-2">
+									<span class="type-caption text-ink/70">Attach documents</span>
+									<input
+										ref="submissionFileInput"
+										type="file"
+										multiple
+										class="if-input w-full"
+										@change="handleSubmissionFilesChange"
+									/>
+								</label>
+								<div
+									v-if="submissionFiles.length"
+									class="rounded-2xl border border-line-soft bg-white p-3"
+								>
+									<div class="flex items-center justify-between gap-3">
+										<p class="type-caption text-ink/60">Selected files</p>
+										<button
+											type="button"
+											class="type-caption text-jacaranda underline"
+											@click="clearSubmissionFiles"
+										>
+											Clear
+										</button>
+									</div>
+									<div class="mt-2 space-y-2">
+										<div
+											v-for="file in submissionFiles"
+											:key="`${file.name}-${file.size}-${file.lastModified}`"
+											class="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-line-soft px-3 py-2"
+										>
+											<p class="type-caption text-ink/80">{{ file.name }}</p>
+											<span class="chip">
+												{{ formatSelectedSubmissionFileSize(file.size) }}
+											</span>
+										</div>
+									</div>
+								</div>
+								<p v-if="submissionProgressLabel" class="type-caption text-ink/70">
+									{{ submissionProgressLabel }}
+								</p>
 								<p v-if="submissionError" class="type-caption text-flame">
 									{{ submissionError }}
 								</p>
@@ -1081,6 +1121,7 @@ import {
 	getStudentTaskSubmission,
 	submitStudentTaskSubmission,
 } from '@/lib/services/student/studentTaskSubmissionService';
+import type { UploadProgressState } from '@/lib/uploadProgress';
 import type {
 	Response as StudentLearningSpaceResponse,
 	StudentAssignedWork,
@@ -1148,9 +1189,12 @@ const selectedTaskSubmissionError = ref('');
 const selectedTaskSubmissionToken = ref(0);
 const submissionTextDraft = ref('');
 const submissionLinkDraft = ref('');
+const submissionFileInput = ref<HTMLInputElement | null>(null);
+const submissionFiles = ref<File[]>([]);
 const submissionDirty = ref(false);
 const submissionError = ref('');
 const submissionSaving = ref(false);
+const submissionUploadProgress = ref<UploadProgressState | null>(null);
 
 const learningFocus = computed(() => learningSpace.value?.learning.focus || {});
 const nextActions = computed(() => learningSpace.value?.learning.next_actions || []);
@@ -1202,9 +1246,9 @@ const selectedTaskWorkspaceNote = computed(() => {
 		return 'Review the task brief here. No submission is required for this task.';
 	}
 	if (selectedTaskWorkspace.value.allow_late_submission) {
-		return 'Submit a written response or link here. Late submission remains available after the due date.';
+		return 'Submit a written response, link, or file here. Late submission remains available after the due date.';
 	}
-	return 'Submit a written response or link here.';
+	return 'Submit a written response, link, or file here.';
 });
 
 const selectedTaskSubmissionBlocker = computed(() => {
@@ -1220,6 +1264,20 @@ const selectedTaskSubmissionBlocker = computed(() => {
 
 const submissionButtonLabel = computed(() => {
 	return selectedTaskSubmission.value ? 'Resubmit task' : 'Submit task';
+});
+
+const submissionProgressLabel = computed(() => {
+	const progress = submissionUploadProgress.value;
+	if (!progress) return '';
+
+	let label = 'Preparing files';
+	if (progress.phase === 'uploading') {
+		label = 'Uploading files';
+	} else if (progress.phase === 'processing') {
+		label = 'Finalizing submission';
+	}
+
+	return progress.percent === null ? `${label}...` : `${label}... ${progress.percent}%`;
 });
 
 const resolvedClassLabel = computed(() => {
@@ -1717,11 +1775,32 @@ function formatSubmissionTimestamp(value?: string | null) {
 	});
 }
 
+function formatSelectedSubmissionFileSize(sizeBytes?: number | null) {
+	const size = Number(sizeBytes || 0);
+	if (!Number.isFinite(size) || size <= 0) return 'File';
+	if (size >= 1024 * 1024) {
+		return `${(size / (1024 * 1024)).toFixed(1)} MB`;
+	}
+	if (size >= 1024) {
+		return `${Math.max(1, Math.round(size / 1024))} KB`;
+	}
+	return `${size} B`;
+}
+
+function clearSubmissionFiles() {
+	submissionFiles.value = [];
+	submissionUploadProgress.value = null;
+	if (submissionFileInput.value) {
+		submissionFileInput.value.value = '';
+	}
+}
+
 function seedSubmissionDraft(submission: StudentTaskSubmissionResponse) {
 	submissionTextDraft.value = submission?.text_content || '';
 	submissionLinkDraft.value = submission?.link_url || '';
 	submissionDirty.value = false;
 	submissionError.value = '';
+	clearSubmissionFiles();
 }
 
 function resetSelectedTaskSubmissionState() {
@@ -1729,6 +1808,14 @@ function resetSelectedTaskSubmissionState() {
 	selectedTaskSubmissionError.value = '';
 	selectedTaskSubmissionLoading.value = false;
 	seedSubmissionDraft(null);
+}
+
+function handleSubmissionFilesChange(event: Event) {
+	const target = event.target as HTMLInputElement | null;
+	submissionFiles.value = Array.from(target?.files || []);
+	submissionUploadProgress.value = null;
+	submissionDirty.value = true;
+	submissionError.value = '';
 }
 
 async function openAssignedWorkWorkspace(item: StudentAssignedWork) {
@@ -1843,28 +1930,40 @@ async function submitSelectedTaskWorkspace() {
 
 	const textContent = submissionTextDraft.value.trim();
 	const linkUrl = submissionLinkDraft.value.trim();
-	if (!textContent && !linkUrl) {
-		submissionError.value = 'Add a written response or link before submitting.';
+	const files = submissionFiles.value;
+	if (!textContent && !linkUrl && !files.length) {
+		submissionError.value = 'Add a written response, link, or file before submitting.';
 		return;
 	}
 
 	const isResubmission = Boolean(selectedTaskSubmission.value);
 	submissionSaving.value = true;
 	submissionError.value = '';
+	submissionUploadProgress.value = null;
 	try {
-		const response = await submitStudentTaskSubmission({
-			task_outcome: task.task_outcome,
-			text_content: textContent || undefined,
-			link_url: linkUrl || undefined,
-		});
+		const response = await submitStudentTaskSubmission(
+			{
+				task_outcome: task.task_outcome,
+				text_content: textContent || undefined,
+				link_url: linkUrl || undefined,
+				files: files.length ? files : undefined,
+			},
+			{
+				onProgress: progress => {
+					submissionUploadProgress.value = progress;
+				},
+			}
+		);
 		patchAssignedWorkStatus(
 			task.task_delivery,
 			response.outcome_flags?.submission_status || (isResubmission ? 'Resubmitted' : 'Submitted')
 		);
 		submissionDirty.value = false;
+		clearSubmissionFiles();
 		await loadSelectedTaskSubmission();
 		toast.success(isResubmission ? 'Task resubmitted.' : 'Task submitted.');
 	} catch (error) {
+		submissionUploadProgress.value = null;
 		submissionError.value = error instanceof Error ? error.message : 'Could not submit this task.';
 		toast.error(submissionError.value);
 	} finally {

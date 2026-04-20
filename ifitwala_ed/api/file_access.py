@@ -24,6 +24,7 @@ from ifitwala_ed.admission.admission_utils import (
 from ifitwala_ed.api.org_comm_utils import check_audience_match, expand_employee_visibility_context
 from ifitwala_ed.curriculum import materials as materials_domain
 from ifitwala_ed.integrations.drive.authority import (
+    get_current_drive_file_for_attachment,
     get_current_drive_file_for_slot,
     get_drive_file_by_canonical_ref,
     get_drive_file_by_id,
@@ -873,6 +874,18 @@ def _load_drive_communications_callable(attribute: str):
     return None
 
 
+def _load_drive_materials_callable(attribute: str):
+    try:
+        from ifitwala_drive.api import materials as drive_api
+    except ImportError:
+        return None
+
+    callable_obj = getattr(drive_api, attribute, None)
+    if callable(callable_obj):
+        return callable_obj
+    return None
+
+
 def _load_drive_media_callable(attribute: str):
     try:
         from ifitwala_drive.api import media as drive_api
@@ -1043,6 +1056,33 @@ def _resolve_org_communication_drive_file(org_communication: str, row_name: str)
     frappe.throw(_("Governed attachment file was not found."), frappe.DoesNotExistError)
 
 
+def _resolve_current_material_drive_file(material: str | None) -> dict | None:
+    resolved_material = str(material or "").strip()
+    if not resolved_material:
+        return None
+
+    return get_current_drive_file_for_attachment(
+        attached_doctype=CONTEXT_SUPPORTING_MATERIAL,
+        attached_name=resolved_material,
+        fields=[
+            "name",
+            "file",
+            "canonical_ref",
+            "preview_status",
+            "current_version",
+            "owner_doctype",
+            "owner_name",
+            "primary_subject_type",
+            "primary_subject_id",
+            "attached_doctype",
+            "attached_name",
+            "purpose",
+            "slot",
+        ],
+        statuses=("active", "processing", "blocked"),
+    )
+
+
 def _resolve_drive_file_grant_target_url(
     *,
     drive_file_id: str,
@@ -1157,6 +1197,33 @@ def _request_org_communication_attachment_grant(
     return _load_drive_access_callable(generic_method)(**payload)
 
 
+def _request_supporting_material_grant(
+    *,
+    method_name: str,
+    material: str,
+    placement: str | None,
+    drive_file_id: str,
+    derivative_role: str | None = None,
+):
+    grant_callable = _load_drive_materials_callable(method_name)
+    if callable(grant_callable):
+        payload = {"material": str(material or "").strip()}
+        resolved_placement = str(placement or "").strip()
+        explicit_derivative_role = (derivative_role or "").strip()
+        if resolved_placement:
+            payload["placement"] = resolved_placement
+        if explicit_derivative_role:
+            payload["derivative_role"] = explicit_derivative_role
+        return grant_callable(**payload)
+
+    generic_method = "issue_preview_grant" if "preview" in method_name else "issue_download_grant"
+    payload = {"drive_file_id": drive_file_id}
+    explicit_derivative_role = (derivative_role or "").strip()
+    if generic_method == "issue_preview_grant" and explicit_derivative_role:
+        payload["derivative_role"] = explicit_derivative_role
+    return _load_drive_access_callable(generic_method)(**payload)
+
+
 def _request_employee_image_grant(
     *,
     method_name: str,
@@ -1182,6 +1249,55 @@ def _request_employee_image_grant(
     if generic_method == "issue_preview_grant" and explicit_derivative_role:
         payload["derivative_role"] = explicit_derivative_role
     return _load_drive_access_callable(generic_method)(**payload)
+
+
+def _resolve_supporting_material_grant_target_url(
+    *,
+    material: str,
+    placement: str | None,
+    drive_file_id: str,
+    file_id: str,
+    prefer_preview: bool = False,
+    derivative_role: str | None = None,
+    strict_derivative: bool = False,
+) -> str | None:
+    target_url = ""
+    explicit_derivative_role = (derivative_role or "").strip()
+    resolved_material = str(material or "").strip()
+    resolved_placement = str(placement or "").strip() or None
+
+    if prefer_preview and explicit_derivative_role:
+        try:
+            grant = _request_supporting_material_grant(
+                method_name="issue_supporting_material_preview_grant",
+                material=resolved_material,
+                placement=resolved_placement,
+                drive_file_id=drive_file_id,
+                derivative_role=explicit_derivative_role,
+            )
+            target_url = str((grant or {}).get("url") or "").strip()
+        except Exception:
+            target_url = ""
+        if strict_derivative:
+            return target_url or None
+
+    if not target_url:
+        grant_method = "issue_supporting_material_download_grant"
+        if prefer_preview:
+            preview_status = frappe.db.get_value("Drive File", drive_file_id, "preview_status")
+            if preview_status == "ready":
+                grant_method = "issue_supporting_material_preview_grant"
+        grant = _request_supporting_material_grant(
+            method_name=grant_method,
+            material=resolved_material,
+            placement=resolved_placement,
+            drive_file_id=drive_file_id,
+        )
+        target_url = str((grant or {}).get("url") or "").strip()
+
+    if target_url and not _is_raw_private_redirect_target(target_url):
+        return target_url
+    return None
 
 
 def _resolve_employee_image_grant_target_url(
@@ -2329,6 +2445,18 @@ def download_academic_file(
         share_token=share_token,
         viewer_email=viewer_email,
     )
+    material, _material_course = _resolve_supporting_material_context_for_file(file_row)
+    placement_name = (
+        _assert_internal_material_context(
+            file_row=file_row,
+            context_doctype=context_doctype,
+            context_name=context_name,
+            material=material,
+        )
+        if material
+        else None
+    )
+    material_drive_file = _resolve_current_material_drive_file(material) if material else None
 
     file_url = (file_row.get("file_url") or "").strip()
     if file_url.startswith(("http://", "https://")):
@@ -2337,8 +2465,19 @@ def download_academic_file(
         return
 
     if (derivative_role or "").strip():
-        target_url = _resolve_drive_preview_grant_url(file_name, derivative_role=derivative_role)
-        if _respond_with_redirect_target(target_url=target_url):
+        target_url = (
+            _resolve_supporting_material_grant_target_url(
+                material=material,
+                placement=placement_name,
+                drive_file_id=str((material_drive_file or {}).get("name") or "").strip(),
+                file_id=str((material_drive_file or {}).get("file") or file_name).strip(),
+                prefer_preview=True,
+                derivative_role=derivative_role,
+            )
+            if material and material_drive_file and material_drive_file.get("name")
+            else _resolve_drive_preview_grant_url(file_name, derivative_role=derivative_role)
+        )
+        if _respond_with_delivery_target(target_url=target_url):
             return
 
     if _is_public_site_file_url(file_url):
@@ -2346,8 +2485,17 @@ def download_academic_file(
         frappe.local.response["location"] = file_url
         return
 
-    target_url = _resolve_drive_download_grant_url(file_name)
-    if _respond_with_redirect_target(target_url=target_url):
+    target_url = (
+        _resolve_supporting_material_grant_target_url(
+            material=material,
+            placement=placement_name,
+            drive_file_id=str((material_drive_file or {}).get("name") or "").strip(),
+            file_id=str((material_drive_file or {}).get("file") or file_name).strip(),
+        )
+        if material and material_drive_file and material_drive_file.get("name")
+        else _resolve_drive_download_grant_url(file_name)
+    )
+    if _respond_with_delivery_target(target_url=target_url):
         return
 
     frappe.throw(_("Could not resolve the file content."), frappe.DoesNotExistError)
@@ -2433,9 +2581,31 @@ def preview_academic_file(
         share_token=share_token,
         viewer_email=viewer_email,
     )
+    material, _material_course = _resolve_supporting_material_context_for_file(file_row)
+    placement_name = (
+        _assert_internal_material_context(
+            file_row=file_row,
+            context_doctype=context_doctype,
+            context_name=context_name,
+            material=material,
+        )
+        if material
+        else None
+    )
+    material_drive_file = _resolve_current_material_drive_file(material) if material else None
 
-    target_url = _resolve_drive_preview_grant_url(file_name)
-    if _respond_with_redirect_target(target_url=target_url):
+    target_url = (
+        _resolve_supporting_material_grant_target_url(
+            material=material,
+            placement=placement_name,
+            drive_file_id=str((material_drive_file or {}).get("name") or "").strip(),
+            file_id=str((material_drive_file or {}).get("file") or file_name).strip(),
+            prefer_preview=True,
+        )
+        if material and material_drive_file and material_drive_file.get("name")
+        else _resolve_drive_preview_grant_url(file_name)
+    )
+    if _respond_with_delivery_target(target_url=target_url):
         return
 
     file_url = (file_row.get("file_url") or "").strip()
@@ -2449,8 +2619,17 @@ def preview_academic_file(
         frappe.local.response["location"] = file_url
         return
 
-    target_url = _resolve_drive_download_grant_url(file_name)
-    if _respond_with_redirect_target(target_url=target_url):
+    target_url = (
+        _resolve_supporting_material_grant_target_url(
+            material=material,
+            placement=placement_name,
+            drive_file_id=str((material_drive_file or {}).get("name") or "").strip(),
+            file_id=str((material_drive_file or {}).get("file") or file_name).strip(),
+        )
+        if material and material_drive_file and material_drive_file.get("name")
+        else _resolve_drive_download_grant_url(file_name)
+    )
+    if _respond_with_delivery_target(target_url=target_url):
         return
 
     frappe.throw(_("Could not resolve the file content."), frappe.DoesNotExistError)
@@ -2468,19 +2647,32 @@ def thumbnail_academic_file(
     if not file_name:
         frappe.throw(_("File is required."), frappe.ValidationError)
 
-    _resolve_authorized_academic_file(
+    file_row = _resolve_authorized_academic_file(
         file_name=file_name,
         context_doctype=context_doctype,
         context_name=context_name,
         share_token=share_token,
         viewer_email=viewer_email,
     )
+    material, _material_course = _resolve_supporting_material_context_for_file(file_row)
+    placement_name = (
+        _assert_internal_material_context(
+            file_row=file_row,
+            context_doctype=context_doctype,
+            context_name=context_name,
+            material=material,
+        )
+        if material
+        else None
+    )
 
-    drive_file = _resolve_drive_file_delivery_row(file_name)
+    drive_file = (
+        _resolve_current_material_drive_file(material) if material else _resolve_drive_file_delivery_row(file_name)
+    )
     if drive_file and drive_file.get("name"):
         target_url = _resolve_cached_thumbnail_target_url(
             drive_file_id=drive_file.get("name"),
-            file_id=file_name,
+            file_id=str((drive_file or {}).get("file") or file_name).strip(),
             surface_parts=[
                 "academic",
                 context_doctype,
@@ -2490,12 +2682,25 @@ def thumbnail_academic_file(
                 file_name,
             ],
             strict_derivative=True,
+            target_resolver=(
+                (
+                    lambda: _resolve_supporting_material_grant_target_url(
+                        material=material,
+                        placement=placement_name,
+                        drive_file_id=drive_file.get("name"),
+                        file_id=str((drive_file or {}).get("file") or file_name).strip(),
+                        prefer_preview=True,
+                        derivative_role="thumb",
+                        strict_derivative=True,
+                    )
+                )
+                if material
+                else None
+            ),
         )
         if target_url:
-            _set_thumbnail_cache_headers()
-            frappe.local.response["type"] = "redirect"
-            frappe.local.response["location"] = target_url
-            return
+            if _respond_with_delivery_target(target_url=target_url, cache_headers=True):
+                return
 
     frappe.throw(_("Could not resolve the attachment thumbnail."), frappe.DoesNotExistError)
 

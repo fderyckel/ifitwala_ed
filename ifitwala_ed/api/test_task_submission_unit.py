@@ -254,3 +254,75 @@ class TestTaskSubmissionApiUnit(TestCase):
         self.assertEqual(seen["user"], "unit.test@example.com")
         self.assertEqual(seen["uploaded_files"], [])
         self.assertEqual(seen["expected_student"], "STU-1")
+
+    def test_create_or_resubmit_reads_form_fields_and_raw_files_from_multipart_request(self):
+        with stubbed_frappe(extra_modules=_task_submission_stub_modules()) as frappe:
+            seen = {}
+
+            class FakeUpload:
+                def __init__(self, filename, content):
+                    self.filename = filename
+                    self._content = content
+
+                def read(self):
+                    return self._content
+
+            class FakeFiles:
+                def __init__(self, uploads):
+                    self._uploads = uploads
+
+                def getlist(self, key):
+                    if key == "files":
+                        return list(self._uploads)
+                    return []
+
+                def get(self, key):
+                    if key == "file" and self._uploads:
+                        return self._uploads[0]
+                    return None
+
+            frappe.db.get_value = lambda doctype, name, fieldname, **kwargs: "STU-1"
+            frappe.form_dict = {
+                "task_outcome": "TOUT-0005",
+                "text_content": "Typed in portal form",
+                "link_url": "https://example.com/evidence",
+            }
+            frappe.request = types.SimpleNamespace(
+                files=FakeFiles(
+                    [
+                        FakeUpload("lab-report.pdf", b"pdf-bytes"),
+                        FakeUpload("notes.txt", b"text-bytes"),
+                    ]
+                )
+            )
+
+            def fake_create_student_submission(payload, user=None, uploaded_files=None, expected_student=None):
+                seen["payload"] = payload
+                seen["user"] = user
+                seen["uploaded_files"] = uploaded_files
+                seen["expected_student"] = expected_student
+                return {"submission_id": "TSU-0005", "version": 1}
+
+            module = import_fresh("ifitwala_ed.api.task_submission")
+            module._require_authenticated = lambda: None
+            module.task_submission_service.create_student_submission = fake_create_student_submission
+
+            payload = module.create_or_resubmit()
+
+        self.assertEqual(payload["submission_id"], "TSU-0005")
+        self.assertEqual(
+            seen["payload"],
+            {
+                "task_outcome": "TOUT-0005",
+                "text_content": "Typed in portal form",
+                "link_url": "https://example.com/evidence",
+            },
+        )
+        self.assertEqual(
+            seen["uploaded_files"],
+            [
+                {"file_name": "lab-report.pdf", "content": b"pdf-bytes"},
+                {"file_name": "notes.txt", "content": b"text-bytes"},
+            ],
+        )
+        self.assertEqual(seen["expected_student"], "STU-1")
