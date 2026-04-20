@@ -3,6 +3,7 @@ from __future__ import annotations
 from contextlib import contextmanager
 from types import ModuleType, SimpleNamespace
 from unittest import TestCase
+from unittest.mock import patch
 
 from ifitwala_ed.tests.frappe_stubs import StubValidationError, import_fresh, stubbed_frappe
 
@@ -63,3 +64,55 @@ class TestDriveSupportingMaterialContract(TestCase):
         with _drive_materials_module() as module:
             with self.assertRaises(StubValidationError):
                 module.validate_supporting_material_finalize_context(upload_session_doc)
+
+    def test_assert_supporting_material_read_access_accepts_explicit_drive_file_id(self):
+        with _drive_materials_module() as module:
+            module.frappe.session = SimpleNamespace(user="teacher@example.com")
+
+            def fake_get_value(doctype, name, fieldname=None, as_dict=False):
+                if doctype == "Supporting Material" and fieldname == "course":
+                    return "COURSE-1"
+                if doctype == "Material Placement":
+                    return {
+                        "name": name,
+                        "supporting_material": "MAT-0001",
+                        "anchor_doctype": "Course Plan",
+                        "anchor_name": "COURSE-PLAN-0001",
+                    }
+                if doctype == "Course" and fieldname == "school":
+                    return "SCH-1"
+                if doctype == "School" and fieldname == "organization":
+                    return "ORG-1"
+                return None
+
+            module.frappe.db.get_value = fake_get_value
+
+            with (
+                patch.object(module.materials_domain, "user_can_read_material_anchor", return_value=True),
+                patch.object(
+                    module,
+                    "get_drive_file_by_id",
+                    return_value={
+                        "name": "DF-0001",
+                        "file": "FILE-0001",
+                        "canonical_ref": "drv:ORG-1:DF-0001",
+                        "owner_doctype": "Supporting Material",
+                        "owner_name": "MAT-0001",
+                    },
+                ),
+                patch.object(
+                    module,
+                    "get_current_drive_file_for_attachment",
+                    side_effect=AssertionError("attachment lookup should not run"),
+                ),
+            ):
+                payload = module.assert_supporting_material_read_access(
+                    "MAT-0001",
+                    placement="MAT-PLC-0001",
+                    drive_file_id="DF-0001",
+                )
+
+        self.assertEqual(payload["material"], "MAT-0001")
+        self.assertEqual(payload["placement"], "MAT-PLC-0001")
+        self.assertEqual(payload["drive_file_id"], "DF-0001")
+        self.assertEqual(payload["file_id"], "FILE-0001")

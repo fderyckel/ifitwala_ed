@@ -331,7 +331,7 @@ describe('OrgCommunicationArchive', () => {
 					file_size: 2048,
 					preview_status: 'ready',
 					thumbnail_url:
-						'/api/method/ifitwala_ed.api.file_access.thumbnail_org_communication_attachment?row_name=ATT-IMAGE',
+						'/api/method/ifitwala_ed.api.file_access.preview_org_communication_attachment?row_name=ATT-IMAGE',
 					preview_url: '/api/method/ifitwala_ed.api.file_access.preview_org_communication_attachment?row_name=ATT-IMAGE',
 					open_url: '/api/method/ifitwala_ed.api.file_access.open_org_communication_attachment?row_name=ATT-IMAGE',
 					attachment_preview: buildAttachmentPreview({
@@ -342,7 +342,7 @@ describe('OrgCommunicationArchive', () => {
 						preview_mode: 'thumbnail_image',
 						preview_status: 'ready',
 						thumbnail_url:
-							'/api/method/ifitwala_ed.api.file_access.thumbnail_org_communication_attachment?row_name=ATT-IMAGE',
+							'/api/method/ifitwala_ed.api.file_access.preview_org_communication_attachment?row_name=ATT-IMAGE',
 						preview_url:
 							'/api/method/ifitwala_ed.api.file_access.preview_org_communication_attachment?row_name=ATT-IMAGE',
 						open_url:
@@ -357,7 +357,7 @@ describe('OrgCommunicationArchive', () => {
 					file_size: 4096,
 					preview_status: 'ready',
 					thumbnail_url:
-						'/api/method/ifitwala_ed.api.file_access.thumbnail_org_communication_attachment?row_name=ATT-PDF',
+						'/api/method/ifitwala_ed.api.file_access.preview_org_communication_attachment?row_name=ATT-PDF',
 					preview_url: '/api/method/ifitwala_ed.api.file_access.preview_org_communication_attachment?row_name=ATT-PDF',
 					open_url: '/api/method/ifitwala_ed.api.file_access.open_org_communication_attachment?row_name=ATT-PDF',
 					attachment_preview: buildAttachmentPreview({
@@ -368,7 +368,7 @@ describe('OrgCommunicationArchive', () => {
 						preview_mode: 'pdf_embed',
 						preview_status: 'ready',
 						thumbnail_url:
-							'/api/method/ifitwala_ed.api.file_access.thumbnail_org_communication_attachment?row_name=ATT-PDF',
+							'/api/method/ifitwala_ed.api.file_access.preview_org_communication_attachment?row_name=ATT-PDF',
 						preview_url:
 							'/api/method/ifitwala_ed.api.file_access.preview_org_communication_attachment?row_name=ATT-PDF',
 						open_url:

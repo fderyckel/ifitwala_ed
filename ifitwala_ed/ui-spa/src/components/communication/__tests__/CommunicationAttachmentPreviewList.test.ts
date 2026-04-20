@@ -59,7 +59,7 @@ describe('CommunicationAttachmentPreviewList', () => {
 				file_name: 'poster.jpg',
 				preview_status: 'ready',
 				thumbnail_url:
-					'/api/method/ifitwala_ed.api.file_access.thumbnail_org_communication_attachment?row_name=ATT-IMG-READY',
+					'/api/method/ifitwala_ed.api.file_access.preview_org_communication_attachment?row_name=ATT-IMG-READY',
 				preview_url:
 					'/api/method/ifitwala_ed.api.file_access.preview_org_communication_attachment?row_name=ATT-IMG-READY',
 				open_url:
@@ -72,7 +72,7 @@ describe('CommunicationAttachmentPreviewList', () => {
 					preview_mode: 'thumbnail_image',
 					preview_status: 'ready',
 					thumbnail_url:
-						'/api/method/ifitwala_ed.api.file_access.thumbnail_org_communication_attachment?row_name=ATT-IMG-READY',
+						'/api/method/ifitwala_ed.api.file_access.preview_org_communication_attachment?row_name=ATT-IMG-READY',
 					preview_url:
 						'/api/method/ifitwala_ed.api.file_access.preview_org_communication_attachment?row_name=ATT-IMG-READY',
 					open_url:
@@ -87,7 +87,7 @@ describe('CommunicationAttachmentPreviewList', () => {
 		) as HTMLAnchorElement | null;
 		const imagePreview = imageLink?.querySelector('img');
 
-		expect(imagePreview?.getAttribute('src')).toContain('thumbnail_org_communication_attachment');
+		expect(imagePreview?.getAttribute('src')).toContain('preview_org_communication_attachment');
 		expect(imagePreview?.getAttribute('src')).toContain('ATT-IMG-READY');
 		expect(imageLink?.getAttribute('href')).toContain('preview_org_communication_attachment');
 	});
@@ -160,7 +160,7 @@ describe('CommunicationAttachmentPreviewList', () => {
 		expect(document.body.textContent || '').toContain('Open original');
 	});
 
-	it('retries the governed preview image when an inline thumbnail fails to load', async () => {
+	it('falls back to action-led image controls when the governed inline preview fails to load', async () => {
 		mountPreviewList([
 			{
 				row_name: 'ATT-IMG-BROKEN',
@@ -168,7 +168,7 @@ describe('CommunicationAttachmentPreviewList', () => {
 				title: 'Athletics banner',
 				file_name: 'banner.webp',
 				thumbnail_url:
-					'/api/method/ifitwala_ed.api.file_access.thumbnail_org_communication_attachment?row_name=ATT-IMG-BROKEN',
+					'/api/method/ifitwala_ed.api.file_access.preview_org_communication_attachment?row_name=ATT-IMG-BROKEN',
 				preview_url:
 					'/api/method/ifitwala_ed.api.file_access.preview_org_communication_attachment?row_name=ATT-IMG-BROKEN',
 				open_url:
@@ -180,7 +180,7 @@ describe('CommunicationAttachmentPreviewList', () => {
 					extension: 'webp',
 					preview_mode: 'thumbnail_image',
 					thumbnail_url:
-						'/api/method/ifitwala_ed.api.file_access.thumbnail_org_communication_attachment?row_name=ATT-IMG-BROKEN',
+						'/api/method/ifitwala_ed.api.file_access.preview_org_communication_attachment?row_name=ATT-IMG-BROKEN',
 					preview_url:
 						'/api/method/ifitwala_ed.api.file_access.preview_org_communication_attachment?row_name=ATT-IMG-BROKEN',
 					open_url:
@@ -201,9 +201,8 @@ describe('CommunicationAttachmentPreviewList', () => {
 		const retriedImage = document.querySelector(
 			'[data-communication-attachment-kind="image"] img'
 		) as HTMLImageElement | null;
-		expect(retriedImage?.getAttribute('src')).toBe(
-			'/api/method/ifitwala_ed.api.file_access.preview_org_communication_attachment?row_name=ATT-IMG-BROKEN'
-		);
+		expect(retriedImage).toBeNull();
+		expect(document.body.textContent || '').toContain('Preview');
 		expect(document.body.textContent || '').toContain('Open original');
 	});
 
@@ -216,7 +215,7 @@ describe('CommunicationAttachmentPreviewList', () => {
 				file_name: 'handbook.pdf',
 				preview_status: 'ready',
 				thumbnail_url:
-					'/api/method/ifitwala_ed.api.file_access.thumbnail_org_communication_attachment?row_name=ATT-PDF-READY',
+					'/api/method/ifitwala_ed.api.file_access.preview_org_communication_attachment?row_name=ATT-PDF-READY',
 				preview_url: '/api/method/ifitwala_ed.api.file_access.preview_org_communication_attachment?row_name=ATT-PDF-READY',
 				open_url: '/api/method/ifitwala_ed.api.file_access.open_org_communication_attachment?row_name=ATT-PDF-READY',
 				attachment_preview: buildAttachmentPreview({
@@ -249,8 +248,7 @@ describe('CommunicationAttachmentPreviewList', () => {
 				title: 'Policy update',
 				file_name: 'policy.pdf',
 				preview_status: 'pending',
-				thumbnail_url:
-					'/api/method/ifitwala_ed.api.file_access.thumbnail_org_communication_attachment?row_name=ATT-PDF-PENDING',
+				thumbnail_url: null,
 				preview_url: '/api/method/ifitwala_ed.api.file_access.preview_org_communication_attachment?row_name=ATT-PDF-PENDING',
 				open_url: '/api/method/ifitwala_ed.api.file_access.open_org_communication_attachment?row_name=ATT-PDF-PENDING',
 				attachment_preview: buildAttachmentPreview({

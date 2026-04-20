@@ -287,8 +287,20 @@ const canRetryInlineImageWithPreview = computed(() => {
 		props.attachment.preview_url !== props.attachment.thumbnail_url
 	);
 });
+const previewStatusAllowsImage = computed(() => {
+	if (!inlineImageUrl.value) return false;
+	if (props.attachment.preview_status && props.attachment.preview_status !== 'ready') {
+		return false;
+	}
+	return true;
+});
 const showInlineImagePreview = computed(() => {
-	return Boolean(mediaPreviewEnabled.value && inlineImageUrl.value && !imagePreviewFailed.value);
+	return Boolean(
+		mediaPreviewEnabled.value &&
+		inlineImageUrl.value &&
+		previewStatusAllowsImage.value &&
+		!imagePreviewFailed.value
+	);
 });
 const inlinePdfUrl = computed(() => {
 	if (props.attachment.kind !== 'pdf') return null;

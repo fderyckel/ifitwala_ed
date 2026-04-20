@@ -6,16 +6,22 @@ Code refs:
 - `ifitwala_ed/utilities/governed_uploads.py`
 - `ifitwala_ed/utilities/file_management.py`
 - `ifitwala_ed/utilities/image_utils.py`
+- `ifitwala_ed/api/file_access.py`
 - `ifitwala_ed/integrations/drive/authority.py`
 - `ifitwala_ed/integrations/drive/content_uploads.py`
+- `ifitwala_ed/integrations/drive/media.py`
 - `ifitwala_ed/integrations/drive/tasks.py`
 - `ifitwala_ed/integrations/drive/bridge.py`
 - `ifitwala_ed/integrations/drive/workflow_specs.py`
 - `ifitwala_ed/api/task_submission.py`
 - `ifitwala_ed/assessment/task_submission_service.py`
+- `ifitwala_drive/api/media.py`
+- `ifitwala_drive/services/integration/ifitwala_ed_media.py`
 - `ifitwala_drive/api/uploads.py`
 - `ifitwala_drive/services/uploads/finalize.py`
 Test refs:
+- `ifitwala_ed/api/test_file_access.py`
+- `ifitwala_ed/api/test_file_access_unit.py`
 - `ifitwala_drive/tests/test_task_submission_upload_flow.py`
 - `ifitwala_drive/tests/test_media_and_admissions_wrappers.py`
 - `ifitwala_drive/tests/test_preview_jobs.py`
@@ -196,17 +202,20 @@ Current behavior:
   - inline streamed content when the resolved Drive/local grant target is an in-site private path
 - governed private-media routes must never emit raw `/private/...` redirect targets back to the browser
 - Ed no longer probes local disk to rediscover file reality before choosing a governed delivery path for admissions, academic, guardian, employee, org-communication, or public-website media routes
+- guest-visible public website media now resolves through a surface-scoped Drive media wrapper, so public landing-page reads do not depend on raw `Organization` DocType read permission
 
 Why the old model was wrong:
 
 - it reintroduced storage probing into hot read paths
 - it treated local disk as a second delivery authority
 - it kept route behavior dependent on storage layout rather than Drive metadata and grant policy
+- it left public website media on the generic Drive access path even though Ed already owns the public-brand visibility decision for that surface
 
 Implemented fix:
 
 - governed delivery routes now resolve only from safe public/external targets or Drive grants
 - when a local-storage Drive grant resolves to an in-site private path, Ed serves it inline instead of redirecting the browser to a raw `/private/...` URL
+- public website media now uses the same surface-scoped wrapper pattern as other Ed-owned grant surfaces when generic owner-doc checks are narrower than the actual surface contract
 
 ### 2.8 Workflow semantics are too stringly-typed
 

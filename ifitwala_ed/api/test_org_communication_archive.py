@@ -126,7 +126,7 @@ class TestOrgCommunicationArchiveItem(FrappeTestCase):
         )
         self.assertEqual(
             result["attachments"][0]["thumbnail_url"],
-            "/api/method/ifitwala_ed.api.file_access.thumbnail_org_communication_attachment?org_communication=COMM-0001&row_name=row-file",
+            "/api/method/ifitwala_ed.api.file_access.preview_org_communication_attachment?org_communication=COMM-0001&row_name=row-file",
         )
         self.assertEqual(
             result["attachments"][0]["preview_url"],

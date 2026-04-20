@@ -1067,6 +1067,7 @@ class TestFileAccessUrlContracts(FrappeTestCase):
                     {
                         "material": "MAT-1",
                         "placement": "MAT-PLC-1",
+                        "drive_file_id": "DRIVE-0001",
                     },
                 )
             ],
@@ -1244,7 +1245,7 @@ class TestFileAccessUrlContracts(FrappeTestCase):
         )
         self.assertEqual(grant_calls, ["issue_org_communication_attachment_preview_grant"])
 
-    def test_thumbnail_org_communication_attachment_uses_thumb_grant_and_reuses_cache(self):
+    def test_thumbnail_org_communication_attachment_uses_viewer_preview_grant_and_reuses_cache(self):
         attachment_row = frappe._dict(
             name="row-001",
             file="/private/files/policy.png",
@@ -1287,7 +1288,7 @@ class TestFileAccessUrlContracts(FrappeTestCase):
 
             def _grant(**kwargs):
                 grant_requests.append(kwargs)
-                return {"url": "https://thumb.example.com/policy-thumb.webp"}
+                return {"url": "https://preview.example.com/policy-viewer.webp"}
 
             return _grant
 
@@ -1312,7 +1313,7 @@ class TestFileAccessUrlContracts(FrappeTestCase):
 
             first_headers = frappe.local.response.get("headers") or {}
             self.assertEqual(first_headers.get("Cache-Control"), "private, max-age=240, must-revalidate")
-            self.assertEqual(frappe.local.response.get("location"), "https://thumb.example.com/policy-thumb.webp")
+            self.assertEqual(frappe.local.response.get("location"), "https://preview.example.com/policy-viewer.webp")
 
             frappe.local.response = {}
             thumbnail_org_communication_attachment(
@@ -1322,7 +1323,7 @@ class TestFileAccessUrlContracts(FrappeTestCase):
 
         self.assertEqual(
             grant_requests,
-            [{"org_communication": "COMM-0001", "row_name": "row-001", "derivative_role": "thumb"}],
+            [{"org_communication": "COMM-0001", "row_name": "row-001", "derivative_role": "viewer_preview"}],
         )
 
     def test_thumbnail_org_communication_attachment_uses_pdf_card_derivative_for_pdf_rows(self):
@@ -1447,7 +1448,7 @@ class TestFileAccessUrlContracts(FrappeTestCase):
 
             def _grant(**kwargs):
                 grant_requests.append(kwargs)
-                return {"url": f"https://thumb.example.com/{current_version['value']}.webp"}
+                return {"url": f"https://preview.example.com/{current_version['value']}.webp"}
 
             return _grant
 
@@ -1480,8 +1481,8 @@ class TestFileAccessUrlContracts(FrappeTestCase):
         self.assertEqual(
             grant_requests,
             [
-                {"org_communication": "COMM-0001", "row_name": "row-001", "derivative_role": "thumb"},
-                {"org_communication": "COMM-0001", "row_name": "row-001", "derivative_role": "thumb"},
+                {"org_communication": "COMM-0001", "row_name": "row-001", "derivative_role": "viewer_preview"},
+                {"org_communication": "COMM-0001", "row_name": "row-001", "derivative_role": "viewer_preview"},
             ],
         )
 
@@ -1753,7 +1754,7 @@ class TestFileAccessUrlContracts(FrappeTestCase):
 
         self.assertEqual(frappe.local.response, {})
 
-    def test_thumbnail_academic_file_uses_thumb_grant_and_private_cache_headers(self):
+    def test_thumbnail_academic_file_uses_viewer_preview_grant_and_private_cache_headers(self):
         file_row = {
             "name": "FILE-MAT-1",
             "file_url": "/private/files/Courses/COURSE-1/material.png",
@@ -1787,7 +1788,7 @@ class TestFileAccessUrlContracts(FrappeTestCase):
 
             def _grant(**kwargs):
                 grant_requests.append(kwargs)
-                return {"url": "https://thumb.example.com/material-thumb.webp"}
+                return {"url": "https://preview.example.com/material-viewer.webp"}
 
             return _grant
 
@@ -1806,12 +1807,12 @@ class TestFileAccessUrlContracts(FrappeTestCase):
 
         self.assertEqual(
             grant_requests,
-            [{"drive_file_id": "DRIVE-0001", "derivative_role": "thumb"}],
+            [{"drive_file_id": "DRIVE-0001", "derivative_role": "viewer_preview"}],
         )
         self.assertEqual(frappe.local.response.get("type"), "redirect")
         self.assertEqual(
             frappe.local.response.get("location"),
-            "https://thumb.example.com/material-thumb.webp",
+            "https://preview.example.com/material-viewer.webp",
         )
         self.assertEqual(
             (frappe.local.response.get("headers") or {}).get("Cache-Control"),
@@ -1885,7 +1886,7 @@ class TestFileAccessUrlContracts(FrappeTestCase):
             "private, max-age=240, must-revalidate",
         )
 
-    def test_thumbnail_academic_file_uses_material_thumb_grant_wrapper(self):
+    def test_thumbnail_academic_file_uses_material_viewer_preview_grant_wrapper(self):
         file_row = {
             "name": "FILE-MAT-1",
             "file_url": "/private/files/Courses/COURSE-1/material.png",
@@ -1936,7 +1937,7 @@ class TestFileAccessUrlContracts(FrappeTestCase):
             load_materials.side_effect = lambda attribute: (
                 lambda **kwargs: (
                     wrapper_calls.append((attribute, kwargs))
-                    or {"url": "https://thumb.example.com/material-thumb.webp"}
+                    or {"url": "https://preview.example.com/material-viewer.webp"}
                 )
             )
             frappe.local.response = {}
@@ -1954,7 +1955,8 @@ class TestFileAccessUrlContracts(FrappeTestCase):
                     {
                         "material": "MAT-1",
                         "placement": "MAT-PLC-1",
-                        "derivative_role": "thumb",
+                        "drive_file_id": "DRIVE-0001",
+                        "derivative_role": "viewer_preview",
                     },
                 )
             ],
@@ -1962,7 +1964,7 @@ class TestFileAccessUrlContracts(FrappeTestCase):
         self.assertEqual(frappe.local.response.get("type"), "redirect")
         self.assertEqual(
             frappe.local.response.get("location"),
-            "https://thumb.example.com/material-thumb.webp",
+            "https://preview.example.com/material-viewer.webp",
         )
         self.assertEqual(
             (frappe.local.response.get("headers") or {}).get("Cache-Control"),

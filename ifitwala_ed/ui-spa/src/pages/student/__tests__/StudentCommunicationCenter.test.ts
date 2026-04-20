@@ -359,7 +359,7 @@ describe('StudentCommunicationCenter', () => {
 					file_name: 'poster.webp',
 					file_size: 3072,
 					thumbnail_url:
-						'/api/method/ifitwala_ed.api.file_access.thumbnail_org_communication_attachment?row_name=ATT-IMAGE',
+						'/api/method/ifitwala_ed.api.file_access.preview_org_communication_attachment?row_name=ATT-IMAGE',
 					preview_url:
 						'/api/method/ifitwala_ed.api.file_access.preview_org_communication_attachment?row_name=ATT-IMAGE',
 					open_url:
@@ -371,7 +371,7 @@ describe('StudentCommunicationCenter', () => {
 						extension: 'webp',
 						preview_mode: 'thumbnail_image',
 						thumbnail_url:
-							'/api/method/ifitwala_ed.api.file_access.thumbnail_org_communication_attachment?row_name=ATT-IMAGE',
+							'/api/method/ifitwala_ed.api.file_access.preview_org_communication_attachment?row_name=ATT-IMAGE',
 						preview_url:
 							'/api/method/ifitwala_ed.api.file_access.preview_org_communication_attachment?row_name=ATT-IMAGE',
 						open_url:

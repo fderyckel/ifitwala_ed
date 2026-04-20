@@ -55,7 +55,7 @@ STUDENT_PROFILE_IMAGE_PURPOSE = "student_profile_display"
 GUARDIAN_PROFILE_IMAGE_PURPOSE = "guardian_profile_display"
 PROFILE_IMAGE_SLOT = "profile_image"
 EMPLOYEE_PROFILE_IMAGE_SLOT = PROFILE_IMAGE_SLOT
-CARD_IMAGE_DERIVATIVE_ROLE = "thumb"
+CARD_IMAGE_DERIVATIVE_ROLE = "viewer_preview"
 CARD_PDF_DERIVATIVE_ROLE = "pdf_card"
 PDF_MIME_TYPE = "application/pdf"
 
@@ -458,7 +458,7 @@ def get_academic_file_thumbnail_ready_map(file_names: list[str] | tuple[str, ...
          AND dfd.drive_file_version = df.current_version
          AND dfd.derivative_role = CASE
              WHEN COALESCE(dfv.mime_type, '') = 'application/pdf' THEN 'pdf_card'
-             ELSE 'thumb'
+             ELSE 'viewer_preview'
          END
          AND dfd.status = 'ready'
         WHERE df.file IN %(file_names)s
@@ -512,7 +512,7 @@ def get_drive_file_thumbnail_ready_map(
          AND dfd.drive_file_version = df.current_version
          AND dfd.derivative_role = CASE
              WHEN COALESCE(dfv.mime_type, '') = 'application/pdf' THEN 'pdf_card'
-             ELSE 'thumb'
+             ELSE 'viewer_preview'
          END
          AND dfd.status = 'ready'
         WHERE df.name IN %(drive_file_ids)s
@@ -1244,9 +1244,12 @@ def _request_supporting_material_grant(
     if callable(grant_callable):
         payload = {"material": str(material or "").strip()}
         resolved_placement = str(placement or "").strip()
+        resolved_drive_file_id = str(drive_file_id or "").strip()
         explicit_derivative_role = (derivative_role or "").strip()
         if resolved_placement:
             payload["placement"] = resolved_placement
+        if resolved_drive_file_id:
+            payload["drive_file_id"] = resolved_drive_file_id
         if explicit_derivative_role:
             payload["derivative_role"] = explicit_derivative_role
         return grant_callable(**payload)
@@ -1327,6 +1330,30 @@ def _request_guardian_image_grant(
             "guardian": str(guardian or "").strip(),
             "file_id": str(file_id or "").strip(),
         }
+        explicit_derivative_role = (derivative_role or "").strip()
+        if explicit_derivative_role:
+            payload["derivative_role"] = explicit_derivative_role
+        return grant_callable(**payload)
+
+    generic_method = "issue_preview_grant" if "preview" in method_name else "issue_download_grant"
+    payload = {"drive_file_id": drive_file_id}
+    explicit_derivative_role = (derivative_role or "").strip()
+    if generic_method == "issue_preview_grant" and explicit_derivative_role:
+        payload["derivative_role"] = explicit_derivative_role
+    return _load_drive_access_callable(generic_method)(**payload)
+
+
+def _request_public_website_media_grant(
+    *,
+    method_name: str,
+    file_id: str,
+    drive_file_id: str,
+    derivative_role: str | None = None,
+):
+    grant_callable = _load_drive_media_callable(method_name)
+    resolved_file_id = str(file_id or "").strip()
+    if callable(grant_callable) and resolved_file_id:
+        payload = {"file_id": resolved_file_id}
         explicit_derivative_role = (derivative_role or "").strip()
         if explicit_derivative_role:
             payload["derivative_role"] = explicit_derivative_role
@@ -2435,7 +2462,37 @@ def _resolve_drive_preview_grant_url(
 
 
 def _resolve_public_website_media_grant_url(file_name: str) -> str | None:
-    return _resolve_drive_preview_grant_url(file_name)
+    resolved_file_name = str(file_name or "").strip()
+    if not resolved_file_name:
+        return None
+
+    drive_file = get_drive_file_for_file(
+        resolved_file_name,
+        fields=["name"],
+        statuses=("active", "processing", "blocked"),
+    )
+    resolved_drive_file_id = str((drive_file or {}).get("name") or "").strip()
+    if not resolved_drive_file_id:
+        return None
+
+    target_url = ""
+    try:
+        preview_status = frappe.db.get_value("Drive File", resolved_drive_file_id, "preview_status")
+        grant_method = (
+            "issue_public_website_media_preview_grant"
+            if preview_status == "ready"
+            else "issue_public_website_media_download_grant"
+        )
+        grant = _request_public_website_media_grant(
+            method_name=grant_method,
+            file_id=resolved_file_name,
+            drive_file_id=resolved_drive_file_id,
+        )
+        target_url = str((grant or {}).get("url") or "").strip()
+    except Exception:
+        target_url = ""
+
+    return target_url or None
 
 
 def _assert_public_website_media_visible(file_row: dict) -> None:

@@ -216,9 +216,6 @@ class TestOrgCommunicationAttachmentsUnit(TestCase):
         file_access.build_org_communication_attachment_preview_url = lambda *, org_communication, row_name: (
             f"/preview/{org_communication}/{row_name}"
         )
-        file_access.build_org_communication_attachment_thumbnail_url = lambda *, org_communication, row_name: (
-            f"/thumbnail/{org_communication}/{row_name}"
-        )
 
         attachments_bridge = ModuleType("ifitwala_ed.setup.doctype.org_communication.attachments")
         attachments_bridge.ORG_COMMUNICATION_ATTACHMENT_BINDING_ROLE = "communication_attachment"
@@ -248,10 +245,6 @@ class TestOrgCommunicationAttachmentsUnit(TestCase):
                     and as_dict
                 ):
                     return {"preview_status": "ready", "current_version": "DFV-0001"}
-                if doctype == "Drive File Version" and filters == "DFV-0001" and fieldname == "mime_type":
-                    return "application/pdf"
-                if doctype == "Drive File Derivative" and fieldname == "name":
-                    return "DFD-0001"
                 return None
 
             frappe.db.get_value = fake_get_value
@@ -271,23 +264,20 @@ class TestOrgCommunicationAttachmentsUnit(TestCase):
 
         self.assertEqual(payload["preview_status"], "ready")
         self.assertEqual(payload["preview_url"], "/preview/COMM-0001/row-001")
-        self.assertEqual(payload["thumbnail_url"], "/thumbnail/COMM-0001/row-001")
+        self.assertEqual(payload["thumbnail_url"], "/preview/COMM-0001/row-001")
         self.assertEqual(payload["attachment_preview"]["owner_doctype"], "Org Communication")
         self.assertEqual(payload["attachment_preview"]["owner_name"], "COMM-0001")
         self.assertEqual(payload["attachment_preview"]["kind"], "pdf")
         self.assertEqual(payload["attachment_preview"]["preview_mode"], "pdf_embed")
         self.assertEqual(payload["attachment_preview"]["download_url"], "/open/COMM-0001/row-001")
 
-    def test_serialize_attachment_row_hides_thumbnail_until_thumb_is_ready(self):
+    def test_serialize_attachment_row_hides_inline_preview_until_governed_preview_is_ready(self):
         file_access = ModuleType("ifitwala_ed.api.file_access")
         file_access.build_org_communication_attachment_open_url = lambda *, org_communication, row_name: (
             f"/open/{org_communication}/{row_name}"
         )
         file_access.build_org_communication_attachment_preview_url = lambda *, org_communication, row_name: (
             f"/preview/{org_communication}/{row_name}"
-        )
-        file_access.build_org_communication_attachment_thumbnail_url = lambda *, org_communication, row_name: (
-            f"/thumbnail/{org_communication}/{row_name}"
         )
 
         attachments_bridge = ModuleType("ifitwala_ed.setup.doctype.org_communication.attachments")
@@ -317,11 +307,7 @@ class TestOrgCommunicationAttachmentsUnit(TestCase):
                     and fieldname == ["preview_status", "current_version"]
                     and as_dict
                 ):
-                    return {"preview_status": "ready", "current_version": "DFV-0001"}
-                if doctype == "Drive File Version" and filters == "DFV-0001" and fieldname == "mime_type":
-                    return "application/pdf"
-                if doctype == "Drive File Derivative" and fieldname == "name":
-                    return None
+                    return {"preview_status": "pending", "current_version": "DFV-0001"}
                 return None
 
             frappe.db.get_value = fake_get_value
@@ -339,7 +325,7 @@ class TestOrgCommunicationAttachmentsUnit(TestCase):
                 ),
             )
 
-        self.assertEqual(payload["preview_status"], "ready")
+        self.assertEqual(payload["preview_status"], "pending")
         self.assertIsNone(payload["thumbnail_url"])
         self.assertEqual(payload["attachment_preview"]["kind"], "pdf")
         self.assertEqual(payload["attachment_preview"]["preview_mode"], "pdf_embed")

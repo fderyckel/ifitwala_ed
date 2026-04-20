@@ -133,7 +133,7 @@ describe('AttachmentPreviewCard', () => {
 				preview_status: 'ready',
 				extension: 'pdf',
 				thumbnail_url:
-					'/api/method/ifitwala_ed.api.file_access.thumbnail_org_communication_attachment?row_name=ATT-PDF-1',
+					'/api/method/ifitwala_ed.api.file_access.preview_org_communication_attachment?row_name=ATT-PDF-1',
 				preview_url:
 					'/api/method/ifitwala_ed.api.file_access.preview_org_communication_attachment?row_name=ATT-PDF-1',
 				open_url:
@@ -144,7 +144,7 @@ describe('AttachmentPreviewCard', () => {
 
 		const pdfSurface = document.querySelector('[data-communication-attachment-kind="pdf"]');
 		expect(pdfSurface?.querySelector('img')?.getAttribute('src')).toContain(
-			'thumbnail_org_communication_attachment'
+			'preview_org_communication_attachment'
 		);
 		expect(document.body.textContent || '').toContain('Open PDF');
 		expect(document.body.textContent || '').toContain('Open preview image');

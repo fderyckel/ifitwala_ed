@@ -424,7 +424,7 @@ describe('MorningBriefing', () => {
 					file_name: 'policy.pdf',
 					preview_status: 'ready',
 					thumbnail_url:
-						'/api/method/ifitwala_ed.api.file_access.thumbnail_org_communication_attachment?org_communication=COMM-0001&row_name=row-file',
+						'/api/method/ifitwala_ed.api.file_access.preview_org_communication_attachment?org_communication=COMM-0001&row_name=row-file',
 					preview_url:
 						'/api/method/ifitwala_ed.api.file_access.preview_org_communication_attachment?org_communication=COMM-0001&row_name=row-file',
 					open_url:

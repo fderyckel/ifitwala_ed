@@ -1,8 +1,6 @@
 # Copyright (c) 2025, François de Ryckel and contributors
 # For license information, please see license.txt
 
-# ifitwala_ed/schedule/attendace_utils.py
-
 """
 Attendance utilities for Ifitwala_Ed.
 
@@ -22,6 +20,8 @@ What is NOT here:
 - Calendar / staff calendar aggregation
     → see api/calendar.py
 """
+
+from __future__ import annotations
 
 from typing import Dict, List
 

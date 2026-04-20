@@ -71,6 +71,7 @@ class TestGradebookSupport(TestCase):
         task_submission_service = types.ModuleType("ifitwala_ed.assessment.task_submission_service")
 
         image_utils = types.ModuleType("ifitwala_ed.utilities.image_utils")
+        image_utils.PROFILE_IMAGE_THUMB_ONLY_SLOTS = ("profile_image_thumb",)
         image_utils.apply_preferred_student_images = lambda rows, **kwargs: rows
 
         with stubbed_frappe(

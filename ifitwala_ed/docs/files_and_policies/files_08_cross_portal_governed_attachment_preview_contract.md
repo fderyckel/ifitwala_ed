@@ -48,7 +48,7 @@ What still does not exist yet:
 
 Drive now has a narrow image plus first-page PDF derivative foundation, but Ed should still treat preview as partial rollout:
 
-- Org Communication can use `thumbnail_url` for inline image and PDF card previews where Drive reports the card derivative ready, keep `preview_url` for richer preview actions, and fall back to compact metadata cards when neither preview route is ready
+- Org Communication currently points `thumbnail_url` at the richer governed preview route once Drive reports `preview_status = ready`, so inline image and PDF cards render the larger preview asset directly instead of the smaller dedicated thumbnail derivative; when preview is not ready, surfaces still fall back to compact metadata cards
 - admissions applicant document surfaces and staff admissions review/readiness surfaces now also return stable `open_url`, `preview_url`, `thumbnail_url`, and nested `attachment_preview` DTOs for governed applicant evidence
 - the staff task creation overlay can use `preview_url` where Drive reports a ready preview, while still keeping task-material actions inside the existing create flow
 - staff planning-material surfaces can use `thumbnail_url` for inline image/PDF card previews and keep `preview_url` for richer preview actions
@@ -143,8 +143,8 @@ Test refs: `ifitwala_ed/api/test_file_access.py`, `ifitwala_ed/api/test_file_acc
 
 Current pain point:
 
-- Org Communication now prefers `thumbnail_url` for inline card previews, and its thumbnail route fails closed when no safe card derivative is ready (`thumb` for images, `pdf_card` for PDFs)
-- when the richer image preview derivative is already ready but the smaller `thumb` derivative is still missing, Org Communication detail surfaces may fall back to `preview_url` inline instead of hiding the image completely
+- Org Communication now prefers `thumbnail_url` for inline card previews, but that field currently resolves to the same governed preview route as `preview_url` once the richer preview derivative is ready
+- because the old `thumb` derivative proved too small for wide attachment cards, governed attachment-card surfaces now use `viewer_preview` for inline images while keeping `thumb` available for smaller avatar/profile-image surfaces
 - governed applicant-document and staff admissions review DTOs now expose the same split, even where the first UI cut still uses explicit open actions instead of inline cards
 - those preview routes are authorization-first Ed action routes, not dedicated thumbnail-delivery contracts
 - the proposal should not "cache page bootstrap grants"; it should split thumbnail delivery from richer preview delivery while keeping Ed as the permission gate
@@ -247,7 +247,7 @@ DTO rules:
 
 - URL fields are stable server-owned surface actions or `null`
 - the DTO is already filtered for the current viewer; the SPA must not infer hidden attachments
-- `thumbnail_url` should stay lightweight and optional, using `thumb` for images and `pdf_card` for PDF first-page card previews
+- `thumbnail_url` should stay optional, using `viewer_preview` for image attachment-card surfaces and `pdf_card` for PDF first-page card previews
 - `preview_url` should be used only when a richer preview action exists
 - `open_url` remains the current compatibility baseline during rollout
 - current surfaces may still keep their legacy top-level fields (`kind`, `material_type`, `title`, `reference_url`, and similar) while also exposing the nested shared DTO during convergence

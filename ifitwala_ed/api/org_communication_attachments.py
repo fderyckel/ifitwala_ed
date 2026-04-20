@@ -58,7 +58,7 @@ def _get_attachment_row(doc, row_name: str):
 def _get_attachment_preview_meta(org_communication: str, row_name: str) -> dict[str, Any]:
     slot = f"{ORG_COMMUNICATION_ATTACHMENT_SLOT_PREFIX}{str(row_name or '').strip()}"
     if not slot or not org_communication:
-        return {"preview_status": None, "thumbnail_ready": False}
+        return {"preview_status": None, "inline_preview_ready": False}
 
     drive_file_id = frappe.db.get_value(
         "Drive Binding",
@@ -83,7 +83,7 @@ def _get_attachment_preview_meta(org_communication: str, row_name: str) -> dict[
             "name",
         )
     if not drive_file_id:
-        return {"preview_status": None, "thumbnail_ready": False}
+        return {"preview_status": None, "inline_preview_ready": False}
 
     drive_file = (
         frappe.db.get_value(
@@ -95,39 +95,14 @@ def _get_attachment_preview_meta(org_communication: str, row_name: str) -> dict[
         or {}
     )
     preview_status = _clean_text(drive_file.get("preview_status"))
-    current_version = _clean_text(drive_file.get("current_version"))
-    thumbnail_ready = False
-
-    if preview_status == "ready" and current_version:
-        mime_type = _clean_text(frappe.db.get_value("Drive File Version", current_version, "mime_type"))
-        derivative_role = "pdf_card" if mime_type == "application/pdf" else "thumb"
-        thumbnail_ready = bool(
-            _clean_text(
-                frappe.db.get_value(
-                    "Drive File Derivative",
-                    {
-                        "drive_file": drive_file_id,
-                        "drive_file_version": current_version,
-                        "derivative_role": derivative_role,
-                        "status": "ready",
-                    },
-                    "name",
-                )
-            )
-        )
-
     return {
         "preview_status": preview_status,
-        "thumbnail_ready": thumbnail_ready,
+        "inline_preview_ready": preview_status == "ready",
     }
 
 
 def _build_attachment_thumbnail_url(org_communication: str, row_name: str, preview_url: str | None) -> str | None:
-    thumbnail_builder = getattr(file_access_api, "build_org_communication_attachment_thumbnail_url", None)
-    if callable(thumbnail_builder):
-        return thumbnail_builder(org_communication=org_communication, row_name=row_name)
-
-    # Older unit-test stubs may only provide preview/open builders.
+    # Org Communication cards now reuse the richer governed preview route for inline media.
     return preview_url
 
 
@@ -167,7 +142,7 @@ def serialize_org_communication_attachment_row(org_communication: str, row) -> d
         )
         thumbnail_url = (
             _build_attachment_thumbnail_url(org_communication, row_name, preview_url)
-            if preview_meta.get("thumbnail_ready")
+            if preview_meta.get("inline_preview_ready")
             else None
         )
         attachment_preview = build_attachment_preview_item(

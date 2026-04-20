@@ -141,7 +141,7 @@ class TestFileAccessUnit(TestCase):
                 )
             )
 
-    def test_get_academic_file_thumbnail_ready_map_marks_only_ready_thumb_derivatives(self):
+    def test_get_academic_file_thumbnail_ready_map_marks_only_ready_attachment_preview_derivatives(self):
         with _file_access_module() as (file_access, frappe):
 
             def fake_sql(query, values=None, as_dict=False):
@@ -363,7 +363,7 @@ class TestFileAccessUnit(TestCase):
 
             frappe.db.get_value = fake_get_value
             frappe.cache = lambda: _FakeCache()
-            file_access._resolve_drive_file_grant_target_url = lambda **kwargs: "https://thumb.example.com/fresh.webp"
+            file_access._resolve_drive_file_grant_target_url = lambda **kwargs: "https://preview.example.com/fresh.webp"
 
             target_url = file_access._resolve_cached_thumbnail_target_url(
                 drive_file_id="DRIVE-FILE-1",
@@ -371,9 +371,9 @@ class TestFileAccessUnit(TestCase):
                 surface_parts=["org_communication", "COMM-1", "row-1"],
             )
 
-        self.assertEqual(target_url, "https://thumb.example.com/fresh.webp")
+        self.assertEqual(target_url, "https://preview.example.com/fresh.webp")
         self.assertEqual(len(cache_writes), 1)
-        self.assertEqual(cache_writes[0][1], "https://thumb.example.com/fresh.webp")
+        self.assertEqual(cache_writes[0][1], "https://preview.example.com/fresh.webp")
 
     def test_resolve_cached_thumbnail_target_url_uses_pdf_card_derivative_for_pdf_files(self):
         with _file_access_module() as (file_access, frappe):
@@ -674,7 +674,7 @@ class TestFileAccessUnit(TestCase):
                         None,
                         "FILE-ACADEMIC-1",
                     ],
-                    "derivative_role": "thumb",
+                    "derivative_role": "viewer_preview",
                     "strict_derivative": True,
                     "target_resolver": None,
                 }
@@ -1119,6 +1119,26 @@ class TestFileAccessUnit(TestCase):
             "https://signed.example.com/current-student-thumb",
         )
 
+    def test_resolve_public_website_media_grant_url_uses_surface_scoped_media_wrapper(self):
+        with _file_access_module() as (file_access, frappe):
+            frappe.db.get_value = lambda doctype, name, fieldname=None, as_dict=False: (
+                "ready"
+                if doctype == "Drive File" and name == "DRIVE-PUBLIC-1" and fieldname == "preview_status"
+                else None
+            )
+            file_access.get_drive_file_for_file = lambda file_name, **kwargs: {"name": "DRIVE-PUBLIC-1"}
+            file_access._load_drive_media_callable = lambda attribute: (
+                self.assertEqual(attribute, "issue_public_website_media_preview_grant")
+                or (lambda file_id, derivative_role=None: {"url": "https://signed.example.com/logo.webp"})
+            )
+            file_access._load_drive_access_callable = lambda attribute: self.fail(
+                "generic drive grant path should not be used for public website media"
+            )
+
+            target_url = file_access._resolve_public_website_media_grant_url("FILE-PUBLIC-1")
+
+        self.assertEqual(target_url, "https://signed.example.com/logo.webp")
+
     def test_open_public_website_media_accepts_local_drive_delivery_target(self):
         with _file_access_module() as (file_access, frappe):
             delivery_requests: list[dict] = []
@@ -1158,6 +1178,40 @@ class TestFileAccessUnit(TestCase):
             )
 
         self.assertEqual(target_url, "/private/files/ifitwala_drive/files/aa/bb/material.pdf")
+
+    def test_request_supporting_material_grant_passes_drive_file_id_to_wrapper(self):
+        with _file_access_module() as (file_access, _frappe):
+            wrapper_calls = []
+            file_access._load_drive_materials_callable = lambda attribute: (
+                self.assertEqual(attribute, "issue_supporting_material_preview_grant")
+                or (
+                    lambda **kwargs: wrapper_calls.append(kwargs) or {"url": "https://preview.example.com/material.pdf"}
+                )
+            )
+            file_access._load_drive_access_callable = lambda _attribute: self.fail(
+                "generic drive grant path should not be used for supporting materials"
+            )
+
+            grant = file_access._request_supporting_material_grant(
+                method_name="issue_supporting_material_preview_grant",
+                material="MAT-0001",
+                placement="MAT-PLC-1",
+                drive_file_id="DRIVE-FILE-MAT-1",
+                derivative_role="viewer_preview",
+            )
+
+        self.assertEqual(
+            wrapper_calls,
+            [
+                {
+                    "material": "MAT-0001",
+                    "placement": "MAT-PLC-1",
+                    "drive_file_id": "DRIVE-FILE-MAT-1",
+                    "derivative_role": "viewer_preview",
+                }
+            ],
+        )
+        self.assertEqual(grant, {"url": "https://preview.example.com/material.pdf"})
 
     def test_resolve_drive_download_grant_url_returns_signed_url(self):
         with _file_access_module() as (file_access, frappe):

@@ -175,6 +175,31 @@ def assert_guardian_image_read_access(guardian: str, *, file_name: str) -> dict[
     }
 
 
+def assert_public_website_media_read_access(*, file_name: str) -> dict[str, Any]:
+    from ifitwala_ed.api.file_access import (
+        _assert_public_website_media_visible,
+        _resolve_public_website_media_row,
+    )
+
+    resolved_file_name = str(file_name or "").strip()
+    if not resolved_file_name:
+        frappe.throw(_("File is required."), frappe.ValidationError)
+
+    file_row = _resolve_public_website_media_row(resolved_file_name)
+    _assert_public_website_media_visible(file_row)
+
+    drive_file_id = str((file_row or {}).get("drive_file_id") or "").strip()
+    if not drive_file_id:
+        frappe.throw(_("Governed public website media file was not found."))
+
+    return {
+        "file_id": str((file_row.get("name") or resolved_file_name) or "").strip(),
+        "drive_file_id": drive_file_id,
+        "organization": str((file_row.get("organization") or "")).strip(),
+        "school": str((file_row.get("school") or "")).strip() or None,
+    }
+
+
 def build_organization_media_contract(
     *,
     organization: str,
