@@ -1,7 +1,7 @@
 # Governed Files Implementation Status And Remediation Order
 
 Status: Current runtime and gap register
-Date: 2026-04-19
+Date: 2026-04-20
 Code refs:
 - `ifitwala_ed/utilities/governed_uploads.py`
 - `ifitwala_ed/utilities/file_management.py`
@@ -9,11 +9,14 @@ Code refs:
 - `ifitwala_ed/integrations/drive/authority.py`
 - `ifitwala_ed/integrations/drive/content_uploads.py`
 - `ifitwala_ed/integrations/drive/bridge.py`
+- `ifitwala_ed/integrations/drive/workflow_specs.py`
 - `ifitwala_drive/api/uploads.py`
 - `ifitwala_drive/services/uploads/finalize.py`
 Test refs:
 - `ifitwala_drive/tests/test_task_submission_upload_flow.py`
 - `ifitwala_drive/tests/test_media_and_admissions_wrappers.py`
+- `ifitwala_drive/tests/test_preview_jobs.py`
+- `ifitwala_ed/utilities/test_image_utils_unit.py`
 - `ifitwala_ed/utilities/test_governed_uploads_task_flows.py`
 - `ifitwala_ed/admission/test_admissions_portal_uploads_unit.py`
 
@@ -39,7 +42,7 @@ Today the system already has substantial Drive-based infrastructure:
 - grant issuance
 
 The main boundary leaks at ingress and finalize are now sealed.
-The remaining problems are read/derivative cleanup and historical-data removal.
+Remaining work is now about tightening workflow-spec contracts and expanding Drive-native reuse/browse flows without reopening the boundary.
 
 ## 2. Boundary status and remaining non-conforming behaviors
 
@@ -67,7 +70,8 @@ Current code:
 
 - `ifitwala_drive/services/uploads/finalize.py`
 - `ifitwala_drive/services/files/projections.py`
-- `ifitwala_ed/utilities/file_dispatcher.py`
+- `ifitwala_ed/hooks.py`
+- `ifitwala_ed/utilities/image_utils.py`
 
 Current behavior:
 
@@ -116,6 +120,7 @@ Target fix:
 
 - Drive metadata becomes sole governance authority
 - historical `File Classification` rows are removed by migration patch once every row has matching Drive authority
+- the retired `File Classification` DocTypes are then removed by an explicit schema-retirement patch
 
 ### 2.5 Derivatives exist in two systems
 
@@ -145,57 +150,90 @@ Implemented fix:
 - Ed synchronous derivative generation is removed
 - profile-image derivative scheduling now goes through the Drive preview pipeline
 
-### 2.6 Read paths still probe storage directly
+### 2.6 Resolved: governed profile-image reads no longer probe storage directly
 
 Current code:
 
 - `ifitwala_ed/utilities/image_utils.py`
 
-Observed behavior:
+Current behavior:
 
-- read helpers perform repeated file accessibility checks
-- some helpers still inspect disk existence or storage-backed file accessibility
+- profile-image compatibility keys still exist for Ed surfaces
+- those keys now resolve from current `Drive File` metadata, `Drive File Derivative` readiness, and file-access grant routes
+- governed original-image fallback uses the current Drive-owned file rather than disk accessibility probing
 
-Why this is wrong:
+Why the old model was wrong:
 
 - hot paths become DB + disk heavy
 - read behavior depends on storage inspection instead of canonical metadata/grants
 
-Target fix:
+Implemented fix:
 
 - read/open/display decisions come from Drive metadata and grants
-- Ed list surfaces stop probing disk
+- Ed list surfaces stop probing disk for governed profile-image delivery
 
-### 2.7 Workflow semantics are too stringly-typed
+### 2.7 Resolved: governed delivery routes no longer stream local private bytes
+
+Current code:
+
+- `ifitwala_ed/api/file_access.py`
+
+Current behavior:
+
+- governed private-media routes now redirect only to:
+  - explicit external URLs allowed by the surface contract
+  - explicit public `/files/...` URLs allowed by the surface contract
+  - just-in-time safe Drive grant targets
+- unsafe raw `/private/...` grant targets fail closed
+- Ed no longer falls back to local file reads for admissions, academic, guardian, employee, org-communication, or public-website governed media routes
+
+Why the old model was wrong:
+
+- it reintroduced storage probing into hot read paths
+- it treated local disk as a second delivery authority
+- it kept route behavior dependent on storage layout rather than Drive metadata and grant policy
+
+Implemented fix:
+
+- governed delivery routes now resolve only from safe public/external targets or Drive grants
+- raw private redirect targets are rejected instead of streamed from local disk
+
+### 2.8 Workflow semantics are too stringly-typed
 
 Current code:
 
 - `ifitwala_ed/integrations/drive/bridge.py`
-- workflow-specific upload builders across Ed
+- `ifitwala_ed/integrations/drive/workflow_specs.py`
+- Drive wrapper services under `ifitwala_drive/services/integration/`
 
-Observed behavior:
+Previous drift:
 
 - many upload flows hand-author payload dicts
 - purpose/slot/binding semantics are duplicated across code and docs
 
-Why this is wrong:
+Implemented fix:
 
-- browser-time failure becomes the first real integration test
-- semantic drift is easy
+- Ed now exposes one runtime `GovernedUploadSpec` registry in `workflow_specs.py`
+- Drive wrapper services now stamp `workflow_id`, `contract_version`, and `workflow_payload`
+- `Drive Upload Session.upload_contract_json` now persists workflow metadata under `workflow`
+- finalize and post-finalize dispatch now resolve by persisted `workflow_id` first and fall back to detection only for pre-registry sessions
 
-Target fix:
+Remaining cleanup:
 
-- one versioned `GovernedUploadSpec` per workflow
+- some wrapper-specific service modules still exist for public ergonomics
+- the generic `create_upload_session` API still accepts the older explicit governance fields during transition
+- some historical audit/discussion notes may still mention the retired `File Classification` and Ed-side derivative model and must not be treated as runtime design guidance
 
-## 3. Rules for new work before the code refactor lands
+## 3. Rules for new work during remaining cleanup
 
-Until the implementation is cleaned up:
+Until the remaining cleanup lands:
 
 - do not add new direct writes to Drive storage from Ed
 - do not add new `File Classification`-based workflow logic
 - do not add new Ed-side derivative generation
 - do not add new routing/rename logic for Drive-managed objects
-- do not expand the dynamic-import wrapper surface unless strictly necessary to keep the app running during migration
+- do not add new anonymous upload payloads that omit `workflow_id`
+- do not reintroduce reload fallback wrappers, `sys.path` import rescue, or hidden cross-app service imports
 
 ## 4. Remediation order
 
@@ -244,6 +282,39 @@ Required outcomes:
 - Drive becomes sole derivative authority
 - Ed read paths stop probing storage directly
 - completed in code for governed profile-image surfaces and Drive-backed derivative routing
+
+### Phase 6
+
+Runtime workflow spec registry.
+
+Required outcomes:
+
+- completed in code
+- Ed owns one versioned `GovernedUploadSpec` registry in `ifitwala_ed/integrations/drive/workflow_specs.py`
+- Drive persists `workflow_id` and `contract_version` with the session upload contract
+- finalize and post-finalize dispatch resolve by persisted workflow metadata rather than branch cascades
+- wrapper services now create sessions through `workflow_id` plus workflow-specific identifiers internally, while preserving the current public wrapper endpoints
+
+### Phase 7
+
+Governed delivery cleanup.
+
+Required outcomes:
+
+- completed in code
+- governed read/open routes resolve only to safe public/external targets or Drive grants
+- raw private redirect targets fail closed instead of streaming local private bytes
+
+### Phase 8
+
+Runtime wrapper cleanup.
+
+Required outcomes:
+
+- completed in code
+- Ed same-repo integration entrypoints now use explicit imports instead of same-repo dynamic imports
+- Ed no longer uses reload fallback wrappers or hidden Drive service fallbacks to recover missing public API methods
+- Drive no longer uses `sys.path` rescue to reach Ed bridge modules and now resolves only explicit public bridge modules
 
 ## 5. Relationship to the canonical architecture
 

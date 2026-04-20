@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import importlib
 from typing import Any
 
 import frappe
@@ -29,7 +28,7 @@ def _clean_text(value) -> str | None:
 
 def _load_drive_callable(attribute: str):
     try:
-        drive_api = importlib.import_module("ifitwala_drive.api.communications")
+        from ifitwala_drive.api import communications as drive_api
     except ImportError as exc:
         frappe.throw(_("Ifitwala Drive is required for communication attachments: {0}").format(exc))
 
@@ -37,32 +36,9 @@ def _load_drive_callable(attribute: str):
     if callable(callable_obj):
         return callable_obj
 
-    drive_integration = None
-    try:
-        drive_integration = importlib.import_module(
-            "ifitwala_drive.services.integration.ifitwala_ed_org_communications"
-        )
-        importlib.reload(drive_integration)
-        drive_api = importlib.reload(drive_api)
-    except Exception:
-        drive_api = importlib.import_module("ifitwala_drive.api.communications")
-
-    callable_obj = getattr(drive_api, attribute, None)
-    if callable(callable_obj):
-        return callable_obj
-
-    service_attribute = f"{attribute}_service"
-    if drive_integration and hasattr(drive_integration, service_attribute):
-        service_callable = getattr(drive_integration, service_attribute)
-
-        def _wrapped_service_callable(**kwargs):
-            return service_callable(kwargs)
-
-        return _wrapped_service_callable
-
     frappe.throw(
         _(
-            "Ifitwala Drive is missing communications method '{0}'. Deploy or restart the Drive app so the updated communications API is available."
+            "Ifitwala Drive is missing public communications method '{0}'. Deploy the matching Drive API before using governed communication attachments."
         ).format(attribute)
     )
 

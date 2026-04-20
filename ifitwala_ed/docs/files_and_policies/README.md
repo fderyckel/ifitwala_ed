@@ -27,7 +27,7 @@ Rules after the Phase 1 docs reset:
 - `ifitwala_drive` is the sole governance and execution authority for governed files.
 - `ifitwala_ed` remains the workflow, permission, and tenant-scope authority.
 - `File Classification` is not part of the long-term architecture and must be removed during the refactor.
-- if current code still reads or writes `File Classification`, treat that as transitional compatibility only.
+- any remaining `File Classification` references should now exist only in migration patches or historical notes.
 - no new work may extend the old `File Classification` architecture or add new logic that depends on it.
 
 Companion notes:

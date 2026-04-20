@@ -10,9 +10,6 @@ from ifitwala_ed.tests.frappe_stubs import import_fresh, stubbed_frappe
 
 @contextmanager
 def _governed_uploads_module():
-    file_dispatcher = ModuleType("ifitwala_ed.utilities.file_dispatcher")
-    file_dispatcher.create_and_classify_file = lambda **kwargs: None
-
     image_utils = ModuleType("ifitwala_ed.utilities.image_utils")
     image_utils.EMPLOYEE_VARIANT_PRIORITY = []
     image_utils.file_url_is_accessible = lambda file_url, *, file_name=None, is_private=0: True
@@ -24,7 +21,6 @@ def _governed_uploads_module():
 
     with stubbed_frappe(
         extra_modules={
-            "ifitwala_ed.utilities.file_dispatcher": file_dispatcher,
             "ifitwala_ed.utilities.image_utils": image_utils,
             "ifitwala_ed.utilities.organization_media": organization_media,
         }
@@ -218,28 +214,13 @@ class TestGovernedUploadTaskFlows(TestCase):
         )
         self.assertEqual(payload["file"], "FILE-STU-0001")
 
-    def test_get_drive_media_callable_falls_back_to_integration_service(self):
+    def test_get_drive_media_callable_requires_public_media_api_method(self):
         api_module = SimpleNamespace()
-        observed = {}
-
-        def fake_service(payload):
-            observed.update(payload)
-            return {"upload_session_id": "DUS-42"}
-
-        integration_module = SimpleNamespace(upload_guardian_image_service=fake_service)
 
         with _governed_uploads_module() as governed_uploads:
-            with (
-                patch.object(governed_uploads, "_load_drive_module", return_value=api_module),
-                patch.object(governed_uploads.importlib, "import_module", return_value=integration_module),
-                patch.object(governed_uploads.importlib, "reload", side_effect=lambda module: module),
-            ):
-                callable_ = governed_uploads._get_drive_media_callable("upload_guardian_image")
-                response = callable_(guardian="GRD-0001", filename_original="photo.png")
-
-        self.assertEqual(response["upload_session_id"], "DUS-42")
-        self.assertEqual(observed["guardian"], "GRD-0001")
-        self.assertEqual(observed["filename_original"], "photo.png")
+            with patch.object(governed_uploads, "_load_drive_module", return_value=api_module):
+                with self.assertRaises(governed_uploads.frappe.ValidationError):
+                    governed_uploads._get_drive_media_callable("upload_guardian_image")
 
     def test_upload_guardian_image_uses_drive_wrapper_and_persists_org_anchor(self):
         doc = _FakeDoc(name="GRD-0001", organization="", guardian_image="")

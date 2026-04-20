@@ -6,7 +6,6 @@
 from __future__ import annotations
 
 import hashlib
-import importlib
 import json
 import mimetypes
 import os
@@ -193,9 +192,33 @@ def _sync_linked_employee_user_image(employee_name: str, *, original_url: str | 
 
 def _load_drive_module(module_name: str):
     try:
-        return importlib.import_module(module_name)
+        if module_name == "ifitwala_drive.api.uploads":
+            from ifitwala_drive.api import uploads as drive_uploads_api
+
+            return drive_uploads_api
+        if module_name == "ifitwala_drive.api.media":
+            from ifitwala_drive.api import media as drive_media_api
+
+            return drive_media_api
+        if module_name == "ifitwala_drive.api.admissions":
+            from ifitwala_drive.api import admissions as drive_admissions_api
+
+            return drive_admissions_api
+        if module_name == "ifitwala_drive.api.submissions":
+            from ifitwala_drive.api import submissions as drive_submissions_api
+
+            return drive_submissions_api
+        if module_name == "ifitwala_drive.api.resources":
+            from ifitwala_drive.api import resources as drive_resources_api
+
+            return drive_resources_api
+        if module_name == "ifitwala_drive.api.materials":
+            from ifitwala_drive.api import materials as drive_materials_api
+
+            return drive_materials_api
     except ImportError as exc:
         frappe.throw(_("Ifitwala Drive is required for governed upload execution: {0}").format(exc))
+    frappe.throw(_("Unsupported Ifitwala Drive module request: {0}").format(module_name))
 
 
 def _get_drive_media_callable(attribute: str):
@@ -204,32 +227,9 @@ def _get_drive_media_callable(attribute: str):
     if create_session_callable:
         return create_session_callable
 
-    # Long-running app processes may still hold a pre-change Drive module object.
-    # Reload the integration and API modules once before failing.
-    drive_media_integration = None
-    try:
-        drive_media_integration = importlib.import_module("ifitwala_drive.services.integration.ifitwala_ed_media")
-        importlib.reload(drive_media_integration)
-        drive_media_api = importlib.reload(drive_media_api)
-    except Exception:
-        drive_media_api = _load_drive_module("ifitwala_drive.api.media")
-
-    create_session_callable = getattr(drive_media_api, attribute, None)
-    if create_session_callable:
-        return create_session_callable
-
-    service_attribute = f"{attribute}_service"
-    if drive_media_integration and hasattr(drive_media_integration, service_attribute):
-        service_callable = getattr(drive_media_integration, service_attribute)
-
-        def _wrapped_service_callable(**kwargs):
-            return service_callable(kwargs)
-
-        return _wrapped_service_callable
-
     frappe.throw(
         _(
-            "Ifitwala Drive is missing media method '{0}'. Deploy or restart the Drive app so the updated media API is available."
+            "Ifitwala Drive is missing public media method '{0}'. Deploy the matching Drive API before using governed media uploads."
         ).format(attribute)
     )
 

@@ -30,6 +30,7 @@ Today Ifitwala_Ed already enforces the correct broad shape for governed reads:
 
 - business surfaces return server-owned `open_url` values instead of raw private paths
 - `open_org_communication_attachment(...)` re-checks communication visibility, then resolves a Drive grant just in time
+- governed open/preview routes now fail closed when no safe public/external/Drive target exists; they no longer stream local private bytes as a fallback
 - Org Communication rows now also expose a stable `preview_url` route owned by Ed plus a `preview_status` hint for renderability
 - staff, student, and guardian communication detail surfaces now render inline image previews and full-width first-page PDF previews when those governed preview routes are ready, with clean fallback cards when they are not
 - the staff task creation overlay now renders inline image previews and compact PDF preview tiles for current task materials after a new reusable task is created

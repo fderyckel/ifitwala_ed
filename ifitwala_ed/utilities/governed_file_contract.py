@@ -1,4 +1,4 @@
-# ifitwala_ed/utilities/file_classification_contract.py
+# ifitwala_ed/utilities/governed_file_contract.py
 
 from __future__ import annotations
 

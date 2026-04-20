@@ -8,7 +8,7 @@ The core rule is simple:
 
 * the SPA must call `ifitwala_ed` admissions endpoints
 * `ifitwala_ed` must call workflow-aware `ifitwala_drive` endpoints
-* no new governed admissions upload should write files by calling `file_dispatcher.create_and_classify_file(...)` directly from portal-facing business logic
+* no new governed admissions upload should create, route, or finalize files through Ed-local file helpers from portal-facing business logic
 
 This keeps `ifitwala_ed` as workflow authority and `ifitwala_drive` as governed file authority.
 
@@ -22,13 +22,13 @@ Preferred stack for admissions uploads:
 2. `ifitwala_ed.api.admissions_portal` validates applicant access and workflow state
 3. `ifitwala_ed.admission.admissions_portal` calls a workflow-aware `ifitwala_drive.api.admissions.*` or `ifitwala_drive.api.media.*` endpoint
 4. `ifitwala_drive` creates a `Drive Upload Session`
-5. `ifitwala_drive` finalizes through the authoritative Ed dispatcher boundary
+5. `ifitwala_drive` finalizes natively and writes the authoritative governed-file metadata
 
 Avoid:
 
 * SPA calling `ifitwala_drive` directly
 * admissions portal methods calling generic `ifitwala_drive.api.uploads.create_upload_session` directly
-* admissions portal methods writing files directly with `file_dispatcher.create_and_classify_file(...)`
+* admissions portal methods writing files through retired Ed-local file creation/routing helpers
 
 The generic `ifitwala_drive.api.uploads.*` endpoints are infrastructure-level upload lifecycle endpoints. Admissions portal flows should normally use workflow-aware wrappers instead.
 

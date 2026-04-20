@@ -12,7 +12,7 @@ from ifitwala_ed.governance.policy_scope_utils import (
     get_school_ancestors_including_self,
 )
 from ifitwala_ed.integrations.drive.authority import get_drive_file_for_file
-from ifitwala_ed.utilities.file_classification_contract import (
+from ifitwala_ed.utilities.governed_file_contract import (
     ORGANIZATION_MEDIA_DATA_CLASS,
     ORGANIZATION_MEDIA_FILE_CATEGORY,
     ORGANIZATION_MEDIA_PURPOSE,

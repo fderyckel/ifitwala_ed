@@ -261,7 +261,7 @@ No standalone child-doc page is required; behavior is owned by the parent lifecy
 - **File governance**:
   - direct attachments blocked except `applicant_image`
   - governed upload endpoint: `ifitwala_ed.utilities.governed_uploads.upload_applicant_image`
-  - Desk `applicant_image` upload still uses local dispatcher finalization in `ifitwala_ed.utilities.file_dispatcher.create_and_classify_file(...)`
+  - Desk `applicant_image` upload now follows the Drive-governed upload boundary, the same as portal uploads
   - admissions portal self-upload endpoint: `ifitwala_ed.api.admissions_portal.upload_applicant_profile_image`
   - applicant profile image runtime delegate: `ifitwala_ed.admission.admissions_portal.upload_applicant_profile_image` -> `ifitwala_drive.api.admissions.upload_applicant_profile_image`
   - admissions portal guardian photo upload endpoint: `ifitwala_ed.api.admissions_portal.upload_applicant_guardian_image`
@@ -269,7 +269,7 @@ No standalone child-doc page is required; behavior is owned by the parent lifecy
   - admissions portal applicant/guardian photo uploads accept only `JPG`/`JPEG`/`PNG`, reject `HEIC`/`HEIF`, rewrite accepted uploads to server-owned stripped `JPEG`, and enforce `10 MB` / `25 megapixel` limits before governed finalize/storage
   - applicant document uploads runtime delegate: `ifitwala_ed.admission.admissions_portal.upload_applicant_document` -> `ifitwala_drive.api.admissions.upload_applicant_document`
   - applicant health vaccination proof runtime delegate: `ifitwala_ed.admission.admissions_portal.upload_applicant_health_vaccination_proof` -> `ifitwala_drive.api.admissions.upload_applicant_health_vaccination_proof`
-  - all other admissions docs routed via `Applicant Document` + file classification
+  - all other admissions docs route through `Applicant Document` + Drive-governed upload intent
 - **Recommendation intake (runtime)**:
   - external recommender submissions use a separate intake surface (`/admissions/recommendation/<token>`) and do not use applicant portal authentication
   - supports multiple confidential letters per applicant using per-request `Applicant Document Item` slots (`item_key`)

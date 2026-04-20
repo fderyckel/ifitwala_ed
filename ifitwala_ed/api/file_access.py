@@ -3,9 +3,6 @@
 from __future__ import annotations
 
 import hashlib
-import importlib
-import mimetypes
-import os
 from types import SimpleNamespace
 from urllib.parse import urlencode, urlparse
 
@@ -22,16 +19,10 @@ from ifitwala_ed.admission.admission_utils import (
     has_scoped_staff_access_to_student_applicant,
     is_admissions_file_staff_user,
 )
-from ifitwala_ed.api.org_comm_utils import check_audience_match
+from ifitwala_ed.api.org_comm_utils import check_audience_match, expand_employee_visibility_context
+from ifitwala_ed.curriculum import materials as materials_domain
 from ifitwala_ed.integrations.drive.authority import get_drive_file_for_file
 from ifitwala_ed.routing.policy import has_active_employee_profile
-
-_org_comm_utils = importlib.import_module("ifitwala_ed.api.org_comm_utils")
-expand_employee_visibility_context = getattr(
-    _org_comm_utils,
-    "expand_employee_visibility_context",
-    lambda employee, roles: employee or {},
-)
 
 ADMISSIONS_ATTACHMENT_DOCTYPES = {"Applicant Document Item", "Student Applicant", "Contact"}
 CONTEXT_STUDENT_APPLICANT = "Student Applicant"
@@ -54,7 +45,7 @@ def _is_external_url(value: str | None) -> bool:
 
 def _is_public_site_file_url(value: str | None) -> bool:
     raw = (value or "").strip()
-    return raw.startswith("/files/")
+    return raw.startswith("/files/") and not raw.startswith("/files/ifitwala_drive/")
 
 
 def _is_raw_private_redirect_target(value: str | None) -> bool:
@@ -562,7 +553,7 @@ def _resolve_public_website_media_row(file_name: str) -> dict:
 
 def _load_drive_access_callable(attribute: str):
     try:
-        drive_api = importlib.import_module("ifitwala_drive.api.access")
+        from ifitwala_drive.api import access as drive_api
     except ImportError as exc:
         frappe.throw(_("Ifitwala Drive is required for governed file access: {0}").format(exc))
 
@@ -575,7 +566,7 @@ def _load_drive_access_callable(attribute: str):
 
 def _load_drive_communications_callable(attribute: str):
     try:
-        drive_api = importlib.import_module("ifitwala_drive.api.communications")
+        from ifitwala_drive.api import communications as drive_api
     except ImportError:
         return None
 
@@ -744,11 +735,6 @@ def _resolve_drive_file_grant_target_url(
     if target_url and not _is_raw_private_redirect_target(target_url):
         return target_url
 
-    fallback_url = frappe.db.get_value("File", file_id, "file_url")
-    target_url = str(fallback_url or "").strip()
-    if target_url and not _is_raw_private_redirect_target(target_url):
-        return target_url
-
     return None
 
 
@@ -873,11 +859,6 @@ def _resolve_org_communication_attachment_grant_target_url(
         )
         target_url = str((grant or {}).get("url") or "").strip()
 
-    if target_url and not _is_raw_private_redirect_target(target_url):
-        return target_url
-
-    fallback_url = frappe.db.get_value("File", file_id, "file_url")
-    target_url = str(fallback_url or "").strip()
     if target_url and not _is_raw_private_redirect_target(target_url):
         return target_url
 
@@ -1098,51 +1079,7 @@ def _assert_context_permission(
     frappe.throw(_("Unsupported file access context."), frappe.ValidationError)
 
 
-def _read_file_bytes(file_row: dict) -> bytes | None:
-    file_url = (file_row.get("file_url") or "").strip()
-    if not file_url or file_url.startswith(("http://", "https://")):
-        return None
-
-    rel_path = file_url.lstrip("/")
-    if rel_path.startswith("private/") or rel_path.startswith("public/"):
-        abs_path = frappe.utils.get_site_path(rel_path)
-    else:
-        base = "private" if frappe.utils.cint(file_row.get("is_private")) else "public"
-        abs_path = frappe.utils.get_site_path(base, rel_path)
-
-    if not os.path.exists(abs_path):
-        return None
-
-    with open(abs_path, "rb") as handle:
-        return handle.read()
-
-
-def _respond_with_inline_file(file_row: dict, *, cache_headers: bool = False) -> bool:
-    content = _read_file_bytes(file_row)
-    if content is None:
-        return False
-
-    if cache_headers:
-        _set_thumbnail_cache_headers()
-
-    filename = (file_row.get("file_name") or "").strip() or "document"
-    content_type = mimetypes.guess_type(filename)[0] or "application/octet-stream"
-
-    frappe.local.response["type"] = "download"
-    frappe.local.response["filename"] = filename
-    frappe.local.response["filecontent"] = content
-    frappe.local.response["display_content_as"] = "inline"
-    frappe.local.response["content_type"] = content_type
-    return True
-
-
-def _respond_with_redirect_or_inline_file(
-    *,
-    file_row: dict | None = None,
-    file_id: str | None = None,
-    target_url: str | None,
-    cache_headers: bool = False,
-) -> bool:
+def _respond_with_redirect_target(*, target_url: str | None, cache_headers: bool = False) -> bool:
     resolved_target_url = str(target_url or "").strip()
     if resolved_target_url and not _is_raw_private_redirect_target(resolved_target_url):
         if cache_headers:
@@ -1150,14 +1087,7 @@ def _respond_with_redirect_or_inline_file(
         frappe.local.response["type"] = "redirect"
         frappe.local.response["location"] = resolved_target_url
         return True
-
-    resolved_file_row = file_row
-    if resolved_file_row is None and str(file_id or "").strip():
-        resolved_file_row = _resolve_any_file_row(str(file_id or "").strip())
-    if resolved_file_row is None:
-        return False
-
-    return _respond_with_inline_file(resolved_file_row, cache_headers=cache_headers)
+    return False
 
 
 def _resolve_drive_download_grant_url(file_name: str) -> str | None:
@@ -1436,23 +1366,16 @@ def download_admissions_file(
         frappe.local.response["location"] = file_url
         return
 
-    content = _read_file_bytes(file_row)
-    if content is None:
-        target_url = _resolve_drive_download_grant_url(file_name)
-        if target_url:
-            frappe.local.response["type"] = "redirect"
-            frappe.local.response["location"] = target_url
-            return
-        frappe.throw(_("Could not read the file content."), frappe.DoesNotExistError)
+    if _is_public_site_file_url(file_url):
+        frappe.local.response["type"] = "redirect"
+        frappe.local.response["location"] = file_url
+        return
 
-    filename = (file_row.get("file_name") or "").strip() or "document"
-    content_type = mimetypes.guess_type(filename)[0] or "application/octet-stream"
+    target_url = _resolve_drive_download_grant_url(file_name)
+    if _respond_with_redirect_target(target_url=target_url):
+        return
 
-    frappe.local.response["type"] = "download"
-    frappe.local.response["filename"] = filename
-    frappe.local.response["filecontent"] = content
-    frappe.local.response["display_content_as"] = "inline"
-    frappe.local.response["content_type"] = content_type
+    frappe.throw(_("Could not resolve the file content."), frappe.DoesNotExistError)
 
 
 @frappe.whitelist()
@@ -1477,6 +1400,11 @@ def open_org_communication_attachment(
     if not file_url:
         frappe.throw(_("Attachment file is missing."), frappe.DoesNotExistError)
 
+    if _is_public_site_file_url(file_url):
+        frappe.local.response["type"] = "redirect"
+        frappe.local.response["location"] = file_url
+        return
+
     drive_file_id, file_id = _resolve_org_communication_drive_file(doc.name, resolved_row_name)
     target_url = _resolve_org_communication_attachment_grant_target_url(
         org_communication=doc.name,
@@ -1485,7 +1413,7 @@ def open_org_communication_attachment(
         file_id=file_id,
         prefer_preview=False,
     )
-    if _respond_with_redirect_or_inline_file(file_id=file_id, target_url=target_url):
+    if _respond_with_redirect_target(target_url=target_url):
         return
 
     frappe.throw(_("Could not resolve the attachment."), frappe.DoesNotExistError)
@@ -1518,7 +1446,12 @@ def preview_org_communication_attachment(
         file_id=file_id,
         prefer_preview=True,
     )
-    if _respond_with_redirect_or_inline_file(file_id=file_id, target_url=target_url):
+    if _respond_with_redirect_target(target_url=target_url):
+        return
+
+    if _is_public_site_file_url(file_url):
+        frappe.local.response["type"] = "redirect"
+        frappe.local.response["location"] = file_url
         return
 
     frappe.throw(_("Could not resolve the attachment preview."), frappe.DoesNotExistError)
@@ -1583,26 +1516,13 @@ def open_public_website_media(file: str | None = None):
         frappe.local.response["location"] = file_url
         return
 
-    if file_url.startswith("/files/") and not file_url.startswith("/files/ifitwala_drive/"):
+    if _is_public_site_file_url(file_url):
         frappe.local.response["type"] = "redirect"
         frappe.local.response["location"] = file_url
         return
 
-    content = _read_file_bytes(file_row)
-    if content is not None:
-        filename = (file_row.get("file_name") or "").strip() or "image"
-        content_type = mimetypes.guess_type(filename)[0] or "application/octet-stream"
-        frappe.local.response["type"] = "download"
-        frappe.local.response["filename"] = filename
-        frappe.local.response["filecontent"] = content
-        frappe.local.response["display_content_as"] = "inline"
-        frappe.local.response["content_type"] = content_type
-        return
-
     target_url = _resolve_public_website_media_grant_url(file_name)
-    if target_url:
-        frappe.local.response["type"] = "redirect"
-        frappe.local.response["location"] = target_url
+    if _respond_with_redirect_target(target_url=target_url):
         return
 
     frappe.throw(_("Could not resolve a public website media URL."), frappe.DoesNotExistError)
@@ -1637,26 +1557,19 @@ def download_academic_file(
 
     if (derivative_role or "").strip():
         target_url = _resolve_drive_preview_grant_url(file_name, derivative_role=derivative_role)
-        if target_url and _respond_with_redirect_or_inline_file(file_row=file_row, target_url=target_url):
+        if _respond_with_redirect_target(target_url=target_url):
             return
 
-    content = _read_file_bytes(file_row)
-    if content is None:
-        target_url = _resolve_drive_download_grant_url(file_name)
-        if target_url:
-            frappe.local.response["type"] = "redirect"
-            frappe.local.response["location"] = target_url
-            return
-        frappe.throw(_("Could not read the file content."), frappe.DoesNotExistError)
+    if _is_public_site_file_url(file_url):
+        frappe.local.response["type"] = "redirect"
+        frappe.local.response["location"] = file_url
+        return
 
-    filename = (file_row.get("file_name") or "").strip() or "document"
-    content_type = mimetypes.guess_type(filename)[0] or "application/octet-stream"
+    target_url = _resolve_drive_download_grant_url(file_name)
+    if _respond_with_redirect_target(target_url=target_url):
+        return
 
-    frappe.local.response["type"] = "download"
-    frappe.local.response["filename"] = filename
-    frappe.local.response["filecontent"] = content
-    frappe.local.response["display_content_as"] = "inline"
-    frappe.local.response["content_type"] = content_type
+    frappe.throw(_("Could not resolve the file content."), frappe.DoesNotExistError)
 
 
 def _resolve_authorized_academic_file(
@@ -1682,8 +1595,6 @@ def _resolve_authorized_academic_file(
     if material:
         if not material_course:
             frappe.throw(_("Material file is missing course context."), frappe.ValidationError)
-        materials_domain = importlib.import_module("ifitwala_ed.curriculum.materials")
-
         placement_name = _assert_internal_material_context(
             file_row=file_row,
             context_doctype=context_doctype,
@@ -1743,7 +1654,7 @@ def preview_academic_file(
     )
 
     target_url = _resolve_drive_preview_grant_url(file_name)
-    if target_url and _respond_with_redirect_or_inline_file(file_row=file_row, target_url=target_url):
+    if _respond_with_redirect_target(target_url=target_url):
         return
 
     file_url = (file_row.get("file_url") or "").strip()
@@ -1752,21 +1663,16 @@ def preview_academic_file(
         frappe.local.response["location"] = file_url
         return
 
-    content = _read_file_bytes(file_row)
-    if content is None:
-        target_url = _resolve_drive_download_grant_url(file_name)
-        if target_url and _respond_with_redirect_or_inline_file(file_row=file_row, target_url=target_url):
-            return
-        frappe.throw(_("Could not read the file content."), frappe.DoesNotExistError)
+    if _is_public_site_file_url(file_url):
+        frappe.local.response["type"] = "redirect"
+        frappe.local.response["location"] = file_url
+        return
 
-    filename = (file_row.get("file_name") or "").strip() or "document"
-    content_type = mimetypes.guess_type(filename)[0] or "application/octet-stream"
+    target_url = _resolve_drive_download_grant_url(file_name)
+    if _respond_with_redirect_target(target_url=target_url):
+        return
 
-    frappe.local.response["type"] = "download"
-    frappe.local.response["filename"] = filename
-    frappe.local.response["filecontent"] = content
-    frappe.local.response["display_content_as"] = "inline"
-    frappe.local.response["content_type"] = content_type
+    frappe.throw(_("Could not resolve the file content."), frappe.DoesNotExistError)
 
 
 @frappe.whitelist(allow_guest=True)
@@ -1842,26 +1748,19 @@ def download_guardian_file(
 
     if (derivative_role or "").strip():
         target_url = _resolve_drive_preview_grant_url(file_name, derivative_role=derivative_role)
-        if target_url and _respond_with_redirect_or_inline_file(file_row=file_row, target_url=target_url):
+        if _respond_with_redirect_target(target_url=target_url):
             return
 
-    content = _read_file_bytes(file_row)
-    if content is None:
-        target_url = _resolve_drive_download_grant_url(file_name)
-        if target_url:
-            frappe.local.response["type"] = "redirect"
-            frappe.local.response["location"] = target_url
-            return
-        frappe.throw(_("Could not read the file content."), frappe.DoesNotExistError)
+    if _is_public_site_file_url(file_url):
+        frappe.local.response["type"] = "redirect"
+        frappe.local.response["location"] = file_url
+        return
 
-    filename = (file_row.get("file_name") or "").strip() or "document"
-    content_type = mimetypes.guess_type(filename)[0] or "application/octet-stream"
+    target_url = _resolve_drive_download_grant_url(file_name)
+    if _respond_with_redirect_target(target_url=target_url):
+        return
 
-    frappe.local.response["type"] = "download"
-    frappe.local.response["filename"] = filename
-    frappe.local.response["filecontent"] = content
-    frappe.local.response["display_content_as"] = "inline"
-    frappe.local.response["content_type"] = content_type
+    frappe.throw(_("Could not resolve the file content."), frappe.DoesNotExistError)
 
 
 @frappe.whitelist()
@@ -1893,23 +1792,16 @@ def download_employee_file(
 
     if (derivative_role or "").strip():
         target_url = _resolve_drive_preview_grant_url(file_name, derivative_role=derivative_role)
-        if target_url and _respond_with_redirect_or_inline_file(file_row=file_row, target_url=target_url):
+        if _respond_with_redirect_target(target_url=target_url):
             return
 
-    content = _read_file_bytes(file_row)
-    if content is None:
-        target_url = _resolve_drive_download_grant_url(file_name)
-        if target_url:
-            frappe.local.response["type"] = "redirect"
-            frappe.local.response["location"] = target_url
-            return
-        frappe.throw(_("Could not read the file content."), frappe.DoesNotExistError)
+    if _is_public_site_file_url(file_url):
+        frappe.local.response["type"] = "redirect"
+        frappe.local.response["location"] = file_url
+        return
 
-    filename = (file_row.get("file_name") or "").strip() or "document"
-    content_type = mimetypes.guess_type(filename)[0] or "application/octet-stream"
+    target_url = _resolve_drive_download_grant_url(file_name)
+    if _respond_with_redirect_target(target_url=target_url):
+        return
 
-    frappe.local.response["type"] = "download"
-    frappe.local.response["filename"] = filename
-    frappe.local.response["filecontent"] = content
-    frappe.local.response["display_content_as"] = "inline"
-    frappe.local.response["content_type"] = content_type
+    frappe.throw(_("Could not resolve the file content."), frappe.DoesNotExistError)

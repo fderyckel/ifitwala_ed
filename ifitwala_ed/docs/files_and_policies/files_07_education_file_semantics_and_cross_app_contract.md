@@ -1,7 +1,7 @@
 # Education File Semantics And Cross-App Upload Contract
 
 Status: LOCKED target contract
-Date: 2026-04-19
+Date: 2026-04-20
 Related docs:
 
 - `ifitwala_ed/docs/files_and_policies/files_01_architecture_notes.md`
@@ -151,13 +151,20 @@ Finalize should fail only when:
 - permissions no longer allow the action
 - the bytes or MIME are invalid
 
+Current runtime note:
+
+- Drive persists the workflow metadata inside `Drive Upload Session.upload_contract_json.workflow`
+- the session row itself remains the authority for resolved owner, attached target, subject, and governance fields
+- finalize uses persisted `workflow_id` first and falls back to detection only for pre-registry sessions
+
 ## 7. API shape direction
 
 Target direction:
 
 - Ed asks Drive to create an upload session using a `workflow_id` plus workflow identifiers
 - Drive resolves and persists the authoritative spec at the boundary
-- wrappers that exist only for ergonomics are transitional compatibility, not the desired long-term contract
+- wrapper endpoints that still exist only for ergonomics are transitional compatibility, not the desired long-term contract
+- current runtime already follows this model internally even though wrapper-specific public endpoints still exist
 
 This lets the apps converge on one narrow boundary instead of many stringly wrapper exports.
 
@@ -170,8 +177,16 @@ This lets the apps converge on one narrow boundary instead of many stringly wrap
 | `task.submission` | `assessment_submission` | `Task Submission` | `submission` |
 | `admissions.applicant_document` | workflow-specific governed purpose | `Student Applicant` | applicant document slot |
 | `admissions.applicant_profile_image` | `applicant_profile_display` | `Student Applicant` | `profile_image` |
+| `admissions.applicant_guardian_image` | `applicant_profile_display` | `Student Applicant` | guardian row-derived image slot |
+| `admissions.applicant_health_vaccination` | `medical_record` | `Student Applicant` | health evidence slot |
 | `org_communication.attachment` | workflow-specific governed purpose | `Org Communication` | row-derived attachment slot |
+| `media.employee_profile_image` | `employee_profile_display` | `Employee` | `profile_image` |
+| `media.student_profile_image` | `student_profile_display` | `Student` | `profile_image` |
+| `media.guardian_profile_image` | `guardian_profile_display` | `Guardian` | `profile_image` |
+| `organization_media.organization_logo` | `organization_public_media` | `Organization` | organization logo slot |
 | `organization_media.school_logo` | `organization_public_media` | `School` or `Organization` | media-key-derived slot |
+| `organization_media.school_gallery_image` | `organization_public_media` | `School` or `Organization` | gallery row-derived slot |
+| `organization_media.asset` | `organization_public_media` | `Organization` or `School` | media-key-derived slot |
 
 ## 9. End-state rule for `File Classification`
 
@@ -185,7 +200,7 @@ But:
 
 ## 10. Current-runtime note
 
-Current code still uses hand-authored payloads and bridge branches in several places.
+Current code still retains some wrapper-specific public entrypoints and compatibility fallbacks.
 
 Those patterns are transitional and are tracked in:
 

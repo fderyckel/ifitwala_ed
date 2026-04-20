@@ -6,7 +6,7 @@ from typing import Any
 import frappe
 from frappe import _
 
-from ifitwala_ed.utilities.file_classification_contract import LEARNING_RESOURCE_PURPOSE
+from ifitwala_ed.utilities.governed_file_contract import LEARNING_RESOURCE_PURPOSE
 
 _TASK_RESOURCE_DATA_CLASS = "academic"
 _TASK_RESOURCE_PURPOSE = LEARNING_RESOURCE_PURPOSE

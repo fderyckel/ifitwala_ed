@@ -83,35 +83,42 @@ class TestImageUtilsUnit(TestCase):
         self.assertIn("derivative_role=thumb", image_url)
         self.assertIn("file=FILE-EMP-1", image_url)
 
-    def test_generate_employee_derivatives_schedules_drive_pipeline(self):
-        file_doc = SimpleNamespace(
-            name="FILE-EMP-1",
-            attached_to_doctype="Employee",
-            attached_to_field="employee_image",
-            file_name="employee.png",
-            file_url="/private/files/employee.png",
-        )
-        drive_file_row = {
-            "name": "DRIVE-EMP-1",
-            "slot": "profile_image",
-            "current_version": "DFV-EMP-1",
-        }
-        drive_file_doc = SimpleNamespace(name="DRIVE-EMP-1", slot="profile_image", current_version="DFV-EMP-1")
-
+    def test_resolve_original_governed_image_url_uses_current_drive_file_without_storage_probe(self):
         with _image_utils_module() as (image_utils, frappe):
-            observed = []
             with (
-                patch.object(image_utils, "_get_drive_file_row", return_value=drive_file_row),
-                patch.object(frappe.db, "get_value", return_value="image/png"),
-                patch.object(frappe, "get_doc", return_value=drive_file_doc),
-                patch(
-                    "ifitwala_drive.services.files.derivatives.sync_preview_pipeline_for_current_version",
-                    side_effect=lambda **kwargs: observed.append(kwargs),
+                patch.object(
+                    image_utils,
+                    "_get_current_governed_profile_file",
+                    return_value=SimpleNamespace(
+                        name="FILE-EMP-CURRENT",
+                        file_url="/private/files/ifitwala_drive/files/aa/bb/employee-current.png",
+                    ),
+                ),
+                patch.object(
+                    image_utils,
+                    "file_url_is_accessible",
+                    side_effect=AssertionError("governed reads must not probe storage directly"),
                 ),
             ):
-                image_utils._generate_employee_derivatives(file_doc)
+                image_url = image_utils._resolve_original_governed_image_url(
+                    "Employee",
+                    "EMP-0001",
+                    "/private/files/employee-stale.png",
+                )
 
-        self.assertEqual(
-            observed,
-            [{"drive_file_doc": drive_file_doc, "mime_type": "image/png"}],
-        )
+        self.assertIn("file=FILE-EMP-CURRENT", image_url)
+        self.assertIn("context_name=EMP-0001", image_url)
+
+    def test_get_preferred_employee_image_url_without_subject_hides_private_original(self):
+        with _image_utils_module() as (image_utils, frappe):
+            public_url = image_utils.get_preferred_employee_image_url(
+                None,
+                original_url="/files/employee/public-image.png",
+            )
+            private_url = image_utils.get_preferred_employee_image_url(
+                None,
+                original_url="/private/files/employee/private-image.png",
+            )
+
+        self.assertEqual(public_url, "/files/employee/public-image.png")
+        self.assertIsNone(private_url)

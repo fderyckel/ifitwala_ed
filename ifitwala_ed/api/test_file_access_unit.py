@@ -23,6 +23,11 @@ def _file_access_module():
 
     org_comm_utils = ModuleType("ifitwala_ed.api.org_comm_utils")
     org_comm_utils.check_audience_match = lambda *args, **kwargs: False
+    org_comm_utils.expand_employee_visibility_context = lambda employee, roles: employee or {}
+
+    curriculum_materials = ModuleType("ifitwala_ed.curriculum.materials")
+    curriculum_materials.user_can_read_material_anchor = lambda *args, **kwargs: False
+    curriculum_materials.user_can_read_supporting_material = lambda *args, **kwargs: False
 
     routing_policy = ModuleType("ifitwala_ed.routing.policy")
     routing_policy.has_active_employee_profile = lambda **kwargs: True
@@ -32,6 +37,7 @@ def _file_access_module():
             "ifitwala_ed.admission.access": admission_access,
             "ifitwala_ed.admission.admission_utils": admission_utils,
             "ifitwala_ed.api.org_comm_utils": org_comm_utils,
+            "ifitwala_ed.curriculum.materials": curriculum_materials,
             "ifitwala_ed.routing.policy": routing_policy,
         }
     ) as frappe:
@@ -177,18 +183,11 @@ class TestFileAccessUnit(TestCase):
 
         self.assertIsNone(url)
 
-    def test_resolve_drive_file_grant_target_url_hides_raw_private_file_fallback(self):
+    def test_resolve_drive_file_grant_target_url_hides_raw_private_grant_target(self):
         with _file_access_module() as (file_access, frappe):
-
-            def fake_get_value(doctype, filters, fieldname=None, as_dict=False):
-                if doctype == "File":
-                    self.assertEqual(filters, "FILE-EMP-1")
-                    self.assertEqual(fieldname, "file_url")
-                    return "/private/files/secret.pdf"
-                return None
-
-            frappe.db.get_value = fake_get_value
-            file_access._load_drive_access_callable = lambda attribute: lambda **kwargs: {"url": ""}
+            file_access._load_drive_access_callable = lambda attribute: (
+                lambda **kwargs: {"url": "/private/files/secret.pdf"}
+            )
 
             target_url = file_access._resolve_drive_file_grant_target_url(
                 drive_file_id="DRIVE-FILE-1",
@@ -197,17 +196,8 @@ class TestFileAccessUnit(TestCase):
 
         self.assertIsNone(target_url)
 
-    def test_resolve_drive_file_grant_target_url_keeps_public_fallback(self):
+    def test_resolve_drive_file_grant_target_url_returns_none_without_safe_grant(self):
         with _file_access_module() as (file_access, frappe):
-
-            def fake_get_value(doctype, filters, fieldname=None, as_dict=False):
-                if doctype == "File":
-                    self.assertEqual(filters, "FILE-EMP-1")
-                    self.assertEqual(fieldname, "file_url")
-                    return "/files/public-brochure.pdf"
-                return None
-
-            frappe.db.get_value = fake_get_value
             file_access._load_drive_access_callable = lambda attribute: lambda **kwargs: {"url": ""}
 
             target_url = file_access._resolve_drive_file_grant_target_url(
@@ -215,7 +205,7 @@ class TestFileAccessUnit(TestCase):
                 file_id="FILE-EMP-1",
             )
 
-        self.assertEqual(target_url, "/files/public-brochure.pdf")
+        self.assertIsNone(target_url)
 
     def test_resolve_employee_file_open_url_keeps_requested_derivative_role(self):
         with _file_access_module() as (file_access, _frappe):
@@ -232,17 +222,8 @@ class TestFileAccessUnit(TestCase):
         self.assertEqual(parsed.path, "/api/method/ifitwala_ed.api.file_access.download_employee_file")
         self.assertEqual((query.get("derivative_role") or [None])[0], "thumb")
 
-    def test_resolve_drive_file_grant_target_url_strict_derivative_skips_public_original_fallback(self):
+    def test_resolve_drive_file_grant_target_url_strict_derivative_returns_none_without_safe_grant(self):
         with _file_access_module() as (file_access, frappe):
-
-            def fake_get_value(doctype, filters, fieldname=None, as_dict=False):
-                if doctype == "File":
-                    self.assertEqual(filters, "FILE-EMP-1")
-                    self.assertEqual(fieldname, "file_url")
-                    return "/files/public-brochure.pdf"
-                return None
-
-            frappe.db.get_value = fake_get_value
             file_access._load_drive_access_callable = lambda attribute: lambda **kwargs: {"url": ""}
 
             target_url = file_access._resolve_drive_file_grant_target_url(
@@ -485,7 +466,7 @@ class TestFileAccessUnit(TestCase):
 
         self.assertIsNone(target_url)
 
-    def test_download_employee_file_redirects_to_drive_grant_when_local_bytes_missing(self):
+    def test_download_employee_file_redirects_to_drive_grant_for_private_file(self):
         with _file_access_module() as (file_access, frappe):
             file_access.has_active_employee_profile = lambda **kwargs: True
             frappe.session.user = "staff@example.com"
@@ -509,7 +490,6 @@ class TestFileAccessUnit(TestCase):
                 "attached_to_doctype": "Employee",
                 "attached_to_name": "EMP-0001",
             }
-            file_access._read_file_bytes = lambda file_row: None
             file_access._load_drive_access_callable = lambda attribute: (
                 lambda drive_file_id: {"url": "https://signed.example.com/thumb_employee.webp"}
             )
@@ -548,7 +528,6 @@ class TestFileAccessUnit(TestCase):
                 "attached_to_doctype": "Employee",
                 "attached_to_name": "EMP-0001",
             }
-            file_access._read_file_bytes = lambda file_row: None
             file_access._load_drive_access_callable = lambda attribute: (
                 lambda drive_file_id: drive_grant_calls.append(drive_file_id) or {"url": "https://signed.example.com/x"}
             )

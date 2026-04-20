@@ -1,3 +1,4 @@
+[pre_model_sync]
 # removed most stuff
 ifitwala_ed.patches.canonicalize_role_names
 ifitwala_ed.patches.create_default_academic_load_policies
@@ -27,3 +28,6 @@ ifitwala_ed.patches.backfill_location_bookings_for_calendar_events
 ifitwala_ed.patches.backfill_drive_authority_for_classified_files
 ifitwala_ed.patches.remove_file_classification_rows
 ifitwala_ed.patches.backfill_missing_primary_drive_bindings
+
+[post_model_sync]
+ifitwala_ed.patches.retire_file_classification_doctypes

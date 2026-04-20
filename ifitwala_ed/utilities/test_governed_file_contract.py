@@ -4,7 +4,7 @@ import json
 from pathlib import Path
 from unittest import TestCase
 
-from ifitwala_ed.utilities.file_classification_contract import ALLOWED_FILE_PURPOSES, LEARNING_RESOURCE_PURPOSE
+from ifitwala_ed.utilities.governed_file_contract import ALLOWED_FILE_PURPOSES, LEARNING_RESOURCE_PURPOSE
 
 
 def _load_select_options(doc_path: Path, fieldname: str) -> tuple[str, ...]:
@@ -13,14 +13,14 @@ def _load_select_options(doc_path: Path, fieldname: str) -> tuple[str, ...]:
     return tuple(str(field.get("options") or "").splitlines())
 
 
-class TestFileClassificationContract(TestCase):
+class TestGovernedFileContract(TestCase):
     def test_learning_resource_is_part_of_the_canonical_purpose_catalog(self):
         self.assertIn(LEARNING_RESOURCE_PURPOSE, ALLOWED_FILE_PURPOSES)
 
-    def test_file_classification_metadata_matches_the_canonical_purpose_catalog(self):
+    def test_legacy_file_classification_metadata_is_removed_from_repo(self):
         repo_root = Path(__file__).resolve().parents[1]
         metadata_path = repo_root / "setup" / "doctype" / "file_classification" / "file_classification.json"
-        self.assertEqual(_load_select_options(metadata_path, "purpose"), ALLOWED_FILE_PURPOSES)
+        self.assertFalse(metadata_path.exists())
 
     def test_applicant_document_type_metadata_reuses_the_canonical_purpose_catalog(self):
         repo_root = Path(__file__).resolve().parents[1]

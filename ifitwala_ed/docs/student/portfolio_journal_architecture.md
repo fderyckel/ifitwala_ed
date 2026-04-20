@@ -118,9 +118,9 @@ This keeps quick reflection inside the current class/session flow while preservi
 
 ## 7. File governance and GDPR
 
-Portfolio/journal evidence and exports must use dispatcher governance.
+Portfolio/journal evidence and exports must use Drive-governed file authority.
 
-Added `File Classification.purpose` options:
+The governed file purpose catalog includes:
 
 - `portfolio_evidence`
 - `journal_attachment`
@@ -138,7 +138,7 @@ Exports are generated as governed files with:
 
 - `retention_policy = immediate_on_request`
 
-No direct `File.insert()` is permitted in portfolio/journal business flows.
+No direct `File.insert()` or retired Ed-local dispatcher flow is permitted in portfolio/journal business flows.
 
 ## 8. Guardian publication terminology alignment
 
