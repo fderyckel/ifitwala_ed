@@ -127,11 +127,6 @@ def save_task_quiz_manual_review(task: str, grades=None, **kwargs):
 
 
 @frappe.whitelist()
-def repair_task_roster(task: str):
-    return gradebook_writes.repair_task_roster(gradebook_support, task)
-
-
-@frappe.whitelist()
 def update_task_student(task_student: str, updates=None, **kwargs):
     return gradebook_writes.update_task_student(gradebook_support, task_student, updates=updates, **kwargs)
 
@@ -162,7 +157,6 @@ __all__ = [
     "get_task_gradebook",
     "get_task_quiz_manual_review",
     "save_task_quiz_manual_review",
-    "repair_task_roster",
     "update_task_student",
     "publish_outcomes",
     "unpublish_outcomes",

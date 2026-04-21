@@ -202,45 +202,6 @@ def save_task_quiz_manual_review(api, task: str, grades=None, **kwargs):
     }
 
 
-def repair_task_roster(api, task: str):
-    if not api._can_write_gradebook():
-        frappe.throw(_("Not permitted."), frappe.PermissionError)
-    api._require(task, "Task Delivery")
-
-    delivery = frappe.get_doc("Task Delivery", task)
-    api._assert_group_access(delivery.student_group)
-
-    before_count = frappe.db.count("Task Outcome", {"task_delivery": delivery.name})
-    was_draft = int(delivery.docstatus or 0) == 0
-
-    if was_draft:
-        delivery.flags.ignore_permissions = True
-        delivery.submit()
-        delivery = frappe.get_doc("Task Delivery", task)
-
-    materialized = delivery.materialize_roster()
-    after_count = frappe.db.count("Task Outcome", {"task_delivery": delivery.name})
-    outcomes_created = max(after_count - before_count, 0)
-    eligible_students = materialized.get("eligible_students", after_count)
-
-    if outcomes_created:
-        message = _("Roster synced for {student_count} students.").format(student_count=outcomes_created)
-    elif after_count:
-        message = _("Roster is already up to date.")
-    else:
-        message = _("No active students are currently in this student group.")
-
-    return {
-        "task_delivery": delivery.name,
-        "docstatus": int(delivery.docstatus or 0),
-        "was_draft": 1 if was_draft else 0,
-        "eligible_students": eligible_students,
-        "outcomes_created": outcomes_created,
-        "outcomes_total": after_count,
-        "message": message,
-    }
-
-
 def update_task_student(api, task_student: str, updates=None, **kwargs):
     if not api._can_write_gradebook():
         frappe.throw(_("Not permitted."), frappe.PermissionError)

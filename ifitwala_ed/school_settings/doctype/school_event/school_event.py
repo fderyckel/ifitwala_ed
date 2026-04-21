@@ -500,6 +500,33 @@ def _get_custom_user_event_names_for_user(user: str, event_names: list[str]) -> 
     return set(rows or [])
 
 
+def _resolve_team_member_employee_names_for_user(user: str) -> list[str]:
+    direct_names = frappe.get_all("Employee", filters={"user_id": user}, pluck="name")
+    if direct_names:
+        return [name for name in direct_names if name]
+
+    login_email = (frappe.db.get_value("User", user, "email") or user or "").strip()
+    if not login_email:
+        return []
+
+    fallback_rows = frappe.get_all(
+        "Employee",
+        filters={"employee_professional_email": login_email},
+        fields=["name", "user_id"],
+        limit=2,
+    )
+    if len(fallback_rows) != 1:
+        return []
+
+    row = fallback_rows[0]
+    mapped_user = str(row.get("user_id") or "").strip()
+    if mapped_user and mapped_user != user:
+        return []
+
+    employee_name = str(row.get("name") or "").strip()
+    return [employee_name] if employee_name else []
+
+
 @redis_cache(ttl=600)
 def get_user_membership(user: str) -> Dict[str, Set[str]]:
     """
@@ -545,14 +572,7 @@ def get_user_membership(user: str) -> Dict[str, Set[str]]:
 
     # Teams (Team Member child with canonical employee + member links)
     try:
-        employee_names = frappe.get_all(
-            "Employee",
-            or_filters={
-                "user_id": user,
-                "employee_professional_email": user,
-            },
-            pluck="name",
-        )
+        employee_names = _resolve_team_member_employee_names_for_user(user)
 
         team_or_filters: dict[str, str | list[str]] = {"member": user}
         if employee_names:

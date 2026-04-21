@@ -54,14 +54,6 @@
 			>
 				<p class="text-lg font-medium text-ink">No Students Assigned</p>
 				<p class="max-w-xs text-sm">This task has no students in the roster.</p>
-				<button
-					type="button"
-					class="if-button if-button--primary"
-					:disabled="rosterSyncing"
-					@click="syncRoster"
-				>
-					{{ rosterSyncing ? 'Syncing roster…' : 'Sync roster' }}
-				</button>
 			</div>
 
 			<GradebookQuizManualReview
@@ -319,7 +311,6 @@ const emit = defineEmits<{
 const gradebookService = createGradebookService();
 const rootElement = ref<HTMLElement | null>(null);
 const gradebookLoading = ref(false);
-const rosterSyncing = ref(false);
 const drawerLoading = ref(false);
 const drawerErrorMessage = ref<string | null>(null);
 const drawer = ref<GetDrawerResponse | null>(null);
@@ -498,25 +489,6 @@ async function loadGradebook(taskName: string) {
 		if (gradebookLoadVersion.value === version) {
 			gradebookLoading.value = false;
 		}
-	}
-}
-
-async function syncRoster() {
-	if (!props.taskName) {
-		showToast('Select a task first.', 'warning');
-		return;
-	}
-
-	rosterSyncing.value = true;
-	try {
-		const payload = await gradebookService.repairTaskRoster({ task: props.taskName });
-		showSuccessToast(payload.message || 'Roster synced.');
-		await loadGradebook(props.taskName);
-	} catch (error) {
-		console.error('Failed to sync task roster', error);
-		showDangerToast('Could not sync the task roster');
-	} finally {
-		rosterSyncing.value = false;
 	}
 }
 

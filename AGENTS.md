@@ -187,6 +187,13 @@ During development:
 - Remove obsolete or broken paths when approved.
 - Keep one canonical workflow path per feature.
 
+### 2.2.1 Legacy Repair Path Policy
+
+- Do not add permanent runtime `repair`, `sync`, `self-heal`, or fallback flows whose purpose is to correct legacy data or legacy content drift.
+- Legacy remediation belongs in explicit one-shot patches under `ifitwala_ed/patches/`, and those patches should reuse the canonical domain logic where possible.
+- A legacy repair patch must be safe to run once during deployment or migration and should be removable later; it must not become part of the fresh-site runtime contract, API surface, SPA UX, or canonical user docs.
+- If a repair path is truly required for ongoing product behavior rather than legacy cleanup, treat it as first-class workflow logic, document it canonically, and require explicit approval before implementation.
+
 ---
 
 ## 3. Doctype & Data Model Invariants

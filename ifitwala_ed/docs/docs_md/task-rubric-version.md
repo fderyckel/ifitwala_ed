@@ -3,8 +3,8 @@ title: "Task Rubric Version: Freezing Criteria at Delivery Time"
 slug: task-rubric-version
 category: Assessment
 doc_order: 6
-version: "1.2.0"
-last_change_date: "2026-03-12"
+version: "1.2.1"
+last_change_date: "2026-04-22"
 summary: "Snapshot rubric criteria per delivery so grading remains historically stable even if the master task rubric changes later."
 seo_title: "Task Rubric Version: Freezing Criteria at Delivery Time"
 seo_description: "Snapshot rubric criteria per delivery so grading remains historically stable even if the master task rubric changes later."
@@ -18,7 +18,7 @@ Test refs: None (scaffold only: `ifitwala_ed/assessment/doctype/task_rubric_vers
 
 `Task Rubric Version` is the historical snapshot of criteria used by a criteria-mode delivery. It prevents later edits to task criteria from silently rewriting grading meaning.
 
-Current workspace note: rubric snapshots are now created through the submit-driven delivery launch path. Legacy criteria deliveries missing their snapshot can be repaired through the gradebook roster repair workflow.
+Current workspace note: rubric snapshots are now created through the submit-driven delivery launch path. Legacy criteria deliveries missing their snapshot are remediated through one-shot deployment patches.
 
 ## Before You Start (Prerequisites)
 
@@ -52,7 +52,7 @@ Test refs: `ifitwala_ed/assessment/doctype/task_delivery/test_task_delivery.py`,
 3. Use the frozen rubric for contribution validation and outcome recomputation.
 4. Preserve historical grading meaning even when the base task rubric changes later.
 
-Current workspace constraints: criteria snapshots depend on delivery launch semantics, so older deliveries created before the fixed submit path may still need `api/gradebook.py::repair_task_roster()` to build the snapshot and outcome rows.
+Current workspace constraints: criteria snapshots depend on delivery launch semantics, so older deliveries created before the fixed submit path may still need a one-shot deployment patch to build the snapshot and outcome rows.
 
 ## Related Docs
 
@@ -94,4 +94,4 @@ Test refs: None (scaffold only: `ifitwala_ed/assessment/doctype/task_rubric_vers
 ### Current Constraints To Preserve In Review
 
 - Snapshot semantics are correct only when delivery launch semantics stay submit-driven and idempotent.
-- Legacy repair must keep using the delivery-layer snapshot builder rather than inventing a parallel rubric-copy path.
+- Legacy patch-driven remediation must keep using the delivery-layer snapshot builder rather than inventing a parallel rubric-copy path.

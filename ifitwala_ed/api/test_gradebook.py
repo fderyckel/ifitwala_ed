@@ -14,26 +14,6 @@ from ifitwala_ed.tests.frappe_stubs import (
 )
 
 
-class _FakeDelivery:
-    def __init__(self):
-        self.name = "TDL-0001"
-        self.student_group = "GRP-1"
-        self.docstatus = 0
-        self.flags = types.SimpleNamespace(ignore_permissions=False)
-        self.submit_calls = 0
-        self.materialize_calls = 0
-        self.outcome_count = 0
-
-    def submit(self):
-        self.submit_calls += 1
-        self.docstatus = 1
-
-    def materialize_roster(self):
-        self.materialize_calls += 1
-        self.outcome_count = 3
-        return {"eligible_students": 3, "outcomes_created": 3}
-
-
 def _gradebook_stub_modules(
     task_contribution_service=None,
     task_feedback_service=None,
@@ -905,35 +885,6 @@ class TestGradebookApi(TestCase):
             ],
         )
         self.assertEqual(payload, {"updated_item_count": 2, "updated_attempt_count": 2})
-
-    def test_repair_task_roster_submits_draft_delivery_and_backfills_outcomes(self):
-        delivery = _FakeDelivery()
-
-        with stubbed_frappe(extra_modules=_gradebook_stub_modules()) as frappe:
-            frappe.db.count = lambda doctype, filters=None: delivery.outcome_count
-            frappe.get_doc = lambda doctype, name: delivery
-
-            module = _import_fresh_gradebook()
-            module.gradebook_support._can_write_gradebook = lambda: True
-            module.gradebook_support._assert_group_access = lambda student_group: None
-
-            payload = module.repair_task_roster("TDL-0001")
-
-        self.assertEqual(delivery.submit_calls, 1)
-        self.assertTrue(delivery.flags.ignore_permissions)
-        self.assertEqual(delivery.materialize_calls, 1)
-        self.assertEqual(
-            payload,
-            {
-                "task_delivery": "TDL-0001",
-                "docstatus": 1,
-                "was_draft": 1,
-                "eligible_students": 3,
-                "outcomes_created": 3,
-                "outcomes_total": 3,
-                "message": "Roster synced for 3 students.",
-            },
-        )
 
     def test_fetch_group_tasks_exposes_grading_mode_and_comment_flag(self):
         with stubbed_frappe(extra_modules=_gradebook_stub_modules()) as frappe:
