@@ -71,7 +71,7 @@
 								Close
 							</button>
 							<RouterLink
-								:to="{ name: 'staff-gradebook' }"
+								:to="gradebookTarget"
 								class="rounded-full bg-jacaranda px-5 py-2 type-button-label text-white shadow-soft"
 								@click="emitClose('programmatic')"
 							>
@@ -97,6 +97,14 @@ const props = defineProps<{
 	zIndex?: number;
 	overlayId?: string | null;
 	title: string;
+	gradebookQuery?: {
+		student_group?: string | null;
+		task?: string | null;
+		school?: string | null;
+		academic_year?: string | null;
+		program?: string | null;
+		course?: string | null;
+	};
 }>();
 
 const emit = defineEmits<{
@@ -105,6 +113,19 @@ const emit = defineEmits<{
 }>();
 
 const overlayStyle = computed(() => ({ zIndex: props.zIndex ?? 60 }));
+const gradebookTarget = computed(() => ({
+	name: 'staff-gradebook',
+	query: Object.fromEntries(
+		Object.entries({
+			student_group: props.gradebookQuery?.student_group || null,
+			task: props.gradebookQuery?.task || null,
+			school: props.gradebookQuery?.school || null,
+			academic_year: props.gradebookQuery?.academic_year || null,
+			program: props.gradebookQuery?.program || null,
+			course: props.gradebookQuery?.course || null,
+		}).filter(([, value]) => value)
+	),
+}));
 
 function emitClose(reason: CloseReason = 'programmatic') {
 	emit('close', reason);

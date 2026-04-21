@@ -43,8 +43,6 @@
 
 		<FocusStudentsRow :students="currentBundle.focus_students" @open="openFocusStudent" />
 
-		<StudentsGrid :students="currentBundle.students" @open="openStudent" />
-
 		<MyTeachingPanel
 			:notes="currentBundle.notes_preview"
 			:tasks="currentBundle.task_items"
@@ -65,12 +63,11 @@ import { RouterLink, useRoute } from 'vue-router';
 
 import { useOverlayStack } from '@/composables/useOverlayStack';
 import { createClassHubService } from '@/lib/classHubService';
-import type { ClassHubBundle } from '@/types/classHub';
+import type { ClassHubBundle, ClassHubTaskReviewPayload } from '@/types/classHub';
 
 import ClassHubHeader from '@/components/class-hub/ClassHubHeader.vue';
 import TodayList from '@/components/class-hub/TodayList.vue';
 import FocusStudentsRow from '@/components/class-hub/FocusStudentsRow.vue';
-import StudentsGrid from '@/components/class-hub/StudentsGrid.vue';
 import MyTeachingPanel from '@/components/class-hub/MyTeachingPanel.vue';
 import ClassPulse from '@/components/class-hub/ClassPulse.vue';
 import FollowUpsList from '@/components/class-hub/FollowUpsList.vue';
@@ -268,8 +265,17 @@ function openNote(note: ClassHubBundle['notes_preview'][number]) {
 }
 
 function openTask(task: ClassHubBundle['task_items'][number]) {
+	const payload: ClassHubTaskReviewPayload = task.payload || {};
 	overlay.open('class-hub-task-review', {
 		title: task.title,
+		gradebookQuery: {
+			student_group: payload.student_group || currentBundle.value.header.student_group || null,
+			task: payload.task_delivery || null,
+			school: payload.school || null,
+			academic_year: payload.academic_year || currentBundle.value.header.academic_year || null,
+			program: payload.program || null,
+			course: payload.course || currentBundle.value.header.course || null,
+		},
 	});
 }
 

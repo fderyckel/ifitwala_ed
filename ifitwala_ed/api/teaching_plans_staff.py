@@ -4,6 +4,55 @@ from collections import defaultdict
 from typing import Any
 
 
+def _ordered_unit_plans(api, units: list[dict[str, Any]]) -> list[str]:
+    ranked = sorted(
+        [unit for unit in units or [] if api.planning.normalize_text(unit.get("unit_plan"))],
+        key=lambda unit: (
+            int(unit.get("unit_order") or 0) <= 0,
+            int(unit.get("unit_order") or 0),
+            api.planning.normalize_text(unit.get("unit_plan")),
+        ),
+    )
+    return [api.planning.normalize_text(unit.get("unit_plan")) for unit in ranked]
+
+
+def _decorate_resolved_pacing_statuses(
+    api,
+    units: list[dict[str, Any]],
+    current_unit_payload: dict[str, Any] | None,
+) -> list[dict[str, Any]]:
+    current_unit_plan = api.planning.normalize_text((current_unit_payload or {}).get("unit_plan"))
+    ordered_unit_plans = _ordered_unit_plans(api, units)
+    unit_rank = {unit_plan: index for index, unit_plan in enumerate(ordered_unit_plans)}
+    current_index = unit_rank.get(current_unit_plan, -1)
+
+    decorated: list[dict[str, Any]] = []
+    for unit in units or []:
+        unit_plan = api.planning.normalize_text(unit.get("unit_plan"))
+        stored_status = api.planning.normalize_text(unit.get("pacing_status"))
+        resolved_status = stored_status or "Not Started"
+
+        if stored_status == "Hold":
+            resolved_status = "Hold"
+        elif current_index >= 0 and unit_plan in unit_rank:
+            unit_index = unit_rank[unit_plan]
+            if unit_index < current_index:
+                resolved_status = "Completed"
+            elif unit_index == current_index:
+                resolved_status = "In Progress"
+            else:
+                resolved_status = "Not Started"
+
+        decorated.append(
+            {
+                **unit,
+                "resolved_pacing_status": resolved_status,
+            }
+        )
+
+    return decorated
+
+
 def resolve_staff_plan(
     api,
     student_group: str,
@@ -98,6 +147,7 @@ def build_staff_bundle(
         class_unit_rows=doc.get("units") or [],
         anchor_date=api.now_datetime(),
     )
+    decorated_units = api._decorate_resolved_pacing_statuses(decorated_units, current_unit)
 
     payload["teaching_plan"] = {
         "class_teaching_plan": doc.name,

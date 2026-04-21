@@ -916,6 +916,24 @@ class TestTeachingPlansApi(TestCase):
         self.assertEqual(payload["curriculum"]["units"], [])
         self.assertEqual(payload["curriculum"]["session_count"], 0)
 
+    def test_decorate_resolved_pacing_statuses_marks_units_relative_to_current_unit(self):
+        with _teaching_plans_module() as module:
+            payload = module._decorate_resolved_pacing_statuses(
+                [
+                    {"unit_plan": "UNIT-1", "unit_order": 10, "pacing_status": "Not Started"},
+                    {"unit_plan": "UNIT-2", "unit_order": 20, "pacing_status": "Not Started"},
+                    {"unit_plan": "UNIT-3", "unit_order": 30, "pacing_status": "Hold"},
+                ],
+                {
+                    "unit_plan": "UNIT-2",
+                    "source": "calendar",
+                },
+            )
+
+        self.assertEqual(payload[0]["resolved_pacing_status"], "Completed")
+        self.assertEqual(payload[1]["resolved_pacing_status"], "In Progress")
+        self.assertEqual(payload[2]["resolved_pacing_status"], "Hold")
+
     def test_fetch_class_sessions_hides_teacher_fields_for_students(self):
         with _teaching_plans_module() as module:
             with (

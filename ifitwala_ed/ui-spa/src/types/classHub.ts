@@ -1,5 +1,17 @@
 export type ClassHubOverlay = 'QuickCFU' | 'QuickEvidence' | 'StudentContext' | 'TaskReview'
 
+export type ClassHubTaskReviewPayload = {
+  task_delivery?: string | null
+  task?: string | null
+  title?: string | null
+  student_group?: string | null
+  school?: string | null
+  academic_year?: string | null
+  program?: string | null
+  course?: string | null
+  cohort?: string | null
+}
+
 export type ClassHubWheelStudent = {
   student: string
   student_name: string
@@ -112,7 +124,7 @@ export type ClassHubBundle = {
     status_label: string
     pending_count?: number
     overlay: 'TaskReview'
-    payload: Record<string, any>
+    payload: ClassHubTaskReviewPayload
   }>
   pulse_items: Array<{
     id: string

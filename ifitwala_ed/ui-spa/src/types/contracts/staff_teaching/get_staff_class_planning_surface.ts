@@ -128,6 +128,7 @@ export type StaffPlanningUnit = {
 	class_reflections?: StaffPlanningClassReflection[]
 	governed_required: number
 	pacing_status?: string | null
+	resolved_pacing_status?: string | null
 	teacher_focus?: string | null
 	pacing_note?: string | null
 	prior_to_the_unit?: string | null

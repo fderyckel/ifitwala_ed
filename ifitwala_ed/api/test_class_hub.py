@@ -184,6 +184,20 @@ class TestClassHub(FrappeTestCase):
         self.assertEqual(payload["session"]["class_session"], "CLS-001")
         self.assertEqual(payload["session"]["status"], "planned")
         self.assertEqual(payload["task_items"][0]["id"], "TD-001")
+        self.assertEqual(
+            payload["task_items"][0]["payload"],
+            {
+                "task_delivery": "TD-001",
+                "task": "TASK-001",
+                "title": "Exit ticket",
+                "student_group": "SG-0001",
+                "school": None,
+                "academic_year": "2025-2026",
+                "program": None,
+                "course": "Science",
+                "cohort": None,
+            },
+        )
         self.assertEqual(payload["today_items"][0]["overlay"], "QuickEvidence")
         self.assertEqual(payload["now"]["block_label"], "Block 2")
 

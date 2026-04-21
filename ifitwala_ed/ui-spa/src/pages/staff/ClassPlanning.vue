@@ -242,7 +242,9 @@
 											{{ unit.sessions.length }} sessions
 										</p>
 									</div>
-									<span class="chip">{{ unit.pacing_status || 'Not Started' }}</span>
+									<span class="chip">{{
+										unit.resolved_pacing_status || unit.pacing_status || 'Not Started'
+									}}</span>
 								</div>
 							</button>
 						</div>
@@ -267,7 +269,9 @@
 								<span v-if="selectedUnit.estimated_duration" class="chip">
 									{{ selectedUnit.estimated_duration }}
 								</span>
-								<span class="chip">{{ unitForm.pacing_status || 'Not Started' }}</span>
+								<span class="chip">{{
+									selectedUnit.resolved_pacing_status || unitForm.pacing_status || 'Not Started'
+								}}</span>
 							</div>
 						</div>
 

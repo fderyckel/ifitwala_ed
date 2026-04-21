@@ -384,6 +384,137 @@ describe('ClassPlanning page', () => {
 		expect(teacherFocusInput?.value).toBe('Run controlled investigations');
 	});
 
+	it('renders the class-owned pacing pills from the resolved server status', async () => {
+		getStaffClassPlanningSurfaceMock.mockResolvedValue({
+			meta: {
+				generated_at: '2026-04-16 09:00:00',
+				student_group: 'GROUP-1',
+			},
+			group: {
+				student_group: 'GROUP-1',
+				title: 'Biology A',
+				course: 'COURSE-1',
+				academic_year: '2026-2027',
+			},
+			course_plans: [],
+			class_teaching_plans: [
+				{
+					class_teaching_plan: 'CLASS-PLAN-1',
+					title: 'Biology A Plan',
+					course_plan: 'COURSE-PLAN-1',
+					planning_status: 'Active',
+				},
+			],
+			resolved: {
+				class_teaching_plan: 'CLASS-PLAN-1',
+				course_plan: 'COURSE-PLAN-1',
+				unit_plan: 'UNIT-2',
+				can_initialize: 1,
+				requires_course_plan_selection: 0,
+			},
+			teaching_plan: {
+				class_teaching_plan: 'CLASS-PLAN-1',
+				title: 'Biology A Plan',
+				course_plan: 'COURSE-PLAN-1',
+				planning_status: 'Active',
+				team_note: '',
+			},
+			resources: {
+				shared_resources: [],
+				class_resources: [],
+				general_assigned_work: [],
+			},
+			curriculum: {
+				units: [
+					{
+						unit_plan: 'UNIT-1',
+						title: 'Cells',
+						pacing_status: 'Not Started',
+						resolved_pacing_status: 'Completed',
+						teacher_focus: 'Review cells',
+						pacing_note: '',
+						prior_to_the_unit: '',
+						during_the_unit: '',
+						what_work_well: '',
+						what_didnt_work_well: '',
+						changes_suggestions: '',
+						standards: [],
+						shared_resources: [],
+						assigned_work: [],
+						shared_reflections: [],
+						class_reflections: [],
+						governed_required: 1,
+						sessions: [],
+					},
+					{
+						unit_plan: 'UNIT-2',
+						title: 'Scientific Method',
+						pacing_status: 'Not Started',
+						resolved_pacing_status: 'In Progress',
+						teacher_focus: 'Run controlled investigations',
+						pacing_note: '',
+						prior_to_the_unit: '',
+						during_the_unit: '',
+						what_work_well: '',
+						what_didnt_work_well: '',
+						changes_suggestions: '',
+						standards: [],
+						shared_resources: [],
+						assigned_work: [],
+						shared_reflections: [],
+						class_reflections: [],
+						governed_required: 1,
+						sessions: [],
+					},
+					{
+						unit_plan: 'UNIT-3',
+						title: 'Lab Reflection',
+						pacing_status: 'Not Started',
+						resolved_pacing_status: 'Not Started',
+						teacher_focus: '',
+						pacing_note: '',
+						prior_to_the_unit: '',
+						during_the_unit: '',
+						what_work_well: '',
+						what_didnt_work_well: '',
+						changes_suggestions: '',
+						standards: [],
+						shared_resources: [],
+						assigned_work: [],
+						shared_reflections: [],
+						class_reflections: [],
+						governed_required: 1,
+						sessions: [],
+					},
+				],
+				session_count: 0,
+				assigned_work_count: 0,
+			},
+		});
+
+		mountPage();
+		await flushUi();
+
+		const unitButtons = Array.from(document.querySelectorAll('button')).filter(button =>
+			['Cells', 'Scientific Method', 'Lab Reflection'].some(title =>
+				button.textContent?.includes(title)
+			)
+		);
+		const byTitle = Object.fromEntries(
+			unitButtons.map(button => [
+				['Cells', 'Scientific Method', 'Lab Reflection'].find(title =>
+					button.textContent?.includes(title)
+				) || '',
+				button,
+			])
+		);
+
+		expect(byTitle['Cells']?.textContent).toContain('Completed');
+		expect(byTitle['Cells']?.textContent).not.toContain('Not Started');
+		expect(byTitle['Scientific Method']?.textContent).toContain('In Progress');
+		expect(byTitle['Lab Reflection']?.textContent).toContain('Not Started');
+	});
+
 	it('keeps an explicit route unit override ahead of the resolved current unit', async () => {
 		routeState.query = {
 			class_teaching_plan: 'CLASS-PLAN-1',

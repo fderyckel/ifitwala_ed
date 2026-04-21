@@ -363,10 +363,10 @@ const gradebookService = createGradebookService();
 const studentAttendanceService = createStudentAttendanceService();
 
 const filters = reactive({
-	school: null as string | null,
-	academic_year: null as string | null,
-	program: null as string | null,
-	course: null as string | null,
+	school: currentRouteSchool(),
+	academic_year: currentRouteAcademicYear(),
+	program: currentRouteProgram(),
+	course: currentRouteCourse(),
 	task_type: null as string | null,
 	delivery_type: null as string | null,
 });
@@ -689,6 +689,29 @@ function currentRouteStudentGroup(): string | null {
 	return typeof value === 'string' && value ? value : null;
 }
 
+function currentRouteFilterValue(
+	key: 'school' | 'academic_year' | 'program' | 'course'
+): string | null {
+	const value = route.query[key];
+	return typeof value === 'string' && value ? value : null;
+}
+
+function currentRouteSchool(): string | null {
+	return currentRouteFilterValue('school');
+}
+
+function currentRouteAcademicYear(): string | null {
+	return currentRouteFilterValue('academic_year');
+}
+
+function currentRouteProgram(): string | null {
+	return currentRouteFilterValue('program');
+}
+
+function currentRouteCourse(): string | null {
+	return currentRouteFilterValue('course');
+}
+
 function currentRouteTask(): string | null {
 	const value = route.query.task;
 	return typeof value === 'string' && value ? value : null;
@@ -710,6 +733,10 @@ async function findRouteGroup(target: string) {
 	const rows = await gradebookService.fetchGroups({
 		search: target,
 		limit: 20,
+		school: filters.school,
+		academic_year: filters.academic_year,
+		program: filters.program,
+		course: filters.course,
 	});
 	return rows.find(row => row.name === target) || null;
 }

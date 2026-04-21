@@ -242,6 +242,13 @@ def _serialize_class_teaching_plan_row(row: dict) -> dict[str, Any]:
     return _shared_impl.serialize_class_teaching_plan_row(_module(), row)
 
 
+def _decorate_resolved_pacing_statuses(
+    units: list[dict[str, Any]],
+    current_unit_payload: dict[str, Any] | None,
+) -> list[dict[str, Any]]:
+    return _staff_impl._decorate_resolved_pacing_statuses(_module(), units, current_unit_payload)
+
+
 def _serialize_course_option(
     row: dict[str, Any], *, academic_year_options: list[dict[str, Any]] | None = None
 ) -> dict[str, Any]:

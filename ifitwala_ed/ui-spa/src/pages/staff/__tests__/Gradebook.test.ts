@@ -654,7 +654,7 @@ describe('Gradebook page', () => {
 		expect(optionTexts).toEqual(['All Schools', 'Main School', 'Branch Campus']);
 	});
 
-	it('recovers the linked student group when the default school has no matching groups', async () => {
+	it('prefills class filters for a linked student group when route context is provided', async () => {
 		const linkedGroup = {
 			name: 'SG-2',
 			label: 'G6 Math 1 / IIS 2025-2026',
@@ -665,7 +665,13 @@ describe('Gradebook page', () => {
 			cohort: 'G6',
 		};
 
-		routeState.query = { student_group: linkedGroup.name };
+		routeState.query = {
+			student_group: linkedGroup.name,
+			school: linkedGroup.school,
+			academic_year: linkedGroup.academic_year,
+			program: linkedGroup.program,
+			course: linkedGroup.course,
+		};
 		fetchSchoolContextMock.mockResolvedValue({
 			default_school: 'SCH-1',
 			schools: [
@@ -686,23 +692,97 @@ describe('Gradebook page', () => {
 		mountPage();
 		await flushUi();
 
-		expect(fetchGroupsMock.mock.calls).toEqual([
-			[{ school: 'SCH-1' }],
-			[{ search: linkedGroup.name, limit: 20 }],
-			[{ school: 'SCH-2' }],
-		]);
+		expect(fetchGroupsMock.mock.calls).toEqual([[{ school: 'SCH-2' }]]);
 		expect(fetchGroupTasksMock).toHaveBeenCalledWith({ student_group: linkedGroup.name });
 
 		const schoolSelect = document.querySelector(
 			'select[data-placeholder="School"]'
+		) as HTMLSelectElement;
+		const yearSelect = document.querySelector(
+			'select[data-placeholder="Year"]'
+		) as HTMLSelectElement;
+		const programSelect = document.querySelector(
+			'select[data-placeholder="Program"]'
+		) as HTMLSelectElement;
+		const courseSelect = document.querySelector(
+			'select[data-placeholder="Course"]'
 		) as HTMLSelectElement;
 		const groupSelect = document.querySelector(
 			'select[data-placeholder="Select group"]'
 		) as HTMLSelectElement;
 
 		expect(schoolSelect.value).toBe('SCH-2');
+		expect(yearSelect.value).toBe('2025-2026');
+		expect(programSelect.value).toBe('IIS');
+		expect(courseSelect.value).toBe('Math 1');
 		expect(groupSelect.value).toBe(linkedGroup.name);
 		expect(document.body.textContent || '').toContain(linkedGroup.label);
+	});
+
+	it('uses the prefilled route context when the linked group needs search recovery', async () => {
+		const linkedGroup = {
+			name: 'SG-2',
+			label: 'G6 Math 1 / IIS 2025-2026',
+			school: 'SCH-2',
+			academic_year: '2025-2026',
+			program: 'IIS',
+			course: 'Math 1',
+			cohort: 'G6',
+		};
+
+		routeState.query = {
+			student_group: linkedGroup.name,
+			school: linkedGroup.school,
+			academic_year: linkedGroup.academic_year,
+			program: linkedGroup.program,
+			course: linkedGroup.course,
+		};
+		fetchSchoolContextMock.mockResolvedValue({
+			default_school: 'SCH-1',
+			schools: [
+				{ name: 'SCH-1', school_name: 'Default School' },
+				{ name: 'SCH-2', school_name: 'KIS Bangkok' },
+			],
+		});
+		let schoolFetchCount = 0;
+		fetchGroupsMock.mockImplementation(async (payload?: Record<string, unknown>) => {
+			if (payload?.school === linkedGroup.school && !payload?.search) {
+				schoolFetchCount += 1;
+				return schoolFetchCount >= 2 ? [linkedGroup] : [];
+			}
+			if (
+				payload?.search === linkedGroup.name &&
+				payload?.school === linkedGroup.school &&
+				payload?.academic_year === linkedGroup.academic_year &&
+				payload?.program === linkedGroup.program &&
+				payload?.course === linkedGroup.course
+			) {
+				return [linkedGroup];
+			}
+			return [];
+		});
+		fetchGroupTasksMock.mockResolvedValue({ tasks: [] });
+		getGridMock.mockResolvedValue({ deliveries: [], students: [], cells: [] });
+		getTaskGradebookMock.mockResolvedValue({ task: null, criteria: [], students: [] });
+
+		mountPage();
+		await flushUi();
+
+		expect(fetchGroupsMock.mock.calls).toEqual([
+			[{ school: 'SCH-2' }],
+			[
+				{
+					search: linkedGroup.name,
+					limit: 20,
+					school: linkedGroup.school,
+					academic_year: linkedGroup.academic_year,
+					program: linkedGroup.program,
+					course: linkedGroup.course,
+				},
+			],
+			[{ school: 'SCH-2' }],
+		]);
+		expect(fetchGroupTasksMock).toHaveBeenCalledWith({ student_group: linkedGroup.name });
 	});
 
 	it('preselects the linked assigned work when a task query is provided', async () => {

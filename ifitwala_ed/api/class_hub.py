@@ -65,7 +65,15 @@ def _get_student_group_row(student_group: str) -> Dict[str, Any]:
         frappe.db.get_value(
             "Student Group",
             student_group,
-            ["student_group_abbreviation", "student_group_name", "course", "academic_year"],
+            [
+                "student_group_abbreviation",
+                "student_group_name",
+                "school",
+                "program",
+                "course",
+                "cohort",
+                "academic_year",
+            ],
             as_dict=True,
         )
         or {}
@@ -361,7 +369,12 @@ def _build_task_status_label(item: dict[str, Any]) -> str:
     return _("Assigned work")
 
 
-def _build_task_items(items: list[dict[str, Any]]) -> list[dict[str, Any]]:
+def _build_task_items(
+    items: list[dict[str, Any]],
+    *,
+    student_group: str,
+    group: dict[str, Any] | None = None,
+) -> list[dict[str, Any]]:
     payload: list[dict[str, Any]] = []
     for index, item in enumerate(items, start=1):
         task_delivery = planning.normalize_text(item.get("task_delivery"))
@@ -378,6 +391,12 @@ def _build_task_items(items: list[dict[str, Any]]) -> list[dict[str, Any]]:
                     "task_delivery": task_delivery or None,
                     "task": task_name or None,
                     "title": title,
+                    "student_group": student_group or None,
+                    "school": (group or {}).get("school") or None,
+                    "academic_year": (group or {}).get("academic_year") or None,
+                    "program": (group or {}).get("program") or None,
+                    "course": (group or {}).get("course") or None,
+                    "cohort": (group or {}).get("cohort") or None,
                 },
             }
         )
@@ -692,7 +711,7 @@ def _build_bundle(
         current_unit,
         (runtime.get("resources") or {}).get("general_assigned_work"),
     )
-    task_items = _build_task_items(relevant_work)
+    task_items = _build_task_items(relevant_work, student_group=student_group, group=group)
     title = _build_group_title(student_group, group)
 
     return {
