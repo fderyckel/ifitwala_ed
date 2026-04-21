@@ -61,7 +61,7 @@ def resolve_staff_plan(
     group = api._group_context(student_group)
     course_plans = api.frappe.get_all(
         "Course Plan",
-        filters={"course": group["course"], "plan_status": ["!=", "Archived"]},
+        filters={"course": group["course"], "plan_status": "Active"},
         fields=["name", "title", "academic_year", "cycle_label", "plan_status"],
         order_by="modified desc, creation desc",
         limit=50,

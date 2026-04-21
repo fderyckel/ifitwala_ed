@@ -3,8 +3,8 @@ title: "Task Delivery: Assigning Work to a Real Class"
 slug: task-delivery
 category: Assessment
 doc_order: 5
-version: "1.8.0"
-last_change_date: "2026-04-05"
+version: "1.8.1"
+last_change_date: "2026-04-21"
 summary: "Assign a reusable task to a specific class through its class teaching plan, with dates, grading mode, optional class-session context, and scalable outcome generation."
 seo_title: "Task Delivery: Assigning Work to a Real Class"
 seo_description: "Assign a reusable task to a class through its teaching plan with dates, grading mode, evidence rules, and optional class-session context."
@@ -28,7 +28,7 @@ Test refs: None (scaffold only: `ifitwala_ed/assessment/doctype/task_delivery/te
 
 - Create the parent `Task` first.
 - Create the `Student Group` first, with roster and context aligned to the teaching situation.
-- Ensure the class has an active `Class Teaching Plan`. Creating a course-based `Student Group` now provisions one automatically when a single governing `Course Plan` can be resolved; otherwise initialize or select the class plan in Class Planning before assigning work.
+- Ensure the class has an active `Class Teaching Plan`. Creating a course-based `Student Group` now provisions one automatically when a single governing `Course Plan` can be resolved; otherwise initialize or select the class plan in Class Planning before assigning work. Manual Class Planning initialization now creates the class plan as `Active`, and draft or archived plans cannot receive assigned work.
 - Prepare grading setup first (`Grade Scale`, and task criteria readiness if using criteria grading mode).
 
 ## Where It Is Used Across the ERP

@@ -211,9 +211,10 @@
 										:class="cellClass(student.student, cell)"
 										:style="cellStyle(cell)"
 										:aria-label="cellAriaLabel(student.student_name, cell)"
+										:aria-haspopup="cell.hasDetails ? 'dialog' : undefined"
 										:aria-pressed="isSelectedCell(student.student, cell.date) ? 'true' : 'false'"
 										:disabled="!cell.hasDetails"
-										@click="selectDay(student.student, cell.date)"
+										@click="selectDay(student.student, student.student_name, cell.date)"
 									>
 										<span class="text-xs font-semibold">{{ cell.dayNumber }}</span>
 									</button>
@@ -221,45 +222,6 @@
 							</div>
 						</section>
 					</div>
-
-					<section
-						v-if="selectedDay(student.student)"
-						class="rounded-2xl border border-line-soft bg-white p-4"
-					>
-						<div class="mb-3 flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
-							<div>
-								<h3 class="type-body-strong text-ink">
-									{{ student.student_name }} on
-									{{ formatDetailDate(selectedDay(student.student)?.date || '') }}
-								</h3>
-								<p class="type-caption text-ink/60">
-									{{ selectedDay(student.student)?.details.length || 0 }} attendance detail(s)
-								</p>
-							</div>
-							<p
-								class="rounded-full px-3 py-1 type-caption"
-								:class="detailStateClass(selectedDay(student.student)?.state || 'present')"
-							>
-								{{ detailStateLabel(selectedDay(student.student)?.state || 'present') }}
-							</p>
-						</div>
-
-						<ul class="space-y-3">
-							<li
-								v-for="detail in selectedDay(student.student)?.details || []"
-								:key="detail.attendance"
-								class="rounded-xl border border-line-soft bg-surface-soft p-4"
-							>
-								<p class="type-body-strong text-ink">{{ detail.attendance_code_name }}</p>
-								<p class="type-caption text-ink/60">
-									{{ detail.whole_day ? 'Whole day' : detail.time || 'Time not recorded' }}
-									<span v-if="detail.course"> - {{ detail.course }}</span>
-									<span v-if="detail.location"> - {{ detail.location }}</span>
-								</p>
-								<p v-if="detail.remark" class="mt-2 type-body text-ink/80">{{ detail.remark }}</p>
-							</li>
-						</ul>
-					</section>
 				</div>
 			</article>
 		</section>
@@ -267,8 +229,9 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 
+import { useOverlayStack } from '@/composables/useOverlayStack';
 import { getGuardianAttendanceSnapshot } from '@/lib/services/guardianAttendance/guardianAttendanceService';
 
 import type {
@@ -295,12 +258,15 @@ type SummaryTone = 'tracked' | 'present' | 'late' | 'absence';
 
 const weekdayLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
+const overlay = useOverlayStack();
+
 const loading = ref(true);
 const errorMessage = ref('');
 const snapshot = ref<GuardianAttendanceSnapshot | null>(null);
 const selectedStudent = ref('');
 const selectedDays = ref(60);
 const selectedCell = ref<{ student: string; date: string } | null>(null);
+const attendanceDetailOverlayId = ref<string | null>(null);
 
 const children = computed(() => snapshot.value?.family.children ?? []);
 const students = computed<GuardianAttendanceStudent[]>(() => snapshot.value?.students ?? []);
@@ -337,6 +303,7 @@ const studentDayMaps = computed(() => {
 });
 
 async function loadSnapshot() {
+	closeDayOverlay(true);
 	loading.value = true;
 	errorMessage.value = '';
 	try {
@@ -344,9 +311,6 @@ async function loadSnapshot() {
 			student: selectedStudent.value || undefined,
 			days: selectedDays.value,
 		});
-		if (selectedCell.value && !selectedDay(selectedCell.value.student)) {
-			selectedCell.value = null;
-		}
 	} catch (error) {
 		const message = error instanceof Error ? error.message : String(error || '');
 		errorMessage.value = message || 'Unknown error';
@@ -361,17 +325,37 @@ function calendarMonths(student: GuardianAttendanceStudent): CalendarMonth[] {
 	return monthStarts.value.map(monthStart => buildCalendarMonth(monthStart, dayMap));
 }
 
-function selectDay(student: string, date: string) {
+function selectDay(student: string, studentName: string, date: string) {
+	const day = studentDayMaps.value.get(student)?.get(date);
+	if (!day || !day.details.length) return;
+
+	closeDayOverlay();
 	selectedCell.value = { student, date };
+	attendanceDetailOverlayId.value = overlay.open('guardian-attendance-day', {
+		studentName,
+		day,
+		onClose: handleAttendanceDetailClosed,
+	});
 }
 
 function isSelectedCell(student: string, date: string): boolean {
 	return selectedCell.value?.student === student && selectedCell.value?.date === date;
 }
 
-function selectedDay(student: string): GuardianAttendanceDay | null {
-	if (selectedCell.value?.student !== student) return null;
-	return studentDayMaps.value.get(student)?.get(selectedCell.value.date) ?? null;
+function closeDayOverlay(clearSelection = false) {
+	const overlayId = attendanceDetailOverlayId.value;
+	attendanceDetailOverlayId.value = null;
+	if (overlayId) {
+		overlay.close(overlayId);
+	}
+	if (clearSelection) {
+		selectedCell.value = null;
+	}
+}
+
+function handleAttendanceDetailClosed() {
+	attendanceDetailOverlayId.value = null;
+	selectedCell.value = null;
 }
 
 function cellClass(student: string, cell: CalendarCell): string {
@@ -410,12 +394,6 @@ function detailStateLabel(state: GuardianAttendanceDay['state']): string {
 	return 'Present';
 }
 
-function detailStateClass(state: GuardianAttendanceDay['state']): string {
-	if (state === 'late') return 'bg-jacaranda/12 text-jacaranda';
-	if (state === 'absence') return 'bg-flame/12 text-flame';
-	return 'bg-moss/15 text-ink';
-}
-
 function summaryCardClass(tone: SummaryTone): string {
 	if (tone === 'tracked') return 'border-jacaranda/20 bg-jacaranda/5';
 	if (tone === 'present') return 'border-moss/30 bg-moss/10';
@@ -428,16 +406,6 @@ function summaryValueClass(tone: SummaryTone): string {
 	if (tone === 'present') return 'text-ink';
 	if (tone === 'late') return 'text-jacaranda';
 	return 'text-flame';
-}
-
-function formatDetailDate(value: string): string {
-	if (!value) return '';
-	return new Intl.DateTimeFormat(undefined, {
-		weekday: 'long',
-		day: 'numeric',
-		month: 'long',
-		year: 'numeric',
-	}).format(parseIsoDate(value));
 }
 
 function buildMonthStarts(startDate: string, endDate: string): Date[] {
@@ -515,11 +483,14 @@ function mondayIndex(value: Date): number {
 }
 
 watch([selectedStudent, selectedDays], () => {
-	selectedCell.value = null;
 	void loadSnapshot();
 });
 
 onMounted(() => {
 	void loadSnapshot();
+});
+
+onBeforeUnmount(() => {
+	closeDayOverlay(true);
 });
 </script>

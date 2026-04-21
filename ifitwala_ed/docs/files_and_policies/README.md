@@ -49,7 +49,12 @@ Policy-system read order:
 Planned future-policy docs:
 
 - `policy_04_family_signature_and_consent_contract.md`
+- `policy_05_phase2a_desk_authoring_portal_signing_plan.md`
+
+Deprecated pointer:
+
 - `policy_05_phase2a_guardian_first_implementation_plan.md`
+  replaced by `policy_05_phase2a_desk_authoring_portal_signing_plan.md`
 
 Non-authoritative notes:
 

@@ -28,7 +28,9 @@ from ifitwala_ed.api.calendar_core import (
     _system_tzinfo,
     _to_system_datetime,
 )
+from ifitwala_ed.api.org_comm_utils import STAFF_ROLES
 from ifitwala_ed.hr.utils import resolve_staff_calendar_for_employee as _resolve_employee_staff_calendar
+from ifitwala_ed.school_settings.doctype.school_event.school_event import get_user_membership
 from ifitwala_ed.school_settings.school_settings_utils import resolve_school_calendars_for_window
 from ifitwala_ed.utilities.school_tree import get_ancestor_schools
 
@@ -545,8 +547,51 @@ def _collect_school_events(
     if not rows:
         return []
 
+    event_names = [row.get("name") for row in rows if row.get("name")]
+    audience_rows = frappe.get_all(
+        "School Event Audience",
+        filters={"parent": ["in", event_names]},
+        fields=[
+            "parent",
+            "audience_type",
+            "team",
+        ],
+        limit=max(len(event_names) * 8, 50),
+    )
+    audiences_by_event: dict[str, list[dict]] = defaultdict(list)
+    for audience_row in audience_rows or []:
+        parent = audience_row.get("parent")
+        if parent:
+            audiences_by_event[parent].append(audience_row)
+
+    user_roles = set(frappe.get_roles(user))
+    membership = get_user_membership(user)
+    allowed_school_set = set(allowed_schools or [])
+
     events: List[CalendarEvent] = []
     for row in rows:
+        event_name = str(row.get("name") or "").strip()
+        explicit_participant = bool((row.get("participant_name") or "").strip())
+
+        if not explicit_participant:
+            if (row.get("reference_type") or "").strip() == "Applicant Interview":
+                continue
+
+            event_school = str(row.get("school") or "").strip()
+            if not event_school or event_school not in allowed_school_set:
+                continue
+
+            if not any(
+                _school_event_audience_matches_staff_user(
+                    audience_row,
+                    user_roles=user_roles,
+                    membership=membership,
+                    explicit_participant=False,
+                )
+                for audience_row in audiences_by_event.get(event_name, [])
+            ):
+                continue
+
         start_dt = _to_system_datetime(row.starts_on, tzinfo) if row.starts_on else window_start
         end_dt_raw = row.ends_on or row.starts_on
         end_dt = _to_system_datetime(end_dt_raw, tzinfo) if end_dt_raw else (start_dt + CAL_MIN_DURATION)
@@ -573,3 +618,30 @@ def _collect_school_events(
         )
 
     return events
+
+
+def _school_event_audience_matches_staff_user(
+    audience_row,
+    *,
+    user_roles: set[str],
+    membership: dict[str, set[str]],
+    explicit_participant: bool,
+) -> bool:
+    audience_type = str(audience_row.get("audience_type") or "").strip()
+    if not audience_type:
+        return False
+
+    if audience_type == "All Students, Guardians, and Employees":
+        return True
+
+    if audience_type == "All Employees":
+        return bool(set(user_roles or []) & STAFF_ROLES)
+
+    if audience_type == "Employees in Team":
+        team_name = str(audience_row.get("team") or "").strip()
+        return bool(team_name and team_name in set((membership or {}).get("teams") or set()))
+
+    if audience_type == "Custom Users":
+        return explicit_participant
+
+    return False

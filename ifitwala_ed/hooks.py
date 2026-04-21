@@ -453,6 +453,7 @@ scheduler_events = {
         "ifitwala_ed.website.publication.run_hourly_website_publication_sync",
     ],
     "daily": [
+        "ifitwala_ed.curriculum.scheduled_jobs.run_daily_course_plan_activation",
         "ifitwala_ed.students.doctype.student_log.student_log.dispatch_auto_close_completed_logs",
         "ifitwala_ed.hr.doctype.leave_ledger_entry.leave_ledger_entry.dispatch_process_expired_allocation",
         "ifitwala_ed.hr.utils.dispatch_allocate_earned_leaves",

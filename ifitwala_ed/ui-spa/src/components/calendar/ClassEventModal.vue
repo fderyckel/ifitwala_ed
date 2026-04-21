@@ -204,6 +204,10 @@
 										<button
 											type="button"
 											class="meeting-modal__action-button meeting-modal__action-button--secondary"
+											:class="{
+												'cursor-not-allowed opacity-60': Boolean(createTaskBlockedReason),
+											}"
+											:disabled="Boolean(createTaskBlockedReason)"
 											@click="emitCreateTask"
 										>
 											<FeatherIcon name="clipboard" class="h-4 w-4" />
@@ -212,10 +216,11 @@
 									</template>
 								</div>
 								<p
-									v-if="planSessionBlockedReason"
+									v-for="warning in actionWarnings"
+									:key="warning"
 									class="mt-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 type-caption text-amber-900"
 								>
-									{{ planSessionBlockedReason }}
+									{{ warning }}
 								</p>
 							</div>
 						</div>
@@ -248,6 +253,11 @@ const props = defineProps<{
 	eventId?: string | null;
 	portalRole?: 'staff' | 'student' | 'guardian';
 }>();
+
+const MISSING_ACTIVE_TASK_PLAN_MESSAGE =
+	'This class needs an active Class Teaching Plan before assigned work can be created. Open Class Planning for this class, create or activate the plan, then try again.';
+const MULTIPLE_ACTIVE_TASK_PLANS_MESSAGE =
+	'This class has more than one active Class Teaching Plan. Open Class Planning for this class, choose the correct plan there, then create the task from that surface.';
 
 const overlay = useOverlayStack();
 const route = useRoute();
@@ -311,6 +321,27 @@ watch(
 
 const courseLabel = computed(() => data.value?.course_name || data.value?.course || '—');
 const planSessionBlockedReason = computed(() => getPlanSessionBlockedReason(data.value?.course));
+const createTaskBlockedReason = computed(() => {
+	if (planSessionBlockedReason.value) return planSessionBlockedReason.value;
+
+	const taskCreationStatus = data.value?.task_creation?.status;
+	if (taskCreationStatus === 'missing_active_plan') return MISSING_ACTIVE_TASK_PLAN_MESSAGE;
+	if (taskCreationStatus === 'multiple_active_plans') return MULTIPLE_ACTIVE_TASK_PLANS_MESSAGE;
+	if (
+		taskCreationStatus === 'ready' &&
+		!String(data.value?.task_creation?.class_teaching_plan || '').trim()
+	) {
+		return MISSING_ACTIVE_TASK_PLAN_MESSAGE;
+	}
+	return '';
+});
+const actionWarnings = computed(() => {
+	const warnings: string[] = [];
+	for (const message of [planSessionBlockedReason.value, createTaskBlockedReason.value]) {
+		if (message && !warnings.includes(message)) warnings.push(message);
+	}
+	return warnings;
+});
 
 const sessionDateLabel = computed(() => {
 	if (!data.value?.session_date) return '';
@@ -390,10 +421,16 @@ function emitCreateAnnouncement() {
 
 function emitCreateTask() {
 	if (!data.value?.student_group) return;
+	if (createTaskBlockedReason.value) {
+		toast.error(createTaskBlockedReason.value);
+		return;
+	}
 
 	// Clean handoff: class modal disappears, create-task appears as top
 	overlay.replaceTop('create-task', {
 		prefillStudentGroup: data.value.student_group,
+		prefillCourse: data.value.course || null,
+		prefillClassTeachingPlan: data.value.task_creation?.class_teaching_plan || null,
 		prefillDueDate: data.value.end || data.value.start || null,
 	});
 }

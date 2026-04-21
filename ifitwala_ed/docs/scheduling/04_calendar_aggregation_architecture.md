@@ -183,7 +183,11 @@ Meeting event color precedence is:
 School Events are included when:
 
 - the user is an explicit participant
-- or the event is visible through the allowed school ancestry rule used by the staff feed
+- or the event school is in the staff user's allowed school ancestry and the event audience
+  also reaches that user through employee-facing school-event audiences such as
+  `All Students, Guardians, and Employees`, `All Employees`, or a matching
+  `Employees in Team` row
+- applicant-interview school events remain participant-only even when the effective school ancestry matches
 
 These visibility rules are source-owned and must not be flattened into one generic “calendar access” check.
 
@@ -315,7 +319,7 @@ This is how one modal contract currently spans both staff and student class feed
 Detail access checks are intentionally separate:
 
 - meetings use participant or desk-read access
-- school events use event visibility logic
+- school events use event visibility logic aligned with the source feed rather than a generic DocType read-permission shortcut
 - student-group events require concrete student-group access
 
 Refactors must not replace these with one broad “calendar event detail” permission shortcut.

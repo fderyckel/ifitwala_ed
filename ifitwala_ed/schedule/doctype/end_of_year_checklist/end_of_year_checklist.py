@@ -9,6 +9,11 @@ from frappe import _
 from frappe.model.document import Document
 from frappe.query_builder import DocType
 
+from ifitwala_ed.curriculum.doctype.course_plan.course_plan import (
+    ACTIVATION_MODE_ACADEMIC_YEAR_START,
+    build_curriculum_handover_preview,
+    create_rollover_course_plan,
+)
 from ifitwala_ed.hr.professional_development_utils import handle_academic_year_close_for_professional_development
 from ifitwala_ed.utilities.school_tree import get_descendant_schools, is_leaf_school
 
@@ -20,6 +25,7 @@ class EndofYearChecklist(Document):
     def validate(self):
         self._validate_scope_selection()
         self._validate_academic_year_school_match()
+        self._validate_curriculum_target_school_match()
 
     def _validate_scope_selection(self):
         if not self.school:
@@ -36,14 +42,31 @@ class EndofYearChecklist(Document):
                 title=_("Invalid Academic Year"),
             )
 
+    def _validate_curriculum_target_school_match(self):
+        if not self.school or not self.curriculum_target_academic_year:
+            return
+        ay_school = frappe.db.get_value("Academic Year", self.curriculum_target_academic_year, "school")
+        if ay_school and ay_school != self.school:
+            frappe.throw(
+                _("Target Academic Year must belong to the selected School."),
+                title=_("Invalid Target Academic Year"),
+            )
+
     def _ensure_action_state(self):
         if self.status == "Completed":
             frappe.throw(_("Checklist is completed and actions are locked."))
         if self.status != "In Progress":
             frappe.throw(_("Set status to In Progress before running actions."))
 
-    def _resolve_scope(self):
-        self._ensure_action_state()
+    def _ensure_curriculum_action_state(self):
+        if self.status == "Completed":
+            frappe.throw(_("Checklist is completed and curriculum handover is locked."))
+        if not self.curriculum_target_academic_year:
+            frappe.throw(_("Target Academic Year is required for curriculum handover."))
+
+    def _resolve_scope(self, *, require_action_state: bool = True):
+        if require_action_state:
+            self._ensure_action_state()
         if not self.school or not self.academic_year:
             frappe.throw(_("School and Academic Year are required."))
 
@@ -61,7 +84,7 @@ class EndofYearChecklist(Document):
             fields=["name", "school"],
         )
         ay_names = [row.name for row in rows]
-        return {"scope": scope, "ay_names": ay_names}
+        return {"scope": scope, "ay_names": ay_names, "academic_year_name": ay_name}
 
     @frappe.whitelist()
     def archive_academic_year(self):
@@ -118,6 +141,79 @@ class EndofYearChecklist(Document):
             (StudentGroup.academic_year.isin(ay_names)) & (StudentGroup.school.isin(schools))
         ).run()
         return {"processed": len(ay_names)}
+
+    @frappe.whitelist()
+    def get_curriculum_handover_preview(self):
+        scope = self._resolve_scope(require_action_state=False)
+        target_academic_year = (self.curriculum_target_academic_year or "").strip()
+        if not target_academic_year:
+            return {
+                "summary": {
+                    "source_plan_count": 0,
+                    "ready_count": 0,
+                    "existing_count": 0,
+                    "missing_target_academic_year_count": 0,
+                    "no_permission_count": 0,
+                },
+                "rows": [],
+            }
+
+        self._validate_curriculum_target_school_match()
+        target_year_name = frappe.db.get_value("Academic Year", target_academic_year, "academic_year_name")
+        if not target_year_name:
+            frappe.throw(_("Target Academic Year is invalid or missing a name."))
+
+        return build_curriculum_handover_preview(
+            school_scope=scope.get("scope") or [],
+            source_academic_years=scope.get("ay_names") or [],
+            target_academic_year_name=target_year_name,
+            user=frappe.session.user,
+            roles=frappe.get_roles(frappe.session.user),
+        )
+
+    @frappe.whitelist()
+    def prepare_curriculum_handover(self):
+        self._ensure_curriculum_action_state()
+        preview = self.get_curriculum_handover_preview()
+        created = []
+        failed = []
+
+        for row in preview.get("rows") or []:
+            if row.get("status") != "ready":
+                continue
+            source_course_plan = row.get("source_course_plan")
+            target_academic_year = row.get("target_academic_year")
+            if not source_course_plan or not target_academic_year:
+                continue
+            try:
+                result = create_rollover_course_plan(
+                    course_plan=source_course_plan,
+                    target_academic_year=target_academic_year,
+                    activation_mode=ACTIVATION_MODE_ACADEMIC_YEAR_START,
+                    copy_plan_resources=1,
+                    copy_unit_resources=1,
+                )
+                created.append(
+                    {
+                        "source_course_plan": source_course_plan,
+                        "course_plan": result.get("course_plan"),
+                    }
+                )
+            except Exception as exc:
+                failed.append(
+                    {
+                        "source_course_plan": source_course_plan,
+                        "message": str(exc),
+                    }
+                )
+
+        return {
+            "processed": len(preview.get("rows") or []),
+            "created_count": len(created),
+            "failed_count": len(failed),
+            "created": created,
+            "failed": failed,
+        }
 
 
 def _is_system_manager(user: str) -> bool:

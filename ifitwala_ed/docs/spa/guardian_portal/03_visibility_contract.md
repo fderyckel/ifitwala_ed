@@ -158,9 +158,10 @@ Rules:
 2. Holiday rows are limited to resolved school calendars returned by `resolve_school_calendars_for_window(...)` for linked-student schools inside the selected month window.
 3. Holiday rows include only `School Calendar Holidays` rows for the resolved month window where `weekly_off = 0`.
 4. School-event rows reuse the guardian communication-center audience rules and may appear only when the guardian already has visibility through `All Guardians`, `All Students, Guardians, and Employees`, student audiences with `include_guardians = 1`, or explicit participant rows.
-5. The optional child filter may target only a linked student, and the optional school filter may target only a school derived from the guardian's linked children or the selected child.
-6. Child and school filters only narrow the authorized month payload; they never widen school-calendar or school-event visibility.
-7. The server, not the SPA, owns matched-child resolution for both holiday and school-event items.
+5. Parent-school events may match linked children through ancestor-school lineage, so an event anchored on a family root school may still appear for guardians whose linked children are anchored on descendant schools in that branch.
+6. The optional child filter may target only a linked student, and the optional school filter may target only a school derived from the guardian's linked children or the selected child.
+7. Child and school filters only narrow the authorized month payload; they never widen school-calendar or school-event visibility.
+8. The server, not the SPA, owns matched-child resolution for both holiday and school-event items.
 
 ## 7. Monitoring Visibility
 

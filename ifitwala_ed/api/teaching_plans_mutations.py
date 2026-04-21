@@ -60,6 +60,7 @@ def create_class_teaching_plan_impl(api, student_group: str, course_plan: str) -
     doc = api.frappe.new_doc("Class Teaching Plan")
     doc.course_plan = course_plan
     doc.student_group = student_group
+    doc.planning_status = "Active"
     doc.insert(ignore_permissions=True)
     return {
         "class_teaching_plan": doc.name,

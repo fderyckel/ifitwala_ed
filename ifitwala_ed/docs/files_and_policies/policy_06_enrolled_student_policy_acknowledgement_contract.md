@@ -154,7 +154,7 @@ Rules:
 
 ## Out Of Scope
 Status: Active
-Code refs: `ifitwala_ed/docs/files_and_policies/policy_04_family_signature_and_consent_contract.md`, `ifitwala_ed/docs/files_and_policies/policy_05_phase2a_guardian_first_implementation_plan.md`
+Code refs: `ifitwala_ed/docs/files_and_policies/policy_04_family_signature_and_consent_contract.md`, `ifitwala_ed/docs/files_and_policies/policy_05_phase2a_desk_authoring_portal_signing_plan.md`
 Test refs: None
 
 Not in this contract:

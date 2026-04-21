@@ -107,19 +107,20 @@ Rules:
 1. `get_student_center_snapshot(...)` returns exactly these top-level blocks: `meta`, `identity`, `kpis`, `learning`, `attendance`, `wellbeing`, `history`.
 2. `meta.current_academic_year` is copied from `identity.program_enrollment.academic_year`.
 3. `identity` is assembled from `Student`, the latest matching `Program Enrollment` inside the selected program subtree and selected school descendants, and `Student Group Student` joined to `Student Group`.
-4. `kpis` currently contains attendance, task, support, and placeholder academic summary values.
-5. `learning` is assembled from current `Task Delivery` rows scoped to the student through `Student Group Student`, left-joined to `Task Outcome`, `Student Group`, and `Course`, plus `Program Enrollment Course` rows for current courses.
-6. Task-derived KPI, learning, and history blocks now read the current `Task Delivery` / `Task Outcome` model; the snapshot no longer uses the legacy `Task Student` table.
-7. `attendance` is assembled from `Student Attendance`, `Student Attendance Code`, and `Course`, and the snapshot returns attendance rows across available academic years so the SPA can apply `This academic year`, `Last academic year`, and `All academic years` client-side.
-8. `wellbeing.timeline` is event-only and merges visible `Student Log`, `Student Referral`, and `Student Patient Visit` rows, then sorts newest-first and trims to 30 items.
-9. `wellbeing.timeline[].summary` returns stripped text for each capped row; the SPA owns collapse/expand behavior and renders the latest 10 timeline rows before older dashboard rows move into a scroll region.
-10. `wellbeing.health_note` is a separate optional staff-facing card sourced from `Student Patient.medical_info`; it is not inserted into the date-sorted timeline.
-11. Referral rows in `wellbeing.timeline` must honor `Student Referral` server-side permission rules before they are returned to the SPA.
-12. Nurse visit rows in `wellbeing.timeline` must use `Student Patient Visit.note` only; `treatment` is not part of the dashboard timeline contract.
-13. `history.year_options` use `Program Enrollment.academic_year` as the canonical backbone.
-14. `history.academic_trend` is derived from task rows grouped by academic year.
-15. `history.attendance_trend` is derived from distinct `Student Attendance.academic_year` values.
-16. `history.reflection_flags` is currently returned as an empty list.
+4. `identity.photo` is a small avatar surface and must use the governed student avatar derivative helper; it must not fall back to the original full-size student image URL when no derivative is ready.
+5. `kpis` currently contains attendance, task, support, and placeholder academic summary values.
+6. `learning` is assembled from current `Task Delivery` rows scoped to the student through `Student Group Student`, left-joined to `Task Outcome`, `Student Group`, and `Course`, plus `Program Enrollment Course` rows for current courses.
+7. Task-derived KPI, learning, and history blocks now read the current `Task Delivery` / `Task Outcome` model; the snapshot no longer uses the legacy `Task Student` table.
+8. `attendance` is assembled from `Student Attendance`, `Student Attendance Code`, and `Course`, and the snapshot returns attendance rows across available academic years so the SPA can apply `This academic year`, `Last academic year`, and `All academic years` client-side.
+9. `wellbeing.timeline` is event-only and merges visible `Student Log`, `Student Referral`, and `Student Patient Visit` rows, then sorts newest-first and trims to 30 items.
+10. `wellbeing.timeline[].summary` returns stripped text for each capped row; the SPA owns collapse/expand behavior and renders the latest 10 timeline rows before older dashboard rows move into a scroll region.
+11. `wellbeing.health_note` is a separate optional staff-facing card sourced from `Student Patient.medical_info`; it is not inserted into the date-sorted timeline.
+12. Referral rows in `wellbeing.timeline` must honor `Student Referral` server-side permission rules before they are returned to the SPA.
+13. Nurse visit rows in `wellbeing.timeline` must use `Student Patient Visit.note` only; `treatment` is not part of the dashboard timeline contract.
+14. `history.year_options` use `Program Enrollment.academic_year` as the canonical backbone.
+15. `history.academic_trend` is derived from task rows grouped by academic year.
+16. `history.attendance_trend` is derived from distinct `Student Attendance.academic_year` values.
+17. `history.reflection_flags` is currently returned as an empty list.
 
 ## 5. Query and Frappe v16 Contract Notes
 

@@ -161,6 +161,45 @@ def _teaching_plans_module():
 
 
 class TestTeachingPlansApi(TestCase):
+    def test_create_class_teaching_plan_defaults_to_active_status(self):
+        with _teaching_plans_module() as module:
+            created = SimpleNamespace(
+                name="CLASS-PLAN-1",
+                course_plan=None,
+                student_group=None,
+                planning_status=None,
+            )
+
+            def _insert(ignore_permissions=False):
+                created.insert_ignore_permissions = ignore_permissions
+                return created
+
+            created.insert = _insert
+
+            with (
+                patch.object(module, "_assert_staff_group_access", return_value=None),
+                patch.object(module, "_group_context", return_value={"course": "COURSE-1"}),
+                patch.object(
+                    module.planning,
+                    "get_course_plan_row",
+                    return_value={"name": "COURSE-PLAN-1", "course": "COURSE-1"},
+                ),
+                patch.object(module.frappe, "new_doc", return_value=created),
+            ):
+                payload = module.create_class_teaching_plan("GROUP-1", "COURSE-PLAN-1")
+
+        self.assertEqual(created.course_plan, "COURSE-PLAN-1")
+        self.assertEqual(created.student_group, "GROUP-1")
+        self.assertEqual(created.planning_status, "Active")
+        self.assertTrue(created.insert_ignore_permissions)
+        self.assertEqual(
+            payload,
+            {
+                "class_teaching_plan": "CLASS-PLAN-1",
+                "student_group": "GROUP-1",
+            },
+        )
+
     def test_fetch_assigned_work_includes_quiz_launch_state_for_students(self):
         with _teaching_plans_module() as module:
             with (

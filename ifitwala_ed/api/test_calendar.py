@@ -382,6 +382,154 @@ class TestCalendarApi(TestCase):
         self.assertIsNone(payload["event_type"])
         self.assertEqual(payload["timezone"], "Asia/Bangkok")
 
+    def test_school_event_access_blocks_staff_for_guardian_only_ancestor_event(self):
+        doc = _FakeDoc(
+            {
+                "subject": "Parent Workshop",
+                "school": "ISS",
+                "location": "Hall",
+                "event_category": "Parent Engagement",
+                "all_day": 0,
+                "color": None,
+                "description": "<p>Parents only.</p>",
+                "starts_on": "2026-04-10 08:00:00",
+                "ends_on": "2026-04-10 09:00:00",
+                "reference_type": None,
+                "reference_name": None,
+                "docstatus": 0,
+                "audience": [frappe._dict({"audience_type": "All Guardians", "team": None})],
+                "participants": [],
+            },
+            "SE-0002",
+        )
+
+        with (
+            patch("ifitwala_ed.api.calendar_details.frappe.get_roles", return_value=["Employee"]),
+            patch(
+                "ifitwala_ed.api.calendar_details._resolve_employee_for_user",
+                return_value={"school": "IHS"},
+            ),
+            patch("ifitwala_ed.api.calendar_details.get_ancestor_schools", return_value=["IHS", "ISS"]),
+            patch("ifitwala_ed.api.calendar_details.get_user_membership", return_value={"teams": set()}),
+        ):
+            allowed = calendar_details._school_event_access_allowed(doc, "teacher@example.com")
+
+        self.assertFalse(allowed)
+
+    def test_school_event_access_allows_guardian_for_parent_school_event(self):
+        doc = _FakeDoc(
+            {
+                "subject": "Parent Workshop",
+                "school": "ISS",
+                "location": "Hall",
+                "event_category": "Parent Engagement",
+                "all_day": 0,
+                "color": None,
+                "description": "<p>Parents only.</p>",
+                "starts_on": "2026-04-10 08:00:00",
+                "ends_on": "2026-04-10 09:00:00",
+                "reference_type": None,
+                "reference_name": None,
+                "docstatus": 0,
+                "audience": [
+                    frappe._dict(
+                        {
+                            "audience_type": "All Guardians",
+                            "student_group": None,
+                            "include_guardians": 0,
+                            "include_students": 0,
+                            "team": None,
+                        }
+                    )
+                ],
+                "participants": [],
+            },
+            "SE-0003",
+        )
+        context = {
+            "user": "guardian@example.com",
+            "children": [{"student": "STU-1", "full_name": "Amina Example", "school": "IHS"}],
+            "child_by_student": {"STU-1": {"student": "STU-1", "full_name": "Amina Example", "school": "IHS"}},
+            "student_names": ["STU-1"],
+            "student_school_names": {"STU-1": {"IHS"}},
+            "eligible_school_targets_by_student": {"STU-1": {"IHS", "ISS"}},
+            "membership_by_student": {"STU-1": set()},
+        }
+
+        with (
+            patch("ifitwala_ed.api.calendar_details.frappe.session", frappe._dict({"user": "guardian@example.com"})),
+            patch("ifitwala_ed.api.calendar_details.frappe.get_roles", return_value=["Guardian"]),
+            patch(
+                "ifitwala_ed.api.calendar_details._resolve_guardian_communication_context",
+                return_value=context,
+            ),
+        ):
+            allowed = calendar_details._school_event_access_allowed(doc, "guardian@example.com")
+
+        self.assertTrue(allowed)
+
+    def test_get_student_group_event_details_includes_task_creation_context(self):
+        tzinfo = pytz.timezone("Asia/Bangkok")
+        event_start = datetime(2026, 4, 22, 8, 0, 0)
+        event_end = datetime(2026, 4, 22, 9, 0, 0)
+
+        with (
+            patch("ifitwala_ed.api.calendar_details.frappe.session", frappe._dict({"user": "teacher@example.com"})),
+            patch("ifitwala_ed.api.calendar_details._system_tzinfo", return_value=tzinfo),
+            patch(
+                "ifitwala_ed.api.calendar_details._resolve_sg_schedule_context",
+                return_value={
+                    "student_group": "GROUP-1",
+                    "rotation_day": 2,
+                    "block_number": 3,
+                    "block_label": "Block 3",
+                    "session_date": "2026-04-22",
+                    "location": "Room 5",
+                    "location_missing_reason": None,
+                    "start": event_start,
+                    "end": event_end,
+                },
+            ),
+            patch("ifitwala_ed.api.calendar_details._user_has_student_group_access", return_value=True),
+            patch(
+                "ifitwala_ed.api.calendar_details.frappe.db.get_value",
+                return_value=frappe._dict(
+                    {
+                        "name": "GROUP-1",
+                        "student_group_name": "Biology A",
+                        "group_based_on": "Course",
+                        "program": "IB",
+                        "course": "COURSE-1",
+                        "cohort": "G6",
+                        "school": "SCHOOL-1",
+                    }
+                ),
+            ),
+            patch(
+                "ifitwala_ed.api.calendar_details._course_meta_map",
+                return_value={"COURSE-1": {"course_name": "Biology"}},
+            ),
+            patch(
+                "ifitwala_ed.api.calendar_details.planning.resolve_active_class_teaching_plan",
+                return_value={
+                    "status": "ready",
+                    "class_teaching_plan": "CLASS-PLAN-1",
+                    "active_plan_count": 1,
+                },
+            ),
+        ):
+            payload = calendar_details.get_student_group_event_details("sg::GROUP-1::2026-04-22T08:00:00")
+
+        self.assertEqual(payload["student_group"], "GROUP-1")
+        self.assertEqual(payload["course_name"], "Biology")
+        self.assertEqual(
+            payload["task_creation"],
+            {
+                "status": "ready",
+                "class_teaching_plan": "CLASS-PLAN-1",
+            },
+        )
+
     def test_create_school_event_quick_defaults_custom_users_to_session_user(self):
         cache = _DummyCache()
         captured_payloads = []

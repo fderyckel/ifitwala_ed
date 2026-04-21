@@ -3,9 +3,9 @@ title: "Course Plan: Shared Curriculum Version For A Course"
 slug: course-plan
 category: Curriculum
 doc_order: 4
-version: "1.5.6"
-last_change_date: "2026-04-16"
-summary: "Define the governed shared curriculum version for a course, including SPA-first creation from the course-plan index, cycle labeling, publication status, shared summary context, the calendar-aware curriculum timeline, and the governed workspace used to author units, quiz banks, and assignment-ready curriculum assets."
+version: "1.5.7"
+last_change_date: "2026-04-21"
+summary: "Define the governed shared curriculum version for a course, including SPA-first creation from the course-plan index, Desk-side year handover, activation rules, publication status, shared summary context, the calendar-aware curriculum timeline, and the governed workspace used to author units, quiz banks, and assignment-ready curriculum assets."
 seo_title: "Course Plan: Shared Curriculum Version For A Course"
 seo_description: "Define the governed shared curriculum version for a course, including the shared summary and the unit-plan backbone inherited by linked classes."
 ---
@@ -28,6 +28,7 @@ Test refs: None
 - Decide whether the plan needs an `Academic Year` link, cycle label, or both.
 - Prepare the shared summary and non-negotiables the curriculum team wants all linked classes to inherit.
 - Staff can start the plan directly from the staff course-plan index in the SPA; a separate Desk-first creation step is no longer required.
+- A saved Desk `Course Plan` can also start the next academic-year handover directly from the form button, which duplicates the governed unit backbone into a new draft plan.
 - When the plan is year-bound, the staff SPA now selects `Academic Year` from real `Academic Year` records scoped to the linked course school instead of accepting free text.
 - Desk `Text Editor` fields surfaced in this workspace now keep their rich formatting in the staff SPA instead of flattening content into plain text.
 
@@ -51,6 +52,7 @@ Test refs: `ifitwala_ed/api/test_teaching_plans.py`
 
 1. Create the course plan under a `Course`.
    Staff can now do this directly from the course-plan index in the SPA.
+   A saved Desk course plan can also start the next-year handover directly from the form button.
 2. Set the shared title, cycle metadata, and summary that explain the plan’s shared intent.
 3. Add one or more `Unit Plan` rows as the governed backbone for linked classes.
 4. Staff can edit the shared course-plan fields directly from the staff course-plan workspace in the SPA.
@@ -104,6 +106,8 @@ Test refs: `ifitwala_ed/api/test_teaching_plans.py`, `ifitwala_ed/api/test_quiz.
 
 - `Course Plan` is the shared curriculum version record for a course, not a class-owned delivery record.
 - Each `Class Teaching Plan` must point to exactly one governing `Course Plan`.
+- Desk `Course Plan` now carries `activation_mode` so next-year rollover plans can remain `Draft` until a coordinator activates them manually or until the linked `Academic Year.year_start_date` arrives.
+- The Desk rollover action now creates the next academic-year course plan from a saved source plan, copies governed units forward as draft/unpublished units, keeps unit reflections year-specific instead of copying them into the new plan, and reuses shared material placements against the new course-plan and unit anchors.
 - Shared course-plan resources live on `Material Placement` with `anchor_doctype = Course Plan`.
 - The staff course-plan index bootstraps both existing plans and create-ready course options in one bounded payload.
 - New course-plan creation now starts from the staff SPA index and routes directly into the course-plan workspace.
@@ -131,5 +135,6 @@ Test refs: `ifitwala_ed/api/test_teaching_plans.py`, `ifitwala_ed/api/test_quiz.
 ### Current Constraints To Preserve In Review
 
 - Do not mutate linked class teaching plans directly when editing course-plan summary fields.
+- Do not let draft rollover plans become governing class truth before activation; class-plan bootstrap and class-planning selectors must resolve only `Active` course plans.
 - Keep governed curriculum ownership on the shared plan and units, not on class sessions.
 - Preserve server-side permission checks for both shared plan reads and writes.

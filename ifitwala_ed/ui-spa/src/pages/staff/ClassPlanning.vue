@@ -1188,6 +1188,10 @@ function openAssignedWorkOverlay(options?: {
 		toast.error('Create the class teaching plan before assigning work.');
 		return;
 	}
+	if (String(surface.value.teaching_plan.planning_status || '').trim() !== 'Active') {
+		toast.error('Set this class teaching plan to Active before assigning work.');
+		return;
+	}
 	overlay.open('create-task', {
 		prefillStudentGroup: studentGroup.value,
 		prefillCourse: surface.value.group.course,

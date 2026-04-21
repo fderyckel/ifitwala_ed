@@ -52,7 +52,7 @@ class TestStudentOverviewDashboard(IfitwalaFrappeTestCase):
         self.assertIn("SELECT DISTINCT sg.parent", seen_query)
         self.assertIn("INNER JOIN `tabGuardian` g", seen_query)
 
-    def test_identity_block_uses_preferred_student_photo(self):
+    def test_identity_block_uses_preferred_student_avatar(self):
         def fake_get_value(doctype, name_or_filters, fieldname, as_dict=False, order_by=None):
             if doctype == "Student":
                 self.assertEqual(name_or_filters, "STU-001")
@@ -102,8 +102,8 @@ class TestStudentOverviewDashboard(IfitwalaFrappeTestCase):
             patch("ifitwala_ed.api.student_overview_dashboard.frappe.get_all", side_effect=fake_get_all),
             patch("ifitwala_ed.api.student_overview_dashboard.frappe.db.sql", return_value=[]),
             patch(
-                "ifitwala_ed.api.student_overview_dashboard.get_preferred_student_image_url",
-                return_value="/api/method/ifitwala_ed.api.file_access.download_academic_file?file=FILE-1&context_doctype=Student&context_name=STU-001",
+                "ifitwala_ed.api.student_overview_dashboard.get_preferred_student_avatar_url",
+                return_value="/api/method/ifitwala_ed.api.file_access.download_academic_file?file=FILE-1&context_doctype=Student&context_name=STU-001&derivative_role=thumb",
             ) as image_url_mock,
         ):
             payload = _identity_block("STU-001", None, None)
@@ -111,7 +111,7 @@ class TestStudentOverviewDashboard(IfitwalaFrappeTestCase):
         image_url_mock.assert_called_once_with("STU-001", original_url="/private/files/original-student.png")
         self.assertEqual(
             payload["photo"],
-            "/api/method/ifitwala_ed.api.file_access.download_academic_file?file=FILE-1&context_doctype=Student&context_name=STU-001",
+            "/api/method/ifitwala_ed.api.file_access.download_academic_file?file=FILE-1&context_doctype=Student&context_name=STU-001&derivative_role=thumb",
         )
 
     def test_identity_block_matches_program_enrollment_on_program_subtree(self):
@@ -176,7 +176,7 @@ class TestStudentOverviewDashboard(IfitwalaFrappeTestCase):
             patch("ifitwala_ed.api.student_overview_dashboard.frappe.db.get_value", side_effect=fake_get_value),
             patch("ifitwala_ed.api.student_overview_dashboard.frappe.get_all", side_effect=fake_get_all),
             patch("ifitwala_ed.api.student_overview_dashboard.frappe.db.sql", return_value=[]),
-            patch("ifitwala_ed.api.student_overview_dashboard.get_preferred_student_image_url", return_value=None),
+            patch("ifitwala_ed.api.student_overview_dashboard.get_preferred_student_avatar_url", return_value=None),
             patch(
                 "ifitwala_ed.api.student_overview_dashboard.get_descendant_schools",
                 return_value=["SCH-001", "SCH-CHILD"],

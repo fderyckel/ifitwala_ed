@@ -75,7 +75,7 @@ Test refs: `ifitwala_ed/schedule/doctype/student_group/test_student_group.py`, `
 
 - `Class Teaching Plan` is the class-owned planning layer for one teaching group.
 - Every class teaching plan must point to exactly one governing `Course Plan`.
-- Creating an active course-based `Student Group` auto-provisions one active `Class Teaching Plan` when exactly one non-archived governing `Course Plan` can be resolved for that course and academic-year context. If course-plan resolution is missing or ambiguous, class-plan creation remains an explicit Class Planning step.
+- Creating an active course-based `Student Group` auto-provisions one active `Class Teaching Plan` when exactly one active governing `Course Plan` can be resolved for that course and academic-year context. Draft rollover plans must not become governing class truth before activation. If course-plan resolution is missing or ambiguous, class-plan creation remains an explicit Class Planning step, and that manual Class Planning create-plan action also initializes the plan as `Active`.
 - `Class Session` is the educator-facing lifecycle object for a real teaching event.
 - `Class Session Activity` is the ordered session flow inside one class session.
 
@@ -103,6 +103,7 @@ Product rule:
 - assigned work is a teaching outcome of the curriculum flow
 - assigned work is not a substitute for missing planning objects
 - common work definitions do not imply that a class has actually received that work
+- draft or archived class teaching plans are not valid substitutes for the active class-planning anchor required by assigned work
 
 ## Shared Versus Local Work Persistence
 
@@ -202,6 +203,7 @@ Test refs: `ifitwala_ed/schedule/doctype/student_group/test_student_group.py`, `
 - `get_staff_class_planning_surface`, `list_staff_course_plans`, and `get_staff_course_plan_surface` are the staff read-model owners for curriculum planning.
 - The staff course-plan workspace may be split into reusable section components and shared planning helpers, but `CoursePlanWorkspace.vue` plus `get_staff_course_plan_surface` remain the sole route/bootstrap/read-model owners. Future analytics or adjunct panels must compose onto that bounded surface instead of adding independent curriculum waterfalls.
 - `create_course_plan` is the canonical mutation for starting a new governed course plan from the SPA index.
+- Desk `Course Plan` also owns the year-handover action for creating the next academic-year governed plan. That Desk flow creates a draft target plan, duplicates governed units, reuses shared material placements on the new anchors, and may schedule activation for the linked academic-year start date.
 - `StudentGroup.after_insert()` calls `planning.bootstrap_student_group_class_teaching_plan(...)` so course-based class setup can create the default class-plan anchor in one save when course-plan resolution is unambiguous.
 - Shared course-plan editing rights are not derived from static DocType role writes; they are resolved from active teaching assignments on `Student Group`.
 - `Task Delivery` remains the live doctype name. Educator-facing language can evolve, but workflow invariants and schema claims must be grounded in the current files.

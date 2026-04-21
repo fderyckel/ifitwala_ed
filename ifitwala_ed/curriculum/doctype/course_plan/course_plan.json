@@ -14,6 +14,8 @@
   "academic_year",
   "cycle_label",
   "plan_status",
+  "activation_mode",
+  "rollover_source_course_plan",
   "summary"
  ],
  "fields": [
@@ -69,6 +71,20 @@
    "options": "Draft\nActive\nArchived"
   },
   {
+   "default": "Manual",
+   "fieldname": "activation_mode",
+   "fieldtype": "Select",
+   "label": "Activation Mode",
+   "options": "Manual\nAcademic Year Start"
+  },
+  {
+   "fieldname": "rollover_source_course_plan",
+   "fieldtype": "Link",
+   "label": "Rollover Source",
+   "options": "Course Plan",
+   "read_only": 1
+  },
+  {
    "fieldname": "summary",
    "fieldtype": "Text Editor",
    "label": "Summary"
@@ -77,7 +93,7 @@
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-04-12 22:10:02.488176",
+ "modified": "2026-04-21 21:13:12",
  "modified_by": "Administrator",
  "module": "Curriculum",
  "name": "Course Plan",

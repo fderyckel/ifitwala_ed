@@ -9,6 +9,7 @@ from frappe.model.naming import make_autoname
 from frappe.utils import now
 
 from ifitwala_ed.assessment.check_flags import is_checked
+from ifitwala_ed.curriculum import planning as curriculum_planning
 
 
 def get_delivery_context(student_group):
@@ -69,19 +70,12 @@ def resolve_planning_context(student_group, class_teaching_plan=None, class_sess
         class_teaching_plan = class_teaching_plan or (session_row.get("class_teaching_plan") or "").strip()
 
     if not class_teaching_plan:
-        active_rows = frappe.get_all(
-            "Class Teaching Plan",
-            filters={"student_group": student_group, "planning_status": "Active"},
-            fields=["name"],
-            order_by="modified desc, creation desc",
-            limit=2,
-            ignore_permissions=True,
-        )
-        if not active_rows:
+        active_plan_resolution = curriculum_planning.resolve_active_class_teaching_plan(student_group)
+        if active_plan_resolution.get("status") == "missing_active_plan":
             frappe.throw(_("This class needs an active Class Teaching Plan before assigned work can be created."))
-        if len(active_rows) > 1:
+        if active_plan_resolution.get("status") == "multiple_active_plans":
             frappe.throw(_("Select the Class Teaching Plan for this class before creating assigned work."))
-        class_teaching_plan = active_rows[0]["name"]
+        class_teaching_plan = (active_plan_resolution.get("class_teaching_plan") or "").strip()
 
     plan_row = frappe.db.get_value(
         "Class Teaching Plan",
@@ -93,8 +87,11 @@ def resolve_planning_context(student_group, class_teaching_plan=None, class_sess
         frappe.throw(_("Class Teaching Plan not found."))
     if (plan_row.get("student_group") or "").strip() != student_group:
         frappe.throw(_("Selected Class Teaching Plan does not belong to this class."))
-    if (plan_row.get("planning_status") or "").strip() == "Archived":
+    planning_status = (plan_row.get("planning_status") or "").strip()
+    if planning_status == "Archived":
         frappe.throw(_("Archived Class Teaching Plans cannot receive new assigned work."))
+    if planning_status != "Active":
+        frappe.throw(_("This class needs an active Class Teaching Plan before assigned work can be created."))
 
     if session_row and (session_row.get("class_teaching_plan") or "").strip() != class_teaching_plan:
         frappe.throw(_("Selected class session does not belong to this Class Teaching Plan."))

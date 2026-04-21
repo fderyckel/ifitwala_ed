@@ -5,7 +5,7 @@ Status: Planned
 Code refs: `ifitwala_ed/governance/doctype/institutional_policy/institutional_policy.py`, `ifitwala_ed/governance/doctype/policy_version/policy_version.py`, `ifitwala_ed/governance/doctype/policy_acknowledgement/policy_acknowledgement.py`, `ifitwala_ed/api/admissions_portal.py`, `ifitwala_ed/api/guardian_policy.py`
 Test refs: None
 
-This document is the canonical Phase-2 contract for family-facing signatures, permission slips, and mutable consents.
+This document is the canonical Phase-2 contract for desk-authored, portal-completed family and student signatures, permission slips, and mutable consents.
 
 Rules:
 
@@ -14,12 +14,13 @@ Rules:
    - durable policy or handbook acknowledgement
    - one-off permission request tied to an event or activity
    - mutable consent that may later be changed or withdrawn
-3. The product contract is portal-first:
+3. The product contract is desk-authored and portal-completed:
+   - Desk for staff authoring, targeting, and publication
    - `/admissions` for applicant-stage family work
    - `/hub/guardian` for guardian-stage work
-   - `/hub/student` when student action is explicitly required
+   - `/hub/student` for student-stage work, including adult-student self-sign
 4. Staff workflows must remain named workflows with server-owned state transitions, not client-assembled CRUD.
-5. Phase 2A delivery order is defined in `ifitwala_ed/docs/files_and_policies/policy_05_phase2a_guardian_first_implementation_plan.md`.
+5. Phase 2A delivery order is defined in `ifitwala_ed/docs/files_and_policies/policy_05_phase2a_desk_authoring_portal_signing_plan.md`.
 
 ## Reuse Model
 Status: Planned
@@ -47,6 +48,20 @@ Rules:
 4. `Co-sign requirement` is used only when the workflow explicitly requires both a student action and a guardian action.
 5. A single family-facing label may group these modes in the UI, but server logic must keep them distinct because their legal and operational semantics differ.
 
+## Staff Authoring Contract
+Status: Planned
+Code refs: `ifitwala_ed/governance/doctype/institutional_policy/institutional_policy.js`, `ifitwala_ed/governance/doctype/policy_version/policy_version.js`, `ifitwala_ed/ui-spa/src/pages/staff/analytics/PolicySignatureAnalytics.vue`
+Test refs: None
+
+Rules:
+
+1. Staff authoring starts in Desk, not in the staff SPA analytics surface.
+2. The initial authoring entry point should be the canonical `Family Consent Request` Desk form, with Desk-native helpers for template selection, targeting, and publication.
+3. Staff analytics remains a monitoring and reminder surface; it must not become the primary request builder.
+4. Most form fields must be selected from known, server-owned profile bindings instead of being typed freehand for every request.
+5. Free-text prompts are allowed only when no canonical profile field exists or when the request genuinely needs a one-off operational answer.
+6. Staff authoring should start from institution-owned presets such as field trip, event approval, media consent, internship approval, or emergency-contact confirmation rather than a blank technical schema.
+
 ## Signer Authority Contract
 Status: Partial
 Code refs: `ifitwala_ed/admission/doctype/student_applicant_guardian/student_applicant_guardian.json`, `ifitwala_ed/students/doctype/student_guardian/student_guardian.json`, `ifitwala_ed/admission/access.py`, `ifitwala_ed/api/guardian_policy.py`, `ifitwala_ed/governance/doctype/policy_acknowledgement/policy_acknowledgement.py`
@@ -64,6 +79,7 @@ Rules:
    - any authorized signer may complete it once, or
    - all required signers must complete it
 8. Student signature authority is never inferred from guardian authority; if a student signature is required, the workflow must state it explicitly.
+9. Enrolled adult students must be able to self-sign on day one wherever the request audience is `Student`.
 
 ## Family UX Contract
 Status: Planned
@@ -81,6 +97,27 @@ Rules:
 4. A blocked action must explain why it is blocked; silent non-action is a defect.
 5. A guardian who can view a child in the portal but cannot sign for that child must not be presented as an eligible signer.
 6. One-off requests and mutable consents must not be hidden inside the current policy page without explicit mode labeling.
+7. Guardian and student request pages should feel like sibling portal surfaces, with the same evidence, status, and blocked-submit patterns.
+
+## Field Binding And Profile Reuse Contract
+Status: Planned
+Code refs: `ifitwala_ed/students/doctype/guardian/guardian.py`, `ifitwala_ed/utilities/contact_utils.py`, `ifitwala_ed/students/doctype/student/student.py`, `ifitwala_ed/students/doctype/student_guardian/student_guardian.json`
+Test refs: None
+
+Rules:
+
+1. Request fields should default to known bindings from `Student`, `Guardian`, `Student Guardian`, linked `Contact`, and linked `Address` data before introducing free-text entry.
+2. Bound fields must declare one of three modes:
+   - display only
+   - confirm current
+   - allow override
+3. If a signer edits bound phone, email, or address data, the portal must ask whether the change is:
+   - for this form only
+   - the new profile data everywhere
+4. `Update my profile everywhere` is an explicit self-service choice, not a silent background mutation and not a deferred review task in the default contract.
+5. Profile write-back must update the canonical linked `Contact` and `Address` records, then mirror convenience fields such as `Guardian.guardian_email` and `Guardian.guardian_mobile_phone` where the runtime model depends on them.
+6. Form-only overrides must never silently mutate master profile data.
+7. Every submitted decision must retain an immutable snapshot of the presented values, submitted values, and chosen write-back mode.
 
 ## Decision Lifecycle Contract
 Status: Planned
@@ -95,6 +132,7 @@ Rules:
 4. Mutable consent must support later change or withdrawal without deleting prior evidence.
 5. Offline paper capture may be recorded as staff-entered evidence, but staff must never impersonate a guardian or student electronic signature.
 6. Expiry, withdrawal, decline, and supersession are first-class outcomes in this feature and must not be collapsed into "not signed."
+7. If a signer chooses profile write-back during submit, the workflow must record enough before/after evidence to audit what changed.
 
 ## Communication And Reminder Contract
 Status: Planned
@@ -108,6 +146,7 @@ Rules:
 3. Reminder sends must be idempotent and status-aware so already-completed requests are not re-notified.
 4. Overdue and upcoming items must be distinguishable in both family and staff views.
 5. Communications for one-off requests and mutable consents must reuse existing org communication audience and read-state patterns where possible.
+6. Communications may deep-link into guardian or student request pages, but the Desk authoring form remains the canonical staff edit surface.
 
 ## Analytics And Dashboard Contract
 Status: Planned
@@ -147,6 +186,7 @@ Rules:
 5. A child becoming inactive or leaving the school must stop future reminders without destroying past evidence.
 6. Co-sign flows must track guardian completion and student completion separately.
 7. A guardian linked by email only is not a signer unless a relationship row grants authority.
+8. Editing a bound address or phone value for one request must not silently overwrite sibling or guardian records unless the signer explicitly chose profile write-back.
 
 ## Approved Architecture Decisions
 Status: Partial
@@ -159,17 +199,22 @@ Approved decisions:
    - `Family Consent Request`
    - `Family Consent Target`
    - `Family Consent Decision`
-2. Phase 2A ships guardian-first on enrolled-student guardian workflows in `/hub/guardian`.
-3. Student co-sign is deferred to a later phase and must not block guardian-first release.
-4. Default completion rule is `Any Authorized Guardian`; requests may opt into `All Authorized Guardians`.
-5. Mutable consents must carry explicit effective-window fields and use renewal by new request, not silent rollover.
-6. Offline paper capture lives on the same workflow artifact as a staff-recorded `Family Consent Decision`, with governed file evidence attached to that decision.
+2. The product label is `Forms & Signatures`; the backend request/decision layer may keep the `Family Consent*` names.
+3. Phase 2A ships desk-authored enrolled-student workflows with guardian signing and student self-sign available on day one.
+4. Student self-sign does not require guardian-first rollout and must be modeled as a first-class audience from the start.
+5. Default completion rule is `Any Authorized Guardian` for guardian-only requests and `Student Self` for student-only requests; requests may opt into `All Authorized Guardians` or explicit co-sign later.
+6. Student co-sign that requires both guardian and student remains a later slice and must not block day-one student self-sign.
+7. Mutable consents must carry explicit effective-window fields and use renewal by new request, not silent rollover.
+8. Offline paper capture lives on the same workflow artifact as a staff-recorded `Family Consent Decision`, with governed file evidence attached to that decision.
+9. Desk is the canonical authoring home; the staff analytics page remains tracking, reminder, and launch support rather than the primary builder.
+10. Most collected form content must be field-bound to known profile data, with explicit signer choice for profile write-back when edits are made.
 
 Approved field set for the new request/decision layer:
 
 1. `Family Consent Request`
    - `request_title`
    - `request_key`
+   - `template_key`
    - `request_type`
    - `policy_version`
    - `organization`
@@ -187,9 +232,18 @@ Approved field set for the new request/decision layer:
    - `due_on`
    - `status`
    - child table `targets`
+   - child table `fields`
 2. `Family Consent Target`
    - `student`
-3. `Family Consent Decision`
+3. `Family Consent Field`
+   - `field_key`
+   - `field_label`
+   - `field_type`
+   - `value_source`
+   - `field_mode`
+   - `required`
+   - `allow_profile_writeback`
+4. `Family Consent Decision`
    - `family_consent_request`
    - `student`
    - `decision_by`
@@ -199,6 +253,8 @@ Approved field set for the new request/decision layer:
    - `attestation_confirmed`
    - `source_channel`
    - `source_file`
+   - `response_snapshot`
+   - `profile_writeback_mode`
    - `supersedes_decision`
 
 ## Decision Rationale
@@ -209,20 +265,21 @@ Test refs: None
 Pros:
 
 1. Keeps immutable `Policy Acknowledgement` semantics intact instead of overloading them with mutable states.
-2. Delivers the highest-value family workflow first: guardian-facing permission requests and consents in `/hub/guardian`.
+2. Keeps staff authoring in Frappe-native Desk workflows, which fits day-to-day school and university operations better than introducing a second authoring shell.
 3. Preserves the enrolled signer-authority runtime model on `can_consent` while tightening the business rule so only primary guardians receive that signer authority.
-4. Supports later student co-sign without forcing student-specific complexity into Phase 2A.
-5. Makes reminders, expiry, and withdrawal explicit instead of encoding them as absence of acknowledgement.
+4. Adds day-one adult-student self-sign without forcing student-specific logic into guardian pages.
+5. Reduces duplicate data entry by binding most fields to known profile data instead of asking families to retype it.
+6. Makes reminders, expiry, withdrawal, and profile-writeback choice explicit instead of encoding them as absence of acknowledgement.
 
 Cons:
 
 1. Introduces a second governance workflow family beside versioned policy acknowledgements.
-2. Requires new staff publishing and analytics surfaces rather than only extending the current policy page.
-3. Guardian-first release means applicant-stage and student co-sign use cases remain out of scope initially.
+2. Requires new desk authoring workflow, request schema, and portal request pages rather than only extending the current policy page.
+3. Field binding and profile-writeback behavior increase implementation complexity compared with a simple yes/no consent flow.
 
 Blind spots:
 
-1. The exact staff authoring UX for target selection still needs implementation design.
+1. The final Desk authoring UX for template/preset management still needs implementation design.
 2. Renewal cadence defaults for annual consents are not yet wired and will depend on school operations.
 3. Later admissions-stage reuse may require extending targets beyond enrolled students.
 
@@ -231,6 +288,7 @@ Risks:
 1. If request types and decision modes are blurred in UI, families may not understand whether they are acknowledging, approving, or granting consent.
 2. If signer authority is not enforced uniformly server-side, emergency-only guardians could be exposed to actions they must not take.
 3. If staff dashboards reuse custom scope math instead of canonical helpers, permission drift will reappear.
+4. If profile write-back bypasses canonical `Contact` and `Address` ownership, guardian/student contact data will drift and Desk quick views will become inconsistent.
 
 ## Contract Matrix
 Status: Planned
@@ -239,10 +297,10 @@ Test refs: `ifitwala_ed/api/test_admissions_portal.py`, `ifitwala_ed/api/test_gu
 
 | Layer | Current canonical owner | Phase-2 extension | Status |
 |---|---|---|---|
-| Schema / DocType | `Institutional Policy`, `Policy Version`, `Policy Acknowledgement`, applicant/student guardian relationship rows | Add one approved request/decision layer without changing the meaning of immutable acknowledgement evidence | Planned |
-| Controller / workflow logic | `policy_utils`, admissions policy acknowledgement, guardian policy overview, policy acknowledgement permission checks | Add named workflows for request creation, family decision capture, change/withdraw, reminder safety, and offline evidence capture | Planned |
+| Schema / DocType | `Institutional Policy`, `Policy Version`, `Policy Acknowledgement`, applicant/student guardian relationship rows | Add one approved request/decision layer plus request field bindings without changing the meaning of immutable acknowledgement evidence | Planned |
+| Controller / workflow logic | `policy_utils`, admissions policy acknowledgement, guardian policy overview, policy acknowledgement permission checks | Add named workflows for request creation, guardian/student decision capture, profile write-back choice, change/withdraw, reminder safety, and offline evidence capture | Planned |
 | API endpoints | `acknowledge_policy`, `get_guardian_policy_overview`, staff policy communication and signature APIs | Add named family request endpoints instead of assembling generic CRUD from the client | Planned |
-| SPA / UI surfaces | Admissions policies page, guardian policies page, guardian home, staff policy analytics | Add family action cards, dedicated request pages, and explicit request-mode UI for one-off and mutable decisions | Planned |
-| Reports / dashboards / briefings | Staff policy signature analytics and current portal counts | Extend to request-type and decision-status analytics for family workflows | Planned |
+| Desk / portal surfaces | Admissions policies page, guardian policies page, guardian home, student policies page, staff policy analytics | Add Desk authoring, family action cards, dedicated guardian/student request pages, and explicit request-mode UI for one-off and mutable decisions | Planned |
+| Reports / dashboards / briefings | Staff policy signature analytics and current portal counts | Extend to request-type and decision-status analytics for family workflows while keeping Desk as the authoring home | Planned |
 | Scheduler / background jobs | Existing policy communication and staff reminder patterns only | Add reminder and overdue sweeps with idempotent, status-aware dispatch | Planned |
 | Tests | Existing admissions, guardian-policy, and staff policy signature coverage | Add end-to-end coverage for request creation, decision capture, withdrawal, expiry, and permission enforcement | Planned |

@@ -5,6 +5,7 @@ export type OverlayType =
   | 'create-task'
   | 'quick-class-session'
   | 'guardian-calendar'
+  | 'guardian-attendance-day'
   | 'event-quick-create'
   | 'meeting-event'
   | 'school-event'

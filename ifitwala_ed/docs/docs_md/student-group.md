@@ -3,8 +3,8 @@ title: "Student Group: Operational Teaching Group Contract"
 slug: student-group
 category: Schedule
 doc_order: 1
-version: "1.1.2"
-last_change_date: "2026-04-12"
+version: "1.1.3"
+last_change_date: "2026-04-21"
 summary: "Define the operational class, cohort, activity, or pastoral group used for rostering, instructor assignment, schedule intent, attendance scope, and downstream teaching materialization."
 seo_title: "Student Group: Operational Teaching Group Contract"
 seo_description: "Define the operational class, cohort, activity, or pastoral group used for rostering, instructor assignment, schedule intent, and attendance scope."
@@ -61,7 +61,7 @@ Current workspace note: when a selected Program Offering has exactly one Academi
    - schedule row times are stamped from `School Schedule Block`
    - overlap, capacity, and room checks run
    - for course-based groups only, non-instructional or mismatched schedule blocks raise warnings only
-   - for course-based groups only, one active `Class Teaching Plan` is auto-created when exactly one non-archived governing `Course Plan` can be resolved; ambiguous or missing course-plan cases remain manual in Class Planning
+   - for course-based groups only, one active `Class Teaching Plan` is auto-created when exactly one active governing `Course Plan` can be resolved; draft rollover plans stay out of auto-bootstrap until activation, and ambiguous or missing course-plan cases remain manual in Class Planning
 7. On later saves, active-student changes, instructor changes, and schedule changes trigger downstream sync and materialization updates.
    Instructor membership changes also open or close durable `Instructor Log` history rows for affected instructors.
 

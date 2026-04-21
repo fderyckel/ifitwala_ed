@@ -569,11 +569,16 @@ def _event_students_matching_school(
     school_name = str(event_school or "").strip()
     if not school_name:
         return {student for student in relevant_students if student}
-    return {
-        student
-        for student in relevant_students
-        if school_name in set((context.get("student_school_names") or {}).get(student) or [])
-    }
+
+    matched_students: set[str] = set()
+    for student in relevant_students:
+        eligible_school_targets = set((context.get("eligible_school_targets_by_student") or {}).get(student) or [])
+        if not eligible_school_targets:
+            eligible_school_targets = set((context.get("student_school_names") or {}).get(student) or [])
+        if school_name in eligible_school_targets:
+            matched_students.add(student)
+
+    return matched_students
 
 
 def _matched_students_for_school_event_audience(
@@ -639,7 +644,11 @@ def _fetch_guardian_school_events(
             selected_student=selected_student,
             selected_school=selected_school,
         )
-        for school_name in set((context.get("student_school_names") or {}).get(student) or [])
+        for school_name in set(
+            (context.get("eligible_school_targets_by_student") or {}).get(student)
+            or (context.get("student_school_names") or {}).get(student)
+            or []
+        )
         if school_name
     }
     if not target_schools and not context.get("user"):

@@ -95,8 +95,9 @@ Rules:
 1. Holiday rows are sourced from `School Calendar Holidays` for the selected month window and exclude weekly off rows.
 2. Holiday calendars resolve through `resolve_school_calendars_for_window(...)`; nearest-ancestor school-calendar semantics remain intact.
 3. School-event rows reuse the guardian visibility rules already enforced by the communication center.
-4. Both holiday and school-event rows carry matched child labels resolved on the server.
-5. The overlay may merge multiple in-scope family schools into one month view, but item rows keep plain school labels when available.
+4. Parent-school events may match linked children through ancestor-school lineage, so one family event anchored on the parent school can still appear for linked children anchored on descendant schools in that branch.
+5. Both holiday and school-event rows carry matched child labels resolved on the server.
+6. The overlay may merge multiple in-scope family schools into one month view, but item rows keep plain school labels when available.
 
 ## 5. API Contract
 

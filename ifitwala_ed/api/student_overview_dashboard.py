@@ -19,7 +19,7 @@ from ifitwala_ed.students.doctype.student_log.student_log import get_student_log
 from ifitwala_ed.students.doctype.student_referral.student_referral import (
     get_permission_query_conditions as get_student_referral_permission_query_conditions,
 )
-from ifitwala_ed.utilities.image_utils import get_preferred_student_image_url
+from ifitwala_ed.utilities.image_utils import get_preferred_student_avatar_url
 from ifitwala_ed.utilities.school_tree import get_descendant_schools
 
 
@@ -521,7 +521,7 @@ def _identity_block(student: str, program: str | None, school: str | None):
     return {
         "student": student,
         "full_name": student_doc.get("student_full_name"),
-        "photo": get_preferred_student_image_url(
+        "photo": get_preferred_student_avatar_url(
             student,
             original_url=student_doc.get("student_image"),
         ),

@@ -12,7 +12,11 @@
   "status",
   "scope_preview_section",
   "scope_preview",
+  "curriculum_handover_section",
+  "curriculum_target_academic_year",
+  "curriculum_preview",
   "actions_section",
+  "prepare_curriculum_handover",
   "archive_program_enrollment",
   "archive_student_groups",
   "archive_terms",
@@ -61,9 +65,30 @@
    "label": "Affected Schools"
   },
   {
+   "fieldname": "curriculum_handover_section",
+   "fieldtype": "Section Break",
+   "label": "Curriculum Handover"
+  },
+  {
+   "fieldname": "curriculum_target_academic_year",
+   "fieldtype": "Link",
+   "label": "Target Academic Year",
+   "options": "Academic Year"
+  },
+  {
+   "fieldname": "curriculum_preview",
+   "fieldtype": "HTML",
+   "label": "Curriculum Preview"
+  },
+  {
    "fieldname": "actions_section",
    "fieldtype": "Section Break",
    "label": "Actions"
+  },
+  {
+   "fieldname": "prepare_curriculum_handover",
+   "fieldtype": "Button",
+   "label": "Prepare Curriculum Handover"
   },
   {
    "fieldname": "archive_program_enrollment",
@@ -90,7 +115,7 @@
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2025-05-29 08:33:27",
+ "modified": "2026-04-21 21:13:12",
  "modified_by": "Administrator",
  "module": "Schedule",
  "name": "End of Year Checklist",

@@ -677,6 +677,71 @@ class TestGuardianCommunicationCenterPhase2(FrappeTestCase):
         self.assertIsNone(items[0]["school_event"]["event_type"])
         self.assertEqual(items[0]["matched_children"], [children[0]])
 
+    def test_fetch_guardian_school_events_matches_parent_school_events_to_descendant_school_children(self):
+        children = [
+            {"student": "STU-1", "full_name": "Amina Example", "school": "IHS"},
+        ]
+        context = {
+            "user": "guardian@example.com",
+            "children": children,
+            "child_by_student": {row["student"]: row for row in children},
+            "student_names": ["STU-1"],
+            "student_school_names": {
+                "STU-1": {"IHS"},
+            },
+            "eligible_school_targets_by_student": {
+                "STU-1": {"IHS", "ISS"},
+            },
+            "membership_by_student": {
+                "STU-1": {"GROUP-1"},
+            },
+        }
+        captured: dict[str, object] = {}
+
+        def fake_sql(sql, values, as_dict=False):
+            captured["values"] = values
+            return [
+                {
+                    "name": "SE-ISS-0001",
+                    "subject": "ISS Parent Workshop",
+                    "school": "ISS",
+                    "location": "Hall",
+                    "event_category": "Parent Engagement",
+                    "description": "<p>Parents only.</p>",
+                    "starts_on": "2026-04-10 08:00:00",
+                    "ends_on": "2026-04-10 09:00:00",
+                    "all_day": 0,
+                    "creation": "2026-04-09 12:00:00",
+                }
+            ]
+
+        def fake_get_all(doctype, filters=None, fields=None):
+            if doctype == "School Event Audience":
+                return [
+                    {
+                        "parent": "SE-ISS-0001",
+                        "audience_type": "All Guardians",
+                        "student_group": None,
+                        "include_guardians": 0,
+                        "include_students": 0,
+                    }
+                ]
+            if doctype == "School Event Participant":
+                return []
+            self.fail(f"Unexpected doctype fetch: {doctype}")
+
+        with (
+            patch("ifitwala_ed.api.guardian_communications._recent_start_date", return_value="2026-01-10"),
+            patch.object(guardian_communications.frappe.db, "sql", side_effect=fake_sql),
+            patch.object(guardian_communications.frappe, "get_all", side_effect=fake_get_all),
+        ):
+            items = guardian_communications._fetch_guardian_school_events(context)
+
+        self.assertEqual((captured.get("values") or {}).get("target_schools"), ("IHS", "ISS"))
+        self.assertEqual(len(items), 1)
+        self.assertEqual(items[0]["school_event"]["school"], "ISS")
+        self.assertEqual(items[0]["matched_children"], children)
+
 
 class TestGuardianAttendancePhase2(FrappeTestCase):
     def test_attendance_rejects_out_of_scope_student_filter(self):
