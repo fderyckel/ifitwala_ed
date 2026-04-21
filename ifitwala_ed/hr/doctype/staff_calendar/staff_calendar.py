@@ -70,11 +70,24 @@ def _normalize_calendar_filters(filters) -> dict:
 
 
 def _resolve_default_staff_calendar_for_current_user() -> str | None:
-    employee = frappe.db.get_value("Employee", {"user_id": frappe.session.user}, "name")
+    employee = frappe.db.get_value(
+        "Employee",
+        {"user_id": frappe.session.user},
+        ["name", "current_holiday_lis"],
+        as_dict=True,
+    )
     if not employee:
         return None
 
-    calendar_row = resolve_current_staff_calendar_for_employee(employee)
+    linked_calendar = str((employee.get("current_holiday_lis") or "")).strip()
+    if linked_calendar:
+        return linked_calendar
+
+    employee_name = str((employee.get("name") or "")).strip()
+    if not employee_name:
+        return None
+
+    calendar_row = resolve_current_staff_calendar_for_employee(employee_name)
     return (calendar_row or {}).get("name")
 
 
@@ -296,11 +309,10 @@ class StaffCalendar(Document):
 
     def _sync_affected_employees(self, *, ignore_calendar_name: str | None = None):
         for employee in self._affected_employee_names():
-            sync_current_staff_calendar_for_employee(
-                employee,
-                update_modified=False,
-                ignore_calendar_name=ignore_calendar_name,
-            )
+            sync_kwargs = {"update_modified": False}
+            if ignore_calendar_name:
+                sync_kwargs["ignore_calendar_name"] = ignore_calendar_name
+            sync_current_staff_calendar_for_employee(employee, **sync_kwargs)
 
     # ──────────────────────────────────────────────────────────────
     # Persistence helpers (fix for "nothing appears in child table")

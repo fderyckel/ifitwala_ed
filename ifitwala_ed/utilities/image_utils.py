@@ -929,8 +929,29 @@ def ensure_guardian_profile_image(
         source_file_doc = frappe.get_doc("File", resolved_source_file_name)
     else:
         raw_url = str(original_url or "").strip()
+        if not raw_url:
+            raw_url = str(getattr(guardian_doc, "guardian_image", "") or "").strip()
+
+        guardian_file_filters = {
+            "attached_to_doctype": "Guardian",
+            "attached_to_name": resolved_guardian,
+            "attached_to_field": "guardian_image",
+        }
         if raw_url:
-            source_file_doc = _resolve_unique_file_doc_by_url(raw_url)
+            guardian_file_filters["file_url"] = raw_url
+
+        guardian_matches = frappe.get_all(
+            "File",
+            filters=guardian_file_filters,
+            fields=["name"],
+            limit=2,
+        )
+        if len(guardian_matches) == 1:
+            source_file_doc = frappe.get_doc("File", guardian_matches[0]["name"])
+
+        if raw_url:
+            if not source_file_doc:
+                source_file_doc = _resolve_unique_file_doc_by_url(raw_url)
             if not source_file_doc:
                 guardian_matches = frappe.get_all(
                     "File",
