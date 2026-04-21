@@ -166,7 +166,8 @@ Implemented fix:
 - profile-image derivative scheduling now goes through the Drive preview pipeline
 - when Ed roster/avatar surfaces detect missing current-version profile-image derivatives, they request Drive regeneration through the explicit media wrapper seam rather than importing Drive derivative services directly
 - Ed profile-image and public-website media reads now depend on public Drive API wrappers only; they do not import Drive integration services directly and they do not fall back to generic Drive owner-doc grant APIs for those Ed-owned surfaces
-- small roster/avatar surfaces such as gradebook, attendance, student-log lookup, and portal-chrome student/guardian profile avatars now consume governed profile-image derivatives only and do not fall back to original-file URLs when no derivative is ready
+- small roster/avatar surfaces such as gradebook, attendance, and student-log lookup now consume governed profile-image derivatives only and do not fall back to original-file URLs when no derivative is ready
+- portal-chrome student/guardian profile avatars prefer governed profile-image derivatives and request Drive backfill for missing legacy derivatives, but they may temporarily keep the current governed original as a continuity fallback until the derivative pipeline catches up
 
 ### 2.6 Resolved: governed profile-image reads no longer probe storage directly
 

@@ -19,7 +19,7 @@
 				<div class="if-overlay__backdrop" @click="emitClose('backdrop')" />
 			</TransitionChild>
 
-			<div class="if-overlay__wrap">
+			<div class="if-overlay__wrap" @click.self="emitClose('backdrop')">
 				<TransitionChild
 					as="template"
 					enter="if-overlay__panel-enter"
@@ -96,7 +96,8 @@
 						<footer class="if-overlay__footer">
 							<button
 								type="button"
-								class="if-button if-button--secondary"
+								appearance="secondary"
+								class="type-button-label"
 								@click="emitClose('programmatic')"
 							>
 								Close
@@ -110,7 +111,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, onBeforeUnmount, ref, watch } from 'vue';
 import {
 	Dialog,
 	DialogPanel,
@@ -119,8 +120,6 @@ import {
 	TransitionRoot,
 } from '@headlessui/vue';
 import { FeatherIcon } from 'frappe-ui';
-
-import { useOverlayStack } from '@/composables/useOverlayStack';
 
 import type { GuardianAttendanceDay } from '@/types/contracts/guardian/get_guardian_attendance_snapshot';
 
@@ -132,7 +131,7 @@ const props = defineProps<{
 	overlayId?: string;
 	studentName?: string | null;
 	day?: GuardianAttendanceDay | null;
-	onClose?: () => void;
+	clearSelection?: () => void;
 }>();
 
 const emit = defineEmits<{
@@ -141,24 +140,12 @@ const emit = defineEmits<{
 	(e: 'done'): void;
 }>();
 
-const overlay = useOverlayStack();
-
 const overlayStyle = computed(() => ({ zIndex: props.zIndex ?? 0 }));
 const closeBtnEl = ref<HTMLButtonElement | null>(null);
 const detailCount = computed(() => props.day?.details.length ?? 0);
 
 function emitClose(reason: CloseReason) {
-	props.onClose?.();
-	const overlayId = props.overlayId || null;
-	if (overlayId) {
-		try {
-			overlay.close(overlayId);
-			return;
-		} catch (error) {
-			// Fall back to OverlayHost if the direct close path is unavailable.
-		}
-	}
-
+	props.clearSelection?.();
 	emit('close', reason);
 }
 
@@ -169,6 +156,27 @@ function emitAfterLeave() {
 function onDialogClose(_payload: unknown) {
 	// OverlayHost owns close enforcement.
 }
+
+function onKeydown(event: KeyboardEvent) {
+	if (!props.open) return;
+	if (event.key === 'Escape') emitClose('esc');
+}
+
+watch(
+	() => props.open,
+	isOpen => {
+		if (isOpen) {
+			document.addEventListener('keydown', onKeydown, true);
+		} else {
+			document.removeEventListener('keydown', onKeydown, true);
+		}
+	},
+	{ immediate: true }
+);
+
+onBeforeUnmount(() => {
+	document.removeEventListener('keydown', onKeydown, true);
+});
 
 function detailStateLabel(state: GuardianAttendanceDay['state']): string {
 	if (state === 'late') return 'Late or tardy';

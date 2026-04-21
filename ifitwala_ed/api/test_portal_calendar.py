@@ -304,6 +304,66 @@ class TestPortalCalendar(FrappeTestCase):
         self.assertEqual(len(events), 1)
         self.assertEqual(events[0].id, "school_event::SE-0002")
 
+    def test_staff_calendar_school_events_include_team_audience_via_employee_membership(self):
+        user = self._create_user()
+        employee = self._create_employee(self.child_school, professional_email=user.name)
+        team = self._create_team(
+            self.child_school,
+            members=[
+                {
+                    "employee": employee,
+                }
+            ],
+        )
+
+        tzinfo = _system_tzinfo()
+        window_start = tzinfo.localize(datetime(2026, 1, 7, 8, 0, 0))
+        window_end = tzinfo.localize(datetime(2026, 1, 7, 12, 0, 0))
+
+        event_row = frappe._dict(
+            {
+                "name": "SE-TEAM-1",
+                "subject": "Team Briefing",
+                "starts_on": window_start,
+                "ends_on": tzinfo.localize(datetime(2026, 1, 7, 9, 0, 0)),
+                "all_day": 0,
+                "location": "Staff Room",
+                "color": "#0f766e",
+                "school": self.parent_school,
+                "reference_type": None,
+                "reference_name": None,
+                "participant_name": None,
+            }
+        )
+
+        original_get_all = frappe.get_all
+
+        def fake_get_all(doctype, *args, **kwargs):
+            if doctype == "School Event Audience":
+                return [
+                    {
+                        "parent": "SE-TEAM-1",
+                        "audience_type": "Employees in Team",
+                        "team": team,
+                    }
+                ]
+
+            return original_get_all(doctype, *args, **kwargs)
+
+        with (
+            patch(
+                "ifitwala_ed.api.calendar_staff_feed._resolve_employee_for_user",
+                return_value={"name": employee, "school": self.child_school},
+            ),
+            patch("ifitwala_ed.api.calendar_staff_feed.frappe.db.sql", return_value=[event_row]),
+            patch("ifitwala_ed.api.calendar_staff_feed.frappe.get_all", side_effect=fake_get_all),
+            patch("ifitwala_ed.api.calendar_staff_feed.frappe.get_roles", return_value=["Employee"]),
+        ):
+            events = _collect_school_events(user.name, window_start, window_end, tzinfo)
+
+        self.assertEqual(len(events), 1)
+        self.assertEqual(events[0].id, "school_event::SE-TEAM-1")
+
     def _create_organization(self) -> str:
         hash_key = frappe.generate_hash(length=6).upper()
         doc = frappe.get_doc(
@@ -369,6 +429,28 @@ class TestPortalCalendar(FrappeTestCase):
         ).insert(ignore_permissions=True)
         self._created.append(("User", doc.name))
         return doc
+
+    def _create_team(
+        self,
+        school: str | None,
+        *,
+        members: list[dict] | None = None,
+        is_group: int = 1,
+    ) -> str:
+        hash_key = frappe.generate_hash(length=6).upper()
+        payload = {
+            "doctype": "Team",
+            "team_name": f"Portal Team {hash_key}",
+            "organization": self.organization,
+            "is_group": 1 if is_group else 0,
+            "members": members or [],
+        }
+        if school:
+            payload["school"] = school
+
+        doc = frappe.get_doc(payload).insert(ignore_permissions=True)
+        self._created.append(("Team", doc.name))
+        return doc.name
 
     def _create_employee_group(self, group_name: str) -> str:
         hash_key = frappe.generate_hash(length=5).upper()

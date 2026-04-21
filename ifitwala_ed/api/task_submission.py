@@ -20,7 +20,7 @@ from ifitwala_ed.api.file_access import (
     resolve_academic_file_preview_url,
     resolve_academic_file_thumbnail_url,
 )
-from ifitwala_ed.assessment import task_submission_service
+from ifitwala_ed.assessment import task_feedback_service, task_submission_service
 
 
 def _frappe_module():
@@ -80,7 +80,13 @@ def get_latest_submission(outcome_id=None):
     if not rows:
         return None
 
-    return serialize_task_submission_evidence(rows[0], is_latest_version=True)
+    payload = serialize_task_submission_evidence(rows[0], is_latest_version=True)
+    payload["released_result"] = task_feedback_service.build_released_result_payload(
+        outcome_id,
+        audience="student",
+        submission_id=rows[0].get("name"),
+    )
+    return payload
 
 
 def _clean_text(value) -> str | None:

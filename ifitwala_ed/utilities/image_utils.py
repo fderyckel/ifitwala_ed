@@ -755,6 +755,7 @@ def get_preferred_student_image_url(
     original_url: str | None = None,
     slots: Sequence[str] = STUDENT_VARIANT_PRIORITY,
     fallback_to_original: bool = True,
+    request_missing_derivatives: bool = False,
 ) -> str | None:
     return _get_preferred_governed_image_url(
         "Student",
@@ -762,6 +763,7 @@ def get_preferred_student_image_url(
         original_url=original_url,
         slots=slots,
         fallback_to_original=fallback_to_original,
+        request_missing_derivatives=request_missing_derivatives,
     )
 
 
@@ -829,6 +831,7 @@ def get_preferred_guardian_image_url(
     original_url: str | None = None,
     slots: Sequence[str] = GUARDIAN_VARIANT_PRIORITY,
     fallback_to_original: bool = True,
+    request_missing_derivatives: bool = False,
 ) -> str | None:
     return _get_preferred_governed_image_url(
         "Guardian",
@@ -836,6 +839,7 @@ def get_preferred_guardian_image_url(
         original_url=original_url,
         slots=slots,
         fallback_to_original=fallback_to_original,
+        request_missing_derivatives=request_missing_derivatives,
     )
 
 

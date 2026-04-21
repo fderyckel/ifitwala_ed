@@ -182,11 +182,14 @@ For Ed-owned staff, student, and guardian surfaces:
 
 ## 5. Publication Matrix And Reporting Boundary
 
-Status: **Phase 0 locked, not yet implemented in runtime**
+Status: **Phase 0 locked, partially implemented in runtime**
 
 Code refs:
 - `ifitwala_ed/api/outcome_publish.py`
 - `ifitwala_ed/api/gradebook_writes.py`
+- `ifitwala_ed/assessment/task_feedback_service.py`
+- `ifitwala_ed/api/task_submission.py`
+- `ifitwala_ed/assessment/quiz_service.py`
 - `ifitwala_ed/docs/assessment/03_gradebook_notes.md`
 - `ifitwala_ed/docs/assessment/04_task_notes.md`
 
@@ -210,6 +213,12 @@ Rules:
 - Student and guardian surfaces must render only the channels released to that audience.
 - The current `Task Outcome.is_published` model is legacy baseline behavior only.
   It must not be treated as the final release contract for feedback work.
+
+Current runtime boundary:
+
+- staff gradebook publication controls already persist channel-aware `feedback_visibility` and `grade_visibility`
+- the student task workspace and assessed quiz review now consume a release-aware read model on explicit detail surfaces
+- lighter student and guardian summary surfaces still retain legacy `Task Outcome.is_published` compatibility behavior until the full navigator/handoff rollout lands
 
 Reporting boundary:
 

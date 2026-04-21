@@ -47,11 +47,32 @@ def _task_submission_stub_modules():
         "submission_id": "TSU-1",
         "version": 1,
     }
+    task_feedback_service = types.ModuleType("ifitwala_ed.assessment.task_feedback_service")
+    task_feedback_service.build_released_result_payload = lambda outcome_id, audience="student", submission_id=None: {
+        "outcome_id": outcome_id,
+        "task_submission": submission_id,
+        "grade_visible": False,
+        "feedback_visible": False,
+        "publication": {
+            "feedback_visibility": "hidden",
+            "grade_visibility": "hidden",
+            "derived_from_legacy_outcome": True,
+            "legacy_outcome_published": False,
+        },
+        "official": {
+            "score": None,
+            "grade": None,
+            "grade_value": None,
+            "feedback": None,
+        },
+        "feedback": None,
+    }
 
     return {
         "ifitwala_ed.api.file_access": file_access,
         "ifitwala_ed.api.courses": courses,
         "ifitwala_ed.assessment.task_submission_service": task_submission_service,
+        "ifitwala_ed.assessment.task_feedback_service": task_feedback_service,
     }
 
 
@@ -128,6 +149,8 @@ class TestTaskSubmissionApiUnit(TestCase):
         self.assertEqual(attachments[0].get("preview_status"), "ready")
         self.assertEqual(payload.get("annotation_readiness", {}).get("mode"), "reduced")
         self.assertEqual(payload.get("annotation_readiness", {}).get("reason_code"), "pdf_preview_ready")
+        self.assertEqual(payload.get("released_result", {}).get("outcome_id"), "TOUT-0001")
+        self.assertEqual(payload.get("released_result", {}).get("task_submission"), "TSU-2026-00001")
 
         secure_url = (attachments[0].get("file") or "").strip()
         preview_url = (attachments[0].get("preview_url") or "").strip()
@@ -218,6 +241,7 @@ class TestTaskSubmissionApiUnit(TestCase):
         self.assertEqual(attachments[0].get("mime_type"), "application/pdf")
         self.assertEqual(payload.get("annotation_readiness", {}).get("mode"), "reduced")
         self.assertEqual(payload.get("annotation_readiness", {}).get("reason_code"), "pdf_preview_pending")
+        self.assertEqual(payload.get("released_result", {}).get("outcome_id"), "TOUT-0002")
 
     def test_get_latest_submission_rejects_unowned_outcome(self):
         with stubbed_frappe(extra_modules=_task_submission_stub_modules()) as frappe:

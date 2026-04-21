@@ -61,7 +61,7 @@ class TestQuizService(TestCase):
                 "passed": 1,
                 "requires_manual_review": 0,
             },
-            allow_feedback=False,
+            show_grade=False,
         )
 
         self.assertEqual(summary["attempt_id"], "QAT-1")
@@ -88,7 +88,8 @@ class TestQuizService(TestCase):
                 "accepted_answers": ["answer"],
                 "explanation": "<p>Because</p>",
             },
-            allow_feedback=False,
+            show_grade=False,
+            show_feedback=False,
         )
 
         self.assertEqual(payload["selected_option_ids"], ["OPT-1"])
@@ -96,6 +97,39 @@ class TestQuizService(TestCase):
         self.assertEqual(payload["is_correct"], 0)
         self.assertEqual(payload["correct_option_ids"], [])
         self.assertIsNone(payload["explanation_html"])
+
+    def test_student_release_view_uses_release_payload_for_assessed_quizzes(self):
+        with patch.object(
+            self.quiz_service.task_feedback_service,
+            "build_released_result_payload",
+            return_value={
+                "outcome_id": "OUT-1",
+                "grade_visible": True,
+                "feedback_visible": False,
+                "publication": {
+                    "feedback_visibility": "hidden",
+                    "grade_visibility": "student",
+                    "derived_from_legacy_outcome": False,
+                    "legacy_outcome_published": False,
+                },
+                "official": {
+                    "score": 8,
+                    "grade": "B",
+                    "grade_value": 3,
+                    "feedback": None,
+                },
+                "feedback": None,
+            },
+        ) as build_release:
+            payload = self.quiz_service._student_release_view(
+                {"delivery_mode": "Assess"},
+                "OUT-1",
+            )
+
+        build_release.assert_called_once_with("OUT-1", audience="student")
+        self.assertTrue(payload["grade_visible"])
+        self.assertFalse(payload["feedback_visible"])
+        self.assertEqual(payload["released_result"]["official"]["score"], 8)
 
     def test_save_attempt_responses_rejects_expired_attempts(self):
         with (

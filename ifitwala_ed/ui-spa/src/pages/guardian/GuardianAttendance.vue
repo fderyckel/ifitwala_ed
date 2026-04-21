@@ -334,7 +334,7 @@ function selectDay(student: string, studentName: string, date: string) {
 	attendanceDetailOverlayId.value = overlay.open('guardian-attendance-day', {
 		studentName,
 		day,
-		onClose: handleAttendanceDetailClosed,
+		clearSelection: handleAttendanceDetailClosed,
 	});
 }
 

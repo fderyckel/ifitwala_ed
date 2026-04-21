@@ -360,19 +360,18 @@ class SchoolEvent(Document):
             team_names = [row.team for row in self.audience if row.audience_type == "Employees in Team" and row.team]
 
             if team_names:
-                # Team Member → user → Employee
-                team_users = frappe.get_all(
+                # Team Member rows already carry the canonical employee link.
+                team_employees = frappe.get_all(
                     "Team Member",
-                    filters={"parent": ["in", team_names]},
-                    pluck="user",
+                    filters={
+                        "parent": ["in", team_names],
+                        "parenttype": "Team",
+                        "parentfield": "members",
+                    },
+                    pluck="employee",
                 )
-                if team_users:
-                    team_emps = frappe.get_all(
-                        "Employee",
-                        filters={"user_id": ["in", team_users]},
-                        pluck="name",
-                    )
-                    employees.update(team_emps)
+                if team_employees:
+                    employees.update(team_employees)
 
         return employees
 
@@ -544,11 +543,28 @@ def get_user_membership(user: str) -> Dict[str, Set[str]]:
     except frappe.DoesNotExistError:
         pass
 
-    # Teams (Team Member child with a 'user' link)
+    # Teams (Team Member child with canonical employee + member links)
     try:
+        employee_names = frappe.get_all(
+            "Employee",
+            or_filters={
+                "user_id": user,
+                "employee_professional_email": user,
+            },
+            pluck="name",
+        )
+
+        team_or_filters: dict[str, str | list[str]] = {"member": user}
+        if employee_names:
+            team_or_filters["employee"] = ["in", employee_names]
+
         teams = frappe.get_all(
             "Team Member",
-            filters={"user": user},
+            filters={
+                "parenttype": "Team",
+                "parentfield": "members",
+            },
+            or_filters=team_or_filters,
             pluck="parent",
         )
         m["teams"].update(teams)

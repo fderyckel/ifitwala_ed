@@ -130,6 +130,79 @@
 					</span>
 				</div>
 
+				<section class="mb-5 rounded-2xl border border-line-soft bg-surface-soft p-4">
+					<div class="flex flex-wrap gap-2">
+						<span v-if="releasedResult?.grade_visible" class="chip chip-focus">
+							Grade released
+						</span>
+						<span v-if="releasedResult?.feedback_visible" class="chip chip-warm">
+							Feedback released
+						</span>
+						<span v-if="releasedResult?.feedback?.submission_version" class="chip">
+							Feedback on version {{ releasedResult.feedback.submission_version }}
+						</span>
+					</div>
+
+					<p v-if="releasedResultMessage" class="mt-3 type-body text-ink/70">
+						{{ releasedResultMessage }}
+					</p>
+					<template v-else-if="releasedResult">
+						<div class="mt-3 flex flex-wrap gap-2">
+							<span v-if="releasedResult.official.grade" class="chip">
+								Grade {{ releasedResult.official.grade }}
+							</span>
+							<span v-if="releasedResult.official.feedback" class="chip"> Teacher feedback </span>
+						</div>
+
+						<div
+							v-if="
+								releasedResult.feedback?.summary.overall ||
+								releasedResult.feedback?.summary.strengths ||
+								releasedResult.feedback?.summary.improvements ||
+								releasedResult.feedback?.summary.next_steps
+							"
+							class="mt-4 grid gap-3 lg:grid-cols-2"
+						>
+							<article
+								v-if="releasedResult.feedback?.summary.overall"
+								class="rounded-2xl border border-line-soft bg-white p-3"
+							>
+								<p class="type-caption text-ink/60">Overall summary</p>
+								<p class="mt-2 type-body text-ink/80">
+									{{ releasedResult.feedback?.summary.overall }}
+								</p>
+							</article>
+							<article
+								v-if="releasedResult.feedback?.summary.strengths"
+								class="rounded-2xl border border-line-soft bg-white p-3"
+							>
+								<p class="type-caption text-ink/60">Strengths</p>
+								<p class="mt-2 type-body text-ink/80">
+									{{ releasedResult.feedback?.summary.strengths }}
+								</p>
+							</article>
+							<article
+								v-if="releasedResult.feedback?.summary.improvements"
+								class="rounded-2xl border border-line-soft bg-white p-3"
+							>
+								<p class="type-caption text-ink/60">Improvements</p>
+								<p class="mt-2 type-body text-ink/80">
+									{{ releasedResult.feedback?.summary.improvements }}
+								</p>
+							</article>
+							<article
+								v-if="releasedResult.feedback?.summary.next_steps"
+								class="rounded-2xl border border-line-soft bg-white p-3"
+							>
+								<p class="type-caption text-ink/60">Next steps</p>
+								<p class="mt-2 type-body text-ink/80">
+									{{ releasedResult.feedback?.summary.next_steps }}
+								</p>
+							</article>
+						</div>
+					</template>
+				</section>
+
 				<div class="space-y-5">
 					<article
 						v-for="item in sessionPayload.review.items"
@@ -225,6 +298,20 @@ const backRoute = computed(() => ({
 }));
 
 const isPractice = computed(() => Boolean(sessionPayload.value?.session.is_practice));
+const releasedResult = computed(() => sessionPayload.value?.released_result || null);
+const releasedResultMessage = computed(() => {
+	if (isPractice.value) return '';
+	if (sessionPayload.value?.review?.attempt.requires_manual_review) {
+		return 'This quiz is still being reviewed. Released scores and feedback will appear here after grading is complete.';
+	}
+	if (!releasedResult.value) {
+		return 'Results and feedback will appear here after your teacher releases them.';
+	}
+	if (!releasedResult.value.grade_visible && !releasedResult.value.feedback_visible) {
+		return 'Results and feedback will appear here after your teacher releases them.';
+	}
+	return '';
+});
 
 const timeRemainingLabel = computed(() => {
 	const expiresOn = sessionPayload.value?.session.expires_on;
@@ -379,6 +466,7 @@ async function submitQuiz() {
 				requires_manual_review: result.attempt.requires_manual_review,
 			},
 			review: result.review,
+			released_result: result.released_result ?? null,
 		};
 		stopTimer();
 	} catch (error: unknown) {
@@ -391,7 +479,7 @@ async function submitQuiz() {
 
 function reviewLine(item: StudentQuizReviewItem): string {
 	if (item.requires_manual_grading) return 'Awaiting manual review.';
-	if (!isPractice.value) return 'Response recorded.';
+	if (!isPractice.value && !releasedResult.value?.feedback_visible) return 'Response recorded.';
 	if (item.awarded_score != null) return `Score ${item.awarded_score}.`;
 	return item.is_correct ? 'Correct.' : 'Incorrect.';
 }

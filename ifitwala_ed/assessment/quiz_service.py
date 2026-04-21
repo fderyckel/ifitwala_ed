@@ -13,7 +13,7 @@ import frappe
 from frappe import _
 from frappe.utils import get_datetime, now_datetime
 
-from ifitwala_ed.assessment import task_outcome_service
+from ifitwala_ed.assessment import task_feedback_service, task_outcome_service
 from ifitwala_ed.utilities.html_sanitizer import sanitize_html
 
 CHOICE_TYPES = {"Single Choice", "Multiple Answer", "True / False"}
@@ -204,10 +204,16 @@ def refresh_attempt(
         ],
         as_dict=True,
     )
-    allow_feedback = _student_feedback_allowed(delivery)
+    release_view = _student_release_view(delivery, outcome["name"])
     return {
-        "attempt": _public_attempt_summary(refreshed_attempt, allow_feedback=allow_feedback),
-        "review": _build_review_payload(attempt_row["name"], delivery=delivery, outcome=outcome)["review"],
+        "attempt": _public_attempt_summary(refreshed_attempt, show_grade=release_view["grade_visible"]),
+        "review": _build_review_payload(
+            attempt_row["name"],
+            delivery=delivery,
+            outcome=outcome,
+            release_view=release_view,
+        )["review"],
+        "released_result": release_view["released_result"],
     }
 
 
@@ -278,7 +284,7 @@ def get_student_delivery_state_map(
             latest_percentage is not None and pass_percentage is not None and latest_percentage >= pass_percentage
         )
         can_start = current is None and (max_attempts is None or attempts_used < max_attempts) and not threshold_met
-        allow_feedback = _student_feedback_allowed(delivery)
+        show_grade = delivery.get("delivery_mode") != "Assess"
         state_map[delivery["name"]] = {
             "is_practice": 1 if delivery.get("delivery_mode") != "Assess" else 0,
             "attempts_used": attempts_used,
@@ -288,9 +294,9 @@ def get_student_delivery_state_map(
             "can_retry": 1 if latest and can_start else 0,
             "latest_attempt": latest.get("name") if latest else None,
             "status_label": _delivery_status_label(current=current, latest=latest, outcome=outcome),
-            "score": latest.get("score") if latest and allow_feedback else None,
-            "percentage": latest.get("percentage") if latest and allow_feedback else None,
-            "passed": int(latest.get("passed") or 0) if latest and allow_feedback else 0,
+            "score": latest.get("score") if latest and show_grade else None,
+            "percentage": latest.get("percentage") if latest and show_grade else None,
+            "passed": int(latest.get("passed") or 0) if latest and show_grade else 0,
             "pass_percentage": pass_percentage,
             "time_limit_minutes": _to_int(delivery.get("quiz_time_limit_minutes")),
         }
@@ -654,9 +660,15 @@ def _build_attempt_payload(attempt_name: str, *, delivery: dict[str, Any], outco
         as_dict=True,
     )
     items = _get_attempt_items(attempt_name)
+    show_grade = delivery.get("delivery_mode") != "Assess"
     return {
         "mode": "attempt",
-        "session": _base_session_payload(delivery=delivery, outcome=outcome, attempt=attempt),
+        "session": _base_session_payload(
+            delivery=delivery,
+            outcome=outcome,
+            attempt=attempt,
+            show_grade=show_grade,
+        ),
         "items": [
             {
                 "item_id": item["name"],
@@ -671,10 +683,17 @@ def _build_attempt_payload(attempt_name: str, *, delivery: dict[str, Any], outco
             }
             for item in items
         ],
+        "released_result": None,
     }
 
 
-def _build_review_payload(attempt_name: str, *, delivery: dict[str, Any], outcome: dict[str, Any]) -> dict[str, Any]:
+def _build_review_payload(
+    attempt_name: str,
+    *,
+    delivery: dict[str, Any],
+    outcome: dict[str, Any],
+    release_view: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     attempt = frappe.db.get_value(
         "Quiz Attempt",
         attempt_name,
@@ -693,26 +712,42 @@ def _build_review_payload(attempt_name: str, *, delivery: dict[str, Any], outcom
         as_dict=True,
     )
     items = _get_attempt_items(attempt_name)
-    allow_feedback = _student_feedback_allowed(delivery)
+    release_view = release_view or _student_release_view(delivery, outcome["name"])
     review_items = []
     for item in items:
         grading_payload = json.loads(item.get("grading_payload") or "{}")
-        review_items.append(_public_review_item(item, grading_payload=grading_payload, allow_feedback=allow_feedback))
+        review_items.append(
+            _public_review_item(
+                item,
+                grading_payload=grading_payload,
+                show_grade=release_view["grade_visible"],
+                show_feedback=release_view["feedback_visible"],
+            )
+        )
     return {
         "mode": "review",
-        "session": _base_session_payload(delivery=delivery, outcome=outcome, attempt=attempt),
+        "session": _base_session_payload(
+            delivery=delivery,
+            outcome=outcome,
+            attempt=attempt,
+            show_grade=release_view["grade_visible"],
+        ),
         "review": {
-            "attempt": _public_attempt_summary(attempt, allow_feedback=allow_feedback),
+            "attempt": _public_attempt_summary(attempt, show_grade=release_view["grade_visible"]),
             "items": review_items,
         },
+        "released_result": release_view["released_result"],
     }
 
 
 def _base_session_payload(
-    *, delivery: dict[str, Any], outcome: dict[str, Any], attempt: dict[str, Any]
+    *,
+    delivery: dict[str, Any],
+    outcome: dict[str, Any],
+    attempt: dict[str, Any],
+    show_grade: bool,
 ) -> dict[str, Any]:
     task_title = frappe.db.get_value("Task", delivery["task"], "title") or delivery["task"]
-    allow_feedback = _student_feedback_allowed(delivery)
     return {
         "task_delivery": delivery["name"],
         "task": delivery.get("task"),
@@ -725,9 +760,9 @@ def _base_session_payload(
         "started_on": _serialize_scalar(attempt.get("started_on")),
         "expires_on": _serialize_scalar(attempt.get("expires_on")),
         "submitted_on": _serialize_scalar(attempt.get("submitted_on")),
-        "score": attempt.get("score") if allow_feedback else None,
-        "percentage": attempt.get("percentage") if allow_feedback else None,
-        "passed": int(attempt.get("passed") or 0) if allow_feedback else 0,
+        "score": attempt.get("score") if show_grade else None,
+        "percentage": attempt.get("percentage") if show_grade else None,
+        "passed": int(attempt.get("passed") or 0) if show_grade else 0,
         "requires_manual_review": int(attempt.get("requires_manual_review") or 0),
         "max_attempts": _to_int(delivery.get("quiz_max_attempts")),
         "pass_percentage": _to_float(delivery.get("quiz_pass_percentage")),
@@ -751,25 +786,37 @@ def _delivery_status_label(
     return "Not Started"
 
 
-def _student_feedback_allowed(delivery: dict[str, Any]) -> bool:
-    return delivery.get("delivery_mode") != "Assess"
+def _student_release_view(delivery: dict[str, Any], outcome_id: str) -> dict[str, Any]:
+    if delivery.get("delivery_mode") != "Assess":
+        return {
+            "grade_visible": True,
+            "feedback_visible": True,
+            "released_result": None,
+        }
+
+    released_result = task_feedback_service.build_released_result_payload(outcome_id, audience="student")
+    return {
+        "grade_visible": bool(released_result.get("grade_visible")),
+        "feedback_visible": bool(released_result.get("feedback_visible")),
+        "released_result": released_result,
+    }
 
 
-def _public_attempt_summary(attempt: dict[str, Any], *, allow_feedback: bool) -> dict[str, Any]:
+def _public_attempt_summary(attempt: dict[str, Any], *, show_grade: bool) -> dict[str, Any]:
     return {
         "attempt_id": attempt.get("name"),
         "attempt_number": attempt.get("attempt_number"),
         "status": attempt.get("status"),
         "submitted_on": _serialize_scalar(attempt.get("submitted_on")),
-        "score": attempt.get("score") if allow_feedback else None,
-        "percentage": attempt.get("percentage") if allow_feedback else None,
-        "passed": int(attempt.get("passed") or 0) if allow_feedback else 0,
+        "score": attempt.get("score") if show_grade else None,
+        "percentage": attempt.get("percentage") if show_grade else None,
+        "passed": int(attempt.get("passed") or 0) if show_grade else 0,
         "requires_manual_review": int(attempt.get("requires_manual_review") or 0),
     }
 
 
 def _public_review_item(
-    item: dict[str, Any], *, grading_payload: dict[str, Any], allow_feedback: bool
+    item: dict[str, Any], *, grading_payload: dict[str, Any], show_grade: bool, show_feedback: bool
 ) -> dict[str, Any]:
     return {
         "item_id": item["name"],
@@ -781,12 +828,12 @@ def _public_review_item(
         "selected_option_ids": json.loads(item.get("response_payload") or "[]")
         if item.get("question_type") in CHOICE_TYPES
         else [],
-        "awarded_score": item.get("awarded_score") if allow_feedback else None,
-        "is_correct": int(item.get("is_correct") or 0) if allow_feedback else 0,
+        "awarded_score": item.get("awarded_score") if show_grade else None,
+        "is_correct": int(item.get("is_correct") or 0) if show_feedback else 0,
         "requires_manual_grading": int(item.get("requires_manual_grading") or 0),
-        "explanation_html": grading_payload.get("explanation") if allow_feedback else None,
-        "correct_option_ids": grading_payload.get("correct_ids") if allow_feedback else [],
-        "accepted_answers": grading_payload.get("accepted_answers") if allow_feedback else [],
+        "explanation_html": grading_payload.get("explanation") if show_feedback else None,
+        "correct_option_ids": grading_payload.get("correct_ids") if show_feedback else [],
+        "accepted_answers": grading_payload.get("accepted_answers") if show_feedback else [],
     }
 
 

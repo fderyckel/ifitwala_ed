@@ -13,6 +13,7 @@ PUBLICATION_VISIBILITY_STATES = ("hidden", "student", "student_and_guardian")
 FEEDBACK_ITEM_KINDS = ("point", "rect", "page", "text_quote", "path")
 FEEDBACK_INTENT_OPTIONS = ("strength", "issue", "question", "next_step", "rubric_evidence")
 FEEDBACK_WORKFLOW_STATES = ("draft", "published", "acknowledged", "resolved")
+PUBLICATION_AUDIENCES = ("student", "guardian")
 
 
 def build_feedback_workspace_payload(
@@ -68,6 +69,95 @@ def build_feedback_workspace_payload(
         },
         "modified": (workspace_row or {}).get("modified"),
         "modified_by": (workspace_row or {}).get("modified_by"),
+    }
+
+
+def publication_visible_to_audience(visibility: str | None, audience: str = "student") -> bool:
+    resolved_visibility = _normalize_visibility_state(visibility)
+    resolved_audience = _normalize_publication_audience(audience)
+    if resolved_audience == "student":
+        return resolved_visibility in ("student", "student_and_guardian")
+    return resolved_visibility == "student_and_guardian"
+
+
+def build_released_result_payload(
+    outcome_id: str,
+    *,
+    audience: str = "student",
+    submission_id: str | None = None,
+) -> dict[str, Any]:
+    resolved_audience = _normalize_publication_audience(audience)
+    outcome = _get_released_result_outcome_context(outcome_id)
+    resolved_submission_id = _resolve_submission_context_for_release(outcome_id, submission_id)
+    workspace_payload = (
+        build_feedback_workspace_payload(outcome_id, resolved_submission_id) if resolved_submission_id else None
+    )
+
+    publication = (
+        dict(workspace_payload.get("publication") or {})
+        if workspace_payload
+        else _publication_payload_from_legacy(outcome)
+    )
+    feedback_visible = publication_visible_to_audience(publication.get("feedback_visibility"), resolved_audience)
+    grade_visible = publication_visible_to_audience(publication.get("grade_visibility"), resolved_audience)
+
+    summary = {
+        "overall": "",
+        "strengths": "",
+        "improvements": "",
+        "next_steps": "",
+    }
+    items: list[dict[str, Any]] = []
+    submission_version = None
+    modified = None
+    modified_by = None
+    if feedback_visible and workspace_payload:
+        summary = {
+            "overall": _clean_text((workspace_payload.get("summary") or {}).get("overall")) or "",
+            "strengths": _clean_text((workspace_payload.get("summary") or {}).get("strengths")) or "",
+            "improvements": _clean_text((workspace_payload.get("summary") or {}).get("improvements")) or "",
+            "next_steps": _clean_text((workspace_payload.get("summary") or {}).get("next_steps")) or "",
+        }
+        items = list(workspace_payload.get("items") or [])
+        submission_version = workspace_payload.get("submission_version")
+        modified = workspace_payload.get("modified")
+        modified_by = workspace_payload.get("modified_by")
+
+    official_feedback = _clean_text(outcome.get("official_feedback"))
+    if feedback_visible and not any(summary.values()) and official_feedback:
+        summary["overall"] = official_feedback
+
+    return {
+        "outcome_id": outcome_id,
+        "task_submission": resolved_submission_id,
+        "grade_visible": grade_visible,
+        "feedback_visible": feedback_visible,
+        "publication": {
+            "feedback_visibility": publication.get("feedback_visibility") or "hidden",
+            "grade_visibility": publication.get("grade_visibility") or "hidden",
+            "derived_from_legacy_outcome": bool(publication.get("derived_from_legacy_outcome")),
+            "legacy_outcome_published": bool(publication.get("legacy_outcome_published")),
+            "legacy_published_on": publication.get("legacy_published_on"),
+            "legacy_published_by": publication.get("legacy_published_by"),
+        },
+        "official": {
+            "score": outcome.get("official_score") if grade_visible else None,
+            "grade": _clean_text(outcome.get("official_grade")) if grade_visible else None,
+            "grade_value": outcome.get("official_grade_value") if grade_visible else None,
+            "feedback": official_feedback if feedback_visible else None,
+        },
+        "feedback": (
+            {
+                "task_submission": resolved_submission_id,
+                "submission_version": submission_version,
+                "summary": summary,
+                "items": items,
+                "modified": modified,
+                "modified_by": modified_by,
+            }
+            if feedback_visible
+            else None
+        ),
     }
 
 
@@ -316,6 +406,13 @@ def _normalize_visibility_state(value: Any) -> str:
     return resolved
 
 
+def _normalize_publication_audience(value: Any) -> str:
+    resolved = str(value or "student").strip().lower()
+    if resolved not in PUBLICATION_AUDIENCES:
+        frappe.throw(_("Unsupported publication audience."))
+    return resolved
+
+
 def _normalize_page_number(value: Any) -> int:
     try:
         resolved = int(value or 0)
@@ -401,6 +498,53 @@ def _get_legacy_release_state(outcome_id: str) -> dict[str, Any]:
         ["name", "is_published", "published_on", "published_by"],
         as_dict=True,
     ) or {"name": outcome_id, "is_published": 0, "published_on": None, "published_by": None}
+
+
+def _publication_payload_from_legacy(outcome: dict[str, Any]) -> dict[str, Any]:
+    legacy_release = _get_legacy_release_state(outcome.get("name"))
+    feedback_visibility, grade_visibility = _resolve_publication_defaults(None, legacy_release)
+    return {
+        "feedback_visibility": feedback_visibility,
+        "grade_visibility": grade_visibility,
+        "derived_from_legacy_outcome": True,
+        "legacy_outcome_published": bool(int(legacy_release.get("is_published") or 0)),
+        "legacy_published_on": legacy_release.get("published_on"),
+        "legacy_published_by": legacy_release.get("published_by"),
+    }
+
+
+def _resolve_submission_context_for_release(outcome_id: str, submission_id: str | None = None) -> str | None:
+    resolved_submission_id = _clean_text(submission_id)
+    if resolved_submission_id:
+        return resolved_submission_id
+
+    latest_rows = frappe.get_all(
+        "Task Submission",
+        filters={"task_outcome": outcome_id},
+        fields=["name"],
+        order_by="version desc, modified desc",
+        limit=1,
+    )
+    if latest_rows:
+        return _clean_text(latest_rows[0].get("name"))
+    return None
+
+
+def _get_released_result_outcome_context(outcome_id: str) -> dict[str, Any]:
+    fields = [
+        "name",
+        "official_score",
+        "official_grade",
+        "official_grade_value",
+        "official_feedback",
+        "is_published",
+        "published_on",
+        "published_by",
+    ]
+    row = frappe.db.get_value("Task Outcome", outcome_id, fields, as_dict=True)
+    if not row:
+        frappe.throw(_("Task Outcome not found."))
+    return row
 
 
 def _get_outcome_context(outcome_id: str) -> dict[str, Any]:

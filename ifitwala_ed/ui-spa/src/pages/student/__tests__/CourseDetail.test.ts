@@ -104,6 +104,25 @@ function buildLatestSubmission(overrides: Record<string, unknown> = {}) {
 		link_url: 'https://example.com/lab-reflection',
 		attachments: [],
 		annotation_readiness: null,
+		released_result: {
+			outcome_id: 'OUT-WRITE-1',
+			task_submission: 'TSU-1',
+			grade_visible: false,
+			feedback_visible: false,
+			publication: {
+				feedback_visibility: 'hidden',
+				grade_visibility: 'hidden',
+				derived_from_legacy_outcome: true,
+				legacy_outcome_published: false,
+			},
+			official: {
+				score: null,
+				grade: null,
+				grade_value: null,
+				feedback: null,
+			},
+			feedback: null,
+		},
 		...overrides,
 	}
 }
@@ -723,6 +742,75 @@ describe('CourseDetail', () => {
 		expect(document.body.textContent).toContain('Version 2')
 		expect(document.body.textContent).toContain('Updated lab reflection')
 		expect(document.body.textContent).toContain('Resubmitted')
+	})
+
+	it('renders released score and feedback inside the selected task workspace', async () => {
+		resetRouteState()
+		getStudentLearningSpaceMock.mockResolvedValue(buildPayload())
+		getStudentTaskSubmissionMock.mockResolvedValue(
+			buildLatestSubmission({
+				released_result: {
+					outcome_id: 'OUT-WRITE-1',
+					task_submission: 'TSU-1',
+					grade_visible: true,
+					feedback_visible: true,
+					publication: {
+						feedback_visibility: 'student',
+						grade_visibility: 'student',
+						derived_from_legacy_outcome: false,
+						legacy_outcome_published: false,
+					},
+					official: {
+						score: 18,
+						grade: 'A',
+						grade_value: 4,
+						feedback: 'Strong evidence selection.',
+					},
+					feedback: {
+						task_submission: 'TSU-1',
+						submission_version: 1,
+						summary: {
+							overall: 'Strong evidence selection.',
+							strengths: 'Clear observation details.',
+							improvements: 'Tighten the final explanation.',
+							next_steps: 'Link the evidence back to the claim.',
+						},
+						items: [
+							{
+								id: 'TFI-1',
+								kind: 'text_quote',
+								page: 1,
+								intent: 'next_step',
+								workflow_state: 'published',
+								comment: 'Link this sentence back to your claim.',
+								anchor: {
+									kind: 'text_quote',
+									page: 1,
+									quote: 'The nucleus looked darker.',
+								},
+							},
+						],
+					},
+				},
+			})
+		)
+
+		mountCourseDetail({
+			unit_plan: 'UNIT-PLAN-1',
+			class_session: 'CLASS-SESSION-1',
+			task_delivery: 'TDL-WRITE-1',
+		})
+		await flushUi()
+
+		expect(document.body.textContent).toContain('Released result')
+		expect(document.body.textContent).toContain('Grade released')
+		expect(document.body.textContent).toContain('Feedback released')
+		expect(document.body.textContent).toContain('Score 18')
+		expect(document.body.textContent).toContain('Grade A')
+		expect(document.body.textContent).toContain('Strong evidence selection.')
+		expect(document.body.textContent).toContain('Link the evidence back to the claim.')
+		expect(document.body.textContent).toContain('Teacher comments')
+		expect(document.body.textContent).toContain('Link this sentence back to your claim.')
 	})
 
 	it('supports document upload in the selected task workspace', async () => {

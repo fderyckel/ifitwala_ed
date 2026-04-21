@@ -103,6 +103,7 @@ Feedback-specific implication from the canonical feedback contract:
 - future structured feedback records and derived feedback artifacts must bind to a selected submission version or explicit evidence stub context
 - learner submissions remain immutable even when annotated return artifacts exist
 - the current assessment runtime now also exposes one version-bound feedback workspace plus one teacher-owned comment-bank context through the gradebook drawer, but those remain feedback-side productivity layers rather than official outcome truth
+- the student task workspace now loads the latest submission together with a release-aware result projection for that submission version; score and feedback channels remain masked until publication allows student visibility
 
 ### 1.5 Task Contribution
 

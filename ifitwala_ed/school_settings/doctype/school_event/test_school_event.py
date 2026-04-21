@@ -4,7 +4,7 @@
 # ifitwala_ed/school_settings/doctype/school_event/test_school_event.py
 
 from unittest import TestCase
-from unittest.mock import Mock
+from unittest.mock import Mock, patch
 
 import frappe
 
@@ -42,6 +42,37 @@ class TestSchoolEvent(TestCase):
 
         with self.assertRaises(frappe.ValidationError):
             SchoolEvent.validate_custom_users_require_participants(doc)
+
+    def test_get_employees_for_booking_uses_team_member_employee_links(self):
+        doc = SchoolEvent.__new__(SchoolEvent)
+        doc.participants = []
+        doc.audience = [frappe._dict({"audience_type": "Employees in Team", "team": "TEAM-OPS"})]
+
+        def fake_get_all(doctype, filters=None, pluck=None, **kwargs):
+            if doctype == "Team Member":
+                self.assertEqual(
+                    filters,
+                    {
+                        "parent": ["in", ["TEAM-OPS"]],
+                        "parenttype": "Team",
+                        "parentfield": "members",
+                    },
+                )
+                self.assertEqual(pluck, "employee")
+                return ["EMP-0001", "EMP-0002"]
+
+            if doctype == "Employee":
+                self.fail("Team audience employee resolution should use Team Member.employee directly.")
+
+            return []
+
+        with patch(
+            "ifitwala_ed.school_settings.doctype.school_event.school_event.frappe.get_all",
+            side_effect=fake_get_all,
+        ):
+            employees = SchoolEvent._get_employees_for_booking(doc)
+
+        self.assertEqual(employees, {"EMP-0001", "EMP-0002"})
 
     def test_after_insert_syncs_employee_and_location_bookings(self):
         doc = SchoolEvent.__new__(SchoolEvent)

@@ -231,7 +231,8 @@ Current enforced rules:
 
 - student attempt access is server-scoped by student and course
 - answer keys and correctness are not included in active attempt payloads
-- assessed quiz review redacts score, percentage, correctness, accepted answers, correct options, and explanations
+- assessed quiz review keeps score hidden until the grade channel is released to the student
+- assessed quiz review keeps correctness, accepted answers, correct options, explanations, and feedback summary hidden until the feedback channel is released to the student
 - quiz runtime responses set explicit no-store cache headers
 - essay items remain in manual-review state until graded
 

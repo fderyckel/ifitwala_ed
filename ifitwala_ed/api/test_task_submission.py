@@ -11,15 +11,36 @@ from ifitwala_ed.api.task_submission import get_latest_submission
 class TestTaskSubmissionApi(FrappeTestCase):
     @patch("ifitwala_ed.api.task_submission._require_authenticated")
     @patch("ifitwala_ed.api.task_submission._require_student_outcome_access")
+    @patch("ifitwala_ed.api.task_submission.task_feedback_service.build_released_result_payload")
     @patch("ifitwala_ed.api.task_submission.frappe.get_all")
     def test_get_latest_submission_serializes_governed_preview_and_open_urls(
         self,
         mock_get_all,
+        mock_build_released_result_payload,
         mock_require_outcome_access,
         mock_require_authenticated,
     ):
         mock_require_authenticated.return_value = None
         mock_require_outcome_access.return_value = "STU-0001"
+        mock_build_released_result_payload.return_value = {
+            "outcome_id": "TOUT-0001",
+            "task_submission": "TSU-2026-00001",
+            "grade_visible": False,
+            "feedback_visible": False,
+            "publication": {
+                "feedback_visibility": "hidden",
+                "grade_visibility": "hidden",
+                "derived_from_legacy_outcome": True,
+                "legacy_outcome_published": False,
+            },
+            "official": {
+                "score": None,
+                "grade": None,
+                "grade_value": None,
+                "feedback": None,
+            },
+            "feedback": None,
+        }
         mock_get_all.side_effect = [
             [
                 {
@@ -100,3 +121,4 @@ class TestTaskSubmissionApi(FrappeTestCase):
         self.assertTrue(attachments[0].get("attachment_preview", {}).get("is_latest_version"))
         self.assertEqual(payload.get("annotation_readiness", {}).get("mode"), "reduced")
         self.assertEqual(payload.get("annotation_readiness", {}).get("reason_code"), "pdf_preview_ready")
+        self.assertEqual(payload.get("released_result", {}).get("outcome_id"), "TOUT-0001")

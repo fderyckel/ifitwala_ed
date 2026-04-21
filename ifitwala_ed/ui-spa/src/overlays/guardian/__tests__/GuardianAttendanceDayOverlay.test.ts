@@ -1,9 +1,9 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { createApp, defineComponent, h, nextTick, type App } from 'vue'
 
-const { overlayCloseMock, overlayOnCloseMock } = vi.hoisted(() => ({
-	overlayCloseMock: vi.fn(),
-	overlayOnCloseMock: vi.fn(),
+const { clearSelectionMock, closeEventMock } = vi.hoisted(() => ({
+	clearSelectionMock: vi.fn(),
+	closeEventMock: vi.fn(),
 }))
 
 function passthroughComponent(name: string, tag = 'div') {
@@ -62,12 +62,6 @@ vi.mock('frappe-ui', () => ({
 	}),
 }))
 
-vi.mock('@/composables/useOverlayStack', () => ({
-	useOverlayStack: () => ({
-		close: overlayCloseMock,
-	}),
-}))
-
 import GuardianAttendanceDayOverlay from '@/overlays/guardian/GuardianAttendanceDayOverlay.vue'
 
 const cleanupFns: Array<() => void> = []
@@ -106,7 +100,8 @@ function mountOverlay() {
 							},
 						],
 					},
-					onClose: overlayOnCloseMock,
+					clearSelection: clearSelectionMock,
+					onClose: closeEventMock,
 				})
 			},
 		})
@@ -120,8 +115,8 @@ function mountOverlay() {
 }
 
 afterEach(() => {
-	overlayCloseMock.mockReset()
-	overlayOnCloseMock.mockReset()
+	clearSelectionMock.mockReset()
+	closeEventMock.mockReset()
 	while (cleanupFns.length) cleanupFns.pop()?.()
 	document.body.innerHTML = ''
 })
@@ -140,7 +135,7 @@ describe('GuardianAttendanceDayOverlay', () => {
 		expect(text).toContain('Room 201')
 	})
 
-	it('closes through the overlay stack and notifies the page callback', async () => {
+	it('emits a programmatic close and clears the selected cell state', async () => {
 		mountOverlay()
 		await flushUi()
 
@@ -151,7 +146,20 @@ describe('GuardianAttendanceDayOverlay', () => {
 
 		closeButton?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
 
-		expect(overlayOnCloseMock).toHaveBeenCalledTimes(1)
-		expect(overlayCloseMock).toHaveBeenCalledWith('ov_guardian_attendance_day')
+		expect(clearSelectionMock).toHaveBeenCalledTimes(1)
+		expect(closeEventMock).toHaveBeenCalledWith('programmatic')
+	})
+
+	it('closes when the user clicks outside the dialog panel', async () => {
+		mountOverlay()
+		await flushUi()
+
+		const wrap = document.querySelector('.if-overlay__wrap') as HTMLDivElement | null
+		expect(wrap).not.toBeNull()
+
+		wrap?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+
+		expect(clearSelectionMock).toHaveBeenCalledTimes(1)
+		expect(closeEventMock).toHaveBeenCalledWith('backdrop')
 	})
 })

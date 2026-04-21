@@ -188,7 +188,7 @@ describe('GuardianAttendance', () => {
 						}),
 					]),
 				}),
-				onClose: expect.any(Function),
+				clearSelection: expect.any(Function),
 			})
 		)
 	})

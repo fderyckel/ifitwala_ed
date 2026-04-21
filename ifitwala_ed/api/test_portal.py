@@ -31,7 +31,7 @@ class TestPortalIdentity(FrappeTestCase):
                 ],
             ),
             patch(
-                "ifitwala_ed.api.portal.get_preferred_guardian_avatar_url",
+                "ifitwala_ed.api.portal.get_preferred_guardian_image_url",
                 return_value="/files/guardian-thumb.webp",
             ) as image_mock,
         ):
@@ -46,6 +46,9 @@ class TestPortalIdentity(FrappeTestCase):
         image_mock.assert_called_once_with(
             "GRD-0001",
             original_url="/private/files/guardian-original.png",
+            slots=portal.PROFILE_IMAGE_DERIVATIVE_SLOTS,
+            fallback_to_original=True,
+            request_missing_derivatives=True,
         )
 
     def test_get_guardian_portal_identity_falls_back_to_user_identity_when_guardian_row_missing(self):
@@ -63,7 +66,7 @@ class TestPortalIdentity(FrappeTestCase):
                     None,
                 ],
             ),
-            patch("ifitwala_ed.api.portal.get_preferred_guardian_avatar_url") as image_mock,
+            patch("ifitwala_ed.api.portal.get_preferred_guardian_image_url") as image_mock,
         ):
             payload = portal.get_guardian_portal_identity()
 

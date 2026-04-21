@@ -966,6 +966,128 @@
 							</form>
 						</section>
 					</div>
+
+					<section
+						v-if="selectedTaskWorkspace.requires_submission || selectedTaskReleasedResult"
+						class="mt-4 rounded-2xl border border-line-soft bg-surface-soft p-4"
+					>
+						<div class="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+							<div>
+								<p class="type-body-strong text-ink">Released result</p>
+								<p class="mt-2 type-caption text-ink/70">
+									Scores and feedback appear here after they are released for your view.
+								</p>
+							</div>
+							<div class="flex flex-wrap gap-2">
+								<span v-if="selectedTaskReleasedResult?.feedback?.submission_version" class="chip">
+									Feedback on version
+									{{ selectedTaskReleasedResult.feedback.submission_version }}
+								</span>
+								<span v-if="selectedTaskReleasedResult?.grade_visible" class="chip chip-focus">
+									Grade released
+								</span>
+								<span v-if="selectedTaskReleasedResult?.feedback_visible" class="chip chip-warm">
+									Feedback released
+								</span>
+							</div>
+						</div>
+
+						<p v-if="selectedTaskReleasedResultMessage" class="mt-3 type-body text-ink/70">
+							{{ selectedTaskReleasedResultMessage }}
+						</p>
+						<template v-else-if="selectedTaskReleasedResult">
+							<div class="mt-3 flex flex-wrap gap-2">
+								<span v-if="selectedTaskReleasedResult.official.score != null" class="chip">
+									Score {{ formatReleasedScore(selectedTaskReleasedResult.official.score) }}
+								</span>
+								<span v-if="selectedTaskReleasedResult.official.grade" class="chip">
+									Grade {{ selectedTaskReleasedResult.official.grade }}
+								</span>
+							</div>
+
+							<div
+								v-if="
+									selectedTaskReleasedResult.feedback?.summary.overall ||
+									selectedTaskReleasedResult.feedback?.summary.strengths ||
+									selectedTaskReleasedResult.feedback?.summary.improvements ||
+									selectedTaskReleasedResult.feedback?.summary.next_steps
+								"
+								class="mt-4 grid gap-3 lg:grid-cols-2"
+							>
+								<article
+									v-if="selectedTaskReleasedResult.feedback?.summary.overall"
+									class="rounded-2xl border border-line-soft bg-white p-3"
+								>
+									<p class="type-caption text-ink/60">Overall summary</p>
+									<p class="mt-2 type-body text-ink/80">
+										{{ selectedTaskReleasedResult.feedback?.summary.overall }}
+									</p>
+								</article>
+								<article
+									v-if="selectedTaskReleasedResult.feedback?.summary.strengths"
+									class="rounded-2xl border border-line-soft bg-white p-3"
+								>
+									<p class="type-caption text-ink/60">Strengths</p>
+									<p class="mt-2 type-body text-ink/80">
+										{{ selectedTaskReleasedResult.feedback?.summary.strengths }}
+									</p>
+								</article>
+								<article
+									v-if="selectedTaskReleasedResult.feedback?.summary.improvements"
+									class="rounded-2xl border border-line-soft bg-white p-3"
+								>
+									<p class="type-caption text-ink/60">Improvements</p>
+									<p class="mt-2 type-body text-ink/80">
+										{{ selectedTaskReleasedResult.feedback?.summary.improvements }}
+									</p>
+								</article>
+								<article
+									v-if="selectedTaskReleasedResult.feedback?.summary.next_steps"
+									class="rounded-2xl border border-line-soft bg-white p-3"
+								>
+									<p class="type-caption text-ink/60">Next steps</p>
+									<p class="mt-2 type-body text-ink/80">
+										{{ selectedTaskReleasedResult.feedback?.summary.next_steps }}
+									</p>
+								</article>
+							</div>
+
+							<details
+								v-if="selectedTaskReleasedResult.feedback?.items.length"
+								class="mt-4 rounded-2xl border border-line-soft bg-white p-4"
+							>
+								<summary class="cursor-pointer list-none">
+									<div class="flex items-center justify-between gap-3">
+										<div>
+											<p class="type-body-strong text-ink">Teacher comments</p>
+											<p class="mt-1 type-caption text-ink/70">
+												Open the released comment list for this submission.
+											</p>
+										</div>
+										<span class="chip">
+											{{ selectedTaskReleasedResult.feedback?.items.length || 0 }}
+										</span>
+									</div>
+								</summary>
+								<div class="mt-4 space-y-3">
+									<article
+										v-for="item in selectedTaskReleasedResult.feedback?.items || []"
+										:key="item.id || `${item.kind}-${item.page}-${item.comment}`"
+										class="rounded-2xl border border-line-soft bg-surface-soft p-3"
+									>
+										<div class="flex flex-wrap gap-2">
+											<span class="chip">{{ humanizeLabel(item.intent) }}</span>
+											<span v-if="item.page" class="chip">Page {{ item.page }}</span>
+											<span v-if="item.assessment_criteria" class="chip">
+												{{ item.assessment_criteria }}
+											</span>
+										</div>
+										<p class="mt-2 type-body text-ink/80">{{ item.comment }}</p>
+									</article>
+								</div>
+							</details>
+						</template>
+					</section>
 				</section>
 
 				<div
@@ -1132,6 +1254,7 @@ import type {
 	StudentLearningUnit,
 } from '@/types/contracts/student_learning/get_student_learning_space';
 import type { Response as StudentTaskSubmissionResponse } from '@/types/contracts/student_learning/get_student_task_submission';
+import type { ReleasedAssessmentResult } from '@/types/contracts/student_learning/released_assessment_result';
 
 const PLACEHOLDER =
 	'data:image/svg+xml;charset=UTF-8,' +
@@ -1233,6 +1356,10 @@ const selectedTaskWorkspace = computed<StudentAssignedWork | null>(() => {
 	return selectedAssignedWork.value;
 });
 
+const selectedTaskReleasedResult = computed<ReleasedAssessmentResult | null>(() => {
+	return selectedTaskSubmission.value?.released_result || null;
+});
+
 const displayedAssignedWork = computed<StudentAssignedWork[]>(() => {
 	if (selectedUnit.value) {
 		return dedupeAssignedWork(selectedUnit.value.assigned_work || []);
@@ -1258,6 +1385,19 @@ const selectedTaskSubmissionBlocker = computed(() => {
 	}
 	if (!selectedTaskWorkspace.value.task_outcome) {
 		return 'Your submission workspace is not ready yet. Refresh this page or contact your teacher if the problem continues.';
+	}
+	return '';
+});
+
+const selectedTaskReleasedResultMessage = computed(() => {
+	if (!selectedTaskWorkspace.value?.requires_submission) return '';
+	if (selectedTaskSubmissionLoading.value) return 'Loading released result...';
+	if (!selectedTaskSubmission.value) {
+		return 'Released scores and feedback appear here after you submit and your teacher publishes them.';
+	}
+	const releasedResult = selectedTaskReleasedResult.value;
+	if (!releasedResult || (!releasedResult.grade_visible && !releasedResult.feedback_visible)) {
+		return 'Results and feedback are not released yet.';
 	}
 	return '';
 });
@@ -1785,6 +1925,13 @@ function formatSelectedSubmissionFileSize(sizeBytes?: number | null) {
 		return `${Math.max(1, Math.round(size / 1024))} KB`;
 	}
 	return `${size} B`;
+}
+
+function formatReleasedScore(value?: number | null) {
+	if (value in [null, undefined, '']) return '';
+	const score = Number(value);
+	if (!Number.isFinite(score)) return String(value);
+	return Number.isInteger(score) ? String(score) : score.toFixed(2);
 }
 
 function clearSubmissionFiles() {

@@ -186,3 +186,79 @@ class TestTaskFeedbackService(TestCase):
                     1,
                     {"point": {"x": 1.2, "y": 0.4}},
                 )
+
+    def test_build_released_result_payload_masks_grade_when_only_feedback_is_released(self):
+        with stubbed_frappe() as frappe:
+
+            def fake_get_value(doctype, name_or_filters, fieldname=None, as_dict=False):
+                if doctype == "Task Outcome":
+                    return {
+                        "name": "OUT-1",
+                        "official_score": 18,
+                        "official_grade": "A",
+                        "official_grade_value": 4,
+                        "official_feedback": "Tighten the conclusion.",
+                        "is_published": 0,
+                        "published_on": None,
+                        "published_by": None,
+                    }
+                if doctype == "Task Submission":
+                    return {"name": "TSU-1", "task_outcome": "OUT-1", "version": 2}
+                if doctype == "Task Feedback Workspace":
+                    return {
+                        "name": "TFW-1",
+                        "feedback_visibility": "student",
+                        "grade_visibility": "hidden",
+                        "overall_summary": "Strong reasoning overall.",
+                        "strengths_summary": "",
+                        "improvements_summary": "Clarify the final paragraph.",
+                        "next_steps_summary": "",
+                        "modified": "2026-04-20 10:00:00",
+                        "modified_by": "teacher@example.com",
+                    }
+                return None
+
+            frappe.db.get_value = fake_get_value
+            frappe.get_all = lambda doctype, **kwargs: []
+
+            module = import_fresh("ifitwala_ed.assessment.task_feedback_service")
+            payload = module.build_released_result_payload(
+                "OUT-1",
+                audience="student",
+                submission_id="TSU-1",
+            )
+
+        self.assertFalse(payload["grade_visible"])
+        self.assertTrue(payload["feedback_visible"])
+        self.assertIsNone(payload["official"]["score"])
+        self.assertEqual(payload["feedback"]["summary"]["overall"], "Strong reasoning overall.")
+        self.assertEqual(payload["feedback"]["summary"]["improvements"], "Clarify the final paragraph.")
+
+    def test_build_released_result_payload_uses_legacy_publish_defaults_without_workspace(self):
+        with stubbed_frappe() as frappe:
+
+            def fake_get_value(doctype, name_or_filters, fieldname=None, as_dict=False):
+                if doctype == "Task Outcome":
+                    return {
+                        "name": "OUT-2",
+                        "official_score": 12,
+                        "official_grade": "B",
+                        "official_grade_value": 3,
+                        "official_feedback": "Keep supporting each claim.",
+                        "is_published": 1,
+                        "published_on": "2026-04-20 12:00:00",
+                        "published_by": "teacher@example.com",
+                    }
+                return None
+
+            frappe.db.get_value = fake_get_value
+            frappe.get_all = lambda doctype, **kwargs: []
+
+            module = import_fresh("ifitwala_ed.assessment.task_feedback_service")
+            payload = module.build_released_result_payload("OUT-2", audience="student")
+
+        self.assertTrue(payload["grade_visible"])
+        self.assertTrue(payload["feedback_visible"])
+        self.assertEqual(payload["official"]["score"], 12)
+        self.assertEqual(payload["official"]["feedback"], "Keep supporting each claim.")
+        self.assertEqual(payload["feedback"]["summary"]["overall"], "Keep supporting each claim.")

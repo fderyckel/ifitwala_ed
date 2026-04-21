@@ -30,8 +30,9 @@ from ifitwala_ed.api.student_log_dashboard import ALLOWED_ANALYTICS_ROLES as WEL
 from ifitwala_ed.api.student_overview_roles import ALLOWED_STAFF_ROLES as STUDENT_OVERVIEW_STAFF_ROLES
 from ifitwala_ed.api.users import STAFF_ROLES
 from ifitwala_ed.utilities.image_utils import (
-    get_preferred_guardian_avatar_url,
-    get_preferred_student_avatar_url,
+    PROFILE_IMAGE_DERIVATIVE_SLOTS,
+    get_preferred_guardian_image_url,
+    get_preferred_student_image_url,
 )
 
 CACHE_TTL_SECONDS = 3600
@@ -173,9 +174,12 @@ def _resolve_student_row_for_user(user: str):
         as_dict=True,
     )
     if student:
-        student["student_image"] = get_preferred_student_avatar_url(
+        student["student_image"] = get_preferred_student_image_url(
             student.get("name"),
             original_url=student.get("student_image"),
+            slots=PROFILE_IMAGE_DERIVATIVE_SLOTS,
+            fallback_to_original=True,
+            request_missing_derivatives=True,
         )
         return student
 
@@ -193,9 +197,12 @@ def _resolve_student_row_for_user(user: str):
         as_dict=True,
     )
     if student:
-        student["student_image"] = get_preferred_student_avatar_url(
+        student["student_image"] = get_preferred_student_image_url(
             student.get("name"),
             original_url=student.get("student_image"),
+            slots=PROFILE_IMAGE_DERIVATIVE_SLOTS,
+            fallback_to_original=True,
+            request_missing_derivatives=True,
         )
     return student
 
@@ -239,9 +246,12 @@ def _resolve_guardian_row_for_user(user: str):
         as_dict=True,
     )
     if guardian:
-        guardian["guardian_image"] = get_preferred_guardian_avatar_url(
+        guardian["guardian_image"] = get_preferred_guardian_image_url(
             guardian.get("name"),
             original_url=guardian.get("guardian_image"),
+            slots=PROFILE_IMAGE_DERIVATIVE_SLOTS,
+            fallback_to_original=True,
+            request_missing_derivatives=True,
         )
     return guardian
 
@@ -327,7 +337,7 @@ def get_student_portal_identity():
         frappe.throw(_("You must be logged in."), frappe.PermissionError)
 
     cache = frappe.cache()
-    cache_key = f"student_portal:identity:v3:{user}"
+    cache_key = f"student_portal:identity:v4:{user}"
     cached = cache.get_value(cache_key)
     if cached:
         try:
