@@ -32,6 +32,15 @@ STRUCTURED_FEEDBACK_INTENTS = {
     "Positive",
     "Celebration",
 }
+STAFF_AUDIENCE_ROLES = {
+    "Academic Admin",
+    "Academic Assistant",
+    "Academic Staff",
+    "Administrator",
+    "Employee",
+    "Instructor",
+    "System Manager",
+}
 
 
 class CommunicationInteractionEntry(Document):
@@ -75,7 +84,7 @@ class CommunicationInteractionEntry(Document):
             self.audience_type = "Guardian"
         elif "Student" in roles:
             self.audience_type = "Student"
-        elif roles & {"Employee", "Academic Staff", "Academic Admin", "System Manager", "Academic Assistant"}:
+        elif roles & STAFF_AUDIENCE_ROLES:
             self.audience_type = "Staff"
 
     def _apply_mode_constraints(self):

@@ -1,6 +1,10 @@
 // Copyright (c) 2025, François de Ryckel and contributors
 // For license information, please see license.txt
 
+const DEFAULT_EMPLOYEE_AVATAR_DATA_URL = `data:image/svg+xml;utf8,${encodeURIComponent(
+	'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" fill="none"><rect width="96" height="96" rx="48" fill="#E5E7EB"/><circle cx="48" cy="35" r="16" fill="#9CA3AF"/><path d="M20 78c6-16 18-24 28-24s22 8 28 24" fill="#9CA3AF"/></svg>',
+)}`;
+
 frappe.listview_settings["Employee"] = {
 	add_fields: ["employment_status", "department", "designation", "employee_image"],
 	onload(listview) {
@@ -19,9 +23,8 @@ frappe.listview_settings["Employee"] = {
 
 		const applyResolvedImages = () => {
 			rows.forEach((row) => {
-				const resolved = cache[row.name];
-				if (resolved) {
-					row.employee_image = resolved;
+				if (Object.prototype.hasOwnProperty.call(cache, row.name)) {
+					row.employee_image = cache[row.name] || DEFAULT_EMPLOYEE_AVATAR_DATA_URL;
 				}
 			});
 
@@ -32,13 +35,14 @@ frappe.listview_settings["Employee"] = {
 				$result.find(".list-row-container").each(function () {
 					const $row = $(this);
 					const docname = ($row.attr("data-name") || "").trim();
+					if (!Object.prototype.hasOwnProperty.call(cache, docname)) return;
 					const resolved = cache[docname];
-					if (!resolved) return;
+					const nextSrc = resolved || DEFAULT_EMPLOYEE_AVATAR_DATA_URL;
 
 					const img = $row.find("img").get(0);
 					if (!img) return;
-					if (img.getAttribute("src") === resolved) return;
-					img.setAttribute("src", resolved);
+					if (img.getAttribute("src") === nextSrc) return;
+					img.setAttribute("src", nextSrc);
 				});
 			}, 0);
 		};

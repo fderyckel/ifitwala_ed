@@ -19,6 +19,7 @@ from ifitwala_ed.utilities.image_utils import (
     EMPLOYEE_VARIANT_PRIORITY,
     file_url_is_accessible,
     get_employee_image_variants_map,
+    get_preferred_employee_avatar_url,
     get_preferred_employee_image_url,
 )
 from ifitwala_ed.utilities.organization_media import (
@@ -222,9 +223,6 @@ def _drive_upload_and_finalize(*, create_session_callable, payload: dict, conten
     upload_session_id = session_response.get("upload_session_id")
     if not upload_session_id:
         frappe.throw(_("Drive did not return an upload_session_id."))
-    upload_token = session_response.get("upload_token")
-    if not upload_token:
-        frappe.throw(_("Drive did not return an upload_token for the buffered upload flow."))
 
     ingest_upload_session_content = getattr(drive_uploads_api, "ingest_upload_session_content", None)
     if not callable(ingest_upload_session_content):
@@ -235,7 +233,6 @@ def _drive_upload_and_finalize(*, create_session_callable, payload: dict, conten
         )
     ingest_upload_session_content(
         upload_session_id=upload_session_id,
-        upload_token=upload_token,
         content=content,
     )
 
@@ -737,7 +734,7 @@ def get_employee_image_variants(employee: str):
     doc = frappe.get_doc("Employee", employee)
     doc.check_permission("read")
 
-    variants = get_employee_image_variants_map([doc.name]).get(doc.name, {})
+    variants = get_employee_image_variants_map([doc.name], request_missing_derivatives=True).get(doc.name, {})
     if doc.employee_image and "profile_image" not in variants:
         variants["profile_image"] = doc.employee_image
     return variants
@@ -775,10 +772,9 @@ def get_employee_image_display_map(employees):
     image_rows = {row["name"]: row.get("employee_image") for row in rows}
 
     return {
-        employee_name: get_preferred_employee_image_url(
+        employee_name: get_preferred_employee_avatar_url(
             employee_name,
             original_url=image_rows.get(employee_name),
-            slots=EMPLOYEE_VARIANT_PRIORITY,
         )
         or ""
         for employee_name in employee_names

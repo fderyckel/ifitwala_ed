@@ -119,6 +119,37 @@ class TestMorningBrief(IfitwalaFrappeTestCase):
         self.assertEqual(captured["values"], ("03-19", "03-27"))
         self.assertIn("employment_status = 'Active'", captured["query"])
 
+    def test_get_staff_birthdays_uses_derivative_only_employee_images(self):
+        rows = [
+            frappe._dict(
+                employee="EMP-0001",
+                name="Dana Staff",
+                image="/private/files/employee-original.png",
+                date_of_birth="1990-03-23",
+            )
+        ]
+
+        with (
+            patch.object(morning_brief, "today", return_value="2026-03-23"),
+            patch.object(morning_brief.frappe.db, "sql", return_value=rows),
+            patch.object(
+                morning_brief,
+                "apply_preferred_employee_images",
+                return_value=rows,
+            ) as apply_preferred,
+        ):
+            payload = morning_brief.get_staff_birthdays()
+
+        apply_preferred.assert_called_once_with(
+            rows,
+            employee_field="employee",
+            image_field="image",
+            slots=morning_brief.PROFILE_IMAGE_DERIVATIVE_SLOTS,
+            fallback_to_original=False,
+            request_missing_derivatives=True,
+        )
+        self.assertIs(payload, rows)
+
     def test_get_my_student_birthdays_uses_bound_group_scope(self):
         captured = {}
 

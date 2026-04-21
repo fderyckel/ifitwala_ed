@@ -42,6 +42,82 @@ def _image_utils_module():
 
 
 class TestImageUtilsUnit(TestCase):
+    def test_apply_preferred_student_images_requeues_missing_derivatives_without_current_version(self):
+        with _image_utils_module() as (image_utils, frappe):
+            rows = [{"name": "STU-0001", "student_image": "/private/files/student-source.png"}]
+            request_calls = []
+            cache_writes = []
+
+            class _FakeCache:
+                def get_value(self, key):
+                    return None
+
+                def set_value(self, key, value, expires_in_sec=None):
+                    cache_writes.append((key, value, expires_in_sec))
+
+            image_utils.get_current_drive_files_for_slots = lambda **kwargs: [
+                {
+                    "name": "DRIVE-STU-1",
+                    "primary_subject_id": "STU-0001",
+                    "slot": "profile_image",
+                    "file": "FILE-STU-1",
+                    "current_version": None,
+                }
+            ]
+
+            def fake_get_all(doctype, filters=None, fields=None, limit=None, order_by=None):
+                del filters, fields, limit, order_by
+                if doctype == "File":
+                    return [
+                        {
+                            "name": "FILE-STU-1",
+                            "file_url": "/private/files/student-source.png",
+                            "is_private": 1,
+                        }
+                    ]
+                if doctype == "Drive File Derivative":
+                    return []
+                raise AssertionError(f"Unexpected get_all doctype: {doctype}")
+
+            frappe.get_all = fake_get_all
+            frappe.cache = lambda: _FakeCache()
+
+            with (
+                patch.object(
+                    image_utils,
+                    "request_profile_image_preview_derivatives",
+                    side_effect=lambda *args, **kwargs: request_calls.append((args, kwargs)),
+                ),
+                patch.object(image_utils, "_resolve_original_governed_image_url") as resolve_original,
+            ):
+                image_utils.apply_preferred_student_images(
+                    rows,
+                    student_field="name",
+                    image_field="student_image",
+                    slots=image_utils.PROFILE_IMAGE_THUMB_ONLY_SLOTS,
+                    fallback_to_original=False,
+                    request_missing_derivatives=True,
+                )
+
+        resolve_original.assert_not_called()
+        self.assertIsNone(rows[0]["student_image"])
+        self.assertEqual(
+            request_calls,
+            [
+                (
+                    ("Student", "STU-0001"),
+                    {
+                        "file_id": "FILE-STU-1",
+                        "derivative_roles": ["thumb"],
+                    },
+                )
+            ],
+        )
+        self.assertEqual(len(cache_writes), 1)
+        self.assertIn(":__missing__:", cache_writes[0][0])
+        self.assertEqual(cache_writes[0][1], 1)
+        self.assertEqual(cache_writes[0][2], 300)
+
     def test_apply_preferred_student_images_thumb_only_requeues_missing_derivatives(self):
         with _image_utils_module() as (image_utils, frappe):
             rows = [{"name": "STU-0001", "student_image": "/private/files/student-source.png"}]
@@ -343,6 +419,147 @@ class TestImageUtilsUnit(TestCase):
 
         self.assertIn("derivative_role=thumb", image_url)
         self.assertIn("file=FILE-EMP-1", image_url)
+
+    def test_apply_preferred_employee_images_derivative_only_requeues_missing_derivatives(self):
+        with _image_utils_module() as (image_utils, frappe):
+            rows = [{"name": "EMP-0001", "image": "/private/files/employee-source.png"}]
+            request_calls = []
+            cache_writes = []
+
+            class _FakeCache:
+                def get_value(self, key):
+                    return None
+
+                def set_value(self, key, value, expires_in_sec=None):
+                    cache_writes.append((key, value, expires_in_sec))
+
+            image_utils.get_current_drive_files_for_slots = lambda **kwargs: [
+                {
+                    "name": "DRIVE-EMP-1",
+                    "primary_subject_id": "EMP-0001",
+                    "slot": "profile_image",
+                    "file": "FILE-EMP-1",
+                    "current_version": "DFV-EMP-1",
+                }
+            ]
+
+            def fake_get_all(doctype, filters=None, fields=None, limit=None, order_by=None):
+                del filters, fields, limit, order_by
+                if doctype == "File":
+                    return [
+                        {
+                            "name": "FILE-EMP-1",
+                            "file_url": "/private/files/employee-source.png",
+                            "is_private": 1,
+                        }
+                    ]
+                if doctype == "Drive File Derivative":
+                    return []
+                raise AssertionError(f"Unexpected get_all doctype: {doctype}")
+
+            frappe.get_all = fake_get_all
+            frappe.cache = lambda: _FakeCache()
+
+            with (
+                patch.object(
+                    image_utils,
+                    "request_profile_image_preview_derivatives",
+                    side_effect=lambda *args, **kwargs: request_calls.append((args, kwargs)),
+                ),
+                patch.object(image_utils, "_resolve_original_governed_image_url") as resolve_original,
+            ):
+                image_utils.apply_preferred_employee_images(
+                    rows,
+                    employee_field="name",
+                    image_field="image",
+                    slots=image_utils.PROFILE_IMAGE_DERIVATIVE_SLOTS,
+                    fallback_to_original=False,
+                    request_missing_derivatives=True,
+                )
+
+        resolve_original.assert_not_called()
+        self.assertIsNone(rows[0]["image"])
+        self.assertEqual(
+            request_calls,
+            [
+                (
+                    ("Employee", "EMP-0001"),
+                    {
+                        "file_id": "FILE-EMP-1",
+                        "derivative_roles": ["card", "thumb", "viewer_preview"],
+                    },
+                )
+            ],
+        )
+        self.assertEqual(len(cache_writes), 1)
+        self.assertEqual(cache_writes[0][1], 1)
+        self.assertEqual(cache_writes[0][2], 300)
+
+    def test_get_preferred_employee_avatar_url_requeues_missing_derivatives(self):
+        with _image_utils_module() as (image_utils, frappe):
+            request_calls = []
+
+            class _FakeCache:
+                def get_value(self, key):
+                    return None
+
+                def set_value(self, key, value, expires_in_sec=None):
+                    return None
+
+            image_utils.get_current_drive_files_for_slots = lambda **kwargs: [
+                {
+                    "name": "DRIVE-EMP-1",
+                    "primary_subject_id": "EMP-0001",
+                    "slot": "profile_image",
+                    "file": "FILE-EMP-1",
+                    "current_version": "DFV-EMP-1",
+                }
+            ]
+
+            def fake_get_all(doctype, filters=None, fields=None, limit=None, order_by=None):
+                del filters, fields, limit, order_by
+                if doctype == "File":
+                    return [
+                        {
+                            "name": "FILE-EMP-1",
+                            "file_url": "/private/files/employee-source.png",
+                            "is_private": 1,
+                        }
+                    ]
+                if doctype == "Drive File Derivative":
+                    return []
+                raise AssertionError(f"Unexpected get_all doctype: {doctype}")
+
+            frappe.get_all = fake_get_all
+            frappe.cache = lambda: _FakeCache()
+
+            with (
+                patch.object(
+                    image_utils,
+                    "request_profile_image_preview_derivatives",
+                    side_effect=lambda *args, **kwargs: request_calls.append((args, kwargs)),
+                ),
+                patch.object(image_utils, "_resolve_original_governed_image_url") as resolve_original,
+            ):
+                image_url = image_utils.get_preferred_employee_avatar_url(
+                    "EMP-0001",
+                    original_url="/private/files/employee-source.png",
+                )
+
+        resolve_original.assert_not_called()
+        self.assertIsNone(image_url)
+        self.assertEqual(
+            request_calls,
+            [
+                (
+                    ("Employee", "EMP-0001"),
+                    {
+                        "file_id": "FILE-EMP-1",
+                        "derivative_roles": ["card", "thumb", "viewer_preview"],
+                    },
+                )
+            ],
+        )
 
     def test_resolve_original_governed_image_url_uses_current_drive_file_without_storage_probe(self):
         with _image_utils_module() as (image_utils, frappe):

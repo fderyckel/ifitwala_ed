@@ -14,7 +14,11 @@ from ifitwala_ed.api.org_communication_interactions import get_seen_org_communic
 from ifitwala_ed.schedule.schedule_utils import get_weekend_days_for_calendar
 from ifitwala_ed.school_settings.school_settings_utils import resolve_school_calendars_for_window
 from ifitwala_ed.students.doctype.student_log.student_log import get_student_log_visibility_predicate
-from ifitwala_ed.utilities.image_utils import apply_preferred_employee_images, apply_preferred_student_images
+from ifitwala_ed.utilities.image_utils import (
+    PROFILE_IMAGE_DERIVATIVE_SLOTS,
+    apply_preferred_employee_images,
+    apply_preferred_student_images,
+)
 from ifitwala_ed.utilities.school_tree import get_descendant_schools, get_user_default_school
 
 CLINIC_SUMMARY_RANGE_BUSINESS_DAYS = "3D"
@@ -744,7 +748,14 @@ def get_staff_birthdays():
             DATE_FORMAT(employee_date_of_birth, '%%%%m-%%%%d') ASC
     """
     rows = frappe.db.sql(sql, (start_md, end_md), as_dict=True)
-    return apply_preferred_employee_images(rows, employee_field="employee", image_field="image")
+    return apply_preferred_employee_images(
+        rows,
+        employee_field="employee",
+        image_field="image",
+        slots=PROFILE_IMAGE_DERIVATIVE_SLOTS,
+        fallback_to_original=False,
+        request_missing_derivatives=True,
+    )
 
 
 def get_my_student_birthdays(group_names):

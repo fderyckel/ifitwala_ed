@@ -14,7 +14,8 @@ def _governed_uploads_module():
     image_utils = ModuleType("ifitwala_ed.utilities.image_utils")
     image_utils.EMPLOYEE_VARIANT_PRIORITY = []
     image_utils.file_url_is_accessible = lambda file_url, *, file_name=None, is_private=0: True
-    image_utils.get_employee_image_variants_map = lambda employee_names: {}
+    image_utils.get_employee_image_variants_map = lambda employee_names, **kwargs: {}
+    image_utils.get_preferred_employee_avatar_url = lambda employee_name, original_url=None: original_url
     image_utils.get_preferred_employee_image_url = lambda employee_name, original_url=None, slots=None: original_url
 
     organization_media = ModuleType("ifitwala_ed.utilities.organization_media")
@@ -102,7 +103,6 @@ class TestGovernedUploadTaskFlows(TestCase):
             )
             return {
                 "upload_session_id": "DUS-EMP-1",
-                "upload_token": "drive-token-123",
                 "upload_target": {"headers": {"X-Drive-Upload-Token": "drive-token-123"}},
             }
 
@@ -150,7 +150,6 @@ class TestGovernedUploadTaskFlows(TestCase):
             [
                 {
                     "upload_session_id": "DUS-EMP-1",
-                    "upload_token": "drive-token-123",
                     "content": b"employee-content",
                 }
             ],
@@ -430,6 +429,31 @@ class TestGovernedUploadTaskFlows(TestCase):
         self.assertTrue(user_doc.flags.ignore_permissions)
         self.assertEqual(user_doc.user_image, "/files/thumb_employee.webp")
         self.assertEqual(user_doc.saved, 1)
+
+    def test_get_employee_image_display_map_uses_derivative_only_avatar_helper(self):
+        employee_doc = SimpleNamespace(check_permission=lambda ptype: None)
+
+        with _governed_uploads_module() as governed_uploads:
+            with (
+                patch.object(governed_uploads.frappe, "get_doc", return_value=employee_doc),
+                patch.object(
+                    governed_uploads.frappe,
+                    "get_all",
+                    return_value=[{"name": "EMP-0001", "employee_image": "/private/files/employee-photo.png"}],
+                ),
+                patch.object(
+                    governed_uploads,
+                    "get_preferred_employee_avatar_url",
+                    return_value="/files/thumb_employee.webp",
+                ) as get_avatar,
+            ):
+                payload = governed_uploads.get_employee_image_display_map(["EMP-0001"])
+
+        get_avatar.assert_called_once_with(
+            "EMP-0001",
+            original_url="/private/files/employee-photo.png",
+        )
+        self.assertEqual(payload, {"EMP-0001": "/files/thumb_employee.webp"})
 
     def test_upload_task_submission_attachment_uses_drive_wrapper(self):
         doc = _FakeDoc(name="TSUB-0001", school="SCH-0001", student="STU-0001")

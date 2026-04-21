@@ -11,6 +11,10 @@
 
 frappe.provide("ifitwala_ed.hr");
 
+const DEFAULT_EMPLOYEE_AVATAR_DATA_URL = `data:image/svg+xml;utf8,${encodeURIComponent(
+  '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" fill="none"><rect width="96" height="96" rx="48" fill="#E5E7EB"/><circle cx="48" cy="35" r="16" fill="#9CA3AF"/><path d="M20 78c6-16 18-24 28-24s22 8 28 24" fill="#9CA3AF"/></svg>',
+)}`;
+
 frappe.ui.form.on("Employee", {
   setup(frm) {
     frm.fields_dict.user_id.get_query = function () {
@@ -217,7 +221,7 @@ frappe.ui.form.on("Employee", {
         if (!imgEl || !imgEl.getAttribute) return;
         const nextUrl = candidates[index];
         if (!nextUrl) {
-          imgEl.setAttribute("src", originalUrl);
+          imgEl.setAttribute("src", DEFAULT_EMPLOYEE_AVATAR_DATA_URL);
           return;
         }
         imgEl.setAttribute("data-variant-index", String(index));
@@ -238,7 +242,7 @@ frappe.ui.form.on("Employee", {
           const nextIndex = currentIndex + 1;
           if (nextIndex >= candidates.length) {
             imgEl.removeEventListener("error", onError);
-            imgEl.setAttribute("src", originalUrl);
+            imgEl.setAttribute("src", DEFAULT_EMPLOYEE_AVATAR_DATA_URL);
             return;
           }
           applyCandidate(imgEl, nextIndex);
@@ -267,13 +271,10 @@ frappe.ui.form.on("Employee", {
         variants.profile_image_thumb,
         variants.profile_image_card,
         variants.profile_image_medium,
-        variants.profile_image,
-        originalUrl,
       ].filter(Boolean))];
-      applyWithCandidates(candidates);
+      applyWithCandidates(candidates.length ? candidates : [DEFAULT_EMPLOYEE_AVATAR_DATA_URL]);
     }).catch(() => {
-      const candidates = [originalUrl];
-      applyWithCandidates(candidates);
+      applyWithCandidates([DEFAULT_EMPLOYEE_AVATAR_DATA_URL]);
     });
   },
 

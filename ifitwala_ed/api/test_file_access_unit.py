@@ -472,6 +472,23 @@ class TestFileAccessUnit(TestCase):
         )
         self.assertEqual(generic_calls, [])
 
+    def test_request_org_communication_attachment_grant_fails_closed_when_wrapper_is_unavailable(self):
+        with _file_access_module() as (file_access, _frappe):
+            file_access._load_drive_communications_callable = lambda _attribute: None
+            file_access._load_drive_access_callable = lambda attribute: self.fail(
+                f"generic drive grant path should not be used for org communication attachments: {attribute}"
+            )
+
+            grant = file_access._request_org_communication_attachment_grant(
+                method_name="issue_org_communication_attachment_preview_grant",
+                org_communication="COMM-0001",
+                row_name="row-001",
+                drive_file_id="DRIVE-FILE-1",
+                derivative_role="thumb",
+            )
+
+        self.assertIsNone(grant)
+
     def test_resolve_org_communication_attachment_grant_target_url_uses_preview_wrapper_when_ready(self):
         with _file_access_module() as (file_access, frappe):
             grant_calls: list[tuple[str, dict]] = []
@@ -1295,6 +1312,23 @@ class TestFileAccessUnit(TestCase):
             ],
         )
         self.assertEqual(grant, {"url": "https://preview.example.com/material.pdf"})
+
+    def test_request_supporting_material_grant_fails_closed_when_wrapper_is_unavailable(self):
+        with _file_access_module() as (file_access, _frappe):
+            file_access._load_drive_materials_callable = lambda _attribute: None
+            file_access._load_drive_access_callable = lambda attribute: self.fail(
+                f"generic drive grant path should not be used for supporting materials: {attribute}"
+            )
+
+            grant = file_access._request_supporting_material_grant(
+                method_name="issue_supporting_material_preview_grant",
+                material="MAT-0001",
+                placement="MAT-PLC-1",
+                drive_file_id="DRIVE-FILE-MAT-1",
+                derivative_role="viewer_preview",
+            )
+
+        self.assertIsNone(grant)
 
     def test_resolve_drive_download_grant_url_returns_signed_url(self):
         with _file_access_module() as (file_access, frappe):

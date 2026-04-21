@@ -1,7 +1,7 @@
 # Education File Semantics And Cross-App Upload Contract
 
 Status: LOCKED target contract
-Date: 2026-04-20
+Date: 2026-04-21
 Related docs:
 
 - `ifitwala_ed/docs/files_and_policies/files_01_architecture_notes.md`
@@ -157,7 +157,7 @@ Current runtime note:
 - the session row itself remains the authority for resolved owner, attached target, subject, and governance fields
 - finalize uses persisted `workflow_id` first and falls back to detection only for pre-registry sessions
 - new session creation fails closed without `workflow_id`
-- the locked generic DTO now carries `upload_token`, `workflow_id`, `contract_version`, and typed `workflow_result`
+- the locked generic DTO carries `workflow_id`, `contract_version`, and typed `workflow_result`; current runtime may also include `upload_token` for browser/proxy upload targets, but trusted server-side buffered ingest must not depend on it
 - wrapper-specific metadata such as `row_name`, admissions item identifiers, or gallery captions must travel only through `workflow_result`
 
 ## 7. API shape direction

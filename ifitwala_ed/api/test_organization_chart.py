@@ -23,6 +23,7 @@ def _organization_chart_module():
         image_field="image",
         slots=None,
         fallback_to_original=True,
+        request_missing_derivatives=False,
     ):
         helper_state["calls"].append(
             {
@@ -30,6 +31,7 @@ def _organization_chart_module():
                 "image_field": image_field,
                 "slots": slots,
                 "fallback_to_original": fallback_to_original,
+                "request_missing_derivatives": request_missing_derivatives,
             }
         )
         resolved = []
@@ -159,6 +161,7 @@ class TestOrganizationChartApi(TestCase):
             ("profile_image_thumb", "profile_image_card", "profile_image_medium"),
         )
         self.assertFalse(helper_state["calls"][0]["fallback_to_original"])
+        self.assertTrue(helper_state["calls"][0]["request_missing_derivatives"])
         self.assertEqual(calls["employee"], 2)
 
     def test_get_org_chart_tree_returns_helper_resolved_images(self):
@@ -220,3 +223,4 @@ class TestOrganizationChartApi(TestCase):
             ("profile_image_thumb", "profile_image_card", "profile_image_medium"),
         )
         self.assertFalse(helper_state["calls"][0]["fallback_to_original"])
+        self.assertTrue(helper_state["calls"][0]["request_missing_derivatives"])

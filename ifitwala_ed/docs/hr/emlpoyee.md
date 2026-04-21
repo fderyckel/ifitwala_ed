@@ -137,11 +137,12 @@ Current read consumers using canonical variant resolution:
 - organization chart API (`ifitwala_ed/api/organization_chart.py`)
 - morning brief staff birthdays (`ifitwala_ed/api/morning_brief.py`)
 - website leadership provider (`ifitwala_ed/website/providers/leadership.py`)
+- avatar-sized Employee surfaces request only Drive-managed derivatives and use a default avatar when no derivative is ready; they must not fall back to the original full-size image
 
 Org chart visibility contract:
 - the staff org chart defaults to `All Organizations`, not the viewer's base organization
 - employee profile-image access for the org chart and Morning Brief staff-birthday surface is available to any authenticated active employee; base-organization scope does not gate those thumbnail/card reads
-- the org chart surface resolves Employee image derivatives in this order: `profile_image_thumb` -> `profile_image_card` -> `profile_image_medium`; it must not fall back to the original full-size image on that surface
+- avatar-sized Employee surfaces such as the org chart and Morning Brief birthday cards resolve Employee image derivatives in this order: `profile_image_thumb` -> `profile_image_card` -> `profile_image_medium`; they must not fall back to the original full-size image on those surfaces
 - those compatibility variant keys resolve to Drive derivative roles (`thumb`, `card`, `viewer_preview`) on the current governed `profile_image` file
 - when a governed Employee derivative is stored in `ifitwala_drive`, staff image consumers still resolve it through the named Employee file route, which now keeps Ed as the permission boundary for governed profile-image grants instead of relying on raw `Employee` DocType read access in Drive
 - Morning Brief staff-birthday cards must resolve against the current governed Employee profile-image authority even if an older compatibility `File` id has rotated out; stale `file=` links are a bug

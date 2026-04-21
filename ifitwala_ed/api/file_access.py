@@ -1223,13 +1223,7 @@ def _request_org_communication_attachment_grant(
         if explicit_derivative_role:
             payload["derivative_role"] = explicit_derivative_role
         return grant_callable(**payload)
-
-    generic_method = "issue_preview_grant" if "preview" in method_name else "issue_download_grant"
-    payload = {"drive_file_id": drive_file_id}
-    explicit_derivative_role = (derivative_role or "").strip()
-    if generic_method == "issue_preview_grant" and explicit_derivative_role:
-        payload["derivative_role"] = explicit_derivative_role
-    return _load_drive_access_callable(generic_method)(**payload)
+    return None
 
 
 def _request_supporting_material_grant(
@@ -1253,13 +1247,7 @@ def _request_supporting_material_grant(
         if explicit_derivative_role:
             payload["derivative_role"] = explicit_derivative_role
         return grant_callable(**payload)
-
-    generic_method = "issue_preview_grant" if "preview" in method_name else "issue_download_grant"
-    payload = {"drive_file_id": drive_file_id}
-    explicit_derivative_role = (derivative_role or "").strip()
-    if generic_method == "issue_preview_grant" and explicit_derivative_role:
-        payload["derivative_role"] = explicit_derivative_role
-    return _load_drive_access_callable(generic_method)(**payload)
+    return None
 
 
 def _request_employee_image_grant(

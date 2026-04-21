@@ -16,7 +16,7 @@ def _load_drive_media_callable(attribute: str) -> Callable[..., dict[str, Any]] 
         callable_obj = getattr(media_api, attribute, None)
         if callable(callable_obj):
             return callable_obj
-    except Exception:
+    except ImportError:
         pass
 
     return None

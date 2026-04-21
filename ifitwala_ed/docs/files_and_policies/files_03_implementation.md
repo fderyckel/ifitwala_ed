@@ -1,7 +1,7 @@
 # Governed Files Implementation Status And Remediation Order
 
 Status: Current runtime and gap register
-Date: 2026-04-20
+Date: 2026-04-21
 Code refs:
 - `ifitwala_ed/utilities/governed_uploads.py`
 - `ifitwala_ed/utilities/file_management.py`
@@ -70,7 +70,7 @@ Current behavior:
 - Ed creates the Drive session
 - Ed hands buffered upload bytes to a Drive-owned ingest helper
 - Drive owns storage writes and `Drive Upload Session` state mutation
-- the session DTO now returns an explicit `upload_token`, so Ed no longer scrapes `upload_target.headers` to recover buffered-ingest credentials
+- the trusted buffered-ingest seam resolves the session from Drive authority and does not require Ed to replay browser upload-token headers
 
 Outcome:
 
