@@ -25,7 +25,11 @@ def mark_contributions_stale(outcome_id, latest_submission_id=None):
 	"""
     params["user"] = frappe.session.user or "Administrator"
     frappe.db.sql(query, params)
-    return frappe.db.rowcount
+    rowcount = getattr(getattr(frappe.db, "_cursor", None), "rowcount", 0)
+    try:
+        return max(int(rowcount or 0), 0)
+    except Exception:
+        return 0
 
 
 def _ensure_evidence_stub_submission(*args, **kwargs):

@@ -1,6 +1,7 @@
 # Copyright (c) 2026, François de Ryckel and contributors
 # For license information, please see license.txt
 
+from types import SimpleNamespace
 from unittest import TestCase
 
 from ifitwala_ed.tests.frappe_stubs import StubPermissionError, StubValidationError, import_fresh, stubbed_frappe
@@ -197,3 +198,38 @@ class TestTaskContributionService(TestCase):
             module = import_fresh("ifitwala_ed.assessment.task_contribution_service")
 
             self.assertEqual(module.get_latest_submission_version("OUT-1"), 0)
+
+    def test_mark_contributions_stale_returns_cursor_rowcount(self):
+        with stubbed_frappe() as frappe:
+            captured = {}
+
+            def fake_sql(query, params=None, **kwargs):
+                captured["query"] = query
+                captured["params"] = params
+                return ()
+
+            frappe.db.sql = fake_sql
+            frappe.db._cursor = SimpleNamespace(rowcount=2)
+
+            module = import_fresh("ifitwala_ed.assessment.task_contribution_service")
+
+            result = module.mark_contributions_stale("OUT-1", latest_submission_id="SUB-1")
+
+        self.assertEqual(result, 2)
+        self.assertIn("UPDATE `tabTask Contribution`", captured["query"])
+        self.assertEqual(
+            captured["params"],
+            {
+                "outcome": "OUT-1",
+                "submission": "SUB-1",
+                "user": "unit.test@example.com",
+            },
+        )
+
+    def test_mark_contributions_stale_defaults_to_zero_without_cursor_rowcount(self):
+        with stubbed_frappe() as frappe:
+            frappe.db.sql = lambda *args, **kwargs: ()
+
+            module = import_fresh("ifitwala_ed.assessment.task_contribution_service")
+
+            self.assertEqual(module.mark_contributions_stale("OUT-1"), 0)

@@ -75,6 +75,7 @@ def resolve_planning_context(student_group, class_teaching_plan=None, class_sess
             fields=["name"],
             order_by="modified desc, creation desc",
             limit=2,
+            ignore_permissions=True,
         )
         if not active_rows:
             frappe.throw(_("This class needs an active Class Teaching Plan before assigned work can be created."))

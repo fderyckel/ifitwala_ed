@@ -40,6 +40,7 @@ def _gradebook_stub_modules(
     task_feedback_comment_bank_service=None,
 ):
     image_utils = types.ModuleType("ifitwala_ed.utilities.image_utils")
+    image_utils.PROFILE_IMAGE_THUMB_ONLY_SLOTS = ("profile_image_thumb",)
     image_utils.apply_preferred_student_images = lambda rows: rows
     quiz_service = types.ModuleType("ifitwala_ed.assessment.quiz_service")
     quiz_service.MANUAL_TYPES = {"Essay"}
