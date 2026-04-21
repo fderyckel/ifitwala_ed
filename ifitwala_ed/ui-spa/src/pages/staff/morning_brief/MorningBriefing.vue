@@ -154,14 +154,6 @@
 										class="flex shrink-0 flex-wrap items-center gap-2 xl:max-w-[15rem] xl:justify-end"
 									>
 										<button
-											v-if="canCommentOnAnnouncement(item)"
-											type="button"
-											class="if-action"
-											@click.stop="openInteractionThread(item)"
-										>
-											Comments ({{ getInteractionStatsFor(item).comments_total }})
-										</button>
-										<button
 											v-if="canReactToAnnouncement(item)"
 											type="button"
 											class="if-action"

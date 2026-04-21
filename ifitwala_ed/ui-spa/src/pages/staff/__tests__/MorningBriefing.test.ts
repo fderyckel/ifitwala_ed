@@ -274,7 +274,7 @@ afterEach(() => {
 });
 
 describe('MorningBriefing', () => {
-	it('keeps the comments action visible for staff comments on the staff briefing surface', async () => {
+	it('keeps list cards focused on acknowledge and open update actions', async () => {
 		widgetsPayloadRef.current = {
 			announcements: [buildAnnouncement({ allowPublicThread: 'false' })],
 			today_label: 'Monday',
@@ -294,7 +294,8 @@ describe('MorningBriefing', () => {
 
 		const buttons = Array.from(document.querySelectorAll('button'));
 		expect(buttons.some(button => (button.textContent || '').includes('Acknowledge'))).toBe(true);
-		expect(buttons.some(button => (button.textContent || '').includes('Comments'))).toBe(true);
+		expect(buttons.some(button => (button.textContent || '').includes('Open update'))).toBe(true);
+		expect(buttons.some(button => (button.textContent || '').includes('Comments'))).toBe(false);
 	});
 
 	it('hides briefing interaction actions when the communication mode is None', async () => {
