@@ -1139,6 +1139,43 @@ class TestFileAccessUnit(TestCase):
 
         self.assertEqual(target_url, "https://signed.example.com/logo.webp")
 
+    def test_resolve_public_website_media_grant_url_uses_service_wrapper_when_api_wrapper_is_unavailable(self):
+        with _file_access_module() as (file_access, frappe):
+            frappe.db.get_value = lambda doctype, name, fieldname=None, as_dict=False: (
+                "ready"
+                if doctype == "Drive File" and name == "DRIVE-PUBLIC-1" and fieldname == "preview_status"
+                else None
+            )
+            file_access.get_drive_file_for_file = lambda file_name, **kwargs: {"name": "DRIVE-PUBLIC-1"}
+            file_access._load_drive_media_callable = lambda attribute: None
+            file_access._load_drive_media_service_callable = lambda attribute: (
+                self.assertEqual(attribute, "issue_public_website_media_preview_grant")
+                or (lambda **payload: {"url": "https://signed.example.com/logo-from-service.webp"})
+            )
+            file_access._load_drive_access_callable = lambda attribute: self.fail(
+                "generic drive grant path should not be used for public website media"
+            )
+
+            target_url = file_access._resolve_public_website_media_grant_url("FILE-PUBLIC-1")
+
+        self.assertEqual(target_url, "https://signed.example.com/logo-from-service.webp")
+
+    def test_request_public_website_media_grant_does_not_use_generic_drive_fallback(self):
+        with _file_access_module() as (file_access, _frappe):
+            file_access._load_drive_media_callable = lambda attribute: None
+            file_access._load_drive_media_service_callable = lambda attribute: None
+            file_access._load_drive_access_callable = lambda attribute: self.fail(
+                "generic drive grant path should not be used for public website media"
+            )
+
+            grant = file_access._request_public_website_media_grant(
+                method_name="issue_public_website_media_preview_grant",
+                file_id="FILE-PUBLIC-1",
+                drive_file_id="DRIVE-PUBLIC-1",
+            )
+
+        self.assertIsNone(grant)
+
     def test_open_public_website_media_accepts_local_drive_delivery_target(self):
         with _file_access_module() as (file_access, frappe):
             delivery_requests: list[dict] = []

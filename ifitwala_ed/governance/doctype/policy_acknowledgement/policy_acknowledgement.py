@@ -657,6 +657,18 @@ def get_permission_query_conditions(user: str | None = None) -> str | None:
     return "(" + " OR ".join(conditions) + ")"
 
 
+def on_doctype_update():
+    frappe.db.add_unique(
+        "Policy Acknowledgement",
+        ["policy_version", "acknowledged_by", "context_doctype", "context_name"],
+    )
+    frappe.db.add_index(
+        "Policy Acknowledgement",
+        ["policy_version", "acknowledged_for", "context_doctype", "context_name", "docstatus"],
+        index_name="idx_policy_ack_audience_context_status",
+    )
+
+
 def has_permission(doc: "PolicyAcknowledgement", user: str | None = None, ptype: str | None = None) -> bool:
     user = user or frappe.session.user
     if user == "Administrator" or is_system_manager(user):

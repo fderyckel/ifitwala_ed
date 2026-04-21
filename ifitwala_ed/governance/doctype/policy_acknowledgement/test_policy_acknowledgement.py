@@ -234,3 +234,20 @@ class TestPolicyAcknowledgement(FrappeTestCase):
             allowed = policy_ack_controller.has_permission(doc, user="guardian@example.com")
 
         self.assertFalse(allowed)
+
+    def test_on_doctype_update_adds_required_indexes(self):
+        with (
+            patch.object(policy_ack_controller.frappe.db, "add_unique") as add_unique,
+            patch.object(policy_ack_controller.frappe.db, "add_index") as add_index,
+        ):
+            policy_ack_controller.on_doctype_update()
+
+        add_unique.assert_called_once_with(
+            "Policy Acknowledgement",
+            ["policy_version", "acknowledged_by", "context_doctype", "context_name"],
+        )
+        add_index.assert_called_once_with(
+            "Policy Acknowledgement",
+            ["policy_version", "acknowledged_for", "context_doctype", "context_name", "docstatus"],
+            index_name="idx_policy_ack_audience_context_status",
+        )
