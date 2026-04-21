@@ -163,6 +163,7 @@ Operational deployment rule:
 * the exported API wrapper and the underlying Drive integration service must ship together
 * `bench clear-cache` is not sufficient for new Python wrapper exports; restart app processes after deploy
 * verify wrapper availability from `bench --site <site> console` before testing in the browser
+* Ed runtime must fail closed if a required wrapper export is unavailable; it must not import Drive integration service exports directly as a compatibility fallback
 
 Recommended console verification:
 

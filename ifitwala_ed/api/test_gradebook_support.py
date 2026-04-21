@@ -7,14 +7,18 @@ from ifitwala_ed.tests.frappe_stubs import import_fresh, stubbed_frappe
 
 
 class TestGradebookSupport(TestCase):
-    def test_get_student_meta_map_requests_thumb_only_student_images(self):
+    def test_get_student_meta_map_requests_derivative_only_student_images(self):
         helper_state = {"calls": []}
 
         quiz_service = types.ModuleType("ifitwala_ed.assessment.quiz_service")
         quiz_service.MANUAL_TYPES = set()
         task_submission_service = types.ModuleType("ifitwala_ed.assessment.task_submission_service")
         image_utils = types.ModuleType("ifitwala_ed.utilities.image_utils")
-        image_utils.PROFILE_IMAGE_THUMB_ONLY_SLOTS = ("profile_image_thumb",)
+        image_utils.PROFILE_IMAGE_DERIVATIVE_SLOTS = (
+            "profile_image_thumb",
+            "profile_image_card",
+            "profile_image_medium",
+        )
 
         def apply_preferred_student_images(rows, **kwargs):
             helper_state["calls"].append(kwargs)
@@ -57,7 +61,11 @@ class TestGradebookSupport(TestCase):
                 {
                     "student_field": "name",
                     "image_field": "student_image",
-                    "slots": ("profile_image_thumb",),
+                    "slots": (
+                        "profile_image_thumb",
+                        "profile_image_card",
+                        "profile_image_medium",
+                    ),
                     "fallback_to_original": False,
                     "request_missing_derivatives": True,
                 }
@@ -71,7 +79,11 @@ class TestGradebookSupport(TestCase):
         task_submission_service = types.ModuleType("ifitwala_ed.assessment.task_submission_service")
 
         image_utils = types.ModuleType("ifitwala_ed.utilities.image_utils")
-        image_utils.PROFILE_IMAGE_THUMB_ONLY_SLOTS = ("profile_image_thumb",)
+        image_utils.PROFILE_IMAGE_DERIVATIVE_SLOTS = (
+            "profile_image_thumb",
+            "profile_image_card",
+            "profile_image_medium",
+        )
         image_utils.apply_preferred_student_images = lambda rows, **kwargs: rows
 
         with stubbed_frappe(

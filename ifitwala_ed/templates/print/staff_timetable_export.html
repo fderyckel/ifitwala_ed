@@ -74,7 +74,7 @@
 								<div class="day-panel__all-day">
 									<div class="day-panel__section-label">{{ _("All-day") }}</div>
 									{% for event in day.all_day_events %}
-									<div class="all-day-chip all-day-chip--{{ event.source_class }}" style="--event-accent: {{ event.color }};">
+									<div class="all-day-chip all-day-chip--{{ event.source_class }}" style="--event-accent: {{ event.accent_color }}; --event-border: {{ event.border_color }}; --event-bg-strong: {{ event.background_strong }}; --event-bg-soft: {{ event.background_soft }}; --event-badge-bg: {{ event.badge_background }}; --event-badge-text: {{ event.badge_text }};">
 										<span class="all-day-chip__label">{{ event.source_label }}</span>
 										<span class="all-day-chip__title">{{ event.title }}</span>
 										{% if event.location %}
@@ -88,7 +88,7 @@
 								<div class="day-panel__timeline">
 									{% if day.timed_events %}
 										{% for event in day.timed_events %}
-										<article class="event-card event-card--{{ event.source_class }}" style="--event-accent: {{ event.color }};">
+										<article class="event-card event-card--{{ event.source_class }}" style="--event-accent: {{ event.accent_color }}; --event-border: {{ event.border_color }}; --event-bg-strong: {{ event.background_strong }}; --event-bg-soft: {{ event.background_soft }}; --event-badge-bg: {{ event.badge_background }}; --event-badge-text: {{ event.badge_text }};">
 											<div class="event-card__meta-row">
 												<span class="event-card__badge">{{ event.source_label }}</span>
 												<span class="event-card__time">{{ event.time_label }}</span>
@@ -106,6 +106,10 @@
 							</div>
 							{% if day.in_window %}
 							<div class="day-panel__planning">
+								<div class="planning-line">
+									<span class="planning-line__checkbox"></span>
+									<span class="planning-line__rule"></span>
+								</div>
 								<div class="planning-line">
 									<span class="planning-line__checkbox"></span>
 									<span class="planning-line__rule"></span>

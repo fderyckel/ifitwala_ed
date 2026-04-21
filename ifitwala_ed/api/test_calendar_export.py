@@ -7,6 +7,8 @@ import pytz
 
 from ifitwala_ed.api.calendar_export import (
     PDF_OPTIONS,
+    _build_embedded_print_font_css_from_candidates,
+    _build_event_palette,
     _build_timetable_weeks,
     _format_date_span,
     _render_staff_timetable_pdf,
@@ -115,6 +117,29 @@ class TestCalendarExport(TestCase):
         self.assertEqual([day["weekday_short"] for day in weeks[0]["days"]], ["Mon", "Tue", "Wed", "Thu", "Fri"])
         self.assertEqual(weeks[0]["event_count"], 1)
         self.assertNotIn("2026-05-09", [day["iso"] for day in weeks[0]["days"]])
+
+    def test_build_event_palette_uses_calendar_color_for_pastel_print_palette(self):
+        palette = _build_event_palette("#2A9D8F", "school")
+
+        self.assertEqual(palette["accent_color"], "rgb(42, 157, 143)")
+        self.assertEqual(palette["border_color"], "rgba(42, 157, 143, 0.32)")
+        self.assertEqual(palette["badge_background"], "rgba(42, 157, 143, 0.18)")
+        self.assertTrue(palette["background_strong"].startswith("rgb("))
+        self.assertTrue(palette["background_soft"].startswith("rgb("))
+
+    def test_build_embedded_print_font_css_skips_missing_candidates_and_embeds_supported_font(self):
+        from pathlib import Path
+        from tempfile import TemporaryDirectory
+
+        with TemporaryDirectory() as tempdir:
+            font_path = Path(tempdir) / "TestThai.ttf"
+            font_path.write_bytes(b"fake-font-data")
+
+            css = _build_embedded_print_font_css_from_candidates((Path(tempdir) / "Missing.ttf", font_path))
+
+        self.assertIn('font-family: "Ifitwala Print Sans"', css)
+        self.assertIn('format("truetype")', css)
+        self.assertIn("ZmFrZS1mb250LWRhdGE=", css)
 
     def test_resolve_brand_context_falls_back_to_parent_school_logo_and_tagline(self):
         with (

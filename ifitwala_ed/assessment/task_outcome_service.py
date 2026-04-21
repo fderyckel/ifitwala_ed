@@ -259,6 +259,7 @@ def _apply_non_criteria_official_fields(outcome_id, grade_scale, require_grading
         grading_status = "Finalized" if require_grading else "Not Applicable"
 
     official_fields["grading_status"] = grading_status
+    _prune_null_grade_value_for_score_only_updates(official_fields)
     frappe.db.set_value("Task Outcome", outcome_id, official_fields, update_modified=True)
 
     return {"outcome": outcome_id, "grading_status": grading_status}
@@ -289,6 +290,7 @@ def _apply_boolean_official_fields(outcome_id, require_grading, grading_mode, co
         grading_status = "Finalized" if require_grading else "Not Applicable"
 
     updates["grading_status"] = grading_status
+    _prune_null_grade_value_for_score_only_updates(updates)
     frappe.db.set_value("Task Outcome", outcome_id, updates, update_modified=True)
     return {"outcome": outcome_id, "grading_status": grading_status}
 
@@ -337,6 +339,7 @@ def _apply_criteria_official_fields(
         grading_status = "Finalized" if require_grading else "Not Applicable"
 
     updates["grading_status"] = grading_status
+    _prune_null_grade_value_for_score_only_updates(updates)
     frappe.db.set_value("Task Outcome", outcome_id, updates, update_modified=True)
     return {"outcome": outcome_id, "grading_status": grading_status}
 
@@ -505,6 +508,23 @@ def _current_completion_state(outcome_id):
         return 0
     value = frappe.db.get_value("Task Outcome", outcome_id, "is_complete")
     return 1 if int(value or 0) == 1 else 0
+
+
+def _prune_null_grade_value_for_score_only_updates(updates):
+    if not isinstance(updates, dict):
+        return updates
+
+    if updates.get("official_score") in (None, ""):
+        return updates
+
+    grade_symbol = updates.get("official_grade")
+    if grade_symbol not in (None, "") and str(grade_symbol).strip():
+        return updates
+
+    if updates.get("official_grade_value") in (None, ""):
+        updates.pop("official_grade_value", None)
+
+    return updates
 
 
 def _clear_outcome_criteria(outcome_id):

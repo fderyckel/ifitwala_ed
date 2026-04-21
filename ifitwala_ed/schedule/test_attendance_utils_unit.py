@@ -29,7 +29,11 @@ def _attendance_utils_stub_modules(helper_state: dict):
     term_module.get_current_term = lambda school, academic_year: None
 
     image_utils = types.ModuleType("ifitwala_ed.utilities.image_utils")
-    image_utils.PROFILE_IMAGE_THUMB_ONLY_SLOTS = ("profile_image_thumb",)
+    image_utils.PROFILE_IMAGE_DERIVATIVE_SLOTS = (
+        "profile_image_thumb",
+        "profile_image_card",
+        "profile_image_medium",
+    )
 
     def apply_preferred_student_images(rows, **kwargs):
         helper_state["calls"].append(kwargs)
@@ -49,7 +53,7 @@ def _attendance_utils_stub_modules(helper_state: dict):
 
 
 class TestAttendanceUtilsUnit(TestCase):
-    def test_get_student_group_students_requests_thumb_only_student_images(self):
+    def test_get_student_group_students_requests_derivative_only_student_images(self):
         helper_state = {"calls": []}
 
         with stubbed_frappe(extra_modules=_attendance_utils_stub_modules(helper_state)) as frappe:
@@ -74,7 +78,11 @@ class TestAttendanceUtilsUnit(TestCase):
                 {
                     "student_field": "student",
                     "image_field": "student_image",
-                    "slots": ("profile_image_thumb",),
+                    "slots": (
+                        "profile_image_thumb",
+                        "profile_image_card",
+                        "profile_image_medium",
+                    ),
                     "fallback_to_original": False,
                     "request_missing_derivatives": True,
                 }

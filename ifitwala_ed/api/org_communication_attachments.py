@@ -16,6 +16,7 @@ from ifitwala_ed.utilities.governed_uploads import (
     _drive_upload_and_finalize,
     _get_uploaded_file,
     _resolve_upload_mime_type_hint,
+    _workflow_result_payload,
 )
 
 
@@ -220,9 +221,11 @@ def upload_org_communication_attachment(
     )
 
     doc.reload()
+    session_workflow_result = _workflow_result_payload(session_response)
+    finalize_workflow_result = _workflow_result_payload(finalize_response)
     resolved_row_name = (
-        _clean_text(finalize_response.get("row_name"))
-        or _clean_text(session_response.get("row_name"))
+        _clean_text(finalize_workflow_result.get("row_name"))
+        or _clean_text(session_workflow_result.get("row_name"))
         or _clean_text(row_name)
     )
     target_row = _get_attachment_row(doc, resolved_row_name)

@@ -33,7 +33,7 @@ from ifitwala_ed.schedule.schedule_utils import get_effective_schedule_for_ay, g
 from ifitwala_ed.schedule.student_group_scheduling import get_school_for_student_group
 from ifitwala_ed.school_settings.doctype.term.term import get_current_term
 from ifitwala_ed.utilities.image_utils import (
-    PROFILE_IMAGE_THUMB_ONLY_SLOTS,
+    PROFILE_IMAGE_DERIVATIVE_SLOTS,
     apply_preferred_student_images,
 )
 
@@ -46,7 +46,7 @@ LIMIT_DEFAULT = 30  # UI paging only
 DEFAULT_PAGE_LEN = 25
 
 MEETING_DATES_TTL = 24 * 60 * 60  # 1 day
-ATTENDANCE_ROSTER_IMAGE_SLOTS = PROFILE_IMAGE_THUMB_ONLY_SLOTS
+ATTENDANCE_ROSTER_IMAGE_SLOTS = PROFILE_IMAGE_DERIVATIVE_SLOTS
 
 
 # ---------------------------------------------------------------------

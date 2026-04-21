@@ -48,7 +48,6 @@ import string
 
 import frappe
 from frappe import _
-from frappe.contacts.address_and_contact import load_address_and_contact
 from frappe.desk.form.linked_with import get_linked_doctypes
 from frappe.model.document import Document
 from frappe.utils import get_files_path, get_link_to_form, getdate, today, validate_email_address
@@ -62,9 +61,6 @@ from ifitwala_ed.integrations.drive.authority import is_governed_file
 
 
 class Student(Document):
-    def onload(self):
-        load_address_and_contact(self)
-
     def before_insert(self):
         self._validate_creation_source()
 
@@ -704,24 +700,161 @@ def _parse_name_list(value) -> list[str]:
     return names
 
 
+def _build_student_contact_summary(contact_name: str | None) -> dict | None:
+    contact_name = (contact_name or "").strip()
+    if not contact_name or not frappe.db.exists("Contact", contact_name):
+        return None
+
+    contact_row = (
+        frappe.db.get_value(
+            "Contact",
+            contact_name,
+            ["first_name", "last_name", "email_id", "mobile_no"],
+            as_dict=True,
+        )
+        or {}
+    )
+    display_name = (
+        " ".join(
+            filter(
+                None,
+                [
+                    (contact_row.get("first_name") or "").strip(),
+                    (contact_row.get("last_name") or "").strip(),
+                ],
+            )
+        ).strip()
+        or contact_name
+    )
+
+    email_rows = frappe.get_all(
+        "Contact Email",
+        filters={"parent": contact_name},
+        fields=["email_id", "is_primary", "idx"],
+        order_by="is_primary desc, idx asc, creation asc",
+        limit=0,
+    )
+    phone_rows = frappe.get_all(
+        "Contact Phone",
+        filters={"parent": contact_name},
+        fields=["phone", "is_primary_mobile_no", "idx"],
+        order_by="is_primary_mobile_no desc, idx asc, creation asc",
+        limit=0,
+    )
+
+    emails = []
+    seen_emails = set()
+    for row in email_rows:
+        value = (row.get("email_id") or "").strip()
+        if not value or value in seen_emails:
+            continue
+        seen_emails.add(value)
+        emails.append({"value": value, "is_primary": int(row.get("is_primary") or 0)})
+
+    fallback_email = (contact_row.get("email_id") or "").strip()
+    if fallback_email and fallback_email not in seen_emails:
+        emails.insert(0, {"value": fallback_email, "is_primary": 1})
+
+    phones = []
+    seen_phones = set()
+    for row in phone_rows:
+        value = (row.get("phone") or "").strip()
+        if not value or value in seen_phones:
+            continue
+        seen_phones.add(value)
+        phones.append({"value": value, "is_primary": int(row.get("is_primary_mobile_no") or 0)})
+
+    fallback_phone = (contact_row.get("mobile_no") or "").strip()
+    if fallback_phone and fallback_phone not in seen_phones:
+        phones.insert(0, {"value": fallback_phone, "is_primary": 1})
+
+    return {
+        "name": contact_name,
+        "display_name": display_name,
+        "emails": emails,
+        "phones": phones,
+    }
+
+
+def _build_student_address_summaries(address_names: list[str]) -> list[dict]:
+    if not address_names:
+        return []
+
+    rows = frappe.get_all(
+        "Address",
+        filters={"name": ["in", address_names]},
+        fields=[
+            "name",
+            "address_title",
+            "address_type",
+            "address_line1",
+            "address_line2",
+            "city",
+            "state",
+            "country",
+            "pincode",
+        ],
+        order_by="creation asc",
+        limit=0,
+    )
+    by_name = {(row.get("name") or "").strip(): row for row in rows if (row.get("name") or "").strip()}
+
+    summaries = []
+    for address_name in address_names:
+        row = by_name.get(address_name)
+        if not row:
+            continue
+
+        locality = ", ".join(
+            part for part in [(row.get("city") or "").strip(), (row.get("state") or "").strip()] if part
+        )
+        if locality and (row.get("pincode") or "").strip():
+            locality = f"{locality} {(row.get('pincode') or '').strip()}"
+        elif not locality:
+            locality = (row.get("pincode") or "").strip()
+
+        lines = [
+            (row.get("address_line1") or "").strip(),
+            (row.get("address_line2") or "").strip(),
+            locality,
+            (row.get("country") or "").strip(),
+        ]
+        summaries.append(
+            {
+                "name": address_name,
+                "display_title": (row.get("address_title") or address_name).strip() or address_name,
+                "address_type": (row.get("address_type") or "").strip(),
+                "lines": [line for line in lines if line],
+            }
+        )
+
+    return summaries
+
+
 @frappe.whitelist()
 def get_student_crm_summary(student_name: str) -> dict:
     student = _require_student_access(student_name, ptype="read")
     contact_name = (get_contact_linked_to_student(student.name) or "").strip()
     address_names = _get_student_address_names(student.name)
+    contact_summary = _build_student_contact_summary(contact_name)
+    address_summaries = _build_student_address_summaries(address_names)
+    resolved_address_names = [row["name"] for row in address_summaries]
 
     can_open_contact = bool(contact_name and frappe.has_permission("Contact", doc=contact_name, ptype="read"))
     readable_addresses = [
         address_name
-        for address_name in address_names
+        for address_name in resolved_address_names
         if frappe.has_permission("Address", doc=address_name, ptype="read")
     ]
 
     return {
         "contact": contact_name if can_open_contact else None,
+        "contact_summary": contact_summary,
+        "has_hidden_contact": bool(contact_summary and not can_open_contact),
         "addresses": readable_addresses,
-        "address_count": len(address_names),
-        "has_hidden_addresses": len(readable_addresses) != len(address_names),
+        "address_summaries": address_summaries,
+        "address_count": len(address_summaries),
+        "has_hidden_addresses": len(readable_addresses) != len(address_summaries),
     }
 
 

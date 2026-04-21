@@ -100,7 +100,11 @@ class TestGovernedUploadTaskFlows(TestCase):
                     "upload_source": upload_source,
                 }
             )
-            return {"upload_session_id": "DUS-EMP-1"}
+            return {
+                "upload_session_id": "DUS-EMP-1",
+                "upload_token": "drive-token-123",
+                "upload_target": {"headers": {"X-Drive-Upload-Token": "drive-token-123"}},
+            }
 
         def fake_get_doc(doctype, name):
             if doctype == "File":
@@ -143,7 +147,13 @@ class TestGovernedUploadTaskFlows(TestCase):
         self.assertEqual(observed["upload_source"], "Desk")
         self.assertEqual(
             ingest_calls,
-            [{"upload_session_id": "DUS-EMP-1", "content": b"employee-content"}],
+            [
+                {
+                    "upload_session_id": "DUS-EMP-1",
+                    "upload_token": "drive-token-123",
+                    "content": b"employee-content",
+                }
+            ],
         )
         self.assertEqual(session_response["upload_session_id"], "DUS-EMP-1")
         self.assertEqual(finalize_response["file_id"], "FILE-EMP-0001")
@@ -482,8 +492,14 @@ class TestGovernedUploadTaskFlows(TestCase):
                         governed_uploads,
                         "_drive_upload_and_finalize",
                         return_value=(
-                            {"upload_session_id": "DUS-2", "row_name": "row-001"},
-                            {"file_id": "FILE-0002", "row_name": "row-001"},
+                            {
+                                "upload_session_id": "DUS-2",
+                                "workflow_result": {"row_name": "row-001"},
+                            },
+                            {
+                                "file_id": "FILE-0002",
+                                "workflow_result": {"row_name": "row-001"},
+                            },
                             file_doc,
                         ),
                     ) as bridge,

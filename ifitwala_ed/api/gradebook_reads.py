@@ -143,7 +143,7 @@ def get_grid(api, filters=None, **kwargs):
             "official": {
                 "score": row.get("official_score"),
                 "grade": row.get("official_grade"),
-                "grade_value": row.get("official_grade_value"),
+                "grade_value": _grade_value_for_payload(row.get("official_grade"), row.get("official_grade_value")),
                 "feedback": row.get("official_feedback"),
             },
         }
@@ -247,6 +247,7 @@ def get_drawer(api, outcome_id: str, submission_id: str | None = None, version: 
         order_by="submitted_on desc, modified desc",
         limit=100,
     )
+    contributions = [_normalize_contribution_grade_value(row, api) for row in contributions]
 
     my_contribution = api._select_my_contribution(contributions)
     my_criteria = []
@@ -329,7 +330,10 @@ def get_drawer(api, outcome_id: str, submission_id: str | None = None, version: 
             "official": {
                 "score": outcome_doc.get("official_score"),
                 "grade": outcome_doc.get("official_grade"),
-                "grade_value": outcome_doc.get("official_grade_value"),
+                "grade_value": _grade_value_for_payload(
+                    outcome_doc.get("official_grade"),
+                    outcome_doc.get("official_grade_value"),
+                ),
                 "feedback": outcome_doc.get("official_feedback"),
             },
             "criteria": outcome_criteria,
@@ -348,7 +352,10 @@ def get_drawer(api, outcome_id: str, submission_id: str | None = None, version: 
             "judgment_code": my_contribution.get("judgment_code"),
             "score": api._coerce_float(my_contribution.get("score")),
             "grade": my_contribution.get("grade"),
-            "grade_value": api._coerce_float(my_contribution.get("grade_value")),
+            "grade_value": _grade_value_for_payload(
+                my_contribution.get("grade"),
+                api._coerce_float(my_contribution.get("grade_value")),
+            ),
             "criteria": my_criteria,
             "feedback": my_contribution.get("feedback"),
             "submitted_on": my_contribution.get("submitted_on"),
@@ -369,6 +376,26 @@ def get_drawer(api, outcome_id: str, submission_id: str | None = None, version: 
         },
         "contributions": contributions,
     }
+
+
+def _grade_value_for_payload(grade_symbol, grade_value):
+    if grade_symbol in (None, ""):
+        return None
+    if not str(grade_symbol).strip():
+        return None
+    return grade_value
+
+
+def _normalize_contribution_grade_value(row, api):
+    if not isinstance(row, dict):
+        return row
+
+    normalized = dict(row)
+    normalized["grade_value"] = _grade_value_for_payload(
+        normalized.get("grade"),
+        api._coerce_float(normalized.get("grade_value")),
+    )
+    return normalized
 
 
 def fetch_groups(api, search=None, limit=None, school=None, academic_year=None, program=None, course=None):

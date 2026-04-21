@@ -10,11 +10,11 @@ from frappe import _
 
 from ifitwala_ed.assessment import quiz_service, task_submission_service
 from ifitwala_ed.utilities.image_utils import (
-    PROFILE_IMAGE_THUMB_ONLY_SLOTS,
+    PROFILE_IMAGE_DERIVATIVE_SLOTS,
     apply_preferred_student_images,
 )
 
-GRADEBOOK_STUDENT_IMAGE_SLOTS = PROFILE_IMAGE_THUMB_ONLY_SLOTS
+GRADEBOOK_STUDENT_IMAGE_SLOTS = PROFILE_IMAGE_DERIVATIVE_SLOTS
 
 
 def _normalize_filters(filters, kwargs):

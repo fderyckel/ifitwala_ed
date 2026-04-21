@@ -1139,7 +1139,7 @@ class TestFileAccessUnit(TestCase):
 
         self.assertEqual(target_url, "https://signed.example.com/logo.webp")
 
-    def test_resolve_public_website_media_grant_url_uses_service_wrapper_when_api_wrapper_is_unavailable(self):
+    def test_resolve_public_website_media_grant_url_fails_closed_when_api_wrapper_is_unavailable(self):
         with _file_access_module() as (file_access, frappe):
             frappe.db.get_value = lambda doctype, name, fieldname=None, as_dict=False: (
                 "ready"
@@ -1148,22 +1148,17 @@ class TestFileAccessUnit(TestCase):
             )
             file_access.get_drive_file_for_file = lambda file_name, **kwargs: {"name": "DRIVE-PUBLIC-1"}
             file_access._load_drive_media_callable = lambda attribute: None
-            file_access._load_drive_media_service_callable = lambda attribute: (
-                self.assertEqual(attribute, "issue_public_website_media_preview_grant")
-                or (lambda **payload: {"url": "https://signed.example.com/logo-from-service.webp"})
-            )
             file_access._load_drive_access_callable = lambda attribute: self.fail(
                 "generic drive grant path should not be used for public website media"
             )
 
             target_url = file_access._resolve_public_website_media_grant_url("FILE-PUBLIC-1")
 
-        self.assertEqual(target_url, "https://signed.example.com/logo-from-service.webp")
+        self.assertIsNone(target_url)
 
     def test_request_public_website_media_grant_does_not_use_generic_drive_fallback(self):
         with _file_access_module() as (file_access, _frappe):
             file_access._load_drive_media_callable = lambda attribute: None
-            file_access._load_drive_media_service_callable = lambda attribute: None
             file_access._load_drive_access_callable = lambda attribute: self.fail(
                 "generic drive grant path should not be used for public website media"
             )
@@ -1172,6 +1167,57 @@ class TestFileAccessUnit(TestCase):
                 method_name="issue_public_website_media_preview_grant",
                 file_id="FILE-PUBLIC-1",
                 drive_file_id="DRIVE-PUBLIC-1",
+            )
+
+        self.assertIsNone(grant)
+
+    def test_request_student_image_grant_fails_closed_when_media_wrapper_is_unavailable(self):
+        with _file_access_module() as (file_access, _frappe):
+            file_access._load_drive_media_callable = lambda attribute: None
+            file_access._load_drive_access_callable = lambda attribute: self.fail(
+                "generic drive grant path should not be used for student profile images"
+            )
+
+            grant = file_access._request_student_image_grant(
+                method_name="issue_student_image_preview_grant",
+                student="STU-0001",
+                file_id="FILE-STU-1",
+                drive_file_id="DRIVE-STU-1",
+                derivative_role="thumb",
+            )
+
+        self.assertIsNone(grant)
+
+    def test_request_guardian_image_grant_fails_closed_when_media_wrapper_is_unavailable(self):
+        with _file_access_module() as (file_access, _frappe):
+            file_access._load_drive_media_callable = lambda attribute: None
+            file_access._load_drive_access_callable = lambda attribute: self.fail(
+                "generic drive grant path should not be used for guardian profile images"
+            )
+
+            grant = file_access._request_guardian_image_grant(
+                method_name="issue_guardian_image_preview_grant",
+                guardian="GRD-0001",
+                file_id="FILE-GRD-1",
+                drive_file_id="DRIVE-GRD-1",
+                derivative_role="thumb",
+            )
+
+        self.assertIsNone(grant)
+
+    def test_request_employee_image_grant_fails_closed_when_media_wrapper_is_unavailable(self):
+        with _file_access_module() as (file_access, _frappe):
+            file_access._load_drive_media_callable = lambda attribute: None
+            file_access._load_drive_access_callable = lambda attribute: self.fail(
+                "generic drive grant path should not be used for employee profile images"
+            )
+
+            grant = file_access._request_employee_image_grant(
+                method_name="issue_employee_image_preview_grant",
+                employee="EMP-0001",
+                file_id="FILE-EMP-1",
+                drive_file_id="DRIVE-EMP-1",
+                derivative_role="thumb",
             )
 
         self.assertIsNone(grant)

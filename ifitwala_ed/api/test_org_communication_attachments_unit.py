@@ -175,9 +175,10 @@ class TestOrgCommunicationAttachmentsUnit(TestCase):
         governed_uploads = ModuleType("ifitwala_ed.utilities.governed_uploads")
         governed_uploads._get_uploaded_file = lambda: ("announcement.pdf", b"file-bytes")
         governed_uploads._resolve_upload_mime_type_hint = lambda filename=None: "application/pdf"
+        governed_uploads._workflow_result_payload = lambda response: dict((response or {}).get("workflow_result") or {})
         governed_uploads._drive_upload_and_finalize = lambda **kwargs: (
-            {"upload_session_id": "DUS-0001", "row_name": "row-001"},
-            {"file_id": "FILE-0001"},
+            {"upload_session_id": "DUS-0001", "workflow_result": {"row_name": "row-001"}},
+            {"file_id": "FILE-0001", "workflow_result": {"row_name": "row-001"}},
             SimpleNamespace(name="FILE-0001"),
         )
 
@@ -225,6 +226,7 @@ class TestOrgCommunicationAttachmentsUnit(TestCase):
         governed_uploads = ModuleType("ifitwala_ed.utilities.governed_uploads")
         governed_uploads._get_uploaded_file = lambda: ("announcement.pdf", b"file-bytes")
         governed_uploads._resolve_upload_mime_type_hint = lambda filename=None: "application/pdf"
+        governed_uploads._workflow_result_payload = lambda response: dict((response or {}).get("workflow_result") or {})
         governed_uploads._drive_upload_and_finalize = lambda **kwargs: ({}, {}, SimpleNamespace(name="FILE-1"))
 
         with stubbed_frappe(
@@ -288,6 +290,7 @@ class TestOrgCommunicationAttachmentsUnit(TestCase):
         governed_uploads = ModuleType("ifitwala_ed.utilities.governed_uploads")
         governed_uploads._get_uploaded_file = lambda: ("announcement.pdf", b"file-bytes")
         governed_uploads._resolve_upload_mime_type_hint = lambda filename=None: "application/pdf"
+        governed_uploads._workflow_result_payload = lambda response: dict((response or {}).get("workflow_result") or {})
         governed_uploads._drive_upload_and_finalize = lambda **kwargs: ({}, {}, SimpleNamespace(name="FILE-1"))
 
         with stubbed_frappe(

@@ -40,7 +40,11 @@ def _gradebook_stub_modules(
     task_feedback_comment_bank_service=None,
 ):
     image_utils = types.ModuleType("ifitwala_ed.utilities.image_utils")
-    image_utils.PROFILE_IMAGE_THUMB_ONLY_SLOTS = ("profile_image_thumb",)
+    image_utils.PROFILE_IMAGE_DERIVATIVE_SLOTS = (
+        "profile_image_thumb",
+        "profile_image_card",
+        "profile_image_medium",
+    )
     image_utils.apply_preferred_student_images = lambda rows: rows
     quiz_service = types.ModuleType("ifitwala_ed.assessment.quiz_service")
     quiz_service.MANUAL_TYPES = {"Essay"}
@@ -112,6 +116,16 @@ def _gradebook_stub_modules(
             else file_url
         )
     )
+    file_access.resolve_academic_file_thumbnail_url = (
+        lambda *, file_name, file_url, context_doctype=None, context_name=None, **kwargs: (
+            f"/api/method/ifitwala_ed.api.file_access.thumbnail_academic_file?file={file_name}&context_doctype={context_doctype}&context_name={context_name}"
+            if file_name
+            else file_url
+        )
+    )
+    file_access.get_drive_file_thumbnail_ready_map = lambda file_names: {
+        file_name: False for file_name in (file_names or []) if file_name
+    }
 
     return {
         "ifitwala_ed.api.file_access": file_access,
@@ -1116,6 +1130,68 @@ class TestGradebookApi(TestCase):
         )
         self.assertTrue(payload["cells"][0]["flags"]["has_new_submission"])
         self.assertTrue(payload["cells"][1]["flags"]["is_published"])
+
+    def test_get_grid_hides_grade_value_when_official_grade_is_missing(self):
+        with stubbed_frappe(extra_modules=_gradebook_stub_modules()) as frappe:
+
+            def fake_get_all(doctype, filters=None, fields=None, order_by=None, limit=0, pluck=None):
+                if doctype == "Task Delivery":
+                    return [
+                        {
+                            "name": "TDL-0001",
+                            "task": "TASK-1",
+                            "grading_mode": "Points",
+                            "rubric_scoring_strategy": None,
+                            "due_date": "2026-04-03 10:00:00",
+                            "delivery_mode": "Assess",
+                            "allow_feedback": 1,
+                            "max_points": 20,
+                        }
+                    ]
+                if doctype == "Task":
+                    return [{"name": "TASK-1", "title": "Quiz score", "task_type": "Quiz"}]
+                if doctype == "Task Outcome":
+                    return [
+                        {
+                            "name": "OUT-1",
+                            "task_delivery": "TDL-0001",
+                            "student": "STU-1",
+                            "grading_status": "Finalized",
+                            "procedural_status": None,
+                            "has_submission": 1,
+                            "has_new_submission": 0,
+                            "official_score": 20,
+                            "official_grade": None,
+                            "official_grade_value": 0,
+                            "official_feedback": "",
+                            "is_complete": 0,
+                            "is_published": 0,
+                        }
+                    ]
+                return []
+
+            frappe.get_all = fake_get_all
+
+            module = _import_fresh_gradebook()
+            module.gradebook_support._can_read_gradebook = lambda: True
+            module.gradebook_support._resolve_gradebook_scope = lambda school, academic_year, course: {}
+            module.gradebook_support._assert_group_access = lambda student_group: None
+            module.gradebook_support._get_student_display_map = lambda student_ids: {"STU-1": "Ada Lovelace"}
+            module.gradebook_support._get_student_meta_map = lambda student_ids: {
+                "STU-1": {"student_id": "S-001", "student_image": None}
+            }
+
+            payload = module.get_grid(
+                {
+                    "school": "SCH-1",
+                    "academic_year": "2025-2026",
+                    "limit": 1,
+                }
+            )
+
+        self.assertEqual(payload["cells"][0]["official"]["score"], 20)
+        self.assertIsNone(payload["cells"][0]["official"]["grade"])
+        self.assertIsNone(payload["cells"][0]["official"]["grade_value"])
 
     def test_update_task_student_rejects_feedback_when_comments_disabled(self):
         with stubbed_frappe(extra_modules=_gradebook_stub_modules()) as frappe:

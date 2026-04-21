@@ -17,6 +17,7 @@ def _admissions_portal_module():
     governed_uploads = ModuleType("ifitwala_ed.utilities.governed_uploads")
     governed_uploads._drive_upload_and_finalize = lambda **kwargs: None
     governed_uploads._resolve_upload_mime_type_hint = lambda **kwargs: None
+    governed_uploads._workflow_result_payload = lambda response: dict((response or {}).get("workflow_result") or {})
 
     drive_admissions_api = ModuleType("ifitwala_drive.api.admissions")
     drive_admissions_api.upload_applicant_document = object()
@@ -89,7 +90,7 @@ class TestAdmissionsPortalUploadMimeHints(TestCase):
                         {
                             "drive_file_id": "DRV-FILE-0001",
                             "canonical_ref": "drv:ORG-1:DRV-FILE-0001",
-                            "slot": "profile_image",
+                            "workflow_result": {"slot": "profile_image"},
                         },
                         file_doc,
                     ),
@@ -126,7 +127,7 @@ class TestAdmissionsPortalUploadMimeHints(TestCase):
                         {
                             "drive_file_id": "DRV-FILE-0002",
                             "canonical_ref": "drv:ORG-1:DRV-FILE-0002",
-                            "slot": "profile_image",
+                            "workflow_result": {"slot": "profile_image"},
                         },
                         file_doc,
                     ),

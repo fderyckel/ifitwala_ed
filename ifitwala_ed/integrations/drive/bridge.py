@@ -130,9 +130,8 @@ def reconcile_upload_session_payload(payload: dict[str, Any]) -> dict[str, Any]:
             "workflow_payload": workflow_payload,
         }
 
-    from ifitwala_ed.integrations.drive import tasks
-
-    return tasks.reconcile_task_submission_session_payload(payload)
+    frappe.throw(_("workflow_id is required."))
+    return {}
 
 
 def resolve_finalize_contract(upload_session_doc) -> dict[str, Any]:

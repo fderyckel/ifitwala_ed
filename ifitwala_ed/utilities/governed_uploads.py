@@ -222,6 +222,9 @@ def _drive_upload_and_finalize(*, create_session_callable, payload: dict, conten
     upload_session_id = session_response.get("upload_session_id")
     if not upload_session_id:
         frappe.throw(_("Drive did not return an upload_session_id."))
+    upload_token = session_response.get("upload_token")
+    if not upload_token:
+        frappe.throw(_("Drive did not return an upload_token for the buffered upload flow."))
 
     ingest_upload_session_content = getattr(drive_uploads_api, "ingest_upload_session_content", None)
     if not callable(ingest_upload_session_content):
@@ -230,7 +233,11 @@ def _drive_upload_and_finalize(*, create_session_callable, payload: dict, conten
                 "Ifitwala Drive is missing ingest_upload_session_content. Deploy or restart the Drive app so the updated upload API is available."
             )
         )
-    ingest_upload_session_content(upload_session_id=upload_session_id, content=content)
+    ingest_upload_session_content(
+        upload_session_id=upload_session_id,
+        upload_token=upload_token,
+        content=content,
+    )
 
     finalize_response = drive_uploads_api.finalize_upload_session(
         upload_session_id=upload_session_id,
@@ -241,6 +248,15 @@ def _drive_upload_and_finalize(*, create_session_callable, payload: dict, conten
         frappe.throw(_("Drive finalize did not return a file_id."))
 
     return session_response, finalize_response, frappe.get_doc("File", file_name)
+
+
+def _workflow_result_payload(response: dict | None) -> dict:
+    if not isinstance(response, dict):
+        return {}
+    workflow_result = response.get("workflow_result")
+    if not isinstance(workflow_result, dict):
+        return {}
+    return dict(workflow_result)
 
 
 def _build_drive_idempotency_key(*, payload: dict, content: bytes) -> str:
@@ -467,7 +483,9 @@ def upload_task_resource(task: str | None = None, row_name: str | None = None, *
     _ensure_file_on_disk(file_doc)
 
     payload = _response_payload(file_doc)
-    payload["row_name"] = finalize_response.get("row_name") or session_response.get("row_name")
+    session_workflow_result = _workflow_result_payload(session_response)
+    finalize_workflow_result = _workflow_result_payload(finalize_response)
+    payload["row_name"] = finalize_workflow_result.get("row_name") or session_workflow_result.get("row_name")
     return payload
 
 
@@ -570,8 +588,12 @@ def upload_school_gallery_image(school: str | None = None, row_name: str | None 
 
     payload = _response_payload(file_doc)
     payload["school"] = doc.name
-    payload["row_name"] = finalize_response.get("row_name") or session_response.get("row_name")
-    payload["caption"] = session_response.get("caption") or caption or None
+    session_workflow_result = _workflow_result_payload(session_response)
+    finalize_workflow_result = _workflow_result_payload(finalize_response)
+    payload["row_name"] = finalize_workflow_result.get("row_name") or session_workflow_result.get("row_name")
+    payload["caption"] = (
+        finalize_workflow_result.get("caption") or session_workflow_result.get("caption") or caption or None
+    )
     return payload
 
 

@@ -70,6 +70,7 @@ Current behavior:
 - Ed creates the Drive session
 - Ed hands buffered upload bytes to a Drive-owned ingest helper
 - Drive owns storage writes and `Drive Upload Session` state mutation
+- the session DTO now returns an explicit `upload_token`, so Ed no longer scrapes `upload_target.headers` to recover buffered-ingest credentials
 
 Outcome:
 
@@ -163,6 +164,8 @@ Implemented fix:
 - Drive is the only derivative authority
 - Ed synchronous derivative generation is removed
 - profile-image derivative scheduling now goes through the Drive preview pipeline
+- when Ed roster/avatar surfaces detect missing current-version profile-image derivatives, they request Drive regeneration through the explicit media wrapper seam rather than importing Drive derivative services directly
+- Ed profile-image and public-website media reads now depend on public Drive API wrappers only; they do not import Drive integration services directly and they do not fall back to generic Drive owner-doc grant APIs for those Ed-owned surfaces
 - small student roster/avatar surfaces such as gradebook, attendance, and student-log lookup now consume governed profile-image derivatives only and do not fall back to original-file URLs when no derivative is ready
 
 ### 2.6 Resolved: governed profile-image reads no longer probe storage directly
@@ -235,6 +238,9 @@ Implemented fix:
 - Ed now exposes one runtime `GovernedUploadSpec` registry in `workflow_specs.py`
 - Drive wrapper services now stamp `workflow_id`, `contract_version`, and `workflow_payload`
 - `Drive Upload Session.upload_contract_json` now persists workflow metadata under `workflow`
+- new session creation fails closed without `workflow_id`
+- the locked session/finalize DTOs now expose `workflow_id`, `contract_version`, and typed `workflow_result`
+- wrapper-specific extras such as `row_name`, admissions item metadata, or gallery captions must live under `workflow_result`, not as scattered top-level session/finalize keys
 - finalize and post-finalize dispatch now resolve by persisted `workflow_id` first and fall back to detection only for pre-registry sessions
 
 Remaining cleanup:
@@ -242,6 +248,7 @@ Remaining cleanup:
 - some wrapper-specific service modules still exist for public ergonomics
 - a few historical finalize sessions may still rely on workflow detection fallback instead of persisted workflow metadata
 - some historical audit/discussion notes may still mention the retired `File Classification` and Ed-side derivative model and must not be treated as runtime design guidance
+- some compatibility-heavy write helpers still fetch the native `File` projection after finalize, so `file_id` remains part of the locked generic finalize DTO until those reads are fully retired
 
 ### 2.9 Resolved: student task submission uploads now follow the governed append-only path
 

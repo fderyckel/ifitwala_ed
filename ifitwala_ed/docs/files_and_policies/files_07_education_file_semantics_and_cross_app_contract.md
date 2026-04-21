@@ -156,6 +156,9 @@ Current runtime note:
 - Drive persists the workflow metadata inside `Drive Upload Session.upload_contract_json.workflow`
 - the session row itself remains the authority for resolved owner, attached target, subject, and governance fields
 - finalize uses persisted `workflow_id` first and falls back to detection only for pre-registry sessions
+- new session creation fails closed without `workflow_id`
+- the locked generic DTO now carries `upload_token`, `workflow_id`, `contract_version`, and typed `workflow_result`
+- wrapper-specific metadata such as `row_name`, admissions item identifiers, or gallery captions must travel only through `workflow_result`
 
 ## 7. API shape direction
 
@@ -200,7 +203,9 @@ Current rule:
 
 ## 10. Current-runtime note
 
-Current code still retains some wrapper-specific public entrypoints and compatibility fallbacks.
+Current code still retains some wrapper-specific public entrypoints and a small amount of finalize-time detection fallback for pre-registry sessions.
+
+New governed session creation no longer falls back when `workflow_id` is missing.
 
 Those patterns are transitional and are tracked in:
 

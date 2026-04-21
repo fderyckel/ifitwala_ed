@@ -8,6 +8,86 @@ from ifitwala_ed.tests.frappe_stubs import import_fresh, stubbed_frappe
 
 
 class TestTaskOutcomeService(TestCase):
+    def test_points_score_without_grade_scale_omits_null_grade_value_update(self):
+        updates = []
+
+        with stubbed_frappe() as frappe:
+
+            def fake_get_value(doctype, name, fieldname=None, as_dict=False):
+                if doctype == "Task Outcome" and fieldname == [
+                    "task_delivery",
+                    "grade_scale",
+                    "is_published",
+                ]:
+                    return {
+                        "task_delivery": "TDL-1",
+                        "grade_scale": None,
+                        "is_published": 0,
+                    }
+                if doctype == "Task Outcome" and fieldname == [
+                    "official_score",
+                    "official_grade",
+                    "official_grade_value",
+                ]:
+                    return {
+                        "official_score": None,
+                        "official_grade": None,
+                        "official_grade_value": None,
+                    }
+                if doctype == "Task Delivery":
+                    return {
+                        "grading_mode": "Points",
+                        "require_grading": 1,
+                        "rubric_scoring_strategy": None,
+                        "grade_scale": None,
+                        "rubric_version": None,
+                    }
+                return None
+
+            def fake_get_values(doctype, filters=None, fieldname=None, order_by=None, as_dict=False):
+                if doctype == "Task Contribution":
+                    return [
+                        {
+                            "name": "TCO-1",
+                            "contribution_type": "Self",
+                            "judgment_code": None,
+                            "score": 20,
+                            "grade": None,
+                            "grade_value": None,
+                            "feedback": "",
+                            "moderation_action": None,
+                            "modified": "2026-04-21 11:10:00",
+                        }
+                    ]
+                return []
+
+            frappe.db.get_value = fake_get_value
+            frappe.db.get_values = fake_get_values
+            frappe.db.set_value = lambda doctype, name, values, update_modified=True: updates.append(
+                (doctype, name, values, update_modified)
+            )
+
+            module = import_fresh("ifitwala_ed.assessment.task_outcome_service")
+            payload = module.apply_official_outcome_from_contributions("OUT-1")
+
+        self.assertEqual(payload, {"outcome": "OUT-1", "grading_status": "Finalized"})
+        self.assertEqual(
+            updates,
+            [
+                (
+                    "Task Outcome",
+                    "OUT-1",
+                    {
+                        "official_score": 20,
+                        "official_grade": None,
+                        "official_feedback": "",
+                        "grading_status": "Finalized",
+                    },
+                    True,
+                )
+            ],
+        )
+
     def test_completion_judgment_contribution_updates_is_complete_and_clears_scalar_fields(self):
         updates = []
 
@@ -393,7 +473,6 @@ class TestTaskOutcomeService(TestCase):
                 {
                     "official_score": 84.0,
                     "official_grade": None,
-                    "official_grade_value": None,
                     "official_feedback": "Strong evidence.",
                     "grading_status": "Finalized",
                 },

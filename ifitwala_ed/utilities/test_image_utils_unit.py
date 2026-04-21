@@ -18,12 +18,10 @@ def _image_utils_module():
     )
     file_access.resolve_guardian_file_open_url = lambda **kwargs: None
     file_access.resolve_academic_file_open_url = lambda **kwargs: None
+    media_client = ModuleType("ifitwala_ed.integrations.drive.media_client")
+    media_client.request_profile_image_preview_derivatives = lambda *args, **kwargs: None
 
     drive_root = ModuleType("ifitwala_drive")
-    drive_services = ModuleType("ifitwala_drive.services")
-    drive_files = ModuleType("ifitwala_drive.services.files")
-    drive_derivatives = ModuleType("ifitwala_drive.services.files.derivatives")
-    drive_derivatives.sync_preview_pipeline_for_current_version = lambda **kwargs: None
     pil_module = ModuleType("PIL")
     pil_image_module = ModuleType("PIL.Image")
     pil_module.Image = pil_image_module
@@ -31,10 +29,8 @@ def _image_utils_module():
     with stubbed_frappe(
         extra_modules={
             "ifitwala_ed.api.file_access": file_access,
+            "ifitwala_ed.integrations.drive.media_client": media_client,
             "ifitwala_drive": drive_root,
-            "ifitwala_drive.services": drive_services,
-            "ifitwala_drive.services.files": drive_files,
-            "ifitwala_drive.services.files.derivatives": drive_derivatives,
             "PIL": pil_module,
             "PIL.Image": pil_image_module,
         }
@@ -49,7 +45,7 @@ class TestImageUtilsUnit(TestCase):
     def test_apply_preferred_student_images_thumb_only_requeues_missing_derivatives(self):
         with _image_utils_module() as (image_utils, frappe):
             rows = [{"name": "STU-0001", "student_image": "/private/files/student-source.png"}]
-            sync_calls = []
+            request_calls = []
             cache_writes = []
 
             class _FakeCache:
@@ -85,15 +81,12 @@ class TestImageUtilsUnit(TestCase):
 
             frappe.get_all = fake_get_all
             frappe.cache = lambda: _FakeCache()
-            frappe.get_doc = lambda doctype, name: SimpleNamespace(name=name, doctype=doctype)
-            frappe.db.get_value = lambda doctype, name, fieldname=None, as_dict=False: (
-                "image/webp" if doctype == "Drive File Version" and name == "DFV-STU-1" else None
-            )
 
             with (
-                patch(
-                    "ifitwala_drive.services.files.derivatives.sync_preview_pipeline_for_current_version",
-                    side_effect=lambda **kwargs: sync_calls.append(kwargs),
+                patch.object(
+                    image_utils,
+                    "request_profile_image_preview_derivatives",
+                    side_effect=lambda *args, **kwargs: request_calls.append((args, kwargs)),
                 ),
                 patch.object(image_utils, "_resolve_original_governed_image_url") as resolve_original,
             ):
@@ -108,12 +101,112 @@ class TestImageUtilsUnit(TestCase):
 
         resolve_original.assert_not_called()
         self.assertIsNone(rows[0]["student_image"])
-        self.assertEqual(len(sync_calls), 1)
-        self.assertEqual(sync_calls[0]["mime_type"], "image/webp")
-        self.assertEqual(sync_calls[0]["drive_file_doc"].name, "DRIVE-STU-1")
+        self.assertEqual(
+            request_calls,
+            [
+                (
+                    ("Student", "STU-0001"),
+                    {
+                        "file_id": "FILE-STU-1",
+                        "derivative_roles": ["thumb"],
+                    },
+                )
+            ],
+        )
         self.assertEqual(len(cache_writes), 1)
         self.assertEqual(cache_writes[0][1], 1)
         self.assertEqual(cache_writes[0][2], 300)
+
+    def test_apply_preferred_student_images_derivative_only_uses_ready_card_and_requeues_missing_thumb(self):
+        with _image_utils_module() as (image_utils, frappe):
+            rows = [{"name": "STU-0001", "student_image": "/private/files/student-source.png"}]
+            request_calls = []
+
+            class _FakeCache:
+                def get_value(self, key):
+                    return None
+
+                def set_value(self, key, value, expires_in_sec=None):
+                    del key, value, expires_in_sec
+
+            image_utils.get_current_drive_files_for_slots = lambda **kwargs: [
+                {
+                    "name": "DRIVE-STU-1",
+                    "primary_subject_id": "STU-0001",
+                    "slot": "profile_image",
+                    "file": "FILE-STU-1",
+                    "current_version": "DFV-STU-1",
+                }
+            ]
+
+            def fake_get_all(doctype, filters=None, fields=None, limit=None, order_by=None):
+                del filters, fields, limit, order_by
+                if doctype == "File":
+                    return [
+                        {
+                            "name": "FILE-STU-1",
+                            "file_url": "/private/files/student-source.png",
+                            "is_private": 1,
+                        }
+                    ]
+                if doctype == "Drive File Derivative":
+                    return [
+                        {
+                            "drive_file": "DRIVE-STU-1",
+                            "derivative_role": "card",
+                        }
+                    ]
+                raise AssertionError(f"Unexpected get_all doctype: {doctype}")
+
+            frappe.get_all = fake_get_all
+            frappe.cache = lambda: _FakeCache()
+
+            def fake_resolve_display_url(
+                primary_subject_type,
+                subject_name,
+                *,
+                file_name,
+                file_url,
+                drive_file_id=None,
+                canonical_ref=None,
+                derivative_role=None,
+            ):
+                del primary_subject_type, file_url, drive_file_id, canonical_ref
+                suffix = derivative_role or "original"
+                return f"/resolved/{subject_name}/{file_name}/{suffix}"
+
+            with (
+                patch.object(
+                    image_utils,
+                    "request_profile_image_preview_derivatives",
+                    side_effect=lambda *args, **kwargs: request_calls.append((args, kwargs)),
+                ),
+                patch.object(image_utils, "_resolve_governed_display_url", side_effect=fake_resolve_display_url),
+                patch.object(image_utils, "_resolve_original_governed_image_url") as resolve_original,
+            ):
+                image_utils.apply_preferred_student_images(
+                    rows,
+                    student_field="name",
+                    image_field="student_image",
+                    slots=image_utils.PROFILE_IMAGE_DERIVATIVE_SLOTS,
+                    fallback_to_original=False,
+                    request_missing_derivatives=True,
+                )
+
+        resolve_original.assert_not_called()
+        self.assertEqual(rows[0]["student_image"], "/resolved/STU-0001/FILE-STU-1/card")
+        self.assertEqual(
+            request_calls,
+            [
+                (
+                    ("Student", "STU-0001"),
+                    {
+                        "file_id": "FILE-STU-1",
+                        "derivative_roles": ["card", "thumb", "viewer_preview"],
+                    },
+                )
+            ],
+        )
 
     def test_apply_preferred_student_images_uses_unbounded_variant_queries_for_large_rosters(self):
         with _image_utils_module() as (image_utils, frappe):

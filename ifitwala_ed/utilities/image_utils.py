@@ -22,12 +22,18 @@ from ifitwala_ed.integrations.drive.authority import (
     get_drive_file_for_file,
     is_governed_file,
 )
+from ifitwala_ed.integrations.drive.media_client import request_profile_image_preview_derivatives
 
 PROFILE_IMAGE_VARIANT_SLOTS = (
     "profile_image_thumb",
     "profile_image_card",
     "profile_image_medium",
     "profile_image",
+)
+PROFILE_IMAGE_DERIVATIVE_SLOTS = (
+    "profile_image_thumb",
+    "profile_image_card",
+    "profile_image_medium",
 )
 PROFILE_IMAGE_THUMB_ONLY_SLOTS = ("profile_image_thumb",)
 PROFILE_IMAGE_VARIANT_PRIORITY = PROFILE_IMAGE_VARIANT_SLOTS
@@ -371,6 +377,7 @@ def _preview_sync_request_cache_key(
 
 def _request_missing_preview_derivatives(
     *,
+    primary_subject_type: str,
     rows: Sequence[dict],
     derivative_roles: Sequence[str],
     ready_roles_by_drive_file: dict[str, set[str]],
@@ -379,19 +386,16 @@ def _request_missing_preview_derivatives(
     if not requested_roles:
         return
 
-    try:
-        from ifitwala_drive.services.files.derivatives import sync_preview_pipeline_for_current_version
-    except Exception:
-        return
-
     cache = frappe.cache() if hasattr(frappe, "cache") else None
     cache_get = getattr(cache, "get_value", None)
     cache_set = getattr(cache, "set_value", None)
 
     for row in rows or []:
         drive_file_id = str(row.get("name") or "").strip()
+        subject_name = str(row.get("primary_subject_id") or "").strip()
+        file_id = str(row.get("file") or "").strip()
         current_version = str(row.get("current_version") or "").strip()
-        if not drive_file_id or not current_version:
+        if not drive_file_id or not current_version or not subject_name or not file_id:
             continue
 
         ready_roles = ready_roles_by_drive_file.get(drive_file_id, set())
@@ -407,11 +411,11 @@ def _request_missing_preview_derivatives(
             continue
 
         try:
-            drive_file_doc = frappe.get_doc("Drive File", drive_file_id)
-            mime_type = frappe.db.get_value("Drive File Version", current_version, "mime_type")
-            sync_preview_pipeline_for_current_version(
-                drive_file_doc=drive_file_doc,
-                mime_type=mime_type,
+            request_profile_image_preview_derivatives(
+                primary_subject_type,
+                subject_name,
+                file_id=file_id,
+                derivative_roles=requested_roles,
             )
             if callable(cache_set):
                 cache_set(cache_key, 1, expires_in_sec=_PREVIEW_SYNC_REQUEST_TTL_SECONDS)
@@ -484,6 +488,7 @@ def _get_governed_image_variants_map(
                 ready_roles_by_drive_file.setdefault(drive_file_id, set()).add(derivative_role)
         if request_missing_derivatives:
             _request_missing_preview_derivatives(
+                primary_subject_type=primary_subject_type,
                 rows=rows,
                 derivative_roles=derivative_roles,
                 ready_roles_by_drive_file=ready_roles_by_drive_file,
