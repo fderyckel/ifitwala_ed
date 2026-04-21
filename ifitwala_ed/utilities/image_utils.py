@@ -35,6 +35,7 @@ PROFILE_IMAGE_DERIVATIVE_SLOTS = (
     "profile_image_card",
     "profile_image_medium",
 )
+PROFILE_IMAGE_CURRENT_FILE_STATUSES = ("active", "processing", "blocked")
 PROFILE_IMAGE_THUMB_ONLY_SLOTS = ("profile_image_thumb",)
 PROFILE_IMAGE_VARIANT_PRIORITY = PROFILE_IMAGE_VARIANT_SLOTS
 PROFILE_IMAGE_VARIANT_ROLE_MAP = {
@@ -442,7 +443,7 @@ def _get_governed_image_variants_map(
         primary_subject_ids=names,
         slots=("profile_image",),
         fields=["name", "primary_subject_id", "slot", "file", "current_version", "canonical_ref"],
-        statuses=("active",),
+        statuses=PROFILE_IMAGE_CURRENT_FILE_STATUSES,
     )
     if not rows:
         return {}
@@ -865,7 +866,7 @@ def _get_current_governed_profile_file(*, primary_subject_type: str, subject_nam
         primary_subject_id=resolved_subject,
         slot="profile_image",
         fields=["file", "current_version"],
-        statuses=("active",),
+        statuses=PROFILE_IMAGE_CURRENT_FILE_STATUSES,
     )
     if not str((drive_file or {}).get("current_version") or "").strip():
         return None

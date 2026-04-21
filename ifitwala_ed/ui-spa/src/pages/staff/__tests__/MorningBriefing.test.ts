@@ -5,6 +5,7 @@ const {
 	createResourceMock,
 	widgetsPayloadRef,
 	getOrgCommInteractionSummaryMock,
+	getCommunicationThreadMock,
 	getOrgCommunicationItemMock,
 	markOrgCommunicationReadMock,
 	subscribeMock,
@@ -14,6 +15,7 @@ const {
 			current: null as Record<string, unknown> | null,
 		},
 		getOrgCommInteractionSummaryMock: vi.fn(),
+		getCommunicationThreadMock: vi.fn(),
 		getOrgCommunicationItemMock: vi.fn(),
 		markOrgCommunicationReadMock: vi.fn(),
 		subscribeMock: vi.fn(() => vi.fn()),
@@ -65,7 +67,7 @@ vi.mock('@/composables/useOverlayStack', () => ({
 vi.mock('@/lib/services/communicationInteraction/communicationInteractionService', () => ({
 	createCommunicationInteractionService: () => ({
 		getOrgCommInteractionSummary: getOrgCommInteractionSummaryMock,
-		getCommunicationThread: vi.fn(),
+		getCommunicationThread: getCommunicationThreadMock,
 		reactToOrgCommunication: vi.fn(),
 		postOrgCommunicationComment: vi.fn(),
 		markOrgCommunicationRead: markOrgCommunicationReadMock,
@@ -113,8 +115,13 @@ vi.mock('@/components/ContentDialog.vue', () => ({
 				type: String,
 				default: '',
 			},
+			showComments: {
+				type: Boolean,
+				default: true,
+			},
 		},
-		setup(props) {
+		emits: ['open-comments'],
+		setup(props, { emit }) {
 			return () =>
 				props.modelValue
 					? h('div', { 'data-testid': 'content-dialog-stub' }, [
@@ -135,6 +142,16 @@ vi.mock('@/components/ContentDialog.vue', () => ({
 								{ 'data-testid': 'content-dialog-attachments-error' },
 								props.attachmentsError
 							),
+							props.showComments
+								? h(
+										'button',
+										{
+											'data-testid': 'content-dialog-open-comments',
+											onClick: () => emit('open-comments'),
+										},
+										'Comments'
+									)
+								: null,
 						])
 					: null;
 		},
@@ -169,7 +186,7 @@ vi.mock('@/components/CommentThreadDrawer.vue', () => ({
 			},
 		},
 		setup(props) {
-			return () => (props.open ? h('div', 'Comment drawer') : null);
+			return () => (props.open ? h('div', { 'data-testid': 'comment-drawer-stub' }, 'Comment drawer') : null);
 		},
 	}),
 }));
@@ -264,6 +281,7 @@ afterEach(() => {
 	createResourceMock.mockClear();
 	widgetsPayloadRef.current = null;
 	getOrgCommInteractionSummaryMock.mockReset();
+	getCommunicationThreadMock.mockReset();
 	getOrgCommunicationItemMock.mockReset();
 	markOrgCommunicationReadMock.mockReset();
 	subscribeMock.mockClear();
@@ -444,5 +462,52 @@ describe('MorningBriefing', () => {
 		expect(
 			document.querySelector('[data-testid="content-dialog-content"]')?.innerHTML || ''
 		).toContain('Full detail body');
+	});
+
+	it('closes the content dialog before opening the comment drawer from the announcement overlay', async () => {
+		getOrgCommunicationItemMock.mockResolvedValue({
+			name: 'COMM-0001',
+			title: 'High priority update',
+			message_html: '<p>Full detail body</p>',
+			communication_type: 'Information',
+			priority: 'High',
+			publish_from: '2026-04-19 08:00:00',
+			attachments: [],
+		});
+		getCommunicationThreadMock.mockResolvedValue([]);
+		widgetsPayloadRef.current = {
+			announcements: [buildAnnouncement({ allowPublicThread: 'false' })],
+			today_label: 'Monday',
+		};
+		getOrgCommInteractionSummaryMock.mockResolvedValue({
+			'COMM-0001': {
+				counts: {},
+				self: null,
+				reaction_counts: {},
+				reactions_total: 1,
+				comments_total: 2,
+			},
+		});
+
+		mountMorningBriefing();
+		await flushUi();
+
+		clickButtonWithText('Open update');
+		await flushUi();
+
+		expect(document.querySelector('[data-testid="content-dialog-stub"]')).not.toBeNull();
+
+		document
+			.querySelector('[data-testid="content-dialog-open-comments"]')
+			?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		await flushUi();
+
+		expect(document.querySelector('[data-testid="content-dialog-stub"]')).toBeNull();
+		expect(document.querySelector('[data-testid="comment-drawer-stub"]')).not.toBeNull();
+		expect(getCommunicationThreadMock).toHaveBeenCalledWith({
+			org_communication: 'COMM-0001',
+			limit_start: 0,
+			limit: 30,
+		});
 	});
 });

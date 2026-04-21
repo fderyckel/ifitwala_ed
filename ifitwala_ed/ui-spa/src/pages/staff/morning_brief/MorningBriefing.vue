@@ -618,7 +618,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
+import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
 import { createResource, FeatherIcon, toast } from 'frappe-ui';
 
 import { useOverlayStack } from '@/composables/useOverlayStack';
@@ -1028,8 +1028,20 @@ function openInteractionThread(item: Announcement): void {
 	}
 
 	activeCommunication.value = item;
-	showInteractionDrawer.value = true;
-	void refreshInteractionThread(item.name);
+	newComment.value = '';
+
+	const openDrawer = () => {
+		showInteractionDrawer.value = true;
+		void refreshInteractionThread(item.name);
+	};
+
+	if (isContentDialogOpen.value) {
+		isContentDialogOpen.value = false;
+		void nextTick().then(openDrawer);
+		return;
+	}
+
+	openDrawer();
 }
 
 function formatThreadTimestamp(value?: string | null): string {

@@ -42,6 +42,54 @@ def _image_utils_module():
 
 
 class TestImageUtilsUnit(TestCase):
+    def test_get_governed_image_variants_map_uses_current_profile_authority_statuses(self):
+        with _image_utils_module() as (image_utils, _frappe):
+            captured = {}
+
+            def fake_get_current_drive_files_for_slots(**kwargs):
+                captured.update(kwargs)
+                return []
+
+            image_utils.get_current_drive_files_for_slots = fake_get_current_drive_files_for_slots
+
+            variants = image_utils._get_governed_image_variants_map(
+                "Employee",
+                ["EMP-0001"],
+                slots=image_utils.PROFILE_IMAGE_DERIVATIVE_SLOTS,
+            )
+
+        self.assertEqual(variants, {})
+        self.assertEqual(
+            captured["statuses"],
+            image_utils.PROFILE_IMAGE_CURRENT_FILE_STATUSES,
+        )
+
+    def test_get_current_governed_profile_file_uses_current_profile_authority_statuses(self):
+        with _image_utils_module() as (image_utils, frappe):
+            captured = {}
+
+            def fake_get_current_drive_file_for_slot(**kwargs):
+                captured.update(kwargs)
+                return {
+                    "file": "FILE-EMP-1",
+                    "current_version": "DFV-EMP-1",
+                }
+
+            image_utils.get_current_drive_file_for_slot = fake_get_current_drive_file_for_slot
+            frappe.db.exists = lambda doctype, name: doctype == "File" and name == "FILE-EMP-1"
+            frappe.get_doc = lambda doctype, name: SimpleNamespace(doctype=doctype, name=name)
+
+            file_doc = image_utils._get_current_governed_profile_file(
+                primary_subject_type="Employee",
+                subject_name="EMP-0001",
+            )
+
+        self.assertEqual(file_doc.name, "FILE-EMP-1")
+        self.assertEqual(
+            captured["statuses"],
+            image_utils.PROFILE_IMAGE_CURRENT_FILE_STATUSES,
+        )
+
     def test_apply_preferred_student_images_requeues_missing_derivatives_without_current_version(self):
         with _image_utils_module() as (image_utils, frappe):
             rows = [{"name": "STU-0001", "student_image": "/private/files/student-source.png"}]
