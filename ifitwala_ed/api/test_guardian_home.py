@@ -9,6 +9,7 @@ from frappe.tests.utils import FrappeTestCase
 from ifitwala_ed.api.guardian_home import (
     _assert_no_internal_schedule_keys,
     _build_communication_bundle,
+    _build_preparation_items,
     _find_forbidden_keys,
     _resolve_chip_status,
     get_guardian_home_snapshot,
@@ -293,6 +294,66 @@ class TestGuardianHome(FrappeTestCase):
                 lock_date=date(2026, 2, 1),
             ),
             "missing",
+        )
+
+    def test_build_preparation_items_builds_low_noise_forward_looking_rows(self):
+        family_timeline = [
+            {
+                "date": "2026-02-02",
+                "children": [
+                    {
+                        "student": "STU-0001",
+                        "assessments_upcoming": [{"title": "Math quiz", "task_delivery": "DEL-QUIZ"}],
+                        "tasks_due": [{"title": "Reading journal", "task_delivery": "DEL-TASK"}],
+                        "blocks": [
+                            {
+                                "kind": "activity",
+                                "title": "Science fair",
+                                "start_time": "10:00",
+                                "end_time": "11:00",
+                            },
+                            {
+                                "kind": "course",
+                                "title": "Math",
+                                "start_time": "08:00",
+                                "end_time": "09:00",
+                            },
+                        ],
+                    }
+                ],
+            }
+        ]
+
+        items = _build_preparation_items(
+            family_timeline=family_timeline,
+            communication_bundle={"attention_items": []},
+        )
+
+        self.assertEqual(
+            items,
+            [
+                {
+                    "student": "STU-0001",
+                    "date": "2026-02-02",
+                    "label": "Prepare for: Math quiz",
+                    "source": "task",
+                    "related": {"task_delivery": "DEL-QUIZ"},
+                },
+                {
+                    "student": "STU-0001",
+                    "date": "2026-02-02",
+                    "label": "Due soon: Reading journal",
+                    "source": "task",
+                    "related": {"task_delivery": "DEL-TASK"},
+                },
+                {
+                    "student": "STU-0001",
+                    "date": "2026-02-02",
+                    "label": "Science fair",
+                    "source": "schedule",
+                    "related": {"schedule_hint": {"start_time": "10:00", "end_time": "11:00"}},
+                },
+            ],
         )
 
     def test_forbidden_key_detection_finds_rotation_and_block(self):

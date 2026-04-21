@@ -50,8 +50,10 @@ EMPLOYEE_AVATAR_VARIANT_SLOTS = PROFILE_IMAGE_DERIVATIVE_SLOTS
 
 EMPLOYEE_VARIANT_PRIORITY = EMPLOYEE_VARIANT_SLOTS
 STUDENT_VARIANT_SLOTS = PROFILE_IMAGE_VARIANT_SLOTS
+STUDENT_AVATAR_VARIANT_SLOTS = PROFILE_IMAGE_DERIVATIVE_SLOTS
 STUDENT_VARIANT_PRIORITY = STUDENT_VARIANT_SLOTS
 GUARDIAN_VARIANT_SLOTS = PROFILE_IMAGE_VARIANT_SLOTS
+GUARDIAN_AVATAR_VARIANT_SLOTS = PROFILE_IMAGE_DERIVATIVE_SLOTS
 GUARDIAN_VARIANT_PRIORITY = GUARDIAN_VARIANT_SLOTS
 
 
@@ -763,6 +765,21 @@ def get_preferred_student_image_url(
     )
 
 
+def get_preferred_student_avatar_url(
+    student_name: str | None,
+    *,
+    original_url: str | None = None,
+) -> str | None:
+    return _get_preferred_governed_image_url(
+        "Student",
+        student_name,
+        original_url=original_url,
+        slots=STUDENT_AVATAR_VARIANT_SLOTS,
+        fallback_to_original=False,
+        request_missing_derivatives=True,
+    )
+
+
 def build_student_image_variants(student_name: str | None, original_url: str | None = None) -> dict[str, str | None]:
     return _build_governed_image_variants(
         "Student",
@@ -796,8 +813,14 @@ def get_guardian_image_variants_map(
     guardian_names: Sequence[str] | Iterable[str],
     *,
     slots: Sequence[str] = GUARDIAN_VARIANT_SLOTS,
+    request_missing_derivatives: bool = False,
 ) -> dict[str, dict[str, str]]:
-    return _get_governed_image_variants_map("Guardian", guardian_names, slots=slots)
+    return _get_governed_image_variants_map(
+        "Guardian",
+        guardian_names,
+        slots=slots,
+        request_missing_derivatives=request_missing_derivatives,
+    )
 
 
 def get_preferred_guardian_image_url(
@@ -813,6 +836,21 @@ def get_preferred_guardian_image_url(
         original_url=original_url,
         slots=slots,
         fallback_to_original=fallback_to_original,
+    )
+
+
+def get_preferred_guardian_avatar_url(
+    guardian_name: str | None,
+    *,
+    original_url: str | None = None,
+) -> str | None:
+    return _get_preferred_governed_image_url(
+        "Guardian",
+        guardian_name,
+        original_url=original_url,
+        slots=GUARDIAN_AVATAR_VARIANT_SLOTS,
+        fallback_to_original=False,
+        request_missing_derivatives=True,
     )
 
 

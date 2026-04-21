@@ -92,6 +92,7 @@ Do not let the client assemble important workflows out of generic document mutat
 - Do not widen response shape without cause.
 - Do not silently change endpoint contracts.
 - Keep request and response structures explicit and auditable.
+- In Python API modules, `_()` is reserved for translation literals only; never assign to `_`, use `_` as a throwaway variable, or shadow the Frappe translation alias.
 - For governed file/image reads, return a server-owned display/open URL for private media instead of exposing raw private paths.
 - A governed private-media route must never set `frappe.local.response["location"]` to a raw `/private/...` path; if no safe redirect target exists, stream the file inline from the API route instead.
 - Shared file-delivery helpers must return only a safe redirect target or `None`; route handlers own the final inline/private-media fallback behavior.

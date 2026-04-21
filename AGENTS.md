@@ -112,6 +112,8 @@ No opportunistic cleanup. No scope creep.
 - If a generated artifact is likely to be large, split it, summarize it, or keep it outside the tracked repo workflow.
 - Treat any single generated markdown file approaching repository or tool limits as a process failure to avoid, not a lint issue to discover later.
 - For i18n, translation functions must receive stable literal source strings only.
+- `_()` and `__()` are reserved for translation only.
+- Never assign to `_` or `__`, and never use `_` as a throwaway variable, tuple-unpack target, or temporary alias.
 - Never pass variables directly to `_()` or `__()`.
 - Never use f-strings, template literals, or string concatenation as the translatable source sentence.
 - When dynamic data is required, use a literal source string with named placeholders, then format after translation.
