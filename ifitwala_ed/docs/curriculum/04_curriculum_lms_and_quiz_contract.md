@@ -82,6 +82,7 @@ Current resource preview behavior in that workspace:
 - non-quiz task context is deep-linkable through the course route query, and the selected task workspace lives inside `CourseDetail.vue` rather than on a second student task page
 - latest student submission evidence stays lazy-loaded per selected task so the learning-space bootstrap remains bounded; the bootstrap must not inline full submission histories or per-task evidence bodies for every assigned row
 - when a delivery requires submission, the selected task workspace may send text, link, and governed file evidence through the same student business endpoint; portal clients must not call Drive upload/grant APIs directly
+- when a delivery is `Assign Only`, the selected task workspace must show the student-owned mark-complete action inline instead of a submission composer
 
 This is the live LMS model.
 
@@ -115,8 +116,8 @@ Test refs: `ifitwala_ed/api/test_courses.py`, `ifitwala_ed/ui-spa/src/pages/stud
 ## Assigned Work In The LMS
 
 Status: Implemented
-Code refs: `ifitwala_ed/assessment/doctype/task/task.json`, `ifitwala_ed/assessment/doctype/task_delivery/task_delivery.json`, `ifitwala_ed/api/teaching_plans.py`, `ifitwala_ed/ui-spa/src/pages/student/CourseDetail.vue`
-Test refs: `ifitwala_ed/assessment/doctype/task_delivery/test_task_delivery.py`, `ifitwala_ed/api/test_teaching_plans.py`
+Code refs: `ifitwala_ed/assessment/doctype/task/task.json`, `ifitwala_ed/assessment/doctype/task_delivery/task_delivery.json`, `ifitwala_ed/api/teaching_plans.py`, `ifitwala_ed/api/task_completion.py`, `ifitwala_ed/ui-spa/src/pages/student/CourseDetail.vue`, `ifitwala_ed/ui-spa/src/lib/services/student/studentTaskCompletionService.ts`
+Test refs: `ifitwala_ed/assessment/doctype/task_delivery/test_task_delivery.py`, `ifitwala_ed/api/test_teaching_plans.py`, `ifitwala_ed/api/test_task_completion_unit.py`, `ifitwala_ed/ui-spa/src/pages/student/__tests__/CourseDetail.test.ts`
 
 - `Task` remains the reusable work definition.
 - `Task Delivery` remains the class-scoped assigned-work runtime object.
@@ -126,6 +127,7 @@ Test refs: `ifitwala_ed/assessment/doctype/task_delivery/test_task_delivery.py`,
 - `CourseDetail.vue` is the canonical student reading and launch surface for assigned work; quiz-backed work hands off to `StudentQuiz.vue` only for the attempt runtime.
 - Non-quiz task cards open a selected task workspace inside `CourseDetail.vue`, not a second student task page.
 - That workspace may lazily read the latest student submission and support text/link/file submit or resubmit when the delivery requires submission.
+- The same workspace must handle `Assign Only` completion inline through a named student business endpoint; it must not call the staff gradebook write route.
 - File attachments are submitted through the same `create_or_resubmit` business endpoint, then rendered back through governed `open_url` and `preview_url` attachment DTOs owned by Ed.
 - The dedicated student quiz page remains the attempt and review runtime after launch.
 

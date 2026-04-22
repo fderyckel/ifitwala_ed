@@ -1,0 +1,183 @@
+{
+ "actions": [],
+ "autoname": "FCD-.YYYY.-.MM.-.####",
+ "creation": "2026-04-22 10:00:00",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "family_consent_request",
+  "student",
+  "decision_by_doctype",
+  "decision_by",
+  "decision_status",
+  "decision_at",
+  "typed_signature_name",
+  "attestation_confirmed",
+  "source_channel",
+  "source_file",
+  "response_snapshot",
+  "profile_writeback_mode",
+  "supersedes_decision"
+ ],
+ "fields": [
+  {
+   "fieldname": "family_consent_request",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Family Consent Request",
+   "options": "Family Consent Request",
+   "reqd": 1
+  },
+  {
+   "fieldname": "student",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Student",
+   "options": "Student",
+   "reqd": 1
+  },
+  {
+   "fieldname": "decision_by_doctype",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Decision By DocType",
+   "options": "Guardian\nStudent",
+   "reqd": 1
+  },
+  {
+   "fieldname": "decision_by",
+   "fieldtype": "Data",
+   "label": "Decision By",
+   "reqd": 1
+  },
+  {
+   "fieldname": "decision_status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Decision Status",
+   "options": "Approved\nDeclined\nGranted\nDenied\nWithdrawn",
+   "reqd": 1
+  },
+  {
+   "fieldname": "decision_at",
+   "fieldtype": "Datetime",
+   "label": "Decision At",
+   "reqd": 1
+  },
+  {
+   "fieldname": "typed_signature_name",
+   "fieldtype": "Data",
+   "label": "Typed Signature Name"
+  },
+  {
+   "default": "0",
+   "fieldname": "attestation_confirmed",
+   "fieldtype": "Check",
+   "label": "Attestation Confirmed"
+  },
+  {
+   "fieldname": "source_channel",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Source Channel",
+   "options": "Guardian Portal\nStudent Portal\nDesk Paper Capture",
+   "reqd": 1
+  },
+  {
+   "fieldname": "source_file",
+   "fieldtype": "Link",
+   "label": "Source File",
+   "options": "File"
+  },
+  {
+   "fieldname": "response_snapshot",
+   "fieldtype": "Long Text",
+   "label": "Response Snapshot",
+   "reqd": 1
+  },
+  {
+   "fieldname": "profile_writeback_mode",
+   "fieldtype": "Select",
+   "label": "Profile Writeback Mode",
+   "options": "Form Only\nUpdate Profile"
+  },
+  {
+   "fieldname": "supersedes_decision",
+   "fieldtype": "Link",
+   "label": "Supersedes Decision",
+   "options": "Family Consent Decision"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-04-22 10:00:00",
+ "modified_by": "Administrator",
+ "module": "Governance",
+ "name": "Family Consent Decision",
+ "naming_rule": "Expression",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Organization Admin",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Academic Admin",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Academic Staff",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "read": 1,
+   "role": "Guardian"
+  },
+  {
+   "create": 1,
+   "read": 1,
+   "role": "Student"
+  }
+ ],
+ "row_format": "Dynamic",
+ "search_fields": "family_consent_request,student,decision_by",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

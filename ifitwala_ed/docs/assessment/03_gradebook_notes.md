@@ -246,9 +246,16 @@ Runtime contract:
 
 1. Teacher clicks a cell
 2. Drawer opens → Completion toggle
-3. Teacher marks complete (or student self-marks in portal later)
+3. Teacher marks complete (or student self-marks inside the course workspace)
 
 No grade, no submission required.
+
+Runtime contract:
+
+- `Assign Only` completion remains the direct `Task Outcome` exception and does not create a `Task Submission`
+- the student portal uses the existing `CourseDetail.vue` task workspace, not a second task page
+- direct completion writes must stamp `completed_on` when work becomes complete so student home/work-board ordering stays coherent
+- direct completion must reject changes while the outcome is already published
 
 ---
 

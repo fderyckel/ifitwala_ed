@@ -265,6 +265,24 @@ describe('StaffHome', () => {
 		expect(analyticsCategories?.textContent || '').not.toContain('Bus & Route Load');
 	});
 
+	it('surfaces forms and signatures alongside policy acknowledgments when compliance analytics are enabled', async () => {
+		getStaffHomeHeaderMock.mockResolvedValue({
+			first_name: 'Mali',
+			full_name: 'Mali Bangkok',
+			capabilities: {
+				analytics_policy_signatures: true,
+			},
+		});
+		listFocusItemsMock.mockResolvedValue([]);
+
+		mountStaffHome();
+		await flushUi();
+
+		const analyticsCategories = document.querySelector('.staff-home__analytics-category-grid');
+		expect(analyticsCategories?.textContent || '').toContain('Policy Acknowledgments');
+		expect(analyticsCategories?.textContent || '').toContain('Forms & Signatures');
+	});
+
 	it('keeps create communication visible but disabled when org scope is missing', async () => {
 		getStaffHomeHeaderMock.mockResolvedValue({
 			first_name: 'Mali',

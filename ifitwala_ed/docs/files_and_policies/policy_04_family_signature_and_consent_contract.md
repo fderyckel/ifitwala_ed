@@ -19,8 +19,9 @@ Rules:
    - `/admissions` for applicant-stage family work
    - `/hub/guardian` for guardian-stage work
    - `/hub/student` for student-stage work, including adult-student self-sign
-4. Staff workflows must remain named workflows with server-owned state transitions, not client-assembled CRUD.
-5. Phase 2A delivery order is defined in `ifitwala_ed/docs/files_and_policies/policy_05_phase2a_desk_authoring_portal_signing_plan.md`.
+4. Staff monitoring and analytics for this feature live in staff Vue analytics pages, not in Desk reporting widgets.
+5. Staff workflows must remain named workflows with server-owned state transitions, not client-assembled CRUD.
+6. Phase 2A delivery order is defined in `ifitwala_ed/docs/files_and_policies/policy_05_phase2a_desk_authoring_portal_signing_plan.md`.
 
 ## Reuse Model
 Status: Planned
@@ -57,7 +58,7 @@ Rules:
 
 1. Staff authoring starts in Desk, not in the staff SPA analytics surface.
 2. The initial authoring entry point should be the canonical `Family Consent Request` Desk form, with Desk-native helpers for template selection, targeting, and publication.
-3. Staff analytics remains a monitoring and reminder surface; it must not become the primary request builder.
+3. Staff analytics lives in staff Vue pages as the monitoring and reminder surface; it must not become the primary request builder.
 4. Most form fields must be selected from known, server-owned profile bindings instead of being typed freehand for every request.
 5. Free-text prompts are allowed only when no canonical profile field exists or when the request genuinely needs a one-off operational answer.
 6. Staff authoring should start from institution-owned presets such as field trip, event approval, media consent, internship approval, or emergency-contact confirmation rather than a blank technical schema.
@@ -98,6 +99,8 @@ Rules:
 5. A guardian who can view a child in the portal but cannot sign for that child must not be presented as an eligible signer.
 6. One-off requests and mutable consents must not be hidden inside the current policy page without explicit mode labeling.
 7. Guardian and student request pages should feel like sibling portal surfaces, with the same evidence, status, and blocked-submit patterns.
+8. If a request is configured as `Paper Only`, the family portal may show the request and its status, but it must not offer an electronic submit action.
+9. `Portal Or Paper` requests must make it clear that electronic completion is available but paper return remains acceptable.
 
 ## Field Binding And Profile Reuse Contract
 Status: Planned
@@ -133,6 +136,7 @@ Rules:
 5. Offline paper capture may be recorded as staff-entered evidence, but staff must never impersonate a guardian or student electronic signature.
 6. Expiry, withdrawal, decline, and supersession are first-class outcomes in this feature and must not be collapsed into "not signed."
 7. If a signer chooses profile write-back during submit, the workflow must record enough before/after evidence to audit what changed.
+8. Requests may declare that completion is accepted through portal submit, paper collection, or either channel, and that choice must be enforced server-side.
 
 ## Communication And Reminder Contract
 Status: Planned
@@ -160,6 +164,7 @@ Rules:
    - organization
    - school
    - audience mode
+   - completion channel mode
    - request type
    - current status
 3. Minimum outcome statuses for analytics are:
@@ -171,6 +176,7 @@ Rules:
    - overdue
 4. Analytics visibility must reuse canonical server-side permission predicates and must not implement separate scope math.
 5. Family-facing counts must stay action-oriented and avoid legal or operational jargon where simpler wording exists.
+6. Staff analytics for this feature belongs in Vue staff pages under the staff portal shell, while Desk remains the authoring and edit surface.
 
 ## Edge-Case Rules
 Status: Planned
@@ -187,6 +193,7 @@ Rules:
 6. Co-sign flows must track guardian completion and student completion separately.
 7. A guardian linked by email only is not a signer unless a relationship row grants authority.
 8. Editing a bound address or phone value for one request must not silently overwrite sibling or guardian records unless the signer explicitly chose profile write-back.
+9. `Paper Only` requests must reject guardian or student portal submit attempts even if a stale client still shows an action button.
 
 ## Approved Architecture Decisions
 Status: Partial
@@ -208,7 +215,8 @@ Approved decisions:
 7. Mutable consents must carry explicit effective-window fields and use renewal by new request, not silent rollover.
 8. Offline paper capture lives on the same workflow artifact as a staff-recorded `Family Consent Decision`, with governed file evidence attached to that decision.
 9. Desk is the canonical authoring home; the staff analytics page remains tracking, reminder, and launch support rather than the primary builder.
-10. Most collected form content must be field-bound to known profile data, with explicit signer choice for profile write-back when edits are made.
+10. Staff monitoring, reminder follow-up, and completion analytics for this feature live in Vue staff pages rather than Desk.
+11. Most collected form content must be field-bound to known profile data, with explicit signer choice for profile write-back when edits are made.
 
 ## Exact DocType Schema Contract
 Status: Planned
@@ -234,6 +242,7 @@ Frappe child-table bookkeeping fields (`parent`, `parenttype`, `parentfield`, `i
 | `audience_mode` | audience selector | Yes | Guardian, Student, or later guardian-and-student |
 | `signer_rule` | completion rule | Yes | Values constrained by `audience_mode` |
 | `decision_mode` | decision semantics | Yes | Distinguishes approval vs consent semantics |
+| `completion_channel_mode` | accepted completion channels | Yes | Portal Only, Portal Or Paper, or Paper Only |
 | `requires_typed_signature` | typed-signature requirement flag | Yes | Default on for legal-signature flows |
 | `requires_attestation` | electronic-signature attestation requirement flag | Yes | Default on for legal-signature flows |
 | `effective_from` | effective start date | No | Primarily used by mutable consent |
@@ -312,7 +321,11 @@ Rules:
    - `Approve / Decline`
    - `Grant / Deny`
    - `Acknowledge` reserved for a later non-durable operational receipt contract
-7. `Family Consent Field.field_type` values are:
+7. `completion_channel_mode` values are:
+   - `Portal Only`
+   - `Portal Or Paper`
+   - `Paper Only`
+8. `Family Consent Field.field_type` values are:
    - `Text`
    - `Long Text`
    - `Phone`
@@ -320,29 +333,30 @@ Rules:
    - `Address`
    - `Date`
    - `Checkbox`
-8. `Family Consent Field.field_mode` values are:
+9. `Family Consent Field.field_mode` values are:
    - `Display Only`
    - `Confirm Current`
    - `Allow Override`
-9. `Family Consent Decision.decision_status` values are:
+10. `Family Consent Decision.decision_status` values are:
    - `Approved`
    - `Declined`
    - `Granted`
    - `Denied`
    - `Withdrawn`
-10. `Family Consent Decision.source_channel` values are:
+11. `Family Consent Decision.source_channel` values are:
    - `Guardian Portal`
    - `Student Portal`
    - `Desk Paper Capture`
-11. `profile_writeback_mode` values are:
+12. `profile_writeback_mode` values are:
    - blank
    - `Form Only`
    - `Update Profile`
-12. `pending`, `completed`, `declined`, `withdrawn`, `expired`, and `overdue` are derived board and analytics states, not raw `decision_status` values stored on the decision row.
-13. `completed` maps from the latest non-superseded `Approved` or `Granted` event that is still active inside the request window.
-14. `declined` maps from the latest non-superseded `Declined` or `Denied` event.
-15. `withdrawn` maps from the latest non-superseded `Withdrawn` event.
-16. `expired` and `overdue` are time-derived target/request states and must not be inserted as synthetic decision rows.
+13. `pending`, `completed`, `declined`, `withdrawn`, `expired`, and `overdue` are derived board and analytics states, not raw `decision_status` values stored on the decision row.
+14. `completed` maps from the latest non-superseded `Approved` or `Granted` event that is still active inside the request window.
+15. `declined` maps from the latest non-superseded `Declined` or `Denied` event.
+16. `withdrawn` maps from the latest non-superseded `Withdrawn` event.
+17. `expired` and `overdue` are time-derived target/request states and must not be inserted as synthetic decision rows.
+18. `Paper Only` requests may only be completed through `Desk Paper Capture`.
 
 ## Snapshot Payload Contract
 Status: Planned
@@ -405,7 +419,19 @@ Rules:
 
 ### Staff Workflows
 
-1. `publish_family_consent_request`
+1. `get_family_consent_dashboard_context`
+   - caller: staff Vue analytics/dashboard surface
+   - request:
+     - `organization?: string`
+   - response:
+     - `filters.organization`
+     - `options.organizations: string[]`
+     - `options.schools: string[]`
+     - `options.request_types: string[]`
+     - `options.statuses: string[]`
+     - `options.audience_modes: string[]`
+     - `options.completion_channel_modes: string[]`
+2. `publish_family_consent_request`
    - caller: Desk button or Desk form action
    - request:
      - `family_consent_request: string`
@@ -417,14 +443,15 @@ Rules:
      - `request_key: string`
      - `target_count: number`
      - `communication_count: number`
-2. `get_family_consent_dashboard`
-   - caller: staff analytics/dashboard surface
+3. `get_family_consent_dashboard`
+   - caller: staff Vue analytics/dashboard surface
    - request:
      - `organization?: string`
      - `school?: string`
      - `request_type?: string`
      - `status?: string`
      - `audience_mode?: string`
+     - `completion_channel_mode?: string`
    - response:
      - `meta.generated_at`
      - `filters`
@@ -440,12 +467,13 @@ Rules:
        - `family_consent_request`
        - `request_key`
        - `request_title`
-       - `request_type`
-       - `audience_mode`
-       - `signer_rule`
-       - `status`
-       - `organization`
-       - `school`
+     - `request_type`
+     - `audience_mode`
+     - `signer_rule`
+     - `completion_channel_mode`
+     - `status`
+     - `organization`
+     - `school`
        - `due_on`
        - `target_count`
        - `pending_count`
@@ -503,6 +531,7 @@ Rules:
        - `request_title`
        - `request_type`
        - `decision_mode`
+       - `completion_channel_mode`
        - `request_text`
        - `source_file`
        - `effective_from`
@@ -553,6 +582,8 @@ Rules:
      - `student: string`
      - `current_status: string`
      - `profile_writeback_mode: string | null`
+   - server rule:
+     - reject submit when `completion_channel_mode = "Paper Only"`
 
 ### Student Workflows
 
@@ -592,6 +623,8 @@ Rules:
      - `profile_writeback_mode?: "Form Only" | "Update Profile"`
    - response:
      - same shape as `submit_guardian_consent_decision`
+   - server rule:
+     - reject submit when `completion_channel_mode = "Paper Only"`
 
 ### Shared Mutation Workflows
 

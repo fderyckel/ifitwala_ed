@@ -14,7 +14,8 @@ Success criteria:
 3. Most displayed fields are reused from known profile data instead of being re-entered manually.
 4. When a signer edits contact or address data, the system offers an explicit choice between form-only override and profile write-back.
 5. The system records immutable decision history without mutating `Policy Acknowledgement`.
-6. Staff can track pending, completed, declined, withdrawn, expired, and overdue outcomes.
+6. Staff can track pending, completed, declined, withdrawn, expired, and overdue outcomes from staff Vue analytics pages.
+7. Requests may be configured as portal-only, portal-or-paper, or paper-only without creating a second workflow model.
 
 ## In Scope
 Status: Planned
@@ -24,7 +25,7 @@ Test refs: None
 Rules:
 
 1. Enrolled-student guardian workflows and enrolled-student self-sign workflows ship together in Phase 2A.
-2. Authoring starts in Desk on the canonical request form; staff SPA analytics remains monitoring-first.
+2. Authoring starts in Desk on the canonical request form; staff Vue analytics remains monitoring-first.
 3. Request types in scope are:
    - one-off permission requests
    - mutable consents
@@ -32,6 +33,10 @@ Rules:
 5. Student self-sign uses the current logged-in student self-context only.
 6. Request fields are mostly known field bindings, with limited one-off prompts where canonical data does not exist.
 7. Home attention cards and one dedicated request page per portal are part of the initial release.
+8. Completion-channel modes in scope are:
+   - `Portal Only`
+   - `Portal Or Paper`
+   - `Paper Only`
 
 ## Out Of Scope
 Status: Planned
@@ -56,7 +61,7 @@ Implementation order:
 
 1. Schema and controller layer.
 2. Desk authoring and publish flow.
-3. Staff dashboard and analytics APIs.
+3. Staff Vue analytics APIs.
 4. Guardian and student read/action APIs.
 5. Guardian and student portal surfaces.
 6. Reminder and overdue scheduler support.
@@ -87,6 +92,7 @@ Rules:
    - `Published`
    - `Closed`
    - `Archived`
+7. `Family Consent Request` must carry a `completion_channel_mode` field so one request can be configured as electronic-only, paper-allowed, or paper-only without changing the decision model.
 
 ## Phase 2A Activation Contract
 Status: Planned
@@ -106,7 +112,11 @@ Rules:
 4. Phase 2A implements `decision_mode` values:
    - `Approve / Decline`
    - `Grant / Deny`
-5. Phase 2A implements `field_type` values:
+5. Phase 2A implements `completion_channel_mode` values:
+   - `Portal Only`
+   - `Portal Or Paper`
+   - `Paper Only`
+6. Phase 2A implements `field_type` values:
    - `Text`
    - `Long Text`
    - `Phone`
@@ -114,8 +124,8 @@ Rules:
    - `Address`
    - `Date`
    - `Checkbox`
-6. `Guardian + Student`, `Guardian And Student`, `Per Family`, and any non-durable operational `Acknowledge` mode remain schema-reserved but not executable in Phase 2A.
-7. Profile write-back is allowed only for bindings that the server registry explicitly maps to canonical `Contact` and `Address` ownership, plus mirrored convenience fields on `Guardian` and `Student`.
+7. `Guardian + Student`, `Guardian And Student`, `Per Family`, and any non-durable operational `Acknowledge` mode remain schema-reserved but not executable in Phase 2A.
+8. Profile write-back is allowed only for bindings that the server registry explicitly maps to canonical `Contact` and `Address` ownership, plus mirrored convenience fields on `Guardian` and `Student`.
 
 ## Desk Authoring Plan
 Status: Planned
@@ -129,12 +139,14 @@ Rules:
 3. Desk authoring should guide staff through:
    - template or preset selection
    - audience choice
+   - completion channel choice
    - target selection
    - field binding selection
    - due/effective dates
    - publish
 4. Known profile bindings should be presented as readable authoring choices rather than raw schema fieldnames.
 5. Staff analytics may link to the Desk request record, but analytics is not the primary builder.
+6. If `Paper Only` is selected, Desk must not require portal-signature setup that the family can never use.
 
 ## Server Workflow Plan
 Status: Planned
@@ -148,16 +160,17 @@ Modules to add:
 
 Named workflows:
 
-1. `publish_family_consent_request`
-2. `get_family_consent_dashboard`
-3. `get_guardian_consent_board`
-4. `get_guardian_consent_detail`
-5. `submit_guardian_consent_decision`
-6. `get_student_consent_board`
-7. `get_student_consent_detail`
-8. `submit_student_consent_decision`
-9. `withdraw_family_consent_decision`
-10. `record_family_consent_paper_decision`
+1. `get_family_consent_dashboard_context`
+2. `publish_family_consent_request`
+3. `get_family_consent_dashboard`
+4. `get_guardian_consent_board`
+5. `get_guardian_consent_detail`
+6. `submit_guardian_consent_decision`
+7. `get_student_consent_board`
+8. `get_student_consent_detail`
+9. `submit_student_consent_decision`
+10. `withdraw_family_consent_decision`
+11. `record_family_consent_paper_decision`
 
 Rules:
 
@@ -167,6 +180,7 @@ Rules:
 4. If a signer chooses profile write-back, the server must update canonical `Contact` and linked `Address` data synchronously and mirror dependent guardian or student convenience fields where required.
 5. Paper capture must require explicit staff action and provenance fields.
 6. Mutable-consent withdrawal must create a new decision row and update derived current state, not delete prior history.
+7. Portal submit endpoints must reject `Paper Only` requests and return an actionable validation error instead of silently accepting or hiding the mismatch.
 
 ## File Ownership Plan
 Status: Planned
@@ -187,6 +201,7 @@ Ownership for the first coding slice:
    - add `ifitwala_ed/api/family_consent.py`
    - keep guardian and student permission entry points parallel to existing `guardian_policy.py` and `student_policy.py`
 4. Portal surfaces:
+   - add one staff Vue analytics page under `ui-spa/src/pages/staff/analytics/` for forms/signatures monitoring
    - add `ifitwala_ed/ui-spa/src/pages/guardian/GuardianConsents.vue`
    - add `ifitwala_ed/ui-spa/src/pages/student/StudentConsents.vue`
    - extend home-summary integrations instead of adding extra bootstrap calls
@@ -223,6 +238,7 @@ UI rules:
 4. Student pages must not expose guardian-only requests.
 5. The submit flow must explain blocked validation states and profile write-back choices in-product.
 6. Mutable consent detail pages must show current state and prior-change history in plain language.
+7. `Paper Only` requests may show an informational status card and collection instructions, but no electronic sign/approve action.
 
 ## Staff Dashboard And Analytics Plan
 Status: Planned
@@ -232,14 +248,18 @@ Test refs: None
 Rules:
 
 1. Staff need one status dashboard for Phase 2A, but authoring still starts in Desk.
-2. The dashboard must deep-link to the Desk request record for authoring fixes and to the relevant portal request for preview when appropriate.
-3. Minimum filters are:
+2. The analytics and monitoring surface lives in staff Vue analytics pages under the staff portal shell, not in Desk.
+3. The dashboard must deep-link to the Desk request record for authoring fixes and to the relevant portal request for preview when appropriate.
+4. The dashboard must expose `completion_channel_mode` so staff can distinguish portal-first work from forms still waiting on paper return.
+5. Existing policy-signature analytics patterns may be reused, but the runtime surface must remain a Vue staff page rather than a Desk report.
+6. Minimum filters are:
    - organization
    - school
+   - completion channel
    - request type
    - status
    - audience
-4. Target blockers must remain actionable with direct links to the relevant request or target student.
+7. Target blockers must remain actionable with direct links to the relevant request or target student.
 
 ## Scheduler And Reminder Plan
 Status: Planned
@@ -270,6 +290,7 @@ Rules:
    - expired
    - overdue
 4. Analytics must distinguish guardian and student completion instead of collapsing them into one family count.
+5. Analytics must distinguish completion-channel configuration so staff can filter paper-only and mixed-channel requests cleanly.
 
 ## Test Plan
 Status: Planned

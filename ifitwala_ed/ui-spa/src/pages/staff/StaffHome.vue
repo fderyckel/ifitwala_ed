@@ -811,6 +811,11 @@ const analyticsCategories: StaffHomeAnalyticsCategory[] = [
 				capability: 'analytics_policy_signatures',
 			},
 			{
+				label: 'Forms & Signatures',
+				to: { name: 'staff-forms-signatures-analytics' },
+				capability: 'analytics_policy_signatures',
+			},
+			{
 				label: 'Policy Library',
 				to: { name: 'staff-policies' },
 				capability: 'staff_policy_library',

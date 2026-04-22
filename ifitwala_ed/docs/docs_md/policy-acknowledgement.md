@@ -3,8 +3,8 @@ title: "Policy Acknowledgement: Immutable Consent Evidence"
 slug: policy-acknowledgement
 category: Governance
 doc_order: 3
-version: "2.0.1"
-last_change_date: "2026-04-15"
+version: "2.0.2"
+last_change_date: "2026-04-22"
 summary: "Create permanent, tamper-proof records of who acknowledged which policy version, when, and under what context—forming your legal audit trail across staff, guardians, students, and applicants."
 seo_title: "Policy Acknowledgement: Immutable Consent Evidence"
 seo_description: "Learn how Policy Acknowledgements create permanent, tamper-proof records of policy consent with electronic signatures and audit trails."
@@ -18,7 +18,7 @@ A **Policy Acknowledgement** is the permanent, tamper-proof evidence that someon
 - **What** version they acknowledged
 - **When** they acknowledged it
 - **How** they acknowledged it (signature, attestation, clauses)
-- **In what context** (as staff, guardian for a child, student, or applicant)
+- **In what context** (as staff, guardian, student, or applicant)
 
 Once created, a Policy Acknowledgement cannot be edited, cancelled, or deleted. It is **immutable evidence**—designed for the real world where "we said they agreed" isn't enough; you need proof.
 

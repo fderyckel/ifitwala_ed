@@ -159,6 +159,7 @@ const routes: RouteRecordRaw[] = [
 	{ path: '/staff/analytics/enrollment', name: 'StaffEnrollmentAnalytics', component: () => import('@/pages/staff/analytics/EnrollmentAnalytics.vue'), meta: { layout: 'staff' } },
 	{ path: '/staff/analytics/academic-load', name: 'staff-academic-load', component: () => import('@/pages/staff/analytics/AcademicLoad.vue'), meta: { layout: 'staff' } },
 	{ path: '/staff/analytics/policy-signatures', name: 'staff-policy-signature-analytics', component: () => import('@/pages/staff/analytics/PolicySignatureAnalytics.vue'), meta: { layout: 'staff' } },
+	{ path: '/staff/analytics/forms-signatures', name: 'staff-forms-signatures-analytics', component: () => import('@/pages/staff/analytics/FormsSignaturesAnalytics.vue'), meta: { layout: 'staff' } },
 	{ path: '/staff/policies', name: 'staff-policies', component: () => import('@/pages/staff/StaffPolicies.vue'), meta: { layout: 'staff' } },
   { path: '/staff/announcements', name: 'staff-announcements', component: () => import('@/pages/staff/OrgCommunicationArchive.vue'), meta: { layout: 'staff' } },
 	{ path: '/staff/analytics/inquiry', name: 'staff-inquiry-analytics', component: () => import('@/pages/staff/analytics/InquiryAnalytics.vue'), meta: { layout: 'staff' } },

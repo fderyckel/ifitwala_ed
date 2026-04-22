@@ -338,7 +338,8 @@ The gradebook API must not accept `official_*` writes from clients.
 Client-facing grading routes create or update contributions and let the outcome truth pipeline recompute official results.
 Current explicit exception:
 
-- `Assign Only` completion tracking may still write `Task Outcome.is_complete` directly because it is not part of the assessed grading audit path
+- `Assign Only` completion tracking may still write `Task Outcome.is_complete` and `completed_on` directly because it is not part of the assessed grading audit path
+- that direct path must stay behind named business endpoints, keep exact learner ownership checks for portal writes, and reject completion edits after publication
 
 ---
 
