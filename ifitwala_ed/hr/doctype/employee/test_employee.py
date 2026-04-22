@@ -339,7 +339,7 @@ class TestEmployee(FrappeTestCase):
         with (
             patch("ifitwala_ed.hr.doctype.employee.employee.frappe.get_doc", return_value=user_doc),
             patch(
-                "ifitwala_ed.hr.doctype.employee.employee.get_preferred_employee_image_url",
+                "ifitwala_ed.hr.doctype.employee.employee.get_preferred_employee_avatar_url",
                 return_value="/files/thumb.webp",
             ) as preferred_image,
         ):

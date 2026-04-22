@@ -16,7 +16,7 @@ from ifitwala_ed.utilities.employee_utils import (
     get_descendant_organizations,
     get_user_base_org,
 )
-from ifitwala_ed.utilities.image_utils import get_preferred_employee_image_url
+from ifitwala_ed.utilities.image_utils import get_preferred_employee_avatar_url
 from ifitwala_ed.utilities.transaction_base import delete_events
 from ifitwala_ed.website.utils import slugify_route_segment
 
@@ -52,7 +52,7 @@ def get_school_lineage(*args, **kwargs):
 def _refresh_runtime_bindings():
     global frappe, _, scrub, load_address_and_contact, get_doc_permissions
     global invalidate_staff_portal_calendar_cache, resolve_current_staff_calendar_for_employee
-    global get_descendant_organizations, get_user_base_org, get_preferred_employee_image_url
+    global get_descendant_organizations, get_user_base_org, get_preferred_employee_avatar_url
     global get_school_lineage, delete_events, slugify_route_segment
 
     current_frappe = importlib.import_module("frappe")
@@ -80,7 +80,7 @@ def _refresh_runtime_bindings():
     )
     from ifitwala_ed.utilities.employee_utils import get_user_base_org as current_get_user_base_org
     from ifitwala_ed.utilities.image_utils import (
-        get_preferred_employee_image_url as current_get_preferred_employee_image_url,
+        get_preferred_employee_avatar_url as current_get_preferred_employee_avatar_url,
     )
     from ifitwala_ed.utilities.school_tree import get_school_lineage as current_get_school_lineage
     from ifitwala_ed.utilities.transaction_base import delete_events as current_delete_events
@@ -92,7 +92,7 @@ def _refresh_runtime_bindings():
     resolve_current_staff_calendar_for_employee = current_resolve_current_staff_calendar_for_employee
     get_descendant_organizations = current_get_descendant_organizations
     get_user_base_org = current_get_user_base_org
-    get_preferred_employee_image_url = current_get_preferred_employee_image_url
+    get_preferred_employee_avatar_url = current_get_preferred_employee_avatar_url
     get_school_lineage = current_get_school_lineage
     delete_events = current_delete_events
     slugify_route_segment = current_slugify_route_segment
@@ -694,7 +694,7 @@ class Employee(NestedSet):
             user.birth_date = self.employee_date_of_birth
 
         # ---- image sync -------------------------------------------------------
-        avatar_url = get_preferred_employee_image_url(self.name, original_url=self.employee_image)
+        avatar_url = get_preferred_employee_avatar_url(self.name, original_url=self.employee_image)
         if avatar_url and user.user_image != avatar_url:
             user.user_image = avatar_url
 

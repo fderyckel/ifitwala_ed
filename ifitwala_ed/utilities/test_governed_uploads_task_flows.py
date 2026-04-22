@@ -410,7 +410,7 @@ class TestGovernedUploadTaskFlows(TestCase):
                 patch.object(governed_uploads.frappe.db, "get_value", return_value="staff@example.com"),
                 patch.object(
                     governed_uploads,
-                    "get_preferred_employee_image_url",
+                    "get_preferred_employee_avatar_url",
                     return_value="/files/thumb_employee.webp",
                 ) as get_preferred,
                 patch.object(governed_uploads.frappe, "get_doc", return_value=user_doc) as get_doc,
@@ -423,7 +423,6 @@ class TestGovernedUploadTaskFlows(TestCase):
         get_preferred.assert_called_once_with(
             "EMP-0001",
             original_url="/private/files/employee-photo.png",
-            slots=governed_uploads.EMPLOYEE_VARIANT_PRIORITY,
         )
         get_doc.assert_called_once_with("User", "staff@example.com")
         self.assertTrue(user_doc.flags.ignore_permissions)

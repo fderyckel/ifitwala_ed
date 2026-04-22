@@ -16,11 +16,9 @@ from frappe import _
 
 from ifitwala_ed.integrations.drive.authority import get_drive_file_for_file
 from ifitwala_ed.utilities.image_utils import (
-    EMPLOYEE_VARIANT_PRIORITY,
     file_url_is_accessible,
     get_employee_image_variants_map,
     get_preferred_employee_avatar_url,
-    get_preferred_employee_image_url,
 )
 from ifitwala_ed.utilities.organization_media import (
     build_organization_media_slot,
@@ -174,10 +172,9 @@ def _sync_linked_employee_user_image(employee_name: str, *, original_url: str | 
     if not user_id:
         return
 
-    avatar_url = get_preferred_employee_image_url(
+    avatar_url = get_preferred_employee_avatar_url(
         employee_name,
         original_url=original_url,
-        slots=EMPLOYEE_VARIANT_PRIORITY,
     )
     if not avatar_url:
         return
