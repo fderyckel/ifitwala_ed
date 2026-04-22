@@ -27,6 +27,7 @@ class GovernedUploadSpec:
     resolve_context_override: ContextOverrideResolver
     resolve_binding_role: BindingRoleResolver
     run_post_finalize: PostFinalizeHandler
+    is_private: bool | None = None
 
 
 def _throw_missing_field(fieldname: str) -> None:
@@ -517,6 +518,7 @@ _WORKFLOW_SPECS: tuple[GovernedUploadSpec, ...] = (
     GovernedUploadSpec(
         workflow_id="task.submission",
         contract_version=_WORKFLOW_CONTRACT_VERSION,
+        is_private=None,
         resolve_session_context=_resolve_task_submission_session_context,
         validate_finalize_context=_validate_task_submission_finalize_context,
         resolve_attached_field_override=_no_attached_field_override,
@@ -527,6 +529,7 @@ _WORKFLOW_SPECS: tuple[GovernedUploadSpec, ...] = (
     GovernedUploadSpec(
         workflow_id="task.resource",
         contract_version=_WORKFLOW_CONTRACT_VERSION,
+        is_private=None,
         resolve_session_context=_resolve_task_resource_session_context,
         validate_finalize_context=_validate_task_resource_finalize_context,
         resolve_attached_field_override=_no_attached_field_override,
@@ -537,6 +540,7 @@ _WORKFLOW_SPECS: tuple[GovernedUploadSpec, ...] = (
     GovernedUploadSpec(
         workflow_id="supporting_material.file",
         contract_version=_WORKFLOW_CONTRACT_VERSION,
+        is_private=None,
         resolve_session_context=_resolve_supporting_material_session_context,
         validate_finalize_context=_validate_supporting_material_finalize_context,
         resolve_attached_field_override=_no_attached_field_override,
@@ -547,6 +551,7 @@ _WORKFLOW_SPECS: tuple[GovernedUploadSpec, ...] = (
     GovernedUploadSpec(
         workflow_id="admissions.applicant_document",
         contract_version=_WORKFLOW_CONTRACT_VERSION,
+        is_private=None,
         resolve_session_context=_resolve_applicant_document_session_context,
         validate_finalize_context=_validate_applicant_document_finalize_context,
         resolve_attached_field_override=_resolve_admissions_attached_field_override,
@@ -557,6 +562,7 @@ _WORKFLOW_SPECS: tuple[GovernedUploadSpec, ...] = (
     GovernedUploadSpec(
         workflow_id="admissions.applicant_profile_image",
         contract_version=_WORKFLOW_CONTRACT_VERSION,
+        is_private=None,
         resolve_session_context=_resolve_applicant_profile_image_session_context,
         validate_finalize_context=_validate_applicant_profile_image_finalize_context,
         resolve_attached_field_override=_resolve_admissions_attached_field_override,
@@ -567,6 +573,7 @@ _WORKFLOW_SPECS: tuple[GovernedUploadSpec, ...] = (
     GovernedUploadSpec(
         workflow_id="admissions.applicant_guardian_image",
         contract_version=_WORKFLOW_CONTRACT_VERSION,
+        is_private=None,
         resolve_session_context=_resolve_applicant_guardian_image_session_context,
         validate_finalize_context=_validate_applicant_guardian_image_finalize_context,
         resolve_attached_field_override=_resolve_admissions_attached_field_override,
@@ -577,6 +584,7 @@ _WORKFLOW_SPECS: tuple[GovernedUploadSpec, ...] = (
     GovernedUploadSpec(
         workflow_id="admissions.applicant_health_vaccination",
         contract_version=_WORKFLOW_CONTRACT_VERSION,
+        is_private=None,
         resolve_session_context=_resolve_applicant_health_session_context,
         validate_finalize_context=_validate_applicant_health_finalize_context,
         resolve_attached_field_override=_resolve_admissions_attached_field_override,
@@ -587,6 +595,7 @@ _WORKFLOW_SPECS: tuple[GovernedUploadSpec, ...] = (
     GovernedUploadSpec(
         workflow_id="student.export_file",
         contract_version=_WORKFLOW_CONTRACT_VERSION,
+        is_private=None,
         resolve_session_context=_resolve_student_export_session_context,
         validate_finalize_context=_validate_student_export_finalize_context,
         resolve_attached_field_override=_no_attached_field_override,
@@ -597,6 +606,7 @@ _WORKFLOW_SPECS: tuple[GovernedUploadSpec, ...] = (
     GovernedUploadSpec(
         workflow_id="student_patient.vaccination_proof",
         contract_version=_WORKFLOW_CONTRACT_VERSION,
+        is_private=None,
         resolve_session_context=_resolve_student_patient_vaccination_session_context,
         validate_finalize_context=_validate_student_patient_vaccination_finalize_context,
         resolve_attached_field_override=_resolve_student_artifact_attached_field_override,
@@ -607,6 +617,7 @@ _WORKFLOW_SPECS: tuple[GovernedUploadSpec, ...] = (
     GovernedUploadSpec(
         workflow_id="student.promoted_admissions_document",
         contract_version=_WORKFLOW_CONTRACT_VERSION,
+        is_private=None,
         resolve_session_context=_resolve_promoted_admissions_document_session_context,
         validate_finalize_context=_validate_promoted_admissions_document_finalize_context,
         resolve_attached_field_override=_no_attached_field_override,
@@ -617,6 +628,7 @@ _WORKFLOW_SPECS: tuple[GovernedUploadSpec, ...] = (
     GovernedUploadSpec(
         workflow_id="org_communication.attachment",
         contract_version=_WORKFLOW_CONTRACT_VERSION,
+        is_private=None,
         resolve_session_context=_resolve_org_communication_session_context,
         validate_finalize_context=_validate_org_communication_finalize_context,
         resolve_attached_field_override=_no_attached_field_override,
@@ -627,6 +639,7 @@ _WORKFLOW_SPECS: tuple[GovernedUploadSpec, ...] = (
     GovernedUploadSpec(
         workflow_id="media.employee_profile_image",
         contract_version=_WORKFLOW_CONTRACT_VERSION,
+        is_private=True,
         resolve_session_context=_resolve_employee_image_session_context,
         validate_finalize_context=_validate_media_finalize_context,
         resolve_attached_field_override=_resolve_media_attached_field_override,
@@ -637,6 +650,7 @@ _WORKFLOW_SPECS: tuple[GovernedUploadSpec, ...] = (
     GovernedUploadSpec(
         workflow_id="media.student_profile_image",
         contract_version=_WORKFLOW_CONTRACT_VERSION,
+        is_private=True,
         resolve_session_context=_resolve_student_image_session_context,
         validate_finalize_context=_validate_media_finalize_context,
         resolve_attached_field_override=_resolve_media_attached_field_override,
@@ -647,6 +661,7 @@ _WORKFLOW_SPECS: tuple[GovernedUploadSpec, ...] = (
     GovernedUploadSpec(
         workflow_id="media.guardian_profile_image",
         contract_version=_WORKFLOW_CONTRACT_VERSION,
+        is_private=True,
         resolve_session_context=_resolve_guardian_image_session_context,
         validate_finalize_context=_validate_media_finalize_context,
         resolve_attached_field_override=_resolve_media_attached_field_override,
@@ -657,6 +672,7 @@ _WORKFLOW_SPECS: tuple[GovernedUploadSpec, ...] = (
     GovernedUploadSpec(
         workflow_id="organization_media.organization_logo",
         contract_version=_WORKFLOW_CONTRACT_VERSION,
+        is_private=None,
         resolve_session_context=_resolve_organization_logo_session_context,
         validate_finalize_context=_validate_media_finalize_context,
         resolve_attached_field_override=_resolve_media_attached_field_override,
@@ -667,6 +683,7 @@ _WORKFLOW_SPECS: tuple[GovernedUploadSpec, ...] = (
     GovernedUploadSpec(
         workflow_id="organization_media.school_logo",
         contract_version=_WORKFLOW_CONTRACT_VERSION,
+        is_private=None,
         resolve_session_context=_resolve_school_logo_session_context,
         validate_finalize_context=_validate_media_finalize_context,
         resolve_attached_field_override=_resolve_media_attached_field_override,
@@ -677,6 +694,7 @@ _WORKFLOW_SPECS: tuple[GovernedUploadSpec, ...] = (
     GovernedUploadSpec(
         workflow_id="organization_media.school_gallery_image",
         contract_version=_WORKFLOW_CONTRACT_VERSION,
+        is_private=None,
         resolve_session_context=_resolve_school_gallery_image_session_context,
         validate_finalize_context=_validate_media_finalize_context,
         resolve_attached_field_override=_resolve_media_attached_field_override,
@@ -687,6 +705,7 @@ _WORKFLOW_SPECS: tuple[GovernedUploadSpec, ...] = (
     GovernedUploadSpec(
         workflow_id="organization_media.asset",
         contract_version=_WORKFLOW_CONTRACT_VERSION,
+        is_private=None,
         resolve_session_context=_resolve_organization_media_asset_session_context,
         validate_finalize_context=_validate_media_finalize_context,
         resolve_attached_field_override=_resolve_media_attached_field_override,
@@ -733,6 +752,8 @@ def build_upload_session_context(workflow_id: str, payload: dict[str, Any]) -> d
 
     spec = get_upload_spec(workflow_id)
     resolved = dict(spec.resolve_session_context(dict(payload)))
+    if spec.is_private is not None:
+        resolved["is_private"] = int(bool(spec.is_private))
     resolved["workflow_id"] = spec.workflow_id
     resolved["contract_version"] = spec.contract_version
     return resolved

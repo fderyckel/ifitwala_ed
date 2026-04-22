@@ -126,6 +126,25 @@ Rules:
    - `Checkbox`
 7. `Guardian + Student`, `Guardian And Student`, `Per Family`, and any non-durable operational `Acknowledge` mode remain schema-reserved but not executable in Phase 2A.
 8. Profile write-back is allowed only for bindings that the server registry explicitly maps to canonical `Contact` and `Address` ownership, plus mirrored convenience fields on `Guardian` and `Student`.
+9. The initial Phase 2A binding registry is:
+   - `Student.student_full_name`
+   - `Student.student_email`
+   - `Student.student_mobile_number`
+   - `Student.anchor_school`
+   - `Guardian.guardian_full_name`
+   - `Guardian.guardian_email`
+   - `Guardian.guardian_mobile_phone`
+   - `Student.primary_address`
+   - `Guardian.primary_address`
+10. `Address` fields submit and snapshot a structured value with:
+    - `address_line1`
+    - `address_line2`
+    - `city`
+    - `state`
+    - `country`
+    - `pincode`
+11. `Student.primary_address` and `Guardian.primary_address` may write back only when the server can resolve exactly one canonical linked `Address` row for that context.
+12. `Student.student_email` remains a valid bound field for display and form capture, but Phase 2A keeps portal-side profile write-back disabled for that binding until student login identity is decoupled from `Student.student_email`.
 
 ## Desk Authoring Plan
 Status: Planned

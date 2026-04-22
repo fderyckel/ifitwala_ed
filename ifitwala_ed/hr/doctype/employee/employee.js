@@ -111,16 +111,15 @@ frappe.ui.form.on("Employee", {
         return;
       }
 
-      new frappe.ui.FileUploader({
-        method: "ifitwala_ed.utilities.governed_uploads.upload_employee_image",
-        args: { employee: frm.doc.name },
-        doctype: "Employee",
-        docname: frm.doc.name,
-        fieldname,
-        is_private: 0,
-        disable_private: true,
-        allow_multiple: false,
-        on_success(file_doc) {
+	      new frappe.ui.FileUploader({
+	        method: "ifitwala_ed.utilities.governed_uploads.upload_employee_image",
+	        args: { employee: frm.doc.name },
+	        doctype: "Employee",
+	        docname: frm.doc.name,
+	        fieldname,
+	        disable_private: true,
+	        allow_multiple: false,
+	        on_success(file_doc) {
           const payload = file_doc?.message
             || (Array.isArray(file_doc) ? file_doc[0] : file_doc)
             || (typeof file_doc === "string" ? { file_url: file_doc } : null);

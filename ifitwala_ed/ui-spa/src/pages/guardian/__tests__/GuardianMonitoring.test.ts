@@ -8,6 +8,27 @@ const { getGuardianMonitoringSnapshotMock, markGuardianStudentLogReadMock } = vi
 	markGuardianStudentLogReadMock: vi.fn(),
 }))
 
+vi.mock('vue-router', async () => {
+	const { defineComponent, h } = await import('vue')
+
+	return {
+		RouterLink: defineComponent({
+			name: 'RouterLinkStub',
+			props: {
+				to: {
+					type: [String, Object],
+					required: false,
+					default: '',
+				},
+			},
+			setup(props, { slots }) {
+				return () =>
+					h('a', { 'data-to': JSON.stringify(props.to || null) }, slots.default?.())
+			},
+		}),
+	}
+})
+
 vi.mock('frappe-ui', () => ({
 	toast: {
 		error: vi.fn(),
@@ -99,6 +120,8 @@ describe('GuardianMonitoring', () => {
 					published_by: 'teacher@example.com',
 					score: { value: 92 },
 					narrative: 'Strong progress.',
+					grade_visible: true,
+					feedback_visible: true,
 				},
 			],
 		})
@@ -115,6 +138,7 @@ describe('GuardianMonitoring', () => {
 		expect(text).toContain('Needs follow-up')
 		expect(text).toContain('Science assessment')
 		expect(text).toContain('92')
+		expect(document.body.innerHTML).toContain('guardian-released-feedback')
 	})
 
 	it('reloads the payload when the child filter changes', async () => {

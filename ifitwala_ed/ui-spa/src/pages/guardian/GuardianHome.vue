@@ -45,6 +45,41 @@
 			</article>
 		</section>
 
+		<section v-if="consentSummary.pending_count" class="card-surface p-5">
+			<div class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+				<div>
+					<p class="type-overline text-ink/60">Forms &amp; Signatures</p>
+					<h2 class="type-h3 text-ink">Operational forms need your action</h2>
+					<p class="type-caption text-ink/70">
+						{{ consentSummary.pending_count }}
+						{{ consentSummary.pending_count === 1 ? 'form is' : 'forms are' }}
+						waiting for your family action.
+					</p>
+				</div>
+				<RouterLink class="if-button if-button--primary" :to="{ name: 'guardian-consents' }">
+					Open Forms &amp; Signatures
+				</RouterLink>
+			</div>
+			<ul class="mt-4 space-y-2">
+				<li
+					v-for="(item, index) in consentSummary.items"
+					:key="`${item.request_key}:${item.student}:${index}`"
+					class="rounded-lg border border-line-soft bg-white p-3"
+				>
+					<div class="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+						<div>
+							<p class="type-body-strong text-ink">
+								{{ item.request_title }}
+								<span class="text-ink/60"> · {{ item.student_name }}</span>
+							</p>
+							<p v-if="item.due_on" class="mt-1 type-caption text-ink/70">Due {{ item.due_on }}</p>
+						</div>
+						<span class="chip">{{ item.status_label }}</span>
+					</div>
+				</li>
+			</ul>
+		</section>
+
 		<section v-if="policySummary.pending_count" class="card-surface p-5">
 			<div class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
 				<div>
@@ -390,6 +425,14 @@ const counts = computed(
 		}
 );
 const familyTimeline = computed(() => snapshot.value?.zones.family_timeline ?? []);
+const consentSummary = computed(
+	() =>
+		snapshot.value?.consents ?? {
+			pending_count: 0,
+			overdue_count: 0,
+			items: [],
+		}
+);
 const policySummary = computed(
 	() =>
 		snapshot.value?.policies ?? {
@@ -442,6 +485,12 @@ const quickLinks = [
 		description: 'Review upcoming classes and day summaries.',
 		icon: 'calendar',
 		to: { name: 'guardian-home' },
+	},
+	{
+		title: 'Forms & Signatures',
+		description: 'Review guardian forms and submit pending approvals.',
+		icon: 'edit-3',
+		to: { name: 'guardian-consents' },
 	},
 	{
 		title: 'Policies',

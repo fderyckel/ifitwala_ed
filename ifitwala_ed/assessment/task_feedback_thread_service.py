@@ -202,8 +202,20 @@ def _resolve_workspace_id(
     resolved_submission_id = _clean_text(submission_id)
     if not resolved_outcome_id or not resolved_submission_id:
         return None
+    db_get_value = getattr(getattr(frappe, "db", None), "get_value", None)
+    if not callable(db_get_value):
+        rows = frappe.get_all(
+            "Task Feedback Workspace",
+            filters={"task_outcome": resolved_outcome_id, "task_submission": resolved_submission_id},
+            fields=["name"],
+            order_by="modified desc, creation desc, name desc",
+            limit=1,
+        )
+        if not rows:
+            return None
+        return _clean_text(rows[0].get("name"))
     return _clean_text(
-        frappe.db.get_value(
+        db_get_value(
             "Task Feedback Workspace",
             {"task_outcome": resolved_outcome_id, "task_submission": resolved_submission_id},
             "name",

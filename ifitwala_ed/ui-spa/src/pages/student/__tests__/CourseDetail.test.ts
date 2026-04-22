@@ -857,6 +857,7 @@ describe('CourseDetail', () => {
 		expect(document.body.textContent).toContain('Link the evidence back to the claim.')
 		expect(document.body.textContent).toContain('Teacher comments')
 		expect(document.body.textContent).toContain('Link this sentence back to your claim.')
+		expect(document.body.innerHTML).toContain('student-released-feedback')
 	})
 
 	it('supports document upload in the selected task workspace', async () => {

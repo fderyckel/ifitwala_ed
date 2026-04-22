@@ -17,6 +17,16 @@ export type PolicyActionItem = {
 	href: RouteTarget
 }
 
+export type ConsentActionItem = {
+	request_key: string
+	request_title: string
+	student: string
+	student_name: string
+	due_on?: string | null
+	status_label: string
+	href: RouteTarget
+}
+
 export type Response = {
 	meta: {
 		generated_at: string
@@ -31,6 +41,11 @@ export type Response = {
 		first_name?: string | null
 		full_name?: string | null
 		image_url?: string | null
+	}
+	consents?: {
+		pending_count: number
+		overdue_count?: number
+		items: ConsentActionItem[]
 	}
 	policies?: {
 		pending_count: number

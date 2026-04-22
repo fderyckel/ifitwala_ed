@@ -1039,6 +1039,13 @@
 								<span v-if="selectedTaskReleasedResult.official.grade" class="chip">
 									Grade {{ selectedTaskReleasedResult.official.grade }}
 								</span>
+								<RouterLink
+									v-if="selectedTaskFeedbackRoute"
+									:to="selectedTaskFeedbackRoute"
+									class="if-button if-button--secondary"
+								>
+									Open released feedback
+								</RouterLink>
 							</div>
 
 							<div
@@ -1397,6 +1404,30 @@ const selectedTaskWorkspace = computed<StudentAssignedWork | null>(() => {
 
 const selectedTaskReleasedResult = computed<ReleasedAssessmentResult | null>(() => {
 	return selectedTaskSubmission.value?.released_result || null;
+});
+const selectedTaskFeedbackRoute = computed(() => {
+	if (
+		!selectedTaskWorkspace.value?.task_outcome ||
+		!(
+			selectedTaskReleasedResult.value?.feedback_visible ||
+			selectedTaskReleasedResult.value?.grade_visible
+		)
+	) {
+		return null;
+	}
+	return {
+		name: 'student-released-feedback',
+		params: {
+			course_id: props.course_id,
+			task_outcome: selectedTaskWorkspace.value.task_outcome,
+		},
+		query: {
+			student_group: props.student_group || undefined,
+			unit_plan: selectedUnit.value?.unit_plan || props.unit_plan || undefined,
+			class_session: selectedSession.value?.class_session || props.class_session || undefined,
+			task_delivery: selectedTaskWorkspace.value.task_delivery || undefined,
+		},
+	};
 });
 
 const selectedTaskSupportsDirectCompletion = computed(() => {

@@ -608,6 +608,10 @@
 										{{ feedbackForm.items.length }}
 										{{ feedbackForm.items.length === 1 ? 'item' : 'items' }}
 									</Badge>
+									<Badge variant="subtle">
+										{{ feedbackForm.priorities.length }}
+										{{ feedbackForm.priorities.length === 1 ? 'priority' : 'priorities' }}
+									</Badge>
 									<Badge v-if="drawer.feedback_workspace?.modified" variant="subtle">
 										Updated {{ formatDateTime(drawer.feedback_workspace.modified) }}
 									</Badge>
@@ -676,12 +680,145 @@
 								</div>
 							</div>
 
+							<div class="mt-5 rounded-2xl border border-border/70 bg-gray-50/40 p-4">
+								<div class="flex flex-wrap items-start justify-between gap-3">
+									<div>
+										<p class="text-xs font-semibold uppercase tracking-[0.16em] text-ink/45">
+											Pinned Priorities
+										</p>
+										<p class="mt-2 text-sm text-ink/70">
+											Keep the student’s first actions tight. Link a priority to a note when you
+											want the navigator to jump directly into the document.
+										</p>
+									</div>
+									<button
+										type="button"
+										class="if-button if-button--secondary"
+										:disabled="priorityLimitReached"
+										@click="addFeedbackPriority"
+									>
+										{{ priorityLimitReached ? 'Priority limit reached' : 'Add priority' }}
+									</button>
+								</div>
+
+								<div v-if="feedbackForm.priorities.length" class="mt-4 space-y-3">
+									<div
+										v-for="(priority, index) in feedbackForm.priorities"
+										:key="priority.id || `priority-${index}`"
+										class="rounded-2xl border border-border/70 bg-white p-4"
+									>
+										<div class="flex items-start justify-between gap-3">
+											<div>
+												<p class="text-sm font-semibold text-ink">Priority {{ index + 1 }}</p>
+												<p class="mt-1 text-xs text-ink/55">
+													Use a short title plus one concrete action cue.
+												</p>
+											</div>
+											<button
+												type="button"
+												class="text-sm font-medium text-flame transition hover:underline"
+												@click="removeFeedbackPriority(index)"
+											>
+												Remove
+											</button>
+										</div>
+
+										<div class="mt-4 grid gap-3 lg:grid-cols-2">
+											<div class="space-y-1.5">
+												<label
+													class="block text-xs font-semibold uppercase tracking-[0.16em] text-ink/45"
+												>
+													Title
+												</label>
+												<FormControl
+													type="text"
+													placeholder="Lead with the next move."
+													:model-value="priority.title"
+													@update:modelValue="
+														feedbackForm.priorities[index].title = String($event || '')
+													"
+												/>
+											</div>
+											<div class="space-y-1.5">
+												<label
+													class="block text-xs font-semibold uppercase tracking-[0.16em] text-ink/45"
+												>
+													Linked note
+												</label>
+												<FormControl
+													type="select"
+													:options="[
+														{ label: 'No linked note', value: '' },
+														...feedbackItemOptions,
+													]"
+													option-label="label"
+													option-value="value"
+													:model-value="priority.feedback_item_id || ''"
+													@update:modelValue="
+														feedbackForm.priorities[index].feedback_item_id =
+															String($event || '') || null
+													"
+												/>
+												<p v-if="!feedbackItemOptions.length" class="text-xs text-ink/55">
+													Save the feedback draft once to link priorities back to anchored notes.
+												</p>
+											</div>
+											<div class="space-y-1.5 lg:col-span-2">
+												<label
+													class="block text-xs font-semibold uppercase tracking-[0.16em] text-ink/45"
+												>
+													Detail
+												</label>
+												<FormControl
+													type="textarea"
+													rows="2"
+													placeholder="Tell the student what to do with this feedback."
+													:model-value="priority.detail"
+													@update:modelValue="
+														feedbackForm.priorities[index].detail = String($event || '')
+													"
+												/>
+											</div>
+											<div class="space-y-1.5">
+												<label
+													class="block text-xs font-semibold uppercase tracking-[0.16em] text-ink/45"
+												>
+													Criterion
+												</label>
+												<FormControl
+													type="select"
+													:options="[
+														{ label: 'No linked criterion', value: '' },
+														...feedbackCriteriaOptions,
+													]"
+													option-label="label"
+													option-value="value"
+													:model-value="priority.assessment_criteria || ''"
+													@update:modelValue="
+														feedbackForm.priorities[index].assessment_criteria =
+															String($event || '') || null
+													"
+												/>
+											</div>
+										</div>
+									</div>
+								</div>
+
+								<div
+									v-else
+									class="mt-4 rounded-2xl border border-dashed border-border/70 bg-white p-4 text-sm text-ink/60"
+								>
+									Add up to five priorities so the released navigator opens with a clear first pass
+									instead of a dense wall of notes.
+								</div>
+							</div>
+
 							<div
 								class="mt-4 flex items-center justify-between gap-3 border-t border-border/60 pt-4"
 							>
 								<p class="text-xs text-ink/45">
 									Save one bounded draft for this selected submission version after updating
-									summary text or anchored comments.
+									summary text, priorities, or anchored comments.
 								</p>
 								<button
 									type="button"
@@ -691,6 +828,138 @@
 								>
 									{{ feedbackBusy ? 'Saving…' : 'Save Feedback Draft' }}
 								</button>
+							</div>
+						</div>
+
+						<div class="rounded-2xl border border-border/70 bg-white p-4">
+							<div class="flex flex-wrap items-start justify-between gap-3">
+								<div>
+									<p class="text-xs font-semibold uppercase tracking-[0.16em] text-ink/45">
+										Student Replies
+									</p>
+									<h3 class="mt-2 text-sm font-semibold text-ink">
+										Clarifications and learner uptake
+									</h3>
+									<p class="mt-2 text-sm text-ink/70">
+										Keep reply handling in the drawer so instructors do not leave the marking
+										context to answer one student.
+									</p>
+								</div>
+								<Badge variant="subtle">
+									{{ feedbackThreads.length }}
+									{{ feedbackThreads.length === 1 ? 'thread' : 'threads' }}
+								</Badge>
+							</div>
+
+							<div v-if="feedbackThreads.length" class="mt-4 space-y-3">
+								<div
+									v-for="thread in feedbackThreads"
+									:key="thread.thread_id"
+									class="rounded-2xl border border-border/70 bg-gray-50/40 p-4"
+								>
+									<div class="flex flex-wrap items-start justify-between gap-3">
+										<div class="min-w-0">
+											<p class="text-sm font-semibold text-ink">
+												{{ threadTargetLabel(thread) }}
+											</p>
+											<p class="mt-1 text-xs text-ink/55">
+												Updated {{ formatDateTime(thread.modified) || 'recently' }}
+											</p>
+										</div>
+										<div class="flex flex-wrap gap-2">
+											<Badge variant="subtle">
+												{{ learnerStateLabel(thread.learner_state) }}
+											</Badge>
+											<Badge
+												variant="subtle"
+												:theme="thread.thread_status === 'resolved' ? 'green' : undefined"
+											>
+												{{ thread.thread_status === 'resolved' ? 'Resolved' : 'Open' }}
+											</Badge>
+										</div>
+									</div>
+
+									<div class="mt-4 space-y-2">
+										<div
+											v-for="message in thread.messages"
+											:key="
+												message.id ||
+												`${thread.thread_id}-${message.created}-${message.author_role}`
+											"
+											class="rounded-2xl px-3 py-3"
+											:class="
+												message.author_role === 'student'
+													? 'bg-jacaranda/6'
+													: 'bg-white ring-1 ring-border/60'
+											"
+										>
+											<div class="flex flex-wrap items-center gap-2">
+												<Badge variant="subtle">
+													{{ message.author_role === 'student' ? 'Student' : 'Instructor' }}
+												</Badge>
+												<span class="text-xs text-ink/55">
+													{{
+														message.message_kind === 'clarification' ? 'Clarification' : 'Reply'
+													}}
+												</span>
+											</div>
+											<p class="mt-2 whitespace-pre-wrap text-sm text-ink/80">
+												{{ message.body }}
+											</p>
+										</div>
+									</div>
+
+									<div
+										class="mt-4 border-t border-border/60 pt-4"
+										v-if="drawer.allowed_actions.can_edit_feedback"
+									>
+										<FormControl
+											type="textarea"
+											rows="2"
+											placeholder="Reply to the student inside the grading drawer."
+											:model-value="threadReplyDrafts[thread.thread_id] || ''"
+											@update:modelValue="
+												threadReplyDrafts[thread.thread_id] = String($event || '')
+											"
+										/>
+										<div class="mt-3 flex flex-wrap gap-2">
+											<button
+												type="button"
+												class="if-button if-button--secondary"
+												:disabled="threadBusy || !threadReplyDrafts[thread.thread_id]?.trim()"
+												@click="emitSaveFeedbackThreadReply(thread.thread_id)"
+											>
+												{{ threadBusy ? 'Sending…' : 'Send reply' }}
+											</button>
+											<button
+												type="button"
+												class="if-button if-button--quiet"
+												:disabled="threadBusy"
+												@click="
+													emitSaveFeedbackThreadState(
+														thread.thread_id,
+														thread.thread_status === 'resolved' ? 'open' : 'resolved'
+													)
+												"
+											>
+												{{
+													threadBusy
+														? 'Updating…'
+														: thread.thread_status === 'resolved'
+															? 'Reopen'
+															: 'Mark resolved'
+												}}
+											</button>
+										</div>
+									</div>
+								</div>
+							</div>
+
+							<div
+								v-else
+								class="mt-4 rounded-2xl border border-dashed border-border/70 bg-gray-50/40 p-4 text-sm text-ink/60"
+							>
+								No student replies or clarification requests yet.
 							</div>
 						</div>
 					</div>
@@ -982,6 +1251,8 @@ import AttachmentPreviewCard from '@/components/attachments/AttachmentPreviewCar
 import type { CommentBankScopeMode } from '@/types/contracts/gradebook/comment_bank';
 import type {
 	FeedbackIntent,
+	FeedbackPriority,
+	FeedbackThread,
 	FeedbackVisibility,
 	FeedbackWorkspaceItem,
 } from '@/types/contracts/gradebook/feedback_workspace';
@@ -1034,6 +1305,7 @@ const props = defineProps<{
 	feedbackBusy?: boolean;
 	commentBankBusy?: boolean;
 	publicationBusy?: boolean;
+	threadBusy?: boolean;
 	submissionSeenBusy?: boolean;
 	publishBusy?: boolean;
 	moderationBusy?: boolean;
@@ -1058,6 +1330,7 @@ const emit = defineEmits<{
 				improvements: string;
 				next_steps: string;
 			};
+			priorities: FeedbackPriority[];
 			items: FeedbackWorkspaceItem[];
 		}
 	): void;
@@ -1078,6 +1351,23 @@ const emit = defineEmits<{
 			feedback_intent: FeedbackIntent;
 			assessment_criteria?: string | null;
 			scope_mode: CommentBankScopeMode;
+		}
+	): void;
+	(
+		e: 'save-feedback-thread-reply',
+		payload: {
+			outcome_id: string;
+			thread_id: string;
+			body: string;
+			thread_status?: 'open' | 'resolved' | null;
+		}
+	): void;
+	(
+		e: 'save-feedback-thread-state',
+		payload: {
+			outcome_id: string;
+			thread_id: string;
+			thread_status: 'open' | 'resolved';
 		}
 	): void;
 	(
@@ -1131,6 +1421,7 @@ const feedbackForm = reactive({
 		improvements: '',
 		next_steps: '',
 	},
+	priorities: [] as FeedbackPriority[],
 	items: [] as FeedbackWorkspaceItem[],
 	publication: {
 		feedback_visibility: 'hidden' as FeedbackVisibility,
@@ -1159,6 +1450,7 @@ const feedbackDraftDirty = computed(
 		feedbackDraftBaseline.value !==
 		JSON.stringify({
 			summary: feedbackForm.summary,
+			priorities: feedbackForm.priorities,
 			items: feedbackForm.items,
 		})
 );
@@ -1195,6 +1487,17 @@ const publicationControlsDisabled = computed(
 		publicationContextMissing.value ||
 		!canSaveFeedbackPublication.value
 );
+const feedbackItemOptions = computed(() =>
+	feedbackForm.items
+		.filter(item => item.id)
+		.map((item, index) => ({
+			label: `Note ${index + 1}${item.comment ? ` · ${item.comment.slice(0, 48)}` : ''}`,
+			value: item.id || '',
+		}))
+);
+const feedbackThreads = computed(() => props.drawer?.feedback_threads || []);
+const threadReplyDrafts = ref<Record<string, string>>({});
+const priorityLimitReached = computed(() => feedbackForm.priorities.length >= 5);
 
 const selectedSubmissionLabel = computed(() => {
 	const row = props.drawer?.selected_submission;
@@ -1304,18 +1607,30 @@ function resetFeedbackForm(drawer: GetDrawerResponse | null) {
 	feedbackForm.summary.strengths = workspace?.summary.strengths || '';
 	feedbackForm.summary.improvements = workspace?.summary.improvements || '';
 	feedbackForm.summary.next_steps = workspace?.summary.next_steps || '';
+	feedbackForm.priorities = cloneFeedbackPriorities(workspace?.priorities || []);
 	feedbackForm.items = cloneFeedbackItems(workspace?.items || []);
 	feedbackForm.publication.feedback_visibility =
 		workspace?.publication.feedback_visibility || 'hidden';
 	feedbackForm.publication.grade_visibility = workspace?.publication.grade_visibility || 'hidden';
 	feedbackDraftBaseline.value = JSON.stringify({
 		summary: feedbackForm.summary,
+		priorities: feedbackForm.priorities,
 		items: feedbackForm.items,
 	});
 	publicationBaseline.value = JSON.stringify({
 		feedback_visibility: feedbackForm.publication.feedback_visibility,
 		grade_visibility: feedbackForm.publication.grade_visibility,
 	});
+	threadReplyDrafts.value = {};
+}
+
+function cloneFeedbackPriorities(priorities: FeedbackPriority[]): FeedbackPriority[] {
+	return priorities.map(priority => ({
+		...priority,
+		detail: priority.detail || '',
+		feedback_item_id: priority.feedback_item_id || null,
+		assessment_criteria: priority.assessment_criteria || null,
+	}));
 }
 
 function cloneFeedbackItems(items: FeedbackWorkspaceItem[]): FeedbackWorkspaceItem[] {
@@ -1323,6 +1638,20 @@ function cloneFeedbackItems(items: FeedbackWorkspaceItem[]): FeedbackWorkspaceIt
 		...item,
 		anchor: JSON.parse(JSON.stringify(item.anchor)),
 	}));
+}
+
+function addFeedbackPriority() {
+	if (priorityLimitReached.value) return;
+	feedbackForm.priorities.push({
+		title: '',
+		detail: '',
+		feedback_item_id: null,
+		assessment_criteria: null,
+	});
+}
+
+function removeFeedbackPriority(index: number) {
+	feedbackForm.priorities.splice(index, 1);
 }
 
 function emitVersion(row: NonNullable<GetDrawerResponse['latest_submission']>) {
@@ -1349,6 +1678,7 @@ function emitSaveFeedbackDraft() {
 			improvements: feedbackForm.summary.improvements,
 			next_steps: feedbackForm.summary.next_steps,
 		},
+		priorities: cloneFeedbackPriorities(feedbackForm.priorities),
 		items: cloneFeedbackItems(feedbackForm.items),
 	});
 }
@@ -1379,6 +1709,61 @@ function emitSaveCommentBankEntry(payload: {
 		feedback_intent: payload.feedback_intent,
 		assessment_criteria: payload.assessment_criteria || null,
 		scope_mode: payload.scope_mode,
+	});
+}
+
+function threadTargetLabel(thread: FeedbackThread) {
+	if (thread.target_type === 'feedback_item' && thread.target_feedback_item) {
+		const index = feedbackForm.items.findIndex(item => item.id === thread.target_feedback_item);
+		const item = feedbackForm.items.find(row => row.id === thread.target_feedback_item);
+		if (index >= 0) {
+			return `Feedback note ${index + 1}${item?.comment ? ` · ${item.comment.slice(0, 48)}` : ''}`;
+		}
+		return 'Feedback note';
+	}
+	if (thread.target_type === 'priority' && thread.target_priority) {
+		const priority = feedbackForm.priorities.find(row => row.id === thread.target_priority);
+		return priority?.title || 'Pinned priority';
+	}
+	if (thread.target_type === 'summary') {
+		return `Summary · ${summaryFieldLabel(thread.summary_field)}`;
+	}
+	return 'Released feedback thread';
+}
+
+function summaryFieldLabel(field?: string | null) {
+	if (field === 'strengths') return 'Strengths';
+	if (field === 'improvements') return 'Improvements';
+	if (field === 'next_steps') return 'Next steps';
+	return 'Overall';
+}
+
+function learnerStateLabel(state?: string | null) {
+	if (state === 'understood') return 'Understood';
+	if (state === 'acted_on') return 'Acted on';
+	return 'Open';
+}
+
+function emitSaveFeedbackThreadReply(threadId: string) {
+	const outcomeId = props.drawer?.outcome.outcome_id;
+	const body = threadReplyDrafts.value[threadId]?.trim();
+	if (!outcomeId || !threadId || !body) return;
+	emit('save-feedback-thread-reply', {
+		outcome_id: outcomeId,
+		thread_id: threadId,
+		body,
+		thread_status: 'open',
+	});
+	threadReplyDrafts.value[threadId] = '';
+}
+
+function emitSaveFeedbackThreadState(threadId: string, threadStatus: 'open' | 'resolved') {
+	const outcomeId = props.drawer?.outcome.outcome_id;
+	if (!outcomeId || !threadId) return;
+	emit('save-feedback-thread-state', {
+		outcome_id: outcomeId,
+		thread_id: threadId,
+		thread_status: threadStatus,
 	});
 }
 

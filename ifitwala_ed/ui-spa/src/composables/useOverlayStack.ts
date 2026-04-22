@@ -35,6 +35,7 @@ export type OverlayType =
   | 'admissions-submit'
   | 'admissions-workspace'
   | 'critical-incidents-list'
+  | 'consent-profile-writeback'
 
 export type OverlayEntry = {
   id: string

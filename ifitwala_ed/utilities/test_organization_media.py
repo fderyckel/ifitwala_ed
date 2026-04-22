@@ -365,7 +365,12 @@ class TestOrganizationMedia(FrappeTestCase):
                 "content": base64.b64decode(self._tiny_png_base64()),
                 "is_private": 0,
             }
-        ).insert(ignore_permissions=True)
+        )
+        # Mirror Drive's native File compatibility projection flags so the
+        # fixture follows the same governed insert path as production.
+        file_doc.flags.governed_upload = True
+        file_doc.flags.drive_compat_projection = True
+        file_doc = file_doc.insert(ignore_permissions=True)
         self._created.append(("File", file_doc.name))
 
         session_doc = frappe.get_doc(

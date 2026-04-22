@@ -56,7 +56,7 @@ def _validate_provided_authoritative_fields(
     authoritative_payload: dict[str, Any],
 ) -> None:
     for fieldname, authoritative_value in authoritative_payload.items():
-        if fieldname in {"workflow_id", "contract_version"}:
+        if fieldname in {"workflow_id", "contract_version", "is_private"}:
             continue
         provided_value = provided_payload.get(fieldname)
         if provided_value not in (None, "", authoritative_value):
@@ -104,15 +104,18 @@ def _build_finalize_contract(upload_session_doc, workflow_id: str) -> dict[str, 
         frappe.throw(
             _("Upload session no longer matches the authoritative workflow contract: {0}.").format(spec.workflow_id)
         )
+    authoritative_context = dict(authoritative)
+    if spec.is_private is not None:
+        authoritative_context["is_private"] = int(bool(spec.is_private))
 
     return {
         "workflow": spec.workflow_id,
         "workflow_id": spec.workflow_id,
         "contract_version": spec.contract_version,
-        "authoritative_context": authoritative,
+        "authoritative_context": authoritative_context,
         "attached_field_override": spec.resolve_attached_field_override(upload_session_doc),
-        "context_override": spec.resolve_context_override(upload_session_doc, authoritative),
-        "binding_role": spec.resolve_binding_role(upload_session_doc, authoritative),
+        "context_override": spec.resolve_context_override(upload_session_doc, authoritative_context),
+        "binding_role": spec.resolve_binding_role(upload_session_doc, authoritative_context),
     }
 
 
@@ -144,14 +147,17 @@ def resolve_finalize_contract(upload_session_doc) -> dict[str, Any]:
         authoritative = spec.validate_finalize_context(upload_session_doc)
         if authoritative is None:
             continue
+        authoritative_context = dict(authoritative)
+        if spec.is_private is not None:
+            authoritative_context["is_private"] = int(bool(spec.is_private))
         return {
             "workflow": spec.workflow_id,
             "workflow_id": spec.workflow_id,
             "contract_version": spec.contract_version,
-            "authoritative_context": authoritative,
+            "authoritative_context": authoritative_context,
             "attached_field_override": spec.resolve_attached_field_override(upload_session_doc),
-            "context_override": spec.resolve_context_override(upload_session_doc, authoritative),
-            "binding_role": spec.resolve_binding_role(upload_session_doc, authoritative),
+            "context_override": spec.resolve_context_override(upload_session_doc, authoritative_context),
+            "binding_role": spec.resolve_binding_role(upload_session_doc, authoritative_context),
         }
 
     return dict(_EMPTY_FINALIZE_CONTRACT)

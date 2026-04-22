@@ -7,6 +7,7 @@ export type CoursePlanAcademicYearOption = {
 }
 
 export type CoursePlanIndexRow = {
+	name: string
 	course_plan: string
 	title: string
 	course: string

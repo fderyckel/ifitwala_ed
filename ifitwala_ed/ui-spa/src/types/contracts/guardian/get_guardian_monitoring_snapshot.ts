@@ -58,4 +58,6 @@ export type MonitoringPublishedResult = {
 	published_by: string
 	score?: { value: number | string } | null
 	narrative?: string
+	grade_visible?: boolean
+	feedback_visible?: boolean
 }

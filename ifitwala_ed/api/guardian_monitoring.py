@@ -15,6 +15,7 @@ from ifitwala_ed.api.guardian_home import (
     _resolve_guardian_scope,
 )
 from ifitwala_ed.api.student_log import _upsert_student_log_read_receipt
+from ifitwala_ed.assessment import task_feedback_service
 
 
 @frappe.whitelist()
@@ -108,7 +109,7 @@ def _get_monitoring_results(*, student_names: list[str], days: int) -> list[dict
 
     anchor = frappe.utils.getdate()
     window_start = add_days(anchor, -(days - 1))
-    rows = frappe.get_all(
+    legacy_rows = frappe.get_all(
         "Task Outcome",
         filters={
             "student": ["in", student_names],
@@ -128,6 +129,60 @@ def _get_monitoring_results(*, student_names: list[str], days: int) -> list[dict
         order_by="published_on desc, modified desc",
         limit=200,
     )
+    workspace_rows = frappe.db.sql(
+        """
+        SELECT
+            task_outcome,
+            task,
+            student,
+            task_submission,
+            modified,
+            modified_by
+        FROM `tabTask Feedback Workspace`
+        WHERE student IN %(students)s
+          AND modified BETWEEN %(window_start)s AND %(window_end)s
+          AND (
+            feedback_visibility = 'student_and_guardian'
+            OR grade_visibility = 'student_and_guardian'
+          )
+        ORDER BY modified DESC
+        LIMIT 200
+        """,
+        {
+            "students": tuple(student_names),
+            "window_start": f"{window_start} 00:00:00",
+            "window_end": f"{anchor} 23:59:59",
+        },
+        as_dict=True,
+    )
+
+    candidate_rows: dict[str, dict[str, Any]] = {}
+    for row in legacy_rows:
+        outcome_id = row.get("name")
+        if not outcome_id:
+            continue
+        candidate_rows[outcome_id] = {
+            "task_outcome": outcome_id,
+            "student": row.get("student"),
+            "task": row.get("task"),
+            "published_on": row.get("published_on"),
+            "published_by": row.get("published_by"),
+            "task_submission": None,
+        }
+    for row in workspace_rows:
+        outcome_id = row.get("task_outcome")
+        if not outcome_id:
+            continue
+        candidate_rows[outcome_id] = {
+            "task_outcome": outcome_id,
+            "student": row.get("student"),
+            "task": row.get("task"),
+            "published_on": row.get("modified"),
+            "published_by": row.get("modified_by"),
+            "task_submission": row.get("task_submission"),
+        }
+
+    rows = list(candidate_rows.values())
     task_names = sorted({(row.get("task") or "").strip() for row in rows if (row.get("task") or "").strip()})
     task_rows = frappe.get_all(
         "Task",
@@ -145,25 +200,44 @@ def _get_monitoring_results(*, student_names: list[str], days: int) -> list[dict
 
     out: list[dict[str, Any]] = []
     for row in rows:
+        released = task_feedback_service.build_released_result_payload(
+            row.get("task_outcome") or "",
+            audience="guardian",
+            submission_id=row.get("task_submission"),
+        )
+        if not released.get("grade_visible") and not released.get("feedback_visible"):
+            continue
+
         score = None
-        if row.get("official_score") not in (None, ""):
-            score = {"value": row.get("official_score")}
-        elif row.get("official_grade"):
-            score = {"value": row.get("official_grade")}
+        if released.get("official", {}).get("score") not in (None, ""):
+            score = {"value": released.get("official", {}).get("score")}
+        elif released.get("official", {}).get("grade"):
+            score = {"value": released.get("official", {}).get("grade")}
+
+        narrative = (
+            (((released.get("feedback") or {}).get("summary") or {}).get("overall"))
+            or released.get("official", {}).get("feedback")
+            or ""
+        )
 
         out.append(
             {
-                "task_outcome": row.get("name") or "",
+                "task_outcome": row.get("task_outcome") or "",
                 "student": row.get("student") or "",
                 "student_name": student_name_map.get(row.get("student")) or row.get("student") or "",
-                "title": task_map.get(row.get("task"), {}).get("title") or row.get("task") or row.get("name") or "",
+                "title": task_map.get(row.get("task"), {}).get("title")
+                or row.get("task")
+                or row.get("task_outcome")
+                or "",
                 "published_on": str(row.get("published_on") or ""),
                 "published_by": row.get("published_by") or "",
                 "score": score,
-                "narrative": _plain_summary(row.get("official_feedback")),
+                "narrative": _plain_summary(narrative),
+                "grade_visible": bool(released.get("grade_visible")),
+                "feedback_visible": bool(released.get("feedback_visible")),
             }
         )
-    return out
+    return sorted(out, key=lambda row: str(row.get("published_on") or ""), reverse=True)[:200]
 
 
 @frappe.whitelist()

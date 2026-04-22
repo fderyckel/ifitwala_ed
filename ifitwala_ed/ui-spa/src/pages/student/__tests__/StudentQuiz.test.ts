@@ -249,6 +249,7 @@ describe('StudentQuiz', () => {
 		expect(document.body.textContent).toContain('Review osmosis before the next lesson.')
 		expect(document.body.textContent).toContain('Score 1.')
 		expect(document.body.innerHTML).toContain('Because')
+		expect(document.body.innerHTML).toContain('student-released-feedback')
 	})
 
 	it('keeps assessed quiz review redacted until release', async () => {

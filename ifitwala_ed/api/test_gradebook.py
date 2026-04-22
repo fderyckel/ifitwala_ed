@@ -18,6 +18,7 @@ def _gradebook_stub_modules(
     task_contribution_service=None,
     task_feedback_service=None,
     task_feedback_comment_bank_service=None,
+    task_feedback_thread_service=None,
     task_outcome_service=None,
 ):
     image_utils = types.ModuleType("ifitwala_ed.utilities.image_utils")
@@ -43,6 +44,7 @@ def _gradebook_stub_modules(
                 "improvements": "",
                 "next_steps": "",
             },
+            "priorities": [],
             "items": [],
             "publication": {
                 "feedback_visibility": "hidden",
@@ -82,6 +84,15 @@ def _gradebook_stub_modules(
             },
             "entries": [],
         }
+    thread_service = task_feedback_thread_service or types.ModuleType(
+        "ifitwala_ed.assessment.task_feedback_thread_service"
+    )
+    if not hasattr(thread_service, "build_feedback_thread_payloads"):
+        thread_service.build_feedback_thread_payloads = lambda **kwargs: []
+    if not hasattr(thread_service, "save_instructor_reply"):
+        thread_service.save_instructor_reply = lambda payload, actor=None: {"thread": None}
+    if not hasattr(thread_service, "save_instructor_thread_state"):
+        thread_service.save_instructor_thread_state = lambda payload, actor=None: {"thread": None}
     file_access = types.ModuleType("ifitwala_ed.api.file_access")
     file_access.resolve_academic_file_open_url = (
         lambda *, file_name, file_url, context_doctype=None, context_name=None, **kwargs: (
@@ -115,6 +126,7 @@ def _gradebook_stub_modules(
         or types.ModuleType("ifitwala_ed.assessment.task_contribution_service"),
         "ifitwala_ed.assessment.task_feedback_comment_bank_service": comment_bank_service,
         "ifitwala_ed.assessment.task_feedback_service": feedback_service,
+        "ifitwala_ed.assessment.task_feedback_thread_service": thread_service,
         "ifitwala_ed.assessment.task_outcome_service": task_outcome_service
         or types.ModuleType("ifitwala_ed.assessment.task_outcome_service"),
         "ifitwala_ed.assessment.task_submission_service": types.ModuleType(

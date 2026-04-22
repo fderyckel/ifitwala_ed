@@ -127,6 +127,7 @@ describe('PortalSidebar', () => {
 			'Monitoring',
 			'Finance',
 			'Policies',
+			'Forms & Signatures',
 			'Showcase Portfolio',
 		]);
 	});

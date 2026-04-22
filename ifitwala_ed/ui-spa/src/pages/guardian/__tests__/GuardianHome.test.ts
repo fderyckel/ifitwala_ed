@@ -111,6 +111,21 @@ describe('GuardianHome', () => {
 					{ student: 'STU-2', full_name: 'Noah Example', school: 'School One' },
 				],
 			},
+			consents: {
+				pending_count: 1,
+				overdue_count: 0,
+				items: [
+					{
+						request_key: 'FCR-1',
+						request_title: 'Field trip consent',
+						student: 'STU-1',
+						student_name: 'Amina Example',
+						due_on: '2026-03-15',
+						status_label: 'Action needed',
+						href: { name: 'guardian-consent-detail' },
+					},
+				],
+			},
 			policies: {
 				pending_count: 2,
 				items: [
@@ -215,6 +230,8 @@ describe('GuardianHome', () => {
 		expect(text).toContain('Family Snapshot')
 		expect(text).toContain('School Calendar')
 		expect(text).toContain('Communications')
+		expect(text).toContain('Operational forms need your action')
+		expect(text).toContain('Field trip consent')
 		expect(text).toContain('Policy acknowledgements need your action')
 		expect(text).toContain('Family Handbook')
 		expect(text).toContain('Learning Highlights')

@@ -127,6 +127,8 @@ Code refs:
 - `ifitwala_ed/api/guardian_communications.py`
 - `ifitwala_ed/api/calendar_quick_create.py`
 - `ifitwala_ed/api/org_communication_quick_create.py`
+- `ifitwala_ed/school_settings/doctype/school_event/school_event.py`
+- `ifitwala_ed/school_settings/doctype/school_event/school_event.js`
 - `ifitwala_ed/api/portal.py`
 - `ifitwala_ed/ui-spa/src/pages/admissions/ApplicantMessages.vue`
 - `ifitwala_ed/ui-spa/src/lib/services/communicationInteraction/communicationInteractionService.ts`
@@ -146,6 +148,7 @@ Test refs:
 - `ifitwala_ed/api/test_student_communications.py`
 - `ifitwala_ed/api/test_portal.py`
 - `ifitwala_ed/api/test_calendar.py`
+- `ifitwala_ed/school_settings/doctype/school_event/test_school_event.py`
 - `ifitwala_ed/ui-spa/src/overlays/calendar/__tests__/EventQuickCreateOverlay.test.ts`
 
 Rules:
@@ -173,6 +176,11 @@ Rules:
 16. Applicant messages use the admissions service, which writes to the same canonical entry ledger.
 17. No surface may call any retired `Communication Interaction` API or schema artifact.
 18. Staff Home school-event quick create may publish a companion `Org Communication` in the same server workflow, but the result is still an `Org Communication` record governed by this contract rather than a second message model attached to `School Event`.
+19. When a `School Event` stores `reference_type='Org Communication'`, that link is the canonical companion-announcement seam:
+
+- the event owns lifecycle sync for title plus audience scope
+- the linked communication remains the messaging/read-state truth
+- canceling or deleting the event archives the linked communication rather than deleting it
 
 ## 4. Visibility and Read-State
 

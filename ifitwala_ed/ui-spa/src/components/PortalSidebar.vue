@@ -193,6 +193,7 @@ const hasGuardianPortal = computed(() => portalRoles.value.includes('guardian'))
 const studentMenu: MenuItem[] = [
 	{ label: 'Courses', icon: 'book-open', to: { name: 'student-courses' } },
 	{ label: 'Policies', icon: 'shield', to: { name: 'student-policies' } },
+	{ label: 'Forms & Signatures', icon: 'edit-3', to: { name: 'student-consents' } },
 	{ label: 'Portfolio & Journal', icon: 'layers', to: { name: 'student-portfolio' } },
 	{
 		label: 'Communications',
@@ -216,6 +217,7 @@ const guardianMenu: MenuItem[] = [
 	{ label: 'Monitoring', icon: 'file-text', to: { name: 'guardian-monitoring' } },
 	{ label: 'Finance', icon: 'credit-card', to: { name: 'guardian-finance' } },
 	{ label: 'Policies', icon: 'shield', to: { name: 'guardian-policies' } },
+	{ label: 'Forms & Signatures', icon: 'edit-3', to: { name: 'guardian-consents' } },
 	{ label: 'Showcase Portfolio', icon: 'layers', to: { name: 'guardian-portfolio' } },
 ];
 

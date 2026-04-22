@@ -152,6 +152,13 @@
 								Grade {{ releasedResult.official.grade }}
 							</span>
 							<span v-if="releasedResult.official.feedback" class="chip"> Teacher feedback </span>
+							<RouterLink
+								v-if="releasedFeedbackRoute"
+								:to="releasedFeedbackRoute"
+								class="if-button if-button--secondary"
+							>
+								Open released feedback
+							</RouterLink>
 						</div>
 
 						<div
@@ -296,6 +303,26 @@ const backRoute = computed(() => ({
 		class_session: props.class_session || undefined,
 	},
 }));
+const releasedFeedbackRoute = computed(() => {
+	const outcomeId = sessionPayload.value?.released_result?.outcome_id;
+	const hasVisibleRelease =
+		sessionPayload.value?.released_result?.feedback_visible ||
+		sessionPayload.value?.released_result?.grade_visible;
+	if (!outcomeId || !hasVisibleRelease) return null;
+	return {
+		name: 'student-released-feedback',
+		params: {
+			course_id: props.course_id,
+			task_outcome: outcomeId,
+		},
+		query: {
+			student_group: props.student_group || undefined,
+			unit_plan: props.unit_plan || undefined,
+			class_session: props.class_session || undefined,
+			task_delivery: props.task_delivery,
+		},
+	};
+});
 
 const isPractice = computed(() => Boolean(sessionPayload.value?.session.is_practice));
 const releasedResult = computed(() => sessionPayload.value?.released_result || null);

@@ -699,8 +699,10 @@ The system **must never expose**:
 
 All teacher-facing strings **must** come from translation keys.
 
-Current runtime still exposes one portal release action.
-The release vocabulary below describes the target language once channel-based release ships.
+Current runtime now stores channel-specific feedback and grade visibility in the drawer, while the
+legacy publish/unpublish action remains as a compatibility release control on the outcome.
+The release vocabulary below therefore describes the active channel model, even though the staff UI
+still shows both the publication-state save action and the legacy release button.
 
 ### Canonical Teacher Vocabulary
 

@@ -213,9 +213,11 @@ def _serialize_school_event_items(items: list[dict[str, Any]]) -> list[dict[str,
 
 
 def _sort_calendar_items(items: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    kind_order = {"holiday": 0, "school_event": 1}
     return sorted(
         items,
         key=lambda item: (
+            kind_order.get(str(item.get("kind") or ""), 99),
             str(item.get("start") or item.get("end") or ""),
             str(item.get("title") or ""),
             str(item.get("item_id") or ""),

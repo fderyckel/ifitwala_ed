@@ -728,6 +728,51 @@ def resolve_employee_file_open_url(
     return open_url or raw_url or None
 
 
+def build_public_employee_image_url(
+    *,
+    employee: str,
+    file_name: str,
+    derivative_role: str | None = None,
+) -> str:
+    resolved_employee = (employee or "").strip()
+    resolved_file = (file_name or "").strip()
+    resolved_derivative_role = (derivative_role or "").strip()
+    if not resolved_employee or not resolved_file or not resolved_derivative_role:
+        return ""
+    return "/api/method/ifitwala_ed.api.file_access.open_public_employee_image?" + urlencode(
+        {
+            "employee": resolved_employee,
+            "file": resolved_file,
+            "derivative_role": resolved_derivative_role,
+        }
+    )
+
+
+def resolve_public_employee_image_url(
+    *,
+    employee: str | None,
+    file_name: str | None,
+    file_url: str | None,
+    derivative_role: str | None = None,
+) -> str | None:
+    raw_url = (file_url or "").strip()
+    if raw_url.startswith(("http://", "https://")):
+        return raw_url
+
+    resolved_employee = (employee or "").strip()
+    resolved_file_name = (file_name or "").strip()
+    resolved_derivative_role = (derivative_role or "").strip()
+    if not resolved_employee or not resolved_file_name or not resolved_derivative_role:
+        return None
+
+    open_url = build_public_employee_image_url(
+        employee=resolved_employee,
+        file_name=resolved_file_name,
+        derivative_role=resolved_derivative_role,
+    )
+    return open_url or None
+
+
 def build_org_communication_attachment_open_url(
     *,
     org_communication: str,
@@ -1334,6 +1379,30 @@ def _request_public_website_media_grant(
     return None
 
 
+def _request_public_employee_image_grant(
+    *,
+    method_name: str,
+    employee: str,
+    file_id: str,
+    drive_file_id: str,
+    derivative_role: str | None = None,
+):
+    grant_callable = _load_drive_media_callable(method_name)
+    resolved_employee = str(employee or "").strip()
+    resolved_file_id = str(file_id or "").strip()
+    if not callable(grant_callable) or not resolved_employee or not resolved_file_id:
+        return None
+
+    payload = {
+        "employee": resolved_employee,
+        "file_id": resolved_file_id,
+    }
+    explicit_derivative_role = (derivative_role or "").strip()
+    if explicit_derivative_role:
+        payload["derivative_role"] = explicit_derivative_role
+    return grant_callable(**payload)
+
+
 def _resolve_supporting_material_grant_target_url(
     *,
     material: str,
@@ -1349,14 +1418,14 @@ def _resolve_supporting_material_grant_target_url(
     resolved_material = str(material or "").strip()
     resolved_placement = str(placement or "").strip() or None
 
-    if prefer_preview and explicit_derivative_role:
+    if prefer_preview:
         try:
             grant = _request_supporting_material_grant(
                 method_name="issue_supporting_material_preview_grant",
                 material=resolved_material,
                 placement=resolved_placement,
                 drive_file_id=drive_file_id,
-                derivative_role=explicit_derivative_role,
+                derivative_role=explicit_derivative_role or None,
             )
             target_url = str((grant or {}).get("url") or "").strip()
         except Exception:
@@ -1395,7 +1464,7 @@ def _resolve_employee_image_grant_target_url(
     resolved_employee = str(employee or "").strip()
     resolved_file_id = str(file_id or "").strip()
 
-    if prefer_preview and explicit_derivative_role:
+    if prefer_preview:
         try:
             if resolved_file_id:
                 grant = _request_employee_image_grant(
@@ -1403,13 +1472,13 @@ def _resolve_employee_image_grant_target_url(
                     employee=resolved_employee,
                     file_id=resolved_file_id,
                     drive_file_id=drive_file_id,
-                    derivative_role=explicit_derivative_role,
+                    derivative_role=explicit_derivative_role or None,
                 )
                 target_url = str((grant or {}).get("url") or "").strip()
             else:
                 target_url = _resolve_drive_preview_grant_url(
                     drive_file_id=drive_file_id,
-                    derivative_role=explicit_derivative_role,
+                    derivative_role=explicit_derivative_role or None,
                 )
         except Exception:
             target_url = ""
@@ -2462,6 +2531,31 @@ def _resolve_public_website_media_grant_url(file_name: str) -> str | None:
     return target_url or None
 
 
+def _resolve_public_employee_image_grant_target_url(
+    *,
+    employee: str,
+    file_id: str,
+    drive_file_id: str,
+    derivative_role: str | None = None,
+) -> str | None:
+    resolved_derivative_role = str(derivative_role or "").strip()
+    if not resolved_derivative_role:
+        return None
+
+    try:
+        grant = _request_public_employee_image_grant(
+            method_name="issue_public_employee_image_preview_grant",
+            employee=employee,
+            file_id=file_id,
+            drive_file_id=drive_file_id,
+            derivative_role=resolved_derivative_role,
+        )
+    except Exception:
+        return None
+
+    return str((grant or {}).get("url") or "").strip() or None
+
+
 def _assert_public_website_media_visible(file_row: dict) -> None:
     from ifitwala_ed.website.public_brand import (
         get_descendant_organization_names,
@@ -2495,6 +2589,117 @@ def _assert_public_website_media_visible(file_row: dict) -> None:
         frappe.throw(_("This school media is not published."), frappe.PermissionError)
     if not (school_row.get("website_slug") or "").strip():
         frappe.throw(_("This school media is missing a website route."), frappe.PermissionError)
+
+
+def _assert_public_employee_image_visible(
+    *,
+    employee: str,
+    organization: str | None,
+    school: str | None,
+) -> None:
+    from ifitwala_ed.website.public_brand import (
+        get_descendant_organization_names,
+        resolve_public_brand_organization,
+    )
+
+    resolved_employee = (employee or "").strip()
+    if not resolved_employee:
+        frappe.throw(_("Employee is required."), frappe.ValidationError)
+
+    employee_row = frappe.db.get_value(
+        "Employee",
+        resolved_employee,
+        ["organization", "school", "show_on_website"],
+        as_dict=True,
+    )
+    if not employee_row:
+        frappe.throw(_("Employee not found for this media."), frappe.DoesNotExistError)
+    if not frappe.utils.cint(employee_row.get("show_on_website")):
+        frappe.throw(_("This employee photo is not published."), frappe.PermissionError)
+
+    resolved_organization = (organization or "").strip() or (employee_row.get("organization") or "").strip()
+    if not resolved_organization:
+        frappe.throw(_("Employee photo is missing organization context."), frappe.PermissionError)
+
+    if (employee_row.get("organization") or "").strip() != resolved_organization:
+        frappe.throw(_("Employee photo organization scope is invalid."), frappe.PermissionError)
+
+    public_brand_organization = resolve_public_brand_organization()
+    visible_organizations = set(get_descendant_organization_names(public_brand_organization))
+    if resolved_organization not in visible_organizations:
+        frappe.throw(_("This employee photo is not visible on the public website."), frappe.PermissionError)
+
+    resolved_school = (school or "").strip() or (employee_row.get("school") or "").strip()
+    employee_school = (employee_row.get("school") or "").strip()
+    if resolved_school and employee_school and employee_school != resolved_school:
+        frappe.throw(_("Employee photo school scope is invalid."), frappe.PermissionError)
+    if not resolved_school:
+        return
+
+    school_row = frappe.db.get_value(
+        "School",
+        resolved_school,
+        ["organization", "is_published", "website_slug"],
+        as_dict=True,
+    )
+    if not school_row:
+        frappe.throw(_("School not found for this employee photo."), frappe.DoesNotExistError)
+    if (school_row.get("organization") or "").strip() != resolved_organization:
+        frappe.throw(_("Employee photo school organization scope is invalid."), frappe.PermissionError)
+    if not frappe.utils.cint(school_row.get("is_published")):
+        frappe.throw(_("This employee photo is not published."), frappe.PermissionError)
+    if not (school_row.get("website_slug") or "").strip():
+        frappe.throw(_("This employee photo is missing a website route."), frappe.PermissionError)
+
+
+def _resolve_public_employee_image_row(*, employee: str, file_name: str) -> dict:
+    resolved_employee = (employee or "").strip()
+    resolved_file_name = (file_name or "").strip()
+    if not resolved_employee or not resolved_file_name:
+        frappe.throw(_("Employee and file are required."), frappe.ValidationError)
+
+    file_row = _resolve_any_file_row(resolved_file_name)
+    drive_file = get_drive_file_for_file(
+        resolved_file_name,
+        fields=[
+            "name",
+            "owner_doctype",
+            "owner_name",
+            "organization",
+            "school",
+            "primary_subject_type",
+            "primary_subject_id",
+            "purpose",
+            "slot",
+        ],
+        statuses=("active", "processing"),
+    )
+    if not drive_file:
+        frappe.throw(_("This employee photo is not published."), frappe.PermissionError)
+
+    if (
+        (drive_file.get("owner_doctype") or "").strip() != "Employee"
+        or (drive_file.get("owner_name") or "").strip() != resolved_employee
+        or (drive_file.get("primary_subject_type") or "").strip() != "Employee"
+        or (drive_file.get("primary_subject_id") or "").strip() != resolved_employee
+        or (drive_file.get("purpose") or "").strip() != "employee_profile_display"
+        or (drive_file.get("slot") or "").strip() != "profile_image"
+    ):
+        frappe.throw(_("This employee photo is not published."), frappe.PermissionError)
+
+    file_row.update(
+        {
+            "drive_file_id": drive_file.get("name"),
+            "organization": (drive_file.get("organization") or "").strip(),
+            "school": (drive_file.get("school") or "").strip(),
+        }
+    )
+    _assert_public_employee_image_visible(
+        employee=resolved_employee,
+        organization=file_row.get("organization"),
+        school=file_row.get("school"),
+    )
+    return file_row
 
 
 def _resolve_student_context_for_file(file_row: dict) -> tuple[str | None, str | None]:
@@ -2915,6 +3120,46 @@ def thumbnail_org_communication_attachment(
             return
 
     frappe.throw(_("Could not resolve the attachment thumbnail."), frappe.DoesNotExistError)
+
+
+@frappe.whitelist(allow_guest=True)
+def open_public_employee_image(
+    employee: str | None = None,
+    file: str | None = None,
+    derivative_role: str | None = None,
+):
+    resolved_employee = (employee or "").strip()
+    file_name = (file or "").strip()
+    resolved_derivative_role = (derivative_role or "").strip()
+    if not resolved_employee:
+        frappe.throw(_("Employee is required."), frappe.ValidationError)
+    if not file_name:
+        frappe.throw(_("File is required."), frappe.ValidationError)
+    if not resolved_derivative_role:
+        frappe.throw(_("Derivative role is required for public employee photos."), frappe.ValidationError)
+
+    file_row = _resolve_public_employee_image_row(employee=resolved_employee, file_name=file_name)
+    resolved_drive_file_id = str(file_row.get("drive_file_id") or "").strip()
+    if not resolved_drive_file_id:
+        frappe.throw(_("Governed employee photo file was not found."), frappe.DoesNotExistError)
+
+    target_url = _resolve_cached_thumbnail_target_url(
+        drive_file_id=resolved_drive_file_id,
+        file_id=file_name,
+        surface_parts=["public_employee_photo", resolved_employee],
+        derivative_role=resolved_derivative_role,
+        strict_derivative=True,
+        target_resolver=lambda: _resolve_public_employee_image_grant_target_url(
+            employee=resolved_employee,
+            file_id=file_name,
+            drive_file_id=resolved_drive_file_id,
+            derivative_role=resolved_derivative_role,
+        ),
+    )
+    if target_url and _respond_with_delivery_target(target_url=target_url, cache_headers=True):
+        return
+
+    frappe.throw(_("Could not resolve a public employee photo URL."), frappe.DoesNotExistError)
 
 
 @frappe.whitelist(allow_guest=True)

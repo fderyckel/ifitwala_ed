@@ -214,29 +214,36 @@ def _get_guardian_policy_rows(*, guardian_name: str, children: list[dict[str, An
     if not schema_check.get("ok") or not children:
         return []
 
-    child_contexts = _resolve_authorized_child_contexts(children)
-    if not child_contexts:
+    policy_contexts = _resolve_policy_contexts(children)
+    if not policy_contexts:
         return []
 
+    child_contexts = _resolve_authorized_child_contexts(children)
     candidate_rows: dict[str, dict[str, Any]] = {}
     applicable_children_by_version: dict[str, list[dict[str, Any]]] = {}
     scope_cache: dict[tuple[str, str], list[dict[str, Any]]] = {}
     seen_children_by_version: dict[str, set[str]] = {}
-    for child_context in child_contexts:
-        scope_key = (child_context["organization"], child_context["school"])
+
+    for policy_context in policy_contexts:
+        scope_key = (policy_context["organization"], policy_context["school"])
         policy_rows = scope_cache.get(scope_key)
         if policy_rows is None:
             policy_rows = _query_policy_candidates_for_context(
-                organization=child_context["organization"],
-                school=child_context["school"],
+                organization=policy_context["organization"],
+                school=policy_context["school"],
             )
             scope_cache[scope_key] = policy_rows
         for row in policy_rows:
             version = (row.get("policy_version") or "").strip()
+            if version and version not in candidate_rows:
+                candidate_rows[version] = row
+
+    for child_context in child_contexts:
+        scope_key = (child_context["organization"], child_context["school"])
+        for row in scope_cache.get(scope_key) or []:
+            version = (row.get("policy_version") or "").strip()
             if not version:
                 continue
-            if version not in candidate_rows:
-                candidate_rows[version] = row
             seen_students = seen_children_by_version.setdefault(version, set())
             student_name = child_context["student"]
             if student_name in seen_students:
@@ -267,17 +274,21 @@ def _get_guardian_policy_rows(*, guardian_name: str, children: list[dict[str, An
         if version and version not in family_ack_map:
             family_ack_map[version] = row
 
-    child_ack_rows = frappe.get_all(
-        "Policy Acknowledgement",
-        filters={
-            "policy_version": ["in", versions],
-            "acknowledged_for": "Guardian",
-            "context_doctype": "Student",
-            "context_name": ["in", tuple([child["student"] for child in child_contexts])],
-            "docstatus": 1,
-        },
-        fields=["name", "policy_version", "context_name", "acknowledged_by", "acknowledged_at"],
-        order_by="acknowledged_at desc",
+    child_ack_rows = (
+        frappe.get_all(
+            "Policy Acknowledgement",
+            filters={
+                "policy_version": ["in", versions],
+                "acknowledged_for": "Guardian",
+                "context_doctype": "Student",
+                "context_name": ["in", tuple([child["student"] for child in child_contexts])],
+                "docstatus": 1,
+            },
+            fields=["name", "policy_version", "context_name", "acknowledged_by", "acknowledged_at"],
+            order_by="acknowledged_at desc",
+        )
+        if child_contexts
+        else []
     )
     child_ack_map: dict[tuple[str, str], dict[str, Any]] = {}
     for row in child_ack_rows:

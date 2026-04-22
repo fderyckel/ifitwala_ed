@@ -21,6 +21,8 @@ const {
 	saveFeedbackDraftMock,
 	saveFeedbackCommentBankEntryMock,
 	saveFeedbackPublicationMock,
+	saveFeedbackThreadReplyMock,
+	saveFeedbackThreadStateMock,
 	saveDraftMock,
 	saveTaskQuizManualReviewMock,
 	submitContributionMock,
@@ -71,6 +73,8 @@ const {
 	saveFeedbackDraftMock: vi.fn(),
 	saveFeedbackCommentBankEntryMock: vi.fn(),
 	saveFeedbackPublicationMock: vi.fn(),
+	saveFeedbackThreadReplyMock: vi.fn(),
+	saveFeedbackThreadStateMock: vi.fn(),
 	saveDraftMock: vi.fn(),
 	saveTaskQuizManualReviewMock: vi.fn(),
 	submitContributionMock: vi.fn(),
@@ -247,6 +251,8 @@ vi.mock('@/lib/services/gradebook/gradebookService', () => ({
 		saveFeedbackDraft: saveFeedbackDraftMock,
 		saveFeedbackCommentBankEntry: saveFeedbackCommentBankEntryMock,
 		saveFeedbackPublication: saveFeedbackPublicationMock,
+		saveFeedbackThreadReply: saveFeedbackThreadReplyMock,
+		saveFeedbackThreadState: saveFeedbackThreadStateMock,
 		saveDraft: saveDraftMock,
 		saveTaskQuizManualReview: saveTaskQuizManualReviewMock,
 		submitContribution: submitContributionMock,
@@ -615,7 +621,11 @@ afterEach(() => {
 	moderatorActionMock.mockReset();
 	publishOutcomesMock.mockReset();
 	saveDraftMock.mockReset();
+	saveFeedbackDraftMock.mockReset();
 	saveFeedbackCommentBankEntryMock.mockReset();
+	saveFeedbackPublicationMock.mockReset();
+	saveFeedbackThreadReplyMock.mockReset();
+	saveFeedbackThreadStateMock.mockReset();
 	saveTaskQuizManualReviewMock.mockReset();
 	submitContributionMock.mockReset();
 	unpublishOutcomesMock.mockReset();

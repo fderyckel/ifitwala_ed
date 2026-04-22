@@ -390,24 +390,29 @@ It also does **not** mean the release model is solved beyond the current legacy 
 
 ## 9. Next Implementation Sequence
 
-Status: **Locked sequencing from current baseline**
+Status: **Updated sequencing from the implemented Phase 4 baseline**
 
-From the current drawer/evidence baseline, the next implementation sequence is:
+Phases 2, 3, and 4 are now implemented as the current runtime baseline:
 
 1. structured feedback records and publication states inside the assessment boundary
 2. annotation authoring workflow plus minimal comment bank and readability detection/fallback
 3. student feedback navigator plus reply and clarification loop
-4. OCR hardening, derived artifacts/export, and feedback analytics
 
-See `09_feedback_records_and_publication_rfc.md` for the non-authoritative implementation RFC that translates this sequence into a Phase 2 design.
+The next implementation sequence is now:
 
-The following remain out of current-baseline scope until those phases ship:
+1. OCR hardening and explicit text-readability upgrade paths for scanned/image PDFs
+2. derived annotated artifact export and governed returned-feedback delivery
+3. feedback analytics and reuse insights
+4. revision-planning and draft-comparison upgrades built on the existing thread and priority model
 
-- student-visible annotation navigation
-- revision planning and acted-on tracking
-- derived annotated PDF generation
-- full OCR gate enforcement
+See `12_phase4_student_feedback_navigator_and_reply_rfc.md` for the implemented Phase 4 runtime companion and planning history.
+
+The following remain outside the current baseline:
+
+- derived annotated PDF generation as the default student reading surface
+- full OCR gate enforcement before every review workflow
 - AI-assisted comment generation
+- student-authored revision plans and draft-to-draft acted-on comparison
 
 ---
 
@@ -417,15 +422,29 @@ Status: **Current implementation boundary**
 
 Code refs:
 - `ifitwala_ed/api/gradebook_reads.py`
+- `ifitwala_ed/api/released_feedback.py`
 - `ifitwala_ed/api/task_submission.py`
+- `ifitwala_ed/assessment/task_feedback_service.py`
+- `ifitwala_ed/assessment/task_feedback_thread_service.py`
+- `ifitwala_ed/ui-spa/src/components/assessment/ReleasedFeedbackNavigator.vue`
+- `ifitwala_ed/ui-spa/src/components/assessment/ReleasedFeedbackPdfViewer.vue`
+- `ifitwala_ed/ui-spa/src/pages/student/StudentReleasedFeedbackDetail.vue`
+- `ifitwala_ed/ui-spa/src/pages/guardian/GuardianReleasedFeedbackDetail.vue`
 - `ifitwala_ed/docs/high_concurrency_contract.md`
 
 Test refs:
 - `ifitwala_ed/api/test_gradebook.py`
+- `ifitwala_ed/api/test_released_feedback.py`
+- `ifitwala_ed/assessment/test_task_feedback_service.py`
+- `ifitwala_ed/assessment/test_task_feedback_thread_service.py`
 - `ifitwala_ed/ui-spa/src/pages/staff/__tests__/Gradebook.test.ts`
+- `ifitwala_ed/ui-spa/src/pages/student/__tests__/CourseDetail.test.ts`
+- `ifitwala_ed/ui-spa/src/pages/student/__tests__/StudentQuiz.test.ts`
+- `ifitwala_ed/ui-spa/src/pages/guardian/__tests__/GuardianMonitoring.test.ts`
 
 - The Phase 1 drawer bootstrap must stay bounded and outcome-scoped.
 - Evidence review should reuse the existing selected-submission serialization path rather than inventing a new file-preview endpoint.
 - Task list or roster reads may remain separate from drawer bootstrap as long as the drawer itself does not fan out into multiple dependent requests.
-- The current release model in `Task Outcome.is_published` remains a baseline implementation detail, not the final feedback-release contract.
+- Portal released-feedback reads now consume the assessment-owned publication channels on `Task Feedback Workspace`.
+- The legacy `Task Outcome.is_published` flag remains a compatibility release signal in some staff and summary surfaces, but it is no longer the only contract that controls learner-visible assessment feedback.
 - Future feedback records should be introduced adjacent to the task runtime and keyed by outcome plus evidence version, rather than hidden inside `Task Contribution`.

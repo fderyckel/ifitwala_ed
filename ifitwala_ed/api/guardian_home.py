@@ -53,6 +53,7 @@ def get_guardian_home_snapshot(anchor_date=None, school_days=7, debug=0):
             "guardian": {"name": None},
         },
         "family": {"children": []},
+        "consents": {"pending_count": 0, "overdue_count": 0, "items": []},
         "policies": {"pending_count": 0, "items": []},
         "zones": {
             "family_timeline": [],
@@ -77,8 +78,13 @@ def get_guardian_home_snapshot(anchor_date=None, school_days=7, debug=0):
     if not children:
         return _finalize_payload(payload, debug_mode, debug_warnings)
 
+    from ifitwala_ed.api.family_consent import get_guardian_consent_home_summary
     from ifitwala_ed.api.guardian_policy import get_guardian_policy_home_summary
 
+    payload["consents"] = get_guardian_consent_home_summary(
+        guardian_name=guardian_name,
+        children=children,
+    )
     payload["policies"] = get_guardian_policy_home_summary(
         guardian_name=guardian_name,
         children=children,
@@ -1384,13 +1390,13 @@ def _build_preparation_items(
     family_timeline: List[Dict[str, Any]],
     communication_bundle: Dict[str, Any],
 ) -> List[Dict[str, Any]]:
-    out: List[Dict[str, Any]] = []
+    prioritized_items: List[Tuple[int, Dict[str, Any]]] = []
     counts: Dict[Tuple[str, str], int] = defaultdict(int)
 
     def can_add(student: str, date_str: str) -> bool:
         return counts[(student, date_str)] < PREP_CAP_PER_CHILD_DAY
 
-    def add_item(item: Dict[str, Any]):
+    def add_item(item: Dict[str, Any], *, priority: int):
         student = item.get("student")
         date_str = item.get("date")
         if not student or not date_str:
@@ -1398,7 +1404,7 @@ def _build_preparation_items(
         if not can_add(student, date_str):
             return
         counts[(student, date_str)] += 1
-        out.append(item)
+        prioritized_items.append((priority, item))
 
     for day in family_timeline:
         day_date = day.get("date")
@@ -1406,17 +1412,6 @@ def _build_preparation_items(
             student = child.get("student")
             if not student or not day_date:
                 continue
-
-            for chip in child.get("assessments_upcoming", []):
-                add_item(
-                    {
-                        "student": student,
-                        "date": day_date,
-                        "label": _("Prepare for: {0}").format(chip.get("title") or _("Assessment")),  # noqa: F823
-                        "source": "task",
-                        "related": {"task_delivery": chip.get("task_delivery")},
-                    }
-                )
 
             for chip in child.get("tasks_due", []):
                 add_item(
@@ -1426,7 +1421,20 @@ def _build_preparation_items(
                         "label": _("Due soon: {0}").format(chip.get("title") or _("Task")),
                         "source": "task",
                         "related": {"task_delivery": chip.get("task_delivery")},
-                    }
+                    },
+                    priority=0,
+                )
+
+            for chip in child.get("assessments_upcoming", []):
+                add_item(
+                    {
+                        "student": student,
+                        "date": day_date,
+                        "label": _("Prepare for: {0}").format(chip.get("title") or _("Assessment")),  # noqa: F823
+                        "source": "task",
+                        "related": {"task_delivery": chip.get("task_delivery")},
+                    },
+                    priority=1,
                 )
 
             for block in child.get("blocks", []):
@@ -1444,14 +1452,15 @@ def _build_preparation_items(
                                 "end_time": block.get("end_time"),
                             }
                         },
-                    }
+                    },
+                    priority=2,
                 )
 
     # Communication-to-prep is intentionally conservative in Phase-1:
     # no synthetic child mapping; keep communication in attention/recent only.
 
-    out.sort(key=lambda x: (x.get("date"), x.get("student"), x.get("label")))
-    return out[:80]
+    prioritized_items.sort(key=lambda row: (row[1].get("date"), row[1].get("student"), row[0], row[1].get("label")))
+    return [item for _, item in prioritized_items[:80]]
 
 
 def _build_recent_activity(

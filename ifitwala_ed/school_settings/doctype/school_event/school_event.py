@@ -12,6 +12,7 @@ from frappe import _
 from frappe.desk.reportview import get_filters_cond
 from frappe.model.document import Document
 from frappe.utils import (
+    cint,
     get_datetime,
     get_system_timezone,
     now_datetime,
@@ -39,6 +40,387 @@ ADMIN_AUDIENCE_ROLES = {
     "Academic Admin",
     "Academic Assistant",
 }
+ORG_COMMUNICATION_REFERENCE_TYPE = "Org Communication"
+COMPANION_COMMUNICATION_TYPE = "Event Announcement"
+LINKED_SCHOOL_EVENT_NOTE_PREFIX = "[Linked School Event]"
+
+
+def _doc_row_value(source, fieldname: str):
+    getter = getattr(source, "get", None)
+    if callable(getter):
+        return getter(fieldname)
+    return getattr(source, fieldname, None)
+
+
+def _safe_text(value) -> str:
+    return str(value or "").strip()
+
+
+def _linked_school_event_note(event_name: str) -> str:
+    return f"{LINKED_SCHOOL_EVENT_NOTE_PREFIX} {event_name}"
+
+
+def _normalize_linked_school_event_note(current_note: str | None, event_name: str) -> str:
+    note_value = _safe_text(current_note)
+    legacy_note = f"Published from School Event {event_name}."
+    if not note_value or note_value == legacy_note or note_value.startswith(LINKED_SCHOOL_EVENT_NOTE_PREFIX):
+        return _linked_school_event_note(event_name)
+    return note_value
+
+
+def _resolve_school_event_organization(event_doc) -> str:
+    school_name = _safe_text(_doc_row_value(event_doc, "school"))
+    if not school_name:
+        frappe.throw(
+            _("School is required before linking an announcement to this event."),
+            title=_("Missing School"),
+        )
+
+    organization = _safe_text(frappe.db.get_value("School", school_name, "organization"))
+    if organization:
+        return organization
+
+    frappe.throw(
+        _("School {school} is missing an organization, so the linked announcement cannot be managed.").format(
+            school=school_name
+        ),
+        title=_("Missing Organization"),
+    )
+
+
+def _pick_companion_portal_surface(audiences: list[dict], *, current_surface: str | None = None) -> str:
+    from ifitwala_ed.setup.doctype.org_communication.org_communication import (
+        get_org_communication_allowed_portal_surfaces,
+        resolve_org_communication_delivery_profile,
+    )
+
+    profile = resolve_org_communication_delivery_profile(audiences)
+    allowed_surfaces = set(get_org_communication_allowed_portal_surfaces(profile))
+    current_value = _safe_text(current_surface)
+
+    if current_value and current_value in allowed_surfaces:
+        return current_value
+    if "Portal Feed" in allowed_surfaces and profile == "portal_only":
+        return "Portal Feed"
+    if "Everywhere" in allowed_surfaces:
+        return "Everywhere"
+    if "Portal Feed" in allowed_surfaces:
+        return "Portal Feed"
+    if "Desk" in allowed_surfaces:
+        return "Desk"
+    if "Morning Brief" in allowed_surfaces:
+        return "Morning Brief"
+    return "Portal Feed"
+
+
+def _map_school_event_audience_row_to_org_communication_rows(*, school: str, audience_row) -> list[dict]:
+    audience_type = _safe_text(_doc_row_value(audience_row, "audience_type"))
+    team_name = _safe_text(_doc_row_value(audience_row, "team")) or None
+    student_group_name = _safe_text(_doc_row_value(audience_row, "student_group")) or None
+    include_guardians = cint(_doc_row_value(audience_row, "include_guardians"))
+    include_students = cint(_doc_row_value(audience_row, "include_students"))
+
+    if audience_type == WHOLE_SCHOOL_AUDIENCE:
+        return [
+            {
+                "target_mode": "School Scope",
+                "school": school,
+                "team": None,
+                "student_group": None,
+                "include_descendants": 1,
+                "to_staff": 1,
+                "to_students": 1,
+                "to_guardians": 1,
+                "note": None,
+            }
+        ]
+
+    if audience_type == "All Students":
+        return [
+            {
+                "target_mode": "School Scope",
+                "school": school,
+                "team": None,
+                "student_group": None,
+                "include_descendants": 1,
+                "to_staff": 0,
+                "to_students": 1,
+                "to_guardians": 1 if include_guardians else 0,
+                "note": None,
+            }
+        ]
+
+    if audience_type == "All Guardians":
+        return [
+            {
+                "target_mode": "School Scope",
+                "school": school,
+                "team": None,
+                "student_group": None,
+                "include_descendants": 1,
+                "to_staff": 0,
+                "to_students": 1 if include_students else 0,
+                "to_guardians": 1,
+                "note": None,
+            }
+        ]
+
+    if audience_type == "All Employees":
+        return [
+            {
+                "target_mode": "School Scope",
+                "school": school,
+                "team": None,
+                "student_group": None,
+                "include_descendants": 1,
+                "to_staff": 1,
+                "to_students": 1 if include_students else 0,
+                "to_guardians": 0,
+                "note": None,
+            }
+        ]
+
+    if audience_type == "Students in Student Group":
+        if not student_group_name:
+            frappe.throw(_("Student Group is required to sync the linked announcement."), frappe.ValidationError)
+        return [
+            {
+                "target_mode": "Student Group",
+                "school": None,
+                "team": None,
+                "student_group": student_group_name,
+                "include_descendants": 0,
+                "to_staff": 0,
+                "to_students": 1,
+                "to_guardians": 1 if include_guardians else 0,
+                "note": None,
+            }
+        ]
+
+    if audience_type == "Employees in Team":
+        if include_students:
+            frappe.throw(
+                _(
+                    "Linked announcements do not support 'Include Students' when the audience type is 'Employees in Team'."
+                ),
+                frappe.ValidationError,
+            )
+        if not team_name:
+            frappe.throw(_("Team is required to sync the linked announcement."), frappe.ValidationError)
+        return [
+            {
+                "target_mode": "Team",
+                "school": None,
+                "team": team_name,
+                "student_group": None,
+                "include_descendants": 0,
+                "to_staff": 1,
+                "to_students": 0,
+                "to_guardians": 0,
+                "note": None,
+            }
+        ]
+
+    if audience_type == "Custom Users":
+        frappe.throw(
+            _(
+                "Linked announcements are not supported for 'Custom Users'. Remove the linked Org Communication or use a publishable event audience."
+            ),
+            frappe.ValidationError,
+        )
+
+    frappe.throw(
+        _("Audience type {audience_type} is not supported for linked announcements.").format(
+            audience_type=audience_type
+        ),
+        frappe.ValidationError,
+    )
+
+
+def build_companion_org_communication_audiences(event_doc) -> list[dict]:
+    school_name = _safe_text(_doc_row_value(event_doc, "school"))
+    rows = list(_doc_row_value(event_doc, "audience") or [])
+    if not rows:
+        frappe.throw(_("School Event requires at least one audience row."), frappe.ValidationError)
+
+    mapped_rows: list[dict] = []
+    seen_keys: set[tuple] = set()
+
+    for row in rows:
+        for mapped_row in _map_school_event_audience_row_to_org_communication_rows(
+            school=school_name,
+            audience_row=row,
+        ):
+            dedupe_key = (
+                mapped_row.get("target_mode"),
+                mapped_row.get("school"),
+                mapped_row.get("team"),
+                mapped_row.get("student_group"),
+                cint(mapped_row.get("include_descendants")),
+                cint(mapped_row.get("to_staff")),
+                cint(mapped_row.get("to_students")),
+                cint(mapped_row.get("to_guardians")),
+            )
+            if dedupe_key in seen_keys:
+                continue
+            seen_keys.add(dedupe_key)
+            mapped_rows.append(mapped_row)
+
+    return mapped_rows
+
+
+def _syncable_school_event_message(
+    *, current_message: str | None, before_description: str | None, new_description: str | None
+) -> str:
+    current_value = current_message or ""
+    if _safe_text(current_value):
+        if (
+            _safe_text(before_description)
+            and _safe_text(current_value) == _safe_text(before_description)
+            and _safe_text(new_description)
+        ):
+            return new_description or ""
+        return current_value
+    if _safe_text(new_description):
+        return new_description or ""
+    return current_value
+
+
+def _get_linked_org_communication_name(event_doc) -> str | None:
+    if _safe_text(_doc_row_value(event_doc, "reference_type")) != ORG_COMMUNICATION_REFERENCE_TYPE:
+        return None
+    communication_name = _safe_text(_doc_row_value(event_doc, "reference_name"))
+    return communication_name or None
+
+
+def _raise_linked_announcement_permission_error(*, action: str) -> None:
+    frappe.throw(
+        _(
+            "This school event is linked to an announcement. You do not have permission to {action} that announcement. Open the linked Org Communication or ask an administrator to help."
+        ).format(action=action),
+        frappe.PermissionError,
+    )
+
+
+def publish_companion_org_communication_for_event(
+    *, event_doc, request_id: str, announcement_message: str | None = None
+) -> dict:
+    from ifitwala_ed.api.org_communication_quick_create import create_org_communication_quick
+
+    organization = _resolve_school_event_organization(event_doc)
+    message_value = (
+        announcement_message if _safe_text(announcement_message) else _doc_row_value(event_doc, "description")
+    )
+    if not _safe_text(message_value):
+        frappe.throw(
+            _("Add an announcement message or event description before publishing the linked announcement."),
+            frappe.ValidationError,
+        )
+
+    audiences = build_companion_org_communication_audiences(event_doc)
+    response = create_org_communication_quick(
+        title=_safe_text(_doc_row_value(event_doc, "subject")) or _safe_text(_doc_row_value(event_doc, "name")),
+        communication_type=COMPANION_COMMUNICATION_TYPE,
+        status="Published",
+        priority="Normal",
+        portal_surface=_pick_companion_portal_surface(audiences),
+        organization=organization,
+        school=_safe_text(_doc_row_value(event_doc, "school")),
+        message=message_value,
+        internal_note=_linked_school_event_note(_safe_text(_doc_row_value(event_doc, "name"))),
+        interaction_mode="None",
+        allow_private_notes=0,
+        allow_public_thread=0,
+        audiences=audiences,
+        client_request_id=f"{request_id}:publish",
+    )
+
+    communication_name = _safe_text(response.get("name"))
+    if communication_name and _safe_text(_doc_row_value(event_doc, "name")):
+        frappe.db.set_value(
+            "School Event",
+            _safe_text(_doc_row_value(event_doc, "name")),
+            {
+                "reference_type": ORG_COMMUNICATION_REFERENCE_TYPE,
+                "reference_name": communication_name,
+            },
+            update_modified=False,
+        )
+        event_doc.reference_type = ORG_COMMUNICATION_REFERENCE_TYPE
+        event_doc.reference_name = communication_name
+
+    return {
+        "name": communication_name,
+        "title": response.get("title"),
+        "status": response.get("status"),
+    }
+
+
+def sync_linked_org_communication_for_event(event_doc) -> str | None:
+    communication_name = _get_linked_org_communication_name(event_doc)
+    if not communication_name or not frappe.db.exists(ORG_COMMUNICATION_REFERENCE_TYPE, communication_name):
+        return None
+
+    communication_doc = frappe.get_doc(ORG_COMMUNICATION_REFERENCE_TYPE, communication_name)
+    try:
+        communication_doc.check_permission("write")
+    except frappe.PermissionError:
+        _raise_linked_announcement_permission_error(action="update")
+
+    before_event = None
+    if hasattr(event_doc, "get_doc_before_save") and callable(event_doc.get_doc_before_save):
+        try:
+            before_event = event_doc.get_doc_before_save()
+        except Exception:
+            before_event = None
+
+    audiences = build_companion_org_communication_audiences(event_doc)
+    communication_doc.title = _safe_text(_doc_row_value(event_doc, "subject")) or communication_doc.title
+    communication_doc.communication_type = COMPANION_COMMUNICATION_TYPE
+    communication_doc.organization = _resolve_school_event_organization(event_doc)
+    communication_doc.school = _safe_text(_doc_row_value(event_doc, "school"))
+    communication_doc.portal_surface = _pick_companion_portal_surface(
+        audiences,
+        current_surface=_safe_text(_doc_row_value(communication_doc, "portal_surface")),
+    )
+    communication_doc.interaction_mode = "None"
+    communication_doc.allow_private_notes = 0
+    communication_doc.allow_public_thread = 0
+    communication_doc.internal_note = _normalize_linked_school_event_note(
+        _doc_row_value(communication_doc, "internal_note"),
+        _safe_text(_doc_row_value(event_doc, "name")),
+    )
+    communication_doc.message = _syncable_school_event_message(
+        current_message=_doc_row_value(communication_doc, "message"),
+        before_description=_doc_row_value(before_event, "description") if before_event else None,
+        new_description=_doc_row_value(event_doc, "description"),
+    )
+    communication_doc.set("audiences", [])
+    for row in audiences:
+        communication_doc.append("audiences", row)
+    communication_doc.save()
+    return communication_doc.name
+
+
+def archive_linked_org_communication_for_event(event_doc) -> str | None:
+    communication_name = _get_linked_org_communication_name(event_doc)
+    if not communication_name or not frappe.db.exists(ORG_COMMUNICATION_REFERENCE_TYPE, communication_name):
+        return None
+
+    communication_doc = frappe.get_doc(ORG_COMMUNICATION_REFERENCE_TYPE, communication_name)
+    try:
+        communication_doc.check_permission("write")
+    except frappe.PermissionError:
+        _raise_linked_announcement_permission_error(action="archive")
+    communication_doc.internal_note = _normalize_linked_school_event_note(
+        _doc_row_value(communication_doc, "internal_note"),
+        _safe_text(_doc_row_value(event_doc, "name")),
+    )
+    if _safe_text(_doc_row_value(communication_doc, "status")) != "Archived":
+        communication_doc.status = "Archived"
+        communication_doc.save()
+    return communication_doc.name
+
 
 # ============================================================================
 #  SCHOOL EVENT DOCUMENT
@@ -62,12 +444,15 @@ class SchoolEvent(Document):
         self.validate_date()
         self.sync_employee_bookings()
         self.sync_location_booking()
+        self.sync_linked_announcement()
 
     def on_cancel(self):
         delete_location_bookings_for_source(source_doctype=self.doctype, source_name=self.name)
+        self.archive_linked_announcement()
 
     def on_trash(self):
         delete_location_bookings_for_source(source_doctype=self.doctype, source_name=self.name)
+        self.archive_linked_announcement()
 
     def validate_date(self):
         """Non-'Other' categories must be in the future."""
@@ -471,6 +856,12 @@ class SchoolEvent(Document):
                 "slot_key": ["!=", slot_key],
             },
         )
+
+    def sync_linked_announcement(self) -> None:
+        sync_linked_org_communication_for_event(self)
+
+    def archive_linked_announcement(self) -> None:
+        archive_linked_org_communication_for_event(self)
 
 
 # ============================================================================

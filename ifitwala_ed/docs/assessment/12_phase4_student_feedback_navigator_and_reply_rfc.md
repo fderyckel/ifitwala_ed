@@ -1,15 +1,15 @@
 # Ifitwala_Ed — Phase 4 Student Feedback Navigator And Reply RFC
 
-Status: **Planned execution RFC / non-authoritative until canonical runtime docs are updated**
+Status: **Implemented runtime companion / non-authoritative planning history**
 Audience: Product, Engineering, UX, and coding agents
 Scope: Phase 4 student-facing released feedback navigator, instructor reply/clarification loop, guardian read-only assessment feedback access, and migration away from legacy single-channel outcome release on portal assessment surfaces
-Last updated: 2026-04-19
+Last updated: 2026-04-22
 
 Important note:
 
-- This RFC turns the approved Phase 4 direction into an execution-ready plan.
+- This RFC started as the approved Phase 4 execution plan and now also records the implemented runtime baseline.
 - It does **not** approve final schema names, field names, endpoint names, route names, or permission changes by itself.
-- If implementation lands, update `03_gradebook_notes.md`, `04_task_notes.md`, and `07_feedback_annotation_ecosystem_contract.md` in the same change.
+- `03_gradebook_notes.md` and `07_feedback_annotation_ecosystem_contract.md` have been updated with the current runtime boundary; sections below that still say **Planned** should be read as planning history unless section 1 overrides them.
 - This RFC extends the Phase 2 and Phase 3 runtime introduced by `09_feedback_records_and_publication_rfc.md` and `11_phase3_teacher_authoring_and_comment_bank_rfc.md`.
 
 Related docs:
@@ -45,36 +45,43 @@ The primary engineering outcome is one bounded released-feedback read model plus
 
 ## 1. Current Baseline
 
-Status: **Implemented baseline with Phase 4 gaps**
+Status: **Implemented Phase 4 baseline**
 
 Code refs:
 
 - `ifitwala_ed/assessment/task_feedback_service.py`
+- `ifitwala_ed/assessment/task_feedback_thread_service.py`
 - `ifitwala_ed/api/gradebook.py`
 - `ifitwala_ed/api/gradebook_reads.py`
 - `ifitwala_ed/api/gradebook_writes.py`
+- `ifitwala_ed/api/released_feedback.py`
 - `ifitwala_ed/api/outcome_publish.py`
 - `ifitwala_ed/api/teaching_plans.py`
 - `ifitwala_ed/api/courses.py`
 - `ifitwala_ed/api/guardian_monitoring.py`
+- `ifitwala_ed/ui-spa/src/components/assessment/ReleasedFeedbackNavigator.vue`
+- `ifitwala_ed/ui-spa/src/components/assessment/ReleasedFeedbackPdfViewer.vue`
 - `ifitwala_ed/ui-spa/src/pages/staff/gradebook/components/GradebookStudentDrawer.vue`
 - `ifitwala_ed/ui-spa/src/pages/staff/gradebook/components/GradebookPdfWorkspace.vue`
 - `ifitwala_ed/ui-spa/src/pages/student/CourseDetail.vue`
+- `ifitwala_ed/ui-spa/src/pages/student/StudentReleasedFeedbackDetail.vue`
 - `ifitwala_ed/ui-spa/src/pages/student/StudentQuiz.vue`
 - `ifitwala_ed/ui-spa/src/pages/guardian/GuardianMonitoring.vue`
-- `ifitwala_ed/ui-spa/src/pages/guardian/GuardianStudentShell.vue`
+- `ifitwala_ed/ui-spa/src/pages/guardian/GuardianReleasedFeedbackDetail.vue`
+- `ifitwala_ed/ui-spa/src/router/index.ts`
 - `ifitwala_ed/ui-spa/src/types/contracts/gradebook/feedback_workspace.ts`
-- `ifitwala_ed/ui-spa/src/types/contracts/student_learning/get_student_learning_space.ts`
+- `ifitwala_ed/ui-spa/src/types/contracts/assessment/released_feedback_detail.ts`
 
 Test refs:
 
 - `ifitwala_ed/api/test_gradebook.py`
+- `ifitwala_ed/api/test_released_feedback.py`
 - `ifitwala_ed/assessment/test_task_feedback_service.py`
+- `ifitwala_ed/assessment/test_task_feedback_thread_service.py`
 - `ifitwala_ed/assessment/test_task_feedback_comment_bank_service.py`
-- `ifitwala_ed/api/test_teaching_plans.py`
-- `ifitwala_ed/api/test_guardian_phase2.py`
 - `ifitwala_ed/ui-spa/src/pages/staff/__tests__/Gradebook.test.ts`
 - `ifitwala_ed/ui-spa/src/pages/student/__tests__/CourseDetail.test.ts`
+- `ifitwala_ed/ui-spa/src/pages/student/__tests__/StudentQuiz.test.ts`
 - `ifitwala_ed/ui-spa/src/pages/guardian/__tests__/GuardianMonitoring.test.ts`
 
 Phase 3 already provides:
@@ -86,13 +93,21 @@ Phase 3 already provides:
 - a drawer-owned `pdf.js` workspace with draft annotation overlays
 - a minimal teacher-owned comment bank
 
-Phase 4 gaps that still exist:
+Phase 4 now adds:
 
-- student and guardian portals do not yet consume the new feedback/grade channel states
-- the student LMS does not yet expose a released assessment feedback navigator
-- guardians still see simple published-result summaries driven by legacy `Task Outcome.is_published`
-- there is no assessment-owned reply thread model for student clarification
-- current summary storage has overall, strengths, improvements, and next steps, but does **not** yet persist pinned priorities as first-class records
+- student released-feedback detail routes from course-context work and quiz review
+- guardian read-only released-feedback handoff from guardian monitoring
+- first-class pinned priorities on the feedback workspace
+- first-class reply threads and learner-state tracking
+- drawer-first instructor reply and resolve handling
+- immutable `assessment_submission` evidence as the default student document surface, with structured overlays layered in the navigator
+
+Current runtime boundaries that still remain after Phase 4:
+
+- the staff drawer still shows the legacy publish/unpublish action alongside the newer channel-state save action
+- guardian released-feedback detail is intentionally text-first and does not yet render a guardian document surface
+- student reply entry points currently target feedback-item threads; priority and summary reply entry points are not yet exposed in the portal UI
+- OCR hardening, derived annotated export artifacts, and feedback analytics remain later phases
 
 ---
 

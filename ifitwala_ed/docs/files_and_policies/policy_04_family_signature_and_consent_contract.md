@@ -110,17 +110,36 @@ Test refs: None
 Rules:
 
 1. Request fields should default to known bindings from `Student`, `Guardian`, `Student Guardian`, linked `Contact`, and linked `Address` data before introducing free-text entry.
-2. Bound fields must declare one of three modes:
+2. Phase 2A exposes a server-owned binding registry for the initial portal slice:
+   - `Student.student_full_name`
+   - `Student.student_email`
+   - `Student.student_mobile_number`
+   - `Student.anchor_school`
+   - `Guardian.guardian_full_name`
+   - `Guardian.guardian_email`
+   - `Guardian.guardian_mobile_phone`
+   - `Student.primary_address`
+   - `Guardian.primary_address`
+3. `Student.primary_address` and `Guardian.primary_address` resolve only when the server can identify exactly one canonical linked `Address` row for that signer context; otherwise the field may still be shown or edited for form-only use, but profile write-back must stay disabled until Desk authoring or linked-address ownership is clarified.
+4. `Student.student_email` may be shown and captured on the form, but Phase 2A portal submit keeps profile write-back disabled for that binding until student portal identity is no longer keyed directly from `Student.student_email`.
+5. `Address` field payloads use a structured value with:
+   - `address_line1`
+   - `address_line2`
+   - `city`
+   - `state`
+   - `country`
+   - `pincode`
+6. Bound fields must declare one of three modes:
    - display only
    - confirm current
    - allow override
-3. If a signer edits bound phone, email, or address data, the portal must ask whether the change is:
+7. If a signer edits bound phone, email, or address data, the portal must ask whether the change is:
    - for this form only
    - the new profile data everywhere
-4. `Update my profile everywhere` is an explicit self-service choice, not a silent background mutation and not a deferred review task in the default contract.
-5. Profile write-back must update the canonical linked `Contact` and `Address` records, then mirror convenience fields such as `Guardian.guardian_email`, `Guardian.guardian_mobile_phone`, `Student.student_email`, and `Student.student_mobile_number` where the runtime model depends on them.
-6. Form-only overrides must never silently mutate master profile data.
-7. Every submitted decision must retain an immutable snapshot of the presented values, submitted values, and chosen write-back mode.
+8. `Update my profile everywhere` is an explicit self-service choice, not a silent background mutation and not a deferred review task in the default contract.
+9. Profile write-back must update the canonical linked `Contact` and `Address` records, then mirror convenience fields such as `Guardian.guardian_email`, `Guardian.guardian_mobile_phone`, `Student.student_email`, and `Student.student_mobile_number` where the runtime model depends on them.
+10. Form-only overrides must never silently mutate master profile data.
+11. Every submitted decision must retain an immutable snapshot of the presented values, submitted values, and chosen write-back mode.
 
 ## Decision Lifecycle Contract
 Status: Planned
@@ -394,15 +413,16 @@ Rules:
    - `submitted_value`
    - `changed`
    - `allow_profile_writeback`
-6. `writeback` must contain:
+6. For `field_type = Address`, `presented_value` and `submitted_value` use the structured address payload defined in the field-binding contract; other field types continue to use scalar values.
+7. `writeback` must contain:
    - `profile_writeback_mode`
    - `changed_profile_fields`
    - `before_values`
    - `after_values`
-7. When the signer chooses `Form Only`, `submitted_value` still captures the override while `before_values` and `after_values` remain equal for master profile data.
-8. When the signer chooses `Update Profile`, the snapshot must preserve both the presented values and the canonical after-values written to `Contact`, `Address`, and mirrored convenience fields.
-9. For student self-sign, mirrored convenience fields include `Student.student_email` and `Student.student_mobile_number` because student runtime and user linkage still depend on them.
-10. For guardian sign, mirrored convenience fields include `Guardian.guardian_email` and `Guardian.guardian_mobile_phone`.
+8. When the signer chooses `Form Only`, `submitted_value` still captures the override while `before_values` and `after_values` remain equal for master profile data.
+9. When the signer chooses `Update Profile`, the snapshot must preserve both the presented values and the canonical after-values written to `Contact`, `Address`, and mirrored convenience fields.
+10. For student self-sign, mirrored convenience fields include `Student.student_email` and `Student.student_mobile_number` because student runtime and user linkage still depend on them.
+11. For guardian sign, mirrored convenience fields include `Guardian.guardian_email` and `Guardian.guardian_mobile_phone`.
 
 ## Named Endpoint Contract
 Status: Planned
@@ -572,7 +592,7 @@ Rules:
      - `decision_status: string`
      - `typed_signature_name?: string`
      - `attestation_confirmed?: 0 | 1`
-     - `field_values: Array<{ field_key: string; value: string | number | boolean | null }>`
+     - `field_values: Array<{ field_key: string; value: string | number | boolean | null | { address_line1?: string; address_line2?: string; city?: string; state?: string; country?: string; pincode?: string } }>`
      - `profile_writeback_mode?: "Form Only" | "Update Profile"`
    - response:
      - `ok: boolean`
@@ -619,7 +639,7 @@ Rules:
      - `decision_status: string`
      - `typed_signature_name?: string`
      - `attestation_confirmed?: 0 | 1`
-     - `field_values: Array<{ field_key: string; value: string | number | boolean | null }>`
+     - `field_values: Array<{ field_key: string; value: string | number | boolean | null | { address_line1?: string; address_line2?: string; city?: string; state?: string; country?: string; pincode?: string } }>`
      - `profile_writeback_mode?: "Form Only" | "Update Profile"`
    - response:
      - same shape as `submit_guardian_consent_decision`

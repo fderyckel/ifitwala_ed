@@ -179,6 +179,13 @@
 							Published by {{ row.published_by }}
 						</p>
 						<p v-if="row.narrative" class="type-body text-ink/80">{{ row.narrative }}</p>
+						<RouterLink
+							v-if="row.feedback_visible || row.grade_visible"
+							:to="guardianFeedbackRoute(row)"
+							class="mt-3 inline-flex type-caption font-semibold text-jacaranda hover:underline"
+						>
+							Open released feedback
+						</RouterLink>
 					</article>
 				</div>
 			</section>
@@ -188,6 +195,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue';
+import { RouterLink } from 'vue-router';
 import { toast } from 'frappe-ui';
 
 import {
@@ -221,6 +229,16 @@ const studentLogs = computed<MonitoringStudentLog[]>(() => snapshot.value?.stude
 const publishedResults = computed<MonitoringPublishedResult[]>(
 	() => snapshot.value?.published_results ?? []
 );
+
+function guardianFeedbackRoute(row: MonitoringPublishedResult) {
+	return {
+		name: 'guardian-released-feedback',
+		params: {
+			student_id: row.student,
+			task_outcome: row.task_outcome,
+		},
+	};
+}
 
 async function markAsSeen(studentLog: string) {
 	if (!studentLog || markingLogName.value === studentLog) return;

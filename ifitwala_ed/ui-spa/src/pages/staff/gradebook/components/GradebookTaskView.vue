@@ -234,6 +234,7 @@
 					:feedback-busy="feedbackBusy"
 					:comment-bank-busy="commentBankBusy"
 					:publication-busy="publicationBusy"
+					:thread-busy="threadBusy"
 					:submission-seen-busy="submissionSeenBusy"
 					:publish-busy="publishBusy"
 					:moderation-busy="moderationBusy"
@@ -247,6 +248,8 @@
 					@save-feedback-draft="saveFeedbackDraft"
 					@save-comment-bank-entry="saveFeedbackCommentBankEntry"
 					@save-feedback-publication="saveFeedbackPublication"
+					@save-feedback-thread-reply="saveFeedbackThreadReply"
+					@save-feedback-thread-state="saveFeedbackThreadState"
 					@moderator-action="runModeratorAction"
 					@mark-submission-seen="markSubmissionSeen"
 					@publish="publishOutcome"
@@ -323,6 +326,7 @@ const markingBusy = ref(false);
 const feedbackBusy = ref(false);
 const commentBankBusy = ref(false);
 const publicationBusy = ref(false);
+const threadBusy = ref(false);
 const submissionSeenBusy = ref(false);
 const publishBusy = ref(false);
 const moderationBusy = ref(false);
@@ -833,6 +837,13 @@ async function saveFeedbackDraft(payload: {
 		improvements: string;
 		next_steps: string;
 	};
+	priorities: Array<{
+		id?: string | null;
+		title: string;
+		detail?: string | null;
+		feedback_item_id?: string | null;
+		assessment_criteria?: string | null;
+	}>;
 	items: FeedbackWorkspaceItem[];
 }) {
 	feedbackBusy.value = true;
@@ -845,6 +856,56 @@ async function saveFeedbackDraft(payload: {
 		showDangerToast('Could not save feedback draft');
 	} finally {
 		feedbackBusy.value = false;
+	}
+}
+
+function upsertDrawerThread(thread: GetDrawerResponse['feedback_threads'][number]) {
+	if (!drawer.value) return;
+	const nextThreads = (drawer.value.feedback_threads || []).filter(
+		row => row.thread_id !== thread.thread_id
+	);
+	nextThreads.push(thread);
+	drawer.value.feedback_threads = nextThreads.sort((left, right) =>
+		String(left.modified || '').localeCompare(String(right.modified || ''))
+	);
+}
+
+async function saveFeedbackThreadReply(payload: {
+	outcome_id: string;
+	thread_id: string;
+	body: string;
+	thread_status?: 'open' | 'resolved' | null;
+}) {
+	threadBusy.value = true;
+	try {
+		const response = await gradebookService.saveFeedbackThreadReply(payload);
+		upsertDrawerThread(response.thread);
+		showSuccessToast('Reply saved.');
+	} catch (error) {
+		console.error('Failed to save feedback thread reply', error);
+		showDangerToast('Could not save reply');
+	} finally {
+		threadBusy.value = false;
+	}
+}
+
+async function saveFeedbackThreadState(payload: {
+	outcome_id: string;
+	thread_id: string;
+	thread_status: 'open' | 'resolved';
+}) {
+	threadBusy.value = true;
+	try {
+		const response = await gradebookService.saveFeedbackThreadState(payload);
+		upsertDrawerThread(response.thread);
+		showSuccessToast(
+			payload.thread_status === 'resolved' ? 'Thread resolved.' : 'Thread reopened.'
+		);
+	} catch (error) {
+		console.error('Failed to update feedback thread state', error);
+		showDangerToast('Could not update thread state');
+	} finally {
+		threadBusy.value = false;
 	}
 }
 

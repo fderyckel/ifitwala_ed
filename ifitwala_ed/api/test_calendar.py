@@ -648,13 +648,8 @@ class TestCalendarApi(TestCase):
                 return_value={"enabled": True, "blocked_reason": None},
             ),
             patch(
-                "ifitwala_ed.api.calendar_quick_create.frappe.db.get_value",
-                return_value=frappe._dict({"organization": "ORG-ROOT"}),
-            ),
-            patch(
-                "ifitwala_ed.api.calendar_quick_create.create_org_communication_quick",
+                "ifitwala_ed.api.calendar_quick_create.publish_companion_org_communication_for_event",
                 return_value={
-                    "ok": True,
                     "status": "created",
                     "name": "ORG-COMM-26-04-00001",
                     "title": "Parent MYP Workshop",
@@ -678,26 +673,9 @@ class TestCalendarApi(TestCase):
         self.assertEqual(len(captured_event_payloads), 1)
         self.assertEqual(captured_event_payloads[0].get("school"), "ISS")
         mocked_publish.assert_called_once()
-        self.assertEqual(
-            mocked_publish.call_args.kwargs["audiences"],
-            [
-                {
-                    "target_mode": "School Scope",
-                    "school": "ISS",
-                    "team": None,
-                    "student_group": None,
-                    "include_descendants": 1,
-                    "to_staff": 0,
-                    "to_students": 0,
-                    "to_guardians": 1,
-                    "note": None,
-                }
-            ],
-        )
-        self.assertEqual(mocked_publish.call_args.kwargs["portal_surface"], "Portal Feed")
-        self.assertEqual(mocked_publish.call_args.kwargs["organization"], "ORG-ROOT")
-        self.assertEqual(mocked_publish.call_args.kwargs["status"], "Published")
-        self.assertEqual(mocked_publish.call_args.kwargs["message"], "Workshop presentation")
+        self.assertEqual(mocked_publish.call_args.kwargs["event_doc"].name, "SE-26-04-00001")
+        self.assertEqual(mocked_publish.call_args.kwargs["request_id"], "req-publish-1")
+        self.assertEqual(mocked_publish.call_args.kwargs["announcement_message"], "Workshop presentation")
 
     def test_student_group_memberships_does_not_filter_child_rows_by_active(self):
         observed_filters = []

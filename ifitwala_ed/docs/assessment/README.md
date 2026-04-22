@@ -32,6 +32,6 @@ Planning and audit notes:
 - `11_phase3_teacher_authoring_and_comment_bank_rfc.md`
   planned Phase 3 execution RFC for teacher authoring, reusable comments, and curriculum-aware feedback relevance
 - `12_phase4_student_feedback_navigator_and_reply_rfc.md`
-  planned Phase 4 execution RFC for the student feedback navigator, instructor reply loop, guardian read-only released feedback access, and channel-aware portal release consumption
+  implemented Phase 4 runtime companion plus planning history for the student feedback navigator, instructor reply loop, guardian read-only released feedback access, and channel-aware portal release consumption
 - `gradebook_drawer_phases.md`
   planned roadmap; update the runtime docs above when phases ship

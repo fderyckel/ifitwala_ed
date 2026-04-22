@@ -46,6 +46,41 @@
 		</section>
 
 		<section
+			v-if="consentSummary.pending_count"
+			class="student-hub-section student-hub-section--warm"
+		>
+			<div class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+				<div>
+					<p class="type-overline text-ink/60">Action Needed</p>
+					<h2 class="type-h2 text-ink">Forms are waiting for your signature</h2>
+					<p class="mt-1 type-body text-ink/70">
+						{{ consentSummary.pending_count }}
+						{{ consentSummary.pending_count === 1 ? 'form is' : 'forms are' }}
+						waiting for your decision.
+					</p>
+				</div>
+				<RouterLink :to="{ name: 'student-consents' }" class="if-button if-button--primary">
+					Open Forms &amp; Signatures
+				</RouterLink>
+			</div>
+			<div class="mt-4 grid gap-3 lg:grid-cols-3">
+				<article
+					v-for="item in consentSummary.items"
+					:key="`${item.request_key}:${item.student}`"
+					class="student-hub-card student-hub-card--warm"
+				>
+					<div class="flex items-start justify-between gap-3">
+						<div>
+							<p class="type-body-strong text-ink">{{ item.request_title }}</p>
+							<p v-if="item.due_on" class="mt-2 type-caption text-ink/70">Due {{ item.due_on }}</p>
+						</div>
+						<span class="chip">{{ item.status_label }}</span>
+					</div>
+				</article>
+			</div>
+		</section>
+
+		<section
 			v-if="policySummary.pending_count"
 			class="student-hub-section student-hub-section--warm"
 		>
@@ -426,6 +461,14 @@ const policySummary = computed(
 			items: [],
 		}
 );
+const consentSummary = computed(
+	() =>
+		homePayload.value?.consents ?? {
+			pending_count: 0,
+			overdue_count: 0,
+			items: [],
+		}
+);
 const currentClass = computed<TodayClass | null>(
 	() => homePayload.value?.learning?.orientation?.current_class ?? null
 );
@@ -624,6 +667,12 @@ onMounted(() => {
 });
 
 const quickLinks = [
+	{
+		title: 'Forms & Signatures',
+		description: 'Review operational forms that need your signature.',
+		icon: 'edit-3',
+		to: { name: 'student-consents' },
+	},
 	{
 		title: 'Policies',
 		description: 'Review and acknowledge active student policies.',

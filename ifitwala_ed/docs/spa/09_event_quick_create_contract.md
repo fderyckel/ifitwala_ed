@@ -161,11 +161,14 @@ Code refs:
 - `ifitwala_ed/api/calendar_quick_create.py`
 - `ifitwala_ed/api/org_communication_quick_create.py`
 - `ifitwala_ed/setup/doctype/school_event/school_event.json`
+- `ifitwala_ed/school_settings/doctype/school_event/school_event.py`
+- `ifitwala_ed/school_settings/doctype/school_event/school_event.js`
 
 Test refs:
 
 - `ifitwala_ed/api/test_calendar.py`
 - `ifitwala_ed/ui-spa/src/overlays/calendar/__tests__/EventQuickCreateOverlay.test.ts`
+- `ifitwala_ed/school_settings/doctype/school_event/test_school_event.py`
 
 Rules:
 
@@ -187,6 +190,13 @@ Rules:
    - `Employees in Team` maps to `Team`
    - `Custom Users` does not support companion announcement publish from this overlay
 8. The shared overlay shell must still close immediately on semantic success and rely on the calendar service invalidate signal for refresh; when a companion announcement is created, the same success path must also invalidate org-communication surfaces.
+9. When quick create publishes a companion announcement, `School Event.reference_type/reference_name` become the canonical lifecycle link to that `Org Communication`.
+10. For linked companion announcements:
+
+- the `School Event` form remains the source of truth for event title plus audience scope
+- event updates sync the linked announcement title, issuing school, audience rows, portal-surface compatibility, and the message only when it still mirrors the event description
+- event cancel/trash archives the linked announcement
+- Desk must expose the linked announcement as an explicit handoff from the `School Event` form
 
 ## 6. Contract Matrix
 
@@ -201,6 +211,8 @@ Code refs:
 - `ifitwala_ed/setup/doctype/meeting/meeting.py`
 - `ifitwala_ed/setup/doctype/meeting_participant/meeting_participant.json`
 - `ifitwala_ed/setup/doctype/school_event/school_event.json`
+- `ifitwala_ed/school_settings/doctype/school_event/school_event.py`
+- `ifitwala_ed/school_settings/doctype/school_event/school_event.js`
 - `ifitwala_ed/ui-spa/src/overlays/calendar/EventQuickCreateOverlay.vue`
 - `ifitwala_ed/ui-spa/src/pages/staff/StaffHome.vue`
 - `ifitwala_ed/ui-spa/src/lib/services/calendar/eventQuickCreateService.ts`
@@ -215,19 +227,20 @@ Code refs:
 Test refs:
 
 - `ifitwala_ed/api/test_calendar.py`
+- `ifitwala_ed/school_settings/doctype/school_event/test_school_event.py`
 - `ifitwala_ed/ui-spa/src/pages/staff/__tests__/StaffHome.test.ts`
 - `ifitwala_ed/ui-spa/src/pages/staff/__tests__/RoomUtilization.test.ts`
 - `ifitwala_ed/ui-spa/src/overlays/calendar/__tests__/EventQuickCreateOverlay.test.ts`
 
-| Concern                          | Canonical owner                                                                                    | Code refs                                                                                                                                                  | Test refs                                                                                                                                                                                  |
-| -------------------------------- | -------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Schema / DocType                 | `Meeting`, `Meeting Participant`, `School Event`                                                   | `setup/doctype/meeting/meeting.json`, `setup/doctype/meeting_participant/meeting_participant.json`, `setup/doctype/school_event/school_event.json`         | `ifitwala_ed/api/test_calendar.py`                                                                                                                                                         |
-| Controller / workflow logic      | `calendar_quick_create.py` plus `Meeting` controller invariants and companion announcement mapping | `ifitwala_ed/api/calendar_quick_create.py`, `ifitwala_ed/api/org_communication_quick_create.py`, `setup/doctype/meeting/meeting.py`                        | `ifitwala_ed/api/test_calendar.py`                                                                                                                                                         |
-| API endpoints                    | `calendar.py` facade over quick-create methods                                                     | `ifitwala_ed/api/calendar.py`, `ifitwala_ed/api/calendar_quick_create.py`                                                                                  | `ifitwala_ed/api/test_calendar.py`                                                                                                                                                         |
-| SPA/UI surfaces                  | Staff Home and Room Utilization quick actions plus `EventQuickCreateOverlay`                       | `ui-spa/src/pages/staff/StaffHome.vue`, `ui-spa/src/pages/staff/analytics/RoomUtilization.vue`, `ui-spa/src/overlays/calendar/EventQuickCreateOverlay.vue` | `ui-spa/src/pages/staff/__tests__/StaffHome.test.ts`, `ui-spa/src/pages/staff/__tests__/RoomUtilization.test.ts`, `ui-spa/src/overlays/calendar/__tests__/EventQuickCreateOverlay.test.ts` |
-| Reports / dashboards / briefings | Staff Home and Room Utilization quick-action copy and overlay entry points                         | `ui-spa/src/pages/staff/StaffHome.vue`, `ui-spa/src/pages/staff/analytics/RoomUtilization.vue`                                                             | `ui-spa/src/pages/staff/__tests__/StaffHome.test.ts`, `ui-spa/src/pages/staff/__tests__/RoomUtilization.test.ts`                                                                           |
-| Scheduler / background jobs      | None                                                                                               | None                                                                                                                                                       | None                                                                                                                                                                                       |
-| Tests                            | Calendar facade, publish-capability bootstrap, and quick-create regression coverage                | `ifitwala_ed/api/test_calendar.py`, `ui-spa/src/overlays/calendar/__tests__/EventQuickCreateOverlay.test.ts`                                               | `ifitwala_ed/api/test_calendar.py`, `ifitwala_ed/ui-spa/src/overlays/calendar/__tests__/EventQuickCreateOverlay.test.ts`                                                                   |
+| Concern                          | Canonical owner                                                                                                     | Code refs                                                                                                                                                                                   | Test refs                                                                                                                                                                                  |
+| -------------------------------- | ------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Schema / DocType                 | `Meeting`, `Meeting Participant`, `School Event`                                                                    | `setup/doctype/meeting/meeting.json`, `setup/doctype/meeting_participant/meeting_participant.json`, `setup/doctype/school_event/school_event.json`                                          | `ifitwala_ed/api/test_calendar.py`                                                                                                                                                         |
+| Controller / workflow logic      | `calendar_quick_create.py` plus `Meeting`/`School Event` controller invariants and companion announcement lifecycle | `ifitwala_ed/api/calendar_quick_create.py`, `ifitwala_ed/api/org_communication_quick_create.py`, `setup/doctype/meeting/meeting.py`, `school_settings/doctype/school_event/school_event.py` | `ifitwala_ed/api/test_calendar.py`, `ifitwala_ed/school_settings/doctype/school_event/test_school_event.py`                                                                                |
+| API endpoints                    | `calendar.py` facade over quick-create methods                                                                      | `ifitwala_ed/api/calendar.py`, `ifitwala_ed/api/calendar_quick_create.py`                                                                                                                   | `ifitwala_ed/api/test_calendar.py`                                                                                                                                                         |
+| SPA/UI surfaces                  | Staff Home and Room Utilization quick actions plus `EventQuickCreateOverlay`                                        | `ui-spa/src/pages/staff/StaffHome.vue`, `ui-spa/src/pages/staff/analytics/RoomUtilization.vue`, `ui-spa/src/overlays/calendar/EventQuickCreateOverlay.vue`                                  | `ui-spa/src/pages/staff/__tests__/StaffHome.test.ts`, `ui-spa/src/pages/staff/__tests__/RoomUtilization.test.ts`, `ui-spa/src/overlays/calendar/__tests__/EventQuickCreateOverlay.test.ts` |
+| Reports / dashboards / briefings | Staff Home and Room Utilization quick-action copy and overlay entry points                                          | `ui-spa/src/pages/staff/StaffHome.vue`, `ui-spa/src/pages/staff/analytics/RoomUtilization.vue`                                                                                              | `ui-spa/src/pages/staff/__tests__/StaffHome.test.ts`, `ui-spa/src/pages/staff/__tests__/RoomUtilization.test.ts`                                                                           |
+| Scheduler / background jobs      | None                                                                                                                | None                                                                                                                                                                                        | None                                                                                                                                                                                       |
+| Tests                            | Calendar facade, publish-capability bootstrap, and quick-create regression coverage                                 | `ifitwala_ed/api/test_calendar.py`, `ui-spa/src/overlays/calendar/__tests__/EventQuickCreateOverlay.test.ts`                                                                                | `ifitwala_ed/api/test_calendar.py`, `ifitwala_ed/ui-spa/src/overlays/calendar/__tests__/EventQuickCreateOverlay.test.ts`                                                                   |
 
 ## 7. Technical Notes (IT)
 

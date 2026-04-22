@@ -21,14 +21,12 @@ from ifitwala_ed.api.calendar_core import (
     _to_system_datetime,
 )
 from ifitwala_ed.api.org_communication_quick_create import (
-    create_org_communication_quick,
     get_org_communication_quick_create_capability,
 )
 from ifitwala_ed.api.student_log_dashboard import get_authorized_schools
 from ifitwala_ed.schedule.schedule_utils import iter_student_group_room_slots
-from ifitwala_ed.setup.doctype.org_communication.org_communication import (
-    get_org_communication_allowed_portal_surfaces,
-    resolve_org_communication_delivery_profile,
+from ifitwala_ed.school_settings.doctype.school_event.school_event import (
+    publish_companion_org_communication_for_event,
 )
 from ifitwala_ed.utilities.location_utils import find_room_conflicts, get_visible_location_rows_for_school
 from ifitwala_ed.utilities.school_tree import get_ancestor_schools, get_descendant_schools
@@ -181,214 +179,6 @@ def _normalize_attendee_kinds(value: object | None) -> list[str]:
 def _json_cache_key(prefix: str, payload: dict) -> str:
     digest = sha1(json.dumps(payload, sort_keys=True, default=str).encode("utf-8")).hexdigest()
     return f"{prefix}:{digest}"
-
-
-def _pick_publish_portal_surface(audiences: list[dict]) -> str:
-    profile = resolve_org_communication_delivery_profile(audiences)
-    allowed_surfaces = list(get_org_communication_allowed_portal_surfaces(profile))
-    if "Portal Feed" in allowed_surfaces and profile == "portal_only":
-        return "Portal Feed"
-    if "Everywhere" in allowed_surfaces:
-        return "Everywhere"
-    if "Portal Feed" in allowed_surfaces:
-        return "Portal Feed"
-    if "Desk" in allowed_surfaces:
-        return "Desk"
-    if "Morning Brief" in allowed_surfaces:
-        return "Morning Brief"
-    return "Portal Feed"
-
-
-def _build_published_org_communication_audiences(
-    *,
-    school: str,
-    audience_type: str,
-    audience_team: str | None,
-    audience_student_group: str | None,
-    include_guardians: int,
-    include_students: int,
-) -> list[dict]:
-    include_guardians_flag = cint(include_guardians)
-    include_students_flag = cint(include_students)
-
-    if audience_type == "All Students, Guardians, and Employees":
-        return [
-            {
-                "target_mode": "School Scope",
-                "school": school,
-                "team": None,
-                "student_group": None,
-                "include_descendants": 1,
-                "to_staff": 1,
-                "to_students": 1,
-                "to_guardians": 1,
-                "note": None,
-            }
-        ]
-
-    if audience_type == "All Students":
-        return [
-            {
-                "target_mode": "School Scope",
-                "school": school,
-                "team": None,
-                "student_group": None,
-                "include_descendants": 1,
-                "to_staff": 0,
-                "to_students": 1,
-                "to_guardians": 1 if include_guardians_flag else 0,
-                "note": None,
-            }
-        ]
-
-    if audience_type == "All Guardians":
-        return [
-            {
-                "target_mode": "School Scope",
-                "school": school,
-                "team": None,
-                "student_group": None,
-                "include_descendants": 1,
-                "to_staff": 0,
-                "to_students": 1 if include_students_flag else 0,
-                "to_guardians": 1,
-                "note": None,
-            }
-        ]
-
-    if audience_type == "All Employees":
-        return [
-            {
-                "target_mode": "School Scope",
-                "school": school,
-                "team": None,
-                "student_group": None,
-                "include_descendants": 1,
-                "to_staff": 1,
-                "to_students": 1 if include_students_flag else 0,
-                "to_guardians": 0,
-                "note": None,
-            }
-        ]
-
-    if audience_type == "Students in Student Group":
-        if not audience_student_group:
-            frappe.throw(_("Student Group is required to publish this announcement."), frappe.ValidationError)
-        return [
-            {
-                "target_mode": "Student Group",
-                "school": None,
-                "team": None,
-                "student_group": audience_student_group,
-                "include_descendants": 0,
-                "to_staff": 0,
-                "to_students": 1,
-                "to_guardians": 1 if include_guardians_flag else 0,
-                "note": None,
-            }
-        ]
-
-    if audience_type == "Employees in Team":
-        if include_students_flag:
-            frappe.throw(
-                _(
-                    "Also publish announcement does not support 'Include Students' when audience type is 'Employees in Team'."
-                ),
-                frappe.ValidationError,
-            )
-        if not audience_team:
-            frappe.throw(_("Team is required to publish this announcement."), frappe.ValidationError)
-        return [
-            {
-                "target_mode": "Team",
-                "school": None,
-                "team": audience_team,
-                "student_group": None,
-                "include_descendants": 0,
-                "to_staff": 1,
-                "to_students": 0,
-                "to_guardians": 0,
-                "note": None,
-            }
-        ]
-
-    if audience_type == "Custom Users":
-        frappe.throw(
-            _(
-                "Also publish announcement is not available for 'Custom Users'. Create the event first, then publish a separate Org Communication if needed."
-            ),
-            frappe.ValidationError,
-        )
-
-    frappe.throw(
-        _("Audience type {audience_type} is not supported for announcement publishing.").format(
-            audience_type=audience_type
-        ),
-        frappe.ValidationError,
-    )
-
-
-def _publish_org_communication_for_school_event(
-    *,
-    request_id: str,
-    event_name: str,
-    subject: str,
-    school: str,
-    description: str | None,
-    announcement_message: str | None,
-    audience_type: str,
-    audience_team: str | None,
-    audience_student_group: str | None,
-    include_guardians: int,
-    include_students: int,
-) -> dict:
-    school_row = frappe.db.get_value("School", school, ["organization"], as_dict=True) or {}
-    organization = _safe_text(school_row.get("organization"))
-    if not organization:
-        frappe.throw(
-            _("School {school} is missing an organization, so the announcement cannot be published.").format(
-                school=school
-            ),
-            frappe.ValidationError,
-        )
-
-    message_value = announcement_message if _safe_text(announcement_message) else description
-    if not _safe_text(message_value):
-        frappe.throw(
-            _("Add an announcement message or event description before publishing the announcement."),
-            frappe.ValidationError,
-        )
-
-    audiences = _build_published_org_communication_audiences(
-        school=school,
-        audience_type=audience_type,
-        audience_team=audience_team,
-        audience_student_group=audience_student_group,
-        include_guardians=include_guardians,
-        include_students=include_students,
-    )
-
-    response = create_org_communication_quick(
-        title=subject,
-        communication_type="Event Announcement",
-        status="Published",
-        priority="Normal",
-        portal_surface=_pick_publish_portal_surface(audiences),
-        organization=organization,
-        school=school,
-        message=message_value,
-        internal_note=_("Published from School Event {event_name}.").format(event_name=event_name),
-        interaction_mode="None",
-        allow_private_notes=0,
-        allow_public_thread=0,
-        audiences=audiences,
-        client_request_id=f"{request_id}:publish",
-    )
-    return {
-        "name": response.get("name"),
-        "title": response.get("title"),
-        "status": response.get("status"),
-    }
 
 
 def _idempotency_key(doctype: str, user: str, client_request_id: str) -> str:
@@ -2576,18 +2366,10 @@ def create_school_event_quick(
         doc = frappe.get_doc(payload)
         doc.insert()
         if publish_announcement_flag:
-            published_communication = _publish_org_communication_for_school_event(
+            published_communication = publish_companion_org_communication_for_event(
+                event_doc=doc,
                 request_id=request_id,
-                event_name=doc.name,
-                subject=doc.subject or doc.name,
-                school=school_value,
-                description=description,
                 announcement_message=announcement_message,
-                audience_type=audience_value,
-                audience_team=team_value or None,
-                audience_student_group=student_group_value or None,
-                include_guardians=cint(include_guardians),
-                include_students=cint(include_students),
             )
 
         start_dt = _to_system_datetime(doc.starts_on, _system_tzinfo()) if getattr(doc, "starts_on", None) else None

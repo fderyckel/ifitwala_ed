@@ -16,6 +16,7 @@ from frappe.utils import get_datetime, now_datetime
 from ifitwala_ed.api import course_schedule as course_schedule_api
 from ifitwala_ed.api import portal as portal_api
 from ifitwala_ed.api import student_communications as student_communications_api
+from ifitwala_ed.api.family_consent import get_student_consent_home_summary
 from ifitwala_ed.api.student_policy import get_student_policy_home_summary
 from ifitwala_ed.api.student_task_status import (
     DONE_GRADING_STATUSES,
@@ -850,6 +851,7 @@ def get_student_hub_home() -> dict[str, Any]:
             "weekday": schedule.get("weekday"),
         },
         "identity": identity,
+        "consents": get_student_consent_home_summary(student_name),
         "policies": get_student_policy_home_summary(student_name),
         "learning": {
             "today_classes": today_courses,
