@@ -852,7 +852,7 @@ def get_preferred_guardian_avatar_url(
         "Guardian",
         guardian_name,
         original_url=original_url,
-        slots=GUARDIAN_AVATAR_VARIANT_SLOTS,
+        slots=PROFILE_IMAGE_THUMB_ONLY_SLOTS,
         fallback_to_original=False,
         request_missing_derivatives=True,
     )

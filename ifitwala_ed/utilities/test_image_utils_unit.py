@@ -609,6 +609,72 @@ class TestImageUtilsUnit(TestCase):
             ],
         )
 
+    def test_get_preferred_guardian_avatar_url_requests_thumb_only_derivative(self):
+        with _image_utils_module() as (image_utils, frappe):
+            request_calls = []
+
+            class _FakeCache:
+                def get_value(self, key):
+                    return None
+
+                def set_value(self, key, value, expires_in_sec=None):
+                    return None
+
+            image_utils.get_current_drive_files_for_slots = lambda **kwargs: [
+                {
+                    "name": "DRIVE-GRD-1",
+                    "primary_subject_id": "GRD-0001",
+                    "slot": "profile_image",
+                    "file": "FILE-GRD-1",
+                    "current_version": "DFV-GRD-1",
+                }
+            ]
+
+            def fake_get_all(doctype, filters=None, fields=None, limit=None, order_by=None):
+                del filters, fields, limit, order_by
+                if doctype == "File":
+                    return [
+                        {
+                            "name": "FILE-GRD-1",
+                            "file_url": "/private/files/guardian-source.png",
+                            "is_private": 1,
+                        }
+                    ]
+                if doctype == "Drive File Derivative":
+                    return []
+                raise AssertionError(f"Unexpected get_all doctype: {doctype}")
+
+            frappe.get_all = fake_get_all
+            frappe.cache = lambda: _FakeCache()
+
+            with (
+                patch.object(
+                    image_utils,
+                    "request_profile_image_preview_derivatives",
+                    side_effect=lambda *args, **kwargs: request_calls.append((args, kwargs)),
+                ),
+                patch.object(image_utils, "_resolve_original_governed_image_url") as resolve_original,
+            ):
+                image_url = image_utils.get_preferred_guardian_avatar_url(
+                    "GRD-0001",
+                    original_url="/private/files/guardian-source.png",
+                )
+
+        resolve_original.assert_not_called()
+        self.assertIsNone(image_url)
+        self.assertEqual(
+            request_calls,
+            [
+                (
+                    ("Guardian", "GRD-0001"),
+                    {
+                        "file_id": "FILE-GRD-1",
+                        "derivative_roles": ["thumb"],
+                    },
+                )
+            ],
+        )
+
     def test_resolve_original_governed_image_url_uses_current_drive_file_without_storage_probe(self):
         with _image_utils_module() as (image_utils, frappe):
             with (

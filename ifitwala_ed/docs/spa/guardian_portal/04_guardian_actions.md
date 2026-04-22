@@ -3,7 +3,7 @@
 Status: Active
 Audience: Humans, coding agents
 Scope: Guardian-initiated actions inside `/hub/guardian`
-Last updated: 2026-04-20
+Last updated: 2026-04-22
 
 This document defines what guardians can currently do through the guardian portal and what remains planned.
 
@@ -81,7 +81,7 @@ Implemented guardian actions:
 8. Use `/guardian/finance` to review authorized invoices and payment history for the family.
 9. Use `/guardian/monitoring` to review family-wide guardian-visible logs and published results with optional child filtering, then mark visible logs as seen.
 10. Use `/guardian/communications` to review family-wide org communications and school events, optionally narrow to one linked child, open full messages, open event details, mark org communications as seen, and, when the communication mode allows it, react or comment through the shared named interaction workflows.
-11. Use the `School Calendar` quick link on Guardian Home to open a large monthly overlay, move between months, filter by linked child or family school, include or exclude holidays and school events, review the selected-day agenda, and open school-event detail when an event item exposes it.
+11. Use the `School Calendar` quick link on Guardian Home to open a large monthly overlay, move between months, filter by linked child or family school, include or exclude holidays and school events, open inline day details for one selected date, and open school-event detail directly from a calendar event item when it exposes it.
 
 ## 3. Planned But Not Wired On `/hub/guardian`
 

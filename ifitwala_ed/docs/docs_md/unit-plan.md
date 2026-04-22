@@ -3,8 +3,8 @@ title: "Unit Plan: Governed Curriculum Backbone Inside a Course Plan"
 slug: unit-plan
 category: Curriculum
 doc_order: 5
-version: "1.5.1"
-last_change_date: "2026-04-16"
+version: "1.5.2"
+last_change_date: "2026-04-22"
 summary: "Define the shared unit backbone for a course plan, including validated standards alignment, pedagogy, reflections, and reusable context that class teaching plans inherit."
 seo_title: "Unit Plan: Governed Curriculum Backbone Inside a Course Plan"
 seo_description: "Define the shared unit backbone for a course plan, including standards alignment, pedagogy, and reflections that class teaching plans inherit."
@@ -95,7 +95,7 @@ Test refs: `ifitwala_ed/curriculum/doctype/unit_plan/test_unit_plan.py`
 ### Current Contract
 
 - `Unit Plan` owns ordering within a `Course Plan` through `unit_order`.
-- `unit_plan.py` normalizes the carried curriculum fields and repairs `unit_order` collisions in steps of 10.
+- `unit_plan.py` normalizes the carried curriculum fields, assigns the next `unit_order` when one is missing, and rejects duplicate `unit_order` values at runtime. Legacy collisions are remediated through one-shot patches.
 - `ifitwala_ed.api.teaching_plans.save_unit_plan` now owns SPA-side governed unit mutations, including inline standards and shared reflection rows.
 - In the staff course-plan workspace, `program` is now selected from actual `Program` docs already linked to the unit course; save mutations reject changed program values that are not linked to that course while preserving unchanged legacy values.
 - Shared reflection `academic_year` and `school` remain parent-derived from the selected `Course Plan` in the SPA instead of being hand-entered in the governed unit overlay.
@@ -111,3 +111,4 @@ Test refs: `ifitwala_ed/curriculum/doctype/unit_plan/test_unit_plan.py`
 - `Unit Plan` is a shared curriculum object, not a class-owned teaching event and not a grading fact table.
 - Class-specific pacing, activities, and reflections still belong on `Class Teaching Plan` and `Class Session`.
 - Inline standards rows remain snapshots owned by the unit, but each row must now resolve to an existing `Learning Standards` record so teachers cannot invent standards or taxonomy paths on the unit plan.
+- Legacy `unit_order` collisions are remediated through deployment patches; save flows must not silently move a unit to a different order.

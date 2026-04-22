@@ -3,7 +3,7 @@
 Status: Active
 Audience: Humans, coding agents
 Scope: `/hub/guardian` family information surfaces
-Last updated: 2026-04-20
+Last updated: 2026-04-22
 
 This document defines the canonical information contract for Guardian Home plus the Phase-2 guardian policy, finance, and monitoring surfaces.
 
@@ -238,7 +238,7 @@ Rules:
 2. The overlay payload is month-scoped and includes the family child list, filter options, summary counts, and one merged `items` collection of `holiday` and `school_event` rows.
 3. The overlay is read-only and stays family-first by default, with optional child and school filters plus `Show holidays` and `Show school events` toggles.
 4. Item rows expose matched child labels from the server and may expose one `open_target` only for school-event detail.
-5. Holiday rows stay inline to the overlay agenda; school-event rows may open the existing school-event detail overlay.
+5. Calendar item pills are direct interaction targets: school-event pills may open the existing school-event detail overlay, while holidays and mixed-day review stay inside the inline day-detail sheet below the month grid.
 
 ## 11. Explicit Exclusions
 

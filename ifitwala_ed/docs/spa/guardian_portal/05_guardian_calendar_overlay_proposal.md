@@ -3,7 +3,7 @@
 Status: Active
 Audience: Humans, coding agents
 Scope: `School Calendar` quick link and large monthly overlay launched from `/hub/guardian`
-Last updated: 2026-04-20
+Last updated: 2026-04-22
 
 This document is the canonical contract for the implemented guardian school-calendar overlay.
 
@@ -47,9 +47,9 @@ Rules:
 
 1. The overlay uses the shared SPA overlay stack and the `if-overlay__panel--xl` panel size.
 2. The header exposes month navigation, refresh, and close actions.
-3. The main body uses one month grid plus a selected-day agenda panel.
-4. On smaller screens the same overlay stacks filters and drops the agenda below the calendar.
-5. Holiday detail stays inside the overlay agenda. School-event detail may open the existing school-event overlay when an item exposes `open_target`.
+3. The main body uses one large month grid with direct item clicks and an optional inline day-detail sheet below the grid when the guardian opens one date.
+4. The calendar grid remains the primary object on all screen sizes; filters stack on smaller screens, but the overlay does not keep a permanent secondary agenda rail.
+5. School-event pills may open the existing school-event overlay when an item exposes `open_target`; holiday and mixed-day review stays inside the inline day-detail sheet.
 
 ## 3. Filter Model
 
@@ -170,5 +170,5 @@ Test refs:
 | Schema / DocType | School calendars, school-calendar holidays, guardian-linked children, and guardian-visible school events | `school_settings/doctype/school_calendar/*`, `school_settings/doctype/school_calendar_holidays/*`, `school_settings/doctype/school_event/*`, `school_settings/doctype/school_event_audience/*`, `school_settings/doctype/school_event_participant/*`, `students/doctype/guardian/*`, `students/doctype/student_guardian/*`, `students/doctype/guardian_student/*` | `api/test_guardian_calendar.py`, `api/test_guardian_phase2.py` |
 | Controller / workflow logic | Guardian month bootstrap, holiday resolution, school-event reuse, and scope validation for child and school filters | `api/guardian_calendar.py`, `api/guardian_communications.py`, `school_settings/school_settings_utils.py` | `api/test_guardian_calendar.py`, `api/test_guardian_phase2.py` |
 | API endpoints | `get_guardian_calendar_overlay` | `api/guardian_calendar.py` | `api/test_guardian_calendar.py` |
-| SPA / UI surfaces | Guardian Home quick link, overlay registration, large month view, and selected-day agenda | `ui-spa/src/pages/guardian/GuardianHome.vue`, `ui-spa/src/composables/useOverlayStack.ts`, `ui-spa/src/overlays/OverlayHost.vue`, `ui-spa/src/overlays/guardian/GuardianCalendarOverlay.vue`, `ui-spa/src/styles/components.css` | `ui-spa/src/pages/guardian/__tests__/GuardianHome.test.ts`, `ui-spa/src/overlays/guardian/__tests__/GuardianCalendarOverlay.test.ts` |
+| SPA / UI surfaces | Guardian Home quick link, overlay registration, large month view, direct calendar-item actions, and inline day-detail sheet | `ui-spa/src/pages/guardian/GuardianHome.vue`, `ui-spa/src/composables/useOverlayStack.ts`, `ui-spa/src/overlays/OverlayHost.vue`, `ui-spa/src/overlays/guardian/GuardianCalendarOverlay.vue`, `ui-spa/src/styles/components.css` | `ui-spa/src/pages/guardian/__tests__/GuardianHome.test.ts`, `ui-spa/src/overlays/guardian/__tests__/GuardianCalendarOverlay.test.ts` |
 | Service / transport | Typed calendar overlay request and response transport | `ui-spa/src/types/contracts/guardian/get_guardian_calendar_overlay.ts`, `ui-spa/src/lib/services/guardianCalendar/guardianCalendarService.ts` | `ui-spa/src/lib/services/guardianCalendar/__tests__/guardianCalendarService.test.ts` |

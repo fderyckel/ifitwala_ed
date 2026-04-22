@@ -234,27 +234,39 @@ describe('GuardianCalendarOverlay', () => {
 		expect(document.body.textContent || '').toContain('School is fixed to School One')
 	})
 
-	it('opens the existing school-event detail overlay from the day agenda', async () => {
+	it('opens the existing school-event detail overlay directly from a calendar item', async () => {
 		getGuardianCalendarOverlayMock.mockResolvedValue(buildPayload())
 
 		mountOverlay()
 		await flushUi()
 
-		const dayButton = Array.from(document.querySelectorAll('button')).find(button =>
+		const eventButton = Array.from(document.querySelectorAll('button')).find(button =>
 			(button.textContent || '').includes('Parent Conference')
 		)
-		expect(dayButton).toBeTruthy()
+		expect(eventButton).toBeTruthy()
 
-		dayButton?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
-		await flushUi()
-
-		const viewDetailsButton = Array.from(document.querySelectorAll('button')).find(button =>
-			(button.textContent || '').includes('View details')
-		)
-		expect(viewDetailsButton).toBeTruthy()
-
-		viewDetailsButton?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+		eventButton?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
 
 		expect(overlayOpenMock).toHaveBeenCalledWith('school-event', { event: 'EVENT-1' })
+	})
+
+	it('shows inline day details for holidays without opening a second overlay', async () => {
+		getGuardianCalendarOverlayMock.mockResolvedValue(buildPayload())
+
+		mountOverlay()
+		await flushUi()
+
+		const holidayButton = Array.from(document.querySelectorAll('button')).find(button =>
+			(button.textContent || '').includes('Songkran Break')
+		)
+		expect(holidayButton).toBeTruthy()
+
+		holidayButton?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+		await flushUi()
+
+		const text = document.body.textContent || ''
+		expect(text).toContain('School closed.')
+		expect(text).toContain('View details')
+		expect(overlayOpenMock).not.toHaveBeenCalled()
 	})
 })

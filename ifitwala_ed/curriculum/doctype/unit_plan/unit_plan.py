@@ -47,7 +47,11 @@ class UnitPlan(Document):
                 "name": ["!=", self.name],
             },
         ):
-            self.unit_order = planning.next_unit_order(self.course_plan)
+            frappe.throw(
+                _("This course plan already uses Unit Order {unit_order}. Choose a different order.").format(
+                    unit_order=self.unit_order,
+                )
+            )
 
         duplicate = frappe.db.exists(
             "Unit Plan",

@@ -171,47 +171,60 @@
 												class="guardian-calendar-overlay__empty-cell"
 												aria-hidden="true"
 											/>
-											<button
+											<div
 												v-else
-												type="button"
 												class="guardian-calendar-overlay__day"
 												:class="{
 													'guardian-calendar-overlay__day--today': cell.isToday,
 													'guardian-calendar-overlay__day--selected': cell.isSelected,
 												}"
-												@click="selectedDate = cell.date"
 											>
 												<div class="guardian-calendar-overlay__day-header">
 													<span class="type-body-strong text-ink">{{ cell.dayNumber }}</span>
-													<span v-if="cell.items.length" class="guardian-calendar-overlay__count">
+													<button
+														v-if="cell.items.length"
+														type="button"
+														class="guardian-calendar-overlay__count guardian-calendar-overlay__count-button"
+														:aria-label="dayCountLabel(cell)"
+														@click="showDateDetails(cell.date)"
+													>
 														{{ cell.items.length }}
-													</span>
+													</button>
 												</div>
 
 												<div class="guardian-calendar-overlay__day-items">
-													<p
+													<button
 														v-for="item in cell.previewItems"
 														:key="`${cell.date}-${item.item_id}`"
+														type="button"
 														class="guardian-calendar-overlay__day-pill"
 														:class="dayPillClass(item)"
 														:title="item.title"
+														:aria-label="calendarItemLabel(item)"
+														@click="openCalendarItem(item, cell.date)"
 													>
 														{{ item.title }}
-													</p>
-													<p
+													</button>
+													<button
 														v-if="cell.hiddenCount > 0"
+														type="button"
 														class="guardian-calendar-overlay__more type-caption text-ink/60"
+														:aria-label="dayCountLabel(cell)"
+														@click="showDateDetails(cell.date)"
 													>
 														+{{ cell.hiddenCount }} more
-													</p>
+													</button>
 												</div>
-											</button>
+											</div>
 										</template>
 									</div>
 								</div>
 
-								<aside class="guardian-calendar-overlay__agenda card-surface">
-									<div class="flex items-start justify-between gap-3">
+								<section
+									v-if="selectedDate"
+									class="guardian-calendar-overlay__day-sheet card-surface"
+								>
+									<div class="guardian-calendar-overlay__day-sheet-header">
 										<div>
 											<h3 class="type-h3 text-ink">{{ selectedDateLabel }}</h3>
 											<p class="mt-1 type-caption text-ink/60">
@@ -221,10 +234,10 @@
 										</div>
 										<button
 											type="button"
-											class="if-button if-button--secondary"
-											@click="jumpToToday"
+											class="if-button if-button--quiet"
+											@click="clearDateDetails"
 										>
-											Today
+											Close
 										</button>
 									</div>
 
@@ -237,11 +250,11 @@
 										</p>
 									</div>
 
-									<ul v-else class="guardian-calendar-overlay__agenda-list">
+									<ul v-else class="guardian-calendar-overlay__detail-list">
 										<li
 											v-for="item in selectedDateItems"
 											:key="item.item_id"
-											class="guardian-calendar-overlay__agenda-item"
+											class="guardian-calendar-overlay__detail-item"
 										>
 											<div class="flex items-start justify-between gap-3">
 												<div class="min-w-0">
@@ -291,7 +304,7 @@
 											</div>
 										</li>
 									</ul>
-								</aside>
+								</section>
 							</section>
 						</div>
 					</DialogPanel>
@@ -453,12 +466,7 @@ const calendarCells = computed<(CalendarCell | null)[]>(() => {
 });
 
 const selectedDateLabel = computed(() =>
-	new Intl.DateTimeFormat(undefined, {
-		weekday: 'long',
-		day: 'numeric',
-		month: 'long',
-		year: 'numeric',
-	}).format(parseIsoDate(selectedDate.value || currentMonthStart.value))
+	selectedDate.value ? fullDateLabel(selectedDate.value) : ''
 );
 const selectedDateItems = computed(() => itemsByDate.value.get(selectedDate.value) ?? []);
 
@@ -482,8 +490,11 @@ async function loadSnapshot() {
 
 		snapshot.value = payload;
 		currentMonthStart.value = payload.meta.month_start;
-		if (!isDateWithinMonth(selectedDate.value, payload.meta.month_start, payload.meta.month_end)) {
-			selectedDate.value = defaultSelectedDate(payload.meta.month_start, payload.meta.month_end);
+		if (
+			selectedDate.value &&
+			!isDateWithinMonth(selectedDate.value, payload.meta.month_start, payload.meta.month_end)
+		) {
+			selectedDate.value = '';
 		}
 	} catch (error) {
 		if (seq !== requestSeq) return;
@@ -519,20 +530,9 @@ function onDialogClose(_payload: unknown) {
 
 function stepMonth(offset: number) {
 	const current = parseIsoDate(currentMonthStart.value);
-	selectedDate.value = defaultSelectedDate(
-		formatIsoDate(new Date(current.getFullYear(), current.getMonth() + offset, 1)),
-		endOfMonth(formatIsoDate(new Date(current.getFullYear(), current.getMonth() + offset, 1)))
-	);
 	currentMonthStart.value = formatIsoDate(
 		new Date(current.getFullYear(), current.getMonth() + offset, 1)
 	);
-}
-
-function jumpToToday() {
-	const today = todayIso();
-	const normalizedMonth = normalizeMonthStart(today);
-	currentMonthStart.value = normalizedMonth;
-	selectedDate.value = defaultSelectedDate(normalizedMonth, endOfMonth(normalizedMonth));
 }
 
 function openSchoolEvent(eventName: string) {
@@ -540,10 +540,37 @@ function openSchoolEvent(eventName: string) {
 	overlay.open('school-event', { event: eventName });
 }
 
+function showDateDetails(date: string) {
+	selectedDate.value = date;
+}
+
+function clearDateDetails() {
+	selectedDate.value = '';
+}
+
+function openCalendarItem(item: GuardianCalendarItem, fallbackDate: string) {
+	if (item.open_target?.type === 'school-event') {
+		openSchoolEvent(item.open_target.name);
+		return;
+	}
+	showDateDetails(fallbackDate);
+}
+
 function dayPillClass(item: GuardianCalendarItem) {
 	return item.kind === 'holiday'
 		? 'guardian-calendar-overlay__day-pill--holiday'
 		: 'guardian-calendar-overlay__day-pill--event';
+}
+
+function dayCountLabel(cell: CalendarCell): string {
+	return `Show ${cell.items.length} ${cell.items.length === 1 ? 'item' : 'items'} for ${fullDateLabel(cell.date)}`;
+}
+
+function calendarItemLabel(item: GuardianCalendarItem): string {
+	if (item.open_target?.type === 'school-event') {
+		return `Open details for ${item.title}`;
+	}
+	return `Review ${item.title}`;
 }
 
 function itemSchoolLabel(item: GuardianCalendarItem): string {
@@ -604,13 +631,9 @@ watch(selectedStudent, () => {
 
 watch(currentMonthStart, nextMonth => {
 	if (!isDateWithinMonth(selectedDate.value, nextMonth, endOfMonth(nextMonth))) {
-		selectedDate.value = defaultSelectedDate(nextMonth, endOfMonth(nextMonth));
+		selectedDate.value = '';
 	}
 });
-
-if (!selectedDate.value) {
-	selectedDate.value = defaultSelectedDate(currentMonthStart.value, monthEnd.value);
-}
 
 function normalizeMonthStart(value?: string | null): string {
 	const resolved = value ? parseIsoDate(datePart(value)) : parseIsoDate(todayIso());
@@ -620,14 +643,6 @@ function normalizeMonthStart(value?: string | null): string {
 function endOfMonth(monthStartValue: string): string {
 	const start = parseIsoDate(monthStartValue);
 	return formatIsoDate(new Date(start.getFullYear(), start.getMonth() + 1, 0));
-}
-
-function defaultSelectedDate(monthStartValue: string, monthEndValue: string): string {
-	const today = todayIso();
-	if (isDateWithinMonth(today, monthStartValue, monthEndValue)) {
-		return today;
-	}
-	return monthStartValue;
 }
 
 function isDateWithinMonth(
@@ -703,6 +718,15 @@ function shortDateLabel(value: string): string {
 	return new Intl.DateTimeFormat(undefined, {
 		day: 'numeric',
 		month: 'short',
+	}).format(parseIsoDate(value));
+}
+
+function fullDateLabel(value: string): string {
+	return new Intl.DateTimeFormat(undefined, {
+		weekday: 'long',
+		day: 'numeric',
+		month: 'long',
+		year: 'numeric',
 	}).format(parseIsoDate(value));
 }
 
@@ -794,14 +818,14 @@ function compareCalendarItems(a: GuardianCalendarItem, b: GuardianCalendarItem):
 }
 
 .guardian-calendar-overlay__workspace {
-	display: grid;
-	grid-template-columns: minmax(0, 2.2fr) minmax(20rem, 1fr);
+	display: flex;
+	flex-direction: column;
 	gap: 1rem;
 	min-height: 0;
 }
 
 .guardian-calendar-overlay__calendar,
-.guardian-calendar-overlay__agenda {
+.guardian-calendar-overlay__day-sheet {
 	padding: 1rem;
 }
 
@@ -842,13 +866,7 @@ function compareCalendarItems(a: GuardianCalendarItem, b: GuardianCalendarItem):
 	text-align: left;
 	transition:
 		border-color 120ms ease,
-		box-shadow 120ms ease,
-		transform 120ms ease;
-}
-
-.guardian-calendar-overlay__day:hover {
-	transform: translateY(-1px);
-	border-color: rgb(var(--jacaranda-rgb) / 0.35);
+		box-shadow 120ms ease;
 }
 
 .guardian-calendar-overlay__day--today {
@@ -879,6 +897,18 @@ function compareCalendarItems(a: GuardianCalendarItem, b: GuardianCalendarItem):
 	color: rgb(var(--ink-rgb) / 0.7);
 }
 
+.guardian-calendar-overlay__count-button {
+	border: 0;
+	cursor: pointer;
+	transition:
+		background 120ms ease,
+		box-shadow 120ms ease;
+}
+
+.guardian-calendar-overlay__count-button:hover {
+	background: rgb(var(--sand-rgb) / 0.85);
+}
+
 .guardian-calendar-overlay__day-items {
 	display: flex;
 	flex-direction: column;
@@ -888,13 +918,26 @@ function compareCalendarItems(a: GuardianCalendarItem, b: GuardianCalendarItem):
 }
 
 .guardian-calendar-overlay__day-pill {
+	display: block;
+	width: 100%;
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
+	border: 0;
 	border-radius: 999px;
 	padding: 0.2rem 0.5rem;
 	font-size: 0.72rem;
 	font-weight: 600;
+	text-align: left;
+	cursor: pointer;
+	transition:
+		box-shadow 120ms ease,
+		transform 120ms ease;
+}
+
+.guardian-calendar-overlay__day-pill:hover {
+	transform: translateY(-1px);
+	box-shadow: 0 0 0 1px rgb(var(--jacaranda-rgb) / 0.18);
 }
 
 .guardian-calendar-overlay__day-pill--holiday {
@@ -908,14 +951,25 @@ function compareCalendarItems(a: GuardianCalendarItem, b: GuardianCalendarItem):
 }
 
 .guardian-calendar-overlay__more {
+	border: 0;
+	background: transparent;
 	padding-left: 0.25rem;
+	text-align: left;
+	cursor: pointer;
 }
 
-.guardian-calendar-overlay__agenda {
+.guardian-calendar-overlay__day-sheet {
 	display: flex;
 	flex-direction: column;
 	gap: 1rem;
 	min-height: 0;
+}
+
+.guardian-calendar-overlay__day-sheet-header {
+	display: flex;
+	align-items: flex-start;
+	justify-content: space-between;
+	gap: 1rem;
 }
 
 .guardian-calendar-overlay__empty-agenda {
@@ -925,14 +979,13 @@ function compareCalendarItems(a: GuardianCalendarItem, b: GuardianCalendarItem):
 	padding: 1rem;
 }
 
-.guardian-calendar-overlay__agenda-list {
+.guardian-calendar-overlay__detail-list {
 	display: flex;
 	flex-direction: column;
 	gap: 0.875rem;
-	overflow-y: auto;
 }
 
-.guardian-calendar-overlay__agenda-item {
+.guardian-calendar-overlay__detail-item {
 	border-radius: 1rem;
 	border: 1px solid rgb(var(--border-rgb) / 0.75);
 	background: rgb(var(--surface-rgb) / 0.55);
@@ -952,8 +1005,7 @@ function compareCalendarItems(a: GuardianCalendarItem, b: GuardianCalendarItem):
 }
 
 @media (max-width: 1023px) {
-	.guardian-calendar-overlay__filters,
-	.guardian-calendar-overlay__workspace {
+	.guardian-calendar-overlay__filters {
 		grid-template-columns: 1fr;
 	}
 
@@ -972,7 +1024,7 @@ function compareCalendarItems(a: GuardianCalendarItem, b: GuardianCalendarItem):
 	}
 
 	.guardian-calendar-overlay__calendar,
-	.guardian-calendar-overlay__agenda {
+	.guardian-calendar-overlay__day-sheet {
 		padding: 0.875rem;
 	}
 
