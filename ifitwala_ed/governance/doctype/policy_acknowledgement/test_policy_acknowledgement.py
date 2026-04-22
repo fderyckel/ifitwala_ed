@@ -288,6 +288,7 @@ class TestPolicyAcknowledgement(FrappeTestCase):
         add_unique.assert_called_once_with(
             "Policy Acknowledgement",
             ["policy_version", "acknowledged_by", "context_doctype", "context_name"],
+            constraint_name=policy_ack_controller.POLICY_ACK_CONTEXT_UNIQUE_CONSTRAINT,
         )
         add_index.assert_called_once_with(
             "Policy Acknowledgement",

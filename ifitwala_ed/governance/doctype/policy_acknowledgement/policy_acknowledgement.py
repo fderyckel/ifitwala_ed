@@ -30,6 +30,7 @@ ACK_CONTEXT_MAP = {
     "Guardian": ("Guardian", "Student"),
     "Staff": ("Employee",),
 }
+POLICY_ACK_CONTEXT_UNIQUE_CONSTRAINT = "uniq_policy_ack_ver_user_ctx"
 
 
 def _normalize_clause_text(value: str | None) -> str:
@@ -670,6 +671,7 @@ def on_doctype_update():
     frappe.db.add_unique(
         "Policy Acknowledgement",
         ["policy_version", "acknowledged_by", "context_doctype", "context_name"],
+        constraint_name=POLICY_ACK_CONTEXT_UNIQUE_CONSTRAINT,
     )
     frappe.db.add_index(
         "Policy Acknowledgement",
