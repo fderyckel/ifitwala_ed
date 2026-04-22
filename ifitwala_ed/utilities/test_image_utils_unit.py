@@ -16,6 +16,11 @@ def _image_utils_module():
         f"?file={kwargs.get('file_name')}&context_doctype={kwargs.get('context_doctype')}"
         f"&context_name={kwargs.get('context_name')}&derivative_role={kwargs.get('derivative_role')}"
     )
+    file_access.resolve_public_employee_image_url = lambda **kwargs: (
+        "/api/method/ifitwala_ed.api.file_access.open_public_employee_image"
+        f"?employee={kwargs.get('employee')}&file={kwargs.get('file_name')}"
+        f"&derivative_role={kwargs.get('derivative_role')}"
+    )
     file_access.resolve_guardian_file_open_url = lambda **kwargs: None
     file_access.resolve_academic_file_open_url = lambda **kwargs: None
     media_client = ModuleType("ifitwala_ed.integrations.drive.media_client")
@@ -294,8 +299,9 @@ class TestImageUtilsUnit(TestCase):
                 drive_file_id=None,
                 canonical_ref=None,
                 derivative_role=None,
+                is_private=None,
             ):
-                del primary_subject_type, file_url, drive_file_id, canonical_ref
+                del primary_subject_type, file_url, drive_file_id, canonical_ref, is_private
                 suffix = derivative_role or "original"
                 return f"/resolved/{subject_name}/{file_name}/{suffix}"
 
@@ -392,8 +398,9 @@ class TestImageUtilsUnit(TestCase):
                 drive_file_id=None,
                 canonical_ref=None,
                 derivative_role=None,
+                is_private=None,
             ):
-                del primary_subject_type, file_url, drive_file_id, canonical_ref
+                del primary_subject_type, file_url, drive_file_id, canonical_ref, is_private
                 suffix = derivative_role or "original"
                 return f"/resolved/{subject_name}/{file_name}/{suffix}"
 
@@ -608,6 +615,49 @@ class TestImageUtilsUnit(TestCase):
                 )
             ],
         )
+
+    def test_build_public_employee_image_variants_uses_guest_safe_public_route(self):
+        with _image_utils_module() as (image_utils, frappe):
+            image_utils.get_current_drive_files_for_slots = lambda **kwargs: [
+                {
+                    "name": "DRIVE-EMP-1",
+                    "primary_subject_id": "EMP-0001",
+                    "slot": "profile_image",
+                    "file": "FILE-EMP-1",
+                    "current_version": "DFV-EMP-1",
+                }
+            ]
+
+            def fake_get_all(doctype, filters=None, fields=None, limit=None, order_by=None):
+                del filters, fields, limit, order_by
+                if doctype == "File":
+                    return [
+                        {
+                            "name": "FILE-EMP-1",
+                            "file_url": "/private/files/employee-source.png",
+                            "is_private": 1,
+                        }
+                    ]
+                if doctype == "Drive File Derivative":
+                    return [
+                        {"drive_file": "DRIVE-EMP-1", "derivative_role": "thumb"},
+                        {"drive_file": "DRIVE-EMP-1", "derivative_role": "card"},
+                        {"drive_file": "DRIVE-EMP-1", "derivative_role": "viewer_preview"},
+                    ]
+                raise AssertionError(f"Unexpected get_all doctype: {doctype}")
+
+            frappe.get_all = fake_get_all
+
+            variants = image_utils.build_public_employee_image_variants(
+                "EMP-0001",
+                original_url="/private/files/employee-source.png",
+            )
+
+        self.assertEqual(variants["original"], None)
+        self.assertIn("open_public_employee_image", variants["thumb"])
+        self.assertIn("derivative_role=thumb", variants["thumb"])
+        self.assertIn("derivative_role=card", variants["card"])
+        self.assertIn("derivative_role=viewer_preview", variants["medium"])
 
     def test_get_preferred_guardian_avatar_url_requests_thumb_only_derivative(self):
         with _image_utils_module() as (image_utils, frappe):

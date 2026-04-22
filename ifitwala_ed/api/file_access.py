@@ -755,10 +755,6 @@ def resolve_public_employee_image_url(
     file_url: str | None,
     derivative_role: str | None = None,
 ) -> str | None:
-    raw_url = (file_url or "").strip()
-    if raw_url.startswith(("http://", "https://")):
-        return raw_url
-
     resolved_employee = (employee or "").strip()
     resolved_file_name = (file_name or "").strip()
     resolved_derivative_role = (derivative_role or "").strip()

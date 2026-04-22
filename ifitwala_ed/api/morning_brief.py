@@ -1,8 +1,8 @@
+from __future__ import annotations
+
 # Copyright (c) 2025, François de Ryckel and contributors
 # For license information, please see license.txt
-
 # ifitwala_ed/api/morning_brief.py
-
 from collections import defaultdict
 
 import frappe
@@ -687,7 +687,14 @@ def get_recent_student_logs(user):
         as_dict=True,
     )
 
-    apply_preferred_student_images(logs, student_field="student", image_field="student_image")
+    apply_preferred_student_images(
+        logs,
+        student_field="student",
+        image_field="student_image",
+        slots=PROFILE_IMAGE_DERIVATIVE_SLOTS,
+        fallback_to_original=False,
+        request_missing_derivatives=True,
+    )
 
     formatted_logs = []
     for log in logs:

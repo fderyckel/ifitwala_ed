@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from contextlib import contextmanager
-from types import ModuleType
+from types import ModuleType, SimpleNamespace
 from unittest import TestCase
 
 from ifitwala_ed.tests.frappe_stubs import import_fresh, stubbed_frappe
@@ -70,6 +70,43 @@ def _morning_brief_module():
 
 
 class TestMorningBriefUnit(TestCase):
+    def test_get_recent_student_logs_requests_derivative_only_student_images(self):
+        with _morning_brief_module() as (morning_brief, frappe, image_helper_state):
+            morning_brief.get_student_log_visibility_predicate = lambda **kwargs: ("1=1", {})
+            frappe.db.sql = lambda query, values=None, as_dict=False, **kwargs: [
+                SimpleNamespace(
+                    name="LOG-1",
+                    student="STU-0001",
+                    student_name="Amina Learner",
+                    student_image="/private/files/student-source.png",
+                    log_type="Behaviour",
+                    date="2026-03-23",
+                    requires_follow_up=1,
+                    follow_up_status="Open",
+                    log="Needs support",
+                )
+            ]
+
+            rows = morning_brief.get_recent_student_logs("staff@example.com")
+
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(
+            image_helper_state["calls"],
+            [
+                {
+                    "student_field": "student",
+                    "image_field": "student_image",
+                    "slots": (
+                        "profile_image_thumb",
+                        "profile_image_card",
+                        "profile_image_medium",
+                    ),
+                    "fallback_to_original": False,
+                    "request_missing_derivatives": True,
+                }
+            ],
+        )
+
     def test_get_my_student_birthdays_requests_derivative_only_student_images(self):
         with _morning_brief_module() as (morning_brief, frappe, image_helper_state):
             captured = {}

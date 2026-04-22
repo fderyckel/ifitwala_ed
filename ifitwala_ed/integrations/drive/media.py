@@ -200,6 +200,33 @@ def assert_public_website_media_read_access(*, file_name: str) -> dict[str, Any]
     }
 
 
+def assert_public_employee_image_read_access(employee: str, *, file_name: str) -> dict[str, Any]:
+    from ifitwala_ed.api.file_access import _resolve_public_employee_image_row
+
+    resolved_employee = str(employee or "").strip()
+    resolved_file_name = str(file_name or "").strip()
+    if not resolved_employee:
+        frappe.throw(_("Employee is required."), frappe.ValidationError)
+    if not resolved_file_name:
+        frappe.throw(_("File is required."), frappe.ValidationError)
+
+    file_row = _resolve_public_employee_image_row(
+        employee=resolved_employee,
+        file_name=resolved_file_name,
+    )
+    drive_file_id = str((file_row or {}).get("drive_file_id") or "").strip()
+    if not drive_file_id:
+        frappe.throw(_("Governed public employee photo file was not found."))
+
+    return {
+        "employee": resolved_employee,
+        "file_id": str((file_row.get("name") or resolved_file_name) or "").strip(),
+        "drive_file_id": drive_file_id,
+        "organization": str((file_row.get("organization") or "")).strip() or None,
+        "school": str((file_row.get("school") or "")).strip() or None,
+    }
+
+
 def build_organization_media_contract(
     *,
     organization: str,

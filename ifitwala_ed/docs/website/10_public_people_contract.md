@@ -1,9 +1,9 @@
 <!-- ifitwala_ed/docs/website/10_public_people_contract.md -->
 # Public People Contract
 
-Status: Implemented baseline as of April 8, 2026
-Code refs: `ifitwala_ed/hr/doctype/employee/employee.json`, `ifitwala_ed/hr/doctype/employee/employee.py`, `ifitwala_ed/website/public_people.py`, `ifitwala_ed/website/providers/leadership.py`, `ifitwala_ed/website/providers/staff_directory.py`, `ifitwala_ed/website/renderer.py`, `ifitwala_ed/utilities/image_utils.py`, `ifitwala_ed/hooks.py`
-Test refs: `ifitwala_ed/website/tests/test_public_people.py`, `ifitwala_ed/website/tests/test_leadership_provider.py`, `ifitwala_ed/website/tests/test_staff_directory_provider.py`, `ifitwala_ed/website/tests/test_website_route_context.py`, `ifitwala_ed/utilities/test_school_tree.py`
+Status: Implemented baseline as of April 22, 2026
+Code refs: `ifitwala_ed/hr/doctype/employee/employee.json`, `ifitwala_ed/hr/doctype/employee/employee.py`, `ifitwala_ed/website/public_people.py`, `ifitwala_ed/website/providers/leadership.py`, `ifitwala_ed/website/providers/staff_directory.py`, `ifitwala_ed/website/renderer.py`, `ifitwala_ed/utilities/image_utils.py`, `ifitwala_ed/api/file_access.py`, `ifitwala_ed/hooks.py`
+Test refs: `ifitwala_ed/website/tests/test_public_people.py`, `ifitwala_ed/website/tests/test_leadership_provider.py`, `ifitwala_ed/website/tests/test_staff_directory_provider.py`, `ifitwala_ed/website/tests/test_website_route_context.py`, `ifitwala_ed/api/test_file_access_unit.py`, `ifitwala_ed/utilities/test_school_tree.py`
 
 ## 1. Purpose
 
@@ -59,6 +59,8 @@ Current runtime rule:
 - an employee is eligible for public people surfaces only when:
   - `show_on_website = 1`
   - the employee belongs to the relevant school scope
+- the website consumes approved governed derivatives through a guest-safe public employee-image route
+- the internal `employee_profile_image` upload workflow remains private; public website display is a separate read contract, not a public upload contract
 
 There is no separate website publication workflow for employees in the current implementation.
 
@@ -126,8 +128,9 @@ Public people surfaces must use governed employee image derivatives first.
 
 Current runtime behavior:
 
-- people payloads use `build_employee_image_variants(...)`
+- people payloads use `build_public_employee_image_variants(...)`
 - website cards should prefer `thumb`, `card`, and `medium`
+- guest delivery goes through `open_public_employee_image(...)`, which validates publication scope and resolves a short-lived Drive preview grant for the approved derivative only
 - public website people surfaces do not fall back to the original full-size employee image
 
 Public people surfaces must not fetch full original employee images by default when a derivative exists.

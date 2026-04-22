@@ -324,6 +324,22 @@ class TestFileAccessUnit(TestCase):
         self.assertEqual((query.get("context_name") or [None])[0], "EMP-0001")
         self.assertEqual((query.get("derivative_role") or [None])[0], "card")
 
+    def test_resolve_public_employee_image_url_uses_guest_safe_route(self):
+        with _file_access_module() as (file_access, _frappe):
+            url = file_access.resolve_public_employee_image_url(
+                employee="EMP-0001",
+                file_name="FILE-EMP-1",
+                file_url="https://cdn.invalid/employee.png",
+                derivative_role="card",
+            )
+
+        parsed = urlparse(url or "")
+        query = parse_qs(parsed.query)
+        self.assertEqual(parsed.path, "/api/method/ifitwala_ed.api.file_access.open_public_employee_image")
+        self.assertEqual((query.get("employee") or [None])[0], "EMP-0001")
+        self.assertEqual((query.get("file") or [None])[0], "FILE-EMP-1")
+        self.assertEqual((query.get("derivative_role") or [None])[0], "card")
+
     def test_resolve_drive_file_grant_target_url_strict_derivative_returns_none_without_safe_grant(self):
         with _file_access_module() as (file_access, frappe):
             file_access._load_drive_access_callable = lambda attribute: lambda **kwargs: {"url": ""}
@@ -1238,6 +1254,47 @@ class TestFileAccessUnit(TestCase):
             )
 
         self.assertIsNone(grant)
+
+    def test_request_public_employee_image_grant_fails_closed_when_media_wrapper_is_unavailable(self):
+        with _file_access_module() as (file_access, _frappe):
+            file_access._load_drive_media_callable = lambda attribute: None
+            file_access._load_drive_access_callable = lambda attribute: self.fail(
+                "generic drive grant path should not be used for public employee photos"
+            )
+
+            grant = file_access._request_public_employee_image_grant(
+                method_name="issue_public_employee_image_preview_grant",
+                employee="EMP-0001",
+                file_id="FILE-EMP-1",
+                drive_file_id="DRIVE-EMP-1",
+                derivative_role="card",
+            )
+
+        self.assertIsNone(grant)
+
+    def test_open_public_employee_image_accepts_local_drive_delivery_target(self):
+        with _file_access_module() as (file_access, frappe):
+            delivery_requests: list[dict] = []
+            frappe.local.response = {}
+            file_access._resolve_public_employee_image_row = lambda employee, file_name: {
+                "name": file_name,
+                "drive_file_id": "DRIVE-EMP-1",
+            }
+            file_access._resolve_cached_thumbnail_target_url = lambda **kwargs: (
+                "/private/files/ifitwala_drive/files/aa/bb/employee-card.webp"
+            )
+            file_access._respond_with_delivery_target = lambda **kwargs: delivery_requests.append(kwargs) or True
+
+            file_access.open_public_employee_image(
+                employee="EMP-0001",
+                file="FILE-EMP-1",
+                derivative_role="card",
+            )
+
+        self.assertEqual(
+            delivery_requests,
+            [{"target_url": "/private/files/ifitwala_drive/files/aa/bb/employee-card.webp", "cache_headers": True}],
+        )
 
     def test_open_public_website_media_accepts_local_drive_delivery_target(self):
         with _file_access_module() as (file_access, frappe):

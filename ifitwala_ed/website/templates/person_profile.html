@@ -10,12 +10,12 @@
 				<div class="relative min-h-[22rem] bg-[radial-gradient(circle_at_top,_rgba(59,130,246,0.18),_transparent_58%),linear-gradient(135deg,_#eff6ff,_#f8fafc_55%,_#eef2ff)]">
 					{% if person.photo and (person.photo.thumb or person.photo.card or person.photo.medium or person.photo.original) %}
 						{{ img_macro.smart_image(
-							person.photo.thumb,
-							person.photo.card,
-							person.photo.medium,
-							person.photo.original,
-							person.name,
-							"h-full w-full object-cover",
+							thumb_url=person.photo.thumb,
+							card_url=person.photo.card,
+							medium_url=person.photo.medium,
+							original_url=person.photo.original,
+							alt=person.name,
+							class_name="h-full w-full object-cover",
 							fallback="medium",
 							sizes="(min-width: 1024px) 22rem, 100vw"
 						) }}

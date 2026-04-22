@@ -12,12 +12,74 @@ from ifitwala_ed.api.guardian_home import (
     _build_preparation_items,
     _find_forbidden_keys,
     _resolve_chip_status,
+    _resolve_guardian_scope,
     get_guardian_home_snapshot,
     get_guardian_student_learning_brief,
 )
 
 
 class TestGuardianHome(FrappeTestCase):
+    def test_resolve_guardian_scope_requests_derivative_only_student_images(self):
+        captured_calls = []
+
+        def fake_get_all(doctype, filters=None, fields=None, order_by=None):
+            if doctype == "Student Guardian":
+                return [{"parent": "STU-0001"}]
+            if doctype == "Guardian Student":
+                return []
+            if doctype == "Student":
+                self.assertEqual(filters, {"name": ["in", ["STU-0001"]], "enabled": 1})
+                self.assertEqual(fields, ["name", "student_full_name", "anchor_school", "student_image"])
+                self.assertEqual(order_by, "student_full_name asc, name asc")
+                return [
+                    {
+                        "name": "STU-0001",
+                        "student_full_name": "Amina Example",
+                        "anchor_school": "SCH-0001",
+                        "student_image": "/private/files/student-source.png",
+                    }
+                ]
+            self.fail(f"Unexpected get_all call: {doctype}")
+
+        with (
+            patch("ifitwala_ed.api.guardian_home.frappe.db.get_value", return_value="GRD-0001"),
+            patch("ifitwala_ed.api.guardian_home.frappe.get_all", side_effect=fake_get_all),
+            patch(
+                "ifitwala_ed.api.guardian_home.apply_preferred_student_images",
+                side_effect=lambda rows, **kwargs: captured_calls.append(kwargs) or rows,
+            ),
+        ):
+            guardian_name, children = _resolve_guardian_scope("guardian@example.com")
+
+        self.assertEqual(guardian_name, "GRD-0001")
+        self.assertEqual(
+            children,
+            [
+                {
+                    "student": "STU-0001",
+                    "full_name": "Amina Example",
+                    "school": "SCH-0001",
+                    "student_image_url": "/private/files/student-source.png",
+                }
+            ],
+        )
+        self.assertEqual(
+            captured_calls,
+            [
+                {
+                    "student_field": "name",
+                    "image_field": "student_image",
+                    "slots": (
+                        "profile_image_thumb",
+                        "profile_image_card",
+                        "profile_image_medium",
+                    ),
+                    "fallback_to_original": False,
+                    "request_missing_derivatives": True,
+                }
+            ],
+        )
+
     def test_snapshot_returns_empty_structure_when_guardian_has_no_linked_children(self):
         with (
             patch("ifitwala_ed.api.guardian_home.frappe.session", frappe._dict({"user": "guardian@example.com"})),

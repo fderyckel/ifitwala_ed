@@ -47,6 +47,8 @@ _PREVIEW_SYNC_REQUEST_TTL_SECONDS = 300
 
 EMPLOYEE_VARIANT_SLOTS = PROFILE_IMAGE_VARIANT_SLOTS
 EMPLOYEE_AVATAR_VARIANT_SLOTS = PROFILE_IMAGE_DERIVATIVE_SLOTS
+PUBLIC_EMPLOYEE_VARIANT_SLOTS = PROFILE_IMAGE_DERIVATIVE_SLOTS
+PUBLIC_EMPLOYEE_CURRENT_FILE_STATUSES = ("active", "processing")
 
 EMPLOYEE_VARIANT_PRIORITY = EMPLOYEE_VARIANT_SLOTS
 STUDENT_VARIANT_SLOTS = PROFILE_IMAGE_VARIANT_SLOTS
@@ -258,6 +260,7 @@ def _resolve_governed_display_url(
     drive_file_id: str | None = None,
     canonical_ref: str | None = None,
     derivative_role: str | None = None,
+    is_private: int | bool | None = None,
 ) -> str | None:
     raw_url = str(file_url or "").strip()
     resolved_drive_file_id = str(drive_file_id or "").strip() or None
@@ -268,7 +271,12 @@ def _resolve_governed_display_url(
 
     explicit_derivative_role = str(derivative_role or "").strip() or None
 
-    if raw_url and not explicit_derivative_role and _is_directly_displayable_file_url(raw_url):
+    if (
+        raw_url
+        and not explicit_derivative_role
+        and _is_directly_displayable_file_url(raw_url)
+        and not int(is_private or 0)
+    ):
         return raw_url
 
     resolved_subject = str(subject_name or "").strip()
@@ -345,27 +353,67 @@ def _resolve_original_governed_image_url(
                 resolved_subject,
                 file_name=current_file_doc.name,
                 file_url=current_file_url,
+                is_private=getattr(current_file_doc, "is_private", None),
             )
             if resolved_current_url:
                 return resolved_current_url
 
     file_name = None
+    file_is_private = None
     if raw_url and primary_subject_type and resolved_subject:
-        file_name = frappe.db.get_value(
+        file_row = frappe.db.get_value(
             "File",
             {
                 "attached_to_doctype": primary_subject_type,
                 "attached_to_name": resolved_subject,
                 "file_url": raw_url,
             },
-            "name",
+            ["name", "is_private"],
+            as_dict=True,
         )
+        file_name = str((file_row or {}).get("name") or "").strip() or None
+        file_is_private = (file_row or {}).get("is_private")
 
     return _resolve_governed_display_url(
         primary_subject_type,
         resolved_subject,
         file_name=file_name,
         file_url=raw_url,
+        is_private=file_is_private,
+    )
+
+
+def _resolve_public_employee_display_url(
+    employee_name: str,
+    *,
+    file_name: str | None,
+    file_url: str | None,
+    derivative_role: str | None = None,
+) -> str | None:
+    from ifitwala_ed.api.file_access import resolve_public_employee_image_url
+
+    return resolve_public_employee_image_url(
+        employee=employee_name,
+        file_name=file_name,
+        file_url=file_url,
+        derivative_role=derivative_role,
+    )
+
+
+def _resolve_public_employee_variant_url(
+    _primary_subject_type: str,
+    subject_name: str | None,
+    *,
+    file_name: str | None,
+    file_url: str | None,
+    derivative_role: str | None = None,
+    **_kwargs,
+) -> str | None:
+    return _resolve_public_employee_display_url(
+        str(subject_name or "").strip(),
+        file_name=file_name,
+        file_url=file_url,
+        derivative_role=derivative_role,
     )
 
 
@@ -434,6 +482,8 @@ def _get_governed_image_variants_map(
     *,
     slots: Sequence[str],
     request_missing_derivatives: bool = False,
+    statuses: Sequence[str] = PROFILE_IMAGE_CURRENT_FILE_STATUSES,
+    display_url_resolver=None,
 ) -> dict[str, dict[str, str]]:
     names = [str(name or "").strip() for name in (subject_names or [])]
     names = [name for name in names if name]
@@ -445,7 +495,7 @@ def _get_governed_image_variants_map(
         primary_subject_ids=names,
         slots=("profile_image",),
         fields=["name", "primary_subject_id", "slot", "file", "current_version", "canonical_ref"],
-        statuses=PROFILE_IMAGE_CURRENT_FILE_STATUSES,
+        statuses=tuple(statuses),
     )
     if not rows:
         return {}
@@ -500,6 +550,7 @@ def _get_governed_image_variants_map(
             )
 
     variants: dict[str, dict[str, str]] = {}
+    url_resolver = display_url_resolver or _resolve_governed_display_url
     for row in rows:
         subject_name = row.get("primary_subject_id")
         drive_file_id = str(row.get("name") or "").strip()
@@ -509,17 +560,19 @@ def _get_governed_image_variants_map(
 
         file_row = file_map.get(file_name) or {}
         file_url = (file_row.get("file_url") or "").strip()
+        file_is_private = file_row.get("is_private")
         canonical_ref = str(row.get("canonical_ref") or "").strip() or None
 
         subject_variants = variants.setdefault(subject_name, {})
         if "profile_image" in slots:
-            original_display_url = _resolve_governed_display_url(
+            original_display_url = url_resolver(
                 primary_subject_type,
                 subject_name,
                 file_name=file_name,
                 file_url=file_url,
                 drive_file_id=drive_file_id or None,
                 canonical_ref=canonical_ref,
+                is_private=file_is_private,
             )
             if original_display_url:
                 subject_variants["profile_image"] = original_display_url
@@ -529,7 +582,7 @@ def _get_governed_image_variants_map(
             derivative_role = PROFILE_IMAGE_VARIANT_ROLE_MAP.get(slot)
             if not derivative_role or derivative_role not in ready_roles:
                 continue
-            display_url = _resolve_governed_display_url(
+            display_url = url_resolver(
                 primary_subject_type,
                 subject_name,
                 file_name=file_name,
@@ -537,6 +590,7 @@ def _get_governed_image_variants_map(
                 drive_file_id=drive_file_id or None,
                 canonical_ref=canonical_ref,
                 derivative_role=derivative_role,
+                is_private=file_is_private,
             )
             if display_url:
                 subject_variants[slot] = display_url
@@ -588,10 +642,20 @@ def _build_governed_image_variants(
     original_url: str | None = None,
     slots: Sequence[str],
     fallback_to_original: bool = True,
+    request_missing_derivatives: bool = False,
+    statuses: Sequence[str] = PROFILE_IMAGE_CURRENT_FILE_STATUSES,
+    display_url_resolver=None,
 ) -> dict[str, str | None]:
     subject_name = str(subject_name or "").strip()
     variants = (
-        _get_governed_image_variants_map(primary_subject_type, [subject_name], slots=slots).get(subject_name, {})
+        _get_governed_image_variants_map(
+            primary_subject_type,
+            [subject_name],
+            slots=slots,
+            request_missing_derivatives=request_missing_derivatives,
+            statuses=statuses,
+            display_url_resolver=display_url_resolver,
+        ).get(subject_name, {})
         if subject_name
         else {}
     )
@@ -718,6 +782,21 @@ def build_employee_image_variants(
         original_url=original_url,
         slots=EMPLOYEE_VARIANT_SLOTS,
         fallback_to_original=fallback_to_original,
+    )
+
+
+def build_public_employee_image_variants(
+    employee_name: str | None,
+    original_url: str | None = None,
+) -> dict[str, str | None]:
+    return _build_governed_image_variants(
+        "Employee",
+        employee_name,
+        original_url=original_url,
+        slots=PUBLIC_EMPLOYEE_VARIANT_SLOTS,
+        fallback_to_original=False,
+        statuses=PUBLIC_EMPLOYEE_CURRENT_FILE_STATUSES,
+        display_url_resolver=_resolve_public_employee_variant_url,
     )
 
 

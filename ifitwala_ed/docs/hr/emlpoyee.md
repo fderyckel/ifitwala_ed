@@ -112,6 +112,7 @@ Frontend form logic:
 - file: `ifitwala_ed/hr/doctype/employee/employee.js`
 - image field is read-only and uses governed upload action.
 - upload uses method `ifitwala_ed.utilities.governed_uploads.upload_employee_image`.
+- the Desk uploader no longer authors `is_private`; the governed upload spec is the privacy authority.
 - after upload, form reloads and applies preferred image variants from classified slots.
 
 Backend linkage:
@@ -128,6 +129,7 @@ Backend linkage:
   - `profile_image_medium`
   These are resolved from Drive derivative roles, not from separate governed derivative files.
 - `Employee.employee_image` remains the latest canonical Employee image reference.
+- the canonical Employee profile-image workflow is private. Public website staff photos are delivered through the separate public-people read contract and guest-safe public employee-image route, not through the authenticated employee file route.
 - consumers that need a smaller image must resolve the canonical compatibility variants instead of guessing file paths.
 - `update_user()` syncs linked `User.user_image` from the preferred Employee variant (`thumb` first, then `card`, `medium`, original).
 

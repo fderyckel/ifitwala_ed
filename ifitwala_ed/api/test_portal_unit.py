@@ -50,27 +50,16 @@ def _portal_module():
     policy_signature.POLICY_SIGNATURE_MANAGER_ROLES = set()
 
     image_utils = ModuleType("ifitwala_ed.utilities.image_utils")
-    image_utils.PROFILE_IMAGE_DERIVATIVE_SLOTS = (
-        "profile_image_thumb",
-        "profile_image_card",
-        "profile_image_medium",
-    )
 
-    def get_preferred_student_image_url(
+    def get_preferred_student_avatar_url(
         student_name,
         *,
         original_url=None,
-        slots=None,
-        fallback_to_original=True,
-        request_missing_derivatives=False,
     ):
         image_helper_state["student"].append(
             {
                 "student_name": student_name,
                 "original_url": original_url,
-                "slots": slots,
-                "fallback_to_original": fallback_to_original,
-                "request_missing_derivatives": request_missing_derivatives,
             }
         )
         return "/api/method/ifitwala_ed.api.file_access.download_academic_file?file=FILE-THUMB&context_doctype=Student&context_name=STU-0001&derivative_role=thumb"
@@ -88,7 +77,7 @@ def _portal_module():
         )
         return "/api/method/ifitwala_ed.api.file_access.download_guardian_file?file=FILE-THUMB&context_doctype=Guardian&context_name=GRD-0001&derivative_role=thumb"
 
-    image_utils.get_preferred_student_image_url = get_preferred_student_image_url
+    image_utils.get_preferred_student_avatar_url = get_preferred_student_avatar_url
     image_utils.get_preferred_guardian_avatar_url = get_preferred_guardian_avatar_url
 
     with stubbed_frappe(
@@ -156,7 +145,7 @@ class TestPortalUnit(TestCase):
             ],
         )
 
-    def test_get_student_portal_identity_prefers_derivatives_and_keeps_original_fallback(self):
+    def test_get_student_portal_identity_uses_derivative_only_avatar_url(self):
         cache_writes = []
 
         with _portal_module() as (portal, frappe, image_helper_state):
@@ -198,13 +187,6 @@ class TestPortalUnit(TestCase):
                 {
                     "student_name": "STU-0001",
                     "original_url": "/private/files/student-original.png",
-                    "slots": (
-                        "profile_image_thumb",
-                        "profile_image_card",
-                        "profile_image_medium",
-                    ),
-                    "fallback_to_original": True,
-                    "request_missing_derivatives": True,
                 }
             ],
         )

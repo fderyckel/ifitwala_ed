@@ -1,7 +1,7 @@
 # Governed Files Implementation Status And Remediation Order
 
 Status: Current runtime and gap register
-Date: 2026-04-21
+Date: 2026-04-22
 Code refs:
 - `ifitwala_ed/utilities/governed_uploads.py`
 - `ifitwala_ed/utilities/file_management.py`
@@ -168,7 +168,8 @@ Implemented fix:
 - the legacy profile-image recovery path is patch-driven, not a permanent runtime fallback; the repair patches walk Employee, Student, and Guardian rows, rebuild missing governed profile images through the public Drive upload seam, and materialize `thumb`, `card`, and `viewer_preview` for current governed profile images during migrate so avatar surfaces stop falling back to originals after legacy repair
 - Ed profile-image and public-website media reads now depend on public Drive API wrappers only; they do not import Drive integration services directly and they do not fall back to generic Drive owner-doc grant APIs for those Ed-owned surfaces
 - small roster/avatar surfaces such as gradebook, attendance, and student-log lookup now consume governed profile-image derivatives only and do not fall back to original-file URLs when no derivative is ready
-- guardian portal-chrome avatars now consume governed profile-image derivatives only and never fall back to the original file on that tiny avatar surface; student portal identity still prefers governed profile-image derivatives and may temporarily keep the current governed original as a continuity fallback until the derivative pipeline catches up
+- guardian portal-chrome avatars and student portal identity now consume governed profile-image derivatives only and never fall back to the original file on those compact identity surfaces
+- public website people surfaces now resolve approved employee profile-image derivatives through a guest-safe public employee-image route; they do not use the authenticated employee file route and they do not fall back to the original full-size image
 
 ### 2.6 Resolved: governed profile-image reads no longer probe storage directly
 
@@ -208,6 +209,7 @@ Current behavior:
 - governed private-media routes must never emit raw `/private/...` redirect targets back to the browser
 - Ed no longer probes local disk to rediscover file reality before choosing a governed delivery path for admissions, academic, guardian, employee, org-communication, or public-website media routes
 - guest-visible public website media now resolves through a surface-scoped Drive media wrapper, so public landing-page reads do not depend on raw `Organization` DocType read permission
+- guest-visible public employee photos now follow the same pattern through a dedicated public employee-image wrapper and route, so public website staff photos no longer depend on the authenticated employee read path
 
 Why the old model was wrong:
 

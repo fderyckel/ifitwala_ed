@@ -30,9 +30,8 @@ from ifitwala_ed.api.student_log_dashboard import ALLOWED_ANALYTICS_ROLES as WEL
 from ifitwala_ed.api.student_overview_roles import ALLOWED_STAFF_ROLES as STUDENT_OVERVIEW_STAFF_ROLES
 from ifitwala_ed.api.users import STAFF_ROLES
 from ifitwala_ed.utilities.image_utils import (
-    PROFILE_IMAGE_DERIVATIVE_SLOTS,
     get_preferred_guardian_avatar_url,
-    get_preferred_student_image_url,
+    get_preferred_student_avatar_url,
 )
 
 CACHE_TTL_SECONDS = 3600
@@ -174,12 +173,9 @@ def _resolve_student_row_for_user(user: str):
         as_dict=True,
     )
     if student:
-        student["student_image"] = get_preferred_student_image_url(
+        student["student_image"] = get_preferred_student_avatar_url(
             student.get("name"),
             original_url=student.get("student_image"),
-            slots=PROFILE_IMAGE_DERIVATIVE_SLOTS,
-            fallback_to_original=True,
-            request_missing_derivatives=True,
         )
         return student
 
@@ -197,12 +193,9 @@ def _resolve_student_row_for_user(user: str):
         as_dict=True,
     )
     if student:
-        student["student_image"] = get_preferred_student_image_url(
+        student["student_image"] = get_preferred_student_avatar_url(
             student.get("name"),
             original_url=student.get("student_image"),
-            slots=PROFILE_IMAGE_DERIVATIVE_SLOTS,
-            fallback_to_original=True,
-            request_missing_derivatives=True,
         )
     return student
 

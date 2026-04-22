@@ -7,7 +7,7 @@ import copy
 import frappe
 from frappe.utils.caching import redis_cache
 
-from ifitwala_ed.utilities.image_utils import build_employee_image_variants
+from ifitwala_ed.utilities.image_utils import build_public_employee_image_variants
 from ifitwala_ed.website.utils import build_employee_profile_url
 
 
@@ -123,10 +123,9 @@ def _build_public_person(row: dict, designation_row: dict | None, school_row: di
             if has_profile_page
             else None
         ),
-        "photo": build_employee_image_variants(
+        "photo": build_public_employee_image_variants(
             row.get("name"),
             original_url=row.get("employee_image"),
-            fallback_to_original=False,
         ),
     }
 
