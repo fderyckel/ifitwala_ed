@@ -182,6 +182,8 @@ Rules:
 - the linked communication remains the messaging/read-state truth
 - canceling or deleting the event archives the linked communication rather than deleting it
 
+20. Student and guardian school-event detail modals must not expose Desk deep links for linked `Org Communication` references; those references are staff workflow context, not portal navigation.
+
 ## 4. Visibility and Read-State
 
 Status: Implemented

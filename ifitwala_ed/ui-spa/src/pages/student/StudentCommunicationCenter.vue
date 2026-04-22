@@ -242,6 +242,7 @@
 		<SchoolEventModal
 			:open="schoolEventOpen"
 			:event="selectedSchoolEvent"
+			:allow-reference-link="false"
 			@close="closeSchoolEvent"
 			@after-leave="resetSchoolEvent"
 		/>

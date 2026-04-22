@@ -197,6 +197,7 @@ Rules:
 - event updates sync the linked announcement title, issuing school, audience rows, portal-surface compatibility, and the message only when it still mirrors the event description
 - event cancel/trash archives the linked announcement
 - Desk must expose the linked announcement as an explicit handoff from the `School Event` form
+- once the linked announcement exists, the raw `reference_type/reference_name` fields are workflow-managed and must no longer behave like normal editable reference pickers
 
 ## 6. Contract Matrix
 

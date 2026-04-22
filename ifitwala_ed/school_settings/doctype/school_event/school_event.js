@@ -10,8 +10,13 @@ frappe.ui.form.on('School Event', {
 
 	refresh(frm) {
 		add_reference_jump_button(frm);
+		sync_reference_field_lock(frm);
 		show_linked_announcement_hint(frm);
 		toggle_participants_visibility(frm);
+	},
+
+	reference_type(frm) {
+		sync_reference_field_lock(frm);
 	},
 });
 
@@ -26,7 +31,10 @@ function set_reference_type_query(frm) {
 	if (!frm.fields_dict.reference_type) return;
 
 	frm.set_query('reference_type', () => ({
-		filters: { issingle: 0 },
+		filters: {
+			issingle: 0,
+			name: ['!=', 'Org Communication'],
+		},
 	}));
 }
 
@@ -61,6 +69,25 @@ function show_linked_announcement_hint(frm) {
 		.catch(() => {
 			// Keep the form usable if the linked announcement can no longer be resolved.
 		});
+}
+
+function sync_reference_field_lock(frm) {
+	const isLinkedAnnouncement =
+		frm.doc.reference_type === 'Org Communication' && Boolean(frm.doc.reference_name);
+	const description = isLinkedAnnouncement
+		? __(
+				'Managed by the companion announcement workflow. Use Open Announcement to review or edit the linked communication.'
+			)
+		: __(
+				'Optional reference to a related Desk document. Org Communication links are managed automatically.'
+			);
+
+	frm.set_df_property('reference_type', 'read_only', isLinkedAnnouncement ? 1 : 0);
+	frm.set_df_property('reference_name', 'read_only', isLinkedAnnouncement ? 1 : 0);
+	frm.set_df_property('reference_type', 'description', description);
+	frm.set_df_property('reference_name', 'description', description);
+	frm.refresh_field('reference_type');
+	frm.refresh_field('reference_name');
 }
 
 // Show participants only for "Custom Users" audience rows

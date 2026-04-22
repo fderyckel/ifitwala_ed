@@ -132,7 +132,7 @@
 									</p>
 								</section>
 
-								<section v-if="referenceLink" class="meeting-modal__participants">
+								<section v-if="showReferenceSection" class="meeting-modal__participants">
 									<div class="meeting-modal__section-heading">
 										<div>
 											<p class="meeting-modal__label type-label">Reference</p>
@@ -142,6 +142,7 @@
 										</div>
 									</div>
 									<a
+										v-if="referenceLink"
 										class="meeting-modal__link type-caption"
 										:href="referenceLink"
 										target="_blank"
@@ -174,13 +175,19 @@ import { computed, onBeforeUnmount, ref, watch } from 'vue';
 import { api } from '@/lib/client';
 import type { SchoolEventDetails } from './schoolEventTypes';
 
-const props = defineProps<{
-	open: boolean;
-	loading?: boolean;
-	error?: string | null;
-	event?: SchoolEventDetails | string | null;
-	zIndex?: number;
-}>();
+const props = withDefaults(
+	defineProps<{
+		open: boolean;
+		loading?: boolean;
+		error?: string | null;
+		event?: SchoolEventDetails | string | null;
+		allowReferenceLink?: boolean;
+		zIndex?: number;
+	}>(),
+	{
+		allowReferenceLink: true,
+	}
+);
 
 type CloseReason = 'backdrop' | 'esc' | 'programmatic';
 
@@ -302,8 +309,12 @@ const windowLabel = computed(() => {
 	return `${dateLabel} · ${timeFormatter.format(start)} → ${dateFormatter.format(end)} · ${timeFormatter.format(end)}`;
 });
 
+const hasReference = computed(() =>
+	Boolean(resolvedEvent.value?.reference_type && resolvedEvent.value?.reference_name)
+);
+
 const referenceLink = computed(() => {
-	if (!resolvedEvent.value?.reference_type || !resolvedEvent.value.reference_name) {
+	if (!props.allowReferenceLink || !hasReference.value) {
 		return '';
 	}
 	const doctype = String(resolvedEvent.value.reference_type || '')
@@ -316,6 +327,8 @@ const referenceLink = computed(() => {
 	const name = encodeURIComponent(resolvedEvent.value.reference_name);
 	return `/desk/${encodeURIComponent(doctype)}/${name}`;
 });
+
+const showReferenceSection = computed(() => hasReference.value && props.allowReferenceLink);
 
 function safeDate(value?: string | null) {
 	if (!value) return null;
