@@ -1306,7 +1306,7 @@ class TestSubmitApplication(FrappeTestCase):
                 ],
             )
 
-    def test_update_applicant_profile_preserves_legacy_guardian_image_attachment_scope(self):
+    def test_update_applicant_profile_preserves_guardian_image_attachment_scope_on_guardian_row(self):
         self._set_guardians_section_setting(1)
 
         contact = frappe.get_doc(
@@ -1320,12 +1320,30 @@ class TestSubmitApplication(FrappeTestCase):
         self.applicant.db_set("applicant_contact", contact.name, update_modified=False)
         self.applicant.reload()
 
+        guardian_email = f"guardian-{frappe.generate_hash(length=8)}@example.com"
+        guardian_row = self.applicant.append(
+            "guardians",
+            {
+                "relationship": "Mother",
+                "use_applicant_contact": 1,
+                "can_consent": 1,
+                "is_primary": 1,
+                "is_primary_guardian": 1,
+                "guardian_first_name": "Mina",
+                "guardian_last_name": "Portal",
+                "guardian_email": guardian_email,
+                "guardian_mobile_phone": "+14155550101",
+            },
+        )
+        self.applicant.save(ignore_permissions=True)
+        guardian_row_name = guardian_row.name
+
         file_doc = frappe.get_doc(
             {
                 "doctype": "File",
-                "attached_to_doctype": "Student Applicant",
-                "attached_to_name": self.applicant.name,
-                "attached_to_field": "guardians",
+                "attached_to_doctype": "Student Applicant Guardian",
+                "attached_to_name": guardian_row_name,
+                "attached_to_field": "guardian_image",
                 "file_name": "guardian.png",
                 "content": base64.b64decode(self._tiny_png_base64()),
                 "is_private": 1,
@@ -1336,23 +1354,37 @@ class TestSubmitApplication(FrappeTestCase):
         self._created.append(("File", file_doc.name))
 
         frappe.set_user(self.applicant_user)
-        payload = update_applicant_profile(
-            student_applicant=self.applicant.name,
-            guardians=[
-                {
-                    "relationship": "Mother",
-                    "use_applicant_contact": 1,
-                    "can_consent": 1,
-                    "is_primary": 1,
-                    "is_primary_guardian": 1,
-                    "guardian_first_name": "Mina",
-                    "guardian_last_name": "Portal",
-                    "guardian_email": f"guardian-{frappe.generate_hash(length=8)}@example.com",
-                    "guardian_mobile_phone": "+14155550101",
-                    "guardian_image": file_doc.file_url,
-                }
-            ],
-        )
+        with (
+            patch(
+                "ifitwala_ed.admission.doctype.student_applicant.student_applicant.ensure_guardian_profile_image",
+                return_value=file_doc.file_url,
+            ),
+            patch(
+                "ifitwala_ed.api.admissions_portal.get_drive_file_for_file",
+                return_value={
+                    "primary_subject_type": "Student Applicant",
+                    "primary_subject_id": self.applicant.name,
+                },
+            ),
+        ):
+            payload = update_applicant_profile(
+                student_applicant=self.applicant.name,
+                guardians=[
+                    {
+                        "name": guardian_row_name,
+                        "relationship": "Mother",
+                        "use_applicant_contact": 1,
+                        "can_consent": 1,
+                        "is_primary": 1,
+                        "is_primary_guardian": 1,
+                        "guardian_first_name": "Mina",
+                        "guardian_last_name": "Portal",
+                        "guardian_email": guardian_email,
+                        "guardian_mobile_phone": "+14155550101",
+                        "guardian_image": file_doc.file_url,
+                    }
+                ],
+            )
 
         self.assertTrue(payload.get("ok"))
         self.assertIn("download_admissions_file", (payload.get("guardians") or [{}])[0].get("guardian_image") or "")
@@ -1362,9 +1394,9 @@ class TestSubmitApplication(FrappeTestCase):
             ["attached_to_doctype", "attached_to_name", "attached_to_field"],
             as_dict=True,
         )
-        self.assertEqual(file_row.get("attached_to_doctype"), "Student Applicant")
-        self.assertEqual(file_row.get("attached_to_name"), self.applicant.name)
-        self.assertEqual((file_row.get("attached_to_field") or "").strip(), "guardians")
+        self.assertEqual(file_row.get("attached_to_doctype"), "Student Applicant Guardian")
+        self.assertEqual(file_row.get("attached_to_name"), guardian_row_name)
+        self.assertEqual((file_row.get("attached_to_field") or "").strip(), "guardian_image")
 
     def test_get_applicant_profile_includes_applicant_image(self):
         file_doc = frappe.get_doc(
@@ -1375,9 +1407,11 @@ class TestSubmitApplication(FrappeTestCase):
                 "attached_to_field": "applicant_image",
                 "file_name": f"applicant-{frappe.generate_hash(length=6)}.png",
                 "is_private": 1,
-                "content": b"applicant-image",
+                "content": base64.b64decode(self._tiny_png_base64()),
             }
-        ).insert(ignore_permissions=True)
+        )
+        file_doc.flags.governed_upload = True
+        file_doc.insert(ignore_permissions=True)
         self._created.append(("File", file_doc.name))
         self.applicant.db_set("applicant_image", file_doc.file_url, update_modified=False)
         self.applicant.reload()

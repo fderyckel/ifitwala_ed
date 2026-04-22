@@ -335,16 +335,16 @@ class TestGuardianHome(FrappeTestCase):
                 {
                     "student": "STU-0001",
                     "date": "2026-02-02",
-                    "label": "Prepare for: Math quiz",
+                    "label": "Due soon: Reading journal",
                     "source": "task",
-                    "related": {"task_delivery": "DEL-QUIZ"},
+                    "related": {"task_delivery": "DEL-TASK"},
                 },
                 {
                     "student": "STU-0001",
                     "date": "2026-02-02",
-                    "label": "Due soon: Reading journal",
+                    "label": "Prepare for: Math quiz",
                     "source": "task",
-                    "related": {"task_delivery": "DEL-TASK"},
+                    "related": {"task_delivery": "DEL-QUIZ"},
                 },
                 {
                     "student": "STU-0001",

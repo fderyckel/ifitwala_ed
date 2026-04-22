@@ -560,7 +560,7 @@ class TestFileAccessUrlContracts(FrappeTestCase):
 
         def fake_media_loader(attribute):
             self.assertEqual(attribute, "issue_employee_image_preview_grant")
-            return lambda employee, file_id: {
+            return lambda employee, file_id, drive_file_id=None, derivative_role=None: {
                 "url": f"https://signed.example.com/{employee}/{file_id}/thumb_employee.webp"
             }
 
@@ -1038,6 +1038,14 @@ class TestFileAccessUrlContracts(FrappeTestCase):
             patch(
                 "ifitwala_ed.api.file_access._resolve_current_material_drive_file",
                 return_value={"name": "DRIVE-0001", "file": "FILE-CURRENT-1"},
+            ),
+            patch(
+                "ifitwala_ed.api.file_access.frappe.db.get_value",
+                side_effect=lambda doctype, filters=None, fieldname=None, as_dict=False: (
+                    "ready"
+                    if doctype == "Drive File" and filters == "DRIVE-0001" and fieldname == "preview_status"
+                    else None
+                ),
             ),
             patch("ifitwala_ed.api.file_access._load_drive_materials_callable") as load_materials,
             patch(
@@ -1774,30 +1782,35 @@ class TestFileAccessUrlContracts(FrappeTestCase):
             def set_value(self, key, value, expires_in_sec=None):
                 self.values[key] = value
 
-        grant_requests = []
+        wrapper_calls = []
 
         def fake_get_value(doctype, filters=None, fieldname=None, as_dict=False):
-            if doctype == "Drive File" and filters == {"file": "FILE-MAT-1"}:
-                return {"name": "DRIVE-0001", "preview_status": "ready", "current_version": "DFV-0001"}
             if doctype == "Drive File" and filters == "DRIVE-0001" and fieldname == ["name", "current_version"]:
                 return {"name": "DRIVE-0001", "current_version": "DFV-0001"}
+            if doctype == "Drive File Version" and filters == "DFV-0001" and fieldname == "mime_type":
+                return "image/png"
             return None
-
-        def fake_load(attribute):
-            self.assertEqual(attribute, "issue_preview_grant")
-
-            def _grant(**kwargs):
-                grant_requests.append(kwargs)
-                return {"url": "https://preview.example.com/material-viewer.webp"}
-
-            return _grant
 
         with (
             patch("ifitwala_ed.api.file_access._resolve_authorized_academic_file", return_value=file_row),
+            patch(
+                "ifitwala_ed.api.file_access._resolve_current_material_drive_file",
+                return_value={"name": "DRIVE-0001", "file": "FILE-CURRENT-1", "current_version": "DFV-0001"},
+            ),
             patch("ifitwala_ed.api.file_access.frappe.db.get_value", side_effect=fake_get_value),
-            patch("ifitwala_ed.api.file_access.frappe.cache", return_value=_FakeCache()),
-            patch("ifitwala_ed.api.file_access._load_drive_access_callable", side_effect=fake_load),
+            patch("ifitwala_ed.api.file_access._get_shared_cache", return_value=_FakeCache()),
+            patch("ifitwala_ed.api.file_access._load_drive_materials_callable") as load_materials,
+            patch(
+                "ifitwala_ed.api.file_access._load_drive_access_callable",
+                side_effect=AssertionError("generic Drive grant path should not be used"),
+            ),
         ):
+            load_materials.side_effect = lambda attribute: (
+                lambda **kwargs: (
+                    wrapper_calls.append((attribute, kwargs))
+                    or {"url": "https://preview.example.com/material-viewer.webp"}
+                )
+            )
             frappe.local.response = {}
             thumbnail_academic_file(
                 file="FILE-MAT-1",
@@ -1806,8 +1819,17 @@ class TestFileAccessUrlContracts(FrappeTestCase):
             )
 
         self.assertEqual(
-            grant_requests,
-            [{"drive_file_id": "DRIVE-0001", "derivative_role": "viewer_preview"}],
+            wrapper_calls,
+            [
+                (
+                    "issue_supporting_material_preview_grant",
+                    {
+                        "material": "MAT-1",
+                        "drive_file_id": "DRIVE-0001",
+                        "derivative_role": "viewer_preview",
+                    },
+                )
+            ],
         )
         self.assertEqual(frappe.local.response.get("type"), "redirect")
         self.assertEqual(
@@ -1839,32 +1861,34 @@ class TestFileAccessUrlContracts(FrappeTestCase):
             def set_value(self, key, value, expires_in_sec=None):
                 self.values[key] = value
 
-        grant_requests = []
+        wrapper_calls = []
 
         def fake_get_value(doctype, filters=None, fieldname=None, as_dict=False):
-            if doctype == "Drive File" and filters == {"file": "FILE-MAT-1"}:
-                return {"name": "DRIVE-0001", "preview_status": "ready", "current_version": "DFV-0001"}
             if doctype == "Drive File" and filters == "DRIVE-0001" and fieldname == ["name", "current_version"]:
                 return {"name": "DRIVE-0001", "current_version": "DFV-0001"}
             if doctype == "Drive File Version" and filters == "DFV-0001" and fieldname == "mime_type":
                 return "application/pdf"
             return None
 
-        def fake_load(attribute):
-            self.assertEqual(attribute, "issue_preview_grant")
-
-            def _grant(**kwargs):
-                grant_requests.append(kwargs)
-                return {"url": "https://thumb.example.com/material-card.jpg"}
-
-            return _grant
-
         with (
             patch("ifitwala_ed.api.file_access._resolve_authorized_academic_file", return_value=file_row),
+            patch(
+                "ifitwala_ed.api.file_access._resolve_current_material_drive_file",
+                return_value={"name": "DRIVE-0001", "file": "FILE-CURRENT-1", "current_version": "DFV-0001"},
+            ),
             patch("ifitwala_ed.api.file_access.frappe.db.get_value", side_effect=fake_get_value),
-            patch("ifitwala_ed.api.file_access.frappe.cache", return_value=_FakeCache()),
-            patch("ifitwala_ed.api.file_access._load_drive_access_callable", side_effect=fake_load),
+            patch("ifitwala_ed.api.file_access._get_shared_cache", return_value=_FakeCache()),
+            patch("ifitwala_ed.api.file_access._load_drive_materials_callable") as load_materials,
+            patch(
+                "ifitwala_ed.api.file_access._load_drive_access_callable",
+                side_effect=AssertionError("generic Drive grant path should not be used"),
+            ),
         ):
+            load_materials.side_effect = lambda attribute: (
+                lambda **kwargs: (
+                    wrapper_calls.append((attribute, kwargs)) or {"url": "https://thumb.example.com/material-card.jpg"}
+                )
+            )
             frappe.local.response = {}
             thumbnail_academic_file(
                 file="FILE-MAT-1",
@@ -1873,8 +1897,17 @@ class TestFileAccessUrlContracts(FrappeTestCase):
             )
 
         self.assertEqual(
-            grant_requests,
-            [{"drive_file_id": "DRIVE-0001", "derivative_role": "pdf_card"}],
+            wrapper_calls,
+            [
+                (
+                    "issue_supporting_material_preview_grant",
+                    {
+                        "material": "MAT-1",
+                        "drive_file_id": "DRIVE-0001",
+                        "derivative_role": "pdf_card",
+                    },
+                )
+            ],
         )
         self.assertEqual(frappe.local.response.get("type"), "redirect")
         self.assertEqual(

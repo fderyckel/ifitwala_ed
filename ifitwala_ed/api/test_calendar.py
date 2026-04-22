@@ -644,6 +644,10 @@ class TestCalendarApi(TestCase):
             patch("ifitwala_ed.api.calendar_quick_create._ensure_allowed_school", return_value="ISS"),
             patch("ifitwala_ed.api.calendar_quick_create._ensure_allowed_location", return_value=None),
             patch(
+                "ifitwala_ed.api.calendar_quick_create.get_org_communication_quick_create_capability",
+                return_value={"enabled": True, "blocked_reason": None},
+            ),
+            patch(
                 "ifitwala_ed.api.calendar_quick_create.frappe.db.get_value",
                 return_value=frappe._dict({"organization": "ORG-ROOT"}),
             ),
