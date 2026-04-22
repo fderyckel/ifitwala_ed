@@ -134,14 +134,14 @@
 					<div class="space-y-1">
 						<p class="type-caption text-ink/60">
 							{{
-								applicantImage
+								hasApplicantImage
 									? __('Current image is saved.')
 									: __('No student image uploaded yet.')
 							}}
 						</p>
 						<a
-							v-if="applicantImage"
-							:href="applicantImage"
+							v-if="applicantImageOpenUrl"
+							:href="applicantImageOpenUrl"
 							target="_blank"
 							rel="noopener noreferrer"
 							class="type-caption text-jacaranda underline"
@@ -624,8 +624,8 @@
 										</div>
 									</div>
 									<a
-										v-if="guardian.guardian_image"
-										:href="guardian.guardian_image"
+										v-if="guardian.guardian_image_open_url"
+										:href="guardian.guardian_image_open_url"
 										target="_blank"
 										rel="noopener noreferrer"
 										class="type-caption text-jacaranda underline"
@@ -730,6 +730,7 @@ const imageUploadProgress = ref<UploadProgressState | null>(null);
 const error = ref<string | null>(null);
 const actionError = ref('');
 const applicantImage = ref('');
+const applicantImageOpenUrl = ref('');
 const recordModified = ref('');
 const selectedImageFile = ref<File | null>(null);
 const imageInput = ref<HTMLInputElement | null>(null);
@@ -749,6 +750,9 @@ const applicationContext = ref<ApplicantProfileResponse['application_context']>(
 );
 
 const isReadOnly = computed(() => Boolean(session.value?.applicant?.is_read_only));
+const hasApplicantImage = computed(() =>
+	Boolean((applicantImage.value || '').trim() || (applicantImageOpenUrl.value || '').trim())
+);
 const imageUploadProgressLabel = computed(() =>
 	selectedImageFile.value?.name
 		? __('Uploading {0}').replace('{0}', selectedImageFile.value.name)
@@ -944,12 +948,14 @@ async function uploadGuardianImage(index: number) {
 			}
 		);
 		const fileUrl = String(payload.image_url || '').trim();
-		if (!fileUrl) {
-			throw new Error(__('Unable to upload guardian image.'));
+		const openUrl = String(payload.open_url || '').trim();
+		if (!fileUrl && !openUrl) {
+			throw new Error(__('Unable to resolve guardian image.'));
 		}
 		guardians.value[index] = normalizeGuardianRow({
 			...guardians.value[index],
 			guardian_image: fileUrl,
+			guardian_image_open_url: openUrl,
 		});
 		delete selectedGuardianImageFiles.value[index];
 		const input = guardianImageInputs.value[index];
@@ -979,6 +985,7 @@ function applyPayload(payload: ApplicantProfileResponse) {
 	savedGuardians.value = guardianRowsForSubmit(guardians.value);
 	clearGuardianImageUploadState();
 	applicantImage.value = (payload.applicant_image || '').trim();
+	applicantImageOpenUrl.value = (payload.applicant_image_open_url || '').trim();
 	selectedImageFile.value = null;
 	if (imageInput.value) imageInput.value.value = '';
 }
@@ -992,6 +999,7 @@ async function loadProfile() {
 		completeness.value = createEmptyCompleteness();
 		applicationContext.value = createEmptyApplicationContext();
 		applicantImage.value = '';
+		applicantImageOpenUrl.value = '';
 		recordModified.value = '';
 		error.value = null;
 		return;
@@ -1120,6 +1128,7 @@ async function uploadSelectedImage() {
 			}
 		);
 		applicantImage.value = (payload.image_url || '').trim();
+		applicantImageOpenUrl.value = (payload.open_url || '').trim();
 		selectedImageFile.value = null;
 		if (imageInput.value) imageInput.value.value = '';
 		await loadProfile();

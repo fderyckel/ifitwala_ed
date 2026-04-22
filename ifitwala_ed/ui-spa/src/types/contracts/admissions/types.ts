@@ -102,6 +102,7 @@ export type ApplicantGuardianProfile = {
   guardian_work_email?: string | null
   guardian_work_phone?: string | null
   guardian_image?: string | null
+  guardian_image_open_url?: string | null
   user?: string | null
   is_primary_guardian?: boolean | number | null
   is_financial_guardian?: boolean | number | null

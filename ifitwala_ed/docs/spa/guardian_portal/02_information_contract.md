@@ -47,7 +47,7 @@ Test refs:
 Rules:
 
 1. Guardian Home shows the portal heading, the configured school-day window, and a refresh action.
-2. The summary cards show `unread_communications`, `unread_visible_student_logs`, `upcoming_due_tasks`, and `upcoming_assessments`.
+2. The summary cards show `unread_communications`, `unread_visible_student_logs`, `upcoming_due_tasks`, and `upcoming_assessments`; when `upcoming_assessments` is non-zero, that card may jump the guardian to the first in-window timeline day that carries assessment detail.
 3. Quick links route guardians to communications, course selection, activities, attendance, policies, finance, monitoring, portfolio, and the family snapshot, and launch the `School Calendar` monthly overlay from Guardian Home.
 4. The guardian portal shell may surface an unread communication badge on the `Communications` rail item using the same unread org-communication count shown by the family snapshot.
 5. The landing page remains a briefing surface; navigation is secondary.

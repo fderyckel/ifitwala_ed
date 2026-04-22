@@ -5,6 +5,8 @@ from typing import Any
 import frappe
 from frappe import _
 
+from ifitwala_ed.utilities.portal_identity_cache import invalidate_student_portal_identity_cache
+
 _PROFILE_IMAGE_SLOT = "profile_image"
 
 
@@ -347,6 +349,7 @@ def run_media_post_finalize(upload_session_doc, created_file) -> dict[str, Any]:
         student_doc.student_image = file_url
         if hasattr(student_doc, "sync_student_contact_image"):
             student_doc.sync_student_contact_image()
+        invalidate_student_portal_identity_cache(student=student_doc.name)
         return {"file_url": file_url}
 
     if upload_session_doc.owner_doctype == "Guardian":

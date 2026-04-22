@@ -125,28 +125,25 @@ class TestPortalCalendar(FrappeTestCase):
 
         self.assertEqual(events, [])
 
-    def test_staff_calendar_resolves_employee_by_email_when_user_id_missing(self):
+    def test_staff_calendar_requires_canonical_employee_link_when_user_id_is_missing(self):
         user = self._create_user()
-        employee = self._create_employee(self.child_school, professional_email=user.name)
+        self._create_employee(self.child_school, professional_email=user.name)
 
         resolved = _resolve_employee_for_user(
             user.name,
             fields=["name", "school"],
             employment_status_filter=["!=", "Inactive"],
         )
-        self.assertTrue(resolved)
-        self.assertEqual(resolved.get("name"), employee)
-        self.assertEqual(resolved.get("school"), self.child_school)
+        self.assertIsNone(resolved)
 
         frappe.set_user(user.name)
-        payload = get_staff_calendar(
-            from_datetime="2026-01-07T00:00:00",
-            to_datetime="2026-01-10T00:00:00",
-            sources=["staff_holiday"],
-            force_refresh=True,
-        )
-        self.assertIn("events", payload)
-        self.assertTrue(any(evt.get("source") == "staff_holiday" for evt in payload.get("events", [])))
+        with self.assertRaises(frappe.PermissionError):
+            get_staff_calendar(
+                from_datetime="2026-01-07T00:00:00",
+                to_datetime="2026-01-10T00:00:00",
+                sources=["staff_holiday"],
+                force_refresh=True,
+            )
 
     def test_administrator_staff_calendar_without_employee_link_returns_empty_payload(self):
         payload = get_staff_calendar(

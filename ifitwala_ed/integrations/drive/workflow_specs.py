@@ -562,7 +562,7 @@ _WORKFLOW_SPECS: tuple[GovernedUploadSpec, ...] = (
     GovernedUploadSpec(
         workflow_id="admissions.applicant_profile_image",
         contract_version=_WORKFLOW_CONTRACT_VERSION,
-        is_private=None,
+        is_private=True,
         resolve_session_context=_resolve_applicant_profile_image_session_context,
         validate_finalize_context=_validate_applicant_profile_image_finalize_context,
         resolve_attached_field_override=_resolve_admissions_attached_field_override,
@@ -573,7 +573,7 @@ _WORKFLOW_SPECS: tuple[GovernedUploadSpec, ...] = (
     GovernedUploadSpec(
         workflow_id="admissions.applicant_guardian_image",
         contract_version=_WORKFLOW_CONTRACT_VERSION,
-        is_private=None,
+        is_private=True,
         resolve_session_context=_resolve_applicant_guardian_image_session_context,
         validate_finalize_context=_validate_applicant_guardian_image_finalize_context,
         resolve_attached_field_override=_resolve_admissions_attached_field_override,

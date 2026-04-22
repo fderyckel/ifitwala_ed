@@ -1362,9 +1362,16 @@ class TestSubmitApplication(FrappeTestCase):
             patch(
                 "ifitwala_ed.api.admissions_portal.get_drive_file_for_file",
                 return_value={
+                    "name": "DRV-GUARDIAN-1",
+                    "file": file_doc.name,
+                    "canonical_ref": f"drv:{self.organization}:DRV-GUARDIAN-1",
                     "primary_subject_type": "Student Applicant",
                     "primary_subject_id": self.applicant.name,
                 },
+            ),
+            patch(
+                "ifitwala_ed.api.admissions_portal.get_drive_file_thumbnail_ready_map",
+                return_value={"DRV-GUARDIAN-1": True},
             ),
         ):
             payload = update_applicant_profile(
@@ -1387,7 +1394,9 @@ class TestSubmitApplication(FrappeTestCase):
             )
 
         self.assertTrue(payload.get("ok"))
-        self.assertIn("download_admissions_file", (payload.get("guardians") or [{}])[0].get("guardian_image") or "")
+        guardian_payload = (payload.get("guardians") or [{}])[0]
+        self.assertIn("thumbnail_admissions_file", guardian_payload.get("guardian_image") or "")
+        self.assertIn("download_admissions_file", guardian_payload.get("guardian_image_open_url") or "")
         file_row = frappe.db.get_value(
             "File",
             file_doc.name,
@@ -1417,12 +1426,32 @@ class TestSubmitApplication(FrappeTestCase):
         self.applicant.reload()
 
         frappe.set_user(self.applicant_user)
-        profile_payload = get_applicant_profile(student_applicant=self.applicant.name)
+        with (
+            patch(
+                "ifitwala_ed.api.admissions_portal.get_drive_file_for_file",
+                return_value={
+                    "name": "DRV-APP-1",
+                    "file": file_doc.name,
+                    "canonical_ref": f"drv:{self.organization}:DRV-APP-1",
+                    "primary_subject_type": "Student Applicant",
+                    "primary_subject_id": self.applicant.name,
+                },
+            ),
+            patch(
+                "ifitwala_ed.api.admissions_portal.get_drive_file_thumbnail_ready_map",
+                return_value={"DRV-APP-1": True},
+            ),
+        ):
+            profile_payload = get_applicant_profile(student_applicant=self.applicant.name)
         secure_url = str(profile_payload.get("applicant_image") or "").strip()
         self.assertTrue(secure_url)
         self.assertNotIn("/private/files/", secure_url)
-        self.assertIn("download_admissions_file", secure_url)
+        self.assertIn("thumbnail_admissions_file", secure_url)
         self.assertIn(f"file={file_doc.name}", secure_url)
+        self.assertIn(
+            "download_admissions_file",
+            str(profile_payload.get("applicant_image_open_url") or ""),
+        )
 
     def test_upload_applicant_profile_image_denies_other_applicant(self):
         other = self._create_applicant(self.organization, self.school, applicant_user="")
@@ -1449,22 +1478,29 @@ class TestSubmitApplication(FrappeTestCase):
 
     def test_upload_applicant_profile_image_creates_governed_file(self):
         captured: dict = {}
+        drive_file_id = "DRV-FILE-0001"
+        canonical_ref = f"drv:{self.organization}:{drive_file_id}"
 
         def _capture_drive_upload(**kwargs):
             captured.update(kwargs)
-            drive_file_id = f"DRV-FILE-{frappe.generate_hash(length=6)}"
             return {
-                "file": f"FILE-{frappe.generate_hash(length=8)}",
+                "file": "FILE-UP-APP-1",
                 "file_url": f"/private/files/applicant-{frappe.generate_hash(length=6)}.jpg",
                 "drive_file_id": drive_file_id,
-                "canonical_ref": f"drv:{self.organization}:{drive_file_id}",
+                "canonical_ref": canonical_ref,
                 "student_applicant": kwargs.get("student_applicant"),
             }
 
         frappe.set_user(self.applicant_user)
-        with patch(
-            "ifitwala_ed.api.admissions_portal.admission_api.upload_applicant_profile_image",
-            side_effect=_capture_drive_upload,
+        with (
+            patch(
+                "ifitwala_ed.api.admissions_portal.admission_api.upload_applicant_profile_image",
+                side_effect=_capture_drive_upload,
+            ),
+            patch(
+                "ifitwala_ed.api.admissions_portal.get_drive_file_thumbnail_ready_map",
+                return_value={drive_file_id: True},
+            ),
         ):
             payload = upload_applicant_profile_image(
                 student_applicant=self.applicant.name,
@@ -1473,9 +1509,10 @@ class TestSubmitApplication(FrappeTestCase):
             )
 
         self.assertTrue(payload.get("ok"))
-        self.assertIn("download_admissions_file", str(payload.get("image_url") or ""))
-        self.assertTrue(str(payload.get("drive_file_id") or "").startswith("DRV-FILE-"))
-        self.assertTrue(str(payload.get("canonical_ref") or "").startswith(f"drv:{self.organization}:"))
+        self.assertIn("thumbnail_admissions_file", str(payload.get("image_url") or ""))
+        self.assertIn("download_admissions_file", str(payload.get("open_url") or ""))
+        self.assertEqual(str(payload.get("drive_file_id") or ""), drive_file_id)
+        self.assertEqual(str(payload.get("canonical_ref") or ""), canonical_ref)
         self.assertEqual(captured["student_applicant"], self.applicant.name)
         self.assertEqual(captured["upload_source"], "SPA")
         self.assertTrue(captured["file_name"].startswith("applicant_profile_image_"))
@@ -1484,6 +1521,8 @@ class TestSubmitApplication(FrappeTestCase):
 
     def test_upload_applicant_profile_image_reads_json_request_payload_when_bound_kwargs_are_blank_strings(self):
         captured: dict = {}
+        drive_file_id = "DRV-FILE-JSON-1"
+        canonical_ref = f"drv:{self.organization}:{drive_file_id}"
         request_payload = {
             "student_applicant": self.applicant.name,
             "file_name": "student.png",
@@ -1492,12 +1531,11 @@ class TestSubmitApplication(FrappeTestCase):
 
         def _capture_drive_upload(**kwargs):
             captured.update(kwargs)
-            drive_file_id = f"DRV-FILE-{frappe.generate_hash(length=6)}"
             return {
-                "file": f"FILE-{frappe.generate_hash(length=8)}",
+                "file": "FILE-UP-APP-JSON-1",
                 "file_url": f"/private/files/applicant-{frappe.generate_hash(length=6)}.jpg",
                 "drive_file_id": drive_file_id,
-                "canonical_ref": f"drv:{self.organization}:{drive_file_id}",
+                "canonical_ref": canonical_ref,
                 "student_applicant": kwargs.get("student_applicant"),
             }
 
@@ -1519,6 +1557,10 @@ class TestSubmitApplication(FrappeTestCase):
                 "ifitwala_ed.api.admissions_portal.admission_api.upload_applicant_profile_image",
                 side_effect=_capture_drive_upload,
             ),
+            patch(
+                "ifitwala_ed.api.admissions_portal.get_drive_file_thumbnail_ready_map",
+                return_value={drive_file_id: True},
+            ),
         ):
             payload = upload_applicant_profile_image(
                 student_applicant="",
@@ -1527,9 +1569,10 @@ class TestSubmitApplication(FrappeTestCase):
             )
 
         self.assertTrue(payload.get("ok"))
-        self.assertTrue(str(payload.get("drive_file_id") or "").startswith("DRV-FILE-"))
-        self.assertTrue(str(payload.get("canonical_ref") or "").startswith(f"drv:{self.organization}:"))
-        self.assertIn("download_admissions_file", str(payload.get("image_url") or ""))
+        self.assertEqual(str(payload.get("drive_file_id") or ""), drive_file_id)
+        self.assertEqual(str(payload.get("canonical_ref") or ""), canonical_ref)
+        self.assertIn("thumbnail_admissions_file", str(payload.get("image_url") or ""))
+        self.assertIn("download_admissions_file", str(payload.get("open_url") or ""))
         self.assertEqual(captured["student_applicant"], self.applicant.name)
         self.assertEqual(captured["upload_source"], "SPA")
         self.assertTrue(captured["file_name"].startswith("applicant_profile_image_"))
@@ -1599,23 +1642,30 @@ class TestSubmitApplication(FrappeTestCase):
         guardian_row_name = guardian_row.name
 
         captured: dict = {}
+        drive_file_id = "DRV-GUARDIAN-UP-1"
+        canonical_ref = f"drv:{self.organization}:{drive_file_id}"
 
         def _capture_drive_upload(**kwargs):
             captured.update(kwargs)
-            drive_file_id = f"DRV-FILE-{frappe.generate_hash(length=6)}"
             return {
-                "file": f"FILE-{frappe.generate_hash(length=8)}",
+                "file": "FILE-UP-GUARDIAN-1",
                 "file_url": f"/private/files/guardian-{frappe.generate_hash(length=6)}.jpg",
                 "drive_file_id": drive_file_id,
-                "canonical_ref": f"drv:{self.organization}:{drive_file_id}",
+                "canonical_ref": canonical_ref,
                 "student_applicant": kwargs.get("student_applicant"),
                 "guardian_row_name": kwargs.get("guardian_row_name"),
             }
 
         frappe.set_user(self.applicant_user)
-        with patch(
-            "ifitwala_ed.api.admissions_portal.admission_api.upload_applicant_guardian_image",
-            side_effect=_capture_drive_upload,
+        with (
+            patch(
+                "ifitwala_ed.api.admissions_portal.admission_api.upload_applicant_guardian_image",
+                side_effect=_capture_drive_upload,
+            ),
+            patch(
+                "ifitwala_ed.api.admissions_portal.get_drive_file_thumbnail_ready_map",
+                return_value={drive_file_id: True},
+            ),
         ):
             payload = upload_applicant_guardian_image(
                 student_applicant=self.applicant.name,
@@ -1625,9 +1675,10 @@ class TestSubmitApplication(FrappeTestCase):
             )
 
         self.assertTrue(payload.get("ok"))
-        self.assertIn("download_admissions_file", str(payload.get("image_url") or ""))
-        self.assertTrue(str(payload.get("drive_file_id") or "").startswith("DRV-FILE-"))
-        self.assertTrue(str(payload.get("canonical_ref") or "").startswith(f"drv:{self.organization}:"))
+        self.assertIn("thumbnail_admissions_file", str(payload.get("image_url") or ""))
+        self.assertIn("download_admissions_file", str(payload.get("open_url") or ""))
+        self.assertEqual(str(payload.get("drive_file_id") or ""), drive_file_id)
+        self.assertEqual(str(payload.get("canonical_ref") or ""), canonical_ref)
         self.assertEqual(captured["student_applicant"], self.applicant.name)
         self.assertEqual(captured["guardian_row_name"], guardian_row_name)
         self.assertEqual(captured["upload_source"], "SPA")
@@ -1650,6 +1701,8 @@ class TestSubmitApplication(FrappeTestCase):
         guardian_row_name = guardian_row.name
 
         captured: dict = {}
+        drive_file_id = "DRV-GUARDIAN-JSON-1"
+        canonical_ref = f"drv:{self.organization}:{drive_file_id}"
         request_payload = {
             "student_applicant": self.applicant.name,
             "guardian_row_name": guardian_row_name,
@@ -1659,12 +1712,11 @@ class TestSubmitApplication(FrappeTestCase):
 
         def _capture_drive_upload(**kwargs):
             captured.update(kwargs)
-            drive_file_id = f"DRV-FILE-{frappe.generate_hash(length=6)}"
             return {
-                "file": f"FILE-{frappe.generate_hash(length=8)}",
+                "file": "FILE-UP-GUARDIAN-JSON-1",
                 "file_url": f"/private/files/guardian-{frappe.generate_hash(length=6)}.jpg",
                 "drive_file_id": drive_file_id,
-                "canonical_ref": f"drv:{self.organization}:{drive_file_id}",
+                "canonical_ref": canonical_ref,
                 "student_applicant": kwargs.get("student_applicant"),
                 "guardian_row_name": kwargs.get("guardian_row_name"),
             }
@@ -1687,6 +1739,10 @@ class TestSubmitApplication(FrappeTestCase):
                 "ifitwala_ed.api.admissions_portal.admission_api.upload_applicant_guardian_image",
                 side_effect=_capture_drive_upload,
             ),
+            patch(
+                "ifitwala_ed.api.admissions_portal.get_drive_file_thumbnail_ready_map",
+                return_value={drive_file_id: True},
+            ),
         ):
             payload = upload_applicant_guardian_image(
                 student_applicant="",
@@ -1696,9 +1752,10 @@ class TestSubmitApplication(FrappeTestCase):
             )
 
         self.assertTrue(payload.get("ok"))
-        self.assertTrue(str(payload.get("drive_file_id") or "").startswith("DRV-FILE-"))
-        self.assertTrue(str(payload.get("canonical_ref") or "").startswith(f"drv:{self.organization}:"))
-        self.assertIn("download_admissions_file", str(payload.get("image_url") or ""))
+        self.assertEqual(str(payload.get("drive_file_id") or ""), drive_file_id)
+        self.assertEqual(str(payload.get("canonical_ref") or ""), canonical_ref)
+        self.assertIn("thumbnail_admissions_file", str(payload.get("image_url") or ""))
+        self.assertIn("download_admissions_file", str(payload.get("open_url") or ""))
         self.assertEqual(captured["student_applicant"], self.applicant.name)
         self.assertEqual(captured["guardian_row_name"], guardian_row_name)
         self.assertEqual(captured["upload_source"], "SPA")

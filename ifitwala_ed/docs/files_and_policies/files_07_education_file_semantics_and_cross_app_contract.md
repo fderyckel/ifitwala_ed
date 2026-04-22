@@ -99,6 +99,14 @@ Each spec must define:
 - optional display/read profile identifier
 - optional post-finalize callback identifier
 
+For human identity-image workflows, privacy is spec-owned and defaults to private:
+
+- `media.student_profile_image`
+- `media.guardian_profile_image`
+- `media.employee_profile_image`
+- `admissions.applicant_profile_image`
+- `admissions.applicant_guardian_image`
+
 ## 5. Authority split
 
 ### 5.1 Ed owns

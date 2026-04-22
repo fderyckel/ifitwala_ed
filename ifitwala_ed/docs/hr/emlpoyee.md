@@ -100,8 +100,8 @@ Role handling now follows managed sync:
   - `Academic Admin` only: when no school scope resolves, or the active Employee profile exists with a blank `school`, employee-linked contact visibility falls back to organization descendant scope
   - `Employee`: read only the contact linked to their own employee record
 - when `Employee.employment_status` is not `Active`, the linked `User` is disabled and all assigned role rows are removed.
-- routing policy resolves active employee status using `Employee.user_id` first, then an unambiguous active match on `employee_professional_email` to avoid false-negative staff routing when legacy user links are missing.
-- at login, if a staff user has no active `Employee.user_id` link but exactly one active `Employee` row matches `employee_professional_email`, the system self-heals `user_id` and re-runs access sync.
+- routing policy and employee-scoped APIs resolve staff identity from canonical `Employee.user_id` only; `employee_professional_email` is not a runtime fallback identity key.
+- existing sites remediate missing active `Employee.user_id` links through the one-shot patch `ifitwala_ed.patches.backfill_employee_user_links`, which backfills only unambiguous matches and re-runs managed access sync during migrate.
 - if login cannot resolve any valid portal section after applying employee/admissions/student/guardian rules, the user is sent back to `/login` instead of being dropped onto `/hub/staff`.
 - `Employee._apply_designation_role()` reruns managed access sync on every Employee update for linked users so imported or drifted accounts are repaired even when the Employee document itself did not change effective access fields.
 - role-management authorization includes `HR User`, `HR Manager`, `System Manager`, and `Administrator`.
@@ -179,10 +179,10 @@ We decided that employee account access is strictly controlled by `Employee.empl
 Reason: non-active employees must not access either Desk or Portal.
 Impact: the employee sync hook now toggles `User.enabled` automatically and blocks login/access for non-active employee statuses.
 
-[2026-02-18] Decision:
-We decided to self-heal missing active Employee-to-User links at login when there is exactly one unambiguous active match on `employee_professional_email`.
-Reason: historical data can miss `Employee.user_id`, which produced false-negative staff redirects and sent active staff users to the student portal.
-Impact: successful login now repairs the link and re-applies access sync before role-based portal redirect is resolved.
+[2026-04-22] Decision:
+We decided missing active Employee-to-User links are remediated by a one-shot backfill patch instead of login self-heal or email-based runtime fallback.
+Reason: `employee_professional_email` is required but not the canonical identity link, and using it at login/API time kept legacy repair behavior inside runtime hot paths.
+Impact: runtime staff identity now resolves from `Employee.user_id` only; migrate backfills only unambiguous active links and re-applies managed access sync during the patch.
 
 [2026-02-26] Decision:
 We decided to keep `HR Manager` and `HR User` organization-subtree scoped, but include employees with empty `organization`.
@@ -250,7 +250,7 @@ Impact: staff users opening `Active Employee` now land on full scoped list behav
 [2026-03-11] Decision:
 We decided designation-driven role additions must show an operator-facing dialog during Employee save.
 Reason: HR needs immediate feedback when the system adds managed roles to the linked user in the background.
-Impact: designation change and first-time user-link flows now surface the exact newly added managed roles without notifying unrelated non-UI sync paths such as login self-heal.
+Impact: designation change and first-time user-link flows now surface the exact newly added managed roles without notifying unrelated non-UI remediation paths such as migrate backfills.
 
 [2026-03-20] Decision:
 We decided Employee save must rerun managed user-access sync when effective access changes from `Employee History`, not only when the primary designation changes.

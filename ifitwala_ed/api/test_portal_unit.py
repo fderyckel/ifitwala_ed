@@ -100,7 +100,9 @@ def _portal_module():
     ) as frappe:
         frappe.as_json = lambda value: value
         frappe.cache = lambda: SimpleNamespace(
-            get_value=lambda key: None, set_value=lambda key, value, expires_in_sec=None: None
+            get_value=lambda key: None,
+            set_value=lambda key, value, expires_in_sec=None: None,
+            delete_value=lambda key: None,
         )
         yield import_fresh("ifitwala_ed.api.portal"), frappe, image_helper_state
 
@@ -192,3 +194,25 @@ class TestPortalUnit(TestCase):
         )
         self.assertEqual(len(cache_writes), 1)
         self.assertIn("student_portal:identity:v4:student@example.com", cache_writes[0]["key"])
+
+    def test_invalidate_student_portal_identity_cache_deletes_scoped_student_user_key(self):
+        deleted_keys = []
+
+        with _portal_module() as (portal, frappe, _image_helper_state):
+            frappe.db.get_value = lambda doctype, name_or_filters, fieldname=None, **kwargs: (
+                "student@example.com"
+                if doctype == "Student" and name_or_filters == "STU-0001" and fieldname == "student_email"
+                else None
+            )
+            frappe.cache = lambda: SimpleNamespace(
+                get_value=lambda key: None,
+                set_value=lambda key, value, expires_in_sec=None: None,
+                delete_value=lambda key: deleted_keys.append(key),
+            )
+
+            portal.invalidate_student_portal_identity_cache(student="STU-0001")
+
+        self.assertEqual(
+            deleted_keys,
+            ["student_portal:identity:v4:student@example.com"],
+        )

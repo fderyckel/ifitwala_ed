@@ -236,6 +236,7 @@ APPLICANT_GUARDIAN_REQUIRED_FIELD_LABELS = (
     ("guardian_mobile_phone", "Guardian Mobile Phone"),
     ("guardian_image", "Guardian Photo"),
 )
+_CURRENT_PROFILE_IMAGE_STATUSES = ("active", "processing", "blocked")
 
 
 def _has_health_declaration_column() -> bool:
@@ -672,18 +673,42 @@ def _build_profile_payload(applicant) -> dict:
     completeness = _profile_completeness(profile)
     guardians_enabled = _guardians_feature_enabled()
     applicant_name = _as_text(applicant.get("name")).strip()
+    applicant_drive_file, applicant_file_row = _resolve_applicant_profile_image_authority(
+        applicant_name=applicant_name,
+        applicant_image=applicant.get("applicant_image"),
+    )
+    guardian_image_authority = _collect_guardian_image_authority_map(applicant) if guardians_enabled else {}
+    drive_file_ids = [
+        str((applicant_drive_file or {}).get("name") or "").strip(),
+        *[
+            str((drive_file or {}).get("name") or "").strip()
+            for drive_file, _file_row in guardian_image_authority.values()
+        ],
+    ]
+    thumbnail_ready_map = get_drive_file_thumbnail_ready_map(drive_file_ids)
+    applicant_image_urls = _build_admissions_profile_image_urls(
+        applicant_name=applicant_name,
+        original_image=applicant.get("applicant_image"),
+        drive_file=applicant_drive_file,
+        file_row=applicant_file_row,
+        thumbnail_ready=thumbnail_ready_map.get(str((applicant_drive_file or {}).get("name") or "").strip()),
+    )
     return {
         "profile": profile,
         "completeness": completeness,
         "application_context": _application_context_payload(applicant),
         "options": _profile_reference_options(),
-        "applicant_image": _applicant_image_open_url(
-            applicant_name=applicant_name,
-            applicant_image=applicant.get("applicant_image"),
-        ),
+        "applicant_image": applicant_image_urls["image_url"],
+        "applicant_image_open_url": applicant_image_urls["open_url"],
         "record_modified": _as_text(applicant.get("modified")).strip(),
         "guardian_section_enabled": guardians_enabled,
-        "guardians": _serialize_applicant_guardians(applicant) if guardians_enabled else [],
+        "guardians": _serialize_applicant_guardians(
+            applicant,
+            authority_map=guardian_image_authority,
+            thumbnail_ready_map=thumbnail_ready_map,
+        )
+        if guardians_enabled
+        else [],
     }
 
 
@@ -769,21 +794,36 @@ def _guardians_feature_enabled() -> bool:
     return bool(cint(setting or 0))
 
 
-def _serialize_applicant_guardians(applicant) -> list[dict]:
+def _serialize_applicant_guardians(
+    applicant,
+    *,
+    authority_map: dict[str, tuple[dict, dict | None]] | None = None,
+    thumbnail_ready_map: dict[str, bool] | None = None,
+) -> list[dict]:
+    authority_map = authority_map or {}
+    thumbnail_ready_map = thumbnail_ready_map or {}
     rows: list[dict] = []
     for row in applicant.get("guardians") or []:
         payload: dict = {}
+        guardian_row_name = _as_text(row.get("name")).strip()
         for fieldname in APPLICANT_GUARDIAN_FIELDS:
             if fieldname in APPLICANT_GUARDIAN_CHECK_FIELDS:
                 payload[fieldname] = _as_check(row.get(fieldname))
             elif fieldname == "guardian_image":
-                payload[fieldname] = _guardian_image_open_url(
+                drive_file, file_row = authority_map.get(guardian_row_name, ({}, None))
+                image_urls = _build_admissions_profile_image_urls(
                     applicant_name=applicant.name,
-                    guardian_row_name=_as_text(row.get("name")).strip(),
-                    guardian_image=_as_text(row.get(fieldname)).strip(),
+                    guardian_row_name=guardian_row_name,
+                    original_image=_as_text(row.get(fieldname)).strip(),
+                    drive_file=drive_file,
+                    file_row=file_row,
+                    thumbnail_ready=thumbnail_ready_map.get(str((drive_file or {}).get("name") or "").strip()),
                 )
+                payload[fieldname] = image_urls["image_url"]
+                payload["guardian_image_open_url"] = image_urls["open_url"]
             else:
                 payload[fieldname] = _as_text(row.get(fieldname)).strip()
+        payload.setdefault("guardian_image_open_url", "")
         rows.append(payload)
     return rows
 
@@ -800,7 +840,7 @@ def _resolve_applicant_profile_image_drive_file(*, applicant_name: str) -> dict 
         attached_doctype="Student Applicant",
         attached_name=applicant_name,
         fields=["name", "file", "canonical_ref"],
-        statuses=("active", "processing", "blocked"),
+        statuses=_CURRENT_PROFILE_IMAGE_STATUSES,
     )
 
 
@@ -815,7 +855,7 @@ def _resolve_guardian_image_drive_file(*, applicant_name: str, guardian_row_name
         attached_doctype="Student Applicant Guardian",
         attached_name=resolved_guardian_row_name,
         fields=["name", "file", "canonical_ref"],
-        statuses=("active", "processing", "blocked"),
+        statuses=_CURRENT_PROFILE_IMAGE_STATUSES,
     )
 
 
@@ -870,6 +910,119 @@ def _resolve_guardian_image_file(
             return row
 
     return None
+
+
+def _resolve_profile_image_drive_file_from_file_row(file_row: dict | None) -> dict | None:
+    file_name = _as_text((file_row or {}).get("name")).strip()
+    if not file_name:
+        return None
+    return get_drive_file_for_file(
+        file_name,
+        fields=["name", "file", "canonical_ref"],
+        statuses=_CURRENT_PROFILE_IMAGE_STATUSES,
+    )
+
+
+def _resolve_applicant_profile_image_authority(
+    *,
+    applicant_name: str,
+    applicant_image: str | None,
+) -> tuple[dict, dict | None]:
+    drive_file = _resolve_applicant_profile_image_drive_file(applicant_name=applicant_name) or {}
+    file_row = _resolve_applicant_profile_image_file(
+        applicant_name=applicant_name,
+        applicant_image=applicant_image,
+    )
+    if not drive_file.get("name"):
+        drive_file = _resolve_profile_image_drive_file_from_file_row(file_row) or drive_file
+    return drive_file, file_row
+
+
+def _resolve_guardian_image_authority(
+    *,
+    applicant_name: str,
+    guardian_row_name: str | None,
+    guardian_image: str | None,
+) -> tuple[dict, dict | None]:
+    drive_file = (
+        _resolve_guardian_image_drive_file(
+            applicant_name=applicant_name,
+            guardian_row_name=guardian_row_name,
+        )
+        or {}
+    )
+    file_row = _resolve_guardian_image_file(
+        applicant_name=applicant_name,
+        guardian_row_name=guardian_row_name,
+        guardian_image=guardian_image,
+    )
+    if not drive_file.get("name"):
+        drive_file = _resolve_profile_image_drive_file_from_file_row(file_row) or drive_file
+    return drive_file, file_row
+
+
+def _collect_guardian_image_authority_map(applicant) -> dict[str, tuple[dict, dict | None]]:
+    authority_map: dict[str, tuple[dict, dict | None]] = {}
+    applicant_name = _as_text(applicant.get("name")).strip()
+    for row in applicant.get("guardians") or []:
+        guardian_row_name = _as_text(row.get("name")).strip()
+        if not guardian_row_name:
+            continue
+        authority_map[guardian_row_name] = _resolve_guardian_image_authority(
+            applicant_name=applicant_name,
+            guardian_row_name=guardian_row_name,
+            guardian_image=row.get("guardian_image"),
+        )
+    return authority_map
+
+
+def _build_admissions_profile_image_urls(
+    *,
+    applicant_name: str,
+    original_image: str | None,
+    drive_file: dict | None,
+    file_row: dict | None,
+    guardian_row_name: str | None = None,
+    thumbnail_ready: bool | None = None,
+) -> dict[str, str]:
+    del guardian_row_name
+    resolved_drive_file = drive_file or {}
+    resolved_file_row = file_row or {}
+    file_name = _as_text(resolved_file_row.get("name") or resolved_drive_file.get("file")).strip() or None
+    drive_file_id = _as_text(resolved_drive_file.get("name")).strip() or None
+    canonical_ref = _as_text(resolved_drive_file.get("canonical_ref")).strip() or None
+    fallback_file_url = (
+        None if (file_name or drive_file_id or canonical_ref) else _as_text(original_image).strip() or None
+    )
+
+    open_url = (
+        resolve_admissions_file_open_url(
+            file_name=file_name,
+            file_url=fallback_file_url,
+            drive_file_id=drive_file_id,
+            canonical_ref=canonical_ref,
+            context_doctype="Student Applicant",
+            context_name=applicant_name,
+        )
+        or ""
+    )
+
+    image_url = ""
+    if drive_file_id or canonical_ref:
+        image_url = (
+            resolve_admissions_file_thumbnail_url(
+                file_name=file_name,
+                file_url=None,
+                drive_file_id=drive_file_id,
+                canonical_ref=canonical_ref,
+                context_doctype="Student Applicant",
+                context_name=applicant_name,
+                thumbnail_ready=thumbnail_ready,
+            )
+            or ""
+        )
+
+    return {"image_url": image_url, "open_url": open_url}
 
 
 def _file_is_scoped_to_applicant(*, file_row: dict, applicant_name: str) -> bool:
@@ -938,27 +1091,16 @@ def _resolve_applicant_profile_image_file(*, applicant_name: str, applicant_imag
 
 
 def _applicant_image_open_url(*, applicant_name: str, applicant_image: str | None) -> str:
-    image_value = _as_text(applicant_image).strip()
-    if not image_value:
-        return ""
-
-    drive_file = _resolve_applicant_profile_image_drive_file(applicant_name=applicant_name) or {}
-    file_row = _resolve_applicant_profile_image_file(
+    drive_file, file_row = _resolve_applicant_profile_image_authority(
         applicant_name=applicant_name,
-        applicant_image=image_value,
+        applicant_image=applicant_image,
     )
-    fallback_file_url = None if (drive_file.get("name") or drive_file.get("canonical_ref") or file_row) else image_value
-    return (
-        resolve_admissions_file_open_url(
-            file_name=(file_row or {}).get("name") or drive_file.get("file"),
-            file_url=fallback_file_url,
-            drive_file_id=drive_file.get("name"),
-            canonical_ref=drive_file.get("canonical_ref"),
-            context_doctype="Student Applicant",
-            context_name=applicant_name,
-        )
-        or ""
-    )
+    return _build_admissions_profile_image_urls(
+        applicant_name=applicant_name,
+        original_image=applicant_image,
+        drive_file=drive_file,
+        file_row=file_row,
+    )["open_url"]
 
 
 def _guardian_image_open_url(
@@ -967,47 +1109,17 @@ def _guardian_image_open_url(
     guardian_row_name: str | None = None,
     guardian_image: str | None,
 ) -> str:
-    image_value = _as_text(guardian_image).strip()
-    if not image_value:
-        return ""
-
-    drive_file = (
-        _resolve_guardian_image_drive_file(
-            applicant_name=applicant_name,
-            guardian_row_name=guardian_row_name,
-        )
-        or {}
-    )
-    file_row = _resolve_guardian_image_file(
+    drive_file, file_row = _resolve_guardian_image_authority(
         applicant_name=applicant_name,
         guardian_row_name=guardian_row_name,
-        guardian_image=image_value,
+        guardian_image=guardian_image,
     )
-    if not file_row:
-        fallback_file_url = None if drive_file.get("name") or drive_file.get("canonical_ref") else image_value
-        return (
-            resolve_admissions_file_open_url(
-                file_name=drive_file.get("file"),
-                file_url=fallback_file_url,
-                drive_file_id=drive_file.get("name"),
-                canonical_ref=drive_file.get("canonical_ref"),
-                context_doctype="Student Applicant",
-                context_name=applicant_name,
-            )
-            or ""
-        )
-
-    return (
-        resolve_admissions_file_open_url(
-            file_name=file_row.get("name"),
-            file_url=None if drive_file.get("name") or drive_file.get("canonical_ref") else file_row.get("file_url"),
-            drive_file_id=drive_file.get("name"),
-            canonical_ref=drive_file.get("canonical_ref"),
-            context_doctype="Student Applicant",
-            context_name=applicant_name,
-        )
-        or ""
-    )
+    return _build_admissions_profile_image_urls(
+        applicant_name=applicant_name,
+        original_image=guardian_image,
+        drive_file=drive_file,
+        file_row=file_row,
+    )["open_url"]
 
 
 def _parse_guardians_payload(guardians) -> list[dict] | None:
@@ -2089,18 +2201,25 @@ def upload_applicant_profile_image(
         content=normalized_content,
         upload_source="SPA",
     )
+    drive_file_id = _as_text(upload_result.get("drive_file_id")).strip()
+    thumbnail_ready_map = get_drive_file_thumbnail_ready_map([drive_file_id]) if drive_file_id else {}
+    image_urls = _build_admissions_profile_image_urls(
+        applicant_name=applicant.name,
+        original_image=None,
+        drive_file={
+            "name": drive_file_id,
+            "file": upload_result.get("file"),
+            "canonical_ref": upload_result.get("canonical_ref"),
+        },
+        file_row=None,
+        thumbnail_ready=thumbnail_ready_map.get(drive_file_id),
+    )
 
     return {
         "ok": True,
         "file": upload_result.get("file"),
-        "image_url": resolve_admissions_file_open_url(
-            file_name=upload_result.get("file"),
-            file_url=None,
-            drive_file_id=upload_result.get("drive_file_id"),
-            canonical_ref=upload_result.get("canonical_ref"),
-            context_doctype="Student Applicant",
-            context_name=applicant.name,
-        ),
+        "image_url": image_urls["image_url"],
+        "open_url": image_urls["open_url"],
         "file_name": normalized_file_name,
         "file_size": len(normalized_content),
         "drive_file_id": upload_result.get("drive_file_id"),
@@ -2155,18 +2274,25 @@ def upload_applicant_guardian_image(
         content=normalized_content,
         upload_source="SPA",
     )
+    drive_file_id = _as_text(upload_result.get("drive_file_id")).strip()
+    thumbnail_ready_map = get_drive_file_thumbnail_ready_map([drive_file_id]) if drive_file_id else {}
+    image_urls = _build_admissions_profile_image_urls(
+        applicant_name=applicant.name,
+        original_image=None,
+        drive_file={
+            "name": drive_file_id,
+            "file": upload_result.get("file"),
+            "canonical_ref": upload_result.get("canonical_ref"),
+        },
+        file_row=None,
+        thumbnail_ready=thumbnail_ready_map.get(drive_file_id),
+    )
 
     return {
         "ok": True,
         "file": upload_result.get("file"),
-        "image_url": resolve_admissions_file_open_url(
-            file_name=upload_result.get("file"),
-            file_url=None,
-            drive_file_id=upload_result.get("drive_file_id"),
-            canonical_ref=upload_result.get("canonical_ref"),
-            context_doctype="Student Applicant",
-            context_name=applicant.name,
-        ),
+        "image_url": image_urls["image_url"],
+        "open_url": image_urls["open_url"],
         "file_name": normalized_file_name,
         "file_size": len(normalized_content),
         "drive_file_id": upload_result.get("drive_file_id"),

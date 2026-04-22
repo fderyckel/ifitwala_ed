@@ -2,24 +2,22 @@
 <template>
 	<div data-testid="guardian-home-page" class="portal-page">
 		<header class="card-surface p-5 sm:p-6">
-			<div class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-				<div>
-					<p class="type-overline text-ink/60">Guardian Portal</p>
-					<h1 class="type-h1 text-ink">Family Snapshot</h1>
-					<p class="type-body text-ink/70">
-						Today and the next {{ meta.school_days }} school days for your family.
-					</p>
-				</div>
-				<div class="flex items-center gap-2">
-					<button
-						type="button"
-						class="if-button if-button--quiet self-start"
-						:disabled="loading"
-						@click="loadSnapshot"
-					>
-						Refresh
-					</button>
-				</div>
+			<div class="flex items-start justify-between gap-3">
+				<p class="type-overline text-ink/60">Guardian Portal</p>
+				<button
+					type="button"
+					class="if-button if-button--quiet shrink-0"
+					:disabled="loading"
+					@click="loadSnapshot"
+				>
+					Refresh
+				</button>
+			</div>
+			<div class="mt-3 text-left">
+				<h1 class="type-h1 text-ink">Family Snapshot</h1>
+				<p class="type-body text-ink/70">
+					Today and the next {{ meta.school_days }} school days for your family.
+				</p>
 			</div>
 		</header>
 
@@ -39,10 +37,19 @@
 				<p class="type-caption">Upcoming due tasks</p>
 				<p class="type-h3 text-ink">{{ counts.upcoming_due_tasks }}</p>
 			</article>
-			<article class="card-surface p-3">
+			<component
+				:is="hasUpcomingAssessments ? 'button' : 'article'"
+				data-testid="guardian-home-upcoming-assessments-card"
+				v-bind="hasUpcomingAssessments ? { type: 'button' } : {}"
+				class="card-surface block p-3 text-left"
+				:class="
+					hasUpcomingAssessments ? 'transition hover:border-jacaranda/30 hover:bg-jacaranda/5' : ''
+				"
+				@click="hasUpcomingAssessments ? openUpcomingAssessments() : undefined"
+			>
 				<p class="type-caption">Upcoming assessments</p>
 				<p class="type-h3 text-ink">{{ counts.upcoming_assessments }}</p>
-			</article>
+			</component>
 		</section>
 
 		<section v-if="consentSummary.pending_count" class="card-surface p-5">
@@ -233,7 +240,11 @@
 				</div>
 			</section>
 
-			<section class="card-surface p-5">
+			<section
+				ref="familyTimelineSection"
+				data-testid="guardian-home-family-timeline"
+				class="card-surface p-5"
+			>
 				<div class="mb-4 flex items-center justify-between">
 					<h2 class="type-h3 text-ink">Family Timeline</h2>
 				</div>
@@ -244,6 +255,7 @@
 					<article
 						v-for="day in familyTimeline"
 						:key="day.date"
+						:data-upcoming-assessment-day="hasAssessmentDay(day) ? 'true' : null"
 						class="rounded-xl border border-line-soft bg-surface-soft p-4"
 					>
 						<div class="mb-3 flex items-center justify-between">
@@ -391,7 +403,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue';
+import { computed, nextTick, onMounted, ref } from 'vue';
 import { RouterLink } from 'vue-router';
 import { FeatherIcon } from 'frappe-ui';
 
@@ -405,6 +417,7 @@ const loading = ref<boolean>(true);
 const errorMessage = ref<string>('');
 const snapshot = ref<GuardianHomeSnapshot | null>(null);
 const overlay = useOverlayStack();
+const familyTimelineSection = ref<HTMLElement | null>(null);
 
 const meta = computed(
 	() =>
@@ -444,6 +457,7 @@ const attentionItems = computed(() => snapshot.value?.zones.attention_needed ?? 
 const prepItems = computed(() => snapshot.value?.zones.preparation_and_support ?? []);
 const recentActivity = computed(() => snapshot.value?.zones.recent_activity ?? []);
 const learningHighlights = computed(() => snapshot.value?.zones.learning_highlights ?? []);
+const hasUpcomingAssessments = computed(() => counts.value.upcoming_assessments > 0);
 
 function openGuardianCalendar() {
 	overlay.open('guardian-calendar', {});
@@ -551,6 +565,23 @@ function childInitials(student: string): string {
 
 function chipTitles(chips: DueTaskChip[]): string {
 	return chips.map(chip => chip.title).join(', ');
+}
+
+function hasAssessmentDay(day: GuardianHomeSnapshot['zones']['family_timeline'][number]): boolean {
+	return day.children.some(child => child.assessments_upcoming.length > 0);
+}
+
+async function openUpcomingAssessments() {
+	if (!hasUpcomingAssessments.value) return;
+
+	await nextTick();
+
+	const firstAssessmentDay = familyTimelineSection.value?.querySelector<HTMLElement>(
+		'[data-upcoming-assessment-day="true"]'
+	);
+	const target = firstAssessmentDay || familyTimelineSection.value;
+	if (!target || typeof target.scrollIntoView !== 'function') return;
+	target.scrollIntoView({ block: 'start', behavior: 'smooth' });
 }
 
 async function loadSnapshot() {

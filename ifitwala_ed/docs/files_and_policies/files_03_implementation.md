@@ -152,6 +152,7 @@ Corrected behavior:
   - `profile_image_thumb` -> `thumb`
   - `profile_image_card` -> `card`
   - `profile_image_medium` -> `viewer_preview`
+- `thumb` is the compact avatar derivative (`160px` max width); compact identity/avatar surfaces should request `thumb` only and should not silently substitute `card` or `viewer_preview`
 
 Why the old model was wrong:
 
@@ -165,7 +166,7 @@ Implemented fix:
 - Ed synchronous derivative generation is removed
 - profile-image derivative scheduling now goes through the Drive preview pipeline
 - when Ed roster/avatar surfaces detect missing current-version profile-image derivatives, they request Drive regeneration through the explicit media wrapper seam rather than importing Drive derivative services directly
-- the legacy profile-image recovery path is patch-driven, not a permanent runtime fallback; the repair patches walk Employee, Student, and Guardian rows, rebuild missing governed profile images through the public Drive upload seam, and materialize `thumb`, `card`, and `viewer_preview` for current governed profile images during migrate so avatar surfaces stop falling back to originals after legacy repair
+- the legacy profile-image recovery path is patch-driven, not a permanent runtime fallback; the repair patches walk Employee, Student, Guardian, and admissions applicant/guardian profile-image rows, rebuild or resync missing governed profile images through the public Drive upload seam, and materialize refreshed `thumb`, `card`, and `viewer_preview` derivatives for current governed profile images during migrate so avatar surfaces stop falling back to originals after legacy repair
 - Ed profile-image and public-website media reads now depend on public Drive API wrappers only; they do not import Drive integration services directly and they do not fall back to generic Drive owner-doc grant APIs for those Ed-owned surfaces
 - small roster/avatar surfaces such as gradebook, attendance, and student-log lookup now consume governed profile-image derivatives only and do not fall back to original-file URLs when no derivative is ready
 - guardian portal-chrome avatars and student portal identity now consume governed profile-image derivatives only and never fall back to the original file on those compact identity surfaces
@@ -344,6 +345,7 @@ Required outcomes:
 - completed in code
 - Ed owns one versioned `GovernedUploadSpec` registry in `ifitwala_ed/integrations/drive/workflow_specs.py`
 - Drive persists `workflow_id` and `contract_version` with the session upload contract
+- Drive persists the spec-owned `is_private` value with the session upload contract; UI callers and wrapper services are not a second privacy authority
 - finalize and post-finalize dispatch resolve by persisted workflow metadata rather than branch cascades
 - wrapper services now create sessions through `workflow_id` plus workflow-specific identifiers internally, while preserving the current public wrapper endpoints
 

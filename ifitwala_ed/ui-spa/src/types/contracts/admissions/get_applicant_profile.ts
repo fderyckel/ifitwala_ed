@@ -16,6 +16,7 @@ export type Response = {
   completeness: ApplicantProfileCompleteness
   application_context: ApplicantApplicationContext
   applicant_image?: string
+  applicant_image_open_url?: string
   record_modified?: string
   guardian_section_enabled?: boolean
   guardians?: ApplicantGuardianProfile[]

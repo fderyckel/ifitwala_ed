@@ -33,8 +33,11 @@ from ifitwala_ed.utilities.image_utils import (
     get_preferred_guardian_avatar_url,
     get_preferred_student_avatar_url,
 )
+from ifitwala_ed.utilities.portal_identity_cache import (
+    CACHE_TTL_SECONDS,
+    student_portal_identity_cache_key,
+)
 
-CACHE_TTL_SECONDS = 3600
 HR_ROLES = frozenset({"HR User", "HR Manager"})
 ROLE_INSTRUCTOR = "Instructor"
 ROLE_ACADEMIC_STAFF = "Academic Staff"
@@ -327,7 +330,7 @@ def get_student_portal_identity():
         frappe.throw(_("You must be logged in."), frappe.PermissionError)
 
     cache = frappe.cache()
-    cache_key = f"student_portal:identity:v4:{user}"
+    cache_key = student_portal_identity_cache_key(user)
     cached = cache.get_value(cache_key)
     if cached:
         try:

@@ -96,30 +96,6 @@ def resolve_section_from_path(path: str | None) -> str | None:
     return None
 
 
-def _active_employee_status_from_login_email(*, user: str) -> tuple[bool, str]:
-    login_email = (frappe.db.get_value("User", user, "email") or user or "").strip()
-    if not login_email:
-        return False, ""
-
-    matches = frappe.get_all(
-        "Employee",
-        filters={
-            "employment_status": "Active",
-            "employee_professional_email": login_email,
-        },
-        fields=["name", "user_id"],
-        limit=2,
-    )
-    if len(matches) != 1:
-        return False, ""
-
-    current_user_id = str(matches[0].get("user_id") or "").strip()
-    if current_user_id and current_user_id != user:
-        return False, ""
-
-    return True, "active"
-
-
 def _linked_employee_status(*, user: str) -> tuple[bool, str]:
     if frappe.db.exists("Employee", {"user_id": user, "employment_status": "Active"}):
         return True, "active"
@@ -129,15 +105,8 @@ def _linked_employee_status(*, user: str) -> tuple[bool, str]:
         status = str(row.get("employment_status") or "").strip().lower()
         if status == "active":
             return True, "active"
-
-        has_unlinked_active, unlinked_active_status = _active_employee_status_from_login_email(user=user)
-        if has_unlinked_active:
-            return True, unlinked_active_status
         return True, status
 
-    has_unlinked_active, unlinked_active_status = _active_employee_status_from_login_email(user=user)
-    if has_unlinked_active:
-        return True, unlinked_active_status
     return False, ""
 
 

@@ -14,6 +14,29 @@ frappe.provide("ifitwala_ed.hr");
 const DEFAULT_EMPLOYEE_AVATAR_DATA_URL = `data:image/svg+xml;utf8,${encodeURIComponent(
   '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" fill="none"><rect width="96" height="96" rx="48" fill="#E5E7EB"/><circle cx="48" cy="35" r="16" fill="#9CA3AF"/><path d="M20 78c6-16 18-24 28-24s22 8 28 24" fill="#9CA3AF"/></svg>',
 )}`;
+const EMPLOYEE_IMAGE_VARIANT_RETRY_DELAYS_MS = [800, 1600, 3200];
+
+function clearEmployeeImageVariantRetry(frm) {
+  if (frm.__employeeImageVariantRetryTimer) {
+    clearTimeout(frm.__employeeImageVariantRetryTimer);
+    frm.__employeeImageVariantRetryTimer = null;
+  }
+  frm.__employeeImageVariantRetryAttempt = 0;
+}
+
+function scheduleEmployeeImageVariantRetry(frm) {
+  const attempt = Number(frm.__employeeImageVariantRetryAttempt || 0);
+  if (attempt >= EMPLOYEE_IMAGE_VARIANT_RETRY_DELAYS_MS.length) return;
+  if (frm.__employeeImageVariantRetryTimer) return;
+
+  const delay = EMPLOYEE_IMAGE_VARIANT_RETRY_DELAYS_MS[attempt];
+  frm.__employeeImageVariantRetryAttempt = attempt + 1;
+  frm.__employeeImageVariantRetryTimer = setTimeout(() => {
+    frm.__employeeImageVariantRetryTimer = null;
+    if (frm.is_new()) return;
+    frm.trigger("apply_employee_image_variant");
+  }, delay);
+}
 
 frappe.ui.form.on("Employee", {
   setup(frm) {
@@ -202,18 +225,24 @@ frappe.ui.form.on("Employee", {
   },
 
   apply_employee_image_variant(frm) {
-    if (frm.is_new()) return;
+    if (frm.is_new()) {
+      clearEmployeeImageVariantRetry(frm);
+      return;
+    }
 
     const originalUrl = (frm.doc.employee_image || "").trim();
-    if (!originalUrl) return;
+    if (!originalUrl) {
+      clearEmployeeImageVariantRetry(frm);
+      return;
+    }
 
-    const $wrapper = frm.page?.wrapper;
+      const $wrapper = frm.page?.wrapper;
     if (!$wrapper) return;
 
     const filename = originalUrl.split("/").pop() || "";
     if (!filename) return;
 
-    const applyWithCandidates = (candidates) => {
+      const applyWithCandidates = (candidates) => {
       if (!candidates.length) return;
 
       const applyCandidate = (imgEl, index) => {
@@ -271,9 +300,16 @@ frappe.ui.form.on("Employee", {
         variants.profile_image_card,
         variants.profile_image_medium,
       ].filter(Boolean))];
-      applyWithCandidates(candidates.length ? candidates : [DEFAULT_EMPLOYEE_AVATAR_DATA_URL]);
+      if (candidates.length) {
+        clearEmployeeImageVariantRetry(frm);
+        applyWithCandidates(candidates);
+        return;
+      }
+      applyWithCandidates([DEFAULT_EMPLOYEE_AVATAR_DATA_URL]);
+      scheduleEmployeeImageVariantRetry(frm);
     }).catch(() => {
       applyWithCandidates([DEFAULT_EMPLOYEE_AVATAR_DATA_URL]);
+      scheduleEmployeeImageVariantRetry(frm);
     });
   },
 

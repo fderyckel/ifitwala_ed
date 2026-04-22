@@ -60,6 +60,7 @@ vi.mock('@/composables/useOverlayStack', () => ({
 import GuardianHome from '@/pages/guardian/GuardianHome.vue'
 
 const cleanupFns: Array<() => void> = []
+const originalScrollIntoView = HTMLElement.prototype.scrollIntoView
 
 async function flushUi() {
 	await Promise.resolve()
@@ -90,6 +91,17 @@ function mountGuardianHome() {
 afterEach(() => {
 	getGuardianHomeSnapshotMock.mockReset()
 	overlayOpenMock.mockReset()
+	if (originalScrollIntoView) {
+		Object.defineProperty(HTMLElement.prototype, 'scrollIntoView', {
+			configurable: true,
+			value: originalScrollIntoView,
+		})
+	} else {
+		Object.defineProperty(HTMLElement.prototype, 'scrollIntoView', {
+			configurable: true,
+			value: undefined,
+		})
+	}
 	while (cleanupFns.length) {
 		cleanupFns.pop()?.()
 	}
@@ -167,7 +179,15 @@ describe('GuardianHome', () => {
 										status: 'assigned',
 									},
 								],
-								assessments_upcoming: [],
+								assessments_upcoming: [
+									{
+										task_delivery: 'TD-2',
+										title: 'Science quiz',
+										due_date: '2026-03-13',
+										kind: 'assessment',
+										status: 'assigned',
+									},
+								],
 							},
 						],
 					},
@@ -244,6 +264,7 @@ describe('GuardianHome', () => {
 		expect(text).toContain('Amina Example')
 		expect(text).toContain('Math')
 		expect(text).toContain('Due: Essay draft')
+		expect(text).toContain('Assessments: Science quiz')
 		expect(text).toContain('Attention Needed')
 		expect(text).toContain('Needs follow-up')
 		expect(text).toContain('Preparation & Support')
@@ -304,5 +325,84 @@ describe('GuardianHome', () => {
 		calendarButton?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
 
 		expect(overlayOpenMock).toHaveBeenCalledWith('guardian-calendar', {})
+	})
+
+	it('jumps to the first family timeline day with upcoming assessments from the summary card', async () => {
+		const scrollIntoViewMock = vi.fn()
+		Object.defineProperty(HTMLElement.prototype, 'scrollIntoView', {
+			configurable: true,
+			value: scrollIntoViewMock,
+		})
+
+		getGuardianHomeSnapshotMock.mockResolvedValue({
+			meta: {
+				generated_at: '2026-03-13T09:00:00',
+				anchor_date: '2026-03-13',
+				school_days: 7,
+				guardian: { name: 'GRD-0001' },
+			},
+			family: {
+				children: [{ student: 'STU-1', full_name: 'Amina Example', school: 'School One' }],
+			},
+			consents: { pending_count: 0, overdue_count: 0, items: [] },
+			policies: { pending_count: 0, items: [] },
+			zones: {
+				family_timeline: [
+					{
+						date: '2026-03-13',
+						label: 'Fri 13 Mar',
+						is_school_day: true,
+						children: [
+							{
+								student: 'STU-1',
+								day_summary: { start_time: '08:00', end_time: '14:00' },
+								blocks: [],
+								tasks_due: [],
+								assessments_upcoming: [
+									{
+										task_delivery: 'TD-2',
+										title: 'Science quiz',
+										due_date: '2026-03-13',
+										kind: 'assessment',
+										status: 'assigned',
+									},
+								],
+							},
+						],
+					},
+				],
+				attention_needed: [],
+				preparation_and_support: [
+					{
+						student: 'STU-1',
+						date: '2026-03-13',
+						label: 'Prepare for: Science quiz',
+						source: 'task',
+						related: { task_delivery: 'TD-2' },
+					},
+				],
+				recent_activity: [],
+				learning_highlights: [],
+			},
+			counts: {
+				unread_communications: 0,
+				unread_visible_student_logs: 0,
+				upcoming_due_tasks: 0,
+				upcoming_assessments: 1,
+			},
+		})
+
+		mountGuardianHome()
+		await flushUi()
+
+		const assessmentCard = document.querySelector(
+			'[data-testid="guardian-home-upcoming-assessments-card"]'
+		) as HTMLButtonElement | null
+		expect(assessmentCard).toBeTruthy()
+
+		assessmentCard?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+		await flushUi()
+
+		expect(scrollIntoViewMock).toHaveBeenCalledWith({ block: 'start', behavior: 'smooth' })
 	})
 })

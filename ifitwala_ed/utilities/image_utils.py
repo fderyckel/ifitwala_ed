@@ -46,16 +46,16 @@ PROFILE_IMAGE_VARIANT_ROLE_MAP = {
 _PREVIEW_SYNC_REQUEST_TTL_SECONDS = 300
 
 EMPLOYEE_VARIANT_SLOTS = PROFILE_IMAGE_VARIANT_SLOTS
-EMPLOYEE_AVATAR_VARIANT_SLOTS = PROFILE_IMAGE_DERIVATIVE_SLOTS
+EMPLOYEE_AVATAR_VARIANT_SLOTS = PROFILE_IMAGE_THUMB_ONLY_SLOTS
 PUBLIC_EMPLOYEE_VARIANT_SLOTS = PROFILE_IMAGE_DERIVATIVE_SLOTS
 PUBLIC_EMPLOYEE_CURRENT_FILE_STATUSES = ("active", "processing")
 
 EMPLOYEE_VARIANT_PRIORITY = EMPLOYEE_VARIANT_SLOTS
 STUDENT_VARIANT_SLOTS = PROFILE_IMAGE_VARIANT_SLOTS
-STUDENT_AVATAR_VARIANT_SLOTS = PROFILE_IMAGE_DERIVATIVE_SLOTS
+STUDENT_AVATAR_VARIANT_SLOTS = PROFILE_IMAGE_THUMB_ONLY_SLOTS
 STUDENT_VARIANT_PRIORITY = STUDENT_VARIANT_SLOTS
 GUARDIAN_VARIANT_SLOTS = PROFILE_IMAGE_VARIANT_SLOTS
-GUARDIAN_AVATAR_VARIANT_SLOTS = PROFILE_IMAGE_DERIVATIVE_SLOTS
+GUARDIAN_AVATAR_VARIANT_SLOTS = PROFILE_IMAGE_THUMB_ONLY_SLOTS
 GUARDIAN_VARIANT_PRIORITY = GUARDIAN_VARIANT_SLOTS
 
 
@@ -671,10 +671,7 @@ def _build_governed_image_variants(
         "original": original_fallback,
         "medium": variants.get("profile_image_medium") or original_fallback,
         "card": variants.get("profile_image_card") or variants.get("profile_image_medium") or original_fallback,
-        "thumb": variants.get("profile_image_thumb")
-        or variants.get("profile_image_card")
-        or variants.get("profile_image_medium")
-        or original_fallback,
+        "thumb": variants.get("profile_image_thumb") or original_fallback,
     }
 
 
@@ -931,7 +928,7 @@ def get_preferred_guardian_avatar_url(
         "Guardian",
         guardian_name,
         original_url=original_url,
-        slots=PROFILE_IMAGE_THUMB_ONLY_SLOTS,
+        slots=GUARDIAN_AVATAR_VARIANT_SLOTS,
         fallback_to_original=False,
         request_missing_derivatives=True,
     )

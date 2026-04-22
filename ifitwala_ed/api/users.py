@@ -283,49 +283,6 @@ def _set_login_redirect_state(*, path: str, login_manager=None) -> None:
     frappe.local.response["redirect_to"] = path
 
 
-def _self_heal_employee_user_link(*, user: str, roles: set[str]) -> None:
-    """
-    Backfill missing Employee.user_id links during login when there is exactly one
-    Active Employee row matching the login email.
-    """
-    _ = roles
-    if frappe.db.exists("Employee", {"user_id": user, "employment_status": "Active"}):
-        return
-
-    login_email = (frappe.db.get_value("User", user, "email") or user or "").strip()
-    if not login_email:
-        return
-
-    matches = frappe.get_all(
-        "Employee",
-        filters={
-            "employment_status": "Active",
-            "employee_professional_email": login_email,
-        },
-        fields=["name", "user_id"],
-        limit=2,
-    )
-    if len(matches) != 1:
-        return
-
-    current_user_id = str(matches[0].get("user_id") or "").strip()
-    if current_user_id and current_user_id != user:
-        return
-
-    employee_name = matches[0]["name"]
-    frappe.db.set_value("Employee", employee_name, "user_id", user, update_modified=False)
-
-    try:
-        from ifitwala_ed.hr.employee_access import sync_user_access_from_employee
-
-        sync_user_access_from_employee(frappe.get_doc("Employee", employee_name))
-    except Exception:
-        frappe.log_error(
-            frappe.get_traceback(),
-            f"Employee link self-heal sync failed for user {user} and employee {employee_name}",
-        )
-
-
 def _has_active_employee_profile(*, user: str, roles: set) -> bool:
     """Return True when user has an active Employee record."""
     return has_active_employee_profile(user=user, roles=roles)
@@ -372,8 +329,6 @@ def redirect_user_to_entry_portal(login_manager=None, *, hook_source: str = "log
         return
 
     roles = set(frappe.get_roles(user))
-    _self_heal_employee_user_link(user=user, roles=roles)
-    roles = set(frappe.get_roles(user))
     path = _resolve_login_redirect_path(user=user, roles=roles)
 
     if _is_login_flow_request():
@@ -415,8 +370,6 @@ def get_website_user_home_page(user=None) -> str:
     if not user or user == "Guest":
         return "index"
 
-    roles = set(frappe.get_roles(user))
-    _self_heal_employee_user_link(user=user, roles=roles)
     roles = set(frappe.get_roles(user))
     return _resolve_login_redirect_path(user=user, roles=roles)
 

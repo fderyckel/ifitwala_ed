@@ -438,6 +438,72 @@ class TestImageUtilsUnit(TestCase):
         resolve_original.assert_not_called()
         self.assertIsNone(image_url)
 
+    def test_get_preferred_student_avatar_url_requeues_missing_thumb_only(self):
+        with _image_utils_module() as (image_utils, frappe):
+            request_calls = []
+
+            class _FakeCache:
+                def get_value(self, key):
+                    return None
+
+                def set_value(self, key, value, expires_in_sec=None):
+                    return None
+
+            image_utils.get_current_drive_files_for_slots = lambda **kwargs: [
+                {
+                    "name": "DRIVE-STU-1",
+                    "primary_subject_id": "STU-0001",
+                    "slot": "profile_image",
+                    "file": "FILE-STU-1",
+                    "current_version": "DFV-STU-1",
+                }
+            ]
+
+            def fake_get_all(doctype, filters=None, fields=None, limit=None, order_by=None):
+                del filters, fields, limit, order_by
+                if doctype == "File":
+                    return [
+                        {
+                            "name": "FILE-STU-1",
+                            "file_url": "/private/files/student-source.png",
+                            "is_private": 1,
+                        }
+                    ]
+                if doctype == "Drive File Derivative":
+                    return []
+                raise AssertionError(f"Unexpected get_all doctype: {doctype}")
+
+            frappe.get_all = fake_get_all
+            frappe.cache = lambda: _FakeCache()
+
+            with (
+                patch.object(
+                    image_utils,
+                    "request_profile_image_preview_derivatives",
+                    side_effect=lambda *args, **kwargs: request_calls.append((args, kwargs)),
+                ),
+                patch.object(image_utils, "_resolve_original_governed_image_url") as resolve_original,
+            ):
+                image_url = image_utils.get_preferred_student_avatar_url(
+                    "STU-0001",
+                    original_url="/private/files/student-source.png",
+                )
+
+        resolve_original.assert_not_called()
+        self.assertIsNone(image_url)
+        self.assertEqual(
+            request_calls,
+            [
+                (
+                    ("Student", "STU-0001"),
+                    {
+                        "file_id": "FILE-STU-1",
+                        "derivative_roles": ["thumb"],
+                    },
+                )
+            ],
+        )
+
     def test_get_preferred_employee_image_url_uses_ready_drive_derivative_role(self):
         with _image_utils_module() as (image_utils, frappe):
             image_utils.get_current_drive_files_for_slots = lambda **kwargs: [
@@ -610,7 +676,7 @@ class TestImageUtilsUnit(TestCase):
                     ("Employee", "EMP-0001"),
                     {
                         "file_id": "FILE-EMP-1",
-                        "derivative_roles": ["card", "thumb", "viewer_preview"],
+                        "derivative_roles": ["thumb"],
                     },
                 )
             ],

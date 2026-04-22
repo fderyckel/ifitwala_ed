@@ -683,20 +683,20 @@ class TestUserRedirect(FrappeTestCase):
         frappe.delete_doc("Employee", employee.name, force=True)
         frappe.delete_doc("User", user.email, force=True)
 
-    def test_login_self_heals_active_employee_link_and_redirects_to_staff(self):
-        """If user_id link is missing but active employee email matches, login should self-heal and route staff."""
-        email = f"test_self_heal_employee_link_{frappe.generate_hash(length=6)}@example.com"
+    def test_login_does_not_backfill_missing_employee_link_during_staff_redirect(self):
+        """Login redirects must not mutate Employee.user_id when role-only staff access resolves the portal."""
+        email = f"test_missing_employee_link_{frappe.generate_hash(length=6)}@example.com"
         user = frappe.new_doc("User")
         user.email = email
-        user.first_name = "Self"
-        user.last_name = "Heal"
+        user.first_name = "Missing"
+        user.last_name = "Link"
         user.enabled = 1
         _append_role(user, "Employee")
         user.insert(ignore_permissions=True)
 
         employee = frappe.new_doc("Employee")
-        employee.employee_first_name = "Self"
-        employee.employee_last_name = "Heal"
+        employee.employee_first_name = "Missing"
+        employee.employee_last_name = "Link"
         employee.date_of_joining = nowdate()
         employee.employee_professional_email = email
         employee.organization = _ensure_test_organization()
@@ -709,7 +709,7 @@ class TestUserRedirect(FrappeTestCase):
         redirect_user_to_entry_portal()
 
         employee.reload()
-        self.assertEqual(employee.user_id, email)
+        self.assertFalse(employee.user_id)
         self.assertEqual(frappe.local.response.get("home_page"), "/hub/staff")
         self.assertEqual(frappe.local.response.get("redirect_to"), "/hub/staff")
 
@@ -717,8 +717,8 @@ class TestUserRedirect(FrappeTestCase):
         frappe.delete_doc("Employee", employee.name, force=True)
         frappe.delete_doc("User", user.email, force=True)
 
-    def test_unlinked_active_employee_email_match_routes_to_staff(self):
-        """Active employee email match should resolve staff portal even when user_id link is missing."""
+    def test_unlinked_active_employee_email_match_no_longer_grants_staff_route(self):
+        """A matching professional email is not a runtime employee identity fallback anymore."""
         email = f"test_unlinked_active_employee_{frappe.generate_hash(length=6)}@example.com"
         user = frappe.new_doc("User")
         user.email = email
@@ -741,8 +741,8 @@ class TestUserRedirect(FrappeTestCase):
 
         redirect_user_to_entry_portal()
 
-        self.assertEqual(frappe.local.response.get("home_page"), "/hub/staff")
-        self.assertEqual(frappe.local.response.get("redirect_to"), "/hub/staff")
+        self.assertEqual(frappe.local.response.get("home_page"), "/login")
+        self.assertEqual(frappe.local.response.get("redirect_to"), "/login")
 
         frappe.set_user("Administrator")
         frappe.delete_doc("Employee", employee.name, force=True)

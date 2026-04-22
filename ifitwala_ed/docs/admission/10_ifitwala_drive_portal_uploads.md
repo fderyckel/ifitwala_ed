@@ -102,6 +102,8 @@ Current workflow path:
 Notes:
 
 * `Student Applicant.applicant_image` is updated during Drive post-finalize
+* privacy is workflow-owned and private by default for this upload surface
+* SPA-facing payloads return thumbnail-only `image_url` for compact profile display plus a separate server-owned `open_url`
 
 ### 4. Applicant guardian image upload
 
@@ -125,6 +127,8 @@ Notes:
 * guardian image slot is row-aware: `guardian_profile_image__<guardian-row-key>`
 * the upload requires a saved guardian row identity
 * the current SPA rule is: save a new guardian row first, then upload its image
+* privacy is workflow-owned and private by default for this upload surface
+* SPA-facing payloads return thumbnail-only `image_url` for compact profile display plus a separate server-owned `open_url`
 
 ---
 
@@ -228,7 +232,8 @@ Post-finalize:
 
 * update `Student Applicant.applicant_image`
 * keep the compatibility `File.file_url` on `Student Applicant.applicant_image`
-* return a server-owned admissions `image_url` plus `drive_file_id` and `canonical_ref` to the SPA
+* return a server-owned admissions thumbnail `image_url`, a separate `open_url`, plus `drive_file_id` and `canonical_ref` to the SPA
+* compact profile/avatar surfaces must treat `image_url` as derivative-only and may show a placeholder until the thumbnail derivative is ready
 
 ### Applicant guardian image contract
 
@@ -253,6 +258,13 @@ Why row-aware slotting matters:
 * slots are legal/governance truth
 * one generic `guardian_profile_image` slot is not sufficient when an applicant can have multiple guardians
 * each guardian image needs independent replacement/version lineage
+
+Post-finalize:
+
+* update `Student Applicant Guardian.guardian_image`
+* keep the compatibility `File.file_url` on `Student Applicant Guardian.guardian_image`
+* return a server-owned admissions thumbnail `image_url`, a separate `open_url`, plus `drive_file_id` and `canonical_ref` to the SPA
+* compact guardian identity surfaces must treat `image_url` as derivative-only and may show a placeholder until the thumbnail derivative is ready
 
 ### SPA usage
 
