@@ -56,6 +56,14 @@ import type {
 	Response as SaveFeedbackPublicationResponse,
 } from '@/types/contracts/gradebook/save_feedback_publication'
 import type {
+	Request as SaveFeedbackThreadReplyRequest,
+	Response as SaveFeedbackThreadReplyResponse,
+} from '@/types/contracts/gradebook/save_feedback_thread_reply'
+import type {
+	Request as SaveFeedbackThreadStateRequest,
+	Response as SaveFeedbackThreadStateResponse,
+} from '@/types/contracts/gradebook/save_feedback_thread_state'
+import type {
 	Request as SaveTaskQuizManualReviewRequest,
 	Response as SaveTaskQuizManualReviewResponse,
 } from '@/types/contracts/gradebook/save_task_quiz_manual_review'
@@ -113,6 +121,18 @@ export function createGradebookService() {
 
 	const saveFeedbackCommentBankEntryResource = createResource<SaveFeedbackCommentBankEntryResponse>({
 		url: 'ifitwala_ed.api.gradebook.save_feedback_comment_bank_entry',
+		method: 'POST',
+		auto: false,
+	})
+
+	const saveFeedbackThreadReplyResource = createResource<SaveFeedbackThreadReplyResponse>({
+		url: 'ifitwala_ed.api.gradebook.save_feedback_thread_reply',
+		method: 'POST',
+		auto: false,
+	})
+
+	const saveFeedbackThreadStateResource = createResource<SaveFeedbackThreadStateResponse>({
+		url: 'ifitwala_ed.api.gradebook.save_feedback_thread_state',
 		method: 'POST',
 		auto: false,
 	})
@@ -209,6 +229,18 @@ export function createGradebookService() {
 		return saveFeedbackCommentBankEntryResource.submit(payload)
 	}
 
+	async function saveFeedbackThreadReply(
+		payload: SaveFeedbackThreadReplyRequest,
+	): Promise<SaveFeedbackThreadReplyResponse> {
+		return saveFeedbackThreadReplyResource.submit(payload)
+	}
+
+	async function saveFeedbackThreadState(
+		payload: SaveFeedbackThreadStateRequest,
+	): Promise<SaveFeedbackThreadStateResponse> {
+		return saveFeedbackThreadStateResource.submit(payload)
+	}
+
 	async function submitContribution(
 		payload: SubmitContributionRequest,
 	): Promise<SubmitContributionResponse> {
@@ -276,6 +308,8 @@ export function createGradebookService() {
 		saveFeedbackDraft,
 		saveFeedbackCommentBankEntry,
 		saveFeedbackPublication,
+		saveFeedbackThreadReply,
+		saveFeedbackThreadState,
 		submitContribution,
 		moderatorAction,
 		getTaskGradebook,

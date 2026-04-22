@@ -159,10 +159,22 @@ def _ensure_indexes():
     unique_name = "uniq_task_feedback_workspace_outcome_submission"
     submission_index = "idx_task_feedback_workspace_submission"
     outcome_index = "idx_task_feedback_workspace_outcome_modified"
+    unique_columns = ["task_outcome", "task_submission"]
 
     rows = frappe.db.sql("SHOW INDEX FROM `{}`".format(table), as_dict=True)
-    if not _unique_index_exists(rows, ["task_outcome", "task_submission"]):
+    if not _unique_index_exists(rows, unique_columns):
+        existing = [row for row in rows if row.get("Key_name") == unique_name]
+        if existing:
+            if _index_entries_match_columns(existing, unique_columns) and _is_unique_index_entries(existing):
+                return
+            frappe.db.sql(f"ALTER TABLE `{table}` DROP INDEX `{unique_name}`")
         frappe.db.sql(f"ALTER TABLE `{table}` ADD UNIQUE INDEX `{unique_name}` (`task_outcome`, `task_submission`)")
+        rows = frappe.db.sql("SHOW INDEX FROM `{}`".format(table), as_dict=True)
+        if not _unique_index_exists(rows, unique_columns):
+            frappe.throw(
+                "Task Feedback Workspace UNIQUE(task_outcome, task_submission) index missing after migrate. "
+                "Migration/installation is broken."
+            )
 
     rows = frappe.db.sql("SHOW INDEX FROM `{}`".format(table), as_dict=True)
     if not _index_exists(rows, submission_index):
@@ -179,8 +191,9 @@ def _unique_index_exists(rows, columns):
         key_name = row.get("Key_name")
         if not key_name:
             continue
+        non_unique = row.get("Non_unique")
         try:
-            non_unique = int(row.get("Non_unique") or 1)
+            non_unique = int(non_unique)
         except Exception:
             non_unique = 1
         if non_unique != 0:
@@ -188,10 +201,24 @@ def _unique_index_exists(rows, columns):
         index_map.setdefault(key_name, []).append(row)
 
     for entries in index_map.values():
-        ordered = sorted(entries, key=lambda row: int(row.get("Seq_in_index") or 0))
-        if [row.get("Column_name") for row in ordered] == columns:
+        if _index_entries_match_columns(entries, columns):
             return True
     return False
+
+
+def _is_unique_index_entries(entries):
+    if not entries:
+        return False
+    non_unique = entries[0].get("Non_unique")
+    try:
+        return int(non_unique) == 0
+    except Exception:
+        return False
+
+
+def _index_entries_match_columns(entries, columns):
+    ordered = sorted(entries, key=lambda row: int(row.get("Seq_in_index") or 0))
+    return [row.get("Column_name") for row in ordered] == columns
 
 
 def _index_exists(rows, index_name):

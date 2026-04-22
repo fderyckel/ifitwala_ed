@@ -195,8 +195,9 @@ def _unique_index_exists(rows, columns):
         key_name = row.get("Key_name")
         if not key_name:
             continue
+        non_unique = row.get("Non_unique")
         try:
-            non_unique = int(row.get("Non_unique") or 1)
+            non_unique = int(non_unique)
         except Exception:
             non_unique = 1
         if non_unique != 0:

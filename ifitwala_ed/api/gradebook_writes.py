@@ -13,6 +13,7 @@ from ifitwala_ed.assessment import (
     task_contribution_service,
     task_feedback_comment_bank_service,
     task_feedback_service,
+    task_feedback_thread_service,
     task_outcome_service,
 )
 
@@ -73,6 +74,30 @@ def save_feedback_comment_bank_entry(api, payload=None, **kwargs):
     _assert_outcome_access(api, outcome_id)
     result = task_feedback_comment_bank_service.save_comment_bank_entry(data, actor=frappe.session.user)
     return {"comment_bank": result}
+
+
+def save_feedback_thread_reply(api, payload=None, **kwargs):
+    if not api._can_write_gradebook():
+        frappe.throw(_("Not permitted."), frappe.PermissionError)
+
+    data = api._normalize_payload(payload, kwargs)
+    outcome_id = api._get_payload_value(data, "outcome_id", "task_outcome")
+    api._require(outcome_id, "Task Outcome")
+    _assert_outcome_access(api, outcome_id)
+    result = task_feedback_thread_service.save_instructor_reply(data, actor=frappe.session.user)
+    return {"thread": result}
+
+
+def save_feedback_thread_state(api, payload=None, **kwargs):
+    if not api._can_write_gradebook():
+        frappe.throw(_("Not permitted."), frappe.PermissionError)
+
+    data = api._normalize_payload(payload, kwargs)
+    outcome_id = api._get_payload_value(data, "outcome_id", "task_outcome")
+    api._require(outcome_id, "Task Outcome")
+    _assert_outcome_access(api, outcome_id)
+    result = task_feedback_thread_service.save_instructor_thread_state(data, actor=frappe.session.user)
+    return {"thread": result}
 
 
 def submit_contribution(api, payload=None, **kwargs):

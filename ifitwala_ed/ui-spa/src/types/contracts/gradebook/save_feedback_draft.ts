@@ -1,4 +1,4 @@
-import type { FeedbackWorkspaceItem, FeedbackWorkspacePayload } from './feedback_workspace'
+import type { FeedbackPriority, FeedbackWorkspaceItem, FeedbackWorkspacePayload } from './feedback_workspace'
 
 export type Request = {
 	outcome_id: string
@@ -9,6 +9,7 @@ export type Request = {
 		improvements?: string | null
 		next_steps?: string | null
 	}
+	priorities?: FeedbackPriority[]
 	items: FeedbackWorkspaceItem[]
 }
 

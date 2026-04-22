@@ -1,6 +1,6 @@
 import type { AttachmentPreviewItem, AttachmentPreviewStatus } from '@/types/contracts/attachments/shared'
 import type { CommentBankPayload } from './comment_bank'
-import type { FeedbackWorkspacePayload } from './feedback_workspace'
+import type { FeedbackThread, FeedbackWorkspacePayload } from './feedback_workspace'
 
 export type Request = {
 	outcome_id: string
@@ -159,6 +159,7 @@ export type Response = {
 	latest_submission?: SubmissionVersionSummary | null
 	selected_submission?: SubmissionEvidence | null
 	feedback_workspace?: FeedbackWorkspacePayload | null
+	feedback_threads: FeedbackThread[]
 	comment_bank?: CommentBankPayload | null
 	submission_versions: SubmissionVersionSummary[]
 	my_contribution?: MyContributionPayload | null

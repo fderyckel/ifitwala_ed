@@ -59,6 +59,16 @@ def save_feedback_comment_bank_entry(payload=None, **kwargs):
 
 
 @frappe.whitelist()
+def save_feedback_thread_reply(payload=None, **kwargs):
+    return gradebook_writes.save_feedback_thread_reply(gradebook_support, payload=payload, **kwargs)
+
+
+@frappe.whitelist()
+def save_feedback_thread_state(payload=None, **kwargs):
+    return gradebook_writes.save_feedback_thread_state(gradebook_support, payload=payload, **kwargs)
+
+
+@frappe.whitelist()
 def submit_contribution(payload=None, **kwargs):
     return gradebook_writes.submit_contribution(gradebook_support, payload=payload, **kwargs)
 
@@ -148,6 +158,8 @@ __all__ = [
     "save_feedback_draft",
     "save_feedback_publication",
     "save_feedback_comment_bank_entry",
+    "save_feedback_thread_reply",
+    "save_feedback_thread_state",
     "submit_contribution",
     "save_contribution_draft",
     "moderator_action",
