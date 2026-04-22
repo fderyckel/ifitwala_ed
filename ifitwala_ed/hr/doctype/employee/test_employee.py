@@ -239,6 +239,14 @@ class TestEmployee(FrappeTestCase):
         with (
             patch.object(emp, "_can_manage_user_roles", return_value=True),
             patch.object(emp, "get_doc_before_save", return_value=previous),
+            patch.object(
+                emp,
+                "_access_sync_signature",
+                side_effect=[
+                    (True, ("Academic Staff",), "Academics"),
+                    (True, ("Leadership",), "Leadership"),
+                ],
+            ),
             patch("ifitwala_ed.hr.employee_access.sync_user_access_from_employee") as sync_access,
         ):
             emp._apply_designation_role()
@@ -260,17 +268,16 @@ class TestEmployee(FrappeTestCase):
             employee_history=[frappe._dict({"designation": "Teacher", "from_date": nowdate(), "to_date": None})],
         )
 
-        def compute_access(doc):
-            if len(doc.employee_history or []) == 1:
-                return {"Academic Staff"}, "Academics"
-            return {"Academic Staff", "Grade Level Lead"}, "Academics"
-
         with (
             patch.object(emp, "_can_manage_user_roles", return_value=True),
             patch.object(emp, "get_doc_before_save", return_value=previous),
-            patch(
-                "ifitwala_ed.hr.employee_access.compute_effective_access_from_employee",
-                side_effect=compute_access,
+            patch.object(
+                emp,
+                "_access_sync_signature",
+                side_effect=[
+                    (True, ("Academic Staff",), "Academics"),
+                    (True, ("Academic Staff", "Grade Level Lead"), "Academics"),
+                ],
             ),
             patch("ifitwala_ed.hr.employee_access.sync_user_access_from_employee") as sync_access,
         ):
@@ -278,19 +285,33 @@ class TestEmployee(FrappeTestCase):
 
         sync_access.assert_called_once_with(emp, notify_role_additions=True)
 
-    def test_apply_designation_role_reconciles_even_when_effective_access_is_unchanged(self):
+    def test_apply_designation_role_skips_when_effective_access_is_unchanged(self):
         emp = employee_controller.Employee.__new__(employee_controller.Employee)
         emp.user_id = "staff@example.com"
         emp.employment_status = "Active"
         emp.employee_history = [frappe._dict({"designation": "Teacher", "from_date": nowdate(), "to_date": None})]
+        previous = frappe._dict(
+            user_id="staff@example.com",
+            employment_status="Active",
+            employee_history=[frappe._dict({"designation": "Teacher", "from_date": nowdate(), "to_date": None})],
+        )
 
         with (
             patch.object(emp, "_can_manage_user_roles", return_value=True),
+            patch.object(emp, "get_doc_before_save", return_value=previous),
+            patch.object(
+                emp,
+                "_access_sync_signature",
+                side_effect=[
+                    (True, ("Academic Staff",), "Academics"),
+                    (True, ("Academic Staff",), "Academics"),
+                ],
+            ),
             patch("ifitwala_ed.hr.employee_access.sync_user_access_from_employee") as sync_access,
         ):
             emp._apply_designation_role()
 
-        sync_access.assert_called_once_with(emp, notify_role_additions=True)
+        sync_access.assert_not_called()
 
     def test_apply_designation_role_syncs_when_employment_status_changes(self):
         emp = employee_controller.Employee.__new__(employee_controller.Employee)
@@ -307,14 +328,36 @@ class TestEmployee(FrappeTestCase):
         with (
             patch.object(emp, "_can_manage_user_roles", return_value=True),
             patch.object(emp, "get_doc_before_save", return_value=previous),
-            patch(
-                "ifitwala_ed.hr.employee_access.compute_effective_access_from_employee",
-                return_value=({"Academic Staff"}, "Academics"),
+            patch.object(
+                emp,
+                "_access_sync_signature",
+                side_effect=[
+                    (True, ("Academic Staff",), "Academics"),
+                    (False, ("Academic Staff",), "Academics"),
+                ],
             ),
             patch("ifitwala_ed.hr.employee_access.sync_user_access_from_employee") as sync_access,
         ):
             emp._apply_designation_role()
 
+        sync_access.assert_called_once_with(emp, notify_role_additions=True)
+
+    def test_apply_designation_role_syncs_when_user_link_is_newly_set(self):
+        emp = employee_controller.Employee.__new__(employee_controller.Employee)
+        emp.user_id = "staff@example.com"
+        emp.employment_status = "Active"
+
+        previous = frappe._dict(user_id="", employment_status="Active")
+
+        with (
+            patch.object(emp, "_can_manage_user_roles", return_value=True),
+            patch.object(emp, "get_doc_before_save", return_value=previous),
+            patch.object(emp, "_access_sync_signature") as access_signature,
+            patch("ifitwala_ed.hr.employee_access.sync_user_access_from_employee") as sync_access,
+        ):
+            emp._apply_designation_role()
+
+        access_signature.assert_not_called()
         sync_access.assert_called_once_with(emp, notify_role_additions=True)
 
     def test_update_user_prefers_thumb_variant_for_user_avatar(self):

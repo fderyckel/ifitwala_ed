@@ -103,7 +103,7 @@ Role handling now follows managed sync:
 - routing policy and employee-scoped APIs resolve staff identity from canonical `Employee.user_id` only; `employee_professional_email` is not a runtime fallback identity key.
 - existing sites remediate missing active `Employee.user_id` links through the one-shot patch `ifitwala_ed.patches.backfill_employee_user_links`, which backfills only unambiguous matches and re-runs managed access sync during migrate.
 - if login cannot resolve any valid portal section after applying employee/admissions/student/guardian rules, the user is sent back to `/login` instead of being dropped onto `/hub/staff`.
-- `Employee._apply_designation_role()` reruns managed access sync on every Employee update for linked users so imported or drifted accounts are repaired even when the Employee document itself did not change effective access fields.
+- `Employee._apply_designation_role()` reruns managed access sync when linked-user access inputs actually change (for example: `user_id` is newly set, `employment_status` changes, or current `Employee History`/designation access changes). Imported or drifted linked users are normalized through the one-shot patch `ifitwala_ed.patches.backfill_employee_managed_access`.
 - role-management authorization includes `HR User`, `HR Manager`, `System Manager`, and `Administrator`.
 
 ## 4) Employee picture behavior (form + backend)
@@ -184,6 +184,11 @@ We decided missing active Employee-to-User links are remediated by a one-shot ba
 Reason: `employee_professional_email` is required but not the canonical identity link, and using it at login/API time kept legacy repair behavior inside runtime hot paths.
 Impact: runtime staff identity now resolves from `Employee.user_id` only; migrate backfills only unambiguous active links and re-applies managed access sync during the patch.
 
+[2026-04-22] Decision:
+We decided employee-facing staff roles must normalize `Role.home_page` to `/hub/staff`.
+Reason: staff login should converge on the staff hub even when role metadata is consulted before or instead of the login redirect hooks.
+Impact: `Academic Staff`, `Nurse`, `Academic Admin`, `Admission Officer`, and `Admission Manager` keep Desk access but now share the same staff-hub landing route; existing sites are aligned through a one-shot patch.
+
 [2026-02-26] Decision:
 We decided to keep `HR Manager` and `HR User` organization-subtree scoped, but include employees with empty `organization`.
 Reason: HR must remain org-scoped by descendant inheritance, while still being able to triage/fix employee records that are missing organization assignment.
@@ -260,4 +265,4 @@ Impact: adding or editing a current secondary designation row now updates the li
 [2026-03-24] Decision:
 We decided active linked staff users must always carry the baseline `Employee` role in addition to current designation/history-managed roles, and non-active linked users must lose all roles.
 Reason: imported or drifted staff accounts were missing the base `Employee` role, while non-active employees must not retain confidential-system access through stale roles.
-Impact: every Employee save now reconciles the linked user role set; active users regain `Employee` plus current designation/history roles, and HR sees a save-time notice when non-active status strips the linked user's roles.
+Impact: runtime Employee saves reconcile the linked user role set only when managed access inputs change; historical drifted linked users are normalized through the one-shot patch `ifitwala_ed.patches.backfill_employee_managed_access`.

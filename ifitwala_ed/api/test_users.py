@@ -56,8 +56,23 @@ def _append_role(user_doc, role: str) -> None:
     user_doc.append("roles", {"role": role})
 
 
+def _new_test_user():
+    user = frappe.new_doc("User")
+    user.send_welcome_email = 0
+    return user
+
+
 class TestUserRedirect(FrappeTestCase):
     """Test unified login redirect logic."""
+
+    def setUp(self):
+        super().setUp()
+        self._welcome_mail_patcher = patch("frappe.core.doctype.user.user.User.send_welcome_mail_to_user")
+        self._welcome_mail_patcher.start()
+
+    def tearDown(self):
+        self._welcome_mail_patcher.stop()
+        super().tearDown()
 
     def test_strip_redirect_query_removes_redirect_to_params(self):
         raw = "/login?redirect-to=%2Fdesk&foo=bar&redirect_to=%2Fdesk#frag"
@@ -95,7 +110,7 @@ class TestUserRedirect(FrappeTestCase):
                 frappe.form_dict = original_form_dict
 
     def test_non_staff_desk_request_redirects_admissions_applicant(self):
-        user = frappe.new_doc("User")
+        user = _new_test_user()
         user.email = f"test_admissions_desk_block_{frappe.generate_hash(length=6)}@example.com"
         user.first_name = "Admissions"
         user.last_name = "Applicant"
@@ -120,7 +135,7 @@ class TestUserRedirect(FrappeTestCase):
             frappe.delete_doc("User", user.email, force=True)
 
     def test_staff_role_with_admissions_role_is_not_redirected_from_desk(self):
-        user = frappe.new_doc("User")
+        user = _new_test_user()
         user.email = f"test_staff_plus_admissions_{frappe.generate_hash(length=6)}@example.com"
         user.first_name = "Mixed"
         user.last_name = "Roles"
@@ -158,7 +173,7 @@ class TestUserRedirect(FrappeTestCase):
             frappe.delete_doc("User", user.email, force=True)
 
     def test_staff_desk_request_is_not_redirected(self):
-        user = frappe.new_doc("User")
+        user = _new_test_user()
         user.email = f"test_staff_desk_allow_{frappe.generate_hash(length=6)}@example.com"
         user.first_name = "Desk"
         user.last_name = "Staff"
@@ -196,7 +211,7 @@ class TestUserRedirect(FrappeTestCase):
     def test_users_without_portal_access_redirect_to_login(self):
         """Users with no resolved portal entitlement must not be dropped onto Staff Home."""
         # Create test user
-        user = frappe.new_doc("User")
+        user = _new_test_user()
         user.email = "test_user_portal@example.com"
         user.first_name = "Test"
         user.last_name = "User"
@@ -220,7 +235,7 @@ class TestUserRedirect(FrappeTestCase):
 
     def test_admissions_applicant_redirects_to_admissions(self):
         """Admissions Applicants with a linked applicant should be redirected to /admissions."""
-        user = frappe.new_doc("User")
+        user = _new_test_user()
         user.email = "test_admissions_applicant@example.com"
         user.first_name = "Test"
         user.last_name = "Admissions Applicant"
@@ -242,7 +257,7 @@ class TestUserRedirect(FrappeTestCase):
 
     def test_staff_and_admissions_roles_redirect_to_staff(self):
         """Mixed staff+admissions roles must prefer staff routing."""
-        user = frappe.new_doc("User")
+        user = _new_test_user()
         user.email = f"test_staff_admissions_precedence_{frappe.generate_hash(length=6)}@example.com"
         user.first_name = "Staff"
         user.last_name = "Admissions"
@@ -276,7 +291,7 @@ class TestUserRedirect(FrappeTestCase):
 
     def test_login_redirect_overrides_incoming_redirect_to_param(self):
         """Role-based redirect must win over incoming redirect_to values like /desk."""
-        user = frappe.new_doc("User")
+        user = _new_test_user()
         user.email = "test_override_redirect_param@example.com"
         user.first_name = "Override"
         user.last_name = "Redirect"
@@ -311,7 +326,7 @@ class TestUserRedirect(FrappeTestCase):
 
     def test_login_redirect_sets_login_manager_home_page(self):
         """Login hook must set login_manager.home_page to canonical portal target."""
-        user = frappe.new_doc("User")
+        user = _new_test_user()
         user.email = "test_login_manager_home_page@example.com"
         user.first_name = "Home"
         user.last_name = "Page"
@@ -350,7 +365,7 @@ class TestUserRedirect(FrappeTestCase):
         frappe.delete_doc("User", user.email, force=True)
 
     def test_login_redirect_trace_does_not_write_error_log(self):
-        user = frappe.new_doc("User")
+        user = _new_test_user()
         user.email = f"test_redirect_trace_logging_{frappe.generate_hash(length=6)}@example.com"
         user.first_name = "Trace"
         user.last_name = "Logging"
@@ -400,7 +415,7 @@ class TestUserRedirect(FrappeTestCase):
     def test_guardian_redirects_to_guardian_portal(self):
         """Guardians should be redirected to /hub/guardian."""
         # Create test user with Guardian role
-        user = frappe.new_doc("User")
+        user = _new_test_user()
         user.email = "test_guardian_portal@example.com"
         user.first_name = "Test"
         user.last_name = "Guardian"
@@ -439,7 +454,7 @@ class TestUserRedirect(FrappeTestCase):
 
         previous_mode = frappe.db.get_single_value("Admission Settings", "admissions_access_mode")
 
-        user = frappe.new_doc("User")
+        user = _new_test_user()
         user.email = f"test_admissions_family_{frappe.generate_hash(length=6)}@example.com"
         user.first_name = "Family"
         user.last_name = "Admissions"
@@ -470,7 +485,7 @@ class TestUserRedirect(FrappeTestCase):
     def test_student_redirects_to_student_portal(self):
         """Students should be redirected to /hub/student."""
         # Create test user with Student role
-        user = frappe.new_doc("User")
+        user = _new_test_user()
         user.email = "test_student_portal@example.com"
         user.first_name = "Test"
         user.last_name = "Student"
@@ -511,7 +526,7 @@ class TestUserRedirect(FrappeTestCase):
     def test_staff_redirects_to_staff_portal(self):
         """Staff should be redirected to /hub/staff."""
         # Create test user with Employee role
-        user = frappe.new_doc("User")
+        user = _new_test_user()
         user.email = "test_staff_portal@example.com"
         user.first_name = "Test"
         user.last_name = "Staff"
@@ -548,7 +563,7 @@ class TestUserRedirect(FrappeTestCase):
 
     def test_employee_role_without_employee_profile_redirects_to_staff(self):
         """Employee role alone should route to /hub/staff."""
-        user = frappe.new_doc("User")
+        user = _new_test_user()
         user.email = "test_employee_role_only_portal@example.com"
         user.first_name = "Employee"
         user.last_name = "RoleOnly"
@@ -569,7 +584,7 @@ class TestUserRedirect(FrappeTestCase):
 
     def test_staff_role_without_employee_profile_redirects_to_staff(self):
         """Staff roles still route to /hub/staff even without Employee profile."""
-        user = frappe.new_doc("User")
+        user = _new_test_user()
         user.email = "test_staff_role_only_portal@example.com"
         user.first_name = "Teacher"
         user.last_name = "RoleOnly"
@@ -590,7 +605,7 @@ class TestUserRedirect(FrappeTestCase):
 
     def test_active_employee_record_redirects_to_staff_even_without_employee_role(self):
         """Active employee profile should force /hub/staff even without Employee role."""
-        user = frappe.new_doc("User")
+        user = _new_test_user()
         user.email = "test_active_employee_profile_redirect@example.com"
         user.first_name = "Active"
         user.last_name = "Employee"
@@ -622,7 +637,7 @@ class TestUserRedirect(FrappeTestCase):
 
     def test_non_active_employee_profile_redirects_to_login(self):
         """Non-active employee profiles should not retain portal entry access."""
-        user = frappe.new_doc("User")
+        user = _new_test_user()
         user.email = "test_temp_leave_employee_profile_redirect@example.com"
         user.first_name = "Temporary"
         user.last_name = "Leave"
@@ -653,7 +668,7 @@ class TestUserRedirect(FrappeTestCase):
 
     def test_non_active_employee_with_stale_staff_role_redirects_to_login(self):
         """Inactive employee status must win over stale staff-role rows."""
-        user = frappe.new_doc("User")
+        user = _new_test_user()
         user.email = "test_temp_leave_employee_with_admin_role@example.com"
         user.first_name = "Temporary"
         user.last_name = "AdminRole"
@@ -686,7 +701,7 @@ class TestUserRedirect(FrappeTestCase):
     def test_login_does_not_backfill_missing_employee_link_during_staff_redirect(self):
         """Login redirects must not mutate Employee.user_id when role-only staff access resolves the portal."""
         email = f"test_missing_employee_link_{frappe.generate_hash(length=6)}@example.com"
-        user = frappe.new_doc("User")
+        user = _new_test_user()
         user.email = email
         user.first_name = "Missing"
         user.last_name = "Link"
@@ -720,7 +735,7 @@ class TestUserRedirect(FrappeTestCase):
     def test_unlinked_active_employee_email_match_no_longer_grants_staff_route(self):
         """A matching professional email is not a runtime employee identity fallback anymore."""
         email = f"test_unlinked_active_employee_{frappe.generate_hash(length=6)}@example.com"
-        user = frappe.new_doc("User")
+        user = _new_test_user()
         user.email = email
         user.first_name = "Unlinked"
         user.last_name = "Active"
@@ -765,7 +780,7 @@ class TestUserRedirect(FrappeTestCase):
 
     def test_get_website_user_home_page_uses_canonical_policy(self):
         """Website home hook should resolve to canonical hub/staff for active staff users."""
-        user = frappe.new_doc("User")
+        user = _new_test_user()
         user.email = "test_website_home_policy@example.com"
         user.first_name = "Web"
         user.last_name = "Home"
@@ -797,7 +812,7 @@ class TestUserRedirect(FrappeTestCase):
 
     def test_logout_flow_does_not_force_redirect_exception(self):
         """Logout-triggered on_login must not raise Redirect."""
-        user = frappe.new_doc("User")
+        user = _new_test_user()
         user.email = "test_logout_no_redirect_exception@example.com"
         user.first_name = "Logout"
         user.last_name = "Safe"
@@ -861,6 +876,15 @@ class TestUserRedirect(FrappeTestCase):
 
 
 class TestUserQueries(FrappeTestCase):
+    def setUp(self):
+        super().setUp()
+        self._welcome_mail_patcher = patch("frappe.core.doctype.user.user.User.send_welcome_mail_to_user")
+        self._welcome_mail_patcher.start()
+
+    def tearDown(self):
+        self._welcome_mail_patcher.stop()
+        super().tearDown()
+
     def test_get_users_with_role_returns_only_enabled_matching_users(self):
         frappe.set_user("Administrator")
 
@@ -877,7 +901,7 @@ class TestUserQueries(FrappeTestCase):
                 }
             ).insert(ignore_permissions=True)
 
-        employee_user = frappe.new_doc("User")
+        employee_user = _new_test_user()
         employee_user.email = f"test_employee_query_match_{frappe.generate_hash(length=6)}@example.com"
         employee_user.first_name = "Interview"
         employee_user.last_name = "Match"
@@ -885,7 +909,7 @@ class TestUserQueries(FrappeTestCase):
         _append_role(employee_user, "Employee")
         employee_user.insert(ignore_permissions=True)
 
-        disabled_employee = frappe.new_doc("User")
+        disabled_employee = _new_test_user()
         disabled_employee.email = f"test_employee_query_disabled_{frappe.generate_hash(length=6)}@example.com"
         disabled_employee.first_name = "Interview"
         disabled_employee.last_name = "Disabled"
@@ -893,7 +917,7 @@ class TestUserQueries(FrappeTestCase):
         _append_role(disabled_employee, "Employee")
         disabled_employee.insert(ignore_permissions=True)
 
-        non_employee_user = frappe.new_doc("User")
+        non_employee_user = _new_test_user()
         non_employee_user.email = f"test_employee_query_other_{frappe.generate_hash(length=6)}@example.com"
         non_employee_user.first_name = "Interview"
         non_employee_user.last_name = "Teacher"

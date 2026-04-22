@@ -214,11 +214,14 @@ def _get_guardian_policy_rows(*, guardian_name: str, children: list[dict[str, An
     if not schema_check.get("ok") or not children:
         return []
 
-    policy_contexts = _resolve_policy_contexts(children)
+    child_contexts = _resolve_authorized_child_contexts(children)
+    if not child_contexts:
+        return []
+
+    policy_contexts = _resolve_policy_contexts(child_contexts)
     if not policy_contexts:
         return []
 
-    child_contexts = _resolve_authorized_child_contexts(children)
     candidate_rows: dict[str, dict[str, Any]] = {}
     applicable_children_by_version: dict[str, list[dict[str, Any]]] = {}
     scope_cache: dict[tuple[str, str], list[dict[str, Any]]] = {}
@@ -409,6 +412,28 @@ def _children_with_signer_authority(*, guardian_name: str, children: list[dict[s
 
 
 def _resolve_policy_contexts(children: list[dict[str, Any]]) -> list[dict[str, str]]:
+    if not children:
+        return []
+
+    direct_contexts: list[dict[str, str]] = []
+    seen_direct: set[tuple[str, str]] = set()
+    missing_school_context = False
+    for child in children:
+        school = (child.get("school") or "").strip()
+        organization = (child.get("organization") or "").strip()
+        if not school:
+            continue
+        if organization:
+            key = (organization, school)
+            if key in seen_direct:
+                continue
+            seen_direct.add(key)
+            direct_contexts.append({"organization": organization, "school": school})
+            continue
+        missing_school_context = True
+    if direct_contexts and not missing_school_context:
+        return direct_contexts
+
     school_names = sorted(
         {(child.get("school") or "").strip() for child in children if (child.get("school") or "").strip()}
     )

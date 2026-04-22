@@ -3,6 +3,7 @@ from __future__ import annotations
 import sys
 import types
 from unittest import TestCase
+from unittest.mock import patch
 
 from ifitwala_ed.tests.frappe_stubs import import_fresh
 
@@ -29,17 +30,21 @@ class TestMediaClient(TestCase):
             return {"status": "ok"}
 
         drive_media.request_student_image_preview_derivatives = _request_student_image_preview_derivatives
-        sys.modules["ifitwala_drive"] = drive_root
-        sys.modules["ifitwala_drive.api"] = drive_api
-        sys.modules["ifitwala_drive.api.media"] = drive_media
-
-        module = import_fresh("ifitwala_ed.integrations.drive.media_client")
-        response = module.request_profile_image_preview_derivatives(
-            "Student",
-            "STU-0001",
-            file_id="FILE-STU-1",
-            derivative_roles=["thumb", "card"],
-        )
+        with patch.dict(
+            sys.modules,
+            {
+                "ifitwala_drive": drive_root,
+                "ifitwala_drive.api": drive_api,
+                "ifitwala_drive.api.media": drive_media,
+            },
+        ):
+            module = import_fresh("ifitwala_ed.integrations.drive.media_client")
+            response = module.request_profile_image_preview_derivatives(
+                "Student",
+                "STU-0001",
+                file_id="FILE-STU-1",
+                derivative_roles=["thumb", "card"],
+            )
 
         self.assertEqual(
             recorder["payload"],
@@ -60,17 +65,21 @@ class TestMediaClient(TestCase):
         drive_services = types.ModuleType("ifitwala_drive.services")
         drive_integration = types.ModuleType("ifitwala_drive.services.integration")
         drive_media_service = types.ModuleType("ifitwala_drive.services.integration.ifitwala_ed_media")
-        sys.modules["ifitwala_drive"] = drive_root
-        sys.modules["ifitwala_drive.services"] = drive_services
-        sys.modules["ifitwala_drive.services.integration"] = drive_integration
-        sys.modules["ifitwala_drive.services.integration.ifitwala_ed_media"] = drive_media_service
-
-        module = import_fresh("ifitwala_ed.integrations.drive.media_client")
-        response = module.request_profile_image_preview_derivatives(
-            "Guardian",
-            "GRD-0001",
-            file_id="FILE-GRD-1",
-            derivative_roles=["thumb"],
-        )
+        with patch.dict(
+            sys.modules,
+            {
+                "ifitwala_drive": drive_root,
+                "ifitwala_drive.services": drive_services,
+                "ifitwala_drive.services.integration": drive_integration,
+                "ifitwala_drive.services.integration.ifitwala_ed_media": drive_media_service,
+            },
+        ):
+            module = import_fresh("ifitwala_ed.integrations.drive.media_client")
+            response = module.request_profile_image_preview_derivatives(
+                "Guardian",
+                "GRD-0001",
+                file_id="FILE-GRD-1",
+                derivative_roles=["thumb"],
+            )
 
         self.assertIsNone(response)

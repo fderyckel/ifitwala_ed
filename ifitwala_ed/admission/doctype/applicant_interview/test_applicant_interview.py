@@ -1,5 +1,6 @@
 # ifitwala_ed/admission/doctype/applicant_interview/test_applicant_interview.py
 
+from unittest.mock import patch
 from urllib.parse import parse_qs, urlparse
 
 import frappe
@@ -663,17 +664,12 @@ class TestApplicantInterview(FrappeTestCase):
         ).insert(ignore_permissions=True)
         self._created.append(("Applicant Document Item", item.name))
 
-        file_doc = frappe.get_doc(
-            {
-                "doctype": "File",
-                "attached_to_doctype": "Applicant Document Item",
-                "attached_to_name": item.name,
-                "file_name": "overall-review.txt",
-                "is_private": 1,
-                "content": b"overall-review-file",
-            }
-        ).insert(ignore_permissions=True)
-        self._created.append(("File", file_doc.name))
+        file_doc = self._create_governed_applicant_document_file(
+            item_name=item.name,
+            document_type=doc_type.name,
+            file_name="overall-review.txt",
+            content=b"overall-review-file",
+        )
 
         assignment = frappe.get_doc(
             {
@@ -697,7 +693,7 @@ class TestApplicantInterview(FrappeTestCase):
 
         uploaded_rows = payload.get("document_review", {}).get("uploaded_rows") or []
         self.assertTrue(uploaded_rows)
-        secure_url = (uploaded_rows[0].get("file_url") or "").strip()
+        secure_url = (uploaded_rows[0].get("open_url") or "").strip()
         self.assertTrue(secure_url)
 
         parsed = urlparse(secure_url)
@@ -708,11 +704,15 @@ class TestApplicantInterview(FrappeTestCase):
         self.assertEqual((query.get("context_name") or [None])[0], self.applicant.name)
 
         frappe.local.response = {}
-        download_admissions_file(
-            file=file_doc.name,
-            context_doctype="Student Applicant",
-            context_name=self.applicant.name,
-        )
+        with patch(
+            "ifitwala_ed.api.file_access._resolve_drive_download_grant_url",
+            return_value=file_doc.file_url,
+        ):
+            download_admissions_file(
+                file=file_doc.name,
+                context_doctype="Student Applicant",
+                context_name=self.applicant.name,
+            )
         self.assertEqual(frappe.local.response.get("type"), "download")
         self.assertEqual(frappe.local.response.get("filename"), file_doc.file_name)
         self.assertEqual(frappe.local.response.get("filecontent"), b"overall-review-file")
@@ -767,17 +767,12 @@ class TestApplicantInterview(FrappeTestCase):
         ).insert(ignore_permissions=True)
         self._created.append(("Applicant Document Item", item.name))
 
-        file_doc = frappe.get_doc(
-            {
-                "doctype": "File",
-                "attached_to_doctype": "Applicant Document Item",
-                "attached_to_name": item.name,
-                "file_name": "health-review.txt",
-                "is_private": 1,
-                "content": b"health-review-file",
-            }
-        ).insert(ignore_permissions=True)
-        self._created.append(("File", file_doc.name))
+        file_doc = self._create_governed_applicant_document_file(
+            item_name=item.name,
+            document_type=doc_type.name,
+            file_name="health-review.txt",
+            content=b"health-review-file",
+        )
 
         assignment = frappe.get_doc(
             {
@@ -812,7 +807,7 @@ class TestApplicantInterview(FrappeTestCase):
 
         uploaded_rows = payload.get("document_review", {}).get("uploaded_rows") or []
         self.assertTrue(uploaded_rows)
-        secure_url = (uploaded_rows[0].get("file_url") or "").strip()
+        secure_url = (uploaded_rows[0].get("open_url") or "").strip()
         self.assertTrue(secure_url)
 
         parsed = urlparse(secure_url)
@@ -823,11 +818,15 @@ class TestApplicantInterview(FrappeTestCase):
         self.assertEqual((query.get("context_name") or [None])[0], self.applicant.name)
 
         frappe.local.response = {}
-        download_admissions_file(
-            file=file_doc.name,
-            context_doctype="Student Applicant",
-            context_name=self.applicant.name,
-        )
+        with patch(
+            "ifitwala_ed.api.file_access._resolve_drive_download_grant_url",
+            return_value=file_doc.file_url,
+        ):
+            download_admissions_file(
+                file=file_doc.name,
+                context_doctype="Student Applicant",
+                context_name=self.applicant.name,
+            )
         self.assertEqual(frappe.local.response.get("type"), "download")
         self.assertEqual(frappe.local.response.get("filename"), file_doc.file_name)
         self.assertEqual(frappe.local.response.get("filecontent"), b"health-review-file")
@@ -1253,6 +1252,7 @@ class TestApplicantInterview(FrappeTestCase):
         self._created.append(("User", doc.name))
         if roles:
             doc.add_roles(*roles)
+        frappe.clear_cache(user=doc.name)
         return doc
 
     def _create_employee(self, user, *, first_name: str, last_name: str, school: str | None = None):
@@ -1315,6 +1315,108 @@ class TestApplicantInterview(FrappeTestCase):
         ).insert(ignore_permissions=True)
         self._created.append(("Student Applicant", doc.name))
         return doc
+
+    def _create_governed_applicant_document_file(
+        self,
+        *,
+        item_name: str,
+        document_type: str,
+        file_name: str,
+        content: bytes,
+    ):
+        from ifitwala_drive.services.files.creation import create_drive_file_artifacts
+
+        from ifitwala_ed.integrations.drive.admissions import get_applicant_document_context
+
+        item_row = frappe.db.get_value(
+            "Applicant Document Item",
+            item_name,
+            ["name", "applicant_document", "item_key", "item_label"],
+            as_dict=True,
+        )
+        context = get_applicant_document_context(
+            {
+                "student_applicant": self.applicant.name,
+                "document_type": document_type,
+                "applicant_document": item_row.get("applicant_document"),
+                "applicant_document_item": item_name,
+                "item_key": item_row.get("item_key"),
+                "item_label": item_row.get("item_label"),
+                "filename_original": file_name,
+            }
+        )
+        storage_artifact = {
+            "object_key": f"files/admissions/{frappe.generate_hash(length=12)}",
+            "storage_backend": "local",
+            "mime_type": "text/plain",
+            "size_bytes": len(content),
+            "content_hash": frappe.generate_hash(length=12),
+        }
+        file_doc = frappe.get_doc(
+            {
+                "doctype": "File",
+                "attached_to_doctype": "Applicant Document Item",
+                "attached_to_name": item_name,
+                "file_name": file_name,
+                "is_private": 1,
+                "content": content,
+            }
+        )
+        file_doc.flags.governed_upload = True
+        file_doc.flags.drive_compat_projection = True
+        file_doc = file_doc.insert(ignore_permissions=True)
+        self._created.append(("File", file_doc.name))
+
+        session_doc = frappe.get_doc(
+            {
+                "doctype": "Drive Upload Session",
+                "session_key": f"admissions-doc-{frappe.generate_hash(length=12)}",
+                "status": "completed",
+                "upload_source": "SPA",
+                "created_by_user": "Administrator",
+                "owner_doctype": context["owner_doctype"],
+                "owner_name": context["owner_name"],
+                "attached_doctype": context["attached_doctype"],
+                "attached_name": context["attached_name"],
+                "organization": context["organization"],
+                "school": context["school"],
+                "intended_primary_subject_type": context["primary_subject_type"],
+                "intended_primary_subject_id": context["primary_subject_id"],
+                "intended_data_class": context["data_class"],
+                "intended_purpose": context["purpose"],
+                "intended_retention_policy": context["retention_policy"],
+                "intended_slot": context["slot"],
+                "filename_original": file_name,
+                "mime_type_hint": storage_artifact["mime_type"],
+                "received_size_bytes": storage_artifact["size_bytes"],
+                "content_hash": storage_artifact["content_hash"],
+                "is_private": 1,
+                "storage_backend": storage_artifact["storage_backend"],
+                "tmp_object_key": f"tmp/admissions/{frappe.generate_hash(length=12)}",
+                "upload_token": frappe.generate_hash(length=16),
+            }
+        ).insert(ignore_permissions=True)
+        self._created.append(("Drive Upload Session", session_doc.name))
+
+        artifacts = create_drive_file_artifacts(
+            upload_session_doc=session_doc,
+            file_id=file_doc.name,
+            storage_artifact=storage_artifact,
+            binding_role="applicant_document",
+        )
+        self._created.append(("Drive File", artifacts["drive_file_id"]))
+        if artifacts.get("drive_file_version_id"):
+            self._created.append(("Drive File Version", artifacts["drive_file_version_id"]))
+        if artifacts.get("drive_binding_id"):
+            self._created.append(("Drive Binding", artifacts["drive_binding_id"]))
+        for doctype in ("Drive File Derivative", "Drive Processing Job"):
+            for name in frappe.get_all(
+                doctype,
+                filters={"drive_file": artifacts["drive_file_id"]},
+                pluck="name",
+            ):
+                self._created.append((doctype, name))
+        return file_doc
 
     def _recommendation_feature_tables_ready(self) -> bool:
         required = (

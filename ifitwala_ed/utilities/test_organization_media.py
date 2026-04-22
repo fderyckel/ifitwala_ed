@@ -350,24 +350,32 @@ class TestOrganizationMedia(FrappeTestCase):
         file_name: str | None = None,
         upload_source: str = "Desk",
     ):
+        from ifitwala_drive.services.files.creation import create_drive_file_artifacts
+
         classification = build_organization_media_classification(
             organization=organization,
             school=school,
             slot=slot,
             upload_source=upload_source,
         )
+        content = base64.b64decode(self._tiny_png_base64())
+        storage_artifact = {
+            "object_key": f"files/organization-media/{frappe.generate_hash(length=12)}",
+            "storage_backend": "local",
+            "mime_type": "image/png",
+            "size_bytes": len(content),
+            "content_hash": frappe.generate_hash(length=12),
+        }
         file_doc = frappe.get_doc(
             {
                 "doctype": "File",
                 "attached_to_doctype": "Organization",
                 "attached_to_name": organization,
                 "file_name": file_name or f"{slot}.png",
-                "content": base64.b64decode(self._tiny_png_base64()),
+                "content": content,
                 "is_private": 0,
             }
         )
-        # Mirror Drive's native File compatibility projection flags so the
-        # fixture follows the same governed insert path as production.
         file_doc.flags.governed_upload = True
         file_doc.flags.drive_compat_projection = True
         file_doc = file_doc.insert(ignore_permissions=True)
@@ -393,6 +401,9 @@ class TestOrganizationMedia(FrappeTestCase):
                 "intended_retention_policy": classification["retention_policy"],
                 "intended_slot": classification["slot"],
                 "filename_original": file_doc.file_name,
+                "mime_type_hint": storage_artifact["mime_type"],
+                "received_size_bytes": storage_artifact["size_bytes"],
+                "content_hash": storage_artifact["content_hash"],
                 "is_private": int(file_doc.is_private or 0),
                 "storage_backend": "local",
                 "tmp_object_key": f"tmp/org-media/{frappe.generate_hash(length=12)}",
@@ -400,37 +411,24 @@ class TestOrganizationMedia(FrappeTestCase):
             }
         ).insert(ignore_permissions=True)
         self._created.append(("Drive Upload Session", session_doc.name))
-
-        drive_doc = frappe.get_doc(
-            {
-                "doctype": "Drive File",
-                "file": file_doc.name,
-                "source_upload_session": session_doc.name,
-                "status": "active",
-                "preview_status": "ready",
-                "canonical_ref": f"drv:{organization}:{frappe.generate_hash(length=12)}",
-                "display_name": file_doc.file_name,
-                "attached_doctype": "Organization",
-                "attached_name": organization,
-                "owner_doctype": "Organization",
-                "owner_name": organization,
-                "organization": organization,
-                "school": school,
-                "primary_subject_type": classification["primary_subject_type"],
-                "primary_subject_id": classification["primary_subject_id"],
-                "data_class": classification["data_class"],
-                "purpose": classification["purpose"],
-                "retention_policy": classification["retention_policy"],
-                "slot": classification["slot"],
-                "current_version_no": 1,
-                "storage_backend": "local",
-                "storage_object_key": f"files/organization-media/{file_doc.name}",
-                "upload_source": upload_source,
-                "content_hash": frappe.generate_hash(length=12),
-                "is_private": int(file_doc.is_private or 0),
-            }
-        ).insert(ignore_permissions=True)
-        self._created.append(("Drive File", drive_doc.name))
+        artifacts = create_drive_file_artifacts(
+            upload_session_doc=session_doc,
+            file_id=file_doc.name,
+            storage_artifact=storage_artifact,
+            binding_role="organization_media",
+        )
+        self._created.append(("Drive File", artifacts["drive_file_id"]))
+        if artifacts.get("drive_file_version_id"):
+            self._created.append(("Drive File Version", artifacts["drive_file_version_id"]))
+        if artifacts.get("drive_binding_id"):
+            self._created.append(("Drive Binding", artifacts["drive_binding_id"]))
+        for doctype in ("Drive File Derivative", "Drive Processing Job"):
+            for name in frappe.get_all(
+                doctype,
+                filters={"drive_file": artifacts["drive_file_id"]},
+                pluck="name",
+            ):
+                self._created.append((doctype, name))
         return file_doc
 
     @contextmanager

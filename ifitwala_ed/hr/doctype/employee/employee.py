@@ -915,14 +915,31 @@ class Employee(NestedSet):
         is_active = cstr(getattr(source, "employment_status", "")).strip().lower() == "active"
         return is_active, tuple(sorted(roles)), cstr(workspace).strip()
 
+    def _needs_managed_access_sync(self) -> bool:
+        if not self.user_id:
+            return False
+
+        prev = self.get_doc_before_save()
+        if not prev:
+            return True
+
+        prev_user_id = cstr(prev.get("user_id") if hasattr(prev, "get") else getattr(prev, "user_id", None)).strip()
+        current_user_id = cstr(self.user_id).strip()
+        if prev_user_id != current_user_id:
+            return True
+
+        return self._access_sync_signature(prev) != self._access_sync_signature()
+
     def _apply_designation_role(self):
         if not self.user_id:
             return
         if not self._can_manage_user_roles():
             return
+        if not self._needs_managed_access_sync():
+            return
 
-        # Keep designation-driven roles aligned with the managed sync model,
-        # including baseline Employee role repair and non-active role stripping.
+        # Keep designation-driven roles aligned with the managed sync model when
+        # Employee access inputs actually changed.
         from ifitwala_ed.hr.employee_access import sync_user_access_from_employee
 
         sync_user_access_from_employee(self, notify_role_additions=True)
