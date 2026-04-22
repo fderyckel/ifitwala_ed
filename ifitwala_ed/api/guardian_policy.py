@@ -18,7 +18,12 @@ from ifitwala_ed.governance.policy_scope_utils import (
     get_school_ancestors_including_self,
     select_nearest_policy_rows_by_key,
 )
-from ifitwala_ed.governance.policy_utils import ensure_policy_applies_to_storage, policy_applies_to_filter_sql
+from ifitwala_ed.governance.policy_utils import (
+    GUARDIAN_ACK_MODE_CHILD,
+    ensure_policy_applies_to_storage,
+    normalize_guardian_acknowledgement_mode,
+    policy_applies_to_filter_sql,
+)
 from ifitwala_ed.utilities.html_sanitizer import sanitize_html
 
 
@@ -82,7 +87,7 @@ def get_guardian_policy_home_summary(*, guardian_name: str, children: list[dict[
                 "policy_version": row.get("policy_version") or "",
                 "policy_title": row.get("policy_title") or "",
                 "version_label": row.get("version_label") or "",
-                "description": row.get("description") or "",
+                "description": _guardian_home_policy_description(row),
                 "status_label": _("Pending acknowledgement"),
                 "href": {
                     "name": "guardian-policies",
@@ -94,9 +99,20 @@ def get_guardian_policy_home_summary(*, guardian_name: str, children: list[dict[
     }
 
 
+def _guardian_home_policy_description(row: dict[str, Any]) -> str:
+    description = (row.get("description") or "").strip()
+    scope_label = (row.get("scope_label") or "").strip()
+    if not scope_label or scope_label == _("Family acknowledgement"):
+        return description
+    if not description:
+        return scope_label
+    return _("{scope}: {description}").format(scope=scope_label, description=description)
+
+
 @frappe.whitelist()
 def acknowledge_guardian_policy(
     policy_version: str,
+    context_name: str | None = None,
     typed_signature_name: str | None = None,
     attestation_confirmed: int | str | bool | None = None,
     checked_clause_names=None,
@@ -108,18 +124,30 @@ def acknowledge_guardian_policy(
     user = frappe.session.user
     guardian_name, children = _resolve_guardian_scope(user)
     candidate_rows = _get_guardian_policy_rows(guardian_name=guardian_name, children=children)
-    candidate_versions = {(row.get("policy_version") or "").strip() for row in candidate_rows}
-    if version not in candidate_versions:
+    requested_context_name = (context_name or "").strip()
+    selected_rows = [row for row in candidate_rows if (row.get("policy_version") or "").strip() == version]
+    if requested_context_name:
+        selected_rows = [
+            row for row in selected_rows if (row.get("ack_context_name") or "").strip() == requested_context_name
+        ]
+    if not selected_rows:
         frappe.throw(_("You do not have permission to acknowledge this policy."), frappe.PermissionError)
+    if len(selected_rows) > 1:
+        frappe.throw(
+            _("Choose the exact child acknowledgement row before signing this policy."),
+            frappe.ValidationError,
+        )
+    selected_row = selected_rows[0]
+    ack_context_doctype = (selected_row.get("ack_context_doctype") or "Guardian").strip()
+    ack_context_name = (selected_row.get("ack_context_name") or guardian_name).strip()
 
     existing_name = frappe.db.get_value(
         "Policy Acknowledgement",
         {
             "policy_version": version,
-            "acknowledged_by": user,
             "acknowledged_for": "Guardian",
-            "context_doctype": "Guardian",
-            "context_name": guardian_name,
+            "context_doctype": ack_context_doctype,
+            "context_name": ack_context_name,
             "docstatus": 1,
         },
         "name",
@@ -161,8 +189,8 @@ def acknowledge_guardian_policy(
             "policy_version": version,
             "acknowledged_by": user,
             "acknowledged_for": "Guardian",
-            "context_doctype": "Guardian",
-            "context_name": guardian_name,
+            "context_doctype": ack_context_doctype,
+            "context_name": ack_context_name,
         }
     )
     populate_policy_acknowledgement_evidence(
@@ -186,22 +214,42 @@ def _get_guardian_policy_rows(*, guardian_name: str, children: list[dict[str, An
     if not schema_check.get("ok") or not children:
         return []
 
+    child_contexts = _resolve_authorized_child_contexts(children)
+    if not child_contexts:
+        return []
+
     candidate_rows: dict[str, dict[str, Any]] = {}
-    for context in _resolve_policy_contexts(children):
-        for row in _query_policy_candidates_for_context(
-            organization=context["organization"],
-            school=context["school"],
-        ):
+    applicable_children_by_version: dict[str, list[dict[str, Any]]] = {}
+    scope_cache: dict[tuple[str, str], list[dict[str, Any]]] = {}
+    seen_children_by_version: dict[str, set[str]] = {}
+    for child_context in child_contexts:
+        scope_key = (child_context["organization"], child_context["school"])
+        policy_rows = scope_cache.get(scope_key)
+        if policy_rows is None:
+            policy_rows = _query_policy_candidates_for_context(
+                organization=child_context["organization"],
+                school=child_context["school"],
+            )
+            scope_cache[scope_key] = policy_rows
+        for row in policy_rows:
             version = (row.get("policy_version") or "").strip()
-            if version and version not in candidate_rows:
+            if not version:
+                continue
+            if version not in candidate_rows:
                 candidate_rows[version] = row
+            seen_students = seen_children_by_version.setdefault(version, set())
+            student_name = child_context["student"]
+            if student_name in seen_students:
+                continue
+            seen_students.add(student_name)
+            applicable_children_by_version.setdefault(version, []).append(child_context)
 
     rows = list(candidate_rows.values())
     if not rows:
         return []
 
     versions = [row["policy_version"] for row in rows if row.get("policy_version")]
-    ack_rows = frappe.get_all(
+    family_ack_rows = frappe.get_all(
         "Policy Acknowledgement",
         filters={
             "policy_version": ["in", versions],
@@ -213,18 +261,70 @@ def _get_guardian_policy_rows(*, guardian_name: str, children: list[dict[str, An
         fields=["name", "policy_version", "acknowledged_by", "acknowledged_at"],
         order_by="acknowledged_at desc",
     )
-    ack_map = {}
-    for row in ack_rows:
+    family_ack_map = {}
+    for row in family_ack_rows:
         version = (row.get("policy_version") or "").strip()
-        if version and version not in ack_map:
-            ack_map[version] = row
+        if version and version not in family_ack_map:
+            family_ack_map[version] = row
+
+    child_ack_rows = frappe.get_all(
+        "Policy Acknowledgement",
+        filters={
+            "policy_version": ["in", versions],
+            "acknowledged_for": "Guardian",
+            "context_doctype": "Student",
+            "context_name": ["in", tuple([child["student"] for child in child_contexts])],
+            "docstatus": 1,
+        },
+        fields=["name", "policy_version", "context_name", "acknowledged_by", "acknowledged_at"],
+        order_by="acknowledged_at desc",
+    )
+    child_ack_map: dict[tuple[str, str], dict[str, Any]] = {}
+    for row in child_ack_rows:
+        version = (row.get("policy_version") or "").strip()
+        student_name = (row.get("context_name") or "").strip()
+        key = (version, student_name)
+        if version and student_name and key not in child_ack_map:
+            child_ack_map[key] = row
 
     clauses_by_version = get_policy_version_acknowledgement_clauses_map(versions)
     expected_signature_name = _expected_guardian_signature_name(guardian_name)
     out: list[dict[str, Any]] = []
     for row in rows:
         version = (row.get("policy_version") or "").strip()
-        acknowledgement = ack_map.get(version, {})
+        guardian_mode = normalize_guardian_acknowledgement_mode(row.get("guardian_acknowledgement_mode"))
+        if guardian_mode == GUARDIAN_ACK_MODE_CHILD:
+            for child_context in applicable_children_by_version.get(version, []):
+                acknowledgement = child_ack_map.get((version, child_context["student"]), {})
+                out.append(
+                    {
+                        "policy_name": row.get("policy_name"),
+                        "policy_key": row.get("policy_key"),
+                        "policy_title": row.get("policy_title"),
+                        "policy_category": row.get("policy_category"),
+                        "policy_version": version,
+                        "version_label": row.get("version_label"),
+                        "organization": row.get("policy_organization"),
+                        "school": row.get("policy_school"),
+                        "description": row.get("description") or "",
+                        "policy_text": sanitize_html(row.get("policy_text") or "", allow_headings_from="h2"),
+                        "effective_from": str(row.get("effective_from") or ""),
+                        "effective_to": str(row.get("effective_to") or ""),
+                        "approved_on": str(row.get("approved_on") or ""),
+                        "expected_signature_name": expected_signature_name,
+                        "acknowledgement_clauses": clauses_by_version.get(version, []),
+                        "guardian_acknowledgement_mode": guardian_mode,
+                        "scope_label": child_context["student_label"],
+                        "ack_context_doctype": "Student",
+                        "ack_context_name": child_context["student"],
+                        "is_acknowledged": bool(acknowledgement),
+                        "acknowledged_at": str(acknowledgement.get("acknowledged_at") or ""),
+                        "acknowledged_by": acknowledgement.get("acknowledged_by") or "",
+                    }
+                )
+            continue
+
+        acknowledgement = family_ack_map.get(version, {})
         out.append(
             {
                 "policy_name": row.get("policy_name"),
@@ -242,6 +342,8 @@ def _get_guardian_policy_rows(*, guardian_name: str, children: list[dict[str, An
                 "approved_on": str(row.get("approved_on") or ""),
                 "expected_signature_name": expected_signature_name,
                 "acknowledgement_clauses": clauses_by_version.get(version, []),
+                "guardian_acknowledgement_mode": guardian_mode,
+                "scope_label": _("Family acknowledgement"),
                 "ack_context_doctype": "Guardian",
                 "ack_context_name": guardian_name,
                 "is_acknowledged": bool(acknowledgement),
@@ -255,6 +357,7 @@ def _get_guardian_policy_rows(*, guardian_name: str, children: list[dict[str, An
             0 if not row.get("is_acknowledged") else 1,
             row.get("policy_category") or "",
             row.get("policy_title") or "",
+            row.get("scope_label") or "",
         )
     )
     return out
@@ -323,6 +426,45 @@ def _resolve_policy_contexts(children: list[dict[str, Any]]) -> list[dict[str, s
     return contexts
 
 
+def _resolve_authorized_child_contexts(children: list[dict[str, Any]]) -> list[dict[str, str]]:
+    school_names = sorted(
+        {(child.get("school") or "").strip() for child in children if (child.get("school") or "").strip()}
+    )
+    if not school_names:
+        return []
+
+    school_rows = frappe.get_all(
+        "School",
+        filters={"name": ["in", school_names]},
+        fields=["name", "organization"],
+    )
+    school_map = {row.get("name"): row for row in school_rows if row.get("name")}
+
+    contexts: list[dict[str, str]] = []
+    seen_students: set[str] = set()
+    for child in children:
+        student_name = (child.get("student") or "").strip()
+        school = (child.get("school") or "").strip()
+        organization = (school_map.get(school, {}).get("organization") or "").strip()
+        if not student_name or not school or not organization or student_name in seen_students:
+            continue
+        seen_students.add(student_name)
+        contexts.append(
+            {
+                "student": student_name,
+                "student_label": (
+                    child.get("full_name")
+                    or child.get("student_name")
+                    or child.get("student_full_name")
+                    or student_name
+                ).strip(),
+                "organization": organization,
+                "school": school,
+            }
+        )
+    return contexts
+
+
 def _query_policy_candidates_for_context(*, organization: str, school: str) -> list[dict[str, Any]]:
     ancestor_orgs = get_organization_ancestors_including_self(organization)
     if not ancestor_orgs:
@@ -350,6 +492,7 @@ def _query_policy_candidates_for_context(*, organization: str, school: str) -> l
                ip.school AS policy_school,
                pv.name AS policy_version,
                pv.version_label AS version_label,
+               pv.guardian_acknowledgement_mode AS guardian_acknowledgement_mode,
                pv.policy_text AS policy_text,
                pv.effective_from AS effective_from,
                pv.effective_to AS effective_to,

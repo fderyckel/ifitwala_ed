@@ -11,6 +11,8 @@ export type PolicyAcknowledgementClause = {
 	idx: number
 }
 
+export type GuardianAcknowledgementMode = 'Family Acknowledgement' | 'Child Acknowledgement'
+
 export type Response = {
 	meta: {
 		generated_at: string
@@ -43,7 +45,9 @@ export type GuardianPolicyRow = {
 	approved_on: string
 	expected_signature_name: string
 	acknowledgement_clauses: PolicyAcknowledgementClause[]
-	ack_context_doctype: 'Guardian'
+	guardian_acknowledgement_mode: GuardianAcknowledgementMode
+	scope_label: string
+	ack_context_doctype: 'Guardian' | 'Student'
 	ack_context_name: string
 	is_acknowledged: boolean
 	acknowledged_at: string

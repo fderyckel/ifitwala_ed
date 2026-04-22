@@ -219,6 +219,7 @@ Current runtime boundary:
 - staff gradebook publication controls already persist channel-aware `feedback_visibility` and `grade_visibility`
 - the student task workspace and assessed quiz review now consume a release-aware read model on explicit detail surfaces
 - lighter student and guardian summary surfaces still retain legacy `Task Outcome.is_published` compatibility behavior until the full navigator/handoff rollout lands
+- student summary chips on home/LMS assigned-work surfaces must stay operational only (`Completed`, `Submitted`, `Resubmitted`, `Late`, `Overdue`, `Due Today`, `Upcoming`, `Not Yet Open`, `Open`) and must not surface raw grading workflow states such as `Finalized` or `Released`
 
 Reporting boundary:
 

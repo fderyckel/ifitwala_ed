@@ -621,7 +621,6 @@ class TestEmployee(FrappeTestCase):
             patch.object(emp, "reset_employee_emails_cache"),
             patch.object(emp, "sync_employee_history"),
             patch.object(emp, "_sync_staff_calendar"),
-            patch.object(emp, "_ensure_primary_contact"),
             patch.object(emp, "_apply_designation_role"),
             patch.object(emp, "_apply_approver_roles"),
             patch.object(emp, "_can_sync_user_profile", return_value=False),
@@ -635,12 +634,33 @@ class TestEmployee(FrappeTestCase):
         update_org.assert_called_once()
         update_school.assert_called_once()
 
-    def test_ensure_primary_contact_adds_employee_link_and_updates_primary_contact(self):
+    def test_on_update_does_not_mutate_primary_contact_graph(self):
         emp = employee_controller.Employee.__new__(employee_controller.Employee)
         emp.user_id = "staff@example.com"
+
+        with (
+            patch.object(emp, "_reports_to_changed", return_value=False),
+            patch.object(emp, "reset_employee_emails_cache"),
+            patch.object(emp, "sync_employee_history"),
+            patch.object(emp, "_sync_staff_calendar"),
+            patch.object(emp, "_apply_designation_role"),
+            patch.object(emp, "_apply_approver_roles"),
+            patch.object(emp, "_can_sync_user_profile", return_value=False),
+            patch.object(emp, "_get_or_create_primary_contact") as get_or_create_primary_contact,
+            patch.object(emp, "_ensure_contact_employee_link") as ensure_contact_employee_link,
+            patch.object(emp, "db_set") as db_set,
+            patch.object(emp, "update_user_default_organization"),
+            patch.object(emp, "update_user_default_school"),
+        ):
+            emp.on_update()
+
+        get_or_create_primary_contact.assert_not_called()
+        ensure_contact_employee_link.assert_not_called()
+        db_set.assert_not_called()
+
+    def test_ensure_contact_employee_link_adds_employee_link(self):
+        emp = employee_controller.Employee.__new__(employee_controller.Employee)
         emp.name = "EMP-0001"
-        emp.empl_primary_contact = None
-        emp.db_set = Mock()
 
         contact_doc = Mock()
         contact_doc.append = Mock()
@@ -655,21 +675,16 @@ class TestEmployee(FrappeTestCase):
 
         with (
             patch(
-                "ifitwala_ed.hr.doctype.employee.employee.frappe.db.get_value",
-                return_value="CONTACT-0001",
-            ),
-            patch(
                 "ifitwala_ed.hr.doctype.employee.employee.frappe.db.exists",
                 side_effect=db_exists,
             ),
             patch("ifitwala_ed.hr.doctype.employee.employee.frappe.get_doc", return_value=contact_doc) as get_doc,
         ):
-            emp._ensure_primary_contact()
+            emp._ensure_contact_employee_link("CONTACT-0001")
 
         get_doc.assert_called_once_with("Contact", "CONTACT-0001")
         contact_doc.append.assert_called_once_with("links", {"link_doctype": "Employee", "link_name": "EMP-0001"})
         contact_doc.save.assert_called_once_with(ignore_permissions=True)
-        emp.db_set.assert_called_once_with("empl_primary_contact", "CONTACT-0001", update_modified=False)
 
     def test_resolve_primary_contact_name_prefers_contact_user(self):
         emp = employee_controller.Employee.__new__(employee_controller.Employee)
@@ -685,36 +700,28 @@ class TestEmployee(FrappeTestCase):
         self.assertEqual(contact_name, "CONTACT-0007")
         get_value.assert_called_once_with("Contact", {"user": "staff@example.com"}, "name")
 
-    def test_ensure_primary_contact_repairs_link_from_existing_primary_contact(self):
+    def test_resolve_primary_contact_name_falls_back_to_existing_primary_contact(self):
         emp = employee_controller.Employee.__new__(employee_controller.Employee)
         emp.user_id = "staff@example.com"
-        emp.name = "EMP-0001"
         emp.empl_primary_contact = "CONTACT-0009"
-        emp.db_set = Mock()
-
-        contact_doc = Mock()
-        contact_doc.append = Mock()
-        contact_doc.save = Mock()
 
         def db_exists(doctype, filters=None):
             if doctype == "Contact":
                 return filters == "CONTACT-0009"
-            if doctype == "Dynamic Link":
-                return False
             return False
 
         with (
-            patch("ifitwala_ed.hr.doctype.employee.employee.frappe.db.get_value", return_value=None),
+            patch(
+                "ifitwala_ed.hr.doctype.employee.employee.frappe.db.get_value",
+                side_effect=[None, None],
+            ),
             patch("ifitwala_ed.hr.doctype.employee.employee.frappe.db.exists", side_effect=db_exists),
-            patch("ifitwala_ed.hr.doctype.employee.employee.frappe.get_doc", return_value=contact_doc),
         ):
-            emp._ensure_primary_contact()
+            contact_name = emp._resolve_primary_contact_name()
 
-        contact_doc.append.assert_called_once_with("links", {"link_doctype": "Employee", "link_name": "EMP-0001"})
-        contact_doc.save.assert_called_once_with(ignore_permissions=True)
-        emp.db_set.assert_not_called()
+        self.assertEqual(contact_name, "CONTACT-0009")
 
-    def test_ensure_primary_contact_creates_contact_when_missing(self):
+    def test_get_or_create_primary_contact_creates_contact_when_missing(self):
         emp = employee_controller.Employee.__new__(employee_controller.Employee)
         emp.user_id = "staff@example.com"
         emp.name = "EMP-0001"
@@ -724,14 +731,11 @@ class TestEmployee(FrappeTestCase):
         emp.employee_gender = "Female"
         emp.employee_professional_email = "staff@example.com"
         emp.employee_mobile_phone = "+660000000"
-        emp.empl_primary_contact = None
-        emp.db_set = Mock()
 
         contact_doc = Mock()
         contact_doc.name = "CONTACT-NEW"
         contact_doc.append = Mock()
         contact_doc.insert = Mock()
-        contact_doc.save = Mock()
 
         with (
             patch(
@@ -743,21 +747,16 @@ class TestEmployee(FrappeTestCase):
                 side_effect=lambda doctype, filters=None: doctype == "Gender",
             ),
             patch("ifitwala_ed.hr.doctype.employee.employee.frappe.new_doc", return_value=contact_doc),
-            patch(
-                "ifitwala_ed.hr.doctype.employee.employee.frappe.get_doc",
-                return_value=contact_doc,
-            ),
         ):
-            emp._ensure_primary_contact()
+            contact_name = emp._get_or_create_primary_contact()
 
+        self.assertEqual(contact_name, "CONTACT-NEW")
         contact_doc.append.assert_any_call("email_ids", {"email_id": "staff@example.com", "is_primary": 1})
         contact_doc.append.assert_any_call("phone_nos", {"phone": "+660000000", "is_primary_mobile_no": 1})
-        contact_doc.append.assert_any_call("links", {"link_doctype": "Employee", "link_name": "EMP-0001"})
         contact_doc.insert.assert_called_once_with(ignore_permissions=True)
-        contact_doc.save.assert_called_once_with(ignore_permissions=True)
-        emp.db_set.assert_called_once_with("empl_primary_contact", "CONTACT-NEW", update_modified=False)
+        contact_doc.save.assert_not_called()
 
-    def test_create_user_repairs_primary_contact_link_after_save(self):
+    def test_create_user_provisions_primary_contact_link_after_save(self):
         emp = frappe._dict(
             user_id=None,
             employee_professional_email="staff@example.com",
@@ -767,9 +766,12 @@ class TestEmployee(FrappeTestCase):
             employee_gender="Female",
             employee_date_of_birth=None,
             employee_mobile_phone=None,
+            empl_primary_contact=None,
         )
         emp.save = Mock()
-        emp._ensure_primary_contact = Mock()
+        emp._get_or_create_primary_contact = Mock(return_value="CONTACT-NEW")
+        emp._ensure_contact_employee_link = Mock()
+        emp.db_set = Mock()
 
         user_doc = frappe._dict(name="staff@example.com")
         user_doc.flags = frappe._dict()
@@ -797,4 +799,6 @@ class TestEmployee(FrappeTestCase):
         self.assertEqual(result, "staff@example.com")
         user_doc.insert.assert_called_once_with(ignore_permissions=True)
         emp.save.assert_called_once_with(ignore_permissions=True)
-        emp._ensure_primary_contact.assert_called_once_with()
+        emp._get_or_create_primary_contact.assert_called_once_with()
+        emp._ensure_contact_employee_link.assert_called_once_with("CONTACT-NEW")
+        emp.db_set.assert_called_once_with("empl_primary_contact", "CONTACT-NEW", update_modified=False)

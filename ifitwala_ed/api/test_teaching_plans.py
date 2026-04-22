@@ -280,9 +280,68 @@ class TestTeachingPlansApi(TestCase):
         self.assertEqual(payload[0]["task_outcome"], "OUT-1")
         self.assertEqual(payload[0]["requires_submission"], 0)
         self.assertEqual(payload[0]["allow_late_submission"], 0)
+        self.assertEqual(payload[0]["status_label"], "Completed")
         self.assertEqual(payload[0]["quiz_state"]["can_continue"], 1)
         self.assertEqual(payload[0]["quiz_state"]["status_label"], "In Progress")
         self.assertEqual(payload[0]["instructions_html"], "<p>Bring your notes.</p>")
+
+    def test_fetch_assigned_work_hides_internal_grading_status_labels_for_students(self):
+        with _teaching_plans_module() as module:
+            with (
+                patch.object(
+                    module.frappe.db,
+                    "sql",
+                    return_value=[
+                        {
+                            "task_delivery": "TDL-2",
+                            "delivery_name": "TDL-2",
+                            "task": "TASK-2",
+                            "class_session": "SESSION-1",
+                            "delivery_mode": "Collect Work",
+                            "grading_mode": "Rubric",
+                            "requires_submission": 1,
+                            "allow_late_submission": 1,
+                            "available_from": "2026-04-05 10:00:00",
+                            "due_date": "2026-04-06 09:00:00",
+                            "lock_date": None,
+                            "quiz_question_bank": None,
+                            "quiz_question_count": None,
+                            "quiz_time_limit_minutes": None,
+                            "quiz_max_attempts": None,
+                            "quiz_pass_percentage": None,
+                            "title": "Cell comparison reflection",
+                            "instructions": "Submit your reflection.",
+                            "task_type": "Written Response",
+                            "unit_plan": "UNIT-1",
+                        }
+                    ],
+                ),
+                patch.object(module, "_fetch_material_map", return_value={}),
+                patch.object(module._read_models_impl, "sanitize_html", return_value="<p>Submit your reflection.</p>"),
+                patch.object(
+                    module.frappe,
+                    "get_all",
+                    return_value=[
+                        {
+                            "name": "OUT-2",
+                            "task_delivery": "TDL-2",
+                            "submission_status": "Not Submitted",
+                            "grading_status": "Released",
+                            "is_complete": 0,
+                            "is_published": 1,
+                        }
+                    ],
+                ),
+                patch.object(module, "now_datetime", return_value=datetime(2026, 4, 5, 9, 0, 0)),
+                patch.object(module.quiz_service, "get_student_delivery_state_map", return_value={}),
+            ):
+                payload = module._fetch_assigned_work(
+                    "CLASS-PLAN-1",
+                    audience="student",
+                    student_name="STU-1",
+                )
+
+        self.assertEqual(payload[0]["status_label"], "Completed")
 
     def test_get_student_learning_space_includes_focus_and_next_actions(self):
         with _teaching_plans_module() as module:

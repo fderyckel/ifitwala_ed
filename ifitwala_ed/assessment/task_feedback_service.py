@@ -14,6 +14,7 @@ FEEDBACK_ITEM_KINDS = ("point", "rect", "page", "text_quote", "path")
 FEEDBACK_INTENT_OPTIONS = ("strength", "issue", "question", "next_step", "rubric_evidence")
 FEEDBACK_WORKFLOW_STATES = ("draft", "published", "acknowledged", "resolved")
 PUBLICATION_AUDIENCES = ("student", "guardian")
+SUMMARY_FIELDS = ("overall", "strengths", "improvements", "next_steps")
 
 
 def build_feedback_workspace_payload(
@@ -42,8 +43,10 @@ def build_feedback_workspace_payload(
         return None
 
     feedback_items = []
+    priorities = []
     if workspace_row and workspace_row.get("name"):
         feedback_items = _load_feedback_item_rows(workspace_row.get("name"))
+        priorities = _load_feedback_priority_rows(workspace_row.get("name"))
 
     derived_from_legacy = not bool(workspace_row)
     feedback_visibility, grade_visibility = _resolve_publication_defaults(workspace_row, legacy_release)
@@ -58,6 +61,7 @@ def build_feedback_workspace_payload(
             "improvements": (workspace_row or {}).get("improvements_summary") or "",
             "next_steps": (workspace_row or {}).get("next_steps_summary") or "",
         },
+        "priorities": priorities,
         "items": feedback_items,
         "publication": {
             "feedback_visibility": feedback_visibility,
@@ -161,6 +165,77 @@ def build_released_result_payload(
     }
 
 
+def build_released_feedback_detail_payload(
+    outcome_id: str,
+    *,
+    audience: str = "student",
+    submission_id: str | None = None,
+) -> dict[str, Any]:
+    from ifitwala_ed.assessment import task_feedback_thread_service
+
+    released = build_released_result_payload(
+        outcome_id,
+        audience=audience,
+        submission_id=submission_id,
+    )
+    if not released.get("grade_visible") and not released.get("feedback_visible"):
+        frappe.throw(_("Released feedback is not available for this audience."), frappe.PermissionError)
+
+    resolved_audience = _normalize_publication_audience(audience)
+    resolved_submission_id = _clean_text(released.get("task_submission"))
+    workspace_payload = (
+        build_feedback_workspace_payload(outcome_id, resolved_submission_id) if resolved_submission_id else None
+    )
+    outcome_context = _get_release_context(outcome_id)
+    released_items = list((released.get("feedback") or {}).get("items") or [])
+    released_priorities = (
+        list((workspace_payload or {}).get("priorities") or []) if released.get("feedback_visible") else []
+    )
+    feedback_threads = (
+        task_feedback_thread_service.build_feedback_thread_payloads(
+            outcome_id=outcome_id,
+            submission_id=resolved_submission_id,
+        )
+        if resolved_audience == "student" and released.get("feedback_visible") and resolved_submission_id
+        else []
+    )
+    return {
+        "outcome_id": outcome_id,
+        "audience": resolved_audience,
+        "context": outcome_context,
+        "task_submission": resolved_submission_id,
+        "grade_visible": bool(released.get("grade_visible")),
+        "feedback_visible": bool(released.get("feedback_visible")),
+        "publication": dict(released.get("publication") or {}),
+        "official": dict(released.get("official") or {}),
+        "feedback": (
+            {
+                "task_submission": resolved_submission_id,
+                "submission_version": (released.get("feedback") or {}).get("submission_version"),
+                "summary": dict((released.get("feedback") or {}).get("summary") or {}),
+                "priorities": released_priorities,
+                "items": released_items,
+                "rubric_snapshot": _build_released_rubric_snapshot(
+                    outcome_id,
+                    released_items,
+                    grade_visible=bool(released.get("grade_visible")),
+                    feedback_visible=bool(released.get("feedback_visible")),
+                ),
+                "threads": feedback_threads,
+                "modified": (released.get("feedback") or {}).get("modified"),
+                "modified_by": (released.get("feedback") or {}).get("modified_by"),
+            }
+            if released.get("feedback_visible")
+            else None
+        ),
+        "allowed_actions": {
+            "can_reply": resolved_audience == "student" and bool(released.get("feedback_visible")),
+            "can_set_learner_state": resolved_audience == "student" and bool(released.get("feedback_visible")),
+            "can_view_threads": resolved_audience == "student" and bool(released.get("feedback_visible")),
+        },
+    }
+
+
 def save_feedback_workspace_draft(payload: dict[str, Any] | str | None, *, actor: str | None = None) -> dict[str, Any]:
     data = _normalize_payload(payload)
     outcome_id = _clean_text(data.get("outcome_id") or data.get("task_outcome"))
@@ -183,9 +258,22 @@ def save_feedback_workspace_draft(payload: dict[str, Any] | str | None, *, actor
     next_items = []
     for raw_item in _coerce_items(data.get("items")):
         next_items.append(_normalize_feedback_item_record(raw_item, actor=actor))
-    workspace_doc.set("feedback_items", [])
-    for item in next_items:
-        workspace_doc.append("feedback_items", item)
+    _replace_child_rows_preserving_names(
+        workspace_doc,
+        "feedback_items",
+        next_items,
+        id_key="id",
+    )
+
+    next_priorities = []
+    for raw_priority in _coerce_priorities(data.get("priorities")):
+        next_priorities.append(_normalize_feedback_priority_record(raw_priority))
+    _replace_child_rows_preserving_names(
+        workspace_doc,
+        "priorities",
+        next_priorities,
+        id_key="id",
+    )
 
     _save_workspace_doc(workspace_doc)
     return build_feedback_workspace_payload(outcome_id, submission_id) or {}
@@ -311,6 +399,30 @@ def _load_feedback_item_rows(workspace_id: str) -> list[dict[str, Any]]:
     return payload
 
 
+def _load_feedback_priority_rows(workspace_id: str) -> list[dict[str, Any]]:
+    rows = frappe.get_all(
+        "Task Feedback Priority",
+        filters={
+            "parent": workspace_id,
+            "parenttype": "Task Feedback Workspace",
+            "parentfield": "priorities",
+        },
+        fields=["name", "title", "detail", "feedback_item_id", "assessment_criteria"],
+        order_by="idx asc",
+        limit=0,
+    )
+    return [
+        {
+            "id": row.get("name"),
+            "title": row.get("title") or "",
+            "detail": row.get("detail") or "",
+            "feedback_item_id": _clean_text(row.get("feedback_item_id")),
+            "assessment_criteria": _clean_text(row.get("assessment_criteria")),
+        }
+        for row in rows
+    ]
+
+
 def _get_or_create_workspace_doc(outcome_id: str, submission_id: str):
     existing_name = frappe.db.get_value(
         "Task Feedback Workspace",
@@ -375,6 +487,18 @@ def _normalize_feedback_item_record(raw_item: dict[str, Any], *, actor: str) -> 
         "anchor_payload": json.dumps(anchor, separators=(",", ":"), sort_keys=True),
         "assessment_criteria": _clean_text(raw_item.get("assessment_criteria")),
         "author": _clean_text(raw_item.get("author")) or actor,
+    }
+
+
+def _normalize_feedback_priority_record(raw_priority: dict[str, Any]) -> dict[str, Any]:
+    title = _clean_text(raw_priority.get("title"))
+    if not title:
+        frappe.throw(_("Pinned priorities require a title."))
+    return {
+        "title": title,
+        "detail": _clean_text(raw_priority.get("detail")),
+        "feedback_item_id": _clean_text(raw_priority.get("feedback_item_id")),
+        "assessment_criteria": _clean_text(raw_priority.get("assessment_criteria")),
     }
 
 
@@ -478,6 +602,29 @@ def _coerce_items(value: Any) -> list[dict[str, Any]]:
     return next_items
 
 
+def _coerce_priorities(value: Any) -> list[dict[str, Any]]:
+    if value is None:
+        return []
+    if not isinstance(value, list):
+        frappe.throw(_("Pinned priorities must be a list."))
+    next_rows: list[dict[str, Any]] = []
+    for row in value:
+        if not isinstance(row, dict):
+            frappe.throw(_("Each pinned priority must be a dict."))
+        next_rows.append(row)
+    return next_rows
+
+
+def _replace_child_rows_preserving_names(doc, fieldname: str, rows: list[dict[str, Any]], *, id_key: str = "id"):
+    doc.set(fieldname, [])
+    for row in rows:
+        prepared = {key: value for key, value in row.items() if key != id_key}
+        resolved_name = _clean_text(row.get(id_key))
+        if resolved_name:
+            prepared["name"] = resolved_name
+        doc.append(fieldname, prepared)
+
+
 def _resolve_publication_defaults(
     workspace_row: dict[str, Any] | None, legacy_release: dict[str, Any]
 ) -> tuple[str, str]:
@@ -533,6 +680,10 @@ def _resolve_submission_context_for_release(outcome_id: str, submission_id: str 
 def _get_released_result_outcome_context(outcome_id: str) -> dict[str, Any]:
     fields = [
         "name",
+        "task_delivery",
+        "task",
+        "student",
+        "course",
         "official_score",
         "official_grade",
         "official_grade_value",
@@ -555,6 +706,32 @@ def _get_outcome_context(outcome_id: str) -> dict[str, Any]:
     return row
 
 
+def _get_release_context(outcome_id: str) -> dict[str, Any]:
+    outcome = _get_released_result_outcome_context(outcome_id)
+    task_delivery = _clean_text(outcome.get("task_delivery"))
+    delivery_row = (
+        frappe.db.get_value(
+            "Task Delivery",
+            task_delivery,
+            ["name", "title", "task_type"],
+            as_dict=True,
+        )
+        if task_delivery
+        else None
+    ) or {}
+    course = _clean_text(outcome.get("course"))
+    course_name = _clean_text(frappe.db.get_value("Course", course, "course_name")) if course else None
+    return {
+        "task_delivery": task_delivery,
+        "task": _clean_text(outcome.get("task")),
+        "title": _clean_text(delivery_row.get("title")) or task_delivery or outcome_id,
+        "task_type": _clean_text(delivery_row.get("task_type")),
+        "course": course,
+        "course_name": course_name,
+        "student": _clean_text(outcome.get("student")),
+    }
+
+
 def _require_feedback_submission_context(outcome_id: str, submission_id: str) -> dict[str, Any]:
     fields = ["name", "task_outcome", "version"]
     row = frappe.db.get_value("Task Submission", submission_id, fields, as_dict=True)
@@ -563,6 +740,64 @@ def _require_feedback_submission_context(outcome_id: str, submission_id: str) ->
     if row.get("task_outcome") != outcome_id:
         frappe.throw(_("Task Submission does not belong to the selected Task Outcome."))
     return row
+
+
+def _build_released_rubric_snapshot(
+    outcome_id: str,
+    feedback_items: list[dict[str, Any]],
+    *,
+    grade_visible: bool,
+    feedback_visible: bool,
+) -> list[dict[str, Any]]:
+    rows = frappe.get_all(
+        "Task Outcome Criterion",
+        filters={
+            "parent": outcome_id,
+            "parenttype": "Task Outcome",
+            "parentfield": "criteria",
+        },
+        fields=["assessment_criteria", "level", "level_points", "feedback"],
+        order_by="idx asc",
+        limit=0,
+    )
+    if not rows:
+        return []
+    criteria_ids = [
+        _clean_text(row.get("assessment_criteria")) for row in rows if _clean_text(row.get("assessment_criteria"))
+    ]
+    criteria_meta = frappe.get_all(
+        "Assessment Criteria",
+        filters={"name": ["in", criteria_ids]} if criteria_ids else {"name": ["in", [""]]},
+        fields=["name", "assessment_criteria"],
+        limit=0,
+    )
+    name_map = {
+        _clean_text(row.get("name")): _clean_text(row.get("assessment_criteria"))
+        for row in criteria_meta
+        if _clean_text(row.get("name"))
+    }
+    linked_item_ids_by_criteria: dict[str, list[str]] = {}
+    for item in feedback_items:
+        criteria_id = _clean_text(item.get("assessment_criteria"))
+        item_id = _clean_text(item.get("id"))
+        if not criteria_id or not item_id:
+            continue
+        linked_item_ids_by_criteria.setdefault(criteria_id, []).append(item_id)
+    return [
+        {
+            "assessment_criteria": _clean_text(row.get("assessment_criteria")),
+            "criteria_name": name_map.get(_clean_text(row.get("assessment_criteria")))
+            or _clean_text(row.get("assessment_criteria")),
+            "level": _clean_text(row.get("level")) if grade_visible else None,
+            "points": row.get("level_points") if grade_visible else None,
+            "feedback": _clean_text(row.get("feedback")) if feedback_visible else None,
+            "linked_feedback_item_ids": linked_item_ids_by_criteria.get(
+                _clean_text(row.get("assessment_criteria")) or "",
+                [],
+            ),
+        }
+        for row in rows
+    ]
 
 
 def _clean_text(value: Any) -> str | None:

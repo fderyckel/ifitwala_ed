@@ -327,6 +327,7 @@ function buildPayload(message: string | null = null): StudentLearningSpaceRespon
 							grading_mode: 'None',
 							requires_submission: 1,
 							allow_late_submission: 1,
+							status_label: 'Open',
 							submission_status: 'Not Submitted',
 							materials: [],
 						},
@@ -427,6 +428,7 @@ function buildPayload(message: string | null = null): StudentLearningSpaceRespon
 								grading_mode: 'None',
 								requires_submission: 1,
 								allow_late_submission: 1,
+								status_label: 'Open',
 								submission_status: 'Not Submitted',
 								materials: [],
 							},
@@ -520,6 +522,7 @@ function buildPayload(message: string | null = null): StudentLearningSpaceRespon
 										grading_mode: 'None',
 										requires_submission: 1,
 										allow_late_submission: 1,
+										status_label: 'Open',
 										submission_status: 'Not Submitted',
 										materials: [],
 									},
@@ -563,6 +566,7 @@ function buildAssignOnlyPayload(): StudentLearningSpaceResponse {
 					grading_mode: 'Completion',
 					requires_submission: 0,
 					allow_late_submission: 0,
+					status_label: 'Open',
 					submission_status: 'Not Required',
 					is_complete: 0,
 				}
@@ -938,6 +942,47 @@ describe('CourseDetail', () => {
 		}))
 		expect(document.body.textContent).toContain('Version 2')
 		expect(document.body.textContent).toContain('lab-report.pdf')
+	})
+
+	it('renders the server-owned task status label instead of raw grading workflow text', async () => {
+		resetRouteState()
+		const payload = buildPayload()
+		const withReleasedStatus = (item: StudentAssignedWork): StudentAssignedWork =>
+			item.task_delivery === 'TDL-WRITE-1'
+				? {
+						...item,
+						status_label: 'Completed',
+						submission_status: 'Not Submitted',
+						grading_status: 'Released',
+					}
+				: item
+
+		payload.resources.general_assigned_work = payload.resources.general_assigned_work.map(item =>
+			withReleasedStatus(item)
+		)
+		payload.curriculum.units = payload.curriculum.units.map(unit => ({
+			...unit,
+			assigned_work: unit.assigned_work.map(item => withReleasedStatus(item)),
+			sessions: unit.sessions.map(session => ({
+				...session,
+				assigned_work: session.assigned_work.map(item => withReleasedStatus(item)),
+			})),
+		}))
+		getStudentLearningSpaceMock.mockResolvedValue(payload)
+
+		mountCourseDetail({
+			unit_plan: 'UNIT-PLAN-1',
+			class_session: 'CLASS-SESSION-1',
+			task_delivery: 'TDL-WRITE-1',
+		})
+		await flushUi()
+
+		const chipTexts = Array.from(document.querySelectorAll('.chip')).map(node =>
+			(node.textContent || '').trim()
+		)
+
+		expect(chipTexts).toContain('Completed')
+		expect(chipTexts).not.toContain('Released')
 	})
 
 	it('marks assign-only tasks complete in the course workspace', async () => {

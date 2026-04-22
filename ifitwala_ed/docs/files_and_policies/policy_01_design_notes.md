@@ -249,15 +249,21 @@ Admissions acknowledgements are governed by two explicit runtime controls:
 Once an Applicant is promoted to Student:
 
 * Guardian relationships are explicit via `Student Guardian`
-* Guardians may acknowledge policies **for Students**, subject to:
+* Guardian durable policy acknowledgement remains governed separately from admissions
+* When a policy applies to `Guardian`, `Policy Version.guardian_acknowledgement_mode` controls enrolled-student guardian evidence shape:
 
-  * verified guardian–student linkage
-  * server-side authorization checks
+  * `Family Acknowledgement` -> one guardian self-context acknowledgement for the policy version
+  * `Child Acknowledgement` -> one student-context acknowledgement per signer-authorized child in scope
+* Guardians may acknowledge enrolled-student guardian policies only with:
+
+  * verified guardian-student linkage
+  * signer authority
+  * server-side scope checks
 
 ### Summary
 
 * Admissions acknowledgement now supports applicant-context and guardian-self-context evidence depending on `admissions_acknowledgement_mode`
-* Student-stage durable acknowledgement remains `Student` or linked `Guardian`, depending on audience and signer authority
+* Student-stage durable acknowledgement remains `Student` or linked `Guardian`, with guardian evidence shape controlled by `Policy Version.guardian_acknowledgement_mode`
 * No implicit authority
 * No retroactive inference
 * All acknowledgement rules are explicit, auditable, and enforced server-side

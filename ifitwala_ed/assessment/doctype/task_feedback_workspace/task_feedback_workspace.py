@@ -27,10 +27,12 @@ class TaskFeedbackWorkspace(Document):
         self._set_submission_version()
         self._normalize_publication_fields()
         self._normalize_feedback_items()
+        self._normalize_priorities()
 
     def validate(self):
         self._validate_publication_fields()
         self._validate_feedback_items()
+        self._validate_priorities()
 
     def _doc_meta(self):
         if not hasattr(self, "_workspace_meta"):
@@ -116,6 +118,13 @@ class TaskFeedbackWorkspace(Document):
                 sort_keys=True,
             )
 
+    def _normalize_priorities(self):
+        for row in self.get("priorities") or []:
+            row.title = (row.title or "").strip()
+            row.detail = (row.detail or "").strip()
+            row.feedback_item_id = str(row.feedback_item_id or "").strip() or None
+            row.assessment_criteria = str(row.assessment_criteria or "").strip() or None
+
     def _validate_feedback_items(self):
         for row in self.get("feedback_items") or []:
             if row.anchor_kind not in FEEDBACK_ITEM_KINDS:
@@ -131,6 +140,14 @@ class TaskFeedbackWorkspace(Document):
             if page_number <= 0:
                 frappe.throw(_("Feedback item page number must be a positive integer."))
             normalize_feedback_anchor_payload(row.anchor_kind, page_number, row.anchor_payload)
+
+    def _validate_priorities(self):
+        item_ids = {row.name for row in self.get("feedback_items") or [] if getattr(row, "name", None)}
+        for row in self.get("priorities") or []:
+            if not row.title:
+                frappe.throw(_("Feedback priorities require a title."))
+            if row.feedback_item_id and row.feedback_item_id not in item_ids:
+                frappe.throw(_("Feedback priority links must point to a feedback item in the same workspace."))
 
 
 def on_doctype_update():

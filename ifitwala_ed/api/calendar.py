@@ -185,6 +185,8 @@ def create_school_event_quick(
     reference_type: str | None = None,
     reference_name: str | None = None,
     custom_participants: object | None = None,
+    publish_announcement: int | None = 0,
+    announcement_message: str | None = None,
     client_request_id: str | None = None,
 ):
     return calendar_quick_create.create_school_event_quick(
@@ -204,6 +206,8 @@ def create_school_event_quick(
         reference_type=reference_type,
         reference_name=reference_name,
         custom_participants=custom_participants,
+        publish_announcement=publish_announcement,
+        announcement_message=announcement_message,
         client_request_id=client_request_id,
     )
 

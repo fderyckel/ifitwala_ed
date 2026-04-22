@@ -23,4 +23,15 @@ def execute():
             continue
 
         employee_doc = frappe.get_doc("Employee", employee_name)
-        employee_doc._ensure_primary_contact()
+        _backfill_employee_contact_link(employee_doc)
+
+
+def _backfill_employee_contact_link(employee_doc) -> None:
+    contact_name = employee_doc._get_or_create_primary_contact()
+    if not contact_name:
+        return
+
+    employee_doc._ensure_contact_employee_link(contact_name)
+    if employee_doc.empl_primary_contact != contact_name:
+        employee_doc.empl_primary_contact = contact_name
+        employee_doc.db_set("empl_primary_contact", contact_name, update_modified=False)

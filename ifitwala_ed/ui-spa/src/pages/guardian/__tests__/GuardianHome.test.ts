@@ -215,7 +215,7 @@ describe('GuardianHome', () => {
 		expect(text).toContain('Family Snapshot')
 		expect(text).toContain('School Calendar')
 		expect(text).toContain('Communications')
-		expect(text).toContain('Policies need your acknowledgement')
+		expect(text).toContain('Policy acknowledgements need your action')
 		expect(text).toContain('Family Handbook')
 		expect(text).toContain('Learning Highlights')
 		expect(text).toContain('Students are comparing how cell structures work together.')

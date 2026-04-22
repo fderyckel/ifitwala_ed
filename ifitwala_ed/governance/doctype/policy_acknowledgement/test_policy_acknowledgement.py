@@ -205,6 +205,49 @@ class TestPolicyAcknowledgement(FrappeTestCase):
 
         self.assertEqual(orgs, ["ORG-1", "ORG-2"])
 
+    def test_validate_context_allows_guardian_acknowledgement_on_student_context(self):
+        doc = policy_ack_controller.PolicyAcknowledgement.__new__(policy_ack_controller.PolicyAcknowledgement)
+        doc.acknowledged_for = "Guardian"
+        doc.context_doctype = "Student"
+        doc.context_name = "STU-0001"
+
+        def fake_exists(doctype, name=None):
+            if doctype == "DocType":
+                return name == "Student"
+            if doctype == "Student":
+                return name == "STU-0001"
+            raise AssertionError(f"Unexpected exists lookup: {doctype} {name}")
+
+        with (
+            patch.object(policy_ack_controller.frappe.db, "exists", side_effect=fake_exists),
+            patch.object(doc, "_validate_policy_scope_for_context"),
+        ):
+            doc._validate_context()
+
+    def test_guardian_role_validation_allows_student_context_when_signer_authorized(self):
+        doc = policy_ack_controller.PolicyAcknowledgement.__new__(policy_ack_controller.PolicyAcknowledgement)
+        doc.acknowledged_for = "Guardian"
+        doc.context_doctype = "Student"
+        doc.context_name = "STU-0001"
+
+        with (
+            patch(
+                "ifitwala_ed.governance.doctype.policy_acknowledgement.policy_acknowledgement.has_guardian_role",
+                return_value=True,
+            ),
+            patch(
+                "ifitwala_ed.governance.doctype.policy_acknowledgement.policy_acknowledgement.has_admissions_family_role",
+                return_value=False,
+            ),
+            patch(
+                "ifitwala_ed.governance.doctype.policy_acknowledgement.policy_acknowledgement.get_guardian_names_for_user",
+                return_value=["GUARD-PRIMARY"],
+            ),
+            patch.object(doc, "_guardian_name_for_user", return_value="GUARD-PRIMARY"),
+            patch.object(doc, "_guardian_linked_to_student", return_value=True),
+        ):
+            self.assertIsNone(doc._role_validation_error())
+
     def test_has_permission_rejects_non_primary_guardian_self_context(self):
         doc = frappe._dict(
             policy_version=self.policy_version.name,

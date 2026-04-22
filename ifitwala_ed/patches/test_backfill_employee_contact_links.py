@@ -8,9 +8,13 @@ from ifitwala_ed.patches.backfill_employee_contact_links import execute
 
 
 class TestBackfillEmployeeContactLinks(FrappeTestCase):
-    def test_execute_repairs_existing_employee_contact_links(self):
+    def test_execute_backfills_existing_employee_contact_links(self):
         employee_one = Mock()
+        employee_one.empl_primary_contact = None
+        employee_one._get_or_create_primary_contact.return_value = "CONTACT-0001"
         employee_two = Mock()
+        employee_two.empl_primary_contact = "CONTACT-0002"
+        employee_two._get_or_create_primary_contact.return_value = "CONTACT-0002"
 
         with (
             patch("ifitwala_ed.patches.backfill_employee_contact_links.frappe.db.table_exists", return_value=True),
@@ -33,5 +37,9 @@ class TestBackfillEmployeeContactLinks(FrappeTestCase):
         )
         mocked_get_doc.assert_any_call("Employee", "EMP-0001")
         mocked_get_doc.assert_any_call("Employee", "EMP-0002")
-        employee_one._ensure_primary_contact.assert_called_once_with()
-        employee_two._ensure_primary_contact.assert_called_once_with()
+        employee_one._get_or_create_primary_contact.assert_called_once_with()
+        employee_one._ensure_contact_employee_link.assert_called_once_with("CONTACT-0001")
+        employee_one.db_set.assert_called_once_with("empl_primary_contact", "CONTACT-0001", update_modified=False)
+        employee_two._get_or_create_primary_contact.assert_called_once_with()
+        employee_two._ensure_contact_employee_link.assert_called_once_with("CONTACT-0002")
+        employee_two.db_set.assert_not_called()

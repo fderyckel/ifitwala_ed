@@ -148,7 +148,7 @@ class TestPolicySignature(FrappeTestCase):
         self.created.append(("Guardian", guardian.name))
         return guardian
 
-    def _make_student(self, *, user: str, guardian_name: str):
+    def _make_student(self, *, user: str, guardian_name: str, school: str | None = None):
         seed = frappe.generate_hash(length=6)
         previous_import = getattr(frappe.flags, "in_import", False)
         frappe.flags.in_import = True
@@ -159,7 +159,7 @@ class TestPolicySignature(FrappeTestCase):
                     "student_first_name": "Policy",
                     "student_last_name": f"Student-{seed}",
                     "student_email": user,
-                    "anchor_school": self.school.name,
+                    "anchor_school": (school or self.school.name).strip(),
                     "allow_direct_creation": 1,
                 }
             )
@@ -682,6 +682,141 @@ class TestPolicySignature(FrappeTestCase):
         self.assertEqual(guardian_pending_rows[0].get("subject_name"), guardian_two.guardian_full_name)
         self.assertEqual(len(student_signed_rows), 1)
         self.assertEqual(student_signed_rows[0].get("record_id"), student_one.name)
+
+    def test_guardian_child_mode_counts_each_child_as_a_separate_target(self):
+        guardian_user = make_user(roles=["Guardian"])
+        self.created.append(("User", guardian_user.name))
+
+        guardian = self._make_guardian(user=guardian_user.name)
+        student_one = self._make_student(
+            user=f"student+{frappe.generate_hash(length=4)}@example.com",
+            guardian_name=guardian.name,
+        )
+        student_two = self._make_student(
+            user=f"student+{frappe.generate_hash(length=4)}@example.com",
+            guardian_name=guardian.name,
+        )
+
+        guardian_policy = frappe.get_doc(
+            {
+                "doctype": "Institutional Policy",
+                "policy_key": f"guardian_child_mode_{frappe.generate_hash(length=8)}",
+                "policy_title": "Guardian Child Scope Policy",
+                "policy_category": "Handbooks",
+                "applies_to": [{"policy_audience": "Guardian"}],
+                "organization": self.organization.name,
+                "is_active": 1,
+            }
+        ).insert(ignore_permissions=True)
+        self.created.append(("Institutional Policy", guardian_policy.name))
+
+        guardian_version = frappe.get_doc(
+            {
+                "doctype": "Policy Version",
+                "institutional_policy": guardian_policy.name,
+                "version_label": "v1",
+                "policy_text": "<p>Child scope guardian policy text.</p>",
+                "guardian_acknowledgement_mode": "Child Acknowledgement",
+                "is_active": 1,
+            }
+        ).insert(ignore_permissions=True)
+        self.created.append(("Policy Version", guardian_version.name))
+
+        frappe.set_user(guardian_user.name)
+        child_ack = frappe.get_doc(
+            {
+                "doctype": "Policy Acknowledgement",
+                "policy_version": guardian_version.name,
+                "acknowledged_by": guardian_user.name,
+                "acknowledged_for": "Guardian",
+                "context_doctype": "Student",
+                "context_name": student_one.name,
+            }
+        ).insert(ignore_permissions=True)
+        self.created.append(("Policy Acknowledgement", child_ack.name))
+
+        frappe.set_user("Administrator")
+        dashboard = get_staff_policy_signature_dashboard(
+            policy_version=guardian_version.name,
+            organization=self.organization.name,
+            school=self.school.name,
+        )
+
+        guardian_section = (dashboard.get("audiences") or [])[0]
+        summary = guardian_section.get("summary") or {}
+        pending_rows = (guardian_section.get("rows") or {}).get("pending") or []
+        signed_rows = (guardian_section.get("rows") or {}).get("signed") or []
+
+        self.assertEqual(summary.get("eligible_targets"), 2)
+        self.assertEqual(summary.get("signed"), 1)
+        self.assertEqual(summary.get("pending"), 1)
+        self.assertIn("separately for each child", guardian_section.get("workflow_description") or "")
+        self.assertEqual(len(pending_rows), 1)
+        self.assertIn(student_two.student_full_name, pending_rows[0].get("context_label") or "")
+        self.assertEqual(len(signed_rows), 1)
+        self.assertEqual(signed_rows[0].get("record_id"), f"{guardian.name}::{student_one.name}")
+
+    def test_guardian_child_mode_excludes_children_outside_policy_scope(self):
+        sibling_school = make_school(self.organization.name, prefix="PS Guardian Sibling")
+        self.created.append(("School", sibling_school.name))
+
+        guardian_user = make_user(roles=["Guardian"])
+        self.created.append(("User", guardian_user.name))
+
+        guardian = self._make_guardian(user=guardian_user.name)
+        in_scope_student = self._make_student(
+            user=f"student+{frappe.generate_hash(length=4)}@example.com",
+            guardian_name=guardian.name,
+            school=self.school.name,
+        )
+        self._make_student(
+            user=f"student+{frappe.generate_hash(length=4)}@example.com",
+            guardian_name=guardian.name,
+            school=sibling_school.name,
+        )
+
+        guardian_policy = frappe.get_doc(
+            {
+                "doctype": "Institutional Policy",
+                "policy_key": f"guardian_child_scope_{frappe.generate_hash(length=8)}",
+                "policy_title": "Guardian Child School Scope Policy",
+                "policy_category": "Handbooks",
+                "applies_to": [{"policy_audience": "Guardian"}],
+                "organization": self.organization.name,
+                "school": self.school.name,
+                "is_active": 1,
+            }
+        ).insert(ignore_permissions=True)
+        self.created.append(("Institutional Policy", guardian_policy.name))
+
+        guardian_version = frappe.get_doc(
+            {
+                "doctype": "Policy Version",
+                "institutional_policy": guardian_policy.name,
+                "version_label": "v1",
+                "policy_text": "<p>Child scope guardian school policy text.</p>",
+                "guardian_acknowledgement_mode": "Child Acknowledgement",
+                "is_active": 1,
+            }
+        ).insert(ignore_permissions=True)
+        self.created.append(("Policy Version", guardian_version.name))
+
+        frappe.set_user("Administrator")
+        dashboard = get_staff_policy_signature_dashboard(
+            policy_version=guardian_version.name,
+            organization=self.organization.name,
+        )
+
+        guardian_section = (dashboard.get("audiences") or [])[0]
+        summary = guardian_section.get("summary") or {}
+        pending_rows = (guardian_section.get("rows") or {}).get("pending") or []
+
+        self.assertEqual(summary.get("eligible_targets"), 1)
+        self.assertEqual(summary.get("signed"), 0)
+        self.assertEqual(summary.get("pending"), 1)
+        self.assertEqual(len(pending_rows), 1)
+        self.assertEqual(pending_rows[0].get("record_id"), f"{guardian.name}::{in_scope_student.name}")
+        self.assertIn(in_scope_student.student_full_name, pending_rows[0].get("context_label") or "")
 
     def test_audience_register_search_and_pagination_for_guardians(self):
         guardian_user_one = make_user(roles=["Guardian"])

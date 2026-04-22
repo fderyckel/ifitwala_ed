@@ -179,6 +179,34 @@
 										placeholder="Add a short note above the policy action link."
 									/>
 								</div>
+
+								<div
+									v-if="showGuardianModeSelector"
+									class="flex min-w-0 flex-col gap-1 md:col-span-2"
+								>
+									<label
+										for="family-policy-campaign-guardian-mode"
+										class="type-label leading-tight"
+										>Guardian acknowledgement scope</label
+									>
+									<select
+										id="family-policy-campaign-guardian-mode"
+										v-model="form.guardian_acknowledgement_mode"
+										class="if-overlay__input"
+										:disabled="busyOptions || busyPublish || guardianModeLocked"
+									>
+										<option value="Family Acknowledgement">Family Acknowledgement</option>
+										<option value="Child Acknowledgement">Child Acknowledgement</option>
+									</select>
+									<p class="type-caption text-slate-500">
+										Family mode keeps one guardian acknowledgement per policy version. Child mode
+										requires a separate guardian acknowledgement row for each child in scope.
+									</p>
+									<p v-if="guardianModeLocked" class="type-caption text-clay">
+										Guardian acknowledgements already exist for this policy version, so this scope
+										is locked.
+									</p>
+								</div>
 							</section>
 
 							<section class="rounded-2xl border border-slate-200 bg-white px-4 py-4 shadow-soft">
@@ -324,6 +352,7 @@ import type { PolicyOption } from '@/types/contracts/policy_signature/get_staff_
 import type {
 	FamilyAudiencePreview,
 	FamilyPolicyCampaignAudience,
+	GuardianAcknowledgementMode,
 } from '@/types/contracts/policy_signature/get_family_policy_campaign_options';
 import type { Response as PublishFamilyCampaignResponse } from '@/types/contracts/policy_signature/publish_family_policy_campaign';
 
@@ -362,10 +391,14 @@ const options = reactive<{
 
 const preview = reactive<{
 	family_audiences: FamilyPolicyCampaignAudience[];
+	guardian_acknowledgement_mode: GuardianAcknowledgementMode | null;
+	guardian_acknowledgement_mode_locked: boolean;
 	school_target_count: number;
 	audience_previews: FamilyAudiencePreview[];
 }>({
 	family_audiences: [],
+	guardian_acknowledgement_mode: null,
+	guardian_acknowledgement_mode_locked: false,
 	school_target_count: 0,
 	audience_previews: [],
 });
@@ -375,6 +408,7 @@ const form = reactive<{
 	school: string;
 	policy_version: string;
 	audiences: FamilyPolicyCampaignAudience[];
+	guardian_acknowledgement_mode: GuardianAcknowledgementMode | '';
 	title: string;
 	message: string;
 	publish_to: string;
@@ -383,6 +417,7 @@ const form = reactive<{
 	school: '',
 	policy_version: '',
 	audiences: [],
+	guardian_acknowledgement_mode: '',
 	title: '',
 	message: '',
 	publish_to: '',
@@ -395,6 +430,11 @@ const overlayStyle = computed(() => ({
 const availableAudiences = computed(() => preview.family_audiences || []);
 const audiencePreviews = computed(() => preview.audience_previews || []);
 const selectedAudiences = computed(() => form.audiences || []);
+const showGuardianModeSelector = computed(
+	() =>
+		availableAudiences.value.includes('Guardian') && selectedAudiences.value.includes('Guardian')
+);
+const guardianModeLocked = computed(() => Boolean(preview.guardian_acknowledgement_mode_locked));
 const selectedPendingTotal = computed(() =>
 	selectedAudiences.value.reduce((total, audience) => {
 		const previewRow = audiencePreviews.value.find(row => row.audience === audience);
@@ -460,6 +500,7 @@ function applyInitialContext() {
 	form.school = (props.school || '').trim();
 	form.policy_version = (props.policy_version || '').trim();
 	form.audiences = [];
+	form.guardian_acknowledgement_mode = '';
 	form.title = '';
 	form.message = '';
 	form.publish_to = '';
@@ -479,6 +520,9 @@ function normalizeSelection() {
 	if (!form.audiences.length && availableAudiences.value.length) {
 		form.audiences = [...availableAudiences.value];
 	}
+	if (!available.has('Guardian')) {
+		form.guardian_acknowledgement_mode = '';
+	}
 }
 
 async function refreshOptions() {
@@ -491,14 +535,21 @@ async function refreshOptions() {
 			organization: form.organization || null,
 			school: form.school || null,
 			policy_version: form.policy_version || null,
+			guardian_acknowledgement_mode: form.guardian_acknowledgement_mode || null,
 		});
 
 		options.organizations = [...(response.options?.organizations || [])];
 		options.schools = [...(response.options?.schools || [])];
 		options.policies = [...(response.options?.policies || [])];
 		preview.family_audiences = [...(response.preview?.family_audiences || [])];
+		preview.guardian_acknowledgement_mode =
+			response.preview?.guardian_acknowledgement_mode || null;
+		preview.guardian_acknowledgement_mode_locked = Boolean(
+			response.preview?.guardian_acknowledgement_mode_locked
+		);
 		preview.school_target_count = response.preview?.school_target_count || 0;
 		preview.audience_previews = [...(response.preview?.audience_previews || [])];
+		form.guardian_acknowledgement_mode = response.preview?.guardian_acknowledgement_mode || '';
 
 		if (!form.organization && options.organizations.length === 1) {
 			form.organization = options.organizations[0];
@@ -564,6 +615,9 @@ async function publishCampaign() {
 			school: form.school || null,
 			policy_version: form.policy_version,
 			audiences: [...form.audiences],
+			guardian_acknowledgement_mode: selectedAudiences.value.includes('Guardian')
+				? form.guardian_acknowledgement_mode || null
+				: null,
 			title: form.title.trim() ? form.title.trim() : null,
 			message: form.message.trim() ? form.message.trim() : null,
 			publish_to: form.publish_to || null,
@@ -595,7 +649,7 @@ watch(
 );
 
 watch(
-	() => [form.organization, form.school, form.policy_version],
+	() => [form.organization, form.school, form.policy_version, form.guardian_acknowledgement_mode],
 	() => {
 		if (!props.open) return;
 		scheduleRefresh();

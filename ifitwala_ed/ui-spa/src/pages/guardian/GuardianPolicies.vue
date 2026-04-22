@@ -26,8 +26,8 @@
 			<article class="card-surface policy-metric-card policy-metric-card--total p-4">
 				<div class="policy-metric-card__row">
 					<div>
-						<p class="type-caption text-ink/65">Total policies</p>
-						<p class="type-caption text-ink/50">Current family policy scope</p>
+						<p class="type-caption text-ink/65">Total acknowledgements</p>
+						<p class="type-caption text-ink/50">Current guardian acknowledgement scope</p>
 					</div>
 					<p class="type-h2 text-ink">{{ counts.total_policies }}</p>
 				</div>
@@ -36,7 +36,7 @@
 				<div class="policy-metric-card__row">
 					<div>
 						<p class="type-caption text-ink/65">Acknowledged</p>
-						<p class="type-caption text-ink/50">Already signed for this family</p>
+						<p class="type-caption text-ink/50">Already signed in Guardian Portal</p>
 					</div>
 					<p class="type-h2 text-canopy">{{ counts.acknowledged_policies }}</p>
 				</div>
@@ -81,7 +81,7 @@
 						</p>
 					</div>
 					<div class="flex flex-wrap gap-2">
-						<span class="chip">Total {{ counts.total_policies }}</span>
+						<span class="chip">Acknowledgements {{ counts.total_policies }}</span>
 						<span class="rounded-full bg-leaf/12 px-3 py-1 type-caption text-canopy">
 							Acknowledged {{ counts.acknowledged_policies }}
 						</span>
@@ -94,7 +94,7 @@
 
 			<article
 				v-for="row in rows"
-				:key="row.policy_version"
+				:key="rowStateKey(row)"
 				class="card-surface policy-card space-y-4 p-5"
 				:class="[
 					row.is_acknowledged ? 'policy-card--acknowledged' : 'policy-card--pending',
@@ -107,6 +107,7 @@
 					<div class="space-y-1">
 						<p class="type-caption text-ink/60">
 							{{ row.policy_category }} · {{ row.version_label }}
+							<span v-if="row.scope_label"> · {{ row.scope_label }}</span>
 						</p>
 						<h2 class="type-h3 text-ink">{{ row.policy_title }}</h2>
 						<p class="type-body text-ink/70">
@@ -164,11 +165,11 @@
 								class="policy-clause-row flex items-start gap-3 rounded-xl border border-line-soft bg-white px-3 py-3"
 							>
 								<input
-									:checked="isClauseChecked(row.policy_version, clause.name)"
+									:checked="isClauseChecked(rowStateKey(row), clause.name)"
 									type="checkbox"
 									class="mt-1 h-4 w-4"
-									:disabled="isRowBusy(row.policy_version)"
-									@change="toggleClause(row.policy_version, clause.name, $event)"
+									:disabled="isRowBusy(rowStateKey(row))"
+									@change="toggleClause(rowStateKey(row), clause.name, $event)"
 								/>
 								<span class="type-body text-ink/85">
 									{{ clause.clause_text }}
@@ -177,7 +178,7 @@
 							</label>
 						</div>
 						<p
-							v-if="submitAttempts[row.policy_version] && !hasRequiredClausesChecked(row)"
+							v-if="submitAttempts[rowStateKey(row)] && !hasRequiredClausesChecked(row)"
 							class="type-caption text-flame"
 						>
 							Check every required acknowledgement clause before signing.
@@ -200,19 +201,19 @@
 						<label class="block space-y-1">
 							<span class="type-caption text-ink/70">Type full name as electronic signature</span>
 							<input
-								:value="typedSignatureByVersion[row.policy_version] || ''"
+								:value="typedSignatureByVersion[rowStateKey(row)] || ''"
 								type="text"
 								class="if-input w-full"
 								placeholder="Enter your full name"
-								:disabled="isRowBusy(row.policy_version)"
-								@input="updateTypedSignature(row.policy_version, $event)"
+								:disabled="isRowBusy(rowStateKey(row))"
+								@input="updateTypedSignature(rowStateKey(row), $event)"
 							/>
 						</label>
 
 						<p
 							v-if="
-								(signatureTouched[row.policy_version] || submitAttempts[row.policy_version]) &&
-								typedSignatureByVersion[row.policy_version]?.trim() &&
+								(signatureTouched[rowStateKey(row)] || submitAttempts[rowStateKey(row)]) &&
+								typedSignatureByVersion[rowStateKey(row)]?.trim() &&
 								!isTypedSignatureMatch(row)
 							"
 							class="type-caption text-flame"
@@ -222,11 +223,11 @@
 
 						<label class="flex items-start gap-2">
 							<input
-								:checked="Boolean(attestationByVersion[row.policy_version])"
+								:checked="Boolean(attestationByVersion[rowStateKey(row)])"
 								type="checkbox"
 								class="mt-1 h-4 w-4"
-								:disabled="isRowBusy(row.policy_version)"
-								@change="toggleAttestation(row.policy_version, $event)"
+								:disabled="isRowBusy(rowStateKey(row))"
+								@change="toggleAttestation(rowStateKey(row), $event)"
 							/>
 							<span class="type-caption text-ink/80">
 								I confirm that typing my name is my electronic signature, and I have read,
@@ -235,9 +236,7 @@
 						</label>
 
 						<p
-							v-if="
-								submitAttempts[row.policy_version] && !attestationByVersion[row.policy_version]
-							"
+							v-if="submitAttempts[rowStateKey(row)] && !attestationByVersion[rowStateKey(row)]"
 							class="type-caption text-flame"
 						>
 							Confirm the legal attestation before signing.
@@ -248,16 +247,16 @@
 						<button
 							type="button"
 							class="if-action policy-action-button"
-							:disabled="isRowBusy(row.policy_version)"
+							:disabled="isRowBusy(rowStateKey(row))"
 							@click="acknowledgeRow(row)"
 						>
-							{{ isRowBusy(row.policy_version) ? 'Saving...' : 'Sign and acknowledge policy' }}
+							{{ isRowBusy(rowStateKey(row)) ? 'Saving...' : 'Sign and acknowledge policy' }}
 						</button>
 					</div>
 				</div>
 
-				<p v-if="rowErrors[row.policy_version]" class="type-body text-flame">
-					{{ rowErrors[row.policy_version] }}
+				<p v-if="rowErrors[rowStateKey(row)]" class="type-body text-flame">
+					{{ rowErrors[rowStateKey(row)] }}
 				</p>
 			</article>
 		</section>
@@ -312,8 +311,12 @@ function trustedHtml(html: string): string {
 	return String(html || '');
 }
 
-function isRowBusy(policyVersion: string): boolean {
-	return Boolean(busyRows.value[policyVersion]);
+function isRowBusy(rowKey: string): boolean {
+	return Boolean(busyRows.value[rowKey]);
+}
+
+function rowStateKey(row: GuardianPolicyRow): string {
+	return [row.policy_version, row.ack_context_doctype, row.ack_context_name].join('::');
 }
 
 function isFocusedPolicy(policyVersion: string): boolean {
@@ -358,14 +361,14 @@ function toggleAttestation(policyVersion: string, event: Event) {
 }
 
 function isTypedSignatureMatch(row: GuardianPolicyRow): boolean {
-	const typed = normalizeName(typedSignatureByVersion.value[row.policy_version] || '');
+	const typed = normalizeName(typedSignatureByVersion.value[rowStateKey(row)] || '');
 	if (!typed) return false;
 	const expected = normalizeName(row.expected_signature_name || '');
 	return expected ? typed === expected : true;
 }
 
 function hasRequiredClausesChecked(row: GuardianPolicyRow): boolean {
-	const selected = new Set(selectedClauseNames(row.policy_version));
+	const selected = new Set(selectedClauseNames(rowStateKey(row)));
 	return row.acknowledgement_clauses.every(
 		clause => !clause.is_required || selected.has(clause.name)
 	);
@@ -408,42 +411,44 @@ async function loadOverview() {
 
 async function acknowledgeRow(row: GuardianPolicyRow) {
 	const policyVersion = row.policy_version;
-	submitAttempts.value = { ...submitAttempts.value, [policyVersion]: true };
-	signatureTouched.value = { ...signatureTouched.value, [policyVersion]: true };
-	rowErrors.value = { ...rowErrors.value, [policyVersion]: '' };
+	const rowKey = rowStateKey(row);
+	submitAttempts.value = { ...submitAttempts.value, [rowKey]: true };
+	signatureTouched.value = { ...signatureTouched.value, [rowKey]: true };
+	rowErrors.value = { ...rowErrors.value, [rowKey]: '' };
 
-	if (!typedSignatureByVersion.value[policyVersion]?.trim()) {
+	if (!typedSignatureByVersion.value[rowKey]?.trim()) {
 		const message = 'Type your full name to provide your electronic signature.';
-		rowErrors.value = { ...rowErrors.value, [policyVersion]: message };
+		rowErrors.value = { ...rowErrors.value, [rowKey]: message };
 		toast.error(message);
 		return;
 	}
 	if (!hasRequiredClausesChecked(row)) {
 		const message = 'Check every required acknowledgement clause before signing.';
-		rowErrors.value = { ...rowErrors.value, [policyVersion]: message };
+		rowErrors.value = { ...rowErrors.value, [rowKey]: message };
 		toast.error(message);
 		return;
 	}
 	if (!isTypedSignatureMatch(row)) {
 		const message = `Typed signature must match exactly: ${row.expected_signature_name}`;
-		rowErrors.value = { ...rowErrors.value, [policyVersion]: message };
+		rowErrors.value = { ...rowErrors.value, [rowKey]: message };
 		toast.error(message);
 		return;
 	}
-	if (!attestationByVersion.value[policyVersion]) {
+	if (!attestationByVersion.value[rowKey]) {
 		const message = 'Confirm the legal attestation before signing.';
-		rowErrors.value = { ...rowErrors.value, [policyVersion]: message };
+		rowErrors.value = { ...rowErrors.value, [rowKey]: message };
 		toast.error(message);
 		return;
 	}
 
-	busyRows.value = { ...busyRows.value, [policyVersion]: true };
+	busyRows.value = { ...busyRows.value, [rowKey]: true };
 	try {
 		const result = await acknowledgeGuardianPolicy({
 			policy_version: policyVersion,
-			typed_signature_name: typedSignatureByVersion.value[policyVersion].trim(),
-			attestation_confirmed: attestationByVersion.value[policyVersion] ? 1 : 0,
-			checked_clause_names: selectedClauseNames(policyVersion),
+			context_name: row.ack_context_name,
+			typed_signature_name: typedSignatureByVersion.value[rowKey].trim(),
+			attestation_confirmed: attestationByVersion.value[rowKey] ? 1 : 0,
+			checked_clause_names: selectedClauseNames(rowKey),
 		});
 		toast.success(
 			result.status === 'already_acknowledged'
@@ -455,11 +460,11 @@ async function acknowledgeRow(row: GuardianPolicyRow) {
 		const message = error instanceof Error ? error.message : String(error || '');
 		rowErrors.value = {
 			...rowErrors.value,
-			[policyVersion]: message || 'Could not acknowledge this policy.',
+			[rowKey]: message || 'Could not acknowledge this policy.',
 		};
 		toast.error(message || 'Could not acknowledge this policy.');
 	} finally {
-		busyRows.value = { ...busyRows.value, [policyVersion]: false };
+		busyRows.value = { ...busyRows.value, [rowKey]: false };
 	}
 }
 

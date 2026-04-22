@@ -122,9 +122,14 @@ Test refs: `ifitwala_ed/api/test_policy_signature.py`, `ifitwala_ed/api/test_pol
    - `Student`
 2. Staff campaign launch remains staff-task only and continues to create internal signature `ToDo` rows for eligible employees.
 3. A separate family campaign overlay may publish student and guardian portal communications for the selected organization/school scope.
-4. Family campaign publication creates one `Org Communication` per selected family audience and deep-links to the exact portal policy page with `policy_version`.
-5. Guardian and student acknowledgement truth remains portal `Policy Acknowledgement` evidence. Family campaigns do not create tasks or a second compliance source.
-6. The dashboard bootstrap remains a bounded summary read and large audience browsing still uses the server-backed audience register.
+4. When the selected policy version applies to guardians, the family campaign overlay shows the persisted guardian acknowledgement mode and may switch it between `Family Acknowledgement` and `Child Acknowledgement` before first guardian acknowledgement exists.
+5. Once guardian acknowledgement evidence exists for that policy version, guardian acknowledgement mode is locked and the overlay must present it as read-only preview state.
+6. Family campaign publication creates one `Org Communication` per selected family audience and deep-links to the exact portal policy page with `policy_version`.
+7. Guardian and student acknowledgement truth remains portal `Policy Acknowledgement` evidence. Family campaigns do not create tasks or a second compliance source.
+8. Guardian analytics counts are mode-aware:
+   - family mode counts one guardian target per eligible guardian
+   - child mode counts one guardian target per in-scope signer-authorized child
+9. The dashboard bootstrap remains a bounded summary read and large audience browsing still uses the server-backed audience register.
 
 ## Contract Matrix
 Status: Implemented
@@ -134,9 +139,9 @@ Test refs: `ifitwala_ed/api/test_policy_signature.py`, `ifitwala_ed/api/test_ana
 | Layer | Contract | Status |
 |---|---|---|
 | Schema / DocType | Reuse `Institutional Policy`, `Policy Version`, `Policy Acknowledgement`, `Employee` | Implemented |
-| Controller / workflow logic | Cross-audience browsing remains library-first; actionable acknowledgement flows stay in Focus, Guardian Portal, Student Hub, and Admissions, with family campaigns publishing portal notices only | Implemented |
+| Controller / workflow logic | Cross-audience browsing remains library-first; actionable acknowledgement flows stay in Focus, Guardian Portal, Student Hub, and Admissions, with family campaigns publishing portal notices only and optionally persisting guardian mode before first evidence lock | Implemented |
 | API endpoints | `get_policy_library`, `get_policy_inform_payload`, `get_staff_policy_signature_dashboard`, `get_staff_policy_signature_audience_rows`, `get_family_policy_campaign_options`, `publish_family_policy_campaign` | Implemented |
-| SPA / UI surfaces | `/staff/policies`, `/staff/analytics/policy-signatures`, existing policy-inform overlay, separate staff and family campaign overlays | Implemented |
-| Reports / dashboards | Staff Home link integration with capability gate plus on-demand audience register for high-volume policy analytics | Implemented |
+| SPA / UI surfaces | `/staff/policies`, `/staff/analytics/policy-signatures`, existing policy-inform overlay, separate staff and family campaign overlays with guardian mode preview/lock | Implemented |
+| Reports / dashboards | Staff Home link integration with capability gate plus on-demand audience register for high-volume policy analytics and mode-aware guardian counts | Implemented |
 | Scheduler / background jobs | None | Implemented |
-| Tests | Backend and SPA regression coverage for cross-audience browsing and staff-mode status flow | Implemented |
+| Tests | Backend and SPA regression coverage for cross-audience browsing, staff-mode status flow, and guardian family-vs-child analytics | Implemented |

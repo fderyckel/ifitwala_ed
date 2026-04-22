@@ -140,6 +140,47 @@ class TestGuardianPolicyPhase2(FrappeTestCase):
         self.assertEqual(payload["acknowledged_for"], "Guardian")
         self.assertEqual(payload["context_name"], "GRD-0001")
 
+    def test_acknowledge_guardian_policy_uses_student_context_for_child_mode(self):
+        acknowledgement_doc = Mock()
+        acknowledgement_doc.name = "ACK-CHILD-1"
+
+        with (
+            patch("ifitwala_ed.api.guardian_policy.frappe.session", frappe._dict({"user": "guardian@example.com"})),
+            patch(
+                "ifitwala_ed.api.guardian_policy._resolve_guardian_scope",
+                return_value=("GRD-0001", [{"student": "STU-1"}]),
+            ),
+            patch(
+                "ifitwala_ed.api.guardian_policy._get_guardian_policy_rows",
+                return_value=[
+                    {
+                        "policy_version": "VER-1",
+                        "ack_context_doctype": "Student",
+                        "ack_context_name": "STU-1",
+                    }
+                ],
+            ),
+            patch("ifitwala_ed.api.guardian_policy.frappe.db.get_value", return_value=None),
+            patch(
+                "ifitwala_ed.api.guardian_policy._expected_guardian_signature_name",
+                return_value="Amina Example Guardian",
+            ),
+            patch("ifitwala_ed.api.guardian_policy.populate_policy_acknowledgement_evidence"),
+            patch("ifitwala_ed.api.guardian_policy.frappe.get_doc", return_value=acknowledgement_doc) as get_doc_mock,
+        ):
+            result = acknowledge_guardian_policy(
+                "VER-1",
+                context_name="STU-1",
+                typed_signature_name="Amina Example Guardian",
+                attestation_confirmed=1,
+            )
+
+        self.assertEqual(result["status"], "acknowledged")
+        payload = get_doc_mock.call_args.args[0]
+        self.assertEqual(payload["acknowledged_for"], "Guardian")
+        self.assertEqual(payload["context_doctype"], "Student")
+        self.assertEqual(payload["context_name"], "STU-1")
+
     def test_children_with_signer_authority_filters_to_consent_enabled_links(self):
         children = [
             {"student": "STU-1", "full_name": "Amina Example", "school": "SCHOOL-1"},
@@ -249,6 +290,66 @@ class TestGuardianPolicyPhase2(FrappeTestCase):
         self.assertIn("<h2>Family Handbook</h2>", rows[0]["policy_text"])
         self.assertIn("<p>Welcome</p>", rows[0]["policy_text"])
         self.assertNotIn("<script", rows[0]["policy_text"])
+
+    def test_get_guardian_policy_rows_expands_child_mode_to_one_row_per_student(self):
+        children = [
+            {"student": "STU-1", "full_name": "Amina Example", "school": "SCHOOL-1"},
+            {"student": "STU-2", "full_name": "Noah Example", "school": "SCHOOL-1"},
+        ]
+
+        with (
+            patch("ifitwala_ed.api.guardian_policy.ensure_policy_applies_to_storage", return_value={"ok": True}),
+            patch(
+                "ifitwala_ed.api.guardian_policy._resolve_authorized_child_contexts",
+                return_value=[
+                    {
+                        "student": "STU-1",
+                        "student_label": "Amina Example",
+                        "organization": "ORG-1",
+                        "school": "SCHOOL-1",
+                    },
+                    {
+                        "student": "STU-2",
+                        "student_label": "Noah Example",
+                        "organization": "ORG-1",
+                        "school": "SCHOOL-1",
+                    },
+                ],
+            ),
+            patch(
+                "ifitwala_ed.api.guardian_policy._query_policy_candidates_for_context",
+                return_value=[
+                    {
+                        "policy_name": "POL-1",
+                        "policy_key": "family_handbook",
+                        "policy_title": "Family Handbook",
+                        "policy_category": "Handbooks",
+                        "policy_version": "VER-1",
+                        "version_label": "v1",
+                        "guardian_acknowledgement_mode": "Child Acknowledgement",
+                        "policy_organization": "ORG-1",
+                        "policy_school": "SCHOOL-1",
+                        "description": "Review this handbook.",
+                        "policy_text": "<p>Policy text</p>",
+                        "effective_from": None,
+                        "effective_to": None,
+                        "approved_on": None,
+                    }
+                ],
+            ),
+            patch("ifitwala_ed.api.guardian_policy.frappe.get_all", return_value=[]),
+            patch("ifitwala_ed.api.guardian_policy.get_policy_version_acknowledgement_clauses_map", return_value={}),
+            patch(
+                "ifitwala_ed.api.guardian_policy._expected_guardian_signature_name",
+                return_value="Mariam Example",
+            ),
+        ):
+            rows = _get_guardian_policy_rows(guardian_name="GRD-0001", children=children)
+
+        self.assertEqual(len(rows), 2)
+        self.assertEqual({row["ack_context_doctype"] for row in rows}, {"Student"})
+        self.assertEqual({row["ack_context_name"] for row in rows}, {"STU-1", "STU-2"})
+        self.assertEqual({row["scope_label"] for row in rows}, {"Amina Example", "Noah Example"})
 
 
 class TestGuardianFinancePhase2(FrappeTestCase):

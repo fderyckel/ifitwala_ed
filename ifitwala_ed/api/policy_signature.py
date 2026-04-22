@@ -16,8 +16,10 @@ from ifitwala_ed.governance.policy_scope_utils import (
     select_nearest_policy_rows_by_key,
 )
 from ifitwala_ed.governance.policy_utils import (
+    GUARDIAN_ACK_MODE_CHILD,
     get_policy_applies_to_token_map,
     get_policy_applies_to_tokens_for_policy,
+    normalize_guardian_acknowledgement_mode,
     policy_applies_to,
 )
 from ifitwala_ed.utilities.employee_utils import get_descendant_organizations, get_user_base_org
@@ -236,6 +238,7 @@ def _policy_options_for_scope(
         SELECT
             pv.name AS policy_version,
             pv.version_label,
+            pv.guardian_acknowledgement_mode,
             pv.effective_from,
             pv.effective_to,
             ip.name AS institutional_policy,
@@ -272,6 +275,9 @@ def _policy_options_for_scope(
 
     options = []
     for row in rows:
+        row["guardian_acknowledgement_mode"] = normalize_guardian_acknowledgement_mode(
+            row.get("guardian_acknowledgement_mode")
+        )
         tokens = list(token_map.get((row.get("institutional_policy") or "").strip(), ()))
         if not _supported_policy_signature_audiences(tokens):
             continue
@@ -327,6 +333,7 @@ def _active_policy_rows_for_context(
             pv.version_label,
             pv.based_on_version,
             pv.change_summary,
+            pv.guardian_acknowledgement_mode,
             pv.effective_from,
             pv.effective_to,
             pv.approved_on,
@@ -365,6 +372,9 @@ def _active_policy_rows_for_context(
 
     out = []
     for row in rows:
+        row["guardian_acknowledgement_mode"] = normalize_guardian_acknowledgement_mode(
+            row.get("guardian_acknowledgement_mode")
+        )
         tokens = _supported_policy_signature_audiences(
             token_map.get((row.get("institutional_policy") or "").strip(), ())
         )
@@ -662,6 +672,7 @@ def get_policy_version_context(
             pv.change_summary,
             pv.diff_html,
             pv.change_stats,
+            pv.guardian_acknowledgement_mode,
             pv.effective_from,
             pv.effective_to,
             pv.is_active AS policy_version_is_active,
@@ -686,6 +697,9 @@ def get_policy_version_context(
 
     row = rows[0]
     row["policy_text"] = sanitize_html(row.get("policy_text") or "", allow_headings_from="h2")
+    row["guardian_acknowledgement_mode"] = normalize_guardian_acknowledgement_mode(
+        row.get("guardian_acknowledgement_mode")
+    )
     row["applies_to_tokens"] = list(get_policy_applies_to_tokens_for_policy(row.get("institutional_policy")))
     if require_active and (not row.get("policy_version_is_active") or not row.get("policy_is_active")):
         frappe.throw(_("Policy Version must be active under an active Institutional Policy."))
@@ -694,6 +708,95 @@ def get_policy_version_context(
         frappe.throw(_("Selected Policy Version does not apply to Staff."))
 
     return row
+
+
+def _policy_supports_guardian_audience(policy_row: dict | None) -> bool:
+    return "Guardian" in set((policy_row or {}).get("applies_to_tokens") or [])
+
+
+def _guardian_acknowledgement_mode_is_locked(*, policy_version: str | None) -> bool:
+    policy_version = (policy_version or "").strip()
+    if not policy_version:
+        return False
+    return bool(
+        frappe.db.exists(
+            "Policy Acknowledgement",
+            {
+                "policy_version": policy_version,
+                "acknowledged_for": "Guardian",
+                "docstatus": 1,
+            },
+        )
+    )
+
+
+def _effective_guardian_acknowledgement_mode(
+    *,
+    policy_row: dict,
+    requested_mode: str | None = None,
+) -> tuple[str | None, bool]:
+    if not _policy_supports_guardian_audience(policy_row):
+        return None, False
+
+    persisted_mode = normalize_guardian_acknowledgement_mode(policy_row.get("guardian_acknowledgement_mode"))
+    locked = _guardian_acknowledgement_mode_is_locked(policy_version=policy_row.get("policy_version"))
+    if locked:
+        return persisted_mode, True
+
+    return normalize_guardian_acknowledgement_mode(requested_mode or persisted_mode), False
+
+
+def _policy_row_with_guardian_acknowledgement_mode(policy_row: dict, guardian_mode: str | None) -> dict:
+    if guardian_mode is None:
+        return dict(policy_row)
+    return {
+        **dict(policy_row),
+        "guardian_acknowledgement_mode": normalize_guardian_acknowledgement_mode(guardian_mode),
+    }
+
+
+def _persist_guardian_acknowledgement_mode_if_needed(
+    *,
+    policy_row: dict,
+    requested_mode: str | None,
+) -> dict:
+    effective_mode, locked = _effective_guardian_acknowledgement_mode(
+        policy_row=policy_row,
+        requested_mode=requested_mode,
+    )
+    if effective_mode is None:
+        return dict(policy_row)
+
+    persisted_mode = normalize_guardian_acknowledgement_mode(policy_row.get("guardian_acknowledgement_mode"))
+    if effective_mode == persisted_mode:
+        return _policy_row_with_guardian_acknowledgement_mode(policy_row, persisted_mode)
+    if locked:
+        frappe.throw(
+            _(
+                "Guardian acknowledgement scope is already locked for this Policy Version because guardian acknowledgements exist."
+            ),
+            frappe.ValidationError,
+        )
+
+    version_doc = frappe.get_doc("Policy Version", policy_row.get("policy_version"))
+    version_doc.guardian_acknowledgement_mode = effective_mode
+    version_doc.save(ignore_permissions=True)
+
+    return {
+        **dict(policy_row),
+        "guardian_acknowledgement_mode": effective_mode,
+    }
+
+
+def _guardian_workflow_description(policy_row: dict) -> str:
+    guardian_mode = normalize_guardian_acknowledgement_mode(policy_row.get("guardian_acknowledgement_mode"))
+    if guardian_mode == GUARDIAN_ACK_MODE_CHILD:
+        return _(
+            "Guardians acknowledge this policy separately for each child in Guardian Portal; no staff tasks are created."
+        )
+    return _(
+        "Guardians acknowledge this policy once in Guardian Portal for their family scope; no staff tasks are created."
+    )
 
 
 def validate_staff_policy_scope_for_employee(policy_row: dict, employee_row: dict) -> None:
@@ -938,6 +1041,7 @@ def _target_guardians(*, organization: str, school: str | None) -> list[dict]:
             {
                 "organization": (row.get("organization") or "").strip(),
                 "school": (row.get("school") or "").strip(),
+                "student": (row.get("student") or "").strip(),
                 "student_name": student_name,
             }
         )
@@ -1342,9 +1446,16 @@ def _family_policy_campaign_message_html(*, policy_row: dict, audience: str, mes
         parts.append(custom_message_html)
     if change_summary:
         parts.append(f"<p><strong>{escape(_('Summary'))}</strong><br>{escape(change_summary)}</p>")
-    parts.append(
-        f"<p>{escape(_('Please review the full policy text and acknowledge it in {portal_label}.').format(portal_label=portal_label))}</p>"
-    )
+    if audience == "Guardian":
+        guardian_mode = normalize_guardian_acknowledgement_mode(policy_row.get("guardian_acknowledgement_mode"))
+        guidance = (
+            _("Please review the full policy text and acknowledge it separately for each child in {portal_label}.")
+            if guardian_mode == GUARDIAN_ACK_MODE_CHILD
+            else _("Please review the full policy text and acknowledge it in {portal_label}.")
+        )
+    else:
+        guidance = _("Please review the full policy text and acknowledge it in {portal_label}.")
+    parts.append(f"<p>{escape(guidance.format(portal_label=portal_label))}</p>")
     parts.append(
         '<div class="mt-3 flex flex-wrap justify-end gap-2">'
         + f'<a href="{action_href}" data-policy-version="{escape((policy_row.get("policy_version") or "").strip())}" class="btn btn-primary">'
@@ -1401,9 +1512,20 @@ def _normalize_family_policy_campaign_audiences(
     return normalized
 
 
-def _family_campaign_preview_payload(*, policy_row: dict, organization: str, school: str | None) -> dict:
-    dashboard_payload = _build_policy_signature_dashboard_payload(
+def _family_campaign_preview_payload(
+    *,
+    policy_row: dict,
+    organization: str,
+    school: str | None,
+    guardian_acknowledgement_mode: str | None = None,
+) -> dict:
+    effective_guardian_mode, guardian_mode_locked = _effective_guardian_acknowledgement_mode(
         policy_row=policy_row,
+        requested_mode=guardian_acknowledgement_mode,
+    )
+    preview_policy_row = _policy_row_with_guardian_acknowledgement_mode(policy_row, effective_guardian_mode)
+    dashboard_payload = _build_policy_signature_dashboard_payload(
+        policy_row=preview_policy_row,
         organization=organization,
         school=school,
         employee_group=None,
@@ -1415,7 +1537,9 @@ def _family_campaign_preview_payload(*, policy_row: dict, organization: str, sch
         if (section.get("audience") or "").strip() in set(POLICY_FAMILY_CAMPAIGN_AUDIENCE_ORDER)
     ]
     return {
-        "family_audiences": _supported_family_policy_campaign_audiences(policy_row.get("applies_to_tokens")),
+        "family_audiences": _supported_family_policy_campaign_audiences(preview_policy_row.get("applies_to_tokens")),
+        "guardian_acknowledgement_mode": effective_guardian_mode,
+        "guardian_acknowledgement_mode_locked": guardian_mode_locked,
         "school_target_count": len(_family_campaign_school_targets(organization=organization, school=school)),
         "audience_previews": [
             {
@@ -1439,6 +1563,7 @@ def get_family_policy_campaign_options(
     organization: str | None = None,
     school: str | None = None,
     policy_version: str | None = None,
+    guardian_acknowledgement_mode: str | None = None,
 ):
     user, roles = _require_roles(POLICY_SIGNATURE_MANAGER_ROLES)
     scoped_orgs = _manager_scope_organizations(user=user, roles=roles)
@@ -1446,6 +1571,7 @@ def get_family_policy_campaign_options(
     organization = (organization or "").strip() or None
     school = (school or "").strip() or None
     policy_version = (policy_version or "").strip() or None
+    guardian_acknowledgement_mode = (guardian_acknowledgement_mode or "").strip() or None
 
     if organization:
         _ensure_organization_in_scope(organization, scoped_orgs)
@@ -1465,6 +1591,8 @@ def get_family_policy_campaign_options(
 
     preview = {
         "family_audiences": [],
+        "guardian_acknowledgement_mode": None,
+        "guardian_acknowledgement_mode_locked": False,
         "school_target_count": len(_family_campaign_school_targets(organization=organization, school=school))
         if organization
         else 0,
@@ -1480,6 +1608,7 @@ def get_family_policy_campaign_options(
                 policy_row=policy_row,
                 organization=organization,
                 school=school,
+                guardian_acknowledgement_mode=guardian_acknowledgement_mode,
             )
 
     return {
@@ -1499,6 +1628,7 @@ def publish_family_policy_campaign(
     organization: str | None = None,
     school: str | None = None,
     audiences=None,
+    guardian_acknowledgement_mode: str | None = None,
     title: str | None = None,
     message: str | None = None,
     publish_to: str | None = None,
@@ -1509,6 +1639,7 @@ def publish_family_policy_campaign(
     policy_version = (policy_version or "").strip()
     organization = (organization or "").strip()
     school = (school or "").strip() or None
+    guardian_acknowledgement_mode = (guardian_acknowledgement_mode or "").strip() or None
     title = (title or "").strip() or None
     message = (message or "").strip() or None
     client_request_id = (client_request_id or "").strip() or None
@@ -1551,6 +1682,7 @@ def publish_family_policy_campaign(
         policy_row=policy_row,
         organization=organization,
         school=school,
+        guardian_acknowledgement_mode=guardian_acknowledgement_mode if "Guardian" in set(selected_audiences) else None,
     )
     preview_by_audience = {
         (row.get("audience") or "").strip(): row
@@ -1569,6 +1701,11 @@ def publish_family_policy_campaign(
             organization,
             school or "",
             ",".join(selected_audiences),
+            normalize_guardian_acknowledgement_mode(
+                guardian_acknowledgement_mode or policy_row.get("guardian_acknowledgement_mode")
+            )
+            if "Guardian" in set(selected_audiences)
+            else "",
             title or "",
             message or "",
             publish_to_value.isoformat() if publish_to_value else "",
@@ -1621,6 +1758,12 @@ def publish_family_policy_campaign(
                         "status": "already_processed",
                         "idempotent": True,
                     }
+
+        if "Guardian" in set(selected_audiences):
+            policy_row = _persist_guardian_acknowledgement_mode_if_needed(
+                policy_row=policy_row,
+                requested_mode=guardian_acknowledgement_mode,
+            )
 
         publish_from_value = now_datetime()
         created_communications: list[dict] = []
@@ -1681,6 +1824,11 @@ def publish_family_policy_campaign(
             "organization": organization,
             "school": school,
             "audiences": selected_audiences,
+            "guardian_acknowledgement_mode": (
+                normalize_guardian_acknowledgement_mode(policy_row.get("guardian_acknowledgement_mode"))
+                if "Guardian" in set(selected_audiences)
+                else None
+            ),
             "counts": {
                 "published": len(created_communications),
                 "pending": selected_pending,
@@ -2108,6 +2256,87 @@ def _build_guardian_audience_dataset(
 ) -> dict:
     targets = _target_guardians(organization=organization, school=school)
     eligible, skipped_scope = _eligible_guardian_rows(policy_row=policy_row, rows=targets)
+    guardian_mode = normalize_guardian_acknowledgement_mode(policy_row.get("guardian_acknowledgement_mode"))
+
+    if guardian_mode == GUARDIAN_ACK_MODE_CHILD:
+        child_target_rows = []
+        for guardian in eligible:
+            for context in guardian.get("contexts") or []:
+                if not _policy_scope_applies_to_context(
+                    policy_row=policy_row,
+                    organization=context.get("organization"),
+                    school=context.get("school"),
+                ):
+                    continue
+                student_name = (context.get("student") or "").strip()
+                if not student_name:
+                    continue
+                child_target_rows.append(
+                    {
+                        "guardian_name": (guardian.get("name") or "").strip(),
+                        "guardian_full_name": guardian.get("guardian_full_name"),
+                        "guardian_email": guardian.get("guardian_email"),
+                        "guardian_user_id": guardian.get("user_id"),
+                        "student_name": student_name,
+                        "student_label": (context.get("student_name") or student_name).strip(),
+                        "organization": (context.get("organization") or "").strip(),
+                        "school": (context.get("school") or "").strip(),
+                    }
+                )
+
+        ack_by_student = _acknowledgement_rows_by_context(
+            policy_version=policy_row["policy_version"],
+            acknowledged_for="Guardian",
+            context_doctype="Student",
+            context_names=[row.get("student_name") for row in child_target_rows],
+        )
+        rows = []
+        for target in child_target_rows:
+            ack = ack_by_student.get((target.get("student_name") or "").strip())
+            context_bits = [_("For {student}").format(student=target.get("student_label"))]
+            if not target.get("guardian_user_id"):
+                context_bits.append(_("No guardian portal user linked yet"))
+            rows.append(
+                {
+                    "record_id": f"{target.get('guardian_name')}::{target.get('student_name')}",
+                    "subject_name": target.get("guardian_full_name") or target.get("guardian_name"),
+                    "subject_subtitle": target.get("guardian_email"),
+                    "context_label": " · ".join(bit for bit in context_bits if bit),
+                    "organization": target.get("organization") or None,
+                    "school": target.get("school") or None,
+                    "is_signed": bool(ack),
+                    "acknowledged_at": ack.get("acknowledged_at") if ack else None,
+                    "acknowledged_by": ack.get("acknowledged_by") if ack else None,
+                }
+            )
+
+        signed_count = sum(1 for row in rows if row["is_signed"])
+        pending_count = len(rows) - signed_count
+        workflow_description = _guardian_workflow_description(policy_row)
+        return {
+            "audience": "Guardian",
+            "audience_label": POLICY_SIGNATURE_AUDIENCE_LABELS["Guardian"],
+            "workflow_description": workflow_description,
+            "supports_campaign_launch": False,
+            "summary": {
+                "target_rows": len(child_target_rows),
+                "eligible_targets": len(rows),
+                "signed": signed_count,
+                "pending": pending_count,
+                "completion_pct": _completion_pct(signed_count, len(rows)),
+                "skipped_scope": skipped_scope,
+                "already_open": 0,
+                "to_create": 0,
+            },
+            "breakdowns": {
+                "by_organization": _build_breakdown(rows, field="organization"),
+                "by_school": _build_breakdown(rows, field="school"),
+                "by_context": [],
+                "context_label": _("Guardian Child Scope"),
+            },
+            "rows": rows,
+        }
+
     ack_by_guardian = _acknowledgement_rows_by_context(
         policy_version=policy_row["policy_version"],
         acknowledged_for="Guardian",
@@ -2151,7 +2380,7 @@ def _build_guardian_audience_dataset(
     return {
         "audience": "Guardian",
         "audience_label": POLICY_SIGNATURE_AUDIENCE_LABELS["Guardian"],
-        "workflow_description": POLICY_SIGNATURE_AUDIENCE_WORKFLOW_DESCRIPTIONS["Guardian"],
+        "workflow_description": _guardian_workflow_description(policy_row),
         "supports_campaign_launch": False,
         "summary": {
             "target_rows": len(targets),

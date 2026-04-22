@@ -22,6 +22,7 @@ from ifitwala_ed.api.calendar_core import (
 )
 from ifitwala_ed.api.org_communication_quick_create import (
     create_org_communication_quick,
+    get_org_communication_quick_create_capability,
 )
 from ifitwala_ed.api.student_log_dashboard import get_authorized_schools
 from ifitwala_ed.schedule.schedule_utils import iter_student_group_room_slots
@@ -1860,6 +1861,7 @@ def get_event_quick_create_options():
         if default_school
         else _location_type_options_for_scope(None, is_admin_like)
     )
+    publish_capability = get_org_communication_quick_create_capability(user=user)
 
     payload = {
         "can_create_meeting": can_create_meeting,
@@ -1879,6 +1881,10 @@ def get_event_quick_create_options():
             {"value": "student", "label": "Students"},
             {"value": "guardian", "label": "Guardians"},
         ],
+        "announcement_publish": {
+            "enabled": bool(publish_capability.get("enabled")),
+            "blocked_reason": _safe_text(publish_capability.get("blocked_reason")) or None,
+        },
         "defaults": {
             "school": default_school,
             "day_start_time": DEFAULT_DAY_START_TIME,
@@ -2476,6 +2482,8 @@ def create_school_event_quick(
     reference_type: str | None = None,
     reference_name: str | None = None,
     custom_participants: object | None = None,
+    publish_announcement: int | None = 0,
+    announcement_message: str | None = None,
     client_request_id: str | None = None,
 ):
     user = frappe.session.user
@@ -2495,6 +2503,16 @@ def create_school_event_quick(
     reference_name_value = _safe_text(reference_name)
     team_value = _safe_text(audience_team)
     student_group_value = _safe_text(audience_student_group)
+    publish_announcement_flag = cint(publish_announcement)
+
+    if publish_announcement_flag:
+        publish_capability = get_org_communication_quick_create_capability(user=user)
+        if not publish_capability.get("enabled"):
+            frappe.throw(
+                _safe_text(publish_capability.get("blocked_reason"))
+                or _("You do not have permission to publish announcements from this workflow."),
+                frappe.PermissionError,
+            )
 
     if not request_id:
         frappe.throw(_("client_request_id is required."), frappe.ValidationError)
@@ -2523,6 +2541,7 @@ def create_school_event_quick(
         participants = [user]
 
     def _create():
+        published_communication = None
         audience_row = {
             "audience_type": audience_value,
             "include_guardians": cint(include_guardians),
@@ -2556,6 +2575,20 @@ def create_school_event_quick(
 
         doc = frappe.get_doc(payload)
         doc.insert()
+        if publish_announcement_flag:
+            published_communication = _publish_org_communication_for_school_event(
+                request_id=request_id,
+                event_name=doc.name,
+                subject=doc.subject or doc.name,
+                school=school_value,
+                description=description,
+                announcement_message=announcement_message,
+                audience_type=audience_value,
+                audience_team=team_value or None,
+                audience_student_group=student_group_value or None,
+                include_guardians=cint(include_guardians),
+                include_students=cint(include_students),
+            )
 
         start_dt = _to_system_datetime(doc.starts_on, _system_tzinfo()) if getattr(doc, "starts_on", None) else None
         end_dt = _to_system_datetime(doc.ends_on, _system_tzinfo()) if getattr(doc, "ends_on", None) else None
@@ -2569,6 +2602,7 @@ def create_school_event_quick(
             "title": doc.subject or doc.name,
             "start": start_dt.isoformat() if start_dt else None,
             "end": end_dt.isoformat() if end_dt else None,
+            "published_communication": published_communication,
             **_target_payload(
                 doctype="School Event",
                 name=doc.name,

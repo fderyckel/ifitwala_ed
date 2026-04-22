@@ -1,10 +1,14 @@
-import type { FamilyPolicyCampaignAudience } from '@/types/contracts/policy_signature/get_family_policy_campaign_options';
+import type {
+	FamilyPolicyCampaignAudience,
+	GuardianAcknowledgementMode,
+} from '@/types/contracts/policy_signature/get_family_policy_campaign_options';
 
 export type Request = {
 	policy_version: string;
 	organization: string;
 	school?: string | null;
 	audiences: FamilyPolicyCampaignAudience[];
+	guardian_acknowledgement_mode?: GuardianAcknowledgementMode | null;
 	title?: string | null;
 	message?: string | null;
 	publish_to?: string | null;
@@ -19,6 +23,7 @@ export type Response = {
 	organization: string;
 	school?: string | null;
 	audiences: FamilyPolicyCampaignAudience[];
+	guardian_acknowledgement_mode?: GuardianAcknowledgementMode | null;
 	counts: {
 		published: number;
 		pending: number;

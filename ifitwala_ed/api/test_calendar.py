@@ -565,6 +565,136 @@ class TestCalendarApi(TestCase):
         self.assertEqual(len(captured_payloads), 1)
         self.assertEqual(captured_payloads[0].get("participants"), [{"participant": "staff@example.com"}])
 
+    def test_get_event_quick_create_options_includes_announcement_publish_capability(self):
+        cache = _DummyCache()
+
+        with (
+            patch("ifitwala_ed.api.calendar_quick_create.frappe.session", frappe._dict({"user": "staff@example.com"})),
+            patch(
+                "ifitwala_ed.api.calendar_quick_create.frappe.has_permission",
+                side_effect=lambda doctype, ptype=None, user=None: doctype == "School Event",
+            ),
+            patch("ifitwala_ed.api.calendar_quick_create.frappe.cache", return_value=cache),
+            patch(
+                "ifitwala_ed.api.calendar_quick_create._get_quick_create_scope",
+                return_value={
+                    "roles": ["Academic Assistant"],
+                    "base_school": "ISS",
+                    "school_scope": ["ISS", "IHS", "IMS"],
+                    "is_admin_like": False,
+                },
+            ),
+            patch(
+                "ifitwala_ed.api.calendar_quick_create._cached_select_options",
+                side_effect=lambda doctype, fieldname: {
+                    ("Meeting", "meeting_category"): ["General"],
+                    ("School Event", "event_category"): ["Other"],
+                    ("School Event Audience", "audience_type"): ["All Guardians", "Students in Student Group"],
+                }[(doctype, fieldname)],
+            ),
+            patch(
+                "ifitwala_ed.api.calendar_quick_create._school_options_for_scope",
+                return_value=[
+                    {"value": "ISS", "label": "Ifitwala Secondary School"},
+                    {"value": "IHS", "label": "Ifitwala High School"},
+                ],
+            ),
+            patch("ifitwala_ed.api.calendar_quick_create._location_options_map_for_schools", return_value={"ISS": []}),
+            patch(
+                "ifitwala_ed.api.calendar_quick_create._location_type_options_map_for_schools", return_value={"ISS": []}
+            ),
+            patch("ifitwala_ed.api.calendar_quick_create._team_options_for_scope", return_value=[]),
+            patch("ifitwala_ed.api.calendar_quick_create._student_group_options_for_scope", return_value=[]),
+            patch(
+                "ifitwala_ed.api.calendar_quick_create.get_org_communication_quick_create_capability",
+                return_value={
+                    "enabled": False,
+                    "blocked_reason": "Set a default organization before publishing announcements.",
+                },
+            ),
+        ):
+            payload = calendar_quick_create.get_event_quick_create_options()
+
+        self.assertEqual(
+            payload["announcement_publish"],
+            {
+                "enabled": False,
+                "blocked_reason": "Set a default organization before publishing announcements.",
+            },
+        )
+
+    def test_create_school_event_quick_can_publish_matching_org_communication(self):
+        cache = _DummyCache()
+        captured_event_payloads = []
+
+        def _fake_get_doc(*args, **kwargs):
+            if len(args) == 1 and isinstance(args[0], dict):
+                payload = args[0]
+                captured_event_payloads.append(payload)
+                return _FakeDoc(payload, "SE-26-04-00001")
+            if args == ("System Settings", "System Settings"):
+                return frappe._dict({"time_zone": "Asia/Bangkok"})
+            raise AssertionError(f"Unexpected get_doc call: args={args!r} kwargs={kwargs!r}")
+
+        with (
+            patch("ifitwala_ed.api.calendar_quick_create.frappe.session", frappe._dict({"user": "staff@example.com"})),
+            patch("ifitwala_ed.api.calendar_quick_create.frappe.has_permission", return_value=True),
+            patch("ifitwala_ed.api.calendar_quick_create.frappe.cache", return_value=cache),
+            patch("ifitwala_ed.api.calendar_quick_create.frappe.get_doc", side_effect=_fake_get_doc),
+            patch("ifitwala_ed.api.calendar_quick_create._ensure_allowed_school", return_value="ISS"),
+            patch("ifitwala_ed.api.calendar_quick_create._ensure_allowed_location", return_value=None),
+            patch(
+                "ifitwala_ed.api.calendar_quick_create.frappe.db.get_value",
+                return_value=frappe._dict({"organization": "ORG-ROOT"}),
+            ),
+            patch(
+                "ifitwala_ed.api.calendar_quick_create.create_org_communication_quick",
+                return_value={
+                    "ok": True,
+                    "status": "created",
+                    "name": "ORG-COMM-26-04-00001",
+                    "title": "Parent MYP Workshop",
+                },
+            ) as mocked_publish,
+        ):
+            response = create_school_event_quick(
+                client_request_id="req-publish-1",
+                subject="Parent MYP Workshop",
+                school="ISS",
+                starts_on="2026-04-22T08:00",
+                ends_on="2026-04-22T09:00",
+                audience_type="All Guardians",
+                event_category="Parent Engagement",
+                publish_announcement=1,
+                announcement_message="Workshop presentation",
+            )
+
+        self.assertEqual(response.get("status"), "created")
+        self.assertEqual(response.get("published_communication", {}).get("name"), "ORG-COMM-26-04-00001")
+        self.assertEqual(len(captured_event_payloads), 1)
+        self.assertEqual(captured_event_payloads[0].get("school"), "ISS")
+        mocked_publish.assert_called_once()
+        self.assertEqual(
+            mocked_publish.call_args.kwargs["audiences"],
+            [
+                {
+                    "target_mode": "School Scope",
+                    "school": "ISS",
+                    "team": None,
+                    "student_group": None,
+                    "include_descendants": 1,
+                    "to_staff": 0,
+                    "to_students": 0,
+                    "to_guardians": 1,
+                    "note": None,
+                }
+            ],
+        )
+        self.assertEqual(mocked_publish.call_args.kwargs["portal_surface"], "Portal Feed")
+        self.assertEqual(mocked_publish.call_args.kwargs["organization"], "ORG-ROOT")
+        self.assertEqual(mocked_publish.call_args.kwargs["status"], "Published")
+        self.assertEqual(mocked_publish.call_args.kwargs["message"], "Workshop presentation")
+
     def test_student_group_memberships_does_not_filter_child_rows_by_active(self):
         observed_filters = []
 

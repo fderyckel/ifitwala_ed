@@ -15,7 +15,7 @@ Core flow:
 - `on_update()` handles operational updates:
   - NestedSet update when `reports_to` changes.
   - cache reset and history synchronization.
-  - staff calendar + primary contact synchronization.
+  - staff calendar invalidation when the resolved holiday source changes.
   - role/authority helpers.
   - profile sync to linked `User` (strictly permission-gated).
 
@@ -81,8 +81,8 @@ Current create flow:
 - HR/System Manager authorization checks
 - professional email required and uniqueness checks
 - create `User`, link back to `Employee.user_id`, save employee
-- immediately repair the contact graph so the user-linked `Contact` also carries an `Employee` dynamic link and `Employee.empl_primary_contact` points at that contact
-- employee contact resolution prefers `Contact.user = Employee.user_id`; if no contact exists yet, the save flow creates a minimal contact from employee identity data and then adds the `Employee` dynamic link
+- immediately provision the contact graph so the user-linked `Contact` also carries an `Employee` dynamic link and `Employee.empl_primary_contact` points at that contact
+- employee contact provisioning prefers `Contact.user = Employee.user_id`; if no contact exists yet, the create-user flow creates a minimal contact from employee identity data and then adds the `Employee` dynamic link
 
 Role handling now follows managed sync:
 - on employee save, `sync_user_access_from_employee` computes effective roles/workspace from employee history + designation defaults, and always includes the baseline `Employee` role for active staff users.
@@ -93,7 +93,7 @@ Role handling now follows managed sync:
 - on employee save, linked `User.enabled` is enforced from `Employee.employment_status`:
   - `Active` -> `enabled = 1`
   - any other status (`Temporary Leave`, `Suspended`, `Left`, or blank) -> `enabled = 0`
-- on employee save, `_ensure_primary_contact()` self-heals the contact graph: if the user-linked contact exists but is missing a `Contact.links` row to the current `Employee`, the link is inserted; if the employee already has `empl_primary_contact`, that contact is reused as a repair target.
+- employee save no longer repairs legacy contact-link drift; existing sites backfill missing `Contact.links -> Employee` rows and `empl_primary_contact` references through the one-shot patch `ifitwala_ed.patches.backfill_employee_contact_links`
 - contact visibility for employee-linked contacts is server-scoped through `Contact.links -> Employee`:
   - `HR Manager` / `HR User`: read employee contacts in their organization scope
   - `Academic Admin` / `Academic Assistant`: read employee contacts in their effective school + descendant-school scope, where Academic Admin resolves school from the active Employee profile before persisted defaults

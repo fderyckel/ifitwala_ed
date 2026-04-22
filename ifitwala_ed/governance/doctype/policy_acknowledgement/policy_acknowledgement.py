@@ -27,7 +27,7 @@ from ifitwala_ed.governance.policy_utils import (
 ACK_CONTEXT_MAP = {
     "Applicant": ("Student Applicant",),
     "Student": ("Student",),
-    "Guardian": ("Guardian",),
+    "Guardian": ("Guardian", "Student"),
     "Staff": ("Employee",),
 }
 
@@ -449,10 +449,19 @@ class PolicyAcknowledgement(Document):
             guardian_names = get_guardian_names_for_user(user=frappe.session.user)
             if not guardian_names:
                 return _("Guardian-linked account is not connected to a Guardian record.")
-            if self.context_name not in guardian_names:
-                return _("Guardians may only acknowledge policies for themselves.")
-            if not _guardian_has_primary_signer_authority(self.context_name):
-                return _("Only primary guardians may acknowledge guardian policies.")
+            if self.context_doctype == "Guardian":
+                if self.context_name not in guardian_names:
+                    return _("Guardians may only acknowledge policies for themselves.")
+                if not _guardian_has_primary_signer_authority(self.context_name):
+                    return _("Only primary guardians may acknowledge guardian policies.")
+                return None
+            if self.context_doctype == "Student":
+                guardian_name = self._guardian_name_for_user()
+                if not guardian_name:
+                    return _("Guardian-linked account is not connected to a Guardian record.")
+                if not self._guardian_linked_to_student(guardian_name, self.context_name):
+                    return _("You are not a signer-authorized guardian for this student.")
+                return None
             return None
         if self.acknowledged_for == "Staff":
             if has_staff_role():

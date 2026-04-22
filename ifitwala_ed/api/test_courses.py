@@ -361,6 +361,38 @@ class TestCoursesApi(TestCase):
         self.assertEqual([item["task_delivery"] for item in board["soon"]], ["TD-SOON"])
         self.assertEqual([item["task_delivery"] for item in board["later"]], ["TD-LATER"])
         self.assertEqual([item["task_delivery"] for item in board["done"]], ["TD-DONE"])
+        self.assertEqual(board["now"][0]["status_label"], "Overdue")
+        self.assertEqual(board["soon"][0]["status_label"], "Upcoming")
+        self.assertEqual(board["later"][0]["status_label"], "Upcoming")
+        self.assertEqual(board["done"][0]["status_label"], "Submitted")
+
+    def test_build_work_item_status_label_hides_internal_grading_states(self):
+        anchor = datetime(2026, 3, 13, 9, 0, 0)
+
+        self.assertEqual(
+            courses_api._build_work_item_status_label(
+                {
+                    "grading_status": "Released",
+                    "submission_status": "Not Submitted",
+                    "is_complete": 0,
+                },
+                anchor,
+            ),
+            "Completed",
+        )
+        self.assertEqual(
+            courses_api._build_work_item_status_label(
+                {
+                    "available_from": "2026-03-13 11:00:00",
+                    "due_date": "2026-03-15 09:00:00",
+                    "submission_status": "Not Submitted",
+                    "grading_status": "Not Started",
+                    "is_complete": 0,
+                },
+                anchor,
+            ),
+            "Not Yet Open",
+        )
 
     def test_get_student_hub_home_includes_board_and_timeline(self):
         anchor = datetime(2026, 3, 13, 8, 45, 0)
@@ -458,6 +490,8 @@ class TestCoursesApi(TestCase):
             payload["learning"]["work_board"]["now"][0]["href"]["query"]["task_delivery"],
             "TD-1",
         )
+        self.assertEqual(payload["learning"]["work_board"]["now"][0]["status_label"], "Upcoming")
+        self.assertEqual(payload["learning"]["timeline"][1]["items"][0]["status_label"], "Upcoming")
         self.assertEqual(payload["learning"]["timeline"][0]["items"][0]["kind"], "scheduled_class")
 
     def test_build_work_item_href_preserves_class_session_context(self):

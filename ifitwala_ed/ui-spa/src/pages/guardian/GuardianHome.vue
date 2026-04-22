@@ -49,10 +49,10 @@
 			<div class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
 				<div>
 					<p class="type-overline text-ink/60">Policy Actions</p>
-					<h2 class="type-h3 text-ink">Policies need your acknowledgement</h2>
+					<h2 class="type-h3 text-ink">Policy acknowledgements need your action</h2>
 					<p class="type-caption text-ink/70">
 						{{ policySummary.pending_count }}
-						{{ policySummary.pending_count === 1 ? 'policy is' : 'policies are' }}
+						{{ policySummary.pending_count === 1 ? 'acknowledgement is' : 'acknowledgements are' }}
 						waiting for your family action.
 					</p>
 				</div>
@@ -62,8 +62,8 @@
 			</div>
 			<ul class="mt-4 space-y-2">
 				<li
-					v-for="item in policySummary.items"
-					:key="item.policy_version"
+					v-for="(item, index) in policySummary.items"
+					:key="`${item.policy_version}:${index}`"
 					class="rounded-lg border border-line-soft bg-white p-3"
 				>
 					<div class="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">

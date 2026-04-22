@@ -83,6 +83,7 @@ export type StudentAssignedWork = {
 	available_from?: string | null
 	due_date?: string | null
 	lock_date?: string | null
+	status_label?: string | null
 	submission_status?: string | null
 	grading_status?: string | null
 	is_complete?: number

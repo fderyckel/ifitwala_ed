@@ -289,8 +289,8 @@ Status: Canonical
 Code refs: `ifitwala_ed/api/teaching_plans.py`, `ifitwala_ed/api/quiz.py`, `ifitwala_ed/assessment/quiz_service.py`, `ifitwala_ed/ui-spa/src/pages/student/CourseDetail.vue`, `ifitwala_ed/ui-spa/src/pages/student/StudentQuiz.vue`
 Test refs: `ifitwala_ed/api/test_teaching_plans.py`, `ifitwala_ed/api/test_quiz.py`, `ifitwala_ed/assessment/test_quiz_service.py`
 
-- The student learning space and the quiz player are separate runtime surfaces today. Do not document them as one merged flow until `CourseDetail.vue` actually exposes quiz launch/state behavior.
-- `CourseDetail.vue` now owns quiz launch, resume, and review entry points; `StudentQuiz.vue` stays the bounded runtime player.
+- The student learning space and the quiz player remain separate runtime surfaces. `CourseDetail.vue` owns quiz launch, resume, and review entry points; `StudentQuiz.vue` stays the bounded runtime player.
+- Student assigned-work summary chips in `CourseDetail.vue` are server-owned operational labels and must not mirror raw `Task Outcome.grading_status`.
 - `get_student_learning_space` owns curriculum context. `api/quiz.py` plus `quiz_service.py` own quiz attempt workflows.
 - Assessed feedback withholding is implemented in the server serializer, not by hiding fields in the SPA.
 - Any change to quiz payload secrecy, attempt rules, or LMS launch flow must update this contract in the same change.

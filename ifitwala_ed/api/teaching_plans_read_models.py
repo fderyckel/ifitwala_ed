@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Any
 
 from ifitwala_ed.api.attachment_previews import build_attachment_preview_item, extract_file_extension
+from ifitwala_ed.api.student_task_status import DONE_SUBMISSION_STATUSES, build_student_task_status_label
 from ifitwala_ed.utilities.html_sanitizer import sanitize_html
 
 
@@ -315,7 +316,15 @@ def fetch_assigned_work(
                 "student": student_name,
                 "task_delivery": ["in", [row["task_delivery"] for row in rows if row.get("task_delivery")] or [""]],
             },
-            fields=["name", "task_delivery", "submission_status", "grading_status", "is_complete", "is_published"],
+            fields=[
+                "name",
+                "task_delivery",
+                "submission_status",
+                "grading_status",
+                "has_submission",
+                "is_complete",
+                "is_published",
+            ],
             limit=0,
         )
         outcomes_by_delivery = {row.get("task_delivery"): row for row in outcome_rows or [] if row.get("task_delivery")}
@@ -341,6 +350,7 @@ def fetch_assigned_work(
         )
 
     payload = []
+    anchor_dt = api.now_datetime()
     for row in rows:
         item = {
             "task_delivery": row.get("task_delivery"),
@@ -366,6 +376,23 @@ def fetch_assigned_work(
             item["grading_status"] = outcome.get("grading_status")
             item["is_complete"] = int(outcome.get("is_complete") or 0) if outcome else 0
             item["is_published"] = int(outcome.get("is_published") or 0) if outcome else 0
+            item["status_label"] = build_student_task_status_label(
+                {
+                    "available_from": row.get("available_from"),
+                    "due_date": row.get("due_date"),
+                    "submission_status": outcome.get("submission_status"),
+                    "grading_status": outcome.get("grading_status"),
+                    "is_complete": outcome.get("is_complete"),
+                    "has_submission": (
+                        int(outcome.get("has_submission") or 0)
+                        if outcome.get("has_submission") is not None
+                        else (
+                            1 if str(outcome.get("submission_status") or "").strip() in DONE_SUBMISSION_STATUSES else 0
+                        )
+                    ),
+                },
+                anchor_dt,
+            )
             item["quiz_state"] = quiz_state_by_delivery.get(row.get("task_delivery"))
         payload.append(item)
     return payload

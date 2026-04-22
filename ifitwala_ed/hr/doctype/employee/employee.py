@@ -187,7 +187,6 @@ class Employee(NestedSet):
 
         self.reset_employee_emails_cache()
         self.sync_employee_history()
-        self._ensure_primary_contact()
 
         prev = self.get_doc_before_save() or {}
         prev_holiday = (
@@ -866,36 +865,6 @@ class Employee(NestedSet):
         contact.append("links", {"link_doctype": "Employee", "link_name": self.name})
         contact.save(ignore_permissions=True)
 
-    def _ensure_primary_contact(self):
-        _refresh_runtime_bindings()
-
-        """
-        NOTE:
-        Employee does NOT own contact/address data.
-        Contact is the single source of truth.
-        This method only ensures correct graph linking:
-        User → Contact → Employee (via Dynamic Link).
-
-        Dependency:
-        User creation is expected to auto-create a Contact linked to the User (hook-level behavior).
-        """
-        if not self.user_id:
-            return
-
-        contact_name = self._get_or_create_primary_contact()
-        if not contact_name:
-            frappe.log_error(
-                title="Employee Contact Link Missing",
-                message=f"No Contact found for User {self.user_id}",
-            )
-            return
-
-        self._ensure_contact_employee_link(contact_name)
-
-        if self.empl_primary_contact != contact_name:
-            self.empl_primary_contact = contact_name
-            self.db_set("empl_primary_contact", contact_name, update_modified=False)
-
     def _can_sync_user_profile(self) -> bool:
         _refresh_runtime_bindings()
 
@@ -1050,7 +1019,19 @@ def create_user(employee, user=None, email=None):
 
     emp.user_id = user_doc.name
     emp.save(ignore_permissions=True)
-    emp._ensure_primary_contact()
+
+    contact_name = emp._get_or_create_primary_contact()
+    if not contact_name:
+        frappe.log_error(
+            title="Employee Contact Link Missing",
+            message=f"No Contact found for User {emp.user_id}",
+        )
+        return user_doc.name
+
+    emp._ensure_contact_employee_link(contact_name)
+    if emp.empl_primary_contact != contact_name:
+        emp.empl_primary_contact = contact_name
+        emp.db_set("empl_primary_contact", contact_name, update_modified=False)
 
     return user_doc.name
 

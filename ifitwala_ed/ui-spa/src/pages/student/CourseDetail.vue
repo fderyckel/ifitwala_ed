@@ -1949,8 +1949,9 @@ function nextActionButtonLabel(action: StudentLearningNextAction) {
 
 function assignedWorkStatusLabel(item: StudentAssignedWork) {
 	if (item.quiz_state?.status_label) return item.quiz_state.status_label;
+	if (item.status_label) return item.status_label;
 	if (item.is_complete) return 'Completed';
-	return humanizeLabel(item.submission_status || item.grading_status || '');
+	return '';
 }
 
 function assignedWorkTimingLabel(item: StudentAssignedWork) {
@@ -2179,6 +2180,7 @@ async function submitSelectedTaskWorkspace() {
 			}
 		);
 		patchAssignedWork(task.task_delivery, {
+			status_label: isResubmission ? 'Resubmitted' : 'Submitted',
 			submission_status:
 				response.outcome_flags?.submission_status ||
 				(isResubmission ? 'Resubmitted' : 'Submitted'),
@@ -2210,6 +2212,7 @@ async function markSelectedTaskComplete() {
 		});
 		patchAssignedWork(task.task_delivery, {
 			is_complete: response.is_complete ? 1 : 0,
+			status_label: response.is_complete ? 'Completed' : task.status_label,
 		});
 		toast.success('Task marked complete.');
 	} catch (error) {

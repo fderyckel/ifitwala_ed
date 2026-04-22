@@ -87,6 +87,8 @@ class TestPolicyFamilyCampaign(FrappeTestCase):
             [row.get("policy_version") for row in result["options"]["policies"]],
             ["PV-GUARDIAN", "PV-MIXED"],
         )
+        self.assertIsNone(result["preview"]["guardian_acknowledgement_mode"])
+        self.assertFalse(result["preview"]["guardian_acknowledgement_mode_locked"])
         self.assertEqual(result["preview"]["school_target_count"], 1)
 
     def test_publish_family_policy_campaign_creates_one_portal_communication_per_selected_audience(self):
@@ -101,6 +103,7 @@ class TestPolicyFamilyCampaign(FrappeTestCase):
             "policy_version": "PV-FAMILY",
             "policy_title": "Community Handbook",
             "version_label": "v4",
+            "guardian_acknowledgement_mode": "Family Acknowledgement",
             "policy_organization": "ORG-ROOT",
             "policy_school": "",
             "institutional_policy": "POL-1",
@@ -111,6 +114,8 @@ class TestPolicyFamilyCampaign(FrappeTestCase):
         }
         preview_payload = {
             "family_audiences": ["Guardian", "Student"],
+            "guardian_acknowledgement_mode": "Child Acknowledgement",
+            "guardian_acknowledgement_mode_locked": False,
             "school_target_count": 2,
             "audience_previews": [
                 {
@@ -159,6 +164,10 @@ class TestPolicyFamilyCampaign(FrappeTestCase):
                 "ifitwala_ed.api.policy_signature._family_campaign_preview_payload",
                 return_value=preview_payload,
             ),
+            patch(
+                "ifitwala_ed.api.policy_signature._persist_guardian_acknowledgement_mode_if_needed",
+                return_value={**policy_row, "guardian_acknowledgement_mode": "Child Acknowledgement"},
+            ) as persist_mode_mock,
             patch.object(policy_signature.frappe, "get_doc", side_effect=fake_get_doc),
             patch.object(policy_signature.frappe, "cache", return_value=cache),
         ):
@@ -166,6 +175,7 @@ class TestPolicyFamilyCampaign(FrappeTestCase):
                 policy_version="PV-FAMILY",
                 organization="ORG-ROOT",
                 audiences=["Guardian", "Student"],
+                guardian_acknowledgement_mode="Child Acknowledgement",
                 title="Please review this handbook update",
                 message="A new acknowledgement is waiting for your family.",
                 client_request_id="REQ-1",
@@ -174,6 +184,7 @@ class TestPolicyFamilyCampaign(FrappeTestCase):
                 policy_version="PV-FAMILY",
                 organization="ORG-ROOT",
                 audiences=["Guardian", "Student"],
+                guardian_acknowledgement_mode="Child Acknowledgement",
                 title="Please review this handbook update",
                 message="A new acknowledgement is waiting for your family.",
                 client_request_id="REQ-1",
@@ -185,10 +196,12 @@ class TestPolicyFamilyCampaign(FrappeTestCase):
         self.assertEqual(first_result["counts"]["published"], 2)
         self.assertEqual(first_result["counts"]["pending"], 9)
         self.assertEqual(first_result["counts"]["school_targets"], 2)
+        self.assertEqual(first_result["guardian_acknowledgement_mode"], "Child Acknowledgement")
         self.assertEqual(
             [first_result["communications"][0]["audience"], first_result["communications"][1]["audience"]],
             ["Guardian", "Student"],
         )
+        persist_mode_mock.assert_called_once()
         self.assertEqual(captured_payloads[0]["status"], "Published")
         self.assertEqual(captured_payloads[0]["portal_surface"], "Portal Feed")
         self.assertEqual(

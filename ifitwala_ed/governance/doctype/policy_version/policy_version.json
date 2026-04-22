@@ -23,6 +23,7 @@
   "policy_text",
   "section_break_acknowledgement_clauses",
   "acknowledgement_clauses",
+  "guardian_acknowledgement_mode",
   "diff_html",
   "change_stats",
   "text_locked"
@@ -74,6 +75,14 @@
    "fieldtype": "Table",
    "label": "Acknowledgement Clauses",
    "options": "Policy Version Acknowledgement Clause"
+  },
+  {
+   "default": "Family Acknowledgement",
+   "description": "Guardian durable policy scope for enrolled-student portal acknowledgement. Ignored when the policy does not apply to Guardians.",
+   "fieldname": "guardian_acknowledgement_mode",
+   "fieldtype": "Select",
+   "label": "Guardian Acknowledgement Mode",
+   "options": "Family Acknowledgement\nChild Acknowledgement"
   },
   {
    "fieldname": "diff_html",
@@ -150,7 +159,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-04-14 21:38:25.136617",
+ "modified": "2026-04-22 13:01:32",
  "modified_by": "Administrator",
  "module": "Governance",
  "name": "Policy Version",

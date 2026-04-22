@@ -9,6 +9,7 @@ This document is the canonical messaging contract for all `Org Communication` co
 Status: Implemented
 
 Code refs:
+
 - `ifitwala_ed/api/org_communication_interactions.py`
 - `ifitwala_ed/api/admissions_communication.py`
 - `ifitwala_ed/api/org_communication_archive.py`
@@ -20,6 +21,7 @@ Code refs:
 - `ifitwala_ed/students/doctype/portal_read_receipt/portal_read_receipt.py`
 
 Test refs:
+
 - `ifitwala_ed/api/test_org_communication_interactions.py`
 - `ifitwala_ed/api/test_admissions_communication.py`
 - `ifitwala_ed/api/test_guardian_phase2.py`
@@ -40,12 +42,14 @@ Rules:
 Status: Implemented
 
 Code refs:
+
 - `ifitwala_ed/api/org_comm_utils.py`
 - `ifitwala_ed/api/org_communication_interactions.py`
 - `ifitwala_ed/setup/doctype/communication_interaction_entry/communication_interaction_entry.py`
 - `ifitwala_ed/ui-spa/src/components/communication/OrgCommunicationQuickCreateModal.vue`
 
 Test refs:
+
 - `ifitwala_ed/api/test_org_communication_interactions.py`
 - `ifitwala_ed/api/test_admissions_communication.py`
 - `ifitwala_ed/ui-spa/src/components/communication/__tests__/OrgCommunicationQuickCreateModal.test.ts`
@@ -69,10 +73,12 @@ Rules:
 Status: Implemented
 
 Code refs:
+
 - `ifitwala_ed/api/org_communication_interactions.py`
 - `ifitwala_ed/api/admissions_communication.py`
 
 Test refs:
+
 - `ifitwala_ed/api/test_org_communication_interactions.py`
 - `ifitwala_ed/api/test_admissions_communication.py`
 
@@ -106,8 +112,10 @@ Rules:
 Status: Partial
 
 Code refs:
+
 - `ifitwala_ed/ui-spa/src/pages/staff/morning_brief/MorningBriefing.vue`
 - `ifitwala_ed/ui-spa/src/pages/staff/OrgCommunicationArchive.vue`
+- `ifitwala_ed/ui-spa/src/overlays/calendar/EventQuickCreateOverlay.vue`
 - `ifitwala_ed/ui-spa/src/components/activity/ActivityCommunicationPanel.vue`
 - `ifitwala_ed/ui-spa/src/pages/student/StudentCommunicationCenter.vue`
 - `ifitwala_ed/ui-spa/src/pages/guardian/GuardianCommunicationCenter.vue`
@@ -117,6 +125,8 @@ Code refs:
 - `ifitwala_ed/ui-spa/src/pages/student/CourseDetail.vue`
 - `ifitwala_ed/api/student_communications.py`
 - `ifitwala_ed/api/guardian_communications.py`
+- `ifitwala_ed/api/calendar_quick_create.py`
+- `ifitwala_ed/api/org_communication_quick_create.py`
 - `ifitwala_ed/api/portal.py`
 - `ifitwala_ed/ui-spa/src/pages/admissions/ApplicantMessages.vue`
 - `ifitwala_ed/ui-spa/src/lib/services/communicationInteraction/communicationInteractionService.ts`
@@ -124,6 +134,7 @@ Code refs:
 - `ifitwala_ed/ui-spa/src/lib/services/guardianCommunication/guardianCommunicationService.ts`
 
 Test refs:
+
 - `ifitwala_ed/ui-spa/src/lib/services/communicationInteraction/__tests__/communicationInteractionService.test.ts`
 - `ifitwala_ed/ui-spa/src/lib/services/student/__tests__/studentLearningHubService.test.ts`
 - `ifitwala_ed/ui-spa/src/lib/services/guardianCommunication/__tests__/guardianCommunicationService.test.ts`
@@ -134,7 +145,8 @@ Test refs:
 - `ifitwala_ed/ui-spa/src/components/__tests__/PortalSidebar.test.ts`
 - `ifitwala_ed/api/test_student_communications.py`
 - `ifitwala_ed/api/test_portal.py`
-- Component-level tests: None
+- `ifitwala_ed/api/test_calendar.py`
+- `ifitwala_ed/ui-spa/src/overlays/calendar/__tests__/EventQuickCreateOverlay.test.ts`
 
 Rules:
 
@@ -160,12 +172,14 @@ Rules:
 15. Guardian communication center may render school-event rows in the same family feed, but only `Org Communication` rows use the shared messaging interaction and read-state workflows.
 16. Applicant messages use the admissions service, which writes to the same canonical entry ledger.
 17. No surface may call any retired `Communication Interaction` API or schema artifact.
+18. Staff Home school-event quick create may publish a companion `Org Communication` in the same server workflow, but the result is still an `Org Communication` record governed by this contract rather than a second message model attached to `School Event`.
 
 ## 4. Visibility and Read-State
 
 Status: Implemented
 
 Code refs:
+
 - `ifitwala_ed/api/org_comm_utils.py`
 - `ifitwala_ed/api/org_communication_interactions.py`
 - `ifitwala_ed/api/student_communications.py`
@@ -175,6 +189,7 @@ Code refs:
 - `ifitwala_ed/api/file_access.py`
 
 Test refs:
+
 - `ifitwala_ed/api/test_org_comm_utils.py`
 - `ifitwala_ed/api/test_org_communication_interactions.py`
 - `ifitwala_ed/api/test_admissions_communication.py`
@@ -214,12 +229,14 @@ Rules:
 Status: Implemented
 
 Code refs:
+
 - `ifitwala_ed/patches/setup/p01_migrate_communication_interactions_to_entry_ledger.py`
 - `ifitwala_ed/patches/setup/p02_drop_communication_interaction_entry_legacy_link.py`
 - `ifitwala_ed/patches/setup/p03_delete_communication_interaction_doctype.py`
 - `ifitwala_ed/patches.txt`
 
 Test refs:
+
 - Patch coverage: None
 
 Rules:
@@ -235,6 +252,7 @@ Rules:
 Status: Implemented
 
 Code refs:
+
 - `ifitwala_ed/api/org_communication_interactions.py`
 - `ifitwala_ed/api/admissions_communication.py`
 - `ifitwala_ed/api/guardian_communications.py`
@@ -253,6 +271,7 @@ Code refs:
 - `ifitwala_ed/ui-spa/src/pages/admissions/ApplicantMessages.vue`
 
 Test refs:
+
 - `ifitwala_ed/api/test_org_communication_interactions.py`
 - `ifitwala_ed/api/test_admissions_communication.py`
 - `ifitwala_ed/api/test_guardian_phase2.py`
@@ -264,12 +283,12 @@ Test refs:
 - `ifitwala_ed/ui-spa/src/pages/guardian/__tests__/GuardianCommunicationCenter.test.ts`
 - Patch coverage: None
 
-| Concern | Canonical owner | Code refs | Test refs |
-| --- | --- | --- | --- |
-| Schema / DocType | `Org Communication`, `Communication Interaction Entry`, `Portal Read Receipt` | `setup/doctype/communication_interaction_entry/*`, `students/doctype/portal_read_receipt/*` | `api/test_org_communication_interactions.py` |
-| Controller / workflow logic | Shared messaging workflow APIs, student/guardian communication-center bootstrap, portal unread chrome counts, and admissions wrappers | `api/org_communication_interactions.py`, `api/student_communications.py`, `api/guardian_communications.py`, `api/portal.py`, `api/admissions_communication.py` | `api/test_org_communication_interactions.py`, `api/test_student_communications.py`, `api/test_guardian_phase2.py`, `api/test_portal.py`, `api/test_admissions_communication.py` |
-| API endpoints | Named interaction endpoints plus student/guardian communication-center bootstrap and student/guardian portal chrome counts | `api/org_communication_interactions.py`, `api/student_communications.py`, `api/guardian_communications.py`, `api/portal.py`, `api/admissions_communication.py` | `api/test_org_communication_interactions.py`, `api/test_student_communications.py`, `api/test_guardian_phase2.py`, `api/test_portal.py`, `api/test_admissions_communication.py` |
-| SPA/UI surfaces | Morning Brief, Archive, Student Communication Center, Guardian Communication Center, Student/Guardian portal shell badges, Activity panels, Applicant Messages | `ui-spa/src/pages/staff/morning_brief/MorningBriefing.vue`, `ui-spa/src/pages/staff/OrgCommunicationArchive.vue`, `ui-spa/src/pages/student/StudentCommunicationCenter.vue`, `ui-spa/src/pages/guardian/GuardianCommunicationCenter.vue`, `ui-spa/src/layouts/PortalLayout.vue`, `ui-spa/src/components/PortalSidebar.vue`, `ui-spa/src/components/activity/ActivityCommunicationPanel.vue`, `ui-spa/src/pages/admissions/ApplicantMessages.vue` | `ui-spa/src/lib/services/communicationInteraction/__tests__/communicationInteractionService.test.ts`, `ui-spa/src/lib/services/guardianCommunication/__tests__/guardianCommunicationService.test.ts`, `ui-spa/src/lib/services/student/__tests__/studentLearningHubService.test.ts`, `ui-spa/src/pages/student/__tests__/StudentCommunicationCenter.test.ts`, `ui-spa/src/pages/guardian/__tests__/GuardianCommunicationCenter.test.ts`, `ui-spa/src/components/__tests__/PortalSidebar.test.ts` |
-| Reports / dashboards / briefings | Morning Brief, Archive, Student/Guardian portal unread chrome counts, Guardian Home unread summaries, Student/Guardian Communication Centers | `api/org_communication_archive.py`, `api/student_communications.py`, `api/guardian_home.py`, `api/guardian_communications.py`, `api/portal.py`, `ui-spa/src/layouts/PortalLayout.vue`, `ui-spa/src/pages/staff/morning_brief/MorningBriefing.vue`, `ui-spa/src/pages/student/StudentCommunicationCenter.vue`, `ui-spa/src/pages/guardian/GuardianCommunicationCenter.vue` | `api/test_org_communication_interactions.py`, `api/test_student_communications.py`, `api/test_guardian_phase2.py`, `api/test_portal.py` |
-| Scheduler / background jobs | None | None | None |
-| Migration / retirement | Legacy snapshot rows backfilled in pre-sync; legacy schema removed in post-sync cleanup | `patches/setup/p01_migrate_communication_interactions_to_entry_ledger.py`, `patches/setup/p02_drop_communication_interaction_entry_legacy_link.py`, `patches/setup/p03_delete_communication_interaction_doctype.py`, `patches.txt` | None |
+| Concern                          | Canonical owner                                                                                                                                                | Code refs                                                                                                                                                                                                                                                                                                                                                                                                                                        | Test refs                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| -------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Schema / DocType                 | `Org Communication`, `Communication Interaction Entry`, `Portal Read Receipt`                                                                                  | `setup/doctype/communication_interaction_entry/*`, `students/doctype/portal_read_receipt/*`                                                                                                                                                                                                                                                                                                                                                      | `api/test_org_communication_interactions.py`                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| Controller / workflow logic      | Shared messaging workflow APIs, student/guardian communication-center bootstrap, portal unread chrome counts, and admissions wrappers                          | `api/org_communication_interactions.py`, `api/student_communications.py`, `api/guardian_communications.py`, `api/portal.py`, `api/admissions_communication.py`                                                                                                                                                                                                                                                                                   | `api/test_org_communication_interactions.py`, `api/test_student_communications.py`, `api/test_guardian_phase2.py`, `api/test_portal.py`, `api/test_admissions_communication.py`                                                                                                                                                                                                                                                                                                                  |
+| API endpoints                    | Named interaction endpoints plus student/guardian communication-center bootstrap and student/guardian portal chrome counts                                     | `api/org_communication_interactions.py`, `api/student_communications.py`, `api/guardian_communications.py`, `api/portal.py`, `api/admissions_communication.py`                                                                                                                                                                                                                                                                                   | `api/test_org_communication_interactions.py`, `api/test_student_communications.py`, `api/test_guardian_phase2.py`, `api/test_portal.py`, `api/test_admissions_communication.py`                                                                                                                                                                                                                                                                                                                  |
+| SPA/UI surfaces                  | Morning Brief, Archive, Student Communication Center, Guardian Communication Center, Student/Guardian portal shell badges, Activity panels, Applicant Messages | `ui-spa/src/pages/staff/morning_brief/MorningBriefing.vue`, `ui-spa/src/pages/staff/OrgCommunicationArchive.vue`, `ui-spa/src/pages/student/StudentCommunicationCenter.vue`, `ui-spa/src/pages/guardian/GuardianCommunicationCenter.vue`, `ui-spa/src/layouts/PortalLayout.vue`, `ui-spa/src/components/PortalSidebar.vue`, `ui-spa/src/components/activity/ActivityCommunicationPanel.vue`, `ui-spa/src/pages/admissions/ApplicantMessages.vue` | `ui-spa/src/lib/services/communicationInteraction/__tests__/communicationInteractionService.test.ts`, `ui-spa/src/lib/services/guardianCommunication/__tests__/guardianCommunicationService.test.ts`, `ui-spa/src/lib/services/student/__tests__/studentLearningHubService.test.ts`, `ui-spa/src/pages/student/__tests__/StudentCommunicationCenter.test.ts`, `ui-spa/src/pages/guardian/__tests__/GuardianCommunicationCenter.test.ts`, `ui-spa/src/components/__tests__/PortalSidebar.test.ts` |
+| Reports / dashboards / briefings | Morning Brief, Archive, Student/Guardian portal unread chrome counts, Guardian Home unread summaries, Student/Guardian Communication Centers                   | `api/org_communication_archive.py`, `api/student_communications.py`, `api/guardian_home.py`, `api/guardian_communications.py`, `api/portal.py`, `ui-spa/src/layouts/PortalLayout.vue`, `ui-spa/src/pages/staff/morning_brief/MorningBriefing.vue`, `ui-spa/src/pages/student/StudentCommunicationCenter.vue`, `ui-spa/src/pages/guardian/GuardianCommunicationCenter.vue`                                                                        | `api/test_org_communication_interactions.py`, `api/test_student_communications.py`, `api/test_guardian_phase2.py`, `api/test_portal.py`                                                                                                                                                                                                                                                                                                                                                          |
+| Scheduler / background jobs      | None                                                                                                                                                           | None                                                                                                                                                                                                                                                                                                                                                                                                                                             | None                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| Migration / retirement           | Legacy snapshot rows backfilled in pre-sync; legacy schema removed in post-sync cleanup                                                                        | `patches/setup/p01_migrate_communication_interactions_to_entry_ledger.py`, `patches/setup/p02_drop_communication_interaction_entry_legacy_link.py`, `patches/setup/p03_delete_communication_interaction_doctype.py`, `patches.txt`                                                                                                                                                                                                               | None                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |

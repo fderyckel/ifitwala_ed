@@ -3,7 +3,7 @@
 Status: Active
 Audience: Humans, coding agents
 Scope: Data visible through `/hub/guardian`
-Last updated: 2026-04-20
+Last updated: 2026-04-22
 
 This document defines the current server-enforced visibility rules for the guardian portal.
 
@@ -73,8 +73,11 @@ Rules:
 
 1. Guardian policy rows are resolved from active `Institutional Policy` and active `Policy Version` records where `applies_to` includes `Guardian`.
 2. Policy scope is derived from the organizations and schools of the guardian's signer-authorized linked students.
-3. Guardian acknowledgement state is limited to `Policy Acknowledgement` rows for `acknowledged_for = Guardian`, `context_doctype = Guardian`, and `context_name = Guardian.name`.
-4. Guardians must not see policy rows for children where the guardian lacks signer authority, or rows whose audience is staff-only, student-only, or applicant-only.
+3. Guardian acknowledgement state is mode-aware and always stays under `acknowledged_for = Guardian`:
+   - `Family Acknowledgement` reads and writes `context_doctype = Guardian`, `context_name = Guardian.name`
+   - `Child Acknowledgement` reads and writes `context_doctype = Student`, `context_name = Student.name`
+4. `Child Acknowledgement` rows must be limited to signer-authorized linked children whose organization and school context actually match the policy scope.
+5. Guardians must not see policy rows for children where the guardian lacks signer authority, or rows whose audience is staff-only, student-only, or applicant-only.
 
 ## 4. Finance Visibility
 

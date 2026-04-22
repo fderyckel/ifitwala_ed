@@ -4,11 +4,13 @@ import type {
 } from '@/types/contracts/policy_signature/get_staff_policy_campaign_options';
 
 export type FamilyPolicyCampaignAudience = Exclude<PolicySignatureAudience, 'Staff'>;
+export type GuardianAcknowledgementMode = 'Family Acknowledgement' | 'Child Acknowledgement';
 
 export type Request = {
 	organization?: string | null;
 	school?: string | null;
 	policy_version?: string | null;
+	guardian_acknowledgement_mode?: GuardianAcknowledgementMode | null;
 };
 
 export type FamilyAudiencePreview = {
@@ -30,6 +32,8 @@ export type Response = {
 	};
 	preview: {
 		family_audiences: FamilyPolicyCampaignAudience[];
+		guardian_acknowledgement_mode: GuardianAcknowledgementMode | null;
+		guardian_acknowledgement_mode_locked: boolean;
 		school_target_count: number;
 		audience_previews: FamilyAudiencePreview[];
 	};

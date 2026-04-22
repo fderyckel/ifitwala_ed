@@ -2,6 +2,8 @@
 # See license.txt
 # ifitwala_ed/governance/doctype/policy_version/test_policy_version.py
 
+from unittest.mock import patch
+
 import frappe
 from frappe.tests.utils import FrappeTestCase
 from frappe.utils import nowdate
@@ -404,6 +406,32 @@ class TestPolicyVersionAmendments(FrappeTestCase):
         version.policy_text = "<p>Edited after activation.</p>"
         with self.assertRaises(frappe.ValidationError):
             version.save(ignore_permissions=True)
+
+    def test_guardian_acknowledgement_mode_can_change_after_activation_before_guardian_ack(self):
+        version = self._make_policy_version(
+            policy=self.policy.name,
+            version_label="v1",
+            policy_text="<p>Active text.</p>",
+            is_active=1,
+        )
+
+        version.guardian_acknowledgement_mode = "Child Acknowledgement"
+        version.save(ignore_permissions=True)
+
+        self.assertEqual(version.guardian_acknowledgement_mode, "Child Acknowledgement")
+
+    def test_guardian_acknowledgement_mode_locks_after_guardian_ack(self):
+        version = self._make_policy_version(
+            policy=self.policy.name,
+            version_label="v1",
+            policy_text="<p>Active text.</p>",
+            is_active=1,
+        )
+
+        with patch.object(type(version), "_has_guardian_acknowledgements", return_value=True):
+            version.guardian_acknowledgement_mode = "Child Acknowledgement"
+            with self.assertRaises(frappe.ValidationError):
+                version.save(ignore_permissions=True)
 
     def test_acknowledgement_clauses_lock_after_activation(self):
         version = self._make_policy_version(
