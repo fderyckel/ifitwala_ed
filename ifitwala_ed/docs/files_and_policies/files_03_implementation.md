@@ -168,7 +168,7 @@ Implemented fix:
 - the legacy profile-image recovery path is patch-driven, not a permanent runtime fallback; the repair patches walk Employee, Student, and Guardian rows, rebuild missing governed profile images through the public Drive upload seam, and materialize `thumb`, `card`, and `viewer_preview` for current governed profile images during migrate so avatar surfaces stop falling back to originals after legacy repair
 - Ed profile-image and public-website media reads now depend on public Drive API wrappers only; they do not import Drive integration services directly and they do not fall back to generic Drive owner-doc grant APIs for those Ed-owned surfaces
 - small roster/avatar surfaces such as gradebook, attendance, and student-log lookup now consume governed profile-image derivatives only and do not fall back to original-file URLs when no derivative is ready
-- portal-chrome student/guardian profile avatars prefer governed profile-image derivatives and request Drive backfill for missing legacy derivatives, but they may temporarily keep the current governed original as a continuity fallback until the derivative pipeline catches up
+- guardian portal-chrome avatars now consume governed profile-image derivatives only and never fall back to the original file on that tiny avatar surface; student portal identity still prefers governed profile-image derivatives and may temporarily keep the current governed original as a continuity fallback until the derivative pipeline catches up
 
 ### 2.6 Resolved: governed profile-image reads no longer probe storage directly
 

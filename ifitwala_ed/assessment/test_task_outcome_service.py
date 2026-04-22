@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from unittest import TestCase
 
-from ifitwala_ed.tests.frappe_stubs import import_fresh, stubbed_frappe
+from ifitwala_ed.tests.frappe_stubs import StubPermissionError, StubValidationError, import_fresh, stubbed_frappe
 
 
 class TestTaskOutcomeService(TestCase):
@@ -565,3 +565,147 @@ class TestTaskOutcomeService(TestCase):
 
         self.assertEqual(payload, {"outcome": "OUT-1", "grading_status": "Finalized"})
         self.assertEqual(updates[-1][2]["official_score"], 10.0)
+
+    def test_set_assign_only_completion_stamps_completed_on(self):
+        saves = []
+
+        class _FakeOutcomeDoc:
+            def __init__(self):
+                self.name = "OUT-1"
+                self.is_complete = 0
+                self.completed_on = None
+
+            def save(self, ignore_permissions=False):
+                saves.append(
+                    {
+                        "is_complete": self.is_complete,
+                        "completed_on": self.completed_on,
+                        "ignore_permissions": ignore_permissions,
+                    }
+                )
+
+        with stubbed_frappe() as frappe:
+            frappe.db.get_value = lambda doctype, name, fieldname=None, as_dict=False: (
+                {
+                    "name": "OUT-1",
+                    "task_delivery": "TDL-1",
+                    "student": "STU-1",
+                    "is_published": 0,
+                    "is_complete": 0,
+                    "completed_on": None,
+                }
+                if doctype == "Task Outcome"
+                else {
+                    "delivery_mode": "Assign Only",
+                    "grading_mode": "Completion",
+                    "require_grading": 0,
+                    "rubric_scoring_strategy": None,
+                    "grade_scale": None,
+                    "rubric_version": None,
+                }
+            )
+            frappe.get_doc = lambda doctype, name: _FakeOutcomeDoc()
+
+            module = import_fresh("ifitwala_ed.assessment.task_outcome_service")
+            payload = module.set_assign_only_completion("OUT-1", is_complete=1, ignore_permissions=True)
+
+        self.assertEqual(payload["outcome"], "OUT-1")
+        self.assertEqual(payload["is_complete"], 1)
+        self.assertEqual(payload["completed_on"], "2026-03-12 17:45:04")
+        self.assertEqual(
+            saves,
+            [
+                {
+                    "is_complete": 1,
+                    "completed_on": "2026-03-12 17:45:04",
+                    "ignore_permissions": True,
+                }
+            ],
+        )
+
+    def test_set_assign_only_completion_is_idempotent_when_already_complete(self):
+        with stubbed_frappe() as frappe:
+            frappe.db.get_value = lambda doctype, name, fieldname=None, as_dict=False: (
+                {
+                    "name": "OUT-1",
+                    "task_delivery": "TDL-1",
+                    "student": "STU-1",
+                    "is_published": 0,
+                    "is_complete": 1,
+                    "completed_on": "2026-04-20 09:30:00",
+                }
+                if doctype == "Task Outcome"
+                else {
+                    "delivery_mode": "Assign Only",
+                    "grading_mode": "Completion",
+                    "require_grading": 0,
+                    "rubric_scoring_strategy": None,
+                    "grade_scale": None,
+                    "rubric_version": None,
+                }
+            )
+            frappe.get_doc = lambda doctype, name: (_ for _ in ()).throw(AssertionError("save should not be called"))
+
+            module = import_fresh("ifitwala_ed.assessment.task_outcome_service")
+            payload = module.set_assign_only_completion("OUT-1", is_complete=1)
+
+        self.assertEqual(
+            payload,
+            {
+                "outcome": "OUT-1",
+                "is_complete": 1,
+                "completed_on": "2026-04-20 09:30:00",
+            },
+        )
+
+    def test_set_assign_only_completion_rejects_published_outcomes(self):
+        with stubbed_frappe() as frappe:
+            frappe.db.get_value = lambda doctype, name, fieldname=None, as_dict=False: (
+                {
+                    "name": "OUT-1",
+                    "task_delivery": "TDL-1",
+                    "student": "STU-1",
+                    "is_published": 1,
+                    "is_complete": 1,
+                    "completed_on": "2026-04-20 09:30:00",
+                }
+                if doctype == "Task Outcome"
+                else {
+                    "delivery_mode": "Assign Only",
+                    "grading_mode": "Completion",
+                    "require_grading": 0,
+                    "rubric_scoring_strategy": None,
+                    "grade_scale": None,
+                    "rubric_version": None,
+                }
+            )
+
+            module = import_fresh("ifitwala_ed.assessment.task_outcome_service")
+            with self.assertRaises(StubValidationError):
+                module.set_assign_only_completion("OUT-1", is_complete=1)
+
+    def test_set_assign_only_completion_rejects_student_mismatch(self):
+        with stubbed_frappe() as frappe:
+            frappe.db.get_value = lambda doctype, name, fieldname=None, as_dict=False: (
+                {
+                    "name": "OUT-1",
+                    "task_delivery": "TDL-1",
+                    "student": "STU-2",
+                    "is_published": 0,
+                    "is_complete": 0,
+                    "completed_on": None,
+                }
+                if doctype == "Task Outcome"
+                else {
+                    "delivery_mode": "Assign Only",
+                    "grading_mode": "Completion",
+                    "require_grading": 0,
+                    "rubric_scoring_strategy": None,
+                    "grade_scale": None,
+                    "rubric_version": None,
+                }
+            )
+
+            module = import_fresh("ifitwala_ed.assessment.task_outcome_service")
+            with self.assertRaises(StubPermissionError):
+                module.set_assign_only_completion("OUT-1", is_complete=1, expected_student="STU-1")

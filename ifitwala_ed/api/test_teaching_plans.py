@@ -1707,7 +1707,7 @@ class TestTeachingPlansApi(TestCase):
         timeline_mock.assert_called_once()
         self.assertEqual(timeline_mock.call_args.kwargs["student_group"], "GROUP-1")
 
-    def test_list_staff_course_plans_serializes_manage_flag(self):
+    def test_list_staff_course_plans_hides_rollover_drafts_for_non_coordinators_and_serializes_manage_flag(self):
         with _teaching_plans_module() as module:
             rows = [
                 {
@@ -1718,19 +1718,32 @@ class TestTeachingPlansApi(TestCase):
                     "academic_year": "2026-2027",
                     "cycle_label": "Semester 1",
                     "plan_status": "Active",
+                    "rollover_source_course_plan": None,
                 },
                 {
                     "name": "COURSE-PLAN-2",
-                    "title": "Biology Plan B",
+                    "title": "Biology Rollover Draft",
                     "course": "COURSE-2",
                     "school": "SCH-1",
                     "academic_year": "2026-2027",
                     "cycle_label": "Semester 2",
                     "plan_status": "Draft",
+                    "rollover_source_course_plan": "COURSE-PLAN-1",
+                },
+                {
+                    "name": "COURSE-PLAN-3",
+                    "title": "Biology Working Draft",
+                    "course": "COURSE-3",
+                    "school": "SCH-1",
+                    "academic_year": "2026-2027",
+                    "cycle_label": "Semester 3",
+                    "plan_status": "Draft",
+                    "rollover_source_course_plan": None,
                 },
             ]
 
             with (
+                patch.object(module.frappe, "get_roles", return_value=["Academic Admin"]),
                 patch.object(module.planning, "user_has_global_curriculum_access", return_value=True),
                 patch.object(
                     module.planning,
@@ -1745,14 +1758,66 @@ class TestTeachingPlansApi(TestCase):
                     return_value=[
                         {"name": "COURSE-1", "course_name": "Biology", "course_group": "Science"},
                         {"name": "COURSE-2", "course_name": "Biology B", "course_group": "Science"},
+                        {"name": "COURSE-3", "course_name": "Biology C", "course_group": "Science"},
                     ],
                 ),
             ):
                 payload = module.list_staff_course_plans()
 
         self.assertEqual(len(payload["course_plans"]), 2)
+        self.assertEqual(
+            [row["name"] for row in payload["course_plans"]],
+            ["COURSE-PLAN-1", "COURSE-PLAN-3"],
+        )
         self.assertEqual(payload["course_plans"][0]["can_manage_resources"], 1)
         self.assertEqual(payload["course_plans"][1]["can_manage_resources"], 0)
+
+    def test_list_staff_course_plans_includes_rollover_drafts_for_curriculum_coordinator(self):
+        with _teaching_plans_module() as module:
+            rows = [
+                {
+                    "name": "COURSE-PLAN-1",
+                    "title": "Biology Plan",
+                    "course": "COURSE-1",
+                    "school": "SCH-1",
+                    "academic_year": "2026-2027",
+                    "cycle_label": "Semester 1",
+                    "plan_status": "Active",
+                    "rollover_source_course_plan": None,
+                },
+                {
+                    "name": "COURSE-PLAN-2",
+                    "title": "Biology Rollover Draft",
+                    "course": "COURSE-2",
+                    "school": "SCH-1",
+                    "academic_year": "2026-2027",
+                    "cycle_label": "Semester 2",
+                    "plan_status": "Draft",
+                    "rollover_source_course_plan": "COURSE-PLAN-1",
+                },
+            ]
+
+            with (
+                patch.object(module.frappe, "get_roles", return_value=["Curriculum Coordinator"]),
+                patch.object(module.planning, "user_has_global_curriculum_access", return_value=True),
+                patch.object(module.planning, "user_can_manage_course_curriculum", return_value=True),
+                patch.object(module, "_fetch_academic_year_options_for_schools", return_value={}),
+                patch.object(module.frappe, "get_list", return_value=rows),
+                patch.object(
+                    module.frappe,
+                    "get_all",
+                    return_value=[
+                        {"name": "COURSE-1", "course_name": "Biology", "course_group": "Science"},
+                        {"name": "COURSE-2", "course_name": "Biology B", "course_group": "Science"},
+                    ],
+                ),
+            ):
+                payload = module.list_staff_course_plans()
+
+        self.assertEqual(
+            [row["name"] for row in payload["course_plans"]],
+            ["COURSE-PLAN-1", "COURSE-PLAN-2"],
+        )
 
     def test_list_staff_course_plans_includes_creation_options_for_curriculum_coordinator(self):
         with _teaching_plans_module() as module:

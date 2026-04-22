@@ -3,12 +3,16 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { createApp, defineComponent, h, nextTick, type App } from 'vue'
 
-import type { Response as StudentLearningSpaceResponse } from '@/types/contracts/student_learning/get_student_learning_space'
+import type {
+	Response as StudentLearningSpaceResponse,
+	StudentAssignedWork,
+} from '@/types/contracts/student_learning/get_student_learning_space'
 
 const {
 	getStudentLearningSpaceMock,
 	getStudentTaskSubmissionMock,
 	submitStudentTaskSubmissionMock,
+	markStudentTaskCompleteMock,
 	createReflectionEntryMock,
 	routeState,
 	routerReplaceMock,
@@ -17,6 +21,7 @@ const {
 		getStudentLearningSpaceMock: vi.fn(),
 		getStudentTaskSubmissionMock: vi.fn(),
 		submitStudentTaskSubmissionMock: vi.fn(),
+		markStudentTaskCompleteMock: vi.fn(),
 		createReflectionEntryMock: vi.fn(),
 		routeState: {
 			query: {
@@ -59,6 +64,10 @@ vi.mock('@/lib/services/student/studentLearningHubService', () => ({
 vi.mock('@/lib/services/student/studentTaskSubmissionService', () => ({
 	getStudentTaskSubmission: getStudentTaskSubmissionMock,
 	submitStudentTaskSubmission: submitStudentTaskSubmissionMock,
+}))
+
+vi.mock('@/lib/services/student/studentTaskCompletionService', () => ({
+	markStudentTaskComplete: markStudentTaskCompleteMock,
 }))
 
 vi.mock('@/lib/services/portfolio/portfolioService', () => ({
@@ -542,6 +551,38 @@ function buildPayload(message: string | null = null): StudentLearningSpaceRespon
 	}
 }
 
+function buildAssignOnlyPayload(): StudentLearningSpaceResponse {
+	const payload = buildPayload()
+	const convertTask = (item: StudentAssignedWork): StudentAssignedWork =>
+		item.task_delivery === 'TDL-WRITE-1'
+			? {
+					...item,
+					task_outcome: 'OUT-ASSIGN-1',
+					title: 'Field notebook check',
+					delivery_mode: 'Assign Only',
+					grading_mode: 'Completion',
+					requires_submission: 0,
+					allow_late_submission: 0,
+					submission_status: 'Not Required',
+					is_complete: 0,
+				}
+			: item
+
+	payload.resources.general_assigned_work = payload.resources.general_assigned_work.map(item =>
+		convertTask(item)
+	)
+	payload.curriculum.units = payload.curriculum.units.map(unit => ({
+		...unit,
+		assigned_work: unit.assigned_work.map(item => convertTask(item)),
+		sessions: unit.sessions.map(session => ({
+			...session,
+			assigned_work: session.assigned_work.map(item => convertTask(item)),
+		})),
+	}))
+
+	return payload
+}
+
 async function flushUi() {
 	await Promise.resolve()
 	await nextTick()
@@ -600,6 +641,7 @@ afterEach(() => {
 	getStudentLearningSpaceMock.mockReset()
 	getStudentTaskSubmissionMock.mockReset()
 	submitStudentTaskSubmissionMock.mockReset()
+	markStudentTaskCompleteMock.mockReset()
 	createReflectionEntryMock.mockReset()
 	routerReplaceMock.mockReset()
 	resetRouteState()
@@ -896,6 +938,42 @@ describe('CourseDetail', () => {
 		}))
 		expect(document.body.textContent).toContain('Version 2')
 		expect(document.body.textContent).toContain('lab-report.pdf')
+	})
+
+	it('marks assign-only tasks complete in the course workspace', async () => {
+		resetRouteState()
+		getStudentLearningSpaceMock.mockResolvedValue(buildAssignOnlyPayload())
+		markStudentTaskCompleteMock.mockResolvedValue({
+			task_outcome: 'OUT-ASSIGN-1',
+			is_complete: 1,
+			completed_on: '2026-04-22 09:15:00',
+		})
+
+		mountCourseDetail({
+			unit_plan: 'UNIT-PLAN-1',
+			class_session: 'CLASS-SESSION-1',
+			task_delivery: 'TDL-WRITE-1',
+		})
+		await flushUi()
+
+		expect(getStudentTaskSubmissionMock).not.toHaveBeenCalled()
+		expect(document.body.textContent).toContain('Mark task complete')
+		expect(document.body.textContent).toContain(
+			'No submission is required. Mark this task complete here once you finish the assigned work.'
+		)
+
+		const completeButton = Array.from(document.querySelectorAll('button')).find(button =>
+			button.textContent?.includes('Mark task complete')
+		)
+		expect(completeButton).toBeTruthy()
+		completeButton?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+		await flushUi()
+
+		expect(markStudentTaskCompleteMock).toHaveBeenCalledWith({
+			task_outcome: 'OUT-ASSIGN-1',
+		})
+		expect(document.body.textContent).toContain('Task complete')
+		expect(document.body.textContent).toContain('Completed')
 	})
 
 	it('keeps the learning space visible when shared-plan messaging is present', async () => {

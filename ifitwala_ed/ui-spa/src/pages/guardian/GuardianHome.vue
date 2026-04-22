@@ -11,15 +11,6 @@
 					</p>
 				</div>
 				<div class="flex items-center gap-2">
-					<RouterLink
-						class="if-button if-button--secondary"
-						:to="{ name: 'guardian-course-selection' }"
-					>
-						Course Selection
-					</RouterLink>
-					<RouterLink class="if-button if-button--secondary" :to="{ name: 'guardian-activities' }">
-						Activity Booking
-					</RouterLink>
 					<button
 						type="button"
 						class="if-button if-button--quiet self-start"

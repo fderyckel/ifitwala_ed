@@ -66,6 +66,7 @@ Ownership rule:
 - instructors attached to at least one `Student Group` for a course may create and edit the shared `Course Plan`, `Unit Plan`, quiz banks, and shared curriculum resources for that course
 - curriculum coordinators and academic administrators may also manage shared curriculum for the courses they govern
 - shared curriculum is course-team owned; it is not limited to a coordinator-only workflow
+- rollover-generated draft next-year `Course Plan` rows stay visible on the staff course-plan index only to `Curriculum Coordinator`; that visibility carve-out is for handover control, not a general restriction on shared curriculum authoring
 
 ## Class Planning Layer
 

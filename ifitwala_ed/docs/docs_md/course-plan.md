@@ -3,8 +3,8 @@ title: "Course Plan: Shared Curriculum Version For A Course"
 slug: course-plan
 category: Curriculum
 doc_order: 4
-version: "1.5.7"
-last_change_date: "2026-04-21"
+version: "1.5.8"
+last_change_date: "2026-04-22"
 summary: "Define the governed shared curriculum version for a course, including SPA-first creation from the course-plan index, Desk-side year handover, activation rules, publication status, shared summary context, the calendar-aware curriculum timeline, and the governed workspace used to author units, quiz banks, and assignment-ready curriculum assets."
 seo_title: "Course Plan: Shared Curriculum Version For A Course"
 seo_description: "Define the governed shared curriculum version for a course, including the shared summary and the unit-plan backbone inherited by linked classes."
@@ -69,6 +69,7 @@ Test refs: `ifitwala_ed/api/test_teaching_plans.py`
 - Desk role permissions on `Course Plan` remain broad enough for administrative access (`System Manager`, `Academic Admin`, `Curriculum Coordinator`), but the staff SPA is the canonical shared authoring surface.
 - Staff SPA read access is resolved server-side from curriculum scope helpers, not from route visibility alone.
 - Staff SPA write access is limited to users who can manage curriculum for the linked `Course`; this includes curriculum leadership and instructors with qualifying teaching assignment access for that course.
+- Rollover-generated draft next-year plans remain visible in the staff course-plan index only to `Curriculum Coordinator`; other staff continue to see active plans plus any non-rollover drafts they are allowed to work on.
 - When the workspace is opened with optional `student_group` context to clamp the timeline to a term-scoped class, the API also enforces staff access to that `Student Group`; the timeline must not accept an arbitrary class hint from the browser.
 
 ## Related Docs
@@ -110,6 +111,7 @@ Test refs: `ifitwala_ed/api/test_teaching_plans.py`, `ifitwala_ed/api/test_quiz.
 - The Desk rollover action now creates the next academic-year course plan from a saved source plan, copies governed units forward as draft/unpublished units, keeps unit reflections year-specific instead of copying them into the new plan, and reuses shared material placements against the new course-plan and unit anchors.
 - Shared course-plan resources live on `Material Placement` with `anchor_doctype = Course Plan`.
 - The staff course-plan index bootstraps both existing plans and create-ready course options in one bounded payload.
+- That index hides rollover-generated draft plans from non-coordinators so next-year draft handover work does not flood broader day-to-day course-plan lists.
 - New course-plan creation now starts from the staff SPA index and routes directly into the course-plan workspace.
 - Course-plan `academic_year` in the staff SPA is now chosen from actual `Academic Year` docs resolved for the selected course school scope; create/update mutations reject out-of-scope changes while preserving unchanged legacy values.
 - The staff course-plan workspace now edits and renders Desk `Text Editor` fields as Desk-compatible rich text, including course summary, governed unit rich-text fields, and quiz question prompt/explanation.

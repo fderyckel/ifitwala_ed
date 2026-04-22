@@ -31,7 +31,7 @@ from ifitwala_ed.api.student_overview_roles import ALLOWED_STAFF_ROLES as STUDEN
 from ifitwala_ed.api.users import STAFF_ROLES
 from ifitwala_ed.utilities.image_utils import (
     PROFILE_IMAGE_DERIVATIVE_SLOTS,
-    get_preferred_guardian_image_url,
+    get_preferred_guardian_avatar_url,
     get_preferred_student_image_url,
 )
 
@@ -246,12 +246,9 @@ def _resolve_guardian_row_for_user(user: str):
         as_dict=True,
     )
     if guardian:
-        guardian["guardian_image"] = get_preferred_guardian_image_url(
+        guardian["guardian_image"] = get_preferred_guardian_avatar_url(
             guardian.get("name"),
             original_url=guardian.get("guardian_image"),
-            slots=PROFILE_IMAGE_DERIVATIVE_SLOTS,
-            fallback_to_original=True,
-            request_missing_derivatives=True,
         )
     return guardian
 

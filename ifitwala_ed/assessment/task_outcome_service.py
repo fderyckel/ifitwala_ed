@@ -5,6 +5,7 @@
 
 import frappe
 from frappe import _
+from frappe.utils import now_datetime
 
 _GRADE_SCALE_THRESHOLD_CACHE = {}
 
@@ -201,6 +202,7 @@ def _get_delivery_flags(delivery_id):
     if not delivery_id:
         return {}
     fields = [
+        "delivery_mode",
         "grading_mode",
         "require_grading",
         "rubric_scoring_strategy",
@@ -594,6 +596,69 @@ def _supports_weighted_rubric_totals(rubric_meta):
         total_weight += weighting
 
     return abs(total_weight - 100.0) <= 0.01
+
+
+def set_assign_only_completion(
+    outcome_id,
+    *,
+    is_complete,
+    expected_student=None,
+    ignore_permissions=False,
+):
+    """
+    Apply the direct official-completion exception for Assign Only deliveries.
+
+    This path remains outside contribution audit history by design, but it still
+    enforces delivery mode, publication locks, and exact student ownership when
+    requested by a student-facing workflow.
+    """
+    if not outcome_id:
+        frappe.throw(_("Task Outcome is required."))
+
+    outcome = frappe.db.get_value(
+        "Task Outcome",
+        outcome_id,
+        ["name", "task_delivery", "student", "is_published", "is_complete", "completed_on"],
+        as_dict=True,
+    )
+    if not outcome:
+        frappe.throw(_("Task Outcome not found."))
+
+    expected_student_name = str(expected_student or "").strip()
+    if expected_student_name and str(outcome.get("student") or "").strip() != expected_student_name:
+        frappe.throw(_("Not permitted."), frappe.PermissionError)
+
+    delivery = _get_delivery_context(outcome.get("task_delivery"))
+    delivery_mode = str(delivery.get("delivery_mode") or "").strip()
+    if delivery_mode != "Assign Only":
+        frappe.throw(_("Direct completion is only available for assign-only work."))
+
+    if int(outcome.get("is_published") or 0) == 1:
+        frappe.throw(_("Unrelease this outcome before changing completion."))
+
+    target_is_complete = 1 if int(is_complete or 0) == 1 else 0
+    current_is_complete = 1 if int(outcome.get("is_complete") or 0) == 1 else 0
+    current_completed_on = outcome.get("completed_on")
+    next_completed_on = current_completed_on if target_is_complete and current_completed_on else None
+    if target_is_complete and not next_completed_on:
+        next_completed_on = now_datetime()
+
+    if current_is_complete == target_is_complete and current_completed_on == next_completed_on:
+        return {
+            "outcome": outcome.get("name") or outcome_id,
+            "is_complete": current_is_complete,
+            "completed_on": current_completed_on,
+        }
+
+    outcome_doc = frappe.get_doc("Task Outcome", outcome_id)
+    outcome_doc.is_complete = target_is_complete
+    outcome_doc.completed_on = next_completed_on
+    outcome_doc.save(ignore_permissions=ignore_permissions)
+    return {
+        "outcome": outcome_doc.name,
+        "is_complete": 1 if int(outcome_doc.is_complete or 0) == 1 else 0,
+        "completed_on": outcome_doc.completed_on,
+    }
 
 
 def mark_new_submission_seen(outcome_id):

@@ -18,6 +18,7 @@ def _gradebook_stub_modules(
     task_contribution_service=None,
     task_feedback_service=None,
     task_feedback_comment_bank_service=None,
+    task_outcome_service=None,
 ):
     image_utils = types.ModuleType("ifitwala_ed.utilities.image_utils")
     image_utils.PROFILE_IMAGE_DERIVATIVE_SLOTS = (
@@ -114,7 +115,8 @@ def _gradebook_stub_modules(
         or types.ModuleType("ifitwala_ed.assessment.task_contribution_service"),
         "ifitwala_ed.assessment.task_feedback_comment_bank_service": comment_bank_service,
         "ifitwala_ed.assessment.task_feedback_service": feedback_service,
-        "ifitwala_ed.assessment.task_outcome_service": types.ModuleType("ifitwala_ed.assessment.task_outcome_service"),
+        "ifitwala_ed.assessment.task_outcome_service": task_outcome_service
+        or types.ModuleType("ifitwala_ed.assessment.task_outcome_service"),
         "ifitwala_ed.assessment.task_submission_service": types.ModuleType(
             "ifitwala_ed.assessment.task_submission_service"
         ),
@@ -1304,29 +1306,32 @@ class TestGradebookApi(TestCase):
 
     def test_update_task_student_keeps_assign_only_completion_on_direct_outcome_path(self):
         submitted_payloads = []
-        saved_values = []
+        completion_calls = []
 
         task_contribution_service = types.ModuleType("ifitwala_ed.assessment.task_contribution_service")
         task_contribution_service.submit_contribution = lambda payload, contributor=None: submitted_payloads.append(
             (payload, contributor)
         )
-
-        class _FakeOutcomeDoc:
-            def __init__(self):
-                self.grading_status = None
-                self.is_complete = 0
-
-            def save(self, ignore_permissions=False):
-                saved_values.append(
+        task_outcome_service = types.ModuleType("ifitwala_ed.assessment.task_outcome_service")
+        task_outcome_service.set_assign_only_completion = (
+            lambda outcome_id, *, is_complete, expected_student=None, ignore_permissions=False: (
+                completion_calls.append(
                     {
-                        "grading_status": self.grading_status,
-                        "is_complete": self.is_complete,
+                        "outcome_id": outcome_id,
+                        "is_complete": is_complete,
+                        "expected_student": expected_student,
                         "ignore_permissions": ignore_permissions,
                     }
                 )
+                or {"outcome": outcome_id, "is_complete": is_complete, "completed_on": "2026-04-17 18:10:00"}
+            )
+        )
 
         with stubbed_frappe(
-            extra_modules=_gradebook_stub_modules(task_contribution_service=task_contribution_service)
+            extra_modules=_gradebook_stub_modules(
+                task_contribution_service=task_contribution_service,
+                task_outcome_service=task_outcome_service,
+            )
         ) as frappe:
 
             def fake_get_value(doctype, name, fieldname=None, as_dict=False):
@@ -1359,7 +1364,6 @@ class TestGradebookApi(TestCase):
                 return None
 
             frappe.db.get_value = fake_get_value
-            frappe.get_doc = lambda doctype, name: _FakeOutcomeDoc()
 
             module = _import_fresh_gradebook()
             module.gradebook_support._can_write_gradebook = lambda: True
@@ -1369,11 +1373,12 @@ class TestGradebookApi(TestCase):
 
         self.assertEqual(submitted_payloads, [])
         self.assertEqual(
-            saved_values,
+            completion_calls,
             [
                 {
-                    "grading_status": None,
+                    "outcome_id": "OUT-1",
                     "is_complete": 1,
+                    "expected_student": None,
                     "ignore_permissions": False,
                 }
             ],

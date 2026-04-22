@@ -308,6 +308,7 @@ def list_staff_course_plans_payload(api) -> dict[str, Any]:
                 "academic_year",
                 "cycle_label",
                 "plan_status",
+                "rollover_source_course_plan",
             ],
             order_by="modified desc, creation desc",
             limit=0,
@@ -328,12 +329,22 @@ def list_staff_course_plans_payload(api) -> dict[str, Any]:
                     "academic_year",
                     "cycle_label",
                     "plan_status",
+                    "rollover_source_course_plan",
                 ],
                 order_by="modified desc, creation desc",
                 limit=0,
             )
         else:
             rows = []
+    if "Curriculum Coordinator" not in roles:
+        rows = [
+            row
+            for row in rows or []
+            if not (
+                api.planning.normalize_text(row.get("plan_status")) == "Draft"
+                and api.planning.normalize_text(row.get("rollover_source_course_plan"))
+            )
+        ]
     course_names = sorted({row.get("course") for row in rows if row.get("course")})
     course_map = {
         row.get("name"): row

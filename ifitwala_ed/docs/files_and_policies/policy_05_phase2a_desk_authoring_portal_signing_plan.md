@@ -88,6 +88,35 @@ Rules:
    - `Closed`
    - `Archived`
 
+## Phase 2A Activation Contract
+Status: Planned
+Code refs: `ifitwala_ed/docs/files_and_policies/policy_04_family_signature_and_consent_contract.md`, `ifitwala_ed/students/doctype/guardian/guardian.py`, `ifitwala_ed/students/doctype/student/student.py`
+Test refs: None
+
+Rules:
+
+1. Phase 2A implements `subject_scope = Per Student` only.
+2. Phase 2A implements `audience_mode` values:
+   - `Guardian`
+   - `Student`
+3. Phase 2A implements `signer_rule` values:
+   - `Any Authorized Guardian`
+   - `All Authorized Guardians`
+   - `Student Self`
+4. Phase 2A implements `decision_mode` values:
+   - `Approve / Decline`
+   - `Grant / Deny`
+5. Phase 2A implements `field_type` values:
+   - `Text`
+   - `Long Text`
+   - `Phone`
+   - `Email`
+   - `Address`
+   - `Date`
+   - `Checkbox`
+6. `Guardian + Student`, `Guardian And Student`, `Per Family`, and any non-durable operational `Acknowledge` mode remain schema-reserved but not executable in Phase 2A.
+7. Profile write-back is allowed only for bindings that the server registry explicitly maps to canonical `Contact` and `Address` ownership, plus mirrored convenience fields on `Guardian` and `Student`.
+
 ## Desk Authoring Plan
 Status: Planned
 Code refs: `ifitwala_ed/governance/doctype/institutional_policy/institutional_policy.js`, `ifitwala_ed/governance/doctype/policy_version/policy_version.js`, `ifitwala_ed/ui-spa/src/pages/staff/analytics/PolicySignatureAnalytics.vue`
@@ -135,9 +164,39 @@ Rules:
 1. Publish creates target rows and freezes the field definition in one transaction.
 2. Guardian and student submit flows must be idempotent against repeat clicks for the same active state transition.
 3. Permission checks must resolve signer authority server-side at action time, not from cached client assumptions.
-4. If a signer chooses profile write-back, the server must update canonical `Contact` and linked `Address` data synchronously and mirror dependent guardian contact fields where required.
+4. If a signer chooses profile write-back, the server must update canonical `Contact` and linked `Address` data synchronously and mirror dependent guardian or student convenience fields where required.
 5. Paper capture must require explicit staff action and provenance fields.
 6. Mutable-consent withdrawal must create a new decision row and update derived current state, not delete prior history.
+
+## File Ownership Plan
+Status: Planned
+Code refs: `ifitwala_ed/api/guardian_policy.py`, `ifitwala_ed/api/student_policy.py`, `ifitwala_ed/api/policy_signature.py`, `ifitwala_ed/ui-spa/src/router/index.ts`, `ifitwala_ed/ui-spa/src/pages/guardian/GuardianPolicies.vue`, `ifitwala_ed/ui-spa/src/pages/student/StudentPolicies.vue`
+Test refs: None
+
+Ownership for the first coding slice:
+
+1. Schema and controller layer:
+   - add `ifitwala_ed/governance/doctype/family_consent_request/`
+   - add `ifitwala_ed/governance/doctype/family_consent_target/`
+   - add `ifitwala_ed/governance/doctype/family_consent_field/`
+   - add `ifitwala_ed/governance/doctype/family_consent_decision/`
+2. Staff workflows:
+   - add `ifitwala_ed/api/family_consent_staff.py`
+   - extend Desk actions from the `Family Consent Request` form instead of building a separate SPA authoring shell
+3. Guardian and student portal workflows:
+   - add `ifitwala_ed/api/family_consent.py`
+   - keep guardian and student permission entry points parallel to existing `guardian_policy.py` and `student_policy.py`
+4. Portal surfaces:
+   - add `ifitwala_ed/ui-spa/src/pages/guardian/GuardianConsents.vue`
+   - add `ifitwala_ed/ui-spa/src/pages/student/StudentConsents.vue`
+   - extend home-summary integrations instead of adding extra bootstrap calls
+5. Typed contracts:
+   - add guardian and student consent contract types under `ui-spa/src/types/contracts/guardian/` and `ui-spa/src/types/contracts/student/`
+   - add shared staff dashboard contract types under `ui-spa/src/types/contracts/policy_signature/` or a dedicated family-consent contract folder if the surface diverges materially
+6. Tests:
+   - add DocType tests for publish freeze and decision supersession
+   - add API tests for guardian, student, and staff workflows
+   - add SPA tests for home cards, board grouping, detail submit, and profile write-back dialog
 
 ## Guardian And Student Portal Plan
 Status: Planned

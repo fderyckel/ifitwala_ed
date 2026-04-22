@@ -880,90 +880,126 @@
 								</p>
 							</template>
 							<p v-else class="mt-3 type-body text-ink/70">
-								This task stays in your course workspace, but it does not require a submission.
+								{{ selectedTaskWorkspaceStatusNote }}
 							</p>
 						</section>
 
 						<section class="rounded-2xl border border-line-soft bg-surface-soft p-4">
-							<p class="type-body-strong text-ink">
-								{{ submissionButtonLabel }}
-							</p>
-							<p class="mt-2 type-caption text-ink/70">
-								Written responses, links, and document uploads are supported in this workspace.
-							</p>
-							<p v-if="selectedTaskSubmissionBlocker" class="mt-3 type-body text-ink/70">
-								{{ selectedTaskSubmissionBlocker }}
-							</p>
-							<form v-else class="mt-3 space-y-3" @submit.prevent="submitSelectedTaskWorkspace">
-								<label class="block space-y-2">
-									<span class="type-caption text-ink/70">Written response</span>
-									<textarea
-										v-model="submissionTextDraft"
-										rows="6"
-										class="if-input min-h-[9rem] w-full"
-										placeholder="Summarize your work, reflection, or answer."
-										@input="submissionDirty = true"
-									/>
-								</label>
-								<label class="block space-y-2">
-									<span class="type-caption text-ink/70">Link to your work</span>
-									<input
-										v-model="submissionLinkDraft"
-										type="url"
-										class="if-input w-full"
-										placeholder="https://example.com/your-work"
-										@input="submissionDirty = true"
-									/>
-								</label>
-								<label class="block space-y-2">
-									<span class="type-caption text-ink/70">Attach documents</span>
-									<input
-										ref="submissionFileInput"
-										type="file"
-										multiple
-										class="if-input w-full"
-										@change="handleSubmissionFilesChange"
-									/>
-								</label>
-								<div
-									v-if="submissionFiles.length"
-									class="rounded-2xl border border-line-soft bg-white p-3"
-								>
-									<div class="flex items-center justify-between gap-3">
-										<p class="type-caption text-ink/60">Selected files</p>
-										<button
-											type="button"
-											class="type-caption text-jacaranda underline"
-											@click="clearSubmissionFiles"
-										>
-											Clear
-										</button>
-									</div>
-									<div class="mt-2 space-y-2">
-										<div
-											v-for="file in submissionFiles"
-											:key="`${file.name}-${file.size}-${file.lastModified}`"
-											class="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-line-soft px-3 py-2"
-										>
-											<p class="type-caption text-ink/80">{{ file.name }}</p>
-											<span class="chip">
-												{{ formatSelectedSubmissionFileSize(file.size) }}
-											</span>
+							<template v-if="selectedTaskWorkspace.requires_submission">
+								<p class="type-body-strong text-ink">
+									{{ submissionButtonLabel }}
+								</p>
+								<p class="mt-2 type-caption text-ink/70">
+									Written responses, links, and document uploads are supported in this workspace.
+								</p>
+								<p v-if="selectedTaskSubmissionBlocker" class="mt-3 type-body text-ink/70">
+									{{ selectedTaskSubmissionBlocker }}
+								</p>
+								<form v-else class="mt-3 space-y-3" @submit.prevent="submitSelectedTaskWorkspace">
+									<label class="block space-y-2">
+										<span class="type-caption text-ink/70">Written response</span>
+										<textarea
+											v-model="submissionTextDraft"
+											rows="6"
+											class="if-input min-h-[9rem] w-full"
+											placeholder="Summarize your work, reflection, or answer."
+											@input="submissionDirty = true"
+										/>
+									</label>
+									<label class="block space-y-2">
+										<span class="type-caption text-ink/70">Link to your work</span>
+										<input
+											v-model="submissionLinkDraft"
+											type="url"
+											class="if-input w-full"
+											placeholder="https://example.com/your-work"
+											@input="submissionDirty = true"
+										/>
+									</label>
+									<label class="block space-y-2">
+										<span class="type-caption text-ink/70">Attach documents</span>
+										<input
+											ref="submissionFileInput"
+											type="file"
+											multiple
+											class="if-input w-full"
+											@change="handleSubmissionFilesChange"
+										/>
+									</label>
+									<div
+										v-if="submissionFiles.length"
+										class="rounded-2xl border border-line-soft bg-white p-3"
+									>
+										<div class="flex items-center justify-between gap-3">
+											<p class="type-caption text-ink/60">Selected files</p>
+											<button
+												type="button"
+												class="type-caption text-jacaranda underline"
+												@click="clearSubmissionFiles"
+											>
+												Clear
+											</button>
+										</div>
+										<div class="mt-2 space-y-2">
+											<div
+												v-for="file in submissionFiles"
+												:key="`${file.name}-${file.size}-${file.lastModified}`"
+												class="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-line-soft px-3 py-2"
+											>
+												<p class="type-caption text-ink/80">{{ file.name }}</p>
+												<span class="chip">
+													{{ formatSelectedSubmissionFileSize(file.size) }}
+												</span>
+											</div>
 										</div>
 									</div>
-								</div>
-								<p v-if="submissionProgressLabel" class="type-caption text-ink/70">
-									{{ submissionProgressLabel }}
+									<p v-if="submissionProgressLabel" class="type-caption text-ink/70">
+										{{ submissionProgressLabel }}
+									</p>
+									<p v-if="submissionError" class="type-caption text-flame">
+										{{ submissionError }}
+									</p>
+									<div class="flex flex-wrap items-center gap-3">
+										<button type="submit" class="if-action" :disabled="submissionSaving">
+											{{ submissionSaving ? 'Saving...' : submissionButtonLabel }}
+										</button>
+									</div>
+								</form>
+							</template>
+							<template v-else-if="selectedTaskSupportsDirectCompletion">
+								<p class="type-body-strong text-ink">
+									{{ taskCompletionButtonLabel }}
 								</p>
-								<p v-if="submissionError" class="type-caption text-flame">
-									{{ submissionError }}
+								<p class="mt-2 type-caption text-ink/70">
+									Mark this assign-only task complete here once you finish the assigned work.
 								</p>
-								<div class="flex flex-wrap items-center gap-3">
-									<button type="submit" class="if-action" :disabled="submissionSaving">
-										{{ submissionSaving ? 'Saving...' : submissionButtonLabel }}
-									</button>
+								<p v-if="selectedTaskDirectCompletionBlocker" class="mt-3 type-body text-ink/70">
+									{{ selectedTaskDirectCompletionBlocker }}
+								</p>
+								<div v-else class="mt-3 space-y-3">
+									<p v-if="taskCompletionError" class="type-caption text-flame">
+										{{ taskCompletionError }}
+									</p>
+									<div class="flex flex-wrap items-center gap-3">
+										<button
+											type="button"
+											class="if-action"
+											:disabled="
+												taskCompletionSaving || Boolean(selectedTaskWorkspace.is_complete)
+											"
+											@click="markSelectedTaskComplete"
+										>
+											{{ taskCompletionButtonLabel }}
+										</button>
+									</div>
 								</div>
-							</form>
+							</template>
+							<template v-else>
+								<p class="type-body-strong text-ink">Task brief</p>
+								<p class="mt-2 type-caption text-ink/70">
+									This task stays in your course workspace and does not require a submission.
+								</p>
+							</template>
 						</section>
 					</div>
 
@@ -1239,6 +1275,7 @@ import { RouterLink, useRoute, useRouter } from 'vue-router';
 import StudentLearningResourceCard from '@/components/learning/StudentLearningResourceCard.vue';
 import { createReflectionEntry } from '@/lib/services/portfolio/portfolioService';
 import { getStudentLearningSpace } from '@/lib/services/student/studentLearningHubService';
+import { markStudentTaskComplete } from '@/lib/services/student/studentTaskCompletionService';
 import {
 	getStudentTaskSubmission,
 	submitStudentTaskSubmission,
@@ -1318,6 +1355,8 @@ const submissionDirty = ref(false);
 const submissionError = ref('');
 const submissionSaving = ref(false);
 const submissionUploadProgress = ref<UploadProgressState | null>(null);
+const taskCompletionSaving = ref(false);
+const taskCompletionError = ref('');
 
 const learningFocus = computed(() => learningSpace.value?.learning.focus || {});
 const nextActions = computed(() => learningSpace.value?.learning.next_actions || []);
@@ -1360,6 +1399,12 @@ const selectedTaskReleasedResult = computed<ReleasedAssessmentResult | null>(() 
 	return selectedTaskSubmission.value?.released_result || null;
 });
 
+const selectedTaskSupportsDirectCompletion = computed(() => {
+	if (!selectedTaskWorkspace.value) return false;
+	if (selectedTaskWorkspace.value.requires_submission) return false;
+	return String(selectedTaskWorkspace.value.delivery_mode || '').trim() === 'Assign Only';
+});
+
 const displayedAssignedWork = computed<StudentAssignedWork[]>(() => {
 	if (selectedUnit.value) {
 		return dedupeAssignedWork(selectedUnit.value.assigned_work || []);
@@ -1369,6 +1414,12 @@ const displayedAssignedWork = computed<StudentAssignedWork[]>(() => {
 
 const selectedTaskWorkspaceNote = computed(() => {
 	if (!selectedTaskWorkspace.value) return '';
+	if (selectedTaskSupportsDirectCompletion.value) {
+		if (selectedTaskWorkspace.value.is_complete) {
+			return 'This task is already marked complete in your course workspace.';
+		}
+		return 'No submission is required. Mark this task complete here once you finish the assigned work.';
+	}
 	if (!selectedTaskWorkspace.value.requires_submission) {
 		return 'Review the task brief here. No submission is required for this task.';
 	}
@@ -1389,6 +1440,26 @@ const selectedTaskSubmissionBlocker = computed(() => {
 	return '';
 });
 
+const selectedTaskWorkspaceStatusNote = computed(() => {
+	if (!selectedTaskWorkspace.value || selectedTaskWorkspace.value.requires_submission) return '';
+	if (selectedTaskSupportsDirectCompletion.value) {
+		return selectedTaskWorkspace.value.is_complete
+			? 'This assign-only task is marked complete in your course workspace.'
+			: 'No submission is required. Mark this task complete here once you finish the work.';
+	}
+	return 'This task stays in your course workspace, but it does not require a submission.';
+});
+
+const selectedTaskDirectCompletionBlocker = computed(() => {
+	if (!selectedTaskSupportsDirectCompletion.value || selectedTaskWorkspace.value?.is_complete) {
+		return '';
+	}
+	if (!selectedTaskWorkspace.value?.task_outcome) {
+		return 'Your completion workspace is not ready yet. Refresh this page or contact your teacher if the problem continues.';
+	}
+	return '';
+});
+
 const selectedTaskReleasedResultMessage = computed(() => {
 	if (!selectedTaskWorkspace.value?.requires_submission) return '';
 	if (selectedTaskSubmissionLoading.value) return 'Loading released result...';
@@ -1404,6 +1475,12 @@ const selectedTaskReleasedResultMessage = computed(() => {
 
 const submissionButtonLabel = computed(() => {
 	return selectedTaskSubmission.value ? 'Resubmit task' : 'Submit task';
+});
+
+const taskCompletionButtonLabel = computed(() => {
+	if (!selectedTaskSupportsDirectCompletion.value) return '';
+	if (taskCompletionSaving.value) return 'Marking complete...';
+	return selectedTaskWorkspace.value?.is_complete ? 'Task complete' : 'Mark task complete';
 });
 
 const submissionProgressLabel = computed(() => {
@@ -2035,14 +2112,14 @@ async function loadSelectedTaskSubmission() {
 	}
 }
 
-function patchAssignedWorkStatus(taskDelivery: string, submissionStatus: string) {
+function patchAssignedWork(taskDelivery: string, updates: Partial<StudentAssignedWork>) {
 	if (!learningSpace.value) return;
 	const updateItems = (items: StudentAssignedWork[]) =>
 		items.map(item =>
 			item.task_delivery === taskDelivery
 				? {
 						...item,
-						submission_status: submissionStatus,
+						...updates,
 					}
 				: item
 		);
@@ -2101,10 +2178,11 @@ async function submitSelectedTaskWorkspace() {
 				},
 			}
 		);
-		patchAssignedWorkStatus(
-			task.task_delivery,
-			response.outcome_flags?.submission_status || (isResubmission ? 'Resubmitted' : 'Submitted')
-		);
+		patchAssignedWork(task.task_delivery, {
+			submission_status:
+				response.outcome_flags?.submission_status ||
+				(isResubmission ? 'Resubmitted' : 'Submitted'),
+		});
 		submissionDirty.value = false;
 		clearSubmissionFiles();
 		await loadSelectedTaskSubmission();
@@ -2115,6 +2193,31 @@ async function submitSelectedTaskWorkspace() {
 		toast.error(submissionError.value);
 	} finally {
 		submissionSaving.value = false;
+	}
+}
+
+async function markSelectedTaskComplete() {
+	const task = selectedTaskWorkspace.value;
+	if (!selectedTaskSupportsDirectCompletion.value || !task?.task_outcome || task.is_complete) {
+		return;
+	}
+
+	taskCompletionSaving.value = true;
+	taskCompletionError.value = '';
+	try {
+		const response = await markStudentTaskComplete({
+			task_outcome: task.task_outcome,
+		});
+		patchAssignedWork(task.task_delivery, {
+			is_complete: response.is_complete ? 1 : 0,
+		});
+		toast.success('Task marked complete.');
+	} catch (error) {
+		taskCompletionError.value =
+			error instanceof Error ? error.message : 'Could not mark this task complete.';
+		toast.error(taskCompletionError.value);
+	} finally {
+		taskCompletionSaving.value = false;
 	}
 }
 
@@ -2272,6 +2375,8 @@ watch(
 	() => {
 		submissionDirty.value = false;
 		submissionError.value = '';
+		taskCompletionError.value = '';
+		taskCompletionSaving.value = false;
 		loadSelectedTaskSubmission();
 	}
 );

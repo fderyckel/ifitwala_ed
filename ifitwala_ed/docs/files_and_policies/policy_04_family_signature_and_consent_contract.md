@@ -115,7 +115,7 @@ Rules:
    - for this form only
    - the new profile data everywhere
 4. `Update my profile everywhere` is an explicit self-service choice, not a silent background mutation and not a deferred review task in the default contract.
-5. Profile write-back must update the canonical linked `Contact` and `Address` records, then mirror convenience fields such as `Guardian.guardian_email` and `Guardian.guardian_mobile_phone` where the runtime model depends on them.
+5. Profile write-back must update the canonical linked `Contact` and `Address` records, then mirror convenience fields such as `Guardian.guardian_email`, `Guardian.guardian_mobile_phone`, `Student.student_email`, and `Student.student_mobile_number` where the runtime model depends on them.
 6. Form-only overrides must never silently mutate master profile data.
 7. Every submitted decision must retain an immutable snapshot of the presented values, submitted values, and chosen write-back mode.
 
@@ -198,6 +198,7 @@ Approved decisions:
 1. The new request/decision layer will use these DocTypes:
    - `Family Consent Request`
    - `Family Consent Target`
+   - `Family Consent Field`
    - `Family Consent Decision`
 2. The product label is `Forms & Signatures`; the backend request/decision layer may keep the `Family Consent*` names.
 3. Phase 2A ships desk-authored enrolled-student workflows with guardian signing and student self-sign available on day one.
@@ -209,53 +210,421 @@ Approved decisions:
 9. Desk is the canonical authoring home; the staff analytics page remains tracking, reminder, and launch support rather than the primary builder.
 10. Most collected form content must be field-bound to known profile data, with explicit signer choice for profile write-back when edits are made.
 
-Approved field set for the new request/decision layer:
+## Exact DocType Schema Contract
+Status: Planned
+Code refs: `ifitwala_ed/students/doctype/guardian/guardian.py`, `ifitwala_ed/students/doctype/student/student.py`, `ifitwala_ed/utilities/contact_utils.py`, `ifitwala_ed/api/guardian_policy.py`, `ifitwala_ed/api/student_policy.py`
+Test refs: None
 
-1. `Family Consent Request`
-   - `request_title`
+Frappe child-table bookkeeping fields (`parent`, `parenttype`, `parentfield`, `idx`) are implied and not repeated below. The tables below list business fields only.
+
+### `Family Consent Request`
+
+| Field | Contract | Required | Notes |
+|---|---|---|---|
+| `request_title` | human-readable request title | Yes | Staff-facing and family-facing title |
+| `request_key` | immutable unique request key | Yes | Server-generated; used for portal routing and deep links |
+| `template_key` | preset/template identifier | No | Stable preset key such as field trip or media consent |
+| `request_type` | request family | Yes | See enum contract |
+| `policy_version` | link to `Policy Version` | No | Allowed only when the request is seeded from policy-library content; it does not convert this workflow into durable acknowledgement |
+| `organization` | link to `Organization` | Yes | Top tenant scope for the request |
+| `school` | link to `School` | No | Blank only when a request legitimately spans multiple schools inside the selected organization scope |
+| `request_text` | sanitized rich-text body shown to signers | Yes | Canonical explanatory text and any legal wording for the form |
+| `source_file` | governed source attachment | No | Must follow the governed attachment contract; no raw URL storage in API DTOs |
+| `subject_scope` | target-scope selector | Yes | Phase 2A supports `Per Student` only |
+| `audience_mode` | audience selector | Yes | Guardian, Student, or later guardian-and-student |
+| `signer_rule` | completion rule | Yes | Values constrained by `audience_mode` |
+| `decision_mode` | decision semantics | Yes | Distinguishes approval vs consent semantics |
+| `requires_typed_signature` | typed-signature requirement flag | Yes | Default on for legal-signature flows |
+| `requires_attestation` | electronic-signature attestation requirement flag | Yes | Default on for legal-signature flows |
+| `effective_from` | effective start date | No | Primarily used by mutable consent |
+| `effective_to` | effective end date | No | Primarily used by mutable consent |
+| `due_on` | due date | No | Drives overdue state and reminders |
+| `status` | request lifecycle status | Yes | Draft, Published, Closed, Archived |
+| `targets` | child table of `Family Consent Target` | Yes before publish | Frozen publish-time target set |
+| `fields` | child table of `Family Consent Field` | Yes before publish | Ordered field/binding definition shown to signers |
+
+### `Family Consent Target`
+
+| Field | Contract | Required | Notes |
+|---|---|---|---|
+| `organization` | frozen organization scope for the target student | Yes | Supports scoped analytics without rereading student hierarchy on every row |
+| `school` | frozen school scope for the target student | Yes | Supports staff filters and descendant-scope summaries |
+| `student` | link to `Student` | Yes | Canonical target subject for Phase 2A |
+
+### `Family Consent Field`
+
+| Field | Contract | Required | Notes |
+|---|---|---|---|
+| `field_key` | immutable stable response key | Yes | Used in snapshots and submit payloads; does not change after publish |
+| `field_label` | signer-facing label | Yes | Friendly label shown in Desk and portal |
+| `field_type` | display/input type | Yes | See enum contract |
+| `value_source` | server-owned binding source | No | Required for bound fields; blank only for true one-off prompts |
+| `field_mode` | interaction mode | Yes | Display Only, Confirm Current, or Allow Override |
+| `required` | completion requirement flag | Yes | Applies to confirm and override inputs only |
+| `allow_profile_writeback` | write-back eligibility flag | Yes | Valid only for writable profile-backed fields |
+
+### `Family Consent Decision`
+
+| Field | Contract | Required | Notes |
+|---|---|---|---|
+| `family_consent_request` | link to `Family Consent Request` | Yes | Parent request for this decision event |
+| `student` | link to `Student` | Yes | Target student for whom the decision applies |
+| `decision_by_doctype` | signer actor type | Yes | `Guardian` or `Student` |
+| `decision_by` | signer actor name | Yes | Actor entity, not just the logged-in user |
+| `decision_status` | immutable decision event outcome | Yes | See enum contract |
+| `decision_at` | decision timestamp | Yes | Stored explicitly for evidence and reporting |
+| `typed_signature_name` | submitted typed signature | No | Required only when the request requires typed signature |
+| `attestation_confirmed` | signer attestation flag | Yes | Required only when the request requires attestation |
+| `source_channel` | channel that created the decision | Yes | Guardian Portal, Student Portal, or Desk Paper Capture |
+| `source_file` | governed evidence attachment | No | Used for scanned paper evidence or supporting attachments |
+| `response_snapshot` | immutable JSON payload of presented and submitted values | Yes | See snapshot contract |
+| `profile_writeback_mode` | write-back decision for this submit | No | Blank when no writable profile-backed fields changed |
+| `supersedes_decision` | link to prior `Family Consent Decision` | No | Used for withdrawal or later changes without mutating earlier evidence |
+
+## State And Enum Contract
+Status: Planned
+Code refs: `ifitwala_ed/api/guardian_policy.py`, `ifitwala_ed/api/student_policy.py`, `ifitwala_ed/api/policy_signature.py`
+Test refs: None
+
+Rules:
+
+1. `Family Consent Request.status` values are:
+   - `Draft`
+   - `Published`
+   - `Closed`
+   - `Archived`
+2. `subject_scope` values are:
+   - `Per Student`
+   - `Per Family` reserved for a later contract
+3. `audience_mode` values are:
+   - `Guardian`
+   - `Student`
+   - `Guardian + Student`
+4. `signer_rule` values are:
+   - `Any Authorized Guardian`
+   - `All Authorized Guardians`
+   - `Student Self`
+   - `Guardian And Student`
+5. Phase 2A implements only:
+   - `Guardian` with `Any Authorized Guardian` or `All Authorized Guardians`
+   - `Student` with `Student Self`
+6. `decision_mode` values are:
+   - `Approve / Decline`
+   - `Grant / Deny`
+   - `Acknowledge` reserved for a later non-durable operational receipt contract
+7. `Family Consent Field.field_type` values are:
+   - `Text`
+   - `Long Text`
+   - `Phone`
+   - `Email`
+   - `Address`
+   - `Date`
+   - `Checkbox`
+8. `Family Consent Field.field_mode` values are:
+   - `Display Only`
+   - `Confirm Current`
+   - `Allow Override`
+9. `Family Consent Decision.decision_status` values are:
+   - `Approved`
+   - `Declined`
+   - `Granted`
+   - `Denied`
+   - `Withdrawn`
+10. `Family Consent Decision.source_channel` values are:
+   - `Guardian Portal`
+   - `Student Portal`
+   - `Desk Paper Capture`
+11. `profile_writeback_mode` values are:
+   - blank
+   - `Form Only`
+   - `Update Profile`
+12. `pending`, `completed`, `declined`, `withdrawn`, `expired`, and `overdue` are derived board and analytics states, not raw `decision_status` values stored on the decision row.
+13. `completed` maps from the latest non-superseded `Approved` or `Granted` event that is still active inside the request window.
+14. `declined` maps from the latest non-superseded `Declined` or `Denied` event.
+15. `withdrawn` maps from the latest non-superseded `Withdrawn` event.
+16. `expired` and `overdue` are time-derived target/request states and must not be inserted as synthetic decision rows.
+
+## Snapshot Payload Contract
+Status: Planned
+Code refs: `ifitwala_ed/students/doctype/guardian/guardian.py`, `ifitwala_ed/students/doctype/student/student.py`, `ifitwala_ed/utilities/contact_utils.py`
+Test refs: None
+
+Rules:
+
+1. `response_snapshot` is the immutable evidence payload for every `Family Consent Decision`.
+2. `response_snapshot` must store these top-level blocks:
+   - `request`
+   - `signer`
+   - `field_values`
+   - `writeback`
+3. `request` must contain:
    - `request_key`
-   - `template_key`
+   - `request_title`
    - `request_type`
-   - `policy_version`
-   - `organization`
-   - `school`
-   - `request_text`
-   - `source_file`
-   - `subject_scope`
-   - `audience_mode`
-   - `signer_rule`
    - `decision_mode`
-   - `requires_typed_signature`
-   - `requires_attestation`
    - `effective_from`
    - `effective_to`
    - `due_on`
-   - `status`
-   - child table `targets`
-   - child table `fields`
-2. `Family Consent Target`
-   - `student`
-3. `Family Consent Field`
+4. `signer` must contain:
+   - `decision_by_doctype`
+   - `decision_by`
+   - `typed_signature_name`
+   - `attestation_confirmed`
+5. `field_values` must be an ordered list of rows, each containing:
    - `field_key`
    - `field_label`
    - `field_type`
-   - `value_source`
    - `field_mode`
-   - `required`
+   - `value_source`
+   - `presented_value`
+   - `submitted_value`
+   - `changed`
    - `allow_profile_writeback`
-4. `Family Consent Decision`
-   - `family_consent_request`
-   - `student`
-   - `decision_by`
-   - `decision_status`
-   - `decision_at`
-   - `typed_signature_name`
-   - `attestation_confirmed`
-   - `source_channel`
-   - `source_file`
-   - `response_snapshot`
+6. `writeback` must contain:
    - `profile_writeback_mode`
-   - `supersedes_decision`
+   - `changed_profile_fields`
+   - `before_values`
+   - `after_values`
+7. When the signer chooses `Form Only`, `submitted_value` still captures the override while `before_values` and `after_values` remain equal for master profile data.
+8. When the signer chooses `Update Profile`, the snapshot must preserve both the presented values and the canonical after-values written to `Contact`, `Address`, and mirrored convenience fields.
+9. For student self-sign, mirrored convenience fields include `Student.student_email` and `Student.student_mobile_number` because student runtime and user linkage still depend on them.
+10. For guardian sign, mirrored convenience fields include `Guardian.guardian_email` and `Guardian.guardian_mobile_phone`.
+
+## Named Endpoint Contract
+Status: Planned
+Code refs: `ifitwala_ed/api/guardian_policy.py`, `ifitwala_ed/api/student_policy.py`, `ifitwala_ed/api/policy_signature.py`, `ifitwala_ed/api/guardian_home.py`
+Test refs: None
+
+Rules:
+
+1. Desk workflows use `Family Consent Request.name` as the primary identifier.
+2. Portal workflows use `request_key` plus `student` as the stable detail identifier.
+3. Board and detail endpoints must return one bounded payload each; portal surfaces must not build the form through request waterfalls.
+4. No endpoint may emit raw private file URLs. Any request attachment or paper-evidence attachment must use the governed attachment/open-preview contract from `files_08_cross_portal_governed_attachment_preview_contract.md`.
+5. Submit and withdraw workflows must be idempotent. A repeated identical transition returns a success response with `status = already_current` instead of duplicating evidence rows.
+
+### Staff Workflows
+
+1. `publish_family_consent_request`
+   - caller: Desk button or Desk form action
+   - request:
+     - `family_consent_request: string`
+     - `send_initial_communication?: 0 | 1`
+   - response:
+     - `ok: boolean`
+     - `status: "published" | "already_published"`
+     - `family_consent_request: string`
+     - `request_key: string`
+     - `target_count: number`
+     - `communication_count: number`
+2. `get_family_consent_dashboard`
+   - caller: staff analytics/dashboard surface
+   - request:
+     - `organization?: string`
+     - `school?: string`
+     - `request_type?: string`
+     - `status?: string`
+     - `audience_mode?: string`
+   - response:
+     - `meta.generated_at`
+     - `filters`
+     - `counts` with:
+       - `requests`
+       - `pending`
+       - `completed`
+       - `declined`
+       - `withdrawn`
+       - `expired`
+       - `overdue`
+     - `rows[]` with:
+       - `family_consent_request`
+       - `request_key`
+       - `request_title`
+       - `request_type`
+       - `audience_mode`
+       - `signer_rule`
+       - `status`
+       - `organization`
+       - `school`
+       - `due_on`
+       - `target_count`
+       - `pending_count`
+       - `completed_count`
+       - `declined_count`
+       - `withdrawn_count`
+       - `expired_count`
+       - `overdue_count`
+
+### Guardian Workflows
+
+3. `get_guardian_consent_board`
+   - request: none
+   - response:
+     - `meta.generated_at`
+     - `meta.guardian.name`
+     - `family.children`
+     - `counts` with:
+       - `pending`
+       - `completed`
+       - `declined`
+       - `withdrawn`
+       - `expired`
+       - `overdue`
+     - `groups` with:
+       - `action_needed[]`
+       - `completed[]`
+       - `declined_or_withdrawn[]`
+       - `expired[]`
+     - each board row contains:
+       - `request_key`
+       - `request_title`
+       - `request_type`
+       - `decision_mode`
+       - `student`
+       - `student_name`
+       - `organization`
+       - `school`
+       - `due_on`
+       - `effective_from`
+       - `effective_to`
+       - `current_status`
+       - `current_status_label`
+       - `last_decision_at`
+       - `last_decision_by`
+4. `get_guardian_consent_detail`
+   - request:
+     - `request_key: string`
+     - `student: string`
+   - response:
+     - `meta.generated_at`
+     - `request` with:
+       - `family_consent_request`
+       - `request_key`
+       - `request_title`
+       - `request_type`
+       - `decision_mode`
+       - `request_text`
+       - `source_file`
+       - `effective_from`
+       - `effective_to`
+       - `due_on`
+       - `requires_typed_signature`
+       - `requires_attestation`
+     - `target` with:
+       - `student`
+       - `student_name`
+       - `organization`
+       - `school`
+       - `current_status`
+       - `current_status_label`
+     - `signer` with:
+       - `doctype`
+       - `name`
+       - `expected_signature_name`
+     - `fields[]` with:
+       - `field_key`
+       - `field_label`
+       - `field_type`
+       - `field_mode`
+       - `required`
+       - `presented_value`
+       - `allow_profile_writeback`
+       - `binding_label`
+     - `history[]` with:
+       - `decision_status`
+       - `decision_at`
+       - `decision_by_doctype`
+       - `decision_by`
+       - `source_channel`
+5. `submit_guardian_consent_decision`
+   - request:
+     - `request_key: string`
+     - `student: string`
+     - `decision_status: string`
+     - `typed_signature_name?: string`
+     - `attestation_confirmed?: 0 | 1`
+     - `field_values: Array<{ field_key: string; value: string | number | boolean | null }>`
+     - `profile_writeback_mode?: "Form Only" | "Update Profile"`
+   - response:
+     - `ok: boolean`
+     - `status: "submitted" | "already_current"`
+     - `decision_name: string`
+     - `request_key: string`
+     - `student: string`
+     - `current_status: string`
+     - `profile_writeback_mode: string | null`
+
+### Student Workflows
+
+6. `get_student_consent_board`
+   - request: none
+   - response:
+     - `meta.generated_at`
+     - `meta.student.name`
+     - `identity.student`
+     - `counts` with:
+       - `pending`
+       - `completed`
+       - `declined`
+       - `withdrawn`
+       - `expired`
+       - `overdue`
+     - `groups` with:
+       - `action_needed[]`
+       - `completed[]`
+       - `declined_or_withdrawn[]`
+       - `expired[]`
+     - board row shape matches guardian board rows except there is no family child list
+7. `get_student_consent_detail`
+   - request:
+     - `request_key: string`
+     - `student: string`
+   - response:
+     - same structural blocks as guardian detail, except `signer.doctype = "Student"` and `signer.expected_signature_name` is resolved from the current student context
+8. `submit_student_consent_decision`
+   - request:
+     - `request_key: string`
+     - `student: string`
+     - `decision_status: string`
+     - `typed_signature_name?: string`
+     - `attestation_confirmed?: 0 | 1`
+     - `field_values: Array<{ field_key: string; value: string | number | boolean | null }>`
+     - `profile_writeback_mode?: "Form Only" | "Update Profile"`
+   - response:
+     - same shape as `submit_guardian_consent_decision`
+
+### Shared Mutation Workflows
+
+9. `withdraw_family_consent_decision`
+   - caller: guardian portal or student portal when the current state allows withdrawal
+   - request:
+     - `request_key: string`
+     - `student: string`
+     - `typed_signature_name?: string`
+     - `attestation_confirmed?: 0 | 1`
+   - response:
+     - `ok: boolean`
+     - `status: "withdrawn" | "already_current"`
+     - `decision_name: string`
+     - `request_key: string`
+     - `student: string`
+     - `current_status: "withdrawn"`
+10. `record_family_consent_paper_decision`
+   - caller: Desk only
+   - request:
+     - `family_consent_request: string`
+     - `student: string`
+     - `decision_by_doctype: "Guardian" | "Student"`
+     - `decision_by: string`
+     - `decision_status: string`
+     - `decision_at: string`
+     - `source_file?: string`
+   - response:
+     - `ok: boolean`
+     - `status: "recorded"`
+     - `decision_name: string`
+     - `family_consent_request: string`
+     - `student: string`
 
 ## Decision Rationale
 Status: Partial

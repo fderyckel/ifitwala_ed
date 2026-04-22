@@ -325,18 +325,22 @@ def update_task_student(api, task_student: str, updates=None, **kwargs):
     if status_value is not None and is_published:
         frappe.throw(_("Unrelease this outcome before changing grading status."))
     if status_value is not None or direct_complete_write or visibility_provided:
-        outcome_doc = frappe.get_doc("Task Outcome", task_student)
+        outcome_doc = frappe.get_doc("Task Outcome", task_student) if status_value is not None else None
         if status_value is not None:
             outcome_doc.grading_status = status_value
         if direct_complete_write:
-            outcome_doc.is_complete = 1 if api._bool_flag(payload.get("complete")) else 0
+            task_outcome_service.set_assign_only_completion(
+                task_student,
+                is_complete=1 if api._bool_flag(payload.get("complete")) else 0,
+                ignore_permissions=False,
+            )
         if visibility_provided:
             publish_flag = api._bool_flag(payload.get("visible_to_student")) or api._bool_flag(
                 payload.get("visible_to_guardian")
             )
             if not publish_flag and not api._is_academic_adminish():
                 frappe.throw(_("Not permitted."), frappe.PermissionError)
-            if status_value is not None or direct_complete_write:
+            if status_value is not None:
                 outcome_doc.save(ignore_permissions=False)
             outcome_publish._bulk_update_publish(
                 [task_student],
@@ -346,7 +350,7 @@ def update_task_student(api, task_student: str, updates=None, **kwargs):
                     "published_by": frappe.session.user if publish_flag else None,
                 },
             )
-        else:
+        elif status_value is not None:
             outcome_doc.save(ignore_permissions=False)
 
     fresh = (
