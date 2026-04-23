@@ -5,7 +5,7 @@ from __future__ import annotations
 import frappe
 
 
-def make_organization(prefix: str = "Org"):
+def make_organization(prefix: str = "Org", *, with_coa: bool = False):
     org = frappe.get_doc(
         {
             "doctype": "Organization",
@@ -13,7 +13,14 @@ def make_organization(prefix: str = "Org"):
             "abbr": f"ORG{frappe.generate_hash(length=4)}",
         }
     )
-    org.insert()
+    previous_skip_coa = bool(getattr(frappe.flags, "skip_org_coa_setup", False))
+    if not with_coa:
+        org.flags.skip_coa_setup = True
+        frappe.flags.skip_org_coa_setup = True
+    try:
+        org.insert()
+    finally:
+        frappe.flags.skip_org_coa_setup = previous_skip_coa
     return org
 
 

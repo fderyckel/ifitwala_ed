@@ -102,12 +102,14 @@ class TestStudentPatientVisit(FrappeTestCase):
 
 
 def _make_student(prefix):
+    _ensure_gender("Female")
     student = frappe.get_doc(
         {
             "doctype": "Student",
             "student_first_name": prefix,
             "student_last_name": f"Test {frappe.generate_hash(length=6)}",
             "student_email": f"{frappe.generate_hash(length=8)}@example.com",
+            "student_gender": "Female",
         }
     )
     previous_in_migration = bool(getattr(frappe.flags, "in_migration", False))
@@ -124,3 +126,9 @@ def _make_student_patient(student_name):
     if existing_name:
         return frappe.get_doc("Student Patient", existing_name)
     return frappe.get_doc({"doctype": "Student Patient", "student": student_name}).insert()
+
+
+def _ensure_gender(gender_name: str):
+    if frappe.db.exists("Gender", gender_name):
+        return
+    frappe.get_doc({"doctype": "Gender", "gender": gender_name}).insert(ignore_permissions=True)

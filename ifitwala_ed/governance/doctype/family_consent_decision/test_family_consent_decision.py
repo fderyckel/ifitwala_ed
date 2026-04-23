@@ -71,9 +71,10 @@ class TestFamilyConsentDecision(FrappeTestCase):
                         "field_mode": "Allow Override",
                     }
                 ],
-                "status": "Published",
             }
         ).insert(ignore_permissions=True)
+        doc.status = "Published"
+        doc.save(ignore_permissions=True)
         self.created.append(("Family Consent Request", doc.name))
         return doc
 

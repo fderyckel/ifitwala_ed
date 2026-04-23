@@ -5,18 +5,11 @@
 
 import frappe
 from frappe import _
+from frappe.desk.form.assign_to import add as assign_add
+from frappe.desk.form.assign_to import remove as assign_remove
 from frappe.model.document import Document
 from frappe.utils import cint, date_diff, get_datetime
 from frappe.utils.nestedset import get_descendants_of
-
-# Try native assign/remove; fall back to direct ToDo updates if unavailable
-try:
-    from frappe.desk.form.assign_to import add as assign_add
-    from frappe.desk.form.assign_to import remove as assign_remove
-except Exception:
-    assign_add = None
-    assign_remove = None
-
 
 AUTO_CLOSE_CHUNK_SIZE = 200
 AUTO_CLOSE_DISPATCH_LOCK_KEY = "ifitwala_ed:scheduler:auto_close_completed_logs:dispatch"
@@ -700,26 +693,17 @@ class StudentLog(Document):
         school = self.school or self._resolve_school()
         due_date = _get_follow_up_due_date(school, self.next_step)
 
-        # Create/ensure a single OPEN ToDo for the assignee
+        # Create/ensure a single OPEN ToDo for the assignee through the native assignment API.
         desc = f"Follow up on the Student Log for {self.student_name}"
-        if assign_add:
-            assign_add(
-                {
-                    "doctype": self.doctype,
-                    "name": self.name,
-                    "assign_to": [user],
-                    "description": desc,
-                    "due_date": due_date,
-                }
-            )
-        else:
-            _insert_follow_up_todo(
-                log_name=self.name,
-                student_name=self.student_name,
-                allocated_to=user,
-                school=school,
-                next_step=self.next_step,
-            )
+        assign_add(
+            {
+                "doctype": self.doctype,
+                "name": self.name,
+                "assign_to": [user],
+                "description": desc,
+                "due_date": due_date,
+            }
+        )
 
         # Emit ONE clean "initial assignment" timeline note (not on reassign)
         if not had_open:
@@ -745,15 +729,7 @@ class StudentLog(Document):
         assignees = self._open_assignees()
         targets = [user] if user else assignees
         for u in targets:
-            if assign_remove:
-                assign_remove(self.doctype, self.name, u)
-            else:
-                frappe.db.set_value(
-                    "ToDo",
-                    {"reference_type": self.doctype, "reference_name": self.name, "allocated_to": u, "status": "Open"},
-                    "status",
-                    "Closed",
-                )
+            assign_remove(self.doctype, self.name, u)
 
     def _open_assignees(self):
         rows = frappe.get_all(

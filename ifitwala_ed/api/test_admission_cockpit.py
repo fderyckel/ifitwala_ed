@@ -21,6 +21,14 @@ from ifitwala_ed.api.admissions_review import (
 )
 
 
+def _insert_user_without_notifications(user):
+    with (
+        patch("frappe.core.doctype.user.user.User.send_password_notification"),
+        patch("frappe.core.doctype.user.user.User.send_welcome_mail_to_user"),
+    ):
+        user.insert(ignore_permissions=True)
+
+
 class TestAdmissionCockpit(FrappeTestCase):
     def setUp(self):
         super().setUp()
@@ -265,13 +273,11 @@ class TestAdmissionCockpit(FrappeTestCase):
                 "first_name": "Cockpit",
                 "last_name": prefix.title(),
                 "enabled": 1,
-                "send_welcome_email": 0,
-                "send_password_notification": 0,
                 "roles": [{"role": role} for role in roles],
             }
         )
         user.flags.no_welcome_mail = True
-        user.insert(ignore_permissions=True)
+        _insert_user_without_notifications(user)
         self._created.append(("User", user.name))
         frappe.clear_cache(user=user.name)
         return user

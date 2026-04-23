@@ -21,6 +21,8 @@ Supporting non-canonical note:
 
 - `05_browser_e2e_proposal.md`
   implemented phase-1 local/manual E2E note; it does not override the strategy or CI policy
+- `06_eca_activity_manual_qa_checklist.md`
+  manual physical QA checklist for the current ECA activity workflow; it does not override the activity-booking architecture or test strategy
 
 Audit artifact:
 

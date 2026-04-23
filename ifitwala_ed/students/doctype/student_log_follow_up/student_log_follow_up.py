@@ -5,14 +5,8 @@
 
 import frappe
 from frappe import _
+from frappe.desk.form.assign_to import remove as assign_remove
 from frappe.model.document import Document
-
-# resolve native assign API once (fallback closes ToDo directly)
-try:
-    from frappe.desk.form.assign_to import remove as assign_remove
-except Exception:
-    assign_remove = None
-
 
 ADMIN_ROLES = {"Academic Admin", "System Manager", "Administrator"}
 
@@ -65,13 +59,9 @@ class StudentLogFollowUp(Document):
 
         for t in open_todos:
             allocated_to = t.get("allocated_to")
-            if assign_remove and allocated_to:
-                try:
-                    assign_remove("Student Log", log_name, allocated_to)
-                    continue
-                except Exception:
-                    # fall back to direct close below
-                    pass
+            if allocated_to:
+                assign_remove("Student Log", log_name, allocated_to)
+                continue
 
             if t.get("name"):
                 frappe.db.set_value("ToDo", t["name"], "status", "Closed")

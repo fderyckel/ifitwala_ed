@@ -92,18 +92,13 @@ class TestSchoolEvent(TestCase):
         with self.assertRaises(frappe.ValidationError):
             SchoolEvent.validate_custom_users_require_participants(doc)
 
-    def test_get_user_membership_matches_team_via_login_email_fallback(self):
+    def test_get_user_membership_matches_team_via_canonical_employee_link(self):
         def fake_get_all(doctype, filters=None, pluck=None, fields=None, or_filters=None, limit=None, **kwargs):
             if doctype in {"Student Group Student", "Student Group Instructor", "Guardian", "Guardian Student"}:
                 return []
 
             if doctype == "Employee" and filters == {"user_id": "staff.user"} and pluck == "name":
-                return []
-
-            if doctype == "Employee" and filters == {"employee_professional_email": "staff@example.com"}:
-                self.assertEqual(fields, ["name", "user_id"])
-                self.assertEqual(limit, 2)
-                return [frappe._dict({"name": "EMP-0001", "user_id": ""})]
+                return ["EMP-0001"]
 
             if doctype == "Team Member":
                 self.assertEqual(
@@ -115,32 +110,21 @@ class TestSchoolEvent(TestCase):
 
             self.fail(f"Unexpected get_all call for {doctype}: filters={filters}, or_filters={or_filters}")
 
-        with (
-            patch(
-                "ifitwala_ed.school_settings.doctype.school_event.school_event.frappe.db.get_value",
-                return_value="staff@example.com",
-            ),
-            patch(
-                "ifitwala_ed.school_settings.doctype.school_event.school_event.frappe.get_all",
-                side_effect=fake_get_all,
-            ),
+        with patch(
+            "ifitwala_ed.school_settings.doctype.school_event.school_event.frappe.get_all",
+            side_effect=fake_get_all,
         ):
             membership = self._raw_get_user_membership()("staff.user")
 
         self.assertEqual(membership["teams"], {"TEAM-OPS"})
 
-    def test_get_user_membership_ignores_email_fallback_linked_to_other_user(self):
+    def test_get_user_membership_does_not_match_team_via_email_when_user_link_is_missing(self):
         def fake_get_all(doctype, filters=None, pluck=None, fields=None, or_filters=None, limit=None, **kwargs):
             if doctype in {"Student Group Student", "Student Group Instructor", "Guardian", "Guardian Student"}:
                 return []
 
             if doctype == "Employee" and filters == {"user_id": "staff.user"} and pluck == "name":
                 return []
-
-            if doctype == "Employee" and filters == {"employee_professional_email": "staff@example.com"}:
-                self.assertEqual(fields, ["name", "user_id"])
-                self.assertEqual(limit, 2)
-                return [frappe._dict({"name": "EMP-OTHER", "user_id": "other.user"})]
 
             if doctype == "Team Member":
                 self.assertEqual(or_filters, {"member": "staff.user"})
@@ -152,7 +136,7 @@ class TestSchoolEvent(TestCase):
         with (
             patch(
                 "ifitwala_ed.school_settings.doctype.school_event.school_event.frappe.db.get_value",
-                return_value="staff@example.com",
+                side_effect=AssertionError("Employee email fallback should not run."),
             ),
             patch(
                 "ifitwala_ed.school_settings.doctype.school_event.school_event.frappe.get_all",

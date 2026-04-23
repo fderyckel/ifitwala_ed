@@ -1016,29 +1016,7 @@ def _get_custom_user_event_names_for_user(user: str, event_names: list[str]) -> 
 
 def _resolve_team_member_employee_names_for_user(user: str) -> list[str]:
     direct_names = frappe.get_all("Employee", filters={"user_id": user}, pluck="name")
-    if direct_names:
-        return [name for name in direct_names if name]
-
-    login_email = (frappe.db.get_value("User", user, "email") or user or "").strip()
-    if not login_email:
-        return []
-
-    fallback_rows = frappe.get_all(
-        "Employee",
-        filters={"employee_professional_email": login_email},
-        fields=["name", "user_id"],
-        limit=2,
-    )
-    if len(fallback_rows) != 1:
-        return []
-
-    row = fallback_rows[0]
-    mapped_user = str(row.get("user_id") or "").strip()
-    if mapped_user and mapped_user != user:
-        return []
-
-    employee_name = str(row.get("name") or "").strip()
-    return [employee_name] if employee_name else []
+    return [name for name in direct_names if name]
 
 
 @redis_cache(ttl=600)

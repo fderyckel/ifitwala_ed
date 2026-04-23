@@ -163,65 +163,6 @@ class AcademicYear(Document):
                 )
             )
 
-    @frappe.whitelist()
-    def retire_ay(self, school_scope=None):
-        """
-        Deprecated: use End of Year Checklist for scoped closures.
-        This legacy method requires an explicit school scope to avoid global updates.
-        """
-        if not school_scope:
-            frappe.throw(
-                _("retire_ay() is deprecated and requires an explicit school scope."),
-                title=_("Deprecated"),
-            )
-        if isinstance(school_scope, str):
-            school_scope = frappe.parse_json(school_scope)
-        if not isinstance(school_scope, (list, tuple)) or not school_scope:
-            frappe.throw(_("school_scope must be a non-empty list."), title=_("Invalid Scope"))
-        if self.school not in school_scope:
-            frappe.throw(_("Academic Year school must be included in school_scope."), title=_("Invalid Scope"))
-
-        # 1. Retire all active Terms linked to this Academic Year
-        frappe.db.sql(
-            """
-            UPDATE `tabTerm`
-            SET archived = 1
-            WHERE academic_year = %s
-            AND archived = 0
-        """,
-            (self.name,),
-        )
-
-        # 2. Retire all active Program Enrollments for this Academic Year
-        frappe.db.sql(
-            """
-            UPDATE `tabProgram Enrollment`
-               SET archived = 1
-             WHERE academic_year = %(academic_year)s
-               AND school IN %(schools)s
-               AND archived = 0
-            """,
-            {"schools": tuple(school_scope), "academic_year": self.name},
-        )
-
-        # Update the Academic Year's own status to indicate it is retired
-        self.db_set("archived", 1)
-        frappe.db.commit()
-        frappe.msgprint(
-            _(
-                "Academic Year retired successfully. Archived status set to 1 for linked program enrollments and terms. "
-                "Use End of Year Checklist for full, scoped closure."
-            )
-        )
-        return "Academic Year archived successfully."
-
-
-@frappe.whitelist()
-def retire_academic_year(academic_year, school_scope=None):
-    # Fetch the Academic Year doc and call its retire method
-    doc = frappe.get_doc("Academic Year", academic_year)
-    return doc.retire_ay(school_scope=school_scope)
-
 
 def get_permission_query_conditions(user):
     if user == "Administrator" or "System Manager" in frappe.get_roles(user):

@@ -5,34 +5,15 @@
 
 frappe.ui.form.on("Academic Year", {
   refresh: function (frm) {
-    // Add "Retire Academic Year" button if the document is not new and is active
-    if (!frm.is_new() && frm.doc.archived == 1) {
-      frm.add_custom_button(__("Retire Academic Year (Deprecated)"), function() {
-        frappe.confirm(
-          __("Deprecated: use End of Year Checklist for scoped closure. This will retire linked Program Enrollments and Terms. Continue?"),
-          function() {
-            // On confirm, call the server-side method to retire the academic year
-            frappe.call({
-              method: "ifitwala_ed.school_settings.doctype.academic_year.academic_year.retire_academic_year",
-              args: {
-                academic_year: frm.doc.name,
-                school_scope: [frm.doc.school]
-              },
-              callback: function(r) {
-                if (r.message) {
-                  frappe.msgprint(r.message);
-                  // Optionally update the form field to reflect the archived status
-                  // Reload the doc from the server so archived and timestamp are synced
-                  frm.reload_doc();
-                }
-              }
-            });
-          },
-          function() {
-            // On cancel, do nothing
-          }
-        );
-      }).addClass("btn btn-danger");
+    if (!frm.is_new()) {
+      frm.add_custom_button(__("Open End of Year Checklist"), function() {
+        frappe.route_options = {
+          from_academic_year_form: 1,
+          school: frm.doc.school || "",
+          academic_year: frm.doc.name || "",
+        };
+        frappe.set_route("Form", "End of Year Checklist");
+      });
     }
 
     // Custom button for creating term

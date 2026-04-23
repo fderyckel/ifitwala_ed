@@ -2,6 +2,8 @@
 # Copyright (c) 2026, François de Ryckel and contributors
 # See license.txt
 
+from unittest.mock import patch
+
 import frappe
 from frappe.tests.utils import FrappeTestCase
 
@@ -14,10 +16,32 @@ from ifitwala_ed.api.focus import (
 )
 from ifitwala_ed.tests.factories.users import make_user
 
+_REQUIRED_TEST_APPS = ("frappe", "ifitwala_ed")
+_ORIGINAL_GET_INSTALLED_APPS = getattr(frappe, "get_installed_apps", None)
+
+
+def _get_test_installed_apps(*args, **kwargs):
+    apps = []
+    if callable(_ORIGINAL_GET_INSTALLED_APPS):
+        try:
+            apps = list(_ORIGINAL_GET_INSTALLED_APPS(*args, **kwargs) or [])
+        except Exception:
+            apps = []
+    for app_name in _REQUIRED_TEST_APPS:
+        if app_name not in apps:
+            apps.append(app_name)
+    return apps
+
 
 class TestFocusInquiry(FrappeTestCase):
     def setUp(self):
         super().setUp()
+        self._installed_apps_patcher = patch.object(
+            frappe,
+            "get_installed_apps",
+            side_effect=_get_test_installed_apps,
+        )
+        self._installed_apps_patcher.start()
         self._notification_states: list[tuple[str, int]] = []
         for notification_name in ("Inquiry Assigned", "Notify Admission Manager"):
             if not frappe.db.exists("Notification", notification_name):
@@ -48,6 +72,7 @@ class TestFocusInquiry(FrappeTestCase):
                 )
         if self._notification_states:
             frappe.clear_cache()
+        self._installed_apps_patcher.stop()
         super().tearDown()
 
     def _ensure_role(self, user: str, role: str) -> None:

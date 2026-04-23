@@ -73,6 +73,9 @@ def is_system_manager(user: str | None = None) -> bool:
 
 
 def ensure_policy_admin(user: str | None = None) -> None:
+    user = user or frappe.session.user
+    if user == "Administrator":
+        return
     roles = _user_roles(user)
     if roles & POLICY_ADMIN_ROLES:
         return
@@ -80,6 +83,9 @@ def ensure_policy_admin(user: str | None = None) -> None:
 
 
 def is_policy_admin(user: str | None = None) -> bool:
+    user = user or frappe.session.user
+    if user == "Administrator":
+        return True
     roles = _user_roles(user)
     return bool(roles & POLICY_ADMIN_ROLES)
 

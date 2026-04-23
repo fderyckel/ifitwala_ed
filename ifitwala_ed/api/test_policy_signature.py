@@ -1,5 +1,7 @@
 # ifitwala_ed/api/test_policy_signature.py
 
+from unittest.mock import patch
+
 import frappe
 from frappe.tests.utils import FrappeTestCase
 from frappe.utils import nowdate
@@ -15,12 +17,35 @@ from ifitwala_ed.governance.policy_utils import ensure_policy_audience_records
 from ifitwala_ed.tests.factories.organization import make_organization, make_school
 from ifitwala_ed.tests.factories.users import make_user
 
+_REQUIRED_TEST_APPS = ("frappe", "ifitwala_ed")
+_ORIGINAL_GET_INSTALLED_APPS = getattr(frappe, "get_installed_apps", None)
+
+
+def _get_test_installed_apps(*args, **kwargs):
+    apps = []
+    if callable(_ORIGINAL_GET_INSTALLED_APPS):
+        try:
+            apps = list(_ORIGINAL_GET_INSTALLED_APPS(*args, **kwargs) or [])
+        except Exception:
+            apps = []
+    for app_name in _REQUIRED_TEST_APPS:
+        if app_name not in apps:
+            apps.append(app_name)
+    return apps
+
 
 class TestPolicySignature(FrappeTestCase):
     def setUp(self):
+        self._installed_apps_patcher = patch.object(
+            frappe,
+            "get_installed_apps",
+            side_effect=_get_test_installed_apps,
+        )
+        self._installed_apps_patcher.start()
         frappe.set_user("Administrator")
         ensure_policy_audience_records()
         self.created: list[tuple[str, str]] = []
+        self._ensure_gender("Female")
 
         self.organization = make_organization(prefix="PS Org")
         self.created.append(("Organization", self.organization.name))
@@ -85,6 +110,7 @@ class TestPolicySignature(FrappeTestCase):
         frappe.set_user("Administrator")
         for doctype, name in reversed(self.created):
             self._delete_created_doc(doctype, name)
+        self._installed_apps_patcher.stop()
         super().tearDown()
 
     def _delete_created_doc(self, doctype: str, name: str):
@@ -100,6 +126,12 @@ class TestPolicySignature(FrappeTestCase):
             return
         role = frappe.get_doc({"doctype": "Role", "role_name": role_name}).insert(ignore_permissions=True)
         self.created.append(("Role", role.name))
+
+    def _ensure_gender(self, gender_name: str):
+        if frappe.db.exists("Gender", gender_name):
+            return
+        gender = frappe.get_doc({"doctype": "Gender", "gender": gender_name}).insert(ignore_permissions=True)
+        self.created.append(("Gender", gender.name))
 
     def _assign_role(self, user: str, role_name: str):
         self._ensure_role(role_name)

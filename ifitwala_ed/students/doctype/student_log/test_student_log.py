@@ -400,6 +400,23 @@ class TestStudentLog(TestCase):
         self.assertEqual(payload["assign_to"], ["assignee@example.com"])
         self.assertEqual(payload["due_date"], "2026-04-23")
 
+    def test_unassign_uses_native_assign_remove_api(self):
+        doc = StudentLog.__new__(StudentLog)
+        doc.doctype = "Student Log"
+        doc.name = "LOG-0001"
+        doc._open_assignees = lambda: ["assignee@example.com", "backup@example.com"]
+
+        with patch("ifitwala_ed.students.doctype.student_log.student_log.assign_remove") as assign_remove:
+            doc._unassign()
+
+        self.assertEqual(
+            assign_remove.call_args_list,
+            [
+                call("Student Log", "LOG-0001", "assignee@example.com"),
+                call("Student Log", "LOG-0001", "backup@example.com"),
+            ],
+        )
+
     def test_assign_follow_up_uses_persisted_role_without_repairing_it(self):
         inserted_todos = []
 
@@ -455,7 +472,7 @@ class TestStudentLog(TestCase):
                 side_effect=lambda payload: _FakeToDo(payload),
             ),
             patch("ifitwala_ed.students.doctype.student_log.student_log.frappe.db.set_value") as set_value,
-            patch.object(frappe.session, "user", "admin@example.com"),
+            patch.dict(frappe.session, {"user": "admin@example.com"}),
         ):
             result = assign_follow_up("LOG-0001", "assignee@example.com")
 

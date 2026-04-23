@@ -34,6 +34,8 @@ class Organization(NestedSet):
     def after_insert(self):
         if self.name == VIRTUAL_ROOT:
             return
+        if getattr(self.flags, "skip_coa_setup", False) or getattr(frappe.flags, "skip_org_coa_setup", False):
+            return
 
         from ifitwala_ed.accounting.coa_utils import create_coa_for_organization
 

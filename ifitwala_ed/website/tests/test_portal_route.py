@@ -1,10 +1,20 @@
 # ifitwala_ed/website/tests/test_portal_route.py
 
+from unittest.mock import patch
+
 import frappe
 from frappe.tests.utils import FrappeTestCase
 from frappe.utils import nowdate
 
 from ifitwala_ed.www.hub.index import get_context
+
+
+def _insert_user_without_notifications(user):
+    with (
+        patch("frappe.core.doctype.user.user.User.send_password_notification"),
+        patch("frappe.core.doctype.user.user.User.send_welcome_mail_to_user"),
+    ):
+        return user.insert(ignore_permissions=True)
 
 
 class TestPortalRoute(FrappeTestCase):
@@ -110,13 +120,11 @@ class TestPortalRoute(FrappeTestCase):
                 "first_name": "Portal",
                 "last_name": "Route",
                 "enabled": 1,
-                "send_welcome_email": 0,
-                "send_password_notification": 0,
                 "roles": [{"role": role} for role in roles],
             }
         )
         user.flags.no_welcome_mail = True
-        user = user.insert(ignore_permissions=True)
+        user = _insert_user_without_notifications(user)
         self._created.append(("User", user.name))
         return user
 

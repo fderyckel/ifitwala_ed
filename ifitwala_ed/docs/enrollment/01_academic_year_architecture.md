@@ -224,21 +224,21 @@ Those actions are designed to be rerunnable without changing the meaning of the 
 
 ## 6. Legacy `retire_ay()` Status
 
-Status: Deprecated legacy helper
+Status: Retired runtime path
 Code refs:
-- `ifitwala_ed/school_settings/doctype/academic_year/academic_year.py`
 - `ifitwala_ed/school_settings/doctype/academic_year/academic_year.js`
+- `ifitwala_ed/schedule/doctype/end_of_year_checklist/end_of_year_checklist.py`
+- `ifitwala_ed/schedule/doctype/end_of_year_checklist/end_of_year_checklist.js`
 Test refs:
-- `ifitwala_ed/school_settings/doctype/academic_year/test_academic_year.py`
+- `ifitwala_ed/schedule/doctype/end_of_year_checklist/test_end_of_year_checklist.py`
 
-`AcademicYear.retire_ay()` is no longer documented as the primary closure path.
+`AcademicYear.retire_ay()` is removed from runtime.
 
 Current runtime behavior:
 
-- it is explicitly deprecated
-- it requires an explicit `school_scope`
-- it archives `Program Enrollment` using that scope
-- it remains weaker than the checklist for full closure governance
+- the `Academic Year` form no longer exposes a direct archival method
+- the Desk affordance now routes users into `End of Year Checklist` with the current school and Academic Year prefilled
+- all destructive year-close behavior remains owned by checklist actions and their scope/status/permission rules
 
 Use `End of Year Checklist` for real closure work.
 

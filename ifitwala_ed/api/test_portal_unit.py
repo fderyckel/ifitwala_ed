@@ -104,6 +104,7 @@ def _portal_module():
             set_value=lambda key, value, expires_in_sec=None: None,
             delete_value=lambda key: None,
         )
+        import_fresh("ifitwala_ed.utilities.portal_identity_cache")
         yield import_fresh("ifitwala_ed.api.portal"), frappe, image_helper_state
 
 

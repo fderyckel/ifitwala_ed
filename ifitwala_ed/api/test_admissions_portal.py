@@ -50,6 +50,14 @@ def _policy_schema_available() -> bool:
     return bool(ensure_policy_applies_to_column(caller="test_admissions_portal").get("ok"))
 
 
+def _insert_user_without_notifications(user):
+    with (
+        patch("frappe.core.doctype.user.user.User.send_password_notification"),
+        patch("frappe.core.doctype.user.user.User.send_welcome_mail_to_user"),
+    ):
+        user.insert(ignore_permissions=True)
+
+
 class TestAdmissionsPortalAuthGuards(FrappeTestCase):
     def test_require_admissions_applicant_rejects_none_literal_as_unauthenticated(self):
         with patch("ifitwala_ed.api.admissions_portal._session_user", return_value=""):
@@ -291,13 +299,11 @@ class TestInviteApplicant(FrappeTestCase):
                 "first_name": "Disabled",
                 "last_name": "Applicant",
                 "enabled": 0,
-                "send_welcome_email": 0,
-                "send_password_notification": 0,
                 "user_type": "Website User",
             }
         )
         user.flags.no_welcome_mail = True
-        user.insert(ignore_permissions=True)
+        _insert_user_without_notifications(user)
         self._created.append(("User", user.name))
 
         with (
@@ -552,13 +558,11 @@ class TestInviteApplicant(FrappeTestCase):
                 "first_name": "Admissions",
                 "last_name": "Staff",
                 "enabled": 1,
-                "send_welcome_email": 0,
-                "send_password_notification": 0,
                 "roles": [{"role": "Admission Manager"}],
             }
         )
         user.flags.no_welcome_mail = True
-        user.insert(ignore_permissions=True)
+        _insert_user_without_notifications(user)
         self._created.append(("User", user.name))
         frappe.clear_cache(user=user.name)
         return user.name
@@ -1925,13 +1929,11 @@ class TestSubmitApplication(FrappeTestCase):
                 "first_name": "Portal",
                 "last_name": "Applicant",
                 "enabled": 1,
-                "send_welcome_email": 0,
-                "send_password_notification": 0,
                 "roles": [{"role": "Admissions Applicant"}],
             }
         )
         user.flags.no_welcome_mail = True
-        user.insert(ignore_permissions=True)
+        _insert_user_without_notifications(user)
         self._created.append(("User", user.name))
         frappe.clear_cache(user=user.name)
         return user.name
@@ -1972,13 +1974,11 @@ class TestSubmitApplication(FrappeTestCase):
                 "first_name": "Family",
                 "last_name": "Portal",
                 "enabled": 1,
-                "send_welcome_email": 0,
-                "send_password_notification": 0,
                 "roles": [{"role": "Admissions Family"}],
             }
         )
         user.flags.no_welcome_mail = True
-        user.insert(ignore_permissions=True)
+        _insert_user_without_notifications(user)
         self._created.append(("User", user.name))
         frappe.clear_cache(user=user.name)
         return user

@@ -634,15 +634,6 @@ def _resolve_unit_standard_catalog_row(
     if linked_row:
         return linked_row
 
-    direct_match = frappe.db.get_value(
-        "Learning Standards",
-        linked_name,
-        ["name", *LEARNING_STANDARD_CATALOG_FIELDS],
-        as_dict=True,
-    )
-    if direct_match:
-        return _normalize_learning_standard_catalog_row(direct_match)
-
     frappe.throw(
         _("Learning Standard {0} does not exist. Re-select it from the picker.").format(linked_name),
         frappe.ValidationError,

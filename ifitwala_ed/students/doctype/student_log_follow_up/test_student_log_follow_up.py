@@ -2,7 +2,7 @@
 # See license.txt
 
 from unittest import TestCase
-from unittest.mock import patch
+from unittest.mock import call, patch
 
 import frappe
 
@@ -13,6 +13,35 @@ from ifitwala_ed.students.doctype.student_log_follow_up.student_log_follow_up im
 
 
 class TestStudentLogFollowUp(TestCase):
+    def test_close_open_todos_uses_native_assign_remove_api(self):
+        doc = StudentLogFollowUp.__new__(StudentLogFollowUp)
+
+        with (
+            patch(
+                "ifitwala_ed.students.doctype.student_log_follow_up.student_log_follow_up.frappe.get_all",
+                return_value=[
+                    frappe._dict({"name": "TODO-1", "allocated_to": "assignee@example.com"}),
+                    frappe._dict({"name": "TODO-2", "allocated_to": "backup@example.com"}),
+                ],
+            ),
+            patch(
+                "ifitwala_ed.students.doctype.student_log_follow_up.student_log_follow_up.assign_remove"
+            ) as assign_remove,
+            patch(
+                "ifitwala_ed.students.doctype.student_log_follow_up.student_log_follow_up.frappe.db.set_value"
+            ) as set_value,
+        ):
+            doc._close_open_todos_for_log("LOG-0001")
+
+        self.assertEqual(
+            assign_remove.call_args_list,
+            [
+                call("Student Log", "LOG-0001", "assignee@example.com"),
+                call("Student Log", "LOG-0001", "backup@example.com"),
+            ],
+        )
+        set_value.assert_not_called()
+
     def test_has_permission_allows_current_assignee_to_submit(self):
         doc = frappe._dict({"student_log": "LOG-0001"})
 

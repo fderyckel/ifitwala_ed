@@ -1,3 +1,5 @@
+from unittest.mock import patch
+
 import frappe
 from frappe.tests.utils import FrappeTestCase
 
@@ -8,14 +10,37 @@ from ifitwala_ed.api.family_consent_staff import (
 )
 from ifitwala_ed.tests.factories.organization import make_organization, make_school
 
+_REQUIRED_TEST_APPS = ("frappe", "ifitwala_ed")
+_ORIGINAL_GET_INSTALLED_APPS = getattr(frappe, "get_installed_apps", None)
+
+
+def _get_test_installed_apps(*args, **kwargs):
+    apps = []
+    if callable(_ORIGINAL_GET_INSTALLED_APPS):
+        try:
+            apps = list(_ORIGINAL_GET_INSTALLED_APPS(*args, **kwargs) or [])
+        except Exception:
+            apps = []
+    for app_name in _REQUIRED_TEST_APPS:
+        if app_name not in apps:
+            apps.append(app_name)
+    return apps
+
 
 class TestFamilyConsentStaff(FrappeTestCase):
     def setUp(self):
         super().setUp()
+        self._installed_apps_patcher = patch.object(
+            frappe,
+            "get_installed_apps",
+            side_effect=_get_test_installed_apps,
+        )
+        self._installed_apps_patcher.start()
         frappe.set_user("Administrator")
         self.created: list[tuple[str, str]] = []
+        self._ensure_gender("Female")
 
-        self.organization = make_organization(prefix="FC Org")
+        self.organization = make_organization(prefix="FC Org", with_coa=False)
         self.created.append(("Organization", self.organization.name))
         self.school = make_school(self.organization.name, prefix="FC School")
         self.created.append(("School", self.school.name))
@@ -29,7 +54,14 @@ class TestFamilyConsentStaff(FrappeTestCase):
             if not frappe.db.exists(doctype, name):
                 continue
             frappe.delete_doc(doctype, name, force=1, ignore_permissions=True)
+        self._installed_apps_patcher.stop()
         super().tearDown()
+
+    def _ensure_gender(self, gender_name: str):
+        if frappe.db.exists("Gender", gender_name):
+            return
+        gender = frappe.get_doc({"doctype": "Gender", "gender": gender_name}).insert(ignore_permissions=True)
+        self.created.append(("Gender", gender.name))
 
     def _make_student(self, *, email_prefix: str):
         seed = frappe.generate_hash(length=6)
@@ -139,7 +171,7 @@ class TestFamilyConsentStaff(FrappeTestCase):
         self.assertEqual(payload["rows"][0]["overdue_count"], 1)
 
     def test_dashboard_rejects_school_outside_selected_organization(self):
-        other_organization = make_organization(prefix="FC Other Org")
+        other_organization = make_organization(prefix="FC Other Org", with_coa=False)
         self.created.append(("Organization", other_organization.name))
         other_school = make_school(other_organization.name, prefix="FC Other School")
         self.created.append(("School", other_school.name))

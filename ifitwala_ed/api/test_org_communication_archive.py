@@ -198,7 +198,7 @@ class TestOrgCommunicationArchiveFeed(FrappeTestCase):
     def test_get_feed_student_group_filter_prefilters_exact_group_scope(self):
         captured = {}
 
-        def fake_sql(query, values=None, as_dict=False):
+        def fake_sql(query, values=None, as_dict=False, **kwargs):
             captured["query"] = query
             captured["values"] = values or {}
             self.assertTrue(as_dict)
@@ -239,6 +239,7 @@ class TestOrgCommunicationArchiveFeed(FrappeTestCase):
                 "ifitwala_ed.api.org_communication_archive._get_scope",
                 return_value=("ORG-1", "SCH-1", [], []),
             ),
+            patch("ifitwala_ed.api.org_communication_archive.today", return_value="2026-04-10"),
             patch("ifitwala_ed.api.org_communication_archive.frappe.db.sql", side_effect=fake_sql),
             patch("ifitwala_ed.api.org_communication_archive.check_audience_match", return_value=True) as match_mock,
             patch("ifitwala_ed.api.org_communication_archive.get_audience_label", return_value="Students · SG-1"),
@@ -272,7 +273,7 @@ class TestOrgCommunicationArchiveFeed(FrappeTestCase):
     def test_get_feed_keeps_parent_organization_candidates_for_organization_audience(self):
         captured = {}
 
-        def fake_sql(query, values=None, as_dict=False):
+        def fake_sql(query, values=None, as_dict=False, **kwargs):
             captured["query"] = query
             captured["values"] = values or {}
             self.assertTrue(as_dict)
@@ -317,6 +318,7 @@ class TestOrgCommunicationArchiveFeed(FrappeTestCase):
                 "ifitwala_ed.api.org_communication_archive.get_ancestor_organizations",
                 return_value=["ORG-CHILD", "ORG-ROOT"],
             ),
+            patch("ifitwala_ed.api.org_communication_archive.today", return_value="2026-04-10"),
             patch("ifitwala_ed.api.org_communication_archive.frappe.db.sql", side_effect=fake_sql),
             patch("ifitwala_ed.api.org_communication_archive.check_audience_match", return_value=True),
             patch("ifitwala_ed.api.org_communication_archive.get_audience_label", return_value="Staff · ORG"),

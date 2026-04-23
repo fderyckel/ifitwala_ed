@@ -311,6 +311,24 @@ class TestStudentLogUnit(TestCase):
         )
         self.assertEqual(inserted_todos[0][0]["allocated_to"], "assignee@example.com")
 
+    def test_unassign_uses_native_assign_remove_api(self):
+        with _student_log_module() as (student_log_module, _):
+            doc = student_log_module.StudentLog.__new__(student_log_module.StudentLog)
+            doc.doctype = "Student Log"
+            doc.name = "LOG-0001"
+            doc._open_assignees = lambda: ["assignee@example.com", "backup@example.com"]
+
+            with patch.object(student_log_module, "assign_remove") as assign_remove:
+                doc._unassign()
+
+        self.assertEqual(
+            assign_remove.call_args_list,
+            [
+                call("Student Log", "LOG-0001", "assignee@example.com"),
+                call("Student Log", "LOG-0001", "backup@example.com"),
+            ],
+        )
+
     def test_assign_follow_up_blocks_missing_follow_up_role_without_runtime_backfill(self):
         with _student_log_module() as (student_log_module, _):
 

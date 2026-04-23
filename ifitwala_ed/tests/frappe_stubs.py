@@ -110,6 +110,10 @@ def stubbed_frappe(extra_modules: dict[str, object] | None = None) -> Iterator[t
     if extra_modules:
         modules.update(extra_modules)
     _apply_module_specs(modules)
+    preexisting_module_names = set(sys.modules)
+    cleanup_prefixes = {
+        module_name.split(".", 1)[0] for module_name in modules if module_name and module_name.split(".", 1)[0]
+    }
 
     restored_package_attrs: list[tuple[object, str, object, bool]] = []
     imported_modules: list[tuple[str, object, object | None, str | None, object, bool]] = []
@@ -150,6 +154,20 @@ def stubbed_frappe(extra_modules: dict[str, object] | None = None) -> Iterator[t
                     setattr(parent_module, attr_name, previous_value)
                 else:
                     delattr(parent_module, attr_name)
+            leaked_module_names = [
+                module_name
+                for module_name in sys.modules
+                if module_name not in preexisting_module_names
+                and any(module_name == prefix or module_name.startswith(f"{prefix}.") for prefix in cleanup_prefixes)
+            ]
+            for module_name in sorted(leaked_module_names, key=len, reverse=True):
+                leaked_module = sys.modules.get(module_name)
+                parent_name, _, attr_name = module_name.rpartition(".")
+                if leaked_module is not None and parent_name and attr_name:
+                    parent_module = sys.modules.get(parent_name)
+                    if parent_module is not None and getattr(parent_module, attr_name, _MISSING) is leaked_module:
+                        delattr(parent_module, attr_name)
+                sys.modules.pop(module_name, None)
 
 
 def import_fresh(module_name: str):

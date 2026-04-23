@@ -7,6 +7,7 @@ const STATUS_COMPLETED = "Completed";
 
 frappe.ui.form.on("End of Year Checklist", {
 	refresh(frm) {
+		applyAcademicYearRouteContext(frm);
 		ensure_defaults(frm);
 		set_scope_queries(frm);
 		refresh_scope_preview(frm);
@@ -44,6 +45,28 @@ frappe.ui.form.on("End of Year Checklist", {
 		run_action(frm, "archive_academic_year", __("Academic Years archived."));
 	},
 });
+
+function applyAcademicYearRouteContext(frm) {
+	const routeOptions = frappe.route_options || {};
+	if (!routeOptions.from_academic_year_form) {
+		return;
+	}
+
+	frappe.route_options = null;
+
+	const updates = {};
+	if (routeOptions.school && routeOptions.school !== frm.doc.school) {
+		updates.school = routeOptions.school;
+	}
+	if (routeOptions.academic_year && routeOptions.academic_year !== frm.doc.academic_year) {
+		updates.academic_year = routeOptions.academic_year;
+	}
+	if (!Object.keys(updates).length) {
+		return;
+	}
+
+	frm.set_value(updates);
+}
 
 function ensure_defaults(frm) {
 	if (!frm.doc.status) {

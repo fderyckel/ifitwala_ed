@@ -1,5 +1,7 @@
 # ifitwala_ed/api/test_focus_student_log.py
 
+from unittest.mock import patch
+
 import frappe
 from frappe.tests.utils import FrappeTestCase
 from frappe.utils import cint
@@ -16,12 +18,35 @@ from ifitwala_ed.api.focus import (
 from ifitwala_ed.tests.factories.organization import make_organization, make_school
 from ifitwala_ed.tests.factories.users import make_user
 
+_REQUIRED_TEST_APPS = ("frappe", "ifitwala_ed")
+_ORIGINAL_GET_INSTALLED_APPS = getattr(frappe, "get_installed_apps", None)
+
+
+def _get_test_installed_apps(*args, **kwargs):
+    apps = []
+    if callable(_ORIGINAL_GET_INSTALLED_APPS):
+        try:
+            apps = list(_ORIGINAL_GET_INSTALLED_APPS(*args, **kwargs) or [])
+        except Exception:
+            apps = []
+    for app_name in _REQUIRED_TEST_APPS:
+        if app_name not in apps:
+            apps.append(app_name)
+    return apps
+
 
 class TestFocusStudentLog(FrappeTestCase):
     def setUp(self):
         super().setUp()
+        self._installed_apps_patcher = patch.object(
+            frappe,
+            "get_installed_apps",
+            side_effect=_get_test_installed_apps,
+        )
+        self._installed_apps_patcher.start()
         frappe.set_user("Administrator")
         self._created: list[tuple[str, str]] = []
+        self._ensure_gender("Female")
 
     def tearDown(self):
         frappe.set_user("Administrator")
@@ -32,6 +57,7 @@ class TestFocusStudentLog(FrappeTestCase):
                     if docstatus == 1:
                         frappe.get_doc(doctype, name).cancel()
                 frappe.delete_doc(doctype, name, force=1, ignore_permissions=True)
+        self._installed_apps_patcher.stop()
         super().tearDown()
 
     def test_get_focus_context_includes_student_log_time(self):
@@ -245,6 +271,12 @@ class TestFocusStudentLog(FrappeTestCase):
             }
         ).insert(ignore_permissions=True)
 
+    def _ensure_gender(self, gender_name: str) -> None:
+        if frappe.db.exists("Gender", gender_name):
+            return
+        gender = frappe.get_doc({"doctype": "Gender", "gender": gender_name}).insert(ignore_permissions=True)
+        self._created.append(("Gender", gender.name))
+
     def _get_or_create_program_root(self):
         if frappe.db.exists("Program", "All Programs"):
             return frappe.get_doc("Program", "All Programs")
@@ -263,7 +295,7 @@ class TestFocusStudentLog(FrappeTestCase):
     def _make_follow_up_focus_fixture(self) -> dict[str, str]:
         frappe.set_user("Administrator")
 
-        organization = make_organization(prefix="Focus Log Org")
+        organization = make_organization(prefix="Focus Log Org", with_coa=False)
         self._created.append(("Organization", organization.name))
 
         school = make_school(organization.name, prefix="Focus Log School")
@@ -319,12 +351,14 @@ class TestFocusStudentLog(FrappeTestCase):
         }
 
     def _make_student(self):
+        self._ensure_gender("Female")
         student = frappe.get_doc(
             {
                 "doctype": "Student",
                 "student_first_name": "Focus",
                 "student_last_name": f"Log-{frappe.generate_hash(length=6)}",
                 "student_email": f"{frappe.generate_hash(length=8)}@example.com",
+                "student_gender": "Female",
             }
         )
         previous_in_migration = bool(getattr(frappe.flags, "in_migration", False))

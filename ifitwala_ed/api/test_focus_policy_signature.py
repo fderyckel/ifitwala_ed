@@ -1,5 +1,7 @@
 # ifitwala_ed/api/test_focus_policy_signature.py
 
+from unittest.mock import patch
+
 import frappe
 from frappe.tests.utils import FrappeTestCase
 from frappe.utils import nowdate
@@ -15,9 +17,31 @@ from ifitwala_ed.governance.policy_utils import ensure_policy_audience_records
 from ifitwala_ed.tests.factories.organization import make_organization
 from ifitwala_ed.tests.factories.users import make_user
 
+_REQUIRED_TEST_APPS = ("frappe", "ifitwala_ed")
+_ORIGINAL_GET_INSTALLED_APPS = getattr(frappe, "get_installed_apps", None)
+
+
+def _get_test_installed_apps(*args, **kwargs):
+    apps = []
+    if callable(_ORIGINAL_GET_INSTALLED_APPS):
+        try:
+            apps = list(_ORIGINAL_GET_INSTALLED_APPS(*args, **kwargs) or [])
+        except Exception:
+            apps = []
+    for app_name in _REQUIRED_TEST_APPS:
+        if app_name not in apps:
+            apps.append(app_name)
+    return apps
+
 
 class TestFocusPolicySignature(FrappeTestCase):
     def setUp(self):
+        self._installed_apps_patcher = patch.object(
+            frappe,
+            "get_installed_apps",
+            side_effect=_get_test_installed_apps,
+        )
+        self._installed_apps_patcher.start()
         frappe.set_user("Administrator")
         ensure_policy_audience_records()
         self.created: list[tuple[str, str]] = []
@@ -107,6 +131,7 @@ class TestFocusPolicySignature(FrappeTestCase):
         for doctype, name in reversed(self.created):
             if frappe.db.exists(doctype, name):
                 frappe.delete_doc(doctype, name, force=1, ignore_permissions=True)
+        self._installed_apps_patcher.stop()
         super().tearDown()
 
     def _make_employee(self, user: str):
