@@ -138,7 +138,7 @@ class TestUnitPlan(FrappeTestCase):
         with self.assertRaises(frappe.ValidationError):
             planning.ensure_linked_unit_plan_standards(doc)
 
-    def test_ensure_linked_unit_plan_standards_falls_back_to_direct_identifier_resolution(self):
+    def test_ensure_linked_unit_plan_standards_rejects_broken_link_when_prefetch_misses(self):
         standard = frappe.get_doc(
             {
                 "doctype": "Learning Standards",
@@ -177,12 +177,13 @@ class TestUnitPlan(FrappeTestCase):
             return original_get_all(doctype, *args, **kwargs)
 
         with patch.object(frappe, "get_all", side_effect=fake_get_all):
-            planning.ensure_linked_unit_plan_standards(doc)
+            with self.assertRaises(frappe.ValidationError):
+                planning.ensure_linked_unit_plan_standards(doc)
 
         self.assertEqual(doc.standards[0]["learning_standard"], standard.name)
-        self.assertEqual(doc.standards[0]["standard_code"], standard.standard_code)
+        self.assertEqual(doc.standards[0]["coverage_level"], "Introduced")
 
-    def test_ensure_linked_unit_plan_standards_falls_back_to_snapshot_match_when_identifier_fails(self):
+    def test_ensure_linked_unit_plan_standards_rejects_broken_link_even_with_matching_snapshot(self):
         program = frappe.get_doc(
             {
                 "doctype": "Program",
@@ -228,8 +229,9 @@ class TestUnitPlan(FrappeTestCase):
             ]
         )
 
-        planning.ensure_linked_unit_plan_standards(doc)
+        with self.assertRaises(frappe.ValidationError):
+            planning.ensure_linked_unit_plan_standards(doc)
 
-        self.assertEqual(doc.standards[0]["learning_standard"], standard.name)
+        self.assertEqual(doc.standards[0]["learning_standard"], "broken-link-value")
         self.assertEqual(doc.standards[0]["standard_code"], standard.standard_code)
         self.assertEqual(doc.standards[0]["coverage_level"], "Introduced")

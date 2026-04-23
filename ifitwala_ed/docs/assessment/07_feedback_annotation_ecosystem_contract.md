@@ -421,6 +421,7 @@ The second slice of item 2 is now implemented:
 - export/open actions may reuse the current artifact when it is still fresh relative to the released feedback source state
 
 See `12_phase4_student_feedback_navigator_and_reply_rfc.md` for the implemented Phase 4 runtime companion and planning history.
+See `13_phase5b_ocr_readability_hardening_rfc.md` for the planned OCR/readability hardening contract on immutable submission evidence.
 
 The following remain outside the current baseline:
 

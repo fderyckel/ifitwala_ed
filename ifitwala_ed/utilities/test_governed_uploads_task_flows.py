@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import importlib.machinery
 import sys
 from contextlib import contextmanager
 from types import ModuleType, SimpleNamespace
@@ -7,6 +8,17 @@ from unittest import TestCase
 from unittest.mock import patch
 
 from ifitwala_ed.tests.frappe_stubs import import_fresh, stubbed_frappe
+
+
+def _stub_module(name: str, *, is_package: bool = False) -> ModuleType:
+    module = ModuleType(name)
+    module.__spec__ = importlib.machinery.ModuleSpec(name, loader=None, is_package=is_package)
+    if is_package:
+        module.__path__ = []
+        module.__package__ = name
+    else:
+        module.__package__ = name.rpartition(".")[0]
+    return module
 
 
 @contextmanager
@@ -39,9 +51,9 @@ def _governed_uploads_module():
 
 @contextmanager
 def _patched_drive_api_module(module_name: str, **attributes):
-    root_module = ModuleType("ifitwala_drive")
-    api_module = ModuleType("ifitwala_drive.api")
-    child_module = ModuleType(module_name)
+    root_module = _stub_module("ifitwala_drive", is_package=True)
+    api_module = _stub_module("ifitwala_drive.api", is_package=True)
+    child_module = _stub_module(module_name)
     for key, value in attributes.items():
         setattr(child_module, key, value)
     setattr(api_module, module_name.rsplit(".", 1)[-1], child_module)

@@ -59,6 +59,7 @@ def _append_role(user_doc, role: str) -> None:
 def _new_test_user():
     user = frappe.new_doc("User")
     user.send_welcome_email = 0
+    user.send_password_notification = 0
     return user
 
 
@@ -67,11 +68,11 @@ class TestUserRedirect(FrappeTestCase):
 
     def setUp(self):
         super().setUp()
-        self._welcome_mail_patcher = patch("frappe.core.doctype.user.user.User.send_welcome_mail_to_user")
-        self._welcome_mail_patcher.start()
+        self._password_notification_patcher = patch("frappe.core.doctype.user.user.User.send_password_notification")
+        self._password_notification_patcher.start()
 
     def tearDown(self):
-        self._welcome_mail_patcher.stop()
+        self._password_notification_patcher.stop()
         super().tearDown()
 
     def test_strip_redirect_query_removes_redirect_to_params(self):

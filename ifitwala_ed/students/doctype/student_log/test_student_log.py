@@ -4,7 +4,7 @@
 # ifitwala_ed/students/doctype/student_log/test_student_log.py
 
 from unittest import TestCase
-from unittest.mock import patch
+from unittest.mock import call, patch
 
 import frappe
 
@@ -13,6 +13,7 @@ from ifitwala_ed.students.doctype.student_log.student_log import (
     _get_auto_close_eligible_rows,
     _interpolate_sql_params,
     _is_accreditation_visitor_only,
+    assign_follow_up,
     dispatch_auto_close_completed_logs,
     get_student_log_visibility_predicate,
     process_auto_close_completed_logs_chunk,
@@ -123,6 +124,31 @@ class TestStudentLog(TestCase):
 
         with self.assertRaises(frappe.ValidationError):
             doc._assert_core_fields_immutable_after_follow_up()
+
+    @patch("ifitwala_ed.students.doctype.student_log.student_log.frappe.get_value", return_value=None)
+    def test_validate_persists_academic_staff_default_when_next_step_has_no_associated_role(self, _get_value):
+        doc = StudentLog.__new__(StudentLog)
+        doc.requires_follow_up = 1
+        doc.next_step = "STEP-1"
+        doc.follow_up_role = None
+        doc.follow_up_person = None
+        doc.follow_up_status = None
+        doc.school = "SCH-1"
+        doc.name = None
+        doc.docstatus = 0
+        doc.is_new = lambda: True
+        doc._current_assignee = lambda: None
+        doc._compute_follow_up_status = lambda: None
+        doc._apply_status = lambda *args, **kwargs: None
+        doc._ensure_delivery_context = lambda: None
+        doc._resolve_school = lambda: "SCH-1"
+        doc._assert_amendment_allowed = lambda: None
+        doc._assert_core_fields_immutable_after_follow_up = lambda: None
+        doc._assert_followup_transition_and_immutability = lambda: None
+
+        doc.validate()
+
+        self.assertEqual(doc.follow_up_role, "Academic Staff")
 
     def test_dispatch_auto_close_completed_logs_enqueues_long_queue_chunks(self):
         cache = _DummyCache()
@@ -236,6 +262,114 @@ class TestStudentLog(TestCase):
         payload = assign_add.call_args.args[0]
         self.assertEqual(payload["assign_to"], ["assignee@example.com"])
         self.assertEqual(payload["due_date"], "2026-04-23")
+
+    def test_assign_follow_up_uses_persisted_role_without_repairing_it(self):
+        inserted_todos = []
+
+        class _FakeToDo:
+            def __init__(self, payload):
+                self.payload = payload
+
+            def insert(self, ignore_permissions=False):
+                inserted_todos.append((self.payload, ignore_permissions))
+                return self
+
+        def fake_db_get_value(doctype, filters=None, fieldname=None, as_dict=False):
+            if doctype == "Student Log":
+                return frappe._dict(
+                    {
+                        "name": "LOG-0001",
+                        "owner": "author@example.com",
+                        "school": "SCH-1",
+                        "student_name": "Focus Student",
+                        "follow_up_status": None,
+                        "follow_up_role": "Counselor",
+                        "next_step": "STEP-1",
+                    }
+                )
+            if doctype == "ToDo":
+                return None
+            raise AssertionError(f"Unexpected get_value lookup: {doctype!r}")
+
+        def fake_get_roles(user=None):
+            if user == "assignee@example.com":
+                return ["Counselor"]
+            return ["Academic Admin"]
+
+        with (
+            patch(
+                "ifitwala_ed.students.doctype.student_log.student_log.frappe.defaults.get_user_default",
+                return_value="SCH-1",
+            ),
+            patch(
+                "ifitwala_ed.students.doctype.student_log.student_log.frappe.db.get_value",
+                side_effect=fake_db_get_value,
+            ),
+            patch("ifitwala_ed.students.doctype.student_log.student_log.frappe.db.sql", side_effect=[[(1,)], None]),
+            patch("ifitwala_ed.students.doctype.student_log.student_log.frappe.get_roles", side_effect=fake_get_roles),
+            patch("ifitwala_ed.students.doctype.student_log.student_log.frappe.get_value") as get_value,
+            patch("ifitwala_ed.students.doctype.student_log.student_log._get_follow_up_due_days", return_value=4),
+            patch("ifitwala_ed.students.doctype.student_log.student_log.frappe.utils.today", return_value="2026-04-19"),
+            patch(
+                "ifitwala_ed.students.doctype.student_log.student_log.frappe.utils.add_days", return_value="2026-04-23"
+            ),
+            patch(
+                "ifitwala_ed.students.doctype.student_log.student_log.frappe.get_doc",
+                side_effect=lambda payload: _FakeToDo(payload),
+            ),
+            patch("ifitwala_ed.students.doctype.student_log.student_log.frappe.db.set_value") as set_value,
+            patch.object(frappe.session, "user", "admin@example.com"),
+        ):
+            result = assign_follow_up("LOG-0001", "assignee@example.com")
+
+        self.assertEqual(result["assigned_to"], "assignee@example.com")
+        self.assertEqual(result["status"], "Open")
+        get_value.assert_not_called()
+        self.assertEqual(
+            set_value.call_args_list,
+            [
+                call("Student Log", "LOG-0001", "follow_up_person", "assignee@example.com"),
+                call("Student Log", "LOG-0001", "follow_up_status", "Open"),
+            ],
+        )
+        self.assertEqual(inserted_todos[0][0]["allocated_to"], "assignee@example.com")
+
+    def test_assign_follow_up_blocks_missing_follow_up_role_without_runtime_backfill(self):
+        def fake_db_get_value(doctype, filters=None, fieldname=None, as_dict=False):
+            if doctype == "Student Log":
+                return frappe._dict(
+                    {
+                        "name": "LOG-0002",
+                        "owner": "author@example.com",
+                        "school": "SCH-1",
+                        "student_name": "Focus Student",
+                        "follow_up_status": None,
+                        "follow_up_role": None,
+                        "next_step": "STEP-1",
+                    }
+                )
+            if doctype == "Employee":
+                return "SCH-1"
+            raise AssertionError(f"Unexpected get_value lookup: {doctype!r}")
+
+        with (
+            patch(
+                "ifitwala_ed.students.doctype.student_log.student_log.frappe.defaults.get_user_default",
+                return_value=None,
+            ),
+            patch(
+                "ifitwala_ed.students.doctype.student_log.student_log.frappe.db.get_value",
+                side_effect=fake_db_get_value,
+            ),
+            patch("ifitwala_ed.students.doctype.student_log.student_log.frappe.db.sql", return_value=[(1,)]),
+            patch("ifitwala_ed.students.doctype.student_log.student_log.frappe.get_value") as get_value,
+            patch("ifitwala_ed.students.doctype.student_log.student_log.frappe.db.set_value") as set_value,
+        ):
+            with self.assertRaises(frappe.ValidationError):
+                assign_follow_up("LOG-0002", "assignee@example.com")
+
+        get_value.assert_not_called()
+        set_value.assert_not_called()
 
     def test_process_auto_close_completed_logs_chunk_only_updates_currently_eligible_logs(self):
         cache = _DummyCache()

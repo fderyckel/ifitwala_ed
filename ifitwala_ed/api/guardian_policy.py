@@ -218,7 +218,9 @@ def _get_guardian_policy_rows(*, guardian_name: str, children: list[dict[str, An
     if not child_contexts:
         return []
 
-    policy_contexts = _resolve_policy_contexts(child_contexts)
+    policy_contexts = _policy_contexts_from_authorized_children(child_contexts) or _resolve_policy_contexts(
+        child_contexts
+    )
     if not policy_contexts:
         return []
 
@@ -409,6 +411,22 @@ def _children_with_signer_authority(*, guardian_name: str, children: list[dict[s
         return []
 
     return [child for child in children if (child.get("student") or "").strip() in allowed_students]
+
+
+def _policy_contexts_from_authorized_children(children: list[dict[str, Any]]) -> list[dict[str, str]]:
+    contexts: list[dict[str, str]] = []
+    seen: set[tuple[str, str]] = set()
+    for child in children:
+        organization = (child.get("organization") or "").strip()
+        school = (child.get("school") or "").strip()
+        if not organization or not school:
+            continue
+        key = (organization, school)
+        if key in seen:
+            continue
+        seen.add(key)
+        contexts.append({"organization": organization, "school": school})
+    return contexts
 
 
 def _resolve_policy_contexts(children: list[dict[str, Any]]) -> list[dict[str, str]]:

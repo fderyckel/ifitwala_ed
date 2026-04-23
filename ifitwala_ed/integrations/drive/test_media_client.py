@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import importlib.machinery
 import sys
 import types
 from unittest import TestCase
@@ -14,6 +15,17 @@ def _purge_modules(*prefixes: str) -> None:
             sys.modules.pop(module_name, None)
 
 
+def _stub_module(name: str, *, is_package: bool = False) -> types.ModuleType:
+    module = types.ModuleType(name)
+    module.__spec__ = importlib.machinery.ModuleSpec(name, loader=None, is_package=is_package)
+    if is_package:
+        module.__path__ = []
+        module.__package__ = name
+    else:
+        module.__package__ = name.rpartition(".")[0]
+    return module
+
+
 class TestMediaClient(TestCase):
     def test_request_profile_image_preview_derivatives_prefers_media_api_wrapper(self):
         _purge_modules(
@@ -21,9 +33,9 @@ class TestMediaClient(TestCase):
             "ifitwala_drive",
         )
         recorder = {}
-        drive_root = types.ModuleType("ifitwala_drive")
-        drive_api = types.ModuleType("ifitwala_drive.api")
-        drive_media = types.ModuleType("ifitwala_drive.api.media")
+        drive_root = _stub_module("ifitwala_drive", is_package=True)
+        drive_api = _stub_module("ifitwala_drive.api", is_package=True)
+        drive_media = _stub_module("ifitwala_drive.api.media")
 
         def _request_student_image_preview_derivatives(**kwargs):
             recorder["payload"] = kwargs
@@ -61,10 +73,10 @@ class TestMediaClient(TestCase):
             "ifitwala_ed.integrations.drive.media_client",
             "ifitwala_drive",
         )
-        drive_root = types.ModuleType("ifitwala_drive")
-        drive_services = types.ModuleType("ifitwala_drive.services")
-        drive_integration = types.ModuleType("ifitwala_drive.services.integration")
-        drive_media_service = types.ModuleType("ifitwala_drive.services.integration.ifitwala_ed_media")
+        drive_root = _stub_module("ifitwala_drive", is_package=True)
+        drive_services = _stub_module("ifitwala_drive.services", is_package=True)
+        drive_integration = _stub_module("ifitwala_drive.services.integration", is_package=True)
+        drive_media_service = _stub_module("ifitwala_drive.services.integration.ifitwala_ed_media")
         with patch.dict(
             sys.modules,
             {

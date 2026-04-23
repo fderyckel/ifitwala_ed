@@ -1,6 +1,11 @@
 [pre_model_sync]
 # removed most stuff
 ifitwala_ed.patches.backfill_course_plan_academic_year_scope
+ifitwala_ed.patches.backfill_student_log_follow_up_roles
 ifitwala_ed.patches.backfill_student_profile_images
 ifitwala_ed.patches.backfill_unit_plan_program_scope
+ifitwala_ed.patches.backfill_unit_plan_standard_links
 ifitwala_ed.patches.backfill_student_referral_case_links
+
+[post_model_sync]
+# Patches added in this section will be executed after doctypes are migrated

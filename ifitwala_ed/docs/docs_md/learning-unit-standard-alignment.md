@@ -3,8 +3,8 @@ title: "Learning Unit Standard Alignment: Unit-Level Standards Snapshot"
 slug: learning-unit-standard-alignment
 category: Curriculum
 doc_order: 4
-version: "1.2.0"
-last_change_date: "2026-04-13"
+version: "1.2.1"
+last_change_date: "2026-04-23"
 summary: "Record the standards coverage and alignment notes that a specific unit plan claims, using a validated link to the approved standards catalog plus a unit-owned inline snapshot."
 seo_title: "Learning Unit Standard Alignment: Unit-Level Standards Snapshot"
 seo_description: "Record the standards coverage and alignment notes that a specific learning unit claims, stored inline as child rows on the parent unit."
@@ -13,8 +13,8 @@ seo_description: "Record the standards coverage and alignment notes that a speci
 ## Learning Unit Standard Alignment: Unit-Level Standards Snapshot
 
 Status: Partial
-Code refs: `ifitwala_ed/curriculum/doctype/learning_unit_standard_alignment/learning_unit_standard_alignment.json`, `ifitwala_ed/curriculum/doctype/learning_unit_standard_alignment/learning_unit_standard_alignment.py`, `ifitwala_ed/curriculum/doctype/unit_plan/unit_plan.json`
-Test refs: None
+Code refs: `ifitwala_ed/curriculum/doctype/learning_unit_standard_alignment/learning_unit_standard_alignment.json`, `ifitwala_ed/curriculum/doctype/learning_unit_standard_alignment/learning_unit_standard_alignment.py`, `ifitwala_ed/curriculum/doctype/unit_plan/unit_plan.json`, `ifitwala_ed/curriculum/planning.py`
+Test refs: `ifitwala_ed/curriculum/test_planning_unit.py`, `ifitwala_ed/curriculum/doctype/unit_plan/test_unit_plan.py`, `ifitwala_ed/patches/test_backfill_unit_plan_standard_links.py`
 
 `Learning Unit Standard Alignment` is the child table that stores a unit's standards coverage claim. Each row now selects an existing `Learning Standards` record, then stores a validated inline snapshot of the approved framework metadata, code, and description inside the parent `Unit Plan`.
 
@@ -80,6 +80,7 @@ Test refs: None
 - The schema now stores both:
   - a `Learning Standards` link for identity and validation
   - a unit-owned snapshot of the approved metadata for stable downstream reads
+- Runtime save paths require the `learning_standard` link itself to resolve to an existing `Learning Standards` record; legacy broken links are remediated through the one-shot patch `ifitwala_ed.patches.backfill_unit_plan_standard_links` instead of being rebuilt during unit validation.
 
 ### Current Constraints To Preserve In Review
 

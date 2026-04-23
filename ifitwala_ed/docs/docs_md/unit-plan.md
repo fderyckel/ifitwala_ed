@@ -3,7 +3,7 @@ title: "Unit Plan: Governed Curriculum Backbone Inside a Course Plan"
 slug: unit-plan
 category: Curriculum
 doc_order: 5
-version: "1.5.3"
+version: "1.5.4"
 last_change_date: "2026-04-23"
 summary: "Define the shared unit backbone for a course plan, including validated standards alignment, pedagogy, reflections, and reusable context that class teaching plans inherit."
 seo_title: "Unit Plan: Governed Curriculum Backbone Inside a Course Plan"
@@ -14,7 +14,7 @@ seo_description: "Define the shared unit backbone for a course plan, including s
 
 Status: Implemented
 Code refs: `ifitwala_ed/curriculum/doctype/unit_plan/unit_plan.json`, `ifitwala_ed/curriculum/doctype/unit_plan/unit_plan.py`, `ifitwala_ed/api/teaching_plans.py`, `ifitwala_ed/ui-spa/src/pages/staff/CoursePlanWorkspace.vue`, `ifitwala_ed/ui-spa/src/components/planning/course-plan-workspace/CoursePlanUnitEditor.vue`, `ifitwala_ed/ui-spa/src/lib/planning/coursePlanWorkspace.ts`, `ifitwala_ed/assessment/doctype/task/task.py`
-Test refs: `ifitwala_ed/curriculum/doctype/unit_plan/test_unit_plan.py`, `ifitwala_ed/api/test_teaching_plans.py`
+Test refs: `ifitwala_ed/curriculum/doctype/unit_plan/test_unit_plan.py`, `ifitwala_ed/curriculum/test_planning_unit.py`, `ifitwala_ed/api/test_teaching_plans.py`, `ifitwala_ed/patches/test_backfill_unit_plan_standard_links.py`
 
 `Unit Plan` is the governed curriculum unit inside a `Course Plan`. It carries the shared sequence, pedagogy, standards alignment, and reflection context that all linked class teaching plans inherit.
 
@@ -111,4 +111,5 @@ Test refs: `ifitwala_ed/curriculum/doctype/unit_plan/test_unit_plan.py`
 - `Unit Plan` is a shared curriculum object, not a class-owned teaching event and not a grading fact table.
 - Class-specific pacing, activities, and reflections still belong on `Class Teaching Plan` and `Class Session`.
 - Inline standards rows remain snapshots owned by the unit, but each row must now resolve to an existing `Learning Standards` record so teachers cannot invent standards or taxonomy paths on the unit plan.
+- Legacy broken `learning_standard` links are remediated through the one-shot patch `ifitwala_ed.patches.backfill_unit_plan_standard_links`; save flows must not silently relink a row from old identifiers or snapshot text.
 - Legacy `unit_order` collisions are remediated through deployment patches; save flows must not silently move a unit to a different order.

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import importlib
+import importlib.machinery
 import sys
 import types
 from contextlib import contextmanager
@@ -35,6 +36,27 @@ def _whitelist(*args, **kwargs):
         return fn
 
     return decorator
+
+
+def _apply_module_specs(modules: dict[str, object]) -> None:
+    module_names = [name for name, module in modules.items() if isinstance(module, types.ModuleType)]
+    for module_name in sorted(module_names, key=len):
+        module_obj = modules[module_name]
+        if getattr(module_obj, "__spec__", None) is not None:
+            continue
+
+        is_package = hasattr(module_obj, "__path__") or any(
+            other_name.startswith(f"{module_name}.") for other_name in module_names
+        )
+        module_obj.__spec__ = importlib.machinery.ModuleSpec(
+            module_name,
+            loader=None,
+            is_package=is_package,
+        )
+        if is_package and not hasattr(module_obj, "__path__"):
+            module_obj.__path__ = []
+        if not getattr(module_obj, "__package__", None):
+            module_obj.__package__ = module_name if is_package else module_name.rpartition(".")[0]
 
 
 @contextmanager
@@ -87,6 +109,7 @@ def stubbed_frappe(extra_modules: dict[str, object] | None = None) -> Iterator[t
     }
     if extra_modules:
         modules.update(extra_modules)
+    _apply_module_specs(modules)
 
     restored_package_attrs: list[tuple[object, str, object, bool]] = []
     imported_modules: list[tuple[str, object, object | None, str | None, object, bool]] = []

@@ -313,7 +313,7 @@ class StudentLog(Document):
         Pre-submit assignment support:
         - If requires_follow_up = 1 and follow_up_person is set before submit,
                 ensure exactly one open ToDo exists for that user (single-assignee policy).
-        - Enforce role from Next Step → associated_role (if provided).
+        - Persist follow-up role from Next Step; default to Academic Staff when no role is configured.
         - Mirror current open assignee back to follow_up_person.
         - When requires_follow_up = 0 (pre-submit), keep follow-up status unset until submit.
         - Derive status (timeline comments suppressed for auto reasons).
@@ -322,16 +322,13 @@ class StudentLog(Document):
             if not self.next_step:
                 frappe.throw(_("Please select a next step."))
 
-            # Use 'associated_role' (per your Next Step JSON)
-            expected_role = None
-            if self.next_step:
-                expected_role = frappe.get_value("Student Log Next Step", self.next_step, "associated_role")
+            expected_role = _resolve_follow_up_role_from_next_step(self.next_step)
             if (
                 self.is_new()
                 or not self.name
                 or not frappe.db.exists("Student Log Follow Up", {"student_log": self.name, "docstatus": 1})
             ):
-                self.follow_up_role = expected_role or None
+                self.follow_up_role = expected_role
 
             # If a person is chosen pre-submit, ensure ToDo reflects that (single open)
             if self.follow_up_person and not self.is_new():
@@ -347,7 +344,7 @@ class StudentLog(Document):
             self.follow_up_person = current or self.follow_up_person
 
             # Role guard if both next_step role and person exist
-            if expected_role and self.follow_up_person:
+            if self.follow_up_person:
                 has_role = frappe.db.exists("Has Role", {"parent": self.follow_up_person, "role": expected_role})
                 if not has_role:
                     frappe.throw(
@@ -737,7 +734,16 @@ def get_follow_up_role_from_next_step(next_step):
     Return the role associated with the selected Next Step.
     Used to role-filter the follow_up_person picker (pre-submit assignment).
     """
-    return frappe.get_value("Student Log Next Step", next_step, "associated_role")
+    return _resolve_follow_up_role_from_next_step(next_step)
+
+
+def _resolve_follow_up_role_from_next_step(next_step: str | None) -> str:
+    next_step_name = (next_step or "").strip()
+    if not next_step_name:
+        return ACADEMIC_STAFF_ROLE
+
+    role = frappe.get_value("Student Log Next Step", next_step_name, "associated_role")
+    return (role or "").strip() or ACADEMIC_STAFF_ROLE
 
 
 # ---------- assign/reassign endpoint (owner OR Academic Admin OR current assignee) ----------
@@ -747,7 +753,7 @@ def assign_follow_up(log_name: str, user: str):
     Efficient (re)assignment:
     - Blocks when log is 'Completed'
     - Branch guard: assignee must be within school subtree
-    - Role guard (target): assignee must have follow_up_role (fallback 'Academic Staff')
+    - Role guard (target): assignee must have the persisted follow_up_role
     - Perms (actor): Academic Admin OR log author OR current assignee OR user with follow_up_role
     - Bulk-closes existing OPEN ToDos; inserts one new ToDo
     - Mirrors follow_up_person; recomputes status via DB (no full doc loads)
@@ -799,10 +805,15 @@ def assign_follow_up(log_name: str, user: str):
             title=_("Outside School Branch"),
         )
 
-    # Keep Next Step role routing authoritative even for older rows where
-    # follow_up_role was never mirrored onto the Student Log itself.
-    required_role = sl.follow_up_role or frappe.get_value("Student Log Next Step", sl.next_step, "associated_role")
-    required_role = required_role or "Academic Staff"
+    required_role = (sl.follow_up_role or "").strip()
+    if not required_role:
+        frappe.throw(
+            _(
+                "This Student Log is missing its required follow-up role. "
+                "Ask an administrator to run the historical follow-up-role backfill."
+            ),
+            title=_("Missing Follow-Up Role"),
+        )
     if required_role and required_role not in set(frappe.get_roles(user)):
         frappe.throw(
             _("Assignee must have the role: {role}.").format(role=required_role),
@@ -856,8 +867,6 @@ def assign_follow_up(log_name: str, user: str):
 
     # Mirror assignee on the parent
     frappe.db.set_value("Student Log", sl.name, "follow_up_person", user)
-    if (sl.follow_up_role or "") != (required_role or ""):
-        frappe.db.set_value("Student Log", sl.name, "follow_up_role", required_role)
 
     # Recompute status cheaply for the new active cycle.
     new_status = "Open"
