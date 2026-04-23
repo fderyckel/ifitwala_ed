@@ -9,6 +9,7 @@ from ifitwala_ed.governance.policy_scope_utils import (
     get_organization_ancestors_including_self,
     get_school_ancestors_including_self,
 )
+from ifitwala_ed.integrations.drive.authority import is_governed_file
 
 REQUEST_TYPE_ONE_OFF = "One-off Permission Request"
 REQUEST_TYPE_MUTABLE = "Mutable Consent"
@@ -138,6 +139,7 @@ class FamilyConsentRequest(Document):
         self._normalize_request()
         self._validate_request_enums()
         self._validate_scope()
+        self._validate_source_file()
         self._normalize_targets()
         self._normalize_fields()
         self._validate_date_window()
@@ -199,6 +201,14 @@ class FamilyConsentRequest(Document):
             school_ancestors = get_organization_ancestors_including_self(school_org)
             if self.organization not in school_ancestors:
                 frappe.throw(_("Selected School is outside the selected Organization scope."))
+
+    def _validate_source_file(self):
+        if not self.source_file:
+            return
+        if not frappe.db.exists("File", self.source_file):
+            frappe.throw(_("Source File is invalid."))
+        if not is_governed_file(self.source_file):
+            frappe.throw(_("Source File must be a governed file managed by Ifitwala Drive."))
 
     def _normalize_targets(self):
         seen_students: set[str] = set()

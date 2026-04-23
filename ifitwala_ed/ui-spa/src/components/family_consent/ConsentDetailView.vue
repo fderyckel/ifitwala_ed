@@ -85,6 +85,24 @@
 				/>
 			</section>
 
+			<section
+				v-if="detail.request.source_attachment_preview"
+				class="student-hub-section space-y-4"
+			>
+				<div>
+					<h2 class="type-h3 text-ink">Reference document</h2>
+					<p class="mt-1 type-caption text-ink/60">
+						This request includes a governed attachment. Open it from here without exposing raw
+						file paths.
+					</p>
+				</div>
+				<AttachmentPreviewCard
+					:attachment="detail.request.source_attachment_preview"
+					variant="learning"
+					:title="detail.request.source_attachment_preview.display_name || 'Reference document'"
+				/>
+			</section>
+
 			<section class="student-hub-section space-y-4">
 				<div>
 					<h2 class="type-h3 text-ink">Form fields</h2>
@@ -324,6 +342,7 @@ import { computed, onMounted, ref } from 'vue';
 import { RouterLink } from 'vue-router';
 import { toast } from 'frappe-ui';
 
+import AttachmentPreviewCard from '@/components/attachments/AttachmentPreviewCard.vue';
 import { useOverlayStack } from '@/composables/useOverlayStack';
 import {
 	buildConsentFieldDraftValue,

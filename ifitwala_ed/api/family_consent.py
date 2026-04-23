@@ -7,6 +7,8 @@ import frappe
 from frappe import _
 from frappe.utils import cint, getdate, now_datetime
 
+from ifitwala_ed.api import file_access as file_access_api
+from ifitwala_ed.api.attachment_previews import build_attachment_preview_item, extract_file_extension
 from ifitwala_ed.api.guardian_home import _resolve_guardian_scope
 from ifitwala_ed.api.guardian_policy import _children_with_signer_authority, _expected_guardian_signature_name
 from ifitwala_ed.api.student_policy import _expected_student_signature_name, _require_student_name_for_session_user
@@ -28,6 +30,7 @@ from ifitwala_ed.governance.doctype.family_consent_request.family_consent_reques
     SIGNER_RULE_STUDENT_SELF,
     SUBJECT_SCOPE_PER_STUDENT,
 )
+from ifitwala_ed.integrations.drive.authority import get_drive_file_for_file
 from ifitwala_ed.students.doctype.student.student import get_contact_linked_to_student
 from ifitwala_ed.utilities.html_sanitizer import sanitize_html
 
@@ -287,6 +290,32 @@ def _get_or_create_guardian_contact(guardian_name: str) -> str:
     return _clean_data(contact_name)
 
 
+def _ensure_contact_link(*, contact_name: str, link_doctype: str, link_name: str, link_title: str | None = None):
+    if frappe.db.exists(
+        "Dynamic Link",
+        {
+            "parenttype": "Contact",
+            "parentfield": "links",
+            "parent": contact_name,
+            "link_doctype": link_doctype,
+            "link_name": link_name,
+        },
+    ):
+        return
+
+    frappe.get_doc(
+        {
+            "doctype": "Dynamic Link",
+            "parenttype": "Contact",
+            "parentfield": "links",
+            "parent": contact_name,
+            "link_doctype": link_doctype,
+            "link_name": link_name,
+            "link_title": link_title or link_name,
+        }
+    ).insert(ignore_permissions=True)
+
+
 def _get_or_create_student_contact(student_name: str, student_row: dict[str, Any]) -> str:
     contact_name = _clean_data(get_contact_linked_to_student(student_name))
     if contact_name:
@@ -295,34 +324,41 @@ def _get_or_create_student_contact(student_name: str, student_row: dict[str, Any
     display_name = _clean_data(student_row.get("student_preferred_name")) or _clean_data(
         student_row.get("student_full_name")
     )
+    student_email = _clean_data(student_row.get("student_email"))
+    student_user = student_email if student_email and frappe.db.exists("User", student_email) else None
+    if student_user:
+        contact_name = _clean_data(frappe.db.get_value("Contact", {"user": student_user}, "name"))
+        if contact_name:
+            _ensure_contact_link(
+                contact_name=contact_name,
+                link_doctype="Student",
+                link_name=student_name,
+                link_title=display_name or student_name,
+            )
+            return contact_name
+
     contact_payload = {
         "doctype": "Contact",
         "first_name": display_name or student_name,
         "last_name": "",
-        "user": frappe.session.user if frappe.session.user != "Guest" else None,
+        "user": student_user or None,
     }
-    email = _clean_data(student_row.get("student_email"))
     mobile = _clean_data(student_row.get("student_mobile_number"))
-    if email:
-        contact_payload["email_ids"] = [{"email_id": email, "is_primary": 1}]
-        contact_payload["email_id"] = email
+    if student_email:
+        contact_payload["email_ids"] = [{"email_id": student_email, "is_primary": 1}]
+        contact_payload["email_id"] = student_email
     if mobile:
         contact_payload["phone_nos"] = [{"phone": mobile, "is_primary_mobile_no": 1}]
         contact_payload["mobile_no"] = mobile
 
     contact_doc = frappe.get_doc(contact_payload)
     contact_doc.insert(ignore_permissions=True)
-    frappe.get_doc(
-        {
-            "doctype": "Dynamic Link",
-            "parenttype": "Contact",
-            "parentfield": "links",
-            "parent": contact_doc.name,
-            "link_doctype": "Student",
-            "link_name": student_name,
-            "link_title": display_name or student_name,
-        }
-    ).insert(ignore_permissions=True)
+    _ensure_contact_link(
+        contact_name=contact_doc.name,
+        link_doctype="Student",
+        link_name=student_name,
+        link_title=display_name or student_name,
+    )
     return _clean_data(contact_doc.name)
 
 
@@ -724,6 +760,152 @@ def _build_student_binding_context(student_name: str) -> dict[str, Any]:
         "guardian_primary_address_name": None,
         "guardian_primary_address_value": None,
     }
+
+
+def resolve_family_consent_source_attachment_access(request_key: str, student: str) -> dict[str, Any]:
+    request_key = _clean_data(request_key)
+    student = _clean_data(student)
+    if not request_key:
+        frappe.throw(_("Request key is required."))
+
+    request_meta = frappe.db.get_value(
+        "Family Consent Request",
+        {"request_key": request_key},
+        ["name", "audience_mode"],
+        as_dict=True,
+    )
+    if not request_meta:
+        frappe.throw(_("This form request could not be found."), frappe.PermissionError)
+
+    audience_mode = _clean_data(request_meta.get("audience_mode"))
+    if audience_mode == AUDIENCE_GUARDIAN:
+        guardian_name, children = _ensure_guardian_portal_scope()
+        allowed_students = {
+            _clean_data(child.get("student")) for child in children if _clean_data(child.get("student"))
+        }
+        if student not in allowed_students:
+            frappe.throw(_("You do not have permission to access this form request."), frappe.PermissionError)
+        request_doc, target_row = _load_request_doc_for_portal(
+            request_key=request_key,
+            student=student,
+            audience_mode=AUDIENCE_GUARDIAN,
+        )
+        signer_name = guardian_name
+    elif audience_mode == AUDIENCE_STUDENT:
+        student_name = _require_student_name_for_session_user()
+        if student and student != student_name:
+            frappe.throw(_("You do not have permission to access this form request."), frappe.PermissionError)
+        student = student_name
+        request_doc, target_row = _load_request_doc_for_portal(
+            request_key=request_key,
+            student=student,
+            audience_mode=AUDIENCE_STUDENT,
+        )
+        signer_name = student_name
+    else:
+        frappe.throw(_("This request does not expose a portal source attachment."), frappe.PermissionError)
+
+    source_file = _clean_data(request_doc.source_file)
+    if not source_file:
+        frappe.throw(_("Source attachment is missing."), frappe.DoesNotExistError)
+
+    file_row = (
+        frappe.db.get_value(
+            "File",
+            source_file,
+            ["name", "file_name", "file_url", "file_size", "is_private"],
+            as_dict=True,
+        )
+        or {}
+    )
+    if not file_row:
+        frappe.throw(_("Source attachment file could not be found."), frappe.DoesNotExistError)
+
+    drive_file = (
+        get_drive_file_for_file(
+            source_file,
+            fields=["name", "canonical_ref", "preview_status", "current_version"],
+            statuses=("active", "processing", "blocked"),
+        )
+        or {}
+    )
+    return {
+        "request_doc": request_doc,
+        "target_row": target_row,
+        "student": student,
+        "audience_mode": audience_mode,
+        "signer_name": signer_name,
+        "source_file_name": source_file,
+        "file_row": file_row,
+        "drive_file": drive_file,
+    }
+
+
+def _serialize_request_source_attachment_preview(request_doc, *, student: str) -> dict[str, Any] | None:
+    source_file = _clean_data(request_doc.source_file)
+    if not source_file:
+        return None
+
+    file_row = (
+        frappe.db.get_value(
+            "File",
+            source_file,
+            ["name", "file_name", "file_url", "file_size"],
+            as_dict=True,
+        )
+        or {}
+    )
+    if not file_row:
+        return None
+
+    drive_file = (
+        get_drive_file_for_file(
+            source_file,
+            fields=["name", "canonical_ref", "preview_status", "current_version"],
+            statuses=("active", "processing", "blocked"),
+        )
+        or {}
+    )
+    drive_file_id = _clean_data(drive_file.get("name"))
+    preview_status = _clean_data(drive_file.get("preview_status")) or None
+    thumbnail_ready = (
+        file_access_api.get_drive_file_thumbnail_ready_map([drive_file_id]).get(drive_file_id, False)
+        if drive_file_id
+        else False
+    )
+
+    open_url = file_access_api.build_family_consent_request_source_open_url(
+        request_key=request_doc.request_key,
+        student=student,
+    )
+    preview_url = file_access_api.build_family_consent_request_source_preview_url(
+        request_key=request_doc.request_key,
+        student=student,
+    )
+    thumbnail_url = (
+        file_access_api.build_family_consent_request_source_thumbnail_url(
+            request_key=request_doc.request_key,
+            student=student,
+        )
+        if thumbnail_ready
+        else None
+    )
+    return build_attachment_preview_item(
+        item_id=request_doc.request_key,
+        owner_doctype="Family Consent Request",
+        owner_name=request_doc.name,
+        file_id=drive_file_id or source_file,
+        display_name=_clean_data(file_row.get("file_name")) or _clean_data(request_doc.request_title) or source_file,
+        description=_("Reference attachment for this form request."),
+        extension=extract_file_extension(file_name=file_row.get("file_name"), file_url=file_row.get("file_url")),
+        size_bytes=file_row.get("file_size"),
+        preview_status=preview_status,
+        thumbnail_url=thumbnail_url,
+        preview_url=preview_url,
+        open_url=open_url,
+        download_url=open_url,
+        badge=_("Request attachment"),
+    )
 
 
 def _resolve_binding(field_row, *, context: dict[str, Any]) -> dict[str, Any]:
@@ -1387,7 +1569,10 @@ def get_guardian_consent_detail(request_key: str, student: str) -> dict[str, Any
             "decision_mode": request_doc.decision_mode,
             "completion_channel_mode": request_doc.completion_channel_mode,
             "request_text": sanitize_html(request_doc.request_text or "", allow_headings_from="h2"),
-            "source_file": _clean_data(request_doc.source_file),
+            "source_attachment_preview": _serialize_request_source_attachment_preview(
+                request_doc,
+                student=student,
+            ),
             "effective_from": str(request_doc.effective_from or ""),
             "effective_to": str(request_doc.effective_to or ""),
             "due_on": str(request_doc.due_on or ""),
@@ -1520,7 +1705,10 @@ def get_student_consent_detail(request_key: str, student: str) -> dict[str, Any]
             "decision_mode": request_doc.decision_mode,
             "completion_channel_mode": request_doc.completion_channel_mode,
             "request_text": sanitize_html(request_doc.request_text or "", allow_headings_from="h2"),
-            "source_file": _clean_data(request_doc.source_file),
+            "source_attachment_preview": _serialize_request_source_attachment_preview(
+                request_doc,
+                student=student_name,
+            ),
             "effective_from": str(request_doc.effective_from or ""),
             "effective_to": str(request_doc.effective_to or ""),
             "due_on": str(request_doc.due_on or ""),

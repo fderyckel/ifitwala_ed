@@ -553,7 +553,7 @@ Rules:
        - `decision_mode`
        - `completion_channel_mode`
        - `request_text`
-       - `source_file`
+       - `source_attachment_preview`
        - `effective_from`
        - `effective_to`
        - `due_on`
@@ -585,6 +585,8 @@ Rules:
        - `decision_by_doctype`
        - `decision_by`
        - `source_channel`
+   - attachment rule:
+     - `request.source_attachment_preview` follows the governed `AttachmentPreviewItem` DTO contract from `files_08_cross_portal_governed_attachment_preview_contract.md`
 5. `submit_guardian_consent_decision`
    - request:
      - `request_key: string`

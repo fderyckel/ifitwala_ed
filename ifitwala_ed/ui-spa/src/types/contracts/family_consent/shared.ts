@@ -1,3 +1,5 @@
+import type { AttachmentPreviewItem } from '@/types/contracts/attachments/shared'
+
 export type RouteTarget = {
 	name: string
 	params?: Record<string, string>
@@ -94,7 +96,7 @@ export type ConsentDetailRequestBlock = {
 	decision_mode: string
 	completion_channel_mode: string
 	request_text: string
-	source_file?: string | null
+	source_attachment_preview?: AttachmentPreviewItem | null
 	effective_from?: string | null
 	effective_to?: string | null
 	due_on?: string | null

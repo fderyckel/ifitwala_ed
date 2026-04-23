@@ -814,6 +814,39 @@ def build_org_communication_attachment_thumbnail_url(
     )
 
 
+def build_family_consent_request_source_open_url(*, request_key: str, student: str) -> str:
+    resolved_request_key = (request_key or "").strip()
+    resolved_student = (student or "").strip()
+    if not resolved_request_key or not resolved_student:
+        return ""
+
+    return "/api/method/ifitwala_ed.api.file_access.open_family_consent_request_source_attachment?" + urlencode(
+        {"request_key": resolved_request_key, "student": resolved_student}
+    )
+
+
+def build_family_consent_request_source_preview_url(*, request_key: str, student: str) -> str:
+    resolved_request_key = (request_key or "").strip()
+    resolved_student = (student or "").strip()
+    if not resolved_request_key or not resolved_student:
+        return ""
+
+    return "/api/method/ifitwala_ed.api.file_access.preview_family_consent_request_source_attachment?" + urlencode(
+        {"request_key": resolved_request_key, "student": resolved_student}
+    )
+
+
+def build_family_consent_request_source_thumbnail_url(*, request_key: str, student: str) -> str:
+    resolved_request_key = (request_key or "").strip()
+    resolved_student = (student or "").strip()
+    if not resolved_request_key or not resolved_student:
+        return ""
+
+    return "/api/method/ifitwala_ed.api.file_access.thumbnail_family_consent_request_source_attachment?" + urlencode(
+        {"request_key": resolved_request_key, "student": resolved_student}
+    )
+
+
 def build_public_website_media_url(*, file_name: str) -> str:
     resolved_file = (file_name or "").strip()
     if not resolved_file:
@@ -2993,6 +3026,122 @@ def thumbnail_admissions_file(
             return
 
     frappe.throw(_("Could not resolve the attachment thumbnail."), frappe.DoesNotExistError)
+
+
+def _resolve_family_consent_source_attachment_context(
+    *, request_key: str | None = None, student: str | None = None
+) -> dict[str, object]:
+    from ifitwala_ed.api.family_consent import resolve_family_consent_source_attachment_access
+
+    return resolve_family_consent_source_attachment_access(
+        request_key=(request_key or "").strip(),
+        student=(student or "").strip(),
+    )
+
+
+@frappe.whitelist()
+def open_family_consent_request_source_attachment(
+    request_key: str | None = None,
+    student: str | None = None,
+):
+    context = _resolve_family_consent_source_attachment_context(request_key=request_key, student=student)
+    file_row = context.get("file_row") or {}
+    drive_file = context.get("drive_file") or {}
+
+    file_url = str((file_row or {}).get("file_url") or "").strip()
+    if file_url.startswith(("http://", "https://")):
+        frappe.local.response["type"] = "redirect"
+        frappe.local.response["location"] = file_url
+        return
+
+    if _is_public_site_file_url(file_url):
+        frappe.local.response["type"] = "redirect"
+        frappe.local.response["location"] = file_url
+        return
+
+    target_url = _resolve_drive_download_grant_url(
+        (file_row or {}).get("name"),
+        drive_file_id=(drive_file or {}).get("name") or None,
+        canonical_ref=(drive_file or {}).get("canonical_ref") or None,
+    )
+    if _respond_with_delivery_target(target_url=target_url):
+        return
+
+    frappe.throw(_("Could not resolve the source attachment."), frappe.DoesNotExistError)
+
+
+@frappe.whitelist()
+def preview_family_consent_request_source_attachment(
+    request_key: str | None = None,
+    student: str | None = None,
+):
+    context = _resolve_family_consent_source_attachment_context(request_key=request_key, student=student)
+    file_row = context.get("file_row") or {}
+    drive_file = context.get("drive_file") or {}
+
+    target_url = _resolve_drive_preview_grant_url(
+        (file_row or {}).get("name"),
+        drive_file_id=(drive_file or {}).get("name") or None,
+        canonical_ref=(drive_file or {}).get("canonical_ref") or None,
+    )
+    if _respond_with_delivery_target(target_url=target_url):
+        return
+
+    file_url = str((file_row or {}).get("file_url") or "").strip()
+    if file_url.startswith(("http://", "https://")):
+        frappe.local.response["type"] = "redirect"
+        frappe.local.response["location"] = file_url
+        return
+
+    if _is_public_site_file_url(file_url):
+        frappe.local.response["type"] = "redirect"
+        frappe.local.response["location"] = file_url
+        return
+
+    target_url = _resolve_drive_download_grant_url(
+        (file_row or {}).get("name"),
+        drive_file_id=(drive_file or {}).get("name") or None,
+        canonical_ref=(drive_file or {}).get("canonical_ref") or None,
+    )
+    if _respond_with_delivery_target(target_url=target_url):
+        return
+
+    frappe.throw(_("Could not resolve the source attachment preview."), frappe.DoesNotExistError)
+
+
+@frappe.whitelist()
+def thumbnail_family_consent_request_source_attachment(
+    request_key: str | None = None,
+    student: str | None = None,
+):
+    context = _resolve_family_consent_source_attachment_context(request_key=request_key, student=student)
+    file_row = context.get("file_row") or {}
+    drive_file = context.get("drive_file") or {}
+    resolved_request_key = str(request_key or "").strip()
+    resolved_student = str(student or context.get("student") or "").strip()
+
+    resolved_drive_file_id = str((drive_file or {}).get("name") or "").strip()
+    if not resolved_drive_file_id:
+        frappe.throw(_("Governed source attachment metadata is missing."), frappe.DoesNotExistError)
+
+    derivative_role = _resolve_card_preview_derivative_role_for_drive_file(resolved_drive_file_id)
+    target_url = _resolve_cached_thumbnail_target_url(
+        drive_file_id=resolved_drive_file_id,
+        file_id=str((file_row or {}).get("name") or resolved_drive_file_id).strip(),
+        surface_parts=["family_consent_request_source", resolved_request_key, resolved_student],
+        derivative_role=derivative_role,
+        strict_derivative=True,
+        target_resolver=lambda: _resolve_drive_preview_grant_url(
+            (file_row or {}).get("name"),
+            drive_file_id=resolved_drive_file_id,
+            canonical_ref=(drive_file or {}).get("canonical_ref") or None,
+            derivative_role=derivative_role,
+        ),
+    )
+    if target_url and _respond_with_delivery_target(target_url=target_url, cache_headers=True):
+        return
+
+    frappe.throw(_("Could not resolve the source attachment thumbnail."), frappe.DoesNotExistError)
 
 
 @frappe.whitelist()

@@ -12,6 +12,9 @@ from ifitwala_ed.api.file_access import (
     build_academic_file_thumbnail_url,
     build_admissions_file_open_url,
     build_employee_file_open_url,
+    build_family_consent_request_source_open_url,
+    build_family_consent_request_source_preview_url,
+    build_family_consent_request_source_thumbnail_url,
     build_guardian_file_open_url,
     build_org_communication_attachment_open_url,
     build_org_communication_attachment_preview_url,
@@ -266,6 +269,51 @@ class TestFileAccessUrlContracts(FrappeTestCase):
         self.assertEqual((query.get("file") or [None])[0], "FILE-GRD-1")
         self.assertEqual((query.get("context_doctype") or [None])[0], "Guardian")
         self.assertEqual((query.get("context_name") or [None])[0], "GRD-0001")
+
+    def test_build_family_consent_request_source_open_url_includes_context(self):
+        url = build_family_consent_request_source_open_url(
+            request_key="FCR-PORTAL-1",
+            student="STU-0001",
+        )
+        parsed = urlparse(url)
+        query = parse_qs(parsed.query)
+
+        self.assertEqual(
+            parsed.path,
+            "/api/method/ifitwala_ed.api.file_access.open_family_consent_request_source_attachment",
+        )
+        self.assertEqual((query.get("request_key") or [None])[0], "FCR-PORTAL-1")
+        self.assertEqual((query.get("student") or [None])[0], "STU-0001")
+
+    def test_build_family_consent_request_source_preview_url_includes_context(self):
+        url = build_family_consent_request_source_preview_url(
+            request_key="FCR-PORTAL-1",
+            student="STU-0001",
+        )
+        parsed = urlparse(url)
+        query = parse_qs(parsed.query)
+
+        self.assertEqual(
+            parsed.path,
+            "/api/method/ifitwala_ed.api.file_access.preview_family_consent_request_source_attachment",
+        )
+        self.assertEqual((query.get("request_key") or [None])[0], "FCR-PORTAL-1")
+        self.assertEqual((query.get("student") or [None])[0], "STU-0001")
+
+    def test_build_family_consent_request_source_thumbnail_url_includes_context(self):
+        url = build_family_consent_request_source_thumbnail_url(
+            request_key="FCR-PORTAL-1",
+            student="STU-0001",
+        )
+        parsed = urlparse(url)
+        query = parse_qs(parsed.query)
+
+        self.assertEqual(
+            parsed.path,
+            "/api/method/ifitwala_ed.api.file_access.thumbnail_family_consent_request_source_attachment",
+        )
+        self.assertEqual((query.get("request_key") or [None])[0], "FCR-PORTAL-1")
+        self.assertEqual((query.get("student") or [None])[0], "STU-0001")
 
     def test_build_employee_file_open_url_includes_context(self):
         url = build_employee_file_open_url(

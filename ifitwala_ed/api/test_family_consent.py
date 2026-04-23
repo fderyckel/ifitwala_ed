@@ -10,6 +10,7 @@ from ifitwala_ed.api.family_consent import (
     SIGNER_RULE_STUDENT_SELF,
     SUBJECT_SCOPE_PER_STUDENT,
     _decision_status_label,
+    _get_or_create_student_contact,
     _request_is_executable,
     get_guardian_consent_home_summary,
     get_student_consent_home_summary,
@@ -111,3 +112,39 @@ class TestFamilyConsentPortalContracts(FrappeTestCase):
 
         self.assertEqual(summary["pending_count"], 1)
         self.assertEqual(summary["items"][0]["href"]["name"], "student-consent-detail")
+
+    def test_get_or_create_student_contact_uses_student_identity_not_session_user(self):
+        created_payloads: list[dict] = []
+
+        class _FakeContactDoc:
+            def __init__(self, payload):
+                self.payload = payload
+                self.name = "CONTACT-NEW"
+
+            def insert(self, ignore_permissions=True):
+                created_payloads.append(self.payload)
+                return self
+
+        with (
+            patch("ifitwala_ed.api.family_consent.get_contact_linked_to_student", return_value=""),
+            patch(
+                "ifitwala_ed.api.family_consent.frappe.db.exists",
+                side_effect=lambda doctype, name: doctype == "User" and name == "student@example.com",
+            ),
+            patch("ifitwala_ed.api.family_consent.frappe.db.get_value", return_value=None),
+            patch(
+                "ifitwala_ed.api.family_consent.frappe.get_doc",
+                side_effect=lambda payload: _FakeContactDoc(payload),
+            ),
+            patch("ifitwala_ed.api.family_consent._ensure_contact_link"),
+        ):
+            student_row = {
+                "student_full_name": "Amina Example",
+                "student_preferred_name": "Amina",
+                "student_email": "student@example.com",
+                "student_mobile_number": "+66 812 345 678",
+            }
+            contact_name = _get_or_create_student_contact("STU-1", student_row)
+
+        self.assertEqual(contact_name, "CONTACT-NEW")
+        self.assertEqual(created_payloads[0]["user"], "student@example.com")
