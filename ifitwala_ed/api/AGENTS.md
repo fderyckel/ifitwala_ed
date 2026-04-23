@@ -232,3 +232,11 @@ Before finalizing an API change, verify:
 - response shape remains stable or intentionally updated
 - docs/contracts are updated if behavior changed
 - related tests were added or updated where required
+
+---
+
+## 10. API Test Fixture Rules
+
+- API tests must prefer supported fixture controls over monkeypatching framework internals.
+- Do not patch `User.send_password_notification`, `User.send_welcome_mail_to_user`, `frappe.sendmail`, or `Document.run_notifications` just to keep fixture creation alive when a supported document flag or deterministic fixture state can prevent the side effect.
+- If an API test must suppress a side effect, do it with the narrowest fixture-scoped data change possible and restore the original state in teardown.

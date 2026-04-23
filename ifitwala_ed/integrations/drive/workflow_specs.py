@@ -593,7 +593,7 @@ _WORKFLOW_SPECS: tuple[GovernedUploadSpec, ...] = (
         validate_finalize_context=_validate_supporting_material_finalize_context,
         resolve_attached_field_override=_no_attached_field_override,
         resolve_context_override=_resolve_supporting_material_context_override,
-        resolve_binding_role=_static_binding_role("general_reference"),
+        resolve_binding_role=_static_binding_role("supporting_material"),
         run_post_finalize=_resolve_supporting_material_post_finalize,
     ),
     GovernedUploadSpec(

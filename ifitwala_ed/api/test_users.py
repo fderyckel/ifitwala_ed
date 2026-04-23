@@ -60,20 +60,12 @@ def _new_test_user():
     user = frappe.new_doc("User")
     user.send_welcome_email = 0
     user.send_password_notification = 0
+    user.flags.no_welcome_mail = True
     return user
 
 
 class TestUserRedirect(FrappeTestCase):
     """Test unified login redirect logic."""
-
-    def setUp(self):
-        super().setUp()
-        self._password_notification_patcher = patch("frappe.core.doctype.user.user.User.send_password_notification")
-        self._password_notification_patcher.start()
-
-    def tearDown(self):
-        self._password_notification_patcher.stop()
-        super().tearDown()
 
     def test_strip_redirect_query_removes_redirect_to_params(self):
         raw = "/login?redirect-to=%2Fdesk&foo=bar&redirect_to=%2Fdesk#frag"
@@ -878,15 +870,6 @@ class TestUserRedirect(FrappeTestCase):
 
 
 class TestUserQueries(FrappeTestCase):
-    def setUp(self):
-        super().setUp()
-        self._welcome_mail_patcher = patch("frappe.core.doctype.user.user.User.send_welcome_mail_to_user")
-        self._welcome_mail_patcher.start()
-
-    def tearDown(self):
-        self._welcome_mail_patcher.stop()
-        super().tearDown()
-
     def test_get_users_with_role_returns_only_enabled_matching_users(self):
         frappe.set_user("Administrator")
 

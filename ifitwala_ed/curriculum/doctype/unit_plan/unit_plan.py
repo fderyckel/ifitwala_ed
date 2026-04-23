@@ -86,7 +86,7 @@ def _program_picker_scope(program: str | None) -> list[str]:
     if not program:
         return []
     if not frappe.db.exists("Program", program):
-        return [program]
+        return []
     descendants = get_descendants_of("Program", program) or []
     return [program, *descendants]
 
@@ -125,31 +125,38 @@ def get_learning_standard_picker(
 
     if framework_name:
         filters["framework_name"] = framework_name
+    selected_program = None
     if program:
         program_scope = _program_picker_scope(program)
-        filters["program"] = ["in", program_scope or [program]]
+        if program_scope:
+            filters["program"] = ["in", program_scope]
+            selected_program = program
     if strand:
         filters["strand"] = strand
     if substrand and substrand != "[No Substrand]":
         filters["substrand"] = substrand
 
-    rows = frappe.get_list(
-        "Learning Standards",
-        filters=filters,
-        fields=[
-            "name",
-            "framework_name",
-            "framework_version",
-            "subject_area",
-            "program",
-            "strand",
-            "substrand",
-            "standard_code",
-            "standard_description",
-            "alignment_type",
-        ],
-        order_by="framework_name asc, program asc, strand asc, substrand asc, standard_code asc",
-        limit=0,
+    rows = (
+        frappe.get_list(
+            "Learning Standards",
+            filters=filters,
+            fields=[
+                "name",
+                "framework_name",
+                "framework_version",
+                "subject_area",
+                "program",
+                "strand",
+                "substrand",
+                "standard_code",
+                "standard_description",
+                "alignment_type",
+            ],
+            order_by="framework_name asc, program asc, strand asc, substrand asc, standard_code asc",
+            limit=0,
+        )
+        if not program or selected_program
+        else []
     )
     if substrand == "[No Substrand]":
         rows = [row for row in rows if not planning.normalize_text(row.get("substrand"))]
@@ -177,7 +184,7 @@ def get_learning_standard_picker(
                 for row in rows
                 if planning.normalize_text(row.get("program"))
             ),
-            *((program,) if program else ()),
+            *((selected_program,) if selected_program else ()),
         }
     )
     strands = sorted(
@@ -208,7 +215,7 @@ def get_learning_standard_picker(
         "filters": {
             "unit_plan": unit_plan or None,
             "framework_name": framework_name or None,
-            "program": program or None,
+            "program": selected_program or None,
             "strand": strand or None,
             "substrand": substrand or None,
             "search_text": search_text or None,

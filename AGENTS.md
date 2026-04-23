@@ -662,6 +662,9 @@ If a critical assumption cannot be verified from the workspace, stop and say exa
 - Never install fake modules or global stubs during test-module import.
 - Scope stubs/monkeypatches inside the test, fixture, or context manager and restore them automatically.
 - A test that passes in isolation but contaminates later imports or framework cleanup is broken.
+- Do not patch Frappe framework mail/notification internals just to make fixtures insert cleanly when a supported fixture control exists.
+- Prefer framework-supported fixture inputs and flags such as document fields, `doc.flags`, or explicit test data state over monkeypatching `User.send_password_notification`, `User.send_welcome_mail_to_user`, `frappe.sendmail`, or `Document.run_notifications`.
+- If side effects must be suppressed for a test, suppress them through localized fixture state and restore that state in teardown; do not leave the test coupled to a stale patched code path.
 
 ### 15.2 Stub And Import-Surface Discipline
 

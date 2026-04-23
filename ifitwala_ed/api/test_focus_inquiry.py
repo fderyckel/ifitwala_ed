@@ -2,8 +2,6 @@
 # Copyright (c) 2026, François de Ryckel and contributors
 # See license.txt
 
-from unittest.mock import patch
-
 import frappe
 from frappe.tests.utils import FrappeTestCase
 
@@ -20,12 +18,36 @@ from ifitwala_ed.tests.factories.users import make_user
 class TestFocusInquiry(FrappeTestCase):
     def setUp(self):
         super().setUp()
-        self._notification_patcher = patch("frappe.email.doctype.notification.notification.evaluate_alert")
-        self._notification_patcher.start()
+        self._notification_states: list[tuple[str, int]] = []
+        for notification_name in ("Inquiry Assigned", "Notify Admission Manager"):
+            if not frappe.db.exists("Notification", notification_name):
+                continue
+            enabled = int(frappe.db.get_value("Notification", notification_name, "enabled") or 0)
+            self._notification_states.append((notification_name, enabled))
+            if enabled:
+                frappe.db.set_value(
+                    "Notification",
+                    notification_name,
+                    "enabled",
+                    0,
+                    update_modified=False,
+                )
+        if self._notification_states:
+            frappe.clear_cache()
 
     def tearDown(self):
         frappe.set_user("Administrator")
-        self._notification_patcher.stop()
+        for notification_name, enabled in self._notification_states:
+            if frappe.db.exists("Notification", notification_name):
+                frappe.db.set_value(
+                    "Notification",
+                    notification_name,
+                    "enabled",
+                    enabled,
+                    update_modified=False,
+                )
+        if self._notification_states:
+            frappe.clear_cache()
         super().tearDown()
 
     def _ensure_role(self, user: str, role: str) -> None:

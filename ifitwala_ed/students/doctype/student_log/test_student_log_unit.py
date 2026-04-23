@@ -104,6 +104,72 @@ class TestStudentLogUnit(TestCase):
 
         self.assertEqual(doc.follow_up_role, "Academic Staff")
 
+    def test_validate_seeds_delivery_context_for_new_logs_only(self):
+        with _student_log_module() as (student_log_module, _):
+            doc = student_log_module.StudentLog.__new__(student_log_module.StudentLog)
+            doc.requires_follow_up = 0
+            doc.next_step = None
+            doc.follow_up_person = None
+            doc.follow_up_status = None
+            doc.student = "STU-0001"
+            doc.program = None
+            doc.academic_year = None
+            doc.program_offering = None
+            doc.school = None
+            doc.name = None
+            doc.docstatus = 0
+            doc.is_new = lambda: True
+            doc._unassign = lambda: None
+            doc._apply_status = lambda *args, **kwargs: None
+            doc._assert_amendment_allowed = lambda: None
+            doc._assert_core_fields_immutable_after_follow_up = lambda: None
+            doc._assert_followup_transition_and_immutability = lambda: None
+
+            def seed_context():
+                doc.program = "PROG-1"
+                doc.academic_year = "AY-2026"
+
+            with (
+                patch.object(doc, "_ensure_delivery_context", side_effect=seed_context) as ensure_delivery_context,
+                patch.object(doc, "_resolve_school", return_value="SCH-1") as resolve_school,
+            ):
+                doc.validate()
+
+        ensure_delivery_context.assert_called_once_with()
+        resolve_school.assert_called_once_with()
+        self.assertEqual(doc.school, "SCH-1")
+
+    def test_validate_skips_delivery_context_backfill_for_existing_logs(self):
+        with _student_log_module() as (student_log_module, _):
+            doc = student_log_module.StudentLog.__new__(student_log_module.StudentLog)
+            doc.requires_follow_up = 0
+            doc.next_step = None
+            doc.follow_up_person = None
+            doc.follow_up_status = None
+            doc.student = "STU-0001"
+            doc.program = None
+            doc.academic_year = None
+            doc.program_offering = None
+            doc.school = None
+            doc.name = "LOG-0001"
+            doc.docstatus = 0
+            doc.is_new = lambda: False
+            doc._unassign = lambda: None
+            doc._apply_status = lambda *args, **kwargs: None
+            doc._assert_amendment_allowed = lambda: None
+            doc._assert_core_fields_immutable_after_follow_up = lambda: None
+            doc._assert_followup_transition_and_immutability = lambda: None
+
+            with (
+                patch.object(doc, "_ensure_delivery_context") as ensure_delivery_context,
+                patch.object(doc, "_resolve_school", return_value="SCH-1") as resolve_school,
+            ):
+                doc.validate()
+
+        ensure_delivery_context.assert_not_called()
+        resolve_school.assert_not_called()
+        self.assertIsNone(doc.school)
+
     def test_assign_follow_up_uses_persisted_role_without_repairing_it(self):
         with _student_log_module() as (student_log_module, frappe):
             inserted_todos = []

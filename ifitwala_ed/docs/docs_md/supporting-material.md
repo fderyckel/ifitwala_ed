@@ -3,8 +3,8 @@ title: "Supporting Material: Reusable Learning Material"
 slug: supporting-material
 category: Curriculum
 doc_order: 8
-version: "1.2.0"
-last_change_date: "2026-04-15"
+version: "1.2.1"
+last_change_date: "2026-04-23"
 summary: "Store reusable supporting files and links that students open alongside units, sessions, and tasks without turning planning content into a file library."
 seo_title: "Supporting Material: Reusable Learning Material"
 seo_description: "Store reusable supporting files and links that students open alongside units, sessions, and tasks without turning planning content into a file library."
@@ -95,8 +95,8 @@ Test refs: `ifitwala_ed/curriculum/test_materials.py`, `ifitwala_ed/curriculum/d
 
 - `Supporting Material` is reusable and course-scoped.
 - File-backed materials store the authoritative `File` link on the material itself, not on `Task.attachments`.
-- File-backed materials require a governed `Drive Binding` with binding role `general_reference`.
-- Current governed upload classification for `Supporting Material` uses purpose `learning_resource` under the canonical education-governance purpose set. The legacy binding role remains `general_reference` in this rollout for compatibility with existing Drive binding records and browse contracts.
+- File-backed materials require a governed `Drive Binding` with binding role `supporting_material`.
+- Current governed upload classification for `Supporting Material` uses purpose `learning_resource` under the canonical education-governance purpose set, and legacy `general_reference` bindings are remediated through the one-shot patch `ifitwala_ed.patches.backfill_supporting_material_binding_roles`.
 - Desk read/list visibility is course-scoped through permission hooks.
 - `Academic Admin` can manage supporting materials across curriculum scope.
 - `Curriculum Coordinator` can manage supporting materials for program-scoped shared curriculum on `Course Plan` and `Unit Plan`; they do not gain class-owned material write access just from coordinator scope.

@@ -79,7 +79,6 @@
 					:unit-status-options="unitStatusOptions"
 					:derived-reflection-academic-year="derivedReflectionAcademicYear"
 					:derived-reflection-school="derivedReflectionSchool"
-					:legacy-standards-count="legacyStandardsCount"
 					:show-unit-save-rail="showUnitSaveRail"
 					:unit-editor-heading="unitEditorHeading"
 					:unit-save-status-label="unitSaveStatusLabel"
@@ -305,18 +304,6 @@ const derivedReflectionAcademicYear = computed(
 );
 const derivedReflectionSchool = computed(() => surface.value?.course_plan.school || '');
 const showUnitEditor = computed(() => Boolean(selectedUnit.value || creatingUnit.value));
-const legacyStandardsCount = computed(
-	() =>
-		unitForm.standards.filter(
-			standard =>
-				!String(standard.learning_standard || '').trim() &&
-				Boolean(
-					String(standard.standard_code || '').trim() ||
-					String(standard.standard_description || '').trim() ||
-					String(standard.framework_name || '').trim()
-				)
-		).length
-);
 const showQuizBankEditor = computed(() =>
 	Boolean(selectedQuizQuestionBank.value || creatingQuizQuestionBank.value)
 );

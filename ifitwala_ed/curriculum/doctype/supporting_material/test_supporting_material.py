@@ -10,7 +10,7 @@ from ifitwala_ed.tests.frappe_stubs import StubValidationError, import_fresh, st
 @contextmanager
 def _supporting_material_module():
     materials_stub = ModuleType("ifitwala_ed.curriculum.materials")
-    materials_stub.MATERIAL_BINDING_ROLE = "general_reference"
+    materials_stub.MATERIAL_BINDING_ROLE = "supporting_material"
     materials_stub.MATERIAL_FILE_SLOT = "material_file"
     materials_stub.MATERIAL_TYPE_FILE = "File"
     materials_stub.MATERIAL_TYPE_REFERENCE_LINK = "Reference Link"

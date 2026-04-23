@@ -105,3 +105,54 @@ class TestUnitPlanRuntime(TestCase):
             program="MYP",
         )
         planning.ensure_linked_unit_plan_standards.assert_not_called()
+
+    def test_learning_standard_picker_drops_stale_program_filter(self):
+        planning = types.ModuleType("ifitwala_ed.curriculum.planning")
+        planning.normalize_text = lambda value: str(value or "").strip()
+        planning.normalize_long_text = lambda value: value
+
+        teaching_plans_api = types.ModuleType("ifitwala_ed.api.teaching_plans")
+        teaching_plans_api._validate_course_program_link = Mock()
+
+        nestedset = types.ModuleType("frappe.utils.nestedset")
+        nestedset.get_descendants_of = lambda doctype, name: []
+
+        with stubbed_frappe(
+            extra_modules={
+                "ifitwala_ed.curriculum.planning": planning,
+                "ifitwala_ed.api.teaching_plans": teaching_plans_api,
+                "frappe.utils.nestedset": nestedset,
+            }
+        ) as frappe:
+            frappe.db.exists = lambda doctype, filters=None: (
+                False if doctype == "Program" and filters == "LEGACY-PROGRAM" else None
+            )
+            frappe.db.get_value = lambda *args, **kwargs: None
+            frappe.get_list = lambda *args, **kwargs: (_ for _ in ()).throw(
+                AssertionError("get_list should not run for a stale program filter")
+            )
+            module = import_fresh("ifitwala_ed.curriculum.doctype.unit_plan.unit_plan")
+
+            payload = module.get_learning_standard_picker(program="LEGACY-PROGRAM")
+
+        self.assertEqual(
+            payload,
+            {
+                "filters": {
+                    "unit_plan": None,
+                    "framework_name": None,
+                    "program": None,
+                    "strand": None,
+                    "substrand": None,
+                    "search_text": None,
+                },
+                "options": {
+                    "frameworks": [],
+                    "programs": [],
+                    "strands": [],
+                    "substrands": [],
+                    "has_blank_substrand": False,
+                },
+                "standards": [],
+            },
+        )

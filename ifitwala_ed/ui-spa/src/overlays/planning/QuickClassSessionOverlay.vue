@@ -47,7 +47,7 @@
 								<p class="type-overline text-ink/55">Class Session</p>
 								<DialogTitle class="type-h2 text-ink">Plan This Session</DialogTitle>
 								<p class="mt-1 type-caption text-ink/60">
-									Use the clicked calendar slot to plan the actual lesson flow for this class
+									Use the clicked calendar slot to plan the actual session flow for this class
 									without leaving the calendar context.
 								</p>
 							</div>
@@ -405,7 +405,7 @@
 											<div class="space-y-3 border-t border-line-soft pt-4">
 												<div class="flex items-center justify-between gap-3">
 													<div>
-														<p class="type-overline text-ink/55">Lesson Flow</p>
+														<p class="type-overline text-ink/55">Session Flow</p>
 														<p class="type-caption text-ink/70">
 															Add the sequence of activities students will experience.
 														</p>

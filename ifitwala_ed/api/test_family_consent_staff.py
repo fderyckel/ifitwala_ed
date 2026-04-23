@@ -11,6 +11,7 @@ from ifitwala_ed.tests.factories.organization import make_organization, make_sch
 
 class TestFamilyConsentStaff(FrappeTestCase):
     def setUp(self):
+        super().setUp()
         frappe.set_user("Administrator")
         self.created: list[tuple[str, str]] = []
 
@@ -32,8 +33,8 @@ class TestFamilyConsentStaff(FrappeTestCase):
 
     def _make_student(self, *, email_prefix: str):
         seed = frappe.generate_hash(length=6)
-        previous_import = getattr(frappe.flags, "in_import", False)
-        frappe.flags.in_import = True
+        previous_migration = bool(getattr(frappe.flags, "in_migration", False))
+        frappe.flags.in_migration = True
         try:
             doc = frappe.get_doc(
                 {
@@ -42,11 +43,10 @@ class TestFamilyConsentStaff(FrappeTestCase):
                     "student_last_name": f"{email_prefix}-{seed}",
                     "student_email": f"{email_prefix}-{seed}@example.com",
                     "anchor_school": self.school.name,
-                    "allow_direct_creation": 1,
                 }
             ).insert(ignore_permissions=True)
         finally:
-            frappe.flags.in_import = previous_import
+            frappe.flags.in_migration = previous_migration
         self.created.append(("Student", doc.name))
         return doc
 

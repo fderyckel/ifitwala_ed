@@ -1,7 +1,9 @@
 [pre_model_sync]
 # removed most stuff
 ifitwala_ed.patches.backfill_course_plan_academic_year_scope
+ifitwala_ed.patches.backfill_supporting_material_binding_roles
 ifitwala_ed.patches.backfill_student_log_follow_up_roles
+ifitwala_ed.patches.backfill_student_log_delivery_context
 ifitwala_ed.patches.backfill_student_profile_images
 ifitwala_ed.patches.backfill_unit_plan_program_scope
 ifitwala_ed.patches.backfill_unit_plan_standard_links

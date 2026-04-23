@@ -19,6 +19,7 @@ from ifitwala_ed.tests.factories.users import make_user
 
 class TestFocusStudentLog(FrappeTestCase):
     def setUp(self):
+        super().setUp()
         frappe.set_user("Administrator")
         self._created: list[tuple[str, str]] = []
 

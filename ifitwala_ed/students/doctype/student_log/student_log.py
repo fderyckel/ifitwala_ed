@@ -127,6 +127,120 @@ def _get_auto_close_eligible_rows(log_names=None):
     return eligible
 
 
+def _normalize_program_enrollment_context(row) -> dict[str, str | None]:
+    return {
+        "program": (row.get("program") or "").strip() or None,
+        "academic_year": (row.get("academic_year") or "").strip() or None,
+        "program_offering": (row.get("program_offering") or "").strip() or None,
+        "school": (row.get("school") or "").strip() or None,
+    }
+
+
+def _get_program_enrollment_context(
+    student: str | None,
+    *,
+    on_date: str | None = None,
+    require_unique: bool = False,
+) -> dict[str, str | None]:
+    student_name = (student or "").strip()
+    if not student_name:
+        return {}
+
+    target_date = str(on_date or frappe.utils.today())
+    rows = frappe.db.sql(
+        """
+        SELECT
+            pe.program,
+            pe.academic_year,
+            pe.program_offering,
+            COALESCE(pe.school, p.school) AS school,
+            CASE WHEN ay.year_start_date IS NOT NULL
+                    AND ay.year_start_date <= %(on_date)s
+                    AND ay.year_end_date   >= %(on_date)s
+                    THEN 1 ELSE 0 END AS within_ay,
+            IFNULL(pe.archived, 0) AS archived_flag,
+            ay.year_start_date,
+            pe.creation
+        FROM `tabProgram Enrollment` pe
+        LEFT JOIN `tabProgram` p ON p.name = pe.program
+        LEFT JOIN `tabAcademic Year` ay ON ay.name = pe.academic_year
+        WHERE pe.student = %(student)s
+          AND pe.docstatus < 2
+        ORDER BY
+            within_ay DESC,
+            archived_flag ASC,
+            COALESCE(ay.year_start_date, '1900-01-01') DESC,
+            pe.creation DESC
+        LIMIT 5
+        """,
+        {"student": student_name, "on_date": target_date},
+        as_dict=True,
+    )
+    if not rows:
+        return {}
+
+    candidates = [row for row in rows if not cint(row.get("archived_flag")) and cint(row.get("within_ay"))]
+    if not candidates:
+        candidates = [row for row in rows if not cint(row.get("archived_flag"))]
+    if not candidates:
+        candidates = rows
+
+    normalized_candidates = [_normalize_program_enrollment_context(row) for row in candidates]
+    if require_unique:
+        distinct_contexts = {
+            (
+                row.get("program"),
+                row.get("academic_year"),
+                row.get("program_offering"),
+                row.get("school"),
+            )
+            for row in normalized_candidates
+        }
+        if len(distinct_contexts) != 1:
+            return {}
+
+    return normalized_candidates[0] if normalized_candidates else {}
+
+
+def _resolve_student_log_school(
+    *,
+    student: str | None,
+    academic_year: str | None,
+    program_offering: str | None,
+) -> str | None:
+    program_offering_name = (program_offering or "").strip()
+    if program_offering_name:
+        school_name = frappe.db.get_value("Program Offering", program_offering_name, "school")
+        if school_name:
+            return school_name
+
+    student_name = (student or "").strip()
+    academic_year_name = (academic_year or "").strip()
+    if student_name and academic_year_name:
+        filters = {
+            "student": student_name,
+            "academic_year": academic_year_name,
+            "archived": ["in", (0, None)],
+        }
+        if program_offering_name:
+            filters["program_offering"] = program_offering_name
+
+        pe = frappe.get_all(
+            "Program Enrollment",
+            filters=filters,
+            fields=["school"],
+            limit=1,
+            order_by="modified desc",
+        )
+        if pe and pe[0].get("school"):
+            return pe[0]["school"]
+
+    if academic_year_name:
+        return frappe.db.get_value("Academic Year", academic_year_name, "school")
+
+    return None
+
+
 def dispatch_auto_close_completed_logs(chunk_size=AUTO_CLOSE_CHUNK_SIZE):
     chunk_size = max(cint(chunk_size) or AUTO_CLOSE_CHUNK_SIZE, 1)
     cache = frappe.cache()
@@ -369,11 +483,10 @@ class StudentLog(Document):
         # Apply derived status (suppresses timeline via reason)
         self._apply_status(derived, reason="recomputed on validate", write_immediately=False)
 
-        self._ensure_delivery_context()
-
-        # Infer school from program if missing
-        if not self.school:
-            self.school = self._resolve_school()
+        if self.is_new() or not self.name:
+            self._ensure_delivery_context()
+            if not self.school:
+                self.school = self._resolve_school()
 
         self._assert_amendment_allowed()
         self._assert_core_fields_immutable_after_follow_up()
@@ -513,44 +626,16 @@ class StudentLog(Document):
 
     def _resolve_school(self) -> str | None:
         """Prefer Program Offering.school, else Program Enrollment.school (same AY), else AY.school."""
-        # A) Program Offering → school (authoritative)
-        if getattr(self, "program_offering", None):
-            s = frappe.db.get_value("Program Offering", self.program_offering, "school")
-            if s:
-                return s  # Program Offering has required School field.  :contentReference[oaicite:0]{index=0}
-
-        # B) Program Enrollment → school (same AY; optionally same offering)
-        if self.student and self.academic_year:
-            filters = {
-                "student": self.student,
-                "academic_year": self.academic_year,
-                "archived": ["in", (0, None)],
-            }
-            # if the log points to a specific offering, keep it tight
-            if getattr(self, "program_offering", None):
-                filters["program_offering"] = self.program_offering
-
-            pe = frappe.get_all(
-                "Program Enrollment",
-                filters=filters,
-                fields=["school"],
-                limit=1,
-                order_by="modified desc",
-            )
-            if pe and pe[0].get("school"):
-                return pe[0]["school"]  # Program Enrollment carries School.  :contentReference[oaicite:1]{index=1}
-
-        # C) Academic Year → school (last fallback)
-        if self.academic_year:
-            return frappe.db.get_value("Academic Year", self.academic_year, "school")
-
-        return None
+        return _resolve_student_log_school(
+            student=self.student,
+            academic_year=self.academic_year,
+            program_offering=self.program_offering,
+        )
 
     def _ensure_delivery_context(self):
         """
-        Fill Program, Academic Year, Program Offering, and School from the student's
-        active Program Enrollment when any is missing. This keeps the log anchored to
-        the real delivery context without relying on Program.school (legacy).
+        Fill Program, Academic Year, Program Offering, and School for new logs from the
+        student's current active Program Enrollment.
         """
         need_program = not getattr(self, "program", None)
         need_ay = not getattr(self, "academic_year", None)
@@ -563,7 +648,7 @@ class StudentLog(Document):
         if not self.student:
             return
 
-        ctx = get_active_program_enrollment(self.student) or {}
+        ctx = _get_program_enrollment_context(self.student) or {}
         # ctx may be frappe._dict or dict
         prog = ctx.get("program")
         ay = ctx.get("academic_year")
@@ -702,30 +787,10 @@ def get_employee_data(employee_name=None):
 
 
 @frappe.whitelist()
-def get_active_program_enrollment(student):
+def get_active_program_enrollment(student, on_date=None):
     if not student:
         return {}
-    today = frappe.utils.today()
-    pe = frappe.db.sql(
-        """
-        SELECT
-            pe.name,
-            pe.program,
-            pe.academic_year,
-            pe.program_offering,     -- NEW
-            pe.school                -- NEW (authoritative delivery school)
-        FROM `tabProgram Enrollment` pe
-        JOIN `tabAcademic Year` ay ON pe.academic_year = ay.name
-        WHERE pe.student = %s
-          AND %s BETWEEN ay.year_start_date AND ay.year_end_date
-          AND (pe.archived = 0 OR pe.archived IS NULL)
-        ORDER BY ay.year_start_date DESC
-        LIMIT 1
-    """,
-        (student, today),
-        as_dict=True,
-    )
-    return pe[0] if pe else {}
+    return _get_program_enrollment_context(student, on_date=on_date)
 
 
 @frappe.whitelist()

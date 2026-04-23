@@ -24,8 +24,6 @@ from ifitwala_ed.api.admissions_review import (
 class TestAdmissionCockpit(FrappeTestCase):
     def setUp(self):
         super().setUp()
-        self._password_notification_patcher = patch("frappe.core.doctype.user.user.User.send_password_notification")
-        self._password_notification_patcher.start()
         frappe.set_user("Administrator")
         self._created: list[tuple[str, str]] = []
         self._ensure_role("Admission Manager")
@@ -45,7 +43,6 @@ class TestAdmissionCockpit(FrappeTestCase):
         for doctype, name in reversed(self._created):
             if frappe.db.exists(doctype, name):
                 frappe.delete_doc(doctype, name, force=1, ignore_permissions=True)
-        self._password_notification_patcher.stop()
         super().tearDown()
 
     def test_invalid_school_scope_reuses_single_organization_lookup(self):
@@ -272,7 +269,9 @@ class TestAdmissionCockpit(FrappeTestCase):
                 "send_password_notification": 0,
                 "roles": [{"role": role} for role in roles],
             }
-        ).insert(ignore_permissions=True)
+        )
+        user.flags.no_welcome_mail = True
+        user.insert(ignore_permissions=True)
         self._created.append(("User", user.name))
         frappe.clear_cache(user=user.name)
         return user

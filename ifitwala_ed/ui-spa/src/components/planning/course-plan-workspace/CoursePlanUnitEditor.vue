@@ -630,22 +630,6 @@
 					class="space-y-3"
 				>
 					<div
-						v-if="legacyStandardsCount"
-						class="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3"
-					>
-						<p class="type-body-strong text-amber-950">
-							{{ legacyStandardsCount }} standards row{{
-								legacyStandardsCount > 1 ? 's need' : ' needs'
-							}}
-							re-selection
-						</p>
-						<p class="mt-1 type-caption text-amber-900/80">
-							These rows do not yet carry a catalog link. Remove and re-add them through Select
-							Standards so the unit saves against the approved learning-standards master.
-						</p>
-					</div>
-
-					<div
 						v-if="!unitForm.standards.length"
 						class="rounded-2xl border border-dashed border-line-soft p-4"
 					>
@@ -1127,7 +1111,6 @@ const props = defineProps<{
 	unitStatusOptions: readonly string[];
 	derivedReflectionAcademicYear: string;
 	derivedReflectionSchool: string;
-	legacyStandardsCount: number;
 	showUnitSaveRail: boolean;
 	unitEditorHeading: string;
 	unitSaveStatusLabel: string;
