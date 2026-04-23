@@ -682,6 +682,23 @@ If a critical assumption cannot be verified from the workspace, stop and say exa
 - Verify failing import-path or stub-heavy tests with the same Python major/minor version as the failing environment when syntax or import behavior may differ.
 - If a module is widely imported or frequently stubbed, agents should proactively check repository tests for partial fake-module replacements before adding new imports to that module.
 
+### 15.3 Fixture And Harness Guardrails
+
+- When a failure occurs before the feature logic under test runs, treat fixture drift, harness drift, and leaked side effects as the default suspects before editing production code.
+- Shared factories are governed contract surfaces. Fix shared factories first when the same failure pattern can affect multiple suites.
+- Test fixtures must not assign document attributes that shadow controller or document methods. Example class: assigning `send_password_notification` on `User`.
+- Default test fixture behavior should minimize unrelated side effects:
+  - no welcome mail
+  - no password notifications via method-shadowing field assignment
+  - no accounting/bootstrap setup unless the test is explicitly about that workflow
+  - no hidden dependency on site master data
+- Tests creating `Organization` must explicitly opt out of COA/bootstrap side effects unless the test is verifying accounting setup or bootstrap behavior.
+- Required setup records such as `Gender`, `Role`, and similar master data must be created explicitly in the test or shared factory when the test depends on them; do not assume they exist on the site.
+- When patching low-level framework primitives such as `frappe.db.sql`, fake functions must accept framework kwargs (`debug`, `run`, `pluck`, and similar) unless the test is intentionally asserting the exact call shape.
+- If a test patches low-level DB access, also patch any higher-level helpers in that path that may trigger unrelated framework reads such as `today()`, installed-app resolution, system settings, or DocType metadata loading.
+- Integration-heavy tests that exercise hooks, `frappe.get_attr(...)`, or installed-app dependent behavior must stabilize `frappe.get_installed_apps()` when the environment is known to drift.
+- A test fix that only works because unrelated hooks, scheduler effects, or bootstrap flows happened not to run is not a valid fix.
+
 ---
 
 ## 16. Frappe Security Model (Learned)
