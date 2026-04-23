@@ -92,13 +92,11 @@ For non-trivial tasks, agents MUST:
 1. Restate the task precisely.
 2. Identify exact files to inspect and likely files to change.
 3. Summarize relevant doc/code/contract constraints.
-4. List key risks:
+4. List key risks; for failing tests, identify the first non-test code path in the traceback and fix shared factory, fixture helper, reference-data, or harness-bootstrap failures before editing production workflow code:
    - UX regressions
    - permission leaks
    - data integrity/workflow regressions
    - concurrency/performance regressions
-   For failing tests, identify the first non-test code path in the traceback.
-   If the failure starts in a shared factory, fixture helper, reference-data lookup, or harness bootstrap path, fix that setup contract before editing production workflow code.
 5. Stop for explicit approval before:
    - structural refactors
    - schema changes
