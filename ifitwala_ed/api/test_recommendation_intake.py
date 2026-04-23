@@ -364,6 +364,8 @@ class TestRecommendationIntake(FrappeTestCase):
                 "first_name": "Recommendation",
                 "last_name": prefix.title(),
                 "enabled": 1,
+                "send_welcome_email": 0,
+                "send_password_notification": 0,
                 "roles": [{"role": role} for role in roles],
             }
         ).insert(ignore_permissions=True)

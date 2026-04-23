@@ -1111,25 +1111,42 @@
 									Current runtime still uses one published state on the outcome.
 								</p>
 							</div>
-							<button
-								v-if="drawer.outcome.is_published"
-								type="button"
-								class="if-button if-button--secondary"
-								:disabled="publishBusy || !drawer.allowed_actions.can_unpublish"
-								@click="emit('unpublish')"
-							>
-								{{ publishBusy ? 'Updating…' : 'Unrelease' }}
-							</button>
-							<button
-								v-else
-								type="button"
-								class="if-button if-button--primary"
-								:disabled="publishBusy || !drawer.allowed_actions.can_publish"
-								@click="emit('publish')"
-							>
-								{{ publishBusy ? 'Updating…' : 'Release' }}
-							</button>
+							<div class="flex flex-wrap gap-2">
+								<button
+									type="button"
+									class="if-button if-button--secondary"
+									:disabled="exportButtonDisabled"
+									@click="emit('export-feedback-pdf')"
+								>
+									{{ exportBusy ? 'Preparing…' : 'Export student PDF' }}
+								</button>
+								<button
+									v-if="drawer.outcome.is_published"
+									type="button"
+									class="if-button if-button--secondary"
+									:disabled="publishBusy || !drawer.allowed_actions.can_unpublish"
+									@click="emit('unpublish')"
+								>
+									{{ publishBusy ? 'Updating…' : 'Unrelease' }}
+								</button>
+								<button
+									v-else
+									type="button"
+									class="if-button if-button--primary"
+									:disabled="publishBusy || !drawer.allowed_actions.can_publish"
+									@click="emit('publish')"
+								>
+									{{ publishBusy ? 'Updating…' : 'Release' }}
+								</button>
+							</div>
 						</div>
+						<p class="mt-3 text-xs text-ink/45">
+							Generate the current student-facing released feedback as a governed PDF artifact.
+							<span v-if="publicationDirty">Save publication state first.</span>
+							<span v-else-if="!hasExportableFeedbackRelease">
+								Student feedback must be visible before export.
+							</span>
+						</p>
 					</div>
 				</div>
 
@@ -1308,6 +1325,7 @@ const props = defineProps<{
 	threadBusy?: boolean;
 	submissionSeenBusy?: boolean;
 	publishBusy?: boolean;
+	exportBusy?: boolean;
 	moderationBusy?: boolean;
 	showSequenceControls?: boolean;
 	canGoPrevious?: boolean;
@@ -1380,6 +1398,7 @@ const emit = defineEmits<{
 	(e: 'mark-submission-seen'): void;
 	(e: 'publish'): void;
 	(e: 'unpublish'): void;
+	(e: 'export-feedback-pdf'): void;
 	(e: 'go-previous'): void;
 	(e: 'go-next'): void;
 }>();
@@ -1471,6 +1490,17 @@ const canSaveFeedbackPublication = computed(
 	() =>
 		Boolean(props.drawer?.selected_submission?.submission_id) &&
 		Boolean(props.drawer?.allowed_actions.can_manage_feedback_publication)
+);
+const hasExportableFeedbackRelease = computed(
+	() =>
+		(props.drawer?.feedback_workspace?.publication.feedback_visibility || 'hidden') !== 'hidden'
+);
+const exportButtonDisabled = computed(
+	() =>
+		Boolean(props.exportBusy) ||
+		publicationDirty.value ||
+		!hasExportableFeedbackRelease.value ||
+		!Boolean(props.drawer?.allowed_actions.can_manage_feedback_publication)
 );
 const showPublicationSection = computed(
 	() =>

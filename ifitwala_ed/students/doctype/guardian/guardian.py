@@ -49,11 +49,6 @@ class Guardian(Document):
             self._ensure_guardian_portal_routing(self.user)
 
     def on_update(self):
-        # 4) Idempotent self-heal: if link missing, add it
-        contact_name = self._find_contact_name()
-        if contact_name:
-            self._ensure_contact_link(contact_name)
-
         # 5) If user field was changed or newly set, ensure portal routing
         if self._has_user_changed():
             self._ensure_guardian_portal_routing(self.user)

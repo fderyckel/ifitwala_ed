@@ -237,6 +237,7 @@
 					:thread-busy="threadBusy"
 					:submission-seen-busy="submissionSeenBusy"
 					:publish-busy="publishBusy"
+					:export-busy="exportBusy"
 					:moderation-busy="moderationBusy"
 					:show-sequence-controls="Boolean(drawer && visibleStudents.length > 1)"
 					:can-go-previous="canGoPrevious"
@@ -254,6 +255,7 @@
 					@mark-submission-seen="markSubmissionSeen"
 					@publish="publishOutcome"
 					@unpublish="unpublishOutcome"
+					@export-feedback-pdf="exportFeedbackPdf"
 					@go-previous="openRelativeStudent(-1)"
 					@go-next="openRelativeStudent(1)"
 				/>
@@ -329,6 +331,7 @@ const publicationBusy = ref(false);
 const threadBusy = ref(false);
 const submissionSeenBusy = ref(false);
 const publishBusy = ref(false);
+const exportBusy = ref(false);
 const moderationBusy = ref(false);
 const selectedBatchOutcomeIds = ref<string[]>([]);
 
@@ -1044,6 +1047,27 @@ async function unpublishOutcome() {
 		showDangerToast('Could not unrelease this outcome');
 	} finally {
 		publishBusy.value = false;
+	}
+}
+
+async function exportFeedbackPdf() {
+	if (!selectedOutcomeId.value) return;
+	exportBusy.value = true;
+	try {
+		const response = await gradebookService.exportFeedbackPdf({
+			outcome_id: selectedOutcomeId.value,
+		});
+		const targetUrl = response.artifact?.open_url || response.artifact?.preview_url;
+		if (!targetUrl) {
+			throw new Error('Missing feedback artifact URL');
+		}
+		window.open(targetUrl, '_blank', 'noopener,noreferrer');
+		showSuccessToast('Feedback PDF prepared.');
+	} catch (error) {
+		console.error('Failed to export feedback PDF', error);
+		showDangerToast('Could not prepare the feedback PDF');
+	} finally {
+		exportBusy.value = false;
 	}
 }
 

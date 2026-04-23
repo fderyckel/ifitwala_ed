@@ -24,6 +24,15 @@
 					Score {{ formatScore(detail.official.score) }}
 				</span>
 				<span v-if="detail.official.grade" class="chip"> Grade {{ detail.official.grade }} </span>
+				<button
+					v-if="mode === 'student' && detail.feedback_visible"
+					type="button"
+					class="if-button if-button--secondary"
+					:disabled="Boolean(exportBusy)"
+					@click="emit('export-feedback-pdf')"
+				>
+					{{ exportBusy ? 'Preparing…' : 'Download feedback PDF' }}
+				</button>
 			</div>
 		</header>
 
@@ -299,6 +308,7 @@ const props = defineProps<{
 	mode: 'student' | 'guardian';
 	replyBusyTarget?: string | null;
 	stateBusyTarget?: string | null;
+	exportBusy?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -317,6 +327,7 @@ const emit = defineEmits<{
 			learner_state: Exclude<FeedbackThreadLearnerState, 'none'> | 'none';
 		}
 	): void;
+	(e: 'export-feedback-pdf'): void;
 }>();
 
 const selectedFilter = ref<

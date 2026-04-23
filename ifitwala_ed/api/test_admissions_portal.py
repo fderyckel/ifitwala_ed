@@ -297,6 +297,8 @@ class TestInviteApplicant(FrappeTestCase):
                 "first_name": "Disabled",
                 "last_name": "Applicant",
                 "enabled": 0,
+                "send_welcome_email": 0,
+                "send_password_notification": 0,
                 "user_type": "Website User",
             }
         ).insert(ignore_permissions=True)
@@ -555,6 +557,7 @@ class TestInviteApplicant(FrappeTestCase):
                 "last_name": "Staff",
                 "enabled": 1,
                 "send_welcome_email": 0,
+                "send_password_notification": 0,
                 "roles": [{"role": "Admission Manager"}],
             }
         ).insert(ignore_permissions=True)
@@ -1931,6 +1934,7 @@ class TestSubmitApplication(FrappeTestCase):
                 "last_name": "Applicant",
                 "enabled": 1,
                 "send_welcome_email": 0,
+                "send_password_notification": 0,
                 "roles": [{"role": "Admissions Applicant"}],
             }
         ).insert(ignore_permissions=True)
@@ -1974,6 +1978,8 @@ class TestSubmitApplication(FrappeTestCase):
                 "first_name": "Family",
                 "last_name": "Portal",
                 "enabled": 1,
+                "send_welcome_email": 0,
+                "send_password_notification": 0,
                 "roles": [{"role": "Admissions Family"}],
             }
         ).insert(ignore_permissions=True)

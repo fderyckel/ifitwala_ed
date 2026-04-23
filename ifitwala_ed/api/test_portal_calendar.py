@@ -245,6 +245,10 @@ class TestPortalCalendar(FrappeTestCase):
                 "ifitwala_ed.api.calendar_staff_feed._resolve_employee_for_user",
                 return_value={"name": "EMP-0001", "school": self.child_school},
             ),
+            patch(
+                "ifitwala_ed.api.calendar_staff_feed.get_ancestor_schools",
+                return_value=[self.child_school, self.parent_school],
+            ),
             patch("ifitwala_ed.api.calendar_staff_feed.frappe.db.sql", return_value=[event_row]),
             patch("ifitwala_ed.api.calendar_staff_feed.frappe.get_all", side_effect=fake_get_all),
             patch("ifitwala_ed.api.calendar_staff_feed.frappe.get_roles", return_value=["Employee"]),
@@ -290,6 +294,10 @@ class TestPortalCalendar(FrappeTestCase):
             patch(
                 "ifitwala_ed.api.calendar_staff_feed._resolve_employee_for_user",
                 return_value={"name": "EMP-0001", "school": self.child_school},
+            ),
+            patch(
+                "ifitwala_ed.api.calendar_staff_feed.get_ancestor_schools",
+                return_value=[self.child_school, self.parent_school],
             ),
             patch("ifitwala_ed.api.calendar_staff_feed.frappe.db.sql", return_value=[event_row]),
             patch("ifitwala_ed.api.calendar_staff_feed.frappe.get_all", side_effect=fake_get_all),
@@ -422,6 +430,8 @@ class TestPortalCalendar(FrappeTestCase):
                 "first_name": "Portal",
                 "last_name": "Calendar",
                 "enabled": 1,
+                "send_welcome_email": 0,
+                "send_password_notification": 0,
             }
         ).insert(ignore_permissions=True)
         self._created.append(("User", doc.name))

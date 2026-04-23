@@ -1,6 +1,8 @@
 # Copyright (c) 2026, Francois de Ryckel and contributors
 # For license information, please see license.txt
 
+from unittest.mock import patch
+
 import frappe
 from frappe.tests.utils import FrappeTestCase
 
@@ -13,6 +15,10 @@ from ifitwala_ed.schedule.doctype.program_offering_selection_window.test_program
 
 class TestSelfEnrollmentApi(FrappeTestCase):
     def setUp(self):
+        self._welcome_mail_patcher = patch("frappe.core.doctype.user.user.User.send_welcome_mail_to_user")
+        self._welcome_mail_patcher.start()
+        self._password_notification_patcher = patch("frappe.core.doctype.user.user.User.send_password_notification")
+        self._password_notification_patcher.start()
         frappe.set_user("Administrator")
         self._created: list[tuple[str, str]] = []
         self._guardian_links: list[tuple[str, str]] = []
@@ -42,6 +48,8 @@ class TestSelfEnrollmentApi(FrappeTestCase):
         for doctype, name in reversed(self._created):
             if frappe.db.exists(doctype, name):
                 frappe.delete_doc(doctype, name, force=1, ignore_permissions=True)
+        self._password_notification_patcher.stop()
+        self._welcome_mail_patcher.stop()
 
     def test_guardian_board_lists_authorized_window(self):
         context = _build_self_enrollment_context()
@@ -287,6 +295,8 @@ class TestSelfEnrollmentApi(FrappeTestCase):
                 "first_name": "Guardian",
                 "last_name": "Portal",
                 "enabled": 1,
+                "send_welcome_email": 0,
+                "send_password_notification": 0,
                 "user_type": "Website User",
                 "roles": [{"role": "Guardian"}],
             }

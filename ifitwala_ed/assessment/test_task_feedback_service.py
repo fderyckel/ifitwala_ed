@@ -262,3 +262,131 @@ class TestTaskFeedbackService(TestCase):
         self.assertEqual(payload["official"]["score"], 12)
         self.assertEqual(payload["official"]["feedback"], "Keep supporting each claim.")
         self.assertEqual(payload["feedback"]["summary"]["overall"], "Keep supporting each claim.")
+
+    def test_released_feedback_detail_skips_priority_reads_when_priority_table_is_not_migrated(self):
+        with stubbed_frappe() as frappe:
+
+            def fake_get_value(doctype, name_or_filters, fieldname=None, as_dict=False):
+                if doctype == "Task Outcome":
+                    return {
+                        "name": "OUT-1",
+                        "task_delivery": "TDL-1",
+                        "task": "TASK-1",
+                        "student": "STU-1",
+                        "course": "CRS-1",
+                        "official_score": None,
+                        "official_grade": None,
+                        "official_grade_value": None,
+                        "official_feedback": "Legacy fallback",
+                        "is_published": 0,
+                        "published_on": None,
+                        "published_by": None,
+                    }
+                if doctype == "Task Submission":
+                    return {"name": "TSU-1", "task_outcome": "OUT-1", "version": 2}
+                if doctype == "Task Feedback Workspace":
+                    return {
+                        "name": "TFW-1",
+                        "feedback_visibility": "student_and_guardian",
+                        "grade_visibility": "hidden",
+                        "overall_summary": "Released summary",
+                        "strengths_summary": "",
+                        "improvements_summary": "",
+                        "next_steps_summary": "",
+                        "modified": "2026-04-23 10:00:00",
+                        "modified_by": "teacher@example.com",
+                    }
+                if doctype == "Task Delivery":
+                    return {"name": "TDL-1", "title": "Source Analysis", "task_type": "assignment"}
+                if doctype == "Course" and fieldname == "course_name":
+                    return "History"
+                return None
+
+            def fake_get_all(doctype, **kwargs):
+                if doctype == "Task Feedback Item":
+                    return [
+                        {
+                            "name": "TFI-1",
+                            "anchor_kind": "page",
+                            "page_number": 1,
+                            "feedback_intent": "issue",
+                            "workflow_state": "published",
+                            "body": "Clarify the evidence.",
+                            "anchor_payload": '{"kind":"page","page":1}',
+                            "assessment_criteria": None,
+                            "author": "teacher@example.com",
+                        }
+                    ]
+                return []
+
+            frappe.db.get_value = fake_get_value
+            frappe.get_all = fake_get_all
+            frappe.db.table_exists = lambda doctype: doctype != "Task Feedback Priority"
+            frappe.db.has_column = lambda doctype, fieldname: True
+
+            module = import_fresh("ifitwala_ed.assessment.task_feedback_service")
+            payload = module.build_released_feedback_detail_payload(
+                "OUT-1",
+                audience="guardian",
+                submission_id="TSU-1",
+            )
+
+        self.assertTrue(payload["feedback_visible"])
+        self.assertEqual(payload["feedback"]["summary"]["overall"], "Released summary")
+        self.assertEqual(len(payload["feedback"]["items"]), 1)
+        self.assertEqual(payload["feedback"]["priorities"], [])
+
+    def test_released_feedback_detail_falls_back_to_legacy_when_feedback_workspace_schema_is_missing(self):
+        with stubbed_frappe() as frappe:
+
+            def fake_get_value(doctype, name_or_filters, fieldname=None, as_dict=False):
+                if doctype == "Task Outcome":
+                    return {
+                        "name": "OUT-2",
+                        "task_delivery": "TDL-2",
+                        "task": "TASK-2",
+                        "student": "STU-2",
+                        "course": "CRS-2",
+                        "official_score": 14,
+                        "official_grade": "B",
+                        "official_grade_value": 3,
+                        "official_feedback": "Keep supporting each claim.",
+                        "is_published": 1,
+                        "published_on": "2026-04-20 12:00:00",
+                        "published_by": "teacher@example.com",
+                    }
+                if doctype == "Task Submission":
+                    return {"name": "TSU-2", "task_outcome": "OUT-2", "version": 3}
+                if doctype == "Task Delivery":
+                    return {"name": "TDL-2", "title": "Essay", "task_type": "assignment"}
+                if doctype == "Course" and fieldname == "course_name":
+                    return "English"
+                return None
+
+            frappe.db.get_value = fake_get_value
+            frappe.get_all = lambda doctype, **kwargs: []
+            frappe.db.table_exists = lambda doctype: (
+                doctype
+                not in {
+                    "Task Feedback Workspace",
+                    "Task Feedback Item",
+                    "Task Feedback Priority",
+                    "Task Feedback Thread",
+                    "Task Feedback Thread Message",
+                }
+            )
+            frappe.db.has_column = lambda doctype, fieldname: True
+
+            module = import_fresh("ifitwala_ed.assessment.task_feedback_service")
+            payload = module.build_released_feedback_detail_payload(
+                "OUT-2",
+                audience="guardian",
+                submission_id="TSU-2",
+            )
+
+        self.assertTrue(payload["grade_visible"])
+        self.assertTrue(payload["feedback_visible"])
+        self.assertEqual(payload["official"]["score"], 14)
+        self.assertEqual(payload["feedback"]["summary"]["overall"], "Keep supporting each claim.")
+        self.assertEqual(payload["feedback"]["items"], [])
+        self.assertEqual(payload["feedback"]["priorities"], [])

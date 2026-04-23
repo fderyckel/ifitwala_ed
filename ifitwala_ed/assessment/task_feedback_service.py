@@ -15,6 +15,35 @@ FEEDBACK_INTENT_OPTIONS = ("strength", "issue", "question", "next_step", "rubric
 FEEDBACK_WORKFLOW_STATES = ("draft", "published", "acknowledged", "resolved")
 PUBLICATION_AUDIENCES = ("student", "guardian")
 SUMMARY_FIELDS = ("overall", "strengths", "improvements", "next_steps")
+WORKSPACE_READ_COLUMNS = (
+    "feedback_visibility",
+    "grade_visibility",
+    "overall_summary",
+    "strengths_summary",
+    "improvements_summary",
+    "next_steps_summary",
+)
+FEEDBACK_ITEM_READ_COLUMNS = (
+    "anchor_kind",
+    "page_number",
+    "feedback_intent",
+    "workflow_state",
+    "body",
+    "anchor_payload",
+    "assessment_criteria",
+    "author",
+)
+FEEDBACK_PRIORITY_READ_COLUMNS = ("title", "detail", "feedback_item_id", "assessment_criteria")
+FEEDBACK_THREAD_READ_COLUMNS = (
+    "task_feedback_workspace",
+    "target_type",
+    "target_feedback_item",
+    "target_priority",
+    "summary_field",
+    "learner_state",
+    "thread_status",
+)
+FEEDBACK_THREAD_MESSAGE_READ_COLUMNS = ("author", "author_role", "message_kind", "body")
 
 
 def build_feedback_workspace_payload(
@@ -22,22 +51,24 @@ def build_feedback_workspace_payload(
 ) -> dict[str, Any] | None:
     submission = _require_feedback_submission_context(outcome_id, submission_id)
     legacy_release = _get_legacy_release_state(outcome_id)
-    workspace_row = frappe.db.get_value(
-        "Task Feedback Workspace",
-        {"task_outcome": outcome_id, "task_submission": submission_id},
-        [
-            "name",
-            "feedback_visibility",
-            "grade_visibility",
-            "overall_summary",
-            "strengths_summary",
-            "improvements_summary",
-            "next_steps_summary",
-            "modified",
-            "modified_by",
-        ],
-        as_dict=True,
-    )
+    workspace_row = None
+    if _feedback_workspace_reads_available():
+        workspace_row = frappe.db.get_value(
+            "Task Feedback Workspace",
+            {"task_outcome": outcome_id, "task_submission": submission_id},
+            [
+                "name",
+                "feedback_visibility",
+                "grade_visibility",
+                "overall_summary",
+                "strengths_summary",
+                "improvements_summary",
+                "next_steps_summary",
+                "modified",
+                "modified_by",
+            ],
+            as_dict=True,
+        )
 
     if not workspace_row and not include_defaults:
         return None
@@ -45,8 +76,10 @@ def build_feedback_workspace_payload(
     feedback_items = []
     priorities = []
     if workspace_row and workspace_row.get("name"):
-        feedback_items = _load_feedback_item_rows(workspace_row.get("name"))
-        priorities = _load_feedback_priority_rows(workspace_row.get("name"))
+        if _feedback_item_reads_available():
+            feedback_items = _load_feedback_item_rows(workspace_row.get("name"))
+        if _feedback_priority_reads_available():
+            priorities = _load_feedback_priority_rows(workspace_row.get("name"))
 
     derived_from_legacy = not bool(workspace_row)
     feedback_visibility, grade_visibility = _resolve_publication_defaults(workspace_row, legacy_release)
@@ -196,7 +229,12 @@ def build_released_feedback_detail_payload(
             outcome_id=outcome_id,
             submission_id=resolved_submission_id,
         )
-        if resolved_audience == "student" and released.get("feedback_visible") and resolved_submission_id
+        if (
+            resolved_audience == "student"
+            and released.get("feedback_visible")
+            and resolved_submission_id
+            and _feedback_thread_reads_available()
+        )
         else []
     )
     return {
@@ -803,3 +841,33 @@ def _build_released_rubric_snapshot(
 def _clean_text(value: Any) -> str | None:
     resolved = str(value or "").strip()
     return resolved or None
+
+
+def _feedback_workspace_reads_available() -> bool:
+    return _doctype_read_columns_available("Task Feedback Workspace", WORKSPACE_READ_COLUMNS)
+
+
+def _feedback_item_reads_available() -> bool:
+    return _doctype_read_columns_available("Task Feedback Item", FEEDBACK_ITEM_READ_COLUMNS)
+
+
+def _feedback_priority_reads_available() -> bool:
+    return _doctype_read_columns_available("Task Feedback Priority", FEEDBACK_PRIORITY_READ_COLUMNS)
+
+
+def _feedback_thread_reads_available() -> bool:
+    return _doctype_read_columns_available("Task Feedback Thread", FEEDBACK_THREAD_READ_COLUMNS) and (
+        _doctype_read_columns_available("Task Feedback Thread Message", FEEDBACK_THREAD_MESSAGE_READ_COLUMNS)
+    )
+
+
+def _doctype_read_columns_available(doctype: str, fieldnames: tuple[str, ...]) -> bool:
+    db = getattr(frappe, "db", None)
+    table_exists = getattr(db, "table_exists", None)
+    if callable(table_exists) and not table_exists(doctype):
+        return False
+
+    has_column = getattr(db, "has_column", None)
+    if not callable(has_column):
+        return True
+    return all(has_column(doctype, fieldname) for fieldname in fieldnames)

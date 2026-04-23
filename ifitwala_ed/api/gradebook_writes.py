@@ -11,6 +11,7 @@ from ifitwala_ed.api import outcome_publish
 from ifitwala_ed.assessment import (
     quiz_service,
     task_contribution_service,
+    task_feedback_artifact_service,
     task_feedback_comment_bank_service,
     task_feedback_service,
     task_feedback_thread_service,
@@ -98,6 +99,21 @@ def save_feedback_thread_state(api, payload=None, **kwargs):
     _assert_outcome_access(api, outcome_id)
     result = task_feedback_thread_service.save_instructor_thread_state(data, actor=frappe.session.user)
     return {"thread": result}
+
+
+def export_feedback_pdf(api, payload=None, **kwargs):
+    if not api._can_write_gradebook():
+        frappe.throw(_("Not permitted."), frappe.PermissionError)
+
+    data = api._normalize_payload(payload, kwargs)
+    outcome_id = api._get_payload_value(data, "outcome_id", "task_outcome")
+    api._require(outcome_id, "Task Outcome")
+    _assert_outcome_access(api, outcome_id)
+    artifact = task_feedback_artifact_service.export_released_feedback_pdf(
+        outcome_id,
+        audience="student",
+    )
+    return {"artifact": artifact}
 
 
 def submit_contribution(api, payload=None, **kwargs):

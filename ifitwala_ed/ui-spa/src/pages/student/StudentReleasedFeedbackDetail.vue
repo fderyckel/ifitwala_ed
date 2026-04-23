@@ -25,8 +25,10 @@
 			mode="student"
 			:reply-busy-target="replyBusyTarget"
 			:state-busy-target="stateBusyTarget"
+			:export-busy="exportBusy"
 			@reply="handleReply"
 			@set-learner-state="handleLearnerState"
+			@export-feedback-pdf="handleExportFeedbackPdf"
 		/>
 	</div>
 </template>
@@ -38,6 +40,7 @@ import { toast } from 'frappe-ui';
 
 import ReleasedFeedbackNavigator from '@/components/assessment/ReleasedFeedbackNavigator.vue';
 import {
+	exportStudentReleasedFeedbackPdf,
 	getStudentReleasedFeedbackDetail,
 	saveStudentFeedbackReply,
 	saveStudentFeedbackThreadState,
@@ -59,6 +62,7 @@ const errorMessage = ref('');
 const detail = ref<ReleasedFeedbackDetail | null>(null);
 const replyBusyTarget = ref<string | null>(null);
 const stateBusyTarget = ref<string | null>(null);
+const exportBusy = ref(false);
 
 const backRoute = computed(() => ({
 	name: 'student-course-detail',
@@ -138,6 +142,27 @@ async function handleLearnerState(payload: {
 		);
 	} finally {
 		stateBusyTarget.value = null;
+	}
+}
+
+async function handleExportFeedbackPdf() {
+	exportBusy.value = true;
+	try {
+		const response = await exportStudentReleasedFeedbackPdf({ outcome_id: props.task_outcome });
+		const targetUrl = response.artifact?.open_url || response.artifact?.preview_url;
+		if (!targetUrl) {
+			throw new Error('Missing feedback artifact URL');
+		}
+		window.open(targetUrl, '_blank', 'noopener,noreferrer');
+		toast.success?.('Feedback PDF prepared.');
+	} catch (error: unknown) {
+		toast.error?.(
+			error instanceof Error && error.message
+				? error.message
+				: 'Could not prepare the feedback PDF.'
+		);
+	} finally {
+		exportBusy.value = false;
 	}
 }
 

@@ -20,6 +20,10 @@ from ifitwala_ed.api.admissions_portal import (
 
 class TestAdmissionsDocumentItems(FrappeTestCase):
     def setUp(self):
+        self._welcome_mail_patcher = patch("frappe.core.doctype.user.user.User.send_welcome_mail_to_user")
+        self._welcome_mail_patcher.start()
+        self._password_notification_patcher = patch("frappe.core.doctype.user.user.User.send_password_notification")
+        self._password_notification_patcher.start()
         frappe.set_user("Administrator")
         self._created: list[tuple[str, str]] = []
         self._ensure_role("Admissions Applicant")
@@ -35,6 +39,8 @@ class TestAdmissionsDocumentItems(FrappeTestCase):
         for doctype, name in reversed(self._created):
             if frappe.db.exists(doctype, name):
                 frappe.delete_doc(doctype, name, force=1, ignore_permissions=True)
+        self._password_notification_patcher.stop()
+        self._welcome_mail_patcher.stop()
 
     def test_upload_creates_item_and_returns_item_metadata(self):
         frappe.set_user(self.applicant_user)
@@ -337,6 +343,8 @@ class TestAdmissionsDocumentItems(FrappeTestCase):
                 "first_name": "Portal",
                 "last_name": "Applicant",
                 "enabled": 1,
+                "send_welcome_email": 0,
+                "send_password_notification": 0,
                 "roles": [{"role": "Admissions Applicant"}],
             }
         ).insert(ignore_permissions=True)

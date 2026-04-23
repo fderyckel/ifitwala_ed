@@ -88,6 +88,22 @@ def _resolve_task_submission_session_context(payload: dict[str, Any]) -> dict[st
     return authoritative
 
 
+def _resolve_task_feedback_export_session_context(payload: dict[str, Any]) -> dict[str, Any]:
+    from ifitwala_ed.integrations.drive import tasks
+
+    task_submission = str(payload.get("task_submission") or payload.get("owner_name") or "").strip()
+    if not task_submission:
+        _throw_missing_field("task_submission")
+
+    task_submission_doc = tasks.assert_task_submission_upload_access(task_submission, permission_type="write")
+    authoritative = tasks.build_task_feedback_export_upload_contract(
+        task_submission_doc,
+        audience=payload.get("audience"),
+    )
+    _validate_workflow_slot(payload, authoritative, label=_("Task feedback export"))
+    return authoritative
+
+
 def _resolve_task_submission_context_override(
     upload_session_doc, authoritative_context: dict[str, Any]
 ) -> dict[str, Any] | None:
@@ -97,6 +113,18 @@ def _resolve_task_submission_context_override(
         getattr(upload_session_doc, "owner_name", None) or authoritative_context.get("owner_name") or ""
     ).strip()
     return tasks.get_task_submission_context_override(owner_name)
+
+
+def _resolve_task_feedback_export_context_override(
+    upload_session_doc, authoritative_context: dict[str, Any]
+) -> dict[str, Any] | None:
+    from ifitwala_ed.integrations.drive import tasks
+
+    owner_name = str(
+        getattr(upload_session_doc, "owner_name", None) or authoritative_context.get("owner_name") or ""
+    ).strip()
+    slot = str(getattr(upload_session_doc, "intended_slot", None) or authoritative_context.get("slot") or "").strip()
+    return tasks.get_task_feedback_export_context_override(owner_name, slot)
 
 
 def _resolve_task_submission_post_finalize(upload_session_doc, created_file) -> dict[str, Any]:
@@ -112,6 +140,15 @@ def _validate_task_submission_finalize_context(upload_session_doc) -> Optional[d
     from ifitwala_ed.integrations.drive import tasks
 
     return tasks.validate_task_submission_finalize_context(upload_session_doc)
+
+
+def _validate_task_feedback_export_finalize_context(upload_session_doc) -> Optional[dict[str, Any]]:
+    if getattr(upload_session_doc, "owner_doctype", None) != "Task Submission":
+        return None
+
+    from ifitwala_ed.integrations.drive import tasks
+
+    return tasks.validate_task_feedback_export_finalize_context(upload_session_doc)
 
 
 def _resolve_task_resource_session_context(payload: dict[str, Any]) -> dict[str, Any]:
@@ -525,6 +562,17 @@ _WORKFLOW_SPECS: tuple[GovernedUploadSpec, ...] = (
         resolve_context_override=_resolve_task_submission_context_override,
         resolve_binding_role=_no_binding_role,
         run_post_finalize=_resolve_task_submission_post_finalize,
+    ),
+    GovernedUploadSpec(
+        workflow_id="task.feedback_export",
+        contract_version=_WORKFLOW_CONTRACT_VERSION,
+        is_private=None,
+        resolve_session_context=_resolve_task_feedback_export_session_context,
+        validate_finalize_context=_validate_task_feedback_export_finalize_context,
+        resolve_attached_field_override=_no_attached_field_override,
+        resolve_context_override=_resolve_task_feedback_export_context_override,
+        resolve_binding_role=_no_binding_role,
+        run_post_finalize=_noop_post_finalize,
     ),
     GovernedUploadSpec(
         workflow_id="task.resource",

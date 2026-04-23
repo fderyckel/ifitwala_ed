@@ -69,6 +69,11 @@ def save_feedback_thread_state(payload=None, **kwargs):
 
 
 @frappe.whitelist()
+def export_feedback_pdf(payload=None, **kwargs):
+    return gradebook_writes.export_feedback_pdf(gradebook_support, payload=payload, **kwargs)
+
+
+@frappe.whitelist()
 def submit_contribution(payload=None, **kwargs):
     return gradebook_writes.submit_contribution(gradebook_support, payload=payload, **kwargs)
 
@@ -160,6 +165,7 @@ __all__ = [
     "save_feedback_comment_bank_entry",
     "save_feedback_thread_reply",
     "save_feedback_thread_state",
+    "export_feedback_pdf",
     "submit_contribution",
     "save_contribution_draft",
     "moderator_action",

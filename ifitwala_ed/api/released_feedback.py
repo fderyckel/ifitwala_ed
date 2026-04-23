@@ -11,7 +11,11 @@ from frappe import _
 from ifitwala_ed.api import courses as courses_api
 from ifitwala_ed.api import guardian_home
 from ifitwala_ed.api import task_submission as task_submission_api
-from ifitwala_ed.assessment import task_feedback_service, task_feedback_thread_service
+from ifitwala_ed.assessment import (
+    task_feedback_artifact_service,
+    task_feedback_service,
+    task_feedback_thread_service,
+)
 
 
 @frappe.whitelist()
@@ -68,6 +72,17 @@ def save_student_feedback_thread_state(payload=None, **kwargs) -> dict[str, Any]
         frappe.throw(_("Learner actions are not available for this feedback release."), frappe.PermissionError)
     thread = task_feedback_thread_service.save_student_learner_state(data, actor=frappe.session.user)
     return {"thread": thread}
+
+
+@frappe.whitelist()
+def export_student_released_feedback_pdf(outcome_id: str) -> dict[str, Any]:
+    _require_authenticated()
+    _require_student_outcome_access(outcome_id)
+    artifact = task_feedback_artifact_service.export_released_feedback_pdf(
+        outcome_id,
+        audience="student",
+    )
+    return {"artifact": artifact}
 
 
 def _build_student_document_payload(submission_id: str | None) -> dict[str, Any] | None:
