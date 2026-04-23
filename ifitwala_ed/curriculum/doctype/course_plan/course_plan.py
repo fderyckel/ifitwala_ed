@@ -46,7 +46,6 @@ class CoursePlan(Document):
         _validate_course_plan_academic_year(
             course_school=course_school,
             academic_year=self.academic_year,
-            previous_academic_year=self.get_db_value("academic_year") if hasattr(self, "get_db_value") else None,
         )
         _validate_unique_active_course_plan(self)
 
@@ -70,14 +69,12 @@ def _validate_course_plan_academic_year(
     *,
     course_school: str | None,
     academic_year: str | None,
-    previous_academic_year: str | None = None,
 ) -> None:
     from ifitwala_ed.api import teaching_plans as teaching_plans_api
 
     teaching_plans_api._validate_course_plan_academic_year(
         course_school=course_school,
         academic_year=academic_year,
-        previous_academic_year=previous_academic_year,
     )
 
 

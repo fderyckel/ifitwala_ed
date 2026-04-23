@@ -237,9 +237,6 @@ class StudentReferral(Document):
         """Create or fetch a Referral Case linked to this referral; return name."""
         existing = frappe.db.get_value("Referral Case", {"referral": self.name}, "name")
         if existing:
-            # keep the mirror in sync if missing
-            if frappe.db.get_value("Student Referral", self.name, "referral_case") != existing:
-                frappe.db.set_value("Student Referral", self.name, "referral_case", existing, update_modified=False)
             return existing
 
         case = frappe.new_doc("Referral Case")

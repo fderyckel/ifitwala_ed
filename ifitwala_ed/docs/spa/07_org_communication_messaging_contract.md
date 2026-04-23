@@ -181,6 +181,7 @@ Rules:
 - the event owns lifecycle sync for title plus audience scope
 - the linked communication remains the messaging/read-state truth
 - canceling or deleting the event archives the linked communication rather than deleting it
+- Desk must render that companion workflow in a dedicated `Linked Announcement` block on the `School Event` form, while non-announcement references stay under `Related Record`
 
 20. Student and guardian school-event detail modals must not expose Desk deep links for linked `Org Communication` references; those references are staff workflow context, not portal navigation.
 

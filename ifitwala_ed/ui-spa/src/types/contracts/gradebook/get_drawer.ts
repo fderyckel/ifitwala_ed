@@ -1,4 +1,5 @@
 import type { AttachmentPreviewItem, AttachmentPreviewStatus } from '@/types/contracts/attachments/shared'
+import type { FeedbackArtifact } from '@/types/contracts/assessment/feedback_artifact'
 import type { CommentBankPayload } from './comment_bank'
 import type { FeedbackThread, FeedbackWorkspacePayload } from './feedback_workspace'
 
@@ -159,6 +160,7 @@ export type Response = {
 	latest_submission?: SubmissionVersionSummary | null
 	selected_submission?: SubmissionEvidence | null
 	feedback_workspace?: FeedbackWorkspacePayload | null
+	feedback_artifact?: FeedbackArtifact | null
 	feedback_threads: FeedbackThread[]
 	comment_bank?: CommentBankPayload | null
 	submission_versions: SubmissionVersionSummary[]

@@ -170,6 +170,27 @@ def _released_feedback_stub_modules(
                 "extension": "pdf",
             },
         }
+    if not hasattr(artifact_service, "get_current_released_feedback_pdf_artifact"):
+        artifact_service.get_current_released_feedback_pdf_artifact = (
+            lambda outcome_id, audience="student", detail=None, submission_id=None: {
+                "file_id": "FILE-1",
+                "file_name": "released-feedback.pdf",
+                "task_submission": "TSU-1",
+                "submission_version": 2,
+                "preview_status": "ready",
+                "open_url": "/open/feedback-pdf",
+                "preview_url": "/preview/feedback-pdf",
+                "attachment_preview": {
+                    "display_name": "Released feedback PDF",
+                    "kind": "pdf",
+                    "preview_mode": "pdf_embed",
+                    "preview_url": "/preview/feedback-pdf",
+                    "open_url": "/open/feedback-pdf",
+                    "mime_type": "application/pdf",
+                    "extension": "pdf",
+                },
+            }
+        )
 
     return {
         "ifitwala_ed.assessment.task_feedback_artifact_service": artifact_service,
@@ -214,6 +235,7 @@ class TestReleasedFeedbackApi(TestCase):
         self.assertEqual(payload["document"]["submission"]["submission_id"], "TSU-1")
         self.assertEqual(payload["document"]["primary_attachment"]["row_name"], "ATT-PDF")
         self.assertEqual(payload["document"]["primary_attachment"]["open_url"], "/open/submission")
+        self.assertEqual(payload["released_feedback_artifact"]["open_url"], "/open/feedback-pdf")
 
     def test_guardian_detail_stays_text_first_without_document_surface(self):
         with stubbed_frappe(extra_modules=_released_feedback_stub_modules()) as frappe:
@@ -226,6 +248,7 @@ class TestReleasedFeedbackApi(TestCase):
 
         self.assertEqual(payload["audience"], "guardian")
         self.assertIsNone(payload["document"])
+        self.assertIsNone(payload["released_feedback_artifact"])
 
     def test_student_reply_uses_named_thread_mutation(self):
         captured: dict[str, object] = {}

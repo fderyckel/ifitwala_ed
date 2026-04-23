@@ -23,9 +23,11 @@ from ifitwala_ed.api.file_access import (
     download_academic_file,
     download_employee_file,
     download_guardian_file,
+    open_family_consent_request_source_attachment,
     open_org_communication_attachment,
     open_public_website_media,
     preview_academic_file,
+    preview_family_consent_request_source_attachment,
     preview_org_communication_attachment,
     resolve_academic_file_open_url,
     resolve_academic_file_preview_url,
@@ -423,6 +425,102 @@ class TestFileAccessUrlContracts(FrappeTestCase):
             ),
             external,
         )
+
+    def test_open_family_consent_request_source_attachment_redirects_to_drive_download_grant(self):
+        context = {
+            "file_row": {
+                "name": "FILE-CONSENT-1",
+                "file_url": "/private/files/consent-packet.pdf",
+            },
+            "drive_file": {
+                "name": "DRIVE-CONSENT-1",
+                "canonical_ref": "drv:ORG-1:DRIVE-CONSENT-1",
+            },
+            "student": "STU-0001",
+        }
+
+        with (
+            patch(
+                "ifitwala_ed.api.file_access._resolve_family_consent_source_attachment_context",
+                return_value=context,
+            ),
+            patch(
+                "ifitwala_ed.api.file_access._resolve_drive_download_grant_url",
+                return_value="https://download.example.com/consent-packet.pdf",
+            ),
+        ):
+            frappe.local.response = {}
+            open_family_consent_request_source_attachment(
+                request_key="FCR-PORTAL-1",
+                student="STU-0001",
+            )
+
+        self.assertEqual(frappe.local.response.get("type"), "redirect")
+        self.assertEqual(
+            frappe.local.response.get("location"),
+            "https://download.example.com/consent-packet.pdf",
+        )
+
+    def test_preview_family_consent_request_source_attachment_redirects_to_drive_preview_grant(self):
+        context = {
+            "file_row": {
+                "name": "FILE-CONSENT-2",
+                "file_url": "/private/files/lab-consent.pdf",
+            },
+            "drive_file": {
+                "name": "DRIVE-CONSENT-2",
+                "canonical_ref": "drv:ORG-1:DRIVE-CONSENT-2",
+            },
+            "student": "STU-0002",
+        }
+
+        with (
+            patch(
+                "ifitwala_ed.api.file_access._resolve_family_consent_source_attachment_context",
+                return_value=context,
+            ),
+            patch(
+                "ifitwala_ed.api.file_access._resolve_drive_preview_grant_url",
+                return_value="https://preview.example.com/lab-consent.pdf",
+            ),
+            patch(
+                "ifitwala_ed.api.file_access._resolve_drive_download_grant_url",
+                side_effect=AssertionError("download fallback should not run when preview grant exists"),
+            ),
+        ):
+            frappe.local.response = {}
+            preview_family_consent_request_source_attachment(
+                request_key="FCR-PORTAL-2",
+                student="STU-0002",
+            )
+
+        self.assertEqual(frappe.local.response.get("type"), "redirect")
+        self.assertEqual(
+            frappe.local.response.get("location"),
+            "https://preview.example.com/lab-consent.pdf",
+        )
+
+    def test_open_family_consent_request_source_attachment_bubbles_permission_error(self):
+        with patch(
+            "ifitwala_ed.api.file_access._resolve_family_consent_source_attachment_context",
+            side_effect=frappe.PermissionError("forbidden"),
+        ):
+            with self.assertRaises(frappe.PermissionError):
+                open_family_consent_request_source_attachment(
+                    request_key="FCR-PORTAL-1",
+                    student="STU-OTHER",
+                )
+
+    def test_preview_family_consent_request_source_attachment_bubbles_permission_error(self):
+        with patch(
+            "ifitwala_ed.api.file_access._resolve_family_consent_source_attachment_context",
+            side_effect=frappe.PermissionError("forbidden"),
+        ):
+            with self.assertRaises(frappe.PermissionError):
+                preview_family_consent_request_source_attachment(
+                    request_key="FCR-PORTAL-2",
+                    student="STU-OTHER",
+                )
 
     def test_download_guardian_file_redirects_to_drive_grant_for_linked_guardian(self):
         file_row = {

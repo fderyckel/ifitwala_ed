@@ -239,8 +239,6 @@ def academic_year_scope_for_school(api, school: str | None) -> list[str]:
 def fetch_academic_year_options_for_schools(
     api,
     schools: list[str] | tuple[str, ...],
-    *,
-    pinned_years: dict[str, str] | None = None,
 ) -> dict[str, list[dict[str, Any]]]:
     normalized_schools = [
         school_name
@@ -261,14 +259,6 @@ def fetch_academic_year_options_for_schools(
             if api.planning.normalize_text(scope_school)
         }
     )
-    pinned_year_names = sorted(
-        {
-            api.planning.normalize_text(academic_year)
-            for academic_year in (pinned_years or {}).values()
-            if api.planning.normalize_text(academic_year)
-        }
-    )
-
     rows = api.frappe.get_all(
         "Academic Year",
         filters={"school": ["in", query_schools]} if query_schools else {"name": ["in", [""]]},
@@ -276,23 +266,8 @@ def fetch_academic_year_options_for_schools(
         order_by="year_start_date desc, name desc",
         limit=0,
     )
-    if pinned_year_names:
-        pinned_rows = api.frappe.get_all(
-            "Academic Year",
-            filters={"name": ["in", pinned_year_names]},
-            fields=["name", "school", "year_start_date", "year_end_date"],
-            order_by="year_start_date desc, name desc",
-            limit=0,
-        )
-        rows_by_name = {api.planning.normalize_text(row.get("name")): row for row in rows or []}
-        for row in pinned_rows or []:
-            name = api.planning.normalize_text(row.get("name"))
-            if name and name not in rows_by_name:
-                rows.append(row)
-                rows_by_name[name] = row
 
     rows_by_school: dict[str, list[dict[str, Any]]] = api.defaultdict(list)
-    rows_by_name: dict[str, dict[str, Any]] = {}
     for row in rows or []:
         school_name = api.planning.normalize_text(row.get("school"))
         record_name = api.planning.normalize_text(row.get("name"))
@@ -300,7 +275,6 @@ def fetch_academic_year_options_for_schools(
             continue
         if school_name:
             rows_by_school[school_name].append(row)
-        rows_by_name[record_name] = row
 
     options_by_school: dict[str, list[dict[str, Any]]] = {}
     for school_name, scope in scope_by_school.items():
@@ -314,11 +288,6 @@ def fetch_academic_year_options_for_schools(
                 options.append(api._serialize_academic_year_option(row))
                 seen.add(record_name)
 
-        pinned_name = api.planning.normalize_text((pinned_years or {}).get(school_name))
-        pinned_row = rows_by_name.get(pinned_name)
-        if pinned_name and pinned_row and pinned_name not in seen:
-            options.append(api._serialize_academic_year_option(pinned_row))
-
         options_by_school[school_name] = options
 
     return options_by_school
@@ -327,15 +296,8 @@ def fetch_academic_year_options_for_schools(
 def fetch_program_options_for_course(
     api,
     course: str | None,
-    *,
-    pinned_programs: list[str] | tuple[str, ...] | None = None,
 ) -> list[dict[str, Any]]:
     course_name = api.planning.normalize_text(course)
-    pinned_names = {
-        api.planning.normalize_text(program_name)
-        for program_name in (pinned_programs or [])
-        if api.planning.normalize_text(program_name)
-    }
     linked_program_names = (
         api.frappe.get_all(
             "Program Course",
@@ -352,7 +314,6 @@ def fetch_program_options_for_course(
         for program_name in linked_program_names
         if api.planning.normalize_text(program_name)
     }
-    program_names.update(pinned_names)
     if not program_names:
         return []
 
@@ -365,8 +326,7 @@ def fetch_program_options_for_course(
     )
     payload: list[dict[str, Any]] = []
     for row in rows or []:
-        name = api.planning.normalize_text(row.get("name"))
-        if int(row.get("archive") or 0) and name not in pinned_names:
+        if int(row.get("archive") or 0):
             continue
         payload.append(api._serialize_program_option(row))
     return payload
@@ -377,12 +337,9 @@ def validate_course_plan_academic_year(
     *,
     course_school: str | None,
     academic_year: str | None,
-    previous_academic_year: str | None = None,
 ) -> None:
     academic_year_name = api.planning.normalize_text(academic_year)
     if not academic_year_name:
-        return
-    if academic_year_name == api.planning.normalize_text(previous_academic_year):
         return
 
     row = api.frappe.db.get_value("Academic Year", academic_year_name, ["name", "school"], as_dict=True)
@@ -412,17 +369,22 @@ def validate_course_program_link(
     *,
     course: str | None,
     program: str | None,
-    previous_program: str | None = None,
 ) -> None:
     program_name = api.planning.normalize_text(program)
     if not program_name:
         return
-    if program_name == api.planning.normalize_text(previous_program):
-        return
 
-    if not api.frappe.db.exists("Program", program_name):
+    program_row = api.frappe.db.get_value("Program", program_name, ["name", "archive"], as_dict=True)
+    if not program_row:
         api.frappe.throw(
             api._("Program {program} was not found.").format(program=program_name),
+            api.frappe.ValidationError,
+        )
+    if int(program_row.get("archive") or 0):
+        api.frappe.throw(
+            api._("Program {program} is archived. Choose an active program already linked to this course.").format(
+                program=program_name
+            ),
             api.frappe.ValidationError,
         )
 

@@ -5,6 +5,12 @@ import type { ChildRef } from '@/types/contracts/guardian/get_guardian_home_snap
 export type Request = {
 	student?: string
 	days?: number
+	page_length?: number
+	prioritize_unread?: boolean
+}
+
+export type PageRequest = Request & {
+	start?: number
 }
 
 export type MarkGuardianStudentLogReadRequest = {
@@ -15,6 +21,14 @@ export type MarkGuardianStudentLogReadResponse = {
 	ok: boolean
 	student_log: string
 	read_at: string
+}
+
+export type MonitoringPage<T> = {
+	items: T[]
+	total_count: number
+	has_more: boolean
+	start: number
+	page_length: number
 }
 
 export type Response = {
@@ -34,8 +48,8 @@ export type Response = {
 		unread_visible_student_logs: number
 		published_results: number
 	}
-	student_logs: MonitoringStudentLog[]
-	published_results: MonitoringPublishedResult[]
+	student_logs: MonitoringPage<MonitoringStudentLog>
+	published_results: MonitoringPage<MonitoringPublishedResult>
 }
 
 export type MonitoringStudentLog = {
@@ -61,3 +75,6 @@ export type MonitoringPublishedResult = {
 	grade_visible?: boolean
 	feedback_visible?: boolean
 }
+
+export type StudentLogPageResponse = MonitoringPage<MonitoringStudentLog>
+export type PublishedResultPageResponse = MonitoringPage<MonitoringPublishedResult>

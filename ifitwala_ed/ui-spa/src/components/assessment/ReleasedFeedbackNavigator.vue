@@ -31,7 +31,7 @@
 					:disabled="Boolean(exportBusy)"
 					@click="emit('export-feedback-pdf')"
 				>
-					{{ exportBusy ? 'Preparing…' : 'Download feedback PDF' }}
+					{{ exportBusy ? 'Preparing…' : exportButtonLabel }}
 				</button>
 			</div>
 		</header>
@@ -349,6 +349,9 @@ const heroMessage = computed(() => {
 	}
 	return 'The result is visible, but detailed feedback has not been released yet.';
 });
+const exportButtonLabel = computed(() =>
+	props.detail.released_feedback_artifact ? 'Open latest feedback PDF' : 'Prepare feedback PDF'
+);
 const summaryCards = computed(() => {
 	const summary = props.detail.feedback?.summary;
 	if (!summary) return [];

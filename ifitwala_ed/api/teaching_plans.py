@@ -269,25 +269,19 @@ def _academic_year_scope_for_school(school: str | None) -> list[str]:
 
 def _fetch_academic_year_options_for_schools(
     schools: list[str] | tuple[str, ...],
-    *,
-    pinned_years: dict[str, str] | None = None,
 ) -> dict[str, list[dict[str, Any]]]:
     return _shared_impl.fetch_academic_year_options_for_schools(
         _module(),
         schools,
-        pinned_years=pinned_years,
     )
 
 
 def _fetch_program_options_for_course(
     course: str | None,
-    *,
-    pinned_programs: list[str] | tuple[str, ...] | None = None,
 ) -> list[dict[str, Any]]:
     return _shared_impl.fetch_program_options_for_course(
         _module(),
         course,
-        pinned_programs=pinned_programs,
     )
 
 
@@ -295,13 +289,11 @@ def _validate_course_plan_academic_year(
     *,
     course_school: str | None,
     academic_year: str | None,
-    previous_academic_year: str | None = None,
 ) -> None:
     _shared_impl.validate_course_plan_academic_year(
         _module(),
         course_school=course_school,
         academic_year=academic_year,
-        previous_academic_year=previous_academic_year,
     )
 
 
@@ -309,13 +301,11 @@ def _validate_course_program_link(
     *,
     course: str | None,
     program: str | None,
-    previous_program: str | None = None,
 ) -> None:
     _shared_impl.validate_course_program_link(
         _module(),
         course=course,
         program=program,
-        previous_program=previous_program,
     )
 
 

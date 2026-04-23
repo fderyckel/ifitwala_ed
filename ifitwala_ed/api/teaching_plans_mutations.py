@@ -203,7 +203,6 @@ def save_course_plan_impl(api, payload=None, **kwargs) -> dict[str, Any]:
     api._validate_course_plan_academic_year(
         course_school=getattr(doc, "school", None),
         academic_year=doc.academic_year,
-        previous_academic_year=doc.get_db_value("academic_year") if hasattr(doc, "get_db_value") else None,
     )
     doc.cycle_label = api.planning.normalize_text(data.get("cycle_label")) or None
     doc.plan_status = api.planning.normalize_text(data.get("plan_status")) or None
@@ -296,7 +295,6 @@ def save_unit_plan_impl(
     api._validate_course_program_link(
         course=course_plan_row.get("course"),
         program=doc.program,
-        previous_program=doc.get_db_value("program") if hasattr(doc, "get_db_value") else None,
     )
     doc.unit_code = api.planning.normalize_text(unit_code) or None
     doc.unit_order = int(unit_order) if unit_order not in (None, "") else None

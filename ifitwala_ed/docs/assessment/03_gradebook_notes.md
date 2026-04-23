@@ -161,6 +161,7 @@ Current implementation baseline for the Evidence tab:
 - selected submission payload now includes a server-owned annotation-readiness summary for the currently selected version
 - drawer bootstrap now also returns one bounded **feedback workspace** block for the selected submission version, including summary text, structured anchored items, and explicit feedback/grade publication state
 - drawer bootstrap now also returns one bounded **comment bank** block for the current outcome context, filtered server-side for the current teacher plus course / task / criterion relevance
+- drawer bootstrap now also returns an optional current **released feedback artifact** block for the selected submission version when a fresh governed `assessment_feedback` export already exists
 - feedback draft and publication changes now use named drawer mutations: `save_feedback_draft` and `save_feedback_publication`
 - reusable feedback comments now save through a named drawer mutation: `save_feedback_comment_bank_entry`
 - current runtime moderation is now routed through named server mutations from the drawer Review tab: `Approve`, `Adjust`, and `Return to Grader`
@@ -174,6 +175,7 @@ Current partial annotation-readiness baseline:
 
 - current runtime can render governed source PDFs inside the drawer, support point / area / page structured feedback drafts for the selected submission version there, edit draft note / intent / workflow / criterion linkage in place, and fall back to preview/open actions when the source render is unavailable
 - current runtime now supports a minimal teacher-owned comment bank in the drawer, including insertion into the selected feedback item and promotion of a one-off draft note into a reusable entry with personal / course / task scope
+- current runtime now exposes a current student-facing released feedback PDF artifact in the drawer and student navigator when a fresh governed export already exists, and reuses that artifact instead of regenerating it on every open
 - current runtime does **not** yet support text-anchored comments, OCR-driven upgrades, student feedback navigation, replies, or shared course-team comment banks
 
 Future annotation contract for the drawer:

@@ -24,6 +24,8 @@
   "audience",
   "participants_section",
   "participants",
+  "linked_announcement_section",
+  "linked_announcement_html",
   "references_section",
   "reference_type",
   "column_break_i1ra",
@@ -135,9 +137,22 @@
    "options": "School Event Participant"
   },
   {
+   "fieldname": "linked_announcement_section",
+   "fieldtype": "Section Break",
+   "label": "Linked Announcement"
+  },
+  {
+   "fieldname": "linked_announcement_html",
+   "fieldtype": "HTML",
+   "label": "Linked Announcement",
+   "no_copy": 1,
+   "print_hide": 1,
+   "report_hide": 1
+  },
+  {
    "fieldname": "references_section",
    "fieldtype": "Section Break",
-   "label": "References"
+   "label": "Related Record"
   },
   {
    "fieldname": "audience_section",
@@ -156,7 +171,7 @@
  "index_web_pages_for_search": 1,
  "is_calendar_and_gantt": 1,
  "links": [],
- "modified": "2026-04-21 20:36:12.593217",
+ "modified": "2026-04-23 10:22:26.602149",
  "modified_by": "Administrator",
  "module": "School Settings",
  "name": "School Event",

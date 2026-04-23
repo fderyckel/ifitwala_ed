@@ -80,7 +80,11 @@ vi.mock('@/components/assessment/ReleasedFeedbackNavigator.vue', async () => {
 								disabled: props.exportBusy,
 								onClick: () => emit('export-feedback-pdf'),
 							},
-							props.exportBusy ? 'Preparing…' : 'Download feedback PDF'
+							props.exportBusy
+								? 'Preparing…'
+								: (props.detail as any).released_feedback_artifact
+									? 'Open latest feedback PDF'
+									: 'Prepare feedback PDF'
 						),
 					])
 			},
@@ -137,6 +141,7 @@ function buildDetail(overrides: Record<string, unknown> = {}) {
 			threads: [],
 		},
 		document: null,
+		released_feedback_artifact: null,
 		allowed_actions: {
 			can_reply: true,
 			can_set_learner_state: true,
@@ -231,7 +236,7 @@ describe('StudentReleasedFeedbackDetail', () => {
 		await flushUi()
 
 		const button = Array.from(host.querySelectorAll('button')).find(element =>
-			element.textContent?.includes('Download feedback PDF')
+			element.textContent?.includes('Prepare feedback PDF')
 		) as HTMLButtonElement | undefined
 
 		expect(button).toBeTruthy()
@@ -245,5 +250,41 @@ describe('StudentReleasedFeedbackDetail', () => {
 			'noopener,noreferrer'
 		)
 		expect(toastSuccessMock).toHaveBeenCalledWith('Feedback PDF prepared.')
+	})
+
+	it('opens the latest governed artifact without exporting again', async () => {
+		getStudentReleasedFeedbackDetailMock.mockResolvedValue(
+			buildDetail({
+				released_feedback_artifact: {
+					file_id: 'FILE-1',
+					file_name: 'released-feedback.pdf',
+					task_submission: 'TSU-1',
+					submission_version: 2,
+					preview_status: 'ready',
+					open_url: '/api/method/ifitwala_ed.api.file_access.download_academic_file?file=FILE-1',
+					preview_url: '/api/method/ifitwala_ed.api.file_access.preview_academic_file?file=FILE-1',
+					attachment_preview: null,
+				},
+			})
+		)
+
+		const host = mountPage()
+		await flushUi()
+
+		const button = Array.from(host.querySelectorAll('button')).find(element =>
+			element.textContent?.includes('Open latest feedback PDF')
+		) as HTMLButtonElement | undefined
+
+		expect(button).toBeTruthy()
+		button?.click()
+		await flushUi()
+
+		expect(exportStudentReleasedFeedbackPdfMock).not.toHaveBeenCalled()
+		expect(openMock).toHaveBeenCalledWith(
+			'/api/method/ifitwala_ed.api.file_access.download_academic_file?file=FILE-1',
+			'_blank',
+			'noopener,noreferrer'
+		)
+		expect(toastSuccessMock).toHaveBeenCalledWith('Opened the latest feedback PDF.')
 	})
 })

@@ -413,6 +413,13 @@ The first slice of item 2 is now implemented:
 - the artifact is attached to the selected `Task Submission` version so it stays evidence-version-bound without replacing immutable submission evidence
 - the artifact is optional and derivative; it is not the default in-product reading surface
 
+The second slice of item 2 is now implemented:
+
+- student released-feedback detail may expose the current governed `assessment_feedback` artifact as an optional additive read block when a fresh export already exists
+- the staff gradebook drawer may expose the same current artifact for the currently selected submission version
+- current artifact discovery must reuse the governed slot contract on `Task Submission`; it must not invent a parallel assessment-specific file lookup shape
+- export/open actions may reuse the current artifact when it is still fresh relative to the released feedback source state
+
 See `12_phase4_student_feedback_navigator_and_reply_rfc.md` for the implemented Phase 4 runtime companion and planning history.
 
 The following remain outside the current baseline:

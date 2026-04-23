@@ -1,4 +1,5 @@
 import type { AttachmentPreviewItem } from '@/types/contracts/attachments/shared'
+import type { FeedbackArtifact } from './feedback_artifact'
 import type {
 	FeedbackPriority,
 	FeedbackThread,
@@ -70,6 +71,7 @@ export type ReleasedFeedbackDetail = {
 			open_url?: string | null
 		} | null
 	} | null
+	released_feedback_artifact?: FeedbackArtifact | null
 	allowed_actions: {
 		can_reply: boolean
 		can_set_learner_state: boolean

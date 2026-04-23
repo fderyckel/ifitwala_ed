@@ -1118,7 +1118,7 @@
 									:disabled="exportButtonDisabled"
 									@click="emit('export-feedback-pdf')"
 								>
-									{{ exportBusy ? 'Preparing…' : 'Export student PDF' }}
+									{{ exportBusy ? 'Preparing…' : exportButtonLabel }}
 								</button>
 								<button
 									v-if="drawer.outcome.is_published"
@@ -1141,7 +1141,7 @@
 							</div>
 						</div>
 						<p class="mt-3 text-xs text-ink/45">
-							Generate the current student-facing released feedback as a governed PDF artifact.
+							{{ exportHelperText }}
 							<span v-if="publicationDirty">Save publication state first.</span>
 							<span v-else-if="!hasExportableFeedbackRelease">
 								Student feedback must be visible before export.
@@ -1494,6 +1494,20 @@ const canSaveFeedbackPublication = computed(
 const hasExportableFeedbackRelease = computed(
 	() =>
 		(props.drawer?.feedback_workspace?.publication.feedback_visibility || 'hidden') !== 'hidden'
+);
+const currentFeedbackArtifactUrl = computed(
+	() =>
+		props.drawer?.feedback_artifact?.open_url ||
+		props.drawer?.feedback_artifact?.preview_url ||
+		null
+);
+const exportButtonLabel = computed(() =>
+	currentFeedbackArtifactUrl.value ? 'Open latest student PDF' : 'Prepare student PDF'
+);
+const exportHelperText = computed(() =>
+	currentFeedbackArtifactUrl.value
+		? 'The latest governed student-facing feedback PDF is ready to open.'
+		: 'Generate the current student-facing released feedback as a governed PDF artifact.'
 );
 const exportButtonDisabled = computed(
 	() =>

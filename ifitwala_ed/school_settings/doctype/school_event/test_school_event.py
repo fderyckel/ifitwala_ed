@@ -14,13 +14,17 @@ from ifitwala_ed.school_settings.doctype.school_event.school_event import School
 
 class TestSchoolEvent(TestCase):
     class _FakeOrgCommunicationDoc(frappe._dict):
-        def __init__(self, payload):
+        def __init__(self, payload, *, permission_errors=None):
             super().__init__(payload)
             self.checked_permissions = []
             self.saved = False
+            self.permission_errors = permission_errors or {}
 
         def check_permission(self, ptype):
             self.checked_permissions.append(ptype)
+            error = self.permission_errors.get(ptype)
+            if error:
+                raise error
 
         def set(self, fieldname, value):
             self[fieldname] = value
@@ -36,6 +40,18 @@ class TestSchoolEvent(TestCase):
         def save(self):
             self.saved = True
             return self
+
+    class _FakeSchoolEventDoc(frappe._dict):
+        def __init__(self, payload, *, permission_errors=None):
+            super().__init__(payload)
+            self.checked_permissions = []
+            self.permission_errors = permission_errors or {}
+
+        def check_permission(self, ptype):
+            self.checked_permissions.append(ptype)
+            error = self.permission_errors.get(ptype)
+            if error:
+                raise error
 
     @staticmethod
     def _raw_get_user_membership():
@@ -280,6 +296,159 @@ class TestSchoolEvent(TestCase):
         )
         self.assertEqual(event_doc.reference_type, "Org Communication")
         self.assertEqual(event_doc.reference_name, "ORG-COMM-26-04-00001")
+
+    def test_get_school_event_linked_announcement_summary_returns_publishable_empty_state(self):
+        event_doc = self._FakeSchoolEventDoc(
+            {
+                "name": "SE-26-04-00001",
+                "subject": "Parent MYP Workshop",
+                "school": "ISS",
+                "description": "Workshop presentation",
+                "audience": [frappe._dict({"audience_type": "All Guardians", "include_students": 0})],
+            }
+        )
+
+        with (
+            patch(
+                "ifitwala_ed.school_settings.doctype.school_event.school_event.frappe.get_doc",
+                return_value=event_doc,
+            ),
+            patch(
+                "ifitwala_ed.api.org_communication_quick_create.get_org_communication_quick_create_capability",
+                return_value={"enabled": True, "blocked_reason": None},
+            ),
+            patch(
+                "ifitwala_ed.school_settings.doctype.school_event.school_event.frappe.db.get_value",
+                return_value="ORG-ROOT",
+            ),
+        ):
+            payload = school_event_controller.get_school_event_linked_announcement_summary("SE-26-04-00001")
+
+        self.assertEqual(event_doc.checked_permissions, ["read"])
+        self.assertEqual(payload["state"], "none")
+        self.assertFalse(payload["linked"])
+        self.assertTrue(payload["can_publish"])
+        self.assertIsNone(payload["blocked_reason"])
+
+    def test_get_school_event_linked_announcement_summary_returns_linked_state(self):
+        event_doc = self._FakeSchoolEventDoc(
+            {
+                "name": "SE-26-04-00001",
+                "reference_type": "Org Communication",
+                "reference_name": "ORG-COMM-26-04-00001",
+            }
+        )
+        communication_doc = self._FakeOrgCommunicationDoc(
+            {
+                "name": "ORG-COMM-26-04-00001",
+                "title": "Parent MYP Workshop",
+                "status": "Published",
+                "portal_surface": "Portal Feed",
+            }
+        )
+        audience_summary = {
+            "primary": {
+                "scope_type": "School",
+                "scope_value": "ISS",
+                "scope_label": "Ifitwala Secondary School",
+                "recipients": ["Guardians"],
+                "include_descendants": 1,
+            },
+            "chips": [{"type": "recipient", "label": "Guardians"}],
+            "meta": {"audience_rows": 1, "recipient_count": 1, "has_multiple_audiences": 0},
+        }
+
+        with (
+            patch(
+                "ifitwala_ed.school_settings.doctype.school_event.school_event.frappe.get_doc",
+                side_effect=[event_doc, communication_doc],
+            ),
+            patch(
+                "ifitwala_ed.school_settings.doctype.school_event.school_event.frappe.db.exists",
+                return_value=True,
+            ),
+            patch(
+                "ifitwala_ed.api.org_comm_utils.build_audience_summary",
+                return_value=audience_summary,
+            ),
+        ):
+            payload = school_event_controller.get_school_event_linked_announcement_summary("SE-26-04-00001")
+
+        self.assertEqual(event_doc.checked_permissions, ["read"])
+        self.assertEqual(communication_doc.checked_permissions, ["read"])
+        self.assertEqual(payload["state"], "linked")
+        self.assertTrue(payload["linked"])
+        self.assertTrue(payload["can_open"])
+        self.assertEqual(payload["portal_surface"], "Portal Feed")
+        self.assertEqual(payload["audience_summary"], audience_summary)
+
+    def test_get_school_event_linked_announcement_summary_returns_permission_limited_state(self):
+        event_doc = self._FakeSchoolEventDoc(
+            {
+                "name": "SE-26-04-00001",
+                "reference_type": "Org Communication",
+                "reference_name": "ORG-COMM-26-04-00001",
+            }
+        )
+        communication_doc = self._FakeOrgCommunicationDoc(
+            {"name": "ORG-COMM-26-04-00001"},
+            permission_errors={"read": frappe.PermissionError()},
+        )
+
+        with (
+            patch(
+                "ifitwala_ed.school_settings.doctype.school_event.school_event.frappe.get_doc",
+                side_effect=[event_doc, communication_doc],
+            ),
+            patch(
+                "ifitwala_ed.school_settings.doctype.school_event.school_event.frappe.db.exists",
+                return_value=True,
+            ),
+        ):
+            payload = school_event_controller.get_school_event_linked_announcement_summary("SE-26-04-00001")
+
+        self.assertEqual(event_doc.checked_permissions, ["read"])
+        self.assertEqual(communication_doc.checked_permissions, ["read"])
+        self.assertEqual(payload["state"], "permission_limited")
+        self.assertTrue(payload["linked"])
+        self.assertFalse(payload["can_open"])
+
+    def test_publish_school_event_linked_announcement_reuses_companion_workflow(self):
+        event_doc = self._FakeSchoolEventDoc(
+            {
+                "name": "SE-26-04-00001",
+                "subject": "Parent MYP Workshop",
+                "school": "ISS",
+                "description": "Workshop presentation",
+                "audience": [frappe._dict({"audience_type": "All Guardians", "include_students": 0})],
+            }
+        )
+
+        with (
+            patch(
+                "ifitwala_ed.school_settings.doctype.school_event.school_event.frappe.get_doc",
+                return_value=event_doc,
+            ),
+            patch(
+                "ifitwala_ed.school_settings.doctype.school_event.school_event._get_linked_announcement_publish_blocked_reason",
+                return_value=None,
+            ),
+            patch(
+                "ifitwala_ed.school_settings.doctype.school_event.school_event.publish_companion_org_communication_for_event",
+                return_value={"name": "ORG-COMM-26-04-00001"},
+            ) as mocked_publish,
+            patch(
+                "ifitwala_ed.school_settings.doctype.school_event.school_event._get_linked_announcement_summary",
+                return_value={"state": "linked", "announcement_name": "ORG-COMM-26-04-00001"},
+            ) as mocked_summary,
+        ):
+            payload = school_event_controller.publish_school_event_linked_announcement("SE-26-04-00001")
+
+        self.assertEqual(event_doc.checked_permissions, ["write"])
+        mocked_publish.assert_called_once()
+        mocked_summary.assert_called_once_with(event_doc, user=frappe.session.user)
+        self.assertEqual(payload["status"], "published")
+        self.assertEqual(payload["name"], "ORG-COMM-26-04-00001")
 
     def test_sync_linked_org_communication_for_event_updates_title_audience_and_mirrored_message(self):
         event_doc = frappe._dict(

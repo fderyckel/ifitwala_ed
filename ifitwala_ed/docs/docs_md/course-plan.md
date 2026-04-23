@@ -3,8 +3,8 @@ title: "Course Plan: Shared Curriculum Version For A Course"
 slug: course-plan
 category: Curriculum
 doc_order: 4
-version: "1.5.8"
-last_change_date: "2026-04-22"
+version: "1.5.9"
+last_change_date: "2026-04-23"
 summary: "Define the governed shared curriculum version for a course, including SPA-first creation from the course-plan index, Desk-side year handover, activation rules, publication status, shared summary context, the calendar-aware curriculum timeline, and the governed workspace used to author units, quiz banks, and assignment-ready curriculum assets."
 seo_title: "Course Plan: Shared Curriculum Version For A Course"
 seo_description: "Define the governed shared curriculum version for a course, including the shared summary and the unit-plan backbone inherited by linked classes."
@@ -113,7 +113,7 @@ Test refs: `ifitwala_ed/api/test_teaching_plans.py`, `ifitwala_ed/api/test_quiz.
 - The staff course-plan index bootstraps both existing plans and create-ready course options in one bounded payload.
 - That index hides rollover-generated draft plans from non-coordinators so next-year draft handover work does not flood broader day-to-day course-plan lists.
 - New course-plan creation now starts from the staff SPA index and routes directly into the course-plan workspace.
-- Course-plan `academic_year` in the staff SPA is now chosen from actual `Academic Year` docs resolved for the selected course school scope; create/update mutations reject out-of-scope changes while preserving unchanged legacy values.
+- Course-plan `academic_year` in the staff SPA is now chosen from actual `Academic Year` docs resolved for the selected course school scope; create/update mutations reject out-of-scope values, and existing sites remediate legacy free-text or out-of-scope links through the one-shot patch `ifitwala_ed.patches.backfill_course_plan_academic_year_scope`.
 - The staff course-plan workspace now edits and renders Desk `Text Editor` fields as Desk-compatible rich text, including course summary, governed unit rich-text fields, and quiz question prompt/explanation.
 - The staff course-plan workspace now includes a bounded read-only curriculum timeline that lays governed unit durations across real instructional dates from the resolved `School Calendar`, shading holiday/break spans and skipping non-instructional days instead of guessing in the browser.
 - When the shared course plan is opened with optional `student_group` route context and that class is term-scoped, the curriculum timeline clamps to that term window instead of the full Academic Year.

@@ -217,16 +217,6 @@ def build_staff_course_plan_bundle(
         selected_unit = api.planning.normalize_text((timeline_current_unit or {}).get("unit_plan")) or units[0].get(
             "unit_plan"
         )
-    selected_unit_row = next((row for row in units if row.get("unit_plan") == selected_unit), None)
-    selected_programs = [
-        api.planning.normalize_text(selected_unit_row.get("program")) if selected_unit_row else "",
-        *[
-            api.planning.normalize_text(row.get("program"))
-            for row in (selected_unit_row or {}).get("standards", [])
-            if api.planning.normalize_text(row.get("program"))
-        ],
-    ]
-
     quiz_question_banks = api._fetch_course_quiz_question_banks(course_plan_row.get("course"))
     selected_quiz_question_bank = api.planning.normalize_text(quiz_question_bank)
     if selected_quiz_question_bank and not any(
@@ -239,16 +229,10 @@ def build_staff_course_plan_bundle(
     if not selected_quiz_question_bank and quiz_question_banks:
         selected_quiz_question_bank = quiz_question_banks[0].get("quiz_question_bank")
 
-    academic_year_options = api._fetch_academic_year_options_for_schools(
-        [course_plan_row.get("school")],
-        pinned_years={course_plan_row.get("school"): course_plan_row.get("academic_year")}
-        if api.planning.normalize_text(course_plan_row.get("school"))
-        else None,
-    ).get(api.planning.normalize_text(course_plan_row.get("school")), [])
-    program_options = api._fetch_program_options_for_course(
-        course_plan_row.get("course"),
-        pinned_programs=selected_programs,
+    academic_year_options = api._fetch_academic_year_options_for_schools([course_plan_row.get("school")]).get(
+        api.planning.normalize_text(course_plan_row.get("school")), []
     )
+    program_options = api._fetch_program_options_for_course(course_plan_row.get("course"))
 
     return {
         "meta": {

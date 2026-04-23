@@ -11,7 +11,9 @@ from ifitwala_ed.api.guardian_communications import get_guardian_communication_c
 from ifitwala_ed.api.guardian_finance import _resolve_finance_scope, get_guardian_finance_snapshot
 from ifitwala_ed.api.guardian_monitoring import (
     _get_monitoring_logs,
+    get_guardian_monitoring_published_results,
     get_guardian_monitoring_snapshot,
+    get_guardian_monitoring_student_logs,
     mark_guardian_student_log_read,
 )
 from ifitwala_ed.api.guardian_policy import (
@@ -458,13 +460,18 @@ class TestGuardianMonitoringPhase2(FrappeTestCase):
                 "ifitwala_ed.api.guardian_monitoring.frappe.utils.getdate",
                 return_value=frappe.utils.getdate("2026-03-13"),
             ),
-            patch("ifitwala_ed.api.guardian_monitoring.frappe.get_all", return_value=[row]),
             patch(
-                "ifitwala_ed.api.guardian_monitoring._get_unread_reference_names",
-                return_value=["LOG-1"],
+                "ifitwala_ed.api.guardian_monitoring.frappe.db.sql",
+                return_value=[{**row, "is_unread": 1}],
             ),
         ):
-            result = _get_monitoring_logs(user="guardian@example.com", student_names=["STU-1"], days=30)
+            result = _get_monitoring_logs(
+                user="guardian@example.com",
+                student_names=["STU-1"],
+                days=30,
+                start=0,
+                page_length=12,
+            )
 
         self.assertEqual(result[0]["summary"], long_log_text)
         self.assertGreater(len(result[0]["summary"]), 220)
@@ -497,15 +504,30 @@ class TestGuardianMonitoringPhase2(FrappeTestCase):
                 "is_unread": True,
             }
         ]
-        published_results = [
-            {
-                "task_outcome": "OUT-1",
-                "student": "STU-2",
-                "student_name": "Noah Example",
-                "title": "Science assessment",
-                "published_on": "2026-03-11 09:00:00",
-            }
-        ]
+        published_results = {
+            "items": [
+                {
+                    "task_outcome": "OUT-1",
+                    "student": "STU-2",
+                    "student_name": "Noah Example",
+                    "title": "Science assessment",
+                    "published_on": "2026-03-11 09:00:00",
+                }
+            ],
+            "total_count": 1,
+            "unread_total_count": 0,
+            "has_more": False,
+            "start": 0,
+            "page_length": 12,
+        }
+        student_log_page = {
+            "items": student_logs,
+            "total_count": 1,
+            "unread_total_count": 1,
+            "has_more": False,
+            "start": 0,
+            "page_length": 12,
+        }
 
         with (
             patch("ifitwala_ed.api.guardian_monitoring.frappe.session", frappe._dict({"user": "guardian@example.com"})),
@@ -517,15 +539,85 @@ class TestGuardianMonitoringPhase2(FrappeTestCase):
                 "ifitwala_ed.api.guardian_monitoring._resolve_guardian_scope",
                 return_value=("GRD-0001", children),
             ),
-            patch("ifitwala_ed.api.guardian_monitoring._get_monitoring_logs", return_value=student_logs),
-            patch("ifitwala_ed.api.guardian_monitoring._get_monitoring_results", return_value=published_results),
+            patch("ifitwala_ed.api.guardian_monitoring._get_monitoring_logs_page", return_value=student_log_page),
+            patch("ifitwala_ed.api.guardian_monitoring._get_monitoring_results_page", return_value=published_results),
         ):
-            payload = get_guardian_monitoring_snapshot(days=30)
+            payload = get_guardian_monitoring_snapshot(days=30, page_length=12)
 
         self.assertEqual(payload["counts"]["visible_student_logs"], 1)
         self.assertEqual(payload["counts"]["unread_visible_student_logs"], 1)
         self.assertEqual(payload["counts"]["published_results"], 1)
         self.assertEqual(payload["family"]["children"], children)
+        self.assertEqual(payload["student_logs"]["items"], student_logs)
+        self.assertEqual(payload["published_results"]["total_count"], 1)
+
+    def test_monitoring_student_logs_endpoint_returns_paged_payload(self):
+        children = [{"student": "STU-1", "full_name": "Amina Example", "school": "SCHOOL-1"}]
+        log_page = {
+            "items": [
+                {
+                    "student_log": "LOG-1",
+                    "student": "STU-1",
+                    "student_name": "Amina Example",
+                    "date": "2026-03-12",
+                    "summary": "Needs follow-up",
+                    "follow_up_status": "Open",
+                    "is_unread": True,
+                }
+            ],
+            "total_count": 3,
+            "unread_total_count": 1,
+            "has_more": True,
+            "start": 1,
+            "page_length": 12,
+        }
+
+        with (
+            patch("ifitwala_ed.api.guardian_monitoring.frappe.session", frappe._dict({"user": "guardian@example.com"})),
+            patch(
+                "ifitwala_ed.api.guardian_monitoring._resolve_guardian_scope",
+                return_value=("GRD-0001", children),
+            ),
+            patch("ifitwala_ed.api.guardian_monitoring._get_monitoring_logs_page", return_value=log_page),
+        ):
+            payload = get_guardian_monitoring_student_logs(start=1, page_length=12)
+
+        self.assertEqual(payload["items"], log_page["items"])
+        self.assertEqual(payload["total_count"], 3)
+        self.assertTrue(payload["has_more"])
+
+    def test_monitoring_published_results_endpoint_returns_paged_payload(self):
+        children = [{"student": "STU-1", "full_name": "Amina Example", "school": "SCHOOL-1"}]
+        result_page = {
+            "items": [
+                {
+                    "task_outcome": "OUT-1",
+                    "student": "STU-1",
+                    "student_name": "Amina Example",
+                    "title": "Science assessment",
+                    "published_on": "2026-03-11 09:00:00",
+                }
+            ],
+            "total_count": 2,
+            "unread_total_count": 0,
+            "has_more": True,
+            "start": 1,
+            "page_length": 12,
+        }
+
+        with (
+            patch("ifitwala_ed.api.guardian_monitoring.frappe.session", frappe._dict({"user": "guardian@example.com"})),
+            patch(
+                "ifitwala_ed.api.guardian_monitoring._resolve_guardian_scope",
+                return_value=("GRD-0001", children),
+            ),
+            patch("ifitwala_ed.api.guardian_monitoring._get_monitoring_results_page", return_value=result_page),
+        ):
+            payload = get_guardian_monitoring_published_results(start=1, page_length=12)
+
+        self.assertEqual(payload["items"], result_page["items"])
+        self.assertEqual(payload["total_count"], 2)
+        self.assertTrue(payload["has_more"])
 
     def test_mark_guardian_student_log_read_persists_seen_state_for_linked_child(self):
         children = [{"student": "STU-1", "full_name": "Amina Example", "school": "SCHOOL-1"}]

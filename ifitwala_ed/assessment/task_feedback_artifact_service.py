@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import re
+from datetime import datetime
 from html import escape
+from types import SimpleNamespace
 from typing import Any
 
 import frappe
@@ -17,6 +19,8 @@ from ifitwala_ed.api.file_access import (
     resolve_academic_file_preview_url,
 )
 from ifitwala_ed.assessment import task_feedback_service
+from ifitwala_ed.integrations.drive import tasks as drive_tasks
+from ifitwala_ed.integrations.drive.authority import get_current_drive_file_for_slot
 from ifitwala_ed.integrations.drive.content_uploads import upload_content_via_drive
 
 SUPPORTED_EXPORT_AUDIENCES = ("student",)
@@ -26,6 +30,7 @@ def export_released_feedback_pdf(
     outcome_id: str,
     *,
     audience: str = "student",
+    submission_id: str | None = None,
 ) -> dict[str, Any]:
     resolved_outcome_id = _clean_text(outcome_id)
     if not resolved_outcome_id:
@@ -35,6 +40,7 @@ def export_released_feedback_pdf(
     detail = task_feedback_service.build_released_feedback_detail_payload(
         resolved_outcome_id,
         audience=resolved_audience,
+        submission_id=submission_id,
     )
     if not detail.get("feedback_visible"):
         frappe.throw(_("Released feedback is not available for PDF export."), frappe.PermissionError)
@@ -42,6 +48,15 @@ def export_released_feedback_pdf(
     submission_id = _clean_text(detail.get("task_submission"))
     if not submission_id:
         frappe.throw(_("Released feedback export requires a bound Task Submission version."))
+
+    current_artifact = get_current_released_feedback_pdf_artifact(
+        resolved_outcome_id,
+        audience=resolved_audience,
+        submission_id=submission_id,
+        detail=detail,
+    )
+    if current_artifact:
+        return current_artifact
 
     html = _render_released_feedback_html(detail)
 
@@ -62,23 +77,93 @@ def export_released_feedback_pdf(
         mime_type_hint="application/pdf",
     )
     return _build_artifact_payload(
-        detail=detail,
         submission_id=submission_id,
-        file_doc=file_doc,
+        submission_version=((detail.get("feedback") or {}).get("submission_version")),
+        file_id=getattr(file_doc, "name", None),
+        file_name=getattr(file_doc, "file_name", None),
+        file_url=getattr(file_doc, "file_url", None),
         preview_status=(finalize_response or {}).get("preview_status"),
+    )
+
+
+def get_current_released_feedback_pdf_artifact(
+    outcome_id: str,
+    *,
+    audience: str = "student",
+    submission_id: str | None = None,
+    detail: dict[str, Any] | None = None,
+) -> dict[str, Any] | None:
+    resolved_outcome_id = _clean_text(outcome_id)
+    if not resolved_outcome_id:
+        frappe.throw(_("Task Outcome is required for feedback artifact lookup."))
+
+    resolved_audience = _normalize_export_audience(audience)
+    released = detail or task_feedback_service.build_released_result_payload(
+        resolved_outcome_id,
+        audience=resolved_audience,
+        submission_id=submission_id,
+    )
+    if not released.get("feedback_visible"):
+        return None
+
+    resolved_submission_id = _clean_text(released.get("task_submission"))
+    if not resolved_submission_id:
+        return None
+
+    submission_row = frappe.db.get_value(
+        "Task Submission",
+        resolved_submission_id,
+        ["name", "student", "school"],
+        as_dict=True,
+    )
+    if not submission_row or not _clean_text(submission_row.get("student")):
+        return None
+
+    drive_file = get_current_drive_file_for_slot(
+        primary_subject_type="Student",
+        primary_subject_id=_clean_text(submission_row.get("student")),
+        slot=_feedback_export_slot(resolved_submission_id, submission_row, resolved_audience),
+        school=_clean_text(submission_row.get("school")),
+        attached_doctype="Task Submission",
+        attached_name=resolved_submission_id,
+        fields=("file", "preview_status", "modified", "creation"),
+    )
+    if not drive_file or not _clean_text(drive_file.get("file")):
+        return None
+    if not _artifact_is_fresh(drive_file, released, outcome_id=resolved_outcome_id):
+        return None
+
+    file_row = frappe.db.get_value(
+        "File",
+        _clean_text(drive_file.get("file")),
+        ["name", "file_name", "file_url"],
+        as_dict=True,
+    )
+    if not file_row:
+        return None
+
+    return _build_artifact_payload(
+        submission_id=resolved_submission_id,
+        submission_version=((released.get("feedback") or {}).get("submission_version")),
+        file_id=file_row.get("name"),
+        file_name=file_row.get("file_name"),
+        file_url=file_row.get("file_url"),
+        preview_status=drive_file.get("preview_status"),
     )
 
 
 def _build_artifact_payload(
     *,
-    detail: dict[str, Any],
     submission_id: str,
-    file_doc,
+    submission_version: Any = None,
+    file_id: Any = None,
+    file_name: Any = None,
+    file_url: Any = None,
     preview_status: Any = None,
 ) -> dict[str, Any]:
-    file_id = _clean_text(getattr(file_doc, "name", None))
-    file_name = _clean_text(getattr(file_doc, "file_name", None))
-    file_url = _clean_text(getattr(file_doc, "file_url", None))
+    file_id = _clean_text(file_id)
+    file_name = _clean_text(file_name)
+    file_url = _clean_text(file_url)
     preview_url = resolve_academic_file_preview_url(
         file_name=file_id,
         file_url=file_url,
@@ -97,7 +182,7 @@ def _build_artifact_payload(
         "file_id": file_id,
         "file_name": file_name,
         "task_submission": submission_id,
-        "submission_version": ((detail.get("feedback") or {}).get("submission_version")),
+        "submission_version": submission_version,
         "preview_status": _clean_text(preview_status),
         "open_url": open_url,
         "preview_url": preview_url,
@@ -114,6 +199,52 @@ def _build_artifact_payload(
             open_url=open_url,
         ),
     }
+
+
+def _feedback_export_slot(submission_id: str, submission_row: dict[str, Any], audience: str) -> str:
+    authoritative = drive_tasks.build_task_feedback_export_upload_contract(
+        SimpleNamespace(
+            name=submission_id,
+            student=_clean_text(submission_row.get("student")),
+            school=_clean_text(submission_row.get("school")),
+        ),
+        audience=audience,
+    )
+    return _clean_text(authoritative.get("slot")) or ""
+
+
+def _artifact_is_fresh(drive_file: dict[str, Any], released: dict[str, Any], *, outcome_id: str) -> bool:
+    artifact_modified = _coerce_datetime(drive_file.get("modified")) or _coerce_datetime(drive_file.get("creation"))
+    if not artifact_modified:
+        return False
+
+    source_timestamps = [
+        _coerce_datetime((released.get("feedback") or {}).get("modified")),
+        _coerce_datetime((released.get("publication") or {}).get("legacy_published_on")),
+        _coerce_datetime(frappe.db.get_value("Task Outcome", outcome_id, "modified")),
+    ]
+    relevant_sources = [value for value in source_timestamps if value is not None]
+    if not relevant_sources:
+        return True
+    return artifact_modified >= max(relevant_sources)
+
+
+def _coerce_datetime(value: Any) -> datetime | None:
+    cleaned = _clean_text(value)
+    if not cleaned:
+        return None
+    try:
+        from frappe.utils import get_datetime
+
+        coerced = get_datetime(cleaned)
+        if isinstance(coerced, datetime):
+            return coerced
+    except Exception:
+        pass
+    try:
+        return datetime.fromisoformat(cleaned.replace("Z", "+00:00"))
+    except ValueError:
+        return None
 
 
 def _build_export_filename(detail: dict[str, Any]) -> str:

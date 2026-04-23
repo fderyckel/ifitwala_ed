@@ -27,6 +27,11 @@ def get_student_released_feedback_detail(outcome_id: str) -> dict[str, Any]:
         audience="student",
     )
     detail["document"] = _build_student_document_payload(detail.get("task_submission"))
+    detail["released_feedback_artifact"] = task_feedback_artifact_service.get_current_released_feedback_pdf_artifact(
+        outcome_id,
+        audience="student",
+        detail=detail,
+    )
     return detail
 
 
@@ -39,6 +44,7 @@ def get_guardian_released_feedback_detail(outcome_id: str) -> dict[str, Any]:
         audience="guardian",
     )
     detail["document"] = None
+    detail["released_feedback_artifact"] = None
     return detail
 
 

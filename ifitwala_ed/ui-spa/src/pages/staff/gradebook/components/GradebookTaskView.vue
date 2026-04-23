@@ -1054,12 +1054,23 @@ async function exportFeedbackPdf() {
 	if (!selectedOutcomeId.value) return;
 	exportBusy.value = true;
 	try {
+		const currentArtifactUrl =
+			drawer.value?.feedback_artifact?.open_url || drawer.value?.feedback_artifact?.preview_url;
+		if (currentArtifactUrl) {
+			window.open(currentArtifactUrl, '_blank', 'noopener,noreferrer');
+			showSuccessToast('Opened the latest feedback PDF.');
+			return;
+		}
 		const response = await gradebookService.exportFeedbackPdf({
 			outcome_id: selectedOutcomeId.value,
+			submission_id: drawer.value?.selected_submission?.submission_id || undefined,
 		});
 		const targetUrl = response.artifact?.open_url || response.artifact?.preview_url;
 		if (!targetUrl) {
 			throw new Error('Missing feedback artifact URL');
+		}
+		if (drawer.value) {
+			drawer.value.feedback_artifact = response.artifact;
 		}
 		window.open(targetUrl, '_blank', 'noopener,noreferrer');
 		showSuccessToast('Feedback PDF prepared.');

@@ -16,12 +16,16 @@ class TestUnitPlanRuntime(TestCase):
         planning.ensure_linked_unit_plan_standards = Mock()
         planning.next_unit_order = Mock(return_value=30)
 
+        teaching_plans_api = types.ModuleType("ifitwala_ed.api.teaching_plans")
+        teaching_plans_api._validate_course_program_link = Mock()
+
         nestedset = types.ModuleType("frappe.utils.nestedset")
         nestedset.get_descendants_of = lambda doctype, name: []
 
         with stubbed_frappe(
             extra_modules={
                 "ifitwala_ed.curriculum.planning": planning,
+                "ifitwala_ed.api.teaching_plans": teaching_plans_api,
                 "frappe.utils.nestedset": nestedset,
             }
         ) as frappe:
@@ -46,15 +50,58 @@ class TestUnitPlanRuntime(TestCase):
             frappe.db.exists = _exists
             module = import_fresh("ifitwala_ed.curriculum.doctype.unit_plan.unit_plan")
 
-        doc = module.UnitPlan()
-        doc.name = "UNIT-PLAN-1"
-        doc.course_plan = "COURSE-PLAN-1"
-        doc.title = "Cells and Systems"
-        doc.unit_order = 20
+            doc = module.UnitPlan()
+            doc.name = "UNIT-PLAN-1"
+            doc.course_plan = "COURSE-PLAN-1"
+            doc.title = "Cells and Systems"
+            doc.unit_order = 20
 
-        with self.assertRaisesRegex(StubValidationError, "Unit Order 20"):
-            doc.validate()
+            with self.assertRaisesRegex(StubValidationError, "Unit Order 20"):
+                doc.validate()
 
+        teaching_plans_api._validate_course_program_link.assert_called_once_with(
+            course="COURSE-1",
+            program=None,
+        )
         planning.ensure_linked_unit_plan_standards.assert_called_once_with(doc)
         planning.next_unit_order.assert_not_called()
         self.assertEqual(doc.unit_order, 20)
+
+    def test_validate_rejects_program_not_linked_to_course(self):
+        planning = types.ModuleType("ifitwala_ed.curriculum.planning")
+        planning.normalize_text = lambda value: str(value or "").strip()
+        planning.normalize_long_text = lambda value: value
+        planning.get_course_plan_row = lambda course_plan: {"course": "COURSE-1", "school": "SCH-1"}
+        planning.ensure_linked_unit_plan_standards = Mock()
+        planning.next_unit_order = Mock(return_value=30)
+
+        teaching_plans_api = types.ModuleType("ifitwala_ed.api.teaching_plans")
+        teaching_plans_api._validate_course_program_link = Mock(side_effect=StubValidationError("Program MYP invalid"))
+
+        nestedset = types.ModuleType("frappe.utils.nestedset")
+        nestedset.get_descendants_of = lambda doctype, name: []
+
+        with stubbed_frappe(
+            extra_modules={
+                "ifitwala_ed.curriculum.planning": planning,
+                "ifitwala_ed.api.teaching_plans": teaching_plans_api,
+                "frappe.utils.nestedset": nestedset,
+            }
+        ):
+            module = import_fresh("ifitwala_ed.curriculum.doctype.unit_plan.unit_plan")
+
+            doc = module.UnitPlan()
+            doc.name = "UNIT-PLAN-1"
+            doc.course_plan = "COURSE-PLAN-1"
+            doc.title = "Cells and Systems"
+            doc.program = "MYP"
+            doc.unit_order = 20
+
+            with self.assertRaisesRegex(StubValidationError, "Program MYP invalid"):
+                doc.validate()
+
+        teaching_plans_api._validate_course_program_link.assert_called_once_with(
+            course="COURSE-1",
+            program="MYP",
+        )
+        planning.ensure_linked_unit_plan_standards.assert_not_called()

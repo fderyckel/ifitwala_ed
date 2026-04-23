@@ -663,6 +663,22 @@ If a critical assumption cannot be verified from the workspace, stop and say exa
 - Scope stubs/monkeypatches inside the test, fixture, or context manager and restore them automatically.
 - A test that passes in isolation but contaminates later imports or framework cleanup is broken.
 
+### 15.2 Stub And Import-Surface Discipline
+
+- Treat test stubs, fake modules, fixture helpers, and import shims as contract surfaces, not shortcuts.
+- When runtime imports change, update every affected test stub in the same change.
+- Before changing production code for a failing unit import, determine whether the failure is:
+  - test-harness drift
+  - a real runtime contract break
+- Prefer extending shared stub builders over creating narrow ad-hoc `ModuleType(...)` replacements inside individual tests.
+- Any test that overrides shared modules such as `frappe.utils`, `ifitwala_ed.utilities.image_utils`, or similar cross-cutting helpers must preserve every export required by the modules under test.
+- When code imports through a package surface such as `from ifitwala_ed.assessment import task_feedback_artifact_service`, the stub must satisfy that exact package-level import path, not only the leaf module path.
+- If logic moves from a public API module to an internal utility module, preserve the old public export with a thin compatibility wrapper or equivalent import unless an approved contract change updates all callers and tests together.
+- Public module surfaces used by tests or callers are part of the runtime contract; removing a previously available symbol without coordinated updates is a bug.
+- Renamed helpers in shared utilities must trigger a search for stale test doubles and fake-module exports; do not stop after fixing runtime imports.
+- Verify failing import-path or stub-heavy tests with the same Python major/minor version as the failing environment when syntax or import behavior may differ.
+- If a module is widely imported or frequently stubbed, agents should proactively check repository tests for partial fake-module replacements before adding new imports to that module.
+
 ---
 
 ## 16. Frappe Security Model (Learned)

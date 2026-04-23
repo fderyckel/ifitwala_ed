@@ -3,7 +3,7 @@ title: "Student: Your Learner Records Made Simple"
 slug: student
 category: Students
 doc_order: 1
-version: "1.3.1"
+version: "1.3.2"
 last_change_date: "2026-04-23"
 summary: "Manage learner records with confidence—from admissions intake to alumni status. Understand when to use the admissions pipeline versus importing existing students."
 seo_title: "Student: Your Learner Records Made Simple"
@@ -323,6 +323,7 @@ A: Common reasons: missing `allow_direct_creation = 1`, duplicate emails, missin
 - **Import Flag**: `allow_direct_creation` check field required for imports
 - **Side Effects**: imported/direct student creation keeps user creation, Student Patient creation, contact linking, and image sync; applicant promotion now also materializes the canonical `Contact.links -> Student` binding synchronously.
 - **Legacy remediation**: existing sites backfill missing `Contact.links -> Student` rows through the one-shot patch `ifitwala_ed.patches.backfill_student_contact_links`
+- **Profile-image cleanup**: runtime Student saves no longer rename or repair legacy image files; existing sites normalize legacy `Student.student_image` rows through the one-shot patch `ifitwala_ed.patches.backfill_student_profile_images`
 
 ### Permission Matrix
 

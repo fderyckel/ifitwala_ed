@@ -161,6 +161,7 @@ def get_grid(api, filters=None, **kwargs):
 def get_drawer(api, outcome_id: str, submission_id: str | None = None, version: int | str | None = None):
     from ifitwala_ed.api import task_submission as task_submission_api
     from ifitwala_ed.assessment import (
+        task_feedback_artifact_service,
         task_feedback_comment_bank_service,
         task_feedback_service,
         task_feedback_thread_service,
@@ -286,6 +287,13 @@ def get_drawer(api, outcome_id: str, submission_id: str | None = None, version: 
             outcome_id=outcome_id,
             submission_id=selected_submission_id,
         )
+    feedback_artifact = None
+    if selected_submission_id:
+        feedback_artifact = task_feedback_artifact_service.get_current_released_feedback_pdf_artifact(
+            outcome_id,
+            audience="student",
+            submission_id=selected_submission_id,
+        )
     comment_bank = task_feedback_comment_bank_service.build_comment_bank_payload(
         outcome_id,
         actor=frappe.session.user,
@@ -351,6 +359,7 @@ def get_drawer(api, outcome_id: str, submission_id: str | None = None, version: 
         "latest_submission": latest_submission,
         "selected_submission": selected_submission,
         "feedback_workspace": feedback_workspace,
+        "feedback_artifact": feedback_artifact,
         "feedback_threads": feedback_threads,
         "comment_bank": comment_bank,
         "submission_versions": submission_versions,

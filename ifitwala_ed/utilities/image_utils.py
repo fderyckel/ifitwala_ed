@@ -1389,8 +1389,8 @@ def handle_file_after_insert(doc, method=None):
         if is_governed_file(doc.name):
             return
 
-        # Defer legacy Student images until after rename_student_image()
-        # puts them into /files/student/ with secure suffix.
+        # Legacy Student profile-image normalization is patch-driven now.
+        # Runtime file hooks only process already-normalized public Student files.
         if not doc.file_url or not doc.file_url.startswith("/files/student/"):
             return
 
@@ -1468,7 +1468,7 @@ def rebuild_resized_images(doctype):
 
 
 # ────────────────────────────────────────────────────────────────────────────
-# Central entry point (used by Student.rename_student_image)
+# Central entry point for legacy public Student image processing during cleanup.
 # ────────────────────────────────────────────────────────────────────────────
 def process_single_file(file_doc):
     """Create all four WebP sizes for a File (idempotent)."""

@@ -422,6 +422,129 @@ def archive_linked_org_communication_for_event(event_doc) -> str | None:
     return communication_doc.name
 
 
+def _get_related_record_publish_conflict(event_doc) -> str | None:
+    reference_type = _safe_text(_doc_row_value(event_doc, "reference_type"))
+    reference_name = _safe_text(_doc_row_value(event_doc, "reference_name"))
+    if not reference_type or not reference_name or reference_type == ORG_COMMUNICATION_REFERENCE_TYPE:
+        return None
+
+    return _(
+        "This event already uses its Related Record slot for {reference_type} {reference_name}. Clear that related record before publishing a linked announcement."
+    ).format(reference_type=reference_type, reference_name=reference_name)
+
+
+def _coerce_exception_message(exc: Exception) -> str | None:
+    for candidate in (
+        getattr(exc, "message", None),
+        getattr(exc, "msg", None),
+        getattr(exc, "args", None),
+        str(exc),
+    ):
+        if isinstance(candidate, (list, tuple)):
+            for item in candidate:
+                message = _safe_text(item)
+                if message:
+                    return message
+            continue
+        message = _safe_text(candidate)
+        if message:
+            return message
+    return None
+
+
+def _get_linked_announcement_publish_blocked_reason(event_doc, *, user: str | None = None) -> str | None:
+    from ifitwala_ed.api.org_communication_quick_create import get_org_communication_quick_create_capability
+
+    capability = get_org_communication_quick_create_capability(user=user)
+    if not capability.get("enabled"):
+        return _safe_text(capability.get("blocked_reason")) or _(
+            "You do not have permission to publish companion announcements."
+        )
+
+    related_record_conflict = _get_related_record_publish_conflict(event_doc)
+    if related_record_conflict:
+        return related_record_conflict
+
+    try:
+        _resolve_school_event_organization(event_doc)
+        build_companion_org_communication_audiences(event_doc)
+    except (frappe.ValidationError, frappe.PermissionError) as exc:
+        return _coerce_exception_message(exc)
+
+    if not _safe_text(_doc_row_value(event_doc, "description")):
+        return _("Add an event description before publishing a linked announcement from this form.")
+
+    return None
+
+
+def _get_linked_announcement_summary(event_doc, *, user: str | None = None) -> dict:
+    from ifitwala_ed.api.org_comm_utils import build_audience_summary
+
+    communication_name = _get_linked_org_communication_name(event_doc)
+    if communication_name:
+        if not frappe.db.exists(ORG_COMMUNICATION_REFERENCE_TYPE, communication_name):
+            return {
+                "linked": True,
+                "announcement_name": communication_name,
+                "title": None,
+                "status": None,
+                "portal_surface": None,
+                "audience_summary": None,
+                "can_open": False,
+                "can_publish": False,
+                "blocked_reason": _(
+                    "This event points to a linked announcement that could not be resolved. Ask an administrator to repair the link before publishing again."
+                ),
+                "state": "missing",
+            }
+
+        communication_doc = frappe.get_doc(ORG_COMMUNICATION_REFERENCE_TYPE, communication_name)
+        try:
+            communication_doc.check_permission("read")
+        except frappe.PermissionError:
+            return {
+                "linked": True,
+                "announcement_name": communication_name,
+                "title": None,
+                "status": None,
+                "portal_surface": None,
+                "audience_summary": None,
+                "can_open": False,
+                "can_publish": False,
+                "blocked_reason": _(
+                    "You can manage this event, but you do not have permission to open the linked announcement."
+                ),
+                "state": "permission_limited",
+            }
+
+        return {
+            "linked": True,
+            "announcement_name": communication_name,
+            "title": _safe_text(_doc_row_value(communication_doc, "title")) or communication_name,
+            "status": _safe_text(_doc_row_value(communication_doc, "status")) or None,
+            "portal_surface": _safe_text(_doc_row_value(communication_doc, "portal_surface")) or None,
+            "audience_summary": build_audience_summary(communication_name),
+            "can_open": True,
+            "can_publish": False,
+            "blocked_reason": None,
+            "state": "linked",
+        }
+
+    blocked_reason = _get_linked_announcement_publish_blocked_reason(event_doc, user=user)
+    return {
+        "linked": False,
+        "announcement_name": None,
+        "title": None,
+        "status": None,
+        "portal_surface": None,
+        "audience_summary": None,
+        "can_open": False,
+        "can_publish": not bool(blocked_reason),
+        "blocked_reason": blocked_reason,
+        "state": "none",
+    }
+
+
 # ============================================================================
 #  SCHOOL EVENT DOCUMENT
 # ============================================================================
@@ -1229,6 +1352,56 @@ def get_school_events_for_user(start, end, user=None, filters=None):
 # ============================================================================
 #  PUBLIC WRAPPER
 # ============================================================================
+
+
+@frappe.whitelist()
+def get_school_event_linked_announcement_summary(event: str):
+    event_name = _safe_text(event)
+    if not event_name:
+        frappe.throw(_("School Event is required."), frappe.ValidationError)
+
+    event_doc = frappe.get_doc("School Event", event_name)
+    event_doc.check_permission("read")
+    return _get_linked_announcement_summary(event_doc, user=frappe.session.user)
+
+
+@frappe.whitelist()
+def publish_school_event_linked_announcement(event: str):
+    event_name = _safe_text(event)
+    if not event_name:
+        frappe.throw(_("School Event is required."), frappe.ValidationError)
+
+    event_doc = frappe.get_doc("School Event", event_name)
+    event_doc.check_permission("write")
+
+    communication_name = _get_linked_org_communication_name(event_doc)
+    if communication_name:
+        if frappe.db.exists(ORG_COMMUNICATION_REFERENCE_TYPE, communication_name):
+            return {
+                "status": "already_linked",
+                "name": communication_name,
+                "summary": _get_linked_announcement_summary(event_doc, user=frappe.session.user),
+            }
+        frappe.throw(
+            _(
+                "This event points to a linked announcement that could not be resolved. Ask an administrator to repair the link before publishing again."
+            ),
+            frappe.ValidationError,
+        )
+
+    blocked_reason = _get_linked_announcement_publish_blocked_reason(event_doc, user=frappe.session.user)
+    if blocked_reason:
+        frappe.throw(blocked_reason, frappe.ValidationError)
+
+    published = publish_companion_org_communication_for_event(
+        event_doc=event_doc,
+        request_id=f"desk-event-{frappe.generate_hash(length=10)}",
+    )
+    return {
+        "status": "published",
+        "name": published.get("name"),
+        "summary": _get_linked_announcement_summary(event_doc, user=frappe.session.user),
+    }
 
 
 @frappe.whitelist()

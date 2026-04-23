@@ -3,8 +3,8 @@ title: "Unit Plan: Governed Curriculum Backbone Inside a Course Plan"
 slug: unit-plan
 category: Curriculum
 doc_order: 5
-version: "1.5.2"
-last_change_date: "2026-04-22"
+version: "1.5.3"
+last_change_date: "2026-04-23"
 summary: "Define the shared unit backbone for a course plan, including validated standards alignment, pedagogy, reflections, and reusable context that class teaching plans inherit."
 seo_title: "Unit Plan: Governed Curriculum Backbone Inside a Course Plan"
 seo_description: "Define the shared unit backbone for a course plan, including standards alignment, pedagogy, and reflections that class teaching plans inherit."
@@ -97,7 +97,7 @@ Test refs: `ifitwala_ed/curriculum/doctype/unit_plan/test_unit_plan.py`
 - `Unit Plan` owns ordering within a `Course Plan` through `unit_order`.
 - `unit_plan.py` normalizes the carried curriculum fields, assigns the next `unit_order` when one is missing, and rejects duplicate `unit_order` values at runtime. Legacy collisions are remediated through one-shot patches.
 - `ifitwala_ed.api.teaching_plans.save_unit_plan` now owns SPA-side governed unit mutations, including inline standards and shared reflection rows.
-- In the staff course-plan workspace, `program` is now selected from actual `Program` docs already linked to the unit course; save mutations reject changed program values that are not linked to that course while preserving unchanged legacy values.
+- In the staff course-plan workspace, `program` is now selected from active `Program` docs already linked to the unit course; runtime rejects invalid or archived program values, and existing sites remediate legacy missing/unlinked/archived values through the one-shot patch `ifitwala_ed.patches.backfill_unit_plan_program_scope`.
 - Shared reflection `academic_year` and `school` remain parent-derived from the selected `Course Plan` in the SPA instead of being hand-entered in the governed unit overlay.
 - The staff course-plan workspace now edits and renders unit `Text Editor` fields (`overview`, `essential_understanding`, `misconceptions`, `content`, `skills`, `concepts`) and reflection `Text Editor` fields with Desk-compatible rich text instead of plain textareas/plain interpolation.
 - The SPA unit authoring surface is now isolated in `ui-spa/src/components/planning/course-plan-workspace/CoursePlanUnitEditor.vue`, while `CoursePlanWorkspace.vue` stays the bootstrap/save owner. Future analytics or side panels must compose next to that editor instead of duplicating unit mutation logic.

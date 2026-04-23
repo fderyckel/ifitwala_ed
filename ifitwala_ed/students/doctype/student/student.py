@@ -30,7 +30,7 @@ Students may be created through TWO explicit, supported pathways:
        - User creation
        - Student Patient creation
        - Contact linking
-       - Image renaming & syncing
+       - Image syncing
        - Sibling synchronization
 
 Invariant:
@@ -42,22 +42,13 @@ This file intentionally enforces that invariant in Python,
 not at schema level, to preserve import and migration safety.
 """
 
-import os
-import random
-import string
-
 import frappe
 from frappe import _
 from frappe.desk.form.linked_with import get_linked_doctypes
 from frappe.model.document import Document
-from frappe.utils import get_files_path, get_link_to_form, getdate, today, validate_email_address
+from frappe.utils import get_link_to_form, getdate, today, validate_email_address
 
 from ifitwala_ed.accounting.account_holder_utils import validate_account_holder_for_student
-from ifitwala_ed.governance.policy_utils import (
-    MEDIA_CONSENT_POLICY_KEY,
-    has_applicant_policy_acknowledgement,
-)
-from ifitwala_ed.integrations.drive.authority import is_governed_file
 
 
 class Student(Document):
@@ -172,7 +163,6 @@ class Student(Document):
         self.ensure_contact_and_link()
 
     def on_update(self):
-        self.rename_student_image()
         self.update_student_enabled_status()
         self.sync_student_contact_image()
         self.sync_reciprocal_siblings()
@@ -236,140 +226,7 @@ class Student(Document):
         else:
             frappe.db.set_value("Student Patient", patient, "status", "Active")
 
-    def _has_media_consent(self) -> bool:
-        if not self.student_applicant:
-            return False
-        return has_applicant_policy_acknowledgement(
-            policy_key=MEDIA_CONSENT_POLICY_KEY,
-            student_applicant=self.student_applicant,
-        )
-
-    def rename_student_image(self):
-        # Only proceed if there's a student_image
-        if not self.student_image:
-            return
-
-        if not self._has_media_consent():
-            return
-
-        try:
-            file_name = frappe.db.get_value(
-                "File",
-                {"file_url": self.student_image, "attached_to_doctype": "Student", "attached_to_name": self.name},
-                "name",
-            )
-            if file_name and is_governed_file(file_name):
-                return
-
-            student_id = self.name
-            current_file_name = os.path.basename(self.student_image)
-
-            # Check if it already has "STU-XXXX_XXXXXX.jpg" format
-            if (
-                current_file_name.startswith(student_id + "_")
-                and len(current_file_name.split("_")[1].split(".")[0]) == 6
-                and current_file_name.split(".")[1].lower() in ["jpg", "jpeg", "png", "gif"]
-                and self.student_image.startswith("/files/student/")
-            ):
-                return
-
-            file_extension = os.path.splitext(self.student_image)[1]
-            random_suffix = "".join(random.choices(string.ascii_letters + string.digits, k=6))
-            expected_file_name = f"{student_id}_{random_suffix}{file_extension}"
-
-            student_folder_fm_path = "Home/student"
-            expected_file_path = os.path.join(student_folder_fm_path, expected_file_name)
-
-            # Check if a file with the new expected name already exists
-            if frappe.db.exists("File", {"file_url": f"/files/{expected_file_path}"}):
-                frappe.log_error(
-                    title=_("Image Rename Skipped"),
-                    message=_("Image {0} already exists for student {1}").format(expected_file_name, student_id),
-                )
-                return
-
-            # Check if the original file doc exists
-            file_name = frappe.db.get_value(
-                "File",
-                {"file_url": self.student_image, "attached_to_doctype": "Student", "attached_to_name": self.name},
-                "name",
-            )
-
-            if not file_name:
-                frappe.log_error(
-                    title=_("Missing File Doc"),
-                    message=_("No File doc found for {0}, attached_to=Student {1}").format(
-                        self.student_image, self.name
-                    ),
-                )
-                return
-
-            file_doc = frappe.get_doc("File", file_name)
-
-            # Ensure the "student" folder exists
-            if not frappe.db.exists("File", {"file_name": "student", "folder": "Home"}):
-                student_folder = frappe.get_doc(
-                    {"doctype": "File", "file_name": "student", "is_folder": 1, "folder": "Home"}
-                )
-                student_folder.insert()
-
-            # Rename the file on disk
-            new_file_path = os.path.join(get_files_path(), "student", expected_file_name)
-            os.makedirs(os.path.dirname(new_file_path), exist_ok=True)
-
-            old_rel_path = (file_doc.file_url or "").lstrip("/")
-            if not old_rel_path:
-                frappe.throw(_("Original file URL is missing."))
-            old_file_path = frappe.utils.get_site_path(old_rel_path)
-
-            if os.path.exists(old_file_path):
-                os.rename(old_file_path, new_file_path)
-                new_url = f"/files/student/{expected_file_name}"
-                frappe.db.set_value(
-                    "File",
-                    file_doc.name,
-                    {
-                        "file_name": expected_file_name,
-                        "file_url": new_url,
-                        "folder": "Home/student",
-                        "is_private": 0,
-                    },
-                    update_modified=False,
-                )
-            else:
-                frappe.throw(_("Original file not found: {file_path}").format(file_path=old_file_path))
-
-            # Update doc.student_image to reflect new URL
-            frappe.db.set_value(
-                "Student",
-                self.name,
-                "student_image",
-                new_url,
-                update_modified=False,
-            )
-            self.student_image = new_url
-
-            from ifitwala_ed.utilities.image_utils import process_single_file
-
-            file_doc.file_url = new_url
-            process_single_file(file_doc)
-
-            frappe.msgprint(
-                _("Image renamed to {file_name} and moved to /files/student/").format(file_name=expected_file_name)
-            )
-
-        except Exception as e:
-            frappe.log_error(
-                title=_("Student Image Error"), message=f"Error handling student image for {self.name}: {e}"
-            )
-            frappe.msgprint(
-                _("Error handling student image for {student_name}: {error}").format(
-                    student_name=self.name,
-                    error=e,
-                )
-            )
-
-    # Sync the student image to the linked contact. This method is called after the student image is renamed
+    # Sync the student image to the linked contact.
     def sync_student_contact_image(self):
         if not self.student_image:
             return

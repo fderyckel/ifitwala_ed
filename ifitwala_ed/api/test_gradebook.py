@@ -76,6 +76,19 @@ def _gradebook_stub_modules(
             "preview_url": "/preview/feedback-pdf",
             "attachment_preview": {"kind": "pdf", "preview_mode": "pdf_embed"},
         }
+    if not hasattr(artifact_service, "get_current_released_feedback_pdf_artifact"):
+        artifact_service.get_current_released_feedback_pdf_artifact = (
+            lambda outcome_id, audience="student", submission_id=None, detail=None: {
+                "file_id": "FILE-1",
+                "file_name": "released-feedback.pdf",
+                "task_submission": submission_id or "TSU-1",
+                "submission_version": 1,
+                "preview_status": "ready",
+                "open_url": "/open/feedback-pdf",
+                "preview_url": "/preview/feedback-pdf",
+                "attachment_preview": {"kind": "pdf", "preview_mode": "pdf_embed"},
+            }
+        )
     comment_bank_service = task_feedback_comment_bank_service or types.ModuleType(
         "ifitwala_ed.assessment.task_feedback_comment_bank_service"
     )
@@ -164,9 +177,10 @@ class TestGradebookApi(TestCase):
         captured: dict[str, object] = {}
         artifact_service = types.ModuleType("ifitwala_ed.assessment.task_feedback_artifact_service")
 
-        def fake_export(outcome_id, audience="student"):
+        def fake_export(outcome_id, audience="student", submission_id=None):
             captured["outcome_id"] = outcome_id
             captured["audience"] = audience
+            captured["submission_id"] = submission_id
             return {
                 "file_id": "FILE-1",
                 "file_name": "released-feedback.pdf",
@@ -195,10 +209,11 @@ class TestGradebookApi(TestCase):
 
             frappe.db.get_value = fake_get_value
             module = _import_fresh_gradebook()
-            payload = module.export_feedback_pdf({"outcome_id": "OUT-1"})
+            payload = module.export_feedback_pdf({"outcome_id": "OUT-1", "submission_id": "TSU-1"})
 
         self.assertEqual(captured["outcome_id"], "OUT-1")
         self.assertEqual(captured["audience"], "student")
+        self.assertEqual(captured["submission_id"], "TSU-1")
         self.assertEqual(payload["artifact"]["open_url"], "/open/feedback-pdf")
 
     def test_get_drawer_selects_requested_submission_version_and_serializes_preview_urls(self):
@@ -346,6 +361,8 @@ class TestGradebookApi(TestCase):
         self.assertNotIn("submissions", payload)
         self.assertEqual(payload["feedback_workspace"]["task_submission"], "TSU-2026-00001")
         self.assertEqual(payload["feedback_workspace"]["publication"]["feedback_visibility"], "hidden")
+        self.assertEqual(payload["feedback_artifact"]["task_submission"], "TSU-2026-00001")
+        self.assertEqual(payload["feedback_artifact"]["open_url"], "/open/feedback-pdf")
         self.assertEqual(payload["comment_bank"]["entries"], [])
         self.assertEqual(payload["submission_versions"][0]["submission_id"], "TSU-2026-00001")
         self.assertTrue(payload["submission_versions"][0]["is_selected"])

@@ -1,4 +1,3 @@
-<!-- ifitwala_ed/ui-spa/src/pages/guardian/GuardianMonitoring.vue -->
 <template>
 	<div class="portal-page">
 		<header class="card-surface monitoring-hero p-5 sm:p-6">
@@ -94,34 +93,46 @@
 				<div class="mb-4">
 					<p class="type-overline text-jacaranda/80">Published Results</p>
 				</div>
-				<div v-if="!publishedResults.length" class="type-body text-ink/70">
-					No published results in this window.
-				</div>
-				<div v-else class="space-y-3">
-					<article
-						v-for="row in publishedResults"
-						:key="row.task_outcome"
-						class="monitoring-entry monitoring-entry--result rounded-xl border border-line-soft bg-surface-soft p-4"
-					>
-						<div class="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-							<div>
-								<p class="type-body-strong text-ink">{{ row.student_name }}</p>
-								<p class="type-caption text-ink/60">{{ row.title }} · {{ row.published_on }}</p>
-							</div>
-							<p v-if="row.score" class="type-body-strong text-ink">{{ row.score.value }}</p>
-						</div>
-						<p v-if="row.published_by" class="mt-2 type-caption text-ink/60">
-							Published by {{ row.published_by }}
-						</p>
-						<p v-if="row.narrative" class="type-body text-ink/80">{{ row.narrative }}</p>
-						<RouterLink
-							v-if="row.feedback_visible || row.grade_visible"
-							:to="guardianFeedbackRoute(row)"
-							class="mt-3 inline-flex type-caption font-semibold text-jacaranda hover:underline"
+				<div class="monitoring-section__body">
+					<div v-if="!publishedResults.length" class="type-body text-ink/70">
+						No published results in this window.
+					</div>
+					<div v-else class="space-y-3">
+						<article
+							v-for="row in publishedResults"
+							:key="row.task_outcome"
+							class="monitoring-entry monitoring-entry--result rounded-xl border border-line-soft bg-surface-soft p-4"
 						>
-							Open released feedback
-						</RouterLink>
-					</article>
+							<div class="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+								<div>
+									<p class="type-body-strong text-ink">{{ row.student_name }}</p>
+									<p class="type-caption text-ink/60">{{ row.title }} · {{ row.published_on }}</p>
+								</div>
+								<p v-if="row.score" class="type-body-strong text-ink">{{ row.score.value }}</p>
+							</div>
+							<p v-if="row.published_by" class="mt-2 type-caption text-ink/60">
+								Published by {{ row.published_by }}
+							</p>
+							<p v-if="row.narrative" class="type-body text-ink/80">{{ row.narrative }}</p>
+							<RouterLink
+								v-if="row.feedback_visible || row.grade_visible"
+								:to="guardianFeedbackRoute(row)"
+								class="mt-3 inline-flex type-caption font-semibold text-jacaranda hover:underline"
+							>
+								Open released feedback
+							</RouterLink>
+						</article>
+					</div>
+					<div v-if="publishedResultsPage.has_more" class="mt-4 flex justify-center">
+						<button
+							type="button"
+							class="if-button if-button--secondary"
+							:disabled="publishedResultsLoadingMore"
+							@click="loadMorePublishedResults"
+						>
+							{{ publishedResultsLoadingMore ? 'Loading…' : 'Load More Results' }}
+						</button>
+					</div>
 				</div>
 			</section>
 
@@ -133,37 +144,49 @@
 				<div class="mb-4">
 					<p class="type-overline text-canopy/75">Student Logs</p>
 				</div>
-				<div v-if="!studentLogs.length" class="type-body text-ink/70">
-					No guardian-visible student logs in this window.
-				</div>
-				<div v-else class="space-y-3">
-					<article
-						v-for="row in studentLogs"
-						:key="row.student_log"
-						:data-student-log="row.student_log"
-						:data-monitoring-log-unread="row.is_unread ? 'true' : null"
-						class="monitoring-entry monitoring-entry--log rounded-xl border border-line-soft bg-surface-soft p-4"
-					>
-						<div class="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-							<div class="min-w-0">
-								<p class="type-body-strong text-ink">{{ row.student_name }}</p>
-								<p class="type-caption text-ink/60">
-									{{ row.date }}<span v-if="row.time"> · {{ row.time }}</span>
-									<span v-if="row.follow_up_status"> · {{ row.follow_up_status }}</span>
-								</p>
+				<div class="monitoring-section__body">
+					<div v-if="!studentLogs.length" class="type-body text-ink/70">
+						No guardian-visible student logs in this window.
+					</div>
+					<div v-else class="space-y-3">
+						<article
+							v-for="row in studentLogs"
+							:key="row.student_log"
+							:data-student-log="row.student_log"
+							:data-monitoring-log-unread="row.is_unread ? 'true' : null"
+							class="monitoring-entry monitoring-entry--log rounded-xl border border-line-soft bg-surface-soft p-4"
+						>
+							<div class="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+								<div class="min-w-0">
+									<p class="type-body-strong text-ink">{{ row.student_name }}</p>
+									<p class="type-caption text-ink/60">
+										{{ row.date }}<span v-if="row.time"> · {{ row.time }}</span>
+										<span v-if="row.follow_up_status"> · {{ row.follow_up_status }}</span>
+									</p>
+								</div>
+								<button
+									v-if="row.is_unread"
+									type="button"
+									class="shrink-0 rounded-full border border-jacaranda/20 bg-white px-3 py-1 type-caption font-semibold text-jacaranda transition hover:border-jacaranda/30 hover:bg-jacaranda/5 disabled:border-line-soft disabled:bg-surface-soft disabled:text-ink/40"
+									:disabled="markingLogName === row.student_log"
+									@click="markAsSeen(row.student_log)"
+								>
+									{{ markingLogName === row.student_log ? 'Saving...' : 'Mark as seen' }}
+								</button>
 							</div>
-							<button
-								v-if="row.is_unread"
-								type="button"
-								class="shrink-0 rounded-full border border-jacaranda/20 bg-white px-3 py-1 type-caption font-semibold text-jacaranda transition hover:border-jacaranda/30 hover:bg-jacaranda/5 disabled:border-line-soft disabled:bg-surface-soft disabled:text-ink/40"
-								:disabled="markingLogName === row.student_log"
-								@click="markAsSeen(row.student_log)"
-							>
-								{{ markingLogName === row.student_log ? 'Saving...' : 'Mark as seen' }}
-							</button>
-						</div>
-						<p class="mt-2 break-words type-body text-ink/80">{{ row.summary }}</p>
-					</article>
+							<p class="mt-2 break-words type-body text-ink/80">{{ row.summary }}</p>
+						</article>
+					</div>
+					<div v-if="studentLogsPage.has_more" class="mt-4 flex justify-center">
+						<button
+							type="button"
+							class="if-button if-button--secondary"
+							:disabled="studentLogsLoadingMore"
+							@click="loadMoreStudentLogs"
+						>
+							{{ studentLogsLoadingMore ? 'Loading…' : 'Load More Logs' }}
+						</button>
+					</div>
 				</div>
 			</section>
 		</template>
@@ -176,15 +199,20 @@ import { RouterLink, useRoute } from 'vue-router';
 import { toast } from 'frappe-ui';
 
 import {
+	getGuardianMonitoringPublishedResults,
 	getGuardianMonitoringSnapshot,
+	getGuardianMonitoringStudentLogs,
 	markGuardianStudentLogRead,
 } from '@/lib/services/guardianMonitoring/guardianMonitoringService';
 
 import type {
+	MonitoringPage,
 	MonitoringPublishedResult,
 	MonitoringStudentLog,
 	Response as GuardianMonitoringSnapshot,
 } from '@/types/contracts/guardian/get_guardian_monitoring_snapshot';
+
+const PAGE_LENGTH = 12;
 
 const loading = ref(true);
 const errorMessage = ref('');
@@ -192,8 +220,25 @@ const snapshot = ref<GuardianMonitoringSnapshot | null>(null);
 const selectedStudent = ref('');
 const selectedDays = ref(30);
 const markingLogName = ref('');
+const studentLogsLoadingMore = ref(false);
+const publishedResultsLoadingMore = ref(false);
 const studentLogsSection = ref<HTMLElement | null>(null);
 const route = useRoute();
+
+function emptyPage<T>(): MonitoringPage<T> {
+	return {
+		items: [],
+		total_count: 0,
+		has_more: false,
+		start: 0,
+		page_length: PAGE_LENGTH,
+	};
+}
+
+const studentLogsPage =
+	ref<MonitoringPage<MonitoringStudentLog>>(emptyPage<MonitoringStudentLog>());
+const publishedResultsPage =
+	ref<MonitoringPage<MonitoringPublishedResult>>(emptyPage<MonitoringPublishedResult>());
 
 const children = computed(() => snapshot.value?.family.children ?? []);
 const counts = computed(
@@ -204,9 +249,9 @@ const counts = computed(
 			published_results: 0,
 		}
 );
-const studentLogs = computed<MonitoringStudentLog[]>(() => snapshot.value?.student_logs ?? []);
+const studentLogs = computed<MonitoringStudentLog[]>(() => studentLogsPage.value.items ?? []);
 const publishedResults = computed<MonitoringPublishedResult[]>(
-	() => snapshot.value?.published_results ?? []
+	() => publishedResultsPage.value.items ?? []
 );
 const focusUnreadLogs = computed(
 	() => typeof route.query.focus === 'string' && route.query.focus.trim() === 'unread'
@@ -222,13 +267,22 @@ function guardianFeedbackRoute(row: MonitoringPublishedResult) {
 	};
 }
 
+function snapshotPayload() {
+	return {
+		student: selectedStudent.value || undefined,
+		days: selectedDays.value,
+		page_length: PAGE_LENGTH,
+		prioritize_unread: focusUnreadLogs.value,
+	};
+}
+
 async function markAsSeen(studentLog: string) {
 	if (!studentLog || markingLogName.value === studentLog) return;
 
 	markingLogName.value = studentLog;
 	try {
 		await markGuardianStudentLogRead({ log_name: studentLog });
-		const row = snapshot.value?.student_logs.find(item => item.student_log === studentLog);
+		const row = studentLogsPage.value.items.find(item => item.student_log === studentLog);
 		if (row?.is_unread) {
 			row.is_unread = false;
 			if ((snapshot.value?.counts.unread_visible_student_logs || 0) > 0 && snapshot.value) {
@@ -257,10 +311,10 @@ async function loadSnapshot() {
 	loading.value = true;
 	errorMessage.value = '';
 	try {
-		snapshot.value = await getGuardianMonitoringSnapshot({
-			student: selectedStudent.value || undefined,
-			days: selectedDays.value,
-		});
+		const response = await getGuardianMonitoringSnapshot(snapshotPayload());
+		snapshot.value = response;
+		studentLogsPage.value = response.student_logs;
+		publishedResultsPage.value = response.published_results;
 	} catch (error) {
 		const message = error instanceof Error ? error.message : String(error || '');
 		errorMessage.value = message || 'Unknown error';
@@ -272,7 +326,51 @@ async function loadSnapshot() {
 	}
 }
 
-watch([selectedStudent, selectedDays], () => {
+async function loadMoreStudentLogs() {
+	if (studentLogsLoadingMore.value || !studentLogsPage.value.has_more) return;
+
+	studentLogsLoadingMore.value = true;
+	try {
+		const response = await getGuardianMonitoringStudentLogs({
+			...snapshotPayload(),
+			start: studentLogsPage.value.items.length,
+		});
+		studentLogsPage.value = {
+			...response,
+			items: [...studentLogsPage.value.items, ...(response.items || [])],
+		};
+	} catch (error) {
+		const message = error instanceof Error ? error.message : String(error || '');
+		toast.error(message || 'Could not load more student logs.');
+	} finally {
+		studentLogsLoadingMore.value = false;
+	}
+}
+
+async function loadMorePublishedResults() {
+	if (publishedResultsLoadingMore.value || !publishedResultsPage.value.has_more) return;
+
+	publishedResultsLoadingMore.value = true;
+	try {
+		const response = await getGuardianMonitoringPublishedResults({
+			student: selectedStudent.value || undefined,
+			days: selectedDays.value,
+			start: publishedResultsPage.value.items.length,
+			page_length: PAGE_LENGTH,
+		});
+		publishedResultsPage.value = {
+			...response,
+			items: [...publishedResultsPage.value.items, ...(response.items || [])],
+		};
+	} catch (error) {
+		const message = error instanceof Error ? error.message : String(error || '');
+		toast.error(message || 'Could not load more published results.');
+	} finally {
+		publishedResultsLoadingMore.value = false;
+	}
+}
+
+watch([selectedStudent, selectedDays, focusUnreadLogs], () => {
 	void loadSnapshot();
 });
 
@@ -383,6 +481,13 @@ onMounted(() => {
 	);
 }
 
+.monitoring-section__body {
+	max-height: min(34rem, calc(100vh - 18rem));
+	overflow-y: auto;
+	padding-right: 0.35rem;
+	scrollbar-gutter: stable;
+}
+
 .monitoring-entry {
 	transition:
 		border-color 120ms ease,
@@ -409,6 +514,14 @@ onMounted(() => {
 		grid-template-columns: repeat(3, minmax(0, 1fr));
 		overflow: visible;
 		padding-bottom: 0;
+	}
+}
+
+@media (max-width: 639px) {
+	.monitoring-section__body {
+		max-height: none;
+		overflow: visible;
+		padding-right: 0;
 	}
 }
 </style>

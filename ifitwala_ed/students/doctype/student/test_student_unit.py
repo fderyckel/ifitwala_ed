@@ -93,7 +93,6 @@ class TestStudentUnit(TestCase):
             student = student_module.Student.__new__(student_module.Student)
 
             with (
-                patch.object(student, "rename_student_image") as rename_student_image,
                 patch.object(student, "ensure_contact_and_link") as ensure_contact_and_link,
                 patch.object(student, "update_student_enabled_status") as update_student_enabled_status,
                 patch.object(student, "sync_student_contact_image") as sync_student_contact_image,
@@ -101,7 +100,6 @@ class TestStudentUnit(TestCase):
             ):
                 student.on_update()
 
-        rename_student_image.assert_called_once_with()
         ensure_contact_and_link.assert_not_called()
         update_student_enabled_status.assert_called_once_with()
         sync_student_contact_image.assert_called_once_with()

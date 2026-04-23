@@ -1321,6 +1321,163 @@ class TestTeachingPlansApi(TestCase):
             "QQ-1",
         )
 
+    def test_build_staff_course_plan_bundle_uses_course_linked_program_options_only(self):
+        with _teaching_plans_module() as module:
+            program_options_mock = Mock(return_value=[])
+
+            with (
+                patch.object(
+                    module,
+                    "_resolve_planning_resource_anchor",
+                    return_value={
+                        "anchor_doctype": "Course Plan",
+                        "anchor_name": "COURSE-PLAN-1",
+                        "can_manage_resources": 1,
+                    },
+                ),
+                patch.object(
+                    module.planning,
+                    "get_course_plan_row",
+                    return_value={
+                        "name": "COURSE-PLAN-1",
+                        "title": "Biology Plan",
+                        "course": "COURSE-1",
+                        "school": "SCH-1",
+                        "academic_year": "2026-2027",
+                        "cycle_label": "Semester 1",
+                        "plan_status": "Active",
+                    },
+                ),
+                patch.object(
+                    module,
+                    "_build_unit_lookup",
+                    return_value={
+                        "UNIT-1": {
+                            "title": "Cells and Systems",
+                            "unit_order": 10,
+                            "program": "LEGACY-PROGRAM",
+                            "standards": [{"program": "LEGACY-STANDARDS-PROGRAM"}],
+                            "shared_reflections": [],
+                            "class_reflections": [],
+                        }
+                    },
+                ),
+                patch.object(module, "_fetch_material_map", return_value={}),
+                patch.object(module, "_fetch_course_quiz_question_banks", return_value=[]),
+                patch.object(module, "_fetch_selected_quiz_question_bank", return_value=None),
+                patch.object(
+                    module,
+                    "_fetch_academic_year_options_for_schools",
+                    return_value={
+                        "SCH-1": [
+                            {"value": "2026-2027", "label": "2026-2027", "school": "SCH-1"},
+                        ]
+                    },
+                ),
+                patch.object(module, "_fetch_program_options_for_course", program_options_mock),
+                patch.object(
+                    module.frappe,
+                    "get_doc",
+                    return_value=SimpleNamespace(
+                        name="COURSE-PLAN-1",
+                        modified="2026-04-02 09:00:00",
+                        summary="Shared course summary",
+                        check_permission=lambda ptype: None,
+                    ),
+                ),
+                patch.object(
+                    module.frappe.db,
+                    "get_value",
+                    return_value={"course_name": "Biology", "course_group": "Science"},
+                ),
+                patch.object(
+                    module,
+                    "_build_course_plan_timeline",
+                    return_value={
+                        "status": "ready",
+                        "units": [{"unit_plan": "UNIT-1", "is_current": 1}],
+                    },
+                ),
+            ):
+                payload = module._build_staff_course_plan_bundle("COURSE-PLAN-1")
+
+        program_options_mock.assert_called_once_with("COURSE-1")
+        self.assertEqual(payload["field_options"]["programs"], [])
+
+    def test_build_staff_course_plan_bundle_uses_scope_only_academic_year_options(self):
+        with _teaching_plans_module() as module:
+            academic_year_options_mock = Mock(return_value={"SCH-1": []})
+
+            with (
+                patch.object(
+                    module,
+                    "_resolve_planning_resource_anchor",
+                    return_value={
+                        "anchor_doctype": "Course Plan",
+                        "anchor_name": "COURSE-PLAN-1",
+                        "can_manage_resources": 1,
+                    },
+                ),
+                patch.object(
+                    module.planning,
+                    "get_course_plan_row",
+                    return_value={
+                        "name": "COURSE-PLAN-1",
+                        "title": "Biology Plan",
+                        "course": "COURSE-1",
+                        "school": "SCH-1",
+                        "academic_year": "SCH-OTHER 2026-2027",
+                        "cycle_label": "Semester 1",
+                        "plan_status": "Active",
+                    },
+                ),
+                patch.object(
+                    module,
+                    "_build_unit_lookup",
+                    return_value={
+                        "UNIT-1": {
+                            "title": "Cells and Systems",
+                            "unit_order": 10,
+                            "standards": [],
+                            "shared_reflections": [],
+                            "class_reflections": [],
+                        }
+                    },
+                ),
+                patch.object(module, "_fetch_material_map", return_value={}),
+                patch.object(module, "_fetch_course_quiz_question_banks", return_value=[]),
+                patch.object(module, "_fetch_selected_quiz_question_bank", return_value=None),
+                patch.object(module, "_fetch_academic_year_options_for_schools", academic_year_options_mock),
+                patch.object(module, "_fetch_program_options_for_course", return_value=[]),
+                patch.object(
+                    module.frappe,
+                    "get_doc",
+                    return_value=SimpleNamespace(
+                        name="COURSE-PLAN-1",
+                        modified="2026-04-02 09:00:00",
+                        summary="Shared course summary",
+                        check_permission=lambda ptype: None,
+                    ),
+                ),
+                patch.object(
+                    module.frappe.db,
+                    "get_value",
+                    return_value={"course_name": "Biology", "course_group": "Science"},
+                ),
+                patch.object(
+                    module,
+                    "_build_course_plan_timeline",
+                    return_value={
+                        "status": "ready",
+                        "units": [{"unit_plan": "UNIT-1", "is_current": 1}],
+                    },
+                ),
+            ):
+                payload = module._build_staff_course_plan_bundle("COURSE-PLAN-1")
+
+        academic_year_options_mock.assert_called_once_with(["SCH-1"])
+        self.assertEqual(payload["field_options"]["academic_years"], [])
+
     def test_build_staff_course_plan_bundle_defaults_to_current_timeline_unit(self):
         with _teaching_plans_module() as module:
             with (
@@ -2296,10 +2453,27 @@ class TestTeachingPlansApi(TestCase):
     def test_validate_course_program_link_rejects_unlinked_program(self):
         with _teaching_plans_module() as module:
             with self.assertRaises(module.frappe.ValidationError):
+                with (
+                    patch.object(
+                        module.frappe.db,
+                        "get_value",
+                        return_value={"name": "MYP", "archive": 0},
+                    ),
+                    patch.object(
+                        module.frappe.db,
+                        "exists",
+                        return_value=False,
+                    ),
+                ):
+                    module._validate_course_program_link(course="COURSE-1", program="MYP")
+
+    def test_validate_course_program_link_rejects_archived_program(self):
+        with _teaching_plans_module() as module:
+            with self.assertRaises(module.frappe.ValidationError):
                 with patch.object(
                     module.frappe.db,
-                    "exists",
-                    side_effect=lambda doctype, filters=None: doctype == "Program",
+                    "get_value",
+                    return_value={"name": "MYP", "archive": 1},
                 ):
                     module._validate_course_program_link(course="COURSE-1", program="MYP")
 

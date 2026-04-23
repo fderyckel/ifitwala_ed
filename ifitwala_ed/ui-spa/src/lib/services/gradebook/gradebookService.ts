@@ -230,7 +230,10 @@ export function createGradebookService() {
 	async function exportFeedbackPdf(
 		payload: ExportFeedbackPdfRequest,
 	): Promise<ExportFeedbackPdfResponse> {
-		return exportFeedbackPdfResource.submit(payload)
+		return exportFeedbackPdfResource.submit({
+			outcome_id: payload.outcome_id,
+			submission_id: payload.submission_id ?? undefined,
+		})
 	}
 
 	async function saveFeedbackPublication(

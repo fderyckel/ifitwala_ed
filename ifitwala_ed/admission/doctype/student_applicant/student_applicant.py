@@ -36,9 +36,7 @@ from ifitwala_ed.admission.admission_utils import (
 from ifitwala_ed.admission.applicant_document_readiness import build_document_review_payload_for_applicant
 from ifitwala_ed.admission.applicant_review_workflow import apply_review_decision
 from ifitwala_ed.governance.policy_utils import (
-    MEDIA_CONSENT_POLICY_KEY,
     get_applicant_policy_status,
-    has_applicant_policy_acknowledgement,
 )
 from ifitwala_ed.integrations.drive.authority import (
     get_current_drive_file_for_slot,
@@ -756,16 +754,7 @@ class StudentApplicant(Document):
         health_snapshot = self._copy_health_profile_to_student_patient(student.name)
         copied_docs = self._copy_promotable_documents_to_student(student)
 
-        file_doc = self._copy_applicant_image_to_student(student)
-        if file_doc and self._has_media_consent():
-            try:
-                student.student_image = file_doc.file_url
-                student.rename_student_image()
-            except Exception:
-                frappe.log_error(
-                    frappe.get_traceback(),
-                    "Applicant Image Publish Failed",
-                )
+        self._copy_applicant_image_to_student(student)
 
         self.flags.from_promotion = True
         self.student = student.name
@@ -1521,14 +1510,6 @@ class StudentApplicant(Document):
             content=content,
         )
         return file_doc.file_url
-
-    def _has_media_consent(self) -> bool:
-        return has_applicant_policy_acknowledgement(
-            policy_key=MEDIA_CONSENT_POLICY_KEY,
-            student_applicant=self.name,
-            organization=self.organization,
-            school=self.school,
-        )
 
     def _copy_applicant_image_to_student(self, student):
         if not self.applicant_image:

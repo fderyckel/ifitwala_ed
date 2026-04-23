@@ -1,5 +1,7 @@
+from types import SimpleNamespace
 from unittest.mock import patch
 
+import frappe
 from frappe.tests.utils import FrappeTestCase
 
 from ifitwala_ed.api.family_consent import (
@@ -14,6 +16,7 @@ from ifitwala_ed.api.family_consent import (
     _request_is_executable,
     get_guardian_consent_home_summary,
     get_student_consent_home_summary,
+    resolve_family_consent_source_attachment_access,
 )
 
 
@@ -148,3 +151,115 @@ class TestFamilyConsentPortalContracts(FrappeTestCase):
 
         self.assertEqual(contact_name, "CONTACT-NEW")
         self.assertEqual(created_payloads[0]["user"], "student@example.com")
+
+    def test_resolve_family_consent_source_attachment_access_allows_guardian_authorized_student(self):
+        request_doc = SimpleNamespace(name="FCR-REQ-1", request_key="FCR-KEY-1", source_file="FILE-1")
+        target_row = {"student": "STU-1", "organization": "ORG-1", "school": "SCH-1"}
+        file_row = {
+            "name": "FILE-1",
+            "file_name": "trip-packet.pdf",
+            "file_url": "/private/files/trip-packet.pdf",
+            "file_size": 2048,
+            "is_private": 1,
+        }
+        drive_file = {
+            "name": "DRIVE-1",
+            "canonical_ref": "drv:ORG-1:DRIVE-1",
+            "preview_status": "ready",
+            "current_version": "DFV-1",
+        }
+
+        def fake_get_value(doctype, filters=None, fieldname=None, as_dict=False):
+            if doctype == "Family Consent Request":
+                return {"name": "FCR-REQ-1", "audience_mode": AUDIENCE_GUARDIAN}
+            if doctype == "File" and filters == "FILE-1":
+                return file_row
+            return None
+
+        with (
+            patch("ifitwala_ed.api.family_consent.frappe.db.get_value", side_effect=fake_get_value),
+            patch(
+                "ifitwala_ed.api.family_consent._ensure_guardian_portal_scope",
+                return_value=("GRD-1", [{"student": "STU-1"}]),
+            ),
+            patch(
+                "ifitwala_ed.api.family_consent._load_request_doc_for_portal",
+                return_value=(request_doc, target_row),
+            ),
+            patch("ifitwala_ed.api.family_consent.get_drive_file_for_file", return_value=drive_file),
+        ):
+            context = resolve_family_consent_source_attachment_access("FCR-KEY-1", "STU-1")
+
+        self.assertEqual(context["student"], "STU-1")
+        self.assertEqual(context["audience_mode"], AUDIENCE_GUARDIAN)
+        self.assertEqual(context["signer_name"], "GRD-1")
+        self.assertEqual(context["file_row"]["name"], "FILE-1")
+        self.assertEqual(context["drive_file"]["name"], "DRIVE-1")
+
+    def test_resolve_family_consent_source_attachment_access_rejects_guardian_without_signer_authority(self):
+        with (
+            patch(
+                "ifitwala_ed.api.family_consent.frappe.db.get_value",
+                return_value={"name": "FCR-REQ-1", "audience_mode": AUDIENCE_GUARDIAN},
+            ),
+            patch(
+                "ifitwala_ed.api.family_consent._ensure_guardian_portal_scope",
+                return_value=("GRD-1", [{"student": "STU-1"}]),
+            ),
+        ):
+            with self.assertRaises(frappe.PermissionError):
+                resolve_family_consent_source_attachment_access("FCR-KEY-1", "STU-OTHER")
+
+    def test_resolve_family_consent_source_attachment_access_allows_student_self(self):
+        request_doc = SimpleNamespace(name="FCR-REQ-2", request_key="FCR-KEY-2", source_file="FILE-2")
+        target_row = {"student": "STU-1", "organization": "ORG-1", "school": "SCH-1"}
+        file_row = {
+            "name": "FILE-2",
+            "file_name": "lab-consent.pdf",
+            "file_url": "/private/files/lab-consent.pdf",
+            "file_size": 4096,
+            "is_private": 1,
+        }
+
+        def fake_get_value(doctype, filters=None, fieldname=None, as_dict=False):
+            if doctype == "Family Consent Request":
+                return {"name": "FCR-REQ-2", "audience_mode": AUDIENCE_STUDENT}
+            if doctype == "File" and filters == "FILE-2":
+                return file_row
+            return None
+
+        with (
+            patch("ifitwala_ed.api.family_consent.frappe.db.get_value", side_effect=fake_get_value),
+            patch(
+                "ifitwala_ed.api.family_consent._require_student_name_for_session_user",
+                return_value="STU-1",
+            ),
+            patch(
+                "ifitwala_ed.api.family_consent._load_request_doc_for_portal",
+                return_value=(request_doc, target_row),
+            ),
+            patch(
+                "ifitwala_ed.api.family_consent.get_drive_file_for_file",
+                return_value={"name": "DRIVE-2", "canonical_ref": "drv:ORG-1:DRIVE-2"},
+            ),
+        ):
+            context = resolve_family_consent_source_attachment_access("FCR-KEY-2", "STU-1")
+
+        self.assertEqual(context["student"], "STU-1")
+        self.assertEqual(context["audience_mode"], AUDIENCE_STUDENT)
+        self.assertEqual(context["signer_name"], "STU-1")
+        self.assertEqual(context["file_row"]["name"], "FILE-2")
+
+    def test_resolve_family_consent_source_attachment_access_rejects_other_student(self):
+        with (
+            patch(
+                "ifitwala_ed.api.family_consent.frappe.db.get_value",
+                return_value={"name": "FCR-REQ-2", "audience_mode": AUDIENCE_STUDENT},
+            ),
+            patch(
+                "ifitwala_ed.api.family_consent._require_student_name_for_session_user",
+                return_value="STU-1",
+            ),
+        ):
+            with self.assertRaises(frappe.PermissionError):
+                resolve_family_consent_source_attachment_access("FCR-KEY-2", "STU-OTHER")

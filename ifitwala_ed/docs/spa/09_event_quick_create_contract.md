@@ -160,7 +160,7 @@ Code refs:
 - `ifitwala_ed/ui-spa/src/overlays/calendar/EventQuickCreateOverlay.vue`
 - `ifitwala_ed/api/calendar_quick_create.py`
 - `ifitwala_ed/api/org_communication_quick_create.py`
-- `ifitwala_ed/setup/doctype/school_event/school_event.json`
+- `ifitwala_ed/school_settings/doctype/school_event/school_event.json`
 - `ifitwala_ed/school_settings/doctype/school_event/school_event.py`
 - `ifitwala_ed/school_settings/doctype/school_event/school_event.js`
 
@@ -196,8 +196,10 @@ Rules:
 - the `School Event` form remains the source of truth for event title plus audience scope
 - event updates sync the linked announcement title, issuing school, audience rows, portal-surface compatibility, and the message only when it still mirrors the event description
 - event cancel/trash archives the linked announcement
-- Desk must expose the linked announcement as an explicit handoff from the `School Event` form
-- once the linked announcement exists, the raw `reference_type/reference_name` fields are workflow-managed and must no longer behave like normal editable reference pickers
+- Desk must expose the linked announcement through a dedicated `Linked Announcement` block on the `School Event` form
+- the dedicated block owns `Open Announcement`, empty-state publish guidance, and blocked-state messaging
+- generic non-announcement references remain under `Related Record`
+- once the linked announcement exists, the raw `reference_type/reference_name` seam is workflow-managed and must no longer behave like a normal editable reference picker
 
 ## 6. Contract Matrix
 
@@ -211,7 +213,7 @@ Code refs:
 - `ifitwala_ed/setup/doctype/meeting/meeting.json`
 - `ifitwala_ed/setup/doctype/meeting/meeting.py`
 - `ifitwala_ed/setup/doctype/meeting_participant/meeting_participant.json`
-- `ifitwala_ed/setup/doctype/school_event/school_event.json`
+- `ifitwala_ed/school_settings/doctype/school_event/school_event.json`
 - `ifitwala_ed/school_settings/doctype/school_event/school_event.py`
 - `ifitwala_ed/school_settings/doctype/school_event/school_event.js`
 - `ifitwala_ed/ui-spa/src/overlays/calendar/EventQuickCreateOverlay.vue`

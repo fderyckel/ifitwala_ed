@@ -35,6 +35,7 @@ class UnitPlan(Document):
         course_plan = planning.get_course_plan_row(self.course_plan)
         self.course = course_plan.get("course")
         self.school = course_plan.get("school")
+        _validate_course_program_link(course=self.course, program=getattr(self, "program", None))
         planning.ensure_linked_unit_plan_standards(self)
 
         if not int(self.unit_order or 0):
@@ -69,6 +70,15 @@ class UnitPlan(Document):
 
     def on_update(self):
         planning.sync_all_class_teaching_plans(self.course_plan)
+
+
+def _validate_course_program_link(*, course: str | None, program: str | None) -> None:
+    from ifitwala_ed.api import teaching_plans as teaching_plans_api
+
+    teaching_plans_api._validate_course_program_link(
+        course=course,
+        program=program,
+    )
 
 
 def _program_picker_scope(program: str | None) -> list[str]:

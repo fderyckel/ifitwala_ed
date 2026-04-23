@@ -107,11 +107,13 @@ def export_feedback_pdf(api, payload=None, **kwargs):
 
     data = api._normalize_payload(payload, kwargs)
     outcome_id = api._get_payload_value(data, "outcome_id", "task_outcome")
+    submission_id = api._get_payload_value(data, "submission_id", "task_submission")
     api._require(outcome_id, "Task Outcome")
     _assert_outcome_access(api, outcome_id)
     artifact = task_feedback_artifact_service.export_released_feedback_pdf(
         outcome_id,
         audience="student",
+        submission_id=submission_id,
     )
     return {"artifact": artifact}
 

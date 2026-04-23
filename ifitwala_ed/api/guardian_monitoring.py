@@ -10,16 +10,100 @@ from frappe.utils import add_days, cint, now_datetime, strip_html
 
 from ifitwala_ed.api.guardian_home import (
     _coerce_time,
-    _get_unread_reference_names,
     _plain_summary,
     _resolve_guardian_scope,
 )
 from ifitwala_ed.api.student_log import _upsert_student_log_read_receipt
 from ifitwala_ed.assessment import task_feedback_service
 
+DEFAULT_PAGE_LENGTH = 12
+
 
 @frappe.whitelist()
-def get_guardian_monitoring_snapshot(student: str | None = None, days: int | str = 30) -> dict[str, Any]:
+def get_guardian_monitoring_snapshot(
+    student: str | None = None,
+    days: int | str = 30,
+    page_length: int | str = DEFAULT_PAGE_LENGTH,
+    prioritize_unread: bool | int | str | None = None,
+) -> dict[str, Any]:
+    context = _resolve_monitoring_context(student=student, days=days)
+    page_len = _coerce_page_length(page_length)
+    prioritize_unread_logs = _coerce_prioritize_unread(prioritize_unread)
+    log_page = _get_monitoring_logs_page(
+        user=context["user"],
+        student_names=context["scoped_students"],
+        days=context["window_days"],
+        start=0,
+        page_length=page_len,
+        prioritize_unread=prioritize_unread_logs,
+    )
+    result_page = _get_monitoring_results_page(
+        student_names=context["scoped_students"],
+        days=context["window_days"],
+        start=0,
+        page_length=page_len,
+    )
+
+    return {
+        "meta": {
+            "generated_at": now_datetime().isoformat(),
+            "guardian": {"name": context["guardian_name"]},
+            "filters": {
+                "student": context["selected_student"] or "",
+                "days": context["window_days"],
+            },
+        },
+        "family": {"children": context["children"]},
+        "counts": {
+            "visible_student_logs": log_page["total_count"],
+            "unread_visible_student_logs": log_page["unread_total_count"],
+            "published_results": result_page["total_count"],
+        },
+        "student_logs": _serialize_page(log_page),
+        "published_results": _serialize_page(result_page),
+    }
+
+
+@frappe.whitelist()
+def get_guardian_monitoring_student_logs(
+    student: str | None = None,
+    days: int | str = 30,
+    start: int | str = 0,
+    page_length: int | str = DEFAULT_PAGE_LENGTH,
+    prioritize_unread: bool | int | str | None = None,
+) -> dict[str, Any]:
+    context = _resolve_monitoring_context(student=student, days=days)
+    return _serialize_page(
+        _get_monitoring_logs_page(
+            user=context["user"],
+            student_names=context["scoped_students"],
+            days=context["window_days"],
+            start=_coerce_start(start),
+            page_length=_coerce_page_length(page_length),
+            prioritize_unread=_coerce_prioritize_unread(prioritize_unread),
+        )
+    )
+
+
+@frappe.whitelist()
+def get_guardian_monitoring_published_results(
+    student: str | None = None,
+    days: int | str = 30,
+    start: int | str = 0,
+    page_length: int | str = DEFAULT_PAGE_LENGTH,
+) -> dict[str, Any]:
+    context = _resolve_monitoring_context(student=student, days=days)
+    return _serialize_page(
+        _get_monitoring_results_page(
+            student_names=context["scoped_students"],
+            days=context["window_days"],
+            start=_coerce_start(start),
+            page_length=_coerce_page_length(page_length),
+        )
+    )
+
+
+def _resolve_monitoring_context(*, student: str | None, days: int | str) -> dict[str, Any]:
     selected_student = (student or "").strip()
     window_days = _coerce_days(days)
     user = frappe.session.user
@@ -30,26 +114,13 @@ def get_guardian_monitoring_snapshot(student: str | None = None, days: int | str
         frappe.throw(_("This student is not available in your guardian scope."), frappe.PermissionError)
 
     scoped_students = [selected_student] if selected_student else sorted(allowed_students)
-    log_rows = _get_monitoring_logs(user=user, student_names=scoped_students, days=window_days)
-    result_rows = _get_monitoring_results(student_names=scoped_students, days=window_days)
-
     return {
-        "meta": {
-            "generated_at": now_datetime().isoformat(),
-            "guardian": {"name": guardian_name},
-            "filters": {
-                "student": selected_student or "",
-                "days": window_days,
-            },
-        },
-        "family": {"children": children},
-        "counts": {
-            "visible_student_logs": len(log_rows),
-            "unread_visible_student_logs": sum(1 for row in log_rows if row.get("is_unread")),
-            "published_results": len(result_rows),
-        },
-        "student_logs": log_rows,
-        "published_results": result_rows,
+        "user": user,
+        "guardian_name": guardian_name,
+        "children": children,
+        "selected_student": selected_student,
+        "window_days": window_days,
+        "scoped_students": scoped_students,
     }
 
 
@@ -63,30 +134,145 @@ def _coerce_days(days: int | str) -> int:
     return value
 
 
+def _coerce_start(start: int | str | None) -> int:
+    try:
+        value = int(start or 0)
+    except Exception:
+        frappe.throw(_("Invalid start."))
+    if value < 0:
+        frappe.throw(_("start must be 0 or greater."))
+    return value
+
+
+def _coerce_page_length(page_length: int | str | None) -> int:
+    try:
+        value = int(page_length or DEFAULT_PAGE_LENGTH)
+    except Exception:
+        frappe.throw(_("Invalid page_length."))
+    if value < 1 or value > 50:
+        frappe.throw(_("page_length must be between 1 and 50."))
+    return value
+
+
+def _coerce_prioritize_unread(value: bool | int | str | None) -> bool:
+    if isinstance(value, bool):
+        return value
+    if value in (None, "", 0, "0", "false", "False", "FALSE", "no", "No", "NO"):
+        return False
+    if value in (1, "1", "true", "True", "TRUE", "yes", "Yes", "YES"):
+        return True
+    frappe.throw(_("Invalid prioritize_unread flag."))
+
+
 def _plain_guardian_log_text(value: Any) -> str:
     text = strip_html(value or "")
     return " ".join(text.split()).strip()
 
 
-def _get_monitoring_logs(*, user: str, student_names: list[str], days: int) -> list[dict[str, Any]]:
+def _empty_page() -> dict[str, Any]:
+    return {
+        "items": [],
+        "total_count": 0,
+        "unread_total_count": 0,
+        "has_more": False,
+        "start": 0,
+        "page_length": DEFAULT_PAGE_LENGTH,
+    }
+
+
+def _serialize_page(page: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "items": page.get("items") or [],
+        "total_count": int(page.get("total_count") or 0),
+        "has_more": bool(page.get("has_more")),
+        "start": int(page.get("start") or 0),
+        "page_length": int(page.get("page_length") or DEFAULT_PAGE_LENGTH),
+    }
+
+
+def _count_monitoring_logs(*, user: str, student_names: list[str], days: int) -> dict[str, int]:
+    if not student_names:
+        return {"total_count": 0, "unread_total_count": 0}
+
+    anchor = frappe.utils.getdate()
+    window_start = add_days(anchor, -(days - 1))
+    row = (
+        frappe.db.sql(
+            """
+            SELECT
+                COUNT(*) AS total_count,
+                COALESCE(SUM(CASE WHEN prr.name IS NULL THEN 1 ELSE 0 END), 0) AS unread_total_count
+            FROM `tabStudent Log` sl
+            LEFT JOIN `tabPortal Read Receipt` prr
+              ON prr.user = %(user)s
+             AND prr.reference_doctype = 'Student Log'
+             AND prr.reference_name = sl.name
+            WHERE sl.student IN %(students)s
+              AND sl.visible_to_guardians = 1
+              AND sl.date BETWEEN %(window_start)s AND %(anchor)s
+            """,
+            {
+                "user": user,
+                "students": tuple(student_names),
+                "window_start": window_start,
+                "anchor": anchor,
+            },
+            as_dict=True,
+        )
+        or [{}]
+    )[0]
+    return {
+        "total_count": cint(row.get("total_count") or 0),
+        "unread_total_count": cint(row.get("unread_total_count") or 0),
+    }
+
+
+def _get_monitoring_logs(
+    *,
+    user: str,
+    student_names: list[str],
+    days: int,
+    start: int = 0,
+    page_length: int = DEFAULT_PAGE_LENGTH,
+    prioritize_unread: bool = False,
+) -> list[dict[str, Any]]:
     if not student_names:
         return []
 
     anchor = frappe.utils.getdate()
     window_start = add_days(anchor, -(days - 1))
-    rows = frappe.get_all(
-        "Student Log",
-        filters={
-            "student": ["in", student_names],
-            "visible_to_guardians": 1,
-            "date": ["between", [window_start, anchor]],
+    order_prefix = "CASE WHEN prr.name IS NULL THEN 0 ELSE 1 END ASC, " if prioritize_unread else ""
+    rows = frappe.db.sql(
+        f"""
+        SELECT
+            sl.name,
+            sl.student,
+            sl.student_name,
+            sl.date,
+            sl.time,
+            sl.follow_up_status,
+            sl.log,
+            CASE WHEN prr.name IS NULL THEN 1 ELSE 0 END AS is_unread
+        FROM `tabStudent Log` sl
+        LEFT JOIN `tabPortal Read Receipt` prr
+          ON prr.user = %(user)s
+         AND prr.reference_doctype = 'Student Log'
+         AND prr.reference_name = sl.name
+        WHERE sl.student IN %(students)s
+          AND sl.visible_to_guardians = 1
+          AND sl.date BETWEEN %(window_start)s AND %(anchor)s
+        ORDER BY {order_prefix}sl.date DESC, sl.time DESC, sl.modified DESC
+        LIMIT %(limit)s OFFSET %(offset)s
+        """,
+        {
+            "user": user,
+            "students": tuple(student_names),
+            "window_start": window_start,
+            "anchor": anchor,
+            "limit": page_length,
+            "offset": start,
         },
-        fields=["name", "student", "student_name", "date", "time", "follow_up_status", "log"],
-        order_by="date desc, time desc, modified desc",
-        limit=200,
-    )
-    unread_names = set(
-        _get_unread_reference_names(user, "Student Log", [row.get("name") for row in rows if row.get("name")])
+        as_dict=True,
     )
     out: list[dict[str, Any]] = []
     for row in rows:
@@ -102,10 +288,44 @@ def _get_monitoring_logs(*, user: str, student_names: list[str], days: int) -> l
                 "time": _coerce_time(row.get("time"), "guardian_monitoring.student_log.time", []),
                 "summary": _plain_guardian_log_text(row.get("log")),
                 "follow_up_status": row.get("follow_up_status") or "",
-                "is_unread": name in unread_names,
+                "is_unread": bool(cint(row.get("is_unread") or 0)),
             }
         )
     return out
+
+
+def _get_monitoring_logs_page(
+    *,
+    user: str,
+    student_names: list[str],
+    days: int,
+    start: int,
+    page_length: int,
+    prioritize_unread: bool = False,
+) -> dict[str, Any]:
+    if not student_names:
+        page = _empty_page()
+        page["page_length"] = page_length
+        return page
+
+    counts = _count_monitoring_logs(user=user, student_names=student_names, days=days)
+    items = _get_monitoring_logs(
+        user=user,
+        student_names=student_names,
+        days=days,
+        start=start,
+        page_length=page_length,
+        prioritize_unread=prioritize_unread,
+    )
+    total_count = counts["total_count"]
+    return {
+        "items": items,
+        "total_count": total_count,
+        "unread_total_count": counts["unread_total_count"],
+        "has_more": (start + page_length) < total_count,
+        "start": start,
+        "page_length": page_length,
+    }
 
 
 def _get_monitoring_results(*, student_names: list[str], days: int) -> list[dict[str, Any]]:
@@ -132,7 +352,7 @@ def _get_monitoring_results(*, student_names: list[str], days: int) -> list[dict
             "official_feedback",
         ],
         order_by="published_on desc, modified desc",
-        limit=200,
+        limit=0,
     )
     workspace_rows = frappe.db.sql(
         """
@@ -151,7 +371,6 @@ def _get_monitoring_results(*, student_names: list[str], days: int) -> list[dict
             OR grade_visibility = 'student_and_guardian'
           )
         ORDER BY modified DESC
-        LIMIT 200
         """,
         {
             "students": tuple(student_names),
@@ -242,7 +461,26 @@ def _get_monitoring_results(*, student_names: list[str], days: int) -> list[dict
                 "feedback_visible": bool(released.get("feedback_visible")),
             }
         )
-    return sorted(out, key=lambda row: str(row.get("published_on") or ""), reverse=True)[:200]
+    return sorted(out, key=lambda row: str(row.get("published_on") or ""), reverse=True)
+
+
+def _get_monitoring_results_page(
+    *,
+    student_names: list[str],
+    days: int,
+    start: int,
+    page_length: int,
+) -> dict[str, Any]:
+    rows = _get_monitoring_results(student_names=student_names, days=days)
+    total_count = len(rows)
+    return {
+        "items": rows[start : start + page_length],
+        "total_count": total_count,
+        "unread_total_count": 0,
+        "has_more": (start + page_length) < total_count,
+        "start": start,
+        "page_length": page_length,
+    }
 
 
 @frappe.whitelist()
@@ -252,7 +490,7 @@ def mark_guardian_student_log_read(log_name: str) -> dict[str, Any]:
         frappe.throw(_("log_name is required."))
 
     user = frappe.session.user
-    guardian_name, children = _resolve_guardian_scope(user)
+    _guardian_name, children = _resolve_guardian_scope(user)
     allowed_students = {child.get("student") for child in children if child.get("student")}
     log_row = frappe.db.get_value(
         "Student Log",

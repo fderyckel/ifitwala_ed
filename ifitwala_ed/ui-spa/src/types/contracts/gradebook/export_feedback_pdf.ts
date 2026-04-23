@@ -2,6 +2,7 @@ import type { FeedbackArtifact } from '@/types/contracts/assessment/feedback_art
 
 export type Request = {
 	outcome_id: string
+	submission_id?: string | null
 }
 
 export type Response = {

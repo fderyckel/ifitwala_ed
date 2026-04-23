@@ -148,10 +148,21 @@ async function handleLearnerState(payload: {
 async function handleExportFeedbackPdf() {
 	exportBusy.value = true;
 	try {
+		const currentArtifactUrl =
+			detail.value?.released_feedback_artifact?.open_url ||
+			detail.value?.released_feedback_artifact?.preview_url;
+		if (currentArtifactUrl) {
+			window.open(currentArtifactUrl, '_blank', 'noopener,noreferrer');
+			toast.success?.('Opened the latest feedback PDF.');
+			return;
+		}
 		const response = await exportStudentReleasedFeedbackPdf({ outcome_id: props.task_outcome });
 		const targetUrl = response.artifact?.open_url || response.artifact?.preview_url;
 		if (!targetUrl) {
 			throw new Error('Missing feedback artifact URL');
+		}
+		if (detail.value) {
+			detail.value.released_feedback_artifact = response.artifact;
 		}
 		window.open(targetUrl, '_blank', 'noopener,noreferrer');
 		toast.success?.('Feedback PDF prepared.');
