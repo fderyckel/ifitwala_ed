@@ -40,8 +40,8 @@ vi.mock('vue-router', async () => {
 					default: '',
 				},
 			},
-			setup(_, { slots }) {
-				return () => h('a', {}, slots.default?.())
+			setup(props, { slots }) {
+				return () => h('a', { 'data-to': JSON.stringify(props.to || null) }, slots.default?.())
 			},
 		}),
 	}
@@ -325,6 +325,44 @@ describe('GuardianHome', () => {
 		calendarButton?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
 
 		expect(overlayOpenMock).toHaveBeenCalledWith('guardian-calendar', {})
+	})
+
+	it('routes the unread student logs summary card into the monitoring unread focus view', async () => {
+		getGuardianHomeSnapshotMock.mockResolvedValue({
+			meta: {
+				generated_at: '2026-03-13T09:00:00',
+				anchor_date: '2026-03-13',
+				school_days: 7,
+				guardian: { name: 'GRD-0001' },
+			},
+			family: {
+				children: [{ student: 'STU-1', full_name: 'Amina Example', school: 'School One' }],
+			},
+			consents: { pending_count: 0, overdue_count: 0, items: [] },
+			policies: { pending_count: 0, items: [] },
+			zones: {
+				family_timeline: [],
+				attention_needed: [],
+				preparation_and_support: [],
+				recent_activity: [],
+				learning_highlights: [],
+			},
+			counts: {
+				unread_communications: 0,
+				unread_visible_student_logs: 2,
+				upcoming_due_tasks: 0,
+				upcoming_assessments: 0,
+			},
+		})
+
+		mountGuardianHome()
+		await flushUi()
+
+		const unreadLogsCard = Array.from(document.querySelectorAll<HTMLAnchorElement>('a')).find(link =>
+			(link.textContent || '').includes('Unread student logs')
+		)
+		expect(unreadLogsCard?.getAttribute('data-to')).toContain('"name":"guardian-monitoring"')
+		expect(unreadLogsCard?.getAttribute('data-to')).toContain('"focus":"unread"')
 	})
 
 	it('jumps to the first family timeline day with upcoming assessments from the summary card', async () => {

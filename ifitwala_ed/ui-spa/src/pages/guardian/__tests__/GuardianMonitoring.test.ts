@@ -7,6 +7,9 @@ const { getGuardianMonitoringSnapshotMock, markGuardianStudentLogReadMock } = vi
 	getGuardianMonitoringSnapshotMock: vi.fn(),
 	markGuardianStudentLogReadMock: vi.fn(),
 }))
+const { routeQueryMock } = vi.hoisted(() => ({
+	routeQueryMock: {} as Record<string, unknown>,
+}))
 
 vi.mock('vue-router', async () => {
 	const { defineComponent, h } = await import('vue')
@@ -26,6 +29,9 @@ vi.mock('vue-router', async () => {
 					h('a', { 'data-to': JSON.stringify(props.to || null) }, slots.default?.())
 			},
 		}),
+		useRoute: () => ({
+			query: routeQueryMock,
+		}),
 	}
 })
 
@@ -43,6 +49,7 @@ vi.mock('@/lib/services/guardianMonitoring/guardianMonitoringService', () => ({
 import GuardianMonitoring from '@/pages/guardian/GuardianMonitoring.vue'
 
 const cleanupFns: Array<() => void> = []
+const originalScrollIntoView = HTMLElement.prototype.scrollIntoView
 
 async function flushUi() {
 	await Promise.resolve()
@@ -73,6 +80,20 @@ function mountGuardianMonitoring() {
 afterEach(() => {
 	getGuardianMonitoringSnapshotMock.mockReset()
 	markGuardianStudentLogReadMock.mockReset()
+	Object.keys(routeQueryMock).forEach((key) => {
+		delete routeQueryMock[key]
+	})
+	if (originalScrollIntoView) {
+		Object.defineProperty(HTMLElement.prototype, 'scrollIntoView', {
+			configurable: true,
+			value: originalScrollIntoView,
+		})
+	} else {
+		Object.defineProperty(HTMLElement.prototype, 'scrollIntoView', {
+			configurable: true,
+			value: undefined,
+		})
+	}
 	while (cleanupFns.length) {
 		cleanupFns.pop()?.()
 	}
@@ -81,6 +102,8 @@ afterEach(() => {
 
 describe('GuardianMonitoring', () => {
 	it('renders family-wide logs and published results from the canonical payload', async () => {
+		const longLogSummary =
+			'Needs follow-up on the science reflection and should bring the signed reading journal tomorrow so the teacher can review the full progress note with the family.'
 		getGuardianMonitoringSnapshotMock.mockResolvedValue({
 			meta: {
 				generated_at: '2026-03-13T09:00:00',
@@ -105,7 +128,7 @@ describe('GuardianMonitoring', () => {
 					student_name: 'Amina Example',
 					date: '2026-03-12',
 					time: '09:00',
-					summary: 'Needs follow-up',
+					summary: longLogSummary,
 					follow_up_status: 'Open',
 					is_unread: true,
 				},
@@ -135,7 +158,8 @@ describe('GuardianMonitoring', () => {
 		expect(text).toContain(
 			"View your child's or children's logs and published results in one place"
 		)
-		expect(text).toContain('Needs follow-up')
+		expect(text).toContain('Latest student logs')
+		expect(text).toContain(longLogSummary)
 		expect(text).toContain('Science assessment')
 		expect(text).toContain('92')
 		expect(document.body.innerHTML).toContain('guardian-released-feedback')
@@ -260,5 +284,61 @@ describe('GuardianMonitoring', () => {
 		const text = document.body.textContent || ''
 		expect(text).toContain('Seen')
 		expect(text).not.toContain('Mark as seen')
+	})
+
+	it('scrolls the first unread log into view when the page is opened from the unread summary card', async () => {
+		const scrolledTargets: string[] = []
+		Object.defineProperty(HTMLElement.prototype, 'scrollIntoView', {
+			configurable: true,
+			value: function () {
+				scrolledTargets.push((this as HTMLElement).dataset.studentLog || '')
+			},
+		})
+
+		routeQueryMock.focus = 'unread'
+		getGuardianMonitoringSnapshotMock.mockResolvedValue({
+			meta: {
+				generated_at: '2026-03-13T09:00:00',
+				guardian: { name: 'GRD-0001' },
+				filters: { student: '', days: 30 },
+			},
+			family: {
+				children: [{ student: 'STU-1', full_name: 'Amina Example', school: 'School One' }],
+			},
+			counts: {
+				visible_student_logs: 2,
+				unread_visible_student_logs: 1,
+				published_results: 0,
+			},
+			student_logs: [
+				{
+					student_log: 'LOG-1',
+					student: 'STU-1',
+					student_name: 'Amina Example',
+					date: '2026-03-12',
+					time: '09:00',
+					summary: 'Unread detail',
+					follow_up_status: 'Open',
+					is_unread: true,
+				},
+				{
+					student_log: 'LOG-2',
+					student: 'STU-1',
+					student_name: 'Amina Example',
+					date: '2026-03-11',
+					time: '',
+					summary: 'Seen detail',
+					follow_up_status: 'Completed',
+					is_unread: false,
+				},
+			],
+			published_results: [],
+		})
+
+		mountGuardianMonitoring()
+		await flushUi()
+
+		expect(scrolledTargets).toContain('LOG-1')
+		expect(document.querySelector('[data-monitoring-log-unread="true"]')).toBeTruthy()
 	})
 })

@@ -3,8 +3,8 @@ title: "Admission Settings: Admissions SLA and Assignment Policy"
 slug: admission-settings
 category: Admission
 doc_order: 1
-version: "1.5.0"
-last_change_date: "2026-03-12"
+version: "1.5.1"
+last_change_date: "2026-04-23"
 summary: "Define admissions SLA windows, assignment task color defaults, admissions-portal family/access toggles, and the admissions-to-enrollment auto-hydration policy."
 seo_title: "Admission Settings: Admissions SLA and Assignment Policy"
 seo_description: "Define admissions SLA windows, assignment task color defaults, and admissions-portal guardian section visibility."
@@ -36,7 +36,7 @@ This doctype owns eight configuration fields:
 ## How to Read the Two SLAs
 
 - `first_contact_sla_days` and `followup_sla_days` are measured from different anchor events, so one is not required to be greater/less than the other.
-- `first_contact_due_on` is anchored to inquiry submission time (`submitted_at`) and seeded by `set_inquiry_deadlines` (or scheduler backfill for legacy rows).
+- `first_contact_due_on` is anchored to inquiry submission time (`submitted_at`) and seeded by `set_inquiry_deadlines`; legacy missing values are remediated through the one-shot patch `ifitwala_ed.patches.backfill_inquiry_first_contact_due_dates`.
 - `followup_due_on` is anchored to assignment time and is set on `assign_inquiry` / `reassign_inquiry`.
 - In `Assigned` state, SLA status evaluation can consider both due dates; whichever deadline is sooner can drive overdue/due-today status.
 
@@ -78,7 +78,8 @@ This shows why `followup_sla_days` does not need to be less than `first_contact_
   - accepted plans can stay staff-reviewed/manual or auto-hydrate immediately after promotion based on this setting.
 - Scheduler:
   - `ifitwala_ed.admission.scheduled_jobs.run_hourly_sla_sweep` is registered in `hooks.py` hourly events.
-  - Sweep logic in `check_sla_breaches` is column-aware, backfills missing first-contact due dates for legacy Inquiry rows, and caches run summary at `admissions:sla_sweep:last_run`.
+  - Sweep logic in `check_sla_breaches` is column-aware, recomputes SLA status, and caches run summary at `admissions:sla_sweep:last_run`.
+  - Existing sites backfill missing `Inquiry.first_contact_due_on` values through the one-shot patch `ifitwala_ed.patches.backfill_inquiry_first_contact_due_dates`.
 - Inquiry dashboard analytics:
   - `ifitwala_ed.api.inquiry.get_dashboard_data` uses `followup_sla_days` as the upcoming-horizon window.
 
@@ -107,7 +108,7 @@ Treat SLA value updates as policy changes. Mid-cycle edits can shift operational
 
 ## Technical Notes (IT)
 
-### Latest Technical Snapshot (2026-03-04)
+### Latest Technical Snapshot (2026-04-23)
 
 - **DocType schema file**: `ifitwala_ed/admission/doctype/admission_settings/admission_settings.json`
 - **Controller file**: `ifitwala_ed/admission/doctype/admission_settings/admission_settings.py`
@@ -132,7 +133,9 @@ Treat SLA value updates as policy changes. Mid-cycle edits can shift operational
     - `set_inquiry_deadlines`
     - `assign_inquiry`
     - `reassign_inquiry`
-    - `check_sla_breaches` (first-contact due date backfill)
+    - `check_sla_breaches`
+  - `ifitwala_ed/patches/backfill_inquiry_first_contact_due_dates.py`
+    - one-shot remediation for legacy missing `first_contact_due_on` values
   - `ifitwala_ed/api/inquiry.py`
     - `get_dashboard_data` reads `followup_sla_days` for upcoming horizon
   - `ifitwala_ed/api/admissions_portal.py`

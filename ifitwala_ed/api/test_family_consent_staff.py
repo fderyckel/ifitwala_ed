@@ -31,6 +31,7 @@ class TestFamilyConsentStaff(FrappeTestCase):
         super().tearDown()
 
     def _make_student(self, *, email_prefix: str):
+        seed = frappe.generate_hash(length=6)
         previous_import = getattr(frappe.flags, "in_import", False)
         frappe.flags.in_import = True
         try:
@@ -38,7 +39,8 @@ class TestFamilyConsentStaff(FrappeTestCase):
                 {
                     "doctype": "Student",
                     "student_first_name": "Consent",
-                    "student_last_name": f"{email_prefix}-{frappe.generate_hash(length=6)}",
+                    "student_last_name": f"{email_prefix}-{seed}",
+                    "student_email": f"{email_prefix}-{seed}@example.com",
                     "anchor_school": self.school.name,
                     "allow_direct_creation": 1,
                 }

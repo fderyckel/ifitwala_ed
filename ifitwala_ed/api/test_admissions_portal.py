@@ -161,6 +161,11 @@ class TestAdmissionsPortalContracts(FrappeTestCase):
 
 class TestInviteApplicant(FrappeTestCase):
     def setUp(self):
+        super().setUp()
+        self._welcome_mail_patcher = patch("frappe.core.doctype.user.user.User.send_welcome_mail_to_user")
+        self._welcome_mail_patcher.start()
+        self._password_notification_patcher = patch("frappe.core.doctype.user.user.User.send_password_notification")
+        self._password_notification_patcher.start()
         frappe.set_user("Administrator")
         self._created: list[tuple[str, str]] = []
         self._ensure_role("Admissions Family")
@@ -191,6 +196,9 @@ class TestInviteApplicant(FrappeTestCase):
         for doctype, name in reversed(self._created):
             if frappe.db.exists(doctype, name):
                 frappe.delete_doc(doctype, name, force=1, ignore_permissions=True)
+        self._password_notification_patcher.stop()
+        self._welcome_mail_patcher.stop()
+        super().tearDown()
 
     def test_invite_applicant_creates_portal_user_and_marks_invited(self):
         email = f"applicant-{frappe.generate_hash(length=8)}@example.com"
@@ -546,6 +554,7 @@ class TestInviteApplicant(FrappeTestCase):
                 "first_name": "Admissions",
                 "last_name": "Staff",
                 "enabled": 1,
+                "send_welcome_email": 0,
                 "roles": [{"role": "Admission Manager"}],
             }
         ).insert(ignore_permissions=True)
@@ -581,6 +590,11 @@ class TestInviteApplicant(FrappeTestCase):
 
 class TestSubmitApplication(FrappeTestCase):
     def setUp(self):
+        super().setUp()
+        self._welcome_mail_patcher = patch("frappe.core.doctype.user.user.User.send_welcome_mail_to_user")
+        self._welcome_mail_patcher.start()
+        self._password_notification_patcher = patch("frappe.core.doctype.user.user.User.send_password_notification")
+        self._password_notification_patcher.start()
         frappe.set_user("Administrator")
         self._created: list[tuple[str, str]] = []
         self._ensure_role("Admissions Applicant")
@@ -625,6 +639,9 @@ class TestSubmitApplication(FrappeTestCase):
                 frappe.db.delete("Policy Acknowledgement", {"name": name})
                 continue
             frappe.delete_doc(doctype, name, force=1, ignore_permissions=True)
+        self._password_notification_patcher.stop()
+        self._welcome_mail_patcher.stop()
+        super().tearDown()
 
     def test_submit_application_accepts_invited_state(self):
         frappe.set_user(self.applicant_user)
@@ -1913,6 +1930,7 @@ class TestSubmitApplication(FrappeTestCase):
                 "first_name": "Portal",
                 "last_name": "Applicant",
                 "enabled": 1,
+                "send_welcome_email": 0,
                 "roles": [{"role": "Admissions Applicant"}],
             }
         ).insert(ignore_permissions=True)

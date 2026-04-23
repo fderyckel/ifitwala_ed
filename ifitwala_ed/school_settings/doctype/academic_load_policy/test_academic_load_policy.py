@@ -17,15 +17,26 @@ class TestAcademicLoadPolicy(FrappeTestCase):
         class _FakeDoc:
             def __init__(self, payload):
                 inserted.update(payload)
+                self._payload = dict(payload)
                 self.flags = type("Flags", (), {})()
                 self.name = "POL-DEFAULT"
 
             def insert(self, ignore_permissions=False):
                 inserted["ignore_permissions"] = ignore_permissions
 
+            def get(self, key, default=None):
+                return self._payload.get(key, default)
+
+        original_get_doc = policy_api.frappe.get_doc
+
+        def _fake_get_doc(*args, **kwargs):
+            if len(args) == 1 and isinstance(args[0], dict) and args[0].get("doctype") == "Academic Load Policy":
+                return _FakeDoc(args[0])
+            return original_get_doc(*args, **kwargs)
+
         with (
             patch.object(policy_api.frappe.db, "get_value", return_value=None),
-            patch.object(policy_api.frappe, "get_doc", side_effect=lambda payload: _FakeDoc(payload)),
+            patch.object(policy_api.frappe, "get_doc", side_effect=_fake_get_doc),
         ):
             name = policy_api.ensure_default_policy_for_school("SCH-1", ignore_permissions=True)
 

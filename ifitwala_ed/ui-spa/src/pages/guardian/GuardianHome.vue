@@ -29,10 +29,13 @@
 				<p class="type-caption">Unread communications</p>
 				<p class="type-h3 text-ink">{{ counts.unread_communications }}</p>
 			</RouterLink>
-			<article class="card-surface p-3">
+			<RouterLink
+				:to="{ name: 'guardian-monitoring', query: { focus: 'unread' } }"
+				class="card-surface block p-3 transition hover:border-jacaranda/30 hover:bg-jacaranda/5"
+			>
 				<p class="type-caption">Unread student logs</p>
 				<p class="type-h3 text-ink">{{ counts.unread_visible_student_logs }}</p>
-			</article>
+			</RouterLink>
 			<article class="card-surface p-3">
 				<p class="type-caption">Upcoming due tasks</p>
 				<p class="type-h3 text-ink">{{ counts.upcoming_due_tasks }}</p>

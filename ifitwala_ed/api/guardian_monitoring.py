@@ -6,7 +6,7 @@ from typing import Any
 
 import frappe
 from frappe import _
-from frappe.utils import add_days, cint, now_datetime
+from frappe.utils import add_days, cint, now_datetime, strip_html
 
 from ifitwala_ed.api.guardian_home import (
     _coerce_time,
@@ -63,6 +63,11 @@ def _coerce_days(days: int | str) -> int:
     return value
 
 
+def _plain_guardian_log_text(value: Any) -> str:
+    text = strip_html(value or "")
+    return " ".join(text.split()).strip()
+
+
 def _get_monitoring_logs(*, user: str, student_names: list[str], days: int) -> list[dict[str, Any]]:
     if not student_names:
         return []
@@ -95,7 +100,7 @@ def _get_monitoring_logs(*, user: str, student_names: list[str], days: int) -> l
                 "student_name": row.get("student_name") or row.get("student") or "",
                 "date": str(row.get("date") or ""),
                 "time": _coerce_time(row.get("time"), "guardian_monitoring.student_log.time", []),
-                "summary": _plain_summary(row.get("log")),
+                "summary": _plain_guardian_log_text(row.get("log")),
                 "follow_up_status": row.get("follow_up_status") or "",
                 "is_unread": name in unread_names,
             }

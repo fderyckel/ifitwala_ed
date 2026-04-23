@@ -10,6 +10,7 @@ from ifitwala_ed.api.guardian_attendance import get_guardian_attendance_snapshot
 from ifitwala_ed.api.guardian_communications import get_guardian_communication_center
 from ifitwala_ed.api.guardian_finance import _resolve_finance_scope, get_guardian_finance_snapshot
 from ifitwala_ed.api.guardian_monitoring import (
+    _get_monitoring_logs,
     get_guardian_monitoring_snapshot,
     mark_guardian_student_log_read,
 )
@@ -254,6 +255,17 @@ class TestGuardianPolicyPhase2(FrappeTestCase):
         with (
             patch("ifitwala_ed.api.guardian_policy.ensure_policy_applies_to_storage", return_value={"ok": True}),
             patch(
+                "ifitwala_ed.api.guardian_policy._resolve_authorized_child_contexts",
+                return_value=[
+                    {
+                        "student": "STU-1",
+                        "student_label": "STU-1",
+                        "organization": "ORG-1",
+                        "school": "SCHOOL-1",
+                    }
+                ],
+            ),
+            patch(
                 "ifitwala_ed.api.guardian_policy._resolve_policy_contexts",
                 return_value=[{"organization": "ORG-1", "school": "SCHOOL-1"}],
             ),
@@ -429,6 +441,35 @@ class TestGuardianFinancePhase2(FrappeTestCase):
 
 
 class TestGuardianMonitoringPhase2(FrappeTestCase):
+    def test_monitoring_logs_return_full_guardian_visible_note_text(self):
+        long_log_text = " ".join(["Detailed guardian-visible note"] * 24)
+        row = {
+            "name": "LOG-1",
+            "student": "STU-1",
+            "student_name": "Amina Example",
+            "date": frappe.utils.getdate("2026-03-12"),
+            "time": None,
+            "follow_up_status": "Open",
+            "log": f"<p>{long_log_text}</p>",
+        }
+
+        with (
+            patch(
+                "ifitwala_ed.api.guardian_monitoring.frappe.utils.getdate",
+                return_value=frappe.utils.getdate("2026-03-13"),
+            ),
+            patch("ifitwala_ed.api.guardian_monitoring.frappe.get_all", return_value=[row]),
+            patch(
+                "ifitwala_ed.api.guardian_monitoring._get_unread_reference_names",
+                return_value=["LOG-1"],
+            ),
+        ):
+            result = _get_monitoring_logs(user="guardian@example.com", student_names=["STU-1"], days=30)
+
+        self.assertEqual(result[0]["summary"], long_log_text)
+        self.assertGreater(len(result[0]["summary"]), 220)
+        self.assertTrue(result[0]["is_unread"])
+
     def test_monitoring_rejects_out_of_scope_student_filter(self):
         with (
             patch("ifitwala_ed.api.guardian_monitoring.frappe.session", frappe._dict({"user": "guardian@example.com"})),

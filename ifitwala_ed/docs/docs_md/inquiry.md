@@ -3,8 +3,8 @@ title: "Inquiry: Managing Website Visitor Intake"
 slug: inquiry
 category: Admission
 doc_order: 2
-version: "1.4.3"
-last_change_date: "2026-03-22"
+version: "1.4.4"
+last_change_date: "2026-04-23"
 summary: "Capture, assign, and track incoming website inquiries with SLA visibility and optional conversion to Student Applicant when relevant."
 seo_title: "Inquiry: Managing Website Visitor Intake"
 seo_description: "Capture, assign, and track incoming website inquiries with SLA visibility and optional conversion to Student Applicant when relevant."
@@ -94,7 +94,7 @@ Allowed transitions are strictly server-validated:
 - **Analytics surface**:
   - staff SPA route: `/staff/analytics/inquiry`
   - API: `ifitwala_ed.api.inquiry.get_dashboard_data` and related filter endpoints
-- **Scheduler**: hourly SLA recomputation (`run_hourly_sla_sweep` -> `check_sla_breaches`) with per-doctype column validation, legacy due-date backfill for Inquiry rows, and run summary cache at `admissions:sla_sweep:last_run`.
+- **Scheduler**: hourly SLA recomputation (`run_hourly_sla_sweep` -> `check_sla_breaches`) updates SLA status only and caches the run summary at `admissions:sla_sweep:last_run`; legacy missing `first_contact_due_on` rows are remediated through the one-shot patch `ifitwala_ed.patches.backfill_inquiry_first_contact_due_dates`.
 - **File routing fallback**: attachments routed under Admissions inquiry context in file management utilities.
 
 ## Lifecycle and Linked Documents

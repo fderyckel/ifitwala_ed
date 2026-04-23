@@ -3,7 +3,7 @@
 Status: Active
 Audience: Humans, coding agents
 Scope: `/hub/guardian` family information surfaces
-Last updated: 2026-04-22
+Last updated: 2026-04-23
 
 This document defines the canonical information contract for Guardian Home plus the Phase-2 guardian policy, finance, and monitoring surfaces.
 
@@ -47,7 +47,7 @@ Test refs:
 Rules:
 
 1. Guardian Home shows the portal heading, the configured school-day window, and a refresh action.
-2. The summary cards show `unread_communications`, `unread_visible_student_logs`, `upcoming_due_tasks`, and `upcoming_assessments`; when `upcoming_assessments` is non-zero, that card may jump the guardian to the first in-window timeline day that carries assessment detail.
+2. The summary cards show `unread_communications`, `unread_visible_student_logs`, `upcoming_due_tasks`, and `upcoming_assessments`; the `Unread student logs` card routes to `/guardian/monitoring?focus=unread`, and when `upcoming_assessments` is non-zero that card may jump the guardian to the first in-window timeline day that carries assessment detail.
 3. Quick links route guardians to communications, course selection, activities, attendance, policies, finance, monitoring, portfolio, and the family snapshot, and launch the `School Calendar` monthly overlay from Guardian Home.
 4. The guardian portal shell may surface an unread communication badge on the `Communications` rail item using the same unread org-communication count shown by the family snapshot.
 5. The landing page remains a briefing surface; navigation is secondary.
@@ -162,9 +162,11 @@ Rules:
 
 1. `/guardian/monitoring` is a family-wide monitoring surface, not one portal view per child.
 2. The page shows guardian-visible student logs and published task results for all linked children by default.
-3. Child filtering is optional and does not change server visibility; it only narrows the already-authorized payload.
-4. Guardian-visible student logs expose an explicit mark-read action through `mark_guardian_student_log_read`, which writes `Portal Read Receipt` for the logged-in guardian only.
-5. Monitoring mode must not introduce sibling ranking, gradebook editing, or unpublished results.
+3. Guardian-visible student logs render the full plain-text note body returned by the server; the guardian portal must not truncate those log notes into teaser text on this surface.
+4. Child filtering is optional and does not change server visibility; it only narrows the already-authorized payload.
+5. Guardian-visible student logs expose an explicit mark-read action through `mark_guardian_student_log_read`, which writes `Portal Read Receipt` for the logged-in guardian only.
+6. When the route query includes `focus=unread`, the SPA scrolls the first unread guardian-visible student log into view after the payload loads; if no unread log exists, the page focuses the student-log section itself.
+7. Monitoring mode must not introduce sibling ranking, gradebook editing, or unpublished results.
 
 ## 8. Communication Center Surface
 

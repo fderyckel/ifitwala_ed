@@ -504,10 +504,32 @@ class TestAdmissionCockpit(FrappeTestCase):
 
     @contextmanager
     def _patched_drive_admissions_bridge(self):
+        from ifitwala_drive.services.files.creation import create_drive_file_artifacts
+
+        from ifitwala_ed.integrations.drive.admissions import get_applicant_document_context
+
         fake_drive_admissions = type("FakeDriveAdmissions", (), {"upload_applicant_document": object()})()
 
         def _fake_drive_upload_and_finalize(*, create_session_callable, payload, content):
             self.assertIs(create_session_callable, fake_drive_admissions.upload_applicant_document)
+            context = get_applicant_document_context(
+                {
+                    "student_applicant": self.applicant.name,
+                    "document_type": payload["document_type"],
+                    "applicant_document": payload["applicant_document"],
+                    "applicant_document_item": payload["applicant_document_item"],
+                    "item_key": payload["item_key"],
+                    "item_label": payload["item_label"],
+                    "filename_original": payload["filename_original"],
+                }
+            )
+            storage_artifact = {
+                "object_key": f"files/admissions/{frappe.generate_hash(length=12)}",
+                "storage_backend": "local",
+                "mime_type": "text/plain",
+                "size_bytes": len(content),
+                "content_hash": frappe.generate_hash(length=12),
+            }
             file_doc = frappe.get_doc(
                 {
                     "doctype": "File",
@@ -519,16 +541,64 @@ class TestAdmissionCockpit(FrappeTestCase):
                 }
             )
             file_doc.flags.governed_upload = True
-            file_doc.insert(ignore_permissions=True)
+            file_doc.flags.drive_compat_projection = True
+            file_doc = file_doc.insert(ignore_permissions=True)
             self._created.append(("File", file_doc.name))
-            drive_file_id = f"DRV-{file_doc.name}"
+            session_doc = frappe.get_doc(
+                {
+                    "doctype": "Drive Upload Session",
+                    "session_key": f"cockpit-doc-{frappe.generate_hash(length=12)}",
+                    "status": "completed",
+                    "upload_source": "SPA",
+                    "created_by_user": "Administrator",
+                    "owner_doctype": context["owner_doctype"],
+                    "owner_name": context["owner_name"],
+                    "attached_doctype": context["attached_doctype"],
+                    "attached_name": context["attached_name"],
+                    "organization": context["organization"],
+                    "school": context["school"],
+                    "intended_primary_subject_type": context["primary_subject_type"],
+                    "intended_primary_subject_id": context["primary_subject_id"],
+                    "intended_data_class": context["data_class"],
+                    "intended_purpose": context["purpose"],
+                    "intended_retention_policy": context["retention_policy"],
+                    "intended_slot": context["slot"],
+                    "filename_original": payload["filename_original"],
+                    "mime_type_hint": storage_artifact["mime_type"],
+                    "received_size_bytes": storage_artifact["size_bytes"],
+                    "content_hash": storage_artifact["content_hash"],
+                    "is_private": 1,
+                    "storage_backend": storage_artifact["storage_backend"],
+                    "tmp_object_key": f"tmp/admissions/{frappe.generate_hash(length=12)}",
+                    "upload_token": frappe.generate_hash(length=16),
+                }
+            ).insert(ignore_permissions=True)
+            self._created.append(("Drive Upload Session", session_doc.name))
+            artifacts = create_drive_file_artifacts(
+                upload_session_doc=session_doc,
+                file_id=file_doc.name,
+                storage_artifact=storage_artifact,
+                binding_role="applicant_document",
+            )
+            self._created.append(("Drive File", artifacts["drive_file_id"]))
+            if artifacts.get("drive_file_version_id"):
+                self._created.append(("Drive File Version", artifacts["drive_file_version_id"]))
+            if artifacts.get("drive_binding_id"):
+                self._created.append(("Drive Binding", artifacts["drive_binding_id"]))
+            for doctype in ("Drive File Derivative", "Drive Processing Job"):
+                for name in frappe.get_all(
+                    doctype,
+                    filters={"drive_file": artifacts["drive_file_id"]},
+                    pluck="name",
+                ):
+                    self._created.append((doctype, name))
             return (
                 {"upload_session_id": "DUS-TEST"},
                 {
                     "file_id": file_doc.name,
                     "file_url": file_doc.file_url,
-                    "drive_file_id": drive_file_id,
-                    "canonical_ref": f"drv:{self.organization}:{drive_file_id}",
+                    "drive_file_id": artifacts["drive_file_id"],
+                    "canonical_ref": artifacts["canonical_ref"],
                     "applicant_document": payload["applicant_document"],
                     "applicant_document_item": payload["applicant_document_item"],
                     "item_key": payload["item_key"],

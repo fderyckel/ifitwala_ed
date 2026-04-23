@@ -90,13 +90,18 @@
 		</section>
 
 		<template v-else>
-			<section class="card-surface monitoring-section monitoring-section--logs p-5">
+			<section
+				ref="studentLogsSection"
+				data-testid="guardian-monitoring-student-logs"
+				class="card-surface monitoring-section monitoring-section--logs p-5"
+			>
 				<div class="mb-4 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
 					<div>
 						<p class="type-overline text-canopy/75">Student Logs</p>
-						<h2 class="type-h3 text-ink">Guardian-visible updates</h2>
+						<h2 class="type-h3 text-ink">Latest student logs</h2>
 						<p class="type-caption text-ink/65">
-							Review new notes across your family and mark them as seen once read.
+							Review the newest guardian-visible notes across your family and mark unread items as
+							seen once read.
 						</p>
 					</div>
 					<div class="flex flex-wrap gap-2">
@@ -113,17 +118,19 @@
 					<article
 						v-for="row in studentLogs"
 						:key="row.student_log"
+						:data-student-log="row.student_log"
+						:data-monitoring-log-unread="row.is_unread ? 'true' : null"
 						class="monitoring-entry monitoring-entry--log rounded-xl border border-line-soft bg-surface-soft p-4"
 					>
 						<div class="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-							<div>
+							<div class="min-w-0">
 								<p class="type-body-strong text-ink">{{ row.student_name }}</p>
 								<p class="type-caption text-ink/60">
 									{{ row.date }}<span v-if="row.time"> · {{ row.time }}</span>
 									<span v-if="row.follow_up_status"> · {{ row.follow_up_status }}</span>
 								</p>
 							</div>
-							<div class="flex flex-col items-start gap-2 sm:items-end">
+							<div class="flex items-center gap-2 self-start sm:justify-end">
 								<p
 									class="rounded-full px-3 py-1 type-caption"
 									:class="row.is_unread ? 'bg-flame/15 text-flame' : 'bg-leaf/15 text-canopy'"
@@ -133,7 +140,7 @@
 								<button
 									v-if="row.is_unread"
 									type="button"
-									class="type-caption font-semibold text-jacaranda hover:underline disabled:text-ink/40"
+									class="rounded-full border border-jacaranda/20 bg-white px-3 py-1 type-caption font-semibold text-jacaranda transition hover:border-jacaranda/30 hover:bg-jacaranda/5 disabled:border-line-soft disabled:bg-surface-soft disabled:text-ink/40"
 									:disabled="markingLogName === row.student_log"
 									@click="markAsSeen(row.student_log)"
 								>
@@ -141,7 +148,7 @@
 								</button>
 							</div>
 						</div>
-						<p class="mt-2 type-body text-ink/80">{{ row.summary }}</p>
+						<p class="mt-2 break-words type-body text-ink/80">{{ row.summary }}</p>
 					</article>
 				</div>
 			</section>
@@ -194,8 +201,8 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue';
-import { RouterLink } from 'vue-router';
+import { computed, nextTick, onMounted, ref, watch } from 'vue';
+import { RouterLink, useRoute } from 'vue-router';
 import { toast } from 'frappe-ui';
 
 import {
@@ -215,6 +222,8 @@ const snapshot = ref<GuardianMonitoringSnapshot | null>(null);
 const selectedStudent = ref('');
 const selectedDays = ref(30);
 const markingLogName = ref('');
+const studentLogsSection = ref<HTMLElement | null>(null);
+const route = useRoute();
 
 const children = computed(() => snapshot.value?.family.children ?? []);
 const counts = computed(
@@ -228,6 +237,9 @@ const counts = computed(
 const studentLogs = computed<MonitoringStudentLog[]>(() => snapshot.value?.student_logs ?? []);
 const publishedResults = computed<MonitoringPublishedResult[]>(
 	() => snapshot.value?.published_results ?? []
+);
+const focusUnreadLogs = computed(
+	() => typeof route.query.focus === 'string' && route.query.focus.trim() === 'unread'
 );
 
 function guardianFeedbackRoute(row: MonitoringPublishedResult) {
@@ -261,6 +273,16 @@ async function markAsSeen(studentLog: string) {
 	}
 }
 
+async function focusUnreadStudentLog() {
+	if (!focusUnreadLogs.value) return;
+	await nextTick();
+	const target =
+		document.querySelector<HTMLElement>('[data-monitoring-log-unread="true"]') ??
+		studentLogsSection.value;
+	if (!target || typeof target.scrollIntoView !== 'function') return;
+	target.scrollIntoView({ block: 'start', behavior: 'smooth' });
+}
+
 async function loadSnapshot() {
 	loading.value = true;
 	errorMessage.value = '';
@@ -274,6 +296,9 @@ async function loadSnapshot() {
 		errorMessage.value = message || 'Unknown error';
 	} finally {
 		loading.value = false;
+	}
+	if (!errorMessage.value) {
+		await focusUnreadStudentLog();
 	}
 }
 

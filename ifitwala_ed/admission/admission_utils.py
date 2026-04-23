@@ -8,7 +8,7 @@ import frappe
 from frappe import _
 from frappe.desk.form.assign_to import add as add_assignment
 from frappe.desk.form.assign_to import remove as remove_assignment
-from frappe.utils import add_days, cint, get_datetime, getdate, now, now_datetime, nowdate, validate_email_address
+from frappe.utils import add_days, get_datetime, getdate, now, now_datetime, nowdate, validate_email_address
 from frappe.utils.nestedset import get_ancestors_of, get_descendants_of
 
 from ifitwala_ed.governance.policy_scope_utils import (
@@ -276,8 +276,6 @@ def check_sla_breaches():
             has_sla_status = frappe.db.has_column(doctype, "sla_status")
             has_first_contact_due = frappe.db.has_column(doctype, "first_contact_due_on")
             has_followup_due = frappe.db.has_column(doctype, "followup_due_on")
-            has_submitted_at = frappe.db.has_column(doctype, "submitted_at")
-
             if not has_workflow_state or not has_sla_status:
                 summary["skipped"].append(
                     {
@@ -335,25 +333,6 @@ def check_sla_breaches():
 
             params = {"today": today}
             try:
-                # Backfill missing first-contact due dates for legacy rows so scheduler can manage them.
-                if has_first_contact_due:
-                    first_contact_sla_days = cint(_get_first_contact_sla_days_default()) or 7
-                    base_date_expr = (
-                        "COALESCE(DATE(submitted_at), DATE(creation), %(today)s)"
-                        if has_submitted_at
-                        else "COALESCE(DATE(creation), %(today)s)"
-                    )
-                    frappe.db.sql(
-                        f"""
-                        UPDATE `tab{doctype}`
-                           SET first_contact_due_on = DATE_ADD({base_date_expr}, INTERVAL {first_contact_sla_days} DAY)
-                         WHERE docstatus = 0
-                           AND first_contact_due_on IS NULL
-                           AND {workflow_state_expr} NOT IN {contacted_states}
-                        """,
-                        params,
-                    )
-
                 # 1) Mark Overdue
                 frappe.db.sql(
                     f"""
@@ -1222,11 +1201,6 @@ def assign_inquiry(doctype, docname, assigned_to, assignment_lane: str | None = 
     # Load settings
     settings = frappe.get_cached_doc("Admission Settings")
 
-    # Ensure first_contact_due_on exists for legacy rows
-    if not getattr(doc, "first_contact_due_on", None):
-        base = getdate(doc.submitted_at) if getattr(doc, "submitted_at", None) else getdate(nowdate())
-        doc.first_contact_due_on = add_days(base, settings.first_contact_sla_days or 7)
-
     # Compute follow-up due and update Inquiry (in-memory only)
     followup_due = add_days(nowdate(), settings.followup_sla_days or 1)
     doc.assigned_to = assigned_to
@@ -1288,11 +1262,6 @@ def reassign_inquiry(doctype, docname, new_assigned_to, assignment_lane: str | N
 
     settings = frappe.get_cached_doc("Admission Settings")
     prev_assigned = doc.assigned_to
-
-    # Ensure first_contact_due_on exists for legacy rows
-    if not getattr(doc, "first_contact_due_on", None):
-        base = getdate(doc.submitted_at) if getattr(doc, "submitted_at", None) else getdate(nowdate())
-        doc.first_contact_due_on = add_days(base, settings.first_contact_sla_days or 7)
 
     # Compute new follow-up due and update Inquiry (in-memory only)
     followup_due = add_days(nowdate(), settings.followup_sla_days or 1)

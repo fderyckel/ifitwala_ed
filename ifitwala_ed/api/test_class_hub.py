@@ -124,6 +124,11 @@ class TestClassHub(FrappeTestCase):
                 "ifitwala_ed.api.class_hub._get_active_roster",
                 return_value=[{"student": "STU-001", "student_name": "Amina Dar"}],
             ),
+            patch("ifitwala_ed.api.class_hub.planning.get_course_plan_row", return_value=None),
+            patch(
+                "ifitwala_ed.api.class_hub.teaching_plans_api._resolve_current_curriculum_unit",
+                return_value={"unit": None},
+            ),
             patch("ifitwala_ed.api.class_hub._can_create_student_log_for_session_user", return_value=True),
         ):
             payload = class_hub.get_bundle("SG-0001")

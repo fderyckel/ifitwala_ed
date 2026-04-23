@@ -706,8 +706,9 @@ class TestUserRedirect(FrappeTestCase):
         user.first_name = "Missing"
         user.last_name = "Link"
         user.enabled = 1
-        _append_role(user, "Employee")
+        _append_role(user, "Teacher")
         user.insert(ignore_permissions=True)
+        frappe.clear_cache(user=user.name)
 
         employee = frappe.new_doc("Employee")
         employee.employee_first_name = "Missing"

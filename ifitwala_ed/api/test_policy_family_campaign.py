@@ -25,12 +25,19 @@ class _DummyOrgCommunicationDoc:
 class _DummyCache:
     def __init__(self):
         self.values = {}
+        self.hash_values = {}
 
     def get_value(self, key):
         return self.values.get(key)
 
     def set_value(self, key, value, expires_in_sec=None):
         self.values[key] = value
+
+    def hget(self, key, field):
+        return (self.hash_values.get(key) or {}).get(field)
+
+    def hset(self, key, field, value):
+        self.hash_values.setdefault(key, {})[field] = value
 
     def lock(self, key, timeout=15):
         return nullcontext()
