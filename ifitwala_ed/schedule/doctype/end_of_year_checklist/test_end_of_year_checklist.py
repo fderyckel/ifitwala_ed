@@ -339,7 +339,6 @@ class TestEndofYearChecklist(FrappeTestCase):
                 "last_name": "User",
                 "enabled": 1,
                 "send_welcome_email": 0,
-                "send_password_notification": 0,
             }
         )
         doc.flags.no_welcome_mail = True

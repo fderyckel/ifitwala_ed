@@ -431,9 +431,10 @@ class TestPortalCalendar(FrappeTestCase):
                 "last_name": "Calendar",
                 "enabled": 1,
                 "send_welcome_email": 0,
-                "send_password_notification": 0,
             }
-        ).insert(ignore_permissions=True)
+        )
+        doc.flags.no_welcome_mail = True
+        doc = doc.insert(ignore_permissions=True)
         self._created.append(("User", doc.name))
         return doc
 

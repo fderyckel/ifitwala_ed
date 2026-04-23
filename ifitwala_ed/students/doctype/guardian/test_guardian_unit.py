@@ -96,7 +96,7 @@ class TestGuardianUnit(TestCase):
 
         self.assertEqual(user_name, "guardian@example.com")
         self.assertEqual(captured["payload"]["send_welcome_email"], 0)
-        self.assertEqual(captured["payload"]["send_password_notification"], 0)
+        self.assertNotIn("send_password_notification", captured["payload"])
         self.assertEqual(captured["payload"]["user_type"], "Website User")
         self.assertTrue(fake_user.flags.ignore_permissions)
         self.assertTrue(fake_user.flags.no_welcome_mail)

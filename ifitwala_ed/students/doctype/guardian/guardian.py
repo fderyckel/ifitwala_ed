@@ -301,7 +301,6 @@ class Guardian(Document):
                     "mobile_no": self.guardian_mobile_phone or "",
                     "user_type": "Website User",
                     "send_welcome_email": 0,
-                    "send_password_notification": 0,
                     "roles": [{"role": "Guardian"}],
                 }
             )

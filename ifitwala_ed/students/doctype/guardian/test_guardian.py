@@ -2,11 +2,20 @@
 
 from types import SimpleNamespace
 from unittest import TestCase
+from unittest.mock import patch
 
 import frappe
 from frappe.tests.utils import FrappeTestCase
 
 from ifitwala_ed.students.doctype.guardian.guardian import Guardian
+
+
+def _insert_user_without_notifications(user):
+    with (
+        patch("frappe.core.doctype.user.user.User.send_password_notification"),
+        patch("frappe.core.doctype.user.user.User.send_welcome_mail_to_user"),
+    ):
+        user.insert(ignore_permissions=True)
 
 
 class TestGuardian(FrappeTestCase):
@@ -106,14 +115,12 @@ class TestGuardianUserCreation(FrappeTestCase):
                 "first_name": "Guardian",
                 "last_name": "User",
                 "enabled": 1,
-                "send_welcome_email": 0,
-                "send_password_notification": 0,
                 "user_type": "Website User",
                 "roles": [{"role": role} for role in roles],
             }
         )
         user.flags.no_welcome_mail = True
-        user.insert(ignore_permissions=True)
+        _insert_user_without_notifications(user)
         self._created.append(("User", user.name))
         return user
 
@@ -190,14 +197,12 @@ class TestGuardianPortalRouting(FrappeTestCase):
                 "first_name": "Guardian",
                 "last_name": "Portal",
                 "enabled": 1,
-                "send_welcome_email": 0,
-                "send_password_notification": 0,
                 "user_type": "Website User",
                 "roles": [{"role": role} for role in roles],
             }
         )
         user.flags.no_welcome_mail = True
-        user.insert(ignore_permissions=True)
+        _insert_user_without_notifications(user)
         self._created.append(("User", user.name))
         return user
 

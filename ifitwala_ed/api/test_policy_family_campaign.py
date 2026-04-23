@@ -154,6 +154,7 @@ class TestPolicyFamilyCampaign(FrappeTestCase):
                 "ifitwala_ed.api.policy_signature._require_roles",
                 return_value=("admin@example.com", {"Academic Admin"}),
             ),
+            patch("ifitwala_ed.api.policy_signature._", side_effect=lambda text: text),
             patch(
                 "ifitwala_ed.api.policy_signature._manager_scope_organizations",
                 return_value=["ORG-ROOT"],

@@ -1731,8 +1731,6 @@ class TestStudentApplicant(FrappeTestCase):
                 "first_name": first_name,
                 "last_name": last_name,
                 "enabled": 1,
-                "send_welcome_email": 0,
-                "send_password_notification": 0,
             }
         )
         if add_role:

@@ -296,11 +296,12 @@ class TestSelfEnrollmentApi(FrappeTestCase):
                 "last_name": "Portal",
                 "enabled": 1,
                 "send_welcome_email": 0,
-                "send_password_notification": 0,
                 "user_type": "Website User",
                 "roles": [{"role": "Guardian"}],
             }
-        ).insert(ignore_permissions=True)
+        )
+        user.flags.no_welcome_mail = True
+        user.insert(ignore_permissions=True)
         self._created.append(("User", user.name))
 
         guardian = frappe.get_doc(
