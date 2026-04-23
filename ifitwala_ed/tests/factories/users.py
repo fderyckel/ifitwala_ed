@@ -9,6 +9,8 @@ import frappe
 
 def _insert_user_without_notifications(user):
     with (
+        patch.object(user, "send_password_notification"),
+        patch.object(user, "send_welcome_mail_to_user"),
         patch("frappe.core.doctype.user.user.User.send_password_notification"),
         patch("frappe.core.doctype.user.user.User.send_welcome_mail_to_user"),
     ):
@@ -17,6 +19,8 @@ def _insert_user_without_notifications(user):
 
 def _save_user_without_notifications(user):
     with (
+        patch.object(user, "send_password_notification"),
+        patch.object(user, "send_welcome_mail_to_user"),
         patch("frappe.core.doctype.user.user.User.send_password_notification"),
         patch("frappe.core.doctype.user.user.User.send_welcome_mail_to_user"),
     ):

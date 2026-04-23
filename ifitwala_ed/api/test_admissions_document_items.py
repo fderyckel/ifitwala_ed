@@ -18,6 +18,17 @@ from ifitwala_ed.api.admissions_portal import (
 )
 
 
+def _insert_user_without_notifications(user):
+    # User field values can shadow same-named methods on the document instance.
+    with (
+        patch.object(user, "send_password_notification"),
+        patch.object(user, "send_welcome_mail_to_user"),
+        patch("frappe.core.doctype.user.user.User.send_password_notification"),
+        patch("frappe.core.doctype.user.user.User.send_welcome_mail_to_user"),
+    ):
+        return user.insert(ignore_permissions=True)
+
+
 class TestAdmissionsDocumentItems(FrappeTestCase):
     def setUp(self):
         self._welcome_mail_patcher = patch("frappe.core.doctype.user.user.User.send_welcome_mail_to_user")
@@ -348,7 +359,7 @@ class TestAdmissionsDocumentItems(FrappeTestCase):
             }
         )
         user.flags.no_welcome_mail = True
-        user = user.insert(ignore_permissions=True)
+        user = _insert_user_without_notifications(user)
         self._created.append(("User", user.name))
         frappe.clear_cache(user=user.name)
         return user.name

@@ -16,6 +16,17 @@ from ifitwala_ed.api.calendar_staff_feed import (
 from ifitwala_ed.school_settings.school_settings_utils import resolve_school_calendars_for_window
 
 
+def _insert_user_without_notifications(user):
+    # User field values can shadow same-named methods on the document instance.
+    with (
+        patch.object(user, "send_password_notification"),
+        patch.object(user, "send_welcome_mail_to_user"),
+        patch("frappe.core.doctype.user.user.User.send_password_notification"),
+        patch("frappe.core.doctype.user.user.User.send_welcome_mail_to_user"),
+    ):
+        return user.insert(ignore_permissions=True)
+
+
 class TestPortalCalendar(FrappeTestCase):
     def setUp(self):
         frappe.set_user("Administrator")
@@ -434,7 +445,7 @@ class TestPortalCalendar(FrappeTestCase):
             }
         )
         doc.flags.no_welcome_mail = True
-        doc = doc.insert(ignore_permissions=True)
+        doc = _insert_user_without_notifications(doc)
         self._created.append(("User", doc.name))
         return doc
 

@@ -2,6 +2,7 @@
 # Copyright (c) 2026, François de Ryckel and contributors
 # See license.txt
 
+from unittest.mock import patch
 from urllib.parse import urlparse
 
 import frappe
@@ -21,6 +22,17 @@ from ifitwala_ed.api.recommendation_intake import (
     list_recommendation_requests,
     submit_recommendation,
 )
+
+
+def _insert_user_without_notifications(user):
+    # User field values can shadow same-named methods on the document instance.
+    with (
+        patch.object(user, "send_password_notification"),
+        patch.object(user, "send_welcome_mail_to_user"),
+        patch("frappe.core.doctype.user.user.User.send_password_notification"),
+        patch("frappe.core.doctype.user.user.User.send_welcome_mail_to_user"),
+    ):
+        return user.insert(ignore_permissions=True)
 
 
 class TestRecommendationIntake(FrappeTestCase):
@@ -364,12 +376,11 @@ class TestRecommendationIntake(FrappeTestCase):
                 "first_name": "Recommendation",
                 "last_name": prefix.title(),
                 "enabled": 1,
-                "send_welcome_email": 0,
                 "roles": [{"role": role} for role in roles],
             }
         )
         user.flags.no_welcome_mail = True
-        user = user.insert(ignore_permissions=True)
+        user = _insert_user_without_notifications(user)
         self._created.append(("User", user.name))
         frappe.clear_cache(user=user.name)
         return user

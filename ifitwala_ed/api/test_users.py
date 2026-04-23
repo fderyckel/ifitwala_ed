@@ -81,7 +81,12 @@ def _new_test_user():
 
 
 def _insert_user(user_doc):
+    if getattr(user_doc, "doctype", None) != "User":
+        user_doc.insert(ignore_permissions=True)
+        return
     with (
+        patch.object(user_doc, "send_password_notification"),
+        patch.object(user_doc, "send_welcome_mail_to_user"),
         patch("frappe.core.doctype.user.user.User.send_password_notification"),
         patch("frappe.core.doctype.user.user.User.send_welcome_mail_to_user"),
     ):
