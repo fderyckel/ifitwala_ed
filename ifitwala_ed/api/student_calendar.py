@@ -16,7 +16,7 @@ from frappe import _
 from frappe.utils import getdate, now_datetime
 
 # Reuse existing utilities for schedule expansion
-from ifitwala_ed.api.calendar import (
+from ifitwala_ed.api.calendar_core import (
     CalendarEvent,
     _course_meta_map,
     _resolve_window,

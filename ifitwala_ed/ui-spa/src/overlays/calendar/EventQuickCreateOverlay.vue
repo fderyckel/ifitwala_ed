@@ -916,6 +916,65 @@
 										/>
 									</div>
 
+									<div class="rounded-2xl border border-border/70 bg-sand/20 p-4 shadow-soft">
+										<div class="space-y-1">
+											<p class="type-overline text-ink/55">Communications</p>
+											<h3 class="type-h3 text-ink">Calendar item vs announcement</h3>
+											<p class="type-caption text-ink/70">
+												This school event creates the calendar item. If families or students also
+												need a portal announcement with read-state, publish it here in the same
+												workflow.
+											</p>
+										</div>
+
+										<label
+											class="mt-4 flex items-start gap-3 rounded-2xl border border-border/70 bg-white px-4 py-3 type-caption text-ink/80"
+											:class="
+												canPublishAnnouncement ? 'cursor-pointer' : 'cursor-not-allowed opacity-70'
+											"
+										>
+											<input
+												v-model="schoolEventForm.publish_announcement"
+												type="checkbox"
+												class="mt-0.5 rounded border-border/70"
+												:disabled="submitting || !canPublishAnnouncement"
+											/>
+											<span>
+												<span class="block type-body-strong text-ink">
+													Also publish announcement
+												</span>
+												<span class="mt-1 block type-caption text-ink/65">
+													Recommended when this event is for guardians or students and should
+													appear in Communications as well as the calendar.
+												</span>
+											</span>
+										</label>
+
+										<p
+											v-if="publishAnnouncementBlockedReason"
+											class="mt-3 type-caption text-amber-800"
+										>
+											{{ publishAnnouncementBlockedReason }}
+										</p>
+
+										<div v-if="schoolEventForm.publish_announcement" class="mt-4 space-y-1">
+											<label class="type-label">Announcement message (optional)</label>
+											<FormControl
+												type="textarea"
+												:rows="5"
+												:model-value="schoolEventForm.announcement_message"
+												:disabled="submitting"
+												placeholder="What should families or students read in Communications?"
+												@update:modelValue="
+													value => updateSchoolEventField('announcement_message', value)
+												"
+											/>
+											<p class="type-caption text-ink/60">
+												If you leave this blank, the event description above is reused.
+											</p>
+										</div>
+									</div>
+
 									<p
 										v-if="schoolEventForm.audience_type === 'Custom Users'"
 										class="type-caption text-ink/65"
@@ -929,21 +988,22 @@
 						<footer
 							class="if-overlay__footer flex flex-wrap items-center justify-end gap-2 px-6 pb-6"
 						>
-							<Button
-								appearance="secondary"
+							<button
+								type="button"
+								class="if-button if-button--secondary"
 								:disabled="submitting"
 								@click="emitClose('programmatic')"
 							>
 								Cancel
-							</Button>
-							<Button
-								appearance="primary"
-								:loading="submitting"
+							</button>
+							<button
+								type="button"
+								class="if-button if-button--primary"
 								:disabled="submitting"
 								@click="submit"
 							>
 								{{ submitLabel }}
-							</Button>
+							</button>
 						</footer>
 					</DialogPanel>
 				</TransitionChild>
@@ -961,7 +1021,7 @@ import {
 	TransitionChild,
 	TransitionRoot,
 } from '@headlessui/vue';
-import { Button, FeatherIcon, FormControl, Spinner } from 'frappe-ui';
+import { FeatherIcon, FormControl, Spinner } from 'frappe-ui';
 
 import { formatHumanDateTimeFields } from '@/lib/datetime';
 import {
@@ -1087,6 +1147,8 @@ const schoolEventForm = reactive({
 	audience_student_group: '',
 	include_guardians: false,
 	include_students: false,
+	publish_announcement: false,
+	announcement_message: '',
 });
 
 const meetingFormatOptions: MeetingFormatOption[] = [
@@ -1245,9 +1307,34 @@ const audienceTypeSelectOptions = computed<SelectOption[]>(
 		})) as SelectOption[]
 );
 
-const submitLabel = computed(() =>
-	activeType.value === 'meeting' ? 'Create meeting' : 'Create school event'
+const announcementPublishCapability = computed(() => options.value?.announcement_publish);
+
+const publishAnnouncementBlockedReason = computed(() => {
+	if (!announcementPublishCapability.value?.enabled) {
+		return (
+			announcementPublishCapability.value?.blocked_reason ||
+			'You do not currently have access to publish org communications from this workflow.'
+		);
+	}
+	if (schoolEventForm.audience_type === 'Custom Users') {
+		return 'Custom Users events can stay calendar-only here. Publish a separate communication if you need message history.';
+	}
+	if (schoolEventForm.audience_type === 'Employees in Team' && schoolEventForm.include_students) {
+		return "Team announcements cannot mirror 'Include students' from this event audience.";
+	}
+	return '';
+});
+
+const canPublishAnnouncement = computed(
+	() =>
+		Boolean(announcementPublishCapability.value?.enabled) &&
+		!publishAnnouncementBlockedReason.value
 );
+
+const submitLabel = computed(() => {
+	if (activeType.value === 'meeting') return 'Create meeting';
+	return schoolEventForm.publish_announcement ? 'Create event and publish' : 'Create school event';
+});
 
 const selectedAttendeeCountLabel = computed(() => {
 	const invitees = selectedAttendees.value.length;
@@ -1584,6 +1671,8 @@ function initializeForms() {
 	schoolEventForm.audience_student_group = '';
 	schoolEventForm.include_guardians = false;
 	schoolEventForm.include_students = false;
+	schoolEventForm.publish_announcement = false;
+	schoolEventForm.announcement_message = '';
 
 	selectedAttendeeKinds.value = (options.value?.attendee_kinds || []).map(option => option.value);
 }
@@ -1637,8 +1726,31 @@ function updateMeetingField(field: keyof typeof meetingForm, value: unknown) {
 
 function updateSchoolEventField(field: keyof typeof schoolEventForm, value: unknown) {
 	(schoolEventForm as Record<string, unknown>)[field] = String(value || '').trim();
+	if (field === 'audience_type') {
+		if (schoolEventForm.audience_type !== 'Employees in Team') {
+			schoolEventForm.audience_team = '';
+		}
+		if (schoolEventForm.audience_type !== 'Students in Student Group') {
+			schoolEventForm.audience_student_group = '';
+		}
+		if (!['All Students', 'Students in Student Group'].includes(schoolEventForm.audience_type)) {
+			schoolEventForm.include_guardians = false;
+		}
+		if (!['All Guardians', 'All Employees'].includes(schoolEventForm.audience_type)) {
+			schoolEventForm.include_students = false;
+		}
+	}
 	clearErrorState();
 }
+
+watch(
+	() => canPublishAnnouncement.value,
+	canPublish => {
+		if (!canPublish) {
+			schoolEventForm.publish_announcement = false;
+		}
+	}
+);
 
 function updateAttendeeSearchQuery(value: unknown) {
 	attendeeSearchQuery.value = String(value || '').trimStart();
@@ -1904,6 +2016,17 @@ function validateSchoolEvent() {
 	) {
 		return "Audience Student Group is required when audience type is 'Students in Student Group'.";
 	}
+	if (schoolEventForm.publish_announcement) {
+		if (!canPublishAnnouncement.value) {
+			return (
+				publishAnnouncementBlockedReason.value ||
+				'Announcement publishing is not available for this event.'
+			);
+		}
+		if (!schoolEventForm.announcement_message.trim() && !schoolEventForm.description.trim()) {
+			return 'Add an announcement message or event description before publishing the announcement.';
+		}
+	}
 
 	return null;
 }
@@ -2141,6 +2264,8 @@ async function submit() {
 				audience_student_group: schoolEventForm.audience_student_group || null,
 				include_guardians: schoolEventForm.include_guardians ? 1 : 0,
 				include_students: schoolEventForm.include_students ? 1 : 0,
+				publish_announcement: schoolEventForm.publish_announcement ? 1 : 0,
+				announcement_message: schoolEventForm.announcement_message || null,
 				custom_participants: null,
 			});
 		}

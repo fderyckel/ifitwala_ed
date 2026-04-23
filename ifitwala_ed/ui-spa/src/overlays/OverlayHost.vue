@@ -46,6 +46,8 @@ import MeetingEventModal from '@/components/calendar/MeetingEventModal.vue';
 import SchoolEventModal from '@/components/calendar/SchoolEventModal.vue';
 import ClassEventModal from '@/components/calendar/ClassEventModal.vue';
 import EventQuickCreateOverlay from '@/overlays/calendar/EventQuickCreateOverlay.vue';
+import GuardianCalendarOverlay from '@/overlays/guardian/GuardianCalendarOverlay.vue';
+import GuardianAttendanceDayOverlay from '@/overlays/guardian/GuardianAttendanceDayOverlay.vue';
 import QuickClassSessionOverlay from '@/overlays/planning/QuickClassSessionOverlay.vue';
 import OrgCommunicationQuickCreateOverlay from '@/components/communication/OrgCommunicationQuickCreateModal.vue';
 import AttendanceRemarkOverlay from '@/overlays/attendance/AttendanceRemarkOverlay.vue';
@@ -57,6 +59,7 @@ import AnalyticsExpandOverlay from '@/overlays/analytics/AnalyticsExpandOverlay.
 import OrganizationChartPersonOverlay from '@/overlays/staff/OrganizationChartPersonOverlay.vue';
 import StaffPolicyInformOverlay from '@/overlays/staff/StaffPolicyInformOverlay.vue';
 import StaffPolicyCampaignOverlay from '@/overlays/staff/StaffPolicyCampaignOverlay.vue';
+import FamilyPolicyCampaignOverlay from '@/overlays/staff/FamilyPolicyCampaignOverlay.vue';
 import ProfessionalDevelopmentRequestOverlay from '@/overlays/staff/ProfessionalDevelopmentRequestOverlay.vue';
 import ProfessionalDevelopmentCompletionOverlay from '@/overlays/staff/ProfessionalDevelopmentCompletionOverlay.vue';
 import ClassHubGroupPickerOverlay from '@/components/overlays/class-hub/ClassHubGroupPickerOverlay.vue';
@@ -71,6 +74,7 @@ import ApplicantPolicyAcknowledgeOverlay from '@/overlays/admissions/ApplicantPo
 import ApplicantSubmitOverlay from '@/overlays/admissions/ApplicantSubmitOverlay.vue';
 import AdmissionsWorkspaceOverlay from '@/overlays/admissions/AdmissionsWorkspaceOverlay.vue';
 import CriticalIncidentsListOverlay from '@/overlays/morning_brief/CriticalIncidentsListOverlay.vue';
+import ConsentProfileWritebackOverlay from '@/overlays/portal/ConsentProfileWritebackOverlay.vue';
 
 type CloseReason = 'backdrop' | 'esc' | 'programmatic';
 
@@ -180,6 +184,10 @@ function resolveComponent(type: OverlayType) {
 			return CreateTaskDeliveryOverlay;
 		case 'quick-class-session':
 			return QuickClassSessionOverlay;
+		case 'guardian-calendar':
+			return GuardianCalendarOverlay;
+		case 'guardian-attendance-day':
+			return GuardianAttendanceDayOverlay;
 		case 'event-quick-create':
 			return EventQuickCreateOverlay;
 		case 'meeting-event':
@@ -204,6 +212,8 @@ function resolveComponent(type: OverlayType) {
 			return StaffPolicyInformOverlay;
 		case 'staff-policy-signature-campaign':
 			return StaffPolicyCampaignOverlay;
+		case 'staff-family-policy-campaign':
+			return FamilyPolicyCampaignOverlay;
 		case 'staff-professional-development-request':
 			return ProfessionalDevelopmentRequestOverlay;
 		case 'staff-professional-development-completion':
@@ -236,6 +246,8 @@ function resolveComponent(type: OverlayType) {
 			return AdmissionsWorkspaceOverlay;
 		case 'critical-incidents-list':
 			return CriticalIncidentsListOverlay;
+		case 'consent-profile-writeback':
+			return ConsentProfileWritebackOverlay;
 		default:
 			return CreateTaskDeliveryOverlay;
 	}

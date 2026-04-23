@@ -1,6 +1,6 @@
 # Print System Contract
 
-Status: Approved direction, initial reference implementation added
+Status: Approved direction, reference implementation expanded
 
 Scope:
 - all Desk `Print Format` work
@@ -26,6 +26,9 @@ Code refs:
 - `ifitwala_ed/patches/publish_student_profile_print_format.py`
 - `ifitwala_ed/students/report/medical_info_and_emergency_contact/medical_info_and_emergency_contact.html`
 - `ifitwala_ed/students/report/medical_info_and_emergency_contact/medical_info_and_emergency_contact.py`
+- `ifitwala_ed/api/calendar_export.py`
+- `ifitwala_ed/templates/print/staff_timetable_export.html`
+- `ifitwala_ed/templates/print/staff_timetable_export.css`
 - `ifitwala_ed/students/doctype/student/student.json`
 - `ifitwala_ed/students/doctype/student/student.py`
 - `ifitwala_ed/hooks.py`
@@ -33,12 +36,13 @@ Code refs:
 
 Test refs:
 - `ifitwala_ed/students/print_format/test_student_profile_print_format.py`
+- `ifitwala_ed/api/test_calendar_export.py`
 - existing report coverage is feature-specific, not a shared print-system contract
 
 Current reality:
 
 1. The repo already contains app-owned `Print Format` records for `Employee` and `Student Profile`.
-2. The repo already contains report-print HTML for operational outputs, including medical and emergency contact printing.
+2. The repo already contains report-print HTML for operational outputs, including medical and emergency contact printing and the staff timetable PDF export.
 3. This contract now defines the shared print architecture, but the repo does not yet have a shared runtime print helper layer or centralized reusable print assets.
 4. App-owned print-format files do not become visible in Desk until the target site syncs them into the database. In current repo direction, that happens through site migrate plus any required patch-based publication logic.
 5. `hooks.py` does not currently wire a custom Jinja methods/filters package, so new print work must assume stock Frappe/Jinja capabilities unless that infrastructure is explicitly added later.
@@ -106,6 +110,7 @@ Examples:
 - medical and emergency packets
 - grouped review printouts
 - reporting and analytics extracts
+- premium staff timetable PDF export
 
 ### 2.3 Non-Negotiable Rule
 
@@ -165,6 +170,8 @@ Rules:
 4. The virtual root organization `All Organizations` is explicitly excluded from brand fallback.
 5. Tagline fallback is school-only: current school, then ancestor schools. Organization tagline fallback is not part of the current schema contract.
 6. If no in-scope logo exists, the letterhead remains text-only. It must not borrow a sibling or site-global organization logo.
+7. App-owned custom Jinja print formats that are expected to participate in the standard Desk print flow must explicitly render the managed `letter_head` when present.
+8. Managed `Letter Head.footer` is page chrome, not document body content. Do not render it inline at the end of custom print-format HTML. Repeated footer behavior belongs to PDF generation through `Print Settings.repeat_header_footer`.
 
 ## 4. Schema-to-Print Workflow
 
@@ -275,6 +282,7 @@ It should be:
 - premium and institution-facing
 - safe under the standard `Student.print` permission contract
 - grounded in the Student schema already present in the repo
+- compatible with the managed default letterhead by switching from full local branding to a slim document banner when managed letterhead is active
 
 ### 7.2 Included Fields
 

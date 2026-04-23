@@ -419,7 +419,12 @@ def search_students(**payload):
         ],
         limit=limit,
     )
-    apply_preferred_student_images(rows, student_field="name", image_field="student_image")
+    apply_preferred_student_images(
+        rows,
+        student_field="name",
+        image_field="student_image",
+        fallback_to_original=False,
+    )
 
     out = []
     for r in rows:

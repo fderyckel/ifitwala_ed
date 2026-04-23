@@ -1,122 +1,28 @@
 # ifitwala_ed/api/calendar.py
 
 """
-Calendar API compatibility facade.
+Calendar API public RPC boundary.
 
-Public API paths remain locked on this module (for example,
+Public Frappe method paths remain locked on this module (for example,
 `ifitwala_ed.api.calendar.get_staff_calendar`) while implementations live in
-split modules:
-- calendar_core.py
+owner modules:
 - calendar_staff_feed.py
 - calendar_details.py
 - calendar_quick_create.py
 - calendar_prefs.py
+
+Internal Python code should import helpers from those owner modules directly
+instead of importing through this boundary module.
 """
 
 import frappe
 
-from ifitwala_ed.api.calendar_core import (
-    CACHE_TTL_SECONDS,
-    CAL_MIN_DURATION,
-    DEFAULT_WINDOW_DAYS,
-    LOOKBACK_DAYS,
-    VALID_SOURCES,
-    CalendarEvent,
-    _attach_duration,
-    _cache_key,
-    _coerce_time,
-    _combine,
-    _course_meta_map,
-    _localize_datetime,
-    _meeting_window,
-    _normalize_sources,
-    _resolve_employee_for_user,
-    _resolve_instructor_ids,
-    _resolve_window,
-    _student_group_memberships,
-    _student_group_title_and_color,
-    _system_tzinfo,
-    _time_to_str,
-    _to_system_datetime,
-)
-from ifitwala_ed.api.calendar_details import (
-    _any_student_has_active_group_membership,
-    _get_team_meta,
-    _guardian_students_for_user,
-    _meeting_access_allowed,
-    _resolve_sg_booking_context,
-    _resolve_sg_schedule_context,
-    _resolve_student_for_user,
-    _school_event_access_allowed,
-    _student_has_active_group_membership,
-    _user_has_student_group_access,
-)
-from ifitwala_ed.api.calendar_details import (
-    get_meeting_details as _get_meeting_details,
-)
-from ifitwala_ed.api.calendar_details import (
-    get_school_event_details as _get_school_event_details,
-)
-from ifitwala_ed.api.calendar_details import (
-    get_student_group_event_details as _get_student_group_event_details,
-)
-from ifitwala_ed.api.calendar_prefs import (
-    debug_staff_calendar_window as _debug_staff_calendar_window,
-)
-from ifitwala_ed.api.calendar_prefs import (
-    get_portal_calendar_prefs as _get_portal_calendar_prefs,
-)
-from ifitwala_ed.api.calendar_quick_create import (
-    ATTENDEE_SEARCH_CACHE_TTL_SECONDS,
-    META_SELECT_OPTIONS_CACHE_TTL_SECONDS,
-    QUICK_CREATE_IDEMPOTENCY_TTL_SECONDS,
-    ROOM_SUGGESTION_CACHE_TTL_SECONDS,
-    SLOT_SUGGESTION_CACHE_TTL_SECONDS,
-    _cached_select_options,
-    _desk_route_slug,
-    _doc_url,
-    _idempotency_key,
-    _location_options_for_scope,
-    _parse_user_list,
-    _run_idempotent_create,
-    _safe_text,
-    _school_options_for_scope,
-    _split_select_options,
-    _student_group_options_for_scope,
-    _target_payload,
-    _team_options_for_scope,
-)
-from ifitwala_ed.api.calendar_quick_create import (
-    create_meeting_quick as _create_meeting_quick,
-)
-from ifitwala_ed.api.calendar_quick_create import (
-    create_school_event_quick as _create_school_event_quick,
-)
-from ifitwala_ed.api.calendar_quick_create import (
-    get_event_quick_create_options as _get_event_quick_create_options,
-)
-from ifitwala_ed.api.calendar_quick_create import (
-    get_meeting_team_attendees as _get_meeting_team_attendees,
-)
-from ifitwala_ed.api.calendar_quick_create import (
-    search_meeting_attendees as _search_meeting_attendees,
-)
-from ifitwala_ed.api.calendar_quick_create import (
-    suggest_meeting_rooms as _suggest_meeting_rooms,
-)
-from ifitwala_ed.api.calendar_quick_create import (
-    suggest_meeting_slots as _suggest_meeting_slots,
-)
-from ifitwala_ed.api.calendar_staff_feed import (
-    _collect_meeting_events,
-    _collect_school_events,
-    _collect_staff_holiday_events,
-    _collect_student_group_events,
-    _collect_student_group_events_from_bookings,
-    _resolve_staff_calendar_for_employee,
-)
-from ifitwala_ed.api.calendar_staff_feed import (
-    get_staff_calendar as _get_staff_calendar,
+from ifitwala_ed.api import (
+    calendar_details,
+    calendar_export,
+    calendar_prefs,
+    calendar_quick_create,
+    calendar_staff_feed,
 )
 
 
@@ -127,7 +33,7 @@ def get_staff_calendar(
     sources=None,
     force_refresh: bool = False,
 ):
-    return _get_staff_calendar(
+    return calendar_staff_feed.get_staff_calendar(
         from_datetime=from_datetime,
         to_datetime=to_datetime,
         sources=sources,
@@ -137,12 +43,12 @@ def get_staff_calendar(
 
 @frappe.whitelist()
 def get_meeting_details(meeting: str):
-    return _get_meeting_details(meeting=meeting)
+    return calendar_details.get_meeting_details(meeting=meeting)
 
 
 @frappe.whitelist()
 def get_school_event_details(event: str):
-    return _get_school_event_details(event=event)
+    return calendar_details.get_school_event_details(event=event)
 
 
 @frappe.whitelist()
@@ -151,12 +57,12 @@ def get_student_group_event_details(
     eventId: str | None = None,
     id: str | None = None,
 ):
-    return _get_student_group_event_details(event_id=event_id, eventId=eventId, id=id)
+    return calendar_details.get_student_group_event_details(event_id=event_id, eventId=eventId, id=id)
 
 
 @frappe.whitelist()
 def get_event_quick_create_options():
-    return _get_event_quick_create_options()
+    return calendar_quick_create.get_event_quick_create_options()
 
 
 @frappe.whitelist()
@@ -176,7 +82,7 @@ def create_meeting_quick(
     participants: object | None = None,
     client_request_id: str | None = None,
 ):
-    return _create_meeting_quick(
+    return calendar_quick_create.create_meeting_quick(
         meeting_name=meeting_name,
         date=date,
         start_time=start_time,
@@ -200,7 +106,7 @@ def search_meeting_attendees(
     attendee_kinds=None,
     limit: int | None = None,
 ):
-    return _search_meeting_attendees(
+    return calendar_quick_create.search_meeting_attendees(
         query=query,
         attendee_kinds=attendee_kinds,
         limit=limit,
@@ -209,7 +115,7 @@ def search_meeting_attendees(
 
 @frappe.whitelist()
 def get_meeting_team_attendees(*, team: str | None = None):
-    return _get_meeting_team_attendees(team=team)
+    return calendar_quick_create.get_meeting_team_attendees(team=team)
 
 
 @frappe.whitelist()
@@ -225,7 +131,7 @@ def suggest_meeting_slots(
     location_type: str | None = None,
     require_room: object | None = None,
 ):
-    return _suggest_meeting_slots(
+    return calendar_quick_create.suggest_meeting_slots(
         attendees=attendees,
         duration_minutes=duration_minutes,
         date_from=date_from,
@@ -249,7 +155,7 @@ def suggest_meeting_rooms(
     capacity_needed: int | None = None,
     limit: int | None = None,
 ):
-    return _suggest_meeting_rooms(
+    return calendar_quick_create.suggest_meeting_rooms(
         school=school,
         date=date,
         start_time=start_time,
@@ -279,9 +185,11 @@ def create_school_event_quick(
     reference_type: str | None = None,
     reference_name: str | None = None,
     custom_participants: object | None = None,
+    publish_announcement: int | None = 0,
+    announcement_message: str | None = None,
     client_request_id: str | None = None,
 ):
-    return _create_school_event_quick(
+    return calendar_quick_create.create_school_event_quick(
         subject=subject,
         school=school,
         starts_on=starts_on,
@@ -298,32 +206,29 @@ def create_school_event_quick(
         reference_type=reference_type,
         reference_name=reference_name,
         custom_participants=custom_participants,
+        publish_announcement=publish_announcement,
+        announcement_message=announcement_message,
         client_request_id=client_request_id,
     )
 
 
 @frappe.whitelist()
-def debug_staff_calendar_window(from_datetime: str | None = None, to_datetime: str | None = None):
-    return _debug_staff_calendar_window(from_datetime=from_datetime, to_datetime=to_datetime)
+def get_portal_calendar_prefs(from_datetime: str | None = None, to_datetime: str | None = None):
+    return calendar_prefs.get_portal_calendar_prefs(from_datetime=from_datetime, to_datetime=to_datetime)
 
 
 @frappe.whitelist()
-def get_portal_calendar_prefs(from_datetime: str | None = None, to_datetime: str | None = None):
-    return _get_portal_calendar_prefs(from_datetime=from_datetime, to_datetime=to_datetime)
+def export_staff_timetable_pdf(
+    preset: str | None = None,
+    include_weekends: object | None = None,
+):
+    return calendar_export.export_staff_timetable_pdf(
+        preset=preset,
+        include_weekends=include_weekends,
+    )
 
 
 __all__ = [
-    "VALID_SOURCES",
-    "DEFAULT_WINDOW_DAYS",
-    "LOOKBACK_DAYS",
-    "CACHE_TTL_SECONDS",
-    "CAL_MIN_DURATION",
-    "QUICK_CREATE_IDEMPOTENCY_TTL_SECONDS",
-    "META_SELECT_OPTIONS_CACHE_TTL_SECONDS",
-    "ATTENDEE_SEARCH_CACHE_TTL_SECONDS",
-    "SLOT_SUGGESTION_CACHE_TTL_SECONDS",
-    "ROOM_SUGGESTION_CACHE_TTL_SECONDS",
-    "CalendarEvent",
     "get_staff_calendar",
     "get_meeting_details",
     "get_school_event_details",
@@ -335,51 +240,6 @@ __all__ = [
     "suggest_meeting_rooms",
     "create_meeting_quick",
     "create_school_event_quick",
-    "debug_staff_calendar_window",
     "get_portal_calendar_prefs",
-    "_resolve_employee_for_user",
-    "_system_tzinfo",
-    "_normalize_sources",
-    "_cache_key",
-    "_resolve_window",
-    "_to_system_datetime",
-    "_localize_datetime",
-    "_coerce_time",
-    "_time_to_str",
-    "_combine",
-    "_attach_duration",
-    "_course_meta_map",
-    "_student_group_title_and_color",
-    "_resolve_instructor_ids",
-    "_student_group_memberships",
-    "_resolve_staff_calendar_for_employee",
-    "_collect_student_group_events",
-    "_collect_student_group_events_from_bookings",
-    "_collect_staff_holiday_events",
-    "_collect_meeting_events",
-    "_collect_school_events",
-    "_meeting_window",
-    "_get_team_meta",
-    "_meeting_access_allowed",
-    "_resolve_sg_schedule_context",
-    "_resolve_sg_booking_context",
-    "_user_has_student_group_access",
-    "_resolve_student_for_user",
-    "_guardian_students_for_user",
-    "_student_has_active_group_membership",
-    "_any_student_has_active_group_membership",
-    "_school_event_access_allowed",
-    "_split_select_options",
-    "_safe_text",
-    "_desk_route_slug",
-    "_doc_url",
-    "_parse_user_list",
-    "_idempotency_key",
-    "_run_idempotent_create",
-    "_target_payload",
-    "_school_options_for_scope",
-    "_team_options_for_scope",
-    "_student_group_options_for_scope",
-    "_location_options_for_scope",
-    "_cached_select_options",
+    "export_staff_timetable_pdf",
 ]

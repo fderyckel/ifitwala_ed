@@ -1,3 +1,5 @@
+import type { ReleasedAssessmentResult } from '@/types/contracts/student_learning/released_assessment_result'
+
 export type Request = {
 	task_delivery: string
 }
@@ -7,6 +9,7 @@ export type Response = {
 	session: StudentQuizSession
 	items?: StudentQuizItem[]
 	review?: StudentQuizReview
+	released_result?: ReleasedAssessmentResult | null
 }
 
 export type StudentQuizSession = {

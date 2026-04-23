@@ -122,6 +122,7 @@ class TestStudentCommunicationsApi(TestCase):
                     "item_id": "org::COMM-1",
                     "sort_at": "2026-04-10T09:00:00",
                     "source_type": "course",
+                    "is_unread": True,
                     "org_communication": {"name": "COMM-1", "priority": "Normal"},
                 },
                 {
@@ -129,6 +130,7 @@ class TestStudentCommunicationsApi(TestCase):
                     "item_id": "org::COMM-2",
                     "sort_at": "2026-04-09T09:00:00",
                     "source_type": "course",
+                    "is_unread": True,
                     "org_communication": {"name": "COMM-2", "priority": "Critical"},
                 },
             ]
@@ -153,9 +155,70 @@ class TestStudentCommunicationsApi(TestCase):
         self.assertEqual(payload["meta"]["student_group"], "GROUP-1")
         self.assertEqual(payload["meta"]["item"], "org::COMM-2")
         self.assertEqual(payload["summary"]["source_counts"], {"course": 2})
+        self.assertEqual(payload["summary"]["unread_items"], 2)
         self.assertEqual(payload["total_count"], 2)
         self.assertEqual(len(payload["items"]), 1)
         self.assertEqual(payload["items"][0]["item_id"], "org::COMM-2")
+        self.assertTrue(payload["items"][0]["is_unread"])
+
+    def test_fetch_student_org_communications_limits_to_feed_surfaces(self):
+        with _student_communications_module() as module:
+            captured: dict[str, object] = {}
+
+            def fake_sql(sql, values, as_dict=False):
+                captured["sql"] = sql
+                captured["values"] = values
+                return [
+                    {
+                        "name": "COMM-1",
+                        "title": "Class update",
+                        "message": "<p>Bring your calculator.</p>",
+                        "communication_type": "Information",
+                        "status": "Published",
+                        "priority": "Normal",
+                        "portal_surface": "Portal Feed",
+                        "school": "SCH-1",
+                        "organization": "ORG-1",
+                        "publish_from": "2026-04-10 09:00:00",
+                        "publish_to": None,
+                        "brief_start_date": None,
+                        "brief_end_date": None,
+                        "interaction_mode": "Student Q&A",
+                        "allow_private_notes": 0,
+                        "allow_public_thread": 1,
+                        "activity_program_offering": None,
+                        "activity_booking": None,
+                        "activity_student_group": None,
+                        "creation": "2026-04-10 08:00:00",
+                    }
+                ]
+
+            with (
+                patch.object(module.frappe.db, "sql", side_effect=fake_sql),
+                patch.object(module, "_fetch_matching_student_group_rows", return_value={"COMM-1": "SG-1"}),
+            ):
+                items = module._fetch_student_org_communications(
+                    {
+                        "user": "student@example.com",
+                        "roles": {"Student"},
+                        "group_names": {"SG-1"},
+                        "eligible_school_targets": {"SCH-1"},
+                        "audience_scope": {"student_name": "STU-1"},
+                        "group_map": {
+                            "SG-1": {
+                                "student_group_name": "Biology A",
+                                "group_based_on": "Course",
+                                "course": "COURSE-1",
+                            }
+                        },
+                    }
+                )
+
+        self.assertIn(
+            "IFNULL(oc.portal_surface, 'Everywhere') IN ('Everywhere', 'Portal Feed')",
+            str(captured.get("sql") or ""),
+        )
+        self.assertEqual(items[0]["org_communication"]["portal_surface"], "Portal Feed")
 
     def test_fetch_student_school_events_does_not_query_missing_event_type_column(self):
         with _student_communications_module() as module:

@@ -311,8 +311,16 @@ doc_events = {
         "on_trash": "ifitwala_ed.website.public_people.invalidate_public_people_cache",
     },
     "School": {
-        "after_save": "ifitwala_ed.website.public_people.invalidate_public_people_cache",
-        "on_trash": "ifitwala_ed.website.public_people.invalidate_public_people_cache",
+        "after_save": [
+            "ifitwala_ed.website.public_people.invalidate_public_people_cache",
+            "ifitwala_ed.utilities.school_tree.invalidate_school_tree_cache",
+            "ifitwala_ed.api.course_schedule.invalidate_course_schedule_cache",
+        ],
+        "on_trash": [
+            "ifitwala_ed.website.public_people.invalidate_public_people_cache",
+            "ifitwala_ed.utilities.school_tree.invalidate_school_tree_cache",
+            "ifitwala_ed.api.course_schedule.invalidate_course_schedule_cache",
+        ],
     },
     "Website Notice": {
         "after_save": "ifitwala_ed.website.site_notices.invalidate_site_notice_cache",
@@ -323,13 +331,31 @@ doc_events = {
         "on_trash": "ifitwala_ed.website.providers.story_feed.invalidate_story_feed_cache",
     },
     "School Calendar": {
-        "after_save": "ifitwala_ed.website.providers.academic_calendar.invalidate_academic_calendar_cache",
-        "on_trash": "ifitwala_ed.website.providers.academic_calendar.invalidate_academic_calendar_cache",
+        "after_save": [
+            "ifitwala_ed.website.providers.academic_calendar.invalidate_academic_calendar_cache",
+            "ifitwala_ed.api.course_schedule.invalidate_course_schedule_cache",
+        ],
+        "on_trash": [
+            "ifitwala_ed.website.providers.academic_calendar.invalidate_academic_calendar_cache",
+            "ifitwala_ed.api.course_schedule.invalidate_course_schedule_cache",
+        ],
+    },
+    "School Schedule": {
+        "after_save": "ifitwala_ed.api.course_schedule.invalidate_course_schedule_cache",
+        "on_trash": "ifitwala_ed.api.course_schedule.invalidate_course_schedule_cache",
+    },
+    "Academic Year": {
+        "after_save": "ifitwala_ed.api.course_schedule.invalidate_course_schedule_cache",
+        "on_trash": "ifitwala_ed.api.course_schedule.invalidate_course_schedule_cache",
+    },
+    "Term": {
+        "after_save": "ifitwala_ed.api.course_schedule.invalidate_course_schedule_cache",
+        "on_trash": "ifitwala_ed.api.course_schedule.invalidate_course_schedule_cache",
     },
     "File": {
         "validate": "ifitwala_ed.utilities.file_management.validate_admissions_attachment",
-        "after_insert": "ifitwala_ed.utilities.file_dispatcher.handle_file_after_insert",
-        "on_update": "ifitwala_ed.utilities.file_dispatcher.handle_file_on_update",
+        "after_insert": "ifitwala_ed.utilities.image_utils.handle_file_after_insert",
+        "on_update": "ifitwala_ed.utilities.image_utils.handle_file_on_update",
     },
     "Student Group": {
         "on_update": [
@@ -347,7 +373,20 @@ doc_events = {
         "on_update": "ifitwala_ed.school_settings.doctype.academic_load_policy.academic_load_policy.invalidate_academic_load_cache",
         "on_trash": "ifitwala_ed.school_settings.doctype.academic_load_policy.academic_load_policy.invalidate_academic_load_cache",
     },
-    "School Calendar Holiday": {"after_insert": "ifitwala_ed.schedule.schedule_utils.invalidate_all_for_calendar"},
+    "School Calendar Holidays": {
+        "after_insert": [
+            "ifitwala_ed.schedule.schedule_utils.invalidate_all_for_calendar",
+            "ifitwala_ed.api.course_schedule.invalidate_course_schedule_cache",
+        ],
+        "on_update": [
+            "ifitwala_ed.schedule.schedule_utils.invalidate_all_for_calendar",
+            "ifitwala_ed.api.course_schedule.invalidate_course_schedule_cache",
+        ],
+        "on_trash": [
+            "ifitwala_ed.schedule.schedule_utils.invalidate_all_for_calendar",
+            "ifitwala_ed.api.course_schedule.invalidate_course_schedule_cache",
+        ],
+    },
     "Program Offering": {
         "on_update": "ifitwala_ed.school_settings.doctype.academic_load_policy.academic_load_policy.invalidate_academic_load_cache"
     },
@@ -414,6 +453,7 @@ scheduler_events = {
         "ifitwala_ed.website.publication.run_hourly_website_publication_sync",
     ],
     "daily": [
+        "ifitwala_ed.curriculum.scheduled_jobs.run_daily_course_plan_activation",
         "ifitwala_ed.students.doctype.student_log.student_log.dispatch_auto_close_completed_logs",
         "ifitwala_ed.hr.doctype.leave_ledger_entry.leave_ledger_entry.dispatch_process_expired_allocation",
         "ifitwala_ed.hr.utils.dispatch_allocate_earned_leaves",

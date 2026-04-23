@@ -11,6 +11,65 @@ from ifitwala_ed.tests.base import IfitwalaFrappeTestCase
 
 
 class TestMorningBrief(IfitwalaFrappeTestCase):
+    def test_get_daily_bulletin_orders_newest_first_and_exposes_unread_state(self):
+        captured = {}
+
+        def fake_sql(query, values=None, as_dict=False, **kwargs):
+            captured["query"] = query
+            captured["values"] = values
+            captured["as_dict"] = as_dict
+            return [
+                frappe._dict(
+                    name="COMM-NEW",
+                    title="Newest",
+                    message="<p>New</p>",
+                    communication_type="Information",
+                    priority="Normal",
+                    brief_end_date=None,
+                    brief_start_date="2026-04-19",
+                    interaction_mode="Staff Comments",
+                    allow_private_notes=0,
+                    allow_public_thread=0,
+                ),
+                frappe._dict(
+                    name="COMM-OLD",
+                    title="Older",
+                    message="<p>Old</p>",
+                    communication_type="Reminder",
+                    priority="High",
+                    brief_end_date=None,
+                    brief_start_date="2026-04-17",
+                    interaction_mode="Staff Comments",
+                    allow_private_notes=0,
+                    allow_public_thread=0,
+                ),
+            ]
+
+        with (
+            patch.object(morning_brief, "today", return_value="2026-04-19"),
+            patch.object(morning_brief.frappe.db, "sql", side_effect=fake_sql),
+            patch.object(
+                morning_brief.frappe.db,
+                "get_value",
+                return_value=frappe._dict(name="EMP-0001", school="SCH-1", organization="ORG-1"),
+            ),
+            patch.object(morning_brief, "check_audience_match", return_value=True),
+            patch.object(
+                morning_brief,
+                "get_seen_org_communication_names",
+                return_value={"COMM-OLD"},
+            ),
+        ):
+            rows = morning_brief.get_daily_bulletin("staff@example.com", ["Academic Staff"])
+
+        self.assertTrue(captured["as_dict"])
+        self.assertEqual(captured["values"], (date(2026, 4, 19), date(2026, 4, 19)))
+        self.assertIn("ORDER BY brief_start_date DESC, creation DESC", captured["query"])
+        self.assertEqual([row["name"] for row in rows], ["COMM-NEW", "COMM-OLD"])
+        self.assertEqual(rows[0]["brief_start_date"], "2026-04-19")
+        self.assertTrue(rows[0]["is_unread"])
+        self.assertFalse(rows[1]["is_unread"])
+
     def test_get_pending_grading_tasks_uses_task_delivery_schema(self):
         captured = {}
 
@@ -59,8 +118,82 @@ class TestMorningBrief(IfitwalaFrappeTestCase):
         self.assertTrue(captured["as_dict"])
         self.assertEqual(captured["values"], ("03-19", "03-27"))
         self.assertIn("employment_status = 'Active'", captured["query"])
-        self.assertIn("employee_date_of_birth IS NOT NULL", captured["query"])
-        self.assertNotRegex(captured["query"], r"(?<!employment_)status = 'Active'")
+
+    def test_get_staff_birthdays_uses_derivative_only_employee_images(self):
+        rows = [
+            frappe._dict(
+                employee="EMP-0001",
+                name="Dana Staff",
+                image="/private/files/employee-original.png",
+                date_of_birth="1990-03-23",
+            )
+        ]
+
+        with (
+            patch.object(morning_brief, "today", return_value="2026-03-23"),
+            patch.object(morning_brief.frappe.db, "sql", return_value=rows),
+            patch.object(
+                morning_brief,
+                "apply_preferred_employee_images",
+                return_value=rows,
+            ) as apply_preferred,
+        ):
+            payload = morning_brief.get_staff_birthdays()
+
+        apply_preferred.assert_called_once_with(
+            rows,
+            employee_field="employee",
+            image_field="image",
+            slots=morning_brief.PROFILE_IMAGE_DERIVATIVE_SLOTS,
+            fallback_to_original=False,
+            request_missing_derivatives=True,
+        )
+        self.assertIs(payload, rows)
+
+    def test_get_my_student_birthdays_uses_bound_group_scope(self):
+        captured = {}
+
+        def fake_sql(query, values=None, as_dict=False, **kwargs):
+            captured["query"] = query
+            captured["values"] = values
+            captured["as_dict"] = as_dict
+            return []
+
+        with (
+            patch.object(morning_brief, "today", return_value="2026-03-23"),
+            patch.object(morning_brief.frappe.db, "sql", side_effect=fake_sql),
+            patch.object(morning_brief, "apply_preferred_student_images", side_effect=lambda rows, **kwargs: rows),
+        ):
+            rows = morning_brief.get_my_student_birthdays(["SG-1", "SG-2"])
+
+        self.assertEqual(rows, [])
+        self.assertTrue(captured["as_dict"])
+        self.assertEqual(captured["values"]["group_names"], ("SG-1", "SG-2"))
+        self.assertEqual(captured["values"]["start_md"], "03-19")
+        self.assertEqual(captured["values"]["end_md"], "03-27")
+        self.assertIn("sgs.parent IN %(group_names)s", captured["query"])
+        self.assertNotIn("IN ('SG-1'", captured["query"])
+
+    def test_get_my_absent_students_uses_bound_group_scope(self):
+        captured = {}
+
+        def fake_sql(query, values=None, as_dict=False, **kwargs):
+            captured["query"] = query
+            captured["values"] = values
+            captured["as_dict"] = as_dict
+            return []
+
+        with (
+            patch.object(morning_brief, "today", return_value="2026-04-20"),
+            patch.object(morning_brief.frappe.db, "sql", side_effect=fake_sql),
+        ):
+            rows = morning_brief.get_my_absent_students(["SG-1"])
+
+        self.assertEqual(rows, [])
+        self.assertTrue(captured["as_dict"])
+        self.assertEqual(captured["values"], {"site_today": "2026-04-20", "group_names": ("SG-1",)})
+        self.assertIn("WHERE sa.attendance_date = %(site_today)s", captured["query"])
+        self.assertIn("sa.student_group IN %(group_names)s", captured["query"])
 
     def test_query_clinic_visit_counts_falls_back_to_student_anchor_school(self):
         captured = {}

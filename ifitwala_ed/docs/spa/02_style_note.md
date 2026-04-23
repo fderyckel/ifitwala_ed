@@ -357,6 +357,112 @@ Vue templates **must use these**, not raw Tailwind text utilities.
 
 ---
 
+### 6.3.1 Routed page headers are a shared contract
+
+Status: Implemented for staff routed pages and admissions applicant subpages
+
+Code refs:
+
+* `ui-spa/src/styles/components.css`
+* `ui-spa/src/pages/staff/StaffHome.vue`
+* `ui-spa/src/pages/staff/OrgCommunicationArchive.vue`
+* `ui-spa/src/pages/staff/morning_brief/MorningBriefing.vue`
+* `ui-spa/src/pages/staff/StaffPolicies.vue`
+* `ui-spa/src/pages/staff/organization_chart/OrganizationChart.vue`
+* `ui-spa/src/pages/staff/CoursePlanIndex.vue`
+* `ui-spa/src/pages/staff/ClassPlanning.vue`
+* `ui-spa/src/components/planning/course-plan-workspace/CoursePlanWorkspaceHeader.vue`
+* `ui-spa/src/pages/staff/analytics/AcademicLoad.vue`
+* `ui-spa/src/pages/staff/analytics/PolicySignatureAnalytics.vue`
+* `ui-spa/src/pages/staff/analytics/StudentOverview.vue`
+* `ui-spa/src/pages/staff/analytics/StudentDemographicAnalytics.vue`
+* `ui-spa/src/pages/admissions/ApplicantOverview.vue`
+* `ui-spa/src/pages/admissions/ApplicantProfile.vue`
+* `ui-spa/src/pages/admissions/ApplicantDocuments.vue`
+* `ui-spa/src/pages/admissions/ApplicantPolicies.vue`
+* `ui-spa/src/pages/admissions/ApplicantMessages.vue`
+* `ui-spa/src/pages/admissions/ApplicantStatus.vue`
+
+Test refs:
+
+* None
+
+Canonical target for route-level headers in `staff-shell`, `analytics-shell`, and layout-owned
+admissions subpages:
+
+```vue
+<header class="page-header">
+  <div class="page-header__intro">
+    <h1 class="type-h1 text-canopy|text-ink">Page title</h1>
+    <p class="type-meta text-slate-token/80|text-ink/70">
+      One sentence that explains the page's operational purpose.
+    </p>
+  </div>
+  <div class="page-header__actions">
+    <!-- Date pills, refresh buttons, or page-scoped actions -->
+  </div>
+</header>
+```
+
+Rules:
+
+* The intro block is always left-aligned. Do not center it to "balance" actions, and do not right-align it.
+* Route-level titles use `<h1>` + `.type-h1`. `.type-h2` is for in-page section headings, not page titles.
+* Staff routed pages use `text-canopy` for the route title. Admissions applicant subpages use `text-ink` because `AdmissionsLayout` already owns the outer shell identity.
+* The subtitle / top explanation uses `.type-meta` when present and should normally stay to one sentence. If more operational context is needed, move it into chips, badges, or the first surface block below the header.
+* Do not use raw Tailwind typography utilities (`text-base`, `text-2xl`, `tracking-tight`, etc.) for routed page titles or subtitles when semantic helpers already exist.
+* Actions live in a separate trailing cluster. On mobile they stack below the intro; on desktop they sit to the right. The actions cluster must not change the intro alignment.
+* Pages without a useful subtitle may omit it, but must not replace it with decorative filler text.
+* `page-header*` is the shared primitive. Do not recreate this pattern with page-local flex/title classes when the shared classes already exist.
+* Student / guardian hero surfaces may keep their own accent language, but they must still follow the same principle: one route-level title block, semantic typography, and no ad-hoc alignment drift.
+
+---
+
+### 6.3.2 Buttons use one hierarchy
+
+Status: Approved and partially implemented for shared SPA primitives, staff routed pages, and overlay footers
+
+Code refs:
+
+* `ui-spa/src/styles/components.css`
+* `ui-spa/src/pages/staff/StaffHome.vue`
+* `ui-spa/src/pages/staff/ProfessionalDevelopment.vue`
+* `ui-spa/src/pages/staff/StaffPolicies.vue`
+* `ui-spa/src/pages/staff/analytics/RoomUtilization.vue`
+* `ui-spa/src/pages/staff/analytics/AcademicLoad.vue`
+* `ui-spa/src/pages/staff/analytics/InquiryAnalytics.vue`
+* `ui-spa/src/pages/staff/admissions/AdmissionsCockpit.vue`
+* `ui-spa/src/overlays/staff/ProfessionalDevelopmentRequestOverlay.vue`
+* `ui-spa/src/overlays/staff/StaffPolicyInformOverlay.vue`
+* `ui-spa/src/overlays/admissions/AdmissionsWorkspaceOverlay.vue`
+
+Canonical intents:
+
+* **Primary** = highest-emphasis action in the current container
+* **Secondary** = alternate top-level action in the same container
+* **Subtle** = inline record / card / table action only
+* **Quiet** = chrome / utility only, never the only path for a business-critical workflow
+* **Danger** = destructive or irreversible only
+
+Color and token mapping:
+
+* Primary actions use `jacaranda`
+* `ink` remains the premium neutral anchor for text, borders, and structural emphasis; it is not the default CTA fill
+* Secondary actions use `surface-strong` + structural borders + `ink` text
+* Quiet actions stay transparent or lightly tinted with restrained `slate` / `ink` emphasis
+* Danger actions use `flame`
+* Positive state badges and workflow completion still use `leaf` + `canopy`; do not repurpose `leaf` as the default CTA color
+
+Rules:
+
+* `.if-action` is the subtle inline primitive. Do not use it for save, submit, approve, create, finalize, or other container-level commit actions.
+* Overlay footers use one trailing primary submit when a commit exists. The paired dismiss action is secondary unless the footer is utility-only.
+* Route-level header actions should normally contain at most one primary button. Refresh, close, open settings, and similar utility actions should be quiet or secondary.
+* Staff / admin and student / guardian surfaces share the same action hierarchy and primary accent. The premium feel comes from the surrounding shell and surface treatment, not from per-portal CTA color forks.
+* Segmented view toggles and pills are not CTAs. Reuse shared pill / toggle primitives such as the shared SPA segmented control instead of inventing page-local “button-like” tabs.
+
+---
+
 ### 6.4 Surfaces over colors
 
 Cards are surfaces, not boxes.
@@ -442,7 +548,7 @@ Canonical shell ownership:
 
 * **Staff workspace pages** use `staff-shell`
 * **Staff analytics pages** use `analytics-shell`
-* **Gradebook** uses its approved gradebook shell
+* **Gradebook** is a staff workspace page and uses `staff-shell`; any denser grading layout belongs inside the page body, not as a separate outer shell family
 * **Student / Guardian routed pages** rely on `PortalLayout` for the outer background and shell; page roots should usually use the shared `portal-page` rhythm helper (or equivalent rhythm-only structure), not page-wide shell styling
 * **Admissions routed pages** rely on `AdmissionsLayout` for chrome and outer surfaces; page roots should usually use the shared `admissions-page` rhythm helper (or an equivalent named page class), not page-local shell padding
 
@@ -450,6 +556,7 @@ Rules:
 
 * Do not recreate page-wide gradients, max-widths, or shell padding inside routed pages when the layout already owns them
 * Do not replace a canonical shell with local `p-*`, `min-h-full`, or ad-hoc max-width wrappers just because one page looks acceptable in isolation
+* `AdmissionsLayout` owns the applicant identity header. Individual applicant routes still render one inner `page-header` block for the active subpage title and subtitle.
 * If a surface truly needs a new shell family, update `layout.css`, the owning layout component, and this note in the same approved change
 
 ---
@@ -517,10 +624,11 @@ Before merging any Vue page styling change:
 
 1. Identify the owning surface and canonical root shell first
 2. Search `styles/components.css`, `styles/layout.css`, and sibling pages before adding a new primitive
-3. If a new token or semantic utility is needed, update `tokens.css`, `tailwind.config.js`, and this note in the same change
-4. Run `python3 scripts/spa_style_guardrails.py`
-5. Compare the touched page against at least one sibling route in the same surface
-6. If the page already contains drift, do not copy it into new code; either fix it or isolate it as explicit legacy debt
+3. Compare the route-level page header against this note and at least one sibling route in the same shell family before accepting any title/alignment change
+4. If a new token or semantic utility is needed, update `tokens.css`, `tailwind.config.js`, and this note in the same change
+5. Run `python3 scripts/spa_style_guardrails.py`
+6. Compare the touched page against at least one sibling route in the same surface
+7. If the page already contains drift, do not copy it into new code; either fix it or isolate it as explicit legacy debt
 
 ---
 

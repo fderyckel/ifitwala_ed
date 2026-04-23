@@ -25,15 +25,15 @@
 					<button
 						v-if="canOpenApplicantWorkspace"
 						type="button"
-						class="btn btn-quiet"
+						class="if-action"
 						@click="openApplicantWorkspace"
 					>
 						Admissions Workspace
 					</button>
-					<button v-if="canOpenDesk" type="button" class="btn btn-quiet" @click="openInDesk">
+					<button v-if="canOpenDesk" type="button" class="if-action" @click="openInDesk">
 						Open in Desk
 					</button>
-					<button type="button" class="btn btn-quiet" @click="requestRefresh">Refresh</button>
+					<button type="button" class="if-action" @click="requestRefresh">Refresh</button>
 				</div>
 			</div>
 		</div>
@@ -47,7 +47,7 @@
 			<div class="mt-3 flex flex-wrap items-center gap-2">
 				<button
 					type="button"
-					class="btn btn-quiet"
+					class="if-action"
 					:disabled="busy || !canClaim"
 					@click="claimAssignment"
 				>
@@ -67,7 +67,7 @@
 				</select>
 				<button
 					type="button"
-					class="btn btn-quiet"
+					class="if-action"
 					:disabled="busy || !canReassign || !reassignToUser"
 					@click="reassignAssignment"
 				>
@@ -89,11 +89,7 @@
 					</div>
 					<div>Current status: {{ assignment.preview.review_status || 'Pending' }}</div>
 					<div v-if="assignment.preview.file_url">
-						<button
-							type="button"
-							class="inline-flex items-center rounded-full border border-slate-200 bg-white px-4 py-2 type-button-label text-ink shadow-sm transition hover:-translate-y-0.5 hover:border-jacaranda hover:text-jacaranda"
-							@click="openPreviewFile"
-						>
+						<button type="button" class="if-button if-button--secondary" @click="openPreviewFile">
 							Open file
 						</button>
 					</div>
@@ -158,10 +154,10 @@
 			</div>
 
 			<div class="mt-4 flex items-center justify-end gap-2">
-				<button type="button" class="btn btn-quiet" @click="emitClose">Close</button>
+				<button type="button" class="if-button if-button--quiet" @click="emitClose">Close</button>
 				<button
 					type="button"
-					class="inline-flex items-center rounded-full bg-jacaranda px-5 py-2 type-button-label text-white shadow-soft transition hover:-translate-y-0.5 hover:shadow-strong disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:translate-y-0"
+					class="if-button if-button--primary"
 					:disabled="busy || submittedOnce"
 					@click="submitDecision"
 				>

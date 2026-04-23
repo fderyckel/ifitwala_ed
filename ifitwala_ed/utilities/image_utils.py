@@ -3,7 +3,8 @@
 
 # ifitwala_ed/utilities/image_utils.py
 
-import io
+from __future__ import annotations
+
 import os
 import re
 from collections.abc import Iterable, Sequence
@@ -15,21 +16,46 @@ import frappe
 from frappe import _
 from PIL import Image
 
+from ifitwala_ed.integrations.drive.authority import (
+    get_current_drive_file_for_slot,
+    get_current_drive_files_for_slots,
+    get_drive_file_for_file,
+    is_governed_file,
+)
+from ifitwala_ed.integrations.drive.media_client import request_profile_image_preview_derivatives
+
 PROFILE_IMAGE_VARIANT_SLOTS = (
     "profile_image_thumb",
     "profile_image_card",
     "profile_image_medium",
     "profile_image",
 )
+PROFILE_IMAGE_DERIVATIVE_SLOTS = (
+    "profile_image_thumb",
+    "profile_image_card",
+    "profile_image_medium",
+)
+PROFILE_IMAGE_CURRENT_FILE_STATUSES = ("active", "processing", "blocked")
+PROFILE_IMAGE_THUMB_ONLY_SLOTS = ("profile_image_thumb",)
 PROFILE_IMAGE_VARIANT_PRIORITY = PROFILE_IMAGE_VARIANT_SLOTS
-PROFILE_IMAGE_VARIANT_SIZES = {"thumb": 160, "card": 400, "medium": 960}
+PROFILE_IMAGE_VARIANT_ROLE_MAP = {
+    "profile_image_thumb": "thumb",
+    "profile_image_card": "card",
+    "profile_image_medium": "viewer_preview",
+}
+_PREVIEW_SYNC_REQUEST_TTL_SECONDS = 300
 
 EMPLOYEE_VARIANT_SLOTS = PROFILE_IMAGE_VARIANT_SLOTS
+EMPLOYEE_AVATAR_VARIANT_SLOTS = PROFILE_IMAGE_THUMB_ONLY_SLOTS
+PUBLIC_EMPLOYEE_VARIANT_SLOTS = PROFILE_IMAGE_DERIVATIVE_SLOTS
+PUBLIC_EMPLOYEE_CURRENT_FILE_STATUSES = ("active", "processing")
 
 EMPLOYEE_VARIANT_PRIORITY = EMPLOYEE_VARIANT_SLOTS
 STUDENT_VARIANT_SLOTS = PROFILE_IMAGE_VARIANT_SLOTS
+STUDENT_AVATAR_VARIANT_SLOTS = PROFILE_IMAGE_THUMB_ONLY_SLOTS
 STUDENT_VARIANT_PRIORITY = STUDENT_VARIANT_SLOTS
 GUARDIAN_VARIANT_SLOTS = PROFILE_IMAGE_VARIANT_SLOTS
+GUARDIAN_AVATAR_VARIANT_SLOTS = PROFILE_IMAGE_THUMB_ONLY_SLOTS
 GUARDIAN_VARIANT_PRIORITY = GUARDIAN_VARIANT_SLOTS
 
 
@@ -41,60 +67,11 @@ def slugify(text):
     return re.sub(r"[^a-z0-9]+", "_", text.lower()).strip("_")
 
 
-def _get_file_classification(file_doc):
+def _get_drive_file_row(file_doc, *, statuses=("active", "processing", "blocked")):
     if not file_doc:
         return None
 
-    name = frappe.db.get_value("File Classification", {"file": file_doc.name}, "name")
-    if not name:
-        return None
-
-    return frappe.get_doc("File Classification", name)
-
-
-def _get_secondary_subjects(fc_doc):
-    if not fc_doc:
-        return []
-
-    return [
-        {
-            "subject_type": row.subject_type,
-            "subject_id": row.subject_id,
-            "role": row.role,
-        }
-        for row in (fc_doc.secondary_subjects or [])
-    ]
-
-
-def _render_resized_bytes(original_path, width, quality=75):
-    try:
-        with Image.open(original_path) as img:
-            if img.width <= width:
-                return None
-            img.thumbnail((width, width))
-            buffer = io.BytesIO()
-            img.save(buffer, "WEBP", optimize=True, quality=quality)
-            return buffer.getvalue()
-    except Exception as e:
-        frappe.log_error(f"Error resizing image bytes: {e}", "File Auto-Resize")
-        return None
-
-
-def _render_resized_content(original_content: bytes, width, quality=75):
-    if not original_content:
-        return None
-
-    try:
-        with Image.open(io.BytesIO(original_content)) as img:
-            if img.width <= width:
-                return None
-            img.thumbnail((width, width))
-            buffer = io.BytesIO()
-            img.save(buffer, "WEBP", optimize=True, quality=quality)
-            return buffer.getvalue()
-    except Exception as e:
-        frappe.log_error(f"Error resizing image content: {e}", "File Auto-Resize")
-        return None
+    return get_drive_file_for_file(file_doc.name, statuses=statuses)
 
 
 def resolve_file_absolute_path(file_url: str | None, is_private: int | None = 0) -> str | None:
@@ -169,37 +146,6 @@ def file_url_is_accessible(
 
     candidate = absolute_path(drive_file.get("storage_object_key"))
     return bool(candidate and os.path.exists(candidate))
-
-
-def _build_governed_derivative_classification(fc_doc, slot_suffix, source_file):
-    return {
-        "primary_subject_type": fc_doc.primary_subject_type,
-        "primary_subject_id": fc_doc.primary_subject_id,
-        "data_class": fc_doc.data_class,
-        "purpose": fc_doc.purpose,
-        "retention_policy": fc_doc.retention_policy,
-        "slot": f"{fc_doc.slot}_{slot_suffix}",
-        "organization": fc_doc.organization,
-        "school": fc_doc.school,
-        "upload_source": fc_doc.upload_source or "Desk",
-        "source_file": source_file,
-    }
-
-
-def _build_employee_derivative_classification(fc_doc, slot_suffix, source_file):
-    return _build_governed_derivative_classification(fc_doc, slot_suffix, source_file)
-
-
-def _governed_derivative_exists(source_file, slot_base, slot_suffix):
-    slot = f"{slot_base}_{slot_suffix}"
-    return frappe.db.exists(
-        "File Classification",
-        {"source_file": source_file, "slot": slot},
-    )
-
-
-def _employee_derivative_exists(source_file, slot_base, slot_suffix):
-    return _governed_derivative_exists(source_file, slot_base, slot_suffix)
 
 
 def _resolve_drive_local_path(file_doc) -> str | None:
@@ -296,64 +242,92 @@ def _resolve_employee_original_path(file_doc) -> str | None:
     return _resolve_governed_original_path(file_doc)
 
 
+def _is_directly_displayable_file_url(file_url: str | None) -> bool:
+    raw_url = str(file_url or "").strip()
+    if not raw_url:
+        return False
+    if raw_url.startswith(("http://", "https://")):
+        return True
+    return raw_url.startswith("/files/") and not raw_url.startswith("/files/ifitwala_drive/")
+
+
 def _resolve_governed_display_url(
     primary_subject_type: str,
     subject_name: str | None,
     *,
     file_name: str | None,
     file_url: str | None,
+    drive_file_id: str | None = None,
+    canonical_ref: str | None = None,
+    derivative_role: str | None = None,
+    is_private: int | bool | None = None,
 ) -> str | None:
     raw_url = str(file_url or "").strip()
-    if not raw_url:
+    resolved_drive_file_id = str(drive_file_id or "").strip() or None
+    resolved_canonical_ref = str(canonical_ref or "").strip() or None
+    resolved_file_name = str(file_name or "").strip() or None
+    if not raw_url and not resolved_file_name and not resolved_drive_file_id and not resolved_canonical_ref:
         return None
 
-    if raw_url.startswith("/files/") and not raw_url.startswith("/files/ifitwala_drive/"):
+    explicit_derivative_role = str(derivative_role or "").strip() or None
+
+    if (
+        raw_url
+        and not explicit_derivative_role
+        and _is_directly_displayable_file_url(raw_url)
+        and not int(is_private or 0)
+    ):
         return raw_url
 
     resolved_subject = str(subject_name or "").strip()
     if not resolved_subject:
-        return raw_url
+        return None
 
     if primary_subject_type == "Student":
         from ifitwala_ed.api.file_access import resolve_academic_file_open_url
 
-        return (
-            resolve_academic_file_open_url(
-                file_name=file_name,
-                file_url=raw_url,
-                context_doctype="Student",
-                context_name=resolved_subject,
-            )
-            or raw_url
+        resolved_url = resolve_academic_file_open_url(
+            file_name=resolved_file_name,
+            file_url=raw_url,
+            context_doctype="Student",
+            context_name=resolved_subject,
+            derivative_role=explicit_derivative_role,
+        )
+        return resolved_url or (
+            raw_url if not explicit_derivative_role and _is_directly_displayable_file_url(raw_url) else None
         )
 
     if primary_subject_type == "Guardian":
         from ifitwala_ed.api.file_access import resolve_guardian_file_open_url
 
-        return (
-            resolve_guardian_file_open_url(
-                file_name=file_name,
-                file_url=raw_url,
-                context_doctype="Guardian",
-                context_name=resolved_subject,
-            )
-            or raw_url
+        resolved_url = resolve_guardian_file_open_url(
+            file_name=resolved_file_name,
+            file_url=raw_url,
+            context_doctype="Guardian",
+            context_name=resolved_subject,
+            derivative_role=explicit_derivative_role,
+        )
+        return resolved_url or (
+            raw_url if not explicit_derivative_role and _is_directly_displayable_file_url(raw_url) else None
         )
 
     if primary_subject_type == "Employee":
         from ifitwala_ed.api.file_access import resolve_employee_file_open_url
 
-        return (
-            resolve_employee_file_open_url(
-                file_name=file_name,
-                file_url=raw_url,
-                context_doctype="Employee",
-                context_name=resolved_subject,
-            )
-            or raw_url
+        resolved_url = resolve_employee_file_open_url(
+            file_name=resolved_file_name,
+            file_url=raw_url,
+            drive_file_id=resolved_drive_file_id,
+            canonical_ref=resolved_canonical_ref,
+            context_doctype="Employee",
+            context_name=resolved_subject,
+            derivative_role=explicit_derivative_role,
+        )
+        return resolved_url or (
+            raw_url if not explicit_derivative_role and _is_directly_displayable_file_url(raw_url) else None
         )
 
-    return raw_url
+    return raw_url if not explicit_derivative_role and _is_directly_displayable_file_url(raw_url) else None
 
 
 def _resolve_original_governed_image_url(
@@ -364,29 +338,142 @@ def _resolve_original_governed_image_url(
     raw_url = str(original_url or "").strip()
     resolved_subject = str(subject_name or "").strip()
     if not raw_url:
-        return None
+        if not resolved_subject:
+            return None
+
+    if primary_subject_type and resolved_subject:
+        current_file_doc = _get_current_governed_profile_file(
+            primary_subject_type=primary_subject_type,
+            subject_name=resolved_subject,
+        )
+        current_file_url = str(getattr(current_file_doc, "file_url", "") or "").strip()
+        if current_file_doc and current_file_url:
+            resolved_current_url = _resolve_governed_display_url(
+                primary_subject_type,
+                resolved_subject,
+                file_name=current_file_doc.name,
+                file_url=current_file_url,
+                is_private=getattr(current_file_doc, "is_private", None),
+            )
+            if resolved_current_url:
+                return resolved_current_url
 
     file_name = None
-    if primary_subject_type and resolved_subject:
-        file_name = frappe.db.get_value(
+    file_is_private = None
+    if raw_url and primary_subject_type and resolved_subject:
+        file_row = frappe.db.get_value(
             "File",
             {
                 "attached_to_doctype": primary_subject_type,
                 "attached_to_name": resolved_subject,
                 "file_url": raw_url,
             },
-            "name",
+            ["name", "is_private"],
+            as_dict=True,
         )
-
-    if not file_url_is_accessible(raw_url, file_name=file_name):
-        return None
+        file_name = str((file_row or {}).get("name") or "").strip() or None
+        file_is_private = (file_row or {}).get("is_private")
 
     return _resolve_governed_display_url(
         primary_subject_type,
         resolved_subject,
         file_name=file_name,
         file_url=raw_url,
+        is_private=file_is_private,
     )
+
+
+def _resolve_public_employee_display_url(
+    employee_name: str,
+    *,
+    file_name: str | None,
+    file_url: str | None,
+    derivative_role: str | None = None,
+) -> str | None:
+    from ifitwala_ed.api.file_access import resolve_public_employee_image_url
+
+    return resolve_public_employee_image_url(
+        employee=employee_name,
+        file_name=file_name,
+        file_url=file_url,
+        derivative_role=derivative_role,
+    )
+
+
+def _resolve_public_employee_variant_url(
+    _primary_subject_type: str,
+    subject_name: str | None,
+    *,
+    file_name: str | None,
+    file_url: str | None,
+    derivative_role: str | None = None,
+    **_kwargs,
+) -> str | None:
+    return _resolve_public_employee_display_url(
+        str(subject_name or "").strip(),
+        file_name=file_name,
+        file_url=file_url,
+        derivative_role=derivative_role,
+    )
+
+
+def _preview_sync_request_cache_key(
+    *,
+    drive_file_id: str,
+    current_version: str | None,
+    derivative_roles: Sequence[str],
+) -> str:
+    resolved_version = str(current_version or "").strip() or "__missing__"
+    role_signature = ",".join(sorted({str(role or "").strip() for role in derivative_roles if str(role or "").strip()}))
+    return f"ifitwala_ed:profile_image_preview_sync:v1:{drive_file_id}:{resolved_version}:{role_signature}"
+
+
+def _request_missing_preview_derivatives(
+    *,
+    primary_subject_type: str,
+    rows: Sequence[dict],
+    derivative_roles: Sequence[str],
+    ready_roles_by_drive_file: dict[str, set[str]],
+) -> None:
+    requested_roles = [str(role or "").strip() for role in (derivative_roles or []) if str(role or "").strip()]
+    if not requested_roles:
+        return
+
+    cache = frappe.cache() if hasattr(frappe, "cache") else None
+    cache_get = getattr(cache, "get_value", None)
+    cache_set = getattr(cache, "set_value", None)
+
+    for row in rows or []:
+        drive_file_id = str(row.get("name") or "").strip()
+        subject_name = str(row.get("primary_subject_id") or "").strip()
+        file_id = str(row.get("file") or "").strip()
+        current_version = str(row.get("current_version") or "").strip() or None
+        if not drive_file_id or not subject_name or not file_id:
+            continue
+
+        ready_roles = ready_roles_by_drive_file.get(drive_file_id, set())
+        if all(role in ready_roles for role in requested_roles):
+            continue
+
+        cache_key = _preview_sync_request_cache_key(
+            drive_file_id=drive_file_id,
+            current_version=current_version,
+            derivative_roles=requested_roles,
+        )
+        if callable(cache_get) and cache_get(cache_key):
+            continue
+
+        try:
+            request_profile_image_preview_derivatives(
+                primary_subject_type,
+                subject_name,
+                file_id=file_id,
+                derivative_roles=requested_roles,
+            )
+            if callable(cache_set):
+                cache_set(cache_key, 1, expires_in_sec=_PREVIEW_SYNC_REQUEST_TTL_SECONDS)
+        except Exception:
+            frappe.log_error(frappe.get_traceback(), "Profile Image Preview Sync Request Failed")
 
 
 def _get_governed_image_variants_map(
@@ -394,21 +481,21 @@ def _get_governed_image_variants_map(
     subject_names: Sequence[str] | Iterable[str],
     *,
     slots: Sequence[str],
+    request_missing_derivatives: bool = False,
+    statuses: Sequence[str] = PROFILE_IMAGE_CURRENT_FILE_STATUSES,
+    display_url_resolver=None,
 ) -> dict[str, dict[str, str]]:
     names = [str(name or "").strip() for name in (subject_names or [])]
     names = [name for name in names if name]
     if not names:
         return {}
 
-    rows = frappe.get_all(
-        "File Classification",
-        filters={
-            "primary_subject_type": primary_subject_type,
-            "primary_subject_id": ("in", names),
-            "slot": ("in", list(slots)),
-            "is_current_version": 1,
-        },
-        fields=["primary_subject_id", "slot", "file"],
+    rows = get_current_drive_files_for_slots(
+        primary_subject_type=primary_subject_type,
+        primary_subject_ids=names,
+        slots=("profile_image",),
+        fields=["name", "primary_subject_id", "slot", "file", "current_version", "canonical_ref"],
+        statuses=tuple(statuses),
     )
     if not rows:
         return {}
@@ -421,41 +508,92 @@ def _get_governed_image_variants_map(
         "File",
         filters={"name": ("in", file_names)},
         fields=["name", "file_url", "is_private"],
+        limit=0,
     )
     file_map = {row["name"]: row for row in files}
 
+    derivative_roles = sorted(
+        {PROFILE_IMAGE_VARIANT_ROLE_MAP[slot] for slot in (slots or []) if slot in PROFILE_IMAGE_VARIANT_ROLE_MAP}
+    )
+    ready_roles_by_drive_file: dict[str, set[str]] = {}
+    if derivative_roles:
+        drive_file_ids = [str(row.get("name") or "").strip() for row in rows if str(row.get("name") or "").strip()]
+        current_versions = [
+            str(row.get("current_version") or "").strip()
+            for row in rows
+            if str(row.get("current_version") or "").strip()
+        ]
+        if drive_file_ids and current_versions:
+            derivative_rows = frappe.get_all(
+                "Drive File Derivative",
+                filters={
+                    "drive_file": ("in", drive_file_ids),
+                    "drive_file_version": ("in", current_versions),
+                    "derivative_role": ("in", derivative_roles),
+                    "status": "ready",
+                },
+                fields=["drive_file", "derivative_role"],
+                limit=0,
+            )
+            for derivative_row in derivative_rows or []:
+                drive_file_id = str(derivative_row.get("drive_file") or "").strip()
+                derivative_role = str(derivative_row.get("derivative_role") or "").strip()
+                if not drive_file_id or not derivative_role:
+                    continue
+                ready_roles_by_drive_file.setdefault(drive_file_id, set()).add(derivative_role)
+        if request_missing_derivatives:
+            _request_missing_preview_derivatives(
+                primary_subject_type=primary_subject_type,
+                rows=rows,
+                derivative_roles=derivative_roles,
+                ready_roles_by_drive_file=ready_roles_by_drive_file,
+            )
+
     variants: dict[str, dict[str, str]] = {}
+    url_resolver = display_url_resolver or _resolve_governed_display_url
     for row in rows:
         subject_name = row.get("primary_subject_id")
-        slot = row.get("slot")
+        drive_file_id = str(row.get("name") or "").strip()
         file_name = row.get("file")
-        if not (subject_name and slot and file_name):
+        if not (subject_name and file_name):
             continue
 
-        file_row = file_map.get(file_name)
-        if not file_row:
-            continue
-
+        file_row = file_map.get(file_name) or {}
         file_url = (file_row.get("file_url") or "").strip()
-        if not file_url:
-            continue
-        if not file_url_is_accessible(
-            file_url,
-            file_name=file_name,
-            is_private=file_row.get("is_private"),
-        ):
-            continue
+        file_is_private = file_row.get("is_private")
+        canonical_ref = str(row.get("canonical_ref") or "").strip() or None
 
-        display_url = _resolve_governed_display_url(
-            primary_subject_type,
-            subject_name,
-            file_name=file_name,
-            file_url=file_url,
-        )
-        if not display_url:
-            continue
+        subject_variants = variants.setdefault(subject_name, {})
+        if "profile_image" in slots:
+            original_display_url = url_resolver(
+                primary_subject_type,
+                subject_name,
+                file_name=file_name,
+                file_url=file_url,
+                drive_file_id=drive_file_id or None,
+                canonical_ref=canonical_ref,
+                is_private=file_is_private,
+            )
+            if original_display_url:
+                subject_variants["profile_image"] = original_display_url
 
-        variants.setdefault(subject_name, {})[slot] = display_url
+        ready_roles = ready_roles_by_drive_file.get(drive_file_id, set())
+        for slot in slots:
+            derivative_role = PROFILE_IMAGE_VARIANT_ROLE_MAP.get(slot)
+            if not derivative_role or derivative_role not in ready_roles:
+                continue
+            display_url = url_resolver(
+                primary_subject_type,
+                subject_name,
+                file_name=file_name,
+                file_url=file_url,
+                drive_file_id=drive_file_id or None,
+                canonical_ref=canonical_ref,
+                derivative_role=derivative_role,
+                is_private=file_is_private,
+            )
+            if display_url:
+                subject_variants[slot] = display_url
 
     return variants
 
@@ -467,14 +605,25 @@ def _get_preferred_governed_image_url(
     original_url: str | None = None,
     slots: Sequence[str],
     fallback_to_original: bool = True,
+    request_missing_derivatives: bool = False,
 ) -> str | None:
     subject_name = str(subject_name or "").strip()
     if not subject_name:
         if not fallback_to_original:
             return None
-        return original_url if file_url_exists_on_disk(original_url) else None
+        return _resolve_governed_display_url(
+            primary_subject_type,
+            None,
+            file_name=None,
+            file_url=original_url,
+        )
 
-    variants = _get_governed_image_variants_map(primary_subject_type, [subject_name], slots=slots).get(subject_name, {})
+    variants = _get_governed_image_variants_map(
+        primary_subject_type,
+        [subject_name],
+        slots=slots,
+        request_missing_derivatives=request_missing_derivatives,
+    ).get(subject_name, {})
     for slot in slots:
         file_url = variants.get(slot)
         if file_url:
@@ -493,10 +642,20 @@ def _build_governed_image_variants(
     original_url: str | None = None,
     slots: Sequence[str],
     fallback_to_original: bool = True,
+    request_missing_derivatives: bool = False,
+    statuses: Sequence[str] = PROFILE_IMAGE_CURRENT_FILE_STATUSES,
+    display_url_resolver=None,
 ) -> dict[str, str | None]:
     subject_name = str(subject_name or "").strip()
     variants = (
-        _get_governed_image_variants_map(primary_subject_type, [subject_name], slots=slots).get(subject_name, {})
+        _get_governed_image_variants_map(
+            primary_subject_type,
+            [subject_name],
+            slots=slots,
+            request_missing_derivatives=request_missing_derivatives,
+            statuses=statuses,
+            display_url_resolver=display_url_resolver,
+        ).get(subject_name, {})
         if subject_name
         else {}
     )
@@ -512,10 +671,7 @@ def _build_governed_image_variants(
         "original": original_fallback,
         "medium": variants.get("profile_image_medium") or original_fallback,
         "card": variants.get("profile_image_card") or variants.get("profile_image_medium") or original_fallback,
-        "thumb": variants.get("profile_image_thumb")
-        or variants.get("profile_image_card")
-        or variants.get("profile_image_medium")
-        or original_fallback,
+        "thumb": variants.get("profile_image_thumb") or original_fallback,
     }
 
 
@@ -527,12 +683,18 @@ def _apply_preferred_governed_images(
     image_field: str,
     slots: Sequence[str],
     fallback_to_original: bool = True,
+    request_missing_derivatives: bool = False,
 ) -> list[dict]:
     if not rows:
         return rows
 
     subject_names = [row.get(subject_field) for row in rows if row.get(subject_field)]
-    variants = _get_governed_image_variants_map(primary_subject_type, subject_names, slots=slots)
+    variants = _get_governed_image_variants_map(
+        primary_subject_type,
+        subject_names,
+        slots=slots,
+        request_missing_derivatives=request_missing_derivatives,
+    )
 
     for row in rows:
         subject_name = row.get(subject_field)
@@ -564,8 +726,14 @@ def get_employee_image_variants_map(
     employee_names: Sequence[str] | Iterable[str],
     *,
     slots: Sequence[str] = EMPLOYEE_VARIANT_SLOTS,
+    request_missing_derivatives: bool = False,
 ) -> dict[str, dict[str, str]]:
-    return _get_governed_image_variants_map("Employee", employee_names, slots=slots)
+    return _get_governed_image_variants_map(
+        "Employee",
+        employee_names,
+        slots=slots,
+        request_missing_derivatives=request_missing_derivatives,
+    )
 
 
 def get_preferred_employee_image_url(
@@ -584,6 +752,21 @@ def get_preferred_employee_image_url(
     )
 
 
+def get_preferred_employee_avatar_url(
+    employee_name: str | None,
+    *,
+    original_url: str | None = None,
+) -> str | None:
+    return _get_preferred_governed_image_url(
+        "Employee",
+        employee_name,
+        original_url=original_url,
+        slots=EMPLOYEE_AVATAR_VARIANT_SLOTS,
+        fallback_to_original=False,
+        request_missing_derivatives=True,
+    )
+
+
 def build_employee_image_variants(
     employee_name: str | None,
     original_url: str | None = None,
@@ -599,6 +782,21 @@ def build_employee_image_variants(
     )
 
 
+def build_public_employee_image_variants(
+    employee_name: str | None,
+    original_url: str | None = None,
+) -> dict[str, str | None]:
+    return _build_governed_image_variants(
+        "Employee",
+        employee_name,
+        original_url=original_url,
+        slots=PUBLIC_EMPLOYEE_VARIANT_SLOTS,
+        fallback_to_original=False,
+        statuses=PUBLIC_EMPLOYEE_CURRENT_FILE_STATUSES,
+        display_url_resolver=_resolve_public_employee_variant_url,
+    )
+
+
 def apply_preferred_employee_images(
     rows: list[dict],
     *,
@@ -606,6 +804,7 @@ def apply_preferred_employee_images(
     image_field: str = "image",
     slots: Sequence[str] = EMPLOYEE_VARIANT_PRIORITY,
     fallback_to_original: bool = True,
+    request_missing_derivatives: bool = False,
 ) -> list[dict]:
     return _apply_preferred_governed_images(
         rows,
@@ -614,6 +813,7 @@ def apply_preferred_employee_images(
         image_field=image_field,
         slots=slots,
         fallback_to_original=fallback_to_original,
+        request_missing_derivatives=request_missing_derivatives,
     )
 
 
@@ -630,12 +830,31 @@ def get_preferred_student_image_url(
     *,
     original_url: str | None = None,
     slots: Sequence[str] = STUDENT_VARIANT_PRIORITY,
+    fallback_to_original: bool = True,
+    request_missing_derivatives: bool = False,
 ) -> str | None:
     return _get_preferred_governed_image_url(
         "Student",
         student_name,
         original_url=original_url,
         slots=slots,
+        fallback_to_original=fallback_to_original,
+        request_missing_derivatives=request_missing_derivatives,
+    )
+
+
+def get_preferred_student_avatar_url(
+    student_name: str | None,
+    *,
+    original_url: str | None = None,
+) -> str | None:
+    return _get_preferred_governed_image_url(
+        "Student",
+        student_name,
+        original_url=original_url,
+        slots=STUDENT_AVATAR_VARIANT_SLOTS,
+        fallback_to_original=False,
+        request_missing_derivatives=True,
     )
 
 
@@ -654,6 +873,8 @@ def apply_preferred_student_images(
     student_field: str = "student",
     image_field: str = "student_image",
     slots: Sequence[str] = STUDENT_VARIANT_PRIORITY,
+    fallback_to_original: bool = True,
+    request_missing_derivatives: bool = False,
 ) -> list[dict]:
     return _apply_preferred_governed_images(
         rows,
@@ -661,6 +882,8 @@ def apply_preferred_student_images(
         subject_field=student_field,
         image_field=image_field,
         slots=slots,
+        fallback_to_original=fallback_to_original,
+        request_missing_derivatives=request_missing_derivatives,
     )
 
 
@@ -668,8 +891,14 @@ def get_guardian_image_variants_map(
     guardian_names: Sequence[str] | Iterable[str],
     *,
     slots: Sequence[str] = GUARDIAN_VARIANT_SLOTS,
+    request_missing_derivatives: bool = False,
 ) -> dict[str, dict[str, str]]:
-    return _get_governed_image_variants_map("Guardian", guardian_names, slots=slots)
+    return _get_governed_image_variants_map(
+        "Guardian",
+        guardian_names,
+        slots=slots,
+        request_missing_derivatives=request_missing_derivatives,
+    )
 
 
 def get_preferred_guardian_image_url(
@@ -677,12 +906,31 @@ def get_preferred_guardian_image_url(
     *,
     original_url: str | None = None,
     slots: Sequence[str] = GUARDIAN_VARIANT_PRIORITY,
+    fallback_to_original: bool = True,
+    request_missing_derivatives: bool = False,
 ) -> str | None:
     return _get_preferred_governed_image_url(
         "Guardian",
         guardian_name,
         original_url=original_url,
         slots=slots,
+        fallback_to_original=fallback_to_original,
+        request_missing_derivatives=request_missing_derivatives,
+    )
+
+
+def get_preferred_guardian_avatar_url(
+    guardian_name: str | None,
+    *,
+    original_url: str | None = None,
+) -> str | None:
+    return _get_preferred_governed_image_url(
+        "Guardian",
+        guardian_name,
+        original_url=original_url,
+        slots=GUARDIAN_AVATAR_VARIANT_SLOTS,
+        fallback_to_original=False,
+        request_missing_derivatives=True,
     )
 
 
@@ -711,100 +959,345 @@ def apply_preferred_guardian_images(
     )
 
 
-def _generate_governed_profile_derivatives(file_doc, *, doctype: str, fieldname: str, log_label: str):
-    if not file_doc or file_doc.attached_to_doctype != doctype:
-        return
-
-    if file_doc.attached_to_field and file_doc.attached_to_field != fieldname:
-        return
-
-    filename = os.path.basename(file_doc.file_url or file_doc.file_name or "")
-    if filename.startswith(("hero_", "medium_", "card_", "thumb_")):
-        return
-
-    fc_doc = _get_file_classification(file_doc)
-    if not fc_doc or fc_doc.slot != "profile_image":
-        return
-
-    if not file_doc.file_url:
-        return
+def _read_managed_file_bytes(file_doc, *, log_label: str) -> bytes | None:
+    if not file_doc:
+        return None
 
     original_path = _resolve_governed_original_path(file_doc)
-    original_content = None
-    if not original_path or not os.path.exists(original_path):
-        original_content = _download_drive_original(file_doc, log_title=f"{log_label} Image Download Failed")
-    if (not original_path or not os.path.exists(original_path)) and not original_content:
+    if original_path and os.path.exists(original_path):
+        try:
+            with open(original_path, "rb") as handle:
+                return handle.read()
+        except OSError:
+            return None
+
+    return _download_drive_original(file_doc, log_title=f"{log_label} Image Download Failed")
+
+
+def _get_current_governed_profile_file(*, primary_subject_type: str, subject_name: str) -> object | None:
+    resolved_subject = str(subject_name or "").strip()
+    if not resolved_subject:
+        return None
+
+    drive_file = get_current_drive_file_for_slot(
+        primary_subject_type=primary_subject_type,
+        primary_subject_id=resolved_subject,
+        slot="profile_image",
+        fields=["file", "current_version"],
+        statuses=PROFILE_IMAGE_CURRENT_FILE_STATUSES,
+    )
+    if not str((drive_file or {}).get("current_version") or "").strip():
+        return None
+    file_name = (drive_file or {}).get("file")
+    if not file_name:
+        return None
+    if not frappe.db.exists("File", file_name):
+        return None
+    return frappe.get_doc("File", file_name)
+
+
+def _resolve_unique_file_doc_by_url(file_url: str | None) -> object | None:
+    raw_url = str(file_url or "").strip()
+    if not raw_url:
+        return None
+
+    matches = frappe.get_all(
+        "File",
+        filters={"file_url": raw_url},
+        fields=["name"],
+        limit=2,
+    )
+    if len(matches) != 1:
+        return None
+
+    return frappe.get_doc("File", matches[0]["name"])
+
+
+def _sync_guardian_profile_image_field(*, guardian_name: str, file_url: str | None, organization: str | None) -> None:
+    resolved_guardian = str(guardian_name or "").strip()
+    resolved_url = str(file_url or "").strip()
+    resolved_organization = str(organization or "").strip()
+    if not resolved_guardian or not resolved_url:
+        return
+
+    frappe.db.set_value(
+        "Guardian",
+        resolved_guardian,
+        {
+            "guardian_image": resolved_url,
+            "organization": resolved_organization or None,
+        },
+        update_modified=False,
+    )
+
+
+def _sync_student_profile_image_field(*, student_name: str, file_url: str | None) -> None:
+    resolved_student = str(student_name or "").strip()
+    resolved_url = str(file_url or "").strip()
+    if not resolved_student or not resolved_url:
+        return
+
+    frappe.db.set_value(
+        "Student",
+        resolved_student,
+        "student_image",
+        resolved_url,
+        update_modified=False,
+    )
+
+
+def ensure_student_profile_image(
+    student_name: str | None,
+    *,
+    original_url: str | None = None,
+    source_file_name: str | None = None,
+    upload_source: str = "API",
+) -> str | None:
+    resolved_student = str(student_name or "").strip()
+    if not resolved_student:
+        return None
+
+    student_doc = None
+
+    def _load_student_doc():
+        nonlocal student_doc
+        if student_doc is None:
+            student_doc = frappe.get_doc("Student", resolved_student)
+        return student_doc
+
+    current_file_doc = _get_current_governed_profile_file(
+        primary_subject_type="Student",
+        subject_name=resolved_student,
+    )
+
+    if current_file_doc:
+        _sync_student_profile_image_field(
+            student_name=resolved_student,
+            file_url=current_file_doc.file_url,
+        )
+        return current_file_doc.file_url
+
+    student_doc = _load_student_doc()
+
+    from ifitwala_drive.api.media import upload_student_image
+
+    from ifitwala_ed.integrations.drive.content_uploads import upload_content_via_drive
+    from ifitwala_ed.integrations.drive.media import build_student_image_contract
+
+    build_student_image_contract(student_doc)
+
+    source_file_doc = None
+    resolved_source_file_name = str(source_file_name or "").strip()
+    if resolved_source_file_name and frappe.db.exists("File", resolved_source_file_name):
+        source_file_doc = frappe.get_doc("File", resolved_source_file_name)
+    else:
+        raw_url = str(original_url or "").strip()
+        if not raw_url:
+            raw_url = str(getattr(student_doc, "student_image", "") or "").strip()
+
+        student_file_filters = {
+            "attached_to_doctype": "Student",
+            "attached_to_name": resolved_student,
+            "attached_to_field": "student_image",
+        }
+        if raw_url:
+            student_file_filters["file_url"] = raw_url
+
+        student_matches = frappe.get_all(
+            "File",
+            filters=student_file_filters,
+            fields=["name"],
+            limit=2,
+        )
+        if len(student_matches) == 1:
+            source_file_doc = frappe.get_doc("File", student_matches[0]["name"])
+
+        if raw_url:
+            if not source_file_doc:
+                source_file_doc = _resolve_unique_file_doc_by_url(raw_url)
+            if not source_file_doc:
+                student_matches = frappe.get_all(
+                    "File",
+                    filters={
+                        "attached_to_doctype": "Student",
+                        "attached_to_name": resolved_student,
+                        "file_url": raw_url,
+                    },
+                    fields=["name"],
+                    limit=2,
+                )
+                if len(student_matches) == 1:
+                    source_file_doc = frappe.get_doc("File", student_matches[0]["name"])
+
+    if not source_file_doc:
+        return None
+
+    content = _read_managed_file_bytes(source_file_doc, log_label="Student")
+    if not content:
         frappe.log_error(
-            f"{log_label} image missing on disk for file {file_doc.name}: {file_doc.file_url}",
-            f"{log_label} Image Resize",
+            frappe.as_json(
+                {
+                    "error": "student_profile_image_source_unreadable",
+                    "student": resolved_student,
+                    "source_file": source_file_doc.name,
+                    "source_file_url": source_file_doc.file_url,
+                },
+                indent=2,
+            ),
+            "Student Profile Image Sync Failed",
         )
-        return
+        return None
 
-    base_filename = os.path.splitext(filename)[0]
-    slug_base = slugify(base_filename)
-    if not slug_base:
-        return
-
-    from ifitwala_ed.utilities import file_dispatcher
-
-    secondary_subjects = _get_secondary_subjects(fc_doc)
-
-    for size_label, width in PROFILE_IMAGE_VARIANT_SIZES.items():
-        if _governed_derivative_exists(file_doc.name, fc_doc.slot, size_label):
-            continue
-
-        if original_path and os.path.exists(original_path):
-            content = _render_resized_bytes(original_path, width)
-        else:
-            content = _render_resized_content(original_content or b"", width)
-        if not content:
-            continue
-
-        classification = _build_governed_derivative_classification(
-            fc_doc,
-            size_label,
-            file_doc.name,
-        )
-
-        file_dispatcher.create_and_classify_file(
-            file_kwargs={
-                "attached_to_doctype": file_doc.attached_to_doctype,
-                "attached_to_name": file_doc.attached_to_name,
-                "attached_to_field": file_doc.attached_to_field,
-                "file_name": f"{size_label}_{slug_base}.webp",
-                "content": content,
-                "is_private": int(file_doc.is_private or 0),
-            },
-            classification=classification,
-            secondary_subjects=secondary_subjects,
-        )
-
-
-def _generate_employee_derivatives(file_doc):
-    _generate_governed_profile_derivatives(
-        file_doc,
-        doctype="Employee",
-        fieldname="employee_image",
-        log_label="Employee",
+    filename = (source_file_doc.file_name or "").strip() or os.path.basename(
+        source_file_doc.file_url or "student_profile_image"
+    )
+    _session_response, _finalize_response, current_file_doc = upload_content_via_drive(
+        create_session_callable=upload_student_image,
+        session_payload={
+            "student": student_doc.name,
+            "upload_source": upload_source,
+        },
+        file_name=filename,
+        content=content,
     )
 
+    _sync_student_profile_image_field(
+        student_name=resolved_student,
+        file_url=current_file_doc.file_url,
+    )
+    return current_file_doc.file_url
 
-def _generate_student_derivatives(file_doc):
-    _generate_governed_profile_derivatives(
-        file_doc,
-        doctype="Student",
-        fieldname="student_image",
-        log_label="Student",
+
+def ensure_guardian_profile_image(
+    guardian_name: str | None,
+    *,
+    original_url: str | None = None,
+    source_file_name: str | None = None,
+    organization: str | None = None,
+    upload_source: str = "API",
+) -> str | None:
+    resolved_guardian = str(guardian_name or "").strip()
+    if not resolved_guardian:
+        return None
+
+    guardian_doc = None
+
+    def _load_guardian_doc():
+        nonlocal guardian_doc
+        if guardian_doc is None:
+            guardian_doc = frappe.get_doc("Guardian", resolved_guardian)
+            if organization and not (guardian_doc.organization or "").strip():
+                guardian_doc.organization = organization
+        return guardian_doc
+
+    current_file_doc = _get_current_governed_profile_file(
+        primary_subject_type="Guardian",
+        subject_name=resolved_guardian,
     )
 
+    if current_file_doc:
+        current_drive_file = _get_drive_file_row(current_file_doc)
+        resolved_organization = (current_drive_file or {}).get("organization") or organization
+        if not str(resolved_organization or "").strip():
+            resolved_organization = getattr(_load_guardian_doc(), "organization", None)
+        _sync_guardian_profile_image_field(
+            guardian_name=resolved_guardian,
+            file_url=current_file_doc.file_url,
+            organization=resolved_organization,
+        )
+        return current_file_doc.file_url
 
-def _generate_guardian_derivatives(file_doc):
-    _generate_governed_profile_derivatives(
-        file_doc,
-        doctype="Guardian",
-        fieldname="guardian_image",
-        log_label="Guardian",
+    guardian_doc = _load_guardian_doc()
+
+    from ifitwala_drive.api.media import upload_guardian_image
+
+    from ifitwala_ed.integrations.drive.content_uploads import upload_content_via_drive
+    from ifitwala_ed.integrations.drive.media import build_guardian_image_contract
+
+    contract = build_guardian_image_contract(guardian_doc)
+    contract["upload_source"] = upload_source
+
+    source_file_doc = None
+    resolved_source_file_name = str(source_file_name or "").strip()
+    if resolved_source_file_name and frappe.db.exists("File", resolved_source_file_name):
+        source_file_doc = frappe.get_doc("File", resolved_source_file_name)
+    else:
+        raw_url = str(original_url or "").strip()
+        if not raw_url:
+            raw_url = str(getattr(guardian_doc, "guardian_image", "") or "").strip()
+
+        guardian_file_filters = {
+            "attached_to_doctype": "Guardian",
+            "attached_to_name": resolved_guardian,
+            "attached_to_field": "guardian_image",
+        }
+        if raw_url:
+            guardian_file_filters["file_url"] = raw_url
+
+        guardian_matches = frappe.get_all(
+            "File",
+            filters=guardian_file_filters,
+            fields=["name"],
+            limit=2,
+        )
+        if len(guardian_matches) == 1:
+            source_file_doc = frappe.get_doc("File", guardian_matches[0]["name"])
+
+        if raw_url:
+            if not source_file_doc:
+                source_file_doc = _resolve_unique_file_doc_by_url(raw_url)
+            if not source_file_doc:
+                guardian_matches = frappe.get_all(
+                    "File",
+                    filters={
+                        "attached_to_doctype": "Guardian",
+                        "attached_to_name": resolved_guardian,
+                        "file_url": raw_url,
+                    },
+                    fields=["name"],
+                    limit=2,
+                )
+                if len(guardian_matches) == 1:
+                    source_file_doc = frappe.get_doc("File", guardian_matches[0]["name"])
+
+    if not source_file_doc:
+        return None
+
+    content = _read_managed_file_bytes(source_file_doc, log_label="Guardian")
+    if not content:
+        frappe.log_error(
+            frappe.as_json(
+                {
+                    "error": "guardian_profile_image_source_unreadable",
+                    "guardian": resolved_guardian,
+                    "source_file": source_file_doc.name,
+                    "source_file_url": source_file_doc.file_url,
+                },
+                indent=2,
+            ),
+            "Guardian Profile Image Sync Failed",
+        )
+        return None
+
+    filename = (source_file_doc.file_name or "").strip() or os.path.basename(
+        source_file_doc.file_url or "guardian_profile_image"
     )
+    _session_response, _finalize_response, current_file_doc = upload_content_via_drive(
+        create_session_callable=upload_guardian_image,
+        session_payload={
+            "guardian": guardian_doc.name,
+            "upload_source": upload_source,
+        },
+        file_name=filename,
+        content=content,
+    )
+
+    _sync_guardian_profile_image_field(
+        guardian_name=resolved_guardian,
+        file_url=current_file_doc.file_url,
+        organization=contract.get("organization"),
+    )
+    return current_file_doc.file_url
 
 
 def resize_and_save(
@@ -889,16 +1382,11 @@ def resize_and_save(
 # ────────────────────────────────────────────────────────────────────────────
 def handle_file_after_insert(doc, method=None):
     """Hook: create WebP variants after a File is inserted."""
-    # Governed Employee images should only be processed once classified.
     if doc.attached_to_doctype == "Employee":
-        if not frappe.db.exists("File Classification", {"file": doc.name}):
-            return
-        _generate_employee_derivatives(doc)
         return
 
     if doc.attached_to_doctype == "Student":
-        if frappe.db.exists("File Classification", {"file": doc.name}):
-            _generate_student_derivatives(doc)
+        if is_governed_file(doc.name):
             return
 
         # Defer legacy Student images until after rename_student_image()
@@ -907,15 +1395,12 @@ def handle_file_after_insert(doc, method=None):
             return
 
     if doc.attached_to_doctype == "Guardian":
-        if not frappe.db.exists("File Classification", {"file": doc.name}):
-            return
-        _generate_guardian_derivatives(doc)
         return
 
     if not (doc.file_url and doc.attached_to_doctype):
         return
 
-    allowed_doctypes = ["Employee", "Student", "School", "Course", "Program", "Blog Post"]
+    allowed_doctypes = ["Student", "School", "Course", "Program", "Blog Post"]
     if doc.attached_to_doctype not in allowed_doctypes:
         return
 
@@ -945,23 +1430,6 @@ def handle_file_after_insert(doc, method=None):
 def handle_file_on_update(doc, method=None):
     """Hook: same logic for updates (but Student may still be mid‑rename)."""
     handle_file_after_insert(doc, method)
-
-
-# ────────────────────────────────────────────────────────────────────────────
-# Governed dispatcher entry point
-# ────────────────────────────────────────────────────────────────────────────
-def handle_governed_file_after_classification(file_doc):
-    """Run derivative generation after governance is established."""
-    if not file_doc:
-        return
-    if file_doc.attached_to_doctype == "Employee":
-        _generate_employee_derivatives(file_doc)
-        return
-    if file_doc.attached_to_doctype == "Student":
-        _generate_student_derivatives(file_doc)
-        return
-    if file_doc.attached_to_doctype == "Guardian":
-        _generate_guardian_derivatives(file_doc)
 
 
 # ────────────────────────────────────────────────────────────────────────────

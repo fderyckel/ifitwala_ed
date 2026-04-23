@@ -2,7 +2,7 @@
 # See license.txt
 
 import json
-from unittest.mock import patch
+from unittest.mock import call, patch
 
 import frappe
 from frappe.tests.utils import FrappeTestCase
@@ -243,3 +243,36 @@ class TestStaffCalendar(FrappeTestCase):
         self.assertEqual(get_list.call_args.kwargs["filters"], {"name": "SC-SELF"})
         self.assertEqual(events[0]["staff_calendar"], "SC-SELF")
         self.assertEqual(events[0]["title"], "Default Calendar Day")
+
+    def test_on_update_resyncs_linked_and_descendant_scope_employees(self):
+        doc = frappe.get_doc({"doctype": "Staff Calendar"})
+        doc.name = "SC-2026"
+        doc.school = "PARENT-SCHOOL"
+        doc.employee_group = "Leadership"
+
+        with (
+            patch(
+                "ifitwala_ed.hr.doctype.staff_calendar.staff_calendar.get_descendant_schools",
+                return_value=["PARENT-SCHOOL", "CHILD-SCHOOL"],
+            ),
+            patch(
+                "ifitwala_ed.hr.doctype.staff_calendar.staff_calendar.frappe.get_all",
+                side_effect=[
+                    ["EMP-LINKED"],
+                    ["EMP-LINKED", "EMP-DESC"],
+                ],
+            ),
+            patch(
+                "ifitwala_ed.hr.doctype.staff_calendar.staff_calendar.sync_current_staff_calendar_for_employee"
+            ) as sync_current,
+        ):
+            doc.on_update()
+
+        sync_current.assert_has_calls(
+            [
+                call("EMP-DESC", update_modified=False),
+                call("EMP-LINKED", update_modified=False),
+            ],
+            any_order=True,
+        )
+        self.assertEqual(sync_current.call_count, 2)

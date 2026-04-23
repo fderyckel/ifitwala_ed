@@ -7,6 +7,10 @@
 		height: 48px;
 	}
 
+	.schedule-calendar__viewport .calendar-shell .fc-timegrid .fc-timegrid-slot {
+		height: 72px !important;
+	}
+
 	.calendar-shell .fc-timegrid .fc-timegrid-axis-cushion {
 		font-size: 0.75rem;
 		color: rgb(var(--slate-rgb) / 0.75);

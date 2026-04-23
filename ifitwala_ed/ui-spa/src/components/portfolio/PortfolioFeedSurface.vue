@@ -2,20 +2,27 @@
 <template>
 	<div class="space-y-6">
 		<header class="card-surface p-5 sm:p-6">
-			<div class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-				<div>
+			<div class="page-header">
+				<div class="page-header__intro">
 					<p class="type-overline text-ink/60">{{ portalLabel }}</p>
-					<h1 class="type-h1 text-ink">{{ title }}</h1>
-					<p class="type-body text-ink/70">{{ subtitle }}</p>
+					<h1 class="type-h1" :class="isStaff ? 'text-canopy' : 'text-ink'">{{ title }}</h1>
+					<p :class="isStaff ? 'type-meta text-slate-token/80' : 'type-body text-ink/70'">
+						{{ subtitle }}
+					</p>
 				</div>
-				<div class="flex flex-wrap items-center gap-2">
-					<button type="button" class="if-action" :disabled="loading" @click="refreshFeed">
+				<div class="page-header__actions">
+					<button
+						type="button"
+						class="if-button if-button--quiet"
+						:disabled="loading"
+						@click="refreshFeed"
+					>
 						Refresh
 					</button>
 					<button
 						v-if="canExport"
 						type="button"
-						class="if-action"
+						class="if-button if-button--secondary"
 						:disabled="exportingPortfolio"
 						@click="onExportPortfolio"
 					>
@@ -24,7 +31,7 @@
 					<button
 						v-if="canExport"
 						type="button"
-						class="if-action"
+						class="if-button if-button--secondary"
 						:disabled="exportingReflection"
 						@click="onExportReflection"
 					>
@@ -111,10 +118,20 @@
 				</label>
 			</div>
 			<div class="mt-4 flex flex-wrap gap-2">
-				<button type="button" class="if-action" :disabled="loading" @click="applyFilters">
+				<button
+					type="button"
+					class="if-button if-button--primary"
+					:disabled="loading"
+					@click="applyFilters"
+				>
 					Apply filters
 				</button>
-				<button type="button" class="if-action" :disabled="loading" @click="resetFilters">
+				<button
+					type="button"
+					class="if-button if-button--secondary"
+					:disabled="loading"
+					@click="resetFilters"
+				>
 					Reset
 				</button>
 			</div>
@@ -167,7 +184,7 @@
 			<div class="mt-4 flex flex-wrap items-center gap-2">
 				<button
 					type="button"
-					class="if-action"
+					class="if-button if-button--primary"
 					:disabled="creatingShareLink"
 					@click="onCreateShareLink"
 				>
@@ -252,7 +269,7 @@
 			<div class="mt-3 flex items-center gap-2">
 				<button
 					type="button"
-					class="if-action"
+					class="if-button if-button--primary"
 					:disabled="creatingReflection"
 					@click="onCreateReflection"
 				>
@@ -282,7 +299,7 @@
 				<div class="mt-2 flex flex-wrap gap-2">
 					<button
 						type="button"
-						class="if-action"
+						class="if-button if-button--quiet"
 						:disabled="moderationBusy"
 						@click="selectPendingForModeration"
 					>
@@ -290,7 +307,7 @@
 					</button>
 					<button
 						type="button"
-						class="if-action"
+						class="if-button if-button--quiet"
 						:disabled="moderationBusy"
 						@click="clearModerationSelection"
 					>
@@ -298,7 +315,7 @@
 					</button>
 					<button
 						type="button"
-						class="if-action"
+						class="if-button if-button--primary"
 						:disabled="moderationBusy"
 						@click="onBatchModerate('approve')"
 					>
@@ -306,7 +323,7 @@
 					</button>
 					<button
 						type="button"
-						class="if-action"
+						class="if-button if-button--secondary"
 						:disabled="moderationBusy"
 						@click="onBatchModerate('return_for_edit')"
 					>
@@ -314,7 +331,7 @@
 					</button>
 					<button
 						type="button"
-						class="if-action"
+						class="if-button if-button--danger"
 						:disabled="moderationBusy"
 						@click="onBatchModerate('hide')"
 					>
@@ -485,13 +502,18 @@
 			</div>
 
 			<div v-if="hasPaging" class="mt-4 flex items-center justify-between">
-				<button type="button" class="if-action" :disabled="loading || page <= 1" @click="goPrev">
+				<button
+					type="button"
+					class="if-button if-button--secondary"
+					:disabled="loading || page <= 1"
+					@click="goPrev"
+				>
 					Previous
 				</button>
 				<p class="type-caption text-ink/70">Page {{ page }} of {{ totalPages }}</p>
 				<button
 					type="button"
-					class="if-action"
+					class="if-button if-button--secondary"
 					:disabled="loading || page >= totalPages"
 					@click="goNext"
 				>

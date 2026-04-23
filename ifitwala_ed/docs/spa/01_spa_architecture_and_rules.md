@@ -273,11 +273,16 @@ For SPA calendar surfaces (staff, student, guardian):
 
 Server contract for staff portal:
 
-1. Attempt `Staff Calendar` holidays using nearest lineage school match.
-2. If no Staff Calendar holidays are available, fallback to effective `School Calendar Holidays` for the same window (`self -> nearest ancestor`).
+1. Attempt `Staff Calendar` holidays from `Employee.current_holiday_lis` first when that linked `Staff Calendar` overlaps the requested window.
+2. Otherwise attempt `Staff Calendar` holidays using nearest lineage school match.
+3. Fallback to effective `School Calendar Holidays` for the same window (`self -> nearest ancestor`) only when no `Staff Calendar` resolves for the employee.
 3. If the logged-in user is the built-in `Administrator` account and no active `Employee` record resolves, the calendar feed must still return a normal payload instead of raising a permission error.
 4. This fallback is only for the built-in `Administrator` user. Other staff portal users without an active `Employee` record must still receive the explicit permission error.
 5. In the `Administrator` fallback path, employee-scoped sources stay empty, while user-scoped participant sources may still return events.
+
+Additional rule:
+
+* once a `Staff Calendar` resolves for the employee, the staff portal must not widen that holiday source with `School Calendar` rows for the same window
 
 Server + client contract for student portal:
 
@@ -314,14 +319,16 @@ State ownership:
 
 1. `PortalLayout` owns `isMobileSidebarOpen`.
 2. `PortalLayout` owns `isDesktopRailExpanded`.
-3. `PortalLayout` owns contextual-sidebar visibility (`showStudentContextSidebar`) based on route name and active portal section.
-4. Desktop rail preference persists per section (`student` / `guardian`) via explicit local storage keys.
-5. Route changes must close only the mobile drawer.
+3. `PortalLayout` owns unread portal-chrome badge state for student and guardian navigation items; shell badges must refresh from a lightweight shell-owned payload, not from page bootstrap payloads.
+4. `PortalLayout` owns contextual-sidebar visibility (`showStudentContextSidebar`) based on route name and active portal section.
+5. Desktop rail preference persists per section (`student` / `guardian`) via explicit local storage keys.
+6. Route changes must close only the mobile drawer.
 
 Accessibility and UX invariants:
 
 * Rail toggle must expose `aria-expanded`.
 * Collapsed rail must preserve accessible labels (screen reader-visible text + tooltip on hover/focus).
+* Collapsed rail unread badges may degrade from numeric pills to dots, but the accessible label must still announce the unread communication count.
 * Active navigation must include a non-color cue in addition to color.
 * Motion for rail transitions must respect `prefers-reduced-motion`.
 
@@ -389,6 +396,8 @@ Rules:
 * **Overlays** must not toast, must not emit `uiSignals`, and must not refetch pages. They close immediately on success and display inline errors on failure.
 * **Services** must not toast. They call endpoints and emit `*_invalidate` signals **only after confirmed semantic success**.
 * **Refresh Owners** (pages or shell-level listeners) subscribe to `uiSignals`, decide when to refetch, and may optionally show a “Saved” toast **after refetch success**.
+
+Approved multi-step overlays may keep the overlay open after an intermediate mutation only when that mutation does not yet complete the user-visible workflow. In that case the overlay must still avoid toasts, `uiSignals`, and parent refetch at the midpoint, must lock or preserve the scope-driving context for the remaining steps, and must commit the refresh-owner handoff only once when the teacher finishes the workflow and closes the overlay.
 
 This prevents:
 

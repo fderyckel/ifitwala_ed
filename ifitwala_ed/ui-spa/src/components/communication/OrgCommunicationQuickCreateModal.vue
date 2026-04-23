@@ -81,922 +81,114 @@
 							</div>
 
 							<form v-else class="space-y-5" @submit.prevent="submit">
-								<div v-if="isClassEventMode" class="space-y-5">
-									<section class="rounded-[28px] border border-border/70 bg-white p-5 shadow-soft">
-										<div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-											<div class="space-y-1">
-												<p class="type-overline text-ink/55">Class event</p>
-												<div class="flex flex-wrap items-center gap-2">
-													<h3 class="type-h3 text-ink">Locked context</h3>
-													<span class="rounded-full bg-sky/25 px-3 py-1 type-caption text-canopy">
-														Auto applied
-													</span>
-												</div>
-												<p class="type-caption text-ink/65">
-													The selected class event keeps scope, history, and archive context in
-													sync automatically.
-												</p>
-											</div>
-										</div>
+								<input
+									ref="attachmentFileInput"
+									type="file"
+									class="hidden"
+									multiple
+									@change="onAttachmentFileSelected"
+								/>
 
-										<div
-											class="if-class-event-context-card mt-4 grid grid-cols-1 gap-2.5 sm:grid-cols-2"
-										>
-											<div
-												v-for="(item, index) in classEventContextCards"
-												:key="item.label"
-												class="if-class-event-context-pill"
-												:class="`if-class-event-context-pill--${index}`"
-											>
-												<span class="if-class-event-context-pill__label">
-													{{ item.label }}
-												</span>
-												<p class="min-w-0 type-body-strong text-ink">
-													{{ item.value }}
-												</p>
-											</div>
-										</div>
-									</section>
+								<OrgCommunicationQuickCreateClassEventComposer
+									v-if="isClassEventMode"
+									:class-event-context-cards="classEventContextCards"
+									:form="form"
+									:submitting="submitting"
+									:status-options="statusOptions"
+									:message-editor-buttons="messageEditorButtons"
+									:class-event-audience-row="classEventAudienceRow"
+									:attachment-section="attachmentSectionState"
+									@update-message="updateMessage"
+									@trigger-file-picker="triggerAttachmentFilePicker"
+									@toggle-link-composer="toggleLinkComposer"
+									@reset-link-draft="resetLinkDraft"
+									@submit-link="submitLinkAttachment"
+									@delete-attachment="deleteAttachment"
+								/>
 
-									<section class="rounded-[28px] border border-border/70 bg-white p-5 shadow-soft">
-										<div class="space-y-1">
-											<p class="type-overline text-ink/55">Message</p>
-											<h3 class="type-h3 text-ink">Announcement</h3>
-											<p class="type-caption text-ink/65">
-												Write the announcement once. Class context, issuing scope, and thread rules
-												are applied automatically.
-											</p>
-										</div>
-
-										<div class="mt-4 space-y-1">
-											<label class="type-label">Title</label>
-											<FormControl
-												v-model="form.title"
-												type="text"
-												placeholder="Class announcement"
-												:disabled="submitting"
-											/>
-										</div>
-
-										<div class="mt-4 space-y-1">
-											<label class="type-label">Message</label>
-											<div
-												class="if-org-communication-message-editor overflow-hidden rounded-2xl border border-border/80 bg-white shadow-sm"
-											>
-												<TextEditor
-													:content="form.message"
-													placeholder="Share the update, reminder, or call to action."
-													:editable="!submitting"
-													:fixed-menu="messageEditorButtons"
-													editor-class="prose prose-sm max-w-none min-h-[14rem] bg-white px-4 py-3 text-sm text-ink focus:outline-none"
-													@change="updateMessage"
-												/>
-											</div>
-										</div>
-									</section>
-
-									<section class="rounded-[28px] border border-border/70 bg-white p-5 shadow-soft">
-										<div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-											<div class="space-y-1">
-												<p class="type-overline text-ink/55">Attachments</p>
-												<h3 class="type-h3 text-ink">Files and links</h3>
-												<p class="type-caption text-ink/65">
-													Add a governed file or a link without leaving this class flow. The first
-													attachment saves a draft automatically so the communication owns the file
-													history.
-												</p>
-											</div>
-											<div class="flex flex-wrap gap-2">
-												<button
-													type="button"
-													class="rounded-full border border-border/80 bg-surface px-3 py-1.5 type-button-label text-ink transition hover:border-jacaranda hover:text-jacaranda"
-													:disabled="submitting || attachmentSubmitting"
-													@click="triggerAttachmentFilePicker"
-												>
-													Add file
-												</button>
-												<button
-													type="button"
-													class="rounded-full border border-border/80 bg-surface px-3 py-1.5 type-button-label text-ink transition hover:border-jacaranda hover:text-jacaranda"
-													:disabled="submitting || attachmentSubmitting"
-													@click="showLinkComposer = !showLinkComposer"
-												>
-													{{ showLinkComposer ? 'Close link' : 'Add link' }}
-												</button>
-											</div>
-										</div>
-
-										<input
-											ref="attachmentFileInput"
-											type="file"
-											class="hidden"
-											multiple
-											@change="onAttachmentFileSelected"
-										/>
-
-										<div
-											v-if="attachmentErrorMessage"
-											class="mt-4 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3"
-										>
-											<p class="type-caption text-rose-900">{{ attachmentErrorMessage }}</p>
-										</div>
-
-										<div
-											v-if="showLinkComposer"
-											class="mt-4 rounded-[24px] border border-border/70 bg-surface-soft/70 p-4"
-										>
-											<div class="grid grid-cols-1 gap-3">
-												<div class="space-y-1">
-													<label class="type-label">Link URL</label>
-													<FormControl
-														v-model="linkDraft.external_url"
-														type="text"
-														placeholder="https://example.com/resource.pdf"
-														:disabled="submitting || attachmentSubmitting"
-													/>
-												</div>
-												<div class="space-y-1">
-													<label class="type-label">Link label</label>
-													<FormControl
-														v-model="linkDraft.title"
-														type="text"
-														placeholder="Optional display label"
-														:disabled="submitting || attachmentSubmitting"
-													/>
-												</div>
-											</div>
-											<div class="mt-3 flex flex-wrap justify-end gap-2">
-												<Button
-													appearance="secondary"
-													:disabled="submitting || attachmentSubmitting"
-													@click="resetLinkDraft"
-												>
-													Cancel
-												</Button>
-												<Button
-													appearance="primary"
-													:loading="attachmentSubmitting"
-													:disabled="submitting || attachmentSubmitting || !linkDraftReady"
-													@click="submitLinkAttachment"
-												>
-													Add link
-												</Button>
-											</div>
-										</div>
-
-										<div class="mt-4 space-y-3">
-											<div
-												v-for="attachment in attachmentRows"
-												:key="attachment.row_name"
-												class="flex flex-col gap-3 rounded-2xl border border-border/70 bg-surface-soft/70 px-4 py-3 sm:flex-row sm:items-center sm:justify-between"
-											>
-												<div class="min-w-0">
-													<p class="type-body-strong text-ink">{{ attachment.title }}</p>
-													<p class="mt-1 truncate type-caption text-ink/60">
-														{{ formatAttachmentMeta(attachment) }}
-													</p>
-												</div>
-												<div class="flex flex-wrap gap-2">
-													<a
-														v-if="attachment.open_url"
-														:href="attachment.open_url"
-														target="_blank"
-														rel="noopener noreferrer"
-														class="rounded-full border border-border/80 bg-white px-3 py-1.5 type-button-label text-ink transition hover:border-jacaranda hover:text-jacaranda"
-													>
-														Open
-													</a>
-													<button
-														type="button"
-														class="rounded-full border border-border/80 bg-white px-3 py-1.5 type-button-label text-slate-token transition hover:border-rose-300 hover:text-rose-700"
-														:disabled="submitting || attachmentSubmitting"
-														@click="deleteAttachment(attachment)"
-													>
-														Remove
-													</button>
-												</div>
-											</div>
-											<p v-if="!attachmentRows.length" class="type-caption text-ink/60">
-												No attachments yet. Keep it light: add only the file or link teachers and
-												families actually need.
-											</p>
-										</div>
-									</section>
-
-									<section class="rounded-[28px] border border-border/70 bg-white p-5 shadow-soft">
-										<div class="space-y-1">
-											<p class="type-overline text-ink/55">Delivery</p>
-											<h3 class="type-h3 text-ink">Send options</h3>
-											<p class="type-caption text-ink/65">
-												Pick whether to save this draft, schedule it, or publish it now. Students
-												in the selected class are always included.
-											</p>
-										</div>
-
-										<div class="mt-4 flex flex-wrap gap-2">
-											<button
-												v-for="statusOption in statusOptions"
-												:key="statusOption"
-												type="button"
-												class="rounded-full px-3 py-1.5 type-button-label transition"
-												:class="
-													form.status === statusOption
-														? 'bg-jacaranda text-white'
-														: 'bg-slate-100 text-slate-token hover:bg-slate-200'
-												"
-												:disabled="submitting"
-												@click="form.status = statusOption"
-											>
-												{{ statusOption }}
-											</button>
-										</div>
-
-										<div v-if="form.status === 'Scheduled'" class="mt-4 space-y-1">
-											<label class="type-label">Publish from</label>
-											<input
-												v-model="form.publish_from"
-												type="datetime-local"
-												class="w-full rounded-2xl border border-border/80 bg-white px-3 py-2 text-sm text-ink shadow-sm focus:border-jacaranda/50 focus:ring-1 focus:ring-jacaranda/30"
-												:disabled="submitting"
-											/>
-											<p class="type-caption text-ink/55">
-												Schedule when this announcement should become visible.
-											</p>
-										</div>
-
-										<div
-											class="mt-4 rounded-[24px] border border-border/70 bg-surface-soft/70 p-4"
-										>
-											<div class="space-y-1">
-												<p class="type-overline text-ink/55">Recipients</p>
-												<h4 class="type-h4 text-ink">Audience</h4>
-											</div>
-
-											<div
-												class="if-class-event-audience-grid mt-4 grid grid-cols-1 gap-3 min-[480px]:grid-cols-2"
-											>
-												<div
-													class="flex h-full items-start gap-3 rounded-2xl border border-border/70 bg-white px-4 py-3 type-caption text-ink/75"
-												>
-													<input
-														checked
-														type="checkbox"
-														class="mt-0.5 rounded border-slate-300 text-jacaranda"
-														disabled
-													/>
-													<div>
-														<p class="type-body-strong text-ink">Students</p>
-														<p class="mt-1 type-caption text-ink/65">
-															The selected student group is always included.
-														</p>
-													</div>
-												</div>
-
-												<label
-													v-if="classEventAudienceRow"
-													class="flex h-full cursor-pointer items-start gap-3 rounded-2xl border border-border/70 bg-white px-4 py-3 type-caption text-ink/75"
-												>
-													<input
-														v-model="classEventAudienceRow.to_guardians"
-														type="checkbox"
-														class="mt-0.5 rounded border-slate-300 text-jacaranda"
-														:disabled="submitting"
-													/>
-													<div>
-														<p class="type-body-strong text-ink">Visible to guardians</p>
-														<p class="mt-1 type-caption text-ink/65">
-															Turn this on only when guardians should also receive the class
-															announcement.
-														</p>
-													</div>
-												</label>
-											</div>
-										</div>
-									</section>
-
-									<details class="rounded-[28px] border border-border/70 bg-white p-5 shadow-soft">
-										<summary class="cursor-pointer list-none">
-											<div
-												class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between"
-											>
-												<div class="space-y-1">
-													<p class="type-overline text-ink/55">Staff note</p>
-													<h3 class="type-h3 text-ink">Internal note</h3>
-													<p class="type-caption text-ink/65">
-														Optional context for staff managing this communication later.
-													</p>
-												</div>
-												<span
-													class="rounded-full border border-border/80 bg-surface px-3 py-1.5 type-caption text-ink/65"
-												>
-													Optional
-												</span>
-											</div>
-										</summary>
-
-										<div class="mt-4 space-y-1">
-											<label class="type-label">Internal note</label>
-											<FormControl
-												v-model="form.internal_note"
-												type="textarea"
-												:rows="3"
-												placeholder="Optional staff note for managing this communication."
-												:disabled="submitting"
-											/>
-										</div>
-									</details>
-								</div>
-
-								<div
+								<OrgCommunicationQuickCreateStaffHomeComposer
 									v-else
-									class="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1.5fr)_minmax(22rem,0.9fr)]"
-								>
-									<div class="space-y-5">
-										<section
-											class="rounded-[28px] border border-border/70 bg-white p-5 shadow-soft"
-										>
-											<div
-												class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between"
-											>
-												<div class="space-y-1">
-													<p class="type-overline text-ink/55">Message</p>
-													<h3 class="type-h3 text-ink">Core details</h3>
-													<p class="type-caption text-ink/65">
-														Use the same organization, school, delivery, and audience rules as
-														Desk, without leaving the staff shell.
-													</p>
-												</div>
-												<span
-													v-if="isClassEventMode"
-													class="rounded-full bg-sky/25 px-3 py-1.5 type-caption text-canopy"
-												>
-													Class event context locked
-												</span>
-											</div>
-
-											<div
-												class="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]"
-											>
-												<div class="space-y-1">
-													<label class="type-label">Title</label>
-													<FormControl
-														v-model="form.title"
-														type="text"
-														placeholder="Weekly staff update"
-														:disabled="submitting"
-													/>
-												</div>
-
-												<div class="space-y-1">
-													<label class="type-label">Communication type</label>
-													<select
-														v-model="form.communication_type"
-														class="if-org-communication-native-select"
-														:disabled="submitting || isClassEventMode"
-													>
-														<option
-															v-for="option in communicationTypeOptions"
-															:key="getSelectOptionValue(option)"
-															:value="getSelectOptionValue(option)"
-														>
-															{{ getSelectOptionLabel(option) }}
-														</option>
-													</select>
-												</div>
-											</div>
-
-											<div class="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
-												<div class="space-y-1">
-													<label class="type-label">Organization</label>
-													<select
-														v-model="form.organization"
-														class="if-org-communication-native-select"
-														:disabled="submitting || isClassEventMode"
-													>
-														<option
-															v-for="option in organizationSelectOptions"
-															:key="getSelectOptionValue(option)"
-															:value="getSelectOptionValue(option)"
-														>
-															{{ getSelectOptionLabel(option) }}
-														</option>
-													</select>
-													<p class="type-caption text-ink/55">
-														{{ organizationHelpText }}
-													</p>
-												</div>
-
-												<div class="space-y-1">
-													<label class="type-label">Issuing school</label>
-													<select
-														v-model="form.school"
-														class="if-org-communication-native-select"
-														:disabled="submitting || schoolSelectionLocked"
-													>
-														<option value="">No issuing school</option>
-														<option
-															v-for="option in schoolSelectOptions"
-															:key="getSelectOptionValue(option)"
-															:value="getSelectOptionValue(option)"
-														>
-															{{ getSelectOptionLabel(option) }}
-														</option>
-													</select>
-													<p class="type-caption text-ink/55">
-														{{ schoolHelpText }}
-													</p>
-												</div>
-											</div>
-
-											<div class="mt-4 space-y-1">
-												<label class="type-label">Message</label>
-												<div
-													class="if-org-communication-message-editor overflow-hidden rounded-2xl border border-border/80 bg-white shadow-sm"
-												>
-													<TextEditor
-														:content="form.message"
-														placeholder="Share the update, call to action, or announcement."
-														:editable="!submitting"
-														:fixed-menu="messageEditorButtons"
-														editor-class="prose prose-sm max-w-none min-h-[14rem] bg-white px-4 py-3 text-sm text-ink focus:outline-none"
-														@change="updateMessage"
-													/>
-												</div>
-											</div>
-
-											<div class="mt-4 space-y-1">
-												<label class="type-label">Internal note</label>
-												<FormControl
-													v-model="form.internal_note"
-													type="textarea"
-													:rows="3"
-													placeholder="Optional staff note for managing this communication."
-													:disabled="submitting"
-												/>
-											</div>
-										</section>
-
-										<section
-											class="rounded-[28px] border border-border/70 bg-white p-5 shadow-soft"
-										>
-											<div class="space-y-1">
-												<p class="type-overline text-ink/55">Delivery</p>
-												<h3 class="type-h3 text-ink">Publishing and surfaces</h3>
-												<p class="type-caption text-ink/65">
-													{{
-														isClassEventMode
-															? 'Choose whether this is saved as a draft, scheduled, or published immediately.'
-															: 'Publish will send now or schedule from Publish from. Save as draft keeps the communication editable.'
-													}}
-												</p>
-											</div>
-
-											<div v-if="isClassEventMode" class="mt-4 flex flex-wrap gap-2">
-												<button
-													v-for="statusOption in statusOptions"
-													:key="statusOption"
-													type="button"
-													class="rounded-full px-3 py-1.5 type-button-label transition"
-													:class="
-														form.status === statusOption
-															? 'bg-jacaranda text-white'
-															: 'bg-slate-100 text-slate-token hover:bg-slate-200'
-													"
-													:disabled="submitting"
-													@click="form.status = statusOption"
-												>
-													{{ statusOption }}
-												</button>
-											</div>
-											<div
-												v-else
-												class="mt-4 rounded-2xl border border-sky/30 bg-sky/10 px-4 py-3"
-											>
-												<p class="type-caption text-canopy">
-													Publish action status:
-													<span class="type-body-strong text-canopy">
-														{{ publishActionStatus }}
-													</span>
-												</p>
-											</div>
-
-											<div class="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
-												<div class="space-y-1">
-													<label class="type-label">Priority</label>
-													<select
-														v-model="form.priority"
-														class="if-org-communication-native-select"
-														:disabled="submitting"
-													>
-														<option
-															v-for="option in priorityOptions"
-															:key="getSelectOptionValue(option)"
-															:value="getSelectOptionValue(option)"
-														>
-															{{ getSelectOptionLabel(option) }}
-														</option>
-													</select>
-												</div>
-												<div class="space-y-1">
-													<label class="type-label">Portal surface</label>
-													<select
-														v-model="form.portal_surface"
-														class="if-org-communication-native-select"
-														:disabled="submitting"
-													>
-														<option
-															v-for="option in portalSurfaceOptions"
-															:key="getSelectOptionValue(option)"
-															:value="getSelectOptionValue(option)"
-														>
-															{{ getSelectOptionLabel(option) }}
-														</option>
-													</select>
-												</div>
-												<div class="space-y-1">
-													<label class="type-label">Brief order</label>
-													<FormControl
-														v-model="form.brief_order"
-														type="number"
-														placeholder="Optional"
-														:disabled="submitting"
-													/>
-												</div>
-												<div class="space-y-1">
-													<label class="type-label">Publish from</label>
-													<input
-														v-model="form.publish_from"
-														type="datetime-local"
-														class="w-full rounded-2xl border border-border/80 bg-white px-3 py-2 text-sm text-ink shadow-sm focus:border-jacaranda/50 focus:ring-1 focus:ring-jacaranda/30"
-														:disabled="submitting"
-													/>
-												</div>
-												<div class="space-y-1">
-													<label class="type-label">Publish until</label>
-													<input
-														v-model="form.publish_to"
-														type="datetime-local"
-														class="w-full rounded-2xl border border-border/80 bg-white px-3 py-2 text-sm text-ink shadow-sm focus:border-jacaranda/50 focus:ring-1 focus:ring-jacaranda/30"
-														:disabled="submitting"
-													/>
-												</div>
-												<div class="space-y-1">
-													<label class="type-label">
-														Brief start date
-														<span v-if="briefDatesRequired" class="text-rose-600">*</span>
-													</label>
-													<input
-														v-model="form.brief_start_date"
-														type="date"
-														class="w-full rounded-2xl border border-border/80 bg-white px-3 py-2 text-sm text-ink shadow-sm focus:border-jacaranda/50 focus:ring-1 focus:ring-jacaranda/30"
-														:disabled="submitting"
-													/>
-												</div>
-												<div class="space-y-1">
-													<label class="type-label">Brief end date</label>
-													<input
-														v-model="form.brief_end_date"
-														type="date"
-														class="w-full rounded-2xl border border-border/80 bg-white px-3 py-2 text-sm text-ink shadow-sm focus:border-jacaranda/50 focus:ring-1 focus:ring-jacaranda/30"
-														:disabled="submitting"
-													/>
-												</div>
-											</div>
-										</section>
-
-										<section
-											class="rounded-[28px] border border-border/70 bg-white p-5 shadow-soft"
-										>
-											<div
-												class="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between"
-											>
-												<div class="space-y-1">
-													<p class="type-overline text-ink/55">Audience</p>
-													<h3 class="type-h3 text-ink">Targeting</h3>
-													<p class="type-caption text-ink/65">
-														Choose one or more audience rows. Recipient toggles follow the same
-														target-mode rules as Desk.
-													</p>
-												</div>
-												<button
-													v-if="!isClassEventMode"
-													type="button"
-													class="rounded-full border border-border/80 bg-surface px-3 py-1.5 type-button-label text-ink transition hover:border-jacaranda hover:text-jacaranda"
-													:disabled="submitting"
-													@click="addAudienceRow()"
-												>
-													Add audience
-												</button>
-											</div>
-
-											<div class="mt-4 space-y-4">
-												<div
-													v-for="(row, index) in audienceRows"
-													:key="row.id"
-													class="rounded-[24px] border border-border/70 bg-surface-soft/70 p-4"
-												>
-													<div
-														class="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between"
-													>
-														<div class="space-y-1">
-															<p class="type-caption text-ink/55">Audience row {{ index + 1 }}</p>
-															<div class="flex flex-wrap gap-2">
-																<button
-																	v-for="targetMode in audienceTargetModeOptions"
-																	:key="targetMode"
-																	type="button"
-																	class="rounded-full px-3 py-1.5 type-button-label transition"
-																	:class="
-																		row.target_mode === targetMode
-																			? 'bg-ink text-white'
-																			: 'bg-white text-slate-token hover:bg-slate-100'
-																	"
-																	:disabled="submitting || isAudienceTargetLocked(row)"
-																	@click="setAudienceTargetMode(row, targetMode)"
-																>
-																	{{ targetMode }}
-																</button>
-															</div>
-														</div>
-
-														<button
-															v-if="!isClassEventMode && audienceRows.length > 1"
-															type="button"
-															class="rounded-full border border-border/80 bg-white px-3 py-1.5 type-button-label text-slate-token transition hover:border-rose-300 hover:text-rose-700"
-															:disabled="submitting"
-															@click="removeAudienceRow(row.id)"
-														>
-															Remove
-														</button>
-													</div>
-
-													<div class="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
-														<div v-if="row.target_mode === 'School Scope'" class="space-y-1">
-															<label class="type-label">Audience school</label>
-															<select
-																v-model="row.school"
-																class="if-org-communication-native-select"
-																:disabled="submitting || schoolSelectionLocked"
-															>
-																<option value="">Select school</option>
-																<option
-																	v-for="option in schoolSelectOptions"
-																	:key="getSelectOptionValue(option)"
-																	:value="getSelectOptionValue(option)"
-																>
-																	{{ getSelectOptionLabel(option) }}
-																</option>
-															</select>
-															<label
-																class="mt-2 inline-flex cursor-pointer items-center gap-2 type-caption text-ink/70"
-															>
-																<input
-																	v-model="row.include_descendants"
-																	type="checkbox"
-																	class="rounded border-slate-300 text-jacaranda"
-																	:disabled="submitting"
-																/>
-																Include descendant schools
-															</label>
-														</div>
-
-														<div v-else-if="row.target_mode === 'Organization'" class="space-y-1">
-															<label class="type-label">Organization staff</label>
-															<p
-																class="rounded-2xl border border-border/70 bg-white px-3 py-3 type-caption text-ink/70"
-															>
-																Uses the selected organization. Staff without a School remain
-																included.
-															</p>
-														</div>
-
-														<div v-else-if="row.target_mode === 'Team'" class="space-y-1">
-															<label class="type-label">Team</label>
-															<select
-																v-model="row.team"
-																class="if-org-communication-native-select"
-																:disabled="submitting"
-															>
-																<option value="">Select team</option>
-																<option
-																	v-for="option in teamSelectOptions"
-																	:key="getSelectOptionValue(option)"
-																	:value="getSelectOptionValue(option)"
-																>
-																	{{ getSelectOptionLabel(option) }}
-																</option>
-															</select>
-														</div>
-
-														<div v-else class="space-y-1">
-															<label class="type-label">Student group</label>
-															<select
-																v-model="row.student_group"
-																class="if-org-communication-native-select"
-																:disabled="submitting || isClassEventMode"
-															>
-																<option value="">Select student group</option>
-																<option
-																	v-for="option in studentGroupSelectOptions"
-																	:key="getSelectOptionValue(option)"
-																	:value="getSelectOptionValue(option)"
-																>
-																	{{ getSelectOptionLabel(option) }}
-																</option>
-															</select>
-														</div>
-
-														<div class="space-y-2">
-															<label class="type-label">Recipients</label>
-															<div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
-																<label
-																	v-for="recipient in recipientToggleDefinitions"
-																	:key="recipient.field"
-																	class="flex items-center gap-2 rounded-2xl border border-border/70 bg-white px-3 py-2 type-caption text-ink/75"
-																	:class="
-																		isRecipientDisabled(row, recipient.field) ? 'opacity-55' : ''
-																	"
-																>
-																	<input
-																		:checked="Boolean(row[recipient.field])"
-																		type="checkbox"
-																		class="rounded border-slate-300 text-jacaranda"
-																		:disabled="
-																			submitting || isRecipientDisabled(row, recipient.field)
-																		"
-																		@change="toggleRecipient(row, recipient.field, $event)"
-																	/>
-																	<span>{{ recipient.label }}</span>
-																</label>
-															</div>
-															<p
-																v-if="
-																	row.target_mode === 'School Scope' && !canTargetWideSchoolScope
-																"
-																class="type-caption text-amber-700"
-															>
-																School-scope Staff rows require Academic Admin, Academic Assistant,
-																HR Manager, Accounts Manager, or System Manager.
-															</p>
-															<p
-																v-else-if="
-																	row.target_mode === 'Organization' && !canTargetWideSchoolScope
-																"
-																class="type-caption text-amber-700"
-															>
-																Organization staff rows require Academic Admin, Academic Assistant,
-																HR Manager, Accounts Manager, or System Manager.
-															</p>
-														</div>
-													</div>
-
-													<div class="mt-4 space-y-1">
-														<label class="type-label">Row note</label>
-														<FormControl
-															v-model="row.note"
-															type="textarea"
-															:rows="2"
-															placeholder="Optional note for this audience row."
-															:disabled="submitting"
-														/>
-													</div>
-												</div>
-											</div>
-										</section>
-									</div>
-
-									<aside class="space-y-5">
-										<section
-											class="if-org-communication-ready-check overflow-hidden rounded-[32px] border border-canopy/10 bg-canopy bg-[linear-gradient(160deg,rgb(var(--canopy-rgb)/0.96),rgb(var(--ink-rgb)/0.92))] p-5 text-white shadow-soft"
-										>
-											<p class="type-overline text-white/65">Ready check</p>
-											<h3 class="mt-1 type-h3 text-white">{{ summaryTitle }}</h3>
-											<p class="mt-2 type-caption text-white/70">
-												{{ summarySubtitle }}
-											</p>
-
-											<div class="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-1">
-												<div class="rounded-2xl bg-white/10 px-4 py-3 backdrop-blur-sm">
-													<p class="type-caption text-white/60">
-														{{ isClassEventMode ? 'Delivery' : 'Publish action' }}
-													</p>
-													<p class="mt-1 type-body-strong text-white">
-														{{ publishActionStatus }} · {{ form.portal_surface }}
-													</p>
-												</div>
-												<div class="rounded-2xl bg-white/10 px-4 py-3 backdrop-blur-sm">
-													<p class="type-caption text-white/60">Issuing scope</p>
-													<p class="mt-1 type-body-strong text-white">
-														{{ issuingScopeLabel }}
-													</p>
-												</div>
-											</div>
-										</section>
-
-										<section
-											class="rounded-[28px] border border-border/70 bg-white p-5 shadow-soft"
-										>
-											<p class="type-overline text-ink/55">Interaction</p>
-											<h3 class="mt-1 type-h3 text-ink">Interaction settings</h3>
-											<div class="mt-4 space-y-4">
-												<div class="space-y-1">
-													<label class="type-label">Interaction mode</label>
-													<select
-														v-model="form.interaction_mode"
-														class="if-org-communication-native-select"
-														:disabled="submitting"
-													>
-														<option
-															v-for="option in interactionModeOptions"
-															:key="getSelectOptionValue(option)"
-															:value="getSelectOptionValue(option)"
-														>
-															{{ getSelectOptionLabel(option) }}
-														</option>
-													</select>
-												</div>
-												<label
-													class="flex cursor-pointer items-start gap-3 rounded-2xl border border-border/70 bg-surface-soft px-4 py-3 type-caption text-ink/75"
-												>
-													<input
-														v-model="form.allow_private_notes"
-														type="checkbox"
-														class="mt-0.5 rounded border-slate-300 text-jacaranda"
-														:disabled="submitting || privateNotesDisabled"
-													/>
-													<span>
-														<span class="block"> Let teachers and staff reply privately. </span>
-														<span class="mt-1 block text-[11px] text-ink/60">
-															{{ privateNotesHelpText }}
-														</span>
-													</span>
-												</label>
-												<label
-													class="flex cursor-pointer items-start gap-3 rounded-2xl border border-border/70 bg-surface-soft px-4 py-3 type-caption text-ink/75"
-												>
-													<input
-														v-model="form.allow_public_thread"
-														type="checkbox"
-														class="mt-0.5 rounded border-slate-300 text-jacaranda"
-														:disabled="submitting || publicThreadDisabled"
-													/>
-													<span>
-														<span class="block">
-															Let students or families reply in the shared thread.
-														</span>
-														<span class="mt-1 block text-[11px] text-ink/60">
-															{{ publicThreadHelpText }}
-														</span>
-													</span>
-												</label>
-											</div>
-										</section>
-
-										<section
-											class="rounded-[28px] border border-border/70 bg-white p-5 shadow-soft"
-										>
-											<p class="type-overline text-ink/55">Audience summary</p>
-											<div class="mt-4 space-y-3">
-												<div
-													v-for="item in audienceSummaryRows"
-													:key="item.id"
-													class="rounded-2xl border border-border/70 bg-surface-soft px-4 py-3"
-												>
-													<p class="type-body-strong text-ink">{{ item.scope }}</p>
-													<p class="mt-1 type-caption text-ink/65">{{ item.recipients }}</p>
-												</div>
-												<p v-if="!audienceSummaryRows.length" class="type-caption text-ink/60">
-													Add at least one audience row.
-												</p>
-											</div>
-										</section>
-									</aside>
-								</div>
+									:form="form"
+									:submitting="submitting"
+									:communication-type-options="communicationTypeOptions"
+									:organization-select-options="organizationSelectOptions"
+									:school-select-options="schoolSelectOptions"
+									:priority-options="priorityOptions"
+									:portal-surface-options="portalSurfaceOptions"
+									:interaction-mode-options="interactionModeOptions"
+									:audience-presets="audiencePresets"
+									:organization-help-text="organizationHelpText"
+									:school-help-text="schoolHelpText"
+									:issuing-school-selection-locked="issuingSchoolSelectionLocked"
+									:audience-school-selection-locked="audienceSchoolSelectionLocked"
+									:attachment-context-locked="attachmentContextLocked"
+									:attachment-context-lock-message="attachmentContextLockMessage"
+									:brief-dates-required="briefDatesRequired"
+									:show-brief-fields="briefSurfaceSelected"
+									:delivery-help-text="deliveryHelpText"
+									:delivery-validation-message="deliveryValidationMessage"
+									:audience-validation-message="audienceValidationMessage"
+									:audience-empty-state-message="audienceEmptyStateMessage"
+									:publish-action-status="publishActionStatus"
+									:private-notes-disabled="privateNotesDisabled"
+									:public-thread-disabled="publicThreadDisabled"
+									:private-notes-help-text="privateNotesHelpText"
+									:public-thread-help-text="publicThreadHelpText"
+									:audience-rows="audienceRows"
+									:recipient-toggle-definitions="recipientToggleDefinitions"
+									:can-target-wide-school-scope="canTargetWideSchoolScope"
+									:audience-summary-rows="audienceSummaryRows"
+									:get-audience-row-title="getAudienceRowTitle"
+									:get-audience-row-description="getAudienceRowDescription"
+									:get-audience-search-items="getAudienceSearchItems"
+									:summary-title="summaryTitle"
+									:summary-subtitle="summarySubtitle"
+									:issuing-scope-label="issuingScopeLabel"
+									:message-editor-buttons="messageEditorButtons"
+									:attachment-section="attachmentSectionState"
+									:get-select-option-value="getSelectOptionValue"
+									:get-select-option-label="getSelectOptionLabel"
+									:add-audience-preset="addAudiencePreset"
+									:remove-audience-row="removeAudienceRow"
+									:is-recipient-disabled="isRecipientDisabled"
+									:toggle-recipient="toggleRecipient"
+									:search-audience-targets="searchAudienceTargets"
+									:select-audience-search-item="selectAudienceSearchItem"
+									:clear-audience-search-selection="clearAudienceSearchSelection"
+									:update-message="updateMessage"
+									:open-native-date-picker="openNativeDatePicker"
+									@trigger-file-picker="triggerAttachmentFilePicker"
+									@toggle-link-composer="toggleLinkComposer"
+									@reset-link-draft="resetLinkDraft"
+									@submit-link="submitLinkAttachment"
+									@delete-attachment="deleteAttachment"
+								/>
 
 								<footer class="if-overlay__footer flex flex-wrap items-center justify-end gap-2">
-									<Button
-										appearance="secondary"
+									<button
+										type="button"
+										class="if-button if-button--secondary"
 										:disabled="submitting"
 										@click="handleClose('programmatic')"
 									>
 										Cancel
-									</Button>
-									<Button
+									</button>
+									<button
 										v-if="!isClassEventMode"
-										appearance="secondary"
-										:disabled="submitDisabled"
+										type="button"
+										class="if-button if-button--secondary"
+										:disabled="draftSubmitDisabled"
 										@click="submitDraft"
 									>
 										Save as draft
-									</Button>
-									<Button
-										appearance="primary"
-										:loading="submitting"
-										:disabled="submitDisabled"
+									</button>
+									<button
 										type="submit"
+										class="if-button if-button--primary"
+										:disabled="publishSubmitDisabled"
 									>
 										{{ primarySubmitLabel }}
-									</Button>
+									</button>
 								</footer>
 							</form>
 						</div>
@@ -1016,13 +208,15 @@ import {
 	TransitionChild,
 	TransitionRoot,
 } from '@headlessui/vue';
-import { Button, FeatherIcon, FormControl, Spinner, TextEditor } from 'frappe-ui';
+import { FeatherIcon, Spinner } from 'frappe-ui';
 
 import {
 	addOrgCommunicationLink,
 	createOrgCommunicationQuick,
 	getOrgCommunicationQuickCreateOptions,
 	removeOrgCommunicationAttachment,
+	searchOrgCommunicationStudentGroups,
+	searchOrgCommunicationTeams,
 	uploadOrgCommunicationAttachment,
 } from '@/lib/services/orgCommunicationQuickCreateService';
 import type { OrgCommunicationAttachmentRow } from '@/types/contracts/org_communication_attachments/shared';
@@ -1030,23 +224,64 @@ import type {
 	Request as CreateOrgCommunicationQuickRequest,
 	OrgCommunicationQuickAudienceRow,
 } from '@/types/contracts/org_communication_quick_create/create_org_communication_quick';
-import type { Response as OrgCommunicationQuickCreateOptionsResponse } from '@/types/contracts/org_communication_quick_create/get_org_communication_quick_create_options';
+import type {
+	OrgCommunicationAudiencePreset,
+	OrgCommunicationQuickDeliveryProfileKey,
+	OrgCommunicationQuickReferenceStudentGroup,
+	OrgCommunicationQuickReferenceTeam,
+	Response as OrgCommunicationQuickCreateOptionsResponse,
+} from '@/types/contracts/org_communication_quick_create/get_org_communication_quick_create_options';
+import OrgCommunicationQuickCreateClassEventComposer from '@/components/communication/OrgCommunicationQuickCreateClassEventComposer.vue';
+import OrgCommunicationQuickCreateStaffHomeComposer from '@/components/communication/OrgCommunicationQuickCreateStaffHomeComposer.vue';
+import type {
+	AttachmentSectionState,
+	AudienceRowState,
+	AudienceSummaryRow,
+	ClassEventContextCard,
+	AudienceTargetSearchItem,
+	MessageEditorButton,
+	RecipientField,
+	RecipientToggleDefinition,
+} from '@/components/communication/orgCommunicationQuickCreateTypes';
+import type { UploadProgressState } from '@/lib/uploadProgress';
 
 type CloseReason = 'backdrop' | 'esc' | 'programmatic';
 type EntryMode = 'staff-home' | 'class-event';
-type RecipientField = 'to_staff' | 'to_students' | 'to_guardians';
-type AudienceRowState = {
-	id: string;
-	target_mode: string;
+type AttachmentDraftPurpose = 'governed-file' | 'link';
+const CLASS_EVENT_PORTAL_SURFACE = 'Portal Feed';
+type TopLevelErrorSource =
+	| ''
+	| 'load'
+	| 'submit'
+	| 'attachment-precondition'
+	| 'attachment-context-lock';
+
+type AttachmentContextSnapshot = {
+	organization: string;
 	school: string;
+	studentGroup: string;
 	team: string;
-	student_group: string;
-	include_descendants: boolean;
-	to_staff: boolean;
-	to_students: boolean;
-	to_guardians: boolean;
-	note: string;
+	schoolScopeSchool: string;
 };
+
+function resolveAudienceDeliveryProfileKey(
+	rows: AudienceRowState[]
+): OrgCommunicationQuickDeliveryProfileKey {
+	let hasStaffRecipients = false;
+	let hasPortalRecipients = false;
+
+	for (const row of rows) {
+		if (row.to_staff) hasStaffRecipients = true;
+		if (row.to_students || row.to_guardians) hasPortalRecipients = true;
+	}
+
+	if (hasStaffRecipients && hasPortalRecipients) return 'mixed';
+	if (hasPortalRecipients) return 'portal_only';
+	if (hasStaffRecipients) return 'staff_only';
+	return 'undecided';
+}
+
+class AttachmentPreconditionError extends Error {}
 
 const props = defineProps<{
 	open: boolean;
@@ -1074,12 +309,16 @@ const optionsLoading = ref(false);
 const submitting = ref(false);
 const attachmentSubmitting = ref(false);
 const errorMessage = ref('');
+const topLevelErrorSource = ref<TopLevelErrorSource>('');
 const attachmentErrorMessage = ref('');
+const attachmentUploadProgress = ref<UploadProgressState | null>(null);
+const attachmentUploadProgressLabel = ref('');
 const options = ref<OrgCommunicationQuickCreateOptionsResponse | null>(null);
 const audienceRows = ref<AudienceRowState[]>([]);
 const attachmentRows = ref<OrgCommunicationAttachmentRow[]>([]);
 const savedCommunicationName = ref('');
 const showLinkComposer = ref(false);
+const lockedAttachmentContextSnapshot = ref<AttachmentContextSnapshot | null>(null);
 
 const form = reactive({
 	title: '',
@@ -1106,6 +345,17 @@ const linkDraft = reactive({
 	external_url: '',
 });
 
+function setTopLevelError(message: string, source: Exclude<TopLevelErrorSource, ''>) {
+	errorMessage.value = message;
+	topLevelErrorSource.value = source;
+}
+
+function clearTopLevelError(source?: Exclude<TopLevelErrorSource, ''>) {
+	if (source && topLevelErrorSource.value !== source) return;
+	errorMessage.value = '';
+	topLevelErrorSource.value = '';
+}
+
 const overlayStyle = computed(() => ({
 	zIndex: props.zIndex ?? 70,
 }));
@@ -1120,6 +370,7 @@ const canTargetWideSchoolScope = computed(() =>
 	Boolean(options.value?.permissions?.can_target_wide_school_scope)
 );
 const context = computed(() => options.value?.context ?? null);
+const audiencePresets = computed(() => options.value?.audience_presets ?? []);
 
 const organizationSelectOptions = computed(() => {
 	const rows = options.value?.references.organizations ?? [];
@@ -1142,41 +393,90 @@ const schoolSelectOptions = computed(() => {
 	}));
 });
 
-const teamSelectOptions = computed(() => {
-	const rows = (options.value?.references.teams ?? []).filter(row => {
-		if (form.school && row.school) return row.school === form.school;
-		if (form.organization && row.organization) return row.organization === form.organization;
-		return true;
-	});
-	return rows.map(row => ({
-		label: row.team_code
-			? `${row.team_code} · ${row.team_name || row.name}`
-			: row.team_name || row.name,
-		value: row.name,
-	}));
-});
-
-const studentGroupSelectOptions = computed(() => {
-	const rows = (options.value?.references.student_groups ?? []).filter(row => {
-		if (!form.school) return true;
-		return !row.school || row.school === form.school;
-	});
-	return rows.map(row => ({
-		label: row.student_group_abbreviation
-			? `${row.student_group_abbreviation} · ${row.student_group_name || row.name}`
-			: row.student_group_name || row.name,
-		value: row.name,
-	}));
-});
-
 const communicationTypeOptions = computed(() => options.value?.fields.communication_types ?? []);
 const statusOptions = computed(() => options.value?.fields.statuses ?? []);
 const priorityOptions = computed(() => options.value?.fields.priorities ?? []);
-const portalSurfaceOptions = computed(() => options.value?.fields.portal_surfaces ?? []);
-const interactionModeOptions = computed(() => options.value?.fields.interaction_modes ?? []);
-const audienceTargetModeOptions = computed(
-	() => options.value?.fields.audience_target_modes ?? []
+const allPortalSurfaceOptions = computed(() => options.value?.fields.portal_surfaces ?? []);
+const deliveryRules = computed(() => options.value?.delivery_rules ?? null);
+const deliveryProfileKey = computed<OrgCommunicationQuickDeliveryProfileKey>(() => {
+	if (isClassEventMode.value) return 'portal_only';
+	return resolveAudienceDeliveryProfileKey(audienceRows.value);
+});
+const activeDeliveryProfile = computed(
+	() => deliveryRules.value?.profiles?.[deliveryProfileKey.value] ?? null
 );
+const portalSurfaceOptions = computed(() => {
+	const allowedSurfaces = activeDeliveryProfile.value?.allowed_portal_surfaces ?? [];
+	if (!allowedSurfaces.length) return allPortalSurfaceOptions.value;
+	return allPortalSurfaceOptions.value.filter(option => allowedSurfaces.includes(option));
+});
+const interactionModeOptions = computed(() => options.value?.fields.interaction_modes ?? []);
+const briefPortalSurfaces = computed(() => deliveryRules.value?.brief_portal_surfaces ?? []);
+const briefSurfaceSelected = computed(() =>
+	briefPortalSurfaces.value.includes(String(form.portal_surface || '').trim())
+);
+const deliveryHelpText = computed(() => activeDeliveryProfile.value?.help_text || '');
+const deliverySurfaceSelectionMessage = computed(() => {
+	const allowedSurfaces = activeDeliveryProfile.value?.allowed_portal_surfaces ?? [];
+	const currentSurface = String(form.portal_surface || '').trim();
+	if (!currentSurface || !allowedSurfaces.length || deliveryProfileKey.value === 'undecided') {
+		return '';
+	}
+	if (allowedSurfaces.includes(currentSurface)) return '';
+	return deliveryHelpText.value || 'Choose a portal surface that matches the selected audience.';
+});
+const hasOrganizationAudience = computed(() =>
+	audienceRows.value.some(row => row.target_mode === 'Organization')
+);
+const hasGovernedFileAttachments = computed(() =>
+	attachmentRows.value.some(row => row.kind === 'file')
+);
+const attachmentContextLocked = computed(() =>
+	Boolean(savedCommunicationName.value && hasGovernedFileAttachments.value)
+);
+const lockedAttachmentSchoolLabel = computed(() => {
+	const school =
+		lockedAttachmentContextSnapshot.value?.school ||
+		(attachmentContextLocked.value ? buildAttachmentContextSnapshot().school : '');
+	return school ? getSchoolOptionLabel(school) || school : '';
+});
+const attachmentContextLockMessage = computed(() => {
+	if (lockedAttachmentSchoolLabel.value) {
+		return `Governed files are already attached for ${lockedAttachmentSchoolLabel.value}. Remove the governed files before changing Organization, Issuing school, or Audience in Scope above.`;
+	}
+	if (canTargetWideSchoolScope.value) {
+		return 'Governed files are already attached for this organization-scoped draft. You can still add an Organization-wide audience in Scope above, but you must remove the governed files before switching to school, team, or student-group scope.';
+	}
+	return 'Governed files are already attached for this organization-scoped draft. Remove the governed files before changing Organization, Issuing school, or Audience in Scope above.';
+});
+const audienceEmptyStateMessage = computed(() => {
+	if (!attachmentContextLocked.value) {
+		return 'Choose an audience workflow in Scope above. You can add more than one audience when needed.';
+	}
+	if (lockedAttachmentSchoolLabel.value) {
+		return `This draft is already locked to ${lockedAttachmentSchoolLabel.value}. Add a school audience for that school, or remove the governed files before switching scope.`;
+	}
+	if (canTargetWideSchoolScope.value) {
+		return 'This draft is already locked to organization scope. Choose Organization-wide above to reach staff across your organization tree.';
+	}
+	return 'This draft is already locked to organization scope. Organization-wide audiences are unavailable for your current role.';
+});
+
+function getAttachmentContextLockMessageForTarget(targetLabel: string) {
+	if (targetLabel === 'Organization-wide' && lockedAttachmentSchoolLabel.value) {
+		return `This draft's governed files are locked to ${lockedAttachmentSchoolLabel.value}. Remove the governed files, clear Issuing School, choose Organization-wide, then attach the files again.`;
+	}
+	if (targetLabel === 'School Scope' && !lockedAttachmentSchoolLabel.value) {
+		return 'This draft already has organization-scoped governed files. Remove the governed files before switching to a school-scoped audience.';
+	}
+	if (
+		(targetLabel === 'Team' || targetLabel === 'Student Group') &&
+		lockedAttachmentSchoolLabel.value
+	) {
+		return `This draft's governed files are locked to ${lockedAttachmentSchoolLabel.value}. Remove the governed files before switching to a ${targetLabel.toLowerCase()} audience.`;
+	}
+	return attachmentContextLockMessage.value;
+}
 
 function getSelectOptionValue(option: string | { value?: string | null }) {
 	if (typeof option === 'string') return option;
@@ -1188,19 +488,113 @@ function getSelectOptionLabel(option: string | { label?: string | null; value?: 
 	return String(option?.label ?? option?.value ?? '');
 }
 
-const schoolSelectionLocked = computed(() => {
+function getSchoolOptionLabel(name: string | null | undefined) {
+	return (
+		schoolSelectOptions.value.find(option => option.value === name)?.label || String(name || '')
+	);
+}
+
+function getOrganizationOptionLabel(name: string | null | undefined) {
+	return (
+		organizationSelectOptions.value.find(option => option.value === name)?.label ||
+		String(name || '')
+	);
+}
+
+function normalizeAttachmentContextValue(value: string | null | undefined) {
+	return String(value || '').trim();
+}
+
+function getUniqueAudienceContextValue(
+	targetMode: AudienceRowState['target_mode'],
+	field: 'school' | 'team' | 'student_group'
+) {
+	const values = audienceRows.value
+		.filter(row => row.target_mode === targetMode)
+		.map(row => normalizeAttachmentContextValue(row[field]))
+		.filter(Boolean);
+	const uniqueValues = Array.from(new Set(values));
+	return uniqueValues.length === 1 ? uniqueValues[0] : '';
+}
+
+function buildAttachmentContextSnapshot(): AttachmentContextSnapshot {
+	return {
+		organization: normalizeAttachmentContextValue(form.organization),
+		school: normalizeAttachmentContextValue(form.school),
+		studentGroup: getUniqueAudienceContextValue('Student Group', 'student_group'),
+		team: getUniqueAudienceContextValue('Team', 'team'),
+		schoolScopeSchool: getUniqueAudienceContextValue('School Scope', 'school'),
+	};
+}
+
+function attachmentContextSnapshotsMatch(
+	left: AttachmentContextSnapshot | null,
+	right: AttachmentContextSnapshot | null
+) {
+	if (!left || !right) return left === right;
+	return (
+		left.organization === right.organization &&
+		left.school === right.school &&
+		left.studentGroup === right.studentGroup &&
+		left.team === right.team &&
+		left.schoolScopeSchool === right.schoolScopeSchool
+	);
+}
+
+function buildTeamSearchItem(row: OrgCommunicationQuickReferenceTeam): AudienceTargetSearchItem {
+	const label = row.team_code
+		? `${row.team_code} · ${row.team_name || row.name}`
+		: row.team_name || row.name;
+	const description =
+		getSchoolOptionLabel(row.school) || getOrganizationOptionLabel(row.organization) || 'Team';
+	return {
+		value: row.name,
+		label,
+		description,
+	};
+}
+
+function buildStudentGroupSearchItem(
+	row: OrgCommunicationQuickReferenceStudentGroup
+): AudienceTargetSearchItem {
+	const label = row.student_group_abbreviation
+		? `${row.student_group_abbreviation} · ${row.student_group_name || row.name}`
+		: row.student_group_name || row.name;
+	const description = getSchoolOptionLabel(row.school) || row.group_based_on || 'Student group';
+	return {
+		value: row.name,
+		label,
+		description,
+	};
+}
+
+const suggestedTeamItems = computed(() =>
+	(options.value?.suggested_targets?.teams ?? []).map(buildTeamSearchItem)
+);
+const suggestedStudentGroupItems = computed(() =>
+	(options.value?.suggested_targets?.student_groups ?? []).map(buildStudentGroupSearchItem)
+);
+
+const audienceSchoolSelectionLocked = computed(() => {
+	if (attachmentContextLocked.value) return true;
 	if (isClassEventMode.value) return true;
 	if (!context.value) return false;
 	if (context.value.lock_to_default_school) return true;
 	return !context.value.can_select_school;
 });
+const issuingSchoolSelectionLocked = computed(
+	() =>
+		attachmentContextLocked.value ||
+		hasOrganizationAudience.value ||
+		audienceSchoolSelectionLocked.value
+);
 
-const recipientToggleDefinitions: Array<{ field: RecipientField; label: string }> = [
+const recipientToggleDefinitions: RecipientToggleDefinition[] = [
 	{ field: 'to_staff', label: 'Staff' },
 	{ field: 'to_students', label: 'Students' },
 	{ field: 'to_guardians', label: 'Guardians' },
 ];
-const messageEditorButtons = [
+const messageEditorButtons: MessageEditorButton[] = [
 	'Paragraph',
 	['Heading 2', 'Heading 3'],
 	'Separator',
@@ -1262,9 +656,7 @@ const issuingScopeLabel = computed(() => {
 	if (orgOption) return orgOption.label;
 	return 'No issuing scope selected';
 });
-const briefDatesRequired = computed(() =>
-	['Morning Brief', 'Everywhere'].includes(String(form.portal_surface || '').trim())
-);
+const briefDatesRequired = computed(() => briefSurfaceSelected.value);
 const privateNotesDisabled = computed(
 	() => !['Structured Feedback'].includes(String(form.interaction_mode || '').trim())
 );
@@ -1305,6 +697,12 @@ const schoolHelpText = computed(() => {
 	if (!context.value) return 'Loading school scope...';
 	if (isClassEventMode.value)
 		return 'Class event entry keeps the issuing school aligned to the selected class.';
+	if (attachmentContextLocked.value) {
+		return 'Issuing scope is locked while governed files remain attached to this draft.';
+	}
+	if (hasOrganizationAudience.value) {
+		return 'Leave Issuing School blank because Organization audience rows are organization-level.';
+	}
 	if (context.value.lock_to_default_school) {
 		return 'Issuing School is fixed to your default school when your school scope is locked.';
 	}
@@ -1315,23 +713,45 @@ const schoolHelpText = computed(() => {
 	}
 	return 'No issuing school scope is configured. Use organization-level communication or ask admin to configure school scope.';
 });
+const attachmentContextChangedSinceLock = computed(() => {
+	if (!attachmentContextLocked.value || !lockedAttachmentContextSnapshot.value) return false;
+	return !attachmentContextSnapshotsMatch(
+		lockedAttachmentContextSnapshot.value,
+		buildAttachmentContextSnapshot()
+	);
+});
+const attachmentContextLockBlocker = computed(() => {
+	if (!attachmentContextChangedSinceLock.value) return '';
+	return attachmentContextLockMessage.value;
+});
 const classEventAudienceRow = computed(() => {
 	if (!isClassEventMode.value) return null;
 	return audienceRows.value[0] ?? null;
 });
 const classEventStudentGroupLabel = computed(() => {
-	const studentGroupName = classEventAudienceRow.value?.student_group || props.studentGroup;
-	if (!studentGroupName) return 'Selected student group';
+	const studentGroupLabel = classEventAudienceRow.value?.student_group_label;
+	if (studentGroupLabel) return studentGroupLabel;
 	return (
-		studentGroupSelectOptions.value.find(option => option.value === studentGroupName)?.label ||
-		studentGroupName
+		classEventAudienceRow.value?.student_group || props.studentGroup || 'Selected student group'
 	);
 });
 const classEventScheduleLabel = computed(() => {
 	const parts = [props.sessionDate, props.sessionTimeLabel].filter(Boolean);
 	return parts.length ? parts.join(' · ') : 'Selected class event';
 });
-const classEventContextCards = computed(() => [
+const attachmentSectionHelpText = computed(() => {
+	if (isClassEventMode.value) {
+		return 'Add a governed file or a link without leaving this class flow. The first attachment saves a draft automatically so the communication owns the file history.';
+	}
+	if (attachmentContextLocked.value) {
+		if (lockedAttachmentSchoolLabel.value) {
+			return `This draft is locked to ${lockedAttachmentSchoolLabel.value}. Add more files or links for that scope here, then review or remove attached rows below.`;
+		}
+		return 'This draft is locked to organization scope. Add more files or links for that scope here, then review or remove attached rows below.';
+	}
+	return 'Finish Scope above, then add a governed file or a link here. The first governed file auto-saves a draft and locks that scope; review attached rows below.';
+});
+const classEventContextCards = computed<ClassEventContextCard[]>(() => [
 	{
 		label: 'Course',
 		value: props.courseLabel || summaryTitle.value,
@@ -1350,32 +770,21 @@ const classEventContextCards = computed(() => [
 	},
 ]);
 const linkDraftReady = computed(() => Boolean(linkDraft.external_url.trim()));
+const attachmentActionsDisabled = computed(
+	() => submitting.value || attachmentSubmitting.value || optionsLoading.value || !options.value
+);
 
-const audienceSummaryRows = computed(() =>
+const audienceSummaryRows = computed<AudienceSummaryRow[]>(() =>
 	audienceRows.value.map(row => {
 		let scope = row.target_mode;
 		if (row.target_mode === 'School Scope') {
-			scope =
-				schoolSelectOptions.value.find(option => option.value === row.school)?.label ||
-				row.school ||
-				'School scope';
+			scope = getSchoolOptionLabel(row.school) || row.school || 'School scope';
 		} else if (row.target_mode === 'Team') {
-			scope =
-				teamSelectOptions.value.find(option => option.value === row.team)?.label ||
-				row.team ||
-				'Team';
+			scope = row.team_label || row.team || 'Team';
 		} else if (row.target_mode === 'Organization') {
-			scope =
-				organizationSelectOptions.value.find(option => option.value === form.organization)
-					?.label ||
-				form.organization ||
-				'Organization';
+			scope = getOrganizationOptionLabel(form.organization) || form.organization || 'Organization';
 		} else if (row.target_mode === 'Student Group') {
-			scope =
-				studentGroupSelectOptions.value.find(option => option.value === row.student_group)
-					?.label ||
-				row.student_group ||
-				'Student group';
+			scope = row.student_group_label || row.student_group || 'Student group';
 		}
 		const recipients = recipientToggleDefinitions
 			.filter(recipient => Boolean(row[recipient.field]))
@@ -1389,12 +798,26 @@ const audienceSummaryRows = computed(() =>
 	})
 );
 
+const attachmentSectionState = computed<AttachmentSectionState>(() => ({
+	helpText: attachmentSectionHelpText.value,
+	attachmentRows: attachmentRows.value,
+	attachmentErrorMessage: attachmentErrorMessage.value,
+	attachmentActionsDisabled: attachmentActionsDisabled.value,
+	removeDisabled: submitting.value || attachmentSubmitting.value,
+	showLinkComposer: showLinkComposer.value,
+	linkDraft,
+	linkDraftReady: linkDraftReady.value,
+	uploadProgress: attachmentUploadProgress.value,
+	uploadProgressLabel: attachmentUploadProgressLabel.value,
+}));
+
 function getValidationMessage(draftMode = false) {
 	if (!form.title.trim()) return 'Title is required.';
 	if (!form.communication_type) return 'Communication type is required.';
 	if (!draftMode && !form.status) return 'Status is required.';
 	if (!form.organization) return 'Organization is required.';
-	if (briefDatesRequired.value && !form.brief_start_date) {
+	if (deliverySurfaceSelectionMessage.value) return deliverySurfaceSelectionMessage.value;
+	if (!draftMode && briefDatesRequired.value && !form.brief_start_date) {
 		return 'Brief Start Date is required when Portal Surface is Morning Brief or Everywhere.';
 	}
 	if (
@@ -1422,6 +845,7 @@ function getValidationMessage(draftMode = false) {
 	) {
 		return 'Publish From for a Scheduled communication must be in the future.';
 	}
+	if (draftMode) return '';
 	if (!audienceRows.value.length)
 		return 'Please add at least one Audience for this communication.';
 	for (const row of audienceRows.value) {
@@ -1442,17 +866,70 @@ function getValidationMessage(draftMode = false) {
 			return 'You are not allowed to target Staff at School Scope from your current role.';
 		}
 		if (!canTargetWideSchoolScope.value && row.target_mode === 'Organization') {
-			return 'You are not allowed to target Staff at Organization scope from your current role.';
+			return 'You are not allowed to target Organization audiences from your current role.';
 		}
 	}
 	return '';
 }
 
-const validationMessage = computed(() => getValidationMessage(false));
+const publishValidationMessage = computed(() => getValidationMessage(false));
+const draftValidationMessage = computed(() => getValidationMessage(true));
 
-const submitDisabled = computed(
+const deliveryValidationMessage = computed(() => {
+	const message = publishValidationMessage.value;
+	if (!message) return '';
+	if (
+		message.startsWith('Brief Start Date') ||
+		message.startsWith('Brief End Date') ||
+		message.startsWith('Publish Until') ||
+		message.startsWith('Publish From') ||
+		message.startsWith('Scheduled communications') ||
+		message.startsWith('Student and guardian audiences') ||
+		message.startsWith('Audiences that include both staff') ||
+		message.startsWith('Staff-only audiences')
+	) {
+		return message;
+	}
+	return '';
+});
+
+const audienceValidationMessage = computed(() => {
+	const message = draftValidationMessage.value || publishValidationMessage.value;
+	if (!message) return '';
+	if (message.startsWith('Please add at least one Audience') && attachmentContextLocked.value) {
+		if (lockedAttachmentSchoolLabel.value) {
+			return `Governed files are already attached for ${lockedAttachmentSchoolLabel.value}. Add a school audience for that school, or remove the governed files before switching to Organization-wide.`;
+		}
+		if (canTargetWideSchoolScope.value) {
+			return 'Governed files are already attached for this organization-scoped draft. Choose Organization-wide above to reach staff across your organization tree, or remove the governed files before switching to a narrower scope.';
+		}
+		return 'Governed files are already attached for this organization-scoped draft. Organization-wide audiences are unavailable for your current role.';
+	}
+	if (
+		message.startsWith('Please add at least one Audience') ||
+		message.startsWith('Target Mode') ||
+		message.startsWith('Audience row') ||
+		message.startsWith('You are not allowed to target Staff')
+	) {
+		return message;
+	}
+	return '';
+});
+
+const draftSubmitDisabled = computed(
 	() =>
-		submitting.value || optionsLoading.value || !options.value || Boolean(validationMessage.value)
+		submitting.value ||
+		optionsLoading.value ||
+		!options.value ||
+		Boolean(draftValidationMessage.value)
+);
+
+const publishSubmitDisabled = computed(
+	() =>
+		submitting.value ||
+		optionsLoading.value ||
+		!options.value ||
+		Boolean(publishValidationMessage.value)
 );
 
 function emitAfterLeave() {
@@ -1485,21 +962,59 @@ watch(
 	() => props.open,
 	async open => {
 		if (!open) return;
-		errorMessage.value = '';
+		clearTopLevelError();
 		await bootstrap();
 	},
 	{ immediate: true }
 );
 
 watch(
+	attachmentContextLocked,
+	locked => {
+		if (locked) {
+			if (!lockedAttachmentContextSnapshot.value) {
+				lockedAttachmentContextSnapshot.value = buildAttachmentContextSnapshot();
+			}
+			return;
+		}
+		lockedAttachmentContextSnapshot.value = null;
+	},
+	{ immediate: true }
+);
+
+watch(attachmentContextLockBlocker, blocker => {
+	if (!blocker) {
+		clearTopLevelError('attachment-context-lock');
+	}
+});
+
+watch(
+	[
+		() => form.title,
+		() => form.communication_type,
+		() => form.organization,
+		() => form.school,
+		() => form.publish_from,
+		() => form.publish_to,
+		() => form.brief_start_date,
+		() => form.brief_end_date,
+	],
+	() => {
+		clearTopLevelError('attachment-precondition');
+	}
+);
+
+watch(
 	() => form.organization,
 	organization => {
-		if (!organization || schoolSelectionLocked.value) return;
-		const currentSchoolAllowed = schoolSelectOptions.value.some(
-			option => option.value === form.school
-		);
-		if (!currentSchoolAllowed) {
-			form.school = '';
+		if (!organization) return;
+		if (!issuingSchoolSelectionLocked.value) {
+			const currentSchoolAllowed = schoolSelectOptions.value.some(
+				option => option.value === form.school
+			);
+			if (!currentSchoolAllowed) {
+				form.school = '';
+			}
 		}
 		for (const row of audienceRows.value) {
 			if (row.target_mode !== 'School Scope') continue;
@@ -1509,6 +1024,25 @@ watch(
 			if (!rowSchoolAllowed) row.school = form.school;
 		}
 	}
+);
+
+watch(
+	hasOrganizationAudience,
+	hasOrganizationTarget => {
+		if (hasOrganizationTarget) {
+			form.school = '';
+			return;
+		}
+		if (form.school || audienceSchoolSelectionLocked.value) return;
+		const defaultSchool =
+			(isClassEventMode.value ? '' : context.value?.default_school) ||
+			(schoolSelectOptions.value.length === 1 ? schoolSelectOptions.value[0]?.value : '') ||
+			'';
+		if (defaultSchool) {
+			form.school = defaultSchool;
+		}
+	},
+	{ immediate: true }
 );
 
 watch(
@@ -1529,6 +1063,41 @@ watch(
 	}
 );
 
+watch([activeDeliveryProfile, () => form.portal_surface], ([profile, currentSurface]) => {
+	if (!profile) return;
+	const allowedSurfaces = profile.allowed_portal_surfaces ?? [];
+	const currentValue = String(currentSurface || '').trim();
+	if (!allowedSurfaces.length || !currentValue || allowedSurfaces.includes(currentValue)) {
+		return;
+	}
+	const nextSurface = profile.preferred_portal_surface || allowedSurfaces[0] || '';
+	if (!nextSurface || nextSurface === currentValue) return;
+	form.portal_surface = nextSurface;
+	if (!briefPortalSurfaces.value.includes(nextSurface)) {
+		form.brief_start_date = '';
+		form.brief_end_date = '';
+		form.brief_order = '';
+	}
+});
+
+watch(
+	() =>
+		audienceRows.value
+			.map(row =>
+				[
+					row.target_mode,
+					row.school,
+					row.team,
+					row.student_group,
+					row.include_descendants ? '1' : '0',
+				].join(':')
+			)
+			.join('|'),
+	() => {
+		clearTopLevelError('attachment-precondition');
+	}
+);
+
 onBeforeUnmount(() => {
 	document.removeEventListener('keydown', onKeydown, true);
 });
@@ -1542,10 +1111,14 @@ async function loadOptions() {
 	if (optionsLoading.value) return;
 	optionsLoading.value = true;
 	try {
-		options.value = await getOrgCommunicationQuickCreateOptions({});
+		options.value = await getOrgCommunicationQuickCreateOptions({
+			prefill_student_group: props.studentGroup || null,
+		});
 	} catch (error) {
-		errorMessage.value =
-			error instanceof Error ? error.message : 'Unable to load communication options.';
+		setTopLevelError(
+			error instanceof Error ? error.message : 'Unable to load communication options.',
+			'load'
+		);
 	} finally {
 		optionsLoading.value = false;
 	}
@@ -1576,11 +1149,13 @@ function initializeForm() {
 		: defaults.communication_type;
 	form.status = isClassEventMode.value ? 'Published' : defaults.status;
 	form.priority = defaults.priority;
-	form.portal_surface = isClassEventMode.value ? 'Everywhere' : defaults.portal_surface;
+	form.portal_surface = isClassEventMode.value
+		? CLASS_EVENT_PORTAL_SURFACE
+		: defaults.portal_surface;
 	form.publish_from = formatDateTimeInput(new Date());
 	form.publish_to = '';
-	form.brief_start_date = props.sessionDate || '';
-	form.brief_end_date = props.sessionDate || '';
+	form.brief_start_date = isClassEventMode.value ? '' : props.sessionDate || '';
+	form.brief_end_date = isClassEventMode.value ? '' : props.sessionDate || '';
 	form.brief_order = '';
 	form.organization = defaultOrganization;
 	form.school = defaultSchool;
@@ -1605,10 +1180,17 @@ function initializeForm() {
 	linkDraft.external_url = '';
 
 	if (isClassEventMode.value) {
+		const classEventTarget = (options.value?.suggested_targets?.student_groups ?? []).find(
+			row => row.name === props.studentGroup
+		);
 		audienceRows.value = [
 			createAudienceRow({
+				preset_key: 'class_event',
 				target_mode: 'Student Group',
 				student_group: props.studentGroup || '',
+				student_group_label: classEventTarget
+					? buildStudentGroupSearchItem(classEventTarget).label
+					: props.studentGroup || '',
 				to_students: true,
 				to_guardians: false,
 				to_staff: false,
@@ -1617,59 +1199,44 @@ function initializeForm() {
 		return;
 	}
 
-	audienceRows.value = [
-		createAudienceRow({
-			target_mode: 'School Scope',
-			school: form.school,
-			include_descendants: true,
-		}),
-	];
+	audienceRows.value = [];
 }
 
 function createAudienceRow(seed: Partial<AudienceRowState> = {}): AudienceRowState {
 	const targetMode = seed.target_mode || 'School Scope';
 	const row: AudienceRowState = {
 		id: `aud_${Date.now()}_${Math.random().toString(16).slice(2)}`,
+		preset_key: seed.preset_key || '',
 		target_mode: targetMode,
 		school: seed.school || '',
 		team: seed.team || '',
+		team_label: seed.team_label || '',
 		student_group: seed.student_group || '',
+		student_group_label: seed.student_group_label || '',
 		include_descendants:
 			targetMode === 'School Scope' ? Boolean(seed.include_descendants ?? true) : false,
 		to_staff: Boolean(seed.to_staff ?? false),
 		to_students: Boolean(seed.to_students ?? false),
 		to_guardians: Boolean(seed.to_guardians ?? false),
 		note: seed.note || '',
+		search_kind:
+			seed.search_kind ??
+			(targetMode === 'Team' ? 'team' : targetMode === 'Student Group' ? 'student_group' : null),
+		search_query: seed.search_query || '',
+		search_results: seed.search_results ? [...seed.search_results] : [],
+		search_loading: Boolean(seed.search_loading ?? false),
+		search_message: seed.search_message || '',
 	};
 	applyAudienceDefaults(row);
 	return row;
 }
 
-function addAudienceRow() {
-	audienceRows.value.push(
-		createAudienceRow({
-			target_mode: 'School Scope',
-			school: form.school,
-			include_descendants: true,
-		})
-	);
-}
-
 function removeAudienceRow(rowId: string) {
+	if (attachmentContextLocked.value) {
+		setTopLevelError(attachmentContextLockMessage.value, 'attachment-context-lock');
+		return;
+	}
 	audienceRows.value = audienceRows.value.filter(row => row.id !== rowId);
-}
-
-function isAudienceTargetLocked(row: AudienceRowState) {
-	return isClassEventMode.value && row.student_group === props.studentGroup;
-}
-
-function setAudienceTargetMode(row: AudienceRowState, targetMode: string) {
-	row.target_mode = targetMode;
-	row.school = targetMode === 'School Scope' ? form.school || row.school : '';
-	row.team = targetMode === 'Team' ? row.team : '';
-	row.student_group = targetMode === 'Student Group' ? row.student_group : '';
-	row.include_descendants = targetMode === 'School Scope';
-	applyAudienceDefaults(row);
 }
 
 function allowedRecipientFields(targetMode: string): RecipientField[] {
@@ -1693,7 +1260,9 @@ function applyAudienceDefaults(row: AudienceRowState) {
 	}
 
 	if (row.target_mode === 'Organization') {
-		row.to_staff = true;
+		if (!row.to_staff && !row.to_guardians) {
+			row.to_staff = true;
+		}
 		return;
 	}
 
@@ -1715,6 +1284,70 @@ function applyAudienceDefaults(row: AudienceRowState) {
 	}
 }
 
+function applyAudiencePreset(row: AudienceRowState, preset: OrgCommunicationAudiencePreset) {
+	row.preset_key = preset.key;
+	for (const recipient of recipientToggleDefinitions) {
+		row[recipient.field] = preset.default_fields.includes(recipient.field);
+	}
+	applyAudienceDefaults(row);
+	if (row.search_kind === 'team') {
+		row.search_results = suggestedTeamItems.value.slice(0, 8);
+		row.search_message = row.search_results.length
+			? 'Choose a suggested team or search by name.'
+			: 'Search for the team you want to reach.';
+	}
+	if (row.search_kind === 'student_group') {
+		row.search_results = suggestedStudentGroupItems.value.slice(0, 8);
+		row.search_message = row.search_results.length
+			? 'Choose a suggested class or search by name.'
+			: 'Search for the class or student group you want to reach.';
+	}
+}
+
+function addAudiencePreset(presetKey: string) {
+	if (attachmentContextLocked.value) {
+		const preset = audiencePresets.value.find(option => option.key === presetKey);
+		if (!preset) return;
+		if (preset.target_mode === 'School Scope' && lockedAttachmentContextSnapshot.value?.school) {
+			clearTopLevelError('attachment-context-lock');
+		} else if (
+			preset.target_mode === 'Organization' &&
+			!lockedAttachmentContextSnapshot.value?.school
+		) {
+			clearTopLevelError('attachment-context-lock');
+		} else {
+			setTopLevelError(
+				getAttachmentContextLockMessageForTarget(
+					preset.target_mode === 'Organization' ? 'Organization-wide' : preset.target_mode
+				),
+				'attachment-context-lock'
+			);
+			return;
+		}
+	}
+	const preset = audiencePresets.value.find(option => option.key === presetKey);
+	if (!preset) return;
+	if (
+		attachmentContextLocked.value &&
+		preset.target_mode !== 'School Scope' &&
+		preset.target_mode !== 'Organization'
+	) {
+		setTopLevelError(
+			getAttachmentContextLockMessageForTarget(preset.target_mode),
+			'attachment-context-lock'
+		);
+		return;
+	}
+	const row = createAudienceRow({
+		preset_key: preset.key,
+		target_mode: preset.target_mode,
+		school: preset.target_mode === 'School Scope' ? form.school : '',
+		include_descendants: preset.target_mode === 'School Scope',
+	});
+	applyAudiencePreset(row, preset);
+	audienceRows.value.push(row);
+}
+
 function isRecipientDisabled(row: AudienceRowState, field: RecipientField) {
 	const allowed = new Set(allowedRecipientFields(row.target_mode));
 	if (!allowed.has(field)) return true;
@@ -1725,7 +1358,6 @@ function isRecipientDisabled(row: AudienceRowState, field: RecipientField) {
 	) {
 		return true;
 	}
-	if (row.target_mode === 'Organization' && field === 'to_staff') return true;
 	if (row.target_mode === 'Team' && field === 'to_staff') return true;
 	if (isClassEventMode.value && row.target_mode === 'Student Group' && field === 'to_students')
 		return true;
@@ -1739,8 +1371,185 @@ function toggleRecipient(row: AudienceRowState, field: RecipientField, event: Ev
 	applyAudienceDefaults(row);
 }
 
+function getAudienceSearchItems(row: AudienceRowState) {
+	if (row.search_query.trim().length >= 2) {
+		return row.search_results;
+	}
+	if (row.search_kind === 'team')
+		return row.search_results.length ? row.search_results : suggestedTeamItems.value;
+	if (row.search_kind === 'student_group') {
+		return row.search_results.length ? row.search_results : suggestedStudentGroupItems.value;
+	}
+	return [];
+}
+
+function getAudiencePreset(row: AudienceRowState) {
+	return audiencePresets.value.find(option => option.key === row.preset_key) || null;
+}
+
+function getAudienceRecipientSummary(row: AudienceRowState) {
+	return recipientToggleDefinitions
+		.filter(recipient => Boolean(row[recipient.field]))
+		.map(recipient => recipient.label)
+		.join(', ');
+}
+
+function getAudienceRowTitle(row: AudienceRowState) {
+	return (
+		getAudiencePreset(row)?.label ||
+		(row.target_mode === 'Team'
+			? 'Team audience'
+			: row.target_mode === 'Student Group'
+				? 'Class or student group'
+				: row.target_mode === 'Organization'
+					? 'Organization-wide'
+					: 'School audience')
+	);
+}
+
+function getAudienceRowDescription(row: AudienceRowState) {
+	if (row.target_mode === 'School Scope') {
+		const schoolLabel = getSchoolOptionLabel(row.school) || 'selected school scope';
+		const recipients = getAudienceRecipientSummary(row) || 'Choose recipients';
+		return `${schoolLabel} · ${recipients}`;
+	}
+	if (row.target_mode === 'Team') {
+		const teamLabel = row.team_label || 'Choose a team';
+		return `${teamLabel} · Staff`;
+	}
+	if (row.target_mode === 'Student Group') {
+		const studentGroupLabel = row.student_group_label || 'Choose a class or student group';
+		const recipients = getAudienceRecipientSummary(row) || 'Choose recipients';
+		return `${studentGroupLabel} · ${recipients}`;
+	}
+	const recipients = getAudienceRecipientSummary(row) || 'Choose recipients';
+	return `${getOrganizationOptionLabel(form.organization) || form.organization || 'Organization'} · ${recipients}`;
+}
+
+function clearAudienceSearchSelection(row: AudienceRowState) {
+	if (attachmentContextLocked.value) {
+		setTopLevelError(attachmentContextLockMessage.value, 'attachment-context-lock');
+		return;
+	}
+	if (row.search_kind === 'team') {
+		row.team = '';
+		row.team_label = '';
+		row.search_results = suggestedTeamItems.value.slice(0, 8);
+		row.search_message = row.search_results.length
+			? 'Choose a suggested team or search by name.'
+			: 'Search for the team you want to reach.';
+		return;
+	}
+	if (row.search_kind === 'student_group') {
+		row.student_group = '';
+		row.student_group_label = '';
+		row.search_results = suggestedStudentGroupItems.value.slice(0, 8);
+		row.search_message = row.search_results.length
+			? 'Choose a suggested class or search by name.'
+			: 'Search for the class or student group you want to reach.';
+	}
+}
+
+function selectAudienceSearchItem(row: AudienceRowState, item: AudienceTargetSearchItem) {
+	if (attachmentContextLocked.value) {
+		setTopLevelError(attachmentContextLockMessage.value, 'attachment-context-lock');
+		return;
+	}
+	if (row.search_kind === 'team') {
+		row.team = item.value;
+		row.team_label = item.label;
+	}
+	if (row.search_kind === 'student_group') {
+		row.student_group = item.value;
+		row.student_group_label = item.label;
+	}
+	row.search_message = `${item.label} selected.`;
+}
+
+async function searchAudienceTargets(row: AudienceRowState) {
+	if (attachmentContextLocked.value) {
+		setTopLevelError(attachmentContextLockMessage.value, 'attachment-context-lock');
+		return;
+	}
+	if (row.search_loading) return;
+	const query = row.search_query.trim();
+	if (row.search_kind === 'team') {
+		if (query.length < 2) {
+			row.search_results = suggestedTeamItems.value.slice(0, 8);
+			row.search_message = row.search_results.length
+				? 'Choose a suggested team or type at least 2 characters to search.'
+				: 'Type at least 2 characters to search teams.';
+			return;
+		}
+		row.search_loading = true;
+		row.search_message = '';
+		try {
+			const response = await searchOrgCommunicationTeams({
+				query,
+				organization: form.organization || null,
+				school: form.school || null,
+				limit: 8,
+			});
+			row.search_results = (response.results || []).map(buildTeamSearchItem);
+			row.search_message = row.search_results.length ? '' : 'No teams match that search yet.';
+		} catch (error) {
+			row.search_results = [];
+			row.search_message = error instanceof Error ? error.message : 'Unable to search teams.';
+		} finally {
+			row.search_loading = false;
+		}
+		return;
+	}
+	if (row.search_kind === 'student_group') {
+		if (query.length < 2) {
+			row.search_results = suggestedStudentGroupItems.value.slice(0, 8);
+			row.search_message = row.search_results.length
+				? 'Choose a suggested class or type at least 2 characters to search.'
+				: 'Type at least 2 characters to search classes.';
+			return;
+		}
+		row.search_loading = true;
+		row.search_message = '';
+		try {
+			const response = await searchOrgCommunicationStudentGroups({
+				query,
+				organization: form.organization || null,
+				school: form.school || null,
+				limit: 8,
+			});
+			row.search_results = (response.results || []).map(buildStudentGroupSearchItem);
+			row.search_message = row.search_results.length
+				? ''
+				: 'No classes or student groups match that search yet.';
+		} catch (error) {
+			row.search_results = [];
+			row.search_message =
+				error instanceof Error ? error.message : 'Unable to search classes or student groups.';
+		} finally {
+			row.search_loading = false;
+		}
+	}
+}
+
 function updateMessage(content: string) {
 	form.message = content;
+}
+
+function openNativeDatePicker(event: Event) {
+	const input = event.currentTarget as HTMLInputElement | null;
+	if (!input || input.disabled) return;
+
+	const pickerInput = input as HTMLInputElement & { showPicker?: () => void };
+	if (typeof pickerInput.showPicker === 'function') {
+		try {
+			pickerInput.showPicker();
+			return;
+		} catch {
+			// Ignore browsers that expose the method but reject imperative open calls.
+		}
+	}
+
+	input.focus();
 }
 
 function toFrappeDatetime(value: string) {
@@ -1815,7 +1624,7 @@ function buildPayload(statusOverride?: string): CreateOrgCommunicationQuickReque
 		communication_type: classEventMode ? 'Class Announcement' : form.communication_type,
 		status: statusOverride || form.status,
 		priority: form.priority,
-		portal_surface: classEventMode ? 'Everywhere' : form.portal_surface,
+		portal_surface: classEventMode ? CLASS_EVENT_PORTAL_SURFACE : form.portal_surface,
 		publish_from: toFrappeDatetime(form.publish_from),
 		publish_to: toFrappeDatetime(form.publish_to),
 		brief_start_date: briefStartDate,
@@ -1846,45 +1655,44 @@ function removeAttachmentRow(rowName: string) {
 	attachmentRows.value = attachmentRows.value.filter(row => row.row_name !== rowName);
 }
 
+function toggleLinkComposer() {
+	showLinkComposer.value = !showLinkComposer.value;
+}
+
 function resetLinkDraft() {
 	linkDraft.title = '';
 	linkDraft.external_url = '';
 	showLinkComposer.value = false;
 }
 
-function formatAttachmentMeta(attachment: OrgCommunicationAttachmentRow) {
-	if (attachment.kind === 'link') {
-		return attachment.external_url || 'External link';
-	}
-	const parts = [attachment.file_name];
-	if (attachment.file_size) {
-		parts.push(formatFileSize(attachment.file_size));
-	}
-	return parts.filter(Boolean).join(' · ') || 'Governed file';
-}
-
-function formatFileSize(value: number | string | null | undefined) {
-	const size = typeof value === 'number' ? value : Number(value || 0);
-	if (!Number.isFinite(size) || size <= 0) return '';
-	if (size < 1024) return `${size} B`;
-	if (size < 1024 * 1024) return `${(size / 1024).toFixed(1)} KB`;
-	return `${(size / (1024 * 1024)).toFixed(1)} MB`;
-}
-
-async function ensureSavedDraft() {
-	if (savedCommunicationName.value) return savedCommunicationName.value;
-	const draftValidationError = getValidationMessage(true);
+async function ensureSavedDraft(purpose: AttachmentDraftPurpose) {
+	const draftValidationError = getAttachmentDraftBlocker(purpose);
 	if (draftValidationError) {
-		throw new Error(draftValidationError);
+		throw new AttachmentPreconditionError(draftValidationError);
 	}
-	const response = await createOrgCommunicationQuick(buildPayload('Draft'));
-	savedCommunicationName.value = response.name;
-	return response.name;
+	if (savedCommunicationName.value) return savedCommunicationName.value;
+	try {
+		const response = await createOrgCommunicationQuick(buildPayload('Draft'));
+		savedCommunicationName.value = response.name;
+		return response.name;
+	} catch (error) {
+		throw new AttachmentPreconditionError(
+			error instanceof Error
+				? resolveActionErrorMessage(error)
+				: 'Unable to save the draft before adding attachments.'
+		);
+	}
 }
 
 function triggerAttachmentFilePicker() {
-	if (attachmentSubmitting.value || submitting.value) return;
+	if (attachmentActionsDisabled.value) return;
 	attachmentErrorMessage.value = '';
+	const draftValidationError = getAttachmentDraftBlocker('governed-file');
+	if (draftValidationError) {
+		setTopLevelError(draftValidationError, 'attachment-precondition');
+		return;
+	}
+	clearTopLevelError('attachment-precondition');
 	attachmentFileInput.value?.click();
 }
 
@@ -1896,18 +1704,36 @@ async function onAttachmentFileSelected(event: Event) {
 	attachmentSubmitting.value = true;
 	attachmentErrorMessage.value = '';
 	try {
-		const orgCommunication = await ensureSavedDraft();
-		for (const file of files) {
-			const response = await uploadOrgCommunicationAttachment({
-				org_communication: orgCommunication,
-				file,
-			});
+		const orgCommunication = await ensureSavedDraft('governed-file');
+		clearTopLevelError('attachment-precondition');
+		for (const [index, file] of files.entries()) {
+			attachmentUploadProgressLabel.value =
+				files.length > 1
+					? `Uploading ${file.name} (${index + 1} of ${files.length})`
+					: `Uploading ${file.name}`;
+			const response = await uploadOrgCommunicationAttachment(
+				{
+					org_communication: orgCommunication,
+					file,
+				},
+				{
+					onProgress: progress => {
+						attachmentUploadProgress.value = progress;
+					},
+				}
+			);
 			upsertAttachmentRow(response.attachment);
 		}
 	} catch (error) {
-		attachmentErrorMessage.value =
-			error instanceof Error ? error.message : 'Unable to upload the attachment.';
+		if (error instanceof AttachmentPreconditionError) {
+			setTopLevelError(error.message, 'attachment-precondition');
+		} else {
+			attachmentErrorMessage.value =
+				error instanceof Error ? error.message : 'Unable to upload the attachment.';
+		}
 	} finally {
+		attachmentUploadProgress.value = null;
+		attachmentUploadProgressLabel.value = '';
 		attachmentSubmitting.value = false;
 		if (target) target.value = '';
 	}
@@ -1922,7 +1748,8 @@ async function submitLinkAttachment() {
 	attachmentSubmitting.value = true;
 	attachmentErrorMessage.value = '';
 	try {
-		const orgCommunication = await ensureSavedDraft();
+		const orgCommunication = await ensureSavedDraft('link');
+		clearTopLevelError('attachment-precondition');
 		const response = await addOrgCommunicationLink({
 			org_communication: orgCommunication,
 			title: linkDraft.title.trim() || null,
@@ -1931,8 +1758,12 @@ async function submitLinkAttachment() {
 		upsertAttachmentRow(response.attachment);
 		resetLinkDraft();
 	} catch (error) {
-		attachmentErrorMessage.value =
-			error instanceof Error ? error.message : 'Unable to add the link.';
+		if (error instanceof AttachmentPreconditionError) {
+			setTopLevelError(error.message, 'attachment-precondition');
+		} else {
+			attachmentErrorMessage.value =
+				error instanceof Error ? error.message : 'Unable to add the link.';
+		}
 	} finally {
 		attachmentSubmitting.value = false;
 	}
@@ -1979,13 +1810,18 @@ async function submitPublish() {
 }
 
 async function submitWithStatus(statusOverride: string) {
-	const validationError = getValidationMessage(false);
+	const validationError =
+		statusOverride === 'Draft' ? draftValidationMessage.value : publishValidationMessage.value;
 	if (validationError) {
-		errorMessage.value = validationError;
+		setTopLevelError(validationError, 'submit');
+		return;
+	}
+	if (attachmentContextLockBlocker.value) {
+		setTopLevelError(attachmentContextLockBlocker.value, 'attachment-context-lock');
 		return;
 	}
 
-	errorMessage.value = '';
+	clearTopLevelError();
 	submitting.value = true;
 
 	try {
@@ -1994,99 +1830,56 @@ async function submitWithStatus(statusOverride: string) {
 		emit('close', 'programmatic');
 		emit('done', response);
 	} catch (error) {
-		errorMessage.value =
-			error instanceof Error ? error.message : 'Unable to create communication.';
+		setTopLevelError(resolveActionErrorMessage(error), 'submit');
 	} finally {
 		submitting.value = false;
 	}
 }
+
+function getGovernedFileDraftScopeBlocker() {
+	if (isClassEventMode.value || hasGovernedFileAttachments.value) return '';
+	if (!audienceRows.value.length) {
+		if (canTargetWideSchoolScope.value && form.school) {
+			return 'Finish Scope above before adding governed files. Choose an audience workflow or clear Issuing School first. The first governed file auto-saves a draft and locks that scope.';
+		}
+		return 'Finish Scope above before adding governed files. Choose an audience workflow first. The first governed file auto-saves a draft and locks that scope.';
+	}
+	for (const row of audienceRows.value) {
+		if (row.target_mode === 'School Scope' && !row.school) {
+			return 'Finish Scope above before adding governed files. Select the school for the audience row first. The first governed file auto-saves a draft and locks that scope.';
+		}
+		if (row.target_mode === 'Team' && !row.team) {
+			return 'Finish Scope above before adding governed files. Select the team first. The first governed file auto-saves a draft and locks that scope.';
+		}
+		if (row.target_mode === 'Student Group' && !row.student_group) {
+			return 'Finish Scope above before adding governed files. Select the class or student group first. The first governed file auto-saves a draft and locks that scope.';
+		}
+	}
+	return '';
+}
+
+function getAttachmentDraftBlocker(purpose: AttachmentDraftPurpose) {
+	if (optionsLoading.value || !options.value) {
+		return 'Communication options are still loading. Wait a moment, then try again.';
+	}
+	const draftValidationError = draftValidationMessage.value;
+	if (draftValidationError) {
+		return draftValidationError;
+	}
+	if (purpose === 'governed-file') {
+		return getGovernedFileDraftScopeBlocker();
+	}
+	return '';
+}
+
+function resolveActionErrorMessage(error: unknown) {
+	const fallback = error instanceof Error ? error.message : 'Unable to create communication.';
+	if (
+		fallback.includes('governed file attachments') &&
+		fallback.includes('Remove the governed files before changing')
+	) {
+		return attachmentContextLockMessage.value;
+	}
+	return fallback;
+}
 </script>
-
-<style scoped>
-.if-org-communication-native-select {
-	width: 100%;
-	appearance: none;
-	border-radius: 1rem;
-	border: 1px solid rgb(var(--border-rgb) / 0.8);
-	background-color: rgb(var(--surface-rgb));
-	background-image:
-		linear-gradient(45deg, transparent 50%, rgb(var(--ink-rgb) / 0.55) 50%),
-		linear-gradient(135deg, rgb(var(--ink-rgb) / 0.55) 50%, transparent 50%);
-	background-position:
-		calc(100% - 1.1rem) calc(50% - 0.12rem),
-		calc(100% - 0.8rem) calc(50% - 0.12rem);
-	background-repeat: no-repeat;
-	background-size:
-		0.4rem 0.4rem,
-		0.4rem 0.4rem;
-	box-shadow: var(--shadow-soft);
-	color: rgb(var(--ink-rgb));
-	font-size: 0.875rem;
-	line-height: 1.25rem;
-	padding: 0.625rem 2.5rem 0.625rem 0.875rem;
-	transition:
-		border-color 120ms ease,
-		box-shadow 120ms ease,
-		background-color 120ms ease;
-}
-
-.if-org-communication-native-select:focus {
-	border-color: rgb(var(--jacaranda-rgb) / 0.5);
-	box-shadow:
-		var(--shadow-soft),
-		0 0 0 1px rgb(var(--jacaranda-rgb) / 0.3);
-	outline: none;
-}
-
-.if-org-communication-native-select:disabled {
-	cursor: not-allowed;
-	background-color: rgb(var(--surface-rgb) / 0.8);
-	color: rgb(var(--ink-rgb) / 0.5);
-	opacity: 0.8;
-}
-
-.if-class-event-context-pill {
-	display: flex;
-	min-width: 0;
-	flex-wrap: wrap;
-	align-items: center;
-	gap: 0.625rem;
-	border-radius: 1.25rem;
-	border: 1px solid rgb(var(--border-rgb) / 0.72);
-	background: rgb(var(--surface-rgb) / 0.66);
-	padding: 0.75rem 0.875rem;
-}
-
-.if-class-event-context-pill__label {
-	display: inline-flex;
-	align-items: center;
-	justify-content: center;
-	border-radius: 9999px;
-	padding: 0.25rem 0.625rem;
-	font-size: 0.6875rem;
-	font-weight: 700;
-	letter-spacing: 0.16em;
-	line-height: 1;
-	text-transform: uppercase;
-}
-
-.if-class-event-context-pill--0 .if-class-event-context-pill__label {
-	background: rgb(var(--jacaranda-rgb) / 0.14);
-	color: rgb(var(--jacaranda-rgb) / 1);
-}
-
-.if-class-event-context-pill--1 .if-class-event-context-pill__label {
-	background: rgb(var(--leaf-rgb) / 0.14);
-	color: rgb(var(--canopy-rgb) / 1);
-}
-
-.if-class-event-context-pill--2 .if-class-event-context-pill__label {
-	background: rgb(var(--sky-rgb) / 0.24);
-	color: rgb(var(--canopy-rgb) / 1);
-}
-
-.if-class-event-context-pill--3 .if-class-event-context-pill__label {
-	background: rgb(var(--slate-rgb) / 0.14);
-	color: rgb(var(--slate-rgb) / 0.9);
-}
-</style>

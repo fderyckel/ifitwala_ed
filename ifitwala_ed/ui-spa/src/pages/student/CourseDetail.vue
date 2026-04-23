@@ -1,6 +1,6 @@
 <!-- ifitwala_ed/ui-spa/src/pages/student/CourseDetail.vue -->
 <template>
-	<div class="portal-page">
+	<div class="portal-page student-hub-page">
 		<div>
 			<RouterLink
 				:to="{ name: 'student-courses' }"
@@ -11,20 +11,19 @@
 			</RouterLink>
 		</div>
 
-		<section
-			v-if="errorMessage"
-			class="rounded-2xl border border-flame/30 bg-[var(--flame)]/5 px-5 py-4"
-		>
-			<p class="type-body-strong text-flame">Could not load this learning space.</p>
-			<p class="mt-1 type-caption text-ink/70">{{ errorMessage }}</p>
+		<section v-if="errorMessage" class="if-banner if-banner--danger">
+			<p class="if-banner__title type-body-strong text-flame">
+				Could not load this learning space.
+			</p>
+			<p class="if-banner__body mt-1 type-caption">{{ errorMessage }}</p>
 		</section>
 
-		<section v-else-if="loading && !learningSpace" class="card-surface p-6">
+		<section v-else-if="loading && !learningSpace" class="student-hub-section">
 			<p class="type-body text-ink/70">Loading learning space...</p>
 		</section>
 
 		<template v-else-if="learningSpace">
-			<header class="card-surface overflow-hidden">
+			<header class="student-hub-hero overflow-hidden">
 				<div class="grid gap-5 p-5 sm:gap-6 sm:p-6 xl:grid-cols-[minmax(0,9rem),minmax(0,1fr)]">
 					<div class="flex justify-center xl:justify-start">
 						<div
@@ -109,14 +108,12 @@
 
 			<section
 				v-if="learningSpace.message"
-				class="rounded-2xl border border-line-soft bg-surface-soft px-5 py-4"
+				class="student-hub-section student-hub-section--warm px-5 py-4"
 			>
 				<p class="type-body text-ink/80">{{ learningSpace.message }}</p>
 			</section>
 
-			<section
-				class="sticky top-4 z-20 rounded-[1.5rem] border border-white/70 bg-white/90 p-3 shadow-[0_18px_45px_-28px_rgba(33,53,71,0.45)] backdrop-blur-xl sm:p-4"
-			>
+			<section class="sticky top-4 z-20 paper-card-frosted p-3 sm:p-4">
 				<div class="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
 					<div class="flex flex-wrap gap-2">
 						<button
@@ -129,32 +126,29 @@
 						</button>
 						<button
 							type="button"
-							class="inline-flex items-center justify-center rounded-full border border-line-soft bg-white px-4 py-2 text-sm font-semibold text-ink transition hover:border-jacaranda/40 hover:bg-jacaranda/5"
+							class="if-button if-button--secondary"
 							@click="jumpToSection(SECTION_IDS.assignedWork)"
 						>
 							Assignments
 						</button>
 						<button
 							type="button"
-							class="inline-flex items-center justify-center rounded-full border border-line-soft bg-white px-4 py-2 text-sm font-semibold text-ink transition hover:border-jacaranda/40 hover:bg-jacaranda/5"
+							class="if-button if-button--secondary"
 							@click="jumpToSection(SECTION_IDS.resources)"
 						>
 							Resources
 						</button>
 						<RouterLink
 							:to="classUpdatesHref"
-							class="inline-flex items-center justify-center gap-2 rounded-full border px-4 py-2 text-sm font-semibold transition"
+							class="if-button"
 							:class="
 								courseUpdateSummary.unread_count || courseUpdateSummary.has_high_priority
-									? 'border-jacaranda/40 bg-jacaranda/5 text-jacaranda'
-									: 'border-line-soft bg-white text-ink hover:border-jacaranda/40 hover:bg-jacaranda/5'
+									? 'if-button--primary'
+									: 'if-button--secondary'
 							"
 						>
 							<span>Class Updates</span>
-							<span
-								v-if="classUpdatesBadge"
-								class="rounded-full bg-white/90 px-2 py-0.5 text-xs font-semibold text-jacaranda"
-							>
+							<span v-if="classUpdatesBadge" class="chip chip-focus px-2 py-0.5">
 								{{ classUpdatesBadge }}
 							</span>
 						</RouterLink>
@@ -162,18 +156,14 @@
 
 					<nav
 						aria-label="Jump to course sections"
-						class="flex gap-2 overflow-x-auto pb-1 xl:flex-wrap xl:justify-end xl:overflow-visible xl:pb-0"
+						class="if-segmented overflow-x-auto pb-1 xl:flex-wrap xl:justify-end xl:overflow-visible xl:pb-0"
 					>
 						<button
 							v-for="section in learningSections"
 							:key="section.id"
 							type="button"
-							class="shrink-0 rounded-full border px-4 py-2 text-sm font-semibold transition"
-							:class="
-								activeSectionId === section.id
-									? 'border-jacaranda bg-jacaranda/10 text-jacaranda'
-									: 'border-line-soft bg-white text-ink/70 hover:border-jacaranda/30 hover:text-ink'
-							"
+							class="if-segmented__item shrink-0"
+							:class="activeSectionId === section.id ? 'if-segmented__item--active' : ''"
 							@click="jumpToSection(section.id)"
 						>
 							{{ section.label }}
@@ -248,7 +238,7 @@
 						</button>
 						<button
 							type="button"
-							class="inline-flex items-center justify-center rounded-full border border-line-soft bg-white px-4 py-2 text-sm font-semibold text-ink transition hover:border-jacaranda/40 hover:bg-jacaranda/5"
+							class="if-button if-button--secondary"
 							@click="jumpToSection(SECTION_IDS.assignedWork)"
 						>
 							Open assignments
@@ -472,28 +462,11 @@
 									<span class="chip">{{ selectedSession.resources.length }}</span>
 								</div>
 								<div class="grid gap-3 lg:grid-cols-2">
-									<article
+									<StudentLearningResourceCard
 										v-for="resource in selectedSession.resources"
 										:key="resource.placement || resource.material"
-										class="rounded-2xl border border-line-soft bg-surface-soft p-4"
-									>
-										<p class="type-body-strong text-ink">{{ resource.title }}</p>
-										<p v-if="resource.description" class="mt-2 type-caption text-ink/70">
-											{{ resource.description }}
-										</p>
-										<p v-if="resource.placement_note" class="mt-2 type-caption text-ink/60">
-											{{ resource.placement_note }}
-										</p>
-										<a
-											v-if="resource.open_url"
-											:href="resource.open_url"
-											target="_blank"
-											rel="noreferrer"
-											class="mt-3 inline-flex text-sm font-medium text-jacaranda transition hover:text-jacaranda/80"
-										>
-											Open resource
-										</a>
-									</article>
+										:resource="resource"
+									/>
 								</div>
 							</div>
 
@@ -506,7 +479,12 @@
 									<article
 										v-for="item in selectedSession.assigned_work"
 										:key="item.task_delivery"
-										class="rounded-2xl border border-line-soft bg-surface-soft p-4"
+										class="rounded-2xl border p-4"
+										:class="
+											isSelectedAssignedWork(item)
+												? 'border-jacaranda/40 bg-white shadow-sm'
+												: 'border-line-soft bg-surface-soft'
+										"
 									>
 										<div class="flex flex-wrap items-center gap-2">
 											<p class="type-body-strong text-ink">{{ item.title }}</p>
@@ -518,23 +496,27 @@
 										<p v-if="item.due_date" class="mt-2 type-caption text-ink/70">
 											Due {{ item.due_date }}
 										</p>
-										<div v-if="item.materials.length" class="mt-4 space-y-2">
-											<p class="type-caption text-ink/60">What you may need</p>
-											<div class="flex flex-wrap gap-2">
-												<template
+										<div
+											v-if="item.instructions_html"
+											class="mt-4 rounded-2xl border border-line-soft bg-white p-4"
+										>
+											<p class="type-caption text-ink/60">Instructions</p>
+											<div
+												class="mt-3 prose prose-sm max-w-none text-ink/80"
+												v-html="item.instructions_html"
+											/>
+										</div>
+										<div v-if="item.materials.length" class="mt-4 space-y-3">
+											<div class="flex items-center justify-between gap-3">
+												<p class="type-caption text-ink/60">Attachments</p>
+												<span class="chip">{{ item.materials.length }}</span>
+											</div>
+											<div class="grid gap-3 lg:grid-cols-2">
+												<StudentLearningResourceCard
 													v-for="resource in item.materials"
 													:key="resource.placement || resource.material"
-												>
-													<a
-														v-if="resource.open_url"
-														:href="resource.open_url"
-														target="_blank"
-														rel="noreferrer"
-														class="inline-flex items-center rounded-full border border-line-soft bg-white px-3 py-1 text-xs font-medium text-ink transition hover:border-jacaranda/40 hover:bg-jacaranda/5"
-													>
-														{{ resource.title }}
-													</a>
-												</template>
+													:resource="resource"
+												/>
 											</div>
 										</div>
 										<div class="mt-3 flex flex-wrap gap-2">
@@ -630,7 +612,7 @@
 								<article
 									v-for="standard in selectedUnit.standards"
 									:key="`${selectedUnit.unit_plan}-${standard.standard_code}-${standard.standard_description}`"
-									class="rounded-2xl border border-line-soft bg-white p-4"
+									class="student-hub-card student-hub-card--neutral p-4"
 								>
 									<div class="flex flex-wrap items-center gap-2">
 										<p class="type-body-strong text-ink">
@@ -704,10 +686,7 @@
 									<span class="chip">{{ reflectionEntries.length }}</span>
 								</div>
 
-								<div
-									v-if="!reflectionEntries.length"
-									class="mt-4 rounded-2xl border border-dashed border-line-soft bg-white p-4"
-								>
+								<div v-if="!reflectionEntries.length" class="mt-4 student-hub-empty">
 									<p class="type-body text-ink/70">
 										Your reflections will appear here after you save them.
 									</p>
@@ -717,7 +696,7 @@
 									<article
 										v-for="entry in reflectionEntries"
 										:key="entry.name"
-										class="rounded-2xl border border-line-soft bg-white p-4"
+										class="student-hub-card student-hub-card--neutral p-4"
 									>
 										<div class="flex flex-wrap items-center gap-2">
 											<p class="type-body-strong text-ink">
@@ -766,6 +745,394 @@
 					<span class="chip">{{ displayedAssignedWork.length }}</span>
 				</div>
 
+				<section
+					v-if="selectedTaskWorkspace"
+					class="mt-5 rounded-3xl border border-jacaranda/20 bg-white p-5 shadow-sm"
+				>
+					<div class="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+						<div>
+							<p class="type-overline text-ink/60">Task Workspace</p>
+							<h3 class="mt-2 type-h3 text-ink">{{ selectedTaskWorkspace.title }}</h3>
+							<p
+								v-if="assignedWorkContextLine(selectedTaskWorkspace)"
+								class="mt-2 type-caption text-ink/70"
+							>
+								{{ assignedWorkContextLine(selectedTaskWorkspace) }}
+							</p>
+							<p
+								v-if="assignedWorkTimingLabel(selectedTaskWorkspace)"
+								class="mt-1 type-caption text-ink/60"
+							>
+								{{ assignedWorkTimingLabel(selectedTaskWorkspace) }}
+							</p>
+						</div>
+						<div class="flex flex-wrap gap-2">
+							<span v-if="selectedTaskWorkspace.task_type" class="chip">
+								{{ selectedTaskWorkspace.task_type }}
+							</span>
+							<span v-if="assignedWorkStatusLabel(selectedTaskWorkspace)" class="chip">
+								{{ assignedWorkStatusLabel(selectedTaskWorkspace) }}
+							</span>
+							<span v-if="selectedTaskWorkspace.requires_submission" class="chip">
+								Submission
+							</span>
+						</div>
+					</div>
+
+					<p class="mt-3 type-body text-ink/75">{{ selectedTaskWorkspaceNote }}</p>
+
+					<div
+						v-if="selectedTaskWorkspace.instructions_html"
+						class="mt-4 rounded-2xl border border-line-soft bg-surface-soft p-4"
+					>
+						<p class="type-caption text-ink/60">Instructions</p>
+						<div
+							class="mt-3 prose prose-sm max-w-none text-ink/80"
+							v-html="selectedTaskWorkspace.instructions_html"
+						/>
+					</div>
+
+					<div v-if="selectedTaskWorkspace.materials.length" class="mt-4 space-y-3">
+						<div class="flex items-center justify-between gap-3">
+							<p class="type-caption text-ink/60">Attachments</p>
+							<span class="chip">{{ selectedTaskWorkspace.materials.length }}</span>
+						</div>
+						<div class="grid gap-3 lg:grid-cols-2">
+							<StudentLearningResourceCard
+								v-for="resource in selectedTaskWorkspace.materials"
+								:key="resource.placement || resource.material"
+								:resource="resource"
+							/>
+						</div>
+					</div>
+
+					<div class="mt-5 grid gap-4 xl:grid-cols-[minmax(0,1fr),minmax(0,1fr)]">
+						<section class="rounded-2xl border border-line-soft bg-surface-soft p-4">
+							<div class="flex items-center justify-between gap-3">
+								<p class="type-body-strong text-ink">Latest submission</p>
+								<span v-if="selectedTaskSubmission" class="chip">
+									Version {{ selectedTaskSubmission.version }}
+								</span>
+							</div>
+							<p v-if="selectedTaskSubmissionLoading" class="mt-3 type-body text-ink/70">
+								Loading your latest submission...
+							</p>
+							<p v-else-if="selectedTaskSubmissionError" class="mt-3 type-body text-flame">
+								{{ selectedTaskSubmissionError }}
+							</p>
+							<template v-else-if="selectedTaskWorkspace.requires_submission">
+								<div v-if="selectedTaskSubmission" class="mt-3 space-y-3">
+									<p class="type-caption text-ink/70">
+										Submitted {{ formatSubmissionTimestamp(selectedTaskSubmission.submitted_on) }}
+									</p>
+									<div
+										v-if="selectedTaskSubmission.text_content"
+										class="rounded-2xl border border-line-soft bg-white p-3"
+									>
+										<p class="type-caption text-ink/60">Written response</p>
+										<p class="mt-2 whitespace-pre-wrap type-body text-ink/80">
+											{{ selectedTaskSubmission.text_content }}
+										</p>
+									</div>
+									<div
+										v-if="selectedTaskSubmission.link_url"
+										class="rounded-2xl border border-line-soft bg-white p-3"
+									>
+										<p class="type-caption text-ink/60">Linked evidence</p>
+										<a
+											:href="selectedTaskSubmission.link_url"
+											target="_blank"
+											rel="noreferrer"
+											class="mt-2 inline-flex break-all type-body text-jacaranda underline"
+										>
+											{{ selectedTaskSubmission.link_url }}
+										</a>
+									</div>
+									<div
+										v-if="selectedTaskSubmission.attachments.length"
+										class="rounded-2xl border border-line-soft bg-white p-3"
+									>
+										<p class="type-caption text-ink/60">Attachments</p>
+										<div class="mt-2 space-y-2">
+											<div
+												v-for="attachment in selectedTaskSubmission.attachments"
+												:key="attachment.row_name || attachment.open_url || attachment.file_name"
+												class="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-line-soft px-3 py-2"
+											>
+												<p class="type-caption text-ink/80">
+													{{ attachment.file_name || attachment.description || 'Attachment' }}
+												</p>
+												<a
+													v-if="attachment.open_url"
+													:href="attachment.open_url"
+													target="_blank"
+													rel="noreferrer"
+													class="type-caption text-jacaranda underline"
+												>
+													Open
+												</a>
+											</div>
+										</div>
+									</div>
+								</div>
+								<p v-else class="mt-3 type-body text-ink/70">
+									No submission has been recorded yet.
+								</p>
+							</template>
+							<p v-else class="mt-3 type-body text-ink/70">
+								{{ selectedTaskWorkspaceStatusNote }}
+							</p>
+						</section>
+
+						<section class="rounded-2xl border border-line-soft bg-surface-soft p-4">
+							<template v-if="selectedTaskWorkspace.requires_submission">
+								<p class="type-body-strong text-ink">
+									{{ submissionButtonLabel }}
+								</p>
+								<p class="mt-2 type-caption text-ink/70">
+									Written responses, links, and document uploads are supported in this workspace.
+								</p>
+								<p v-if="selectedTaskSubmissionBlocker" class="mt-3 type-body text-ink/70">
+									{{ selectedTaskSubmissionBlocker }}
+								</p>
+								<form v-else class="mt-3 space-y-3" @submit.prevent="submitSelectedTaskWorkspace">
+									<label class="block space-y-2">
+										<span class="type-caption text-ink/70">Written response</span>
+										<textarea
+											v-model="submissionTextDraft"
+											rows="6"
+											class="if-input min-h-[9rem] w-full"
+											placeholder="Summarize your work, reflection, or answer."
+											@input="submissionDirty = true"
+										/>
+									</label>
+									<label class="block space-y-2">
+										<span class="type-caption text-ink/70">Link to your work</span>
+										<input
+											v-model="submissionLinkDraft"
+											type="url"
+											class="if-input w-full"
+											placeholder="https://example.com/your-work"
+											@input="submissionDirty = true"
+										/>
+									</label>
+									<label class="block space-y-2">
+										<span class="type-caption text-ink/70">Attach documents</span>
+										<input
+											ref="submissionFileInput"
+											type="file"
+											multiple
+											class="if-input w-full"
+											@change="handleSubmissionFilesChange"
+										/>
+									</label>
+									<div
+										v-if="submissionFiles.length"
+										class="rounded-2xl border border-line-soft bg-white p-3"
+									>
+										<div class="flex items-center justify-between gap-3">
+											<p class="type-caption text-ink/60">Selected files</p>
+											<button
+												type="button"
+												class="type-caption text-jacaranda underline"
+												@click="clearSubmissionFiles"
+											>
+												Clear
+											</button>
+										</div>
+										<div class="mt-2 space-y-2">
+											<div
+												v-for="file in submissionFiles"
+												:key="`${file.name}-${file.size}-${file.lastModified}`"
+												class="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-line-soft px-3 py-2"
+											>
+												<p class="type-caption text-ink/80">{{ file.name }}</p>
+												<span class="chip">
+													{{ formatSelectedSubmissionFileSize(file.size) }}
+												</span>
+											</div>
+										</div>
+									</div>
+									<p v-if="submissionProgressLabel" class="type-caption text-ink/70">
+										{{ submissionProgressLabel }}
+									</p>
+									<p v-if="submissionError" class="type-caption text-flame">
+										{{ submissionError }}
+									</p>
+									<div class="flex flex-wrap items-center gap-3">
+										<button type="submit" class="if-action" :disabled="submissionSaving">
+											{{ submissionSaving ? 'Saving...' : submissionButtonLabel }}
+										</button>
+									</div>
+								</form>
+							</template>
+							<template v-else-if="selectedTaskSupportsDirectCompletion">
+								<p class="type-body-strong text-ink">
+									{{ taskCompletionButtonLabel }}
+								</p>
+								<p class="mt-2 type-caption text-ink/70">
+									Mark this assign-only task complete here once you finish the assigned work.
+								</p>
+								<p v-if="selectedTaskDirectCompletionBlocker" class="mt-3 type-body text-ink/70">
+									{{ selectedTaskDirectCompletionBlocker }}
+								</p>
+								<div v-else class="mt-3 space-y-3">
+									<p v-if="taskCompletionError" class="type-caption text-flame">
+										{{ taskCompletionError }}
+									</p>
+									<div class="flex flex-wrap items-center gap-3">
+										<button
+											type="button"
+											class="if-action"
+											:disabled="
+												taskCompletionSaving || Boolean(selectedTaskWorkspace.is_complete)
+											"
+											@click="markSelectedTaskComplete"
+										>
+											{{ taskCompletionButtonLabel }}
+										</button>
+									</div>
+								</div>
+							</template>
+							<template v-else>
+								<p class="type-body-strong text-ink">Task brief</p>
+								<p class="mt-2 type-caption text-ink/70">
+									This task stays in your course workspace and does not require a submission.
+								</p>
+							</template>
+						</section>
+					</div>
+
+					<section
+						v-if="selectedTaskWorkspace.requires_submission || selectedTaskReleasedResult"
+						class="mt-4 rounded-2xl border border-line-soft bg-surface-soft p-4"
+					>
+						<div class="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+							<div>
+								<p class="type-body-strong text-ink">Released result</p>
+								<p class="mt-2 type-caption text-ink/70">
+									Scores and feedback appear here after they are released for your view.
+								</p>
+							</div>
+							<div class="flex flex-wrap gap-2">
+								<span v-if="selectedTaskReleasedResult?.feedback?.submission_version" class="chip">
+									Feedback on version
+									{{ selectedTaskReleasedResult.feedback.submission_version }}
+								</span>
+								<span v-if="selectedTaskReleasedResult?.grade_visible" class="chip chip-focus">
+									Grade released
+								</span>
+								<span v-if="selectedTaskReleasedResult?.feedback_visible" class="chip chip-warm">
+									Feedback released
+								</span>
+							</div>
+						</div>
+
+						<p v-if="selectedTaskReleasedResultMessage" class="mt-3 type-body text-ink/70">
+							{{ selectedTaskReleasedResultMessage }}
+						</p>
+						<template v-else-if="selectedTaskReleasedResult">
+							<div class="mt-3 flex flex-wrap gap-2">
+								<span v-if="selectedTaskReleasedResult.official.score != null" class="chip">
+									Score {{ formatReleasedScore(selectedTaskReleasedResult.official.score) }}
+								</span>
+								<span v-if="selectedTaskReleasedResult.official.grade" class="chip">
+									Grade {{ selectedTaskReleasedResult.official.grade }}
+								</span>
+								<RouterLink
+									v-if="selectedTaskFeedbackRoute"
+									:to="selectedTaskFeedbackRoute"
+									class="if-button if-button--secondary"
+								>
+									Open released feedback
+								</RouterLink>
+							</div>
+
+							<div
+								v-if="
+									selectedTaskReleasedResult.feedback?.summary.overall ||
+									selectedTaskReleasedResult.feedback?.summary.strengths ||
+									selectedTaskReleasedResult.feedback?.summary.improvements ||
+									selectedTaskReleasedResult.feedback?.summary.next_steps
+								"
+								class="mt-4 grid gap-3 lg:grid-cols-2"
+							>
+								<article
+									v-if="selectedTaskReleasedResult.feedback?.summary.overall"
+									class="rounded-2xl border border-line-soft bg-white p-3"
+								>
+									<p class="type-caption text-ink/60">Overall summary</p>
+									<p class="mt-2 type-body text-ink/80">
+										{{ selectedTaskReleasedResult.feedback?.summary.overall }}
+									</p>
+								</article>
+								<article
+									v-if="selectedTaskReleasedResult.feedback?.summary.strengths"
+									class="rounded-2xl border border-line-soft bg-white p-3"
+								>
+									<p class="type-caption text-ink/60">Strengths</p>
+									<p class="mt-2 type-body text-ink/80">
+										{{ selectedTaskReleasedResult.feedback?.summary.strengths }}
+									</p>
+								</article>
+								<article
+									v-if="selectedTaskReleasedResult.feedback?.summary.improvements"
+									class="rounded-2xl border border-line-soft bg-white p-3"
+								>
+									<p class="type-caption text-ink/60">Improvements</p>
+									<p class="mt-2 type-body text-ink/80">
+										{{ selectedTaskReleasedResult.feedback?.summary.improvements }}
+									</p>
+								</article>
+								<article
+									v-if="selectedTaskReleasedResult.feedback?.summary.next_steps"
+									class="rounded-2xl border border-line-soft bg-white p-3"
+								>
+									<p class="type-caption text-ink/60">Next steps</p>
+									<p class="mt-2 type-body text-ink/80">
+										{{ selectedTaskReleasedResult.feedback?.summary.next_steps }}
+									</p>
+								</article>
+							</div>
+
+							<details
+								v-if="selectedTaskReleasedResult.feedback?.items.length"
+								class="mt-4 rounded-2xl border border-line-soft bg-white p-4"
+							>
+								<summary class="cursor-pointer list-none">
+									<div class="flex items-center justify-between gap-3">
+										<div>
+											<p class="type-body-strong text-ink">Teacher comments</p>
+											<p class="mt-1 type-caption text-ink/70">
+												Open the released comment list for this submission.
+											</p>
+										</div>
+										<span class="chip">
+											{{ selectedTaskReleasedResult.feedback?.items.length || 0 }}
+										</span>
+									</div>
+								</summary>
+								<div class="mt-4 space-y-3">
+									<article
+										v-for="item in selectedTaskReleasedResult.feedback?.items || []"
+										:key="item.id || `${item.kind}-${item.page}-${item.comment}`"
+										class="rounded-2xl border border-line-soft bg-surface-soft p-3"
+									>
+										<div class="flex flex-wrap gap-2">
+											<span class="chip">{{ humanizeLabel(item.intent) }}</span>
+											<span v-if="item.page" class="chip">Page {{ item.page }}</span>
+											<span v-if="item.assessment_criteria" class="chip">
+												{{ item.assessment_criteria }}
+											</span>
+										</div>
+										<p class="mt-2 type-body text-ink/80">{{ item.comment }}</p>
+									</article>
+								</div>
+							</details>
+						</template>
+					</section>
+				</section>
+
 				<div
 					v-if="!displayedAssignedWork.length"
 					class="mt-5 rounded-2xl border border-dashed border-line-soft p-4"
@@ -779,7 +1146,12 @@
 					<article
 						v-for="item in displayedAssignedWork"
 						:key="item.task_delivery"
-						class="rounded-2xl border border-line-soft bg-surface-soft p-4"
+						class="rounded-2xl border p-4"
+						:class="
+							isSelectedAssignedWork(item)
+								? 'border-jacaranda/40 bg-white shadow-sm'
+								: 'border-line-soft bg-surface-soft'
+						"
 					>
 						<div class="flex flex-wrap items-center gap-2">
 							<p class="type-body-strong text-ink">{{ item.title }}</p>
@@ -794,23 +1166,27 @@
 						<p v-if="assignedWorkContextLine(item)" class="mt-1 type-caption text-ink/60">
 							{{ assignedWorkContextLine(item) }}
 						</p>
-						<div v-if="item.materials.length" class="mt-4 space-y-2">
-							<p class="type-caption text-ink/60">What you may need</p>
-							<div class="flex flex-wrap gap-2">
-								<template
+						<div
+							v-if="item.instructions_html"
+							class="mt-4 rounded-2xl border border-line-soft bg-white p-4"
+						>
+							<p class="type-caption text-ink/60">Instructions</p>
+							<div
+								class="mt-3 prose prose-sm max-w-none text-ink/80"
+								v-html="item.instructions_html"
+							/>
+						</div>
+						<div v-if="item.materials.length" class="mt-4 space-y-3">
+							<div class="flex items-center justify-between gap-3">
+								<p class="type-caption text-ink/60">Attachments</p>
+								<span class="chip">{{ item.materials.length }}</span>
+							</div>
+							<div class="grid gap-3 lg:grid-cols-2">
+								<StudentLearningResourceCard
 									v-for="resource in item.materials"
 									:key="resource.placement || resource.material"
-								>
-									<a
-										v-if="resource.open_url"
-										:href="resource.open_url"
-										target="_blank"
-										rel="noreferrer"
-										class="inline-flex items-center rounded-full border border-line-soft bg-white px-3 py-1 text-xs font-medium text-ink transition hover:border-jacaranda/40 hover:bg-jacaranda/5"
-									>
-										{{ resource.title }}
-									</a>
-								</template>
+									:resource="resource"
+								/>
 							</div>
 						</div>
 						<div class="mt-3 flex flex-wrap gap-2">
@@ -856,22 +1232,12 @@
 						class="rounded-2xl border border-line-soft bg-surface-soft p-4"
 					>
 						<p class="type-body-strong text-ink">This unit</p>
-						<div class="mt-3 space-y-3">
-							<div
+						<div class="mt-3 grid gap-3">
+							<StudentLearningResourceCard
 								v-for="resource in selectedUnit.shared_resources"
 								:key="resource.placement || resource.material"
-							>
-								<p class="type-caption text-ink/70">{{ resource.title }}</p>
-								<a
-									v-if="resource.open_url"
-									:href="resource.open_url"
-									target="_blank"
-									rel="noreferrer"
-									class="mt-1 inline-flex text-sm font-medium text-jacaranda transition hover:text-jacaranda/80"
-								>
-									Open resource
-								</a>
-							</div>
+								:resource="resource"
+							/>
 						</div>
 					</article>
 
@@ -880,22 +1246,12 @@
 						class="rounded-2xl border border-line-soft bg-surface-soft p-4"
 					>
 						<p class="type-body-strong text-ink">Your class</p>
-						<div class="mt-3 space-y-3">
-							<div
+						<div class="mt-3 grid gap-3">
+							<StudentLearningResourceCard
 								v-for="resource in learningSpace.resources.class_resources"
 								:key="resource.placement || resource.material"
-							>
-								<p class="type-caption text-ink/70">{{ resource.title }}</p>
-								<a
-									v-if="resource.open_url"
-									:href="resource.open_url"
-									target="_blank"
-									rel="noreferrer"
-									class="mt-1 inline-flex text-sm font-medium text-jacaranda transition hover:text-jacaranda/80"
-								>
-									Open resource
-								</a>
-							</div>
+								:resource="resource"
+							/>
 						</div>
 					</article>
 
@@ -904,22 +1260,12 @@
 						class="rounded-2xl border border-line-soft bg-surface-soft p-4"
 					>
 						<p class="type-body-strong text-ink">Across this course</p>
-						<div class="mt-3 space-y-3">
-							<div
+						<div class="mt-3 grid gap-3">
+							<StudentLearningResourceCard
 								v-for="resource in learningSpace.resources.shared_resources"
 								:key="resource.placement || resource.material"
-							>
-								<p class="type-caption text-ink/70">{{ resource.title }}</p>
-								<a
-									v-if="resource.open_url"
-									:href="resource.open_url"
-									target="_blank"
-									rel="noreferrer"
-									class="mt-1 inline-flex text-sm font-medium text-jacaranda transition hover:text-jacaranda/80"
-								>
-									Open resource
-								</a>
-							</div>
+								:resource="resource"
+							/>
 						</div>
 					</article>
 				</div>
@@ -933,8 +1279,15 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { toast } from 'frappe-ui';
 import { RouterLink, useRoute, useRouter } from 'vue-router';
 
+import StudentLearningResourceCard from '@/components/learning/StudentLearningResourceCard.vue';
 import { createReflectionEntry } from '@/lib/services/portfolio/portfolioService';
 import { getStudentLearningSpace } from '@/lib/services/student/studentLearningHubService';
+import { markStudentTaskComplete } from '@/lib/services/student/studentTaskCompletionService';
+import {
+	getStudentTaskSubmission,
+	submitStudentTaskSubmission,
+} from '@/lib/services/student/studentTaskSubmissionService';
+import type { UploadProgressState } from '@/lib/uploadProgress';
 import type {
 	Response as StudentLearningSpaceResponse,
 	StudentAssignedWork,
@@ -944,6 +1297,8 @@ import type {
 	StudentLearningSession,
 	StudentLearningUnit,
 } from '@/types/contracts/student_learning/get_student_learning_space';
+import type { Response as StudentTaskSubmissionResponse } from '@/types/contracts/student_learning/get_student_task_submission';
+import type { ReleasedAssessmentResult } from '@/types/contracts/student_learning/released_assessment_result';
 
 const PLACEHOLDER =
 	'data:image/svg+xml;charset=UTF-8,' +
@@ -977,6 +1332,7 @@ const props = defineProps<{
 	student_group?: string;
 	unit_plan?: string;
 	class_session?: string;
+	task_delivery?: string;
 }>();
 
 const router = useRouter();
@@ -987,12 +1343,27 @@ const loading = ref(false);
 const errorMessage = ref('');
 const selectedUnitPlan = ref('');
 const selectedSessionId = ref('');
+const selectedTaskDelivery = ref('');
 const loadToken = ref(0);
 const activeSectionId = ref<LearningSectionId>(SECTION_IDS.focus);
 const scrollFrame = ref<number | null>(null);
 const reflectionBody = ref('');
 const reflectionError = ref('');
 const reflectionSaving = ref(false);
+const selectedTaskSubmission = ref<StudentTaskSubmissionResponse>(null);
+const selectedTaskSubmissionLoading = ref(false);
+const selectedTaskSubmissionError = ref('');
+const selectedTaskSubmissionToken = ref(0);
+const submissionTextDraft = ref('');
+const submissionLinkDraft = ref('');
+const submissionFileInput = ref<HTMLInputElement | null>(null);
+const submissionFiles = ref<File[]>([]);
+const submissionDirty = ref(false);
+const submissionError = ref('');
+const submissionSaving = ref(false);
+const submissionUploadProgress = ref<UploadProgressState | null>(null);
+const taskCompletionSaving = ref(false);
+const taskCompletionError = ref('');
 
 const learningFocus = computed(() => learningSpace.value?.learning.focus || {});
 const nextActions = computed(() => learningSpace.value?.learning.next_actions || []);
@@ -1020,11 +1391,141 @@ const selectedSession = computed<StudentLearningSession | null>(() => {
 	);
 });
 
+const selectedAssignedWork = computed<StudentAssignedWork | null>(() => {
+	return findAssignedWorkByDelivery(selectedTaskDelivery.value);
+});
+
+const selectedTaskWorkspace = computed<StudentAssignedWork | null>(() => {
+	if (!selectedAssignedWork.value || isQuizAssignedWork(selectedAssignedWork.value)) {
+		return null;
+	}
+	return selectedAssignedWork.value;
+});
+
+const selectedTaskReleasedResult = computed<ReleasedAssessmentResult | null>(() => {
+	return selectedTaskSubmission.value?.released_result || null;
+});
+const selectedTaskFeedbackRoute = computed(() => {
+	if (
+		!selectedTaskWorkspace.value?.task_outcome ||
+		!(
+			selectedTaskReleasedResult.value?.feedback_visible ||
+			selectedTaskReleasedResult.value?.grade_visible
+		)
+	) {
+		return null;
+	}
+	return {
+		name: 'student-released-feedback',
+		params: {
+			course_id: props.course_id,
+			task_outcome: selectedTaskWorkspace.value.task_outcome,
+		},
+		query: {
+			student_group: props.student_group || undefined,
+			unit_plan: selectedUnit.value?.unit_plan || props.unit_plan || undefined,
+			class_session: selectedSession.value?.class_session || props.class_session || undefined,
+			task_delivery: selectedTaskWorkspace.value.task_delivery || undefined,
+		},
+	};
+});
+
+const selectedTaskSupportsDirectCompletion = computed(() => {
+	if (!selectedTaskWorkspace.value) return false;
+	if (selectedTaskWorkspace.value.requires_submission) return false;
+	return String(selectedTaskWorkspace.value.delivery_mode || '').trim() === 'Assign Only';
+});
+
 const displayedAssignedWork = computed<StudentAssignedWork[]>(() => {
 	if (selectedUnit.value) {
 		return dedupeAssignedWork(selectedUnit.value.assigned_work || []);
 	}
 	return dedupeAssignedWork(learningSpace.value?.resources.general_assigned_work || []);
+});
+
+const selectedTaskWorkspaceNote = computed(() => {
+	if (!selectedTaskWorkspace.value) return '';
+	if (selectedTaskSupportsDirectCompletion.value) {
+		if (selectedTaskWorkspace.value.is_complete) {
+			return 'This task is already marked complete in your course workspace.';
+		}
+		return 'No submission is required. Mark this task complete here once you finish the assigned work.';
+	}
+	if (!selectedTaskWorkspace.value.requires_submission) {
+		return 'Review the task brief here. No submission is required for this task.';
+	}
+	if (selectedTaskWorkspace.value.allow_late_submission) {
+		return 'Submit a written response, link, or file here. Late submission remains available after the due date.';
+	}
+	return 'Submit a written response, link, or file here.';
+});
+
+const selectedTaskSubmissionBlocker = computed(() => {
+	if (!selectedTaskWorkspace.value) return '';
+	if (!selectedTaskWorkspace.value.requires_submission) {
+		return 'This task does not require a submission.';
+	}
+	if (!selectedTaskWorkspace.value.task_outcome) {
+		return 'Your submission workspace is not ready yet. Refresh this page or contact your teacher if the problem continues.';
+	}
+	return '';
+});
+
+const selectedTaskWorkspaceStatusNote = computed(() => {
+	if (!selectedTaskWorkspace.value || selectedTaskWorkspace.value.requires_submission) return '';
+	if (selectedTaskSupportsDirectCompletion.value) {
+		return selectedTaskWorkspace.value.is_complete
+			? 'This assign-only task is marked complete in your course workspace.'
+			: 'No submission is required. Mark this task complete here once you finish the work.';
+	}
+	return 'This task stays in your course workspace, but it does not require a submission.';
+});
+
+const selectedTaskDirectCompletionBlocker = computed(() => {
+	if (!selectedTaskSupportsDirectCompletion.value || selectedTaskWorkspace.value?.is_complete) {
+		return '';
+	}
+	if (!selectedTaskWorkspace.value?.task_outcome) {
+		return 'Your completion workspace is not ready yet. Refresh this page or contact your teacher if the problem continues.';
+	}
+	return '';
+});
+
+const selectedTaskReleasedResultMessage = computed(() => {
+	if (!selectedTaskWorkspace.value?.requires_submission) return '';
+	if (selectedTaskSubmissionLoading.value) return 'Loading released result...';
+	if (!selectedTaskSubmission.value) {
+		return 'Released scores and feedback appear here after you submit and your teacher publishes them.';
+	}
+	const releasedResult = selectedTaskReleasedResult.value;
+	if (!releasedResult || (!releasedResult.grade_visible && !releasedResult.feedback_visible)) {
+		return 'Results and feedback are not released yet.';
+	}
+	return '';
+});
+
+const submissionButtonLabel = computed(() => {
+	return selectedTaskSubmission.value ? 'Resubmit task' : 'Submit task';
+});
+
+const taskCompletionButtonLabel = computed(() => {
+	if (!selectedTaskSupportsDirectCompletion.value) return '';
+	if (taskCompletionSaving.value) return 'Marking complete...';
+	return selectedTaskWorkspace.value?.is_complete ? 'Task complete' : 'Mark task complete';
+});
+
+const submissionProgressLabel = computed(() => {
+	const progress = submissionUploadProgress.value;
+	if (!progress) return '';
+
+	let label = 'Preparing files';
+	if (progress.phase === 'uploading') {
+		label = 'Uploading files';
+	} else if (progress.phase === 'processing') {
+		label = 'Finalizing submission';
+	}
+
+	return progress.percent === null ? `${label}...` : `${label}... ${progress.percent}%`;
 });
 
 const resolvedClassLabel = computed(() => {
@@ -1152,7 +1653,11 @@ async function jumpToSection(sectionId: LearningSectionId) {
 	scrollToSection(sectionId);
 }
 
-async function replaceLearningContextRoute(unitPlan: string, classSession: string) {
+async function replaceLearningContextRoute(
+	unitPlan: string,
+	classSession: string,
+	taskDelivery: string
+) {
 	const nextStudentGroup =
 		learningSpace.value?.access.resolved_student_group || props.student_group || '';
 	const nextQuery = {
@@ -1160,11 +1665,13 @@ async function replaceLearningContextRoute(unitPlan: string, classSession: strin
 		student_group: nextStudentGroup || undefined,
 		unit_plan: unitPlan || undefined,
 		class_session: classSession || undefined,
+		task_delivery: taskDelivery || undefined,
 	};
 	if (
 		String(route.query.student_group || '').trim() === nextStudentGroup &&
 		String(route.query.unit_plan || '').trim() === unitPlan &&
-		String(route.query.class_session || '').trim() === classSession
+		String(route.query.class_session || '').trim() === classSession &&
+		String(route.query.task_delivery || '').trim() === taskDelivery
 	) {
 		return;
 	}
@@ -1177,18 +1684,35 @@ async function replaceLearningContextRoute(unitPlan: string, classSession: strin
 function applySelection(payload: StudentLearningSpaceResponse) {
 	const requestedSession = String(props.class_session || '').trim();
 	const requestedUnit = String(props.unit_plan || '').trim();
+	const requestedTask = String(props.task_delivery || '').trim();
 	const defaultUnit = String(payload.learning.selected_context.unit_plan || '').trim();
 	const defaultSession = String(payload.learning.selected_context.class_session || '').trim();
+	const defaultTask = String(payload.learning.selected_context.task_delivery || '').trim();
 	const requestedSessionUnit = requestedSession
 		? payload.curriculum.units.find(unit =>
 				unit.sessions.some(session => session.class_session === requestedSession)
 			)
 		: null;
+	const requestedTaskItem = requestedTask
+		? findAssignedWorkInPayload(payload, requestedTask)
+		: null;
+	const defaultTaskItem = defaultTask ? findAssignedWorkInPayload(payload, defaultTask) : null;
+	const taskAnchoredUnitPlan = String(
+		requestedTaskItem?.unit_plan || defaultTaskItem?.unit_plan || ''
+	).trim();
+	const taskAnchoredSession = String(
+		requestedTaskItem?.class_session || defaultTaskItem?.class_session || ''
+	).trim();
 
 	const currentUnitStillExists = payload.curriculum.units.some(
 		unit => unit.unit_plan === selectedUnitPlan.value
 	);
-	if (requestedSessionUnit) {
+	if (
+		taskAnchoredUnitPlan &&
+		payload.curriculum.units.some(unit => unit.unit_plan === taskAnchoredUnitPlan)
+	) {
+		selectedUnitPlan.value = taskAnchoredUnitPlan;
+	} else if (requestedSessionUnit) {
 		selectedUnitPlan.value = requestedSessionUnit.unit_plan;
 	} else if (
 		requestedUnit &&
@@ -1209,10 +1733,15 @@ function applySelection(payload: StudentLearningSpaceResponse) {
 	const requestedSessionStillExists = !!unit?.sessions.some(
 		session => session.class_session === requestedSession
 	);
+	const anchoredTaskSessionStillExists = !!unit?.sessions.some(
+		session => session.class_session === taskAnchoredSession
+	);
 	const currentSessionStillExists = !!unit?.sessions.some(
 		session => session.class_session === selectedSessionId.value
 	);
-	if (requestedSessionStillExists) {
+	if (anchoredTaskSessionStillExists) {
+		selectedSessionId.value = taskAnchoredSession;
+	} else if (requestedSessionStillExists) {
 		selectedSessionId.value = requestedSession;
 	} else if (
 		defaultSession &&
@@ -1221,6 +1750,22 @@ function applySelection(payload: StudentLearningSpaceResponse) {
 		selectedSessionId.value = defaultSession;
 	} else if (!currentSessionStillExists) {
 		selectedSessionId.value = unit?.sessions[0]?.class_session || '';
+	}
+
+	const currentSelectedTask = selectedTaskDelivery.value
+		? findAssignedWorkInPayload(payload, selectedTaskDelivery.value)
+		: null;
+	if (requestedTaskItem) {
+		selectedTaskDelivery.value = requestedTaskItem.task_delivery;
+	} else if (defaultTaskItem) {
+		selectedTaskDelivery.value = defaultTaskItem.task_delivery;
+	} else if (
+		currentSelectedTask &&
+		taskBelongsToUnit(currentSelectedTask, selectedUnitPlan.value)
+	) {
+		selectedTaskDelivery.value = currentSelectedTask.task_delivery;
+	} else {
+		selectedTaskDelivery.value = '';
 	}
 }
 
@@ -1263,7 +1808,12 @@ async function selectUnit(unitPlan: string) {
 	selectedSessionId.value =
 		learningSpace.value?.curriculum.units.find(unit => unit.unit_plan === unitPlan)?.sessions[0]
 			?.class_session || '';
-	await replaceLearningContextRoute(selectedUnitPlan.value, selectedSessionId.value);
+	selectedTaskDelivery.value = '';
+	await replaceLearningContextRoute(
+		selectedUnitPlan.value,
+		selectedSessionId.value,
+		selectedTaskDelivery.value
+	);
 	await nextTick();
 	await jumpToSection(
 		selectedSessionId.value ? SECTION_IDS.sessionJourney : SECTION_IDS.unitOverview
@@ -1278,7 +1828,12 @@ async function selectSession(classSession: string) {
 		selectedUnitPlan.value = parentUnit.unit_plan;
 	}
 	selectedSessionId.value = classSession;
-	await replaceLearningContextRoute(selectedUnitPlan.value, selectedSessionId.value);
+	selectedTaskDelivery.value = '';
+	await replaceLearningContextRoute(
+		selectedUnitPlan.value,
+		selectedSessionId.value,
+		selectedTaskDelivery.value
+	);
 	await nextTick();
 	await jumpToSection(SECTION_IDS.sessionJourney);
 }
@@ -1295,6 +1850,34 @@ function dedupeAssignedWork(items: StudentAssignedWork[]) {
 		seen.add(key);
 		return true;
 	});
+}
+
+function findAssignedWorkInPayload(
+	payload: StudentLearningSpaceResponse | null,
+	taskDelivery?: string | null
+) {
+	const target = String(taskDelivery || '').trim();
+	if (!payload || !target) return null;
+	for (const item of payload.resources.general_assigned_work || []) {
+		if (String(item.task_delivery || '').trim() === target) return item;
+	}
+	for (const unit of payload.curriculum.units || []) {
+		for (const item of unit.assigned_work || []) {
+			if (String(item.task_delivery || '').trim() === target) return item;
+		}
+		for (const session of unit.sessions || []) {
+			for (const item of session.assigned_work || []) {
+				if (String(item.task_delivery || '').trim() === target) return item;
+			}
+		}
+	}
+	return null;
+}
+
+function taskBelongsToUnit(item: StudentAssignedWork, unitPlan?: string | null) {
+	const target = String(unitPlan || '').trim();
+	if (!target) return false;
+	return String(item.unit_plan || '').trim() === target;
 }
 
 function findUnitByPlan(unitPlan?: string | null) {
@@ -1314,22 +1897,13 @@ function findSessionById(classSession?: string | null) {
 }
 
 function findAssignedWorkByDelivery(taskDelivery?: string | null) {
-	const target = String(taskDelivery || '').trim();
-	if (!target) return null;
-	for (const item of learningSpace.value?.resources.general_assigned_work || []) {
-		if (String(item.task_delivery || '').trim() === target) return item;
-	}
-	for (const unit of learningSpace.value?.curriculum.units || []) {
-		for (const item of unit.assigned_work || []) {
-			if (String(item.task_delivery || '').trim() === target) return item;
-		}
-		for (const session of unit.sessions || []) {
-			for (const item of session.assigned_work || []) {
-				if (String(item.task_delivery || '').trim() === target) return item;
-			}
-		}
-	}
-	return null;
+	return findAssignedWorkInPayload(learningSpace.value, taskDelivery);
+}
+
+function isSelectedAssignedWork(item: StudentAssignedWork) {
+	return (
+		String(item.task_delivery || '').trim() === String(selectedTaskDelivery.value || '').trim()
+	);
 }
 
 function sessionTimingLabel(session: StudentLearningSession) {
@@ -1406,8 +1980,9 @@ function nextActionButtonLabel(action: StudentLearningNextAction) {
 
 function assignedWorkStatusLabel(item: StudentAssignedWork) {
 	if (item.quiz_state?.status_label) return item.quiz_state.status_label;
+	if (item.status_label) return item.status_label;
 	if (item.is_complete) return 'Completed';
-	return humanizeLabel(item.submission_status || item.grading_status || '');
+	return '';
 }
 
 function assignedWorkTimingLabel(item: StudentAssignedWork) {
@@ -1428,9 +2003,256 @@ function assignedWorkContextLine(item: StudentAssignedWork) {
 
 function assignedWorkActionLabel(item: StudentAssignedWork) {
 	if (isQuizAssignedWork(item)) return quizActionLabel(item);
+	if (isSelectedAssignedWork(item)) return 'Workspace open';
 	if (item.class_session) return 'Open task workspace';
 	if (item.unit_plan) return 'Open unit workspace';
 	return 'Open course workspace';
+}
+
+function formatSubmissionTimestamp(value?: string | null) {
+	const text = String(value || '').trim();
+	if (!text) return '';
+	const normalized = text.replace(' ', 'T');
+	const parsed = new Date(normalized);
+	if (Number.isNaN(parsed.getTime())) return text;
+	return parsed.toLocaleString(undefined, {
+		year: 'numeric',
+		month: 'short',
+		day: 'numeric',
+		hour: 'numeric',
+		minute: '2-digit',
+	});
+}
+
+function formatSelectedSubmissionFileSize(sizeBytes?: number | null) {
+	const size = Number(sizeBytes || 0);
+	if (!Number.isFinite(size) || size <= 0) return 'File';
+	if (size >= 1024 * 1024) {
+		return `${(size / (1024 * 1024)).toFixed(1)} MB`;
+	}
+	if (size >= 1024) {
+		return `${Math.max(1, Math.round(size / 1024))} KB`;
+	}
+	return `${size} B`;
+}
+
+function formatReleasedScore(value?: number | null) {
+	if (value in [null, undefined, '']) return '';
+	const score = Number(value);
+	if (!Number.isFinite(score)) return String(value);
+	return Number.isInteger(score) ? String(score) : score.toFixed(2);
+}
+
+function clearSubmissionFiles() {
+	submissionFiles.value = [];
+	submissionUploadProgress.value = null;
+	if (submissionFileInput.value) {
+		submissionFileInput.value.value = '';
+	}
+}
+
+function seedSubmissionDraft(submission: StudentTaskSubmissionResponse) {
+	submissionTextDraft.value = submission?.text_content || '';
+	submissionLinkDraft.value = submission?.link_url || '';
+	submissionDirty.value = false;
+	submissionError.value = '';
+	clearSubmissionFiles();
+}
+
+function resetSelectedTaskSubmissionState() {
+	selectedTaskSubmission.value = null;
+	selectedTaskSubmissionError.value = '';
+	selectedTaskSubmissionLoading.value = false;
+	seedSubmissionDraft(null);
+}
+
+function handleSubmissionFilesChange(event: Event) {
+	const target = event.target as HTMLInputElement | null;
+	submissionFiles.value = Array.from(target?.files || []);
+	submissionUploadProgress.value = null;
+	submissionDirty.value = true;
+	submissionError.value = '';
+}
+
+async function openAssignedWorkWorkspace(item: StudentAssignedWork) {
+	if (item.unit_plan) {
+		selectedUnitPlan.value = item.unit_plan;
+	}
+	if (item.class_session) {
+		selectedSessionId.value = item.class_session;
+	} else if (item.unit_plan) {
+		selectedSessionId.value =
+			learningSpace.value?.curriculum.units.find(unit => unit.unit_plan === item.unit_plan)
+				?.sessions[0]?.class_session || '';
+	} else {
+		selectedSessionId.value = '';
+	}
+	selectedTaskDelivery.value = item.task_delivery;
+	await replaceLearningContextRoute(
+		selectedUnitPlan.value,
+		selectedSessionId.value,
+		selectedTaskDelivery.value
+	);
+	await nextTick();
+	await jumpToSection(SECTION_IDS.assignedWork);
+}
+
+async function loadSelectedTaskSubmission() {
+	const task = selectedTaskWorkspace.value;
+	const ticket = selectedTaskSubmissionToken.value + 1;
+	selectedTaskSubmissionToken.value = ticket;
+
+	if (!task) {
+		resetSelectedTaskSubmissionState();
+		return;
+	}
+	if (!task.requires_submission) {
+		resetSelectedTaskSubmissionState();
+		return;
+	}
+	if (!task.task_outcome) {
+		selectedTaskSubmission.value = null;
+		selectedTaskSubmissionLoading.value = false;
+		selectedTaskSubmissionError.value = '';
+		seedSubmissionDraft(null);
+		return;
+	}
+
+	selectedTaskSubmissionLoading.value = true;
+	selectedTaskSubmissionError.value = '';
+	try {
+		const payload = await getStudentTaskSubmission({
+			outcome_id: task.task_outcome,
+		});
+		if (ticket !== selectedTaskSubmissionToken.value) return;
+		selectedTaskSubmission.value = payload;
+		if (!submissionDirty.value) {
+			seedSubmissionDraft(payload);
+		}
+	} catch (error) {
+		if (ticket !== selectedTaskSubmissionToken.value) return;
+		selectedTaskSubmission.value = null;
+		selectedTaskSubmissionError.value =
+			error instanceof Error ? error.message : 'Could not load your latest submission.';
+		if (!submissionDirty.value) {
+			seedSubmissionDraft(null);
+		}
+	} finally {
+		if (ticket === selectedTaskSubmissionToken.value) {
+			selectedTaskSubmissionLoading.value = false;
+		}
+	}
+}
+
+function patchAssignedWork(taskDelivery: string, updates: Partial<StudentAssignedWork>) {
+	if (!learningSpace.value) return;
+	const updateItems = (items: StudentAssignedWork[]) =>
+		items.map(item =>
+			item.task_delivery === taskDelivery
+				? {
+						...item,
+						...updates,
+					}
+				: item
+		);
+
+	learningSpace.value = {
+		...learningSpace.value,
+		resources: {
+			...learningSpace.value.resources,
+			general_assigned_work: updateItems(
+				learningSpace.value.resources.general_assigned_work || []
+			),
+		},
+		curriculum: {
+			...learningSpace.value.curriculum,
+			units: (learningSpace.value.curriculum.units || []).map(unit => ({
+				...unit,
+				assigned_work: updateItems(unit.assigned_work || []),
+				sessions: (unit.sessions || []).map(session => ({
+					...session,
+					assigned_work: updateItems(session.assigned_work || []),
+				})),
+			})),
+		},
+	};
+}
+
+async function submitSelectedTaskWorkspace() {
+	const task = selectedTaskWorkspace.value;
+	if (!task?.requires_submission || !task.task_outcome) {
+		return;
+	}
+
+	const textContent = submissionTextDraft.value.trim();
+	const linkUrl = submissionLinkDraft.value.trim();
+	const files = submissionFiles.value;
+	if (!textContent && !linkUrl && !files.length) {
+		submissionError.value = 'Add a written response, link, or file before submitting.';
+		return;
+	}
+
+	const isResubmission = Boolean(selectedTaskSubmission.value);
+	submissionSaving.value = true;
+	submissionError.value = '';
+	submissionUploadProgress.value = null;
+	try {
+		const response = await submitStudentTaskSubmission(
+			{
+				task_outcome: task.task_outcome,
+				text_content: textContent || undefined,
+				link_url: linkUrl || undefined,
+				files: files.length ? files : undefined,
+			},
+			{
+				onProgress: progress => {
+					submissionUploadProgress.value = progress;
+				},
+			}
+		);
+		patchAssignedWork(task.task_delivery, {
+			status_label: isResubmission ? 'Resubmitted' : 'Submitted',
+			submission_status:
+				response.outcome_flags?.submission_status ||
+				(isResubmission ? 'Resubmitted' : 'Submitted'),
+		});
+		submissionDirty.value = false;
+		clearSubmissionFiles();
+		await loadSelectedTaskSubmission();
+		toast.success(isResubmission ? 'Task resubmitted.' : 'Task submitted.');
+	} catch (error) {
+		submissionUploadProgress.value = null;
+		submissionError.value = error instanceof Error ? error.message : 'Could not submit this task.';
+		toast.error(submissionError.value);
+	} finally {
+		submissionSaving.value = false;
+	}
+}
+
+async function markSelectedTaskComplete() {
+	const task = selectedTaskWorkspace.value;
+	if (!selectedTaskSupportsDirectCompletion.value || !task?.task_outcome || task.is_complete) {
+		return;
+	}
+
+	taskCompletionSaving.value = true;
+	taskCompletionError.value = '';
+	try {
+		const response = await markStudentTaskComplete({
+			task_outcome: task.task_outcome,
+		});
+		patchAssignedWork(task.task_delivery, {
+			is_complete: response.is_complete ? 1 : 0,
+			status_label: response.is_complete ? 'Completed' : task.status_label,
+		});
+		toast.success('Task marked complete.');
+	} catch (error) {
+		taskCompletionError.value =
+			error instanceof Error ? error.message : 'Could not mark this task complete.';
+		toast.error(taskCompletionError.value);
+	} finally {
+		taskCompletionSaving.value = false;
+	}
 }
 
 const reflectionPrompt = computed(() => {
@@ -1522,6 +2344,13 @@ async function saveReflection() {
 }
 
 async function handleNextAction(action: StudentLearningNextAction) {
+	if (action.task_delivery) {
+		const item = findAssignedWorkByDelivery(action.task_delivery);
+		if (item && !isQuizAssignedWork(item)) {
+			await openAssignedWorkWorkspace(item);
+			return;
+		}
+	}
 	if (action.unit_plan) {
 		await selectUnit(action.unit_plan);
 	}
@@ -1535,19 +2364,13 @@ async function handleNextAction(action: StudentLearningNextAction) {
 }
 
 async function focusAssignedWork(item: StudentAssignedWork) {
-	if (item.unit_plan) {
-		await selectUnit(item.unit_plan);
-	}
-	if (item.class_session) {
-		await selectSession(item.class_session);
-		return;
-	}
-	await jumpToSection(item.unit_plan ? SECTION_IDS.unitOverview : SECTION_IDS.assignedWork);
+	await openAssignedWorkWorkspace(item);
 }
 
 async function handleStudentGroupChange(event: Event) {
 	const target = event.target as HTMLSelectElement | null;
 	const value = String(target?.value || '').trim();
+	selectedTaskDelivery.value = '';
 	await router.replace({
 		query: {
 			student_group: value || undefined,
@@ -1565,7 +2388,7 @@ watch(
 );
 
 watch(
-	() => [props.unit_plan, props.class_session],
+	() => [props.unit_plan, props.class_session, props.task_delivery],
 	async () => {
 		if (!learningSpace.value) return;
 		applySelection(learningSpace.value);
@@ -1578,6 +2401,17 @@ watch(
 		} else {
 			requestActiveSectionSync();
 		}
+	}
+);
+
+watch(
+	() => selectedTaskWorkspace.value?.task_delivery || '',
+	() => {
+		submissionDirty.value = false;
+		submissionError.value = '';
+		taskCompletionError.value = '';
+		taskCompletionSaving.value = false;
+		loadSelectedTaskSubmission();
 	}
 );
 

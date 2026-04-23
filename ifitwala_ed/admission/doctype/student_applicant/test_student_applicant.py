@@ -2,11 +2,13 @@
 # Copyright (c) 2024, fdR and Contributors
 # See license.txt
 
+import io
 from unittest.mock import patch
 from urllib.parse import parse_qs, urlparse
 
 import frappe
 from frappe.tests.utils import FrappeTestCase
+from PIL import Image
 
 from ifitwala_ed.admission.doctype.student_applicant.student_applicant import academic_year_intent_query
 
@@ -320,19 +322,123 @@ class TestStudentApplicant(FrappeTestCase):
         for name in copied_file_names:
             self._created.append(("File", name))
 
-        copied_classifications = frappe.get_all(
-            "File Classification",
-            filters={
-                "primary_subject_type": "Student",
-                "primary_subject_id": student_name,
-                "source_file": source_file.name,
-            },
+        copied_drive_rows = frappe.get_all(
+            "Drive File",
+            filters={"file": ["in", copied_file_names]},
+            fields=["name", "file", "primary_subject_type", "primary_subject_id", "attached_doctype", "attached_name"],
+        )
+        self.assertTrue(copied_drive_rows)
+        self.assertTrue(set(copied_file_names).issubset({row["file"] for row in copied_drive_rows}))
+        for row in copied_drive_rows:
+            self.assertEqual(row.get("primary_subject_type"), "Student")
+            self.assertEqual(row.get("primary_subject_id"), student_name)
+            self.assertEqual(row.get("attached_doctype"), "Student")
+            self.assertEqual(row.get("attached_name"), student_name)
+            self._created.append(("Drive File", row["name"]))
+
+        drive_file_names = [row["name"] for row in copied_drive_rows if row.get("name")]
+        drive_versions = frappe.get_all(
+            "Drive File Version",
+            filters={"drive_file": ["in", drive_file_names]},
             fields=["name"],
         )
-        copied_classification_names = [row["name"] for row in copied_classifications]
-        self.assertTrue(copied_classification_names)
-        for name in copied_classification_names:
-            self._created.append(("File Classification", name))
+        self.assertTrue(drive_versions)
+        for row in drive_versions:
+            self._created.append(("Drive File Version", row["name"]))
+
+        drive_bindings = frappe.get_all(
+            "Drive Binding",
+            filters={"drive_file": ["in", drive_file_names]},
+            fields=["name"],
+        )
+        for row in drive_bindings:
+            self._created.append(("Drive Binding", row["name"]))
+
+    def test_copy_promotable_documents_prefers_current_drive_attachment_over_latest_file_row(self):
+        doc_type = self._create_applicant_document_type(code="application_form")
+        applicant = self._create_student_applicant(student_joining_date=frappe.utils.nowdate())
+
+        frappe.set_user("Administrator")
+        try:
+            applicant_doc = frappe.get_doc(
+                {
+                    "doctype": "Applicant Document",
+                    "student_applicant": applicant.name,
+                    "document_type": doc_type,
+                    "review_status": "Approved",
+                }
+            ).insert(ignore_permissions=True)
+        finally:
+            frappe.set_user(self.staff_user.name)
+        self._created.append(("Applicant Document", applicant_doc.name))
+
+        item = frappe.get_doc(
+            {
+                "doctype": "Applicant Document Item",
+                "applicant_document": applicant_doc.name,
+                "item_key": "application_form",
+                "item_label": "Application Form",
+                "review_status": "Approved",
+            }
+        ).insert(ignore_permissions=True)
+        self._created.append(("Applicant Document Item", item.name))
+
+        current_source = frappe.get_doc(
+            {
+                "doctype": "File",
+                "attached_to_doctype": "Applicant Document Item",
+                "attached_to_name": item.name,
+                "file_name": "current-source.txt",
+                "is_private": 1,
+                "content": b"current-source",
+            }
+        ).insert(ignore_permissions=True)
+        self._created.append(("File", current_source.name))
+
+        newer_compatibility_row = frappe.get_doc(
+            {
+                "doctype": "File",
+                "attached_to_doctype": "Applicant Document Item",
+                "attached_to_name": item.name,
+                "file_name": "stale-newer-row.txt",
+                "is_private": 1,
+                "content": b"stale-newer-row",
+            }
+        ).insert(ignore_permissions=True)
+        self._created.append(("File", newer_compatibility_row.name))
+
+        student = frappe._dict(name="STU-NEW")
+        seen_sources = []
+        upload_calls = []
+
+        def fake_read_file_bytes(file_row):
+            seen_sources.append(file_row.get("name"))
+            return b"promoted-bytes"
+
+        def fake_upload_content_via_drive(**kwargs):
+            upload_calls.append(kwargs)
+
+        with (
+            patch(
+                "ifitwala_ed.admission.doctype.student_applicant.student_applicant.get_current_drive_files_for_attachments",
+                return_value=[{"attached_name": item.name, "file": current_source.name}],
+            ),
+            patch.object(applicant, "_read_file_bytes", side_effect=fake_read_file_bytes),
+            patch(
+                "ifitwala_ed.integrations.drive.content_uploads.upload_content_via_drive",
+                side_effect=fake_upload_content_via_drive,
+            ),
+        ):
+            copied_count = applicant._copy_promotable_documents_to_student(student)
+
+        self.assertEqual(copied_count, 1)
+        self.assertEqual(seen_sources, [current_source.name])
+        self.assertEqual(len(upload_calls), 1)
+        self.assertEqual(upload_calls[0].get("file_name"), "current-source.txt")
+        self.assertEqual(
+            (upload_calls[0].get("workflow_payload") or {}).get("source_applicant_document_item"),
+            item.name,
+        )
 
     def test_required_document_type_from_parent_school_applies_to_child_school_applicant(self):
         code = f"parent_req_{frappe.generate_hash(length=6)}"
@@ -1243,6 +1349,106 @@ class TestStudentApplicant(FrappeTestCase):
                 )
             )
         )
+
+    def test_upgrade_identity_promotes_guardian_image_into_governed_guardian_profile_image(self):
+        applicant = self._create_student_applicant(student_joining_date=frappe.utils.nowdate())
+        self._create_applicant_health_profile(applicant.name)
+
+        guardian_email = f"guardian-image-{frappe.generate_hash(length=8)}@example.com"
+        applicant.append(
+            "guardians",
+            {
+                "relationship": "Mother",
+                "can_consent": 1,
+                "is_primary_guardian": 1,
+                "guardian_first_name": "Image",
+                "guardian_last_name": "Guardian",
+                "guardian_email": guardian_email,
+                "guardian_mobile_phone": "+14155550157",
+                "guardian_gender": "Female",
+            },
+        )
+        applicant.save(ignore_permissions=True)
+
+        guardian_row = applicant.get("guardians")[0]
+        image_buffer = io.BytesIO()
+        Image.new("RGB", (1200, 1200), color=(20, 80, 140)).save(image_buffer, "PNG")
+        source_file = frappe.get_doc(
+            {
+                "doctype": "File",
+                "attached_to_doctype": "Student Applicant Guardian",
+                "attached_to_name": guardian_row.name,
+                "attached_to_field": "guardian_image",
+                "file_name": "guardian-source.png",
+                "is_private": 1,
+                "content": image_buffer.getvalue(),
+            }
+        ).insert(ignore_permissions=True)
+        self._created.append(("File", source_file.name))
+
+        guardian_row.guardian_image = source_file.file_url
+        applicant.save(ignore_permissions=True)
+        self._advance_applicant_to_approved(applicant)
+
+        student_name = applicant.promote_to_student()
+        self._created.append(("Student", student_name))
+
+        original_exists = frappe.db.exists
+
+        def exists_with_enrollment(doctype, filters=None, *args, **kwargs):
+            if doctype == "Program Enrollment" and isinstance(filters, dict):
+                if filters.get("student") == student_name and int(filters.get("archived") or 0) == 0:
+                    return "PE-MOCK-0003"
+            return original_exists(doctype, filters, *args, **kwargs)
+
+        with patch.object(frappe.db, "exists", side_effect=exists_with_enrollment):
+            result = applicant.upgrade_identity()
+
+        self.assertTrue(result.get("ok"))
+
+        guardian_name = frappe.db.get_value("Guardian", {"guardian_email": guardian_email}, "name")
+        self.assertTrue(bool(guardian_name))
+        self._created.append(("Guardian", guardian_name))
+
+        guardian_doc = frappe.get_doc("Guardian", guardian_name)
+        profile_drive_file = frappe.get_all(
+            "Drive File",
+            filters={
+                "primary_subject_type": "Guardian",
+                "primary_subject_id": guardian_name,
+                "slot": "profile_image",
+                "status": "active",
+            },
+            fields=["name", "file", "purpose", "attached_doctype", "attached_name", "current_version"],
+            limit=1,
+        )
+        self.assertEqual(len(profile_drive_file), 1)
+        profile_drive_row = profile_drive_file[0]
+        self._created.append(("Drive File", profile_drive_row["name"]))
+        self.assertEqual(profile_drive_row.get("purpose"), "guardian_profile_display")
+        self.assertEqual(profile_drive_row.get("attached_doctype"), "Guardian")
+        self.assertEqual(profile_drive_row.get("attached_name"), guardian_name)
+        self.assertTrue(bool(profile_drive_row.get("current_version")))
+        self._created.append(("Drive File Version", profile_drive_row["current_version"]))
+
+        profile_file = frappe.get_doc("File", profile_drive_row["file"])
+        self._created.append(("File", profile_file.name))
+        self.assertEqual(profile_file.attached_to_doctype, "Guardian")
+        self.assertEqual(profile_file.attached_to_name, guardian_name)
+        self.assertEqual(profile_file.attached_to_field, "guardian_image")
+        self.assertEqual(guardian_doc.guardian_image, profile_file.file_url)
+
+        derivative_rows = frappe.get_all(
+            "Drive File Derivative",
+            filters={
+                "drive_file": profile_drive_row["name"],
+            },
+            fields=["name", "derivative_role"],
+        )
+        derivative_roles = {row["derivative_role"] for row in derivative_rows}
+        self.assertTrue({"thumb", "card", "viewer_preview"}.issubset(derivative_roles))
+        for row in derivative_rows:
+            self._created.append(("Drive File Derivative", row["name"]))
 
     def test_promote_to_student_carries_non_signing_guardian_authority(self):
         guardian = self._create_guardian(

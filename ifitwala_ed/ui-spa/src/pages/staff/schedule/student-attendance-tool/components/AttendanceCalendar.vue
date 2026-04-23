@@ -12,18 +12,24 @@
 			</div>
 
 			<div class="flex items-center gap-2">
-				<Button
-					appearance="minimal"
-					icon="chevron-left"
+				<button
+					type="button"
+					class="if-button if-button--quiet if-button--icon"
 					:disabled="!previousMonthDate || loading"
 					@click="goToPrev"
-				/>
-				<Button
-					appearance="minimal"
-					icon="chevron-right"
+					aria-label="Previous month"
+				>
+					<FeatherIcon name="chevron-left" class="h-4 w-4" />
+				</button>
+				<button
+					type="button"
+					class="if-button if-button--quiet if-button--icon"
 					:disabled="!nextMonthDate || loading"
 					@click="goToNext"
-				/>
+					aria-label="Next month"
+				>
+					<FeatherIcon name="chevron-right" class="h-4 w-4" />
+				</button>
 			</div>
 		</div>
 
@@ -84,7 +90,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue';
-import { Button, Spinner } from 'frappe-ui';
+import { FeatherIcon, Spinner } from 'frappe-ui';
 import { __ } from '@/lib/i18n';
 
 type CalendarDay = {

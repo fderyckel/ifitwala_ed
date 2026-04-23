@@ -11,6 +11,12 @@ from frappe import _
 from frappe.model.document import Document
 from frappe.utils import date_diff, formatdate, getdate
 
+from ifitwala_ed.hr.utils import (
+    resolve_current_staff_calendar_for_employee,
+    sync_current_staff_calendar_for_employee,
+)
+from ifitwala_ed.utilities.school_tree import get_descendant_schools
+
 
 def _missing_holidays_dependency_message() -> str:
     return _(
@@ -66,14 +72,23 @@ def _normalize_calendar_filters(filters) -> dict:
 def _resolve_default_staff_calendar_for_current_user() -> str | None:
     employee = frappe.db.get_value(
         "Employee",
-        {"user_id": frappe.session.user, "employment_status": "Active"},
+        {"user_id": frappe.session.user},
         ["name", "current_holiday_lis"],
         as_dict=True,
     )
     if not employee:
         return None
 
-    return employee.get("current_holiday_lis") or None
+    linked_calendar = str((employee.get("current_holiday_lis") or "")).strip()
+    if linked_calendar:
+        return linked_calendar
+
+    employee_name = str((employee.get("name") or "")).strip()
+    if not employee_name:
+        return None
+
+    calendar_row = resolve_current_staff_calendar_for_employee(employee_name)
+    return (calendar_row or {}).get("name")
 
 
 @frappe.whitelist()
@@ -171,6 +186,12 @@ class StaffCalendar(Document):
         else:
             self.total_working_day = 0
 
+    def on_update(self):
+        self._sync_affected_employees()
+
+    def on_trash(self):
+        self._sync_affected_employees(ignore_calendar_name=self.name)
+
     def _validate_period(self):
         if not self.from_date or not self.to_date:
             frappe.throw(_("From Date and To Date are required."))
@@ -249,6 +270,49 @@ class StaffCalendar(Document):
 
     def get_holidays(self) -> list[date]:
         return [getdate(h.holiday_date) for h in (self.holidays or [])]
+
+    def _affected_employee_names(self) -> list[str]:
+        employees: set[str] = set()
+
+        linked_rows = frappe.get_all(
+            "Employee",
+            filters={
+                "employment_status": "Active",
+                "current_holiday_lis": self.name,
+            },
+            pluck="name",
+            limit=0,
+            ignore_permissions=True,
+        )
+        employees.update(linked_rows or [])
+
+        if not self.employee_group:
+            return sorted(employees)
+
+        group_filters = {
+            "employment_status": "Active",
+            "employee_group": self.employee_group,
+        }
+        if self.school:
+            school_scope = get_descendant_schools(self.school) or [self.school]
+            group_filters["school"] = ["in", school_scope]
+
+        group_rows = frappe.get_all(
+            "Employee",
+            filters=group_filters,
+            pluck="name",
+            limit=0,
+            ignore_permissions=True,
+        )
+        employees.update(group_rows or [])
+        return sorted(employees)
+
+    def _sync_affected_employees(self, *, ignore_calendar_name: str | None = None):
+        for employee in self._affected_employee_names():
+            sync_kwargs = {"update_modified": False}
+            if ignore_calendar_name:
+                sync_kwargs["ignore_calendar_name"] = ignore_calendar_name
+            sync_current_staff_calendar_for_employee(employee, **sync_kwargs)
 
     # ──────────────────────────────────────────────────────────────
     # Persistence helpers (fix for "nothing appears in child table")

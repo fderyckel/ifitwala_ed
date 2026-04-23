@@ -20,7 +20,14 @@ from ifitwala_ed.admission.admission_utils import (
     is_applicant_document_type_in_scope,
     normalize_email_value,
 )
-from ifitwala_ed.api.file_access import resolve_admissions_file_open_url
+from ifitwala_ed.api.attachment_previews import build_attachment_preview_item, extract_file_extension
+from ifitwala_ed.api.file_access import (
+    get_drive_file_thumbnail_ready_map,
+    resolve_admissions_file_open_url,
+    resolve_admissions_file_preview_url,
+    resolve_admissions_file_thumbnail_url,
+)
+from ifitwala_ed.integrations.drive.authority import get_current_drive_files_for_attachments
 
 ADMISSIONS_APPLICANT_ROLE = "Admissions Applicant"
 RECOMMENDATION_TEMPLATE_DOCTYPE = "Recommendation Template"
@@ -82,6 +89,104 @@ def _as_bool(value) -> bool:
         return bool(value)
     text = str(value or "").strip().lower()
     return text in {"1", "true", "yes", "on"}
+
+
+def _text(value) -> str:
+    return str(value or "").strip()
+
+
+def _load_drive_version_mime_map(version_ids: list[str]) -> dict[str, str]:
+    resolved_version_ids = [version_id for version_id in dict.fromkeys(version_ids) if _text(version_id)]
+    if not resolved_version_ids:
+        return {}
+
+    rows = frappe.get_all(
+        "Drive File Version",
+        filters={"name": ["in", resolved_version_ids]},
+        fields=["name", "mime_type"],
+        limit=0,
+    )
+    return {_text(row.get("name")): _text(row.get("mime_type")) for row in rows if _text(row.get("name"))}
+
+
+def _serialize_recommendation_attachment(
+    *,
+    student_applicant: str,
+    latest_drive_file: dict | None,
+    thumbnail_ready_map: dict[str, bool],
+    version_mime_map: dict[str, str],
+) -> dict:
+    drive_row = latest_drive_file or {}
+    drive_file_id = _text(drive_row.get("name"))
+    compatibility_file_id = _text(drive_row.get("file"))
+    canonical_ref = _text(drive_row.get("canonical_ref")) or None
+    file_name = (
+        _text(drive_row.get("display_name")) or _text(drive_row.get("file_name")) or compatibility_file_id or None
+    )
+    preview_status = _text(drive_row.get("preview_status")) or None
+    if not drive_file_id and not compatibility_file_id:
+        return {
+            "drive_file_id": None,
+            "canonical_ref": None,
+            "file_name": None,
+            "open_url": None,
+            "preview_url": None,
+            "thumbnail_url": None,
+            "preview_status": None,
+            "attachment_preview": None,
+        }
+
+    open_url = resolve_admissions_file_open_url(
+        file_name=compatibility_file_id or None,
+        file_url=None,
+        drive_file_id=drive_file_id or None,
+        canonical_ref=canonical_ref,
+        context_doctype="Student Applicant",
+        context_name=student_applicant,
+    )
+    preview_url = resolve_admissions_file_preview_url(
+        file_name=compatibility_file_id or None,
+        file_url=None,
+        drive_file_id=drive_file_id or None,
+        canonical_ref=canonical_ref,
+        context_doctype="Student Applicant",
+        context_name=student_applicant,
+        preview_ready=preview_status == "ready",
+    )
+    thumbnail_url = resolve_admissions_file_thumbnail_url(
+        file_name=compatibility_file_id or None,
+        file_url=None,
+        drive_file_id=drive_file_id or None,
+        canonical_ref=canonical_ref,
+        context_doctype="Student Applicant",
+        context_name=student_applicant,
+        thumbnail_ready=thumbnail_ready_map.get(drive_file_id, False),
+    )
+    mime_type = version_mime_map.get(_text(drive_row.get("current_version"))) or None
+    attachment_preview = build_attachment_preview_item(
+        item_id=drive_file_id or compatibility_file_id or file_name,
+        owner_doctype="Student Applicant",
+        owner_name=student_applicant,
+        file_id=drive_file_id or compatibility_file_id,
+        display_name=file_name,
+        mime_type=mime_type,
+        extension=extract_file_extension(file_name=file_name, file_url=None),
+        preview_status=preview_status,
+        thumbnail_url=thumbnail_url,
+        preview_url=preview_url,
+        open_url=open_url,
+        download_url=open_url,
+    )
+    return {
+        "drive_file_id": drive_file_id or None,
+        "canonical_ref": canonical_ref,
+        "file_name": file_name,
+        "open_url": open_url,
+        "preview_url": preview_url,
+        "thumbnail_url": thumbnail_url,
+        "preview_status": preview_status,
+        "attachment_preview": attachment_preview,
+    }
 
 
 def _get_bound_request():
@@ -934,23 +1039,43 @@ def get_recommendation_status_batch_for_applicants(
             )
             item_map = {(row.get("name") or "").strip(): row for row in item_rows if (row.get("name") or "").strip()}
 
-        latest_file_by_item = {}
+        latest_drive_file_by_item = {}
         if applicant_document_item_names:
-            file_rows = frappe.get_all(
-                "File",
-                filters={
-                    "attached_to_doctype": "Applicant Document Item",
-                    "attached_to_name": ["in", applicant_document_item_names],
-                },
-                fields=["name", "attached_to_name", "file_name", "file_url", "creation"],
-                order_by="creation desc",
-                limit=10000,
+            drive_rows = get_current_drive_files_for_attachments(
+                attached_doctype="Applicant Document Item",
+                attached_names=applicant_document_item_names,
+                fields=[
+                    "name",
+                    "attached_name",
+                    "file",
+                    "canonical_ref",
+                    "display_name",
+                    "preview_status",
+                    "current_version",
+                    "creation",
+                ],
+                statuses=("active", "processing", "blocked"),
             )
-            for file_row in file_rows:
-                attached_to_name = (file_row.get("attached_to_name") or "").strip()
-                if not attached_to_name or attached_to_name in latest_file_by_item:
+            for drive_row in drive_rows:
+                attached_to_name = _text(drive_row.get("attached_name"))
+                if not attached_to_name or attached_to_name in latest_drive_file_by_item:
                     continue
-                latest_file_by_item[attached_to_name] = file_row
+                latest_drive_file_by_item[attached_to_name] = drive_row
+
+        drive_thumbnail_ready_map = get_drive_file_thumbnail_ready_map(
+            [
+                _text(row_drive.get("name"))
+                for row_drive in latest_drive_file_by_item.values()
+                if _text(row_drive.get("name"))
+            ]
+        )
+        drive_version_mime_map = _load_drive_version_mime_map(
+            [
+                _text(row_drive.get("current_version"))
+                for row_drive in latest_drive_file_by_item.values()
+                if _text(row_drive.get("current_version"))
+            ]
+        )
 
         for request_row in review_request_rows:
             applicant_name = (request_row.get("student_applicant") or "").strip()
@@ -964,7 +1089,12 @@ def get_recommendation_status_batch_for_applicants(
             ).strip()
             item_row = item_map.get(applicant_document_item) or {}
             review_status = (item_row.get("review_status") or "").strip() or "Pending"
-            latest_file = latest_file_by_item.get(applicant_document_item) or {}
+            latest_attachment = _serialize_recommendation_attachment(
+                student_applicant=applicant_name,
+                latest_drive_file=latest_drive_file_by_item.get(applicant_document_item),
+                thumbnail_ready_map=drive_thumbnail_ready_map,
+                version_mime_map=drive_version_mime_map,
+            )
             submitted_on = submission_row.get("submitted_on") or request_row.get("consumed_on")
             template_name = (request_row.get("recommendation_template") or "").strip()
             template_meta = review_template_map.get(template_name) or {}
@@ -1001,17 +1131,14 @@ def get_recommendation_status_batch_for_applicants(
                 "resend_count": cint(request_row.get("resend_count") or 0),
                 "has_file": bool(cint(submission_row.get("has_file"))),
                 "attestation_confirmed": bool(cint(submission_row.get("attestation_confirmed"))),
-                "file_name": (latest_file.get("file_name") or "").strip() or None,
-                "file_url": (
-                    resolve_admissions_file_open_url(
-                        file_name=latest_file.get("name"),
-                        file_url=latest_file.get("file_url"),
-                        context_doctype="Student Applicant",
-                        context_name=applicant_name,
-                    )
-                    if latest_file
-                    else None
-                ),
+                "file_name": latest_attachment.get("file_name"),
+                "open_url": latest_attachment.get("open_url"),
+                "preview_url": latest_attachment.get("preview_url"),
+                "thumbnail_url": latest_attachment.get("thumbnail_url"),
+                "preview_status": latest_attachment.get("preview_status"),
+                "drive_file_id": latest_attachment.get("drive_file_id"),
+                "canonical_ref": latest_attachment.get("canonical_ref"),
+                "attachment_preview": latest_attachment.get("attachment_preview"),
                 "needs_review": bool(needs_review),
                 "can_review": bool(
                     (request_row.get("request_status") or "").strip() == "Submitted" and applicant_document_item
@@ -1671,19 +1798,34 @@ def get_recommendation_review_payload(
             or {}
         )
 
-    latest_file = {}
+    latest_attachment = {}
     if applicant_document_item_name:
-        latest_file_rows = frappe.get_all(
-            "File",
-            filters={
-                "attached_to_doctype": "Applicant Document Item",
-                "attached_to_name": applicant_document_item_name,
-            },
-            fields=["name", "file_name", "file_url", "creation"],
-            order_by="creation desc",
-            limit=1,
+        latest_drive_file = get_current_drive_files_for_attachments(
+            attached_doctype="Applicant Document Item",
+            attached_names=[applicant_document_item_name],
+            fields=[
+                "name",
+                "attached_name",
+                "file",
+                "canonical_ref",
+                "display_name",
+                "preview_status",
+                "current_version",
+                "creation",
+            ],
+            statuses=("active", "processing", "blocked"),
         )
-        latest_file = latest_file_rows[0] if latest_file_rows else {}
+        latest_drive_file = latest_drive_file[0] if latest_drive_file else None
+        latest_attachment = _serialize_recommendation_attachment(
+            student_applicant=resolved_applicant,
+            latest_drive_file=latest_drive_file,
+            thumbnail_ready_map=get_drive_file_thumbnail_ready_map(
+                [_text(latest_drive_file.get("name"))] if latest_drive_file else []
+            ),
+            version_mime_map=_load_drive_version_mime_map(
+                [_text(latest_drive_file.get("current_version"))] if latest_drive_file else []
+            ),
+        )
 
     template_name = (request_row.get("recommendation_template") or "").strip()
     template_meta = (
@@ -1727,17 +1869,14 @@ def get_recommendation_review_payload(
             "expires_on": request_row.get("expires_on"),
             "has_file": bool(cint(submission_row.get("has_file"))),
             "attestation_confirmed": bool(cint(submission_row.get("attestation_confirmed"))),
-            "file_name": (latest_file.get("file_name") or "").strip() or None,
-            "file_url": (
-                resolve_admissions_file_open_url(
-                    file_name=latest_file.get("name"),
-                    file_url=latest_file.get("file_url"),
-                    context_doctype="Student Applicant",
-                    context_name=resolved_applicant,
-                )
-                if latest_file
-                else None
-            ),
+            "file_name": latest_attachment.get("file_name"),
+            "open_url": latest_attachment.get("open_url"),
+            "preview_url": latest_attachment.get("preview_url"),
+            "thumbnail_url": latest_attachment.get("thumbnail_url"),
+            "preview_status": latest_attachment.get("preview_status"),
+            "drive_file_id": latest_attachment.get("drive_file_id"),
+            "canonical_ref": latest_attachment.get("canonical_ref"),
+            "attachment_preview": latest_attachment.get("attachment_preview"),
             "answers": _build_recommendation_answer_rows(snapshot, submission_row.get("answers_json")),
             "can_review": bool(
                 applicant_document_item_name

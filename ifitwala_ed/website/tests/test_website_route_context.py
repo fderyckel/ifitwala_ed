@@ -102,7 +102,7 @@ class TestWebsiteRouteContext(FrappeTestCase):
         ).insert(ignore_permissions=True)
 
         with patch(
-            "ifitwala_ed.website.public_people.build_employee_image_variants",
+            "ifitwala_ed.website.public_people.build_public_employee_image_variants",
             return_value={"original": None, "card": None, "medium": None, "thumb": None},
         ):
             context = build_render_context(

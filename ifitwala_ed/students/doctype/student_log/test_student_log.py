@@ -151,26 +151,55 @@ class TestStudentLog(TestCase):
         second_call = enqueue.call_args_list[1]
         self.assertEqual(second_call.kwargs["log_names"], ["LOG-0003"])
 
-    def test_get_auto_close_eligible_rows_uses_school_due_days_contract(self):
+    def test_get_auto_close_eligible_rows_prefers_next_step_policy_over_school_default(self):
         student_log_rows = [
-            frappe._dict({"name": "LOG-0001", "modified": "2026-03-10 08:00:00", "school": "SCH-1"}),
-            frappe._dict({"name": "LOG-0002", "modified": "2026-03-17 08:00:00", "school": "SCH-2"}),
-            frappe._dict({"name": "LOG-0003", "modified": "2026-03-16 08:00:00", "school": None}),
+            frappe._dict(
+                {
+                    "name": "LOG-0001",
+                    "modified": "2026-03-15 08:00:00",
+                    "school": "SCH-1",
+                    "next_step": "STEP-1",
+                }
+            ),
+            frappe._dict(
+                {
+                    "name": "LOG-0002",
+                    "modified": "2026-03-17 08:00:00",
+                    "school": "SCH-2",
+                    "next_step": "STEP-2",
+                }
+            ),
+            frappe._dict(
+                {
+                    "name": "LOG-0003",
+                    "modified": "2026-03-16 08:00:00",
+                    "school": None,
+                    "next_step": None,
+                }
+            ),
         ]
         school_rows = [
             frappe._dict({"name": "SCH-1", "default_follow_up_due_in_days": 7}),
             frappe._dict({"name": "SCH-2", "default_follow_up_due_in_days": 5}),
         ]
+        next_step_rows = [
+            frappe._dict({"name": "STEP-1", "auto_close_after_days": 3}),
+            frappe._dict({"name": "STEP-2", "auto_close_after_days": None}),
+        ]
 
         def fake_get_all(doctype, filters=None, fields=None):
             if doctype == "Student Log":
                 self.assertEqual(filters, {"follow_up_status": "In Progress"})
-                self.assertEqual(fields, ["name", "modified", "school"])
+                self.assertEqual(fields, ["name", "modified", "school", "next_step"])
                 return student_log_rows
             if doctype == "School":
                 self.assertEqual(fields, ["name", "default_follow_up_due_in_days"])
                 self.assertEqual(filters, {"name": ["in", ["SCH-1", "SCH-2"]]})
                 return school_rows
+            if doctype == "Student Log Next Step":
+                self.assertEqual(fields, ["name", "auto_close_after_days"])
+                self.assertEqual(filters, {"name": ["in", ["STEP-1", "STEP-2"]]})
+                return next_step_rows
             self.fail(f"Unexpected doctype lookup: {doctype}")
 
         with (
@@ -180,8 +209,33 @@ class TestStudentLog(TestCase):
             eligible = _get_auto_close_eligible_rows()
 
         self.assertEqual([row.name for row in eligible], ["LOG-0001", "LOG-0003"])
-        self.assertEqual(eligible[0].auto_close_due_in_days, 7)
+        self.assertEqual(eligible[0].auto_close_due_in_days, 3)
         self.assertEqual(eligible[1].auto_close_due_in_days, 5)
+
+    def test_assign_to_uses_due_date_helper_even_without_program_context(self):
+        doc = StudentLog.__new__(StudentLog)
+        doc.doctype = "Student Log"
+        doc.name = "LOG-0001"
+        doc.student_name = "Focus Student"
+        doc.school = "SCH-1"
+        doc.next_step = "STEP-1"
+        doc._resolve_school = lambda: "SCH-1"
+
+        with (
+            patch("ifitwala_ed.students.doctype.student_log.student_log.frappe.db.exists", return_value=False),
+            patch(
+                "ifitwala_ed.students.doctype.student_log.student_log._get_follow_up_due_days",
+                return_value=4,
+            ),
+            patch("ifitwala_ed.students.doctype.student_log.student_log.frappe.utils.today", return_value="2026-04-19"),
+            patch("ifitwala_ed.students.doctype.student_log.student_log.assign_add") as assign_add,
+        ):
+            doc._assign_to("assignee@example.com")
+
+        assign_add.assert_called_once()
+        payload = assign_add.call_args.args[0]
+        self.assertEqual(payload["assign_to"], ["assignee@example.com"])
+        self.assertEqual(payload["due_date"], "2026-04-23")
 
     def test_process_auto_close_completed_logs_chunk_only_updates_currently_eligible_logs(self):
         cache = _DummyCache()

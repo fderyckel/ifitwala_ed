@@ -5,14 +5,28 @@ const {
 	routeState,
 	replaceMock,
 	toastMock,
+	fetchMock,
 	fetchSchoolContextMock,
 	fetchGroupsMock,
 	fetchGroupTasksMock,
+	getDrawerMock,
 	getGridMock,
 	getTaskGradebookMock,
 	getTaskQuizManualReviewMock,
-	repairTaskRosterMock,
+	markNewSubmissionSeenMock,
+	moderatorActionMock,
+	publishOutcomesMock,
+	pdfGlobalWorkerOptions,
+	getDocumentMock,
+	saveFeedbackDraftMock,
+	saveFeedbackCommentBankEntryMock,
+	saveFeedbackPublicationMock,
+	saveFeedbackThreadReplyMock,
+	saveFeedbackThreadStateMock,
+	saveDraftMock,
 	saveTaskQuizManualReviewMock,
+	submitContributionMock,
+	unpublishOutcomesMock,
 	updateTaskStudentMock,
 } = vi.hoisted(() => ({
 	routeState: {
@@ -20,16 +34,65 @@ const {
 	},
 	replaceMock: vi.fn(() => Promise.resolve()),
 	toastMock: vi.fn(),
+	fetchMock: vi.fn(async () => ({
+		ok: true,
+		arrayBuffer: async () => new ArrayBuffer(16),
+	})),
 	fetchSchoolContextMock: vi.fn(),
 	fetchGroupsMock: vi.fn(),
 	fetchGroupTasksMock: vi.fn(),
+	getDrawerMock: vi.fn(),
 	getGridMock: vi.fn(),
 	getTaskGradebookMock: vi.fn(),
 	getTaskQuizManualReviewMock: vi.fn(),
-	repairTaskRosterMock: vi.fn(),
+	markNewSubmissionSeenMock: vi.fn(),
+	moderatorActionMock: vi.fn(),
+	publishOutcomesMock: vi.fn(),
+	pdfGlobalWorkerOptions: { workerSrc: '' },
+	getDocumentMock: vi.fn(() => {
+		const renderTask = {
+			cancel: vi.fn(),
+			promise: Promise.resolve(),
+		};
+		const page = {
+			getViewport: vi.fn(({ scale }: { scale: number }) => ({
+				width: 640 * scale,
+				height: 860 * scale,
+			})),
+			render: vi.fn(() => renderTask),
+		};
+		return {
+			promise: Promise.resolve({
+				numPages: 2,
+				getPage: vi.fn(async () => page),
+				destroy: vi.fn(async () => undefined),
+			}),
+			destroy: vi.fn(),
+		};
+	}),
+	saveFeedbackDraftMock: vi.fn(),
+	saveFeedbackCommentBankEntryMock: vi.fn(),
+	saveFeedbackPublicationMock: vi.fn(),
+	saveFeedbackThreadReplyMock: vi.fn(),
+	saveFeedbackThreadStateMock: vi.fn(),
+	saveDraftMock: vi.fn(),
 	saveTaskQuizManualReviewMock: vi.fn(),
+	submitContributionMock: vi.fn(),
+	unpublishOutcomesMock: vi.fn(),
 	updateTaskStudentMock: vi.fn(),
 }));
+
+vi.stubGlobal('fetch', fetchMock);
+
+if (typeof HTMLCanvasElement !== 'undefined') {
+	Object.defineProperty(HTMLCanvasElement.prototype, 'getContext', {
+		configurable: true,
+		value: vi.fn(() => ({
+			setTransform: vi.fn(),
+			clearRect: vi.fn(),
+		})),
+	});
+}
 
 vi.mock('vue-router', () => ({
 	useRoute: () => routeState,
@@ -165,15 +228,35 @@ vi.mock('frappe-ui', () => ({
 	toast: toastMock,
 }));
 
+vi.mock('pdfjs-dist/legacy/build/pdf.mjs', () => ({
+	GlobalWorkerOptions: pdfGlobalWorkerOptions,
+	getDocument: getDocumentMock,
+}));
+
+vi.mock('pdfjs-dist/legacy/build/pdf.worker.min.mjs?url', () => ({
+	default: '/mock-pdf-worker.min.mjs',
+}));
+
 vi.mock('@/lib/services/gradebook/gradebookService', () => ({
 	createGradebookService: () => ({
 		fetchGroups: fetchGroupsMock,
 		fetchGroupTasks: fetchGroupTasksMock,
+		getDrawer: getDrawerMock,
 		getGrid: getGridMock,
 		getTaskGradebook: getTaskGradebookMock,
 		getTaskQuizManualReview: getTaskQuizManualReviewMock,
-		repairTaskRoster: repairTaskRosterMock,
+		markNewSubmissionSeen: markNewSubmissionSeenMock,
+		moderatorAction: moderatorActionMock,
+		publishOutcomes: publishOutcomesMock,
+		saveFeedbackDraft: saveFeedbackDraftMock,
+		saveFeedbackCommentBankEntry: saveFeedbackCommentBankEntryMock,
+		saveFeedbackPublication: saveFeedbackPublicationMock,
+		saveFeedbackThreadReply: saveFeedbackThreadReplyMock,
+		saveFeedbackThreadState: saveFeedbackThreadStateMock,
+		saveDraft: saveDraftMock,
 		saveTaskQuizManualReview: saveTaskQuizManualReviewMock,
+		submitContribution: submitContributionMock,
+		unpublishOutcomes: unpublishOutcomesMock,
 		updateTaskStudent: updateTaskStudentMock,
 	}),
 }));
@@ -218,6 +301,7 @@ function mockGradebookFlow(options?: {
 	task?: Record<string, unknown>;
 	students?: Array<Record<string, unknown>>;
 	criteria?: Array<Record<string, unknown>>;
+	drawer?: Record<string, unknown>;
 }) {
 	const group = {
 		name: 'SG-1',
@@ -255,6 +339,10 @@ function mockGradebookFlow(options?: {
 			student_id: 'S-001',
 			student_image: null,
 			status: 'Not Started',
+			procedural_status: null,
+			submission_status: null,
+			has_submission: 0,
+			has_new_submission: 0,
 			complete: 0,
 			mark_awarded: null,
 			feedback: null,
@@ -300,6 +388,172 @@ function mockGradebookFlow(options?: {
 		criteria: options?.criteria || [],
 		students,
 	});
+	getDrawerMock.mockResolvedValue({
+		delivery: {
+			name: String(task.name),
+			task: 'TASK-1',
+			title: String(task.title),
+			task_type: (task.task_type as string | null) || 'Assignment',
+			student_group: group.name,
+			due_date: task.due_date as string | null,
+			delivery_mode: (task.delivery_type as string | null) || 'Assess',
+			grading_mode: task.grading_mode as string | null,
+			allow_feedback: task.allow_feedback as 0 | 1,
+			rubric_scoring_strategy: task.rubric_scoring_strategy as
+				| 'Sum Total'
+				| 'Separate Criteria'
+				| null,
+			max_points: task.max_points as number | null,
+			criteria:
+				(options?.criteria || []).map(criterion => ({
+					assessment_criteria: String(criterion.assessment_criteria),
+					criteria_name: String(criterion.criteria_name),
+					criteria_weighting:
+						typeof criterion.criteria_weighting === 'number' ? criterion.criteria_weighting : null,
+					levels: Array.isArray(criterion.levels) ? criterion.levels : [],
+				})) || [],
+		},
+		student: {
+			student: String(students[0].student),
+			student_name: String(students[0].student_name),
+			student_id: (students[0].student_id as string | null) || null,
+			student_image: (students[0].student_image as string | null) || null,
+		},
+		outcome: {
+			outcome_id: String(students[0].task_student),
+			grading_status: (students[0].status as string | null) || 'Not Started',
+			procedural_status: (students[0].procedural_status as string | null) || null,
+			has_submission: Boolean(students[0].has_submission),
+			has_new_submission: Boolean(students[0].has_new_submission),
+			is_complete: Boolean(students[0].complete),
+			is_published: Boolean(students[0].visible_to_student),
+			published_on: null,
+			published_by: null,
+			official: {
+				score: (students[0].mark_awarded as number | null) || null,
+				grade: null,
+				grade_value: null,
+				feedback: (students[0].feedback as string | null) || null,
+			},
+			criteria: (students[0].criteria_scores as Array<Record<string, unknown>>).map(row => ({
+				criteria: String(row.assessment_criteria),
+				level: (row.level as string | null) || null,
+				points: (row.level_points as number | null) || null,
+			})),
+		},
+		latest_submission: null,
+		selected_submission: null,
+		feedback_workspace: null,
+		submission_versions: [],
+		my_contribution: null,
+		moderation_history: [],
+		allowed_actions: {
+			can_edit_marking: true,
+			can_edit_feedback: true,
+			can_mark_submission_seen: true,
+			can_publish: true,
+			can_unpublish: true,
+			can_manage_feedback_publication: true,
+			can_moderate: false,
+			show_review_tab: false,
+		},
+		contributions: [],
+		...options?.drawer,
+	});
+	markNewSubmissionSeenMock.mockResolvedValue({
+		ok: true,
+		outcome: 'OUT-1',
+		has_new_submission: 0,
+	});
+	publishOutcomesMock.mockResolvedValue({
+		outcomes: [
+			{ outcome_id: 'OUT-1', is_published: true, published_on: null, published_by: null },
+		],
+	});
+	unpublishOutcomesMock.mockResolvedValue({
+		outcomes: [
+			{ outcome_id: 'OUT-1', is_published: false, published_on: null, published_by: null },
+		],
+	});
+	saveDraftMock.mockResolvedValue({
+		result: {
+			contribution: 'TCN-DR-1',
+			status: 'Draft',
+			task_outcome: 'OUT-1',
+			task_submission: null,
+		},
+		outcome: null,
+	});
+	saveFeedbackDraftMock.mockResolvedValue({
+		feedback_workspace: {
+			workspace_id: 'TFW-1',
+			task_outcome: 'OUT-1',
+			task_submission: 'TSU-1',
+			submission_version: 2,
+			summary: {
+				overall: '',
+				strengths: '',
+				improvements: '',
+				next_steps: '',
+			},
+			items: [],
+			publication: {
+				feedback_visibility: 'hidden',
+				grade_visibility: 'hidden',
+				derived_from_legacy_outcome: false,
+				legacy_outcome_published: false,
+				legacy_published_on: null,
+				legacy_published_by: null,
+			},
+			modified: null,
+			modified_by: null,
+		},
+	});
+	saveFeedbackPublicationMock.mockResolvedValue({
+		feedback_workspace: {
+			workspace_id: 'TFW-1',
+			task_outcome: 'OUT-1',
+			task_submission: 'TSU-1',
+			submission_version: 2,
+			summary: {
+				overall: '',
+				strengths: '',
+				improvements: '',
+				next_steps: '',
+			},
+			items: [],
+			publication: {
+				feedback_visibility: 'student',
+				grade_visibility: 'hidden',
+				derived_from_legacy_outcome: false,
+				legacy_outcome_published: false,
+				legacy_published_on: null,
+				legacy_published_by: null,
+			},
+			modified: null,
+			modified_by: null,
+		},
+	});
+	submitContributionMock.mockResolvedValue({
+		ok: true,
+		outcome_update: { outcome: 'OUT-1', grading_status: 'Finalized' },
+		result: {
+			contribution: 'TCN-1',
+			status: 'Submitted',
+			task_outcome: 'OUT-1',
+			task_submission: null,
+		},
+	});
+	moderatorActionMock.mockResolvedValue({
+		ok: true,
+		outcome_update: { outcome: 'OUT-1', grading_status: 'Moderated' },
+		result: {
+			contribution: 'TCN-MOD-1',
+			status: 'Submitted',
+			task_outcome: 'OUT-1',
+			task_submission: null,
+		},
+	});
 
 	return { group, task };
 }
@@ -310,6 +564,15 @@ async function openTask(title: string) {
 	);
 	expect(taskButton).not.toBeNull();
 	taskButton!.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+	await flushUi();
+}
+
+async function openStudentDrawer(studentName = 'Ada Lovelace') {
+	const studentButton = Array.from(document.querySelectorAll('button')).find(button =>
+		(button.textContent || '').includes(studentName)
+	);
+	expect(studentButton).not.toBeNull();
+	studentButton!.dispatchEvent(new MouseEvent('click', { bubbles: true }));
 	await flushUi();
 }
 
@@ -341,14 +604,31 @@ afterEach(() => {
 	routeState.query = {};
 	replaceMock.mockClear();
 	toastMock.mockClear();
+	fetchMock.mockReset();
+	fetchMock.mockResolvedValue({
+		ok: true,
+		arrayBuffer: async () => new ArrayBuffer(16),
+	});
 	fetchSchoolContextMock.mockReset();
 	fetchGroupsMock.mockReset();
 	fetchGroupTasksMock.mockReset();
+	getDocumentMock.mockClear();
 	getGridMock.mockReset();
 	getTaskGradebookMock.mockReset();
 	getTaskQuizManualReviewMock.mockReset();
-	repairTaskRosterMock.mockReset();
+	getDrawerMock.mockReset();
+	markNewSubmissionSeenMock.mockReset();
+	moderatorActionMock.mockReset();
+	publishOutcomesMock.mockReset();
+	saveDraftMock.mockReset();
+	saveFeedbackDraftMock.mockReset();
+	saveFeedbackCommentBankEntryMock.mockReset();
+	saveFeedbackPublicationMock.mockReset();
+	saveFeedbackThreadReplyMock.mockReset();
+	saveFeedbackThreadStateMock.mockReset();
 	saveTaskQuizManualReviewMock.mockReset();
+	submitContributionMock.mockReset();
+	unpublishOutcomesMock.mockReset();
 	updateTaskStudentMock.mockReset();
 	while (cleanupFns.length) cleanupFns.pop()?.();
 	document.body.innerHTML = '';
@@ -380,7 +660,7 @@ describe('Gradebook page', () => {
 		expect(optionTexts).toEqual(['All Schools', 'Main School', 'Branch Campus']);
 	});
 
-	it('recovers the linked student group when the default school has no matching groups', async () => {
+	it('prefills class filters for a linked student group when route context is provided', async () => {
 		const linkedGroup = {
 			name: 'SG-2',
 			label: 'G6 Math 1 / IIS 2025-2026',
@@ -391,7 +671,13 @@ describe('Gradebook page', () => {
 			cohort: 'G6',
 		};
 
-		routeState.query = { student_group: linkedGroup.name };
+		routeState.query = {
+			student_group: linkedGroup.name,
+			school: linkedGroup.school,
+			academic_year: linkedGroup.academic_year,
+			program: linkedGroup.program,
+			course: linkedGroup.course,
+		};
 		fetchSchoolContextMock.mockResolvedValue({
 			default_school: 'SCH-1',
 			schools: [
@@ -412,23 +698,97 @@ describe('Gradebook page', () => {
 		mountPage();
 		await flushUi();
 
-		expect(fetchGroupsMock.mock.calls).toEqual([
-			[{ school: 'SCH-1' }],
-			[{ search: linkedGroup.name, limit: 20 }],
-			[{ school: 'SCH-2' }],
-		]);
+		expect(fetchGroupsMock.mock.calls).toEqual([[{ school: 'SCH-2' }]]);
 		expect(fetchGroupTasksMock).toHaveBeenCalledWith({ student_group: linkedGroup.name });
 
 		const schoolSelect = document.querySelector(
 			'select[data-placeholder="School"]'
+		) as HTMLSelectElement;
+		const yearSelect = document.querySelector(
+			'select[data-placeholder="Year"]'
+		) as HTMLSelectElement;
+		const programSelect = document.querySelector(
+			'select[data-placeholder="Program"]'
+		) as HTMLSelectElement;
+		const courseSelect = document.querySelector(
+			'select[data-placeholder="Course"]'
 		) as HTMLSelectElement;
 		const groupSelect = document.querySelector(
 			'select[data-placeholder="Select group"]'
 		) as HTMLSelectElement;
 
 		expect(schoolSelect.value).toBe('SCH-2');
+		expect(yearSelect.value).toBe('2025-2026');
+		expect(programSelect.value).toBe('IIS');
+		expect(courseSelect.value).toBe('Math 1');
 		expect(groupSelect.value).toBe(linkedGroup.name);
 		expect(document.body.textContent || '').toContain(linkedGroup.label);
+	});
+
+	it('uses the prefilled route context when the linked group needs search recovery', async () => {
+		const linkedGroup = {
+			name: 'SG-2',
+			label: 'G6 Math 1 / IIS 2025-2026',
+			school: 'SCH-2',
+			academic_year: '2025-2026',
+			program: 'IIS',
+			course: 'Math 1',
+			cohort: 'G6',
+		};
+
+		routeState.query = {
+			student_group: linkedGroup.name,
+			school: linkedGroup.school,
+			academic_year: linkedGroup.academic_year,
+			program: linkedGroup.program,
+			course: linkedGroup.course,
+		};
+		fetchSchoolContextMock.mockResolvedValue({
+			default_school: 'SCH-1',
+			schools: [
+				{ name: 'SCH-1', school_name: 'Default School' },
+				{ name: 'SCH-2', school_name: 'KIS Bangkok' },
+			],
+		});
+		let schoolFetchCount = 0;
+		fetchGroupsMock.mockImplementation(async (payload?: Record<string, unknown>) => {
+			if (payload?.school === linkedGroup.school && !payload?.search) {
+				schoolFetchCount += 1;
+				return schoolFetchCount >= 2 ? [linkedGroup] : [];
+			}
+			if (
+				payload?.search === linkedGroup.name &&
+				payload?.school === linkedGroup.school &&
+				payload?.academic_year === linkedGroup.academic_year &&
+				payload?.program === linkedGroup.program &&
+				payload?.course === linkedGroup.course
+			) {
+				return [linkedGroup];
+			}
+			return [];
+		});
+		fetchGroupTasksMock.mockResolvedValue({ tasks: [] });
+		getGridMock.mockResolvedValue({ deliveries: [], students: [], cells: [] });
+		getTaskGradebookMock.mockResolvedValue({ task: null, criteria: [], students: [] });
+
+		mountPage();
+		await flushUi();
+
+		expect(fetchGroupsMock.mock.calls).toEqual([
+			[{ school: 'SCH-2' }],
+			[
+				{
+					search: linkedGroup.name,
+					limit: 20,
+					school: linkedGroup.school,
+					academic_year: linkedGroup.academic_year,
+					program: linkedGroup.program,
+					course: linkedGroup.course,
+				},
+			],
+			[{ school: 'SCH-2' }],
+		]);
+		expect(fetchGroupTasksMock).toHaveBeenCalledWith({ student_group: linkedGroup.name });
 	});
 
 	it('preselects the linked assigned work when a task query is provided', async () => {
@@ -441,6 +801,36 @@ describe('Gradebook page', () => {
 		expect(fetchGroupTasksMock).toHaveBeenCalledWith({ student_group: 'SG-1' });
 		expect(getTaskGradebookMock).toHaveBeenCalledWith({ task: task.name });
 		expect(document.body.textContent || '').toContain('Ada Lovelace');
+	});
+
+	it('mounts inside the shared staff shell and lets teachers collapse the task rail', async () => {
+		mockGradebookFlow();
+
+		mountPage();
+		await flushUi();
+
+		expect(document.querySelector('.staff-shell')).not.toBeNull();
+		expect(document.body.textContent || '').toContain('Task 1');
+
+		const collapseButton = document.querySelector(
+			'button[aria-label="Collapse task rail"]'
+		) as HTMLButtonElement | null;
+		expect(collapseButton).not.toBeNull();
+		collapseButton?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		await flushUi();
+
+		expect(document.querySelector('button[aria-label="Expand task rail"]')).not.toBeNull();
+		expect(document.body.textContent || '').not.toContain('Task 1');
+
+		const reopenButton = Array.from(document.querySelectorAll('button')).find(button =>
+			(button.textContent || '').includes('Tasks')
+		);
+		expect(reopenButton).not.toBeNull();
+		reopenButton?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		await flushUi();
+
+		expect(document.querySelector('button[aria-label="Collapse task rail"]')).not.toBeNull();
+		expect(document.body.textContent || '').toContain('Task 1');
 	});
 
 	it('loads the overview grid only after the teacher switches modes', async () => {
@@ -526,13 +916,19 @@ describe('Gradebook page', () => {
 		mountPage();
 		await flushUi();
 		await openTask('Binary check');
+		await openStudentDrawer();
 
 		const text = document.body.textContent || '';
-		expect(text).toContain('Yes / No');
+		expect(getDrawerMock).toHaveBeenCalledWith({
+			outcome_id: 'OUT-1',
+			submission_id: null,
+			version: null,
+		});
+		expect(text).toContain('Yes/No');
 		expect(text).toContain('Yes');
 		expect(text).toContain('No');
 		expect(text).not.toContain('Points Awarded');
-		expect(text).not.toContain('Comment');
+		expect(document.querySelector('textarea')).toBeNull();
 	});
 
 	it('renders completion grading with complete copy instead of yes/no copy', async () => {
@@ -551,6 +947,7 @@ describe('Gradebook page', () => {
 		mountPage();
 		await flushUi();
 		await openTask('Completion check');
+		await openStudentDrawer();
 
 		const text = document.body.textContent || '';
 		expect(text).toContain('Complete');
@@ -558,27 +955,555 @@ describe('Gradebook page', () => {
 		expect(text).not.toContain('Yes / No');
 	});
 
-	it('renders student visibility checkboxes inline in the student header', async () => {
+	it('shows release controls inside the official result tab', async () => {
 		mockGradebookFlow();
 
 		mountPage();
 		await flushUi();
 		await openTask('Task 1');
+		await openStudentDrawer();
 
-		const studentName = Array.from(document.querySelectorAll('p')).find(node =>
-			(node.textContent || '').includes('Ada Lovelace')
+		const officialTab = Array.from(document.querySelectorAll('button')).find(button =>
+			(button.textContent || '').includes('Official Result')
 		);
-		expect(studentName).not.toBeNull();
+		expect(officialTab).toBeTruthy();
+		officialTab!.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		await flushUi();
 
-		const studentHeader = studentName?.closest('div.border-b');
-		expect(studentHeader).not.toBeNull();
+		expect(document.body.textContent || '').toContain('Release');
+		expect(document.body.textContent || '').toContain('Assessment Publication Channels');
+		expect(document.body.textContent || '').toContain(
+			'Current student/guardian portals still follow the legacy outcome release path'
+		);
+	});
 
-		const visibilityRow = studentHeader?.querySelector('.gradebook-student-visibility');
-		expect(visibilityRow).not.toBeNull();
-		expect(visibilityRow?.textContent || '').toContain('Visible to Student');
-		expect(visibilityRow?.textContent || '').toContain('Visible to Guardian');
-		expect(visibilityRow?.querySelectorAll('input[type="checkbox"]').length).toBe(2);
-		expect(document.body.textContent || '').not.toContain('Visibility');
+	it('shows reduced PDF review state in the evidence tab without guessing file paths', async () => {
+		mockGradebookFlow({
+			students: [
+				{
+					task_student: 'OUT-1',
+					student: 'STU-1',
+					student_name: 'Ada Lovelace',
+					student_id: 'S-001',
+					student_image: null,
+					status: 'Needs Review',
+					procedural_status: 'Submitted',
+					has_submission: 1,
+					has_new_submission: 1,
+					complete: 0,
+					mark_awarded: 12,
+					feedback: null,
+					visible_to_student: 0,
+					visible_to_guardian: 0,
+					updated_on: null,
+					criteria_scores: [],
+				},
+			],
+			drawer: {
+				latest_submission: {
+					submission_id: 'TSU-1',
+					version: 2,
+					submitted_on: '2026-04-03 10:00:00',
+					origin: 'Student Upload',
+					is_stub: false,
+					is_selected: true,
+				},
+				selected_submission: {
+					submission_id: 'TSU-1',
+					version: 2,
+					submitted_on: '2026-04-03 10:00:00',
+					submitted_by: 'student@example.com',
+					origin: 'Student Upload',
+					is_stub: false,
+					evidence_note: 'Essay PDF',
+					is_cloned: false,
+					cloned_from: null,
+					text_content: null,
+					link_url: null,
+					attachments: [
+						{
+							row_name: 'ATT-1',
+							kind: 'file',
+							file: '/api/method/ifitwala_ed.api.file_access.download_academic_file?file=FILE-TASK-1',
+							file_name: 'essay.pdf',
+							file_size: 256,
+							description: 'Essay PDF',
+							preview_status: 'pending',
+							preview_url:
+								'/api/method/ifitwala_ed.api.file_access.preview_academic_file?file=FILE-TASK-1',
+							open_url:
+								'/api/method/ifitwala_ed.api.file_access.download_academic_file?file=FILE-TASK-1',
+							mime_type: 'application/pdf',
+							extension: 'pdf',
+						},
+					],
+					annotation_readiness: {
+						mode: 'reduced',
+						reason_code: 'pdf_preview_pending',
+						title: 'Reduced PDF review mode',
+						message:
+							'This governed PDF is still generating its preview. Text-anchored annotation is not available in the current runtime yet, so use the source PDF plus drawer marking for now.',
+						attachment_row_name: 'ATT-1',
+						attachment_file_name: 'essay.pdf',
+						preview_status: 'pending',
+						preview_url:
+							'/api/method/ifitwala_ed.api.file_access.preview_academic_file?file=FILE-TASK-1',
+						open_url:
+							'/api/method/ifitwala_ed.api.file_access.download_academic_file?file=FILE-TASK-1',
+					},
+				},
+				feedback_workspace: {
+					workspace_id: 'TFW-1',
+					task_outcome: 'OUT-1',
+					task_submission: 'TSU-1',
+					submission_version: 2,
+					summary: {
+						overall: 'Lead with the strongest claim.',
+						strengths: '',
+						improvements: '',
+						next_steps: '',
+					},
+					items: [],
+					publication: {
+						feedback_visibility: 'hidden',
+						grade_visibility: 'hidden',
+						derived_from_legacy_outcome: false,
+						legacy_outcome_published: false,
+						legacy_published_on: null,
+						legacy_published_by: null,
+					},
+					modified: null,
+					modified_by: null,
+				},
+				submission_versions: [
+					{
+						submission_id: 'TSU-1',
+						version: 2,
+						submitted_on: '2026-04-03 10:00:00',
+						origin: 'Student Upload',
+						is_stub: false,
+						is_selected: true,
+					},
+				],
+			},
+		});
+
+		mountPage();
+		await flushUi();
+		await openTask('Task 1');
+		await openStudentDrawer();
+
+		const evidenceTab = Array.from(document.querySelectorAll('button')).find(button =>
+			(button.textContent || '').includes('Evidence')
+		);
+		expect(evidenceTab).toBeTruthy();
+		evidenceTab!.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		await flushUi();
+
+		const text = document.body.textContent || '';
+		expect(text).toContain('Annotation Surface');
+		expect(text).toContain('PDF Workspace');
+		expect(text).toContain('Read-only pdf.js viewer');
+		expect(text).toContain('Reduced mode');
+		expect(text).toContain('Source PDF:');
+		expect(text).toContain('essay.pdf');
+		expect(text).toContain('Selected-submission feedback drafts');
+		expect(text).toContain('Point comment');
+		expect(text).toContain('Area comment');
+		expect(text).toContain('Add page comment');
+		expect(text).toContain('Drawer feedback draft items');
+		expect(text).toContain('Version-bound feedback workspace');
+		expect(text).toContain('Save Feedback Draft');
+		expect(text).toContain('Page 1 of 2');
+		expect(text).toContain('100%');
+		expect(getDocumentMock).toHaveBeenCalled();
+		expect(fetchMock).toHaveBeenCalledWith(
+			'/api/method/ifitwala_ed.api.file_access.download_academic_file?file=FILE-TASK-1',
+			expect.objectContaining({
+				credentials: 'include',
+			})
+		);
+
+		const previewLink = Array.from(document.querySelectorAll('a')).find(link =>
+			(link.textContent || '').includes('Try preview')
+		);
+		expect(previewLink?.getAttribute('href')).toContain(
+			'/api/method/ifitwala_ed.api.file_access.preview_academic_file'
+		);
+	});
+
+	it('uses explicit contribution and moderation mutations from the drawer', async () => {
+		mockGradebookFlow({
+			task: {
+				allow_feedback: 1,
+			},
+			students: [
+				{
+					task_student: 'OUT-1',
+					student: 'STU-1',
+					student_name: 'Ada Lovelace',
+					student_id: 'S-001',
+					student_image: null,
+					status: 'Needs Review',
+					procedural_status: 'Submitted',
+					submission_status: 'Submitted',
+					has_submission: 1,
+					has_new_submission: 0,
+					complete: 0,
+					mark_awarded: 8,
+					feedback: 'Current official feedback',
+					visible_to_student: 0,
+					visible_to_guardian: 0,
+					updated_on: null,
+					criteria_scores: [],
+				},
+			],
+			drawer: {
+				latest_submission: {
+					submission_id: 'TSU-2',
+					version: 2,
+					submitted_on: '2026-04-02 10:00:00',
+					origin: 'Student Upload',
+					is_stub: false,
+					is_selected: true,
+				},
+				allowed_actions: {
+					can_edit_marking: true,
+					can_mark_submission_seen: true,
+					can_publish: true,
+					can_unpublish: true,
+					can_moderate: true,
+					show_review_tab: true,
+				},
+			},
+		});
+
+		mountPage();
+		await flushUi();
+		await openTask('Task 1');
+		await openStudentDrawer();
+
+		const pointsInput = Array.from(document.querySelectorAll('input')).find(
+			input => (input as HTMLInputElement).type === 'number'
+		) as HTMLInputElement | undefined;
+		expect(pointsInput).toBeDefined();
+		pointsInput!.value = '12';
+		pointsInput!.dispatchEvent(new Event('input', { bubbles: true }));
+		await flushUi();
+
+		const saveButton = Array.from(document.querySelectorAll('button')).find(button =>
+			(button.textContent || '').includes('Save Marking')
+		);
+		expect(saveButton).not.toBeNull();
+		saveButton!.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		await flushUi();
+
+		expect(submitContributionMock).toHaveBeenCalledWith(
+			expect.objectContaining({
+				task_outcome: 'OUT-1',
+				task_submission: 'TSU-2',
+				score: 12,
+				feedback: 'Current official feedback',
+			})
+		);
+		expect(updateTaskStudentMock).not.toHaveBeenCalled();
+
+		const reviewTab = Array.from(document.querySelectorAll('button')).find(button =>
+			(button.textContent || '').includes('Review')
+		);
+		expect(reviewTab).not.toBeNull();
+		reviewTab!.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		await flushUi();
+
+		const approveButton = Array.from(document.querySelectorAll('button')).find(button =>
+			(button.textContent || '').includes('Approve')
+		);
+		expect(approveButton).not.toBeNull();
+		approveButton!.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		await flushUi();
+
+		expect(moderatorActionMock).toHaveBeenCalledWith(
+			expect.objectContaining({
+				task_outcome: 'OUT-1',
+				task_submission: 'TSU-2',
+				action: 'Approve',
+				score: 12,
+				feedback: 'Current official feedback',
+			})
+		);
+	});
+
+	it('releases a selected batch of unreleased students from the task workspace', async () => {
+		mockGradebookFlow({
+			students: [
+				{
+					task_student: 'OUT-1',
+					student: 'STU-1',
+					student_name: 'Ada Lovelace',
+					student_id: 'S-001',
+					student_image: null,
+					status: 'Finalized',
+					procedural_status: null,
+					has_submission: 1,
+					has_new_submission: 0,
+					complete: 0,
+					mark_awarded: 14,
+					feedback: null,
+					visible_to_student: 0,
+					visible_to_guardian: 0,
+					updated_on: null,
+					criteria_scores: [],
+				},
+				{
+					task_student: 'OUT-2',
+					student: 'STU-2',
+					student_name: 'Grace Hopper',
+					student_id: 'S-002',
+					student_image: null,
+					status: 'Released',
+					procedural_status: null,
+					has_submission: 1,
+					has_new_submission: 0,
+					complete: 0,
+					mark_awarded: 18,
+					feedback: null,
+					visible_to_student: 1,
+					visible_to_guardian: 1,
+					updated_on: null,
+					criteria_scores: [],
+				},
+			],
+		});
+
+		mountPage();
+		await flushUi();
+		await openTask('Task 1');
+
+		const selectButton = document.querySelector('[data-select-unreleased]');
+		expect(selectButton).not.toBeNull();
+		selectButton!.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		await flushUi();
+
+		const releaseButton = document.querySelector('[data-release-selected]');
+		expect(releaseButton).not.toBeNull();
+		releaseButton!.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		await flushUi();
+
+		expect(publishOutcomesMock).toHaveBeenCalledWith({ outcome_ids: ['OUT-1'] });
+	});
+
+	it('turns collect-work tasks into an evidence inbox sorted by evidence priority', async () => {
+		mockGradebookFlow({
+			task: {
+				title: 'Science Journal',
+				grading_mode: 'None',
+				allow_feedback: 1,
+				points: 0,
+				binary: 0,
+				criteria: 0,
+				observations: 1,
+				max_points: null,
+				delivery_type: 'Collect Work',
+			},
+			students: [
+				{
+					task_student: 'OUT-4',
+					student: 'STU-4',
+					student_name: 'Katherine Johnson',
+					student_id: 'S-004',
+					student_image: null,
+					status: 'Not Started',
+					procedural_status: 'Submitted',
+					submission_status: 'Submitted',
+					has_submission: 1,
+					has_new_submission: 0,
+					complete: 0,
+					mark_awarded: null,
+					feedback: null,
+					visible_to_student: 0,
+					visible_to_guardian: 0,
+					updated_on: null,
+					criteria_scores: [],
+				},
+				{
+					task_student: 'OUT-2',
+					student: 'STU-2',
+					student_name: 'Grace Hopper',
+					student_id: 'S-002',
+					student_image: null,
+					status: 'Not Started',
+					procedural_status: null,
+					submission_status: null,
+					has_submission: 0,
+					has_new_submission: 0,
+					complete: 0,
+					mark_awarded: null,
+					feedback: null,
+					visible_to_student: 0,
+					visible_to_guardian: 0,
+					updated_on: null,
+					criteria_scores: [],
+				},
+				{
+					task_student: 'OUT-3',
+					student: 'STU-3',
+					student_name: 'Alan Turing',
+					student_id: 'S-003',
+					student_image: null,
+					status: 'Needs Review',
+					procedural_status: 'Submitted',
+					submission_status: 'Late',
+					has_submission: 1,
+					has_new_submission: 0,
+					complete: 0,
+					mark_awarded: null,
+					feedback: null,
+					visible_to_student: 0,
+					visible_to_guardian: 0,
+					updated_on: null,
+					criteria_scores: [],
+				},
+				{
+					task_student: 'OUT-1',
+					student: 'STU-1',
+					student_name: 'Ada Lovelace',
+					student_id: 'S-001',
+					student_image: null,
+					status: 'Needs Review',
+					procedural_status: 'Submitted',
+					submission_status: 'Late',
+					has_submission: 1,
+					has_new_submission: 1,
+					complete: 0,
+					mark_awarded: null,
+					feedback: null,
+					visible_to_student: 0,
+					visible_to_guardian: 0,
+					updated_on: null,
+					criteria_scores: [],
+				},
+			],
+		});
+
+		mountPage();
+		await flushUi();
+		await openTask('Science Journal');
+
+		const text = document.body.textContent || '';
+		expect(text).toContain('Evidence Inbox');
+		expect(text).toContain('New Evidence (1)');
+		expect(text).toContain('Missing (1)');
+		expect(text).toContain('Late (2)');
+
+		const studentButtons = Array.from(
+			document.querySelectorAll<HTMLElement>('[data-gradebook-student]')
+		);
+		expect(studentButtons).toHaveLength(4);
+		expect(studentButtons.map(button => button.textContent || '')).toEqual([
+			expect.stringContaining('Ada Lovelace'),
+			expect.stringContaining('Alan Turing'),
+			expect.stringContaining('Grace Hopper'),
+			expect.stringContaining('Katherine Johnson'),
+		]);
+		expect(studentButtons[0]?.textContent || '').toContain('Submission: Late');
+	});
+
+	it('navigates the collect-work drawer against the current evidence queue order', async () => {
+		mockGradebookFlow({
+			task: {
+				title: 'Reading Log',
+				grading_mode: 'None',
+				allow_feedback: 1,
+				points: 0,
+				binary: 0,
+				criteria: 0,
+				observations: 1,
+				max_points: null,
+				delivery_type: 'Collect Work',
+			},
+			students: [
+				{
+					task_student: 'OUT-3',
+					student: 'STU-3',
+					student_name: 'Grace Hopper',
+					student_id: 'S-003',
+					student_image: null,
+					status: 'Not Started',
+					procedural_status: 'Submitted',
+					submission_status: 'Submitted',
+					has_submission: 1,
+					has_new_submission: 0,
+					complete: 0,
+					mark_awarded: null,
+					feedback: null,
+					visible_to_student: 0,
+					visible_to_guardian: 0,
+					updated_on: null,
+					criteria_scores: [],
+				},
+				{
+					task_student: 'OUT-2',
+					student: 'STU-2',
+					student_name: 'Alan Turing',
+					student_id: 'S-002',
+					student_image: null,
+					status: 'Needs Review',
+					procedural_status: 'Submitted',
+					submission_status: 'Late',
+					has_submission: 1,
+					has_new_submission: 0,
+					complete: 0,
+					mark_awarded: null,
+					feedback: null,
+					visible_to_student: 0,
+					visible_to_guardian: 0,
+					updated_on: null,
+					criteria_scores: [],
+				},
+				{
+					task_student: 'OUT-1',
+					student: 'STU-1',
+					student_name: 'Ada Lovelace',
+					student_id: 'S-001',
+					student_image: null,
+					status: 'Needs Review',
+					procedural_status: 'Submitted',
+					submission_status: 'Late',
+					has_submission: 1,
+					has_new_submission: 1,
+					complete: 0,
+					mark_awarded: null,
+					feedback: null,
+					visible_to_student: 0,
+					visible_to_guardian: 0,
+					updated_on: null,
+					criteria_scores: [],
+				},
+			],
+		});
+
+		mountPage();
+		await flushUi();
+		await openTask('Reading Log');
+		await openStudentDrawer('Ada Lovelace');
+
+		expect(getDrawerMock.mock.calls[0]?.[0]).toEqual({
+			outcome_id: 'OUT-1',
+			submission_id: null,
+			version: null,
+		});
+
+		const nextButton = document.querySelector('button[aria-label="Open next student"]');
+		expect(nextButton).not.toBeNull();
+		nextButton!.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		await flushUi();
+
+		expect(getDrawerMock.mock.calls[1]?.[0]).toEqual({
+			outcome_id: 'OUT-2',
+			submission_id: null,
+			version: null,
+		});
+		expect(document.body.textContent || '').toContain('Inbox 2 of 3');
 	});
 
 	it('renders criteria grading with criteria controls and comment box only when enabled', async () => {
@@ -609,6 +1534,9 @@ describe('Gradebook page', () => {
 					student_id: 'S-001',
 					student_image: null,
 					status: 'Not Started',
+					procedural_status: null,
+					has_submission: 0,
+					has_new_submission: 0,
 					complete: 0,
 					mark_awarded: null,
 					feedback: 'Strong reflection.',
@@ -630,6 +1558,7 @@ describe('Gradebook page', () => {
 		mountPage();
 		await flushUi();
 		await openTask('Rubric task');
+		await openStudentDrawer();
 
 		const text = document.body.textContent || '';
 		expect(text).toContain('Criteria Breakdown');

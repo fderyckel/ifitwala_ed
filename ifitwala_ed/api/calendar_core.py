@@ -49,14 +49,7 @@ def _resolve_employee_for_user(
     employment_status_filter=None,
 ) -> Optional[dict]:
     """
-    Resolve employee linkage for a user with legacy-safe fallback.
-
-    Primary path:
-    - Employee.user_id == user
-
-    Fallback path (legacy data):
-    - exactly one Employee matches employee_professional_email == User.email
-    - user_id on that row is blank or already points to this same user
+    Resolve employee linkage for a user from the canonical Employee.user_id link.
     """
     wanted_fields = list(fields or ["name"])
     if "name" not in wanted_fields:
@@ -70,29 +63,7 @@ def _resolve_employee_for_user(
     if direct_row:
         return direct_row
 
-    login_email = (frappe.db.get_value("User", user, "email") or user or "").strip()
-    if not login_email:
-        return None
-
-    fallback_filters = {"employee_professional_email": login_email}
-    if employment_status_filter is not None:
-        fallback_filters["employment_status"] = employment_status_filter
-
-    fallback_rows = frappe.get_all(
-        "Employee",
-        filters=fallback_filters,
-        fields=[*wanted_fields, "user_id"],
-        limit=2,
-    )
-    if len(fallback_rows) != 1:
-        return None
-
-    row = fallback_rows[0]
-    mapped_user = str(row.get("user_id") or "").strip()
-    if mapped_user and mapped_user != user:
-        return None
-
-    return {field: row.get(field) for field in wanted_fields}
+    return None
 
 
 def _system_tzinfo() -> pytz.timezone:

@@ -61,7 +61,7 @@ class TestLeadershipProvider(FrappeTestCase):
         )
 
         with patch(
-            "ifitwala_ed.website.public_people.build_employee_image_variants",
+            "ifitwala_ed.website.public_people.build_public_employee_image_variants",
             return_value={"original": None, "card": None, "medium": None, "thumb": None},
         ):
             payload = provider.get_context(
@@ -114,7 +114,7 @@ class TestLeadershipProvider(FrappeTestCase):
         _make_employee(school=school.name, organization=organization.name, designation=teacher.name, first_name="Cleo")
 
         with patch(
-            "ifitwala_ed.website.public_people.build_employee_image_variants",
+            "ifitwala_ed.website.public_people.build_public_employee_image_variants",
             return_value={"original": None, "card": None, "medium": None, "thumb": None},
         ):
             payload = provider.get_context(
@@ -211,7 +211,7 @@ class TestLeadershipProvider(FrappeTestCase):
         )
 
         with patch(
-            "ifitwala_ed.website.public_people.build_employee_image_variants",
+            "ifitwala_ed.website.public_people.build_public_employee_image_variants",
             return_value={"original": None, "card": None, "medium": None, "thumb": None},
         ):
             payload = provider.get_context(
@@ -268,7 +268,7 @@ class TestLeadershipProvider(FrappeTestCase):
         employee.save()
 
         with patch(
-            "ifitwala_ed.website.public_people.build_employee_image_variants",
+            "ifitwala_ed.website.public_people.build_public_employee_image_variants",
             return_value={"original": None, "card": None, "medium": None, "thumb": None},
         ):
             payload = provider.get_context(

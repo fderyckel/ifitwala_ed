@@ -12,9 +12,11 @@ from frappe.utils import add_days, get_datetime, getdate, now_datetime, strip_ht
 from frappe.utils.caching import redis_cache
 
 from ifitwala_ed.api import teaching_plans as teaching_plans_api
+from ifitwala_ed.api.org_comm_utils import get_school_organization_map
 from ifitwala_ed.api.org_communication_interactions import get_seen_org_communication_names
 from ifitwala_ed.schedule.schedule_utils import get_effective_schedule_for_ay, get_rotation_dates
-from ifitwala_ed.utilities.image_utils import apply_preferred_student_images
+from ifitwala_ed.utilities.employee_utils import get_ancestor_organizations
+from ifitwala_ed.utilities.image_utils import PROFILE_IMAGE_DERIVATIVE_SLOTS, apply_preferred_student_images
 from ifitwala_ed.utilities.school_tree import get_descendant_schools
 
 FORBIDDEN_PAYLOAD_KEYS = {"rotation_day", "block_number"}
@@ -51,6 +53,7 @@ def get_guardian_home_snapshot(anchor_date=None, school_days=7, debug=0):
             "guardian": {"name": None},
         },
         "family": {"children": []},
+        "consents": {"pending_count": 0, "overdue_count": 0, "items": []},
         "policies": {"pending_count": 0, "items": []},
         "zones": {
             "family_timeline": [],
@@ -75,8 +78,13 @@ def get_guardian_home_snapshot(anchor_date=None, school_days=7, debug=0):
     if not children:
         return _finalize_payload(payload, debug_mode, debug_warnings)
 
+    from ifitwala_ed.api.family_consent import get_guardian_consent_home_summary
     from ifitwala_ed.api.guardian_policy import get_guardian_policy_home_summary
 
+    payload["consents"] = get_guardian_consent_home_summary(
+        guardian_name=guardian_name,
+        children=children,
+    )
     payload["policies"] = get_guardian_policy_home_summary(
         guardian_name=guardian_name,
         children=children,
@@ -221,7 +229,14 @@ def _resolve_guardian_scope(user: str) -> Tuple[str, List[Dict[str, Any]]]:
         fields=["name", "student_full_name", "anchor_school", "student_image"],
         order_by="student_full_name asc, name asc",
     )
-    apply_preferred_student_images(students, student_field="name", image_field="student_image")
+    apply_preferred_student_images(
+        students,
+        student_field="name",
+        image_field="student_image",
+        slots=PROFILE_IMAGE_DERIVATIVE_SLOTS,
+        fallback_to_original=False,
+        request_missing_derivatives=True,
+    )
 
     children = [
         {
@@ -1213,6 +1228,7 @@ def _build_communication_bundle(
         SELECT
             name,
             title,
+            organization,
             publish_from,
             publish_to,
             creation,
@@ -1236,7 +1252,22 @@ def _build_communication_bundle(
 
     child_groups = {group for groups in membership.values() for group in groups}
     child_schools = {child.get("school") for child in children if child.get("school")}
+    school_org_map = get_school_organization_map(child_schools)
+    child_organization_targets: set[str] = set()
+    for organization_name in {
+        school_org_map.get(str(school_name or "").strip())
+        for school_name in child_schools
+        if school_org_map.get(str(school_name or "").strip())
+    }:
+        if not organization_name:
+            continue
+        child_organization_targets.add(organization_name)
+        try:
+            child_organization_targets.update(get_ancestor_organizations(organization_name) or [])
+        except Exception:
+            continue
     candidate_names = [row.get("name") for row in candidates if row.get("name")]
+    candidate_org_by_name = {row.get("name"): row.get("organization") for row in candidates if row.get("name")}
     audience_rows = frappe.get_all(
         "Org Communication Audience",
         filters={"parent": ["in", candidate_names]},
@@ -1246,6 +1277,7 @@ def _build_communication_bundle(
     for row in audience_rows:
         parent = row.get("parent")
         if parent:
+            row["organization"] = candidate_org_by_name.get(parent)
             audience_by_comm[parent].append(row)
 
     descendants_cache: Dict[str, set[str]] = {}
@@ -1274,6 +1306,8 @@ def _build_communication_bundle(
                 aud_school=row.get("school"),
                 include_descendants=int(row.get("include_descendants") or 0) == 1,
             )
+        if mode == "Organization":
+            return bool(row.get("organization") and row.get("organization") in child_organization_targets)
         if mode == "Team":
             return False
 
@@ -1285,6 +1319,8 @@ def _build_communication_bundle(
                 aud_school=row.get("school"),
                 include_descendants=int(row.get("include_descendants") or 0) == 1,
             )
+        if row.get("organization"):
+            return row.get("organization") in child_organization_targets
         return False
 
     visible: List[Dict[str, Any]] = []
@@ -1361,13 +1397,13 @@ def _build_preparation_items(
     family_timeline: List[Dict[str, Any]],
     communication_bundle: Dict[str, Any],
 ) -> List[Dict[str, Any]]:
-    out: List[Dict[str, Any]] = []
+    prioritized_items: List[Tuple[int, Dict[str, Any]]] = []
     counts: Dict[Tuple[str, str], int] = defaultdict(int)
 
     def can_add(student: str, date_str: str) -> bool:
         return counts[(student, date_str)] < PREP_CAP_PER_CHILD_DAY
 
-    def add_item(item: Dict[str, Any]):
+    def add_item(item: Dict[str, Any], *, priority: int):
         student = item.get("student")
         date_str = item.get("date")
         if not student or not date_str:
@@ -1375,7 +1411,7 @@ def _build_preparation_items(
         if not can_add(student, date_str):
             return
         counts[(student, date_str)] += 1
-        out.append(item)
+        prioritized_items.append((priority, item))
 
     for day in family_timeline:
         day_date = day.get("date")
@@ -1383,17 +1419,6 @@ def _build_preparation_items(
             student = child.get("student")
             if not student or not day_date:
                 continue
-
-            for chip in child.get("assessments_upcoming", []):
-                add_item(
-                    {
-                        "student": student,
-                        "date": day_date,
-                        "label": _("Prepare for: {0}").format(chip.get("title") or _("Assessment")),  # noqa: F823
-                        "source": "task",
-                        "related": {"task_delivery": chip.get("task_delivery")},
-                    }
-                )
 
             for chip in child.get("tasks_due", []):
                 add_item(
@@ -1403,7 +1428,20 @@ def _build_preparation_items(
                         "label": _("Due soon: {0}").format(chip.get("title") or _("Task")),
                         "source": "task",
                         "related": {"task_delivery": chip.get("task_delivery")},
-                    }
+                    },
+                    priority=0,
+                )
+
+            for chip in child.get("assessments_upcoming", []):
+                add_item(
+                    {
+                        "student": student,
+                        "date": day_date,
+                        "label": _("Prepare for: {0}").format(chip.get("title") or _("Assessment")),  # noqa: F823
+                        "source": "task",
+                        "related": {"task_delivery": chip.get("task_delivery")},
+                    },
+                    priority=1,
                 )
 
             for block in child.get("blocks", []):
@@ -1421,15 +1459,15 @@ def _build_preparation_items(
                                 "end_time": block.get("end_time"),
                             }
                         },
-                    }
+                    },
+                    priority=2,
                 )
 
     # Communication-to-prep is intentionally conservative in Phase-1:
     # no synthetic child mapping; keep communication in attention/recent only.
-    _ = communication_bundle
 
-    out.sort(key=lambda x: (x.get("date"), x.get("student"), x.get("label")))
-    return out[:80]
+    prioritized_items.sort(key=lambda row: (row[1].get("date"), row[1].get("student"), row[0], row[1].get("label")))
+    return [item for _, item in prioritized_items[:80]]
 
 
 def _build_recent_activity(

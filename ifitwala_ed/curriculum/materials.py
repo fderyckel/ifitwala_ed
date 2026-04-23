@@ -7,7 +7,7 @@ import frappe
 from frappe import _
 
 from ifitwala_ed.api import student_groups as student_groups_api
-from ifitwala_ed.utilities.file_classification_contract import LEARNING_RESOURCE_PURPOSE
+from ifitwala_ed.utilities.governed_file_contract import LEARNING_RESOURCE_PURPOSE
 
 MATERIAL_TYPE_FILE = "File"
 MATERIAL_TYPE_REFERENCE_LINK = "Reference Link"

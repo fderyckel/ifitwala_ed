@@ -55,6 +55,11 @@ One page. Multiple lenses. No duplicated dashboards.
 
 Use this page for desk-equivalent, row-level attendance auditing (filters, grouped rows, dynamic code columns, and pagination). Keep `/staff/analytics/attendance` as the pattern-first executive surface.
 
+Ledger-specific UI contract:
+
+* Window presets live in the page header actions, not inside the filter grid.
+* Program options must be derived from the selected school scope so sibling-school programs do not appear.
+
 **Persistent layout**
 
 * FiltersBar (date range, school, program, student_group)

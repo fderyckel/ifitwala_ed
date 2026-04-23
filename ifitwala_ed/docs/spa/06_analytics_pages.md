@@ -421,6 +421,39 @@ Why this is locked:
 
 If the page cannot prove the failure is permission-related, it must show an honest error state instead.
 
+---
+
+### 5.6 Analytics page header contract
+
+Status: Implemented
+
+Code refs:
+- `ifitwala_ed/ui-spa/src/styles/components.css`
+- `ifitwala_ed/ui-spa/src/pages/staff/analytics/AcademicLoad.vue`
+- `ifitwala_ed/ui-spa/src/pages/staff/analytics/AttendanceAnalytics.vue`
+- `ifitwala_ed/ui-spa/src/pages/staff/analytics/AttendanceLedger.vue`
+- `ifitwala_ed/ui-spa/src/pages/staff/analytics/EnrollmentAnalytics.vue`
+- `ifitwala_ed/ui-spa/src/pages/staff/analytics/InquiryAnalytics.vue`
+- `ifitwala_ed/ui-spa/src/pages/staff/analytics/PolicySignatureAnalytics.vue`
+- `ifitwala_ed/ui-spa/src/pages/staff/analytics/RoomUtilization.vue`
+- `ifitwala_ed/ui-spa/src/pages/staff/analytics/StudentDemographicAnalytics.vue`
+- `ifitwala_ed/ui-spa/src/pages/staff/analytics/StudentLogAnalytics.vue`
+- `ifitwala_ed/ui-spa/src/pages/staff/analytics/StudentOverview.vue`
+
+Test refs:
+- None
+
+Rules:
+
+1. The first content block inside `analytics-shell` is one route-level page header, before `FiltersBar`, KPI rows, or data cards.
+2. The header intro block stays left-aligned on every breakpoint. Do not center or right-anchor the title to compensate for pills, buttons, or selector width.
+3. The route title uses `<h1 class="type-h1 text-canopy">...</h1>`.
+4. The optional subtitle / top explanation uses `<p class="type-meta text-slate-token/80">...</p>`.
+5. `type-h2`, `type-caption`, and raw `text-*` sizing classes are not allowed for the route-level analytics page title or subtitle.
+6. Date-range pills, refresh actions, export replacements, and other page-scoped controls belong in a trailing actions cluster only.
+7. The presence or width of actions must never visually re-anchor the intro block away from the left edge of the shell rhythm.
+8. If a page needs more than one short sentence of operational context, keep the subtitle concise and move secondary detail into badges, helper chips, or the first surface below the header.
+
 ## 6. Performance & Query Design
 
 ### 6.1 Prefer one indexed query
@@ -515,6 +548,8 @@ Rules:
 ❌ Aggregating before permission checks
 ❌ Optimistic analytics updates
 ❌ Pagination excluded from payload
+❌ Centered or right-anchored route-level analytics title blocks
+❌ `type-h2`, `type-caption`, or raw `text-*` utilities on route-level analytics titles/subtitles
 ❌ Hidden heatmap visualMap with no explicit `inRange` palette
 ❌ Drill-down drawer rows that provide names but no direct action link
 ❌ Donut hover emphasis that causes visual jitter/flicker

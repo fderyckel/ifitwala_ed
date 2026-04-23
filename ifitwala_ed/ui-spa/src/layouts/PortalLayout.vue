@@ -16,6 +16,7 @@
 				:is-mobile-open="isMobileSidebarOpen"
 				:is-rail-expanded="isDesktopRailExpanded"
 				:active-section="activeSection"
+				:communication-unread-count="communicationUnreadCount"
 				@close-mobile="isMobileSidebarOpen = false"
 				@toggle-rail="toggleRail"
 			/>
@@ -36,12 +37,17 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import PortalNavbar from '@/components/PortalNavbar.vue';
 import PortalSidebar from '@/components/PortalSidebar.vue';
 import StudentContextSidebar from '@/components/StudentContextSidebar.vue';
 import PortalFooter from '@/components/PortalFooter.vue';
+import {
+	getGuardianPortalChrome,
+	getStudentPortalChrome,
+} from '@/lib/services/portal/portalChromeService';
+import { SIGNAL_ORG_COMMUNICATION_INVALIDATE, uiSignals } from '@/lib/uiSignals';
 
 type PortalSection = 'student' | 'guardian';
 
@@ -53,6 +59,9 @@ const STORAGE_KEYS: Record<PortalSection, string> = {
 const route = useRoute();
 const isMobileSidebarOpen = ref(false);
 const isDesktopRailExpanded = ref(false);
+const communicationUnreadCount = ref(0);
+let portalChromeRequestId = 0;
+let disposeOrgCommunicationInvalidate: (() => void) | null = null;
 
 const activeSection = computed<PortalSection>(() => {
 	if (String(route.path || '').startsWith('/guardian')) return 'guardian';
@@ -85,11 +94,29 @@ function writeRailPreference(section: PortalSection, expanded: boolean) {
 	}
 }
 
+async function refreshPortalChrome(section: PortalSection = activeSection.value) {
+	const requestId = ++portalChromeRequestId;
+	try {
+		const response =
+			section === 'guardian' ? await getGuardianPortalChrome() : await getStudentPortalChrome();
+		if (requestId !== portalChromeRequestId || activeSection.value !== section) {
+			return;
+		}
+		communicationUnreadCount.value = response.counts.unread_communications || 0;
+	} catch {
+		if (requestId !== portalChromeRequestId || activeSection.value !== section) {
+			return;
+		}
+		communicationUnreadCount.value = 0;
+	}
+}
+
 watch(
 	activeSection,
 	section => {
 		isDesktopRailExpanded.value = readRailPreference(section);
 		isMobileSidebarOpen.value = false;
+		void refreshPortalChrome(section);
 	},
 	{ immediate: true }
 );
@@ -112,4 +139,15 @@ function toggleSidebar() {
 function toggleRail() {
 	isDesktopRailExpanded.value = !isDesktopRailExpanded.value;
 }
+
+disposeOrgCommunicationInvalidate = uiSignals.subscribe(
+	SIGNAL_ORG_COMMUNICATION_INVALIDATE,
+	() => {
+		void refreshPortalChrome();
+	}
+);
+
+onBeforeUnmount(() => {
+	if (disposeOrgCommunicationInvalidate) disposeOrgCommunicationInvalidate();
+});
 </script>

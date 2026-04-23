@@ -3,7 +3,7 @@
  "allow_import": 1,
  "allow_rename": 1,
  "autoname": "hash",
- "creation": "2026-03-21 13:18:35.000000",
+ "creation": "2026-03-21 13:18:35",
  "description": "Controls how the Academic Load dashboard converts weekly teaching, student counts, activities, meetings, and school events into one comparable load score. Total load score = teaching weight x weekly teaching hours + student weight x (students taught / student ratio divisor) + activity weight x weekly activity hours + meeting weight x weekly average meeting hours + school event weight x weekly average event hours. Thresholds then classify the score as Low, Normal, High, or Critical.",
  "doctype": "DocType",
  "engine": "InnoDB",
@@ -16,16 +16,19 @@
   "teaching_weight",
   "student_weight",
   "student_ratio_divisor",
+  "column_break_rruw",
   "activity_weight",
   "meeting_weight",
   "school_event_weight",
   "window_rules_section",
   "meeting_window_days",
   "future_horizon_days",
+  "column_break_couw",
   "meeting_blend_mode",
   "thresholds_section",
   "underutilized_threshold",
   "high_load_threshold",
+  "column_break_cgbz",
   "overload_threshold",
   "exclusions_section",
   "exclude_cancelled_meetings",
@@ -192,11 +195,23 @@
    "fieldname": "notes",
    "fieldtype": "Small Text",
    "label": "Notes"
+  },
+  {
+   "fieldname": "column_break_rruw",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "column_break_couw",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "column_break_cgbz",
+   "fieldtype": "Column Break"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-03-22 14:00:00.000000",
+ "modified": "2026-04-15 01:03:23.284987",
  "modified_by": "Administrator",
  "module": "School Settings",
  "name": "Academic Load Policy",

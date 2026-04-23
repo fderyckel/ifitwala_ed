@@ -212,6 +212,37 @@ describe('StaffHome', () => {
 		});
 	});
 
+	it('opens the meeting quick action in ad-hoc mode', async () => {
+		getStaffHomeHeaderMock.mockResolvedValue({
+			first_name: 'Kis',
+			full_name: 'Kis Bangkok',
+			capabilities: {
+				quick_action_create_event: true,
+				quick_action_create_meeting: true,
+				quick_action_create_school_event: false,
+			},
+		});
+		listFocusItemsMock.mockResolvedValue([]);
+
+		mountStaffHome();
+		await flushUi();
+
+		const meetingButton = Array.from(
+			document.querySelectorAll('[data-testid="staff-home-quick-actions"] button')
+		).find(button => (button.textContent || '').includes('Schedule meeting'));
+
+		expect(meetingButton).toBeDefined();
+
+		meetingButton?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		await flushUi();
+
+		expect(overlayOpenMock).toHaveBeenCalledWith('event-quick-create', {
+			eventType: 'meeting',
+			lockEventType: true,
+			meetingMode: 'ad_hoc',
+		});
+	});
+
 	it('shows room utilization in explore links without exposing scheduling analytics links', async () => {
 		getStaffHomeHeaderMock.mockResolvedValue({
 			first_name: 'Mali',
@@ -232,5 +263,60 @@ describe('StaffHome', () => {
 		expect(exploreLinks?.textContent || '').toContain('Room Utilization');
 		expect(analyticsCategories?.textContent || '').toContain('Room Occupancy');
 		expect(analyticsCategories?.textContent || '').not.toContain('Bus & Route Load');
+	});
+
+	it('surfaces forms and signatures alongside policy acknowledgments when compliance analytics are enabled', async () => {
+		getStaffHomeHeaderMock.mockResolvedValue({
+			first_name: 'Mali',
+			full_name: 'Mali Bangkok',
+			capabilities: {
+				analytics_policy_signatures: true,
+			},
+		});
+		listFocusItemsMock.mockResolvedValue([]);
+
+		mountStaffHome();
+		await flushUi();
+
+		const analyticsCategories = document.querySelector('.staff-home__analytics-category-grid');
+		expect(analyticsCategories?.textContent || '').toContain('Policy Acknowledgments');
+		expect(analyticsCategories?.textContent || '').toContain('Forms & Signatures');
+	});
+
+	it('keeps create communication visible but disabled when org scope is missing', async () => {
+		getStaffHomeHeaderMock.mockResolvedValue({
+			first_name: 'Mali',
+			full_name: 'Mali Bangkok',
+			capabilities: {
+				quick_action_org_communication: false,
+			},
+			quick_actions: {
+				org_communication: {
+					enabled: false,
+					blocked_reason:
+						'Set a default organization or ask an administrator to grant your organization scope before creating communications.',
+				},
+			},
+		});
+		listFocusItemsMock.mockResolvedValue([]);
+
+		mountStaffHome();
+		await flushUi();
+
+		const quickActions = document.querySelector('[data-testid="staff-home-quick-actions"]');
+		const createCommunicationButton = Array.from(
+			quickActions?.querySelectorAll('button') || []
+		).find(button => (button.textContent || '').includes('Create communication')) as
+			| HTMLButtonElement
+			| undefined;
+
+		expect(quickActions?.textContent || '').toContain('Create communication');
+		expect(quickActions?.textContent || '').toContain('Set a default organization');
+		expect(createCommunicationButton?.disabled).toBe(true);
+
+		createCommunicationButton?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		await flushUi();
+
+		expect(overlayOpenMock).not.toHaveBeenCalled();
 	});
 });

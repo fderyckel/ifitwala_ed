@@ -100,7 +100,7 @@ describe('communicationInteractionService', () => {
 		})
 	})
 
-	it('markOrgCommunicationRead sends canonical payload without emitting invalidate', async () => {
+	it('markOrgCommunicationRead sends canonical payload and emits invalidate on success', async () => {
 		const service = createCommunicationInteractionService()
 		resourceRecords[4].submit.mockResolvedValue({
 			ok: true,
@@ -115,6 +115,8 @@ describe('communicationInteractionService', () => {
 		expect(resourceRecords[4].submit).toHaveBeenCalledWith({
 			org_communication: 'COMM-0003',
 		})
-		expect(emitMock).not.toHaveBeenCalled()
+		expect(emitMock).toHaveBeenCalledWith('org_communication:invalidate', {
+			names: ['COMM-0003'],
+		})
 	})
 })

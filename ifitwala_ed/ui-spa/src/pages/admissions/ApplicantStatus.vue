@@ -2,30 +2,35 @@
 
 <template>
 	<div class="admissions-page">
-		<div>
-			<p class="type-h2 text-ink">{{ __('Application status') }}</p>
-			<p class="mt-1 type-caption text-ink/60">
-				{{ __('Track the current status of your admissions application.') }}
-			</p>
-		</div>
+		<header class="page-header">
+			<div class="page-header__intro">
+				<h1 class="type-h1 text-ink">{{ __('Application status') }}</h1>
+				<p class="type-meta text-ink/70">
+					{{ __('Track the current status of your admissions application.') }}
+				</p>
+			</div>
+		</header>
 
-		<div class="rounded-2xl border border-border/70 bg-white px-4 py-4 shadow-soft">
+		<div class="admissions-card admissions-card--plain">
 			<p class="type-body-strong text-ink">{{ __('Current status') }}</p>
-			<p class="mt-2 type-h3 text-ink">{{ portalStatus || __('—') }}</p>
+			<p class="mt-2">
+				<span class="admissions-status-pill admissions-status-pill--quiet type-caption">
+					{{ portalStatus || __('—') }}
+				</span>
+			</p>
 			<p v-if="readOnlyReason" class="mt-2 type-caption text-ink/60">
 				{{ readOnlyReason }}
 			</p>
 		</div>
 
-		<div
-			v-if="enrollmentOffer"
-			class="rounded-2xl border border-border/70 bg-white px-4 py-4 shadow-soft"
-		>
+		<div v-if="enrollmentOffer" class="admissions-card admissions-card--plain">
 			<div class="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
 				<div>
 					<p class="type-body-strong text-ink">{{ __('Enrollment offer') }}</p>
-					<p class="mt-1 type-caption text-ink/65">
-						{{ enrollmentOffer.status || __('Pending') }}
+					<p class="mt-1">
+						<span class="admissions-status-pill admissions-status-pill--quiet type-caption">
+							{{ enrollmentOffer.status || __('Pending') }}
+						</span>
 					</p>
 				</div>
 				<p v-if="enrollmentOffer.offer_expires_on" class="type-caption text-ink/60">
@@ -34,11 +39,11 @@
 			</div>
 
 			<div class="mt-3 grid gap-3 sm:grid-cols-2">
-				<div class="rounded-xl border border-border/60 bg-surface/40 px-3 py-2">
+				<div class="admissions-detail-card">
 					<p class="type-caption text-ink/60">{{ __('Program Offering') }}</p>
 					<p class="type-body text-ink">{{ enrollmentOffer.program_offering || __('—') }}</p>
 				</div>
-				<div class="rounded-xl border border-border/60 bg-surface/40 px-3 py-2">
+				<div class="admissions-detail-card">
 					<p class="type-caption text-ink/60">{{ __('Academic Year') }}</p>
 					<p class="type-body text-ink">{{ enrollmentOffer.academic_year || __('—') }}</p>
 				</div>
@@ -51,16 +56,13 @@
 				{{ enrollmentOffer.offer_message }}
 			</p>
 
-			<div
-				v-if="enrollmentOffer.course_choices_available"
-				class="mt-3 rounded-xl border border-border/60 bg-surface/40 px-3 py-3"
-			>
+			<div v-if="enrollmentOffer.course_choices_available" class="mt-3 admissions-detail-card">
 				<div class="flex flex-wrap items-center justify-between gap-3">
 					<div>
 						<p class="type-body text-ink">{{ __('Course choices') }}</p>
 						<p
 							class="mt-1 type-caption whitespace-pre-wrap"
-							:class="needsCourseChoices ? 'text-amber-800' : 'text-ink/60'"
+							:class="needsCourseChoices ? 'text-clay' : 'text-ink/60'"
 						>
 							{{
 								needsCourseChoices
@@ -71,7 +73,7 @@
 					</div>
 					<RouterLink
 						:to="buildRouteLocation('admissions-course-choices')"
-						class="rounded-full border border-border/70 bg-white px-4 py-2 type-caption text-ink/75"
+						class="if-button if-button--secondary"
 					>
 						{{ needsCourseChoices ? __('Open course choices') : __('View course choices') }}
 					</RouterLink>
@@ -85,7 +87,7 @@
 				<button
 					v-if="enrollmentOffer.can_accept"
 					type="button"
-					class="rounded-full bg-canopy px-4 py-2 type-caption text-white disabled:opacity-60"
+					class="if-button if-button--primary"
 					:disabled="acceptOfferDisabled"
 					@click="acceptOffer"
 				>
@@ -94,7 +96,7 @@
 				<button
 					v-if="enrollmentOffer.can_decline"
 					type="button"
-					class="rounded-full border border-rose-200 bg-white px-4 py-2 type-caption text-rose-900 disabled:opacity-60"
+					class="if-button if-button--danger"
 					:disabled="offerLoading"
 					@click="declineOffer"
 				>
@@ -102,30 +104,26 @@
 				</button>
 			</div>
 
-			<p v-if="offerError" class="mt-3 type-caption text-rose-800 whitespace-pre-wrap">
+			<p v-if="offerError" class="mt-3 type-caption text-flame whitespace-pre-wrap">
 				{{ offerError }}
 			</p>
 		</div>
 
-		<div v-if="loading" class="rounded-2xl border border-border/70 bg-surface px-4 py-4">
+		<div v-if="loading" class="admissions-state-card">
 			<p class="type-caption text-ink/65">{{ __('Loading recommendation status…') }}</p>
 		</div>
 
-		<div v-else-if="error" class="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3">
-			<p class="type-body-strong text-rose-900">
+		<div v-else-if="error" class="if-banner if-banner--danger">
+			<p class="if-banner__title type-body-strong">
 				{{ __('Unable to load recommendation status') }}
 			</p>
-			<p class="mt-1 type-caption text-rose-900/80 whitespace-pre-wrap">{{ error }}</p>
-			<button
-				type="button"
-				class="mt-3 rounded-full border border-rose-200 bg-white px-4 py-2 type-caption text-rose-900"
-				@click="loadSnapshot"
-			>
+			<p class="if-banner__body mt-1 type-caption whitespace-pre-wrap">{{ error }}</p>
+			<button type="button" class="if-button if-button--secondary mt-3" @click="loadSnapshot">
 				{{ __('Try again') }}
 			</button>
 		</div>
 
-		<div v-else class="rounded-2xl border border-border/70 bg-white px-4 py-4 shadow-soft">
+		<div v-else class="admissions-card admissions-card--plain">
 			<p class="type-body-strong text-ink">{{ __('Recommendations') }}</p>
 			<p class="mt-1 type-caption text-ink/65">{{ recommendationSummaryLine }}</p>
 			<p class="mt-2 type-caption text-ink/55">
@@ -140,7 +138,7 @@
 				<div
 					v-for="row in recommendationRows"
 					:key="row.recommendation_template"
-					class="rounded-xl border border-border/60 bg-surface/40 px-3 py-2"
+					class="admissions-detail-card"
 				>
 					<p class="type-body text-ink">{{ row.template_name }}</p>
 					<p class="type-caption text-ink/60">
@@ -153,7 +151,7 @@
 				</div>
 			</div>
 
-			<p v-if="missingTemplates.length" class="mt-3 type-caption text-amber-800">
+			<p v-if="missingTemplates.length" class="mt-3 type-caption text-clay">
 				{{ __('Still pending: {0}').replace('{0}', missingTemplates.join(', ')) }}
 			</p>
 		</div>

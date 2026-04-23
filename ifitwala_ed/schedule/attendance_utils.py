@@ -1,8 +1,6 @@
 # Copyright (c) 2025, François de Ryckel and contributors
 # For license information, please see license.txt
 
-# ifitwala_ed/schedule/attendace_utils.py
-
 """
 Attendance utilities for Ifitwala_Ed.
 
@@ -23,6 +21,8 @@ What is NOT here:
     → see api/calendar.py
 """
 
+from __future__ import annotations
+
 from typing import Dict, List
 
 import frappe
@@ -32,7 +32,10 @@ from frappe.utils import getdate, now_datetime, nowdate
 from ifitwala_ed.schedule.schedule_utils import get_effective_schedule_for_ay, get_rotation_dates
 from ifitwala_ed.schedule.student_group_scheduling import get_school_for_student_group
 from ifitwala_ed.school_settings.doctype.term.term import get_current_term
-from ifitwala_ed.utilities.image_utils import apply_preferred_student_images
+from ifitwala_ed.utilities.image_utils import (
+    PROFILE_IMAGE_DERIVATIVE_SLOTS,
+    apply_preferred_student_images,
+)
 
 ATT_CODE_FIELD = "attendance_code"
 ATT_CODE_DOCTYPE = "Student Attendance Code"
@@ -43,11 +46,37 @@ LIMIT_DEFAULT = 30  # UI paging only
 DEFAULT_PAGE_LEN = 25
 
 MEETING_DATES_TTL = 24 * 60 * 60  # 1 day
+ATTENDANCE_ROSTER_IMAGE_SLOTS = PROFILE_IMAGE_DERIVATIVE_SLOTS
 
 
 # ---------------------------------------------------------------------
 # Helpers exposed to the JS page
 # ---------------------------------------------------------------------
+
+
+def resolve_student_group_schedule_name(student_group: str | None = None, *, sg_doc=None) -> str | None:
+    """
+    Resolve the schedule attendance should use for a Student Group.
+
+    Priority:
+    1. Explicit Student Group.school_schedule
+    2. Effective Academic-Year schedule for the group's school scope
+    """
+    if sg_doc is None:
+        if not student_group:
+            return None
+        sg_doc = frappe.get_doc(SG_DOCTYPE, student_group)
+
+    schedule_name = getattr(sg_doc, "school_schedule", None) or None
+    if schedule_name:
+        return schedule_name
+
+    academic_year = getattr(sg_doc, "academic_year", None) or None
+    school = get_school_for_student_group(sg_doc.name)
+    if not academic_year or not school:
+        return None
+
+    return get_effective_schedule_for_ay(academic_year, school)
 
 
 def get_student_group_students(
@@ -83,7 +112,14 @@ def get_student_group_students(
         {"sg": student_group, "limit": page_length, "offset": start},
         as_dict=True,
     )
-    return apply_preferred_student_images(rows, student_field="student", image_field="student_image")
+    return apply_preferred_student_images(
+        rows,
+        student_field="student",
+        image_field="student_image",
+        slots=ATTENDANCE_ROSTER_IMAGE_SLOTS,
+        fallback_to_original=False,
+        request_missing_derivatives=True,
+    )
 
 
 @frappe.whitelist()
@@ -199,11 +235,12 @@ def fetch_blocks_for_day(student_group: str, attendance_date: str) -> List[int]:
     return the list of block numbers scheduled for that group on that day.
     """
     sg = frappe.get_cached_doc("Student Group", student_group)
-    if not sg.school_schedule:
+    schedule_name = resolve_student_group_schedule_name(sg_doc=sg)
+    if not schedule_name:
         return []
 
     # 1. Find the rotation_day for that date
-    rot_dates = get_rotation_dates(sg.school_schedule, sg.academic_year, include_holidays=False)
+    rot_dates = get_rotation_dates(schedule_name, sg.academic_year, include_holidays=False)
     rotation_map = {rd["date"].isoformat(): rd["rotation_day"] for rd in rot_dates}
     rotation_day = rotation_map.get(attendance_date)
     if not rotation_day:
@@ -284,6 +321,7 @@ def bulk_upsert_attendance(payload=None):
     for g in group_names:
         sg = frappe.get_cached_doc("Student Group", g)
         group_school = get_school_for_student_group(sg.name)
+        schedule_name = resolve_student_group_schedule_name(sg_doc=sg)
 
         # Term window (today must be within current term if one exists)
         # today = getdate()  # noqa: F841
@@ -320,7 +358,7 @@ def bulk_upsert_attendance(payload=None):
         sched_map = {(int(r.rotation_day), int(r.block_number)): r for r in schedule_rows if r.block_number is not None}
 
         # Rotation map: date ISO -> rotation_day
-        rot_dates = get_rotation_dates(sg.school_schedule, sg.academic_year, include_holidays=False)
+        rot_dates = get_rotation_dates(schedule_name, sg.academic_year, include_holidays=False) if schedule_name else []
         rotation_map = {rd["date"].isoformat(): int(rd["rotation_day"]) for rd in rot_dates}
 
         # Valid meeting dates (ISO strings) from cached helper
@@ -524,12 +562,7 @@ def get_meeting_dates(student_group: str | None = None, *, limit: int | None = N
 
     sg = frappe.get_doc("Student Group", student_group)
 
-    schedule_name = sg.school_schedule
-    if not schedule_name:
-        schedule_name = get_effective_schedule_for_ay(
-            sg.academic_year,
-            get_school_for_student_group(sg.name),
-        )
+    schedule_name = resolve_student_group_schedule_name(sg_doc=sg)
 
     if not schedule_name:
         rc.set_value(key, [], expires_in_sec=MEETING_DATES_TTL)

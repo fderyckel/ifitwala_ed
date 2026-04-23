@@ -2,10 +2,10 @@
 
 <template>
 	<div class="admissions-page">
-		<div class="flex flex-wrap items-start justify-between gap-4">
-			<div>
-				<p class="type-h2 text-ink">{{ __('Course choices') }}</p>
-				<p class="mt-1 type-caption text-ink/60">
+		<header class="page-header">
+			<div class="page-header__intro">
+				<h1 class="type-h1 text-ink">{{ __('Course choices') }}</h1>
+				<p class="type-meta text-ink/70">
 					{{
 						__(
 							'Choose optional courses from your program offering. Required courses stay visible for reference, and enrollment baskets show which requirement group each course can satisfy.'
@@ -13,13 +13,15 @@
 					}}
 				</p>
 			</div>
-			<RouterLink
-				:to="buildRouteLocation('admissions-status')"
-				class="rounded-full border border-border/70 bg-white px-4 py-2 type-caption text-ink/75"
-			>
-				{{ __('Review offer') }}
-			</RouterLink>
-		</div>
+			<div class="page-header__actions">
+				<RouterLink
+					:to="buildRouteLocation('admissions-status')"
+					class="if-button if-button--secondary"
+				>
+					{{ __('Review offer') }}
+				</RouterLink>
+			</div>
+		</header>
 
 		<div v-if="loading" class="rounded-2xl border border-border/70 bg-surface px-4 py-4">
 			<div class="flex items-center gap-3">
@@ -31,11 +33,7 @@
 		<div v-else-if="error" class="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3">
 			<p class="type-body-strong text-rose-900">{{ __('Unable to load course choices') }}</p>
 			<p class="mt-1 type-caption text-rose-900/80 whitespace-pre-wrap">{{ error }}</p>
-			<button
-				type="button"
-				class="mt-3 rounded-full border border-rose-200 bg-white px-4 py-2 type-caption text-rose-900"
-				@click="loadChoices"
-			>
+			<button type="button" class="if-button if-button--secondary mt-3" @click="loadChoices">
 				{{ __('Try again') }}
 			</button>
 		</div>
@@ -337,7 +335,7 @@
 				<div class="flex flex-wrap items-center gap-3">
 					<button
 						type="button"
-						class="rounded-full bg-ink px-5 py-2 type-caption text-white shadow-soft disabled:opacity-50"
+						class="if-button if-button--primary"
 						:disabled="!canEditChoices || saving || !summary?.has_courses"
 						@click="saveChoices"
 					>

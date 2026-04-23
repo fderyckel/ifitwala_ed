@@ -64,13 +64,15 @@ Rules:
 1. Attachments must no longer require a `Student Group` audience by default.
 2. Multi-school fan-out communications without one authoritative school anchor remain organization-scoped for attachment governance.
 3. Team communications may resolve to school scope when the authoritative `Team.school` exists; otherwise they remain organization-scoped.
-4. Missing `organization` is a blocker and must be explained as such in the UI.
+4. Partial class context must fail closed. If a communication resolves `student_group` context without authoritative `course` and `school`, upload must be rejected with an explicit validation error instead of falling through to school or organization folder routing.
+5. Missing `organization` is a blocker and must be explained as such in the UI.
+6. After the first governed file exists, changing the authoritative attachment context is blocked until governed file rows are removed. This protects Drive governance from post-upload scope drift.
 
 ## 4. Storage Boundary
 
 **Status:** Implemented
-**Code refs:** `ifitwala_ed/setup/doctype/org_communication/attachments.py`, `ifitwala_ed/integrations/drive/org_communications.py`
-**Test refs:** `ifitwala_ed/api/test_org_communication_attachments_unit.py`
+**Code refs:** `ifitwala_ed/setup/doctype/org_communication/attachments.py`, `ifitwala_ed/integrations/drive/org_communications.py`, `ifitwala_drive/services/folders/resolution.py`, `ifitwala_drive/services/integration/ifitwala_ed_org_communications.py`
+**Test refs:** `ifitwala_ed/api/test_org_communication_attachments_unit.py`, `ifitwala_drive/tests/test_org_communication_attachment_upload_flow.py`
 
 Governed folder placement is determined by the resolved attachment context:
 
@@ -92,6 +94,7 @@ Rules:
 1. The UI must not guess any attachment path.
 2. The upload/finalize session must be revalidated against the authoritative communication context before file finalization.
 3. Class-event communication keeps its existing course/student-group placement; the broader contract adds school and organization context rather than replacing governance with raw attachments.
+4. Post-finalize preview/derivative scheduling remains Drive-owned deferred enrichment and must enqueue onto a runtime-valid worker queue. Drive may keep semantic queue classes internally, but org communication uploads must not fail because a semantic queue label was sent directly into Frappe without runtime validation or fallback.
 
 ## 5. UX and Mutation Rules
 
@@ -105,10 +108,10 @@ Rules:
 2. External links use only `ifitwala_ed.api.org_communication_attachments.add_org_communication_link`.
 3. Removal uses only `ifitwala_ed.api.org_communication_attachments.remove_org_communication_attachment`.
 4. Desk must save dirty communications before opening the governed uploader so the server resolves attachment context from persisted state.
-5. Desk must not claim that student-group context is required when organization or school communication contexts are valid.
+5. Desk must not claim that student-group, school, or organization routing locally. The server is the only authority for attachment context resolution.
 6. Raw Desk `Attach` remains non-canonical and is still rejected by controller validation for file rows.
 
-## 6. Visibility and Open URL Contract
+## 6. Visibility and Attachment Action URL Contract
 
 **Status:** Implemented
 **Code refs:** `ifitwala_ed/api/file_access.py`, `ifitwala_ed/api/org_communication_archive.py`, `ifitwala_ed/api/org_comm_utils.py`
@@ -117,6 +120,13 @@ Rules:
 Rules:
 
 1. Attachment reads must continue to enforce the same communication visibility contract as archive/detail reads.
-2. Authorized viewers receive server-owned `open_url` values only.
-3. Private file URLs must never be constructed in the client.
-4. Authored-history owner access remains aligned with the existing `allow_owner=True` attachment-open rule.
+2. Authorized viewers receive server-owned action URLs only.
+3. File rows expose stable Ed-owned `open_url` values, stable Ed-owned `preview_url` values for richer preview flows, and an optional `thumbnail_url` field that Org Communication currently points at the same governed preview route once Drive reports `preview_status = ready`, so inline cards render the richer preview asset instead of an undersized thumbnail. Rows still include a `preview_status` hint so SPA surfaces know when the governed preview route resolves a renderable preview asset instead of the original file, plus an additive nested `attachment_preview` block carrying the shared cross-surface preview DTO now consumed by the shared SPA attachment-preview card layer.
+4. Those stable routes are not durable storage URLs; Drive grants remain short-lived and are resolved at request time.
+5. Private file URLs must never be constructed in the client.
+6. Authored-history owner access remains aligned with the existing `allow_owner=True` attachment-open rule.
+7. For staff, student, and guardian surfaces, Ed-owned Org Communication read routes are the permission boundary. After Ed authorizes the viewer through the communication audience contract, Drive grant issuance must run through the Org Communication communications wrapper and must not re-check raw `Org Communication` doctype role access for that end user.
+8. Archive/detail surfaces must prefer `thumbnail_url` for inline card previews. For Org Communication's current runtime, that field now resolves to the same governed preview route as `preview_url` once the richer preview is ready, so cards stop depending on the smaller dedicated thumbnail derivative. If no governed preview is ready, the surface must fall back to an action-led card instead of attempting to inline the original file.
+9. Thumbnail routes may use short-lived Ed-side redirect caching plus private browser cache headers, but the SPA still receives only stable Ed-owned action URLs rather than provider grants.
+10. External links and non-ready PDFs must still degrade to action-led metadata cards instead of blank embeds or raw-path guesses.
+11. Open and preview routes must not require a secondary `File` row lookup when a safe Drive grant URL is already resolved. If no safe public/external/Drive target exists, the route must fail closed instead of streaming local private bytes. The dedicated Org Communication thumbnail route remains available for explicit card-sized derivative callers and must still fail closed when no safe derivative grant exists; current archive/detail DTOs no longer depend on that route for inline cards.

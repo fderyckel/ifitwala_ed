@@ -46,7 +46,7 @@
    "in_list_view": 1,
    "in_standard_filter": 1,
    "label": "Event Category",
-   "options": "Course\nMeeting\nActivity\nAppointment\nOther"
+   "options": "Appointment\nExtracurricular\nParent Engagement\nStakeholder Engagement\nCeremonial Event\nAdmissions Event\nAcademic Event\nOutreach\nCultural & Community Events\nProfessional Development\nActivity\nCourse\nMeeting\nOther"
   },
   {
    "fieldname": "color",
@@ -156,7 +156,7 @@
  "index_web_pages_for_search": 1,
  "is_calendar_and_gantt": 1,
  "links": [],
- "modified": "2026-03-28 12:32:22.897191",
+ "modified": "2026-04-21 20:36:12.593217",
  "modified_by": "Administrator",
  "module": "School Settings",
  "name": "School Event",

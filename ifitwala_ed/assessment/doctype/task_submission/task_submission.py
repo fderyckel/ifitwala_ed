@@ -119,6 +119,9 @@ class TaskSubmission(Document):
         self.is_late = 1 if (due_date and now > due_date and not extension) else 0
 
     def _validate_evidence_presence(self):
+        if self.is_stub:
+            return
+
         has_attachments = bool(self.get("attachments"))
         has_link = bool((self.link_url or "").strip())
         has_text = bool((self.text_content or "").strip())

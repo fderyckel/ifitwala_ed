@@ -41,7 +41,7 @@
 							:to="item.to"
 							class="portal-sidebar__item group"
 							active-class="portal-sidebar__item--active"
-							:aria-label="item.label"
+							:aria-label="itemAriaLabel(item)"
 							@click="handleNavActivate"
 						>
 							<FeatherIcon :name="item.icon" class="portal-sidebar__icon" />
@@ -49,6 +49,16 @@
 								item.label
 							}}</span>
 							<span class="sr-only">{{ item.label }}</span>
+							<span
+								v-if="badgeCount(item)"
+								class="portal-sidebar__badge type-caption"
+								aria-hidden="true"
+							>
+								{{ badgeLabel(badgeCount(item)) }}
+							</span>
+							<span v-if="badgeCount(item)" class="sr-only">
+								{{ badgeCount(item) }} unread communications
+							</span>
 							<span class="portal-sidebar__tooltip type-caption" aria-hidden="true">{{
 								item.label
 							}}</span>
@@ -146,12 +156,14 @@ type MenuItem = {
 	label: string;
 	icon: string;
 	to: RouteLocationRaw;
+	badge?: 'unread-communications';
 };
 
 const props = defineProps<{
 	isMobileOpen: boolean;
 	isRailExpanded: boolean;
 	activeSection: PortalSection;
+	communicationUnreadCount?: number;
 }>();
 
 const emit = defineEmits<{
@@ -181,21 +193,31 @@ const hasGuardianPortal = computed(() => portalRoles.value.includes('guardian'))
 const studentMenu: MenuItem[] = [
 	{ label: 'Courses', icon: 'book-open', to: { name: 'student-courses' } },
 	{ label: 'Policies', icon: 'shield', to: { name: 'student-policies' } },
+	{ label: 'Forms & Signatures', icon: 'edit-3', to: { name: 'student-consents' } },
 	{ label: 'Portfolio & Journal', icon: 'layers', to: { name: 'student-portfolio' } },
-	{ label: 'Communications', icon: 'message-square', to: { name: 'student-communications' } },
+	{
+		label: 'Communications',
+		icon: 'message-square',
+		to: { name: 'student-communications' },
+		badge: 'unread-communications',
+	},
 	{ label: 'Activities', icon: 'star', to: { name: 'student-activities' } },
 	{ label: 'Student Log', icon: 'file-text', to: { name: 'student-logs' } },
 ];
 
 const guardianMenu: MenuItem[] = [
-	{ label: 'Family Snapshot', icon: 'home', to: { name: 'guardian-home' } },
-	{ label: 'Communications', icon: 'message-square', to: { name: 'guardian-communications' } },
-	{ label: 'Course Selection', icon: 'check-square', to: { name: 'guardian-course-selection' } },
-	{ label: 'Activities', icon: 'star', to: { name: 'guardian-activities' } },
+	{
+		label: 'Communications',
+		icon: 'message-square',
+		to: { name: 'guardian-communications' },
+		badge: 'unread-communications',
+	},
 	{ label: 'Attendance', icon: 'calendar', to: { name: 'guardian-attendance' } },
-	{ label: 'Policies', icon: 'shield', to: { name: 'guardian-policies' } },
-	{ label: 'Finance', icon: 'credit-card', to: { name: 'guardian-finance' } },
+	{ label: 'Activities', icon: 'star', to: { name: 'guardian-activities' } },
 	{ label: 'Monitoring', icon: 'file-text', to: { name: 'guardian-monitoring' } },
+	{ label: 'Finance', icon: 'credit-card', to: { name: 'guardian-finance' } },
+	{ label: 'Policies', icon: 'shield', to: { name: 'guardian-policies' } },
+	{ label: 'Forms & Signatures', icon: 'edit-3', to: { name: 'guardian-consents' } },
 	{ label: 'Showcase Portfolio', icon: 'layers', to: { name: 'guardian-portfolio' } },
 ];
 
@@ -228,7 +250,7 @@ const sidebarLabel = computed(() => {
 });
 
 const homeLabel = computed(() => {
-	if (props.activeSection === 'guardian') return 'Guardian Home';
+	if (props.activeSection === 'guardian') return 'Family Snapshot';
 	return 'Student Home';
 });
 
@@ -241,4 +263,19 @@ const accountItems = [
 	{ label: 'Profile', icon: 'user', href: '/desk/user-profile' },
 	{ label: 'Logout', icon: 'log-out', href: '/logout?redirect-to=%2F' },
 ];
+
+function badgeCount(item: MenuItem) {
+	if (item.badge !== 'unread-communications') return 0;
+	return Math.max(0, Number(props.communicationUnreadCount || 0));
+}
+
+function badgeLabel(count: number) {
+	return count > 9 ? '9+' : String(count);
+}
+
+function itemAriaLabel(item: MenuItem) {
+	const count = badgeCount(item);
+	if (!count) return item.label;
+	return `${item.label}, ${count} unread communications`;
+}
 </script>

@@ -16,7 +16,12 @@ def _teaching_plans_module():
     student_groups_api._instructor_group_names = lambda user: []
 
     file_access_api = ModuleType("ifitwala_ed.api.file_access")
+    file_access_api.get_academic_file_thumbnail_ready_map = lambda file_names: {
+        file_name: True for file_name in file_names or []
+    }
     file_access_api.resolve_academic_file_open_url = lambda **kwargs: "/open/resource"
+    file_access_api.resolve_academic_file_preview_url = lambda **kwargs: "/preview/resource"
+    file_access_api.resolve_academic_file_thumbnail_url = lambda **kwargs: "/thumbnail/resource"
 
     materials_domain = ModuleType("ifitwala_ed.curriculum.materials")
     materials_domain.MATERIAL_TYPE_FILE = "File"
@@ -156,6 +161,45 @@ def _teaching_plans_module():
 
 
 class TestTeachingPlansApi(TestCase):
+    def test_create_class_teaching_plan_defaults_to_active_status(self):
+        with _teaching_plans_module() as module:
+            created = SimpleNamespace(
+                name="CLASS-PLAN-1",
+                course_plan=None,
+                student_group=None,
+                planning_status=None,
+            )
+
+            def _insert(ignore_permissions=False):
+                created.insert_ignore_permissions = ignore_permissions
+                return created
+
+            created.insert = _insert
+
+            with (
+                patch.object(module, "_assert_staff_group_access", return_value=None),
+                patch.object(module, "_group_context", return_value={"course": "COURSE-1"}),
+                patch.object(
+                    module.planning,
+                    "get_course_plan_row",
+                    return_value={"name": "COURSE-PLAN-1", "course": "COURSE-1"},
+                ),
+                patch.object(module.frappe, "new_doc", return_value=created),
+            ):
+                payload = module.create_class_teaching_plan("GROUP-1", "COURSE-PLAN-1")
+
+        self.assertEqual(created.course_plan, "COURSE-PLAN-1")
+        self.assertEqual(created.student_group, "GROUP-1")
+        self.assertEqual(created.planning_status, "Active")
+        self.assertTrue(created.insert_ignore_permissions)
+        self.assertEqual(
+            payload,
+            {
+                "class_teaching_plan": "CLASS-PLAN-1",
+                "student_group": "GROUP-1",
+            },
+        )
+
     def test_fetch_assigned_work_includes_quiz_launch_state_for_students(self):
         with _teaching_plans_module() as module:
             with (
@@ -170,6 +214,8 @@ class TestTeachingPlansApi(TestCase):
                             "class_session": "SESSION-1",
                             "delivery_mode": "Assign Only",
                             "grading_mode": "None",
+                            "requires_submission": 0,
+                            "allow_late_submission": 0,
                             "available_from": None,
                             "due_date": "2026-04-10 09:00:00",
                             "lock_date": None,
@@ -179,17 +225,20 @@ class TestTeachingPlansApi(TestCase):
                             "quiz_max_attempts": 2,
                             "quiz_pass_percentage": 70,
                             "title": "Cells Checkpoint",
+                            "instructions": "<p>Bring your notes.</p><script>alert(1)</script>",
                             "task_type": "Quiz",
                             "unit_plan": "UNIT-1",
                         }
                     ],
                 ),
                 patch.object(module, "_fetch_material_map", return_value={}),
+                patch.object(module._read_models_impl, "sanitize_html", return_value="<p>Bring your notes.</p>"),
                 patch.object(
                     module.frappe,
                     "get_all",
                     return_value=[
                         {
+                            "name": "OUT-1",
                             "task_delivery": "TDL-1",
                             "submission_status": "Submitted",
                             "grading_status": "Not Applicable",
@@ -228,8 +277,71 @@ class TestTeachingPlansApi(TestCase):
 
         self.assertEqual(payload[0]["task_delivery"], "TDL-1")
         self.assertEqual(payload[0]["submission_status"], "Submitted")
+        self.assertEqual(payload[0]["task_outcome"], "OUT-1")
+        self.assertEqual(payload[0]["requires_submission"], 0)
+        self.assertEqual(payload[0]["allow_late_submission"], 0)
+        self.assertEqual(payload[0]["status_label"], "Completed")
         self.assertEqual(payload[0]["quiz_state"]["can_continue"], 1)
         self.assertEqual(payload[0]["quiz_state"]["status_label"], "In Progress")
+        self.assertEqual(payload[0]["instructions_html"], "<p>Bring your notes.</p>")
+
+    def test_fetch_assigned_work_hides_internal_grading_status_labels_for_students(self):
+        with _teaching_plans_module() as module:
+            with (
+                patch.object(
+                    module.frappe.db,
+                    "sql",
+                    return_value=[
+                        {
+                            "task_delivery": "TDL-2",
+                            "delivery_name": "TDL-2",
+                            "task": "TASK-2",
+                            "class_session": "SESSION-1",
+                            "delivery_mode": "Collect Work",
+                            "grading_mode": "Rubric",
+                            "requires_submission": 1,
+                            "allow_late_submission": 1,
+                            "available_from": "2026-04-05 10:00:00",
+                            "due_date": "2026-04-06 09:00:00",
+                            "lock_date": None,
+                            "quiz_question_bank": None,
+                            "quiz_question_count": None,
+                            "quiz_time_limit_minutes": None,
+                            "quiz_max_attempts": None,
+                            "quiz_pass_percentage": None,
+                            "title": "Cell comparison reflection",
+                            "instructions": "Submit your reflection.",
+                            "task_type": "Written Response",
+                            "unit_plan": "UNIT-1",
+                        }
+                    ],
+                ),
+                patch.object(module, "_fetch_material_map", return_value={}),
+                patch.object(module._read_models_impl, "sanitize_html", return_value="<p>Submit your reflection.</p>"),
+                patch.object(
+                    module.frappe,
+                    "get_all",
+                    return_value=[
+                        {
+                            "name": "OUT-2",
+                            "task_delivery": "TDL-2",
+                            "submission_status": "Not Submitted",
+                            "grading_status": "Released",
+                            "is_complete": 0,
+                            "is_published": 1,
+                        }
+                    ],
+                ),
+                patch.object(module, "now_datetime", return_value=datetime(2026, 4, 5, 9, 0, 0)),
+                patch.object(module.quiz_service, "get_student_delivery_state_map", return_value={}),
+            ):
+                payload = module._fetch_assigned_work(
+                    "CLASS-PLAN-1",
+                    audience="student",
+                    student_name="STU-1",
+                )
+
+        self.assertEqual(payload[0]["status_label"], "Completed")
 
     def test_get_student_learning_space_includes_focus_and_next_actions(self):
         with _teaching_plans_module() as module:
@@ -268,7 +380,11 @@ class TestTeachingPlansApi(TestCase):
                 patch.object(
                     module.frappe,
                     "get_doc",
-                    return_value=SimpleNamespace(name="CLASS-PLAN-1", course_plan="COURSE-PLAN-1"),
+                    return_value=SimpleNamespace(
+                        name="CLASS-PLAN-1",
+                        course_plan="COURSE-PLAN-1",
+                        get=lambda fieldname, default=None: [] if fieldname == "units" else default,
+                    ),
                 ),
                 patch.object(module, "_build_unit_lookup", return_value={}),
                 patch.object(
@@ -324,7 +440,20 @@ class TestTeachingPlansApi(TestCase):
                                 "status_label": "In Progress",
                             },
                             "materials": [],
-                        }
+                        },
+                        {
+                            "task_delivery": "TDL-2",
+                            "task": "TASK-2",
+                            "task_outcome": "OUT-2",
+                            "title": "Cell comparison reflection",
+                            "task_type": "Written Response",
+                            "unit_plan": "UNIT-1",
+                            "class_session": "SESSION-1",
+                            "requires_submission": 1,
+                            "allow_late_submission": 1,
+                            "submission_status": "Not Submitted",
+                            "materials": [],
+                        },
                     ],
                 ),
                 patch.object(
@@ -347,7 +476,20 @@ class TestTeachingPlansApi(TestCase):
                                     "status_label": "In Progress",
                                 },
                                 "materials": [],
-                            }
+                            },
+                            {
+                                "task_delivery": "TDL-2",
+                                "task": "TASK-2",
+                                "task_outcome": "OUT-2",
+                                "title": "Cell comparison reflection",
+                                "task_type": "Written Response",
+                                "unit_plan": "UNIT-1",
+                                "class_session": "SESSION-1",
+                                "requires_submission": 1,
+                                "allow_late_submission": 1,
+                                "submission_status": "Not Submitted",
+                                "materials": [],
+                            },
                         ],
                     },
                 ),
@@ -371,6 +513,16 @@ class TestTeachingPlansApi(TestCase):
                         }
                     ],
                 ),
+                patch.object(
+                    module,
+                    "_resolve_current_curriculum_unit",
+                    return_value={
+                        "unit_plan": "UNIT-1",
+                        "unit": {"unit_plan": "UNIT-1", "title": "Cells and Systems"},
+                        "source": "calendar",
+                        "timeline": None,
+                    },
+                ),
                 patch.object(module, "now_datetime", return_value=datetime(2026, 4, 2, 9, 0, 0)),
             ):
                 payload = module.get_student_learning_space("COURSE-1", "GROUP-1")
@@ -379,6 +531,7 @@ class TestTeachingPlansApi(TestCase):
         self.assertEqual(payload["learning"]["focus"]["current_session"]["class_session"], "SESSION-1")
         self.assertEqual(payload["learning"]["selected_context"]["unit_plan"], "UNIT-1")
         self.assertEqual(payload["learning"]["selected_context"]["class_session"], "SESSION-1")
+        self.assertEqual(payload["learning"]["selected_context"]["task_delivery"], "TDL-2")
         self.assertEqual(payload["learning"]["reflection_entries"][0]["name"], "REF-1")
         self.assertEqual(payload["learning"]["reflection_entries"][0]["class_session"], "SESSION-1")
         self.assertEqual(payload["learning"]["next_actions"][0]["kind"], "quiz")
@@ -393,6 +546,128 @@ class TestTeachingPlansApi(TestCase):
                 "latest_publish_at": None,
             },
         )
+
+    def test_get_student_learning_space_uses_resolved_current_unit_for_selected_context(self):
+        with _teaching_plans_module() as module:
+            with (
+                patch.object(module, "_require_student_name", return_value="STU-1"),
+                patch.object(module, "_assert_student_course_access", return_value=None),
+                patch.object(
+                    module,
+                    "_resolve_student_group_options",
+                    return_value=[{"student_group": "GROUP-1", "label": "Biology A"}],
+                ),
+                patch.object(
+                    module,
+                    "_resolve_student_plan",
+                    return_value=(
+                        "GROUP-1",
+                        {
+                            "name": "CLASS-PLAN-1",
+                            "title": "Biology A",
+                            "planning_status": "Active",
+                        },
+                    ),
+                ),
+                patch.object(module, "_assert_student_group_membership", return_value=None),
+                patch.object(
+                    module.frappe.db,
+                    "get_value",
+                    return_value={
+                        "name": "COURSE-1",
+                        "course_name": "Biology",
+                        "course_group": "Science",
+                        "description": "Course description",
+                        "course_image": "/files/biology.jpg",
+                    },
+                ),
+                patch.object(
+                    module.frappe,
+                    "get_doc",
+                    return_value=SimpleNamespace(
+                        name="CLASS-PLAN-1",
+                        course_plan="COURSE-PLAN-1",
+                        get=lambda fieldname, default=None: [] if fieldname == "units" else default,
+                    ),
+                ),
+                patch.object(module, "_build_unit_lookup", return_value={}),
+                patch.object(
+                    module,
+                    "_serialize_backbone_units",
+                    return_value=[
+                        {
+                            "unit_plan": "UNIT-1",
+                            "title": "Cells and Systems",
+                            "unit_order": 10,
+                            "overview": "Shared unit overview",
+                            "essential_understanding": "Systems work together.",
+                            "content": "Cells",
+                            "skills": "Observe",
+                            "concepts": "Systems",
+                            "standards": [],
+                            "shared_resources": [],
+                            "assigned_work": [],
+                        },
+                        {
+                            "unit_plan": "UNIT-2",
+                            "title": "Scientific Method",
+                            "unit_order": 20,
+                            "overview": "Shared unit overview",
+                            "essential_understanding": "Evidence drives inquiry.",
+                            "content": "Inquiry",
+                            "skills": "Investigate",
+                            "concepts": "Evidence",
+                            "standards": [],
+                            "shared_resources": [],
+                            "assigned_work": [],
+                        },
+                    ],
+                ),
+                patch.object(
+                    module,
+                    "_fetch_class_sessions",
+                    return_value=[
+                        {
+                            "class_session": "SESSION-2",
+                            "title": "Hypothesis workshop",
+                            "unit_plan": "UNIT-2",
+                            "session_status": "Planned",
+                            "session_date": "2026-04-10",
+                            "learning_goal": "Plan a fair test.",
+                            "activities": [],
+                            "resources": [],
+                            "assigned_work": [],
+                        }
+                    ],
+                ),
+                patch.object(module, "_fetch_assigned_work", return_value=[]),
+                patch.object(
+                    module,
+                    "_attach_resources_and_work",
+                    return_value={
+                        "shared_resources": [],
+                        "class_resources": [],
+                        "general_assigned_work": [],
+                    },
+                ),
+                patch.object(module, "_fetch_student_learning_reflections", return_value=[]),
+                patch.object(
+                    module,
+                    "_resolve_current_curriculum_unit",
+                    return_value={
+                        "unit_plan": "UNIT-2",
+                        "unit": {"unit_plan": "UNIT-2", "title": "Scientific Method"},
+                        "source": "calendar",
+                        "timeline": None,
+                    },
+                ),
+                patch.object(module, "now_datetime", return_value=datetime(2026, 4, 2, 9, 0, 0)),
+            ):
+                payload = module.get_student_learning_space("COURSE-1", "GROUP-1")
+
+        self.assertEqual(payload["learning"]["selected_context"]["unit_plan"], "UNIT-2")
+        self.assertEqual(payload["learning"]["focus"]["current_unit"]["unit_plan"], "UNIT-2")
+        self.assertEqual(payload["learning"]["focus"]["current_session"]["class_session"], "SESSION-2")
 
     def test_get_student_learning_space_falls_back_to_shared_course_plan_without_active_class(self):
         with _teaching_plans_module() as module:
@@ -468,13 +743,25 @@ class TestTeachingPlansApi(TestCase):
                     "GROUP-2",
                 )
 
-    def test_serialize_material_entry_uses_governed_open_url_for_file_material(self):
+    def test_serialize_material_entry_uses_governed_preview_and_open_urls_for_file_material(self):
         with _teaching_plans_module() as module:
-            with patch.object(
-                module,
-                "resolve_academic_file_open_url",
-                return_value="/api/method/ifitwala_ed.api.file_access.open_academic_file?f=FILE-1",
-            ) as resolve_open_url:
+            with (
+                patch.object(
+                    module,
+                    "resolve_academic_file_thumbnail_url",
+                    return_value="/api/method/ifitwala_ed.api.file_access.thumbnail_academic_file?f=FILE-1",
+                ) as resolve_thumbnail_url,
+                patch.object(
+                    module,
+                    "resolve_academic_file_preview_url",
+                    return_value="/api/method/ifitwala_ed.api.file_access.preview_academic_file?f=FILE-1",
+                ) as resolve_preview_url,
+                patch.object(
+                    module,
+                    "resolve_academic_file_open_url",
+                    return_value="/api/method/ifitwala_ed.api.file_access.open_academic_file?f=FILE-1",
+                ) as resolve_open_url,
+            ):
                 payload = module._serialize_material_entry(
                     {
                         "material": "MAT-1",
@@ -492,9 +779,23 @@ class TestTeachingPlansApi(TestCase):
                                 "placement_order": 10,
                             }
                         ],
-                    }
+                    },
+                    thumbnail_ready_map={"FILE-1": True},
                 )
 
+        resolve_thumbnail_url.assert_called_once_with(
+            file_name="FILE-1",
+            file_url="/private/files/lab.pdf",
+            context_doctype="Material Placement",
+            context_name="PLC-1",
+            thumbnail_ready=True,
+        )
+        resolve_preview_url.assert_called_once_with(
+            file_name="FILE-1",
+            file_url="/private/files/lab.pdf",
+            context_doctype="Material Placement",
+            context_name="PLC-1",
+        )
         resolve_open_url.assert_called_once_with(
             file_name="FILE-1",
             file_url="/private/files/lab.pdf",
@@ -502,10 +803,25 @@ class TestTeachingPlansApi(TestCase):
             context_name="PLC-1",
         )
         self.assertEqual(
+            payload["thumbnail_url"],
+            "/api/method/ifitwala_ed.api.file_access.thumbnail_academic_file?f=FILE-1",
+        )
+        self.assertEqual(
+            payload["preview_url"],
+            "/api/method/ifitwala_ed.api.file_access.preview_academic_file?f=FILE-1",
+        )
+        self.assertEqual(
             payload["open_url"],
             "/api/method/ifitwala_ed.api.file_access.open_academic_file?f=FILE-1",
         )
         self.assertNotIn("file_url", payload)
+        self.assertEqual(payload["attachment_preview"]["owner_doctype"], "Material Placement")
+        self.assertEqual(payload["attachment_preview"]["owner_name"], "PLC-1")
+        self.assertEqual(payload["attachment_preview"]["kind"], "pdf")
+        self.assertEqual(
+            payload["attachment_preview"]["download_url"],
+            "/api/method/ifitwala_ed.api.file_access.open_academic_file?f=FILE-1",
+        )
 
     def test_get_student_learning_space_logs_payload_metrics(self):
         with _teaching_plans_module() as module:
@@ -698,6 +1014,24 @@ class TestTeachingPlansApi(TestCase):
         self.assertEqual(payload["curriculum"]["units"], [])
         self.assertEqual(payload["curriculum"]["session_count"], 0)
 
+    def test_decorate_resolved_pacing_statuses_marks_units_relative_to_current_unit(self):
+        with _teaching_plans_module() as module:
+            payload = module._decorate_resolved_pacing_statuses(
+                [
+                    {"unit_plan": "UNIT-1", "unit_order": 10, "pacing_status": "Not Started"},
+                    {"unit_plan": "UNIT-2", "unit_order": 20, "pacing_status": "Not Started"},
+                    {"unit_plan": "UNIT-3", "unit_order": 30, "pacing_status": "Hold"},
+                ],
+                {
+                    "unit_plan": "UNIT-2",
+                    "source": "calendar",
+                },
+            )
+
+        self.assertEqual(payload[0]["resolved_pacing_status"], "Completed")
+        self.assertEqual(payload[1]["resolved_pacing_status"], "In Progress")
+        self.assertEqual(payload[2]["resolved_pacing_status"], "Hold")
+
     def test_fetch_class_sessions_hides_teacher_fields_for_students(self):
         with _teaching_plans_module() as module:
             with (
@@ -849,6 +1183,14 @@ class TestTeachingPlansApi(TestCase):
                     },
                 ),
                 patch.object(module, "_fetch_program_options_for_course", return_value=[]),
+                patch.object(
+                    module,
+                    "_build_course_plan_timeline",
+                    return_value={
+                        "status": "ready",
+                        "units": [{"unit_plan": "UNIT-1", "is_current": 1}],
+                    },
+                ),
             ):
                 payload = module._build_staff_course_plan_bundle("COURSE-PLAN-1")
 
@@ -960,6 +1302,14 @@ class TestTeachingPlansApi(TestCase):
                     "get_value",
                     return_value={"course_name": "Biology", "course_group": "Science"},
                 ),
+                patch.object(
+                    module,
+                    "_build_course_plan_timeline",
+                    return_value={
+                        "status": "ready",
+                        "units": [{"unit_plan": "UNIT-1", "is_current": 1}],
+                    },
+                ),
             ):
                 payload = module._build_staff_course_plan_bundle("COURSE-PLAN-1")
 
@@ -970,6 +1320,182 @@ class TestTeachingPlansApi(TestCase):
             payload["assessment"]["selected_quiz_question_bank"]["questions"][0]["quiz_question"],
             "QQ-1",
         )
+
+    def test_build_staff_course_plan_bundle_defaults_to_current_timeline_unit(self):
+        with _teaching_plans_module() as module:
+            with (
+                patch.object(
+                    module,
+                    "_resolve_planning_resource_anchor",
+                    return_value={
+                        "anchor_doctype": "Course Plan",
+                        "anchor_name": "COURSE-PLAN-1",
+                        "can_manage_resources": 1,
+                    },
+                ),
+                patch.object(
+                    module.planning,
+                    "get_course_plan_row",
+                    return_value={
+                        "name": "COURSE-PLAN-1",
+                        "title": "Biology Plan",
+                        "course": "COURSE-1",
+                        "school": "SCH-1",
+                        "academic_year": "2026-2027",
+                        "cycle_label": "Semester 1",
+                        "plan_status": "Active",
+                    },
+                ),
+                patch.object(
+                    module.planning,
+                    "get_unit_plan_rows",
+                    return_value=[
+                        {"name": "UNIT-1", "title": "Cells and Systems", "unit_order": 10},
+                        {"name": "UNIT-2", "title": "Scientific Method", "unit_order": 20},
+                    ],
+                ),
+                patch.object(
+                    module,
+                    "_build_unit_lookup",
+                    return_value={
+                        "UNIT-1": {
+                            "title": "Cells and Systems",
+                            "unit_order": 10,
+                            "standards": [],
+                            "shared_reflections": [],
+                            "class_reflections": [],
+                        },
+                        "UNIT-2": {
+                            "title": "Scientific Method",
+                            "unit_order": 20,
+                            "standards": [],
+                            "shared_reflections": [],
+                            "class_reflections": [],
+                        },
+                    },
+                ),
+                patch.object(module, "_fetch_material_map", return_value={}),
+                patch.object(
+                    module,
+                    "_build_course_plan_timeline",
+                    return_value={
+                        "status": "ready",
+                        "units": [
+                            {"unit_plan": "UNIT-1", "is_current": 0},
+                            {"unit_plan": "UNIT-2", "is_current": 1},
+                        ],
+                    },
+                ),
+                patch.object(
+                    module.frappe,
+                    "get_doc",
+                    return_value=SimpleNamespace(
+                        name="COURSE-PLAN-1",
+                        modified="2026-04-02 09:00:00",
+                        summary="Shared course summary",
+                        check_permission=lambda ptype: None,
+                    ),
+                ),
+                patch.object(
+                    module.frappe.db,
+                    "get_value",
+                    return_value={"course_name": "Biology", "course_group": "Science"},
+                ),
+                patch.object(
+                    module,
+                    "_fetch_academic_year_options_for_schools",
+                    return_value={
+                        "SCH-1": [
+                            {"value": "2026-2027", "label": "2026-2027", "school": "SCH-1"},
+                        ]
+                    },
+                ),
+                patch.object(module, "_fetch_program_options_for_course", return_value=[]),
+            ):
+                payload = module._build_staff_course_plan_bundle("COURSE-PLAN-1")
+
+        self.assertEqual(payload["resolved"]["unit_plan"], "UNIT-2")
+
+    def test_build_staff_bundle_exposes_resolved_current_unit(self):
+        with _teaching_plans_module() as module:
+            class_doc = SimpleNamespace(
+                name="CLASS-PLAN-1",
+                course_plan="COURSE-PLAN-1",
+                title="Biology A Plan",
+                planning_status="Active",
+                team_note="",
+                get=lambda fieldname, default=None: [] if fieldname == "units" else default,
+            )
+            with (
+                patch.object(
+                    module,
+                    "_resolve_staff_plan",
+                    return_value=(
+                        {
+                            "name": "GROUP-1",
+                            "student_group_name": "Biology A",
+                            "course": "COURSE-1",
+                            "academic_year": "2026-2027",
+                        },
+                        [{"name": "COURSE-PLAN-1", "title": "Semester 1", "plan_status": "Active"}],
+                        [
+                            {
+                                "name": "CLASS-PLAN-1",
+                                "title": "Biology A Plan",
+                                "course_plan": "COURSE-PLAN-1",
+                                "planning_status": "Active",
+                            }
+                        ],
+                        "CLASS-PLAN-1",
+                    ),
+                ),
+                patch.object(module.frappe, "get_doc", return_value=class_doc),
+                patch.object(
+                    module,
+                    "_build_unit_lookup",
+                    return_value={
+                        "UNIT-1": {"title": "Cells", "unit_order": 10},
+                        "UNIT-2": {"title": "Scientific Method", "unit_order": 20},
+                    },
+                ),
+                patch.object(
+                    module,
+                    "_serialize_backbone_units",
+                    return_value=[
+                        {"unit_plan": "UNIT-1", "title": "Cells", "unit_order": 10},
+                        {"unit_plan": "UNIT-2", "title": "Scientific Method", "unit_order": 20},
+                    ],
+                ),
+                patch.object(module, "_fetch_class_sessions", return_value=[]),
+                patch.object(module, "_fetch_assigned_work", return_value=[]),
+                patch.object(
+                    module,
+                    "_attach_resources_and_work",
+                    return_value={
+                        "shared_resources": [],
+                        "class_resources": [],
+                        "general_assigned_work": [],
+                    },
+                ),
+                patch.object(
+                    module.planning,
+                    "get_course_plan_row",
+                    return_value={"name": "COURSE-PLAN-1", "course": "COURSE-1"},
+                ),
+                patch.object(
+                    module,
+                    "_resolve_current_curriculum_unit",
+                    return_value={
+                        "unit_plan": "UNIT-2",
+                        "unit": {"unit_plan": "UNIT-2", "title": "Scientific Method"},
+                        "source": "calendar",
+                        "timeline": None,
+                    },
+                ),
+            ):
+                payload = module._build_staff_bundle("GROUP-1", "CLASS-PLAN-1")
+
+        self.assertEqual(payload["resolved"]["unit_plan"], "UNIT-2")
 
     def test_build_course_plan_timeline_skips_holidays_and_blocks_after_unresolved_duration(self):
         with _teaching_plans_module() as module:
@@ -1025,6 +1551,7 @@ class TestTeachingPlansApi(TestCase):
                     },
                 ),
                 patch.object(module.frappe, "get_all", side_effect=fake_get_all),
+                patch.object(module, "now_datetime", return_value=datetime(2026, 1, 15, 9, 0, 0)),
             ):
                 payload = module._build_course_plan_timeline(
                     {"course": "COURSE-1", "academic_year": "2026-2027", "school": "SCH-1"},
@@ -1061,8 +1588,37 @@ class TestTeachingPlansApi(TestCase):
         self.assertEqual(payload["holidays"][0]["end_date"], "2026-01-23")
         self.assertEqual(payload["units"][0]["start_date"], "2026-01-05")
         self.assertEqual(payload["units"][0]["end_date"], "2026-01-30")
+        self.assertEqual(payload["units"][0]["is_current"], 1)
         self.assertEqual(payload["units"][1]["schedule_state"], "unscheduled_duration")
+        self.assertEqual(payload["units"][1]["is_current"], 0)
         self.assertEqual(payload["units"][2]["schedule_state"], "blocked")
+
+    def test_resolve_timeline_current_unit_keeps_previous_unit_active_during_gap(self):
+        with _teaching_plans_module() as module:
+            current_unit = module._resolve_timeline_current_unit(
+                {
+                    "status": "ready",
+                    "units": [
+                        {
+                            "unit_plan": "UNIT-1",
+                            "title": "Cells and Systems",
+                            "unit_order": 10,
+                            "start_date": "2026-01-05",
+                            "end_date": "2026-01-30",
+                        },
+                        {
+                            "unit_plan": "UNIT-2",
+                            "title": "Scientific Method",
+                            "unit_order": 20,
+                            "start_date": "2026-02-02",
+                            "end_date": "2026-02-27",
+                        },
+                    ],
+                },
+                anchor_date="2026-01-31",
+            )
+
+        self.assertEqual(current_unit["unit_plan"], "UNIT-1")
 
     def test_fetch_timeline_holiday_spans_merges_weekend_inside_same_break(self):
         with _teaching_plans_module() as module:
@@ -1210,7 +1766,7 @@ class TestTeachingPlansApi(TestCase):
         timeline_mock.assert_called_once()
         self.assertEqual(timeline_mock.call_args.kwargs["student_group"], "GROUP-1")
 
-    def test_list_staff_course_plans_serializes_manage_flag(self):
+    def test_list_staff_course_plans_hides_rollover_drafts_for_non_coordinators_and_serializes_manage_flag(self):
         with _teaching_plans_module() as module:
             rows = [
                 {
@@ -1221,19 +1777,32 @@ class TestTeachingPlansApi(TestCase):
                     "academic_year": "2026-2027",
                     "cycle_label": "Semester 1",
                     "plan_status": "Active",
+                    "rollover_source_course_plan": None,
                 },
                 {
                     "name": "COURSE-PLAN-2",
-                    "title": "Biology Plan B",
+                    "title": "Biology Rollover Draft",
                     "course": "COURSE-2",
                     "school": "SCH-1",
                     "academic_year": "2026-2027",
                     "cycle_label": "Semester 2",
                     "plan_status": "Draft",
+                    "rollover_source_course_plan": "COURSE-PLAN-1",
+                },
+                {
+                    "name": "COURSE-PLAN-3",
+                    "title": "Biology Working Draft",
+                    "course": "COURSE-3",
+                    "school": "SCH-1",
+                    "academic_year": "2026-2027",
+                    "cycle_label": "Semester 3",
+                    "plan_status": "Draft",
+                    "rollover_source_course_plan": None,
                 },
             ]
 
             with (
+                patch.object(module.frappe, "get_roles", return_value=["Academic Admin"]),
                 patch.object(module.planning, "user_has_global_curriculum_access", return_value=True),
                 patch.object(
                     module.planning,
@@ -1248,14 +1817,66 @@ class TestTeachingPlansApi(TestCase):
                     return_value=[
                         {"name": "COURSE-1", "course_name": "Biology", "course_group": "Science"},
                         {"name": "COURSE-2", "course_name": "Biology B", "course_group": "Science"},
+                        {"name": "COURSE-3", "course_name": "Biology C", "course_group": "Science"},
                     ],
                 ),
             ):
                 payload = module.list_staff_course_plans()
 
         self.assertEqual(len(payload["course_plans"]), 2)
+        self.assertEqual(
+            [row["name"] for row in payload["course_plans"]],
+            ["COURSE-PLAN-1", "COURSE-PLAN-3"],
+        )
         self.assertEqual(payload["course_plans"][0]["can_manage_resources"], 1)
         self.assertEqual(payload["course_plans"][1]["can_manage_resources"], 0)
+
+    def test_list_staff_course_plans_includes_rollover_drafts_for_curriculum_coordinator(self):
+        with _teaching_plans_module() as module:
+            rows = [
+                {
+                    "name": "COURSE-PLAN-1",
+                    "title": "Biology Plan",
+                    "course": "COURSE-1",
+                    "school": "SCH-1",
+                    "academic_year": "2026-2027",
+                    "cycle_label": "Semester 1",
+                    "plan_status": "Active",
+                    "rollover_source_course_plan": None,
+                },
+                {
+                    "name": "COURSE-PLAN-2",
+                    "title": "Biology Rollover Draft",
+                    "course": "COURSE-2",
+                    "school": "SCH-1",
+                    "academic_year": "2026-2027",
+                    "cycle_label": "Semester 2",
+                    "plan_status": "Draft",
+                    "rollover_source_course_plan": "COURSE-PLAN-1",
+                },
+            ]
+
+            with (
+                patch.object(module.frappe, "get_roles", return_value=["Curriculum Coordinator"]),
+                patch.object(module.planning, "user_has_global_curriculum_access", return_value=True),
+                patch.object(module.planning, "user_can_manage_course_curriculum", return_value=True),
+                patch.object(module, "_fetch_academic_year_options_for_schools", return_value={}),
+                patch.object(module.frappe, "get_list", return_value=rows),
+                patch.object(
+                    module.frappe,
+                    "get_all",
+                    return_value=[
+                        {"name": "COURSE-1", "course_name": "Biology", "course_group": "Science"},
+                        {"name": "COURSE-2", "course_name": "Biology B", "course_group": "Science"},
+                    ],
+                ),
+            ):
+                payload = module.list_staff_course_plans()
+
+        self.assertEqual(
+            [row["name"] for row in payload["course_plans"]],
+            ["COURSE-PLAN-1", "COURSE-PLAN-2"],
+        )
 
     def test_list_staff_course_plans_includes_creation_options_for_curriculum_coordinator(self):
         with _teaching_plans_module() as module:

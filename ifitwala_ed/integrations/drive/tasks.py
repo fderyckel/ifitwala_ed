@@ -6,7 +6,7 @@ from typing import Any
 import frappe
 from frappe import _
 
-from ifitwala_ed.utilities.file_classification_contract import LEARNING_RESOURCE_PURPOSE
+from ifitwala_ed.utilities.governed_file_contract import LEARNING_RESOURCE_PURPOSE
 
 _TASK_RESOURCE_DATA_CLASS = "academic"
 _TASK_RESOURCE_PURPOSE = LEARNING_RESOURCE_PURPOSE
@@ -135,11 +135,58 @@ def build_task_submission_upload_contract(task_submission_doc) -> dict[str, Any]
 
 
 def assert_task_submission_upload_access(task_submission: str, *, permission_type: str = "write"):
-    return _get_task_submission_doc(task_submission, permission_type=permission_type)
+    doc = _get_task_submission_doc(task_submission)
+    if not permission_type:
+        return doc
+
+    try:
+        doc.check_permission(permission_type)
+    except Exception as exc:
+        permission_error = getattr(frappe, "PermissionError", None)
+        if (
+            permission_type == "write"
+            and isinstance(permission_error, type)
+            and isinstance(exc, permission_error)
+            and _task_submission_owned_by_session_student(doc)
+        ):
+            return doc
+        raise
+    return doc
 
 
 def assert_task_resource_upload_access(task: str, *, permission_type: str = "write"):
     return _get_task_doc(task, permission_type=permission_type)
+
+
+def _task_submission_owned_by_session_student(task_submission_doc) -> bool:
+    student = str(getattr(task_submission_doc, "student", None) or "").strip()
+    if not student:
+        return False
+
+    session_student = _get_session_student_name()
+    if not session_student:
+        return False
+
+    return student == session_student
+
+
+def _get_session_student_name() -> str | None:
+    try:
+        from ifitwala_ed.api import courses as courses_api
+
+        return str(courses_api._require_student_name_for_session_user() or "").strip() or None
+    except Exception as exc:
+        handled_exceptions = tuple(
+            error_type
+            for error_type in (
+                getattr(frappe, "PermissionError", None),
+                getattr(frappe, "AuthenticationError", None),
+            )
+            if isinstance(error_type, type) and issubclass(error_type, Exception)
+        )
+        if handled_exceptions and isinstance(exc, handled_exceptions):
+            return None
+        raise
 
 
 def validate_task_resource_finalize_context(upload_session_doc) -> dict[str, Any] | None:

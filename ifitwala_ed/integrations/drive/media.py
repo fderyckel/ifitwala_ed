@@ -5,6 +5,8 @@ from typing import Any
 import frappe
 from frappe import _
 
+from ifitwala_ed.utilities.portal_identity_cache import invalidate_student_portal_identity_cache
+
 _PROFILE_IMAGE_SLOT = "profile_image"
 
 
@@ -42,6 +44,63 @@ def build_employee_image_contract(employee_doc) -> dict[str, Any]:
         "purpose": "employee_profile_display",
         "retention_policy": "employment_duration_plus_grace",
         "slot": _PROFILE_IMAGE_SLOT,
+    }
+
+
+def assert_employee_image_read_access(employee: str, *, file_name: str) -> dict[str, Any]:
+    from ifitwala_ed.api.file_access import (
+        _require_authenticated_user,
+        _resolve_employee_profile_image_access,
+    )
+
+    resolved_employee = str(employee or "").strip()
+    resolved_file_name = str(file_name or "").strip()
+    if not resolved_employee:
+        frappe.throw(_("Employee is required."), frappe.ValidationError)
+    if not resolved_file_name:
+        frappe.throw(_("File is required."), frappe.ValidationError)
+
+    user = _require_authenticated_user()
+    context = _resolve_employee_profile_image_access(
+        user=user,
+        file_name=resolved_file_name,
+        context_doctype="Employee",
+        context_name=resolved_employee,
+        strict=True,
+    )
+    return {
+        "employee": context["file_employee"],
+        "file_id": str((context.get("file_row") or {}).get("name") or resolved_file_name).strip(),
+        "drive_file_id": context["drive_file_id"],
+    }
+
+
+def assert_student_image_read_access(student: str, *, file_name: str) -> dict[str, Any]:
+    from ifitwala_ed.api.file_access import (
+        _require_authenticated_user,
+        _resolve_student_profile_image_access,
+    )
+
+    resolved_student = str(student or "").strip()
+    resolved_file_name = str(file_name or "").strip()
+    if not resolved_student:
+        frappe.throw(_("Student is required."), frappe.ValidationError)
+    if not resolved_file_name:
+        frappe.throw(_("File is required."), frappe.ValidationError)
+
+    user = _require_authenticated_user()
+    context = _resolve_student_profile_image_access(
+        user=user,
+        file_name=resolved_file_name,
+        context_doctype="Student",
+        context_name=resolved_student,
+        strict=True,
+    )
+    return {
+        "student": context["file_student"],
+        "school": context.get("school"),
+        "file_id": str((context.get("file_row") or {}).get("name") or resolved_file_name).strip(),
+        "drive_file_id": context["drive_file_id"],
     }
 
 
@@ -87,6 +146,86 @@ def build_guardian_image_contract(guardian_doc) -> dict[str, Any]:
         "purpose": "guardian_profile_display",
         "retention_policy": "until_school_exit_plus_6m",
         "slot": _PROFILE_IMAGE_SLOT,
+    }
+
+
+def assert_guardian_image_read_access(guardian: str, *, file_name: str) -> dict[str, Any]:
+    from ifitwala_ed.api.file_access import (
+        _require_authenticated_user,
+        _resolve_guardian_profile_image_access,
+    )
+
+    resolved_guardian = str(guardian or "").strip()
+    resolved_file_name = str(file_name or "").strip()
+    if not resolved_guardian:
+        frappe.throw(_("Guardian is required."), frappe.ValidationError)
+    if not resolved_file_name:
+        frappe.throw(_("File is required."), frappe.ValidationError)
+
+    user = _require_authenticated_user()
+    context = _resolve_guardian_profile_image_access(
+        user=user,
+        file_name=resolved_file_name,
+        context_doctype="Guardian",
+        context_name=resolved_guardian,
+        strict=True,
+    )
+    return {
+        "guardian": context["file_guardian"],
+        "file_id": str((context.get("file_row") or {}).get("name") or resolved_file_name).strip(),
+        "drive_file_id": context["drive_file_id"],
+    }
+
+
+def assert_public_website_media_read_access(*, file_name: str) -> dict[str, Any]:
+    from ifitwala_ed.api.file_access import (
+        _assert_public_website_media_visible,
+        _resolve_public_website_media_row,
+    )
+
+    resolved_file_name = str(file_name or "").strip()
+    if not resolved_file_name:
+        frappe.throw(_("File is required."), frappe.ValidationError)
+
+    file_row = _resolve_public_website_media_row(resolved_file_name)
+    _assert_public_website_media_visible(file_row)
+
+    drive_file_id = str((file_row or {}).get("drive_file_id") or "").strip()
+    if not drive_file_id:
+        frappe.throw(_("Governed public website media file was not found."))
+
+    return {
+        "file_id": str((file_row.get("name") or resolved_file_name) or "").strip(),
+        "drive_file_id": drive_file_id,
+        "organization": str((file_row.get("organization") or "")).strip(),
+        "school": str((file_row.get("school") or "")).strip() or None,
+    }
+
+
+def assert_public_employee_image_read_access(employee: str, *, file_name: str) -> dict[str, Any]:
+    from ifitwala_ed.api.file_access import _resolve_public_employee_image_row
+
+    resolved_employee = str(employee or "").strip()
+    resolved_file_name = str(file_name or "").strip()
+    if not resolved_employee:
+        frappe.throw(_("Employee is required."), frappe.ValidationError)
+    if not resolved_file_name:
+        frappe.throw(_("File is required."), frappe.ValidationError)
+
+    file_row = _resolve_public_employee_image_row(
+        employee=resolved_employee,
+        file_name=resolved_file_name,
+    )
+    drive_file_id = str((file_row or {}).get("drive_file_id") or "").strip()
+    if not drive_file_id:
+        frappe.throw(_("Governed public employee photo file was not found."))
+
+    return {
+        "employee": resolved_employee,
+        "file_id": str((file_row.get("name") or resolved_file_name) or "").strip(),
+        "drive_file_id": drive_file_id,
+        "organization": str((file_row.get("organization") or "")).strip() or None,
+        "school": str((file_row.get("school") or "")).strip() or None,
     }
 
 
@@ -210,6 +349,7 @@ def run_media_post_finalize(upload_session_doc, created_file) -> dict[str, Any]:
         student_doc.student_image = file_url
         if hasattr(student_doc, "sync_student_contact_image"):
             student_doc.sync_student_contact_image()
+        invalidate_student_portal_identity_cache(student=student_doc.name)
         return {"file_url": file_url}
 
     if upload_session_doc.owner_doctype == "Guardian":

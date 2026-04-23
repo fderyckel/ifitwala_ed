@@ -32,7 +32,6 @@ from ifitwala_ed.admission.admission_utils import (
     ensure_contact_for_email,
     ensure_inquiry_contact,
     get_applicant_scope_ancestors,
-    get_contact_email_options,
     get_contact_primary_email,
     has_complete_applicant_document_type_classification,
     is_applicant_document_type_in_scope,
@@ -45,7 +44,13 @@ from ifitwala_ed.admission.doctype.applicant_enrollment_plan.applicant_enrollmen
     get_applicant_enrollment_choice_state,
     get_latest_applicant_enrollment_plan,
 )
-from ifitwala_ed.api.file_access import resolve_admissions_file_open_url
+from ifitwala_ed.api.attachment_previews import build_attachment_preview_item, extract_file_extension
+from ifitwala_ed.api.file_access import (
+    get_drive_file_thumbnail_ready_map,
+    resolve_admissions_file_open_url,
+    resolve_admissions_file_preview_url,
+    resolve_admissions_file_thumbnail_url,
+)
 from ifitwala_ed.api.recommendation_intake import (
     get_recommendation_status_for_applicant,
     get_recommendation_template_rows_for_applicant,
@@ -57,6 +62,11 @@ from ifitwala_ed.governance.doctype.policy_acknowledgement.policy_acknowledgemen
 from ifitwala_ed.governance.policy_utils import (
     ADMISSIONS_POLICY_MODE_FAMILY,
     get_applicant_policy_status,
+)
+from ifitwala_ed.integrations.drive.authority import (
+    get_current_drive_file_for_slot,
+    get_current_drive_files_for_attachments,
+    get_drive_file_for_file,
 )
 from ifitwala_ed.utilities.html_sanitizer import sanitize_html
 
@@ -226,6 +236,7 @@ APPLICANT_GUARDIAN_REQUIRED_FIELD_LABELS = (
     ("guardian_mobile_phone", "Guardian Mobile Phone"),
     ("guardian_image", "Guardian Photo"),
 )
+_CURRENT_PROFILE_IMAGE_STATUSES = ("active", "processing", "blocked")
 
 
 def _has_health_declaration_column() -> bool:
@@ -491,23 +502,6 @@ def _prepare_profile_image_upload(
     return _profile_image_output_filename(filename_prefix), normalized_bytes
 
 
-def _ensure_file_on_disk(file_doc) -> None:
-    if not file_doc or not file_doc.file_url:
-        frappe.throw(_("File URL missing after upload."))
-    if file_doc.file_url.startswith("http"):
-        return
-
-    rel_path = file_doc.file_url.lstrip("/")
-    if rel_path.startswith("private/") or rel_path.startswith("public/"):
-        abs_path = frappe.utils.get_site_path(rel_path)
-    else:
-        base = "private" if file_doc.is_private else "public"
-        abs_path = frappe.utils.get_site_path(base, rel_path)
-
-    if not os.path.exists(abs_path):
-        frappe.throw(_("File could not be finalized on disk. Please retry the upload."))
-
-
 def _build_applicant_display_name(row: dict) -> str:
     parts = [
         _as_text(row.get("first_name")).strip(),
@@ -678,15 +672,43 @@ def _build_profile_payload(applicant) -> dict:
     profile = _serialize_applicant_profile(applicant)
     completeness = _profile_completeness(profile)
     guardians_enabled = _guardians_feature_enabled()
+    applicant_name = _as_text(applicant.get("name")).strip()
+    applicant_drive_file, applicant_file_row = _resolve_applicant_profile_image_authority(
+        applicant_name=applicant_name,
+        applicant_image=applicant.get("applicant_image"),
+    )
+    guardian_image_authority = _collect_guardian_image_authority_map(applicant) if guardians_enabled else {}
+    drive_file_ids = [
+        str((applicant_drive_file or {}).get("name") or "").strip(),
+        *[
+            str((drive_file or {}).get("name") or "").strip()
+            for drive_file, _file_row in guardian_image_authority.values()
+        ],
+    ]
+    thumbnail_ready_map = get_drive_file_thumbnail_ready_map(drive_file_ids)
+    applicant_image_urls = _build_admissions_profile_image_urls(
+        applicant_name=applicant_name,
+        original_image=applicant.get("applicant_image"),
+        drive_file=applicant_drive_file,
+        file_row=applicant_file_row,
+        thumbnail_ready=thumbnail_ready_map.get(str((applicant_drive_file or {}).get("name") or "").strip()),
+    )
     return {
         "profile": profile,
         "completeness": completeness,
         "application_context": _application_context_payload(applicant),
         "options": _profile_reference_options(),
-        "applicant_image": _as_text(applicant.get("applicant_image")).strip(),
+        "applicant_image": applicant_image_urls["image_url"],
+        "applicant_image_open_url": applicant_image_urls["open_url"],
         "record_modified": _as_text(applicant.get("modified")).strip(),
         "guardian_section_enabled": guardians_enabled,
-        "guardians": _serialize_applicant_guardians(applicant) if guardians_enabled else [],
+        "guardians": _serialize_applicant_guardians(
+            applicant,
+            authority_map=guardian_image_authority,
+            thumbnail_ready_map=thumbnail_ready_map,
+        )
+        if guardians_enabled
+        else [],
     }
 
 
@@ -772,28 +794,95 @@ def _guardians_feature_enabled() -> bool:
     return bool(cint(setting or 0))
 
 
-def _serialize_applicant_guardians(applicant) -> list[dict]:
+def _serialize_applicant_guardians(
+    applicant,
+    *,
+    authority_map: dict[str, tuple[dict, dict | None]] | None = None,
+    thumbnail_ready_map: dict[str, bool] | None = None,
+) -> list[dict]:
+    authority_map = authority_map or {}
+    thumbnail_ready_map = thumbnail_ready_map or {}
     rows: list[dict] = []
     for row in applicant.get("guardians") or []:
         payload: dict = {}
+        guardian_row_name = _as_text(row.get("name")).strip()
         for fieldname in APPLICANT_GUARDIAN_FIELDS:
             if fieldname in APPLICANT_GUARDIAN_CHECK_FIELDS:
                 payload[fieldname] = _as_check(row.get(fieldname))
             elif fieldname == "guardian_image":
-                payload[fieldname] = _guardian_image_open_url(
+                drive_file, file_row = authority_map.get(guardian_row_name, ({}, None))
+                image_urls = _build_admissions_profile_image_urls(
                     applicant_name=applicant.name,
-                    guardian_image=_as_text(row.get(fieldname)).strip(),
+                    guardian_row_name=guardian_row_name,
+                    original_image=_as_text(row.get(fieldname)).strip(),
+                    drive_file=drive_file,
+                    file_row=file_row,
+                    thumbnail_ready=thumbnail_ready_map.get(str((drive_file or {}).get("name") or "").strip()),
                 )
+                payload[fieldname] = image_urls["image_url"]
+                payload["guardian_image_open_url"] = image_urls["open_url"]
             else:
                 payload[fieldname] = _as_text(row.get(fieldname)).strip()
+        payload.setdefault("guardian_image_open_url", "")
         rows.append(payload)
     return rows
 
 
-def _resolve_guardian_image_file(*, applicant_name: str, guardian_image: str | None) -> dict | None:
+def _guardian_profile_image_slot(guardian_row_name: str) -> str:
+    return f"guardian_profile_image__{frappe.scrub((guardian_row_name or '').strip())[:80]}"
+
+
+def _resolve_applicant_profile_image_drive_file(*, applicant_name: str) -> dict | None:
+    return get_current_drive_file_for_slot(
+        primary_subject_type="Student Applicant",
+        primary_subject_id=applicant_name,
+        slot="profile_image",
+        attached_doctype="Student Applicant",
+        attached_name=applicant_name,
+        fields=["name", "file", "canonical_ref"],
+        statuses=_CURRENT_PROFILE_IMAGE_STATUSES,
+    )
+
+
+def _resolve_guardian_image_drive_file(*, applicant_name: str, guardian_row_name: str | None) -> dict | None:
+    resolved_guardian_row_name = _as_text(guardian_row_name).strip()
+    if not resolved_guardian_row_name:
+        return None
+    return get_current_drive_file_for_slot(
+        primary_subject_type="Student Applicant",
+        primary_subject_id=applicant_name,
+        slot=_guardian_profile_image_slot(resolved_guardian_row_name),
+        attached_doctype="Student Applicant Guardian",
+        attached_name=resolved_guardian_row_name,
+        fields=["name", "file", "canonical_ref"],
+        statuses=_CURRENT_PROFILE_IMAGE_STATUSES,
+    )
+
+
+def _resolve_guardian_image_file(
+    *,
+    applicant_name: str,
+    guardian_row_name: str | None = None,
+    guardian_image: str | None,
+) -> dict | None:
     image_value = _as_text(guardian_image).strip()
     if not image_value:
         return None
+
+    drive_file = _resolve_guardian_image_drive_file(
+        applicant_name=applicant_name,
+        guardian_row_name=guardian_row_name,
+    )
+    file_name = _as_text((drive_file or {}).get("file")).strip()
+    if file_name:
+        row = frappe.db.get_value(
+            "File",
+            file_name,
+            ["name", "file_url", "attached_to_doctype", "attached_to_name", "attached_to_field"],
+            as_dict=True,
+        )
+        if row and _file_is_scoped_to_applicant(file_row=row, applicant_name=applicant_name):
+            return row
 
     file_name = ""
     if "download_admissions_file" in image_value:
@@ -823,18 +912,130 @@ def _resolve_guardian_image_file(*, applicant_name: str, guardian_image: str | N
     return None
 
 
+def _resolve_profile_image_drive_file_from_file_row(file_row: dict | None) -> dict | None:
+    file_name = _as_text((file_row or {}).get("name")).strip()
+    if not file_name:
+        return None
+    return get_drive_file_for_file(
+        file_name,
+        fields=["name", "file", "canonical_ref"],
+        statuses=_CURRENT_PROFILE_IMAGE_STATUSES,
+    )
+
+
+def _resolve_applicant_profile_image_authority(
+    *,
+    applicant_name: str,
+    applicant_image: str | None,
+) -> tuple[dict, dict | None]:
+    drive_file = _resolve_applicant_profile_image_drive_file(applicant_name=applicant_name) or {}
+    file_row = _resolve_applicant_profile_image_file(
+        applicant_name=applicant_name,
+        applicant_image=applicant_image,
+    )
+    if not drive_file.get("name"):
+        drive_file = _resolve_profile_image_drive_file_from_file_row(file_row) or drive_file
+    return drive_file, file_row
+
+
+def _resolve_guardian_image_authority(
+    *,
+    applicant_name: str,
+    guardian_row_name: str | None,
+    guardian_image: str | None,
+) -> tuple[dict, dict | None]:
+    drive_file = (
+        _resolve_guardian_image_drive_file(
+            applicant_name=applicant_name,
+            guardian_row_name=guardian_row_name,
+        )
+        or {}
+    )
+    file_row = _resolve_guardian_image_file(
+        applicant_name=applicant_name,
+        guardian_row_name=guardian_row_name,
+        guardian_image=guardian_image,
+    )
+    if not drive_file.get("name"):
+        drive_file = _resolve_profile_image_drive_file_from_file_row(file_row) or drive_file
+    return drive_file, file_row
+
+
+def _collect_guardian_image_authority_map(applicant) -> dict[str, tuple[dict, dict | None]]:
+    authority_map: dict[str, tuple[dict, dict | None]] = {}
+    applicant_name = _as_text(applicant.get("name")).strip()
+    for row in applicant.get("guardians") or []:
+        guardian_row_name = _as_text(row.get("name")).strip()
+        if not guardian_row_name:
+            continue
+        authority_map[guardian_row_name] = _resolve_guardian_image_authority(
+            applicant_name=applicant_name,
+            guardian_row_name=guardian_row_name,
+            guardian_image=row.get("guardian_image"),
+        )
+    return authority_map
+
+
+def _build_admissions_profile_image_urls(
+    *,
+    applicant_name: str,
+    original_image: str | None,
+    drive_file: dict | None,
+    file_row: dict | None,
+    guardian_row_name: str | None = None,
+    thumbnail_ready: bool | None = None,
+) -> dict[str, str]:
+    del guardian_row_name
+    resolved_drive_file = drive_file or {}
+    resolved_file_row = file_row or {}
+    file_name = _as_text(resolved_file_row.get("name") or resolved_drive_file.get("file")).strip() or None
+    drive_file_id = _as_text(resolved_drive_file.get("name")).strip() or None
+    canonical_ref = _as_text(resolved_drive_file.get("canonical_ref")).strip() or None
+    fallback_file_url = (
+        None if (file_name or drive_file_id or canonical_ref) else _as_text(original_image).strip() or None
+    )
+
+    open_url = (
+        resolve_admissions_file_open_url(
+            file_name=file_name,
+            file_url=fallback_file_url,
+            drive_file_id=drive_file_id,
+            canonical_ref=canonical_ref,
+            context_doctype="Student Applicant",
+            context_name=applicant_name,
+        )
+        or ""
+    )
+
+    image_url = ""
+    if drive_file_id or canonical_ref:
+        image_url = (
+            resolve_admissions_file_thumbnail_url(
+                file_name=file_name,
+                file_url=None,
+                drive_file_id=drive_file_id,
+                canonical_ref=canonical_ref,
+                context_doctype="Student Applicant",
+                context_name=applicant_name,
+                thumbnail_ready=thumbnail_ready,
+            )
+            or ""
+        )
+
+    return {"image_url": image_url, "open_url": open_url}
+
+
 def _file_is_scoped_to_applicant(*, file_row: dict, applicant_name: str) -> bool:
     file_name = _as_text(file_row.get("name")).strip()
     if file_name:
-        classification = frappe.db.get_value(
-            "File Classification",
-            {"file": file_name},
-            ["primary_subject_type", "primary_subject_id"],
-            as_dict=True,
+        drive_file = get_drive_file_for_file(
+            file_name,
+            fields=["primary_subject_type", "primary_subject_id"],
+            statuses=("active", "processing", "blocked"),
         )
-        if classification and (
-            _as_text(classification.get("primary_subject_type")).strip() == "Student Applicant"
-            and _as_text(classification.get("primary_subject_id")).strip() == applicant_name
+        if drive_file and (
+            _as_text(drive_file.get("primary_subject_type")).strip() == "Student Applicant"
+            and _as_text(drive_file.get("primary_subject_id")).strip() == applicant_name
         ):
             return True
 
@@ -844,83 +1045,81 @@ def _file_is_scoped_to_applicant(*, file_row: dict, applicant_name: str) -> bool
     )
 
 
-def _guardian_image_open_url(*, applicant_name: str, guardian_image: str | None) -> str:
-    image_value = _as_text(guardian_image).strip()
+def _resolve_applicant_profile_image_file(*, applicant_name: str, applicant_image: str | None) -> dict | None:
+    image_value = _as_text(applicant_image).strip()
     if not image_value:
-        return ""
+        return None
 
-    file_row = _resolve_guardian_image_file(applicant_name=applicant_name, guardian_image=image_value)
-    if not file_row:
-        return image_value
-
-    return (
-        resolve_admissions_file_open_url(
-            file_name=file_row.get("name"),
-            file_url=file_row.get("file_url"),
-            context_doctype="Student Applicant",
-            context_name=applicant_name,
+    drive_file = _resolve_applicant_profile_image_drive_file(applicant_name=applicant_name)
+    file_name = _as_text((drive_file or {}).get("file")).strip()
+    if file_name:
+        row = frappe.db.get_value(
+            "File",
+            file_name,
+            ["name", "file_url", "attached_to_doctype", "attached_to_name", "attached_to_field"],
+            as_dict=True,
         )
-        or _as_text(file_row.get("file_url")).strip()
+        if row and _file_is_scoped_to_applicant(file_row=row, applicant_name=applicant_name):
+            return row
+
+    file_name = ""
+    if "download_admissions_file" in image_value:
+        parsed = urlparse(image_value)
+        file_name = _as_text((parse_qs(parsed.query).get("file") or [""])[0]).strip()
+    if file_name:
+        row = frappe.db.get_value(
+            "File",
+            file_name,
+            ["name", "file_url", "attached_to_doctype", "attached_to_name", "attached_to_field"],
+            as_dict=True,
+        )
+        if row and _file_is_scoped_to_applicant(file_row=row, applicant_name=applicant_name):
+            return row
+
+    file_rows = frappe.get_all(
+        "File",
+        filters={"file_url": image_value},
+        fields=["name", "file_url", "attached_to_doctype", "attached_to_name", "attached_to_field"],
+        order_by="creation desc",
+        limit=5,
     )
+    for row in file_rows:
+        if _file_is_scoped_to_applicant(file_row=row, applicant_name=applicant_name):
+            return row
+
+    return None
 
 
-def _rehome_guardian_image_to_contact(
+def _applicant_image_open_url(*, applicant_name: str, applicant_image: str | None) -> str:
+    drive_file, file_row = _resolve_applicant_profile_image_authority(
+        applicant_name=applicant_name,
+        applicant_image=applicant_image,
+    )
+    return _build_admissions_profile_image_urls(
+        applicant_name=applicant_name,
+        original_image=applicant_image,
+        drive_file=drive_file,
+        file_row=file_row,
+    )["open_url"]
+
+
+def _guardian_image_open_url(
     *,
     applicant_name: str,
+    guardian_row_name: str | None = None,
     guardian_image: str | None,
-    contact_name: str | None,
 ) -> str:
-    resolved_contact = _as_text(contact_name).strip()
-    if not resolved_contact:
-        return _as_text(guardian_image).strip()
-
-    file_row = _resolve_guardian_image_file(applicant_name=applicant_name, guardian_image=guardian_image)
-    if not file_row:
-        return _as_text(guardian_image).strip()
-
-    attached_doctype = _as_text(file_row.get("attached_to_doctype")).strip()
-    attached_name = _as_text(file_row.get("attached_to_name")).strip()
-    attached_field = _as_text(file_row.get("attached_to_field")).strip()
-    if attached_doctype == "Contact" and attached_name == resolved_contact:
-        return _as_text(file_row.get("file_url")).strip()
-
-    row_parent = ""
-    if attached_doctype == "Student Applicant Guardian" and attached_name:
-        row_parent = _as_text(frappe.db.get_value("Student Applicant Guardian", attached_name, "parent")).strip()
-
-    can_rehome_from_applicant = attached_doctype == "Student Applicant" and attached_name == applicant_name
-    can_rehome_from_guardian_row = attached_doctype == "Student Applicant Guardian" and row_parent == applicant_name
-
-    if not can_rehome_from_applicant and not can_rehome_from_guardian_row:
-        return _as_text(file_row.get("file_url")).strip() or _as_text(guardian_image).strip()
-
-    if attached_field == "applicant_image":
-        return _as_text(file_row.get("file_url")).strip() or _as_text(guardian_image).strip()
-
-    frappe.db.set_value(
-        "File",
-        file_row.get("name"),
-        {
-            "attached_to_doctype": "Contact",
-            "attached_to_name": resolved_contact,
-            "attached_to_field": None,
-        },
-        update_modified=False,
+    drive_file, file_row = _resolve_guardian_image_authority(
+        applicant_name=applicant_name,
+        guardian_row_name=guardian_row_name,
+        guardian_image=guardian_image,
     )
-
-    classification_name = frappe.db.get_value("File Classification", {"file": file_row.get("name")}, "name")
-    if classification_name:
-        frappe.db.set_value(
-            "File Classification",
-            classification_name,
-            {
-                "attached_doctype": "Contact",
-                "attached_name": resolved_contact,
-            },
-            update_modified=False,
-        )
-
-    return _as_text(file_row.get("file_url")).strip() or _as_text(guardian_image).strip()
+    return _build_admissions_profile_image_urls(
+        applicant_name=applicant_name,
+        original_image=guardian_image,
+        drive_file=drive_file,
+        file_row=file_row,
+    )["open_url"]
 
 
 def _parse_guardians_payload(guardians) -> list[dict] | None:
@@ -1242,11 +1441,7 @@ def _apply_guardians_to_applicant(*, applicant, guardians_payload: list[dict]):
             row_payload=row,
             existing_contact_name=existing_contact_name,
         )
-        row["guardian_image"] = _rehome_guardian_image_to_contact(
-            applicant_name=applicant.name,
-            guardian_image=row.get("guardian_image"),
-            contact_name=row.get("contact"),
-        )
+        row["guardian_image"] = _as_text(row.get("guardian_image")).strip()
 
         if not _as_text(row.get("guardian_full_name")).strip():
             row["guardian_full_name"] = " ".join(
@@ -1998,7 +2193,7 @@ def upload_applicant_profile_image(
 
     applicant = frappe.get_doc("Student Applicant", applicant_name)
     if not applicant.get("organization") or not applicant.get("school"):
-        frappe.throw(_("Organization and School are required for file classification."))
+        frappe.throw(_("Organization and School are required for governed admissions uploads."))
 
     upload_result = admission_api.upload_applicant_profile_image(
         student_applicant=applicant.name,
@@ -2006,14 +2201,29 @@ def upload_applicant_profile_image(
         content=normalized_content,
         upload_source="SPA",
     )
+    drive_file_id = _as_text(upload_result.get("drive_file_id")).strip()
+    thumbnail_ready_map = get_drive_file_thumbnail_ready_map([drive_file_id]) if drive_file_id else {}
+    image_urls = _build_admissions_profile_image_urls(
+        applicant_name=applicant.name,
+        original_image=None,
+        drive_file={
+            "name": drive_file_id,
+            "file": upload_result.get("file"),
+            "canonical_ref": upload_result.get("canonical_ref"),
+        },
+        file_row=None,
+        thumbnail_ready=thumbnail_ready_map.get(drive_file_id),
+    )
 
     return {
         "ok": True,
         "file": upload_result.get("file"),
-        "file_url": upload_result.get("file_url"),
+        "image_url": image_urls["image_url"],
+        "open_url": image_urls["open_url"],
         "file_name": normalized_file_name,
         "file_size": len(normalized_content),
-        "classification": upload_result.get("classification"),
+        "drive_file_id": upload_result.get("drive_file_id"),
+        "canonical_ref": upload_result.get("canonical_ref"),
     }
 
 
@@ -2055,7 +2265,7 @@ def upload_applicant_guardian_image(
 
     applicant = frappe.get_doc("Student Applicant", applicant_name)
     if not applicant.get("organization") or not applicant.get("school"):
-        frappe.throw(_("Organization and School are required for file classification."))
+        frappe.throw(_("Organization and School are required for governed admissions uploads."))
 
     upload_result = admission_api.upload_applicant_guardian_image(
         student_applicant=applicant.name,
@@ -2064,14 +2274,29 @@ def upload_applicant_guardian_image(
         content=normalized_content,
         upload_source="SPA",
     )
+    drive_file_id = _as_text(upload_result.get("drive_file_id")).strip()
+    thumbnail_ready_map = get_drive_file_thumbnail_ready_map([drive_file_id]) if drive_file_id else {}
+    image_urls = _build_admissions_profile_image_urls(
+        applicant_name=applicant.name,
+        original_image=None,
+        drive_file={
+            "name": drive_file_id,
+            "file": upload_result.get("file"),
+            "canonical_ref": upload_result.get("canonical_ref"),
+        },
+        file_row=None,
+        thumbnail_ready=thumbnail_ready_map.get(drive_file_id),
+    )
 
     return {
         "ok": True,
         "file": upload_result.get("file"),
-        "file_url": upload_result.get("file_url"),
+        "image_url": image_urls["image_url"],
+        "open_url": image_urls["open_url"],
         "file_name": normalized_file_name,
         "file_size": len(normalized_content),
-        "classification": upload_result.get("classification"),
+        "drive_file_id": upload_result.get("drive_file_id"),
+        "canonical_ref": upload_result.get("canonical_ref"),
     }
 
 
@@ -2277,6 +2502,94 @@ def update_applicant_health(
     }
 
 
+def _load_drive_version_mime_map(version_ids: list[str]) -> dict[str, str]:
+    resolved_version_ids = [version_id for version_id in dict.fromkeys(version_ids) if _as_text(version_id).strip()]
+    if not resolved_version_ids:
+        return {}
+
+    rows = frappe.get_all(
+        "Drive File Version",
+        filters={"name": ["in", resolved_version_ids]},
+        fields=["name", "mime_type"],
+        limit=0,
+    )
+    return {
+        _as_text(row.get("name")).strip(): _as_text(row.get("mime_type")).strip()
+        for row in rows
+        if _as_text(row.get("name")).strip()
+    }
+
+
+def _serialize_applicant_document_attachment(
+    *,
+    latest_drive_file: dict,
+    student_applicant_name: str,
+    thumbnail_ready_map: dict[str, bool],
+    version_mime_map: dict[str, str],
+) -> dict:
+    drive_file_id = _as_text(latest_drive_file.get("name")).strip()
+    compatibility_file_id = _as_text(latest_drive_file.get("file")).strip()
+    canonical_ref = _as_text(latest_drive_file.get("canonical_ref")).strip() or None
+    file_name = (
+        _as_text(latest_drive_file.get("display_name")).strip()
+        or _as_text(latest_drive_file.get("file_name")).strip()
+        or compatibility_file_id
+    )
+    preview_status = _as_text(latest_drive_file.get("preview_status")).strip() or None
+    open_url = resolve_admissions_file_open_url(
+        file_name=compatibility_file_id or None,
+        file_url=None,
+        drive_file_id=drive_file_id,
+        canonical_ref=canonical_ref,
+        context_doctype="Student Applicant",
+        context_name=student_applicant_name,
+    )
+    preview_url = resolve_admissions_file_preview_url(
+        file_name=compatibility_file_id or None,
+        file_url=None,
+        drive_file_id=drive_file_id,
+        canonical_ref=canonical_ref,
+        context_doctype="Student Applicant",
+        context_name=student_applicant_name,
+        preview_ready=preview_status == "ready",
+    )
+    thumbnail_url = resolve_admissions_file_thumbnail_url(
+        file_name=compatibility_file_id or None,
+        file_url=None,
+        drive_file_id=drive_file_id,
+        canonical_ref=canonical_ref,
+        context_doctype="Student Applicant",
+        context_name=student_applicant_name,
+        thumbnail_ready=thumbnail_ready_map.get(drive_file_id, False),
+    )
+    mime_type = version_mime_map.get(_as_text(latest_drive_file.get("current_version")).strip())
+    attachment_preview = build_attachment_preview_item(
+        item_id=drive_file_id or compatibility_file_id or file_name,
+        owner_doctype="Student Applicant",
+        owner_name=student_applicant_name,
+        file_id=drive_file_id or compatibility_file_id,
+        display_name=file_name,
+        mime_type=mime_type,
+        extension=extract_file_extension(file_name=file_name, file_url=None),
+        preview_status=preview_status,
+        thumbnail_url=thumbnail_url,
+        preview_url=preview_url,
+        open_url=open_url,
+        download_url=open_url,
+    )
+    return {
+        "drive_file_id": drive_file_id or None,
+        "canonical_ref": canonical_ref,
+        "file_name": file_name or None,
+        "uploaded_at": latest_drive_file.get("creation"),
+        "open_url": open_url,
+        "preview_url": preview_url,
+        "thumbnail_url": thumbnail_url,
+        "preview_status": preview_status,
+        "attachment_preview": attachment_preview,
+    }
+
+
 @frappe.whitelist()
 def list_applicant_documents(student_applicant: str | None = None):
     user = _require_admissions_applicant()
@@ -2326,22 +2639,43 @@ def list_applicant_documents(student_applicant: str | None = None):
     )
     item_names = [row_item.get("name") for row_item in item_rows if row_item.get("name")]
 
-    latest_file_by_item: dict[str, dict] = {}
+    latest_drive_file_by_item: dict[str, dict] = {}
     if item_names:
-        item_file_rows = frappe.get_all(
-            "File",
-            filters={
-                "attached_to_doctype": "Applicant Document Item",
-                "attached_to_name": ["in", item_names],
-            },
-            fields=["name", "attached_to_name", "file_url", "file_name", "creation"],
-            order_by="creation desc",
+        drive_rows = get_current_drive_files_for_attachments(
+            attached_doctype="Applicant Document Item",
+            attached_names=item_names,
+            fields=[
+                "name",
+                "attached_name",
+                "file",
+                "canonical_ref",
+                "display_name",
+                "preview_status",
+                "current_version",
+                "creation",
+            ],
+            statuses=("active", "processing", "blocked"),
         )
-        for row_file in item_file_rows:
-            parent = row_file.get("attached_to_name")
-            if not parent or parent in latest_file_by_item:
+        for drive_row in drive_rows:
+            parent = drive_row.get("attached_name")
+            if not parent or parent in latest_drive_file_by_item:
                 continue
-            latest_file_by_item[parent] = row_file
+            latest_drive_file_by_item[parent] = drive_row
+
+    drive_thumbnail_ready_map = get_drive_file_thumbnail_ready_map(
+        [
+            _as_text(row_drive.get("name")).strip()
+            for row_drive in latest_drive_file_by_item.values()
+            if _as_text(row_drive.get("name")).strip()
+        ]
+    )
+    drive_version_mime_map = _load_drive_version_mime_map(
+        [
+            _as_text(row_drive.get("current_version")).strip()
+            for row_drive in latest_drive_file_by_item.values()
+            if _as_text(row_drive.get("current_version")).strip()
+        ]
+    )
 
     doc_type_names = sorted({doc.get("document_type") for doc in documents if doc.get("document_type")})
     doc_type_meta: dict[str, dict] = {}
@@ -2366,7 +2700,27 @@ def list_applicant_documents(student_applicant: str | None = None):
         parent = row_item.get("applicant_document")
         if not parent:
             continue
-        latest_file = latest_file_by_item.get(row_item.get("name"), {})
+        latest_drive_file = latest_drive_file_by_item.get(row_item.get("name"), {})
+        attachment = (
+            _serialize_applicant_document_attachment(
+                latest_drive_file=latest_drive_file,
+                student_applicant_name=student_applicant_name,
+                thumbnail_ready_map=drive_thumbnail_ready_map,
+                version_mime_map=drive_version_mime_map,
+            )
+            if latest_drive_file
+            else {
+                "drive_file_id": None,
+                "canonical_ref": None,
+                "file_name": None,
+                "uploaded_at": None,
+                "open_url": None,
+                "preview_url": None,
+                "thumbnail_url": None,
+                "preview_status": None,
+                "attachment_preview": None,
+            }
+        )
         items_by_document.setdefault(parent, []).append(
             {
                 "name": row_item.get("name"),
@@ -2375,14 +2729,15 @@ def list_applicant_documents(student_applicant: str | None = None):
                 "review_status": row_item.get("review_status") or "Pending",
                 "reviewed_by": row_item.get("reviewed_by"),
                 "reviewed_on": row_item.get("reviewed_on"),
-                "uploaded_at": latest_file.get("creation"),
-                "file_url": resolve_admissions_file_open_url(
-                    file_name=latest_file.get("name"),
-                    file_url=latest_file.get("file_url"),
-                    context_doctype="Student Applicant",
-                    context_name=student_applicant_name,
-                ),
-                "file_name": latest_file.get("file_name"),
+                "uploaded_at": attachment.get("uploaded_at"),
+                "open_url": attachment.get("open_url"),
+                "preview_url": attachment.get("preview_url"),
+                "thumbnail_url": attachment.get("thumbnail_url"),
+                "preview_status": attachment.get("preview_status"),
+                "file_name": attachment.get("file_name"),
+                "drive_file_id": attachment.get("drive_file_id"),
+                "canonical_ref": attachment.get("canonical_ref"),
+                "attachment_preview": attachment.get("attachment_preview"),
             }
         )
 
@@ -2393,7 +2748,7 @@ def list_applicant_documents(student_applicant: str | None = None):
         items = items_by_document.get(doc_name, [])
 
         latest_uploaded_at = None
-        latest_file_url = None
+        latest_open_url = None
         if items:
             sorted_items = sorted(
                 items,
@@ -2401,23 +2756,23 @@ def list_applicant_documents(student_applicant: str | None = None):
                 reverse=True,
             )
             latest_uploaded_at = sorted_items[0].get("uploaded_at")
-            latest_file_url = sorted_items[0].get("file_url")
+            latest_open_url = sorted_items[0].get("open_url")
 
         is_required = bool(type_meta.get("is_required"))
         is_repeatable = bool(type_meta.get("is_repeatable"))
         required_count = _portal_required_document_count(type_meta)
-        uploaded_count = len([item for item in items if item.get("file_url")])
+        uploaded_count = len([item for item in items if item.get("open_url")])
         approved_count = len(
-            [item for item in items if item.get("file_url") and item.get("review_status") == "Approved"]
+            [item for item in items if item.get("open_url") and item.get("review_status") == "Approved"]
         )
         rejected_count = len(
-            [item for item in items if item.get("file_url") and item.get("review_status") == "Rejected"]
+            [item for item in items if item.get("open_url") and item.get("review_status") == "Rejected"]
         )
         pending_count = len(
             [
                 item
                 for item in items
-                if item.get("file_url")
+                if item.get("open_url")
                 and (item.get("review_status") or "Pending").strip() not in {"Approved", "Rejected"}
             ]
         )
@@ -2461,7 +2816,7 @@ def list_applicant_documents(student_applicant: str | None = None):
                 "reviewed_by": doc.get("reviewed_by"),
                 "reviewed_on": doc.get("reviewed_on"),
                 "uploaded_at": latest_uploaded_at,
-                "file_url": latest_file_url,
+                "open_url": latest_open_url,
                 "items": items,
             }
         )
@@ -2688,7 +3043,58 @@ def upload_applicant_document(
     if file_name:
         payload["file_name"] = file_name
 
-    return admission_api.upload_applicant_document(**payload)
+    upload_result = admission_api.upload_applicant_document(**payload)
+    resolved_drive_file_id = _as_text(upload_result.get("drive_file_id")).strip() or None
+    resolved_canonical_ref = _as_text(upload_result.get("canonical_ref")).strip() or None
+    preview_status = (
+        _as_text(frappe.db.get_value("Drive File", resolved_drive_file_id, "preview_status")).strip()
+        if resolved_drive_file_id
+        else ""
+    )
+    thumbnail_ready = (
+        get_drive_file_thumbnail_ready_map([resolved_drive_file_id]).get(resolved_drive_file_id, False)
+        if resolved_drive_file_id
+        else False
+    )
+    open_url = resolve_admissions_file_open_url(
+        file_name=upload_result.get("file"),
+        file_url=None,
+        drive_file_id=resolved_drive_file_id,
+        canonical_ref=resolved_canonical_ref,
+        context_doctype="Student Applicant",
+        context_name=row.get("name"),
+    )
+    preview_url = resolve_admissions_file_preview_url(
+        file_name=upload_result.get("file"),
+        file_url=None,
+        drive_file_id=resolved_drive_file_id,
+        canonical_ref=resolved_canonical_ref,
+        context_doctype="Student Applicant",
+        context_name=row.get("name"),
+        preview_ready=preview_status == "ready",
+    )
+    thumbnail_url = resolve_admissions_file_thumbnail_url(
+        file_name=upload_result.get("file"),
+        file_url=None,
+        drive_file_id=resolved_drive_file_id,
+        canonical_ref=resolved_canonical_ref,
+        context_doctype="Student Applicant",
+        context_name=row.get("name"),
+        thumbnail_ready=thumbnail_ready,
+    )
+    return {
+        "file": upload_result.get("file"),
+        "open_url": open_url,
+        "preview_url": preview_url,
+        "thumbnail_url": thumbnail_url,
+        "preview_status": preview_status or None,
+        "drive_file_id": resolved_drive_file_id,
+        "canonical_ref": resolved_canonical_ref,
+        "applicant_document": upload_result.get("applicant_document"),
+        "applicant_document_item": upload_result.get("applicant_document_item"),
+        "item_key": upload_result.get("item_key"),
+        "item_label": upload_result.get("item_label"),
+    }
 
 
 @frappe.whitelist()
@@ -2991,6 +3397,124 @@ def _resolve_applicant_contact(
     return contact_name or None
 
 
+def _contact_linked_to_user(user_name: str | None) -> str | None:
+    user_name = (user_name or "").strip()
+    if not user_name:
+        return None
+
+    contact_name = (frappe.db.get_value("Contact", {"user": user_name}, "name") or "").strip()
+    if contact_name:
+        return contact_name
+
+    contact_name = (
+        frappe.db.get_value(
+            "Dynamic Link",
+            {
+                "parenttype": "Contact",
+                "parentfield": "links",
+                "link_doctype": "User",
+                "link_name": user_name,
+            },
+            "parent",
+        )
+        or ""
+    ).strip()
+    return contact_name or None
+
+
+def _contact_linked_to_applicant(contact_name: str | None) -> str | None:
+    contact_name = (contact_name or "").strip()
+    if not contact_name:
+        return None
+
+    applicant_name = (
+        frappe.db.get_value(
+            "Dynamic Link",
+            {
+                "parenttype": "Contact",
+                "parentfield": "links",
+                "parent": contact_name,
+                "link_doctype": "Student Applicant",
+            },
+            "link_name",
+        )
+        or ""
+    ).strip()
+    return applicant_name or None
+
+
+def _canonical_applicant_contact_for_invite(
+    applicant_doc,
+    *,
+    user_doc=None,
+    contact_name: str | None = None,
+    invite_email: str | None = None,
+    allow_create: bool = False,
+) -> str | None:
+    current_contact = (applicant_doc.get("applicant_contact") or "").strip()
+    if current_contact:
+        return current_contact
+
+    invite_email = normalize_email_value(invite_email)
+    candidate_names: list[str] = []
+    for candidate in (
+        _contact_linked_to_user(getattr(user_doc, "name", None) if user_doc else None),
+        (frappe.db.get_value("Contact Email", {"email_id": invite_email}, "parent") or "").strip()
+        if invite_email
+        else "",
+        (contact_name or "").strip(),
+    ):
+        candidate = (candidate or "").strip()
+        if not candidate or candidate in candidate_names:
+            continue
+        linked_applicant = _contact_linked_to_applicant(candidate)
+        if linked_applicant and linked_applicant != applicant_doc.name:
+            frappe.throw(_("Invite email is linked to a different Contact."))
+        candidate_names.append(candidate)
+
+    if candidate_names:
+        return candidate_names[0]
+
+    if allow_create and invite_email:
+        return ensure_contact_for_email(
+            first_name=applicant_doc.get("first_name"),
+            last_name=applicant_doc.get("last_name"),
+            email=invite_email,
+        )
+
+    return None
+
+
+def _invite_contact_email_options(contact_name: str | None) -> list[str]:
+    contact_name = (contact_name or "").strip()
+    if not contact_name:
+        return []
+
+    rows = frappe.get_all(
+        "Contact Email",
+        filters={"parent": contact_name},
+        fields=["email_id", "is_primary", "idx"],
+        order_by="is_primary desc, idx asc, creation asc",
+        ignore_permissions=True,
+    )
+    emails: list[str] = []
+    seen: set[str] = set()
+    for row in rows:
+        normalized = normalize_email_value(row.get("email_id"))
+        if not normalized or normalized in seen:
+            continue
+        seen.add(normalized)
+        emails.append(normalized)
+    return emails
+
+
+def _invite_contact_primary_email(contact_name: str | None) -> str | None:
+    options = _invite_contact_email_options(contact_name)
+    if options:
+        return options[0]
+    return get_contact_primary_email(contact_name)
+
+
 def _require_family_workspace_mode() -> None:
     if not is_family_workspace_enabled():
         frappe.throw(
@@ -3200,7 +3724,17 @@ def get_invite_email_options(*, student_applicant: str | None = None) -> dict:
         frappe.throw(_("student_applicant is required."))
 
     applicant = frappe.get_doc("Student Applicant", student_applicant)
-    contact_name = _resolve_applicant_contact(applicant, allow_create=False)
+    contact_name = _canonical_applicant_contact_for_invite(
+        applicant,
+        user_doc=frappe.get_doc("User", applicant.applicant_user)
+        if applicant.applicant_user and frappe.db.exists("User", applicant.applicant_user)
+        else None,
+        contact_name=_resolve_applicant_contact(applicant, allow_create=False),
+        invite_email=normalize_email_value(applicant.get("portal_account_email"))
+        or normalize_email_value(applicant.get("applicant_email"))
+        or normalize_email_value(applicant.get("applicant_user")),
+        allow_create=False,
+    )
 
     emails: list[str] = []
     seen: set[str] = set()
@@ -3213,7 +3747,7 @@ def get_invite_email_options(*, student_applicant: str | None = None) -> dict:
             seen.add(value)
             emails.append(value)
 
-    for value in get_contact_email_options(contact_name):
+    for value in _invite_contact_email_options(contact_name):
         if value and value not in seen:
             seen.add(value)
             emails.append(value)
@@ -3257,14 +3791,22 @@ def invite_applicant(*, student_applicant: str | None = None, email: str | None 
         if linked_user != email:
             frappe.throw(_("Applicant already linked to a different user."))
 
-    contact_name = _resolve_applicant_contact(applicant, invite_email=email, allow_create=True)
-    if not contact_name:
-        frappe.throw(_("Unable to resolve Applicant Contact for this invite."))
-    primary_contact_email = get_contact_primary_email(contact_name) or email
+    contact_name = _resolve_applicant_contact(applicant, invite_email=email, allow_create=False)
 
     if applicant.applicant_user:
         user_doc = frappe.get_doc("User", linked_user)
         _ensure_admissions_applicant_role(user_doc)
+        contact_name = _canonical_applicant_contact_for_invite(
+            applicant,
+            user_doc=user_doc,
+            contact_name=contact_name,
+            invite_email=email,
+            allow_create=True,
+        )
+        if not contact_name:
+            frappe.throw(_("Unable to resolve Applicant Contact for this invite."))
+        upsert_contact_email(contact_name, email, set_primary_if_missing=True)
+        primary_contact_email = _invite_contact_primary_email(contact_name) or email
 
         applicant.flags.from_applicant_invite = True
         applicant.flags.from_contact_sync = True
@@ -3295,7 +3837,7 @@ def invite_applicant(*, student_applicant: str | None = None, email: str | None 
     if frappe.db.exists("User", email):
         user_doc = frappe.get_doc("User", email)
         existing_roles = {row.role for row in (user_doc.roles or [])}
-        non_portal_roles = existing_roles - {ADMISSIONS_ROLE}
+        non_portal_roles = existing_roles - {ADMISSIONS_ROLE, "All", "Guest", "Desk User"}
         if non_portal_roles:
             frappe.throw(_("User already has non-admissions roles and cannot be invited."))
     else:
@@ -3306,12 +3848,25 @@ def invite_applicant(*, student_applicant: str | None = None, email: str | None 
                 "first_name": applicant.first_name or email,
                 "last_name": applicant.last_name or "",
                 "enabled": 1,
+                "username": email,
+                "user_type": "Website User",
             }
         )
         user_doc.append("roles", {"role": ADMISSIONS_ROLE})
         user_doc.insert(ignore_permissions=True)
 
     _ensure_admissions_applicant_role(user_doc)
+    contact_name = _canonical_applicant_contact_for_invite(
+        applicant,
+        user_doc=user_doc,
+        contact_name=contact_name,
+        invite_email=email,
+        allow_create=True,
+    )
+    if not contact_name:
+        frappe.throw(_("Unable to resolve Applicant Contact for this invite."))
+    upsert_contact_email(contact_name, email, set_primary_if_missing=True)
+    primary_contact_email = _invite_contact_primary_email(contact_name) or email
 
     existing_link = frappe.db.get_value(
         "Student Applicant",

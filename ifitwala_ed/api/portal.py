@@ -3,13 +3,20 @@
 
 # ifitwala_ed/api/portal.py
 
+from __future__ import annotations
+
 import frappe
 from frappe import _
 
 from ifitwala_ed.admission.admission_utils import ADMISSIONS_ROLES
+from ifitwala_ed.api import guardian_communications as guardian_communications_api
+from ifitwala_ed.api import student_communications as student_communications_api
 from ifitwala_ed.api.attendance import ADMIN_ROLES, COUNSELOR_ROLES, INSTRUCTOR_ROLES
 from ifitwala_ed.api.enrollment_analytics import ALLOWED_ANALYTICS_ROLES as ENROLLMENT_ANALYTICS_ROLES
 from ifitwala_ed.api.inquiry import ALLOWED_ANALYTICS_ROLES as INQUIRY_ANALYTICS_ROLES
+from ifitwala_ed.api.org_communication_quick_create import (
+    get_org_communication_quick_create_capability,
+)
 from ifitwala_ed.api.policy_signature import (
     POLICY_LIBRARY_ROLES,
     POLICY_SIGNATURE_ANALYTICS_ROLES,
@@ -20,16 +27,17 @@ from ifitwala_ed.api.student_demographics_dashboard import (
     ALLOWED_ANALYTICS_ROLES as STUDENT_DEMOGRAPHICS_ANALYTICS_ROLES,
 )
 from ifitwala_ed.api.student_log_dashboard import ALLOWED_ANALYTICS_ROLES as WELLBEING_ANALYTICS_ROLES
-from ifitwala_ed.api.student_overview_dashboard import (
-    ALLOWED_STAFF_ROLES as STUDENT_OVERVIEW_STAFF_ROLES,
-)
+from ifitwala_ed.api.student_overview_roles import ALLOWED_STAFF_ROLES as STUDENT_OVERVIEW_STAFF_ROLES
 from ifitwala_ed.api.users import STAFF_ROLES
 from ifitwala_ed.utilities.image_utils import (
-    get_preferred_guardian_image_url,
-    get_preferred_student_image_url,
+    get_preferred_guardian_avatar_url,
+    get_preferred_student_avatar_url,
+)
+from ifitwala_ed.utilities.portal_identity_cache import (
+    CACHE_TTL_SECONDS,
+    student_portal_identity_cache_key,
 )
 
-CACHE_TTL_SECONDS = 3600
 HR_ROLES = frozenset({"HR User", "HR Manager"})
 ROLE_INSTRUCTOR = "Instructor"
 ROLE_ACADEMIC_STAFF = "Academic Staff"
@@ -92,7 +100,12 @@ def _resolve_staff_first_name(user: str, user_first_name: str | None, user_full_
     return "Staff"
 
 
-def _build_staff_home_capabilities(roles: set[str], user: str | None = None) -> dict[str, bool]:
+def _build_staff_home_capabilities(
+    roles: set[str],
+    user: str | None = None,
+    *,
+    org_communication_quick_action_state: dict[str, bool | str | None] | None = None,
+) -> dict[str, bool]:
     attendance_roles = set(ADMIN_ROLES) | set(COUNSELOR_ROLES) | set(INSTRUCTOR_ROLES)
     has_instructor_role = ROLE_INSTRUCTOR in roles
     has_academic_staff_role = ROLE_ACADEMIC_STAFF in roles
@@ -100,7 +113,12 @@ def _build_staff_home_capabilities(roles: set[str], user: str | None = None) -> 
     if user:
         can_create_meeting = bool(frappe.has_permission("Meeting", ptype="create", user=user))
         can_create_school_event = bool(frappe.has_permission("School Event", ptype="create", user=user))
-        can_create_org_communication = bool(frappe.has_permission("Org Communication", ptype="create", user=user))
+        org_communication_quick_action_state = (
+            org_communication_quick_action_state
+            if org_communication_quick_action_state is not None
+            else get_org_communication_quick_create_capability(user=user)
+        )
+        can_create_org_communication = bool(org_communication_quick_action_state.get("enabled"))
     else:
         can_create_meeting = bool(roles & set(MEETING_CREATE_ROLES))
         can_create_school_event = bool(roles & set(SCHOOL_EVENT_CREATE_ROLES))
@@ -158,7 +176,7 @@ def _resolve_student_row_for_user(user: str):
         as_dict=True,
     )
     if student:
-        student["student_image"] = get_preferred_student_image_url(
+        student["student_image"] = get_preferred_student_avatar_url(
             student.get("name"),
             original_url=student.get("student_image"),
         )
@@ -178,7 +196,7 @@ def _resolve_student_row_for_user(user: str):
         as_dict=True,
     )
     if student:
-        student["student_image"] = get_preferred_student_image_url(
+        student["student_image"] = get_preferred_student_avatar_url(
             student.get("name"),
             original_url=student.get("student_image"),
         )
@@ -224,7 +242,7 @@ def _resolve_guardian_row_for_user(user: str):
         as_dict=True,
     )
     if guardian:
-        guardian["guardian_image"] = get_preferred_guardian_image_url(
+        guardian["guardian_image"] = get_preferred_guardian_avatar_url(
             guardian.get("name"),
             original_url=guardian.get("guardian_image"),
         )
@@ -267,7 +285,7 @@ def get_staff_home_header():
         frappe.throw(_("You must be logged in."), frappe.PermissionError)
 
     cache = frappe.cache()
-    cache_key = f"staff_home:header:v5:{user}"
+    cache_key = f"staff_home:header:v6:{user}"
     cached = cache.get_value(cache_key)
     if cached:
         try:
@@ -279,14 +297,26 @@ def get_staff_home_header():
     if not row:
         frappe.throw(_("User not found."), frappe.DoesNotExistError)
 
-    first_name = _resolve_staff_first_name(user, row.first_name, row.full_name)
+    row_name = row.get("name") if isinstance(row, dict) else row.name
+    row_first_name = row.get("first_name") if isinstance(row, dict) else row.first_name
+    row_full_name = row.get("full_name") if isinstance(row, dict) else row.full_name
+
+    first_name = _resolve_staff_first_name(user, row_first_name, row_full_name)
     roles = set(frappe.get_roles(user))
+    org_communication_quick_action_state = get_org_communication_quick_create_capability(user=user)
 
     payload = {
-        "user": row.name,
+        "user": row_name,
         "first_name": first_name,
-        "full_name": row.full_name,
-        "capabilities": _build_staff_home_capabilities(roles, user=user),
+        "full_name": row_full_name,
+        "capabilities": _build_staff_home_capabilities(
+            roles,
+            user=user,
+            org_communication_quick_action_state=org_communication_quick_action_state,
+        ),
+        "quick_actions": {
+            "org_communication": org_communication_quick_action_state,
+        },
     }
 
     cache.set_value(cache_key, frappe.as_json(payload), expires_in_sec=CACHE_TTL_SECONDS)
@@ -300,7 +330,7 @@ def get_student_portal_identity():
         frappe.throw(_("You must be logged in."), frappe.PermissionError)
 
     cache = frappe.cache()
-    cache_key = f"student_portal:identity:v2:{user}"
+    cache_key = student_portal_identity_cache_key(user)
     cached = cache.get_value(cache_key)
     if cached:
         try:
@@ -362,3 +392,23 @@ def get_guardian_portal_identity():
     }
 
     return payload
+
+
+def _build_portal_chrome_payload(*, unread_communications: int) -> dict[str, dict[str, int]]:
+    return {
+        "counts": {
+            "unread_communications": max(int(unread_communications or 0), 0),
+        }
+    }
+
+
+@frappe.whitelist()
+def get_student_portal_chrome():
+    unread_count = student_communications_api.get_student_portal_communication_unread_count()
+    return _build_portal_chrome_payload(unread_communications=unread_count)
+
+
+@frappe.whitelist()
+def get_guardian_portal_chrome():
+    unread_count = guardian_communications_api.get_guardian_portal_communication_unread_count()
+    return _build_portal_chrome_payload(unread_communications=unread_count)

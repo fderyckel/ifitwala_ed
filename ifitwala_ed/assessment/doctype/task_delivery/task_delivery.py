@@ -139,8 +139,11 @@ class TaskDelivery(Document):
         )
         if not plan:
             frappe.throw(_("Class Teaching Plan not found."))
-        if (plan.get("planning_status") or "").strip() == "Archived":
+        planning_status = (plan.get("planning_status") or "").strip()
+        if planning_status == "Archived":
             frappe.throw(_("Archived Class Teaching Plans cannot receive new assigned work."))
+        if planning_status != "Active":
+            frappe.throw(_("This class needs an active Class Teaching Plan before assigned work can be created."))
         if plan.get("student_group") and plan.get("student_group") != self.student_group:
             frappe.throw(_("Selected Class Teaching Plan does not belong to this class."))
         if self._has_field("course") and plan.get("course") and plan.get("course") != self.course:

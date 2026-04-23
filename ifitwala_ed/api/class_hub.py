@@ -65,7 +65,15 @@ def _get_student_group_row(student_group: str) -> Dict[str, Any]:
         frappe.db.get_value(
             "Student Group",
             student_group,
-            ["student_group_abbreviation", "student_group_name", "course", "academic_year"],
+            [
+                "student_group_abbreviation",
+                "student_group_name",
+                "school",
+                "program",
+                "course",
+                "cohort",
+                "academic_year",
+            ],
             as_dict=True,
         )
         or {}
@@ -361,7 +369,12 @@ def _build_task_status_label(item: dict[str, Any]) -> str:
     return _("Assigned work")
 
 
-def _build_task_items(items: list[dict[str, Any]]) -> list[dict[str, Any]]:
+def _build_task_items(
+    items: list[dict[str, Any]],
+    *,
+    student_group: str,
+    group: dict[str, Any] | None = None,
+) -> list[dict[str, Any]]:
     payload: list[dict[str, Any]] = []
     for index, item in enumerate(items, start=1):
         task_delivery = planning.normalize_text(item.get("task_delivery"))
@@ -378,6 +391,12 @@ def _build_task_items(items: list[dict[str, Any]]) -> list[dict[str, Any]]:
                     "task_delivery": task_delivery or None,
                     "task": task_name or None,
                     "title": title,
+                    "student_group": student_group or None,
+                    "school": (group or {}).get("school") or None,
+                    "academic_year": (group or {}).get("academic_year") or None,
+                    "program": (group or {}).get("program") or None,
+                    "course": (group or {}).get("course") or None,
+                    "cohort": (group or {}).get("cohort") or None,
                 },
             }
         )
@@ -445,6 +464,14 @@ def _build_pulse_items(
     date_iso: str,
 ) -> list[dict[str, Any]]:
     items: list[dict[str, Any]] = []
+    unit_plan = planning.normalize_text((current_session or {}).get("unit_plan")) or planning.normalize_text(
+        (current_unit or {}).get("unit_plan")
+    )
+    planning_route = {
+        "name": "staff-class-planning",
+        "params": {"studentGroup": student_group},
+        "query": {"unit_plan": unit_plan} if unit_plan else None,
+    }
     if current_session:
         resource_count = len(current_session.get("resources") or [])
         if resource_count:
@@ -452,7 +479,7 @@ def _build_pulse_items(
                 {
                     "id": "pulse-session-resources",
                     "label": _("{count} session resources ready").format(count=resource_count),
-                    "route": {"name": "staff-class-planning", "params": {"studentGroup": student_group}},
+                    "route": planning_route,
                 }
             )
         if task_items:
@@ -460,7 +487,7 @@ def _build_pulse_items(
                 {
                     "id": "pulse-session-work",
                     "label": _("{count} work items linked to this class").format(count=len(task_items)),
-                    "route": {"name": "staff-class-planning", "params": {"studentGroup": student_group}},
+                    "route": planning_route,
                 }
             )
         return items
@@ -472,7 +499,7 @@ def _build_pulse_items(
                 "label": _("No class session is planned for {date}.").format(
                     date=formatdate(getdate(date_iso), "d MMM")
                 ),
-                "route": {"name": "staff-class-planning", "params": {"studentGroup": student_group}},
+                "route": planning_route,
             }
         )
     return items
@@ -525,6 +552,7 @@ def _build_bundle_message(
     *,
     teaching_plan: dict[str, Any] | None,
     units: list[dict[str, Any]],
+    current_unit: dict[str, Any] | None,
     current_session: dict[str, Any] | None,
     date_iso: str,
 ) -> str | None:
@@ -535,6 +563,10 @@ def _build_bundle_message(
     if not units:
         return _(
             "This class teaching plan does not have any governed units yet. Open Class Planning to sync the class with the shared course plan before starting a session."
+        )
+    if not current_unit:
+        return _(
+            "The current unit could not be resolved from pacing or the school calendar. Update the shared unit durations or mark the class unit in progress before starting a session."
         )
     if not current_session:
         return _(
@@ -659,21 +691,34 @@ def _build_bundle(
         if row.get("student") and row.get("student_name")
     ]
     focus_students = [{"student": row["student"], "student_name": row["student_name"]} for row in students[:3]]
-    current_unit, current_session = _select_runtime_session(runtime.get("units") or [], date_iso)
+    units = runtime.get("units") or []
+    current_unit, current_session = _select_runtime_session(units, date_iso)
     if not current_unit:
-        current_unit = _select_runtime_unit(runtime.get("units") or [])
+        course_plan = planning.normalize_text((runtime.get("teaching_plan") or {}).get("course_plan"))
+        course_plan_row = planning.get_course_plan_row(course_plan) if course_plan else None
+        current_unit = (
+            teaching_plans_api._resolve_current_curriculum_unit(
+                units,
+                course_plan_row=course_plan_row,
+                student_group=student_group,
+                anchor_date=date_iso,
+                allow_live_session=date_iso == nowdate(),
+            ).get("unit")
+            or None
+        )
     relevant_work = _collect_relevant_work(
         current_session,
         current_unit,
         (runtime.get("resources") or {}).get("general_assigned_work"),
     )
-    task_items = _build_task_items(relevant_work)
+    task_items = _build_task_items(relevant_work, student_group=student_group, group=group)
     title = _build_group_title(student_group, group)
 
     return {
         "message": _build_bundle_message(
             teaching_plan=runtime.get("teaching_plan"),
-            units=runtime.get("units") or [],
+            units=units,
+            current_unit=current_unit,
             current_session=current_session,
             date_iso=date_iso,
         ),
@@ -871,11 +916,23 @@ def start_session(
             "started_at": now_datetime().isoformat(sep=" "),
         }
 
-    current_unit = _select_runtime_unit(units)
+    if not current_unit:
+        course_plan = planning.normalize_text(teaching_plan.get("course_plan"))
+        course_plan_row = planning.get_course_plan_row(course_plan) if course_plan else None
+        current_unit = (
+            teaching_plans_api._resolve_current_curriculum_unit(
+                units,
+                course_plan_row=course_plan_row,
+                student_group=student_group,
+                anchor_date=date_iso,
+                allow_live_session=date_iso == nowdate(),
+            ).get("unit")
+            or None
+        )
     if not current_unit:
         frappe.throw(
             _(
-                "This class teaching plan does not have any governed units yet. Open Class Planning to sync the class with the shared course plan before starting a session."
+                "The current unit could not be resolved from pacing or the school calendar. Update the shared unit durations or mark the class unit in progress before starting a session."
             ),
             exc=frappe.ValidationError,
         )

@@ -15,6 +15,7 @@ from frappe.utils import add_days, get_datetime, getdate, now_datetime, strip_ht
 
 from ifitwala_ed.api.file_access import resolve_academic_file_open_url
 from ifitwala_ed.api.student_log_dashboard import get_authorized_schools
+from ifitwala_ed.integrations.drive.authority import get_drive_file_for_file
 from ifitwala_ed.utilities.school_tree import get_school_lineage
 
 STAFF_ROLES = {
@@ -26,6 +27,13 @@ STAFF_ROLES = {
     "Curriculum Coordinator",
 }
 ADMIN_ROLES = {"System Manager", "Administrator"}
+PORTFOLIO_ARTEFACT_PURPOSE = "portfolio_evidence"
+PORTFOLIO_ARTEFACT_SLOT = "portfolio_artefact"
+PORTFOLIO_ARTEFACT_STATUSES = ("active", "processing", "blocked")
+
+
+def _clean_text(value: Any) -> str:
+    return str(value or "").strip()
 
 
 def _require_authenticated_user() -> str:
@@ -56,6 +64,97 @@ def _normalize_to_list(value: Any) -> list[str]:
     if not isinstance(value, (list, tuple, set)):
         return []
     return [str(v).strip() for v in value if str(v).strip()]
+
+
+def _is_valid_portfolio_artefact_drive_row(
+    drive_row: Dict[str, Any] | None,
+    *,
+    student: str | None,
+    school: str | None,
+) -> bool:
+    row = drive_row or {}
+    if _clean_text(row.get("primary_subject_type")) != "Student":
+        return False
+    if _clean_text(row.get("primary_subject_id")) != _clean_text(student):
+        return False
+    if _clean_text(row.get("purpose")) != PORTFOLIO_ARTEFACT_PURPOSE:
+        return False
+    if _clean_text(row.get("slot")) != PORTFOLIO_ARTEFACT_SLOT:
+        return False
+    drive_school = _clean_text(row.get("school"))
+    return not (_clean_text(school) and drive_school and drive_school != _clean_text(school))
+
+
+def _assert_portfolio_artefact_contract(*, artefact_file: str | None, student: str, school: str) -> None:
+    resolved_file = _clean_text(artefact_file)
+    if not resolved_file:
+        return
+
+    drive_row = get_drive_file_for_file(
+        resolved_file,
+        fields=[
+            "file",
+            "primary_subject_type",
+            "primary_subject_id",
+            "purpose",
+            "slot",
+            "school",
+        ],
+        statuses=PORTFOLIO_ARTEFACT_STATUSES,
+    )
+    if not drive_row:
+        frappe.throw(_("External artefact must reference a governed portfolio file."))
+    if not _is_valid_portfolio_artefact_drive_row(drive_row, student=student, school=school):
+        frappe.throw(_("External artefact file does not match the portfolio governed-file contract."))
+
+
+def _load_portfolio_artefact_meta(file_names: list[str]) -> Dict[str, Dict[str, Any]]:
+    resolved_files = sorted({_clean_text(file_name) for file_name in (file_names or []) if _clean_text(file_name)})
+    if not resolved_files:
+        return {}
+
+    file_rows = frappe.get_all(
+        "File",
+        filters={"name": ["in", resolved_files]},
+        fields=["name", "file_name", "file_size"],
+        limit=0,
+    )
+    file_map = {_clean_text(row.get("name")): row for row in file_rows if _clean_text(row.get("name"))}
+
+    drive_rows = frappe.get_all(
+        "Drive File",
+        filters={
+            "file": ["in", resolved_files],
+            "status": ["in", list(PORTFOLIO_ARTEFACT_STATUSES)],
+        },
+        fields=[
+            "name",
+            "file",
+            "display_name",
+            "primary_subject_type",
+            "primary_subject_id",
+            "purpose",
+            "slot",
+            "school",
+        ],
+        order_by="modified desc, creation desc",
+        limit=0,
+    )
+    drive_map: Dict[str, Dict[str, Any]] = {}
+    for row in drive_rows:
+        file_name = _clean_text(row.get("file"))
+        if file_name and file_name not in drive_map:
+            drive_map[file_name] = row
+
+    return {
+        file_name: {
+            "file_name": _clean_text((file_map.get(file_name) or {}).get("file_name"))
+            or _clean_text((drive_map.get(file_name) or {}).get("display_name")),
+            "file_size": (file_map.get(file_name) or {}).get("file_size"),
+            "drive_file": drive_map.get(file_name) or {},
+        }
+        for file_name in resolved_files
+    }
 
 
 def _resolve_student_for_user(user: str) -> str | None:
@@ -422,14 +521,7 @@ def _load_item_evidence(rows: list[Dict[str, Any]]) -> Dict[str, Dict[str, Any]]
         )
         reflection_map = {row.get("name"): row for row in reflection_rows if row.get("name")}
 
-    file_map = {}
-    if files:
-        file_rows = frappe.get_all(
-            "File",
-            filters={"name": ["in", files]},
-            fields=["name", "file_name", "file_url", "file_size"],
-        )
-        file_map = {row.get("name"): row for row in file_rows if row.get("name")}
+    artefact_meta = _load_portfolio_artefact_meta(files)
 
     for row in rows:
         item_name = row.get("item_name")
@@ -453,17 +545,28 @@ def _load_item_evidence(rows: list[Dict[str, Any]]) -> Dict[str, Dict[str, Any]]
                 "text_preview": strip_html(reflection.get("body") or "")[:280],
             }
         elif row.get("item_type") == "External Artefact" and row.get("artefact_file"):
-            file_row = file_map.get(row.get("artefact_file"), {})
+            file_name = _clean_text(row.get("artefact_file"))
+            artefact_row = artefact_meta.get(file_name, {})
+            drive_row = artefact_row.get("drive_file") or {}
+            valid_drive_row = _is_valid_portfolio_artefact_drive_row(
+                drive_row,
+                student=row.get("student"),
+                school=row.get("school"),
+            )
             item_map[item_name] = {
                 "kind": "external_file",
-                "file_name": file_row.get("file_name"),
-                "file_url": resolve_academic_file_open_url(
-                    file_name=file_row.get("name"),
-                    file_url=file_row.get("file_url"),
-                    context_doctype="Student Portfolio Item",
-                    context_name=item_name,
+                "file_name": artefact_row.get("file_name") or None,
+                "file_url": (
+                    resolve_academic_file_open_url(
+                        file_name=file_name,
+                        file_url=None,
+                        context_doctype="Student Portfolio Item",
+                        context_name=item_name,
+                    )
+                    if valid_drive_row
+                    else None
                 ),
-                "file_size": file_row.get("file_size"),
+                "file_size": artefact_row.get("file_size"),
             }
     return item_map
 
@@ -796,14 +899,20 @@ def _default_showcase_state(*, school: str, is_showcase: bool) -> str:
     return "Approved"
 
 
-def _compose_item_payload(data: Dict[str, Any], *, school: str) -> Dict[str, Any]:
+def _compose_item_payload(data: Dict[str, Any], *, student: str, school: str) -> Dict[str, Any]:
     item_type = data.get("item_type")
     task_submission = data.get("task_submission")
     reflection = data.get("student_reflection_entry")
-    artefact_file = data.get("artefact_file")
+    artefact_file = _clean_text(data.get("artefact_file")) or None
     references = [bool(task_submission), bool(reflection), bool(artefact_file)]
     if sum(references) != 1:
         frappe.throw(_("Exactly one evidence reference is required."))
+    if artefact_file:
+        _assert_portfolio_artefact_contract(
+            artefact_file=artefact_file,
+            student=student,
+            school=school,
+        )
 
     evidence_date = data.get("evidence_date")
     if not evidence_date and task_submission:
@@ -853,7 +962,7 @@ def add_portfolio_item(payload=None, **kwargs):
     portfolio_name = portfolio_name or _get_or_create_portfolio(student, academic_year, school)
     portfolio = frappe.get_doc("Student Portfolio", portfolio_name)
 
-    item_payload = _compose_item_payload(data, school=school)
+    item_payload = _compose_item_payload(data, student=student, school=school)
     row = portfolio.append("items", item_payload)
     portfolio.save(ignore_permissions=True)
 
@@ -1298,21 +1407,23 @@ def resolve_portfolio_share_context(token: str, viewer_email: str | None = None)
         ["name", "student_full_name", "student_preferred_name"],
         as_dict=True,
     )
-    file_map = {}
-    file_names = [item.artefact_file for item in (portfolio.items or []) if item.artefact_file]
-    if file_names:
-        file_rows = frappe.get_all(
-            "File",
-            filters={"name": ["in", file_names]},
-            fields=["name", "file_url", "file_name"],
-        )
-        file_map = {f.get("name"): f for f in file_rows if f.get("name")}
+    artefact_meta = _load_portfolio_artefact_meta(
+        [item.artefact_file for item in (portfolio.items or []) if item.artefact_file]
+    )
     items = []
     for item in portfolio.items or []:
         if int(item.is_showcase or 0) != 1:
             continue
         if (item.moderation_state or "") != "Approved":
             continue
+        artefact_file = _clean_text(item.artefact_file)
+        artefact_row = artefact_meta.get(artefact_file, {})
+        drive_row = artefact_row.get("drive_file") or {}
+        valid_artefact = _is_valid_portfolio_artefact_drive_row(
+            drive_row,
+            student=portfolio.student,
+            school=portfolio.school,
+        )
         items.append(
             {
                 "item_name": item.name,
@@ -1322,14 +1433,18 @@ def resolve_portfolio_share_context(token: str, viewer_email: str | None = None)
                 "evidence_date": item.evidence_date,
                 "task_submission": item.task_submission,
                 "student_reflection_entry": item.student_reflection_entry,
-                "artefact_file": item.artefact_file,
-                "artefact_file_url": resolve_academic_file_open_url(
-                    file_name=item.artefact_file,
-                    file_url=(file_map.get(item.artefact_file) or {}).get("file_url"),
-                    share_token=token,
-                    viewer_email=viewer_email,
+                "artefact_file": artefact_file if valid_artefact else None,
+                "artefact_file_url": (
+                    resolve_academic_file_open_url(
+                        file_name=artefact_file,
+                        file_url=None,
+                        share_token=token,
+                        viewer_email=viewer_email,
+                    )
+                    if valid_artefact
+                    else None
                 ),
-                "artefact_file_name": (file_map.get(item.artefact_file) or {}).get("file_name"),
+                "artefact_file_name": artefact_row.get("file_name") if valid_artefact else None,
             }
         )
 
@@ -1417,38 +1532,22 @@ def _render_reflection_pdf_html(rows: List[Dict[str, Any]], title: str) -> str:
 def _dispatch_export_file(
     *,
     student: str,
-    school: str,
-    purpose: str,
-    slot: str,
+    export_kind: str,
     file_name: str,
     content: bytes,
 ):
-    from ifitwala_ed.utilities import file_dispatcher
+    from ifitwala_ed.integrations.drive.content_uploads import upload_content_via_drive
 
-    organization = frappe.db.get_value("School", school, "organization")
-    if not organization:
-        frappe.throw(_("Organization is required for exports."))
-
-    return file_dispatcher.create_and_classify_file(
-        file_kwargs={
-            "attached_to_doctype": "Student",
-            "attached_to_name": student,
-            "is_private": 1,
-            "file_name": file_name,
-            "content": content,
+    _session_response, _finalize_response, file_doc = upload_content_via_drive(
+        workflow_id="student.export_file",
+        workflow_payload={
+            "student": student,
+            "export_kind": export_kind,
         },
-        classification={
-            "primary_subject_type": "Student",
-            "primary_subject_id": student,
-            "data_class": "academic",
-            "purpose": purpose,
-            "retention_policy": "immediate_on_request",
-            "slot": slot,
-            "organization": organization,
-            "school": school,
-            "upload_source": "API",
-        },
+        file_name=file_name,
+        content=content,
     )
+    return file_doc
 
 
 @frappe.whitelist()
@@ -1475,9 +1574,7 @@ def export_portfolio_pdf(payload=None, **kwargs):
     pdf_content = get_pdf(html)
     file_doc = _dispatch_export_file(
         student=student,
-        school=school,
-        purpose="portfolio_export",
-        slot="portfolio_export_pdf",
+        export_kind="portfolio",
         file_name=f"portfolio-export-{student}-{today()}.pdf",
         content=pdf_content,
     )
@@ -1518,9 +1615,7 @@ def export_reflection_pdf(payload=None, **kwargs):
     pdf_content = get_pdf(html)
     file_doc = _dispatch_export_file(
         student=student,
-        school=school,
-        purpose="journal_export",
-        slot="journal_export_pdf",
+        export_kind="journal",
         file_name=f"reflection-export-{student}-{today()}.pdf",
         content=pdf_content,
     )

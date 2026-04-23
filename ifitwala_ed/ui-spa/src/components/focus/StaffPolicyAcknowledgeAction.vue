@@ -36,12 +36,12 @@
 					<button
 						v-if="policy?.policy_version"
 						type="button"
-						class="btn btn-quiet"
+						class="if-action"
 						@click="openInDesk(policy.policy_version)"
 					>
 						Open in Desk
 					</button>
-					<button type="button" class="btn btn-quiet" @click="requestRefresh">Refresh</button>
+					<button type="button" class="if-action" @click="requestRefresh">Refresh</button>
 				</div>
 			</div>
 		</div>
@@ -57,16 +57,17 @@
 				<div class="flex items-center gap-2">
 					<button
 						type="button"
-						class="btn btn-quiet"
-						:disabled="activeTab === 'changes' || !hasDiffHtml"
+						class="if-action"
+						:aria-pressed="activeTab === 'changes'"
+						:disabled="!hasDiffHtml"
 						@click="activeTab = 'changes'"
 					>
 						Changes
 					</button>
 					<button
 						type="button"
-						class="btn btn-quiet"
-						:disabled="activeTab === 'full'"
+						class="if-action"
+						:aria-pressed="activeTab === 'full'"
 						@click="activeTab = 'full'"
 					>
 						Full policy
@@ -119,7 +120,7 @@
 			</div>
 
 			<div v-if="activeTab === 'changes' && hasDiffHtml" class="mt-2 flex justify-end">
-				<button type="button" class="btn btn-quiet" @click="activeTab = 'full'">
+				<button type="button" class="if-action" @click="activeTab = 'full'">
 					View full policy text
 				</button>
 			</div>
@@ -207,10 +208,10 @@
 			</div>
 
 			<div class="mt-4 flex items-center justify-end gap-2">
-				<button type="button" class="btn btn-quiet" @click="emitClose">Close</button>
+				<button type="button" class="if-button if-button--quiet" @click="emitClose">Close</button>
 				<button
 					type="button"
-					class="btn btn-primary"
+					class="if-button if-button--primary"
 					:disabled="busy || submittedOnce"
 					@click="acknowledgePolicy"
 				>

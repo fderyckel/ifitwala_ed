@@ -2,19 +2,24 @@
 	<!-- Page wrapper -->
 	<div class="staff-shell">
 		<!-- Header -->
-		<div class="flex items-center justify-between gap-3">
-			<h1 class="text-xl font-semibold tracking-tight">Student Group Cards</h1>
-			<div class="flex items-center gap-2">
-				<Button
-					appearance="primary"
-					:loading="studentsLoading"
-					@click="reloadStudents"
-					:disabled="!filters.student_group"
-				>
-					Reload
-				</Button>
+		<header class="page-header">
+			<div class="page-header__intro">
+				<h1 class="type-h1 text-canopy">Student Group Cards</h1>
+				<p class="type-meta text-slate-token/80">
+					Review the selected group and reload the current student card set from one workspace.
+				</p>
 			</div>
-		</div>
+			<div class="page-header__actions">
+				<button
+					type="button"
+					class="if-button if-button--quiet"
+					@click="reloadStudents"
+					:disabled="!filters.student_group || studentsLoading"
+				>
+					{{ studentsLoading ? 'Reloading…' : 'Reload' }}
+				</button>
+			</div>
+		</header>
 
 		<!-- Filters -->
 		<div class="ifit-filters mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -138,9 +143,14 @@
 
 			<!-- Load more -->
 			<div v-if="showLoadMore" class="mt-6 flex justify-center">
-				<Button appearance="primary" :loading="studentsLoading" @click="loadMore">
-					Load More
-				</Button>
+				<button
+					type="button"
+					class="if-button if-button--secondary"
+					:disabled="studentsLoading"
+					@click="loadMore"
+				>
+					{{ studentsLoading ? 'Loading…' : 'Load More' }}
+				</button>
 			</div>
 
 			<!-- Totals -->
@@ -191,15 +201,15 @@
 							>
 						</div>
 
-						<Button
+						<button
 							v-if="item.case_name"
-							size="sm"
-							appearance="minimal"
+							type="button"
+							class="if-action"
 							@click="openCase(item.case_name)"
 							:title="'Open Referral Case in Desk'"
 						>
 							View Case
-						</Button>
+						</button>
 					</div>
 
 					<!-- Meta row -->
@@ -224,7 +234,9 @@
 
 		<template #footer>
 			<div class="flex w-full justify-end">
-				<Button appearance="primary" @click="ssg.open = false">Close</Button>
+				<button type="button" class="if-button if-button--secondary" @click="ssg.open = false">
+					Close
+				</button>
 			</div>
 		</template>
 	</Dialog>
@@ -240,7 +252,13 @@
 		</template>
 		<template #footer>
 			<div class="flex w-full justify-end">
-				<Button appearance="primary" @click="medicalDialog.open = false">Close</Button>
+				<button
+					type="button"
+					class="if-button if-button--secondary"
+					@click="medicalDialog.open = false"
+				>
+					Close
+				</button>
 			</div>
 		</template>
 	</Dialog>
@@ -249,7 +267,7 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { nextTick } from 'vue';
-import { Button, FormControl, Badge, Dialog, FeatherIcon, call, toast } from 'frappe-ui';
+import { FormControl, Badge, Dialog, FeatherIcon, call, toast } from 'frappe-ui';
 
 type Filters = {
 	program: string | null;

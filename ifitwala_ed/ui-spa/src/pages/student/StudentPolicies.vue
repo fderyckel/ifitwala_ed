@@ -1,7 +1,7 @@
 <!-- ifitwala_ed/ui-spa/src/pages/student/StudentPolicies.vue -->
 <template>
-	<div class="portal-page">
-		<header class="card-surface p-5 sm:p-6">
+	<div class="portal-page student-hub-page">
+		<header class="student-hub-hero">
 			<div class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
 				<div>
 					<p class="type-overline text-ink/60">Student Hub</p>
@@ -22,30 +22,30 @@
 		</header>
 
 		<section class="grid grid-cols-1 gap-3 sm:grid-cols-3">
-			<article class="card-surface p-4">
-				<p class="type-caption">Total policies</p>
+			<article class="student-hub-card student-hub-card--neutral p-4">
+				<p class="type-caption text-ink/65">Total policies</p>
 				<p class="type-h3 text-ink">{{ counts.total_policies }}</p>
 			</article>
-			<article class="card-surface p-4">
-				<p class="type-caption">Acknowledged</p>
-				<p class="type-h3 text-ink">{{ counts.acknowledged_policies }}</p>
+			<article class="student-hub-card student-hub-card--success p-4">
+				<p class="type-caption text-ink/65">Acknowledged</p>
+				<p class="type-h3 text-canopy">{{ counts.acknowledged_policies }}</p>
 			</article>
-			<article class="card-surface p-4">
-				<p class="type-caption">Pending</p>
-				<p class="type-h3 text-ink">{{ counts.pending_policies }}</p>
+			<article class="student-hub-card student-hub-card--warm p-4">
+				<p class="type-caption text-ink/65">Pending</p>
+				<p class="type-h3 text-clay">{{ counts.pending_policies }}</p>
 			</article>
 		</section>
 
-		<section v-if="loading" class="card-surface p-5">
+		<section v-if="loading" class="student-hub-section">
 			<p class="type-body text-ink/70">Loading student policies...</p>
 		</section>
 
-		<section v-else-if="errorMessage" class="card-surface p-5">
-			<p class="type-body-strong text-flame">Could not load student policies.</p>
-			<p class="type-body text-ink/70">{{ errorMessage }}</p>
+		<section v-else-if="errorMessage" class="if-banner if-banner--danger">
+			<p class="if-banner__title type-body-strong text-flame">Could not load student policies.</p>
+			<p class="if-banner__body type-body">{{ errorMessage }}</p>
 		</section>
 
-		<section v-else-if="!rows.length" class="card-surface p-5">
+		<section v-else-if="!rows.length" class="student-hub-section student-hub-section--support">
 			<p class="type-body-strong text-ink">No active student policies in scope.</p>
 			<p class="type-body text-ink/70">
 				There are no active student policy versions to review right now.
@@ -53,7 +53,17 @@
 		</section>
 
 		<section v-else class="space-y-4">
-			<article v-for="row in rows" :key="row.policy_version" class="card-surface space-y-4 p-5">
+			<article
+				v-for="row in rows"
+				:key="row.policy_version"
+				class="student-hub-card space-y-4 p-5 transition-shadow"
+				:class="[
+					row.is_acknowledged ? 'student-hub-card--success' : 'student-hub-card--warm',
+					isFocusedPolicy(row.policy_version) ? 'ring-2 ring-jacaranda/35 shadow-soft' : '',
+				]"
+				:data-policy-version="row.policy_version"
+				:data-policy-focused="isFocusedPolicy(row.policy_version) ? 'true' : 'false'"
+			>
 				<div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
 					<div class="space-y-1">
 						<p class="type-caption text-ink/60">
@@ -69,8 +79,8 @@
 					</div>
 					<div class="flex flex-col items-start gap-2 sm:items-end">
 						<p
-							class="rounded-full px-3 py-1 type-caption"
-							:class="row.is_acknowledged ? 'bg-leaf/15 text-canopy' : 'bg-sand text-clay'"
+							class="chip px-3 py-1 type-caption"
+							:class="row.is_acknowledged ? 'chip-success' : 'chip-warm'"
 						>
 							{{ row.is_acknowledged ? 'Acknowledged' : 'Pending acknowledgement' }}
 						</p>
@@ -81,13 +91,13 @@
 				</div>
 
 				<details
-					class="rounded-xl border border-line-soft bg-surface-soft p-4"
-					:open="!row.is_acknowledged"
+					class="student-hub-card student-hub-card--neutral p-4"
+					:open="!row.is_acknowledged || isFocusedPolicy(row.policy_version)"
 				>
 					<summary class="cursor-pointer type-body-strong text-ink">Open policy text</summary>
 					<div
 						v-if="row.policy_text"
-						class="policy-richtext prose prose-sm mt-3 max-w-none text-ink/80"
+						class="policy-richtext portal-richtext prose prose-sm mt-3 max-w-none text-ink/80"
 						v-html="trustedHtml(row.policy_text)"
 					/>
 					<p v-else class="mt-3 type-body text-ink/70">No policy text available.</p>
@@ -95,7 +105,7 @@
 
 				<div
 					v-if="!row.is_acknowledged"
-					class="rounded-xl border border-line-soft bg-surface-soft p-4 space-y-4"
+					class="student-hub-card student-hub-card--neutral p-4 space-y-4"
 				>
 					<div v-if="row.acknowledgement_clauses.length" class="space-y-3">
 						<div>
@@ -108,7 +118,7 @@
 							<label
 								v-for="clause in row.acknowledgement_clauses"
 								:key="clause.name"
-								class="flex items-start gap-3 rounded-xl border border-line-soft bg-white px-3 py-3"
+								class="portal-choice-row"
 							>
 								<input
 									:checked="isClauseChecked(row.policy_version, clause.name)"
@@ -212,7 +222,8 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue';
+import { computed, nextTick, onMounted, ref } from 'vue';
+import { useRoute } from 'vue-router';
 import { toast } from 'frappe-ui';
 
 import {
@@ -235,6 +246,7 @@ const attestationByVersion = ref<Record<string, boolean>>({});
 const checkedClausesByVersion = ref<Record<string, string[]>>({});
 const submitAttempts = ref<Record<string, boolean>>({});
 const signatureTouched = ref<Record<string, boolean>>({});
+const route = useRoute();
 
 const counts = computed(
 	() =>
@@ -245,6 +257,9 @@ const counts = computed(
 		}
 );
 const rows = computed<StudentPolicyRow[]>(() => overview.value?.rows ?? []);
+const focusedPolicyVersion = computed(() =>
+	typeof route.query.policy_version === 'string' ? route.query.policy_version.trim() : ''
+);
 
 function normalizeName(value: string): string {
 	return value.trim().replace(/\s+/g, ' ').toLowerCase();
@@ -256,6 +271,10 @@ function trustedHtml(html: string): string {
 
 function isRowBusy(policyVersion: string): boolean {
 	return Boolean(busyRows.value[policyVersion]);
+}
+
+function isFocusedPolicy(policyVersion: string): boolean {
+	return Boolean(focusedPolicyVersion.value && focusedPolicyVersion.value === policyVersion);
 }
 
 function selectedClauseNames(policyVersion: string): string[] {
@@ -307,12 +326,23 @@ function resetRowState() {
 	signatureTouched.value = {};
 }
 
+async function focusRequestedPolicy() {
+	if (!focusedPolicyVersion.value) return;
+	await nextTick();
+	const target = Array.from(document.querySelectorAll<HTMLElement>('[data-policy-version]')).find(
+		element => element.dataset.policyVersion === focusedPolicyVersion.value
+	);
+	if (!target || typeof target.scrollIntoView !== 'function') return;
+	target.scrollIntoView({ block: 'start', behavior: 'smooth' });
+}
+
 async function loadOverview() {
 	loading.value = true;
 	errorMessage.value = '';
 	try {
 		overview.value = await getStudentPolicyOverview();
 		resetRowState();
+		await focusRequestedPolicy();
 	} catch (error) {
 		const message = error instanceof Error ? error.message : String(error || '');
 		errorMessage.value = message || 'Unknown error';
@@ -379,50 +409,3 @@ onMounted(() => {
 	void loadOverview();
 });
 </script>
-
-<style scoped>
-.policy-richtext :deep(.ql-editor) {
-	padding: 0;
-}
-
-.policy-richtext :deep(p + p) {
-	margin-top: 0.75rem;
-}
-
-.policy-richtext :deep(ul) {
-	list-style-type: disc;
-	padding-inline-start: 1.5rem;
-}
-
-.policy-richtext :deep(ol) {
-	list-style-type: decimal;
-	padding-inline-start: 1.5rem;
-}
-
-.policy-richtext :deep(li) {
-	margin: 0.25rem 0;
-}
-
-.policy-richtext :deep(a) {
-	color: rgb(var(--jacaranda-rgb) / 1);
-	text-decoration: underline;
-	text-underline-offset: 0.14em;
-}
-
-.policy-richtext :deep(u) {
-	text-decoration: underline;
-	text-underline-offset: 0.14em;
-}
-
-.policy-richtext :deep(h2) {
-	font-size: 1.25rem;
-	font-weight: 600;
-	line-height: 1.35;
-}
-
-.policy-richtext :deep(h3) {
-	font-size: 1.125rem;
-	font-weight: 600;
-	line-height: 1.4;
-}
-</style>

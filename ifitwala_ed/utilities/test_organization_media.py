@@ -1,5 +1,7 @@
 # ifitwala_ed/utilities/test_organization_media.py
 
+from __future__ import annotations
+
 import base64
 from contextlib import contextmanager
 from unittest.mock import patch
@@ -7,8 +9,7 @@ from unittest.mock import patch
 import frappe
 from frappe.tests.utils import FrappeTestCase
 
-from ifitwala_ed.utilities import file_dispatcher
-from ifitwala_ed.utilities.file_classification_contract import (
+from ifitwala_ed.utilities.governed_file_contract import (
     ORGANIZATION_MEDIA_PURPOSE,
     ORGANIZATION_MEDIA_RETENTION_POLICY,
 )
@@ -19,7 +20,6 @@ from ifitwala_ed.utilities.governed_uploads import (
 from ifitwala_ed.utilities.organization_media import (
     build_organization_logo_slot,
     build_organization_media_classification,
-    build_organization_media_context,
     build_organization_media_slot,
     build_school_gallery_slot,
     build_school_logo_slot,
@@ -70,7 +70,7 @@ class TestOrganizationMedia(FrappeTestCase):
             if frappe.db.exists(doctype, name):
                 frappe.delete_doc(doctype, name, force=1, ignore_permissions=True)
 
-    def test_dispatcher_classifies_organization_media_and_routes_to_org_path(self):
+    def test_governed_org_media_file_carries_drive_authority(self):
         slot = build_school_logo_slot(school=self.leaf_school)
         file_doc = self._create_org_media_file(
             organization=self.child_org,
@@ -79,8 +79,8 @@ class TestOrganizationMedia(FrappeTestCase):
             file_name="school-logo.png",
         )
 
-        classification = frappe.db.get_value(
-            "File Classification",
+        drive_row = frappe.db.get_value(
+            "Drive File",
             {"file": file_doc.name},
             [
                 "primary_subject_type",
@@ -90,20 +90,24 @@ class TestOrganizationMedia(FrappeTestCase):
                 "organization",
                 "school",
                 "slot",
+                "attached_doctype",
+                "attached_name",
+                "owner_doctype",
+                "owner_name",
             ],
             as_dict=True,
         )
-        self.assertEqual(classification.get("primary_subject_type"), "Organization")
-        self.assertEqual(classification.get("primary_subject_id"), self.child_org)
-        self.assertEqual(classification.get("purpose"), ORGANIZATION_MEDIA_PURPOSE)
-        self.assertEqual(classification.get("retention_policy"), ORGANIZATION_MEDIA_RETENTION_POLICY)
-        self.assertEqual(classification.get("organization"), self.child_org)
-        self.assertEqual(classification.get("school"), self.leaf_school)
-        self.assertEqual(classification.get("slot"), slot)
-        self.assertEqual(
-            file_doc.folder,
-            f"Home/Organizations/{self.child_org}/Schools/{self.leaf_school}/Media/Public",
-        )
+        self.assertEqual(drive_row.get("primary_subject_type"), "Organization")
+        self.assertEqual(drive_row.get("primary_subject_id"), self.child_org)
+        self.assertEqual(drive_row.get("purpose"), ORGANIZATION_MEDIA_PURPOSE)
+        self.assertEqual(drive_row.get("retention_policy"), ORGANIZATION_MEDIA_RETENTION_POLICY)
+        self.assertEqual(drive_row.get("organization"), self.child_org)
+        self.assertEqual(drive_row.get("school"), self.leaf_school)
+        self.assertEqual(drive_row.get("slot"), slot)
+        self.assertEqual(drive_row.get("attached_doctype"), "Organization")
+        self.assertEqual(drive_row.get("attached_name"), self.child_org)
+        self.assertEqual(drive_row.get("owner_doctype"), "Organization")
+        self.assertEqual(drive_row.get("owner_name"), self.child_org)
 
     def test_visible_media_for_school_respects_org_and_school_ancestry(self):
         exact_school_file = self._create_org_media_file(
@@ -230,7 +234,7 @@ class TestOrganizationMedia(FrappeTestCase):
         self.assertTrue(any(item["scope_type"] == "organization" for item in payload["items"]))
         self.assertIn(self.leaf_school, {row["name"] for row in payload["schools"]})
 
-    def test_upload_organization_media_asset_creates_governed_classified_file(self):
+    def test_upload_organization_media_asset_creates_governed_drive_file(self):
         with (
             self._patched_drive_media_bridge(),
             patch(
@@ -245,22 +249,21 @@ class TestOrganizationMedia(FrappeTestCase):
                 media_key="homepage-hero",
             )
 
-        self._track_classified_file(payload["file"])
         self.assertEqual(payload["organization"], self.child_org)
         self.assertEqual(payload["school"], self.leaf_school)
         self.assertEqual(payload["scope"], "school")
         self.assertEqual(payload["slot"], "organization_media__homepage_hero")
 
-        classification = frappe.db.get_value(
-            "File Classification",
+        drive_row = frappe.db.get_value(
+            "Drive File",
             {"file": payload["file"]},
             ["organization", "school", "purpose", "slot"],
             as_dict=True,
         )
-        self.assertEqual(classification["organization"], self.child_org)
-        self.assertEqual(classification["school"], self.leaf_school)
-        self.assertEqual(classification["purpose"], ORGANIZATION_MEDIA_PURPOSE)
-        self.assertEqual(classification["slot"], "organization_media__homepage_hero")
+        self.assertEqual(drive_row["organization"], self.child_org)
+        self.assertEqual(drive_row["school"], self.leaf_school)
+        self.assertEqual(drive_row["purpose"], ORGANIZATION_MEDIA_PURPOSE)
+        self.assertEqual(drive_row["slot"], "organization_media__homepage_hero")
 
     def test_upload_organization_logo_updates_org_with_governed_file(self):
         with (
@@ -272,20 +275,19 @@ class TestOrganizationMedia(FrappeTestCase):
         ):
             payload = upload_organization_logo(organization=self.child_org)
 
-        self._track_classified_file(payload["file"])
         organization_doc = frappe.get_doc("Organization", self.child_org)
         self.assertEqual(organization_doc.organization_logo_file, payload["file"])
         self.assertEqual(organization_doc.organization_logo, payload["file_url"])
 
-        classification = frappe.db.get_value(
-            "File Classification",
+        drive_row = frappe.db.get_value(
+            "Drive File",
             {"file": payload["file"]},
             ["organization", "school", "slot"],
             as_dict=True,
         )
-        self.assertEqual(classification["organization"], self.child_org)
-        self.assertFalse(classification["school"])
-        self.assertEqual(classification["slot"], build_organization_logo_slot(organization=self.child_org))
+        self.assertEqual(drive_row["organization"], self.child_org)
+        self.assertFalse(drive_row["school"])
+        self.assertEqual(drive_row["slot"], build_organization_logo_slot(organization=self.child_org))
 
     def test_school_save_rejects_legacy_url_only_media(self):
         logo_file = self._create_org_media_file(
@@ -346,28 +348,87 @@ class TestOrganizationMedia(FrappeTestCase):
         school: str | None,
         slot: str,
         file_name: str | None = None,
+        upload_source: str = "Desk",
     ):
-        file_doc = file_dispatcher.create_and_classify_file(
-            file_kwargs={
+        from ifitwala_drive.services.files.creation import create_drive_file_artifacts
+
+        classification = build_organization_media_classification(
+            organization=organization,
+            school=school,
+            slot=slot,
+            upload_source=upload_source,
+        )
+        content = base64.b64decode(self._tiny_png_base64())
+        storage_artifact = {
+            "object_key": f"files/organization-media/{frappe.generate_hash(length=12)}",
+            "storage_backend": "local",
+            "mime_type": "image/png",
+            "size_bytes": len(content),
+            "content_hash": frappe.generate_hash(length=12),
+        }
+        file_doc = frappe.get_doc(
+            {
+                "doctype": "File",
                 "attached_to_doctype": "Organization",
                 "attached_to_name": organization,
                 "file_name": file_name or f"{slot}.png",
-                "content": base64.b64decode(self._tiny_png_base64()),
+                "content": content,
                 "is_private": 0,
-            },
-            classification=build_organization_media_classification(
-                organization=organization,
-                school=school,
-                slot=slot,
-                upload_source="Desk",
-            ),
-            context_override=build_organization_media_context(
-                organization=organization,
-                school=school,
-                slot=slot,
-            ),
+            }
         )
-        self._track_classified_file(file_doc.name)
+        file_doc.flags.governed_upload = True
+        file_doc.flags.drive_compat_projection = True
+        file_doc = file_doc.insert(ignore_permissions=True)
+        self._created.append(("File", file_doc.name))
+
+        session_doc = frappe.get_doc(
+            {
+                "doctype": "Drive Upload Session",
+                "session_key": f"org-media-{frappe.generate_hash(length=12)}",
+                "status": "completed",
+                "upload_source": upload_source,
+                "created_by_user": "Administrator",
+                "attached_doctype": "Organization",
+                "attached_name": organization,
+                "owner_doctype": "Organization",
+                "owner_name": organization,
+                "organization": organization,
+                "school": school,
+                "intended_primary_subject_type": classification["primary_subject_type"],
+                "intended_primary_subject_id": classification["primary_subject_id"],
+                "intended_data_class": classification["data_class"],
+                "intended_purpose": classification["purpose"],
+                "intended_retention_policy": classification["retention_policy"],
+                "intended_slot": classification["slot"],
+                "filename_original": file_doc.file_name,
+                "mime_type_hint": storage_artifact["mime_type"],
+                "received_size_bytes": storage_artifact["size_bytes"],
+                "content_hash": storage_artifact["content_hash"],
+                "is_private": int(file_doc.is_private or 0),
+                "storage_backend": "local",
+                "tmp_object_key": f"tmp/org-media/{frappe.generate_hash(length=12)}",
+                "upload_token": frappe.generate_hash(length=16),
+            }
+        ).insert(ignore_permissions=True)
+        self._created.append(("Drive Upload Session", session_doc.name))
+        artifacts = create_drive_file_artifacts(
+            upload_session_doc=session_doc,
+            file_id=file_doc.name,
+            storage_artifact=storage_artifact,
+            binding_role="organization_media",
+        )
+        self._created.append(("Drive File", artifacts["drive_file_id"]))
+        if artifacts.get("drive_file_version_id"):
+            self._created.append(("Drive File Version", artifacts["drive_file_version_id"]))
+        if artifacts.get("drive_binding_id"):
+            self._created.append(("Drive Binding", artifacts["drive_binding_id"]))
+        for doctype in ("Drive File Derivative", "Drive Processing Job"):
+            for name in frappe.get_all(
+                doctype,
+                filters={"drive_file": artifacts["drive_file_id"]},
+                pluck="name",
+            ):
+                self._created.append((doctype, name))
         return file_doc
 
     @contextmanager
@@ -398,25 +459,12 @@ class TestOrganizationMedia(FrappeTestCase):
                 slot = build_organization_media_slot(media_key=payload["media_key"])
                 school = payload.get("school")
 
-            file_doc = file_dispatcher.create_and_classify_file(
-                file_kwargs={
-                    "attached_to_doctype": "Organization",
-                    "attached_to_name": payload["organization"],
-                    "file_name": payload["filename_original"],
-                    "content": content,
-                    "is_private": 0,
-                },
-                classification=build_organization_media_classification(
-                    organization=payload["organization"],
-                    school=school,
-                    slot=slot,
-                    upload_source=payload.get("upload_source") or "Desk",
-                ),
-                context_override=build_organization_media_context(
-                    organization=payload["organization"],
-                    school=school,
-                    slot=slot,
-                ),
+            file_doc = self._create_org_media_file(
+                organization=payload["organization"],
+                school=school,
+                slot=slot,
+                file_name=payload["filename_original"],
+                upload_source=payload.get("upload_source") or "Desk",
             )
 
             finalize_response = {
@@ -427,8 +475,13 @@ class TestOrganizationMedia(FrappeTestCase):
 
         with (
             patch(
-                "ifitwala_ed.utilities.governed_uploads._load_drive_module",
-                return_value=fake_drive_media,
+                "ifitwala_drive.api.media.upload_organization_media_asset",
+                new=fake_drive_media.upload_organization_media_asset,
+            ),
+            patch("ifitwala_drive.api.media.upload_organization_logo", new=fake_drive_media.upload_organization_logo),
+            patch("ifitwala_drive.api.media.upload_school_logo", new=fake_drive_media.upload_school_logo),
+            patch(
+                "ifitwala_drive.api.media.upload_school_gallery_image", new=fake_drive_media.upload_school_gallery_image
             ),
             patch(
                 "ifitwala_ed.utilities.governed_uploads._drive_upload_and_finalize",
@@ -440,14 +493,6 @@ class TestOrganizationMedia(FrappeTestCase):
             ),
         ):
             yield
-
-    def _track_classified_file(self, file_name: str | None):
-        if not file_name:
-            return
-        self._created.append(("File", file_name))
-        classification_name = frappe.db.get_value("File Classification", {"file": file_name}, "name")
-        if classification_name:
-            self._created.append(("File Classification", classification_name))
 
     def _create_org(self, organization_name: str, abbr: str, parent: str | None = None, is_group: int = 0) -> str:
         doc = frappe.get_doc(

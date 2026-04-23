@@ -2,85 +2,9 @@
 
 **Date:** 2026-02-01
 **Auditor:** Antigravity
-**Status:** In Progress / Changes Required
+**Status:** Historical note / strategic recommendations only
 
-## 1. Acknowledgement of Reading
-I have read and understood the following policy definition files:
-*   `policy_01_design_notes.md` (Authority Matrix & Schema Locks)
-*   `policy_02_controllers.md` (Controller Guards)
-*   `policy_03_taxinomy.md` (Taxonomy & Categories)
-
----
-
-## 2. Executive Summary
-The core architecture for **Institutional Policy**, **Policy Version**, and **Policy Acknowledgement** is effectively implemented with strong adherence to the **immutability** and **server-side enforcement** principles outlined in the policy notes. The "PowerSchool-style" locking of legal text and versions works as intended.
-
-However, there are **critical discrepancies** in the **Taxonomy/Category** implementation and **Guardian acknowledgement workflows** that must be referenced before calling this "complete".
-
----
-
-## 3. What Has Been Achieved (Compliance Verified)
-
-### ✅ Core Schema & Authority
-*   **Doctypes exist** matching the specifications: `Institutional Policy`, `Policy Version`, `Policy Acknowledgement`.
-*   **Immutability** is correctly enforced in `before_save` and `before_delete` controllers.
-*   **Deletion** is strictly forbidden across all three doctypes, matching `policy_02`.
-*   **System Manager overrides** are implemented with mandatory reasoning and commenting.
-
-### ✅ Institutional Policy
-*   Organization scoping is correctly enforced.
-*   `policy_key` immutability is active.
-
-### ✅ Policy Version
-*   **Legal Text Lock:** The system successfully prevents editing `policy_text` once an acknowledgement exists.
-*   **Active State Logic:** Correctly validates that the parent policy must be active.
-*   **Uniqueness:** Version labels are unique per policy.
-
-### ✅ Policy Acknowledgement
-*   **Append-only:** No edits allowed.
-*   **Context Binding:** Enforces `context_doctype` and `context_name`.
-*   **Applicant Scope:** Correctly validates that the applicant belongs to the same organization as the policy.
-
----
-
-## 4. Gaps and Missing Implementation (Action/Fix Required)
-
-### 🔴 Critical: Taxonomy Mismatch (`policy_03_taxinomy.md`)
-The `Institutional Policy` doctype (`institutional_policy.json`) uses an outdated or incorrect list of options for `policy_category`.
-
-*   **Current (JSON):** "Privacy", "Safeguarding", "Academic", "Conduct", "Handbook", "Other".
-*   **Required (Policy):** "Safeguarding", "Privacy & Data Protection", "Admissions", "Academic", "Conduct & Behaviour", "Health & Safety", "Operations", "Handbooks", "Employment".
-*   **Violation:** The option "Other" is explicitly **forbidden** by the spec but is present in the code.
-*   **Violation:** "Admissions", "Health & Safety", "Operations", "Employment" are missing.
-
-### 🔴 Critical: Guardian Acknowledgement Logic Failure
-The current implementation of `policy_acknowledgement.py` prevents Guardians from acknowledging policies for Students, which is a key requirement of `policy_01`.
-
-*   **Issue:** `_is_role_allowed_for_ack` checks `has_student_role()` when `acknowledged_for == "Student"`. A Guardian user does not have the Student role, so they are blocked.
-*   **Missing Logic:** There is no logic handling `acknowledged_for="Guardian"` (for parent handbooks) or `acknowledged_for="Student"` *by* a Guardian.
-*   **Missing Option:** The `acknowledged_for` field in JSON lacks the "Guardian" option.
-*   **Missing Context:** `ACK_CONTEXT_MAP` lacks a mapping for "Guardian".
-
-### 🟠 Optimization & Efficiency
-*   **No immediate risks.** The current lookup methods (`frappe.db.get_value`, `exists`) are efficient for the expected write volume (low-frequency administrative writes, moderate-frequency acknowledgement writes).
-*   **Index Recommendation:** Ensure composite indexes exist for the uniqueness constraints (e.g., `(policy_version, acknowledged_by, context_doctype, context_name)`) to avoid table scans as the acknowledgement table grows.
-
-### 🟡 Minor Discrepancies
-*   **Naming:** The JSON uses "Privacy" vs Policy "Privacy & Data Protection".
-*   **Naming:** The JSON uses "Conduct" vs Policy "Conduct & Behaviour".
-
----
-
-## 5. Next Steps (Remediation Plan)
-
-1.  **Refactor Taxonomy:** Update `Institutional Policy` JSON options to strictly match `policy_03_taxinomy.md`. Remove "Other".
-2.  **Fix Guardian Logic:**
-    *   Update `acknowledged_for` options to include "Guardian".
-    *   Update `ACK_CONTEXT_MAP` to handle Guardian context.
-    *   Refactor `_is_role_allowed_for_ack` to allow a user with **Guardian Role** to acknowledge when `acknowledged_for` is "Student" (if they are linked to that student) OR "Applicant".
-3.  **Verify Indexes:** Confirm database indexes for the uniqueness checks.
-
----
+Sections 1-4 of the original implementation audit were removed after the policy contracts, schema, and runtime moved on. This file remains only as a historical note for forward-looking product ideas; current behavior authority lives in the canonical docs under `ifitwala_ed/docs/files_and_policies/`.
 
 ## 6. Strategic Recommendations (Competitor Analysis)
 
@@ -126,9 +50,3 @@ To position IFitwala_Ed as a top-tier Education ERP, the following architectural
 *   **Impact:** `0.70`
 *   **Why:** Signing 15 individual policies is a poor user experience.
 *   **Recommendation:** Create "Policy Bundles" (e.g., "New Staff Onboarding Pack", "Year 7 Enrollment Pack"). Present these as a single localized workflow with a progress bar ("3 of 10 policies signed"), rather than a disjointed list of files.
-
----
-
-**Sign-off:**
-*   *Architecture Status:* **Verified**
-*   *Implementation Status:* **Incomplete (Categories & Guardian Flow)**

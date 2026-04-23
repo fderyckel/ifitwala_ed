@@ -1,20 +1,18 @@
 <!-- ifitwala_ed/ui-spa/src/pages/staff/analytics/RoomUtilization.vue -->
 <template>
 	<div class="analytics-shell">
-		<header class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-			<div class="text-left">
-				<h1 class="type-h2 text-canopy">Room Utilization</h1>
-				<p class="type-body text-slate-500 mt-1">
+		<header class="page-header">
+			<div class="page-header__intro">
+				<h1 class="type-h1 text-canopy">Room Utilization</h1>
+				<p class="type-meta text-slate-token/80">
 					Find free rooms across your campus and book spaces.
 				</p>
 			</div>
-			<button
-				v-if="canViewAnalytics"
-				class="rounded-full bg-canopy px-5 py-2 text-sm font-medium text-white transition-all hover:bg-leaf hover:shadow-md active:scale-95"
-				@click="refreshMetrics"
-			>
-				Refresh Data
-			</button>
+			<div v-if="canViewAnalytics" class="page-header__actions">
+				<button type="button" class="if-button if-button--quiet" @click="refreshMetrics">
+					Refresh Data
+				</button>
+			</div>
 		</header>
 
 		<KpiRow v-if="canViewAnalytics" :items="kpiItems" class="mb-2" />
@@ -38,13 +36,23 @@
 				<div class="flex flex-wrap items-center gap-3">
 					<button
 						v-if="canOpenCreateEvent"
-						class="rounded-full border border-slate-200 bg-white px-5 py-2 text-sm font-medium text-ink transition-all hover:border-canopy/40 hover:text-canopy hover:shadow-sm active:scale-95"
+						type="button"
+						class="if-button if-button--secondary"
 						@click="openCreateEvent"
 					>
 						{{ eventQuickActionTitle }}
 					</button>
 					<button
-						class="fui-btn-primary rounded-full px-5 py-2 text-sm font-medium transition-all hover:shadow-md active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+						v-if="canCreateMeeting"
+						type="button"
+						class="if-button if-button--quiet"
+						@click="openCreateTeamMeeting"
+					>
+						Schedule team meeting
+					</button>
+					<button
+						type="button"
+						class="if-button if-button--primary"
 						:disabled="
 							freeRoomsLoading ||
 							!availabilityFilters.date ||
@@ -1168,6 +1176,17 @@ function openCreateEvent() {
 		eventType: lockEventType ? eventType : null,
 		lockEventType,
 		meetingMode: 'ad_hoc',
+		prefillSchool: selectedSchool.value || null,
+	});
+}
+
+function openCreateTeamMeeting() {
+	if (!canCreateMeeting.value) return;
+
+	overlay.open('event-quick-create', {
+		eventType: 'meeting',
+		lockEventType: true,
+		meetingMode: 'team',
 		prefillSchool: selectedSchool.value || null,
 	});
 }

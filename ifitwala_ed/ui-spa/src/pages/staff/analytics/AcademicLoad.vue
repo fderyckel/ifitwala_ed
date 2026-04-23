@@ -1,10 +1,10 @@
 <!-- ifitwala_ed/ui-spa/src/pages/staff/analytics/AcademicLoad.vue -->
 <template>
 	<div class="analytics-shell space-y-5">
-		<header class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-			<div>
-				<h1 class="type-h2 text-canopy">Academic Load</h1>
-				<p class="type-caption text-slate-500">
+		<header class="page-header">
+			<div class="page-header__intro">
+				<h1 class="type-h1 text-canopy">Academic Load</h1>
+				<p class="type-meta text-slate-token/80">
 					See current workload shape for academic staff, compare fairness, and support substitute
 					decisions with school-configurable scoring.
 				</p>
@@ -21,15 +21,12 @@
 					</span>
 				</div>
 			</div>
-			<button
-				v-if="policySummary?.name"
-				type="button"
-				class="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm transition hover:border-canopy hover:text-canopy"
-				@click="openPolicySettings"
-			>
-				<FeatherIcon name="sliders" class="h-4 w-4" />
-				<span>Workload settings</span>
-			</button>
+			<div v-if="policySummary?.name" class="page-header__actions">
+				<button type="button" class="if-button if-button--secondary" @click="openPolicySettings">
+					<FeatherIcon name="sliders" class="h-4 w-4" />
+					<span>Workload settings</span>
+				</button>
+			</div>
 		</header>
 
 		<FiltersBar>
@@ -108,17 +105,14 @@
 		<div v-else class="space-y-5">
 			<KpiRow :items="kpiItems" />
 
-			<nav class="flex flex-wrap gap-2">
+			<nav class="flex flex-wrap gap-2" aria-label="Academic load views">
 				<button
 					v-for="tab in tabs"
 					:key="tab.value"
 					type="button"
-					class="rounded-full px-4 py-2 text-sm font-medium transition"
-					:class="
-						activeTab === tab.value
-							? 'bg-canopy text-white shadow-sm'
-							: 'border border-slate-200 bg-white text-slate-600 hover:border-slate-300'
-					"
+					class="if-button"
+					:class="activeTab === tab.value ? 'if-button--secondary' : 'if-button--quiet'"
+					:aria-pressed="activeTab === tab.value"
 					@click="activeTab = tab.value"
 				>
 					{{ tab.label }}

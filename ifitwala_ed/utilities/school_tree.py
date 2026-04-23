@@ -3,16 +3,29 @@
 
 # /Users/francois.de/Documents/ifitwala_ed/ifitwala_ed/utilities/school_tree.py
 
+from __future__ import annotations
+
 import frappe
 from frappe.utils.nestedset import get_ancestors_of, get_descendants_of
 
 from ifitwala_ed.utilities.tree_utils import get_ancestors_inclusive, get_descendants_inclusive
 
 CACHE_TTL = 600  # seconds
+SCHOOL_TREE_CACHE_PREFIXES = (
+    "ifitwala_ed:school_tree:",
+    "tree:School:",
+)
 
 
 class ParentRuleViolation(frappe.ValidationError):
     """Raised when a child record violates parent↔child inheritance rules."""
+
+
+def invalidate_school_tree_cache(doc=None, _=None):
+    cache = frappe.cache()
+    for prefix in SCHOOL_TREE_CACHE_PREFIXES:
+        for key in cache.get_keys(f"{prefix}*"):
+            cache.delete_value(key)
 
 
 def get_root_school() -> str | None:

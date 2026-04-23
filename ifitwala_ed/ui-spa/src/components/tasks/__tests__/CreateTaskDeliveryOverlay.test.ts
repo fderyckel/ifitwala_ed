@@ -6,22 +6,29 @@ const MISSING_ACTIVE_PLAN_MESSAGE =
 
 const {
 	routerPushMock,
-	toastCreateMock,
+	apiUploadMock,
+	emitTaskDeliveryCreatedSignalMock,
 	closeMock,
 	createNewTaskCalls,
+	createTaskReferenceMaterialCalls,
 	assignExistingTaskCalls,
+	uploadedTaskMaterialCalls,
 	searchReusableTaskCalls,
 	getReusableTaskCalls,
 	resourceState,
 } = vi.hoisted(() => ({
 	routerPushMock: vi.fn(),
-	toastCreateMock: vi.fn(),
+	apiUploadMock: vi.fn(),
+	emitTaskDeliveryCreatedSignalMock: vi.fn(),
 	closeMock: vi.fn(),
 	createNewTaskCalls: [] as any[],
+	createTaskReferenceMaterialCalls: [] as any[],
 	assignExistingTaskCalls: [] as any[],
+	uploadedTaskMaterialCalls: [] as any[],
 	searchReusableTaskCalls: [] as any[],
 	getReusableTaskCalls: [] as any[],
 	resourceState: {
+		courseCriteriaRows: [] as any[],
 		createNewTaskResult: {
 			task: 'TASK-NEW-1',
 			task_delivery: 'TDL-NEW-1',
@@ -61,11 +68,17 @@ const {
 			grading_defaults: {
 				default_allow_feedback: 1,
 				default_grading_mode: 'Completion',
+				default_rubric_scoring_strategy: null,
 				default_max_points: null,
 				default_grade_scale: null,
 			},
+			criteria_defaults: {
+				rubric_scoring_strategy: null,
+				criteria_rows: [],
+			},
 			quiz_defaults: {},
 		},
+		taskMaterialsRows: [] as any[],
 	},
 }));
 
@@ -95,6 +108,14 @@ vi.mock('vue-router', () => ({
 	useRouter: () => ({
 		push: routerPushMock,
 	}),
+}));
+
+vi.mock('@/lib/services/tasks/taskDeliveryWorkflowService', () => ({
+	emitTaskDeliveryCreatedSignal: emitTaskDeliveryCreatedSignalMock,
+}));
+
+vi.mock('@/lib/client', () => ({
+	apiUpload: apiUploadMock,
 }));
 
 vi.mock('frappe-ui', async () => {
@@ -134,6 +155,15 @@ vi.mock('frappe-ui', async () => {
 				},
 			};
 		}
+		if (config.url === 'ifitwala_ed.api.task.list_course_assessment_criteria') {
+			return {
+				loading: false,
+				submit: async () => {
+					config.onSuccess?.(resourceState.courseCriteriaRows);
+					return resourceState.courseCriteriaRows;
+				},
+			};
+		}
 		if (config.url === 'ifitwala_ed.api.task.create_task_delivery') {
 			return {
 				loading: false,
@@ -155,6 +185,25 @@ vi.mock('frappe-ui', async () => {
 					}
 					config.onSuccess?.(resourceState.createNewTaskResult);
 					return resourceState.createNewTaskResult;
+				},
+			};
+		}
+		if (config.url === 'ifitwala_ed.api.materials.list_task_materials') {
+			return {
+				loading: false,
+				submit: async () => {
+					config.onSuccess?.({ materials: resourceState.taskMaterialsRows });
+					return { materials: resourceState.taskMaterialsRows };
+				},
+			};
+		}
+		if (config.url === 'ifitwala_ed.api.materials.create_task_reference_material') {
+			return {
+				loading: false,
+				submit: async (payload: any) => {
+					createTaskReferenceMaterialCalls.push(payload);
+					config.onSuccess?.(payload);
+					return payload;
 				},
 			};
 		}
@@ -273,18 +322,32 @@ vi.mock('frappe-ui', async () => {
 				};
 			},
 		}),
-		FeatherIcon: defineComponent({
-			name: 'FeatherIconStub',
-			setup() {
-				return () => h('span');
+		TextEditor: defineComponent({
+			name: 'TextEditorStub',
+			props: ['content', 'placeholder', 'editable', 'editorClass'],
+			emits: ['change'],
+			setup(props, { emit }) {
+				return () =>
+					h('textarea', {
+						value: props.content ?? '',
+						placeholder: props.placeholder,
+						disabled: props.editable === false,
+						'data-text-editor': 'true',
+						class: props.editorClass,
+						onInput: (event: Event) =>
+							emit('change', (event.target as HTMLTextAreaElement).value),
+					});
 			},
 		}),
-		createResource,
-		toast: {
-			create: toastCreateMock,
-		},
-	};
-});
+			FeatherIcon: defineComponent({
+				name: 'FeatherIconStub',
+				setup() {
+					return () => h('span');
+				},
+			}),
+			createResource,
+		};
+	});
 
 import CreateTaskDeliveryOverlay from '@/components/tasks/CreateTaskDeliveryOverlay.vue';
 
@@ -320,6 +383,22 @@ async function setInput(placeholder: string, value: string) {
 	await flushUi();
 }
 
+async function setTextEditor(value: string) {
+	const editor = document.querySelector('[data-text-editor="true"]') as HTMLTextAreaElement | null;
+	expect(editor).not.toBeNull();
+	editor!.value = value;
+	editor!.dispatchEvent(new Event('input', { bubbles: true }));
+	await flushUi();
+}
+
+async function setSelect(selector: string, value: string) {
+	const select = document.querySelector(selector) as HTMLSelectElement | null;
+	expect(select).not.toBeNull();
+	select!.value = value;
+	select!.dispatchEvent(new Event('change', { bubbles: true }));
+	await flushUi();
+}
+
 function mountOverlay(props: Record<string, unknown> = {}) {
 	const host = document.createElement('div');
 	document.body.appendChild(host);
@@ -346,9 +425,22 @@ function mountOverlay(props: Record<string, unknown> = {}) {
 
 beforeEach(() => {
 	createNewTaskCalls.length = 0;
+	createTaskReferenceMaterialCalls.length = 0;
 	assignExistingTaskCalls.length = 0;
+	uploadedTaskMaterialCalls.length = 0;
 	searchReusableTaskCalls.length = 0;
 	getReusableTaskCalls.length = 0;
+	apiUploadMock.mockReset();
+	apiUploadMock.mockImplementation(async (url: string, formData: FormData) => {
+		uploadedTaskMaterialCalls.push({ url, formData });
+		return {
+			placement: 'PLACEMENT-UPLOADED-1',
+			material: 'MAT-UPLOADED-1',
+			title: String(formData.get('title') || ''),
+			material_type: 'File',
+			file_name: 'lab-guide.pdf',
+		};
+	});
 	resourceState.createNewTaskResult = {
 		task: 'TASK-NEW-1',
 		task_delivery: 'TDL-NEW-1',
@@ -388,16 +480,24 @@ beforeEach(() => {
 		grading_defaults: {
 			default_allow_feedback: 1,
 			default_grading_mode: 'Completion',
+			default_rubric_scoring_strategy: null,
 			default_max_points: null,
 			default_grade_scale: null,
 		},
+		criteria_defaults: {
+			rubric_scoring_strategy: null,
+			criteria_rows: [],
+		},
 		quiz_defaults: {},
 	};
+	resourceState.courseCriteriaRows = [];
+	resourceState.taskMaterialsRows = [];
 });
 
 afterEach(() => {
 	routerPushMock.mockReset();
-	toastCreateMock.mockReset();
+	apiUploadMock.mockReset();
+	emitTaskDeliveryCreatedSignalMock.mockReset();
 	closeMock.mockReset();
 	while (cleanupFns.length) cleanupFns.pop()?.();
 	document.body.innerHTML = '';
@@ -449,7 +549,41 @@ describe('CreateTaskDeliveryOverlay', () => {
 		});
 	});
 
-	it('assigns an existing reusable task without reopening the task-material editor', async () => {
+	it('submits rich-text task instructions from Step 1', async () => {
+		mountOverlay();
+		await flushUi();
+
+		await setInput('Assignment title', 'Microscope reflection');
+		await setTextEditor('<p>Bring <strong>two observations</strong> and one question.</p>');
+		await clickButton('Create');
+
+		expect(createNewTaskCalls).toHaveLength(1);
+		expect(createNewTaskCalls[0]).toMatchObject({
+			title: 'Microscope reflection',
+			instructions: '<p>Bring <strong>two observations</strong> and one question.</p>',
+		});
+		expect(emitTaskDeliveryCreatedSignalMock).toHaveBeenCalledWith({
+			task: 'TASK-NEW-1',
+			task_delivery: 'TDL-NEW-1',
+			student_group: 'GRP-1',
+			class_teaching_plan: null,
+			unit_plan: null,
+			class_session: null,
+		});
+		expect(closeMock).toHaveBeenCalledWith('programmatic');
+	});
+
+	it('shows the attachment composer inside the main create step', async () => {
+		mountOverlay();
+		await flushUi();
+
+		const text = document.body.textContent || '';
+		expect(text).toContain('Include files or links with this task');
+		expect(text).toContain('Queue file or image');
+		expect(text).toContain('Attachments saved with this task');
+	});
+
+	it('assigns an existing reusable task and closes immediately after success', async () => {
 		mountOverlay();
 		await flushUi();
 
@@ -484,10 +618,189 @@ describe('CreateTaskDeliveryOverlay', () => {
 			allow_feedback: 1,
 		});
 		expect(createNewTaskCalls).toHaveLength(0);
+		expect(closeMock).toHaveBeenCalledWith('programmatic');
+		expect(emitTaskDeliveryCreatedSignalMock).toHaveBeenCalledWith({
+			task: 'TASK-SHARED-1',
+			task_delivery: 'TDL-SHARED-1',
+			student_group: 'GRP-1',
+			class_teaching_plan: null,
+			unit_plan: null,
+			class_session: null,
+		});
+	});
 
-		const successText = document.body.textContent || '';
-		expect(successText).toContain('Assigned work ready');
-		expect(successText).not.toContain('Add task materials');
-		expect(successText).toContain('Add any class-specific resources in Class Planning');
+	it('renders reusable-task instructions without exposing literal html tags', async () => {
+		resourceState.reusableTaskDetail = {
+			...resourceState.reusableTaskDetail,
+			instructions: '<p>Annotate the article.</p><ul><li>Quote evidence</li></ul>',
+		};
+
+		mountOverlay();
+		await flushUi();
+
+		await clickButton('Reuse existing task');
+		await clickButton('Shared reading response');
+
+		const text = document.body.textContent || '';
+		expect(text).toContain('Annotate the article.');
+		expect(text).toContain('Quote evidence');
+		expect(text).not.toContain('<p>');
+		expect(text).not.toContain('<li>');
+	});
+
+	it('creates a criteria task with course criteria and a local rubric strategy', async () => {
+		resourceState.courseCriteriaRows = [
+			{
+				assessment_criteria: 'CRIT-ANALYSIS',
+				criteria_name: 'Analysis',
+				criteria_weighting: 40,
+				criteria_max_points: 8,
+				levels: [{ level: '1' }, { level: '2' }, { level: '3' }, { level: '4' }],
+			},
+			{
+				assessment_criteria: 'CRIT-COMMUNICATION',
+				criteria_name: 'Communication',
+				criteria_weighting: 60,
+				criteria_max_points: 10,
+				levels: [{ level: '1' }, { level: '2' }, { level: '3' }, { level: '4' }],
+			},
+		];
+
+		mountOverlay();
+		await flushUi();
+
+		await setInput('Assignment title', 'Essay checkpoint');
+		await clickButton('Collect and assess');
+		await clickButton('Yes');
+		await clickButton('Criteria');
+		await setSelect('[data-rubric-strategy-select="true"]', 'Sum Total');
+		await setSelect('[data-criteria-library-select="true"]', 'CRIT-ANALYSIS');
+		await clickButton('Add criterion');
+		await setSelect('[data-criteria-library-select="true"]', 'CRIT-COMMUNICATION');
+		await clickButton('Add criterion');
+		await clickButton('Create');
+
+		expect(createNewTaskCalls).toHaveLength(1);
+		expect(createNewTaskCalls[0]).toMatchObject({
+			title: 'Essay checkpoint',
+			student_group: 'GRP-1',
+			delivery_mode: 'Assess',
+			grading_mode: 'Criteria',
+			rubric_scoring_strategy: 'Sum Total',
+			criteria_rows: [
+				{
+					assessment_criteria: 'CRIT-ANALYSIS',
+					criteria_weighting: 40,
+					criteria_max_points: 8,
+				},
+				{
+					assessment_criteria: 'CRIT-COMMUNICATION',
+					criteria_weighting: 60,
+					criteria_max_points: 10,
+				},
+			],
+		});
+	});
+
+	it('reuses criteria tasks while allowing only the local delivery strategy to change', async () => {
+		resourceState.reusableTaskDetail = {
+			name: 'TASK-SHARED-1',
+			title: 'Shared essay rubric',
+			instructions: 'Write and justify your position.',
+			task_type: 'Assignment',
+			default_course: 'COURSE-1',
+			unit_plan: 'UNIT-1',
+			owner: 'colleague@example.com',
+			is_template: 1,
+			visibility_scope: 'shared',
+			default_delivery_mode: 'Assess',
+			grading_defaults: {
+				default_allow_feedback: 1,
+				default_grading_mode: 'Criteria',
+				default_rubric_scoring_strategy: 'Sum Total',
+				default_max_points: null,
+				default_grade_scale: null,
+			},
+			criteria_defaults: {
+				rubric_scoring_strategy: 'Sum Total',
+				criteria_rows: [
+					{
+						assessment_criteria: 'CRIT-ANALYSIS',
+						criteria_name: 'Analysis',
+						criteria_weighting: 40,
+						criteria_max_points: 8,
+						levels: [{ level: '1' }, { level: '2' }, { level: '3' }, { level: '4' }],
+					},
+				],
+			},
+			quiz_defaults: {},
+		};
+
+		mountOverlay();
+		await flushUi();
+
+		await clickButton('Reuse existing task');
+		await clickButton('Shared reading response');
+		await setSelect('[data-rubric-strategy-select="true"]', 'Separate Criteria');
+		await clickButton('Assign existing task');
+
+		expect(assignExistingTaskCalls).toHaveLength(1);
+		expect(assignExistingTaskCalls[0]).toMatchObject({
+			task: 'TASK-SHARED-1',
+			student_group: 'GRP-1',
+			delivery_mode: 'Assess',
+			grading_mode: 'Criteria',
+			rubric_scoring_strategy: 'Separate Criteria',
+		});
+		expect(closeMock).toHaveBeenCalledWith('programmatic');
+	});
+
+	it('uploads queued file attachments as part of the create flow', async () => {
+		mountOverlay();
+		await flushUi();
+
+		await clickButton('Queue file or image');
+
+		const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement | null;
+		expect(fileInput).not.toBeNull();
+		const file = new File(['pdf-bytes'], 'lab-guide.pdf', { type: 'application/pdf' });
+		Object.defineProperty(fileInput!, 'files', {
+			value: [file],
+			configurable: true,
+		});
+		fileInput!.dispatchEvent(new Event('change', { bubbles: true }));
+		await flushUi();
+		await clickButton('Queue attachment');
+
+		await setInput('Assignment title', 'Microscope reflection');
+		await clickButton('Create');
+
+		expect(createNewTaskCalls).toHaveLength(1);
+		expect(apiUploadMock).toHaveBeenCalledTimes(1);
+		expect(uploadedTaskMaterialCalls[0].url).toBe(
+			'ifitwala_ed.api.materials.upload_task_material_file'
+		);
+		expect(uploadedTaskMaterialCalls[0].formData.get('task')).toBe('TASK-NEW-1');
+		expect(uploadedTaskMaterialCalls[0].formData.get('title')).toBe('lab-guide.pdf');
+		expect(closeMock).toHaveBeenCalledWith('programmatic');
+	});
+
+	it('closes immediately after creating the task when nothing is queued', async () => {
+		mountOverlay();
+		await flushUi();
+
+		await setInput('Assignment title', 'Microscope reflection');
+		await clickButton('Create');
+
+		expect(createNewTaskCalls).toHaveLength(1);
+		expect(emitTaskDeliveryCreatedSignalMock).toHaveBeenCalledWith({
+			task: 'TASK-NEW-1',
+			task_delivery: 'TDL-NEW-1',
+			student_group: 'GRP-1',
+			class_teaching_plan: null,
+			unit_plan: null,
+			class_session: null,
+		});
+		expect(closeMock).toHaveBeenCalledWith('programmatic');
 	});
 });

@@ -1,5 +1,7 @@
 // ui-spa/src/types/contracts/staff_teaching/get_staff_class_planning_surface.ts
 
+import type { AttachmentPreviewItem } from '@/types/contracts/attachments/shared'
+
 export type Request = {
 	student_group: string
 	class_teaching_plan?: string
@@ -38,6 +40,8 @@ export type StaffPlanningMaterial = {
 	modality?: string | null
 	description?: string | null
 	reference_url?: string | null
+	thumbnail_url?: string | null
+	preview_url?: string | null
 	open_url?: string | null
 	file_name?: string | null
 	file_size?: string | null
@@ -46,6 +50,7 @@ export type StaffPlanningMaterial = {
 	usage_role?: string | null
 	placement_note?: string | null
 	placement_order?: number | null
+	attachment_preview?: AttachmentPreviewItem | null
 }
 
 export type StaffAssignedWork = {
@@ -123,6 +128,7 @@ export type StaffPlanningUnit = {
 	class_reflections?: StaffPlanningClassReflection[]
 	governed_required: number
 	pacing_status?: string | null
+	resolved_pacing_status?: string | null
 	teacher_focus?: string | null
 	pacing_note?: string | null
 	prior_to_the_unit?: string | null
@@ -160,6 +166,7 @@ export type Response = {
 	resolved: {
 		class_teaching_plan?: string | null
 		course_plan?: string | null
+		unit_plan?: string | null
 		can_initialize: number
 		requires_course_plan_selection: number
 	}

@@ -57,11 +57,27 @@ def flatten_assigned_work(
 def resolve_student_learning_focus(
     api,
     units: list[dict[str, Any]],
+    preferred_unit_plan: str | None = None,
+    *,
+    anchor_date: Any | None = None,
 ) -> tuple[dict[str, Any] | None, dict[str, Any] | None]:
     if not units:
         return None, None
 
-    today = api.now_datetime().date()
+    resolved_unit_plan = api.planning.normalize_text(preferred_unit_plan)
+    if resolved_unit_plan:
+        selected_unit = next(
+            (unit for unit in units if api.planning.normalize_text(unit.get("unit_plan")) == resolved_unit_plan),
+            None,
+        )
+        if selected_unit:
+            return selected_unit, resolve_student_learning_session(
+                api,
+                selected_unit,
+                anchor_date=anchor_date,
+            )
+
+    resolved_anchor = api._coerce_curriculum_anchor_date(anchor_date)
     in_progress: list[tuple[datetime, dict[str, Any], dict[str, Any]]] = []
     upcoming: list[tuple[datetime, dict[str, Any], dict[str, Any]]] = []
     undated: list[tuple[int, int, dict[str, Any], dict[str, Any]]] = []
@@ -73,7 +89,7 @@ def resolve_student_learning_focus(
         if session_status == "in progress":
             in_progress.append((session_date or api.now_datetime(), unit, session))
             continue
-        if session_date and session_date.date() >= today:
+        if session_date and session_date.date() >= resolved_anchor:
             upcoming.append((session_date, unit, session))
             continue
         if session_date:
@@ -96,6 +112,64 @@ def resolve_student_learning_focus(
     return units[0], None
 
 
+def resolve_student_learning_session(
+    api,
+    unit: dict[str, Any] | None,
+    *,
+    anchor_date: Any | None = None,
+) -> dict[str, Any] | None:
+    if not unit:
+        return None
+
+    resolved_anchor = api._coerce_curriculum_anchor_date(anchor_date)
+    in_progress: list[tuple[datetime, tuple[int, str], dict[str, Any]]] = []
+    exact: list[tuple[tuple[int, str], dict[str, Any]]] = []
+    future: list[tuple[datetime, tuple[int, str], dict[str, Any]]] = []
+    previous: list[tuple[datetime, tuple[int, str], dict[str, Any]]] = []
+    undated: list[tuple[tuple[int, str], dict[str, Any]]] = []
+
+    for session in unit.get("sessions") or []:
+        status = api.planning.normalize_text(session.get("session_status")).lower()
+        if status in {"changed", "canceled"}:
+            continue
+
+        sort_key = (
+            int(session.get("sequence_index") or 0),
+            api.planning.normalize_text(session.get("class_session")),
+        )
+        session_date = api._coerce_learning_datetime(session.get("session_date"))
+        if status == "in progress":
+            in_progress.append((session_date or api.now_datetime(), sort_key, session))
+            continue
+        if session_date and session_date.date() == resolved_anchor:
+            exact.append((sort_key, session))
+            continue
+        if session_date and session_date.date() > resolved_anchor:
+            future.append((session_date, sort_key, session))
+            continue
+        if session_date:
+            previous.append((session_date, sort_key, session))
+            continue
+        undated.append((sort_key, session))
+
+    if in_progress:
+        _, _, session = sorted(in_progress, key=lambda row: (row[0], row[1]))[0]
+        return session
+    if exact:
+        _, session = sorted(exact, key=lambda row: row[0])[0]
+        return session
+    if future:
+        _, _, session = sorted(future, key=lambda row: (row[0], row[1]))[0]
+        return session
+    if undated:
+        _, session = sorted(undated, key=lambda row: row[0])[0]
+        return session
+    if previous:
+        _, _, session = sorted(previous, key=lambda row: (row[0], row[1]), reverse=True)[0]
+        return session
+    return None
+
+
 def build_student_focus_statement(
     api,
     unit: dict[str, Any] | None,
@@ -112,8 +186,18 @@ def build_student_focus_statement(
     return None
 
 
-def build_student_learning_focus(api, units: list[dict[str, Any]]) -> dict[str, Any]:
-    unit, session = api._resolve_student_learning_focus(units)
+def build_student_learning_focus(
+    api,
+    units: list[dict[str, Any]],
+    current_unit_plan: str | None = None,
+    *,
+    anchor_date: Any | None = None,
+) -> dict[str, Any]:
+    unit, session = api._resolve_student_learning_focus(
+        units,
+        current_unit_plan,
+        anchor_date=anchor_date,
+    )
     return {
         "current_unit": (
             {
@@ -256,15 +340,71 @@ def build_student_next_actions(
     return [row[2] for row in actions[:4]]
 
 
+def resolve_student_selected_task(
+    api,
+    units: list[dict[str, Any]],
+    general_assigned_work: list[dict[str, Any]] | None,
+    *,
+    current_unit_plan: str | None = None,
+    current_session_id: str | None = None,
+) -> dict[str, Any] | None:
+    normalized_unit_plan = api.planning.normalize_text(current_unit_plan)
+    normalized_session_id = api.planning.normalize_text(current_session_id)
+
+    def first_non_quiz(items: list[dict[str, Any]] | None) -> dict[str, Any] | None:
+        for item in items or []:
+            if api.planning.normalize_text(item.get("task_type")).lower() == "quiz":
+                continue
+            if api.planning.normalize_text(item.get("task_delivery")):
+                return item
+        return None
+
+    if normalized_session_id:
+        for _unit, session in api._iter_learning_sessions(units):
+            if api.planning.normalize_text(session.get("class_session")) != normalized_session_id:
+                continue
+            selected = first_non_quiz(session.get("assigned_work"))
+            if selected:
+                return selected
+
+    if normalized_unit_plan:
+        for unit in units or []:
+            if api.planning.normalize_text(unit.get("unit_plan")) != normalized_unit_plan:
+                continue
+            selected = first_non_quiz(unit.get("assigned_work"))
+            if selected:
+                return selected
+            for session in unit.get("sessions") or []:
+                selected = first_non_quiz(session.get("assigned_work"))
+                if selected:
+                    return selected
+
+    return first_non_quiz(api._flatten_assigned_work(units, general_assigned_work))
+
+
 def build_student_learning_sections(
     api,
     units: list[dict[str, Any]],
     general_assigned_work: list[dict[str, Any]] | None,
     reflection_entries: list[dict[str, Any]] | None = None,
+    current_unit_plan: str | None = None,
+    *,
+    anchor_date: Any | None = None,
 ) -> dict[str, Any]:
-    focus = api._build_student_learning_focus(units)
+    focus = api._build_student_learning_focus(
+        units,
+        current_unit_plan,
+        anchor_date=anchor_date,
+    )
     current_unit_plan = api.planning.normalize_text((focus.get("current_unit") or {}).get("unit_plan"))
     current_session = focus.get("current_session") or {}
+    selected_task = resolve_student_selected_task(
+        api,
+        units,
+        general_assigned_work,
+        current_unit_plan=current_unit_plan,
+        current_session_id=api.planning.normalize_text(current_session.get("class_session")),
+    )
     return {
         "focus": focus,
         "next_actions": api._build_student_next_actions(units, general_assigned_work),
@@ -272,6 +412,7 @@ def build_student_learning_sections(
         "selected_context": {
             "unit_plan": current_unit_plan or None,
             "class_session": api.planning.normalize_text(current_session.get("class_session")) or None,
+            "task_delivery": api.planning.normalize_text((selected_task or {}).get("task_delivery")) or None,
         },
         "unit_navigation": api._build_student_unit_navigation(units, current_unit_plan),
     }
@@ -379,10 +520,13 @@ def build_student_learning_space_payload(
         "has_high_priority": 0,
         "latest_publish_at": None,
     }
+    course_plan_row: dict[str, Any] | None = None
+    current_unit_plan: str | None = None
 
     if class_plan_row:
         doc = api.frappe.get_doc("Class Teaching Plan", class_plan_row["name"])
         resolved_course_plan = doc.course_plan
+        course_plan_row = api.planning.get_course_plan_row(doc.course_plan)
         unit_lookup = api._build_unit_lookup(doc.course_plan, audience="student")
         unit_rows = api._serialize_backbone_units(doc.name, unit_lookup, audience="student")
         sessions = api._fetch_class_sessions(doc.name, audience="student")
@@ -397,6 +541,13 @@ def build_student_learning_space_payload(
             class_teaching_plan=doc.name,
             assigned_work=assigned_work,
         )
+        current_unit_plan = api._resolve_current_curriculum_unit(
+            units_payload,
+            course_plan_row=course_plan_row,
+            student_group=selected_group or None,
+            class_unit_rows=doc.get("units") or [],
+            anchor_date=api.now_datetime(),
+        ).get("unit_plan")
         assigned_work_count = len(assigned_work)
     else:
         course_plans = api.frappe.get_all(
@@ -408,6 +559,7 @@ def build_student_learning_space_payload(
         )
         if len(course_plans) == 1:
             resolved_course_plan = course_plans[0]["name"]
+            course_plan_row = api.planning.get_course_plan_row(resolved_course_plan)
             unit_lookup = api._build_unit_lookup(resolved_course_plan, audience="student")
             units_payload = [
                 {
@@ -436,6 +588,12 @@ def build_student_learning_space_payload(
                 units=units_payload,
                 course_plan=resolved_course_plan,
             )
+            current_unit_plan = api._resolve_current_curriculum_unit(
+                units_payload,
+                course_plan_row=course_plan_row,
+                anchor_date=api.now_datetime(),
+                allow_live_session=False,
+            ).get("unit_plan")
             if group_options:
                 message = api._(
                     "Your teacher has not published a class teaching plan yet. Showing the shared course plan."
@@ -509,6 +667,8 @@ def build_student_learning_space_payload(
             units_payload,
             resources_payload.get("general_assigned_work") or [],
             reflection_entries,
+            current_unit_plan,
+            anchor_date=api.now_datetime(),
         ),
         "resources": resources_payload,
         "curriculum": {

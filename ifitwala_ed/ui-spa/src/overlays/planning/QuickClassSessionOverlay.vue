@@ -163,11 +163,7 @@
 												>
 													{{ createPending ? 'Creating...' : 'Create Class Teaching Plan' }}
 												</button>
-												<button
-													type="button"
-													class="if-action if-action--subtle"
-													@click="openFullPlanning"
-												>
+												<button type="button" class="if-action" @click="openFullPlanning">
 													Open Full Class Planning
 												</button>
 											</div>
@@ -184,11 +180,7 @@
 										Add governed units to the shared course plan before planning class sessions.
 									</p>
 									<div class="mt-4">
-										<button
-											type="button"
-											class="if-action if-action--subtle"
-											@click="openFullPlanning"
-										>
+										<button type="button" class="if-action" @click="openFullPlanning">
 											Open Full Class Planning
 										</button>
 									</div>
@@ -236,11 +228,7 @@
 											</label>
 
 											<div class="flex flex-wrap gap-3 lg:justify-end">
-												<button
-													type="button"
-													class="if-action if-action--subtle"
-													@click="openFullPlanning"
-												>
+												<button type="button" class="if-action" @click="openFullPlanning">
 													Open Full Class Planning
 												</button>
 											</div>
@@ -270,7 +258,7 @@
 												<button
 													v-if="currentSessionId !== dateMatchedSession.class_session"
 													type="button"
-													class="if-action if-action--subtle"
+													class="if-action"
 													@click="editMatchedSession"
 												>
 													Edit Existing
@@ -278,7 +266,7 @@
 												<button
 													v-if="currentSessionId === dateMatchedSession.class_session"
 													type="button"
-													class="if-action if-action--subtle"
+													class="if-action"
 													@click="startNewSessionDraft"
 												>
 													Start Another Session
@@ -422,11 +410,7 @@
 															Add the sequence of activities students will experience.
 														</p>
 													</div>
-													<button
-														type="button"
-														class="if-action if-action--subtle"
-														@click="addActivity"
-													>
+													<button type="button" class="if-action" @click="addActivity">
 														Add Activity
 													</button>
 												</div>
@@ -545,7 +529,7 @@
 												<button
 													v-if="currentSessionId"
 													type="button"
-													class="if-action if-action--subtle"
+													class="if-action"
 													@click="startNewSessionDraft"
 												>
 													Start New Draft

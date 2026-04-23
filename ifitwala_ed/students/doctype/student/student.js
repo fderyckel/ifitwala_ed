@@ -23,7 +23,6 @@ frappe.ui.form.on('Student', {
 		}
 
 		frm.trigger("render_contact_address_readonly");
-		frm.trigger("refresh_crm_actions");
 		frm.trigger("refresh_family_address_proposal");
 
 		frm.trigger("setup_governed_image_upload");
@@ -57,14 +56,30 @@ frappe.ui.form.on('Student', {
 
 	render_contact_address_readonly: function(frm) {
 		if (frm.is_new()) {
-			frappe.contacts.clear_address_and_contact(frm);
+			frm.__student_crm_summary = null;
+			renderStudentCrmSummary(frm, null);
+			frm.events.refresh_crm_actions(frm, null);
 			return;
 		}
 
-		frappe.contacts.render_address_and_contact(frm);
+		const studentName = frm.doc.name;
+		frappe.call({
+			method: "ifitwala_ed.students.doctype.student.student.get_student_crm_summary",
+			args: { student_name: studentName },
+			callback: function(r) {
+				if (frm.doc.name !== studentName) {
+					return;
+				}
+
+				const summary = r.message || {};
+				frm.__student_crm_summary = summary;
+				renderStudentCrmSummary(frm, summary);
+				frm.events.refresh_crm_actions(frm, summary);
+			}
+		});
 	},
 
-	refresh_crm_actions: function(frm) {
+	refresh_crm_actions: function(frm, summary) {
 		frm.remove_custom_button(__("Contact"), __("View"));
 		frm.remove_custom_button(__("Address"), __("View"));
 		frm.remove_custom_button(__("Addresses"), __("View"));
@@ -73,38 +88,32 @@ frappe.ui.form.on('Student', {
 			return;
 		}
 
-		frappe.call({
-			method: "ifitwala_ed.students.doctype.student.student.get_student_crm_summary",
-			args: { student_name: frm.doc.name },
-			callback: function(r) {
-				const summary = r.message || {};
-				if (summary.contact) {
-					frm.add_custom_button(
-						__("Contact"),
-						() => frappe.set_route("Form", "Contact", summary.contact),
-						__("View")
-					);
-				}
+		const resolvedSummary = summary || frm.__student_crm_summary || {};
+		if (resolvedSummary.contact) {
+			frm.add_custom_button(
+				__("Contact"),
+				() => frappe.set_route("Form", "Contact", resolvedSummary.contact),
+				__("View")
+			);
+		}
 
-				const addresses = Array.isArray(summary.addresses) ? summary.addresses : [];
-				if (addresses.length === 1) {
-					frm.add_custom_button(
-						__("Address"),
-						() => frappe.set_route("Form", "Address", addresses[0]),
-						__("View")
-					);
-					return;
-				}
+		const addresses = Array.isArray(resolvedSummary.addresses) ? resolvedSummary.addresses : [];
+		if (addresses.length === 1) {
+			frm.add_custom_button(
+				__("Address"),
+				() => frappe.set_route("Form", "Address", addresses[0]),
+				__("View")
+			);
+			return;
+		}
 
-				if (addresses.length > 1) {
-					frm.add_custom_button(
-						__("Addresses"),
-						() => openAddressPickerDialog(addresses),
-						__("View")
-					);
-				}
-			}
-		});
+		if (addresses.length > 1) {
+			frm.add_custom_button(
+				__("Addresses"),
+				() => openAddressPickerDialog(addresses),
+				__("View")
+			);
+		}
 	},
 
 	setup_sibling_guardian_sync: function(frm) {
@@ -406,16 +415,15 @@ frappe.ui.form.on("Student", {
 				return;
 			}
 
-			new frappe.ui.FileUploader({
-				method: "ifitwala_ed.utilities.governed_uploads.upload_student_image",
-				args: { student: frm.doc.name },
-				doctype: "Student",
-				docname: frm.doc.name,
-				fieldname,
-				is_private: 0,
-				disable_private: true,
-				allow_multiple: false,
-				on_success(file_doc) {
+				new frappe.ui.FileUploader({
+					method: "ifitwala_ed.utilities.governed_uploads.upload_student_image",
+					args: { student: frm.doc.name },
+					doctype: "Student",
+					docname: frm.doc.name,
+					fieldname,
+					disable_private: true,
+					allow_multiple: false,
+					on_success(file_doc) {
 					const payload = file_doc?.message
 						|| (Array.isArray(file_doc) ? file_doc[0] : file_doc)
 						|| (typeof file_doc === "string" ? { file_url: file_doc } : null);
@@ -506,6 +514,144 @@ function normalizeMultiCheckValues(value) {
 	return Object.entries(value)
 		.filter(([, checked]) => Boolean(checked))
 		.map(([key]) => key);
+}
+
+const STUDENT_CRM_PANEL_STYLE = [
+	"padding: 12px",
+	"border: 1px solid var(--border-color)",
+	"border-radius: var(--border-radius-md)",
+	"background: var(--fg-color, #fff)",
+].join("; ");
+
+const STUDENT_CRM_CARD_STYLE = [
+	"padding: 10px",
+	"border-radius: var(--border-radius-sm)",
+	"background: var(--control-bg, #f7f7f7)",
+].join("; ");
+
+function renderStudentCrmSummary(frm, summary) {
+	const contactWrapper = frm.get_field("contact_html")?.$wrapper;
+	const addressWrapper = frm.get_field("address_html")?.$wrapper;
+	if (!contactWrapper?.length || !addressWrapper?.length) {
+		return;
+	}
+
+	const contactSummary = summary?.contact_summary || null;
+	const addressSummaries = Array.isArray(summary?.address_summaries) ? summary.address_summaries : [];
+
+	contactWrapper.html(buildStudentContactHtml(contactSummary, Boolean(summary?.has_hidden_contact)));
+	addressWrapper.html(buildStudentAddressHtml(addressSummaries, Boolean(summary?.has_hidden_addresses)));
+}
+
+function buildStudentContactHtml(contactSummary, hasHiddenContact) {
+	const title = contactSummary?.display_name || __("No linked contact.");
+	const meta = contactSummary?.name && contactSummary.name !== title
+		? `<div class="small text-muted" style="margin-top: 4px;">${frappe.utils.escape_html(contactSummary.name)}</div>`
+		: "";
+
+	const emails = Array.isArray(contactSummary?.emails) ? contactSummary.emails : [];
+	const phones = Array.isArray(contactSummary?.phones) ? contactSummary.phones : [];
+	const chips = [];
+
+	emails.forEach((row) => {
+		if (!row?.value) {
+			return;
+		}
+		chips.push(buildStudentContactChip(
+			row.is_primary ? __("Primary Email") : __("Email"),
+			row.value
+		));
+	});
+
+	phones.forEach((row) => {
+		if (!row?.value) {
+			return;
+		}
+		chips.push(buildStudentContactChip(
+			row.is_primary ? __("Primary Phone") : __("Phone"),
+			row.value
+		));
+	});
+
+	if (!chips.length) {
+		chips.push(
+			`<div class="text-muted small" style="margin-top: 8px;">${__("No email or phone rows are linked to this contact.")}</div>`
+		);
+	}
+
+	const hiddenContactMessage = __(
+		"Direct Contact record access is unavailable for your role. Details remain visible here."
+	);
+	const notice = hasHiddenContact
+		? `<div class="text-muted small" style="margin-top: 10px;">${hiddenContactMessage}</div>`
+		: "";
+
+	return `
+		<div class="if-student-crm-panel" style="${STUDENT_CRM_PANEL_STYLE}">
+			<div class="small text-muted" style="margin-bottom: 6px;">${__("Linked Contact")}</div>
+			<div style="font-weight: 600;">${frappe.utils.escape_html(title)}</div>
+			${meta}
+			<div style="display: grid; gap: 8px; margin-top: 10px;">
+				${chips.join("")}
+			</div>
+			${notice}
+		</div>
+	`;
+}
+
+function buildStudentContactChip(label, value) {
+	return `
+		<div style="${STUDENT_CRM_CARD_STYLE}; padding: 8px 10px;">
+			<div class="small text-muted">${frappe.utils.escape_html(label)}</div>
+			<div>${frappe.utils.escape_html(value)}</div>
+		</div>
+	`;
+}
+
+function buildStudentAddressHtml(addressSummaries, hasHiddenAddresses) {
+	const rows = (addressSummaries || []).map((row) => buildStudentAddressCard(row)).join("");
+	const emptyState = rows
+		? rows
+		: `<div class="text-muted small">${__("No linked address.")}</div>`;
+	const hiddenAddressMessage = __(
+		"Direct Address record access is unavailable for your role. Details remain visible here."
+	);
+	const notice = hasHiddenAddresses
+		? `<div class="text-muted small" style="margin-top: 10px;">${hiddenAddressMessage}</div>`
+		: "";
+
+	return `
+		<div class="if-student-crm-panel" style="${STUDENT_CRM_PANEL_STYLE}">
+			<div class="small text-muted" style="margin-bottom: 6px;">
+				${addressSummaries?.length > 1 ? __("Linked Addresses") : __("Linked Address")}
+			</div>
+			<div style="display: grid; gap: 10px;">
+				${emptyState}
+			</div>
+			${notice}
+		</div>
+	`;
+}
+
+function buildStudentAddressCard(row) {
+	const title = row?.display_title || row?.name || "";
+	const meta = row?.address_type
+		? `<div class="small text-muted" style="margin-top: 4px;">${frappe.utils.escape_html(row.address_type)}</div>`
+		: "";
+	const lines = Array.isArray(row?.lines)
+		? row.lines
+			.filter(Boolean)
+			.map((line) => `<div>${frappe.utils.escape_html(line)}</div>`)
+			.join("")
+		: "";
+
+	return `
+		<div style="${STUDENT_CRM_CARD_STYLE}">
+			<div style="font-weight: 600;">${frappe.utils.escape_html(title)}</div>
+			${meta}
+			<div style="margin-top: 8px;">${lines}</div>
+		</div>
+	`;
 }
 
 function openAddressPickerDialog(addresses) {

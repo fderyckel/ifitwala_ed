@@ -1,5 +1,7 @@
 // ifitwala_ed/ui-spa/src/lib/client.ts
 
+import { emitUploadProgress, type UploadProgressCallback } from '@/lib/uploadProgress'
+
 type HttpMethod = 'POST' | 'GET'
 
 let cachedCsrfToken: string | null = null
@@ -103,6 +105,106 @@ function redirectToLoginIfNeeded() {
 	window.location.assign(loginPath)
 }
 
+type ProgressRequestOptions = {
+	onProgress?: UploadProgressCallback
+	contentType?: string
+	totalBytes?: number | null
+}
+
+function parseResponsePayload(text: string) {
+	if (!text) {
+		return {}
+	}
+	try {
+		return JSON.parse(text)
+	} catch {
+		return {}
+	}
+}
+
+function rejectWithServerPayload(
+	status: number,
+	statusText: string,
+	data: any,
+	reject: (reason?: unknown) => void
+) {
+	const serverMessages = parseServerMessages(data?._server_messages)
+	const message = serverMessages.join('\n') || data?.message || statusText
+	if ((status === 401 || status === 403) && isSessionFailureMessage(message || '')) {
+		redirectToLoginIfNeeded()
+	}
+	reject(new Error(message || 'API request failed'))
+}
+
+async function requestWithProgress<T>(
+	method: string,
+	body: FormData | string,
+	options: ProgressRequestOptions = {}
+): Promise<T> {
+	const csrf = await resolveCsrfToken()
+
+	return new Promise((resolve, reject) => {
+		const xhr = new XMLHttpRequest()
+		let latestLoaded = 0
+		let latestTotal = options.totalBytes ?? null
+		let processingEmitted = false
+
+		const emitProcessing = () => {
+			if (processingEmitted) {
+				return
+			}
+			processingEmitted = true
+			const processingLoaded =
+				typeof latestTotal === 'number' && latestTotal > 0 ? latestTotal : latestLoaded
+			emitUploadProgress(options.onProgress, 'processing', processingLoaded, latestTotal)
+		}
+
+		xhr.open('POST', `/api/method/${method}`, true)
+		xhr.withCredentials = true
+		if (options.contentType) {
+			xhr.setRequestHeader('Content-Type', options.contentType)
+		}
+		if (csrf) {
+			xhr.setRequestHeader('X-Frappe-CSRF-Token', csrf)
+		}
+
+		xhr.upload.addEventListener('loadstart', () => {
+			emitUploadProgress(options.onProgress, 'uploading', 0, latestTotal)
+		})
+		xhr.upload.addEventListener('progress', event => {
+			latestLoaded = event.loaded
+			if (event.lengthComputable) {
+				latestTotal = event.total
+			}
+			emitUploadProgress(
+				options.onProgress,
+				'uploading',
+				event.loaded,
+				event.lengthComputable ? event.total : latestTotal
+			)
+		})
+		xhr.upload.addEventListener('load', emitProcessing)
+		xhr.onreadystatechange = () => {
+			if (xhr.readyState >= XMLHttpRequest.HEADERS_RECEIVED) {
+				emitProcessing()
+			}
+		}
+		xhr.onerror = () => reject(new Error('API request failed'))
+		xhr.onabort = () => reject(new Error('API request failed'))
+		xhr.onload = () => {
+			emitProcessing()
+			const data = parseResponsePayload(xhr.responseText || '')
+			if (xhr.status < 200 || xhr.status >= 300 || data?.exception || data?.exc) {
+				rejectWithServerPayload(xhr.status, xhr.statusText, data, reject)
+				return
+			}
+			resolve((data?.message ?? data) as T)
+		}
+
+		xhr.send(body)
+	})
+}
+
 export async function api(method: string, payload?: any, httpMethod: HttpMethod = 'POST') {
 	const csrf = await resolveCsrfToken()
 	const response = await fetch(`/api/method/${method}`, {
@@ -125,6 +227,27 @@ export async function api(method: string, payload?: any, httpMethod: HttpMethod 
 		throw new Error(message || 'API request failed')
 	}
 	return data?.message ?? data
+}
+
+export async function apiUpload<T>(
+	method: string,
+	formData: FormData,
+	options: Pick<ProgressRequestOptions, 'onProgress'> = {}
+): Promise<T> {
+	return requestWithProgress<T>(method, formData, options)
+}
+
+export async function apiPostWithProgress<T>(
+	method: string,
+	payload: any,
+	options: Pick<ProgressRequestOptions, 'onProgress'> = {}
+): Promise<T> {
+	const body = JSON.stringify(payload || {})
+	return requestWithProgress<T>(method, body, {
+		...options,
+		contentType: 'application/json',
+		totalBytes: new Blob([body]).size,
+	})
 }
 
 export function setCsrfToken(token: string) {

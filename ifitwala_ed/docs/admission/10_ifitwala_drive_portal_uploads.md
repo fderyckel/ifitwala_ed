@@ -8,7 +8,7 @@ The core rule is simple:
 
 * the SPA must call `ifitwala_ed` admissions endpoints
 * `ifitwala_ed` must call workflow-aware `ifitwala_drive` endpoints
-* no new governed admissions upload should write files by calling `file_dispatcher.create_and_classify_file(...)` directly from portal-facing business logic
+* no new governed admissions upload should create, route, or finalize files through Ed-local file helpers from portal-facing business logic
 
 This keeps `ifitwala_ed` as workflow authority and `ifitwala_drive` as governed file authority.
 
@@ -22,13 +22,13 @@ Preferred stack for admissions uploads:
 2. `ifitwala_ed.api.admissions_portal` validates applicant access and workflow state
 3. `ifitwala_ed.admission.admissions_portal` calls a workflow-aware `ifitwala_drive.api.admissions.*` or `ifitwala_drive.api.media.*` endpoint
 4. `ifitwala_drive` creates a `Drive Upload Session`
-5. `ifitwala_drive` finalizes through the authoritative Ed dispatcher boundary
+5. `ifitwala_drive` finalizes natively and writes the authoritative governed-file metadata
 
 Avoid:
 
 * SPA calling `ifitwala_drive` directly
 * admissions portal methods calling generic `ifitwala_drive.api.uploads.create_upload_session` directly
-* admissions portal methods writing files directly with `file_dispatcher.create_and_classify_file(...)`
+* admissions portal methods writing files through retired Ed-local file creation/routing helpers
 
 The generic `ifitwala_drive.api.uploads.*` endpoints are infrastructure-level upload lifecycle endpoints. Admissions portal flows should normally use workflow-aware wrappers instead.
 
@@ -57,6 +57,8 @@ Notes:
 
 * this is the correct pattern
 * scope, slot, purpose, retention, organization, and school are resolved server-side
+* SPA-facing responses now return server-owned admissions `open_url` / `preview_url` / `thumbnail_url` fields plus `drive_file_id` and `canonical_ref`
+* compatibility `File.file_url` may still exist internally, but it is not the portal contract
 
 ### 2. Applicant health vaccination proof upload
 
@@ -100,6 +102,8 @@ Current workflow path:
 Notes:
 
 * `Student Applicant.applicant_image` is updated during Drive post-finalize
+* privacy is workflow-owned and private by default for this upload surface
+* SPA-facing payloads return thumbnail-only `image_url` for compact profile display plus a separate server-owned `open_url`
 
 ### 4. Applicant guardian image upload
 
@@ -123,6 +127,8 @@ Notes:
 * guardian image slot is row-aware: `guardian_profile_image__<guardian-row-key>`
 * the upload requires a saved guardian row identity
 * the current SPA rule is: save a new guardian row first, then upload its image
+* privacy is workflow-owned and private by default for this upload surface
+* SPA-facing payloads return thumbnail-only `image_url` for compact profile display plus a separate server-owned `open_url`
 
 ---
 
@@ -161,6 +167,7 @@ Operational deployment rule:
 * the exported API wrapper and the underlying Drive integration service must ship together
 * `bench clear-cache` is not sufficient for new Python wrapper exports; restart app processes after deploy
 * verify wrapper availability from `bench --site <site> console` before testing in the browser
+* Ed runtime must fail closed if a required wrapper export is unavailable; it must not import Drive integration service exports directly as a compatibility fallback
 
 Recommended console verification:
 
@@ -224,7 +231,9 @@ Authoritative contract:
 Post-finalize:
 
 * update `Student Applicant.applicant_image`
-* return `file_url` and classification id to the SPA
+* keep the compatibility `File.file_url` on `Student Applicant.applicant_image`
+* return a server-owned admissions thumbnail `image_url`, a separate `open_url`, plus `drive_file_id` and `canonical_ref` to the SPA
+* compact profile/avatar surfaces must treat `image_url` as derivative-only and may show a placeholder until the thumbnail derivative is ready
 
 ### Applicant guardian image contract
 
@@ -249,6 +258,13 @@ Why row-aware slotting matters:
 * slots are legal/governance truth
 * one generic `guardian_profile_image` slot is not sufficient when an applicant can have multiple guardians
 * each guardian image needs independent replacement/version lineage
+
+Post-finalize:
+
+* update `Student Applicant Guardian.guardian_image`
+* keep the compatibility `File.file_url` on `Student Applicant Guardian.guardian_image`
+* return a server-owned admissions thumbnail `image_url`, a separate `open_url`, plus `drive_file_id` and `canonical_ref` to the SPA
+* compact guardian identity surfaces must treat `image_url` as derivative-only and may show a placeholder until the thumbnail derivative is ready
 
 ### SPA usage
 

@@ -14,6 +14,9 @@ from ifitwala_ed.curriculum.materials import validate_reference_url
 from ifitwala_ed.setup.doctype.org_communication.attachments import (
     ORG_COMMUNICATION_ATTACHMENT_BINDING_ROLE,
     ORG_COMMUNICATION_ATTACHMENT_SLOT_PREFIX,
+    assert_org_communication_attachment_context_stable,
+    has_org_communication_governed_file_attachments,
+    resolve_org_communication_attachment_context,
 )
 
 # --------------------------------------------------------------------
@@ -34,7 +37,9 @@ WIDE_AUDIENCE_RECIPIENT_ROLES = {
     "Academic Assistant",
     "HR Manager",
     "Accounts Manager",
+    "Nurse",
 }
+WIDE_AUDIENCE_ROLE_LABEL = "Academic Admin, Academic Assistant, HR Manager, Accounts Manager, Nurse, or System Manager"
 
 AUDIENCE_TARGET_MODES = ("School Scope", "Organization", "Team", "Student Group")
 RECIPIENT_TOGGLE_FIELDS = ("to_staff", "to_students", "to_guardians")
@@ -45,9 +50,31 @@ RECIPIENT_TOGGLE_LABELS = {
 }
 TARGET_MODE_ALLOWED_RECIPIENTS = {
     "School Scope": {"to_staff", "to_students", "to_guardians"},
-    "Organization": {"to_staff"},
+    "Organization": {"to_staff", "to_guardians"},
     "Team": {"to_staff"},
     "Student Group": {"to_staff", "to_students", "to_guardians"},
+}
+BRIEF_PORTAL_SURFACES = ("Morning Brief", "Everywhere")
+DELIVERY_PROFILE_ALLOWED_PORTAL_SURFACES = {
+    "staff_only": {"Desk", "Morning Brief", "Everywhere"},
+    "portal_only": {"Portal Feed"},
+    "mixed": {"Portal Feed", "Everywhere"},
+}
+DELIVERY_PROFILE_PREFERRED_PORTAL_SURFACES = {
+    "undecided": ("Everywhere", "Desk", "Portal Feed", "Morning Brief"),
+    "staff_only": ("Everywhere", "Desk", "Morning Brief"),
+    "portal_only": ("Portal Feed",),
+    "mixed": ("Everywhere", "Portal Feed"),
+}
+DELIVERY_PROFILE_HELP_TEXT = {
+    "undecided": _("Choose the audience first to narrow delivery surfaces to the ones that match that communication."),
+    "staff_only": _("Staff-only communications can publish to Desk, Morning Brief, or Everywhere."),
+    "portal_only": _(
+        "Student and guardian audiences publish through Portal Feed. Morning Brief dates are not used for portal-only communications."
+    ),
+    "mixed": _(
+        "Communications that include both staff and portal recipients can publish to Portal Feed or Everywhere."
+    ),
 }
 ORG_COMMUNICATION_NAME_PATTERN = "ORG-COMM-.YY.-.MM.-.#####"
 
@@ -87,6 +114,68 @@ def _get_enabled_recipient_fields(row) -> set[str]:
     return {field for field, enabled in flags.items() if enabled}
 
 
+def _allows_partial_audience_editing(doc) -> bool:
+    return str(_field_value(doc, "status") or "").strip() == "Draft"
+
+
+def resolve_org_communication_delivery_profile(audiences) -> str:
+    has_staff = False
+    has_portal = False
+
+    for row in audiences or []:
+        enabled_recipients = _get_enabled_recipient_fields(row)
+        if enabled_recipients & {"to_staff"}:
+            has_staff = True
+        if enabled_recipients & {"to_students", "to_guardians"}:
+            has_portal = True
+
+    if has_staff and has_portal:
+        return "mixed"
+    if has_portal:
+        return "portal_only"
+    if has_staff:
+        return "staff_only"
+    return "undecided"
+
+
+def get_org_communication_allowed_portal_surfaces(profile: str) -> set[str]:
+    return set(DELIVERY_PROFILE_ALLOWED_PORTAL_SURFACES.get(profile, set()))
+
+
+def get_org_communication_delivery_rules(*, portal_surfaces: list[str], default_surface: str | None) -> dict:
+    available_surfaces = [str(surface or "").strip() for surface in portal_surfaces if str(surface or "").strip()]
+    default_value = str(default_surface or "").strip()
+
+    def _pick_preferred_surface(profile: str, allowed_surfaces: list[str]) -> str:
+        if not allowed_surfaces:
+            return ""
+        if default_value and default_value in allowed_surfaces:
+            return default_value
+        preferred_order = DELIVERY_PROFILE_PREFERRED_PORTAL_SURFACES.get(profile, ())
+        for candidate in preferred_order:
+            if candidate in allowed_surfaces:
+                return candidate
+        return allowed_surfaces[0]
+
+    profiles: dict[str, dict[str, object]] = {}
+    for profile in ("undecided", "staff_only", "portal_only", "mixed"):
+        if profile == "undecided":
+            allowed_surfaces = list(available_surfaces)
+        else:
+            allowed_set = get_org_communication_allowed_portal_surfaces(profile)
+            allowed_surfaces = [surface for surface in available_surfaces if surface in allowed_set]
+        profiles[profile] = {
+            "allowed_portal_surfaces": allowed_surfaces,
+            "preferred_portal_surface": _pick_preferred_surface(profile, allowed_surfaces),
+            "help_text": DELIVERY_PROFILE_HELP_TEXT.get(profile, ""),
+        }
+
+    return {
+        "brief_portal_surfaces": [surface for surface in available_surfaces if surface in set(BRIEF_PORTAL_SURFACES)],
+        "profiles": profiles,
+    }
+
+
 # --------------------------------------------------------------------
 # Main Document controller
 # --------------------------------------------------------------------
@@ -104,17 +193,19 @@ class OrgCommunication(Document):
         2. Enforce optional Issuing School based on user scope (node + descendants).
         3. Validate School<->Organization alignment when school is set.
         4. Handle date logic.
-        5. Validate audience rows.
-        6. Enforce audience role restrictions.
-        7. Enforce status + publish window rules.
-        8. Enforce portal_surface rules.
-        9. Enforce Class Announcement pattern.
+        5. Lock attachment governance context once governed files exist.
+        6. Validate audience rows.
+        7. Enforce audience role restrictions.
+        8. Enforce status + publish window rules.
+        9. Enforce portal_surface rules.
+        10. Enforce Class Announcement pattern.
         """
         self._resolve_and_validate_organization_scope()
         self._validate_and_enforce_issuing_school_scope()
         self._validate_school_organization_alignment()
         self._validate_activity_context_links()
         self._normalize_and_validate_dates()
+        self._validate_attachment_context_lock()
         self._validate_audiences()
         self._validate_attachments()
         self._enforce_role_restrictions_on_audiences()
@@ -430,7 +521,10 @@ class OrgCommunication(Document):
         - For everyone: School Scope rows must be consistent with the parent
           Issuing School nested tree.
         """
+        allow_partial_audiences = _allows_partial_audience_editing(self)
         if not self.audiences:
+            if allow_partial_audiences:
+                return
             frappe.throw(
                 _("Please add at least one Audience for this communication."),
                 title=_("Missing Audience"),
@@ -468,6 +562,8 @@ class OrgCommunication(Document):
         for row in self.audiences:
             target_mode = (row.target_mode or "").strip()
             if not target_mode:
+                if allow_partial_audiences:
+                    continue
                 frappe.throw(
                     _("Target Mode is required for each Audience row."),
                     title=_("Missing Target Mode"),
@@ -481,6 +577,8 @@ class OrgCommunication(Document):
 
             if target_mode == "School Scope":
                 if not row.school:
+                    if allow_partial_audiences:
+                        continue
                     frappe.throw(
                         _("Audience row for School Scope must specify a School."),
                         title=_("Incomplete Audience"),
@@ -491,19 +589,23 @@ class OrgCommunication(Document):
                         _("Audience row for Organization cannot specify School, Team, or Student Group."),
                         title=_("Invalid Organization Audience"),
                     )
-                if self.school:
+                if self.school and not allow_partial_audiences:
                     frappe.throw(
                         _("Organization audience rows require a blank Issuing School."),
                         title=_("Invalid Organization Audience"),
                     )
             elif target_mode == "Team":
                 if not row.team:
+                    if allow_partial_audiences:
+                        continue
                     frappe.throw(
                         _("Audience row for Team must specify a Team."),
                         title=_("Incomplete Audience"),
                     )
             elif target_mode == "Student Group":
                 if not row.student_group:
+                    if allow_partial_audiences:
+                        continue
                     frappe.throw(
                         _("Audience row for Student Group must specify a Student Group."),
                         title=_("Incomplete Audience"),
@@ -511,6 +613,8 @@ class OrgCommunication(Document):
 
             enabled_recipients = _get_enabled_recipient_fields(row)
             if not enabled_recipients:
+                if allow_partial_audiences:
+                    continue
                 frappe.throw(
                     _("Audience row must include at least one Recipient toggle."),
                     title=_("Missing Recipients"),
@@ -560,6 +664,9 @@ class OrgCommunication(Document):
 
     def _enforce_role_restrictions_on_audiences(self):
         """Restrict wide staff/community audience rows to privileged roles."""
+        if _allows_partial_audience_editing(self):
+            return
+
         user = frappe.session.user
         is_wide_privileged = _user_has_any_role(user, WIDE_AUDIENCE_RECIPIENT_ROLES)
 
@@ -571,17 +678,15 @@ class OrgCommunication(Document):
             enabled_recipients = _get_enabled_recipient_fields(row)
             if target_mode == "School Scope" and enabled_recipients & {"to_staff"} and not is_wide_privileged:
                 frappe.throw(
-                    _(
-                        "You are not allowed to target Staff at School Scope. "
-                        "Only Academic Admin, Academic Assistant, HR Manager, Accounts Manager, or System Manager may do this."
+                    _("You are not allowed to target Staff at School Scope. Only {roles} may do this.").format(
+                        roles=WIDE_AUDIENCE_ROLE_LABEL
                     ),
                     title=_("Audience Not Allowed"),
                 )
             if target_mode == "Organization" and not is_wide_privileged:
                 frappe.throw(
-                    _(
-                        "You are not allowed to target Staff at Organization scope. "
-                        "Only Academic Admin, Academic Assistant, HR Manager, Accounts Manager, or System Manager may do this."
+                    _("You are not allowed to target Organization audiences. Only {roles} may do this.").format(
+                        roles=WIDE_AUDIENCE_ROLE_LABEL
                     ),
                     title=_("Audience Not Allowed"),
                 )
@@ -590,6 +695,11 @@ class OrgCommunication(Document):
         rows = self.get("attachments") or []
         if not rows:
             return
+
+        if has_org_communication_governed_file_attachments(self):
+            # Governed file rows require a resolvable authoritative context even when
+            # the attachment rows themselves are unchanged on this save.
+            resolve_org_communication_attachment_context(self)
 
         before = None if self.is_new() else self.get_doc_before_save()
         unchanged_rows = {}
@@ -677,6 +787,13 @@ class OrgCommunication(Document):
                     )
                 )
 
+    def _validate_attachment_context_lock(self):
+        before = None if self.is_new() else self.get_doc_before_save()
+        if not before:
+            return
+
+        assert_org_communication_attachment_context_stable(self, before)
+
     # ----------------------------------------------------------------
     # Status / publish window rules
     # ----------------------------------------------------------------
@@ -723,8 +840,32 @@ class OrgCommunication(Document):
     def _enforce_portal_surface_rules(self):
         """Ensure portal_surface is compatible with brief dates."""
         portal_surface = (self.portal_surface or "").strip()
+        status = (self.status or "").strip()
+        delivery_profile = resolve_org_communication_delivery_profile(_field_value(self, "audiences") or [])
 
-        if portal_surface in {"Morning Brief", "Everywhere"}:
+        if not _allows_partial_audience_editing(self) and delivery_profile != "undecided":
+            allowed_surfaces = get_org_communication_allowed_portal_surfaces(delivery_profile)
+            if allowed_surfaces and portal_surface and portal_surface not in allowed_surfaces:
+                if delivery_profile == "portal_only":
+                    frappe.throw(
+                        _("Student and guardian audiences must use Portal Feed instead of {surface}.").format(
+                            surface=portal_surface
+                        ),
+                        title=_("Invalid Portal Surface"),
+                    )
+                if delivery_profile == "mixed":
+                    frappe.throw(
+                        _(
+                            "Audiences that include both staff and portal recipients must use Portal Feed or Everywhere."
+                        ),
+                        title=_("Invalid Portal Surface"),
+                    )
+                frappe.throw(
+                    _("Staff-only audiences must use Desk, Morning Brief, or Everywhere."),
+                    title=_("Invalid Portal Surface"),
+                )
+
+        if portal_surface in set(BRIEF_PORTAL_SURFACES) and status in {"Published", "Scheduled"}:
             if not self.brief_start_date:
                 frappe.throw(
                     _("Brief Start Date is required when Portal Surface is Morning Brief or Everywhere."),
@@ -962,7 +1103,7 @@ def _get_allowed_organizations_for_user(user: str | None = None) -> list[str]:
 
 
 @frappe.whitelist()
-def get_org_communication_context() -> dict:
+def get_org_communication_context(user: str | None = None) -> dict:
     """Context for client-side UX:
 
     - default_school: where the user "sits" in the nestedset
@@ -971,7 +1112,7 @@ def get_org_communication_context() -> dict:
       * org-scope schools when no default_school for non-privileged users
     - is_privileged: can choose Issuing School (Academic Admin, Academic Assistant, System Manager)
     """
-    user = frappe.session.user
+    user = user or frappe.session.user
     default_school, school_tree = _get_school_scope_tree(user)
     is_privileged = _user_has_any_role(user, ELEVATED_WIDE_AUDIENCE_ROLES)
 
@@ -982,11 +1123,10 @@ def get_org_communication_context() -> dict:
     if not org_scope and base_org:
         org_scope = _get_descendant_organizations_uncached(base_org)
 
-    # For non-privileged users without a default school, allow selecting from
-    # schools inside their effective organization scope.
+    # When no default school is configured, school selection comes from the
+    # effective organization scope so org-scoped admins can still target a
+    # specific school from quick-create.
     if default_school:
-        allowed_schools = school_tree
-    elif is_privileged:
         allowed_schools = school_tree
     else:
         allowed_schools = _get_org_scope_schools_for_user(user)

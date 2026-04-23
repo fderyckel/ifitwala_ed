@@ -21,7 +21,10 @@ from frappe.utils import (
     get_year_ending,
     get_year_start,
     getdate,
+    today,
 )
+
+from ifitwala_ed.utilities.school_tree import get_ancestor_schools
 
 EARNED_LEAVE_CHUNK_SIZE = 100
 EARNED_LEAVE_DISPATCH_LOCK_KEY = "ifitwala_ed:scheduler:earned_leave:dispatch"
@@ -29,6 +32,7 @@ EARNED_LEAVE_SUMMARY_CACHE_KEY = "ifitwala_ed:scheduler:earned_leave:last_run"
 LEAVE_ENCASHMENT_CHUNK_SIZE = 100
 LEAVE_ENCASHMENT_DISPATCH_LOCK_KEY = "ifitwala_ed:scheduler:leave_encashment:dispatch"
 LEAVE_ENCASHMENT_SUMMARY_CACHE_KEY = "ifitwala_ed:scheduler:leave_encashment:last_run"
+PORTAL_CALENDAR_CACHE_PREFIX = "ifitwala_ed:portal_calendar:"
 
 
 def _chunk_values(values, chunk_size):
@@ -131,10 +135,286 @@ def _get_employee_context(employee: str):
     )
 
 
+def _get_staff_calendar_context(employee: str):
+    if not employee:
+        return frappe._dict()
+    return (
+        frappe.db.get_value(
+            "Employee",
+            employee,
+            ["name", "school", "employee_group", "current_holiday_lis", "employment_status"],
+            as_dict=True,
+        )
+        or frappe._dict()
+    )
+
+
+def _staff_calendar_sort_date(raw_value) -> int:
+    if not raw_value:
+        return datetime.date.min.toordinal()
+    return getdate(raw_value).toordinal()
+
+
+def _calendar_overlaps_window(calendar_row, start_date=None, end_date=None) -> bool:
+    start_date = getdate(start_date) if start_date else None
+    end_date = getdate(end_date) if end_date else None
+
+    if start_date and not end_date:
+        end_date = start_date
+    if end_date and not start_date:
+        start_date = end_date
+
+    from_date = getdate(calendar_row.get("from_date")) if calendar_row.get("from_date") else None
+    to_date = getdate(calendar_row.get("to_date")) if calendar_row.get("to_date") else None
+
+    if start_date and to_date and to_date < start_date:
+        return False
+    if end_date and from_date and from_date > end_date:
+        return False
+    return True
+
+
+def _get_staff_calendar_docrow(calendar_name: str | None, *, ignore_calendar_name: str | None = None):
+    calendar_name = (calendar_name or "").strip()
+    if not calendar_name:
+        return None
+    if ignore_calendar_name and calendar_name == ignore_calendar_name:
+        return None
+
+    rows = frappe.get_all(
+        "Staff Calendar",
+        filters={"name": calendar_name},
+        fields=["name", "school", "employee_group", "from_date", "to_date"],
+        limit=1,
+        ignore_permissions=True,
+    )
+    return rows[0] if rows else None
+
+
+def _get_staff_calendar_candidates(
+    employee_group: str,
+    *,
+    start_date=None,
+    end_date=None,
+    ignore_calendar_name: str | None = None,
+):
+    employee_group = (employee_group or "").strip()
+    if not employee_group:
+        return []
+
+    filters = {"employee_group": employee_group}
+    if start_date:
+        filters["to_date"] = [">=", getdate(start_date)]
+    if end_date:
+        filters["from_date"] = ["<=", getdate(end_date)]
+
+    rows = frappe.get_all(
+        "Staff Calendar",
+        filters=filters,
+        fields=["name", "school", "employee_group", "from_date", "to_date"],
+        limit=0,
+        ignore_permissions=True,
+    )
+    if ignore_calendar_name:
+        rows = [row for row in rows if (row.get("name") or "") != ignore_calendar_name]
+    return rows
+
+
+def _scope_staff_calendar_candidates(candidates, employee_school: str | None):
+    if not candidates:
+        return []
+
+    if employee_school:
+        school_chain = get_ancestor_schools(employee_school) or [employee_school]
+        school_rank = {school: idx for idx, school in enumerate(school_chain)}
+        scoped = [row for row in candidates if (row.get("school") or "").strip() in school_rank]
+        scoped.sort(
+            key=lambda row: (
+                school_rank.get((row.get("school") or "").strip(), 10**9),
+                -_staff_calendar_sort_date(row.get("from_date")),
+                row.get("name") or "",
+            )
+        )
+        return scoped
+
+    if len(candidates) == 1:
+        return sorted(
+            candidates,
+            key=lambda row: (-_staff_calendar_sort_date(row.get("from_date")), row.get("name") or ""),
+        )
+
+    return []
+
+
+def _linked_staff_calendar_from_candidates(candidates, calendar_name: str | None):
+    calendar_name = (calendar_name or "").strip()
+    if not calendar_name:
+        return None
+
+    for row in candidates or []:
+        if (row.get("name") or "").strip() == calendar_name:
+            return row
+
+    return None
+
+
+def resolve_staff_calendar_for_employee(
+    employee: str,
+    *,
+    start_date=None,
+    end_date=None,
+    ignore_calendar_name: str | None = None,
+):
+    ctx = _get_staff_calendar_context(employee)
+    if not ctx:
+        return None
+
+    start_date = getdate(start_date) if start_date else None
+    end_date = getdate(end_date) if end_date else None
+    if start_date and not end_date:
+        end_date = start_date
+    if end_date and not start_date:
+        start_date = end_date
+
+    linked_calendar = _get_staff_calendar_docrow(
+        ctx.current_holiday_lis,
+        ignore_calendar_name=ignore_calendar_name,
+    )
+    if linked_calendar and _calendar_overlaps_window(linked_calendar, start_date, end_date):
+        linked_calendar["resolution"] = "employee_link"
+        return linked_calendar
+
+    employee_group = (ctx.employee_group or "").strip()
+    if not employee_group:
+        return None
+
+    candidates = _get_staff_calendar_candidates(
+        employee_group,
+        start_date=start_date,
+        end_date=end_date,
+        ignore_calendar_name=ignore_calendar_name,
+    )
+    if not linked_calendar:
+        linked_calendar = _linked_staff_calendar_from_candidates(candidates, ctx.current_holiday_lis)
+        if linked_calendar and _calendar_overlaps_window(linked_calendar, start_date, end_date):
+            linked_calendar["resolution"] = "employee_link"
+            return linked_calendar
+
+    scoped = _scope_staff_calendar_candidates(candidates, ctx.school)
+    if scoped:
+        scoped[0]["resolution"] = "matched_scope"
+        return scoped[0]
+
+    return None
+
+
+def resolve_current_staff_calendar_for_employee(
+    employee: str,
+    *,
+    as_of_date=None,
+    ignore_calendar_name: str | None = None,
+):
+    ctx = _get_staff_calendar_context(employee)
+    if not ctx:
+        return None
+
+    if ctx.get("employment_status") != "Active":
+        return None
+
+    current_date = getdate(as_of_date or today())
+
+    linked_calendar = _get_staff_calendar_docrow(
+        ctx.current_holiday_lis,
+        ignore_calendar_name=ignore_calendar_name,
+    )
+    if linked_calendar and _calendar_overlaps_window(linked_calendar, current_date, current_date):
+        linked_calendar["resolution"] = "employee_link"
+        return linked_calendar
+
+    employee_group = (ctx.employee_group or "").strip()
+    if not employee_group:
+        if linked_calendar:
+            linked_calendar["resolution"] = "employee_link_stale"
+            return linked_calendar
+        return None
+
+    candidates = _get_staff_calendar_candidates(
+        employee_group,
+        ignore_calendar_name=ignore_calendar_name,
+    )
+    if not linked_calendar:
+        linked_calendar = _linked_staff_calendar_from_candidates(candidates, ctx.current_holiday_lis)
+        if linked_calendar and _calendar_overlaps_window(linked_calendar, current_date, current_date):
+            linked_calendar["resolution"] = "employee_link"
+            return linked_calendar
+
+    scoped = _scope_staff_calendar_candidates(candidates, ctx.school)
+
+    active_candidates = [row for row in scoped if _calendar_overlaps_window(row, current_date, current_date)]
+    if active_candidates:
+        active_candidates.sort(
+            key=lambda row: (-_staff_calendar_sort_date(row.get("from_date")), row.get("name") or "")
+        )
+        active_candidates[0]["resolution"] = "matched_current"
+        return active_candidates[0]
+
+    if scoped:
+        scoped.sort(key=lambda row: (-_staff_calendar_sort_date(row.get("from_date")), row.get("name") or ""))
+        scoped[0]["resolution"] = "matched_latest"
+        return scoped[0]
+
+    if linked_calendar:
+        linked_calendar["resolution"] = "employee_link_stale"
+        return linked_calendar
+
+    return None
+
+
+def invalidate_staff_portal_calendar_cache(employee: str | None = None):
+    cache = frappe.cache()
+    pattern = f"{PORTAL_CALENDAR_CACHE_PREFIX}{employee}:*" if employee else f"{PORTAL_CALENDAR_CACHE_PREFIX}*"
+    for key in cache.get_keys(pattern):
+        cache.delete_value(key)
+
+
+def sync_current_staff_calendar_for_employee(
+    employee: str,
+    *,
+    update_modified: bool = False,
+    ignore_calendar_name: str | None = None,
+):
+    if not employee or not frappe.db.exists("Employee", employee):
+        return None
+
+    resolved = resolve_current_staff_calendar_for_employee(
+        employee,
+        ignore_calendar_name=ignore_calendar_name,
+    )
+    resolved_name = (resolved or {}).get("name")
+    current_name = frappe.db.get_value("Employee", employee, "current_holiday_lis")
+
+    if (current_name or None) != (resolved_name or None):
+        frappe.db.set_value(
+            "Employee",
+            employee,
+            "current_holiday_lis",
+            resolved_name,
+            update_modified=update_modified,
+        )
+        invalidate_staff_portal_calendar_cache(employee)
+
+    return resolved_name
+
+
 def get_holiday_list_for_employee(employee, organization=None, raise_exception=True):
     ctx = _get_employee_context(employee)
-    if ctx.current_holiday_lis:
-        return ctx.current_holiday_lis
+    linked_calendar = (ctx.get("current_holiday_lis") or "").strip() if ctx else ""
+    if linked_calendar:
+        return linked_calendar
+
+    calendar_row = resolve_current_staff_calendar_for_employee(employee)
+    if calendar_row:
+        return calendar_row.get("name")
 
     if raise_exception:
         frappe.throw(_("No Staff Calendar could be resolved for Employee {0}").format(employee))
@@ -142,14 +422,21 @@ def get_holiday_list_for_employee(employee, organization=None, raise_exception=T
 
 
 def get_holidays_for_employee(employee, start_date, end_date, raise_exception=True, only_non_weekly=False):
-    ctx = _get_employee_context(employee)
     start_date = getdate(start_date)
     end_date = getdate(end_date)
+    ctx = _get_employee_context(employee)
+    linked_calendar = (ctx.get("current_holiday_lis") or "").strip() if ctx else ""
+    calendar_name = linked_calendar
+
+    calendar_row = None
+    if not calendar_name:
+        calendar_row = resolve_staff_calendar_for_employee(employee, start_date=start_date, end_date=end_date)
+        calendar_name = (calendar_row or {}).get("name")
 
     holidays = []
-    if ctx.current_holiday_lis:
+    if calendar_name:
         filters = {
-            "parent": ctx.current_holiday_lis,
+            "parent": calendar_name,
             "holiday_date": ("between", [start_date, end_date]),
         }
         if only_non_weekly:

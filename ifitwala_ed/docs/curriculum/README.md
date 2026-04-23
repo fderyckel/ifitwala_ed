@@ -17,6 +17,11 @@ Current canonical set:
 - `04_curriculum_lms_and_quiz_contract.md`
   student learning-space and native quiz runtime contract
 
+Supporting current-state companion note:
+
+- `05_student_and_guardian_learning_experience_proposal.md`
+  implemented student and guardian learning-surface direction with ongoing polish notes; canonical runtime authority still lives in `04_curriculum_lms_and_quiz_contract.md` plus the guardian portal contracts
+
 Moved historical notes retained in this folder:
 
 - `05_materials_guideline_history.md`

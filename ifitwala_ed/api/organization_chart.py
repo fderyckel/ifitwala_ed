@@ -132,6 +132,7 @@ def _serialize_employees(rows: Iterable[dict]) -> list[dict]:
         image_field="image",
         slots=ORG_CHART_IMAGE_SLOTS,
         fallback_to_original=False,
+        request_missing_derivatives=True,
     )
 
 

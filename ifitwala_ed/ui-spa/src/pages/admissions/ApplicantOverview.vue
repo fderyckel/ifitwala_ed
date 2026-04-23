@@ -1,120 +1,120 @@
 <!-- ifitwala_ed/ui-spa/src/pages/admissions/ApplicantOverview.vue -->
 
 <template>
-	<div class="admissions-overview">
-		<div class="admissions-overview__header">
-			<p class="type-h2 text-ink">{{ __('Overview') }}</p>
-			<p class="type-body text-ink/65">
-				{{ __('Track your application progress and next steps.') }}
-			</p>
-		</div>
+	<div class="admissions-page">
+		<header class="page-header">
+			<div class="page-header__intro">
+				<h1 class="type-h1 text-ink">{{ __('Overview') }}</h1>
+				<p class="type-meta text-ink/70">
+					{{ __('Track your application progress and next steps.') }}
+				</p>
+			</div>
+		</header>
 
-		<div v-if="loading" class="admissions-overview__state-card">
-			<div class="admissions-overview__state-inline">
+		<div v-if="loading" class="admissions-state-card">
+			<div class="admissions-state-inline">
 				<Spinner class="h-4 w-4" />
 				<p class="type-body-strong text-ink">{{ __('Loading overview…') }}</p>
 			</div>
 		</div>
 
-		<div v-else-if="error" class="admissions-overview__error-card">
-			<p class="type-body-strong text-rose-900">{{ __('Unable to load overview') }}</p>
-			<p class="admissions-overview__error-text type-caption text-rose-900/80 whitespace-pre-wrap">
-				{{ error }}
-			</p>
-			<button type="button" class="admissions-overview__retry-button" @click="loadSnapshot">
+		<div v-else-if="error" class="if-banner if-banner--danger">
+			<p class="if-banner__title type-body-strong">{{ __('Unable to load overview') }}</p>
+			<p class="if-banner__body mt-1 type-caption whitespace-pre-wrap">{{ error }}</p>
+			<button type="button" class="if-button if-button--secondary mt-3" @click="loadSnapshot">
 				{{ __('Try again') }}
 			</button>
 		</div>
 
-		<div v-else class="admissions-overview__content">
-			<div class="admissions-overview__summary-grid">
-				<section class="admissions-overview__panel">
-					<div class="admissions-overview__panel-header">
+		<div v-else class="space-y-4">
+			<div class="grid gap-4 md:grid-cols-2">
+				<section class="admissions-card admissions-card--plain">
+					<div class="flex items-center justify-between gap-3">
 						<p class="type-body-strong text-ink">{{ __('Application details') }}</p>
 					</div>
-					<div class="admissions-overview__data-rows">
+					<div class="admissions-detail-grid mt-3">
 						<div
 							v-for="row in applicationRows"
 							:key="row.key"
-							class="admissions-overview__data-row"
+							class="admissions-detail-card flex flex-wrap items-center justify-between gap-2"
 						>
-							<p class="admissions-overview__data-label type-caption">{{ row.label }}</p>
-							<p class="admissions-overview__data-value type-body">{{ row.value }}</p>
+							<p class="type-caption text-ink/60">{{ row.label }}</p>
+							<p class="ml-auto text-right type-body text-ink/80">{{ row.value }}</p>
 						</div>
 					</div>
 				</section>
 
-				<section class="admissions-overview__panel">
-					<div class="admissions-overview__panel-header">
+				<section class="admissions-card admissions-card--plain">
+					<div class="flex items-center justify-between gap-3">
 						<p class="type-body-strong text-ink">{{ __('Profile summary') }}</p>
 						<RouterLink
 							:to="buildRouteLocation('admissions-profile')"
-							class="admissions-overview__open-button"
+							class="if-button if-button--secondary"
 						>
 							{{ __('Open profile') }}
 						</RouterLink>
 					</div>
-					<div class="admissions-overview__data-rows">
-						<div v-for="row in profileRows" :key="row.key" class="admissions-overview__data-row">
-							<p class="admissions-overview__data-label type-caption">{{ row.label }}</p>
-							<p class="admissions-overview__data-value type-body">{{ row.value }}</p>
+					<div class="admissions-detail-grid mt-3">
+						<div
+							v-for="row in profileRows"
+							:key="row.key"
+							class="admissions-detail-card flex flex-wrap items-center justify-between gap-2"
+						>
+							<p class="type-caption text-ink/60">{{ row.label }}</p>
+							<p class="ml-auto text-right type-body text-ink/80">{{ row.value }}</p>
 						</div>
 					</div>
 				</section>
 			</div>
 
-			<section class="admissions-overview__panel admissions-overview__panel--actions">
-				<div class="admissions-overview__section-title">
+			<section class="admissions-card admissions-card--plain">
+				<div class="flex flex-col gap-1">
 					<p class="type-h3 text-ink">{{ __('Next actions') }}</p>
 					<p class="type-caption text-ink/60">
 						{{ __('Complete these steps to keep your application moving.') }}
 					</p>
 				</div>
-				<p
-					v-if="!snapshot?.next_actions?.length"
-					class="admissions-overview__empty-note type-caption"
-				>
+				<p v-if="!snapshot?.next_actions?.length" class="mt-3 type-caption text-ink/60">
 					{{ __('No outstanding tasks right now.') }}
 				</p>
-				<div v-else class="admissions-overview__action-list">
-					<div
+				<div v-else class="admissions-action-list mt-3">
+					<RouterLink
 						v-for="action in snapshot.next_actions"
 						:key="action.label"
-						class="admissions-overview__action-item"
+						:to="buildRouteLocation(action.route_name)"
+						class="admissions-action-link"
 					>
-						<div class="admissions-overview__action-copy">
-							<p class="type-body text-ink">{{ action.label }}</p>
-							<p v-if="action.is_blocking" class="type-caption text-ink/60">
+						<div class="flex min-w-0 flex-col gap-1">
+							<p class="type-body">{{ action.label }}</p>
+							<p v-if="action.is_blocking" class="type-caption text-clay/80">
 								{{ __('Required before submission.') }}
 							</p>
 						</div>
-						<RouterLink
-							:to="buildRouteLocation(action.route_name)"
-							class="admissions-overview__open-button"
-						>
-							{{ __('Open') }}
-						</RouterLink>
-					</div>
+						<span class="type-caption">{{ __('Open') }}</span>
+					</RouterLink>
 				</div>
 			</section>
 
-			<section class="admissions-overview__completion-section">
-				<div class="admissions-overview__section-title">
+			<section class="admissions-card admissions-card--plain">
+				<div class="flex flex-col gap-1">
 					<p class="type-body-strong text-ink">{{ __('Progress by section') }}</p>
 					<p class="type-caption text-ink/60">
 						{{ __('Review what is complete and what is still pending.') }}
 					</p>
 				</div>
-				<div class="admissions-overview__completion-grid">
+				<div class="mt-3 grid gap-3 md:grid-cols-2">
 					<div
 						v-for="card in completionCards"
 						:key="card.key"
-						class="admissions-overview__completion-card"
+						class="admissions-detail-card flex flex-wrap items-center justify-between gap-3"
 					>
-						<p class="type-body-strong text-ink">{{ card.label }}</p>
-						<p class="admissions-overview__status-pill type-caption" :class="card.pillClass">
+						<div class="flex items-center gap-2">
+							<span class="admissions-status-dot" :class="card.dotClass" />
+							<p class="type-body-strong text-ink">{{ card.label }}</p>
+						</div>
+						<span class="admissions-status-pill type-caption" :class="card.pillClass">
 							{{ card.statusLabel }}
-						</p>
+						</span>
 					</div>
 				</div>
 			</section>
@@ -157,14 +157,27 @@ function statusLabel(state: string) {
 function statusPillClass(state: string) {
 	switch (state) {
 		case 'complete':
-			return 'admissions-overview__status-pill--complete';
+			return 'admissions-status-pill--success';
 		case 'in_progress':
-			return 'admissions-overview__status-pill--in-progress';
+			return 'admissions-status-pill--warm';
 		case 'optional':
-			return 'admissions-overview__status-pill--optional';
+			return 'admissions-status-pill--quiet';
 		case 'pending':
 		default:
-			return 'admissions-overview__status-pill--pending';
+			return 'admissions-status-pill--quiet';
+	}
+}
+
+function statusDotClass(state: string) {
+	switch (state) {
+		case 'complete':
+			return 'admissions-status-dot--complete';
+		case 'in_progress':
+			return 'admissions-status-dot--in-progress';
+		case 'optional':
+		case 'pending':
+		default:
+			return 'admissions-status-dot--pending';
 	}
 }
 
@@ -180,6 +193,7 @@ const completionCards = computed(() => {
 		{ key: 'interviews', label: __('Interviews'), state: completeness.interviews },
 	].map(card => ({
 		...card,
+		dotClass: statusDotClass(card.state),
 		statusLabel: statusLabel(card.state),
 		pillClass: statusPillClass(card.state),
 	}));

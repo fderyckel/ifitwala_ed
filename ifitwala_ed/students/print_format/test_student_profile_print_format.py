@@ -69,15 +69,29 @@ class TestStudentProfilePrintFormat(unittest.TestCase):
 
     def test_school_branding_tokens_are_present(self):
         for token in (
-            'frappe.get_cached_value("School", doc.anchor_school, ["school_name", "school_logo", "school_tagline"], as_dict=True)',
+            'frappe.db.get_value("School", doc.anchor_school, ["school_name", "school_logo", "school_tagline"], as_dict=True)',
             "school_meta.school_logo",
             "school_meta.school_tagline",
             "brand-mark",
             "brand-tagline",
         ):
+            self.assertIn(token, self.html if "frappe.db.get_value" in token or "school_meta" in token else self.css)
+
+    def test_template_integrates_managed_letterhead_without_inline_footer(self):
+        for token in (
+            "using_managed_letterhead",
+            "{{ letter_head | safe }}",
+            "no_letterhead",
+            "document-banner",
+            "student-profile--with-letterhead",
+        ):
             self.assertIn(
-                token, self.html if "frappe.get_cached_value" in token or "school_meta" in token else self.css
+                token,
+                self.html
+                if token.startswith("{{") or "managed_letterhead" in token or token == "no_letterhead"
+                else self.css,
             )
+        self.assertNotIn("{{ footer | safe }}", self.html)
 
     def test_linked_contact_and_address_tokens_are_present(self):
         for token in (
@@ -141,6 +155,7 @@ class TestStudentProfilePrintFormat(unittest.TestCase):
         self.assertIn(".info-key", self.css)
         self.assertIn(".brand-ribbon", self.css)
         self.assertIn(".crm-grid", self.css)
+        self.assertIn(".document-banner", self.css)
         self.assertNotIn(".label,", self.css)
 
 

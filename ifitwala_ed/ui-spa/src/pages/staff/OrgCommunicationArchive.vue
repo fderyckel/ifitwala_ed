@@ -1,21 +1,23 @@
 <!-- ifitwala_ed/ui-spa/src/pages/staff/OrgCommunicationArchive.vue -->
 <template>
-	<div class="staff-shell min-w-0 space-y-6">
+	<div class="staff-shell min-w-0 space-y-4">
 		<!-- Header -->
-		<header class="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-			<div>
-				<h1 class="type-h1">Announcement Archive</h1>
-				<p class="type-meta text-slate-token/70">
+		<header class="page-header">
+			<div class="page-header__intro">
+				<h1 class="type-h1 text-canopy">Announcement Archive</h1>
+				<p class="type-meta text-slate-token/80">
 					All communications visible to you across your organisation
 				</p>
 			</div>
 
 			<!-- Date Range Toggles -->
-			<DateRangePills v-model="filters.date_range" :items="DATE_RANGES" />
+			<div class="page-header__actions">
+				<DateRangePills v-model="filters.date_range" :items="DATE_RANGES" />
+			</div>
 		</header>
 
 		<!-- Filters Bar -->
-		<FiltersBar class="analytics-filters">
+		<FiltersBar class="analytics-filters org-archive__filters">
 			<!-- Organization -->
 			<div v-if="organizationOptions.length > 0" class="flex flex-col gap-1">
 				<label class="type-label">Organization</label>
@@ -301,25 +303,8 @@
 								<FeatherIcon name="paperclip" class="h-4 w-4 text-slate-token/60" />
 								<h3 class="text-sm font-semibold text-ink">Attachments</h3>
 							</div>
-							<div class="mt-4 space-y-3">
-								<a
-									v-for="attachment in detailAttachments"
-									:key="attachment.row_name"
-									:href="attachment.open_url || attachment.external_url || '#'"
-									target="_blank"
-									rel="noopener noreferrer"
-									class="flex items-center justify-between gap-3 rounded-xl border border-line-soft bg-surface-soft px-4 py-3 transition hover:border-jacaranda/40 hover:bg-white"
-								>
-									<div class="min-w-0">
-										<p class="truncate text-sm font-medium text-ink">
-											{{ attachment.title }}
-										</p>
-										<p class="mt-1 truncate text-xs text-slate-token/60">
-											{{ formatAttachmentMeta(attachment) }}
-										</p>
-									</div>
-									<FeatherIcon name="external-link" class="h-4 w-4 shrink-0 text-slate-token/50" />
-								</a>
+							<div class="mt-4">
+								<CommunicationAttachmentPreviewList :attachments="detailAttachments" />
 							</div>
 						</div>
 					</div>
@@ -407,11 +392,11 @@ import {
 	type PolicyInformLinkPayload,
 } from '@/utils/policyInformLink';
 import type { ReactionCode } from '@/types/interactions';
-import type { OrgCommunicationAttachmentRow } from '@/types/contracts/org_communication_attachments/shared';
 import type { Response as OrgCommunicationItemResponse } from '@/types/contracts/org_communication_archive/get_org_communication_item';
 import FiltersBar from '@/components/filters/FiltersBar.vue';
 import DateRangePills from '@/components/filters/DateRangePills.vue';
 import CommentThreadDrawer from '@/components/CommentThreadDrawer.vue';
+import CommunicationAttachmentPreviewList from '@/components/communication/CommunicationAttachmentPreviewList.vue';
 import InteractionEmojiChips from '@/components/InteractionEmojiChips.vue';
 import { getInteractionStats as buildInteractionStats } from '@/utils/interactionStats';
 import {
@@ -493,25 +478,6 @@ const detailSnippetFallback = computed(() => {
 });
 
 const detailAttachments = computed(() => fullContent.value?.attachments || []);
-
-function formatAttachmentMeta(attachment: OrgCommunicationAttachmentRow) {
-	if (attachment.kind === 'link') {
-		return attachment.external_url || 'External link';
-	}
-	const parts = [attachment.file_name];
-	if (attachment.file_size) {
-		parts.push(formatFileSize(attachment.file_size));
-	}
-	return parts.filter(Boolean).join(' · ') || 'Governed file';
-}
-
-function formatFileSize(value: number | string | null | undefined) {
-	const size = typeof value === 'number' ? value : Number(value || 0);
-	if (!Number.isFinite(size) || size <= 0) return '';
-	if (size < 1024) return `${size} B`;
-	if (size < 1024 * 1024) return `${(size / 1024).toFixed(1)} KB`;
-	return `${(size / (1024 * 1024)).toFixed(1)} MB`;
-}
 
 // User Context for Filters
 const myTeams = ref<Array<{ label: string; value: string }>>([]);
@@ -1201,10 +1167,9 @@ function onDetailContentClick(event: MouseEvent) {
 
 	const policyVersion = String(payload.policyVersion || '').trim();
 	if (!policyVersion) return;
+	const selectedCommunicationName = String(selectedComm.value?.name || '').trim();
 	const orgCommunication =
-		String(payload.orgCommunication || '').trim() ||
-		String(selectedComm.value?.name || '').trim() ||
-		null;
+		selectedCommunicationName || String(payload.orgCommunication || '').trim() || null;
 
 	overlay.open('staff-policy-inform', {
 		policyVersion,
@@ -1214,6 +1179,11 @@ function onDetailContentClick(event: MouseEvent) {
 </script>
 
 <style scoped>
+.org-archive__filters {
+	margin-top: -0.5rem;
+	margin-bottom: 0;
+}
+
 .org-archive__grid {
 	min-height: 0;
 }

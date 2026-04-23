@@ -1,5 +1,7 @@
 // ifitwala_ed/ui-spa/src/types/contracts/admissions/types.ts
 
+import type { AttachmentPreviewItem } from '@/types/contracts/attachments/shared'
+
 export type PortalApplicantStatus =
   | 'Draft'
   | 'In Progress'
@@ -100,6 +102,7 @@ export type ApplicantGuardianProfile = {
   guardian_work_email?: string | null
   guardian_work_phone?: string | null
   guardian_image?: string | null
+  guardian_image_open_url?: string | null
   user?: string | null
   is_primary_guardian?: boolean | number | null
   is_financial_guardian?: boolean | number | null
@@ -144,7 +147,7 @@ export type ApplicantDocument = {
   reviewed_by?: string | null
   reviewed_on?: string | null
   uploaded_at?: string | null
-  file_url?: string | null
+  open_url?: string | null
   items?: Array<{
     name?: string
     item_key: string
@@ -153,8 +156,14 @@ export type ApplicantDocument = {
     reviewed_by?: string | null
     reviewed_on?: string | null
     uploaded_at?: string | null
-    file_url?: string | null
+    open_url?: string | null
+    preview_url?: string | null
+    thumbnail_url?: string | null
+    preview_status?: string | null
     file_name?: string | null
+    drive_file_id?: string | null
+    canonical_ref?: string | null
+    attachment_preview?: AttachmentPreviewItem | null
   }>
 }
 

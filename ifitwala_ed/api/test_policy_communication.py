@@ -336,3 +336,55 @@ class TestPolicyCommunication(FrappeTestCase):
                     policy_version="PV-003",
                     org_communication="COMM-OTHER",
                 )
+
+    def test_get_policy_inform_payload_allows_owner_visibility_for_org_communication_fallback(self):
+        policy_row = {
+            "policy_version": "PV-004",
+            "institutional_policy": "POL-2",
+            "policy_key": "POL-HR",
+            "policy_title": "HR Handbook",
+            "version_label": "v1",
+            "policy_organization": "ORG-ROOT",
+            "policy_school": "",
+            "based_on_version": None,
+            "change_summary": "",
+            "change_stats": {"added": 0, "removed": 0, "modified": 0},
+            "diff_html": "",
+            "policy_text": "<p>policy</p>",
+        }
+
+        with (
+            patch(
+                "ifitwala_ed.api.policy_communication.frappe.session",
+                frappe._dict({"user": "hr-manager@example.com"}),
+            ),
+            patch.object(policy_communication.frappe, "get_roles", return_value=["HR Manager"]),
+            patch("ifitwala_ed.api.policy_communication._policy_row", return_value=policy_row),
+            patch("ifitwala_ed.api.policy_communication.is_policy_within_user_scope", return_value=True),
+            patch(
+                "ifitwala_ed.api.policy_communication._get_active_employee_context",
+                return_value={"name": "EMP-7", "school": None, "organization": "ORG-ROOT"},
+            ),
+            patch(
+                "ifitwala_ed.api.policy_communication.check_audience_match",
+                return_value=True,
+            ) as audience_match_mock,
+            patch(
+                "ifitwala_ed.api.policy_communication.get_staff_policy_signature_state_for_user",
+                return_value={},
+            ),
+            patch("ifitwala_ed.api.policy_communication.get_policy_version_history_rows", return_value=[]),
+        ):
+            result = policy_communication.get_policy_inform_payload(
+                policy_version="PV-004",
+                org_communication="COMM-POLICY",
+            )
+
+        audience_match_mock.assert_called_once_with(
+            "COMM-POLICY",
+            "hr-manager@example.com",
+            ["HR Manager"],
+            {"name": "EMP-7", "school": None, "organization": "ORG-ROOT"},
+            allow_owner=True,
+        )
+        self.assertEqual(result["policy_version"], "PV-004")

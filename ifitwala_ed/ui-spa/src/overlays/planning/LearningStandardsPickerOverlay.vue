@@ -287,14 +287,21 @@
 						</div>
 
 						<footer class="if-overlay__footer">
-							<Button appearance="minimal" @click="emitClose('programmatic')">Cancel</Button>
-							<Button
-								appearance="primary"
+							<button
+								type="button"
+								class="if-button if-button--secondary"
+								@click="emitClose('programmatic')"
+							>
+								Cancel
+							</button>
+							<button
+								type="button"
+								class="if-button if-button--primary"
 								:disabled="!selectedRows.length"
 								@click="applySelection"
 							>
 								Add Selected
-							</Button>
+							</button>
 						</footer>
 					</DialogPanel>
 				</TransitionChild>
@@ -312,7 +319,7 @@ import {
 	TransitionChild,
 	TransitionRoot,
 } from '@headlessui/vue';
-import { Button, FeatherIcon } from 'frappe-ui';
+import { FeatherIcon } from 'frappe-ui';
 
 import { useOverlayStack } from '@/composables/useOverlayStack';
 import { getLearningStandardPicker } from '@/lib/services/staff/staffTeachingService';

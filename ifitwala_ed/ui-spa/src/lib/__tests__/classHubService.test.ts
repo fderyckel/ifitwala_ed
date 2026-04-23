@@ -37,7 +37,7 @@ describe('classHubService', () => {
 		}
 	})
 
-	it('unwraps the Frappe message envelope for the staff-home entry contract', async () => {
+	it('returns the canonical staff-home entry payload from the shared resource boundary', async () => {
 		const service = createClassHubService()
 		const staffHomeEntry = resourceRecords.find(
 			record => record.config.url === 'ifitwala_ed.api.class_hub.resolve_staff_home_entry'
@@ -46,19 +46,17 @@ describe('classHubService', () => {
 		if (!staffHomeEntry) throw new Error('staffHomeEntryResource was not created')
 
 		staffHomeEntry.submit.mockResolvedValue({
-			message: {
-				status: 'choose',
-				message: 'Choose the class hub you want to open.',
-				groups: [
-					{
-						student_group: 'SG-IMS-COURSE',
-						student_group_name: 'IMS Grade 5',
-						title: 'IMS Grade 5 - Science',
-						academic_year: '2026-2027',
-						course: 'Science',
-					},
-				],
-			},
+			status: 'choose',
+			message: 'Choose the class hub you want to open.',
+			groups: [
+				{
+					student_group: 'SG-IMS-COURSE',
+					student_group_name: 'IMS Grade 5',
+					title: 'IMS Grade 5 - Science',
+					academic_year: '2026-2027',
+					course: 'Science',
+				},
+			],
 		})
 
 		const payload = await service.resolveStaffHomeEntry()

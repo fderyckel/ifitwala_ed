@@ -159,6 +159,7 @@ def serialize_course_plan_summary(
     can_manage_resources: int = 0,
 ) -> dict[str, Any]:
     return {
+        "name": row.get("name"),
         "course_plan": row.get("name"),
         "record_modified": api._serialize_scalar(row.get("modified")),
         "title": row.get("title") or row.get("name"),

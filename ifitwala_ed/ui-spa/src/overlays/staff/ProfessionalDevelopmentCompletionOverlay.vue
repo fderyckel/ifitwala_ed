@@ -148,10 +148,21 @@
 						</div>
 
 						<footer class="if-overlay__footer">
-							<Button appearance="minimal" @click="emitClose('programmatic')">Cancel</Button>
-							<Button appearance="primary" :loading="submitting" @click="submitForm">
+							<button
+								type="button"
+								class="if-button if-button--secondary"
+								@click="emitClose('programmatic')"
+							>
+								Cancel
+							</button>
+							<button
+								type="button"
+								class="if-button if-button--primary"
+								:disabled="submitting"
+								@click="submitForm"
+							>
 								Save completion
-							</Button>
+							</button>
 						</footer>
 					</DialogPanel>
 				</TransitionChild>
@@ -168,7 +179,7 @@ import {
 	TransitionChild,
 	TransitionRoot,
 } from '@headlessui/vue';
-import { Button, FeatherIcon } from 'frappe-ui';
+import { FeatherIcon } from 'frappe-ui';
 import { computed, ref, watch } from 'vue';
 
 import { useOverlayStack } from '@/composables/useOverlayStack';

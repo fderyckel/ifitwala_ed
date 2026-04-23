@@ -155,6 +155,12 @@
 					class="text-sm"
 				/>
 				<p class="text-[11px] text-gray-500">Images or PDFs only (max 10 MB each).</p>
+				<InlineUploadStatus
+					v-if="attachmentUploadProgress"
+					class="mt-3"
+					:label="attachmentUploadProgressLabel"
+					:progress="attachmentUploadProgress"
+				/>
 			</div>
 
 			<!-- Actions -->
@@ -177,10 +183,15 @@ import { computed, reactive, ref } from 'vue';
 import { Dialog, Button, toast } from 'frappe-ui';
 import { RouterLink } from 'vue-router';
 
+import InlineUploadStatus from '@/components/feedback/InlineUploadStatus.vue';
+import { apiUpload } from '@/lib/client';
+
 const currentYear = computed(() => new Date().getFullYear());
 const open = ref(false);
 const submitting = ref(false);
 const fileInput = ref(null);
+const attachmentUploadProgress = ref(null);
+const attachmentUploadProgressLabel = ref('');
 
 // Footer links (Help triggers modal)
 const footerItems = [
@@ -257,22 +268,24 @@ async function submit() {
 		const name = message?.name;
 		// Upload attachments sequentially
 		const files = fileInput.value?.files ? Array.from(fileInput.value.files) : [];
-		for (const file of files) {
+		for (const [index, file] of files.entries()) {
+			attachmentUploadProgressLabel.value =
+				files.length > 1
+					? `Uploading ${file.name} (${index + 1} of ${files.length})`
+					: `Uploading ${file.name}`;
 			const fd = new FormData();
 			fd.append('referral_name', name);
 			fd.append('file', file, file.name);
 
-			const resp = await fetch(
-				'/api/method/ifitwala_ed.utilities.portal_utils.upload_self_referral_file',
-				{
-					method: 'POST',
-					body: fd,
-					headers: { 'X-Frappe-CSRF-Token': frappe.csrf_token },
-				}
-			);
-			if (!resp.ok) {
+			try {
+				await apiUpload('ifitwala_ed.utilities.portal_utils.upload_self_referral_file', fd, {
+					onProgress: progress => {
+						attachmentUploadProgress.value = progress;
+					},
+				});
+			} catch (error) {
 				// Non-blocking: show a warning but keep success for the referral itself
-				console.warn('Upload failed:', file.name, await resp.text());
+				console.warn('Upload failed:', file.name, error);
 				toast({
 					title: 'Some files failed to upload',
 					text: 'You can add attachments later with a counselor.',
@@ -303,6 +316,8 @@ async function submit() {
 			theme: 'red',
 		});
 	} finally {
+		attachmentUploadProgress.value = null;
+		attachmentUploadProgressLabel.value = '';
 		submitting.value = false;
 	}
 }
@@ -315,6 +330,8 @@ function resetForm() {
 	form.preferred_contact_method = '';
 	form.ok_to_contact_guardians = false;
 	form.safe_times_to_contact = '';
+	attachmentUploadProgress.value = null;
+	attachmentUploadProgressLabel.value = '';
 	if (fileInput.value) fileInput.value.value = '';
 }
 </script>

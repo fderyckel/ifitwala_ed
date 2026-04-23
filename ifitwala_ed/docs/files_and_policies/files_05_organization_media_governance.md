@@ -1,288 +1,184 @@
 # Organization Media Governance — Canonical Contract
 
-This document defines the canonical ownership and governance model for reusable public-facing media used by organizations and schools.
+This note defines the live governed-file contract for reusable public-facing organization and school media.
 
-It exists to close the current gap between:
+It reflects the post-refactor model:
 
-* the global file dispatcher / classification policy, and
-* school website / gallery image workflows that still behave like direct attachments.
-
-This contract is forward-looking and intentionally future-proofs the platform for separated application, database, and object-storage deployments.
+- `ifitwala_drive` is the governed file authority
+- `ifitwala_ed` owns workflow meaning, organization/school scope, and UI wiring
+- `Drive File` is the authoritative metadata row
+- `File Classification` and the Ed dispatcher are retired and must not be reintroduced
 
 ---
 
 ## 1. Scope
 
-**Status:** Partial
-**Code refs:** `ifitwala_ed/utilities/file_dispatcher.py`, `ifitwala_ed/utilities/governed_uploads.py`, `ifitwala_ed/utilities/organization_media.py`, `ifitwala_ed/school_settings/doctype/school/school.json`, `ifitwala_ed/school_settings/doctype/school/school.py`, `ifitwala_ed/school_site/doctype/gallery_image/gallery_image.json`
+**Status:** Active
+**Code refs:** `ifitwala_ed/utilities/governed_uploads.py`, `ifitwala_ed/utilities/organization_media.py`, `ifitwala_ed/utilities/governed_file_contract.py`, `ifitwala_ed/setup/doctype/organization/organization.py`, `ifitwala_ed/school_settings/doctype/school/school.py`, `ifitwala_drive/services/integration/ifitwala_ed_media.py`
 **Test refs:** `ifitwala_ed/utilities/test_organization_media.py`
 
-This contract governs all organization-owned reusable media intended for:
+This contract governs reusable public-facing media used for:
 
-* website / public-site branding
-* website blocks (hero, section carousel, leadership, cards)
-* organization and school landing surfaces
-* shared marketing / admissions imagery
+- organization branding
+- school branding
+- reusable website/gallery imagery
+- school and organization landing surfaces
+- marketing/admissions public media
 
-This contract does **not** change student, applicant, employee, or task file rules.
-
-It defines the canonical ownership model for media that can be reused across more than one page or school.
+It does not change student, guardian, employee, applicant, or assessment file rules.
 
 ---
 
-## 2. Canonical Ownership Model
-
-**Status:** Partial
-**Code refs:** `ifitwala_ed/setup/doctype/file_classification/file_classification.json`, `ifitwala_ed/setup/doctype/file_classification/file_classification.py`, `ifitwala_ed/utilities/file_classification_contract.py`, `ifitwala_ed/utilities/organization_media.py`, `ifitwala_ed/school_settings/doctype/school/school.json`
-**Test refs:** `ifitwala_ed/utilities/test_organization_media.py`
+## 2. Ownership Model
 
 ### 2.1 Root owner
 
-The canonical owner for reusable public-facing media is **Organization**.
+The authoritative governed owner is the `Organization`.
 
-This is the starting point for governance because:
+Why:
 
-* every School belongs to an Organization
-* shared branding normally belongs to the organization, not a single page
-* organization ownership avoids duplicate uploads across sibling schools
-* nested organizations can inherit and reuse assets predictably
+- every `School` belongs to an `Organization`
+- shared branding belongs to the organization scope by default
+- organization-root ownership keeps reuse and inheritance predictable across nested organizations
 
 ### 2.2 School specificity
 
-School-specific media remains governed under the same organization-owned model.
+School-scoped media stays inside the same governed model.
 
 Rules:
 
-* `organization` is always required
-* `school` is optional, but when set it indicates a school-scoped asset under that organization
-* school-scoped media is not a separate governance system
+- `organization` is always required
+- `school` is optional
+- when `school` is present, the file remains organization-owned but school-scoped
+- school scope is metadata on the governed Drive file, not a second governance system
 
-### 2.3 Business-document anchoring
+### 2.3 Authoritative metadata
 
-For organization media, the governing business document is the owning `Organization`.
+The live authority row is `Drive File`.
 
-When a school-specific asset is uploaded, the file may additionally carry:
+Required organization-media semantics:
 
-* `school` classification field = target school
-* optional secondary relation or attachment to school-specific gallery rows
-
-The primary governance owner remains organization-scoped.
+- `primary_subject_type = Organization`
+- `primary_subject_id = <organization>`
+- `data_class = operational`
+- `purpose = organization_public_media`
+- `retention_policy = immediate_on_request`
 
 ---
 
-## 3. Nested Visibility & Inheritance
+## 3. Slot Contract
 
-**Status:** Partial
-**Code refs:** `ifitwala_ed/setup/doctype/organization/organization.py`, `ifitwala_ed/governance/policy_scope_utils.py`, `ifitwala_ed/utilities/organization_media.py`, `ifitwala_ed/school_settings/doctype/school/school.py`
-**Test refs:** `ifitwala_ed/utilities/test_organization_media.py`
+Implemented slot patterns:
 
-Organization media must respect the NestedSet hierarchy.
+- `organization_logo__<organization>`
+- `school_logo__<school>`
+- `school_gallery_image__<gallery_row_name>`
+- `organization_media__<media_key>`
 
-### 3.1 Allowed visibility
+Rules:
 
-Given a school attached to organization `O`, selectable media may come from:
+- slot meaning is resolved server-side
+- callers must not invent path-like storage identity from the slot
+- UI code may store the returned `file`, server-owned `open_url` / `preview_url` / `thumbnail_url`, and surface-specific reference fields, but not storage keys
 
-* `O`
-* any ancestor of `O`
-* when media is school-scoped, only the current school or one of its ancestor schools inside `O`
+---
 
-### 3.2 Forbidden visibility
+## 4. Upload Boundary
 
-Selectable media must **not** come from:
+### 4.1 Required path
 
-* sibling organizations
-* cousin organizations
-* descendant organizations of a sibling
-* unrelated trees
-* sibling schools inside the same organization
-* unrelated school branches inside the same organization
+Organization media uploads must flow through:
 
-### 3.3 Directionality
+1. `ifitwala_ed.utilities.governed_uploads.*`
+2. `ifitwala_drive.api.media.*`
+3. Drive upload session creation
+4. Drive-owned ingest
+5. Drive-owned finalize
+6. native `File` projection plus authoritative `Drive File`
 
-Inheritance is one-way:
+### 4.2 Forbidden path
 
-* ancestor -> descendant is allowed
-* descendant -> ancestor is forbidden by default
+Do not:
 
-### 3.4 Precedence
+- call `File.insert()` directly from organization-media workflow code
+- route files through the retired Ed dispatcher
+- recreate organization-media governance in Ed-local tables
+- guess storage paths or private URLs in the UI
 
-Where defaults or reusable selections are resolved:
+---
+
+## 5. Visibility & Inheritance
+
+Server-side visibility must follow nested organization and school scope.
+
+Allowed sources for a school:
 
 1. school-scoped media on the current school
-2. school-scoped media on ancestor schools in the current organization
-3. organization-owned media on the current organization
-4. organization-owned media inherited from nearest ancestor upward
+2. school-scoped media on ancestor schools in the same organization tree
+3. organization-scoped media on the current organization
+4. organization-scoped media on ancestor organizations
 
-This precedence must be implemented by shared server helpers, not by client-side scope math.
+Forbidden sources:
+
+- sibling organizations
+- cousin organizations
+- sibling school branches
+- unrelated school nodes inside the same organization tree
+
+This scope math belongs in shared server helpers, not the browser.
 
 ---
 
-## 4. Media Selection Workflow
+## 6. Persisted Surface Fields
 
-**Status:** Partial
-**Code refs:** `ifitwala_ed/public/js/website_props_builder.js`, `ifitwala_ed/public/js/organization_media_dialog.js`, `ifitwala_ed/setup/doctype/organization/organization.js`, `ifitwala_ed/school_settings/doctype/school/school.js`, `ifitwala_ed/school_site/doctype/program_website_profile/program_website_profile.js`, `ifitwala_ed/website/block_registry.py`, `ifitwala_ed/website/providers/*.py`
-**Test refs:** `ifitwala_ed/utilities/test_organization_media.py` (server), `None` (Desk JS)
+Current Desk/runtime surfaces persist:
 
-For every school/organization image picker in Desk:
+- `Organization.organization_logo_file` -> governed `File`
+- `Organization.organization_logo` -> canonical returned file URL
+- `School.school_logo_file` -> governed `File`
+- `School.school_logo` -> canonical returned file URL
+- `Gallery Image.governed_file` -> governed `File`
+- `Gallery Image.school_image` -> canonical returned file URL
 
-* the primary action is `Choose from Organization Media`
-* the secondary action is `Upload to Organization Media`
-* free-form file URL typing is not the primary workflow
+Legacy URL-only values are non-canonical and must be rejected on save.
+
+---
+
+## 7. Reuse Workflow
+
+Desk image pickers for organization/school media must be reuse-first:
+
+- first offer existing governed media in visible scope
+- if no suitable file exists, offer upload into governed organization media
+- do not leave the user at a dead end with an empty picker and no next step
 
 Implemented now:
 
-* school-context website block props use the organization media picker instead of a raw image field
-* `Program Website Profile.hero_image` uses the same organization media picker
-* `Organization` and `School` forms expose `Manage Organization Media`
-
-### 4.1 Reuse-first rule
-
-Editors should first reuse an existing governed asset from the resolved organization scope.
-
-### 4.2 Upload rule
-
-If the needed image does not exist:
-
-* upload must go through a governed upload endpoint
-* upload must classify the file immediately
-* the resulting asset becomes selectable in the same media picker flow
-
-### 4.3 No dead ends
-
-If the picker finds no matching assets, the UI must still provide a next action:
-
-* upload a new governed image
-* or navigate directly to the owning organization media management surface
+- school and organization forms enforce governed media references
+- list/browse helpers resolve visible organization media from `Drive File`
+- upload wrappers return server-owned file references instead of storage guesses
 
 ---
 
-## 5. File Governance Contract
+## 8. Read Contract
 
-**Status:** Partial
-**Code refs:** `ifitwala_ed/utilities/file_dispatcher.py`, `ifitwala_ed/utilities/governed_uploads.py`, `ifitwala_ed/utilities/organization_media.py`, `ifitwala_ed/utilities/file_classification_contract.py`, `ifitwala_ed/setup/doctype/file_classification/file_classification.json`, `ifitwala_ed/school_settings/doctype/school/school.py`, `ifitwala_ed/school_settings/doctype/school/school.js`
-**Test refs:** `ifitwala_ed/utilities/test_organization_media.py`
+Organization-media readers must resolve from:
 
-Organization media must follow the same dispatcher-only governance rules as all other governed files.
+- `Drive File` for authority and scope
+- native `File` only when a surface still needs the Frappe file id or filename compatibility projection
 
-### 5.1 Required entrypoint
+They must not:
 
-All uploads must go through:
-
-* `create_and_classify_file(...)`
-* or a governed wrapper that delegates to it
-
-Direct `File.insert()` remains forbidden.
-
-### 5.2 Required classification extension
-
-Current implementation:
-
-* `File Classification.primary_subject_type` includes `Organization`
-* `purpose` includes `organization_public_media`
-* `school` is optional for `Organization`-owned classifications
-* school logo uploads and school gallery uploads use dispatcher-classified `Organization` media records
-
-### 5.3 Required classification semantics
-
-Implemented values:
-
-* primary subject type: `Organization`
-* data class: `operational`
-* purpose: `organization_public_media`
-* retention policy: `immediate_on_request`
-* slot patterns:
-  * `school_logo__<school>`
-  * `school_gallery_image__<gallery_row_name>`
-  * `organization_media__<media_key>`
-
-School and organization surfaces currently use the following persisted references:
-
-* `School.school_logo_file` stores the governed `File`
-* `School.school_logo` stores the canonical returned file URL
-* `Gallery Image.governed_file` stores the governed `File`
-* `Gallery Image.school_image` stores the canonical returned file URL
-* `Organization.organization_logo_file` stores the governed `File`
-* `Organization.organization_logo` stores the canonical returned file URL
-
-Legacy URL-only values are no longer canonical. Save-time validation must reject them and require re-upload / re-link through governed organization media.
-
-### 5.4 Storage discipline
-
-The UI must never guess a storage path.
-
-It must store and reuse only the canonical file URL or media reference returned by the governed upload / selection flow.
+- query `File Classification`
+- depend on retired derivative sibling files
+- infer visibility from folder names
 
 ---
 
-## 6. Storage Boundary Contract
+## 9. Non-Negotiable Rules
 
-**Status:** Partial
-**Code refs:** `ifitwala_ed/utilities/file_dispatcher.py`, `ifitwala_ed/utilities/file_management.py`, `ifitwala_ed/utilities/organization_media.py`
-**Test refs:** `ifitwala_ed/utilities/test_organization_media.py`
-
-The governance contract must remain valid if the platform later separates:
-
-* application runtime
-* database
-* object storage bucket
-
-### 6.1 Stable assumptions
-
-Allowed assumptions:
-
-* the dispatcher returns a canonical file URL
-* classification metadata lives in the database
-* physical storage is abstracted behind dispatcher / file management services
-
-Forbidden assumptions:
-
-* website code knows the final filesystem path
-* UI code builds storage URLs by string concatenation
-* business logic depends on app server local disk layout
-
-### 6.2 Public media rule
-
-If organization media is intended for public website use:
-
-* the storage backend may be local or bucket-based
-* the canonical URL must remain renderer-safe regardless of backend
-* moving from filesystem to object storage must not require block data rewrites
-
----
-
-## 7. Contract Matrix
-
-**Status:** Partial
-**Code refs:** `ifitwala_ed/utilities/file_dispatcher.py`, `ifitwala_ed/utilities/governed_uploads.py`, `ifitwala_ed/utilities/organization_media.py`, `ifitwala_ed/setup/doctype/organization/organization.py`, `ifitwala_ed/setup/doctype/organization/organization.js`, `ifitwala_ed/school_settings/doctype/school/school.json`, `ifitwala_ed/school_settings/doctype/school/school.py`, `ifitwala_ed/school_settings/doctype/school/school.js`, `ifitwala_ed/school_site/doctype/gallery_image/gallery_image.json`, `ifitwala_ed/school_site/doctype/program_website_profile/program_website_profile.js`, `ifitwala_ed/public/js/website_props_builder.js`, `ifitwala_ed/public/js/organization_media_dialog.js`
-**Test refs:** `ifitwala_ed/utilities/test_organization_media.py`
-
-| Area | Current state | Required state | Status |
-| --- | --- | --- | --- |
-| Canonical owner | School/gallery attachment patterns | Organization-owned media with optional school scope | Partial |
-| Nested visibility | Not explicitly defined for media | Ancestor-to-descendant inheritance only | Partial |
-| Dispatcher path | Generic dispatcher exists | Organization media must use dispatcher-only flow | Partial |
-| Classification schema | Person/applicant-centric | Add explicit organization media subject/purpose contract | Implemented |
-| School gallery storage | Plain attach child rows | Governed references to classified files | Partial |
-| Organization media management surface | No generic Desk entry point | Shared management surface from Organization/School forms | Implemented |
-| Props-builder UX | Raw image strings / attach controls without org media scope | Reuse-first media picker + governed upload | Implemented |
-| Storage decoupling | Architecture note says storage may change | Explicit no-local-path dependency contract | Partial |
-| Legacy raw URL tolerance | URL-only public media values tolerated | URL-only values fail validation and must be relinked through governed media | Implemented |
-| Tests | No organization-media governance tests | Scope, inheritance, upload, list, and strict-validation tests required | Partial |
-
-Unknown rows are not allowed in this matrix. The gaps above must be resolved before implementation work is claimed complete.
-
----
-
-## 8. Immediate Documentation Guardrail
-
-**Status:** Implemented
-**Code refs:** `ifitwala_ed/docs/files_and_policies/files_01_architecture_notes.md`, `ifitwala_ed/docs/files_and_policies/files_03_implementation.md`, `ifitwala_ed/docs/files_and_policies/files_04_workflow_examples.md`
-**Test refs:** None
-
-Until implementation catches up:
-
-* do not introduce any new school/website image upload path that bypasses dispatcher governance
-* do not add school-specific media pickers that treat gallery attachments as a separate file system
-* do not encode local filesystem assumptions into renderer or UI logic
-
-This document is the source of truth for future organization media implementation.
+- `File Classification` is retired for organization media
+- the Ed dispatcher is retired for organization media
+- Drive owns ingest, finalize, and authoritative metadata
+- Ed owns scope validation, slot resolution, and surface wiring
+- no new code may recreate organization-media governance outside Drive

@@ -27,12 +27,12 @@
 					<button
 						v-if="inquiry?.name"
 						type="button"
-						class="btn btn-quiet"
+						class="if-action"
 						@click="openInDesk(inquiry.name)"
 					>
 						Open in Desk
 					</button>
-					<button type="button" class="btn btn-quiet" @click="requestRefresh">Refresh</button>
+					<button type="button" class="if-action" @click="requestRefresh">Refresh</button>
 				</div>
 			</div>
 		</div>
@@ -49,7 +49,7 @@
 					<button
 						v-if="inquiry?.contact"
 						type="button"
-						class="btn btn-quiet"
+						class="if-action"
 						@click="openContactInDesk(inquiry.contact)"
 					>
 						Open contact
@@ -57,7 +57,7 @@
 					<button
 						v-else
 						type="button"
-						class="btn btn-quiet"
+						class="if-action"
 						:disabled="contactBusy"
 						@click="createContact"
 					>
@@ -133,10 +133,10 @@
 			</div>
 
 			<div class="mt-4 flex items-center justify-end gap-2">
-				<button type="button" class="btn btn-quiet" @click="emitClose">Close</button>
+				<button type="button" class="if-button if-button--quiet" @click="emitClose">Close</button>
 				<button
 					type="button"
-					class="btn btn-primary"
+					class="if-button if-button--primary"
 					:disabled="busy || submittedOnce || !canMarkContacted"
 					@click="markContacted"
 				>

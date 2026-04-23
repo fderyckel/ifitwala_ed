@@ -300,12 +300,12 @@ async function reloadLedger() {
 		const payload = buildPayload();
 		const response = await analyticsService.getLedger(payload);
 		if (runId !== loadRunId) return;
-		ledger.value = response;
-
 		const returnedTotalPages = response.pagination?.total_pages || 1;
 		if (page.value > returnedTotalPages) {
 			page.value = returnedTotalPages;
+			return;
 		}
+		ledger.value = response;
 	} catch (error) {
 		if (runId !== loadRunId) return;
 		pageError.value = formatError(error);
@@ -370,8 +370,16 @@ watch(
 );
 
 watch(
-	() => [page.value, pageLength.value, sortBy.value, sortOrder.value],
+	() => [page.value, sortBy.value, sortOrder.value],
 	() => {
+		scheduleReload();
+	}
+);
+
+watch(
+	() => pageLength.value,
+	() => {
+		page.value = 1;
 		scheduleReload();
 	}
 );
@@ -389,13 +397,20 @@ onMounted(async () => {
 </script>
 
 <template>
-	<div class="analytics-shell attendance-ledger-shell">
-		<header class="flex flex-wrap items-end justify-between gap-3">
-			<div>
-				<h1 class="type-h2 text-canopy">Attendance Ledger</h1>
-				<p class="type-body mt-1 text-slate-token/80">
+	<div class="analytics-shell">
+		<header class="page-header">
+			<div class="page-header__intro">
+				<h1 class="type-h1 text-canopy">Attendance Ledger</h1>
+				<p class="type-meta text-slate-token/80">
 					Row-level attendance evidence for follow-up, compliance, and code integrity.
 				</p>
+			</div>
+			<div class="page-header__actions">
+				<DateRangePills
+					:model-value="preset"
+					:items="presetItems"
+					@update:model-value="applyPreset"
+				/>
 			</div>
 		</header>
 
@@ -459,16 +474,6 @@ onMounted(async () => {
 						{{ group.student_group_name || group.name }}
 					</option>
 				</select>
-			</div>
-
-			<div class="flex flex-col gap-1">
-				<label class="type-label">Window</label>
-				<DateRangePills
-					:model-value="preset"
-					:items="presetItems"
-					size="sm"
-					@update:model-value="applyPreset"
-				/>
 			</div>
 
 			<div class="flex flex-col gap-1">
@@ -795,10 +800,6 @@ onMounted(async () => {
 </template>
 
 <style scoped>
-.attendance-ledger-shell {
-	max-width: none;
-}
-
 .attendance-ledger-grid {
 	grid-template-columns: minmax(0, 1fr);
 }

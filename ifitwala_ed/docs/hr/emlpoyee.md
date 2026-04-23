@@ -15,7 +15,7 @@ Core flow:
 - `on_update()` handles operational updates:
   - NestedSet update when `reports_to` changes.
   - cache reset and history synchronization.
-  - staff calendar + primary contact synchronization.
+  - staff calendar invalidation when the resolved holiday source changes.
   - role/authority helpers.
   - profile sync to linked `User` (strictly permission-gated).
 
@@ -38,15 +38,18 @@ Permission scope for `Employee`:
 
 For staff portal calendar reads, holiday resolution follows this server-owned precedence:
 
-1. Resolve `Staff Calendar` by:
+1. If `Employee.current_holiday_lis` resolves to a `Staff Calendar` that overlaps the requested date window, use that linked Staff Calendar.
+2. Otherwise resolve `Staff Calendar` by:
   - `employee_group` match
   - date-window overlap
   - nearest school in lineage (`employee.school` -> parent -> grandparent)
-2. If no Staff Calendar holidays are available, fallback to `School Calendar Holidays` from the effective School Calendar resolver for the same date window.
+3. Only if no `Staff Calendar` resolves for the employee, fallback to `School Calendar Holidays` from the effective School Calendar resolver for the same date window.
 
 Important:
+- Once a `Staff Calendar` resolves for an employee, `School Calendar` fallback does not widen or replace that employee holiday source for the same window.
 - This fallback is lineage-based and deterministic.
 - No sibling-school leakage is allowed.
+- `Staff Calendar` writes re-sync affected `Employee.current_holiday_lis` rows so newly created or updated staff calendars take effect without requiring an Employee re-save.
 - SPA clients must not guess school/AY fallback; they consume API payload only.
 - If the logged-in user is the built-in `Administrator` account and no resolved active `Employee` record exists, employee-scoped calendar sources return empty instead of raising, while user-linked participant sources may still load.
 - Other staff portal users without an active `Employee` record still raise the explicit permission error.
@@ -78,8 +81,8 @@ Current create flow:
 - HR/System Manager authorization checks
 - professional email required and uniqueness checks
 - create `User`, link back to `Employee.user_id`, save employee
-- immediately repair the contact graph so the user-linked `Contact` also carries an `Employee` dynamic link and `Employee.empl_primary_contact` points at that contact
-- employee contact resolution prefers `Contact.user = Employee.user_id`; if no contact exists yet, the save flow creates a minimal contact from employee identity data and then adds the `Employee` dynamic link
+- immediately provision the contact graph so the user-linked `Contact` also carries an `Employee` dynamic link and `Employee.empl_primary_contact` points at that contact
+- employee contact provisioning prefers `Contact.user = Employee.user_id`; if no contact exists yet, the create-user flow creates a minimal contact from employee identity data and then adds the `Employee` dynamic link
 
 Role handling now follows managed sync:
 - on employee save, `sync_user_access_from_employee` computes effective roles/workspace from employee history + designation defaults, and always includes the baseline `Employee` role for active staff users.
@@ -90,17 +93,17 @@ Role handling now follows managed sync:
 - on employee save, linked `User.enabled` is enforced from `Employee.employment_status`:
   - `Active` -> `enabled = 1`
   - any other status (`Temporary Leave`, `Suspended`, `Left`, or blank) -> `enabled = 0`
-- on employee save, `_ensure_primary_contact()` self-heals the contact graph: if the user-linked contact exists but is missing a `Contact.links` row to the current `Employee`, the link is inserted; if the employee already has `empl_primary_contact`, that contact is reused as a repair target.
+- employee save no longer repairs legacy contact-link drift; existing sites backfill missing `Contact.links -> Employee` rows and `empl_primary_contact` references through the one-shot patch `ifitwala_ed.patches.backfill_employee_contact_links`
 - contact visibility for employee-linked contacts is server-scoped through `Contact.links -> Employee`:
   - `HR Manager` / `HR User`: read employee contacts in their organization scope
   - `Academic Admin` / `Academic Assistant`: read employee contacts in their effective school + descendant-school scope, where Academic Admin resolves school from the active Employee profile before persisted defaults
   - `Academic Admin` only: when no school scope resolves, or the active Employee profile exists with a blank `school`, employee-linked contact visibility falls back to organization descendant scope
   - `Employee`: read only the contact linked to their own employee record
 - when `Employee.employment_status` is not `Active`, the linked `User` is disabled and all assigned role rows are removed.
-- routing policy resolves active employee status using `Employee.user_id` first, then an unambiguous active match on `employee_professional_email` to avoid false-negative staff routing when legacy user links are missing.
-- at login, if a staff user has no active `Employee.user_id` link but exactly one active `Employee` row matches `employee_professional_email`, the system self-heals `user_id` and re-runs access sync.
+- routing policy and employee-scoped APIs resolve staff identity from canonical `Employee.user_id` only; `employee_professional_email` is not a runtime fallback identity key.
+- existing sites remediate missing active `Employee.user_id` links through the one-shot patch `ifitwala_ed.patches.backfill_employee_user_links`, which backfills only unambiguous matches and re-runs managed access sync during migrate.
 - if login cannot resolve any valid portal section after applying employee/admissions/student/guardian rules, the user is sent back to `/login` instead of being dropped onto `/hub/staff`.
-- `Employee._apply_designation_role()` reruns managed access sync on every Employee update for linked users so imported or drifted accounts are repaired even when the Employee document itself did not change effective access fields.
+- `Employee._apply_designation_role()` reruns managed access sync when linked-user access inputs actually change (for example: `user_id` is newly set, `employment_status` changes, or current `Employee History`/designation access changes). Imported or drifted linked users are normalized through the one-shot patch `ifitwala_ed.patches.backfill_employee_managed_access`.
 - role-management authorization includes `HR User`, `HR Manager`, `System Manager`, and `Administrator`.
 
 ## 4) Employee picture behavior (form + backend)
@@ -109,17 +112,25 @@ Frontend form logic:
 - file: `ifitwala_ed/hr/doctype/employee/employee.js`
 - image field is read-only and uses governed upload action.
 - upload uses method `ifitwala_ed.utilities.governed_uploads.upload_employee_image`.
+- the Desk uploader no longer authors `is_private`; the governed upload spec is the privacy authority.
 - after upload, form reloads and applies preferred image variants from classified slots.
 
 Backend linkage:
 - file: `ifitwala_ed/hr/doctype/employee/employee.py`
-- `ifitwala_ed.utilities.image_utils` owns canonical Employee image variant resolution and Drive-aware derivative generation.
-- governed Employee uploads create classified WebP derivatives with slots:
+- `ifitwala_ed.utilities.image_utils` owns canonical Employee image variant resolution and Drive-aware derivative scheduling.
+- governed Employee uploads create one canonical governed `profile_image` Drive file.
+- Drive generates the actual derivative artifacts for that file using derivative roles:
+  - `thumb`
+  - `card`
+  - `viewer_preview`
+- Ed still exposes compatibility variant keys:
   - `profile_image_thumb`
   - `profile_image_card`
   - `profile_image_medium`
+  These are resolved from Drive derivative roles, not from separate governed derivative files.
 - `Employee.employee_image` remains the latest canonical Employee image reference.
-- consumers that need a smaller image must resolve the classified variants instead of guessing file paths.
+- the canonical Employee profile-image workflow is private. Public website staff photos are delivered through the separate public-people read contract and guest-safe public employee-image route, not through the authenticated employee file route.
+- consumers that need a smaller image must resolve the canonical compatibility variants instead of guessing file paths.
 - `update_user()` syncs linked `User.user_image` from the preferred Employee variant (`thumb` first, then `card`, `medium`, original).
 
 Current read consumers using canonical variant resolution:
@@ -128,13 +139,16 @@ Current read consumers using canonical variant resolution:
 - organization chart API (`ifitwala_ed/api/organization_chart.py`)
 - morning brief staff birthdays (`ifitwala_ed/api/morning_brief.py`)
 - website leadership provider (`ifitwala_ed/website/providers/leadership.py`)
+- avatar-sized Employee surfaces request only Drive-managed derivatives and use a default avatar when no derivative is ready; they must not fall back to the original full-size image
 
 Org chart visibility contract:
 - the staff org chart defaults to `All Organizations`, not the viewer's base organization
-- employee image access for the org chart is available to any authenticated active employee; base-organization scope does not gate employee thumbnails on that surface
-- the org chart surface resolves Employee image derivatives in this order: `profile_image_thumb` -> `profile_image_card` -> `profile_image_medium`; it must not fall back to the original full-size image on that surface
-- when a governed Employee derivative is stored in `ifitwala_drive` instead of local disk, the org chart still resolves it through the named Employee file route, which may redirect to a Drive-issued download URL after the employee-access check passes
-- changes to employee image display permissions must update both the employee image route tests and the org chart consumer contract tests in the same change
+- employee profile-image access for the org chart and Morning Brief staff-birthday surface is available to any authenticated active employee; base-organization scope does not gate those thumbnail/card reads
+- avatar-sized Employee surfaces such as the org chart and Morning Brief birthday cards resolve Employee image derivatives in this order: `profile_image_thumb` -> `profile_image_card` -> `profile_image_medium`; they must not fall back to the original full-size image on those surfaces
+- those compatibility variant keys resolve to Drive derivative roles (`thumb`, `card`, `viewer_preview`) on the current governed `profile_image` file
+- when a governed Employee derivative is stored in `ifitwala_drive`, staff image consumers still resolve it through the named Employee file route, which now keeps Ed as the permission boundary for governed profile-image grants instead of relying on raw `Employee` DocType read access in Drive
+- Morning Brief staff-birthday cards must resolve against the current governed Employee profile-image authority even if an older compatibility `File` id has rotated out; stale `file=` links are a bug
+- changes to employee image display permissions must update the employee image route tests and the affected consumer contract tests in the same change
 
 This keeps Employee image governance and User avatar synchronization aligned.
 
@@ -165,10 +179,15 @@ We decided that employee account access is strictly controlled by `Employee.empl
 Reason: non-active employees must not access either Desk or Portal.
 Impact: the employee sync hook now toggles `User.enabled` automatically and blocks login/access for non-active employee statuses.
 
-[2026-02-18] Decision:
-We decided to self-heal missing active Employee-to-User links at login when there is exactly one unambiguous active match on `employee_professional_email`.
-Reason: historical data can miss `Employee.user_id`, which produced false-negative staff redirects and sent active staff users to the student portal.
-Impact: successful login now repairs the link and re-applies access sync before role-based portal redirect is resolved.
+[2026-04-22] Decision:
+We decided missing active Employee-to-User links are remediated by a one-shot backfill patch instead of login self-heal or email-based runtime fallback.
+Reason: `employee_professional_email` is required but not the canonical identity link, and using it at login/API time kept legacy repair behavior inside runtime hot paths.
+Impact: runtime staff identity now resolves from `Employee.user_id` only; migrate backfills only unambiguous active links and re-applies managed access sync during the patch.
+
+[2026-04-22] Decision:
+We decided employee-facing staff roles must normalize `Role.home_page` to `/hub/staff`.
+Reason: staff login should converge on the staff hub even when role metadata is consulted before or instead of the login redirect hooks.
+Impact: `Academic Staff`, `Nurse`, `Academic Admin`, `Admission Officer`, and `Admission Manager` keep Desk access but now share the same staff-hub landing route; existing sites are aligned through a one-shot patch.
 
 [2026-02-26] Decision:
 We decided to keep `HR Manager` and `HR User` organization-subtree scoped, but include employees with empty `organization`.
@@ -236,7 +255,7 @@ Impact: staff users opening `Active Employee` now land on full scoped list behav
 [2026-03-11] Decision:
 We decided designation-driven role additions must show an operator-facing dialog during Employee save.
 Reason: HR needs immediate feedback when the system adds managed roles to the linked user in the background.
-Impact: designation change and first-time user-link flows now surface the exact newly added managed roles without notifying unrelated non-UI sync paths such as login self-heal.
+Impact: designation change and first-time user-link flows now surface the exact newly added managed roles without notifying unrelated non-UI remediation paths such as migrate backfills.
 
 [2026-03-20] Decision:
 We decided Employee save must rerun managed user-access sync when effective access changes from `Employee History`, not only when the primary designation changes.
@@ -246,4 +265,4 @@ Impact: adding or editing a current secondary designation row now updates the li
 [2026-03-24] Decision:
 We decided active linked staff users must always carry the baseline `Employee` role in addition to current designation/history-managed roles, and non-active linked users must lose all roles.
 Reason: imported or drifted staff accounts were missing the base `Employee` role, while non-active employees must not retain confidential-system access through stale roles.
-Impact: every Employee save now reconciles the linked user role set; active users regain `Employee` plus current designation/history roles, and HR sees a save-time notice when non-active status strips the linked user's roles.
+Impact: runtime Employee saves reconcile the linked user role set only when managed access inputs change; historical drifted linked users are normalized through the one-shot patch `ifitwala_ed.patches.backfill_employee_managed_access`.

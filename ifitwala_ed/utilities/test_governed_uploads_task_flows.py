@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import sys
 from contextlib import contextmanager
 from types import ModuleType, SimpleNamespace
 from unittest import TestCase
@@ -10,13 +11,11 @@ from ifitwala_ed.tests.frappe_stubs import import_fresh, stubbed_frappe
 
 @contextmanager
 def _governed_uploads_module():
-    file_dispatcher = ModuleType("ifitwala_ed.utilities.file_dispatcher")
-    file_dispatcher.create_and_classify_file = lambda **kwargs: None
-
     image_utils = ModuleType("ifitwala_ed.utilities.image_utils")
     image_utils.EMPLOYEE_VARIANT_PRIORITY = []
     image_utils.file_url_is_accessible = lambda file_url, *, file_name=None, is_private=0: True
-    image_utils.get_employee_image_variants_map = lambda employee_names: {}
+    image_utils.get_employee_image_variants_map = lambda employee_names, **kwargs: {}
+    image_utils.get_preferred_employee_avatar_url = lambda employee_name, original_url=None: original_url
     image_utils.get_preferred_employee_image_url = lambda employee_name, original_url=None, slots=None: original_url
 
     organization_media = ModuleType("ifitwala_ed.utilities.organization_media")
@@ -24,7 +23,6 @@ def _governed_uploads_module():
 
     with stubbed_frappe(
         extra_modules={
-            "ifitwala_ed.utilities.file_dispatcher": file_dispatcher,
             "ifitwala_ed.utilities.image_utils": image_utils,
             "ifitwala_ed.utilities.organization_media": organization_media,
         }
@@ -37,6 +35,26 @@ def _governed_uploads_module():
         frappe.scrub = lambda value: str(value or "").strip().lower().replace(" ", "_")
         frappe.utils = SimpleNamespace(get_site_path=lambda *parts: "/tmp")
         yield import_fresh("ifitwala_ed.utilities.governed_uploads")
+
+
+@contextmanager
+def _patched_drive_api_module(module_name: str, **attributes):
+    root_module = ModuleType("ifitwala_drive")
+    api_module = ModuleType("ifitwala_drive.api")
+    child_module = ModuleType(module_name)
+    for key, value in attributes.items():
+        setattr(child_module, key, value)
+    setattr(api_module, module_name.rsplit(".", 1)[-1], child_module)
+    setattr(root_module, "api", api_module)
+    with patch.dict(
+        sys.modules,
+        {
+            "ifitwala_drive": root_module,
+            "ifitwala_drive.api": api_module,
+            module_name: child_module,
+        },
+    ):
+        yield child_module
 
 
 class _FakeDoc:
@@ -55,21 +73,11 @@ class _FakeDoc:
 
 
 class TestGovernedUploadTaskFlows(TestCase):
-    def test_drive_upload_and_finalize_injects_idempotency_key_for_strict_wrapper(self):
-        storage_calls = []
-        uploads_api = SimpleNamespace(finalize_upload_session=lambda **kwargs: {"file_id": "FILE-EMP-0001"})
-        storage_base = SimpleNamespace(
-            get_storage_backend=lambda _backend: SimpleNamespace(
-                write_temporary_object=lambda *, object_key, content: storage_calls.append((object_key, content))
-            )
-        )
-        session_doc = _FakeDoc(
-            name="DUS-EMP-1",
-            storage_backend="drive_test",
-            tmp_object_key="tmp/employee-photo.png",
-            status="pending",
-            received_size_bytes=None,
-            error_log="old-error",
+    def test_drive_upload_and_finalize_injects_idempotency_key_and_uses_drive_owned_ingest(self):
+        ingest_calls = []
+        uploads_api = SimpleNamespace(
+            ingest_upload_session_content=lambda **kwargs: ingest_calls.append(kwargs),
+            finalize_upload_session=lambda **kwargs: {"file_id": "FILE-EMP-0001"},
         )
         file_doc = SimpleNamespace(name="FILE-EMP-0001")
         observed = {}
@@ -93,12 +101,12 @@ class TestGovernedUploadTaskFlows(TestCase):
                     "upload_source": upload_source,
                 }
             )
-            return {"upload_session_id": "DUS-EMP-1"}
+            return {
+                "upload_session_id": "DUS-EMP-1",
+                "upload_target": {"headers": {"X-Drive-Upload-Token": "drive-token-123"}},
+            }
 
         def fake_get_doc(doctype, name):
-            if doctype == "Drive Upload Session":
-                self.assertEqual(name, "DUS-EMP-1")
-                return session_doc
             if doctype == "File":
                 self.assertEqual(name, "FILE-EMP-0001")
                 return file_doc
@@ -117,21 +125,19 @@ class TestGovernedUploadTaskFlows(TestCase):
                 content=b"employee-content",
             )
 
-            with (
-                patch.object(
-                    governed_uploads,
-                    "_load_drive_module",
-                    side_effect=lambda module_name: (
-                        uploads_api if module_name == "ifitwala_drive.api.uploads" else storage_base
-                    ),
-                ),
-                patch.object(governed_uploads.frappe, "get_doc", side_effect=fake_get_doc),
+            with _patched_drive_api_module(
+                "ifitwala_drive.api.uploads",
+                ingest_upload_session_content=uploads_api.ingest_upload_session_content,
+                finalize_upload_session=uploads_api.finalize_upload_session,
             ):
-                session_response, finalize_response, returned_file_doc = governed_uploads._drive_upload_and_finalize(
-                    create_session_callable=strict_wrapper,
-                    payload=base_payload,
-                    content=b"employee-content",
-                )
+                with patch.object(governed_uploads.frappe, "get_doc", side_effect=fake_get_doc):
+                    session_response, finalize_response, returned_file_doc = (
+                        governed_uploads._drive_upload_and_finalize(
+                            create_session_callable=strict_wrapper,
+                            payload=base_payload,
+                            content=b"employee-content",
+                        )
+                    )
 
         self.assertEqual(observed["employee"], "EMP-0001")
         self.assertEqual(observed["filename_original"], "employee-photo.png")
@@ -139,11 +145,15 @@ class TestGovernedUploadTaskFlows(TestCase):
         self.assertEqual(observed["expected_size_bytes"], len(b"employee-content"))
         self.assertEqual(observed["idempotency_key"], expected_idempotency_key)
         self.assertEqual(observed["upload_source"], "Desk")
-        self.assertEqual(storage_calls, [("tmp/employee-photo.png", b"employee-content")])
-        self.assertEqual(session_doc.status, "uploaded")
-        self.assertEqual(session_doc.received_size_bytes, len(b"employee-content"))
-        self.assertIsNone(session_doc.error_log)
-        self.assertEqual(session_doc.saved, 1)
+        self.assertEqual(
+            ingest_calls,
+            [
+                {
+                    "upload_session_id": "DUS-EMP-1",
+                    "content": b"employee-content",
+                }
+            ],
+        )
         self.assertEqual(session_response["upload_session_id"], "DUS-EMP-1")
         self.assertEqual(finalize_response["file_id"], "FILE-EMP-0001")
         self.assertIs(returned_file_doc, file_doc)
@@ -238,28 +248,11 @@ class TestGovernedUploadTaskFlows(TestCase):
         )
         self.assertEqual(payload["file"], "FILE-STU-0001")
 
-    def test_get_drive_media_callable_falls_back_to_integration_service(self):
-        api_module = SimpleNamespace()
-        observed = {}
-
-        def fake_service(payload):
-            observed.update(payload)
-            return {"upload_session_id": "DUS-42"}
-
-        integration_module = SimpleNamespace(upload_guardian_image_service=fake_service)
-
+    def test_get_drive_media_callable_requires_public_media_api_method(self):
         with _governed_uploads_module() as governed_uploads:
-            with (
-                patch.object(governed_uploads, "_load_drive_module", return_value=api_module),
-                patch.object(governed_uploads.importlib, "import_module", return_value=integration_module),
-                patch.object(governed_uploads.importlib, "reload", side_effect=lambda module: module),
-            ):
-                callable_ = governed_uploads._get_drive_media_callable("upload_guardian_image")
-                response = callable_(guardian="GRD-0001", filename_original="photo.png")
-
-        self.assertEqual(response["upload_session_id"], "DUS-42")
-        self.assertEqual(observed["guardian"], "GRD-0001")
-        self.assertEqual(observed["filename_original"], "photo.png")
+            with _patched_drive_api_module("ifitwala_drive.api.media"):
+                with self.assertRaises(governed_uploads.frappe.ValidationError):
+                    governed_uploads._get_drive_media_callable("upload_guardian_image")
 
     def test_upload_guardian_image_uses_drive_wrapper_and_persists_org_anchor(self):
         doc = _FakeDoc(name="GRD-0001", organization="", guardian_image="")
@@ -273,19 +266,24 @@ class TestGovernedUploadTaskFlows(TestCase):
         )
 
         with _governed_uploads_module() as governed_uploads:
-            with (
-                patch.object(governed_uploads, "_require_doc", return_value=doc),
-                patch.object(governed_uploads, "_get_uploaded_file", return_value=("guardian-photo.png", b"content")),
-                patch.object(governed_uploads, "_load_drive_module", return_value=fake_drive_api),
-                patch.object(governed_uploads, "_ensure_file_on_disk"),
-                patch.object(
-                    governed_uploads,
-                    "_drive_upload_and_finalize",
-                    return_value=({"upload_session_id": "DUS-9"}, {"file_id": "FILE-0009"}, file_doc),
-                ) as bridge,
-                patch.object(governed_uploads.frappe.db, "set_value") as set_value,
+            with _patched_drive_api_module(
+                "ifitwala_drive.api.media",
+                upload_guardian_image=fake_drive_api.upload_guardian_image,
             ):
-                payload = governed_uploads.upload_guardian_image(guardian="GRD-0001")
+                with (
+                    patch.object(governed_uploads, "_require_doc", return_value=doc),
+                    patch.object(
+                        governed_uploads, "_get_uploaded_file", return_value=("guardian-photo.png", b"content")
+                    ),
+                    patch.object(governed_uploads, "_ensure_file_on_disk"),
+                    patch.object(
+                        governed_uploads,
+                        "_drive_upload_and_finalize",
+                        return_value=({"upload_session_id": "DUS-9"}, {"file_id": "FILE-0009"}, file_doc),
+                    ) as bridge,
+                    patch.object(governed_uploads.frappe.db, "set_value") as set_value,
+                ):
+                    payload = governed_uploads.upload_guardian_image(guardian="GRD-0001")
 
         bridge.assert_called_once()
         self.assertIs(bridge.call_args.kwargs["create_session_callable"], fake_drive_api.upload_guardian_image)
@@ -312,24 +310,27 @@ class TestGovernedUploadTaskFlows(TestCase):
         )
 
         with _governed_uploads_module() as governed_uploads:
-            with (
-                patch.object(governed_uploads, "_require_doc", return_value=doc),
-                patch.object(
-                    governed_uploads,
-                    "_get_uploaded_file",
-                    return_value=("employee-photo.png", b"employee-content"),
-                ),
-                patch.object(governed_uploads, "_load_drive_module", return_value=fake_drive_api),
-                patch.object(governed_uploads, "_ensure_file_on_disk"),
-                patch.object(
-                    governed_uploads,
-                    "_drive_upload_and_finalize",
-                    return_value=({"upload_session_id": "DUS-EMP-1"}, {"file_id": "FILE-EMP-0001"}, file_doc),
-                ) as bridge,
-                patch.object(governed_uploads, "_sync_linked_employee_user_image") as sync_user_image,
-                patch.object(governed_uploads.frappe.db, "set_value") as set_value,
+            with _patched_drive_api_module(
+                "ifitwala_drive.api.media",
+                upload_employee_image=fake_drive_api.upload_employee_image,
             ):
-                payload = governed_uploads.upload_employee_image(employee="EMP-0001")
+                with (
+                    patch.object(governed_uploads, "_require_doc", return_value=doc),
+                    patch.object(
+                        governed_uploads,
+                        "_get_uploaded_file",
+                        return_value=("employee-photo.png", b"employee-content"),
+                    ),
+                    patch.object(governed_uploads, "_ensure_file_on_disk"),
+                    patch.object(
+                        governed_uploads,
+                        "_drive_upload_and_finalize",
+                        return_value=({"upload_session_id": "DUS-EMP-1"}, {"file_id": "FILE-EMP-0001"}, file_doc),
+                    ) as bridge,
+                    patch.object(governed_uploads, "_sync_linked_employee_user_image") as sync_user_image,
+                    patch.object(governed_uploads.frappe.db, "set_value") as set_value,
+                ):
+                    payload = governed_uploads.upload_employee_image(employee="EMP-0001")
 
         bridge.assert_called_once()
         self.assertIs(bridge.call_args.kwargs["create_session_callable"], fake_drive_api.upload_employee_image)
@@ -358,27 +359,26 @@ class TestGovernedUploadTaskFlows(TestCase):
         )
 
         with _governed_uploads_module() as governed_uploads:
-            with (
-                patch.object(governed_uploads, "_require_doc", return_value=doc),
-                patch.object(governed_uploads, "_require_clean_saved_doc", return_value=doc),
-                patch.object(
-                    governed_uploads,
-                    "_get_uploaded_file",
-                    return_value=("worksheet.pdf", b"worksheet-content"),
-                ),
-                patch.object(
-                    governed_uploads,
-                    "_load_drive_module",
-                    return_value=drive_materials_api,
-                ),
-                patch.object(governed_uploads, "_ensure_file_on_disk"),
-                patch.object(
-                    governed_uploads,
-                    "_drive_upload_and_finalize",
-                    return_value=({"upload_session_id": "DUS-MAT-1"}, {"file_id": "FILE-MAT-0001"}, file_doc),
-                ) as bridge,
+            with _patched_drive_api_module(
+                "ifitwala_drive.api.materials",
+                upload_supporting_material=drive_materials_api.upload_supporting_material,
             ):
-                payload = governed_uploads.upload_supporting_material_file(material="MAT-0001")
+                with (
+                    patch.object(governed_uploads, "_require_doc", return_value=doc),
+                    patch.object(governed_uploads, "_require_clean_saved_doc", return_value=doc),
+                    patch.object(
+                        governed_uploads,
+                        "_get_uploaded_file",
+                        return_value=("worksheet.pdf", b"worksheet-content"),
+                    ),
+                    patch.object(governed_uploads, "_ensure_file_on_disk"),
+                    patch.object(
+                        governed_uploads,
+                        "_drive_upload_and_finalize",
+                        return_value=({"upload_session_id": "DUS-MAT-1"}, {"file_id": "FILE-MAT-0001"}, file_doc),
+                    ) as bridge,
+                ):
+                    payload = governed_uploads.upload_supporting_material_file(material="MAT-0001")
 
         bridge.assert_called_once()
         self.assertIs(
@@ -410,7 +410,7 @@ class TestGovernedUploadTaskFlows(TestCase):
                 patch.object(governed_uploads.frappe.db, "get_value", return_value="staff@example.com"),
                 patch.object(
                     governed_uploads,
-                    "get_preferred_employee_image_url",
+                    "get_preferred_employee_avatar_url",
                     return_value="/files/thumb_employee.webp",
                 ) as get_preferred,
                 patch.object(governed_uploads.frappe, "get_doc", return_value=user_doc) as get_doc,
@@ -423,12 +423,36 @@ class TestGovernedUploadTaskFlows(TestCase):
         get_preferred.assert_called_once_with(
             "EMP-0001",
             original_url="/private/files/employee-photo.png",
-            slots=governed_uploads.EMPLOYEE_VARIANT_PRIORITY,
         )
         get_doc.assert_called_once_with("User", "staff@example.com")
         self.assertTrue(user_doc.flags.ignore_permissions)
         self.assertEqual(user_doc.user_image, "/files/thumb_employee.webp")
         self.assertEqual(user_doc.saved, 1)
+
+    def test_get_employee_image_display_map_uses_derivative_only_avatar_helper(self):
+        employee_doc = SimpleNamespace(check_permission=lambda ptype: None)
+
+        with _governed_uploads_module() as governed_uploads:
+            with (
+                patch.object(governed_uploads.frappe, "get_doc", return_value=employee_doc),
+                patch.object(
+                    governed_uploads.frappe,
+                    "get_all",
+                    return_value=[{"name": "EMP-0001", "employee_image": "/private/files/employee-photo.png"}],
+                ),
+                patch.object(
+                    governed_uploads,
+                    "get_preferred_employee_avatar_url",
+                    return_value="/files/thumb_employee.webp",
+                ) as get_avatar,
+            ):
+                payload = governed_uploads.get_employee_image_display_map(["EMP-0001"])
+
+        get_avatar.assert_called_once_with(
+            "EMP-0001",
+            original_url="/private/files/employee-photo.png",
+        )
+        self.assertEqual(payload, {"EMP-0001": "/files/thumb_employee.webp"})
 
     def test_upload_task_submission_attachment_uses_drive_wrapper(self):
         doc = _FakeDoc(name="TSUB-0001", school="SCH-0001", student="STU-0001")
@@ -441,18 +465,21 @@ class TestGovernedUploadTaskFlows(TestCase):
         )
 
         with _governed_uploads_module() as governed_uploads:
-            with (
-                patch.object(governed_uploads, "_require_doc", return_value=doc),
-                patch.object(governed_uploads, "_get_uploaded_file", return_value=("submission.pdf", b"content")),
-                patch.object(governed_uploads, "_load_drive_module", return_value=fake_drive_api),
-                patch.object(governed_uploads, "_ensure_file_on_disk"),
-                patch.object(
-                    governed_uploads,
-                    "_drive_upload_and_finalize",
-                    return_value=({"upload_session_id": "DUS-1"}, {"file_id": "FILE-0001"}, file_doc),
-                ) as bridge,
+            with _patched_drive_api_module(
+                "ifitwala_drive.api.submissions",
+                upload_task_submission_artifact=fake_drive_api.upload_task_submission_artifact,
             ):
-                payload = governed_uploads.upload_task_submission_attachment(task_submission="TSUB-0001")
+                with (
+                    patch.object(governed_uploads, "_require_doc", return_value=doc),
+                    patch.object(governed_uploads, "_get_uploaded_file", return_value=("submission.pdf", b"content")),
+                    patch.object(governed_uploads, "_ensure_file_on_disk"),
+                    patch.object(
+                        governed_uploads,
+                        "_drive_upload_and_finalize",
+                        return_value=({"upload_session_id": "DUS-1"}, {"file_id": "FILE-0001"}, file_doc),
+                    ) as bridge,
+                ):
+                    payload = governed_uploads.upload_task_submission_attachment(task_submission="TSUB-0001")
 
         bridge.assert_called_once()
         self.assertIs(
@@ -475,23 +502,32 @@ class TestGovernedUploadTaskFlows(TestCase):
         )
 
         with _governed_uploads_module() as governed_uploads:
-            with (
-                patch.object(governed_uploads, "_require_doc", return_value=doc),
-                patch.object(governed_uploads, "_require_clean_saved_doc", return_value=doc),
-                patch.object(governed_uploads, "_get_uploaded_file", return_value=("resource.pdf", b"content")),
-                patch.object(governed_uploads, "_load_drive_module", return_value=fake_drive_api),
-                patch.object(governed_uploads, "_ensure_file_on_disk"),
-                patch.object(
-                    governed_uploads,
-                    "_drive_upload_and_finalize",
-                    return_value=(
-                        {"upload_session_id": "DUS-2", "row_name": "row-001"},
-                        {"file_id": "FILE-0002", "row_name": "row-001"},
-                        file_doc,
-                    ),
-                ) as bridge,
+            with _patched_drive_api_module(
+                "ifitwala_drive.api.resources",
+                upload_task_resource=fake_drive_api.upload_task_resource,
             ):
-                payload = governed_uploads.upload_task_resource(task="TASK-0001")
+                with (
+                    patch.object(governed_uploads, "_require_doc", return_value=doc),
+                    patch.object(governed_uploads, "_require_clean_saved_doc", return_value=doc),
+                    patch.object(governed_uploads, "_get_uploaded_file", return_value=("resource.pdf", b"content")),
+                    patch.object(governed_uploads, "_ensure_file_on_disk"),
+                    patch.object(
+                        governed_uploads,
+                        "_drive_upload_and_finalize",
+                        return_value=(
+                            {
+                                "upload_session_id": "DUS-2",
+                                "workflow_result": {"row_name": "row-001"},
+                            },
+                            {
+                                "file_id": "FILE-0002",
+                                "workflow_result": {"row_name": "row-001"},
+                            },
+                            file_doc,
+                        ),
+                    ) as bridge,
+                ):
+                    payload = governed_uploads.upload_task_resource(task="TASK-0001")
 
         bridge.assert_called_once()
         self.assertIs(bridge.call_args.kwargs["create_session_callable"], fake_drive_api.upload_task_resource)

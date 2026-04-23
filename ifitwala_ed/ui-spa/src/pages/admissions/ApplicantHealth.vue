@@ -2,59 +2,53 @@
 
 <template>
 	<div class="admissions-page">
-		<div class="flex flex-wrap items-start justify-between gap-4">
-			<div>
-				<p class="type-h2 text-ink">{{ __('Health information') }}</p>
-				<p class="mt-1 type-caption text-ink/60">
+		<header class="page-header">
+			<div class="page-header__intro">
+				<h1 class="type-h1 text-ink">{{ __('Health information') }}</h1>
+				<p class="type-meta text-ink/70">
 					{{ __('Provide complete medical details, including vaccination records.') }}
 				</p>
 			</div>
-			<button
-				type="button"
-				class="rounded-full bg-ink px-4 py-2 type-caption text-white shadow-soft disabled:opacity-50"
-				:disabled="isReadOnly || loading"
-				@click="openEdit"
-			>
-				{{ __('Edit') }}
-			</button>
-		</div>
+			<div class="page-header__actions">
+				<button
+					type="button"
+					class="if-button if-button--primary"
+					:disabled="isReadOnly || loading"
+					@click="openEdit"
+				>
+					{{ __('Edit') }}
+				</button>
+			</div>
+		</header>
 
-		<div v-if="loading" class="rounded-2xl border border-border/70 bg-surface px-4 py-4">
-			<div class="flex items-center gap-3">
+		<div v-if="loading" class="admissions-state-card">
+			<div class="admissions-state-inline">
 				<Spinner class="h-4 w-4" />
 				<p class="type-body-strong text-ink">{{ __('Loading health details…') }}</p>
 			</div>
 		</div>
 
-		<div v-else-if="error" class="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3">
-			<p class="type-body-strong text-rose-900">{{ __('Unable to load health information') }}</p>
-			<p class="mt-1 type-caption text-rose-900/80 whitespace-pre-wrap">{{ error }}</p>
-			<button
-				type="button"
-				class="mt-3 rounded-full border border-rose-200 bg-white px-4 py-2 type-caption text-rose-900"
-				@click="loadHealth"
-			>
+		<div v-else-if="error" class="if-banner if-banner--danger">
+			<p class="if-banner__title type-body-strong">
+				{{ __('Unable to load health information') }}
+			</p>
+			<p class="if-banner__body mt-1 type-caption whitespace-pre-wrap">{{ error }}</p>
+			<button type="button" class="if-button if-button--secondary mt-3" @click="loadHealth">
 				{{ __('Try again') }}
 			</button>
 		</div>
 
-		<div v-else class="grid gap-4">
-			<div v-if="actionError" class="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3">
-				<p class="type-body-strong text-amber-900">{{ __('Notice') }}</p>
-				<p class="mt-1 type-caption text-amber-900/80">{{ actionError }}</p>
+		<div v-else class="space-y-4">
+			<div v-if="actionError" class="admissions-card admissions-card--warm">
+				<p class="type-body-strong text-clay">{{ __('Notice') }}</p>
+				<p class="mt-1 type-caption text-clay/85">{{ actionError }}</p>
 			</div>
-			<div
-				class="rounded-2xl px-4 py-4 shadow-soft"
-				:class="
-					isDeclaredComplete
-						? 'border border-leaf/40 bg-leaf/10'
-						: 'border border-amber-200 bg-amber-50'
-				"
+
+			<section
+				class="admissions-card"
+				:class="isDeclaredComplete ? 'admissions-card--success' : 'admissions-card--warm'"
 			>
-				<p
-					class="type-body-strong"
-					:class="isDeclaredComplete ? 'text-emerald-900' : 'text-amber-900'"
-				>
+				<p class="type-body-strong" :class="isDeclaredComplete ? 'text-canopy' : 'text-clay'">
 					{{
 						isDeclaredComplete
 							? __('Health declaration confirmed')
@@ -63,7 +57,7 @@
 				</p>
 				<p
 					class="mt-1 type-caption"
-					:class="isDeclaredComplete ? 'text-emerald-900/80' : 'text-amber-900/80'"
+					:class="isDeclaredComplete ? 'text-canopy/85' : 'text-clay/85'"
 				>
 					{{
 						isDeclaredComplete
@@ -73,68 +67,64 @@
 								).replace('{0}', applicantDisplayName)
 					}}
 				</p>
-			</div>
+			</section>
 
-			<div class="rounded-2xl border border-border/70 bg-white px-4 py-4 shadow-soft">
-				<div class="grid gap-4 md:grid-cols-2">
-					<div>
+			<section class="admissions-card admissions-card--plain">
+				<div class="grid gap-3 md:grid-cols-2">
+					<div class="admissions-detail-card">
 						<p class="type-caption text-ink/60">{{ __('Blood group') }}</p>
 						<p class="mt-1 type-body text-ink/80">{{ displayText(health?.blood_group) }}</p>
 					</div>
-					<div>
+					<div class="admissions-detail-card">
 						<p class="type-caption text-ink/60">{{ __('Any allergies') }}</p>
 						<p class="mt-1 type-body text-ink/80">
 							{{ hasAllergies ? __('Yes') : __('No') }}
 						</p>
 					</div>
 				</div>
-				<div v-if="hasAllergies" class="mt-4 grid gap-3 md:grid-cols-3">
-					<div>
+				<div v-if="hasAllergies" class="mt-3 grid gap-3 md:grid-cols-3">
+					<div class="admissions-detail-card">
 						<p class="type-caption text-ink/60">{{ __('Food allergies') }}</p>
 						<p class="mt-1 type-body text-ink/80 whitespace-pre-wrap">
 							{{ displayText(health?.food_allergies) }}
 						</p>
 					</div>
-					<div>
+					<div class="admissions-detail-card">
 						<p class="type-caption text-ink/60">{{ __('Insect bites') }}</p>
 						<p class="mt-1 type-body text-ink/80 whitespace-pre-wrap">
 							{{ displayText(health?.insect_bites) }}
 						</p>
 					</div>
-					<div>
+					<div class="admissions-detail-card">
 						<p class="type-caption text-ink/60">{{ __('Medication allergies') }}</p>
 						<p class="mt-1 type-body text-ink/80 whitespace-pre-wrap">
 							{{ displayText(health?.medication_allergies) }}
 						</p>
 					</div>
 				</div>
-			</div>
+			</section>
 
-			<div class="rounded-2xl border border-border/70 bg-white px-4 py-4 shadow-soft">
+			<section class="admissions-card admissions-card--plain">
 				<p class="type-body-strong text-ink">{{ __('Medical conditions') }}</p>
 				<div class="mt-3 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-					<div
-						v-for="item in conditionRows"
-						:key="item.key"
-						class="rounded-xl border border-border/60 px-3 py-2"
-					>
+					<div v-for="item in conditionRows" :key="item.key" class="admissions-detail-card">
 						<p class="type-caption text-ink/60">{{ item.label }}</p>
 						<p class="mt-1 type-body text-ink/80 whitespace-pre-wrap">
 							{{ displayText(item.value) }}
 						</p>
 					</div>
 				</div>
-			</div>
+			</section>
 
-			<div class="rounded-2xl border border-border/70 bg-white px-4 py-4 shadow-soft">
-				<div class="grid gap-4 md:grid-cols-2">
-					<div>
+			<section class="admissions-card admissions-card--plain">
+				<div class="grid gap-3 md:grid-cols-2">
+					<div class="admissions-detail-card">
 						<p class="type-body-strong text-ink">{{ __('Diet requirements') }}</p>
 						<p class="mt-1 type-body text-ink/80 whitespace-pre-wrap">
 							{{ displayText(health?.diet_requirements) }}
 						</p>
 					</div>
-					<div>
+					<div class="admissions-detail-card">
 						<p class="type-body-strong text-ink">
 							{{ __('Medical surgeries / hospitalizations') }}
 						</p>
@@ -143,28 +133,25 @@
 						</p>
 					</div>
 				</div>
-				<div class="mt-4">
+				<div class="admissions-detail-card mt-3">
 					<p class="type-body-strong text-ink">{{ __('Other medical information') }}</p>
 					<p class="mt-1 type-body text-ink/80 whitespace-pre-wrap">
 						{{ displayText(health?.other_medical_information) }}
 					</p>
 				</div>
-			</div>
+			</section>
 
-			<div class="rounded-2xl border border-border/70 bg-white px-4 py-4 shadow-soft">
+			<section class="admissions-card admissions-card--plain">
 				<div class="flex items-center justify-between gap-3">
 					<p class="type-body-strong text-ink">{{ __('Vaccinations') }}</p>
-					<p class="type-caption text-ink/60">
+					<p class="admissions-status-pill admissions-status-pill--quiet type-caption">
 						{{ vaccinationRows.length }} {{ __('record(s)') }}
 					</p>
 				</div>
-				<div
-					v-if="!vaccinationRows.length"
-					class="mt-3 rounded-xl border border-border/60 px-3 py-3"
-				>
+				<div v-if="!vaccinationRows.length" class="admissions-detail-card mt-3">
 					<p class="type-body text-ink/70">{{ __('No vaccinations recorded.') }}</p>
 				</div>
-				<div v-else class="mt-3 overflow-x-auto">
+				<div v-else class="admissions-detail-card mt-3 overflow-x-auto">
 					<table class="min-w-full divide-y divide-border/70 text-left text-sm">
 						<thead>
 							<tr class="text-ink/60">
@@ -184,7 +171,7 @@
 										:href="row.vaccination_proof"
 										target="_blank"
 										rel="noopener noreferrer"
-										class="text-ink underline"
+										class="text-jacaranda underline"
 									>
 										{{ __('View') }}
 									</a>
@@ -195,7 +182,7 @@
 						</tbody>
 					</table>
 				</div>
-			</div>
+			</section>
 		</div>
 	</div>
 </template>

@@ -112,6 +112,8 @@ No opportunistic cleanup. No scope creep.
 - If a generated artifact is likely to be large, split it, summarize it, or keep it outside the tracked repo workflow.
 - Treat any single generated markdown file approaching repository or tool limits as a process failure to avoid, not a lint issue to discover later.
 - For i18n, translation functions must receive stable literal source strings only.
+- `_()` and `__()` are reserved for translation only.
+- Never assign to `_` or `__`, and never use `_` as a throwaway variable, tuple-unpack target, or temporary alias.
 - Never pass variables directly to `_()` or `__()`.
 - Never use f-strings, template literals, or string concatenation as the translatable source sentence.
 - When dynamic data is required, use a literal source string with named placeholders, then format after translation.
@@ -140,6 +142,43 @@ Drift is a bug.
   - risks
   - explicit approval
 
+### 2.1.1 Documentation Routing Protocol
+
+When starting non-trivial work, find the canonical doc before designing or editing.
+
+Read in this order:
+
+1. nearest applicable `AGENTS.md`
+2. `ifitwala_ed/docs/README.md`
+3. the relevant docs-folder `README.md` when one exists
+4. the feature's canonical contract doc(s)
+5. cross-cutting contracts such as:
+   - `ifitwala_ed/docs/high_concurrency_contract.md`
+   - `ifitwala_ed/docs/nested_scope_contract.md`
+   - `ifitwala_ed/docs/testing/01_test_strategy.md`
+
+Routing rules:
+
+- Prefer docs that explicitly say `Canonical`, `Active`, `Locked`, or that include concrete `Status`, `Code refs`, and `Test refs`.
+- Treat `proposal`, `audit`, `history`, `phase`, and `notes` files as non-authoritative unless the file itself says it is the current canonical/runtime contract.
+- Treat `ifitwala_ed/docs/docs_md/` as end-user and DocType-facing guidance, not as the default source for runtime architecture, unless a feature contract explicitly points there.
+- If a folder has a `README.md`, use it as the navigation index rather than scanning file names and guessing authority.
+
+For any change involving governed uploads, links vs files, private-media open/download URLs, picture thumbnails, image/PDF preview, or attachment DTOs, read these exact docs before editing:
+
+1. `ifitwala_ed/docs/files_and_policies/README.md`
+2. `ifitwala_ed/docs/files_and_policies/files_01_architecture_notes.md`
+3. `ifitwala_ed/docs/files_and_policies/files_03_implementation.md`
+4. `ifitwala_ed/docs/files_and_policies/files_07_education_file_semantics_and_cross_app_contract.md`
+5. `ifitwala_ed/docs/files_and_policies/files_08_cross_portal_governed_attachment_preview_contract.md`
+6. the relevant surface note such as `files_05_organization_media_governance.md`, `files_06_org_communication_attachment_contract.md`, or `docs/admission/03_portal_files_gdpr.md`
+7. `../ifitwala_drive/ifitwala_drive/docs/06_api_contracts.md` when touching the Ed/Drive seam
+
+If the surface is admissions-specific, also read:
+
+- `ifitwala_ed/docs/admission/05_admission_portal.md`
+- `ifitwala_ed/docs/admission/10_ifitwala_drive_portal_uploads.md`
+
 ### 2.2 Legacy Code Policy
 
 During development:
@@ -147,6 +186,13 @@ During development:
 - Do not introduce compatibility shims, duplicate flows, or fallback routes unless explicitly approved for runtime contract preservation.
 - Remove obsolete or broken paths when approved.
 - Keep one canonical workflow path per feature.
+
+### 2.2.1 Legacy Repair Path Policy
+
+- Do not add permanent runtime `repair`, `sync`, `self-heal`, or fallback flows whose purpose is to correct legacy data or legacy content drift.
+- Legacy remediation belongs in explicit one-shot patches under `ifitwala_ed/patches/`, and those patches should reuse the canonical domain logic where possible.
+- A legacy repair patch must be safe to run once during deployment or migration and should be removable later; it must not become part of the fresh-site runtime contract, API surface, SPA UX, or canonical user docs.
+- If a repair path is truly required for ongoing product behavior rather than legacy cleanup, treat it as first-class workflow logic, document it canonically, and require explicit approval before implementation.
 
 ---
 
@@ -239,10 +285,21 @@ Rules:
   - `frappe.db.get_value`
   - `frappe.db.get_values`
   - `frappe.get_all`
-  - Query Builder
-  - parameterized SQL
+- Query Builder
+- parameterized SQL
 - Never interpolate SQL strings manually.
 - Never use broad queries when indexed scoped queries are available.
+
+### 5.2.1 Read-Plan Discipline For Hot Paths
+
+When touching dashboards, reports, page-init endpoints, or other hot read surfaces:
+
+- identify every helper the endpoint calls and what each helper reads
+- collapse duplicated stable reads into one shared preload context when multiple blocks need the same inputs
+- do not accept "same data, different helper" as a reason to reread the database
+- when replacing per-row `get_doc(...)` work with preloaded rows, verify the downstream helper's full field contract first
+- batched/preloaded substitutes must include every field later used by validation, equality, sorting, permissions, and derived state
+- add targeted tests that fail if the hot path falls back to per-row `get_doc(...)`, `frappe.db.get_value(...)`, or equivalent repeated reads
 
 ---
 
@@ -293,6 +350,15 @@ SPA and backend work must preserve:
 - surface-specific visibility contracts for governed file/image reads
 - server-resolved display/open URLs for private media instead of raw private paths
 
+## 5.4.1 Async Queue Boundary Rule
+
+When Ed code relies on Drive or any async follow-up work:
+
+- internal queue labels are not automatically valid Frappe runtime queues
+- any `frappe.enqueue(...)` queue must either be a standard queue (`short`, `default`, `long`), a documented custom runtime queue, or be normalized to a runtime-valid queue at the enqueue boundary
+- user-visible mutation success must not be lost merely because deferred enrichment selected an undeployed semantic queue label
+- if a change adds or renames queue labels, update the canonical docs/runbook in the same change and add regression coverage for the enqueue boundary
+
 ### 5.3 Caching Rules
 
 Shared or stable data should use Redis-backed caching where safe:
@@ -315,6 +381,22 @@ Cache keys must include relevant scope:
 - filters
 
 Stale cache without an invalidation strategy is a bug.
+
+For every new shared cache, agents must define and verify:
+
+- exact key shape
+- scope dimensions
+- owner invalidator function
+- dependent caches/helpers that must also be invalidated
+- mutation hooks that trigger invalidation
+
+Rules:
+
+- do not replace request-local dict caches on hot paths with Redis caches unless invalidation ownership is explicit
+- do not stop at the cache you added; also clear dependent helper caches such as ancestor-chain or effective-resolution caches
+- avoid prefix-wide or global cache wipes as the default invalidation strategy in multi-tenant domains
+- if broad invalidation is temporarily unavoidable, call it out explicitly as a concession and say what narrower ownership is still missing
+- cache changes must include tests for both reuse and invalidation
 
 ---
 
@@ -348,6 +430,13 @@ Avoid:
 - unbounded scheduler sweeps
 - oversized transactions
 
+When an endpoint returns multiple blocks or panels:
+
+- write down which inputs are shared across blocks
+- preload shared stable inputs once
+- pass the shared inputs through explicitly instead of letting each block query independently
+- keep permissions and tenant scoping enforced before preload fan-out, not after payload assembly
+
 ### 6.2 Scheduler & Job Rules
 
 Background jobs and scheduled jobs must be:
@@ -380,6 +469,12 @@ Optimize:
 - cacheability
 - batching
 - idempotency
+
+Hot-path write changes must also follow these rules:
+
+- if you skip `save()` for unchanged rows, verify the target controller/hooks do not provide required side effects for that path
+- compare equality against the full payload the controller cares about, not a partial subset
+- add regression coverage for the no-op path and the changed path
 
 ---
 
@@ -496,6 +591,7 @@ Never swallow framework exceptions in permission or visibility logic.
 - Atomic routing only
 - No URL guessing in the UI
 - No raw private file URLs in SPA/API display contracts
+- Governed private-media read routes must never emit raw `/private/...` redirect targets; they must stream inline content or redirect only to a server-owned/public/external URL explicitly allowed by the surface contract
 - Each governed read surface must define who may open the resolved display URL
 - Any change to governed file/image visibility must update permission tests in the same change
 - Deterministic derivative slots
@@ -558,6 +654,14 @@ Before considering work done, verify:
 - related tests are added or updated when required
 
 If a critical assumption cannot be verified from the workspace, stop and say exactly what is missing.
+
+### 15.1 Test Isolation Rules
+
+- Test modules must be import-safe under Frappe test discovery.
+- Never mutate `sys.modules`, `frappe.db`, `frappe.session`, or other framework globals at module scope in `test_*.py`.
+- Never install fake modules or global stubs during test-module import.
+- Scope stubs/monkeypatches inside the test, fixture, or context manager and restore them automatically.
+- A test that passes in isolation but contaminates later imports or framework cleanup is broken.
 
 ---
 

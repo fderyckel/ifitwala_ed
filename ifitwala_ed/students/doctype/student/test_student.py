@@ -2,6 +2,8 @@
 # Copyright (c) 2024, fdR and Contributors
 # See license.txt
 
+from unittest.mock import patch
+
 import frappe
 from frappe.tests.utils import FrappeTestCase
 
@@ -126,6 +128,57 @@ class TestStudent(FrappeTestCase):
         self.assertEqual(summary.get("contact"), contact_name)
         self.assertEqual(summary.get("addresses"), [address.name])
         self.assertEqual(int(summary.get("address_count") or 0), 1)
+        self.assertEqual(summary.get("contact_summary", {}).get("display_name"), student.student_full_name)
+        self.assertEqual(
+            summary.get("contact_summary", {}).get("emails"),
+            [{"value": student.student_email, "is_primary": 1}],
+        )
+        self.assertEqual(
+            summary.get("address_summaries"),
+            [
+                {
+                    "name": address.name,
+                    "display_title": address.address_title,
+                    "address_type": address.address_type,
+                    "lines": ["1 Test Street", "Bangkok 10110", address.country],
+                }
+            ],
+        )
+
+    def test_get_student_crm_summary_keeps_read_only_preview_when_contact_and_address_are_not_openable(self):
+        student = self._make_imported_student()
+        address = self._make_address(link_doctype="Student", link_name=student.name, prefix="Hidden Address")
+
+        def _has_permission(doctype, doc=None, ptype="read", user=None):
+            if doctype == "Student":
+                return True
+            if doctype in {"Contact", "Address"}:
+                return False
+            return True
+
+        with patch("ifitwala_ed.students.doctype.student.student.frappe.has_permission", side_effect=_has_permission):
+            summary = get_student_crm_summary(student.name)
+
+        self.assertIsNone(summary.get("contact"))
+        self.assertEqual(summary.get("addresses"), [])
+        self.assertTrue(summary.get("has_hidden_contact"))
+        self.assertTrue(summary.get("has_hidden_addresses"))
+        self.assertEqual(summary.get("contact_summary", {}).get("display_name"), student.student_full_name)
+        self.assertEqual(
+            summary.get("contact_summary", {}).get("emails"),
+            [{"value": student.student_email, "is_primary": 1}],
+        )
+        self.assertEqual(
+            summary.get("address_summaries"),
+            [
+                {
+                    "name": address.name,
+                    "display_title": address.address_title,
+                    "address_type": address.address_type,
+                    "lines": ["1 Test Street", "Bangkok 10110", address.country],
+                }
+            ],
+        )
 
     def test_family_address_proposal_skips_related_records_with_existing_address(self):
         student = self._make_imported_student()

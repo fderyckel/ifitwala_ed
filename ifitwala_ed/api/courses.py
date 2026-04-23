@@ -16,7 +16,13 @@ from frappe.utils import get_datetime, now_datetime
 from ifitwala_ed.api import course_schedule as course_schedule_api
 from ifitwala_ed.api import portal as portal_api
 from ifitwala_ed.api import student_communications as student_communications_api
+from ifitwala_ed.api.family_consent import get_student_consent_home_summary
 from ifitwala_ed.api.student_policy import get_student_policy_home_summary
+from ifitwala_ed.api.student_task_status import (
+    DONE_GRADING_STATUSES,
+    DONE_SUBMISSION_STATUSES,
+    build_student_task_status_label,
+)
 
 COURSE_PLACEHOLDER = "/assets/ifitwala_ed/images/course_placeholder.jpg"
 WORK_BOARD_NOW_LIMIT = 3
@@ -26,8 +32,6 @@ WORK_BOARD_DONE_LIMIT = 6
 TIMELINE_HORIZON_DAYS = 7
 NOW_WINDOW_DAYS = 2
 SOON_WINDOW_DAYS = 7
-DONE_SUBMISSION_STATUSES = {"Submitted", "Late", "Resubmitted"}
-DONE_GRADING_STATUSES = {"Finalized", "Released"}
 OPENABLE_LEARNING_SPACE_STATUSES = {"ready", "shared_plan_only"}
 
 
@@ -53,6 +57,7 @@ def _build_course_href(
     student_group: str | None = None,
     unit_plan: str | None = None,
     class_session: str | None = None,
+    task_delivery: str | None = None,
 ) -> dict[str, Any]:
     href: dict[str, Any] = {
         "name": "student-course-detail",
@@ -62,6 +67,7 @@ def _build_course_href(
         "student_group": student_group,
         "unit_plan": unit_plan,
         "class_session": class_session,
+        "task_delivery": task_delivery,
     }
     query = {key: value for key, value in query.items() if value}
     if query:
@@ -544,30 +550,12 @@ def _build_work_item_href(row: dict[str, Any]) -> dict[str, Any] | None:
         student_group=row.get("student_group"),
         unit_plan=row.get("unit_plan"),
         class_session=row.get("class_session"),
+        task_delivery=row.get("task_delivery"),
     )
 
 
 def _build_work_item_status_label(row: dict[str, Any], anchor_dt: datetime) -> str:
-    due_dt = _coerce_datetime(row.get("due_date"))
-    available_dt = _coerce_datetime(row.get("available_from"))
-    grading_status = str(row.get("grading_status") or "").strip()
-    submission_status = str(row.get("submission_status") or "").strip()
-
-    if int(row.get("is_complete") or 0) == 1:
-        return "Completed"
-    if grading_status in DONE_GRADING_STATUSES:
-        return grading_status
-    if submission_status in DONE_SUBMISSION_STATUSES:
-        return submission_status
-    if due_dt and due_dt < anchor_dt:
-        return "Overdue"
-    if due_dt and due_dt.date() == anchor_dt.date():
-        return "Due Today"
-    if due_dt:
-        return "Upcoming"
-    if available_dt and available_dt > anchor_dt:
-        return "Not Yet Open"
-    return "Open"
+    return build_student_task_status_label(row, anchor_dt)
 
 
 def _classify_work_item_lane(row: dict[str, Any], anchor_dt: datetime) -> tuple[str, str]:
@@ -863,6 +851,7 @@ def get_student_hub_home() -> dict[str, Any]:
             "weekday": schedule.get("weekday"),
         },
         "identity": identity,
+        "consents": get_student_consent_home_summary(student_name),
         "policies": get_student_policy_home_summary(student_name),
         "learning": {
             "today_classes": today_courses,

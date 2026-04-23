@@ -37,6 +37,13 @@ class TestEndofYearChecklist(FrappeTestCase):
         self.child_ay = self._create_academic_year(self.child_school, self.ay_name)
         self.leaf_ay = self._create_academic_year(self.leaf_school, self.ay_name)
         self.sibling_ay = self._create_academic_year(self.sibling_school, self.ay_name)
+        self.next_ay_name = "2026-2027"
+        self.next_leaf_ay = self._create_academic_year(
+            self.leaf_school,
+            self.next_ay_name,
+            start_date="2026-08-01",
+            end_date="2027-06-30",
+        )
 
         self.root_term = self._create_term(self.root_ay, "Root Term")
         self.child_term = self._create_term(self.child_ay, "Child Term")
@@ -57,6 +64,9 @@ class TestEndofYearChecklist(FrappeTestCase):
         self.root_group = self._create_student_group(self.root_offering, self.root_ay, "SGR")
         self.child_group = self._create_student_group(self.child_offering, self.child_ay, "SGC")
         self.leaf_group = self._create_student_group(self.leaf_offering, self.leaf_ay, "SGL")
+        self.course = self._create_course(self.leaf_school)
+        self.leaf_course_plan = self._create_course_plan(self.course, self.leaf_ay)
+        self.leaf_unit_plan = self._create_unit_plan(self.leaf_course_plan)
 
     def tearDown(self):
         for doctype, name in reversed(self._created):
@@ -125,6 +135,28 @@ class TestEndofYearChecklist(FrappeTestCase):
 
         frappe.set_user("Administrator")
 
+    def test_curriculum_handover_creates_next_year_course_plan(self):
+        checklist = frappe.get_single("End of Year Checklist")
+        checklist.school = self.leaf_school
+        checklist.academic_year = self.leaf_ay
+        checklist.curriculum_target_academic_year = self.next_leaf_ay
+        checklist.status = "In Progress"
+        checklist.save(ignore_permissions=True)
+
+        preview = checklist.get_curriculum_handover_preview()
+        self.assertEqual(preview["summary"]["ready_count"], 1)
+
+        result = checklist.prepare_curriculum_handover()
+
+        self.assertEqual(result["created_count"], 1)
+        created_name = result["created"][0]["course_plan"]
+        created_plan = frappe.get_doc("Course Plan", created_name)
+        created_units = frappe.get_all("Unit Plan", filters={"course_plan": created_name}, pluck="name", limit=0)
+        self.assertEqual(created_plan.rollover_source_course_plan, self.leaf_course_plan)
+        self.assertEqual(created_plan.activation_mode, "Academic Year Start")
+        self.assertEqual(created_plan.plan_status, "Draft")
+        self.assertEqual(len(created_units), 1)
+
     def _create_org(self):
         name = f"Org-{frappe.generate_hash(length=6)}"
         doc = frappe.get_doc(
@@ -151,7 +183,7 @@ class TestEndofYearChecklist(FrappeTestCase):
         self._created.append(("School", doc.name))
         return doc.name
 
-    def _create_academic_year(self, school, academic_year_name):
+    def _create_academic_year(self, school, academic_year_name, start_date="2025-08-01", end_date="2026-06-30"):
         doc = frappe.get_doc(
             {
                 "doctype": "Academic Year",
@@ -159,8 +191,8 @@ class TestEndofYearChecklist(FrappeTestCase):
                 "school": school,
                 "archived": 0,
                 "visible_to_admission": 1,
-                "year_start_date": "2025-08-01",
-                "year_end_date": "2026-06-30",
+                "year_start_date": start_date,
+                "year_end_date": end_date,
             }
         ).insert(ignore_permissions=True)
         self._created.append(("Academic Year", doc.name))
@@ -249,6 +281,44 @@ class TestEndofYearChecklist(FrappeTestCase):
             }
         ).insert(ignore_permissions=True)
         self._created.append(("Student Group", doc.name))
+        return doc.name
+
+    def _create_course(self, school):
+        doc = frappe.get_doc(
+            {
+                "doctype": "Course",
+                "course_name": f"Course {frappe.generate_hash(length=6)}",
+                "school": school,
+            }
+        ).insert(ignore_permissions=True)
+        self._created.append(("Course", doc.name))
+        return doc.name
+
+    def _create_course_plan(self, course, academic_year):
+        doc = frappe.get_doc(
+            {
+                "doctype": "Course Plan",
+                "title": f"Course Plan {frappe.generate_hash(length=4)}",
+                "course": course,
+                "academic_year": academic_year,
+                "plan_status": "Active",
+            }
+        ).insert(ignore_permissions=True)
+        self._created.append(("Course Plan", doc.name))
+        return doc.name
+
+    def _create_unit_plan(self, course_plan):
+        doc = frappe.get_doc(
+            {
+                "doctype": "Unit Plan",
+                "course_plan": course_plan,
+                "title": f"Unit Plan {frappe.generate_hash(length=4)}",
+                "unit_status": "Active",
+                "duration": "3",
+                "is_published": 1,
+            }
+        ).insert(ignore_permissions=True)
+        self._created.append(("Unit Plan", doc.name))
         return doc.name
 
     def _create_user(self, email):

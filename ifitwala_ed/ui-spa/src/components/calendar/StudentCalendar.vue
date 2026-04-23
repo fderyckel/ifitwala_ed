@@ -125,12 +125,6 @@ const calendarResource = createResource({
 		};
 	},
 	auto: false,
-	transform: (data: unknown) => {
-		if (data && typeof data === 'object' && 'message' in data) {
-			return (data as Record<string, unknown>).message;
-		}
-		return data;
-	},
 });
 
 const calendarErrorMessage = computed(() => {

@@ -45,6 +45,10 @@ export type StudentRow = {
 	student_id?: string | null
 	student_image?: string | null
 	status?: string | null
+	procedural_status?: string | null
+	submission_status?: string | null
+	has_submission: 0 | 1
+	has_new_submission: 0 | 1
 	complete: 0 | 1
 	mark_awarded: number | null
 	feedback?: string | null

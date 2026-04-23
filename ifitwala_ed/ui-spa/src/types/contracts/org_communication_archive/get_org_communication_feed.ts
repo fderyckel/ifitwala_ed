@@ -14,6 +14,4 @@ export type Response = {
   has_more: boolean
   start: number
   page_length: number
-  limit_start?: number
-  limit?: number
 }

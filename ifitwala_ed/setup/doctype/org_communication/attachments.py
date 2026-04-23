@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import importlib
 import re
 from typing import Any
 
@@ -16,7 +17,24 @@ ORG_COMMUNICATION_ATTACHMENT_SCHOOL_CATEGORY = "School Communication Attachment"
 ORG_COMMUNICATION_ATTACHMENT_ORGANIZATION_CATEGORY = "Organization Communication Attachment"
 
 
+def _refresh_runtime_bindings():
+    global frappe, _
+
+    current_frappe = importlib.import_module("frappe")
+    bound_is_stub = getattr(frappe, "__file__", None) is None
+    current_is_real = getattr(current_frappe, "__file__", None) is not None
+
+    if not bound_is_stub or not current_is_real or current_frappe is frappe:
+        return frappe
+
+    frappe = current_frappe
+    _ = getattr(current_frappe, "_", _)
+    return frappe
+
+
 def _field_value(source, fieldname: str):
+    _refresh_runtime_bindings()
+
     getter = getattr(source, "get", None)
     if callable(getter):
         return getter(fieldname)
@@ -24,6 +42,8 @@ def _field_value(source, fieldname: str):
 
 
 def _normalize_row_key(value: str | None) -> str:
+    _refresh_runtime_bindings()
+
     normalized = re.sub(r"[^A-Za-z0-9_-]+", "-", str(value or "").strip()).strip("-_")
     if normalized:
         return normalized
@@ -31,6 +51,8 @@ def _normalize_row_key(value: str | None) -> str:
 
 
 def parse_org_communication_attachment_row_key(slot: str | None) -> str | None:
+    _refresh_runtime_bindings()
+
     resolved_slot = str(slot or "").strip()
     if not resolved_slot.startswith(ORG_COMMUNICATION_ATTACHMENT_SLOT_PREFIX):
         return None
@@ -39,11 +61,40 @@ def parse_org_communication_attachment_row_key(slot: str | None) -> str | None:
 
 
 def _clean_link_value(value: str | None) -> str | None:
+    _refresh_runtime_bindings()
+
     resolved = str(value or "").strip()
     return resolved or None
 
 
+def _assert_complete_class_attachment_context(context: dict[str, Any] | None) -> None:
+    _refresh_runtime_bindings()
+
+    resolved = dict(context or {})
+    course = _clean_link_value(resolved.get("course"))
+    student_group = _clean_link_value(resolved.get("student_group"))
+    school = _clean_link_value(resolved.get("school"))
+    if not course and not student_group:
+        return
+
+    missing_fields: list[str] = []
+    if not course:
+        missing_fields.append(_("course"))
+    if not student_group:
+        missing_fields.append(_("student group"))
+    if not school:
+        missing_fields.append(_("issuing school"))
+    if not missing_fields:
+        return
+
+    frappe.throw(
+        _("Org Communication attachment class context is incomplete. Missing {0}.").format(", ".join(missing_fields))
+    )
+
+
 def _get_doc(name: str, *, permission_type: str | None = None):
+    _refresh_runtime_bindings()
+
     if not frappe.db.exists("Org Communication", name):
         frappe.throw(_("Org Communication does not exist: {0}").format(name))
 
@@ -58,10 +109,14 @@ def assert_org_communication_attachment_upload_access(
     *,
     permission_type: str = "write",
 ):
+    _refresh_runtime_bindings()
+
     return _get_doc(org_communication, permission_type=permission_type)
 
 
 def _resolve_student_group_for_attachments(doc) -> str | None:
+    _refresh_runtime_bindings()
+
     activity_student_group = _clean_link_value(_field_value(doc, "activity_student_group"))
     if activity_student_group:
         return activity_student_group
@@ -77,6 +132,8 @@ def _resolve_student_group_for_attachments(doc) -> str | None:
 
 
 def _get_unique_audience_link_value(doc, *, target_mode: str, fieldname: str) -> str | None:
+    _refresh_runtime_bindings()
+
     values: list[str] = []
     for row in _field_value(doc, "audiences") or []:
         if str(_field_value(row, "target_mode") or "").strip() != target_mode:
@@ -90,6 +147,8 @@ def _get_unique_audience_link_value(doc, *, target_mode: str, fieldname: str) ->
 
 
 def _resolve_team_attachment_context(doc) -> dict[str, str | None]:
+    _refresh_runtime_bindings()
+
     team = _get_unique_audience_link_value(doc, target_mode="Team", fieldname="team")
     if not team:
         return {"team": None, "school": None, "organization": None}
@@ -111,6 +170,8 @@ def _resolve_team_attachment_context(doc) -> dict[str, str | None]:
 
 
 def resolve_org_communication_attachment_context(doc) -> dict[str, str | None]:
+    _refresh_runtime_bindings()
+
     student_group = _resolve_student_group_for_attachments(doc)
     if student_group:
         student_group_row = frappe.db.get_value(
@@ -141,13 +202,15 @@ def resolve_org_communication_attachment_context(doc) -> dict[str, str | None]:
         if not organization:
             frappe.throw(_("Org Communication attachments require an organization."))
 
-        return {
+        context = {
             "context_kind": "student_group",
             "organization": organization,
             "school": school,
             "course": course,
             "student_group": student_group,
         }
+        _assert_complete_class_attachment_context(context)
+        return context
 
     team_context = _resolve_team_attachment_context(doc)
     school = (
@@ -170,7 +233,73 @@ def resolve_org_communication_attachment_context(doc) -> dict[str, str | None]:
     }
 
 
+def has_org_communication_governed_file_attachments(doc) -> bool:
+    _refresh_runtime_bindings()
+
+    for row in _field_value(doc, "attachments") or []:
+        if _clean_link_value(_field_value(row, "file")):
+            return True
+    return False
+
+
+def _attachment_context_snapshot(doc) -> dict[str, str | None]:
+    _refresh_runtime_bindings()
+
+    context = resolve_org_communication_attachment_context(doc)
+    return {
+        "context_kind": _clean_link_value(context.get("context_kind")),
+        "organization": _clean_link_value(context.get("organization")),
+        "school": _clean_link_value(context.get("school")),
+        "course": _clean_link_value(context.get("course")),
+        "student_group": _clean_link_value(context.get("student_group")),
+    }
+
+
+def assert_org_communication_attachment_context_stable(doc, before_doc) -> None:
+    _refresh_runtime_bindings()
+
+    if not before_doc or not has_org_communication_governed_file_attachments(before_doc):
+        return
+    if not has_org_communication_governed_file_attachments(doc):
+        return
+
+    before_snapshot = _attachment_context_snapshot(before_doc)
+    try:
+        current_snapshot = _attachment_context_snapshot(doc)
+    except frappe.ValidationError:
+        frappe.throw(
+            _(
+                "This communication already has governed file attachments. Remove the governed files before changing the attachment context."
+            ),
+            title=_("Attachment Context Locked"),
+        )
+    if before_snapshot == current_snapshot:
+        return
+
+    changed_fields: list[str] = []
+    field_labels = {
+        "context_kind": _("attachment scope"),
+        "organization": _("organization"),
+        "school": _("issuing school"),
+        "course": _("course context"),
+        "student_group": _("student group"),
+    }
+    for fieldname, label in field_labels.items():
+        if before_snapshot.get(fieldname) != current_snapshot.get(fieldname):
+            changed_fields.append(label)
+
+    changed_summary = ", ".join(changed_fields) or _("attachment context")
+    frappe.throw(
+        _(
+            "This communication already has governed file attachments. Remove the governed files before changing {0}."
+        ).format(changed_summary),
+        title=_("Attachment Context Locked"),
+    )
+
+
 def _assert_attachment_row_exists(doc, row_key: str) -> None:
+    _refresh_runtime_bindings()
+
     if not row_key:
         frappe.throw(_("Org Communication attachment row key is required."))
     for row in doc.get("attachments") or []:
@@ -189,6 +318,7 @@ def build_org_communication_attachment_upload_contract(
         frappe.throw(_("Save the Org Communication before attaching governed files."))
 
     context = resolve_org_communication_attachment_context(doc)
+    _assert_complete_class_attachment_context(context)
     row_key = _normalize_row_key(row_name)
     if row_name and require_existing_row:
         _assert_attachment_row_exists(doc, row_key)
@@ -259,6 +389,7 @@ def get_org_communication_context_override(owner_name: str | None, slot: str | N
 
     doc = _get_doc(owner_name)
     context = resolve_org_communication_attachment_context(doc)
+    _assert_complete_class_attachment_context(context)
     if context["context_kind"] == "student_group":
         return {
             "root_folder": "Home/Courses",

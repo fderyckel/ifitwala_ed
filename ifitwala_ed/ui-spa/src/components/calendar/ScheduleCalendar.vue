@@ -33,6 +33,14 @@
 						<FeatherIcon name="refresh-cw" class="h-4 w-4" />
 						Refresh
 					</button>
+					<button
+						class="if-action type-button-label"
+						:aria-expanded="exportPanelOpen ? 'true' : 'false'"
+						@click="toggleExportPanel"
+					>
+						<FeatherIcon name="printer" class="h-4 w-4" />
+						Print timetable
+					</button>
 					<span v-if="lastUpdatedLabel" class="type-caption text-slate-token/70">
 						Updated {{ lastUpdatedLabel }}
 					</span>
@@ -81,9 +89,69 @@
 				</div>
 			</div>
 
+			<div
+				v-if="exportPanelOpen"
+				class="schedule-calendar__export-panel mt-4 rounded-2xl border border-[rgb(var(--sand-rgb)/0.45)] bg-[rgb(var(--sky-rgb)/0.42)] px-4 py-4 shadow-soft sm:px-5"
+				role="region"
+				aria-label="Timetable export"
+			>
+				<div class="schedule-calendar__export-header">
+					<div>
+						<p class="type-overline text-slate-token/70">Print</p>
+						<h3 class="type-h3 text-ink">Choose a timetable range</h3>
+					</div>
+					<p class="type-caption text-slate-token/70">
+						Opens a dedicated Ifitwala PDF, not the live calendar view.
+					</p>
+				</div>
+
+				<label
+					class="mt-4 flex items-start gap-3 rounded-2xl border border-[rgb(var(--sand-rgb)/0.58)] bg-white/82 px-3 py-3 shadow-soft"
+					for="staff-timetable-export-weekends"
+				>
+					<input
+						id="staff-timetable-export-weekends"
+						v-model="exportIncludeWeekends"
+						type="checkbox"
+						class="mt-0.5 h-4 w-4 rounded-[0.35rem] border border-[rgb(var(--border-rgb)/0.88)] accent-[rgb(var(--canopy-rgb)/1)]"
+					/>
+					<span class="min-w-0">
+						<span class="type-body-strong block text-ink">Include weekends</span>
+						<span class="type-caption text-slate-token/72">
+							Unchecked prints a tighter Monday to Friday spread.
+						</span>
+					</span>
+				</label>
+
+				<div class="schedule-calendar__export-grid mt-4">
+					<button
+						v-for="preset in exportPresets"
+						:key="preset.id"
+						type="button"
+						class="schedule-calendar__export-option text-left"
+						@click="openTimetableExport(preset.id)"
+					>
+						<span class="schedule-calendar__export-option-label type-body-strong text-ink">
+							{{ preset.label }}
+						</span>
+						<span class="schedule-calendar__export-option-copy type-caption text-slate-token/75">
+							{{ preset.copy }}
+						</span>
+					</button>
+				</div>
+
+				<p
+					v-if="exportError"
+					class="mt-3 rounded-xl border border-[rgb(var(--flame-rgb)/0.25)] bg-[rgb(var(--flame-rgb)/0.06)] px-3 py-2 type-caption text-flame"
+					role="alert"
+				>
+					{{ exportError }}
+				</p>
+			</div>
+
 			<!-- Calendar shell with rounded corners + clipping and breathing room -->
 			<div
-				class="relative mt-6 overflow-hidden rounded-2xl border border-[rgb(var(--border-rgb)/0.95)] bg-white p-2 shadow-soft sm:p-4"
+				class="schedule-calendar__viewport relative mt-6 overflow-hidden rounded-2xl border border-[rgb(var(--border-rgb)/0.95)] bg-white p-2 shadow-soft sm:p-4"
 			>
 				<FullCalendar ref="calendarRef" :options="calendarOptions" class="calendar-shell" />
 
@@ -133,11 +201,16 @@ import dayGridPlugin from '@fullcalendar/daygrid';
 import timeGridPlugin from '@fullcalendar/timegrid';
 import listPlugin from '@fullcalendar/list';
 import { DatesSetArg, EventClickArg, EventContentArg } from '@fullcalendar/core';
-import { FeatherIcon } from 'frappe-ui';
+import { FeatherIcon, toast } from 'frappe-ui';
 
 import { CalendarSource, useCalendarEvents } from '@/composables/useCalendarEvents';
 import { useCalendarPrefs } from '@/composables/useCalendarPrefs';
 import { buildScheduleCalendarListMeta } from '@/components/calendar/scheduleCalendarListMeta';
+import {
+	buildStaffTimetableExportUrl,
+	STAFF_TIMETABLE_EXPORT_PRESETS,
+	type StaffTimetableExportPreset,
+} from '@/components/calendar/staffTimetableExport';
 import { SIGNAL_CALENDAR_INVALIDATE, uiSignals } from '@/lib/uiSignals';
 
 // ✅ Overlay stack (single renderer via OverlayHost teleported to #overlay-root)
@@ -214,6 +287,11 @@ const subtitle = computed(() => {
 		? `${total} event${total === 1 ? '' : 's'} in view`
 		: 'Nothing scheduled in this range';
 });
+
+const exportPresets = STAFF_TIMETABLE_EXPORT_PRESETS;
+const exportPanelOpen = ref(false);
+const exportIncludeWeekends = ref(true);
+const exportError = ref('');
 
 const calendarRef = ref<InstanceType<typeof FullCalendar> | null>(null);
 type CalendarScreen = 'phone' | 'tablet' | 'desktop';
@@ -397,6 +475,27 @@ function handleDatesSet(arg: DatesSetArg) {
 
 function handleRefresh() {
 	refresh({ force: true, reason: 'manual' });
+}
+
+function toggleExportPanel() {
+	exportError.value = '';
+	exportPanelOpen.value = !exportPanelOpen.value;
+}
+
+function openTimetableExport(preset: StaffTimetableExportPreset) {
+	exportError.value = '';
+	const opened = window.open(
+		buildStaffTimetableExportUrl(preset, exportIncludeWeekends.value),
+		'_blank',
+		'noopener'
+	);
+	if (!opened) {
+		const message = 'Allow pop-ups to open the timetable PDF.';
+		exportError.value = message;
+		toast.error(message);
+		return;
+	}
+	exportPanelOpen.value = false;
 }
 
 const sourcePalette: Record<CalendarSource, { label: string; dot: string; active: string }> = {
@@ -680,6 +779,48 @@ onBeforeUnmount(() => {
 	gap: 0.75rem;
 }
 
+.schedule-calendar__export-header {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) auto;
+	column-gap: 1rem;
+	row-gap: 0.5rem;
+	align-items: end;
+}
+
+.schedule-calendar__export-grid {
+	display: grid;
+	gap: 0.75rem;
+}
+
+.schedule-calendar__export-option {
+	display: flex;
+	flex-direction: column;
+	gap: 0.35rem;
+	padding: 0.9rem 1rem;
+	border: 1px solid rgb(var(--border-rgb) / 0.92);
+	border-radius: 1rem;
+	background: rgb(var(--surface-rgb) / 0.92);
+	transition:
+		transform 160ms ease,
+		border-color 160ms ease,
+		box-shadow 160ms ease,
+		background-color 160ms ease;
+}
+
+.schedule-calendar__export-option:hover,
+.schedule-calendar__export-option:focus-visible {
+	transform: translateY(-1px);
+	border-color: rgb(var(--canopy-rgb) / 0.38);
+	background: rgb(var(--surface-rgb) / 1);
+	box-shadow: 0 14px 28px rgb(var(--ink-rgb) / 0.08);
+	outline: none;
+}
+
+.schedule-calendar__export-option-label,
+.schedule-calendar__export-option-copy {
+	display: block;
+}
+
 @media (max-width: 639px) {
 	.schedule-calendar__header {
 		grid-template-columns: minmax(0, 1fr);
@@ -689,6 +830,10 @@ onBeforeUnmount(() => {
 		justify-self: start;
 		text-align: left;
 		white-space: normal;
+	}
+
+	.schedule-calendar__export-header {
+		grid-template-columns: minmax(0, 1fr);
 	}
 }
 
@@ -706,6 +851,12 @@ onBeforeUnmount(() => {
 
 	.schedule-calendar__filter-group--controls {
 		margin-right: 0.5rem;
+	}
+}
+
+@media (min-width: 640px) {
+	.schedule-calendar__export-grid {
+		grid-template-columns: repeat(3, minmax(0, 1fr));
 	}
 }
 </style>

@@ -1,9 +1,9 @@
-# Guardian Home Information Contract (v0.3)
+# Guardian Home Information Contract (v0.4)
 
 Status: Active
 Audience: Humans, coding agents
 Scope: `/hub/guardian` family information surfaces
-Last updated: 2026-04-15
+Last updated: 2026-04-22
 
 This document defines the canonical information contract for Guardian Home plus the Phase-2 guardian policy, finance, and monitoring surfaces.
 
@@ -47,9 +47,10 @@ Test refs:
 Rules:
 
 1. Guardian Home shows the portal heading, the configured school-day window, and a refresh action.
-2. The summary cards show `unread_communications`, `unread_visible_student_logs`, `upcoming_due_tasks`, and `upcoming_assessments`.
-3. Quick links route guardians to communications, course selection, activities, policies, finance, monitoring, portfolio, and the family snapshot.
-4. The landing page remains a briefing surface; navigation is secondary.
+2. The summary cards show `unread_communications`, `unread_visible_student_logs`, `upcoming_due_tasks`, and `upcoming_assessments`; when `upcoming_assessments` is non-zero, that card may jump the guardian to the first in-window timeline day that carries assessment detail.
+3. Quick links route guardians to communications, course selection, activities, attendance, policies, finance, monitoring, portfolio, and the family snapshot, and launch the `School Calendar` monthly overlay from Guardian Home.
+4. The guardian portal shell may surface an unread communication badge on the `Communications` rail item using the same unread org-communication count shown by the family snapshot.
+5. The landing page remains a briefing surface; navigation is secondary.
 
 ## 3. Home Zone Order And Content
 
@@ -185,11 +186,11 @@ Test refs:
 Rules:
 
 1. `/guardian/communications` consumes one canonical payload: `get_guardian_communication_center`.
-2. The page is family-first and shows org communications for all linked children by default, with an optional child filter that narrows the already-authorized payload.
-3. Communication rows render once per `Org Communication` and expose the linked-child labels matched by the server.
-4. V1 includes `Org Communication` history only; school-event history is deferred.
-5. Opening a communication detail must call `mark_org_communication_read` so the unread state stays aligned with Guardian Home.
-6. Guardian communication detail, comments, and reactions reuse the shared org communication interaction workflow instead of introducing guardian-only interaction endpoints.
+2. The page is family-first and shows guardian-visible org communications and school events for all linked children by default, with an optional child filter that narrows the already-authorized payload.
+3. Feed rows render once per domain record and expose the linked-child labels matched by the server.
+4. Org communication rows keep their shared interaction, detail, and read-state behavior.
+5. School-event rows are visibility-only items in this surface and open the event detail modal from the bootstrap payload instead of using the org communication interaction workflow.
+6. Opening an org communication detail must call `mark_org_communication_read` so the unread state stays aligned with Guardian Home and the guardian shell badge.
 
 ## 9. Attendance Surface
 
@@ -213,35 +214,67 @@ Rules:
 3. Attendance cells summarize each recorded day as `present`, `late`, or `absence`, and clicking a day reveals plain-language details for that day only.
 4. Attendance detail may expose time, attendance code, course, location, and remark, but it must not expose `rotation_day` or `block_number`.
 
-## 10. Explicit Exclusions
+## 10. School Calendar Overlay
+
+Status: Implemented
+
+Code refs:
+
+- `ifitwala_ed/api/guardian_calendar.py`
+- `ifitwala_ed/api/guardian_communications.py`
+- `ifitwala_ed/ui-spa/src/types/contracts/guardian/get_guardian_calendar_overlay.ts`
+- `ifitwala_ed/ui-spa/src/lib/services/guardianCalendar/guardianCalendarService.ts`
+- `ifitwala_ed/ui-spa/src/overlays/guardian/GuardianCalendarOverlay.vue`
+
+Test refs:
+
+- `ifitwala_ed/api/test_guardian_calendar.py`
+- `ifitwala_ed/ui-spa/src/lib/services/guardianCalendar/__tests__/guardianCalendarService.test.ts`
+- `ifitwala_ed/ui-spa/src/overlays/guardian/__tests__/GuardianCalendarOverlay.test.ts`
+
+Rules:
+
+1. The `School Calendar` quick link on Guardian Home opens one canonical payload: `get_guardian_calendar_overlay`.
+2. The overlay payload is month-scoped and includes the family child list, filter options, summary counts, and one merged `items` collection of `holiday` and `school_event` rows.
+3. The overlay is read-only and stays family-first by default, with optional child and school filters plus `Show holidays` and `Show school events` toggles.
+4. Item rows expose matched child labels from the server and may expose one `open_target` only for school-event detail.
+5. Calendar item pills are direct interaction targets: school-event pills may open the existing school-event detail overlay, while holidays and mixed-day review stay inside the inline day-detail sheet below the month grid.
+
+## 11. Explicit Exclusions
 
 Status: Implemented
 
 Code refs:
 
 - `ifitwala_ed/api/guardian_home.py`
+- `ifitwala_ed/api/guardian_calendar.py`
 - `ifitwala_ed/ui-spa/src/pages/guardian/GuardianHome.vue`
+- `ifitwala_ed/ui-spa/src/overlays/guardian/GuardianCalendarOverlay.vue`
 - `ifitwala_ed/ui-spa/src/types/contracts/guardian/get_guardian_home_snapshot.ts`
+- `ifitwala_ed/ui-spa/src/types/contracts/guardian/get_guardian_calendar_overlay.ts`
 
 Test refs:
 
 - `ifitwala_ed/api/test_guardian_home.py`
+- `ifitwala_ed/api/test_guardian_calendar.py`
 
 Rules:
 
 1. Guardian Home must not expose `rotation_day` or `block_number` anywhere in the payload or UI.
 2. Guardian surfaces must not expose live gradebook rows, staff-only notes, or sibling comparison data.
 3. Guardian finance does not create or submit payments in Phase 2; it remains a read-only visibility surface.
-4. Guardian communication-center V1 does not include school-event history.
-5. Any new information block on `/hub/guardian` must be added to this document before it is treated as canonical.
+4. School-event rows inside `/guardian/communications` do not create guardian unread/read-state.
+5. The calendar overlay does not expose class timetables, meetings, attendance, or assignment dates in v1.
+6. Any new information block on `/hub/guardian` must be added to this document before it is treated as canonical.
 
-## 11. Contract Matrix
+## 12. Contract Matrix
 
 Status: Implemented
 
 Code refs:
 
 - `ifitwala_ed/api/guardian_home.py`
+- `ifitwala_ed/api/guardian_calendar.py`
 - `ifitwala_ed/api/guardian_communications.py`
 - `ifitwala_ed/api/guardian_policy.py`
 - `ifitwala_ed/api/guardian_attendance.py`
@@ -251,9 +284,12 @@ Code refs:
 - `ifitwala_ed/ui-spa/src/lib/services/guardianHome/guardianHomeService.ts`
 - `ifitwala_ed/ui-spa/src/types/contracts/guardian/get_guardian_communication_center.ts`
 - `ifitwala_ed/ui-spa/src/lib/services/guardianCommunication/guardianCommunicationService.ts`
+- `ifitwala_ed/ui-spa/src/types/contracts/guardian/get_guardian_calendar_overlay.ts`
+- `ifitwala_ed/ui-spa/src/lib/services/guardianCalendar/guardianCalendarService.ts`
 - `ifitwala_ed/ui-spa/src/pages/guardian/GuardianHome.vue`
 - `ifitwala_ed/ui-spa/src/pages/guardian/GuardianCommunicationCenter.vue`
 - `ifitwala_ed/ui-spa/src/pages/guardian/GuardianStudentShell.vue`
+- `ifitwala_ed/ui-spa/src/overlays/guardian/GuardianCalendarOverlay.vue`
 - `ifitwala_ed/ui-spa/src/types/contracts/guardian/get_guardian_policy_overview.ts`
 - `ifitwala_ed/ui-spa/src/types/contracts/guardian/acknowledge_guardian_policy.ts`
 - `ifitwala_ed/ui-spa/src/types/contracts/guardian/get_guardian_attendance_snapshot.ts`
@@ -268,8 +304,10 @@ Test refs:
 
 - `ifitwala_ed/api/test_guardian_home.py`
 - `ifitwala_ed/api/test_guardian_phase2.py`
+- `ifitwala_ed/api/test_guardian_calendar.py`
 - `ifitwala_ed/ui-spa/src/lib/services/guardianHome/__tests__/guardianHomeService.test.ts`
 - `ifitwala_ed/ui-spa/src/lib/services/guardianCommunication/__tests__/guardianCommunicationService.test.ts`
+- `ifitwala_ed/ui-spa/src/lib/services/guardianCalendar/__tests__/guardianCalendarService.test.ts`
 - `ifitwala_ed/ui-spa/src/pages/guardian/__tests__/GuardianHome.test.ts`
 - `ifitwala_ed/ui-spa/src/pages/guardian/__tests__/GuardianCommunicationCenter.test.ts`
 - `ifitwala_ed/ui-spa/src/pages/guardian/__tests__/GuardianStudentShell.test.ts`
@@ -277,13 +315,14 @@ Test refs:
 - `ifitwala_ed/ui-spa/src/pages/guardian/__tests__/GuardianAttendance.test.ts`
 - `ifitwala_ed/ui-spa/src/pages/guardian/__tests__/GuardianFinance.test.ts`
 - `ifitwala_ed/ui-spa/src/pages/guardian/__tests__/GuardianMonitoring.test.ts`
+- `ifitwala_ed/ui-spa/src/overlays/guardian/__tests__/GuardianCalendarOverlay.test.ts`
 
 | Concern                          | Canonical owner                                                                                                                                                                                    | Code refs                                                                                                                                                                                                                                                                                                                                                                                                                                                                 | Test refs                                                                                                                                                                                                                                                                                                                                                                                                     |
 | -------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Schema / DocType                 | Guardian surfaces read guardian links, student logs, attendance, outcomes, communications, policy acknowledgements, account holders, invoices, payments, and portal read receipts                    | `api/guardian_home.py`, `governance/doctype/policy_acknowledgement/*`, `accounting/doctype/account_holder/*`, `accounting/doctype/sales_invoice/*`, `accounting/doctype/payment_entry/*`, `students/doctype/student_log/*`, `students/doctype/student_attendance/*`, `school_settings/doctype/student_attendance_code/*`, `students/doctype/portal_read_receipt/*`, `assessment/doctype/task_outcome/*`                                                                 | `api/test_guardian_home.py`, `api/test_guardian_phase2.py`                                                                                                                                                                                                                                                                                                                                                    |
-| Controller / workflow logic      | Snapshot builder, drill-down filtering, communication-center bootstrap, policy acknowledgement flow, attendance visibility assembly, finance visibility assembly, monitoring aggregation and read-state | `api/guardian_home.py`, `api/guardian_communications.py`, `api/guardian_policy.py`, `api/guardian_attendance.py`, `api/guardian_finance.py`, `api/guardian_monitoring.py`, `ui-spa/src/pages/guardian/GuardianStudentShell.vue`                                                                                                                                                                                                                                           | `api/test_guardian_home.py`, `api/test_guardian_phase2.py`                                                                                                                                                                                                                                                                                                                                                    |
-| API endpoints                    | `get_guardian_home_snapshot`, `get_guardian_student_learning_brief`, `get_guardian_communication_center`, `get_guardian_policy_overview`, `acknowledge_guardian_policy`, `get_guardian_attendance_snapshot`, `get_guardian_finance_snapshot`, `get_guardian_monitoring_snapshot`, `mark_guardian_student_log_read` | `api/guardian_home.py`, `api/guardian_communications.py`, `api/guardian_policy.py`, `api/guardian_attendance.py`, `api/guardian_finance.py`, `api/guardian_monitoring.py`                                                                                                                                                                                                                       | `api/test_guardian_home.py`, `api/test_guardian_phase2.py`                                                                                                                                                                                                                                                                                                                                                    |
-| SPA / UI surfaces                | Guardian Home, Guardian Communication Center, Guardian Student Shell, Guardian Policies, Guardian Attendance, Guardian Finance, Guardian Monitoring                                               | `ui-spa/src/pages/guardian/GuardianHome.vue`, `ui-spa/src/pages/guardian/GuardianCommunicationCenter.vue`, `ui-spa/src/pages/guardian/GuardianStudentShell.vue`, `ui-spa/src/pages/guardian/GuardianPolicies.vue`, `ui-spa/src/pages/guardian/GuardianAttendance.vue`, `ui-spa/src/pages/guardian/GuardianFinance.vue`, `ui-spa/src/pages/guardian/GuardianMonitoring.vue`                                                                                                | `ui-spa/src/lib/services/guardianHome/__tests__/guardianHomeService.test.ts`, `ui-spa/src/lib/services/guardianCommunication/__tests__/guardianCommunicationService.test.ts`, `ui-spa/src/pages/guardian/__tests__/GuardianHome.test.ts`, `ui-spa/src/pages/guardian/__tests__/GuardianCommunicationCenter.test.ts`, `ui-spa/src/pages/guardian/__tests__/GuardianStudentShell.test.ts`, `ui-spa/src/pages/guardian/__tests__/GuardianPolicies.test.ts`, `ui-spa/src/pages/guardian/__tests__/GuardianAttendance.test.ts`, `ui-spa/src/pages/guardian/__tests__/GuardianFinance.test.ts`, `ui-spa/src/pages/guardian/__tests__/GuardianMonitoring.test.ts` |
-| Reports / dashboards / briefings | Home summary cards, communication summary cards, learning highlights, child learning briefs, attendance summary cards, finance summary cards, and monitoring summary cards                         | `ui-spa/src/pages/guardian/GuardianHome.vue`, `ui-spa/src/pages/guardian/GuardianCommunicationCenter.vue`, `ui-spa/src/pages/guardian/GuardianStudentShell.vue`, `ui-spa/src/pages/guardian/GuardianAttendance.vue`, `ui-spa/src/pages/guardian/GuardianFinance.vue`, `ui-spa/src/pages/guardian/GuardianMonitoring.vue`                                                                                                                                               | `api/test_guardian_home.py`, `api/test_guardian_phase2.py`                                                                                                                                                                                                                                                                                                                                                    |
+| Schema / DocType                 | Guardian surfaces read guardian links, school calendars and holidays, school events, student logs, attendance, outcomes, communications, policy acknowledgements, account holders, invoices, payments, and portal read receipts | `api/guardian_home.py`, `school_settings/doctype/school_calendar/*`, `school_settings/doctype/school_calendar_holidays/*`, `school_settings/doctype/school_event/*`, `school_settings/doctype/school_event_audience/*`, `school_settings/doctype/school_event_participant/*`, `governance/doctype/policy_acknowledgement/*`, `accounting/doctype/account_holder/*`, `accounting/doctype/sales_invoice/*`, `accounting/doctype/payment_entry/*`, `students/doctype/student_log/*`, `students/doctype/student_attendance/*`, `school_settings/doctype/student_attendance_code/*`, `students/doctype/portal_read_receipt/*`, `assessment/doctype/task_outcome/*` | `api/test_guardian_home.py`, `api/test_guardian_calendar.py`, `api/test_guardian_phase2.py`                                                                                                                                                                                                                                                                                                                   |
+| Controller / workflow logic      | Snapshot builder, drill-down filtering, guardian calendar overlay bootstrap, communication-center bootstrap, policy acknowledgement flow, attendance visibility assembly, finance visibility assembly, monitoring aggregation and read-state | `api/guardian_home.py`, `api/guardian_calendar.py`, `api/guardian_communications.py`, `api/guardian_policy.py`, `api/guardian_attendance.py`, `api/guardian_finance.py`, `api/guardian_monitoring.py`, `ui-spa/src/pages/guardian/GuardianStudentShell.vue`                                                                                                                                                                                                              | `api/test_guardian_home.py`, `api/test_guardian_calendar.py`, `api/test_guardian_phase2.py`                                                                                                                                                                                                                                                                                                                   |
+| API endpoints                    | `get_guardian_home_snapshot`, `get_guardian_student_learning_brief`, `get_guardian_calendar_overlay`, `get_guardian_communication_center`, `get_guardian_policy_overview`, `acknowledge_guardian_policy`, `get_guardian_attendance_snapshot`, `get_guardian_finance_snapshot`, `get_guardian_monitoring_snapshot`, `mark_guardian_student_log_read` | `api/guardian_home.py`, `api/guardian_calendar.py`, `api/guardian_communications.py`, `api/guardian_policy.py`, `api/guardian_attendance.py`, `api/guardian_finance.py`, `api/guardian_monitoring.py`                                                                                                                                                                                          | `api/test_guardian_home.py`, `api/test_guardian_calendar.py`, `api/test_guardian_phase2.py`                                                                                                                                                                                                                                                                                                                   |
+| SPA / UI surfaces                | Guardian Home, Guardian Calendar Overlay, Guardian Communication Center, Guardian Student Shell, Guardian Policies, Guardian Attendance, Guardian Finance, Guardian Monitoring                      | `ui-spa/src/pages/guardian/GuardianHome.vue`, `ui-spa/src/overlays/guardian/GuardianCalendarOverlay.vue`, `ui-spa/src/pages/guardian/GuardianCommunicationCenter.vue`, `ui-spa/src/pages/guardian/GuardianStudentShell.vue`, `ui-spa/src/pages/guardian/GuardianPolicies.vue`, `ui-spa/src/pages/guardian/GuardianAttendance.vue`, `ui-spa/src/pages/guardian/GuardianFinance.vue`, `ui-spa/src/pages/guardian/GuardianMonitoring.vue`                                          | `ui-spa/src/lib/services/guardianHome/__tests__/guardianHomeService.test.ts`, `ui-spa/src/lib/services/guardianCommunication/__tests__/guardianCommunicationService.test.ts`, `ui-spa/src/lib/services/guardianCalendar/__tests__/guardianCalendarService.test.ts`, `ui-spa/src/pages/guardian/__tests__/GuardianHome.test.ts`, `ui-spa/src/pages/guardian/__tests__/GuardianCommunicationCenter.test.ts`, `ui-spa/src/pages/guardian/__tests__/GuardianStudentShell.test.ts`, `ui-spa/src/pages/guardian/__tests__/GuardianPolicies.test.ts`, `ui-spa/src/pages/guardian/__tests__/GuardianAttendance.test.ts`, `ui-spa/src/pages/guardian/__tests__/GuardianFinance.test.ts`, `ui-spa/src/pages/guardian/__tests__/GuardianMonitoring.test.ts`, `ui-spa/src/overlays/guardian/__tests__/GuardianCalendarOverlay.test.ts` |
+| Reports / dashboards / briefings | Home summary cards, the home-launched calendar month view, communication and school-event summary cards, learning highlights, child learning briefs, attendance summary cards, finance summary cards, and monitoring summary cards | `ui-spa/src/pages/guardian/GuardianHome.vue`, `ui-spa/src/overlays/guardian/GuardianCalendarOverlay.vue`, `ui-spa/src/pages/guardian/GuardianCommunicationCenter.vue`, `ui-spa/src/pages/guardian/GuardianStudentShell.vue`, `ui-spa/src/pages/guardian/GuardianAttendance.vue`, `ui-spa/src/pages/guardian/GuardianFinance.vue`, `ui-spa/src/pages/guardian/GuardianMonitoring.vue`                                                                                  | `api/test_guardian_home.py`, `api/test_guardian_calendar.py`, `api/test_guardian_phase2.py`                                                                                                                                                                                                                                                                                                                   |
 | Scheduler / background jobs      | None                                                                                                                                                                                               | None                                                                                                                                                                                                                                                                                                                                                                                                                                                                      | None                                                                                                                                                                                                                                                                                                                                                                                                          |
-| Tests                            | Endpoint unit coverage, service transport coverage, and guardian Phase-2 page regression coverage                                                                                                  | `api/test_guardian_home.py`, `api/test_guardian_phase2.py`, `ui-spa/src/lib/services/guardianHome/__tests__/guardianHomeService.test.ts`, `ui-spa/src/pages/guardian/__tests__/GuardianHome.test.ts`, `ui-spa/src/pages/guardian/__tests__/GuardianStudentShell.test.ts`, `ui-spa/src/pages/guardian/__tests__/GuardianPolicies.test.ts`, `ui-spa/src/pages/guardian/__tests__/GuardianAttendance.test.ts`, `ui-spa/src/pages/guardian/__tests__/GuardianFinance.test.ts`, `ui-spa/src/pages/guardian/__tests__/GuardianMonitoring.test.ts` | Implemented                                                                                                                                                                                                                                                                                                                                                                                                   |
+| Tests                            | Endpoint unit coverage, service transport coverage, overlay regression coverage, and guardian Phase-2 page regression coverage                                                                   | `api/test_guardian_home.py`, `api/test_guardian_calendar.py`, `api/test_guardian_phase2.py`, `ui-spa/src/lib/services/guardianHome/__tests__/guardianHomeService.test.ts`, `ui-spa/src/lib/services/guardianCalendar/__tests__/guardianCalendarService.test.ts`, `ui-spa/src/pages/guardian/__tests__/GuardianHome.test.ts`, `ui-spa/src/pages/guardian/__tests__/GuardianStudentShell.test.ts`, `ui-spa/src/pages/guardian/__tests__/GuardianPolicies.test.ts`, `ui-spa/src/pages/guardian/__tests__/GuardianAttendance.test.ts`, `ui-spa/src/pages/guardian/__tests__/GuardianFinance.test.ts`, `ui-spa/src/pages/guardian/__tests__/GuardianMonitoring.test.ts`, `ui-spa/src/overlays/guardian/__tests__/GuardianCalendarOverlay.test.ts` | Implemented                                                                                                                                                                                                                                                                          |

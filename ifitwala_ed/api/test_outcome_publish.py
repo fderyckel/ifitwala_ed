@@ -7,8 +7,10 @@ from ifitwala_ed.tests.frappe_stubs import import_fresh, stubbed_frappe
 
 
 class _FakeOutcomeDoc:
-    def __init__(self, name: str):
+    def __init__(self, name: str, *, grading_status: str = "Finalized", task_delivery: str = "TDL-1"):
         self.name = name
+        self.task_delivery = task_delivery
+        self.grading_status = grading_status
         self.is_published = None
         self.published_on = "stale"
         self.published_by = "stale"
@@ -62,13 +64,86 @@ class TestOutcomePublishApi(TestCase):
             [("Task Outcome", "OUT-1"), ("Task Outcome", "OUT-2")],
         )
         self.assertEqual(outcome_one.is_published, 1)
+        self.assertEqual(outcome_one.grading_status, "Released")
         self.assertEqual(outcome_one.published_on, "2026-03-23 09:30:00")
         self.assertEqual(outcome_one.published_by, "teacher@example.com")
         self.assertEqual(outcome_one.save_calls, [True])
         self.assertEqual(outcome_two.is_published, 1)
+        self.assertEqual(outcome_two.grading_status, "Released")
         self.assertEqual(outcome_two.published_on, "2026-03-23 09:30:00")
         self.assertEqual(outcome_two.published_by, "teacher@example.com")
         self.assertEqual(outcome_two.save_calls, [True])
+
+    def test_bulk_update_publish_restores_unpublished_status_when_unreleasing(self):
+        outcome = _FakeOutcomeDoc("OUT-1", grading_status="Released")
+
+        with (
+            patch.object(
+                self.outcome_publish.frappe,
+                "get_all",
+                return_value=["OUT-1"],
+            ),
+            patch.object(
+                self.outcome_publish.frappe,
+                "get_doc",
+                return_value=outcome,
+            ),
+            patch.object(
+                self.outcome_publish,
+                "_resolve_unpublished_status",
+                return_value="Moderated",
+            ),
+        ):
+            self.outcome_publish._bulk_update_publish(
+                ["OUT-1"],
+                {
+                    "is_published": 0,
+                    "published_on": None,
+                    "published_by": None,
+                },
+            )
+
+        self.assertEqual(outcome.is_published, 0)
+        self.assertEqual(outcome.grading_status, "Moderated")
+        self.assertIsNone(outcome.published_on)
+        self.assertIsNone(outcome.published_by)
+
+    def test_resolve_unpublished_status_prefers_latest_moderator_contribution(self):
+        outcome = _FakeOutcomeDoc("OUT-1", grading_status="Released")
+
+        with (
+            patch.object(
+                self.outcome_publish.frappe,
+                "get_all",
+                return_value=[{"contribution_type": "Moderator"}],
+            ),
+            patch.object(self.outcome_publish.frappe.db, "get_value", create=True) as get_value,
+        ):
+            status = self.outcome_publish._resolve_unpublished_status(outcome)
+
+        get_value.assert_not_called()
+        self.assertEqual(status, "Moderated")
+
+    def test_resolve_unpublished_status_falls_back_to_finalized_for_assess_deliveries(self):
+        outcome = _FakeOutcomeDoc("OUT-1", grading_status="Released", task_delivery="TDL-42")
+
+        with (
+            patch.object(
+                self.outcome_publish.frappe,
+                "get_all",
+                return_value=[],
+            ),
+            patch.object(
+                self.outcome_publish.frappe.db,
+                "get_value",
+                return_value={"delivery_mode": "Assess"},
+                create=True,
+            ) as get_value,
+        ):
+            status = self.outcome_publish._resolve_unpublished_status(outcome)
+
+        get_value.assert_called_once_with("Task Delivery", "TDL-42", ["delivery_mode"], as_dict=True)
+        self.assertEqual(status, "Finalized")
 
     def test_publish_outcomes_passes_current_user_and_timestamp(self):
         with (

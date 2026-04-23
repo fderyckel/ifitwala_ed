@@ -33,12 +33,6 @@ PAGE_STYLE_VISUAL_TOKENS = (
     "linear-gradient",
     "radial-gradient",
 )
-
-RAW_PALETTE_RE = re.compile(
-    r"\b(?:bg|text|border|ring|from|via|to)-"
-    r"(?:slate|gray|zinc|neutral|stone|red|orange|amber|yellow|lime|green|emerald|"
-    r"teal|cyan|sky|blue|indigo|violet|purple|fuchsia|pink|rose)(?:-|/|\b)"
-)
 SCOPED_STYLE_RE = re.compile(r"<style\s+scoped[^>]*>(.*?)</style>", re.S)
 SCRIPT_BLOCK_RE = re.compile(r"<script(?:\s[^>]*)?>(.*?)</script>", re.S)
 STATIC_CLASS_ATTR_RE = re.compile(r"(?<![:\w-])class\s*=\s*([\"'])(.*?)\1", re.S)
@@ -313,7 +307,41 @@ def collect_unknown_semantic_colors(files: list[Path]) -> dict[str, set[str]]:
 def collect_report_only_warnings(page_files: list[Path]) -> dict[str, list[str]]:
     warnings: dict[str, list[str]] = {}
 
-    raw_palette_pages = [repo_rel(path) for path in page_files if RAW_PALETTE_RE.search(path.read_text())]
+    raw_palette_pages: list[str] = []
+    for path in page_files:
+        text = path.read_text()
+        has_raw_palette = False
+        for fragment in iter_candidate_class_fragments(text):
+            for token in iter_class_tokens(fragment):
+                class_token = token.rsplit(":", 1)[-1]
+                matched_prefix = None
+                token_value = ""
+                for prefix in ("bg", "text", "border", "ring", "from", "via", "to"):
+                    marker = f"{prefix}-"
+                    if class_token.startswith(marker):
+                        matched_prefix = prefix
+                        token_value = class_token[len(marker) :]
+                        break
+                if not matched_prefix or not token_value or "[" in token_value:
+                    continue
+
+                color_name = token_value.split("/", 1)[0]
+                color_name = normalize_color_token(matched_prefix, color_name)
+                if not color_name or is_non_color_token(matched_prefix, color_name):
+                    continue
+                if color_name in SEMANTIC_COLOR_NAMES:
+                    continue
+
+                first = color_name.split("-", 1)[0]
+                if first in NATIVE_COLOR_FAMILIES:
+                    has_raw_palette = True
+                    break
+            if has_raw_palette:
+                break
+
+        if has_raw_palette:
+            raw_palette_pages.append(repo_rel(path))
+
     if raw_palette_pages:
         warnings["pages_using_raw_palette_utilities"] = raw_palette_pages
 

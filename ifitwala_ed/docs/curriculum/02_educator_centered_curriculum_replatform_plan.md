@@ -32,7 +32,7 @@ The old `Lesson`, `Lesson Activity`, and `Lesson Instance` tree is not the live 
 
 ## Governed Year-To-Year Persistence
 
-Status: Implemented as governance rule, not as one system-owned rollover wizard
+Status: Implemented as governance rule with Desk-side handover flow
 Code refs: `ifitwala_ed/api/task.py`, `ifitwala_ed/assessment/task_creation_service.py`, `ifitwala_ed/docs/enrollment/07_year_rollover_architecture.md`
 Test refs: `ifitwala_ed/api/test_task.py`, `ifitwala_ed/assessment/test_task_creation_service.py`
 
@@ -51,7 +51,7 @@ Year-to-year reuse follows this rule set:
 - a teacher may still reuse their own historical task definitions for the same course
 - cross-teacher reuse for the same course still requires explicit course-library sharing
 
-This repository does not currently implement one curriculum rollover cockpit that clones or re-seeds all of those records automatically.
+This repository now implements a bounded Desk-side curriculum handover flow from `Course Plan`, plus a checklist-assisted bulk handover action on `End of Year Checklist`. That handover creates a draft next-year `Course Plan`, duplicates governed `Unit Plan` rows, reuses shared material placements on the new anchors, and leaves class-owned runtime untouched.
 
 ## Enrollment Rollover Boundary
 

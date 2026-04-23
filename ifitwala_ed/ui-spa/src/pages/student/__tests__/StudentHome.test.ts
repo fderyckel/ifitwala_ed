@@ -130,6 +130,21 @@ describe('StudentHome', () => {
 				student: 'STU-1',
 				display_name: 'Amina',
 			},
+			consents: {
+				pending_count: 1,
+				overdue_count: 0,
+				items: [
+					{
+						request_key: 'FCR-1',
+						request_title: 'Lab participation consent',
+						student: 'STU-1',
+						student_name: 'Amina Example',
+						due_on: '2026-04-04',
+						status_label: 'Action needed',
+						href: { name: 'student-consent-detail' },
+					},
+				],
+			},
 			policies: {
 				pending_count: 1,
 				items: [
@@ -175,6 +190,8 @@ describe('StudentHome', () => {
 		await flushUi()
 
 		const text = document.body.textContent || ''
+		expect(text).toContain('Forms are waiting for your signature')
+		expect(text).toContain('Lab participation consent')
 		expect(text).toContain('Policies need your acknowledgement')
 		expect(text).toContain('Student Handbook')
 		expect(text).toContain('A course is still being prepared')
@@ -207,6 +224,11 @@ describe('StudentHome', () => {
 				user: 'student@example.com',
 				student: 'STU-1',
 				display_name: 'Amina',
+			},
+			consents: {
+				pending_count: 0,
+				overdue_count: 0,
+				items: [],
 			},
 			policies: {
 				pending_count: 0,

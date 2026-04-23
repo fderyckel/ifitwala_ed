@@ -37,14 +37,14 @@
 					<button
 						v-if="log?.name"
 						type="button"
-						class="btn btn-quiet"
+						class="if-action"
 						@click="openInDesk('Student Log', log.name)"
 					>
 						Open in Desk
 					</button>
 
 					<!-- Advisory: does NOT block closing or workflows -->
-					<button type="button" class="btn btn-quiet" @click="requestRefresh">Refresh</button>
+					<button type="button" class="if-action" @click="requestRefresh">Refresh</button>
 				</div>
 			</div>
 
@@ -80,7 +80,7 @@
 
 						<button
 							type="button"
-							class="btn btn-quiet"
+							class="if-action"
 							@click="openInDesk('Student Log Follow Up', fu.name)"
 						>
 							Open
@@ -128,11 +128,11 @@
 
 			<div class="mt-4 flex items-center justify-end gap-2">
 				<!-- A+: close must NEVER be blocked by busy -->
-				<button type="button" class="btn btn-quiet" @click="emitClose">Cancel</button>
+				<button type="button" class="if-button if-button--quiet" @click="emitClose">Cancel</button>
 
 				<button
 					type="button"
-					class="btn btn-primary"
+					class="if-button if-button--primary"
 					:disabled="busy || submittedOnce || !canSubmit"
 					@click="submitFollowUp"
 				>
@@ -152,19 +152,65 @@
 
 			<!-- Reassign -->
 			<div class="mt-4">
-				<div class="type-meta text-ink/60 mb-1">Reassign to (User ID / email)</div>
+				<div class="type-meta text-ink/60 mb-1">Reassign to</div>
 				<input
-					v-model="reassignTo"
+					v-model="reassignSearchQuery"
 					class="if-input w-full"
 					type="text"
-					placeholder="e.g. teacher@school.org"
+					placeholder="Type a full name, user ID, or email"
 					:disabled="busy"
 				/>
+				<div class="type-meta text-ink/60 mt-2">
+					Search by the employee's full name, user ID, or email.
+				</div>
+				<div v-if="reassignSearchLoading" class="type-meta text-ink/60 mt-2">Searching…</div>
 				<div
-					v-if="reassignTo.trim().length > 0 && reassignTo.trim().length < 3"
+					v-if="reassignSearchQuery.trim().length > 0 && reassignSearchQuery.trim().length < 2"
 					class="type-meta text-ink/60 mt-2"
 				>
-					Please enter a valid user.
+					Type at least 2 letters to search by full name.
+				</div>
+				<div
+					v-else-if="
+						reassignSearchQuery.trim().length >= 2 &&
+						!reassignSearchLoading &&
+						reassignCandidates.length === 0
+					"
+					class="type-meta text-ink/60 mt-2"
+				>
+					No matching staff found. Keep typing a name, or enter a full user ID / email.
+				</div>
+				<div
+					v-if="reassignCandidates.length"
+					class="mt-3 overflow-hidden rounded-xl border border-ink/10"
+				>
+					<button
+						v-for="candidate in reassignCandidates"
+						:key="candidate.value"
+						type="button"
+						class="flex w-full items-center justify-between gap-3 border-b border-ink/10 px-3 py-3 text-left transition last:border-b-0 hover:bg-surface-soft"
+						@click="selectReassignCandidate(candidate.value, candidate.label)"
+					>
+						<div class="min-w-0">
+							<div class="type-body font-medium truncate">{{ candidate.label }}</div>
+							<div v-if="candidate.meta" class="type-meta text-ink/60 truncate">
+								{{ candidate.meta }}
+							</div>
+						</div>
+						<div
+							v-if="resolvedReassignTarget === candidate.value"
+							class="type-meta text-ink/60 shrink-0"
+						>
+							Selected
+						</div>
+					</button>
+				</div>
+				<div v-if="reassignSelectedUserId" class="type-meta text-ink/60 mt-2">
+					Selected:
+					<span class="text-ink">{{ reassignSelectedLabel || reassignSelectedUserId }}</span>
+					<span v-if="reassignSelectedLabel && reassignSelectedLabel !== reassignSelectedUserId">
+						• {{ reassignSelectedUserId }}
+					</span>
 				</div>
 
 				<!-- Inline error (A+): overlays/workflow UI do not toast -->
@@ -174,12 +220,14 @@
 
 				<div class="mt-3 flex items-center justify-end gap-2">
 					<!-- A+: close must NEVER be blocked by busy -->
-					<button type="button" class="btn btn-quiet" @click="emitClose">Close</button>
+					<button type="button" class="if-button if-button--quiet" @click="emitClose">
+						Close
+					</button>
 
 					<button
 						type="button"
-						class="btn btn-primary"
-						:disabled="busy || submittedOnce || reassignTo.trim().length < 3"
+						class="if-button if-button--primary"
+						:disabled="busy || submittedOnce || resolvedReassignTarget.length < 3"
 						@click="reassignFollowUp"
 					>
 						{{ busy ? 'Processing…' : 'Reassign follow-up' }}
@@ -196,7 +244,7 @@
 				<div class="mt-3 flex items-center justify-end gap-2">
 					<button
 						type="button"
-						class="btn btn-success"
+						class="if-button if-button--primary"
 						:disabled="busy || submittedOnce || !canComplete"
 						@click="completeParentLog"
 					>
@@ -228,10 +276,12 @@ import { computed, ref, watch } from 'vue';
 import { formatHumanDateTimeFields } from '@/lib/datetime';
 import { __ } from '@/lib/i18n';
 import { createFocusService } from '@/lib/services/focus/focusService';
+import { createStudentLogService } from '@/lib/services/studentLog/studentLogService';
 
 import type { Response as GetFocusContextResponse } from '@/types/contracts/focus/get_focus_context';
 import type { Request as SubmitStudentLogFollowUpRequest } from '@/types/contracts/focus/submit_student_log_follow_up';
 import type { Request as ReviewStudentLogOutcomeRequest } from '@/types/contracts/focus/review_student_log_outcome';
+import type { Response as SearchFollowUpUsersResponse } from '@/types/contracts/student_log/search_follow_up_users';
 
 type Mode = 'assignee' | 'author';
 
@@ -256,6 +306,7 @@ const emit = defineEmits<{
  * - owns uiSignals emission (A+)
  */
 const focusService = createFocusService();
+const studentLogService = createStudentLogService();
 
 function emitClose() {
 	emit('close');
@@ -279,7 +330,11 @@ const busy = ref(false);
 const submittedOnce = ref(false);
 
 const draftText = ref('');
-const reassignTo = ref('');
+const reassignSearchQuery = ref('');
+const reassignSelectedUserId = ref('');
+const reassignSelectedLabel = ref('');
+const reassignCandidates = ref<SearchFollowUpUsersResponse>([]);
+const reassignSearchLoading = ref(false);
 
 // A+ inline errors (no toast)
 const actionError = ref<string | null>(null);
@@ -300,6 +355,12 @@ const canComplete = computed(() => {
 	return !!activeStudentLogName.value && s !== 'completed';
 });
 
+const resolvedReassignTarget = computed(() => {
+	return (reassignSelectedUserId.value || reassignSearchQuery.value || '').trim();
+});
+
+let reassignSearchRequestSeq = 0;
+
 function applyContext(ctx: GetFocusContextResponse) {
 	log.value = ctx.log;
 	followUps.value = ctx.follow_ups;
@@ -311,13 +372,47 @@ watch(
 	next => {
 		// reset action inputs on context change (prevents stale drafts)
 		draftText.value = '';
-		reassignTo.value = '';
+		reassignSearchQuery.value = '';
+		reassignSelectedUserId.value = '';
+		reassignSelectedLabel.value = '';
+		reassignCandidates.value = [];
+		reassignSearchLoading.value = false;
 		submittedOnce.value = false;
 		actionError.value = null;
 		applyContext(next);
+		if (next.mode === 'author') {
+			void loadReassignCandidates('');
+		}
 	},
 	{ immediate: true, deep: false }
 );
+
+watch(reassignSearchQuery, nextValue => {
+	const query = String(nextValue || '').trim();
+	if (
+		reassignSelectedUserId.value &&
+		query &&
+		query === String(reassignSelectedLabel.value || reassignSelectedUserId.value).trim()
+	) {
+		reassignCandidates.value = [];
+		reassignSearchLoading.value = false;
+		return;
+	}
+
+	reassignSelectedUserId.value = '';
+	reassignSelectedLabel.value = '';
+
+	if (!query) {
+		void loadReassignCandidates('');
+		return;
+	}
+	if (query.length < 2) {
+		reassignCandidates.value = [];
+		reassignSearchLoading.value = false;
+		return;
+	}
+	void loadReassignCandidates(query);
+});
 
 /* Helpers ------------------------------------------------------ */
 function newClientRequestId(prefix = 'req') {
@@ -387,6 +482,50 @@ function errorMessage(err: unknown): string {
 	return __('Please try again.');
 }
 
+async function loadReassignCandidates(query: string) {
+	const student = String(log.value?.student || '').trim();
+	const nextStep = String(log.value?.next_step || '').trim();
+	if (modeState.value !== 'author' || !student || !nextStep) {
+		reassignCandidates.value = [];
+		reassignSearchLoading.value = false;
+		return;
+	}
+
+	const requestSeq = ++reassignSearchRequestSeq;
+	reassignSearchLoading.value = true;
+	actionError.value = null;
+
+	try {
+		const candidates = await studentLogService.searchFollowUpUsers({
+			next_step: nextStep,
+			student,
+			query,
+			limit: 20,
+		});
+		if (requestSeq !== reassignSearchRequestSeq) return;
+		reassignCandidates.value = candidates || [];
+	} catch (err: unknown) {
+		if (requestSeq !== reassignSearchRequestSeq) return;
+		reassignCandidates.value = [];
+		actionError.value =
+			err instanceof Error && err.message
+				? err.message
+				: __('Could not search staff. Try typing a full user ID / email instead.');
+	} finally {
+		if (requestSeq === reassignSearchRequestSeq) {
+			reassignSearchLoading.value = false;
+		}
+	}
+}
+
+function selectReassignCandidate(userId: string, label: string) {
+	actionError.value = null;
+	reassignSelectedUserId.value = String(userId || '').trim();
+	reassignSelectedLabel.value = String(label || userId || '').trim();
+	reassignCandidates.value = [];
+	reassignSearchQuery.value = reassignSelectedLabel.value || reassignSelectedUserId.value;
+}
+
 /* Actions ------------------------------------------------------ */
 async function submitFollowUp() {
 	if (busy.value || submittedOnce.value) return;
@@ -433,9 +572,9 @@ async function reassignFollowUp() {
 	const focusItemId = requireFocusItemId();
 	if (!focusItemId) return;
 
-	const target = (reassignTo.value || '').trim();
+	const target = resolvedReassignTarget.value;
 	if (target.length < 3) {
-		actionError.value = __('Please enter a valid user (email / user id).');
+		actionError.value = __('Please select a valid staff member or enter a full user ID / email.');
 		return;
 	}
 

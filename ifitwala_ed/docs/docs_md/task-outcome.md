@@ -3,9 +3,9 @@ title: "Task Outcome: The Official Student-Level Assessment Record"
 slug: task-outcome
 category: Assessment
 doc_order: 7
-version: "1.2.0"
-last_change_date: "2026-03-12"
-summary: "Maintain one authoritative outcome per student per delivery, with official scores, criterion truth, statuses, and publication controls."
+version: "1.3.1"
+last_change_date: "2026-04-22"
+summary: "Maintain one authoritative outcome per student per delivery, with official scores, criterion truth, derived boolean completion state, statuses, and publication controls."
 seo_title: "Task Outcome: The Official Student-Level Assessment Record"
 seo_description: "Maintain one authoritative outcome per student per delivery, with official scores, criterion truth, statuses, and publication controls."
 ---
@@ -18,7 +18,7 @@ Test refs: `ifitwala_ed/assessment/doctype/task_outcome/test_task_outcome.py`
 
 `Task Outcome` is the institutional truth row for a student on a specific delivery. Submissions and contributions can evolve over time, but official grading and publication state live here.
 
-Current workspace note: the outcome model itself is implemented, and the delivery launch path now submits and materializes outcomes consistently. Legacy deliveries created before that fix can be repaired from gradebook.
+Current workspace note: the outcome model itself is implemented, and the delivery launch path now submits and materializes outcomes consistently. Legacy deliveries missing outcomes are remediated through one-shot deployment patches rather than gradebook runtime actions.
 
 ## Before You Start (Prerequisites)
 
@@ -58,8 +58,8 @@ Test refs: `ifitwala_ed/assessment/doctype/task_outcome/test_task_outcome.py`, `
 Current workspace constraints:
 
 - Outcomes are created from delivery launch semantics, not from client-side gradebook synthesis.
-- Gradebook still reads `Task Outcome` rows only; when older deliveries are missing rows, `api/gradebook.py::repair_task_roster()` is the canonical repair action.
-- `bulk_create_outcomes()` remains idempotent, so launch and repair paths can safely backfill only missing students.
+- Gradebook still reads `Task Outcome` rows only; missing legacy rows are remediated through one-shot deployment patches, not client repair actions.
+- `bulk_create_outcomes()` remains idempotent, so launch flows and approved backfill patches can safely insert only missing students.
 
 ## Related Docs
 
@@ -103,9 +103,10 @@ Test refs: `ifitwala_ed/assessment/doctype/task_outcome/test_task_outcome.py`
 - `on_update()` records info comments when official values are edited directly.
 - `task_outcome_service.py` is the canonical official-truth recompute layer.
 - `api/gradebook.py` and reporting readers consume outcome truth and outcome criterion truth rather than computing totals client-side.
+- For assessed `Completion` and `Binary` work, `Task Outcome.is_complete` is derived from the selected `Task Contribution.judgment_code`; `Assign Only` remains the direct procedural completion path.
 
 ### Current Constraints To Preserve In Review
 
 - The outcome table remains canonical; gradebook must not invent roster rows client-side.
-- Legacy deliveries without outcomes must be fixed at the delivery layer through the named repair endpoint, not by relaxing the fact-table rule.
+- Legacy deliveries without outcomes must be fixed at the delivery layer through one-shot patches, not by relaxing the fact-table rule.
 - Any implementation change here must keep the outcome fact-table rule intact: correctness belongs on the server.

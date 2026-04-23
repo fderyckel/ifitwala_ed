@@ -28,8 +28,11 @@ from ifitwala_ed.api.calendar_core import (
     _system_tzinfo,
     _to_system_datetime,
 )
+from ifitwala_ed.api.org_comm_utils import STAFF_ROLES
+from ifitwala_ed.hr.utils import resolve_staff_calendar_for_employee as _resolve_employee_staff_calendar
+from ifitwala_ed.school_settings.doctype.school_event.school_event import get_user_membership
 from ifitwala_ed.school_settings.school_settings_utils import resolve_school_calendars_for_window
-from ifitwala_ed.utilities.school_tree import get_ancestor_schools, get_school_lineage
+from ifitwala_ed.utilities.school_tree import get_ancestor_schools
 
 
 def get_staff_calendar(
@@ -128,75 +131,9 @@ def _resolve_staff_calendar_for_employee(
     start_date: date,
     end_date: date,
 ) -> Optional[dict]:
-    """
-    Return the single best Staff Calendar match for this employee and window.
-
-    Rule:
-    - employee_group must match
-    - calendar must overlap [start_date, end_date]
-    - calendar school is chosen by nearest match in the employee school's ancestor chain
-      (employee school first, then parent, then grandparent...)
-    """
     if not employee_id:
         return None
-
-    emp_rows = frappe.get_all(
-        "Employee",
-        filters={"name": employee_id},
-        fields=["name", "school", "employee_group"],
-        limit=1,
-        ignore_permissions=True,
-    )
-
-    if not emp_rows:
-        return None
-
-    emp = emp_rows[0]
-    employee_school = emp.get("school")
-    employee_group = emp.get("employee_group")
-
-    if not employee_school or not employee_group:
-        return None
-
-    school_chain = get_school_lineage(employee_school)
-
-    cals = frappe.get_all(
-        "Staff Calendar",
-        filters={
-            "employee_group": employee_group,
-            "school": ["in", school_chain],
-            "from_date": ["<=", end_date],
-            "to_date": [">=", start_date],
-        },
-        fields=["name", "school", "employee_group", "from_date", "to_date"],
-        ignore_permissions=True,
-    )
-
-    if not cals:
-        return None
-
-    rank = {school: i for i, school in enumerate(school_chain)}
-    cals.sort(key=lambda r: rank.get(r.get("school"), 10**9))
-
-    if len(cals) > 1:
-        frappe.logger("ifitwala_ed.calendar").warning(
-            "Multiple Staff Calendar matches; using nearest school match",
-            {
-                "employee": employee_id,
-                "employee_school": employee_school,
-                "employee_group": employee_group,
-                "window_start": start_date.isoformat(),
-                "window_end": end_date.isoformat(),
-                "matches": [c.get("name") for c in cals[:10]],
-            },
-        )
-
-    best = cals[0]
-    return {
-        "name": best.get("name"),
-        "school": best.get("school"),
-        "employee_group": best.get("employee_group"),
-    }
+    return _resolve_employee_staff_calendar(employee_id, start_date=start_date, end_date=end_date)
 
 
 def _collect_student_group_events(
@@ -307,49 +244,58 @@ def _collect_staff_holiday_events(
     default_color = "#64748B"
 
     cal = _resolve_staff_calendar_for_employee(employee_id, start_date, end_date)
-    if cal:
-        holiday_rows = frappe.get_all(
-            "Staff Calendar Holidays",
-            filters={
-                "parent": cal["name"],
-                "holiday_date": ["between", [start_date, end_date]],
-            },
-            fields=["holiday_date", "description", "color", "weekly_off"],
-            order_by="holiday_date asc",
-            ignore_permissions=True,
+    if cal is not None:
+        calendar_name = (cal.get("name") or "").strip() if hasattr(cal, "get") else ""
+        if not calendar_name:
+            return []
+
+        holiday_rows = (
+            frappe.get_all(
+                "Staff Calendar Holidays",
+                filters={
+                    "parent": calendar_name,
+                    "holiday_date": ["between", [start_date, end_date]],
+                },
+                fields=["holiday_date", "description", "color", "weekly_off"],
+                order_by="holiday_date asc",
+                ignore_permissions=True,
+            )
+            or []
         )
+        if not holiday_rows:
+            return []
 
-        if holiday_rows:
-            events: List[CalendarEvent] = []
-            for row in holiday_rows:
-                hd = getdate(row.get("holiday_date"))
-                if not hd:
-                    continue
+        events: List[CalendarEvent] = []
+        for row in holiday_rows:
+            hd = getdate(row.get("holiday_date"))
+            if not hd:
+                continue
 
-                start_dt = _combine(hd, time(0, 0, 0), tzinfo)
-                end_dt = _combine(hd + timedelta(days=1), time(0, 0, 0), tzinfo)
-                title = (row.get("description") or "").strip() or _("Holiday")
-                color = (row.get("color") or "").strip() or default_color
+            start_dt = _combine(hd, time(0, 0, 0), tzinfo)
+            end_dt = _combine(hd + timedelta(days=1), time(0, 0, 0), tzinfo)
+            title = (row.get("description") or "").strip() or _("Holiday")
+            color = (row.get("color") or "").strip() or default_color
 
-                events.append(
-                    CalendarEvent(
-                        id=f"staff_holiday::{cal['name']}::{hd.isoformat()}",
-                        title=title,
-                        start=start_dt,
-                        end=end_dt,
-                        source="staff_holiday",
-                        color=color,
-                        all_day=True,
-                        meta={
-                            "staff_calendar": cal["name"],
-                            "holiday_date": hd.isoformat(),
-                            "weekly_off": int(row.get("weekly_off") or 0),
-                            "employee_group": cal["employee_group"],
-                            "school": cal["school"],
-                        },
-                    )
+            events.append(
+                CalendarEvent(
+                    id=f"staff_holiday::{calendar_name}::{hd.isoformat()}",
+                    title=title,
+                    start=start_dt,
+                    end=end_dt,
+                    source="staff_holiday",
+                    color=color,
+                    all_day=True,
+                    meta={
+                        "staff_calendar": calendar_name,
+                        "holiday_date": hd.isoformat(),
+                        "weekly_off": int(row.get("weekly_off") or 0),
+                        "employee_group": cal.get("employee_group"),
+                        "school": cal.get("school"),
+                        "resolution": cal.get("resolution"),
+                    },
                 )
-            return events
+            )
+        return events
 
     employee_school = frappe.db.get_value("Employee", employee_id, "school")
     if not employee_school:
@@ -601,8 +547,51 @@ def _collect_school_events(
     if not rows:
         return []
 
+    event_names = [row.get("name") for row in rows if row.get("name")]
+    audience_rows = frappe.get_all(
+        "School Event Audience",
+        filters={"parent": ["in", event_names]},
+        fields=[
+            "parent",
+            "audience_type",
+            "team",
+        ],
+        limit=max(len(event_names) * 8, 50),
+    )
+    audiences_by_event: dict[str, list[dict]] = defaultdict(list)
+    for audience_row in audience_rows or []:
+        parent = audience_row.get("parent")
+        if parent:
+            audiences_by_event[parent].append(audience_row)
+
+    user_roles = set(frappe.get_roles(user))
+    membership = get_user_membership(user)
+    allowed_school_set = set(allowed_schools or [])
+
     events: List[CalendarEvent] = []
     for row in rows:
+        event_name = str(row.get("name") or "").strip()
+        explicit_participant = bool((row.get("participant_name") or "").strip())
+
+        if not explicit_participant:
+            if (row.get("reference_type") or "").strip() == "Applicant Interview":
+                continue
+
+            event_school = str(row.get("school") or "").strip()
+            if not event_school or event_school not in allowed_school_set:
+                continue
+
+            if not any(
+                _school_event_audience_matches_staff_user(
+                    audience_row,
+                    user_roles=user_roles,
+                    membership=membership,
+                    explicit_participant=False,
+                )
+                for audience_row in audiences_by_event.get(event_name, [])
+            ):
+                continue
+
         start_dt = _to_system_datetime(row.starts_on, tzinfo) if row.starts_on else window_start
         end_dt_raw = row.ends_on or row.starts_on
         end_dt = _to_system_datetime(end_dt_raw, tzinfo) if end_dt_raw else (start_dt + CAL_MIN_DURATION)
@@ -629,3 +618,30 @@ def _collect_school_events(
         )
 
     return events
+
+
+def _school_event_audience_matches_staff_user(
+    audience_row,
+    *,
+    user_roles: set[str],
+    membership: dict[str, set[str]],
+    explicit_participant: bool,
+) -> bool:
+    audience_type = str(audience_row.get("audience_type") or "").strip()
+    if not audience_type:
+        return False
+
+    if audience_type == "All Students, Guardians, and Employees":
+        return True
+
+    if audience_type == "All Employees":
+        return bool(set(user_roles or []) & STAFF_ROLES)
+
+    if audience_type == "Employees in Team":
+        team_name = str(audience_row.get("team") or "").strip()
+        return bool(team_name and team_name in set((membership or {}).get("teams") or set()))
+
+    if audience_type == "Custom Users":
+        return explicit_participant
+
+    return False

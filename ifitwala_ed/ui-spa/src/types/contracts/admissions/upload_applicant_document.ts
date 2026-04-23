@@ -13,8 +13,12 @@ export type Request = {
 
 export type Response = {
   file: string
-  file_url: string
-  classification: string
+  open_url?: string | null
+  preview_url?: string | null
+  thumbnail_url?: string | null
+  preview_status?: string | null
+  drive_file_id?: string | null
+  canonical_ref?: string | null
   applicant_document: string
   applicant_document_item: string
   item_key: string

@@ -22,7 +22,7 @@
 
 		<template v-else>
 			<div
-				v-if="!canManageResources"
+				v-if="shouldShowReadOnlyNotice"
 				:class="[
 					panelSectionOffset,
 					'rounded-2xl border border-line-soft bg-surface-soft px-4 py-4',
@@ -36,16 +36,12 @@
 				v-if="canManageResources"
 				:class="[panelSectionOffset, 'rounded-2xl border border-line-soft bg-surface-soft p-5']"
 			>
-				<div class="flex flex-wrap gap-2">
+				<div class="if-segmented flex-wrap">
 					<button
 						type="button"
 						data-resource-mode="link"
-						class="rounded-full border px-4 py-2 text-sm font-medium transition"
-						:class="
-							composerMode === 'link'
-								? 'border-leaf/60 bg-sky/20 text-ink'
-								: 'border-border/70 bg-white text-ink/70 hover:border-leaf/40'
-						"
+						class="if-segmented__item"
+						:class="{ 'if-segmented__item--active': composerMode === 'link' }"
 						@click="composerMode = 'link'"
 					>
 						Add link
@@ -53,12 +49,8 @@
 					<button
 						type="button"
 						data-resource-mode="file"
-						class="rounded-full border px-4 py-2 text-sm font-medium transition"
-						:class="
-							composerMode === 'file'
-								? 'border-leaf/60 bg-sky/20 text-ink'
-								: 'border-border/70 bg-white text-ink/70 hover:border-leaf/40'
-						"
+						class="if-segmented__item"
+						:class="{ 'if-segmented__item--active': composerMode === 'file' }"
 						@click="composerMode = 'file'"
 					>
 						Upload file
@@ -124,17 +116,23 @@
 				<div v-else class="mt-4 space-y-3">
 					<input ref="fileInput" type="file" class="hidden" @change="onFileSelected" />
 					<div class="flex flex-wrap items-center gap-3">
-						<Button
-							appearance="secondary"
+						<button
+							type="button"
+							class="if-button if-button--secondary"
 							data-resource-choose-file="true"
 							@click="fileInput?.click()"
 						>
 							Choose file
-						</Button>
+						</button>
 						<p class="type-caption text-ink/70">
 							{{ selectedFile?.name || 'No file selected yet.' }}
 						</p>
 					</div>
+					<InlineUploadStatus
+						v-if="uploadProgress"
+						:label="uploadProgressLabel"
+						:progress="uploadProgress"
+					/>
 				</div>
 
 				<div
@@ -145,14 +143,22 @@
 				</div>
 
 				<div class="mt-4 flex justify-end">
-					<Button
-						appearance="primary"
-						:loading="submitting"
-						:disabled="!canSubmit"
+					<button
+						type="button"
+						class="if-button if-button--primary"
+						:disabled="!canSubmit || submitting"
 						@click="addResource"
 					>
-						{{ composerMode === 'link' ? 'Add link' : 'Upload file' }}
-					</Button>
+						{{
+							submitting
+								? composerMode === 'link'
+									? 'Adding…'
+									: 'Uploading…'
+								: composerMode === 'link'
+									? 'Add link'
+									: 'Upload file'
+						}}
+					</button>
 				</div>
 			</section>
 
@@ -169,48 +175,28 @@
 					:key="resource.placement || resource.material"
 					class="rounded-2xl border border-line-soft bg-surface-soft p-4"
 				>
-					<div class="flex items-start justify-between gap-3">
-						<div class="min-w-0">
-							<div class="flex flex-wrap items-center gap-2">
-								<p class="type-body-strong text-ink">{{ resource.title }}</p>
-								<span v-if="resource.material_type" class="chip">
-									{{ resource.material_type }}
-								</span>
-								<span v-if="resource.usage_role" class="chip">{{ resource.usage_role }}</span>
-							</div>
-							<p v-if="resource.description" class="mt-2 type-caption text-ink/70">
-								{{ resource.description }}
-							</p>
-							<p v-if="resource.placement_note" class="mt-2 type-caption text-ink/70">
-								{{ resource.placement_note }}
-							</p>
-							<p
-								v-if="resource.file_name || resource.reference_url"
-								class="mt-2 type-caption text-ink/70"
-							>
-								{{ resource.file_name || resource.reference_url }}
-							</p>
-						</div>
-						<div class="flex items-center gap-2">
-							<a
-								v-if="resource.open_url"
-								:href="resource.open_url"
-								target="_blank"
-								rel="noreferrer"
-								class="if-action"
-							>
-								Open
-							</a>
-							<Button
+					<AttachmentPreviewCard
+						v-if="resource.attachment_preview"
+						:attachment="resource.attachment_preview"
+						variant="planning"
+						:title="resource.title"
+						:description="resourceDescription(resource)"
+						:meta-text="resourceMetaLine(resource)"
+						:chips="resourceChips(resource)"
+						:enable-preview-surface="enableAttachmentPreview"
+					>
+						<template #extra-actions>
+							<button
 								v-if="resource.placement && canManageResources"
-								appearance="secondary"
-								:loading="removingPlacement === resource.placement"
+								type="button"
+								class="if-button if-button--danger"
+								:disabled="removingPlacement === resource.placement"
 								@click="removeResource(resource.placement)"
 							>
-								Remove
-							</Button>
-						</div>
-					</div>
+								{{ removingPlacement === resource.placement ? 'Removing…' : 'Remove' }}
+							</button>
+						</template>
+					</AttachmentPreviewCard>
 				</article>
 			</section>
 		</template>
@@ -219,8 +205,11 @@
 
 <script setup lang="ts">
 import { computed, reactive, ref } from 'vue';
-import { Button, FormControl, toast } from 'frappe-ui';
+import { FormControl, toast } from 'frappe-ui';
 
+import AttachmentPreviewCard from '@/components/attachments/AttachmentPreviewCard.vue';
+import InlineUploadStatus from '@/components/feedback/InlineUploadStatus.vue';
+import type { UploadProgressState } from '@/lib/uploadProgress';
 import {
 	createPlanningReferenceMaterial,
 	removePlanningMaterial,
@@ -240,12 +229,16 @@ const props = withDefaults(
 		blockedMessage: string;
 		canManage?: boolean;
 		readOnlyMessage?: string;
+		showReadOnlyNotice?: boolean;
 		resources: StaffPlanningMaterial[];
+		enableAttachmentPreview?: boolean;
 		hideHeader?: boolean;
 		embedded?: boolean;
 	}>(),
 	{
 		canManage: true,
+		showReadOnlyNotice: true,
+		enableAttachmentPreview: false,
 		hideHeader: false,
 		embedded: false,
 	}
@@ -261,6 +254,7 @@ const removingPlacement = ref<string | null>(null);
 const errorMessage = ref('');
 const selectedFile = ref<File | null>(null);
 const fileInput = ref<HTMLInputElement | null>(null);
+const uploadProgress = ref<UploadProgressState | null>(null);
 
 const form = reactive({
 	title: '',
@@ -287,6 +281,9 @@ const usageRoleOptions = [
 
 const hideHeader = computed(() => props.hideHeader);
 const canManageResources = computed(() => props.canManage !== false);
+const shouldShowReadOnlyNotice = computed(
+	() => !canManageResources.value && props.showReadOnlyNotice !== false
+);
 const panelClasses = computed(() =>
 	props.embedded ? 'space-y-0' : 'rounded-[2rem] border border-line-soft bg-white p-6 shadow-soft'
 );
@@ -304,6 +301,9 @@ const canSubmit = computed(() => {
 		? Boolean(normalizeReferenceUrl(form.reference_url))
 		: Boolean(selectedFile.value) && Boolean(form.title.trim());
 });
+const uploadProgressLabel = computed(() =>
+	selectedFile.value?.name ? `Uploading ${selectedFile.value.name}` : 'Uploading file'
+);
 
 function resetDraftFields() {
 	form.title = '';
@@ -362,16 +362,23 @@ async function addResource() {
 				placement_note: form.placement_note.trim() || undefined,
 			});
 		} else if (selectedFile.value) {
-			await uploadPlanningMaterialFile({
-				anchor_doctype: props.anchorDoctype,
-				anchor_name: props.anchorName,
-				title: form.title.trim(),
-				file: selectedFile.value,
-				description: form.description.trim() || undefined,
-				modality: form.modality,
-				usage_role: form.usage_role,
-				placement_note: form.placement_note.trim() || undefined,
-			});
+			await uploadPlanningMaterialFile(
+				{
+					anchor_doctype: props.anchorDoctype,
+					anchor_name: props.anchorName,
+					title: form.title.trim(),
+					file: selectedFile.value,
+					description: form.description.trim() || undefined,
+					modality: form.modality,
+					usage_role: form.usage_role,
+					placement_note: form.placement_note.trim() || undefined,
+				},
+				{
+					onProgress: progress => {
+						uploadProgress.value = progress;
+					},
+				}
+			);
 		}
 		resetDraftFields();
 		emit('changed');
@@ -382,6 +389,7 @@ async function addResource() {
 		errorMessage.value = message;
 		toast.error(message);
 	} finally {
+		uploadProgress.value = null;
 		submitting.value = false;
 	}
 }
@@ -436,5 +444,21 @@ function deriveTitleFromUrl(referenceUrl: string): string {
 	} catch {
 		return referenceUrl;
 	}
+}
+
+function resourceDescription(resource: StaffPlanningMaterial): string | null {
+	return resource.description || null;
+}
+
+function resourceMetaLine(resource: StaffPlanningMaterial): string | null {
+	return (
+		[resource.placement_note, resource.file_name || resource.reference_url]
+			.filter(Boolean)
+			.join(' · ') || null
+	);
+}
+
+function resourceChips(resource: StaffPlanningMaterial): string[] {
+	return [resource.material_type || null, resource.usage_role || null].filter(Boolean) as string[];
 }
 </script>

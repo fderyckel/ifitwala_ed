@@ -1,10 +1,20 @@
 <!-- ifitwala_ed/ui-spa/src/pages/staff/analytics/EnrollmentAnalytics.vue -->
 <template>
 	<div class="analytics-shell">
-		<header class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-			<div>
-				<h1 class="type-h2 text-canopy">Enrollment</h1>
-				<p class="text-xs text-slate-500">{{ scopeLabel }}</p>
+		<header class="page-header">
+			<div class="page-header__intro">
+				<h1 class="type-h1 text-canopy">Enrollment</h1>
+				<p class="type-meta text-slate-token/80">
+					Enrollment shape and change across your selected organization, school, and academic-year
+					range.
+				</p>
+				<div class="mt-2 flex flex-wrap items-center gap-2">
+					<span
+						class="inline-flex items-center rounded-full border border-slate-200 bg-white px-3 py-1 type-caption text-slate-token/70"
+					>
+						{{ scopeLabel }}
+					</span>
+				</div>
 			</div>
 		</header>
 
@@ -278,9 +288,9 @@ const emptyDashboard: DashboardResponse = {
 };
 
 const dashboard = computed<DashboardResponse>(() => {
-	const raw = dashboardResource.data as any;
+	const raw = dashboardResource.data as DashboardResponse | null;
 	if (!raw) return emptyDashboard;
-	return (raw.message as DashboardResponse) || (raw as DashboardResponse) || emptyDashboard;
+	return raw;
 });
 
 const options = computed(() => dashboard.value.meta?.options || {});
@@ -585,8 +595,7 @@ async function loadDrilldown(reset = false) {
 		page_length: drawerPageLength,
 	};
 	await drilldownResource.submit(payload);
-	const raw = drilldownResource.data as any;
-	const data = raw?.message || raw || {};
+	const data = (drilldownResource.data as { rows?: any[]; total_count?: number } | null) || {};
 	const rows = Array.isArray(data.rows) ? data.rows : [];
 	const total = Number(data.total_count || 0);
 	drawerRows.value = reset ? rows : [...drawerRows.value, ...rows];

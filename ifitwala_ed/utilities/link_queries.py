@@ -46,7 +46,7 @@ def academic_year_global_desc_query(doctype, txt, searchfield, start, page_len, 
         or_filters=or_filters,
         order_by="year_start_date DESC, name DESC",
         start=int(start or 0),
-        page_length=int(page_len or 20),
+        limit=int(page_len or 20),
     )
     return [[r.get("name"), (r.get("academic_year_name") or r.get("name"))] for r in rows]
 

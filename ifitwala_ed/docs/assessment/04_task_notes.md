@@ -3,7 +3,7 @@
 Status: **Authoritative / Current Workspace Contract**
 Scope: `Task`, `Task Delivery`, `Task Outcome`, `Task Submission`, `Task Contribution`
 Audience: Product, Engineering, and coding agents
-Last updated: 2026-04-08
+Last updated: 2026-04-20
 
 This document defines the current task runtime contract in the workspace.
 It replaces older lesson-instance-era notes and removes future-state claims that are not yet true in code.
@@ -11,6 +11,7 @@ It replaces older lesson-instance-era notes and removes future-state claims that
 Related docs:
 - `ifitwala_ed/docs/assessment/01_assessment_notes.md`
 - `ifitwala_ed/docs/assessment/03_gradebook_notes.md`
+- `ifitwala_ed/docs/assessment/07_feedback_annotation_ecosystem_contract.md`
 - `ifitwala_ed/docs/assessment/05_term_reporting_notes.md`
 - `ifitwala_ed/docs/curriculum/01_curriculum_task_delivery_contract.md`
 
@@ -97,11 +98,26 @@ For criteria grading, official per-criterion truth lives in `Task Outcome Criter
 Each new learner submission creates a new version.
 Teacher-created evidence stubs are allowed when grading needs an audit anchor without learner-uploaded evidence.
 
+Feedback-specific implication from the canonical feedback contract:
+
+- future structured feedback records and derived feedback artifacts must bind to a selected submission version or explicit evidence stub context
+- learner submissions remain immutable even when annotated return artifacts exist
+- the current assessment runtime now also exposes one version-bound feedback workspace plus one teacher-owned comment-bank context through the gradebook drawer, but those remain feedback-side productivity layers rather than official outcome truth
+- the student task workspace now loads the latest submission together with a release-aware result projection for that submission version; score and feedback channels remain masked until publication allows student visibility
+
 ### 1.5 Task Contribution
 
 `Task Contribution` stores teacher-authored grading input.
 It does not replace the outcome row directly in the UI contract.
 The official result is derived from eligible contributions, not entered straight into the gradebook payload.
+For assessed `Completion` and `Binary` deliveries, the contribution row carries `judgment_code`; `Task Outcome.is_complete`
+remains the derived official truth rather than the primary write path.
+
+Feedback-specific implication:
+
+- reusable feedback comments and anchored feedback items remain adjacent assessment records
+- they may link to rubric criteria and selected submission versions
+- they must not replace `Task Contribution` as grading input or `Task Outcome` as official result truth
 
 ---
 
@@ -145,6 +161,9 @@ Current workspace reality:
 - `is_template` now controls explicit course-library sharing for reusable tasks. It does not promote work into governed curriculum or common-assessment baseline space.
 - The class-owned context currently lives on required `Task Delivery.class_teaching_plan` and optional `Task Delivery.class_session`.
 - `api/task.py::search_reusable_tasks()` and `api/task.py::search_tasks()` now resolve one course-scoped reusable-task library at a time. They return only tasks the current user owns for that course or tasks explicitly shared with the course team.
+- `api/task.py::list_course_assessment_criteria()` now resolves the same course scope and exposes the course-owned criteria library to the task overlay.
+- `ui-spa/src/components/tasks/CreateTaskDeliveryOverlay.vue` now supports criteria authoring for new tasks directly in the main task flow, using course criteria rows plus task-local weighting and max-points metadata.
+- Reusing an existing criteria task now carries `criteria_defaults` and the default rubric strategy back to the overlay, while keeping the criteria rows themselves on the reusable task definition.
 - `api/task.py::create_task_delivery()` now supports the assign-existing path. Reusing a task creates a new class-scoped delivery only; it does not rewrite the reusable task definition.
 - Same-teacher reuse across groups or school years stays available through task ownership. Cross-teacher reuse requires explicit course-library sharing.
 - Cross-surface dependency: staff Morning Brief instructor widgets in `ifitwala_ed/api/morning_brief.py` read overdue grading state from `Task Delivery` and `Task Outcome`, so any change to task ownership, delivery due-date semantics, grading-required flags, or outcome completion statuses must update Morning Brief code and `ifitwala_ed/api/test_morning_brief.py` in the same change.
@@ -279,6 +298,9 @@ When `grading_mode = "Criteria"`:
 - official criterion rows are copied into `Task Outcome Criterion`
 - `rubric_scoring_strategy = "Separate Criteria"` clears task-level totals and grade fields
 - `rubric_scoring_strategy = "Sum Total"` computes task-level totals and optional grade-scale resolution
+- if the rubric snapshot carries positive `criteria_max_points` on every criterion and the criterion weightings total `100`, the official total is the weighted normalized result:
+  `sum((criterion level_points / criteria_max_points) * criteria_weighting)`
+- if a legacy rubric snapshot does not meet that contract, the runtime falls back to the older weighted raw-point behavior so historical tasks do not silently change meaning
 
 ### 3.3 Non-criteria grading behavior
 
@@ -290,6 +312,13 @@ When grading is not criteria-based, the selected contribution writes:
 - `official_feedback`
 
 through the outcome truth service.
+
+For assessed `Completion` and `Binary` grading, the selected contribution instead writes:
+
+- `official_feedback`
+- derived `is_complete`
+
+using `Task Contribution.judgment_code`.
 
 ### 3.4 Quiz runtime exception
 
@@ -307,6 +336,10 @@ Current write boundary for assessed quiz manual review:
 
 The gradebook API must not accept `official_*` writes from clients.
 Client-facing grading routes create or update contributions and let the outcome truth pipeline recompute official results.
+Current explicit exception:
+
+- `Assign Only` completion tracking may still write `Task Outcome.is_complete` and `completed_on` directly because it is not part of the assessed grading audit path
+- that direct path must stay behind named business endpoints, keep exact learner ownership checks for portal writes, and reject completion edits after publication
 
 ---
 
@@ -318,15 +351,27 @@ Code refs:
 - `ifitwala_ed/assessment/doctype/task_submission/task_submission.py`
 - `ifitwala_ed/assessment/task_submission_service.py`
 - `ifitwala_ed/api/gradebook.py`
+- `ifitwala_ed/api/task_submission.py`
+- `ifitwala_ed/integrations/drive/tasks.py`
+- `ifitwala_ed/integrations/drive/content_uploads.py`
 
 Test refs:
 - `ifitwala_ed/assessment/doctype/task_submission/test_task_submission.py`
+- `ifitwala_ed/api/test_task_submission_unit.py`
+- `ifitwala_ed/assessment/test_task_submission_service.py`
+- `ifitwala_ed/integrations/drive/test_tasks.py`
 
 ### 4.1 Append-only evidence
 
 Learner evidence is append-only.
 Existing evidence cannot be overwritten in place.
 New evidence creates a new submission version.
+
+Student portal implication:
+
+- `ifitwala_ed.api.task_submission.create_or_resubmit` is the canonical student mutation path for text, links, and raw uploaded files
+- if governed files are present, the runtime inserts the new `Task Submission` owner row first, finalizes governed files against that persisted submission version, then saves attachment rows on that same version
+- the portal must not mutate attachment rows on an existing submission version in place
 
 ### 4.2 Student evidence effects
 
@@ -336,6 +381,8 @@ Student-originated evidence:
 - sets `has_new_submission = 1`
 - updates `submission_status`
 - marks prior contributions stale when newer evidence exists
+- may include text content, link evidence, governed file attachments, or a combination of those evidence types
+- file evidence uses the task-submission governed upload workflow; it does not require broad Student write permission on the `Task Submission` DocType
 
 ### 4.3 Teacher evidence stubs
 
@@ -370,7 +417,9 @@ Client code must not recompute totals or criteria summaries independently.
 ### 5.2 Student LMS surface
 
 Students receive assigned work through LMS-facing course and work-board payloads.
-Those payloads expose assignment timing, status, required class-planning context, and optional `class_session` context without exposing internal grading doctypes as the primary mental model.
+Those payloads expose assignment timing, status, task outcome identity, submission-required flags, required class-planning context, and optional `class_session` context without exposing internal grading doctypes as the primary mental model.
+The bounded LMS bootstrap may carry task summary state, but latest submission evidence should stay lazy-loaded per selected task rather than being embedded for every assigned-work row.
+When a delivery requires submission, the selected LMS task workspace may submit text, link, and governed file evidence through the same business endpoint, and the read model must return Ed-owned attachment DTOs with stable `open_url` / `preview_url` values instead of raw private file paths.
 
 ---
 

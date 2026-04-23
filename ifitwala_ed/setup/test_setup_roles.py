@@ -53,6 +53,31 @@ class TestSetupRoles(FrappeTestCase):
         self.assertEqual(role.home_page, "/hub/staff")
         self.assertEqual(int(role.desk_access or 0), 1)
 
+    def test_create_roles_with_homepage_normalizes_employee_facing_staff_role_home_pages(self):
+        seeded_roles = {
+            "Nurse": "/desk/health",
+            "Academic Admin": "/desk/admin",
+            "Admission Officer": "/desk/admission",
+            "Admission Manager": "/desk/admission",
+        }
+
+        for role_name, legacy_home_page in seeded_roles.items():
+            if frappe.db.exists("Role", role_name):
+                role = frappe.get_doc("Role", role_name)
+            else:
+                role = frappe.get_doc({"doctype": "Role", "role_name": role_name}).insert(ignore_permissions=True)
+
+            role.home_page = legacy_home_page
+            role.desk_access = 1
+            role.save(ignore_permissions=True)
+
+        create_roles_with_homepage()
+
+        for role_name in seeded_roles:
+            role = frappe.get_doc("Role", role_name)
+            self.assertEqual(role.home_page, "/hub/staff")
+            self.assertEqual(int(role.desk_access or 0), 1)
+
     def test_ensure_canonical_role_records_creates_canonical_roles(self):
         for role_name in ("Academic Assistant", "Counselor"):
             if frappe.db.exists("Role", role_name):

@@ -11,6 +11,8 @@ import frappe
 from frappe import _
 from frappe.utils import formatdate, get_link_to_form, getdate, strip_html
 
+from ifitwala_ed.school_settings.school_settings_utils import get_allowed_schools
+
 ENTRY_LOCAL_EXPR = "CONVERT_TZ(rce.entry_datetime, 'UTC', %(site_tz)s)"
 
 
@@ -180,8 +182,12 @@ def _build_where(f, date_from, date_to, site_tz):
         where.append("rc.referral = %(referral)s")
         params["referral"] = f.referral  # noqa: E701, E702
     if f.get("school"):
-        where.append("rc.school = %(school)s")
-        params["school"] = f.school  # noqa: E701, E702
+        school_scope = get_allowed_schools(frappe.session.user, f.school)
+        if school_scope:
+            where.append("rc.school IN %(school_list)s")
+            params["school_list"] = tuple(school_scope)
+        else:
+            where.append("1=0")
     if f.get("program"):
         where.append("rc.program = %(program)s")
         params["program"] = f.program  # noqa: E701, E702

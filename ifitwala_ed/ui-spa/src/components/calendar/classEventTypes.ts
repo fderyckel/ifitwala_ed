@@ -20,5 +20,9 @@ export interface ClassEventDetails {
 	start_label?: string | null;
 	end_label?: string | null;
 	timezone?: string | null;
+	task_creation?: {
+		status: 'ready' | 'missing_active_plan' | 'multiple_active_plans';
+		class_teaching_plan?: string | null;
+	} | null;
 	_debug?: Record<string, unknown> | null;
 }

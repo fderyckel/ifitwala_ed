@@ -1,5 +1,7 @@
 // ifitwala_ed/ui-spa/src/types/contracts/admissions/admissions_workspace.ts
 
+import type { AttachmentPreviewItem, AttachmentPreviewStatus } from '@/types/contracts/attachments/shared'
+
 export type InterviewFeedbackStatus = 'Draft' | 'Submitted' | 'Pending'
 
 export interface InterviewWorkspaceInterviewer {
@@ -87,7 +89,13 @@ export interface InterviewWorkspaceDocumentItem {
 	reviewed_by?: string | null
 	reviewed_on?: string | null
 	file_name?: string | null
-	file_url?: string | null
+	open_url?: string | null
+	preview_url?: string | null
+	thumbnail_url?: string | null
+	preview_status?: AttachmentPreviewStatus
+	drive_file_id?: string | null
+	canonical_ref?: string | null
+	attachment_preview?: AttachmentPreviewItem | null
 	uploaded_at?: string | null
 }
 
@@ -114,7 +122,13 @@ export interface ApplicantWorkspaceDocumentItem {
 	uploaded_by?: string | null
 	uploaded_at?: string | null
 	file_name?: string | null
-	file_url?: string | null
+	open_url?: string | null
+	preview_url?: string | null
+	thumbnail_url?: string | null
+	preview_status?: AttachmentPreviewStatus
+	drive_file_id?: string | null
+	canonical_ref?: string | null
+	attachment_preview?: AttachmentPreviewItem | null
 	modified?: string | null
 }
 
@@ -136,7 +150,13 @@ export interface ApplicantWorkspaceRequirementRow {
 	uploaded_by?: string | null
 	uploaded_at?: string | null
 	file_name?: string | null
-	file_url?: string | null
+	open_url?: string | null
+	preview_url?: string | null
+	thumbnail_url?: string | null
+	preview_status?: AttachmentPreviewStatus
+	drive_file_id?: string | null
+	canonical_ref?: string | null
+	attachment_preview?: AttachmentPreviewItem | null
 	modified?: string | null
 	items: ApplicantWorkspaceDocumentItem[]
 }
@@ -162,7 +182,13 @@ export interface ApplicantWorkspaceUploadedRow {
 	uploaded_by?: string | null
 	uploaded_at?: string | null
 	file_name?: string | null
-	file_url?: string | null
+	open_url?: string | null
+	preview_url?: string | null
+	thumbnail_url?: string | null
+	preview_status?: AttachmentPreviewStatus
+	drive_file_id?: string | null
+	canonical_ref?: string | null
+	attachment_preview?: AttachmentPreviewItem | null
 	modified?: string | null
 }
 
@@ -226,7 +252,13 @@ export interface InterviewWorkspaceRecommendationSubmission {
 	reviewed_by?: string | null
 	reviewed_on?: string | null
 	file_name?: string | null
-	file_url?: string | null
+	open_url?: string | null
+	preview_url?: string | null
+	thumbnail_url?: string | null
+	preview_status?: AttachmentPreviewStatus
+	drive_file_id?: string | null
+	canonical_ref?: string | null
+	attachment_preview?: AttachmentPreviewItem | null
 }
 
 export interface RecommendationReviewRow {
@@ -255,7 +287,13 @@ export interface RecommendationReviewRow {
 	has_file?: boolean
 	attestation_confirmed?: boolean
 	file_name?: string | null
-	file_url?: string | null
+	open_url?: string | null
+	preview_url?: string | null
+	thumbnail_url?: string | null
+	preview_status?: AttachmentPreviewStatus
+	drive_file_id?: string | null
+	canonical_ref?: string | null
+	attachment_preview?: AttachmentPreviewItem | null
 	needs_review?: boolean
 	can_review?: boolean
 }
@@ -296,7 +334,13 @@ export interface RecommendationReviewPayload {
 		has_file?: boolean
 		attestation_confirmed?: boolean
 		file_name?: string | null
-		file_url?: string | null
+		open_url?: string | null
+		preview_url?: string | null
+		thumbnail_url?: string | null
+		preview_status?: AttachmentPreviewStatus
+		drive_file_id?: string | null
+		canonical_ref?: string | null
+		attachment_preview?: AttachmentPreviewItem | null
 		answers: RecommendationReviewAnswer[]
 		can_review?: boolean
 		needs_review?: boolean

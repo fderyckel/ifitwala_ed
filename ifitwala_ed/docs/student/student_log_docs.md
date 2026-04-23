@@ -67,9 +67,12 @@ The most critical failure point in schools is the "black hole" where notes disap
 
 - **Explicit Routing:** If a note requires action, the author _must_ select a **Next Step** and an **Assignee**.
 - **Immutable History:** Once follow-up work begins, the original note locks. Integrating follow-up preserves the integrity of the original observation.
+- **Lightweight Follow-Up:** `Student Log Follow Up` is for quick operational updates by the current assignee, not for deep multi-party case management.
+- **Referral Boundary:** If the situation becomes a deeper support case, staff should move it into `Student Referral` rather than stretching Student Log beyond its intended scope.
 - **Focus Integration:**
   - The assignee receives a task in their **Focus** inbox.
   - When they complete the work, the task loops back to the author to **Review Intent**.
+  - If the author reassigns, the log enters a new assignee cycle while keeping prior follow-up notes in timeline order.
   - **Result:** No loose ends. Every "Follow-up Required" note tracks through to completion.
 
 ---

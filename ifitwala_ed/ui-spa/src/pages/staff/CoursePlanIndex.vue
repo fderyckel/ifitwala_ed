@@ -1,29 +1,29 @@
 <template>
 	<div class="staff-shell space-y-6">
 		<section class="overflow-hidden rounded-[2rem] border border-line-soft bg-white shadow-soft">
-			<div class="grid gap-6 px-6 py-6 lg:grid-cols-[minmax(0,1fr),auto] lg:items-end">
-				<div class="space-y-4">
-					<RouterLink
-						:to="{ name: 'staff-home' }"
-						class="inline-flex items-center gap-2 type-caption text-ink/70 transition hover:text-ink"
-					>
-						<span>←</span>
-						<span>Back to Staff Home</span>
-					</RouterLink>
-					<div>
+			<div class="space-y-4 px-6 py-6">
+				<RouterLink
+					:to="{ name: 'staff-home' }"
+					class="inline-flex items-center gap-2 type-caption text-ink/70 transition hover:text-ink"
+				>
+					<span>←</span>
+					<span>Back to Staff Home</span>
+				</RouterLink>
+				<div class="page-header">
+					<div class="page-header__intro">
 						<p class="type-overline text-ink/60">Shared Curriculum Planning</p>
-						<h1 class="mt-2 type-h1 text-ink">Course Plans</h1>
-						<p class="mt-2 max-w-3xl type-body text-ink/80">
+						<h1 class="mt-2 type-h1 text-canopy">Course Plans</h1>
+						<p class="mt-2 max-w-3xl type-meta text-slate-token/80">
 							Open the governed course backbone, shared unit resources, and cross-class reflections
 							from one staff workspace.
 						</p>
 					</div>
-				</div>
-				<div class="flex flex-wrap gap-2 lg:justify-end">
-					<span class="chip">{{ coursePlans.length }} course plans</span>
-					<span v-if="canCreateCoursePlans" class="chip">
-						{{ courseOptions.length }} courses ready to plan
-					</span>
+					<div class="page-header__actions">
+						<span class="chip">{{ coursePlans.length }} course plans</span>
+						<span v-if="canCreateCoursePlans" class="chip">
+							{{ courseOptions.length }} courses ready to plan
+						</span>
+					</div>
 				</div>
 			</div>
 		</section>
@@ -264,7 +264,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref, watch } from 'vue';
-import { useRouter } from 'vue-router';
+import { RouterLink, useRouter } from 'vue-router';
 
 import { toast } from 'frappe-ui';
 

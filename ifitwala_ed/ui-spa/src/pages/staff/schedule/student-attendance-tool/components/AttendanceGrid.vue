@@ -73,15 +73,15 @@
 						</div>
 
 						<div class="pt-1">
-							<Button
-								appearance="minimal"
-								icon="file-text"
-								class="!h-8 rounded-full border border-border/70 bg-white/80 px-3 !text-xs !font-semibold !text-ink/70 transition hover:!border-jacaranda/30 hover:!bg-jacaranda/5 hover:!text-jacaranda"
+							<button
+								type="button"
+								class="if-action border-border/70 bg-white/80 text-ink/70 hover:bg-jacaranda/5 hover:text-jacaranda"
 								:disabled="disabled"
 								@click="$emit('open-log', { student })"
 							>
+								<FeatherIcon name="file-text" class="h-4 w-4" />
 								{{ __('Add log') }}
-							</Button>
+							</button>
 						</div>
 					</div>
 				</div>
@@ -123,19 +123,20 @@
 							</div>
 
 							<div class="flex items-center gap-2 min-[560px]:ml-auto min-[560px]:flex-none">
-								<Button
-									appearance="minimal"
-									icon="message-circle"
-									class="!h-9 !w-9 rounded-full border border-transparent text-ink/60 transition hover:border-jacaranda/30 hover:bg-jacaranda/5 hover:text-jacaranda"
+								<button
+									type="button"
+									class="if-action h-9 w-9 justify-center border-transparent px-0 text-ink/60 hover:border-jacaranda/30 hover:bg-jacaranda/5 hover:text-jacaranda"
 									:class="
 										student.remarks?.[block]
-											? '!border-jacaranda/40 !bg-jacaranda/10 !text-jacaranda'
+											? 'border-jacaranda/40 bg-jacaranda/10 text-jacaranda'
 											: ''
 									"
 									:title="student.remarks?.[block] ? __('Edit remark') : __('Add remark')"
 									:disabled="disabled"
 									@click="$emit('open-remark', { student, block })"
-								/>
+								>
+									<FeatherIcon name="message-circle" class="h-4 w-4" />
+								</button>
 								<p
 									v-if="student.remarks?.[block]"
 									class="hidden text-xs text-ink/60 min-[560px]:inline"
@@ -196,7 +197,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onBeforeUnmount, nextTick } from 'vue';
-import { Button, FeatherIcon } from 'frappe-ui';
+import { FeatherIcon } from 'frappe-ui';
 import { __ } from '@/lib/i18n';
 import type { StudentRosterEntry, BlockKey } from '../types';
 import type { StudentAttendanceCodeRow } from '@/types/contracts/studentAttendance';

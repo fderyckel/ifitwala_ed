@@ -4,13 +4,29 @@
 from __future__ import annotations
 
 import re
+from collections import defaultdict
 
 import frappe
 from frappe import _
 
 from ifitwala_ed.schedule.basket_group_utils import get_offering_course_semantics
-from ifitwala_ed.schedule.enrollment_engine import evaluate_basket_selection
-from ifitwala_ed.schedule.enrollment_request_utils import build_program_enrollment_request_validation
+from ifitwala_ed.schedule.enrollment_engine import (
+    _evaluate_basket,
+    _evaluate_capacity,
+    _evaluate_prerequisites,
+    _evaluate_repeat_attempts,
+    _get_capacity_counts,
+    _get_prerequisite_rows,
+    _get_program_courses,
+    _get_student_course_history,
+    _get_student_results,
+    evaluate_basket_selection,
+)
+from ifitwala_ed.schedule.enrollment_request_utils import (
+    _assert_no_catalog_prereqs,
+    _map_offering_seat_policy_to_capacity_policy,
+    build_program_enrollment_request_validation,
+)
 
 GROUP_NAME_PATTERN = re.compile(r"'([^']+)'")
 
@@ -255,8 +271,9 @@ def _course_validation_messages(engine_payload: dict, offering_semantics: dict[s
     return messages
 
 
-def _live_validation_state(request, *, offering_semantics: dict[str, dict]) -> tuple[dict, str | None, bool, list[str]]:
-    engine_payload, _updates = build_program_enrollment_request_validation(request, force=1)
+def _summarize_live_validation(
+    engine_payload: dict, *, offering_semantics: dict[str, dict]
+) -> tuple[str | None, bool, list[str]]:
     summary = engine_payload.get("summary") or {}
     basket_result = (engine_payload.get("results") or {}).get("basket") or {}
     basket_status = (summary.get("basket_status") or basket_result.get("status") or "").strip() or None
@@ -281,12 +298,321 @@ def _live_validation_state(request, *, offering_semantics: dict[str, dict]) -> t
         seen.add(normalized)
         deduped_messages.append(normalized)
 
+    return live_status, ready_for_submit, deduped_messages
+
+
+def _live_validation_state(request, *, offering_semantics: dict[str, dict]) -> tuple[dict, str | None, bool, list[str]]:
+    engine_payload, _updates = build_program_enrollment_request_validation(request, force=1)
+    live_status, ready_for_submit, deduped_messages = _summarize_live_validation(
+        engine_payload,
+        offering_semantics=offering_semantics,
+    )
     return engine_payload, live_status, ready_for_submit, deduped_messages
 
 
-def get_effective_program_enrollment_request_rows(request) -> list[dict]:
+def _live_validation_batch_context(requests, offering_semantics_by_offering: dict[str, dict]) -> dict:
+    draft_requests = [
+        request
+        for request in requests or []
+        if (request.get("request_status") or "").strip() == "Draft"
+        and (request.get("name") or "").strip()
+        and (request.get("student") or "").strip()
+        and (request.get("program_offering") or "").strip()
+    ]
+    if not draft_requests:
+        return {
+            "offering_meta": {},
+            "offering_rules": {},
+            "program_courses": {},
+            "capacity_context": {},
+            "student_history": {},
+            "student_results": {},
+            "prerequisite_rows": {},
+        }
+
+    offering_names = sorted({(request.get("program_offering") or "").strip() for request in draft_requests})
+    offering_rows = frappe.get_all(
+        "Program Offering",
+        filters={"name": ("in", offering_names)},
+        fields=["name", "program", "seat_policy"],
+    )
+    offering_meta = {row.get("name"): row for row in offering_rows if row.get("name")}
+
+    rule_rows = frappe.get_all(
+        "Program Offering Enrollment Rule",
+        filters={"parent": ("in", offering_names), "parenttype": "Program Offering"},
+        fields=["parent", "idx", "rule_type", "int_value_1", "int_value_2", "basket_group", "level", "notes"],
+        order_by="parent asc, idx asc",
+    )
+    offering_rules = defaultdict(list)
+    for row in rule_rows or []:
+        parent = (row.get("parent") or "").strip()
+        if not parent:
+            continue
+        offering_rules[parent].append(row)
+
+    student_names = sorted({(request.get("student") or "").strip() for request in draft_requests})
+    student_history = {student: _get_student_course_history(student) for student in student_names}
+    student_results = {student: _get_student_results(student) for student in student_names}
+
+    program_names = sorted(
+        {(meta.get("program") or "").strip() for meta in offering_meta.values() if (meta.get("program") or "").strip()}
+    )
+    program_courses = {program: _get_program_courses(program) for program in program_names}
+
+    prerequisite_keys = set()
+    for request in draft_requests:
+        offering_name = (request.get("program_offering") or "").strip()
+        program = (offering_meta.get(offering_name) or {}).get("program")
+        if not program:
+            continue
+
+        offering_semantics = offering_semantics_by_offering.setdefault(
+            offering_name,
+            get_offering_course_semantics(offering_name),
+        )
+        for row in _normalize_rows(request.get("courses") or []):
+            course = row.get("course")
+            if course and course in offering_semantics:
+                prerequisite_keys.add((program, course))
+
+    prerequisite_rows = {
+        key: _get_prerequisite_rows(key[0], key[1]) for key in sorted(prerequisite_keys, key=lambda item: item)
+    }
+
+    capacity_context = {}
+    for offering_name in offering_names:
+        offering_semantics_by_offering.setdefault(
+            offering_name,
+            get_offering_course_semantics(offering_name),
+        )
+        seat_policy = (offering_meta.get(offering_name) or {}).get("seat_policy")
+        capacity_policy = _map_offering_seat_policy_to_capacity_policy(seat_policy)
+        counts, policy_used, policy_unavailable = _get_capacity_counts(offering_name, capacity_policy)
+        capacity_context[offering_name] = {
+            "counts": counts,
+            "policy": policy_used,
+            "policy_unavailable": policy_unavailable,
+        }
+
+    return {
+        "offering_meta": offering_meta,
+        "offering_rules": dict(offering_rules),
+        "program_courses": program_courses,
+        "capacity_context": capacity_context,
+        "student_history": student_history,
+        "student_results": student_results,
+        "prerequisite_rows": prerequisite_rows,
+    }
+
+
+def _build_live_validation_engine_payload(
+    request,
+    *,
+    offering_semantics: dict[str, dict],
+    batch_context: dict,
+) -> dict:
     explicit_rows = _normalize_rows(request.get("courses") or [])
-    offering_semantics = get_offering_course_semantics((request.program_offering or "").strip())
+    if not explicit_rows:
+        frappe.throw(_("No courses selected to validate."))
+
+    offering_name = (request.get("program_offering") or "").strip()
+    student = (request.get("student") or "").strip()
+    if not offering_name or not student:
+        frappe.throw(_("Program Offering and Student are required to validate live course choices."))
+
+    offering_meta = batch_context["offering_meta"].get(offering_name) or {}
+    program = (offering_meta.get("program") or "").strip()
+    requested_courses = [row["course"] for row in explicit_rows if row.get("course")]
+    requested_row_map = {row["course"]: row for row in explicit_rows if row.get("course")}
+    student_history = batch_context["student_history"].get(student) or {}
+    student_results = batch_context["student_results"].get(student) or {}
+    program_courses = batch_context["program_courses"].get(program) or {}
+    capacity_context = batch_context["capacity_context"].get(offering_name) or {}
+    capacity_counts = capacity_context.get("counts") or {}
+    policy_used = capacity_context.get("policy") or "committed_only"
+    policy_unavailable = bool(capacity_context.get("policy_unavailable"))
+
+    course_results = []
+    any_course_blocked = False
+    any_course_override_required = False
+
+    for course in requested_courses:
+        course_row = offering_semantics.get(course)
+        requested_row = requested_row_map.get(course) or {}
+        reasons = []
+        evidence = []
+        blocked = False
+        override_required = False
+
+        if not course_row:
+            blocked = True
+            reasons.append("Course is not part of the Program Offering.")
+            capacity_result = {
+                "capacity": None,
+                "counted": None,
+                "remaining": None,
+                "status": "unknown",
+                "policy": policy_used,
+            }
+            if policy_unavailable:
+                capacity_result["policy_unavailable"] = True
+        else:
+            prereq_rows = batch_context["prerequisite_rows"].get((program, course), [])
+            prereq_result = _evaluate_prerequisites(
+                course,
+                prereq_rows,
+                student_history,
+                student_results,
+                course_level=(program_courses.get(course) or {}).get("level"),
+            )
+            reasons.extend(prereq_result.get("reasons") or [])
+            evidence.extend(prereq_result.get("evidence") or [])
+            if not prereq_result.get("eligible"):
+                blocked = True
+                override_required = True
+
+            repeat_result = _evaluate_repeat_attempts(
+                course,
+                program_courses.get(course),
+                student_history,
+                student_results,
+                requested_count=1,
+            )
+            reasons.extend(repeat_result.get("reasons") or [])
+            if not repeat_result.get("eligible"):
+                blocked = True
+                override_required = True
+
+            capacity_result = _evaluate_capacity(
+                course,
+                course_row,
+                capacity_counts,
+                requested_count=1,
+                policy=policy_used,
+                policy_unavailable=policy_unavailable,
+            )
+            if capacity_result.get("status") == "full":
+                blocked = True
+                override_required = True
+                reasons.append("Capacity full for this course.")
+
+        if blocked:
+            any_course_blocked = True
+        if override_required:
+            any_course_override_required = True
+
+        course_results.append(
+            {
+                "course": course,
+                "applied_basket_group": requested_row.get("applied_basket_group") or "",
+                "basket_groups": list((course_row or {}).get("basket_groups") or []),
+                "eligible": not blocked,
+                "blocked": blocked,
+                "override_required": override_required,
+                "reasons": reasons,
+                "evidence": evidence,
+                "capacity": capacity_result,
+                "requested_count": 1,
+            }
+        )
+
+    basket_result = _evaluate_basket(
+        explicit_rows,
+        offering_semantics,
+        {
+            "program_offering": offering_name,
+            "program_courses": program_courses,
+        },
+        rule_rows=batch_context["offering_rules"].get(offering_name, []),
+    )
+
+    basket_status = (basket_result.get("status") or "").strip()
+    basket_override_required = bool(basket_result.get("override_required"))
+    basket_invalid = basket_status == "invalid"
+    basket_pass = basket_status in {"ok", "valid"}
+    basket_not_configured = basket_status == "not_configured"
+
+    overall_blocked = bool(any_course_blocked or basket_invalid)
+    overall_valid = bool((not any_course_blocked) and basket_pass)
+    overall_override_required = bool(any_course_override_required or basket_override_required)
+
+    return {
+        "student": student,
+        "program_offering": offering_name,
+        "requested_courses": requested_courses,
+        "requested_rows": explicit_rows,
+        "requested_counts": {course: 1 for course in requested_courses},
+        "summary": {
+            "valid": bool(overall_valid),
+            "blocked": bool(overall_blocked),
+            "override_required": bool(overall_override_required),
+            "basket_status": basket_status,
+            "basket_not_configured": bool(basket_not_configured),
+        },
+        "results": {
+            "courses": course_results,
+            "basket": basket_result,
+        },
+    }
+
+
+def get_program_enrollment_request_live_choice_states(requests) -> dict[str, dict]:
+    draft_requests = [
+        request
+        for request in requests or []
+        if (request.get("name") or "").strip() and (request.get("request_status") or "").strip() == "Draft"
+    ]
+    if not draft_requests:
+        return {}
+
+    _assert_no_catalog_prereqs()
+
+    offering_semantics_by_offering: dict[str, dict] = {}
+    batch_context = _live_validation_batch_context(draft_requests, offering_semantics_by_offering)
+    live_choice_states: dict[str, dict] = {}
+
+    for request in draft_requests:
+        request_name = (request.get("name") or "").strip()
+        offering_name = (request.get("program_offering") or "").strip()
+        offering_semantics = offering_semantics_by_offering.get(offering_name) or {}
+
+        try:
+            engine_payload = _build_live_validation_engine_payload(
+                request,
+                offering_semantics=offering_semantics,
+                batch_context=batch_context,
+            )
+            _live_status, ready_for_submit, reasons = _summarize_live_validation(
+                engine_payload,
+                offering_semantics=offering_semantics,
+            )
+        except Exception as exc:
+            message = str(exc or "").strip() or _(
+                "The current course choices still need attention before this request can be submitted."
+            )
+            live_choice_states[request_name] = {
+                "ready_for_submit": False,
+                "reasons": [message],
+            }
+            continue
+
+        live_choice_states[request_name] = {
+            "ready_for_submit": bool(ready_for_submit),
+            "reasons": list(reasons or []),
+        }
+
+    return live_choice_states
+
+
+def get_effective_program_enrollment_request_rows(
+    request,
+    *,
+    offering_semantics: dict[str, dict] | None = None,
+) -> list[dict]:
+    explicit_rows = _normalize_rows(request.get("courses") or [])
+    if offering_semantics is None:
+        offering_semantics = get_offering_course_semantics((request.program_offering or "").strip())
     effective_rows = []
     seen = set()
 
@@ -323,14 +649,22 @@ def get_effective_program_enrollment_request_rows(request) -> list[dict]:
     return effective_rows
 
 
-def get_program_enrollment_request_choice_state(request, *, can_edit: bool) -> dict:
+def get_program_enrollment_request_choice_state(
+    request,
+    *,
+    can_edit: bool,
+    offering_semantics: dict[str, dict] | None = None,
+    required_basket_groups: list[str] | None = None,
+) -> dict:
     offering_name = (request.program_offering or "").strip()
-    offering_semantics = get_offering_course_semantics(offering_name) if offering_name else {}
+    if offering_semantics is None:
+        offering_semantics = get_offering_course_semantics(offering_name) if offering_name else {}
     explicit_rows = _normalize_rows(request.get("courses") or [])
     explicit_by_course = {row["course"]: row for row in explicit_rows}
-    effective_rows = get_effective_program_enrollment_request_rows(request)
+    effective_rows = get_effective_program_enrollment_request_rows(request, offering_semantics=offering_semantics)
     effective_by_course = {row["course"]: row for row in effective_rows}
-    required_basket_groups = _required_offering_basket_groups(offering_name)
+    if required_basket_groups is None:
+        required_basket_groups = _required_offering_basket_groups(offering_name)
     basket_result = (
         evaluate_basket_selection(program_offering=offering_name, requested_courses=effective_rows)
         if offering_name

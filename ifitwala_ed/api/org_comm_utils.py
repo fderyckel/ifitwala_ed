@@ -6,7 +6,7 @@
 import frappe
 from frappe import _
 
-from ifitwala_ed.utilities.employee_utils import get_ancestor_organizations
+from ifitwala_ed.utilities.employee_utils import get_ancestor_organizations, get_descendant_organizations
 from ifitwala_ed.utilities.school_tree import get_ancestor_schools, get_descendant_schools
 
 STAFF_ROLES = {
@@ -15,12 +15,72 @@ STAFF_ROLES = {
     "Employee",
     "Academic Admin",
     "Academic Assistant",
+    "HR Manager",
+    "Accounts Manager",
+    "Nurse",
     "System Manager",
 }
 
 
+def _to_text(value) -> str:
+    return str(value or "").strip()
+
+
 def _as_bool(value) -> bool:
     return value in (1, "1", True)
+
+
+def get_school_organization_map(school_names) -> dict[str, str]:
+    normalized_names = sorted({_to_text(school) for school in (school_names or []) if _to_text(school)})
+    if not normalized_names:
+        return {}
+
+    rows = frappe.get_all(
+        "School",
+        filters={"name": ["in", tuple(normalized_names)]},
+        fields=["name", "organization"],
+        limit=0,
+    )
+    return {
+        _to_text(row.get("name")): _to_text(row.get("organization"))
+        for row in (rows or [])
+        if _to_text(row.get("name"))
+    }
+
+
+def expand_employee_visibility_context(employee: dict | None, roles) -> dict:
+    """Expand Academic Admin org/school visibility for archive-like permission checks."""
+    employee = dict(employee or {})
+    if "Academic Admin" not in (roles or []):
+        return employee
+
+    base_school = _to_text(employee.get("school"))
+    if base_school:
+        school_names = [school for school in (get_descendant_schools(base_school) or []) if _to_text(school)]
+        if school_names:
+            employee["school_names"] = school_names
+        return employee
+
+    base_organization = _to_text(employee.get("organization"))
+    if not base_organization:
+        return employee
+
+    organization_names = [org for org in (get_descendant_organizations(base_organization) or []) if _to_text(org)]
+    if organization_names:
+        employee["organization_names"] = organization_names
+
+    school_rows = frappe.get_all(
+        "School",
+        filters={"organization": ["in", organization_names]}
+        if organization_names
+        else {"organization": base_organization},
+        pluck="name",
+    )
+    school_names = [school for school in (school_rows or []) if _to_text(school)]
+    if school_names:
+        employee["school_names"] = school_names
+
+    return employee
 
 
 def _resolve_student_record_for_user(user_id: str) -> dict:
@@ -95,6 +155,7 @@ def _get_cached_guardian_context(user_id: str) -> dict:
             "student_names": set(),
             "student_groups": set(),
             "school_names": set(),
+            "organization_names": set(),
         }
         return cache[user_id]
 
@@ -142,12 +203,19 @@ def _get_cached_guardian_context(user_id: str) -> dict:
 
     school_names = {row.get("anchor_school") for row in (student_rows or []) if row.get("anchor_school")}
     school_names.update({row.get("school") for row in (group_rows or []) if row.get("school")})
+    school_org_map = get_school_organization_map(school_names)
+    organization_names = {
+        school_org_map.get(_to_text(school_name))
+        for school_name in school_names
+        if school_org_map.get(_to_text(school_name))
+    }
 
     cache[user_id] = {
         "guardian_name": guardian_name,
         "student_names": set(enabled_students),
         "student_groups": {row.get("student_group") for row in (group_rows or []) if row.get("student_group")},
         "school_names": school_names,
+        "organization_names": organization_names,
     }
     return cache[user_id]
 
@@ -181,8 +249,10 @@ def check_audience_match(
                     - Others: must be member of that Team via Team Member child table
 
     Strict filter behavior for organization-wide rows:
-    - Organization target mode is staff-only and matches active Employee.organization.
-    - Archive callers may widen this with explicit descendant organization scope in employee.organization_names.
+    - Organization target mode matches the communication organization against the user's
+      organization ancestry.
+    - Archive callers may widen this with explicit descendant organization scope in
+      employee.organization_names.
 
     Strict school filter behaviour:
     - If filter_school = X, only School Scope rows are eligible.
@@ -251,18 +321,26 @@ def check_audience_match(
             )
         return aud_school in user_school_names
 
-    def _organization_scope_match(comm_org, user_org_name, ancestor_cache):
-        allowed_organizations = {org for org in (employee.get("organization_names") or []) if org}
-        if comm_org and allowed_organizations and comm_org in allowed_organizations:
-            return True
-        if not comm_org or not user_org_name:
+    def _organization_scope_match(comm_org, user_org_names, ancestor_cache):
+        if not comm_org:
             return False
-        if user_org_name not in ancestor_cache:
-            try:
-                ancestor_cache[user_org_name] = set(get_ancestor_organizations(user_org_name) or [])
-            except Exception:
-                ancestor_cache[user_org_name] = set()
-        return comm_org in ancestor_cache[user_org_name]
+
+        normalized_user_org_names = {_to_text(org) for org in (user_org_names or []) if _to_text(org)}
+        if not normalized_user_org_names:
+            return False
+        if comm_org in normalized_user_org_names:
+            return True
+
+        for user_org_name in normalized_user_org_names:
+            if user_org_name not in ancestor_cache:
+                try:
+                    ancestor_cache[user_org_name] = set(get_ancestor_organizations(user_org_name) or [])
+                except Exception:
+                    ancestor_cache[user_org_name] = set()
+            if comm_org in ancestor_cache[user_org_name]:
+                return True
+
+        return False
 
     # Normalize "All"/empty
     if filter_team in ("All", "", None):
@@ -333,12 +411,19 @@ def check_audience_match(
         if not user_school_names:
             user_school_names = set(student_context.get("school_names") or [])
 
-    if "Guardian" in roles and (not student_groups or not user_school_names):
+    user_organization_names = {_to_text(employee.get("organization"))} if employee else set()
+    user_organization_names.update(
+        {_to_text(org) for org in (employee.get("organization_names") or []) if _to_text(org)}
+    )
+
+    if "Guardian" in roles and (not student_groups or not user_school_names or not user_organization_names):
         guardian_context = _get_cached_guardian_context(user)
         student_groups.update(set(guardian_context.get("student_groups") or []))
         user_school_names.update(set(guardian_context.get("school_names") or []))
+        user_organization_names.update(
+            {_to_text(org) for org in (guardian_context.get("organization_names") or []) if _to_text(org)}
+        )
 
-    user_organization = employee.get("organization") if employee else None
     user_recipient_flags = _get_user_recipient_flags()
 
     filter_school_scope: set[str] | None = None
@@ -460,7 +545,7 @@ def check_audience_match(
 
         if target_mode == "Organization":
             if is_academic_admin:
-                if _organization_scope_match(comm_org, user_organization, organization_ancestor_cache):
+                if _organization_scope_match(comm_org, user_organization_names, organization_ancestor_cache):
                     return True
                 continue
             enabled_recipients = _get_enabled_recipient_flags(aud)
@@ -468,9 +553,7 @@ def check_audience_match(
                 continue
             if user_recipient_flags and not (enabled_recipients & user_recipient_flags):
                 continue
-            if not (set(roles or []) & STAFF_ROLES):
-                continue
-            if _organization_scope_match(comm_org, user_organization, organization_ancestor_cache):
+            if _organization_scope_match(comm_org, user_organization_names, organization_ancestor_cache):
                 return True
             continue
 

@@ -18,7 +18,12 @@ from ifitwala_ed.governance.policy_scope_utils import (
     is_policy_manageable_by_user,
     is_policy_within_user_scope,
 )
-from ifitwala_ed.governance.policy_utils import ensure_policy_admin, is_policy_admin, is_system_manager
+from ifitwala_ed.governance.policy_utils import (
+    ensure_policy_admin,
+    is_policy_admin,
+    is_system_manager,
+    normalize_guardian_acknowledgement_mode,
+)
 from ifitwala_ed.utilities.html_sanitizer import sanitize_html
 
 PRIVILEGED_POLICY_WRITE_ROLES = frozenset({"System Manager", "Administrator"})
@@ -340,6 +345,7 @@ class PolicyVersion(Document):
     def before_insert(self):
         ensure_policy_admin()
         self._sanitize_policy_text()
+        self._validate_guardian_acknowledgement_mode()
         self._validate_parent_policy()
         self._validate_unique_version_label()
         self._validate_policy_text_required()
@@ -352,6 +358,7 @@ class PolicyVersion(Document):
     def before_save(self):
         ensure_policy_admin()
         self._sanitize_policy_text()
+        self._validate_guardian_acknowledgement_mode()
         if self.is_new():
             self._validate_parent_policy()
         before = self.get_doc_before_save() if not self.is_new() else None
@@ -367,6 +374,7 @@ class PolicyVersion(Document):
             self._enforce_immutability(before)
             self._enforce_policy_text_lock(before, has_ack=has_ack)
             self._enforce_acknowledgement_clause_lock(before, has_ack=has_ack)
+            self._enforce_guardian_acknowledgement_mode_lock(before)
             self._enforce_ack_lock(before, has_ack=has_ack)
 
         self._sync_text_lock_state(before=before, has_ack=has_ack)
@@ -392,6 +400,11 @@ class PolicyVersion(Document):
 
     def _sanitize_policy_text(self):
         self.policy_text = sanitize_html(self.policy_text or "", allow_headings_from="h2")
+
+    def _validate_guardian_acknowledgement_mode(self):
+        self.guardian_acknowledgement_mode = normalize_guardian_acknowledgement_mode(
+            getattr(self, "guardian_acknowledgement_mode", None)
+        )
 
     def _validate_unique_version_label(self):
         if not self.institutional_policy or not self.version_label:
@@ -420,6 +433,19 @@ class PolicyVersion(Document):
     def _has_acknowledgements(self) -> bool:
         return bool(self.name and frappe.db.exists("Policy Acknowledgement", {"policy_version": self.name}))
 
+    def _has_guardian_acknowledgements(self) -> bool:
+        if not self.name:
+            return False
+        return bool(
+            frappe.db.exists(
+                "Policy Acknowledgement",
+                {
+                    "policy_version": self.name,
+                    "acknowledged_for": "Guardian",
+                },
+            )
+        )
+
     def _enforce_policy_text_lock(self, before, *, has_ack: bool):
         if before.get("policy_text") == self.get("policy_text"):
             return
@@ -434,6 +460,11 @@ class PolicyVersion(Document):
     def _acknowledgement_clauses_changed(self, before) -> bool:
         return _serialize_acknowledgement_clauses(before) != _serialize_acknowledgement_clauses(self)
 
+    def _guardian_acknowledgement_mode_changed(self, before) -> bool:
+        return normalize_guardian_acknowledgement_mode(
+            before.get("guardian_acknowledgement_mode")
+        ) != normalize_guardian_acknowledgement_mode(self.get("guardian_acknowledgement_mode"))
+
     def _enforce_acknowledgement_clause_lock(self, before, *, has_ack: bool):
         if not self._acknowledgement_clauses_changed(before):
             return
@@ -446,6 +477,18 @@ class PolicyVersion(Document):
                     "Create a new Policy Version amendment."
                 )
             )
+
+    def _enforce_guardian_acknowledgement_mode_lock(self, before):
+        if not self._guardian_acknowledgement_mode_changed(before):
+            return
+        if not self._has_guardian_acknowledgements():
+            return
+        frappe.throw(
+            _(
+                "Guardian Acknowledgement Mode is immutable once guardian acknowledgements exist. "
+                "Create a new Policy Version amendment."
+            )
+        )
 
     def _enforce_ack_lock(self, before, *, has_ack: bool):
         if not has_ack:

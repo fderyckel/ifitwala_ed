@@ -235,6 +235,45 @@ def get_student_group_row(student_group: str) -> dict:
     return row
 
 
+def resolve_active_class_teaching_plan(student_group: str) -> dict[str, object]:
+    student_group = normalize_text(student_group)
+    if not student_group:
+        return {
+            "status": "missing_active_plan",
+            "class_teaching_plan": None,
+            "active_plan_count": 0,
+        }
+
+    active_rows = frappe.get_all(
+        "Class Teaching Plan",
+        filters={"student_group": student_group, "planning_status": "Active"},
+        fields=["name", "title", "course_plan", "planning_status"],
+        order_by="modified desc, creation desc",
+        limit=2,
+        ignore_permissions=True,
+    )
+
+    if not active_rows:
+        return {
+            "status": "missing_active_plan",
+            "class_teaching_plan": None,
+            "active_plan_count": 0,
+        }
+
+    if len(active_rows) > 1:
+        return {
+            "status": "multiple_active_plans",
+            "class_teaching_plan": None,
+            "active_plan_count": len(active_rows),
+        }
+
+    return {
+        "status": "ready",
+        "class_teaching_plan": normalize_text(active_rows[0].get("name")) or None,
+        "active_plan_count": 1,
+    }
+
+
 def get_unit_plan_rows(course_plan: str) -> list[dict]:
     return frappe.get_all(
         "Unit Plan",
@@ -359,7 +398,7 @@ def _resolve_bootstrap_course_plan_for_group(course: str, academic_year: str | N
 
     base_filters = {
         "course": course,
-        "plan_status": ["!=", "Archived"],
+        "plan_status": "Active",
     }
     if academic_year:
         exact_year_rows = frappe.get_all(

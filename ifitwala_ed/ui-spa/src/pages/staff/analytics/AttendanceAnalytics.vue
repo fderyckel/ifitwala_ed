@@ -32,6 +32,7 @@ import type {
 } from '@/types/contracts/studentAttendance';
 
 type ChartOption = Record<string, unknown>;
+type HeatmapSeriesPoint = [number, number, number, number, number];
 
 type WindowPreset = 'term' | AttendanceDatePreset;
 type RiskBucket = 'critical' | 'warning' | 'ok';
@@ -150,7 +151,7 @@ const heatmapOption = computed<ChartOption>(() => {
 				cell.expected > 0 ? Number(((cell.present / cell.expected) * 100).toFixed(2)) : 0;
 			return [xIdx, yIdx, ratio, cell.present, cell.expected];
 		})
-		.filter((row): row is [number, number, number, number, number] => !!row);
+		.filter((row): row is HeatmapSeriesPoint => !!row);
 
 	const maxRatio = Math.max(100, ...seriesData.map(row => row[2]));
 
@@ -171,6 +172,7 @@ const heatmapOption = computed<ChartOption>(() => {
 		},
 		visualMap: {
 			show: true,
+			dimension: 2,
 			min: 0,
 			max: maxRatio,
 			orient: 'vertical',
@@ -183,7 +185,20 @@ const heatmapOption = computed<ChartOption>(() => {
 				color: ['#dff4ea', '#97d7b8', '#53b587', '#1f8d5b'],
 			},
 		},
-		tooltip: { trigger: 'item' },
+		tooltip: {
+			trigger: 'item',
+			formatter: (params: { value?: HeatmapSeriesPoint }) => {
+				const value = params.value;
+				if (!value) return '';
+				const [xIdx, yIdx, ratio, present, expected] = value;
+				return [
+					x[xIdx] || '',
+					yLabels[yIdx] || '',
+					`${ratio}% integrity`,
+					`${present}/${expected} present`,
+				].join('<br>');
+			},
+		},
 		series: [
 			{
 				type: 'heatmap',
@@ -334,6 +349,8 @@ const activeRiskThresholds = computed(() => risk.value?.thresholds || thresholds
 let loadRunId = 0;
 let reloadTimer: number | null = null;
 let disposeAttendanceInvalidate: (() => void) | null = null;
+let hydratingFilters = false;
+let filterContextRunId = 0;
 
 function isoDate(value: Date): string {
 	return value.toISOString().slice(0, 10);
@@ -396,7 +413,7 @@ function buildBasePayload(): Omit<AttendanceBaseParams, 'mode'> {
 }
 
 function scheduleReload() {
-	if (!filtersReady.value) return;
+	if (!filtersReady.value || hydratingFilters) return;
 	if (Boolean(filters.start_date) !== Boolean(filters.end_date)) {
 		actionError.value = 'Select both start and end dates for a calendar range.';
 		return;
@@ -410,21 +427,75 @@ function scheduleReload() {
 	}, 350);
 }
 
-async function loadStudentGroups() {
+async function loadPrograms(runId?: number) {
+	actionError.value = null;
+	try {
+		const scopedPrograms = await attendanceService.fetchPrograms({
+			school: filters.school,
+		});
+		if (runId !== undefined && runId !== filterContextRunId) return false;
+		programs.value = scopedPrograms;
+		if (filters.program && !scopedPrograms.some(program => program.name === filters.program)) {
+			filters.program = null;
+		}
+		return true;
+	} catch (error) {
+		if (runId !== undefined && runId !== filterContextRunId) return false;
+		programs.value = [];
+		filters.program = null;
+		filters.student_group = null;
+		actionError.value = formatError(error);
+		return false;
+	}
+}
+
+async function loadStudentGroups(runId?: number) {
 	actionError.value = null;
 	try {
 		const groups = await attendanceService.fetchStudentGroups({
 			school: filters.school,
 			program: filters.program,
 		});
+		if (runId !== undefined && runId !== filterContextRunId) return false;
 		studentGroups.value = groups;
 		if (filters.student_group && !groups.some(group => group.name === filters.student_group)) {
 			filters.student_group = null;
 		}
+		return true;
 	} catch (error) {
+		if (runId !== undefined && runId !== filterContextRunId) return false;
 		studentGroups.value = [];
 		filters.student_group = null;
 		actionError.value = formatError(error);
+		return false;
+	}
+}
+
+async function reloadFilterContext() {
+	const runId = ++filterContextRunId;
+	hydratingFilters = true;
+	try {
+		const programsLoaded = await loadPrograms(runId);
+		if (!programsLoaded) return;
+		await loadStudentGroups(runId);
+	} finally {
+		if (runId === filterContextRunId) {
+			await Promise.resolve();
+			hydratingFilters = false;
+		}
+	}
+}
+
+async function reloadStudentGroupContext() {
+	const runId = ++filterContextRunId;
+	hydratingFilters = true;
+	try {
+		await loadStudentGroups(runId);
+	} finally {
+		if (runId === filterContextRunId) {
+			await Promise.resolve();
+			hydratingFilters = false;
+		}
 	}
 }
 
@@ -432,9 +503,7 @@ async function initializeFilters() {
 	const schoolContext = await attendanceService.fetchSchoolContext();
 	schools.value = schoolContext.schools || [];
 	filters.school = schoolContext.default_school || schoolContext.schools?.[0]?.name || null;
-
-	programs.value = await attendanceService.fetchPrograms();
-	await loadStudentGroups();
+	await reloadFilterContext();
 }
 
 async function reloadDashboard() {
@@ -555,17 +624,25 @@ function onRiskRadarClick(event: unknown) {
 }
 
 watch(
-	() => [filters.school, filters.program],
-	() => {
-		if (!filtersReady.value) return;
-		void loadStudentGroups();
+	() => filters.school,
+	async () => {
+		if (!filtersReady.value || hydratingFilters) return;
+		await reloadFilterContext();
+		scheduleReload();
+	}
+);
+
+watch(
+	() => filters.program,
+	async () => {
+		if (!filtersReady.value || hydratingFilters) return;
+		await reloadStudentGroupContext();
+		scheduleReload();
 	}
 );
 
 watch(
 	() => [
-		filters.school,
-		filters.program,
 		filters.student_group,
 		filters.whole_day,
 		filters.activity_only,
@@ -574,6 +651,7 @@ watch(
 		preset.value,
 	],
 	() => {
+		if (hydratingFilters) return;
 		scheduleReload();
 	}
 );
@@ -601,14 +679,19 @@ onBeforeUnmount(() => {
 
 <template>
 	<div class="analytics-shell attendance-analytics-shell">
-		<header class="flex flex-wrap items-end justify-between gap-3">
-			<div>
-				<h1 class="type-h2 text-canopy">Attendance Analytics</h1>
-				<p class="type-body mt-1 text-slate-token/80">
+		<header class="page-header">
+			<div class="page-header__intro">
+				<h1 class="type-h1 text-canopy">Attendance Analytics</h1>
+				<p class="type-meta text-slate-token/80">
 					Pattern-first attendance intelligence with role-aware framing.
 				</p>
 			</div>
-			<div class="flex flex-col items-end gap-2">
+			<div class="page-header__actions">
+				<DateRangePills
+					:model-value="preset"
+					:items="presetItems"
+					@update:model-value="applyPreset"
+				/>
 				<StatsTile :label="roleHeading" :value="meta?.window_source || 'window'" tone="info" />
 			</div>
 		</header>
@@ -653,16 +736,6 @@ onBeforeUnmount(() => {
 						{{ group.student_group_name || group.name }}
 					</option>
 				</select>
-			</div>
-
-			<div class="flex flex-col gap-1">
-				<label class="type-label">Window</label>
-				<DateRangePills
-					:model-value="preset"
-					:items="presetItems"
-					size="sm"
-					@update:model-value="applyPreset"
-				/>
 			</div>
 
 			<div class="flex flex-col gap-1">
@@ -1191,10 +1264,6 @@ onBeforeUnmount(() => {
 </template>
 
 <style scoped>
-.attendance-analytics-shell {
-	max-width: none;
-}
-
 .attendance-analytics-grid {
 	grid-template-columns: minmax(0, 1fr);
 }

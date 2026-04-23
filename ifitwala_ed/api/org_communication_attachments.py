@@ -1,12 +1,12 @@
 from __future__ import annotations
 
-import importlib
 from typing import Any
 
 import frappe
 from frappe import _
 
-from ifitwala_ed.api.file_access import build_org_communication_attachment_open_url
+from ifitwala_ed.api import file_access as file_access_api
+from ifitwala_ed.api.attachment_previews import build_attachment_preview_item, extract_file_extension
 from ifitwala_ed.setup.doctype.org_communication.attachments import (
     ORG_COMMUNICATION_ATTACHMENT_BINDING_ROLE,
     ORG_COMMUNICATION_ATTACHMENT_SLOT_PREFIX,
@@ -16,6 +16,7 @@ from ifitwala_ed.utilities.governed_uploads import (
     _drive_upload_and_finalize,
     _get_uploaded_file,
     _resolve_upload_mime_type_hint,
+    _workflow_result_payload,
 )
 
 
@@ -28,7 +29,7 @@ def _clean_text(value) -> str | None:
 
 def _load_drive_callable(attribute: str):
     try:
-        drive_api = importlib.import_module("ifitwala_drive.api.communications")
+        from ifitwala_drive.api import communications as drive_api
     except ImportError as exc:
         frappe.throw(_("Ifitwala Drive is required for communication attachments: {0}").format(exc))
 
@@ -36,32 +37,9 @@ def _load_drive_callable(attribute: str):
     if callable(callable_obj):
         return callable_obj
 
-    drive_integration = None
-    try:
-        drive_integration = importlib.import_module(
-            "ifitwala_drive.services.integration.ifitwala_ed_org_communications"
-        )
-        importlib.reload(drive_integration)
-        drive_api = importlib.reload(drive_api)
-    except Exception:
-        drive_api = importlib.import_module("ifitwala_drive.api.communications")
-
-    callable_obj = getattr(drive_api, attribute, None)
-    if callable(callable_obj):
-        return callable_obj
-
-    service_attribute = f"{attribute}_service"
-    if drive_integration and hasattr(drive_integration, service_attribute):
-        service_callable = getattr(drive_integration, service_attribute)
-
-        def _wrapped_service_callable(**kwargs):
-            return service_callable(kwargs)
-
-        return _wrapped_service_callable
-
     frappe.throw(
         _(
-            "Ifitwala Drive is missing communications method '{0}'. Deploy or restart the Drive app so the updated communications API is available."
+            "Ifitwala Drive is missing public communications method '{0}'. Deploy the matching Drive API before using governed communication attachments."
         ).format(attribute)
     )
 
@@ -76,6 +54,57 @@ def _get_attachment_row(doc, row_name: str):
             return row
 
     frappe.throw(_("Attachment row was not found: {0}").format(resolved_row_name), frappe.DoesNotExistError)
+
+
+def _get_attachment_preview_meta(org_communication: str, row_name: str) -> dict[str, Any]:
+    slot = f"{ORG_COMMUNICATION_ATTACHMENT_SLOT_PREFIX}{str(row_name or '').strip()}"
+    if not slot or not org_communication:
+        return {"preview_status": None, "inline_preview_ready": False}
+
+    drive_file_id = frappe.db.get_value(
+        "Drive Binding",
+        {
+            "binding_doctype": "Org Communication",
+            "binding_name": org_communication,
+            "binding_role": ORG_COMMUNICATION_ATTACHMENT_BINDING_ROLE,
+            "slot": slot,
+            "status": "active",
+        },
+        "drive_file",
+    )
+    if not drive_file_id:
+        drive_file_id = frappe.db.get_value(
+            "Drive File",
+            {
+                "owner_doctype": "Org Communication",
+                "owner_name": org_communication,
+                "slot": slot,
+                "status": "active",
+            },
+            "name",
+        )
+    if not drive_file_id:
+        return {"preview_status": None, "inline_preview_ready": False}
+
+    drive_file = (
+        frappe.db.get_value(
+            "Drive File",
+            drive_file_id,
+            ["preview_status", "current_version"],
+            as_dict=True,
+        )
+        or {}
+    )
+    preview_status = _clean_text(drive_file.get("preview_status"))
+    return {
+        "preview_status": preview_status,
+        "inline_preview_ready": preview_status == "ready",
+    }
+
+
+def _build_attachment_thumbnail_url(org_communication: str, row_name: str, preview_url: str | None) -> str | None:
+    # Org Communication cards now reuse the richer governed preview route for inline media.
+    return preview_url
 
 
 def serialize_org_communication_attachment_row(org_communication: str, row) -> dict[str, Any]:
@@ -102,9 +131,34 @@ def serialize_org_communication_attachment_row(org_communication: str, row) -> d
         )
 
     if file_url:
-        open_url = build_org_communication_attachment_open_url(
+        preview_meta = _get_attachment_preview_meta(org_communication, row_name)
+        preview_status = preview_meta.get("preview_status")
+        open_url = file_access_api.build_org_communication_attachment_open_url(
             org_communication=org_communication,
             row_name=row_name,
+        )
+        preview_url = file_access_api.build_org_communication_attachment_preview_url(
+            org_communication=org_communication,
+            row_name=row_name,
+        )
+        thumbnail_url = (
+            _build_attachment_thumbnail_url(org_communication, row_name, preview_url)
+            if preview_meta.get("inline_preview_ready")
+            else None
+        )
+        attachment_preview = build_attachment_preview_item(
+            item_id=row_name,
+            owner_doctype="Org Communication",
+            owner_name=org_communication,
+            display_name=title,
+            description=description,
+            extension=extract_file_extension(file_name=file_name, file_url=file_url),
+            size_bytes=file_size,
+            preview_status=preview_status,
+            thumbnail_url=thumbnail_url,
+            preview_url=preview_url,
+            open_url=open_url,
+            download_url=open_url,
         )
         return {
             "row_name": row_name,
@@ -113,9 +167,22 @@ def serialize_org_communication_attachment_row(org_communication: str, row) -> d
             "description": description,
             "file_name": file_name or title,
             "file_size": file_size,
+            "preview_status": preview_status,
+            "thumbnail_url": thumbnail_url,
+            "preview_url": preview_url,
             "open_url": open_url,
+            "attachment_preview": attachment_preview,
         }
 
+    attachment_preview = build_attachment_preview_item(
+        item_id=row_name,
+        owner_doctype="Org Communication",
+        owner_name=org_communication,
+        link_url=external_url,
+        display_name=title,
+        description=description,
+        open_url=external_url,
+    )
     return {
         "row_name": row_name,
         "kind": "link",
@@ -123,6 +190,7 @@ def serialize_org_communication_attachment_row(org_communication: str, row) -> d
         "description": description,
         "external_url": external_url or None,
         "open_url": external_url or None,
+        "attachment_preview": attachment_preview,
     }
 
 
@@ -153,9 +221,11 @@ def upload_org_communication_attachment(
     )
 
     doc.reload()
+    session_workflow_result = _workflow_result_payload(session_response)
+    finalize_workflow_result = _workflow_result_payload(finalize_response)
     resolved_row_name = (
-        _clean_text(finalize_response.get("row_name"))
-        or _clean_text(session_response.get("row_name"))
+        _clean_text(finalize_workflow_result.get("row_name"))
+        or _clean_text(session_workflow_result.get("row_name"))
         or _clean_text(row_name)
     )
     target_row = _get_attachment_row(doc, resolved_row_name)

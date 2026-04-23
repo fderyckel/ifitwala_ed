@@ -2,13 +2,13 @@
 <template>
 	<div class="staff-shell min-w-0 space-y-8">
 		<!-- HEADER -->
-		<header class="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-			<div>
-				<h1 class="type-h1">Morning Briefing</h1>
-				<p class="type-meta mt-1 text-slate-token/80">Daily Operational &amp; Academic Pulse</p>
+		<header class="page-header">
+			<div class="page-header__intro">
+				<h1 class="type-h1 text-canopy">Morning Briefing</h1>
+				<p class="type-meta text-slate-token/80">Daily Operational &amp; Academic Pulse</p>
 			</div>
 
-			<div class="flex items-center gap-3 self-start sm:self-auto">
+			<div class="page-header__actions">
 				<div class="text-right">
 					<span class="section-header block mb-0.5">Today</span>
 					<span class="type-h3 text-ink">
@@ -37,249 +37,158 @@
 		<!-- CONTENT -->
 		<div v-else class="space-y-8">
 			<!-- ANNOUNCEMENTS -->
-			<section v-if="hasArrayData('announcements')" class="space-y-3">
-				<!-- Header strip -->
-				<div class="flex flex-wrap items-center justify-between gap-3">
-					<div class="flex items-center gap-2">
-						<h2 class="section-header text-slate-token/80">Organizational Announcements</h2>
-						<span
-							class="inline-flex items-center rounded-full bg-surface-soft px-2 py-0.5 text-[10px] font-medium text-slate-token/80"
-						>
-							{{ widgets.data.announcements.length }} today
-						</span>
-					</div>
-
-					<div class="flex flex-wrap items-center justify-start gap-2 sm:justify-end">
-						<button
-							v-for="mode in viewModes"
-							:key="mode.value"
-							class="rounded-full border px-3 py-1 text-xs font-semibold transition-all"
-							:class="
-								viewMode === mode.value
-									? 'border-jacaranda bg-jacaranda/5 text-jacaranda shadow-sm'
-									: 'border-border/60 text-slate-token/80 hover:bg-surface-soft'
-							"
-							@click="viewMode = mode.value"
-						>
-							{{ mode.label }}
-						</button>
-
-						<div class="hidden items-center gap-2 text-[11px] text-slate-token/70 sm:flex">
-							<span class="inline-flex items-center gap-1">
-								<span class="h-2 w-2 rounded-full bg-flame"></span>
-								{{ criticalCount }} Critical
-							</span>
-							<span class="inline-flex items-center gap-1">
-								<span class="h-2 w-2 rounded-full bg-jacaranda"></span>
-								{{ highCount }} High
-							</span>
-						</div>
-					</div>
-				</div>
-
-				<!-- Spotlight -->
-				<div
-					v-if="spotlightAnnouncements.length"
-					class="relative overflow-hidden rounded-2xl bg-surface-soft/80 p-5 ring-1 ring-border/60"
-				>
-					<div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-						<div v-if="currentSpotlight" class="flex-1">
-							<div class="mb-2 flex flex-wrap items-center gap-2">
-								<span
-									class="inline-flex items-center gap-1 rounded-md bg-surface-soft px-2 py-1 text-[11px] font-semibold text-slate-token/80"
-								>
-									{{ currentSpotlight.type }}
-								</span>
-								<span
-									v-if="currentSpotlight.priority === 'Critical'"
-									class="inline-flex items-center gap-1 rounded-md bg-flame/10 px-2 py-1 text-[11px] font-semibold text-flame"
-								>
-									Critical
-								</span>
-								<span
-									v-else-if="currentSpotlight.priority === 'High'"
-									class="inline-flex items-center gap-1 rounded-md bg-jacaranda/10 px-2 py-1 text-[11px] font-semibold text-jacaranda"
-								>
-									High priority
-								</span>
-							</div>
-
-							<h3 class="mb-2 type-h3 text-ink">
-								{{ currentSpotlight.title }}
-							</h3>
-
-							<div
-								class="prose prose-sm max-w-none text-slate-token/85 line-clamp-3"
-								v-html="currentSpotlight.content"
-							></div>
-
-							<button
-								@click="openAnnouncement(currentSpotlight)"
-								class="mt-3 flex items-center gap-1 type-button-label text-jacaranda hover:text-jacaranda/80"
-							>
-								Read full announcement
-								<FeatherIcon name="arrow-right" class="h-4 w-4" />
-							</button>
-
-							<!-- Interaction strip for spotlight -->
-							<div
-								v-if="hasVisibleAnnouncementActions(currentSpotlight)"
-								class="mt-3 flex flex-col gap-2 border-t border-border/40 pt-2 text-[11px] text-slate-token/70 sm:flex-row sm:items-center sm:justify-between"
-							>
-								<div class="flex flex-wrap items-center gap-2 sm:gap-3">
-									<button
-										v-if="canReactToAnnouncement(currentSpotlight)"
-										type="button"
-										class="inline-flex items-center gap-1 rounded-full bg-surface-soft px-2 py-1 hover:bg-surface-soft/80"
-										@click.stop="acknowledgeAnnouncement(currentSpotlight)"
+			<section v-if="hasArrayData('announcements')" class="space-y-4">
+				<div class="paper-card-frosted overflow-hidden">
+					<div class="space-y-5 px-5 py-5 lg:px-6 lg:py-6">
+						<div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+							<div class="space-y-2">
+								<div class="flex flex-wrap items-center gap-2">
+									<h2 class="section-header text-canopy/70">Morning Messages</h2>
+									<span
+										class="inline-flex items-center rounded-full border border-[rgb(var(--surface-strong-rgb)/0.72)] bg-[rgb(var(--surface-strong-rgb)/0.76)] px-3 py-1 text-[11px] font-semibold text-slate-token/74"
 									>
-										<FeatherIcon name="thumbs-up" class="h-3 w-3 text-canopy" />
-										<span>
-											Reactions
-											<span class="ml-1 text-[10px] text-slate-token/60">
-												({{ getInteractionStatsFor(currentSpotlight).reactions_total }})
-											</span>
-										</span>
-									</button>
-
-									<button
-										v-if="canCommentOnAnnouncement(currentSpotlight)"
-										type="button"
-										class="inline-flex items-center gap-1 rounded-full px-2 py-1 text-slate-token/70 hover:bg-surface-soft"
-										@click.stop="openInteractionThread(currentSpotlight)"
+										{{ announcementCountLabel }}
+									</span>
+									<span
+										v-if="unreadAnnouncementCount"
+										data-testid="morning-announcements-unread-count"
+										class="inline-flex items-center rounded-full border border-[rgb(var(--flame-rgb)/0.18)] bg-[rgb(var(--flame-rgb)/0.08)] px-3 py-1 text-[11px] font-semibold text-flame"
 									>
-										<FeatherIcon name="message-circle" class="h-3 w-3" />
-										<span>Comments</span>
-										<span class="text-[10px] text-slate-token/60">
-											({{ getInteractionStatsFor(currentSpotlight).comments_total }})
-										</span>
-									</button>
-								</div>
-
-								<div
-									v-if="getInteractionFor(currentSpotlight).self"
-									class="hidden text-[10px] text-jacaranda md:block"
-								>
-									You responded:
-									{{ getInteractionFor(currentSpotlight).self.intent_type || 'Commented' }}
-								</div>
-							</div>
-						</div>
-
-						<div
-							v-if="spotlightAnnouncements.length > 1"
-							class="flex flex-row items-center justify-start gap-3 lg:flex-col"
-						>
-							<button
-								class="rounded-full p-1 text-slate-token/60 transition-colors hover:bg-surface-soft hover:text-ink"
-								@click="prevSpotlight"
-							>
-								<FeatherIcon name="chevron-up" class="h-4 w-4" />
-							</button>
-							<div class="flex flex-row gap-1 lg:flex-col">
-								<span
-									v-for="(a, idx) in spotlightAnnouncements"
-									:key="idx"
-									class="h-1.5 w-1.5 rounded-full"
-									:class="idx === spotlightIndex ? 'bg-jacaranda' : 'bg-border'"
-								></span>
-							</div>
-							<button
-								class="rounded-full p-1 text-slate-token/60 transition-colors hover:bg-surface-soft hover:text-ink"
-								@click="nextSpotlight"
-							>
-								<FeatherIcon name="chevron-down" class="h-4 w-4" />
-							</button>
-						</div>
-					</div>
-				</div>
-
-				<!-- Compact list -->
-				<div class="paper-card mt-3">
-					<div
-						class="flex flex-col gap-2 border-b border-border/60 px-4 py-2 sm:flex-row sm:items-center sm:justify-between"
-					>
-						<p class="text-xs font-semibold uppercase tracking-wide text-slate-token/70">
-							All announcements
-						</p>
-						<button
-							v-if="widgets.data.announcements.length > MAX_INLINE_ANNOUNCEMENTS"
-							class="text-[11px] font-medium text-jacaranda hover:text-jacaranda/80"
-							@click="openAnnouncementsDialog"
-						>
-							Open announcement center
-						</button>
-					</div>
-
-					<div class="divide-y divide-border/40">
-						<button
-							v-for="(item, idx) in limitedAnnouncements"
-							:key="idx"
-							class="flex w-full items-start gap-3 px-4 py-3 text-left transition-colors hover:bg-surface-soft"
-							@click="openAnnouncement(item)"
-						>
-							<div
-								class="mt-1 h-2 w-2 flex-shrink-0 rounded-full"
-								:class="
-									item.priority === 'Critical'
-										? 'bg-flame'
-										: item.priority === 'High'
-											? 'bg-jacaranda'
-											: 'bg-border'
-								"
-							></div>
-
-							<div class="min-w-0 flex-1">
-								<div class="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
-									<p class="truncate text-sm font-semibold text-ink">
-										{{ item.title }}
-									</p>
-									<span class="text-[10px] uppercase text-slate-token/60">
-										{{ item.type }}
+										{{ unreadAnnouncementCount }} unread
 									</span>
 								</div>
-								<p
-									class="mt-1 text-xs text-slate-token/80 line-clamp-4 md:line-clamp-5"
-									v-html="item.content"
-								></p>
+								<p class="max-w-2xl text-sm leading-relaxed text-slate-token/82">
+									Newest updates stay at the top. Open any message for the full body, attachments,
+									and staff responses.
+								</p>
+							</div>
 
-								<!-- Interaction summary for each announcement -->
-								<div
-									v-if="hasVisibleAnnouncementActions(item)"
-									class="mt-2 flex flex-col gap-2 text-[10px] text-slate-token/65 sm:flex-row sm:items-center sm:justify-between"
-								>
-									<div class="flex flex-wrap items-center gap-2">
+							<button
+								type="button"
+								class="rounded-full border px-3 py-1.5 text-xs font-semibold transition-all"
+								:class="
+									showUnreadOnly
+										? 'border-jacaranda/30 bg-jacaranda/10 text-jacaranda shadow-sm'
+										: 'border-border/60 bg-[rgb(var(--surface-strong-rgb)/0.7)] text-slate-token/80 hover:bg-surface-soft'
+								"
+								@click="showUnreadOnly = !showUnreadOnly"
+							>
+								{{ showUnreadOnly ? 'Show all' : 'Unread only' }}
+							</button>
+						</div>
+
+						<div v-if="filteredAnnouncements.length" class="space-y-3">
+							<article
+								v-for="item in filteredAnnouncements"
+								:key="item.name"
+								:data-name="item.name"
+								data-testid="morning-announcement-card"
+								class="rounded-[1.75rem] border border-[rgb(var(--surface-strong-rgb)/0.72)] bg-[linear-gradient(180deg,rgb(var(--surface-strong-rgb)/0.88),rgb(var(--sand-rgb)/0.76))] p-4 shadow-[0_14px_32px_rgb(var(--ink-rgb)/0.04)] sm:p-5"
+							>
+								<div class="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+									<div class="min-w-0 flex-1">
+										<div class="flex flex-wrap items-center gap-2">
+											<span
+												class="inline-flex items-center rounded-full border border-[rgb(var(--clay-rgb)/0.12)] bg-[rgb(var(--surface-strong-rgb)/0.8)] px-3 py-1 text-[11px] font-semibold text-slate-token/74"
+											>
+												{{ formatAnnouncementDate(item.brief_start_date) }}
+											</span>
+											<span
+												class="inline-flex items-center rounded-full border border-[rgb(var(--clay-rgb)/0.14)] bg-[rgb(var(--sand-rgb)/0.88)] px-3 py-1 text-[11px] font-semibold text-clay"
+											>
+												{{ item.type }}
+											</span>
+											<span
+												class="inline-flex items-center rounded-full px-3 py-1 text-[11px] font-semibold"
+												:class="getPriorityClasses(item.priority)"
+											>
+												{{ item.priority || 'Info' }}
+											</span>
+											<span
+												data-testid="morning-announcement-status"
+												class="inline-flex items-center rounded-full px-3 py-1 text-[11px] font-semibold"
+												:class="
+													item.is_unread
+														? 'bg-[rgb(var(--flame-rgb)/0.12)] text-flame'
+														: 'bg-[rgb(var(--canopy-rgb)/0.08)] text-canopy'
+												"
+											>
+												{{ item.is_unread ? 'Unread' : 'Read' }}
+											</span>
+										</div>
+
+										<h3
+											data-testid="morning-announcement-title"
+											class="mt-3 text-[1.15rem] font-semibold tracking-tight text-ink sm:text-[1.25rem]"
+										>
+											{{ item.title }}
+										</h3>
+
+										<div
+											class="prose prose-sm mt-3 max-w-none text-slate-token/86 line-clamp-3"
+											v-html="item.content"
+										></div>
+
+										<div
+											v-if="getInteractionFor(item).self || hasVisibleAnnouncementActions(item)"
+											class="mt-4 flex flex-wrap items-center gap-3 text-xs text-slate-token/70"
+										>
+											<div
+												v-if="hasVisibleAnnouncementActions(item)"
+												class="inline-flex items-center gap-2 rounded-full border border-[rgb(var(--surface-strong-rgb)/0.8)] bg-[rgb(var(--surface-strong-rgb)/0.8)] px-3 py-1.5"
+											>
+												<span>Reactions {{ getInteractionStatsFor(item).reactions_total }}</span>
+												<span class="h-3 w-px bg-border/70"></span>
+												<span>Comments {{ getInteractionStatsFor(item).comments_total }}</span>
+											</div>
+											<span
+												v-if="getInteractionFor(item).self"
+												class="inline-flex items-center rounded-full bg-jacaranda/10 px-3 py-1.5 font-medium text-jacaranda"
+											>
+												You responded
+											</span>
+										</div>
+									</div>
+
+									<div
+										class="flex shrink-0 flex-wrap items-center gap-2 xl:max-w-[15rem] xl:justify-end"
+									>
 										<button
 											v-if="canReactToAnnouncement(item)"
 											type="button"
-											class="inline-flex items-center gap-1 rounded-full px-2 py-0.5 hover:bg-surface-soft"
+											class="if-action"
 											@click.stop="acknowledgeAnnouncement(item)"
 										>
-											<FeatherIcon name="thumbs-up" class="h-3 w-3 text-canopy" />
-											<span>{{ getInteractionStatsFor(item).reactions_total }}</span>
+											Acknowledge
 										</button>
-
-										<button
-											v-if="canCommentOnAnnouncement(item)"
-											type="button"
-											class="inline-flex items-center gap-1 rounded-full px-2 py-0.5 hover:bg-surface-soft"
-											@click.stop="openInteractionThread(item)"
-										>
-											<FeatherIcon name="message-circle" class="h-3 w-3" />
-											<span>Comments</span>
-											<span>({{ getInteractionStatsFor(item).comments_total }})</span>
+										<button type="button" class="if-action" @click="openAnnouncement(item)">
+											Open update
 										</button>
 									</div>
-
-									<span
-										v-if="getInteractionFor(item).self"
-										class="ml-2 text-[10px] text-jacaranda"
-									>
-										You responded
-									</span>
 								</div>
-							</div>
-						</button>
+							</article>
+						</div>
+
+						<div
+							v-else
+							class="rounded-[1.5rem] border border-dashed border-border/70 bg-[rgb(var(--surface-strong-rgb)/0.62)] px-4 py-6 text-sm text-slate-token/76"
+						>
+							<p>
+								{{
+									showUnreadOnly
+										? 'You have no unread morning messages.'
+										: 'No morning messages are available right now.'
+								}}
+							</p>
+							<button
+								v-if="showUnreadOnly"
+								type="button"
+								class="mt-3 inline-flex items-center rounded-full border border-border/60 bg-[rgb(var(--surface-strong-rgb)/0.75)] px-3 py-1 text-xs font-semibold text-slate-token/78 transition-colors hover:bg-surface-soft"
+								@click="showUnreadOnly = false"
+							>
+								Show all updates
+							</button>
+						</div>
 					</div>
 				</div>
 			</section>
@@ -338,7 +247,7 @@
 									v-model="clinicVolumeView"
 									:items="clinicVolumeViewOptions"
 									size="sm"
-									wrap-class="bg-white/70"
+									wrap-class="bg-[rgb(var(--surface-strong-rgb)/0.7)]"
 									@click.stop
 								/>
 							</div>
@@ -438,7 +347,7 @@
 										</div>
 										<div
 											v-if="log.status_color === 'red'"
-											class="absolute -right-1 -top-1 h-3 w-3 rounded-full bg-flame ring-2 ring-white"
+											class="absolute -right-1 -top-1 h-3 w-3 rounded-full bg-flame ring-2 ring-[rgb(var(--surface-strong-rgb)/1)]"
 										></div>
 									</div>
 
@@ -489,7 +398,7 @@
 				>
 					<div class="space-y-4">
 						<div
-							class="inline-flex w-fit items-center gap-2 rounded-full border border-white/70 bg-[rgb(var(--surface-strong-rgb)/0.72)] px-3 py-1 shadow-[0_8px_24px_rgb(var(--ink-rgb)/0.04)] backdrop-blur-sm"
+							class="inline-flex w-fit items-center gap-2 rounded-full border border-[rgb(var(--surface-strong-rgb)/0.72)] bg-[rgb(var(--surface-strong-rgb)/0.72)] px-3 py-1 shadow-[0_8px_24px_rgb(var(--ink-rgb)/0.04)] backdrop-blur-sm"
 						>
 							<div
 								class="flex h-6 w-6 items-center justify-center rounded-full bg-[rgb(var(--canopy-rgb)/0.08)] text-canopy"
@@ -515,7 +424,7 @@
 
 					<div class="grid gap-2.5 sm:grid-cols-3 lg:grid-cols-1 xl:grid-cols-3">
 						<div
-							class="rounded-[1.35rem] border border-white/70 bg-[rgb(var(--surface-strong-rgb)/0.74)] p-3 shadow-[0_10px_28px_rgb(var(--ink-rgb)/0.04)] backdrop-blur-sm"
+							class="rounded-[1.35rem] border border-[rgb(var(--surface-strong-rgb)/0.72)] bg-[rgb(var(--surface-strong-rgb)/0.74)] p-3 shadow-[0_10px_28px_rgb(var(--ink-rgb)/0.04)] backdrop-blur-sm"
 						>
 							<p class="type-overline text-slate-token/58">In View</p>
 							<p class="mt-2 text-2xl font-semibold tracking-tight text-canopy">
@@ -567,10 +476,10 @@
 								<li
 									v-for="emp in widgets.data.staff_birthdays"
 									:key="emp.name"
-									class="flex items-center gap-3 rounded-2xl border border-white/75 bg-[rgb(var(--surface-strong-rgb)/0.82)] px-3 py-3 shadow-[0_8px_18px_rgb(var(--ink-rgb)/0.04)]"
+									class="flex items-center gap-3 rounded-2xl border border-[rgb(var(--surface-strong-rgb)/0.76)] bg-[rgb(var(--surface-strong-rgb)/0.82)] px-3 py-3 shadow-[0_8px_18px_rgb(var(--ink-rgb)/0.04)]"
 								>
 									<div
-										class="h-10 w-10 overflow-hidden rounded-full bg-white shadow-[var(--shadow-soft)] ring-1 ring-[rgb(var(--clay-rgb)/0.12)]"
+										class="h-10 w-10 overflow-hidden rounded-full bg-[rgb(var(--surface-strong-rgb)/1)] shadow-[var(--shadow-soft)] ring-1 ring-[rgb(var(--clay-rgb)/0.12)]"
 									>
 										<img v-if="emp.image" :src="emp.image" class="h-full w-full object-cover" />
 										<div
@@ -620,10 +529,10 @@
 								<li
 									v-for="stu in widgets.data.my_student_birthdays"
 									:key="stu.first_name + stu.last_name"
-									class="flex items-center gap-3 rounded-2xl border border-white/75 bg-[rgb(var(--surface-strong-rgb)/0.82)] px-3 py-3 shadow-[0_8px_18px_rgb(var(--ink-rgb)/0.04)]"
+									class="flex items-center gap-3 rounded-2xl border border-[rgb(var(--surface-strong-rgb)/0.76)] bg-[rgb(var(--surface-strong-rgb)/0.82)] px-3 py-3 shadow-[0_8px_18px_rgb(var(--ink-rgb)/0.04)]"
 								>
 									<div
-										class="h-10 w-10 overflow-hidden rounded-full bg-white shadow-[var(--shadow-soft)] ring-1 ring-[rgb(var(--jacaranda-rgb)/0.12)]"
+										class="h-10 w-10 overflow-hidden rounded-full bg-[rgb(var(--surface-strong-rgb)/1)] shadow-[var(--shadow-soft)] ring-1 ring-[rgb(var(--jacaranda-rgb)/0.12)]"
 									>
 										<img v-if="stu.image" :src="stu.image" class="h-full w-full object-cover" />
 										<div
@@ -661,11 +570,15 @@
 		<!-- CONTENT DIALOG -->
 		<ContentDialog
 			v-model="isContentDialogOpen"
+			:title="dialogContentTitle"
 			:subtitle="dialogContent.subtitle"
-			:content="dialogContent.content"
+			:content="dialogContentBody"
 			:image="dialogContent.image"
 			:image-fallback="dialogContent.imageFallback"
 			:badge="dialogContent.badge"
+			:attachments="dialogContentAttachments"
+			:attachments-loading="dialogContentAttachmentsLoading"
+			:attachments-error="dialogContentAttachmentsError"
 			:show-interactions="showInteractionsForActive"
 			:show-comments="showCommentsForActive"
 			:interaction="
@@ -676,56 +589,6 @@
 			@react="activeCommunication && reactToAnnouncement(activeCommunication, $event)"
 			@policy-inform="openPolicyInformOverlay"
 		/>
-
-		<!-- ANNOUNCEMENT CENTER DIALOG -->
-		<GenericListDialog
-			v-model="showAnnouncementCenter"
-			title="Announcement Center"
-			subtitle="Full list of announcements"
-			:items="widgets.data?.announcements || []"
-		>
-			<template #item="{ item }">
-				<div class="flex gap-3 p-4">
-					<div
-						class="mt-1 h-2.5 w-2.5 flex-shrink-0 rounded-full"
-						:class="
-							item.priority === 'Critical'
-								? 'bg-flame ring-2 ring-flame/30'
-								: item.priority === 'High'
-									? 'bg-jacaranda ring-2 ring-jacaranda/30'
-									: 'bg-border'
-						"
-					></div>
-					<div class="min-w-0 flex-1">
-						<div class="flex items-start justify-between gap-2">
-							<div class="flex flex-wrap items-center gap-2">
-								<p class="text-sm font-semibold text-ink">
-									{{ item.title }}
-								</p>
-								<span
-									class="inline-flex items-center rounded-full bg-surface-soft px-2 py-0.5 text-[11px] font-semibold text-slate-token/80"
-								>
-									{{ item.type }}
-								</span>
-								<span
-									class="inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold"
-									:class="getPriorityClasses(item.priority)"
-								>
-									{{ item.priority || 'Info' }}
-								</span>
-							</div>
-							<button
-								class="text-[11px] font-medium text-jacaranda transition-colors hover:text-jacaranda/80"
-								@click="openAnnouncement(item)"
-							>
-								Open
-							</button>
-						</div>
-						<div class="mt-1 text-xs text-slate-token/80 line-clamp-3" v-html="item.content"></div>
-					</div>
-				</div>
-			</template>
-		</GenericListDialog>
 
 		<!-- CLINIC HISTORY DIALOG -->
 		<HistoryDialog
@@ -755,15 +618,15 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
+import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
 import { createResource, FeatherIcon, toast } from 'frappe-ui';
 
 import { useOverlayStack } from '@/composables/useOverlayStack';
 import { formatLocalizedDateTime } from '@/lib/datetime';
 import { createCommunicationInteractionService } from '@/lib/services/communicationInteraction/communicationInteractionService';
+import { createOrgCommunicationArchiveService } from '@/lib/services/orgCommunicationArchive/orgCommunicationArchiveService';
 import { SIGNAL_ORG_COMMUNICATION_INVALIDATE, uiSignals } from '@/lib/uiSignals';
 import ContentDialog from '@/components/ContentDialog.vue';
-import GenericListDialog from '@/components/analytics/GenericListDialog.vue';
 import HistoryDialog from '@/components/analytics/HistoryDialog.vue';
 import CommentThreadDrawer from '@/components/CommentThreadDrawer.vue';
 import DateRangePills from '@/components/filters/DateRangePills.vue';
@@ -781,6 +644,7 @@ import {
 	type StudentLogDetail,
 } from '@/types/morning_brief';
 import type { InteractionSummary, ReactionCode } from '@/types/morning_brief';
+import type { Response as OrgCommunicationItemResponse } from '@/types/contracts/org_communication_archive/get_org_communication_item';
 import {
 	getAudienceInteractionCapabilities,
 	ORG_COMMUNICATION_VIEWERS,
@@ -810,7 +674,6 @@ type ArrayWidgetKey =
 	| 'attendance_trend'
 	| 'my_absent_students';
 
-// State for Dialog
 const isContentDialogOpen = ref<boolean>(false);
 const overlay = useOverlayStack();
 const dialogContent = ref<DialogContent>({
@@ -822,11 +685,11 @@ const dialogContent = ref<DialogContent>({
 	badge: '',
 });
 
-// State for new dialogs
-const showAnnouncementCenter = ref<boolean>(false);
 const showClinicHistory = ref<boolean>(false);
 const showInteractionDrawer = ref<boolean>(false);
 const activeCommunication = ref<Announcement | null>(null);
+const readMarking = ref<Record<string, boolean>>({});
+const showUnreadOnly = ref(false);
 const showInteractionsForActive = computed(
 	() => getAnnouncementInteractionCapabilities(activeCommunication.value).hasVisibleActions
 );
@@ -835,9 +698,13 @@ const showCommentsForActive = computed(
 );
 const newComment = ref<string>('');
 const interactionService = createCommunicationInteractionService();
+const archiveService = createOrgCommunicationArchiveService();
 const interactionSummaryData = ref<InteractionSummaryMap>({});
 const interactionThreadRows = ref<InteractionThreadRow[]>([]);
 const interactionThreadLoading = ref(false);
+const announcementDetailData = ref<Record<string, OrgCommunicationItemResponse | null>>({});
+const announcementDetailLoading = ref<Record<string, boolean>>({});
+const announcementDetailError = ref<Record<string, string>>({});
 let disposeOrgCommunicationInvalidate: (() => void) | null = null;
 
 const criticalIncidentsList = createResource<StudentLogDetail[]>({
@@ -866,21 +733,43 @@ const clinicHistoryRangeOptions = [
 ] as const;
 type ClinicVolumeView = (typeof clinicVolumeViewOptions)[number]['value'];
 const clinicVolumeView = ref<ClinicVolumeView>('3D');
-
-const viewModes = [
-	{ value: 'focus', label: 'Focus' },
-	{ value: 'all', label: 'All' },
-] as const;
-type ViewMode = (typeof viewModes)[number]['value'];
-const MAX_INLINE_ANNOUNCEMENTS = 5;
-const viewMode = ref<ViewMode>('all');
-const spotlightIndex = ref(0);
-const spotlightAnnouncements = computed<Announcement[]>(() =>
-	(widgets.data?.announcements || []).filter(a => ['Critical', 'High'].includes(a.priority ?? ''))
+const activeAnnouncementName = computed<string>(() => activeCommunication.value?.name || '');
+const activeAnnouncementDetail = computed<OrgCommunicationItemResponse | null>(() => {
+	if (!activeAnnouncementName.value) return null;
+	return announcementDetailData.value[activeAnnouncementName.value] || null;
+});
+const dialogContentTitle = computed<string>(() => {
+	const detailTitle = activeAnnouncementDetail.value?.title;
+	if (typeof detailTitle === 'string' && detailTitle.trim()) {
+		return detailTitle.trim();
+	}
+	return dialogContent.value.title;
+});
+const dialogContentBody = computed<string>(() => {
+	const detailBody = activeAnnouncementDetail.value?.message_html;
+	if (typeof detailBody === 'string' && detailBody.trim()) {
+		return detailBody.trim();
+	}
+	return dialogContent.value.content;
+});
+const dialogContentAttachments = computed(() => activeAnnouncementDetail.value?.attachments || []);
+const dialogContentAttachmentsLoading = computed<boolean>(() =>
+	Boolean(
+		activeAnnouncementName.value && announcementDetailLoading.value[activeAnnouncementName.value]
+	)
 );
-const currentSpotlight = computed<Announcement | null>(
-	() => spotlightAnnouncements.value[spotlightIndex.value] || null
+const dialogContentAttachmentsError = computed<string>(() =>
+	activeAnnouncementName.value
+		? announcementDetailError.value[activeAnnouncementName.value] || ''
+		: ''
 );
+const unreadAnnouncementCount = computed(
+	() => (widgets.data?.announcements || []).filter(item => item.is_unread).length
+);
+const announcementCountLabel = computed(() => {
+	const total = widgets.data?.announcements?.length ?? 0;
+	return `${total} ${total === 1 ? 'update' : 'updates'}`;
+});
 
 function syncCriticalIncidentsOverlayState(): void {
 	criticalIncidentsOverlayState.items = Array.isArray(criticalIncidentsList.data)
@@ -889,29 +778,12 @@ function syncCriticalIncidentsOverlayState(): void {
 	criticalIncidentsOverlayState.loading = Boolean(criticalIncidentsList.loading);
 }
 
-watch(spotlightAnnouncements, (list: Announcement[]) => {
-	if (!list.length) {
-		spotlightIndex.value = 0;
-		return;
-	}
-	if (spotlightIndex.value >= list.length) {
-		spotlightIndex.value = 0;
-	}
-});
-
 watch(
 	() => [criticalIncidentsList.data, criticalIncidentsList.loading],
 	() => {
 		syncCriticalIncidentsOverlayState();
 	},
 	{ immediate: true }
-);
-
-const criticalCount = computed(
-	() => (widgets.data?.announcements || []).filter(a => a.priority === 'Critical').length
-);
-const highCount = computed(
-	() => (widgets.data?.announcements || []).filter(a => a.priority === 'High').length
 );
 const clinicVolume = computed<ClinicVolumeSummary | null>(
 	() => widgets.data?.clinic_volume || null
@@ -944,15 +816,8 @@ watch(
 
 const filteredAnnouncements = computed<Announcement[]>(() => {
 	const all = widgets.data?.announcements || [];
-
-	if (viewMode.value === 'focus') {
-		return all.filter(a => a.priority === 'Critical' || a.priority === 'High');
-	}
-
-	return all;
+	return showUnreadOnly.value ? all.filter(item => item.is_unread) : all;
 });
-
-const limitedAnnouncements = computed<Announcement[]>(() => filteredAnnouncements.value);
 
 function getAnnouncementInteractionCapabilities(item: Announcement | null | undefined) {
 	return getAudienceInteractionCapabilities(item, {
@@ -1061,18 +926,6 @@ function onOrgCommunicationInvalidated(payload?: { names?: string[] }) {
 	}
 }
 
-function nextSpotlight(): void {
-	if (!spotlightAnnouncements.value.length) return;
-	spotlightIndex.value = (spotlightIndex.value + 1) % spotlightAnnouncements.value.length;
-}
-
-function prevSpotlight(): void {
-	if (!spotlightAnnouncements.value.length) return;
-	spotlightIndex.value =
-		(spotlightIndex.value - 1 + spotlightAnnouncements.value.length) %
-		spotlightAnnouncements.value.length;
-}
-
 function hasArrayData(key: ArrayWidgetKey): boolean {
 	const list = widgets.data?.[key];
 	return Array.isArray(list) && list.length > 0;
@@ -1102,13 +955,48 @@ function openAnnouncement(news: Announcement): void {
 	activeCommunication.value = news;
 	dialogContent.value = {
 		title: news.title,
-		subtitle: formattedDate.value,
+		subtitle: formatAnnouncementDate(news.brief_start_date),
 		content: news.content,
 		image: '',
 		imageFallback: '',
 		badge: news.type,
 	};
 	isContentDialogOpen.value = true;
+	void loadAnnouncementDetail(news.name);
+	void markAnnouncementRead(news);
+}
+
+async function loadAnnouncementDetail(name: string): Promise<void> {
+	const resolvedName = String(name || '').trim();
+	if (!resolvedName || announcementDetailLoading.value[resolvedName]) {
+		return;
+	}
+	if (announcementDetailData.value[resolvedName]) {
+		return;
+	}
+
+	announcementDetailError.value[resolvedName] = '';
+	announcementDetailLoading.value[resolvedName] = true;
+
+	try {
+		announcementDetailData.value[resolvedName] = await archiveService.getOrgCommunicationItem({
+			name: resolvedName,
+		});
+	} catch (err) {
+		const message =
+			err instanceof Error
+				? err.message
+				: 'Could not load attachments for this announcement. Close and reopen it to retry.';
+		announcementDetailError.value[resolvedName] = message;
+		toast({
+			title: 'Unable to load announcement detail',
+			text: message,
+			icon: 'alert-circle',
+			appearance: 'danger',
+		});
+	} finally {
+		announcementDetailLoading.value[resolvedName] = false;
+	}
 }
 
 function getInteractionFor(item: Announcement): InteractionSummary {
@@ -1140,8 +1028,20 @@ function openInteractionThread(item: Announcement): void {
 	}
 
 	activeCommunication.value = item;
-	showInteractionDrawer.value = true;
-	void refreshInteractionThread(item.name);
+	newComment.value = '';
+
+	const openDrawer = () => {
+		showInteractionDrawer.value = true;
+		void refreshInteractionThread(item.name);
+	};
+
+	if (isContentDialogOpen.value) {
+		isContentDialogOpen.value = false;
+		void nextTick().then(openDrawer);
+		return;
+	}
+
+	openDrawer();
 }
 
 function formatThreadTimestamp(value?: string | null): string {
@@ -1151,6 +1051,29 @@ function formatThreadTimestamp(value?: string | null): string {
 		month: 'short',
 		fallback: value,
 	});
+}
+
+async function markAnnouncementRead(item: Announcement): Promise<void> {
+	const commName = String(item?.name || '').trim();
+	if (!commName || !item.is_unread || readMarking.value[commName]) {
+		return;
+	}
+
+	readMarking.value[commName] = true;
+	try {
+		await interactionService.markOrgCommunicationRead({ org_communication: commName });
+		item.is_unread = false;
+	} catch (err) {
+		const message = err instanceof Error ? err.message : 'Unable to mark this message as read.';
+		toast({
+			title: 'Unable to update read state',
+			text: message,
+			icon: 'alert-circle',
+			appearance: 'danger',
+		});
+	} finally {
+		readMarking.value[commName] = false;
+	}
 }
 
 async function acknowledgeAnnouncement(item: Announcement): Promise<void> {
@@ -1276,10 +1199,6 @@ async function reactToAnnouncement(item: Announcement, reaction: ReactionCode): 
 	}
 }
 
-function openAnnouncementsDialog(): void {
-	showAnnouncementCenter.value = true;
-}
-
 function openPolicyInformOverlay(payload: PolicyInformLinkPayload): void {
 	const policyVersion = String(payload?.policyVersion || '').trim();
 	if (!policyVersion) return;
@@ -1308,10 +1227,27 @@ function openCriticalIncidentsOverlay(): void {
 
 const formattedDate = computed<string>(() => widgets.data?.today_label ?? '');
 
+function formatAnnouncementDate(value?: string | null): string {
+	const raw = String(value || '').trim();
+	if (!raw) return 'Current briefing';
+
+	const normalized = raw.length <= 10 ? `${raw}T12:00:00` : raw;
+	const parsed = new Date(normalized);
+	if (Number.isNaN(parsed.getTime())) {
+		return raw;
+	}
+
+	return new Intl.DateTimeFormat('en-US', {
+		day: '2-digit',
+		month: 'short',
+		year: 'numeric',
+	}).format(parsed);
+}
+
 function getPriorityClasses(priority: OrgPriority): string {
 	switch (priority) {
 		case 'Critical':
-			return 'bg-flame text-white ring-2 ring-flame/30';
+			return 'bg-flame text-[rgb(var(--surface-strong-rgb)/1)] ring-2 ring-flame/30';
 		case 'High':
 			return 'bg-jacaranda/5 ring-1 ring-jacaranda/30';
 		case 'Low':

@@ -1,5 +1,5 @@
 // ifitwala_ed/ui-spa/src/composables/useCalendarPrefs.ts
-import { call } from 'frappe-ui';
+import { apiMethod } from '@/resources/frappe';
 import { ref } from 'vue';
 
 type Prefs = {
@@ -48,10 +48,9 @@ export function useCalendarPrefs() {
     loading.value = true;
     error.value = null;
     try {
-      const res = await call('ifitwala_ed.api.calendar.get_portal_calendar_prefs');
-      const data = (res && typeof res === 'object' && 'message' in res) ? (res as any).message : res;
+      const data = await apiMethod<Prefs>('ifitwala_ed.api.calendar.get_portal_calendar_prefs');
       if (data) {
-        prefs.value = data as Prefs;
+        prefs.value = data;
         writeStore(prefs.value);
       }
       return prefs.value;

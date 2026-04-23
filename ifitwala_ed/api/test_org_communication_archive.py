@@ -22,11 +22,34 @@ class TestOrgCommunicationArchiveItem(FrappeTestCase):
         }
 
         def fake_employee_lookup(doctype, filters, fields=None, as_dict=False):
-            self.assertEqual(doctype, "Employee")
-            self.assertEqual(filters, {"user_id": "staff@example.com"})
-            self.assertEqual(fields, ["name", "school", "organization"])
-            self.assertTrue(as_dict)
-            return {"name": "EMP-1", "school": "SCH-1", "organization": "ORG-1"}
+            if doctype == "Employee":
+                self.assertEqual(filters, {"user_id": "staff@example.com"})
+                self.assertEqual(fields, ["name", "school", "organization"])
+                self.assertTrue(as_dict)
+                return {"name": "EMP-1", "school": "SCH-1", "organization": "ORG-1"}
+            if doctype == "Drive Binding":
+                self.assertEqual(fields, "drive_file")
+                return "DF-0001"
+            if doctype == "Drive File" and fields == ["preview_status", "current_version"]:
+                self.assertEqual(filters, "DF-0001")
+                self.assertTrue(as_dict)
+                return {"preview_status": "ready", "current_version": "DFV-0001"}
+            if doctype == "Drive File Version":
+                self.assertEqual(filters, "DFV-0001")
+                self.assertEqual(fields, "mime_type")
+                return "application/pdf"
+            if doctype == "Drive File Derivative" and fields == "name":
+                self.assertEqual(
+                    filters,
+                    {
+                        "drive_file": "DF-0001",
+                        "drive_file_version": "DFV-0001",
+                        "derivative_role": "pdf_card",
+                        "status": "ready",
+                    },
+                )
+                return "DFD-0001"
+            return None
 
         doc = SimpleNamespace(
             name="COMM-0001",
@@ -71,6 +94,10 @@ class TestOrgCommunicationArchiveItem(FrappeTestCase):
             patch("ifitwala_ed.api.org_communication_archive.frappe.get_roles", return_value=["Academic Staff"]),
             patch("ifitwala_ed.api.org_communication_archive.frappe.db.get_value", side_effect=fake_employee_lookup),
             patch(
+                "ifitwala_ed.api.org_communication_archive.expand_employee_visibility_context",
+                side_effect=lambda employee, roles: employee,
+            ),
+            patch(
                 "ifitwala_ed.api.org_communication_archive.check_audience_match", return_value=True
             ) as audience_match_mock,
             patch("ifitwala_ed.api.org_communication_archive.frappe.get_doc", return_value=doc),
@@ -97,7 +124,19 @@ class TestOrgCommunicationArchiveItem(FrappeTestCase):
             result["attachments"][0]["open_url"],
             "/api/method/ifitwala_ed.api.file_access.open_org_communication_attachment?org_communication=COMM-0001&row_name=row-file",
         )
+        self.assertEqual(
+            result["attachments"][0]["thumbnail_url"],
+            "/api/method/ifitwala_ed.api.file_access.preview_org_communication_attachment?org_communication=COMM-0001&row_name=row-file",
+        )
+        self.assertEqual(
+            result["attachments"][0]["preview_url"],
+            "/api/method/ifitwala_ed.api.file_access.preview_org_communication_attachment?org_communication=COMM-0001&row_name=row-file",
+        )
+        self.assertEqual(result["attachments"][0]["preview_status"], "ready")
+        self.assertEqual(result["attachments"][0]["attachment_preview"]["owner_doctype"], "Org Communication")
+        self.assertEqual(result["attachments"][0]["attachment_preview"]["kind"], "pdf")
         self.assertEqual(result["attachments"][1]["external_url"], "https://example.com/reference")
+        self.assertEqual(result["attachments"][1]["attachment_preview"]["kind"], "link")
 
     def test_get_item_enriches_academic_admin_with_archive_scope(self):
         doc = SimpleNamespace(
@@ -124,8 +163,13 @@ class TestOrgCommunicationArchiveItem(FrappeTestCase):
                 return_value={"name": "EMP-1", "school": "SCH-PARENT", "organization": "ORG-ROOT"},
             ),
             patch(
-                "ifitwala_ed.api.org_communication_archive._get_scope",
-                return_value=("ORG-ROOT", "SCH-PARENT", ["ORG-ROOT", "ORG-CHILD"], ["SCH-PARENT", "SCH-CHILD"]),
+                "ifitwala_ed.api.org_communication_archive.expand_employee_visibility_context",
+                return_value={
+                    "name": "EMP-1",
+                    "school": "SCH-PARENT",
+                    "organization": "ORG-ROOT",
+                    "school_names": ["SCH-PARENT", "SCH-CHILD"],
+                },
             ),
             patch(
                 "ifitwala_ed.api.org_communication_archive.check_audience_match", return_value=True
@@ -219,6 +263,10 @@ class TestOrgCommunicationArchiveFeed(FrappeTestCase):
             filter_school=None,
             allow_owner=True,
         )
+        self.assertEqual(result["start"], 0)
+        self.assertEqual(result["page_length"], 10)
+        self.assertNotIn("limit_start", result)
+        self.assertNotIn("limit", result)
         self.assertEqual([item["name"] for item in result["items"]], ["COMM-0002"])
 
     def test_get_feed_keeps_parent_organization_candidates_for_organization_audience(self):
@@ -278,6 +326,10 @@ class TestOrgCommunicationArchiveFeed(FrappeTestCase):
 
         self.assertIn("organization IN %(org_guard)s", captured["query"])
         self.assertEqual(set(captured["values"]["org_guard"]), {"ORG-CHILD", "ORG-ROOT"})
+        self.assertEqual(result["start"], 0)
+        self.assertEqual(result["page_length"], 10)
+        self.assertNotIn("limit_start", result)
+        self.assertNotIn("limit", result)
         self.assertEqual([item["name"] for item in result["items"]], ["COMM-ROOT"])
 
 
@@ -353,6 +405,10 @@ class TestOrgCommunicationArchiveContext(FrappeTestCase):
                 "ifitwala_ed.api.org_communication_archive._get_scope",
                 return_value=("ORG-1", "SCH-1", ["ORG-1"], ["SCH-1", "SCH-2"]),
             ),
+            patch(
+                "ifitwala_ed.api.org_communication_archive.get_ancestor_organizations",
+                return_value=["ORG-1"],
+            ),
             patch("ifitwala_ed.api.org_communication_archive.frappe.db.sql", return_value=[]),
             patch(
                 "ifitwala_ed.api.org_communication_archive.frappe.get_all",
@@ -389,3 +445,44 @@ class TestOrgCommunicationArchiveContext(FrappeTestCase):
             [row["value"] for row in result["my_groups"]],
             ["SG-1", "SG-2"],
         )
+
+    def test_get_item_non_admin_does_not_require_archive_scope_expansion(self):
+        doc = SimpleNamespace(
+            name="COMM-0003",
+            title="Staff note",
+            message="<p>Visible</p>",
+            communication_type="Information",
+            priority="Normal",
+            publish_from="2026-03-09 08:00:00",
+            activity_program_offering=None,
+            activity_booking=None,
+            activity_student_group=None,
+            get=lambda fieldname: [],
+        )
+
+        with (
+            patch(
+                "ifitwala_ed.api.org_communication_archive.frappe.session",
+                frappe._dict({"user": "staff@example.com"}),
+            ),
+            patch("ifitwala_ed.api.org_communication_archive.frappe.get_roles", return_value=["Academic Staff"]),
+            patch(
+                "ifitwala_ed.api.org_communication_archive.frappe.db.get_value",
+                return_value={"name": "EMP-1", "school": "SCH-1", "organization": "ORG-1"},
+            ),
+            patch(
+                "ifitwala_ed.api.org_communication_archive.expand_employee_visibility_context",
+                side_effect=lambda employee, roles: employee,
+            ),
+            patch(
+                "ifitwala_ed.api.org_communication_archive._get_scope",
+                side_effect=AssertionError("detail reads should not expand archive scope"),
+            ),
+            patch("ifitwala_ed.api.org_communication_archive.check_audience_match", return_value=True),
+            patch("ifitwala_ed.api.org_communication_archive.frappe.get_doc", return_value=doc),
+            patch("ifitwala_ed.api.org_communication_archive.get_audience_label", return_value="Staff · SCH"),
+            patch("ifitwala_ed.api.org_communication_archive.build_audience_summary", return_value={}),
+        ):
+            result = org_communication_archive.get_org_communication_item("COMM-0003")
+
+        self.assertEqual(result["name"], "COMM-0003")

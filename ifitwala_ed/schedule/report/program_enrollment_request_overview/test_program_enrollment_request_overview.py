@@ -124,20 +124,15 @@ class TestProgramEnrollmentRequestOverview(TestCase):
         self.assertEqual(data[1]["students_requested"], 0)
 
     @patch(
-        "ifitwala_ed.schedule.report.program_enrollment_request_overview.program_enrollment_request_overview._get_live_choice_state",
-        side_effect=lambda request_name: (
-            {
+        "ifitwala_ed.schedule.report.program_enrollment_request_overview.program_enrollment_request_overview._get_live_choice_states",
+        return_value={
+            "PER-0001": {
                 "ready_for_submit": False,
                 "reasons": ["Choose at least one course in Language Group."],
             }
-            if request_name == "PER-0001"
-            else {
-                "ready_for_submit": True,
-                "reasons": [],
-            }
-        ),
+        },
     )
-    def test_build_window_tracker_view_surfaces_missing_and_problem_rows(self, _mock_live_choice_state):
+    def test_build_window_tracker_view_surfaces_missing_and_problem_rows(self, _mock_live_choice_states):
         window_rows = [
             {
                 "student": "STU-2",
@@ -196,6 +191,79 @@ class TestProgramEnrollmentRequestOverview(TestCase):
 
         self.assertEqual(by_student["STU-3"]["submission_status"], report.SUBMISSION_STATUS_SUBMITTED)
         self.assertEqual(by_student["STU-3"]["problem_status"], report.PROBLEM_STATUS_NEEDS_OVERRIDE)
+
+    def test_get_live_choice_states_delegates_to_batched_choice_state_helper(self):
+        requests = [
+            {
+                "name": "PER-0001",
+                "student": "STU-1",
+                "program_offering": "PO-1",
+                "program": "PROG-1",
+                "academic_year": "AY-2026",
+                "request_kind": "Academic",
+                "request_status": "Draft",
+                "validation_status": "Not Validated",
+                "submitted_on": None,
+                "courses": [
+                    {
+                        "course": "BIO",
+                        "required": 0,
+                        "applied_basket_group": "Language Group",
+                        "choice_rank": 1,
+                    }
+                ],
+            },
+            {
+                "name": "PER-0002",
+                "student": "STU-2",
+                "program_offering": "PO-1",
+                "program": "PROG-1",
+                "academic_year": "AY-2026",
+                "request_kind": "Academic",
+                "request_status": "Draft",
+                "validation_status": "Not Validated",
+                "submitted_on": None,
+                "courses": [
+                    {
+                        "course": "CHEM",
+                        "required": 0,
+                        "applied_basket_group": "",
+                        "choice_rank": 2,
+                    }
+                ],
+            },
+            {
+                "name": "PER-0003",
+                "student": "STU-3",
+                "program_offering": "PO-2",
+                "program": "PROG-2",
+                "academic_year": "AY-2026",
+                "request_kind": "Academic",
+                "request_status": "Approved",
+                "validation_status": "Valid",
+                "submitted_on": "2026-03-28 11:00:00",
+                "courses": [],
+            },
+        ]
+        expected = {
+            "PER-0001": {
+                "ready_for_submit": False,
+                "reasons": ["Choose at least one course in Group A."],
+            },
+            "PER-0002": {
+                "ready_for_submit": True,
+                "reasons": [],
+            },
+        }
+
+        with patch(
+            "ifitwala_ed.schedule.report.program_enrollment_request_overview.program_enrollment_request_overview.get_program_enrollment_request_live_choice_states",
+            return_value=expected,
+        ) as batch_helper_mock:
+            live_states = report._get_live_choice_states(requests)
+
+        batch_helper_mock.assert_called_once_with(requests)
+        self.assertEqual(live_states, expected)
 
     @patch(
         "ifitwala_ed.schedule.report.program_enrollment_request_overview.program_enrollment_request_overview.frappe.db.sql",

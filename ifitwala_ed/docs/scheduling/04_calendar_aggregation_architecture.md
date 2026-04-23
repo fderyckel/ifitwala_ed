@@ -6,6 +6,7 @@ Active with known implementation split. Canonical note for how portal calendar f
 
 Code refs:
 - `ifitwala_ed/api/calendar.py`
+- `ifitwala_ed/api/calendar_export.py`
 - `ifitwala_ed/api/calendar_core.py`
 - `ifitwala_ed/api/calendar_staff_feed.py`
 - `ifitwala_ed/api/calendar_details.py`
@@ -18,6 +19,7 @@ Code refs:
 Test refs:
 - `ifitwala_ed/api/test_portal_calendar.py`
 - `ifitwala_ed/api/test_calendar.py`
+- `ifitwala_ed/api/test_calendar_export.py`
 - `ifitwala_ed/api/test_student_calendar.py`
 - `ifitwala_ed/api/test_room_utilization.py`
 
@@ -84,7 +86,7 @@ Code refs:
 Test refs:
 - `ifitwala_ed/api/test_calendar.py`
 
-`api/calendar.py` is the locked public facade for staff calendar workflows.
+`api/calendar.py` is the locked public RPC boundary for staff calendar workflows, including timetable export.
 
 It keeps public API paths stable while implementation is split across:
 
@@ -93,8 +95,10 @@ It keeps public API paths stable while implementation is split across:
 - `calendar_details.py`
 - `calendar_quick_create.py`
 - `calendar_prefs.py`
+- `calendar_export.py`
 
 Refactors may move implementation between those modules, but they must not silently drift the public API boundary without updating docs and dependent contracts.
+Internal Python code must import helpers from the owner modules directly rather than importing helper functions through `api/calendar.py`.
 
 ### 2.1 Shared staff-feed source model
 
@@ -108,6 +112,12 @@ The canonical staff feed sources are defined in `calendar_core.py`:
 `_normalize_sources(...)` owns source filtering and default ordering.
 
 Clients must not invent additional source labels client-side.
+
+### 2.2 Staff timetable export stays on the same boundary
+
+`export_staff_timetable_pdf(...)` is part of the same public boundary.
+
+It is a read-only print/export surface for the logged-in staff user and must remain documented together with the staff feed rather than drifting into a separate ad hoc endpoint family.
 
 ---
 
@@ -147,14 +157,19 @@ Operational consequence:
 - lightweight list rendering may expose `meta.location` from `Employee Booking.location` directly on the feed row
 - SPA clients must not derive class location by re-reading schedule rows or opening detail endpoints during list paint
 
-### 3.2 Staff holiday events use a two-step fallback
+### 3.2 Staff holiday events use employee-linked Staff Calendar precedence
 
 Staff holiday events resolve in this order:
 
-1. `Staff Calendar Holidays` from the best matching `Staff Calendar`
-2. fallback to `School Calendar Holidays` via nearest school-calendar lineage
+1. `Staff Calendar Holidays` from `Employee.current_holiday_lis` when that linked `Staff Calendar` overlaps the requested window
+2. otherwise `Staff Calendar Holidays` from the best matching `Staff Calendar`
+3. fallback to `School Calendar Holidays` via nearest school-calendar lineage only when no `Staff Calendar` resolves for the employee
 
-This means staff holiday visibility is school-lineage aware and remains usable when no direct `Staff Calendar` exists.
+Operational consequences:
+
+- once a `Staff Calendar` resolves for the employee, school-calendar fallback must not widen the holiday set for that same window
+- employee-linked staff calendars take effect without waiting for a later Employee save because Staff Calendar writes re-sync affected `Employee.current_holiday_lis` rows
+- staff holiday visibility remains school-lineage aware when the employee link is blank or stale
 
 ### 3.3 Meeting and School Event visibility is source-specific
 
@@ -168,7 +183,11 @@ Meeting event color precedence is:
 School Events are included when:
 
 - the user is an explicit participant
-- or the event is visible through the allowed school ancestry rule used by the staff feed
+- or the event school is in the staff user's allowed school ancestry and the event audience
+  also reaches that user through employee-facing school-event audiences such as
+  `All Students, Guardians, and Employees`, `All Employees`, or a matching
+  `Employees in Team` row
+- applicant-interview school events remain participant-only even when the effective school ancestry matches
 
 These visibility rules are source-owned and must not be flattened into one generic “calendar access” check.
 
@@ -181,6 +200,16 @@ Staff calendar payloads are cached in Redis using a key built from:
 - normalized source list
 
 This cache is owned by the calendar feed, not by the SPA.
+
+### 3.5 Staff timetable export reuses the staff feed contract
+
+The premium staff timetable PDF export is not a separate source assembler.
+
+Rules:
+
+1. The export must reuse the same staff-feed source authority and visibility rules documented above.
+2. The export may reshape the payload into weekly print spreads, but it must not widen or narrow event inclusion ad hoc.
+3. The export is server-rendered for print and must not depend on client-side per-event detail waterfalls.
 
 ---
 
@@ -290,7 +319,7 @@ This is how one modal contract currently spans both staff and student class feed
 Detail access checks are intentionally separate:
 
 - meetings use participant or desk-read access
-- school events use event visibility logic
+- school events use event visibility logic aligned with the source feed rather than a generic DocType read-permission shortcut
 - student-group events require concrete student-group access
 
 Refactors must not replace these with one broad “calendar event detail” permission shortcut.
@@ -477,9 +506,10 @@ Code refs:
 
 When refactoring calendar aggregation:
 
-1. Keep `api/calendar.py` as the stable public facade for staff-calendar workflows unless the API contract is explicitly changed.
-2. Keep source-specific visibility rules server-owned.
-3. Do not replace booking-backed staff class events with raw schedule expansion.
-4. Do not replace the Location Calendar with source-document hydration that leaks titles.
-5. Do not claim a cross-surface unified event model where the runtime still has staff-booking ids and student-schedule ids.
-6. Update this note together with code if student meetings, unified class-event ids, or source authority rules change.
+1. Keep `api/calendar.py` as the stable public RPC boundary for staff-calendar workflows unless the API contract is explicitly changed.
+2. Keep `api/calendar.py` thin: public whitelisted wrappers only, not a shared internal helper barrel.
+3. Keep source-specific visibility rules server-owned.
+4. Do not replace booking-backed staff class events with raw schedule expansion.
+5. Do not replace the Location Calendar with source-document hydration that leaks titles.
+6. Do not claim a cross-surface unified event model where the runtime still has staff-booking ids and student-schedule ids.
+7. Update this note together with code if student meetings, unified class-event ids, or source authority rules change.

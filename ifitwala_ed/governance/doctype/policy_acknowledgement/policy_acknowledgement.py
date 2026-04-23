@@ -27,9 +27,10 @@ from ifitwala_ed.governance.policy_utils import (
 ACK_CONTEXT_MAP = {
     "Applicant": ("Student Applicant",),
     "Student": ("Student",),
-    "Guardian": ("Guardian",),
+    "Guardian": ("Guardian", "Student"),
     "Staff": ("Employee",),
 }
+POLICY_ACK_CONTEXT_UNIQUE_CONSTRAINT = "uniq_policy_ack_ver_user_ctx"
 
 
 def _normalize_clause_text(value: str | None) -> str:
@@ -449,10 +450,19 @@ class PolicyAcknowledgement(Document):
             guardian_names = get_guardian_names_for_user(user=frappe.session.user)
             if not guardian_names:
                 return _("Guardian-linked account is not connected to a Guardian record.")
-            if self.context_name not in guardian_names:
-                return _("Guardians may only acknowledge policies for themselves.")
-            if not _guardian_has_primary_signer_authority(self.context_name):
-                return _("Only primary guardians may acknowledge guardian policies.")
+            if self.context_doctype == "Guardian":
+                if self.context_name not in guardian_names:
+                    return _("Guardians may only acknowledge policies for themselves.")
+                if not _guardian_has_primary_signer_authority(self.context_name):
+                    return _("Only primary guardians may acknowledge guardian policies.")
+                return None
+            if self.context_doctype == "Student":
+                guardian_name = self._guardian_name_for_user()
+                if not guardian_name:
+                    return _("Guardian-linked account is not connected to a Guardian record.")
+                if not self._guardian_linked_to_student(guardian_name, self.context_name):
+                    return _("You are not a signer-authorized guardian for this student.")
+                return None
             return None
         if self.acknowledged_for == "Staff":
             if has_staff_role():
@@ -655,6 +665,19 @@ def get_permission_query_conditions(user: str | None = None) -> str | None:
     if not conditions:
         return "1=0"
     return "(" + " OR ".join(conditions) + ")"
+
+
+def on_doctype_update():
+    frappe.db.add_unique(
+        "Policy Acknowledgement",
+        ["policy_version", "acknowledged_by", "context_doctype", "context_name"],
+        constraint_name=POLICY_ACK_CONTEXT_UNIQUE_CONSTRAINT,
+    )
+    frappe.db.add_index(
+        "Policy Acknowledgement",
+        ["policy_version", "acknowledged_for", "context_doctype", "context_name", "docstatus"],
+        index_name="idx_policy_ack_audience_context_status",
+    )
 
 
 def has_permission(doc: "PolicyAcknowledgement", user: str | None = None, ptype: str | None = None) -> bool:

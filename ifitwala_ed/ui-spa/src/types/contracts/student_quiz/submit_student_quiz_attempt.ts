@@ -1,3 +1,4 @@
+import type { ReleasedAssessmentResult } from '@/types/contracts/student_learning/released_assessment_result'
 import type { StudentQuizReview } from './open_student_quiz_session'
 import type { StudentQuizAttemptResponse } from './save_student_quiz_attempt'
 
@@ -17,4 +18,5 @@ export type Response = {
 		submitted_on?: string | null
 	}
 	review: StudentQuizReview
+	released_result?: ReleasedAssessmentResult | null
 }

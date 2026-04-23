@@ -3,8 +3,8 @@ title: "Task Delivery: Assigning Work to a Real Class"
 slug: task-delivery
 category: Assessment
 doc_order: 5
-version: "1.8.0"
-last_change_date: "2026-04-05"
+version: "1.8.2"
+last_change_date: "2026-04-22"
 summary: "Assign a reusable task to a specific class through its class teaching plan, with dates, grading mode, optional class-session context, and scalable outcome generation."
 seo_title: "Task Delivery: Assigning Work to a Real Class"
 seo_description: "Assign a reusable task to a class through its teaching plan with dates, grading mode, evidence rules, and optional class-session context."
@@ -28,7 +28,7 @@ Test refs: None (scaffold only: `ifitwala_ed/assessment/doctype/task_delivery/te
 
 - Create the parent `Task` first.
 - Create the `Student Group` first, with roster and context aligned to the teaching situation.
-- Ensure the class has an active `Class Teaching Plan`. Creating a course-based `Student Group` now provisions one automatically when a single governing `Course Plan` can be resolved; otherwise initialize or select the class plan in Class Planning before assigning work.
+- Ensure the class has an active `Class Teaching Plan`. Creating a course-based `Student Group` now provisions one automatically when a single governing `Course Plan` can be resolved; otherwise initialize or select the class plan in Class Planning before assigning work. Manual Class Planning initialization now creates the class plan as `Active`, and draft or archived plans cannot receive assigned work.
 - Prepare grading setup first (`Grade Scale`, and task criteria readiness if using criteria grading mode).
 
 ## Where It Is Used Across the ERP
@@ -60,7 +60,6 @@ Current workspace constraints:
 - `task_delivery.py` keeps outcome generation and rubric snapshotting behind delivery launch semantics.
 - `task_creation_service.py::create_task_and_delivery()` and `task_delivery_service.py::create_delivery()` both submit the delivery and then enforce roster materialization idempotently.
 - `api/task.py::create_task_delivery()` now validates course-scoped reusable-task visibility before delegating to `task_delivery_service.py::create_delivery()`.
-- `api/gradebook.py::repair_task_roster()` exists to backfill outcomes for deliveries created before the launch contract was restored, and to catch up later roster additions safely.
 - The current schema exposes required `class_teaching_plan` plus optional `class_session`.
 
 ## Permission Matrix
@@ -129,7 +128,7 @@ Test refs: `ifitwala_ed/assessment/doctype/task_delivery/test_task_delivery.py`,
 - `on_submit()` is the canonical place for:
   - criteria snapshot creation
   - bulk `Task Outcome` creation for eligible students
-- `materialize_roster()` is the idempotent parent-controller helper used by submit flows and the gradebook repair endpoint.
+- `materialize_roster()` is the idempotent parent-controller helper used by submit flows and approved one-shot backfill patches.
 - `on_cancel()` removes linked outcomes only when no evidence exists.
 - Delivery services no longer auto-create taught-session records. If a delivery needs live class-session context, it must link to an existing `Class Session`.
 - Reusing a shared task does not authorize a class to mutate the shared baseline through delivery edits, and no delivery flow may silently promote local class changes back into shared curriculum.
@@ -137,7 +136,7 @@ Test refs: `ifitwala_ed/assessment/doctype/task_delivery/test_task_delivery.py`,
 ### Current Constraints To Preserve In Review
 
 - `group_submission` remains intentionally blocked until the subgroup model exists.
-- Legacy deliveries created before the fixed launch path may still need `api/gradebook.py::repair_task_roster()` to generate their outcomes.
+- Legacy deliveries created before the fixed launch path are remediated through one-shot deployment patches, not gradebook runtime repair actions.
 - Current delivery payloads must resolve a `class_teaching_plan` first, then may link to taught curriculum through `class_session` when that context is explicitly supplied.
 - Course-based `Student Group` creation now reduces assignment setup friction by auto-provisioning one active `Class Teaching Plan` when course-plan resolution is unambiguous. Missing or ambiguous course-plan cases remain explicit manual setup rather than guessed linkage.
 - Any future change in delivery launch semantics must update:

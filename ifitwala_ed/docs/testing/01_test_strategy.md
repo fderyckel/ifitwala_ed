@@ -86,3 +86,11 @@ The metrics script is informational by default and can be enforced with environm
 
 7. Private media contracts must stay server-owned.
 - SPA and website consumers should receive server-resolved display URLs, never raw private paths, and regressions here should be fixed at the API/display-contract layer.
+- When a governed route responds with a redirect, tests should also assert the redirect target is not a raw `/private/...` path unless the surface contract explicitly allows public-media delivery.
+
+8. Multi-step overlays must test first-mutation lock behavior.
+- If a workflow auto-saves drafts, uploads governed files, or otherwise locks server invariants after an intermediate step, add SPA regression coverage for:
+  - the first mutation that activates the lock
+  - any pre-first-mutation blocker that forces the user to choose scope before the lock can be activated
+  - the affected controls becoming non-editable or otherwise guarded
+  - final submit being blocked client-side with actionable remediation when stale state would violate the lock

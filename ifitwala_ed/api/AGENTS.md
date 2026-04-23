@@ -27,6 +27,33 @@ They are contract surfaces for real workflows.
 - This Codex session runs on the user's local machine for this repo.
 - Do not add stock explanations about missing `frappe` in `.venv`, missing `bench` on `PATH`, or the shell not being the remote server unless a specific attempted command is blocked and that exact blocker matters.
 
+## 0.2 Documentation Routing Protocol
+
+Before changing API behavior, read the canonical docs in this order:
+
+1. `ifitwala_ed/docs/README.md`
+2. the relevant docs-folder `README.md` when one exists
+3. the feature's canonical runtime contract
+
+Always check these cross-cutting notes when relevant:
+
+- `ifitwala_ed/docs/high_concurrency_contract.md` for hot paths, dashboards, bootstrap endpoints, caching, and async boundaries
+- `ifitwala_ed/docs/nested_scope_contract.md` for hierarchy-aware scope, descendant inclusion, or location/school visibility
+- `ifitwala_ed/docs/files_and_policies/README.md` for governed file/image routes
+- `ifitwala_ed/docs/files_and_policies/files_08_cross_portal_governed_attachment_preview_contract.md` for stable `open_url` / `preview_url` / `thumbnail_url` DTO rules
+- `ifitwala_ed/docs/testing/README.md` and `ifitwala_ed/docs/testing/01_test_strategy.md` before deciding test scope
+
+If the API change touches uploads, attachment links, previews, thumbnails, or private-media routing, also read:
+
+- `ifitwala_ed/docs/files_and_policies/files_01_architecture_notes.md`
+- `ifitwala_ed/docs/files_and_policies/files_03_implementation.md`
+- `ifitwala_ed/docs/files_and_policies/files_07_education_file_semantics_and_cross_app_contract.md`
+- `ifitwala_ed/docs/admission/05_admission_portal.md` when the surface is admissions/applicant-facing or staff admissions review
+- `ifitwala_ed/docs/admission/10_ifitwala_drive_portal_uploads.md` when the change touches admissions uploads or applicant images
+- `../ifitwala_drive/ifitwala_drive/docs/06_api_contracts.md`
+
+Treat proposal, audit, history, and implementation-companion notes as non-authoritative unless they explicitly declare themselves the current runtime contract.
+
 ---
 
 ## 1. Endpoint Design Rules
@@ -65,7 +92,10 @@ Do not let the client assemble important workflows out of generic document mutat
 - Do not widen response shape without cause.
 - Do not silently change endpoint contracts.
 - Keep request and response structures explicit and auditable.
+- In Python API modules, `_()` is reserved for translation literals only; never assign to `_`, use `_` as a throwaway variable, or shadow the Frappe translation alias.
 - For governed file/image reads, return a server-owned display/open URL for private media instead of exposing raw private paths.
+- A governed private-media route must never set `frappe.local.response["location"]` to a raw `/private/...` path; if no safe redirect target exists, stream the file inline from the API route instead.
+- Shared file-delivery helpers must return only a safe redirect target or `None`; route handlers own the final inline/private-media fallback behavior.
 
 If contract behavior changes, docs must be updated with code.
 
@@ -163,6 +193,8 @@ For queued jobs and scheduler work:
 - failures must be isolated
 - execution must be observable
 - overlap/replay risk must be considered
+- semantic queue labels are not enough by themselves; every `frappe.enqueue(...)` call must target a runtime-valid queue or normalize to one at the enqueue boundary
+- if a mutation endpoint enqueues post-finalize or post-save work, missing custom worker topology must not become a browser-visible failure unless the workflow contract explicitly says the mutation is blocked
 
 Schedulers should dispatch chunks, not process giant workloads inline.
 

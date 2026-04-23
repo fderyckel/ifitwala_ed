@@ -142,8 +142,11 @@ When `criteria = 1`:
 
 * The Delivery snapshots rubric structure (Task Rubric Version)
 * Each criterion may define weighting and max points
+* New task creation can now author those criteria rows from the course-scoped `Course Assessment Criteria` library
+* Reusing an existing criteria task carries the frozen criteria rows forward while still allowing a delivery-local rubric strategy
 * Per‑student rubric marks live in **Task Contributions** (criterion rows)
 * Official result rolls up to **Task Outcome**
+* Delivery-local level points are derived from the rubric snapshot rather than owned globally by `Assessment Criteria Level`
 
 Criteria grading is **explicit and irreversible once grading has started**.
 
@@ -157,6 +160,15 @@ When `points = 1` and `criteria = 0`:
 * `max_points` defines the denominator
 * Official score is stored on **Task Outcome**
 * Grade Scale is resolved at delivery time (policy‑driven)
+
+### Completion and Binary Tasks
+
+When grading mode is `Completion` or `Binary`:
+
+* Teacher judgment is stored on **Task Contribution** as `judgment_code`
+* Optional comments still live on the same contribution row
+* `Task Outcome.is_complete` is derived official truth for the selected contribution
+* `Assign Only` remains the procedural exception and may update `Task Outcome.is_complete` directly
 
 ---
 

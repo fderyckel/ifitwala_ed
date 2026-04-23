@@ -5,6 +5,7 @@
 
 import frappe
 from frappe import _
+from frappe.utils import now_datetime
 
 _GRADE_SCALE_THRESHOLD_CACHE = {}
 
@@ -47,6 +48,7 @@ def _recompute_official_outcome_internal(outcome_id, policy=None):
         [
             "name",
             "contribution_type",
+            "judgment_code",
             "score",
             "grade",
             "grade_value",
@@ -77,6 +79,7 @@ def _recompute_official_outcome_internal(outcome_id, policy=None):
             "official_grade": None,
             "official_grade_value": None,
             "official_feedback": None,
+            "is_complete": 0,
             "grading_status": "Not Applicable" if not require_grading else "Not Started",
         }
         if was_published:
@@ -98,6 +101,17 @@ def _recompute_official_outcome_internal(outcome_id, policy=None):
             rubric_scoring_strategy=rubric_strategy,
             rubric_version=rubric_version,
             has_rubric_scores=has_rubric_scores,
+        )
+        if was_published:
+            _clear_outcome_publish(outcome_id)
+        return result
+
+    if grading_mode in {"Binary", "Completion"}:
+        result = _apply_boolean_official_fields(
+            outcome_id=outcome_id,
+            require_grading=require_grading,
+            grading_mode=grading_mode,
+            contribution=selected,
         )
         if was_published:
             _clear_outcome_publish(outcome_id)
@@ -188,6 +202,7 @@ def _get_delivery_flags(delivery_id):
     if not delivery_id:
         return {}
     fields = [
+        "delivery_mode",
         "grading_mode",
         "require_grading",
         "rubric_scoring_strategy",
@@ -246,8 +261,39 @@ def _apply_non_criteria_official_fields(outcome_id, grade_scale, require_grading
         grading_status = "Finalized" if require_grading else "Not Applicable"
 
     official_fields["grading_status"] = grading_status
+    _prune_null_grade_value_for_score_only_updates(official_fields)
     frappe.db.set_value("Task Outcome", outcome_id, official_fields, update_modified=True)
 
+    return {"outcome": outcome_id, "grading_status": grading_status}
+
+
+def _apply_boolean_official_fields(outcome_id, require_grading, grading_mode, contribution):
+    current_is_complete = _current_completion_state(outcome_id)
+    judgment_code = (contribution.get("judgment_code") or "").strip()
+    judgment_map = {
+        "Binary": {"yes": 1, "no": 0},
+        "Completion": {"complete": 1, "incomplete": 0},
+    }
+
+    is_complete = current_is_complete
+    if judgment_code:
+        is_complete = judgment_map.get(grading_mode, {}).get(judgment_code, current_is_complete)
+
+    updates = {
+        "official_score": None,
+        "official_grade": None,
+        "official_grade_value": None,
+        "official_feedback": contribution.get("feedback"),
+        "is_complete": is_complete,
+    }
+
+    grading_status = "Moderated" if contribution.get("contribution_type") == "Moderator" else None
+    if not grading_status:
+        grading_status = "Finalized" if require_grading else "Not Applicable"
+
+    updates["grading_status"] = grading_status
+    _prune_null_grade_value_for_score_only_updates(updates)
+    frappe.db.set_value("Task Outcome", outcome_id, updates, update_modified=True)
     return {"outcome": outcome_id, "grading_status": grading_status}
 
 
@@ -279,8 +325,8 @@ def _apply_criteria_official_fields(
             "official_feedback": official_feedback,
         }
     else:
-        weights = _load_rubric_weights(rubric_version) if rubric_version else {}
-        total_points = _sum_contribution_criterion_points(contribution.get("name"), weights)
+        rubric_meta = _load_rubric_criterion_meta(rubric_version) if rubric_version else {}
+        total_points = _sum_contribution_criterion_points(contribution.get("name"), rubric_meta)
         grade_symbol = _grade_symbol_from_score(grade_scale, total_points) if grade_scale else None
         grade_value = resolve_grade_symbol(grade_scale, grade_symbol) if grade_symbol and grade_scale else None
         updates = {
@@ -295,6 +341,7 @@ def _apply_criteria_official_fields(
         grading_status = "Finalized" if require_grading else "Not Applicable"
 
     updates["grading_status"] = grading_status
+    _prune_null_grade_value_for_score_only_updates(updates)
     frappe.db.set_value("Task Outcome", outcome_id, updates, update_modified=True)
     return {"outcome": outcome_id, "grading_status": grading_status}
 
@@ -321,7 +368,7 @@ def _grade_symbol_from_score(grade_scale, numeric_score):
     return selected
 
 
-def _sum_contribution_criterion_points(contribution_name, weights=None):
+def _sum_contribution_criterion_points(contribution_name, rubric_meta=None):
     if not contribution_name:
         return 0.0
 
@@ -338,12 +385,37 @@ def _sum_contribution_criterion_points(contribution_name, weights=None):
         )
         or []
     )
+
+    if _supports_weighted_rubric_totals(rubric_meta):
+        points_by_criteria = {}
+        for row in rows:
+            criteria = row.get("assessment_criteria")
+            if not criteria:
+                continue
+            try:
+                points_by_criteria[criteria] = float(row.get("level_points") or 0)
+            except Exception:
+                points_by_criteria[criteria] = 0.0
+
+        total = 0.0
+        for criteria, meta in (rubric_meta or {}).items():
+            try:
+                weighting = float(meta.get("criteria_weighting") or 0)
+                max_points = float(meta.get("criteria_max_points") or 0)
+                level_points = float(points_by_criteria.get(criteria) or 0)
+            except Exception:
+                continue
+            if max_points <= 0 or weighting <= 0:
+                continue
+            total += (level_points / max_points) * weighting
+        return total
+
     total = 0.0
     for row in rows:
         criteria = row.get("assessment_criteria")
         weight = 1.0
-        if weights and criteria in weights:
-            weight = weights.get(criteria) or 1.0
+        if rubric_meta and criteria in rubric_meta:
+            weight = (rubric_meta.get(criteria) or {}).get("criteria_weighting") or 1.0
         try:
             total += float(row.get("level_points") or 0) * float(weight or 1.0)
         except Exception:
@@ -433,6 +505,30 @@ def _current_official_grading_fields(outcome_id):
     )
 
 
+def _current_completion_state(outcome_id):
+    if not outcome_id:
+        return 0
+    value = frappe.db.get_value("Task Outcome", outcome_id, "is_complete")
+    return 1 if int(value or 0) == 1 else 0
+
+
+def _prune_null_grade_value_for_score_only_updates(updates):
+    if not isinstance(updates, dict):
+        return updates
+
+    if updates.get("official_score") in (None, ""):
+        return updates
+
+    grade_symbol = updates.get("official_grade")
+    if grade_symbol not in (None, "") and str(grade_symbol).strip():
+        return updates
+
+    if updates.get("official_grade_value") in (None, ""):
+        updates.pop("official_grade_value", None)
+
+    return updates
+
+
 def _clear_outcome_criteria(outcome_id):
     frappe.db.delete(
         "Task Outcome Criterion",
@@ -457,7 +553,7 @@ def _clear_outcome_publish(outcome_id):
     )
 
 
-def _load_rubric_weights(rubric_version):
+def _load_rubric_criterion_meta(rubric_version):
     if not rubric_version:
         return {}
 
@@ -469,15 +565,99 @@ def _load_rubric_weights(rubric_version):
                 "parenttype": "Task Rubric Version",
                 "parentfield": "criteria",
             },
-            ["assessment_criteria", "criteria_weighting"],
+            ["assessment_criteria", "criteria_weighting", "criteria_max_points"],
             as_dict=True,
         )
         or []
     )
     return {
-        row.get("assessment_criteria"): row.get("criteria_weighting") or 1.0
+        row.get("assessment_criteria"): {
+            "criteria_weighting": row.get("criteria_weighting"),
+            "criteria_max_points": row.get("criteria_max_points"),
+        }
         for row in rows
         if row.get("assessment_criteria")
+    }
+
+
+def _supports_weighted_rubric_totals(rubric_meta):
+    if not rubric_meta:
+        return False
+
+    total_weight = 0.0
+    for meta in rubric_meta.values():
+        try:
+            weighting = float(meta.get("criteria_weighting") or 0)
+            max_points = float(meta.get("criteria_max_points") or 0)
+        except Exception:
+            return False
+        if weighting <= 0 or max_points <= 0:
+            return False
+        total_weight += weighting
+
+    return abs(total_weight - 100.0) <= 0.01
+
+
+def set_assign_only_completion(
+    outcome_id,
+    *,
+    is_complete,
+    expected_student=None,
+    ignore_permissions=False,
+):
+    """
+    Apply the direct official-completion exception for Assign Only deliveries.
+
+    This path remains outside contribution audit history by design, but it still
+    enforces delivery mode, publication locks, and exact student ownership when
+    requested by a student-facing workflow.
+    """
+    if not outcome_id:
+        frappe.throw(_("Task Outcome is required."))
+
+    outcome = frappe.db.get_value(
+        "Task Outcome",
+        outcome_id,
+        ["name", "task_delivery", "student", "is_published", "is_complete", "completed_on"],
+        as_dict=True,
+    )
+    if not outcome:
+        frappe.throw(_("Task Outcome not found."))
+
+    expected_student_name = str(expected_student or "").strip()
+    if expected_student_name and str(outcome.get("student") or "").strip() != expected_student_name:
+        frappe.throw(_("Not permitted."), frappe.PermissionError)
+
+    delivery = _get_delivery_context(outcome.get("task_delivery"))
+    delivery_mode = str(delivery.get("delivery_mode") or "").strip()
+    if delivery_mode != "Assign Only":
+        frappe.throw(_("Direct completion is only available for assign-only work."))
+
+    if int(outcome.get("is_published") or 0) == 1:
+        frappe.throw(_("Unrelease this outcome before changing completion."))
+
+    target_is_complete = 1 if int(is_complete or 0) == 1 else 0
+    current_is_complete = 1 if int(outcome.get("is_complete") or 0) == 1 else 0
+    current_completed_on = outcome.get("completed_on")
+    next_completed_on = current_completed_on if target_is_complete and current_completed_on else None
+    if target_is_complete and not next_completed_on:
+        next_completed_on = now_datetime()
+
+    if current_is_complete == target_is_complete and current_completed_on == next_completed_on:
+        return {
+            "outcome": outcome.get("name") or outcome_id,
+            "is_complete": current_is_complete,
+            "completed_on": current_completed_on,
+        }
+
+    outcome_doc = frappe.get_doc("Task Outcome", outcome_id)
+    outcome_doc.is_complete = target_is_complete
+    outcome_doc.completed_on = next_completed_on
+    outcome_doc.save(ignore_permissions=ignore_permissions)
+    return {
+        "outcome": outcome_doc.name,
+        "is_complete": 1 if int(outcome_doc.is_complete or 0) == 1 else 0,
+        "completed_on": outcome_doc.completed_on,
     }
 
 

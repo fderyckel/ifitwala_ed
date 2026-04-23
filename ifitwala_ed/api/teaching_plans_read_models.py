@@ -2,19 +2,84 @@ from __future__ import annotations
 
 from typing import Any
 
+from ifitwala_ed.api.attachment_previews import build_attachment_preview_item, extract_file_extension
+from ifitwala_ed.api.student_task_status import DONE_SUBMISSION_STATUSES, build_student_task_status_label
+from ifitwala_ed.utilities.html_sanitizer import sanitize_html
 
-def serialize_material_entry(api, entry: dict[str, Any]) -> dict[str, Any]:
+
+def _material_thumbnail_ready_map(api, entries: list[dict[str, Any]]) -> dict[str, bool]:
+    file_names = [
+        str(entry.get("file") or "").strip()
+        for entry in entries or []
+        if entry.get("material_type") == api.materials_domain.MATERIAL_TYPE_FILE
+        and str(entry.get("file") or "").strip()
+    ]
+    return api.get_academic_file_thumbnail_ready_map(file_names)
+
+
+def serialize_material_entry(
+    api,
+    entry: dict[str, Any],
+    *,
+    thumbnail_ready_map: dict[str, bool] | None = None,
+) -> dict[str, Any]:
     placement = (entry.get("placements") or [{}])[0]
     material_type = entry.get("material_type")
+    owner_doctype = "Material Placement" if placement.get("placement") else "Supporting Material"
+    owner_name = placement.get("placement") or entry.get("material")
     if material_type == api.materials_domain.MATERIAL_TYPE_FILE:
+        resolved_file_id = entry.get("file")
+        resolved_file_name = str(entry.get("file") or "").strip()
+        thumbnail_url = api.resolve_academic_file_thumbnail_url(
+            file_name=entry.get("file"),
+            file_url=entry.get("file_url"),
+            context_doctype="Material Placement" if placement.get("placement") else "Supporting Material",
+            context_name=placement.get("placement") or entry.get("material"),
+            thumbnail_ready=(
+                thumbnail_ready_map.get(resolved_file_name)
+                if thumbnail_ready_map is not None and resolved_file_name
+                else None
+            ),
+        )
+        preview_url = api.resolve_academic_file_preview_url(
+            file_name=entry.get("file"),
+            file_url=entry.get("file_url"),
+            context_doctype="Material Placement" if placement.get("placement") else "Supporting Material",
+            context_name=placement.get("placement") or entry.get("material"),
+        )
         open_url = api.resolve_academic_file_open_url(
             file_name=entry.get("file"),
             file_url=entry.get("file_url"),
             context_doctype="Material Placement" if placement.get("placement") else "Supporting Material",
             context_name=placement.get("placement") or entry.get("material"),
         )
+        attachment_preview = build_attachment_preview_item(
+            item_id=owner_name,
+            owner_doctype=owner_doctype,
+            owner_name=owner_name,
+            file_id=resolved_file_id,
+            display_name=entry.get("title"),
+            description=entry.get("description"),
+            extension=extract_file_extension(file_name=entry.get("file_name"), file_url=entry.get("file_url")),
+            size_bytes=entry.get("file_size"),
+            thumbnail_url=thumbnail_url,
+            preview_url=preview_url,
+            open_url=open_url,
+            download_url=open_url,
+        )
     else:
+        thumbnail_url = None
+        preview_url = None
         open_url = entry.get("reference_url")
+        attachment_preview = build_attachment_preview_item(
+            item_id=owner_name,
+            owner_doctype=owner_doctype,
+            owner_name=owner_name,
+            link_url=entry.get("reference_url"),
+            display_name=entry.get("title"),
+            description=entry.get("description"),
+            open_url=open_url,
+        )
 
     return {
         "material": entry.get("material"),
@@ -23,6 +88,8 @@ def serialize_material_entry(api, entry: dict[str, Any]) -> dict[str, Any]:
         "modality": entry.get("modality"),
         "description": entry.get("description"),
         "reference_url": entry.get("reference_url"),
+        "thumbnail_url": thumbnail_url,
+        "preview_url": preview_url,
         "open_url": open_url,
         "file_name": entry.get("file_name"),
         "file_size": entry.get("file_size"),
@@ -31,6 +98,7 @@ def serialize_material_entry(api, entry: dict[str, Any]) -> dict[str, Any]:
         "usage_role": placement.get("usage_role"),
         "placement_note": placement.get("placement_note"),
         "placement_order": placement.get("placement_order"),
+        "attachment_preview": attachment_preview,
     }
 
 
@@ -177,7 +245,8 @@ def reload_anchor_material(api, anchor_doctype: str, anchor_name: str, material_
     created = next((row for row in rows if row.get("material") == material_name), None)
     if not created:
         api.frappe.throw(api._("Material was created but could not be reloaded."))
-    return api._serialize_material_entry(created)
+    thumbnail_ready_map = _material_thumbnail_ready_map(api, rows)
+    return api._serialize_material_entry(created, thumbnail_ready_map=thumbnail_ready_map)
 
 
 def fetch_material_map(
@@ -185,8 +254,13 @@ def fetch_material_map(
     anchor_refs: list[tuple[str, str]],
 ) -> dict[tuple[str, str], list[dict[str, Any]]]:
     material_map = api.materials_domain.list_materials_for_anchors(anchor_refs)
+    thumbnail_ready_map = _material_thumbnail_ready_map(
+        api,
+        [entry for entries in material_map.values() for entry in (entries or [])],
+    )
     return {
-        anchor: [api._serialize_material_entry(entry) for entry in entries] for anchor, entries in material_map.items()
+        anchor: [api._serialize_material_entry(entry, thumbnail_ready_map=thumbnail_ready_map) for entry in entries]
+        for anchor, entries in material_map.items()
     }
 
 
@@ -206,6 +280,8 @@ def fetch_assigned_work(
             td.class_session,
             td.delivery_mode,
             td.grading_mode,
+            td.requires_submission,
+            td.allow_late_submission,
             td.available_from,
             td.due_date,
             td.lock_date,
@@ -215,6 +291,7 @@ def fetch_assigned_work(
             td.quiz_max_attempts,
             td.quiz_pass_percentage,
             t.title,
+            t.instructions,
             t.task_type,
             t.unit_plan
         FROM `tabTask Delivery` td
@@ -239,7 +316,15 @@ def fetch_assigned_work(
                 "student": student_name,
                 "task_delivery": ["in", [row["task_delivery"] for row in rows if row.get("task_delivery")] or [""]],
             },
-            fields=["task_delivery", "submission_status", "grading_status", "is_complete", "is_published"],
+            fields=[
+                "name",
+                "task_delivery",
+                "submission_status",
+                "grading_status",
+                "has_submission",
+                "is_complete",
+                "is_published",
+            ],
             limit=0,
         )
         outcomes_by_delivery = {row.get("task_delivery"): row for row in outcome_rows or [] if row.get("task_delivery")}
@@ -265,16 +350,20 @@ def fetch_assigned_work(
         )
 
     payload = []
+    anchor_dt = api.now_datetime()
     for row in rows:
         item = {
             "task_delivery": row.get("task_delivery"),
             "task": row.get("task"),
             "title": row.get("title") or row.get("task"),
+            "instructions_html": sanitize_html(row.get("instructions") or "", allow_headings_from="h3"),
             "task_type": row.get("task_type"),
             "unit_plan": row.get("unit_plan"),
             "class_session": row.get("class_session"),
             "delivery_mode": row.get("delivery_mode"),
             "grading_mode": row.get("grading_mode"),
+            "requires_submission": int(row.get("requires_submission") or 0),
+            "allow_late_submission": int(row.get("allow_late_submission") or 0),
             "available_from": api._serialize_scalar(row.get("available_from")),
             "due_date": api._serialize_scalar(row.get("due_date")),
             "lock_date": api._serialize_scalar(row.get("lock_date")),
@@ -282,10 +371,28 @@ def fetch_assigned_work(
         }
         if audience == "student":
             outcome = outcomes_by_delivery.get(row.get("task_delivery"), {})
+            item["task_outcome"] = outcome.get("name")
             item["submission_status"] = outcome.get("submission_status")
             item["grading_status"] = outcome.get("grading_status")
             item["is_complete"] = int(outcome.get("is_complete") or 0) if outcome else 0
             item["is_published"] = int(outcome.get("is_published") or 0) if outcome else 0
+            item["status_label"] = build_student_task_status_label(
+                {
+                    "available_from": row.get("available_from"),
+                    "due_date": row.get("due_date"),
+                    "submission_status": outcome.get("submission_status"),
+                    "grading_status": outcome.get("grading_status"),
+                    "is_complete": outcome.get("is_complete"),
+                    "has_submission": (
+                        int(outcome.get("has_submission") or 0)
+                        if outcome.get("has_submission") is not None
+                        else (
+                            1 if str(outcome.get("submission_status") or "").strip() in DONE_SUBMISSION_STATUSES else 0
+                        )
+                    ),
+                },
+                anchor_dt,
+            )
             item["quiz_state"] = quiz_state_by_delivery.get(row.get("task_delivery"))
         payload.append(item)
     return payload

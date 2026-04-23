@@ -1,0 +1,239 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "TFW-.YY.-.MM.-.####",
+ "creation": "2026-04-19 09:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "section_break_identity",
+  "task_outcome",
+  "task_submission",
+  "submission_version",
+  "feedback_visibility",
+  "grade_visibility",
+  "section_break_summary",
+  "overall_summary",
+  "strengths_summary",
+  "improvements_summary",
+  "next_steps_summary",
+  "section_break_priorities",
+  "priorities",
+  "section_break_feedback_items",
+  "feedback_items",
+  "section_break_context",
+  "task_delivery",
+  "task",
+  "student",
+  "student_group",
+  "school",
+  "course",
+  "academic_year"
+ ],
+ "fields": [
+  {
+   "fieldname": "section_break_identity",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "task_outcome",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Task Outcome",
+   "options": "Task Outcome",
+   "reqd": 1
+  },
+  {
+   "fieldname": "task_submission",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Task Submission",
+   "options": "Task Submission",
+   "reqd": 1
+  },
+  {
+   "fieldname": "submission_version",
+   "fieldtype": "Int",
+   "in_list_view": 1,
+   "label": "Submission Version",
+   "read_only": 1,
+   "reqd": 1
+  },
+  {
+   "default": "hidden",
+   "fieldname": "feedback_visibility",
+   "fieldtype": "Select",
+   "label": "Feedback Visibility",
+   "options": "hidden\nstudent\nstudent_and_guardian",
+   "reqd": 1
+  },
+  {
+   "default": "hidden",
+   "fieldname": "grade_visibility",
+   "fieldtype": "Select",
+   "label": "Grade Visibility",
+   "options": "hidden\nstudent\nstudent_and_guardian",
+   "reqd": 1
+  },
+  {
+   "fieldname": "section_break_summary",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "overall_summary",
+   "fieldtype": "Small Text",
+   "label": "Overall Summary"
+  },
+  {
+   "fieldname": "strengths_summary",
+   "fieldtype": "Small Text",
+   "label": "Strengths Summary"
+  },
+  {
+   "fieldname": "improvements_summary",
+   "fieldtype": "Small Text",
+   "label": "Improvements Summary"
+  },
+  {
+   "fieldname": "next_steps_summary",
+   "fieldtype": "Small Text",
+   "label": "Next Steps Summary"
+  },
+  {
+   "fieldname": "section_break_priorities",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "priorities",
+   "fieldtype": "Table",
+   "label": "Priorities",
+   "options": "Task Feedback Priority"
+  },
+  {
+   "fieldname": "section_break_feedback_items",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "feedback_items",
+   "fieldtype": "Table",
+   "label": "Feedback Items",
+   "options": "Task Feedback Item"
+  },
+  {
+   "fieldname": "section_break_context",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "task_delivery",
+   "fieldtype": "Link",
+   "label": "Task Delivery",
+   "options": "Task Delivery",
+   "read_only": 1
+  },
+  {
+   "fieldname": "task",
+   "fieldtype": "Link",
+   "label": "Task",
+   "options": "Task",
+   "read_only": 1
+  },
+  {
+   "fieldname": "student",
+   "fieldtype": "Link",
+   "label": "Student",
+   "options": "Student",
+   "read_only": 1
+  },
+  {
+   "fieldname": "student_group",
+   "fieldtype": "Link",
+   "label": "Student Group",
+   "options": "Student Group",
+   "read_only": 1
+  },
+  {
+   "fieldname": "school",
+   "fieldtype": "Link",
+   "label": "School",
+   "options": "School",
+   "read_only": 1
+  },
+  {
+   "fieldname": "course",
+   "fieldtype": "Link",
+   "label": "Course",
+   "options": "Course",
+   "read_only": 1
+  },
+  {
+   "fieldname": "academic_year",
+   "fieldtype": "Link",
+   "label": "Academic Year",
+   "options": "Academic Year",
+   "read_only": 1
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-04-22 13:27:43.000000",
+ "modified_by": "Administrator",
+ "module": "Assessment",
+ "name": "Task Feedback Workspace",
+ "naming_rule": "Expression",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Academic Admin",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Instructor",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Curriculum Coordinator",
+   "share": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "title_field": "task_submission",
+ "track_changes": 1
+}

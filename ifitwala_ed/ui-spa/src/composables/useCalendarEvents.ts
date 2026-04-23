@@ -1,5 +1,5 @@
 // ifitwala_ed/ui-spa/src/composables/useCalendarEvents.ts
-import { call } from 'frappe-ui';
+import { apiMethod } from '@/resources/frappe';
 import { Ref, computed, ref } from 'vue';
 
 export type CalendarSource =
@@ -62,8 +62,20 @@ function makeSourceKey(sources: Iterable<CalendarSource>) {
 	return Array.from(new Set(sources)).sort().join(',');
 }
 
-function makeCacheKey(role: string, rangeKey: string, sources: Iterable<CalendarSource>) {
-	return `${role}:${makeSourceKey(sources)}:${rangeKey}`;
+function resolveSessionUserId() {
+	if (typeof window === 'undefined') return '';
+	const session = (window as any)?.frappe?.session || {};
+	const userInfo = session.user_info || {};
+	return String(session.user || userInfo.name || userInfo.email || '').trim();
+}
+
+function makeCacheKey(
+	role: string,
+	rangeKey: string,
+	sources: Iterable<CalendarSource>,
+	userId = resolveSessionUserId()
+) {
+	return `${role}:${userId || 'anonymous'}:${makeSourceKey(sources)}:${rangeKey}`;
 }
 
 function getSessionStorage(): Storage | null {
@@ -122,11 +134,34 @@ function clearCache(cacheKey: string) {
 	}
 }
 
-function unwrapResponse(response: unknown) {
-	if (response && typeof response === 'object' && 'message' in response) {
-		return (response as Record<string, unknown>).message;
+function extractCalendarErrorMessage(err: unknown) {
+	if (err && typeof err === 'object') {
+		const maybe = err as {
+			status?: number;
+			message?: string;
+			messages?: unknown[];
+			response?: { statusText?: string };
+		};
+		const firstMessage = Array.isArray(maybe.messages)
+			? maybe.messages.find(message => typeof message === 'string' && message.trim())
+			: null;
+		if (typeof firstMessage === 'string' && firstMessage.trim()) {
+			return firstMessage.trim();
+		}
+		if (typeof maybe.message === 'string' && maybe.message.trim()) {
+			return maybe.message.trim();
+		}
+		if (maybe.status === 401) {
+			return 'Your session expired. Sign in again and retry.';
+		}
+		if (maybe.status === 403) {
+			return 'You do not currently have permission to view this calendar.';
+		}
+		if (typeof maybe.response?.statusText === 'string' && maybe.response.statusText.trim()) {
+			return maybe.response.statusText.trim();
+		}
 	}
-	return response;
+	return 'Unable to load events right now.';
 }
 
 export function useCalendarEvents(options: CalendarComposableOptions = {}) {
@@ -165,14 +200,12 @@ export function useCalendarEvents(options: CalendarComposableOptions = {}) {
 		error.value = null;
 
 		try {
-			const payload = unwrapResponse(
-				await call('ifitwala_ed.api.calendar.get_staff_calendar', {
-					from_datetime: range.start,
-					to_datetime: range.end,
-					sources: Array.from(activeSources.value),
-					force_refresh: Boolean(opts.force),
-				})
-			) as CalendarPayload;
+			const payload = await apiMethod<CalendarPayload>('ifitwala_ed.api.calendar.get_staff_calendar', {
+				from_datetime: range.start,
+				to_datetime: range.end,
+				sources: Array.from(activeSources.value),
+				force_refresh: Boolean(opts.force),
+			});
 
 			if (payload) {
 				writeCache(cacheKey, payload);
@@ -180,7 +213,8 @@ export function useCalendarEvents(options: CalendarComposableOptions = {}) {
 			}
 		} catch (err) {
 			console.error('[calendar] fetch failed', err);
-			error.value = 'Unable to load events right now.';
+			clearCache(cacheKey);
+			error.value = extractCalendarErrorMessage(err);
 		} finally {
 			loading.value = false;
 		}

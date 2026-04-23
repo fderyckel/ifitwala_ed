@@ -1,9 +1,9 @@
-# Guardian Portal Visibility Contract (v0.3)
+# Guardian Portal Visibility Contract (v0.4)
 
 Status: Active
 Audience: Humans, coding agents
 Scope: Data visible through `/hub/guardian`
-Last updated: 2026-04-15
+Last updated: 2026-04-22
 
 This document defines the current server-enforced visibility rules for the guardian portal.
 
@@ -73,8 +73,11 @@ Rules:
 
 1. Guardian policy rows are resolved from active `Institutional Policy` and active `Policy Version` records where `applies_to` includes `Guardian`.
 2. Policy scope is derived from the organizations and schools of the guardian's signer-authorized linked students.
-3. Guardian acknowledgement state is limited to `Policy Acknowledgement` rows for `acknowledged_for = Guardian`, `context_doctype = Guardian`, and `context_name = Guardian.name`.
-4. Guardians must not see policy rows for children where the guardian lacks signer authority, or rows whose audience is staff-only, student-only, or applicant-only.
+3. Guardian acknowledgement state is mode-aware and always stays under `acknowledged_for = Guardian`:
+   - `Family Acknowledgement` reads and writes `context_doctype = Guardian`, `context_name = Guardian.name`
+   - `Child Acknowledgement` reads and writes `context_doctype = Student`, `context_name = Student.name`
+4. `Child Acknowledgement` rows must be limited to signer-authorized linked children whose organization and school context actually match the policy scope.
+5. Guardians must not see policy rows for children where the guardian lacks signer authority, or rows whose audience is staff-only, student-only, or applicant-only.
 
 ## 4. Finance Visibility
 
@@ -122,15 +125,48 @@ Test refs:
 
 Rules:
 
-1. Guardian-visible communications are audience-scoped on the server before they reach Guardian Home or `/guardian/communications`.
+1. Guardian-visible org communications are audience-scoped on the server before they reach Guardian Home or `/guardian/communications`.
 2. Guardian communication-center scope starts from linked students only; the server must derive the guardian's linked student-group and school context before evaluating audience rows.
-3. The optional child filter on `/guardian/communications` may target only a linked student; any out-of-scope filter must fail with a permission error.
-4. Unread state is derived from `Portal Read Receipt`.
-5. A guardian's own communication interaction rows also count as seen for summary logic.
-6. Hidden communications must not contribute to unread counts, attention rows, recent activity, or the communication-center history.
-7. Communication-center rows must stay deduplicated at the `Org Communication` level even when the same communication matches more than one linked child.
+3. Guardian-visible school events in `/guardian/communications` are limited to recent `School Event` rows whose audience reaches the guardian through `All Guardians`, `All Students, Guardians, and Employees`, student audiences with `include_guardians=1`, or explicit participant rows.
+4. School-event rows must still resolve to linked children server-side using school and student-group context before they appear in the family feed.
+5. The optional child filter on `/guardian/communications` may target only a linked student; any out-of-scope filter must fail with a permission error.
+6. Unread state is derived from `Portal Read Receipt` for org communications only.
+7. A guardian's own communication interaction rows also count as seen for summary logic.
+8. Hidden org communications must not contribute to unread counts, attention rows, recent activity, or the communication-center history.
+9. Communication-center rows must stay deduplicated at the domain-record level even when the same communication or event matches more than one linked child.
 
-## 6. Monitoring Visibility
+## 6. School Calendar Overlay Visibility
+
+Status: Implemented
+
+Code refs:
+
+- `ifitwala_ed/api/guardian_calendar.py`
+- `ifitwala_ed/api/guardian_communications.py`
+- `ifitwala_ed/school_settings/school_settings_utils.py`
+- `ifitwala_ed/school_settings/doctype/school_calendar/school_calendar.json`
+- `ifitwala_ed/school_settings/doctype/school_calendar_holidays/school_calendar_holidays.json`
+- `ifitwala_ed/school_settings/doctype/school_event/school_event.json`
+- `ifitwala_ed/school_settings/doctype/school_event_audience/school_event_audience.json`
+- `ifitwala_ed/school_settings/doctype/school_event_participant/school_event_participant.json`
+
+Test refs:
+
+- `ifitwala_ed/api/test_guardian_calendar.py`
+- `ifitwala_ed/api/test_guardian_phase2.py`
+
+Rules:
+
+1. The `School Calendar` overlay starts from the same guardian linked-student scope used by other `/hub/guardian` surfaces.
+2. Holiday rows are limited to resolved school calendars returned by `resolve_school_calendars_for_window(...)` for linked-student schools inside the selected month window.
+3. Holiday rows include only `School Calendar Holidays` rows for the resolved month window where `weekly_off = 0`.
+4. School-event rows reuse the guardian communication-center audience rules and may appear only when the guardian already has visibility through `All Guardians`, `All Students, Guardians, and Employees`, student audiences with `include_guardians = 1`, or explicit participant rows.
+5. Parent-school events may match linked children through ancestor-school lineage, so an event anchored on a family root school may still appear for guardians whose linked children are anchored on descendant schools in that branch.
+6. The optional child filter may target only a linked student, and the optional school filter may target only a school derived from the guardian's linked children or the selected child.
+7. Child and school filters only narrow the authorized month payload; they never widen school-calendar or school-event visibility.
+8. The server, not the SPA, owns matched-child resolution for both holiday and school-event items.
+
+## 7. Monitoring Visibility
 
 Status: Implemented
 
@@ -154,7 +190,7 @@ Rules:
 5. `mark_guardian_student_log_read` may only write a read receipt for a linked student's guardian-visible log and for the current guardian user.
 6. Monitoring must not expose unpublished task outcomes, staff-only logs, or non-linked children.
 
-## 7. Attendance Visibility
+## 8. Attendance Visibility
 
 Status: Implemented
 
@@ -176,7 +212,7 @@ Rules:
 4. Attendance detail must not expose `rotation_day`, `block_number`, unpublished academic outcomes, or non-linked student data.
 5. Days with no attendance rows must remain unfilled; the server must not invent inferred attendance for missing dates.
 
-## 8. Course Selection Visibility
+## 9. Course Selection Visibility
 
 Status: Implemented
 
@@ -198,19 +234,23 @@ Rules:
 4. Course rows shown in the guardian selection editor must come from the authoritative `Program Offering` semantics; the portal must not invent or expose off-offering choices.
 5. The course-selection exception does not authorize visibility into unrelated draft academic records, staff review notes, or other children outside guardian scope.
 
-## 9. Explicit Prohibitions
+## 10. Explicit Prohibitions
 
 Status: Implemented
 
 Code refs:
 
 - `ifitwala_ed/api/guardian_home.py`
+- `ifitwala_ed/api/guardian_calendar.py`
 - `ifitwala_ed/ui-spa/src/types/contracts/guardian/get_guardian_home_snapshot.ts`
+- `ifitwala_ed/ui-spa/src/types/contracts/guardian/get_guardian_calendar_overlay.ts`
 - `ifitwala_ed/ui-spa/src/pages/guardian/GuardianHome.vue`
+- `ifitwala_ed/ui-spa/src/overlays/guardian/GuardianCalendarOverlay.vue`
 
 Test refs:
 
 - `ifitwala_ed/api/test_guardian_home.py`
+- `ifitwala_ed/api/test_guardian_calendar.py`
 
 Rules:
 
@@ -218,19 +258,21 @@ Rules:
 2. The guardian portal must not expose draft grading, unpublished outcomes, staff-only student logs, unrelated draft academic records, or cross-family data.
 3. Frontend hiding is not a visibility control; all filtering happens before the payload reaches the SPA.
 4. Finance rows must not expose account holders outside the authority rule, even if the guardian can see the student.
-5. Any new guardian-visible data class must add an explicit server gate and be documented here before release.
+5. The calendar overlay must not infer extra holiday, school, or child scope in the browser.
+6. Any new guardian-visible data class must add an explicit server gate and be documented here before release.
 
 Planned curriculum-awareness additions are tracked in:
 
 - `ifitwala_ed/docs/curriculum/05_student_and_guardian_learning_experience_proposal.md`
 
-## 10. Contract Matrix
+## 11. Contract Matrix
 
 Status: Implemented
 
 Code refs:
 
 - `ifitwala_ed/api/guardian_home.py`
+- `ifitwala_ed/api/guardian_calendar.py`
 - `ifitwala_ed/api/guardian_communications.py`
 - `ifitwala_ed/api/guardian_policy.py`
 - `ifitwala_ed/api/guardian_attendance.py`
@@ -242,6 +284,8 @@ Code refs:
 - `ifitwala_ed/students/doctype/student_log/student_log.json`
 - `ifitwala_ed/students/doctype/student_attendance/student_attendance.json`
 - `ifitwala_ed/school_settings/doctype/student_attendance_code/student_attendance_code.json`
+- `ifitwala_ed/school_settings/doctype/school_calendar/school_calendar.json`
+- `ifitwala_ed/school_settings/doctype/school_calendar_holidays/school_calendar_holidays.json`
 - `ifitwala_ed/students/doctype/portal_read_receipt/portal_read_receipt.py`
 - `ifitwala_ed/students/doctype/portal_read_receipt/portal_read_receipt.json`
 - `ifitwala_ed/ui-spa/src/types/contracts/guardian/get_guardian_home_snapshot.ts`
@@ -250,6 +294,7 @@ Test refs:
 
 - `ifitwala_ed/api/test_guardian_home.py`
 - `ifitwala_ed/api/test_guardian_phase2.py`
+- `ifitwala_ed/api/test_guardian_calendar.py`
 - `ifitwala_ed/api/test_self_enrollment.py`
 - `ifitwala_ed/api/test_org_comm_utils.py`
 - `ifitwala_ed/api/test_org_communication_interactions.py`
@@ -257,10 +302,10 @@ Test refs:
 
 | Concern                          | Canonical owner                                                                                                                                          | Code refs                                                                                                                                                                                                                                                                                                                                                                                      | Test refs                                                                                                                                                                                       |
 | -------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Schema / DocType                 | Guardian links, policy acknowledgements, guardian-visible student logs, attendance, published outcomes, account holders, invoices, payments, portal read receipts | `students/doctype/guardian/*`, `students/doctype/student_guardian/*`, `students/doctype/guardian_student/*`, `governance/doctype/policy_acknowledgement/*`, `students/doctype/student_log/*`, `students/doctype/student_attendance/*`, `school_settings/doctype/student_attendance_code/*`, `assessment/doctype/task_outcome/*`, `accounting/doctype/account_holder/*`, `accounting/doctype/sales_invoice/*`, `accounting/doctype/payment_entry/*`, `students/doctype/portal_read_receipt/*` | `api/test_users.py`, `api/test_guardian_home.py`, `api/test_guardian_phase2.py`                                                                                                                 |
-| Controller / workflow logic      | Guardian scope resolution, snapshot filtering, communication-center filtering, course-selection filtering, policy scope filtering, attendance visibility filtering, finance authority filtering, monitoring filtering, communication seen-state rules | `api/guardian_home.py`, `api/guardian_communications.py`, `api/self_enrollment.py`, `api/guardian_policy.py`, `api/guardian_attendance.py`, `api/guardian_finance.py`, `api/guardian_monitoring.py`, `api/org_comm_utils.py`, `api/org_communication_interactions.py`                                                                                                                     | `api/test_guardian_home.py`, `api/test_self_enrollment.py`, `api/test_guardian_phase2.py`, `api/test_org_comm_utils.py`, `api/test_org_communication_interactions.py`                               |
-| API endpoints                    | Guardian snapshot, guardian communication center, guardian course selection, guardian policy, guardian attendance, guardian finance, guardian monitoring, and org communication interaction workflows | `api/guardian_home.py`, `api/guardian_communications.py`, `api/self_enrollment.py`, `api/guardian_policy.py`, `api/guardian_attendance.py`, `api/guardian_finance.py`, `api/guardian_monitoring.py`, `api/org_communication_interactions.py`                                                                                                                                                 | `api/test_guardian_home.py`, `api/test_self_enrollment.py`, `api/test_guardian_phase2.py`, `api/test_org_communication_interactions.py`                                                                 |
-| SPA / UI surfaces                | Guardian Home, Guardian Communication Center, child drill-down, course selection, policies, attendance, finance, and monitoring consume filtered payload only | `ui-spa/src/pages/guardian/GuardianHome.vue`, `ui-spa/src/pages/guardian/GuardianCommunicationCenter.vue`, `ui-spa/src/pages/guardian/GuardianStudentShell.vue`, `ui-spa/src/pages/guardian/GuardianCourseSelection.vue`, `ui-spa/src/pages/guardian/GuardianCourseSelectionDetail.vue`, `ui-spa/src/pages/guardian/GuardianPolicies.vue`, `ui-spa/src/pages/guardian/GuardianAttendance.vue`, `ui-spa/src/pages/guardian/GuardianFinance.vue`, `ui-spa/src/pages/guardian/GuardianMonitoring.vue`                      | `ui-spa/src/pages/guardian/__tests__/GuardianCommunicationCenter.test.ts`, `ui-spa/src/pages/guardian/__tests__/GuardianCourseSelection.test.ts`, `ui-spa/src/pages/guardian/__tests__/GuardianPolicies.test.ts`, `ui-spa/src/pages/guardian/__tests__/GuardianAttendance.test.ts`, `ui-spa/src/pages/guardian/__tests__/GuardianFinance.test.ts`, `ui-spa/src/pages/guardian/__tests__/GuardianMonitoring.test.ts` |
-| Reports / dashboards / briefings | Guardian Home, family communication cards, family attendance cards, family finance cards, and monitoring counts | `ui-spa/src/pages/guardian/GuardianHome.vue`, `ui-spa/src/pages/guardian/GuardianCommunicationCenter.vue`, `ui-spa/src/pages/guardian/GuardianAttendance.vue`, `ui-spa/src/pages/guardian/GuardianFinance.vue`, `ui-spa/src/pages/guardian/GuardianMonitoring.vue`, `api/guardian_home.py`, `api/guardian_communications.py`, `api/guardian_attendance.py`, `api/guardian_finance.py`, `api/guardian_monitoring.py`                                                                                             | `api/test_guardian_home.py`, `api/test_guardian_phase2.py`                                                                                                                                      |
+| Schema / DocType                 | Guardian links, school calendars and holidays, guardian-visible school events, policy acknowledgements, guardian-visible student logs, attendance, published outcomes, account holders, invoices, payments, portal read receipts | `students/doctype/guardian/*`, `students/doctype/student_guardian/*`, `students/doctype/guardian_student/*`, `school_settings/doctype/school_calendar/*`, `school_settings/doctype/school_calendar_holidays/*`, `school_settings/doctype/school_event/*`, `school_settings/doctype/school_event_audience/*`, `school_settings/doctype/school_event_participant/*`, `governance/doctype/policy_acknowledgement/*`, `students/doctype/student_log/*`, `students/doctype/student_attendance/*`, `school_settings/doctype/student_attendance_code/*`, `assessment/doctype/task_outcome/*`, `accounting/doctype/account_holder/*`, `accounting/doctype/sales_invoice/*`, `accounting/doctype/payment_entry/*`, `students/doctype/portal_read_receipt/*` | `api/test_users.py`, `api/test_guardian_home.py`, `api/test_guardian_calendar.py`, `api/test_guardian_phase2.py`                                                                               |
+| Controller / workflow logic      | Guardian scope resolution, snapshot filtering, calendar overlay filtering, communication-center filtering, course-selection filtering, policy scope filtering, attendance visibility filtering, finance authority filtering, monitoring filtering, communication seen-state rules | `api/guardian_home.py`, `api/guardian_calendar.py`, `api/guardian_communications.py`, `api/self_enrollment.py`, `api/guardian_policy.py`, `api/guardian_attendance.py`, `api/guardian_finance.py`, `api/guardian_monitoring.py`, `api/org_comm_utils.py`, `api/org_communication_interactions.py`                                                                                               | `api/test_guardian_home.py`, `api/test_guardian_calendar.py`, `api/test_self_enrollment.py`, `api/test_guardian_phase2.py`, `api/test_org_comm_utils.py`, `api/test_org_communication_interactions.py` |
+| API endpoints                    | Guardian snapshot, guardian calendar overlay, guardian communication center, guardian course selection, guardian policy, guardian attendance, guardian finance, guardian monitoring, and org communication interaction workflows | `api/guardian_home.py`, `api/guardian_calendar.py`, `api/guardian_communications.py`, `api/self_enrollment.py`, `api/guardian_policy.py`, `api/guardian_attendance.py`, `api/guardian_finance.py`, `api/guardian_monitoring.py`, `api/org_communication_interactions.py`                                                                                                                                  | `api/test_guardian_home.py`, `api/test_guardian_calendar.py`, `api/test_self_enrollment.py`, `api/test_guardian_phase2.py`, `api/test_org_communication_interactions.py`                             |
+| SPA / UI surfaces                | Guardian Home, Guardian Calendar Overlay, Guardian Communication Center, child drill-down, course selection, policies, attendance, finance, and monitoring consume filtered payload only | `ui-spa/src/pages/guardian/GuardianHome.vue`, `ui-spa/src/overlays/guardian/GuardianCalendarOverlay.vue`, `ui-spa/src/pages/guardian/GuardianCommunicationCenter.vue`, `ui-spa/src/pages/guardian/GuardianStudentShell.vue`, `ui-spa/src/pages/guardian/GuardianCourseSelection.vue`, `ui-spa/src/pages/guardian/GuardianCourseSelectionDetail.vue`, `ui-spa/src/pages/guardian/GuardianPolicies.vue`, `ui-spa/src/pages/guardian/GuardianAttendance.vue`, `ui-spa/src/pages/guardian/GuardianFinance.vue`, `ui-spa/src/pages/guardian/GuardianMonitoring.vue` | `ui-spa/src/pages/guardian/__tests__/GuardianHome.test.ts`, `ui-spa/src/overlays/guardian/__tests__/GuardianCalendarOverlay.test.ts`, `ui-spa/src/pages/guardian/__tests__/GuardianCommunicationCenter.test.ts`, `ui-spa/src/pages/guardian/__tests__/GuardianCourseSelection.test.ts`, `ui-spa/src/pages/guardian/__tests__/GuardianPolicies.test.ts`, `ui-spa/src/pages/guardian/__tests__/GuardianAttendance.test.ts`, `ui-spa/src/pages/guardian/__tests__/GuardianFinance.test.ts`, `ui-spa/src/pages/guardian/__tests__/GuardianMonitoring.test.ts` |
+| Reports / dashboards / briefings | Guardian Home, the home-launched calendar month view, family communication and school-event cards, family attendance cards, family finance cards, and monitoring counts | `ui-spa/src/pages/guardian/GuardianHome.vue`, `ui-spa/src/overlays/guardian/GuardianCalendarOverlay.vue`, `ui-spa/src/pages/guardian/GuardianCommunicationCenter.vue`, `ui-spa/src/pages/guardian/GuardianAttendance.vue`, `ui-spa/src/pages/guardian/GuardianFinance.vue`, `ui-spa/src/pages/guardian/GuardianMonitoring.vue`, `api/guardian_home.py`, `api/guardian_calendar.py`, `api/guardian_communications.py`, `api/guardian_attendance.py`, `api/guardian_finance.py`, `api/guardian_monitoring.py` | `api/test_guardian_home.py`, `api/test_guardian_calendar.py`, `api/test_guardian_phase2.py` |
 | Scheduler / background jobs      | None in the guardian portal visibility contract                                                                                                          | None                                                                                                                                                                                                                                                                                                                                                                                           | None                                                                                                                                                                                            |
 | Tests                            | Redirect, guardian snapshot visibility, guardian Phase-2 visibility, communication seen-state                                                            | `api/test_users.py`, `api/test_guardian_home.py`, `api/test_guardian_phase2.py`, `api/test_org_communication_interactions.py`                                                                                                                                                                                                                                                                  | Implemented                                                                                                                                                                                     |

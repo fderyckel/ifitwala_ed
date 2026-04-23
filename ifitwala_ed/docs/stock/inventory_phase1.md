@@ -62,14 +62,9 @@ Create:
 - `ifitwala_ed/stock/inventory/inventory_ledger.py`
 - `ifitwala_ed/stock/inventory/inventory_validations.py`
 
-### D) Bulk endpoints (whitelisted)
-Create:
-- `ifitwala_ed/api/inventory.py`
-
-Contains:
-- `bulk_issue(payload)`
-- `bulk_return(payload)`
-Both must reuse the same validation/mutation helpers as the doctypes.
+### D) Standalone bulk API
+Do not create a standalone `ifitwala_ed/api/inventory.py` module.
+Phase 1 mutations stay on the canonical Inventory Issue / Inventory Return document submit flows.
 
 ### E) Reports
 Create report files (Script Reports or Query Reports; choose Script for permission logic):
@@ -210,21 +205,14 @@ Must expose:
 
 ---
 
-## 4) Bulk endpoints (Codex must implement)
+## 4) Mutation entrypoints (Phase 1)
 
-### `ifitwala_ed/api/inventory.py`
-Whitelisted:
-- `bulk_issue(payload)`
-- `bulk_return(payload)`
+Phase 1 uses the canonical Inventory Issue and Inventory Return submit flows only.
 
-Payload rules:
-- Flat payload (no `{payload: ...}` wrapper)
-- Must accept keyword args or parse JSON string (match your canonical API shape)
-
-Bulk must:
-- validate inputs strictly
-- reuse the same validation + mutation helpers as doctype controllers
-- support up to N=500 rows (batch insert ledger entries)
+Rules:
+- no standalone whitelisted bulk mutation endpoint
+- enforce invariants in the parent DocType controllers and shared validation helpers
+- keep the document submit path as the single mutation surface
 
 ---
 
@@ -242,7 +230,7 @@ Bulk must:
 6. Ledger entries exist for every submit action
 7. Reports produce correct lists
 8. Hard-fail matrix enforced (no illegal transitions)
-9. Bulk issue/return works with the same invariants
+9. Issue/return submit flows enforce the same invariants across serial and consumable rows
 
 ---
 

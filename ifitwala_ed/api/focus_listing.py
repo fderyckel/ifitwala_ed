@@ -42,7 +42,7 @@ def list_focus_items(open_only: int = 1, limit: int = 20, offset: int = 0):
 
     V1: Student Log + Inquiry.
     - "action" items: ToDo allocated to user for Student Log follow-up work
-    - "review" items: log owner, submitted follow-up exists, log not completed
+    - "review" items: log owner, submitted follow-up exists, no active follow-up ToDo, log not completed
 
     Performance:
     - No N+1 doc loads
@@ -99,12 +99,6 @@ def list_focus_items(open_only: int = 1, limit: int = 20, offset: int = 0):
           and (%(open_only)s = 0 or t.status = 'Open')
           and ifnull(s.requires_follow_up, 0) = 1
           and lower(ifnull(s.follow_up_status, '')) != 'completed'
-          and not exists (
-                select 1
-                from `tabStudent Log Follow Up` f
-                where f.student_log = s.name
-                  and f.docstatus = 1
-          )
         order by t.date asc, t.modified desc
         limit %(limit)s offset %(offset)s
         """,
@@ -326,10 +320,17 @@ def list_focus_items(open_only: int = 1, limit: int = 20, offset: int = 0):
                 where f.student_log = s.name
                   and f.docstatus = 1
           )
+          and not exists (
+                select 1
+                from `tabToDo` t
+                where t.reference_type = %(ref_type)s
+                  and t.reference_name = s.name
+                  and t.status = 'Open'
+          )
         order by s.modified desc
         limit 200
         """,
-        {"user": user},
+        {"user": user, "ref_type": STUDENT_LOG_DOCTYPE},
         as_dict=True,
     )
 

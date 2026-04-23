@@ -58,6 +58,44 @@ def _get_school_follow_up_due_days_map(school_names):
     return {row.name: (cint(row.default_follow_up_due_in_days) or 5) for row in rows}
 
 
+def _get_next_step_follow_up_due_days_map(next_step_names):
+    next_step_names = [next_step for next_step in dict.fromkeys(next_step_names or []) if next_step]
+    if not next_step_names:
+        return {}
+
+    rows = frappe.get_all(
+        "Student Log Next Step",
+        filters={"name": ["in", next_step_names]},
+        fields=["name", "auto_close_after_days"],
+    )
+    return {row.name: (cint(row.auto_close_after_days) or None) for row in rows}
+
+
+def _get_follow_up_due_days(
+    school: str | None,
+    next_step: str | None = None,
+    *,
+    school_due_days_map: dict[str, int] | None = None,
+    next_step_due_days_map: dict[str, int | None] | None = None,
+) -> int:
+    next_step_name = (next_step or "").strip()
+    if next_step_name:
+        if next_step_due_days_map is not None:
+            next_step_days = cint(next_step_due_days_map.get(next_step_name) or 0)
+        else:
+            next_step_days = cint(
+                frappe.db.get_value("Student Log Next Step", next_step_name, "auto_close_after_days") or 0
+            )
+        if next_step_days > 0:
+            return next_step_days
+
+    school_name = (school or "").strip()
+    if school_due_days_map is not None and school_name:
+        return cint(school_due_days_map.get(school_name) or 5) or 5
+
+    return _get_school_follow_up_due_days(school_name)
+
+
 def _get_auto_close_eligible_rows(log_names=None):
     filters = {"follow_up_status": "In Progress"}
     if log_names:
@@ -66,16 +104,22 @@ def _get_auto_close_eligible_rows(log_names=None):
     rows = frappe.get_all(
         "Student Log",
         filters=filters,
-        fields=["name", "modified", "school"],
+        fields=["name", "modified", "school", "next_step"],
     )
     if not rows:
         return []
 
     today = frappe.utils.today()
     due_days_by_school = _get_school_follow_up_due_days_map(row.school for row in rows)
+    due_days_by_next_step = _get_next_step_follow_up_due_days_map(row.next_step for row in rows)
     eligible = []
     for row in rows:
-        due_days = due_days_by_school.get(row.school, 5)
+        due_days = _get_follow_up_due_days(
+            row.school,
+            row.next_step,
+            school_due_days_map=due_days_by_school,
+            next_step_due_days_map=due_days_by_next_step,
+        )
         last_updated = get_datetime(row.modified)
         if date_diff(today, last_updated.date()) >= due_days:
             row.auto_close_due_in_days = due_days
@@ -234,8 +278,8 @@ class StudentLog(Document):
         """
         Derive status from current DB state under the new semantics:
         - None            → follow-up not required or no clear state
-        - "Open"          → exactly one open ToDo exists and no follow-ups yet
-        - "In Progress"   → at least one follow-up exists (draft or submitted)
+        - "Open"          → exactly one open ToDo exists for the active cycle
+        - "In Progress"   → submitted follow-up exists and no open assignee remains
         - "Completed"     → preserved only if explicitly set (author/admin action)
         Notes:
         - Submitting a follow-up does NOT auto-complete the log anymore.
@@ -248,15 +292,18 @@ class StudentLog(Document):
         if (self.follow_up_status or "").lower() == "completed":
             return "Completed"
 
-        # Any follow-up (draft or submitted) means work is/was happening → In Progress
-        if frappe.db.exists("Student Log Follow Up", {"student_log": self.name}):
-            return "In Progress"
-
-        # Otherwise, if exactly one open ToDo exists, we're Open
+        # If an assignee currently owns the next action, the active cycle is Open.
         open_assignees = frappe.get_all(
             "ToDo", filters={"reference_type": "Student Log", "reference_name": self.name, "status": "Open"}, limit=2
         )
-        return "Open" if len(open_assignees) == 1 else None
+        if len(open_assignees) == 1:
+            return "Open"
+
+        # Otherwise, a submitted follow-up means the author review loop is active.
+        if frappe.db.exists("Student Log Follow Up", {"student_log": self.name, "docstatus": 1}):
+            return "In Progress"
+
+        return None
 
     # ---------------------------------------------------------------------
     # Lifecycle
@@ -268,7 +315,7 @@ class StudentLog(Document):
                 ensure exactly one open ToDo exists for that user (single-assignee policy).
         - Enforce role from Next Step → associated_role (if provided).
         - Mirror current open assignee back to follow_up_person.
-        - When requires_follow_up = 0 (pre-submit), mark status Completed quietly.
+        - When requires_follow_up = 0 (pre-submit), keep follow-up status unset until submit.
         - Derive status (timeline comments suppressed for auto reasons).
         """
         if cint(self.requires_follow_up):
@@ -279,6 +326,12 @@ class StudentLog(Document):
             expected_role = None
             if self.next_step:
                 expected_role = frappe.get_value("Student Log Next Step", self.next_step, "associated_role")
+            if (
+                self.is_new()
+                or not self.name
+                or not frappe.db.exists("Student Log Follow Up", {"student_log": self.name, "docstatus": 1})
+            ):
+                self.follow_up_role = expected_role or None
 
             # If a person is chosen pre-submit, ensure ToDo reflects that (single open)
             if self.follow_up_person and not self.is_new():
@@ -368,7 +421,7 @@ class StudentLog(Document):
         if not source_log:
             return
 
-        if frappe.db.exists("Student Log Follow Up", {"student_log": source_log}):
+        if frappe.db.exists("Student Log Follow Up", {"student_log": source_log, "docstatus": 1}):
             frappe.throw(
                 _(
                     "This Student Log already has follow-up records and cannot be amended. "
@@ -386,7 +439,7 @@ class StudentLog(Document):
             return
         if not self.name:
             return
-        if not frappe.db.exists("Student Log Follow Up", {"student_log": self.name}):
+        if not frappe.db.exists("Student Log Follow Up", {"student_log": self.name, "docstatus": 1}):
             return
 
         old = self.get_doc_before_save() or frappe._dict()
@@ -551,13 +604,9 @@ class StudentLog(Document):
             },
         )
 
-        # due date from School.default_follow_up_due_in_days (fallback 5)
-        due_days = 5
-        if self.program:
-            # due date from School.default_follow_up_due_in_days (fallback 5)
-            school = self.school or self._resolve_school()
-            due_days = _get_school_follow_up_due_days(school)
-            due_date = frappe.utils.add_days(frappe.utils.today(), int(due_days))
+        school = self.school or self._resolve_school()
+        due_days = _get_follow_up_due_days(school, self.next_step)
+        due_date = frappe.utils.add_days(frappe.utils.today(), int(due_days))
 
         # Create/ensure a single OPEN ToDo for the assignee
         desc = f"Follow up on the Student Log for {self.student_name}"
@@ -706,13 +755,13 @@ def assign_follow_up(log_name: str, user: str):
     if not (log_name and user):
         frappe.throw(_("Missing parameters."))
 
-        # Minimal parent fetch
-        sl = frappe.db.get_value(
-            "Student Log",
-            log_name,
-            ["name", "owner", "school", "student_name", "follow_up_status", "follow_up_role"],
-            as_dict=True,
-        )
+    # Minimal parent fetch
+    sl = frappe.db.get_value(
+        "Student Log",
+        log_name,
+        ["name", "owner", "school", "student_name", "follow_up_status", "follow_up_role", "next_step"],
+        as_dict=True,
+    )
     if not sl:
         frappe.throw(_("Student Log not found: {log_name}.").format(log_name=log_name))
 
@@ -750,8 +799,10 @@ def assign_follow_up(log_name: str, user: str):
             title=_("Outside School Branch"),
         )
 
-    # Role guard (target): assignee must have required role (fallback 'Academic Staff')
-    required_role = sl.follow_up_role or "Academic Staff"
+    # Keep Next Step role routing authoritative even for older rows where
+    # follow_up_role was never mirrored onto the Student Log itself.
+    required_role = sl.follow_up_role or frappe.get_value("Student Log Next Step", sl.next_step, "associated_role")
+    required_role = required_role or "Academic Staff"
     if required_role and required_role not in set(frappe.get_roles(user)):
         frappe.throw(
             _("Assignee must have the role: {role}.").format(role=required_role),
@@ -788,7 +839,7 @@ def assign_follow_up(log_name: str, user: str):
     )
 
     # Create new OPEN ToDo for assignee (lean insert)
-    due_days = _get_school_follow_up_due_days(sl.school)
+    due_days = _get_follow_up_due_days(sl.school, sl.next_step)
     due_date = frappe.utils.add_days(frappe.utils.today(), int(due_days))
     frappe.get_doc(
         {
@@ -805,11 +856,11 @@ def assign_follow_up(log_name: str, user: str):
 
     # Mirror assignee on the parent
     frappe.db.set_value("Student Log", sl.name, "follow_up_person", user)
+    if (sl.follow_up_role or "") != (required_role or ""):
+        frappe.db.set_value("Student Log", sl.name, "follow_up_role", required_role)
 
-    # Recompute status cheaply:
-    # any follow-up rows → In Progress; else with open ToDo → Open
-    has_followups = bool(frappe.db.exists("Student Log Follow Up", {"student_log": sl.name}))
-    new_status = "In Progress" if has_followups else "Open"
+    # Recompute status cheaply for the new active cycle.
+    new_status = "Open"
     if (sl.follow_up_status or "") != new_status:
         frappe.db.set_value("Student Log", sl.name, "follow_up_status", new_status)
 
@@ -936,10 +987,10 @@ def complete_log(log_name: str):
 @frappe.whitelist()
 def reopen_log(log_name: str):
     """
-    Reopen a 'Completed' Student Log → 'In Progress'.
+    Reopen a 'Completed' Student Log into an active follow-up cycle.
     Permissions: Academic Admin OR log author (owner).
     Effects:
-    - Set follow_up_status = 'In Progress'
+    - Set follow_up_status = 'Open' when a follow_up_person is ready, otherwise 'In Progress'
     - If follow_up_person is set and no OPEN ToDo exists, create one with a sane due date
     - Add concise timeline entry
     - Notify follow_up_person (bell + realtime) if present
@@ -951,7 +1002,7 @@ def reopen_log(log_name: str):
     row = frappe.db.get_value(
         "Student Log",
         log_name,
-        ["name", "owner", "school", "student_name", "follow_up_status", "follow_up_person"],
+        ["name", "owner", "school", "student_name", "follow_up_status", "follow_up_person", "next_step"],
         as_dict=True,
     )
     if not row:
@@ -968,8 +1019,10 @@ def reopen_log(log_name: str):
     if not (is_admin or is_author):
         frappe.throw(_("Only the log author or an Academic Admin can reopen this log."))
 
-    # 1) Flip status → In Progress (single write)
-    frappe.db.set_value("Student Log", row.name, "follow_up_status", "In Progress")
+    new_status = "Open" if row.follow_up_person else "In Progress"
+
+    # 1) Flip status for the reopened cycle
+    frappe.db.set_value("Student Log", row.name, "follow_up_status", new_status)
 
     # 2) Ensure an OPEN ToDo exists for current follow_up_person (if set)
     if row.follow_up_person:
@@ -984,7 +1037,7 @@ def reopen_log(log_name: str):
             "name",
         )
         if not has_open:
-            due_days = _get_school_follow_up_due_days(row.school)
+            due_days = _get_follow_up_due_days(row.school, row.next_step)
             due_date = frappe.utils.add_days(frappe.utils.today(), int(due_days))
             frappe.get_doc(
                 {
@@ -1048,7 +1101,7 @@ def reopen_log(log_name: str):
             except Exception:
                 pass
 
-    return {"ok": True, "status": "In Progress", "log": row.name}
+    return {"ok": True, "status": new_status, "log": row.name}
 
 
 @frappe.whitelist()

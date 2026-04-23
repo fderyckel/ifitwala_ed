@@ -6,7 +6,8 @@
 {% set preferred_name = (doc.student_preferred_name or "").strip() %}
 {% set is_active = 1 if doc.enabled else 0 %}
 {% set generated_on = frappe.utils.formatdate(frappe.utils.nowdate()) %}
-{% set school_meta = frappe.get_cached_value("School", doc.anchor_school, ["school_name", "school_logo", "school_tagline"], as_dict=True) if doc.anchor_school else None %}
+{% set using_managed_letterhead = 1 if (((letter_head or "") | string).strip()) and not no_letterhead else 0 %}
+{% set school_meta = frappe.db.get_value("School", doc.anchor_school, ["school_name", "school_logo", "school_tagline"], as_dict=True) if doc.anchor_school else None %}
 {% set brand_name = school_meta.school_name if school_meta and school_meta.school_name else (doc.get_formatted('anchor_school') if doc.anchor_school else "Ifitwala Ed") %}
 {% set brand_logo = school_meta.school_logo if school_meta and school_meta.school_logo else "" %}
 {% set brand_tagline = ((school_meta.school_tagline if school_meta and school_meta.school_tagline else "") or "").strip() %}
@@ -23,7 +24,12 @@
 	{% set _ = address_map.update({row.name: row}) %}
 {% endfor %}
 
-<div class="ifitwala-print student-profile">
+{% if using_managed_letterhead %}
+{{ letter_head | safe }}
+{% endif %}
+
+<div class="ifitwala-print student-profile {{ 'student-profile--with-letterhead' if using_managed_letterhead else 'student-profile--standalone' }}">
+	{% if not using_managed_letterhead %}
 	<div class="masthead">
 		<div class="brand-ribbon"></div>
 		<div class="masthead-inner">
@@ -62,6 +68,33 @@
 			</div>
 		</div>
 	</div>
+	{% else %}
+	<div class="document-banner">
+		<div class="document-banner__title-block">
+			<div class="document-banner__eyebrow">Student Record</div>
+			<h1>Student Profile</h1>
+			<div class="document-banner__subtle">Generated on {{ frappe.utils.escape_html(generated_on) }}</div>
+		</div>
+		<div class="document-banner__meta">
+			<div class="document-banner__meta-item">
+				<div class="document-banner__label">Record</div>
+				<div class="document-banner__value">{{ frappe.utils.escape_html(doc.name) }}</div>
+			</div>
+			{% if doc.student_id %}
+			<div class="document-banner__meta-item">
+				<div class="document-banner__label">Student ID</div>
+				<div class="document-banner__value">{{ frappe.utils.escape_html(doc.student_id) }}</div>
+			</div>
+			{% endif %}
+			<div class="document-banner__meta-item">
+				<div class="document-banner__label">Status</div>
+				<div class="document-banner__value">
+					<span class="status-pill {{ 'active' if is_active else 'inactive' }}">{{ 'Active' if is_active else 'Inactive' }}</span>
+				</div>
+			</div>
+		</div>
+	</div>
+	{% endif %}
 
 	<div class="hero-card">
 		<div class="hero-main">
@@ -72,7 +105,7 @@
 			{% endif %}
 			<div class="hero-subtitle">
 				{% if doc.anchor_school %}<span>{{ frappe.utils.escape_html(doc.get_formatted('anchor_school')) }}</span>{% endif %}
-				{% if brand_tagline %}<span>{{ frappe.utils.escape_html(brand_tagline) }}</span>{% endif %}
+				{% if brand_tagline and not using_managed_letterhead %}<span>{{ frappe.utils.escape_html(brand_tagline) }}</span>{% endif %}
 			</div>
 
 			<div class="hero-grid">

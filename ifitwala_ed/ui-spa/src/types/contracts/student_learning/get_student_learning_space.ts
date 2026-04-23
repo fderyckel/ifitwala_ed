@@ -1,5 +1,7 @@
 // ui-spa/src/types/contracts/student_learning/get_student_learning_space.ts
 
+import type { AttachmentPreviewItem } from '@/types/contracts/attachments/shared'
+
 export type Request = {
 	course_id: string
 	student_group?: string
@@ -36,6 +38,8 @@ export type StudentLearningMaterial = {
 	modality?: string | null
 	description?: string | null
 	reference_url?: string | null
+	thumbnail_url?: string | null
+	preview_url?: string | null
 	open_url?: string | null
 	file_name?: string | null
 	file_size?: string | null
@@ -44,6 +48,7 @@ export type StudentLearningMaterial = {
 	usage_role?: string | null
 	placement_note?: string | null
 	placement_order?: number | null
+	attachment_preview?: AttachmentPreviewItem | null
 }
 
 export type StudentQuizDeliveryState = {
@@ -65,15 +70,20 @@ export type StudentQuizDeliveryState = {
 export type StudentAssignedWork = {
 	task_delivery: string
 	task: string
+	task_outcome?: string | null
 	title: string
+	instructions_html?: string | null
 	task_type?: string | null
 	unit_plan?: string | null
 	class_session?: string | null
 	delivery_mode?: string | null
 	grading_mode?: string | null
+	requires_submission?: number
+	allow_late_submission?: number
 	available_from?: string | null
 	due_date?: string | null
 	lock_date?: string | null
+	status_label?: string | null
 	submission_status?: string | null
 	grading_status?: string | null
 	is_complete?: number
@@ -211,6 +221,7 @@ export type Response = {
 		selected_context: {
 			unit_plan?: string | null
 			class_session?: string | null
+			task_delivery?: string | null
 		}
 		unit_navigation: StudentLearningNavigationUnit[]
 	}

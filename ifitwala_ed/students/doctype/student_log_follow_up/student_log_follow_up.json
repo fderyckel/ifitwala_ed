@@ -39,7 +39,8 @@
    "fieldname": "student_log",
    "fieldtype": "Link",
    "label": "Student Log",
-   "options": "Student Log"
+   "options": "Student Log",
+   "reqd": 1
   },
   {
    "fieldname": "date",
@@ -72,7 +73,8 @@
   {
    "fieldname": "follow_up",
    "fieldtype": "Text Editor",
-   "label": "Follow up"
+   "label": "Follow up",
+   "reqd": 1
   },
   {
    "fetch_from": "student_log.date",
@@ -105,7 +107,7 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-03-22 14:00:00.000000",
+ "modified": "2026-04-19 08:58:38.000000",
  "modified_by": "Administrator",
  "module": "Students",
  "name": "Student Log Follow Up",
@@ -166,6 +168,7 @@
    "report": 1,
    "role": "Learning Support",
    "share": 1,
+   "submit": 1,
    "write": 1
   },
   {
@@ -178,6 +181,33 @@
    "report": 1,
    "role": "Counselor",
    "share": 1,
+   "submit": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Curriculum Coordinator",
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Instructor",
+   "share": 1,
+   "submit": 1,
    "write": 1
   },
   {

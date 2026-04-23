@@ -18,7 +18,12 @@ from ifitwala_ed.api import teaching_plans_shared as _shared_impl
 from ifitwala_ed.api import teaching_plans_staff as _staff_impl
 from ifitwala_ed.api import teaching_plans_student as _student_impl
 from ifitwala_ed.api import teaching_plans_timeline as _timeline_impl
-from ifitwala_ed.api.file_access import resolve_academic_file_open_url
+from ifitwala_ed.api.file_access import (
+    get_academic_file_thumbnail_ready_map,
+    resolve_academic_file_open_url,
+    resolve_academic_file_preview_url,
+    resolve_academic_file_thumbnail_url,
+)
 from ifitwala_ed.api.student_groups import TRIAGE_ROLES, _instructor_group_names
 from ifitwala_ed.assessment import quiz_service
 from ifitwala_ed.curriculum import materials as materials_domain
@@ -44,7 +49,10 @@ _COMPAT_EXPORTS = (
     getdate,
     now_datetime,
     strip_html,
+    get_academic_file_thumbnail_ready_map,
     resolve_academic_file_open_url,
+    resolve_academic_file_preview_url,
+    resolve_academic_file_thumbnail_url,
     quiz_service,
     materials_domain,
     governed_uploads,
@@ -138,6 +146,10 @@ def _timeline_duration_weeks(value: str | None) -> int | None:
     return _timeline_impl.timeline_duration_weeks(_module(), value)
 
 
+def _coerce_curriculum_anchor_date(value: Any | None = None) -> date:
+    return _timeline_impl.coerce_curriculum_anchor_date(_module(), value)
+
+
 def _resolve_course_plan_timeline_scope(
     course_plan_row: dict[str, Any],
     *,
@@ -194,8 +206,47 @@ def _build_course_plan_timeline(
     )
 
 
+def _resolve_timeline_current_unit(
+    timeline: dict[str, Any],
+    *,
+    anchor_date: Any | None = None,
+) -> dict[str, Any] | None:
+    return _timeline_impl.resolve_timeline_current_unit(
+        _module(),
+        timeline,
+        anchor_date=anchor_date,
+    )
+
+
+def _resolve_current_curriculum_unit(
+    units: list[dict[str, Any]],
+    *,
+    course_plan_row: dict[str, Any] | None = None,
+    student_group: str | None = None,
+    class_unit_rows: list[Any] | None = None,
+    anchor_date: Any | None = None,
+    allow_live_session: bool = True,
+) -> dict[str, Any]:
+    return _timeline_impl.resolve_current_curriculum_unit(
+        _module(),
+        units,
+        course_plan_row=course_plan_row,
+        student_group=student_group,
+        class_unit_rows=class_unit_rows,
+        anchor_date=anchor_date,
+        allow_live_session=allow_live_session,
+    )
+
+
 def _serialize_class_teaching_plan_row(row: dict) -> dict[str, Any]:
     return _shared_impl.serialize_class_teaching_plan_row(_module(), row)
+
+
+def _decorate_resolved_pacing_statuses(
+    units: list[dict[str, Any]],
+    current_unit_payload: dict[str, Any] | None,
+) -> list[dict[str, Any]]:
+    return _staff_impl._decorate_resolved_pacing_statuses(_module(), units, current_unit_payload)
 
 
 def _serialize_course_option(
@@ -308,8 +359,10 @@ def _build_course_plan_creation_access(user: str, roles: set[str]) -> dict[str, 
     return _shared_impl.build_course_plan_creation_access(_module(), user, roles)
 
 
-def _serialize_material_entry(entry: dict[str, Any]) -> dict[str, Any]:
-    return _read_models_impl.serialize_material_entry(_module(), entry)
+def _serialize_material_entry(
+    entry: dict[str, Any], *, thumbnail_ready_map: dict[str, bool] | None = None
+) -> dict[str, Any]:
+    return _read_models_impl.serialize_material_entry(_module(), entry, thumbnail_ready_map=thumbnail_ready_map)
 
 
 def _fetch_course_quiz_question_banks(course: str | None) -> list[dict[str, Any]]:
@@ -450,16 +503,36 @@ def _flatten_assigned_work(
     return _student_impl.flatten_assigned_work(_module(), units, general_assigned_work)
 
 
-def _resolve_student_learning_focus(units: list[dict[str, Any]]) -> tuple[dict[str, Any] | None, dict[str, Any] | None]:
-    return _student_impl.resolve_student_learning_focus(_module(), units)
+def _resolve_student_learning_focus(
+    units: list[dict[str, Any]],
+    preferred_unit_plan: str | None = None,
+    *,
+    anchor_date: Any | None = None,
+) -> tuple[dict[str, Any] | None, dict[str, Any] | None]:
+    return _student_impl.resolve_student_learning_focus(
+        _module(),
+        units,
+        preferred_unit_plan,
+        anchor_date=anchor_date,
+    )
 
 
 def _build_student_focus_statement(unit: dict[str, Any] | None, session: dict[str, Any] | None) -> str | None:
     return _student_impl.build_student_focus_statement(_module(), unit, session)
 
 
-def _build_student_learning_focus(units: list[dict[str, Any]]) -> dict[str, Any]:
-    return _student_impl.build_student_learning_focus(_module(), units)
+def _build_student_learning_focus(
+    units: list[dict[str, Any]],
+    current_unit_plan: str | None = None,
+    *,
+    anchor_date: Any | None = None,
+) -> dict[str, Any]:
+    return _student_impl.build_student_learning_focus(
+        _module(),
+        units,
+        current_unit_plan,
+        anchor_date=anchor_date,
+    )
 
 
 def _build_student_unit_navigation(
@@ -480,12 +553,17 @@ def _build_student_learning_sections(
     units: list[dict[str, Any]],
     general_assigned_work: list[dict[str, Any]] | None,
     reflection_entries: list[dict[str, Any]] | None = None,
+    current_unit_plan: str | None = None,
+    *,
+    anchor_date: Any | None = None,
 ) -> dict[str, Any]:
     return _student_impl.build_student_learning_sections(
         _module(),
         units,
         general_assigned_work,
         reflection_entries,
+        current_unit_plan,
+        anchor_date=anchor_date,
     )
 
 

@@ -8,6 +8,7 @@ from ifitwala_ed.governance.policy_scope_utils import (
     get_user_policy_management_scope,
     get_user_policy_scope,
     is_policy_manageable_by_user,
+    is_policy_organization_applicable_to_context,
     is_policy_within_user_scope,
 )
 from ifitwala_ed.governance.policy_utils import (
@@ -67,14 +68,18 @@ class InstitutionalPolicy(Document):
         if not self.organization:
             return
         school_org = (frappe.db.get_value("School", self.school, "organization") or "").strip()
-        if school_org == (self.organization or "").strip():
+        if is_policy_organization_applicable_to_context(
+            policy_organization=self.organization,
+            context_organization=school_org,
+        ):
             return
 
         frappe.throw(
             _(
                 "Selected School belongs to Organization '{school_organization}', but this policy is scoped to "
-                "Organization '{policy_organization}'. For school-scoped policies, the School must belong directly "
-                "to the selected Organization. Leave School blank for an organization-wide policy."
+                "Organization '{policy_organization}'. For school-scoped policies, the School must belong to the "
+                "selected Organization or one of its descendant Organizations. Leave School blank for an "
+                "organization-wide policy."
             ).format(
                 school_organization=school_org or _("Unknown"),
                 policy_organization=self.organization,

@@ -10,7 +10,14 @@ from ifitwala_ed.admission.admission_utils import (
     get_applicant_scope_ancestors,
     is_applicant_document_type_in_scope,
 )
-from ifitwala_ed.api.file_access import resolve_admissions_file_open_url
+from ifitwala_ed.api.attachment_previews import build_attachment_preview_item, extract_file_extension
+from ifitwala_ed.api.file_access import (
+    get_drive_file_thumbnail_ready_map,
+    resolve_admissions_file_open_url,
+    resolve_admissions_file_preview_url,
+    resolve_admissions_file_thumbnail_url,
+)
+from ifitwala_ed.integrations.drive.authority import get_current_drive_files_for_attachments
 
 
 def empty_document_review_payload() -> dict:
@@ -46,6 +53,104 @@ def build_document_review_payload_for_applicant(
         ]
     )
     return payload_by_applicant.get(applicant_name) or empty_document_review_payload()
+
+
+def _load_drive_version_mime_map(version_ids: list[str]) -> dict[str, str]:
+    resolved_version_ids = [version_id for version_id in dict.fromkeys(version_ids) if _to_text(version_id)]
+    if not resolved_version_ids:
+        return {}
+
+    rows = frappe.get_all(
+        "Drive File Version",
+        filters={"name": ["in", resolved_version_ids]},
+        fields=["name", "mime_type"],
+        limit=0,
+    )
+    return {_to_text(row.get("name")): _to_text(row.get("mime_type")) for row in rows if _to_text(row.get("name"))}
+
+
+def _serialize_item_attachment(
+    *,
+    student_applicant: str,
+    latest_drive_file: dict | None,
+    thumbnail_ready_map: dict[str, bool],
+    version_mime_map: dict[str, str],
+) -> dict:
+    drive_row = latest_drive_file or {}
+    drive_file_id = _to_text(drive_row.get("name"))
+    compatibility_file_id = _to_text(drive_row.get("file"))
+    canonical_ref = _to_text(drive_row.get("canonical_ref")) or None
+    file_name = (
+        _to_text(drive_row.get("display_name")) or _to_text(drive_row.get("file_name")) or compatibility_file_id or None
+    )
+    preview_status = _to_text(drive_row.get("preview_status")) or None
+    if not drive_file_id and not compatibility_file_id:
+        return {
+            "drive_file_id": None,
+            "canonical_ref": None,
+            "file_name": None,
+            "uploaded_at": None,
+            "open_url": None,
+            "preview_url": None,
+            "thumbnail_url": None,
+            "preview_status": None,
+            "attachment_preview": None,
+            "has_uploaded_artifact": False,
+        }
+
+    open_url = resolve_admissions_file_open_url(
+        file_name=compatibility_file_id or None,
+        file_url=None,
+        drive_file_id=drive_file_id or None,
+        canonical_ref=canonical_ref,
+        context_doctype="Student Applicant",
+        context_name=student_applicant,
+    )
+    preview_url = resolve_admissions_file_preview_url(
+        file_name=compatibility_file_id or None,
+        file_url=None,
+        drive_file_id=drive_file_id or None,
+        canonical_ref=canonical_ref,
+        context_doctype="Student Applicant",
+        context_name=student_applicant,
+        preview_ready=preview_status == "ready",
+    )
+    thumbnail_url = resolve_admissions_file_thumbnail_url(
+        file_name=compatibility_file_id or None,
+        file_url=None,
+        drive_file_id=drive_file_id or None,
+        canonical_ref=canonical_ref,
+        context_doctype="Student Applicant",
+        context_name=student_applicant,
+        thumbnail_ready=thumbnail_ready_map.get(drive_file_id, False),
+    )
+    mime_type = version_mime_map.get(_to_text(drive_row.get("current_version"))) or None
+    attachment_preview = build_attachment_preview_item(
+        item_id=drive_file_id or compatibility_file_id or file_name,
+        owner_doctype="Student Applicant",
+        owner_name=student_applicant,
+        file_id=drive_file_id or compatibility_file_id,
+        display_name=file_name,
+        mime_type=mime_type,
+        extension=extract_file_extension(file_name=file_name, file_url=None),
+        preview_status=preview_status,
+        thumbnail_url=thumbnail_url,
+        preview_url=preview_url,
+        open_url=open_url,
+        download_url=open_url,
+    )
+    return {
+        "drive_file_id": drive_file_id or None,
+        "canonical_ref": canonical_ref,
+        "file_name": file_name,
+        "uploaded_at": drive_row.get("creation"),
+        "open_url": open_url,
+        "preview_url": preview_url,
+        "thumbnail_url": thumbnail_url,
+        "preview_status": preview_status,
+        "attachment_preview": attachment_preview,
+        "has_uploaded_artifact": bool(drive_file_id or compatibility_file_id),
+    }
 
 
 def build_document_review_payload_batch(applicant_rows: list[dict]) -> dict[str, dict]:
@@ -179,22 +284,43 @@ def build_document_review_payload_batch(applicant_rows: list[dict]) -> dict[str,
     )
 
     item_names = [_to_text(row.get("name")) for row in item_rows if _to_text(row.get("name"))]
-    latest_file_by_item: dict[str, dict] = {}
+    latest_drive_file_by_item: dict[str, dict] = {}
     if item_names:
-        file_rows = frappe.get_all(
-            "File",
-            filters={
-                "attached_to_doctype": "Applicant Document Item",
-                "attached_to_name": ["in", item_names],
-            },
-            fields=["name", "attached_to_name", "file_url", "file_name", "creation", "owner"],
-            order_by="creation desc",
+        drive_rows = get_current_drive_files_for_attachments(
+            attached_doctype="Applicant Document Item",
+            attached_names=item_names,
+            fields=[
+                "name",
+                "attached_name",
+                "file",
+                "canonical_ref",
+                "display_name",
+                "preview_status",
+                "current_version",
+                "creation",
+            ],
+            statuses=("active", "processing", "blocked"),
         )
-        for row_file in file_rows:
-            item_name = _to_text(row_file.get("attached_to_name"))
-            if not item_name or item_name in latest_file_by_item:
+        for drive_row in drive_rows:
+            item_name = _to_text(drive_row.get("attached_name"))
+            if not item_name or item_name in latest_drive_file_by_item:
                 continue
-            latest_file_by_item[item_name] = row_file
+            latest_drive_file_by_item[item_name] = drive_row
+
+    drive_thumbnail_ready_map = get_drive_file_thumbnail_ready_map(
+        [
+            _to_text(drive_row.get("name"))
+            for drive_row in latest_drive_file_by_item.values()
+            if _to_text(drive_row.get("name"))
+        ]
+    )
+    drive_version_mime_map = _load_drive_version_mime_map(
+        [
+            _to_text(drive_row.get("current_version"))
+            for drive_row in latest_drive_file_by_item.values()
+            if _to_text(drive_row.get("current_version"))
+        ]
+    )
 
     recommendation_submission_by_item: dict[str, dict] = {}
     if item_names and frappe.db.table_exists("Recommendation Submission"):
@@ -223,14 +349,17 @@ def build_document_review_payload_batch(applicant_rows: list[dict]) -> dict[str,
         if not parent_name or not item_name:
             continue
 
-        latest_file = latest_file_by_item.get(item_name, {})
-        recommendation_submission = recommendation_submission_by_item.get(item_name, {})
-        uploaded_by = (
-            _to_text(recommendation_submission.get("recommender_name"))
-            or _to_text(recommendation_submission.get("recommender_email"))
-            or latest_file.get("owner")
+        attachment = _serialize_item_attachment(
+            student_applicant=document_to_applicant.get(parent_name, ""),
+            latest_drive_file=latest_drive_file_by_item.get(item_name),
+            thumbnail_ready_map=drive_thumbnail_ready_map,
+            version_mime_map=drive_version_mime_map,
         )
-        uploaded_at = recommendation_submission.get("submitted_on") or latest_file.get("creation")
+        recommendation_submission = recommendation_submission_by_item.get(item_name, {})
+        uploaded_by = _to_text(recommendation_submission.get("recommender_name")) or _to_text(
+            recommendation_submission.get("recommender_email")
+        )
+        uploaded_at = recommendation_submission.get("submitted_on") or attachment.get("uploaded_at")
         items_by_document.setdefault(parent_name, []).append(
             {
                 "name": item_name,
@@ -241,12 +370,17 @@ def build_document_review_payload_batch(applicant_rows: list[dict]) -> dict[str,
                 "reviewed_on": row_item.get("reviewed_on"),
                 "uploaded_by": uploaded_by or None,
                 "uploaded_at": uploaded_at,
-                "file_url": _resolve_item_file_open_url(
-                    student_applicant=document_to_applicant.get(parent_name, ""),
-                    file_row=latest_file,
+                "open_url": attachment.get("open_url"),
+                "preview_url": attachment.get("preview_url"),
+                "thumbnail_url": attachment.get("thumbnail_url"),
+                "preview_status": attachment.get("preview_status"),
+                "drive_file_id": attachment.get("drive_file_id"),
+                "canonical_ref": attachment.get("canonical_ref"),
+                "attachment_preview": attachment.get("attachment_preview"),
+                "file_name": attachment.get("file_name"),
+                "has_uploaded_artifact": bool(
+                    attachment.get("has_uploaded_artifact") or recommendation_submission.get("name")
                 ),
-                "file_name": _to_text(latest_file.get("file_name")) or None,
-                "has_uploaded_artifact": bool(latest_file.get("name") or recommendation_submission.get("name")),
                 "modified": row_item.get("modified"),
             }
         )
@@ -301,8 +435,14 @@ def build_document_review_payload_batch(applicant_rows: list[dict]) -> dict[str,
                         "override_on": None,
                         "uploaded_by": None,
                         "uploaded_at": None,
-                        "file_url": None,
+                        "open_url": None,
+                        "preview_url": None,
+                        "thumbnail_url": None,
+                        "preview_status": None,
                         "file_name": None,
+                        "drive_file_id": None,
+                        "canonical_ref": None,
+                        "attachment_preview": None,
                         "modified": None,
                         "items": [],
                     }
@@ -391,8 +531,14 @@ def build_document_review_payload_batch(applicant_rows: list[dict]) -> dict[str,
                     "override_on": document_row.get("override_on"),
                     "uploaded_by": latest_uploaded_item.get("uploaded_by"),
                     "uploaded_at": latest_uploaded_item.get("uploaded_at"),
-                    "file_url": latest_uploaded_item.get("file_url"),
+                    "open_url": latest_uploaded_item.get("open_url"),
+                    "preview_url": latest_uploaded_item.get("preview_url"),
+                    "thumbnail_url": latest_uploaded_item.get("thumbnail_url"),
+                    "preview_status": latest_uploaded_item.get("preview_status"),
                     "file_name": latest_uploaded_item.get("file_name"),
+                    "drive_file_id": latest_uploaded_item.get("drive_file_id"),
+                    "canonical_ref": latest_uploaded_item.get("canonical_ref"),
+                    "attachment_preview": latest_uploaded_item.get("attachment_preview"),
                     "modified": document_row.get("modified"),
                     "items": item_group,
                 }
@@ -453,8 +599,14 @@ def build_document_review_payload_batch(applicant_rows: list[dict]) -> dict[str,
                         "reviewed_on": uploaded_item.get("reviewed_on"),
                         "uploaded_by": uploaded_item.get("uploaded_by"),
                         "uploaded_at": uploaded_item.get("uploaded_at"),
-                        "file_url": uploaded_item.get("file_url"),
+                        "open_url": uploaded_item.get("open_url"),
+                        "preview_url": uploaded_item.get("preview_url"),
+                        "thumbnail_url": uploaded_item.get("thumbnail_url"),
+                        "preview_status": uploaded_item.get("preview_status"),
                         "file_name": uploaded_item.get("file_name"),
+                        "drive_file_id": uploaded_item.get("drive_file_id"),
+                        "canonical_ref": uploaded_item.get("canonical_ref"),
+                        "attachment_preview": uploaded_item.get("attachment_preview"),
                         "modified": uploaded_item.get("modified") or document_row.get("modified"),
                     }
                 )
@@ -479,21 +631,6 @@ def build_document_review_payload_batch(applicant_rows: list[dict]) -> dict[str,
         }
 
     return out
-
-
-def _resolve_item_file_open_url(*, student_applicant: str, file_row: dict | None) -> str | None:
-    if not file_row:
-        return None
-    file_name = _to_text(file_row.get("name"))
-    file_url = _to_text(file_row.get("file_url"))
-    if not file_name and not file_url:
-        return None
-    return resolve_admissions_file_open_url(
-        file_name=file_name or None,
-        file_url=file_url or None,
-        context_doctype="Student Applicant",
-        context_name=student_applicant,
-    )
 
 
 def _required_count(document_type_row: dict | None) -> int:

@@ -3,11 +3,19 @@
 import { createResource } from 'frappe-ui'
 import type { FocusItem } from '@/types/focusItem'
 
+export type StaffHomeQuickActionState = {
+	enabled: boolean
+	blocked_reason?: string | null
+}
+
 export type StaffHomeHeader = {
 	user: string
 	first_name?: string | null
 	full_name?: string | null
 	capabilities: Record<string, boolean>
+	quick_actions?: {
+		org_communication?: StaffHomeQuickActionState
+	}
 }
 
 export type ListFocusItemsPayload = {

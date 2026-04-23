@@ -48,6 +48,22 @@ Canonical docs must be clearly usable by:
 - coding agents
 - future maintainers
 
+## 1.1 Documentation Routing Index Rule
+
+When a docs folder contains multiple current notes or a mix of canonical and historical/proposal material, maintain a local `README.md` index.
+
+That index must:
+
+- say what the folder covers
+- identify the current canonical docs
+- give a recommended read order
+- call out non-authoritative files explicitly
+
+The index is navigation only.
+Do not restate full contracts inside it.
+
+When a folder has a `README.md`, agents should read it before scanning individual docs.
+
 ---
 
 ## 2. Status Marker Rule
@@ -69,6 +85,7 @@ If a section cannot point to code or tests, say so explicitly.
 When approved implementation changes behavior:
 
 - update the relevant canonical doc in the same change
+- update the local docs-folder `README.md` too when the canonical set or read order changed
 - do not silently leave stale behavior text
 - do not delete old contract text unless it is truly superseded
 - if old content is replaced, mark it deprecated or point to the replacement
@@ -94,6 +111,15 @@ Docs must be explicit enough that a coding agent can tell:
 
 If a doc is too vague to guide safe implementation, improve the doc first.
 
+For the governed file/link/attachment architecture specifically, keep the canonical read path explicit in docs:
+
+- `files_and_policies/README.md`
+- `files_and_policies/files_01_architecture_notes.md`
+- `files_and_policies/files_03_implementation.md`
+- `files_and_policies/files_07_education_file_semantics_and_cross_app_contract.md`
+- `files_and_policies/files_08_cross_portal_governed_attachment_preview_contract.md`
+- `../ifitwala_drive/ifitwala_drive/docs/06_api_contracts.md` when the note describes the Ed/Drive seam
+
 ---
 
 ## 5. Product / Security / Concurrency Coverage Rule
@@ -105,6 +131,7 @@ Canonical feature docs should explicitly state, where relevant:
 - multi-tenant isolation expectations
 - concurrency/performance expectations
 - queue/cache/realtime expectations when those are part of the design
+- whether queue names are semantic-only or must exist in the live worker topology, and where enqueue-time normalization or fallback ownership lives
 - permission-matrix expectations for governed file/image access when a surface exposes private media
 
 Do not leave these as implicit assumptions for critical workflows.

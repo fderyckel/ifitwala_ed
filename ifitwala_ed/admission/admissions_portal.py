@@ -11,8 +11,8 @@ from frappe.utils import cint, now_datetime
 from ifitwala_ed.admission.admission_utils import get_applicant_document_slot_spec
 from ifitwala_ed.utilities.governed_uploads import (
     _drive_upload_and_finalize,
-    _load_drive_module,
     _resolve_upload_mime_type_hint,
+    _workflow_result_payload,
 )
 
 ALLOWED_UPLOAD_SOURCES = {"Desk", "SPA", "API", "Job"}
@@ -89,7 +89,10 @@ def upload_applicant_document(
             if cached:
                 return frappe.parse_json(cached)
 
-        drive_admissions_api = _load_drive_module("ifitwala_drive.api.admissions")
+        try:
+            from ifitwala_drive.api import admissions as drive_admissions_api
+        except ImportError as exc:
+            frappe.throw(_("Ifitwala Drive is required for governed upload execution: {0}").format(exc))
 
         _session_response, finalize_response, file_doc = _drive_upload_and_finalize(
             create_session_callable=drive_admissions_api.upload_applicant_document,
@@ -112,14 +115,16 @@ def upload_applicant_document(
             content=content,
         )
 
+        finalize_workflow_result = _workflow_result_payload(finalize_response)
         response = {
             "file": file_doc.name,
             "file_url": file_doc.file_url,
-            "classification": finalize_response.get("classification"),
-            "applicant_document": finalize_response.get("applicant_document") or doc.name,
-            "applicant_document_item": finalize_response.get("applicant_document_item") or item_doc.name,
-            "item_key": finalize_response.get("item_key") or item_doc.item_key,
-            "item_label": finalize_response.get("item_label") or item_doc.item_label,
+            "drive_file_id": finalize_response.get("drive_file_id"),
+            "canonical_ref": finalize_response.get("canonical_ref"),
+            "applicant_document": finalize_workflow_result.get("applicant_document") or doc.name,
+            "applicant_document_item": finalize_workflow_result.get("applicant_document_item") or item_doc.name,
+            "item_key": finalize_workflow_result.get("item_key") or item_doc.item_key,
+            "item_label": finalize_workflow_result.get("item_label") or item_doc.item_label,
         }
         if cache_key:
             cache.set_value(cache_key, frappe.as_json(response), expires_in_sec=60 * 10)
@@ -146,7 +151,10 @@ def upload_applicant_profile_image(
     if source not in ALLOWED_UPLOAD_SOURCES:
         frappe.throw(_("Invalid upload_source."))
 
-    drive_admissions_api = _load_drive_module("ifitwala_drive.api.admissions")
+    try:
+        from ifitwala_drive.api import admissions as drive_admissions_api
+    except ImportError as exc:
+        frappe.throw(_("Ifitwala Drive is required for governed upload execution: {0}").format(exc))
     _session_response, finalize_response, file_doc = _drive_upload_and_finalize(
         create_session_callable=drive_admissions_api.upload_applicant_profile_image,
         payload={
@@ -162,12 +170,14 @@ def upload_applicant_profile_image(
         content=content,
     )
 
+    finalize_workflow_result = _workflow_result_payload(finalize_response)
     return {
         "file": file_doc.name,
         "file_url": file_doc.file_url,
-        "classification": finalize_response.get("classification"),
-        "student_applicant": finalize_response.get("student_applicant") or student_applicant,
-        "slot": finalize_response.get("slot"),
+        "drive_file_id": finalize_response.get("drive_file_id"),
+        "canonical_ref": finalize_response.get("canonical_ref"),
+        "student_applicant": finalize_workflow_result.get("student_applicant") or student_applicant,
+        "slot": finalize_workflow_result.get("slot"),
     }
 
 
@@ -194,7 +204,10 @@ def upload_applicant_guardian_image(
     if source not in ALLOWED_UPLOAD_SOURCES:
         frappe.throw(_("Invalid upload_source."))
 
-    drive_admissions_api = _load_drive_module("ifitwala_drive.api.admissions")
+    try:
+        from ifitwala_drive.api import admissions as drive_admissions_api
+    except ImportError as exc:
+        frappe.throw(_("Ifitwala Drive is required for governed upload execution: {0}").format(exc))
     _session_response, finalize_response, file_doc = _drive_upload_and_finalize(
         create_session_callable=drive_admissions_api.upload_applicant_guardian_image,
         payload={
@@ -211,13 +224,15 @@ def upload_applicant_guardian_image(
         content=content,
     )
 
+    finalize_workflow_result = _workflow_result_payload(finalize_response)
     return {
         "file": file_doc.name,
         "file_url": file_doc.file_url,
-        "classification": finalize_response.get("classification"),
-        "student_applicant": finalize_response.get("student_applicant") or student_applicant,
-        "guardian_row_name": finalize_response.get("guardian_row_name") or guardian_row_name,
-        "slot": finalize_response.get("slot"),
+        "drive_file_id": finalize_response.get("drive_file_id"),
+        "canonical_ref": finalize_response.get("canonical_ref"),
+        "student_applicant": finalize_workflow_result.get("student_applicant") or student_applicant,
+        "guardian_row_name": finalize_workflow_result.get("guardian_row_name") or guardian_row_name,
+        "slot": finalize_workflow_result.get("slot"),
     }
 
 
@@ -247,7 +262,10 @@ def upload_applicant_health_vaccination_proof(
     if source not in ALLOWED_UPLOAD_SOURCES:
         frappe.throw(_("Invalid upload_source."))
 
-    drive_admissions_api = _load_drive_module("ifitwala_drive.api.admissions")
+    try:
+        from ifitwala_drive.api import admissions as drive_admissions_api
+    except ImportError as exc:
+        frappe.throw(_("Ifitwala Drive is required for governed upload execution: {0}").format(exc))
     _session_response, finalize_response, file_doc = _drive_upload_and_finalize(
         create_session_callable=drive_admissions_api.upload_applicant_health_vaccination_proof,
         payload={
@@ -267,13 +285,16 @@ def upload_applicant_health_vaccination_proof(
         content=content,
     )
 
+    finalize_workflow_result = _workflow_result_payload(finalize_response)
     return {
         "file": file_doc.name,
         "file_url": file_doc.file_url,
-        "classification": finalize_response.get("classification"),
-        "student_applicant": finalize_response.get("student_applicant") or student_applicant,
-        "applicant_health_profile": finalize_response.get("applicant_health_profile") or applicant_health_profile,
-        "slot": finalize_response.get("slot"),
+        "drive_file_id": finalize_response.get("drive_file_id"),
+        "canonical_ref": finalize_response.get("canonical_ref"),
+        "student_applicant": finalize_workflow_result.get("student_applicant") or student_applicant,
+        "applicant_health_profile": finalize_workflow_result.get("applicant_health_profile")
+        or applicant_health_profile,
+        "slot": finalize_workflow_result.get("slot"),
     }
 
 

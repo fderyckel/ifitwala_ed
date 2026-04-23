@@ -3,8 +3,8 @@ title: "Institutional Policy: Unified Governance for Your School"
 slug: institutional-policy
 category: Governance
 doc_order: 1
-version: "2.0.1"
-last_change_date: "2026-04-15"
+version: "2.0.5"
+last_change_date: "2026-04-22"
 summary: "Create and manage institutional policies that flow seamlessly across your organization—from staff signature campaigns to guardian portals, student hubs, and admissions workflows—all with comprehensive analytics and audit trails."
 seo_title: "Institutional Policy: Unified Governance for Your School"
 seo_description: "Learn how Ifitwala Ed's integrated policy governance connects staff campaigns, guardian acknowledgements, student policies, and admissions requirements in one unified system."
@@ -40,11 +40,12 @@ The actual legal text at a point in time. Create new versions when rules change,
 |---------|-----|------------|
 | **Staff Focus Action** | Employees | ToDo task with inline diff viewer and e-signature |
 | **Morning Brief** | Staff | Policy announcements with one-click review |
-| **Guardian Portal** | Parents | Family policy library with per-child acknowledgements |
+| **Guardian Portal** | Parents | Family policy library with guardian acknowledgements filtered by signer-authorized linked students |
 | **Student Hub** | Students | Age-appropriate policy review and signing |
 | **Admissions Portal** | Applicants | Required policy acknowledgements before enrollment |
 | **Policy Analytics Dashboard** | Admins | Real-time completion tracking across all audiences |
-| **Policy Campaign Overlay** | Admins | Launch targeted signature campaigns |
+| **Staff Policy Campaign Overlay** | Admins | Launch targeted internal staff signature tasks |
+| **Family Policy Campaign Overlay** | Admins | Publish guardian and student portal notices for one policy version |
 | **Policy Inform Overlay** | Everyone | Read-only policy viewer with change history |
 
 ### 4. **Policy Acknowledgement**
@@ -104,7 +105,7 @@ After creating the Institutional Policy, you'll create Policy Versions to hold t
 |----------|-------------------|-------------------|
 | **Applicant** | Admissions portal | Review and acknowledge before enrollment |
 | **Student** | Student Hub (`/hub/student/policies`) | Age-appropriate policy review with e-signature |
-| **Guardian** | Guardian Portal (`/hub/guardian/policies`) | Per-child acknowledgements with family context |
+| **Guardian** | Guardian Portal (`/hub/guardian/policies`) | Mode-aware guardian acknowledgement from signer-authorized linked students: one family row or one row per child |
 | **Staff** | Focus tasks, Morning Brief | Inline diff viewer, ToDo-driven workflow |
 
 <Callout type="warning" title="Audience vs. Signer Authority">
@@ -127,7 +128,7 @@ For policies that apply to Applicants:
 
 ### 1. Staff Signature Campaigns (Launch Overlay)
 
-Admins launch targeted policy campaigns via the **Policy Signature Campaign Overlay** (`/staff` → Set up campaign):
+Admins launch targeted policy campaigns via the **Staff Policy Campaign Overlay** (`/staff` → Set up campaign):
 
 - **Select scope:** Organization, School, Employee Group
 - **Choose policy version:** Any active version
@@ -139,7 +140,22 @@ Admins launch targeted policy campaigns via the **Policy Signature Campaign Over
 The overlay shows you exactly who will receive tasks, who has already signed, and who has pending ToDos—preventing duplicate work and letting you target precisely.
 </Callout>
 
-### 2. Staff Policy Acknowledgement (Focus Action)
+### 2. Family Policy Campaigns (Portal Notice Overlay)
+
+Admins publish family reminders from the **Family Policy Campaign Overlay** on the Policy Signature Analytics dashboard:
+
+- **Select scope:** Organization and optional School
+- **Choose policy version:** Any active version that applies to Guardians, Students, or both
+- **Select family audiences:** Guardian, Student, or both
+- **Set guardian scope when needed:** For guardian policies, choose `Family Acknowledgement` or `Child Acknowledgement` until the first guardian acknowledgement locks that setting
+- **Preview pending counts:** See eligible, signed, and pending totals before publishing
+- **Publish:** Creates audience-specific portal communications that deep-link to the exact policy card
+
+<Callout type="tip" title="Notification only">
+Family campaigns do not create ToDos, snapshot compliance targets, or replace Policy Acknowledgement evidence. They notify families about durable policy work that already exists.
+</Callout>
+
+### 3. Staff Policy Acknowledgement (Focus Action)
 
 Staff sign policies through **Focus** (their task dashboard):
 
@@ -152,34 +168,37 @@ Staff sign policies through **Focus** (their task dashboard):
 
 Once signed, the ToDo auto-completes and the acknowledgement is recorded immutably.
 
-### 3. Staff Policy Library (Inform Overlay)
+### 4. Policy Library (Staff Workspace)
 
 Staff can browse policies anytime via:
 - **Morning Brief** policy links
 - **Org Communication** policy announcements
-- **Staff Policy Library** page
+- **Policy Library** page at `/hub/staff/policies`
 
 The **Policy Inform Overlay** provides:
 - Current policy text
 - Visual diff (if amended version)
 - Version history table
-- Acknowledgement status
+- Audience chips and neutral workflow labels for guardian/student policies
+- Staff acknowledgement status when the selected audience is `Staff`
 - Read-only, close-only interface
 
-### 4. Guardian Portal Policies
+For policy-admin roles such as **Academic Admin**, the Policy Library can browse `Staff`, `Guardian`, and `Student` policy audiences across the selected organization and school scope. Student and guardian acknowledgement still happens in their own portals.
+
+### 5. Guardian Portal Policies
 
 Guardians access policies at `/hub/guardian/policies`:
 
 - **Policy cards:** Show title, category, version, and scope
 - **Status badges:** "Acknowledged" or "Pending acknowledgement"
 - **Expandable text:** Read full policy inline
-- **Per-child context:** Acknowledge for each linked student
+- **Mode-aware scope:** Policies are resolved from signer-authorized linked students, then shown either as one family acknowledgement row or as one row per child
 - **E-signature flow:** Same robust signing as staff (name match + attestation)
 - **Acknowledgement clauses:** Required checkboxes per policy
 
 Guardians only see policies explicitly scoped to them and where they are the primary guardian with signing authority for at least one child.
 
-### 5. Student Hub Policies
+### 6. Student Hub Policies
 
 Students access policies at `/hub/student/policies`:
 
@@ -189,7 +208,7 @@ Students access policies at `/hub/student/policies`:
 - **Guided signing:** Step-by-step acknowledgement flow
 - **Electronic signature:** Type name + legal confirmation
 
-### 6. Admissions Portal Policies
+### 7. Admissions Portal Policies
 
 Applicants encounter policies during the admissions process:
 
@@ -199,7 +218,7 @@ Applicants encounter policies during the admissions process:
 - **Read-only mode:** If application is read-only, policies display without signing
 - **Status tracking:** Admissions staff see completion in readiness checks
 
-### 7. Policy Signature Analytics Dashboard
+### 8. Policy Signature Analytics Dashboard
 
 Admins track completion in real-time at `/staff/analytics/policy-signatures`:
 
@@ -210,9 +229,9 @@ Admins track completion in real-time at `/staff/analytics/policy-signatures`:
 - Completion %
 
 **Audience sections:**
-- Staff (with campaign launch capability)
-- Guardians (portal tracking)
-- Students (hub tracking)
+- Staff (with internal task campaign launch capability)
+- Guardians (portal acknowledgement tracking plus family campaign publication)
+- Students (hub acknowledgement tracking plus family campaign publication)
 
 **Breakdown tables:**
 - By Organization
@@ -228,7 +247,7 @@ A Pastoral Lead filters to their school, selects the current academic year, and 
 - 87% of staff have signed the new Safeguarding Policy
 - 12 guardians still need to acknowledge the Data Privacy update
 - 3 students have pending acknowledgements for the Code of Conduct
-They click "Set up campaign" to nudge remaining staff with targeted ToDos.
+They click "Publish family campaign" to notify guardians and students, then use "Set up campaign" to assign the remaining staff ToDos.
 </Callout>
 
 ---
@@ -242,8 +261,10 @@ They click "Set up campaign" to nudge remaining staff with targeted ToDos.
 - Policies appear in order they must be acknowledged
 
 ### Guardian Engagement
-- Parents see policies for all linked children
-- Sign once per policy per child (or family-wide depending on settings)
+- Parents see policies across their signer-authorized linked family scope
+- Guardian durable acknowledgement can be configured per policy version:
+  - `Family Acknowledgement` = one guardian acknowledgement per active policy version
+  - `Child Acknowledgement` = one guardian acknowledgement row per child in scope
 - Historical acknowledgements preserved
 - Re-acknowledgement prompted for new versions
 
@@ -308,7 +329,7 @@ A: Institutional Policy is the identity and scope (what, who, where). Policy Ver
 A: Go to the Policy Signature Analytics dashboard and click "Set up campaign." Select your scope (organization/school/employee group), choose the policy version, preview the audience, and launch. Focus ToDos are created automatically for all eligible staff.
 
 **Q: Can guardians sign for multiple children at once?**
-A: Guardians see policies in their portal with per-child context. Depending on the policy's admissions acknowledgement mode, they may sign once per family or per child. The system tracks acknowledgements separately for audit purposes.
+A: It depends on the Policy Version's **Guardian Acknowledgement Mode**. `Family Acknowledgement` means the guardian signs once for the policy version across their eligible family scope. `Child Acknowledgement` means the guardian signs a separate row for each child in scope. Academic Admins can choose that mode in the Family Policy Campaign overlay before the first guardian acknowledgement exists; after that, the mode is locked for audit consistency. Admissions uses its own applicant-stage acknowledgement modes separately.
 
 **Q: How do students sign policies?**
 A: Students access their policy library at `/hub/student/policies`. They see policy cards with status, can read the full text inline, and complete a guided signing flow with electronic signature and legal attestation.
@@ -346,6 +367,8 @@ A: Yes, applicant-scoped policies appear in the admissions portal. They must ack
 - **Deletion**: Blocked by controller—use `is_active` instead
 - **SPA Surfaces:**
   - Staff Campaign Overlay: `/staff` → Set up campaign
+  - Family Policy Campaign Overlay: `/staff/analytics/policy-signatures` → Publish family campaign
+  - Policy Library: `/hub/staff/policies`
   - Staff Inform Overlay: Policy read-only viewer
   - Guardian Policies: `/hub/guardian/policies`
   - Student Policies: `/hub/student/policies`

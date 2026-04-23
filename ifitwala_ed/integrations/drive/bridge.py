@@ -1,133 +1,174 @@
 from __future__ import annotations
 
+import json
 from typing import Any
 
-from ifitwala_ed.integrations.drive import admissions, materials, media, org_communications, tasks
+import frappe
+from frappe import _
+
+from ifitwala_ed.integrations.drive.workflow_specs import (
+    build_upload_session_context,
+    get_upload_spec,
+    iter_upload_specs,
+    normalize_workflow_id,
+)
+
+_EMPTY_FINALIZE_CONTRACT = {
+    "workflow": None,
+    "workflow_id": None,
+    "contract_version": None,
+    "authoritative_context": None,
+    "attached_field_override": None,
+    "context_override": None,
+    "binding_role": None,
+}
 
 
-def reconcile_upload_session_payload(payload: dict[str, Any]) -> dict[str, Any]:
-    payload = tasks.reconcile_task_submission_session_payload(payload)
-    return payload
+def _load_session_workflow_metadata(upload_session_doc) -> dict[str, Any]:
+    raw = getattr(upload_session_doc, "upload_contract_json", None)
+    if not raw:
+        return {}
 
+    try:
+        parsed = json.loads(raw)
+    except Exception:
+        return {}
+    if not isinstance(parsed, dict):
+        return {}
 
-def resolve_finalize_contract(upload_session_doc) -> dict[str, Any]:
-    authoritative = tasks.validate_task_submission_finalize_context(upload_session_doc)
-    if authoritative is not None:
-        return {
-            "workflow": "task_submission",
-            "authoritative_context": authoritative,
-            "attached_field_override": None,
-            "context_override": tasks.get_task_submission_context_override(
-                getattr(upload_session_doc, "owner_name", None)
-            ),
-            "binding_role": None,
-        }
+    workflow = parsed.get("workflow")
+    if not isinstance(workflow, dict):
+        return {}
 
-    authoritative = tasks.validate_task_resource_finalize_context(upload_session_doc)
-    if authoritative is not None:
-        return {
-            "workflow": "task_resource",
-            "authoritative_context": authoritative,
-            "attached_field_override": None,
-            "context_override": tasks.get_task_resource_context_override(
-                getattr(upload_session_doc, "owner_name", None),
-                getattr(upload_session_doc, "intended_slot", None),
-            ),
-            "binding_role": "task_resource",
-        }
-
-    authoritative = org_communications.validate_org_communication_finalize_context(upload_session_doc)
-    if authoritative is not None:
-        return {
-            "workflow": "org_communication_attachment",
-            "authoritative_context": authoritative,
-            "attached_field_override": None,
-            "context_override": org_communications.get_org_communication_attachment_context_override(
-                getattr(upload_session_doc, "owner_name", None),
-                getattr(upload_session_doc, "intended_slot", None),
-            ),
-            "binding_role": "communication_attachment",
-        }
-
-    authoritative = materials.validate_supporting_material_finalize_context(upload_session_doc)
-    if authoritative is not None:
-        return {
-            "workflow": "supporting_material",
-            "authoritative_context": authoritative,
-            "attached_field_override": None,
-            "context_override": materials.get_supporting_material_context_override(
-                getattr(upload_session_doc, "owner_name", None),
-                getattr(upload_session_doc, "intended_slot", None),
-            ),
-            "binding_role": "general_reference",
-        }
-
-    authoritative = media.validate_media_finalize_context(upload_session_doc)
-    if authoritative is not None:
-        return {
-            "workflow": "media",
-            "authoritative_context": authoritative,
-            "attached_field_override": media.get_attached_field_override(upload_session_doc),
-            "context_override": None,
-            "binding_role": (
-                "organization_media" if getattr(upload_session_doc, "owner_doctype", None) == "Organization" else None
-            ),
-        }
-
-    authoritative = admissions.validate_applicant_document_finalize_context(upload_session_doc)
-    if authoritative is not None:
-        return {
-            "workflow": "applicant_document",
-            "authoritative_context": authoritative,
-            "attached_field_override": admissions.get_admissions_attached_field_override(upload_session_doc),
-            "context_override": None,
-            "binding_role": None,
-        }
-
-    authoritative = admissions.validate_applicant_profile_image_finalize_context(upload_session_doc)
-    if authoritative is not None:
-        return {
-            "workflow": "applicant_profile_image",
-            "authoritative_context": authoritative,
-            "attached_field_override": admissions.get_admissions_attached_field_override(upload_session_doc),
-            "context_override": None,
-            "binding_role": None,
-        }
-
-    authoritative = admissions.validate_applicant_guardian_image_finalize_context(upload_session_doc)
-    if authoritative is not None:
-        return {
-            "workflow": "applicant_guardian_image",
-            "authoritative_context": authoritative,
-            "attached_field_override": admissions.get_admissions_attached_field_override(upload_session_doc),
-            "context_override": None,
-            "binding_role": None,
-        }
-
-    authoritative = admissions.validate_applicant_health_finalize_context(upload_session_doc)
-    if authoritative is not None:
-        return {
-            "workflow": "applicant_health",
-            "authoritative_context": authoritative,
-            "attached_field_override": admissions.get_admissions_attached_field_override(upload_session_doc),
-            "context_override": None,
-            "binding_role": None,
-        }
+    workflow_id = normalize_workflow_id(workflow.get("workflow_id"))
+    contract_version = str(workflow.get("contract_version") or "").strip() or None
+    if not workflow_id:
+        return {}
 
     return {
-        "workflow": None,
-        "authoritative_context": None,
-        "attached_field_override": None,
-        "context_override": None,
-        "binding_role": None,
+        "workflow_id": workflow_id,
+        "contract_version": contract_version,
     }
 
 
+def _validate_provided_authoritative_fields(
+    provided_payload: dict[str, Any],
+    authoritative_payload: dict[str, Any],
+) -> None:
+    for fieldname, authoritative_value in authoritative_payload.items():
+        if fieldname in {"workflow_id", "contract_version", "is_private"}:
+            continue
+        provided_value = provided_payload.get(fieldname)
+        if provided_value not in (None, "", authoritative_value):
+            frappe.throw(
+                _("Workflow upload field '{field_name}' does not match the authoritative owner context.").format(
+                    field_name=fieldname
+                )
+            )
+
+
+def _normalize_workflow_payload(workflow_payload: Any) -> dict[str, Any]:
+    if workflow_payload in (None, ""):
+        return {}
+    if isinstance(workflow_payload, dict):
+        return workflow_payload
+    if isinstance(workflow_payload, str):
+        try:
+            parsed = json.loads(workflow_payload)
+        except Exception:
+            frappe.throw(_("workflow_payload must be valid JSON."))
+        if isinstance(parsed, dict):
+            return parsed
+    frappe.throw(_("workflow_payload must be a dict."))
+    return {}
+
+
+def resolve_upload_session_context(workflow_id: str, workflow_payload: dict[str, Any]) -> dict[str, Any]:
+    return build_upload_session_context(workflow_id, _normalize_workflow_payload(workflow_payload))
+
+
+def _build_finalize_contract(upload_session_doc, workflow_id: str) -> dict[str, Any]:
+    spec = get_upload_spec(workflow_id)
+    metadata = _load_session_workflow_metadata(upload_session_doc)
+    contract_version = metadata.get("contract_version")
+    if contract_version and contract_version != spec.contract_version:
+        frappe.throw(
+            _("Unsupported governed upload contract version '{0}' for workflow '{1}'.").format(
+                contract_version,
+                spec.workflow_id,
+            )
+        )
+
+    authoritative = spec.validate_finalize_context(upload_session_doc)
+    if authoritative is None:
+        frappe.throw(
+            _("Upload session no longer matches the authoritative workflow contract: {0}.").format(spec.workflow_id)
+        )
+    authoritative_context = dict(authoritative)
+    if spec.is_private is not None:
+        authoritative_context["is_private"] = int(bool(spec.is_private))
+
+    return {
+        "workflow": spec.workflow_id,
+        "workflow_id": spec.workflow_id,
+        "contract_version": spec.contract_version,
+        "authoritative_context": authoritative_context,
+        "attached_field_override": spec.resolve_attached_field_override(upload_session_doc),
+        "context_override": spec.resolve_context_override(upload_session_doc, authoritative_context),
+        "binding_role": spec.resolve_binding_role(upload_session_doc, authoritative_context),
+    }
+
+
+def reconcile_upload_session_payload(payload: dict[str, Any]) -> dict[str, Any]:
+    workflow_id = normalize_workflow_id(payload.get("workflow_id"))
+    if workflow_id:
+        workflow_payload = _normalize_workflow_payload(payload.get("workflow_payload"))
+        authoritative = resolve_upload_session_context(workflow_id, workflow_payload)
+        _validate_provided_authoritative_fields(payload, authoritative)
+        return {
+            **payload,
+            **authoritative,
+            "workflow_id": authoritative["workflow_id"],
+            "contract_version": authoritative["contract_version"],
+            "workflow_payload": workflow_payload,
+        }
+
+    frappe.throw(_("workflow_id is required."))
+    return {}
+
+
+def resolve_finalize_contract(upload_session_doc) -> dict[str, Any]:
+    metadata = _load_session_workflow_metadata(upload_session_doc)
+    workflow_id = metadata.get("workflow_id")
+    if workflow_id:
+        return _build_finalize_contract(upload_session_doc, workflow_id)
+
+    for spec in iter_upload_specs():
+        authoritative = spec.validate_finalize_context(upload_session_doc)
+        if authoritative is None:
+            continue
+        authoritative_context = dict(authoritative)
+        if spec.is_private is not None:
+            authoritative_context["is_private"] = int(bool(spec.is_private))
+        return {
+            "workflow": spec.workflow_id,
+            "workflow_id": spec.workflow_id,
+            "contract_version": spec.contract_version,
+            "authoritative_context": authoritative_context,
+            "attached_field_override": spec.resolve_attached_field_override(upload_session_doc),
+            "context_override": spec.resolve_context_override(upload_session_doc, authoritative_context),
+            "binding_role": spec.resolve_binding_role(upload_session_doc, authoritative_context),
+        }
+
+    return dict(_EMPTY_FINALIZE_CONTRACT)
+
+
 def run_post_finalize(upload_session_doc, created_file) -> dict[str, Any]:
-    response: dict[str, Any] = {}
-    response.update(tasks.run_task_post_finalize(upload_session_doc, created_file))
-    response.update(org_communications.run_org_communication_attachment_post_finalize(upload_session_doc, created_file))
-    response.update(materials.run_material_post_finalize(upload_session_doc, created_file))
-    response.update(media.run_media_post_finalize(upload_session_doc, created_file))
-    response.update(admissions.run_admissions_post_finalize(upload_session_doc, created_file))
-    return response
+    metadata = _load_session_workflow_metadata(upload_session_doc)
+    workflow_id = metadata.get("workflow_id")
+    if not workflow_id:
+        workflow_id = normalize_workflow_id(resolve_finalize_contract(upload_session_doc).get("workflow_id"))
+    if workflow_id:
+        return get_upload_spec(workflow_id).run_post_finalize(upload_session_doc, created_file)
+
+    return {}

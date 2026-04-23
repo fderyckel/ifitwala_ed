@@ -11,8 +11,9 @@ from frappe import _
 from frappe.utils import add_days, getdate, now_datetime, strip_html, today
 
 from ifitwala_ed.api.guardian_home import _resolve_guardian_scope
-from ifitwala_ed.api.org_comm_utils import check_audience_match
+from ifitwala_ed.api.org_comm_utils import check_audience_match, get_school_organization_map
 from ifitwala_ed.api.org_communication_interactions import get_seen_org_communication_names
+from ifitwala_ed.utilities.employee_utils import get_ancestor_organizations
 from ifitwala_ed.utilities.school_tree import get_ancestor_schools, get_descendant_schools
 
 RECENT_WINDOW_DAYS = 90
@@ -179,9 +180,31 @@ def _resolve_guardian_communication_context() -> dict[str, Any]:
                 continue
         eligible_school_targets_by_student[student] = eligible_targets
 
+    school_org_map = get_school_organization_map(school_names)
+    student_organization_names: dict[str, set[str]] = {student: set() for student in student_names}
+    eligible_organization_targets_by_student: dict[str, set[str]] = {}
+    organization_names: set[str] = set()
+    for student, names in student_school_names.items():
+        student_orgs = {
+            school_org_map.get(str(school_name or "").strip())
+            for school_name in names
+            if school_org_map.get(str(school_name or "").strip())
+        }
+        student_organization_names[student] = {org for org in student_orgs if org}
+        organization_names.update(student_organization_names[student])
+
+        eligible_org_targets = set(student_organization_names[student])
+        for organization_name in list(student_organization_names[student]):
+            try:
+                eligible_org_targets.update(get_ancestor_organizations(organization_name) or [])
+            except Exception:
+                continue
+        eligible_organization_targets_by_student[student] = eligible_org_targets
+
     audience_scope = frappe._dict(
         school=next(iter(sorted(school_names)), None),
-        organization=None,
+        organization=next(iter(sorted(organization_names)), None),
+        organization_names=sorted(organization_names),
         student_name=None,
         student_groups=sorted(group_map.keys()),
         school_names=sorted(school_names),
@@ -198,7 +221,9 @@ def _resolve_guardian_communication_context() -> dict[str, Any]:
         "group_members": group_members,
         "group_map": group_map,
         "student_school_names": student_school_names,
+        "student_organization_names": student_organization_names,
         "eligible_school_targets_by_student": eligible_school_targets_by_student,
+        "eligible_organization_targets_by_student": eligible_organization_targets_by_student,
         "audience_scope": audience_scope,
     }
 
@@ -212,11 +237,14 @@ def _validate_selected_student(selected_student: str | None, context: dict[str, 
     return student_name
 
 
-def _candidate_scope(context: dict[str, Any], selected_student: str | None = None) -> tuple[set[str], set[str]]:
+def _candidate_scope(
+    context: dict[str, Any], selected_student: str | None = None
+) -> tuple[set[str], set[str], set[str]]:
     if selected_student:
         return (
             set((context.get("membership_by_student") or {}).get(selected_student) or []),
             set((context.get("eligible_school_targets_by_student") or {}).get(selected_student) or []),
+            set((context.get("eligible_organization_targets_by_student") or {}).get(selected_student) or []),
         )
 
     target_groups = {
@@ -231,11 +259,21 @@ def _candidate_scope(context: dict[str, Any], selected_student: str | None = Non
         for school_name in (names or set())
         if school_name
     }
-    return target_groups, school_targets
+    organization_targets = {
+        organization_name
+        for names in (context.get("eligible_organization_targets_by_student") or {}).values()
+        for organization_name in (names or set())
+        if organization_name
+    }
+    return target_groups, school_targets, organization_targets
 
 
-def _fetch_candidate_rows(target_groups: set[str], school_targets: set[str]) -> list[dict[str, Any]]:
-    if not target_groups and not school_targets:
+def _fetch_candidate_rows(
+    target_groups: set[str],
+    school_targets: set[str],
+    organization_targets: set[str],
+) -> list[dict[str, Any]]:
+    if not target_groups and not school_targets and not organization_targets:
         return []
 
     conditions = ["oc.status IN ('Published', 'Archived')", "oc.publish_from >= %(recent_start)s"]
@@ -275,6 +313,23 @@ def _fetch_candidate_rows(target_groups: set[str], school_targets: set[str]) -> 
             """
         )
         values["school_targets"] = tuple(sorted(school_targets))
+
+    if organization_targets:
+        audience_clauses.append(
+            """
+            EXISTS (
+                SELECT 1
+                FROM `tabOrg Communication Audience` a
+                WHERE a.parent = oc.name
+                  AND a.parenttype = 'Org Communication'
+                  AND a.parentfield = 'audiences'
+                  AND a.target_mode = 'Organization'
+                  AND oc.organization IN %(organization_targets)s
+                  AND COALESCE(a.to_guardians, 0) = 1
+            )
+            """
+        )
+        values["organization_targets"] = tuple(sorted(organization_targets))
 
     conditions.append("IFNULL(oc.portal_surface, 'Everywhere') IN ('Everywhere', 'Portal Feed', 'Guardian Portal')")
     conditions.append("(" + " OR ".join(clause.strip() for clause in audience_clauses) + ")")
@@ -331,6 +386,7 @@ def _matched_students_for_audience(
     context: dict[str, Any],
     selected_student: str | None,
     descendants_cache: dict[str, set[str]],
+    comm_organization: str | None,
 ) -> tuple[set[str], set[str]]:
     if int(audience_row.get("to_guardians") or 0) != 1:
         return set(), set()
@@ -348,6 +404,19 @@ def _matched_students_for_audience(
         if not matched_students:
             return set(), set()
         return matched_students, {group_name}
+
+    if target_mode == "Organization":
+        organization_name = str(comm_organization or "").strip()
+        if not organization_name:
+            return set(), set()
+
+        matched_students = {
+            student
+            for student in relevant_students
+            if organization_name
+            in set((context.get("eligible_organization_targets_by_student") or {}).get(student) or [])
+        }
+        return matched_students, set()
 
     if target_mode != "School Scope":
         return set(), set()
@@ -398,7 +467,7 @@ def _resolve_source_meta(
     return {
         "source_type": "school",
         "source_label": _source_label("school"),
-        "context_label": row.get("school") or None,
+        "context_label": row.get("school") or row.get("organization") or None,
     }
 
 
@@ -452,6 +521,264 @@ def _serialize_guardian_org_communication_item(
     }
 
 
+def _ordered_matched_children(context: dict[str, Any], matched_students: set[str]) -> list[dict[str, Any]]:
+    ordered_children = [
+        (context.get("child_by_student") or {}).get(student)
+        for student in (child.get("student") for child in (context.get("children") or []))
+        if student in matched_students
+    ]
+    return [child for child in ordered_children if child]
+
+
+def _selected_or_all_students(context: dict[str, Any], selected_student: str | None) -> list[str]:
+    if selected_student:
+        return [selected_student]
+    return list(context.get("student_names") or [])
+
+
+def _students_for_school_scope(
+    context: dict[str, Any],
+    *,
+    selected_student: str | None,
+    selected_school: str | None = None,
+) -> list[str]:
+    relevant_students = _selected_or_all_students(context, selected_student)
+    school_name = str(selected_school or "").strip()
+    if not school_name:
+        return [student for student in relevant_students if student]
+
+    return [
+        student
+        for student in relevant_students
+        if school_name in set((context.get("student_school_names") or {}).get(student) or [])
+    ]
+
+
+def _event_students_matching_school(
+    context: dict[str, Any],
+    *,
+    selected_student: str | None,
+    selected_school: str | None = None,
+    event_school: str | None,
+) -> set[str]:
+    relevant_students = _students_for_school_scope(
+        context,
+        selected_student=selected_student,
+        selected_school=selected_school,
+    )
+    school_name = str(event_school or "").strip()
+    if not school_name:
+        return {student for student in relevant_students if student}
+
+    matched_students: set[str] = set()
+    for student in relevant_students:
+        eligible_school_targets = set((context.get("eligible_school_targets_by_student") or {}).get(student) or [])
+        if not eligible_school_targets:
+            eligible_school_targets = set((context.get("student_school_names") or {}).get(student) or [])
+        if school_name in eligible_school_targets:
+            matched_students.add(student)
+
+    return matched_students
+
+
+def _matched_students_for_school_event_audience(
+    event_row: dict[str, Any],
+    audience_row: dict[str, Any],
+    *,
+    context: dict[str, Any],
+    selected_student: str | None,
+    selected_school: str | None = None,
+    explicit_participant_events: set[str],
+) -> set[str]:
+    audience_type = str(audience_row.get("audience_type") or "").strip()
+    event_name = str(event_row.get("name") or "").strip()
+    eligible_students = _event_students_matching_school(
+        context,
+        selected_student=selected_student,
+        selected_school=selected_school,
+        event_school=event_row.get("school"),
+    )
+    if not eligible_students:
+        return set()
+
+    include_guardians = int(audience_row.get("include_guardians") or 0) == 1
+
+    if audience_type in {"All Students, Guardians, and Employees", "All Guardians"}:
+        return eligible_students
+
+    if audience_type == "All Students":
+        return eligible_students if include_guardians else set()
+
+    if audience_type == "Students in Student Group":
+        if not include_guardians:
+            return set()
+        group_name = audience_row.get("student_group")
+        if not group_name:
+            return set()
+        return {
+            student
+            for student in eligible_students
+            if group_name in set((context.get("membership_by_student") or {}).get(student) or [])
+        }
+
+    if audience_type == "Custom Users":
+        if event_name not in explicit_participant_events:
+            return set()
+        return eligible_students
+
+    return set()
+
+
+def _fetch_guardian_school_events(
+    context: dict[str, Any],
+    *,
+    selected_student: str | None = None,
+    start_date=None,
+    end_date=None,
+    selected_school: str | None = None,
+) -> list[dict[str, Any]]:
+    target_schools = {
+        school_name
+        for student in _students_for_school_scope(
+            context,
+            selected_student=selected_student,
+            selected_school=selected_school,
+        )
+        for school_name in set(
+            (context.get("eligible_school_targets_by_student") or {}).get(student)
+            or (context.get("student_school_names") or {}).get(student)
+            or []
+        )
+        if school_name
+    }
+    if not target_schools and not context.get("user"):
+        return []
+
+    window_start = getdate(start_date) if start_date else _recent_start_date()
+    window_end = getdate(end_date) if end_date else None
+
+    conditions = [
+        "se.docstatus < 2",
+        "COALESCE(se.ends_on, se.starts_on) >= %(window_start)s",
+        "("
+        "EXISTS ("
+        "    SELECT 1 FROM `tabSchool Event Participant` sep"
+        "    WHERE sep.parent = se.name"
+        "      AND sep.parenttype = 'School Event'"
+        "      AND sep.participant = %(user)s"
+        ")"
+        " OR COALESCE(se.school, '') = ''" + (" OR se.school IN %(target_schools)s" if target_schools else "") + ")",
+    ]
+    values: dict[str, Any] = {
+        "window_start": window_start,
+        "user": context.get("user"),
+    }
+    if window_end:
+        conditions.append("se.starts_on < %(window_end_exclusive)s")
+        values["window_end_exclusive"] = add_days(window_end, 1)
+    if target_schools:
+        values["target_schools"] = tuple(sorted(target_schools))
+
+    sql = f"""
+        SELECT
+            se.name,
+            se.subject,
+            se.school,
+            se.location,
+            se.event_category,
+            se.description,
+            se.starts_on,
+            se.ends_on,
+            se.all_day,
+            se.creation
+        FROM `tabSchool Event` se
+        WHERE {" AND ".join(condition.strip() for condition in conditions)}
+        ORDER BY se.starts_on DESC, se.creation DESC
+        LIMIT 200
+    """
+    rows = frappe.db.sql(sql, values, as_dict=True) or []
+    if not rows:
+        return []
+
+    event_names = [row.get("name") for row in rows if row.get("name")]
+    audience_rows = frappe.get_all(
+        "School Event Audience",
+        filters={"parent": ["in", event_names]},
+        fields=[
+            "parent",
+            "audience_type",
+            "student_group",
+            "include_guardians",
+            "include_students",
+        ],
+    )
+    audiences_by_event: dict[str, list[dict[str, Any]]] = defaultdict(list)
+    for row in audience_rows or []:
+        parent = row.get("parent")
+        if parent:
+            audiences_by_event[parent].append(row)
+
+    participant_rows = frappe.get_all(
+        "School Event Participant",
+        filters={
+            "parent": ["in", event_names],
+            "parenttype": "School Event",
+            "participant": context.get("user"),
+        },
+        fields=["parent"],
+    )
+    explicit_participant_events = {row.get("parent") for row in participant_rows or [] if row.get("parent")}
+
+    items: list[dict[str, Any]] = []
+    for row in rows:
+        event_name = row.get("name")
+        if not event_name:
+            continue
+
+        matched_students: set[str] = set()
+        for audience_row in audiences_by_event.get(event_name, []):
+            matched_students.update(
+                _matched_students_for_school_event_audience(
+                    row,
+                    audience_row,
+                    context=context,
+                    selected_student=selected_student,
+                    selected_school=selected_school,
+                    explicit_participant_events=explicit_participant_events,
+                )
+            )
+
+        if not matched_students:
+            continue
+
+        items.append(
+            {
+                "kind": "school_event",
+                "item_id": f"event::{event_name}",
+                "sort_at": _serialize_scalar(row.get("starts_on") or row.get("creation")),
+                "source_type": "school",
+                "source_label": _("School Event"),
+                "context_label": row.get("school") or None,
+                "matched_children": _ordered_matched_children(context, matched_students),
+                "school_event": {
+                    "name": event_name,
+                    "subject": row.get("subject") or _("School Event"),
+                    "school": row.get("school"),
+                    "location": row.get("location"),
+                    "event_type": row.get("event_type"),
+                    "event_category": row.get("event_category"),
+                    "description": row.get("description") or "",
+                    "snippet": _snippet_from_html(row.get("description"), limit=220),
+                    "starts_on": _serialize_scalar(row.get("starts_on")),
+                    "ends_on": _serialize_scalar(row.get("ends_on")),
+                    "all_day": 1 if row.get("all_day") else 0,
+                },
+            }
+        )
+
+    return _sort_items(items)
+
+
 def _sort_items(items: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return sorted(
         items,
@@ -465,8 +792,12 @@ def _fetch_guardian_org_communications(
     *,
     selected_student: str | None = None,
 ) -> list[dict[str, Any]]:
-    target_groups, school_targets = _candidate_scope(context, selected_student=selected_student)
-    candidates = _fetch_candidate_rows(target_groups=target_groups, school_targets=school_targets)
+    target_groups, school_targets, organization_targets = _candidate_scope(context, selected_student=selected_student)
+    candidates = _fetch_candidate_rows(
+        target_groups=target_groups,
+        school_targets=school_targets,
+        organization_targets=organization_targets,
+    )
     if not candidates:
         return []
 
@@ -512,6 +843,7 @@ def _fetch_guardian_org_communications(
                 context=context,
                 selected_student=selected_student,
                 descendants_cache=descendants_cache,
+                comm_organization=row.get("organization"),
             )
             matched_students.update(audience_students)
             matched_groups.update(audience_groups)
@@ -545,12 +877,31 @@ def get_guardian_communication_center(
     offset = _coerce_start(start)
     page_len = _coerce_page_length(page_length)
 
-    items = _fetch_guardian_org_communications(
+    org_items = _fetch_guardian_org_communications(
         context,
         selected_student=selected_student or None,
     )
-    if source_filter != "all":
-        items = [row for row in items if row.get("source_type") == source_filter]
+
+    if source_filter == "all":
+        items = list(org_items)
+        items.extend(
+            _fetch_guardian_school_events(
+                context,
+                selected_student=selected_student or None,
+            )
+        )
+        items = _sort_items(items)
+    elif source_filter == "school":
+        items = [row for row in org_items if row.get("source_type") == "school"]
+        items.extend(
+            _fetch_guardian_school_events(
+                context,
+                selected_student=selected_student or None,
+            )
+        )
+        items = _sort_items(items)
+    else:
+        items = [row for row in org_items if row.get("source_type") == source_filter]
 
     summary_counts = Counter(item.get("source_type") or "other" for item in items)
     unread_count = sum(1 for row in items if row.get("is_unread"))
@@ -576,3 +927,9 @@ def get_guardian_communication_center(
         "start": offset,
         "page_length": page_len,
     }
+
+
+def get_guardian_portal_communication_unread_count() -> int:
+    context = _resolve_guardian_communication_context()
+    items = _fetch_guardian_org_communications(context)
+    return sum(1 for item in items if item.get("is_unread"))

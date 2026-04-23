@@ -1,106 +1,135 @@
-# Staff Policy Library Contract
+# Policy Library Contract
 
 ## Purpose
 Status: Implemented
 Code refs: `ifitwala_ed/ui-spa/src/pages/staff/StaffPolicies.vue`, `ifitwala_ed/api/policy_signature.py`, `ifitwala_ed/api/policy_communication.py`
 Test refs: `ifitwala_ed/api/test_policy_signature.py`, `ifitwala_ed/ui-spa/src/pages/staff/__tests__/StaffPolicies.test.ts`
 
-The Staff Policy Library provides a staff-facing page where users can read active policies in scope, filter by organization/school/employee group context, and open a full policy overlay with change and history details.
+The Policy Library is the canonical staff-workspace browsing surface for active institutional policies in scope. It replaces the old “staff policies” semantics with one organization-scoped library page that still preserves staff-specific acknowledgement state when the selected audience is `Staff`.
 
 ## Scope And Access
 Status: Implemented
 Code refs: `ifitwala_ed/api/policy_signature.py`, `ifitwala_ed/governance/policy_scope_utils.py`, `ifitwala_ed/api/portal.py`
 Test refs: `ifitwala_ed/api/test_policy_signature.py`, `ifitwala_ed/api/test_analytics_permissions.py`
 
-1. Allowed roles are `Employee`, `Academic Staff`, and policy-signature analytics roles.
-2. Policy visibility remains server-owned through policy scope rules.
-3. Non-manager staff are scoped to active employee organization context.
-4. Manager roles keep broader organization filter scope.
+1. Allowed roles remain `Employee`, `Academic Staff`, and policy-signature analytics roles.
+2. Policy visibility remains server-owned through organization/school scope helpers.
+3. Non-manager staff keep the narrower staff-library experience:
+   - audience locked to `Staff`
+   - school normalized to the active employee school when available
+4. Manager roles (`Academic Admin`, `HR Manager`, `Organization Admin`, `System Manager`, `Administrator`) may browse policy rows across supported audiences inside their organization scope.
+
+## Route And URL Contract
+Status: Implemented
+Code refs: `ifitwala_ed/ui-spa/src/router/index.ts`, `ifitwala_ed/ui-spa/src/pages/staff/StaffHome.vue`
+Test refs: None
+
+1. Canonical route is `/staff/policies` in the staff SPA shell.
+2. `/staff/policy-library` redirects to the canonical route.
+3. Staff Home labels this surface as `Policy Library`.
 
 ## Filter Contract
 Status: Implemented
 Code refs: `ifitwala_ed/api/policy_signature.py`, `ifitwala_ed/ui-spa/src/pages/staff/StaffPolicies.vue`
 Test refs: `ifitwala_ed/ui-spa/src/pages/staff/__tests__/StaffPolicies.test.ts`
 
-1. Filters are canonical POST payload fields: `organization`, `school`, `employee_group`.
-2. Filters are populated by server options and normalized by returned effective filters.
-3. `school` is always normalized to a concrete value when scoped schools exist:
-   - prefer active `Employee.school`,
-   - fallback to first available school option in selected organization scope.
-4. No client-side scope expansion is allowed.
+1. Canonical POST payload fields are:
+   - `organization`
+   - `school`
+   - `audience`
+2. Filters are server-populated and server-normalized.
+3. For manager roles:
+   - `school` may remain blank to represent all schools in selected organization scope
+   - `audience` options are `All`, `Staff`, `Guardian`, `Student`
+4. For non-manager staff:
+   - `audience` is locked to `Staff`
+   - `school` falls back to the active employee school when available
+5. No client-side scope expansion is allowed.
 
-## Signature Status Contract
+## Row Contract
 Status: Implemented
-Code refs: `ifitwala_ed/api/policy_signature.py`, `ifitwala_ed/ui-spa/src/pages/staff/StaffPolicies.vue`, `ifitwala_ed/ui-spa/src/overlays/staff/StaffPolicyInformOverlay.vue`
+Code refs: `ifitwala_ed/api/policy_signature.py`, `ifitwala_ed/ui-spa/src/types/contracts/policy_signature/get_staff_policy_library.ts`
+Test refs: `ifitwala_ed/api/test_policy_signature.py`
+
+Each row represents the active nearest policy version for one `policy_key` in the selected organization/school context and includes:
+
+1. policy identity and version metadata
+2. policy scope (`policy_organization`, optional `policy_school`)
+3. `applies_to_tokens` for supported library audiences:
+   - `Staff`
+   - `Guardian`
+   - `Student`
+4. Staff-only acknowledgement state fields when the selected audience is `Staff`:
+   - `signature_required`
+   - `acknowledgement_status`
+   - `acknowledged_at`
+
+The library does not duplicate one row per audience. Multi-audience policies appear once with audience chips.
+
+## Staff Status Contract
+Status: Implemented
+Code refs: `ifitwala_ed/api/policy_signature.py`, `ifitwala_ed/ui-spa/src/pages/staff/StaffPolicies.vue`
 Test refs: `ifitwala_ed/api/test_policy_signature.py`, `ifitwala_ed/ui-spa/src/pages/staff/__tests__/StaffPolicies.test.ts`
 
-1. There is no schema field for policy signature requirement.
-2. Signature requirement is derived from staff-signature workflow artifacts at policy level:
-   - campaign ToDo marker (`[policy_signature]`) and/or
-   - existing staff `Policy Acknowledgement` rows.
-3. Status semantics:
-   - `informational`: no signature requirement for this policy.
-   - `signed`: current user acknowledged current active version.
-   - `new_version`: user acknowledged an older version of this policy but not current active version.
-   - `pending`: signature-required policy with no acknowledgement by current user.
+1. Staff acknowledgement state is shown only when the effective audience filter is `Staff`.
+2. There is still no schema field for staff signature requirement.
+3. Signature requirement is derived from staff-signature workflow artifacts:
+   - campaign ToDo marker (`[policy_signature]`)
+   - existing staff `Policy Acknowledgement` rows
+4. Status semantics remain:
+   - `informational`
+   - `signed`
+   - `new_version`
+   - `pending`
+5. Guardian and student library browsing must not reuse staff-status labels for non-staff rows.
 
 ## Overlay Contract
 Status: Implemented
 Code refs: `ifitwala_ed/ui-spa/src/overlays/staff/StaffPolicyInformOverlay.vue`, `ifitwala_ed/api/policy_communication.py`, `ifitwala_ed/ui-spa/src/types/contracts/policy_communication/get_policy_inform_payload.ts`
 Test refs: `ifitwala_ed/ui-spa/src/pages/staff/__tests__/StaffPolicies.test.ts`
 
-1. Policy details open using existing overlay stack type `staff-policy-inform`.
+1. Policy details continue to open through overlay type `staff-policy-inform`.
 2. Overlay payload includes:
-   - full policy text,
-   - diff/change summary stats,
-   - version history rows,
-   - derived signature state.
-3. No second modal system is introduced.
-4. When the overlay is opened from a staff archive communication and passes `org_communication`, the payload endpoint may honor that communication visibility as a surface-specific fallback after verifying:
-   - the user can view that communication, and
-   - the communication organization/school context is compatible with the requested policy version.
-5. This fallback is intended for archive-launched policy communications, especially `Academic Admin` users whose active `Employee` record has no default school and therefore rely on organization descendant fallback.
+   - full policy text
+   - diff/change summary stats
+   - version history rows
+   - audience tokens
+   - staff signature state when applicable
+3. Overlay presentation must stay neutral for guardian/student policies and must not label them “informational” merely because the current user has no staff signature state on them.
+4. When opened from staff archive communications with `org_communication`, the payload endpoint may still use the existing communication-visibility fallback after verifying organization/school compatibility.
 
-## Signature Analytics Link Contract
+## Analytics Link Contract
 Status: Implemented
 Code refs: `ifitwala_ed/ui-spa/src/pages/staff/StaffPolicies.vue`, `ifitwala_ed/ui-spa/src/pages/staff/analytics/PolicySignatureAnalytics.vue`, `ifitwala_ed/ui-spa/src/lib/services/staff/staffHomeService.ts`
 Test refs: `ifitwala_ed/ui-spa/src/pages/staff/__tests__/StaffPolicies.test.ts`
 
-1. Signature-required policy cards expose an action to open policy signature analytics only for users with capability `analytics_policy_signatures`.
-2. The action navigates by named route to `staff-policy-signature-analytics`.
-3. Navigation query must prefill analytics filters with `policy_version` and current scope filters (`organization`, `school`, `employee_group`) when present.
+1. Policy cards expose `Open acknowledgement tracking` only for users with capability `analytics_policy_signatures`.
+2. Navigation goes to route `staff-policy-signature-analytics`.
+3. Navigation query pre-fills only the library scope filters that are meaningful to analytics:
+   - `policy_version`
+   - `organization`
+   - `school`
+4. `Employee Group` remains an analytics-only filter and is no longer a Policy Library filter.
 
 ## Policy Signature Analytics Surface
 Status: Implemented
-Code refs: `ifitwala_ed/api/policy_signature.py`, `ifitwala_ed/ui-spa/src/pages/staff/analytics/PolicySignatureAnalytics.vue`, `ifitwala_ed/ui-spa/src/overlays/staff/StaffPolicyCampaignOverlay.vue`
-Test refs: `ifitwala_ed/api/test_policy_signature.py`, `ifitwala_ed/ui-spa/src/pages/staff/__tests__/PolicySignatureAnalytics.test.ts`
+Code refs: `ifitwala_ed/api/policy_signature.py`, `ifitwala_ed/ui-spa/src/pages/staff/analytics/PolicySignatureAnalytics.vue`, `ifitwala_ed/ui-spa/src/overlays/staff/StaffPolicyCampaignOverlay.vue`, `ifitwala_ed/ui-spa/src/overlays/staff/FamilyPolicyCampaignOverlay.vue`
+Test refs: `ifitwala_ed/api/test_policy_signature.py`, `ifitwala_ed/api/test_policy_family_campaign.py`, `ifitwala_ed/ui-spa/src/pages/staff/__tests__/PolicySignatureAnalytics.test.ts`
 
-1. The analytics page must show acknowledgement status for every supported audience on the selected policy version:
+1. The analytics page still shows acknowledgement status across supported audiences on the selected policy version:
    - `Staff`
    - `Guardian`
    - `Student`
-2. Staff remains the only audience that can launch internal signature tasks from the campaign overlay.
-3. Guardian and student rows are tracking-only on this surface and must be labeled as portal acknowledgements, not internal tasks.
-4. The `Employee Group` filter narrows staff counts only and must not silently reshape guardian or student counts.
-5. The campaign overlay must preserve current analytics filters when opened from the analytics page so staff can launch or inspect follow-up work without losing context.
-6. The dashboard bootstrap remains a bounded summary read:
-   - metric cards,
-   - audience breakdown tables,
-   - short pending/signed previews only for small audiences.
-7. Large audience browsing must use the dedicated audience register instead of rendering long inline tables.
-8. The audience register is server-backed and must support:
-   - `audience`,
-   - `status`,
-   - `query`,
-   - `page`,
-   - `limit`.
-9. The audience register loads on demand from `get_staff_policy_signature_audience_rows` so the page does not add register request waterfalls during initial bootstrap.
-10. The analytics metric card layout on this page is local to the surface and uses five cards that flow as `3 + 2` on desktop:
-   - `Eligible`
-   - `Signed`
-   - `Pending`
-   - `Completion`
-   - `Out of scope`
+2. Staff campaign launch remains staff-task only and continues to create internal signature `ToDo` rows for eligible employees.
+3. A separate family campaign overlay may publish student and guardian portal communications for the selected organization/school scope.
+4. When the selected policy version applies to guardians, the family campaign overlay shows the persisted guardian acknowledgement mode and may switch it between `Family Acknowledgement` and `Child Acknowledgement` before first guardian acknowledgement exists.
+5. Once guardian acknowledgement evidence exists for that policy version, guardian acknowledgement mode is locked and the overlay must present it as read-only preview state.
+6. Family campaign publication creates one `Org Communication` per selected family audience and deep-links to the exact portal policy page with `policy_version`.
+7. Guardian and student acknowledgement truth remains portal `Policy Acknowledgement` evidence. Family campaigns do not create tasks or a second compliance source.
+8. Guardian analytics counts are mode-aware:
+   - family mode counts one guardian target per eligible guardian
+   - child mode counts one guardian target per in-scope signer-authorized child
+9. The dashboard bootstrap remains a bounded summary read and large audience browsing still uses the server-backed audience register.
 
 ## Contract Matrix
 Status: Implemented
@@ -110,9 +139,9 @@ Test refs: `ifitwala_ed/api/test_policy_signature.py`, `ifitwala_ed/api/test_ana
 | Layer | Contract | Status |
 |---|---|---|
 | Schema / DocType | Reuse `Institutional Policy`, `Policy Version`, `Policy Acknowledgement`, `Employee` | Implemented |
-| Controller / workflow logic | Signature-required status is derived from existing workflow artifacts, not new schema | Implemented |
-| API endpoints | `get_staff_policy_library`, `get_policy_inform_payload`, `get_staff_policy_signature_dashboard`, `get_staff_policy_signature_audience_rows` | Implemented |
-| SPA / UI surfaces | `/staff/policies`, `/staff/analytics/policy-signatures`, existing `staff-policy-inform` overlay | Implemented |
-| Reports / dashboards | Staff Home link integration with capability gate plus on-demand audience register for high-volume policy analytics | Implemented |
+| Controller / workflow logic | Cross-audience browsing remains library-first; actionable acknowledgement flows stay in Focus, Guardian Portal, Student Hub, and Admissions, with family campaigns publishing portal notices only and optionally persisting guardian mode before first evidence lock | Implemented |
+| API endpoints | `get_policy_library`, `get_policy_inform_payload`, `get_staff_policy_signature_dashboard`, `get_staff_policy_signature_audience_rows`, `get_family_policy_campaign_options`, `publish_family_policy_campaign` | Implemented |
+| SPA / UI surfaces | `/staff/policies`, `/staff/analytics/policy-signatures`, existing policy-inform overlay, separate staff and family campaign overlays with guardian mode preview/lock | Implemented |
+| Reports / dashboards | Staff Home link integration with capability gate plus on-demand audience register for high-volume policy analytics and mode-aware guardian counts | Implemented |
 | Scheduler / background jobs | None | Implemented |
-| Tests | Backend and SPA regression coverage for status and overlay flow | Implemented |
+| Tests | Backend and SPA regression coverage for cross-audience browsing, staff-mode status flow, and guardian family-vs-child analytics | Implemented |

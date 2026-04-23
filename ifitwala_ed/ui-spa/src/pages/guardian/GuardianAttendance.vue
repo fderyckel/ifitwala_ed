@@ -50,50 +50,60 @@
 		</header>
 
 		<section class="grid grid-cols-2 gap-3 lg:grid-cols-4">
-			<article class="card-surface p-4">
+			<article class="card-surface p-4" :class="summaryCardClass('tracked')">
 				<p class="type-caption">Tracked days</p>
-				<p class="type-h3 text-ink">{{ counts.tracked_days }}</p>
+				<p class="type-h3" :class="summaryValueClass('tracked')">{{ counts.tracked_days }}</p>
 			</article>
-			<article class="card-surface p-4">
+			<article class="card-surface p-4" :class="summaryCardClass('present')">
 				<p class="type-caption">On-track days</p>
-				<p class="type-h3 text-ink">{{ counts.present_days }}</p>
+				<p class="type-h3" :class="summaryValueClass('present')">{{ counts.present_days }}</p>
 			</article>
-			<article class="card-surface p-4">
+			<article class="card-surface p-4" :class="summaryCardClass('late')">
 				<p class="type-caption">Late days</p>
-				<p class="type-h3 text-amber-900">{{ counts.late_days }}</p>
+				<p class="type-h3" :class="summaryValueClass('late')">{{ counts.late_days }}</p>
 			</article>
-			<article class="card-surface p-4">
+			<article class="card-surface p-4" :class="summaryCardClass('absence')">
 				<p class="type-caption">Absence days</p>
-				<p class="type-h3 text-flame">{{ counts.absence_days }}</p>
+				<p class="type-h3" :class="summaryValueClass('absence')">{{ counts.absence_days }}</p>
 			</article>
 		</section>
 
 		<section class="card-surface p-5">
 			<h2 class="mb-3 type-h3 text-ink">How to read this view</h2>
 			<div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-				<div class="rounded-xl border border-line-soft bg-surface-soft p-4">
-					<div class="mb-2 h-8 w-8 rounded-lg border border-leaf/40 bg-leaf/15" />
-					<p class="type-body-strong text-ink">Green</p>
-					<p class="type-caption text-ink/70">Attendance is recorded as present for that day.</p>
+				<div
+					class="rounded-xl border-2 bg-moss/10 p-4"
+					style="border-color: rgb(var(--moss-rgb) / 0.72)"
+				>
+					<div
+						class="mb-2 h-8 w-8 rounded-lg border bg-moss/20"
+						style="border-color: rgb(var(--moss-rgb) / 0.52)"
+					/>
+					<p class="text-lg font-semibold tracking-tight" style="color: rgb(var(--moss-rgb) / 1)">
+						On track
+					</p>
+					<p class="type-body text-ink/75">Attendance is recorded as present for that day.</p>
 				</div>
-				<div class="rounded-xl border border-line-soft bg-surface-soft p-4">
-					<div class="mb-2 h-8 w-8 rounded-lg border border-amber-300 bg-amber-200/70" />
-					<p class="type-body-strong text-ink">Orange</p>
-					<p class="type-caption text-ink/70">
+				<div
+					class="rounded-xl border-2 border-[rgb(var(--jacaranda-rgb)/0.55)] bg-jacaranda/10 p-4"
+				>
+					<div class="mb-2 h-8 w-8 rounded-lg border border-jacaranda/40 bg-jacaranda/20" />
+					<p class="text-lg font-semibold tracking-tight text-jacaranda">Late or tardy</p>
+					<p class="type-body text-ink/75">
 						The day includes a late arrival or another tardy attendance signal.
 					</p>
 				</div>
-				<div class="rounded-xl border border-line-soft bg-surface-soft p-4">
-					<div class="mb-2 h-8 w-8 rounded-lg border border-flame/40 bg-flame/15" />
-					<p class="type-body-strong text-ink">Red</p>
-					<p class="type-caption text-ink/70">
+				<div class="rounded-xl border-2 border-[rgb(var(--flame-rgb)/0.55)] bg-flame/10 p-4">
+					<div class="mb-2 h-8 w-8 rounded-lg border border-flame/40 bg-flame/20" />
+					<p class="text-lg font-semibold tracking-tight text-flame">Absent</p>
+					<p class="type-body text-ink/75">
 						The day includes an absence or other non-present code.
 					</p>
 				</div>
-				<div class="rounded-xl border border-line-soft bg-surface-soft p-4">
+				<div class="rounded-xl border-2 border-line-soft bg-surface-soft p-4">
 					<div class="mb-2 h-8 w-8 rounded-lg border border-dashed border-line-soft bg-white/70" />
-					<p class="type-body-strong text-ink">Grey</p>
-					<p class="type-caption text-ink/70">
+					<p class="text-lg font-semibold tracking-tight text-ink">No record</p>
+					<p class="type-body text-ink/75">
 						No attendance record is available for that date in this window.
 					</p>
 				</div>
@@ -117,29 +127,46 @@
 
 		<section v-else class="space-y-4">
 			<article v-for="student in students" :key="student.student" class="card-surface p-5">
-				<div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+				<div class="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(34rem,38rem)] lg:items-start">
 					<div>
 						<h2 class="type-h3 text-ink">{{ student.student_name }}</h2>
 						<p class="type-caption text-ink/60">
 							Last {{ selectedDays }} days from {{ filters.start_date }} to {{ filters.end_date }}
 						</p>
 					</div>
-					<div class="grid grid-cols-2 gap-3 sm:grid-cols-4">
-						<div class="rounded-xl border border-line-soft bg-surface-soft px-3 py-2">
-							<p class="type-caption">Tracked</p>
-							<p class="type-body-strong text-ink">{{ student.summary.tracked_days }}</p>
+					<div class="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:w-full">
+						<div class="rounded-xl border px-4 py-3" :class="summaryCardClass('tracked')">
+							<p class="text-sm font-semibold text-ink/80 sm:text-base">Tracked</p>
+							<p
+								class="mt-1 text-xl font-semibold sm:text-2xl"
+								:class="summaryValueClass('tracked')"
+							>
+								{{ student.summary.tracked_days }}
+							</p>
 						</div>
-						<div class="rounded-xl border border-line-soft bg-surface-soft px-3 py-2">
-							<p class="type-caption">On track</p>
-							<p class="type-body-strong text-ink">{{ student.summary.present_days }}</p>
+						<div class="rounded-xl border px-4 py-3" :class="summaryCardClass('present')">
+							<p class="text-sm font-semibold text-ink/80 sm:text-base">On track</p>
+							<p
+								class="mt-1 text-xl font-semibold sm:text-2xl"
+								:class="summaryValueClass('present')"
+							>
+								{{ student.summary.present_days }}
+							</p>
 						</div>
-						<div class="rounded-xl border border-line-soft bg-surface-soft px-3 py-2">
-							<p class="type-caption">Late</p>
-							<p class="type-body-strong text-amber-900">{{ student.summary.late_days }}</p>
+						<div class="rounded-xl border px-4 py-3" :class="summaryCardClass('late')">
+							<p class="text-sm font-semibold text-ink/80 sm:text-base">Late</p>
+							<p class="mt-1 text-xl font-semibold sm:text-2xl" :class="summaryValueClass('late')">
+								{{ student.summary.late_days }}
+							</p>
 						</div>
-						<div class="rounded-xl border border-line-soft bg-surface-soft px-3 py-2">
-							<p class="type-caption">Absent</p>
-							<p class="type-body-strong text-flame">{{ student.summary.absence_days }}</p>
+						<div class="rounded-xl border px-4 py-3" :class="summaryCardClass('absence')">
+							<p class="text-sm font-semibold text-ink/80 sm:text-base">Absent</p>
+							<p
+								class="mt-1 text-xl font-semibold sm:text-2xl"
+								:class="summaryValueClass('absence')"
+							>
+								{{ student.summary.absence_days }}
+							</p>
 						</div>
 					</div>
 				</div>
@@ -174,18 +201,20 @@
 								<template v-for="(cell, index) in month.cells" :key="`${month.key}-${index}`">
 									<div
 										v-if="!cell"
-										class="aspect-square rounded-lg border border-dashed border-line-soft/60 bg-white/50"
+										class="aspect-square rounded-lg border-2 border-dashed border-line-soft/70 bg-white/50"
 										aria-hidden="true"
 									/>
 									<button
 										v-else
 										type="button"
-										class="aspect-square rounded-lg border px-2 py-1 text-left transition focus:outline-none focus:ring-2 focus:ring-jacaranda"
+										class="aspect-square rounded-lg border-2 px-2 py-1 text-left transition focus:outline-none focus:ring-2 focus:ring-jacaranda"
 										:class="cellClass(student.student, cell)"
+										:style="cellStyle(cell)"
 										:aria-label="cellAriaLabel(student.student_name, cell)"
+										:aria-haspopup="cell.hasDetails ? 'dialog' : undefined"
 										:aria-pressed="isSelectedCell(student.student, cell.date) ? 'true' : 'false'"
 										:disabled="!cell.hasDetails"
-										@click="selectDay(student.student, cell.date)"
+										@click="selectDay(student.student, student.student_name, cell.date)"
 									>
 										<span class="text-xs font-semibold">{{ cell.dayNumber }}</span>
 									</button>
@@ -193,45 +222,6 @@
 							</div>
 						</section>
 					</div>
-
-					<section
-						v-if="selectedDay(student.student)"
-						class="rounded-2xl border border-line-soft bg-white p-4"
-					>
-						<div class="mb-3 flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
-							<div>
-								<h3 class="type-body-strong text-ink">
-									{{ student.student_name }} on
-									{{ formatDetailDate(selectedDay(student.student)?.date || '') }}
-								</h3>
-								<p class="type-caption text-ink/60">
-									{{ selectedDay(student.student)?.details.length || 0 }} attendance detail(s)
-								</p>
-							</div>
-							<p
-								class="rounded-full px-3 py-1 type-caption"
-								:class="detailStateClass(selectedDay(student.student)?.state || 'present')"
-							>
-								{{ detailStateLabel(selectedDay(student.student)?.state || 'present') }}
-							</p>
-						</div>
-
-						<ul class="space-y-3">
-							<li
-								v-for="detail in selectedDay(student.student)?.details || []"
-								:key="detail.attendance"
-								class="rounded-xl border border-line-soft bg-surface-soft p-4"
-							>
-								<p class="type-body-strong text-ink">{{ detail.attendance_code_name }}</p>
-								<p class="type-caption text-ink/60">
-									{{ detail.whole_day ? 'Whole day' : detail.time || 'Time not recorded' }}
-									<span v-if="detail.course"> - {{ detail.course }}</span>
-									<span v-if="detail.location"> - {{ detail.location }}</span>
-								</p>
-								<p v-if="detail.remark" class="mt-2 type-body text-ink/80">{{ detail.remark }}</p>
-							</li>
-						</ul>
-					</section>
 				</div>
 			</article>
 		</section>
@@ -239,8 +229,9 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 
+import { useOverlayStack } from '@/composables/useOverlayStack';
 import { getGuardianAttendanceSnapshot } from '@/lib/services/guardianAttendance/guardianAttendanceService';
 
 import type {
@@ -263,7 +254,11 @@ type CalendarMonth = {
 	cells: Array<CalendarCell | null>;
 };
 
+type SummaryTone = 'tracked' | 'present' | 'late' | 'absence';
+
 const weekdayLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+
+const overlay = useOverlayStack();
 
 const loading = ref(true);
 const errorMessage = ref('');
@@ -271,6 +266,7 @@ const snapshot = ref<GuardianAttendanceSnapshot | null>(null);
 const selectedStudent = ref('');
 const selectedDays = ref(60);
 const selectedCell = ref<{ student: string; date: string } | null>(null);
+const attendanceDetailOverlayId = ref<string | null>(null);
 
 const children = computed(() => snapshot.value?.family.children ?? []);
 const students = computed<GuardianAttendanceStudent[]>(() => snapshot.value?.students ?? []);
@@ -307,6 +303,7 @@ const studentDayMaps = computed(() => {
 });
 
 async function loadSnapshot() {
+	closeDayOverlay(true);
 	loading.value = true;
 	errorMessage.value = '';
 	try {
@@ -314,9 +311,6 @@ async function loadSnapshot() {
 			student: selectedStudent.value || undefined,
 			days: selectedDays.value,
 		});
-		if (selectedCell.value && !selectedDay(selectedCell.value.student)) {
-			selectedCell.value = null;
-		}
 	} catch (error) {
 		const message = error instanceof Error ? error.message : String(error || '');
 		errorMessage.value = message || 'Unknown error';
@@ -331,31 +325,60 @@ function calendarMonths(student: GuardianAttendanceStudent): CalendarMonth[] {
 	return monthStarts.value.map(monthStart => buildCalendarMonth(monthStart, dayMap));
 }
 
-function selectDay(student: string, date: string) {
+function selectDay(student: string, studentName: string, date: string) {
+	const day = studentDayMaps.value.get(student)?.get(date);
+	if (!day || !day.details.length) return;
+
+	closeDayOverlay();
 	selectedCell.value = { student, date };
+	attendanceDetailOverlayId.value = overlay.open('guardian-attendance-day', {
+		studentName,
+		day,
+		clearSelection: handleAttendanceDetailClosed,
+	});
 }
 
 function isSelectedCell(student: string, date: string): boolean {
 	return selectedCell.value?.student === student && selectedCell.value?.date === date;
 }
 
-function selectedDay(student: string): GuardianAttendanceDay | null {
-	if (selectedCell.value?.student !== student) return null;
-	return studentDayMaps.value.get(student)?.get(selectedCell.value.date) ?? null;
+function closeDayOverlay(clearSelection = false) {
+	const overlayId = attendanceDetailOverlayId.value;
+	attendanceDetailOverlayId.value = null;
+	if (overlayId) {
+		overlay.close(overlayId);
+	}
+	if (clearSelection) {
+		selectedCell.value = null;
+	}
+}
+
+function handleAttendanceDetailClosed() {
+	attendanceDetailOverlayId.value = null;
+	selectedCell.value = null;
 }
 
 function cellClass(student: string, cell: CalendarCell): string {
 	const selected = isSelectedCell(student, cell.date) ? 'ring-2 ring-jacaranda' : '';
 	if (cell.state === 'present') {
-		return `border-leaf/40 bg-leaf/15 text-canopy ${selected}`.trim();
+		return `bg-moss/15 text-ink ${selected}`.trim();
 	}
 	if (cell.state === 'late') {
-		return `border-amber-300 bg-amber-200/70 text-amber-900 ${selected}`.trim();
+		return `border-jacaranda/40 bg-jacaranda/12 text-jacaranda ${selected}`.trim();
 	}
 	if (cell.state === 'absence') {
-		return `border-flame/40 bg-flame/15 text-flame ${selected}`.trim();
+		return `border-flame/45 bg-flame/12 text-flame ${selected}`.trim();
 	}
 	return `border-line-soft bg-white text-ink/45 ${selected}`.trim();
+}
+
+function cellStyle(cell: CalendarCell): Record<string, string> | undefined {
+	if (cell.state === 'present') {
+		return {
+			borderColor: 'rgb(var(--moss-rgb) / 0.72)',
+		};
+	}
+	return undefined;
 }
 
 function cellAriaLabel(studentName: string, cell: CalendarCell): string {
@@ -371,20 +394,18 @@ function detailStateLabel(state: GuardianAttendanceDay['state']): string {
 	return 'Present';
 }
 
-function detailStateClass(state: GuardianAttendanceDay['state']): string {
-	if (state === 'late') return 'bg-amber-200/70 text-amber-900';
-	if (state === 'absence') return 'bg-flame/15 text-flame';
-	return 'bg-leaf/15 text-canopy';
+function summaryCardClass(tone: SummaryTone): string {
+	if (tone === 'tracked') return 'border-jacaranda/20 bg-jacaranda/5';
+	if (tone === 'present') return 'border-moss/30 bg-moss/10';
+	if (tone === 'late') return 'border-jacaranda/30 bg-jacaranda/10';
+	return 'border-flame/30 bg-flame/10';
 }
 
-function formatDetailDate(value: string): string {
-	if (!value) return '';
-	return new Intl.DateTimeFormat(undefined, {
-		weekday: 'long',
-		day: 'numeric',
-		month: 'long',
-		year: 'numeric',
-	}).format(parseIsoDate(value));
+function summaryValueClass(tone: SummaryTone): string {
+	if (tone === 'tracked') return 'text-jacaranda';
+	if (tone === 'present') return 'text-ink';
+	if (tone === 'late') return 'text-jacaranda';
+	return 'text-flame';
 }
 
 function buildMonthStarts(startDate: string, endDate: string): Date[] {
@@ -462,11 +483,14 @@ function mondayIndex(value: Date): number {
 }
 
 watch([selectedStudent, selectedDays], () => {
-	selectedCell.value = null;
 	void loadSnapshot();
 });
 
 onMounted(() => {
 	void loadSnapshot();
+});
+
+onBeforeUnmount(() => {
+	closeDayOverlay(true);
 });
 </script>

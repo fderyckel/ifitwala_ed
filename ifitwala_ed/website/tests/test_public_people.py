@@ -34,7 +34,7 @@ class TestPublicPeopleService(FrappeTestCase):
         )
 
         with patch(
-            "ifitwala_ed.website.public_people.build_employee_image_variants",
+            "ifitwala_ed.website.public_people.build_public_employee_image_variants",
             return_value={"original": None, "card": None, "medium": None, "thumb": None},
         ):
             rows = public_people.get_public_people_records(
@@ -69,7 +69,7 @@ class TestPublicPeopleService(FrappeTestCase):
         )
 
         with patch(
-            "ifitwala_ed.website.public_people.build_employee_image_variants",
+            "ifitwala_ed.website.public_people.build_public_employee_image_variants",
             return_value={"original": None, "card": None, "medium": None, "thumb": None},
         ):
             rows = public_people.get_public_people_records(
@@ -101,11 +101,11 @@ class TestPublicPeopleService(FrappeTestCase):
         employee.show_public_profile_page = 1
         employee.featured_on_website = 1
         employee.website_sort_order = 3
-        employee.bio = "Chloe leads interdisciplinary learning and advisory support."
+        employee.small_bio = "Chloe leads interdisciplinary learning and advisory support."
         employee.save(ignore_permissions=True)
 
         with patch(
-            "ifitwala_ed.website.public_people.build_employee_image_variants",
+            "ifitwala_ed.website.public_people.build_public_employee_image_variants",
             return_value={"original": None, "card": None, "medium": None, "thumb": None},
         ):
             rows = public_people.get_public_people_records(
@@ -127,7 +127,7 @@ class TestPublicPeopleService(FrappeTestCase):
         self.assertTrue(rows[0]["featured"])
         self.assertEqual(rows[0]["sort_order"], 3)
         self.assertEqual(person["employee"], employee.name)
-        self.assertEqual(person["full_bio"], employee.bio)
+        self.assertEqual(person["full_bio"], employee.small_bio)
 
     def test_public_people_disables_original_image_fallback_for_website_surfaces(self):
         organization = make_organization(prefix="Public People Image Org")
@@ -149,12 +149,11 @@ class TestPublicPeopleService(FrappeTestCase):
 
         captured_calls = []
 
-        def fake_build_employee_image_variants(employee_name, original_url=None, *, fallback_to_original=True):
+        def fake_build_public_employee_image_variants(employee_name, original_url=None):
             captured_calls.append(
                 {
                     "employee_name": employee_name,
                     "original_url": original_url,
-                    "fallback_to_original": fallback_to_original,
                 }
             )
             return {
@@ -165,8 +164,8 @@ class TestPublicPeopleService(FrappeTestCase):
             }
 
         with patch(
-            "ifitwala_ed.website.public_people.build_employee_image_variants",
-            side_effect=fake_build_employee_image_variants,
+            "ifitwala_ed.website.public_people.build_public_employee_image_variants",
+            side_effect=fake_build_public_employee_image_variants,
         ):
             rows = public_people.get_public_people_records(
                 school_names=(school.name,),
@@ -189,7 +188,6 @@ class TestPublicPeopleService(FrappeTestCase):
                 {
                     "employee_name": rows[0]["employee"],
                     "original_url": "/private/files/ifitwala_drive/files/aa/bb/dana-original.png",
-                    "fallback_to_original": False,
                 }
             ],
         )

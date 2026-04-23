@@ -4,6 +4,8 @@ import { computed, reactive } from 'vue'
 export type OverlayType =
   | 'create-task'
   | 'quick-class-session'
+  | 'guardian-calendar'
+  | 'guardian-attendance-day'
   | 'event-quick-create'
   | 'meeting-event'
   | 'school-event'
@@ -16,6 +18,7 @@ export type OverlayType =
   | 'org-chart-person'
   | 'staff-policy-inform'
   | 'staff-policy-signature-campaign'
+  | 'staff-family-policy-campaign'
   | 'staff-professional-development-request'
   | 'staff-professional-development-completion'
   | 'focus-router'
@@ -32,6 +35,7 @@ export type OverlayType =
   | 'admissions-submit'
   | 'admissions-workspace'
   | 'critical-incidents-list'
+  | 'consent-profile-writeback'
 
 export type OverlayEntry = {
   id: string

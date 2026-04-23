@@ -29,6 +29,12 @@ MEDIA_CONSENT_POLICY_KEY = "media_consent"
 ADMISSIONS_POLICY_MODE_CHILD = "Child Acknowledgement"
 ADMISSIONS_POLICY_MODE_FAMILY = "Family Acknowledgement"
 ADMISSIONS_POLICY_MODE_OPTIONAL = "Child Optional Consent"
+GUARDIAN_ACK_MODE_CHILD = "Child Acknowledgement"
+GUARDIAN_ACK_MODE_FAMILY = "Family Acknowledgement"
+GUARDIAN_ACK_MODES = (
+    GUARDIAN_ACK_MODE_FAMILY,
+    GUARDIAN_ACK_MODE_CHILD,
+)
 POLICY_CATEGORIES = (
     "Safeguarding",
     "Privacy & Data Protection",
@@ -107,6 +113,13 @@ def has_staff_role(user: str | None = None) -> bool:
             "Employee",
         }
     )
+
+
+def normalize_guardian_acknowledgement_mode(value: str | None) -> str:
+    normalized = (value or "").strip()
+    if normalized == GUARDIAN_ACK_MODE_CHILD:
+        return GUARDIAN_ACK_MODE_CHILD
+    return GUARDIAN_ACK_MODE_FAMILY
 
 
 def institutional_policy_db_has_column(column_name: str) -> bool:

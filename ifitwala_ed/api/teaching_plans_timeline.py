@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import re
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from typing import Any
 
 
@@ -42,6 +42,252 @@ def timeline_duration_weeks(api, value: str | None) -> int | None:
 
     weeks = int(match.group(1) or 0)
     return weeks if weeks > 0 else None
+
+
+def coerce_curriculum_anchor_date(api, value: Any | None = None) -> date:
+    if value in (None, ""):
+        return api.now_datetime().date()
+
+    try:
+        parsed = api.get_datetime(value)
+        if isinstance(parsed, datetime):
+            return parsed.date()
+    except Exception:
+        pass
+
+    try:
+        return api.getdate(value)
+    except Exception:
+        return api.now_datetime().date()
+
+
+def _row_value(row: Any, fieldname: str) -> Any:
+    if isinstance(row, dict):
+        return row.get(fieldname)
+    return getattr(row, fieldname, None)
+
+
+def _unit_lookup_by_plan(api, units: list[dict[str, Any]]) -> dict[str, dict[str, Any]]:
+    return {
+        api.planning.normalize_text(unit.get("unit_plan")): unit
+        for unit in units or []
+        if api.planning.normalize_text(unit.get("unit_plan"))
+    }
+
+
+def _session_sort_key(api, unit_index: int, session: dict[str, Any]) -> tuple[int, int, str]:
+    status = api.planning.normalize_text(session.get("session_status"))
+    return (
+        {
+            "In Progress": 0,
+            "Planned": 1,
+            "Draft": 2,
+            "Taught": 3,
+            "Changed": 4,
+            "Canceled": 5,
+        }.get(status, 99),
+        unit_index,
+        int(session.get("sequence_index") or 0),
+    )
+
+
+def _find_session_unit_by_anchor(
+    api,
+    units: list[dict[str, Any]],
+    *,
+    anchor_date: date,
+    exact_only: bool = False,
+) -> dict[str, Any] | None:
+    exact: list[tuple[tuple[int, int, str], dict[str, Any]]] = []
+    future: list[tuple[date, tuple[int, int, str], dict[str, Any]]] = []
+    previous: list[tuple[date, tuple[int, int, str], dict[str, Any]]] = []
+    undated: list[tuple[tuple[int, int, str], dict[str, Any]]] = []
+
+    for unit_index, unit in enumerate(units or []):
+        for session in unit.get("sessions") or []:
+            status = api.planning.normalize_text(session.get("session_status")).lower()
+            if status in {"changed", "canceled"}:
+                continue
+
+            sort_key = _session_sort_key(api, unit_index, session)
+            session_date = session.get("session_date")
+            if session_date:
+                try:
+                    resolved_date = api.getdate(session_date)
+                except Exception:
+                    resolved_date = None
+            else:
+                resolved_date = None
+
+            if resolved_date == anchor_date:
+                exact.append((sort_key, unit))
+                continue
+            if exact_only:
+                continue
+            if resolved_date and resolved_date > anchor_date:
+                future.append((resolved_date, sort_key, unit))
+                continue
+            if resolved_date and resolved_date < anchor_date:
+                previous.append((resolved_date, sort_key, unit))
+                continue
+            undated.append((sort_key, unit))
+
+    if exact:
+        exact.sort(key=lambda row: row[0])
+        return exact[0][1]
+    if exact_only:
+        return None
+    if future:
+        future.sort(key=lambda row: (row[0], row[1]))
+        return future[0][2]
+    if previous:
+        previous.sort(key=lambda row: (row[0], row[1]), reverse=True)
+        return previous[0][2]
+    if undated:
+        undated.sort(key=lambda row: row[0])
+        return undated[0][1]
+    return None
+
+
+def resolve_timeline_current_unit(
+    api,
+    timeline: dict[str, Any],
+    *,
+    anchor_date: Any | None = None,
+) -> dict[str, Any] | None:
+    if (timeline or {}).get("status") != "ready":
+        return None
+
+    resolved_anchor = api._coerce_curriculum_anchor_date(anchor_date)
+    scheduled_units: list[tuple[date, date, dict[str, Any]]] = []
+    for unit in (timeline or {}).get("units") or []:
+        start_date = unit.get("start_date")
+        end_date = unit.get("end_date")
+        if not start_date or not end_date:
+            continue
+        try:
+            scheduled_units.append((api.getdate(start_date), api.getdate(end_date), unit))
+        except Exception:
+            continue
+
+    if not scheduled_units:
+        return None
+
+    scheduled_units.sort(
+        key=lambda row: (
+            row[0],
+            int(row[2].get("unit_order") or 0) <= 0,
+            int(row[2].get("unit_order") or 0),
+            api.planning.normalize_text(row[2].get("unit_plan") or row[2].get("title")),
+        )
+    )
+
+    active = [row for row in scheduled_units if row[0] <= resolved_anchor <= row[1]]
+    if active:
+        return active[0][2]
+
+    previous = [row for row in scheduled_units if row[1] < resolved_anchor]
+    if previous:
+        return previous[-1][2]
+
+    upcoming = [row for row in scheduled_units if row[0] > resolved_anchor]
+    if upcoming:
+        return upcoming[0][2]
+
+    return scheduled_units[0][2]
+
+
+def resolve_current_curriculum_unit(
+    api,
+    units: list[dict[str, Any]],
+    *,
+    course_plan_row: dict[str, Any] | None = None,
+    student_group: str | None = None,
+    class_unit_rows: list[Any] | None = None,
+    anchor_date: Any | None = None,
+    allow_live_session: bool = True,
+) -> dict[str, Any]:
+    resolved_anchor = api._coerce_curriculum_anchor_date(anchor_date)
+    unit_lookup = _unit_lookup_by_plan(api, units)
+    timeline_payload = None
+
+    if allow_live_session:
+        live_candidates: list[tuple[tuple[int, int, str], dict[str, Any]]] = []
+        for unit_index, unit in enumerate(units or []):
+            for session in unit.get("sessions") or []:
+                if api.planning.normalize_text(session.get("session_status")).lower() != "in progress":
+                    continue
+                live_candidates.append((_session_sort_key(api, unit_index, session), unit))
+        if live_candidates:
+            live_candidates.sort(key=lambda row: row[0])
+            selected_unit = live_candidates[0][1]
+            unit_plan = api.planning.normalize_text(selected_unit.get("unit_plan"))
+            return {
+                "unit_plan": unit_plan or None,
+                "unit": unit_lookup.get(unit_plan) or selected_unit,
+                "source": "live_session",
+                "timeline": None,
+            }
+
+    progress_source = class_unit_rows if class_unit_rows is not None else units
+    in_progress_units: list[str] = []
+    for row in progress_source or []:
+        if api.planning.normalize_text(_row_value(row, "pacing_status")).lower() != "in progress":
+            continue
+        unit_plan = api.planning.normalize_text(_row_value(row, "unit_plan"))
+        if unit_plan and unit_plan in unit_lookup and unit_plan not in in_progress_units:
+            in_progress_units.append(unit_plan)
+    if len(in_progress_units) == 1:
+        unit_plan = in_progress_units[0]
+        return {
+            "unit_plan": unit_plan,
+            "unit": unit_lookup.get(unit_plan),
+            "source": "in_progress_unit",
+            "timeline": None,
+        }
+
+    if course_plan_row and units:
+        timeline_payload = api._build_course_plan_timeline(
+            course_plan_row,
+            units,
+            student_group=api.planning.normalize_text(student_group) or None,
+        )
+        timeline_unit = api._resolve_timeline_current_unit(timeline_payload, anchor_date=resolved_anchor)
+        if timeline_unit:
+            unit_plan = api.planning.normalize_text(timeline_unit.get("unit_plan"))
+            return {
+                "unit_plan": unit_plan or None,
+                "unit": unit_lookup.get(unit_plan),
+                "source": "calendar",
+                "timeline": timeline_payload,
+            }
+
+    exact_session_unit = _find_session_unit_by_anchor(api, units, anchor_date=resolved_anchor, exact_only=True)
+    if exact_session_unit:
+        unit_plan = api.planning.normalize_text(exact_session_unit.get("unit_plan"))
+        return {
+            "unit_plan": unit_plan or None,
+            "unit": unit_lookup.get(unit_plan) or exact_session_unit,
+            "source": "dated_session",
+            "timeline": timeline_payload,
+        }
+
+    nearest_session_unit = _find_session_unit_by_anchor(api, units, anchor_date=resolved_anchor, exact_only=False)
+    if nearest_session_unit:
+        unit_plan = api.planning.normalize_text(nearest_session_unit.get("unit_plan"))
+        return {
+            "unit_plan": unit_plan or None,
+            "unit": unit_lookup.get(unit_plan) or nearest_session_unit,
+            "source": "nearest_session",
+            "timeline": timeline_payload,
+        }
+
+    return {
+        "unit_plan": None,
+        "unit": None,
+        "source": "none",
+        "timeline": timeline_payload,
+    }
 
 
 def resolve_course_plan_timeline_scope(
@@ -357,6 +603,7 @@ def build_course_plan_timeline(
             "instructional_day_count": None,
             "calendar_day_span": None,
             "overflow": 0,
+            "is_current": 0,
             "schedule_state": "scheduled",
             "message": None,
         }
@@ -415,7 +662,7 @@ def build_course_plan_timeline(
         payload_units.append(unit_payload)
         current_instructional_index = min(end_index + 1, len(instructional_dates))
 
-    return {
+    payload = {
         "status": "ready",
         "reason": None,
         "message": None,
@@ -433,3 +680,8 @@ def build_course_plan_timeline(
             "instructional_day_count": len(instructional_dates),
         },
     }
+    current_unit = api._resolve_timeline_current_unit(payload, anchor_date=api.now_datetime())
+    current_unit_plan = api.planning.normalize_text((current_unit or {}).get("unit_plan"))
+    for unit in payload_units:
+        unit["is_current"] = int(api.planning.normalize_text(unit.get("unit_plan")) == current_unit_plan)
+    return payload

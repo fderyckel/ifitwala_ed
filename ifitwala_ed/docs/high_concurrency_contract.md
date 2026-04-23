@@ -210,6 +210,25 @@ May happen after the request:
 * derivative file processing
 * search indexing
 
+## 4.2.1 Runtime queue validity is part of the contract
+
+Deferred work is only safely deferred if the request can hand it off onto a queue that is valid for the live site runtime.
+
+Rules:
+
+* semantic queue labels are not automatically valid Frappe worker queues
+* any enqueue boundary must either target `short` / `default` / `long`, prove that matching custom workers are configured, or normalize semantic labels to runtime-valid queues
+* a successful synchronous mutation must not turn into a browser-visible failure only because post-save or post-finalize enrichment picked an undeployed queue label
+* if a feature depends on dedicated workers for isolation, that worker topology must be documented in the canonical contract and operational runbook for the feature
+
+## 4.2.2 Governed media derivatives and reads
+
+For Drive-governed media:
+
+* derivative generation belongs in the Drive deferred pipeline only
+* Ed request and read paths must resolve governed display/open URLs from Drive metadata and grant helpers
+* Ed hot paths must not use disk-existence checks or storage accessibility probes to choose governed avatar/media URLs
+
 ## 4.3 Rule
 
 > **No user-visible success response may depend on deferred work unless the document state explicitly communicates “Processing” and the workflow contract allows it.**

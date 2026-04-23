@@ -2,42 +2,40 @@
 
 <template>
 	<div data-testid="admissions-submit-page" class="admissions-page">
-		<div>
-			<p class="type-h2 text-ink">{{ __('Submit application') }}</p>
-			<p class="mt-1 type-caption text-ink/60">
-				{{ __('Confirm your application is ready for review.') }}
-			</p>
-		</div>
+		<header class="page-header">
+			<div class="page-header__intro">
+				<h1 class="type-h1 text-ink">{{ __('Submit application') }}</h1>
+				<p class="type-meta text-ink/70">
+					{{ __('Confirm your application is ready for review.') }}
+				</p>
+			</div>
+		</header>
 
-		<div v-if="loading" class="rounded-2xl border border-border/70 bg-surface px-4 py-4">
-			<div class="flex items-center gap-3">
+		<div v-if="loading" class="admissions-state-card">
+			<div class="admissions-state-inline">
 				<Spinner class="h-4 w-4" />
 				<p class="type-body-strong text-ink">{{ __('Checking readiness…') }}</p>
 			</div>
 		</div>
 
-		<div v-else-if="error" class="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3">
-			<p class="type-body-strong text-rose-900">{{ __('Unable to load submission status') }}</p>
-			<p class="mt-1 type-caption text-rose-900/80 whitespace-pre-wrap">{{ error }}</p>
-			<button
-				type="button"
-				class="mt-3 rounded-full border border-rose-200 bg-white px-4 py-2 type-caption text-rose-900"
-				@click="loadSnapshot"
-			>
+		<div v-else-if="error" class="if-banner if-banner--danger">
+			<p class="if-banner__title type-body-strong">{{ __('Unable to load submission status') }}</p>
+			<p class="if-banner__body mt-1 type-caption whitespace-pre-wrap">{{ error }}</p>
+			<button type="button" class="if-button if-button--secondary mt-3" @click="loadSnapshot">
 				{{ __('Try again') }}
 			</button>
 		</div>
 
 		<div v-else class="space-y-4">
-			<div v-if="actionError" class="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3">
-				<p class="type-body-strong text-amber-900">{{ __('Notice') }}</p>
-				<p class="mt-1 type-caption text-amber-900/80">{{ actionError }}</p>
+			<div v-if="actionError" class="admissions-card admissions-card--warm">
+				<p class="type-body-strong text-clay">{{ __('Notice') }}</p>
+				<p class="mt-1 type-caption text-clay/85">{{ actionError }}</p>
 			</div>
-			<div class="rounded-2xl border border-border/70 bg-white px-4 py-4 shadow-soft">
+			<div class="admissions-card admissions-card--plain">
 				<p class="type-body-strong text-ink">{{ __('Readiness checklist') }}</p>
 				<ul class="mt-3 space-y-2">
-					<li v-for="item in readinessItems" :key="item.label" class="flex items-center gap-2">
-						<span class="h-2.5 w-2.5 rounded-full" :class="item.dot" />
+					<li v-for="item in readinessItems" :key="item.label" class="admissions-checklist-row">
+						<span class="admissions-status-dot" :class="item.dot" />
 						<span class="type-caption text-ink/70">{{ item.label }}</span>
 					</li>
 				</ul>
@@ -46,16 +44,16 @@
 			<div
 				v-if="blockingActions.length"
 				data-testid="admissions-submit-blocked"
-				class="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3"
+				class="admissions-card admissions-card--warm"
 			>
-				<p class="type-body-strong text-amber-900">{{ __('Action required') }}</p>
-				<p class="mt-1 type-caption text-amber-900/80">{{ blockingMessage }}</p>
-				<div class="mt-3 flex flex-col gap-2">
+				<p class="type-body-strong text-clay">{{ __('Action required') }}</p>
+				<p class="mt-1 type-caption text-clay/85">{{ blockingMessage }}</p>
+				<div class="admissions-action-list mt-3">
 					<RouterLink
 						v-for="action in blockingActions"
 						:key="`${action.route_name}:${action.label}`"
 						:to="buildRouteLocation(action.route_name)"
-						class="flex items-center justify-between rounded-xl border border-amber-200 bg-white px-3 py-2 type-caption text-amber-900"
+						class="admissions-action-link type-caption"
 					>
 						<span>{{ action.label }}</span>
 						<span>{{ __('Open') }}</span>
@@ -63,12 +61,9 @@
 				</div>
 			</div>
 
-			<div
-				v-if="documentsUnderReview"
-				class="rounded-2xl border border-leaf/40 bg-leaf/10 px-4 py-3"
-			>
-				<p class="type-body-strong text-emerald-900">{{ __('Awaiting admissions review') }}</p>
-				<p class="mt-1 type-caption text-emerald-900/80">
+			<div v-if="documentsUnderReview" class="admissions-card admissions-card--success">
+				<p class="type-body-strong text-canopy">{{ __('Awaiting admissions review') }}</p>
+				<p class="mt-1 type-caption text-canopy/85">
 					{{
 						__(
 							'All required documents are uploaded. You can submit now while admissions reviews your files.'
@@ -77,7 +72,7 @@
 				</p>
 				<RouterLink
 					:to="buildRouteLocation('admissions-documents')"
-					class="mt-3 inline-flex rounded-full border border-leaf/40 bg-white px-4 py-2 type-caption text-emerald-900"
+					class="if-button if-button--secondary mt-3"
 				>
 					{{ __('View document statuses') }}
 				</RouterLink>
@@ -87,7 +82,7 @@
 				<button
 					data-testid="admissions-submit-open"
 					type="button"
-					class="rounded-full bg-ink px-5 py-2 type-caption text-white shadow-soft disabled:opacity-50"
+					class="if-button if-button--primary"
 					:disabled="isReadOnly || !isReady"
 					@click="openSubmit"
 				>
@@ -96,7 +91,7 @@
 				<RouterLink
 					v-if="!isReady && blockingActions.length"
 					:to="buildRouteLocation(firstBlockingRouteName)"
-					class="rounded-full border border-border/70 bg-white px-4 py-2 type-caption text-ink/70"
+					class="if-button if-button--secondary"
 				>
 					{{ __('Open first required step') }}
 				</RouterLink>
@@ -173,10 +168,10 @@ const readinessItems = computed(() => {
 		...item,
 		dot:
 			item.state === 'complete'
-				? 'bg-leaf'
+				? 'admissions-status-dot--complete'
 				: item.state === 'in_progress'
-					? 'bg-clay'
-					: 'bg-amber-300',
+					? 'admissions-status-dot--in-progress'
+					: 'admissions-status-dot--pending',
 	}));
 });
 

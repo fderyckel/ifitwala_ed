@@ -143,7 +143,7 @@ def get_grid(api, filters=None, **kwargs):
             "official": {
                 "score": row.get("official_score"),
                 "grade": row.get("official_grade"),
-                "grade_value": row.get("official_grade_value"),
+                "grade_value": _grade_value_for_payload(row.get("official_grade"), row.get("official_grade_value")),
                 "feedback": row.get("official_feedback"),
             },
         }
@@ -158,7 +158,14 @@ def get_grid(api, filters=None, **kwargs):
     }
 
 
-def get_drawer(api, outcome_id: str):
+def get_drawer(api, outcome_id: str, submission_id: str | None = None, version: int | str | None = None):
+    from ifitwala_ed.api import task_submission as task_submission_api
+    from ifitwala_ed.assessment import (
+        task_feedback_comment_bank_service,
+        task_feedback_service,
+        task_feedback_thread_service,
+    )
+
     api._require(outcome_id, "Task Outcome")
 
     if not api._can_read_gradebook():
@@ -167,8 +174,15 @@ def get_drawer(api, outcome_id: str):
     outcome_fields = [
         "name",
         "task_delivery",
+        "student",
         "grading_status",
         "procedural_status",
+        "has_submission",
+        "has_new_submission",
+        "is_complete",
+        "is_published",
+        "published_on",
+        "published_by",
         "official_score",
         "official_grade",
         "official_grade_value",
@@ -177,6 +191,20 @@ def get_drawer(api, outcome_id: str):
     outcome_doc = frappe.db.get_value("Task Outcome", outcome_id, outcome_fields, as_dict=True)
     if not outcome_doc:
         frappe.throw(_("Task Outcome not found."))
+
+    delivery = api._resolve_delivery(outcome_doc.get("task_delivery"))
+    api._assert_group_access(delivery.get("student_group"))
+    task_row = frappe.db.get_value(
+        "Task",
+        delivery.get("task"),
+        ["name", "title", "task_type"],
+        as_dict=True,
+    ) or {"name": delivery.get("task"), "title": delivery.get("task")}
+    delivery_criteria = api._build_delivery_criteria_payload(delivery)
+
+    student_id = outcome_doc.get("student")
+    student_meta = api._get_student_meta_map([student_id]).get(student_id, {}) if student_id else {}
+    student_display = api._get_student_display_map([student_id]).get(student_id, student_id) if student_id else None
 
     outcome_criteria = api._get_outcome_criteria_map({outcome_id}).get(outcome_id, [])
 
@@ -196,7 +224,6 @@ def get_drawer(api, outcome_id: str):
             "evidence_note",
             "link_url",
             "text_content",
-            "attachments",
         ],
         order_by="version desc",
         limit=20,
@@ -212,6 +239,7 @@ def get_drawer(api, outcome_id: str):
             "status",
             "is_stale",
             "task_submission",
+            "judgment_code",
             "score",
             "grade",
             "grade_value",
@@ -223,6 +251,7 @@ def get_drawer(api, outcome_id: str):
         order_by="submitted_on desc, modified desc",
         limit=100,
     )
+    contributions = [_normalize_contribution_grade_value(row, api) for row in contributions]
 
     my_contribution = api._select_my_contribution(contributions)
     my_criteria = []
@@ -230,52 +259,154 @@ def get_drawer(api, outcome_id: str):
         my_criteria = api._get_contribution_criteria(my_contribution.get("name"))
 
     moderation_history = api._build_moderation_history(contributions)
+    selected_submission_row = task_submission_api.select_task_submission_row(
+        submissions,
+        submission_id=submission_id,
+        version=version,
+    )
+    latest_submission = submissions[0] if submissions else None
+    selected_submission = None
+    if selected_submission_row:
+        selected_submission = task_submission_api.serialize_task_submission_evidence(
+            selected_submission_row,
+            is_latest_version=bool(
+                latest_submission and selected_submission_row.get("name") == latest_submission.get("name")
+            ),
+        )
+    selected_submission_id = (selected_submission or {}).get("submission_id")
+    feedback_workspace = None
+    if selected_submission_id:
+        feedback_workspace = task_feedback_service.build_feedback_workspace_payload(
+            outcome_id,
+            selected_submission_id,
+        )
+    feedback_threads = []
+    if selected_submission_id:
+        feedback_threads = task_feedback_thread_service.build_feedback_thread_payloads(
+            outcome_id=outcome_id,
+            submission_id=selected_submission_id,
+        )
+    comment_bank = task_feedback_comment_bank_service.build_comment_bank_payload(
+        outcome_id,
+        actor=frappe.session.user,
+    )
     submission_versions = [
-        {
-            "submission_id": row.get("name"),
-            "version": row.get("version"),
-            "submitted_on": row.get("submitted_on"),
-            "origin": row.get("submission_origin"),
-            "is_stub": api._bool_flag(row.get("is_stub")),
-        }
+        task_submission_api.build_task_submission_version_summary(
+            row,
+            is_selected=(row.get("name") == selected_submission_id),
+        )
         for row in sorted(submissions, key=lambda r: r.get("version") or 0)
     ]
-    latest_submission = submissions[0] if submissions else None
     if latest_submission:
-        latest_submission = {
-            "submission_id": latest_submission.get("name"),
-            "version": latest_submission.get("version"),
-            "submitted_on": latest_submission.get("submitted_on"),
-            "origin": latest_submission.get("submission_origin"),
-            "is_stub": api._bool_flag(latest_submission.get("is_stub")),
-        }
+        latest_submission = task_submission_api.build_task_submission_version_summary(
+            latest_submission,
+            is_selected=(latest_submission.get("name") == selected_submission_id),
+        )
 
     return {
+        "delivery": {
+            "name": delivery.get("name"),
+            "task": task_row.get("name"),
+            "title": task_row.get("title") or task_row.get("name"),
+            "task_type": task_row.get("task_type"),
+            "student_group": delivery.get("student_group"),
+            "due_date": delivery.get("due_date"),
+            "delivery_mode": delivery.get("delivery_mode"),
+            "grading_mode": delivery.get("grading_mode"),
+            "allow_feedback": 1 if api._bool_flag(delivery.get("allow_feedback")) else 0,
+            "rubric_scoring_strategy": delivery.get("rubric_scoring_strategy") or None,
+            "max_points": api._coerce_float(delivery.get("max_points")),
+            "criteria": delivery_criteria,
+        },
+        "student": {
+            "student": student_id,
+            "student_name": student_meta.get("student_preferred_name")
+            or student_meta.get("student_full_name")
+            or student_display
+            or student_id,
+            "student_id": student_meta.get("student_id"),
+            "student_image": student_meta.get("student_image"),
+        },
         "outcome": {
             "outcome_id": outcome_doc.get("name"),
             "grading_status": outcome_doc.get("grading_status"),
             "procedural_status": outcome_doc.get("procedural_status"),
+            "has_submission": api._bool_flag(outcome_doc.get("has_submission")),
+            "has_new_submission": api._bool_flag(outcome_doc.get("has_new_submission")),
+            "is_complete": api._bool_flag(outcome_doc.get("is_complete")),
+            "is_published": api._bool_flag(outcome_doc.get("is_published")),
+            "published_on": outcome_doc.get("published_on"),
+            "published_by": outcome_doc.get("published_by"),
             "official": {
                 "score": outcome_doc.get("official_score"),
                 "grade": outcome_doc.get("official_grade"),
-                "grade_value": outcome_doc.get("official_grade_value"),
+                "grade_value": _grade_value_for_payload(
+                    outcome_doc.get("official_grade"),
+                    outcome_doc.get("official_grade_value"),
+                ),
                 "feedback": outcome_doc.get("official_feedback"),
             },
             "criteria": outcome_criteria,
         },
         "latest_submission": latest_submission,
+        "selected_submission": selected_submission,
+        "feedback_workspace": feedback_workspace,
+        "feedback_threads": feedback_threads,
+        "comment_bank": comment_bank,
         "submission_versions": submission_versions,
         "my_contribution": {
+            "name": my_contribution.get("name"),
             "status": my_contribution.get("status"),
+            "contribution_type": my_contribution.get("contribution_type"),
+            "task_submission": my_contribution.get("task_submission"),
+            "is_stale": api._bool_flag(my_contribution.get("is_stale")),
+            "judgment_code": my_contribution.get("judgment_code"),
+            "score": api._coerce_float(my_contribution.get("score")),
+            "grade": my_contribution.get("grade"),
+            "grade_value": _grade_value_for_payload(
+                my_contribution.get("grade"),
+                api._coerce_float(my_contribution.get("grade_value")),
+            ),
             "criteria": my_criteria,
             "feedback": my_contribution.get("feedback"),
+            "submitted_on": my_contribution.get("submitted_on"),
+            "modified": my_contribution.get("modified"),
         }
         if my_contribution
         else None,
         "moderation_history": moderation_history,
-        "submissions": submissions,
+        "allowed_actions": {
+            "can_edit_marking": api._can_write_gradebook(),
+            "can_edit_feedback": api._can_write_gradebook(),
+            "can_mark_submission_seen": api._can_write_gradebook() or api._is_academic_adminish(),
+            "can_publish": api._can_write_gradebook() or api._is_academic_adminish(),
+            "can_unpublish": api._is_academic_adminish(),
+            "can_manage_feedback_publication": api._can_write_gradebook() or api._is_academic_adminish(),
+            "can_moderate": api._is_academic_adminish(),
+            "show_review_tab": api._is_academic_adminish(),
+        },
         "contributions": contributions,
     }
+
+
+def _grade_value_for_payload(grade_symbol, grade_value):
+    if grade_symbol in (None, ""):
+        return None
+    if not str(grade_symbol).strip():
+        return None
+    return grade_value
+
+
+def _normalize_contribution_grade_value(row, api):
+    if not isinstance(row, dict):
+        return row
+
+    normalized = dict(row)
+    normalized["grade_value"] = _grade_value_for_payload(
+        normalized.get("grade"),
+        api._coerce_float(normalized.get("grade_value")),
+    )
+    return normalized
 
 
 def fetch_groups(api, search=None, limit=None, school=None, academic_year=None, program=None, course=None):
@@ -433,6 +564,10 @@ def get_task_gradebook(api, task: str):
             "name",
             "student",
             "grading_status",
+            "procedural_status",
+            "submission_status",
+            "has_submission",
+            "has_new_submission",
             "is_complete",
             "official_score",
             "official_feedback",
@@ -497,6 +632,10 @@ def get_task_gradebook(api, task: str):
                 "student_id": meta.get("student_id"),
                 "student_image": meta.get("student_image"),
                 "status": outcome.get("grading_status"),
+                "procedural_status": outcome.get("procedural_status"),
+                "submission_status": outcome.get("submission_status"),
+                "has_submission": int(outcome.get("has_submission") or 0),
+                "has_new_submission": int(outcome.get("has_new_submission") or 0),
                 "complete": int(outcome.get("is_complete") or 0),
                 "mark_awarded": api._coerce_float(outcome.get("official_score")),
                 "feedback": outcome.get("official_feedback"),

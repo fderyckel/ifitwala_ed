@@ -18,6 +18,7 @@ from ifitwala_ed.schedule.attendance_utils import (
     get_meeting_dates,
     list_attendance_codes,
     previous_status_map,
+    resolve_student_group_schedule_name,
 )
 from ifitwala_ed.schedule.schedule_utils import get_weekend_days_for_calendar
 from ifitwala_ed.utilities.school_tree import _is_adminish, get_school_lineage, get_user_default_school
@@ -234,13 +235,48 @@ def fetch_school_filter_context():
 
 
 @frappe.whitelist()
-def fetch_active_programs():
-    """Return all non-archived programs for the Program dropdown."""
-    return frappe.get_all(
-        "Program",
-        fields=["name", "program_name", "parent_program", "lft", "rgt", "is_group"],
-        filters={"archive": 0},
-        order_by="lft asc",
+def fetch_active_programs(school: str | None = None):
+    """
+    Return visible programs for the selected school scope.
+
+    Program Offering is the authoritative school-to-program bridge. This query
+    derives distinct offered programs from Program Offering rows in scope, then
+    expands to ancestor Program nodes so staff can still filter by a parent
+    program family where appropriate.
+    """
+    school_scope = _expand_school_scope(school)
+    if school_scope == []:
+        return []
+
+    params: dict[str, object] = {}
+    school_condition = ""
+    if school_scope:
+        school_condition = "AND po.school IN %(school_scope)s"
+        params["school_scope"] = tuple(school_scope)
+
+    return frappe.db.sql(
+        f"""
+        SELECT DISTINCT
+            ancestor.name,
+            ancestor.program_name,
+            ancestor.parent_program,
+            ancestor.lft,
+            ancestor.rgt,
+            ancestor.is_group
+        FROM `tabProgram Offering` po
+        INNER JOIN `tabProgram` offered
+            ON offered.name = po.program
+        INNER JOIN `tabProgram` ancestor
+            ON ancestor.lft <= offered.lft
+           AND ancestor.rgt >= offered.rgt
+        WHERE COALESCE(po.program, '') != ''
+          AND COALESCE(offered.archive, 0) = 0
+          AND COALESCE(ancestor.archive, 0) = 0
+          {school_condition}
+        ORDER BY ancestor.lft ASC
+        """,
+        params,
+        as_dict=True,
     )
 
 
@@ -269,7 +305,7 @@ def fetch_attendance_ledger_context(
             fallback=school_context.get("default_school"),
             allow_first=True,
         )
-        programs = fetch_active_programs()
+        programs = fetch_active_programs(school=selected_school)
         selected_program = _pick_named_value(requested["program"], programs)
 
         groups = fetch_portal_student_groups(
@@ -334,7 +370,7 @@ def fetch_attendance_tool_bootstrap(
             fallback=school_context.get("default_school"),
             allow_first=True,
         )
-        programs = fetch_active_programs()
+        programs = fetch_active_programs(school=selected_school)
         selected_program = _pick_named_value(requested["program"], programs)
         groups = fetch_portal_student_groups(
             school=selected_school,
@@ -491,8 +527,7 @@ def get_weekend_days(student_group: str | None = None) -> list[int]:
     if not student_group:
         return get_weekend_days_for_calendar(None)
 
-    # Resolve School Schedule → School Calendar
-    schedule_name = frappe.db.get_value("Student Group", student_group, "school_schedule")
+    schedule_name = resolve_student_group_schedule_name(student_group)
     if not schedule_name:
         return get_weekend_days_for_calendar(None)
 

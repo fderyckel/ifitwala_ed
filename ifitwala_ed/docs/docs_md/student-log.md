@@ -3,8 +3,8 @@ title: "Student Log: Track Observations and Follow-Ups"
 slug: student-log
 category: Students
 doc_order: 2
-version: "1.0.0"
-last_change_date: "2026-04-11"
+version: "1.0.1"
+last_change_date: "2026-04-19"
 summary: "Document student observations, incidents, and concerns with built-in follow-up workflows. Keep everyone informed while maintaining appropriate privacy controls."
 seo_title: "Student Log: Track Observations and Follow-Ups"
 seo_description: "Learn how to use Student Logs to document observations, track follow-ups, and maintain a complete record of student support interactions in Ifitwala Ed."
@@ -89,12 +89,12 @@ When creating or editing a log:
 1. Check **"Requires Follow Up"**
 2. Select a **Next Step** (configured by your school—e.g., "Schedule parent meeting", "Refer to counselor")
 3. Choose the **Follow-up Role** (who should handle this)
-4. Assign a specific **Follow-up Person** (optional—can be assigned later)
+4. Assign a specific **Follow-up Person** (required before submit)
 
 <Callout type="success" title="What happens automatically">
 When you submit a log requiring follow-up:
 - A ToDo task is created for the assigned person
-- Due date is set based on your school's default (usually 5 days)
+- Due date follows the selected **Next Step** policy when configured, otherwise your school's default
 - Status becomes "Open"
 - The assignee gets notified
 </Callout>
@@ -104,16 +104,19 @@ When you submit a log requiring follow-up:
 | Status | What It Means | Who Can Change It |
 |--------|---------------|-------------------|
 | **Open** | Task created, waiting for action | System-managed |
-| **In Progress** | Follow-up work has started | System-managed when first follow-up is added |
+| **In Progress** | Follow-up work has started | System-managed when the first submitted follow-up is added |
 | **Completed** | Resolution achieved | Author, Academic Admin, or current assignee |
 
 ### Adding Follow-Up Notes
 
-As work progresses, anyone involved can add **Student Log Follow Up** entries:
-- Document conversations with the student or family
-- Record interventions attempted
-- Note outcomes and next steps
-- Attach relevant files or evidence
+As work progresses, the current assignee can add quick **Student Log Follow Up** entries to record:
+- Conversations with the student or family
+- Interventions attempted
+- Outcomes and immediate next steps
+
+If another staff member needs to add context without taking over the assignment, use **Add Clarification** on the Student Log.
+
+For deeper, multi-party support work, move the case into **Student Referral** rather than turning the log into a long-running case file.
 
 Each follow-up is timestamped and attributed, creating a complete timeline.
 
@@ -128,6 +131,8 @@ Life happens—people go on leave or need help. To reassign:
 Only the author, Academic Admin, current assignee, or someone with the follow-up role can reassign a log. Completed logs cannot be reassigned—they must be reopened first.
 </Callout>
 
+Reassigning a log starts a new follow-up cycle for the new assignee. The previous follow-up history stays on the log for context.
+
 ### Completing a Log
 
 When the follow-up work is done:
@@ -140,7 +145,7 @@ Need to reopen? Authors and Academic Admins can reopen completed logs if new inf
 
 ### Auto-Close for Stale Items
 
-Logs "In Progress" that haven't been updated in a while (default: 5 days) are automatically marked "Completed" by the system. This prevents abandoned tasks from lingering in queues forever.
+Logs "In Progress" that haven't been updated in a while are automatically marked "Completed" by the system using the selected **Next Step** policy when available, otherwise the school's default follow-up window. This prevents abandoned tasks from lingering in queues forever.
 
 ---
 
@@ -220,6 +225,7 @@ Student Logs contain sensitive information, so access is carefully controlled:
 
 ### Visibility Rules
 
+- **Default visibility is off** for both students and guardians until staff chooses otherwise
 - **Authors** can always see logs they created
 - **Assignees** can see logs assigned to them for follow-up
 - **Staff** see logs for students in their school scope
@@ -254,6 +260,7 @@ Student Logs contain sensitive information, so access is carefully controlled:
 - **Be specific** in next steps—"Schedule meeting" is better than "Follow up"
 - **Assign promptly**—don't leave logs unassigned in the queue
 - **Add follow-up notes** as work progresses—don't wait until completion
+- **Keep follow-ups lightweight**—use Student Referral for deeper coordinated cases
 - **Complete logs** when done—don't let resolved items linger
 - **Reopen if needed**—new information can emerge after closure
 
@@ -274,7 +281,7 @@ Student Logs contain sensitive information, so access is carefully controlled:
 ## Common Questions
 
 **Q: Can I edit a log after submitting it?**
-A: Yes, you can cancel and amend if no follow-up work has started yet. Once follow-ups exist, core fields become locked to preserve the record. Add clarification notes instead.
+A: Yes, you can cancel and amend if no submitted follow-up work has started yet. Once a submitted follow-up exists, core fields become locked to preserve the record. Add clarification notes instead.
 
 **Q: Who gets notified when I create a log?**
 A: The assigned follow-up person gets a ToDo notification. If visible to guardians, they may see it on their portal (depending on your school's notification settings).
@@ -449,7 +456,8 @@ A Pastoral Lead can filter to their school, select the current academic year, an
 - **Submittable**: Yes (must be submitted to create follow-up tasks)
 - **Amendable**: Yes (unless follow-ups exist)
 - **Follow-up Status**: Computed field (Open → In Progress → Completed)
-- **Scheduler**: Daily job auto-completes stale "In Progress" logs (default: 5 days of inactivity)
+- **Visibility Defaults**: `Visible to Student` and `Visible to Guardians` default to off
+- **Scheduler**: Daily job auto-completes stale "In Progress" logs using the selected next-step policy or the school default
 
 ### Permission Matrix
 

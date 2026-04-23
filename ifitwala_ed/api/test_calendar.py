@@ -5,16 +5,10 @@ from unittest import TestCase
 from unittest.mock import patch
 
 import frappe
+import pytz
 
-from ifitwala_ed.api import calendar_quick_create
+from ifitwala_ed.api import calendar_details, calendar_quick_create
 from ifitwala_ed.api.calendar import (
-    CAL_MIN_DURATION,
-    _attach_duration,
-    _coerce_time,
-    _resolve_sg_schedule_context,
-    _student_group_memberships,
-    _system_tzinfo,
-    _time_to_str,
     create_meeting_quick,
     create_school_event_quick,
     get_meeting_team_attendees,
@@ -22,6 +16,15 @@ from ifitwala_ed.api.calendar import (
     suggest_meeting_rooms,
     suggest_meeting_slots,
 )
+from ifitwala_ed.api.calendar_core import (
+    CAL_MIN_DURATION,
+    _attach_duration,
+    _coerce_time,
+    _student_group_memberships,
+    _system_tzinfo,
+    _time_to_str,
+)
+from ifitwala_ed.api.calendar_details import _resolve_sg_schedule_context
 from ifitwala_ed.api.calendar_staff_feed import _collect_meeting_events
 
 
@@ -343,6 +346,190 @@ class TestCalendarApi(TestCase):
         self.assertEqual(len(events), 1)
         self.assertEqual(events[0].color, "#112233")
 
+    def test_get_school_event_details_tolerates_missing_event_type_field(self):
+        doc = _FakeDoc(
+            {
+                "subject": "Assembly",
+                "school": "SCHOOL-1",
+                "location": "Hall",
+                "event_category": "Other",
+                "all_day": 0,
+                "color": None,
+                "description": "<p>Bring your planner.</p>",
+                "starts_on": "2026-04-10 08:00:00",
+                "ends_on": "2026-04-10 09:00:00",
+                "reference_type": None,
+                "reference_name": None,
+                "docstatus": 0,
+            },
+            "SE-0001",
+        )
+
+        with (
+            patch("ifitwala_ed.api.calendar_details.frappe.session", frappe._dict({"user": "teacher@example.com"})),
+            patch("ifitwala_ed.api.calendar_details.frappe.get_doc", return_value=doc),
+            patch("ifitwala_ed.api.calendar_details._school_event_access_allowed", return_value=True),
+            patch(
+                "ifitwala_ed.api.calendar_details._system_tzinfo",
+                return_value=pytz.timezone("Asia/Bangkok"),
+            ),
+        ):
+            payload = calendar_details.get_school_event_details("SE-0001")
+
+        self.assertEqual(payload["name"], "SE-0001")
+        self.assertEqual(payload["subject"], "Assembly")
+        self.assertEqual(payload["event_category"], "Other")
+        self.assertIsNone(payload["event_type"])
+        self.assertEqual(payload["timezone"], "Asia/Bangkok")
+
+    def test_school_event_access_blocks_staff_for_guardian_only_ancestor_event(self):
+        doc = _FakeDoc(
+            {
+                "subject": "Parent Workshop",
+                "school": "ISS",
+                "location": "Hall",
+                "event_category": "Parent Engagement",
+                "all_day": 0,
+                "color": None,
+                "description": "<p>Parents only.</p>",
+                "starts_on": "2026-04-10 08:00:00",
+                "ends_on": "2026-04-10 09:00:00",
+                "reference_type": None,
+                "reference_name": None,
+                "docstatus": 0,
+                "audience": [frappe._dict({"audience_type": "All Guardians", "team": None})],
+                "participants": [],
+            },
+            "SE-0002",
+        )
+
+        with (
+            patch("ifitwala_ed.api.calendar_details.frappe.get_roles", return_value=["Employee"]),
+            patch(
+                "ifitwala_ed.api.calendar_details._resolve_employee_for_user",
+                return_value={"school": "IHS"},
+            ),
+            patch("ifitwala_ed.api.calendar_details.get_ancestor_schools", return_value=["IHS", "ISS"]),
+            patch("ifitwala_ed.api.calendar_details.get_user_membership", return_value={"teams": set()}),
+        ):
+            allowed = calendar_details._school_event_access_allowed(doc, "teacher@example.com")
+
+        self.assertFalse(allowed)
+
+    def test_school_event_access_allows_guardian_for_parent_school_event(self):
+        doc = _FakeDoc(
+            {
+                "subject": "Parent Workshop",
+                "school": "ISS",
+                "location": "Hall",
+                "event_category": "Parent Engagement",
+                "all_day": 0,
+                "color": None,
+                "description": "<p>Parents only.</p>",
+                "starts_on": "2026-04-10 08:00:00",
+                "ends_on": "2026-04-10 09:00:00",
+                "reference_type": None,
+                "reference_name": None,
+                "docstatus": 0,
+                "audience": [
+                    frappe._dict(
+                        {
+                            "audience_type": "All Guardians",
+                            "student_group": None,
+                            "include_guardians": 0,
+                            "include_students": 0,
+                            "team": None,
+                        }
+                    )
+                ],
+                "participants": [],
+            },
+            "SE-0003",
+        )
+        context = {
+            "user": "guardian@example.com",
+            "children": [{"student": "STU-1", "full_name": "Amina Example", "school": "IHS"}],
+            "child_by_student": {"STU-1": {"student": "STU-1", "full_name": "Amina Example", "school": "IHS"}},
+            "student_names": ["STU-1"],
+            "student_school_names": {"STU-1": {"IHS"}},
+            "eligible_school_targets_by_student": {"STU-1": {"IHS", "ISS"}},
+            "membership_by_student": {"STU-1": set()},
+        }
+
+        with (
+            patch("ifitwala_ed.api.calendar_details.frappe.session", frappe._dict({"user": "guardian@example.com"})),
+            patch("ifitwala_ed.api.calendar_details.frappe.get_roles", return_value=["Guardian"]),
+            patch(
+                "ifitwala_ed.api.calendar_details._resolve_guardian_communication_context",
+                return_value=context,
+            ),
+        ):
+            allowed = calendar_details._school_event_access_allowed(doc, "guardian@example.com")
+
+        self.assertTrue(allowed)
+
+    def test_get_student_group_event_details_includes_task_creation_context(self):
+        tzinfo = pytz.timezone("Asia/Bangkok")
+        event_start = datetime(2026, 4, 22, 8, 0, 0)
+        event_end = datetime(2026, 4, 22, 9, 0, 0)
+
+        with (
+            patch("ifitwala_ed.api.calendar_details.frappe.session", frappe._dict({"user": "teacher@example.com"})),
+            patch("ifitwala_ed.api.calendar_details._system_tzinfo", return_value=tzinfo),
+            patch(
+                "ifitwala_ed.api.calendar_details._resolve_sg_schedule_context",
+                return_value={
+                    "student_group": "GROUP-1",
+                    "rotation_day": 2,
+                    "block_number": 3,
+                    "block_label": "Block 3",
+                    "session_date": "2026-04-22",
+                    "location": "Room 5",
+                    "location_missing_reason": None,
+                    "start": event_start,
+                    "end": event_end,
+                },
+            ),
+            patch("ifitwala_ed.api.calendar_details._user_has_student_group_access", return_value=True),
+            patch(
+                "ifitwala_ed.api.calendar_details.frappe.db.get_value",
+                return_value=frappe._dict(
+                    {
+                        "name": "GROUP-1",
+                        "student_group_name": "Biology A",
+                        "group_based_on": "Course",
+                        "program": "IB",
+                        "course": "COURSE-1",
+                        "cohort": "G6",
+                        "school": "SCHOOL-1",
+                    }
+                ),
+            ),
+            patch(
+                "ifitwala_ed.api.calendar_details._course_meta_map",
+                return_value={"COURSE-1": {"course_name": "Biology"}},
+            ),
+            patch(
+                "ifitwala_ed.api.calendar_details.planning.resolve_active_class_teaching_plan",
+                return_value={
+                    "status": "ready",
+                    "class_teaching_plan": "CLASS-PLAN-1",
+                    "active_plan_count": 1,
+                },
+            ),
+        ):
+            payload = calendar_details.get_student_group_event_details("sg::GROUP-1::2026-04-22T08:00:00")
+
+        self.assertEqual(payload["student_group"], "GROUP-1")
+        self.assertEqual(payload["course_name"], "Biology")
+        self.assertEqual(
+            payload["task_creation"],
+            {
+                "status": "ready",
+                "class_teaching_plan": "CLASS-PLAN-1",
+            },
+        )
+
     def test_create_school_event_quick_defaults_custom_users_to_session_user(self):
         cache = _DummyCache()
         captured_payloads = []
@@ -378,6 +565,118 @@ class TestCalendarApi(TestCase):
         self.assertEqual(len(captured_payloads), 1)
         self.assertEqual(captured_payloads[0].get("participants"), [{"participant": "staff@example.com"}])
 
+    def test_get_event_quick_create_options_includes_announcement_publish_capability(self):
+        cache = _DummyCache()
+
+        with (
+            patch("ifitwala_ed.api.calendar_quick_create.frappe.session", frappe._dict({"user": "staff@example.com"})),
+            patch(
+                "ifitwala_ed.api.calendar_quick_create.frappe.has_permission",
+                side_effect=lambda doctype, ptype=None, user=None: doctype == "School Event",
+            ),
+            patch("ifitwala_ed.api.calendar_quick_create.frappe.cache", return_value=cache),
+            patch(
+                "ifitwala_ed.api.calendar_quick_create._get_quick_create_scope",
+                return_value={
+                    "roles": ["Academic Assistant"],
+                    "base_school": "ISS",
+                    "school_scope": ["ISS", "IHS", "IMS"],
+                    "is_admin_like": False,
+                },
+            ),
+            patch(
+                "ifitwala_ed.api.calendar_quick_create._cached_select_options",
+                side_effect=lambda doctype, fieldname: {
+                    ("Meeting", "meeting_category"): ["General"],
+                    ("School Event", "event_category"): ["Other"],
+                    ("School Event Audience", "audience_type"): ["All Guardians", "Students in Student Group"],
+                }[(doctype, fieldname)],
+            ),
+            patch(
+                "ifitwala_ed.api.calendar_quick_create._school_options_for_scope",
+                return_value=[
+                    {"value": "ISS", "label": "Ifitwala Secondary School"},
+                    {"value": "IHS", "label": "Ifitwala High School"},
+                ],
+            ),
+            patch("ifitwala_ed.api.calendar_quick_create._location_options_map_for_schools", return_value={"ISS": []}),
+            patch(
+                "ifitwala_ed.api.calendar_quick_create._location_type_options_map_for_schools", return_value={"ISS": []}
+            ),
+            patch("ifitwala_ed.api.calendar_quick_create._team_options_for_scope", return_value=[]),
+            patch("ifitwala_ed.api.calendar_quick_create._student_group_options_for_scope", return_value=[]),
+            patch(
+                "ifitwala_ed.api.calendar_quick_create.get_org_communication_quick_create_capability",
+                return_value={
+                    "enabled": False,
+                    "blocked_reason": "Set a default organization before publishing announcements.",
+                },
+            ),
+        ):
+            payload = calendar_quick_create.get_event_quick_create_options()
+
+        self.assertEqual(
+            payload["announcement_publish"],
+            {
+                "enabled": False,
+                "blocked_reason": "Set a default organization before publishing announcements.",
+            },
+        )
+
+    def test_create_school_event_quick_can_publish_matching_org_communication(self):
+        cache = _DummyCache()
+        captured_event_payloads = []
+
+        def _fake_get_doc(*args, **kwargs):
+            if len(args) == 1 and isinstance(args[0], dict):
+                payload = args[0]
+                captured_event_payloads.append(payload)
+                return _FakeDoc(payload, "SE-26-04-00001")
+            if args == ("System Settings", "System Settings"):
+                return frappe._dict({"time_zone": "Asia/Bangkok"})
+            raise AssertionError(f"Unexpected get_doc call: args={args!r} kwargs={kwargs!r}")
+
+        with (
+            patch("ifitwala_ed.api.calendar_quick_create.frappe.session", frappe._dict({"user": "staff@example.com"})),
+            patch("ifitwala_ed.api.calendar_quick_create.frappe.has_permission", return_value=True),
+            patch("ifitwala_ed.api.calendar_quick_create.frappe.cache", return_value=cache),
+            patch("ifitwala_ed.api.calendar_quick_create.frappe.get_doc", side_effect=_fake_get_doc),
+            patch("ifitwala_ed.api.calendar_quick_create._ensure_allowed_school", return_value="ISS"),
+            patch("ifitwala_ed.api.calendar_quick_create._ensure_allowed_location", return_value=None),
+            patch(
+                "ifitwala_ed.api.calendar_quick_create.get_org_communication_quick_create_capability",
+                return_value={"enabled": True, "blocked_reason": None},
+            ),
+            patch(
+                "ifitwala_ed.api.calendar_quick_create.publish_companion_org_communication_for_event",
+                return_value={
+                    "status": "created",
+                    "name": "ORG-COMM-26-04-00001",
+                    "title": "Parent MYP Workshop",
+                },
+            ) as mocked_publish,
+        ):
+            response = create_school_event_quick(
+                client_request_id="req-publish-1",
+                subject="Parent MYP Workshop",
+                school="ISS",
+                starts_on="2026-04-22T08:00",
+                ends_on="2026-04-22T09:00",
+                audience_type="All Guardians",
+                event_category="Parent Engagement",
+                publish_announcement=1,
+                announcement_message="Workshop presentation",
+            )
+
+        self.assertEqual(response.get("status"), "created")
+        self.assertEqual(response.get("published_communication", {}).get("name"), "ORG-COMM-26-04-00001")
+        self.assertEqual(len(captured_event_payloads), 1)
+        self.assertEqual(captured_event_payloads[0].get("school"), "ISS")
+        mocked_publish.assert_called_once()
+        self.assertEqual(mocked_publish.call_args.kwargs["event_doc"].name, "SE-26-04-00001")
+        self.assertEqual(mocked_publish.call_args.kwargs["request_id"], "req-publish-1")
+        self.assertEqual(mocked_publish.call_args.kwargs["announcement_message"], "Workshop presentation")
+
     def test_student_group_memberships_does_not_filter_child_rows_by_active(self):
         observed_filters = []
 
@@ -412,7 +711,7 @@ class TestCalendarApi(TestCase):
     def test_search_meeting_attendees_facade_delegates_new_contract(self):
         expected = {"results": [{"value": "student@example.com"}], "notes": ["note"]}
 
-        with patch("ifitwala_ed.api.calendar._search_meeting_attendees", return_value=expected) as mocked:
+        with patch("ifitwala_ed.api.calendar_quick_create.search_meeting_attendees", return_value=expected) as mocked:
             payload = search_meeting_attendees(
                 query="stu",
                 attendee_kinds=["employee", "student"],
@@ -429,7 +728,7 @@ class TestCalendarApi(TestCase):
     def test_get_meeting_team_attendees_facade_delegates_new_contract(self):
         expected = {"team": "TEAM-1", "results": [{"value": "staff@example.com"}]}
 
-        with patch("ifitwala_ed.api.calendar._get_meeting_team_attendees", return_value=expected) as mocked:
+        with patch("ifitwala_ed.api.calendar_quick_create.get_meeting_team_attendees", return_value=expected) as mocked:
             payload = get_meeting_team_attendees(team="TEAM-1")
 
         mocked.assert_called_once_with(team="TEAM-1")
@@ -450,7 +749,7 @@ class TestCalendarApi(TestCase):
             "attendees": [],
         }
 
-        with patch("ifitwala_ed.api.calendar._suggest_meeting_slots", return_value=expected) as mocked:
+        with patch("ifitwala_ed.api.calendar_quick_create.suggest_meeting_slots", return_value=expected) as mocked:
             payload = suggest_meeting_slots(
                 attendees=[{"user": "student@example.com", "kind": "student"}],
                 duration_minutes=45,
@@ -479,7 +778,7 @@ class TestCalendarApi(TestCase):
     def test_suggest_meeting_rooms_facade_delegates_new_contract(self):
         expected = {"rooms": [{"value": "ROOM-1"}], "notes": []}
 
-        with patch("ifitwala_ed.api.calendar._suggest_meeting_rooms", return_value=expected) as mocked:
+        with patch("ifitwala_ed.api.calendar_quick_create.suggest_meeting_rooms", return_value=expected) as mocked:
             payload = suggest_meeting_rooms(
                 school="SCHOOL-1",
                 date="2026-02-01",

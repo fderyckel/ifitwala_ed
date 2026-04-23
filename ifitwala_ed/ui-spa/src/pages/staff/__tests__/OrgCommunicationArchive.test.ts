@@ -7,12 +7,14 @@ const {
 	getOrgCommunicationItemMock,
 	getOrgCommInteractionSummaryMock,
 	subscribeMock,
+	openOverlayMock,
 } = vi.hoisted(() => ({
 	getArchiveContextMock: vi.fn(),
 	getOrgCommunicationFeedMock: vi.fn(),
 	getOrgCommunicationItemMock: vi.fn(),
 	getOrgCommInteractionSummaryMock: vi.fn(),
 	subscribeMock: vi.fn(() => vi.fn()),
+	openOverlayMock: vi.fn(),
 }));
 
 vi.mock('frappe-ui', async () => {
@@ -56,6 +58,10 @@ vi.mock('frappe-ui', async () => {
 					type: [String, Number, Boolean, Object],
 					default: null,
 				},
+				type: {
+					type: String,
+					default: 'text',
+				},
 				options: {
 					type: Array,
 					default: () => [],
@@ -88,7 +94,9 @@ vi.mock('frappe-ui', async () => {
 });
 
 vi.mock('@/composables/useOverlayStack', () => ({
-	useOverlayStack: () => ({}),
+	useOverlayStack: () => ({
+		open: openOverlayMock,
+	}),
 }));
 
 vi.mock('@/lib/services/orgCommunicationArchive/orgCommunicationArchiveService', () => ({
@@ -161,6 +169,19 @@ import OrgCommunicationArchive from '@/pages/staff/OrgCommunicationArchive.vue';
 
 const cleanupFns: Array<() => void> = [];
 
+function buildAttachmentPreview(overrides: Record<string, unknown> = {}) {
+	return {
+		item_id: 'ATT-1',
+		owner_doctype: 'Org Communication',
+		owner_name: 'COMM-1',
+		file_id: 'FILE-1',
+		display_name: 'Attachment',
+		kind: 'other',
+		preview_mode: 'icon_only',
+		...overrides,
+	};
+}
+
 async function flushUi() {
 	await Promise.resolve();
 	await nextTick();
@@ -220,6 +241,7 @@ afterEach(() => {
 	getOrgCommunicationItemMock.mockReset();
 	getOrgCommInteractionSummaryMock.mockReset();
 	subscribeMock.mockClear();
+	openOverlayMock.mockReset();
 	while (cleanupFns.length) {
 		cleanupFns.pop()?.();
 	}
@@ -277,6 +299,127 @@ describe('OrgCommunicationArchive', () => {
 				}),
 			})
 		);
+	});
+
+	it('renders governed attachment preview cards in archive detail when preview routes exist', async () => {
+		getArchiveContextMock.mockResolvedValue({
+			my_teams: [],
+			my_groups: [],
+			schools: [],
+			organizations: [],
+			defaults: {
+				organization: null,
+				school: null,
+				team: null,
+			},
+		});
+		getOrgCommunicationFeedMock.mockResolvedValue({
+			items: [buildItem()],
+			has_more: false,
+			start: 0,
+			page_length: 10,
+		});
+		getOrgCommunicationItemMock.mockResolvedValue({
+			name: 'COMM-0001',
+			message_html: '<p>Body</p>',
+			attachments: [
+				{
+					row_name: 'ATT-IMAGE',
+					kind: 'file',
+					title: 'Event photo',
+					file_name: 'event-photo.jpg',
+					file_size: 2048,
+					preview_status: 'ready',
+					thumbnail_url:
+						'/api/method/ifitwala_ed.api.file_access.preview_org_communication_attachment?row_name=ATT-IMAGE',
+					preview_url: '/api/method/ifitwala_ed.api.file_access.preview_org_communication_attachment?row_name=ATT-IMAGE',
+					open_url: '/api/method/ifitwala_ed.api.file_access.open_org_communication_attachment?row_name=ATT-IMAGE',
+					attachment_preview: buildAttachmentPreview({
+						item_id: 'ATT-IMAGE',
+						display_name: 'Event photo',
+						kind: 'image',
+						extension: 'jpg',
+						preview_mode: 'thumbnail_image',
+						preview_status: 'ready',
+						thumbnail_url:
+							'/api/method/ifitwala_ed.api.file_access.preview_org_communication_attachment?row_name=ATT-IMAGE',
+						preview_url:
+							'/api/method/ifitwala_ed.api.file_access.preview_org_communication_attachment?row_name=ATT-IMAGE',
+						open_url:
+							'/api/method/ifitwala_ed.api.file_access.open_org_communication_attachment?row_name=ATT-IMAGE',
+					}),
+				},
+				{
+					row_name: 'ATT-PDF',
+					kind: 'file',
+					title: 'Agenda',
+					file_name: 'agenda.pdf',
+					file_size: 4096,
+					preview_status: 'ready',
+					thumbnail_url:
+						'/api/method/ifitwala_ed.api.file_access.preview_org_communication_attachment?row_name=ATT-PDF',
+					preview_url: '/api/method/ifitwala_ed.api.file_access.preview_org_communication_attachment?row_name=ATT-PDF',
+					open_url: '/api/method/ifitwala_ed.api.file_access.open_org_communication_attachment?row_name=ATT-PDF',
+					attachment_preview: buildAttachmentPreview({
+						item_id: 'ATT-PDF',
+						display_name: 'Agenda',
+						kind: 'pdf',
+						extension: 'pdf',
+						preview_mode: 'pdf_embed',
+						preview_status: 'ready',
+						thumbnail_url:
+							'/api/method/ifitwala_ed.api.file_access.preview_org_communication_attachment?row_name=ATT-PDF',
+						preview_url:
+							'/api/method/ifitwala_ed.api.file_access.preview_org_communication_attachment?row_name=ATT-PDF',
+						open_url:
+							'/api/method/ifitwala_ed.api.file_access.open_org_communication_attachment?row_name=ATT-PDF',
+					}),
+				},
+				{
+					row_name: 'ATT-LINK',
+					kind: 'link',
+					title: 'Reference site',
+					external_url: 'https://example.com/reference',
+					open_url: 'https://example.com/reference',
+					attachment_preview: buildAttachmentPreview({
+						item_id: 'ATT-LINK',
+						display_name: 'Reference site',
+						kind: 'link',
+						preview_mode: 'external_link',
+						link_url: 'https://example.com/reference',
+						open_url: 'https://example.com/reference',
+					}),
+				},
+			],
+		});
+		getOrgCommInteractionSummaryMock.mockResolvedValue({
+			'COMM-0001': {
+				counts: {},
+				self: null,
+				reaction_counts: {},
+				reactions_total: 0,
+				comments_total: 0,
+			},
+		});
+
+		mountArchive();
+		await flushUi();
+
+		const imagePreview = document.querySelector('[data-communication-attachment-kind="image"] img');
+		expect(imagePreview?.getAttribute('src')).toContain('ATT-IMAGE');
+
+		const pdfPreview = document.querySelector('[data-communication-attachment-kind="pdf"] img');
+		expect(pdfPreview?.getAttribute('src')).toContain('ATT-PDF');
+
+		const openOriginalLinks = Array.from(document.querySelectorAll('a')).filter(anchor =>
+			(anchor.textContent || '').includes('Open original')
+		);
+		expect(openOriginalLinks.length).toBeGreaterThan(0);
+		expect(openOriginalLinks[0]?.getAttribute('href')).toContain('open_org_communication_attachment');
+		expect(document.body.textContent || '').toContain('Open PDF');
+		expect(document.body.textContent || '').toContain('Open preview image');
+		expect(document.body.textContent || '').toContain('Reference site');
+		expect(document.body.textContent || '').toContain('Open link');
 	});
 
 	it('limits student-group options to the selected school and current organization scope', async () => {
@@ -493,5 +636,54 @@ describe('OrgCommunicationArchive', () => {
 
 		expect(commentButton).toBeUndefined();
 		expect(document.body.querySelector('[data-testid="interaction-chips-stub"]')).not.toBeNull();
+	});
+
+	it('opens policy inform with the selected communication name instead of embedded title metadata', async () => {
+		getArchiveContextMock.mockResolvedValue({
+			my_teams: [],
+			my_groups: [],
+			schools: [],
+			organizations: [],
+			defaults: {
+				organization: null,
+				school: null,
+				team: null,
+			},
+		});
+		getOrgCommunicationFeedMock.mockResolvedValue({
+			items: [buildItem()],
+			has_more: false,
+			start: 0,
+			page_length: 10,
+		});
+		getOrgCommunicationItemMock.mockResolvedValue({
+			name: 'COMM-0001',
+			message_html:
+				'<p><a href="#policy-inform?policy_version=GOV-POL-VER-0003" data-policy-inform="1" data-policy-version="GOV-POL-VER-0003" data-org-communication="The Decree of the Ministry of Sartorial Suppression 2 - Version v1 update">Open Policy</a></p>',
+			attachments: [],
+		});
+		getOrgCommInteractionSummaryMock.mockResolvedValue({
+			'COMM-0001': {
+				counts: {},
+				self: null,
+				reaction_counts: {},
+				reactions_total: 0,
+				comments_total: 0,
+			},
+		});
+
+		mountArchive();
+		await flushUi();
+
+		const policyLink = document.querySelector('a[data-policy-inform="1"]') as HTMLAnchorElement | null;
+		expect(policyLink).not.toBeNull();
+
+		policyLink?.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
+		await flushUi();
+
+		expect(openOverlayMock).toHaveBeenCalledWith('staff-policy-inform', {
+			policyVersion: 'GOV-POL-VER-0003',
+			orgCommunication: 'COMM-0001',
+		});
 	});
 });

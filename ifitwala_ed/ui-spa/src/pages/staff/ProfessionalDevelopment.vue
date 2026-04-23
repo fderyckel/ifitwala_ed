@@ -1,21 +1,28 @@
 <template>
 	<div class="staff-shell space-y-6">
 		<header class="card-surface p-5 sm:p-6">
-			<div class="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-				<div>
+			<div class="page-header">
+				<div class="page-header__intro">
 					<p class="type-overline text-ink/60">My Growth</p>
-					<h1 class="type-h1 text-ink">Professional Development</h1>
-					<p class="type-body text-ink/70">
+					<h1 class="type-h1 text-canopy">Professional Development</h1>
+					<p class="type-meta text-slate-token/80">
 						Track requests, budget fit, upcoming commitments, and completion follow-through inside
 						the academic year.
 					</p>
 				</div>
-				<div class="flex items-center gap-2">
-					<RouterLink class="if-action" :to="{ name: 'staff-home' }">Back to Home</RouterLink>
-					<button type="button" class="if-action" @click="openRequestOverlay()">
+				<div class="page-header__actions">
+					<RouterLink class="if-button if-button--secondary" :to="{ name: 'staff-home' }">
+						Back to Home
+					</RouterLink>
+					<button type="button" class="if-button if-button--primary" @click="openRequestOverlay()">
 						New request
 					</button>
-					<button type="button" class="if-action" :disabled="loading" @click="loadBoard">
+					<button
+						type="button"
+						class="if-button if-button--quiet"
+						:disabled="loading"
+						@click="loadBoard"
+					>
 						Refresh
 					</button>
 				</div>
@@ -76,7 +83,11 @@
 							Available: {{ money(budget.available_amount) }}
 						</p>
 						<div class="mt-4">
-							<button type="button" class="if-action" @click="openRequestOverlay(budget.value)">
+							<button
+								type="button"
+								class="if-button if-button--secondary"
+								@click="openRequestOverlay(budget.value)"
+							>
 								Request against this pool
 							</button>
 						</div>
@@ -118,7 +129,7 @@
 								<button
 									v-if="canDecide && ['Submitted', 'Under Review'].includes(request.status)"
 									type="button"
-									class="if-action"
+									class="if-button if-button--primary"
 									@click="decide(request.name, 'approve')"
 								>
 									Approve
@@ -126,7 +137,7 @@
 								<button
 									v-if="canDecide && ['Submitted', 'Under Review'].includes(request.status)"
 									type="button"
-									class="if-action"
+									class="if-button if-button--secondary"
 									@click="decide(request.name, 'reject')"
 								>
 									Reject
@@ -134,7 +145,7 @@
 								<button
 									v-if="canCancelRequest(request.status)"
 									type="button"
-									class="if-action"
+									class="if-button if-button--secondary"
 									@click="cancel(request.name)"
 								>
 									Cancel
@@ -181,7 +192,7 @@
 								<button
 									v-if="canCompleteRecord(record)"
 									type="button"
-									class="if-action"
+									class="if-button if-button--primary"
 									@click="openCompletionOverlay(record)"
 								>
 									Complete
@@ -189,7 +200,7 @@
 								<button
 									v-if="canLiquidate && record.status === 'Completed'"
 									type="button"
-									class="if-action"
+									class="if-button if-button--primary"
 									@click="liquidate(record.name)"
 								>
 									Liquidate

@@ -262,4 +262,63 @@ describe('StudentLogCreateOverlay form controls', () => {
 		expect(visibilityGrid?.textContent || '').toContain('Visible to student')
 		expect(visibilityGrid?.textContent || '').toContain('Visible to parents')
 	})
+
+	it('uses shared overlay surfaces and button primitives in review mode', async () => {
+		getFormOptionsMock.mockResolvedValue({
+			log_types: [{ value: 'NOTE', label: 'Note' }],
+			next_steps: [],
+			student_school: 'SCH-001',
+			allowed_next_step_schools: ['SCH-001'],
+		})
+
+		mountOverlayWithProps({
+			open: true,
+			mode: 'attendance',
+			student: {
+				id: 'STU-001',
+				label: 'Jo',
+			},
+		})
+		await flushUi()
+
+		const logTypeSelect = document.querySelector('select') as HTMLSelectElement | null
+		expect(logTypeSelect).not.toBeNull()
+		if (!logTypeSelect) return
+
+		logTypeSelect.value = 'NOTE'
+		logTypeSelect.dispatchEvent(new Event('change', { bubbles: true }))
+
+		const noteInput = document.querySelector('textarea') as HTMLTextAreaElement | null
+		expect(noteInput).not.toBeNull()
+		if (!noteInput) return
+
+		noteInput.value = 'Observed a clear attendance-related concern.'
+		noteInput.dispatchEvent(new Event('input', { bubbles: true }))
+		await flushUi()
+
+		const reviewButton = Array.from(document.querySelectorAll('button')).find(button =>
+			(button.textContent || '').includes('Review & submit')
+		)
+		reviewButton?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+		await flushUi()
+
+		const reviewCard = document.querySelector('.student-log-create__review-card') as HTMLDivElement | null
+		expect(reviewCard).not.toBeNull()
+		expect(reviewCard?.className || '').toContain('card-panel')
+
+		const sharedSurfaces = reviewCard?.querySelectorAll('.card-surface') || []
+		expect(sharedSurfaces.length).toBeGreaterThanOrEqual(3)
+
+		const editButton = Array.from(document.querySelectorAll('button')).find(button =>
+			(button.textContent || '').includes('Go back and edit')
+		)
+		expect(editButton?.className || '').toContain('if-button')
+		expect(editButton?.className || '').toContain('if-button--secondary')
+
+		const submitButton = Array.from(document.querySelectorAll('button')).find(button =>
+			(button.textContent || '').includes('Confirm & submit')
+		)
+		expect(submitButton?.className || '').toContain('if-button')
+		expect(submitButton?.className || '').toContain('if-button--primary')
+	})
 })

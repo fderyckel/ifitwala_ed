@@ -3,6 +3,8 @@
 
 # ifitwala_ed.hr.doctype.employee.employee
 
+import importlib
+
 import frappe
 from frappe import _, scrub
 from frappe.contacts.address_and_contact import load_address_and_contact
@@ -14,7 +16,7 @@ from ifitwala_ed.utilities.employee_utils import (
     get_descendant_organizations,
     get_user_base_org,
 )
-from ifitwala_ed.utilities.image_utils import get_preferred_employee_image_url
+from ifitwala_ed.utilities.image_utils import get_preferred_employee_avatar_url
 from ifitwala_ed.utilities.transaction_base import delete_events
 from ifitwala_ed.website.utils import slugify_route_segment
 
@@ -25,6 +27,76 @@ class EmployeeUserDisabledError(frappe.ValidationError):
 
 class InactiveEmployeeStatusError(frappe.ValidationError):
     pass
+
+
+def invalidate_staff_portal_calendar_cache(*args, **kwargs):
+    from ifitwala_ed.hr.utils import invalidate_staff_portal_calendar_cache as current_invalidate
+
+    return current_invalidate(*args, **kwargs)
+
+
+def resolve_current_staff_calendar_for_employee(*args, **kwargs):
+    from ifitwala_ed.hr.utils import (
+        resolve_current_staff_calendar_for_employee as current_resolve_staff_calendar,
+    )
+
+    return current_resolve_staff_calendar(*args, **kwargs)
+
+
+def get_school_lineage(*args, **kwargs):
+    from ifitwala_ed.utilities.school_tree import get_school_lineage as current_get_school_lineage
+
+    return current_get_school_lineage(*args, **kwargs)
+
+
+def _refresh_runtime_bindings():
+    global frappe, _, scrub, load_address_and_contact, get_doc_permissions
+    global invalidate_staff_portal_calendar_cache, resolve_current_staff_calendar_for_employee
+    global get_descendant_organizations, get_user_base_org, get_preferred_employee_avatar_url
+    global get_school_lineage, delete_events, slugify_route_segment
+
+    current_frappe = importlib.import_module("frappe")
+    bound_is_stub = getattr(frappe, "__file__", None) is None
+    current_is_real = getattr(current_frappe, "__file__", None) is not None
+
+    if not bound_is_stub or not current_is_real or current_frappe is frappe:
+        return frappe
+
+    frappe = current_frappe
+    _ = getattr(current_frappe, "_", _)
+    scrub = getattr(current_frappe, "scrub", scrub)
+
+    from frappe.contacts.address_and_contact import load_address_and_contact as current_load_address_and_contact
+    from frappe.permissions import get_doc_permissions as current_get_doc_permissions
+
+    from ifitwala_ed.hr.utils import (
+        invalidate_staff_portal_calendar_cache as current_invalidate_staff_portal_calendar_cache,
+    )
+    from ifitwala_ed.hr.utils import (
+        resolve_current_staff_calendar_for_employee as current_resolve_current_staff_calendar_for_employee,
+    )
+    from ifitwala_ed.utilities.employee_utils import (
+        get_descendant_organizations as current_get_descendant_organizations,
+    )
+    from ifitwala_ed.utilities.employee_utils import get_user_base_org as current_get_user_base_org
+    from ifitwala_ed.utilities.image_utils import (
+        get_preferred_employee_avatar_url as current_get_preferred_employee_avatar_url,
+    )
+    from ifitwala_ed.utilities.school_tree import get_school_lineage as current_get_school_lineage
+    from ifitwala_ed.utilities.transaction_base import delete_events as current_delete_events
+    from ifitwala_ed.website.utils import slugify_route_segment as current_slugify_route_segment
+
+    load_address_and_contact = current_load_address_and_contact
+    get_doc_permissions = current_get_doc_permissions
+    invalidate_staff_portal_calendar_cache = current_invalidate_staff_portal_calendar_cache
+    resolve_current_staff_calendar_for_employee = current_resolve_current_staff_calendar_for_employee
+    get_descendant_organizations = current_get_descendant_organizations
+    get_user_base_org = current_get_user_base_org
+    get_preferred_employee_avatar_url = current_get_preferred_employee_avatar_url
+    get_school_lineage = current_get_school_lineage
+    delete_events = current_delete_events
+    slugify_route_segment = current_slugify_route_segment
+    return frappe
 
 
 class Employee(NestedSet):
@@ -40,6 +112,12 @@ class Employee(NestedSet):
         - Use the standard loader to populate __onload for the form renderer
         """
         load_address_and_contact(self)
+
+    def get_doc_before_save(self):
+        parent_getter = getattr(super(), "get_doc_before_save", None)
+        if callable(parent_getter):
+            return parent_getter()
+        return None
 
     def validate(self):
         from ifitwala_ed.controllers.status_updater import validate_status
@@ -66,6 +144,7 @@ class Employee(NestedSet):
         self.validate_preferred_email()
         self.validate_employee_history()
         self.validate_public_website_fields()
+        self._sync_staff_calendar()
 
         if self.user_id:
             self.validate_user_details()
@@ -98,6 +177,8 @@ class Employee(NestedSet):
         return (prev.reports_to or "") != (self.reports_to or "")
 
     def on_update(self):
+        _refresh_runtime_bindings()
+
         # ---------------------------------------------------------
         # 1) Structural graph integrity (always allowed)
         # ---------------------------------------------------------
@@ -106,8 +187,14 @@ class Employee(NestedSet):
 
         self.reset_employee_emails_cache()
         self.sync_employee_history()
-        self._sync_staff_calendar()
-        self._ensure_primary_contact()
+
+        prev = self.get_doc_before_save() or {}
+        prev_holiday = (
+            prev.get("current_holiday_lis") if hasattr(prev, "get") else getattr(prev, "current_holiday_lis", None)
+        )
+        current_holiday = getattr(self, "current_holiday_lis", None)
+        if (prev_holiday or None) != (current_holiday or None):
+            invalidate_staff_portal_calendar_cache(self.name)
 
         # ---------------------------------------------------------
         # 2) Role / authority enforcement (HR-governed, safe)
@@ -126,6 +213,8 @@ class Employee(NestedSet):
             self.update_user_default_school()
 
     def on_trash(self):
+        _refresh_runtime_bindings()
+
         # Keep consistency on delete; guard to avoid unnecessary work
         if self._reports_to_changed():
             self.update_nsm_model()
@@ -319,6 +408,8 @@ class Employee(NestedSet):
                 frappe.msgprint(_("Please enter {0}").format(self.preferred_contact_email))
 
     def update_user_default_school(self):
+        _refresh_runtime_bindings()
+
         """Set or update the default school for the user linked to this employee."""
         if not self.user_id:
             return  # No linked user to update
@@ -350,6 +441,8 @@ class Employee(NestedSet):
             frappe.msgprint(_("Default school set to {0} for user {1}.").format(self.school, self.user_id))
 
     def update_user_default_organization(self):
+        _refresh_runtime_bindings()
+
         """Set or update the default organization for the user linked to this employee."""
         if not self.user_id:
             return  # No linked user to update
@@ -539,6 +632,8 @@ class Employee(NestedSet):
 
     # call on validate. Check that if there is already a user, a few more checks to do.
     def validate_user_details(self):
+        _refresh_runtime_bindings()
+
         if not self.user_id:
             return
 
@@ -579,6 +674,8 @@ class Employee(NestedSet):
 
     # to update the user fields when employee fields are changing
     def update_user(self):
+        _refresh_runtime_bindings()
+
         if not self.user_id:
             return
 
@@ -597,59 +694,84 @@ class Employee(NestedSet):
             user.birth_date = self.employee_date_of_birth
 
         # ---- image sync -------------------------------------------------------
-        avatar_url = get_preferred_employee_image_url(self.name, original_url=self.employee_image)
+        avatar_url = get_preferred_employee_avatar_url(self.name, original_url=self.employee_image)
         if avatar_url and user.user_image != avatar_url:
             user.user_image = avatar_url
 
         user.save(ignore_permissions=True)
 
     def _sync_staff_calendar(self):
-        """Attach the appropriate Staff Calendar to current_holiday_lis based on employee_group.
+        _refresh_runtime_bindings()
 
-        Strategy:
-        - If no employee_group or employee not Active → clear current_holiday_lis.
-        - Otherwise, pick the Staff Calendar whose employee_group matches,
-                and whose period (from_date/to_date) contains today.
-        - If multiple match, choose the one with the latest from_date.
-        - If none match the date, fall back to the latest by from_date.
-        """
-        # Only for active staff
+        """Resolve the authoritative Staff Calendar link for this employee before save."""
         if self.employment_status != "Active":
             self.current_holiday_lis = None
             return
 
-        if not self.employee_group:
-            self.current_holiday_lis = None
+        employee_name = (self.name or "").strip()
+        if employee_name and frappe.db.exists("Employee", employee_name):
+            selected = resolve_current_staff_calendar_for_employee(employee_name)
+            self.current_holiday_lis = (selected or {}).get("name")
             return
 
         today_d = getdate(today())
-
-        calendars = frappe.get_all(
-            "Staff Calendar",
-            filters={"employee_group": self.employee_group},
-            fields=["name", "from_date", "to_date"],
-            order_by="from_date desc",
-        )
-
-        if not calendars:
-            self.current_holiday_lis = None
-            return
-
         selected = None
-        for cal in calendars:
-            from_d = getdate(cal.get("from_date")) if cal.get("from_date") else None
-            to_d = getdate(cal.get("to_date")) if cal.get("to_date") else None
+        linked_name = (self.current_holiday_lis or "").strip()
 
-            if from_d and to_d and from_d <= today_d <= to_d:
-                selected = cal["name"]
-                break
+        linked_rows = []
+        if linked_name:
+            linked_rows = frappe.get_all(
+                "Staff Calendar",
+                filters={"name": linked_name},
+                fields=["name", "school", "from_date", "to_date"],
+                limit=1,
+                ignore_permissions=True,
+            )
+            if linked_rows:
+                linked = linked_rows[0]
+                from_date = getdate(linked.get("from_date")) if linked.get("from_date") else None
+                to_date = getdate(linked.get("to_date")) if linked.get("to_date") else None
+                if from_date and to_date and from_date <= today_d <= to_date:
+                    selected = linked
 
-        if not selected:
-            selected = calendars[0]["name"]
+        if not selected and self.employee_group:
+            calendars = frappe.get_all(
+                "Staff Calendar",
+                filters={"employee_group": self.employee_group},
+                fields=["name", "school", "from_date", "to_date"],
+                limit=0,
+                ignore_permissions=True,
+            )
 
-        self.current_holiday_lis = selected
+            if self.school:
+                school_rank = {school: idx for idx, school in enumerate(get_school_lineage(self.school))}
+                scoped = [row for row in calendars if (row.get("school") or "").strip() in school_rank]
+                active = []
+                for row in scoped:
+                    from_date = getdate(row.get("from_date")) if row.get("from_date") else None
+                    to_date = getdate(row.get("to_date")) if row.get("to_date") else None
+                    if from_date and to_date and from_date <= today_d <= to_date:
+                        active.append(row)
+
+                ranked = active or scoped
+                ranked.sort(
+                    key=lambda row: (
+                        school_rank.get((row.get("school") or "").strip(), 10**9),
+                        -(getdate(row.get("from_date")).toordinal() if row.get("from_date") else 0),
+                        row.get("name") or "",
+                    )
+                )
+                selected = ranked[0] if ranked else None
+            elif linked_rows:
+                selected = linked_rows[0]
+            elif len(calendars) == 1:
+                selected = calendars[0]
+
+        self.current_holiday_lis = (selected or {}).get("name")
 
     def reset_employee_emails_cache(self):
+        _refresh_runtime_bindings()
+
         prev_doc = self.get_doc_before_save() or {}
         cell_number = cstr(self.get("employee_mobile_phone"))
         prev_number = cstr(prev_doc.get("employee_mobile_phone"))
@@ -658,6 +780,8 @@ class Employee(NestedSet):
             frappe.cache().hdel("employees_with_number", prev_number)
 
     def _resolve_primary_contact_name(self) -> str | None:
+        _refresh_runtime_bindings()
+
         if not self.user_id:
             return None
 
@@ -683,6 +807,8 @@ class Employee(NestedSet):
         return None
 
     def _get_or_create_primary_contact(self) -> str | None:
+        _refresh_runtime_bindings()
+
         contact_name = self._resolve_primary_contact_name()
         if contact_name:
             return contact_name
@@ -717,6 +843,8 @@ class Employee(NestedSet):
             raise
 
     def _ensure_contact_employee_link(self, contact_name: str):
+        _refresh_runtime_bindings()
+
         if not contact_name:
             return
 
@@ -737,35 +865,9 @@ class Employee(NestedSet):
         contact.append("links", {"link_doctype": "Employee", "link_name": self.name})
         contact.save(ignore_permissions=True)
 
-    def _ensure_primary_contact(self):
-        """
-        NOTE:
-        Employee does NOT own contact/address data.
-        Contact is the single source of truth.
-        This method only ensures correct graph linking:
-        User → Contact → Employee (via Dynamic Link).
-
-        Dependency:
-        User creation is expected to auto-create a Contact linked to the User (hook-level behavior).
-        """
-        if not self.user_id:
-            return
-
-        contact_name = self._get_or_create_primary_contact()
-        if not contact_name:
-            frappe.log_error(
-                title="Employee Contact Link Missing",
-                message=f"No Contact found for User {self.user_id}",
-            )
-            return
-
-        self._ensure_contact_employee_link(contact_name)
-
-        if self.empl_primary_contact != contact_name:
-            self.empl_primary_contact = contact_name
-            self.db_set("empl_primary_contact", contact_name, update_modified=False)
-
     def _can_sync_user_profile(self) -> bool:
+        _refresh_runtime_bindings()
+
         """
         Only System Manager or the user themself can sync Employee -> User profile fields.
         HR should not be editing other User attributes as a side-effect of editing Employee.
@@ -777,6 +879,8 @@ class Employee(NestedSet):
         return bool(self.user_id and self.user_id == frappe.session.user)
 
     def _can_manage_user_roles(self) -> bool:
+        _refresh_runtime_bindings()
+
         """
         HR Manager / HR User / System Manager can enforce roles programmatically.
         (This does NOT grant generic User write permissions in the UI.)
@@ -785,6 +889,8 @@ class Employee(NestedSet):
         return bool(roles & {"HR Manager", "HR User", "System Manager"}) or frappe.session.user == "Administrator"
 
     def _ensure_user_has_role(self, user: str, role: str):
+        _refresh_runtime_bindings()
+
         """Add role to user if missing, using ignore_permissions to avoid User doctype access issues."""
         if not user or not role:
             return
@@ -809,14 +915,31 @@ class Employee(NestedSet):
         is_active = cstr(getattr(source, "employment_status", "")).strip().lower() == "active"
         return is_active, tuple(sorted(roles)), cstr(workspace).strip()
 
+    def _needs_managed_access_sync(self) -> bool:
+        if not self.user_id:
+            return False
+
+        prev = self.get_doc_before_save()
+        if not prev:
+            return True
+
+        prev_user_id = cstr(prev.get("user_id") if hasattr(prev, "get") else getattr(prev, "user_id", None)).strip()
+        current_user_id = cstr(self.user_id).strip()
+        if prev_user_id != current_user_id:
+            return True
+
+        return self._access_sync_signature(prev) != self._access_sync_signature()
+
     def _apply_designation_role(self):
         if not self.user_id:
             return
         if not self._can_manage_user_roles():
             return
+        if not self._needs_managed_access_sync():
+            return
 
-        # Keep designation-driven roles aligned with the managed sync model,
-        # including baseline Employee role repair and non-active role stripping.
+        # Keep designation-driven roles aligned with the managed sync model when
+        # Employee access inputs actually changed.
         from ifitwala_ed.hr.employee_access import sync_user_access_from_employee
 
         sync_user_access_from_employee(self, notify_role_additions=True)
@@ -840,6 +963,8 @@ class Employee(NestedSet):
 
 @frappe.whitelist()
 def create_user(employee, user=None, email=None):
+    _refresh_runtime_bindings()
+
     # 0) Basic guards
     if not employee:
         frappe.throw(_("Missing Employee"), frappe.ValidationError)
@@ -911,13 +1036,27 @@ def create_user(employee, user=None, email=None):
 
     emp.user_id = user_doc.name
     emp.save(ignore_permissions=True)
-    emp._ensure_primary_contact()
+
+    contact_name = emp._get_or_create_primary_contact()
+    if not contact_name:
+        frappe.log_error(
+            title="Employee Contact Link Missing",
+            message=f"No Contact found for User {emp.user_id}",
+        )
+        return user_doc.name
+
+    emp._ensure_contact_employee_link(contact_name)
+    if emp.empl_primary_contact != contact_name:
+        emp.empl_primary_contact = contact_name
+        emp.db_set("empl_primary_contact", contact_name, update_modified=False)
 
     return user_doc.name
 
 
 @frappe.whitelist()
 def get_children(doctype, parent=None, organization=None, is_root=False, is_tree=False):
+    _refresh_runtime_bindings()
+
     # NOTE:
     # - Treeview calls this often; avoid N+1 queries.
     # - We keep the existing "All Organizations" sentinel for compatibility with current JS.
@@ -991,10 +1130,14 @@ def get_children(doctype, parent=None, organization=None, is_root=False, is_tree
 
 
 def on_doctype_update():
+    _refresh_runtime_bindings()
+
     frappe.db.add_index("Employee", ["lft", "rgt"])
 
 
 def validate_employee_role(doc, method=None, ignore_emp_check=False):
+    _refresh_runtime_bindings()
+
     # called via User hook
     if not ignore_emp_check:
         if frappe.db.get_value("Employee", {"user_id": doc.name}):
@@ -1018,6 +1161,8 @@ def update_user_permissions(doc, method):
 
 
 def has_upload_permission(doc, ptype="read", user=None):
+    _refresh_runtime_bindings()
+
     if not user:
         user = frappe.session.user
     if get_doc_permissions(doc, user=user, ptype=ptype).get(ptype):
@@ -1026,6 +1171,8 @@ def has_upload_permission(doc, ptype="read", user=None):
 
 
 def get_permission_query_conditions(user=None):
+    _refresh_runtime_bindings()
+
     user = user or frappe.session.user
     if not user or user == "Guest":
         return None
@@ -1069,6 +1216,8 @@ def get_permission_query_conditions(user=None):
 
 
 def employee_has_permission(doc=None, ptype=None, user=None):
+    _refresh_runtime_bindings()
+
     user = user or frappe.session.user
     if not user or user == "Guest":
         return False
@@ -1125,6 +1274,8 @@ def employee_has_permission(doc=None, ptype=None, user=None):
 
 
 def _resolve_hr_base_org(user: str) -> str | None:
+    _refresh_runtime_bindings()
+
     """Resolve HR base org from persistent defaults only (no Employee-linkage dependency)."""
     org = _get_user_default_from_db(user, "organization")
     if org:
@@ -1135,6 +1286,8 @@ def _resolve_hr_base_org(user: str) -> str | None:
 
 
 def _resolve_academic_admin_school_scope(user: str) -> str | None:
+    _refresh_runtime_bindings()
+
     """
     Resolve school scope for Academic Admin visibility.
 
@@ -1155,6 +1308,8 @@ def _resolve_academic_admin_school_scope(user: str) -> str | None:
 
 
 def _resolve_academic_admin_base_org(user: str) -> str | None:
+    _refresh_runtime_bindings()
+
     """Resolve Academic Admin base org from active Employee context first, then persisted defaults."""
     employee_org = cstr(get_user_base_org(user)).strip()
     if employee_org:
@@ -1164,6 +1319,8 @@ def _resolve_academic_admin_base_org(user: str) -> str | None:
 
 
 def _resolve_academic_admin_org_scope(user: str) -> list[str]:
+    _refresh_runtime_bindings()
+
     """Resolve read-only Academic Admin org scope for blank-school fallback."""
     scope: set[str] = set()
 
@@ -1194,6 +1351,8 @@ def _resolve_academic_admin_org_scope(user: str) -> list[str]:
 
 
 def _resolve_hr_org_scope(user: str) -> list[str]:
+    _refresh_runtime_bindings()
+
     """Resolve full HR organization scope from default org + explicit user permissions."""
     scope: set[str] = set()
 
@@ -1224,6 +1383,8 @@ def _resolve_hr_org_scope(user: str) -> list[str]:
 
 
 def _get_user_default_from_db(user: str, key: str) -> str | None:
+    _refresh_runtime_bindings()
+
     rows = frappe.get_all(
         "DefaultValue",
         filters={"parent": user, "defkey": key},
@@ -1237,6 +1398,8 @@ def _get_user_default_from_db(user: str, key: str) -> str | None:
 
 
 def _get_descendant_organizations_uncached(org: str) -> list[str]:
+    _refresh_runtime_bindings()
+
     org = cstr(org).strip()
     if not org:
         return []
@@ -1253,6 +1416,8 @@ def _get_descendant_organizations_uncached(org: str) -> list[str]:
 
 
 def _resolve_self_employee(user: str) -> str | None:
+    _refresh_runtime_bindings()
+
     rows = frappe.get_all(
         "Employee",
         filters={"user_id": user},

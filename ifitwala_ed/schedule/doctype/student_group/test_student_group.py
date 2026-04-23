@@ -186,7 +186,7 @@ class TestStudentGroup(TestCase):
             "Course Plan",
             filters={
                 "course": "COURSE-1",
-                "plan_status": ["!=", "Archived"],
+                "plan_status": "Active",
                 "academic_year": "AY-2026",
             },
             fields=["name"],

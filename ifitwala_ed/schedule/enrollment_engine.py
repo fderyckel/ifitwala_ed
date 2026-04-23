@@ -488,7 +488,7 @@ def _evaluate_capacity(course, offering_course_row, capacity_counts, requested_c
     return result
 
 
-def _evaluate_basket(requested_rows, offering_course_rows, basket_policy):
+def _evaluate_basket(requested_rows, offering_course_rows, basket_policy, *, rule_rows=None):
     """
     Basket rules (Option B - structured child table) evaluation.
 
@@ -551,8 +551,9 @@ def _evaluate_basket(requested_rows, offering_course_rows, basket_policy):
             ambiguous_courses.append(course)
 
     # 1) Load structured rules (Option B). If none exist, that's a valid configuration state.
-    rule_rows = []
-    if program_offering:
+    if rule_rows is None:
+        rule_rows = []
+    if program_offering and not rule_rows:
         rule_rows = frappe.get_all(
             "Program Offering Enrollment Rule",
             filters={"parent": program_offering, "parenttype": "Program Offering"},

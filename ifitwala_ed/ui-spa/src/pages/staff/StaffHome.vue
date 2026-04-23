@@ -7,23 +7,25 @@
 		     - Lightweight “welcome” + one high-signal shortcut (Morning Brief)
 		     - No data-heavy calls here (header is cached server-side)
 		   ============================================================ -->
-		<header class="staff-home__header">
-			<div>
-				<h1 class="type-h1">
+		<header class="page-header">
+			<div class="page-header__intro">
+				<h1 class="type-h1 text-ink">
 					{{ greeting }},
 					<span class="text-canopy">{{ firstName }}</span>
 				</h1>
 			</div>
 
 			<!-- Morning Brief opens in a new tab by design (teacher keeps Home open) -->
-			<RouterLink
-				:to="{ name: 'MorningBriefing' }"
-				target="_blank"
-				class="inline-flex items-center gap-2 rounded-full bg-jacaranda px-5 py-2.5 type-button-label text-white shadow-soft transition-transform hover:-translate-y-0.5 hover:shadow-strong"
-			>
-				<FeatherIcon name="sun" class="h-4 w-4 text-yellow-300" />
-				<span>Morning Brief</span>
-			</RouterLink>
+			<div class="page-header__actions">
+				<RouterLink
+					:to="{ name: 'MorningBriefing' }"
+					target="_blank"
+					class="if-button if-button--primary"
+				>
+					<FeatherIcon name="sun" class="h-4 w-4 text-yellow-300" />
+					<span>Morning Brief</span>
+				</RouterLink>
+			</div>
 		</header>
 
 		<!-- ============================================================
@@ -137,9 +139,10 @@
 					</button>
 
 					<button
-						v-if="userCapabilities.quick_action_org_communication"
+						v-if="showOrgCommunicationQuickAction"
 						type="button"
-						class="action-tile group w-full min-w-0"
+						class="action-tile group w-full min-w-0 disabled:cursor-not-allowed disabled:opacity-70"
+						:disabled="!orgCommunicationQuickActionState.enabled"
 						@click="openOrgCommunication"
 					>
 						<div class="action-tile__icon shrink-0">
@@ -149,8 +152,11 @@
 							<p class="type-body-strong text-ink transition-colors group-hover:text-jacaranda">
 								Create communication
 							</p>
-							<p class="truncate type-caption text-slate-token/70">
-								Publish to staff, a student group, or your wider school community
+							<p
+								class="type-caption text-slate-token/70"
+								:class="orgCommunicationQuickActionState.blocked_reason ? '' : 'truncate'"
+							>
+								{{ orgCommunicationQuickActionSubtitle }}
 							</p>
 						</div>
 						<FeatherIcon
@@ -317,7 +323,7 @@
 
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
-import { useRouter, type RouteLocationRaw } from 'vue-router';
+import { RouterLink, useRouter, type RouteLocationRaw } from 'vue-router';
 import { FeatherIcon, toast } from 'frappe-ui';
 
 import ScheduleCalendar from '@/components/calendar/ScheduleCalendar.vue';
@@ -326,6 +332,7 @@ import { useOverlayStack } from '@/composables/useOverlayStack';
 import { createClassHubService } from '@/lib/classHubService';
 import {
 	getStaffHomeHeader,
+	type StaffHomeQuickActionState,
 	listFocusItems,
 	type StaffHomeHeader,
 } from '@/lib/services/staff/staffHomeService';
@@ -382,13 +389,32 @@ const userCapabilities = computed<Record<string, boolean>>(
 	() => userDoc.value?.capabilities ?? {}
 );
 
+const orgCommunicationQuickActionState = computed<StaffHomeQuickActionState>(() => ({
+	enabled:
+		userDoc.value?.quick_actions?.org_communication?.enabled ??
+		Boolean(userCapabilities.value.quick_action_org_communication),
+	blocked_reason: userDoc.value?.quick_actions?.org_communication?.blocked_reason ?? null,
+}));
+
+const showOrgCommunicationQuickAction = computed(
+	() =>
+		Boolean(userCapabilities.value.quick_action_org_communication) ||
+		Boolean(orgCommunicationQuickActionState.value.blocked_reason)
+);
+
+const orgCommunicationQuickActionSubtitle = computed(
+	() =>
+		orgCommunicationQuickActionState.value.blocked_reason ||
+		'Publish to staff, a student group, or your wider school community'
+);
+
 /* QUICK ACTIONS ------------------------------------------------ */
 const hasVisibleQuickActions = computed(
 	() =>
 		Boolean(userCapabilities.value.quick_action_class_hub) ||
 		Boolean(userCapabilities.value.quick_action_create_event) ||
 		Boolean(userCapabilities.value.quick_action_student_log) ||
-		Boolean(userCapabilities.value.quick_action_org_communication)
+		showOrgCommunicationQuickAction.value
 );
 
 /* FOCUS -------------------------------------------------------- */
@@ -733,7 +759,6 @@ const analyticsCategories: StaffHomeAnalyticsCategory[] = [
 				label: 'Organizational Chart',
 				to: { name: 'staff-organization-chart' },
 			},
-			{ label: 'Leave Balance', to: '/analytics/staff/leave-balance', capability: 'analytics_hr' },
 			{
 				label: 'My Growth',
 				to: { name: 'staff-professional-development' },
@@ -755,11 +780,6 @@ const analyticsCategories: StaffHomeAnalyticsCategory[] = [
 				label: 'Room Occupancy',
 				to: { name: 'staff-room-utilization' },
 				capability: 'room_utilization_page',
-			},
-			{
-				label: 'Bus & Route Load',
-				to: '/analytics/scheduling/bus-route-load',
-				capability: 'analytics_scheduling',
 			},
 		],
 	},
@@ -786,17 +806,17 @@ const analyticsCategories: StaffHomeAnalyticsCategory[] = [
 		icon: 'shield',
 		links: [
 			{
-				label: 'Audit Readiness',
-				to: '/analytics/compliance/audit-readiness',
-				capability: 'analytics_attendance_admin',
-			},
-			{
 				label: 'Policy Acknowledgments',
 				to: { name: 'staff-policy-signature-analytics' },
 				capability: 'analytics_policy_signatures',
 			},
 			{
-				label: 'Staff Policies',
+				label: 'Forms & Signatures',
+				to: { name: 'staff-forms-signatures-analytics' },
+				capability: 'analytics_policy_signatures',
+			},
+			{
+				label: 'Policy Library',
 				to: { name: 'staff-policies' },
 				capability: 'staff_policy_library',
 			},
@@ -833,17 +853,19 @@ const greeting = computed(() => {
 	return hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
 });
 
+const canCreateMeeting = computed(() =>
+	Boolean(userCapabilities.value.quick_action_create_meeting)
+);
+const canCreateSchoolEvent = computed(() =>
+	Boolean(userCapabilities.value.quick_action_create_school_event)
+);
 const eventQuickActionTitle = computed(() => {
-	const canCreateMeeting = Boolean(userCapabilities.value.quick_action_create_meeting);
-	const canCreateSchoolEvent = Boolean(userCapabilities.value.quick_action_create_school_event);
-	if (canCreateMeeting && !canCreateSchoolEvent) return 'Schedule meeting';
+	if (canCreateMeeting.value && !canCreateSchoolEvent.value) return 'Schedule meeting';
 	return 'Create event';
 });
 
 const eventQuickActionSubtitle = computed(() => {
-	const canCreateMeeting = Boolean(userCapabilities.value.quick_action_create_meeting);
-	const canCreateSchoolEvent = Boolean(userCapabilities.value.quick_action_create_school_event);
-	if (canCreateMeeting && !canCreateSchoolEvent) {
+	if (canCreateMeeting.value && !canCreateSchoolEvent.value) {
 		return 'Find a common time and invite colleagues, students, or guardians';
 	}
 	return 'Create a meeting or school event';
@@ -893,10 +915,7 @@ async function openClassHubQuickAction() {
 
 /* OVERLAY: Event Quick Create --------------------------------- */
 function openCreateEvent() {
-	const canCreateMeeting = Boolean(userCapabilities.value.quick_action_create_meeting);
-	const canCreateSchoolEvent = Boolean(userCapabilities.value.quick_action_create_school_event);
-
-	if (!canCreateMeeting && !canCreateSchoolEvent) {
+	if (!canCreateMeeting.value && !canCreateSchoolEvent.value) {
 		toast.create({
 			title: 'Not available',
 			text: 'You do not have permission to create events.',
@@ -905,8 +924,8 @@ function openCreateEvent() {
 		return;
 	}
 
-	const lockEventType = canCreateMeeting !== canCreateSchoolEvent;
-	const eventType = canCreateMeeting ? 'meeting' : 'school_event';
+	const lockEventType = canCreateMeeting.value !== canCreateSchoolEvent.value;
+	const eventType = canCreateMeeting.value ? 'meeting' : 'school_event';
 
 	overlay.open('event-quick-create', {
 		eventType: lockEventType ? eventType : null,
@@ -929,6 +948,17 @@ function openStudentLog() {
 }
 
 function openOrgCommunication() {
+	if (!orgCommunicationQuickActionState.value.enabled) {
+		toast.create({
+			title: 'Communication unavailable',
+			text:
+				orgCommunicationQuickActionState.value.blocked_reason ||
+				'You cannot create communications from Staff Home right now.',
+			icon: 'info',
+		});
+		return;
+	}
+
 	overlay.open('org-communication-quick-create', {
 		entryMode: 'staff-home',
 		sourceLabel: 'Staff Home',
@@ -937,12 +967,6 @@ function openOrgCommunication() {
 </script>
 
 <style scoped>
-.staff-home__header {
-	display: flex;
-	flex-direction: column;
-	gap: 1rem;
-}
-
 .staff-home__primary-grid {
 	display: grid;
 	grid-template-columns: minmax(0, 1fr);
@@ -960,14 +984,6 @@ function openOrgCommunication() {
 	display: grid;
 	grid-template-columns: minmax(0, 1fr);
 	gap: 1rem;
-}
-
-@media (min-width: 640px) {
-	.staff-home__header {
-		flex-direction: row;
-		align-items: flex-end;
-		justify-content: space-between;
-	}
 }
 
 @media (min-width: 1024px) {

@@ -2,30 +2,34 @@
 
 <template>
 	<div class="portal-page">
-		<div>
-			<h1 class="type-h1">Student Logs</h1>
-			<p class="type-meta mt-1">Notes shared with you by staff.</p>
-		</div>
+		<header class="page-header">
+			<div class="page-header__intro">
+				<h1 class="type-h1 text-ink">Student Logs</h1>
+				<p class="type-meta text-ink/70">Notes shared with you by staff.</p>
+			</div>
+		</header>
 
 		<!-- Initial loading -->
-		<div v-if="initialLoading" class="py-10 text-center type-meta">Loading logs…</div>
+		<div v-if="initialLoading" class="card-panel py-10 text-center type-meta text-ink/70">
+			Loading logs…
+		</div>
 
 		<!-- Empty state -->
 		<div
 			v-else-if="!logs.length"
-			class="py-10 border border-dashed rounded-lg text-center type-meta bg-white"
+			class="card-panel rounded-2xl border-dashed py-10 text-center type-meta text-ink/68"
 		>
 			No logs yet.
 		</div>
 
 		<!-- List -->
-		<div v-else class="bg-white border rounded-lg divide-y">
+		<div v-else class="space-y-3">
 			<button
 				v-for="log in logs"
 				:key="log.name"
 				type="button"
-				class="w-full text-left p-4 hover:bg-gray-50 transition border-l-4"
-				:style="{ borderColor: colorFor(log.log_type) }"
+				class="if-feed-card if-feed-card--interactive group w-full border-l-4 text-left"
+				:style="{ borderLeftColor: colorFor(log.log_type) }"
 				@click="openLogDetail(log)"
 			>
 				<div class="flex items-start justify-between">
@@ -55,19 +59,12 @@
 					</div>
 
 					<div class="ml-3">
-						<span
-							v-if="log.is_unread"
-							class="inline-flex items-center px-2 py-0.5 rounded-full type-badge-label bg-[var(--jacaranda)]/10 text-[var(--jacaranda)]"
-							>New</span
-						>
+						<span v-if="log.is_unread" class="chip chip-focus">New</span>
 					</div>
 				</div>
 
 				<div v-if="log.follow_up_status" class="mt-2">
-					<span
-						class="inline-flex items-center px-2 py-0.5 rounded type-caption"
-						:style="statusStyles(log.follow_up_status)"
-					>
+					<span class="chip" :class="statusClass(log.follow_up_status)">
 						Follow-up: {{ log.follow_up_status }}
 					</span>
 				</div>
@@ -76,11 +73,7 @@
 
 		<!-- Load more -->
 		<div v-if="hasMore" class="mt-4">
-			<button
-				:disabled="moreLoading"
-				@click="loadMoreLogs"
-				class="inline-flex items-center px-4 py-2 type-button-label rounded-md bg-[var(--leaf)] text-white hover:bg-[var(--leaf)]/90 disabled:opacity-60"
-			>
+			<button :disabled="moreLoading" @click="loadMoreLogs" class="if-button if-button--primary">
 				<span v-if="!moreLoading">Load more</span>
 				<span v-else>Loading…</span>
 			</button>
@@ -155,7 +148,7 @@
 							<div class="if-overlay__footer">
 								<button
 									type="button"
-									class="inline-flex w-full justify-center rounded-lg bg-[var(--leaf)] px-3 py-2 type-button-label text-white shadow-sm hover:bg-[var(--leaf)]/90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--leaf)]"
+									class="if-button if-button--primary w-full justify-center"
 									@click="isModalOpen = false"
 								>
 									Close
@@ -194,10 +187,6 @@ const moreLoading = ref(false);
 const modalLoading = ref(false);
 const initialFocus = ref(null);
 
-function unwrap(resp) {
-	return resp && typeof resp === 'object' && 'message' in resp ? resp.message : resp;
-}
-
 // --- Color helpers (elegant, consistent with tokens) ---------------------------------
 const PALETTE = [
 	'var(--sky)', // sky
@@ -220,14 +209,11 @@ function colorFor(key) {
 	const idx = hashStr(String(key || '')) % PALETTE.length;
 	return PALETTE[idx];
 }
-function statusStyles(status) {
+function statusClass(status) {
 	const s = String(status || '').toLowerCase();
-	if (s.includes('overdue') || s.includes('escalated'))
-		return { backgroundColor: 'rgb(var(--flame-rgb) / 0.15)', color: 'rgb(var(--flame-rgb))' };
-	if (s.includes('pending') || s.includes('open'))
-		return { backgroundColor: 'rgb(var(--sand-rgb))', color: 'rgb(var(--clay-rgb))' };
-	// default -> completed/closed
-	return { backgroundColor: 'rgb(var(--leaf-rgb) / 0.15)', color: 'rgb(var(--leaf-rgb))' };
+	if (s.includes('overdue') || s.includes('escalated')) return 'chip-alert';
+	if (s.includes('pending') || s.includes('open')) return 'chip-warm';
+	return 'chip-success';
 }
 
 // --- Formatting ---------------------------------------------------------------
@@ -247,20 +233,13 @@ function formatTime(t) {
 	return `${H}:${M}`;
 }
 
-// --- Data fetching (GET, no CSRF) --------------------------------------------
+// --- Data fetching ------------------------------------------------------------
 async function fetchLogs() {
 	try {
-		const qs = new URLSearchParams({
-			start: String(start.value),
-			page_length: String(PAGE_LENGTH),
-		}).toString();
-
-		const r = await fetch(`/api/method/ifitwala_ed.api.student_log.get_student_logs?${qs}`, {
-			credentials: 'include',
+		const rows = await apiMethod('ifitwala_ed.api.student_log.get_student_logs', {
+			start: start.value,
+			page_length: PAGE_LENGTH,
 		});
-		if (!r.ok) throw new Error(`HTTP ${r.status}`);
-		const json = await r.json();
-		const rows = unwrap(json) || [];
 		if (!Array.isArray(rows)) throw new Error('Unexpected logs response');
 
 		logs.value.push(...rows);
@@ -277,13 +256,9 @@ async function openLogDetail(log) {
 	isModalOpen.value = true;
 	modalLoading.value = true;
 	try {
-		const q = new URLSearchParams({ log_name: log.name }).toString();
-		const r = await fetch(`/api/method/ifitwala_ed.api.student_log.get_student_log_detail?${q}`, {
-			credentials: 'include',
+		const full = await apiMethod('ifitwala_ed.api.student_log.get_student_log_detail', {
+			log_name: log.name,
 		});
-		if (!r.ok) throw new Error(`HTTP ${r.status}`);
-		const json = await r.json();
-		const full = unwrap(json);
 		if (full && typeof full === 'object') {
 			selectedLog.value = full;
 			try {

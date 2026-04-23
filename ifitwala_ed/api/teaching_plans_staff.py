@@ -4,6 +4,55 @@ from collections import defaultdict
 from typing import Any
 
 
+def _ordered_unit_plans(api, units: list[dict[str, Any]]) -> list[str]:
+    ranked = sorted(
+        [unit for unit in units or [] if api.planning.normalize_text(unit.get("unit_plan"))],
+        key=lambda unit: (
+            int(unit.get("unit_order") or 0) <= 0,
+            int(unit.get("unit_order") or 0),
+            api.planning.normalize_text(unit.get("unit_plan")),
+        ),
+    )
+    return [api.planning.normalize_text(unit.get("unit_plan")) for unit in ranked]
+
+
+def _decorate_resolved_pacing_statuses(
+    api,
+    units: list[dict[str, Any]],
+    current_unit_payload: dict[str, Any] | None,
+) -> list[dict[str, Any]]:
+    current_unit_plan = api.planning.normalize_text((current_unit_payload or {}).get("unit_plan"))
+    ordered_unit_plans = _ordered_unit_plans(api, units)
+    unit_rank = {unit_plan: index for index, unit_plan in enumerate(ordered_unit_plans)}
+    current_index = unit_rank.get(current_unit_plan, -1)
+
+    decorated: list[dict[str, Any]] = []
+    for unit in units or []:
+        unit_plan = api.planning.normalize_text(unit.get("unit_plan"))
+        stored_status = api.planning.normalize_text(unit.get("pacing_status"))
+        resolved_status = stored_status or "Not Started"
+
+        if stored_status == "Hold":
+            resolved_status = "Hold"
+        elif current_index >= 0 and unit_plan in unit_rank:
+            unit_index = unit_rank[unit_plan]
+            if unit_index < current_index:
+                resolved_status = "Completed"
+            elif unit_index == current_index:
+                resolved_status = "In Progress"
+            else:
+                resolved_status = "Not Started"
+
+        decorated.append(
+            {
+                **unit,
+                "resolved_pacing_status": resolved_status,
+            }
+        )
+
+    return decorated
+
+
 def resolve_staff_plan(
     api,
     student_group: str,
@@ -12,7 +61,7 @@ def resolve_staff_plan(
     group = api._group_context(student_group)
     course_plans = api.frappe.get_all(
         "Course Plan",
-        filters={"course": group["course"], "plan_status": ["!=", "Archived"]},
+        filters={"course": group["course"], "plan_status": "Active"},
         fields=["name", "title", "academic_year", "cycle_label", "plan_status"],
         order_by="modified desc, creation desc",
         limit=50,
@@ -90,6 +139,15 @@ def build_staff_bundle(
         class_teaching_plan=doc.name,
         assigned_work=assigned_work,
     )
+    course_plan_row = api.planning.get_course_plan_row(doc.course_plan)
+    current_unit = api._resolve_current_curriculum_unit(
+        decorated_units,
+        course_plan_row=course_plan_row,
+        student_group=student_group,
+        class_unit_rows=doc.get("units") or [],
+        anchor_date=api.now_datetime(),
+    )
+    decorated_units = api._decorate_resolved_pacing_statuses(decorated_units, current_unit)
 
     payload["teaching_plan"] = {
         "class_teaching_plan": doc.name,
@@ -99,6 +157,7 @@ def build_staff_bundle(
         "team_note": doc.team_note,
     }
     payload["resolved"]["course_plan"] = doc.course_plan
+    payload["resolved"]["unit_plan"] = current_unit.get("unit_plan")
     payload["resources"] = resource_bundle
     payload["curriculum"] = {
         "units": decorated_units,
@@ -142,11 +201,22 @@ def build_staff_course_plan_bundle(
         materials_by_anchor,
         unit_rows=unit_rows,
     )
+    timeline = api._build_course_plan_timeline(
+        course_plan_row,
+        units,
+        student_group=api.planning.normalize_text(student_group) or None,
+    )
+    timeline_current_unit = next(
+        (row for row in (timeline.get("units") or []) if int(row.get("is_current") or 0) == 1),
+        None,
+    )
     selected_unit = api.planning.normalize_text(unit_plan)
     if selected_unit and not any(row.get("unit_plan") == selected_unit for row in units):
         api.frappe.throw(api._("Selected unit plan does not belong to this course plan."), api.frappe.PermissionError)
     if not selected_unit and units:
-        selected_unit = units[0].get("unit_plan")
+        selected_unit = api.planning.normalize_text((timeline_current_unit or {}).get("unit_plan")) or units[0].get(
+            "unit_plan"
+        )
     selected_unit_row = next((row for row in units if row.get("unit_plan") == selected_unit), None)
     selected_programs = [
         api.planning.normalize_text(selected_unit_row.get("program")) if selected_unit_row else "",
@@ -208,11 +278,7 @@ def build_staff_course_plan_bundle(
         "curriculum": {
             "units": units,
             "unit_count": len(units),
-            "timeline": api._build_course_plan_timeline(
-                course_plan_row,
-                units,
-                student_group=api.planning.normalize_text(student_group) or None,
-            ),
+            "timeline": timeline,
         },
         "assessment": {
             "quiz_question_banks": quiz_question_banks,
@@ -242,6 +308,7 @@ def list_staff_course_plans_payload(api) -> dict[str, Any]:
                 "academic_year",
                 "cycle_label",
                 "plan_status",
+                "rollover_source_course_plan",
             ],
             order_by="modified desc, creation desc",
             limit=0,
@@ -262,12 +329,22 @@ def list_staff_course_plans_payload(api) -> dict[str, Any]:
                     "academic_year",
                     "cycle_label",
                     "plan_status",
+                    "rollover_source_course_plan",
                 ],
                 order_by="modified desc, creation desc",
                 limit=0,
             )
         else:
             rows = []
+    if "Curriculum Coordinator" not in roles:
+        rows = [
+            row
+            for row in rows or []
+            if not (
+                api.planning.normalize_text(row.get("plan_status")) == "Draft"
+                and api.planning.normalize_text(row.get("rollover_source_course_plan"))
+            )
+        ]
     course_names = sorted({row.get("course") for row in rows if row.get("course")})
     course_map = {
         row.get("name"): row

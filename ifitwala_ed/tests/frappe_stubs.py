@@ -9,6 +9,10 @@ from contextlib import contextmanager
 from typing import Iterator
 from unittest.mock import patch
 
+_MISSING = object()
+# Track fresh stubbed imports so the stub-bound module object does not leak into later real-Frappe tests.
+_ACTIVE_IMPORT_TRACKERS: list[list[tuple[str, object, object | None, str | None, object, bool]]] = []
+
 
 class StubValidationError(Exception):
     pass
@@ -38,7 +42,7 @@ def stubbed_frappe(extra_modules: dict[str, object] | None = None) -> Iterator[t
     frappe._ = lambda message: message
     frappe.PermissionError = StubPermissionError
     frappe.ValidationError = StubValidationError
-    frappe.throw = lambda message, exc=StubValidationError: _raise(exc, message)
+    frappe.throw = lambda message, exc=StubValidationError, **kwargs: _raise(exc, message)
     frappe.whitelist = _whitelist
     frappe.parse_json = lambda value: value
     frappe.session = types.SimpleNamespace(user="unit.test@example.com")
@@ -83,8 +87,10 @@ def stubbed_frappe(extra_modules: dict[str, object] | None = None) -> Iterator[t
         modules.update(extra_modules)
 
     restored_package_attrs: list[tuple[object, str, object, bool]] = []
+    imported_modules: list[tuple[str, object, object | None, str | None, object, bool]] = []
 
     with patch.dict(sys.modules, modules, clear=False):
+        _ACTIVE_IMPORT_TRACKERS.append(imported_modules)
         if extra_modules:
             for module_name, module_obj in extra_modules.items():
                 parent_name, _, attr_name = module_name.rpartition(".")
@@ -101,6 +107,19 @@ def stubbed_frappe(extra_modules: dict[str, object] | None = None) -> Iterator[t
         try:
             yield frappe
         finally:
+            _ACTIVE_IMPORT_TRACKERS.pop()
+            for module_name, previous_module, parent_module, attr_name, previous_attr, had_attr in reversed(
+                imported_modules
+            ):
+                sys.modules.pop(module_name, None)
+                if previous_module is not _MISSING:
+                    sys.modules[module_name] = previous_module
+                if parent_module is None or not attr_name:
+                    continue
+                if had_attr:
+                    setattr(parent_module, attr_name, previous_attr)
+                elif hasattr(parent_module, attr_name):
+                    delattr(parent_module, attr_name)
             for parent_module, attr_name, previous_value, had_attr in reversed(restored_package_attrs):
                 if had_attr:
                     setattr(parent_module, attr_name, previous_value)
@@ -109,5 +128,30 @@ def stubbed_frappe(extra_modules: dict[str, object] | None = None) -> Iterator[t
 
 
 def import_fresh(module_name: str):
+    previous_module = sys.modules.get(module_name, _MISSING)
+    parent_module = None
+    attr_name = None
+    previous_attr = _MISSING
+    had_attr = False
+
+    parent_name, _, attr_name = module_name.rpartition(".")
+    if parent_name and attr_name:
+        parent_module = sys.modules.get(parent_name)
+        if parent_module is None:
+            try:
+                parent_module = importlib.import_module(parent_name)
+            except Exception:
+                parent_module = None
+        if parent_module is not None:
+            had_attr = hasattr(parent_module, attr_name)
+            previous_attr = getattr(parent_module, attr_name, None)
+
     sys.modules.pop(module_name, None)
-    return importlib.import_module(module_name)
+    module = importlib.import_module(module_name)
+
+    if _ACTIVE_IMPORT_TRACKERS:
+        _ACTIVE_IMPORT_TRACKERS[-1].append(
+            (module_name, previous_module, parent_module, attr_name or None, previous_attr, had_attr)
+        )
+
+    return module

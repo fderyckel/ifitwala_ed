@@ -9,98 +9,12 @@ from frappe.utils import getdate, now_datetime
 
 from ifitwala_ed.api.calendar_core import (
     _resolve_employee_for_user,
-    _resolve_window,
     _system_tzinfo,
     _time_to_str,
 )
-from ifitwala_ed.api.calendar_details import _resolve_sg_booking_context
-from ifitwala_ed.api.calendar_staff_feed import _collect_staff_holiday_events, _collect_student_group_events
 from ifitwala_ed.schedule.schedule_utils import get_weekend_days_for_calendar
 from ifitwala_ed.school_settings.school_settings_utils import resolve_school_calendars_for_window
 from ifitwala_ed.utilities.school_tree import get_school_lineage
-
-
-def debug_staff_calendar_window(from_datetime: Optional[str] = None, to_datetime: Optional[str] = None):
-    """
-    Lightweight debug endpoint: returns detected instructor ids, matched
-    student groups, and a small sample of events for the current user.
-    Useful for quick browser testing.
-    """
-    user = frappe.session.user
-    tzinfo = _system_tzinfo()
-    start, end = _resolve_window(from_datetime, to_datetime, tzinfo)
-
-    instr = set(
-        frappe.get_all("Instructor", filters={"linked_user_id": user}, pluck="name", ignore_permissions=True) or []
-    )
-    employee_row = _resolve_employee_for_user(user, fields=["name"])
-    emp = (employee_row or {}).get("name")
-    if emp:
-        instr.update(
-            frappe.get_all("Instructor", filters={"employee": emp}, pluck="name", ignore_permissions=True) or []
-        )
-
-    sgi = set(
-        frappe.get_all(
-            "Student Group Instructor",
-            filters={"parenttype": "Student Group", "instructor": ["in", list(instr) or [""]]},
-            pluck="parent",
-            ignore_permissions=True,
-        )
-        or []
-    )
-
-    sample = _collect_student_group_events(user, start, end, tzinfo)[:10]
-    holiday_events = _collect_staff_holiday_events(
-        user,
-        start,
-        end,
-        tzinfo,
-        employee_id=emp,
-    )
-    holiday_sample = holiday_events[:5]
-    booking_samples = []
-    if emp and frappe.db.table_exists("Employee Booking"):
-        booking_rows = frappe.get_all(
-            "Employee Booking",
-            filters={
-                "employee": emp,
-                "source_doctype": "Student Group",
-                "docstatus": ["<", 2],
-                "from_datetime": ["<", end],
-                "to_datetime": [">", start],
-            },
-            fields=["name", "source_name", "from_datetime", "to_datetime"],
-            order_by="from_datetime desc",
-            limit=5,
-            ignore_permissions=True,
-        )
-        for row in booking_rows:
-            context = _resolve_sg_booking_context(f"sg-booking::{row.name}", tzinfo, debug=True)
-            booking_samples.append(
-                {
-                    "booking": row.name,
-                    "student_group": row.source_name,
-                    "from": row.from_datetime,
-                    "to": row.to_datetime,
-                    "rotation_day": context.get("rotation_day"),
-                    "block_number": context.get("block_number"),
-                    "location": context.get("location"),
-                    "resolution": context.get("_debug"),
-                }
-            )
-
-    return {
-        "user": user,
-        "system_tz": tzinfo.zone,
-        "window": {"from": start.isoformat(), "to": end.isoformat()},
-        "instructor_ids": sorted(instr),
-        "sg_instructor_groups": sorted(sgi),
-        "sample_events": [e.as_dict() for e in sample],
-        "staff_holiday_count": len(holiday_events),
-        "staff_holiday_sample": [e.as_dict() for e in holiday_sample],
-        "booking_samples": booking_samples,
-    }
 
 
 def get_portal_calendar_prefs(from_datetime: Optional[str] = None, to_datetime: Optional[str] = None):

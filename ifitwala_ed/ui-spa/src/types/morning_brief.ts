@@ -64,7 +64,6 @@ export type ApplicationStatus =
 export interface Announcement {
 	name: string
 	title: string
-// ... rest of the file ...
 	content: string
 	type:
 		| 'Logistics'
@@ -78,6 +77,8 @@ export interface Announcement {
 		| 'Urgent'
 		| 'Alert'
 	priority: OrgPriority
+	brief_start_date?: string | null
+	is_unread: boolean
 	interaction_mode: InteractionMode
 	allow_public_thread: 0 | 1
 	allow_private_notes: 0 | 1

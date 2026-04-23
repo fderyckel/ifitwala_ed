@@ -8,15 +8,14 @@
 					official quiz attempt and outcome state on the server.
 				</p>
 			</div>
-			<Button
-				size="sm"
-				appearance="primary"
-				:loading="savingVisible"
-				:disabled="!visibleDirtyRows.length"
+			<button
+				type="button"
+				class="if-button if-button--primary"
+				:disabled="savingVisible || !visibleDirtyRows.length"
 				@click="saveVisibleRows"
 			>
-				Save Visible
-			</Button>
+				{{ savingVisible ? 'Saving Visible…' : 'Save Visible' }}
+			</button>
 		</div>
 
 		<div class="flex flex-wrap gap-2">
@@ -27,23 +26,19 @@
 		</div>
 
 		<div class="grid gap-4 lg:grid-cols-[auto_minmax(0,1fr)]">
-			<div class="inline-flex rounded-lg border border-border bg-white p-1 shadow-sm">
+			<div class="if-segmented">
 				<button
 					type="button"
-					class="rounded-md px-3 py-2 text-sm font-medium transition-all"
-					:class="
-						viewMode === 'question' ? 'bg-leaf text-white shadow-sm' : 'text-ink/70 hover:text-ink'
-					"
+					class="if-segmented__item"
+					:class="{ 'if-segmented__item--active': viewMode === 'question' }"
 					@click="setViewMode('question')"
 				>
 					By Question
 				</button>
 				<button
 					type="button"
-					class="rounded-md px-3 py-2 text-sm font-medium transition-all"
-					:class="
-						viewMode === 'student' ? 'bg-leaf text-white shadow-sm' : 'text-ink/70 hover:text-ink'
-					"
+					class="if-segmented__item"
+					:class="{ 'if-segmented__item--active': viewMode === 'student' }"
 					@click="setViewMode('student')"
 				>
 					By Student
@@ -174,17 +169,18 @@
 								>Unsaved</Badge
 							>
 							<span v-else class="text-xs text-ink/40">Saved</span>
-							<Button
-								size="sm"
-								appearance="primary"
-								:loading="rowStates[row.item_id]?.saving"
+							<button
+								type="button"
+								class="if-button if-button--primary"
 								:disabled="
-									!rowStates[row.item_id]?.dirty || rowStates[row.item_id]?.awarded_score === null
+									!rowStates[row.item_id]?.dirty ||
+									rowStates[row.item_id]?.awarded_score === null ||
+									rowStates[row.item_id]?.saving
 								"
 								@click="saveRow(row.item_id)"
 							>
-								Save Score
-							</Button>
+								{{ rowStates[row.item_id]?.saving ? 'Saving Score…' : 'Save Score' }}
+							</button>
 						</div>
 					</div>
 				</div>
@@ -195,7 +191,7 @@
 
 <script setup lang="ts">
 import { computed, reactive, ref, watch } from 'vue';
-import { Badge, Button, FormControl, Spinner, toast } from 'frappe-ui';
+import { Badge, FormControl, Spinner, toast } from 'frappe-ui';
 import { createGradebookService } from '@/lib/services/gradebook/gradebookService';
 import type {
 	Response as GetTaskQuizManualReviewResponse,

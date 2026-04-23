@@ -27,7 +27,7 @@ def get_next_submission_version(outcome_id):
     return max_version + 1
 
 
-def create_student_submission(payload, user=None, uploaded_files=None):
+def create_student_submission(payload, user=None, uploaded_files=None, expected_student=None):
     data = _normalize_payload(payload)
     outcome_id = _get_payload_value(data, "task_outcome", "outcome")
     if not outcome_id:
@@ -47,8 +47,13 @@ def create_student_submission(payload, user=None, uploaded_files=None):
         ],
         as_dict=True,
     )
+    if expected_student:
+        actual_student = (outcome_row or {}).get("student")
+        if not actual_student or str(actual_student).strip() != str(expected_student).strip():
+            frappe.throw(_("You do not have access to this submission."), frappe.PermissionError)
     if not outcome_row:
         frappe.throw(_("Task Outcome not found."))
+    _assert_submission_allowed(outcome_row)
 
     text_content = (data.get("text_content") or "").strip()
     link_url = (data.get("link_url") or "").strip()
@@ -75,12 +80,12 @@ def create_student_submission(payload, user=None, uploaded_files=None):
     doc.link_url = link_url or None
     if data.get("evidence_note"):
         doc.evidence_note = data.get("evidence_note")
-    if has_uploads:
-        doc.set_new_name()
-        _attach_submission_files(doc, outcome_row, uploaded_files, data.get("upload_source"))
 
     stamp_submission_context(doc, outcome_row)
     doc.insert(ignore_permissions=True)
+    if has_uploads:
+        _attach_submission_files(doc, outcome_row, uploaded_files, data.get("upload_source"))
+        doc.save(ignore_permissions=True)
 
     submission_status = "Submitted" if next_version == 1 else "Resubmitted"
     frappe.db.set_value(
@@ -108,27 +113,14 @@ def create_student_submission(payload, user=None, uploaded_files=None):
 
 
 def _attach_submission_files(submission_doc, outcome_row, uploaded_files, upload_source=None):
-    from ifitwala_ed.utilities import file_dispatcher, file_management
+    from ifitwala_drive.api.submissions import upload_task_submission_artifact
+
+    from ifitwala_ed.integrations.drive.content_uploads import upload_content_via_drive
 
     student = outcome_row.get("student")
-    school = outcome_row.get("school")
-    task_name = outcome_row.get("task") or submission_doc.name
 
     if not student:
-        frappe.throw(_("Student is required for file classification."))
-    if not school:
-        frappe.throw(_("School is required for file classification."))
-
-    organization = frappe.db.get_value("School", school, "organization")
-    if not organization:
-        frappe.throw(_("Organization is required for file classification."))
-
-    settings = file_management.get_settings()
-    context_override = file_management.build_task_submission_context(
-        student=student,
-        task_name=task_name,
-        settings=settings,
-    )
+        frappe.throw(_("Student is required for governed submission uploads."))
 
     source = upload_source or "API"
     for upload in uploaded_files:
@@ -137,26 +129,15 @@ def _attach_submission_files(submission_doc, outcome_row, uploaded_files, upload
         if not file_name or not content:
             frappe.throw(_("Uploaded files must include file_name and content."))
 
-        file_doc = file_dispatcher.create_and_classify_file(
-            file_kwargs={
-                "attached_to_doctype": "Task Submission",
-                "attached_to_name": submission_doc.name,
-                "is_private": 1,
-                "file_name": file_name,
-                "content": content,
-            },
-            classification={
-                "primary_subject_type": "Student",
-                "primary_subject_id": student,
-                "data_class": "academic",
-                "purpose": "assessment_submission",
-                "retention_policy": "until_program_end_plus_1y",
-                "slot": "submission",
-                "organization": organization,
-                "school": school,
+        _session_response, _finalize_response, file_doc = upload_content_via_drive(
+            create_session_callable=upload_task_submission_artifact,
+            session_payload={
+                "task_submission": submission_doc.name,
+                "student": student,
                 "upload_source": source,
             },
-            context_override=context_override,
+            file_name=file_name,
+            content=content,
         )
 
         submission_doc.append(
@@ -168,6 +149,23 @@ def _attach_submission_files(submission_doc, outcome_row, uploaded_files, upload
                 "public": 0,
             },
         )
+
+
+def _assert_submission_allowed(outcome_row):
+    task_delivery = (outcome_row or {}).get("task_delivery")
+    if not task_delivery:
+        frappe.throw(_("This task does not accept submissions."))
+
+    delivery_row = frappe.db.get_value(
+        "Task Delivery",
+        task_delivery,
+        ["requires_submission"],
+        as_dict=True,
+    )
+    if not delivery_row:
+        frappe.throw(_("This task does not accept submissions."))
+    if int(delivery_row.get("requires_submission") or 0) != 1:
+        frappe.throw(_("This task does not accept submissions."))
 
 
 def stamp_submission_context(submission_doc, outcome_row):

@@ -2,7 +2,7 @@
 
 Status: Canonical current-state contract
 Code refs: `ifitwala_ed/curriculum/doctype/supporting_material/supporting_material.json`, `ifitwala_ed/curriculum/doctype/material_placement/material_placement.json`, `ifitwala_ed/curriculum/materials.py`, `ifitwala_ed/api/materials.py`, `ifitwala_ed/api/teaching_plans.py`, `ifitwala_ed/api/file_access.py`, `ifitwala_ed/integrations/drive/bridge.py`, `ifitwala_ed/utilities/governed_uploads.py`, `ifitwala_ed/ui-spa/src/components/tasks/CreateTaskDeliveryOverlay.vue`, `ifitwala_ed/ui-spa/src/components/planning/PlanningResourcePanel.vue`, `ifitwala_ed/ui-spa/src/pages/staff/ClassPlanning.vue`, `ifitwala_ed/ui-spa/src/pages/staff/CoursePlanWorkspace.vue`, `ifitwala_ed/ui-spa/src/pages/student/CourseDetail.vue`
-Test refs: `ifitwala_ed/curriculum/doctype/supporting_material/test_supporting_material.py`, `ifitwala_ed/curriculum/doctype/material_placement/test_material_placement.py`, `ifitwala_ed/curriculum/test_materials.py`, `ifitwala_ed/api/test_teaching_plans.py`, `ifitwala_ed/api/test_file_access.py`, `ifitwala_ed/ui-spa/src/pages/student/__tests__/CourseDetail.test.ts`
+Test refs: `ifitwala_ed/curriculum/doctype/supporting_material/test_supporting_material.py`, `ifitwala_ed/curriculum/doctype/material_placement/test_material_placement.py`, `ifitwala_ed/curriculum/test_materials.py`, `ifitwala_ed/api/test_materials.py`, `ifitwala_ed/api/test_teaching_plans.py`, `ifitwala_ed/api/test_file_access.py`, `ifitwala_ed/ui-spa/src/components/tasks/__tests__/CreateTaskDeliveryOverlay.test.ts`, `ifitwala_ed/ui-spa/src/pages/student/__tests__/CourseDetail.test.ts`
 
 This is the canonical contract for reusable learning materials and resource sharing inside the curriculum stack.
 
@@ -90,6 +90,19 @@ Staff add materials where they already work:
 - task creation overlay for task-scoped materials
 - course-plan workspace for shared course-plan and unit resources
 - class-planning workspace for class-wide and session-specific resources
+- file-upload authoring on those surfaces must show inline upload feedback while the browser is preparing/sending the selected file and must keep a visible finishing state until the governed response returns
+
+Current staff preview behavior:
+
+- governed file materials in the task creation overlay now expose `thumbnail_url` only when a ready `thumb` derivative exists, alongside stable `preview_url` routes for richer preview/open behavior
+- governed file materials on the course-plan and class-planning workspaces now expose stable `thumbnail_url` routes for inline image cards plus stable `preview_url` routes for richer preview/open behavior
+- those current material rows now also carry an additive nested `attachment_preview` block with the shared cross-surface preview DTO
+- those planning workspaces now consume that nested preview DTO through the shared display-only SPA attachment preview card
+- the task creation overlay now lets teachers queue governed task attachments while writing the task itself, then persists those queued attachments automatically during the create action so the workflow still feels like one compose step
+- that governed task-attachment flow is currently restricted to PDF and image uploads (`pdf`, `jpg`, `jpeg`, `png`, `webp`) plus reference links
+- the task creation overlay now renders current task attachments through the shared SPA attachment preview card instead of a task-specific preview fragment
+- those workspaces render inline image previews from `thumbnail_url`, render inline PDF first-page cards from `thumbnail_url` when the smaller `pdf_card` derivative is ready, fall back to the governed `preview_url` inline when the card preview is absent or the thumbnail route cannot be delivered, and keep `preview_url` as the richer PDF preview action
+- `open_url` remains the explicit original-file action and compatibility baseline
 
 This is the current source-of-truth workflow. Do not push teachers back into a generic Desk library as the primary authoring path.
 
@@ -113,6 +126,14 @@ Resolution rule:
 - shared plan resources are fallback context
 - task materials travel with assigned work
 
+Current student preview behavior:
+
+- `CourseDetail.vue` uses optional `thumbnail_url` for inline governed image cards and stable Ed-owned `preview_url` routes for richer preview/open behavior
+- those resource rows now also carry an additive nested `attachment_preview` block with the shared cross-surface preview DTO
+- `CourseDetail.vue` now consumes that nested preview DTO through the shared display-only SPA attachment preview card
+- session resources plus unit, class, and shared course resource shelves now render inline image thumbnails from `thumbnail_url`, use `thumbnail_url` for PDF first-page card previews when the `pdf_card` derivative is ready, fall back to `preview_url` inline when needed, and keep `preview_url` as the richer PDF preview action
+- task-linked materials now render directly inside the assigned-work brief with preview and download actions so students can read the task and access its attachments in one place
+
 The student surface must not require learners to hunt across unrelated pages just to collect the materials for a class.
 
 ## File Governance
@@ -127,6 +148,7 @@ Locked rules:
 
 - `Supporting Material` is the business owner inside Ifitwala_Ed
 - Drive remains the file authority
+- preview routes for file-backed materials must remain Ed-owned stable action routes, not raw file paths or cached grant URLs
 - open/download URLs must be server-resolved
 - raw private file paths are not a valid SPA contract
 - Ifitwala_Ed owns context, placement, and permission checks
@@ -154,7 +176,7 @@ Implemented now:
 - task-scoped link and file materials
 - shared course-plan and unit resource authoring
 - class-wide and session-specific resource authoring
-- student LMS resource shelves with governed open URLs
+- student LMS resource shelves with governed preview/open URLs and inline image or compact PDF preview where available
 
 Not implemented now:
 

@@ -173,9 +173,13 @@ It now carries:
 - `academic_year`
 - `status`
 - resolved scope preview
+- `curriculum_target_academic_year`
+- curriculum handover preview
+- explicit curriculum handover action
 - explicit archive actions
 
 Closure is governed through that surface, not through ad hoc field changes on `Academic Year`.
+The same surface now also provides a bounded curriculum handover helper, but that does not turn `End of Year Checklist` into the enrollment rollover orchestrator.
 
 ### 5.1 Scope model
 
@@ -198,7 +202,14 @@ Parent-school cascade requires:
 
 This is an implemented permission rule, not future intent.
 
-### 5.3 Closure outcomes
+### 5.3 Action split
+
+- `prepare_curriculum_handover` is non-destructive
+- it may run before closure as long as a target academic year is selected and the checklist is not `Completed`
+- destructive archive actions still require `status = In Progress`
+- completed checklists lock both the curriculum handover helper and the destructive archive actions
+
+### 5.4 Closure outcomes
 
 The checklist owns scoped closure of:
 

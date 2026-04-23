@@ -1,6 +1,7 @@
 import frappe
 
 from ifitwala_ed.accounting.fiscal_year_utils import fill_date_range_from_fiscal_year
+from ifitwala_ed.utilities.school_tree import get_descendant_schools
 
 
 def execute(filters=None):
@@ -57,8 +58,9 @@ def execute(filters=None):
         conditions.append("si.account_holder = %(account_holder)s")
         params.update({"account_holder": filters.get("account_holder")})
     if filters.get("school"):
-        conditions.append("sii.school = %(school)s")
-        params.update({"school": filters.get("school")})
+        school_scope = tuple(get_descendant_schools(filters.get("school")) or [filters.get("school")])
+        conditions.append("sii.school IN %(school_list)s")
+        params.update({"school_list": school_scope})
     if filters.get("program"):
         conditions.append("sii.program = %(program)s")
         params.update({"program": filters.get("program")})

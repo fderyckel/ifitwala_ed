@@ -198,102 +198,75 @@ Examples:
 
 ---
 
-## 5. Admissions Policy Acknowledgements — Authority Model
+## 5. Admissions Policy Acknowledgements — Current Runtime
 
-### Current Model (Phase 1)
+Admissions acknowledgements are governed by two explicit runtime controls:
 
-During admissions, Ifitwala uses a **single accountable actor model**.
+* `Admission Settings.admissions_access_mode`
+  * `Single Applicant Workspace`
+  * `Family Workspace`
+* `Institutional Policy.admissions_acknowledgement_mode`
+  * `Child Acknowledgement` (default)
+  * `Family Acknowledgement`
+  * `Child Optional Consent`
 
-* Each `Student Applicant` is associated with one **Admissions Applicant user** (`applicant_user`)
-* This user:
+### Actor and context rules
 
-  * uploads documents and images
-  * acknowledges required policies
-  * submits the application
+#### Child Acknowledgement
 
-Policy acknowledgements during admissions are therefore:
+* The current admissions portal user acknowledges in applicant context
+* `acknowledged_for = Applicant`
+* `context_doctype = Student Applicant`
+* Access is limited to the requested applicant through admissions access resolution
+* In `Family Workspace`, an `Admissions Family` user may complete this step only for explicitly linked applicants
 
-* **Acknowledged for:** Applicant
-* **Acknowledged by:** Admissions Applicant user only
+#### Family Acknowledgement
 
-The system now records guardian relationships at the applicant stage via `Student Applicant Guardian`.
-Current acknowledgement behavior remains:
+* Only an `Admissions Family` user linked through a primary `Student Applicant Guardian` row with `can_consent = 1` may sign
+* Evidence is always stored on guardian self-context
+* `acknowledged_for = Guardian`
+* `context_doctype = Guardian`
+* `context_name` must resolve to the current signer's `Guardian` record
+* Non-primary or non-signer guardians are blocked server-side
 
-* Guardian roles are **not permitted** to acknowledge policies for Applicants
-* Guardian authority is **not inferred** from `applicant_user`
-* This behavior is intentional and enforced server-side
+#### Child Optional Consent
 
-This model is valid for lightweight admissions flows and ensures internal consistency and auditability.
+* Uses the same applicant-context evidence shape as `Child Acknowledgement`
+* `acknowledged_for = Applicant`
+* `context_doctype = Student Applicant`
+* It remains optional for admissions readiness and must not be treated as a missing required acknowledgement
 
-### Current Limitation (Phase 1)
+### Scope and invariants
 
-Guardian rows exist, but Applicant-context policy acknowledgement is still enforced as Applicant-only until policy authority phase-upgrade is enabled.
-
-### Phase 2 — Explicit Applicant–Guardian model (definition)
-
-Phase 2 introduces an explicit relationship between a `Student Applicant` and one or more `Guardian` records.
-
-New child table on `Student Applicant`:
-
-DocType: `Student Applicant Guardian`
-
-Fields:
-
-* `guardian` (Link → Guardian, optional for pre-promotion capture)
-* `contact` (Link → Contact)
-* `use_applicant_contact` (checkbox)
-* `relationship` (Select, same options as `Student Guardian.relation`)
-* `is_primary` (checkbox)
-* `can_consent` (derived signer checkbox; true only for rows marked `is_primary_guardian`)
-* guardian profile fields mirrored from `Guardian`
-
-This mirrors the existing Student ↔ Guardian model and removes all implicit assumptions about who is allowed to act during admissions.
-
-Phase 2 **does not** change behavior by itself. It only makes authority expressible and enforceable.
-
-### Phase 3 — Policy enforcement rules (after Phase 2)
-
-Phase 3 defines **who can acknowledge**, **for whom**, and **when a policy is considered satisfied**.
-
-#### Actor eligibility rules (summary)
-
-* Applicant-stage (`context_doctype = Student Applicant`)
-
-  * `acknowledged_for = Applicant` → Admissions Applicant user, or Guardian user linked via a primary `Student Applicant Guardian` row with the derived signer flag `can_consent = 1`
-  * `acknowledged_for = Guardian` → Guardian user acknowledging for self only, and linked to the applicant
-
-* Student-stage (`context_doctype = Student`)
-
-  * `acknowledged_for = Student` → Student user, or Guardian user linked via `Student Guardian` with `can_consent = 1`, where that signer flag is reserved for primary guardians
-  * `acknowledged_for = Guardian` → Guardian user acknowledging for self only
-
-#### Completion rules (summary)
-
-Add one field on **Institutional Policy** or **Policy Version**:
-
-`consent_mode` (Select)
-
-* `single_actor` (default)
-* `primary_guardian_only`
-* `all_eligible_guardians`
+* Every admissions acknowledgement remains an explicit `Policy Acknowledgement` insert
+* Applicant access is server-owned and resolved from the configured admissions access mode
+* Guardian authority is explicit via `Student Applicant Guardian`; it is never inferred from `applicant_user` or shared email
+* Family-mode acknowledgements do not create Guardian Portal access and do not promote the applicant to Guardian or Student
+* Enrolled-student durable acknowledgement remains governed separately by `policy_06_enrolled_student_policy_acknowledgement_contract.md`
 
 ### Post-Promotion (Student Stage)
 
 Once an Applicant is promoted to Student:
 
 * Guardian relationships are explicit via `Student Guardian`
-* Guardians may acknowledge policies **for Students**, subject to:
+* Guardian durable policy acknowledgement remains governed separately from admissions
+* When a policy applies to `Guardian`, `Policy Version.guardian_acknowledgement_mode` controls enrolled-student guardian evidence shape:
 
-  * verified guardian–student linkage
-  * server-side authorization checks
+  * `Family Acknowledgement` -> one guardian self-context acknowledgement for the policy version
+  * `Child Acknowledgement` -> one student-context acknowledgement per signer-authorized child in scope
+* Guardians may acknowledge enrolled-student guardian policies only with:
+
+  * verified guardian-student linkage
+  * signer authority
+  * server-side scope checks
 
 ### Summary
 
-* Admissions consent = **Applicant user only**
-* Student consent = **Student or linked Guardian**
+* Admissions acknowledgement now supports applicant-context and guardian-self-context evidence depending on `admissions_acknowledgement_mode`
+* Student-stage durable acknowledgement remains `Student` or linked `Guardian`, with guardian evidence shape controlled by `Policy Version.guardian_acknowledgement_mode`
 * No implicit authority
 * No retroactive inference
-* All consent rules are explicit, auditable, and enforced server-side
+* All acknowledgement rules are explicit, auditable, and enforced server-side
 
 ---
 
@@ -308,10 +281,17 @@ This policy is the **sole consent gate** for publishing student profile photos.
 * `applies_to` includes **Applicant**
 * `Policy Version.is_active = 1`
 
-**Acknowledgement context (locked)**
+**Acknowledgement context**
 
-* `acknowledged_for = Applicant`
-* `context_doctype = Student Applicant`
+* `Child Acknowledgement` / `Child Optional Consent`
+
+  * `acknowledged_for = Applicant`
+  * `context_doctype = Student Applicant`
+* `Family Acknowledgement`
+
+  * `acknowledged_for = Guardian`
+  * `context_doctype = Guardian`
+  * self-context only for an eligible primary family signer
 
 **Behavior**
 

@@ -5,6 +5,8 @@ from typing import Any
 import frappe
 from frappe import _
 
+from ifitwala_ed.integrations.drive.authority import get_drive_file_for_file
+
 _HEALTH_VACCINATION_SLOT_PREFIX = "health_vaccination_proof_"
 _APPLICANT_PROFILE_IMAGE_SLOT = "profile_image"
 _GUARDIAN_PROFILE_IMAGE_SLOT_PREFIX = "guardian_profile_image__"
@@ -430,7 +432,14 @@ def run_admissions_post_finalize(upload_session_doc, created_file) -> dict[str, 
     }:
         return {}
 
-    classification_name = frappe.db.get_value("File Classification", {"file": created_file.name}, "name")
+    drive_file = (
+        get_drive_file_for_file(
+            created_file.name,
+            fields=["name", "canonical_ref"],
+            statuses=("active", "processing", "blocked"),
+        )
+        or {}
+    )
     file_url = getattr(created_file, "file_url", None) or frappe.db.get_value("File", created_file.name, "file_url")
 
     if (
@@ -445,7 +454,8 @@ def run_admissions_post_finalize(upload_session_doc, created_file) -> dict[str, 
             update_modified=False,
         )
         return {
-            "classification": classification_name,
+            "drive_file_id": drive_file.get("name"),
+            "canonical_ref": drive_file.get("canonical_ref"),
             "file_url": file_url,
             "student_applicant": upload_session_doc.owner_name,
             "slot": getattr(upload_session_doc, "intended_slot", None),
@@ -460,7 +470,8 @@ def run_admissions_post_finalize(upload_session_doc, created_file) -> dict[str, 
             update_modified=False,
         )
         return {
-            "classification": classification_name,
+            "drive_file_id": drive_file.get("name"),
+            "canonical_ref": drive_file.get("canonical_ref"),
             "file_url": file_url,
             "student_applicant": upload_session_doc.owner_name,
             "guardian_row_name": upload_session_doc.attached_name,
@@ -469,7 +480,8 @@ def run_admissions_post_finalize(upload_session_doc, created_file) -> dict[str, 
 
     if getattr(upload_session_doc, "attached_doctype", None) == "Applicant Health Profile":
         return {
-            "classification": classification_name,
+            "drive_file_id": drive_file.get("name"),
+            "canonical_ref": drive_file.get("canonical_ref"),
             "file_url": file_url,
             "student_applicant": upload_session_doc.owner_name,
             "applicant_health_profile": upload_session_doc.attached_name,
@@ -533,7 +545,8 @@ def run_admissions_post_finalize(upload_session_doc, created_file) -> dict[str, 
 
     return {
         "file_url": file_url,
-        "classification": classification_name,
+        "drive_file_id": drive_file.get("name"),
+        "canonical_ref": drive_file.get("canonical_ref"),
         "applicant_document": applicant_document,
         "applicant_document_item": upload_session_doc.attached_name,
         "item_key": item_row.get("item_key"),

@@ -1,20 +1,20 @@
 <!-- ifitwala_ed/ui-spa/src/pages/staff/analytics/InquiryAnalytics.vue -->
 <template>
 	<div class="analytics-shell">
-		<header class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-			<h1 class="type-h2 text-canopy">Inquiry Analytics</h1>
-			<div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-3">
+		<header class="page-header">
+			<div class="page-header__intro">
+				<h1 class="type-h1 text-canopy">Inquiry Analytics</h1>
+				<p class="type-meta text-slate-token/80">
+					Pipeline volume, response pace, and conversion pressure across inquiry scope.
+				</p>
+			</div>
+			<div class="page-header__actions">
 				<DateRangePills
 					v-model="filters.date_preset"
 					:items="DATE_RANGES"
 					@change="handleDatePresetChange"
 				/>
-				<button
-					class="fui-btn-primary rounded-full px-4 py-1.5 text-sm font-medium transition active:scale-95"
-					@click="refresh"
-				>
-					Refresh
-				</button>
+				<button type="button" class="if-button if-button--quiet" @click="refresh">Refresh</button>
 			</div>
 		</header>
 

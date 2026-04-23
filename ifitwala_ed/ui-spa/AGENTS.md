@@ -27,6 +27,35 @@ The SPA is a UX shell. It is not the source of truth.
 - This Codex session runs on the user's local machine for this repository.
 - Do not add generic closeout notes about missing `frappe`, missing `bench`, or shell `PATH` differences unless a specific command failed and the exact failure is necessary to explain what could not be verified.
 
+## 0.2 Documentation Routing Protocol
+
+Before changing SPA behavior, read the canonical docs in this order:
+
+1. `ifitwala_ed/docs/README.md`
+2. `ifitwala_ed/docs/spa/README.md`
+3. `ifitwala_ed/docs/spa/01_spa_architecture_and_rules.md`
+4. `ifitwala_ed/docs/spa/02_style_note.md` when touching styling, tokens, shells, or layout primitives
+5. `ifitwala_ed/docs/spa/03_overlay_and_workflow.md` when touching overlays or workflow-triggering UI
+6. the relevant feature contract in `ifitwala_ed/docs/spa/`
+
+Also check these cross-cutting notes when relevant:
+
+- `ifitwala_ed/docs/high_concurrency_contract.md` for bootstrap/request-shape changes
+- `ifitwala_ed/docs/nested_scope_contract.md` for hierarchy-aware analytics or scoped views
+- `ifitwala_ed/docs/files_and_policies/README.md` for governed/private media surfaces
+- `ifitwala_ed/docs/files_and_policies/files_08_cross_portal_governed_attachment_preview_contract.md` for preview/open/thumbnail DTO rules
+- `ifitwala_ed/docs/testing/README.md` and `ifitwala_ed/docs/testing/01_test_strategy.md` before deciding test scope
+
+If the SPA change touches uploads, attachment cards, thumbnails, preview modals/cards, or private-media links, also read:
+
+- `ifitwala_ed/docs/files_and_policies/files_03_implementation.md`
+- `ifitwala_ed/docs/files_and_policies/files_07_education_file_semantics_and_cross_app_contract.md`
+- `ifitwala_ed/docs/files_and_policies/files_06_org_communication_attachment_contract.md` when the surface is communication
+- `ifitwala_ed/docs/admission/05_admission_portal.md` when the surface is admissions/applicant-facing or staff admissions review
+- `ifitwala_ed/docs/admission/10_ifitwala_drive_portal_uploads.md` when the change touches admissions uploads, applicant images, or applicant document previews
+
+Treat proposal, audit, history, and implementation-companion notes as non-authoritative unless they explicitly declare themselves the current runtime contract.
+
 ---
 
 ## 1. UX Rules (Non-Negotiable)
@@ -56,6 +85,12 @@ Silent no-op behavior is a defect.
 - Overlays must support explicit entry-point modes when applicable:
   1. prefilled/locked context mode
   2. selection-required mode
+- If a server-owned invariant becomes locked after the first successful mutation in a multi-step overlay (for example first governed file upload, first publish, or first bound selection), the overlay must mirror that lock immediately:
+  - freeze the scope-driving controls
+  - explain the remediation in-product
+  - block final submit before the request leaves the browser
+- If that lock still leaves a valid forward path (for example an organization-scoped draft may still add an `Organization` audience), the overlay copy must name the still-allowed next action. Do not show only a generic locked warning when the user can still complete the workflow safely.
+- If the first successful mutation would lock an ambiguous or defaulted scope (for example a prefilled issuing school that is only one of several valid communication scopes), block before that first mutation and force the user to make scope intent explicit.
 
 If an overlay works from one entry point but fails from another, treat it as a design bug.
 

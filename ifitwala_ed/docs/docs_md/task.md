@@ -3,8 +3,8 @@ title: "Task: The Reusable Learning and Assessment Blueprint"
 slug: task
 category: Assessment
 doc_order: 4
-version: "1.8.0"
-last_change_date: "2026-04-05"
+version: "1.8.3"
+last_change_date: "2026-04-20"
 summary: "Author reusable learning tasks once, then deliver them to groups with the right grading mode, evidence expectations, and task-specific supporting materials."
 seo_title: "Task: The Reusable Learning and Assessment Blueprint"
 seo_description: "Author reusable learning tasks once, then deliver them to groups with the right grading mode, evidence expectations, and rubric strategy."
@@ -43,8 +43,8 @@ Test refs: None
 - Staff portal planning uses the create-task overlay at `ui-spa/src/components/tasks/CreateTaskDeliveryOverlay.vue`.
 - Task-specific reusable materials are shared through [**Supporting Material**](/docs/en/supporting-material/) and [**Material Placement**](/docs/en/material-placement/).
 - `ifitwala_ed/api/task.py` exposes `search_reusable_tasks`, `search_tasks`, `get_task_for_delivery`, and `create_task_delivery`.
-- Some analytics and briefing readers still reference legacy `Task` plus `Task Student` style paths:
-  - `ifitwala_ed/api/student_overview_dashboard.py`
+- Student Overview now reads the current `Task Delivery` plus `Task Outcome` model for learner analytics.
+- Some briefing readers still reference legacy `Task` plus `Task Student` style paths:
   - `ifitwala_ed/api/morning_brief.py`
 
 ## Lifecycle and Linked Documents
@@ -123,12 +123,13 @@ Test refs: `ifitwala_ed/utilities/test_governed_uploads_task_flows.py`
 - `assessment/task_creation_service.py` supports the overlay path that creates both `Task` and `Task Delivery` in one transaction.
 - `api/task.py::search_reusable_tasks()` resolves one course-scoped task library at a time and returns only the current user's own tasks plus tasks explicitly shared with that course team.
 - `api/task.py::create_task_delivery()` now owns the assign-existing-task flow and validates that private tasks stay private until shared.
-- The task overlay keeps teachers in-context after task creation so they can add task materials without leaving the workflow.
+- The task overlay now lets teachers queue task links and governed PDF or image attachments while they write the task instructions, instead of hiding attachment authoring behind a later step.
+- The create action persists the task, delivery, and any queued attachments in one flow, then refreshes class planning once on final success; the post-create attachment panel remains only as a recovery path if a queued upload needs retry.
 - The task overlay does not expose task-material editing after reusing an existing task, because class-local delivery work must not silently mutate a shared reusable definition.
 - No current workflow may treat a task created from one class/session flow as silently promoted shared curriculum just because it is reusable later.
 
 ### Current Drift To Preserve In Review
 
 - The definition layer is stable, but downstream launch remains split across two services.
-- Legacy analytics readers still reference older structures; those reads must not be mistaken for the canonical gradebook contract.
+- Student Overview now reads the current `Task Delivery` plus `Task Outcome` contract, but some older briefing readers still reference legacy structures; those reads must not be mistaken for the canonical gradebook contract.
 - Any implementation change that alters task-launch behavior must update this page and the linked delivery/outcome docs in the same change.

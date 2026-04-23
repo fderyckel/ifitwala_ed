@@ -3,8 +3,8 @@ title: "Policy Acknowledgement: Immutable Consent Evidence"
 slug: policy-acknowledgement
 category: Governance
 doc_order: 3
-version: "2.0.1"
-last_change_date: "2026-04-15"
+version: "2.0.3"
+last_change_date: "2026-04-22"
 summary: "Create permanent, tamper-proof records of who acknowledged which policy version, when, and under what context—forming your legal audit trail across staff, guardians, students, and applicants."
 seo_title: "Policy Acknowledgement: Immutable Consent Evidence"
 seo_description: "Learn how Policy Acknowledgements create permanent, tamper-proof records of policy consent with electronic signatures and audit trails."
@@ -18,7 +18,7 @@ A **Policy Acknowledgement** is the permanent, tamper-proof evidence that someon
 - **What** version they acknowledged
 - **When** they acknowledged it
 - **How** they acknowledged it (signature, attestation, clauses)
-- **In what context** (as staff, guardian for a child, student, or applicant)
+- **In what context** (as staff, guardian, student, or applicant)
 
 Once created, a Policy Acknowledgement cannot be edited, cancelled, or deleted. It is **immutable evidence**—designed for the real world where "we said they agreed" isn't enough; you need proof.
 
@@ -113,9 +113,13 @@ Created when guardians sign policies in their portal:
     Submit the acknowledgement
   </Step>
   <Step title="Evidence Created">
-    Policy Acknowledgement is recorded with guardian context
+    Policy Acknowledgement is recorded with guardian or student context, depending on the Policy Version's guardian acknowledgement mode
   </Step>
 </Steps>
+
+<Callout type="info" title="Guardian family mode vs child mode">
+For enrolled students, guardians do not always sign the same way. `Family Acknowledgement` records one guardian self-context acknowledgement for the policy version. `Child Acknowledgement` records one guardian acknowledgement row per child, using the child as the stored context while keeping the audience as `Guardian`.
+</Callout>
 
 ### Student Acknowledgements
 
@@ -132,7 +136,7 @@ Created during the admissions process:
 
 - Applicants see required policies in admissions portal
 - May sign directly (child mode) or through guardian (family mode)
-- Acknowledgement recorded with Student Applicant context
+- Acknowledgement recorded with `Student Applicant` or `Guardian` context depending on the admissions acknowledgement mode
 - Blocks application readiness until complete
 
 ---
@@ -217,7 +221,8 @@ For **Student Applicants**, the readiness panel shows:
 ### In Guardian Portal
 
 Guardians see their own acknowledgement history:
-- Acknowledged status per policy
+- Acknowledged status per policy row
+- One family row or one row per child, depending on the policy version
 - Timestamp of acknowledgement
 - Cannot be forged or modified
 

@@ -1,0 +1,429 @@
+{% macro safe_text(value) -%}
+	{{ frappe.utils.escape_html(((value or "") | string).strip()) }}
+{%- endmacro %}
+
+{% macro info_row(label, value) -%}
+	{% set normalized = ((value or "") | string).strip() %}
+	{% if normalized %}
+	<div class="info-row">
+		<div class="info-key">{{ label }}</div>
+		<div class="info-value">{{ frappe.utils.escape_html(normalized) }}</div>
+	</div>
+	{% endif %}
+{%- endmacro %}
+
+{% macro multiline_row(label, value) -%}
+	{% set normalized = ((value or "") | string).strip() %}
+	{% if normalized %}
+	<div class="info-row info-row--stacked">
+		<div class="info-key">{{ label }}</div>
+		<div class="info-value">{{ frappe.utils.escape_html(normalized).replace('\n', '<br>') | safe }}</div>
+	</div>
+	{% endif %}
+{%- endmacro %}
+
+{% macro boolean_row(label, value) -%}
+	{% if value is not undefined %}
+	<div class="info-row">
+		<div class="info-key">{{ label }}</div>
+		<div class="info-value">{{ "Yes" if value else "No" }}</div>
+	</div>
+	{% endif %}
+{%- endmacro %}
+
+{% set full_name = (doc.employee_full_name or ((doc.employee_first_name or "") ~ " " ~ (doc.employee_middle_name or "") ~ " " ~ (doc.employee_last_name or ""))).strip() or doc.name %}
+{% set preferred_name = (doc.employee_preferred_name or "").strip() %}
+{% set generated_on = frappe.utils.formatdate(frappe.utils.nowdate()) %}
+{% set using_managed_letterhead = 1 if (((letter_head or "") | string).strip()) and not no_letterhead else 0 %}
+{% set status_text = ((doc.get_formatted('employment_status') or doc.employment_status or "") | string).strip() %}
+{% set contact_name = ((doc.empl_primary_contact or frappe.db.get_value("Dynamic Link", {"link_doctype": "Employee", "link_name": doc.name, "parenttype": "Contact"}, "parent") or "") | string).strip() %}
+{% set contact_doc = frappe.get_doc("Contact", contact_name) if contact_name else None %}
+{% set contact_full_name = (((contact_doc.first_name or "") ~ " " ~ (contact_doc.last_name or "")).strip()) if contact_doc else "" %}
+{% set contact_email_rows = frappe.get_all("Contact Email", filters={"parent": contact_name}, fields=["email_id", "is_primary", "idx"], order_by="is_primary desc, idx asc, creation asc") if contact_name else [] %}
+{% set contact_phone_rows = frappe.get_all("Contact Phone", filters={"parent": contact_name}, fields=["phone", "is_primary_mobile_no", "idx"], order_by="is_primary_mobile_no desc, idx asc, creation asc") if contact_name else [] %}
+{% set address_link_rows = frappe.get_all("Dynamic Link", filters={"parenttype": "Address", "link_doctype": "Employee", "link_name": doc.name}, fields=["parent"], order_by="creation asc") %}
+{% set address_names = address_link_rows | map(attribute='parent') | list %}
+{% set address_docs = frappe.get_all("Address", filters={"name": ["in", address_names]}, fields=["name", "address_title", "address_type", "address_line1", "address_line2", "city", "state", "country", "pincode"], order_by="creation asc") if address_names else [] %}
+{% set address_map = {} %}
+{% for row in address_docs %}
+	{% set _ = address_map.update({row.name: row}) %}
+{% endfor %}
+
+{% set has_personal_identity = doc.employee_salutation or doc.employee_first_name or doc.employee_middle_name or doc.employee_last_name or doc.employee_full_name or doc.employee_preferred_name or doc.employee_gender or doc.employee_date_of_birth or doc.nationality or doc.employee_second_nationality or doc.first_language or doc.employee_second_language %}
+{% set has_contact_and_emergency = doc.employee_professional_email or doc.employee_personal_email or doc.employee_mobile_phone or doc.phone_ext or doc.preferred_contact_email or doc.preferred_email or doc.empl_primary_contact or doc.emergency_contact_person or doc.emergency_contact_relation or doc.emergency_contact_details %}
+{% set has_employment_scope = doc.date_of_joining or status_text or doc.employment_type or doc.designation or doc.department or doc.employee_group or doc.organization or doc.school or doc.reports_to or doc.current_holiday_lis or doc.is_group is not undefined %}
+{% set has_approvals_access = doc.user_id or doc.create_user_permission is not undefined or doc.expense_approver or doc.leave_approver %}
+{% set has_linked_contact_address = contact_name or address_names %}
+{% set has_public_profile = doc.show_on_website is not undefined or doc.show_public_profile_page is not undefined or doc.featured_on_website is not undefined or doc.public_profile_slug or doc.small_bio %}
+{% set has_history = doc.employee_history and doc.employee_history|length %}
+{% set has_exit_offboarding = doc.notice_date or doc.relieving_date or doc.exit_interview_date or doc.exit_interview %}
+
+{% if using_managed_letterhead %}
+{{ letter_head | safe }}
+{% endif %}
+
+<div class="ifitwala-print employee-profile {{ 'employee-profile--with-letterhead' if using_managed_letterhead else 'employee-profile--standalone' }}">
+	{% if not using_managed_letterhead %}
+	<div class="profile-header">
+		<div class="profile-header__main">
+			<div class="eyebrow">Employee Profile</div>
+			<h1>{{ safe_text(full_name) }}</h1>
+			<div class="profile-header__subline">
+				{% if doc.designation %}<span>{{ safe_text(doc.get_formatted('designation') or doc.designation) }}</span>{% endif %}
+				{% if doc.organization %}<span>{{ safe_text(doc.get_formatted('organization') or doc.organization) }}</span>{% endif %}
+				{% if doc.school %}<span>{{ safe_text(doc.get_formatted('school') or doc.school) }}</span>{% endif %}
+			</div>
+			{% if preferred_name and preferred_name != full_name %}
+			<div class="preferred-name">Preferred name: {{ safe_text(preferred_name) }}</div>
+			{% endif %}
+
+			<div class="hero-grid">
+				<div class="hero-item">
+					<div class="hero-label">Record</div>
+					<div class="hero-value">{{ safe_text(doc.name) }}</div>
+				</div>
+				{% if status_text %}
+				<div class="hero-item">
+					<div class="hero-label">Employment Status</div>
+					<div class="hero-value">
+						<span class="status-pill {{ status_text.lower().replace(' ', '-') }}">{{ safe_text(status_text) }}</span>
+					</div>
+				</div>
+				{% endif %}
+				{% if doc.date_of_joining %}
+				<div class="hero-item">
+					<div class="hero-label">Date of Joining</div>
+					<div class="hero-value">{{ safe_text(doc.get_formatted('date_of_joining') or doc.date_of_joining) }}</div>
+				</div>
+				{% endif %}
+				<div class="hero-item">
+					<div class="hero-label">Generated On</div>
+					<div class="hero-value">{{ safe_text(generated_on) }}</div>
+				</div>
+			</div>
+		</div>
+
+		{% if doc.employee_image %}
+		<div class="profile-header__media">
+			<div class="profile-photo" style="width:72px;height:92px;min-width:72px;max-width:72px;min-height:92px;max-height:92px;">
+				<img src="{{ frappe.utils.escape_html(doc.employee_image) }}" alt="{{ frappe.utils.escape_html(full_name) }}" width="72" height="92" style="display:block;width:72px !important;height:92px !important;min-width:72px !important;max-width:72px !important;min-height:92px !important;max-height:92px !important;object-fit:cover;">
+			</div>
+			<div class="profile-photo__caption">Employee Image</div>
+		</div>
+		{% endif %}
+	</div>
+	{% else %}
+	<div class="document-banner">
+		<div class="document-banner__title-block">
+			<div class="document-banner__eyebrow">Employee Record</div>
+			<h1>Employee Profile</h1>
+			<div class="document-banner__subtle">Generated on {{ safe_text(generated_on) }}</div>
+		</div>
+		<div class="document-banner__meta">
+			<div class="document-banner__meta-item">
+				<div class="document-banner__label">Record</div>
+				<div class="document-banner__value">{{ safe_text(doc.name) }}</div>
+			</div>
+			{% if status_text %}
+			<div class="document-banner__meta-item">
+				<div class="document-banner__label">Status</div>
+				<div class="document-banner__value">
+					<span class="status-pill {{ status_text.lower().replace(' ', '-') }}">{{ safe_text(status_text) }}</span>
+				</div>
+			</div>
+			{% endif %}
+			{% if doc.date_of_joining %}
+			<div class="document-banner__meta-item">
+				<div class="document-banner__label">Joined</div>
+				<div class="document-banner__value">{{ safe_text(doc.get_formatted('date_of_joining') or doc.date_of_joining) }}</div>
+			</div>
+			{% endif %}
+		</div>
+	</div>
+
+	<div class="hero-card">
+		<div class="hero-main">
+			<div class="hero-kicker">Employee</div>
+			<h2>{{ safe_text(full_name) }}</h2>
+			{% if preferred_name and preferred_name != full_name %}
+			<div class="preferred-name">Preferred name: {{ safe_text(preferred_name) }}</div>
+			{% endif %}
+			<div class="hero-subtitle">
+				{% if doc.designation %}<span>{{ safe_text(doc.get_formatted('designation') or doc.designation) }}</span>{% endif %}
+				{% if doc.organization %}<span>{{ safe_text(doc.get_formatted('organization') or doc.organization) }}</span>{% endif %}
+				{% if doc.school %}<span>{{ safe_text(doc.get_formatted('school') or doc.school) }}</span>{% endif %}
+			</div>
+
+			<div class="hero-grid">
+				{% if doc.department %}
+				<div class="hero-item">
+					<div class="hero-label">Department</div>
+					<div class="hero-value">{{ safe_text(doc.get_formatted('department') or doc.department) }}</div>
+				</div>
+				{% endif %}
+				{% if doc.employee_group %}
+				<div class="hero-item">
+					<div class="hero-label">Employee Group</div>
+					<div class="hero-value">{{ safe_text(doc.get_formatted('employee_group') or doc.employee_group) }}</div>
+				</div>
+				{% endif %}
+				{% if doc.reports_to %}
+				<div class="hero-item">
+					<div class="hero-label">Reports To</div>
+					<div class="hero-value">{{ safe_text(doc.get_formatted('reports_to') or doc.reports_to) }}</div>
+				</div>
+				{% endif %}
+				{% if status_text %}
+				<div class="hero-item">
+					<div class="hero-label">Status</div>
+					<div class="hero-value">
+						<span class="status-pill {{ status_text.lower().replace(' ', '-') }}">{{ safe_text(status_text) }}</span>
+					</div>
+				</div>
+				{% endif %}
+			</div>
+		</div>
+		{% if doc.employee_image %}
+		<div class="hero-image">
+			<div class="hero-image__frame" style="width:72px;height:92px;min-width:72px;max-width:72px;min-height:92px;max-height:92px;">
+				<img src="{{ frappe.utils.escape_html(doc.employee_image) }}" alt="{{ frappe.utils.escape_html(full_name) }}" width="72" height="92" style="display:block;width:72px !important;height:92px !important;min-width:72px !important;max-width:72px !important;min-height:92px !important;max-height:92px !important;object-fit:cover;">
+			</div>
+		</div>
+		{% endif %}
+	</div>
+	{% endif %}
+
+	<div class="section-grid">
+		{% if has_personal_identity %}
+		<div class="section-card">
+			<div class="section-title">Personal Identity</div>
+			<div class="info-table">
+				{{ info_row("Salutation", doc.get_formatted('employee_salutation') or doc.employee_salutation) }}
+				{{ info_row("First Name", doc.employee_first_name) }}
+				{{ info_row("Middle Name", doc.employee_middle_name) }}
+				{{ info_row("Last Name", doc.employee_last_name) }}
+				{{ info_row("Full Name", doc.employee_full_name) }}
+				{{ info_row("Preferred Name", doc.employee_preferred_name) }}
+				{{ info_row("Gender", doc.get_formatted('employee_gender') or doc.employee_gender) }}
+				{{ info_row("Date of Birth", doc.get_formatted('employee_date_of_birth') or doc.employee_date_of_birth) }}
+				{{ info_row("Nationality", doc.get_formatted('nationality') or doc.nationality) }}
+				{{ info_row("Second Nationality", doc.get_formatted('employee_second_nationality') or doc.employee_second_nationality) }}
+				{{ info_row("First Language", doc.get_formatted('first_language') or doc.first_language) }}
+				{{ info_row("Second Language", doc.get_formatted('employee_second_language') or doc.employee_second_language) }}
+			</div>
+		</div>
+		{% endif %}
+
+		{% if has_contact_and_emergency %}
+		<div class="section-card">
+			<div class="section-title">Contact and Emergency</div>
+			<div class="info-table">
+				{{ info_row("Professional Email", doc.get_formatted('employee_professional_email') or doc.employee_professional_email) }}
+				{{ info_row("Personal Email", doc.get_formatted('employee_personal_email') or doc.employee_personal_email) }}
+				{{ info_row("Mobile Phone", doc.get_formatted('employee_mobile_phone') or doc.employee_mobile_phone) }}
+				{{ info_row("Phone Extension", doc.phone_ext) }}
+				{{ info_row("Preferred Contact Email", doc.get_formatted('preferred_contact_email') or doc.preferred_contact_email) }}
+				{{ info_row("Preferred Email", doc.preferred_email) }}
+				{{ info_row("Primary Contact", doc.get_formatted('empl_primary_contact') or doc.empl_primary_contact) }}
+				{{ info_row("Emergency Contact Name", doc.emergency_contact_person) }}
+				{{ info_row("Emergency Contact Relation", doc.emergency_contact_relation) }}
+				{{ multiline_row("Emergency Contact Details", doc.emergency_contact_details) }}
+			</div>
+		</div>
+		{% endif %}
+	</div>
+
+	<div class="section-grid">
+		{% if has_employment_scope %}
+		<div class="section-card">
+			<div class="section-title">Employment and Scope</div>
+			<div class="info-table">
+				{{ info_row("Date of Joining", doc.get_formatted('date_of_joining') or doc.date_of_joining) }}
+				{{ info_row("Employment Status", doc.get_formatted('employment_status') or doc.employment_status) }}
+				{{ info_row("Employment Type", doc.get_formatted('employment_type') or doc.employment_type) }}
+				{{ info_row("Designation", doc.get_formatted('designation') or doc.designation) }}
+				{{ info_row("Department", doc.get_formatted('department') or doc.department) }}
+				{{ info_row("Employee Group", doc.get_formatted('employee_group') or doc.employee_group) }}
+				{{ info_row("Organization", doc.get_formatted('organization') or doc.organization) }}
+				{{ info_row("School", doc.get_formatted('school') or doc.school) }}
+				{{ info_row("Reports To", doc.get_formatted('reports_to') or doc.reports_to) }}
+				{{ info_row("Current Holiday List", doc.get_formatted('current_holiday_lis') or doc.current_holiday_lis) }}
+				{{ boolean_row("Is Group", doc.is_group) }}
+			</div>
+		</div>
+		{% endif %}
+
+		{% if has_approvals_access %}
+		<div class="section-card">
+			<div class="section-title">Approvals and Access</div>
+			<div class="info-table">
+				{{ info_row("User ID", doc.get_formatted('user_id') or doc.user_id) }}
+				{{ boolean_row("Create User Permission", doc.create_user_permission) }}
+				{{ info_row("Expense Approver", doc.get_formatted('expense_approver') or doc.expense_approver) }}
+				{{ info_row("Leave Approver", doc.get_formatted('leave_approver') or doc.leave_approver) }}
+			</div>
+		</div>
+		{% endif %}
+	</div>
+
+	{% if has_linked_contact_address %}
+	<div class="section-card wide-card crm-card">
+		<div class="section-title">Linked Contact and Address</div>
+		<div class="crm-grid">
+			{% if contact_name %}
+			<div class="crm-panel">
+				<div class="crm-panel__eyebrow">Linked Contact</div>
+				<div class="crm-panel__title">{{ safe_text(contact_full_name or contact_name) }}</div>
+				{% if contact_name and contact_full_name and contact_full_name != contact_name %}
+				<div class="crm-panel__subtle">{{ safe_text(contact_name) }}</div>
+				{% endif %}
+				<div class="contact-list">
+					{% for row in contact_email_rows %}
+						{% set email_text = ((row.email_id or "") | string).strip() %}
+						{% if email_text %}
+						<div class="contact-chip">
+							<span class="contact-chip__label">{{ "Primary Email" if row.is_primary else "Email" }}</span>
+							<span class="contact-chip__value">{{ safe_text(row.email_id) }}</span>
+						</div>
+						{% endif %}
+					{% endfor %}
+					{% for row in contact_phone_rows %}
+						{% set phone_text = ((row.phone or "") | string).strip() %}
+						{% if phone_text %}
+						<div class="contact-chip">
+							<span class="contact-chip__label">{{ "Primary Phone" if row.is_primary_mobile_no else "Phone" }}</span>
+							<span class="contact-chip__value">{{ safe_text(row.phone) }}</span>
+						</div>
+						{% endif %}
+					{% endfor %}
+				</div>
+			</div>
+			{% endif %}
+
+			{% if address_names %}
+			<div class="crm-panel">
+				<div class="crm-panel__eyebrow">Linked Address{% if address_names|length > 1 %}es{% endif %}</div>
+				<div class="address-stack">
+					{% for address_name in address_names %}
+					{% set address = address_map.get(address_name) %}
+					{% if address %}
+					{% set address_title = ((address.address_title or address.name or "") | string).strip() %}
+					{% set address_city_line = (((address.city or "") ~ (", " if address.city and address.state else "") ~ (address.state or "") ~ (" " if (address.city or address.state) and address.pincode else "") ~ (address.pincode or "")).strip()) %}
+					<div class="address-card">
+						{% if address_title %}
+						<div class="address-card__title">{{ safe_text(address_title) }}</div>
+						{% endif %}
+						{% if address.address_type %}
+						<div class="address-card__meta">{{ safe_text(address.address_type) }}</div>
+						{% endif %}
+						<div class="address-lines">
+							{% if address.address_line1 %}<div>{{ safe_text(address.address_line1) }}</div>{% endif %}
+							{% if address.address_line2 %}<div>{{ safe_text(address.address_line2) }}</div>{% endif %}
+							{% if address_city_line %}<div>{{ safe_text(address_city_line) }}</div>{% endif %}
+							{% if address.country %}<div>{{ safe_text(address.country) }}</div>{% endif %}
+						</div>
+					</div>
+					{% endif %}
+					{% endfor %}
+				</div>
+			</div>
+			{% endif %}
+		</div>
+	</div>
+	{% endif %}
+
+	{% if has_public_profile %}
+	<div class="section-card wide-card">
+		<div class="section-title">Website and Public Profile</div>
+		<div class="info-table">
+			{{ boolean_row("Show on Website", doc.show_on_website) }}
+			{{ boolean_row("Enable Public Profile Page", doc.show_public_profile_page) }}
+			{{ boolean_row("Featured on Website", doc.featured_on_website) }}
+			{{ info_row("Public Profile Slug", doc.public_profile_slug) }}
+			{{ multiline_row("Web Bio", doc.small_bio) }}
+		</div>
+	</div>
+	{% endif %}
+
+	{% if has_history %}
+	<div class="section-card wide-card">
+		<div class="section-title">Internal Work History</div>
+		<div class="history-stack">
+			{% for row in doc.employee_history %}
+			{% set history_title = ((row.designation or "") | string).strip() %}
+			{% set history_organization = ((row.organization or "") | string).strip() %}
+			{% set history_school = ((row.school or "") | string).strip() %}
+			{% set history_priority = (row.priority | string).strip() if row.priority is not none else "" %}
+			{% set history_fields = namespace(items=[]) %}
+			{% if row.from_date %}{% set _ = history_fields.items.append(("From Date", frappe.utils.formatdate(row.from_date))) %}{% endif %}
+			{% if row.to_date %}{% set _ = history_fields.items.append(("To Date", frappe.utils.formatdate(row.to_date))) %}{% endif %}
+			{% if row.is_current %}{% set _ = history_fields.items.append(("Is Current", "Yes")) %}{% endif %}
+			{% if row.access_mode %}{% set _ = history_fields.items.append(("Access Mode", row.access_mode)) %}{% endif %}
+			{% if row.role_profile %}{% set _ = history_fields.items.append(("Role Profile", row.role_profile)) %}{% endif %}
+			{% if row.workspace_override %}{% set _ = history_fields.items.append(("Workspace Override", row.workspace_override)) %}{% endif %}
+			{% if history_priority %}{% set _ = history_fields.items.append(("Priority", history_priority)) %}{% endif %}
+			{% set history_note = ((row.note or "") | string).strip() %}
+			{% if history_title or history_organization or history_school or history_fields.items or history_note %}
+			<div class="history-entry">
+				{% if history_title or history_organization or history_school %}
+				<div class="history-entry__heading">
+					{% if history_title %}
+					<div class="history-entry__title">{{ safe_text(history_title) }}</div>
+					{% endif %}
+					{% if history_organization or history_school %}
+					<div class="history-entry__subtitle">
+						{% if history_organization %}<span>{{ safe_text(history_organization) }}</span>{% endif %}
+						{% if history_school %}<span>{{ safe_text(history_school) }}</span>{% endif %}
+					</div>
+					{% endif %}
+				</div>
+				{% endif %}
+
+				{% if history_fields.items %}
+				<table class="history-detail-table">
+					<tbody>
+					{% for group in history_fields.items|batch(3, None) %}
+					<tr>
+						{% for item in group %}
+						<td class="history-detail-cell">
+							{% if item %}
+							<div class="history-entry__label">{{ item[0] }}</div>
+							<div class="history-entry__value">{{ safe_text(item[1]) }}</div>
+							{% endif %}
+						</td>
+						{% endfor %}
+					</tr>
+					{% endfor %}
+					</tbody>
+				</table>
+				{% endif %}
+
+				{% if history_note %}
+				<div class="history-entry__note">
+					<div class="history-entry__label">Note</div>
+					<div class="history-entry__value">{{ frappe.utils.escape_html(history_note).replace('\n', '<br>') | safe }}</div>
+				</div>
+				{% endif %}
+			</div>
+			{% endif %}
+			{% endfor %}
+		</div>
+	</div>
+	{% endif %}
+
+	{% if has_exit_offboarding %}
+	<div class="section-card wide-card exit-card">
+		<div class="section-title">Exit and Offboarding</div>
+		<div class="info-table">
+			{{ info_row("Notice Date", doc.get_formatted('notice_date') or doc.notice_date) }}
+			{{ info_row("Relieving Date", doc.get_formatted('relieving_date') or doc.relieving_date) }}
+			{{ info_row("Exit Interview Date", doc.get_formatted('exit_interview_date') or doc.exit_interview_date) }}
+			{{ multiline_row("Exit Interview", doc.exit_interview) }}
+		</div>
+	</div>
+	{% endif %}
+</div>
+
+{% if using_managed_letterhead and ((footer or "") | string).strip() %}
+{{ footer | safe }}
+{% endif %}

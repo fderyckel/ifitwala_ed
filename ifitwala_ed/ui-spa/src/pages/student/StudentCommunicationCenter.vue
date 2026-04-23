@@ -12,16 +12,30 @@
 					</p>
 				</div>
 				<div class="flex items-center gap-2">
-					<RouterLink v-if="courseBackTo" :to="courseBackTo" class="if-action">
+					<RouterLink
+						v-if="courseBackTo"
+						:to="courseBackTo"
+						class="if-button if-button--secondary"
+					>
 						Back to course
 					</RouterLink>
-					<button v-if="hasCourseScope" type="button" class="if-action" @click="clearCourseScope">
+					<button
+						v-if="hasCourseScope"
+						type="button"
+						class="if-button if-button--secondary"
+						@click="clearCourseScope"
+					>
 						All communications
 					</button>
-					<RouterLink v-else :to="{ name: 'student-home' }" class="if-action">
+					<RouterLink v-else :to="{ name: 'student-home' }" class="if-button if-button--secondary">
 						Back to Home
 					</RouterLink>
-					<button type="button" class="if-action" :disabled="loading" @click="refreshFeed">
+					<button
+						type="button"
+						class="if-button if-button--quiet"
+						:disabled="loading"
+						@click="refreshFeed"
+					>
 						Refresh
 					</button>
 				</div>
@@ -35,17 +49,13 @@
 					<p class="mt-1 type-body-strong text-ink">{{ scopedContextLabel }}</p>
 					<p class="mt-1 type-caption text-ink/70">Most recent messages appear first.</p>
 				</div>
-				<div v-else class="flex flex-wrap gap-2">
+				<div v-else class="if-segmented flex-wrap">
 					<button
 						v-for="option in sourceOptions"
 						:key="option.value"
 						type="button"
-						class="rounded-full border px-4 py-2 text-sm font-semibold transition"
-						:class="
-							activeSource === option.value
-								? 'border-jacaranda bg-jacaranda/10 text-jacaranda'
-								: 'border-line-soft bg-white text-ink/70 hover:border-jacaranda/30 hover:text-ink'
-						"
+						class="if-segmented__item"
+						:class="{ 'if-segmented__item--active': activeSource === option.value }"
 						@click="selectSource(option.value)"
 					>
 						{{ option.label }}
@@ -54,6 +64,7 @@
 
 				<div class="flex flex-wrap gap-2">
 					<span class="chip">Total {{ totalCount }}</span>
+					<span class="chip">Unread {{ unreadCount }}</span>
 					<span v-for="chip in summaryChips" :key="chip.label" class="chip">
 						{{ chip.label }} {{ chip.count }}
 					</span>
@@ -101,6 +112,12 @@
 								<p class="type-caption text-ink/60">{{ item.source_label }}</p>
 								<span class="chip">{{ item.org_communication.communication_type }}</span>
 								<span class="chip">{{ item.org_communication.priority }}</span>
+								<span
+									class="rounded-full px-3 py-1 text-xs font-semibold"
+									:class="item.is_unread ? 'bg-flame/15 text-flame' : 'bg-leaf/15 text-canopy'"
+								>
+									{{ item.is_unread ? 'Unread' : 'Seen' }}
+								</span>
 							</div>
 							<h2 class="mt-2 type-h3 text-ink">{{ item.org_communication.title }}</h2>
 							<p class="mt-2 type-caption text-ink/60">{{ metaLine(item) }}</p>
@@ -161,19 +178,11 @@
 								class="mt-5 space-y-2"
 							>
 								<p class="type-body-strong text-ink">Attachments</p>
-								<div class="flex flex-wrap gap-2">
-									<a
-										v-for="attachment in communicationDetail(item.org_communication.name)
-											?.attachments || []"
-										:key="attachment.row_name"
-										:href="attachment.open_url"
-										target="_blank"
-										rel="noreferrer"
-										class="inline-flex items-center rounded-full border border-line-soft bg-white px-3 py-1 text-xs font-medium text-ink transition hover:border-jacaranda/40 hover:bg-jacaranda/5"
-									>
-										{{ attachment.title || attachment.file_name || attachment.row_name }}
-									</a>
-								</div>
+								<CommunicationAttachmentPreviewList
+									:attachments="
+										communicationDetail(item.org_communication.name)?.attachments || []
+									"
+								/>
 							</div>
 						</div>
 					</div>
@@ -203,7 +212,12 @@
 			</article>
 
 			<div v-if="hasMore" class="flex justify-center">
-				<button type="button" class="if-action" :disabled="loadingMore" @click="loadMore">
+				<button
+					type="button"
+					class="if-button if-button--secondary"
+					:disabled="loadingMore"
+					@click="loadMore"
+				>
 					{{ loadingMore ? 'Loading…' : 'Load more' }}
 				</button>
 			</div>
@@ -228,6 +242,7 @@
 		<SchoolEventModal
 			:open="schoolEventOpen"
 			:event="selectedSchoolEvent"
+			:allow-reference-link="false"
 			@close="closeSchoolEvent"
 			@after-leave="resetSchoolEvent"
 		/>
@@ -242,6 +257,7 @@ import { RouterLink, useRoute, useRouter } from 'vue-router';
 import SchoolEventModal from '@/components/calendar/SchoolEventModal.vue';
 import type { SchoolEventDetails } from '@/components/calendar/schoolEventTypes';
 import CommentThreadDrawer from '@/components/CommentThreadDrawer.vue';
+import CommunicationAttachmentPreviewList from '@/components/communication/CommunicationAttachmentPreviewList.vue';
 import InteractionEmojiChips from '@/components/InteractionEmojiChips.vue';
 import { formatLocalizedDateTime } from '@/lib/datetime';
 import { createCommunicationInteractionService } from '@/lib/services/communicationInteraction/communicationInteractionService';
@@ -283,6 +299,7 @@ const sourceOptions: Array<{ value: SourceFilter; label: string }> = [
 
 const items = ref<StudentCommunicationCenterItem[]>([]);
 const totalCount = ref(0);
+const unreadCount = ref(0);
 const hasMore = ref(false);
 const loading = ref(false);
 const loadingMore = ref(false);
@@ -294,6 +311,7 @@ const summaryMap = ref<InteractionSummaryMap>({});
 const detailMap = ref<Record<string, OrgCommunicationDetailResponse | null>>({});
 const detailLoading = ref<Record<string, boolean>>({});
 const detailError = ref<Record<string, string>>({});
+const readMarking = ref<Record<string, boolean>>({});
 const threadOpen = ref(false);
 const threadLoading = ref(false);
 const commentSubmitting = ref(false);
@@ -497,6 +515,7 @@ async function loadFeed(reset = true) {
 		});
 		summaryCounts.value = response.summary.source_counts || {};
 		totalCount.value = response.total_count || 0;
+		unreadCount.value = response.summary.unread_items || 0;
 		hasMore.value = Boolean(response.has_more);
 		items.value = reset ? response.items || [] : [...items.value, ...(response.items || [])];
 		await loadSummaries();
@@ -556,6 +575,24 @@ async function loadCommunicationDetail(name: string) {
 	}
 }
 
+async function markCommunicationRead(item: StudentOrgCommunicationCenterItem) {
+	const commName = item.org_communication.name;
+	if (!item.is_unread || readMarking.value[commName]) {
+		return;
+	}
+	readMarking.value[commName] = true;
+	try {
+		await interactionService.markOrgCommunicationRead({ org_communication: commName });
+		item.is_unread = false;
+		unreadCount.value = Math.max(0, unreadCount.value - 1);
+	} catch (error) {
+		const message = error instanceof Error ? error.message : String(error || '');
+		toast.error(message || 'Could not mark this update as read.');
+	} finally {
+		readMarking.value[commName] = false;
+	}
+}
+
 async function toggleOrgCommunication(item: StudentOrgCommunicationCenterItem) {
 	actionError.value = '';
 	if (expandedItemId.value === item.item_id) {
@@ -564,6 +601,7 @@ async function toggleOrgCommunication(item: StudentOrgCommunicationCenterItem) {
 	}
 	expandedItemId.value = item.item_id;
 	await loadCommunicationDetail(item.org_communication.name);
+	await markCommunicationRead(item);
 }
 
 async function reactToCommunication(

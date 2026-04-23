@@ -16,6 +16,9 @@ def _student_portfolio_module():
     student_log_dashboard_api = ModuleType("ifitwala_ed.api.student_log_dashboard")
     student_log_dashboard_api.get_authorized_schools = lambda user: ["SCH-1"]
 
+    drive_authority_api = ModuleType("ifitwala_ed.integrations.drive.authority")
+    drive_authority_api.get_drive_file_for_file = lambda *args, **kwargs: None
+
     school_tree_api = ModuleType("ifitwala_ed.utilities.school_tree")
     school_tree_api.get_school_lineage = lambda school: [school]
 
@@ -32,16 +35,153 @@ def _student_portfolio_module():
             "frappe.utils": frappe_utils,
             "ifitwala_ed.api.file_access": file_access_api,
             "ifitwala_ed.api.student_log_dashboard": student_log_dashboard_api,
+            "ifitwala_ed.integrations.drive.authority": drive_authority_api,
             "ifitwala_ed.utilities.school_tree": school_tree_api,
         }
     ) as frappe:
         frappe.db.get_value = lambda *args, **kwargs: None
         frappe.db.count = lambda *args, **kwargs: 0
         frappe.get_all = lambda *args, **kwargs: []
+        frappe.request = None
         yield import_fresh("ifitwala_ed.api.student_portfolio")
 
 
 class TestStudentPortfolioApi(TestCase):
+    def test_add_portfolio_item_rejects_ungoverned_external_artefact(self):
+        class _PortfolioDoc:
+            name = "PORT-1"
+            student = "STU-1"
+            academic_year = "2026-2027"
+            school = "SCH-1"
+
+            def append(self, fieldname, payload):
+                raise AssertionError("invalid artefact must not be appended")
+
+            def save(self, ignore_permissions=True):
+                raise AssertionError("invalid artefact must not be saved")
+
+        with _student_portfolio_module() as module:
+            module._ensure_can_write_student = lambda student: {"role": "Student", "students": [student]}
+            module._get_or_create_portfolio = lambda student, academic_year, school: "PORT-1"
+            module.get_drive_file_for_file = lambda *args, **kwargs: None
+            module.frappe.get_doc = lambda doctype, name=None: _PortfolioDoc()
+
+            with self.assertRaises(module.frappe.ValidationError):
+                module.add_portfolio_item(
+                    {
+                        "student": "STU-1",
+                        "academic_year": "2026-2027",
+                        "school": "SCH-1",
+                        "item_type": "External Artefact",
+                        "artefact_file": "FILE-ARTEFACT-1",
+                    }
+                )
+
+    def test_add_portfolio_item_accepts_governed_external_artefact(self):
+        appended = {}
+
+        class _PortfolioDoc:
+            name = "PORT-1"
+            student = "STU-1"
+            academic_year = "2026-2027"
+            school = "SCH-1"
+
+            def append(self, fieldname, payload):
+                appended["fieldname"] = fieldname
+                appended["payload"] = payload
+                return SimpleNamespace(name="ITEM-1", moderation_state=payload.get("moderation_state"))
+
+            def save(self, ignore_permissions=True):
+                appended["saved"] = True
+
+        with _student_portfolio_module() as module:
+            module._ensure_can_write_student = lambda student: {"role": "Student", "students": [student]}
+            module._get_or_create_portfolio = lambda student, academic_year, school: "PORT-1"
+            module.get_drive_file_for_file = lambda file_name, **kwargs: {
+                "file": file_name,
+                "primary_subject_type": "Student",
+                "primary_subject_id": "STU-1",
+                "purpose": "portfolio_evidence",
+                "slot": "portfolio_artefact",
+                "school": "SCH-1",
+            }
+            module.frappe.get_doc = lambda doctype, name=None: _PortfolioDoc()
+
+            payload = module.add_portfolio_item(
+                {
+                    "student": "STU-1",
+                    "academic_year": "2026-2027",
+                    "school": "SCH-1",
+                    "item_type": "External Artefact",
+                    "artefact_file": "FILE-ARTEFACT-1",
+                }
+            )
+
+        self.assertEqual(payload["portfolio"], "PORT-1")
+        self.assertEqual(appended["fieldname"], "items")
+        self.assertEqual(appended["payload"]["artefact_file"], "FILE-ARTEFACT-1")
+        self.assertTrue(appended["saved"])
+
+    def test_resolve_portfolio_share_context_omits_invalid_external_artefact_download(self):
+        portfolio_doc = SimpleNamespace(
+            name="PORT-1",
+            title="Student Portfolio",
+            showcase_title="",
+            showcase_subtitle="",
+            student="STU-1",
+            academic_year="2026-2027",
+            school="SCH-1",
+            items=[
+                SimpleNamespace(
+                    name="ITEM-1",
+                    item_type="External Artefact",
+                    caption="Showcase artefact",
+                    reflection_summary="",
+                    evidence_date="2026-04-07",
+                    task_submission="",
+                    student_reflection_entry="",
+                    artefact_file="FILE-LEGACY-1",
+                    is_showcase=1,
+                    moderation_state="Approved",
+                )
+            ],
+        )
+
+        with _student_portfolio_module() as module:
+            module._token_hash = lambda token: "hashed-token"
+
+            def fake_get_value(doctype, filters=None, fieldname=None, as_dict=False):
+                if doctype == "Portfolio Share Link":
+                    return {
+                        "name": "SHARE-1",
+                        "portfolio": "PORT-1",
+                        "expires_on": "2026-04-08",
+                        "revoked": 0,
+                        "allow_download": 1,
+                        "allowed_viewer_email": "",
+                    }
+                if doctype == "Student":
+                    return {
+                        "name": "STU-1",
+                        "student_full_name": "Student One",
+                        "student_preferred_name": "Stu",
+                    }
+                return None
+
+            module.frappe.db.get_value = fake_get_value
+            module.frappe.db.set_value = lambda *args, **kwargs: None
+            module.frappe.get_doc = lambda doctype, name=None: portfolio_doc
+            module.frappe.get_all = lambda doctype, filters=None, fields=None, order_by=None, limit=None: (
+                [{"name": "FILE-LEGACY-1", "file_name": "legacy.pdf", "file_size": 128}] if doctype == "File" else []
+            )
+
+            payload = module.resolve_portfolio_share_context(token="share-token")
+
+        item = (payload.get("portfolio") or {}).get("items") or [{}]
+        self.assertIsNone(item[0].get("artefact_file"))
+        self.assertIsNone(item[0].get("artefact_file_url"))
+        self.assertIsNone(item[0].get("artefact_file_name"))
+
     def test_create_reflection_entry_infers_student_for_student_actor(self):
         captured: dict[str, object] = {}
 

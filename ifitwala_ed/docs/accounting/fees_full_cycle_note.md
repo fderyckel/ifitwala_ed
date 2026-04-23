@@ -270,6 +270,11 @@ The follow-up layer now combines reports with dedicated Desk workflow objects.
 - `Dunning Notice`: groups overdue invoices into a collection notice
 - `Statement Of Accounts Run`: creates a finance work queue for statement processing
 
+Current school-filter semantics for these reports are intentionally split:
+
+- `Student Attribution` expands a selected parent school to its descendant branch because the rows are invoice-line attribution rows.
+- `Aged Receivables` still uses an exact-match invoice-line school check while the team decides whether the report should remain invoice-level or become line-aware.
+
 ### 6.2 What finance can do with those tools
 
 - identify overdue invoices by account holder

@@ -31,6 +31,7 @@ export type StudentOrgCommunicationCenterItem = {
 	context_label?: string | null
 	href?: RouteTarget | null
 	href_label?: string | null
+	is_unread: boolean
 	org_communication: OrgCommunicationListItem
 }
 

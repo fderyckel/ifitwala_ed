@@ -7,7 +7,11 @@ import frappe
 from frappe import _
 from frappe.utils import add_days, getdate, strip_html, today
 
-from ifitwala_ed.api.org_comm_utils import build_audience_summary, check_audience_match
+from ifitwala_ed.api.org_comm_utils import (
+    build_audience_summary,
+    check_audience_match,
+    expand_employee_visibility_context,
+)
 from ifitwala_ed.api.org_communication_attachments import serialize_org_communication_attachment_row
 from ifitwala_ed.utilities.employee_utils import (
     get_ancestor_organizations,
@@ -110,6 +114,18 @@ def _get_scope(user: str, employee: dict | None):
     return base_org, base_school, org_scope, school_scope
 
 
+def _get_linked_employee(user: str) -> dict:
+    return (
+        frappe.db.get_value(
+            "Employee",
+            {"user_id": user},
+            ["name", "school", "organization"],
+            as_dict=True,
+        )
+        or {}
+    )
+
+
 def _get_archive_employee_context(user: str, roles: list[str]):
     """Return archive visibility context plus base org/school scopes.
 
@@ -117,12 +133,7 @@ def _get_archive_employee_context(user: str, roles: list[str]):
     - with Employee.school: school cone only
     - without Employee.school: organization descendant fallback
     """
-    employee = frappe.db.get_value(
-        "Employee",
-        {"user_id": user},
-        ["name", "school", "organization"],
-        as_dict=True,
-    )
+    employee = _get_linked_employee(user)
 
     base_org, base_school, org_scope, school_scope = _get_scope(user, employee)
 
@@ -136,6 +147,13 @@ def _get_archive_employee_context(user: str, roles: list[str]):
             archive_employee["school_names"] = school_names
 
     return archive_employee, base_org, base_school, org_scope, school_scope
+
+
+def _get_item_employee_context(user: str, roles: list[str]) -> dict:
+    employee = _get_linked_employee(user)
+    if not employee:
+        return {}
+    return expand_employee_visibility_context(employee, roles)
 
 
 def _get_archive_organization_scope(*, base_org: str | None, org_scope: list[str] | None) -> list[str]:
@@ -330,7 +348,7 @@ def get_org_communication_item(name=None):
 
     # Keep detail visibility aligned with the feed endpoint or users can see a
     # row in the archive list but lose the full body in the detail pane.
-    employee, _base_org, _base_school, _org_scope, _school_scope = _get_archive_employee_context(user, roles)
+    employee = _get_item_employee_context(user, roles)
 
     # NOTE: check_audience_match MUST be updated to use Team Member doctype
     # and not Employee.department. (This is the real underlying bug.)
@@ -364,49 +382,12 @@ def get_org_communication_feed(
     filters: dict | None = None,
     start: int | None = None,
     page_length: int | None = None,
-    limit_start: int = 0,
-    limit: int = 30,
-    # Legacy params (kept to avoid breaking older callers)
-    search_text: str | None = None,
-    status: str | None = None,
-    priority: str | None = None,
-    portal_surface: str | None = None,
-    communication_type: str | None = None,
-    date_range: str | None = None,
-    team: str | None = None,
-    student_group: str | None = None,
-    school: str | None = None,
-    organization: str | None = None,
-    activity_program_offering: str | None = None,
-    activity_student_group: str | None = None,
-    activity_booking: str | None = None,
-    only_with_interactions: int | None = None,
 ) -> dict:
     user = frappe.session.user
     roles = frappe.get_roles(user)
     employee, base_org, base_school, org_scope, school_scope = _get_archive_employee_context(user, roles)
 
-    # Merge legacy params into filters before normalization
     raw_filters = _parse_filters(filters)
-    legacy_overrides = {
-        "search_text": search_text,
-        "status": status,
-        "priority": priority,
-        "portal_surface": portal_surface,
-        "communication_type": communication_type,
-        "date_range": date_range,
-        "team": team,
-        "student_group": student_group,
-        "school": school,
-        "organization": organization,
-        "activity_program_offering": activity_program_offering,
-        "activity_student_group": activity_student_group,
-        "activity_booking": activity_booking,
-        "only_with_interactions": only_with_interactions,
-    }
-    for key, value in legacy_overrides.items():
-        if value is not None and key not in raw_filters:
-            raw_filters[key] = value
 
     filters_dict = _normalize_filters(raw_filters)
 
@@ -437,9 +418,8 @@ def get_org_communication_feed(
     filters_dict["team"] = filter_team_val
     filters_dict["school"] = filter_school_val
 
-    # Pagination params (start/page_length preferred over legacy limit_start/page_length)
-    offset = int(start if start is not None else limit_start or 0)
-    page_len = int(page_length if page_length is not None else limit or 30)
+    offset = int(start or 0)
+    page_len = int(page_length or 30)
 
     # Org guard
     org_guard: set[str] = set()
@@ -687,8 +667,6 @@ def get_org_communication_feed(
     return {
         "items": paged_items,
         "total_count": total_count,
-        "limit_start": offset,
-        "limit": page_len,
         "start": offset,
         "page_length": page_len,
         "has_more": (offset + page_len) < total_count,

@@ -23,7 +23,7 @@
   width: 100%;
   border-bottom: 1px solid #d7dde3;
   background: linear-gradient(135deg, rgba(238, 245, 247, 0.72), #ffffff 42%);
-  padding: 0 0 14px;
+  padding: 2px 0 16px;
 }
 
 .ifitwala-letterhead__mark,
@@ -46,23 +46,16 @@
   border-radius: 16px;
   background: #ffffff;
   padding: 8px;
-}
-
-.ifitwala-letterhead__eyebrow {
-  color: #667085;
-  font-size: 8.75px;
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  box-shadow: 0 10px 18px rgba(23, 33, 43, 0.05);
 }
 
 .ifitwala-letterhead__name {
-  margin-top: 3px;
   color: #0f1720;
   font-family: Baskerville, Georgia, serif;
-  font-size: 23px;
+  font-size: 24px;
   font-weight: 600;
   line-height: 1.14;
+  letter-spacing: 0.01em;
 }
 
 .ifitwala-letterhead__secondary,
@@ -73,12 +66,26 @@
 }
 
 .ifitwala-letterhead__secondary {
-  margin-top: 4px;
+  margin-top: 5px;
+  font-size: 9.75px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
 }
 
 .ifitwala-letterhead__tagline {
-  margin-top: 3px;
+  margin-top: 4px;
   letter-spacing: 0.01em;
+  max-width: 78%;
+}
+
+.ifitwala-letterhead__tagline::before {
+  content: "";
+  display: inline-block;
+  width: 26px;
+  height: 1px;
+  margin: 0 10px 3px 0;
+  background: linear-gradient(90deg, rgba(32, 74, 93, 0.7), rgba(32, 74, 93, 0.1));
 }
 
 @media print {
@@ -87,6 +94,6 @@
   }
 
   .ifitwala-letterhead__panel {
-    padding-bottom: 12px;
+    padding-bottom: 14px;
   }
 }

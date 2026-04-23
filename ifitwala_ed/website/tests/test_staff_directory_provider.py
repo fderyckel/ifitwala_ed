@@ -47,7 +47,7 @@ class TestStaffDirectoryProvider(FrappeTestCase):
         )
 
         with patch(
-            "ifitwala_ed.website.public_people.build_employee_image_variants",
+            "ifitwala_ed.website.public_people.build_public_employee_image_variants",
             return_value={"original": None, "card": None, "medium": None, "thumb": None},
         ):
             payload = provider.get_context(
@@ -103,7 +103,7 @@ class TestStaffDirectoryProvider(FrappeTestCase):
         )
 
         with patch(
-            "ifitwala_ed.website.public_people.build_employee_image_variants",
+            "ifitwala_ed.website.public_people.build_public_employee_image_variants",
             return_value={"original": None, "card": None, "medium": None, "thumb": None},
         ):
             payload = provider.get_context(

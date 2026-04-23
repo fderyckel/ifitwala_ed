@@ -35,8 +35,15 @@ vi.mock('vue-router', () => ({
 	RouterLink: defineComponent({
 		name: 'RouterLinkStub',
 		props: ['to'],
-		setup(_props, { slots }) {
-			return () => h('a', {}, slots.default?.());
+		setup(props, { slots }) {
+			return () =>
+				h(
+					'a',
+					{
+						'data-router-to': JSON.stringify(props.to ?? null),
+					},
+					slots.default?.()
+				);
 		},
 	}),
 }));
@@ -153,5 +160,39 @@ describe('Class Hub overlay close reason contract', () => {
 		await flushUi();
 
 		expect(closeMock).toHaveBeenCalledWith('esc');
+	});
+
+	it('routes task review to gradebook with prefilled class context', async () => {
+		mountOverlay(TaskReviewOverlay, {
+			title: 'Exit ticket review',
+			gradebookQuery: {
+				student_group: 'SG-001',
+				task: 'TD-001',
+				school: 'SCH-001',
+				academic_year: '2025-2026',
+				program: 'IIS',
+				course: 'Math 1',
+			},
+		});
+		await flushUi();
+
+		const link = Array.from(document.querySelectorAll('a')).find(anchor =>
+			(anchor.textContent || '').includes('Go to gradebook')
+		) as HTMLAnchorElement | undefined;
+
+		expect(link).toBeDefined();
+		expect(link?.dataset.routerTo).toBe(
+			JSON.stringify({
+				name: 'staff-gradebook',
+				query: {
+					student_group: 'SG-001',
+					task: 'TD-001',
+					school: 'SCH-001',
+					academic_year: '2025-2026',
+					program: 'IIS',
+					course: 'Math 1',
+				},
+			})
+		);
 	});
 });

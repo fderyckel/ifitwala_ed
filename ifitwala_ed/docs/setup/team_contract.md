@@ -75,25 +75,28 @@ Rules:
 
 ## 4. SPA Quick-Create Integration
 
-Status: Partial
+Status: Implemented
 
 Code refs:
 - `ifitwala_ed/ui-spa/src/overlays/calendar/EventQuickCreateOverlay.vue`
 - `ifitwala_ed/ui-spa/src/pages/staff/StaffHome.vue`
+- `ifitwala_ed/ui-spa/src/pages/staff/analytics/RoomUtilization.vue`
 - `ifitwala_ed/ui-spa/src/lib/services/calendar/eventQuickCreateService.ts`
 - `ifitwala_ed/api/calendar.py`
 - `ifitwala_ed/api/calendar_quick_create.py`
 
 Test refs:
 - `ifitwala_ed/api/test_calendar.py`
+- `ifitwala_ed/ui-spa/src/pages/staff/__tests__/StaffHome.test.ts`
+- `ifitwala_ed/ui-spa/src/pages/staff/__tests__/RoomUtilization.test.ts`
 
 Rules:
 
 1. `EventQuickCreateOverlay` supports a team scheduling mode via `meetingMode='team'`.
 2. In team mode, the selected team is part of the workflow contract and team attendees are hydrated from the named endpoint `get_meeting_team_attendees`.
 3. Team attendees loaded from team mode are locked by context inside the overlay because the meeting submit path also persists the `team` field server-side.
-4. Staff Home currently opens the overlay in `meetingMode='ad_hoc'`, not team mode.
-5. No SPA team-owned entry point is wired to open quick create in `meetingMode='team'` yet, so this integration remains partial even though the overlay contract exists.
+4. Staff Home keeps its existing ad-hoc event launcher; the overlay still supports selecting a team to bulk-add attendees without a separate Staff Home quick action.
+5. Room Utilization keeps its existing ad-hoc launcher and also exposes a `Schedule team meeting` entry point that carries the selected school into the team scheduling flow.
 
 ## 5. Contract Matrix
 
@@ -122,7 +125,7 @@ Test refs:
 | Schema / DocType | `Team`, `Team Member` | `setup/doctype/team/team.json`, `setup/doctype/team_member/team_member.json` | `setup/doctype/team/test_team.py` |
 | Controller / workflow logic | `Team` parent controller | `setup/doctype/team/team.py` | `setup/doctype/team/test_team.py` |
 | API endpoints | `get_children`, `add_node`, `get_eligible_users`, `get_schedulable_academic_years`, `schedule_recurring_meetings`, `get_team_meeting_book` | `setup/doctype/team/team.py`, `setup/doctype/meeting/meeting.py` | `setup/doctype/team/test_team.py` |
-| Desk / UI surfaces | Team form, Team tree, and team-aware quick-create contract | `setup/doctype/team/team.js`, `setup/doctype/team/team_tree.js`, `ui-spa/src/overlays/calendar/EventQuickCreateOverlay.vue`, `ui-spa/src/pages/staff/StaffHome.vue` | `ifitwala_ed/api/test_calendar.py` |
+| Desk / UI surfaces | Team form, Team tree, and team-aware quick-create contract | `setup/doctype/team/team.js`, `setup/doctype/team/team_tree.js`, `ui-spa/src/overlays/calendar/EventQuickCreateOverlay.vue`, `ui-spa/src/pages/staff/StaffHome.vue`, `ui-spa/src/pages/staff/analytics/RoomUtilization.vue` | `ifitwala_ed/api/test_calendar.py`, `ui-spa/src/pages/staff/__tests__/StaffHome.test.ts`, `ui-spa/src/pages/staff/__tests__/RoomUtilization.test.ts` |
 | Reports / dashboards / briefings | Team meeting book only | `setup/doctype/meeting/meeting.py` | `None` |
 | Scheduler / background jobs | None | None | None |
 | Tests | Team tree contract regression coverage plus calendar quick-create facade coverage | `setup/doctype/team/test_team.py`, `ifitwala_ed/api/test_calendar.py` | `setup/doctype/team/test_team.py`, `ifitwala_ed/api/test_calendar.py` |

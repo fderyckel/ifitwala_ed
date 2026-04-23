@@ -173,15 +173,15 @@ class TestInstitutionalPolicy(FrappeTestCase):
         self.assertEqual(policy.organization, child_org)
         self.assertEqual(policy.school, child_school.name)
 
-    def test_insert_rejects_school_from_different_organization(self):
+    def test_insert_rejects_school_outside_policy_organization_lineage(self):
         parent_org = self._make_organization("Policy Parent", is_group=1)
-        child_org = self._make_organization("Policy Child", parent=parent_org)
+        unrelated_org = self._make_organization("Policy Unrelated", is_group=1)
         child_school = frappe.get_doc(
             {
                 "doctype": "School",
                 "school_name": f"Policy Child Scope-{frappe.generate_hash(length=8)}",
                 "abbr": f"S{frappe.generate_hash(length=4)}",
-                "organization": child_org,
+                "organization": unrelated_org,
                 "is_group": 1,
             }
         ).insert(ignore_permissions=True)
@@ -200,7 +200,7 @@ class TestInstitutionalPolicy(FrappeTestCase):
             }
         )
 
-        with self.assertRaisesRegex(frappe.ValidationError, "must belong directly to the selected Organization"):
+        with self.assertRaisesRegex(frappe.ValidationError, "must belong to the selected Organization"):
             policy.insert(ignore_permissions=True)
 
     def _make_policy_admin_user(self, organization: str, *, role: str, prefix: str) -> str:

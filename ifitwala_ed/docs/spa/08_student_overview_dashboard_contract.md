@@ -23,7 +23,7 @@ Code refs:
 - `ifitwala_ed/ui-spa/src/pages/staff/ClassHub.vue`
 
 Test refs:
-- `None`
+- `ifitwala_ed/ui-spa/src/pages/staff/__tests__/StudentOverview.test.ts`
 
 Rules:
 
@@ -43,7 +43,7 @@ Code refs:
 
 Test refs:
 - `ifitwala_ed/api/test_student_overview_dashboard.py`
-- Frontend contract coverage: `None`
+- `ifitwala_ed/ui-spa/src/pages/staff/__tests__/StudentOverview.test.ts`
 
 Rules:
 
@@ -56,6 +56,8 @@ Rules:
 7. The backend permission helper also accepts `admin`, `counselor`, and `attendance` as non-student view modes, but the current page does not expose those options.
 8. The student search API can support blank search on the server, but the current page only issues search requests when the user has typed a non-empty query.
 9. Snapshot reloads are debounced on the client and skipped while an in-flight snapshot request is already loading; this is a UX throttle, not a correctness guarantee.
+10. Task, attendance, wellbeing, and history year-scope controls refer to academic years, not calendar years.
+11. The top school/program/student controls must render inside the shared `FiltersBar` component.
 
 ## 3. Visibility and Scope Contract
 
@@ -104,18 +106,21 @@ Rules:
 
 1. `get_student_center_snapshot(...)` returns exactly these top-level blocks: `meta`, `identity`, `kpis`, `learning`, `attendance`, `wellbeing`, `history`.
 2. `meta.current_academic_year` is copied from `identity.program_enrollment.academic_year`.
-3. `identity` is assembled from `Student`, the latest matching `Program Enrollment`, and `Student Group Student` joined to `Student Group`.
-4. `kpis` currently contains attendance, task, support, and placeholder academic summary values.
-5. `learning` is assembled from `Task Student` joined to `Task` and `Course`, plus `Program Enrollment Course` rows for current courses.
-6. `attendance` is assembled from `Student Attendance`, `Student Attendance Code`, and `Course`.
-7. `wellbeing.timeline` is event-only and merges visible `Student Log`, `Student Referral`, and `Student Patient Visit` rows, then sorts newest-first and trims to 30 items.
-8. `wellbeing.health_note` is a separate optional staff-facing card sourced from `Student Patient.medical_info`; it is not inserted into the date-sorted timeline.
-9. Referral rows in `wellbeing.timeline` must honor `Student Referral` server-side permission rules before they are returned to the SPA.
-10. Nurse visit rows in `wellbeing.timeline` must use `Student Patient Visit.note` only; `treatment` is not part of the dashboard timeline contract.
-11. `history.year_options` use `Program Enrollment.academic_year` as the canonical backbone.
-12. `history.academic_trend` is derived from task rows grouped by academic year.
-13. `history.attendance_trend` is derived from distinct `Student Attendance.academic_year` values.
-14. `history.reflection_flags` is currently returned as an empty list.
+3. `identity` is assembled from `Student`, the latest matching `Program Enrollment` inside the selected program subtree and selected school descendants, and `Student Group Student` joined to `Student Group`.
+4. `identity.photo` is a small avatar surface and must use the governed student avatar derivative helper; it must not fall back to the original full-size student image URL when no derivative is ready.
+5. `kpis` currently contains attendance, task, support, and placeholder academic summary values.
+6. `learning` is assembled from current `Task Delivery` rows scoped to the student through `Student Group Student`, left-joined to `Task Outcome`, `Student Group`, and `Course`, plus `Program Enrollment Course` rows for current courses.
+7. Task-derived KPI, learning, and history blocks now read the current `Task Delivery` / `Task Outcome` model; the snapshot no longer uses the legacy `Task Student` table.
+8. `attendance` is assembled from `Student Attendance`, `Student Attendance Code`, and `Course`, and the snapshot returns attendance rows across available academic years so the SPA can apply `This academic year`, `Last academic year`, and `All academic years` client-side.
+9. `wellbeing.timeline` is event-only and merges visible `Student Log`, `Student Referral`, and `Student Patient Visit` rows, then sorts newest-first and trims to 30 items.
+10. `wellbeing.timeline[].summary` returns stripped text for each capped row; the SPA owns collapse/expand behavior and renders the latest 10 timeline rows before older dashboard rows move into a scroll region.
+11. `wellbeing.health_note` is a separate optional staff-facing card sourced from `Student Patient.medical_info`; it is not inserted into the date-sorted timeline.
+12. Referral rows in `wellbeing.timeline` must honor `Student Referral` server-side permission rules before they are returned to the SPA.
+13. Nurse visit rows in `wellbeing.timeline` must use `Student Patient Visit.note` only; `treatment` is not part of the dashboard timeline contract.
+14. `history.year_options` use `Program Enrollment.academic_year` as the canonical backbone.
+15. `history.academic_trend` is derived from task rows grouped by academic year.
+16. `history.attendance_trend` is derived from distinct `Student Attendance.academic_year` values.
+17. `history.reflection_flags` is currently returned as an empty list.
 
 ## 5. Query and Frappe v16 Contract Notes
 
@@ -134,7 +139,8 @@ Rules:
 2. History attendance-year queries must use simple field names plus `distinct=True`; raw select fragments such as `fields=["distinct academic_year as ay"]` are not part of the valid Frappe v16 contract.
 3. The student overview API must not rely on query syntax that Frappe rejects before business permission checks, because that produces false `403` responses in the SPA.
 4. The regression test module locks the safe distinct-query shape for both `get_filter_meta()` and `_history_block(...)`.
-5. This feature currently has no Redis snapshot cache, no ETag contract, and no background job fan-out; the snapshot is request-time computed.
+5. The task reader path must use the current `Task Delivery` / `Task Outcome` contract and must not reintroduce a `Task Student` compatibility read path.
+6. This feature currently has no Redis snapshot cache, no ETag contract, and no background job fan-out; the snapshot is request-time computed.
 
 ## 6. Contract Matrix
 
@@ -152,14 +158,14 @@ Code refs:
 
 Test refs:
 - `ifitwala_ed/api/test_student_overview_dashboard.py`
-- Frontend contract coverage: `None`
+- `ifitwala_ed/ui-spa/src/pages/staff/__tests__/StudentOverview.test.ts`
 
 | Concern | Canonical owner | Code refs | Test refs |
 | --- | --- | --- | --- |
-| Schema / DocType | `Student`, `Program Enrollment`, `Student Group Student`, `Student Group`, `Student Attendance`, `Student Attendance Code`, `Task`, `Task Student`, `Program Enrollment Course`, `Student Log`, `Student Referral`, `Student Patient`, `Student Patient Visit` | `ifitwala_ed/api/student_overview_dashboard.py` | `ifitwala_ed/api/test_student_overview_dashboard.py` |
+| Schema / DocType | `Student`, `Program Enrollment`, `Program Enrollment Course`, `Student Group`, `Student Group Student`, `Student Attendance`, `Student Attendance Code`, `Task`, `Task Delivery`, `Task Outcome`, `Student Log`, `Student Referral`, `Student Patient`, `Student Patient Visit` | `ifitwala_ed/api/student_overview_dashboard.py` | `ifitwala_ed/api/test_student_overview_dashboard.py` |
 | Controller / workflow logic | `student_overview_dashboard.py` block builders and scope checks | `ifitwala_ed/api/student_overview_dashboard.py` | `ifitwala_ed/api/test_student_overview_dashboard.py` |
 | API endpoints | `get_filter_meta`, `search_students`, `get_student_center_snapshot` | `ifitwala_ed/api/student_overview_dashboard.py` | `ifitwala_ed/api/test_student_overview_dashboard.py` |
-| SPA/UI surfaces | Staff analytics page and its named route | `ifitwala_ed/ui-spa/src/router/index.ts`, `ifitwala_ed/ui-spa/src/pages/staff/analytics/StudentOverview.vue` | `None` |
+| SPA/UI surfaces | Staff analytics page and its named route | `ifitwala_ed/ui-spa/src/router/index.ts`, `ifitwala_ed/ui-spa/src/pages/staff/analytics/StudentOverview.vue` | `ifitwala_ed/ui-spa/src/pages/staff/__tests__/StudentOverview.test.ts` |
 | Reports / dashboards / briefings | Staff Home and Class Hub entry points into Student Overview | `ifitwala_ed/ui-spa/src/pages/staff/StaffHome.vue`, `ifitwala_ed/ui-spa/src/pages/staff/ClassHub.vue` | `None` |
 | Scheduler / background jobs | None | None | None |
-| Tests | Backend regression coverage for Frappe v16-safe distinct queries | `ifitwala_ed/api/test_student_overview_dashboard.py` | `ifitwala_ed/api/test_student_overview_dashboard.py` |
+| Tests | Backend regression coverage for Frappe v16-safe distinct queries plus the Student Overview SPA shell contract | `ifitwala_ed/api/test_student_overview_dashboard.py`, `ifitwala_ed/ui-spa/src/pages/staff/__tests__/StudentOverview.test.ts` | `ifitwala_ed/api/test_student_overview_dashboard.py`, `ifitwala_ed/ui-spa/src/pages/staff/__tests__/StudentOverview.test.ts` |

@@ -2,62 +2,62 @@
 
 <template>
 	<div data-testid="admissions-profile-page" class="admissions-page">
-		<div class="flex flex-wrap items-start justify-between gap-4">
-			<div>
-				<p class="type-h2 text-ink">{{ __('Profile information') }}</p>
-				<p class="mt-1 type-caption text-ink/60">
+		<header class="page-header">
+			<div class="page-header__intro">
+				<h1 class="type-h1 text-ink">{{ __('Profile information') }}</h1>
+				<p class="type-meta text-ink/70">
 					{{ __('Provide core student profile details used at promotion time.') }}
 				</p>
 			</div>
-			<button
-				data-testid="admissions-profile-save"
-				type="button"
-				class="rounded-full bg-ink px-4 py-2 type-caption text-white shadow-soft disabled:opacity-50"
-				:disabled="
-					isReadOnly ||
-					loading ||
-					saving ||
-					uploadingImage ||
-					uploadingGuardianImageIndex !== null ||
-					Boolean(error)
-				"
-				@click="saveProfile"
-			>
-				<span v-if="saving">{{ __('Saving…') }}</span>
-				<span v-else>{{ __('Save profile') }}</span>
-			</button>
-		</div>
+			<div class="page-header__actions">
+				<button
+					data-testid="admissions-profile-save"
+					type="button"
+					class="if-button if-button--primary"
+					:disabled="
+						isReadOnly ||
+						loading ||
+						saving ||
+						uploadingImage ||
+						uploadingGuardianImageIndex !== null ||
+						Boolean(error)
+					"
+					@click="saveProfile"
+				>
+					<span v-if="saving">{{ __('Saving…') }}</span>
+					<span v-else>{{ __('Save profile') }}</span>
+				</button>
+			</div>
+		</header>
 
-		<div v-if="loading" class="rounded-2xl border border-border/70 bg-surface px-4 py-4">
-			<div class="flex items-center gap-3">
+		<div v-if="loading" class="admissions-state-card">
+			<div class="admissions-state-inline">
 				<Spinner class="h-4 w-4" />
 				<p class="type-body-strong text-ink">{{ __('Loading profile…') }}</p>
 			</div>
 		</div>
 
-		<div v-else-if="error" class="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3">
-			<p class="type-body-strong text-rose-900">{{ __('Unable to load profile information') }}</p>
-			<p class="mt-1 type-caption text-rose-900/80 whitespace-pre-wrap">{{ error }}</p>
-			<button
-				type="button"
-				class="mt-3 rounded-full border border-rose-200 bg-surface px-4 py-2 type-caption text-rose-900"
-				@click="loadProfile"
-			>
+		<div v-else-if="error" class="if-banner if-banner--danger">
+			<p class="if-banner__title type-body-strong">
+				{{ __('Unable to load profile information') }}
+			</p>
+			<p class="if-banner__body mt-1 type-caption whitespace-pre-wrap">{{ error }}</p>
+			<button type="button" class="if-button if-button--secondary mt-3" @click="loadProfile">
 				{{ __('Try again') }}
 			</button>
 		</div>
 
 		<div v-else class="space-y-4">
-			<div v-if="actionError" class="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3">
-				<p class="type-body-strong text-amber-900">{{ __('Notice') }}</p>
-				<p class="mt-1 type-caption text-amber-900/80">{{ actionError }}</p>
+			<div v-if="actionError" class="admissions-card admissions-card--warm">
+				<p class="type-body-strong text-clay">{{ __('Notice') }}</p>
+				<p class="mt-1 type-caption text-clay/85">{{ actionError }}</p>
 			</div>
 			<div
 				v-if="!options.languages.length || !options.countries.length"
-				class="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3"
+				class="admissions-card admissions-card--warm"
 			>
-				<p class="type-body-strong text-amber-900">{{ __('Setup required') }}</p>
-				<p class="mt-1 type-caption text-amber-900/80">
+				<p class="type-body-strong text-clay">{{ __('Setup required') }}</p>
+				<p class="mt-1 type-caption text-clay/85">
 					{{
 						__(
 							'Some profile option lists are not configured yet. Please contact the admissions office.'
@@ -66,7 +66,7 @@
 				</p>
 			</div>
 
-			<div class="rounded-2xl border border-border/70 bg-surface px-4 py-4 shadow-soft">
+			<div class="admissions-card admissions-card--plain">
 				<div class="flex flex-wrap items-start justify-between gap-4">
 					<div>
 						<p class="type-body-strong text-ink">{{ __('Student image') }}</p>
@@ -88,7 +88,7 @@
 						/>
 						<button
 							type="button"
-							class="rounded-full border border-border/70 bg-surface px-4 py-2 type-caption text-ink/70 disabled:opacity-50"
+							class="if-button if-button--secondary"
 							:disabled="isReadOnly || uploadingImage"
 							@click="openImagePicker"
 						>
@@ -96,7 +96,7 @@
 						</button>
 						<button
 							type="button"
-							class="rounded-full bg-ink px-4 py-2 type-caption text-white shadow-soft disabled:opacity-50"
+							class="if-button if-button--primary"
 							:disabled="isReadOnly || uploadingImage || !selectedImageFile"
 							@click="uploadSelectedImage"
 						>
@@ -109,9 +109,15 @@
 				<p v-if="selectedImageFile" class="mt-2 type-caption text-ink/55">
 					{{ __('Selected') }}: {{ selectedImageFile.name }}
 				</p>
+				<InlineUploadStatus
+					v-if="imageUploadProgress"
+					class="mt-3"
+					:label="imageUploadProgressLabel"
+					:progress="imageUploadProgress"
+				/>
 
 				<div class="mt-4 flex flex-wrap items-center gap-4">
-					<div class="h-24 w-24 overflow-hidden rounded-2xl border border-border/70 bg-surface">
+					<div class="admissions-photo-frame h-24 w-24">
 						<img
 							v-if="applicantImage"
 							:src="applicantImage"
@@ -128,17 +134,17 @@
 					<div class="space-y-1">
 						<p class="type-caption text-ink/60">
 							{{
-								applicantImage
+								hasApplicantImage
 									? __('Current image is saved.')
 									: __('No student image uploaded yet.')
 							}}
 						</p>
 						<a
-							v-if="applicantImage"
-							:href="applicantImage"
+							v-if="applicantImageOpenUrl"
+							:href="applicantImageOpenUrl"
 							target="_blank"
 							rel="noopener noreferrer"
-							class="type-caption text-ink/70 underline"
+							class="type-caption text-jacaranda underline"
 						>
 							{{ __('Open image in new tab') }}
 						</a>
@@ -147,29 +153,22 @@
 			</div>
 
 			<div
-				class="rounded-2xl px-4 py-4 shadow-soft"
-				:class="
-					completeness.ok
-						? 'border border-leaf/40 bg-leaf/10'
-						: 'border border-amber-200 bg-amber-50'
-				"
+				class="admissions-card"
+				:class="completeness.ok ? 'admissions-card--success' : 'admissions-card--warm'"
 			>
-				<p
-					class="type-body-strong"
-					:class="completeness.ok ? 'text-emerald-900' : 'text-amber-900'"
-				>
+				<p class="type-body-strong" :class="completeness.ok ? 'text-canopy' : 'text-clay'">
 					{{
 						completeness.ok
 							? __('Profile information complete')
 							: __('Profile information still required')
 					}}
 				</p>
-				<p v-if="!completeness.ok" class="mt-1 type-caption text-amber-900/80">
+				<p v-if="!completeness.ok" class="mt-1 type-caption text-clay/85">
 					{{ __('Missing: {0}').replace('{0}', completeness.missing.join(', ')) }}
 				</p>
 			</div>
 
-			<div class="rounded-2xl border border-border/70 bg-surface px-4 py-4 shadow-soft">
+			<div class="admissions-card admissions-card--plain">
 				<p class="type-body-strong text-ink">{{ __('Application details') }}</p>
 				<div class="mt-3 grid gap-3 md:grid-cols-2">
 					<div>
@@ -195,7 +194,7 @@
 				</div>
 			</div>
 
-			<div class="rounded-2xl border border-border/70 bg-surface px-4 py-4 shadow-soft">
+			<div class="admissions-card admissions-card--plain">
 				<p class="type-body-strong text-ink">{{ __('Student profile') }}</p>
 				<div class="mt-4 grid gap-4 md:grid-cols-2">
 					<label class="block">
@@ -203,7 +202,7 @@
 						<input
 							v-model="profile.student_preferred_name"
 							type="text"
-							class="mt-1 w-full rounded-xl border border-border/70 bg-surface px-3 py-2 type-body text-ink focus:outline-none focus:ring-2 focus:ring-ink/20"
+							class="admissions-input mt-1"
 							:disabled="isReadOnly || saving"
 						/>
 					</label>
@@ -213,7 +212,7 @@
 						<input
 							v-model="profile.student_date_of_birth"
 							type="date"
-							class="mt-1 w-full rounded-xl border border-border/70 bg-surface px-3 py-2 type-body text-ink focus:outline-none focus:ring-2 focus:ring-ink/20"
+							class="admissions-input mt-1"
 							:disabled="isReadOnly || saving"
 						/>
 					</label>
@@ -222,7 +221,7 @@
 						<span class="type-caption text-ink/60">{{ __('Gender') }}</span>
 						<select
 							v-model="profile.student_gender"
-							class="mt-1 w-full rounded-xl border border-border/70 bg-surface px-3 py-2 type-body text-ink focus:outline-none focus:ring-2 focus:ring-ink/20"
+							class="admissions-input mt-1"
 							:disabled="isReadOnly || saving"
 						>
 							<option value="">{{ __('Select') }}</option>
@@ -237,7 +236,7 @@
 						<input
 							v-model="profile.student_mobile_number"
 							type="text"
-							class="mt-1 w-full rounded-xl border border-border/70 bg-surface px-3 py-2 type-body text-ink focus:outline-none focus:ring-2 focus:ring-ink/20"
+							class="admissions-input mt-1"
 							:disabled="isReadOnly || saving"
 						/>
 					</label>
@@ -247,7 +246,7 @@
 						<input
 							v-model="profile.student_joining_date"
 							type="date"
-							class="mt-1 w-full rounded-xl border border-border/70 bg-surface px-3 py-2 type-body text-ink focus:outline-none focus:ring-2 focus:ring-ink/20"
+							class="admissions-input mt-1"
 							disabled
 						/>
 						<p class="mt-1 type-caption text-ink/55">
@@ -259,7 +258,7 @@
 						<span class="type-caption text-ink/60">{{ __('Residency status') }}</span>
 						<select
 							v-model="profile.residency_status"
-							class="mt-1 w-full rounded-xl border border-border/70 bg-surface px-3 py-2 type-body text-ink focus:outline-none focus:ring-2 focus:ring-ink/20"
+							class="admissions-input mt-1"
 							:disabled="isReadOnly || saving"
 						>
 							<option value="">{{ __('Select') }}</option>
@@ -273,7 +272,7 @@
 						<span class="type-caption text-ink/60">{{ __('First language') }}</span>
 						<select
 							v-model="profile.student_first_language"
-							class="mt-1 w-full rounded-xl border border-border/70 bg-surface px-3 py-2 type-body text-ink focus:outline-none focus:ring-2 focus:ring-ink/20"
+							class="admissions-input mt-1"
 							:disabled="isReadOnly || saving"
 						>
 							<option value="">{{ __('Select') }}</option>
@@ -291,7 +290,7 @@
 						<span class="type-caption text-ink/60">{{ __('Second language') }}</span>
 						<select
 							v-model="profile.student_second_language"
-							class="mt-1 w-full rounded-xl border border-border/70 bg-surface px-3 py-2 type-body text-ink focus:outline-none focus:ring-2 focus:ring-ink/20"
+							class="admissions-input mt-1"
 							:disabled="isReadOnly || saving"
 						>
 							<option value="">{{ __('Select') }}</option>
@@ -309,7 +308,7 @@
 						<span class="type-caption text-ink/60">{{ __('Nationality') }}</span>
 						<select
 							v-model="profile.student_nationality"
-							class="mt-1 w-full rounded-xl border border-border/70 bg-surface px-3 py-2 type-body text-ink focus:outline-none focus:ring-2 focus:ring-ink/20"
+							class="admissions-input mt-1"
 							:disabled="isReadOnly || saving"
 						>
 							<option value="">{{ __('Select') }}</option>
@@ -327,7 +326,7 @@
 						<span class="type-caption text-ink/60">{{ __('Second nationality') }}</span>
 						<select
 							v-model="profile.student_second_nationality"
-							class="mt-1 w-full rounded-xl border border-border/70 bg-surface px-3 py-2 type-body text-ink focus:outline-none focus:ring-2 focus:ring-ink/20"
+							class="admissions-input mt-1"
 							:disabled="isReadOnly || saving"
 						>
 							<option value="">{{ __('Select') }}</option>
@@ -343,10 +342,7 @@
 				</div>
 			</div>
 
-			<div
-				v-if="guardiansEnabled"
-				class="rounded-2xl border border-border/70 bg-surface px-4 py-4 shadow-soft"
-			>
+			<div v-if="guardiansEnabled" class="admissions-card admissions-card--plain">
 				<div class="flex flex-wrap items-start justify-between gap-3">
 					<div>
 						<p class="type-body-strong text-ink">{{ __('Guardians') }}</p>
@@ -358,7 +354,7 @@
 					</div>
 					<button
 						type="button"
-						class="rounded-full border border-border/70 bg-surface px-4 py-2 type-caption text-ink/70 disabled:opacity-50"
+						class="if-button if-button--secondary"
 						:disabled="isReadOnly || saving"
 						@click="addGuardianRow"
 					>
@@ -366,7 +362,7 @@
 					</button>
 				</div>
 
-				<div v-if="!guardians.length" class="mt-4 rounded-xl border border-border/60 px-3 py-3">
+				<div v-if="!guardians.length" class="mt-4 admissions-detail-card">
 					<p class="type-body text-ink/70">{{ __('No guardians added yet.') }}</p>
 				</div>
 
@@ -374,7 +370,7 @@
 					<div
 						v-for="(guardian, idx) in guardians"
 						:key="guardian.name || `guardian-${idx}`"
-						class="rounded-xl border border-border/60 bg-surface/40 px-3 py-3"
+						class="admissions-detail-card"
 					>
 						<div class="flex flex-wrap items-center justify-between gap-3">
 							<p class="type-body-strong text-ink">
@@ -382,7 +378,7 @@
 							</p>
 							<button
 								type="button"
-								class="rounded-full border border-rose-200 bg-surface px-3 py-1 type-caption text-rose-700 disabled:opacity-50"
+								class="if-button if-button--danger"
 								:disabled="isReadOnly || saving"
 								@click="removeGuardianRow(idx)"
 							>
@@ -395,7 +391,7 @@
 								<span class="type-caption text-ink/60">{{ __('Relationship to student') }}</span>
 								<select
 									v-model="guardian.relationship"
-									class="mt-1 w-full rounded-xl border border-border/70 bg-surface px-3 py-2 type-body text-ink focus:outline-none focus:ring-2 focus:ring-ink/20"
+									class="admissions-input mt-1"
 									:disabled="isReadOnly || saving"
 								>
 									<option value="">{{ __('Select') }}</option>
@@ -413,7 +409,7 @@
 								<input
 									v-model="guardian.use_applicant_contact"
 									type="checkbox"
-									class="h-4 w-4 rounded border-border/70"
+									class="admissions-checkbox"
 									:disabled="isReadOnly || saving"
 								/>
 								<span class="type-caption text-ink/70">{{
@@ -430,7 +426,7 @@
 								<span class="type-caption text-ink/60">{{ __('Salutation') }}</span>
 								<select
 									v-model="guardian.salutation"
-									class="mt-1 w-full rounded-xl border border-border/70 bg-surface px-3 py-2 type-body text-ink focus:outline-none focus:ring-2 focus:ring-ink/20"
+									class="admissions-input mt-1"
 									:disabled="isReadOnly || saving"
 								>
 									<option value="">{{ __('Select') }}</option>
@@ -448,7 +444,7 @@
 								<span class="type-caption text-ink/60">{{ __('Gender') }}</span>
 								<select
 									v-model="guardian.guardian_gender"
-									class="mt-1 w-full rounded-xl border border-border/70 bg-surface px-3 py-2 type-body text-ink focus:outline-none focus:ring-2 focus:ring-ink/20"
+									class="admissions-input mt-1"
 									:disabled="isReadOnly || saving"
 								>
 									<option value="">{{ __('Select') }}</option>
@@ -468,7 +464,7 @@
 									v-model="guardian.guardian_first_name"
 									type="text"
 									required
-									class="mt-1 w-full rounded-xl border border-border/70 bg-surface px-3 py-2 type-body text-ink focus:outline-none focus:ring-2 focus:ring-ink/20"
+									class="admissions-input mt-1"
 									:disabled="isReadOnly || saving"
 								/>
 							</label>
@@ -479,7 +475,7 @@
 									v-model="guardian.guardian_last_name"
 									type="text"
 									required
-									class="mt-1 w-full rounded-xl border border-border/70 bg-surface px-3 py-2 type-body text-ink focus:outline-none focus:ring-2 focus:ring-ink/20"
+									class="admissions-input mt-1"
 									:disabled="isReadOnly || saving"
 								/>
 							</label>
@@ -490,7 +486,7 @@
 									v-model="guardian.guardian_email"
 									type="email"
 									required
-									class="mt-1 w-full rounded-xl border border-border/70 bg-surface px-3 py-2 type-body text-ink focus:outline-none focus:ring-2 focus:ring-ink/20"
+									class="admissions-input mt-1"
 									:disabled="isReadOnly || saving"
 								/>
 							</label>
@@ -501,7 +497,7 @@
 									v-model="guardian.guardian_mobile_phone"
 									type="text"
 									required
-									class="mt-1 w-full rounded-xl border border-border/70 bg-surface px-3 py-2 type-body text-ink focus:outline-none focus:ring-2 focus:ring-ink/20"
+									class="admissions-input mt-1"
 									:disabled="isReadOnly || saving"
 								/>
 							</label>
@@ -510,7 +506,7 @@
 								<span class="type-caption text-ink/60">{{ __('Employment sector') }}</span>
 								<select
 									v-model="guardian.employment_sector"
-									class="mt-1 w-full rounded-xl border border-border/70 bg-surface px-3 py-2 type-body text-ink focus:outline-none focus:ring-2 focus:ring-ink/20"
+									class="admissions-input mt-1"
 									:disabled="isReadOnly || saving"
 								>
 									<option value="">{{ __('Select') }}</option>
@@ -529,7 +525,7 @@
 								<input
 									v-model="guardian.work_place"
 									type="text"
-									class="mt-1 w-full rounded-xl border border-border/70 bg-surface px-3 py-2 type-body text-ink focus:outline-none focus:ring-2 focus:ring-ink/20"
+									class="admissions-input mt-1"
 									:disabled="isReadOnly || saving"
 								/>
 							</label>
@@ -539,7 +535,7 @@
 								<input
 									v-model="guardian.guardian_designation"
 									type="text"
-									class="mt-1 w-full rounded-xl border border-border/70 bg-surface px-3 py-2 type-body text-ink focus:outline-none focus:ring-2 focus:ring-ink/20"
+									class="admissions-input mt-1"
 									:disabled="isReadOnly || saving"
 								/>
 							</label>
@@ -549,7 +545,7 @@
 								<input
 									v-model="guardian.guardian_work_email"
 									type="email"
-									class="mt-1 w-full rounded-xl border border-border/70 bg-surface px-3 py-2 type-body text-ink focus:outline-none focus:ring-2 focus:ring-ink/20"
+									class="admissions-input mt-1"
 									:disabled="isReadOnly || saving"
 								/>
 							</label>
@@ -559,7 +555,7 @@
 								<input
 									v-model="guardian.guardian_work_phone"
 									type="text"
-									class="mt-1 w-full rounded-xl border border-border/70 bg-surface px-3 py-2 type-body text-ink focus:outline-none focus:ring-2 focus:ring-ink/20"
+									class="admissions-input mt-1"
 									:disabled="isReadOnly || saving"
 								/>
 							</label>
@@ -580,7 +576,7 @@
 									/>
 									<button
 										type="button"
-										class="rounded-full border border-border/70 bg-surface px-3 py-2 type-caption text-ink/70 disabled:opacity-50"
+										class="if-button if-button--secondary"
 										:disabled="isReadOnly || saving || uploadingGuardianImageIndex === idx"
 										@click="openGuardianImagePicker(idx)"
 									>
@@ -588,7 +584,7 @@
 									</button>
 									<button
 										type="button"
-										class="rounded-full bg-ink px-3 py-2 type-caption text-white shadow-soft disabled:opacity-50"
+										class="if-button if-button--primary"
 										:disabled="
 											isReadOnly ||
 											saving ||
@@ -606,10 +602,14 @@
 								<p v-if="selectedGuardianImageFileName(idx)" class="mt-2 type-caption text-ink/55">
 									{{ __('Selected') }}: {{ selectedGuardianImageFileName(idx) }}
 								</p>
+								<InlineUploadStatus
+									v-if="guardianUploadProgress(idx)"
+									class="mt-3"
+									:label="guardianUploadProgressLabel(idx)"
+									:progress="guardianUploadProgress(idx)!"
+								/>
 								<div class="mt-3 flex flex-wrap items-center gap-3">
-									<div
-										class="h-14 w-14 overflow-hidden rounded-xl border border-border/70 bg-surface"
-									>
+									<div class="admissions-photo-frame h-14 w-14">
 										<img
 											v-if="guardian.guardian_image"
 											:src="guardian.guardian_image"
@@ -624,11 +624,11 @@
 										</div>
 									</div>
 									<a
-										v-if="guardian.guardian_image"
-										:href="guardian.guardian_image"
+										v-if="guardian.guardian_image_open_url"
+										:href="guardian.guardian_image_open_url"
 										target="_blank"
 										rel="noopener noreferrer"
-										class="type-caption text-ink/70 underline"
+										class="type-caption text-jacaranda underline"
 									>
 										{{ __('Open photo') }}
 									</a>
@@ -639,7 +639,7 @@
 								<input
 									v-model="guardian.is_primary"
 									type="checkbox"
-									class="h-4 w-4 rounded border-border/70"
+									class="admissions-checkbox"
 									:disabled="isReadOnly || saving"
 								/>
 								<span class="type-caption text-ink/70">{{
@@ -651,7 +651,7 @@
 								<input
 									v-model="guardian.can_consent"
 									type="checkbox"
-									class="h-4 w-4 rounded border-border/70"
+									class="admissions-checkbox"
 									:disabled="isReadOnly || saving"
 								/>
 								<span class="type-caption text-ink/70">{{
@@ -663,7 +663,7 @@
 								<input
 									v-model="guardian.is_primary_guardian"
 									type="checkbox"
-									class="h-4 w-4 rounded border-border/70"
+									class="admissions-checkbox"
 									:disabled="isReadOnly || saving"
 								/>
 								<span class="type-caption text-ink/70">{{ __('Is primary guardian') }}</span>
@@ -673,7 +673,7 @@
 								<input
 									v-model="guardian.is_financial_guardian"
 									type="checkbox"
-									class="h-4 w-4 rounded border-border/70"
+									class="admissions-checkbox"
 									:disabled="isReadOnly || saving"
 								/>
 								<span class="type-caption text-ink/70">{{ __('Is financial guardian') }}</span>
@@ -690,9 +690,11 @@
 import { onBeforeUnmount, onMounted, ref, computed } from 'vue';
 import { Spinner } from 'frappe-ui';
 
+import InlineUploadStatus from '@/components/feedback/InlineUploadStatus.vue';
 import { createAdmissionsService } from '@/lib/services/admissions/admissionsService';
 import { useAdmissionsSession } from '@/composables/useAdmissionsSession';
 import { __ } from '@/lib/i18n';
+import { readFileAsBase64, type UploadProgressState } from '@/lib/uploadProgress';
 import {
 	createEmptyGuardian,
 	guardianRowsForSubmit,
@@ -724,15 +726,18 @@ const imageTooLargeMessage = __('Image is too large. Max file size is 10 MB.');
 const loading = ref(false);
 const saving = ref(false);
 const uploadingImage = ref(false);
+const imageUploadProgress = ref<UploadProgressState | null>(null);
 const error = ref<string | null>(null);
 const actionError = ref('');
 const applicantImage = ref('');
+const applicantImageOpenUrl = ref('');
 const recordModified = ref('');
 const selectedImageFile = ref<File | null>(null);
 const imageInput = ref<HTMLInputElement | null>(null);
 const selectedGuardianImageFiles = ref<Record<number, File | null>>({});
 const guardianImageInputs = ref<Record<number, HTMLInputElement | null>>({});
 const uploadingGuardianImageIndex = ref<number | null>(null);
+const guardianImageUploadProgress = ref<Record<number, UploadProgressState>>({});
 const savedGuardians = ref<ApplicantGuardianProfile[]>([]);
 
 const profile = ref<ApplicantProfile>(createEmptyProfile());
@@ -745,6 +750,14 @@ const applicationContext = ref<ApplicantProfileResponse['application_context']>(
 );
 
 const isReadOnly = computed(() => Boolean(session.value?.applicant?.is_read_only));
+const hasApplicantImage = computed(() =>
+	Boolean((applicantImage.value || '').trim() || (applicantImageOpenUrl.value || '').trim())
+);
+const imageUploadProgressLabel = computed(() =>
+	selectedImageFile.value?.name
+		? __('Uploading {0}').replace('{0}', selectedImageFile.value.name)
+		: __('Uploading image')
+);
 
 function createEmptyProfile(): ApplicantProfile {
 	return {
@@ -802,6 +815,7 @@ function clearGuardianImageUploadState() {
 	selectedGuardianImageFiles.value = {};
 	guardianImageInputs.value = {};
 	uploadingGuardianImageIndex.value = null;
+	guardianImageUploadProgress.value = {};
 }
 
 function addGuardianRow() {
@@ -917,20 +931,31 @@ async function uploadGuardianImage(index: number) {
 	uploadingGuardianImageIndex.value = index;
 	actionError.value = '';
 	try {
-		const content = await readAsBase64(file);
-		const payload = await service.uploadApplicantGuardianImage({
-			student_applicant: currentApplicantName.value,
-			guardian_row_name: guardianRowName,
-			file_name: file.name,
-			content,
+		const content = await readFileAsBase64(file, progress => {
+			guardianImageUploadProgress.value[index] = progress;
 		});
-		const fileUrl = String(payload.file_url || '').trim();
-		if (!fileUrl) {
-			throw new Error(__('Unable to upload guardian image.'));
+		const payload = await service.uploadApplicantGuardianImage(
+			{
+				student_applicant: currentApplicantName.value,
+				guardian_row_name: guardianRowName,
+				file_name: file.name,
+				content,
+			},
+			{
+				onProgress: progress => {
+					guardianImageUploadProgress.value[index] = progress;
+				},
+			}
+		);
+		const fileUrl = String(payload.image_url || '').trim();
+		const openUrl = String(payload.open_url || '').trim();
+		if (!fileUrl && !openUrl) {
+			throw new Error(__('Unable to resolve guardian image.'));
 		}
 		guardians.value[index] = normalizeGuardianRow({
 			...guardians.value[index],
 			guardian_image: fileUrl,
+			guardian_image_open_url: openUrl,
 		});
 		delete selectedGuardianImageFiles.value[index];
 		const input = guardianImageInputs.value[index];
@@ -939,6 +964,7 @@ async function uploadGuardianImage(index: number) {
 		const message = err instanceof Error ? err.message : __('Unable to upload guardian image.');
 		actionError.value = message;
 	} finally {
+		delete guardianImageUploadProgress.value[index];
 		uploadingGuardianImageIndex.value = null;
 	}
 }
@@ -959,6 +985,7 @@ function applyPayload(payload: ApplicantProfileResponse) {
 	savedGuardians.value = guardianRowsForSubmit(guardians.value);
 	clearGuardianImageUploadState();
 	applicantImage.value = (payload.applicant_image || '').trim();
+	applicantImageOpenUrl.value = (payload.applicant_image_open_url || '').trim();
 	selectedImageFile.value = null;
 	if (imageInput.value) imageInput.value.value = '';
 }
@@ -972,6 +999,7 @@ async function loadProfile() {
 		completeness.value = createEmptyCompleteness();
 		applicationContext.value = createEmptyApplicationContext();
 		applicantImage.value = '';
+		applicantImageOpenUrl.value = '';
 		recordModified.value = '';
 		error.value = null;
 		return;
@@ -1063,19 +1091,6 @@ function onImageSelected(event: Event) {
 	selectedImageFile.value = file;
 }
 
-async function readAsBase64(file: File): Promise<string> {
-	return new Promise((resolve, reject) => {
-		const reader = new FileReader();
-		reader.onerror = () => reject(new Error('Unable to read file'));
-		reader.onload = () => {
-			const result = typeof reader.result === 'string' ? reader.result : '';
-			const parts = result.split(',');
-			resolve(parts.length > 1 ? parts[1] : result);
-		};
-		reader.readAsDataURL(file);
-	});
-}
-
 async function uploadSelectedImage() {
 	if (isReadOnly.value) {
 		actionError.value = __('This application is read-only.');
@@ -1097,13 +1112,23 @@ async function uploadSelectedImage() {
 	uploadingImage.value = true;
 	actionError.value = '';
 	try {
-		const content = await readAsBase64(selectedImageFile.value);
-		const payload = await service.uploadApplicantProfileImage({
-			student_applicant: currentApplicantName.value,
-			file_name: selectedImageFile.value.name,
-			content,
+		const content = await readFileAsBase64(selectedImageFile.value, progress => {
+			imageUploadProgress.value = progress;
 		});
-		applicantImage.value = (payload.file_url || '').trim();
+		const payload = await service.uploadApplicantProfileImage(
+			{
+				student_applicant: currentApplicantName.value,
+				file_name: selectedImageFile.value.name,
+				content,
+			},
+			{
+				onProgress: progress => {
+					imageUploadProgress.value = progress;
+				},
+			}
+		);
+		applicantImage.value = (payload.image_url || '').trim();
+		applicantImageOpenUrl.value = (payload.open_url || '').trim();
 		selectedImageFile.value = null;
 		if (imageInput.value) imageInput.value.value = '';
 		await loadProfile();
@@ -1111,8 +1136,18 @@ async function uploadSelectedImage() {
 		const message = err instanceof Error ? err.message : __('Unable to upload image.');
 		actionError.value = message;
 	} finally {
+		imageUploadProgress.value = null;
 		uploadingImage.value = false;
 	}
+}
+
+function guardianUploadProgress(index: number): UploadProgressState | null {
+	return guardianImageUploadProgress.value[index] || null;
+}
+
+function guardianUploadProgressLabel(index: number): string {
+	const fileName = selectedGuardianImageFiles.value[index]?.name || '';
+	return fileName ? __('Uploading {0}').replace('{0}', fileName) : __('Uploading image');
 }
 
 let unsubscribe: (() => void) | null = null;

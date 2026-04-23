@@ -1,36 +1,36 @@
 <template>
 	<div class="staff-shell space-y-6">
 		<section class="overflow-hidden rounded-[2rem] border border-line-soft bg-white shadow-soft">
-			<div class="grid gap-6 px-6 py-6 lg:grid-cols-[minmax(0,1fr),auto] lg:items-end">
-				<div class="space-y-4">
-					<RouterLink
-						:to="{ name: 'ClassHub', params: { studentGroup } }"
-						class="inline-flex items-center gap-2 type-caption text-ink/70 transition hover:text-ink"
-					>
-						<span>←</span>
-						<span>Back to Class Hub</span>
-					</RouterLink>
-					<div>
+			<div class="space-y-4 px-6 py-6">
+				<RouterLink
+					:to="{ name: 'ClassHub', params: { studentGroup } }"
+					class="inline-flex items-center gap-2 type-caption text-ink/70 transition hover:text-ink"
+				>
+					<span>←</span>
+					<span>Back to Class Hub</span>
+				</RouterLink>
+				<div class="page-header">
+					<div class="page-header__intro">
 						<p class="type-overline text-ink/60">Curriculum Planning</p>
-						<h1 class="mt-2 type-h1 text-ink">
+						<h1 class="mt-2 type-h1 text-canopy">
 							{{ surface?.group.title || studentGroup || 'Class Planning' }}
 						</h1>
-						<p class="mt-2 max-w-3xl type-body text-ink/80">
+						<p class="mt-2 max-w-3xl type-meta text-slate-token/80">
 							Keep the shared unit backbone intact while adapting pacing, session design, and
 							teaching moves for this class.
 						</p>
 					</div>
-				</div>
-				<div class="flex flex-wrap gap-2 lg:justify-end">
-					<span class="chip">{{ surface?.group.course || 'Course pending' }}</span>
-					<span class="chip">{{ surface?.curriculum.units.length || 0 }} units</span>
-					<span class="chip">{{ surface?.curriculum.session_count || 0 }} sessions</span>
-					<span class="chip"
-						>{{ surface?.curriculum.assigned_work_count || 0 }} assigned work</span
-					>
-					<span v-if="surface?.teaching_plan?.planning_status" class="chip">
-						{{ surface.teaching_plan.planning_status }}
-					</span>
+					<div class="page-header__actions">
+						<span class="chip">{{ surface?.group.course || 'Course pending' }}</span>
+						<span class="chip">{{ surface?.curriculum.units.length || 0 }} units</span>
+						<span class="chip">{{ surface?.curriculum.session_count || 0 }} sessions</span>
+						<span class="chip"
+							>{{ surface?.curriculum.assigned_work_count || 0 }} assigned work</span
+						>
+						<span v-if="surface?.teaching_plan?.planning_status" class="chip">
+							{{ surface.teaching_plan.planning_status }}
+						</span>
+					</div>
 				</div>
 			</div>
 		</section>
@@ -196,7 +196,7 @@
 										unit_plan: selectedUnit?.unit_plan || undefined,
 									},
 								}"
-								class="if-action if-action--subtle"
+								class="if-action"
 							>
 								Open Shared Course Plan
 							</RouterLink>
@@ -242,7 +242,9 @@
 											{{ unit.sessions.length }} sessions
 										</p>
 									</div>
-									<span class="chip">{{ unit.pacing_status || 'Not Started' }}</span>
+									<span class="chip">{{
+										unit.resolved_pacing_status || unit.pacing_status || 'Not Started'
+									}}</span>
 								</div>
 							</button>
 						</div>
@@ -267,7 +269,9 @@
 								<span v-if="selectedUnit.estimated_duration" class="chip">
 									{{ selectedUnit.estimated_duration }}
 								</span>
-								<span class="chip">{{ unitForm.pacing_status || 'Not Started' }}</span>
+								<span class="chip">{{
+									selectedUnit.resolved_pacing_status || unitForm.pacing_status || 'Not Started'
+								}}</span>
 							</div>
 						</div>
 
@@ -555,32 +559,21 @@
 								<h3 class="type-h3 text-ink">Shared Unit Resources</h3>
 								<span class="chip">{{ selectedUnit.shared_resources.length }}</span>
 							</div>
-							<div class="grid gap-3">
-								<article
-									v-for="resource in selectedUnit.shared_resources"
-									:key="resource.placement || resource.material"
-									class="rounded-2xl border border-line-soft bg-surface-soft p-4"
-								>
-									<div class="flex items-start justify-between gap-3">
-										<div class="min-w-0">
-											<p class="type-body-strong text-ink">{{ resource.title }}</p>
-											<p v-if="resource.description" class="mt-1 type-caption text-ink/70">
-												{{ resource.description }}
-											</p>
-										</div>
-										<span v-if="resource.usage_role" class="chip">{{ resource.usage_role }}</span>
-									</div>
-									<a
-										v-if="resource.open_url"
-										:href="resource.open_url"
-										target="_blank"
-										rel="noreferrer"
-										class="mt-3 inline-flex text-sm font-medium text-jacaranda transition hover:text-jacaranda/80"
-									>
-										Open resource
-									</a>
-								</article>
-							</div>
+							<PlanningResourcePanel
+								anchor-doctype="Unit Plan"
+								:anchor-name="selectedUnit.unit_plan"
+								:can-manage="false"
+								:show-read-only-notice="false"
+								eyebrow="Shared Unit Resources"
+								title="Shared resources for this unit"
+								description="Inherited governed materials from the shared unit backbone."
+								empty-message="No shared unit resources are attached to this unit."
+								blocked-message="Select a governed unit before reviewing shared unit resources."
+								:resources="selectedUnit.shared_resources"
+								enable-attachment-preview
+								hide-header
+								embedded
+							/>
 						</div>
 					</section>
 
@@ -594,6 +587,7 @@
 							empty-message="No class-wide resources shared yet."
 							blocked-message="Create the class teaching plan before sharing class resources."
 							:resources="surface.resources.class_resources"
+							enable-attachment-preview
 							@changed="loadSurface"
 						/>
 
@@ -647,11 +641,7 @@
 								<h2 class="mt-1 type-h3 text-ink">Plan what this class will actually do</h2>
 							</div>
 							<div class="flex flex-wrap gap-3">
-								<button
-									type="button"
-									class="if-action if-action--subtle"
-									@click="openAssignedWorkOverlay()"
-								>
+								<button type="button" class="if-action" @click="openAssignedWorkOverlay()">
 									Assign Work To This Class
 								</button>
 								<button type="button" class="if-action" @click="startNewSession">
@@ -873,7 +863,7 @@
 									<button
 										v-if="selectedSessionId"
 										type="button"
-										class="if-action if-action--subtle"
+										class="if-action"
 										@click="
 											openAssignedWorkOverlay({
 												unitPlan: selectedUnit?.unit_plan || null,
@@ -956,6 +946,7 @@
 											empty-message="No session resources shared yet."
 											blocked-message="Create or select a class session before sharing session resources."
 											:resources="selectedSessionResources"
+											enable-attachment-preview
 											@changed="loadSurface"
 										/>
 
@@ -1020,7 +1011,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, reactive, ref, watch } from 'vue';
 import { toast } from 'frappe-ui';
-import { useRoute, useRouter } from 'vue-router';
+import { RouterLink, useRoute, useRouter } from 'vue-router';
 
 import PlanningResourcePanel from '@/components/planning/PlanningResourcePanel.vue';
 import { useOverlayStack } from '@/composables/useOverlayStack';
@@ -1040,18 +1031,10 @@ import type {
 	StaffPlanningSession,
 	StaffPlanningUnit,
 } from '@/types/contracts/staff_teaching/get_staff_class_planning_surface';
+import type { TaskDeliveryCreatedSignal } from '@/types/tasks';
 
 type EditableActivity = StaffPlanningActivity & {
 	local_id: number;
-};
-
-type TaskDeliveryCreatedSignal = {
-	task?: string;
-	task_delivery?: string;
-	student_group?: string | null;
-	class_teaching_plan?: string | null;
-	unit_plan?: string | null;
-	class_session?: string | null;
 };
 
 const route = useRoute();
@@ -1103,6 +1086,9 @@ const sessionForm = reactive({
 const studentGroup = computed(() => String(route.params.studentGroup || '').trim());
 const requestedPlan = computed(() =>
 	typeof route.query.class_teaching_plan === 'string' ? route.query.class_teaching_plan : ''
+);
+const requestedUnit = computed(() =>
+	typeof route.query.unit_plan === 'string' ? route.query.unit_plan : ''
 );
 
 const selectedUnit = computed<StaffPlanningUnit | null>(() => {
@@ -1179,6 +1165,12 @@ function selectUnit(unitPlan: string) {
 	const firstSession = unit?.sessions[0] || null;
 	selectedSessionId.value = firstSession?.class_session || '';
 	syncSessionForm(firstSession);
+	void router.replace({
+		query: {
+			...route.query,
+			unit_plan: unitPlan || undefined,
+		},
+	});
 }
 
 function selectSession(classSession: string) {
@@ -1194,6 +1186,10 @@ function openAssignedWorkOverlay(options?: {
 }) {
 	if (!surface.value?.teaching_plan?.class_teaching_plan) {
 		toast.error('Create the class teaching plan before assigning work.');
+		return;
+	}
+	if (String(surface.value.teaching_plan.planning_status || '').trim() !== 'Active') {
+		toast.error('Set this class teaching plan to Active before assigning work.');
 		return;
 	}
 	overlay.open('create-task', {
@@ -1231,10 +1227,22 @@ function applySurfaceSelection(payload: StaffClassPlanningSurfaceResponse) {
 		draftCoursePlan.value = payload.course_plans[0].course_plan;
 	}
 
+	const requestedUnitPlan = String(requestedUnit.value || '').trim();
+	const resolvedUnitPlan = String(payload.resolved.unit_plan || '').trim();
 	const currentUnitStillExists = payload.curriculum.units.some(
 		unit => unit.unit_plan === selectedUnitPlan.value
 	);
-	if (!currentUnitStillExists) {
+	if (
+		requestedUnitPlan &&
+		payload.curriculum.units.some(unit => unit.unit_plan === requestedUnitPlan)
+	) {
+		selectedUnitPlan.value = requestedUnitPlan;
+	} else if (
+		resolvedUnitPlan &&
+		payload.curriculum.units.some(unit => unit.unit_plan === resolvedUnitPlan)
+	) {
+		selectedUnitPlan.value = resolvedUnitPlan;
+	} else if (!currentUnitStillExists) {
 		selectedUnitPlan.value = payload.curriculum.units[0]?.unit_plan || '';
 	}
 
@@ -1409,6 +1417,14 @@ watch(
 		loadSurface();
 	},
 	{ immediate: true }
+);
+
+watch(
+	() => requestedUnit.value,
+	() => {
+		if (!surface.value) return;
+		applySurfaceSelection(surface.value);
+	}
 );
 
 const unsubscribeTaskDeliveryCreated = uiSignals.subscribe<TaskDeliveryCreatedSignal>(

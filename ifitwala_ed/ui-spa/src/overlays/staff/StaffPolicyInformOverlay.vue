@@ -37,6 +37,15 @@
 									{{ policyTitle }}
 								</DialogTitle>
 								<p v-if="scopeLabel" class="type-caption mt-1 truncate">{{ scopeLabel }}</p>
+								<div v-if="audienceChips.length" class="mt-2 flex flex-wrap gap-2">
+									<span
+										v-for="chip in audienceChips"
+										:key="chip"
+										class="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700"
+									>
+										{{ chip }}
+									</span>
+								</div>
 								<div
 									v-if="statusLabel"
 									class="mt-2 inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium"
@@ -115,16 +124,17 @@
 									<div class="flex items-center justify-end gap-2">
 										<button
 											type="button"
-											class="btn btn-quiet"
-											:disabled="activeTab === 'changes' || !hasDiffHtml"
+											class="if-action"
+											:aria-pressed="activeTab === 'changes'"
+											:disabled="!hasDiffHtml"
 											@click="activeTab = 'changes'"
 										>
 											Changes
 										</button>
 										<button
 											type="button"
-											class="btn btn-quiet"
-											:disabled="activeTab === 'full'"
+											class="if-action"
+											:aria-pressed="activeTab === 'full'"
 											@click="activeTab = 'full'"
 										>
 											Full policy
@@ -222,7 +232,11 @@
 						</section>
 
 						<footer class="if-overlay__footer justify-end">
-							<button type="button" class="btn btn-quiet" @click="emitClose('programmatic')">
+							<button
+								type="button"
+								class="if-button if-button--quiet"
+								@click="emitClose('programmatic')"
+							>
 								Close
 							</button>
 						</footer>
@@ -297,32 +311,68 @@ const hasChangeStats = computed(
 );
 const hasChangeSummary = computed(() => Boolean(changeSummary.value));
 const hasDiffHtml = computed(() => Boolean((policy.value?.diff_html || '').trim()));
-const statusLabel = computed(() => {
-	if (!policy.value?.signature_required) return 'Informational policy (no signature required)';
-	switch (policy.value?.acknowledgement_status) {
-		case 'signed':
-			return 'Signed';
-		case 'new_version':
-			return 'New version to review';
-		case 'pending':
-			return 'Signature pending';
+const audienceTokens = computed(() =>
+	Array.from(new Set((policy.value?.applies_to_tokens || []).filter(Boolean)))
+);
+const audienceChips = computed(() => audienceTokens.value.map(audienceLabel));
+const hasStaffAudience = computed(() => audienceTokens.value.includes('Staff'));
+const workflowLabel = computed(() => {
+	if (!audienceTokens.value.length) return null;
+	if (audienceTokens.value.length > 1) return 'Cross-audience policy';
+	switch (audienceTokens.value[0]) {
+		case 'Guardian':
+			return 'Guardian portal acknowledgement';
+		case 'Student':
+			return 'Student hub acknowledgement';
+		case 'Staff':
+			return 'Staff workspace policy';
 		default:
-			return 'Signature pending';
+			return 'Policy in scope';
 	}
+});
+const statusLabel = computed(() => {
+	if (hasStaffAudience.value && policy.value?.signature_required) {
+		switch (policy.value?.acknowledgement_status) {
+			case 'signed':
+				return 'Signed';
+			case 'new_version':
+				return 'New version to review';
+			case 'pending':
+				return 'Signature pending';
+			default:
+				return 'Signature pending';
+		}
+	}
+	if (hasStaffAudience.value && audienceTokens.value.length === 1) {
+		return 'Informational policy (no signature required)';
+	}
+	return workflowLabel.value;
 });
 const statusClass = computed(() => {
-	if (!policy.value?.signature_required) return 'bg-slate-100 text-slate-700';
-	switch (policy.value?.acknowledgement_status) {
-		case 'signed':
-			return 'bg-leaf/15 text-canopy';
-		case 'new_version':
-			return 'bg-sky/20 text-canopy';
-		case 'pending':
-			return 'bg-sand text-clay';
-		default:
-			return 'bg-sand text-clay';
+	if (hasStaffAudience.value && policy.value?.signature_required) {
+		switch (policy.value?.acknowledgement_status) {
+			case 'signed':
+				return 'bg-leaf/15 text-canopy';
+			case 'new_version':
+				return 'bg-sky/20 text-canopy';
+			case 'pending':
+				return 'bg-sand text-clay';
+			default:
+				return 'bg-sand text-clay';
+		}
 	}
+	if (audienceTokens.value.length > 1) return 'bg-jacaranda/10 text-jacaranda';
+	if (audienceTokens.value[0] === 'Guardian') return 'bg-sky/20 text-canopy';
+	if (audienceTokens.value[0] === 'Student') return 'bg-leaf/15 text-canopy';
+	return 'bg-slate-100 text-slate-700';
 });
+
+function audienceLabel(audience: string): string {
+	if (audience === 'Guardian') return 'Guardians';
+	if (audience === 'Student') return 'Students';
+	if (audience === 'Staff') return 'Staff';
+	return audience;
+}
 
 function trustedHtml(html: string): string {
 	return String(html || '');

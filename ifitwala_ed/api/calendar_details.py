@@ -21,7 +21,25 @@ from ifitwala_ed.api.calendar_core import (
     _system_tzinfo,
     _to_system_datetime,
 )
+from ifitwala_ed.api.guardian_communications import (
+    _matched_students_for_school_event_audience,
+    _resolve_guardian_communication_context,
+)
+from ifitwala_ed.api.org_comm_utils import STAFF_ROLES
+from ifitwala_ed.api.student_calendar import _is_student_audience
+from ifitwala_ed.curriculum import planning
+from ifitwala_ed.school_settings.doctype.school_event.school_event import get_user_membership
 from ifitwala_ed.utilities.school_tree import get_ancestor_schools
+
+
+def _format_detail_datetime_label(value) -> str | None:
+    if not value:
+        return None
+
+    try:
+        return format_datetime(value)
+    except Exception:
+        return value.isoformat() if hasattr(value, "isoformat") else str(value)
 
 
 def get_meeting_details(meeting: str):
@@ -84,8 +102,8 @@ def get_meeting_details(meeting: str):
         "date": doc.date,
         "start": start_dt.isoformat() if start_dt else None,
         "end": end_dt.isoformat() if end_dt else None,
-        "start_label": format_datetime(start_dt) if start_dt else None,
-        "end_label": format_datetime(end_dt) if end_dt else None,
+        "start_label": _format_detail_datetime_label(start_dt),
+        "end_label": _format_detail_datetime_label(end_dt),
         "location": doc.location,
         "virtual_link": doc.virtual_meeting_link,
         "meeting_category": doc.meeting_category,
@@ -142,14 +160,14 @@ def get_school_event_details(event: str):
         "school": doc.school,
         "location": doc.location,
         "event_category": doc.event_category,
-        "event_type": doc.event_type,
+        "event_type": getattr(doc, "event_type", None),
         "all_day": bool(doc.all_day),
         "color": color,
         "description": doc.description or "",
         "start": start_dt.isoformat() if start_dt else None,
         "end": end_dt.isoformat() if end_dt else None,
-        "start_label": format_datetime(start_dt) if start_dt else None,
-        "end_label": format_datetime(end_dt) if end_dt else None,
+        "start_label": _format_detail_datetime_label(start_dt),
+        "end_label": _format_detail_datetime_label(end_dt),
         "reference_type": doc.reference_type,
         "reference_name": doc.reference_name,
         "timezone": tzinfo.zone,
@@ -228,6 +246,7 @@ def get_student_group_event_details(
     end_dt = context.get("end")
     if start_dt and end_dt and end_dt <= start_dt:
         end_dt = start_dt + CAL_MIN_DURATION
+    task_creation_resolution = planning.resolve_active_class_teaching_plan(group_row.name)
 
     return {
         "id": resolved_event_id,
@@ -247,9 +266,13 @@ def get_student_group_event_details(
         "location_missing_reason": context.get("location_missing_reason"),
         "start": start_dt.isoformat() if start_dt else None,
         "end": end_dt.isoformat() if end_dt else None,
-        "start_label": format_datetime(start_dt) if start_dt else None,
-        "end_label": format_datetime(end_dt) if end_dt else None,
+        "start_label": _format_detail_datetime_label(start_dt),
+        "end_label": _format_detail_datetime_label(end_dt),
         "timezone": tzinfo.zone,
+        "task_creation": {
+            "status": task_creation_resolution.get("status"),
+            "class_teaching_plan": task_creation_resolution.get("class_teaching_plan"),
+        },
         "_debug": context.get("_debug") if debug_booking else None,
     }
 
@@ -495,37 +518,124 @@ def _any_student_has_active_group_membership(student_names: set[str], group_name
 
 
 def _school_event_access_allowed(event_doc, user: str) -> bool:
+    user_roles = set(frappe.get_roles(user))
+    explicit_participant = _school_event_has_explicit_participant(event_doc, user)
+    is_admin_like = user == "Administrator" or bool(
+        {"System Manager", "Academic Admin", "Academic Assistant"} & user_roles
+    )
+
     if (event_doc.reference_type or "").strip() == "Applicant Interview":
-        user_roles = set(frappe.get_roles(user))
-        if user == "Administrator" or "System Manager" in user_roles or "Academic Admin" in user_roles:
+        if is_admin_like:
             return True
 
-        return bool(
-            frappe.db.exists(
-                "School Event Participant",
-                {"parent": event_doc.name, "parenttype": "School Event", "participant": user},
-            )
+        return explicit_participant
+
+    if is_admin_like:
+        return True
+
+    if explicit_participant:
+        return True
+
+    if "Guardian" in user_roles and _school_event_guardian_access_allowed(event_doc):
+        return True
+
+    if "Student" in user_roles and _school_event_student_access_allowed(event_doc, user):
+        return True
+
+    if set(user_roles) & STAFF_ROLES and _school_event_staff_access_allowed(event_doc, user, user_roles):
+        return True
+
+    return False
+
+
+def _school_event_has_explicit_participant(event_doc, user: str) -> bool:
+    participants = getattr(event_doc, "participants", None) or []
+    for participant_row in participants:
+        if str(participant_row.get("participant") or "").strip() == user:
+            return True
+    return False
+
+
+def _school_event_guardian_access_allowed(event_doc) -> bool:
+    try:
+        context = _resolve_guardian_communication_context()
+    except frappe.PermissionError:
+        return False
+
+    event_row = {
+        "name": event_doc.name,
+        "school": event_doc.school,
+    }
+    explicit_participant_events = set()
+    if _school_event_has_explicit_participant(event_doc, frappe.session.user):
+        explicit_participant_events.add(event_doc.name)
+
+    for audience_row in getattr(event_doc, "audience", None) or []:
+        matched_students = _matched_students_for_school_event_audience(
+            event_row,
+            audience_row,
+            context=context,
+            selected_student=None,
+            selected_school=None,
+            explicit_participant_events=explicit_participant_events,
         )
+        if matched_students:
+            return True
 
-    if frappe.has_permission("School Event", doc=event_doc, ptype="read"):
-        return True
+    return False
 
-    is_participant = frappe.db.exists(
-        "School Event Participant",
-        {"parent": event_doc.name, "parenttype": "School Event", "participant": user},
+
+def _school_event_student_access_allowed(event_doc, user: str) -> bool:
+    student_name = _resolve_student_for_user(user)
+    if not student_name:
+        return False
+
+    student_group_rows = frappe.get_all(
+        "Student Group Student",
+        filters={"student": student_name, "active": 1},
+        pluck="parent",
     )
-    if is_participant:
-        return True
+    return _is_student_audience(event_doc, student_name, set(student_group_rows or []))
 
+
+def _school_event_staff_access_allowed(event_doc, user: str, user_roles: set[str]) -> bool:
     emp_row = _resolve_employee_for_user(
         user,
         fields=["school"],
         employment_status_filter=["!=", "Inactive"],
     )
     employee_school = (emp_row or {}).get("school")
-    if employee_school and event_doc.school:
-        allowed_schools = get_ancestor_schools(employee_school) or []
-        if event_doc.school in allowed_schools:
+    event_school = str(event_doc.school or "").strip()
+    if not employee_school or not event_school:
+        return False
+
+    allowed_schools = set(get_ancestor_schools(employee_school) or [])
+    if event_school not in allowed_schools:
+        return False
+
+    membership = get_user_membership(user)
+    for audience_row in getattr(event_doc, "audience", None) or []:
+        if _school_event_audience_matches_staff_user(audience_row, user_roles=user_roles, membership=membership):
             return True
+
+    return False
+
+
+def _school_event_audience_matches_staff_user(
+    audience_row, *, user_roles: set[str], membership: dict[str, set[str]]
+) -> bool:
+    audience_type = str(audience_row.get("audience_type") or "").strip()
+    if not audience_type:
+        return False
+
+    if audience_type == "All Students, Guardians, and Employees":
+        return True
+
+    if audience_type == "All Employees":
+        return bool(set(user_roles or []) & STAFF_ROLES)
+
+    if audience_type == "Employees in Team":
+        team_name = str(audience_row.get("team") or "").strip()
+        return bool(team_name and team_name in set((membership or {}).get("teams") or set()))
 
     return False

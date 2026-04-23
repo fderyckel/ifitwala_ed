@@ -101,30 +101,36 @@ def reset_billing_rows_for_invoice(sales_invoice: str) -> None:
     rows = frappe.get_all(
         "Billing Schedule Row",
         filters={"sales_invoice": sales_invoice, "parenttype": "Billing Schedule"},
-        fields=["name", "parent"],
+        fields=["name", "parent", "billing_run"],
         limit=50000,
     )
     if not rows:
         return
 
     parent_names = set()
+    billing_run_names = set()
     for row in rows:
         frappe.db.set_value(
             "Billing Schedule Row",
             row.get("name"),
             {
-                "sales_invoice": "",
-                "billing_run": "",
+                "sales_invoice": None,
+                "billing_run": None,
                 "status": "Pending",
             },
             update_modified=False,
         )
         parent_names.add(row.get("parent"))
+        if row.get("billing_run"):
+            billing_run_names.add(row.get("billing_run"))
 
     from ifitwala_ed.accounting.doctype.billing_schedule.billing_schedule import refresh_billing_schedule
 
     for parent_name in parent_names:
         refresh_billing_schedule(parent_name)
+
+    for billing_run_name in billing_run_names:
+        _refresh_billing_run_after_invoice_reset(billing_run_name)
 
 
 def _get_schedule_target_rows(schedule_doc, row_ids: list[str] | None = None):
@@ -271,3 +277,73 @@ def _link_rows_to_invoice(*, row_refs: list[dict], sales_invoice: str, billing_r
 
     for parent_name in parent_names:
         refresh_billing_schedule(parent_name)
+
+
+def _refresh_billing_run_after_invoice_reset(billing_run: str) -> None:
+    if not billing_run:
+        return
+
+    run = frappe.get_doc("Billing Run", billing_run)
+    retained_row_links = frappe.get_all(
+        "Billing Schedule Row",
+        filters={
+            "billing_run": billing_run,
+            "parenttype": "Billing Schedule",
+            "sales_invoice": ["is", "set"],
+        },
+        fields=["sales_invoice", "period_key", "parent"],
+        order_by="sales_invoice asc, parent asc, idx asc",
+        limit=50000,
+    )
+
+    retained_items = []
+    if retained_row_links:
+        invoice_names = sorted(
+            {(row.get("sales_invoice") or "").strip() for row in retained_row_links if row.get("sales_invoice")}
+        )
+        invoice_map = {
+            row.get("name"): row
+            for row in frappe.get_all(
+                "Sales Invoice",
+                filters={"name": ["in", invoice_names]},
+                fields=["name", "account_holder", "grand_total", "docstatus", "status"],
+                limit=max(len(invoice_names), 1),
+            )
+        }
+
+        grouped_links: dict[str, list[dict]] = {}
+        for row in retained_row_links:
+            sales_invoice = (row.get("sales_invoice") or "").strip()
+            if not sales_invoice:
+                continue
+            grouped_links.setdefault(sales_invoice, []).append(row)
+
+        for sales_invoice in invoice_names:
+            invoice_state = invoice_map.get(sales_invoice)
+            if not invoice_state:
+                continue
+            if (
+                int(invoice_state.get("docstatus") or 0) == 2
+                or (invoice_state.get("status") or "").strip() == "Cancelled"
+            ):
+                continue
+
+            linked_rows = grouped_links.get(sales_invoice) or []
+            if not linked_rows:
+                continue
+
+            retained_items.append(
+                {
+                    "account_holder": invoice_state.get("account_holder"),
+                    "period_key": (linked_rows[0].get("period_key") or "").strip(),
+                    "sales_invoice": sales_invoice,
+                    "billing_schedule_count": len({row.get("parent") for row in linked_rows if row.get("parent")}),
+                    "billing_row_count": len(linked_rows),
+                    "grand_total": money(invoice_state.get("grand_total") or 0),
+                }
+            )
+
+    run.set("items", retained_items)
+    if not retained_items:
+        run.processed_on = None
+    run.save(ignore_permissions=True)

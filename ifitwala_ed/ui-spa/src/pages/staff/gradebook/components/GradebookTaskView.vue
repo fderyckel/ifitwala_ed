@@ -5,50 +5,30 @@
 	>
 		<div class="border-b border-border/50 bg-gray-50/50 px-6 py-4">
 			<div class="flex flex-wrap items-center justify-between gap-4">
-				<div class="flex items-center gap-3">
-					<h2 class="text-lg font-semibold text-ink">Grade Entry</h2>
-					<div
-						v-if="showMaxPointsPill(gradebook.task)"
-						class="flex items-center gap-2 rounded-full border border-border/50 bg-white px-2 py-0.5 text-xs text-ink/60 shadow-sm"
-					>
-						<span class="font-medium">Max Points:</span>
-						<span class="font-bold text-ink">{{ gradebook.task?.max_points || '—' }}</span>
-					</div>
+				<div class="space-y-1">
+					<h2 class="text-lg font-semibold text-ink">Task Workspace</h2>
+					<p class="max-w-2xl text-sm text-ink/60">
+						Open one student at a time in the grading drawer. Evidence review, marking, official
+						result, and release stay in one workflow.
+					</p>
 				</div>
 
-				<div v-if="gradebook.students.length" class="flex flex-wrap items-center gap-2">
-					<span class="text-xs font-medium uppercase tracking-wider text-ink/50"
-						>Visible to all:</span
-					>
-					<Button
-						size="sm"
-						appearance="minimal"
-						:class="
-							allStudentsVisible
-								? 'bg-sky/30 text-ink font-semibold'
-								: 'text-ink/60 hover:text-ink'
-						"
-						@click="toggleVisibilityGroup('student')"
-					>
-						Students
-					</Button>
-					<Button
-						size="sm"
-						appearance="minimal"
-						:class="
-							allGuardiansVisible
-								? 'bg-sky/30 text-ink font-semibold'
-								: 'text-ink/60 hover:text-ink'
-						"
-						@click="toggleVisibilityGroup('guardian')"
-					>
-						Guardians
-					</Button>
+				<div v-if="gradebook.task" class="flex flex-wrap gap-2">
+					<Badge v-if="taskModeBadge(gradebook.task)" variant="subtle">
+						{{ taskModeBadge(gradebook.task) }}
+					</Badge>
+					<Badge variant="subtle">Students {{ gradebook.students.length }}</Badge>
+					<Badge v-if="newEvidenceCount" variant="subtle" theme="orange">
+						New evidence {{ newEvidenceCount }}
+					</Badge>
+					<Badge v-if="releasedCount" variant="subtle" theme="green">
+						Released {{ releasedCount }}
+					</Badge>
 				</div>
 			</div>
 		</div>
 
-		<div class="min-h-[400px] flex-1 bg-white p-6">
+		<div class="min-h-[420px] flex-1 bg-white p-6">
 			<div
 				v-if="gradebookLoading"
 				class="flex h-full flex-col items-center justify-center gap-3 pt-20"
@@ -65,7 +45,7 @@
 					<FeatherIcon name="check-square" class="h-8 w-8 text-ink/30" />
 				</div>
 				<p class="text-lg font-medium text-ink">No Task Selected</p>
-				<p class="max-w-xs text-sm">Choose a task from the left panel to begin entering grades.</p>
+				<p class="max-w-xs text-sm">Choose a task from the left panel to begin grading.</p>
 			</div>
 
 			<div
@@ -74,478 +54,369 @@
 			>
 				<p class="text-lg font-medium text-ink">No Students Assigned</p>
 				<p class="max-w-xs text-sm">This task has no students in the roster.</p>
-				<Button size="md" appearance="primary" :loading="rosterSyncing" @click="syncRoster"
-					>Sync roster</Button
-				>
 			</div>
 
-			<div v-else class="space-y-6">
-				<GradebookQuizManualReview
-					v-if="showsQuizManualReview && taskName"
-					:task-name="taskName"
-				/>
+			<GradebookQuizManualReview
+				v-else-if="showsQuizManualReview && taskName"
+				:task-name="taskName"
+			/>
 
-				<template v-else>
-					<article
-						v-for="student in gradebook.students"
-						:key="student.task_student"
-						:data-gradebook-student="student.student"
-						class="group relative rounded-xl border p-5 transition-all hover:bg-white hover:shadow-md"
-						:class="
-							focusStudent === student.student
-								? 'border-leaf/60 bg-sky/10 shadow-sm ring-1 ring-leaf/20'
-								: 'border-border bg-gray-50/30'
-						"
-					>
+			<div v-else class="grid gap-5 xl:grid-cols-[minmax(17.5rem,19rem)_minmax(0,1fr)]">
+				<section class="rounded-2xl border border-border/70 bg-gray-50/40">
+					<div class="border-b border-border/60 px-4 py-4">
+						<div class="flex flex-wrap items-start justify-between gap-3">
+							<div>
+								<h3 class="text-sm font-semibold uppercase tracking-[0.16em] text-ink/45">
+									{{ hasEvidenceInbox ? 'Evidence Inbox' : 'Student Roster' }}
+								</h3>
+								<p class="mt-1 text-sm text-ink/60">
+									{{ evidenceIntroLabel }}
+								</p>
+							</div>
+							<div class="flex flex-col items-end gap-2">
+								<div class="text-right text-xs text-ink/45">
+									<p>{{ visibleStudents.length }} shown</p>
+									<p v-if="hasEvidenceInbox">{{ gradebook.students.length }} total students</p>
+									<p v-if="gradebook.task?.due_date">
+										Due {{ formatDate(gradebook.task?.due_date) }}
+									</p>
+								</div>
+								<div class="flex flex-wrap justify-end gap-2">
+									<button
+										type="button"
+										class="if-button if-button--secondary"
+										:disabled="publishBusy || !unreleasedOutcomeIds.length"
+										data-select-unreleased
+										@click="selectAllUnreleased"
+									>
+										Select unreleased
+									</button>
+									<button
+										v-if="selectedBatchOutcomeIds.length"
+										type="button"
+										class="if-button if-button--secondary"
+										:disabled="publishBusy"
+										@click="clearBatchSelection"
+									>
+										Clear
+									</button>
+									<button
+										type="button"
+										class="if-button if-button--primary"
+										:disabled="publishBusy || !selectedReleasableOutcomeIds.length"
+										data-release-selected
+										@click="releaseSelectedOutcomes"
+									>
+										Release selected
+										<span v-if="selectedReleasableOutcomeIds.length">
+											({{ selectedReleasableOutcomeIds.length }})
+										</span>
+									</button>
+								</div>
+							</div>
+						</div>
+					</div>
+
+					<div v-if="hasEvidenceInbox" class="border-b border-border/60 bg-white/90 px-4 py-3">
+						<div class="flex flex-wrap items-center gap-2">
+							<button
+								v-for="option in evidenceFilterOptions"
+								:key="option.id"
+								type="button"
+								class="rounded-full border px-3 py-1.5 text-sm font-medium transition"
+								:class="
+									activeEvidenceFilter === option.id
+										? 'border-leaf bg-sky/20 text-ink'
+										: 'border-border/70 bg-white text-ink/65 hover:border-leaf/40 hover:text-ink'
+								"
+								:data-evidence-filter="option.id"
+								@click="setEvidenceFilter(option.id)"
+							>
+								{{ option.label }} ({{ option.count }})
+							</button>
+						</div>
+					</div>
+
+					<div class="max-h-[720px] space-y-2 overflow-y-auto p-2.5">
 						<div
-							class="mb-4 flex flex-wrap items-start justify-between gap-4 border-b border-border/40 pb-4"
+							v-if="!visibleStudents.length"
+							class="rounded-2xl border border-dashed border-border/70 bg-gray-50/40 p-6 text-center text-sm text-ink/60"
 						>
-							<div class="flex min-w-0 flex-1 items-center gap-4">
-								<img
-									:src="student.student_image || DEFAULT_STUDENT_IMAGE"
-									alt=""
-									class="h-12 w-12 rounded-full border border-white bg-white object-cover shadow-sm"
-									loading="lazy"
-									@error="onImgError"
+							No students match this evidence filter.
+						</div>
+						<div
+							v-for="student in visibleStudents"
+							:key="student.task_student"
+							class="flex items-start gap-3 rounded-2xl border border-border/70 bg-white px-3.5 py-4 transition hover:border-leaf/40 hover:bg-sky/10"
+						>
+							<div class="pt-1">
+								<input
+									:checked="isBatchSelected(student.task_student)"
+									:data-batch-select-outcome="student.task_student"
+									type="checkbox"
+									class="h-4 w-4 rounded border-border text-canopy"
+									@change="
+										toggleBatchSelection(
+											student.task_student,
+											($event.target as HTMLInputElement).checked
+										)
+									"
 								/>
-								<div class="min-w-0 flex-1">
-									<div class="flex flex-wrap items-center gap-x-4 gap-y-2">
-										<p class="text-base font-bold text-ink transition-colors hover:text-leaf">
-											{{ student.student_name }}
-										</p>
-										<div class="gradebook-student-visibility grid grid-cols-2 gap-x-4 gap-y-2">
-											<label
-												class="inline-flex cursor-pointer items-center gap-2 text-sm text-ink/70"
+							</div>
+							<button
+								type="button"
+								class="w-full rounded-xl px-1 text-left transition"
+								:data-gradebook-student="student.student"
+								:class="selectedOutcomeId === student.task_student ? 'bg-sky/10' : ''"
+								@click="openStudent(student)"
+							>
+								<div class="flex items-start gap-3">
+									<img
+										:src="student.student_image || DEFAULT_STUDENT_IMAGE"
+										alt=""
+										class="h-11 w-11 rounded-full border border-white bg-white object-cover shadow-sm"
+										loading="lazy"
+										@error="onImgError"
+									/>
+									<div class="min-w-0 flex-1">
+										<div class="flex items-start justify-between gap-3">
+											<div class="min-w-0">
+												<p class="truncate text-sm font-semibold text-ink">
+													{{ student.student_name }}
+												</p>
+												<p class="truncate text-xs text-ink/50">
+													{{ student.student_id || student.student }}
+												</p>
+											</div>
+											<FeatherIcon
+												name="chevron-right"
+												class="mt-0.5 h-4 w-4 shrink-0 text-ink/30"
+											/>
+										</div>
+
+										<div class="mt-3 grid gap-1 text-sm text-ink/65">
+											<p>Status: {{ student.status || '—' }}</p>
+											<p v-if="student.submission_status">
+												Submission: {{ student.submission_status }}
+											</p>
+											<p v-if="student.procedural_status">
+												Procedural: {{ student.procedural_status }}
+											</p>
+											<p>{{ studentResultSummary(student) }}</p>
+										</div>
+
+										<div class="mt-3 flex flex-wrap gap-2">
+											<Badge v-if="student.has_new_submission" variant="subtle" theme="orange">
+												New evidence
+											</Badge>
+											<Badge v-if="student.visible_to_student" variant="subtle" theme="green">
+												Released
+											</Badge>
+											<Badge
+												v-if="student.has_submission && !student.has_new_submission"
+												variant="subtle"
 											>
-												<input
-													type="checkbox"
-													class="h-4 w-4 rounded border-border/70 text-leaf focus:ring-[rgb(var(--leaf-rgb)/0.35)]"
-													:checked="
-														Boolean(studentStates[student.task_student]?.visible_to_student)
-													"
-													@change="
-														onVisibilityInputChange(
-															student.task_student,
-															'visible_to_student',
-															$event
-														)
-													"
-												/>
-												<span>Visible to Student</span>
-											</label>
-											<label
-												class="inline-flex cursor-pointer items-center gap-2 text-sm text-ink/70"
-											>
-												<input
-													type="checkbox"
-													class="h-4 w-4 rounded border-border/70 text-leaf focus:ring-[rgb(var(--leaf-rgb)/0.35)]"
-													:checked="
-														Boolean(studentStates[student.task_student]?.visible_to_guardian)
-													"
-													@change="
-														onVisibilityInputChange(
-															student.task_student,
-															'visible_to_guardian',
-															$event
-														)
-													"
-												/>
-												<span>Visible to Guardian</span>
-											</label>
+												Evidence linked
+											</Badge>
 										</div>
 									</div>
-									<div class="flex items-center gap-2 text-xs text-ink/50">
-										<span v-if="student.student_id" class="font-mono">{{
-											student.student_id
-										}}</span>
-										<span>•</span>
-										<span
-											:class="{
-												'text-leaf font-medium':
-													studentStates[student.task_student]?.status === 'Finalized' ||
-													studentStates[student.task_student]?.status === 'Released',
-											}"
-										>
-											{{ studentStates[student.task_student]?.status || '—' }}
-										</span>
-									</div>
 								</div>
-							</div>
-
-							<div class="flex flex-wrap items-center gap-2">
-								<Badge
-									v-if="showsBooleanResult(gradebook.task)"
-									:variant="studentStates[student.task_student]?.complete ? 'subtle' : 'outline'"
-									:theme="studentStates[student.task_student]?.complete ? 'green' : 'gray'"
-									:class="
-										studentStates[student.task_student]?.complete ? '!bg-leaf/10 !text-leaf' : ''
-									"
-								>
-									<FeatherIcon
-										:name="
-											studentStates[student.task_student]?.complete ? 'check' : 'minus-circle'
-										"
-										class="mr-1 h-3 w-3"
-									/>
-									{{ booleanResultLabel(student.task_student) }}
-								</Badge>
-
-								<div
-									v-if="showsScoreSummary(gradebook.task)"
-									class="flex items-center rounded-lg border border-border/40 bg-white px-3 py-1.5 shadow-sm"
-								>
-									<span class="mr-2 text-xs font-medium uppercase tracking-wider text-ink/40">
-										{{ scoreSummaryLabel(gradebook.task) }}
-									</span>
-									<span class="text-lg font-bold text-ink">
-										{{ formatPoints(studentStates[student.task_student]?.mark_awarded) }}
-									</span>
-								</div>
-							</div>
+							</button>
 						</div>
+					</div>
+				</section>
 
-						<div class="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-							<div class="space-y-4">
-								<FormControl
-									v-if="showsStatusControl(gradebook.task)"
-									type="select"
-									label="Status"
-									:options="statusOptions"
-									option-label="label"
-									option-value="value"
-									placeholder="Select status"
-									:model-value="studentStates[student.task_student]?.status || ''"
-									@update:modelValue="onStatusChanged(student.task_student, $event)"
-								/>
-
-								<div v-if="isPointsTask(gradebook.task)" class="space-y-1.5">
-									<label class="block text-xs font-semibold uppercase tracking-wide text-ink/50">
-										Points Awarded
-									</label>
-									<FormControl
-										type="number"
-										placeholder="Points"
-										:step="0.5"
-										:min="0"
-										:max="gradebook.task?.max_points || undefined"
-										:model-value="studentStates[student.task_student]?.mark_awarded"
-										@update:modelValue="onPointsChanged(student.task_student, $event)"
-									/>
-								</div>
-
-								<div v-if="showsBooleanResult(gradebook.task)" class="space-y-1.5">
-									<label class="block text-xs font-semibold uppercase tracking-wide text-ink/50">
-										{{ booleanControlLabel(gradebook.task) }}
-									</label>
-									<div class="grid grid-cols-2 gap-2">
-										<button
-											type="button"
-											class="rounded-md border px-4 py-2 text-sm font-medium transition-all"
-											:class="
-												studentStates[student.task_student]?.complete
-													? '!border-leaf !bg-leaf !text-white'
-													: 'border-border/60 bg-white text-ink/70 hover:border-leaf/60 hover:text-leaf'
-											"
-											@click="setBooleanState(student.task_student, true)"
-										>
-											{{ booleanPositiveLabel(gradebook.task) }}
-										</button>
-										<button
-											type="button"
-											class="rounded-md border px-4 py-2 text-sm font-medium transition-all"
-											:class="
-												!studentStates[student.task_student]?.complete
-													? 'border-slate-300 bg-slate-100 text-ink'
-													: 'border-border/60 bg-white text-ink/70 hover:border-leaf/60 hover:text-leaf'
-											"
-											@click="setBooleanState(student.task_student, false)"
-										>
-											{{ booleanNegativeLabel(gradebook.task) }}
-										</button>
-									</div>
-								</div>
-							</div>
-
-							<div
-								v-if="supportsFeedback(gradebook.task)"
-								class="space-y-1.5 md:col-span-1 lg:col-span-2"
-							>
-								<label class="block text-xs font-semibold uppercase tracking-wide text-ink/50"
-									>Comment</label
-								>
-								<FormControl
-									type="textarea"
-									rows="5"
-									placeholder="Add a comment for this student..."
-									class="!h-full"
-									:model-value="studentStates[student.task_student]?.feedback || ''"
-									@update:modelValue="onFeedbackChanged(student.task_student, $event)"
-								/>
-							</div>
-						</div>
-
-						<div
-							v-if="gradebook.task?.criteria && gradebook.criteria.length"
-							class="mt-6 rounded-lg border border-border/60 bg-white p-4 shadow-sm"
-						>
-							<div class="mb-4 flex items-center justify-between">
-								<h4 class="text-sm font-bold text-ink">Criteria Breakdown</h4>
-								<Badge
-									v-if="studentStates[student.task_student]?.dirtyCriteria"
-									variant="subtle"
-									theme="orange"
-								>
-									Unsaved Changes
-								</Badge>
-							</div>
-							<div class="grid gap-4 md:grid-cols-2">
-								<div
-									v-for="criterion in gradebook.criteria"
-									:key="criterion.assessment_criteria"
-									class="space-y-2 rounded-md bg-gray-50/50 p-3 ring-1 ring-border/40"
-								>
-									<div class="flex justify-between">
-										<span class="text-sm font-medium text-ink">{{ criterion.criteria_name }}</span>
-										<span v-if="criterion.criteria_weighting" class="text-xs text-ink/50">
-											{{ criterion.criteria_weighting }}%
-										</span>
-									</div>
-									<FormControl
-										v-if="criterion.levels && criterion.levels.length"
-										type="select"
-										size="sm"
-										:options="criterionLevelOptions(criterion)"
-										placeholder="Level Achieved"
-										:model-value="
-											getCriterionState(student.task_student, criterion.assessment_criteria)
-												?.level ?? null
-										"
-										@update:modelValue="
-											level => onCriterionLevelChanged(student.task_student, criterion, level)
-										"
-									/>
-									<FormControl
-										v-else
-										type="text"
-										size="sm"
-										placeholder="Level"
-										:model-value="
-											getCriterionState(student.task_student, criterion.assessment_criteria)
-												?.level ?? ''
-										"
-										@update:modelValue="
-											level => onCriterionLevelChanged(student.task_student, criterion, level)
-										"
-									/>
-									<FormControl
-										type="number"
-										size="sm"
-										:step="0.1"
-										:min="0"
-										placeholder="Points"
-										:model-value="
-											getCriterionState(student.task_student, criterion.assessment_criteria)
-												?.level_points ?? 0
-										"
-										@update:modelValue="
-											value =>
-												onCriterionPointsChanged(
-													student.task_student,
-													criterion.assessment_criteria,
-													value
-												)
-										"
-									/>
-									<FormControl
-										v-if="supportsFeedback(gradebook.task)"
-										type="textarea"
-										rows="2"
-										size="sm"
-										placeholder="Criterion feedback"
-										:model-value="
-											getCriterionState(student.task_student, criterion.assessment_criteria)
-												?.feedback || ''
-										"
-										@update:modelValue="
-											value =>
-												onCriterionFeedbackChanged(
-													student.task_student,
-													criterion.assessment_criteria,
-													value
-												)
-										"
-									/>
-									<div class="flex items-center justify-between text-xs">
-										<span class="text-ink/60">Score:</span>
-										<span class="font-bold text-ink">
-											{{
-												formatPoints(
-													getCriterionState(student.task_student, criterion.assessment_criteria)
-														?.level_points
-												)
-											}}
-										</span>
-									</div>
-								</div>
-							</div>
-						</div>
-
-						<div class="mt-4 flex items-center justify-between border-t border-border/40 pt-4">
-							<p class="text-xs text-ink/40">
-								Last updated
-								{{ formatDateTime(studentStates[student.task_student]?.updated_on) || 'Never' }}
-							</p>
-							<div class="flex gap-2">
-								<Button
-									v-if="gradebook.task?.criteria && gradebook.criteria.length"
-									size="sm"
-									appearance="white"
-									:loading="studentStates[student.task_student]?.savingCriteria"
-									:disabled="!studentStates[student.task_student]?.dirtyCriteria"
-									@click="saveCriteria(student.task_student)"
-								>
-									Save Criteria
-								</Button>
-								<Button
-									size="sm"
-									appearance="primary"
-									:loading="studentStates[student.task_student]?.saving"
-									:disabled="!studentStates[student.task_student]?.dirty"
-									@click="saveStudent(student.task_student)"
-								>
-									Save
-								</Button>
-							</div>
-						</div>
-					</article>
-				</template>
+				<GradebookStudentDrawer
+					:loading="drawerLoading"
+					:drawer="drawer"
+					:error-message="drawerErrorMessage"
+					:marking-busy="markingBusy"
+					:feedback-busy="feedbackBusy"
+					:comment-bank-busy="commentBankBusy"
+					:publication-busy="publicationBusy"
+					:thread-busy="threadBusy"
+					:submission-seen-busy="submissionSeenBusy"
+					:publish-busy="publishBusy"
+					:moderation-busy="moderationBusy"
+					:show-sequence-controls="Boolean(drawer && visibleStudents.length > 1)"
+					:can-go-previous="canGoPrevious"
+					:can-go-next="canGoNext"
+					:sequence-label="sequenceLabel"
+					@close="closeDrawer"
+					@switch-version="switchSubmissionVersion"
+					@save-marking="saveDrawerMarking"
+					@save-feedback-draft="saveFeedbackDraft"
+					@save-comment-bank-entry="saveFeedbackCommentBankEntry"
+					@save-feedback-publication="saveFeedbackPublication"
+					@save-feedback-thread-reply="saveFeedbackThreadReply"
+					@save-feedback-thread-state="saveFeedbackThreadState"
+					@moderator-action="runModeratorAction"
+					@mark-submission-seen="markSubmissionSeen"
+					@publish="publishOutcome"
+					@unpublish="unpublishOutcome"
+					@go-previous="openRelativeStudent(-1)"
+					@go-next="openRelativeStudent(1)"
+				/>
 			</div>
 		</div>
 	</section>
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, reactive, ref, watch } from 'vue';
-import { Badge, Button, FeatherIcon, FormControl, Spinner, toast } from 'frappe-ui';
+import { computed, nextTick, reactive, ref, watch } from 'vue';
+import { Badge, FeatherIcon, Spinner, toast } from 'frappe-ui';
+
 import { createGradebookService } from '@/lib/services/gradebook/gradebookService';
+import type { CommentBankScopeMode } from '@/types/contracts/gradebook/comment_bank';
+import type { FeedbackWorkspaceItem } from '@/types/contracts/gradebook/feedback_workspace';
+import type { Response as GetDrawerResponse } from '@/types/contracts/gradebook/get_drawer';
+import type { Request as ModeratorActionRequest } from '@/types/contracts/gradebook/moderator_action';
+import type { Request as SubmitContributionRequest } from '@/types/contracts/gradebook/submit_contribution';
 import type {
-	CriterionPayload,
+	Response as GetTaskGradebookResponse,
 	TaskPayload,
+	StudentRow,
 } from '@/types/contracts/gradebook/get_task_gradebook';
-import type { Response as UpdateTaskStudentResponse } from '@/types/contracts/gradebook/update_task_student';
+import type { Request as UpdateTaskStudentRequest } from '@/types/contracts/gradebook/update_task_student';
 import GradebookQuizManualReview from './GradebookQuizManualReview.vue';
+import GradebookStudentDrawer from './GradebookStudentDrawer.vue';
 import {
 	DEFAULT_STUDENT_IMAGE,
-	booleanControlLabel,
 	booleanNegativeLabel,
 	booleanPositiveLabel,
-	formatDateTime,
+	formatDate,
 	formatPoints,
 	isAssessedQuizTask,
+	isCollectWorkTask,
+	isCriteriaTask,
 	isPointsTask,
-	normalizeFeedback,
-	scoreSummaryLabel,
 	showMaxPointsPill,
 	showsBooleanResult,
-	showsScoreSummary,
-	showsStatusControl,
-	supportsFeedback,
+	taskModeBadge,
 } from '../gradebookUtils';
-
-interface StudentCriterionState {
-	assessment_criteria: string;
-	level: string | number | null;
-	level_points: number;
-	feedback: string;
-}
-
-interface StudentState {
-	status: string;
-	mark_awarded: number | null;
-	feedback: string;
-	visible_to_student: boolean;
-	visible_to_guardian: boolean;
-	complete: boolean;
-	criteria: StudentCriterionState[];
-	updated_on?: string | null;
-	dirty: boolean;
-	dirtyCriteria: boolean;
-	saving: boolean;
-	savingCriteria: boolean;
-}
 
 interface TaskGradebookState {
 	task: TaskPayload | null;
-	criteria: CriterionPayload[];
-	students: Array<{
-		task_student: string;
-		student: string;
-		student_name: string;
-		student_id?: string | null;
-		student_image?: string | null;
-		status?: string | null;
-		complete: 0 | 1;
-		mark_awarded: number | null;
-		feedback?: string | null;
-		visible_to_student: 0 | 1;
-		visible_to_guardian: 0 | 1;
-		updated_on?: string | null;
-		criteria_scores: Array<{
-			assessment_criteria: string;
-			level: string | number | null;
-			level_points: number | null;
-			feedback?: string | null;
-		}>;
-	}>;
+	students: StudentRow[];
 }
+
+type EvidenceFilter = 'all' | 'new_evidence' | 'missing' | 'submitted' | 'late';
 
 const props = defineProps<{
 	taskName: string | null;
 	focusStudent?: string | null;
 }>();
 
+const emit = defineEmits<{
+	(e: 'select-student', student: string | null): void;
+}>();
+
 const gradebookService = createGradebookService();
 const rootElement = ref<HTMLElement | null>(null);
 const gradebookLoading = ref(false);
-const rosterSyncing = ref(false);
+const drawerLoading = ref(false);
+const drawerErrorMessage = ref<string | null>(null);
+const drawer = ref<GetDrawerResponse | null>(null);
+const selectedOutcomeId = ref<string | null>(null);
+const selectedStudentId = ref<string | null>(null);
+const pendingDrawerOutcomeId = ref<string | null>(null);
+const gradebookLoadVersion = ref(0);
+const drawerLoadVersion = ref(0);
+const markingBusy = ref(false);
+const feedbackBusy = ref(false);
+const commentBankBusy = ref(false);
+const publicationBusy = ref(false);
+const threadBusy = ref(false);
+const submissionSeenBusy = ref(false);
+const publishBusy = ref(false);
+const moderationBusy = ref(false);
+const selectedBatchOutcomeIds = ref<string[]>([]);
 
 const gradebook = reactive<TaskGradebookState>({
 	task: null,
-	criteria: [],
 	students: [],
 });
 
-const studentStates = reactive<Record<string, StudentState>>({});
-const loadVersion = ref(0);
-
-const statusOptions = [
-	{ label: 'Not Started', value: 'Not Started' },
-	{ label: 'In Progress', value: 'In Progress' },
-	{ label: 'Needs Review', value: 'Needs Review' },
-	{ label: 'Moderated', value: 'Moderated' },
-	{ label: 'Finalized', value: 'Finalized' },
-	{ label: 'Released', value: 'Released' },
-	{ label: 'Not Applicable', value: 'Not Applicable' },
-];
-
-const AUTOSAVE_DELAY = 2500;
-const studentSaveTimers: Record<string, ReturnType<typeof setTimeout> | null> = {};
-const criteriaSaveTimers: Record<string, ReturnType<typeof setTimeout> | null> = {};
-
 const showsQuizManualReview = computed(() => isAssessedQuizTask(gradebook.task));
+const newEvidenceCount = computed(
+	() => gradebook.students.filter(student => student.has_new_submission).length
+);
+const releasedCount = computed(
+	() => gradebook.students.filter(student => student.visible_to_student).length
+);
+const hasEvidenceInbox = computed(() => isCollectWorkTask(gradebook.task));
+const evidenceCounts = computed(() => ({
+	all: gradebook.students.length,
+	new_evidence: gradebook.students.filter(student => student.has_new_submission).length,
+	missing: gradebook.students.filter(student => isMissingEvidence(student)).length,
+	submitted: gradebook.students.filter(student => isSubmittedEvidence(student)).length,
+	late: gradebook.students.filter(student => isLateEvidence(student)).length,
+}));
+const activeEvidenceFilter = ref<EvidenceFilter>('all');
+const evidenceFilterOptions = computed(() => [
+	{ id: 'all' as EvidenceFilter, label: 'All', count: evidenceCounts.value.all },
+	{
+		id: 'new_evidence' as EvidenceFilter,
+		label: 'New Evidence',
+		count: evidenceCounts.value.new_evidence,
+	},
+	{ id: 'missing' as EvidenceFilter, label: 'Missing', count: evidenceCounts.value.missing },
+	{
+		id: 'submitted' as EvidenceFilter,
+		label: 'Submitted',
+		count: evidenceCounts.value.submitted,
+	},
+	{ id: 'late' as EvidenceFilter, label: 'Late', count: evidenceCounts.value.late },
+]);
+const visibleStudents = computed(() => {
+	const rows = [...gradebook.students];
+	if (!hasEvidenceInbox.value) {
+		return rows;
+	}
 
-const allStudentsVisible = computed(() => {
-	if (!gradebook.students.length) return false;
-	return gradebook.students.every(student =>
-		Boolean(studentStates[student.task_student]?.visible_to_student)
+	const filtered = rows.filter(student =>
+		studentMatchesEvidenceFilter(student, activeEvidenceFilter.value)
 	);
+	return filtered.sort((left, right) => {
+		const leftRank = evidencePriority(left);
+		const rightRank = evidencePriority(right);
+		if (leftRank !== rightRank) return leftRank - rightRank;
+		return String(left.student_name || left.student).localeCompare(
+			String(right.student_name || right.student)
+		);
+	});
 });
-
-const allGuardiansVisible = computed(() => {
-	if (!gradebook.students.length) return false;
-	return gradebook.students.every(student =>
-		Boolean(studentStates[student.task_student]?.visible_to_guardian)
-	);
+const unreleasedOutcomeIds = computed(() =>
+	gradebook.students
+		.filter(student => !student.visible_to_student)
+		.map(student => student.task_student)
+);
+const selectedReleasableOutcomeIds = computed(() => {
+	const releasable = new Set(unreleasedOutcomeIds.value);
+	return selectedBatchOutcomeIds.value.filter(outcomeId => releasable.has(outcomeId));
+});
+const selectedVisibleIndex = computed(() =>
+	visibleStudents.value.findIndex(student => student.task_student === selectedOutcomeId.value)
+);
+const canGoPrevious = computed(() => selectedVisibleIndex.value > 0);
+const canGoNext = computed(
+	() =>
+		selectedVisibleIndex.value >= 0 &&
+		selectedVisibleIndex.value < visibleStudents.value.length - 1
+);
+const evidenceIntroLabel = computed(() => {
+	if (!gradebook.task?.title) return 'Task';
+	if (!hasEvidenceInbox.value) return gradebook.task.title;
+	return `${gradebook.task.title} · new evidence first, then late, missing, and submitted work.`;
+});
+const sequenceLabel = computed(() => {
+	if (!drawer.value || selectedVisibleIndex.value < 0 || visibleStudents.value.length < 2) {
+		return null;
+	}
+	if (hasEvidenceInbox.value) {
+		return `Inbox ${selectedVisibleIndex.value + 1} of ${visibleStudents.value.length}`;
+	}
+	return `Student ${selectedVisibleIndex.value + 1} of ${visibleStudents.value.length}`;
 });
 
 function showToast(title: string, appearance: 'danger' | 'success' | 'warning' = 'danger') {
@@ -578,372 +449,742 @@ function showSuccessToast(title: string) {
 
 function resetGradebook() {
 	gradebook.task = null;
-	gradebook.criteria = [];
 	gradebook.students = [];
-	clearAllAutosaveTimers();
-	for (const key of Object.keys(studentStates)) {
-		delete studentStates[key];
-	}
+	selectedBatchOutcomeIds.value = [];
+	activeEvidenceFilter.value = 'all';
+	closeDrawer({ syncParent: true });
 }
 
 async function loadGradebook(taskName: string) {
-	const version = loadVersion.value + 1;
-	loadVersion.value = version;
+	const version = gradebookLoadVersion.value + 1;
+	gradebookLoadVersion.value = version;
 	gradebookLoading.value = true;
+
 	try {
-		const payload = await gradebookService.getTaskGradebook({ task: taskName });
-		if (loadVersion.value !== version) {
-			return;
-		}
+		const payload: GetTaskGradebookResponse = await gradebookService.getTaskGradebook({
+			task: taskName,
+		});
+		if (gradebookLoadVersion.value !== version) return;
+
 		gradebook.task = payload.task;
-		gradebook.criteria = payload.criteria || [];
 		gradebook.students = payload.students || [];
-		initializeStudentStates();
-		await scrollToFocusedStudent();
+		syncEvidenceFilter();
+		const visibleOutcomeIds = new Set(gradebook.students.map(student => student.task_student));
+		selectedBatchOutcomeIds.value = selectedBatchOutcomeIds.value.filter(outcomeId =>
+			visibleOutcomeIds.has(outcomeId)
+		);
+
+		if (selectedOutcomeId.value) {
+			const stillVisible = gradebook.students.find(
+				student => student.task_student === selectedOutcomeId.value
+			);
+			if (!stillVisible) {
+				closeDrawer({ syncParent: true });
+			}
+		}
+
+		await applyFocusedStudent();
 	} catch (error) {
 		console.error('Failed to load gradebook', error);
-		if (loadVersion.value === version) {
+		if (gradebookLoadVersion.value === version) {
 			showDangerToast('Could not load gradebook');
 		}
 	} finally {
-		if (loadVersion.value === version) {
+		if (gradebookLoadVersion.value === version) {
 			gradebookLoading.value = false;
 		}
 	}
 }
 
-async function syncRoster() {
-	if (!props.taskName) {
-		showToast('Select a task first.', 'warning');
+async function loadDrawer(
+	outcomeId: string,
+	options: { submissionId?: string | null; version?: number | null } = {}
+) {
+	const version = drawerLoadVersion.value + 1;
+	drawerLoadVersion.value = version;
+	pendingDrawerOutcomeId.value = outcomeId;
+	drawerLoading.value = true;
+	drawerErrorMessage.value = null;
+
+	try {
+		const payload = await gradebookService.getDrawer({
+			outcome_id: outcomeId,
+			submission_id: options.submissionId ?? null,
+			version: options.version ?? null,
+		});
+		if (drawerLoadVersion.value !== version) return;
+		drawer.value = payload;
+		selectedOutcomeId.value = outcomeId;
+		await scrollToSelectedStudent();
+	} catch (error) {
+		console.error('Failed to load drawer', error);
+		if (drawerLoadVersion.value === version) {
+			drawer.value = null;
+			drawerErrorMessage.value = 'Could not load grading details for this student.';
+		}
+	} finally {
+		if (drawerLoadVersion.value === version) {
+			drawerLoading.value = false;
+			if (pendingDrawerOutcomeId.value === outcomeId) {
+				pendingDrawerOutcomeId.value = null;
+			}
+		}
+	}
+}
+
+async function openStudent(student: StudentRow) {
+	selectedOutcomeId.value = student.task_student;
+	selectedStudentId.value = student.student;
+	pendingDrawerOutcomeId.value = student.task_student;
+	emit('select-student', student.student);
+	await loadDrawer(student.task_student);
+}
+
+async function openRelativeStudent(offset: number) {
+	const currentIndex = selectedVisibleIndex.value;
+	if (currentIndex < 0) return;
+	const target = visibleStudents.value[currentIndex + offset];
+	if (!target) return;
+	await openStudent(target);
+}
+
+function closeDrawer(options: { syncParent?: boolean } = {}) {
+	selectedOutcomeId.value = null;
+	selectedStudentId.value = null;
+	pendingDrawerOutcomeId.value = null;
+	drawer.value = null;
+	drawerErrorMessage.value = null;
+	if (options.syncParent !== false) {
+		emit('select-student', null);
+	}
+}
+
+async function applyFocusedStudent() {
+	if (!props.focusStudent) {
+		if (selectedStudentId.value) {
+			closeDrawer({ syncParent: false });
+		}
 		return;
 	}
 
-	rosterSyncing.value = true;
-	try {
-		const payload = await gradebookService.repairTaskRoster({ task: props.taskName });
-		showSuccessToast(payload.message || 'Roster synced.');
-		await loadGradebook(props.taskName);
-	} catch (error) {
-		console.error('Failed to sync task roster', error);
-		showDangerToast('Could not sync the task roster');
-	} finally {
-		rosterSyncing.value = false;
-	}
-}
-
-function criterionLevelOptions(criterion: CriterionPayload) {
-	return (criterion.levels || []).map(level => ({
-		label: level.level,
-		value: level.level,
-	}));
-}
-
-function clearAllAutosaveTimers() {
-	for (const key of Object.keys(studentSaveTimers)) {
-		const handle = studentSaveTimers[key];
-		if (handle) {
-			clearTimeout(handle);
-		}
-		delete studentSaveTimers[key];
-	}
-	for (const key of Object.keys(criteriaSaveTimers)) {
-		const handle = criteriaSaveTimers[key];
-		if (handle) {
-			clearTimeout(handle);
-		}
-		delete criteriaSaveTimers[key];
-	}
-}
-
-function initializeStudentStates() {
-	clearAllAutosaveTimers();
-	for (const key of Object.keys(studentStates)) {
-		delete studentStates[key];
+	const match = gradebook.students.find(student => student.student === props.focusStudent);
+	if (!match) {
+		await scrollToSelectedStudent(props.focusStudent);
+		return;
 	}
 
-	for (const student of gradebook.students) {
-		studentStates[student.task_student] = {
-			status: student.status || 'Not Started',
-			mark_awarded: student.mark_awarded,
-			feedback: normalizeFeedback(student.feedback),
-			visible_to_student: Boolean(student.visible_to_student),
-			visible_to_guardian: Boolean(student.visible_to_guardian),
-			complete: Boolean(student.complete),
-			updated_on: student.updated_on,
-			dirty: false,
-			dirtyCriteria: false,
-			saving: false,
-			savingCriteria: false,
-			criteria: student.criteria_scores.map(item => ({
-				assessment_criteria: item.assessment_criteria,
-				level: item.level,
-				level_points: item.level_points ?? 0,
-				feedback: normalizeFeedback(item.feedback),
-			})),
-		};
-	}
-}
-
-function scheduleStudentSave(taskStudent: string) {
-	const state = studentStates[taskStudent];
-	if (!state) return;
-
-	const existing = studentSaveTimers[taskStudent];
-	if (existing) {
-		clearTimeout(existing);
-	}
-
-	studentSaveTimers[taskStudent] = setTimeout(() => {
-		studentSaveTimers[taskStudent] = null;
-		if (!state.dirty) {
+	if (selectedOutcomeId.value === match.task_student) {
+		selectedStudentId.value = match.student;
+		if (drawer.value && pendingDrawerOutcomeId.value !== match.task_student) {
+			await scrollToSelectedStudent(match.student);
 			return;
 		}
-		if (state.saving) {
-			scheduleStudentSave(taskStudent);
+		if (drawerLoading.value || pendingDrawerOutcomeId.value === match.task_student) {
 			return;
 		}
-		void saveStudent(taskStudent);
-	}, AUTOSAVE_DELAY);
-}
-
-function scheduleCriteriaSave(taskStudent: string) {
-	const state = studentStates[taskStudent];
-	if (!state) return;
-
-	const existing = criteriaSaveTimers[taskStudent];
-	if (existing) {
-		clearTimeout(existing);
 	}
 
-	criteriaSaveTimers[taskStudent] = setTimeout(() => {
-		criteriaSaveTimers[taskStudent] = null;
-		if (!state.dirtyCriteria) {
-			return;
-		}
-		if (state.savingCriteria) {
-			scheduleCriteriaSave(taskStudent);
-			return;
-		}
-		void saveCriteria(taskStudent);
-	}, AUTOSAVE_DELAY);
+	selectedStudentId.value = match.student;
+	await loadDrawer(match.task_student);
 }
 
-function onStatusChanged(taskStudent: string, value: string) {
-	const state = studentStates[taskStudent];
-	if (!state || state.status === value) return;
-	state.status = value;
-	state.dirty = true;
-	scheduleStudentSave(taskStudent);
-}
-
-function onPointsChanged(taskStudent: string, value: number | null) {
-	const state = studentStates[taskStudent];
-	if (!state || state.mark_awarded === value) return;
-	state.mark_awarded = value;
-	state.dirty = true;
-	scheduleStudentSave(taskStudent);
-}
-
-function setBooleanState(taskStudent: string, value: boolean) {
-	const state = studentStates[taskStudent];
-	if (!state || state.complete === value) return;
-	state.complete = value;
-	state.dirty = true;
-	scheduleStudentSave(taskStudent);
-}
-
-function setVisibility(
-	taskStudent: string,
-	field: 'visible_to_student' | 'visible_to_guardian',
-	value: boolean
-) {
-	const state = studentStates[taskStudent];
-	if (!state || state[field] === value) return;
-	state[field] = value;
-	state.dirty = true;
-	scheduleStudentSave(taskStudent);
-}
-
-function onVisibilityInputChange(
-	taskStudent: string,
-	field: 'visible_to_student' | 'visible_to_guardian',
-	event: Event
-) {
-	const target = event.target as HTMLInputElement | null;
-	setVisibility(taskStudent, field, Boolean(target?.checked));
-}
-
-function onFeedbackChanged(taskStudent: string, value: string) {
-	const state = studentStates[taskStudent];
-	if (!state || state.feedback === value) return;
-	state.feedback = value;
-	state.dirty = true;
-	scheduleStudentSave(taskStudent);
-}
-
-function getCriterionState(taskStudent: string, criteriaName: string) {
-	const state = studentStates[taskStudent];
-	return state?.criteria.find(criteria => criteria.assessment_criteria === criteriaName);
-}
-
-function onCriterionLevelChanged(
-	taskStudent: string,
-	criterionRow: CriterionPayload,
-	levelValue: string | number | null
-) {
-	const state = studentStates[taskStudent];
-	if (!state) return;
-	const item = state.criteria.find(
-		criteria => criteria.assessment_criteria === criterionRow.assessment_criteria
+async function scrollToSelectedStudent(targetStudent = selectedStudentId.value) {
+	if (!targetStudent || !rootElement.value) return;
+	await nextTick();
+	const target = rootElement.value.querySelector<HTMLElement>(
+		`[data-gradebook-student="${targetStudent}"]`
 	);
-	if (!item || item.level === levelValue) return;
-
-	const levelDef = criterionRow.levels.find(level => level.level === levelValue);
-	item.level = levelValue;
-	item.level_points = levelDef ? levelDef.points : item.level_points;
-	state.dirtyCriteria = true;
-	scheduleCriteriaSave(taskStudent);
-	if (state.dirty) {
-		scheduleStudentSave(taskStudent);
+	if (!target) return;
+	if (typeof target.scrollIntoView === 'function') {
+		target.scrollIntoView({ block: 'center', behavior: 'smooth' });
 	}
 }
 
-function onCriterionPointsChanged(
-	taskStudent: string,
-	criteriaName: string,
-	value: number | null
+async function refreshCurrentSelection(
+	options: { submissionId?: string | null; version?: number | null } = {}
 ) {
-	const state = studentStates[taskStudent];
-	if (!state) return;
-	const item = state.criteria.find(criteria => criteria.assessment_criteria === criteriaName);
-	if (!item) return;
+	const currentOutcomeId = selectedOutcomeId.value;
+	if (!props.taskName || !currentOutcomeId) return;
+	await loadGradebook(props.taskName);
+	const nextOutcomeId = selectedOutcomeId.value || currentOutcomeId;
+	if (!nextOutcomeId) return;
+	await loadDrawer(nextOutcomeId, options);
+}
 
-	const nextValue = typeof value === 'number' ? value : 0;
-	if (item.level_points === nextValue) return;
-	item.level_points = nextValue;
-	state.dirtyCriteria = true;
-	scheduleCriteriaSave(taskStudent);
-	if (state.dirty) {
-		scheduleStudentSave(taskStudent);
+function currentDrawerSelection() {
+	return {
+		submissionId: drawer.value?.selected_submission?.submission_id ?? null,
+		version: drawer.value?.selected_submission?.version ?? null,
+	};
+}
+
+type StudentRowPatch = {
+	status?: string | null;
+	procedural_status?: string | null;
+	mark_awarded?: number | null;
+	feedback?: string | null;
+	complete?: boolean | 0 | 1 | null;
+	visible_to_student?: boolean | 0 | 1 | null;
+	visible_to_guardian?: boolean | 0 | 1 | null;
+};
+
+function patchStudentRow(outcomeId: string, patch: StudentRowPatch) {
+	const row = gradebook.students.find(student => student.task_student === outcomeId);
+	if (!row) return;
+	if (Object.prototype.hasOwnProperty.call(patch, 'status')) {
+		row.status = patch.status ?? null;
+	}
+	if (Object.prototype.hasOwnProperty.call(patch, 'procedural_status')) {
+		row.procedural_status = patch.procedural_status ?? null;
+	}
+	if (Object.prototype.hasOwnProperty.call(patch, 'mark_awarded')) {
+		row.mark_awarded = patch.mark_awarded ?? null;
+	}
+	if (Object.prototype.hasOwnProperty.call(patch, 'feedback')) {
+		row.feedback = patch.feedback ?? null;
+	}
+	if (Object.prototype.hasOwnProperty.call(patch, 'complete')) {
+		row.complete = patch.complete ? 1 : 0;
+	}
+	if (Object.prototype.hasOwnProperty.call(patch, 'visible_to_student')) {
+		row.visible_to_student = patch.visible_to_student ? 1 : 0;
+	}
+	if (Object.prototype.hasOwnProperty.call(patch, 'visible_to_guardian')) {
+		row.visible_to_guardian = patch.visible_to_guardian ? 1 : 0;
 	}
 }
 
-function onCriterionFeedbackChanged(taskStudent: string, criteriaName: string, value: string) {
-	const state = studentStates[taskStudent];
-	if (!state) return;
-	const item = state.criteria.find(criteria => criteria.assessment_criteria === criteriaName);
-	if (!item || item.feedback === value) return;
-	item.feedback = value;
-	state.dirtyCriteria = true;
-	scheduleCriteriaSave(taskStudent);
-	if (state.dirty) {
-		scheduleStudentSave(taskStudent);
+function applyOutcomeUpdateToStudentRow(
+	outcomeId: string,
+	outcomeUpdate: Record<string, unknown> | null | undefined
+) {
+	if (!outcomeUpdate) return;
+	const patch: StudentRowPatch = {};
+	if (typeof outcomeUpdate.grading_status === 'string') {
+		patch.status = outcomeUpdate.grading_status;
 	}
+	if (
+		typeof outcomeUpdate.procedural_status === 'string' ||
+		outcomeUpdate.procedural_status === null
+	) {
+		patch.procedural_status =
+			(outcomeUpdate.procedural_status as string | null | undefined) ?? null;
+	}
+	if (typeof outcomeUpdate.official_score === 'number' || outcomeUpdate.official_score === null) {
+		patch.mark_awarded = (outcomeUpdate.official_score as number | null | undefined) ?? null;
+	}
+	if (
+		typeof outcomeUpdate.official_feedback === 'string' ||
+		outcomeUpdate.official_feedback === null
+	) {
+		patch.feedback = (outcomeUpdate.official_feedback as string | null | undefined) ?? null;
+	}
+	if (
+		typeof outcomeUpdate.is_complete === 'number' ||
+		typeof outcomeUpdate.is_complete === 'boolean'
+	) {
+		patch.complete = Boolean(outcomeUpdate.is_complete);
+	}
+	if (
+		typeof outcomeUpdate.is_published === 'number' ||
+		typeof outcomeUpdate.is_published === 'boolean'
+	) {
+		const isPublished = Boolean(outcomeUpdate.is_published);
+		patch.visible_to_student = isPublished;
+		patch.visible_to_guardian = isPublished;
+	}
+	patchStudentRow(outcomeId, patch);
 }
 
-async function saveStudent(taskStudent: string) {
-	const state = studentStates[taskStudent];
-	if (!state) return;
+function hasOwnUpdateKey<T extends object, K extends keyof T>(value: T, key: K): boolean {
+	return Object.prototype.hasOwnProperty.call(value, key);
+}
 
-	state.saving = true;
+function isAssessedBooleanDelivery(drawerPayload: GetDrawerResponse): boolean {
+	return (
+		drawerPayload.delivery.delivery_mode === 'Assess' &&
+		(drawerPayload.delivery.grading_mode === 'Binary' ||
+			drawerPayload.delivery.grading_mode === 'Completion')
+	);
+}
+
+function buildContributionRequest(
+	drawerPayload: GetDrawerResponse,
+	updates: UpdateTaskStudentRequest['updates'],
+	options: { action?: ModeratorActionRequest['action'] } = {}
+): SubmitContributionRequest | ModeratorActionRequest | null {
+	const request: Partial<SubmitContributionRequest & ModeratorActionRequest> = {
+		task_outcome: drawerPayload.outcome.outcome_id,
+	};
+	const latestSubmissionId = drawerPayload.latest_submission?.submission_id || null;
+	if (latestSubmissionId) {
+		request.task_submission = latestSubmissionId;
+	}
+	if (options.action) {
+		request.action = options.action;
+	}
+
+	let hasContributionFields = false;
+	if (hasOwnUpdateKey(updates, 'mark_awarded')) {
+		request.score = updates.mark_awarded ?? null;
+		hasContributionFields = true;
+	}
+	if (hasOwnUpdateKey(updates, 'feedback')) {
+		request.feedback = updates.feedback ?? null;
+		hasContributionFields = true;
+	}
+	if (updates.criteria_scores?.length) {
+		request.rubric_scores = updates.criteria_scores;
+		hasContributionFields = true;
+	}
+	if (hasOwnUpdateKey(updates, 'complete') && isAssessedBooleanDelivery(drawerPayload)) {
+		const isComplete = Boolean(updates.complete);
+		request.judgment_code =
+			drawerPayload.delivery.grading_mode === 'Completion'
+				? isComplete
+					? 'complete'
+					: 'incomplete'
+				: isComplete
+					? 'yes'
+					: 'no';
+		hasContributionFields = true;
+	}
+
+	if (!hasContributionFields && !options.action) {
+		return null;
+	}
+
+	return request as SubmitContributionRequest | ModeratorActionRequest;
+}
+
+function buildDirectOutcomeUpdates(
+	drawerPayload: GetDrawerResponse,
+	updates: UpdateTaskStudentRequest['updates']
+): UpdateTaskStudentRequest['updates'] {
+	const directUpdates: UpdateTaskStudentRequest['updates'] = {};
+	const currentStatus = drawerPayload.outcome.grading_status || 'Not Started';
+	if (
+		hasOwnUpdateKey(updates, 'status') &&
+		drawerPayload.delivery.delivery_mode === 'Assess' &&
+		updates.status !== currentStatus
+	) {
+		directUpdates.status = updates.status ?? null;
+	}
+	if (
+		hasOwnUpdateKey(updates, 'complete') &&
+		drawerPayload.delivery.delivery_mode === 'Assign Only' &&
+		Boolean(updates.complete) !== Boolean(drawerPayload.outcome.is_complete)
+	) {
+		directUpdates.complete = updates.complete ?? null;
+	}
+	return directUpdates;
+}
+
+async function saveDrawerMarking(updates: UpdateTaskStudentRequest['updates']) {
+	if (!selectedOutcomeId.value || !drawer.value) return;
+	markingBusy.value = true;
 	try {
-		const payload: Record<string, string | number | boolean | null> = {
-			status: state.status,
-			visible_to_student: state.visible_to_student,
-			visible_to_guardian: state.visible_to_guardian,
-		};
-		if (isPointsTask(gradebook.task)) {
-			payload.mark_awarded = state.mark_awarded;
+		const contributionRequest = buildContributionRequest(drawer.value, updates);
+		const directUpdates = buildDirectOutcomeUpdates(drawer.value, updates);
+		let contributionResponse: Awaited<
+			ReturnType<typeof gradebookService.submitContribution>
+		> | null = null;
+		if (contributionRequest) {
+			contributionResponse = await gradebookService.submitContribution(
+				contributionRequest as SubmitContributionRequest
+			);
+			applyOutcomeUpdateToStudentRow(selectedOutcomeId.value, contributionResponse.outcome_update);
 		}
-		if (showsBooleanResult(gradebook.task)) {
-			payload.complete = state.complete;
-		}
-		if (supportsFeedback(gradebook.task)) {
-			payload.feedback = state.feedback;
-		}
-		const doc: UpdateTaskStudentResponse = await gradebookService.updateTaskStudent({
-			task_student: taskStudent,
-			updates: payload,
-		});
-		state.dirty = false;
-		state.updated_on = doc.updated_on;
-	} catch (error) {
-		console.error('Save failed', error);
-		showDangerToast('Failed to save changes');
-	} finally {
-		state.saving = false;
-		if (state.dirty) {
-			scheduleStudentSave(taskStudent);
-		}
-	}
-}
-
-async function saveCriteria(taskStudent: string) {
-	const state = studentStates[taskStudent];
-	if (!state) return;
-	state.savingCriteria = true;
-	try {
-		const criteriaScores = state.criteria
-			.map(criteria => ({
-				assessment_criteria: criteria.assessment_criteria,
-				level: criteria.level,
-				level_points: criteria.level_points ?? 0,
-				feedback: criteria.feedback,
-			}))
-			.filter(row => row.assessment_criteria && row.level !== null && row.level !== '');
-
-		if (criteriaScores.length) {
-			const doc: UpdateTaskStudentResponse = await gradebookService.updateTaskStudent({
-				task_student: taskStudent,
-				updates: {
-					criteria_scores: criteriaScores,
-					...(supportsFeedback(gradebook.task) ? { feedback: state.feedback } : {}),
-				},
+		if (Object.keys(directUpdates).length) {
+			await gradebookService.updateTaskStudent({
+				task_student: selectedOutcomeId.value,
+				updates: directUpdates,
 			});
-			if (doc?.updated_on) {
-				state.updated_on = doc.updated_on;
-			}
+			patchStudentRow(selectedOutcomeId.value, {
+				status: directUpdates.status ?? undefined,
+				complete:
+					typeof directUpdates.complete === 'boolean'
+						? directUpdates.complete
+						: directUpdates.complete == null
+							? undefined
+							: Boolean(directUpdates.complete),
+			});
 		}
-		state.dirtyCriteria = false;
+		if (hasOwnUpdateKey(updates, 'mark_awarded') || hasOwnUpdateKey(updates, 'feedback')) {
+			patchStudentRow(selectedOutcomeId.value, {
+				mark_awarded: hasOwnUpdateKey(updates, 'mark_awarded')
+					? (updates.mark_awarded ?? null)
+					: undefined,
+				feedback: hasOwnUpdateKey(updates, 'feedback') ? (updates.feedback ?? null) : undefined,
+			});
+		}
+		showSuccessToast('Marking saved.');
+		await loadDrawer(selectedOutcomeId.value, currentDrawerSelection());
 	} catch (error) {
-		console.error(error);
-		showDangerToast('Error saving criteria');
+		console.error('Failed to save marking', error);
+		showDangerToast('Could not save marking changes');
 	} finally {
-		state.savingCriteria = false;
+		markingBusy.value = false;
 	}
 }
 
-function toggleVisibilityGroup(type: 'student' | 'guardian') {
-	const field = type === 'student' ? 'visible_to_student' : 'visible_to_guardian';
-	const targetValue = type === 'student' ? !allStudentsVisible.value : !allGuardiansVisible.value;
+async function saveFeedbackDraft(payload: {
+	outcome_id: string;
+	submission_id: string;
+	summary: {
+		overall: string;
+		strengths: string;
+		improvements: string;
+		next_steps: string;
+	};
+	priorities: Array<{
+		id?: string | null;
+		title: string;
+		detail?: string | null;
+		feedback_item_id?: string | null;
+		assessment_criteria?: string | null;
+	}>;
+	items: FeedbackWorkspaceItem[];
+}) {
+	feedbackBusy.value = true;
+	try {
+		await gradebookService.saveFeedbackDraft(payload);
+		showSuccessToast('Feedback draft saved.');
+		await refreshCurrentSelection(currentDrawerSelection());
+	} catch (error) {
+		console.error('Failed to save feedback draft', error);
+		showDangerToast('Could not save feedback draft');
+	} finally {
+		feedbackBusy.value = false;
+	}
+}
 
-	gradebook.students.forEach(student => {
-		setVisibility(student.task_student, field, targetValue);
+function upsertDrawerThread(thread: GetDrawerResponse['feedback_threads'][number]) {
+	if (!drawer.value) return;
+	const nextThreads = (drawer.value.feedback_threads || []).filter(
+		row => row.thread_id !== thread.thread_id
+	);
+	nextThreads.push(thread);
+	drawer.value.feedback_threads = nextThreads.sort((left, right) =>
+		String(left.modified || '').localeCompare(String(right.modified || ''))
+	);
+}
+
+async function saveFeedbackThreadReply(payload: {
+	outcome_id: string;
+	thread_id: string;
+	body: string;
+	thread_status?: 'open' | 'resolved' | null;
+}) {
+	threadBusy.value = true;
+	try {
+		const response = await gradebookService.saveFeedbackThreadReply(payload);
+		upsertDrawerThread(response.thread);
+		showSuccessToast('Reply saved.');
+	} catch (error) {
+		console.error('Failed to save feedback thread reply', error);
+		showDangerToast('Could not save reply');
+	} finally {
+		threadBusy.value = false;
+	}
+}
+
+async function saveFeedbackThreadState(payload: {
+	outcome_id: string;
+	thread_id: string;
+	thread_status: 'open' | 'resolved';
+}) {
+	threadBusy.value = true;
+	try {
+		const response = await gradebookService.saveFeedbackThreadState(payload);
+		upsertDrawerThread(response.thread);
+		showSuccessToast(
+			payload.thread_status === 'resolved' ? 'Thread resolved.' : 'Thread reopened.'
+		);
+	} catch (error) {
+		console.error('Failed to update feedback thread state', error);
+		showDangerToast('Could not update thread state');
+	} finally {
+		threadBusy.value = false;
+	}
+}
+
+async function saveFeedbackCommentBankEntry(payload: {
+	outcome_id: string;
+	body: string;
+	feedback_intent: FeedbackWorkspaceItem['intent'];
+	assessment_criteria?: string | null;
+	scope_mode: CommentBankScopeMode;
+}) {
+	commentBankBusy.value = true;
+	try {
+		await gradebookService.saveFeedbackCommentBankEntry(payload);
+		showSuccessToast('Reusable comment saved.');
+		await refreshCurrentSelection(currentDrawerSelection());
+	} catch (error) {
+		console.error('Failed to save reusable comment', error);
+		showDangerToast('Could not save this reusable comment');
+	} finally {
+		commentBankBusy.value = false;
+	}
+}
+
+async function saveFeedbackPublication(payload: {
+	outcome_id: string;
+	submission_id: string;
+	feedback_visibility: 'hidden' | 'student' | 'student_and_guardian';
+	grade_visibility: 'hidden' | 'student' | 'student_and_guardian';
+}) {
+	publicationBusy.value = true;
+	try {
+		await gradebookService.saveFeedbackPublication(payload);
+		showSuccessToast('Publication state saved.');
+		await refreshCurrentSelection(currentDrawerSelection());
+	} catch (error) {
+		console.error('Failed to save feedback publication state', error);
+		showDangerToast('Could not save publication state');
+	} finally {
+		publicationBusy.value = false;
+	}
+}
+
+async function runModeratorAction(payload: {
+	action: ModeratorActionRequest['action'];
+	updates: UpdateTaskStudentRequest['updates'];
+}) {
+	if (!selectedOutcomeId.value || !drawer.value) return;
+	const request = buildContributionRequest(drawer.value, payload.updates, {
+		action: payload.action,
+	}) as ModeratorActionRequest | null;
+	if (!request) return;
+
+	moderationBusy.value = true;
+	try {
+		const response = await gradebookService.moderatorAction(request);
+		applyOutcomeUpdateToStudentRow(selectedOutcomeId.value, response.outcome_update);
+		if (
+			hasOwnUpdateKey(payload.updates, 'mark_awarded') ||
+			hasOwnUpdateKey(payload.updates, 'feedback')
+		) {
+			patchStudentRow(selectedOutcomeId.value, {
+				mark_awarded: hasOwnUpdateKey(payload.updates, 'mark_awarded')
+					? (payload.updates.mark_awarded ?? null)
+					: undefined,
+				feedback: hasOwnUpdateKey(payload.updates, 'feedback')
+					? (payload.updates.feedback ?? null)
+					: undefined,
+			});
+		}
+		const successMessage =
+			payload.action === 'Return to Grader'
+				? 'Outcome returned to grader.'
+				: payload.action === 'Adjust'
+					? 'Moderation adjustment applied.'
+					: 'Outcome approved by moderator.';
+		showSuccessToast(successMessage);
+		await loadDrawer(selectedOutcomeId.value, currentDrawerSelection());
+	} catch (error) {
+		console.error('Failed to apply moderation action', error);
+		showDangerToast('Could not apply moderation action');
+	} finally {
+		moderationBusy.value = false;
+	}
+}
+
+async function switchSubmissionVersion(payload: {
+	submissionId?: string | null;
+	version?: number | null;
+}) {
+	if (!selectedOutcomeId.value) return;
+	await loadDrawer(selectedOutcomeId.value, {
+		submissionId: payload.submissionId ?? null,
+		version: payload.version ?? null,
 	});
 }
 
-function booleanResultLabel(taskStudent: string) {
-	const state = studentStates[taskStudent];
-	if (!state) return '—';
-	return state.complete
-		? booleanPositiveLabel(gradebook.task)
-		: booleanNegativeLabel(gradebook.task);
+async function markSubmissionSeen() {
+	if (!selectedOutcomeId.value) return;
+	submissionSeenBusy.value = true;
+	try {
+		await gradebookService.markNewSubmissionSeen({ outcome: selectedOutcomeId.value });
+		showSuccessToast('New evidence badge cleared.');
+		await refreshCurrentSelection();
+	} catch (error) {
+		console.error('Failed to mark new submission seen', error);
+		showDangerToast('Could not update new evidence state');
+	} finally {
+		submissionSeenBusy.value = false;
+	}
 }
 
-function onImgError(event: Event, fallback?: string) {
+async function publishOutcome() {
+	if (!selectedOutcomeId.value) return;
+	publishBusy.value = true;
+	try {
+		await gradebookService.publishOutcomes({ outcome_ids: [selectedOutcomeId.value] });
+		showSuccessToast('Outcome released.');
+		await refreshCurrentSelection();
+	} catch (error) {
+		console.error('Failed to publish outcome', error);
+		showDangerToast('Could not release this outcome');
+	} finally {
+		publishBusy.value = false;
+	}
+}
+
+async function unpublishOutcome() {
+	if (!selectedOutcomeId.value) return;
+	publishBusy.value = true;
+	try {
+		await gradebookService.unpublishOutcomes({ outcome_ids: [selectedOutcomeId.value] });
+		showSuccessToast('Outcome unreleased.');
+		await refreshCurrentSelection();
+	} catch (error) {
+		console.error('Failed to unpublish outcome', error);
+		showDangerToast('Could not unrelease this outcome');
+	} finally {
+		publishBusy.value = false;
+	}
+}
+
+function isBatchSelected(outcomeId: string) {
+	return selectedBatchOutcomeIds.value.includes(outcomeId);
+}
+
+function toggleBatchSelection(outcomeId: string, checked: boolean) {
+	if (!outcomeId) return;
+	const next = new Set(selectedBatchOutcomeIds.value);
+	if (checked) {
+		next.add(outcomeId);
+	} else {
+		next.delete(outcomeId);
+	}
+	selectedBatchOutcomeIds.value = Array.from(next);
+}
+
+function clearBatchSelection() {
+	selectedBatchOutcomeIds.value = [];
+}
+
+function selectAllUnreleased() {
+	selectedBatchOutcomeIds.value = [...unreleasedOutcomeIds.value];
+}
+
+function setEvidenceFilter(filter: EvidenceFilter) {
+	activeEvidenceFilter.value = filter;
+}
+
+async function releaseSelectedOutcomes() {
+	const outcomeIds = selectedReleasableOutcomeIds.value;
+	if (!outcomeIds.length) {
+		showToast('Select at least one unreleased student.', 'warning');
+		return;
+	}
+
+	publishBusy.value = true;
+	try {
+		await gradebookService.publishOutcomes({ outcome_ids: outcomeIds });
+		showSuccessToast(
+			outcomeIds.length === 1
+				? 'Selected outcome released.'
+				: `Released ${outcomeIds.length} outcomes.`
+		);
+		clearBatchSelection();
+		if (!props.taskName) return;
+		await loadGradebook(props.taskName);
+		if (selectedOutcomeId.value && outcomeIds.includes(selectedOutcomeId.value)) {
+			await loadDrawer(selectedOutcomeId.value);
+		}
+	} catch (error) {
+		console.error('Failed to release selected outcomes', error);
+		showDangerToast('Could not release the selected outcomes');
+	} finally {
+		publishBusy.value = false;
+	}
+}
+
+function studentResultSummary(student: StudentRow) {
+	if (isPointsTask(gradebook.task)) {
+		return `Score ${formatPoints(student.mark_awarded)}`;
+	}
+	if (showsBooleanResult(gradebook.task)) {
+		return student.complete
+			? booleanPositiveLabel(gradebook.task)
+			: booleanNegativeLabel(gradebook.task);
+	}
+	if (isCriteriaTask(gradebook.task)) {
+		if (gradebook.task?.rubric_scoring_strategy === 'Separate Criteria') {
+			return `${student.criteria_scores.length} criteria tracked`;
+		}
+		return `Total ${formatPoints(student.mark_awarded)}`;
+	}
+	if (showMaxPointsPill(gradebook.task)) {
+		return `Score ${formatPoints(student.mark_awarded)}`;
+	}
+	return student.feedback ? 'Comment saved' : 'No result yet';
+}
+
+function isLateEvidence(student: StudentRow) {
+	return student.submission_status === 'Late';
+}
+
+function isMissingEvidence(student: StudentRow) {
+	return !student.has_submission && !student.complete;
+}
+
+function isSubmittedEvidence(student: StudentRow) {
+	if (!student.has_submission) return false;
+	return !isLateEvidence(student);
+}
+
+function studentMatchesEvidenceFilter(student: StudentRow, filter: EvidenceFilter) {
+	switch (filter) {
+		case 'new_evidence':
+			return Boolean(student.has_new_submission);
+		case 'missing':
+			return isMissingEvidence(student);
+		case 'submitted':
+			return isSubmittedEvidence(student);
+		case 'late':
+			return isLateEvidence(student);
+		case 'all':
+		default:
+			return true;
+	}
+}
+
+function evidencePriority(student: StudentRow) {
+	if (student.has_new_submission) return 0;
+	if (isLateEvidence(student)) return 1;
+	if (isMissingEvidence(student)) return 2;
+	if (isSubmittedEvidence(student)) return 3;
+	return 4;
+}
+
+function pickDefaultEvidenceFilter(): EvidenceFilter {
+	if (evidenceCounts.value.new_evidence) return 'new_evidence';
+	if (evidenceCounts.value.late) return 'late';
+	if (evidenceCounts.value.missing) return 'missing';
+	if (evidenceCounts.value.submitted) return 'submitted';
+	return 'all';
+}
+
+function syncEvidenceFilter() {
+	if (!hasEvidenceInbox.value) {
+		activeEvidenceFilter.value = 'all';
+		return;
+	}
+	const currentCount = evidenceCounts.value[activeEvidenceFilter.value];
+	if (currentCount > 0) {
+		return;
+	}
+	activeEvidenceFilter.value = pickDefaultEvidenceFilter();
+}
+
+function onImgError(event: Event) {
 	const element = event.target as HTMLImageElement;
 	element.onerror = null;
-	element.src = fallback || DEFAULT_STUDENT_IMAGE;
-}
-
-async function scrollToFocusedStudent() {
-	if (!props.focusStudent || !rootElement.value) return;
-	await nextTick();
-	const target = rootElement.value.querySelector<HTMLElement>(
-		`[data-gradebook-student="${props.focusStudent}"]`
-	);
-	if (!target) return;
-	target.scrollIntoView({ block: 'center', behavior: 'smooth' });
+	element.src = DEFAULT_STUDENT_IMAGE;
 }
 
 watch(
@@ -960,11 +1201,7 @@ watch(
 watch(
 	() => props.focusStudent,
 	() => {
-		void scrollToFocusedStudent();
+		void applyFocusedStudent();
 	}
 );
-
-onBeforeUnmount(() => {
-	clearAllAutosaveTimers();
-});
 </script>

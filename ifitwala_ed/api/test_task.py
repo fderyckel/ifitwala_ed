@@ -213,6 +213,7 @@ class TestTaskApi(TestCase):
                         "default_delivery_mode": "Collect Work",
                         "default_allow_feedback": 1,
                         "default_grading_mode": "Completion",
+                        "default_rubric_scoring_strategy": None,
                         "default_max_points": None,
                         "default_grade_scale": None,
                         "quiz_question_bank": None,
@@ -242,4 +243,191 @@ class TestTaskApi(TestCase):
         self.assertEqual(payload["visibility_scope"], "shared")
         self.assertEqual(payload["default_delivery_mode"], "Collect Work")
         self.assertEqual(payload["grading_defaults"]["default_grading_mode"], "Completion")
+        self.assertEqual(payload["criteria_defaults"]["criteria_rows"], [])
         self.assertEqual(payload["title"], "Shared reading response")
+
+    def test_get_task_for_delivery_includes_task_criteria_defaults(self):
+        planning_module = types.ModuleType("ifitwala_ed.curriculum.planning")
+        planning_module.assert_can_manage_course_curriculum = lambda *args, **kwargs: None
+        planning_module.assert_can_read_course_curriculum = lambda *args, **kwargs: None
+
+        with stubbed_frappe(
+            extra_modules={
+                "ifitwala_ed.curriculum.planning": planning_module,
+                "ifitwala_ed.assessment.task_delivery_service": _task_service_stub(),
+            }
+        ) as frappe:
+            frappe.get_roles = lambda user: ["Instructor"]
+
+            def fake_get_value(doctype, name, fieldname=None, as_dict=False):
+                if doctype == "Student Group":
+                    return "COURSE-1"
+                if doctype == "Task":
+                    return {
+                        "name": "TASK-CRITERIA-1",
+                        "title": "Shared essay rubric",
+                        "instructions": "<p>Write and justify your position.</p>",
+                        "task_type": "Assignment",
+                        "default_course": "COURSE-1",
+                        "unit_plan": None,
+                        "is_template": 1,
+                        "is_archived": 0,
+                        "owner": "colleague@example.com",
+                        "default_delivery_mode": "Assess",
+                        "default_allow_feedback": 1,
+                        "default_grading_mode": "Criteria",
+                        "default_rubric_scoring_strategy": "Sum Total",
+                        "default_max_points": None,
+                        "default_grade_scale": None,
+                        "quiz_question_bank": None,
+                        "quiz_question_count": None,
+                        "quiz_time_limit_minutes": None,
+                        "quiz_max_attempts": None,
+                        "quiz_pass_percentage": None,
+                    }
+                return None
+
+            def fake_get_all(doctype, filters=None, fields=None, order_by=None, limit=0):
+                if doctype == "Task Template Criterion":
+                    return [
+                        {
+                            "assessment_criteria": "CRIT-ANALYSIS",
+                            "criteria_weighting": 40,
+                            "criteria_max_points": 8,
+                        },
+                        {
+                            "assessment_criteria": "CRIT-COMMUNICATION",
+                            "criteria_weighting": 60,
+                            "criteria_max_points": 10,
+                        },
+                    ]
+                if doctype == "Assessment Criteria":
+                    return [
+                        {
+                            "name": "CRIT-ANALYSIS",
+                            "assessment_criteria": "Analysis",
+                            "maximum_mark": 8,
+                        },
+                        {
+                            "name": "CRIT-COMMUNICATION",
+                            "assessment_criteria": "Communication",
+                            "maximum_mark": 10,
+                        },
+                    ]
+                if doctype == "Assessment Criteria Level":
+                    return [
+                        {"parent": "CRIT-ANALYSIS", "achievement_level": "1"},
+                        {"parent": "CRIT-ANALYSIS", "achievement_level": "2"},
+                        {"parent": "CRIT-ANALYSIS", "achievement_level": "3"},
+                        {"parent": "CRIT-ANALYSIS", "achievement_level": "4"},
+                        {"parent": "CRIT-COMMUNICATION", "achievement_level": "1"},
+                        {"parent": "CRIT-COMMUNICATION", "achievement_level": "2"},
+                        {"parent": "CRIT-COMMUNICATION", "achievement_level": "3"},
+                        {"parent": "CRIT-COMMUNICATION", "achievement_level": "4"},
+                    ]
+                return []
+
+            frappe.db.get_value = fake_get_value
+            frappe.get_all = fake_get_all
+
+            module = import_fresh("ifitwala_ed.api.task")
+            payload = module.get_task_for_delivery("TASK-CRITERIA-1", student_group="GRP-1")
+
+        self.assertEqual(payload["grading_defaults"]["default_grading_mode"], "Criteria")
+        self.assertEqual(payload["criteria_defaults"]["rubric_scoring_strategy"], "Sum Total")
+        self.assertEqual(
+            payload["criteria_defaults"]["criteria_rows"],
+            [
+                {
+                    "assessment_criteria": "CRIT-ANALYSIS",
+                    "criteria_name": "Analysis",
+                    "criteria_weighting": 40.0,
+                    "criteria_max_points": 8.0,
+                    "levels": [{"level": "1"}, {"level": "2"}, {"level": "3"}, {"level": "4"}],
+                },
+                {
+                    "assessment_criteria": "CRIT-COMMUNICATION",
+                    "criteria_name": "Communication",
+                    "criteria_weighting": 60.0,
+                    "criteria_max_points": 10.0,
+                    "levels": [{"level": "1"}, {"level": "2"}, {"level": "3"}, {"level": "4"}],
+                },
+            ],
+        )
+
+    def test_list_course_assessment_criteria_returns_course_scoped_library(self):
+        planning_module = types.ModuleType("ifitwala_ed.curriculum.planning")
+        planning_module.assert_can_manage_course_curriculum = lambda *args, **kwargs: None
+        planning_module.assert_can_read_course_curriculum = lambda *args, **kwargs: None
+
+        with stubbed_frappe(
+            extra_modules={
+                "ifitwala_ed.curriculum.planning": planning_module,
+                "ifitwala_ed.assessment.task_delivery_service": _task_service_stub(),
+            }
+        ) as frappe:
+            frappe.get_roles = lambda user: ["Instructor"]
+            frappe.db.get_value = lambda doctype, name, fieldname=None, as_dict=False: (
+                "COURSE-1" if doctype == "Student Group" else None
+            )
+
+            def fake_get_all(doctype, filters=None, fields=None, order_by=None, limit=0):
+                if doctype == "Course Assessment Criteria":
+                    return [
+                        {
+                            "assessment_criteria": "CRIT-ANALYSIS",
+                            "criteria_name": "Analysis",
+                            "criteria_weighting": 40,
+                        },
+                        {
+                            "assessment_criteria": "CRIT-COMMUNICATION",
+                            "criteria_name": "Communication",
+                            "criteria_weighting": 60,
+                        },
+                    ]
+                if doctype == "Assessment Criteria":
+                    return [
+                        {
+                            "name": "CRIT-ANALYSIS",
+                            "assessment_criteria": "Analysis",
+                            "maximum_mark": 8,
+                        },
+                        {
+                            "name": "CRIT-COMMUNICATION",
+                            "assessment_criteria": "Communication",
+                            "maximum_mark": 10,
+                        },
+                    ]
+                if doctype == "Assessment Criteria Level":
+                    return [
+                        {"parent": "CRIT-ANALYSIS", "achievement_level": "Emerging"},
+                        {"parent": "CRIT-ANALYSIS", "achievement_level": "Secure"},
+                        {"parent": "CRIT-COMMUNICATION", "achievement_level": "Emerging"},
+                        {"parent": "CRIT-COMMUNICATION", "achievement_level": "Secure"},
+                    ]
+                return []
+
+            frappe.get_all = fake_get_all
+
+            module = import_fresh("ifitwala_ed.api.task")
+            payload = module.list_course_assessment_criteria(student_group="GRP-1")
+
+        self.assertEqual(
+            payload,
+            [
+                {
+                    "assessment_criteria": "CRIT-ANALYSIS",
+                    "criteria_name": "Analysis",
+                    "criteria_weighting": 40.0,
+                    "criteria_max_points": 8.0,
+                    "levels": [{"level": "Emerging"}, {"level": "Secure"}],
+                },
+                {
+                    "assessment_criteria": "CRIT-COMMUNICATION",
+                    "criteria_name": "Communication",
+                    "criteria_weighting": 60.0,
+                    "criteria_max_points": 10.0,
+                    "levels": [{"level": "Emerging"}, {"level": "Secure"}],
+                },
+            ],
+        )

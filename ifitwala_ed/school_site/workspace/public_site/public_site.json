@@ -26,16 +26,6 @@
   {
    "hidden": 0,
    "is_query_report": 0,
-   "label": "File Classification",
-   "link_count": 0,
-   "link_to": "File Classification",
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
    "label": "File Management Settings",
    "link_count": 0,
    "link_to": "File Management Settings",
@@ -191,7 +181,7 @@
    "type": "Link"
   }
  ],
- "modified": "2026-04-11 23:40:04.255867",
+ "modified": "2026-04-19 14:30:00.000000",
  "modified_by": "Administrator",
  "module": "School Site",
  "name": "Public Site",
