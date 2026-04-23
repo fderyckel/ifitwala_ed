@@ -61,6 +61,47 @@ def _guardian_module():
 
 
 class TestGuardianUnit(TestCase):
+    def test_create_guardian_user_builds_silent_website_user(self):
+        with _guardian_module() as guardian_module:
+            guardian = guardian_module.Guardian.__new__(guardian_module.Guardian)
+            guardian.name = "GRD-0001"
+            guardian.guardian_email = "guardian@example.com"
+            guardian.guardian_first_name = "Guardian"
+            guardian.guardian_last_name = "User"
+            guardian.guardian_mobile_phone = "5550000001"
+            guardian.user = None
+            guardian.db_set = lambda fieldname, value, update_modified=False: setattr(guardian, fieldname, value)
+
+            captured = {}
+            fake_user = SimpleNamespace(
+                name="guardian@example.com",
+                flags=SimpleNamespace(ignore_permissions=False, no_welcome_mail=False),
+            )
+            fake_user.insert = lambda ignore_permissions=True: fake_user
+
+            guardian_module.frappe.db.exists = lambda doctype, name=None: False
+            guardian_module.frappe.db.set_value = lambda *args, **kwargs: None
+
+            def fake_get_doc(payload):
+                captured["payload"] = payload
+                return fake_user
+
+            guardian_module.frappe.get_doc = fake_get_doc
+
+            with (
+                patch.object(guardian, "_find_contact_name", return_value=None),
+                patch.object(guardian, "_get_or_create_contact", return_value="CONTACT-0001"),
+            ):
+                user_name = guardian.create_guardian_user()
+
+        self.assertEqual(user_name, "guardian@example.com")
+        self.assertEqual(captured["payload"]["send_welcome_email"], 0)
+        self.assertEqual(captured["payload"]["send_password_notification"], 0)
+        self.assertEqual(captured["payload"]["user_type"], "Website User")
+        self.assertTrue(fake_user.flags.ignore_permissions)
+        self.assertTrue(fake_user.flags.no_welcome_mail)
+        self.assertEqual(guardian.user, "guardian@example.com")
+
     def test_after_insert_still_links_contact_and_updates_portal_routing(self):
         with _guardian_module() as guardian_module:
             guardian = guardian_module.Guardian.__new__(guardian_module.Guardian)

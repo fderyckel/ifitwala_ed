@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import base64
+import os
 from contextlib import contextmanager
+from types import SimpleNamespace
 from unittest.mock import patch
 
 import frappe
@@ -27,6 +29,10 @@ from ifitwala_ed.utilities.organization_media import (
     list_owned_media_for_organization,
     list_visible_media_for_school,
 )
+
+# Allow class-qualified test discovery paths such as
+# `ifitwala_ed.utilities.test_organization_media.TestOrganizationMedia`.
+__path__ = [os.path.dirname(__file__)]
 
 
 class TestOrganizationMedia(FrappeTestCase):
@@ -68,6 +74,9 @@ class TestOrganizationMedia(FrappeTestCase):
         frappe.set_user("Administrator")
         for doctype, name in reversed(self._created):
             if frappe.db.exists(doctype, name):
+                if doctype == "Drive File":
+                    frappe.db.delete("Drive File", {"name": name})
+                    continue
                 frappe.delete_doc(doctype, name, force=1, ignore_permissions=True)
 
     def test_governed_org_media_file_carries_drive_authority(self):
@@ -350,8 +359,6 @@ class TestOrganizationMedia(FrappeTestCase):
         file_name: str | None = None,
         upload_source: str = "Desk",
     ):
-        from ifitwala_drive.services.files.creation import create_drive_file_artifacts
-
         classification = build_organization_media_classification(
             organization=organization,
             school=school,
@@ -381,55 +388,95 @@ class TestOrganizationMedia(FrappeTestCase):
         file_doc = file_doc.insert(ignore_permissions=True)
         self._created.append(("File", file_doc.name))
 
-        session_doc = frappe.get_doc(
-            {
-                "doctype": "Drive Upload Session",
-                "session_key": f"org-media-{frappe.generate_hash(length=12)}",
-                "status": "completed",
-                "upload_source": upload_source,
-                "created_by_user": "Administrator",
-                "attached_doctype": "Organization",
-                "attached_name": organization,
-                "owner_doctype": "Organization",
-                "owner_name": organization,
-                "organization": organization,
-                "school": school,
-                "intended_primary_subject_type": classification["primary_subject_type"],
-                "intended_primary_subject_id": classification["primary_subject_id"],
-                "intended_data_class": classification["data_class"],
-                "intended_purpose": classification["purpose"],
-                "intended_retention_policy": classification["retention_policy"],
-                "intended_slot": classification["slot"],
-                "filename_original": file_doc.file_name,
-                "mime_type_hint": storage_artifact["mime_type"],
-                "received_size_bytes": storage_artifact["size_bytes"],
-                "content_hash": storage_artifact["content_hash"],
-                "is_private": int(file_doc.is_private or 0),
-                "storage_backend": "local",
-                "tmp_object_key": f"tmp/org-media/{frappe.generate_hash(length=12)}",
-                "upload_token": frappe.generate_hash(length=16),
-            }
-        ).insert(ignore_permissions=True)
-        self._created.append(("Drive Upload Session", session_doc.name))
-        artifacts = create_drive_file_artifacts(
-            upload_session_doc=session_doc,
-            file_id=file_doc.name,
-            storage_artifact=storage_artifact,
-            binding_role="organization_media",
+        session_doc = SimpleNamespace(
+            name=f"DUS-ORG-MEDIA-{frappe.generate_hash(length=12)}",
+            session_key=f"org-media-{frappe.generate_hash(length=12)}",
+            status="completed",
+            upload_source=upload_source,
+            created_by_user="Administrator",
+            attached_doctype="Organization",
+            attached_name=organization,
+            owner_doctype="Organization",
+            owner_name=organization,
+            organization=organization,
+            school=school,
+            intended_primary_subject_type=classification["primary_subject_type"],
+            intended_primary_subject_id=classification["primary_subject_id"],
+            intended_data_class=classification["data_class"],
+            intended_purpose=classification["purpose"],
+            intended_retention_policy=classification["retention_policy"],
+            intended_slot=classification["slot"],
+            filename_original=file_doc.file_name,
+            mime_type_hint=storage_artifact["mime_type"],
+            received_size_bytes=storage_artifact["size_bytes"],
+            content_hash=storage_artifact["content_hash"],
+            is_private=int(file_doc.is_private or 0),
+            storage_backend="local",
+            tmp_object_key=f"tmp/org-media/{frappe.generate_hash(length=12)}",
+            upload_token=frappe.generate_hash(length=16),
+            folder=None,
         )
-        self._created.append(("Drive File", artifacts["drive_file_id"]))
-        if artifacts.get("drive_file_version_id"):
-            self._created.append(("Drive File Version", artifacts["drive_file_version_id"]))
-        if artifacts.get("drive_binding_id"):
-            self._created.append(("Drive Binding", artifacts["drive_binding_id"]))
-        for doctype in ("Drive File Derivative", "Drive Processing Job"):
-            for name in frappe.get_all(
-                doctype,
-                filters={"drive_file": artifacts["drive_file_id"]},
-                pluck="name",
-            ):
-                self._created.append((doctype, name))
+        self._insert_drive_file_row(
+            file_doc=file_doc,
+            session_doc=session_doc,
+            storage_artifact=storage_artifact,
+        )
         return file_doc
+
+    def _insert_drive_file_row(self, *, file_doc, session_doc, storage_artifact: dict) -> str:
+        drive_file_name = f"DRV-FILE-{frappe.generate_hash(length=12)}"
+        now = frappe.utils.now_datetime()
+        frappe.db.sql(
+            """
+            INSERT INTO `tabDrive File`
+                (`name`, `creation`, `modified`, `modified_by`, `owner`, `docstatus`, `idx`,
+                 `file`, `status`, `preview_status`, `source_upload_session`, `canonical_ref`,
+                 `display_name`, `attached_doctype`, `attached_name`, `owner_doctype`, `owner_name`,
+                 `organization`, `school`, `primary_subject_type`, `primary_subject_id`, `data_class`,
+                 `purpose`, `retention_policy`, `slot`, `current_version_no`, `storage_backend`,
+                 `storage_object_key`, `upload_source`, `content_hash`, `is_private`)
+            VALUES
+                (%s, %s, %s, %s, %s, 0, 0,
+                 %s, %s, %s, %s, %s,
+                 %s, %s, %s, %s, %s,
+                 %s, %s, %s, %s, %s,
+                 %s, %s, %s, %s, %s,
+                 %s, %s, %s, %s)
+            """,
+            (
+                drive_file_name,
+                now,
+                now,
+                "Administrator",
+                "Administrator",
+                file_doc.name,
+                "active",
+                "pending",
+                session_doc.name,
+                f"drv:{session_doc.organization}:{drive_file_name}",
+                file_doc.file_name,
+                session_doc.attached_doctype,
+                session_doc.attached_name,
+                session_doc.owner_doctype,
+                session_doc.owner_name,
+                session_doc.organization,
+                session_doc.school,
+                session_doc.intended_primary_subject_type,
+                session_doc.intended_primary_subject_id,
+                session_doc.intended_data_class,
+                session_doc.intended_purpose,
+                session_doc.intended_retention_policy,
+                session_doc.intended_slot,
+                1,
+                storage_artifact["storage_backend"],
+                storage_artifact["object_key"],
+                session_doc.upload_source,
+                storage_artifact["content_hash"],
+                int(file_doc.is_private or 0),
+            ),
+        )
+        self._created.append(("Drive File", drive_file_name))
+        return drive_file_name
 
     @contextmanager
     def _patched_drive_media_bridge(self):
@@ -477,11 +524,22 @@ class TestOrganizationMedia(FrappeTestCase):
             patch(
                 "ifitwala_drive.api.media.upload_organization_media_asset",
                 new=fake_drive_media.upload_organization_media_asset,
+                create=True,
             ),
-            patch("ifitwala_drive.api.media.upload_organization_logo", new=fake_drive_media.upload_organization_logo),
-            patch("ifitwala_drive.api.media.upload_school_logo", new=fake_drive_media.upload_school_logo),
             patch(
-                "ifitwala_drive.api.media.upload_school_gallery_image", new=fake_drive_media.upload_school_gallery_image
+                "ifitwala_drive.api.media.upload_organization_logo",
+                new=fake_drive_media.upload_organization_logo,
+                create=True,
+            ),
+            patch(
+                "ifitwala_drive.api.media.upload_school_logo",
+                new=fake_drive_media.upload_school_logo,
+                create=True,
+            ),
+            patch(
+                "ifitwala_drive.api.media.upload_school_gallery_image",
+                new=fake_drive_media.upload_school_gallery_image,
+                create=True,
             ),
             patch(
                 "ifitwala_ed.utilities.governed_uploads._drive_upload_and_finalize",

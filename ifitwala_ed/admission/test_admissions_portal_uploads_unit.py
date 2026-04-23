@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import importlib.machinery
 import sys
 from contextlib import contextmanager
 from types import ModuleType, SimpleNamespace
@@ -7,6 +8,17 @@ from unittest import TestCase
 from unittest.mock import patch
 
 from ifitwala_ed.tests.frappe_stubs import import_fresh, stubbed_frappe
+
+
+def _stub_module(name: str, *, is_package: bool = False) -> ModuleType:
+    module = ModuleType(name)
+    module.__spec__ = importlib.machinery.ModuleSpec(name, loader=None, is_package=is_package)
+    if is_package:
+        module.__path__ = []
+        module.__package__ = name
+    else:
+        module.__package__ = name.rpartition(".")[0]
+    return module
 
 
 @contextmanager
@@ -19,13 +31,13 @@ def _admissions_portal_module():
     governed_uploads._resolve_upload_mime_type_hint = lambda **kwargs: None
     governed_uploads._workflow_result_payload = lambda response: dict((response or {}).get("workflow_result") or {})
 
-    drive_admissions_api = ModuleType("ifitwala_drive.api.admissions")
+    drive_admissions_api = _stub_module("ifitwala_drive.api.admissions")
     drive_admissions_api.upload_applicant_document = object()
     drive_admissions_api.upload_applicant_profile_image = object()
     drive_admissions_api.upload_applicant_guardian_image = object()
 
-    drive_root = ModuleType("ifitwala_drive")
-    drive_api = ModuleType("ifitwala_drive.api")
+    drive_root = _stub_module("ifitwala_drive", is_package=True)
+    drive_api = _stub_module("ifitwala_drive.api", is_package=True)
     drive_api.admissions = drive_admissions_api
     drive_root.api = drive_api
 

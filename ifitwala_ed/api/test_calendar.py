@@ -69,6 +69,9 @@ class _FakeDoc:
     def insert(self):
         return self
 
+    def get(self, key, default=None):
+        return getattr(self, key, default)
+
 
 class TestCalendarApi(TestCase):
     def test_coerce_time_supports_multiple_input_types(self):

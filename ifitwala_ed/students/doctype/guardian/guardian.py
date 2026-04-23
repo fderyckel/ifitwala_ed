@@ -300,11 +300,13 @@ class Guardian(Document):
                     "username": self.guardian_email,
                     "mobile_no": self.guardian_mobile_phone or "",
                     "user_type": "Website User",
-                    "send_welcome_email": 1,  # invite-style (flip to 0 if you prefer silent)
+                    "send_welcome_email": 0,
+                    "send_password_notification": 0,
                     "roles": [{"role": "Guardian"}],
                 }
             )
             user.flags.ignore_permissions = True
+            user.flags.no_welcome_mail = True
 
             # Prevent Contact→Guardian sync loop during this controlled create
             frappe.flags.skip_contact_to_guardian_sync = True

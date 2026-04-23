@@ -11,6 +11,13 @@ class TestEndofYearChecklist(FrappeTestCase):
     def setUp(self):
         frappe.set_user("Administrator")
         self._created = []
+        for fieldname, value in {
+            "school": "",
+            "academic_year": "",
+            "curriculum_target_academic_year": "",
+            "status": "Draft",
+        }.items():
+            frappe.db.set_single_value("End of Year Checklist", fieldname, value)
         seed = frappe.generate_hash(length=4).upper()
         self.org = self._create_org()
         self.root_school = self._create_school(f"Root School {seed}", f"R{seed}", self.org, is_group=1)
@@ -331,7 +338,11 @@ class TestEndofYearChecklist(FrappeTestCase):
                 "first_name": "Eoy",
                 "last_name": "User",
                 "enabled": 1,
+                "send_welcome_email": 0,
+                "send_password_notification": 0,
             }
-        ).insert(ignore_permissions=True)
+        )
+        doc.flags.no_welcome_mail = True
+        doc.insert(ignore_permissions=True)
         self._created.append(("User", doc.name))
         return doc.name

@@ -3,7 +3,7 @@ title: "Student Log: Track Observations and Follow-Ups"
 slug: student-log
 category: Students
 doc_order: 2
-version: "1.0.3"
+version: "1.0.4"
 last_change_date: "2026-04-23"
 summary: "Document student observations, incidents, and concerns with built-in follow-up workflows. Keep everyone informed while maintaining appropriate privacy controls."
 seo_title: "Student Log: Track Observations and Follow-Ups"
@@ -162,7 +162,7 @@ Logs "In Progress" that haven't been updated in a while are automatically marked
 | **Requires Follow Up** | Does this need action? | Check to enable follow-up workflow |
 | **Next Step** | What should happen next | Pre-configured options from your school |
 | **Follow-up Role** | Required role for assignee | Defaults to `Academic Staff` when the selected Next Step has no associated role |
-| **Follow-up Person** | Who's responsible | Auto-fills from assignment; can be changed |
+| **Follow-up Person** | Who's responsible | Set before submit or through explicit reassign/reopen workflow; ordinary saves do not repair task drift |
 | **Follow-up Status** | Current state | Read-only; system manages this |
 | **Program / Academic Year** | Academic context | Auto-fills from enrollment; override if needed |
 | **School** | Which school this relates to | Auto-fills; important for multi-campus reporting |
@@ -459,6 +459,7 @@ A Pastoral Lead can filter to their school, select the current academic year, an
 - **Visibility Defaults**: `Visible to Student` and `Visible to Guardians` default to off
 - **Scheduler**: Daily job auto-completes stale "In Progress" logs using the selected next-step policy or the school default
 - **Academic context**: new logs seed missing `program`, `academic_year`, `program_offering`, and `school` from the student's current active Program Enrollment; existing sites backfill historical missing context through the one-shot patch `ifitwala_ed.patches.backfill_student_log_delivery_context`
+- **Assignment lifecycle**: follow-up `ToDo` ownership is created on submit and updated through explicit reassign/reopen workflow only; existing sites backfill unambiguous assignment drift through the one-shot patch `ifitwala_ed.patches.backfill_student_log_follow_up_assignments`
 - **Legacy remediation**: existing sites backfill missing `follow_up_role` values on follow-up logs through the one-shot patch `ifitwala_ed.patches.backfill_student_log_follow_up_roles`
 
 ### Permission Matrix

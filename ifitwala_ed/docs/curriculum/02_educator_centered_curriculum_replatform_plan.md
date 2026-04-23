@@ -68,13 +68,14 @@ Enrollment rollover and curriculum reuse are related but separate.
 ## Legacy Cleanup Status
 
 Status: Partial
-Code refs: `ifitwala_ed/docs/curriculum/01_curriculum_task_delivery_contract.md`, `ifitwala_ed/docs/curriculum/README.md`
-Test refs: None
+Code refs: `ifitwala_ed/docs/curriculum/01_curriculum_task_delivery_contract.md`, `ifitwala_ed/docs/curriculum/README.md`, `../ifitwala_drive/ifitwala_drive/ifitwala_drive/doctype/drive_binding/drive_binding.py`, `../ifitwala_drive/ifitwala_drive/patches/retire_legacy_lesson_binding_roles.py`
+Test refs: `../ifitwala_drive/ifitwala_drive/tests/test_drive_binding_doctype.py`, `../ifitwala_drive/ifitwala_drive/tests/test_retire_legacy_lesson_binding_roles_patch.py`
 
 Completed cleanup:
 
 - canonical contracts now use `Class Session` instead of `Lesson Instance` for live runtime language
 - student LMS and class-planning docs now point to the replatformed curriculum spine
+- retired lesson-era `Drive Binding` roles are no longer part of the live governed-file contract; legacy rows are normalized through a one-shot Drive patch instead of being preserved in runtime schema/validation
 - broken documentation reference for this note has been restored
 
 Remaining real gaps:

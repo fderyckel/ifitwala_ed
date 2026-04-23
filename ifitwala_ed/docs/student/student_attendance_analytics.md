@@ -391,7 +391,7 @@ Violating any of these is a bug.
 ### Input
 
 * `school` (optional)
-* If not provided → use **employee.default_school**
+* If not provided → use persisted user default `school`, then **Employee.school**
 
 ### Required behavior
 

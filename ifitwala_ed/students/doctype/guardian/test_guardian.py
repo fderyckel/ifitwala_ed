@@ -106,10 +106,14 @@ class TestGuardianUserCreation(FrappeTestCase):
                 "first_name": "Guardian",
                 "last_name": "User",
                 "enabled": 1,
+                "send_welcome_email": 0,
+                "send_password_notification": 0,
                 "user_type": "Website User",
                 "roles": [{"role": role} for role in roles],
             }
-        ).insert(ignore_permissions=True)
+        )
+        user.flags.no_welcome_mail = True
+        user.insert(ignore_permissions=True)
         self._created.append(("User", user.name))
         return user
 
@@ -186,10 +190,14 @@ class TestGuardianPortalRouting(FrappeTestCase):
                 "first_name": "Guardian",
                 "last_name": "Portal",
                 "enabled": 1,
+                "send_welcome_email": 0,
+                "send_password_notification": 0,
                 "user_type": "Website User",
                 "roles": [{"role": role} for role in roles],
             }
-        ).insert(ignore_permissions=True)
+        )
+        user.flags.no_welcome_mail = True
+        user.insert(ignore_permissions=True)
         self._created.append(("User", user.name))
         return user
 

@@ -78,6 +78,50 @@ def _student_log_module():
 
 
 class TestStudentLogUnit(TestCase):
+    def test_get_user_employee_reads_canonical_employee_fields_only(self):
+        with _student_log_module() as (student_log_module, _):
+            with (
+                patch.object(student_log_module.frappe.db, "has_column", create=True) as has_column,
+                patch.object(
+                    student_log_module.frappe.db,
+                    "get_value",
+                    return_value=SimpleNamespace(name="EMP-0001", school="SCH-1"),
+                ) as get_value,
+            ):
+                employee = student_log_module._get_user_employee("staff@example.com")
+
+        has_column.assert_not_called()
+        get_value.assert_called_once_with(
+            "Employee",
+            {"user_id": "staff@example.com"},
+            ["name", "school"],
+            as_dict=True,
+        )
+        self.assertEqual(employee.school, "SCH-1")
+
+    def test_get_user_school_anchor_prefers_user_default_then_employee_school(self):
+        with _student_log_module() as (student_log_module, _):
+            with (
+                patch.object(student_log_module.frappe.defaults, "get_user_default", return_value="SCH-DEFAULT"),
+                patch.object(student_log_module, "_get_user_employee") as get_user_employee,
+            ):
+                anchor = student_log_module._get_user_school_anchor("staff@example.com")
+
+            with (
+                patch.object(student_log_module.frappe.defaults, "get_user_default", return_value=None),
+                patch.object(
+                    student_log_module,
+                    "_get_user_employee",
+                    return_value={"name": "EMP-0001", "school": "SCH-EMP"},
+                ) as fallback_employee,
+            ):
+                employee_anchor = student_log_module._get_user_school_anchor("staff@example.com")
+
+        get_user_employee.assert_not_called()
+        fallback_employee.assert_called_once_with("staff@example.com")
+        self.assertEqual(anchor, "SCH-DEFAULT")
+        self.assertEqual(employee_anchor, "SCH-EMP")
+
     def test_validate_persists_academic_staff_default_when_next_step_has_no_associated_role(self):
         with _student_log_module() as (student_log_module, _):
             doc = student_log_module.StudentLog.__new__(student_log_module.StudentLog)
@@ -169,6 +213,44 @@ class TestStudentLogUnit(TestCase):
         ensure_delivery_context.assert_not_called()
         resolve_school.assert_not_called()
         self.assertIsNone(doc.school)
+
+    def test_validate_does_not_repair_existing_follow_up_assignments(self):
+        with _student_log_module() as (student_log_module, _):
+            doc = student_log_module.StudentLog.__new__(student_log_module.StudentLog)
+            doc.requires_follow_up = 1
+            doc.next_step = "STEP-1"
+            doc.follow_up_role = None
+            doc.follow_up_person = "selected@example.com"
+            doc.follow_up_status = None
+            doc.school = "SCH-1"
+            doc.name = "LOG-0001"
+            doc.docstatus = 1
+            doc.is_new = lambda: False
+            doc._compute_follow_up_status = lambda: None
+            doc._apply_status = lambda *args, **kwargs: None
+            doc._ensure_delivery_context = lambda: None
+            doc._resolve_school = lambda: "SCH-1"
+            doc._assert_amendment_allowed = lambda: None
+            doc._assert_core_fields_immutable_after_follow_up = lambda: None
+            doc._assert_followup_transition_and_immutability = lambda: None
+
+            def fake_exists(doctype, filters=None):
+                if doctype == "Student Log Follow Up":
+                    return False
+                if doctype == "Has Role":
+                    return True
+                raise AssertionError(f"Unexpected exists lookup: {doctype!r}")
+
+            with (
+                patch.object(student_log_module.frappe.db, "exists", side_effect=fake_exists),
+                patch.object(doc, "_assign_to") as assign_to,
+                patch.object(doc, "_unassign") as unassign,
+            ):
+                doc.validate()
+
+        assign_to.assert_not_called()
+        unassign.assert_not_called()
+        self.assertEqual(doc.follow_up_person, "selected@example.com")
 
     def test_assign_follow_up_uses_persisted_role_without_repairing_it(self):
         with _student_log_module() as (student_log_module, frappe):

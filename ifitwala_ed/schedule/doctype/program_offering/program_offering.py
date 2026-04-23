@@ -48,6 +48,11 @@ def _assert(cond: bool, msg: str):
         frappe.throw(msg)
 
 
+def _format_error_date(value) -> str:
+    resolved = getdate(value) if value else None
+    return resolved.isoformat() if resolved else ""
+
+
 # -------------------------
 # main document
 # -------------------------
@@ -143,11 +148,11 @@ class ProgramOffering(Document):
                     "Academic Years overlap: {first_academic_year} ({first_start}->{first_end}) and {second_academic_year} ({second_start}->{second_end})."
                 ).format(
                     first_academic_year=prev["name"],
-                    first_start=frappe.format(prev["start"], {"fieldtype": "Date"}),
-                    first_end=frappe.format(prev["end"], {"fieldtype": "Date"}),
+                    first_start=_format_error_date(prev["start"]),
+                    first_end=_format_error_date(prev["end"]),
                     second_academic_year=curr["name"],
-                    second_start=frappe.format(curr["start"], {"fieldtype": "Date"}),
-                    second_end=frappe.format(curr["end"], {"fieldtype": "Date"}),
+                    second_start=_format_error_date(curr["start"]),
+                    second_end=_format_error_date(curr["end"]),
                 ),
             )
         return cols
@@ -172,9 +177,9 @@ class ProgramOffering(Document):
                 _(
                     "Start Date {start_date} must lie within the spanning Academic Years ({academic_year_start} -> {academic_year_end})."
                 ).format(
-                    start_date=frappe.format(head_start, {"fieldtype": "Date"}),
-                    academic_year_start=frappe.format(min_ay, {"fieldtype": "Date"}),
-                    academic_year_end=frappe.format(max_ay, {"fieldtype": "Date"}),
+                    start_date=_format_error_date(head_start),
+                    academic_year_start=_format_error_date(min_ay),
+                    academic_year_end=_format_error_date(max_ay),
                 ),
             )
         if head_end:
@@ -183,9 +188,9 @@ class ProgramOffering(Document):
                 _(
                     "End Date {end_date} must lie within the spanning Academic Years ({academic_year_start} -> {academic_year_end})."
                 ).format(
-                    end_date=frappe.format(head_end, {"fieldtype": "Date"}),
-                    academic_year_start=frappe.format(min_ay, {"fieldtype": "Date"}),
-                    academic_year_end=frappe.format(max_ay, {"fieldtype": "Date"}),
+                    end_date=_format_error_date(head_end),
+                    academic_year_start=_format_error_date(min_ay),
+                    academic_year_end=_format_error_date(max_ay),
                 ),
             )
 

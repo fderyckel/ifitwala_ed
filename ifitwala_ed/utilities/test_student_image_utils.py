@@ -134,7 +134,7 @@ class TestStudentImageUtils(FrappeTestCase):
             patch("ifitwala_ed.utilities.image_utils._get_current_governed_profile_file", return_value=None),
             patch("ifitwala_ed.utilities.image_utils.frappe.get_doc", return_value=student_doc),
             patch("ifitwala_ed.integrations.drive.media.build_student_image_contract", return_value={}),
-            patch("ifitwala_drive.api.media.upload_student_image", new=object()),
+            patch("ifitwala_drive.api.media.upload_student_image", new=object(), create=True),
             patch("ifitwala_ed.utilities.image_utils._resolve_unique_file_doc_by_url", return_value=source_file_doc),
             patch("ifitwala_ed.utilities.image_utils._read_managed_file_bytes", return_value=b"student-bytes"),
             patch(

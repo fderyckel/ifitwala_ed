@@ -37,6 +37,9 @@ from ifitwala_ed.utilities.portal_identity_cache import (
     CACHE_TTL_SECONDS,
     student_portal_identity_cache_key,
 )
+from ifitwala_ed.utilities.portal_identity_cache import (
+    invalidate_student_portal_identity_cache as _invalidate_student_portal_identity_cache,
+)
 
 HR_ROLES = frozenset({"HR User", "HR Manager"})
 ROLE_INSTRUCTOR = "Instructor"
@@ -57,6 +60,10 @@ PROFESSIONAL_DEVELOPMENT_PORTAL_ROLES = frozenset(
         "System Manager",
     }
 )
+
+
+def invalidate_student_portal_identity_cache(*args, **kwargs):
+    return _invalidate_student_portal_identity_cache(*args, **kwargs)
 
 
 def _resolve_staff_first_name(user: str, user_first_name: str | None, user_full_name: str | None) -> str:

@@ -91,6 +91,7 @@ class TestBillingRun(AccountingTestMixin, FrappeTestCase):
             self.assertEqual(schedule.rows[0].sales_invoice, invoice.name)
 
         invoice.submit()
+        invoice.reload()
         invoice.cancel()
 
         for row in schedules:

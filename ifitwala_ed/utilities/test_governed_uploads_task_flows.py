@@ -83,6 +83,9 @@ class _FakeDoc:
         self.saved += 1
         return self
 
+    def get(self, key, default=None):
+        return getattr(self, key, default)
+
 
 class TestGovernedUploadTaskFlows(TestCase):
     def test_drive_upload_and_finalize_injects_idempotency_key_and_uses_drive_owned_ingest(self):

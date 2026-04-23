@@ -15,6 +15,10 @@ from ifitwala_ed.admission.doctype.student_applicant.student_applicant import ac
 
 class TestStudentApplicant(FrappeTestCase):
     def setUp(self):
+        self._welcome_mail_patcher = patch("frappe.core.doctype.user.user.User.send_welcome_mail_to_user")
+        self._welcome_mail_patcher.start()
+        self._password_notification_patcher = patch("frappe.core.doctype.user.user.User.send_password_notification")
+        self._password_notification_patcher.start()
         frappe.set_user("Administrator")
         self._created = []
         self._auto_hydrate_setting_before = frappe.db.get_single_value(
@@ -56,6 +60,8 @@ class TestStudentApplicant(FrappeTestCase):
         for doctype, name in reversed(self._created):
             if frappe.db.exists(doctype, name):
                 frappe.delete_doc(doctype, name, force=1, ignore_permissions=True)
+        self._password_notification_patcher.stop()
+        self._welcome_mail_patcher.stop()
 
     def test_academic_year_query_filters_visibility(self):
         rows = academic_year_intent_query(
@@ -1725,6 +1731,8 @@ class TestStudentApplicant(FrappeTestCase):
                 "first_name": first_name,
                 "last_name": last_name,
                 "enabled": 1,
+                "send_welcome_email": 0,
+                "send_password_notification": 0,
             }
         )
         if add_role:
@@ -1732,6 +1740,7 @@ class TestStudentApplicant(FrappeTestCase):
                 frappe.get_doc({"doctype": "Role", "role_name": add_role}).insert(ignore_permissions=True)
                 self._created.append(("Role", add_role))
             user.append("roles", {"role": add_role})
+        user.flags.no_welcome_mail = True
         user.insert(ignore_permissions=True)
         self._created.append(("User", user.name))
         frappe.clear_cache(user=user.name)

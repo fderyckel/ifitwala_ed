@@ -21,6 +21,15 @@ def _resolve_fiscal_year_label(label: str) -> str:
     return FISCAL_YEAR_LABELS.get(label, label)
 
 
+def _format_posting_date_for_message(value) -> str:
+    if not value:
+        return ""
+    try:
+        return formatdate(value)
+    except Exception:
+        return str(getdate(value))
+
+
 def clear_fiscal_year_cache():
     frappe.cache().delete_value(CACHE_KEY)
 
@@ -109,7 +118,7 @@ def resolve_fiscal_year(
             _(
                 "Date {posting_date} resolves to multiple active Fiscal Years for Organization {organization}: {fiscal_years}"
             ).format(
-                posting_date=formatdate(target_date),
+                posting_date=_format_posting_date_for_message(target_date),
                 organization=organization,
                 fiscal_years=fiscal_years,
             ),
@@ -127,7 +136,7 @@ def resolve_fiscal_year(
     frappe.throw(
         _("{label} {posting_date} is not in any active Fiscal Year for Organization {organization}").format(
             label=_resolve_fiscal_year_label(label),
-            posting_date=formatdate(target_date),
+            posting_date=_format_posting_date_for_message(target_date),
             organization=organization,
         ),
         FiscalYearError,

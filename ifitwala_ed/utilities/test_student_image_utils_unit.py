@@ -1,11 +1,23 @@
 from __future__ import annotations
 
+import importlib.machinery
 from contextlib import contextmanager
 from types import ModuleType, SimpleNamespace
 from unittest import TestCase
 from unittest.mock import patch
 
 from ifitwala_ed.tests.frappe_stubs import import_fresh, stubbed_frappe
+
+
+def _stub_module(name: str, *, is_package: bool = False) -> ModuleType:
+    module = ModuleType(name)
+    module.__spec__ = importlib.machinery.ModuleSpec(name, loader=None, is_package=is_package)
+    if is_package:
+        module.__path__ = []
+        module.__package__ = name
+    else:
+        module.__package__ = name.rpartition(".")[0]
+    return module
 
 
 @contextmanager
@@ -24,8 +36,8 @@ def _student_image_utils_module():
     media_client = ModuleType("ifitwala_ed.integrations.drive.media_client")
     media_client.request_profile_image_preview_derivatives = lambda *args, **kwargs: None
 
-    drive_api = ModuleType("ifitwala_drive.api")
-    drive_media_api = ModuleType("ifitwala_drive.api.media")
+    drive_api = _stub_module("ifitwala_drive.api", is_package=True)
+    drive_media_api = _stub_module("ifitwala_drive.api.media")
     drive_media_api.upload_student_image = object()
 
     drive_media = ModuleType("ifitwala_ed.integrations.drive.media")
@@ -34,7 +46,7 @@ def _student_image_utils_module():
     drive_content_uploads = ModuleType("ifitwala_ed.integrations.drive.content_uploads")
     drive_content_uploads.upload_content_via_drive = lambda **kwargs: ({}, {}, None)
 
-    drive_root = ModuleType("ifitwala_drive")
+    drive_root = _stub_module("ifitwala_drive", is_package=True)
     pil_module = ModuleType("PIL")
     pil_image_module = ModuleType("PIL.Image")
     pil_module.Image = pil_image_module

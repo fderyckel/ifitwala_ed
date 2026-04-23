@@ -11,6 +11,8 @@ import frappe
 from ifitwala_ed.students.doctype.student_log.student_log import (
     StudentLog,
     _get_auto_close_eligible_rows,
+    _get_user_employee,
+    _get_user_school_anchor,
     _interpolate_sql_params,
     _is_accreditation_visitor_only,
     assign_follow_up,
@@ -43,6 +45,40 @@ class _DummyCache:
 
 
 class TestStudentLog(TestCase):
+    @patch("ifitwala_ed.students.doctype.student_log.student_log.frappe.db.get_value")
+    def test_get_user_employee_reads_canonical_employee_fields_only(self, mock_get_value):
+        mock_get_value.return_value = frappe._dict({"name": "EMP-0001", "school": "SCH-1"})
+
+        employee = _get_user_employee("staff@example.com")
+
+        mock_get_value.assert_called_once_with(
+            "Employee",
+            {"user_id": "staff@example.com"},
+            ["name", "school"],
+            as_dict=True,
+        )
+        self.assertEqual(employee.school, "SCH-1")
+
+    @patch("ifitwala_ed.students.doctype.student_log.student_log._get_user_employee")
+    @patch("ifitwala_ed.students.doctype.student_log.student_log.frappe.defaults.get_user_default")
+    def test_get_user_school_anchor_prefers_user_default_then_employee_school(
+        self, mock_get_user_default, mock_employee
+    ):
+        mock_get_user_default.return_value = "SCH-DEFAULT"
+
+        anchor = _get_user_school_anchor("staff@example.com")
+
+        self.assertEqual(anchor, "SCH-DEFAULT")
+        mock_employee.assert_not_called()
+
+        mock_get_user_default.return_value = None
+        mock_employee.return_value = frappe._dict({"name": "EMP-0001", "school": "SCH-EMP"})
+
+        employee_anchor = _get_user_school_anchor("staff@example.com")
+
+        mock_employee.assert_called_once_with("staff@example.com")
+        self.assertEqual(employee_anchor, "SCH-EMP")
+
     def test_is_accreditation_visitor_only_requires_single_role(self):
         self.assertTrue(_is_accreditation_visitor_only({"Accreditation Visitor"}))
         self.assertFalse(_is_accreditation_visitor_only({"Accreditation Visitor", "Academic Staff"}))
@@ -213,6 +249,43 @@ class TestStudentLog(TestCase):
         ensure_delivery_context.assert_not_called()
         resolve_school.assert_not_called()
         self.assertIsNone(doc.school)
+
+    def test_validate_does_not_repair_existing_follow_up_assignments(self):
+        doc = StudentLog.__new__(StudentLog)
+        doc.requires_follow_up = 1
+        doc.next_step = "STEP-1"
+        doc.follow_up_role = None
+        doc.follow_up_person = "selected@example.com"
+        doc.follow_up_status = None
+        doc.school = "SCH-1"
+        doc.name = "LOG-0001"
+        doc.docstatus = 1
+        doc.is_new = lambda: False
+        doc._compute_follow_up_status = lambda: None
+        doc._apply_status = lambda *args, **kwargs: None
+        doc._ensure_delivery_context = lambda: None
+        doc._resolve_school = lambda: "SCH-1"
+        doc._assert_amendment_allowed = lambda: None
+        doc._assert_core_fields_immutable_after_follow_up = lambda: None
+        doc._assert_followup_transition_and_immutability = lambda: None
+
+        def fake_exists(doctype, filters=None):
+            if doctype == "Student Log Follow Up":
+                return False
+            if doctype == "Has Role":
+                return True
+            raise AssertionError(f"Unexpected exists lookup: {doctype!r}")
+
+        with (
+            patch("ifitwala_ed.students.doctype.student_log.student_log.frappe.db.exists", side_effect=fake_exists),
+            patch.object(doc, "_assign_to") as assign_to,
+            patch.object(doc, "_unassign") as unassign,
+        ):
+            doc.validate()
+
+        assign_to.assert_not_called()
+        unassign.assert_not_called()
+        self.assertEqual(doc.follow_up_person, "selected@example.com")
 
     def test_dispatch_auto_close_completed_logs_enqueues_long_queue_chunks(self):
         cache = _DummyCache()

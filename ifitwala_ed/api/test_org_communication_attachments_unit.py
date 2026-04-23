@@ -1,9 +1,21 @@
 from __future__ import annotations
 
+import importlib.machinery
 from types import ModuleType, SimpleNamespace
 from unittest import TestCase
 
 from ifitwala_ed.tests.frappe_stubs import import_fresh, stubbed_frappe
+
+
+def _stub_module(name: str, *, is_package: bool = False) -> ModuleType:
+    module = ModuleType(name)
+    module.__spec__ = importlib.machinery.ModuleSpec(name, loader=None, is_package=is_package)
+    if is_package:
+        module.__path__ = []
+        module.__package__ = name
+    else:
+        module.__package__ = name.rpartition(".")[0]
+    return module
 
 
 class _FakeOrgCommunicationDoc:
@@ -182,9 +194,9 @@ class TestOrgCommunicationAttachmentsUnit(TestCase):
             SimpleNamespace(name="FILE-0001"),
         )
 
-        drive_root = ModuleType("ifitwala_drive")
-        drive_api_pkg = ModuleType("ifitwala_drive.api")
-        drive_api = ModuleType("ifitwala_drive.api.communications")
+        drive_root = _stub_module("ifitwala_drive", is_package=True)
+        drive_api_pkg = _stub_module("ifitwala_drive.api", is_package=True)
+        drive_api = _stub_module("ifitwala_drive.api.communications")
         drive_api.upload_org_communication_attachment = lambda **kwargs: {
             "upload_session_id": "DUS-0001",
             "row_name": "row-001",

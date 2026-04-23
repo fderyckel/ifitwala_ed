@@ -241,6 +241,33 @@ def _resolve_student_log_school(
     return None
 
 
+def _get_follow_up_due_date(school: str | None, next_step: str | None) -> str:
+    due_days = _get_follow_up_due_days(school, next_step)
+    return frappe.utils.add_days(frappe.utils.today(), int(due_days))
+
+
+def _insert_follow_up_todo(
+    *,
+    log_name: str,
+    student_name: str | None,
+    allocated_to: str,
+    school: str | None,
+    next_step: str | None,
+):
+    return frappe.get_doc(
+        {
+            "doctype": "ToDo",
+            "allocated_to": allocated_to,
+            "reference_type": "Student Log",
+            "reference_name": log_name,
+            "description": f"Follow up on Student Log for {student_name or log_name}",
+            "date": _get_follow_up_due_date(school, next_step),
+            "status": "Open",
+            "priority": "Medium",
+        }
+    ).insert(ignore_permissions=True)
+
+
 def dispatch_auto_close_completed_logs(chunk_size=AUTO_CLOSE_CHUNK_SIZE):
     chunk_size = max(cint(chunk_size) or AUTO_CLOSE_CHUNK_SIZE, 1)
     cache = frappe.cache()
@@ -424,11 +451,8 @@ class StudentLog(Document):
     # ---------------------------------------------------------------------
     def validate(self):
         """
-        Pre-submit assignment support:
-        - If requires_follow_up = 1 and follow_up_person is set before submit,
-                ensure exactly one open ToDo exists for that user (single-assignee policy).
+        Pre-submit follow-up support:
         - Persist follow-up role from Next Step; default to Academic Staff when no role is configured.
-        - Mirror current open assignee back to follow_up_person.
         - When requires_follow_up = 0 (pre-submit), keep follow-up status unset until submit.
         - Derive status (timeline comments suppressed for auto reasons).
         """
@@ -443,19 +467,6 @@ class StudentLog(Document):
                 or not frappe.db.exists("Student Log Follow Up", {"student_log": self.name, "docstatus": 1})
             ):
                 self.follow_up_role = expected_role
-
-            # If a person is chosen pre-submit, ensure ToDo reflects that (single open)
-            if self.follow_up_person and not self.is_new():
-                opens = self._open_assignees()
-                if not opens:
-                    self._assign_to(self.follow_up_person)
-                elif opens != [self.follow_up_person]:
-                    self._unassign()
-                    self._assign_to(self.follow_up_person)
-
-            # Mirror current open assignee → follow_up_person
-            current = self._current_assignee()
-            self.follow_up_person = current or self.follow_up_person
 
             # Role guard if both next_step role and person exist
             if self.follow_up_person:
@@ -687,8 +698,7 @@ class StudentLog(Document):
         )
 
         school = self.school or self._resolve_school()
-        due_days = _get_follow_up_due_days(school, self.next_step)
-        due_date = frappe.utils.add_days(frappe.utils.today(), int(due_days))
+        due_date = _get_follow_up_due_date(school, self.next_step)
 
         # Create/ensure a single OPEN ToDo for the assignee
         desc = f"Follow up on the Student Log for {self.student_name}"
@@ -703,20 +713,13 @@ class StudentLog(Document):
                 }
             )
         else:
-            todo = frappe.new_doc("ToDo")
-            todo.update(
-                {
-                    "owner": user,
-                    "allocated_to": user,
-                    "reference_type": self.doctype,
-                    "reference_name": self.name,
-                    "description": desc,
-                    "date": due_date,
-                    "status": "Open",
-                    "priority": "Medium",
-                }
+            _insert_follow_up_todo(
+                log_name=self.name,
+                student_name=self.student_name,
+                allocated_to=user,
+                school=school,
+                next_step=self.next_step,
             )
-            todo.insert(ignore_permissions=True)
 
         # Emit ONE clean "initial assignment" timeline note (not on reassign)
         if not had_open:
@@ -751,10 +754,6 @@ class StudentLog(Document):
                     "status",
                     "Closed",
                 )
-
-    def _current_assignee(self):
-        users = self._open_assignees()
-        return users[0] if users else None
 
     def _open_assignees(self):
         rows = frappe.get_all(
@@ -915,20 +914,13 @@ def assign_follow_up(log_name: str, user: str):
     )
 
     # Create new OPEN ToDo for assignee (lean insert)
-    due_days = _get_follow_up_due_days(sl.school, sl.next_step)
-    due_date = frappe.utils.add_days(frappe.utils.today(), int(due_days))
-    frappe.get_doc(
-        {
-            "doctype": "ToDo",
-            "allocated_to": user,
-            "reference_type": "Student Log",
-            "reference_name": sl.name,
-            "description": f"Follow up on Student Log for {sl.student_name or sl.name}",
-            "date": due_date,
-            "status": "Open",
-            "priority": "Medium",
-        }
-    ).insert(ignore_permissions=True)
+    _insert_follow_up_todo(
+        log_name=sl.name,
+        student_name=sl.student_name,
+        allocated_to=user,
+        school=sl.school,
+        next_step=sl.next_step,
+    )
 
     # Mirror assignee on the parent
     frappe.db.set_value("Student Log", sl.name, "follow_up_person", user)
@@ -1111,20 +1103,13 @@ def reopen_log(log_name: str):
             "name",
         )
         if not has_open:
-            due_days = _get_follow_up_due_days(row.school, row.next_step)
-            due_date = frappe.utils.add_days(frappe.utils.today(), int(due_days))
-            frappe.get_doc(
-                {
-                    "doctype": "ToDo",
-                    "allocated_to": row.follow_up_person,
-                    "reference_type": "Student Log",
-                    "reference_name": row.name,
-                    "description": f"Follow up on Student Log for {row.student_name or row.name}",
-                    "date": due_date,
-                    "status": "Open",
-                    "priority": "Medium",
-                }
-            ).insert(ignore_permissions=True)
+            _insert_follow_up_todo(
+                log_name=row.name,
+                student_name=row.student_name,
+                allocated_to=row.follow_up_person,
+                school=row.school,
+                next_step=row.next_step,
+            )
 
     # 3) Timeline: concise audit note
     try:
@@ -1257,11 +1242,7 @@ def _get_user_employee(user: str) -> frappe._dict:
     if not user or user == "Guest":
         return frappe._dict()
 
-    fields = ["name", "school"]
-    if frappe.db.has_column("Employee", "default_school"):
-        fields.insert(1, "default_school")
-
-    return frappe.db.get_value("Employee", {"user_id": user}, fields, as_dict=True) or frappe._dict()
+    return frappe.db.get_value("Employee", {"user_id": user}, ["name", "school"], as_dict=True) or frappe._dict()
 
 
 def _get_user_school_anchor(user: str) -> str | None:
@@ -1272,7 +1253,7 @@ def _get_user_school_anchor(user: str) -> str | None:
         return default_school
 
     emp = _get_user_employee(user)
-    return emp.get("default_school") or emp.get("school")
+    return emp.get("school")
 
 
 def _get_user_school_tree(user: str) -> list[str]:
