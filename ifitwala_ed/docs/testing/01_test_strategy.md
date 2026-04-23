@@ -94,3 +94,15 @@ The metrics script is informational by default and can be enforced with environm
   - any pre-first-mutation blocker that forces the user to choose scope before the lock can be activated
   - the affected controls becoming non-editable or otherwise guarded
   - final submit being blocked client-side with actionable remediation when stale state would violate the lock
+
+9. Diagnose fixture and harness failures before changing feature logic.
+- If a test fails before the target workflow logic runs, treat shared factory drift, missing reference data, and harness bootstrap drift as the default suspects before editing production code.
+
+10. Shared factories must be light by default.
+- Test factories should create the smallest contract-valid fixture for the target invariant. Heavy setup such as accounting bootstrap, file derivation, scheduler fan-out, or cross-app provisioning must be explicit opt-ins.
+
+11. Master data must be explicit, not ambient.
+- Tests that depend on records such as `Gender`, `Role`, audience rows, or similar setup data must create or ensure those rows through shared helpers instead of assuming site state.
+
+12. Repeated harness shims belong in shared helpers.
+- If multiple suites need the same installed-app patch, import shim, or bootstrap guard, move it into a shared helper or base fixture with symmetric setup/teardown rather than duplicating local monkeypatches.

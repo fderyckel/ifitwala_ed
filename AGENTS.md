@@ -97,6 +97,8 @@ For non-trivial tasks, agents MUST:
    - permission leaks
    - data integrity/workflow regressions
    - concurrency/performance regressions
+   For failing tests, identify the first non-test code path in the traceback.
+   If the failure starts in a shared factory, fixture helper, reference-data lookup, or harness bootstrap path, fix that setup contract before editing production workflow code.
 5. Stop for explicit approval before:
    - structural refactors
    - schema changes
@@ -686,6 +688,7 @@ If a critical assumption cannot be verified from the workspace, stop and say exa
 
 - When a failure occurs before the feature logic under test runs, treat fixture drift, harness drift, and leaked side effects as the default suspects before editing production code.
 - Shared factories are governed contract surfaces. Fix shared factories first when the same failure pattern can affect multiple suites.
+- Shared factories must default to the lightest contract-valid setup. Heavy branches such as COA/bootstrap setup, file derivation, scheduler fan-out, or cross-app provisioning must be explicit opt-ins.
 - Test fixtures must not assign document attributes that shadow controller or document methods. Example class: assigning `send_password_notification` on `User`.
 - Default test fixture behavior should minimize unrelated side effects:
   - no welcome mail
@@ -697,6 +700,7 @@ If a critical assumption cannot be verified from the workspace, stop and say exa
 - When patching low-level framework primitives such as `frappe.db.sql`, fake functions must accept framework kwargs (`debug`, `run`, `pluck`, and similar) unless the test is intentionally asserting the exact call shape.
 - If a test patches low-level DB access, also patch any higher-level helpers in that path that may trigger unrelated framework reads such as `today()`, installed-app resolution, system settings, or DocType metadata loading.
 - Integration-heavy tests that exercise hooks, `frappe.get_attr(...)`, or installed-app dependent behavior must stabilize `frappe.get_installed_apps()` when the environment is known to drift.
+- If the same harness patch or bootstrap shim is needed in multiple suites, move it into a shared test helper or base fixture rather than duplicating ad-hoc patches per module.
 - A test fix that only works because unrelated hooks, scheduler effects, or bootstrap flows happened not to run is not a valid fix.
 
 ---
