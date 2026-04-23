@@ -17,6 +17,7 @@ from ifitwala_ed.tests.frappe_stubs import (
 def _gradebook_stub_modules(
     task_contribution_service=None,
     task_feedback_service=None,
+    task_feedback_artifact_service=None,
     task_feedback_comment_bank_service=None,
     task_feedback_thread_service=None,
     task_outcome_service=None,
@@ -61,6 +62,20 @@ def _gradebook_stub_modules(
         feedback_service.save_feedback_workspace_draft = lambda payload, actor=None: payload
     if not hasattr(feedback_service, "save_feedback_publication"):
         feedback_service.save_feedback_publication = lambda payload, actor=None: payload
+    artifact_service = task_feedback_artifact_service or types.ModuleType(
+        "ifitwala_ed.assessment.task_feedback_artifact_service"
+    )
+    if not hasattr(artifact_service, "export_released_feedback_pdf"):
+        artifact_service.export_released_feedback_pdf = lambda outcome_id, audience="student": {
+            "file_id": "FILE-1",
+            "file_name": "released-feedback.pdf",
+            "task_submission": "TSU-1",
+            "submission_version": 1,
+            "preview_status": "pending",
+            "open_url": "/open/feedback-pdf",
+            "preview_url": "/preview/feedback-pdf",
+            "attachment_preview": {"kind": "pdf", "preview_mode": "pdf_embed"},
+        }
     comment_bank_service = task_feedback_comment_bank_service or types.ModuleType(
         "ifitwala_ed.assessment.task_feedback_comment_bank_service"
     )
@@ -124,6 +139,7 @@ def _gradebook_stub_modules(
         "ifitwala_ed.assessment.quiz_service": quiz_service,
         "ifitwala_ed.assessment.task_contribution_service": task_contribution_service
         or types.ModuleType("ifitwala_ed.assessment.task_contribution_service"),
+        "ifitwala_ed.assessment.task_feedback_artifact_service": artifact_service,
         "ifitwala_ed.assessment.task_feedback_comment_bank_service": comment_bank_service,
         "ifitwala_ed.assessment.task_feedback_service": feedback_service,
         "ifitwala_ed.assessment.task_feedback_thread_service": thread_service,
@@ -144,6 +160,47 @@ def _import_fresh_gradebook():
 
 
 class TestGradebookApi(TestCase):
+    def test_export_feedback_pdf_uses_artifact_service(self):
+        captured: dict[str, object] = {}
+        artifact_service = types.ModuleType("ifitwala_ed.assessment.task_feedback_artifact_service")
+
+        def fake_export(outcome_id, audience="student"):
+            captured["outcome_id"] = outcome_id
+            captured["audience"] = audience
+            return {
+                "file_id": "FILE-1",
+                "file_name": "released-feedback.pdf",
+                "task_submission": "TSU-1",
+                "submission_version": 2,
+                "preview_status": "pending",
+                "open_url": "/open/feedback-pdf",
+                "preview_url": "/preview/feedback-pdf",
+                "attachment_preview": {"kind": "pdf", "preview_mode": "pdf_embed"},
+            }
+
+        artifact_service.export_released_feedback_pdf = fake_export
+
+        with stubbed_frappe(
+            extra_modules=_gradebook_stub_modules(task_feedback_artifact_service=artifact_service)
+        ) as frappe:
+            frappe.session.user = "teacher@example.com"
+            frappe.get_roles = lambda user=None: ["Academic Admin"]
+
+            def fake_get_value(doctype, name, fieldname=None, as_dict=False):
+                if doctype == "Task Outcome" and name == "OUT-1":
+                    return {"task_delivery": "TDL-1"}
+                if doctype == "Task Delivery" and name == "TDL-1":
+                    return {"name": "TDL-1", "student_group": "GRP-1"}
+                return None
+
+            frappe.db.get_value = fake_get_value
+            module = _import_fresh_gradebook()
+            payload = module.export_feedback_pdf({"outcome_id": "OUT-1"})
+
+        self.assertEqual(captured["outcome_id"], "OUT-1")
+        self.assertEqual(captured["audience"], "student")
+        self.assertEqual(payload["artifact"]["open_url"], "/open/feedback-pdf")
+
     def test_get_drawer_selects_requested_submission_version_and_serializes_preview_urls(self):
         with stubbed_frappe(extra_modules=_gradebook_stub_modules()) as frappe:
 

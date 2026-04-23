@@ -186,6 +186,7 @@ This lets the apps converge on one narrow boundary instead of many stringly wrap
 | `supporting_material.file` | `learning_resource` | `Supporting Material` | workflow-defined resource slot |
 | `task.resource` | `learning_resource` | `Task` | workflow-defined resource slot |
 | `task.submission` | `assessment_submission` | `Task Submission` | `submission` |
+| `task.feedback_export` | `assessment_feedback` | `Task Submission` | `feedback_export__released__student` |
 | `admissions.applicant_document` | workflow-specific governed purpose | `Student Applicant` | applicant document slot |
 | `admissions.applicant_profile_image` | `applicant_profile_display` | `Student Applicant` | `profile_image` |
 | `admissions.applicant_guardian_image` | `applicant_profile_display` | `Student Applicant` | guardian row-derived image slot |

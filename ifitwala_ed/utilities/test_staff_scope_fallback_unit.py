@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from contextlib import contextmanager
+from html import escape as html_escape
 from types import ModuleType, SimpleNamespace
 from unittest import TestCase
 from unittest.mock import patch
@@ -13,6 +14,7 @@ def _employee_permission_module():
     frappe_utils = ModuleType("frappe.utils")
     frappe_utils.add_years = lambda value, years=0: value
     frappe_utils.cstr = lambda value: str(value or "")
+    frappe_utils.escape_html = lambda value: html_escape("" if value is None else str(value))
     frappe_utils.getdate = lambda value=None: value
     frappe_utils.today = lambda: "2026-04-14"
     frappe_utils.validate_email_address = lambda value, throw=False: value
@@ -36,7 +38,7 @@ def _employee_permission_module():
     employee_utils.get_user_base_org = lambda user=None: None
 
     image_utils = ModuleType("ifitwala_ed.utilities.image_utils")
-    image_utils.get_preferred_employee_image_url = lambda *args, **kwargs: None
+    image_utils.get_preferred_employee_avatar_url = lambda *args, **kwargs: None
 
     transaction_base = ModuleType("ifitwala_ed.utilities.transaction_base")
     transaction_base.delete_events = lambda *args, **kwargs: None
@@ -70,6 +72,7 @@ def _employee_permission_module():
 def _contact_utils_module():
     frappe_utils = ModuleType("frappe.utils")
     frappe_utils.cstr = lambda value: str(value or "")
+    frappe_utils.escape_html = lambda value: html_escape("" if value is None else str(value))
 
     frappe_contacts = ModuleType("frappe.contacts")
     address_and_contact = ModuleType("frappe.contacts.address_and_contact")

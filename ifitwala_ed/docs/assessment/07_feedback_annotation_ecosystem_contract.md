@@ -405,6 +405,14 @@ The next implementation sequence is now:
 3. feedback analytics and reuse insights
 4. revision-planning and draft-comparison upgrades built on the existing thread and priority model
 
+The first slice of item 2 is now implemented:
+
+- staff can generate an on-demand student-facing released feedback PDF from the gradebook drawer
+- students can generate the same released feedback PDF from the feedback navigator
+- the generated file is a governed `assessment_feedback` artifact created through the `task.feedback_export` workflow
+- the artifact is attached to the selected `Task Submission` version so it stays evidence-version-bound without replacing immutable submission evidence
+- the artifact is optional and derivative; it is not the default in-product reading surface
+
 See `12_phase4_student_feedback_navigator_and_reply_rfc.md` for the implemented Phase 4 runtime companion and planning history.
 
 The following remain outside the current baseline:

@@ -107,6 +107,47 @@ class TestDriveTaskResourceContract(TestCase):
 
 
 class TestDriveTaskSubmissionContract(TestCase):
+    def test_build_task_feedback_export_upload_contract_uses_assessment_feedback_purpose(self):
+        task_submission_doc = SimpleNamespace(
+            name="TSU-0001",
+            student="STU-1",
+            school="SCH-1",
+            task="TASK-1",
+            check_permission=lambda permission_type=None: None,
+        )
+
+        with _drive_task_submission_module(task_submission_doc) as module:
+            payload = module.build_task_feedback_export_upload_contract(
+                task_submission_doc,
+                audience="student",
+            )
+
+        self.assertEqual(payload["purpose"], "assessment_feedback")
+        self.assertEqual(payload["slot"], "feedback_export__released__student")
+        self.assertEqual(payload["organization"], "ORG-1")
+        self.assertEqual(payload["school"], "SCH-1")
+
+    def test_validate_task_feedback_export_finalize_context_rejects_stale_submission_purpose(self):
+        upload_session_doc = SimpleNamespace(
+            owner_doctype="Task Submission",
+            owner_name="TSU-0001",
+            attached_doctype="Task Submission",
+            attached_name="TSU-0001",
+            organization="ORG-1",
+            school="SCH-1",
+            intended_primary_subject_type="Student",
+            intended_primary_subject_id="STU-1",
+            intended_data_class="assessment",
+            intended_purpose="assessment_submission",
+            intended_retention_policy="until_school_exit_plus_6m",
+            intended_slot="feedback_export__released__student",
+            upload_contract_json='{"workflow":{"workflow_payload":{"audience":"student"}}}',
+        )
+
+        with _drive_task_submission_module() as module:
+            with self.assertRaises(StubValidationError):
+                module.validate_task_feedback_export_finalize_context(upload_session_doc)
+
     def test_assert_task_submission_upload_access_allows_session_student_owner(self):
         task_submission_doc = SimpleNamespace(
             name="TSU-0001",

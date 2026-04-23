@@ -1,10 +1,11 @@
 from __future__ import annotations
 
+import re
+from html import escape
 from typing import Any
 
 import frappe
 from frappe import _
-from frappe.utils import escape_html
 
 from ifitwala_ed.api.attachment_previews import (
     build_attachment_preview_item,
@@ -120,7 +121,7 @@ def _build_export_filename(detail: dict[str, Any]) -> str:
     title = _clean_text((detail.get("context") or {}).get("title")) or "released-feedback"
     version = (detail.get("feedback") or {}).get("submission_version")
     version_label = f"v{int(version)}" if isinstance(version, int) or str(version or "").isdigit() else "v1"
-    return f"released-feedback-{frappe.scrub(student)}-{frappe.scrub(title)}-{version_label}.pdf"
+    return f"released-feedback-{_slugify(student)}-{_slugify(title)}-{version_label}.pdf"
 
 
 def _render_released_feedback_html(detail: dict[str, Any]) -> str:
@@ -434,7 +435,7 @@ def _intent_label(intent: Any) -> str:
 
 def _safe_text(value: Any) -> str:
     resolved = _clean_text(value) or "—"
-    return escape_html(resolved).replace("\n", "<br />")
+    return escape(resolved).replace("\n", "<br />")
 
 
 def _normalize_export_audience(value: Any) -> str:
@@ -448,3 +449,9 @@ def _normalize_export_audience(value: Any) -> str:
 def _clean_text(value: Any) -> str | None:
     text = str(value or "").strip()
     return text or None
+
+
+def _slugify(value: Any) -> str:
+    resolved = (_clean_text(value) or "item").lower()
+    slug = re.sub(r"[^a-z0-9]+", "-", resolved).strip("-")
+    return slug or "item"

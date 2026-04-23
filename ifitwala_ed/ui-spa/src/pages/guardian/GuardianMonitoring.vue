@@ -90,81 +90,9 @@
 		</section>
 
 		<template v-else>
-			<section
-				ref="studentLogsSection"
-				data-testid="guardian-monitoring-student-logs"
-				class="card-surface monitoring-section monitoring-section--logs p-5"
-			>
-				<div class="mb-4 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-					<div>
-						<p class="type-overline text-canopy/75">Student Logs</p>
-						<h2 class="type-h3 text-ink">Latest student logs</h2>
-						<p class="type-caption text-ink/65">
-							Review the newest guardian-visible notes across your family and mark unread items as
-							seen once read.
-						</p>
-					</div>
-					<div class="flex flex-wrap gap-2">
-						<span class="chip">Visible {{ counts.visible_student_logs }}</span>
-						<span class="rounded-full bg-flame/12 px-3 py-1 type-caption text-flame">
-							Unread {{ counts.unread_visible_student_logs }}
-						</span>
-					</div>
-				</div>
-				<div v-if="!studentLogs.length" class="type-body text-ink/70">
-					No guardian-visible student logs in this window.
-				</div>
-				<div v-else class="space-y-3">
-					<article
-						v-for="row in studentLogs"
-						:key="row.student_log"
-						:data-student-log="row.student_log"
-						:data-monitoring-log-unread="row.is_unread ? 'true' : null"
-						class="monitoring-entry monitoring-entry--log rounded-xl border border-line-soft bg-surface-soft p-4"
-					>
-						<div class="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-							<div class="min-w-0">
-								<p class="type-body-strong text-ink">{{ row.student_name }}</p>
-								<p class="type-caption text-ink/60">
-									{{ row.date }}<span v-if="row.time"> · {{ row.time }}</span>
-									<span v-if="row.follow_up_status"> · {{ row.follow_up_status }}</span>
-								</p>
-							</div>
-							<div class="flex items-center gap-2 self-start sm:justify-end">
-								<p
-									class="rounded-full px-3 py-1 type-caption"
-									:class="row.is_unread ? 'bg-flame/15 text-flame' : 'bg-leaf/15 text-canopy'"
-								>
-									{{ row.is_unread ? 'Unread' : 'Seen' }}
-								</p>
-								<button
-									v-if="row.is_unread"
-									type="button"
-									class="rounded-full border border-jacaranda/20 bg-white px-3 py-1 type-caption font-semibold text-jacaranda transition hover:border-jacaranda/30 hover:bg-jacaranda/5 disabled:border-line-soft disabled:bg-surface-soft disabled:text-ink/40"
-									:disabled="markingLogName === row.student_log"
-									@click="markAsSeen(row.student_log)"
-								>
-									{{ markingLogName === row.student_log ? 'Saving...' : 'Mark as seen' }}
-								</button>
-							</div>
-						</div>
-						<p class="mt-2 break-words type-body text-ink/80">{{ row.summary }}</p>
-					</article>
-				</div>
-			</section>
-
 			<section class="card-surface monitoring-section monitoring-section--results p-5">
-				<div class="mb-4 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-					<div>
-						<p class="type-overline text-jacaranda/80">Published Results</p>
-						<h2 class="type-h3 text-ink">Latest shared outcomes</h2>
-						<p class="type-caption text-ink/65">
-							Published assessment results stay separate from logs so the page is easier to scan.
-						</p>
-					</div>
-					<span class="rounded-full bg-jacaranda/12 px-3 py-1 type-caption text-jacaranda">
-						Published {{ counts.published_results }}
-					</span>
+				<div class="mb-4">
+					<p class="type-overline text-jacaranda/80">Published Results</p>
 				</div>
 				<div v-if="!publishedResults.length" class="type-body text-ink/70">
 					No published results in this window.
@@ -193,6 +121,48 @@
 						>
 							Open released feedback
 						</RouterLink>
+					</article>
+				</div>
+			</section>
+
+			<section
+				ref="studentLogsSection"
+				data-testid="guardian-monitoring-student-logs"
+				class="card-surface monitoring-section monitoring-section--logs p-5"
+			>
+				<div class="mb-4">
+					<p class="type-overline text-canopy/75">Student Logs</p>
+				</div>
+				<div v-if="!studentLogs.length" class="type-body text-ink/70">
+					No guardian-visible student logs in this window.
+				</div>
+				<div v-else class="space-y-3">
+					<article
+						v-for="row in studentLogs"
+						:key="row.student_log"
+						:data-student-log="row.student_log"
+						:data-monitoring-log-unread="row.is_unread ? 'true' : null"
+						class="monitoring-entry monitoring-entry--log rounded-xl border border-line-soft bg-surface-soft p-4"
+					>
+						<div class="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+							<div class="min-w-0">
+								<p class="type-body-strong text-ink">{{ row.student_name }}</p>
+								<p class="type-caption text-ink/60">
+									{{ row.date }}<span v-if="row.time"> · {{ row.time }}</span>
+									<span v-if="row.follow_up_status"> · {{ row.follow_up_status }}</span>
+								</p>
+							</div>
+							<button
+								v-if="row.is_unread"
+								type="button"
+								class="shrink-0 rounded-full border border-jacaranda/20 bg-white px-3 py-1 type-caption font-semibold text-jacaranda transition hover:border-jacaranda/30 hover:bg-jacaranda/5 disabled:border-line-soft disabled:bg-surface-soft disabled:text-ink/40"
+								:disabled="markingLogName === row.student_log"
+								@click="markAsSeen(row.student_log)"
+							>
+								{{ markingLogName === row.student_log ? 'Saving...' : 'Mark as seen' }}
+							</button>
+						</div>
+						<p class="mt-2 break-words type-body text-ink/80">{{ row.summary }}</p>
 					</article>
 				</div>
 			</section>

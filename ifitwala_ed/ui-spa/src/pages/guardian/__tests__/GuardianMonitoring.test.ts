@@ -158,10 +158,16 @@ describe('GuardianMonitoring', () => {
 		expect(text).toContain(
 			"View your child's or children's logs and published results in one place"
 		)
-		expect(text).toContain('Latest student logs')
+		expect(text).not.toContain('Latest student logs')
 		expect(text).toContain(longLogSummary)
 		expect(text).toContain('Science assessment')
 		expect(text).toContain('92')
+		expect(document.body.innerHTML.indexOf('Published Results')).toBeLessThan(
+			document.body.innerHTML.indexOf('Student Logs')
+		)
+		const logCard = document.querySelector('[data-student-log="LOG-1"]')
+		expect(logCard?.textContent || '').toContain('Mark as seen')
+		expect(logCard?.textContent || '').not.toContain('Unread')
 		expect(document.body.innerHTML).toContain('guardian-released-feedback')
 	})
 
@@ -282,8 +288,8 @@ describe('GuardianMonitoring', () => {
 
 		expect(markGuardianStudentLogReadMock).toHaveBeenCalledWith({ log_name: 'LOG-1' })
 		const text = document.body.textContent || ''
-		expect(text).toContain('Seen')
 		expect(text).not.toContain('Mark as seen')
+		expect(document.querySelector('[data-student-log="LOG-1"] button')).toBeNull()
 	})
 
 	it('scrolls the first unread log into view when the page is opened from the unread summary card', async () => {

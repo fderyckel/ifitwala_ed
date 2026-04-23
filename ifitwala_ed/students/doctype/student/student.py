@@ -15,8 +15,8 @@ Students may be created through TWO explicit, supported pathways:
    - Created via StudentApplicant.promote_to_student()
    - `student_applicant` is set
    - profile links such as `cohort` and `student_house` are carried from the applicant when present
-   - Side effects (User, Student Patient, Contact) are GATED
-     and intentionally NOT executed during Phase 1
+   - Student CRM contact binding executes synchronously at promotion handoff
+   - heavier side effects (for example Student access/user provisioning) remain gated
    - Used for all future admissions flows
 
 2) Data Import / Migration (explicit bypass)
@@ -160,11 +160,12 @@ class Student(Document):
 
     def after_insert(self):
         """
-        Phase-1 gating:
-        - If created via Applicant promotion: NO side effects (no user, no patient, no contact).
-        - For imported/onboarded Students: keep existing behavior.
+        Creation ownership:
+        - Applicant promotion still materializes the canonical Student -> Contact binding.
+        - Imported/onboarded Students keep the broader side effects.
         """
         if getattr(frappe.flags, "from_applicant_promotion", False):
+            self.ensure_contact_and_link()
             return
         self.create_student_user()
         self.create_student_patient()
@@ -172,7 +173,6 @@ class Student(Document):
 
     def on_update(self):
         self.rename_student_image()
-        self.ensure_contact_and_link()
         self.update_student_enabled_status()
         self.sync_student_contact_image()
         self.sync_reciprocal_siblings()
@@ -486,31 +486,46 @@ class Student(Document):
         )
 
     def ensure_contact_and_link(self):
-        """Idempotently ensure a Contact exists for this student's User and is linked back to the Student.
-        No msgprint, safe to call from after_insert and on_update."""
+        """Idempotently ensure a canonical Contact exists and is linked back to the Student."""
         if not self.student_email:
             return
 
-        # Require a User (created in after_insert)
-        if not frappe.db.exists("User", self.student_email):
+        contact_name = frappe.db.get_value(
+            "Dynamic Link",
+            {"link_doctype": "Student", "link_name": self.name, "parenttype": "Contact"},
+            "parent",
+        )
+        if contact_name:
             return
 
-        # 1) Find or create Contact bound to this user
-        contact_name = frappe.db.get_value("Contact", {"user": self.student_email}, "name")
+        student_user = self.student_email if frappe.db.exists("User", self.student_email) else None
+
+        # Prefer the canonical Contact bound to the student user when it exists,
+        # otherwise reuse an existing primary-email Contact before creating one.
+        if student_user:
+            contact_name = frappe.db.get_value("Contact", {"user": student_user}, "name")
+        if not contact_name:
+            contact_name = frappe.db.get_value(
+                "Contact Email",
+                {"email_id": self.student_email, "is_primary": 1},
+                "parent",
+            )
+
         if not contact_name:
             # Create a minimal Contact
-            contact = frappe.get_doc(
-                {
-                    "doctype": "Contact",
-                    "user": self.student_email,
-                    "first_name": self.student_first_name
-                    or self.student_preferred_name
-                    or self.student_last_name
-                    or self.name,
-                    "last_name": self.student_last_name or "",
-                    "image": self.student_image or None,
-                }
-            )
+            contact_payload = {
+                "doctype": "Contact",
+                "first_name": self.student_first_name
+                or self.student_preferred_name
+                or self.student_last_name
+                or self.name,
+                "last_name": self.student_last_name or "",
+                "image": self.student_image or None,
+            }
+            if student_user:
+                contact_payload["user"] = student_user
+
+            contact = frappe.get_doc(contact_payload)
             contact.flags.ignore_permissions = True
             if hasattr(contact, "email_id") and self.student_email:
                 contact.email_id = self.student_email
@@ -519,7 +534,15 @@ class Student(Document):
                 contact_name = contact.name
             except Exception:
                 # If another request created it concurrently, load it
-                contact_name = frappe.db.get_value("Contact", {"user": self.student_email}, "name")
+                contact_name = None
+                if student_user:
+                    contact_name = frappe.db.get_value("Contact", {"user": student_user}, "name")
+                if not contact_name:
+                    contact_name = frappe.db.get_value(
+                        "Contact Email",
+                        {"email_id": self.student_email, "is_primary": 1},
+                        "parent",
+                    )
                 if not contact_name:
                     raise
                 contact = frappe.get_doc("Contact", contact_name)

@@ -782,6 +782,7 @@ Feedback workspace expectations:
 - Release makes the official outcome visible through one shared student/guardian state
 - Release supports one student or a selected batch inside the current student group
 - No automatic release
+- Teacher may also generate a governed student-facing feedback PDF from the drawer once student feedback visibility is saved and not hidden
 
 ---
 

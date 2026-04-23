@@ -9,6 +9,7 @@ from ifitwala_ed.tests.frappe_stubs import import_fresh, stubbed_frappe
 def _released_feedback_stub_modules(
     task_feedback_service=None,
     task_feedback_thread_service=None,
+    task_feedback_artifact_service=None,
     task_submission_service=None,
     courses_service=None,
     guardian_home_service=None,
@@ -147,7 +148,31 @@ def _released_feedback_stub_modules(
             [{"student": "STU-1"}],
         )
 
+    artifact_service = task_feedback_artifact_service or types.ModuleType(
+        "ifitwala_ed.assessment.task_feedback_artifact_service"
+    )
+    if not hasattr(artifact_service, "export_released_feedback_pdf"):
+        artifact_service.export_released_feedback_pdf = lambda outcome_id, audience="student": {
+            "file_id": "FILE-1",
+            "file_name": "released-feedback.pdf",
+            "task_submission": "TSU-1",
+            "submission_version": 2,
+            "preview_status": "pending",
+            "open_url": "/open/feedback-pdf",
+            "preview_url": "/preview/feedback-pdf",
+            "attachment_preview": {
+                "display_name": "Released feedback PDF",
+                "kind": "pdf",
+                "preview_mode": "pdf_embed",
+                "preview_url": "/preview/feedback-pdf",
+                "open_url": "/open/feedback-pdf",
+                "mime_type": "application/pdf",
+                "extension": "pdf",
+            },
+        }
+
     return {
+        "ifitwala_ed.assessment.task_feedback_artifact_service": artifact_service,
         "ifitwala_ed.assessment.task_feedback_service": feedback_service,
         "ifitwala_ed.assessment.task_feedback_thread_service": thread_service,
         "ifitwala_ed.api.task_submission": task_submission,
@@ -248,3 +273,37 @@ class TestReleasedFeedbackApi(TestCase):
         self.assertEqual(captured["payload"]["target_feedback_item"], "TFI-1")
         self.assertEqual(captured["payload"]["message_kind"], "clarification")
         self.assertEqual(captured["actor"], "unit.test@example.com")
+
+    def test_student_export_uses_artifact_service(self):
+        captured: dict[str, object] = {}
+        artifact_service = types.ModuleType("ifitwala_ed.assessment.task_feedback_artifact_service")
+
+        def fake_export(outcome_id, audience="student"):
+            captured["outcome_id"] = outcome_id
+            captured["audience"] = audience
+            return {
+                "file_id": "FILE-1",
+                "file_name": "released-feedback.pdf",
+                "task_submission": "TSU-1",
+                "submission_version": 2,
+                "preview_status": "pending",
+                "open_url": "/open/feedback-pdf",
+                "preview_url": "/preview/feedback-pdf",
+                "attachment_preview": {"kind": "pdf", "preview_mode": "pdf_embed"},
+            }
+
+        artifact_service.export_released_feedback_pdf = fake_export
+
+        with stubbed_frappe(
+            extra_modules=_released_feedback_stub_modules(task_feedback_artifact_service=artifact_service)
+        ) as frappe:
+            frappe.db.get_value = lambda doctype, name_or_filters, fieldname=None, as_dict=False: (
+                "STU-1" if doctype == "Task Outcome" and fieldname == "student" else None
+            )
+
+            module = import_fresh("ifitwala_ed.api.released_feedback")
+            payload = module.export_student_released_feedback_pdf("OUT-1")
+
+        self.assertEqual(captured["outcome_id"], "OUT-1")
+        self.assertEqual(captured["audience"], "student")
+        self.assertEqual(payload["artifact"]["open_url"], "/open/feedback-pdf")
