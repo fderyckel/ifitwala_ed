@@ -3,11 +3,51 @@
 
 # /Users/francois.de/Documents/ifitwala_ed/ifitwala_ed/utilities/employee_utils.py
 
+from __future__ import annotations
+
 import frappe
 
 from ifitwala_ed.utilities.tree_utils import get_ancestors_inclusive, get_descendants_inclusive
 
 CACHE_TTL = 300  # seconds
+
+
+def _clean_scope_value(value) -> str | None:
+    if value is None:
+        return None
+    cleaned = str(value).strip()
+    return cleaned or None
+
+
+def _get_user_default_scope_value(user: str, key: str) -> str | None:
+    defaults = getattr(frappe, "defaults", None)
+    if not defaults or not hasattr(defaults, "get_user_default"):
+        return None
+
+    try:
+        value = defaults.get_user_default(key, user=user)
+    except TypeError:
+        value = defaults.get_user_default(key, user)
+
+    return _clean_scope_value(value)
+
+
+def _get_active_employee_scope(user: str) -> dict[str, str | bool | None]:
+    row = (
+        frappe.db.get_value(
+            "Employee",
+            {"user_id": user, "employment_status": "Active"},
+            ["name", "organization", "school"],
+            as_dict=True,
+        )
+        or {}
+    )
+    return {
+        "has_active_employee": bool(_clean_scope_value(row.get("name"))),
+        "organization": _clean_scope_value(row.get("organization")),
+        "school": _clean_scope_value(row.get("school")),
+    }
+
 
 # -------------------------
 # Base org / school for user
@@ -34,6 +74,49 @@ def get_user_base_school(user: str | None = None) -> str | None:
         as_dict=True,
     )
     return row.school if row and row.school else None
+
+
+def get_user_visible_schools(user: str | None = None) -> list[str]:
+    """
+    Return the Desk school visibility scope for the current staff context.
+
+    Precedence:
+    1. Active Employee.school -> that school plus descendants.
+    2. No active Employee profile -> persisted default school plus descendants.
+    3. No school scope -> active Employee.organization (or persisted default
+       organization) -> descendant organizations -> every school in that org scope.
+
+    When an active Employee exists with a blank school, do not revive a stale
+    default school; fall back to organization scope instead.
+    """
+    user = user or frappe.session.user
+    scope = _get_active_employee_scope(user)
+
+    school = scope["school"]
+    if not school and not scope["has_active_employee"]:
+        school = _get_user_default_scope_value(user, "school")
+
+    if school:
+        descendants = get_descendants_inclusive("School", school, cache_ttl=CACHE_TTL) or [school]
+        return list(dict.fromkeys(_clean_scope_value(item) for item in descendants if _clean_scope_value(item)))
+
+    organization = scope["organization"] or _get_user_default_scope_value(user, "organization")
+    if not organization:
+        return []
+
+    organizations = get_descendant_organizations(organization) or [organization]
+    organizations = list(dict.fromkeys(_clean_scope_value(item) for item in organizations if _clean_scope_value(item)))
+    if not organizations:
+        return []
+
+    schools = frappe.get_all(
+        "School",
+        filters={"organization": ["in", organizations]},
+        pluck="name",
+        order_by="lft asc, name asc",
+        limit=0,
+    )
+    return list(dict.fromkeys(_clean_scope_value(item) for item in (schools or []) if _clean_scope_value(item)))
 
 
 def get_descendant_organizations(org: str) -> list[str]:

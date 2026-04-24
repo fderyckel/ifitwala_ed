@@ -3,8 +3,8 @@ title: "Program Offering: Operational Enrollment Contract"
 slug: program-offering
 category: Enrollment
 doc_order: 2
-version: "1.2.1"
-last_change_date: "2026-04-05"
+version: "1.2.2"
+last_change_date: "2026-04-23"
 summary: "Define where and when a program is delivered, including AY span, offering courses, basket-group memberships, basket rules, capacity policy, activity-booking readiness gates, and self-enrollment readiness."
 seo_title: "Program Offering: Operational Enrollment Contract"
 seo_description: "Define where and when a program is delivered, including AY span, offering courses, basket-group memberships, basket rules, capacity policy, and activity-booking readiness gates."
@@ -104,6 +104,12 @@ A course not present in Program catalog can appear in offering only when the row
 
 ## Permission Matrix
 
+Desk visibility is staff-scope driven:
+
+- if the active `Employee` has a `school`, Desk shows that school branch
+- if the active `Employee` has no `school` but does have an `organization`, Desk may show offerings from all schools in that organization descendant scope
+- this widens visibility only; it does not add write access beyond the DocType role permissions below
+
 | Role | Read | Write | Create | Delete |
 |---|---|---|---|---|
 | `System Manager` | Yes | Yes | Yes | Yes |
@@ -143,6 +149,7 @@ A course not present in Program catalog can appear in offering only when the row
   - `academic_year_link_query(...)`
     returns Academic Years from the selected offering school's ancestor chain, ordered by most recent first
   - `create_draft_tuition_invoice(program_offering, account_holder, posting_date, items)`
+  - Desk visibility resolves through `employee_utils.get_user_visible_schools()` so schoolless staff can fall back to organization descendant schools without bypassing role permissions
 
 - **DocType**: `Program Offering` (`ifitwala_ed/schedule/doctype/program_offering/`)
 - **Key child tables**:

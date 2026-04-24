@@ -1,8 +1,8 @@
+from __future__ import annotations
+
 # Copyright (c) 2024, François de Ryckel and contributors
 # For license information, please see license.txt
-
 # ifitwala_ed/schedule/doctype/program_enrollment/program_enrollment.py
-
 import frappe
 from frappe import _
 from frappe.model.document import Document
@@ -11,7 +11,8 @@ from frappe.utils.nestedset import get_ancestors_of
 
 from ifitwala_ed.schedule.basket_group_utils import get_offering_course_semantics
 from ifitwala_ed.schedule.schedule_utils import get_school_term_bounds
-from ifitwala_ed.utilities.school_tree import ParentRuleViolation, get_descendant_schools, get_effective_record
+from ifitwala_ed.utilities.employee_utils import get_user_visible_schools
+from ifitwala_ed.utilities.school_tree import ParentRuleViolation, get_effective_record
 
 ADMIN_ENROLLMENT_ROLES = {"Academic Admin", "Curriculum Coordinator", "Admission Manager"}
 MIGRATION_ROLES = {"System Manager"}
@@ -1165,30 +1166,26 @@ def get_permission_query_conditions(user):
     if user == "Administrator" or "System Manager" in frappe.get_roles(user):
         return None
 
-    user_school = frappe.defaults.get_user_default("school", user)
-    if not user_school:
-        return "1=0"  # No access if no default school
-
-    descendant_schools = get_descendant_schools(user_school)
-    if not descendant_schools:
+    visible_schools = get_user_visible_schools(user)
+    if not visible_schools:
         return "1=0"
-    schools_list = "', '".join(descendant_schools)
-    return f"`tabProgram Enrollment`.`school` IN ('{schools_list}')"
+
+    schools_list = ", ".join(frappe.db.escape(school) for school in visible_schools)
+    return f"`tabProgram Enrollment`.`school` IN ({schools_list})"
 
 
-def has_permission(doc, user=None):
+def has_permission(doc, user=None, ptype=None):
     if not user:
         user = frappe.session.user
 
     if user == "Administrator" or "System Manager" in frappe.get_roles(user):
         return True
 
-    user_school = frappe.defaults.get_user_default("school", user)
-    if not user_school:
+    visible_schools = get_user_visible_schools(user)
+    if not visible_schools:
         return False
 
-    descendant_schools = get_descendant_schools(user_school)
-    return doc.school in descendant_schools
+    return doc.school in visible_schools
 
 
 def on_doctype_update():

@@ -1,8 +1,8 @@
+from __future__ import annotations
+
 # Copyright (c) 2025, François de Ryckel and contributors
 # For license information, please see license.txt
-
 # ifitwala_ed/schedule/doctype/program_offering/program_offering.py
-
 from typing import Optional, Sequence, Union
 
 import frappe
@@ -15,8 +15,9 @@ from ifitwala_ed.schedule.basket_group_utils import get_program_course_basket_gr
 from ifitwala_ed.schedule.schedule_utils import iter_student_group_room_slots
 from ifitwala_ed.schedule.student_group_employee_booking import rebuild_employee_bookings_for_student_group
 from ifitwala_ed.utilities.employee_booking import find_employee_conflicts
+from ifitwala_ed.utilities.employee_utils import get_user_visible_schools
 from ifitwala_ed.utilities.location_utils import find_room_conflicts, is_bookable_room
-from ifitwala_ed.utilities.school_tree import get_ancestor_schools, get_descendant_schools, is_leaf_school
+from ifitwala_ed.utilities.school_tree import get_ancestor_schools, is_leaf_school
 
 # -------------------------
 # small DB helpers (used by validate)
@@ -1054,6 +1055,7 @@ def program_course_options(
     return out
 
 
+@frappe.whitelist()
 @frappe.validate_and_sanitize_search_inputs
 def program_course_link_query(doctype, txt, searchfield, start, page_len, filters):
     filters = filters or {}
@@ -1292,25 +1294,18 @@ def create_draft_tuition_invoice(program_offering: str, account_holder: str, pos
 
 def _user_school_chain(user: str) -> list[str]:
     """
-    Return the list of schools the user can act on:
-    - Leaf school users: [self]
-    - Parent school users: [self + descendants]
+    Return the staff Desk school visibility scope.
+
+    - If the user's active Employee has a school, use that school plus descendants.
+    - If the active Employee has no school, fall back to all schools in the
+      employee organization's descendant scope.
     """
-    user_school = frappe.defaults.get_user_default("school", user)
-    if not user_school:
-        return []
-
-    # get_descendant_schools(user_school) in your utilities already includes self.
-    # If the school is a leaf, that call returns [self] anyway — but we keep the branch explicit for clarity.
-    if is_leaf_school(user_school):
-        return [user_school]
-
-    return get_descendant_schools(user_school)
+    return get_user_visible_schools(user)
 
 
 def get_permission_query_conditions(user: str):
     """
-    Limit list views to Program Offerings in the user's school tree.
+    Limit list views to Program Offerings in the user's Desk school visibility scope.
     Admins/System Managers see everything.
     """
     if user == "Administrator" or "System Manager" in frappe.get_roles(user):
@@ -1327,7 +1322,7 @@ def get_permission_query_conditions(user: str):
 def has_permission(doc, ptype: str, user: str) -> bool:
     """
     Doc-level enforcement:
-    - Read/Write/Delete allowed iff doc.school is in user's school tree
+    - Read/Write/Delete allowed iff doc.school is in the user's Desk school visibility scope
     - Admin/System Manager bypass
     - For Create (doc is usually None), defer to Role Permission Manager; restrict via link field filters in the UI.
     """

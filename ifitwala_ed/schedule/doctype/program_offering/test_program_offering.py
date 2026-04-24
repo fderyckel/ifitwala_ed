@@ -1,7 +1,6 @@
 # Copyright (c) 2025, François de Ryckel and Contributors
 # See license.txt
 
-# import frappe
 import frappe
 from frappe.tests.utils import FrappeTestCase
 
@@ -17,6 +16,9 @@ from ifitwala_ed.schedule.grade_scale_resolver_utils import resolve_grade_scale
 class TestProgramOffering(FrappeTestCase):
     def setUp(self):
         frappe.set_user("Administrator")
+
+    def test_program_course_link_query_is_whitelisted(self):
+        self.assertIn(program_course_link_query, frappe.whitelisted)
 
     def test_grade_scale_resolver_program_default(self):
         program_scale = _make_grade_scale("Program")

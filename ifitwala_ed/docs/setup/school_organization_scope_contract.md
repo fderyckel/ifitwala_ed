@@ -116,6 +116,11 @@ Rules:
 1. Branch visibility:
    - Use descendant school scope.
    - Example owner: `get_allowed_schools()` in `school_settings_utils.py`.
+2. School-scoped Desk visibility with organization fallback:
+   - Use descendant school scope when the active `Employee.school` resolves.
+   - If an active `Employee` exists with a blank `school`, do not revive a stale default school.
+   - Consumers that explicitly opt into organization fallback may widen only to schools whose `organization` is in the caller's organization descendant scope.
+   - Example owners: `employee_utils.get_user_visible_schools()`, `Program Offering`, and `Program Enrollment` scripted permissions.
 2. Nearest ancestor fallback for term/calendar sources:
    - Use school lineage or ancestor helpers.
    - Example owners: `resolve_terms_for_school_calendar()` and `get_schools_per_academic_year_for_terms()`.
@@ -185,6 +190,7 @@ Test refs:
 | Generic tree traversal | `tree_utils` | `utilities/tree_utils.py` | `utilities/test_tree_utils.py` |
 | School-specific lineage and fallback | `school_tree` | `utilities/school_tree.py` | `utilities/test_school_tree.py` |
 | User base org/school resolution | `employee_utils` | `utilities/employee_utils.py` | indirect coverage in policy and feature tests |
+| Staff Desk school visibility with org fallback | `employee_utils` + enrollment scripted permissions | `utilities/employee_utils.py`, `schedule/doctype/program_offering/program_offering.py`, `schedule/doctype/program_enrollment/program_enrollment.py` | `utilities/test_employee_utils.py`, `schedule/test_program_scope_permissions_unit.py` |
 | Policy organization/school inheritance | `policy_scope_utils` | `governance/policy_scope_utils.py` | `governance/test_policy_scope_inheritance.py` |
 | School-settings visibility and calendar resolution | `school_settings_utils` | `school_settings/school_settings_utils.py` | `school_settings/doctype/term/test_term.py`, `utilities/test_school_tree.py` |
 | Term branch visibility with nearest ancestor fallback | `Term` scripted permissions | `school_settings/doctype/term/term.py` | `school_settings/doctype/term/test_term.py` |

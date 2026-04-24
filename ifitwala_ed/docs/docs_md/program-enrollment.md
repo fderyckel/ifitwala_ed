@@ -3,8 +3,8 @@ title: "Program Enrollment: Committed Academic Enrollment Truth"
 slug: program-enrollment
 category: Enrollment
 doc_order: 5
-version: "1.2.5"
-last_change_date: "2026-04-05"
+version: "1.2.6"
+last_change_date: "2026-04-23"
 summary: "Store one committed enrollment per student/offering/year with source provenance, AY and term integrity checks, and traceable course status transitions including required, credited basket-group, and offering-derived term-window snapshots."
 seo_title: "Program Enrollment: Committed Academic Enrollment Truth"
 seo_description: "Store one committed enrollment per student/offering/year with source provenance, AY and term integrity checks, and traceable course status transitions."
@@ -75,6 +75,12 @@ seo_description: "Store one committed enrollment per student/offering/year with 
 
 ## Permission Matrix
 
+Desk visibility is staff-scope driven:
+
+- if the active `Employee` has a `school`, Desk shows that school branch
+- if the active `Employee` has no `school` but does have an `organization`, Desk may show enrollments from all schools in that organization descendant scope
+- this widens visibility only; it does not add write access beyond the DocType role permissions below
+
 | Role | Read | Write | Create | Delete |
 |---|---|---|---|---|
 | `System Manager` | Yes | Yes | Yes | Yes |
@@ -117,6 +123,7 @@ seo_description: "Store one committed enrollment per student/offering/year with 
   - `get_valid_terms_with_fallback(school, academic_year)`
   - `candidate_courses_for_add_multiple(program_offering, academic_year, existing)`
   - `academic_year_link_query(...)`
+  - Desk visibility resolves through `employee_utils.get_user_visible_schools()` so schoolless staff can fall back to organization descendant schools without bypassing role permissions
 
 - **DocType**: `Program Enrollment` (`ifitwala_ed/schedule/doctype/program_enrollment/`)
 - **Autoname**: `expression:PE-.YY.-.#####`
