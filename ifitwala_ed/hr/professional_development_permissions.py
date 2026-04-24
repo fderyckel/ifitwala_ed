@@ -48,8 +48,8 @@ def _get_school_scope(user: str) -> list[str]:
     return get_descendant_schools(base_school) or [base_school]
 
 
-def _is_system_manager(user: str) -> bool:
-    return user == "Administrator" or "System Manager" in frappe.get_roles(user)
+def _is_administrator(user: str) -> bool:
+    return user == "Administrator"
 
 
 def _is_scoped_admin(user: str) -> bool:
@@ -89,7 +89,7 @@ def get_permission_query_conditions(doctype: str, user: str | None = None) -> st
     if not user or user == "Guest":
         return "1=0"
 
-    if _is_system_manager(user):
+    if _is_administrator(user):
         return None
 
     if _is_scoped_admin(user):
@@ -111,7 +111,7 @@ def has_permission_for_doc(doc, user: str | None = None, ptype: str | None = Non
     if not user or user == "Guest":
         return False
 
-    if _is_system_manager(user):
+    if _is_administrator(user):
         return True
 
     if _is_scoped_admin(user):

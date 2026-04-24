@@ -176,5 +176,5 @@ Those surfaces must reuse the same public-people service when implemented.
 - `ifitwala_ed/docs/website/10_public_people_contract_proposal.md`
 - `ifitwala_ed/docs/website/03_website_pages_provider.md`
 - `ifitwala_ed/docs/website/06_block_props_guide.md`
-- `ifitwala_ed/docs/hr/emlpoyee.md`
+- `ifitwala_ed/docs/hr/employee.md`
 - `ifitwala_ed/docs/high_concurrency_contract.md`

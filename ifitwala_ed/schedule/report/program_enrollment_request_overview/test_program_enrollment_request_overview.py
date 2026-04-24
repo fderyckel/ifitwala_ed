@@ -100,6 +100,33 @@ class TestProgramEnrollmentRequestOverview(TestCase):
         )
         self.assertIn("No places are currently available in BIO.", info["detail"])
 
+    def test_extract_invalid_reason_info_surfaces_missing_enrollment_rules(self):
+        row = {
+            "validation_status": "Invalid",
+            "validation_payload": """
+            {
+                "summary": {
+                    "valid": false,
+                    "basket_status": "not_configured",
+                    "basket_not_configured": true
+                },
+                "results": {
+                    "basket": {
+                        "status": "not_configured",
+                        "violations": [],
+                        "reasons": []
+                    },
+                    "courses": []
+                }
+            }
+            """,
+        }
+
+        info = report._extract_invalid_reason_info(row)
+
+        self.assertEqual(info["buckets"], ["Rule Misconfigured / Unsupported"])
+        self.assertIn("Program Offering has no enrollment rules", info["detail"])
+
     def test_build_summary_view_keeps_zero_count_offered_courses(self):
         requests = [
             {

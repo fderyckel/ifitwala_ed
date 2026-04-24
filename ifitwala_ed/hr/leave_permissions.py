@@ -63,7 +63,7 @@ def get_permission_query_conditions(doctype: str, user: str | None = None) -> st
     if not user or user == "Guest":
         return None
 
-    if "System Manager" in frappe.get_roles(user):
+    if user == "Administrator":
         return None
 
     if _is_system_or_hr(user):
@@ -83,7 +83,7 @@ def has_permission_for_doc(doc, user: str | None = None, ptype: str | None = Non
     if not user or user == "Guest":
         return False
 
-    if "System Manager" in frappe.get_roles(user):
+    if user == "Administrator":
         return True
 
     if _is_system_or_hr(user):

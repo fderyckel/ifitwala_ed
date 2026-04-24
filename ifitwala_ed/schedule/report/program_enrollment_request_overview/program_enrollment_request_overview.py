@@ -845,6 +845,17 @@ def _extract_invalid_reason_info(row):
     details = []
     seen_details = set()
 
+    summary = payload.get("summary") or {}
+    if summary.get("basket_not_configured") or (
+        ((payload.get("results") or {}).get("basket") or {}).get("status") == "not_configured"
+    ):
+        _append_bucket(buckets, "Rule Misconfigured / Unsupported")
+        _append_detail(
+            details,
+            seen_details,
+            _("Program Offering has no enrollment rules. Add at least one rule before requests can validate."),
+        )
+
     basket = (payload.get("results") or {}).get("basket") or {}
     for violation in basket.get("violations") or []:
         code = ((violation or {}).get("code") or "").strip()

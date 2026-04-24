@@ -1,5 +1,11 @@
 # Incident Postmortem: Governed Employee Image Uploads
 
+Status: Historical, non-authoritative audit note
+Code refs: See canonical HR and files/media docs
+Test refs: None in this note
+
+This file preserves incident and import history only. Current runtime contracts live in the canonical HR docs identified by `ifitwala_ed/docs/hr/README.md`.
+
 **Date:** 2026-01-25
 **Scope:** Desk (Employee), governed uploads, file routing, derivative generation, UI avatar display
 

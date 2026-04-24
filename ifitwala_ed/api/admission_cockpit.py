@@ -24,6 +24,7 @@ from ifitwala_ed.governance.policy_scope_utils import (
     select_nearest_policy_rows_by_key,
 )
 from ifitwala_ed.governance.policy_utils import ensure_policy_applies_to_storage, policy_applies_to_filter_sql
+from ifitwala_ed.utilities.employee_utils import get_schools_for_organization_scope
 from ifitwala_ed.utilities.school_tree import get_descendant_schools
 
 ALLOWED_COCKPIT_ROLES = ADMISSIONS_ROLES | {"Academic Admin", "System Manager", "Administrator"}
@@ -1335,15 +1336,10 @@ def get_admissions_cockpit_data(filters=None):
         return response
 
     if organization_scope:
-        schools = frappe.get_all(
-            "School",
-            filters={"organization": ["in", organization_scope]},
-            fields=["name"],
-            order_by="lft asc, name asc",
-        )
+        all_schools = get_schools_for_organization_scope(organization_scope)
     else:
         schools = frappe.get_all("School", fields=["name"], order_by="lft asc, name asc")
-    all_schools = [row.get("name") for row in schools if row.get("name")]
+        all_schools = [row.get("name") for row in schools if row.get("name")]
 
     applicant_filters: dict = {}
     if organization_scope:

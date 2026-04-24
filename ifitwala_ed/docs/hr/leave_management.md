@@ -1,5 +1,20 @@
 # Leave Management (HR Domain)
 
+Status: Active canonical contract
+Code refs:
+- `ifitwala_ed/hr/doctype/leave_application/leave_application.py`
+- `ifitwala_ed/hr/doctype/leave_allocation/leave_allocation.py`
+- `ifitwala_ed/hr/doctype/leave_ledger_entry/leave_ledger_entry.py`
+- `ifitwala_ed/hr/leave_permissions.py`
+- `ifitwala_ed/hr/utils.py`
+- `ifitwala_ed/hooks.py`
+Test refs:
+- `ifitwala_ed/hr/test_leave_permissions.py`
+- `ifitwala_ed/hr/test_leave_utils.py`
+- `ifitwala_ed/hr/test_scheduler_dispatch.py`
+- `ifitwala_ed/hr/doctype/leave_application/test_leave_application.py`
+- `ifitwala_ed/patches/test_backfill_default_leave_types.py`
+
 ## Scope and Baseline
 
 This document is the implementation contract for the leave domain integrated into `ifitwala_ed`.
@@ -133,9 +148,10 @@ Organization-first tenancy is enforced via permission hooks in `ifitwala_ed.hr.l
   - `System Manager`
 
 ### Query scoping behavior
-- Org-scoped roles: restricted to base-organization subtree (`organization` + descendants)
+- Org-scoped roles, including `System Manager`, are restricted to the resolved base-organization subtree (`organization` + descendants)
 - Non-HR users: restricted to self (`employee` = current employee)
 - Sibling organization isolation is enforced by query condition generation and doc-level checks
+- The built-in `Administrator` account is not a tenant-scoped role and remains outside this scoped-role contract.
 
 ### Leave Encashment access
 When `HR Settings.enable_leave_encashment = 0`:

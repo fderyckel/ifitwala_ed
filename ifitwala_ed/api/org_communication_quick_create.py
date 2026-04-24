@@ -20,6 +20,7 @@ from ifitwala_ed.setup.doctype.org_communication.org_communication import (
     get_org_communication_context,
     get_org_communication_delivery_rules,
 )
+from ifitwala_ed.utilities.employee_utils import get_schools_for_organization_scope
 
 IDEMPOTENCY_TTL_SECONDS = 900
 AUDIENCE_TARGET_SEARCH_TTL_SECONDS = 60
@@ -286,12 +287,7 @@ def _get_reference_schools(*, school_names: list[str], organization_names: list[
     names = [_clean_text(name) for name in (school_names or [])]
     names = [name for name in names if name]
     if not names and organization_names:
-        names = frappe.get_all(
-            "School",
-            filters={"organization": ["in", tuple(organization_names)]},
-            pluck="name",
-            order_by="lft asc, name asc",
-        )
+        names = get_schools_for_organization_scope(organization_names)
     if not names:
         return []
     return frappe.get_all(
@@ -456,20 +452,10 @@ def _resolve_student_group_search_scope(
     if org_value:
         if allowed_orgs and org_value not in set(allowed_orgs):
             frappe.throw(_("You cannot target that organization from your current scope."), frappe.PermissionError)
-        return frappe.get_all(
-            "School",
-            filters={"organization": org_value},
-            pluck="name",
-            order_by="lft asc, name asc",
-        )
+        return get_schools_for_organization_scope(org_value)
 
     if allowed_orgs:
-        return frappe.get_all(
-            "School",
-            filters={"organization": ["in", tuple(sorted(set(allowed_orgs)))]},
-            pluck="name",
-            order_by="lft asc, name asc",
-        )
+        return get_schools_for_organization_scope(sorted(set(allowed_orgs)))
 
     return []
 

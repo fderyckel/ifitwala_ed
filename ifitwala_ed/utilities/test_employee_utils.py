@@ -22,6 +22,26 @@ def _employee_utils_module():
 
 
 class TestEmployeeUtilsScope(TestCase):
+    def test_get_schools_for_organization_scope_cleans_and_deduplicates_scope(self):
+        with _employee_utils_module() as employee_utils:
+            with patch.object(
+                employee_utils.frappe,
+                "get_all",
+                return_value=["SCH-A", "", "SCH-A", " SCH-B "],
+            ) as get_all:
+                schools = employee_utils.get_schools_for_organization_scope(
+                    [" ORG-ROOT ", "", "ORG-ROOT", None, "ORG-CHILD"]
+                )
+
+        self.assertEqual(schools, ["SCH-A", "SCH-B"])
+        get_all.assert_called_once_with(
+            "School",
+            filters={"organization": ["in", ["ORG-ROOT", "ORG-CHILD"]]},
+            pluck="name",
+            order_by="lft asc, name asc",
+            limit=0,
+        )
+
     def test_get_user_visible_schools_uses_active_employee_school_descendants(self):
         with _employee_utils_module() as employee_utils:
             with (

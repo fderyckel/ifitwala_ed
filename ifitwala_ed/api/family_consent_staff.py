@@ -112,7 +112,7 @@ def get_family_consent_dashboard_context(
             "organization": organization or None,
         },
         "options": {
-            "organizations": sorted(scoped_organizations),
+            "organizations": [organization] if organization else sorted(scoped_organizations),
             "schools": _school_options_for_scope(organization_scope),
             "request_types": list(REQUEST_TYPE_ORDER),
             "statuses": list(REQUEST_STATUS_ORDER),

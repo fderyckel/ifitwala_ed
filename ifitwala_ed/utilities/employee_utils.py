@@ -19,6 +19,15 @@ def _clean_scope_value(value) -> str | None:
     return cleaned or None
 
 
+def _clean_scope_values(values) -> list[str]:
+    cleaned_values = []
+    for value in values or []:
+        cleaned = _clean_scope_value(value)
+        if cleaned:
+            cleaned_values.append(cleaned)
+    return list(dict.fromkeys(cleaned_values))
+
+
 def _get_user_default_scope_value(user: str, key: str) -> str | None:
     defaults = getattr(frappe, "defaults", None)
     if not defaults or not hasattr(defaults, "get_user_default"):
@@ -76,6 +85,36 @@ def get_user_base_school(user: str | None = None) -> str | None:
     return row.school if row and row.school else None
 
 
+def get_schools_for_organization_scope(
+    organizations: str | list[str] | tuple[str, ...] | set[str] | None,
+    *,
+    order_by: str = "lft asc, name asc",
+) -> list[str]:
+    """
+    Return school names linked to an already-authorized organization scope.
+
+    This helper intentionally does not expand organization descendants. Callers
+    must pass the organization scope they are permitted to use.
+    """
+    if isinstance(organizations, str):
+        raw_organizations = [organizations]
+    else:
+        raw_organizations = list(organizations or [])
+
+    organization_names = _clean_scope_values(raw_organizations)
+    if not organization_names:
+        return []
+
+    schools = frappe.get_all(
+        "School",
+        filters={"organization": ["in", organization_names]},
+        pluck="name",
+        order_by=order_by,
+        limit=0,
+    )
+    return _clean_scope_values(schools)
+
+
 def get_user_visible_schools(user: str | None = None) -> list[str]:
     """
     Return the Desk school visibility scope for the current staff context.
@@ -98,25 +137,14 @@ def get_user_visible_schools(user: str | None = None) -> list[str]:
 
     if school:
         descendants = get_descendants_inclusive("School", school, cache_ttl=CACHE_TTL) or [school]
-        return list(dict.fromkeys(_clean_scope_value(item) for item in descendants if _clean_scope_value(item)))
+        return _clean_scope_values(descendants)
 
     organization = scope["organization"] or _get_user_default_scope_value(user, "organization")
     if not organization:
         return []
 
     organizations = get_descendant_organizations(organization) or [organization]
-    organizations = list(dict.fromkeys(_clean_scope_value(item) for item in organizations if _clean_scope_value(item)))
-    if not organizations:
-        return []
-
-    schools = frappe.get_all(
-        "School",
-        filters={"organization": ["in", organizations]},
-        pluck="name",
-        order_by="lft asc, name asc",
-        limit=0,
-    )
-    return list(dict.fromkeys(_clean_scope_value(item) for item in (schools or []) if _clean_scope_value(item)))
+    return get_schools_for_organization_scope(organizations)
 
 
 def get_descendant_organizations(org: str) -> list[str]:

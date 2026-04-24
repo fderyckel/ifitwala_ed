@@ -6,7 +6,11 @@
 import frappe
 from frappe import _
 
-from ifitwala_ed.utilities.employee_utils import get_ancestor_organizations, get_descendant_organizations
+from ifitwala_ed.utilities.employee_utils import (
+    get_ancestor_organizations,
+    get_descendant_organizations,
+    get_schools_for_organization_scope,
+)
 from ifitwala_ed.utilities.school_tree import get_ancestor_schools, get_descendant_schools
 
 STAFF_ROLES = {
@@ -69,14 +73,7 @@ def expand_employee_visibility_context(employee: dict | None, roles) -> dict:
     if organization_names:
         employee["organization_names"] = organization_names
 
-    school_rows = frappe.get_all(
-        "School",
-        filters={"organization": ["in", organization_names]}
-        if organization_names
-        else {"organization": base_organization},
-        pluck="name",
-    )
-    school_names = [school for school in (school_rows or []) if _to_text(school)]
+    school_names = get_schools_for_organization_scope(organization_names or [base_organization])
     if school_names:
         employee["school_names"] = school_names
 

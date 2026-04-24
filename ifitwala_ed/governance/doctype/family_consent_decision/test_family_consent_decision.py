@@ -83,8 +83,8 @@ class TestFamilyConsentDecision(FrappeTestCase):
             {
                 "doctype": "File",
                 "file_name": f"paper-{frappe.generate_hash(length=6)}.pdf",
-                "file_url": f"/private/files/paper-{frappe.generate_hash(length=6)}.pdf",
                 "is_private": 1,
+                "content": b"paper",
             }
         ).insert(ignore_permissions=True)
         self.created.append(("File", file_doc.name))

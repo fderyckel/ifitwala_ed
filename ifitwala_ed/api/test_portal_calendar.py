@@ -374,6 +374,11 @@ class TestPortalCalendar(FrappeTestCase):
             patch("ifitwala_ed.api.calendar_staff_feed.frappe.db.sql", return_value=[event_row]),
             patch("ifitwala_ed.api.calendar_staff_feed.frappe.get_all", side_effect=fake_get_all),
             patch("ifitwala_ed.api.calendar_staff_feed.frappe.get_roles", return_value=["Employee"]),
+            patch(
+                "ifitwala_ed.api.calendar_staff_feed.get_ancestor_schools",
+                return_value=[self.child_school, self.parent_school],
+            ),
+            patch("ifitwala_ed.api.calendar_staff_feed.get_user_membership", return_value={"teams": {team}}),
         ):
             events = _collect_school_events(user.name, window_start, window_end, tzinfo)
 

@@ -1662,6 +1662,23 @@ class StudentApplicant(Document):
                     if file_row:
                         current_file_by_item[parent] = file_row
 
+            missing_item_names = [item_name for item_name in item_names if item_name not in current_file_by_item]
+            if missing_item_names:
+                fallback_file_rows = frappe.get_all(
+                    "File",
+                    filters={
+                        "attached_to_doctype": "Applicant Document Item",
+                        "attached_to_name": ["in", missing_item_names],
+                    },
+                    fields=["name", "attached_to_name", "file_url", "file_name", "is_private"],
+                    order_by="modified desc, creation desc",
+                    limit=0,
+                )
+                for file_row in fallback_file_rows:
+                    parent = (file_row.get("attached_to_name") or "").strip()
+                    if parent and parent not in current_file_by_item:
+                        current_file_by_item[parent] = file_row
+
         document_type_names = sorted({row.get("document_type") for row in docs if row.get("document_type")})
         document_type_map = {}
         if document_type_names:
@@ -1754,17 +1771,40 @@ class StudentApplicant(Document):
             statuses=("active", "processing", "blocked", "superseded"),
         )
         if not drive_file or not str(drive_file.get("storage_object_key") or "").strip():
-            return None
+            return self._read_local_file_bytes(file_row)
 
         try:
             from ifitwala_drive.services.storage.base import get_storage_backend
         except ImportError:
-            return None
+            return self._read_local_file_bytes(file_row)
 
         storage = get_storage_backend(drive_file.get("storage_backend"))
         try:
             return storage.read_final_object(object_key=drive_file.get("storage_object_key"))
         except Exception:
+            return self._read_local_file_bytes(file_row)
+
+    def _read_local_file_bytes(self, file_row):
+        file_url = str((file_row or {}).get("file_url") or "").strip()
+        if not file_url:
+            return None
+
+        try:
+            from ifitwala_ed.api.file_access import _resolve_local_site_file_path
+        except ImportError:
+            return None
+
+        file_path = _resolve_local_site_file_path(
+            file_url,
+            is_private=(file_row or {}).get("is_private"),
+        )
+        if not file_path:
+            return None
+
+        try:
+            with open(file_path, "rb") as handle:
+                return handle.read()
+        except OSError:
             return None
 
     # ---------------------------------------------------------------------

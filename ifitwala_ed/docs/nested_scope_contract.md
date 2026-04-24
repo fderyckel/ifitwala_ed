@@ -50,10 +50,11 @@ Rules:
 3. Requested school scope must always be intersected with the caller's visible school subtree to preserve sibling isolation.
 4. Exact-match school filters are allowed only when the owning contract explicitly states that descendant inheritance is not part of that report or workflow.
 5. Shared visibility helpers must preserve the same descendant-aware behavior as the reports and APIs they support.
-6. Ancestor-school locations may only widen visibility to descendant schools through an explicit location-level sharing rule; sibling schools remain hidden by default.
-7. Location capacity enforcement is part of the same nested-scope contract: parent locations must account for descendant-room utilization when capacity is enforced at the parent node.
-8. New school-scoped Desk forms may prefill the current user's default school when the document is new and the school field is empty, but the prefill must remain editable unless the workflow contract says the context is locked.
-9. Program assessment categories may resolve dynamically from the nearest ancestor when the child program has no local assessment-category rows; local rows remain the canonical override.
+6. Organization fallback for school-scoped staff visibility must resolve the authorized organization descendant scope first, then use `employee_utils.get_schools_for_organization_scope()` to bridge to schools.
+7. Ancestor-school locations may only widen visibility to descendant schools through an explicit location-level sharing rule; sibling schools remain hidden by default.
+8. Location capacity enforcement is part of the same nested-scope contract: parent locations must account for descendant-room utilization when capacity is enforced at the parent node.
+9. New school-scoped Desk forms may prefill the current user's default school when the document is new and the school field is empty, but the prefill must remain editable unless the workflow contract says the context is locked.
+10. Program assessment categories may resolve dynamically from the nearest ancestor when the child program has no local assessment-category rows; local rows remain the canonical override.
 
 ## 2. High-Concurrency Plan
 

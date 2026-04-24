@@ -188,7 +188,7 @@ class FamilyConsentDecision(Document):
             frappe.throw(_("Guardian Portal decisions must be recorded for Guardian signers."))
         if self.source_channel == "Student Portal" and self.decision_by_doctype != "Student":
             frappe.throw(_("Student Portal decisions must be recorded for Student signers."))
-        if self.source_channel == "Desk Paper Capture" and self.profile_writeback_mode:
+        if self.source_channel == "Desk Paper Capture" and self.profile_writeback_mode == "Update Profile":
             frappe.throw(_("Desk paper capture cannot update profile data directly."))
 
         if completion_channel_mode == COMPLETION_CHANNEL_PAPER_ONLY and self.source_channel != "Desk Paper Capture":

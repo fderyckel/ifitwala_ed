@@ -16,6 +16,7 @@ from ifitwala_ed.api.org_communication_attachments import serialize_org_communic
 from ifitwala_ed.utilities.employee_utils import (
     get_ancestor_organizations,
     get_descendant_organizations,
+    get_schools_for_organization_scope,
     get_user_base_org,
     get_user_base_school,
 )
@@ -105,11 +106,7 @@ def _get_scope(user: str, employee: dict | None):
     if base_school:
         school_scope = get_descendant_schools(base_school) or [base_school]
     elif org_scope:
-        school_scope = frappe.get_all(
-            "School",
-            filters={"organization": ["in", org_scope]},
-            pluck="name",
-        )
+        school_scope = get_schools_for_organization_scope(org_scope)
 
     return base_org, base_school, org_scope, school_scope
 

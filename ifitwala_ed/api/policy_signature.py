@@ -22,7 +22,11 @@ from ifitwala_ed.governance.policy_utils import (
     normalize_guardian_acknowledgement_mode,
     policy_applies_to,
 )
-from ifitwala_ed.utilities.employee_utils import get_descendant_organizations, get_user_base_org
+from ifitwala_ed.utilities.employee_utils import (
+    get_descendant_organizations,
+    get_schools_for_organization_scope,
+    get_user_base_org,
+)
 from ifitwala_ed.utilities.html_sanitizer import sanitize_html
 from ifitwala_ed.utilities.school_tree import get_descendant_schools
 
@@ -150,12 +154,7 @@ def _school_options_for_scope(organization_scope: list[str]) -> list[str]:
     if not scoped_orgs:
         return []
 
-    rows = frappe.get_all(
-        "School",
-        filters={"organization": ["in", tuple(scoped_orgs)]},
-        pluck="name",
-    )
-    return sorted({(row or "").strip() for row in rows if (row or "").strip()})
+    return sorted(get_schools_for_organization_scope(scoped_orgs))
 
 
 def _school_scope_names(*, organization_scope: list[str], school: str | None) -> list[str]:
@@ -1347,12 +1346,7 @@ def _family_campaign_school_targets(*, organization: str, school: str | None) ->
     if not organization_scope:
         return []
 
-    school_rows = frappe.get_all(
-        "School",
-        filters={"organization": ["in", tuple(sorted(organization_scope))]},
-        pluck="name",
-    )
-    return sorted({(school_name or "").strip() for school_name in school_rows if (school_name or "").strip()})
+    return sorted(get_schools_for_organization_scope(organization_scope))
 
 
 def _family_campaign_audience_rows(*, audience: str, school: str | None, school_targets: list[str]) -> list[dict]:

@@ -21,7 +21,7 @@ from ifitwala_ed.governance.policy_utils import (
     get_policy_applies_to_tokens,
     get_policy_applies_to_tokens_for_policy,
 )
-from ifitwala_ed.utilities.employee_utils import get_descendant_organizations
+from ifitwala_ed.utilities.employee_utils import get_descendant_organizations, get_schools_for_organization_scope
 from ifitwala_ed.utilities.html_sanitizer import sanitize_html
 from ifitwala_ed.utilities.school_tree import get_descendant_schools
 
@@ -121,14 +121,10 @@ def _get_organization_schools(organization: str) -> list[str]:
     organization_scope = [org for org in (get_descendant_organizations(organization) or []) if org]
     if not organization_scope:
         organization_scope = [organization]
-    schools = frappe.get_all(
-        "School",
-        filters={"organization": ["in", organization_scope]},
-        fields=["name"],
+    return get_schools_for_organization_scope(
+        organization_scope,
         order_by="organization asc, lft asc, name asc",
-        limit=0,
     )
-    return [(row.get("name") or "").strip() for row in schools if (row.get("name") or "").strip()]
 
 
 def _is_school_within_scope(root_school: str | None, target_school: str | None) -> bool:
@@ -225,14 +221,7 @@ def _get_policy_inform_employee_context(user: str, roles: list[str]) -> dict | N
     if organization_names:
         employee["organization_names"] = organization_names
 
-    school_rows = frappe.get_all(
-        "School",
-        filters={"organization": ["in", organization_names]}
-        if organization_names
-        else {"organization": base_organization},
-        pluck="name",
-    )
-    school_names = [school for school in (school_rows or []) if school]
+    school_names = get_schools_for_organization_scope(organization_names or [base_organization])
     if school_names:
         employee["school_names"] = school_names
 

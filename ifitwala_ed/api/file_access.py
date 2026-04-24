@@ -2935,6 +2935,13 @@ def download_admissions_file(
     if _respond_with_delivery_target(target_url=target_url):
         return
 
+    if _respond_with_local_file_content(
+        file_url=file_url,
+        filename=(file_row or {}).get("file_name"),
+        is_private=(file_row or {}).get("is_private"),
+    ):
+        return
+
     frappe.throw(_("Could not resolve the file content."), frappe.DoesNotExistError)
 
 

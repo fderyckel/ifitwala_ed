@@ -1,6 +1,13 @@
 # Designation Visibility Contract
 
-Status: Active
+Status: Active canonical contract
+Code refs:
+- `ifitwala_ed/hr/doctype/designation/designation.py`
+- `ifitwala_ed/hr/doctype/designation/designation.js`
+- `ifitwala_ed/hooks.py`
+Test refs:
+- `ifitwala_ed/hr/doctype/designation/test_designation.py`
+- `ifitwala_ed/patches/test_normalize_legacy_designation_organizations.py`
 
 This note is the authoritative visibility contract for `Designation`.
 
@@ -13,7 +20,7 @@ This note is the authoritative visibility contract for `Designation`.
 - When `Designation.school` is filled, the designation is visible only when the user's effective school is that school, one of its parents, or for HR operators one of its managed descendants.
 - Users with no effective school scope are evaluated by organization scope only, except HR operators who can read school-scoped rows under their managed organization scope.
 - HR operator roles (`HR Manager`, `HR User`) mutate designations by organization descendants: they can create/update/delete for their effective organization and all child organizations.
-- HR operator visibility still includes legacy `All Organizations` rows so those records can be found and corrected.
+- Legacy `All Organizations` designation rows are corrected by `ifitwala_ed.patches.normalize_legacy_designation_organizations`; runtime visibility must not keep a special legacy path for them.
 - `Academic Admin` is read-only on `Designation`. It follows the same applicability visibility contract as other non-HR users and is not an operator-management role.
 - When an HR operator has an effective school, school-scoped mutation is limited to that school and its descendants. HR operators with no effective school can still manage school-scoped rows inside their organization scope.
 - Read visibility is enforced server-side through `permission_query_conditions`. Create/update/delete scope is enforced in the `Designation` controller. List JS must not own security.
@@ -58,4 +65,5 @@ Rules:
 - Read visibility helpers and mutation guards live in `ifitwala_ed/hr/doctype/designation/designation.py`.
 - Hook registration lives in `ifitwala_ed/hooks.py`.
 - Regression coverage lives in `ifitwala_ed/hr/doctype/designation/test_designation.py`.
+- Legacy sentinel cleanup coverage lives in `ifitwala_ed/patches/test_normalize_legacy_designation_organizations.py`.
 - The employee lookup endpoint is `get_scoped_designation_employees()` in `designation.py`.

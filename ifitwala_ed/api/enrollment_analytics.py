@@ -15,7 +15,11 @@ from frappe import _
 from frappe.utils import getdate, nowdate
 
 from ifitwala_ed.api.student_log_dashboard import get_authorized_schools
-from ifitwala_ed.utilities.employee_utils import get_descendant_organizations, get_user_base_org
+from ifitwala_ed.utilities.employee_utils import (
+    get_descendant_organizations,
+    get_schools_for_organization_scope,
+    get_user_base_org,
+)
 from ifitwala_ed.utilities.school_tree import get_descendant_schools
 
 ALLOWED_ANALYTICS_ROLES = {
@@ -148,22 +152,14 @@ def _resolve_scope(filters: dict, ctx: dict) -> dict:
 
     allowed_schools = authorized_schools
     if not allowed_schools and org_scope:
-        allowed_schools = frappe.get_all(
-            "School",
-            filters={"organization": ["in", org_scope]},
-            pluck="name",
-        )
+        allowed_schools = get_schools_for_organization_scope(org_scope)
 
     selected_org_scope = get_descendant_organizations(selected_org) if selected_org else []
     if selected_org and selected_org not in selected_org_scope:
         selected_org_scope = [selected_org]
 
     if selected_org_scope:
-        org_schools = frappe.get_all(
-            "School",
-            filters={"organization": ["in", selected_org_scope]},
-            pluck="name",
-        )
+        org_schools = get_schools_for_organization_scope(selected_org_scope)
         if allowed_schools:
             allowed_schools = [s for s in allowed_schools if s in org_schools]
         else:

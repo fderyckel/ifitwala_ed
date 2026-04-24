@@ -3,8 +3,8 @@ title: "Program Enrollment: Committed Academic Enrollment Truth"
 slug: program-enrollment
 category: Enrollment
 doc_order: 5
-version: "1.2.6"
-last_change_date: "2026-04-23"
+version: "1.2.7"
+last_change_date: "2026-04-24"
 summary: "Store one committed enrollment per student/offering/year with source provenance, AY and term integrity checks, and traceable course status transitions including required, credited basket-group, and offering-derived term-window snapshots."
 seo_title: "Program Enrollment: Committed Academic Enrollment Truth"
 seo_description: "Store one committed enrollment per student/offering/year with source provenance, AY and term integrity checks, and traceable course status transitions."
@@ -123,7 +123,7 @@ Desk visibility is staff-scope driven:
   - `get_valid_terms_with_fallback(school, academic_year)`
   - `candidate_courses_for_add_multiple(program_offering, academic_year, existing)`
   - `academic_year_link_query(...)`
-  - Desk visibility resolves through `employee_utils.get_user_visible_schools()` so schoolless staff can fall back to organization descendant schools without bypassing role permissions
+  - Desk visibility resolves through `employee_utils.get_user_visible_schools()` so schoolless staff can fall back to organization descendant schools without bypassing role permissions; the organization-scope school expansion is centralized in `employee_utils.get_schools_for_organization_scope()`
 
 - **DocType**: `Program Enrollment` (`ifitwala_ed/schedule/doctype/program_enrollment/`)
 - **Autoname**: `expression:PE-.YY.-.#####`

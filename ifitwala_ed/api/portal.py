@@ -66,6 +66,13 @@ def invalidate_student_portal_identity_cache(*args, **kwargs):
     return _invalidate_student_portal_identity_cache(*args, **kwargs)
 
 
+def _can_create_doctype(doctype: str, *, user: str, roles: set[str], fallback_roles: frozenset[str]) -> bool:
+    try:
+        return bool(frappe.has_permission(doctype, ptype="create", user=user))
+    except AttributeError:
+        return bool(roles & set(fallback_roles))
+
+
 def _resolve_staff_first_name(user: str, user_first_name: str | None, user_full_name: str | None) -> str:
     """
     Resolve the preferred greeting name for StaffHome.
@@ -118,8 +125,18 @@ def _build_staff_home_capabilities(
     has_academic_staff_role = ROLE_ACADEMIC_STAFF in roles
 
     if user:
-        can_create_meeting = bool(frappe.has_permission("Meeting", ptype="create", user=user))
-        can_create_school_event = bool(frappe.has_permission("School Event", ptype="create", user=user))
+        can_create_meeting = _can_create_doctype(
+            "Meeting",
+            user=user,
+            roles=roles,
+            fallback_roles=MEETING_CREATE_ROLES,
+        )
+        can_create_school_event = _can_create_doctype(
+            "School Event",
+            user=user,
+            roles=roles,
+            fallback_roles=SCHOOL_EVENT_CREATE_ROLES,
+        )
         org_communication_quick_action_state = (
             org_communication_quick_action_state
             if org_communication_quick_action_state is not None

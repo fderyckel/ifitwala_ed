@@ -309,6 +309,7 @@ Desk visibility for school-anchored enrollment doctypes is staff-scope driven:
 - when the active `Employee.school` resolves, Desk stays within that school descendant branch
 - when the active `Employee` has no `school`, `Program Offering` and `Program Enrollment` Desk visibility may widen to all schools in the employee organization's descendant scope
 - this changes visibility scope only; DocType read/write/create/delete authority still comes from the DocType permission matrix and scripted permission guards
+- the enrollment hooks consume `employee_utils.get_user_visible_schools()`, which delegates the organization-scope-to-school bridge to `employee_utils.get_schools_for_organization_scope()`
 
 ### 4.2 Student portal ownership
 

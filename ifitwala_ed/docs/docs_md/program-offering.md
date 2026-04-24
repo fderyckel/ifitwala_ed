@@ -3,8 +3,8 @@ title: "Program Offering: Operational Enrollment Contract"
 slug: program-offering
 category: Enrollment
 doc_order: 2
-version: "1.2.2"
-last_change_date: "2026-04-23"
+version: "1.2.3"
+last_change_date: "2026-04-24"
 summary: "Define where and when a program is delivered, including AY span, offering courses, basket-group memberships, basket rules, capacity policy, activity-booking readiness gates, and self-enrollment readiness."
 seo_title: "Program Offering: Operational Enrollment Contract"
 seo_description: "Define where and when a program is delivered, including AY span, offering courses, basket-group memberships, basket rules, capacity policy, and activity-booking readiness gates."
@@ -149,7 +149,7 @@ Desk visibility is staff-scope driven:
   - `academic_year_link_query(...)`
     returns Academic Years from the selected offering school's ancestor chain, ordered by most recent first
   - `create_draft_tuition_invoice(program_offering, account_holder, posting_date, items)`
-  - Desk visibility resolves through `employee_utils.get_user_visible_schools()` so schoolless staff can fall back to organization descendant schools without bypassing role permissions
+  - Desk visibility resolves through `employee_utils.get_user_visible_schools()` so schoolless staff can fall back to organization descendant schools without bypassing role permissions; the organization-scope school expansion is centralized in `employee_utils.get_schools_for_organization_scope()`
 
 - **DocType**: `Program Offering` (`ifitwala_ed/schedule/doctype/program_offering/`)
 - **Key child tables**:

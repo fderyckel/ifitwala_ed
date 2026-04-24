@@ -1,5 +1,23 @@
 # Employee: Operational Notes
 
+Status: Active current-runtime contract
+Code refs:
+- `ifitwala_ed/hr/doctype/employee/employee.py`
+- `ifitwala_ed/hr/doctype/employee/employee.js`
+- `ifitwala_ed/hr/doctype/employee/employee_list.js`
+- `ifitwala_ed/hr/employee_access.py`
+- `ifitwala_ed/utilities/image_utils.py`
+- `ifitwala_ed/api/file_access.py`
+Test refs:
+- `ifitwala_ed/hr/doctype/employee/test_employee.py`
+- `ifitwala_ed/utilities/test_employee_image_utils.py`
+- `ifitwala_ed/api/test_organization_chart.py`
+- `ifitwala_ed/api/test_morning_brief.py`
+- `ifitwala_ed/patches/test_backfill_employee_user_links.py`
+- `ifitwala_ed/patches/test_backfill_employee_contact_links.py`
+- `ifitwala_ed/patches/test_backfill_employee_managed_access.py`
+- `ifitwala_ed/patches/test_clear_legacy_employee_active_list_filters.py`
+
 This note explains how `Employee` currently works in code, including:
 - parent `Employee` document behavior (`employee.py`)
 - child table `Employee History`
@@ -32,7 +50,7 @@ Permission scope for `Employee`:
 - Academic Admin organization fallback resolves from active `Employee.organization`, then persisted user default `organization`, and unions explicit `User Permission` grants on `Organization`.
 - `Employee` role has read-only access to their own Employee record only.
 - Employee Desk list, tree, and report surfaces must follow the same scripted visibility scope and must not inject an implicit `employment_status = "Active"` filter.
-- Employee Desk list load reconciles a legacy persisted `employment_status = "Active"` filter from older list defaults so inherited user state cannot silently narrow visibility after the contract change.
+- Legacy persisted `employment_status = "Active"` list filters from older defaults are remediated by the one-shot patch `ifitwala_ed.patches.clear_legacy_employee_active_list_filters`; Employee list runtime must not repair inherited list state.
 
 ### 1.1 Staff Portal Holiday Resolution (Portal Calendar Contract)
 
@@ -209,10 +227,10 @@ We decided Employee list and tree surfaces must not add an implicit active-statu
 Reason: report view already exposes the full permitted Employee scope, and extra list/tree filtering created product drift where authorized staff were silently missing outside report view.
 Impact: Employee list and tree now follow the same server-owned visibility contract as report view; status filtering is user-chosen, not hard-coded by the surface.
 
-[2026-04-15] Decision:
-We decided Employee list load must also remove a persisted legacy `employment_status = "Active"` filter when present.
-Reason: some users can carry forward old list-state that was seeded by the previous hard-coded list default, which keeps list view narrower than report view even after the code contract changes.
-Impact: Employee list now self-heals the inherited legacy status filter on load; users can still add a new status filter intentionally afterward.
+[2026-04-24] Decision:
+We decided persisted legacy `employment_status = "Active"` Employee list filters are migration data, not runtime behavior.
+Reason: runtime self-heal code keeps a legacy repair path inside Desk list loading and conflicts with the one-canonical-workflow rule.
+Impact: existing sites are cleaned through `ifitwala_ed.patches.clear_legacy_employee_active_list_filters`; Employee list view no longer mutates inherited list filters at runtime.
 
 [2026-02-26] Decision:
 We decided HR base-org resolution must not depend on linked Employee rows.

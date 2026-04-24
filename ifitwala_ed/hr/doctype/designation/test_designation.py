@@ -22,7 +22,7 @@ class TestDesignation(FrappeTestCase):
             patch("ifitwala_ed.hr.doctype.designation.designation.frappe.get_roles", return_value=["HR Manager"]),
             patch(
                 "ifitwala_ed.hr.doctype.designation.designation._resolve_designation_read_org_scope",
-                return_value=["All Organizations", "ORG-ROOT", "ORG-CHILD"],
+                return_value=["ORG-ROOT", "ORG-CHILD"],
             ),
             patch(
                 "ifitwala_ed.hr.doctype.designation.designation._resolve_designation_read_school_scope",
@@ -34,7 +34,7 @@ class TestDesignation(FrappeTestCase):
 
         self.assertEqual(
             condition,
-            "(`tabDesignation`.`organization` IN ('All Organizations', 'ORG-ROOT', 'ORG-CHILD') "
+            "(`tabDesignation`.`organization` IN ('ORG-ROOT', 'ORG-CHILD') "
             "AND (IFNULL(`tabDesignation`.`school`, '') = '' OR `tabDesignation`.`school` IN ('SCH-ROOT', 'SCH-CHILD')))",
         )
 
@@ -43,7 +43,7 @@ class TestDesignation(FrappeTestCase):
             patch("ifitwala_ed.hr.doctype.designation.designation.frappe.get_roles", return_value=["Academic Admin"]),
             patch(
                 "ifitwala_ed.hr.doctype.designation.designation._resolve_designation_read_org_scope",
-                return_value=["All Organizations", "ORG-ROOT", "ORG-CHILD"],
+                return_value=["ORG-ROOT", "ORG-CHILD"],
             ),
             patch(
                 "ifitwala_ed.hr.doctype.designation.designation._resolve_designation_read_school_scope",
@@ -55,7 +55,7 @@ class TestDesignation(FrappeTestCase):
 
         self.assertEqual(
             condition,
-            "(`tabDesignation`.`organization` IN ('All Organizations', 'ORG-ROOT', 'ORG-CHILD') "
+            "(`tabDesignation`.`organization` IN ('ORG-ROOT', 'ORG-CHILD') "
             "AND (IFNULL(`tabDesignation`.`school`, '') = '' OR `tabDesignation`.`school` IN ('SCH-ROOT', 'SCH-CHILD')))",
         )
 
@@ -84,7 +84,7 @@ class TestDesignation(FrappeTestCase):
             patch("ifitwala_ed.hr.doctype.designation.designation.frappe.get_roles", return_value=["Instructor"]),
             patch(
                 "ifitwala_ed.hr.doctype.designation.designation._resolve_designation_read_org_scope",
-                return_value=["All Organizations", "ORG-ROOT"],
+                return_value=["ORG-ROOT"],
             ),
             patch(
                 "ifitwala_ed.hr.doctype.designation.designation._resolve_designation_read_school_scope",
@@ -104,7 +104,7 @@ class TestDesignation(FrappeTestCase):
             patch("ifitwala_ed.hr.doctype.designation.designation.frappe.get_roles", return_value=["HR Manager"]),
             patch(
                 "ifitwala_ed.hr.doctype.designation.designation._resolve_designation_operator_org_scope",
-                return_value=["All Organizations", "ORG-ROOT", "ORG-CHILD"],
+                return_value=["ORG-ROOT", "ORG-CHILD"],
             ),
         ):
             doc._assert_mutation_scope_allowed("save", user="hr.manager@example.com")
@@ -118,7 +118,7 @@ class TestDesignation(FrappeTestCase):
             patch("ifitwala_ed.hr.doctype.designation.designation.frappe.get_roles", return_value=["HR Manager"]),
             patch(
                 "ifitwala_ed.hr.doctype.designation.designation._resolve_designation_operator_org_scope",
-                return_value=["All Organizations", "ORG-ROOT", "ORG-CHILD"],
+                return_value=["ORG-ROOT", "ORG-CHILD"],
             ),
         ):
             with self.assertRaises(frappe.PermissionError):
@@ -133,7 +133,7 @@ class TestDesignation(FrappeTestCase):
             patch("ifitwala_ed.hr.doctype.designation.designation.frappe.get_roles", return_value=["HR Manager"]),
             patch(
                 "ifitwala_ed.hr.doctype.designation.designation._resolve_designation_operator_org_scope",
-                return_value=["All Organizations", "ORG-ROOT", "ORG-CHILD"],
+                return_value=["ORG-ROOT", "ORG-CHILD"],
             ),
             patch(
                 "ifitwala_ed.hr.doctype.designation.designation._resolve_designation_operator_school_write_scope",
@@ -152,7 +152,7 @@ class TestDesignation(FrappeTestCase):
             ),
             patch(
                 "ifitwala_ed.hr.doctype.designation.designation._resolve_designation_read_org_scope",
-                return_value=["All Organizations", "ORG-ROOT"],
+                return_value=["ORG-ROOT"],
             ),
             patch(
                 "ifitwala_ed.hr.doctype.designation.designation._resolve_designation_read_school_scope",
@@ -206,7 +206,7 @@ class TestDesignation(FrappeTestCase):
         ):
             scope = designation_controller._resolve_designation_operator_org_scope("staff@example.com")
 
-        self.assertEqual(scope, ["All Organizations", "ORG-CHILD", "ORG-EXPLICIT", "ORG-EXPLICIT-CHILD", "ORG-ROOT"])
+        self.assertEqual(scope, ["ORG-CHILD", "ORG-EXPLICIT", "ORG-EXPLICIT-CHILD", "ORG-ROOT"])
 
     def test_resolve_designation_read_org_scope_for_operator_includes_ancestors_and_descendants(self):
         with (
@@ -242,7 +242,6 @@ class TestDesignation(FrappeTestCase):
         self.assertEqual(
             scope,
             [
-                "All Organizations",
                 "ORG-CHILD",
                 "ORG-EXPLICIT",
                 "ORG-EXPLICIT-CHILD",

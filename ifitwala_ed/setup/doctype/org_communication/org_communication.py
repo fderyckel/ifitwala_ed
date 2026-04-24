@@ -18,6 +18,7 @@ from ifitwala_ed.setup.doctype.org_communication.attachments import (
     has_org_communication_governed_file_attachments,
     resolve_org_communication_attachment_context,
 )
+from ifitwala_ed.utilities.employee_utils import get_schools_for_organization_scope
 
 # --------------------------------------------------------------------
 # Role constants & basic role helper
@@ -1046,13 +1047,7 @@ def _get_org_scope_schools_for_user(user: str | None = None) -> list[str]:
     if not org_scope:
         return []
 
-    schools = frappe.get_all(
-        "School",
-        filters={"organization": ["in", org_scope]},
-        pluck="name",
-        order_by="lft asc, name asc",
-    )
-    return [school for school in schools if school]
+    return get_schools_for_organization_scope(org_scope)
 
 
 def _get_allowed_schools_for_user(user: str | None = None) -> list[str]:

@@ -54,6 +54,40 @@ class TestLeavePermissions(FrappeTestCase):
         self.assertIn("Org A", condition)
         self.assertIn("Org B", condition)
 
+    def test_system_manager_gets_organization_subtree_condition(self):
+        with (
+            patch("frappe.get_roles", return_value=["System Manager"]),
+            patch("ifitwala_ed.hr.leave_permissions._get_user_org_scope", return_value=["Org A"]),
+        ):
+            condition = leave_permissions.get_permission_query_conditions(
+                "Leave Application",
+                "system.manager@example.com",
+            )
+
+        self.assertIn("`tabLeave Application`.`organization` IN", condition)
+        self.assertIn("Org A", condition)
+
+    def test_administrator_remains_unrestricted(self):
+        condition = leave_permissions.get_permission_query_conditions(
+            "Leave Application",
+            "Administrator",
+        )
+
+        self.assertIsNone(condition)
+
+    def test_system_manager_doc_permission_is_org_scoped(self):
+        with (
+            patch("frappe.get_roles", return_value=["System Manager"]),
+            patch("ifitwala_ed.hr.leave_permissions._get_user_org_scope", return_value=["Org A"]),
+        ):
+            allowed = leave_permissions.has_permission_for_doc(
+                frappe._dict(doctype="Leave Application", organization="Org B", employee="HR-EMP-0001"),
+                user="system.manager@example.com",
+                ptype="read",
+            )
+
+        self.assertFalse(allowed)
+
     def test_leave_encashment_permission_denied_when_feature_disabled(self):
         doc = frappe._dict(employee="HR-EMP-0001")
         with patch("frappe.db.get_single_value", return_value=0):

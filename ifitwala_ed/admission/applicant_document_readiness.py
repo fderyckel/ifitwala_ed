@@ -73,6 +73,7 @@ def _serialize_item_attachment(
     *,
     student_applicant: str,
     latest_drive_file: dict | None,
+    latest_file: dict | None = None,
     thumbnail_ready_map: dict[str, bool],
     version_mime_map: dict[str, str],
 ) -> dict:
@@ -84,6 +85,12 @@ def _serialize_item_attachment(
         _to_text(drive_row.get("display_name")) or _to_text(drive_row.get("file_name")) or compatibility_file_id or None
     )
     preview_status = _to_text(drive_row.get("preview_status")) or None
+    file_row = latest_file or {}
+    if not compatibility_file_id:
+        compatibility_file_id = _to_text(file_row.get("name"))
+    if not file_name:
+        file_name = _to_text(file_row.get("file_name")) or compatibility_file_id or None
+
     if not drive_file_id and not compatibility_file_id:
         return {
             "drive_file_id": None,
@@ -143,7 +150,7 @@ def _serialize_item_attachment(
         "drive_file_id": drive_file_id or None,
         "canonical_ref": canonical_ref,
         "file_name": file_name,
-        "uploaded_at": drive_row.get("creation"),
+        "uploaded_at": drive_row.get("creation") or file_row.get("creation"),
         "open_url": open_url,
         "preview_url": preview_url,
         "thumbnail_url": thumbnail_url,
@@ -307,6 +314,25 @@ def build_document_review_payload_batch(applicant_rows: list[dict]) -> dict[str,
                 continue
             latest_drive_file_by_item[item_name] = drive_row
 
+    latest_file_by_item: dict[str, dict] = {}
+    file_rows = []
+    if item_names:
+        file_rows = frappe.get_all(
+            "File",
+            filters={
+                "attached_to_doctype": "Applicant Document Item",
+                "attached_to_name": ["in", item_names],
+            },
+            fields=["name", "attached_to_name", "file_name", "file_url", "creation"],
+            order_by="modified desc, creation desc",
+            limit=0,
+        )
+    for file_row in file_rows:
+        item_name = _to_text(file_row.get("attached_to_name"))
+        if not item_name or item_name in latest_file_by_item:
+            continue
+        latest_file_by_item[item_name] = file_row
+
     drive_thumbnail_ready_map = get_drive_file_thumbnail_ready_map(
         [
             _to_text(drive_row.get("name"))
@@ -352,6 +378,7 @@ def build_document_review_payload_batch(applicant_rows: list[dict]) -> dict[str,
         attachment = _serialize_item_attachment(
             student_applicant=document_to_applicant.get(parent_name, ""),
             latest_drive_file=latest_drive_file_by_item.get(item_name),
+            latest_file=latest_file_by_item.get(item_name),
             thumbnail_ready_map=drive_thumbnail_ready_map,
             version_mime_map=drive_version_mime_map,
         )
@@ -370,6 +397,7 @@ def build_document_review_payload_batch(applicant_rows: list[dict]) -> dict[str,
                 "reviewed_on": row_item.get("reviewed_on"),
                 "uploaded_by": uploaded_by or None,
                 "uploaded_at": uploaded_at,
+                "file_url": attachment.get("open_url"),
                 "open_url": attachment.get("open_url"),
                 "preview_url": attachment.get("preview_url"),
                 "thumbnail_url": attachment.get("thumbnail_url"),
@@ -435,6 +463,7 @@ def build_document_review_payload_batch(applicant_rows: list[dict]) -> dict[str,
                         "override_on": None,
                         "uploaded_by": None,
                         "uploaded_at": None,
+                        "file_url": None,
                         "open_url": None,
                         "preview_url": None,
                         "thumbnail_url": None,
@@ -531,6 +560,7 @@ def build_document_review_payload_batch(applicant_rows: list[dict]) -> dict[str,
                     "override_on": document_row.get("override_on"),
                     "uploaded_by": latest_uploaded_item.get("uploaded_by"),
                     "uploaded_at": latest_uploaded_item.get("uploaded_at"),
+                    "file_url": latest_uploaded_item.get("file_url") or latest_uploaded_item.get("open_url"),
                     "open_url": latest_uploaded_item.get("open_url"),
                     "preview_url": latest_uploaded_item.get("preview_url"),
                     "thumbnail_url": latest_uploaded_item.get("thumbnail_url"),
@@ -599,6 +629,7 @@ def build_document_review_payload_batch(applicant_rows: list[dict]) -> dict[str,
                         "reviewed_on": uploaded_item.get("reviewed_on"),
                         "uploaded_by": uploaded_item.get("uploaded_by"),
                         "uploaded_at": uploaded_item.get("uploaded_at"),
+                        "file_url": uploaded_item.get("file_url") or uploaded_item.get("open_url"),
                         "open_url": uploaded_item.get("open_url"),
                         "preview_url": uploaded_item.get("preview_url"),
                         "thumbnail_url": uploaded_item.get("thumbnail_url"),

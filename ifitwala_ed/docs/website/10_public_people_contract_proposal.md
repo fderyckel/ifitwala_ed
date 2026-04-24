@@ -12,7 +12,7 @@ Current canonical runtime remains defined by:
 - `ifitwala_ed/docs/website/01_architecture_notes.md`
 - `ifitwala_ed/docs/website/03_website_pages_provider.md`
 - `ifitwala_ed/docs/website/06_block_props_guide.md`
-- `ifitwala_ed/docs/hr/emlpoyee.md`
+- `ifitwala_ed/docs/hr/employee.md`
 - `ifitwala_ed/docs/files_and_policies/files_05_organization_media_governance.md`
 
 This proposal exists to define the target public people model before additional schema changes, new directory/profile surfaces, or cross-module public staff behavior changes are approved.
@@ -220,7 +220,7 @@ All of these should consume the same public people contract.
 ## 7. Field Ownership Proposal
 
 Status: Planned
-Code refs: `ifitwala_ed/hr/doctype/employee/*`, `ifitwala_ed/docs/hr/emlpoyee.md`
+Code refs: `ifitwala_ed/hr/doctype/employee/*`, `ifitwala_ed/docs/hr/employee.md`
 Test refs: `None`
 
 ### 7.1 Employee-owned public truth candidates
@@ -258,7 +258,7 @@ The website layer must not own:
 ## 8. Public/Private Data Boundary Proposal
 
 Status: Planned
-Code refs: `ifitwala_ed/docs/hr/emlpoyee.md`, `ifitwala_ed/docs/files_and_policies/files_05_organization_media_governance.md`
+Code refs: `ifitwala_ed/docs/hr/employee.md`, `ifitwala_ed/docs/files_and_policies/files_05_organization_media_governance.md`
 Test refs: `None`
 
 Inspired by Finalsite's public/private directory model, Ifitwala_Ed should explicitly distinguish:

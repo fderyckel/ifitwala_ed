@@ -1,5 +1,30 @@
 # Professional Development Governance (HR Domain)
 
+Status: Partial Phase 1 contract
+Code refs:
+- `ifitwala_ed/api/professional_development.py`
+- `ifitwala_ed/hr/professional_development_utils.py`
+- `ifitwala_ed/hr/professional_development_permissions.py`
+- `ifitwala_ed/hr/doctype/professional_development_theme/professional_development_theme.py`
+- `ifitwala_ed/hr/doctype/professional_development_budget/professional_development_budget.py`
+- `ifitwala_ed/hr/doctype/professional_development_request/professional_development_request.py`
+- `ifitwala_ed/hr/doctype/professional_development_record/professional_development_record.py`
+- `ifitwala_ed/hr/doctype/professional_development_outcome/professional_development_outcome.py`
+- `ifitwala_ed/accounting/doctype/professional_development_encumbrance/professional_development_encumbrance.py`
+- `ifitwala_ed/accounting/professional_development_ledger.py`
+- `ifitwala_ed/ui-spa/src/pages/staff/ProfessionalDevelopment.vue`
+Test refs:
+- `ifitwala_ed/hr/test_professional_development_permissions.py`
+- `ifitwala_ed/ui-spa/src/pages/staff/__tests__/ProfessionalDevelopment.test.ts`
+
+Missing test coverage:
+- request approval materializes exactly one record, one booking, and one reservation
+- cancellation releases booking and reservation deterministically
+- liquidation terminal state and budget updates
+- API mutation permission boundaries
+- year-close handling
+- board hot-path query count and batched PGP goal loading
+
 ## Scope and Status
 
 This document is the canonical Phase 1 contract for Professional Development (PD) in `ifitwala_ed`.
@@ -350,7 +375,7 @@ Server-side scope is mandatory.
 - employees may read only their own request/record/outcome documents
 - sibling-school visibility is forbidden
 
-Organization scope and school-tree scope must both pass when a document is school-scoped.
+Organization scope and school-tree scope must both pass when a document is school-scoped. `System Manager` follows the same scoped administrative contract in PD. The built-in `Administrator` account is not a tenant-scoped role and remains outside this scoped-role contract.
 
 ## Academic Year Closure Contract
 

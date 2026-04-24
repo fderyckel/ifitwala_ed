@@ -371,7 +371,6 @@ class TestStudentApplicant(FrappeTestCase):
                     "doctype": "Applicant Document",
                     "student_applicant": applicant.name,
                     "document_type": doc_type,
-                    "review_status": "Approved",
                 }
             ).insert(ignore_permissions=True)
         finally:

@@ -331,7 +331,7 @@ The default product value should come from strong profiles and directories first
 ## 12. Recommended First Implementation Slice
 
 Status: Planned
-Code refs: `ifitwala_ed/docs/website/01_architecture_notes.md`, `ifitwala_ed/docs/website/03_website_pages_provider.md`, `ifitwala_ed/docs/website/06_block_props_guide.md`, `ifitwala_ed/docs/hr/emlpoyee.md`, `ifitwala_ed/docs/files_and_policies/files_05_organization_media_governance.md`
+Code refs: `ifitwala_ed/docs/website/01_architecture_notes.md`, `ifitwala_ed/docs/website/03_website_pages_provider.md`, `ifitwala_ed/docs/website/06_block_props_guide.md`, `ifitwala_ed/docs/hr/employee.md`, `ifitwala_ed/docs/files_and_policies/files_05_organization_media_governance.md`
 Test refs: `None`
 
 The immediate next approved work should be:

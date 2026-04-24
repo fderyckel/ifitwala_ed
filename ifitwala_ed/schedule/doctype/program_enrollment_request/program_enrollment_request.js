@@ -218,6 +218,9 @@ function buildEducatorReviewMessages(frm) {
 		}
 
 		const basket = payload?.results?.basket || {};
+		if (payload?.summary?.basket_not_configured || basket.status === "not_configured") {
+			push(__("Program Offering has no enrollment rules. Add at least one rule before this request can validate."));
+		}
 		for (const violation of basket.violations || []) {
 			push(formatEducatorBasketMessage(violation));
 		}

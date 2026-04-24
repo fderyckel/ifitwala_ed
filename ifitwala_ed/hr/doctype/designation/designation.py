@@ -7,7 +7,11 @@ from frappe.model.document import Document
 from frappe.utils import cstr, get_link_to_form
 from frappe.utils.nestedset import get_ancestors_of
 
-from ifitwala_ed.utilities.employee_utils import get_user_base_org, get_user_base_school
+from ifitwala_ed.utilities.employee_utils import (
+    get_schools_for_organization_scope,
+    get_user_base_org,
+    get_user_base_school,
+)
 from ifitwala_ed.utilities.tree_utils import get_ancestors_inclusive, get_descendants_inclusive
 
 ALL_ORGANIZATIONS = "All Organizations"
@@ -259,9 +263,6 @@ def _resolve_designation_read_org_scope(user: str, *, roles: set[str] | None = N
         if roles & OPERATOR_SCOPE_ROLES:
             visible_orgs.update(item for item in _get_descendant_organizations_uncached(org) if item)
 
-    if roles & OPERATOR_SCOPE_ROLES and frappe.db.exists("Organization", ALL_ORGANIZATIONS):
-        visible_orgs.add(ALL_ORGANIZATIONS)
-
     return sorted(visible_orgs)
 
 
@@ -299,9 +300,6 @@ def _resolve_designation_operator_org_scope(user: str) -> list[str]:
 
     for org in _get_effective_user_organizations(user):
         visible_orgs.update(_get_descendant_organizations_uncached(org))
-
-    if frappe.db.exists("Organization", ALL_ORGANIZATIONS):
-        visible_orgs.add(ALL_ORGANIZATIONS)
 
     return sorted(visible_orgs)
 
@@ -503,19 +501,7 @@ def _get_descendant_schools_uncached(school: str) -> list[str]:
 
 
 def _get_schools_for_organizations(org_scope: list[str]) -> list[str]:
-    if not org_scope:
-        return []
-
-    return [
-        cstr(item).strip()
-        for item in frappe.get_all(
-            "School",
-            filters={"organization": ["in", org_scope]},
-            pluck="name",
-            order_by="lft asc, name asc",
-        )
-        if cstr(item).strip()
-    ]
+    return get_schools_for_organization_scope(org_scope)
 
 
 def _build_scope_conditions(

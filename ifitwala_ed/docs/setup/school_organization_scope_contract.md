@@ -92,8 +92,9 @@ Rules:
 8. Use `get_school_scope_for_academic_year()` only for Academic Year visibility semantics; it is not a generic scope helper.
 9. `utilities/employee_utils.py` owns user base organization and school resolution from active `Employee` rows.
 10. `employee_utils.get_descendant_organizations()` and `get_ancestor_organizations()` are the canonical organization-tree wrappers used outside governance policy code.
-11. `governance/policy_scope_utils.py` owns policy-specific scope resolution and nearest-scope override semantics.
-12. `school_settings/school_settings_utils.py` owns school-settings visibility helpers and explicit calendar/term resolver helpers.
+11. `employee_utils.get_schools_for_organization_scope()` is the canonical bridge from an already-authorized organization scope to linked schools.
+12. `governance/policy_scope_utils.py` owns policy-specific scope resolution and nearest-scope override semantics.
+13. `school_settings/school_settings_utils.py` owns school-settings visibility helpers and explicit calendar/term resolver helpers.
 
 ## 4. Approved Inheritance Patterns
 
@@ -120,7 +121,8 @@ Rules:
    - Use descendant school scope when the active `Employee.school` resolves.
    - If an active `Employee` exists with a blank `school`, do not revive a stale default school.
    - Consumers that explicitly opt into organization fallback may widen only to schools whose `organization` is in the caller's organization descendant scope.
-   - Example owners: `employee_utils.get_user_visible_schools()`, `Program Offering`, and `Program Enrollment` scripted permissions.
+   - Resolve the authorized organization scope first, then call `employee_utils.get_schools_for_organization_scope()`; do not repeat the raw `School.organization in (...)` query in each feature.
+   - Example owners: `employee_utils.get_user_visible_schools()`, `Program Offering`, `Program Enrollment`, Org Communication, policy communication/signature staff-context helpers, and HR Designation school-scope helpers.
 2. Nearest ancestor fallback for term/calendar sources:
    - Use school lineage or ancestor helpers.
    - Example owners: `resolve_terms_for_school_calendar()` and `get_schools_per_academic_year_for_terms()`.
@@ -190,7 +192,7 @@ Test refs:
 | Generic tree traversal | `tree_utils` | `utilities/tree_utils.py` | `utilities/test_tree_utils.py` |
 | School-specific lineage and fallback | `school_tree` | `utilities/school_tree.py` | `utilities/test_school_tree.py` |
 | User base org/school resolution | `employee_utils` | `utilities/employee_utils.py` | indirect coverage in policy and feature tests |
-| Staff Desk school visibility with org fallback | `employee_utils` + enrollment scripted permissions | `utilities/employee_utils.py`, `schedule/doctype/program_offering/program_offering.py`, `schedule/doctype/program_enrollment/program_enrollment.py` | `utilities/test_employee_utils.py`, `schedule/test_program_scope_permissions_unit.py` |
+| Staff Desk school visibility with org fallback | `employee_utils` + feature scripted permissions/context helpers | `utilities/employee_utils.py`, `schedule/doctype/program_offering/program_offering.py`, `schedule/doctype/program_enrollment/program_enrollment.py`, `api/admission_cockpit.py`, `api/enrollment_analytics.py`, `api/org_comm_utils.py`, `api/org_communication_archive.py`, `api/org_communication_quick_create.py`, `api/policy_communication.py`, `api/policy_signature.py`, `hr/doctype/designation/designation.py`, `setup/doctype/org_communication/org_communication.py` | `utilities/test_employee_utils.py`, `schedule/test_program_scope_permissions_unit.py` |
 | Policy organization/school inheritance | `policy_scope_utils` | `governance/policy_scope_utils.py` | `governance/test_policy_scope_inheritance.py` |
 | School-settings visibility and calendar resolution | `school_settings_utils` | `school_settings/school_settings_utils.py` | `school_settings/doctype/term/test_term.py`, `utilities/test_school_tree.py` |
 | Term branch visibility with nearest ancestor fallback | `Term` scripted permissions | `school_settings/doctype/term/term.py` | `school_settings/doctype/term/test_term.py` |

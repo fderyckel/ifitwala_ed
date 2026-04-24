@@ -801,8 +801,9 @@ class Employee(NestedSet):
         if contact_name:
             return contact_name
 
-        if self.empl_primary_contact and frappe.db.exists("Contact", self.empl_primary_contact):
-            return self.empl_primary_contact
+        primary_contact = self.get("empl_primary_contact")
+        if primary_contact and frappe.db.exists("Contact", primary_contact):
+            return primary_contact
 
         return None
 
