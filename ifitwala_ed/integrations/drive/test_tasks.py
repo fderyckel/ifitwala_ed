@@ -36,6 +36,7 @@ def _drive_tasks_module(task_doc=None):
 
         frappe.db.get_value = fake_get_value
         frappe.db.exists = lambda doctype, name=None: doctype == "Task" and bool(name)
+        frappe.generate_hash = lambda length=10: "row001abcd"[:length]
         frappe.get_doc = lambda doctype, name: task_doc
 
         yield import_fresh("ifitwala_ed.integrations.drive.tasks")
@@ -84,6 +85,19 @@ class TestDriveTaskResourceContract(TestCase):
         self.assertEqual(payload["slot"], "supporting_material__row-001")
         self.assertEqual(payload["organization"], "ORG-1")
         self.assertEqual(payload["school"], "SCH-1")
+
+    def test_build_task_resource_upload_contract_allows_new_generated_row_key(self):
+        task_doc = _FakeTaskDoc(
+            name="TASK-0001",
+            default_course="COURSE-1",
+            attachments=[],
+        )
+
+        with _drive_tasks_module(task_doc) as module:
+            payload = module.build_task_resource_upload_contract(task_doc)
+
+        self.assertEqual(payload["row_name"], "row001abcd")
+        self.assertEqual(payload["slot"], "supporting_material__row001abcd")
 
     def test_validate_task_resource_finalize_context_rejects_stale_academic_report_purpose(self):
         upload_session_doc = SimpleNamespace(

@@ -157,7 +157,11 @@ def _resolve_task_resource_session_context(payload: dict[str, Any]) -> dict[str,
     task = _as_non_empty_string(payload, "task")
     row_name = payload.get("row_name")
     task_doc = tasks.assert_task_resource_upload_access(task, permission_type="write")
-    authoritative = tasks.build_task_resource_upload_contract(task_doc, row_name=row_name)
+    authoritative = tasks.build_task_resource_upload_contract(
+        task_doc,
+        row_name=row_name,
+        allow_missing_row=bool(payload.get("slot")),
+    )
     _validate_workflow_slot(payload, authoritative, label=_("Task resource upload"))
     return authoritative
 

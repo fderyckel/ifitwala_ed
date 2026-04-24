@@ -11,6 +11,7 @@ ifitwala_ed.patches.backfill_student_profile_images
 ifitwala_ed.patches.backfill_unit_plan_program_scope
 ifitwala_ed.patches.backfill_unit_plan_standard_links
 ifitwala_ed.patches.backfill_student_referral_case_links
+ifitwala_ed.patches.backfill_student_group_student_active_flags
 
 [post_model_sync]
 # Patches added in this section will be executed after doctypes are migrated

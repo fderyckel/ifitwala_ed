@@ -743,6 +743,38 @@ class TestTeachingPlansApi(TestCase):
                     "GROUP-2",
                 )
 
+    def test_assert_student_group_membership_uses_explicit_active_membership(self):
+        with _teaching_plans_module() as module:
+            captured = {}
+            student_group = "25-26-G6-Math1/IIS 2025-2026"
+
+            def _exists(doctype, filters):
+                captured["doctype"] = doctype
+                captured["filters"] = filters
+                return "SGS-1"
+
+            with patch.object(module.frappe.db, "exists", side_effect=_exists):
+                module._assert_student_group_membership("STU-1", student_group)
+
+        self.assertEqual(captured["doctype"], "Student Group Student")
+        self.assertEqual(
+            captured["filters"],
+            {
+                "parent": student_group,
+                "parenttype": "Student Group",
+                "student": "STU-1",
+                "active": 1,
+            },
+        )
+
+    def test_assert_student_group_membership_rejects_missing_or_inactive_rows(self):
+        with _teaching_plans_module() as module:
+            with (
+                patch.object(module.frappe.db, "exists", return_value=False),
+                self.assertRaises(module.frappe.PermissionError),
+            ):
+                module._assert_student_group_membership("STU-1", "GROUP-1")
+
     def test_serialize_material_entry_uses_governed_preview_and_open_urls_for_file_material(self):
         with _teaching_plans_module() as module:
             with (

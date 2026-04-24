@@ -90,11 +90,16 @@ def _assert_task_resource_row_exists(task_doc, row_key: str) -> None:
     frappe.throw(_("Task attachment row was not found: {row_key}.").format(row_key=row_key))
 
 
-def build_task_resource_upload_contract(task_doc, *, row_name: str | None = None) -> dict[str, Any]:
+def build_task_resource_upload_contract(
+    task_doc,
+    *,
+    row_name: str | None = None,
+    allow_missing_row: bool = False,
+) -> dict[str, Any]:
     course = _get_task_course(task_doc)
     school, organization = _get_course_school_context(course)
     row_key = _normalize_row_key(row_name)
-    if row_name:
+    if row_name and not allow_missing_row:
         _assert_task_resource_row_exists(task_doc, row_key)
 
     return {
@@ -253,7 +258,7 @@ def validate_task_resource_finalize_context(upload_session_doc) -> dict[str, Any
         frappe.throw(_("Task resource upload sessions require a task-resource slot."))
 
     task_doc = assert_task_resource_upload_access(upload_session_doc.owner_name, permission_type="write")
-    authoritative = build_task_resource_upload_contract(task_doc, row_name=row_key)
+    authoritative = build_task_resource_upload_contract(task_doc, row_name=row_key, allow_missing_row=True)
 
     field_map = {
         "owner_doctype": "owner_doctype",
