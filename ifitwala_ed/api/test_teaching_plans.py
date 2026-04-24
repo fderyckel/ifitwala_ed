@@ -345,6 +345,14 @@ class TestTeachingPlansApi(TestCase):
 
     def test_get_student_learning_space_includes_focus_and_next_actions(self):
         with _teaching_plans_module() as module:
+            current_unit_resolver = Mock(
+                return_value={
+                    "unit_plan": "UNIT-1",
+                    "unit": {"unit_plan": "UNIT-1", "title": "Cells and Systems"},
+                    "source": "calendar",
+                    "timeline": None,
+                }
+            )
             with (
                 patch.object(module, "_require_student_name", return_value="STU-1"),
                 patch.object(module, "_assert_student_course_access", return_value=None),
@@ -513,20 +521,12 @@ class TestTeachingPlansApi(TestCase):
                         }
                     ],
                 ),
-                patch.object(
-                    module,
-                    "_resolve_current_curriculum_unit",
-                    return_value={
-                        "unit_plan": "UNIT-1",
-                        "unit": {"unit_plan": "UNIT-1", "title": "Cells and Systems"},
-                        "source": "calendar",
-                        "timeline": None,
-                    },
-                ),
+                patch.object(module, "_resolve_current_curriculum_unit", side_effect=current_unit_resolver),
                 patch.object(module, "now_datetime", return_value=datetime(2026, 4, 2, 9, 0, 0)),
             ):
                 payload = module.get_student_learning_space("COURSE-1", "GROUP-1")
 
+        self.assertEqual(current_unit_resolver.call_args.kwargs["require_staff_access"], False)
         self.assertEqual(payload["learning"]["focus"]["current_unit"]["unit_plan"], "UNIT-1")
         self.assertEqual(payload["learning"]["focus"]["current_session"]["class_session"], "SESSION-1")
         self.assertEqual(payload["learning"]["selected_context"]["unit_plan"], "UNIT-1")
@@ -1888,6 +1888,51 @@ class TestTeachingPlansApi(TestCase):
         self.assertEqual(payload["scope"]["term"], "TERM-1")
         self.assertEqual(payload["scope"]["window_start"], "2026-01-05")
         self.assertEqual(payload["scope"]["window_end"], "2026-03-27")
+
+    def test_resolve_course_plan_timeline_scope_can_use_student_authorized_class_context(self):
+        with _teaching_plans_module() as module:
+            with (
+                patch.object(
+                    module,
+                    "_assert_staff_group_access",
+                    side_effect=AssertionError("student LMS timeline must not require staff class access"),
+                ),
+                patch.object(
+                    module.planning,
+                    "get_student_group_row",
+                    return_value={
+                        "name": "GROUP-1",
+                        "student_group_name": "Biology A",
+                        "student_group_abbreviation": "BIO-A",
+                        "course": "COURSE-1",
+                        "academic_year": "2026-2027",
+                        "school": "SCH-1",
+                        "term": "",
+                    },
+                ),
+                patch.object(
+                    module.frappe.db,
+                    "get_value",
+                    return_value={
+                        "name": "2026-2027",
+                        "year_start_date": date(2026, 1, 1),
+                        "year_end_date": date(2026, 12, 31),
+                    },
+                ),
+            ):
+                payload = module._resolve_course_plan_timeline_scope(
+                    {
+                        "course": "COURSE-1",
+                        "academic_year": "2026-2027",
+                        "school": "SCH-1",
+                    },
+                    student_group="GROUP-1",
+                    require_staff_access=False,
+                )
+
+        self.assertEqual(payload["status"], "ready")
+        self.assertEqual(payload["scope"]["student_group"], "GROUP-1")
+        self.assertEqual(payload["scope"]["student_group_label"], "Biology A")
 
     def test_build_staff_course_plan_bundle_passes_student_group_to_timeline(self):
         with _teaching_plans_module() as module:

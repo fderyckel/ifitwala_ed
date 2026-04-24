@@ -206,6 +206,7 @@ def resolve_current_curriculum_unit(
     class_unit_rows: list[Any] | None = None,
     anchor_date: Any | None = None,
     allow_live_session: bool = True,
+    require_staff_access: bool = True,
 ) -> dict[str, Any]:
     resolved_anchor = api._coerce_curriculum_anchor_date(anchor_date)
     unit_lookup = _unit_lookup_by_plan(api, units)
@@ -251,6 +252,7 @@ def resolve_current_curriculum_unit(
             course_plan_row,
             units,
             student_group=api.planning.normalize_text(student_group) or None,
+            require_staff_access=require_staff_access,
         )
         timeline_unit = api._resolve_timeline_current_unit(timeline_payload, anchor_date=resolved_anchor)
         if timeline_unit:
@@ -295,6 +297,7 @@ def resolve_course_plan_timeline_scope(
     course_plan_row: dict[str, Any],
     *,
     student_group: str | None = None,
+    require_staff_access: bool = True,
 ) -> dict[str, Any]:
     academic_year = api.planning.normalize_text(course_plan_row.get("academic_year"))
     if not academic_year:
@@ -336,7 +339,8 @@ def resolve_course_plan_timeline_scope(
     selected_school = api.planning.normalize_text(course_plan_row.get("school"))
     selected_term = ""
     if student_group:
-        api._assert_staff_group_access(student_group)
+        if require_staff_access:
+            api._assert_staff_group_access(student_group)
         group_row = api.planning.get_student_group_row(student_group)
         if api.planning.normalize_text(group_row.get("course")) != api.planning.normalize_text(
             course_plan_row.get("course")
@@ -516,11 +520,16 @@ def build_course_plan_timeline(
     units: list[dict[str, Any]],
     *,
     student_group: str | None = None,
+    require_staff_access: bool = True,
 ) -> dict[str, Any]:
     from ifitwala_ed.schedule.schedule_utils import get_calendar_holiday_set, get_weekend_days_for_calendar
     from ifitwala_ed.school_settings.school_settings_utils import resolve_school_calendars_for_window
 
-    scope_payload = api._resolve_course_plan_timeline_scope(course_plan_row, student_group=student_group)
+    scope_payload = api._resolve_course_plan_timeline_scope(
+        course_plan_row,
+        student_group=student_group,
+        require_staff_access=require_staff_access,
+    )
     if scope_payload.get("status") != "ready":
         return scope_payload
 

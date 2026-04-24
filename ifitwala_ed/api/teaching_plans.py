@@ -154,11 +154,13 @@ def _resolve_course_plan_timeline_scope(
     course_plan_row: dict[str, Any],
     *,
     student_group: str | None = None,
+    require_staff_access: bool = True,
 ) -> dict[str, Any]:
     return _timeline_impl.resolve_course_plan_timeline_scope(
         _module(),
         course_plan_row,
         student_group=student_group,
+        require_staff_access=require_staff_access,
     )
 
 
@@ -197,12 +199,14 @@ def _build_course_plan_timeline(
     units: list[dict[str, Any]],
     *,
     student_group: str | None = None,
+    require_staff_access: bool = True,
 ) -> dict[str, Any]:
     return _timeline_impl.build_course_plan_timeline(
         _module(),
         course_plan_row,
         units,
         student_group=student_group,
+        require_staff_access=require_staff_access,
     )
 
 
@@ -226,6 +230,7 @@ def _resolve_current_curriculum_unit(
     class_unit_rows: list[Any] | None = None,
     anchor_date: Any | None = None,
     allow_live_session: bool = True,
+    require_staff_access: bool = True,
 ) -> dict[str, Any]:
     return _timeline_impl.resolve_current_curriculum_unit(
         _module(),
@@ -235,6 +240,7 @@ def _resolve_current_curriculum_unit(
         class_unit_rows=class_unit_rows,
         anchor_date=anchor_date,
         allow_live_session=allow_live_session,
+        require_staff_access=require_staff_access,
     )
 
 

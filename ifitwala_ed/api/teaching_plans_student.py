@@ -547,6 +547,7 @@ def build_student_learning_space_payload(
             student_group=selected_group or None,
             class_unit_rows=doc.get("units") or [],
             anchor_date=api.now_datetime(),
+            require_staff_access=False,
         ).get("unit_plan")
         assigned_work_count = len(assigned_work)
     else:
