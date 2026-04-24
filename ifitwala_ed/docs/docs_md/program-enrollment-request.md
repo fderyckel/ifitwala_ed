@@ -3,8 +3,8 @@ title: "Program Enrollment Request: Transactional Staging for Enrollment"
 slug: program-enrollment-request
 category: Enrollment
 doc_order: 4
-version: "1.6.2"
-last_change_date: "2026-04-05"
+version: "1.6.3"
+last_change_date: "2026-04-24"
 summary: "Capture enrollment intent, run deterministic validation snapshots, enforce override gates, and approve requests before materializing Program Enrollment, including basket-group snapshots, offering-derived term-window carry-forward, admissions hydration, portal self-enrollment provenance, report-driven batch actions, and PER form shortcuts into the request overview."
 seo_title: "Program Enrollment Request: Transactional Staging for Enrollment"
 seo_description: "Capture enrollment intent, run deterministic validation snapshots, enforce override gates, and approve requests before materializing Program Enrollment."
@@ -18,12 +18,12 @@ It remains student-linked even when the request originates in admissions. If adm
 
 ## Before You Start (Prerequisites)
 
-- Create target [**Program Offering**](/docs/en/program-offering/) with offering courses and, when needed, basket-group memberships.
+- Create target [**Program Offering**](/docs/en/program-offering/) with offering courses, at least one enrollment rule, and, when needed, basket-group memberships.
 - Ensure student identity exists.
 - Provide at least one request course row.
 
 <Callout type="warning" title="Approval gate">
-For statuses `Submitted`, `Under Review`, and `Approved`, validation snapshot must exist and remain aligned with basket content. Multi-group optional courses must carry an explicit `applied_basket_group` before the request can advance.
+For statuses `Submitted`, `Under Review`, and `Approved`, validation snapshot must exist and remain aligned with basket content. The target Program Offering must have at least one enrollment rule, such as `MIN_TOTAL_COURSES` with `Value 1 = 1`; otherwise validation is marked not configured. Multi-group optional courses must carry an explicit `applied_basket_group` before the request can advance.
 </Callout>
 
 ## Where It Is Used Across the ERP

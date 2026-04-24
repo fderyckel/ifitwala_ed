@@ -240,3 +240,61 @@ class TestTaskCreationService(TestCase):
         self.assertEqual(delivery.rubric_scoring_strategy, "Sum Total")
         self.assertEqual(payload["task"], "TASK-0001")
         self.assertEqual(payload["task_delivery"], "TDL-0001")
+
+    def test_create_task_and_delivery_ignores_stale_grading_for_collect_work(self):
+        task = _FakeTask()
+        delivery = _FakeDelivery()
+        created_docs = [task, delivery]
+
+        planning_module = types.ModuleType("ifitwala_ed.curriculum.planning")
+        planning_module.assert_can_manage_course_curriculum = lambda *args, **kwargs: None
+
+        with stubbed_frappe(extra_modules={"ifitwala_ed.curriculum.planning": planning_module}) as frappe:
+            frappe.db.savepoint = lambda name: None
+            frappe.db.rollback = lambda save_point=None: None
+            frappe.get_roles = lambda user: ["Instructor"]
+            frappe.db.get_value = lambda doctype, name, fieldname=None, as_dict=False: (
+                {
+                    "name": "CLASS-PLAN-1",
+                    "student_group": "GRP-1",
+                    "course_plan": "COURSE-PLAN-1",
+                    "course": "COURSE-1",
+                    "academic_year": "AY-2025-2026",
+                    "planning_status": "Active",
+                }
+                if doctype == "Class Teaching Plan"
+                else "COURSE-1"
+            )
+            frappe.db.count = lambda doctype, filters=None: 2
+            frappe.get_all = lambda doctype, **kwargs: (
+                [{"name": "CLASS-PLAN-1"}] if doctype == "Class Teaching Plan" else []
+            )
+            frappe.get_meta = lambda doctype: {
+                "Task": _Meta({"task_type": "Homework\nQuiz"}),
+                "Task Delivery": _Meta(
+                    {
+                        "delivery_mode": "Assign Only\nCollect Work\nAssess",
+                        "rubric_scoring_strategy": "Sum Total\nSeparate Criteria",
+                    }
+                ),
+            }[doctype]
+            frappe.new_doc = lambda doctype: created_docs.pop(0)
+
+            module = import_fresh("ifitwala_ed.assessment.task_creation_service")
+
+            module.create_task_and_delivery(
+                title="Draft upload",
+                student_group="GRP-1",
+                class_teaching_plan="CLASS-PLAN-1",
+                delivery_mode="Collect Work",
+                grading_mode="Points",
+                allow_feedback="1",
+                max_points="20",
+            )
+
+        self.assertEqual(task.default_delivery_mode, "Collect Work")
+        self.assertEqual(task.default_grading_mode, "None")
+        self.assertEqual(task.default_allow_feedback, 0)
+        self.assertFalse(hasattr(task, "default_max_points"))
+        self.assertFalse(hasattr(delivery, "grading_mode"))
+        self.assertEqual(delivery.allow_feedback, 0)

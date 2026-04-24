@@ -19,7 +19,6 @@
   "unit_plan",
   "section_break_haua",
   "instructions",
-  "attachments",
   "quiz_section",
   "quiz_question_bank",
   "quiz_question_count",
@@ -95,12 +94,6 @@
    "fieldname": "instructions",
    "fieldtype": "Text Editor",
    "label": "Instructions"
-  },
-  {
-   "fieldname": "attachments",
-   "fieldtype": "Table",
-   "label": "Attachments",
-   "options": "Attached Document"
   },
   {
    "depends_on": "eval:doc.task_type=='Quiz'",
@@ -239,7 +232,7 @@
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-04-05 01:26:54.000000",
+ "modified": "2026-04-24 22:24:39.000000",
  "modified_by": "Administrator",
  "module": "Assessment",
  "name": "Task",

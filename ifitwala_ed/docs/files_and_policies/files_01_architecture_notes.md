@@ -19,7 +19,7 @@ Test refs: Pending as part of the boundary refactor
 
 This architecture governs all governed file/media flows in Ifitwala_Ed:
 
-- task resources and task submissions
+- task materials and task submissions
 - admissions documents and profile images
 - employee, student, guardian, school, and organization media
 - org communication attachments

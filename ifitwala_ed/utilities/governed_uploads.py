@@ -450,40 +450,6 @@ def upload_task_submission_attachment(task_submission: str | None = None, **_kwa
 
 
 @frappe.whitelist()
-def upload_task_resource(task: str | None = None, row_name: str | None = None, **_kwargs):
-    task = task or _get_form_arg("task") or frappe.form_dict.get("docname")
-    row_name = row_name or _get_form_arg("row_name")
-    doc = _require_clean_saved_doc(_require_doc("Task", task), action_label=_("Upload Task Resource"))
-
-    filename, content = _get_uploaded_file()
-    mime_type_hint = _resolve_upload_mime_type_hint(filename=filename)
-    try:
-        from ifitwala_drive.api import resources as drive_resources_api
-    except ImportError as exc:
-        frappe.throw(_("Ifitwala Drive is required for governed upload execution: {0}").format(exc))
-
-    session_response, finalize_response, file_doc = _drive_upload_and_finalize(
-        create_session_callable=drive_resources_api.upload_task_resource,
-        payload={
-            "task": doc.name,
-            "row_name": row_name,
-            "filename_original": filename,
-            "mime_type_hint": mime_type_hint,
-            "expected_size_bytes": len(content),
-            "upload_source": "Desk",
-        },
-        content=content,
-    )
-    _ensure_file_on_disk(file_doc)
-
-    payload = _response_payload(file_doc)
-    session_workflow_result = _workflow_result_payload(session_response)
-    finalize_workflow_result = _workflow_result_payload(finalize_response)
-    payload["row_name"] = finalize_workflow_result.get("row_name") or session_workflow_result.get("row_name")
-    return payload
-
-
-@frappe.whitelist()
 def upload_supporting_material_file(material: str | None = None, **_kwargs):
     material = material or _get_form_arg("material") or frappe.form_dict.get("docname")
     doc = _require_clean_saved_doc(

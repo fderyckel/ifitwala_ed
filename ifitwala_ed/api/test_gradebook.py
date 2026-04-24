@@ -1170,6 +1170,37 @@ class TestGradebookApi(TestCase):
         self.assertTrue(payload["cells"][0]["flags"]["has_new_submission"])
         self.assertTrue(payload["cells"][1]["flags"]["is_published"])
 
+    def test_get_grid_filters_by_assessment_scope_on_the_delivery_query(self):
+        captured_filters = []
+
+        with stubbed_frappe(extra_modules=_gradebook_stub_modules()) as frappe:
+
+            def fake_get_all(doctype, filters=None, fields=None, order_by=None, limit=0, pluck=None):
+                if doctype == "Task Delivery":
+                    captured_filters.append(dict(filters or {}))
+                return []
+
+            frappe.get_all = fake_get_all
+
+            module = _import_fresh_gradebook()
+            module.gradebook_support._can_read_gradebook = lambda: True
+            module.gradebook_support._resolve_gradebook_scope = lambda school, academic_year, course: {}
+            module.gradebook_support._assert_group_access = lambda student_group: None
+
+            base_filters = {
+                "school": "SCH-1",
+                "academic_year": "2025-2026",
+                "student_group": "GRP-1",
+                "limit": 1,
+            }
+            module.get_grid({**base_filters, "assessment_scope": "graded"})
+            module.get_grid({**base_filters, "assessment_scope": "not_graded"})
+            module.get_grid({**base_filters, "assessment_scope": "all"})
+
+        self.assertEqual(captured_filters[0]["delivery_mode"], "Assess")
+        self.assertEqual(captured_filters[1]["delivery_mode"], ["in", ["Collect Work", "Assign Only"]])
+        self.assertNotIn("delivery_mode", captured_filters[2])
+
     def test_get_grid_hides_grade_value_when_official_grade_is_missing(self):
         with stubbed_frappe(extra_modules=_gradebook_stub_modules()) as frappe:
 

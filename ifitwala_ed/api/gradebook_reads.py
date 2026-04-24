@@ -18,6 +18,7 @@ def get_grid(api, filters=None, **kwargs):
     student_group = data.get("student_group")
     task_type = data.get("task_type")
     delivery_mode = data.get("delivery_mode")
+    assessment_scope = str(data.get("assessment_scope") or "").strip().lower()
     api._require(school, "School")
     api._require(academic_year, "Academic Year")
 
@@ -35,6 +36,12 @@ def get_grid(api, filters=None, **kwargs):
         delivery_filters["course"] = ["in", scope["courses"]]
     if delivery_mode:
         delivery_filters["delivery_mode"] = delivery_mode
+    elif assessment_scope == "graded":
+        delivery_filters["delivery_mode"] = "Assess"
+    elif assessment_scope == "not_graded":
+        delivery_filters["delivery_mode"] = ["in", ["Collect Work", "Assign Only"]]
+    elif assessment_scope and assessment_scope != "all":
+        frappe.throw(_("Assessment scope must be graded, not_graded, or all."))
 
     limit = api._coerce_int(data.get("limit"), default=12, minimum=1, maximum=20)
 

@@ -127,12 +127,6 @@ def _resolve_task_feedback_export_context_override(
     return tasks.get_task_feedback_export_context_override(owner_name, slot)
 
 
-def _resolve_task_submission_post_finalize(upload_session_doc, created_file) -> dict[str, Any]:
-    from ifitwala_ed.integrations.drive import tasks
-
-    return tasks.run_task_post_finalize(upload_session_doc, created_file)
-
-
 def _validate_task_submission_finalize_context(upload_session_doc) -> Optional[dict[str, Any]]:
     if getattr(upload_session_doc, "owner_doctype", None) != "Task Submission":
         return None
@@ -149,42 +143,6 @@ def _validate_task_feedback_export_finalize_context(upload_session_doc) -> Optio
     from ifitwala_ed.integrations.drive import tasks
 
     return tasks.validate_task_feedback_export_finalize_context(upload_session_doc)
-
-
-def _resolve_task_resource_session_context(payload: dict[str, Any]) -> dict[str, Any]:
-    from ifitwala_ed.integrations.drive import tasks
-
-    task = _as_non_empty_string(payload, "task")
-    row_name = payload.get("row_name")
-    task_doc = tasks.assert_task_resource_upload_access(task, permission_type="write")
-    authoritative = tasks.build_task_resource_upload_contract(
-        task_doc,
-        row_name=row_name,
-        allow_missing_row=bool(payload.get("slot")),
-    )
-    _validate_workflow_slot(payload, authoritative, label=_("Task resource upload"))
-    return authoritative
-
-
-def _resolve_task_resource_context_override(
-    upload_session_doc, authoritative_context: dict[str, Any]
-) -> dict[str, Any] | None:
-    from ifitwala_ed.integrations.drive import tasks
-
-    owner_name = str(
-        getattr(upload_session_doc, "owner_name", None) or authoritative_context.get("owner_name") or ""
-    ).strip()
-    slot = str(getattr(upload_session_doc, "intended_slot", None) or authoritative_context.get("slot") or "").strip()
-    return tasks.get_task_resource_context_override(owner_name, slot)
-
-
-def _validate_task_resource_finalize_context(upload_session_doc) -> Optional[dict[str, Any]]:
-    if getattr(upload_session_doc, "owner_doctype", None) != "Task":
-        return None
-
-    from ifitwala_ed.integrations.drive import tasks
-
-    return tasks.validate_task_resource_finalize_context(upload_session_doc)
 
 
 def _resolve_supporting_material_session_context(payload: dict[str, Any]) -> dict[str, Any]:
@@ -565,7 +523,7 @@ _WORKFLOW_SPECS: tuple[GovernedUploadSpec, ...] = (
         resolve_attached_field_override=_no_attached_field_override,
         resolve_context_override=_resolve_task_submission_context_override,
         resolve_binding_role=_no_binding_role,
-        run_post_finalize=_resolve_task_submission_post_finalize,
+        run_post_finalize=_noop_post_finalize,
     ),
     GovernedUploadSpec(
         workflow_id="task.feedback_export",
@@ -577,17 +535,6 @@ _WORKFLOW_SPECS: tuple[GovernedUploadSpec, ...] = (
         resolve_context_override=_resolve_task_feedback_export_context_override,
         resolve_binding_role=_no_binding_role,
         run_post_finalize=_noop_post_finalize,
-    ),
-    GovernedUploadSpec(
-        workflow_id="task.resource",
-        contract_version=_WORKFLOW_CONTRACT_VERSION,
-        is_private=None,
-        resolve_session_context=_resolve_task_resource_session_context,
-        validate_finalize_context=_validate_task_resource_finalize_context,
-        resolve_attached_field_override=_no_attached_field_override,
-        resolve_context_override=_resolve_task_resource_context_override,
-        resolve_binding_role=_static_binding_role("task_resource"),
-        run_post_finalize=_resolve_task_submission_post_finalize,
     ),
     GovernedUploadSpec(
         workflow_id="supporting_material.file",
@@ -770,7 +717,6 @@ _WORKFLOW_SPECS: tuple[GovernedUploadSpec, ...] = (
 _WORKFLOW_SPEC_BY_ID = {spec.workflow_id: spec for spec in _WORKFLOW_SPECS}
 _WORKFLOW_ID_ALIASES = {
     "supporting_material": "supporting_material.file",
-    "task_resource": "task.resource",
     "task_submission": "task.submission",
     "applicant_document": "admissions.applicant_document",
     "applicant_profile_image": "admissions.applicant_profile_image",

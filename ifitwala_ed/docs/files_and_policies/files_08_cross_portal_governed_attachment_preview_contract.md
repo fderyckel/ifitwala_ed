@@ -327,7 +327,7 @@ Phase 5: rollout order
 
 - Org Communication first
 - supporting-material planning surfaces next, specifically course-plan, unit-plan, and class-planning cards via the existing shared planning resource panel
-- task resources after the planning surface contract is stable
+- task materials after the planning surface contract is stable
 - task submissions, feedback, and stricter version-aware evidence surfaces after the foundation is stable
 
 Phase 6: regression protection

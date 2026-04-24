@@ -174,6 +174,24 @@ def _assert_task_reusable_for_course(task_row: dict, course: str) -> str:
     )
 
 
+def _task_grading_defaults(task_row: dict) -> dict:
+    if _normalize_text(task_row.get("default_delivery_mode")) != "Assess":
+        return {
+            "default_allow_feedback": 0,
+            "default_grading_mode": "None",
+            "default_rubric_scoring_strategy": None,
+            "default_max_points": None,
+            "default_grade_scale": None,
+        }
+    return {
+        "default_allow_feedback": task_row.get("default_allow_feedback"),
+        "default_grading_mode": task_row.get("default_grading_mode"),
+        "default_rubric_scoring_strategy": task_row.get("default_rubric_scoring_strategy"),
+        "default_max_points": task_row.get("default_max_points"),
+        "default_grade_scale": task_row.get("default_grade_scale"),
+    }
+
+
 def _load_assessment_criteria_meta(criteria_ids: list[str]) -> tuple[dict[str, dict], dict[str, list[dict]]]:
     ids = [criteria_id for criteria_id in dict.fromkeys(criteria_ids or []) if _normalize_text(criteria_id)]
     if not ids:
@@ -431,13 +449,7 @@ def get_task_for_delivery(task, student_group=None, course=None):
         "is_template": int(task_row.get("is_template") or 0),
         "owner": task_row.get("owner"),
         "visibility_scope": visibility_scope,
-        "grading_defaults": {
-            "default_allow_feedback": task_row.get("default_allow_feedback"),
-            "default_grading_mode": task_row.get("default_grading_mode"),
-            "default_rubric_scoring_strategy": task_row.get("default_rubric_scoring_strategy"),
-            "default_max_points": task_row.get("default_max_points"),
-            "default_grade_scale": task_row.get("default_grade_scale"),
-        },
+        "grading_defaults": _task_grading_defaults(task_row),
         "criteria_defaults": {
             "rubric_scoring_strategy": task_row.get("default_rubric_scoring_strategy"),
             "criteria_rows": _get_task_criteria_defaults(task_row.get("name")),

@@ -195,6 +195,9 @@ It owns:
 
 It is the only valid transactional staging object between request intent and committed enrollment.
 
+Academic request validation requires the target `Program Offering` to have at least one `Program Offering Enrollment Rule`.
+For a minimal offering, use `MIN_TOTAL_COURSES` with `Value 1 = 1`; without any enrollment rule, the engine reports the offering basket as `not_configured` and the request remains invalid.
+
 ### 2.4 `Program Enrollment`
 
 `Program Enrollment` is committed academic truth.

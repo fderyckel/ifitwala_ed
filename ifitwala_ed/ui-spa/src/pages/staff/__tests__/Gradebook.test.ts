@@ -894,10 +894,54 @@ describe('Gradebook page', () => {
 			student_group: 'SG-1',
 			course: 'Math 1',
 			task_type: null,
-			delivery_mode: null,
+			assessment_scope: 'graded',
 			limit: 10,
 		});
 		expect(document.body.textContent || '').toContain('Class Overview');
+
+		const notGradedButton = Array.from(document.querySelectorAll('button')).find(button =>
+			(button.textContent || '').includes('Not graded')
+		);
+		expect(notGradedButton).not.toBeNull();
+		notGradedButton!.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		await flushUi();
+
+		expect(getGridMock).toHaveBeenLastCalledWith({
+			school: 'SCH-1',
+			academic_year: '2025-2026',
+			student_group: 'SG-1',
+			course: 'Math 1',
+			task_type: null,
+			assessment_scope: 'not_graded',
+			limit: 10,
+		});
+
+		const taskTypeSelect = document.querySelector(
+			'select[data-placeholder="Task Type"]'
+		) as HTMLSelectElement | null;
+		expect(taskTypeSelect).not.toBeNull();
+		taskTypeSelect!.value = 'Assignment';
+		taskTypeSelect!.dispatchEvent(new Event('change', { bubbles: true }));
+		await flushUi();
+
+		expect(getGridMock).toHaveBeenLastCalledWith({
+			school: 'SCH-1',
+			academic_year: '2025-2026',
+			student_group: 'SG-1',
+			course: 'Math 1',
+			task_type: 'Assignment',
+			assessment_scope: 'not_graded',
+			limit: 10,
+		});
+
+		const columnButton = document.querySelector(
+			'button[aria-label="Open Task 1"]'
+		) as HTMLButtonElement | null;
+		expect(columnButton).not.toBeNull();
+		columnButton!.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		await flushUi();
+
+		expect(getTaskGradebookMock).toHaveBeenCalledWith({ task: 'TDL-1' });
 	});
 
 	it('renders binary grading without points or comment controls when comments are disabled', async () => {

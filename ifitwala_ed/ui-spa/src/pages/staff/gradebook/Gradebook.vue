@@ -335,9 +335,10 @@
 					:academic-year="filters.academic_year"
 					:course="filters.course"
 					:task-type="filters.task_type"
-					:delivery-type="filters.delivery_type"
+					:task-type-options="taskTypeOptions"
 					:selected-task-name="selectedTask?.name || null"
 					@open-task="onOverviewOpenTask"
+					@open-task-column="onOverviewOpenTaskColumn"
 				/>
 			</div>
 		</div>
@@ -913,6 +914,18 @@ function onOverviewOpenTask(payload: { taskName: string; student: string }) {
 	selectTask(match, {
 		switchMode: true,
 		focusStudent: payload.student,
+	});
+}
+
+function onOverviewOpenTaskColumn(payload: { taskName: string }) {
+	const match = taskSummaries.value.find(task => task.name === payload.taskName) || null;
+	if (!match) {
+		showDangerToast('That delivery is no longer available in this class.');
+		return;
+	}
+	selectTask(match, {
+		switchMode: true,
+		focusStudent: null,
 	});
 }
 

@@ -29,6 +29,21 @@ function apply_server_defaults_if_empty(frm) {
 	});
 }
 
+function render_enrollment_rules_notice(frm) {
+	if (!frm.dashboard || !frm.dashboard.set_headline) return;
+
+	const hasRules = (frm.doc.enrollment_rules || []).some((row) => String(row.rule_type || "").trim());
+	if (hasRules) {
+		frm.dashboard.set_headline("");
+		return;
+	}
+
+	const message = __(
+		"Enrollment Requests cannot validate until this Program Offering has at least one Enrollment Rule. Add a rule such as MIN_TOTAL_COURSES with Value 1 = 1."
+	);
+	frm.dashboard.set_headline(`<span class="text-warning">${frappe.utils.escape_html(message)}</span>`);
+}
+
 
 /* ---------------- Helpers: AY defaults for new rows ---------------- */
 
@@ -763,6 +778,7 @@ frappe.ui.form.on("Program Offering", {
 
 		// DO NOT call set_primary_action here; it forces a right-side black button
 		apply_server_defaults_if_empty(frm);
+		render_enrollment_rules_notice(frm);
 	},
 
 	program(frm) {
@@ -776,6 +792,15 @@ frappe.ui.form.on("Program Offering", {
 
 	before_save(frm) {
 		prune_orphaned_offering_basket_groups(frm);
+	}
+});
+
+frappe.ui.form.on("Program Offering Enrollment Rule", {
+	rule_type(frm) {
+		render_enrollment_rules_notice(frm);
+	},
+	enrollment_rules_remove(frm) {
+		render_enrollment_rules_notice(frm);
 	}
 });
 

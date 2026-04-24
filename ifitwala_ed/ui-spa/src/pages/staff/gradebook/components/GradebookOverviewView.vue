@@ -7,14 +7,38 @@
 				<div class="space-y-1">
 					<h2 class="text-lg font-semibold text-ink">Class Overview</h2>
 					<p class="max-w-2xl text-sm text-ink/60">
-						Rows are students and columns are recent deliveries for this group. Open any cell to
-						jump back into quick grading.
+						Rows are students and columns are recent deliveries for this group.
 					</p>
 				</div>
-				<div class="flex items-center gap-3">
-					<div class="hidden text-xs uppercase tracking-wide text-ink/45 sm:block">
-						Recent deliveries
+
+				<div class="flex flex-wrap items-center justify-end gap-3">
+					<div class="if-segmented">
+						<button
+							v-for="option in assessmentScopeOptions"
+							:key="option.value"
+							type="button"
+							class="if-segmented__item"
+							:class="{ 'if-segmented__item--active': assessmentScope === option.value }"
+							@click="setAssessmentScope(option.value)"
+						>
+							{{ option.label }}
+						</button>
 					</div>
+
+					<div class="w-40 shrink-0">
+						<FormControl
+							type="select"
+							size="sm"
+							:options="normalizedTaskTypeOptions"
+							option-label="label"
+							option-value="value"
+							placeholder="Task Type"
+							:model-value="overviewTaskType"
+							@update:modelValue="onTaskTypeChanged"
+						/>
+					</div>
+
+					<div class="hidden text-xs uppercase tracking-wide text-ink/45 sm:block">Columns</div>
 					<FormControl
 						type="select"
 						size="sm"
@@ -73,8 +97,8 @@
 				<div class="flex flex-wrap gap-2">
 					<Badge variant="subtle">Students {{ students.length }}</Badge>
 					<Badge variant="subtle">Deliveries {{ deliveries.length }}</Badge>
-					<Badge v-if="deliveryType" variant="subtle">{{ deliveryType }}</Badge>
-					<Badge v-if="taskType" variant="subtle">{{ taskType }}</Badge>
+					<Badge variant="subtle">{{ assessmentScopeLabel }}</Badge>
+					<Badge v-if="overviewTaskType" variant="subtle">{{ overviewTaskType }}</Badge>
 				</div>
 
 				<div class="overflow-x-auto rounded-xl border border-border/70">
@@ -92,15 +116,28 @@
 									class="min-w-[156px] border-b border-border/70 px-3 py-3 text-left align-top"
 									:class="delivery.delivery_id === selectedTaskName ? 'bg-sky/10' : ''"
 								>
-									<div class="space-y-1">
-										<p class="text-sm font-semibold text-ink">{{ delivery.task_title }}</p>
-										<div class="flex flex-wrap gap-1 text-xs text-ink/55">
-											<span>Due {{ formatDate(delivery.due_date) || '—' }}</span>
-											<Badge v-if="taskModeBadge(delivery)" variant="subtle">
-												{{ taskModeBadge(delivery) }}
-											</Badge>
+									<button
+										type="button"
+										class="group w-full rounded-lg px-2 py-1 text-left transition hover:bg-white hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-leaf/30"
+										:aria-label="`Open ${delivery.task_title}`"
+										@click="openTaskColumn(delivery.delivery_id)"
+									>
+										<div class="space-y-1">
+											<div class="flex items-start justify-between gap-2">
+												<p class="text-sm font-semibold text-ink">{{ delivery.task_title }}</p>
+												<FeatherIcon
+													name="arrow-up-right"
+													class="mt-0.5 h-3.5 w-3.5 shrink-0 text-ink/25 transition group-hover:text-canopy"
+												/>
+											</div>
+											<div class="flex flex-wrap gap-1 text-xs text-ink/55">
+												<span>Due {{ formatDate(delivery.due_date) || '—' }}</span>
+												<Badge v-if="taskModeBadge(delivery)" variant="subtle">
+													{{ taskModeBadge(delivery) }}
+												</Badge>
+											</div>
 										</div>
-									</div>
+									</button>
 								</th>
 							</tr>
 						</thead>
@@ -181,24 +218,33 @@ import {
 	taskModeBadge,
 } from '../gradebookUtils';
 
+type AssessmentScope = 'graded' | 'not_graded' | 'all';
+type SelectOption = {
+	label: string;
+	value: string | null;
+};
+
 const props = defineProps<{
 	group: GroupSummary | null;
 	school: string | null;
 	academicYear: string | null;
 	course: string | null;
 	taskType: string | null;
-	deliveryType: string | null;
+	taskTypeOptions?: SelectOption[];
 	selectedTaskName?: string | null;
 }>();
 
 const emit = defineEmits<{
 	openTask: [payload: { taskName: string; student: string }];
+	openTaskColumn: [payload: { taskName: string }];
 }>();
 
 const gradebookService = createGradebookService();
 const loading = ref(false);
 const errorMessage = ref<string | null>(null);
 const deliveryLimit = ref(10);
+const assessmentScope = ref<AssessmentScope>('graded');
+const overviewTaskType = ref<string | null>(props.taskType || null);
 const response = reactive<GetGridResponse>({
 	deliveries: [],
 	students: [],
@@ -211,9 +257,33 @@ const limitOptions = [
 	{ label: '10 columns', value: 10 },
 	{ label: '14 columns', value: 14 },
 ];
+const assessmentScopeOptions: Array<{ label: string; value: AssessmentScope }> = [
+	{ label: 'Graded', value: 'graded' },
+	{ label: 'Not graded', value: 'not_graded' },
+	{ label: 'All', value: 'all' },
+];
 
 const deliveries = computed(() => response.deliveries || []);
 const students = computed(() => response.students || []);
+const assessmentScopeLabel = computed(() => {
+	if (assessmentScope.value === 'not_graded') return 'Not graded';
+	if (assessmentScope.value === 'all') return 'All work';
+	return 'Graded';
+});
+const normalizedTaskTypeOptions = computed<SelectOption[]>(() => {
+	const options: SelectOption[] = [{ label: 'All Types', value: null }];
+	const seen = new Set<string>();
+
+	for (const option of props.taskTypeOptions || []) {
+		const value = option.value || null;
+		if (!value) continue;
+		if (seen.has(value)) continue;
+		seen.add(value);
+		options.push({ label: option.label || value, value });
+	}
+
+	return options;
+});
 const cellMap = computed(() => {
 	const entries = new Map<string, GetGridResponse['cells'][number]>();
 	for (const cell of response.cells || []) {
@@ -266,8 +336,8 @@ async function loadGrid() {
 			academic_year: props.academicYear,
 			student_group: props.group.name,
 			course: props.course,
-			task_type: props.taskType,
-			delivery_mode: props.deliveryType,
+			task_type: overviewTaskType.value,
+			assessment_scope: assessmentScope.value,
 			limit: deliveryLimit.value,
 		});
 		if (loadVersion.value !== version) {
@@ -294,6 +364,14 @@ function onLimitChanged(value: number | string | null) {
 	const parsed = typeof value === 'number' ? value : Number.parseInt(String(value || ''), 10);
 	if (!Number.isFinite(parsed)) return;
 	deliveryLimit.value = parsed;
+}
+
+function setAssessmentScope(value: AssessmentScope) {
+	assessmentScope.value = value;
+}
+
+function onTaskTypeChanged(value: string | null) {
+	overviewTaskType.value = value || null;
 }
 
 function findCell(student: string, deliveryId: string) {
@@ -390,14 +468,18 @@ function openCell(student: string, deliveryId: string) {
 	emit('openTask', { taskName: deliveryId, student });
 }
 
+function openTaskColumn(deliveryId: string) {
+	emit('openTaskColumn', { taskName: deliveryId });
+}
+
 watch(
 	() => [
 		props.group?.name,
 		props.school,
 		props.academicYear,
 		props.course,
-		props.taskType,
-		props.deliveryType,
+		overviewTaskType.value,
+		assessmentScope.value,
 		deliveryLimit.value,
 	],
 	() => {
@@ -405,4 +487,18 @@ watch(
 	},
 	{ immediate: true }
 );
+
+watch(
+	() => props.taskType,
+	value => {
+		overviewTaskType.value = value || null;
+	}
+);
+
+watch(normalizedTaskTypeOptions, options => {
+	if (!overviewTaskType.value) return;
+	if (!options.some(option => option.value === overviewTaskType.value)) {
+		overviewTaskType.value = null;
+	}
+});
 </script>

@@ -7,6 +7,7 @@ export type Request = {
 	course?: string | null
 	task_type?: string | null
 	delivery_mode?: string | null
+	assessment_scope?: 'graded' | 'not_graded' | 'all' | null
 	limit?: number | null
 }
 

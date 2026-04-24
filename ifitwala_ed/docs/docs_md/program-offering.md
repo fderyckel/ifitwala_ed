@@ -3,7 +3,7 @@ title: "Program Offering: Operational Enrollment Contract"
 slug: program-offering
 category: Enrollment
 doc_order: 2
-version: "1.2.3"
+version: "1.2.4"
 last_change_date: "2026-04-24"
 summary: "Define where and when a program is delivered, including AY span, offering courses, basket-group memberships, basket rules, capacity policy, activity-booking readiness gates, and self-enrollment readiness."
 seo_title: "Program Offering: Operational Enrollment Contract"
@@ -59,9 +59,14 @@ For `offering_academic_years`, the Desk picker follows the same rule: when the o
 4. Add [**Program Offering Course**](/docs/en/program-offering-course/) rows.
 5. Add `offering_course_basket_groups` rows for any offering course that belongs to one or more basket groups.
    In the form, this table is labeled `Enrollment Basket Memberships`.
-6. Configure `enrollment_rules` (`Program Offering Enrollment Rule`) and seat policy.
+6. Configure at least one `enrollment_rules` row (`Program Offering Enrollment Rule`) and seat policy.
+   A minimal valid academic offering needs a rule such as `MIN_TOTAL_COURSES` with `Value 1 = 1`; otherwise linked `Program Enrollment Request` rows cannot validate.
 7. Decide whether `Allow Self Enroll` should be enabled for future selection windows.
 8. Move offering lifecycle (`Planned` -> `Active` -> `Archived`) as operations evolve.
+
+<Callout type="warning" title="Enrollment rule required for request validation">
+`Program Offering` can define many rule types, but it must have at least one enrollment rule before academic `Program Enrollment Request` validation can pass. Use `MIN_TOTAL_COURSES` with `Value 1 = 1` when the offering only needs a basic "select at least one course" rule.
+</Callout>
 
 ### Academic Self-Enrollment Mode (Optional)
 
@@ -165,6 +170,7 @@ Desk visibility is staff-scope driven:
   - basket-group mappings must point to courses already present in `offering_courses`
   - duplicate `(course, basket_group)` mappings are blocked
   - `REQUIRE_GROUP_COVERAGE` rules require `basket_group`
+  - enrollment request validation treats an offering with no `enrollment_rules` as not configured, so requests remain invalid until at least one rule exists
   - catalog membership enforced unless explicit non-catalog exception
   - status restricted to `Planned|Active|Archived`
   - activity booking guardrails and readiness gates enforced server-side

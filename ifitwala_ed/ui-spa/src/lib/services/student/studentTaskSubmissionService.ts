@@ -14,12 +14,27 @@ import type {
 const GET_LATEST_SUBMISSION_METHOD = 'ifitwala_ed.api.task_submission.get_latest_submission'
 const SUBMIT_TASK_SUBMISSION_METHOD = 'ifitwala_ed.api.task_submission.create_or_resubmit'
 
+function assertLatestSubmissionContract(
+	payload: GetStudentTaskSubmissionResponse
+): GetStudentTaskSubmissionResponse {
+	if (payload === null) {
+		return null
+	}
+	if (!payload || typeof payload !== 'object' || !Array.isArray(payload.attachments)) {
+		throw new Error(
+			'Could not load your latest submission because the submission evidence payload is incomplete.'
+		)
+	}
+	return payload
+}
+
 export async function getStudentTaskSubmission(
 	payload: GetStudentTaskSubmissionRequest,
 ): Promise<GetStudentTaskSubmissionResponse> {
-	return apiMethod<GetStudentTaskSubmissionResponse>(GET_LATEST_SUBMISSION_METHOD, {
+	const response = await apiMethod<GetStudentTaskSubmissionResponse>(GET_LATEST_SUBMISSION_METHOD, {
 		outcome_id: payload.outcome_id,
 	})
+	return assertLatestSubmissionContract(response)
 }
 
 export async function submitStudentTaskSubmission(

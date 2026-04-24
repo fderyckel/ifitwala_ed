@@ -209,6 +209,15 @@ def create_delivery(payload):
         frappe.throw(_("Delivery payload must be a dict."))
     if is_checked(payload.get("group_submission")):
         frappe.throw(_("Group submission is paused: subgroup model not implemented."))
+    if payload.get("delivery_mode") != "Assess":
+        payload = {
+            **payload,
+            "grading_mode": None,
+            "allow_feedback": 0,
+            "max_points": None,
+            "grade_scale": None,
+            "rubric_scoring_strategy": None,
+        }
 
     planning_context = resolve_planning_context(
         payload.get("student_group"),

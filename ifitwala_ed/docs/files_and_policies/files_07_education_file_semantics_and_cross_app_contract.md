@@ -56,7 +56,7 @@ This reset keeps the education semantics narrow and reusable.
 
 | Purpose | Meaning | Typical workflow |
 | --- | --- | --- |
-| `learning_resource` | reusable or distributed teaching material | supporting material, task resources, course resources |
+| `learning_resource` | reusable or distributed teaching material | supporting material, task materials, course resources |
 | `assessment_submission` | learner-submitted work for evaluation | task submission attachments |
 | `assessment_feedback` | returned marked or feedback artifacts | feedback uploads |
 | `portfolio_evidence` | curated evidence intentionally kept in a portfolio | portfolio flows |
@@ -74,7 +74,6 @@ Each governed upload workflow must have one canonical `GovernedUploadSpec`.
 Suggested examples:
 
 - `supporting_material.file`
-- `task.resource`
 - `task.submission`
 - `admissions.applicant_document`
 - `admissions.applicant_profile_image`
@@ -184,7 +183,6 @@ This lets the apps converge on one narrow boundary instead of many stringly wrap
 | Workflow | Purpose | Owner example | Slot example |
 | --- | --- | --- | --- |
 | `supporting_material.file` | `learning_resource` | `Supporting Material` | workflow-defined resource slot |
-| `task.resource` | `learning_resource` | `Task` | workflow-defined resource slot |
 | `task.submission` | `assessment_submission` | `Task Submission` | `submission` |
 | `task.feedback_export` | `assessment_feedback` | `Task Submission` | `feedback_export__released__student` |
 | `admissions.applicant_document` | workflow-specific governed purpose | `Student Applicant` | applicant document slot |

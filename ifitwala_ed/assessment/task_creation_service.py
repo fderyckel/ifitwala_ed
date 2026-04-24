@@ -128,6 +128,8 @@ def _validate_payload(payload: dict) -> dict:
     grading_mode = payload.get("grading_mode")
     if grading_mode in ("", None):
         grading_mode = None
+    if delivery_mode != "Assess":
+        grading_mode = None
 
     if grading_mode is not None and grading_mode not in V1_GRADING_MODES:
         frappe.throw(_("Invalid grading mode for v1: {grading_mode}").format(grading_mode=grading_mode))
@@ -141,12 +143,12 @@ def _validate_payload(payload: dict) -> dict:
         except (TypeError, ValueError):
             frappe.throw(_("Max points must be a valid number."))
 
-    grade_scale = payload.get("grade_scale")
+    grade_scale = payload.get("grade_scale") if delivery_mode == "Assess" else None
     if grade_scale and grading_mode in (None, "None"):
         frappe.throw(_("Grade scale is only allowed when grading is enabled."))
 
-    criteria_rows = _normalize_criteria_rows(payload.get("criteria_rows"))
-    rubric_scoring_strategy = payload.get("rubric_scoring_strategy")
+    criteria_rows = _normalize_criteria_rows(payload.get("criteria_rows")) if delivery_mode == "Assess" else []
+    rubric_scoring_strategy = payload.get("rubric_scoring_strategy") if delivery_mode == "Assess" else None
     if rubric_scoring_strategy in ("", None):
         rubric_scoring_strategy = None
 
@@ -188,7 +190,7 @@ def _validate_payload(payload: dict) -> dict:
         "grading_mode": grading_mode,
         "rubric_scoring_strategy": rubric_scoring_strategy,
         "criteria_rows": criteria_rows,
-        "allow_feedback": to_check_value(payload.get("allow_feedback")),
+        "allow_feedback": to_check_value(payload.get("allow_feedback")) if delivery_mode == "Assess" else 0,
         "max_points": payload.get("max_points"),
         "grade_scale": grade_scale,
         "quiz_question_bank": payload.get("quiz_question_bank"),

@@ -242,7 +242,8 @@ class TestTaskApi(TestCase):
         )
         self.assertEqual(payload["visibility_scope"], "shared")
         self.assertEqual(payload["default_delivery_mode"], "Collect Work")
-        self.assertEqual(payload["grading_defaults"]["default_grading_mode"], "Completion")
+        self.assertEqual(payload["grading_defaults"]["default_grading_mode"], "None")
+        self.assertEqual(payload["grading_defaults"]["default_allow_feedback"], 0)
         self.assertEqual(payload["criteria_defaults"]["criteria_rows"], [])
         self.assertEqual(payload["title"], "Shared reading response")
 

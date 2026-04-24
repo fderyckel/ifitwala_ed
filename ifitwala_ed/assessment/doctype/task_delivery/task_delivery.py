@@ -199,13 +199,13 @@ class TaskDelivery(Document):
             self.require_grading = 0
             if self._has_field("allow_late_submission"):
                 self.allow_late_submission = 0
-            self._clear_grading_fields()
+            self._clear_grading_fields(clear_feedback=True)
             return
 
         if self.delivery_mode == "Collect Work":
             self.requires_submission = 1
             self.require_grading = 0
-            self._clear_grading_fields()
+            self._clear_grading_fields(clear_feedback=True)
             return
 
         if self.delivery_mode == "Assess":
@@ -270,7 +270,7 @@ class TaskDelivery(Document):
         if default_feedback in (0, 1, "0", "1", True, False):
             self.allow_feedback = 1 if int(default_feedback) else 0
 
-    def _clear_grading_fields(self, keep_mode=False):
+    def _clear_grading_fields(self, keep_mode=False, clear_feedback=False):
         if not keep_mode:
             self.grading_mode = None
         self.max_points = None
@@ -278,6 +278,8 @@ class TaskDelivery(Document):
         self.rubric_version = None
         if self._has_field("rubric_scoring_strategy"):
             self.rubric_scoring_strategy = None
+        if clear_feedback and self._has_field("allow_feedback"):
+            self.allow_feedback = 0
 
     def _validate_dates(self):
         available_from = get_datetime(self.available_from) if self.available_from else None

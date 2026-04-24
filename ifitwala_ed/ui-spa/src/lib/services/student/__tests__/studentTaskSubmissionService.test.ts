@@ -25,18 +25,38 @@ afterEach(() => {
 
 describe('studentTaskSubmissionService', () => {
 	it('uses the canonical read method for latest submission lookup', async () => {
-		apiMethodMock.mockResolvedValue({ submission_id: 'TSU-1' })
+		apiMethodMock.mockResolvedValue({
+			submission_id: 'TSU-1',
+			version: 1,
+			is_stub: false,
+			attachments: [],
+		})
 
-		await getStudentTaskSubmission({
+		const payload = await getStudentTaskSubmission({
 			outcome_id: 'OUT-1',
 		})
 
+		expect(payload?.attachments).toEqual([])
 		expect(apiMethodMock).toHaveBeenCalledWith(
 			'ifitwala_ed.api.task_submission.get_latest_submission',
 			{
 				outcome_id: 'OUT-1',
 			}
 		)
+	})
+
+	it('rejects malformed latest submission payloads before the page renders them', async () => {
+		apiMethodMock.mockResolvedValue({
+			submission_id: 'TSU-1',
+			version: 1,
+			is_stub: false,
+		})
+
+		await expect(
+			getStudentTaskSubmission({
+				outcome_id: 'OUT-1',
+			})
+		).rejects.toThrow('submission evidence payload is incomplete')
 	})
 
 	it('uses the canonical json method when no files are attached', async () => {

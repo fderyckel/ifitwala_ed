@@ -504,11 +504,16 @@ afterEach(() => {
 });
 
 describe('CreateTaskDeliveryOverlay', () => {
-	it('explains that comments are an additive gradebook option', async () => {
+	it('shows grading controls only for assessed deliveries', async () => {
 		mountOverlay();
 		await flushUi();
 
-		const text = document.body.textContent || '';
+		let text = document.body.textContent || '';
+		expect(text).not.toContain('Allow comment in gradebook?');
+
+		await clickButton('Collect and assess');
+
+		text = document.body.textContent || '';
 		expect(text).toContain('Allow comment in gradebook?');
 		expect(text).toContain('Comments stay separate from points, criteria, or completion.');
 	});
@@ -614,8 +619,8 @@ describe('CreateTaskDeliveryOverlay', () => {
 			task: 'TASK-SHARED-1',
 			student_group: 'GRP-1',
 			delivery_mode: 'Collect Work',
-			grading_mode: 'Completion',
-			allow_feedback: 1,
+			grading_mode: 'None',
+			allow_feedback: 0,
 		});
 		expect(createNewTaskCalls).toHaveLength(0);
 		expect(closeMock).toHaveBeenCalledWith('programmatic');

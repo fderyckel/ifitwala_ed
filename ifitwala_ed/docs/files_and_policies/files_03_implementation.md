@@ -247,7 +247,7 @@ Implemented fix:
 - the locked session/finalize DTOs now expose `workflow_id`, `contract_version`, and typed `workflow_result`
 - wrapper-specific extras such as `row_name`, admissions item metadata, or gallery captions must live under `workflow_result`, not as scattered top-level session/finalize keys
 - finalize and post-finalize dispatch now resolve by persisted `workflow_id` first and fall back to detection only for pre-registry sessions
-- task-resource uploads may create a new governed attachment row during post-finalize, so the resolved row key and slot must stay stable between wrapper-level folder resolution, generic session reconciliation, finalize validation, and post-finalize row mutation
+- task files now use `supporting_material.file`; legacy Task attachment rows are migrated once into `Supporting Material` plus `Material Placement` and are no longer a runtime upload surface
 
 Remaining cleanup:
 

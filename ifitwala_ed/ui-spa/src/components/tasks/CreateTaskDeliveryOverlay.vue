@@ -776,10 +776,7 @@
 									</section>
 
 									<!-- Step 5 -->
-									<section
-										v-if="taskMode === 'create' || selectedReusableTaskDetails"
-										class="card-panel space-y-4 p-5"
-									>
+									<section v-if="showGradingSection" class="card-panel space-y-4 p-5">
 										<div class="flex items-center gap-3">
 											<span class="chip">Step 5</span>
 											<h3 class="type-h3 text-ink">Grading (optional)</h3>
@@ -1659,7 +1656,7 @@ const deliveryOptions: Array<{ label: string; value: DeliveryMode; help: string 
 	{
 		label: 'Collect work',
 		value: 'Collect Work',
-		help: 'Students submit evidence; grading is optional.',
+		help: 'Students submit evidence without grading.',
 	},
 	{ label: 'Collect and assess', value: 'Assess', help: 'Collect evidence and grade it.' },
 ];
@@ -1924,6 +1921,11 @@ const activeTaskType = computed(() =>
 		? selectedReusableTaskDetails.value?.task_type || selectedReusableTask.value?.task_type || ''
 		: form.task_type
 );
+const showGradingSection = computed(
+	() =>
+		(taskMode.value === 'create' || Boolean(selectedReusableTaskDetails.value)) &&
+		form.delivery_mode === 'Assess'
+);
 const showLateSubmission = computed(() => form.delivery_mode !== 'Assign Only');
 const isQuizTask = computed(() => activeTaskType.value === 'Quiz');
 const canEditTaskMaterials = computed(() => createdTaskMode.value === 'create');
@@ -1962,6 +1964,15 @@ watch(
 		if (mode === 'Assign Only') {
 			form.allow_late_submission = false;
 		}
+		if (mode === 'Assess' && !gradingEnabled.value && !form.grading_mode) {
+			gradingEnabled.value = true;
+			form.grading_mode = 'Completion';
+			return;
+		}
+		if (mode !== 'Assess') {
+			setGradingEnabled(false);
+			form.allow_feedback = false;
+		}
 	}
 );
 
@@ -1970,7 +1981,8 @@ const canSubmit = computed(() => {
 	if (!form.delivery_mode) return false;
 	if (taskMode.value === 'reuse') {
 		if (!selectedReusableTaskDetails.value?.name) return false;
-		if (!gradingEnabled.value) return true;
+		if (!showGradingSection.value) return true;
+		if (!gradingEnabled.value) return false;
 		if (!form.grading_mode) return false;
 		if (form.grading_mode === 'Points' && !String(form.max_points || '').trim()) return false;
 		if (form.grading_mode === 'Criteria') {
@@ -1981,7 +1993,8 @@ const canSubmit = computed(() => {
 	}
 	if (!form.title.trim()) return false;
 	if (isQuizTask.value && !form.quiz_question_bank) return false;
-	if (!gradingEnabled.value) return true;
+	if (!showGradingSection.value) return true;
+	if (!gradingEnabled.value) return false;
 	if (!form.grading_mode) return false;
 	if (form.grading_mode === 'Points' && !String(form.max_points || '').trim()) return false;
 	if (form.grading_mode === 'Criteria') {
@@ -2150,6 +2163,7 @@ function setGradingEnabled(value: boolean) {
 		form.grading_mode = '';
 		form.rubric_scoring_strategy = '';
 		form.max_points = '';
+		form.allow_feedback = false;
 	}
 }
 
@@ -2507,14 +2521,20 @@ function normalizeTaskActionError(message: string) {
 
 function applyReusableTaskDefaults(task: TaskForDeliveryPayload) {
 	form.delivery_mode = (task.default_delivery_mode as DeliveryMode) || 'Assign Only';
-	form.allow_feedback = Boolean(task.grading_defaults?.default_allow_feedback);
+	form.allow_feedback = false;
 	form.max_points = '';
 	form.rubric_scoring_strategy = '';
 
 	const defaultGradingMode = task.grading_defaults?.default_grading_mode || '';
-	if (task.task_type !== 'Quiz' && defaultGradingMode && defaultGradingMode !== 'None') {
+	if (
+		form.delivery_mode === 'Assess' &&
+		task.task_type !== 'Quiz' &&
+		defaultGradingMode &&
+		defaultGradingMode !== 'None'
+	) {
 		gradingEnabled.value = true;
 		form.grading_mode = defaultGradingMode;
+		form.allow_feedback = Boolean(task.grading_defaults?.default_allow_feedback);
 		if (defaultGradingMode === 'Points' && task.grading_defaults?.default_max_points != null) {
 			form.max_points = String(task.grading_defaults.default_max_points);
 		}
@@ -2888,7 +2908,7 @@ async function submit() {
 			if (!form.title.trim()) missing.push('Title');
 			if (isQuizTask.value && !form.quiz_question_bank) missing.push('Quiz question bank');
 		}
-		if (gradingEnabled.value) {
+		if (showGradingSection.value && gradingEnabled.value) {
 			if (!form.grading_mode) missing.push('Grading mode');
 			if (form.grading_mode === 'Points' && !String(form.max_points || '').trim())
 				missing.push('Max points');
@@ -2919,7 +2939,7 @@ async function submit() {
 			allow_late_submission:
 				form.delivery_mode === 'Assign Only' ? 0 : form.allow_late_submission ? 1 : 0,
 			group_submission: form.group_submission ? 1 : 0,
-			allow_feedback: form.allow_feedback ? 1 : 0,
+			allow_feedback: showGradingSection.value && form.allow_feedback ? 1 : 0,
 		} as Record<string, any>;
 
 		if (props.prefillUnitPlan) {
@@ -2930,7 +2950,9 @@ async function submit() {
 		if (form.due_date) deliveryPayload.due_date = toFrappeDatetime(form.due_date);
 		if (form.lock_date) deliveryPayload.lock_date = toFrappeDatetime(form.lock_date);
 
-		if (isQuizTask.value) {
+		if (!showGradingSection.value) {
+			deliveryPayload.grading_mode = 'None';
+		} else if (isQuizTask.value) {
 			deliveryPayload.grading_mode = form.delivery_mode === 'Assess' ? 'Points' : 'None';
 		} else if (gradingEnabled.value) {
 			deliveryPayload.grading_mode = form.grading_mode;
@@ -2965,7 +2987,7 @@ async function submit() {
 				if (form.quiz_pass_percentage)
 					payload.quiz_pass_percentage = form.quiz_pass_percentage as any;
 			}
-			if (form.grading_mode === 'Criteria') {
+			if (showGradingSection.value && form.grading_mode === 'Criteria') {
 				payload.rubric_scoring_strategy = form.rubric_scoring_strategy || undefined;
 				payload.criteria_rows = taskCriteriaRows.value.map(row => ({
 					assessment_criteria: row.assessment_criteria,

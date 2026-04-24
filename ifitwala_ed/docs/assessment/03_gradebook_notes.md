@@ -3,7 +3,7 @@
 Status: **UX LOCK DRAFT (Thin)**
 Audience: Product + Engineering + Codex agents
 Goal: A teacher should grade and return work with **minimum clicks** and **zero doctype awareness**.
-Last updated: 2026-04-19
+Last updated: 2026-04-24
 
 ---
 
@@ -56,10 +56,19 @@ Secondary filters (collapsed by default):
 - Status filters: Missing, Late, Needs Review, Needs Moderation, Released
 - Teacher scope: My student groups / All permitted (role-gated)
 
+Overview-specific filters:
+
+- Graded scope: Graded | Not graded | All
+  - Default selected: **Graded**
+  - Graded maps to `Task Delivery.delivery_mode = "Assess"`
+  - Not graded maps to `Collect Work` plus `Assign Only`
+- Task type: Assignment, Homework, Quiz, Test, Project, Exam, and other current `Task.task_type` values available for the selected group
+
 UX rule:
 
 - Prevent “filter spaghetti” by collapsing advanced filters and showing active filter chips.
 - Student-group selection lives in this top context bar; do not duplicate it as a second permanent left-side browser.
+- Overview must keep the grid clean by hiding non-graded deliveries until the teacher explicitly selects Not graded or All.
 
 #### B) Delivery List (left rail or top row selector)
 
@@ -86,6 +95,7 @@ Grid is always:
 
 - Keeps the primary grading workflow fast.
 - Overview mode must lazy-load only when selected and must use one bounded aggregated read for the chosen student group.
+- Overview defaults to graded deliveries only. Non-graded `Collect Work` and `Assign Only` deliveries remain available through explicit Overview filters.
 
 Cell content rules (one glance, no clutter):
 
@@ -108,8 +118,11 @@ Cell content rules (one glance, no clutter):
   - primary: Complete checkbox
   - comment box: only when the delivery explicitly allows comments
 
-**Click target:** the whole cell.
-Click opens drawer.
+**Click targets:**
+
+- Task View cell / roster row: opens the drawer.
+- Overview cell: switches to Task View for that delivery and opens the drawer for that student.
+- Overview column header: switches to Task View for that delivery without selecting a student.
 
 Gradebook grid reads:
 

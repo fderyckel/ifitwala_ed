@@ -3,8 +3,8 @@ title: "Task: The Reusable Learning and Assessment Blueprint"
 slug: task
 category: Assessment
 doc_order: 4
-version: "1.8.3"
-last_change_date: "2026-04-20"
+version: "1.9.0"
+last_change_date: "2026-04-24"
 summary: "Author reusable learning tasks once, then deliver them to groups with the right grading mode, evidence expectations, and task-specific supporting materials."
 seo_title: "Task: The Reusable Learning and Assessment Blueprint"
 seo_description: "Author reusable learning tasks once, then deliver them to groups with the right grading mode, evidence expectations, and rubric strategy."
@@ -103,7 +103,6 @@ Test refs: `ifitwala_ed/utilities/test_governed_uploads_task_flows.py`
   - `title` (`Data`)
   - `default_course` (`Link` -> `Course`)
 - **Child tables**:
-  - `attachments` (`Attached Document`)
   - `task_criteria` (`Task Template Criterion`)
 - **Lifecycle hooks in controller**:
   - `before_validate`
@@ -116,8 +115,8 @@ Test refs: `ifitwala_ed/utilities/test_governed_uploads_task_flows.py`
 - A task may be authored directly for shared reuse or originate from one class workflow, but the current schema does not yet persist that distinction as a dedicated governance field.
 - `task.py` enforces curriculum alignment, duplicate criterion guards, and coherent default grading configuration.
 - `Task` also carries `default_allow_feedback`, which decides whether downstream deliveries should expose a comment box by default.
-- `task.js` filters `unit_plan` and quiz-bank choices by course context, clears stale curriculum links when course changes, and replaces generic Task resource uploads with the governed Task-resource action.
-- `task.py` now treats `attachments` as a legacy compatibility surface only: new reusable task materials live in `Supporting Material` and are shared onto the task through `Material Placement`.
+- `task.js` filters `unit_plan` and quiz-bank choices by course context, clears stale curriculum links when course changes, and routes Desk users to canonical Task Materials through `Material Placement`.
+- Task files and links live in `Supporting Material` and are shared onto the task through `Material Placement`; `Task` no longer carries an attachment child table.
 - The current task schema stops at `unit_plan`; it does not expose `class_session`.
 - `is_template` now controls whether the task is intentionally shared with the course team for reuse. It still does not promote the task into governed curriculum or common-assessment baseline space.
 - `assessment/task_creation_service.py` supports the overlay path that creates both `Task` and `Task Delivery` in one transaction.
