@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import json
+from pathlib import Path
 from unittest import TestCase
 
 from ifitwala_ed.api.attachment_previews import build_attachment_preview_item
@@ -70,3 +72,63 @@ class TestAttachmentPreviewItems(TestCase):
         self.assertNotIn("derivative_role", payload["preview_url"])
         self.assertNotIn("derivative_role", payload["open_url"])
         self.assertEqual(payload["download_url"], payload["open_url"])
+
+    def test_build_attachment_preview_item_hides_raw_private_signed_and_storage_urls(self):
+        payload = build_attachment_preview_item(
+            item_id="ATT-4",
+            owner_doctype="Task Submission",
+            owner_name="TSU-1",
+            file_id="FILE-1",
+            display_name="Unsafe",
+            thumbnail_url="/private/files/thumb.webp",
+            preview_url="https://storage.example.com/object?X-Amz-Signature=abc",
+            open_url="files/aa/bb/object.pdf",
+            download_url="derivatives/aa/bb/object.webp",
+        )
+        serialized = json.dumps(payload, sort_keys=True)
+
+        self.assertIsNone(payload["thumbnail_url"])
+        self.assertIsNone(payload["preview_url"])
+        self.assertIsNone(payload["open_url"])
+        self.assertIsNone(payload["download_url"])
+        self.assertFalse(payload["can_preview"])
+        self.assertFalse(payload["can_open"])
+        self.assertFalse(payload["can_download"])
+        self.assertNotIn("/private/", serialized)
+        self.assertNotIn("X-Amz-Signature", serialized)
+        self.assertNotIn("files/aa/bb", serialized)
+        self.assertNotIn("derivatives/aa/bb", serialized)
+
+    def test_public_preview_docs_and_spa_contracts_do_not_expose_derivative_roles(self):
+        repo_root = Path(__file__).resolve().parents[2]
+        docs_roots = (
+            repo_root / "ifitwala_ed" / "docs" / "files_and_policies",
+            repo_root / "ifitwala_ed" / "docs" / "admission",
+            repo_root / "ifitwala_ed" / "docs" / "hr",
+            repo_root / "ifitwala_ed" / "docs" / "website",
+        )
+        spa_root = repo_root / "ifitwala_ed" / "ui-spa" / "src"
+        forbidden_doc_snippets = ("`thumb`", "`card`", "`viewer_preview`", "`pdf_card`")
+        forbidden_public_contract_snippets = (
+            "derivative_role",
+            "derivative_roles",
+            "viewer_preview",
+            "pdf_card",
+        )
+        failures: list[str] = []
+
+        for root in docs_roots:
+            for path in root.rglob("*.md"):
+                text = path.read_text()
+                for snippet in forbidden_doc_snippets:
+                    if snippet in text:
+                        failures.append(f"{path.relative_to(repo_root)} contains {snippet}")
+
+        for suffix in ("*.ts", "*.vue"):
+            for path in spa_root.rglob(suffix):
+                text = path.read_text()
+                for snippet in forbidden_public_contract_snippets:
+                    if snippet in text:
+                        failures.append(f"{path.relative_to(repo_root)} contains {snippet}")
+
+        self.assertEqual([], failures)

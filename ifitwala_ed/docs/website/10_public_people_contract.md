@@ -129,7 +129,7 @@ Public people surfaces must use governed employee image derivatives first.
 Current runtime behavior:
 
 - people payloads use `build_public_employee_image_variants(...)`
-- website cards should prefer `thumb`, `card`, and `medium`
+- website cards should prefer compact/card/richer preview variants through semantic server-returned fields
 - guest delivery goes through `open_public_employee_image(...)`, which validates publication scope and resolves a short-lived Drive preview grant for the approved derivative only
 - public website people surfaces do not fall back to the original full-size employee image
 

@@ -1,7 +1,7 @@
 # Governed Files Implementation Status And Remediation Order
 
 Status: Current runtime and gap register
-Date: 2026-04-22
+Date: 2026-04-25
 Code refs:
 - `ifitwala_ed/utilities/governed_uploads.py`
 - `ifitwala_ed/utilities/file_management.py`
@@ -148,11 +148,8 @@ Corrected behavior:
 
 - Drive is now the only derivative authority
 - Ed no longer creates governed sibling `File` rows for profile-image variants
-- Ed still exposes compatibility variant keys such as `profile_image_thumb`, `profile_image_card`, and `profile_image_medium`, but those keys now resolve to derivative roles on the current `profile_image` Drive file:
-  - `profile_image_thumb` -> `thumb`
-  - `profile_image_card` -> `card`
-  - `profile_image_medium` -> `viewer_preview`
-- `thumb` is the compact avatar derivative (`160px` max width); compact identity/avatar surfaces should request `thumb` only and should not silently substitute `card` or `viewer_preview`
+- Ed still exposes compatibility variant keys such as `profile_image_thumb`, `profile_image_card`, and `profile_image_medium`, but those keys are semantic display variants resolved by Drive on the current `profile_image` file. Ed docs and SPA contracts must not name Drive's internal derivative roles.
+- compact identity/avatar surfaces should request the compact profile-image variant only and should not silently substitute larger preview variants
 
 Why the old model was wrong:
 
@@ -166,7 +163,7 @@ Implemented fix:
 - Ed synchronous derivative generation is removed
 - profile-image derivative scheduling now goes through the Drive preview pipeline
 - when Ed roster/avatar surfaces detect missing current-version profile-image derivatives, they request Drive regeneration through the explicit media wrapper seam rather than importing Drive derivative services directly
-- the legacy profile-image recovery path is patch-driven, not a permanent runtime fallback; the repair patches walk Employee, Student, Guardian, and admissions applicant/guardian profile-image rows, rebuild or resync missing governed profile images through the public Drive upload seam, and materialize refreshed `thumb`, `card`, and `viewer_preview` derivatives for current governed profile images during migrate so avatar surfaces stop falling back to originals after legacy repair; Student rows are normalized through `ifitwala_ed.patches.backfill_student_profile_images`
+- the legacy profile-image recovery path is patch-driven, not a permanent runtime fallback; the repair patches walk Employee, Student, Guardian, and admissions applicant/guardian profile-image rows, rebuild or resync missing governed profile images through the public Drive upload seam, and materialize refreshed compact/card/richer preview variants for current governed profile images during migrate so avatar surfaces stop falling back to originals after legacy repair; Student rows are normalized through `ifitwala_ed.patches.backfill_student_profile_images`
 - Ed profile-image and public-website media reads now depend on public Drive API wrappers only; they do not import Drive integration services directly and they do not fall back to generic Drive owner-doc grant APIs for those Ed-owned surfaces
 - small roster/avatar surfaces such as gradebook, attendance, and student-log lookup now consume governed profile-image derivatives only and do not fall back to original-file URLs when no derivative is ready
 - guardian portal-chrome avatars and student portal identity now consume governed profile-image derivatives only and never fall back to the original file on those compact identity surfaces
@@ -246,13 +243,13 @@ Implemented fix:
 - new session creation fails closed without `workflow_id`
 - the locked session/finalize DTOs now expose `workflow_id`, `contract_version`, and typed `workflow_result`
 - wrapper-specific extras such as `row_name`, admissions item metadata, or gallery captions must live under `workflow_result`, not as scattered top-level session/finalize keys
-- finalize and post-finalize dispatch now resolve by persisted `workflow_id` first and fall back to detection only for pre-registry sessions
+- finalize and post-finalize dispatch now resolve only by persisted `workflow_id`
+- sessions without persisted workflow metadata are legacy-invalid at finalize time; migration/backfill must materialize explicit workflow metadata through a patch or retire the session
 - task files now use `supporting_material.file`; legacy Task attachment rows are migrated once into `Supporting Material` plus `Material Placement` and are no longer a runtime upload surface
 
 Remaining cleanup:
 
 - some wrapper-specific service modules still exist for public ergonomics
-- a few historical finalize sessions may still rely on workflow detection fallback instead of persisted workflow metadata
 - some historical audit/discussion notes may still mention the retired `File Classification` and Ed-side derivative model and must not be treated as runtime design guidance
 - some compatibility-heavy write helpers still fetch the native `File` projection after finalize, so `file_id` remains part of the locked generic finalize DTO until those reads are fully retired
 
@@ -323,9 +320,10 @@ Collapse authority.
 Required outcomes:
 
 - Drive metadata becomes sole governance authority
-- completed in code
+- implemented for governed DTO/open/preview/erasure decisions; not complete for native `File` projection retirement
 - cleanup patch `ifitwala_ed.patches.backfill_drive_authority_for_classified_files` materializes authoritative Drive rows for historical governed files before deletion
 - cleanup patch `ifitwala_ed.patches.remove_file_classification_rows` removes historical rows only after matching `Drive File` coverage exists
+- remaining native `File` projection removal requires an explicit schema/workflow retirement phase because current Drive DocTypes and some Ed post-upload writes still carry `file_id`
 
 ### Phase 5
 
@@ -347,7 +345,8 @@ Required outcomes:
 - Ed owns one versioned `GovernedUploadSpec` registry in `ifitwala_ed/integrations/drive/workflow_specs.py`
 - Drive persists `workflow_id` and `contract_version` with the session upload contract
 - Drive persists the spec-owned `is_private` value with the session upload contract; UI callers and wrapper services are not a second privacy authority
-- finalize and post-finalize dispatch resolve by persisted workflow metadata rather than branch cascades
+- finalize and post-finalize dispatch resolve by persisted workflow metadata rather than branch cascades or workflow detection
+- finalize-time workflow detection fallback for pre-registry sessions is retired; legacy session repair belongs in explicit migration/backfill patches only
 - wrapper services now create sessions through `workflow_id` plus workflow-specific identifiers internally, while preserving the current public wrapper endpoints
 
 ### Phase 7

@@ -157,6 +157,27 @@ If a guardian's email belongs to a staff member (someone with a staff portal rol
 
 *Guardian read access is scoped to their own linked students through the portal.
 
+## Guardian Data and School Demographics
+
+Guardian records feed the **Student Demographic Analytics** dashboard (staff analytics surface). The following guardian-derived charts are currently active:
+
+| Chart | Source Field | What It Shows |
+|-------|--------------|---------------|
+| **Guardian Employment Sector** | `Employment Sector` | Breakdown of guardian industries (e.g., Healthcare, Education, Government) |
+| **Financial Guardian Spread** | `Is Financial Guardian` + relation | Which parent/guardian role handles billing (Mother, Father, or Other) |
+
+The dashboard also reserves space for additional guardian demographics that are not yet populated because the corresponding fields do not exist on the Guardian DocType:
+
+- **Guardian Nationality (Top)**
+- **Preferred Communication Language**
+- **Guardian Residence (Country)**
+- **Guardian Residence (City)**
+- **Guardian Diversity Score** (KPI)
+
+<Callout type="info" title="Dashboards respect school scope">
+Demographics aggregates are scoped to the selected school filter. Guardian counts reflect links to active students within that scope.
+</Callout>
+
 ## Related Docs
 
 <RelatedDocs

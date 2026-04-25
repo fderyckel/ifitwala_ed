@@ -9,7 +9,6 @@ from frappe import _
 from ifitwala_ed.integrations.drive.workflow_specs import (
     build_upload_session_context,
     get_upload_spec,
-    iter_upload_specs,
     normalize_workflow_id,
 )
 
@@ -143,31 +142,12 @@ def resolve_finalize_contract(upload_session_doc) -> dict[str, Any]:
     if workflow_id:
         return _build_finalize_contract(upload_session_doc, workflow_id)
 
-    for spec in iter_upload_specs():
-        authoritative = spec.validate_finalize_context(upload_session_doc)
-        if authoritative is None:
-            continue
-        authoritative_context = dict(authoritative)
-        if spec.is_private is not None:
-            authoritative_context["is_private"] = int(bool(spec.is_private))
-        return {
-            "workflow": spec.workflow_id,
-            "workflow_id": spec.workflow_id,
-            "contract_version": spec.contract_version,
-            "authoritative_context": authoritative_context,
-            "attached_field_override": spec.resolve_attached_field_override(upload_session_doc),
-            "context_override": spec.resolve_context_override(upload_session_doc, authoritative_context),
-            "binding_role": spec.resolve_binding_role(upload_session_doc, authoritative_context),
-        }
-
     return dict(_EMPTY_FINALIZE_CONTRACT)
 
 
 def run_post_finalize(upload_session_doc, created_file) -> dict[str, Any]:
     metadata = _load_session_workflow_metadata(upload_session_doc)
     workflow_id = metadata.get("workflow_id")
-    if not workflow_id:
-        workflow_id = normalize_workflow_id(resolve_finalize_contract(upload_session_doc).get("workflow_id"))
     if workflow_id:
         return get_upload_spec(workflow_id).run_post_finalize(upload_session_doc, created_file)
 

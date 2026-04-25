@@ -3,7 +3,7 @@ title: "Reporting Cycle: Controlling When Grades Become Official Term Truth"
 slug: reporting-cycle
 category: Assessment
 doc_order: 10
-version: "1.0.1"
+version: "1.0.2"
 last_change_date: "2026-04-25"
 summary: "Define reporting scope and lifecycle, then generate/freeze term results with explicit cutoffs and governance controls."
 seo_title: "Reporting Cycle: Controlling When Grades Become Official Term Truth"
@@ -15,6 +15,7 @@ seo_description: "Define reporting scope and lifecycle, then generate/freeze ter
 ## Before You Start (Prerequisites)
 
 - Create `School`, `Academic Year`, and `Term` records first for cycle scope.
+- Configure an `Assessment Scheme` if the term should use explicit category, task-weight, total-points, criteria, or manual-final calculation policy.
 - Ensure grading activity exists in that scope (`Task Outcome` data) before recalculation/report generation.
 - Set cutoff and instructor-edit-close dates before locking or publishing a cycle.
 
@@ -27,6 +28,7 @@ A reporting cycle is where mutable grading activity becomes institutional record
 ## Where It Is Used Across the ERP
 
 - Drives creation and lifecycle of [**Course Term Result**](/docs/en/course-term-result/).
+- Snapshots the resolved [**Assessment Scheme**](/docs/en/assessment-scheme/) policy used for calculation.
 - API surfaces:
   - `ifitwala_ed.api.term_reporting.get_cycle_summary`
   - `ifitwala_ed.api.term_reporting.get_course_term_results`
@@ -39,9 +41,10 @@ A reporting cycle is where mutable grading activity becomes institutional record
 ## Lifecycle and Linked Documents
 
 1. Define cycle scope (`school`, `academic_year`, `term`, optional `program`) first.
-2. Set cutoff and teacher edit-close windows before opening operational reporting steps.
-3. Run course-result recalculation and generate student reports through named cycle actions.
-4. Lock/publish when governance sign-off is complete and term outcomes are final.
+2. Optionally select a default assessment scheme; active course/program-scoped schemes can still override by specificity during calculation.
+3. Set cutoff and teacher edit-close windows before opening operational reporting steps.
+4. Run course-result recalculation and generate student reports through named cycle actions.
+5. Lock/publish when governance sign-off is complete and term outcomes are final.
 
 <Callout type="info" title="Governance checkpoint">
 Treat status changes in reporting cycles as governance events with clear owners, not routine UI clicks.
@@ -61,7 +64,7 @@ Treat status changes in reporting cycles as governance events with clear owners,
 ## Related Docs
 
 <RelatedDocs
-  slugs="course-term-result,task-outcome,grade-scale"
+  slugs="assessment-scheme,course-term-result,task-outcome,grade-scale"
   title="Related Docs"
 />
 
@@ -77,10 +80,12 @@ Treat status changes in reporting cycles as governance events with clear owners,
 
 - **DocType**: `Reporting Cycle` (`ifitwala_ed/assessment/doctype/reporting_cycle/`)
 - **Scope links**: `school`, `academic_year`, `term`, optional `program`
+- **Assessment policy fields**: `assessment_scheme`, `assessment_calculation_method`, `assessment_scheme_snapshot`
 - **Validation rules** (`reporting_cycle.py`):
   - uniqueness guard by scope + optional name/program context
   - `teacher_edit_close` required before `Locked`/`Published`
   - `task_cutoff_date` required before opening/processing lifecycle states
+  - retired schemes are blocked; program-specific schemes require program-specific cycles; course-specific schemes are resolved during calculation rather than selected directly on the cycle
 - **Whitelisted document methods**:
   - `recalculate_course_results` (queued long job)
   - `generate_student_reports`

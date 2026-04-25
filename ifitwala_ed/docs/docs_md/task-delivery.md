@@ -3,7 +3,7 @@ title: "Task Delivery: Assigning Work to a Real Class"
 slug: task-delivery
 category: Assessment
 doc_order: 5
-version: "1.8.3"
+version: "1.8.4"
 last_change_date: "2026-04-25"
 summary: "Assign a reusable task to a specific class through its class teaching plan, with dates, grading mode, optional class-session context, and scalable outcome generation."
 seo_title: "Task Delivery: Assigning Work to a Real Class"
@@ -29,7 +29,7 @@ Test refs: None (scaffold only: `ifitwala_ed/assessment/doctype/task_delivery/te
 - Create the parent `Task` first.
 - Create the `Student Group` first, with roster and context aligned to the teaching situation.
 - Ensure the class has an active `Class Teaching Plan`. Creating a course-based `Student Group` now provisions one automatically when a single governing `Course Plan` can be resolved; otherwise initialize or select the class plan in Class Planning before assigning work. Manual Class Planning initialization now creates the class plan as `Active`, and draft or archived plans cannot receive assigned work.
-- Prepare grading setup first (`Grade Scale`, and task criteria readiness if using criteria grading mode).
+- Prepare grading setup first (`Grade Scale`, assessment categories for assessed evidence, and task criteria readiness if using criteria grading mode).
 
 ## Where It Is Used Across the ERP
 
@@ -40,6 +40,7 @@ Test refs: None
 - Parent context for [**Task Outcome**](/docs/en/task-outcome/) rows.
 - Referenced by [**Task Submission**](/docs/en/task-submission/) and [**Task Contribution**](/docs/en/task-contribution/).
 - Criteria-mode deliveries feed [**Task Rubric Version**](/docs/en/task-rubric-version/).
+- Assessed deliveries can carry `assessment_category` and optional `reporting_weight` for scheme-aware term reporting.
 - `/staff/gradebook` reads delivery rows through `ifitwala_ed/api/gradebook.py`.
 - Guardian home chips read due-task and upcoming-assessment context from `ifitwala_ed/api/guardian_home.py`.
 - The staff overlay `ui-spa/src/components/tasks/CreateTaskDeliveryOverlay.vue` creates new-task deliveries through `assessment/task_creation_service.py` and reuses existing tasks through `api/task.py::create_task_delivery()`.
@@ -76,7 +77,7 @@ Test refs: `ifitwala_ed/assessment/doctype/task_delivery/test_task_delivery.py`
 ## Related Docs
 
 <RelatedDocs
-  slugs="task,class-session,task-outcome,task-submission,task-contribution,task-rubric-version,task-rubric-criterion"
+  slugs="task,class-session,assessment-category,assessment-scheme,task-outcome,task-submission,task-contribution,task-rubric-version,task-rubric-criterion"
   title="Related Documentation"
 />
 
@@ -105,6 +106,7 @@ Test refs: `ifitwala_ed/assessment/doctype/task_delivery/test_task_delivery.py`,
   - `student_group`
   - `class_teaching_plan`
   - `grade_scale`
+  - `assessment_category`
   - `rubric_version`
   - `course`
   - `academic_year`
@@ -116,6 +118,8 @@ Test refs: `ifitwala_ed/assessment/doctype/task_delivery/test_task_delivery.py`,
 - `before_validate()` stamps denormalized context from `Student Group`, checks task/course alignment, validates the required `class_teaching_plan` anchor, and then validates any optional `class_session` anchor.
 - `validate()` enforces delivery-mode coherence, date rules, criteria requirements, and the current hard block on `group_submission`.
 - `allow_feedback` is an additive delivery policy. It does not replace grading mode; it only governs whether gradebook comments are allowed for that delivery.
+- `assessment_category` is evidence classification for assessed deliveries. It does not compute grades by itself.
+- `reporting_weight` is optional and only affects term-reporting methods that explicitly count task weights.
 - `Task Delivery` is where class-local variation lives: dates, release policy, feedback/comment policy, roster materialization, and optional session linkage.
 - The assign-existing workflow creates a new delivery only. It does not edit the reusable `Task`, and it does not reopen shared task materials from the assignment success state.
 - `on_submit()` is the canonical place for:

@@ -3,7 +3,7 @@ title: "Course Term Result: The Frozen Record of Term Performance"
 slug: course-term-result
 category: Assessment
 doc_order: 11
-version: "1.0.2"
+version: "1.0.3"
 last_change_date: "2026-04-25"
 summary: "Store one immutable term-grade record per student-course-cycle, including calculated values, overrides, and audit-safe context fields."
 seo_title: "Course Term Result: The Frozen Record of Term Performance"
@@ -28,6 +28,7 @@ Course Term Result intentionally duplicates context fields (student, course, pro
 
 - Produced by [**Reporting Cycle**](/docs/en/reporting-cycle/) orchestration.
 - Generated from aggregated [**Task Outcome**](/docs/en/task-outcome/) truth in `assessment/term_reporting.py`.
+- Stores calculation components so educators and later parents can understand how the result was produced.
 - Queried by `ifitwala_ed.api.term_reporting.get_course_term_results`.
 - Linked into student reporting presentation:
   - `Student Term Report Course` child rows reference Course Term Result.
@@ -36,8 +37,9 @@ Course Term Result intentionally duplicates context fields (student, course, pro
 
 1. Create and prepare a `Reporting Cycle` for the exact school/year/term scope.
 2. Run cycle recalculation so results are generated from official `Task Outcome` truth.
-3. Apply approved overrides only where policy requires human adjustment.
-4. Publish/consume results in student term-reporting artifacts and downstream analytics.
+3. Review component rows when a scheme uses categories, task weights, total points, criteria, or manual-final evidence review.
+4. Apply approved overrides only where policy requires human adjustment.
+5. Publish/consume results in student term-reporting artifacts and downstream analytics.
 
 <Callout type="warning" title="Source of truth boundary">
 `Course Term Result` is a generated/frozen reporting record. Do not use it as a substitute for day-to-day grading workflows.
@@ -56,7 +58,7 @@ Course Term Result intentionally duplicates context fields (student, course, pro
 ## Related Docs
 
 <RelatedDocs
-  slugs="reporting-cycle,task-outcome,grade-scale"
+  slugs="assessment-scheme,reporting-cycle,task-outcome,grade-scale"
   title="Related Docs"
 />
 
@@ -73,6 +75,8 @@ Course Term Result intentionally duplicates context fields (student, course, pro
 - **DocType**: `Course Term Result` (`ifitwala_ed/assessment/doctype/course_term_result/`)
 - **Key links**:
   - `reporting_cycle`, `student`, `program_enrollment`, `course`, `program`, `academic_year`, `term`, `instructor`, `grade_scale`, `moderated_by`, `calculated_by`
+- **Child tables**:
+  - `components` (`Course Term Result Component`)
 - **Validation** (`course_term_result.py`):
   - `is_override` kept in sync with `override_grade_value`
 - **Primary producer**:
@@ -86,4 +90,5 @@ Course Term Result intentionally duplicates context fields (student, course, pro
 - **Architecture guarantees (embedded from term-reporting notes)**:
   - one row represents one `student × course × term × reporting cycle` fact
   - values are materialized from official Task Outcome truth and are not live-recomputed by UI views
+  - component rows are an explainability aid for the frozen result, not a separate source of grading truth
   - override paths retain original calculated values for auditability

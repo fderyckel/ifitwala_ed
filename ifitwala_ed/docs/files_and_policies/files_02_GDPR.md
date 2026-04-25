@@ -5,16 +5,20 @@ Last updated: 2026-04-25
 Code refs:
 - `../ifitwala_drive/ifitwala_drive/services/audit/erasure.py`
 - `../ifitwala_drive/ifitwala_drive/api/erasure.py`
+- `ifitwala_ed/integrations/drive/erasure.py`
 - `ifitwala_ed/integrations/drive/workflow_specs.py`
 - `ifitwala_ed/api/file_access.py`
-Test refs: No complete Ed-side DPO/retention workflow tests exist yet.
+Test refs:
+- `../ifitwala_drive/ifitwala_drive/tests/test_drive_versioning_and_erasure.py`
+- `ifitwala_ed/integrations/drive/test_erasure.py`
 
 ## Bottom Line
 
 - Governed file erasure must be driven by Drive metadata, not folder paths.
 - Applicants and Students remain separate data-subject states with different retention and erasure posture.
-- Drive currently owns file erasure execution; Ed still needs an explicit legal/business workflow for erasure decisions.
-- This note is a technical architecture contract, not legal advice. GDPR, Thailand PDPA, and other jurisdiction-specific retention rules need counsel review before implementation.
+- Drive owns file erasure execution and itemized erased/retained/skipped audit output.
+- Ed now has mechanical subject-erasure helpers for creating Drive erasure requests and passing Ed decisions to Drive, but Ed still needs an explicit persistent legal/business workflow for approvals and case management.
+- This note is a technical architecture contract, not legal advice. GDPR, Thailand PDPA, and other jurisdiction-specific retention rules need counsel review before destructive operational rollout.
 
 ## 1. Scope
 
@@ -79,20 +83,27 @@ Implemented today:
 - `Drive File`, version, binding, derivative, and access-event records are the file authority
 - Ed read surfaces return stable server-owned `open_url`, `preview_url`, and `thumbnail_url` values instead of raw storage paths
 - Drive has an erasure execution service that can operate against Drive file metadata
+- Drive erasure execution can be constrained by metadata filters for owner, attached document, slot, purpose, retention policy, organization, school, and data class
+- Drive erasure execution returns itemized audit output for `erased`, `retained`, and `skipped` files, including the reason for each outcome
+- Ed has a mechanical erasure bridge that creates subject-level Drive erasure requests and sends Ed decision items to Drive; it keeps counsel-reviewed school/legal policy as explicit input instead of embedding legal policy in code
 
-Not implemented as a complete Ed-side legal workflow:
+## 5. Phase 3 Still To Implement
+
+These items are part of the Phase 3 erasure product scope but are not done yet. They remain implementation work until matching DocTypes, permissions, APIs, tests, and operating procedures exist:
 
 - DPO role and approval workflow
-- Ed-owned erasure request/case workflow
+- persistent Ed-owned erasure request/case workflow
 - organization/school retention configuration workflow
 - immutable Ed-side GDPR erasure log
 - applicant erasure orchestration across all non-file admissions records
 - student pseudonymization orchestration across academic, safeguarding, finance, and communication records
+- product UI for creating, approving, executing, and reviewing subject-level erasure cases
+- permission matrix for who may request, approve, execute, and audit erasure
 - counsel-approved jurisdiction-specific retention matrix
 
 Any earlier documentation that marked those items as done was stale. These are implementation gaps until matching DocTypes, permissions, APIs, tests, and operating procedures exist.
 
-## 5. Future Workflow Guardrails
+## 6. Future Workflow Guardrails
 
 When the Ed-side erasure workflow is implemented, it must:
 
@@ -104,13 +115,15 @@ When the Ed-side erasure workflow is implemented, it must:
 - fail closed when retention law, subject identity, tenant scope, or file authority cannot be proven
 - avoid automatic destructive erasure until retention rules, approval roles, and auditability are implemented and tested
 
-## 6. Retired Concepts
+Current code mechanics support the file-erasure part of this workflow. They do not replace the counsel-reviewed policy matrix or the future Ed DPO/case workflow.
+
+## 7. Retired Concepts
 
 `File Classification` is retired from the live governed-file architecture and must not be used as runtime authority for new behavior.
 
 Legacy helper names such as `erase_applicant_data(...)` or `pseudonymize_student(...)` are not active API contracts in the current runtime. If future work introduces named erasure or pseudonymization endpoints, those endpoints must be designed from the current Drive metadata model and documented with code/test refs at that time.
 
-## 7. Documentation Rules For New Work
+## 8. Documentation Rules For New Work
 
 New file, attachment, preview, or erasure docs must preserve these statements:
 

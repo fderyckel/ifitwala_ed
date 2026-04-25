@@ -66,7 +66,7 @@ Test refs: `ifitwala_ed/admission/doctype/student_applicant/test_student_applica
 - Link Guardian <-> Student in `Student.guardians`
 - Sync `Student.siblings` from shared explicit guardians carried over from admissions
 - Link tracked guardian `Contact` rows to `Student Applicant`, `Guardian`, and promoted `Student`
-- When an explicit applicant guardian row carries a photo, materialize a Guardian-owned governed `profile_image` source and canonical guardian derivatives (`thumb`, `card`, `medium`) for portal/avatar use
+- When an explicit applicant guardian row carries a photo, materialize a Guardian-owned governed `profile_image` source and canonical compact/card/richer preview variants for portal/avatar use
 
 ## 6. Explicit Non-Effects
 

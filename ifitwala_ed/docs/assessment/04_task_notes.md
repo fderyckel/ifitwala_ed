@@ -80,6 +80,7 @@ It owns:
 - `delivery_mode`
 - availability and deadline fields
 - grading snapshot fields
+- assessment evidence classification fields (`assessment_category`, optional `reporting_weight`)
 - additive comment policy snapshot (`allow_feedback`)
 - optional `class_session`
 - denormalized class context such as `course`, `academic_year`, and `school`
@@ -228,6 +229,8 @@ Current enforced behavior:
   - `requires_submission = 1` means learners hand in work through the platform
   - `requires_submission = 0` means the teacher records marks and feedback for in-class, paper, oral, lab, studio, or exam work
   - grading snapshot fields are set from task defaults where applicable
+  - `assessment_category` classifies evidence for scheme-aware gradebook/reporting aggregation
+  - `reporting_weight` is optional and only used by reporting methods that explicitly count task weights
 
 ### 2.4 Quiz behavior
 

@@ -40,6 +40,37 @@ class ReportingCycle(Document):
         if self.status in ("Open", "Calculated", "Locked", "Published") and not self.task_cutoff_date:
             frappe.throw(_("Task Cutoff Date must be set before opening a reporting cycle."))
 
+        self._validate_assessment_scheme_scope()
+
+    def _validate_assessment_scheme_scope(self):
+        if not getattr(self, "assessment_scheme", None):
+            return
+
+        scheme = frappe.db.get_value(
+            "Assessment Scheme",
+            self.assessment_scheme,
+            ["school", "academic_year", "program", "course", "status"],
+            as_dict=True,
+        )
+        if not scheme:
+            frappe.throw(_("Assessment Scheme was not found."))
+        if scheme.get("status") == "Retired":
+            frappe.throw(_("Retired Assessment Schemes cannot be used for Reporting Cycles."))
+        if scheme.get("school") and self.school and scheme.get("school") != self.school:
+            frappe.throw(_("Assessment Scheme must belong to the same School as the Reporting Cycle."))
+        if scheme.get("academic_year") and self.academic_year and scheme.get("academic_year") != self.academic_year:
+            frappe.throw(_("Assessment Scheme must belong to the same Academic Year as the Reporting Cycle."))
+        if scheme.get("program") and not self.program:
+            frappe.throw(_("Program-specific Assessment Schemes require a Program-specific Reporting Cycle."))
+        if scheme.get("program") and self.program and scheme.get("program") != self.program:
+            frappe.throw(_("Assessment Scheme must belong to the same Program as the Reporting Cycle."))
+        if scheme.get("course"):
+            frappe.throw(
+                _(
+                    "Course-specific Assessment Schemes are resolved during calculation, not selected on Reporting Cycle."
+                )
+            )
+
     @frappe.whitelist()
     def recalculate_course_results(self):
         frappe.enqueue(

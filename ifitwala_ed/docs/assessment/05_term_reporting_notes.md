@@ -4,7 +4,7 @@
 >
 > This document summarizes the architectural decisions for **End‑of‑Term / Term Results Reporting** in Ifitwala_Ed. It is written for **humans and coding agents**. Any implementation that violates these principles is a regression.
 >
-> Last updated: 2026-01-07
+> Last updated: 2026-04-25
 
 ---
 
@@ -26,6 +26,7 @@ No on‑the‑fly recalculation. No silent drift.
 | ------------------ | ------------------------------------------------ |
 | Task               | Assessment definitions & delivery intent         |
 | Gradebook          | Live aggregation & analytics                     |
+| Assessment Scheme  | Calculation policy for term reporting            |
 | Reporting Cycle    | Temporal + policy control                        |
 | Course Term Result | Frozen academic truth                            |
 | Term Report        | Presentation only                                |
@@ -48,6 +49,21 @@ A Reporting Cycle is uniquely defined by:
 * (Optional) Program
 
 It also carries a **human‑readable identity** (`name_label`).
+
+### Assessment Scheme Selection
+
+`Reporting Cycle.assessment_scheme` is an optional default scheme.
+During calculation, `term_reporting.py` also loads active Assessment Schemes scoped to the same school/year/program and resolves the most specific matching scheme for each course result:
+
+1. course-specific
+2. program-specific
+3. academic-year-specific
+4. school default
+
+If the Reporting Cycle has an explicit default scheme, it participates in the same resolution and wins only ties at the same scope specificity.
+
+This keeps the educator-facing setup simple while allowing different courses or programs to use different calculation designs in the same term.
+The selected scheme definitions are snapshotted onto the Reporting Cycle at recalculation time.
 
 ### Temporal Controls
 
@@ -153,10 +169,24 @@ Each Course Term Result stores:
 * grade_value
 * task_counted
 * total_weight
+* component rows explaining the calculation
 * calculated_on
 * calculated_by
 
 Once calculated, these values are **never auto‑recomputed**.
+
+### Supported Calculation Methods
+
+Current runtime supports these scheme methods:
+
+* **Weighted Categories** — average outcomes inside each active category, then apply category weights.
+* **Total Points** — divide earned points by possible points from `Task Delivery.max_points`.
+* **Weighted Tasks** — average task outcome scores using `Task Delivery.reporting_weight`.
+* **Category + Task Weight Hybrid** — use task weights inside each category, then apply category weights.
+* **Criteria-Based** — average official criterion points from `Task Outcome Criterion`.
+* **Manual Final** — list evidence for review while leaving the final result to governed override/manual entry.
+
+No custom formula engine, drop-lowest rule engine, or hidden gradebook-specific calculation is part of the current contract.
 
 ---
 
@@ -210,7 +240,7 @@ No UI logic. No permissions hacks. No side effects.
 
 ## 9. Configuration as Data
 
-Reporting rules are progressively externalized (JSON / config modules):
+Reporting rules are externalized through `Assessment Scheme` records:
 
 * Enables school‑ or program‑specific policies
 * Avoids branching logic explosion
@@ -244,8 +274,9 @@ Course Term Results are generated from:
 - Task Outcome (official fields only)
 - Filtered by Reporting Cycle scope + grading_status policy
 - Filtered by Reporting Cycle.task_cutoff_date (via Task Delivery dates)
+- Interpreted through the resolved Assessment Scheme calculation method
 
-Task-level details (rubrics, marks, feedback) are never embedded here.
+Rubric descriptors, submission evidence, and feedback text are never embedded here.
 
 This is intentional:
 - Tasks may change after reporting

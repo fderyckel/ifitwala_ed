@@ -53,6 +53,28 @@ def _term_reporting_extra_modules():
     }
 
 
+def _patch_single_course_context(module, *, course="COURSE-1", program="PROG-1"):
+    module._load_program_enrollments = lambda _ctx: {
+        "PE-1": types.SimpleNamespace(
+            name="PE-1",
+            student="STU-1",
+            program=program,
+            academic_year="AY-2026",
+            school="SCH-1",
+        )
+    }
+    module._load_program_enrollment_courses = lambda _pe_by_name: {
+        ("STU-1", course): {
+            "program_enrollment": "PE-1",
+            "student": "STU-1",
+            "course": course,
+            "program": program,
+            "academic_year": "AY-2026",
+            "school": "SCH-1",
+        }
+    }
+
+
 class TestTermReporting(TestCase):
     def test_upsert_course_term_results_loads_only_changed_docs(self):
         with stubbed_frappe(extra_modules=_term_reporting_extra_modules()) as frappe:
@@ -307,6 +329,294 @@ class TestTermReporting(TestCase):
         self.assertEqual(aggregate.task_counted, 2)
         self.assertEqual(aggregate.scored_weight, 0.0)
         self.assertEqual(aggregate.note_flags, ["Criteria-only outcome", "Criteria-only outcome"])
+
+    def test_weighted_category_scheme_calculates_component_breakdown(self):
+        with stubbed_frappe(extra_modules=_term_reporting_extra_modules()):
+            module = import_fresh("ifitwala_ed.assessment.term_reporting")
+            _patch_single_course_context(module)
+
+            ctx = {
+                "name": "RC-1",
+                "school": "SCH-1",
+                "academic_year": "AY-2026",
+                "term": "TERM-1",
+                "assessment_scheme": "ASC-1",
+                "assessment_scheme_config": {
+                    "name": "ASC-1",
+                    "calculation_method": "Weighted Categories",
+                    "categories": [
+                        {
+                            "assessment_category": "Formative",
+                            "weight": 40,
+                            "active": True,
+                            "include_in_term_report": True,
+                            "include_in_final_grade": True,
+                            "report_label": "Practice",
+                            "sort_order": 1,
+                        },
+                        {
+                            "assessment_category": "Summative",
+                            "weight": 60,
+                            "active": True,
+                            "include_in_term_report": True,
+                            "include_in_final_grade": True,
+                            "report_label": "Evidence",
+                            "sort_order": 2,
+                        },
+                    ],
+                },
+                "active_assessment_scheme_configs": [],
+            }
+
+            aggregates = module.aggregate_outcomes_to_course_results(
+                ctx,
+                [
+                    module.OutcomeRow(
+                        name="OUT-1",
+                        student="STU-1",
+                        course="COURSE-1",
+                        program="PROG-1",
+                        task_delivery="TD-1",
+                        grading_mode="Points",
+                        rubric_scoring_strategy=None,
+                        official_score=80,
+                        official_grade_value=None,
+                        grade_scale=None,
+                        procedural_status=None,
+                        due_date=None,
+                        lock_date=None,
+                        assessment_category="Formative",
+                    ),
+                    module.OutcomeRow(
+                        name="OUT-2",
+                        student="STU-1",
+                        course="COURSE-1",
+                        program="PROG-1",
+                        task_delivery="TD-2",
+                        grading_mode="Points",
+                        rubric_scoring_strategy=None,
+                        official_score=90,
+                        official_grade_value=None,
+                        grade_scale=None,
+                        procedural_status=None,
+                        due_date=None,
+                        lock_date=None,
+                        assessment_category="Summative",
+                    ),
+                ],
+            )
+
+        aggregate = aggregates[("PE-1", "COURSE-1")]
+        payload = module._course_term_result_payload(ctx, aggregate)
+        self.assertEqual(payload["numeric_score"], 86.0)
+        self.assertEqual(payload["total_weight"], 100.0)
+        self.assertEqual([component.label for component in aggregate.components], ["Practice", "Evidence"])
+        self.assertEqual([component.weight for component in aggregate.components], [40.0, 60.0])
+
+    def test_total_points_scheme_uses_possible_points_as_denominator(self):
+        with stubbed_frappe(extra_modules=_term_reporting_extra_modules()):
+            module = import_fresh("ifitwala_ed.assessment.term_reporting")
+            _patch_single_course_context(module)
+
+            ctx = {
+                "name": "RC-1",
+                "school": "SCH-1",
+                "academic_year": "AY-2026",
+                "term": "TERM-1",
+                "assessment_scheme": None,
+                "assessment_scheme_config": None,
+                "active_assessment_scheme_configs": [
+                    {
+                        "name": "ASC-COURSE-1",
+                        "calculation_method": "Total Points",
+                        "school": "SCH-1",
+                        "academic_year": "AY-2026",
+                        "program": "PROG-1",
+                        "course": "COURSE-1",
+                        "categories": [],
+                    }
+                ],
+            }
+
+            aggregates = module.aggregate_outcomes_to_course_results(
+                ctx,
+                [
+                    module.OutcomeRow(
+                        name="OUT-1",
+                        student="STU-1",
+                        course="COURSE-1",
+                        program="PROG-1",
+                        task_delivery="TD-1",
+                        grading_mode="Points",
+                        rubric_scoring_strategy=None,
+                        official_score=8,
+                        official_grade_value=None,
+                        grade_scale=None,
+                        procedural_status=None,
+                        due_date=None,
+                        lock_date=None,
+                        max_points=10,
+                    ),
+                    module.OutcomeRow(
+                        name="OUT-2",
+                        student="STU-1",
+                        course="COURSE-1",
+                        program="PROG-1",
+                        task_delivery="TD-2",
+                        grading_mode="Points",
+                        rubric_scoring_strategy=None,
+                        official_score=45,
+                        official_grade_value=None,
+                        grade_scale=None,
+                        procedural_status=None,
+                        due_date=None,
+                        lock_date=None,
+                        max_points=50,
+                    ),
+                ],
+            )
+
+        aggregate = aggregates[("PE-1", "COURSE-1")]
+        payload = module._course_term_result_payload(ctx, aggregate)
+        self.assertEqual(aggregate.assessment_scheme, "ASC-COURSE-1")
+        self.assertAlmostEqual(payload["numeric_score"], 88.3333333333)
+        self.assertEqual(payload["total_weight"], 60.0)
+        self.assertEqual(aggregate.components[0].label, "Total Points")
+
+    def test_weighted_tasks_scheme_uses_delivery_reporting_weight(self):
+        with stubbed_frappe(extra_modules=_term_reporting_extra_modules()):
+            module = import_fresh("ifitwala_ed.assessment.term_reporting")
+            _patch_single_course_context(module)
+
+            ctx = {
+                "name": "RC-1",
+                "school": "SCH-1",
+                "academic_year": "AY-2026",
+                "term": "TERM-1",
+                "assessment_scheme": "ASC-1",
+                "assessment_scheme_config": {
+                    "name": "ASC-1",
+                    "calculation_method": "Weighted Tasks",
+                    "categories": [],
+                },
+                "active_assessment_scheme_configs": [],
+            }
+
+            aggregates = module.aggregate_outcomes_to_course_results(
+                ctx,
+                [
+                    module.OutcomeRow(
+                        name="OUT-1",
+                        student="STU-1",
+                        course="COURSE-1",
+                        program="PROG-1",
+                        task_delivery="TD-1",
+                        grading_mode="Points",
+                        rubric_scoring_strategy=None,
+                        official_score=70,
+                        official_grade_value=None,
+                        grade_scale=None,
+                        procedural_status=None,
+                        due_date=None,
+                        lock_date=None,
+                        reporting_weight=1,
+                    ),
+                    module.OutcomeRow(
+                        name="OUT-2",
+                        student="STU-1",
+                        course="COURSE-1",
+                        program="PROG-1",
+                        task_delivery="TD-2",
+                        grading_mode="Points",
+                        rubric_scoring_strategy=None,
+                        official_score=90,
+                        official_grade_value=None,
+                        grade_scale=None,
+                        procedural_status=None,
+                        due_date=None,
+                        lock_date=None,
+                        reporting_weight=3,
+                    ),
+                ],
+            )
+
+        aggregate = aggregates[("PE-1", "COURSE-1")]
+        payload = module._course_term_result_payload(ctx, aggregate)
+        self.assertEqual(payload["numeric_score"], 85.0)
+        self.assertEqual([component.weight for component in aggregate.components], [1.0, 3.0])
+        self.assertEqual([component.component_type for component in aggregate.components], ["Task", "Task"])
+
+    def test_criteria_based_scheme_counts_official_criterion_rows(self):
+        with stubbed_frappe(extra_modules=_term_reporting_extra_modules()) as frappe:
+
+            def fake_get_all(doctype, filters=None, fields=None, order_by=None, **kwargs):
+                if doctype == "Task Outcome Criterion":
+                    return [
+                        {"parent": "OUT-1", "assessment_criteria": "CRIT-1", "level_points": 5},
+                        {"parent": "OUT-2", "assessment_criteria": "CRIT-1", "level_points": 7},
+                        {"parent": "OUT-2", "assessment_criteria": "CRIT-2", "level_points": 4},
+                    ]
+                return []
+
+            frappe.get_all = fake_get_all
+            module = import_fresh("ifitwala_ed.assessment.term_reporting")
+            _patch_single_course_context(module)
+
+            ctx = {
+                "name": "RC-1",
+                "school": "SCH-1",
+                "academic_year": "AY-2026",
+                "term": "TERM-1",
+                "assessment_scheme": "ASC-1",
+                "assessment_scheme_config": {
+                    "name": "ASC-1",
+                    "calculation_method": "Criteria-Based",
+                    "categories": [],
+                },
+                "active_assessment_scheme_configs": [],
+            }
+
+            aggregates = module.aggregate_outcomes_to_course_results(
+                ctx,
+                [
+                    module.OutcomeRow(
+                        name="OUT-1",
+                        student="STU-1",
+                        course="COURSE-1",
+                        program="PROG-1",
+                        task_delivery="TD-1",
+                        grading_mode="Criteria",
+                        rubric_scoring_strategy="Separate Criteria",
+                        official_score=None,
+                        official_grade_value=None,
+                        grade_scale=None,
+                        procedural_status=None,
+                        due_date=None,
+                        lock_date=None,
+                    ),
+                    module.OutcomeRow(
+                        name="OUT-2",
+                        student="STU-1",
+                        course="COURSE-1",
+                        program="PROG-1",
+                        task_delivery="TD-2",
+                        grading_mode="Criteria",
+                        rubric_scoring_strategy="Sum Total",
+                        official_score=None,
+                        official_grade_value=None,
+                        grade_scale=None,
+                        procedural_status=None,
+                        due_date=None,
+                        lock_date=None,
+                    ),
+                ],
+            )
+
+        aggregate = aggregates[("PE-1", "COURSE-1")]
+        payload = module._course_term_result_payload(ctx, aggregate)
+        self.assertEqual(payload["numeric_score"], 5.0)
+        self.assertEqual([component.component_key for component in aggregate.components], ["CRIT-1", "CRIT-2"])
+        self.assertEqual([component.raw_score for component in aggregate.components], [6.0, 4.0])
 
     def test_generate_student_term_reports_batch_loads_existing_reports_and_skips_unchanged(self):
         with stubbed_frappe(extra_modules=_term_reporting_extra_modules()) as frappe:

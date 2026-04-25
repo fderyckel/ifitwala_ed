@@ -57,6 +57,9 @@ Surface-specific notes must not weaken `files_01`, `files_03`, `files_07`, or `f
 - Do not expose Drive derivative roles as product API or SPA DTO fields.
 - Do not add schema changes until wrapper-thinning and seam tests prove they are required.
 - Do not reintroduce `File Classification`, raw `File.file_url`, or raw `/private/...` paths as authority for new governed flows.
+- Do not restore finalize-time workflow detection for sessions missing persisted `workflow_id`.
+- Do not put migration/backfill repair logic on the normal runtime path.
+- Do not add new post-upload reads that depend on native `File` compatibility projections when Drive identity is available.
 
 ## Policy-System Read Order
 

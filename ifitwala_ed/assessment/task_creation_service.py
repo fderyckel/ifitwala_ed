@@ -88,6 +88,8 @@ def _validate_payload(payload: dict) -> dict:
         "group_submission",
         "grading_mode",
         "rubric_scoring_strategy",
+        "assessment_category",
+        "reporting_weight",
         "criteria_rows",
         "allow_feedback",
         "max_points",
@@ -203,6 +205,8 @@ def _validate_payload(payload: dict) -> dict:
         "group_submission": payload.get("group_submission"),
         "grading_mode": grading_mode,
         "rubric_scoring_strategy": rubric_scoring_strategy,
+        "assessment_category": payload.get("assessment_category") if delivery_mode == "Assess" else None,
+        "reporting_weight": payload.get("reporting_weight") if delivery_mode == "Assess" else None,
         "criteria_rows": criteria_rows,
         "allow_feedback": to_check_value(payload.get("allow_feedback")) if delivery_mode == "Assess" else 0,
         "max_points": payload.get("max_points"),
@@ -234,6 +238,8 @@ def create_task_and_delivery(
     unit_plan=None,
     grading_mode=None,
     rubric_scoring_strategy=None,
+    assessment_category=None,
+    reporting_weight=None,
     criteria_rows=None,
     allow_feedback=None,
     max_points=None,
@@ -273,6 +279,8 @@ def create_task_and_delivery(
         "group_submission": group_submission,
         "grading_mode": grading_mode,
         "rubric_scoring_strategy": rubric_scoring_strategy,
+        "assessment_category": assessment_category,
+        "reporting_weight": reporting_weight,
         "criteria_rows": criteria_rows,
         "allow_feedback": allow_feedback,
         "max_points": max_points,
@@ -399,6 +407,10 @@ def create_task_and_delivery(
             delivery.rubric_scoring_strategy = data.get("rubric_scoring_strategy")
         if data.get("grade_scale"):
             delivery.grade_scale = data["grade_scale"]
+        if data.get("assessment_category"):
+            delivery.assessment_category = data["assessment_category"]
+        if data.get("reporting_weight") not in (None, ""):
+            delivery.reporting_weight = data["reporting_weight"]
 
         delivery.insert(ignore_permissions=True)
         delivery.flags.ignore_permissions = True

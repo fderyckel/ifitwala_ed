@@ -10,6 +10,8 @@
   "academic_year",
   "term",
   "program",
+  "assessment_scheme",
+  "assessment_calculation_method",
   "column_break_akfd",
   "name_label",
   "task_cutoff_date",
@@ -23,7 +25,8 @@
   "section_break_n5fk",
   "allow_grade_override",
   "require_teacher_comment",
-  "require_advisor_comment"
+  "require_advisor_comment",
+  "assessment_scheme_snapshot"
  ],
  "fields": [
   {
@@ -53,6 +56,19 @@
    "fieldtype": "Link",
    "label": "Program",
    "options": "Program"
+  },
+  {
+   "fieldname": "assessment_scheme",
+   "fieldtype": "Link",
+   "in_filter": 1,
+   "label": "Assessment Scheme",
+   "options": "Assessment Scheme"
+  },
+  {
+   "fieldname": "assessment_calculation_method",
+   "fieldtype": "Data",
+   "label": "Assessment Calculation Method",
+   "read_only": 1
   },
   {
    "fieldname": "column_break_akfd",
@@ -131,12 +147,19 @@
    "fieldname": "require_advisor_comment",
    "fieldtype": "Data",
    "label": "Require Advisor Comment"
+  },
+  {
+   "fieldname": "assessment_scheme_snapshot",
+   "fieldtype": "Long Text",
+   "hidden": 1,
+   "label": "Assessment Scheme Snapshot",
+   "read_only": 1
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-12-09 22:04:17",
+ "modified": "2026-04-25 14:58:07.000000",
  "modified_by": "Administrator",
  "module": "Assessment",
  "name": "Reporting Cycle",

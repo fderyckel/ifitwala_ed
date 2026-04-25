@@ -3,7 +3,7 @@ title: "Assessment Category: Classifying Learning Work Clearly"
 slug: assessment-category
 category: Assessment
 doc_order: 1
-version: "1.0.1"
+version: "1.0.2"
 last_change_date: "2026-04-25"
 summary: "Define meaningful assessment buckets (Formative, Summative, Project, etc.) so teaching teams, analytics, and reporting speak the same language."
 seo_title: "Assessment Category: Classifying Learning Work Clearly"
@@ -15,7 +15,7 @@ seo_description: "Define meaningful assessment buckets (Formative, Summative, Pr
 ## Before You Start (Prerequisites)
 
 - Agree the institution-wide assessment taxonomy (for example formative/summative/project) first.
-- Create categories before configuring `Course`, `Program`, and `Task` records that reference them.
+- Create categories before configuring assessment schemes or assessed task deliveries that reference them.
 - Keep naming stable once categories are in active reporting use.
 
 Not every piece of student work should be treated the same. `Assessment Category` gives schools a shared vocabulary for classwork, projects, summatives, and other evidence types so decisions stay consistent across teams.
@@ -28,7 +28,8 @@ When categories are clean, your curriculum team can compare like-for-like eviden
 
 - [**Course**](/docs/en/course/) via `Course Assessment Category` child rows.
 - [**Program**](/docs/en/program/) via `Program Assessment Category` child rows.
-- [**Task**](/docs/en/task/) classification and downstream gradebook filtering logic.
+- [**Assessment Scheme**](/docs/en/assessment-scheme/) category rows for reporting policy.
+- [**Task Delivery**](/docs/en/task-delivery/) classification for assessed evidence.
 - Desk Workspaces:
   - `Curriculum` workspace shortcut (`ifitwala_ed/curriculum/workspace/curriculum/curriculum.json`)
   - `Admin` workspace shortcut (`ifitwala_ed/school_settings/workspace/admin/admin.json`)
@@ -36,8 +37,8 @@ When categories are clean, your curriculum team can compare like-for-like eviden
 ## Lifecycle and Linked Documents
 
 1. Define categories first as shared language for assessment design.
-2. Attach categories in curriculum setup (`Course` and `Program`) before task rollout.
-3. Classify each `Task` using the same vocabulary to keep gradebook and analytics comparable.
+2. Attach categories to `Assessment Scheme` rows when the scheme uses category-based calculation.
+3. Classify assessed `Task Delivery` records using the same vocabulary to keep gradebook and reporting comparable.
 4. Review category usage periodically to avoid overlap and duplicate semantics.
 
 <Callout type="info" title="Governance tip">
@@ -58,7 +59,7 @@ Treat category names as policy vocabulary, not teacher-specific labels, so repor
 ## Related Docs
 
 <RelatedDocs
-  slugs="assessment-criteria,grade-scale,task"
+  slugs="assessment-scheme,assessment-criteria,grade-scale,task-delivery"
   title="Related Docs"
 />
 
@@ -80,6 +81,7 @@ Treat category names as policy vocabulary, not teacher-specific labels, so repor
   - no custom client script behavior beyond default form/list
   - maintained as a reference dataset for curriculum and assessment records
 - **Linked child-table ecosystem**:
+  - `Assessment Scheme Category`
   - `Course Assessment Category`
   - `Program Assessment Category`
 - **Architecture guarantees (embedded from assessment doctrine)**:

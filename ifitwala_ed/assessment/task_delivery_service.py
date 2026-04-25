@@ -238,6 +238,8 @@ def create_delivery(payload):
         "max_points",
         "grade_scale",
         "rubric_scoring_strategy",
+        "assessment_category",
+        "reporting_weight",
         "available_from",
         "due_date",
         "lock_date",

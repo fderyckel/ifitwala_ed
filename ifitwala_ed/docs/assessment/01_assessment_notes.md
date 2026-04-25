@@ -43,7 +43,32 @@ Categories describe *what a task is*, not *how it is graded*.
 
 ---
 
-### 2.2 Assessment Criteria
+### 2.2 Assessment Scheme
+
+**Purpose:** Define the reporting calculation policy a school uses to convert assessment evidence into term results.
+
+An Assessment Scheme:
+
+* belongs to one school
+* may be scoped by academic year, program, and course
+* defines one calculation method
+* owns category rows and weights when the method is category-based
+
+Current supported calculation methods:
+
+* Weighted Categories
+* Total Points
+* Weighted Tasks
+* Category + Task Weight Hybrid
+* Criteria-Based
+* Manual Final
+
+`Task Delivery` stores the evidence classification (`assessment_category`) and optional task reporting weight (`reporting_weight`).
+It does **not** store the reporting scheme. Schemes are reporting policy and are resolved during term reporting from the Reporting Cycle default plus active school/year/program/course-scoped schemes.
+
+---
+
+### 2.3 Assessment Criteria
 
 **Purpose:** Define *what is being assessed*.
 
@@ -58,7 +83,7 @@ Criteria are **curriculum artifacts**, not task artifacts.
 
 ---
 
-### 2.3 Assessment Criteria Levels
+### 2.4 Assessment Criteria Levels
 
 **Purpose:** Describe performance bands for a criterion.
 
@@ -111,6 +136,7 @@ Intervals must be:
 Tasks define evidence intent; Delivery turns that intent into Outcomes and Submissions.
 Task supports multiple criteria via `task_criteria`, and Delivery snapshots those rows for rubric grading.
 Delivery applies `rubric_scoring_strategy` (defaulted from Task) to decide whether totals are computed.
+For assessed deliveries, Delivery may also carry `assessment_category` and `reporting_weight` for future gradebook/reporting aggregation.
 Evidence may be offline and is represented via a **Submission stub** when `requires_submission = 1`; otherwise grading can occur without a submission.
 
 Current curriculum boundary:
@@ -250,6 +276,7 @@ At the Reporting Cycle boundary:
 * Gradebook values are *read*
 * Results are *materialized* into Course Term Results
 * Grade Scales are *resolved and frozen*
+* Assessment Schemes are snapshotted on the Reporting Cycle for audit
 
 After this point:
 
@@ -265,6 +292,7 @@ After this point:
 | ----------------------- | -------------------------- |
 | Criteria definition     | Assessment Criteria        |
 | Performance descriptors | Assessment Criteria Levels |
+| Reporting calculation   | Assessment Scheme          |
 | Numeric → grade mapping | Grade Scale + Intervals    |
 | Evidence                | Tasks                      |
 | Live aggregation        | Gradebook                  |

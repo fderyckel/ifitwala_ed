@@ -3,7 +3,7 @@ title: "Task: The Reusable Learning and Assessment Blueprint"
 slug: task
 category: Assessment
 doc_order: 4
-version: "1.9.1"
+version: "1.9.2"
 last_change_date: "2026-04-25"
 summary: "Author reusable learning tasks once, then deliver them to groups with the right grading mode, evidence expectations, and task-specific supporting materials."
 seo_title: "Task: The Reusable Learning and Assessment Blueprint"
@@ -27,7 +27,7 @@ Code refs: `ifitwala_ed/assessment/doctype/task/task.json`, `ifitwala_ed/assessm
 Test refs: None (scaffold only: `ifitwala_ed/assessment/doctype/task/test_task.py`)
 
 - Create the default `Course` first because `default_course` is required.
-- Prepare supporting assessment masters first: `Assessment Category`, `Grade Scale`, and reusable `Assessment Criteria`.
+- Prepare supporting assessment masters first: `Grade Scale` and reusable `Assessment Criteria`. Assessment categories are applied on assessed `Task Delivery` records for reporting classification.
 - Stabilize task design before creating downstream `Task Delivery` records.
 
 ## Where It Is Used Across the ERP

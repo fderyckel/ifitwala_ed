@@ -137,19 +137,16 @@ Backend linkage:
 - file: `ifitwala_ed/hr/doctype/employee/employee.py`
 - `ifitwala_ed.utilities.image_utils` owns canonical Employee image variant resolution and Drive-aware derivative scheduling.
 - governed Employee uploads create one canonical governed `profile_image` Drive file.
-- Drive generates the actual derivative artifacts for that file using derivative roles:
-  - `thumb`
-  - `card`
-  - `viewer_preview`
+- Drive generates the actual derivative artifacts for that file. Concrete derivative role names are Drive-internal and must not appear in Ed/browser DTO contracts.
 - Ed still exposes compatibility variant keys:
   - `profile_image_thumb`
   - `profile_image_card`
   - `profile_image_medium`
-  These are resolved from Drive derivative roles, not from separate governed derivative files.
+  These are semantic display variants resolved through Drive, not separate governed derivative files.
 - `Employee.employee_image` remains the latest canonical Employee image reference.
 - the canonical Employee profile-image workflow is private. Public website staff photos are delivered through the separate public-people read contract and guest-safe public employee-image route, not through the authenticated employee file route.
 - consumers that need a smaller image must resolve the canonical compatibility variants instead of guessing file paths.
-- `update_user()` syncs linked `User.user_image` from the preferred Employee variant (`thumb` first, then `card`, `medium`, original).
+- `update_user()` syncs linked `User.user_image` from the preferred Employee variant in compact-to-larger order, with original only as the last compatibility fallback.
 
 Current read consumers using canonical variant resolution:
 - Employee form avatar (`employee.js`)
@@ -163,7 +160,7 @@ Org chart visibility contract:
 - the staff org chart defaults to `All Organizations`, not the viewer's base organization
 - employee profile-image access for the org chart and Morning Brief staff-birthday surface is available to any authenticated active employee; base-organization scope does not gate those thumbnail/card reads
 - avatar-sized Employee surfaces such as the org chart and Morning Brief birthday cards resolve Employee image derivatives in this order: `profile_image_thumb` -> `profile_image_card` -> `profile_image_medium`; they must not fall back to the original full-size image on those surfaces
-- those compatibility variant keys resolve to Drive derivative roles (`thumb`, `card`, `viewer_preview`) on the current governed `profile_image` file
+- those compatibility variant keys resolve to Drive-managed derivatives on the current governed `profile_image` file; Ed/browser contracts should keep the semantic variant keys and not expose Drive's internal role names
 - when a governed Employee derivative is stored in `ifitwala_drive`, staff image consumers still resolve it through the named Employee file route, which now keeps Ed as the permission boundary for governed profile-image grants instead of relying on raw `Employee` DocType read access in Drive
 - Morning Brief staff-birthday cards must resolve against the current governed Employee profile-image authority even if an older compatibility `File` id has rotated out; stale `file=` links are a bug
 - changes to employee image display permissions must update the employee image route tests and the affected consumer contract tests in the same change

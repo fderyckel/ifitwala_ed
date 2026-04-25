@@ -155,7 +155,7 @@ When an admissions guardian row upgrades into a real `Guardian` identity:
 
 - the admissions-side guardian image may be used as the source
 - Ed creates a new governed guardian `profile_image` Drive record
-- Drive owns derivative scheduling for `thumb`, `card`, and `viewer_preview`
+- Drive owns derivative scheduling for the compact, card/list, and richer preview display variants
 - the resulting `Guardian.guardian_image` points to the new guardian-owned compatibility `File` row
 
 ## 7. GDPR Stance

@@ -19,6 +19,10 @@ _OFFICE_EXTENSIONS = {
     "odp",
 }
 _ARCHIVE_EXTENSIONS = {"zip", "rar", "7z", "tar", "gz", "bz2", "xz"}
+_RAW_STORAGE_PATH_PREFIXES = ("private/", "files/", "derivatives/", "tmp/")
+_S3_SIGNED_QUERY_KEYS = {"x-amz-signature", "x-amz-credential", "x-amz-security-token"}
+_GCS_SIGNED_QUERY_KEYS = {"x-goog-signature", "x-goog-credential", "x-goog-algorithm"}
+_AZURE_SIGNED_QUERY_KEYS = {"sv", "se", "sp", "sr", "sig"}
 
 
 def clean_text(value: Any) -> str | None:
@@ -28,17 +32,46 @@ def clean_text(value: Any) -> str | None:
     return text or None
 
 
+def has_raw_storage_path(text: str, parsed) -> bool:
+    normalized_path = (parsed.path or text).strip().lower().lstrip("/")
+    if parsed.scheme or parsed.netloc:
+        return normalized_path.startswith("private/")
+    return normalized_path.startswith(_RAW_STORAGE_PATH_PREFIXES)
+
+
+def has_provider_signed_url_query(parsed) -> bool:
+    query_keys = {key.lower() for key, _value in parse_qsl(parsed.query, keep_blank_values=True)}
+    if query_keys & _S3_SIGNED_QUERY_KEYS:
+        return True
+    if query_keys & _GCS_SIGNED_QUERY_KEYS:
+        return True
+    if {"googleaccessid", "signature"} <= query_keys:
+        return True
+    return _AZURE_SIGNED_QUERY_KEYS <= query_keys
+
+
 def clean_action_url(value: Any) -> str | None:
     text = clean_text(value)
-    if not text or "derivative_role" not in text:
-        return text
+    if not text:
+        return None
 
     try:
         parsed = urlsplit(text)
     except Exception:
         return text
 
-    if parsed.scheme or parsed.netloc or not parsed.path.startswith("/api/method/"):
+    if has_raw_storage_path(text, parsed):
+        return None
+
+    if parsed.scheme or parsed.netloc:
+        if has_provider_signed_url_query(parsed):
+            return None
+        return text
+
+    if "derivative_role" not in text:
+        return text
+
+    if not parsed.path.startswith("/api/method/"):
         return text
 
     query_pairs = [

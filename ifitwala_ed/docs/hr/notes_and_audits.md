@@ -29,7 +29,7 @@ Employee profile images uploaded via governed flow were saved, but the left colu
 3. **Current runtime note**: this postmortem section describes the earlier repair path. The current architecture has moved beyond it:
    - Drive owns derivative generation
    - Employee uploads create one canonical `profile_image` governed file
-   - Ed compatibility keys `profile_image_thumb`, `profile_image_card`, and `profile_image_medium` now resolve to Drive derivative roles on that original file
+   - Ed compatibility keys `profile_image_thumb`, `profile_image_card`, and `profile_image_medium` now resolve to Drive-managed display variants on that original file
 4. **UI canonicalization**: Employee form uses only canonical derivative URLs returned by the server (no client-side path guessing).
 5. **Variant priority**: Employee image loading order is `profile_image_thumb` → `profile_image_card` → `profile_image_medium` → `profile_image` (original only as last fallback).
 
@@ -44,7 +44,7 @@ Employee profile images uploaded via governed flow were saved, but the left colu
 1. **Employee image URL vs storage**:
    - Compare `Employee.employee_image` with managed-storage accessibility, not just local disk presence.
 2. **Drive derivative presence**:
-   - Ensure the current governed `profile_image` has the expected Drive derivative rows (`thumb`, `card`, `viewer_preview`) for the current version.
+   - Ensure the current governed `profile_image` has the expected compact, card/list, and richer preview derivative rows for the current version.
 3. **UI source**:
    - Verify UI loads from `get_employee_image_variants()` and not from guessed paths.
 

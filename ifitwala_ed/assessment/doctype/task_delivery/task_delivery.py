@@ -29,6 +29,7 @@ class TaskDelivery(Document):
         self._apply_delivery_mode_defaults()
         self._validate_dates()
         self._validate_delivery_mode_coherence()
+        self._validate_assessment_reporting_context()
         self._validate_group_submission()
 
     def on_submit(self):
@@ -327,6 +328,21 @@ class TaskDelivery(Document):
                     frappe.throw(_("Criteria grading requires Task criteria."))
                 if self._has_field("rubric_scoring_strategy") and not self.rubric_scoring_strategy:
                     frappe.throw(_("Rubric Scoring Strategy is required for Criteria grading."))
+
+    def _validate_assessment_reporting_context(self):
+        if self._has_field("reporting_weight") and self.reporting_weight not in (None, ""):
+            try:
+                reporting_weight = float(self.reporting_weight or 0)
+            except Exception:
+                frappe.throw(_("Reporting Weight must be a number."))
+            if reporting_weight < 0:
+                frappe.throw(_("Reporting Weight cannot be negative."))
+
+        if self.delivery_mode != "Assess":
+            if self._has_field("assessment_category"):
+                self.assessment_category = None
+            if self._has_field("reporting_weight"):
+                self.reporting_weight = None
 
     def _is_quiz_task(self):
         defaults = self._get_task_defaults()
