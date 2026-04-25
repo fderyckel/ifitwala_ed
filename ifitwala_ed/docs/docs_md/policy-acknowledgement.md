@@ -3,12 +3,11 @@ title: "Policy Acknowledgement: Immutable Consent Evidence"
 slug: policy-acknowledgement
 category: Governance
 doc_order: 3
-version: "2.0.4"
+version: "2.0.5"
 last_change_date: "2026-04-25"
 summary: "Create permanent, tamper-proof records of who acknowledged which policy version, when, and under what context—forming your legal audit trail across staff, guardians, students, and applicants."
 seo_title: "Policy Acknowledgement: Immutable Consent Evidence"
 seo_description: "Learn how Policy Acknowledgements create permanent, tamper-proof records of policy consent with electronic signatures and audit trails."
----
 
 ## What is a Policy Acknowledgement?
 
@@ -25,8 +24,6 @@ Once created, a Policy Acknowledgement cannot be edited, cancelled, or deleted. 
 <Callout type="info" title="Why immutability matters">
 In traditional systems, consent records can be modified, backdated, or deleted. Ifitwala Ed's Policy Acknowledgements are append-only ledger records. When a parent questions whether they agreed to the media consent policy, you can show the exact timestamp, the typed signature, the clauses they checked, and the version they saw. No he-said-she-said. Just evidence.
 </Callout>
-
----
 
 ## The Anatomy of an Acknowledgement
 
@@ -51,8 +48,6 @@ In traditional systems, consent records can be modified, backdated, or deleted. 
 <Callout type="success" title="The snapshot principle">
 When someone acknowledges a policy, the system captures a snapshot—not just a reference. If the policy clauses change later, the acknowledgement record preserves what the person actually agreed to at that moment. The evidence remains valid even as policies evolve.
 </Callout>
-
----
 
 ## How Acknowledgements Are Created
 
@@ -139,8 +134,6 @@ Created during the admissions process:
 - Acknowledgement recorded with `Student Applicant` or `Guardian` context depending on the admissions acknowledgement mode
 - Blocks application readiness until complete
 
----
-
 ## The Electronic Signature
 
 Every Policy Acknowledgement includes a **typed electronic signature** with legal attestation. This isn't just clicking "I agree"—it's a deliberate, auditable process:
@@ -167,8 +160,6 @@ Before submitting, signers see:
 - **Timestamp preview**: When it will be recorded
 - **Clause checklist**: What they're agreeing to
 
----
-
 ## Acknowledgement Clauses
 
 Policy Versions can define **acknowledgement clauses**—specific statements signers must agree to. These become part of the evidence snapshot.
@@ -190,8 +181,6 @@ When an acknowledgement is created, the system records:
 - Which clauses the user checked
 
 This means if you later add a new clause to the policy, old acknowledgements remain valid evidence of what was agreed to at the time.
-
----
 
 ## Viewing and Using Acknowledgements
 
@@ -226,8 +215,6 @@ Guardians see their own acknowledgement history:
 - Timestamp of acknowledgement
 - Cannot be forged or modified
 
----
-
 ## Duplicate Prevention
 
 The system enforces **one acknowledgement per person per policy version per context**. You cannot:
@@ -240,8 +227,6 @@ If someone tries to acknowledge again, they receive a clear message: "You have a
 <Callout type="tip" title="What about new versions?">
 When a new Policy Version is activated, acknowledgements reset. Staff, guardians, and students must acknowledge the new version—even if they acknowledged the old one. This is by design: new versions mean new content, which requires new consent.
 </Callout>
-
----
 
 ## Audit and Compliance
 
@@ -264,8 +249,6 @@ Policy Acknowledgements are retained indefinitely. Even if:
 - The user account is deactivated
 
 The acknowledgement record persists as legal evidence.
-
----
 
 ## Common Questions
 
@@ -290,15 +273,6 @@ A: Yes. The `acknowledgement_clause_snapshot` field contains JSON showing which 
 **Q: What happens to acknowledgements when I delete a user?**
 A: Acknowledgements are preserved. The `acknowledged_by` field may reference a deactivated user, but the record remains valid evidence.
 
----
-
-<RelatedDocs
-  slugs="institutional-policy,policy-version,student-applicant,student-log"
-  title="Continue With Governance Docs"
-/>
-
----
-
 ## Permission Matrix
 
 | Role | Read | Write | Create | Delete | Notes |
@@ -315,6 +289,13 @@ A: Acknowledgements are preserved. The `acknowledged_by` field may reference a d
 - Visibility is enforced via `permission_query_conditions` and `has_permission` hooks
 - Guardian access to student-context rows requires primary-guardian signer authority, enforced at runtime through `Student Guardian.can_consent`
 - Duplicate tuple enforcement: `(policy_version, acknowledged_by, context_doctype, context_name)`
+
+## Related Docs
+
+<RelatedDocs
+  slugs="institutional-policy,policy-version,student-applicant,student-log"
+  title="Continue With Governance Docs"
+/>
 
 ## Technical Notes (IT)
 

@@ -3,12 +3,11 @@ title: "Employee: Managing Your Staff Records"
 slug: employee
 category: HR
 doc_order: 1
-version: "1.0.0"
-last_change_date: "2026-04-24"
+version: "1.0.1"
+last_change_date: "2026-04-25"
 summary: "Learn how to create and manage Employee records—from onboarding and work history to profile images and user account provisioning."
 seo_title: "Employee: Managing Your Staff Records"
 seo_description: "Complete guide to managing Employee records in Ifitwala Ed including onboarding, work history, designation changes, and user account creation."
----
 
 ## What is an Employee Record?
 
@@ -18,7 +17,6 @@ An **Employee** record is the central staff identity in Ifitwala Ed. It holds ev
 Unlike platforms that separate HR data from academic operations, Ifitwala Ed's Employee record connects seamlessly to teaching assignments, staff calendars, leave management, professional development, and the staff portal. One record, complete visibility.
 </Callout>
 
----
 
 ## Creating a New Employee
 
@@ -50,7 +48,6 @@ When you save an Employee record:
 - The organization chart updates to reflect reporting relationships
 </Callout>
 
----
 
 ## Employee Fields Explained
 
@@ -83,7 +80,6 @@ When you save an Employee record:
 | **Leave Approver** | Who approves their leave | Defaults can be set per designation |
 | **Expense Approver** | Who approves their expenses | Optional |
 
----
 
 ## Work History (Employee History)
 
@@ -114,7 +110,6 @@ The **Employee History** child table tracks position changes over time. This is 
 - `is_current` is derived automatically from the dates
 </Callout>
 
----
 
 ## Creating a User Account
 
@@ -142,7 +137,6 @@ Every active employee needs a linked **User** account to access the staff portal
 - The baseline **Employee** role is always added for active staff
 </Callout>
 
----
 
 ## Employee Profile Image
 
@@ -167,7 +161,6 @@ The system automatically creates optimized variants for different surfaces:
 - **Medium** — For larger previews
 </Callout>
 
----
 
 ## Public Website Profile
 
@@ -186,7 +179,6 @@ Some staff members can be featured on your public website (leadership page, staf
 Public website photos are delivered through a separate public route, not through the authenticated employee file path. This keeps private staff data secure while allowing controlled public exposure.
 </Callout>
 
----
 
 ## Employee Status and Access Control
 
@@ -206,7 +198,6 @@ When you change an employee's status away from Active:
 - They cannot log in to Desk or Portal
 </Callout>
 
----
 
 ## The Organization Chart
 
@@ -218,9 +209,8 @@ The built-in organization chart visualizes your reporting structure. It is avail
 - Avatar images resolve through optimized variants for fast loading
 </Callout>
 
----
 
-## Permissions: Who Can Do What
+## Permission Matrix
 
 | Role | What They Can Do | Typical User |
 |------|------------------|--------------|
@@ -236,7 +226,6 @@ The built-in organization chart visualizes your reporting structure. It is avail
 - Employees can only see their own record
 </Callout>
 
----
 
 ## Best Practices
 
@@ -267,7 +256,6 @@ The built-in organization chart visualizes your reporting structure. It is avail
   <Dont>Skip Employee History for role changes.</Dont>
 </DoDont>
 
----
 
 ## Common Questions
 
@@ -286,14 +274,13 @@ A: Check your organization and school scope. HR users see employees in their org
 **Q: How do I fix a broken profile image?**
 A: Re-upload the image through the governed upload action on the employee form. The system will regenerate all variants automatically.
 
----
+## Related Docs
 
 <RelatedDocs
   slugs="designation,staff-calendar,leave-application,professional-development"
   title="Continue With HR Docs"
 />
 
----
 
 ## Technical Notes (IT)
 

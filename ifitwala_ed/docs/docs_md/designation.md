@@ -3,12 +3,11 @@ title: "Designation: Manage Job Titles and Roles"
 slug: designation
 category: HR
 doc_order: 7
-version: "1.0.0"
-last_change_date: "2026-04-24"
+version: "1.0.1"
+last_change_date: "2026-04-25"
 summary: "Learn how to create and manage designations, configure default role profiles, and look up employees by designation."
 seo_title: "Designation: Manage Job Titles and Roles"
 seo_description: "Guide to managing Designations in Ifitwala Ed—job titles, role profiles, organization scope, and employee lookup."
----
 
 ## What is a Designation?
 
@@ -18,7 +17,6 @@ A **Designation** is a job title or position role in your organization. It defin
 Designations in Ifitwala Ed are more than labels. They carry default role profiles that automatically provision system access when linked to employees. Change a designation, and the employee's permissions update automatically.
 </Callout>
 
----
 
 ## Creating a Designation
 
@@ -47,7 +45,6 @@ Designations in Ifitwala Ed are more than labels. They carry default role profil
 Every designation must belong to a real organization. `All Organizations` is not allowed on Designation records.
 </Callout>
 
----
 
 ## Designation Fields Explained
 
@@ -61,7 +58,6 @@ Every designation must belong to a real organization. `All Organizations` is not
 | **Department Default** | Typical department | Pre-fills on new employee records |
 | **Description** | Role summary | Helpful for job postings and org charts |
 
----
 
 ## Default Role Profiles
 
@@ -90,7 +86,6 @@ When an employee is created or their designation changes:
 Employees can receive baseline role access before their joining date, but workspace assignment is deferred until they have an active history row.
 </Callout>
 
----
 
 ## Viewing Employees by Designation
 
@@ -112,7 +107,6 @@ HR can quickly see all employees holding a specific designation.
 The employee lookup respects organization and school scope. You only see employees you are authorized to view.
 </Callout>
 
----
 
 ## Designation Visibility
 
@@ -128,7 +122,6 @@ Who can see and manage designations depends on role and scope:
 When a designation has a school set, it is only visible to users whose effective school matches or is in the same lineage. HR operators can manage school-scoped rows within their organization scope.
 </Callout>
 
----
 
 ## Collaborate Settings
 
@@ -138,9 +131,8 @@ Some designations may have **Collaborate** settings that define how people in th
 Use Designation Collaborate records to define cross-functional collaboration patterns, mentoring relationships, or review structures.
 </Callout>
 
----
 
-## Permissions: Who Can Do What
+## Permission Matrix
 
 | Role | What They Can Do | Typical User |
 |------|------------------|--------------|
@@ -149,7 +141,6 @@ Use Designation Collaborate records to define cross-functional collaboration pat
 | **Academic Admin** | Read-only access | Principal |
 | **System Manager** | Full access | IT Administrator |
 
----
 
 ## Best Practices
 
@@ -175,7 +166,6 @@ Use Designation Collaborate records to define cross-functional collaboration pat
   <Dont>Delete designations that have employee history.</Dont>
 </DoDont>
 
----
 
 ## Common Questions
 
@@ -194,14 +184,13 @@ A: Yes, designations support renaming. Existing links update automatically.
 **Q: What's the difference between a designation and a department?**
 A: Designation is the job title (what someone does). Department is the functional area (where they work). One person has one designation but works within a department.
 
----
+## Related Docs
 
 <RelatedDocs
   slugs="employee,professional-growth-plan,hr-settings"
   title="Continue With HR Docs"
 />
 
----
 
 ## Technical Notes (IT)
 

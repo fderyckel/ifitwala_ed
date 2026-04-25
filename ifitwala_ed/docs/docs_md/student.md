@@ -3,12 +3,11 @@ title: "Student: Your Learner Records Made Simple"
 slug: student
 category: Students
 doc_order: 1
-version: "1.3.3"
+version: "1.3.4"
 last_change_date: "2026-04-25"
 summary: "Manage learner records with confidence—from admissions intake to alumni status. Understand when to use the admissions pipeline versus importing existing students."
 seo_title: "Student: Your Learner Records Made Simple"
 seo_description: "Learn how to manage Student records in Ifitwala Ed—from admissions promotion to bulk importing existing students with full portal access and health record integration."
----
 
 ## What is a Student Record?
 
@@ -17,8 +16,6 @@ A **Student** is the central learner record in Ifitwala Ed. It's the single sour
 <Callout type="info" title="Why Ifitwala Ed is different">
 Unlike platforms that scatter student data across disconnected modules, Ifitwala Ed's Student record is deeply integrated. One record connects to admissions, enrollment, attendance, assessments, health, finance, and the family portal—giving you a complete 360° view of every learner without switching contexts.
 </Callout>
-
----
 
 ## How Students Are Created
 
@@ -45,8 +42,6 @@ If you're migrating from another system or onboarding an existing school, you ca
 - **Existing school migration** → Use Data Import with the special flag
 - **Never** create students manually one-by-one in Desk (this is blocked for data integrity)
 </Callout>
-
----
 
 ## Creating Students Through Admissions
 
@@ -78,8 +73,6 @@ When you promote an applicant:
 - Contact record links the student to your CRM
 - Guardian relationships and portal access are established
 </Callout>
-
----
 
 ## Importing Existing Students
 
@@ -126,8 +119,6 @@ When you import students, all the same automation runs as with admissions:
 - Full names are auto-generated
 </Callout>
 
----
-
 ## Student Fields Explained
 
 | Field | What It's For | Tips |
@@ -147,8 +138,6 @@ When you import students, all the same automation runs as with admissions:
 | **Student Applicant** | Link to admissions record | Auto-set when promoted from applicant |
 | **Enabled** | Active status | Uncheck to deactivate without deleting history |
 | **Exit Date / Reason** | For withdrawn students | Use when a student leaves your school |
-
----
 
 ## Contact And Address Workflow
 
@@ -170,8 +159,6 @@ Rules:
 - the same Address record is reused through additional links; the system does not duplicate address text just to speed up family setup
 
 This flow is especially useful after migration/import when staff have already linked siblings and guardians and want to avoid repetitive family address entry.
-
----
 
 ## Where You'll Use Student Records
 
@@ -210,111 +197,6 @@ This flow is especially useful after migration/import when staff have already li
 - Retention and attrition reporting
 - Academic performance dashboards
 
----
-
-## Permissions: Who Can Do What
-
-Student records contain sensitive information, so access is carefully controlled:
-
-| Role | What They Can Do | Typical User |
-|------|------------------|--------------|
-| **System Manager** | Full access including imports | IT Administrator |
-| **Academic Admin** | Create, edit, import students | Principal, Registrar |
-| **Academic Assistant** | Edit students, run imports | Admissions Coordinator |
-| **Instructor** | View students they teach | Teachers |
-| **Nurse** | View health-related information | School Nurse |
-| **Counselor** | View assigned students | Guidance Counselor |
-| **Student** | View their own record | The student themselves (via portal) |
-| **Guardian** | View their children's records | Parents (via portal) |
-
-### Data Privacy Notes
-
-- Instructors only see students in their classes
-- Guardians only see their own children
-- Health information is restricted to medical staff
-- Financial details are limited to billing staff
-- Portal access is automatically created for students and guardians
-
-<Callout type="warning" title="Important import permission note">
-Academic Admin and Academic Assistant have import permission. System Manager does **not** have import permission by default—this is intentional to prevent accidental bulk changes. If an admin needs to import, grant "Import" permission explicitly in Role Permissions Manager.
-</Callout>
-
----
-
-## Best Practices
-
-### For New Students (Admissions)
-- Always use the **applicant promotion workflow**
-- Don't create students directly in Desk (it's blocked for good reason)
-- Ensure all required documents are collected before promotion
-- Verify guardian relationships are correct before promotion
-
-### For Existing Students (Migration)
-- Prepare your data carefully before importing
-- Use school-scoped import files (don't mix schools in one spreadsheet)
-- Always set `allow_direct_creation = 1` on every row
-- Include `anchor_school` explicitly for every student
-- Validate your import file before running the actual import
-
-### Data Quality
-- Use consistent naming conventions
-- Set up Cohorts and Student Houses before importing
-- Ensure email addresses are valid and unique
-- Check that joining dates make sense (after date of birth)
-- Use the Student ID field only for legacy IDs from previous systems
-
-### Ongoing Management
-- Use "Enabled" to deactivate students rather than deleting
-- Record exit dates and reasons for withdrawn students
-- Update contact information promptly when families move
-- Sync image changes are automatic when updated
-
-<DoDont doTitle="Do" dontTitle="Don't">
-  <Do>Use the admissions workflow for all new student intake.</Do>
-  <Do>Import existing students only for migrations and onboarding.</Do>
-  <Do>Set `allow_direct_creation = 1` on every import row.</Do>
-  <Do>Include `anchor_school` for every imported student.</Do>
-  <Do>Validate import files before running the actual import.</Do>
-  <Dont>Create students manually in Desk (use admissions or import).</Dont>
-  <Dont>Mix multiple schools in one import spreadsheet.</Dont>
-  <Dont>Skip data validation and expect the system to fix errors.</Dont>
-  <Dont>Delete students—use "Enabled" to deactivate instead.</Dont>
-</DoDont>
-
----
-
-## Common Questions
-
-**Q: Can I create a Student directly without going through admissions?**
-A: Generally no—this is intentionally blocked to maintain data integrity. Use Data Import with `allow_direct_creation = 1` for migrations only.
-
-**Q: What happens to a student's data when they graduate?**
-A: The record remains in the system with their full history. You can set an exit date and reason. This preserves transcripts, grades, and records for alumni purposes.
-
-**Q: Can a student belong to multiple schools?**
-A: Every student has one "anchor school," but they can be enrolled in courses or programs across schools within the same organization (depending on your setup).
-
-**Q: How do students and parents access the portal?**
-A: Portal accounts are created automatically when a student is promoted from applicant or imported. They use the student's email as the username. Guardians get portal access linked to their contact records.
-
-**Q: Can I update student information in bulk?**
-A: Yes, use Data Import with the "Update Existing Records" option. Be careful with bulk changes—always back up first.
-
-**Q: What if a student transfers between my schools?**
-A: Keep the same Student record and update the `anchor_school` field. Their full history stays intact—transcripts, grades, everything follows them.
-
-**Q: Why was my import rejected?**
-A: Common reasons: missing `allow_direct_creation = 1`, duplicate emails, missing required fields (first name, last name, email, anchor_school), or linked records that don't exist (cohort, house, etc.).
-
----
-
-<RelatedDocs
-  slugs="student-applicant,school,organization,student-enrollment-playbook,inquiry"
-  title="Continue With Admissions and Enrollment Docs"
-/>
-
----
-
 ## Permission Matrix
 
 | Role | Read | Write | Create | Delete | Import | Notes |
@@ -331,6 +213,13 @@ A: Common reasons: missing `allow_direct_creation = 1`, duplicate emails, missin
 | `Student` | Yes* | No | No | No | No | Self only (portal) |
 
 *Read access is scoped by relationship (own children, own record, or enrolled students)
+
+## Related Docs
+
+<RelatedDocs
+  slugs="student-applicant,school,organization,student-enrollment-playbook,inquiry"
+  title="Continue With Admissions and Enrollment Docs"
+/>
 
 ## Technical Notes (IT)
 

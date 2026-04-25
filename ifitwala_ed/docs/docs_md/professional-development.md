@@ -3,12 +3,11 @@ title: "Professional Development: Grow Your Staff"
 slug: professional-development
 category: HR
 doc_order: 4
-version: "1.0.0"
-last_change_date: "2026-04-24"
+version: "1.0.1"
+last_change_date: "2026-04-25"
 summary: "Guide to the complete Professional Development workflow—from requesting training and managing budgets to recording outcomes and liquidation."
 seo_title: "Professional Development: Grow Your Staff"
 seo_description: "Learn how staff request professional development, how HR manages budgets and approvals, and how outcomes are tracked in Ifitwala Ed."
----
 
 ## What is Professional Development?
 
@@ -18,7 +17,6 @@ seo_description: "Learn how staff request professional development, how HR manag
 Unlike simple reimbursement forms, Ifitwala Ed's PD workflow enforces budget reservation before approval, tracks completion evidence, and links activities to Professional Growth Plans. It's governance that ensures every training dollar is well spent.
 </Callout>
 
----
 
 ## The PD Lifecycle
 
@@ -38,7 +36,6 @@ Request → Review → Approve → Record → Complete → Outcome → Liquidate
 | **Outcome** | Professional Development Outcome | Completion reflection and actual costs |
 | **Liquidate** | PD Encumbrance | Accounting finalization |
 
----
 
 ## Professional Development Themes
 
@@ -67,7 +64,6 @@ Request → Review → Approve → Record → Complete → Outcome → Liquidate
 - Subject-Specific Pedagogy
 </Callout>
 
----
 
 ## Professional Development Budgets
 
@@ -113,7 +109,6 @@ Request → Review → Approve → Record → Complete → Outcome → Liquidate
 - Budget scope must exactly match request scope on organization, school, and academic year
 </Callout>
 
----
 
 ## Submitting a PD Request
 
@@ -158,7 +153,6 @@ Staff members initiate professional development through a **PD Request**.
 The system blocks duplicate active requests for the same employee, academic year, title, and start date.
 </Callout>
 
----
 
 ## Reviewing and Approving PD Requests
 
@@ -190,7 +184,6 @@ When a PD request is approved:
 - The budget's reserved amount increases
 </Callout>
 
----
 
 ## Professional Development Records
 
@@ -210,7 +203,6 @@ A **PD Record** is the committed operational truth. It tracks the activity from 
 Cancelling a planned or completed record releases both the employee booking and the budget reservation. This is useful when events are cancelled or staff cannot attend.
 </Callout>
 
----
 
 ## Recording Outcomes
 
@@ -238,7 +230,6 @@ After attending professional development, staff submit an **Outcome** to documen
 Your organization may require completion evidence before liquidation. This is controlled by **HR Settings > PD Require Completion Evidence**.
 </Callout>
 
----
 
 ## Liquidation
 
@@ -257,7 +248,6 @@ Liquidation involves accounting entries. Accounts Manager or Accounts User roles
 | **Released** | Reservation reversed (e.g., cancellation) |
 | **Liquidated** | Finalized with actual expenses |
 
----
 
 ## The Staff Portal (My Growth)
 
@@ -273,9 +263,8 @@ Staff can manage their professional development through the **My Growth** portal
 Employees can only see and manage their own PD requests, records, and outcomes. Sibling-school visibility is never permitted.
 </Callout>
 
----
 
-## Permissions: Who Can Do What
+## Permission Matrix
 
 | Role | What They Can Do | Typical User |
 |------|------------------|--------------|
@@ -287,7 +276,6 @@ Employees can only see and manage their own PD requests, records, and outcomes. 
 | **Employee** | Own requests and outcomes only | Any staff member |
 | **System Manager** | Full access | IT Administrator |
 
----
 
 ## Best Practices
 
@@ -320,7 +308,6 @@ Employees can only see and manage their own PD requests, records, and outcomes. 
   <Dont>Liquidate without required evidence.</Dont>
 </DoDont>
 
----
 
 ## Common Questions
 
@@ -339,14 +326,13 @@ A: When submitting a request, select your PGP Plan and a specific PGP Goal. This
 **Q: What evidence is required for completion?**
 A: This depends on your organization's HR Settings. Common evidence includes certificates, attendance confirmations, invoices, and written reflections.
 
----
+## Related Docs
 
 <RelatedDocs
   slugs="professional-growth-plan,employee,leave-application"
   title="Continue With HR and Growth Docs"
 />
 
----
 
 ## Technical Notes (IT)
 

@@ -3,12 +3,11 @@ title: "Professional Growth Plan: Structured Staff Development"
 slug: professional-growth-plan
 category: HR
 doc_order: 5
-version: "1.0.0"
-last_change_date: "2026-04-24"
+version: "1.0.1"
+last_change_date: "2026-04-25"
 summary: "Learn how to create PGP templates, build growth plans, set goals, and conduct structured review rounds."
 seo_title: "Professional Growth Plan: Structured Staff Development"
 seo_description: "Guide to Professional Growth Plans in Ifitwala Ed—templates, plans, goals, ratings, and review rounds for structured staff development."
----
 
 ## What is a Professional Growth Plan?
 
@@ -18,7 +17,6 @@ A **Professional Growth Plan (PGP)** is a structured framework for staff develop
 Ifitwala Ed's PGP system is not a one-time appraisal form. It's a living plan with multiple review rounds, stakeholder involvement, and direct linkage to Professional Development requests. Growth becomes continuous, not annual.
 </Callout>
 
----
 
 ## The PGP Ecosystem
 
@@ -32,7 +30,6 @@ The PGP module consists of interconnected components:
 | **PGP Rating** | Structured evaluation of goal progress |
 | **Rating Scale** | Customizable criteria for evaluations |
 
----
 
 ## PGP Templates
 
@@ -64,7 +61,6 @@ Create different templates for different staff categories:
 - New Teacher Induction Plan
 </Callout>
 
----
 
 ## PGP Plans
 
@@ -100,7 +96,6 @@ A **PGP Plan** is the individual growth plan assigned to a staff member.
 | **Completed** | All review rounds finished |
 | **Archived** | Preserved for historical reference |
 
----
 
 ## PGP Goals
 
@@ -131,7 +126,6 @@ A **PGP Plan** is the individual growth plan assigned to a staff member.
 Link PGP Goals to Professional Development requests. When staff request training, selecting a PGP Goal creates clear traceability between growth objectives and learning activities.
 </Callout>
 
----
 
 ## PGP Ratings
 
@@ -155,7 +149,6 @@ Link PGP Goals to Professional Development requests. When staff request training
   </Step>
 </Steps>
 
----
 
 ## Rating Scales
 
@@ -183,7 +176,6 @@ Common rating scales include:
 - Custom scales for specific competencies
 </Callout>
 
----
 
 ## Review Rounds
 
@@ -200,7 +192,6 @@ The PGP Plan tracks:
 - Overall progress percentage
 </Callout>
 
----
 
 ## Linking PD to Growth Plans
 
@@ -221,9 +212,8 @@ The power of PGP comes from connecting growth plans to actual professional devel
   </Step>
 </Steps>
 
----
 
-## Permissions: Who Can Do What
+## Permission Matrix
 
 | Role | What They Can Do | Typical User |
 |------|------------------|--------------|
@@ -237,7 +227,6 @@ The power of PGP comes from connecting growth plans to actual professional devel
 Stakeholders assigned to a PGP Plan can typically view and rate goals they are responsible for evaluating. Exact permissions depend on role configuration.
 </Callout>
 
----
 
 ## Best Practices
 
@@ -270,7 +259,6 @@ Stakeholders assigned to a PGP Plan can typically view and rate goals they are r
   <Dont>Use inconsistent rating scales across reviewers.</Dont>
 </DoDont>
 
----
 
 ## Common Questions
 
@@ -289,14 +277,13 @@ A: Each round is an evaluation point. Stakeholders rate goal progress, and the p
 **Q: Can goals span multiple academic years?**
 A: PGP Plans are typically scoped to an academic year. Multi-year goals should be broken into annual milestones.
 
----
+## Related Docs
 
 <RelatedDocs
   slugs="professional-development,employee,designation"
   title="Continue With HR and Growth Docs"
 />
 
----
 
 ## Technical Notes (IT)
 

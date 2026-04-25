@@ -3,12 +3,11 @@ title: "Institutional Policy: Unified Governance for Your School"
 slug: institutional-policy
 category: Governance
 doc_order: 1
-version: "2.0.6"
+version: "2.0.7"
 last_change_date: "2026-04-25"
 summary: "Create and manage institutional policies that flow seamlessly across your organization—from staff signature campaigns to guardian portals, student hubs, and admissions workflows—all with comprehensive analytics and audit trails."
 seo_title: "Institutional Policy: Unified Governance for Your School"
 seo_description: "Learn how Ifitwala Ed's integrated policy governance connects staff campaigns, guardian acknowledgements, student policies, and admissions requirements in one unified system."
----
 
 ## What is Institutional Policy?
 
@@ -24,8 +23,6 @@ Unlike disconnected document storage, Ifitwala Ed's policies are **alive**. They
 <Callout type="info" title="Why Ifitwala Ed is different">
 Most platforms treat policies as static documents. Ifitwala Ed treats them as **governance workflows**. A single policy identity can cascade through staff signature campaigns, guardian acknowledgements, student requirements, and admissions gates—each with their own signing flow, tracking, and audit trail. It's governance that actually governs.
 </Callout>
-
----
 
 ## The Policy Ecosystem: How It All Connects
 
@@ -50,8 +47,6 @@ The actual legal text at a point in time. Create new versions when rules change,
 
 ### 4. **Policy Acknowledgement**
 Immutable evidence of who signed what, when, and which version—forming your audit trail.
-
----
 
 ## Creating an Institutional Policy
 
@@ -86,8 +81,6 @@ Immutable evidence of who signed what, when, and which version—forming your au
 After creating the Institutional Policy, you'll create Policy Versions to hold the actual legal text. Once a version is activated, it automatically appears in all relevant portals and surfaces based on your audience selections.
 </Callout>
 
----
-
 ## Policy Scope and Audience
 
 ### Understanding Scope
@@ -121,8 +114,6 @@ For policies that apply to Applicants:
 | **Child Acknowledgement** | Applicant signs directly | Older students applying independently |
 | **Family Acknowledgement** | Guardian signs on behalf of applicant | Younger children, family decisions |
 | **Child Optional Consent** | Student can optionally consent | Media release, optional participation |
-
----
 
 ## Policy Surfaces in Detail
 
@@ -250,8 +241,6 @@ A Pastoral Lead filters to their school, selects the current academic year, and 
 They click "Publish family campaign" to notify guardians and students, then use "Set up campaign" to assign the remaining staff ToDos.
 </Callout>
 
----
-
 ## Where Policies Are Used
 
 ### Admissions Workflow
@@ -286,8 +275,6 @@ They click "Publish family campaign" to notify guardians and students, then use 
 - Program enrollment gates on policy compliance
 - Health services check vaccination policy status
 
----
-
 ## Managing Policy Lifecycle
 
 ### Activating and Deactivating
@@ -318,8 +305,6 @@ They click "Publish family campaign" to notify guardians and students, then use 
   <Dont>Create versions before creating the policy identity.</Dont>
 </DoDont>
 
----
-
 ## Common Questions
 
 **Q: What's the difference between Institutional Policy and Policy Version?**
@@ -349,15 +334,6 @@ A: Historical acknowledgements are preserved. New acknowledgements are no longer
 **Q: Can applicants see policies before submitting an application?**
 A: Yes, applicant-scoped policies appear in the admissions portal. They must acknowledge required policies before their application can be considered complete.
 
----
-
-<RelatedDocs
-  slugs="policy-version,policy-acknowledgement,organization,school,student-applicant"
-  title="Continue With Governance Docs"
-/>
-
----
-
 ## Permission Matrix
 
 | Role | Read | Write | Create | Delete | Notes |
@@ -372,6 +348,13 @@ A: Yes, applicant-scoped policies appear in the admissions portal. They must ack
 | `Accreditation Visitor` | Yes | No | No | No | Read-only for audits |
 
 **Management Scope:** Policy admins may manage policies rooted in their base organization or descendant organizations. Read visibility is enforced through scope hooks.
+
+## Related Docs
+
+<RelatedDocs
+  slugs="policy-version,policy-acknowledgement,organization,school,student-applicant"
+  title="Continue With Governance Docs"
+/>
 
 ## Technical Notes (IT)
 

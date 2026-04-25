@@ -3,12 +3,11 @@ title: "Staff Calendar: Manage Staff Holidays and Working Days"
 slug: staff-calendar
 category: HR
 doc_order: 6
-version: "1.0.0"
-last_change_date: "2026-04-24"
+version: "1.0.1"
+last_change_date: "2026-04-25"
 summary: "Learn how to create staff calendars, add holidays, configure weekly offs, and link calendars to employees for accurate leave calculations."
 seo_title: "Staff Calendar: Manage Staff Holidays and Working Days"
 seo_description: "Guide to setting up Staff Calendars in Ifitwala Ed—weekly holidays, local holidays, break periods, and employee linking."
----
 
 ## What is a Staff Calendar?
 
@@ -18,7 +17,6 @@ A **Staff Calendar** defines holidays, working days, and break periods for staff
 Ifitwala Ed keeps Staff Calendars separate from School Calendars. This means staff can have different holidays than students (e.g., inset days, staff training days, or different term breaks), and leave calculations remain accurate for staff specifically.
 </Callout>
 
----
 
 ## Creating a Staff Calendar
 
@@ -46,7 +44,6 @@ Ifitwala Ed keeps Staff Calendars separate from School Calendars. This means sta
   </Step>
 </Steps>
 
----
 
 ## Adding Weekly Holidays
 
@@ -74,7 +71,6 @@ Most organizations have regular weekly days off (typically Saturday and Sunday).
 You can add multiple weekly offs (e.g., Friday and Saturday for some regions). Run the generator for each day.
 </Callout>
 
----
 
 ## Adding Local Holidays
 
@@ -99,7 +95,6 @@ You can add multiple weekly offs (e.g., Friday and Saturday for some regions). R
 The system fetches holidays for the calendar's date range. Make sure your calendar spans the full period you need.
 </Callout>
 
----
 
 ## Adding Break Periods
 
@@ -120,7 +115,6 @@ The system fetches holidays for the calendar's date range. Make sure your calend
   </Step>
 </Steps>
 
----
 
 ## Managing the Holiday Table
 
@@ -135,7 +129,6 @@ The **Holidays** child table shows all days that are non-working. You can:
 The **Clear Table** button removes all holidays. Use it only if you need to regenerate the calendar from scratch.
 </Callout>
 
----
 
 ## Linking Calendars to Employees
 
@@ -157,7 +150,6 @@ For leave calculations to work, employees must be linked to a Staff Calendar.
 If an employee's linked calendar becomes outdated or missing, the system can self-heal by resolving the effective Staff Calendar based on employee group, date window, and school lineage. However, explicitly setting the calendar is recommended for reliability.
 </Callout>
 
----
 
 ## Calendar Resolution Priority
 
@@ -171,7 +163,6 @@ When determining which calendar to use for an employee, the system follows this 
 Calendar resolution checks the employee's school, then parent schools, then grandparent schools. No sibling-school leakage occurs.
 </Callout>
 
----
 
 ## Staff Calendar vs School Calendar
 
@@ -182,9 +173,8 @@ Calendar resolution checks the employee's school, then parent schools, then gran
 | **Holidays** | Staff inset days, staff-only holidays | Student holidays, term breaks |
 | **Leave system** | Yes — primary source | No — fallback only |
 
----
 
-## Permissions: Who Can Do What
+## Permission Matrix
 
 | Role | What They Can Do | Typical User |
 |------|------------------|--------------|
@@ -193,7 +183,6 @@ Calendar resolution checks the employee's school, then parent schools, then gran
 | **Academic Admin** | Read access | Principal |
 | **System Manager** | Full access | IT Administrator |
 
----
 
 ## Best Practices
 
@@ -218,7 +207,6 @@ Calendar resolution checks the employee's school, then parent schools, then gran
   <Dont>Leave employees without a linked calendar.</Dont>
 </DoDont>
 
----
 
 ## Common Questions
 
@@ -237,14 +225,13 @@ A: Check that the employee has a Current Holiday List set, and that the calendar
 **Q: Can I add a one-off holiday?**
 A: Yes. Add it manually to the Holidays table, or use the break period generator for short ranges.
 
----
+## Related Docs
 
 <RelatedDocs
   slugs="leave-management,leave-application,employee"
   title="Continue With Leave and HR Docs"
 />
 
----
 
 ## Technical Notes (IT)
 

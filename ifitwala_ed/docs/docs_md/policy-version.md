@@ -3,12 +3,11 @@ title: "Policy Version: The Living Legal Text"
 slug: policy-version
 category: Governance
 doc_order: 2
-version: "2.0.2"
+version: "2.0.3"
 last_change_date: "2026-04-25"
 summary: "Create versioned policy text with automatic diff tracking. When rules change, publish amendments that surface everywhere—from staff Focus tasks with inline change viewers to guardian and student portals—while preserving complete audit history."
 seo_title: "Policy Version: Versioned Legal Text with Diff Tracking"
 seo_description: "Learn how Policy Versions track changes, show diffs, and surface across staff, guardian, and student portals with automatic version management and audit trails."
----
 
 ## What is a Policy Version?
 
@@ -20,8 +19,6 @@ Here's where it gets powerful: **Policy Versions are versioned and diff-tracked*
 Static document storage hides changes. Ifitwala Ed surfaces them. When the Safeguarding Policy gets updated, staff don't just see a new document—they see a side-by-side diff showing exactly which clauses changed. This isn't just convenience—it's legal transparency and risk management.
 </Callout>
 
----
-
 ## The Policy Version Lifecycle
 
 ### 1. **Draft**
@@ -32,8 +29,6 @@ Activate the version to publish it. It becomes the current version for its Insti
 
 ### 3. **Archived**
 When superseded by a newer version, the old version remains visible for reference and audit—but new acknowledgements are collected against the current version.
-
----
 
 ## Creating a Policy Version
 
@@ -75,8 +70,6 @@ When you activate a Policy Version:
 - Diff is available for change comparison
 </Callout>
 
----
-
 ## Acknowledgement Clauses
 
 Acknowledgement clauses are the specific agreements signers must confirm. They create legal clarity and audit evidence.
@@ -98,8 +91,6 @@ Acknowledgement clauses are the specific agreements signers must confirm. They c
   <Dont>Use vague language like "I acknowledge things."</Dont>
   <Dont>Make all clauses optional—at least require the legal attestation.</Dont>
 </DoDont>
-
----
 
 ## How Versions Surface Across Your Organization
 
@@ -171,8 +162,6 @@ Admins see version-specific analytics at `/staff/analytics/policy-signatures`:
 - Compare to previous version completion
 - Identify who signed old vs new versions
 
----
-
 ## Amending Policies: The Update Workflow
 
 <Steps title="Updating a Policy">
@@ -206,8 +195,6 @@ Admins see version-specific analytics at `/staff/analytics/policy-signatures`:
 Once activated, Policy Version text cannot be edited. This preserves audit integrity. If you find an error, deactivate and create a new version. Never edit active policy text.
 </Callout>
 
----
-
 ## Understanding the Diff Viewer
 
 The diff viewer appears in:
@@ -235,8 +222,6 @@ The diff viewer appears in:
 While the diff shows technical changes, the Change Summary field lets you explain the *why*. "Updated data retention from 2 years to 3 years per new legal guidance" is more helpful than just seeing text change.
 </Callout>
 
----
-
 ## Version History and Audit
 
 Every Policy Version maintains:
@@ -257,8 +242,6 @@ Every Policy Version maintains:
 <Callout type="info" title="Audit readiness">
 Policy versions and acknowledgements form your legal audit trail. If questioned about who knew what when, you can show: (1) the exact text of the policy at that time, (2) who acknowledged it, (3) when they acknowledged it, and (4) what version they saw.
 </Callout>
-
----
 
 ## Where You'll Use Policy Versions
 
@@ -287,15 +270,6 @@ Policy versions and acknowledgements form your legal audit trail. If questioned 
 - Show systematic policy management
 - Demonstrate distribution and acknowledgement tracking
 
----
-
-<RelatedDocs
-  slugs="institutional-policy,policy-acknowledgement,staff-focus,morning-brief"
-  title="Continue With Governance Docs"
-/>
-
----
-
 ## Permission Matrix
 
 | Role | Read | Write | Create | Delete | Activate |
@@ -311,6 +285,13 @@ Policy versions and acknowledgements form your legal audit trail. If questioned 
 - Only draft versions can be edited or deleted
 - Activation requires Policy Signature Manager roles
 - Acknowledgements are linked to specific version records
+
+## Related Docs
+
+<RelatedDocs
+  slugs="institutional-policy,policy-acknowledgement,staff-focus,morning-brief"
+  title="Continue With Governance Docs"
+/>
 
 ## Technical Notes (IT)
 

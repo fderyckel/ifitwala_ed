@@ -3,12 +3,11 @@ title: "Leave Application: Request and Approve Time Off"
 slug: leave-application
 category: HR
 doc_order: 2
-version: "1.0.0"
-last_change_date: "2026-04-24"
+version: "1.0.1"
+last_change_date: "2026-04-25"
 summary: "Learn how staff apply for leave, check balances, and how managers approve or reject leave requests."
 seo_title: "Leave Application: Request and Approve Time Off"
 seo_description: "Step-by-step guide to applying for leave, understanding leave balances, and managing approvals in Ifitwala Ed."
----
 
 ## What is a Leave Application?
 
@@ -18,7 +17,6 @@ A **Leave Application** is how staff members request time off and how managers a
 Leave applications in Ifitwala Ed are tightly integrated with Staff Calendars (not school calendars). This means holidays, weekends, and blocked days are calculated correctly for staff specifically—not mixed with student academic calendars.
 </Callout>
 
----
 
 ## Applying for Leave
 
@@ -57,7 +55,6 @@ When you submit a leave application:
 - The application appears on the Leave Calendar
 </Callout>
 
----
 
 ## Understanding Leave Balance
 
@@ -71,7 +68,6 @@ The **Leave Balance Before Application** field shows how many days you have avai
 Some leave types allow negative balances. Check with your HR team if you're unsure about your organization's policy.
 </Callout>
 
----
 
 ## Leave Approval Workflow
 
@@ -96,7 +92,6 @@ Leave applications follow a simple but strict approval flow:
 Your organization may have **Prevent Self Leave Approval** enabled in HR Settings. If so, you cannot approve your own leave requests even if you have an override role.
 </Callout>
 
----
 
 ## Approving or Rejecting Leave
 
@@ -122,7 +117,6 @@ When a leave application is approved:
 - The leave appears on calendars and reports
 </Callout>
 
----
 
 ## Cancelling Leave
 
@@ -135,7 +129,6 @@ Only approvers or HR roles can cancel approved leave. When approved leave is can
 - The Employee Attendance record is removed
 - The cancellation is deterministic and traceable
 
----
 
 ## Leave Application Fields Explained
 
@@ -152,7 +145,6 @@ Only approvers or HR roles can cancel approved leave. When approved leave is can
 | **Status** | Current state | Open, Approved, Rejected, Cancelled |
 | **Posting Date** | When recorded | Usually today |
 
----
 
 ## The Leave Calendar
 
@@ -164,7 +156,6 @@ Leave applications appear on the **Leave Calendar** so managers and HR can visua
 - The calendar respects Staff Calendar holidays
 </Callout>
 
----
 
 ## Compensatory Leave
 
@@ -182,9 +173,8 @@ If your organization uses compensatory leave, staff can submit a **Compensatory 
   </Step>
 </Steps>
 
----
 
-## Permissions: Who Can Do What
+## Permission Matrix
 
 | Role | What They Can Do | Typical User |
 |------|------------------|--------------|
@@ -199,7 +189,6 @@ If your organization uses compensatory leave, staff can submit a **Compensatory 
 HR roles can only see and manage leave applications for employees within their organization subtree. Employees can only see their own applications.
 </Callout>
 
----
 
 ## Best Practices
 
@@ -230,7 +219,6 @@ HR roles can only see and manage leave applications for employees within their o
   <Dont>Ignore rejected applications without communicating why.</Dont>
 </DoDont>
 
----
 
 ## Common Questions
 
@@ -252,14 +240,13 @@ A: Common reasons: insufficient balance, conflicting with blocked dates, or team
 **Q: How do half days work?**
 A: Check the Half Day box. For single-day requests, that's a half day. For multi-day requests, specify which date is the half day.
 
----
+## Related Docs
 
 <RelatedDocs
   slugs="leave-management,employee,staff-calendar"
   title="Continue With Leave and HR Docs"
 />
 
----
 
 ## Technical Notes (IT)
 

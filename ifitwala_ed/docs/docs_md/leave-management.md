@@ -3,12 +3,11 @@ title: "Leave Management: Configure Policies and Allocations"
 slug: leave-management
 category: HR
 doc_order: 3
-version: "1.0.0"
-last_change_date: "2026-04-24"
+version: "1.0.1"
+last_change_date: "2026-04-25"
 summary: "HR admin guide to setting up leave types, policies, allocations, periods, and the control panel for automated leave management."
 seo_title: "Leave Management: Configure Policies and Allocations"
 seo_description: "Learn how to configure leave types, create leave policies, assign allocations, and manage leave periods in Ifitwala Ed."
----
 
 ## What is Leave Management?
 
@@ -18,7 +17,6 @@ seo_description: "Learn how to configure leave types, create leave policies, ass
 Ifitwala Ed's leave system is built for schools, not generic offices. It uses Staff Calendars (not student academic calendars) for holiday calculations, supports organization-tree scoping for multi-campus groups, and connects leave to staff attendance automatically.
 </Callout>
 
----
 
 ## Leave Types
 
@@ -78,7 +76,6 @@ Only Unpaid Leave is created with `is_lwp = 1` by default. This means it reduces
 | **Is Compensatory** | Tracks extra work compensation | For holiday overtime |
 | **Is Earned Leave** | Accrues over time | Monthly or quarterly accrual |
 
----
 
 ## Leave Policies
 
@@ -107,7 +104,6 @@ A "Standard Teaching Staff" policy might include:
 - Professional Development Leave: 5 days
 </Callout>
 
----
 
 ## Leave Periods
 
@@ -128,7 +124,6 @@ A "Standard Teaching Staff" policy might include:
   </Step>
 </Steps>
 
----
 
 ## Leave Policy Assignment
 
@@ -156,7 +151,6 @@ A "Standard Teaching Staff" policy might include:
 When you submit a Leave Policy Assignment, the system creates Leave Allocation records for each leave type in the policy. These allocations feed into the balance calculations employees see when applying for leave.
 </Callout>
 
----
 
 ## Leave Allocations
 
@@ -178,7 +172,6 @@ When you submit a Leave Policy Assignment, the system creates Leave Allocation r
 Use **Leave Adjustment** to add or remove days from an existing allocation without cancelling it. This is useful for corrections or special circumstances.
 </Callout>
 
----
 
 ## Leave Control Panel
 
@@ -206,7 +199,6 @@ The **Leave Control Panel** lets HR bulk-assign leave policies to multiple emplo
 Bulk allocation affects many employees at once. Review your filters carefully before clicking Allocate Leave.
 </Callout>
 
----
 
 ## Leave Block List
 
@@ -230,7 +222,6 @@ A **Leave Block List** prevents leave applications on specific dates—useful fo
   </Step>
 </Steps>
 
----
 
 ## Earned Leave
 
@@ -245,7 +236,6 @@ A **Leave Block List** prevents leave applications on specific dates—useful fo
 Earned leave processing is controlled by **HR Settings > Enable Earned Leave Scheduler**. When enabled, the system processes earned leave allocations daily in the background.
 </Callout>
 
----
 
 ## Leave Encashment
 
@@ -255,7 +245,6 @@ Earned leave processing is controlled by **HR Settings > Enable Earned Leave Sch
 Leave Encashment is imported for compatibility but is currently **disabled by default**. It requires both `enable_leave_encashment` and payroll mapping to be active before use. Contact your system administrator before enabling.
 </Callout>
 
----
 
 ## HR Settings for Leave
 
@@ -272,9 +261,8 @@ Configure global leave behavior in **HR Settings**:
 | **Enable Leave Encashment** | Allows encashment functionality |
 | **Auto Leave Encashment** | Automatic encashment generation |
 
----
 
-## Permissions: Who Can Do What
+## Permission Matrix
 
 | Role | What They Can Do | Typical User |
 |------|------------------|--------------|
@@ -283,7 +271,6 @@ Configure global leave behavior in **HR Settings**:
 | **System Manager** | All settings and configuration | IT Administrator |
 | **Employee** | View their own allocations and balances | Any staff member |
 
----
 
 ## Best Practices
 
@@ -309,7 +296,6 @@ Configure global leave behavior in **HR Settings**:
   <Dont>Enable encashment without payroll validation.</Dont>
 </DoDont>
 
----
 
 ## Common Questions
 
@@ -328,14 +314,13 @@ A: Policy Assignment is the high-level connection of employee to policy. Allocat
 **Q: How often does earned leave accrue?**
 A: This depends on the Earned Leave Frequency set on the leave type (Monthly, Quarterly, etc.). The scheduler processes it daily.
 
----
+## Related Docs
 
 <RelatedDocs
   slugs="leave-application,employee,staff-calendar"
   title="Continue With Leave and HR Docs"
 />
 
----
 
 ## Technical Notes (IT)
 
