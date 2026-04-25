@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import mimetypes
 from typing import Any
+from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
 _IMAGE_EXTENSIONS = {"jpg", "jpeg", "png", "webp", "gif", "bmp", "svg"}
 _VIDEO_EXTENSIONS = {"mp4", "mov", "webm", "m4v", "avi", "mkv"}
@@ -25,6 +26,35 @@ def clean_text(value: Any) -> str | None:
         return None
     text = str(value).strip()
     return text or None
+
+
+def clean_action_url(value: Any) -> str | None:
+    text = clean_text(value)
+    if not text or "derivative_role" not in text:
+        return text
+
+    try:
+        parsed = urlsplit(text)
+    except Exception:
+        return text
+
+    if parsed.scheme or parsed.netloc or not parsed.path.startswith("/api/method/"):
+        return text
+
+    query_pairs = [
+        (key, pair_value)
+        for key, pair_value in parse_qsl(parsed.query, keep_blank_values=True)
+        if key not in {"derivative_role", "derivative_roles"}
+    ]
+    return urlunsplit(
+        (
+            parsed.scheme,
+            parsed.netloc,
+            parsed.path,
+            urlencode(query_pairs),
+            parsed.fragment,
+        )
+    )
 
 
 def coerce_size_bytes(value: Any) -> int | None:
@@ -184,10 +214,10 @@ def build_attachment_preview_item(
         mime_type=resolved_mime_type,
         extension=resolved_extension,
     )
-    resolved_thumbnail_url = clean_text(thumbnail_url)
-    resolved_preview_url = clean_text(preview_url)
-    resolved_open_url = clean_text(open_url)
-    resolved_download_url = clean_text(download_url)
+    resolved_thumbnail_url = clean_action_url(thumbnail_url)
+    resolved_preview_url = clean_action_url(preview_url)
+    resolved_open_url = clean_action_url(open_url)
+    resolved_download_url = clean_action_url(download_url)
     if not resolved_download_url and resolved_file_id:
         resolved_download_url = resolved_open_url
 

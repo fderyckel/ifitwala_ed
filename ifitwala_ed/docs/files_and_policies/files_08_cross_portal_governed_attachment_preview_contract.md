@@ -146,7 +146,7 @@ Test refs: `ifitwala_ed/api/test_file_access.py`, `ifitwala_ed/api/test_file_acc
 Current pain point:
 
 - Org Communication now prefers `thumbnail_url` for inline card previews, but that field currently resolves to the same governed preview route as `preview_url` once the richer preview derivative is ready
-- because the old `thumb` derivative proved too small for wide attachment cards, governed attachment-card surfaces now use `viewer_preview` for inline images while keeping `thumb` available for smaller avatar/profile-image surfaces
+- governed attachment-card surfaces now use the Ed-owned `thumbnail_url` route for card-sized inline previews; compact avatar/profile-image derivative choices remain an internal Drive/Ed implementation detail
 - governed applicant-document and staff admissions review DTOs now expose the same split, even where the first UI cut still uses explicit open actions instead of inline cards
 - those preview routes are authorization-first Ed action routes, not dedicated thumbnail-delivery contracts
 - the proposal should not "cache page bootstrap grants"; it should split thumbnail delivery from richer preview delivery while keeping Ed as the permission gate
@@ -160,7 +160,7 @@ Refined direction:
 - image and PDF card surfaces may fall back to `preview_url` inline when `thumbnail_url` is absent or when the thumbnail delivery route fails, so a missing card derivative does not blank the whole card while Drive catches up
 - if Drive determines that an explicit card derivative is stale for the current version/render spec, Ed thumbnail routes should treat it the same as missing and let the SPA fall back to `preview_url` instead of serving an undersized legacy artifact
 - Ed-owned thumbnail routes may use short-lived `frappe.cache()` entries for resolved redirect targets only, never for raw file bytes and never for DTO-embedded provider URLs
-- cache keys must include at least `drive_file`, current version identity, derivative role, and the relevant surface/context dimensions so tenant and portal scope cannot leak
+- cache keys must include at least `drive_file`, current version identity, the internal preview variant, and the relevant surface/context dimensions so tenant and portal scope cannot leak
 - cache TTL must stay shorter than the underlying Drive grant lifetime
 
 Initial rollout target:
@@ -249,7 +249,7 @@ DTO rules:
 
 - URL fields are stable server-owned surface actions or `null`
 - the DTO is already filtered for the current viewer; the SPA must not infer hidden attachments
-- `thumbnail_url` should stay optional, using `viewer_preview` for image attachment-card surfaces and `pdf_card` for PDF first-page card previews
+- `thumbnail_url` should stay optional and represent the card-sized preview action for images or first-page PDF cards; DTOs must not expose Drive derivative role names or derivative-role query parameters
 - `preview_url` should be used only when a richer preview action exists
 - `open_url` remains the current compatibility baseline during rollout
 - current surfaces may still keep their legacy top-level fields (`kind`, `material_type`, `title`, `reference_url`, and similar) while also exposing the nested shared DTO during convergence

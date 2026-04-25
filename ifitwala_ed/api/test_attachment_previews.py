@@ -43,3 +43,30 @@ class TestAttachmentPreviewItems(TestCase):
         self.assertFalse(payload["can_preview"])
         self.assertTrue(payload["can_open"])
         self.assertFalse(payload["can_download"])
+
+    def test_build_attachment_preview_item_hides_internal_derivative_role_query_params(self):
+        payload = build_attachment_preview_item(
+            item_id="ATT-3",
+            owner_doctype="Material Placement",
+            owner_name="PLC-1",
+            file_id="FILE-1",
+            display_name="Lab PDF",
+            extension="pdf",
+            thumbnail_url=(
+                "/api/method/ifitwala_ed.api.file_access.thumbnail_academic_file"
+                "?file=FILE-1&context_doctype=Material+Placement&derivative_role=pdf_card"
+            ),
+            preview_url=(
+                "/api/method/ifitwala_ed.api.file_access.preview_academic_file"
+                "?file=FILE-1&derivative_role=viewer_preview"
+            ),
+            open_url=(
+                "/api/method/ifitwala_ed.api.file_access.download_academic_file?file=FILE-1&derivative_role=thumb"
+            ),
+        )
+
+        self.assertNotIn("derivative_role", payload["thumbnail_url"])
+        self.assertIn("context_doctype=Material+Placement", payload["thumbnail_url"])
+        self.assertNotIn("derivative_role", payload["preview_url"])
+        self.assertNotIn("derivative_role", payload["open_url"])
+        self.assertEqual(payload["download_url"], payload["open_url"])
