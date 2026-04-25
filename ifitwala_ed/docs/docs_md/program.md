@@ -108,11 +108,10 @@ Result: the catalog keeps one course row for ESS while the basket-group table re
 
 ## Related Docs
 
-- [**Program Course**](/docs/en/program-course/)
-- [**Program Course Prerequisite**](/docs/en/program-course-prerequisite/)
-- [**Basket Group**](/docs/en/basket-group/)
-- [**Course**](/docs/en/course/)
-- [**Program Offering**](/docs/en/program-offering/)
+<RelatedDocs
+  slugs="program-course,program-course-prerequisite,basket-group,course,program-offering"
+  title="Related Docs"
+/>
 
 ## Technical Notes (IT)
 

@@ -3,7 +3,7 @@ title: "Task Contribution: Teacher and Moderator Judgment Inputs"
 slug: task-contribution
 category: Assessment
 doc_order: 9
-version: "1.2.1"
+version: "1.2.2"
 last_change_date: "2026-04-25"
 summary: "Store non-destructive grading contributions per submission version, including assessed boolean judgments and comment-only feedback, then derive official outcomes through policy-aware services."
 seo_title: "Task Contribution: Teacher and Moderator Judgment Inputs"
@@ -56,15 +56,10 @@ Test refs: None (scaffold only: `ifitwala_ed/assessment/doctype/task_contributio
 
 ## Related Docs
 
-Status: Implemented
-Code refs: None (documentation cross-reference section)
-Test refs: None
-
-- [**Task Outcome**](/docs/en/task-outcome/)
-- [**Task Submission**](/docs/en/task-submission/)
-- [**Task Contribution Criterion**](/docs/en/task-contribution-criterion/)
-- [**Task Delivery**](/docs/en/task-delivery/)
-- [**Task Rubric Version**](/docs/en/task-rubric-version/)
+<RelatedDocs
+  slugs="task-outcome,task-submission,task-contribution-criterion,task-delivery,task-rubric-version"
+  title="Related Documentation"
+/>
 
 ## Technical Notes (IT)
 

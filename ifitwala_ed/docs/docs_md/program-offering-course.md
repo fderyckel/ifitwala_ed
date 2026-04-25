@@ -76,10 +76,10 @@ Result: the request and enrollment layers require an explicit basket-group selec
 
 ## Related Docs
 
-- [**Program Offering**](/docs/en/program-offering/)
-- [**Basket Group**](/docs/en/basket-group/)
-- [**Program Enrollment Request**](/docs/en/program-enrollment-request/)
-- [**Program Enrollment**](/docs/en/program-enrollment/)
+<RelatedDocs
+  slugs="program-offering,basket-group,program-enrollment-request,program-enrollment"
+  title="Related Docs"
+/>
 
 ## Technical Notes (IT)
 

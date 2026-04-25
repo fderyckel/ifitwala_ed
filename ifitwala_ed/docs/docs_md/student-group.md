@@ -83,10 +83,10 @@ Current workspace note: when a selected Program Offering has exactly one Academi
 
 ## Related Docs
 
-- [**Program Offering**](/docs/en/program-offering/)
-- [**Program Enrollment**](/docs/en/program-enrollment/)
-- [**Task Delivery**](/docs/en/task-delivery/)
-- [**Class Session**](/docs/en/class-session/)
+<RelatedDocs
+  slugs="program-offering,program-enrollment,task-delivery,class-session"
+  title="Related Docs"
+/>
 
 ## Technical Notes (IT)
 

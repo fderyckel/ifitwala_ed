@@ -3,8 +3,8 @@ title: "Supporting Material: Reusable Learning Material"
 slug: supporting-material
 category: Curriculum
 doc_order: 8
-version: "1.2.2"
-last_change_date: "2026-04-24"
+version: "1.2.3"
+last_change_date: "2026-04-25"
 summary: "Store reusable supporting files and links that students open alongside units, sessions, and tasks without turning planning content into a file library."
 seo_title: "Supporting Material: Reusable Learning Material"
 seo_description: "Store reusable supporting files and links that students open alongside units, sessions, and tasks without turning planning content into a file library."
@@ -68,14 +68,10 @@ Test refs: `ifitwala_ed/curriculum/test_materials.py`, `ifitwala_ed/curriculum/d
 
 ## Related Docs
 
-Status: Implemented
-Code refs: None (documentation cross-reference section)
-Test refs: `ifitwala_ed/curriculum/doctype/supporting_material/test_supporting_material.py`
-
-- [**Material Placement**](/docs/en/material-placement/)
-- [**Task**](/docs/en/task/)
-- [**Unit Plan**](/docs/en/unit-plan/)
-- `ifitwala_ed/docs/files_and_policies/files_07_education_file_semantics_and_cross_app_contract.md`
+<RelatedDocs
+  slugs="material-placement,task,unit-plan"
+  title="Related Documentation"
+/>
 
 ## Technical Notes (IT)
 

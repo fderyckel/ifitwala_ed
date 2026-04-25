@@ -3,8 +3,8 @@ title: "Task Rubric Criterion: Frozen Criteria Rows per Delivery"
 slug: task-rubric-criterion
 category: Assessment
 doc_order: 6.1
-version: "1.0.0"
-last_change_date: "2026-03-12"
+version: "1.0.1"
+last_change_date: "2026-04-25"
 summary: "Store the frozen criteria rows copied onto Task Rubric Version so criteria-mode grading remains historically stable."
 seo_title: "Task Rubric Criterion: Frozen Criteria Rows per Delivery"
 seo_description: "Store the frozen criteria rows copied onto Task Rubric Version so criteria-mode grading remains historically stable."
@@ -49,13 +49,10 @@ Test refs: None
 
 ## Related Docs
 
-Status: Implemented
-Code refs: None (documentation cross-reference section)
-Test refs: None
-
-- [**Task Rubric Version**](/docs/en/task-rubric-version/)
-- [**Task Template Criterion**](/docs/en/task-template-criterion/)
-- [**Task Outcome**](/docs/en/task-outcome/)
+<RelatedDocs
+  slugs="task-rubric-version,task-template-criterion,task-outcome"
+  title="Related Documentation"
+/>
 
 ## Technical Notes (IT)
 

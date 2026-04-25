@@ -3,8 +3,8 @@ title: "Organization: Your School Group's Legal Foundation"
 slug: organization
 category: Setup
 doc_order: 1
-version: "1.2.0"
-last_change_date: "2026-04-11"
+version: "1.2.1"
+last_change_date: "2026-04-25"
 summary: "Create and manage legal entities that serve as the foundation for your entire school operation—from admissions and academics to HR, finance, and your public website."
 seo_title: "Organization: Your School Group's Legal Foundation"
 seo_description: "Learn how to set up Organizations in Ifitwala Ed—the legal entity root that powers multi-school management, policy governance, and public brand identity."
@@ -245,15 +245,7 @@ A: Your user account is scoped to specific organizations for security. Contact y
 
 ---
 
-## Technical Notes (IT)
-
-- **DocType**: `Organization` — Located in Setup module
-- **Tree Structure**: Supports hierarchical organization groups
-- **Auto-Creation**: Chart of Accounts generated automatically on insert
-- **Media**: Organization logo uses governed file classification
-- **Hooks**: Permission query conditions and has_permission handlers enforce scope
-
-### Permission Matrix
+## Permission Matrix
 
 | Role | Read | Write | Create | Delete | Notes |
 |------|------|-------|--------|--------|-------|
@@ -264,3 +256,11 @@ A: Your user account is scoped to specific organizations for security. Contact y
 | `Academic Admin` | Yes | Yes | No | No | Actions follow DocType row; records remain limited to scoped organization descendants |
 | `Employee` | Yes | No | No | No | Read-only |
 | `Academic Assistant` | Yes | No | No | No | Read-only |
+
+## Technical Notes (IT)
+
+- **DocType**: `Organization` — Located in Setup module
+- **Tree Structure**: Supports hierarchical organization groups
+- **Auto-Creation**: Chart of Accounts generated automatically on insert
+- **Media**: Organization logo uses governed file classification
+- **Hooks**: Permission query conditions and has_permission handlers enforce scope

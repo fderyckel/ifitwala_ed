@@ -3,8 +3,8 @@ title: "Policy Acknowledgement: Immutable Consent Evidence"
 slug: policy-acknowledgement
 category: Governance
 doc_order: 3
-version: "2.0.3"
-last_change_date: "2026-04-22"
+version: "2.0.4"
+last_change_date: "2026-04-25"
 summary: "Create permanent, tamper-proof records of who acknowledged which policy version, when, and under what context—forming your legal audit trail across staff, guardians, students, and applicants."
 seo_title: "Policy Acknowledgement: Immutable Consent Evidence"
 seo_description: "Learn how Policy Acknowledgements create permanent, tamper-proof records of policy consent with electronic signatures and audit trails."
@@ -299,6 +299,23 @@ A: Acknowledgements are preserved. The `acknowledged_by` field may reference a d
 
 ---
 
+## Permission Matrix
+
+| Role | Read | Write | Create | Delete | Notes |
+|------|------|-------|--------|--------|-------|
+| `System Manager` | Yes | Blocked | Yes | Blocked | Controller blocks edit/cancel/delete |
+| `Guardian` | Yes | No | Yes | No | Runtime context checks apply |
+| `Student` | Yes | No | Yes | No | Runtime context checks apply |
+| `Academic Staff` | Yes | No | Yes | No | Self context visibility only |
+| `Admission Officer` | Yes | No | No | No | Read-only |
+| `Admissions Applicant` | Yes | No | Yes | No | Must match applicant linkage |
+| `Admissions Family` | Yes | No | Yes | No | Linked guardian context required |
+
+**Runtime Enforcement:**
+- Visibility is enforced via `permission_query_conditions` and `has_permission` hooks
+- Guardian access to student-context rows requires primary-guardian signer authority, enforced at runtime through `Student Guardian.can_consent`
+- Duplicate tuple enforcement: `(policy_version, acknowledged_by, context_doctype, context_name)`
+
 ## Technical Notes (IT)
 
 - **DocType**: `Policy Acknowledgement` — Located in Governance module
@@ -333,23 +350,6 @@ A: Acknowledgements are preserved. The `acknowledged_by` field may reference a d
 | `before_delete` | Block delete |
 | `after_insert` | Auto-submit to submitted evidence state |
 | `on_submit` | System Manager override comment when role matrix bypassed |
-
-### Permission Matrix
-
-| Role | Read | Write | Create | Delete | Notes |
-|------|------|-------|--------|--------|-------|
-| `System Manager` | Yes | Blocked | Yes | Blocked | Controller blocks edit/cancel/delete |
-| `Guardian` | Yes | No | Yes | No | Runtime context checks apply |
-| `Student` | Yes | No | Yes | No | Runtime context checks apply |
-| `Academic Staff` | Yes | No | Yes | No | Self context visibility only |
-| `Admission Officer` | Yes | No | No | No | Read-only |
-| `Admissions Applicant` | Yes | No | Yes | No | Must match applicant linkage |
-| `Admissions Family` | Yes | No | Yes | No | Linked guardian context required |
-
-**Runtime Enforcement:**
-- Visibility is enforced via `permission_query_conditions` and `has_permission` hooks
-- Guardian access to student-context rows requires primary-guardian signer authority, enforced at runtime through `Student Guardian.can_consent`
-- Duplicate tuple enforcement: `(policy_version, acknowledged_by, context_doctype, context_name)`
 
 ### API Integration Points
 

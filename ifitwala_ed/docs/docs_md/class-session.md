@@ -3,8 +3,8 @@ title: "Class Session: The Live Teaching Session for a Class"
 slug: class-session
 category: Curriculum
 doc_order: 8
-version: "1.0.3"
-last_change_date: "2026-04-05"
+version: "1.0.4"
+last_change_date: "2026-04-25"
 summary: "Plan and run a real class session for one class teaching plan, with one shared lifecycle used by Class Planning and Class Hub."
 seo_title: "Class Session: The Live Teaching Session for a Class"
 seo_description: "Use Class Session as the educator-facing runtime object for planned, in-progress, taught, changed, or canceled teaching sessions."
@@ -58,14 +58,10 @@ Test refs: `ifitwala_ed/api/test_teaching_plans.py`
 
 ## Related Docs
 
-Status: Implemented
-Code refs: None
-Test refs: None
-
-- [**Class Teaching Plan**](/docs/en/class-teaching-plan/)
-- [**Task Delivery**](/docs/en/task-delivery/)
-- [**Unit Plan**](/docs/en/unit-plan/)
-- [**Student Group**](/docs/en/student-group/)
+<RelatedDocs
+  slugs="class-teaching-plan,task-delivery,unit-plan,student-group"
+  title="Related Documentation"
+/>
 
 ## Technical Notes (IT)
 

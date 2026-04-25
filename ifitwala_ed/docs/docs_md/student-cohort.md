@@ -40,9 +40,10 @@ seo_description: "Define a named cohort label that can be attached to offerings,
 
 ## Related Docs
 
-- [**Program Offering**](/docs/en/program-offering/)
-- [**Program Enrollment**](/docs/en/program-enrollment/)
-- [**Student Group**](/docs/en/student-group/)
+<RelatedDocs
+  slugs="program-offering,program-enrollment,student-group"
+  title="Related Docs"
+/>
 
 ## Technical Notes (IT)
 

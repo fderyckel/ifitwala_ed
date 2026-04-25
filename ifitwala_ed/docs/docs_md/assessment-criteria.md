@@ -3,8 +3,8 @@ title: "Assessment Criteria: Defining What Good Work Looks Like"
 slug: assessment-criteria
 category: Assessment
 doc_order: 2
-version: "1.0.1"
-last_change_date: "2026-03-11"
+version: "1.0.2"
+last_change_date: "2026-04-25"
 summary: "Create reusable criteria and performance levels that power rubric-based grading across tasks, outcomes, moderation, and reporting."
 seo_title: "Assessment Criteria: Defining What Good Work Looks Like"
 seo_description: "Create reusable criteria and performance levels that power rubric-based grading across tasks, outcomes, moderation, and reporting."
@@ -49,6 +49,22 @@ Criteria are curriculum truth, not one-off task notes. That keeps grading consis
 Renaming or redefining criteria after active deliveries can create moderation confusion; treat criteria edits as controlled curriculum changes.
 </Callout>
 
+## Permission Matrix
+
+| Role | Read | Write | Create | Delete |
+|---|---|---|---|---|
+| `System Manager` | Yes | Yes | Yes | Yes |
+| `Curriculum Coordinator` | Yes | Yes | Yes | Yes |
+| `Instructor` | Yes | Yes | No | No |
+| `Academic Admin` | Yes | Yes | Yes | Yes |
+
+## Related Docs
+
+<RelatedDocs
+  slugs="assessment-category,task,task-rubric-version,task-outcome"
+  title="Related Docs"
+/>
+
 ## Technical Notes (IT)
 
 ### Schema and Controller Snapshot
@@ -74,19 +90,3 @@ Renaming or redefining criteria after active deliveries can create moderation co
   - criteria are curriculum artifacts reused across tasks; they are not task-local truth
   - criteria levels describe performance bands and descriptors only
   - numeric-to-grade conversion belongs to Grade Scale, not Assessment Criteria
-
-### Permission Matrix
-
-| Role | Read | Write | Create | Delete |
-|---|---|---|---|---|
-| `System Manager` | Yes | Yes | Yes | Yes |
-| `Curriculum Coordinator` | Yes | Yes | Yes | Yes |
-| `Instructor` | Yes | Yes | No | No |
-| `Academic Admin` | Yes | Yes | Yes | Yes |
-
-## Related Docs
-
-- [**Assessment Category**](/docs/en/assessment-category/)
-- [**Task**](/docs/en/task/)
-- [**Task Rubric Version**](/docs/en/task-rubric-version/)
-- [**Task Outcome**](/docs/en/task-outcome/)

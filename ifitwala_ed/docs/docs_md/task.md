@@ -3,8 +3,8 @@ title: "Task: The Reusable Learning and Assessment Blueprint"
 slug: task
 category: Assessment
 doc_order: 4
-version: "1.9.0"
-last_change_date: "2026-04-24"
+version: "1.9.1"
+last_change_date: "2026-04-25"
 summary: "Author reusable learning tasks once, then deliver them to groups with the right grading mode, evidence expectations, and task-specific supporting materials."
 seo_title: "Task: The Reusable Learning and Assessment Blueprint"
 seo_description: "Author reusable learning tasks once, then deliver them to groups with the right grading mode, evidence expectations, and rubric strategy."
@@ -75,18 +75,10 @@ Test refs: None
 
 ## Related Docs
 
-Status: Implemented
-Code refs: None (documentation cross-reference section)
-Test refs: None
-
-- [**Task Delivery**](/docs/en/task-delivery/)
-- [**Unit Plan**](/docs/en/unit-plan/)
-- [**Class Session**](/docs/en/class-session/)
-- [**Task Template Criterion**](/docs/en/task-template-criterion/)
-- [**Task Rubric Version**](/docs/en/task-rubric-version/)
-- [**Task Outcome**](/docs/en/task-outcome/)
-- [**Assessment Criteria**](/docs/en/assessment-criteria/)
-- [**Grade Scale**](/docs/en/grade-scale/)
+<RelatedDocs
+  slugs="task-delivery,unit-plan,class-session,task-template-criterion,task-rubric-version,task-outcome,assessment-criteria,grade-scale"
+  title="Related Documentation"
+/>
 
 ## Technical Notes (IT)
 

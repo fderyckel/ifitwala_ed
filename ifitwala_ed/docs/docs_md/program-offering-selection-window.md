@@ -80,10 +80,10 @@ Opening a selection window never writes committed enrollment directly. It batch-
 
 ## Related Docs
 
-- [**Program Offering**](/docs/en/program-offering/)
-- [**Program Enrollment Request**](/docs/en/program-enrollment-request/)
-- [**Program Enrollment Tool**](/docs/en/program-enrollment-tool/)
-- [**Student Enrollment Playbook**](/docs/en/student-enrollment-playbook/)
+<RelatedDocs
+  slugs="program-offering,program-enrollment-request,program-enrollment-tool,student-enrollment-playbook"
+  title="Related Docs"
+/>
 
 ## Technical Notes (IT)
 

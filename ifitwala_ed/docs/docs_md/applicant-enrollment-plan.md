@@ -3,8 +3,8 @@ title: "Applicant Enrollment Plan: Admissions to Enrollment Bridge"
 slug: applicant-enrollment-plan
 category: Admission
 doc_order: 5
-version: "1.2.0"
-last_change_date: "2026-03-11"
+version: "1.2.1"
+last_change_date: "2026-04-25"
 summary: "Stage placement, offer, family response, and pre-request basket choices before student promotion, then hydrate the real Program Enrollment Request without duplicating admissions truth."
 seo_title: "Applicant Enrollment Plan: Admissions to Enrollment Bridge"
 seo_description: "Use Applicant Enrollment Plan to manage committee-ready placement, send offers in the admissions portal, capture applicant basket choices, and hydrate a real Program Enrollment Request after promotion."
@@ -95,6 +95,16 @@ This is not the real enrollment transaction. The committed enrollment path still
 - Repeated accept or decline clicks are safe; the server returns the already-recorded outcome instead of creating duplicate state.
 - If a selected course belongs to more than one basket group, the accepted-plan course row must keep an explicit `applied_basket_group` before hydration can complete.
 
+## Permission Matrix
+
+| Role | Read | Write | Create | Delete |
+|---|---|---|---|---|
+| `System Manager` | Yes | Yes | Yes | Yes |
+| `Admission Manager` | Yes | Yes | Yes | Yes |
+| `Admission Officer` | Yes | Yes | Yes | No |
+| `Academic Admin` | Yes | Yes | Yes | No |
+| `Curriculum Coordinator` | Yes | Yes | Yes | No |
+
 ## Related Docs
 
 <RelatedDocs
@@ -149,13 +159,3 @@ This is not the real enrollment transaction. The committed enrollment path still
 - **Request provenance written to PER**:
   - `source_student_applicant`
   - `source_applicant_enrollment_plan`
-
-### Permission Matrix
-
-| Role | Read | Write | Create | Delete |
-|---|---|---|---|---|
-| `System Manager` | Yes | Yes | Yes | Yes |
-| `Admission Manager` | Yes | Yes | Yes | Yes |
-| `Admission Officer` | Yes | Yes | Yes | No |
-| `Academic Admin` | Yes | Yes | Yes | No |
-| `Curriculum Coordinator` | Yes | Yes | Yes | No |

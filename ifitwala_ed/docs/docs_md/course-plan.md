@@ -3,8 +3,8 @@ title: "Course Plan: Shared Curriculum Version For A Course"
 slug: course-plan
 category: Curriculum
 doc_order: 4
-version: "1.5.9"
-last_change_date: "2026-04-23"
+version: "1.5.10"
+last_change_date: "2026-04-25"
 summary: "Define the governed shared curriculum version for a course, including SPA-first creation from the course-plan index, Desk-side year handover, activation rules, publication status, shared summary context, the calendar-aware curriculum timeline, and the governed workspace used to author units, quiz banks, and assignment-ready curriculum assets."
 seo_title: "Course Plan: Shared Curriculum Version For A Course"
 seo_description: "Define the governed shared curriculum version for a course, including the shared summary and the unit-plan backbone inherited by linked classes."
@@ -74,15 +74,10 @@ Test refs: `ifitwala_ed/api/test_teaching_plans.py`
 
 ## Related Docs
 
-Status: Implemented
-Code refs: None (documentation cross-reference section)
-Test refs: None
-
-- [**Unit Plan**](/docs/en/unit-plan/)
-- [**Class Teaching Plan**](/docs/en/class-teaching-plan/)
-- [**Class Session**](/docs/en/class-session/)
-- [**Quiz Question Bank**](/docs/en/quiz-question-bank/)
-- [**Task**](/docs/en/task/)
+<RelatedDocs
+  slugs="unit-plan,class-teaching-plan,class-session,quiz-question-bank,task"
+  title="Related Documentation"
+/>
 
 ## Technical Notes (IT)
 

@@ -3,8 +3,8 @@ title: "Applicant Document Type: Authoritative Admissions Evidence Catalog"
 slug: applicant-document-type
 category: Admission
 doc_order: 5
-version: "1.3.5"
-last_change_date: "2026-03-23"
+version: "1.3.6"
+last_change_date: "2026-04-25"
 summary: "Define canonical admissions document types and codes that drive portal options, readiness checks, and deterministic file-classification slots."
 seo_title: "Applicant Document Type: Authoritative Admissions Evidence Catalog"
 seo_description: "Define canonical admissions document types and codes that drive portal options, readiness checks, and deterministic file-classification slots."
@@ -87,6 +87,15 @@ Changing `code`, scope anchors, or classification fields is not cosmetic. It aff
 
 - No dedicated Script/Query Report currently uses this doctype as `ref_doctype`.
 
+## Permission Matrix
+
+| Role | Read | Write | Create | Delete | Notes |
+|---|---|---|---|---|---|
+| `Admission Officer` | Yes | Yes | Yes | Yes | Full Desk access |
+| `Admission Manager` | Yes | Yes | Yes | Yes | Full Desk access |
+| `Academic Admin` | Yes | Yes | Yes | Yes | Full Desk access |
+| `System Manager` | Yes | Yes | Yes | Yes | Full Desk access |
+
 ## Related Docs
 
 <RelatedDocs
@@ -123,12 +132,3 @@ Changing `code`, scope anchors, or classification fields is not cosmetic. It aff
 - **Downstream gating use**:
   - required-document readiness in `ifitwala_ed/admission/doctype/student_applicant/student_applicant.py::has_required_documents`
   - slot/classification source from doctype fields with deterministic code fallback in `ifitwala_ed/admission/admission_utils.py`
-
-### Permission Matrix
-
-| Role | Read | Write | Create | Delete | Notes |
-|---|---|---|---|---|---|
-| `Admission Officer` | Yes | Yes | Yes | Yes | Full Desk access |
-| `Admission Manager` | Yes | Yes | Yes | Yes | Full Desk access |
-| `Academic Admin` | Yes | Yes | Yes | Yes | Full Desk access |
-| `System Manager` | Yes | Yes | Yes | Yes | Full Desk access |

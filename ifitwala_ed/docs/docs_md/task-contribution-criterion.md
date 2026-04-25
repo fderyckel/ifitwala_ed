@@ -3,8 +3,8 @@ title: "Task Contribution Criterion: Per-Criterion Grading Input Rows"
 slug: task-contribution-criterion
 category: Assessment
 doc_order: 9.1
-version: "1.0.0"
-last_change_date: "2026-03-12"
+version: "1.0.1"
+last_change_date: "2026-04-25"
 summary: "Store the criterion-level grading inputs attached to a Task Contribution so official outcome truth can be recomputed server-side."
 seo_title: "Task Contribution Criterion: Per-Criterion Grading Input Rows"
 seo_description: "Store the criterion-level grading inputs attached to a Task Contribution so official outcome truth can be recomputed server-side."
@@ -49,14 +49,10 @@ Test refs: None
 
 ## Related Docs
 
-Status: Implemented
-Code refs: None (documentation cross-reference section)
-Test refs: None
-
-- [**Task Contribution**](/docs/en/task-contribution/)
-- [**Task Outcome Criterion**](/docs/en/task-outcome-criterion/)
-- [**Task Outcome**](/docs/en/task-outcome/)
-- [**Assessment Criteria**](/docs/en/assessment-criteria/)
+<RelatedDocs
+  slugs="task-contribution,task-outcome-criterion,task-outcome,assessment-criteria"
+  title="Related Documentation"
+/>
 
 ## Technical Notes (IT)
 

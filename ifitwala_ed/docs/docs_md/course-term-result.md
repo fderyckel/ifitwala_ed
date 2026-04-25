@@ -3,8 +3,8 @@ title: "Course Term Result: The Frozen Record of Term Performance"
 slug: course-term-result
 category: Assessment
 doc_order: 11
-version: "1.0.1"
-last_change_date: "2026-03-22"
+version: "1.0.2"
+last_change_date: "2026-04-25"
 summary: "Store one immutable term-grade record per student-course-cycle, including calculated values, overrides, and audit-safe context fields."
 seo_title: "Course Term Result: The Frozen Record of Term Performance"
 seo_description: "Store one immutable term-grade record per student-course-cycle, including calculated values, overrides, and audit-safe context fields."
@@ -43,6 +43,23 @@ Course Term Result intentionally duplicates context fields (student, course, pro
 `Course Term Result` is a generated/frozen reporting record. Do not use it as a substitute for day-to-day grading workflows.
 </Callout>
 
+## Permission Matrix
+
+| Role | Read | Write | Create | Delete |
+|---|---|---|---|---|
+| `System Manager` | Yes | Yes | Yes | Yes |
+| `Academic Admin` | Yes | Yes | Yes | Yes |
+| `Curriculum Coordinator` | Yes | Yes | Yes | Yes |
+| `Instructor` | Yes | Yes | Yes | Yes |
+| `Counselor` | Yes | No | No | No |
+
+## Related Docs
+
+<RelatedDocs
+  slugs="reporting-cycle,task-outcome,grade-scale"
+  title="Related Docs"
+/>
+
 ## Technical Notes (IT)
 
 ### Schema and Controller Snapshot
@@ -70,19 +87,3 @@ Course Term Result intentionally duplicates context fields (student, course, pro
   - one row represents one `student × course × term × reporting cycle` fact
   - values are materialized from official Task Outcome truth and are not live-recomputed by UI views
   - override paths retain original calculated values for auditability
-
-### Permission Matrix
-
-| Role | Read | Write | Create | Delete |
-|---|---|---|---|---|
-| `System Manager` | Yes | Yes | Yes | Yes |
-| `Academic Admin` | Yes | Yes | Yes | Yes |
-| `Curriculum Coordinator` | Yes | Yes | Yes | Yes |
-| `Instructor` | Yes | Yes | Yes | Yes |
-| `Counselor` | Yes | No | No | No |
-
-## Related Docs
-
-- [**Reporting Cycle**](/docs/en/reporting-cycle/)
-- [**Task Outcome**](/docs/en/task-outcome/)
-- [**Grade Scale**](/docs/en/grade-scale/)

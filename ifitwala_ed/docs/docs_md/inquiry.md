@@ -3,8 +3,8 @@ title: "Inquiry: Managing Website Visitor Intake"
 slug: inquiry
 category: Admission
 doc_order: 2
-version: "1.4.4"
-last_change_date: "2026-04-23"
+version: "1.4.5"
+last_change_date: "2026-04-25"
 summary: "Capture, assign, and track incoming website inquiries with SLA visibility and optional conversion to Student Applicant when relevant."
 seo_title: "Inquiry: Managing Website Visitor Intake"
 seo_description: "Capture, assign, and track incoming website inquiries with SLA visibility and optional conversion to Student Applicant when relevant."
@@ -130,6 +130,17 @@ Workflow transitions are server-validated. Teams should follow the canonical sta
 - No Script/Query Report currently declares `Inquiry` as `ref_doctype`.
 - Operational analytics are delivered through API + SPA analytics page, not a classic Desk report object.
 
+## Permission Matrix
+
+| Role | Read | Write | Create | Delete | Notes |
+|---|---|---|---|---|---|
+| `System Manager` | Yes | Yes | Yes | Yes | Full Desk access |
+| `Admission Manager` | Yes | Yes | Yes | Yes | Full Desk access |
+| `Admission Officer` | Yes | Yes | Yes | Yes | Full Desk access |
+| `Academic Admin` | Yes | No | No | No | Read-only in DocType permissions |
+
+Action-level guard in server code: assignment/reassignment require admissions permissions; contact completion allows Admissions/System and the current assigned user.
+
 ## Related Docs
 
 <RelatedDocs
@@ -206,14 +217,3 @@ Workflow transitions are server-validated. Teams should follow the canonical sta
   - `get_focus_context` (returns Inquiry context payload for focus routing)
   - `mark_inquiry_contacted` (named focus action endpoint delegating to `Inquiry.mark_contacted`)
   - `create_inquiry_contact` (named focus action endpoint delegating to `Inquiry.create_contact_from_inquiry` with assignee-bound focus guards)
-
-### Permission Matrix
-
-| Role | Read | Write | Create | Delete | Notes |
-|---|---|---|---|---|---|
-| `System Manager` | Yes | Yes | Yes | Yes | Full Desk access |
-| `Admission Manager` | Yes | Yes | Yes | Yes | Full Desk access |
-| `Admission Officer` | Yes | Yes | Yes | Yes | Full Desk access |
-| `Academic Admin` | Yes | No | No | No | Read-only in DocType permissions |
-
-Action-level guard in server code: assignment/reassignment require admissions permissions; contact completion allows Admissions/System and the current assigned user.

@@ -3,8 +3,8 @@ title: "Task Template Criterion: Criteria Rows on the Task Definition"
 slug: task-template-criterion
 category: Assessment
 doc_order: 4.1
-version: "1.0.0"
-last_change_date: "2026-03-12"
+version: "1.0.1"
+last_change_date: "2026-04-25"
 summary: "Store reusable assessment criteria rows on Task so criteria-mode deliveries can snapshot stable rubric context later."
 seo_title: "Task Template Criterion: Criteria Rows on the Task Definition"
 seo_description: "Store reusable assessment criteria rows on Task so criteria-mode deliveries can snapshot stable rubric context later."
@@ -52,14 +52,10 @@ Test refs: None
 
 ## Related Docs
 
-Status: Implemented
-Code refs: None (documentation cross-reference section)
-Test refs: None
-
-- [**Task**](/docs/en/task/)
-- [**Assessment Criteria**](/docs/en/assessment-criteria/)
-- [**Task Rubric Version**](/docs/en/task-rubric-version/)
-- [**Task Rubric Criterion**](/docs/en/task-rubric-criterion/)
+<RelatedDocs
+  slugs="task,assessment-criteria,task-rubric-version,task-rubric-criterion"
+  title="Related Documentation"
+/>
 
 ## Technical Notes (IT)
 

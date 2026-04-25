@@ -3,8 +3,8 @@ title: "Applicant Health Profile: Health Disclosure and Clearance"
 slug: applicant-health-profile
 category: Admission
 doc_order: 7
-version: "2.4.2"
-last_change_date: "2026-03-23"
+version: "2.4.3"
+last_change_date: "2026-04-25"
 summary: "Capture health details, control family/staff editing by applicant status, and feed readiness for admissions decisions."
 seo_title: "Applicant Health Profile: Health Disclosure and Clearance"
 seo_description: "Capture health details, control family/staff editing by applicant status, and feed readiness for admissions decisions."
@@ -93,6 +93,25 @@ When school policy requires health clearance, do not move applicants to final ap
 
 - No dedicated Script/Query Report currently declares this doctype as `ref_doctype`.
 
+## Permission Matrix
+
+| Role | Read | Write | Create | Delete | Notes |
+|---|---|---|---|---|---|
+| `System Manager` | Yes | Yes | Yes | Yes | Full Desk access |
+| `Academic Admin` | Yes | Yes | Yes | Yes | Scoped to applicant visibility |
+| `Admission Manager` | Yes | Yes | Yes | Yes | Scoped to applicant visibility |
+| `Admission Officer` | Yes | Yes | Yes | Yes | Scoped to applicant visibility |
+| `Nurse` | Yes | Yes | Yes | Yes | Staff review role |
+| `Guardian` | Yes | Yes | Yes | No | Linked-guardian rows only |
+| `Admissions Applicant` | Yes | Yes | Yes | No | Own applicant rows only |
+
+Runtime controller rules:
+- Family/applicant editing is allowed only when user linkage to the applicant is valid and status is non-terminal (`Draft` through `Withdrawn`, excluding `Rejected`).
+- Admissions/academic staff are scoped by applicant organization/school visibility; `System Manager` remains global.
+- An assigned reviewer with an open `Applicant Review Assignment` for the applicant gets read-only access to this profile and the applicant folder, but does not get direct write permission outside the review workflow.
+- Review fields are staff-only (`Admission Officer`, `Admission Manager`, `Academic Admin`, `System Manager`, `Nurse`).
+- Terminal applicant states (`Rejected`, `Promoted`) are read-only.
+
 ## Related Docs
 
 <RelatedDocs
@@ -125,22 +144,3 @@ When school policy requires health clearance, do not move applicants to final ap
   - permission gating by role and applicant status
   - reviewer metadata stamping (`reviewed_by`, `reviewed_on`)
   - promotion handoff consumed by `Student Applicant.promote_to_student`
-
-### Permission Matrix
-
-| Role | Read | Write | Create | Delete | Notes |
-|---|---|---|---|---|---|
-| `System Manager` | Yes | Yes | Yes | Yes | Full Desk access |
-| `Academic Admin` | Yes | Yes | Yes | Yes | Scoped to applicant visibility |
-| `Admission Manager` | Yes | Yes | Yes | Yes | Scoped to applicant visibility |
-| `Admission Officer` | Yes | Yes | Yes | Yes | Scoped to applicant visibility |
-| `Nurse` | Yes | Yes | Yes | Yes | Staff review role |
-| `Guardian` | Yes | Yes | Yes | No | Linked-guardian rows only |
-| `Admissions Applicant` | Yes | Yes | Yes | No | Own applicant rows only |
-
-Runtime controller rules:
-- Family/applicant editing is allowed only when user linkage to the applicant is valid and status is non-terminal (`Draft` through `Withdrawn`, excluding `Rejected`).
-- Admissions/academic staff are scoped by applicant organization/school visibility; `System Manager` remains global.
-- An assigned reviewer with an open `Applicant Review Assignment` for the applicant gets read-only access to this profile and the applicant folder, but does not get direct write permission outside the review workflow.
-- Review fields are staff-only (`Admission Officer`, `Admission Manager`, `Academic Admin`, `System Manager`, `Nurse`).
-- Terminal applicant states (`Rejected`, `Promoted`) are read-only.

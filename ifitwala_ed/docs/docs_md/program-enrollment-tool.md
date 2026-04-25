@@ -120,11 +120,10 @@ If a choice still needs staff judgment, the tool creates the draft request and r
 
 ## Related Docs
 
-- [**Program Enrollment Request**](/docs/en/program-enrollment-request/)
-- [**Program Enrollment**](/docs/en/program-enrollment/)
-- [**Course Enrollment Tool**](/docs/en/course-enrollment-tool/)
-- [**Program Offering Selection Window**](/docs/en/program-offering-selection-window/)
-- [**Student Enrollment Playbook**](/docs/en/student-enrollment-playbook/)
+<RelatedDocs
+  slugs="program-enrollment-request,program-enrollment,course-enrollment-tool,program-offering-selection-window,student-enrollment-playbook"
+  title="Related Docs"
+/>
 
 ## Technical Notes (IT)
 

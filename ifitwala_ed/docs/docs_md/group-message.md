@@ -40,8 +40,10 @@ No controller-driven consumers were located in the current workspace beyond the 
 
 ## Related Docs
 
-- [**Student Group**](/docs/en/student-group/)
-- [**Student Cohort**](/docs/en/student-cohort/)
+<RelatedDocs
+  slugs="student-group,student-cohort"
+  title="Related Docs"
+/>
 
 ## Technical Notes (IT)
 

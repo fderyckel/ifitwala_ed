@@ -3,8 +3,8 @@ title: "Applicant Document: Authoritative Owner of Admissions Files"
 slug: applicant-document
 category: Admission
 doc_order: 6
-version: "1.7.1"
-last_change_date: "2026-03-23"
+version: "1.7.2"
+last_change_date: "2026-04-25"
 summary: "Define Applicant Document as the applicant/type bucket and Applicant Document Item as per-file slot rows for review, readiness, and promotion."
 seo_title: "Applicant Document: Authoritative Owner of Admissions Files"
 seo_description: "Define Applicant Document parent buckets and Applicant Document Item per-file slots for admissions upload, review, readiness, and promotion."
@@ -185,6 +185,20 @@ Staff review surface rule:
 
 - No dedicated Script/Query Report currently declares `Applicant Document` as `ref_doctype`.
 
+## Permission Matrix (Effective Runtime)
+
+| Role | Read | Write | Create | Delete | Notes |
+|---|---|---|---|---|---|
+| `Admission Manager` | Yes | Yes | Yes | Yes | Scoped to applicant visibility; runtime delete guard applies when files exist |
+| `Admission Officer` | Yes | Yes | Yes | Yes | Scoped to applicant visibility; reviewer authority |
+| `Academic Admin` | Yes | Yes | Yes | Yes | Scoped to applicant visibility; reviewer authority |
+| `System Manager` | Yes | Yes | Yes | Yes | Reviewer authority + delete override with attached files |
+| `Admissions Applicant` | Yes | Yes | Yes | No | Own applicant rows only (self-link enforced) |
+| `Curriculum Coordinator` | No | No | No | No | Not in runtime admissions-file access contract |
+| `Academic Assistant` | No | No | No | No | Not in runtime admissions-file access contract |
+
+Runtime controller rules are authoritative over DocType matrix permissions.
+
 ## Related Docs
 
 <RelatedDocs
@@ -242,17 +256,3 @@ Staff review surface rule:
   - promotion copy flow uses approved `Applicant Document Item` submissions in `Student Applicant._copy_promotable_documents_to_student()`
   - `promotion_target` is the active exclusion control for Student copy
   - per-item readiness counting is driven by uploaded submission rows + item review status
-
-### Permission Matrix (Effective Runtime)
-
-| Role | Read | Write | Create | Delete | Notes |
-|---|---|---|---|---|---|
-| `Admission Manager` | Yes | Yes | Yes | Yes | Scoped to applicant visibility; runtime delete guard applies when files exist |
-| `Admission Officer` | Yes | Yes | Yes | Yes | Scoped to applicant visibility; reviewer authority |
-| `Academic Admin` | Yes | Yes | Yes | Yes | Scoped to applicant visibility; reviewer authority |
-| `System Manager` | Yes | Yes | Yes | Yes | Reviewer authority + delete override with attached files |
-| `Admissions Applicant` | Yes | Yes | Yes | No | Own applicant rows only (self-link enforced) |
-| `Curriculum Coordinator` | No | No | No | No | Not in runtime admissions-file access contract |
-| `Academic Assistant` | No | No | No | No | Not in runtime admissions-file access contract |
-
-Runtime controller rules are authoritative over DocType matrix permissions.

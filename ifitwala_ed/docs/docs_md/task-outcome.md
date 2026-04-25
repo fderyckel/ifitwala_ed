@@ -3,7 +3,7 @@ title: "Task Outcome: The Official Student-Level Assessment Record"
 slug: task-outcome
 category: Assessment
 doc_order: 7
-version: "1.3.2"
+version: "1.3.3"
 last_change_date: "2026-04-25"
 summary: "Maintain one authoritative outcome per student per delivery, with scalar scores where the grading mode produces them, criterion truth, derived boolean completion state, statuses, and publication controls."
 seo_title: "Task Outcome: The Official Student-Level Assessment Record"
@@ -63,16 +63,10 @@ Current workspace constraints:
 
 ## Related Docs
 
-Status: Implemented
-Code refs: None (documentation cross-reference section)
-Test refs: None
-
-- [**Task Delivery**](/docs/en/task-delivery/)
-- [**Task Outcome Criterion**](/docs/en/task-outcome-criterion/)
-- [**Task Submission**](/docs/en/task-submission/)
-- [**Task Contribution**](/docs/en/task-contribution/)
-- [**Course Term Result**](/docs/en/course-term-result/)
-- [**Reporting Cycle**](/docs/en/reporting-cycle/)
+<RelatedDocs
+  slugs="task-delivery,task-outcome-criterion,task-submission,task-contribution,course-term-result,reporting-cycle"
+  title="Related Documentation"
+/>
 
 ## Technical Notes (IT)
 

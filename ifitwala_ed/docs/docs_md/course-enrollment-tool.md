@@ -3,8 +3,8 @@ title: "Course Enrollment Tool: Add One Course to Many Enrollments"
 slug: course-enrollment-tool
 category: Enrollment
 doc_order: 7
-version: "1.2.0"
-last_change_date: "2026-03-11"
+version: "1.2.1"
+last_change_date: "2026-04-25"
 summary: "Add one offering course to many Program Enrollments, with optional source-course filtering for course-to-course promotion, server-side eligibility checks, and basket-group safety rules."
 seo_title: "Course Enrollment Tool: Add One Course to Many Enrollments"
 seo_description: "Add a selected offering course to many eligible students' Program Enrollments, optionally filtered by a source course from a prior offering or year."
@@ -72,12 +72,22 @@ When source filters are provided, the tool lists only students whose historical 
 
 Result: the tool does not guess the credited basket group. It stops with a clear error so staff use a basket-aware flow instead of creating ambiguous enrollment truth.
 
+## Permission Matrix
+
+| Role | Read | Write | Create | Delete |
+|---|---|---|---|---|
+| `System Manager` | Yes | Yes | Yes | Yes |
+| `Schedule Maker` | Yes | Yes | Yes | Yes |
+| `Academic Admin` | Yes | Yes | Yes | Yes |
+| `Curriculum Coordinator` | Yes | Yes | Yes | Yes |
+| `Academic Assistant` | Yes | Yes | Yes | Yes |
+
 ## Related Docs
 
-- [**Program Enrollment**](/docs/en/program-enrollment/)
-- [**Program Offering Course**](/docs/en/program-offering-course/)
-- [**Program Enrollment Tool**](/docs/en/program-enrollment-tool/)
-- [**Student Enrollment Playbook**](/docs/en/student-enrollment-playbook/)
+<RelatedDocs
+  slugs="program-enrollment,program-offering-course,program-enrollment-tool,student-enrollment-playbook"
+  title="Related Docs"
+/>
 
 ## Technical Notes (IT)
 
@@ -111,13 +121,3 @@ Result: the tool does not guess the credited basket group. It stops with a clear
   - `required` is synced from destination offering semantics
   - single-group optional courses auto-fill `credited_basket_group`
   - multi-group optional courses are rejected so the tool cannot invent a basket assignment
-
-### Permission Matrix
-
-| Role | Read | Write | Create | Delete |
-|---|---|---|---|---|
-| `System Manager` | Yes | Yes | Yes | Yes |
-| `Schedule Maker` | Yes | Yes | Yes | Yes |
-| `Academic Admin` | Yes | Yes | Yes | Yes |
-| `Curriculum Coordinator` | Yes | Yes | Yes | Yes |
-| `Academic Assistant` | Yes | Yes | Yes | Yes |

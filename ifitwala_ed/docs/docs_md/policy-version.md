@@ -3,8 +3,8 @@ title: "Policy Version: The Living Legal Text"
 slug: policy-version
 category: Governance
 doc_order: 2
-version: "2.0.1"
-last_change_date: "2026-04-16"
+version: "2.0.2"
+last_change_date: "2026-04-25"
 summary: "Create versioned policy text with automatic diff tracking. When rules change, publish amendments that surface everywhere—from staff Focus tasks with inline change viewers to guardian and student portals—while preserving complete audit history."
 seo_title: "Policy Version: Versioned Legal Text with Diff Tracking"
 seo_description: "Learn how Policy Versions track changes, show diffs, and surface across staff, guardian, and student portals with automatic version management and audit trails."
@@ -296,6 +296,22 @@ Policy versions and acknowledgements form your legal audit trail. If questioned 
 
 ---
 
+## Permission Matrix
+
+| Role | Read | Write | Create | Delete | Activate |
+|------|------|-------|--------|--------|----------|
+| `System Manager` | Yes | Draft only | Yes | Draft only | Yes |
+| `Organization Admin` | Yes | Draft only | Yes | Draft only | Yes |
+| `HR Manager` | Yes | Draft only | Yes | Draft only | Yes |
+| `Academic Admin` | Yes | Draft only | Yes | Draft only | Yes |
+| `Academic Staff` | Yes | No | No | No | No |
+
+**Notes:**
+- Active versions are read-only for all roles
+- Only draft versions can be edited or deleted
+- Activation requires Policy Signature Manager roles
+- Acknowledgements are linked to specific version records
+
 ## Technical Notes (IT)
 
 - **DocType**: `Policy Version` — Located in Governance module
@@ -311,19 +327,3 @@ Policy versions and acknowledgements form your legal audit trail. If questioned 
   - Student Hub: Version label on policy cards
   - Admissions Portal: Version in policy list
   - Analytics Dashboard: Version filter and tracking
-
-### Permission Matrix
-
-| Role | Read | Write | Create | Delete | Activate |
-|------|------|-------|--------|--------|----------|
-| `System Manager` | Yes | Draft only | Yes | Draft only | Yes |
-| `Organization Admin` | Yes | Draft only | Yes | Draft only | Yes |
-| `HR Manager` | Yes | Draft only | Yes | Draft only | Yes |
-| `Academic Admin` | Yes | Draft only | Yes | Draft only | Yes |
-| `Academic Staff` | Yes | No | No | No | No |
-
-**Notes:**
-- Active versions are read-only for all roles
-- Only draft versions can be edited or deleted
-- Activation requires Policy Signature Manager roles
-- Acknowledgements are linked to specific version records

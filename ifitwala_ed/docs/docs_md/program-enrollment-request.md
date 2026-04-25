@@ -126,11 +126,10 @@ For statuses `Submitted`, `Under Review`, and `Approved`, validation snapshot mu
 
 ## Related Docs
 
-- [**Program Offering**](/docs/en/program-offering/)
-- [**Basket Group**](/docs/en/basket-group/)
-- [**Applicant Enrollment Plan**](/docs/en/applicant-enrollment-plan/)
-- [**Program Enrollment**](/docs/en/program-enrollment/)
-- [**Student Enrollment Playbook**](/docs/en/student-enrollment-playbook/)
+<RelatedDocs
+  slugs="program-offering,basket-group,applicant-enrollment-plan,program-enrollment,student-enrollment-playbook"
+  title="Related Docs"
+/>
 
 ## Technical Notes (IT)
 

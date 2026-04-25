@@ -68,9 +68,10 @@ Student passes if any full group passes.
 
 ## Related Docs
 
-- [**Program**](/docs/en/program/)
-- [**Program Course**](/docs/en/program-course/)
-- [**Program Enrollment Request**](/docs/en/program-enrollment-request/)
+<RelatedDocs
+  slugs="program,program-course,program-enrollment-request"
+  title="Related Docs"
+/>
 
 ## Technical Notes (IT)
 

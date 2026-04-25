@@ -3,8 +3,8 @@ title: "Task Rubric Version: Freezing Criteria at Delivery Time"
 slug: task-rubric-version
 category: Assessment
 doc_order: 6
-version: "1.2.1"
-last_change_date: "2026-04-22"
+version: "1.2.2"
+last_change_date: "2026-04-25"
 summary: "Snapshot rubric criteria per delivery so grading remains historically stable even if the master task rubric changes later."
 seo_title: "Task Rubric Version: Freezing Criteria at Delivery Time"
 seo_description: "Snapshot rubric criteria per delivery so grading remains historically stable even if the master task rubric changes later."
@@ -56,16 +56,10 @@ Current workspace constraints: criteria snapshots depend on delivery launch sema
 
 ## Related Docs
 
-Status: Implemented
-Code refs: None (documentation cross-reference section)
-Test refs: None
-
-- [**Task**](/docs/en/task/)
-- [**Task Template Criterion**](/docs/en/task-template-criterion/)
-- [**Task Delivery**](/docs/en/task-delivery/)
-- [**Task Rubric Criterion**](/docs/en/task-rubric-criterion/)
-- [**Task Contribution**](/docs/en/task-contribution/)
-- [**Task Outcome**](/docs/en/task-outcome/)
+<RelatedDocs
+  slugs="task,task-template-criterion,task-delivery,task-rubric-criterion,task-contribution,task-outcome"
+  title="Related Documentation"
+/>
 
 ## Technical Notes (IT)
 

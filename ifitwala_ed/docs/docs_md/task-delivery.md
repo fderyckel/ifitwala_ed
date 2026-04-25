@@ -3,8 +3,8 @@ title: "Task Delivery: Assigning Work to a Real Class"
 slug: task-delivery
 category: Assessment
 doc_order: 5
-version: "1.8.2"
-last_change_date: "2026-04-22"
+version: "1.8.3"
+last_change_date: "2026-04-25"
 summary: "Assign a reusable task to a specific class through its class teaching plan, with dates, grading mode, optional class-session context, and scalable outcome generation."
 seo_title: "Task Delivery: Assigning Work to a Real Class"
 seo_description: "Assign a reusable task to a class through its teaching plan with dates, grading mode, evidence rules, and optional class-session context."
@@ -75,17 +75,10 @@ Test refs: `ifitwala_ed/assessment/doctype/task_delivery/test_task_delivery.py`
 
 ## Related Docs
 
-Status: Implemented
-Code refs: None (documentation cross-reference section)
-Test refs: None
-
-- [**Task**](/docs/en/task/)
-- [**Class Session**](/docs/en/class-session/)
-- [**Task Outcome**](/docs/en/task-outcome/)
-- [**Task Submission**](/docs/en/task-submission/)
-- [**Task Contribution**](/docs/en/task-contribution/)
-- [**Task Rubric Version**](/docs/en/task-rubric-version/)
-- [**Task Rubric Criterion**](/docs/en/task-rubric-criterion/)
+<RelatedDocs
+  slugs="task,class-session,task-outcome,task-submission,task-contribution,task-rubric-version,task-rubric-criterion"
+  title="Related Documentation"
+/>
 
 ## Technical Notes (IT)
 

@@ -71,10 +71,10 @@ Result: the program catalog still has one course row, while downstream offering 
 
 ## Related Docs
 
-- [**Program**](/docs/en/program/)
-- [**Basket Group**](/docs/en/basket-group/)
-- [**Program Course Prerequisite**](/docs/en/program-course-prerequisite/)
-- [**Program Offering Course**](/docs/en/program-offering-course/)
+<RelatedDocs
+  slugs="program,basket-group,program-course-prerequisite,program-offering-course"
+  title="Related Docs"
+/>
 
 ## Technical Notes (IT)
 

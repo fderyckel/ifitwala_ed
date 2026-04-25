@@ -3,8 +3,8 @@ title: "Admission Settings: Admissions SLA and Assignment Policy"
 slug: admission-settings
 category: Admission
 doc_order: 1
-version: "1.5.1"
-last_change_date: "2026-04-23"
+version: "1.5.2"
+last_change_date: "2026-04-25"
 summary: "Define admissions SLA windows, assignment task color defaults, admissions-portal family/access toggles, and the admissions-to-enrollment auto-hydration policy."
 seo_title: "Admission Settings: Admissions SLA and Assignment Policy"
 seo_description: "Define admissions SLA windows, assignment task color defaults, and admissions-portal guardian section visibility."
@@ -99,6 +99,15 @@ This shows why `followup_sla_days` does not need to be less than `first_contact_
 Treat SLA value updates as policy changes. Mid-cycle edits can shift operational expectations for newly calculated deadlines and dashboard horizons.
 </Callout>
 
+## Permission Matrix
+
+| Role | Read | Write | Create | Delete | Notes |
+|---|---|---|---|---|---|
+| `System Manager` | Yes | Yes | Yes | Yes | Full single-doctype control |
+| `Admission Manager` | Yes | Yes | Yes | Yes | Operational owner |
+| `Admission Officer` | Yes | No | No | No | Read-only |
+| `Academic Admin` | Yes | No | No | No | Read-only |
+
 ## Related Docs
 
 <RelatedDocs
@@ -148,12 +157,3 @@ Treat SLA value updates as policy changes. Mid-cycle edits can shift operational
     - hourly scheduler entrypoint: `ifitwala_ed.admission.scheduled_jobs.run_hourly_sla_sweep`
 - **Operational nuance**:
   - Current scheduler registration is static hourly from `hooks.py`; no code path currently reads `sla_enabled` or `sla_check_interval_hours` to enable/disable or retime scheduler execution.
-
-### Permission Matrix
-
-| Role | Read | Write | Create | Delete | Notes |
-|---|---|---|---|---|---|
-| `System Manager` | Yes | Yes | Yes | Yes | Full single-doctype control |
-| `Admission Manager` | Yes | Yes | Yes | Yes | Operational owner |
-| `Admission Officer` | Yes | No | No | No | Read-only |
-| `Academic Admin` | Yes | No | No | No | Read-only |

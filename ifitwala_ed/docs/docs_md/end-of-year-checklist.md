@@ -65,9 +65,10 @@ Test refs: `ifitwala_ed/schedule/doctype/end_of_year_checklist/test_end_of_year_
 
 ## Related Docs
 
-- [**Program Enrollment**](/docs/en/program-enrollment/)
-- [**Student Group**](/docs/en/student-group/)
-- [**Course Plan**](/docs/en/course-plan/)
+<RelatedDocs
+  slugs="program-enrollment,student-group,course-plan"
+  title="Related Docs"
+/>
 
 ## Technical Notes (IT)
 

@@ -3,8 +3,8 @@ title: "Institutional Policy: Unified Governance for Your School"
 slug: institutional-policy
 category: Governance
 doc_order: 1
-version: "2.0.5"
-last_change_date: "2026-04-22"
+version: "2.0.6"
+last_change_date: "2026-04-25"
 summary: "Create and manage institutional policies that flow seamlessly across your organization—from staff signature campaigns to guardian portals, student hubs, and admissions workflows—all with comprehensive analytics and audit trails."
 seo_title: "Institutional Policy: Unified Governance for Your School"
 seo_description: "Learn how Ifitwala Ed's integrated policy governance connects staff campaigns, guardian acknowledgements, student policies, and admissions requirements in one unified system."
@@ -358,6 +358,21 @@ A: Yes, applicant-scoped policies appear in the admissions portal. They must ack
 
 ---
 
+## Permission Matrix
+
+| Role | Read | Write | Create | Delete | Notes |
+|------|------|-------|--------|--------|-------|
+| `System Manager` | Yes | Yes | Yes | Blocked | Controller blocks delete |
+| `Organization Admin` | Yes | Yes | Yes | Blocked | Controller blocks delete |
+| `Accounts Manager` | Yes | Yes | Yes | Blocked | Controller blocks delete |
+| `Admission Manager` | Yes | Yes | Yes | Blocked | Controller blocks delete |
+| `Academic Admin` | Yes | Yes | Yes | Blocked | Controller blocks delete |
+| `HR Manager` | Yes | Yes | Yes | Blocked | Controller blocks delete |
+| `Academic Staff` | Yes | No | No | No | Read-only access |
+| `Accreditation Visitor` | Yes | No | No | No | Read-only for audits |
+
+**Management Scope:** Policy admins may manage policies rooted in their base organization or descendant organizations. Read visibility is enforced through scope hooks.
+
 ## Technical Notes (IT)
 
 - **DocType**: `Institutional Policy` — Located in Governance module
@@ -373,18 +388,3 @@ A: Yes, applicant-scoped policies appear in the admissions portal. They must ack
   - Guardian Policies: `/hub/guardian/policies`
   - Student Policies: `/hub/student/policies`
   - Analytics Dashboard: `/staff/analytics/policy-signatures`
-
-### Permission Matrix
-
-| Role | Read | Write | Create | Delete | Notes |
-|------|------|-------|--------|--------|-------|
-| `System Manager` | Yes | Yes | Yes | Blocked | Controller blocks delete |
-| `Organization Admin` | Yes | Yes | Yes | Blocked | Controller blocks delete |
-| `Accounts Manager` | Yes | Yes | Yes | Blocked | Controller blocks delete |
-| `Admission Manager` | Yes | Yes | Yes | Blocked | Controller blocks delete |
-| `Academic Admin` | Yes | Yes | Yes | Blocked | Controller blocks delete |
-| `HR Manager` | Yes | Yes | Yes | Blocked | Controller blocks delete |
-| `Academic Staff` | Yes | No | No | No | Read-only access |
-| `Accreditation Visitor` | Yes | No | No | No | Read-only for audits |
-
-**Management Scope:** Policy admins may manage policies rooted in their base organization or descendant organizations. Read visibility is enforced through scope hooks.

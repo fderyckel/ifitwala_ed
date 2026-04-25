@@ -3,8 +3,8 @@ title: "Basket Group: Enrollment Basket Requirement Vocabulary"
 slug: basket-group
 category: Enrollment
 doc_order: 2
-version: "1.1.0"
-last_change_date: "2026-03-11"
+version: "1.1.1"
+last_change_date: "2026-04-25"
 summary: "Define named basket requirement groups used by Program, Program Offering, Applicant Enrollment Plan, Program Enrollment Request, and Program Enrollment."
 seo_title: "Basket Group: Enrollment Basket Requirement Vocabulary"
 seo_description: "Define named basket requirement groups used across program planning, offering setup, applicant choices, and enrollment transactions."
@@ -51,13 +51,23 @@ In staff forms, basket-related fields are labeled `Basket Group (Enrollment)`, a
 
 Result: the same course may appear in more than one requirement family, but request and enrollment rows still store which group it actually counted against.
 
+## Permission Matrix
+
+| Role | Read | Write | Create | Delete |
+|---|---|---|---|---|
+| `System Manager` | Yes | Yes | Yes | Yes |
+| `Academic Admin` | Yes | Yes | Yes | Yes |
+| `Curriculum Coordinator` | Yes | Yes | Yes | Yes |
+| `Academic Assistant` | Yes | No | No | No |
+| `Schedule Maker` | Yes | No | No | No |
+| `Instructor` | Yes | No | No | No |
+
 ## Related Docs
 
-- [**Program**](/docs/en/program/)
-- [**Program Offering**](/docs/en/program-offering/)
-- [**Program Enrollment Request**](/docs/en/program-enrollment-request/)
-- [**Program Enrollment**](/docs/en/program-enrollment/)
-- [**Applicant Enrollment Plan**](/docs/en/applicant-enrollment-plan/)
+<RelatedDocs
+  slugs="program,program-offering,program-enrollment-request,program-enrollment,applicant-enrollment-plan"
+  title="Related Docs"
+/>
 
 ## Technical Notes (IT)
 
@@ -75,14 +85,3 @@ Result: the same course may appear in more than one requirement family, but requ
 - **Supporting child tables**:
   - `Program Course Basket Group`
   - `Program Offering Course Basket Group`
-
-### Permission Matrix
-
-| Role | Read | Write | Create | Delete |
-|---|---|---|---|---|
-| `System Manager` | Yes | Yes | Yes | Yes |
-| `Academic Admin` | Yes | Yes | Yes | Yes |
-| `Curriculum Coordinator` | Yes | Yes | Yes | Yes |
-| `Academic Assistant` | Yes | No | No | No |
-| `Schedule Maker` | Yes | No | No | No |
-| `Instructor` | Yes | No | No | No |

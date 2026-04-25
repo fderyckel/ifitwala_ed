@@ -3,8 +3,8 @@ title: "Learning Standards: Standards Catalog for Curriculum Taxonomy"
 slug: learning-standards
 category: Curriculum
 doc_order: 3
-version: "1.3.0"
-last_change_date: "2026-04-13"
+version: "1.3.1"
+last_change_date: "2026-04-25"
 summary: "Catalog standards-framework rows for curriculum taxonomy and validate unit-plan standards selections against the approved standards master while reporting still aggregates official outcome truth."
 seo_title: "Learning Standards: Standards Catalog for Curriculum Taxonomy"
 seo_description: "Catalog standards-framework rows for curriculum taxonomy while the live curriculum runtime still publishes unit standards inline and reporting still aggregates official outcome truth."
@@ -58,15 +58,10 @@ Test refs: None
 
 ## Related Docs
 
-Status: Implemented
-Code refs: None (documentation cross-reference section)
-Test refs: None
-
-- [**Unit Plan**](/docs/en/unit-plan/)
-- [**Learning Unit Standard Alignment**](/docs/en/learning-unit-standard-alignment/)
-- [**Task**](/docs/en/task/)
-- [**Task Delivery**](/docs/en/task-delivery/)
-- `ifitwala_ed/docs/assessment/05_term_reporting_notes.md`
+<RelatedDocs
+  slugs="unit-plan,learning-unit-standard-alignment,task,task-delivery"
+  title="Related Documentation"
+/>
 
 ## Technical Notes (IT)
 

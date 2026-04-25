@@ -3,8 +3,8 @@ title: "School: Academic Scope and Hierarchy Node"
 slug: school
 category: School Settings
 doc_order: 1
-version: "1.4.0"
-last_change_date: "2026-04-05"
+version: "1.4.1"
+last_change_date: "2026-04-25"
 summary: "Define schools as NestedSet academic scope records anchored to an Organization, with hierarchy integrity, governed public media, website publication bootstrap, and explicit DocType permissions."
 seo_title: "School: Academic Scope and Hierarchy Node"
 seo_description: "Define schools as NestedSet academic scope records anchored to an Organization, with hierarchy integrity, governed public media, website publication bootstrap, and explicit DocType permissions."
@@ -104,7 +104,7 @@ Test refs:
 | Desk UX guardrails | `school.js` helps users avoid invalid parent selection, offers explicit parent-to-child current-settings copy for missing child values, and routes uploads/buttons into governed flows; server remains authoritative | `school_settings/doctype/school/school.js` | None specific in current repo |
 | Background work | `enqueue_replace_abbr()` defers expensive dependent renames to the `long` queue; `replace_abbr()` only renames explicit school-scoped doctypes | `school_settings/doctype/school/school.py` | `school_settings/doctype/school/test_school.py` |
 
-### Permission Matrix
+## Permission Matrix
 
 | Role | Read | Write | Create | Delete | Notes |
 |---|---|---|---|---|---|
@@ -127,9 +127,10 @@ This matrix reflects the explicit `School` DocType permission rows only. Effecti
 
 ## Related Docs
 
-- [**Organization**](/docs/en/organization/) - legal entity root and hierarchy container
-- [**Student Applicant**](/docs/en/student-applicant/) - admissions anchor and readiness pipeline
-- [**Institutional Policy**](/docs/en/institutional-policy/) - organization/school policy scope source
+<RelatedDocs
+  slugs="organization,student-applicant,institutional-policy"
+  title="Related Docs"
+/>
 
 ## Technical Notes (IT)
 

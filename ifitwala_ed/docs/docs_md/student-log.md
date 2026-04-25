@@ -3,7 +3,7 @@ title: "Student Log: Track Observations and Follow-Ups"
 slug: student-log
 category: Students
 doc_order: 2
-version: "1.0.5"
+version: "1.0.6"
 last_change_date: "2026-04-25"
 summary: "Document student observations, incidents, and concerns with built-in follow-up workflows. Keep everyone informed while maintaining appropriate privacy controls."
 seo_title: "Student Log: Track Observations and Follow-Ups"
@@ -462,21 +462,7 @@ Evidence appears in the Student portal log detail, Guardian Monitoring log cards
 
 ---
 
-## Technical Notes (IT)
-
-- **DocType**: `Student Log` — Located in Students module
-- **Autoname**: `SLOG-.YY.-.MM.-.####` format (auto-generated)
-- **Submittable**: Yes (must be submitted to create follow-up tasks)
-- **Amendable**: Yes (unless follow-ups exist)
-- **Follow-up Status**: Computed field (Open → In Progress → Completed)
-- **Visibility Defaults**: `Visible to Student` and `Visible to Guardians` default to off
-- **Evidence Attachments**: governed by Ifitwala Drive workflow `student_log.evidence_attachment`; parent log visibility and row-level visibility must both allow portal display
-- **Scheduler**: Daily job auto-completes stale "In Progress" logs using the selected next-step policy or the school default
-- **Academic context**: new logs seed missing `program`, `academic_year`, `program_offering`, and `school` from the student's current active Program Enrollment; existing sites backfill historical missing context through the one-shot patch `ifitwala_ed.patches.backfill_student_log_delivery_context`
-- **Assignment lifecycle**: follow-up `ToDo` ownership is created on submit and updated through explicit reassign/reopen workflow only; existing sites backfill unambiguous assignment drift through the one-shot patch `ifitwala_ed.patches.backfill_student_log_follow_up_assignments`
-- **Legacy remediation**: existing sites backfill missing `follow_up_role` values on follow-up logs through the one-shot patch `ifitwala_ed.patches.backfill_student_log_follow_up_roles`
-
-### Permission Matrix
+## Permission Matrix
 
 | Role | Read | Write | Create | Delete | Submit | Cancel | Amend | Notes |
 |------|------|-------|--------|--------|--------|--------|-------|-------|
@@ -491,3 +477,17 @@ Evidence appears in the Student portal log detail, Guardian Monitoring log cards
 | `Guardian` | Yes* | No | No | No | No | No | No | Visible logs only (portal) |
 
 *Read access is scoped to logs explicitly marked visible and within school scope.
+
+## Technical Notes (IT)
+
+- **DocType**: `Student Log` — Located in Students module
+- **Autoname**: `SLOG-.YY.-.MM.-.####` format (auto-generated)
+- **Submittable**: Yes (must be submitted to create follow-up tasks)
+- **Amendable**: Yes (unless follow-ups exist)
+- **Follow-up Status**: Computed field (Open → In Progress → Completed)
+- **Visibility Defaults**: `Visible to Student` and `Visible to Guardians` default to off
+- **Evidence Attachments**: governed by Ifitwala Drive workflow `student_log.evidence_attachment`; parent log visibility and row-level visibility must both allow portal display
+- **Scheduler**: Daily job auto-completes stale "In Progress" logs using the selected next-step policy or the school default
+- **Academic context**: new logs seed missing `program`, `academic_year`, `program_offering`, and `school` from the student's current active Program Enrollment; existing sites backfill historical missing context through the one-shot patch `ifitwala_ed.patches.backfill_student_log_delivery_context`
+- **Assignment lifecycle**: follow-up `ToDo` ownership is created on submit and updated through explicit reassign/reopen workflow only; existing sites backfill unambiguous assignment drift through the one-shot patch `ifitwala_ed.patches.backfill_student_log_follow_up_assignments`
+- **Legacy remediation**: existing sites backfill missing `follow_up_role` values on follow-up logs through the one-shot patch `ifitwala_ed.patches.backfill_student_log_follow_up_roles`

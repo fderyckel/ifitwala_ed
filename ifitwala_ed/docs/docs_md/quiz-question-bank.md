@@ -3,8 +3,8 @@ title: "Quiz Question Bank: Shared Quiz Authoring Set For A Course"
 slug: quiz-question-bank
 category: Assessment
 doc_order: 18
-version: "1.0.2"
-last_change_date: "2026-04-16"
+version: "1.0.3"
+last_change_date: "2026-04-25"
 summary: "Define a reusable course-level quiz question bank that staff can author in the course-plan workspace and assign later through quiz-backed tasks."
 seo_title: "Quiz Question Bank: Shared Quiz Authoring Set For A Course"
 seo_description: "Define a reusable course-level quiz question bank that staff can author in the course-plan workspace and assign later through quiz-backed tasks."
@@ -53,13 +53,10 @@ Test refs: `ifitwala_ed/api/test_quiz.py`
 
 ## Related Docs
 
-Status: Implemented
-Code refs: None
-Test refs: None
-
-- [**Course Plan**](/docs/en/course-plan/)
-- [**Task**](/docs/en/task/)
-- [**Task Delivery**](/docs/en/task-delivery/)
+<RelatedDocs
+  slugs="course-plan,task,task-delivery"
+  title="Related Documentation"
+/>
 
 ## Technical Notes (IT)
 

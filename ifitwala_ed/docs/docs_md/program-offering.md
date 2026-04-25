@@ -130,10 +130,10 @@ Desk visibility is staff-scope driven:
 
 ## Related Docs
 
-- [**Program Offering Course**](/docs/en/program-offering-course/)
-- [**Basket Group**](/docs/en/basket-group/)
-- [**Program Enrollment Request**](/docs/en/program-enrollment-request/)
-- [**Program Enrollment**](/docs/en/program-enrollment/)
+<RelatedDocs
+  slugs="program-offering-course,basket-group,program-enrollment-request,program-enrollment"
+  title="Related Docs"
+/>
 
 ## Technical Notes (IT)
 

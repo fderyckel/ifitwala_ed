@@ -3,8 +3,8 @@ title: "Grade Scale: Converting Scores into Institutional Meaning"
 slug: grade-scale
 category: Assessment
 doc_order: 3
-version: "1.0.0"
-last_change_date: "2026-02-25"
+version: "1.0.1"
+last_change_date: "2026-04-25"
 summary: "Define grade boundaries once and apply them consistently across tasks, outcomes, moderation, and term reporting."
 seo_title: "Grade Scale: Converting Scores into Institutional Meaning"
 seo_description: "Define grade boundaries once and apply them consistently across tasks, outcomes, moderation, and term reporting."
@@ -52,6 +52,23 @@ When grade boundaries live in one master place, teachers can grade quickly while
 Adjusting boundary logic mid-term affects interpretation across active grading work. Plan changes for clean cycle boundaries when possible.
 </Callout>
 
+## Permission Matrix
+
+| Role | Read | Write | Create | Delete |
+|---|---|---|---|---|
+| `System Manager` | Yes | Yes | Yes | Yes |
+| `Academic Admin` | Yes | Yes | Yes | Yes |
+| `Curriculum Coordinator` | Yes | Yes | Yes | Yes |
+| `Academic Staff` | Yes | No | No | No |
+| `Instructor` | Yes | No | No | No |
+
+## Related Docs
+
+<RelatedDocs
+  slugs="assessment-criteria,task-outcome,course-term-result,reporting-cycle"
+  title="Related Docs"
+/>
+
 ## Technical Notes (IT)
 
 ### Schema and Controller Snapshot
@@ -79,20 +96,3 @@ Adjusting boundary logic mid-term affects interpretation across active grading w
   - intervals are interpreted policy boundaries, not foreign-key-linked grade facts
   - interval ranges must stay ordered and non-overlapping to keep symbol resolution deterministic
   - grade symbol + numeric grade value are validated together when written to outcomes/contributions
-
-### Permission Matrix
-
-| Role | Read | Write | Create | Delete |
-|---|---|---|---|---|
-| `System Manager` | Yes | Yes | Yes | Yes |
-| `Academic Admin` | Yes | Yes | Yes | Yes |
-| `Curriculum Coordinator` | Yes | Yes | Yes | Yes |
-| `Academic Staff` | Yes | No | No | No |
-| `Instructor` | Yes | No | No | No |
-
-## Related Docs
-
-- [**Assessment Criteria**](/docs/en/assessment-criteria/)
-- [**Task Outcome**](/docs/en/task-outcome/)
-- [**Course Term Result**](/docs/en/course-term-result/)
-- [**Reporting Cycle**](/docs/en/reporting-cycle/)

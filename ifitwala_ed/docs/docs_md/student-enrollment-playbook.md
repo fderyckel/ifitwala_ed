@@ -70,14 +70,10 @@ This page is the operational path for enrolling students into programs and cours
 
 ## Related Docs
 
-- [**Program**](/docs/en/program/)
-- [**Course**](/docs/en/course/)
-- [**Program Offering**](/docs/en/program-offering/)
-- [**Applicant Enrollment Plan**](/docs/en/applicant-enrollment-plan/)
-- [**Program Enrollment Request**](/docs/en/program-enrollment-request/)
-- [**Program Enrollment**](/docs/en/program-enrollment/)
-- [**Program Enrollment Tool**](/docs/en/program-enrollment-tool/)
-- [**Course Enrollment Tool**](/docs/en/course-enrollment-tool/)
+<RelatedDocs
+  slugs="program,course,program-offering,applicant-enrollment-plan,program-enrollment-request,program-enrollment,program-enrollment-tool,course-enrollment-tool"
+  title="Related Docs"
+/>
 
 ## Technical Notes (IT)
 

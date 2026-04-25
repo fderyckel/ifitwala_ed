@@ -3,7 +3,7 @@ title: "Student Applicant: The Admission Record of Truth"
 slug: student-applicant
 category: Admission
 doc_order: 4
-version: "1.20.3"
+version: "1.20.4"
 last_change_date: "2026-04-25"
 summary: "Manage applicant lifecycle from invitation to promotion, with readiness checks across profile, documents, policies, recommendations, school-scoped health gating, and the admissions-to-enrollment bridge."
 seo_title: "Student Applicant: The Admission Record of Truth"
@@ -372,6 +372,87 @@ For a brand-new site or a newly onboarded school, this is what must exist before
 - No dedicated Script/Query Report declares `Student Applicant` as `ref_doctype`.
 - Current analytics are API/widget driven (admissions portal completeness + morning brief pulse).
 
+## Contract Matrix
+
+Status: Implemented
+Code refs:
+- `ifitwala_ed/admission/doctype/student_applicant/student_applicant.py`
+- `ifitwala_ed/admission/doctype/student_applicant_guardian/student_applicant_guardian.json`
+- `ifitwala_ed/students/doctype/student_guardian/student_guardian.json`
+- `ifitwala_ed/admission/access.py`
+- `ifitwala_ed/api/admissions_portal.py`
+- `ifitwala_ed/api/guardian_policy.py`
+- `ifitwala_ed/governance/doctype/institutional_policy/institutional_policy.py`
+- `ifitwala_ed/governance/doctype/policy_acknowledgement/policy_acknowledgement.py`
+- `ifitwala_ed/ui-spa/src/pages/admissions/ApplicantProfile.vue`
+- `ifitwala_ed/ui-spa/src/overlays/admissions/AdmissionsWorkspaceOverlay.vue`
+
+Test refs:
+- `ifitwala_ed/admission/doctype/student_applicant/test_student_applicant.py`
+- `ifitwala_ed/api/test_admissions_portal.py`
+- `ifitwala_ed/api/test_guardian_phase2.py`
+- `ifitwala_ed/governance/doctype/institutional_policy/test_institutional_policy.py`
+
+| Concern | Canonical owner | Code refs | Test refs |
+|---|---|---|---|
+| Schema / DocType | Applicant-stage and student-stage guardian relationship rows carry canonical signer authority; policy audience remains on Institutional Policy | `admission/doctype/student_applicant_guardian/student_applicant_guardian.json`, `students/doctype/student_guardian/student_guardian.json`, `governance/doctype/institutional_policy/institutional_policy.json` | `admission/doctype/student_applicant/test_student_applicant.py`, `governance/doctype/institutional_policy/test_institutional_policy.py` |
+| Controller / workflow logic | Promotion carries signer authority forward; policy audience uses canonical `Table MultiSelect` rows; guardian/student acknowledgement visibility respects signer authority | `admission/doctype/student_applicant/student_applicant.py`, `governance/doctype/institutional_policy/institutional_policy.py`, `governance/doctype/policy_acknowledgement/policy_acknowledgement.py`, `api/guardian_policy.py` | `admission/doctype/student_applicant/test_student_applicant.py`, `api/test_guardian_phase2.py`, `governance/doctype/institutional_policy/test_institutional_policy.py` |
+| API endpoints | Admissions family invite eligibility and guardian policy visibility use the signer-authority contract; admissions policy acknowledgement remains a named workflow | `api/admissions_portal.py`, `api/guardian_policy.py` | `api/test_admissions_portal.py`, `api/test_guardian_phase2.py` |
+| SPA / UI surfaces | Admissions family guardian rows present signer authority explicitly; guardian portal policy page consumes the filtered policy overview | `ui-spa/src/pages/admissions/ApplicantProfile.vue`, `ui-spa/src/overlays/admissions/AdmissionsWorkspaceOverlay.vue`, `ui-spa/src/pages/guardian/GuardianPolicies.vue` | `ui-spa/src/pages/guardian/__tests__/GuardianPolicies.test.ts` |
+| Reports / dashboards / briefings | Staff policy communication defaults and guardian policy status views follow the canonical audience-row contract | `api/policy_communication.py`, `api/policy_signature.py`, `ui-spa/src/pages/guardian/GuardianPolicies.vue` | `api/test_guardian_phase2.py` |
+| Scheduler / background jobs | None in this signer-authority workflow | None | None |
+| Tests | Coverage exists for policy audience normalization, guardian policy filtering, and promotion carry-forward of signer authority | `governance/doctype/institutional_policy/test_institutional_policy.py`, `api/test_guardian_phase2.py`, `admission/doctype/student_applicant/test_student_applicant.py`, `api/test_admissions_portal.py` | Implemented |
+
+### Troubleshooting: `Policy schema mismatch` (`applies_to` storage)
+
+If you see an error log like:
+
+- title: `Policy schema mismatch`
+- caller: `StudentApplicant.has_required_policies`
+- doctype: `Institutional Policy`
+- missing_table: `Institutional Policy Audience`
+- missing_link_doctype: `Policy Audience`
+
+it means code expects the canonical `Institutional Policy.applies_to` child-table storage, but your site schema is missing the related audience DocTypes or child table.
+
+Current implementation impact:
+
+- `StudentApplicant.has_required_policies()` cannot evaluate required policies and marks readiness as not OK with a schema-error issue.
+- `ifitwala_ed/api/admissions_portal.py::get_applicant_policies` throws a blocking error (`throw=True`) and policy UI cannot load.
+
+What to do (site operations):
+
+1. Run migrations for the affected site:
+   - `bench --site <site-name> migrate`
+2. If the schema is still missing, reload the related DocTypes:
+   - `bench --site <site-name> reload-doc governance doctype institutional_policy`
+   - `bench --site <site-name> reload-doc governance doctype institutional_policy_audience`
+   - `bench --site <site-name> reload-doc governance doctype policy_audience`
+3. Verify the child table exists:
+   - `bench --site <site-name> mariadb -e "SHOW TABLES LIKE 'tabInstitutional Policy Audience';"`
+4. Re-test applicant policy readiness/API and confirm no new `Policy schema mismatch` logs are created.
+
+## Permission Matrix
+
+| Role | Read | Write | Create | Delete | Notes |
+|---|---|---|---|---|---|
+| `System Manager` | Yes | Yes | Yes | Yes | Full Desk access |
+| `Admission Manager` | Yes | Yes | Yes | Yes | Scoped to applicant visibility |
+| `Admission Officer` | Yes | Yes | Yes | Yes | Scoped to applicant visibility |
+| `Academic Admin` | Yes | No | No | No | Scoped read visibility |
+| `Academic Assistant` | No | No | No | No | Not in runtime admissions-file access contract |
+| `Admissions Applicant` | Yes | Yes | No | No | Own applicant only (self-link enforced) |
+| `Admissions Family` | Yes | Yes | No | No | Family workspace only; explicit guardian linkage required |
+
+Runtime controller rules (server):
+- Only admissions staff can create new records.
+- Admissions and academic-admin reads are scope-gated by organization/school visibility; visibility can follow linked student school context during school transfers.
+- Status changes must use lifecycle methods (direct writes are blocked).
+- Family/applicant editability depends on current status (`Invited/In Progress/Missing Info`).
+- Terminal states (`Rejected`, `Promoted`) are locked except explicit System Manager override flow.
+- `inquiry`, `student`, `applicant_user`, `applicant_contact`, and `portal_account_email` are immutable and only set through named flows.
+- Direct `File` clutter is blocked on this doctype except `applicant_image`; admissions evidence belongs on [**Applicant Document**](/docs/en/applicant-document/).
+
 ## Related Docs
 
 <RelatedDocs
@@ -495,84 +576,3 @@ For a brand-new site or a newly onboarded school, this is what must exist before
   - overlay component: `ui-spa/src/overlays/admissions/ApplicantPolicyAcknowledgeOverlay.vue`
   - acknowledgement submit: `admissionsService.acknowledgePolicy` -> `ifitwala_ed.api.admissions_portal.acknowledge_policy`
   - acknowledgement requires `typed_signature_name` + `attestation_confirmed` and server-validates typed name against expected applicant signer identity before insert
-
-## Contract Matrix
-
-Status: Implemented
-Code refs:
-- `ifitwala_ed/admission/doctype/student_applicant/student_applicant.py`
-- `ifitwala_ed/admission/doctype/student_applicant_guardian/student_applicant_guardian.json`
-- `ifitwala_ed/students/doctype/student_guardian/student_guardian.json`
-- `ifitwala_ed/admission/access.py`
-- `ifitwala_ed/api/admissions_portal.py`
-- `ifitwala_ed/api/guardian_policy.py`
-- `ifitwala_ed/governance/doctype/institutional_policy/institutional_policy.py`
-- `ifitwala_ed/governance/doctype/policy_acknowledgement/policy_acknowledgement.py`
-- `ifitwala_ed/ui-spa/src/pages/admissions/ApplicantProfile.vue`
-- `ifitwala_ed/ui-spa/src/overlays/admissions/AdmissionsWorkspaceOverlay.vue`
-
-Test refs:
-- `ifitwala_ed/admission/doctype/student_applicant/test_student_applicant.py`
-- `ifitwala_ed/api/test_admissions_portal.py`
-- `ifitwala_ed/api/test_guardian_phase2.py`
-- `ifitwala_ed/governance/doctype/institutional_policy/test_institutional_policy.py`
-
-| Concern | Canonical owner | Code refs | Test refs |
-|---|---|---|---|
-| Schema / DocType | Applicant-stage and student-stage guardian relationship rows carry canonical signer authority; policy audience remains on Institutional Policy | `admission/doctype/student_applicant_guardian/student_applicant_guardian.json`, `students/doctype/student_guardian/student_guardian.json`, `governance/doctype/institutional_policy/institutional_policy.json` | `admission/doctype/student_applicant/test_student_applicant.py`, `governance/doctype/institutional_policy/test_institutional_policy.py` |
-| Controller / workflow logic | Promotion carries signer authority forward; policy audience uses canonical `Table MultiSelect` rows; guardian/student acknowledgement visibility respects signer authority | `admission/doctype/student_applicant/student_applicant.py`, `governance/doctype/institutional_policy/institutional_policy.py`, `governance/doctype/policy_acknowledgement/policy_acknowledgement.py`, `api/guardian_policy.py` | `admission/doctype/student_applicant/test_student_applicant.py`, `api/test_guardian_phase2.py`, `governance/doctype/institutional_policy/test_institutional_policy.py` |
-| API endpoints | Admissions family invite eligibility and guardian policy visibility use the signer-authority contract; admissions policy acknowledgement remains a named workflow | `api/admissions_portal.py`, `api/guardian_policy.py` | `api/test_admissions_portal.py`, `api/test_guardian_phase2.py` |
-| SPA / UI surfaces | Admissions family guardian rows present signer authority explicitly; guardian portal policy page consumes the filtered policy overview | `ui-spa/src/pages/admissions/ApplicantProfile.vue`, `ui-spa/src/overlays/admissions/AdmissionsWorkspaceOverlay.vue`, `ui-spa/src/pages/guardian/GuardianPolicies.vue` | `ui-spa/src/pages/guardian/__tests__/GuardianPolicies.test.ts` |
-| Reports / dashboards / briefings | Staff policy communication defaults and guardian policy status views follow the canonical audience-row contract | `api/policy_communication.py`, `api/policy_signature.py`, `ui-spa/src/pages/guardian/GuardianPolicies.vue` | `api/test_guardian_phase2.py` |
-| Scheduler / background jobs | None in this signer-authority workflow | None | None |
-| Tests | Coverage exists for policy audience normalization, guardian policy filtering, and promotion carry-forward of signer authority | `governance/doctype/institutional_policy/test_institutional_policy.py`, `api/test_guardian_phase2.py`, `admission/doctype/student_applicant/test_student_applicant.py`, `api/test_admissions_portal.py` | Implemented |
-
-### Troubleshooting: `Policy schema mismatch` (`applies_to` storage)
-
-If you see an error log like:
-
-- title: `Policy schema mismatch`
-- caller: `StudentApplicant.has_required_policies`
-- doctype: `Institutional Policy`
-- missing_table: `Institutional Policy Audience`
-- missing_link_doctype: `Policy Audience`
-
-it means code expects the canonical `Institutional Policy.applies_to` child-table storage, but your site schema is missing the related audience DocTypes or child table.
-
-Current implementation impact:
-
-- `StudentApplicant.has_required_policies()` cannot evaluate required policies and marks readiness as not OK with a schema-error issue.
-- `ifitwala_ed/api/admissions_portal.py::get_applicant_policies` throws a blocking error (`throw=True`) and policy UI cannot load.
-
-What to do (site operations):
-
-1. Run migrations for the affected site:
-   - `bench --site <site-name> migrate`
-2. If the schema is still missing, reload the related DocTypes:
-   - `bench --site <site-name> reload-doc governance doctype institutional_policy`
-   - `bench --site <site-name> reload-doc governance doctype institutional_policy_audience`
-   - `bench --site <site-name> reload-doc governance doctype policy_audience`
-3. Verify the child table exists:
-   - `bench --site <site-name> mariadb -e "SHOW TABLES LIKE 'tabInstitutional Policy Audience';"`
-4. Re-test applicant policy readiness/API and confirm no new `Policy schema mismatch` logs are created.
-
-### Permission Matrix
-
-| Role | Read | Write | Create | Delete | Notes |
-|---|---|---|---|---|---|
-| `System Manager` | Yes | Yes | Yes | Yes | Full Desk access |
-| `Admission Manager` | Yes | Yes | Yes | Yes | Scoped to applicant visibility |
-| `Admission Officer` | Yes | Yes | Yes | Yes | Scoped to applicant visibility |
-| `Academic Admin` | Yes | No | No | No | Scoped read visibility |
-| `Academic Assistant` | No | No | No | No | Not in runtime admissions-file access contract |
-| `Admissions Applicant` | Yes | Yes | No | No | Own applicant only (self-link enforced) |
-| `Admissions Family` | Yes | Yes | No | No | Family workspace only; explicit guardian linkage required |
-
-Runtime controller rules (server):
-- Only admissions staff can create new records.
-- Admissions and academic-admin reads are scope-gated by organization/school visibility; visibility can follow linked student school context during school transfers.
-- Status changes must use lifecycle methods (direct writes are blocked).
-- Family/applicant editability depends on current status (`Invited/In Progress/Missing Info`).
-- Terminal states (`Rejected`, `Promoted`) are locked except explicit System Manager override flow.
-- `inquiry`, `student`, `applicant_user`, `applicant_contact`, and `portal_account_email` are immutable and only set through named flows.
-- Direct `File` clutter is blocked on this doctype except `applicant_image`; admissions evidence belongs on [**Applicant Document**](/docs/en/applicant-document/).

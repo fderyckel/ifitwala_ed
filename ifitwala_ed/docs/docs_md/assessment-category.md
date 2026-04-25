@@ -3,8 +3,8 @@ title: "Assessment Category: Classifying Learning Work Clearly"
 slug: assessment-category
 category: Assessment
 doc_order: 1
-version: "1.0.0"
-last_change_date: "2026-02-25"
+version: "1.0.1"
+last_change_date: "2026-04-25"
 summary: "Define meaningful assessment buckets (Formative, Summative, Project, etc.) so teaching teams, analytics, and reporting speak the same language."
 seo_title: "Assessment Category: Classifying Learning Work Clearly"
 seo_description: "Define meaningful assessment buckets (Formative, Summative, Project, etc.) so teaching teams, analytics, and reporting speak the same language."
@@ -44,6 +44,24 @@ When categories are clean, your curriculum team can compare like-for-like eviden
 Treat category names as policy vocabulary, not teacher-specific labels, so reporting remains consistent across years.
 </Callout>
 
+## Permission Matrix
+
+| Role | Read | Write | Create | Delete |
+|---|---|---|---|---|
+| `System Manager` | Yes | Yes | Yes | Yes |
+| `Academic Admin` | Yes | Yes | Yes | Yes |
+| `Curriculum Coordinator` | Yes | Yes | Yes | Yes |
+| `Academic Staff` | Yes | No | No | No |
+| `Instructor` | Yes | No | No | No |
+| `Accreditation Visitor` | Yes | No | No | No |
+
+## Related Docs
+
+<RelatedDocs
+  slugs="assessment-criteria,grade-scale,task"
+  title="Related Docs"
+/>
+
 ## Technical Notes (IT)
 
 ### Schema and Controller Snapshot
@@ -68,20 +86,3 @@ Treat category names as policy vocabulary, not teacher-specific labels, so repor
   - categories are semantic classification only
   - categories do not compute grades, weights, or numeric outcomes
   - category flags (for example summative/include-in-final) express policy intent, not calculation logic
-
-### Permission Matrix
-
-| Role | Read | Write | Create | Delete |
-|---|---|---|---|---|
-| `System Manager` | Yes | Yes | Yes | Yes |
-| `Academic Admin` | Yes | Yes | Yes | Yes |
-| `Curriculum Coordinator` | Yes | Yes | Yes | Yes |
-| `Academic Staff` | Yes | No | No | No |
-| `Instructor` | Yes | No | No | No |
-| `Accreditation Visitor` | Yes | No | No | No |
-
-## Related Docs
-
-- [**Assessment Criteria**](/docs/en/assessment-criteria/) - defines what is measured
-- [**Grade Scale**](/docs/en/grade-scale/) - defines how scores become grades
-- [**Task**](/docs/en/task/) - where categories are applied in teaching workflows

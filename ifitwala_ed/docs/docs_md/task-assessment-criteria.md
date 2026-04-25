@@ -3,8 +3,8 @@ title: "Task Assessment Criteria: Dormant Child Table in the Task Domain"
 slug: task-assessment-criteria
 category: Assessment
 doc_order: 4.2
-version: "1.0.0"
-last_change_date: "2026-03-12"
+version: "1.0.1"
+last_change_date: "2026-04-25"
 summary: "Document the current non-canonical status of Task Assessment Criteria so agents do not assume it participates in the active task workflow."
 seo_title: "Task Assessment Criteria: Dormant Child Table in the Task Domain"
 seo_description: "Document the current non-canonical status of Task Assessment Criteria so agents do not assume it participates in the active task workflow."
@@ -48,13 +48,10 @@ Test refs: None
 
 ## Related Docs
 
-Status: Implemented
-Code refs: None (documentation cross-reference section)
-Test refs: None
-
-- [**Task Template Criterion**](/docs/en/task-template-criterion/)
-- [**Task**](/docs/en/task/)
-- [**Assessment Criteria**](/docs/en/assessment-criteria/)
+<RelatedDocs
+  slugs="task-template-criterion,task,assessment-criteria"
+  title="Related Documentation"
+/>
 
 ## Technical Notes (IT)
 

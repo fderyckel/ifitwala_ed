@@ -3,8 +3,8 @@ title: "Unit Plan: Governed Curriculum Backbone Inside a Course Plan"
 slug: unit-plan
 category: Curriculum
 doc_order: 5
-version: "1.5.4"
-last_change_date: "2026-04-23"
+version: "1.5.5"
+last_change_date: "2026-04-25"
 summary: "Define the shared unit backbone for a course plan, including validated standards alignment, pedagogy, reflections, and reusable context that class teaching plans inherit."
 seo_title: "Unit Plan: Governed Curriculum Backbone Inside a Course Plan"
 seo_description: "Define the shared unit backbone for a course plan, including standards alignment, pedagogy, and reflections that class teaching plans inherit."
@@ -56,15 +56,10 @@ Test refs: `ifitwala_ed/api/test_teaching_plans.py`
 
 ## Related Docs
 
-Status: Implemented
-Code refs: None (documentation cross-reference section)
-Test refs: None
-
-- [**Course Plan**](/docs/en/course-plan/)
-- [**Class Teaching Plan**](/docs/en/class-teaching-plan/)
-- [**Learning Standards**](/docs/en/learning-standards/)
-- [**Learning Unit Standard Alignment**](/docs/en/learning-unit-standard-alignment/)
-- [**Task**](/docs/en/task/)
+<RelatedDocs
+  slugs="course-plan,class-teaching-plan,learning-standards,learning-unit-standard-alignment,task"
+  title="Related Documentation"
+/>
 
 ## Technical Notes (IT)
 

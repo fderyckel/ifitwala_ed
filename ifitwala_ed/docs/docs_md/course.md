@@ -3,8 +3,8 @@ title: "Course: Catalog Unit for Program and Enrollment Design"
 slug: course
 category: Curriculum
 doc_order: 2
-version: "1.3.1"
-last_change_date: "2026-04-01"
+version: "1.3.2"
+last_change_date: "2026-04-25"
 summary: "Define a reusable catalog course with grade-scale context, assessment categories/criteria, status, and the website publication handoff used by public course marketing surfaces."
 seo_title: "Course: Catalog Unit for Program and Enrollment Design"
 seo_description: "Define a reusable catalog course with grade-scale context, assessment categories/criteria, and status used by Program and Program Offering enrollment flows."
@@ -80,6 +80,26 @@ If `assessment_criteria` rows are used, their `criteria_weighting` total must be
 - `term_long = 0`
 - During Program Enrollment/Course Enrollment Tool flows, term bounds are defaulted from school AY term boundaries when needed.
 
+## Permission Matrix
+
+| Role | Read | Write | Create | Delete |
+|---|---|---|---|---|
+| `System Manager` | Yes | Yes | Yes | Yes |
+| `Academic Admin` | Yes | Yes | Yes | Yes |
+| `Academic Assistant` | Yes | Yes | Yes | Yes |
+| `Curriculum Coordinator` | Yes | Yes | Yes | No |
+| `Academic Staff` | Yes | No | No | No |
+| `Instructor` | Yes | No | No | No |
+| `Admission Officer` | Yes | No | No | No |
+| `Accreditation Visitor` | Yes | No | No | No |
+
+## Related Docs
+
+<RelatedDocs
+  slugs="program,program-course,program-offering-course,task"
+  title="Related Docs"
+/>
+
 ## Technical Notes (IT)
 
 ### Schema and Controller Snapshot
@@ -105,23 +125,3 @@ If `assessment_criteria` rows are used, their `criteria_weighting` total must be
   - published courses with a `school` prepare `Course Website Profile` defaults through `ifitwala_ed/website/bootstrap.py`
   - public course storytelling, SEO, and workflow state live on `Course Website Profile`
   - public routes are school-scoped: `/schools/{school_slug}/courses` and `/schools/{school_slug}/courses/{course_slug}`
-
-### Permission Matrix
-
-| Role | Read | Write | Create | Delete |
-|---|---|---|---|---|
-| `System Manager` | Yes | Yes | Yes | Yes |
-| `Academic Admin` | Yes | Yes | Yes | Yes |
-| `Academic Assistant` | Yes | Yes | Yes | Yes |
-| `Curriculum Coordinator` | Yes | Yes | Yes | No |
-| `Academic Staff` | Yes | No | No | No |
-| `Instructor` | Yes | No | No | No |
-| `Admission Officer` | Yes | No | No | No |
-| `Accreditation Visitor` | Yes | No | No | No |
-
-## Related Docs
-
-- [**Program**](/docs/en/program/)
-- [**Program Course**](/docs/en/program-course/)
-- [**Program Offering Course**](/docs/en/program-offering-course/)
-- [**Task**](/docs/en/task/)

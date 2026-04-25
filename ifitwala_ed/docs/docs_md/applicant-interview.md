@@ -3,8 +3,8 @@ title: "Applicant Interview: Interview Event Record"
 slug: applicant-interview
 category: Admission
 doc_order: 8
-version: "1.7.2"
-last_change_date: "2026-03-12"
+version: "1.7.3"
+last_change_date: "2026-04-25"
 summary: "Record the interview event, participants, calendar projection, and operational context while keeping interviewer opinion only in Applicant Interview Feedback."
 seo_title: "Applicant Interview: Interview Event Record"
 seo_description: "Record the interview event, participants, calendar projection, and operational context while keeping interviewer opinion only in Applicant Interview Feedback."
@@ -78,11 +78,32 @@ Interviewers are child rows for structure only; workflow logic and validations a
 
 - No dedicated Script/Query Report currently declares this doctype as `ref_doctype`.
 
+## Permission Matrix
+
+| Role | Read | Write | Create | Delete | Notes |
+|---|---|---|---|---|---|
+| `System Manager` | Yes | Yes | Yes | Yes | Global privileged access |
+| `Academic Admin` | Yes | Yes | Yes | Yes | Scoped to applicant organization/school visibility |
+| `Admission Manager` | Yes | Yes | Yes | Yes | Scoped to applicant organization/school visibility |
+| `Admission Officer` | Yes | Yes | Yes | Yes | Scoped to applicant organization/school visibility |
+| `Interviewer` (listed in `interviewers`) | Yes (row-level) | No | No | No | Can access only interviews where they are listed |
+
+Runtime controller rule:
+- Staff roles (`Admission` roles + `Academic Admin` + `System Manager`) are evaluated against applicant scope before create/update/read.
+- Scoped visibility is transfer-aware: access can follow linked student school context (for example, active enrollment/current anchor school) while preserving applicant-history linkage.
+- Non-admissions employees listed in `interviewers` can read only their assigned interview rows.
+- Delegated overall-application reviewers with an open `Applicant Review Assignment` for the applicant can open interview workspace payloads and governed interview-context file links read-only from the admissions workspace.
+- That delegated reviewer access does not widen Desk `Applicant Interview` doctype permission.
+- Parent interview editing stays staff-managed; interviewer writes happen only through `Applicant Interview Feedback`.
+- Structured per-interviewer notes must be captured in `Applicant Interview Feedback` from the SPA workspace.
+- Records are blocked when linked applicant is in terminal states (`Rejected`, `Promoted`).
+
 ## Related Docs
 
-- [**Student Applicant**](/docs/en/student-applicant/) - readiness and decision flow
-- [**Applicant Health Profile**](/docs/en/applicant-health-profile/) - health review component
-- [**Applicant Document**](/docs/en/applicant-document/) - file review component
+<RelatedDocs
+  slugs="student-applicant,applicant-health-profile,applicant-document"
+  title="Related Docs"
+/>
 - `Applicant Interview Feedback` - per-interviewer structured notes and recommendations
 
 ## Technical Notes (IT)
@@ -154,23 +175,3 @@ Interviewers are child rows for structure only; workflow logic and validations a
   - `StudentApplicant.has_required_interviews()` tracks count and snapshot section
   - current `ready` boolean blocks on policies/documents/health, not interview count
   - interview summaries show participant and feedback completion state; they do not derive a combined interview opinion from the parent doctype
-
-### Permission Matrix
-
-| Role | Read | Write | Create | Delete | Notes |
-|---|---|---|---|---|---|
-| `System Manager` | Yes | Yes | Yes | Yes | Global privileged access |
-| `Academic Admin` | Yes | Yes | Yes | Yes | Scoped to applicant organization/school visibility |
-| `Admission Manager` | Yes | Yes | Yes | Yes | Scoped to applicant organization/school visibility |
-| `Admission Officer` | Yes | Yes | Yes | Yes | Scoped to applicant organization/school visibility |
-| `Interviewer` (listed in `interviewers`) | Yes (row-level) | No | No | No | Can access only interviews where they are listed |
-
-Runtime controller rule:
-- Staff roles (`Admission` roles + `Academic Admin` + `System Manager`) are evaluated against applicant scope before create/update/read.
-- Scoped visibility is transfer-aware: access can follow linked student school context (for example, active enrollment/current anchor school) while preserving applicant-history linkage.
-- Non-admissions employees listed in `interviewers` can read only their assigned interview rows.
-- Delegated overall-application reviewers with an open `Applicant Review Assignment` for the applicant can open interview workspace payloads and governed interview-context file links read-only from the admissions workspace.
-- That delegated reviewer access does not widen Desk `Applicant Interview` doctype permission.
-- Parent interview editing stays staff-managed; interviewer writes happen only through `Applicant Interview Feedback`.
-- Structured per-interviewer notes must be captured in `Applicant Interview Feedback` from the SPA workspace.
-- Records are blocked when linked applicant is in terminal states (`Rejected`, `Promoted`).

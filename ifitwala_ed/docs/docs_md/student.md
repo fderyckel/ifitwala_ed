@@ -3,8 +3,8 @@ title: "Student: Your Learner Records Made Simple"
 slug: student
 category: Students
 doc_order: 1
-version: "1.3.2"
-last_change_date: "2026-04-23"
+version: "1.3.3"
+last_change_date: "2026-04-25"
 summary: "Manage learner records with confidence—from admissions intake to alumni status. Understand when to use the admissions pipeline versus importing existing students."
 seo_title: "Student: Your Learner Records Made Simple"
 seo_description: "Learn how to manage Student records in Ifitwala Ed—from admissions promotion to bulk importing existing students with full portal access and health record integration."
@@ -315,17 +315,7 @@ A: Common reasons: missing `allow_direct_creation = 1`, duplicate emails, missin
 
 ---
 
-## Technical Notes (IT)
-
-- **DocType**: `Student` — Located in Students module
-- **Autoname**: `STUD-.YY.-.####` format (auto-generated)
-- **Creation Paths**: Applicant promotion (canonical) or Data Import (exception)
-- **Import Flag**: `allow_direct_creation` check field required for imports
-- **Side Effects**: imported/direct student creation keeps user creation, Student Patient creation, contact linking, and image sync; applicant promotion now also materializes the canonical `Contact.links -> Student` binding synchronously.
-- **Legacy remediation**: existing sites backfill missing `Contact.links -> Student` rows through the one-shot patch `ifitwala_ed.patches.backfill_student_contact_links`
-- **Profile-image cleanup**: runtime Student saves no longer rename or repair legacy image files; existing sites normalize legacy `Student.student_image` rows through the one-shot patch `ifitwala_ed.patches.backfill_student_profile_images`
-
-### Permission Matrix
+## Permission Matrix
 
 | Role | Read | Write | Create | Delete | Import | Notes |
 |------|------|-------|--------|--------|--------|-------|
@@ -341,3 +331,13 @@ A: Common reasons: missing `allow_direct_creation = 1`, duplicate emails, missin
 | `Student` | Yes* | No | No | No | No | Self only (portal) |
 
 *Read access is scoped by relationship (own children, own record, or enrolled students)
+
+## Technical Notes (IT)
+
+- **DocType**: `Student` — Located in Students module
+- **Autoname**: `STUD-.YY.-.####` format (auto-generated)
+- **Creation Paths**: Applicant promotion (canonical) or Data Import (exception)
+- **Import Flag**: `allow_direct_creation` check field required for imports
+- **Side Effects**: imported/direct student creation keeps user creation, Student Patient creation, contact linking, and image sync; applicant promotion now also materializes the canonical `Contact.links -> Student` binding synchronously.
+- **Legacy remediation**: existing sites backfill missing `Contact.links -> Student` rows through the one-shot patch `ifitwala_ed.patches.backfill_student_contact_links`
+- **Profile-image cleanup**: runtime Student saves no longer rename or repair legacy image files; existing sites normalize legacy `Student.student_image` rows through the one-shot patch `ifitwala_ed.patches.backfill_student_profile_images`

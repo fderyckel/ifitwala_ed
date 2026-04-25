@@ -46,7 +46,10 @@ seo_description: "Link an employee with user identity, school scope, and teachin
 
 ## Related Docs
 
-- [**Student Group**](/docs/en/student-group/)
+<RelatedDocs
+  slugs="student-group"
+  title="Related Docs"
+/>
 
 ## Technical Notes (IT)
 

@@ -48,8 +48,10 @@ Workspace APIs:
 
 ## Related Docs
 
-- [**Applicant Interview**](/docs/en/applicant-interview/)
-- [**Student Applicant**](/docs/en/student-applicant/)
+<RelatedDocs
+  slugs="applicant-interview,student-applicant"
+  title="Related Docs"
+/>
 
 ## Technical Notes (IT)
 

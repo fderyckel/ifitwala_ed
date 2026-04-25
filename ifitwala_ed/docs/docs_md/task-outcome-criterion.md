@@ -3,8 +3,8 @@ title: "Task Outcome Criterion: Official Criterion-Level Truth"
 slug: task-outcome-criterion
 category: Assessment
 doc_order: 7.1
-version: "1.0.0"
-last_change_date: "2026-03-12"
+version: "1.0.1"
+last_change_date: "2026-04-25"
 summary: "Store per-criterion official results on Task Outcome so analytics and gradebook can trust criterion truth without recomputing client-side."
 seo_title: "Task Outcome Criterion: Official Criterion-Level Truth"
 seo_description: "Store per-criterion official results on Task Outcome so analytics and gradebook can trust criterion truth without recomputing client-side."
@@ -50,14 +50,10 @@ Test refs: None
 
 ## Related Docs
 
-Status: Implemented
-Code refs: None (documentation cross-reference section)
-Test refs: None
-
-- [**Task Outcome**](/docs/en/task-outcome/)
-- [**Task Contribution Criterion**](/docs/en/task-contribution-criterion/)
-- [**Task Rubric Criterion**](/docs/en/task-rubric-criterion/)
-- [**Task Contribution**](/docs/en/task-contribution/)
+<RelatedDocs
+  slugs="task-outcome,task-contribution-criterion,task-rubric-criterion,task-contribution"
+  title="Related Documentation"
+/>
 
 ## Technical Notes (IT)
 

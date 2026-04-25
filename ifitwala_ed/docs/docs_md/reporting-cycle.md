@@ -3,8 +3,8 @@ title: "Reporting Cycle: Controlling When Grades Become Official Term Truth"
 slug: reporting-cycle
 category: Assessment
 doc_order: 10
-version: "1.0.0"
-last_change_date: "2026-02-25"
+version: "1.0.1"
+last_change_date: "2026-04-25"
 summary: "Define reporting scope and lifecycle, then generate/freeze term results with explicit cutoffs and governance controls."
 seo_title: "Reporting Cycle: Controlling When Grades Become Official Term Truth"
 seo_description: "Define reporting scope and lifecycle, then generate/freeze term results with explicit cutoffs and governance controls."
@@ -47,6 +47,24 @@ A reporting cycle is where mutable grading activity becomes institutional record
 Treat status changes in reporting cycles as governance events with clear owners, not routine UI clicks.
 </Callout>
 
+## Permission Matrix
+
+| Role | Read | Write | Create | Delete |
+|---|---|---|---|---|
+| `System Manager` | Yes | Yes | Yes | Yes |
+| `Academic Admin` | Yes | Yes | Yes | Yes |
+| `Curriculum Coordinator` | Yes | Yes | Yes | Yes |
+| `Academic Assistant` | Yes | Yes | Yes | Yes |
+| `Instructor` | Yes | No | No | No |
+| `Academic Staff` | Yes | No | No | No |
+
+## Related Docs
+
+<RelatedDocs
+  slugs="course-term-result,task-outcome,grade-scale"
+  title="Related Docs"
+/>
+
 ## Technical Notes (IT)
 
 ### Schema and Controller Snapshot
@@ -73,20 +91,3 @@ Treat status changes in reporting cycles as governance events with clear owners,
   - reporting lifecycle is explicit (`Draft → Open → Calculated → Locked → Published`)
   - reporting is a controlled snapshot boundary, not a live gradebook view
   - once locked/published, recalculation and edits must follow governed override/re-open pathways only
-
-### Permission Matrix
-
-| Role | Read | Write | Create | Delete |
-|---|---|---|---|---|
-| `System Manager` | Yes | Yes | Yes | Yes |
-| `Academic Admin` | Yes | Yes | Yes | Yes |
-| `Curriculum Coordinator` | Yes | Yes | Yes | Yes |
-| `Academic Assistant` | Yes | Yes | Yes | Yes |
-| `Instructor` | Yes | No | No | No |
-| `Academic Staff` | Yes | No | No | No |
-
-## Related Docs
-
-- [**Course Term Result**](/docs/en/course-term-result/)
-- [**Task Outcome**](/docs/en/task-outcome/)
-- [**Grade Scale**](/docs/en/grade-scale/)

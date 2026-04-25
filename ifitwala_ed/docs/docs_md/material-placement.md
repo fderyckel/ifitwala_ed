@@ -3,8 +3,8 @@ title: "Material Placement: Shared Context For Supporting Materials"
 slug: material-placement
 category: Curriculum
 doc_order: 9
-version: "1.5.0"
-last_change_date: "2026-04-13"
+version: "1.5.1"
+last_change_date: "2026-04-25"
 summary: "Place reusable supporting materials into shared plans, class plans, sessions, and tasks without duplicating the underlying material."
 seo_title: "Material Placement: Shared Context For Supporting Materials"
 seo_description: "Place reusable supporting materials into shared plans, units, class sessions, and tasks without duplicating the underlying material."
@@ -72,14 +72,10 @@ Test refs: `ifitwala_ed/curriculum/test_materials.py`, `ifitwala_ed/curriculum/d
 
 ## Related Docs
 
-Status: Implemented
-Code refs: None (documentation cross-reference section)
-Test refs: `ifitwala_ed/curriculum/doctype/material_placement/test_material_placement.py`
-
-- [**Supporting Material**](/docs/en/supporting-material/)
-- [**Unit Plan**](/docs/en/unit-plan/)
-- [**Class Session**](/docs/en/class-session/)
-- [**Task**](/docs/en/task/)
+<RelatedDocs
+  slugs="supporting-material,unit-plan,class-session,task"
+  title="Related Documentation"
+/>
 
 ## Technical Notes (IT)
 
