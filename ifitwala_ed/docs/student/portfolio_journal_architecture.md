@@ -19,7 +19,7 @@ Portfolio is an annual curation layer over existing evidence and reflection stre
 
 - Existing assessed evidence source: `Task Submission`
 - New universal reflection stream: `Student Reflection Entry`
-- Optional governed external artefact source: `File` (dispatcher/classification required)
+- Optional governed external artefact source: Drive-governed file metadata resolved through the workflow-spec boundary
 
 Guardians and external viewers are constrained to showcase-approved portfolio items only.
 

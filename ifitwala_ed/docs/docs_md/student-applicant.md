@@ -3,8 +3,8 @@ title: "Student Applicant: The Admission Record of Truth"
 slug: student-applicant
 category: Admission
 doc_order: 4
-version: "1.20.2"
-last_change_date: "2026-04-15"
+version: "1.20.3"
+last_change_date: "2026-04-25"
 summary: "Manage applicant lifecycle from invitation to promotion, with readiness checks across profile, documents, policies, recommendations, school-scoped health gating, and the admissions-to-enrollment bridge."
 seo_title: "Student Applicant: The Admission Record of Truth"
 seo_description: "Manage applicant lifecycle from invitation to promotion, with readiness checks across profile, documents, policies, recommendations, school-scoped health gating, and the admissions-to-enrollment bridge."
@@ -449,7 +449,7 @@ For a brand-new site or a newly onboarded school, this is what must exist before
   - copies applicant `cohort` and `student_house` links into the promoted `Student` when those applicant fields are populated
   - creates/syncs `Student Patient` from Applicant Health Profile data
   - copies approved admissions documents into Student-owned governed files; current runtime excludes only rows whose `promotion_target` is explicitly non-`Student`
-  - copies applicant image through governed file dispatcher into Student profile image slot
+  - copies applicant image through the governed Drive workflow into the Student profile image slot
   - when `Admission Settings.auto_hydrate_enrollment_request_after_promotion = 1`, auto-hydrates a draft `Program Enrollment Request` from the accepted Applicant Enrollment Plan
   - does **not** create Guardian/User portal access or mutate portal roles
   - does **not** create `Program Enrollment` directly

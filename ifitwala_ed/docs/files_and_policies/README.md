@@ -3,43 +3,53 @@
 Status: Canonical index
 Code refs: None
 Test refs: None
-Last reset: 2026-04-19
+Last reset: 2026-04-25
 
-`ifitwala_ed/docs/files_and_policies/` is the canonical home for governed file architecture, GDPR-erasure policy, public-media governance, and institutional policy contracts.
+`ifitwala_ed/docs/files_and_policies/` is the canonical home for governed file architecture, attachment display contracts, privacy/erasure principles, public-media governance, and institutional policy contracts.
 
-Governed-file read order:
+## Governed File Read Order
 
 1. `files_01_architecture_notes.md`
    locked target architecture for governed file/media execution
 2. `files_03_implementation.md`
-   current runtime behavior, boundary leaks, and remediation order
+   current runtime behavior, remaining compatibility baggage, and remediation order
 3. `files_07_education_file_semantics_and_cross_app_contract.md`
-   locked workflow/spec contract between Ed and Drive
+   locked `GovernedUploadSpec` and Ed/Drive workflow contract
 4. `files_08_cross_portal_governed_attachment_preview_contract.md`
-   canonical preview/open/thumbnail DTO and route contract for governed file/image surfaces
+   canonical open/preview/thumbnail DTO and route contract
 5. `files_02_GDPR.md`
-   canonical erasure and retention contract
-6. `files_05_organization_media_governance.md`
-   surface-specific governed organization media rules
-7. `files_06_org_communication_attachment_contract.md`
-   surface-specific governed attachment rules
+   privacy, retention, and erasure principles plus explicit implementation gaps
 
-Rules after the Phase 1 docs reset:
+For Drive-side boundary details, also read:
 
-- `ifitwala_drive` is the sole governance and execution authority for governed files.
-- `ifitwala_ed` remains the workflow, permission, and tenant-scope authority.
-- `File Classification` is not part of the long-term architecture and must be removed during the refactor.
-- any remaining `File Classification` references should now exist only in migration patches or historical notes.
-- no new work may extend the old `File Classification` architecture or add new logic that depends on it.
+- `../ifitwala_drive/ifitwala_drive/docs/14_drive_north_star_v1.md`
+- `../ifitwala_drive/ifitwala_drive/docs/02_system_architecture.md`
+- `../ifitwala_drive/ifitwala_drive/docs/04_coupling_with_ifiwala_ed.md`
+- `../ifitwala_drive/ifitwala_drive/docs/06_api_contracts.md`
 
-Companion notes:
+## Surface-Specific Companions
 
+- `files_04_workflow_examples.md`
+  current examples only; it does not override the canonical docs above
 - `files_05_organization_media_governance.md`
+  organization and school media rules
 - `files_06_org_communication_attachment_contract.md`
+  org communication attachment rules
 
-Those surface-specific notes must not weaken `files_01`, `files_03`, or `files_07`.
+Surface-specific notes must not weaken `files_01`, `files_03`, `files_07`, or `files_08`.
 
-Policy-system read order:
+## Current Rules
+
+- `ifitwala_drive` is the sole governed-file execution, metadata, derivative, grant, audit, and erasure authority.
+- `ifitwala_ed` remains the workflow, permission, tenant-scope, and surface-visibility authority.
+- New governed upload work uses `workflow_id + workflow_payload`.
+- Wrapper-specific Drive APIs are transitional facades, not a second place to author workflow semantics.
+- `File Classification` is retired and must not be used for new runtime behavior.
+- Compatibility `File` rows are projections only.
+- Folders are UX/navigation only, never permission, retention, ownership, or erasure truth.
+- SPA/API contracts must expose server-owned actions such as `open_url`, `preview_url`, and `thumbnail_url`, not raw private storage paths.
+
+## Policy-System Read Order
 
 - `policy_01_design_notes.md`
 - `policy_02_controllers.md`

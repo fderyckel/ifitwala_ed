@@ -44,7 +44,7 @@ Goals:
 2. Assessment truth stays criterion-authoritative.
 3. Permissions are always server-side and hierarchy-safe.
 4. Time logic always follows site timezone and canonical coercion.
-5. File governance remains dispatcher/classification enforced.
+5. File governance remains workflow-spec and Drive-boundary enforced.
 6. SPA contract shape remains canonical (`api(method, payload)`).
 
 ## 4. Test Authoring Rules

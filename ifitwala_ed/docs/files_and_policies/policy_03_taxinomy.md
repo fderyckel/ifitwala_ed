@@ -41,7 +41,7 @@ If a policy doesn’t fit, it’s a *content problem*, not a schema problem.
 
 * Data Privacy Notice
 * Media / Image Consent
-* Data Retention Policy
+* data retention policy content
 
 **Applies to**
 

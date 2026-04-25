@@ -1,399 +1,149 @@
-# A️ Task Submission Flows (Students uploading work)
+# Governed Upload Workflow Examples
 
-> Organization-owned reusable media for websites / branding is not defined in this example note.
-> That contract is documented separately in:
-> `ifitwala_ed/docs/files_and_policies/files_05_organization_media_governance.md`
+Status: Current examples, non-authoritative companion
+Last updated: 2026-04-25
+Code refs:
+- `ifitwala_ed/integrations/drive/workflow_specs.py`
+- `ifitwala_ed/integrations/drive/bridge.py`
+- `../ifitwala_drive/ifitwala_drive/api/uploads.py`
+- `../ifitwala_drive/ifitwala_drive/docs/06_api_contracts.md`
+Test refs:
+- `ifitwala_ed/integrations/drive/test_tasks.py`
+- `ifitwala_ed/api/test_file_access.py`
+- `ifitwala_ed/api/test_admissions_portal.py`
 
-No website or gallery workflow should be implemented from examples in this file without first conforming to that organization-media contract.
+## Bottom Line
 
-## 1. What a Task Submission *is* (re-anchoring)
+These examples show the current governed upload shape. They do not override the canonical contract in `files_01`, `files_03`, `files_07`, or Drive `06_api_contracts`.
 
-A **Task Submission file** is:
+Every governed upload starts with a `workflow_id` and a workflow-specific payload. Ed resolves workflow meaning and permissions. Drive owns upload session creation, binary ingress, finalize, file/version/binding records, derivatives, grants, audit, and erasure execution.
 
-* Evidence of work
-* Time-bound
-* Replaceable
-* Disposable
+## 1. Shared Flow
 
-It is **not**:
+1. Ed authorizes the actor in the product workflow.
+2. Ed or a thin Drive wrapper calls Drive session creation with:
+   - `workflow_id`
+   - `workflow_payload`
+   - `filename_original`
+   - `mime_type_hint`
+   - `expected_size_bytes`
+   - `upload_source`
+   - `idempotency_key`
+3. Drive asks Ed to resolve the `GovernedUploadSpec`.
+4. Drive persists the resolved owner, subject, slot, purpose, retention, organization, school, `workflow_id`, and `contract_version`.
+5. Bytes are uploaded through the Drive-owned ingress path.
+6. Drive finalizes the file, creates authoritative Drive records, and runs the Ed post-finalize mutation when the workflow defines one.
+7. Read surfaces expose server-owned `open_url`, optional `preview_url`, and optional `thumbnail_url`; they do not expose storage paths.
 
-* The grade
-* The assessment record
-* The academic decision
+## 2. Minimal API Shape
 
-This separation is the core reason your architecture is already superior.
-
----
-
-## 2. Canonical ownership & subject model
-
-### Primary subject
-
-```
-primary_subject_type = student
-primary_subject_id   = <Student>
-```
-
-Always the student — even for group work.
-
-### Secondary subjects (optional)
-
-Used only for **impact analysis**, never ownership.
-
-Examples:
-
-* Group task → other students as `co-owner`
-* Teacher feedback file → teacher as `contextual`
-
-Deletion authority remains **student-only**.
-
-This is **correct GDPR controller logic**.
-
----
-
-## 3. Slot model for tasks (NON-NEGOTIABLE)
-
-You need **explicit slots**. No generic “attachments”.
-
-### Required slots
-
-| Slot                  | Behavior       | Versioning |
-| --------------------- | -------------- | ---------- |
-| `submission`          | Student upload | Versioned  |
-| `feedback`            | Teacher upload | Versioned  |
-| `rubric_evidence`     | Optional       | Versioned  |
-| `supporting_material` | Optional       | Versioned  |
-
-**Why slots matter**
-
-* Allows delete-only-submission
-* Allows delete-student-files-keep-grades
-* Allows retention expiry by slot
-
-Most LMS systems **cannot do this cleanly**.
-
----
-
-## 4. Dispatcher payload (Task submission)
-
-A student uploading a task **must** go through:
+Target Drive API:
 
 ```python
-create_and_classify_file(
-	file_kwargs={
-		"attached_to_doctype": "Task Submission",
-		"attached_to_name": submission.name,
-		"is_private": 1,
-	},
-	classification={
-		"primary_subject_type": "student",
-		"primary_subject_id": student,
-		"data_class": "assessment",
-		"purpose": "assessment_submission",
-		"retention_policy": "until_school_exit_plus_6m",
-		"slot": "submission",
-		"organization": org,
-		"school": school,
-	},
-	secondary_subjects=[
-		{"subject_type": "student", "subject_id": peer_id, "role": "co-owner"}
-	]
+create_upload_session(
+    workflow_id="task.submission",
+    workflow_payload={"task_submission": task_submission_name},
+    filename_original=filename,
+    mime_type_hint=mime_type,
+    expected_size_bytes=size_bytes,
+    upload_source="Student Portal",
+    idempotency_key=idempotency_key,
 )
 ```
 
-**No slot → reject upload.**
+The exact `workflow_payload` keys are defined by `ifitwala_ed/integrations/drive/workflow_specs.py`.
 
----
+## 3. Current Workflow Examples
 
-## 5. Deletion scenarios (must all work)
-
-### Scenario 1 — Student requests erasure
-
-✅ Delete all task files
-✅ Keep grades, analytics, teacher comments (text)
-✅ Assessment records still computable
-
-### Scenario 2 — Teacher replaces feedback
-
-✅ Old feedback file hidden
-✅ Version incremented
-✅ Only latest shown
-
-### Scenario 3 — School retention expiry
-
-✅ Bulk delete task files
-✅ Academic outcomes untouched
-
-This is where Moodle / Google Classroom **fail badly**.
-
----
-
-## 6. Common platform mistakes (what you avoid)
-
-| Platform mistake              | Why it’s bad                     |
-| ----------------------------- | -------------------------------- |
-| Files tied directly to grades | Erasure breaks transcripts       |
-| Shared Drive folders          | Impossible to delete per student |
-| Filename-based semantics      | Not machine-governable           |
-| One-off attachment logic      | Impossible audits                |
-
-You are **already ahead**.
-
----
-
-# B️⃣ Admissions: Families uploading documents
-
-This is even more sensitive.
-
----
-
-## 1. Admissions uploads are **Applicant-owned**
-
-Key insight (many platforms get this wrong):
-
-> **Admissions files belong to the Student Applicant, not Student or Guardian.**
-
-Until enrollment:
-
-* No Student exists
-* No operational Guardian context exists
-* Admissions files are **decision evidence**, not operational records
-
----
-
-## 2. Semantic ownership (belongs_to)
-
-Admissions documents still carry **semantic meaning**:
-
-* Child‑focused documents
-* Guardian‑focused documents
-
-This meaning is stored on **Applicant Document Type**:
-
-```
-belongs_to = student | guardian | family
-```
-
-This is **never** used for file ownership.
-
----
-
-## 3. Slot taxonomy for admissions (REQUIRED)
-
-You must define **admissions slots** explicitly.
-
-### Core slots
-
-| Slot                  | Data class     | Retention                 |
-| --------------------- | -------------- | ------------------------- |
-| `identity_passport`   | legal          | until_school_exit_plus_6m |
-| `identity_birth_cert` | legal          | until_school_exit_plus_6m |
-| `health_record`       | safeguarding   | until_school_exit_plus_6m |
-| `health_vaccination_proof_*` | safeguarding | until_school_exit_plus_6m |
-| `prior_transcript`    | academic       | until_program_end_plus_1y |
-| `family_photo`        | administrative | immediate_on_request      |
-| `application_form`    | administrative | until_program_end_plus_1y |
-
-Slots allow:
-
-* Partial deletion
-* Regulatory separation
-* Legal hold where needed
-
----
-
-## 4. Dispatcher payload (Admissions upload)
-
-Example: passport upload during admission.
+Task submission evidence:
 
 ```python
-create_and_classify_file(
-	file_kwargs={
-		"attached_to_doctype": "Student Applicant",
-		"attached_to_name": applicant.name,
-		"is_private": 1,
-	},
-	classification={
-		"primary_subject_type": "Student Applicant",
-		"primary_subject_id": applicant.name,
-		"data_class": "legal",
-		"purpose": "identification_document",
-		"retention_policy": "until_school_exit_plus_6m",
-		"slot": "identity_passport",
-		"organization": org,
-		"school": school,
-	}
-)
+workflow_id = "task.submission"
+workflow_payload = {
+    "task_submission": task_submission_name,
+}
 ```
 
----
-
-## 5. Admission rejection scenario (IMPORTANT)
-
-If application is rejected:
-
-### Must be possible
-
-✅ Delete **all files**
-✅ Keep only minimal audit (decision + date)
-✅ No residual files in backups (future crypto-erase)
-
-### Must NOT happen
-
-❌ Files auto-migrated to Student
-❌ Identity docs kept “just in case”
-❌ Shared folder leftovers
-
-Your architecture **supports clean rejection**, which most platforms cannot do.
-
----
-
-## 6. Multi-child family edge cases (handled cleanly)
-
-Example:
-
-* One guardian uploads:
-
-  * Passport for Child A
-  * Transcript for Child B
-
-With your model:
-
-* Each file has **one primary subject**
-* Guardian is secondary
-* Erasure of Child A does not affect Child B
-
-This is **exceptionally hard** to retrofit later — you’re doing it right now.
-
----
-
-NEW
-
-## Admissions Workflow — File Ownership Clarification
-
-In all admissions workflows, the **primary subject of uploaded files is always the Student Applicant**, regardless of the document’s semantic target.
-
-Examples:
-- Student passport → owned by Student Applicant
-- Parent ID document → owned by Student Applicant
-- Family consent form → owned by Student Applicant
-
-### Important Distinction
-
-Semantic meaning (e.g. “belongs to guardian”) is expressed via:
-- document_type
-- classification metadata
-- internal flags
-
-**Not via file ownership.**
-
-### Invariant
-
-At no point during admissions is a file owned by:
-- Student
-- Guardian
-- Any post-promotion entity
-
----
-
-# C️⃣ Student Portfolio + Journal (Students Module)
-
-## 1. Portfolio/journal upload governance
-
-All portfolio and journal artefacts are governed files.
-
-Required purposes:
-
-- `portfolio_evidence`
-- `journal_attachment`
-- `portfolio_export`
-- `journal_export`
-
-Required slots:
-
-- `portfolio_artefact`
-- `journal_attachment`
-- `portfolio_export_pdf`
-- `journal_export_pdf`
-
-## 2. Dispatcher payload (portfolio evidence upload)
+Supporting material file:
 
 ```python
-create_and_classify_file(
-	file_kwargs={
-		"attached_to_doctype": "Student Portfolio",
-		"attached_to_name": portfolio.name,
-		"is_private": 1,
-	},
-	classification={
-		"primary_subject_type": "Student",
-		"primary_subject_id": student,
-		"data_class": "academic",
-		"purpose": "portfolio_evidence",
-		"retention_policy": "until_school_exit_plus_6m",
-		"slot": "portfolio_artefact",
-		"organization": org,
-		"school": school,
-	}
-)
+workflow_id = "supporting_material.file"
+workflow_payload = {
+    "material": supporting_material_name,
+}
 ```
 
-## 3. Dispatcher payload (portfolio export PDF)
+Admissions applicant document:
 
 ```python
-create_and_classify_file(
-	file_kwargs={
-		"attached_to_doctype": "Student",
-		"attached_to_name": student,
-		"is_private": 1,
-	},
-	classification={
-		"primary_subject_type": "Student",
-		"primary_subject_id": student,
-		"data_class": "academic",
-		"purpose": "portfolio_export",
-		"retention_policy": "immediate_on_request",
-		"slot": "portfolio_export_pdf",
-		"organization": org,
-		"school": school,
-	}
-)
+workflow_id = "admissions.applicant_document"
+workflow_payload = {
+    "student_applicant": applicant_name,
+    "document_type": applicant_document_type,
+    "applicant_document_item": applicant_document_item_name,
+}
 ```
 
-## 4. Portfolio rule
+Organization communication attachment:
 
-Portfolio items reference evidence sources.
+```python
+workflow_id = "org_communication.attachment"
+workflow_payload = {
+    "org_communication": communication_name,
+    "row_name": attachment_row_name,
+}
+```
 
-Do not duplicate evidence blobs from Task Submission into portfolio storage.
+Student Log evidence attachment:
 
+```python
+workflow_id = "student_log.evidence_attachment"
+workflow_payload = {
+    "student_log": student_log_name,
+    "row_name": evidence_row_name,
+}
+```
 
-# 🔎 Final Assessment (blunt)
+Organization media asset:
 
-### Task submissions
+```python
+workflow_id = "organization_media.asset"
+workflow_payload = {
+    "organization": organization_name,
+    "scope": "organization",
+    "media_key": media_key,
+}
+```
 
-✔ Correct ownership
-✔ Disposable by design
-✔ Analytics-safe
-✔ Slot-governed
+These examples intentionally omit derived governance fields such as `owner_doctype`, `purpose`, `retention_policy`, and `slot`. Those values are resolved by the workflow spec, not hand-authored by each caller.
 
-### Admissions uploads
+## 4. Read DTO Example
 
-✔ Correct subject modeling
-✔ Guardian/student separation
-✔ Rejection-safe
-✔ GDPR-credible
+Business read models should return stable, server-owned actions:
 
-### Compared to other SaaS
+```json
+{
+  "file_id": "DRV-FILE-0001",
+  "filename": "evidence.pdf",
+  "open_url": "/api/method/ifitwala_ed.api.file_access.open_governed_file?...",
+  "preview_url": "/api/method/ifitwala_ed.api.file_access.preview_governed_file?...",
+  "thumbnail_url": null,
+  "can_open": true,
+  "can_preview": true
+}
+```
 
-You are **one full generation ahead** of:
+The browser must not receive or construct raw storage paths.
 
-* Moodle
-* Google Classroom
-* ManageBac
-* Toddle
-* PowerSchool
+## 5. Retired Patterns
 
-They store files.
-You govern data.
+Do not copy older examples that:
 
----
+- create a native `File` row directly for governed business workflows
+- rely on the retired Ed-local file dispatcher
+- use `File Classification` as runtime authority
+- hand-author owner, slot, purpose, and retention data in each surface
+- treat folders as permission, retention, or erasure truth
+- return `/private/...` paths as SPA/API product contracts
+
+Wrapper-specific Drive APIs may still exist for compatibility, but they are transitional facades over the `workflow_id + workflow_payload` contract.
