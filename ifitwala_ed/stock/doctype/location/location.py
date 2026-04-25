@@ -11,6 +11,8 @@ from frappe.utils import cint
 from ifitwala_ed.utilities.location_utils import get_location_scope
 from ifitwala_ed.utilities.school_tree import get_ancestor_schools
 
+LOCATION_TREE_ROOT = "All Locations"
+
 
 class Location(Document):
     # -------------------------------------------------------------------------
@@ -42,6 +44,7 @@ class Location(Document):
         # 2) Governance constraints
         self._validate_org_against_parent()
         self._validate_school_organization_membership()
+        self._validate_global_root_child_scope()
         self._validate_shared_visibility_requires_school()
 
         # 3) Operational constraints
@@ -105,6 +108,8 @@ class Location(Document):
         parent_org = frappe.db.get_value("Location", self.parent_location, "organization")
 
         if not parent_org:
+            if self.parent_location == LOCATION_TREE_ROOT:
+                return
             # Allow save but warn: parent should be fixed first
             frappe.msgprint(
                 _("Parent Location {parent_location} has no Organization set; please fix the parent first.").format(
@@ -130,6 +135,8 @@ class Location(Document):
         parent_org = self._get_parent_value("organization")
 
         if not parent_org:
+            if self.parent_location == LOCATION_TREE_ROOT:
+                return
             frappe.throw(
                 _("Parent Location {parent_location} has no Organization set. Set it on the parent first.").format(
                     parent_location=frappe.utils.get_link_to_form("Location", self.parent_location)
@@ -326,6 +333,18 @@ class Location(Document):
                 title=_("School Does Not Belong to Organization"),
             )
 
+    def _validate_global_root_child_scope(self):
+        if self.parent_location != LOCATION_TREE_ROOT:
+            return
+
+        if self.organization:
+            return
+
+        frappe.throw(
+            _("Locations under All Locations must have an Organization or a School that resolves to an Organization."),
+            title=_("Missing Location Organization"),
+        )
+
     # -------------------------------------------------------------------------
     # Structural validations added for the Location tree
     # -------------------------------------------------------------------------
@@ -501,6 +520,16 @@ def get_valid_parent_locations(doctype, txt, searchfield, start, page_len, filte
         filters=filters,
         fields=["name", "school"],
     )
+
+    if organization:
+        root_rows = frappe.get_all(
+            "Location",
+            filters={"name": LOCATION_TREE_ROOT, "is_group": 1},
+            fields=["name", "school"],
+            limit=1,
+        )
+        existing = {loc.name for loc in locations}
+        locations.extend(row for row in root_rows if row.name not in existing)
 
     if school:
         allowed_schools = set(get_ancestor_schools(school) or [school])

@@ -14,6 +14,7 @@ from ifitwala_ed.setup.setup import (
     create_designations,
     create_roles_with_homepage,
     ensure_canonical_role_records,
+    ensure_setup_tree_roots,
     grant_role_read_select_to_hr,
 )
 
@@ -213,6 +214,38 @@ class TestSetupRoles(FrappeTestCase):
             ],
         )
         self.assertEqual([int(row.get("is_lwp") or 0) for row in rows], [0, 0, 0, 0, 0, 0, 0, 0, 0, 1])
+
+    def test_ensure_setup_tree_roots_seeds_global_nestedset_roots(self):
+        with patch("ifitwala_ed.setup.setup.insert_record") as insert_record:
+            ensure_setup_tree_roots()
+
+        rows = insert_record.call_args.args[0]
+        self.assertEqual(
+            rows,
+            [
+                {
+                    "doctype": "Program",
+                    "name": "All Programs",
+                    "program_name": "All Programs",
+                    "is_group": 1,
+                    "parent_program": "",
+                },
+                {
+                    "doctype": "Department",
+                    "name": "All Departments",
+                    "department_name": "All Departments",
+                    "is_group": 1,
+                    "parent_department": "",
+                },
+                {
+                    "doctype": "Location",
+                    "name": "All Locations",
+                    "location_name": "All Locations",
+                    "is_group": 1,
+                    "parent_location": "",
+                },
+            ],
+        )
 
     def test_complete_initial_setup_seeds_designations_after_first_real_organization(self):
         root_doc = _DummyDoc("All Organizations")

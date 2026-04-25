@@ -43,6 +43,7 @@ DEFAULT_ADDRESS_TEMPLATE = (
 def setup_education():
     ensure_initial_setup_flag()
     ensure_root_organization()
+    ensure_setup_tree_roots()
     create_roles_with_homepage()
     ensure_canonical_role_records()
     ensure_leave_roles()
@@ -105,6 +106,34 @@ def ensure_root_organization():
         except Exception as e:
             # Bubble up any DB/validation issue
             frappe.throw(_("Unable to create root Organization: {0}").format(str(e)), title=_("Initial Setup Aborted"))
+
+
+def ensure_setup_tree_roots():
+    """Create global root records for persisted NestedSet trees."""
+    records = [
+        {
+            "doctype": "Program",
+            "name": "All Programs",
+            "program_name": "All Programs",
+            "is_group": 1,
+            "parent_program": "",
+        },
+        {
+            "doctype": "Department",
+            "name": "All Departments",
+            "department_name": "All Departments",
+            "is_group": 1,
+            "parent_department": "",
+        },
+        {
+            "doctype": "Location",
+            "name": "All Locations",
+            "location_name": "All Locations",
+            "is_group": 1,
+            "parent_location": "",
+        },
+    ]
+    insert_record(records)
 
 
 def create_roles_with_homepage():
@@ -413,14 +442,6 @@ def add_other_records(country=None):
         {"doctype": "Student Log Next Step", "next_step": "Behaviour follow-up", "associated_role": "Pastoral Lead"},
         {"doctype": "Student Log Next Step", "next_step": "IT / Device support", "associated_role": "Organization IT"},
         {"doctype": "Student Log Next Step", "next_step": "Refer to Nurse / Health", "associated_role": "Nurse"},
-        # Program tree root (global)
-        {
-            "doctype": "Program",
-            "name": "All Programs",
-            "program_name": "All Programs",
-            "is_group": 1,
-            "parent_program": "",
-        },
     ]
     for record in records:
         block_type = record.get("block_type")

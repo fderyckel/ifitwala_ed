@@ -109,6 +109,8 @@ Code refs:
 - `ifitwala_ed/api/room_utilization.py`
 - `ifitwala_ed/api/calendar_quick_create.py`
 - `ifitwala_ed/curriculum/doctype/program/program.py`
+- `ifitwala_ed/setup/setup.py`
+- `ifitwala_ed/stock/doctype/location/location.py`
 - `ifitwala_ed/students/report/case_entries_activity_log/case_entries_activity_log.py`
 - `ifitwala_ed/accounting/report/trial_balance/trial_balance.py`
 - `ifitwala_ed/accounting/report/aged_receivables/aged_receivables.py`
@@ -179,6 +181,7 @@ Test refs:
 - `ifitwala_ed/api/test_room_utilization.py`
 - `ifitwala_ed/stock/doctype/location/test_location.py`
 - `ifitwala_ed/curriculum/doctype/program/test_program.py`
+- `ifitwala_ed/setup/test_setup_roles.py`
 
 | Concern | Canonical owner | Code refs | Test refs |
 | --- | --- | --- | --- |
@@ -218,6 +221,7 @@ Test refs:
 - Term Desk visibility now keeps descendant subtree access and only widens to the nearest ancestor term source per academic year for the user's own branch; sibling terms remain hidden.
 - Report fixes should continue to favor SQL `IN %(scope)s` predicates over Python-side filtering for both correctness and concurrency.
 - Shared ancestor-school facilities must be opt-in on the Location row itself; broad parent-school visibility remains a multi-tenant defect.
+- Setup seeds persisted global roots for `Program`, `Department`, and `Location`. The `All Locations` root is an unscoped global container only; child Locations still own their Organization and must pass the normal school/organization membership checks.
 - Location capacity validation now uses descendant location scope in one grouped query so parent-room capacity checks stay concurrency-safe.
 - Program assessment categories now resolve from the nearest ancestor only when the local child table is empty; explicit local rows remain the canonical override.
 - Deleting the superseded audit is safe only because this document now owns the open decisions, statuses, and execution order.

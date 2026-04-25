@@ -8,7 +8,7 @@ from unittest.mock import patch
 
 import frappe
 
-from ifitwala_ed.stock.doctype.location.location import Location, get_valid_parent_locations
+from ifitwala_ed.stock.doctype.location.location import LOCATION_TREE_ROOT, Location, get_valid_parent_locations
 from ifitwala_ed.utilities.location_utils import get_visible_location_rows_for_school
 
 
@@ -72,10 +72,13 @@ class TestLocation(TestCase):
         _mock_ancestors,
         mock_get_all,
     ):
-        mock_get_all.return_value = [
-            frappe._dict({"name": "Bathroom Wing", "school": "Parent School"}),
-            frappe._dict({"name": "Building Root", "school": None}),
-            frappe._dict({"name": "Science Block", "school": "Sibling School"}),
+        mock_get_all.side_effect = [
+            [
+                frappe._dict({"name": "Bathroom Wing", "school": "Parent School"}),
+                frappe._dict({"name": "Building Root", "school": None}),
+                frappe._dict({"name": "Science Block", "school": "Sibling School"}),
+            ],
+            [],
         ]
 
         results = get_valid_parent_locations(
@@ -87,12 +90,59 @@ class TestLocation(TestCase):
             '{"organization":"Ifitwala Roots Campus","school":"Leaf School"}',
         )
 
-        mock_get_all.assert_called_once_with(
-            "Location",
-            filters={"is_group": 1, "organization": "Ifitwala Roots Campus"},
-            fields=["name", "school"],
+        self.assertEqual(mock_get_all.call_args_list[0].args, ("Location",))
+        self.assertEqual(
+            mock_get_all.call_args_list[0].kwargs,
+            {
+                "filters": {"is_group": 1, "organization": "Ifitwala Roots Campus"},
+                "fields": ["name", "school"],
+            },
+        )
+        self.assertEqual(mock_get_all.call_args_list[1].args, ("Location",))
+        self.assertEqual(
+            mock_get_all.call_args_list[1].kwargs,
+            {
+                "filters": {"name": LOCATION_TREE_ROOT, "is_group": 1},
+                "fields": ["name", "school"],
+                "limit": 1,
+            },
         )
         self.assertEqual(results, [["Bathroom Wing"]])
+
+    @patch("ifitwala_ed.stock.doctype.location.location.frappe.get_all")
+    def test_parent_location_query_includes_global_root_for_organization_scope(self, mock_get_all):
+        mock_get_all.side_effect = [
+            [frappe._dict({"name": "Campus Building", "school": None})],
+            [frappe._dict({"name": LOCATION_TREE_ROOT, "school": None})],
+        ]
+
+        results = get_valid_parent_locations(
+            "Location",
+            "",
+            "name",
+            0,
+            10,
+            '{"organization":"Ifitwala Roots Campus"}',
+        )
+
+        self.assertEqual(results, [["Campus Building"], [LOCATION_TREE_ROOT]])
+
+    def test_global_location_root_without_organization_can_parent_org_locations(self):
+        doc = frappe._dict(
+            {
+                "parent_location": LOCATION_TREE_ROOT,
+                "organization": "Ifitwala Roots Campus",
+                "_get_parent_value": lambda fieldname: None,
+            }
+        )
+
+        Location._validate_org_against_parent(doc)
+
+    def test_global_location_root_children_must_have_scope(self):
+        doc = frappe._dict({"parent_location": LOCATION_TREE_ROOT, "organization": None})
+
+        with self.assertRaises(frappe.ValidationError):
+            Location._validate_global_root_child_scope(doc)
 
     def test_shared_visibility_requires_school(self):
         doc = frappe._dict(
