@@ -244,7 +244,20 @@ def upload_task_material_file(
             description=description,
             modality=modality,
         )
-        governed_uploads.upload_supporting_material_file(material=material.name)
+        uploaded_file = governed_uploads.upload_supporting_material_file(material=material.name)
+        if uploaded_file and uploaded_file.get("file"):
+            material_file = frappe.db.get_value("Supporting Material", material.name, "file")
+            if not material_file:
+                frappe.db.set_value(
+                    "Supporting Material",
+                    material.name,
+                    {
+                        "file": uploaded_file.get("file"),
+                        "file_name": uploaded_file.get("file_name"),
+                        "file_size": uploaded_file.get("file_size"),
+                    },
+                    update_modified=False,
+                )
         placement = materials_domain.create_material_placement(
             supporting_material=material.name,
             anchor_doctype="Task",

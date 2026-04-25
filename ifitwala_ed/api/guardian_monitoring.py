@@ -291,6 +291,17 @@ def _get_monitoring_logs(
                 "is_unread": bool(cint(row.get("is_unread") or 0)),
             }
         )
+    if out:
+        from ifitwala_ed.students.doctype.student_log.evidence import get_student_log_evidence_map
+
+        evidence_map = get_student_log_evidence_map(
+            [row.get("student_log") for row in out],
+            audience="guardian",
+        )
+        for row in out:
+            attachments = evidence_map.get(row.get("student_log")) or []
+            row["attachments"] = attachments
+            row["attachment_count"] = len(attachments)
     return out
 
 

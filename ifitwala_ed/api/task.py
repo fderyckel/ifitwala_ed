@@ -130,6 +130,7 @@ def _task_library_row(task: str) -> dict:
             "is_archived",
             "owner",
             "default_delivery_mode",
+            "default_requires_submission",
             "default_allow_feedback",
             "default_grading_mode",
             "default_rubric_scoring_strategy",
@@ -455,6 +456,7 @@ def get_task_for_delivery(task, student_group=None, course=None):
             "criteria_rows": _get_task_criteria_defaults(task_row.get("name")),
         },
         "default_delivery_mode": task_row.get("default_delivery_mode"),
+        "default_requires_submission": task_row.get("default_requires_submission"),
         "quiz_defaults": {
             "quiz_question_bank": task_row.get("quiz_question_bank"),
             "quiz_question_count": task_row.get("quiz_question_count"),

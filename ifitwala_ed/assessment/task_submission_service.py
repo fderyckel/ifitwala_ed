@@ -3,11 +3,15 @@
 
 # ifitwala_ed/assessment/task_submission_service.py
 
+from types import SimpleNamespace
+
 import frappe
 from frappe import _
 from frappe.utils import now_datetime
 
 from ifitwala_ed.assessment.task_contribution_service import mark_contributions_stale
+
+_PENDING_SUBMISSION_FILES_FLAG = "allow_pending_submission_files"
 
 
 def get_next_submission_version(outcome_id):
@@ -82,10 +86,16 @@ def create_student_submission(payload, user=None, uploaded_files=None, expected_
         doc.evidence_note = data.get("evidence_note")
 
     stamp_submission_context(doc, outcome_row)
+    if has_uploads:
+        _set_doc_flag(doc, _PENDING_SUBMISSION_FILES_FLAG, True)
     doc.insert(ignore_permissions=True)
     if has_uploads:
-        _attach_submission_files(doc, outcome_row, uploaded_files, data.get("upload_source"))
-        doc.save(ignore_permissions=True)
+        _set_doc_flag(doc, _PENDING_SUBMISSION_FILES_FLAG, True)
+        try:
+            _attach_submission_files(doc, outcome_row, uploaded_files, data.get("upload_source"))
+            doc.save(ignore_permissions=True)
+        finally:
+            _set_doc_flag(doc, _PENDING_SUBMISSION_FILES_FLAG, False)
 
     submission_status = "Submitted" if next_version == 1 else "Resubmitted"
     frappe.db.set_value(
@@ -149,6 +159,17 @@ def _attach_submission_files(submission_doc, outcome_row, uploaded_files, upload
                 "public": 0,
             },
         )
+
+
+def _set_doc_flag(doc, flagname, value):
+    flags = getattr(doc, "flags", None)
+    if flags is None:
+        flags = SimpleNamespace()
+        doc.flags = flags
+    if isinstance(flags, dict):
+        flags[flagname] = value
+        return
+    setattr(flags, flagname, value)
 
 
 def _assert_submission_allowed(outcome_row):

@@ -3,11 +3,11 @@ title: "Task Outcome: The Official Student-Level Assessment Record"
 slug: task-outcome
 category: Assessment
 doc_order: 7
-version: "1.3.1"
-last_change_date: "2026-04-22"
-summary: "Maintain one authoritative outcome per student per delivery, with official scores, criterion truth, derived boolean completion state, statuses, and publication controls."
+version: "1.3.2"
+last_change_date: "2026-04-25"
+summary: "Maintain one authoritative outcome per student per delivery, with scalar scores where the grading mode produces them, criterion truth, derived boolean completion state, statuses, and publication controls."
 seo_title: "Task Outcome: The Official Student-Level Assessment Record"
-seo_description: "Maintain one authoritative outcome per student per delivery, with official scores, criterion truth, statuses, and publication controls."
+seo_description: "Maintain one authoritative outcome per student per delivery, with scalar scores where applicable, criterion truth, statuses, and publication controls."
 ---
 
 ## Task Outcome: The Official Student-Level Assessment Record
@@ -103,7 +103,10 @@ Test refs: `ifitwala_ed/assessment/doctype/task_outcome/test_task_outcome.py`
 - `on_update()` records info comments when official values are edited directly.
 - `task_outcome_service.py` is the canonical official-truth recompute layer.
 - `api/gradebook.py` and reporting readers consume outcome truth and outcome criterion truth rather than computing totals client-side.
-- For assessed `Completion` and `Binary` work, `Task Outcome.is_complete` is derived from the selected `Task Contribution.judgment_code`; `Assign Only` remains the direct procedural completion path.
+- Scalar fields such as `official_score`, `official_grade`, and `official_grade_value` are used only when the grading mode produces scalar results.
+- For assessed `Completion` and `Binary` work, `Task Outcome.is_complete` is derived from the selected `Task Contribution.judgment_code`; those modes do not write or require scalar official score fields.
+- Comment-only and ungraded feedback contributions save feedback/status without creating or clearing `official_score`.
+- `Assign Only` remains the direct procedural completion path.
 
 ### Current Constraints To Preserve In Review
 

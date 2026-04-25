@@ -4,7 +4,7 @@
 >
 > This document defines the assessment architecture in Ifitwala_Ed. It explains where criteria, scales, and grading logic come from and how they interact. Written for **humans and coding agents**.
 >
-> Last updated: 2026-04-05
+> Last updated: 2026-04-25
 
 ---
 
@@ -134,6 +134,14 @@ The grading mode is **explicit**, never inferred at read time.
 Comments are additive, not a separate grading mode. `Task.default_allow_feedback` and
 `Task Delivery.allow_feedback` decide whether the gradebook should expose a comment box.
 
+Task-level scalar fields are owned only by grading modes that actually produce scalar results:
+
+* **Points** may write `Task Outcome.official_score` and optional grade fields.
+* **Criteria / Sum Total** may write task-level scalar totals after criterion rollup.
+* **Criteria / Separate Criteria** writes criterion rows only and leaves task-level scalar totals empty.
+* **Completion** and **Binary** write derived `Task Outcome.is_complete`, not `official_score`.
+* **None** and comment-only contributions write feedback/status only; they do not imply or require a score.
+
 ---
 
 ### Criteria‑based Tasks
@@ -168,6 +176,7 @@ When grading mode is `Completion` or `Binary`:
 * Teacher judgment is stored on **Task Contribution** as `judgment_code`
 * Optional comments still live on the same contribution row
 * `Task Outcome.is_complete` is derived official truth for the selected contribution
+* `Task Outcome.official_score`, `official_grade`, and `official_grade_value` are not part of Completion/Binary truth
 * `Assign Only` remains the procedural exception and may update `Task Outcome.is_complete` directly
 
 ---
@@ -183,12 +192,13 @@ Derived official truth
 
 * **Task Outcome** stores status + optional scalar totals.
 * **Task Outcome Criterion** stores per‑criterion official results (always).
+* Completion/Binary truth is stored as `is_complete`; feedback-only truth is stored as feedback/status without a scalar score.
 
 Aggregation
 
 * Reporting uses Outcome totals where present, else Outcome Criterion rows.
 
-**Canonical statement:** A Task Outcome always stores official results per criterion. Task totals are optional and only computed when the delivery strategy allows it.
+**Canonical statement:** A Task Outcome always stores official results per criterion. Task totals are optional and only computed when the delivery strategy allows it; Completion, Binary, None, and comment-only flows must not require task-level scalar scores.
 
 ### Per‑student Layers (Outcome / Submission / Contribution)
 

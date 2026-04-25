@@ -3,9 +3,9 @@ title: "Task Contribution: Teacher and Moderator Judgment Inputs"
 slug: task-contribution
 category: Assessment
 doc_order: 9
-version: "1.2.0"
-last_change_date: "2026-04-17"
-summary: "Store non-destructive grading contributions per submission version, including assessed boolean judgments, then derive official outcomes through policy-aware services."
+version: "1.2.1"
+last_change_date: "2026-04-25"
+summary: "Store non-destructive grading contributions per submission version, including assessed boolean judgments and comment-only feedback, then derive official outcomes through policy-aware services."
 seo_title: "Task Contribution: Teacher and Moderator Judgment Inputs"
 seo_description: "Store non-destructive grading contributions per submission version, then derive official outcomes through policy-aware services."
 ---
@@ -95,7 +95,8 @@ Test refs: None (scaffold only: `ifitwala_ed/assessment/doctype/task_contributio
 - `validate()` enforces grading-mode coherence and grade-scale consistency.
 - `after_insert()` triggers official outcome recomputation for non-draft rows.
 - `task_contribution_service.py` owns the named workflow actions used by gradebook.
-- Assessed `Completion` and `Binary` grading use `judgment_code` on the contribution row; the outcome service derives `Task Outcome.is_complete` from the selected contribution.
+- Assessed `Completion` and `Binary` grading use `judgment_code` on the contribution row; the outcome service derives `Task Outcome.is_complete` from the selected contribution and does not write scalar official score fields.
+- Comment-only contributions write feedback/status only; they do not create, require, or clear `Task Outcome.official_score`.
 
 ### Verified Gap
 

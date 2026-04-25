@@ -131,6 +131,44 @@ class TestTaskDelivery(TestCase):
 
         self.assertEqual(delivery.allow_feedback, 0)
 
+    def test_apply_delivery_mode_defaults_preserves_explicit_assess_no_submission(self):
+        task_delivery_service = types.ModuleType("ifitwala_ed.assessment.task_delivery_service")
+        task_delivery_service.get_delivery_context = lambda student_group: {}
+        task_delivery_service.get_eligible_students = Mock(return_value=[])
+        task_delivery_service.bulk_create_outcomes = Mock(return_value=0)
+
+        with stubbed_frappe(extra_modules={"ifitwala_ed.assessment.task_delivery_service": task_delivery_service}):
+            module = import_fresh("ifitwala_ed.assessment.doctype.task_delivery.task_delivery")
+
+        delivery = module.TaskDelivery()
+        delivery.delivery_mode = "Assess"
+        delivery.requires_submission = 0
+        delivery.grading_mode = "Points"
+        delivery.max_points = 100
+        delivery.grade_scale = None
+        delivery.rubric_version = None
+        delivery.rubric_scoring_strategy = None
+        delivery.flags = types.SimpleNamespace()
+        delivery.flags.explicit_requires_submission = True
+        delivery._is_quiz_task = Mock(return_value=False)
+        delivery._has_field = Mock(
+            side_effect=lambda fieldname: (
+                fieldname in {"allow_feedback", "allow_late_submission", "rubric_scoring_strategy"}
+            )
+        )
+        delivery._get_task_defaults = Mock(
+            return_value={
+                "default_requires_submission": 1,
+                "default_allow_feedback": 1,
+            }
+        )
+
+        delivery._apply_delivery_mode_defaults()
+
+        self.assertEqual(delivery.require_grading, 1)
+        self.assertEqual(delivery.requires_submission, 0)
+        self.assertEqual(delivery.grading_mode, "Points")
+
     def test_validate_class_session_context_rejects_other_student_group(self):
         task_delivery_service = types.ModuleType("ifitwala_ed.assessment.task_delivery_service")
         task_delivery_service.get_delivery_context = lambda student_group: {}

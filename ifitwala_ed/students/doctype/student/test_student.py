@@ -153,10 +153,16 @@ class TestStudent(FrappeTestCase):
             if doctype == "Student":
                 return True
             if doctype in {"Contact", "Address"}:
-                return False
+                raise AssertionError(f"Student CRM summary should not probe native {doctype} permissions")
             return True
 
-        with patch("ifitwala_ed.students.doctype.student.student.frappe.has_permission", side_effect=_has_permission):
+        with (
+            patch("ifitwala_ed.students.doctype.student.student.frappe.has_permission", side_effect=_has_permission),
+            patch(
+                "ifitwala_ed.students.doctype.student.student._has_native_doctype_role_permission",
+                return_value=False,
+            ),
+        ):
             summary = get_student_crm_summary(student.name)
 
         self.assertIsNone(summary.get("contact"))
@@ -179,6 +185,31 @@ class TestStudent(FrappeTestCase):
                 }
             ],
         )
+
+    def test_family_address_proposal_quietly_skips_without_native_address_write(self):
+        student = self._make_imported_student()
+        address = self._make_address(link_doctype="Student", link_name=student.name, prefix="Hidden Address")
+
+        def _has_permission(doctype, doc=None, ptype="read", user=None):
+            if doctype == "Student":
+                return True
+            if doctype == "Address":
+                raise AssertionError("Family address proposal should not probe native Address permissions")
+            return True
+
+        with (
+            patch("ifitwala_ed.students.doctype.student.student.frappe.has_permission", side_effect=_has_permission),
+            patch(
+                "ifitwala_ed.students.doctype.student.student._has_native_doctype_role_permission",
+                return_value=False,
+            ),
+        ):
+            proposal = get_family_address_link_proposal(student.name, address.name)
+
+        self.assertEqual(proposal.get("address"), None)
+        self.assertEqual(proposal.get("linked_addresses"), [address.name])
+        self.assertFalse(proposal.get("has_candidates"))
+        self.assertEqual(proposal.get("reason"), "address_not_writable")
 
     def test_family_address_proposal_skips_related_records_with_existing_address(self):
         student = self._make_imported_student()

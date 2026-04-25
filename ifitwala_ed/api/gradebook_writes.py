@@ -425,6 +425,136 @@ def update_task_student(api, task_student: str, updates=None, **kwargs):
     }
 
 
+def batch_mark_completion(api, payload=None, **kwargs):
+    if not api._can_write_gradebook():
+        frappe.throw(_("Not permitted."), frappe.PermissionError)
+
+    data = api._normalize_payload(payload, kwargs)
+    task_delivery = data.get("task_delivery") or data.get("task")
+    api._require(task_delivery, "Task Delivery")
+
+    target_complete = data.get("target_complete", True)
+    if not api._bool_flag(target_complete):
+        frappe.throw(_("Batch completion currently only supports marking work complete."))
+
+    delivery_row = (
+        frappe.db.get_value(
+            "Task Delivery",
+            task_delivery,
+            ["name", "student_group", "delivery_mode", "grading_mode"],
+            as_dict=True,
+        )
+        or {}
+    )
+    if not delivery_row:
+        frappe.throw(_("Task Delivery not found."))
+
+    api._assert_group_access(delivery_row.get("student_group"))
+
+    delivery_mode = (delivery_row.get("delivery_mode") or "").strip()
+    grading_mode = (delivery_row.get("grading_mode") or "").strip()
+    assessed_completion_mode = delivery_mode == "Assess" and grading_mode == "Completion"
+    assign_only_mode = delivery_mode == "Assign Only"
+    if not (assessed_completion_mode or assign_only_mode):
+        frappe.throw(_("Batch completion is only available for completion or assign-only work."))
+
+    outcome_filters = {"task_delivery": task_delivery}
+    requested_outcome_ids = _normalize_outcome_id_list(data.get("outcome_ids"))
+    if requested_outcome_ids is not None:
+        if not requested_outcome_ids:
+            return _empty_batch_completion_response(task_delivery)
+        outcome_filters["name"] = ["in", requested_outcome_ids]
+
+    outcomes = frappe.get_all(
+        "Task Outcome",
+        filters=outcome_filters,
+        fields=["name", "is_complete", "is_published"],
+        order_by="student asc, name asc",
+        limit=0,
+    )
+    if len(outcomes) > 500:
+        frappe.throw(_("Batch completion is limited to 500 outcomes at a time."))
+
+    updated = []
+    already_complete = []
+    skipped_published = []
+
+    for outcome in outcomes:
+        outcome_id = outcome.get("name")
+        if not outcome_id:
+            continue
+        if api._bool_flag(outcome.get("is_published")):
+            skipped_published.append(outcome_id)
+            continue
+        if api._bool_flag(outcome.get("is_complete")):
+            already_complete.append(outcome_id)
+            continue
+
+        if assessed_completion_mode:
+            result = task_contribution_service.submit_contribution(
+                {"task_outcome": outcome_id, "judgment_code": "complete"},
+                contributor=frappe.session.user,
+            )
+            outcome_update = result.get("outcome_update") if isinstance(result, dict) else {}
+            updated.append(
+                {
+                    "outcome": outcome_id,
+                    "is_complete": 1,
+                    "grading_status": (outcome_update or {}).get("grading_status"),
+                }
+            )
+            continue
+
+        result = task_outcome_service.set_assign_only_completion(
+            outcome_id,
+            is_complete=1,
+            ignore_permissions=False,
+        )
+        updated.append(
+            {
+                "outcome": outcome_id,
+                "is_complete": result.get("is_complete"),
+                "completed_on": result.get("completed_on"),
+            }
+        )
+
+    return {
+        "task_delivery": task_delivery,
+        "target_complete": 1,
+        "total_count": len(outcomes),
+        "updated_count": len(updated),
+        "already_complete_count": len(already_complete),
+        "skipped_published_count": len(skipped_published),
+        "updated": updated,
+        "already_complete": already_complete,
+        "skipped_published": skipped_published,
+    }
+
+
+def _normalize_outcome_id_list(value):
+    if value in (None, ""):
+        return None
+    if isinstance(value, str):
+        value = frappe.parse_json(value)
+    if not isinstance(value, list):
+        frappe.throw(_("Outcome IDs must be a list."))
+    return [str(entry).strip() for entry in value if str(entry or "").strip()]
+
+
+def _empty_batch_completion_response(task_delivery):
+    return {
+        "task_delivery": task_delivery,
+        "target_complete": 1,
+        "total_count": 0,
+        "updated_count": 0,
+        "already_complete_count": 0,
+        "skipped_published_count": 0,
+        "updated": [],
+        "already_complete": [],
+        "skipped_published": [],
+    }
+
+
 def _assert_outcome_access(api, outcome_id: str):
     outcome_row = frappe.db.get_value("Task Outcome", outcome_id, ["task_delivery"], as_dict=True)
     if not outcome_row:

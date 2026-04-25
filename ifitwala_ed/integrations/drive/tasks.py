@@ -101,6 +101,9 @@ def assert_task_submission_upload_access(task_submission: str, *, permission_typ
     if not permission_type:
         return doc
 
+    if permission_type == "write" and _task_submission_owned_by_session_student(doc):
+        return doc
+
     try:
         doc.check_permission(permission_type)
     except Exception as exc:
@@ -148,6 +151,10 @@ def _load_workflow_payload(upload_session_doc) -> dict[str, Any]:
 
 
 def _get_session_student_name() -> str | None:
+    roles = set(frappe.get_roles(frappe.session.user))
+    if "Student" not in roles:
+        return None
+
     try:
         from ifitwala_ed.api import courses as courses_api
 

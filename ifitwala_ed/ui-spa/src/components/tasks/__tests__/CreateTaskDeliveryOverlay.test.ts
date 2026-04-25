@@ -65,6 +65,7 @@ const {
 			is_template: 1,
 			visibility_scope: 'shared',
 			default_delivery_mode: 'Collect Work',
+			default_requires_submission: 1,
 			grading_defaults: {
 				default_allow_feedback: 1,
 				default_grading_mode: 'Completion',
@@ -477,6 +478,7 @@ beforeEach(() => {
 		is_template: 1,
 		visibility_scope: 'shared',
 		default_delivery_mode: 'Collect Work',
+		default_requires_submission: 1,
 		grading_defaults: {
 			default_allow_feedback: 1,
 			default_grading_mode: 'Completion',
@@ -504,18 +506,79 @@ afterEach(() => {
 });
 
 describe('CreateTaskDeliveryOverlay', () => {
-	it('shows grading controls only for assessed deliveries', async () => {
+	it('shows marking controls only for marked work choices', async () => {
 		mountOverlay();
 		await flushUi();
 
 		let text = document.body.textContent || '';
 		expect(text).not.toContain('Allow comment in gradebook?');
 
-		await clickButton('Collect and assess');
+		await clickButton('Collect and mark');
 
 		text = document.body.textContent || '';
 		expect(text).toContain('Allow comment in gradebook?');
 		expect(text).toContain('Comments stay separate from points, criteria, or completion.');
+	});
+
+	it('maps teacher workflow choices to delivery mode and student hand-in flags', async () => {
+		mountOverlay();
+		await flushUi();
+
+		await setInput('Assignment title', 'Shared reading');
+		await clickButton('Create');
+		expect(createNewTaskCalls[0]).toMatchObject({
+			delivery_mode: 'Assign Only',
+			requires_submission: 0,
+			grading_mode: 'None',
+		});
+
+		while (cleanupFns.length) cleanupFns.pop()?.();
+		document.body.innerHTML = '';
+		createNewTaskCalls.length = 0;
+		mountOverlay();
+		await flushUi();
+		await setInput('Assignment title', 'Notebook check');
+		await clickButton('Collect work');
+		await clickButton('Create');
+		expect(createNewTaskCalls[0]).toMatchObject({
+			delivery_mode: 'Collect Work',
+			requires_submission: 1,
+			grading_mode: 'None',
+		});
+
+		while (cleanupFns.length) cleanupFns.pop()?.();
+		document.body.innerHTML = '';
+		createNewTaskCalls.length = 0;
+		mountOverlay();
+		await flushUi();
+		await setInput('Assignment title', 'Essay checkpoint');
+		await clickButton('Collect and mark');
+		await clickButton('Points');
+		await setInput('Enter max points', '10');
+		await clickButton('Create');
+		expect(createNewTaskCalls[0]).toMatchObject({
+			delivery_mode: 'Assess',
+			requires_submission: 1,
+			grading_mode: 'Points',
+			max_points: '10',
+		});
+
+		while (cleanupFns.length) cleanupFns.pop()?.();
+		document.body.innerHTML = '';
+		createNewTaskCalls.length = 0;
+		mountOverlay();
+		await flushUi();
+		await setInput('Assignment title', 'Midterm exam');
+		await clickButton('Mark class work');
+		await clickButton('Points');
+		await setInput('Enter max points', '100');
+		await clickButton('Create');
+		expect(createNewTaskCalls[0]).toMatchObject({
+			delivery_mode: 'Assess',
+			requires_submission: 0,
+			grading_mode: 'Points',
+			max_points: '100',
+		});
 	});
 
 	it('shows the explicit share-with-course-team choice for new tasks', async () => {
@@ -619,6 +682,7 @@ describe('CreateTaskDeliveryOverlay', () => {
 			task: 'TASK-SHARED-1',
 			student_group: 'GRP-1',
 			delivery_mode: 'Collect Work',
+			requires_submission: 1,
 			grading_mode: 'None',
 			allow_feedback: 0,
 		});
@@ -675,8 +739,7 @@ describe('CreateTaskDeliveryOverlay', () => {
 		await flushUi();
 
 		await setInput('Assignment title', 'Essay checkpoint');
-		await clickButton('Collect and assess');
-		await clickButton('Yes');
+		await clickButton('Collect and mark');
 		await clickButton('Criteria');
 		await setSelect('[data-rubric-strategy-select="true"]', 'Sum Total');
 		await setSelect('[data-criteria-library-select="true"]', 'CRIT-ANALYSIS');
@@ -690,6 +753,7 @@ describe('CreateTaskDeliveryOverlay', () => {
 			title: 'Essay checkpoint',
 			student_group: 'GRP-1',
 			delivery_mode: 'Assess',
+			requires_submission: 1,
 			grading_mode: 'Criteria',
 			rubric_scoring_strategy: 'Sum Total',
 			criteria_rows: [
@@ -719,6 +783,7 @@ describe('CreateTaskDeliveryOverlay', () => {
 			is_template: 1,
 			visibility_scope: 'shared',
 			default_delivery_mode: 'Assess',
+			default_requires_submission: 1,
 			grading_defaults: {
 				default_allow_feedback: 1,
 				default_grading_mode: 'Criteria',
@@ -754,6 +819,7 @@ describe('CreateTaskDeliveryOverlay', () => {
 			task: 'TASK-SHARED-1',
 			student_group: 'GRP-1',
 			delivery_mode: 'Assess',
+			requires_submission: 1,
 			grading_mode: 'Criteria',
 			rubric_scoring_strategy: 'Separate Criteria',
 		});

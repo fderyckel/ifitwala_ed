@@ -539,11 +539,11 @@ function renderStudentCrmSummary(frm, summary) {
 	const contactSummary = summary?.contact_summary || null;
 	const addressSummaries = Array.isArray(summary?.address_summaries) ? summary.address_summaries : [];
 
-	contactWrapper.html(buildStudentContactHtml(contactSummary, Boolean(summary?.has_hidden_contact)));
-	addressWrapper.html(buildStudentAddressHtml(addressSummaries, Boolean(summary?.has_hidden_addresses)));
+	contactWrapper.html(buildStudentContactHtml(contactSummary));
+	addressWrapper.html(buildStudentAddressHtml(addressSummaries));
 }
 
-function buildStudentContactHtml(contactSummary, hasHiddenContact) {
+function buildStudentContactHtml(contactSummary) {
 	const title = contactSummary?.display_name || __("No linked contact.");
 	const meta = contactSummary?.name && contactSummary.name !== title
 		? `<div class="small text-muted" style="margin-top: 4px;">${frappe.utils.escape_html(contactSummary.name)}</div>`
@@ -579,13 +579,6 @@ function buildStudentContactHtml(contactSummary, hasHiddenContact) {
 		);
 	}
 
-	const hiddenContactMessage = __(
-		"Direct Contact record access is unavailable for your role. Details remain visible here."
-	);
-	const notice = hasHiddenContact
-		? `<div class="text-muted small" style="margin-top: 10px;">${hiddenContactMessage}</div>`
-		: "";
-
 	return `
 		<div class="if-student-crm-panel" style="${STUDENT_CRM_PANEL_STYLE}">
 			<div class="small text-muted" style="margin-bottom: 6px;">${__("Linked Contact")}</div>
@@ -594,7 +587,6 @@ function buildStudentContactHtml(contactSummary, hasHiddenContact) {
 			<div style="display: grid; gap: 8px; margin-top: 10px;">
 				${chips.join("")}
 			</div>
-			${notice}
 		</div>
 	`;
 }
@@ -608,17 +600,11 @@ function buildStudentContactChip(label, value) {
 	`;
 }
 
-function buildStudentAddressHtml(addressSummaries, hasHiddenAddresses) {
+function buildStudentAddressHtml(addressSummaries) {
 	const rows = (addressSummaries || []).map((row) => buildStudentAddressCard(row)).join("");
 	const emptyState = rows
 		? rows
 		: `<div class="text-muted small">${__("No linked address.")}</div>`;
-	const hiddenAddressMessage = __(
-		"Direct Address record access is unavailable for your role. Details remain visible here."
-	);
-	const notice = hasHiddenAddresses
-		? `<div class="text-muted small" style="margin-top: 10px;">${hiddenAddressMessage}</div>`
-		: "";
 
 	return `
 		<div class="if-student-crm-panel" style="${STUDENT_CRM_PANEL_STYLE}">
@@ -628,7 +614,6 @@ function buildStudentAddressHtml(addressSummaries, hasHiddenAddresses) {
 			<div style="display: grid; gap: 10px;">
 				${emptyState}
 			</div>
-			${notice}
 		</div>
 	`;
 }

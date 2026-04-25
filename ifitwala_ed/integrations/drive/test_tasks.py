@@ -21,6 +21,9 @@ def _drive_task_submission_module(task_submission_doc=None, *, session_student=N
         extra_modules["ifitwala_ed.api.courses"] = courses
 
     with stubbed_frappe(extra_modules=extra_modules) as frappe:
+        if session_student is not None:
+            frappe.get_roles = lambda user=None: ["Student"]
+
         task_submission_doc = task_submission_doc or SimpleNamespace(
             name="TSU-0001",
             student="STU-1",
@@ -88,6 +91,22 @@ class TestDriveTaskSubmissionContract(TestCase):
             student="STU-1",
             school="SCH-1",
             check_permission=lambda permission_type=None: (_ for _ in ()).throw(StubPermissionError("Not permitted.")),
+        )
+
+        with _drive_task_submission_module(task_submission_doc, session_student="STU-1") as module:
+            resolved = module.assert_task_submission_upload_access("TSU-0001", permission_type="write")
+
+        self.assertIs(resolved, task_submission_doc)
+
+    def test_assert_task_submission_upload_access_does_not_emit_role_failure_for_session_student_owner(self):
+        def fail_check_permission(permission_type=None):
+            raise AssertionError("Student owner upload should not call generic DocType write checks.")
+
+        task_submission_doc = SimpleNamespace(
+            name="TSU-0001",
+            student="STU-1",
+            school="SCH-1",
+            check_permission=fail_check_permission,
         )
 
         with _drive_task_submission_module(task_submission_doc, session_student="STU-1") as module:

@@ -4,6 +4,7 @@
 # ifitwala_ed/assessment/doctype/task_submission/test_task_submission.py
 
 import types
+from types import SimpleNamespace
 from unittest import TestCase
 
 from ifitwala_ed.tests.frappe_stubs import StubValidationError, import_fresh, stubbed_frappe
@@ -73,3 +74,78 @@ class TestTaskSubmission(TestCase):
 
         with self.assertRaises(StubValidationError):
             submission._validate_evidence_presence()
+
+    def test_set_version_does_not_bump_existing_submission_version(self):
+        module = _import_task_submission_module()
+        submission = module.TaskSubmission()
+        submission.task_outcome = "OUT-1"
+        submission.version = 3
+        submission.is_new = lambda: False
+
+        def fail_get_next_submission_version(outcome_id):
+            raise AssertionError("Existing submission version must not be recomputed on save.")
+
+        module.get_next_submission_version = fail_get_next_submission_version
+
+        submission._set_version({})
+
+        self.assertEqual(submission.version, 3)
+
+    def test_validate_evidence_presence_allows_pending_file_evidence_on_new_doc(self):
+        module = _import_task_submission_module()
+        submission = module.TaskSubmission()
+        submission.is_stub = 0
+        submission.link_url = None
+        submission.text_content = None
+        submission.flags = SimpleNamespace(allow_pending_submission_files=True)
+        submission.is_new = lambda: True
+        submission.get = lambda fieldname: [] if fieldname == "attachments" else None
+
+        submission._validate_evidence_presence()
+
+    def test_prevent_evidence_overwrite_allows_initial_governed_file_materialization(self):
+        module = _import_task_submission_module()
+        before = SimpleNamespace(
+            link_url="",
+            text_content="",
+            get=lambda fieldname: [] if fieldname == "attachments" else None,
+        )
+        submission = module.TaskSubmission()
+        submission.link_url = ""
+        submission.text_content = ""
+        submission.flags = SimpleNamespace(allow_pending_submission_files=True)
+        submission.is_new = lambda: False
+        submission.get_doc_before_save = lambda: before
+        submission.get = lambda fieldname: (
+            [{"file": "/private/files/evidence.pdf", "external_url": "", "description": ""}]
+            if fieldname == "attachments"
+            else None
+        )
+
+        submission._prevent_evidence_overwrite()
+
+    def test_prevent_evidence_overwrite_still_rejects_non_initial_attachment_edits(self):
+        module = _import_task_submission_module()
+        before = SimpleNamespace(
+            link_url="",
+            text_content="",
+            get=lambda fieldname: (
+                [{"file": "/private/files/old.pdf", "external_url": "", "description": ""}]
+                if fieldname == "attachments"
+                else None
+            ),
+        )
+        submission = module.TaskSubmission()
+        submission.link_url = ""
+        submission.text_content = ""
+        submission.flags = SimpleNamespace(allow_pending_submission_files=True)
+        submission.is_new = lambda: False
+        submission.get_doc_before_save = lambda: before
+        submission.get = lambda fieldname: (
+            [{"file": "/private/files/new.pdf", "external_url": "", "description": ""}]
+            if fieldname == "attachments"
+            else None
+        )
+
+        with self.assertRaises(StubValidationError):
+            submission._prevent_evidence_overwrite()

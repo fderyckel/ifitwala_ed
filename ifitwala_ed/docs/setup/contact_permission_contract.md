@@ -11,9 +11,11 @@ Status: Implemented
 Code refs:
 - `ifitwala_ed/setup/setup.py`
 - `ifitwala_ed/utilities/contact_utils.py`
+- `ifitwala_ed/students/doctype/student/student.py`
 
 Test refs:
 - `ifitwala_ed/setup/test_contact_permissions.py`
+- `ifitwala_ed/students/doctype/student/test_student.py`
 
 Rules:
 
@@ -24,6 +26,8 @@ Rules:
 5. Non-manager editor roles keep no delete access on `Contact`: `Accounts User` and `Admission Officer`.
 6. The permission seed must create any missing canonical roles before inserting `Custom DocPerm` rows, so migrate/setup never fails on a missing role record.
 7. App-level Contact permission hooks may further restrict employee-linked contacts through the server-owned Employee visibility contract; non-employee-linked contacts continue to defer to the seeded DocPerm contract.
+8. Student-form Contact and Address details are a read-only Student-context projection. A user who can read the Student may see the linked Contact summary and linked Address lines on the Student form even when native `Contact` or `Address` DocType opening/editing is not available.
+9. Native `Contact` and `Address` open/edit affordances remain gated by the native DocType role-permission contract. The read-only Student projection must not call `frappe.has_permission("Contact" | "Address", ...)` during Student form load, because a negative native permission probe can add noisy role-permission messages to an otherwise successful Student page refresh.
 
 ## 2. Runtime Enforcement
 
@@ -33,7 +37,7 @@ Code refs:
 - `ifitwala_ed/setup/setup.py`
 - `ifitwala_ed/hooks.py`
 - `ifitwala_ed/utilities/contact_utils.py`
-- `ifitwala_ed/patches/canonicalize_role_names.py`
+- `ifitwala_ed/patches/sync_core_crm_permissions.py`
 
 Test refs:
 - `ifitwala_ed/setup/test_contact_permissions.py`
@@ -41,7 +45,7 @@ Test refs:
 Rules:
 
 1. Fresh installs seed the canonical `Contact` permissions through `grant_core_crm_permissions()` during `after_install`.
-2. Existing sites collapse legacy role names through `ifitwala_ed.patches.canonicalize_role_names`, which then re-runs `grant_core_crm_permissions()`.
+2. Existing sites re-run the canonical seed through `ifitwala_ed.patches.sync_core_crm_permissions`.
 3. `grant_core_crm_permissions()` ensures canonical roles exist before seeding the `Custom DocPerm` rows.
 4. Contact document-level permission checks apply employee-linked contact scope on top of Frappe core permissions.
 5. Contact list visibility keeps non-employee-linked contacts on the seeded DocPerm contract, but employee-linked contacts are narrowed server-side:
@@ -58,13 +62,17 @@ Code refs:
 - `ifitwala_ed/setup/setup.py`
 - `ifitwala_ed/utilities/contact_utils.py`
 - `ifitwala_ed/patches.txt`
-- `ifitwala_ed/patches/canonicalize_role_names.py`
+- `ifitwala_ed/patches/sync_core_crm_permissions.py`
+- `ifitwala_ed/students/doctype/student/student.py`
 
 Test refs:
 - `ifitwala_ed/setup/test_contact_permissions.py`
+- `ifitwala_ed/patches/test_sync_core_crm_permissions.py`
+- `ifitwala_ed/students/doctype/student/test_student.py`
 
 | Concern | Canonical owner | Code refs | Test refs |
 | --- | --- | --- | --- |
 | Permission seed | `grant_core_crm_permissions` | `setup/setup.py` | `setup/test_contact_permissions.py` |
 | Runtime permission hook | `contact_has_permission`, `contact_permission_query_conditions` | `utilities/contact_utils.py` | `setup/test_contact_permissions.py` |
-| Existing-site rollout | role canonicalization patch | `patches/canonicalize_role_names.py`, `patches.txt` | `setup/test_contact_permissions.py` |
+| Student-form read-only CRM projection | `get_student_crm_summary` | `students/doctype/student/student.py` | `students/doctype/student/test_student.py` |
+| Existing-site rollout | CRM permission sync patch | `patches/sync_core_crm_permissions.py`, `patches.txt` | `patches/test_sync_core_crm_permissions.py`, `setup/test_contact_permissions.py` |

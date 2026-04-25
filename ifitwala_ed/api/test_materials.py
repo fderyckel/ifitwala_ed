@@ -107,3 +107,53 @@ class TestTaskMaterialSerialization(TestCase):
                 materials_api.upload_task_material_file(task="TASK-1", title="Checkpoint notes")
 
         self.assertIn("Task attachments support PDF, JPG, PNG, and WEBP files only.", str(ctx.exception))
+
+    def test_upload_task_material_file_links_returned_governed_file_before_reload(self):
+        with _materials_module() as materials_api:
+            upload = type(
+                "Upload",
+                (),
+                {
+                    "filename": "lab-guide.pdf",
+                    "mimetype": "application/pdf",
+                    "stream": BytesIO(b"%PDF-1.4"),
+                },
+            )()
+            materials_api.frappe.request = type("Request", (), {"files": {"file": upload}})()
+            materials_api.frappe.db.savepoint = lambda name: None
+            materials_api.frappe.db.rollback = lambda save_point=None: None
+            set_value_calls = []
+            materials_api.frappe.db.get_value = lambda doctype, name, fieldname=None, as_dict=False: None
+            materials_api.frappe.db.set_value = lambda *args, **kwargs: set_value_calls.append((args, kwargs))
+
+            material = type("Material", (), {"name": "MAT-1"})()
+            placement = type("Placement", (), {"name": "PLACEMENT-1"})()
+            materials_api.materials_domain.create_file_material_record = lambda **kwargs: material
+            materials_api.materials_domain.create_material_placement = lambda **kwargs: placement
+            materials_api.materials_domain.list_anchor_materials = lambda doctype, name: [
+                {
+                    "material": "MAT-1",
+                    "course": "COURSE-1",
+                    "title": "Lab guide",
+                    "material_type": "File",
+                    "file": "FILE-1",
+                    "file_url": "/private/files/lab-guide.pdf",
+                    "file_name": "lab-guide.pdf",
+                    "file_size": 8,
+                    "placements": [{"placement": "PLACEMENT-1"}],
+                }
+            ]
+            materials_api.governed_uploads.upload_supporting_material_file = lambda material: {
+                "file": "FILE-1",
+                "file_name": "lab-guide.pdf",
+                "file_size": 8,
+            }
+
+            with patch.object(materials_api, "_require_task_write", return_value=object()):
+                payload = materials_api.upload_task_material_file(task="TASK-1", title="Lab guide")
+
+        self.assertEqual(payload["material"], "MAT-1")
+        self.assertEqual(payload["placement"], "PLACEMENT-1")
+        self.assertEqual(set_value_calls[0][0][0:2], ("Supporting Material", "MAT-1"))
+        self.assertEqual(set_value_calls[0][0][2]["file"], "FILE-1")
+        self.assertFalse(set_value_calls[0][1]["update_modified"])

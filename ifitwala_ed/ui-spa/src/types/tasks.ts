@@ -53,6 +53,7 @@ export type TaskForDeliveryPayload = {
 	is_template: 0 | 1;
 	visibility_scope: 'mine' | 'shared';
 	default_delivery_mode?: 'Assign Only' | 'Collect Work' | 'Assess' | null;
+	default_requires_submission?: 0 | 1 | boolean | null;
 	grading_defaults: {
 		default_allow_feedback?: 0 | 1 | null;
 		default_grading_mode?: 'None' | 'Completion' | 'Binary' | 'Points' | 'Criteria' | null;
@@ -83,6 +84,7 @@ export type CreateTaskDeliveryInput = {
 	class_session?: string;
 	unit_plan?: string;
 	delivery_mode: 'Assign Only' | 'Collect Work' | 'Assess';
+	requires_submission?: 0 | 1;
 	available_from?: string;
 	due_date?: string;
 	lock_date?: string;

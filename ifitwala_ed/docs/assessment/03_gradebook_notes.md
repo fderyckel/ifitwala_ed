@@ -3,7 +3,7 @@
 Status: **UX LOCK DRAFT (Thin)**
 Audience: Product + Engineering + Codex agents
 Goal: A teacher should grade and return work with **minimum clicks** and **zero doctype awareness**.
-Last updated: 2026-04-24
+Last updated: 2026-04-25
 
 ---
 
@@ -100,10 +100,11 @@ Grid is always:
 Cell content rules (one glance, no clutter):
 
 - Assess:
-  - primary: Official grade/score (or “—”)
+  - primary: Official grade/score, completion state, or criterion summary according to grading mode
   - secondary: status dot
   - badges: New Evidence, Needs Review, Needs Moderation
   - comment box: only when the delivery explicitly allows comments
+  - Completion/Binary cells must not expect or render a numeric score; the official display comes from `is_complete`
 
 - Collect Work:
   - primary: Submitted / Late / Missing
@@ -265,12 +266,23 @@ Runtime contract:
 
 No grade, no submission required.
 
+Batch completion:
+
+- In Task View, completion-compatible deliveries expose **Mark shown complete**.
+- The action is visible only for `Assign Only` deliveries and assessed `Completion` deliveries.
+- The first click opens an in-context confirmation; it does not immediately mutate outcomes.
+- The batch action marks the currently shown incomplete, unpublished roster rows complete in one named server mutation.
+- Teachers handle exceptions by opening individual students and marking them incomplete in the drawer.
+- Released outcomes remain unchanged and must be unreleased before completion can change.
+
 Runtime contract:
 
 - `Assign Only` completion remains the direct `Task Outcome` exception and does not create a `Task Submission`
+- assessed `Completion` batch writes must use contribution-based `judgment_code = "complete"` writes, not direct official-field mutation
 - the student portal uses the existing `CourseDetail.vue` task workspace, not a second task page
 - direct completion writes must stamp `completed_on` when work becomes complete so student home/work-board ordering stays coherent
 - direct completion must reject changes while the outcome is already published
+- `Binary` Yes/No grading is not automatically included in this completion batch action unless product copy explicitly maps it to complete/incomplete
 
 ---
 
@@ -445,13 +457,15 @@ They see:
 - Gradebook API (`api/gradebook.py`) is the stable public RPC boundary; shared helper ownership lives in `api/gradebook_support.py`, and it does not compute grades.
 - Any governed upload, replace, or returned-feedback artifact flow behind this surface must execute through the Ifitwala_drive boundary, not through direct business-logic file writes.
 - Writes go to services; services may create Evidence Stub submissions when missing and `requires_submission = 1`.
+- Comment-only writes save feedback/status only. They must not require, synthesize, or clear `official_score`.
+- Completion/Binary writes save `judgment_code` and derive `is_complete`; they must not write scalar grade fields.
 - Frontend can omit `task_submission` in grade actions; backend will attach to latest student submission if present, else create a stub when required.
 - Instructor-scoped users only see deliveries for taught student groups; course filters narrow scope but never broaden it.
 - Feedback and annotation records must bind to the selected submission version, not float across versions implicitly.
 - The selected submission payload is responsible for server-owned annotation-readiness state for the current evidence version; Vue must not guess PDF readiness from raw file paths.
 - For Ed-owned staff/student/guardian surfaces, the SPA must not call Drive grant APIs directly; Ed-owned routes authorize the business surface first, then issue Drive-backed preview/open/download access.
 
-**Canonical statement:** A Task Outcome always stores official results per criterion. Task totals are optional and only computed when the delivery strategy allows it.
+**Canonical statement:** A Task Outcome always stores official results per criterion. Task totals are optional and only computed when the delivery strategy allows it; Completion, Binary, None, and comment-only flows are valid without task-level scalar scores.
 
 ## MODAL FOR CREATING TASKS
 

@@ -80,6 +80,7 @@ def _validate_payload(payload: dict) -> dict:
         "class_session",
         "unit_plan",
         "delivery_mode",
+        "requires_submission",
         "available_from",
         "due_date",
         "lock_date",
@@ -124,6 +125,18 @@ def _validate_payload(payload: dict) -> dict:
     delivery_options = set(_parse_options("Task Delivery", "delivery_mode"))
     if delivery_mode not in delivery_options:
         frappe.throw(_("Invalid delivery mode: {delivery_mode}").format(delivery_mode=delivery_mode))
+
+    requires_submission = payload.get("requires_submission")
+    explicit_requires_submission = requires_submission not in (None, "")
+    if explicit_requires_submission:
+        requires_submission = to_check_value(requires_submission)
+    else:
+        requires_submission = None
+
+    if delivery_mode == "Assign Only" and requires_submission:
+        frappe.throw(_("Share-work deliveries cannot require student hand-in."))
+    if delivery_mode == "Collect Work" and explicit_requires_submission and not requires_submission:
+        frappe.throw(_("Collect-work deliveries require student hand-in."))
 
     grading_mode = payload.get("grading_mode")
     if grading_mode in ("", None):
@@ -182,6 +195,7 @@ def _validate_payload(payload: dict) -> dict:
         "class_session": payload.get("class_session"),
         "unit_plan": payload.get("unit_plan"),
         "delivery_mode": delivery_mode,
+        "requires_submission": requires_submission,
         "available_from": payload.get("available_from"),
         "due_date": payload.get("due_date"),
         "lock_date": payload.get("lock_date"),
@@ -206,6 +220,7 @@ def create_task_and_delivery(
     title=None,
     student_group=None,
     delivery_mode=None,
+    requires_submission=None,
     instructions=None,
     task_type=None,
     is_template=None,
@@ -250,6 +265,7 @@ def create_task_and_delivery(
         "class_session": class_session,
         "unit_plan": unit_plan,
         "delivery_mode": delivery_mode,
+        "requires_submission": requires_submission,
         "available_from": available_from,
         "due_date": due_date,
         "lock_date": lock_date,
@@ -324,9 +340,12 @@ def create_task_and_delivery(
             if data.get("task_type") == "Quiz" and data["delivery_mode"] == "Assess"
             else data["grading_mode"] or "None"
         )
-        task.default_requires_submission = (
-            0 if data.get("task_type") == "Quiz" else 1 if data["delivery_mode"] in ("Collect Work", "Assess") else 0
-        )
+        if data.get("task_type") == "Quiz":
+            task.default_requires_submission = 0
+        elif data.get("requires_submission") is not None:
+            task.default_requires_submission = data.get("requires_submission")
+        else:
+            task.default_requires_submission = 1 if data["delivery_mode"] in ("Collect Work", "Assess") else 0
         task.default_allow_feedback = to_check_value(data.get("allow_feedback"))
         if data.get("task_type") != "Quiz" and task.default_grading_mode == "Points":
             task.default_max_points = data["max_points"]
@@ -352,6 +371,9 @@ def create_task_and_delivery(
         delivery.student_group = data["student_group"]
         delivery.class_teaching_plan = planning_context["class_teaching_plan"]
         delivery.delivery_mode = data["delivery_mode"]
+        if data.get("requires_submission") is not None:
+            delivery.requires_submission = data.get("requires_submission")
+            delivery.flags.explicit_requires_submission = True
         delivery.allow_feedback = to_check_value(data.get("allow_feedback"))
         if planning_context.get("class_session"):
             delivery.class_session = planning_context["class_session"]

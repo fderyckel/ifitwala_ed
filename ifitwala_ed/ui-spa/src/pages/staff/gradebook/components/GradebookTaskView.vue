@@ -83,6 +83,16 @@
 								</div>
 								<div class="flex flex-wrap justify-end gap-2">
 									<button
+										v-if="completionBatchSupported"
+										type="button"
+										class="if-button if-button--secondary"
+										:disabled="batchCompletionBusy || !batchCompletionEligibleStudents.length"
+										data-mark-shown-complete
+										@click="openBatchCompletionConfirm"
+									>
+										{{ batchCompletionButtonLabel }}
+									</button>
+									<button
 										type="button"
 										class="if-button if-button--secondary"
 										:disabled="publishBusy || !unreleasedOutcomeIds.length"
@@ -111,6 +121,41 @@
 										<span v-if="selectedReleasableOutcomeIds.length">
 											({{ selectedReleasableOutcomeIds.length }})
 										</span>
+									</button>
+								</div>
+							</div>
+						</div>
+						<div
+							v-if="batchCompletionConfirmOpen"
+							class="mt-4 rounded-xl border border-sand/70 bg-sand/10 px-4 py-3"
+						>
+							<div class="flex flex-wrap items-center justify-between gap-3">
+								<div class="space-y-1">
+									<p class="text-sm font-semibold text-ink">
+										Mark {{ batchCompletionEligibleStudents.length }} shown students complete?
+									</p>
+									<p class="text-xs text-ink/60">
+										You can still open individual students and mark exceptions incomplete. Released
+										outcomes will not be changed.
+									</p>
+								</div>
+								<div class="flex items-center gap-2">
+									<button
+										type="button"
+										class="if-button if-button--quiet"
+										:disabled="batchCompletionBusy"
+										@click="closeBatchCompletionConfirm"
+									>
+										Cancel
+									</button>
+									<button
+										type="button"
+										class="if-button if-button--primary"
+										:disabled="batchCompletionBusy || !batchCompletionEligibleStudents.length"
+										data-confirm-mark-shown-complete
+										@click="markShownComplete"
+									>
+										{{ batchCompletionBusy ? 'Marking...' : 'Confirm complete' }}
 									</button>
 								</div>
 							</div>
@@ -270,6 +315,7 @@ import { Badge, FeatherIcon, Spinner, toast } from 'frappe-ui';
 
 import { createGradebookService } from '@/lib/services/gradebook/gradebookService';
 import type { CommentBankScopeMode } from '@/types/contracts/gradebook/comment_bank';
+import type { Response as BatchMarkCompletionResponse } from '@/types/contracts/gradebook/batch_mark_completion';
 import type { FeedbackWorkspaceItem } from '@/types/contracts/gradebook/feedback_workspace';
 import type { Response as GetDrawerResponse } from '@/types/contracts/gradebook/get_drawer';
 import type { Request as ModeratorActionRequest } from '@/types/contracts/gradebook/moderator_action';
@@ -331,6 +377,8 @@ const publicationBusy = ref(false);
 const threadBusy = ref(false);
 const submissionSeenBusy = ref(false);
 const publishBusy = ref(false);
+const batchCompletionBusy = ref(false);
+const batchCompletionConfirmOpen = ref(false);
 const exportBusy = ref(false);
 const moderationBusy = ref(false);
 const selectedBatchOutcomeIds = ref<string[]>([]);
@@ -388,6 +436,33 @@ const visibleStudents = computed(() => {
 			String(right.student_name || right.student)
 		);
 	});
+});
+const completionBatchSupported = computed(() => {
+	const task = gradebook.task;
+	if (!task) return false;
+	return (
+		task.delivery_type === 'Assign Only' ||
+		(task.delivery_type === 'Assess' && task.grading_mode === 'Completion')
+	);
+});
+const batchCompletionEligibleStudents = computed(() => {
+	if (!completionBatchSupported.value) return [];
+	return visibleStudents.value.filter(
+		student => !student.complete && !student.visible_to_student && student.task_student
+	);
+});
+const batchCompletionReleasedBlockedCount = computed(() => {
+	if (!completionBatchSupported.value) return 0;
+	return visibleStudents.value.filter(student => !student.complete && student.visible_to_student)
+		.length;
+});
+const batchCompletionButtonLabel = computed(() => {
+	if (batchCompletionBusy.value) return 'Marking...';
+	if (batchCompletionEligibleStudents.value.length) {
+		return `Mark shown complete (${batchCompletionEligibleStudents.value.length})`;
+	}
+	if (batchCompletionReleasedBlockedCount.value) return 'Unrelease to mark complete';
+	return 'All shown complete';
 });
 const unreleasedOutcomeIds = computed(() =>
 	gradebook.students
@@ -455,6 +530,7 @@ function resetGradebook() {
 	gradebook.students = [];
 	selectedBatchOutcomeIds.value = [];
 	activeEvidenceFilter.value = 'all';
+	batchCompletionConfirmOpen.value = false;
 	closeDrawer({ syncParent: true });
 }
 
@@ -1103,6 +1179,70 @@ function clearBatchSelection() {
 
 function selectAllUnreleased() {
 	selectedBatchOutcomeIds.value = [...unreleasedOutcomeIds.value];
+}
+
+function openBatchCompletionConfirm() {
+	if (!batchCompletionEligibleStudents.value.length) {
+		showToast('No shown incomplete students can be marked complete.', 'warning');
+		return;
+	}
+	batchCompletionConfirmOpen.value = true;
+}
+
+function closeBatchCompletionConfirm() {
+	batchCompletionConfirmOpen.value = false;
+}
+
+function batchCompletionMessage(response: BatchMarkCompletionResponse) {
+	const parts = [`Marked ${response.updated_count} complete.`];
+	if (response.already_complete_count) {
+		parts.push(`${response.already_complete_count} already complete.`);
+	}
+	if (response.skipped_published_count) {
+		parts.push(`${response.skipped_published_count} released unchanged.`);
+	}
+	return parts.join(' ');
+}
+
+async function markShownComplete() {
+	const taskName = gradebook.task?.name;
+	const outcomeIds = batchCompletionEligibleStudents.value.map(student => student.task_student);
+	if (!taskName || !outcomeIds.length) {
+		showToast('No shown incomplete students can be marked complete.', 'warning');
+		return;
+	}
+
+	batchCompletionBusy.value = true;
+	try {
+		const response = await gradebookService.batchMarkCompletion({
+			task_delivery: taskName,
+			target_complete: true,
+			outcome_ids: outcomeIds,
+		});
+		const updatedIds = new Set<string>();
+		for (const row of response.updated || []) {
+			if (!row.outcome) continue;
+			updatedIds.add(row.outcome);
+			const patch: StudentRowPatch = { complete: true };
+			if (Object.prototype.hasOwnProperty.call(row, 'grading_status')) {
+				patch.status = row.grading_status ?? null;
+			}
+			patchStudentRow(row.outcome, patch);
+		}
+		batchCompletionConfirmOpen.value = false;
+		showToast(
+			batchCompletionMessage(response),
+			response.skipped_published_count ? 'warning' : 'success'
+		);
+		if (selectedOutcomeId.value && updatedIds.has(selectedOutcomeId.value)) {
+			await loadDrawer(selectedOutcomeId.value, currentDrawerSelection());
+		}
+	} catch (error) {
+		console.error('Failed to mark shown students complete', error);
+		showDangerToast('Could not mark shown students complete');
+	} finally {
+		batchCompletionBusy.value = false;
+	}
 }
 
 function setEvidenceFilter(filter: EvidenceFilter) {

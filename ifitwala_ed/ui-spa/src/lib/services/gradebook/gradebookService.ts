@@ -8,6 +8,10 @@ import type {
 	Response as FetchGroupsResponse,
 } from '@/types/contracts/gradebook/fetch_groups'
 import type {
+	Request as BatchMarkCompletionRequest,
+	Response as BatchMarkCompletionResponse,
+} from '@/types/contracts/gradebook/batch_mark_completion'
+import type {
 	Request as FetchGroupTasksRequest,
 	Response as FetchGroupTasksResponse,
 } from '@/types/contracts/gradebook/fetch_group_tasks'
@@ -89,6 +93,12 @@ export function createGradebookService() {
 
 	const fetchGroupTasksResource = createResource<FetchGroupTasksResponse>({
 		url: 'ifitwala_ed.api.gradebook.fetch_group_tasks',
+		method: 'POST',
+		auto: false,
+	})
+
+	const batchMarkCompletionResource = createResource<BatchMarkCompletionResponse>({
+		url: 'ifitwala_ed.api.gradebook.batch_mark_completion',
 		method: 'POST',
 		auto: false,
 	})
@@ -209,6 +219,12 @@ export function createGradebookService() {
 		return fetchGroupTasksResource.submit(payload)
 	}
 
+	async function batchMarkCompletion(
+		payload: BatchMarkCompletionRequest,
+	): Promise<BatchMarkCompletionResponse> {
+		return batchMarkCompletionResource.submit(payload)
+	}
+
 	async function getGrid(payload: GetGridRequest): Promise<GetGridResponse> {
 		return getGridResource.submit(payload)
 	}
@@ -321,6 +337,7 @@ export function createGradebookService() {
 	return {
 		fetchGroups,
 		fetchGroupTasks,
+		batchMarkCompletion,
 		getGrid,
 		getDrawer,
 		saveDraft,

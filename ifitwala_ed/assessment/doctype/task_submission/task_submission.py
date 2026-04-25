@@ -14,6 +14,8 @@ from ifitwala_ed.assessment.task_submission_service import (
     stamp_submission_context,
 )
 
+_PENDING_SUBMISSION_FILES_FLAG = "allow_pending_submission_files"
+
 
 class TaskSubmission(Document):
     def before_validate(self):
@@ -77,6 +79,8 @@ class TaskSubmission(Document):
             self.submitted_on = now_datetime()
 
     def _set_version(self, outcome):
+        if not _doc_is_new(self) and self.version:
+            return
         self.version = get_next_submission_version(self.task_outcome)
 
     def _get_delivery(self):
@@ -126,6 +130,9 @@ class TaskSubmission(Document):
         has_link = bool((self.link_url or "").strip())
         has_text = bool((self.text_content or "").strip())
 
+        if _doc_is_new(self) and _flag_enabled(self, _PENDING_SUBMISSION_FILES_FLAG):
+            return
+
         if not (has_attachments or has_link or has_text):
             frappe.throw(_("Provide a file, link, or text submission."))
 
@@ -144,6 +151,8 @@ class TaskSubmission(Document):
             frappe.throw(_("Submissions are append-only. Create a new version instead of editing evidence."))
 
         if _attachments_changed(before.get("attachments"), self.get("attachments")):
+            if _initial_file_materialization_allowed(self, before):
+                return
             frappe.throw(_("Submissions are append-only. Create a new version instead of editing evidence."))
 
     def _maybe_clone_group_submission(self):
@@ -167,6 +176,30 @@ def _attachments_changed(before_rows, after_rows):
         )
 
     return _signature(before_rows) != _signature(after_rows)
+
+
+def _initial_file_materialization_allowed(doc, before):
+    if not _flag_enabled(doc, _PENDING_SUBMISSION_FILES_FLAG):
+        return False
+    if before.get("attachments"):
+        return False
+    return bool(doc.get("attachments"))
+
+
+def _flag_enabled(doc, flagname):
+    flags = getattr(doc, "flags", None)
+    if not flags:
+        return False
+    if isinstance(flags, dict):
+        return bool(flags.get(flagname))
+    return bool(getattr(flags, flagname, False))
+
+
+def _doc_is_new(doc):
+    is_new = getattr(doc, "is_new", None)
+    if not callable(is_new):
+        return False
+    return bool(is_new())
 
 
 def on_doctype_update():

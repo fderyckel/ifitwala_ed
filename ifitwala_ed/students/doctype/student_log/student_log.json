@@ -28,6 +28,8 @@
   "visible_to_guardians",
   "log_entry_section",
   "log",
+  "evidence_section",
+  "evidence_attachments",
   "follow_up_section",
   "column_break_fhgg",
   "requires_follow_up",
@@ -103,6 +105,18 @@
    "fieldtype": "Text Editor",
    "label": "Log",
    "reqd": 1
+  },
+  {
+   "fieldname": "evidence_section",
+   "fieldtype": "Section Break",
+   "label": "Evidence"
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "evidence_attachments",
+   "fieldtype": "Table",
+   "label": "Evidence Attachments",
+   "options": "Student Log Evidence Attachment"
   },
   {
    "fieldname": "amended_from",
@@ -228,7 +242,7 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-04-22 20:12:00.915456",
+ "modified": "2026-04-25 11:03:02.000000",
  "modified_by": "Administrator",
  "module": "Students",
  "name": "Student Log",

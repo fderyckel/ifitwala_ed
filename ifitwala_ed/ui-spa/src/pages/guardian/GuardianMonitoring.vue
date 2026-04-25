@@ -175,6 +175,17 @@
 								</button>
 							</div>
 							<p class="mt-2 break-words type-body text-ink/80">{{ row.summary }}</p>
+							<div v-if="row.attachments?.length" class="mt-3 space-y-3">
+								<template v-for="attachment in row.attachments" :key="attachment.row_name">
+									<AttachmentPreviewCard
+										v-if="attachment.attachment_preview"
+										:attachment="attachment.attachment_preview"
+										:title="attachment.title"
+										:description="attachment.description"
+										variant="evidence"
+									/>
+								</template>
+							</div>
 						</article>
 					</div>
 					<div v-if="studentLogsPage.has_more" class="mt-4 flex justify-center">
@@ -198,6 +209,7 @@ import { computed, nextTick, onMounted, ref, watch } from 'vue';
 import { RouterLink, useRoute } from 'vue-router';
 import { toast } from 'frappe-ui';
 
+import AttachmentPreviewCard from '@/components/attachments/AttachmentPreviewCard.vue';
 import {
 	getGuardianMonitoringPublishedResults,
 	getGuardianMonitoringSnapshot,

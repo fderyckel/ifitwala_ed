@@ -9,6 +9,7 @@ const {
 	fetchSchoolContextMock,
 	fetchGroupsMock,
 	fetchGroupTasksMock,
+	batchMarkCompletionMock,
 	getDrawerMock,
 	getGridMock,
 	getTaskGradebookMock,
@@ -41,6 +42,7 @@ const {
 	fetchSchoolContextMock: vi.fn(),
 	fetchGroupsMock: vi.fn(),
 	fetchGroupTasksMock: vi.fn(),
+	batchMarkCompletionMock: vi.fn(),
 	getDrawerMock: vi.fn(),
 	getGridMock: vi.fn(),
 	getTaskGradebookMock: vi.fn(),
@@ -241,6 +243,7 @@ vi.mock('@/lib/services/gradebook/gradebookService', () => ({
 	createGradebookService: () => ({
 		fetchGroups: fetchGroupsMock,
 		fetchGroupTasks: fetchGroupTasksMock,
+		batchMarkCompletion: batchMarkCompletionMock,
 		getDrawer: getDrawerMock,
 		getGrid: getGridMock,
 		getTaskGradebook: getTaskGradebookMock,
@@ -387,6 +390,17 @@ function mockGradebookFlow(options?: {
 		task,
 		criteria: options?.criteria || [],
 		students,
+	});
+	batchMarkCompletionMock.mockResolvedValue({
+		task_delivery: String(task.name),
+		target_complete: 1,
+		total_count: 1,
+		updated_count: 1,
+		already_complete_count: 0,
+		skipped_published_count: 0,
+		updated: [{ outcome: 'OUT-1', is_complete: 1, grading_status: 'Finalized' }],
+		already_complete: [],
+		skipped_published: [],
 	});
 	getDrawerMock.mockResolvedValue({
 		delivery: {
@@ -612,6 +626,7 @@ afterEach(() => {
 	fetchSchoolContextMock.mockReset();
 	fetchGroupsMock.mockReset();
 	fetchGroupTasksMock.mockReset();
+	batchMarkCompletionMock.mockReset();
 	getDocumentMock.mockClear();
 	getGridMock.mockReset();
 	getTaskGradebookMock.mockReset();
@@ -973,6 +988,7 @@ describe('Gradebook page', () => {
 		expect(text).toContain('No');
 		expect(text).not.toContain('Points Awarded');
 		expect(document.querySelector('textarea')).toBeNull();
+		expect(document.querySelector('[data-mark-shown-complete]')).toBeNull();
 	});
 
 	it('renders completion grading with complete copy instead of yes/no copy', async () => {
@@ -997,6 +1013,51 @@ describe('Gradebook page', () => {
 		expect(text).toContain('Complete');
 		expect(text).toContain('Not complete');
 		expect(text).not.toContain('Yes / No');
+	});
+
+	it('lets teachers mark shown completion rows complete in one batch action', async () => {
+		mockGradebookFlow({
+			task: {
+				title: 'Completion check',
+				grading_mode: 'Completion',
+				allow_feedback: 0,
+				points: 0,
+				binary: 1,
+				criteria: 0,
+				max_points: null,
+			},
+		});
+
+		mountPage();
+		await flushUi();
+		await openTask('Completion check');
+
+		const batchButton = document.querySelector(
+			'[data-mark-shown-complete]'
+		) as HTMLButtonElement | null;
+		expect(batchButton).not.toBeNull();
+		expect(batchButton?.textContent || '').toContain('Mark shown complete (1)');
+		batchButton!.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		await flushUi();
+
+		expect(document.body.textContent || '').toContain('Mark 1 shown students complete?');
+
+		const confirmButton = document.querySelector(
+			'[data-confirm-mark-shown-complete]'
+		) as HTMLButtonElement | null;
+		expect(confirmButton).not.toBeNull();
+		confirmButton!.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		await flushUi();
+
+		expect(batchMarkCompletionMock).toHaveBeenCalledWith({
+			task_delivery: 'TDL-1',
+			target_complete: true,
+			outcome_ids: ['OUT-1'],
+		});
+		expect(toastMock).toHaveBeenCalledWith({
+			title: 'Marked 1 complete.',
+			appearance: 'success',
+		});
 	});
 
 	it('shows release controls inside the official result tab', async () => {

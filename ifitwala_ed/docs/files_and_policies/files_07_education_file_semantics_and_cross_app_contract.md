@@ -190,6 +190,7 @@ This lets the apps converge on one narrow boundary instead of many stringly wrap
 | `admissions.applicant_guardian_image` | `applicant_profile_display` | `Student Applicant` | guardian row-derived image slot |
 | `admissions.applicant_health_vaccination` | `medical_record` | `Student Applicant` | health evidence slot |
 | `org_communication.attachment` | workflow-specific governed purpose | `Org Communication` | row-derived attachment slot |
+| `student_log.evidence_attachment` | `student_log_evidence` | `Student Log` | row-derived evidence slot |
 | `media.employee_profile_image` | `employee_profile_display` | `Employee` | `profile_image` |
 | `media.student_profile_image` | `student_profile_display` | `Student` | `profile_image` |
 | `media.guardian_profile_image` | `guardian_profile_display` | `Guardian` | `profile_image` |

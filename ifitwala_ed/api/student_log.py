@@ -121,6 +121,13 @@ def get_student_logs(start: int = 0, page_length: int = PAGE_LENGTH_DEFAULT):
         body_html = r.pop("log", "") or ""
         body_text = strip_html(body_html).strip()
         r["preview"] = (body_text[:PREVIEW_LEN] + "…") if len(body_text) > PREVIEW_LEN else body_text
+    log_names = [r.get("name") for r in rows if r.get("name")]
+    if log_names:
+        from ifitwala_ed.students.doctype.student_log.evidence import get_student_log_evidence_count_map
+
+        attachment_counts = get_student_log_evidence_count_map(log_names, audience="student")
+        for r in rows:
+            r["attachment_count"] = attachment_counts.get(r.get("name"), 0)
     return rows
 
 
@@ -149,6 +156,9 @@ def get_student_log_detail(log_name: str):
     if log.student != student_name or not log.visible_to_student:
         frappe.throw(_("You do not have permission to view this log."), frappe.PermissionError)
 
+    from ifitwala_ed.students.doctype.student_log.evidence import get_visible_student_log_evidence_attachments
+
+    log["attachments"] = get_visible_student_log_evidence_attachments(log.name, audience="student")
     return log
 
 

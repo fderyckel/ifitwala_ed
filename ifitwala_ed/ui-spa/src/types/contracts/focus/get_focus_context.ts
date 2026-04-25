@@ -1,5 +1,7 @@
 // ui-spa/src/types/contracts/focus/get_focus_context.ts
 
+import type { AttachmentPreviewItem } from '@/types/contracts/attachments/shared'
+
 export type Request = {
   focus_item_id?: string | null
   reference_doctype?: 'Student Log' | 'Inquiry' | 'Applicant Review Assignment' | 'Policy Version' | null
@@ -28,6 +30,7 @@ export type Response = {
     log_html?: string | null
     log_author?: string | null
     log_author_name?: string | null
+    attachments?: StudentLogEvidenceAttachmentRow[]
   } | null
   inquiry: {
     name: string
@@ -130,4 +133,21 @@ export type Response = {
     is_acknowledged?: boolean
     acknowledged_at?: string | null
   } | null
+}
+
+export type StudentLogEvidenceAttachmentRow = {
+  row_name: string
+  kind: 'file' | 'link'
+  title: string
+  description?: string | null
+  file_name?: string | null
+  file_size?: number | string | null
+  external_url?: string | null
+  visible_to_student?: boolean
+  visible_to_guardians?: boolean
+  preview_status?: 'pending' | 'ready' | 'failed' | 'unsupported' | 'not_applicable' | null
+  thumbnail_url?: string | null
+  preview_url?: string | null
+  open_url?: string | null
+  attachment_preview?: AttachmentPreviewItem | null
 }

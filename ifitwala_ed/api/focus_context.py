@@ -124,6 +124,11 @@ def get_focus_context(
             }
             for row in follow_up_rows
         ]
+        from ifitwala_ed.students.doctype.student_log.evidence import (
+            get_visible_student_log_evidence_attachments,
+        )
+
+        evidence_attachments = get_visible_student_log_evidence_attachments(reference_name, audience="staff")
 
         return {
             "focus_item_id": focus_item_id,
@@ -146,6 +151,7 @@ def get_focus_context(
                 "log_html": log_doc.log or "",
                 "log_author": log_author,
                 "log_author_name": log_author_name_by_id.get(log_author) if log_author else None,
+                "attachments": evidence_attachments,
             },
             "inquiry": None,
             "follow_ups": follow_ups,

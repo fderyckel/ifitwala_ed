@@ -1,0 +1,121 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2026-04-25 11:03:02.000000",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "title",
+  "file",
+  "external_url",
+  "description",
+  "column_break_visibility",
+  "visible_to_student",
+  "visible_to_guardians",
+  "file_name",
+  "file_size",
+  "uploaded_by",
+  "uploaded_on",
+  "is_removed"
+ ],
+ "fields": [
+  {
+   "columns": 3,
+   "fieldname": "title",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Title",
+   "reqd": 1
+  },
+  {
+   "columns": 2,
+   "description": "Use the Upload Evidence action for governed files. External URLs can still be added manually.",
+   "fieldname": "file",
+   "fieldtype": "Attach",
+   "in_list_view": 1,
+   "label": "File",
+   "read_only": 1
+  },
+  {
+   "columns": 2,
+   "description": "Optional external evidence link when no governed file is uploaded.",
+   "fieldname": "external_url",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "External URL",
+   "options": "URL"
+  },
+  {
+   "columns": 2,
+   "fieldname": "description",
+   "fieldtype": "Small Text",
+   "in_list_view": 1,
+   "label": "Description"
+  },
+  {
+   "fieldname": "column_break_visibility",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "0",
+   "fieldname": "visible_to_student",
+   "fieldtype": "Check",
+   "in_list_view": 1,
+   "label": "Visible to Student"
+  },
+  {
+   "default": "0",
+   "fieldname": "visible_to_guardians",
+   "fieldtype": "Check",
+   "in_list_view": 1,
+   "label": "Visible to Guardians"
+  },
+  {
+   "fieldname": "file_name",
+   "fieldtype": "Data",
+   "label": "File Name",
+   "read_only": 1
+  },
+  {
+   "fieldname": "file_size",
+   "fieldtype": "Data",
+   "label": "File Size",
+   "read_only": 1
+  },
+  {
+   "fieldname": "uploaded_by",
+   "fieldtype": "Link",
+   "label": "Uploaded By",
+   "options": "User",
+   "read_only": 1
+  },
+  {
+   "fieldname": "uploaded_on",
+   "fieldtype": "Datetime",
+   "label": "Uploaded On",
+   "read_only": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "is_removed",
+   "fieldtype": "Check",
+   "hidden": 1,
+   "label": "Removed"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2026-04-25 11:03:02.000000",
+ "modified_by": "Administrator",
+ "module": "Students",
+ "name": "Student Log Evidence Attachment",
+ "owner": "Administrator",
+ "permissions": [],
+ "row_format": "Dynamic",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

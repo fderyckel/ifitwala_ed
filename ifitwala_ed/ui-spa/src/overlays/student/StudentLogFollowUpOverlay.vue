@@ -129,6 +129,19 @@ Used by:
 											<div class="prose prose-sm max-w-none" v-html="htmlOrEmpty(log.log_html)" />
 										</div>
 									</div>
+
+									<div v-if="logAttachments.length" class="mt-5 space-y-3">
+										<div class="type-label">Evidence</div>
+										<template v-for="attachment in logAttachments" :key="attachment.row_name">
+											<AttachmentPreviewCard
+												v-if="attachment.attachment_preview"
+												:attachment="attachment.attachment_preview"
+												:title="attachment.title"
+												:description="attachment.description"
+												variant="evidence"
+											/>
+										</template>
+									</div>
 								</div>
 
 								<!-- Follow ups list (both modes can see) -->
@@ -329,6 +342,7 @@ import {
 } from '@headlessui/vue';
 import { formatHumanDateTimeFields } from '@/lib/datetime';
 import { __ } from '@/lib/i18n';
+import AttachmentPreviewCard from '@/components/attachments/AttachmentPreviewCard.vue';
 import { createFocusService } from '@/lib/services/focus/focusService';
 import { createStudentLogService } from '@/lib/services/studentLog/studentLogService';
 import { useOverlayStack } from '@/composables/useOverlayStack';
@@ -414,6 +428,9 @@ const logTimestampLabel = computed(() =>
 	formatHumanDateTimeFields(log.value?.date, log.value?.time, {
 		fallback: String(log.value?.date || '').trim(),
 	})
+);
+const logAttachments = computed(() =>
+	Array.isArray(log.value?.attachments) ? log.value.attachments : []
 );
 
 function setError(err: unknown, fallback: string) {

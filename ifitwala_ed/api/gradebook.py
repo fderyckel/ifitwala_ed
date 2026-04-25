@@ -147,6 +147,11 @@ def update_task_student(task_student: str, updates=None, **kwargs):
 
 
 @frappe.whitelist()
+def batch_mark_completion(payload=None, **kwargs):
+    return gradebook_writes.batch_mark_completion(gradebook_support, payload=payload, **kwargs)
+
+
+@frappe.whitelist()
 def publish_outcomes(payload=None, **kwargs):
     return outcome_publish.publish_outcomes(payload=payload, **kwargs)
 
@@ -176,6 +181,7 @@ __all__ = [
     "get_task_quiz_manual_review",
     "save_task_quiz_manual_review",
     "update_task_student",
+    "batch_mark_completion",
     "publish_outcomes",
     "unpublish_outcomes",
 ]

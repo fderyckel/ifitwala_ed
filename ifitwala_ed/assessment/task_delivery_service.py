@@ -8,7 +8,7 @@ from frappe import _
 from frappe.model.naming import make_autoname
 from frappe.utils import now
 
-from ifitwala_ed.assessment.check_flags import is_checked
+from ifitwala_ed.assessment.check_flags import is_checked, to_check_value
 from ifitwala_ed.curriculum import planning as curriculum_planning
 
 
@@ -232,6 +232,7 @@ def create_delivery(payload):
         "student_group",
         "class_teaching_plan",
         "delivery_mode",
+        "requires_submission",
         "grading_mode",
         "allow_feedback",
         "max_points",
@@ -246,7 +247,10 @@ def create_delivery(payload):
     }
     for field, value in payload.items():
         if field in allowed_fields:
-            setattr(doc, field, value)
+            setattr(doc, field, to_check_value(value) if field == "requires_submission" else value)
+
+    if "requires_submission" in payload:
+        doc.flags.explicit_requires_submission = True
 
     doc.class_teaching_plan = planning_context["class_teaching_plan"]
     if planning_context.get("class_session"):

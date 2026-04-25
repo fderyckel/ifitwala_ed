@@ -8,6 +8,8 @@ from frappe import _
 from frappe.utils import now_datetime
 
 _GRADE_SCALE_THRESHOLD_CACHE = {}
+_BOOLEAN_GRADING_MODES = frozenset({"Binary", "Completion"})
+_OFFICIAL_SCALAR_FIELDS = ("official_score", "official_grade", "official_grade_value")
 
 
 def apply_official_outcome_from_contributions(outcome_id, policy=None):
@@ -75,13 +77,12 @@ def _recompute_official_outcome_internal(outcome_id, policy=None):
 
     if not selected:
         updates = {
-            "official_score": None,
-            "official_grade": None,
-            "official_grade_value": None,
             "official_feedback": None,
             "is_complete": 0,
             "grading_status": "Not Applicable" if not require_grading else "Not Started",
         }
+        if _uses_scalar_official_fields(grading_mode):
+            updates.update(_clear_scalar_official_fields())
         if was_published:
             updates["is_published"] = 0
             updates["published_on"] = None
@@ -106,7 +107,7 @@ def _recompute_official_outcome_internal(outcome_id, policy=None):
             _clear_outcome_publish(outcome_id)
         return result
 
-    if grading_mode in {"Binary", "Completion"}:
+    if grading_mode in _BOOLEAN_GRADING_MODES:
         result = _apply_boolean_official_fields(
             outcome_id=outcome_id,
             require_grading=require_grading,
@@ -229,32 +230,41 @@ def _select_official_contribution(contributions):
     return None
 
 
+def _uses_scalar_official_fields(grading_mode):
+    return grading_mode not in _BOOLEAN_GRADING_MODES
+
+
+def _clear_scalar_official_fields():
+    return {fieldname: None for fieldname in _OFFICIAL_SCALAR_FIELDS}
+
+
 def _apply_non_criteria_official_fields(outcome_id, grade_scale, require_grading, contribution):
-    current_fields = _current_official_grading_fields(outcome_id)
     score = contribution.get("score")
     score_provided = score not in (None, "")
     grade_symbol = (contribution.get("grade") or "").strip()
     grade_value = contribution.get("grade_value")
+
+    official_fields = {
+        "official_feedback": contribution.get("feedback"),
+    }
+
+    if score_provided:
+        official_fields["official_score"] = score
+
     if grade_symbol:
         if not grade_scale:
             frappe.throw(_("Grade Scale is required to apply an official grade."))
         if grade_value in (None, ""):
             grade_value = resolve_grade_symbol(grade_scale, grade_symbol)
-    elif score_provided and grade_scale:
-        grade_symbol, grade_value = resolve_grade_for_score(grade_scale, score)
-    elif not score_provided:
-        score = current_fields.get("official_score")
-        grade_symbol = current_fields.get("official_grade")
-        grade_value = current_fields.get("official_grade_value")
-    else:
-        grade_value = None
-
-    official_fields = {
-        "official_score": score,
-        "official_grade": grade_symbol or None,
-        "official_grade_value": grade_value,
-        "official_feedback": contribution.get("feedback"),
-    }
+        official_fields["official_grade"] = grade_symbol
+        official_fields["official_grade_value"] = grade_value
+    elif score_provided:
+        if grade_scale:
+            grade_symbol, grade_value = resolve_grade_for_score(grade_scale, score)
+        else:
+            grade_symbol, grade_value = None, None
+        official_fields["official_grade"] = grade_symbol or None
+        official_fields["official_grade_value"] = grade_value
 
     grading_status = "Moderated" if contribution.get("contribution_type") == "Moderator" else None
     if not grading_status:
@@ -280,9 +290,6 @@ def _apply_boolean_official_fields(outcome_id, require_grading, grading_mode, co
         is_complete = judgment_map.get(grading_mode, {}).get(judgment_code, current_is_complete)
 
     updates = {
-        "official_score": None,
-        "official_grade": None,
-        "official_grade_value": None,
         "official_feedback": contribution.get("feedback"),
         "is_complete": is_complete,
     }

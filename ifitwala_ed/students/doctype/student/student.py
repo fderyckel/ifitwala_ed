@@ -580,6 +580,45 @@ def _parse_name_list(value) -> list[str]:
     return names
 
 
+def _has_native_doctype_role_permission(doctype: str, *, ptype: str = "read", user: str | None = None) -> bool:
+    """Quiet role-permission probe for native open/edit affordances.
+
+    Do not use this as a security gate for mutations; use frappe.has_permission there.
+    This helper intentionally avoids frappe.has_permission because core Frappe may
+    add a permission message while returning False, which is noisy during Student
+    form read-only summary rendering.
+    """
+    doctype = (doctype or "").strip()
+    ptype = (ptype or "read").strip()
+    session = getattr(frappe, "session", None)
+    user = user or getattr(session, "user", None)
+    if not doctype or not user or user == "Guest":
+        return False
+    if user == "Administrator":
+        return True
+
+    roles = set(frappe.get_roles(user) or [])
+    if "System Manager" in roles:
+        return True
+    if not roles:
+        return False
+
+    allowed_permission_fields = {"read", "write", "create", "delete", "email", "comment", "assign"}
+    if ptype not in allowed_permission_fields:
+        return False
+
+    filters = {
+        "parent": doctype,
+        "permlevel": 0,
+        "role": ["in", list(roles)],
+        ptype: 1,
+    }
+    for permission_doctype in ("Custom DocPerm", "DocPerm"):
+        if frappe.get_all(permission_doctype, filters=filters, fields=["name"], limit=1):
+            return True
+    return False
+
+
 def _build_student_contact_summary(contact_name: str | None) -> dict | None:
     contact_name = (contact_name or "").strip()
     if not contact_name or not frappe.db.exists("Contact", contact_name):
@@ -720,12 +759,9 @@ def get_student_crm_summary(student_name: str) -> dict:
     address_summaries = _build_student_address_summaries(address_names)
     resolved_address_names = [row["name"] for row in address_summaries]
 
-    can_open_contact = bool(contact_name and frappe.has_permission("Contact", doc=contact_name, ptype="read"))
-    readable_addresses = [
-        address_name
-        for address_name in resolved_address_names
-        if frappe.has_permission("Address", doc=address_name, ptype="read")
-    ]
+    can_open_contact = bool(contact_name and _has_native_doctype_role_permission("Contact", ptype="read"))
+    can_open_address = _has_native_doctype_role_permission("Address", ptype="read")
+    readable_addresses = [address_name for address_name in resolved_address_names if can_open_address]
 
     return {
         "contact": contact_name if can_open_contact else None,
@@ -757,12 +793,12 @@ def get_family_address_link_proposal(student_name: str, address_name: str | None
             "reason": "requires_exactly_one_student_address",
         }
 
-    if not frappe.has_permission("Address", doc=resolved_address, ptype="read"):
+    if not _has_native_doctype_role_permission("Address", ptype="write"):
         return {
             "address": None,
             "linked_addresses": student_address_names,
             "has_candidates": False,
-            "reason": "address_not_readable",
+            "reason": "address_not_writable",
         }
 
     proposal = _build_family_address_link_proposal(student, resolved_address)

@@ -67,6 +67,9 @@
 					<span class="chip" :class="statusClass(log.follow_up_status)">
 						Follow-up: {{ log.follow_up_status }}
 					</span>
+					<span v-if="log.attachment_count" class="chip ml-2">
+						Evidence: {{ log.attachment_count }}
+					</span>
 				</div>
 			</button>
 		</div>
@@ -141,6 +144,26 @@
 											class="prose prose-sm max-w-none text-ink/80"
 											v-html="selectedLog.log"
 										/>
+										<div
+											v-if="
+												Array.isArray(selectedLog.attachments) && selectedLog.attachments.length
+											"
+											class="mt-5 space-y-3"
+										>
+											<p class="type-body-strong text-ink">Evidence</p>
+											<template
+												v-for="attachment in selectedLog.attachments"
+												:key="attachment.row_name"
+											>
+												<AttachmentPreviewCard
+													v-if="attachment.attachment_preview"
+													:attachment="attachment.attachment_preview"
+													:title="attachment.title"
+													:description="attachment.description"
+													variant="evidence"
+												/>
+											</template>
+										</div>
 									</div>
 								</div>
 							</div>
@@ -173,6 +196,7 @@ import {
 	TransitionRoot,
 } from '@headlessui/vue';
 import { apiMethod } from '@/resources/frappe';
+import AttachmentPreviewCard from '@/components/attachments/AttachmentPreviewCard.vue';
 
 const PAGE_LENGTH = 20;
 

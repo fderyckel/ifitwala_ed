@@ -170,6 +170,82 @@ class TestTaskSubmissionService(TestCase):
             },
         )
 
+    def test_create_student_submission_allows_file_only_evidence_during_initial_materialization(self):
+        with stubbed_frappe() as frappe:
+            order = []
+            test_case = self
+
+            class FakeSubmissionDoc:
+                def __init__(self):
+                    self.name = None
+                    self.attachments = []
+                    self.flags = SimpleNamespace()
+
+                def append(self, fieldname, value):
+                    if fieldname == "attachments":
+                        self.attachments.append(value)
+
+                def insert(self, ignore_permissions=False):
+                    order.append("insert")
+                    test_case.assertTrue(self.flags.allow_pending_submission_files)
+                    self.name = "TSU-FILE-ONLY"
+                    return self
+
+                def save(self, ignore_permissions=False):
+                    order.append("save")
+                    test_case.assertTrue(self.flags.allow_pending_submission_files)
+                    test_case.assertEqual(len(self.attachments), 1)
+                    return self
+
+            def fake_get_value(doctype, name, fieldnames=None, **kwargs):
+                if doctype == "Task Outcome":
+                    return {
+                        "student": "STU-1",
+                        "student_group": "GRP-1",
+                        "course": "COURSE-1",
+                        "academic_year": "AY-1",
+                        "school": "SCH-1",
+                        "task_delivery": "TD-1",
+                        "task": "TASK-1",
+                    }
+                if doctype == "Task Delivery":
+                    return {
+                        "requires_submission": 1,
+                    }
+                return None
+
+            frappe.db.get_value = fake_get_value
+            frappe.db.get_all = lambda *args, **kwargs: [{"max_version": None}]
+            frappe.db.set_value = lambda *args, **kwargs: None
+            frappe.new_doc = lambda doctype: FakeSubmissionDoc()
+
+            module = import_fresh("ifitwala_ed.assessment.task_submission_service")
+            module.mark_contributions_stale = lambda *args, **kwargs: None
+
+            def fake_attach(submission_doc, outcome_row, uploaded_files, upload_source=None):
+                order.append("attach")
+                submission_doc.append(
+                    "attachments",
+                    {
+                        "file": "/private/files/file-only.pdf",
+                        "file_name": "file-only.pdf",
+                        "file_size": 3,
+                        "public": 0,
+                    },
+                )
+
+            module._attach_submission_files = fake_attach
+
+            result = module.create_student_submission(
+                {"task_outcome": "OUT-1"},
+                user="student@example.com",
+                uploaded_files=[{"file_name": "file-only.pdf", "content": b"pdf"}],
+                expected_student="STU-1",
+            )
+
+        self.assertEqual(result["submission_id"], "TSU-FILE-ONLY")
+        self.assertEqual(order, ["insert", "attach", "save"])
+
 
 class TestTaskContributionService(TestCase):
     def test_get_latest_submission_version_uses_aggregate_field_dict(self):

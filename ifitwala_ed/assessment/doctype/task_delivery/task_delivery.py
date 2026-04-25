@@ -248,6 +248,10 @@ class TaskDelivery(Document):
         self.grading_mode = "Completion"
 
     def _set_requires_submission_from_defaults(self):
+        if getattr(self.flags, "explicit_requires_submission", False):
+            self.requires_submission = 1 if int(self.requires_submission or 0) else 0
+            return
+
         defaults = self._get_task_defaults()
         default_requires = defaults.get("default_requires_submission")
         if default_requires in (0, 1, "0", "1", True, False):

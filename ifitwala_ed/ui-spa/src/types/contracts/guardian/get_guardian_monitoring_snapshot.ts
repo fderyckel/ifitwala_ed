@@ -1,5 +1,6 @@
 // ui-spa/src/types/contracts/guardian/get_guardian_monitoring_snapshot.ts
 
+import type { AttachmentPreviewItem } from '@/types/contracts/attachments/shared'
 import type { ChildRef } from '@/types/contracts/guardian/get_guardian_home_snapshot'
 
 export type Request = {
@@ -61,6 +62,8 @@ export type MonitoringStudentLog = {
 	summary: string
 	follow_up_status: string
 	is_unread: boolean
+	attachment_count?: number
+	attachments?: StudentLogEvidenceAttachmentRow[]
 }
 
 export type MonitoringPublishedResult = {
@@ -78,3 +81,18 @@ export type MonitoringPublishedResult = {
 
 export type StudentLogPageResponse = MonitoringPage<MonitoringStudentLog>
 export type PublishedResultPageResponse = MonitoringPage<MonitoringPublishedResult>
+
+export type StudentLogEvidenceAttachmentRow = {
+	row_name: string
+	kind: 'file' | 'link'
+	title: string
+	description?: string | null
+	file_name?: string | null
+	file_size?: number | string | null
+	external_url?: string | null
+	preview_status?: 'pending' | 'ready' | 'failed' | 'unsupported' | 'not_applicable' | null
+	thumbnail_url?: string | null
+	preview_url?: string | null
+	open_url?: string | null
+	attachment_preview?: AttachmentPreviewItem | null
+}

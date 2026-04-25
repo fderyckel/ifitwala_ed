@@ -3,7 +3,7 @@
 Status: **Authoritative / Current Workspace Contract**
 Scope: `Task`, `Task Delivery`, `Task Outcome`, `Task Submission`, `Task Contribution`
 Audience: Product, Engineering, and coding agents
-Last updated: 2026-04-20
+Last updated: 2026-04-25
 
 This document defines the current task runtime contract in the workspace.
 It replaces older lesson-instance-era notes and removes future-state claims that are not yet true in code.
@@ -88,7 +88,7 @@ It owns:
 
 `Task Outcome` is the per-student operational truth for one delivery.
 There should be one outcome row per `(Task Delivery x Student)`.
-It owns submission state, grading state, procedural state, and official scalar result fields.
+It owns submission state, grading state, procedural state, scalar result fields for scalar grading modes, and non-scalar official truth such as completion state.
 
 For criteria grading, official per-criterion truth lives in `Task Outcome Criterion`.
 
@@ -204,6 +204,15 @@ Current delivery modes are:
 - `Collect Work`
 - `Assess`
 
+The teacher-facing task overlay maps educator language onto those runtime modes:
+
+| Overlay choice | Runtime delivery mode | `requires_submission` | Grading |
+| --- | --- | --- | --- |
+| Share work | `Assign Only` | `0` | none |
+| Collect work | `Collect Work` | `1` | none |
+| Collect and mark | `Assess` | `1` | required |
+| Mark class work | `Assess` | `0` | required |
+
 Current enforced behavior:
 
 - `Assign Only`
@@ -215,6 +224,9 @@ Current enforced behavior:
 - `Assess`
   - grading required
   - grading mode must resolve
+  - `requires_submission` may be explicitly set per delivery
+  - `requires_submission = 1` means learners hand in work through the platform
+  - `requires_submission = 0` means the teacher records marks and feedback for in-class, paper, oral, lab, studio, or exam work
   - grading snapshot fields are set from task defaults where applicable
 
 ### 2.4 Quiz behavior
@@ -302,9 +314,9 @@ When `grading_mode = "Criteria"`:
   `sum((criterion level_points / criteria_max_points) * criteria_weighting)`
 - if a legacy rubric snapshot does not meet that contract, the runtime falls back to the older weighted raw-point behavior so historical tasks do not silently change meaning
 
-### 3.3 Non-criteria grading behavior
+### 3.3 Scalar non-criteria grading behavior
 
-When grading is not criteria-based, the selected contribution writes:
+When `grading_mode = "Points"`, the selected contribution may write:
 
 - `official_score`
 - `official_grade`
@@ -313,12 +325,18 @@ When grading is not criteria-based, the selected contribution writes:
 
 through the outcome truth service.
 
-For assessed `Completion` and `Binary` grading, the selected contribution instead writes:
+Comment-only contributions are additive feedback. They write `official_feedback` and status, but they do not create, require, or clear `official_score`.
+
+For assessed `Completion` and `Binary` grading, the selected contribution writes only:
 
 - `official_feedback`
 - derived `is_complete`
 
 using `Task Contribution.judgment_code`.
+
+Completion and Binary grading must not write `official_score`, `official_grade`, or `official_grade_value`. A missing score in those modes is expected, not incomplete data.
+
+For `grading_mode = "None"`, feedback-only contributions likewise do not write scalar official fields.
 
 ### 3.4 Quiz runtime exception
 

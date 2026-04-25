@@ -49,6 +49,14 @@ frappe.ui.form.on("Student Log", {
 
 		// keep follow-up fields visibility in sync
 		toggle_follow_up_fields(frm, requiresFU);
+		setup_student_log_evidence_grid(frm);
+
+		if (!frm.is_new() && frm.doc.docstatus !== 2 && status !== "completed") {
+			const evidenceBtn = frm.add_custom_button(__("Upload Evidence"), () => {
+				void open_student_log_evidence_dialog(frm);
+			}, __("Actions"));
+			evidenceBtn.addClass("btn-info");
+		}
 
 		// ── 👤 Assign / Re-assign (owner/admin/assignee/associated-role; hide when Completed) ──
 		if (requiresFU && !frm.is_new() && status !== "completed" && (isAuthor || isAdmin || isAssignee || hasAssocRole)) {
@@ -305,6 +313,12 @@ frappe.ui.form.on("Student Log", {
 			frm.set_value("follow_up_status", null);
 		}
 	},
+
+	evidence_attachments_add(frm, cdt, cdn) {
+		window.setTimeout(() => {
+			setup_student_log_evidence_row(frm, cdn);
+		}, 0);
+	},
 });
 
 // Small helper to keep field toggling consistent
@@ -325,6 +339,108 @@ function configure_follow_up_person_field(frm) {
 	query: "ifitwala_ed.api.users.get_users_with_role",
 		filters: { role }
 	}));
+}
+
+async function open_student_log_evidence_dialog(frm) {
+	try {
+		if (frm.is_new() || frm.is_dirty()) {
+			await frm.save();
+		}
+	} catch (error) {
+		return;
+	}
+
+	const dialog = new frappe.ui.Dialog({
+		title: __("Upload Evidence"),
+		fields: [
+			{
+				fieldname: "title",
+				fieldtype: "Data",
+				label: __("Title"),
+			},
+			{
+				fieldname: "description",
+				fieldtype: "Small Text",
+				label: __("Description"),
+			},
+			{
+				fieldname: "visible_to_student",
+				fieldtype: "Check",
+				label: __("Visible to Student"),
+			},
+			{
+				fieldname: "visible_to_guardians",
+				fieldtype: "Check",
+				label: __("Visible to Guardians"),
+			},
+		],
+		primary_action_label: __("Choose File"),
+		primary_action(values) {
+			dialog.hide();
+			open_student_log_evidence_file_uploader(frm, values || {});
+		}
+	});
+	dialog.show();
+}
+
+function open_student_log_evidence_file_uploader(frm, values) {
+	new frappe.ui.FileUploader({
+		method: "ifitwala_ed.api.student_log_attachments.upload_student_log_evidence_attachment",
+		args: {
+			student_log: frm.doc.name,
+			title: values.title || "",
+			description: values.description || "",
+			visible_to_student: values.visible_to_student ? 1 : 0,
+			visible_to_guardians: values.visible_to_guardians ? 1 : 0,
+		},
+		doctype: "Student Log",
+		docname: frm.doc.name,
+		is_private: 1,
+		disable_private: true,
+		allow_multiple: false,
+		on_success() {
+			frm.reload_doc();
+		},
+		on_error() {
+			frappe.msgprint(__("Upload failed. Please try again."));
+		},
+	});
+}
+
+function setup_student_log_evidence_grid(frm) {
+	const grid = frm.fields_dict.evidence_attachments?.grid;
+	if (!grid) return;
+
+	(grid.grid_rows || []).forEach(row => {
+		if (row?.doc?.name) {
+			setup_student_log_evidence_row(frm, row.doc.name);
+		}
+	});
+}
+
+function setup_student_log_evidence_row(frm, cdn) {
+	const grid = frm.fields_dict.evidence_attachments?.grid;
+	if (!grid || !cdn) return;
+
+	const gridRow = grid.get_row(cdn);
+	const gridForm = gridRow?.grid_form;
+	const fileField = get_grid_field(gridForm, "file");
+	if (fileField?.df) {
+		fileField.df.read_only = 1;
+		fileField.df.description = __("Use the Upload Evidence action for governed files. External URLs can still be added manually.");
+		fileField.refresh && fileField.refresh();
+	}
+}
+
+function get_grid_field(grid_form, fieldname) {
+	if (!grid_form) return null;
+	if (grid_form.get_field) {
+		return grid_form.get_field(fieldname);
+	}
+	if (grid_form.fields_dict && grid_form.fields_dict[fieldname]) {
+		return grid_form.fields_dict[fieldname];
+	}
+	return null;
 }
 
 

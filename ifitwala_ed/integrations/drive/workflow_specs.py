@@ -199,6 +199,23 @@ def _resolve_org_communication_session_context(payload: dict[str, Any]) -> dict[
     return authoritative
 
 
+def _resolve_student_log_evidence_session_context(payload: dict[str, Any]) -> dict[str, Any]:
+    from ifitwala_ed.integrations.drive import student_logs
+
+    student_log = _as_non_empty_string(payload, "student_log")
+    row_name = payload.get("row_name")
+    student_log_doc = student_logs.assert_student_log_upload_access(
+        student_log,
+        permission_type="write",
+    )
+    authoritative = student_logs.build_student_log_evidence_contract(
+        student_log_doc,
+        row_name=row_name,
+    )
+    _validate_workflow_slot(payload, authoritative, label=_("Student Log evidence upload"))
+    return authoritative
+
+
 def _resolve_org_communication_context_override(
     upload_session_doc, authoritative_context: dict[str, Any]
 ) -> dict[str, Any] | None:
@@ -211,10 +228,28 @@ def _resolve_org_communication_context_override(
     return org_communications.get_org_communication_attachment_context_override(owner_name, slot)
 
 
+def _resolve_student_log_evidence_context_override(
+    upload_session_doc, authoritative_context: dict[str, Any]
+) -> dict[str, Any] | None:
+    from ifitwala_ed.integrations.drive import student_logs
+
+    owner_name = str(
+        getattr(upload_session_doc, "owner_name", None) or authoritative_context.get("owner_name") or ""
+    ).strip()
+    slot = str(getattr(upload_session_doc, "intended_slot", None) or authoritative_context.get("slot") or "").strip()
+    return student_logs.get_student_log_evidence_context_override_for_drive(owner_name, slot)
+
+
 def _resolve_org_communication_post_finalize(upload_session_doc, created_file) -> dict[str, Any]:
     from ifitwala_ed.integrations.drive import org_communications
 
     return org_communications.run_org_communication_attachment_post_finalize(upload_session_doc, created_file)
+
+
+def _resolve_student_log_evidence_post_finalize(upload_session_doc, created_file) -> dict[str, Any]:
+    from ifitwala_ed.integrations.drive import student_logs
+
+    return student_logs.run_student_log_evidence_post_finalize_for_drive(upload_session_doc, created_file)
 
 
 def _validate_org_communication_finalize_context(upload_session_doc) -> Optional[dict[str, Any]]:
@@ -224,6 +259,15 @@ def _validate_org_communication_finalize_context(upload_session_doc) -> Optional
     from ifitwala_ed.integrations.drive import org_communications
 
     return org_communications.validate_org_communication_finalize_context(upload_session_doc)
+
+
+def _validate_student_log_evidence_finalize_context(upload_session_doc) -> Optional[dict[str, Any]]:
+    if getattr(upload_session_doc, "owner_doctype", None) != "Student Log":
+        return None
+
+    from ifitwala_ed.integrations.drive import student_logs
+
+    return student_logs.validate_student_log_evidence_finalize_context_for_drive(upload_session_doc)
 
 
 def _resolve_employee_image_session_context(payload: dict[str, Any]) -> dict[str, Any]:
@@ -636,6 +680,17 @@ _WORKFLOW_SPECS: tuple[GovernedUploadSpec, ...] = (
         run_post_finalize=_resolve_org_communication_post_finalize,
     ),
     GovernedUploadSpec(
+        workflow_id="student_log.evidence_attachment",
+        contract_version=_WORKFLOW_CONTRACT_VERSION,
+        is_private=True,
+        resolve_session_context=_resolve_student_log_evidence_session_context,
+        validate_finalize_context=_validate_student_log_evidence_finalize_context,
+        resolve_attached_field_override=_no_attached_field_override,
+        resolve_context_override=_resolve_student_log_evidence_context_override,
+        resolve_binding_role=_static_binding_role("student_log_evidence"),
+        run_post_finalize=_resolve_student_log_evidence_post_finalize,
+    ),
+    GovernedUploadSpec(
         workflow_id="media.employee_profile_image",
         contract_version=_WORKFLOW_CONTRACT_VERSION,
         is_private=True,
@@ -723,6 +778,7 @@ _WORKFLOW_ID_ALIASES = {
     "applicant_guardian_image": "admissions.applicant_guardian_image",
     "applicant_health": "admissions.applicant_health_vaccination",
     "org_communication_attachment": "org_communication.attachment",
+    "student_log_evidence_attachment": "student_log.evidence_attachment",
 }
 
 

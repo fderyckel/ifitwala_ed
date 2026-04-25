@@ -120,7 +120,19 @@ No two schools are the same. Student Log is designed to adapt to your specific c
 | **4. Action**       | Counselor meets student, adds **Follow-Up** note.              | **Student Log Follow-Up**    |
 | **5. Closure**      | Teacher receives "Review Outcome" task. Closes case.           | **Focus**                    |
 
-## 6. Student Logs Query Report Contract
+## 6. Student Log Evidence Attachment Contract
+
+- Status: Implemented
+- Purpose: Student Logs can carry governed evidence attachments such as photos, PDFs, or external evidence links without exposing raw private file paths to portals.
+- Governance: File uploads use Ifitwala Drive workflow `student_log.evidence_attachment`; Drive owns file metadata, storage, derivative generation, and short-lived grants. Ifitwala Ed owns Student Log permissions, portal visibility, and surface DTO assembly.
+- Upload permission: evidence upload is limited to the log author, the active follow-up assignee, scoped users with Student Log write access, and academic/system administrators. Students and guardians cannot upload Student Log evidence.
+- Visibility: attachments are staff-only by default. Student portal access requires both parent `visible_to_student = 1` and row `visible_to_student = 1`; guardian portal access requires both parent `visible_to_guardians = 1` and row `visible_to_guardians = 1`.
+- Surfaces: evidence is visible on the Student Log Desk form, Student Log Follow Up Desk form, Focus Student Log overlay, Student portal log detail, and Guardian Monitoring log cards.
+- Preview/open: surfaces receive Ed-owned `open_url`, `preview_url`, `thumbnail_url`, and nested `attachment_preview` values. Clients must not guess `/private/...` paths or call Drive grants directly.
+- Code refs: `ifitwala_ed/students/doctype/student_log/evidence.py`, `ifitwala_ed/api/student_log_attachments.py`, `ifitwala_ed/api/file_access.py`, `ifitwala_ed/api/student_log.py`, `ifitwala_ed/api/guardian_monitoring.py`, `ifitwala_ed/api/focus_context.py`, `ifitwala_ed/integrations/drive/workflow_specs.py`, `ifitwala_ed/integrations/drive/student_logs.py`
+- Test refs: `ifitwala_ed/students/doctype/student_log/test_student_log_evidence_unit.py`
+
+## 7. Student Logs Query Report Contract
 
 - Status: Implemented
 - Purpose: `Student Logs` is the canonical Desk query report for grouped Student Log review with inline follow-up history and a print-friendly record view.

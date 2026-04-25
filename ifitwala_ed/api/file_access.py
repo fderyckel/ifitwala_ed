@@ -814,6 +814,51 @@ def build_org_communication_attachment_thumbnail_url(
     )
 
 
+def build_student_log_evidence_attachment_open_url(
+    *,
+    student_log: str,
+    row_name: str,
+) -> str:
+    resolved_student_log = (student_log or "").strip()
+    resolved_row_name = (row_name or "").strip()
+    if not resolved_student_log or not resolved_row_name:
+        return ""
+
+    return "/api/method/ifitwala_ed.api.file_access.open_student_log_evidence_attachment?" + urlencode(
+        {"student_log": resolved_student_log, "row_name": resolved_row_name}
+    )
+
+
+def build_student_log_evidence_attachment_preview_url(
+    *,
+    student_log: str,
+    row_name: str,
+) -> str:
+    resolved_student_log = (student_log or "").strip()
+    resolved_row_name = (row_name or "").strip()
+    if not resolved_student_log or not resolved_row_name:
+        return ""
+
+    return "/api/method/ifitwala_ed.api.file_access.preview_student_log_evidence_attachment?" + urlencode(
+        {"student_log": resolved_student_log, "row_name": resolved_row_name}
+    )
+
+
+def build_student_log_evidence_attachment_thumbnail_url(
+    *,
+    student_log: str,
+    row_name: str,
+) -> str:
+    resolved_student_log = (student_log or "").strip()
+    resolved_row_name = (row_name or "").strip()
+    if not resolved_student_log or not resolved_row_name:
+        return ""
+
+    return "/api/method/ifitwala_ed.api.file_access.thumbnail_student_log_evidence_attachment?" + urlencode(
+        {"student_log": resolved_student_log, "row_name": resolved_row_name}
+    )
+
+
 def build_family_consent_request_source_open_url(*, request_key: str, student: str) -> str:
     resolved_request_key = (request_key or "").strip()
     resolved_student = (student or "").strip()
@@ -975,6 +1020,18 @@ def _load_drive_access_callable(attribute: str):
 def _load_drive_communications_callable(attribute: str):
     try:
         from ifitwala_drive.api import communications as drive_api
+    except ImportError:
+        return None
+
+    callable_obj = getattr(drive_api, attribute, None)
+    if callable(callable_obj):
+        return callable_obj
+    return None
+
+
+def _load_drive_student_logs_callable(attribute: str):
+    try:
+        from ifitwala_drive.api import student_logs as drive_api
     except ImportError:
         return None
 
@@ -1291,6 +1348,27 @@ def _request_org_communication_attachment_grant(
     if callable(grant_callable):
         payload = {
             "org_communication": str(org_communication or "").strip(),
+            "row_name": str(row_name or "").strip(),
+        }
+        explicit_derivative_role = (derivative_role or "").strip()
+        if explicit_derivative_role:
+            payload["derivative_role"] = explicit_derivative_role
+        return grant_callable(**payload)
+    return None
+
+
+def _request_student_log_evidence_attachment_grant(
+    *,
+    method_name: str,
+    student_log: str,
+    row_name: str,
+    drive_file_id: str,
+    derivative_role: str | None = None,
+):
+    grant_callable = _load_drive_student_logs_callable(method_name)
+    if callable(grant_callable):
+        payload = {
+            "student_log": str(student_log or "").strip(),
             "row_name": str(row_name or "").strip(),
         }
         explicit_derivative_role = (derivative_role or "").strip()
@@ -1695,6 +1773,53 @@ def _resolve_org_communication_attachment_grant_target_url(
         grant = _request_org_communication_attachment_grant(
             method_name=grant_method,
             org_communication=resolved_org_communication,
+            row_name=resolved_row_name,
+            drive_file_id=drive_file_id,
+        )
+        target_url = str((grant or {}).get("url") or "").strip()
+
+    return target_url or None
+
+
+def _resolve_student_log_evidence_attachment_grant_target_url(
+    *,
+    student_log: str,
+    row_name: str,
+    drive_file_id: str,
+    file_id: str,
+    prefer_preview: bool = False,
+    derivative_role: str | None = None,
+    strict_derivative: bool = False,
+) -> str | None:
+    target_url = ""
+    explicit_derivative_role = (derivative_role or "").strip()
+    resolved_student_log = str(student_log or "").strip()
+    resolved_row_name = str(row_name or "").strip()
+
+    if prefer_preview and explicit_derivative_role:
+        try:
+            grant = _request_student_log_evidence_attachment_grant(
+                method_name="issue_student_log_evidence_attachment_preview_grant",
+                student_log=resolved_student_log,
+                row_name=resolved_row_name,
+                drive_file_id=drive_file_id,
+                derivative_role=explicit_derivative_role,
+            )
+            target_url = str((grant or {}).get("url") or "").strip()
+        except Exception:
+            target_url = ""
+        if strict_derivative:
+            return target_url or None
+
+    if not target_url:
+        grant_method = "issue_student_log_evidence_attachment_download_grant"
+        if prefer_preview:
+            preview_status = frappe.db.get_value("Drive File", drive_file_id, "preview_status")
+            if preview_status == "ready":
+                grant_method = "issue_student_log_evidence_attachment_preview_grant"
+        grant = _request_student_log_evidence_attachment_grant(
+            method_name=grant_method,
+            student_log=resolved_student_log,
             row_name=resolved_row_name,
             drive_file_id=drive_file_id,
         )
@@ -3272,6 +3397,137 @@ def thumbnail_org_communication_attachment(
             return
 
     frappe.throw(_("Could not resolve the attachment thumbnail."), frappe.DoesNotExistError)
+
+
+@frappe.whitelist()
+def open_student_log_evidence_attachment(
+    student_log: str | None = None,
+    row_name: str | None = None,
+):
+    from ifitwala_ed.students.doctype.student_log.evidence import (
+        assert_student_log_attachment_read_access,
+    )
+
+    resolved_student_log = str(student_log or "").strip()
+    resolved_row_name = str(row_name or "").strip()
+    context = assert_student_log_attachment_read_access(resolved_student_log, resolved_row_name)
+    target_row = context.get("row")
+
+    external_url = str(getattr(target_row, "external_url", "") or "").strip()
+    if external_url:
+        frappe.local.response["type"] = "redirect"
+        frappe.local.response["location"] = external_url
+        return
+
+    file_url = str(getattr(target_row, "file", "") or "").strip()
+    if not file_url:
+        frappe.throw(_("Evidence attachment file is missing."), frappe.DoesNotExistError)
+
+    if _is_public_site_file_url(file_url):
+        frappe.local.response["type"] = "redirect"
+        frappe.local.response["location"] = file_url
+        return
+
+    drive_file_id = str(context.get("drive_file_id") or "").strip()
+    file_id = str(context.get("file_id") or "").strip()
+    target_url = _resolve_student_log_evidence_attachment_grant_target_url(
+        student_log=resolved_student_log,
+        row_name=resolved_row_name,
+        drive_file_id=drive_file_id,
+        file_id=file_id,
+        prefer_preview=False,
+    )
+    if _respond_with_delivery_target(target_url=target_url):
+        return
+
+    frappe.throw(_("Could not resolve the evidence attachment."), frappe.DoesNotExistError)
+
+
+@frappe.whitelist()
+def preview_student_log_evidence_attachment(
+    student_log: str | None = None,
+    row_name: str | None = None,
+):
+    from ifitwala_ed.students.doctype.student_log.evidence import (
+        assert_student_log_attachment_read_access,
+    )
+
+    resolved_student_log = str(student_log or "").strip()
+    resolved_row_name = str(row_name or "").strip()
+    context = assert_student_log_attachment_read_access(resolved_student_log, resolved_row_name)
+    target_row = context.get("row")
+
+    if str(getattr(target_row, "external_url", "") or "").strip():
+        frappe.throw(_("External links do not support governed preview."), frappe.ValidationError)
+
+    file_url = str(getattr(target_row, "file", "") or "").strip()
+    if not file_url:
+        frappe.throw(_("Evidence attachment file is missing."), frappe.DoesNotExistError)
+
+    drive_file_id = str(context.get("drive_file_id") or "").strip()
+    file_id = str(context.get("file_id") or "").strip()
+    target_url = _resolve_student_log_evidence_attachment_grant_target_url(
+        student_log=resolved_student_log,
+        row_name=resolved_row_name,
+        drive_file_id=drive_file_id,
+        file_id=file_id,
+        prefer_preview=True,
+    )
+    if _respond_with_delivery_target(target_url=target_url):
+        return
+
+    if _is_public_site_file_url(file_url):
+        frappe.local.response["type"] = "redirect"
+        frappe.local.response["location"] = file_url
+        return
+
+    frappe.throw(_("Could not resolve the evidence attachment preview."), frappe.DoesNotExistError)
+
+
+@frappe.whitelist()
+def thumbnail_student_log_evidence_attachment(
+    student_log: str | None = None,
+    row_name: str | None = None,
+):
+    from ifitwala_ed.students.doctype.student_log.evidence import (
+        assert_student_log_attachment_read_access,
+    )
+
+    resolved_student_log = str(student_log or "").strip()
+    resolved_row_name = str(row_name or "").strip()
+    context = assert_student_log_attachment_read_access(resolved_student_log, resolved_row_name)
+    target_row = context.get("row")
+
+    if str(getattr(target_row, "external_url", "") or "").strip():
+        frappe.throw(_("External links do not support governed thumbnails."), frappe.ValidationError)
+
+    file_url = str(getattr(target_row, "file", "") or "").strip()
+    if not file_url:
+        frappe.throw(_("Evidence attachment file is missing."), frappe.DoesNotExistError)
+
+    drive_file_id = str(context.get("drive_file_id") or "").strip()
+    file_id = str(context.get("file_id") or "").strip()
+    derivative_role = _resolve_card_preview_derivative_role_for_drive_file(drive_file_id)
+    target_url = _resolve_cached_thumbnail_target_url(
+        drive_file_id=drive_file_id,
+        file_id=file_id,
+        surface_parts=["student_log_evidence", resolved_student_log, resolved_row_name],
+        derivative_role=derivative_role,
+        strict_derivative=True,
+        target_resolver=lambda: _resolve_student_log_evidence_attachment_grant_target_url(
+            student_log=resolved_student_log,
+            row_name=resolved_row_name,
+            drive_file_id=drive_file_id,
+            file_id=file_id,
+            prefer_preview=True,
+            derivative_role=derivative_role,
+            strict_derivative=True,
+        ),
+    )
+    if target_url and _respond_with_delivery_target(target_url=target_url, cache_headers=True):
+        return
+
+    frappe.throw(_("Could not resolve the evidence attachment thumbnail."), frappe.DoesNotExistError)
 
 
 @frappe.whitelist(allow_guest=True)
