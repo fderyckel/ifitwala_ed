@@ -49,6 +49,15 @@ Surface-specific notes must not weaken `files_01`, `files_03`, `files_07`, or `f
 - Folders are UX/navigation only, never permission, retention, ownership, or erasure truth.
 - SPA/API contracts must expose server-owned actions such as `open_url`, `preview_url`, and `thumbnail_url`, not raw private storage paths.
 
+## Do Not Do
+
+- Do not add new wrapper-specific governance contracts.
+- Do not hand-author owner, subject, slot, purpose, retention, organization, or school semantics inside Drive wrappers.
+- Do not turn folders into permission, retention, ownership, or erasure truth.
+- Do not expose Drive derivative roles as product API or SPA DTO fields.
+- Do not add schema changes until wrapper-thinning and seam tests prove they are required.
+- Do not reintroduce `File Classification`, raw `File.file_url`, or raw `/private/...` paths as authority for new governed flows.
+
 ## Policy-System Read Order
 
 - `policy_01_design_notes.md`

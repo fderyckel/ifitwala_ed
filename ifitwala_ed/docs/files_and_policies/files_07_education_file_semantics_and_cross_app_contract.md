@@ -178,6 +178,14 @@ Target direction:
 
 This lets the apps converge on one narrow boundary instead of many stringly wrapper exports.
 
+### 7.1 Do Not Do
+
+- Do not add new wrapper-specific upload contracts when `workflow_id + workflow_payload` can represent the workflow.
+- Do not duplicate `GovernedUploadSpec` semantics into Drive wrapper code, slot registries, folder paths, or frontend payloads.
+- Do not expose implementation-specific derivative roles in Ed/SPA DTOs; use `open_url`, optional `preview_url`, and optional `thumbnail_url`.
+- Do not treat folders as governance truth for permission, retention, ownership, or erasure.
+- Do not add schema changes before the existing contract seam and conformance tests prove a real missing capability.
+
 ## 8. Surface mapping
 
 | Workflow | Purpose | Owner example | Slot example |
