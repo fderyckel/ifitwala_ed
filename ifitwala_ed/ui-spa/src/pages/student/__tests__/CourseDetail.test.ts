@@ -719,7 +719,18 @@ describe('CourseDetail', () => {
 
 	it('loads and resubmits the selected non-quiz task workspace', async () => {
 		resetRouteState()
-		getStudentLearningSpaceMock.mockResolvedValue(buildPayload())
+		const payload = buildPayload()
+		payload.learning.next_actions = [
+			{
+				kind: 'assigned_work',
+				label: 'Complete Cell comparison reflection',
+				supporting_text: 'Due 2026-04-02',
+				task_delivery: 'TDL-WRITE-1',
+				class_session: 'CLASS-SESSION-1',
+				unit_plan: 'UNIT-PLAN-1',
+			},
+		]
+		getStudentLearningSpaceMock.mockResolvedValue(payload)
 		getStudentTaskSubmissionMock
 			.mockResolvedValueOnce(buildLatestSubmission())
 			.mockResolvedValueOnce(
@@ -756,6 +767,7 @@ describe('CourseDetail', () => {
 
 		expect(responseArea?.value).toBe('Initial lab reflection')
 		expect(linkField?.value).toBe('https://example.com/lab-reflection')
+		expect(document.body.textContent).toContain('Complete Cell comparison reflection')
 
 		if (!responseArea || !linkField) {
 			throw new Error('Expected task submission fields to be rendered.')
@@ -785,6 +797,7 @@ describe('CourseDetail', () => {
 		expect(getStudentTaskSubmissionMock).toHaveBeenNthCalledWith(2, {
 			outcome_id: 'OUT-WRITE-1',
 		})
+		expect(document.body.textContent).not.toContain('Complete Cell comparison reflection')
 		expect(document.body.textContent).toContain('Version 2')
 		expect(document.body.textContent).toContain('Updated lab reflection')
 		expect(document.body.textContent).toContain('Resubmitted')
@@ -988,7 +1001,18 @@ describe('CourseDetail', () => {
 
 	it('marks assign-only tasks complete in the course workspace', async () => {
 		resetRouteState()
-		getStudentLearningSpaceMock.mockResolvedValue(buildAssignOnlyPayload())
+		const payload = buildAssignOnlyPayload()
+		payload.learning.next_actions = [
+			{
+				kind: 'assigned_work',
+				label: 'Complete Field notebook check',
+				supporting_text: 'Due 2026-04-02',
+				task_delivery: 'TDL-WRITE-1',
+				class_session: 'CLASS-SESSION-1',
+				unit_plan: 'UNIT-PLAN-1',
+			},
+		]
+		getStudentLearningSpaceMock.mockResolvedValue(payload)
 		markStudentTaskCompleteMock.mockResolvedValue({
 			task_outcome: 'OUT-ASSIGN-1',
 			is_complete: 1,
@@ -1003,6 +1027,7 @@ describe('CourseDetail', () => {
 		await flushUi()
 
 		expect(getStudentTaskSubmissionMock).not.toHaveBeenCalled()
+		expect(document.body.textContent).toContain('Complete Field notebook check')
 		expect(document.body.textContent).toContain('Mark task complete')
 		expect(document.body.textContent).toContain(
 			'No submission is required. Mark this task complete here once you finish the assigned work.'
@@ -1018,6 +1043,7 @@ describe('CourseDetail', () => {
 		expect(markStudentTaskCompleteMock).toHaveBeenCalledWith({
 			task_outcome: 'OUT-ASSIGN-1',
 		})
+		expect(document.body.textContent).not.toContain('Complete Field notebook check')
 		expect(document.body.textContent).toContain('Task complete')
 		expect(document.body.textContent).toContain('Completed')
 	})

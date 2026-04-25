@@ -2178,6 +2178,24 @@ function patchAssignedWork(taskDelivery: string, updates: Partial<StudentAssigne
 	};
 }
 
+function removeNextActionForTaskDelivery(taskDelivery: string) {
+	if (!learningSpace.value) return;
+	const target = String(taskDelivery || '').trim();
+	if (!target) return;
+	const nextActions = learningSpace.value.learning.next_actions || [];
+	if (!nextActions.some(action => String(action.task_delivery || '').trim() === target)) return;
+
+	learningSpace.value = {
+		...learningSpace.value,
+		learning: {
+			...learningSpace.value.learning,
+			next_actions: nextActions.filter(
+				action => String(action.task_delivery || '').trim() !== target
+			),
+		},
+	};
+}
+
 async function submitSelectedTaskWorkspace() {
 	const task = selectedTaskWorkspace.value;
 	if (!task?.requires_submission || !task.task_outcome) {
@@ -2216,6 +2234,7 @@ async function submitSelectedTaskWorkspace() {
 				response.outcome_flags?.submission_status ||
 				(isResubmission ? 'Resubmitted' : 'Submitted'),
 		});
+		removeNextActionForTaskDelivery(task.task_delivery);
 		submissionDirty.value = false;
 		clearSubmissionFiles();
 		await loadSelectedTaskSubmission();
@@ -2245,6 +2264,9 @@ async function markSelectedTaskComplete() {
 			is_complete: response.is_complete ? 1 : 0,
 			status_label: response.is_complete ? 'Completed' : task.status_label,
 		});
+		if (response.is_complete) {
+			removeNextActionForTaskDelivery(task.task_delivery);
+		}
 		toast.success('Task marked complete.');
 	} catch (error) {
 		taskCompletionError.value =

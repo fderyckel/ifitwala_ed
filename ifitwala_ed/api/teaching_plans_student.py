@@ -3,6 +3,29 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any
 
+from ifitwala_ed.api.student_task_status import DONE_GRADING_STATUSES, DONE_SUBMISSION_STATUSES
+
+
+def truthy_completion_flag(value: Any) -> bool:
+    try:
+        return int(value or 0) == 1
+    except Exception:
+        return str(value or "").strip().lower() in {"true", "yes"}
+
+
+def assigned_work_is_done(item: dict[str, Any]) -> bool:
+    if truthy_completion_flag(item.get("is_complete")):
+        return True
+    if truthy_completion_flag(item.get("has_submission")):
+        return True
+    if str(item.get("submission_status") or "").strip() in DONE_SUBMISSION_STATUSES:
+        return True
+    if str(item.get("grading_status") or "").strip() in DONE_GRADING_STATUSES:
+        return True
+    if str(item.get("status_label") or "").strip() in {"Completed", "Submitted"}:
+        return True
+    return False
+
 
 def coerce_learning_datetime(api, value: Any) -> datetime | None:
     if value in (None, ""):
@@ -254,9 +277,10 @@ def build_student_next_actions(
         quiz_state = item.get("quiz_state") or {}
         due_at = api._coerce_learning_datetime(item.get("due_date")) or fallback_date
         title = api.planning.normalize_text(item.get("title")) or api._("Assigned work")
+        task_type = api.planning.normalize_text(item.get("task_type"))
         action: dict[str, Any]
         priority = 3
-        if (item.get("task_type") or "").strip() == "Quiz" and quiz_state.get("can_continue"):
+        if task_type == "Quiz" and truthy_completion_flag(quiz_state.get("can_continue")):
             priority = 0
             action = {
                 "kind": "quiz",
@@ -266,7 +290,7 @@ def build_student_next_actions(
                 "class_session": item.get("class_session"),
                 "unit_plan": item.get("unit_plan"),
             }
-        elif (item.get("task_type") or "").strip() == "Quiz" and quiz_state.get("can_retry"):
+        elif task_type == "Quiz" and truthy_completion_flag(quiz_state.get("can_retry")):
             priority = 1
             action = {
                 "kind": "quiz",
@@ -276,7 +300,7 @@ def build_student_next_actions(
                 "class_session": item.get("class_session"),
                 "unit_plan": item.get("unit_plan"),
             }
-        elif (item.get("task_type") or "").strip() == "Quiz" and quiz_state.get("can_start"):
+        elif task_type == "Quiz" and truthy_completion_flag(quiz_state.get("can_start")):
             priority = 1
             action = {
                 "kind": "quiz",
@@ -286,6 +310,8 @@ def build_student_next_actions(
                 "class_session": item.get("class_session"),
                 "unit_plan": item.get("unit_plan"),
             }
+        elif task_type == "Quiz" or assigned_work_is_done(item):
+            continue
         else:
             action = {
                 "kind": "assigned_work",
@@ -354,6 +380,8 @@ def resolve_student_selected_task(
     def first_non_quiz(items: list[dict[str, Any]] | None) -> dict[str, Any] | None:
         for item in items or []:
             if api.planning.normalize_text(item.get("task_type")).lower() == "quiz":
+                continue
+            if assigned_work_is_done(item):
                 continue
             if api.planning.normalize_text(item.get("task_delivery")):
                 return item

@@ -5,7 +5,7 @@ from __future__ import annotations
 import types
 from unittest import TestCase
 
-from ifitwala_ed.tests.frappe_stubs import import_fresh, stubbed_frappe
+from ifitwala_ed.tests.frappe_stubs import StubValidationError, import_fresh, stubbed_frappe
 
 
 class _MetaField:
@@ -155,6 +155,31 @@ class TestTaskCreationService(TestCase):
                 "outcomes_created": 3,
             },
         )
+
+    def test_create_task_and_delivery_rejects_group_submission(self):
+        planning_module = types.ModuleType("ifitwala_ed.curriculum.planning")
+        planning_module.assert_can_manage_course_curriculum = lambda *args, **kwargs: None
+
+        with stubbed_frappe(extra_modules={"ifitwala_ed.curriculum.planning": planning_module}) as frappe:
+            frappe.get_meta = lambda doctype: {
+                "Task": _Meta({"task_type": "Homework\nQuiz"}),
+                "Task Delivery": _Meta(
+                    {
+                        "delivery_mode": "Assign Only\nCollect Work\nAssess",
+                        "rubric_scoring_strategy": "Sum Total\nSeparate Criteria",
+                    }
+                ),
+            }[doctype]
+
+            module = import_fresh("ifitwala_ed.assessment.task_creation_service")
+
+            with self.assertRaises(StubValidationError):
+                module.create_task_and_delivery(
+                    title="Group draft",
+                    student_group="GRP-1",
+                    delivery_mode="Collect Work",
+                    group_submission="1",
+                )
 
     def test_create_task_and_delivery_persists_criteria_defaults_and_local_strategy(self):
         task = _FakeTask()

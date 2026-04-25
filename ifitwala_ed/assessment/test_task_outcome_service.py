@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import types
 from unittest import TestCase
 
 from ifitwala_ed.tests.frappe_stubs import StubPermissionError, StubValidationError, import_fresh, stubbed_frappe
@@ -718,7 +719,14 @@ class TestTaskOutcomeService(TestCase):
         )
 
     def test_set_assign_only_completion_rejects_published_outcomes(self):
-        with stubbed_frappe() as frappe:
+        task_feedback_service = types.ModuleType("ifitwala_ed.assessment.task_feedback_service")
+        task_feedback_service.build_publication_state_map = lambda outcome_ids: {
+            outcome_id: {"is_visible_to_any_audience": True} for outcome_id in outcome_ids or []
+        }
+
+        with stubbed_frappe(
+            extra_modules={"ifitwala_ed.assessment.task_feedback_service": task_feedback_service}
+        ) as frappe:
             frappe.db.get_value = lambda doctype, name, fieldname=None, as_dict=False: (
                 {
                     "name": "OUT-1",

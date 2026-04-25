@@ -547,6 +547,102 @@ class TestTeachingPlansApi(TestCase):
             },
         )
 
+    def test_student_next_actions_exclude_completed_non_quiz_work(self):
+        with _teaching_plans_module() as module:
+            units = [
+                {
+                    "unit_plan": "UNIT-1",
+                    "title": "Cells and Systems",
+                    "assigned_work": [
+                        {
+                            "task_delivery": "TDL-COMPLETE",
+                            "title": "Completed notebook check",
+                            "task_type": "Written Response",
+                            "unit_plan": "UNIT-1",
+                            "due_date": "2026-04-03 09:00:00",
+                            "is_complete": 1,
+                            "status_label": "Completed",
+                        },
+                        {
+                            "task_delivery": "TDL-SUBMITTED",
+                            "title": "Submitted reflection",
+                            "task_type": "Written Response",
+                            "unit_plan": "UNIT-1",
+                            "due_date": "2026-04-04 09:00:00",
+                            "submission_status": "Submitted",
+                        },
+                        {
+                            "task_delivery": "TDL-OPEN",
+                            "title": "Open reflection",
+                            "task_type": "Written Response",
+                            "unit_plan": "UNIT-1",
+                            "due_date": "2026-04-05 09:00:00",
+                        },
+                        {
+                            "task_delivery": "TDL-QUIZ-RETRY",
+                            "title": "Retry quiz",
+                            "task_type": "Quiz",
+                            "unit_plan": "UNIT-1",
+                            "due_date": "2026-04-06 09:00:00",
+                            "submission_status": "Submitted",
+                            "quiz_state": {"can_retry": 1, "status_label": "Submitted"},
+                        },
+                        {
+                            "task_delivery": "TDL-QUIZ-DONE",
+                            "title": "Finished quiz",
+                            "task_type": "Quiz",
+                            "unit_plan": "UNIT-1",
+                            "due_date": "2026-04-07 09:00:00",
+                            "is_complete": 1,
+                            "quiz_state": {"status_label": "Passed"},
+                        },
+                    ],
+                    "sessions": [],
+                }
+            ]
+
+            with patch.object(module, "now_datetime", return_value=datetime(2026, 4, 2, 9, 0, 0)):
+                actions = module._build_student_next_actions(units, [])
+
+        self.assertEqual([row.get("task_delivery") for row in actions], ["TDL-QUIZ-RETRY", "TDL-OPEN"])
+        self.assertEqual(actions[0]["kind"], "quiz")
+        self.assertEqual(actions[1]["kind"], "assigned_work")
+
+    def test_student_selected_task_skips_completed_work(self):
+        with _teaching_plans_module() as module:
+            with patch.object(module, "now_datetime", return_value=datetime(2026, 4, 2, 9, 0, 0)):
+                sections = module._build_student_learning_sections(
+                    [
+                        {
+                            "unit_plan": "UNIT-1",
+                            "title": "Cells and Systems",
+                            "assigned_work": [
+                                {
+                                    "task_delivery": "TDL-COMPLETE",
+                                    "title": "Completed notebook check",
+                                    "task_type": "Written Response",
+                                    "unit_plan": "UNIT-1",
+                                    "is_complete": 1,
+                                    "status_label": "Completed",
+                                },
+                                {
+                                    "task_delivery": "TDL-OPEN",
+                                    "title": "Open reflection",
+                                    "task_type": "Written Response",
+                                    "unit_plan": "UNIT-1",
+                                },
+                            ],
+                            "sessions": [],
+                        }
+                    ],
+                    [],
+                    [],
+                    "UNIT-1",
+                    anchor_date=datetime(2026, 4, 2, 9, 0, 0),
+                )
+
+        self.assertEqual(sections["selected_context"]["task_delivery"], "TDL-OPEN")
+
     def test_get_student_learning_space_uses_resolved_current_unit_for_selected_context(self):
         with _teaching_plans_module() as module:
             with (

@@ -110,7 +110,6 @@ export type CreateTaskDeliveryInput = {
 	due_date?: string;
 	lock_date?: string;
 	allow_late_submission?: 0 | 1;
-	group_submission?: 0 | 1;
 	grading_mode?: 'None' | 'Completion' | 'Binary' | 'Points' | 'Criteria';
 	rubric_scoring_strategy?: 'Sum Total' | 'Separate Criteria';
 	assessment_category?: string;

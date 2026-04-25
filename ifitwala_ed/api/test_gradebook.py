@@ -58,6 +58,23 @@ def _gradebook_stub_modules(
             "modified": None,
             "modified_by": None,
         }
+    if not hasattr(feedback_service, "build_publication_state_map"):
+        feedback_service.build_publication_state_map = lambda outcome_ids: {
+            outcome_id: {
+                "feedback_visibility": "hidden",
+                "grade_visibility": "hidden",
+                "visible_to_student": False,
+                "visible_to_guardian": False,
+                "is_visible_to_any_audience": False,
+                "derived_from_legacy_outcome": True,
+                "legacy_outcome_published": False,
+                "legacy_published_on": None,
+                "legacy_published_by": None,
+                "task_submission": None,
+                "workspace_id": None,
+            }
+            for outcome_id in outcome_ids or []
+        }
     if not hasattr(feedback_service, "save_feedback_workspace_draft"):
         feedback_service.save_feedback_workspace_draft = lambda payload, actor=None: payload
     if not hasattr(feedback_service, "save_feedback_publication"):
@@ -1028,7 +1045,25 @@ class TestGradebookApi(TestCase):
         )
 
     def test_get_grid_returns_bounded_overview_payload_for_selected_group(self):
-        with stubbed_frappe(extra_modules=_gradebook_stub_modules()) as frappe:
+        feedback_service = types.ModuleType("ifitwala_ed.assessment.task_feedback_service")
+        feedback_service.build_publication_state_map = lambda outcome_ids: {
+            outcome_id: {
+                "feedback_visibility": "student_and_guardian" if outcome_id == "OUT-2" else "hidden",
+                "grade_visibility": "student_and_guardian" if outcome_id == "OUT-2" else "hidden",
+                "visible_to_student": outcome_id == "OUT-2",
+                "visible_to_guardian": outcome_id == "OUT-2",
+                "is_visible_to_any_audience": outcome_id == "OUT-2",
+                "derived_from_legacy_outcome": True,
+                "legacy_outcome_published": outcome_id == "OUT-2",
+                "legacy_published_on": None,
+                "legacy_published_by": None,
+                "task_submission": None,
+                "workspace_id": None,
+            }
+            for outcome_id in outcome_ids or []
+        }
+
+        with stubbed_frappe(extra_modules=_gradebook_stub_modules(task_feedback_service=feedback_service)) as frappe:
 
             def fake_get_all(doctype, filters=None, fields=None, order_by=None, limit=0, pluck=None):
                 if doctype == "Task Delivery":
@@ -1277,9 +1312,23 @@ class TestGradebookApi(TestCase):
             }
 
         task_contribution_service.submit_contribution = fake_submit_contribution
+        feedback_service = types.ModuleType("ifitwala_ed.assessment.task_feedback_service")
+        feedback_service.build_publication_state_map = lambda outcome_ids: {
+            outcome_id: {
+                "is_visible_to_any_audience": outcome_id == "OUT-3",
+                "visible_to_student": outcome_id == "OUT-3",
+                "visible_to_guardian": outcome_id == "OUT-3",
+                "feedback_visibility": "student_and_guardian" if outcome_id == "OUT-3" else "hidden",
+                "grade_visibility": "student_and_guardian" if outcome_id == "OUT-3" else "hidden",
+            }
+            for outcome_id in outcome_ids or []
+        }
 
         with stubbed_frappe(
-            extra_modules=_gradebook_stub_modules(task_contribution_service=task_contribution_service)
+            extra_modules=_gradebook_stub_modules(
+                task_contribution_service=task_contribution_service,
+                task_feedback_service=feedback_service,
+            )
         ) as frappe:
             frappe.session.user = "teacher@example.com"
 
@@ -1446,7 +1495,7 @@ class TestGradebookApi(TestCase):
 
             def fake_get_value(doctype, name, fieldname=None, as_dict=False):
                 if doctype == "Task Outcome":
-                    if fieldname == ["name", "task_delivery", "official_score", "grading_status", "is_published"]:
+                    if fieldname == ["name", "task_delivery", "official_score", "grading_status"]:
                         return {
                             "name": "OUT-1",
                             "task_delivery": "TDL-1",
@@ -1512,7 +1561,7 @@ class TestGradebookApi(TestCase):
 
             def fake_get_value(doctype, name, fieldname=None, as_dict=False):
                 if doctype == "Task Outcome":
-                    if fieldname == ["name", "task_delivery", "official_score", "grading_status", "is_published"]:
+                    if fieldname == ["name", "task_delivery", "official_score", "grading_status"]:
                         return {
                             "name": "OUT-1",
                             "task_delivery": "TDL-1",
@@ -1597,7 +1646,7 @@ class TestGradebookApi(TestCase):
 
             def fake_get_value(doctype, name, fieldname=None, as_dict=False):
                 if doctype == "Task Outcome":
-                    if fieldname == ["name", "task_delivery", "official_score", "grading_status", "is_published"]:
+                    if fieldname == ["name", "task_delivery", "official_score", "grading_status"]:
                         return {
                             "name": "OUT-1",
                             "task_delivery": "TDL-1",
@@ -1651,7 +1700,7 @@ class TestGradebookApi(TestCase):
 
             def fake_get_value(doctype, name, fieldname=None, as_dict=False):
                 if doctype == "Task Outcome":
-                    if fieldname == ["name", "task_delivery", "official_score", "grading_status", "is_published"]:
+                    if fieldname == ["name", "task_delivery", "official_score", "grading_status"]:
                         return {
                             "name": "OUT-1",
                             "task_delivery": "TDL-1",
@@ -1679,11 +1728,16 @@ class TestGradebookApi(TestCase):
                 module.update_task_student("OUT-1", {"status": "Released"})
 
     def test_update_task_student_rejects_status_change_while_outcome_is_released(self):
-        with stubbed_frappe(extra_modules=_gradebook_stub_modules()) as frappe:
+        feedback_service = types.ModuleType("ifitwala_ed.assessment.task_feedback_service")
+        feedback_service.build_publication_state_map = lambda outcome_ids: {
+            outcome_id: {"is_visible_to_any_audience": True} for outcome_id in outcome_ids or []
+        }
+
+        with stubbed_frappe(extra_modules=_gradebook_stub_modules(task_feedback_service=feedback_service)) as frappe:
 
             def fake_get_value(doctype, name, fieldname=None, as_dict=False):
                 if doctype == "Task Outcome":
-                    if fieldname == ["name", "task_delivery", "official_score", "grading_status", "is_published"]:
+                    if fieldname == ["name", "task_delivery", "official_score", "grading_status"]:
                         return {
                             "name": "OUT-1",
                             "task_delivery": "TDL-1",
