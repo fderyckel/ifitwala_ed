@@ -79,6 +79,7 @@ def _bulk_update_publish(outcome_ids, values):
         if next_status:
             outcome_doc.grading_status = next_status
         outcome_doc.save(ignore_permissions=True)
+        _sync_latest_feedback_publication(outcome_id, publish_flag=bool(values.get("is_published")))
 
 
 def _next_grading_status(outcome_doc, *, publish_flag: bool) -> str | None:
@@ -91,6 +92,32 @@ def _next_grading_status(outcome_doc, *, publish_flag: bool) -> str | None:
         return current_status
 
     return _resolve_unpublished_status(outcome_doc)
+
+
+def _sync_latest_feedback_publication(outcome_id: str, *, publish_flag: bool):
+    from ifitwala_ed.assessment import task_feedback_service
+
+    latest_rows = frappe.get_all(
+        "Task Submission",
+        filters={"task_outcome": outcome_id},
+        fields=["name"],
+        order_by="version desc, modified desc",
+        limit=1,
+        ignore_permissions=True,
+    )
+    if not latest_rows:
+        return
+
+    visibility = "student_and_guardian" if publish_flag else "hidden"
+    task_feedback_service.save_feedback_publication(
+        {
+            "outcome_id": outcome_id,
+            "submission_id": latest_rows[0].get("name"),
+            "feedback_visibility": visibility,
+            "grade_visibility": visibility,
+        },
+        actor=frappe.session.user,
+    )
 
 
 def _resolve_unpublished_status(outcome_doc) -> str:

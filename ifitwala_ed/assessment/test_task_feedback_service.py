@@ -263,7 +263,7 @@ class TestTaskFeedbackService(TestCase):
         self.assertEqual(payload["official"]["feedback"], "Keep supporting each claim.")
         self.assertEqual(payload["feedback"]["summary"]["overall"], "Keep supporting each claim.")
 
-    def test_released_feedback_detail_skips_priority_reads_when_priority_table_is_not_migrated(self):
+    def test_released_feedback_detail_returns_empty_priorities_when_none_exist(self):
         with stubbed_frappe() as frappe:
 
             def fake_get_value(doctype, name_or_filters, fieldname=None, as_dict=False):
@@ -321,8 +321,6 @@ class TestTaskFeedbackService(TestCase):
 
             frappe.db.get_value = fake_get_value
             frappe.get_all = fake_get_all
-            frappe.db.table_exists = lambda doctype: doctype != "Task Feedback Priority"
-            frappe.db.has_column = lambda doctype, fieldname: True
 
             module = import_fresh("ifitwala_ed.assessment.task_feedback_service")
             payload = module.build_released_feedback_detail_payload(
@@ -336,7 +334,7 @@ class TestTaskFeedbackService(TestCase):
         self.assertEqual(len(payload["feedback"]["items"]), 1)
         self.assertEqual(payload["feedback"]["priorities"], [])
 
-    def test_released_feedback_detail_falls_back_to_legacy_when_feedback_workspace_schema_is_missing(self):
+    def test_released_feedback_detail_falls_back_to_legacy_when_feedback_workspace_is_missing(self):
         with stubbed_frappe() as frappe:
 
             def fake_get_value(doctype, name_or_filters, fieldname=None, as_dict=False):
@@ -365,17 +363,6 @@ class TestTaskFeedbackService(TestCase):
 
             frappe.db.get_value = fake_get_value
             frappe.get_all = lambda doctype, **kwargs: []
-            frappe.db.table_exists = lambda doctype: (
-                doctype
-                not in {
-                    "Task Feedback Workspace",
-                    "Task Feedback Item",
-                    "Task Feedback Priority",
-                    "Task Feedback Thread",
-                    "Task Feedback Thread Message",
-                }
-            )
-            frappe.db.has_column = lambda doctype, fieldname: True
 
             module = import_fresh("ifitwala_ed.assessment.task_feedback_service")
             payload = module.build_released_feedback_detail_payload(
@@ -390,3 +377,55 @@ class TestTaskFeedbackService(TestCase):
         self.assertEqual(payload["feedback"]["summary"]["overall"], "Keep supporting each claim.")
         self.assertEqual(payload["feedback"]["items"], [])
         self.assertEqual(payload["feedback"]["priorities"], [])
+
+    def test_build_publication_state_map_prefers_latest_workspace_over_legacy_flag(self):
+        with stubbed_frappe() as frappe:
+
+            def fake_get_all(doctype, **kwargs):
+                if doctype == "Task Outcome":
+                    return [
+                        {
+                            "name": "OUT-1",
+                            "is_published": 1,
+                            "published_on": "2026-04-20 12:00:00",
+                            "published_by": "teacher@example.com",
+                        }
+                    ]
+                if doctype == "Task Submission":
+                    return [
+                        {
+                            "name": "TSU-2",
+                            "task_outcome": "OUT-1",
+                            "version": 2,
+                            "modified": "2026-04-22 09:00:00",
+                        },
+                        {
+                            "name": "TSU-1",
+                            "task_outcome": "OUT-1",
+                            "version": 1,
+                            "modified": "2026-04-21 09:00:00",
+                        },
+                    ]
+                if doctype == "Task Feedback Workspace":
+                    return [
+                        {
+                            "name": "TFW-2",
+                            "task_outcome": "OUT-1",
+                            "task_submission": "TSU-2",
+                            "feedback_visibility": "student",
+                            "grade_visibility": "hidden",
+                            "modified": "2026-04-22 10:00:00",
+                        }
+                    ]
+                return []
+
+            frappe.get_all = fake_get_all
+            module = import_fresh("ifitwala_ed.assessment.task_feedback_service")
+            payload = module.build_publication_state_map(["OUT-1"])
+
+        state = payload["OUT-1"]
+        self.assertFalse(state["derived_from_legacy_outcome"])
+        self.assertTrue(state["legacy_outcome_published"])
+        self.assertTrue(state["visible_to_student"])
+        self.assertFalse(state["visible_to_guardian"])
+        self.assertTrue(state["is_visible_to_any_audience"])

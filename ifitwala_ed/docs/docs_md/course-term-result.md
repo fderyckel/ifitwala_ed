@@ -3,7 +3,7 @@ title: "Course Term Result: The Frozen Record of Term Performance"
 slug: course-term-result
 category: Assessment
 doc_order: 11
-version: "1.0.3"
+version: "1.0.4"
 last_change_date: "2026-04-25"
 summary: "Store one immutable term-grade record per student-course-cycle, including calculated values, overrides, and audit-safe context fields."
 seo_title: "Course Term Result: The Frozen Record of Term Performance"
@@ -21,7 +21,7 @@ seo_description: "Store one immutable term-grade record per student-course-cycle
 `Course Term Result` is the durable term-level record generated from assessment outcomes. It is designed for reporting reliability, not live-grade experimentation.
 
 <Callout type="tip" title="Audit-ready design">
-Course Term Result intentionally duplicates context fields (student, course, program, year, term, grade scale) so historical reports stay reproducible even when operational structures change later.
+Course Term Result intentionally duplicates context fields (student, course, program, year, term, grade scale, resolved assessment scheme, and calculation method) so historical reports stay reproducible even when operational structures change later.
 </Callout>
 
 ## Where It Is Used Across the ERP
@@ -74,13 +74,15 @@ Course Term Result intentionally duplicates context fields (student, course, pro
 
 - **DocType**: `Course Term Result` (`ifitwala_ed/assessment/doctype/course_term_result/`)
 - **Key links**:
-  - `reporting_cycle`, `student`, `program_enrollment`, `course`, `program`, `academic_year`, `term`, `instructor`, `grade_scale`, `moderated_by`, `calculated_by`
+  - `reporting_cycle`, `student`, `program_enrollment`, `course`, `program`, `academic_year`, `term`, `instructor`, `assessment_scheme`, `grade_scale`, `moderated_by`, `calculated_by`
 - **Child tables**:
   - `components` (`Course Term Result Component`)
 - **Validation** (`course_term_result.py`):
   - `is_override` kept in sync with `override_grade_value`
 - **Primary producer**:
   - `assessment/term_reporting.py` (`upsert_course_term_results`)
+- **Read API**:
+  - `api/term_reporting.py::get_course_term_results()` returns resolved scheme provenance and component rows for each result
 - **Performance indexes**:
   - (`reporting_cycle`, `student`)
   - (`reporting_cycle`, `program_enrollment`, `course`)
@@ -90,5 +92,6 @@ Course Term Result intentionally duplicates context fields (student, course, pro
 - **Architecture guarantees (embedded from term-reporting notes)**:
   - one row represents one `student × course × term × reporting cycle` fact
   - values are materialized from official Task Outcome truth and are not live-recomputed by UI views
+  - `assessment_scheme` and `assessment_calculation_method` store the resolved policy used for the result
   - component rows are an explainability aid for the frozen result, not a separate source of grading truth
   - override paths retain original calculated values for auditability

@@ -15,6 +15,7 @@ const {
 	uploadedTaskMaterialCalls,
 	searchReusableTaskCalls,
 	getReusableTaskCalls,
+	assessmentSetupCalls,
 	resourceState,
 } = vi.hoisted(() => ({
 	routerPushMock: vi.fn(),
@@ -27,8 +28,22 @@ const {
 	uploadedTaskMaterialCalls: [] as any[],
 	searchReusableTaskCalls: [] as any[],
 	getReusableTaskCalls: [] as any[],
+	assessmentSetupCalls: [] as any[],
 	resourceState: {
 		courseCriteriaRows: [] as any[],
+		assessmentSetup: {
+			course: 'COURSE-1',
+			school: 'SCH-1',
+			academic_year: 'AY-2025-2026',
+			program: 'PROG-1',
+			assessment_scheme: null,
+			scheme_name: null,
+			calculation_method: null,
+			assessment_category_visible: false,
+			assessment_category_required: false,
+			reporting_weight_visible: false,
+			categories: [],
+		} as any,
 		createNewTaskResult: {
 			task: 'TASK-NEW-1',
 			task_delivery: 'TDL-NEW-1',
@@ -162,6 +177,16 @@ vi.mock('frappe-ui', async () => {
 				submit: async () => {
 					config.onSuccess?.(resourceState.courseCriteriaRows);
 					return resourceState.courseCriteriaRows;
+				},
+			};
+		}
+		if (config.url === 'ifitwala_ed.api.task.get_assessment_setup_for_delivery') {
+			return {
+				loading: false,
+				submit: async (payload: any) => {
+					assessmentSetupCalls.push(payload);
+					config.onSuccess?.(resourceState.assessmentSetup);
+					return resourceState.assessmentSetup;
 				},
 			};
 		}
@@ -431,6 +456,7 @@ beforeEach(() => {
 	uploadedTaskMaterialCalls.length = 0;
 	searchReusableTaskCalls.length = 0;
 	getReusableTaskCalls.length = 0;
+	assessmentSetupCalls.length = 0;
 	apiUploadMock.mockReset();
 	apiUploadMock.mockImplementation(async (url: string, formData: FormData) => {
 		uploadedTaskMaterialCalls.push({ url, formData });
@@ -448,6 +474,19 @@ beforeEach(() => {
 		outcomes_created: 24,
 	};
 	resourceState.createNewTaskError = null;
+	resourceState.assessmentSetup = {
+		course: 'COURSE-1',
+		school: 'SCH-1',
+		academic_year: 'AY-2025-2026',
+		program: 'PROG-1',
+		assessment_scheme: null,
+		scheme_name: null,
+		calculation_method: null,
+		assessment_category_visible: false,
+		assessment_category_required: false,
+		reporting_weight_visible: false,
+		categories: [],
+	};
 	resourceState.assignExistingTaskResult = {
 		task: 'TASK-SHARED-1',
 		task_delivery: 'TDL-SHARED-1',
@@ -578,6 +617,55 @@ describe('CreateTaskDeliveryOverlay', () => {
 			requires_submission: 0,
 			grading_mode: 'Points',
 			max_points: '100',
+		});
+	});
+
+	it('submits resolved assessment category and task weight for assessed work', async () => {
+		resourceState.assessmentSetup = {
+			course: 'COURSE-1',
+			school: 'SCH-1',
+			academic_year: 'AY-2025-2026',
+			program: 'PROG-1',
+			assessment_scheme: 'ASC-1',
+			scheme_name: 'Senior School Assessment',
+			calculation_method: 'Category + Task Weight Hybrid',
+			assessment_category_visible: true,
+			assessment_category_required: true,
+			reporting_weight_visible: true,
+			categories: [
+				{
+					assessment_category: 'Summative',
+					label: 'Summative Evidence',
+					weight: 70,
+					include_in_final_grade: true,
+				},
+			],
+		};
+
+		mountOverlay();
+		await flushUi();
+
+		await setInput('Assignment title', 'Lab practical');
+		await clickButton('Collect and mark');
+		await clickButton('Points');
+		await setInput('Enter max points', '20');
+
+		expect(assessmentSetupCalls).toEqual([{ student_group: 'GRP-1' }]);
+		expect(document.body.textContent || '').toContain('Senior School Assessment');
+
+		await setSelect('[data-assessment-category-select="true"]', 'Summative');
+		await setInput('Default 1', '2');
+		await clickButton('Create');
+
+		expect(createNewTaskCalls).toHaveLength(1);
+		expect(createNewTaskCalls[0]).toMatchObject({
+			title: 'Lab practical',
+			delivery_mode: 'Assess',
+			requires_submission: 1,
+			grading_mode: 'Points',
+			max_points: '20',
+			assessment_category: 'Summative',
+			reporting_weight: '2',
 		});
 	});
 

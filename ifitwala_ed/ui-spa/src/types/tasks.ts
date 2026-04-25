@@ -29,6 +29,27 @@ export type TaskCriteriaRow = {
 
 export type CourseAssessmentCriteriaOption = TaskCriteriaRow;
 
+export type AssessmentSetupCategoryOption = {
+	assessment_category: string;
+	label: string;
+	weight?: number | string | null;
+	include_in_final_grade?: boolean | 0 | 1 | null;
+};
+
+export type AssessmentSetupForDeliveryPayload = {
+	course: string;
+	school?: string | null;
+	academic_year?: string | null;
+	program?: string | null;
+	assessment_scheme?: string | null;
+	scheme_name?: string | null;
+	calculation_method?: string | null;
+	assessment_category_visible: boolean;
+	assessment_category_required: boolean;
+	reporting_weight_visible: boolean;
+	categories: AssessmentSetupCategoryOption[];
+};
+
 export type ReusableTaskSummary = {
 	name: string;
 	title: string;
@@ -92,6 +113,8 @@ export type CreateTaskDeliveryInput = {
 	group_submission?: 0 | 1;
 	grading_mode?: 'None' | 'Completion' | 'Binary' | 'Points' | 'Criteria';
 	rubric_scoring_strategy?: 'Sum Total' | 'Separate Criteria';
+	assessment_category?: string;
+	reporting_weight?: number | string;
 	criteria_rows?: Array<{
 		assessment_criteria: string;
 		criteria_weighting?: number | string | null;

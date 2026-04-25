@@ -203,7 +203,7 @@ def stamp_submission_context(submission_doc, outcome_row):
         "task",
     ]
     for field in fieldnames:
-        if outcome_row.get(field) and hasattr(submission_doc, field):
+        if outcome_row.get(field):
             if not getattr(submission_doc, field, None):
                 setattr(submission_doc, field, outcome_row.get(field))
 
@@ -231,13 +231,12 @@ def apply_outcome_submission_effects(outcome_id, submission_id, source="student"
     )
 
     if source == "teacher_stub":
-        updates = {"submission_status": "Submitted"}
-        if "has_submission" in outcome:
-            updates["has_submission"] = 1
-        if "has_new_submission" in outcome:
-            updates["has_new_submission"] = 0
-        if "is_stale" in outcome:
-            updates["is_stale"] = 0
+        updates = {
+            "submission_status": "Submitted",
+            "has_submission": 1,
+            "has_new_submission": 0,
+            "is_stale": 0,
+        }
         frappe.db.set_value("Task Outcome", outcome_id, updates, update_modified=True)
         return
 
@@ -254,112 +253,13 @@ def apply_outcome_submission_effects(outcome_id, submission_id, source="student"
     grading_started = _grading_started(outcome)
     updates = {"submission_status": "Late" if submission.get("is_late") else "Submitted"}
 
-    if "has_submission" in outcome:
-        updates["has_submission"] = 1
-
-    if "has_new_submission" in outcome:
-        updates["has_new_submission"] = 1
-
-    if "is_stale" in outcome:
-        updates["is_stale"] = 1 if grading_started else 0
+    updates["has_submission"] = 1
+    updates["has_new_submission"] = 1
+    updates["is_stale"] = 1 if grading_started else 0
 
     frappe.db.set_value("Task Outcome", outcome_id, updates, update_modified=True)
 
     mark_contributions_stale(outcome_id, latest_submission_id=submission_id)
-
-
-def clone_group_submission(original_submission_id, outcome_ids):
-    if not original_submission_id or not outcome_ids:
-        return 0
-
-    outcome_ids = [outcome_id for outcome_id in outcome_ids if outcome_id]
-    if not outcome_ids:
-        return 0
-
-    original = frappe.get_doc("Task Submission", original_submission_id)
-    if not original.task_outcome:
-        return 0
-
-    outcome_ids = [oid for oid in outcome_ids if oid != original.task_outcome]
-    if not outcome_ids:
-        return 0
-
-    existing = frappe.db.get_values(
-        "Task Submission",
-        {"task_outcome": ["in", outcome_ids], "cloned_from": original_submission_id},
-        "task_outcome",
-        as_list=True,
-    )
-    existing_outcomes = {row[0] for row in existing if row and row[0]}
-    target_outcomes = [oid for oid in outcome_ids if oid not in existing_outcomes]
-    if not target_outcomes:
-        return 0
-
-    max_versions = _max_versions_for_outcomes(target_outcomes)
-    created = 0
-
-    for outcome_id in target_outcomes:
-        version = max_versions.get(outcome_id, 0) + 1
-        doc = frappe.get_doc(
-            {
-                "doctype": "Task Submission",
-                "task_outcome": outcome_id,
-                "task_delivery": original.task_delivery,
-                "task": original.task,
-                "version": version,
-                "submitted_by": original.submitted_by,
-                "submitted_on": original.submitted_on or now_datetime(),
-                "is_late": original.is_late,
-                "is_cloned": 1,
-                "cloned_from": original_submission_id,
-                "link_url": original.link_url,
-                "text_content": original.text_content,
-                "attachments": _clone_attachments(original),
-            }
-        )
-        doc.insert(ignore_permissions=True)
-        apply_outcome_submission_effects(outcome_id, doc.name, source="student")
-        created += 1
-
-    return created
-
-
-def _max_versions_for_outcomes(outcome_ids):
-    if not outcome_ids:
-        return {}
-
-    rows = frappe.db.sql(
-        """
-		SELECT task_outcome, MAX(version) AS max_version
-		FROM `tabTask Submission`
-		WHERE task_outcome IN %(outcomes)s
-		GROUP BY task_outcome
-		""",
-        {"outcomes": tuple(outcome_ids)},
-        as_dict=True,
-    )
-    return {row["task_outcome"]: int(row.get("max_version") or 0) for row in rows}
-
-
-def _clone_attachments(original):
-    attachments = []
-    for row in original.get("attachments") or []:
-        attachments.append(
-            {
-                "section_break_sbex": row.get("section_break_sbex"),
-                "file": row.get("file"),
-                "external_url": row.get("external_url"),
-                "description": row.get("description"),
-                "public": row.get("public"),
-                "version": row.get("version"),
-                "effective_date": row.get("effective_date"),
-                "expiry_date": row.get("expiry_date"),
-                "file_name": row.get("file_name"),
-                "file_size": row.get("file_size"),
-                "is_primary": row.get("is_primary"),
-            }
-        )
-    return attachments
 
 
 def ensure_evidence_stub_submission(outcome_id, origin="Teacher Observation", note=None, created_by=None):
@@ -403,22 +303,14 @@ def ensure_evidence_stub_submission(outcome_id, origin="Teacher Observation", no
     if latest_stub:
         return latest_stub[0]["name"]
 
-    meta = frappe.get_meta("Task Submission")
     doc = frappe.new_doc("Task Submission")
     doc.task_outcome = outcome_id
     doc.version = get_next_submission_version(outcome_id)
-    if meta.get_field("submitted_by"):
-        doc.submitted_by = created_by or frappe.session.user
-    if meta.get_field("submitted_on"):
-        doc.submitted_on = now_datetime()
-    if meta.get_field("submission_origin"):
-        doc.submission_origin = origin
-    if meta.get_field("is_stub"):
-        doc.is_stub = 1
-    if meta.get_field("evidence_note"):
-        doc.evidence_note = note or "Evidence stub (no student submission)"
-    elif meta.get_field("text_content"):
-        doc.text_content = note or "Evidence stub (no student submission)"
+    doc.submitted_by = created_by or frappe.session.user
+    doc.submitted_on = now_datetime()
+    doc.submission_origin = origin
+    doc.is_stub = 1
+    doc.evidence_note = note or "Evidence stub (no student submission)"
 
     stamp_submission_context(doc, outcome_row)
     doc.insert(ignore_permissions=True)

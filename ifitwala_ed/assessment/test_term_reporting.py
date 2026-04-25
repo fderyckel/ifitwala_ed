@@ -87,6 +87,8 @@ class TestTermReporting(TestCase):
                     numeric_score=85.0,
                     grade_value="A",
                     grade_scale="GS-1",
+                    assessment_scheme=None,
+                    assessment_calculation_method=None,
                     task_counted=2,
                     total_weight=2.0,
                     internal_note=None,
@@ -104,6 +106,8 @@ class TestTermReporting(TestCase):
                     numeric_score=70.0,
                     grade_value="C",
                     grade_scale="GS-1",
+                    assessment_scheme=None,
+                    assessment_calculation_method=None,
                     task_counted=1,
                     total_weight=1.0,
                     internal_note=None,
@@ -121,6 +125,8 @@ class TestTermReporting(TestCase):
                     numeric_score=None,
                     grade_value=None,
                     grade_scale=None,
+                    assessment_scheme=None,
+                    assessment_calculation_method=None,
                     task_counted=0,
                     total_weight=0,
                     internal_note="No eligible outcomes",
@@ -138,6 +144,8 @@ class TestTermReporting(TestCase):
                     numeric_score=62.0,
                     grade_value="D",
                     grade_scale="GS-1",
+                    assessment_scheme=None,
+                    assessment_calculation_method=None,
                     task_counted=2,
                     total_weight=2.0,
                     internal_note=None,
@@ -166,7 +174,9 @@ class TestTermReporting(TestCase):
             frappe.new_doc = Mock(return_value=new_doc)
 
             module = import_fresh("ifitwala_ed.assessment.term_reporting")
-            module._grade_label_from_score = lambda grade_scale, numeric_score: "A" if numeric_score == 85.0 else "B"
+            module._grade_label_from_score = lambda grade_scale, numeric_score, **kwargs: (
+                "A" if numeric_score == 85.0 else "B"
+            )
 
             aggregates = {
                 ("PE-1", "COURSE-1"): module.AggregateRow(

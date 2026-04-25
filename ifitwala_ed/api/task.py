@@ -475,6 +475,51 @@ def list_course_assessment_criteria(student_group=None, course=None):
 
 
 @frappe.whitelist()
+def get_assessment_setup_for_delivery(student_group=None, course=None):
+    """
+    Return the resolved assessment-reporting setup for one class assignment workflow.
+    """
+    student_group = _normalize_text(student_group)
+    course = _normalize_text(course)
+    if not student_group:
+        frappe.throw(_("Student Group is required."))
+
+    context = task_delivery_service.get_delivery_context(student_group)
+    resolved_course = _normalize_text(context.get("course"))
+    if course and resolved_course and course != resolved_course:
+        frappe.throw(_("Selected class does not belong to the chosen course."))
+    resolved_course = course or resolved_course
+    if not resolved_course:
+        frappe.throw(_("Selected class is missing a course."))
+
+    _assert_task_library_access(resolved_course, action_label="configure assessment settings for this course")
+
+    from ifitwala_ed.assessment import term_reporting
+
+    scheme = term_reporting.resolve_assessment_scheme_for_course(
+        school=context.get("school"),
+        academic_year=context.get("academic_year"),
+        program=context.get("program"),
+        course=resolved_course,
+    )
+    category_options = term_reporting.assessment_scheme_category_options(scheme)
+
+    return {
+        "course": resolved_course,
+        "school": context.get("school"),
+        "academic_year": context.get("academic_year"),
+        "program": context.get("program"),
+        "assessment_scheme": (scheme or {}).get("name"),
+        "scheme_name": (scheme or {}).get("scheme_name"),
+        "calculation_method": (scheme or {}).get("calculation_method"),
+        "assessment_category_visible": bool(category_options),
+        "assessment_category_required": term_reporting.assessment_scheme_requires_category(scheme),
+        "reporting_weight_visible": term_reporting.assessment_scheme_uses_task_weight(scheme),
+        "categories": category_options,
+    }
+
+
+@frappe.whitelist()
 def create_task_delivery(payload):
     """
     Orchestrate Task Delivery creation.

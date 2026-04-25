@@ -15,9 +15,42 @@ def _task_service_stub():
         "class_session": class_session,
         "course": "COURSE-1",
         "academic_year": "AY-2025-2026",
+        "school": "SCH-1",
+        "program": "PROG-1",
         "unit_plan": None,
     }
+    module.get_delivery_context = lambda student_group: {
+        "course": "COURSE-1",
+        "academic_year": "AY-2025-2026",
+        "school": "SCH-1",
+        "program": "PROG-1",
+    }
     module.create_delivery = lambda payload: {"task_delivery": "TDL-0001", "outcomes_created": 24}
+    return module
+
+
+def _term_reporting_stub(calls: list[dict]):
+    module = types.ModuleType("ifitwala_ed.assessment.term_reporting")
+
+    def resolve_assessment_scheme_for_course(**kwargs):
+        calls.append(kwargs)
+        return {
+            "name": "ASC-1",
+            "scheme_name": "Senior School Assessment",
+            "calculation_method": "Category + Task Weight Hybrid",
+        }
+
+    module.resolve_assessment_scheme_for_course = resolve_assessment_scheme_for_course
+    module.assessment_scheme_category_options = lambda scheme: [
+        {
+            "assessment_category": "Summative",
+            "label": "Summative Evidence",
+            "weight": 70.0,
+            "include_in_final_grade": True,
+        }
+    ]
+    module.assessment_scheme_requires_category = lambda scheme: True
+    module.assessment_scheme_uses_task_weight = lambda scheme: True
     return module
 
 
@@ -431,4 +464,72 @@ class TestTaskApi(TestCase):
                     "levels": [{"level": "Emerging"}, {"level": "Secure"}],
                 },
             ],
+        )
+
+    def test_get_assessment_setup_for_delivery_returns_resolved_scheme_controls(self):
+        permission_calls: list[tuple[str, str, tuple[str, ...] | None, str | None]] = []
+        resolver_calls: list[dict] = []
+
+        planning_module = types.ModuleType("ifitwala_ed.curriculum.planning")
+        planning_module.assert_can_manage_course_curriculum = lambda user, course, roles=None, action_label=None: (
+            permission_calls.append((user, course, tuple(roles or []), action_label))
+        )
+        planning_module.assert_can_read_course_curriculum = lambda *args, **kwargs: None
+
+        with stubbed_frappe(
+            extra_modules={
+                "ifitwala_ed.curriculum.planning": planning_module,
+                "ifitwala_ed.assessment.task_delivery_service": _task_service_stub(),
+                "ifitwala_ed.assessment.term_reporting": _term_reporting_stub(resolver_calls),
+            }
+        ) as frappe:
+            frappe.get_roles = lambda user: ["Instructor"]
+
+            module = import_fresh("ifitwala_ed.api.task")
+            payload = module.get_assessment_setup_for_delivery(student_group="GRP-1")
+
+        self.assertEqual(
+            permission_calls,
+            [
+                (
+                    "unit.test@example.com",
+                    "COURSE-1",
+                    ("Instructor",),
+                    "configure assessment settings for this course",
+                )
+            ],
+        )
+        self.assertEqual(
+            resolver_calls,
+            [
+                {
+                    "school": "SCH-1",
+                    "academic_year": "AY-2025-2026",
+                    "program": "PROG-1",
+                    "course": "COURSE-1",
+                }
+            ],
+        )
+        self.assertEqual(
+            payload,
+            {
+                "course": "COURSE-1",
+                "school": "SCH-1",
+                "academic_year": "AY-2025-2026",
+                "program": "PROG-1",
+                "assessment_scheme": "ASC-1",
+                "scheme_name": "Senior School Assessment",
+                "calculation_method": "Category + Task Weight Hybrid",
+                "assessment_category_visible": True,
+                "assessment_category_required": True,
+                "reporting_weight_visible": True,
+                "categories": [
+                    {
+                        "assessment_category": "Summative",
+                        "label": "Summative Evidence",
+                        "weight": 70.0,
+                        "include_in_final_grade": True,
+                    }
+                ],
+            },
         )

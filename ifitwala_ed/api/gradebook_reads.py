@@ -8,6 +8,8 @@ from frappe import _
 
 
 def get_grid(api, filters=None, **kwargs):
+    from ifitwala_ed.assessment import task_feedback_service
+
     if not api._can_read_gradebook():
         frappe.throw(_("Not permitted."), frappe.PermissionError)
 
@@ -129,10 +131,14 @@ def get_grid(api, filters=None, **kwargs):
         if delivery_map.get(row.get("task_delivery"), {}).get("grading_mode") == "Criteria"
     }
     criteria_map = api._get_outcome_criteria_map(criteria_outcome_ids)
+    publication_map = task_feedback_service.build_publication_state_map(
+        [row.get("name") for row in outcomes if row.get("name")]
+    )
 
     cells = []
     for row in outcomes:
         outcome_id = row.get("name")
+        publication = publication_map.get(outcome_id) or {}
         delivery_id = row.get("task_delivery")
         delivery = delivery_map.get(delivery_id, {})
         cell = {
@@ -145,8 +151,9 @@ def get_grid(api, filters=None, **kwargs):
                 "grading_status": row.get("grading_status"),
                 "procedural_status": row.get("procedural_status"),
                 "is_complete": api._bool_flag(row.get("is_complete")),
-                "is_published": api._bool_flag(row.get("is_published")),
+                "is_published": bool(publication.get("is_visible_to_any_audience")),
             },
+            "publication": publication,
             "official": {
                 "score": row.get("official_score"),
                 "grade": row.get("official_grade"),
@@ -288,6 +295,7 @@ def get_drawer(api, outcome_id: str, submission_id: str | None = None, version: 
             outcome_id,
             selected_submission_id,
         )
+    publication_state = (task_feedback_service.build_publication_state_map([outcome_id]) or {}).get(outcome_id) or {}
     feedback_threads = []
     if selected_submission_id:
         feedback_threads = task_feedback_thread_service.build_feedback_thread_payloads(
@@ -349,9 +357,10 @@ def get_drawer(api, outcome_id: str, submission_id: str | None = None, version: 
             "has_submission": api._bool_flag(outcome_doc.get("has_submission")),
             "has_new_submission": api._bool_flag(outcome_doc.get("has_new_submission")),
             "is_complete": api._bool_flag(outcome_doc.get("is_complete")),
-            "is_published": api._bool_flag(outcome_doc.get("is_published")),
+            "is_published": bool(publication_state.get("is_visible_to_any_audience")),
             "published_on": outcome_doc.get("published_on"),
             "published_by": outcome_doc.get("published_by"),
+            "publication": publication_state,
             "official": {
                 "score": outcome_doc.get("official_score"),
                 "grade": outcome_doc.get("official_grade"),
@@ -557,6 +566,8 @@ def fetch_group_tasks(api, student_group: str):
 
 
 def get_task_gradebook(api, task: str):
+    from ifitwala_ed.assessment import task_feedback_service
+
     if not api._can_read_gradebook():
         frappe.throw(_("Not permitted."), frappe.PermissionError)
     api._require(task, "Task Delivery")
@@ -595,6 +606,7 @@ def get_task_gradebook(api, task: str):
     )
     outcome_ids = [row.get("name") for row in outcomes if row.get("name")]
     outcome_criteria = api._get_outcome_criteria_rows(outcome_ids)
+    publication_map = task_feedback_service.build_publication_state_map(outcome_ids)
 
     student_ids = [row.get("student") for row in outcomes if row.get("student")]
     student_display_map = api._get_student_display_map(student_ids)
@@ -603,6 +615,7 @@ def get_task_gradebook(api, task: str):
     students_payload = []
     for outcome in outcomes:
         student_id = outcome.get("student")
+        publication = publication_map.get(outcome.get("name")) or {}
         meta = student_meta_map.get(student_id) or {}
         criteria_rows = outcome_criteria.get(outcome.get("name"), {})
 
@@ -655,8 +668,9 @@ def get_task_gradebook(api, task: str):
                 "complete": int(outcome.get("is_complete") or 0),
                 "mark_awarded": api._coerce_float(outcome.get("official_score")),
                 "feedback": outcome.get("official_feedback"),
-                "visible_to_student": int(outcome.get("is_published") or 0),
-                "visible_to_guardian": int(outcome.get("is_published") or 0),
+                "visible_to_student": 1 if publication.get("visible_to_student") else 0,
+                "visible_to_guardian": 1 if publication.get("visible_to_guardian") else 0,
+                "publication": publication,
                 "updated_on": outcome.get("modified"),
                 "criteria_scores": criteria_scores,
             }

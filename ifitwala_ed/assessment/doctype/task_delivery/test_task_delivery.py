@@ -267,3 +267,93 @@ class TestTaskDelivery(TestCase):
 
         with self.assertRaises(StubValidationError):
             delivery._validate_class_teaching_plan_context()
+
+    def test_assessment_reporting_context_requires_category_for_category_scheme(self):
+        task_delivery_service = types.ModuleType("ifitwala_ed.assessment.task_delivery_service")
+        task_delivery_service.get_delivery_context = lambda student_group: {}
+        task_delivery_service.get_eligible_students = Mock(return_value=[])
+        task_delivery_service.bulk_create_outcomes = Mock(return_value=0)
+
+        term_reporting = types.ModuleType("ifitwala_ed.assessment.term_reporting")
+        term_reporting.resolve_assessment_scheme_for_course = Mock(
+            return_value={"name": "ASC-1", "calculation_method": "Weighted Categories"}
+        )
+        term_reporting.assessment_scheme_category_options = Mock(
+            return_value=[
+                {
+                    "assessment_category": "Summative",
+                    "label": "Summative",
+                    "weight": 100,
+                    "include_in_final_grade": True,
+                }
+            ]
+        )
+        term_reporting.assessment_scheme_requires_category = Mock(return_value=True)
+
+        with stubbed_frappe(
+            extra_modules={
+                "ifitwala_ed.assessment.task_delivery_service": task_delivery_service,
+                "ifitwala_ed.assessment.term_reporting": term_reporting,
+            }
+        ):
+            module = import_fresh("ifitwala_ed.assessment.doctype.task_delivery.task_delivery")
+
+            delivery = module.TaskDelivery()
+            delivery.delivery_mode = "Assess"
+            delivery.school = "SCH-1"
+            delivery.academic_year = "AY-2025-2026"
+            delivery.program = "PROG-1"
+            delivery.course = "COURSE-1"
+            delivery.assessment_category = None
+            delivery.reporting_weight = None
+            delivery._has_field = Mock(
+                side_effect=lambda fieldname: fieldname in {"assessment_category", "reporting_weight"}
+            )
+
+            with self.assertRaisesRegex(StubValidationError, "Assessment Category is required"):
+                delivery._validate_assessment_reporting_context()
+
+    def test_assessment_reporting_context_rejects_category_not_on_resolved_scheme(self):
+        task_delivery_service = types.ModuleType("ifitwala_ed.assessment.task_delivery_service")
+        task_delivery_service.get_delivery_context = lambda student_group: {}
+        task_delivery_service.get_eligible_students = Mock(return_value=[])
+        task_delivery_service.bulk_create_outcomes = Mock(return_value=0)
+
+        term_reporting = types.ModuleType("ifitwala_ed.assessment.term_reporting")
+        term_reporting.resolve_assessment_scheme_for_course = Mock(
+            return_value={"name": "ASC-1", "calculation_method": "Weighted Categories"}
+        )
+        term_reporting.assessment_scheme_category_options = Mock(
+            return_value=[
+                {
+                    "assessment_category": "Summative",
+                    "label": "Summative",
+                    "weight": 100,
+                    "include_in_final_grade": True,
+                }
+            ]
+        )
+        term_reporting.assessment_scheme_requires_category = Mock(return_value=True)
+
+        with stubbed_frappe(
+            extra_modules={
+                "ifitwala_ed.assessment.task_delivery_service": task_delivery_service,
+                "ifitwala_ed.assessment.term_reporting": term_reporting,
+            }
+        ):
+            module = import_fresh("ifitwala_ed.assessment.doctype.task_delivery.task_delivery")
+
+            delivery = module.TaskDelivery()
+            delivery.delivery_mode = "Assess"
+            delivery.school = "SCH-1"
+            delivery.academic_year = "AY-2025-2026"
+            delivery.program = "PROG-1"
+            delivery.course = "COURSE-1"
+            delivery.assessment_category = "Formative"
+            delivery.reporting_weight = 1
+            delivery._has_field = Mock(
+                side_effect=lambda fieldname: fieldname in {"assessment_category", "reporting_weight"}
+            )
+
+            with self.assertRaisesRegex(StubValidationError, "must be active"):
+                delivery._validate_assessment_reporting_context()

@@ -124,7 +124,6 @@ def bulk_create_outcomes(delivery, students, context=None):
     context = context or get_delivery_context(delivery.student_group)
     submission_status, grading_status = _initial_statuses(delivery)
 
-    meta = frappe.get_meta("Task Outcome")
     fields = [
         "name",
         "task_delivery",
@@ -142,17 +141,13 @@ def bulk_create_outcomes(delivery, students, context=None):
         "creation",
         "modified",
         "modified_by",
+        "program",
+        "course_group",
     ]
-    if meta.get_field("program"):
-        fields.append("program")
-    if meta.get_field("course_group"):
-        fields.append("course_group")
-    if not meta.get_field("grade_scale"):
-        fields.remove("grade_scale")
 
     timestamp = now()
     owner = frappe.session.user
-    name_pattern = meta.autoname or "format:TOU-{YYYY}-{MM}-{#####}"
+    name_pattern = frappe.get_meta("Task Outcome").autoname or "format:TOU-{YYYY}-{MM}-{#####}"
 
     values = []
     for student in new_students:
@@ -165,7 +160,7 @@ def bulk_create_outcomes(delivery, students, context=None):
             "course": context.get("course"),
             "academic_year": context.get("academic_year"),
             "school": context.get("school"),
-            "grade_scale": delivery.grade_scale if "grade_scale" in fields else None,
+            "grade_scale": delivery.grade_scale,
             "submission_status": submission_status,
             "grading_status": grading_status,
             "docstatus": 0,
@@ -173,12 +168,9 @@ def bulk_create_outcomes(delivery, students, context=None):
             "creation": timestamp,
             "modified": timestamp,
             "modified_by": owner,
+            "program": context.get("program"),
+            "course_group": context.get("course_group"),
         }
-
-        if "program" in fields:
-            row["program"] = context.get("program")
-        if "course_group" in fields:
-            row["course_group"] = context.get("course_group")
 
         values.append([row.get(field) for field in fields])
 
@@ -243,7 +235,6 @@ def create_delivery(payload):
         "available_from",
         "due_date",
         "lock_date",
-        # "group_submission", # Explicitly commented out/handled above
         "allow_late_submission",
         "class_session",
     }

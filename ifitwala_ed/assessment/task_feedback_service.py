@@ -15,35 +15,6 @@ FEEDBACK_INTENT_OPTIONS = ("strength", "issue", "question", "next_step", "rubric
 FEEDBACK_WORKFLOW_STATES = ("draft", "published", "acknowledged", "resolved")
 PUBLICATION_AUDIENCES = ("student", "guardian")
 SUMMARY_FIELDS = ("overall", "strengths", "improvements", "next_steps")
-WORKSPACE_READ_COLUMNS = (
-    "feedback_visibility",
-    "grade_visibility",
-    "overall_summary",
-    "strengths_summary",
-    "improvements_summary",
-    "next_steps_summary",
-)
-FEEDBACK_ITEM_READ_COLUMNS = (
-    "anchor_kind",
-    "page_number",
-    "feedback_intent",
-    "workflow_state",
-    "body",
-    "anchor_payload",
-    "assessment_criteria",
-    "author",
-)
-FEEDBACK_PRIORITY_READ_COLUMNS = ("title", "detail", "feedback_item_id", "assessment_criteria")
-FEEDBACK_THREAD_READ_COLUMNS = (
-    "task_feedback_workspace",
-    "target_type",
-    "target_feedback_item",
-    "target_priority",
-    "summary_field",
-    "learner_state",
-    "thread_status",
-)
-FEEDBACK_THREAD_MESSAGE_READ_COLUMNS = ("author", "author_role", "message_kind", "body")
 
 
 def build_feedback_workspace_payload(
@@ -51,24 +22,22 @@ def build_feedback_workspace_payload(
 ) -> dict[str, Any] | None:
     submission = _require_feedback_submission_context(outcome_id, submission_id)
     legacy_release = _get_legacy_release_state(outcome_id)
-    workspace_row = None
-    if _feedback_workspace_reads_available():
-        workspace_row = frappe.db.get_value(
-            "Task Feedback Workspace",
-            {"task_outcome": outcome_id, "task_submission": submission_id},
-            [
-                "name",
-                "feedback_visibility",
-                "grade_visibility",
-                "overall_summary",
-                "strengths_summary",
-                "improvements_summary",
-                "next_steps_summary",
-                "modified",
-                "modified_by",
-            ],
-            as_dict=True,
-        )
+    workspace_row = frappe.db.get_value(
+        "Task Feedback Workspace",
+        {"task_outcome": outcome_id, "task_submission": submission_id},
+        [
+            "name",
+            "feedback_visibility",
+            "grade_visibility",
+            "overall_summary",
+            "strengths_summary",
+            "improvements_summary",
+            "next_steps_summary",
+            "modified",
+            "modified_by",
+        ],
+        as_dict=True,
+    )
 
     if not workspace_row and not include_defaults:
         return None
@@ -76,10 +45,8 @@ def build_feedback_workspace_payload(
     feedback_items = []
     priorities = []
     if workspace_row and workspace_row.get("name"):
-        if _feedback_item_reads_available():
-            feedback_items = _load_feedback_item_rows(workspace_row.get("name"))
-        if _feedback_priority_reads_available():
-            priorities = _load_feedback_priority_rows(workspace_row.get("name"))
+        feedback_items = _load_feedback_item_rows(workspace_row.get("name"))
+        priorities = _load_feedback_priority_rows(workspace_row.get("name"))
 
     derived_from_legacy = not bool(workspace_row)
     feedback_visibility, grade_visibility = _resolve_publication_defaults(workspace_row, legacy_release)
@@ -115,6 +82,64 @@ def publication_visible_to_audience(visibility: str | None, audience: str = "stu
     if resolved_audience == "student":
         return resolved_visibility in ("student", "student_and_guardian")
     return resolved_visibility == "student_and_guardian"
+
+
+def build_publication_state_map(outcome_ids: list[str] | tuple[str, ...] | set[str]) -> dict[str, dict[str, Any]]:
+    ordered_ids = []
+    seen = set()
+    for outcome_id in outcome_ids or []:
+        normalized = _clean_text(outcome_id)
+        if not normalized or normalized in seen:
+            continue
+        seen.add(normalized)
+        ordered_ids.append(normalized)
+
+    if not ordered_ids:
+        return {}
+
+    legacy_rows = frappe.get_all(
+        "Task Outcome",
+        filters={"name": ["in", ordered_ids]},
+        fields=["name", "is_published", "published_on", "published_by"],
+        limit=0,
+    )
+    legacy_by_outcome = {row.get("name"): row for row in legacy_rows if row.get("name")}
+
+    latest_submission_by_outcome = _latest_submission_map(ordered_ids)
+    workspace_by_outcome = _latest_workspace_map(ordered_ids, latest_submission_by_outcome)
+
+    result = {}
+    for outcome_id in ordered_ids:
+        legacy = legacy_by_outcome.get(outcome_id) or {
+            "name": outcome_id,
+            "is_published": 0,
+            "published_on": None,
+            "published_by": None,
+        }
+        workspace = workspace_by_outcome.get(outcome_id)
+        feedback_visibility, grade_visibility = _resolve_publication_defaults(workspace, legacy)
+        visible_to_student = publication_visible_to_audience(
+            feedback_visibility,
+            "student",
+        ) or publication_visible_to_audience(grade_visibility, "student")
+        visible_to_guardian = publication_visible_to_audience(
+            feedback_visibility,
+            "guardian",
+        ) or publication_visible_to_audience(grade_visibility, "guardian")
+        result[outcome_id] = {
+            "feedback_visibility": feedback_visibility,
+            "grade_visibility": grade_visibility,
+            "visible_to_student": bool(visible_to_student),
+            "visible_to_guardian": bool(visible_to_guardian),
+            "is_visible_to_any_audience": bool(visible_to_student or visible_to_guardian),
+            "derived_from_legacy_outcome": not bool(workspace),
+            "legacy_outcome_published": bool(int(legacy.get("is_published") or 0)),
+            "legacy_published_on": legacy.get("published_on"),
+            "legacy_published_by": legacy.get("published_by"),
+            "task_submission": (latest_submission_by_outcome.get(outcome_id) or {}).get("name"),
+            "workspace_id": (workspace or {}).get("name"),
+        }
+    return result
 
 
 def build_released_result_payload(
@@ -229,12 +254,7 @@ def build_released_feedback_detail_payload(
             outcome_id=outcome_id,
             submission_id=resolved_submission_id,
         )
-        if (
-            resolved_audience == "student"
-            and released.get("feedback_visible")
-            and resolved_submission_id
-            and _feedback_thread_reads_available()
-        )
+        if (resolved_audience == "student" and released.get("feedback_visible") and resolved_submission_id)
         else []
     )
     return {
@@ -715,6 +735,57 @@ def _resolve_submission_context_for_release(outcome_id: str, submission_id: str 
     return None
 
 
+def _latest_submission_map(outcome_ids: list[str]) -> dict[str, dict[str, Any]]:
+    if not outcome_ids:
+        return {}
+
+    rows = frappe.get_all(
+        "Task Submission",
+        filters={"task_outcome": ["in", outcome_ids]},
+        fields=["name", "task_outcome", "version", "modified"],
+        order_by="task_outcome asc, version desc, modified desc",
+        limit=0,
+    )
+    latest = {}
+    for row in rows:
+        outcome_id = _clean_text(row.get("task_outcome"))
+        if outcome_id and outcome_id not in latest:
+            latest[outcome_id] = row
+    return latest
+
+
+def _latest_workspace_map(
+    outcome_ids: list[str],
+    latest_submission_by_outcome: dict[str, dict[str, Any]],
+) -> dict[str, dict[str, Any]]:
+    if not outcome_ids:
+        return {}
+
+    latest_submission_names = {row.get("name") for row in latest_submission_by_outcome.values() if row.get("name")}
+    rows = frappe.get_all(
+        "Task Feedback Workspace",
+        filters={"task_outcome": ["in", outcome_ids]},
+        fields=["name", "task_outcome", "task_submission", "feedback_visibility", "grade_visibility", "modified"],
+        order_by="modified desc",
+        limit=0,
+    )
+    selected = {}
+    fallback = {}
+    for row in rows:
+        outcome_id = _clean_text(row.get("task_outcome"))
+        if not outcome_id:
+            continue
+        if outcome_id not in fallback:
+            fallback[outcome_id] = row
+        if row.get("task_submission") in latest_submission_names and outcome_id not in selected:
+            selected[outcome_id] = row
+    return {
+        outcome_id: selected.get(outcome_id) or fallback.get(outcome_id)
+        for outcome_id in outcome_ids
+        if selected.get(outcome_id) or fallback.get(outcome_id)
+    }
+
+
 def _get_released_result_outcome_context(outcome_id: str) -> dict[str, Any]:
     fields = [
         "name",
@@ -792,7 +863,7 @@ def _build_released_rubric_snapshot(
         filters={
             "parent": outcome_id,
             "parenttype": "Task Outcome",
-            "parentfield": "criteria",
+            "parentfield": "official_criteria",
         },
         fields=["assessment_criteria", "level", "level_points", "feedback"],
         order_by="idx asc",
@@ -841,33 +912,3 @@ def _build_released_rubric_snapshot(
 def _clean_text(value: Any) -> str | None:
     resolved = str(value or "").strip()
     return resolved or None
-
-
-def _feedback_workspace_reads_available() -> bool:
-    return _doctype_read_columns_available("Task Feedback Workspace", WORKSPACE_READ_COLUMNS)
-
-
-def _feedback_item_reads_available() -> bool:
-    return _doctype_read_columns_available("Task Feedback Item", FEEDBACK_ITEM_READ_COLUMNS)
-
-
-def _feedback_priority_reads_available() -> bool:
-    return _doctype_read_columns_available("Task Feedback Priority", FEEDBACK_PRIORITY_READ_COLUMNS)
-
-
-def _feedback_thread_reads_available() -> bool:
-    return _doctype_read_columns_available("Task Feedback Thread", FEEDBACK_THREAD_READ_COLUMNS) and (
-        _doctype_read_columns_available("Task Feedback Thread Message", FEEDBACK_THREAD_MESSAGE_READ_COLUMNS)
-    )
-
-
-def _doctype_read_columns_available(doctype: str, fieldnames: tuple[str, ...]) -> bool:
-    db = getattr(frappe, "db", None)
-    table_exists = getattr(db, "table_exists", None)
-    if callable(table_exists) and not table_exists(doctype):
-        return False
-
-    has_column = getattr(db, "has_column", None)
-    if not callable(has_column):
-        return True
-    return all(has_column(doctype, fieldname) for fieldname in fieldnames)

@@ -3,7 +3,7 @@ title: "Assessment Scheme: Term Reporting Calculation Policy"
 slug: assessment-scheme
 category: Assessment
 doc_order: 2
-version: "1.0.0"
+version: "1.0.1"
 last_change_date: "2026-04-25"
 summary: "Define how a school, program, or course counts assessment evidence when producing term results."
 seo_title: "Assessment Scheme: Term Reporting Calculation Policy"
@@ -17,13 +17,14 @@ seo_description: "Define weighted categories, total points, task weights, criter
 - Define stable `Assessment Category` records first if the scheme uses category weighting.
 - Create the `Grade Scale` that should convert numeric scores into report symbols.
 - Decide the simplest calculation method educators and families can understand before adding weights.
+- Prefer one visible method per school/program/course scope; use task weights only when teachers can explain why some tasks count more.
 
 `Assessment Scheme` is the policy layer between day-to-day assessment evidence and official term reporting. It lets a school keep calculation rules explicit without putting formula logic on individual tasks.
 
 ## Where It Is Used Across the ERP
 
 - [**Reporting Cycle**](/docs/en/reporting-cycle/) can select a default scheme and snapshots resolved scheme definitions during recalculation.
-- [**Task Delivery**](/docs/en/task-delivery/) supplies `assessment_category` and optional `reporting_weight` evidence data that scheme methods may use.
+- [**Task Delivery**](/docs/en/task-delivery/) supplies `assessment_category` and optional `reporting_weight` evidence data that scheme methods may use. The staff task overlay reads the resolved scheme before showing category or weight controls.
 - [**Course Term Result**](/docs/en/course-term-result/) stores the final result and component breakdown produced from the scheme.
 
 ## Lifecycle and Linked Documents
@@ -76,4 +77,8 @@ seo_description: "Define weighted categories, total points, task weights, criter
   - only one active scheme may exist for the same exact scope
 - **Runtime resolver**:
   - `assessment/term_reporting.py` resolves the most specific active scheme by school/year/program/course, with the Reporting Cycle scheme as the default/tie-breaker
+  - `api/task.py::get_assessment_setup_for_delivery()` exposes the resolved scheme controls to task setup without duplicating scheme logic in the SPA
   - child table controllers stay empty; validation belongs to the parent `Assessment Scheme`
+- **Desk client script**:
+  - hides category rows when the selected method does not use category policy
+  - shows an active-final category weight total for category-based methods so setup drift is visible before save

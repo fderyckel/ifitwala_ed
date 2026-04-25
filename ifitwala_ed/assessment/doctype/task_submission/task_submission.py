@@ -32,15 +32,6 @@ class TaskSubmission(Document):
 
     def after_insert(self):
         apply_outcome_submission_effects(self.task_outcome, self.name, source="student")
-        self._maybe_clone_group_submission()
-
-    def _doc_meta(self):
-        if not hasattr(self, "_submission_meta"):
-            self._submission_meta = frappe.get_meta(self.doctype)
-        return self._submission_meta
-
-    def _has_field(self, fieldname):
-        return bool(self._doc_meta().get_field(fieldname))
 
     def _require_outcome(self):
         if not self.task_outcome:
@@ -93,7 +84,7 @@ class TaskSubmission(Document):
             self._delivery_row = {}
             return self._delivery_row
 
-        fields = ["lock_date", "due_date", "allow_late_submission", "group_submission"]
+        fields = ["lock_date", "due_date", "allow_late_submission"]
         delivery = (
             frappe.db.get_value(
                 "Task Delivery",
@@ -154,10 +145,6 @@ class TaskSubmission(Document):
             if _initial_file_materialization_allowed(self, before):
                 return
             frappe.throw(_("Submissions are append-only. Create a new version instead of editing evidence."))
-
-    def _maybe_clone_group_submission(self):
-        # Group submissions are paused until subgroup membership is implemented.
-        return
 
 
 def _attachments_changed(before_rows, after_rows):

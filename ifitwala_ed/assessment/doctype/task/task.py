@@ -23,34 +23,12 @@ class Task(Document):
         if used:
             frappe.throw(_("This Task is already used in a delivery. Archive it instead."))
 
-    def _doc_meta(self):
-        if not hasattr(self, "_task_meta"):
-            self._task_meta = frappe.get_meta(self.doctype)
-        return self._task_meta
-
-    def _has_field(self, fieldname):
-        return bool(self._doc_meta().get_field(fieldname))
-
-    def _course_fieldname(self):
-        if self._has_field("course"):
-            return "course"
-        if self._has_field("default_course"):
-            return "default_course"
-        return None
-
     def _get_course_value(self):
-        fieldname = self._course_fieldname()
-        if not fieldname:
-            return None
-        return getattr(self, fieldname, None)
+        return self.default_course
 
     def _require_course(self):
-        fieldname = self._course_fieldname()
-        if not fieldname:
-            return
-        field = self._doc_meta().get_field(fieldname)
-        if field and field.reqd and not getattr(self, fieldname, None):
-            frappe.throw(_("Select a Course or adjust the Task schema."))
+        if not self.default_course:
+            frappe.throw(_("Select a Course for this Task."))
 
     def _get_unit_plan_course(self, unit_plan_name):
         if not unit_plan_name:
@@ -68,8 +46,7 @@ class Task(Document):
                 frappe.throw(_("Unit Plan belongs to a different Course than the Task's Course."))
 
     def _clear_grading_defaults(self):
-        if self._has_field("default_allow_feedback"):
-            self.default_allow_feedback = 0
+        self.default_allow_feedback = 0
         self.default_grade_scale = None
         self.default_max_points = None
 
@@ -83,10 +60,7 @@ class Task(Document):
             "quiz_shuffle_questions",
             "quiz_shuffle_choices",
         ):
-            if self._has_field(fieldname):
-                setattr(
-                    self, fieldname, None if fieldname not in {"quiz_shuffle_questions", "quiz_shuffle_choices"} else 0
-                )
+            setattr(self, fieldname, None if fieldname not in {"quiz_shuffle_questions", "quiz_shuffle_choices"} else 0)
 
     def _count_published_quiz_questions(self, question_bank):
         if not question_bank:

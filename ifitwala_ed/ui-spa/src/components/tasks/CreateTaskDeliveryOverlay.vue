@@ -755,7 +755,7 @@
 											</div>
 										</div>
 
-										<div class="grid gap-4 md:grid-cols-2">
+										<div class="grid gap-4">
 											<label
 												v-if="showLateSubmission"
 												class="flex items-center gap-2 text-sm text-ink/80"
@@ -767,11 +767,6 @@
 												/>
 												Allow late submissions
 											</label>
-											<div
-												class="rounded-xl border border-dashed border-border/80 bg-slate-50 px-3 py-2 text-sm text-ink/70"
-											>
-												Group submission is paused until the subgroup workflow is implemented.
-											</div>
 										</div>
 									</section>
 
@@ -1029,6 +1024,66 @@
 															</p>
 														</div>
 													</div>
+												</div>
+											</div>
+										</div>
+
+										<div
+											v-if="showAssessmentReportingFields"
+											class="space-y-4 rounded-2xl border border-line-soft bg-surface-soft p-4"
+										>
+											<div class="flex flex-wrap items-center justify-between gap-3">
+												<div class="flex items-center gap-3">
+													<span class="chip">Reporting</span>
+													<p class="type-body-strong text-ink">Term report setup</p>
+												</div>
+												<span v-if="resolvedAssessmentSchemeLabel" class="chip">
+													{{ resolvedAssessmentSchemeLabel }}
+												</span>
+											</div>
+
+											<div
+												v-if="assessmentSetupError"
+												class="rounded-xl border border-flame/30 bg-flame/10 px-4 py-3 text-sm text-flame"
+											>
+												{{ assessmentSetupError }}
+											</div>
+											<div
+												v-else-if="assessmentSetupLoading"
+												class="rounded-xl border border-line-soft bg-white px-4 py-3 text-sm text-ink/70"
+											>
+												Loading reporting setup...
+											</div>
+
+											<div class="grid gap-4 md:grid-cols-2">
+												<div v-if="assessmentCategoryVisible" class="space-y-1">
+													<label class="type-label">
+														Assessment category
+														<span v-if="assessmentCategoryRequired" class="text-flame">*</span>
+													</label>
+													<FormControl
+														v-model="form.assessment_category"
+														type="select"
+														:options="assessmentCategoryOptions"
+														option-label="label"
+														option-value="value"
+														placeholder="Select category"
+														data-assessment-category-select="true"
+													/>
+												</div>
+												<div v-if="reportingWeightVisible" class="space-y-1">
+													<label class="type-label">Task weight</label>
+													<FormControl
+														v-model="form.reporting_weight"
+														type="number"
+														:min="0"
+														:step="0.1"
+														placeholder="Default 1"
+														data-reporting-weight-input="true"
+													/>
+													<p v-if="!reportingWeightLooksValid" class="type-caption text-flame">
+														Task weight cannot be negative.
+													</p>
 												</div>
 											</div>
 										</div>
@@ -1481,6 +1536,7 @@ import { emitTaskDeliveryCreatedSignal } from '@/lib/services/tasks/taskDelivery
 import type { UploadProgressState } from '@/lib/uploadProgress';
 import type { AttachmentPreviewItem } from '@/types/contracts/attachments/shared';
 import type {
+	AssessmentSetupForDeliveryPayload,
 	CreateTaskDeliveryInput,
 	CreateTaskDeliveryPayload,
 	CourseAssessmentCriteriaOption,
@@ -1684,10 +1740,11 @@ type FormState = {
 	due_date: string;
 	lock_date: string;
 	allow_late_submission: boolean;
-	group_submission: boolean;
 	share_with_course_team: boolean;
 	grading_mode: string;
 	rubric_scoring_strategy: '' | RubricScoringStrategy;
+	assessment_category: string;
+	reporting_weight: string;
 	allow_feedback: boolean;
 	max_points: string;
 };
@@ -1716,10 +1773,11 @@ const form = reactive<FormState>({
 	due_date: '',
 	lock_date: '',
 	allow_late_submission: false,
-	group_submission: false,
 	share_with_course_team: false,
 	grading_mode: '',
 	rubric_scoring_strategy: '',
+	assessment_category: '',
+	reporting_weight: '',
 	allow_feedback: false,
 	max_points: '',
 });
@@ -1744,6 +1802,9 @@ const criteriaLibraryLoadedForGroup = ref('');
 const criteriaLibraryError = ref('');
 const criteriaLibrarySelection = ref('');
 const taskCriteriaRows = ref<TaskCriteriaRow[]>([]);
+const assessmentSetup = ref<AssessmentSetupForDeliveryPayload | null>(null);
+const assessmentSetupLoadedForGroup = ref('');
+const assessmentSetupError = ref('');
 
 function unwrapMessage<T>(res: any): T | undefined {
 	if (res && typeof res === 'object' && 'message' in res) return (res as any).message;
@@ -1855,6 +1916,28 @@ const listCourseAssessmentCriteriaResource = createResource({
 		);
 	},
 });
+const getAssessmentSetupResource = createResource({
+	url: 'ifitwala_ed.api.task.get_assessment_setup_for_delivery',
+	method: 'POST',
+	auto: false,
+	transform: unwrapMessage,
+	onSuccess: (payload: any) => {
+		assessmentSetup.value = normalizeAssessmentSetup(payload);
+		assessmentSetupLoadedForGroup.value = form.student_group;
+		assessmentSetupError.value = '';
+		pruneAssessmentReportingFields();
+	},
+	onError: (err: any) => {
+		console.error('[CreateTaskDeliveryOverlay] getAssessmentSetup:error', err);
+		assessmentSetup.value = null;
+		assessmentSetupLoadedForGroup.value = '';
+		assessmentSetupError.value = extractTaskActionErrorMessage(
+			err,
+			'Unable to load assessment reporting setup right now.'
+		);
+		pruneAssessmentReportingFields();
+	},
+});
 
 const groupOptions = computed(() =>
 	groups.value.map(row => ({
@@ -1946,10 +2029,51 @@ const criteriaWeightingLooksReady = computed(
 	() => Math.abs(criteriaWeightTotal.value - 100) <= 0.01
 );
 const criteriaWeightTotalLabel = computed(() => formatWeightTotal(criteriaWeightTotal.value));
+const assessmentSetupLoading = computed(() => getAssessmentSetupResource.loading);
+const assessmentCategoryOptions = computed(() =>
+	(assessmentSetup.value?.categories || []).map(row => ({
+		label: row.label || row.assessment_category,
+		value: row.assessment_category,
+	}))
+);
+const assessmentCategoryVisible = computed(
+	() => showGradingSection.value && Boolean(assessmentSetup.value?.assessment_category_visible)
+);
+const assessmentCategoryRequired = computed(
+	() => showGradingSection.value && Boolean(assessmentSetup.value?.assessment_category_required)
+);
+const reportingWeightVisible = computed(
+	() => showGradingSection.value && Boolean(assessmentSetup.value?.reporting_weight_visible)
+);
+const showAssessmentReportingFields = computed(
+	() =>
+		showGradingSection.value &&
+		(assessmentSetupLoading.value ||
+			Boolean(assessmentSetupError.value) ||
+			assessmentCategoryVisible.value ||
+			reportingWeightVisible.value)
+);
+const assessmentSetupReady = computed(
+	() => !showGradingSection.value || assessmentSetupLoadedForGroup.value === form.student_group
+);
+const resolvedAssessmentSchemeLabel = computed(
+	() =>
+		assessmentSetup.value?.scheme_name ||
+		assessmentSetup.value?.assessment_scheme ||
+		assessmentSetup.value?.calculation_method ||
+		''
+);
+const reportingWeightLooksValid = computed(() => {
+	if (!reportingWeightVisible.value || !String(form.reporting_weight || '').trim()) return true;
+	const parsed = Number(form.reporting_weight);
+	return Number.isFinite(parsed) && parsed >= 0;
+});
 
 const canSubmit = computed(() => {
 	if (!form.student_group) return false;
 	if (!form.delivery_mode) return false;
+	if (showGradingSection.value && (!assessmentSetupReady.value || assessmentSetupLoading.value))
+		return false;
 	if (taskMode.value === 'reuse') {
 		if (!selectedReusableTaskDetails.value?.name) return false;
 		if (!showGradingSection.value) return true;
@@ -1959,6 +2083,8 @@ const canSubmit = computed(() => {
 			if (!form.rubric_scoring_strategy) return false;
 			if (!activeCriteriaRows.value.length) return false;
 		}
+		if (assessmentCategoryRequired.value && !form.assessment_category) return false;
+		if (!reportingWeightLooksValid.value) return false;
 		return true;
 	}
 	if (!form.title.trim()) return false;
@@ -1970,6 +2096,8 @@ const canSubmit = computed(() => {
 		if (!form.rubric_scoring_strategy) return false;
 		if (!taskCriteriaRows.value.length) return false;
 	}
+	if (assessmentCategoryRequired.value && !form.assessment_category) return false;
+	if (!reportingWeightLooksValid.value) return false;
 	return true;
 });
 const canSaveMaterialDraft = computed(() => {
@@ -2041,10 +2169,11 @@ function initializeForm() {
 	form.due_date = toDateTimeInput(props.prefillDueDate);
 	form.lock_date = '';
 	form.allow_late_submission = false;
-	form.group_submission = false;
 	form.share_with_course_team = false;
 	form.grading_mode = '';
 	form.rubric_scoring_strategy = '';
+	form.assessment_category = '';
+	form.reporting_weight = '';
 	form.allow_feedback = false;
 	form.max_points = '';
 	errorMessage.value = '';
@@ -2061,6 +2190,9 @@ function initializeForm() {
 	criteriaLibraryError.value = '';
 	criteriaLibrarySelection.value = '';
 	taskCriteriaRows.value = [];
+	assessmentSetup.value = null;
+	assessmentSetupLoadedForGroup.value = '';
+	assessmentSetupError.value = '';
 	resetMaterialComposer();
 }
 
@@ -2071,9 +2203,10 @@ function resetDeliveryFields() {
 	form.due_date = toDateTimeInput(props.prefillDueDate);
 	form.lock_date = '';
 	form.allow_late_submission = false;
-	form.group_submission = false;
 	form.grading_mode = '';
 	form.rubric_scoring_strategy = '';
+	form.assessment_category = '';
+	form.reporting_weight = '';
 	form.allow_feedback = false;
 	form.max_points = '';
 	errorMessage.value = '';
@@ -2129,6 +2262,8 @@ function openClassPlanning() {
 function clearGradingFields() {
 	form.grading_mode = '';
 	form.rubric_scoring_strategy = '';
+	form.assessment_category = '';
+	form.reporting_weight = '';
 	form.max_points = '';
 	form.allow_feedback = false;
 }
@@ -2198,6 +2333,19 @@ watch(
 );
 
 watch(
+	() => [props.open, form.student_group, showGradingSection.value] as const,
+	([isOpen, studentGroup, needsSetup]) => {
+		if (!isOpen) return;
+		if (!studentGroup || !needsSetup) {
+			pruneAssessmentReportingFields();
+			return;
+		}
+		void ensureAssessmentSetupLoaded();
+	},
+	{ immediate: true }
+);
+
+watch(
 	() => form.student_group,
 	(studentGroup, previousGroup) => {
 		if (studentGroup !== previousGroup) {
@@ -2205,6 +2353,11 @@ watch(
 			criteriaLibraryLoadedForGroup.value = '';
 			criteriaLibrarySelection.value = '';
 			criteriaLibraryError.value = '';
+			assessmentSetup.value = null;
+			assessmentSetupLoadedForGroup.value = '';
+			assessmentSetupError.value = '';
+			form.assessment_category = '';
+			form.reporting_weight = '';
 		}
 		if (!props.open || taskMode.value !== 'reuse') return;
 		if (!studentGroup) {
@@ -2319,10 +2472,66 @@ function normalizeCriteriaRows(rows: TaskCriteriaRow[] | null | undefined) {
 		.filter(row => Boolean(row.assessment_criteria));
 }
 
+function normalizeAssessmentSetup(payload: any): AssessmentSetupForDeliveryPayload | null {
+	if (!payload || typeof payload !== 'object') return null;
+	const categories = Array.isArray(payload.categories)
+		? payload.categories
+				.map((row: any) => ({
+					assessment_category: String(row?.assessment_category || '').trim(),
+					label: String(row?.label || row?.assessment_category || '').trim(),
+					weight: row?.weight ?? null,
+					include_in_final_grade: row?.include_in_final_grade ?? null,
+				}))
+				.filter((row: any) => Boolean(row.assessment_category))
+		: [];
+	return {
+		course: String(payload.course || ''),
+		school: payload.school || null,
+		academic_year: payload.academic_year || null,
+		program: payload.program || null,
+		assessment_scheme: payload.assessment_scheme || null,
+		scheme_name: payload.scheme_name || null,
+		calculation_method: payload.calculation_method || null,
+		assessment_category_visible: Boolean(payload.assessment_category_visible),
+		assessment_category_required: Boolean(payload.assessment_category_required),
+		reporting_weight_visible: Boolean(payload.reporting_weight_visible),
+		categories,
+	};
+}
+
+function pruneAssessmentReportingFields() {
+	if (!showGradingSection.value) {
+		form.assessment_category = '';
+		form.reporting_weight = '';
+		return;
+	}
+	if (!assessmentCategoryVisible.value) {
+		form.assessment_category = '';
+	} else if (
+		form.assessment_category &&
+		!assessmentSetup.value?.categories?.some(
+			row => row.assessment_category === form.assessment_category
+		)
+	) {
+		form.assessment_category = '';
+	}
+	if (!reportingWeightVisible.value) {
+		form.reporting_weight = '';
+	}
+}
+
 async function ensureCourseCriteriaLibraryLoaded(force = false) {
 	if (taskMode.value !== 'create' || !form.student_group) return;
 	if (!force && criteriaLibraryLoadedForGroup.value === form.student_group) return;
 	await listCourseAssessmentCriteriaResource.submit({
+		student_group: form.student_group,
+	});
+}
+
+async function ensureAssessmentSetupLoaded(force = false) {
+	if (!form.student_group) return;
+	if (!force && assessmentSetupLoadedForGroup.value === form.student_group) return;
+	await getAssessmentSetupResource.submit({
 		student_group: form.student_group,
 	});
 }
@@ -2902,6 +3111,8 @@ async function submit() {
 			if (isQuizTask.value && !form.quiz_question_bank) missing.push('Quiz question bank');
 		}
 		if (showGradingSection.value) {
+			if (!assessmentSetupReady.value || assessmentSetupLoading.value)
+				missing.push('Reporting setup');
 			if (!form.grading_mode) missing.push('Grading mode');
 			if (form.grading_mode === 'Points' && !String(form.max_points || '').trim())
 				missing.push('Max points');
@@ -2909,6 +3120,9 @@ async function submit() {
 				if (!form.rubric_scoring_strategy) missing.push('Rubric strategy');
 				if (!activeCriteriaRows.value.length) missing.push('Task criteria');
 			}
+			if (assessmentCategoryRequired.value && !form.assessment_category)
+				missing.push('Assessment category');
+			if (!reportingWeightLooksValid.value) missing.push('Task weight');
 		}
 
 		const msg = missing.length
@@ -2931,7 +3145,6 @@ async function submit() {
 			delivery_mode: form.delivery_mode,
 			requires_submission: resolveWorkflowRequiresSubmission(),
 			allow_late_submission: showLateSubmission.value && form.allow_late_submission ? 1 : 0,
-			group_submission: form.group_submission ? 1 : 0,
 			allow_feedback: showGradingSection.value && form.allow_feedback ? 1 : 0,
 		} as Record<string, any>;
 
@@ -2952,6 +3165,14 @@ async function submit() {
 			if (form.grading_mode === 'Points') deliveryPayload.max_points = form.max_points;
 			if (form.grading_mode === 'Criteria') {
 				deliveryPayload.rubric_scoring_strategy = form.rubric_scoring_strategy;
+			}
+		}
+		if (showGradingSection.value) {
+			if (form.assessment_category) {
+				deliveryPayload.assessment_category = form.assessment_category;
+			}
+			if (reportingWeightVisible.value && String(form.reporting_weight || '').trim()) {
+				deliveryPayload.reporting_weight = form.reporting_weight;
 			}
 		}
 

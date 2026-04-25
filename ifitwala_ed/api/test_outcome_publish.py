@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import types
 from unittest import TestCase
 from unittest.mock import patch
 
@@ -43,6 +44,7 @@ class TestOutcomePublishApi(TestCase):
                 "get_doc",
                 side_effect=lambda doctype, name: docs[name],
             ) as get_doc,
+            patch.object(self.outcome_publish, "_sync_latest_feedback_publication") as sync_publication,
         ):
             self.outcome_publish._bulk_update_publish(
                 ["OUT-1", "OUT-1", "MISSING", "OUT-2"],
@@ -62,6 +64,10 @@ class TestOutcomePublishApi(TestCase):
         self.assertEqual(
             [call.args for call in get_doc.call_args_list],
             [("Task Outcome", "OUT-1"), ("Task Outcome", "OUT-2")],
+        )
+        self.assertEqual(
+            [call.kwargs for call in sync_publication.call_args_list],
+            [{"publish_flag": True}, {"publish_flag": True}],
         )
         self.assertEqual(outcome_one.is_published, 1)
         self.assertEqual(outcome_one.grading_status, "Released")
@@ -93,6 +99,7 @@ class TestOutcomePublishApi(TestCase):
                 "_resolve_unpublished_status",
                 return_value="Moderated",
             ),
+            patch.object(self.outcome_publish, "_sync_latest_feedback_publication") as sync_publication,
         ):
             self.outcome_publish._bulk_update_publish(
                 ["OUT-1"],
@@ -107,6 +114,36 @@ class TestOutcomePublishApi(TestCase):
         self.assertEqual(outcome.grading_status, "Moderated")
         self.assertIsNone(outcome.published_on)
         self.assertIsNone(outcome.published_by)
+        sync_publication.assert_called_once_with("OUT-1", publish_flag=False)
+
+    def test_sync_latest_feedback_publication_updates_latest_submission_workspace(self):
+        feedback_service_calls = []
+
+        feedback_service = types.ModuleType("ifitwala_ed.assessment.task_feedback_service")
+        feedback_service.save_feedback_publication = lambda payload, *, actor=None: feedback_service_calls.append(
+            (payload, actor)
+        )
+
+        with stubbed_frappe(extra_modules={"ifitwala_ed.assessment.task_feedback_service": feedback_service}) as frappe:
+            module = import_fresh("ifitwala_ed.api.outcome_publish")
+            frappe.get_all = lambda *args, **kwargs: [{"name": "TSU-2"}]
+
+            module._sync_latest_feedback_publication("OUT-1", publish_flag=True)
+
+        self.assertEqual(
+            feedback_service_calls,
+            [
+                (
+                    {
+                        "outcome_id": "OUT-1",
+                        "submission_id": "TSU-2",
+                        "feedback_visibility": "student_and_guardian",
+                        "grade_visibility": "student_and_guardian",
+                    },
+                    "unit.test@example.com",
+                )
+            ],
+        )
 
     def test_resolve_unpublished_status_prefers_latest_moderator_contribution(self):
         outcome = _FakeOutcomeDoc("OUT-1", grading_status="Released")

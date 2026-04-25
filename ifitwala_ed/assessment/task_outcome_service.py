@@ -7,7 +7,17 @@ import frappe
 from frappe import _
 from frappe.utils import now_datetime
 
-_GRADE_SCALE_THRESHOLD_CACHE = {}
+from ifitwala_ed.assessment.grade_scale_utils import (
+    grade_label_from_score,
+    grade_scale_threshold_map,
+)
+from ifitwala_ed.assessment.grade_scale_utils import (
+    resolve_grade_for_score as _resolve_grade_for_score,
+)
+from ifitwala_ed.assessment.grade_scale_utils import (
+    resolve_grade_symbol as _resolve_grade_symbol,
+)
+
 _BOOLEAN_GRADING_MODES = frozenset({"Binary", "Completion"})
 _OFFICIAL_SCALAR_FIELDS = ("official_score", "official_grade", "official_grade_value")
 
@@ -129,74 +139,19 @@ def _recompute_official_outcome_internal(outcome_id, policy=None):
     return result
 
 
-def get_grade_scale_threshold_map(grade_scale):
+def get_grade_scale_threshold_map(grade_scale, cache=None):
     """
     Return grade_code -> boundary threshold mapping (Grade Scale Interval.boundary_interval).
     """
-    if not grade_scale:
-        frappe.throw(_("Grade Scale is required."))
-
-    if grade_scale in _GRADE_SCALE_THRESHOLD_CACHE:
-        return _GRADE_SCALE_THRESHOLD_CACHE[grade_scale]
-
-    rows = frappe.db.get_values(
-        "Grade Scale Interval",
-        {"parent": grade_scale, "parenttype": "Grade Scale"},
-        ["grade_code", "boundary_interval"],
-        as_dict=True,
-    )
-
-    grade_map = {}
-    for row in rows:
-        code = (row.get("grade_code") or "").strip()
-        if not code:
-            continue
-        try:
-            value = float(row.get("boundary_interval") or 0)
-        except Exception:
-            value = 0.0
-        grade_map[code] = value
-
-    _GRADE_SCALE_THRESHOLD_CACHE[grade_scale] = grade_map
-    return grade_map
+    return grade_scale_threshold_map(grade_scale, cache=cache)
 
 
 def resolve_grade_symbol(grade_scale, grade_symbol):
-    grade_symbol = (grade_symbol or "").strip()
-    if not grade_symbol:
-        frappe.throw(_("Grade symbol is required."))
-
-    grade_map = get_grade_scale_threshold_map(grade_scale)
-    if grade_symbol not in grade_map:
-        allowed = sorted(grade_map.keys())
-        preview = ", ".join(allowed[:10])
-        if len(allowed) > 10:
-            preview = f"{preview}, ..."
-        frappe.throw(
-            _("Grade symbol '{grade_symbol}' is not valid for scale {grade_scale}. Allowed: {allowed_symbols}").format(
-                grade_symbol=grade_symbol,
-                grade_scale=grade_scale,
-                allowed_symbols=preview or _("(none configured)"),
-            )
-        )
-
-    return grade_map[grade_symbol]
+    return _resolve_grade_symbol(grade_scale, grade_symbol)
 
 
 def resolve_grade_for_score(grade_scale, numeric_score):
-    grade_symbol = _grade_symbol_from_score(grade_scale, numeric_score)
-    if not grade_symbol:
-        return None, None
-    return grade_symbol, resolve_grade_symbol(grade_scale, grade_symbol)
-
-
-def set_procedural_status(outcome_id, status, note=None):
-    """
-    Apply a procedural override safely and record an audit note.
-
-    Full implementation is deferred to a later step.
-    """
-    raise NotImplementedError("set_procedural_status is implemented in a later step.")
+    return _resolve_grade_for_score(grade_scale, numeric_score)
 
 
 def _get_delivery_flags(delivery_id):
@@ -354,25 +309,7 @@ def _apply_criteria_official_fields(
 
 
 def _grade_symbol_from_score(grade_scale, numeric_score):
-    if numeric_score is None or grade_scale is None:
-        return None
-
-    grade_map = get_grade_scale_threshold_map(grade_scale)
-    if not grade_map:
-        return None
-
-    selected = None
-    selected_boundary = None
-    for code, boundary in grade_map.items():
-        try:
-            boundary_value = float(boundary or 0)
-        except Exception:
-            boundary_value = 0.0
-        if numeric_score >= boundary_value and (selected_boundary is None or boundary_value > selected_boundary):
-            selected = code
-            selected_boundary = boundary_value
-
-    return selected
+    return grade_label_from_score(grade_scale, numeric_score)
 
 
 def _sum_contribution_criterion_points(contribution_name, rubric_meta=None):
@@ -625,7 +562,7 @@ def set_assign_only_completion(
     outcome = frappe.db.get_value(
         "Task Outcome",
         outcome_id,
-        ["name", "task_delivery", "student", "is_published", "is_complete", "completed_on"],
+        ["name", "task_delivery", "student", "is_complete", "completed_on"],
         as_dict=True,
     )
     if not outcome:
@@ -640,7 +577,10 @@ def set_assign_only_completion(
     if delivery_mode != "Assign Only":
         frappe.throw(_("Direct completion is only available for assign-only work."))
 
-    if int(outcome.get("is_published") or 0) == 1:
+    from ifitwala_ed.assessment import task_feedback_service
+
+    publication_state = (task_feedback_service.build_publication_state_map([outcome_id]) or {}).get(outcome_id) or {}
+    if publication_state.get("is_visible_to_any_audience"):
         frappe.throw(_("Unrelease this outcome before changing completion."))
 
     target_is_complete = 1 if int(is_complete or 0) == 1 else 0

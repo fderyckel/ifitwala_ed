@@ -259,7 +259,7 @@ def update_task_student(api, task_student: str, updates=None, **kwargs):
     outcome_row = frappe.db.get_value(
         "Task Outcome",
         task_student,
-        ["name", "task_delivery", "official_score", "grading_status", "is_published"],
+        ["name", "task_delivery", "official_score", "grading_status"],
         as_dict=True,
     )
     if not outcome_row:
@@ -359,13 +359,16 @@ def update_task_student(api, task_student: str, updates=None, **kwargs):
 
     status_value = api._normalize_grading_status(payload.get("status")) if "status" in payload else None
     visibility_provided = "visible_to_student" in payload or "visible_to_guardian" in payload
-    is_published = api._bool_flag(outcome_row.get("is_published"))
+    publication_state = (task_feedback_service.build_publication_state_map([task_student]) or {}).get(
+        task_student
+    ) or {}
+    is_released = bool(publication_state.get("is_visible_to_any_audience"))
     direct_complete_write = complete_provided and assign_only_mode
     if status_value is not None and delivery_mode != "Assess":
         frappe.throw(_("Grading status can only be updated for assessed work."))
     if status_value == "Released":
         frappe.throw(_("Use the Release action to release outcomes."))
-    if status_value is not None and is_published:
+    if status_value is not None and is_released:
         frappe.throw(_("Unrelease this outcome before changing grading status."))
     if status_value is not None or direct_complete_write or visibility_provided:
         outcome_doc = frappe.get_doc("Task Outcome", task_student) if status_value is not None else None
@@ -406,21 +409,24 @@ def update_task_student(api, task_student: str, updates=None, **kwargs):
                 "official_feedback",
                 "grading_status",
                 "is_complete",
-                "is_published",
                 "modified",
             ],
             as_dict=True,
         )
         or {}
     )
+    fresh_publication = (task_feedback_service.build_publication_state_map([task_student]) or {}).get(
+        task_student
+    ) or {}
     return {
         "task_student": fresh.get("name"),
         "mark_awarded": api._coerce_float(fresh.get("official_score")),
         "feedback": fresh.get("official_feedback"),
         "status": fresh.get("grading_status"),
         "complete": int(fresh.get("is_complete") or 0),
-        "visible_to_student": int(fresh.get("is_published") or 0),
-        "visible_to_guardian": int(fresh.get("is_published") or 0),
+        "visible_to_student": 1 if fresh_publication.get("visible_to_student") else 0,
+        "visible_to_guardian": 1 if fresh_publication.get("visible_to_guardian") else 0,
+        "publication": fresh_publication,
         "updated_on": fresh.get("modified"),
     }
 
@@ -468,7 +474,7 @@ def batch_mark_completion(api, payload=None, **kwargs):
     outcomes = frappe.get_all(
         "Task Outcome",
         filters=outcome_filters,
-        fields=["name", "is_complete", "is_published"],
+        fields=["name", "is_complete"],
         order_by="student asc, name asc",
         limit=0,
     )
@@ -478,12 +484,16 @@ def batch_mark_completion(api, payload=None, **kwargs):
     updated = []
     already_complete = []
     skipped_published = []
+    publication_map = task_feedback_service.build_publication_state_map(
+        [row.get("name") for row in outcomes if row.get("name")]
+    )
 
     for outcome in outcomes:
         outcome_id = outcome.get("name")
         if not outcome_id:
             continue
-        if api._bool_flag(outcome.get("is_published")):
+        publication = publication_map.get(outcome_id) or {}
+        if publication.get("is_visible_to_any_audience"):
             skipped_published.append(outcome_id)
             continue
         if api._bool_flag(outcome.get("is_complete")):

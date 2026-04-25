@@ -107,6 +107,8 @@ Course Term Result intentionally duplicates:
 * term
 * course
 * instructor
+* resolved assessment scheme
+* assessment calculation method
 * grade scale
 
 This protects reports from future structural changes (enrollment moves, instructor reassignment, etc.).
@@ -165,6 +167,9 @@ This boundary is intentional. It prevents reporting from drifting when shared cu
 
 Each Course Term Result stores:
 
+* assessment_scheme
+* assessment_calculation_method
+* grade_scale
 * numeric_score
 * grade_value
 * task_counted

@@ -6,6 +6,52 @@
 import frappe
 from frappe import _
 
+COURSE_TERM_RESULT_FIELDS = [
+    "name",
+    "student",
+    "program_enrollment",
+    "course",
+    "program",
+    "academic_year",
+    "term",
+    "assessment_scheme",
+    "assessment_calculation_method",
+    "grade_scale",
+    "numeric_score",
+    "grade_value",
+    "override_grade_value",
+    "task_counted",
+    "total_weight",
+    "internal_note",
+]
+
+COURSE_TERM_RESULT_COMPONENT_FIELDS = [
+    "parent",
+    "component_type",
+    "component_key",
+    "label",
+    "assessment_category",
+    "assessment_criteria",
+    "weight",
+    "raw_score",
+    "weighted_score",
+    "grade_value",
+    "evidence_count",
+    "included_outcome_count",
+    "excluded_outcome_count",
+    "calculation_note",
+]
+
+
+def _row_value(row, fieldname):
+    if hasattr(row, "get"):
+        return row.get(fieldname)
+    return getattr(row, fieldname, None)
+
+
+def _copy_row(row, fields):
+    return {fieldname: _row_value(row, fieldname) for fieldname in fields}
+
 
 @frappe.whitelist()
 def get_cycle_summary(reporting_cycle):
@@ -59,24 +105,37 @@ def get_course_term_results(reporting_cycle, course=None, student=None, program=
     rows = frappe.get_all(
         "Course Term Result",
         filters=filters,
-        fields=[
-            "name",
-            "student",
-            "program_enrollment",
-            "course",
-            "program",
-            "academic_year",
-            "term",
-            "numeric_score",
-            "grade_value",
-            "override_grade_value",
-            "task_counted",
-            "total_weight",
-            "internal_note",
-        ],
+        fields=COURSE_TERM_RESULT_FIELDS,
         limit_start=start,
         limit=limit,
         order_by="student asc, course asc",
     )
 
-    return {"rows": rows, "count": len(rows)}
+    normalized_rows = [_copy_row(row, COURSE_TERM_RESULT_FIELDS) for row in rows or []]
+    result_names = [row["name"] for row in normalized_rows if row.get("name")]
+    components_by_parent = {name: [] for name in result_names}
+
+    if result_names:
+        component_rows = frappe.get_all(
+            "Course Term Result Component",
+            filters={
+                "parent": ("in", result_names),
+                "parenttype": "Course Term Result",
+                "parentfield": "components",
+            },
+            fields=COURSE_TERM_RESULT_COMPONENT_FIELDS,
+            order_by="parent asc, idx asc",
+            limit=0,
+        )
+        for component_row in component_rows or []:
+            parent = _row_value(component_row, "parent")
+            if parent not in components_by_parent:
+                continue
+            component = _copy_row(component_row, COURSE_TERM_RESULT_COMPONENT_FIELDS)
+            component.pop("parent", None)
+            components_by_parent[parent].append(component)
+
+    for row in normalized_rows:
+        row["components"] = components_by_parent.get(row["name"], [])
+
+    return {"rows": normalized_rows, "count": len(normalized_rows)}

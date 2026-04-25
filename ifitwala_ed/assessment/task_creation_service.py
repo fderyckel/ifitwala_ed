@@ -6,7 +6,7 @@
 import frappe
 from frappe import _
 
-from ifitwala_ed.assessment.check_flags import to_check_value
+from ifitwala_ed.assessment.check_flags import is_checked, to_check_value
 from ifitwala_ed.assessment.task_delivery_service import resolve_planning_context
 from ifitwala_ed.curriculum import planning as curriculum_planning
 
@@ -124,6 +124,9 @@ def _validate_payload(payload: dict) -> dict:
     if task_type == "Quiz" and not payload.get("quiz_question_bank"):
         frappe.throw(_("Quiz Question Bank is required for quiz tasks."))
 
+    if is_checked(payload.get("group_submission")):
+        frappe.throw(_("Group submission is paused: subgroup model not implemented."))
+
     delivery_options = set(_parse_options("Task Delivery", "delivery_mode"))
     if delivery_mode not in delivery_options:
         frappe.throw(_("Invalid delivery mode: {delivery_mode}").format(delivery_mode=delivery_mode))
@@ -202,7 +205,7 @@ def _validate_payload(payload: dict) -> dict:
         "due_date": payload.get("due_date"),
         "lock_date": payload.get("lock_date"),
         "allow_late_submission": payload.get("allow_late_submission"),
-        "group_submission": payload.get("group_submission"),
+        "group_submission": 0,
         "grading_mode": grading_mode,
         "rubric_scoring_strategy": rubric_scoring_strategy,
         "assessment_category": payload.get("assessment_category") if delivery_mode == "Assess" else None,
@@ -396,8 +399,7 @@ def create_task_and_delivery(
         allow_late = data.get("allow_late_submission")
         delivery.allow_late_submission = 1 if allow_late is None else to_check_value(allow_late)
 
-        group_sub = data.get("group_submission")
-        delivery.group_submission = to_check_value(group_sub)
+        delivery.group_submission = 0
 
         if data.get("grading_mode"):
             delivery.grading_mode = data["grading_mode"]

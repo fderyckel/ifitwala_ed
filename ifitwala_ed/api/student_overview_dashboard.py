@@ -797,8 +797,9 @@ def _task_rows(student: str, program: str | None):
             COALESCE(o.has_submission, 0) AS has_submission,
             o.official_score AS mark_awarded,
             td.max_points AS out_of,
-            COALESCE(o.is_published, 0) AS visible_to_student,
-            COALESCE(o.is_published, 0) AS visible_to_guardian,
+            o.name AS outcome_id,
+            0 AS visible_to_student,
+            0 AS visible_to_guardian,
             COALESCE(o.modified, o.completed_on, td.modified) AS updated_on
         FROM `tabTask Delivery` td
         INNER JOIN `tabTask` t ON t.name = td.task
@@ -820,10 +821,25 @@ def _task_rows(student: str, program: str | None):
         params["programs"] = tuple(program_scope)
 
     rows = frappe.db.sql(sql, params, as_dict=True)
+    _apply_task_publication_visibility(rows)
     for row in rows:
         row["status"] = _task_status_label(row)
         row["complete"] = _task_is_completed(row)
     return rows
+
+
+def _apply_task_publication_visibility(rows):
+    outcome_ids = [row.get("outcome_id") for row in rows or [] if row.get("outcome_id")]
+    if not outcome_ids:
+        return
+
+    from ifitwala_ed.assessment import task_feedback_service
+
+    publication_map = task_feedback_service.build_publication_state_map(outcome_ids)
+    for row in rows:
+        publication = publication_map.get(row.get("outcome_id")) or {}
+        row["visible_to_student"] = bool(publication.get("visible_to_student"))
+        row["visible_to_guardian"] = bool(publication.get("visible_to_guardian"))
 
 
 def _learning_block(student: str, program: str | None, academic_year: str | None, *, snapshot_ctx=None):

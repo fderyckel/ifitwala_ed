@@ -217,8 +217,8 @@ Rules:
 Current runtime boundary:
 
 - staff gradebook publication controls already persist channel-aware `feedback_visibility` and `grade_visibility`
-- the student task workspace and assessed quiz review now consume a release-aware read model on explicit detail surfaces
-- lighter student and guardian summary surfaces still retain legacy `Task Outcome.is_published` compatibility behavior until the full navigator/handoff rollout lands
+- the student task workspace, assessed quiz review, staff gradebook read models, and Student Overview task summaries consume a release-aware read model
+- `Task Outcome.is_published` remains a legacy compatibility signal and fallback when no feedback workspace exists for the selected/latest submission
 - student summary chips on home/LMS assigned-work surfaces must stay operational only (`Completed`, `Submitted`, `Resubmitted`, `Late`, `Overdue`, `Due Today`, `Upcoming`, `Not Yet Open`, `Open`) and must not surface raw grading workflow states such as `Finalized` or `Released`
 
 Reporting boundary:
@@ -462,5 +462,5 @@ Test refs:
 - Evidence review should reuse the existing selected-submission serialization path rather than inventing a new file-preview endpoint.
 - Task list or roster reads may remain separate from drawer bootstrap as long as the drawer itself does not fan out into multiple dependent requests.
 - Portal released-feedback reads now consume the assessment-owned publication channels on `Task Feedback Workspace`.
-- The legacy `Task Outcome.is_published` flag remains a compatibility release signal in some staff and summary surfaces, but it is no longer the only contract that controls learner-visible assessment feedback.
+- The legacy `Task Outcome.is_published` flag remains a compatibility fallback, but staff and summary read models must prefer the assessment-owned publication channels when a workspace exists.
 - Future feedback records should be introduced adjacent to the task runtime and keyed by outcome plus evidence version, rather than hidden inside `Task Contribution`.

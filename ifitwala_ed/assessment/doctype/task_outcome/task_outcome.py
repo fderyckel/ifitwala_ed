@@ -27,14 +27,6 @@ class TaskOutcome(Document):
     def on_update(self):
         self._log_official_changes()
 
-    def _doc_meta(self):
-        if not hasattr(self, "_outcome_meta"):
-            self._outcome_meta = frappe.get_meta(self.doctype)
-        return self._outcome_meta
-
-    def _has_field(self, fieldname):
-        return bool(self._doc_meta().get_field(fieldname))
-
     def _require_links(self):
         if not self.task_delivery:
             frappe.throw(_("Task Delivery is required for Task Outcome."))
@@ -51,17 +43,13 @@ class TaskOutcome(Document):
             "academic_year",
             "school",
         ]
-        return [field for field in fields if self._has_field(field)]
-
-    def _optional_denorm_fields(self):
-        fields = []
-        if self._has_field("grade_scale"):
-            fields.append("grade_scale")
         return fields
 
+    def _optional_denorm_fields(self):
+        return ["grade_scale"]
+
     def _delivery_backfillable_fields(self, fieldnames):
-        delivery_meta = frappe.get_meta("Task Delivery")
-        return [field for field in fieldnames if delivery_meta.get_field(field)]
+        return list(fieldnames)
 
     def _backfill_denorm_fields(self):
         required = self._identity_fields()
@@ -143,7 +131,7 @@ class TaskOutcome(Document):
             if (
                 self.official_score not in (None, "")
                 or (self.official_grade or "").strip()
-                or (self._has_field("official_grade_value") and self.official_grade_value not in (None, ""))
+                or self.official_grade_value not in (None, "")
             ):
                 frappe.throw(_("Excused outcomes cannot carry an official score or grade."))
             return
@@ -165,9 +153,6 @@ class TaskOutcome(Document):
                 frappe.throw(_("Cannot release without an official result."))
 
     def _enforce_is_complete(self):
-        if not self._has_field("is_complete"):
-            return
-
         delivery_mode = self._get_delivery_flags().get("delivery_mode")
         finalized = self.grading_status in ("Finalized", "Released")
 
@@ -183,13 +168,9 @@ class TaskOutcome(Document):
             self.is_complete = 0
 
     def _validate_official_grade(self):
-        if not self._has_field("official_grade"):
-            return
-
         grade_symbol = (self.official_grade or "").strip()
         if not grade_symbol:
-            if self._has_field("official_grade_value"):
-                self.official_grade_value = None
+            self.official_grade_value = None
             return
 
         if not self.grade_scale:
@@ -197,15 +178,14 @@ class TaskOutcome(Document):
 
         grade_value = resolve_grade_symbol(self.grade_scale, grade_symbol)
 
-        if self._has_field("official_grade_value"):
-            if self.official_grade_value not in (None, ""):
-                try:
-                    current_value = float(self.official_grade_value)
-                except Exception:
-                    current_value = None
-                if current_value is None or abs(current_value - grade_value) > 1e-9:
-                    frappe.throw(_("Official Grade Value is system-managed and must match the Grade Scale."))
-            self.official_grade_value = grade_value
+        if self.official_grade_value not in (None, ""):
+            try:
+                current_value = float(self.official_grade_value)
+            except Exception:
+                current_value = None
+            if current_value is None or abs(current_value - grade_value) > 1e-9:
+                frappe.throw(_("Official Grade Value is system-managed and must match the Grade Scale."))
+        self.official_grade_value = grade_value
 
     def _has_official_result(self, grading_mode=None):
         if grading_mode in ("Completion", "Binary"):

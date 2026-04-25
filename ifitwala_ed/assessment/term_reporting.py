@@ -13,7 +13,8 @@ from typing import Dict, Iterable, List, Optional, Tuple
 import frappe
 from frappe import _
 from frappe.utils import getdate, now_datetime
-from frappe.utils.caching import redis_cache
+
+from ifitwala_ed.assessment.grade_scale_utils import grade_label_from_score
 
 
 @dataclass
@@ -93,6 +94,7 @@ def get_cycle_context(reporting_cycle: str) -> dict:
         "dishonesty_policy": rc.dishonesty_policy or "Force Zero",
         "exclude_excused": int(rc.exclude_excused or 0) == 1,
         "assessment_scheme": getattr(rc, "assessment_scheme", None),
+        "grade_scale_cache": {},
     }
     ctx["assessment_scheme_config"] = load_assessment_scheme_config(ctx.get("assessment_scheme"))
     ctx["active_assessment_scheme_configs"] = load_active_assessment_scheme_configs(ctx)
@@ -448,6 +450,63 @@ def _resolve_assessment_scheme_config(ctx: dict, info: dict) -> Optional[dict]:
         key=lambda scheme: _scheme_specificity(scheme, default_scheme),
         reverse=True,
     )[0]
+
+
+def resolve_assessment_scheme_for_course(
+    *,
+    school: str,
+    academic_year: str,
+    course: str,
+    program: Optional[str] = None,
+    default_scheme: Optional[str] = None,
+) -> Optional[dict]:
+    if not (school and academic_year and course):
+        return None
+
+    ctx = {
+        "school": school,
+        "academic_year": academic_year,
+        "program": program,
+        "assessment_scheme": default_scheme,
+        "assessment_scheme_config": load_assessment_scheme_config(default_scheme),
+    }
+    ctx["active_assessment_scheme_configs"] = load_active_assessment_scheme_configs(ctx)
+    return _resolve_assessment_scheme_config(
+        ctx,
+        {
+            "school": school,
+            "academic_year": academic_year,
+            "program": program,
+            "course": course,
+        },
+    )
+
+
+def assessment_scheme_requires_category(scheme_config: Optional[dict]) -> bool:
+    return _scheme_method(scheme_config) in ("Weighted Categories", "Category + Task Weight Hybrid")
+
+
+def assessment_scheme_uses_task_weight(scheme_config: Optional[dict]) -> bool:
+    return _scheme_method(scheme_config) in ("Weighted Tasks", "Category + Task Weight Hybrid")
+
+
+def assessment_scheme_category_options(scheme_config: Optional[dict]) -> List[dict]:
+    rows = []
+    for row in (scheme_config or {}).get("categories") or []:
+        if not row.get("active") or not row.get("include_in_term_report"):
+            continue
+        category = row.get("assessment_category")
+        if not category:
+            continue
+        rows.append(
+            {
+                "assessment_category": category,
+                "label": row.get("report_label") or category,
+                "weight": row.get("weight"),
+                "include_in_final_grade": row.get("include_in_final_grade"),
+            }
+        )
+    return rows
 
 
 def _reporting_weight(outcome: OutcomeRow) -> float:
@@ -899,48 +958,20 @@ def _load_outcome_criteria_points_map(outcome_ids: List[str]) -> Dict[str, List[
     return grouped
 
 
-@redis_cache(ttl=86400)
-def _grade_scale_intervals(grade_scale: str) -> List[Tuple[float, str]]:
-    rows = frappe.db.get_values(
-        "Grade Scale Interval",
-        {"parent": grade_scale, "parenttype": "Grade Scale"},
-        ["boundary_interval", "grade_code"],
-        as_dict=True,
-    )
-    intervals: List[Tuple[float, str]] = []
-    for row in rows:
-        code = (row.get("grade_code") or "").strip()
-        if not code:
-            continue
-        try:
-            boundary = float(row.get("boundary_interval") or 0)
-        except Exception:
-            boundary = 0.0
-        intervals.append((boundary, code))
-
-    return sorted(intervals, key=lambda item: item[0])
-
-
-def _grade_label_from_score(grade_scale: Optional[str], numeric_score: Optional[float]) -> Optional[str]:
-    if numeric_score is None or not grade_scale:
-        return None
-
-    intervals = _grade_scale_intervals(grade_scale)
-    if not intervals:
-        return None
-
-    label = None
-    for boundary, code in intervals:
-        if numeric_score >= boundary:
-            label = code
-    return label
+def _grade_label_from_score(
+    grade_scale: Optional[str],
+    numeric_score: Optional[float],
+    *,
+    cache: dict | None = None,
+) -> Optional[str]:
+    return grade_label_from_score(grade_scale, numeric_score, cache=cache)
 
 
 def _course_term_result_payload(ctx: dict, aggregate: AggregateRow) -> dict:
     numeric_score = aggregate.numeric_total / aggregate.scored_weight if aggregate.scored_weight > 0 else None
     scheme = aggregate.assessment_scheme_config or ctx.get("assessment_scheme_config") or {}
     grade_scale = None if aggregate.grade_scale_conflict else aggregate.grade_scale or scheme.get("default_grade_scale")
-    grade_value = _grade_label_from_score(grade_scale, numeric_score)
+    grade_value = _grade_label_from_score(grade_scale, numeric_score, cache=ctx.get("grade_scale_cache"))
 
     note_flags = list(aggregate.note_flags)
     if aggregate.grade_scale_conflict:
@@ -956,6 +987,8 @@ def _course_term_result_payload(ctx: dict, aggregate: AggregateRow) -> dict:
         "academic_year": aggregate.academic_year,
         "school": aggregate.school,
         "term": ctx["term"],
+        "assessment_scheme": aggregate.assessment_scheme,
+        "assessment_calculation_method": aggregate.assessment_calculation_method,
         "grade_scale": grade_scale,
         "numeric_score": numeric_score,
         "grade_value": grade_value,
@@ -965,13 +998,15 @@ def _course_term_result_payload(ctx: dict, aggregate: AggregateRow) -> dict:
     }
 
 
-def _component_rows_payload(aggregate: AggregateRow, grade_scale: Optional[str]) -> List[dict]:
+def _component_rows_payload(
+    aggregate: AggregateRow, grade_scale: Optional[str], *, cache: dict | None = None
+) -> List[dict]:
     payload = []
     for component in aggregate.components or []:
         raw_score = component.raw_score
         grade_value = component.grade_value
         if not grade_value and raw_score is not None:
-            grade_value = _grade_label_from_score(grade_scale, raw_score)
+            grade_value = _grade_label_from_score(grade_scale, raw_score, cache=cache)
         payload.append(
             {
                 "component_type": component.component_type,
@@ -995,7 +1030,9 @@ def _component_rows_payload(aggregate: AggregateRow, grade_scale: Optional[str])
 def _component_rows_match(existing_rows, payload: List[dict]) -> bool:
     normalized_existing = []
     for row in existing_rows or []:
-        normalized_existing.append({field: _row_value(row, field) for field in payload[0].keys()} if payload else {})
+        normalized_existing.append(
+            {fieldname: _row_value(row, fieldname) for fieldname in payload[0].keys()} if payload else {}
+        )
     return normalized_existing == payload
 
 
@@ -1047,6 +1084,9 @@ def _course_term_result_reset_payload() -> dict:
     return {
         "numeric_score": None,
         "grade_value": None,
+        "grade_scale": None,
+        "assessment_scheme": None,
+        "assessment_calculation_method": None,
         "task_counted": 0,
         "total_weight": 0,
         "internal_note": "No eligible outcomes",
@@ -1119,6 +1159,8 @@ def _load_existing_student_term_reports(reporting_cycle: str, program_enrollment
             "academic_year",
             "school",
             "term",
+            "assessment_scheme",
+            "assessment_calculation_method",
         ],
     )
     if not existing_rows:
@@ -1180,12 +1222,15 @@ def upsert_course_term_results(ctx: dict, aggregates: Dict[Tuple[str, str], Aggr
         filters={"reporting_cycle": ctx["name"]},
         fields=[
             "name",
+            "reporting_cycle",
             "student",
             "program_enrollment",
             "course",
             "numeric_score",
             "grade_value",
             "grade_scale",
+            "assessment_scheme",
+            "assessment_calculation_method",
             "task_counted",
             "total_weight",
             "internal_note",
@@ -1208,7 +1253,11 @@ def upsert_course_term_results(ctx: dict, aggregates: Dict[Tuple[str, str], Aggr
 
     for key, aggregate in aggregates.items():
         payload = _course_term_result_payload(ctx, aggregate)
-        component_payloads = _component_rows_payload(aggregate, payload.get("grade_scale"))
+        component_payloads = _component_rows_payload(
+            aggregate,
+            payload.get("grade_scale"),
+            cache=ctx.get("grade_scale_cache"),
+        )
 
         existing = existing_by_key.get(key)
         if existing:
@@ -1227,8 +1276,8 @@ def upsert_course_term_results(ctx: dict, aggregates: Dict[Tuple[str, str], Aggr
             updated += 1
         else:
             doc = frappe.new_doc("Course Term Result")
-            for field, value in payload.items():
-                setattr(doc, field, value)
+            for fieldname, value in payload.items():
+                setattr(doc, fieldname, value)
             _set_component_rows(doc, component_payloads)
             doc.calculated_on = now_datetime()
             doc.calculated_by = frappe.session.user

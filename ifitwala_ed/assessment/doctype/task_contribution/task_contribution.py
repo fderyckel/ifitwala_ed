@@ -32,14 +32,6 @@ class TaskContribution(Document):
         if (self.status or "").strip() != "Draft":
             apply_official_outcome_from_contributions(self.task_outcome)
 
-    def _doc_meta(self):
-        if not hasattr(self, "_contrib_meta"):
-            self._contrib_meta = frappe.get_meta(self.doctype)
-        return self._contrib_meta
-
-    def _has_field(self, fieldname):
-        return bool(self._doc_meta().get_field(fieldname))
-
     def _require_links(self):
         if not self.task_outcome:
             frappe.throw(_("Task Outcome is required."))
@@ -85,7 +77,7 @@ class TaskContribution(Document):
             "school",
             "grade_scale",
         ):
-            if self._has_field(field) and outcome.get(field):
+            if outcome.get(field):
                 setattr(self, field, outcome.get(field))
 
     def _ensure_submission_matches_outcome(self):
@@ -120,23 +112,21 @@ class TaskContribution(Document):
     def _validate_grade_value(self):
         grade_symbol = (self.grade or "").strip()
         if not grade_symbol:
-            if self._has_field("grade_value"):
-                self.grade_value = None
+            self.grade_value = None
             return
 
         if not self.grade_scale:
             frappe.throw(_("Grade Scale is required to set a Grade."))
 
         grade_value = resolve_grade_symbol(self.grade_scale, grade_symbol)
-        if self._has_field("grade_value"):
-            if self.grade_value not in (None, ""):
-                try:
-                    current = float(self.grade_value)
-                except Exception:
-                    current = None
-                if current is None or abs(current - grade_value) > 1e-9:
-                    frappe.throw(_("Grade Value is system-managed and must match the Grade Scale."))
-            self.grade_value = grade_value
+        if self.grade_value not in (None, ""):
+            try:
+                current = float(self.grade_value)
+            except Exception:
+                current = None
+            if current is None or abs(current - grade_value) > 1e-9:
+                frappe.throw(_("Grade Value is system-managed and must match the Grade Scale."))
+        self.grade_value = grade_value
 
     def _validate_payload_for_grading_mode(self):
         delivery = self._get_delivery_flags()

@@ -18,6 +18,7 @@ class TaskDelivery(Document):
     def before_validate(self):
         self._require_task_and_group()
         context = get_delivery_context(self.student_group)
+        self._student_group_context = context
         self._stamp_context(context)
         self._validate_task_course_alignment(context)
         self._validate_class_teaching_plan_context()
@@ -52,24 +53,16 @@ class TaskDelivery(Document):
 
         frappe.db.delete("Task Outcome", {"task_delivery": self.name})
 
-    def _doc_meta(self):
-        if not hasattr(self, "_delivery_meta"):
-            self._delivery_meta = frappe.get_meta(self.doctype)
-        return self._delivery_meta
-
-    def _has_field(self, fieldname):
-        return bool(self._doc_meta().get_field(fieldname))
-
     def _current_context(self):
+        student_group_context = getattr(self, "_student_group_context", None)
+        if student_group_context is None and self.student_group:
+            student_group_context = get_delivery_context(self.student_group)
         context = {
             "course": getattr(self, "course", None),
             "academic_year": getattr(self, "academic_year", None),
             "school": getattr(self, "school", None),
+            "program": (student_group_context or {}).get("program"),
         }
-        if self._has_field("program"):
-            context["program"] = getattr(self, "program", None)
-        if self._has_field("course_group"):
-            context["course_group"] = getattr(self, "course_group", None)
         return context
 
     def _require_task_and_group(self):
@@ -77,19 +70,13 @@ class TaskDelivery(Document):
             frappe.throw(_("Task is required for Task Delivery."))
         if not self.student_group:
             frappe.throw(_("Student Group is required for Task Delivery."))
-        if self._has_field("class_teaching_plan") and not getattr(self, "class_teaching_plan", None):
+        if not self.class_teaching_plan:
             frappe.throw(_("Class Teaching Plan is required for Task Delivery."))
 
     def _stamp_context(self, context):
-        field_map = {
-            "course": "course",
-            "academic_year": "academic_year",
-            "school": "school",
-            "program": "program",
-        }
-        for source_key, fieldname in field_map.items():
-            if self._has_field(fieldname):
-                setattr(self, fieldname, context.get(source_key))
+        self.course = context.get("course")
+        self.academic_year = context.get("academic_year")
+        self.school = context.get("school")
 
         missing = [
             label
@@ -98,25 +85,13 @@ class TaskDelivery(Document):
                 ("Academic Year", "academic_year"),
                 ("School", "school"),
             )
-            if self._has_field(fieldname) and not getattr(self, fieldname, None)
+            if not getattr(self, fieldname, None)
         ]
         if missing:
             frappe.throw(_("Missing context on Student Group: {0}.").format(", ".join(missing)))
 
     def _get_task_course(self):
-        meta = frappe.get_meta("Task")
-        fields = []
-        for fieldname in ("course", "default_course"):
-            if meta.get_field(fieldname):
-                fields.append(fieldname)
-        if not fields:
-            return None
-
-        values = frappe.db.get_value("Task", self.task, fields, as_dict=True) or {}
-        for fieldname in fields:
-            if values.get(fieldname):
-                return values.get(fieldname)
-        return None
+        return frappe.db.get_value("Task", self.task, "default_course")
 
     def _validate_task_course_alignment(self, context):
         task_course = self._get_task_course()
@@ -125,10 +100,7 @@ class TaskDelivery(Document):
             frappe.throw(_("Task course does not match the delivery course."))
 
     def _validate_class_teaching_plan_context(self):
-        if not self._has_field("class_teaching_plan"):
-            return
-
-        class_teaching_plan = (getattr(self, "class_teaching_plan", None) or "").strip()
+        class_teaching_plan = (self.class_teaching_plan or "").strip()
         if not class_teaching_plan:
             frappe.throw(_("Class Teaching Plan is required for Task Delivery."))
 
@@ -147,17 +119,13 @@ class TaskDelivery(Document):
             frappe.throw(_("This class needs an active Class Teaching Plan before assigned work can be created."))
         if plan.get("student_group") and plan.get("student_group") != self.student_group:
             frappe.throw(_("Selected Class Teaching Plan does not belong to this class."))
-        if self._has_field("course") and plan.get("course") and plan.get("course") != self.course:
+        if plan.get("course") and plan.get("course") != self.course:
             frappe.throw(_("Selected Class Teaching Plan does not belong to this course."))
-        if (
-            self._has_field("academic_year")
-            and plan.get("academic_year")
-            and plan.get("academic_year") != getattr(self, "academic_year", None)
-        ):
+        if plan.get("academic_year") and plan.get("academic_year") != self.academic_year:
             frappe.throw(_("Selected Class Teaching Plan does not belong to this academic year."))
 
     def _validate_class_session_context(self):
-        if not self._has_field("class_session") or not getattr(self, "class_session", None):
+        if not self.class_session:
             return
 
         session = frappe.db.get_value(
@@ -169,24 +137,16 @@ class TaskDelivery(Document):
         if not session:
             frappe.throw(_("Class Session not found."))
 
-        if (
-            self._has_field("class_teaching_plan")
-            and session.get("class_teaching_plan")
-            and session.get("class_teaching_plan") != getattr(self, "class_teaching_plan", None)
-        ):
+        if session.get("class_teaching_plan") and session.get("class_teaching_plan") != self.class_teaching_plan:
             frappe.throw(_("Selected class session does not belong to this Class Teaching Plan."))
 
         if session.get("student_group") and session.get("student_group") != self.student_group:
             frappe.throw(_("Selected class session does not belong to this class."))
 
-        if self._has_field("course") and session.get("course") and session.get("course") != self.course:
+        if session.get("course") and session.get("course") != self.course:
             frappe.throw(_("Selected class session does not belong to this course."))
 
-        if (
-            self._has_field("academic_year")
-            and session.get("academic_year")
-            and session.get("academic_year") != getattr(self, "academic_year", None)
-        ):
+        if session.get("academic_year") and session.get("academic_year") != self.academic_year:
             frappe.throw(_("Selected class session does not belong to this academic year."))
 
     def _apply_delivery_mode_defaults(self):
@@ -198,8 +158,7 @@ class TaskDelivery(Document):
         if self.delivery_mode == "Assign Only":
             self.requires_submission = 0
             self.require_grading = 0
-            if self._has_field("allow_late_submission"):
-                self.allow_late_submission = 0
+            self.allow_late_submission = 0
             self._clear_grading_fields(clear_feedback=True)
             return
 
@@ -216,8 +175,7 @@ class TaskDelivery(Document):
                 self.requires_submission = 0
                 self.grading_mode = "Points"
                 self.rubric_version = None
-                if self._has_field("rubric_scoring_strategy"):
-                    self.rubric_scoring_strategy = None
+                self.rubric_scoring_strategy = None
                 self.max_points = self._resolve_quiz_max_points()
                 return
             self._ensure_grading_mode()
@@ -228,8 +186,7 @@ class TaskDelivery(Document):
 
             if self.grading_mode == "Points":
                 self.rubric_version = None
-                if self._has_field("rubric_scoring_strategy"):
-                    self.rubric_scoring_strategy = None
+                self.rubric_scoring_strategy = None
                 self._set_max_points_from_defaults()
 
             if self.grading_mode == "Criteria":
@@ -265,8 +222,6 @@ class TaskDelivery(Document):
             self.requires_submission = 0
 
     def _set_allow_feedback_from_defaults(self):
-        if not self._has_field("allow_feedback"):
-            return
         if getattr(self, "allow_feedback", None) not in (None, ""):
             return
 
@@ -281,9 +236,8 @@ class TaskDelivery(Document):
         self.max_points = None
         self.grade_scale = None
         self.rubric_version = None
-        if self._has_field("rubric_scoring_strategy"):
-            self.rubric_scoring_strategy = None
-        if clear_feedback and self._has_field("allow_feedback"):
+        self.rubric_scoring_strategy = None
+        if clear_feedback:
             self.allow_feedback = 0
 
     def _validate_dates(self):
@@ -326,11 +280,11 @@ class TaskDelivery(Document):
             if self.grading_mode == "Criteria":
                 if not self.rubric_version and not self._get_task_criteria_rows():
                     frappe.throw(_("Criteria grading requires Task criteria."))
-                if self._has_field("rubric_scoring_strategy") and not self.rubric_scoring_strategy:
+                if not self.rubric_scoring_strategy:
                     frappe.throw(_("Rubric Scoring Strategy is required for Criteria grading."))
 
     def _validate_assessment_reporting_context(self):
-        if self._has_field("reporting_weight") and self.reporting_weight not in (None, ""):
+        if self.reporting_weight not in (None, ""):
             try:
                 reporting_weight = float(self.reporting_weight or 0)
             except Exception:
@@ -339,10 +293,28 @@ class TaskDelivery(Document):
                 frappe.throw(_("Reporting Weight cannot be negative."))
 
         if self.delivery_mode != "Assess":
-            if self._has_field("assessment_category"):
-                self.assessment_category = None
-            if self._has_field("reporting_weight"):
-                self.reporting_weight = None
+            self.assessment_category = None
+            self.reporting_weight = None
+            return
+
+        from ifitwala_ed.assessment import term_reporting
+
+        student_group_context = getattr(self, "_student_group_context", None) or {}
+        scheme = term_reporting.resolve_assessment_scheme_for_course(
+            school=self.school,
+            academic_year=self.academic_year,
+            program=student_group_context.get("program"),
+            course=self.course,
+        )
+        if not scheme:
+            return
+
+        category_options = term_reporting.assessment_scheme_category_options(scheme)
+        allowed_categories = {row.get("assessment_category") for row in category_options}
+        if term_reporting.assessment_scheme_requires_category(scheme) and not self.assessment_category:
+            frappe.throw(_("Assessment Category is required for the resolved Assessment Scheme."))
+        if self.assessment_category and allowed_categories and self.assessment_category not in allowed_categories:
+            frappe.throw(_("Assessment Category must be active on the resolved Assessment Scheme."))
 
     def _is_quiz_task(self):
         defaults = self._get_task_defaults()
@@ -361,17 +333,13 @@ class TaskDelivery(Document):
         )
         if not self._is_quiz_task():
             for fieldname in quiz_fields:
-                if self._has_field(fieldname):
-                    setattr(
-                        self,
-                        fieldname,
-                        None if fieldname not in {"quiz_shuffle_questions", "quiz_shuffle_choices"} else 0,
-                    )
+                setattr(
+                    self, fieldname, None if fieldname not in {"quiz_shuffle_questions", "quiz_shuffle_choices"} else 0
+                )
             return
 
         for fieldname in quiz_fields:
-            if self._has_field(fieldname):
-                setattr(self, fieldname, defaults.get(fieldname))
+            setattr(self, fieldname, defaults.get(fieldname))
 
     def _resolve_quiz_max_points(self):
         question_count = int(getattr(self, "quiz_question_count", 0) or 0)
@@ -421,30 +389,22 @@ class TaskDelivery(Document):
             self._task_defaults = {}
             return self._task_defaults
 
-        meta = frappe.get_meta("Task")
         fields = [
-            fieldname
-            for fieldname in (
-                "default_requires_submission",
-                "default_grading_mode",
-                "default_allow_feedback",
-                "default_rubric_scoring_strategy",
-                "default_grade_scale",
-                "default_max_points",
-                "task_type",
-                "quiz_question_bank",
-                "quiz_question_count",
-                "quiz_time_limit_minutes",
-                "quiz_max_attempts",
-                "quiz_pass_percentage",
-                "quiz_shuffle_questions",
-                "quiz_shuffle_choices",
-            )
-            if meta.get_field(fieldname)
+            "default_requires_submission",
+            "default_grading_mode",
+            "default_allow_feedback",
+            "default_rubric_scoring_strategy",
+            "default_grade_scale",
+            "default_max_points",
+            "task_type",
+            "quiz_question_bank",
+            "quiz_question_count",
+            "quiz_time_limit_minutes",
+            "quiz_max_attempts",
+            "quiz_pass_percentage",
+            "quiz_shuffle_questions",
+            "quiz_shuffle_choices",
         ]
-        if not fields:
-            self._task_defaults = {}
-            return self._task_defaults
 
         self._task_defaults = frappe.db.get_value("Task", self.task, fields, as_dict=True) or {}
         return self._task_defaults
@@ -501,8 +461,6 @@ class TaskDelivery(Document):
         return doc.name
 
     def _set_rubric_scoring_strategy_from_defaults(self):
-        if not self._has_field("rubric_scoring_strategy"):
-            return
         if self.rubric_scoring_strategy:
             return
         defaults = self._get_task_defaults()
@@ -517,7 +475,7 @@ class TaskDelivery(Document):
             return
 
         for fieldname in ("student_group", "task", "course", "academic_year", "school"):
-            if self._has_field(fieldname) and getattr(before, fieldname) != getattr(self, fieldname):
+            if getattr(before, fieldname) != getattr(self, fieldname):
                 frappe.throw(_("Cannot change {0} after submission.").format(fieldname.replace("_", " ")))
 
         if frappe.db.get_value("Task Outcome", {"task_delivery": self.name}, "name"):
@@ -529,7 +487,7 @@ class TaskDelivery(Document):
                 "rubric_version",
                 "rubric_scoring_strategy",
             ):
-                if self._has_field(fieldname) and getattr(before, fieldname) != getattr(self, fieldname):
+                if getattr(before, fieldname) != getattr(self, fieldname):
                     frappe.throw(_("Cannot change grading configuration after outcomes exist."))
 
     def _has_evidence(self):

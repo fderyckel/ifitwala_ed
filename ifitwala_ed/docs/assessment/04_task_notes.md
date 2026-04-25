@@ -267,11 +267,10 @@ Status: **Paused / Not Supported In Product**
 Code refs:
 - `ifitwala_ed/assessment/task_delivery_service.py`
 - `ifitwala_ed/assessment/doctype/task_delivery/task_delivery.py`
-- `ifitwala_ed/assessment/doctype/task_submission/task_submission.py`
 
 `group_submission` is not part of the current live contract.
 Creation and validation block it.
-Do not build UI, workflow, or reporting assumptions around group submission until subgroup membership and product rules are explicitly implemented.
+The stale submission-cloning runtime path has been removed; do not build UI, workflow, or reporting assumptions around group submission until subgroup membership and product rules are explicitly implemented.
 
 ---
 

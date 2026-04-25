@@ -34,14 +34,6 @@ class TaskFeedbackWorkspace(Document):
         self._validate_feedback_items()
         self._validate_priorities()
 
-    def _doc_meta(self):
-        if not hasattr(self, "_workspace_meta"):
-            self._workspace_meta = frappe.get_meta(self.doctype)
-        return self._workspace_meta
-
-    def _has_field(self, fieldname):
-        return bool(self._doc_meta().get_field(fieldname))
-
     def _require_links(self):
         if not self.task_outcome:
             frappe.throw(_("Task Outcome is required."))
@@ -69,7 +61,7 @@ class TaskFeedbackWorkspace(Document):
 
     def _stamp_context(self, outcome):
         for field in ("task_delivery", "task", "student", "student_group", "course", "academic_year", "school"):
-            if self._has_field(field) and outcome.get(field):
+            if outcome.get(field):
                 setattr(self, field, outcome.get(field))
 
     def _ensure_submission_matches_outcome(self):

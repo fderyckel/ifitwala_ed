@@ -15,6 +15,8 @@
   "term",
   "instructor",
   "grading_section",
+  "assessment_scheme",
+  "assessment_calculation_method",
   "grade_scale",
   "numeric_score",
   "grade_value",
@@ -92,6 +94,19 @@
    "fieldname": "grading_section",
    "fieldtype": "Section Break",
    "label": "Grading"
+  },
+  {
+   "fieldname": "assessment_scheme",
+   "fieldtype": "Link",
+   "label": "Assessment Scheme",
+   "options": "Assessment Scheme",
+   "read_only": 1
+  },
+  {
+   "fieldname": "assessment_calculation_method",
+   "fieldtype": "Data",
+   "label": "Assessment Calculation Method",
+   "read_only": 1
   },
   {
    "fieldname": "grade_scale",
@@ -195,7 +210,7 @@
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-04-25 14:58:07.000000",
+ "modified": "2026-04-25 22:30:02.000000",
  "modified_by": "Administrator",
  "module": "Assessment",
  "name": "Course Term Result",
