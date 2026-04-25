@@ -73,7 +73,7 @@ class TestStudentLogEvidenceUnit(TestCase):
         self.assertEqual(contract["primary_subject_id"], "STU-0001")
         self.assertEqual(contract["organization"], "ORG-0001")
         self.assertEqual(contract["school"], "SCH-0001")
-        self.assertEqual(contract["purpose"], "student_log_evidence")
+        self.assertEqual(contract["purpose"], "safeguarding_evidence")
         self.assertEqual(contract["slot"], "student_log_evidence__row-001")
 
     def test_student_portal_visibility_requires_parent_and_row_flags(self):

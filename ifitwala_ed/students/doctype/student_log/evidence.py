@@ -11,8 +11,8 @@ from frappe.utils import cint, now_datetime
 from ifitwala_ed.api.attachment_previews import build_attachment_preview_item, extract_file_extension
 
 STUDENT_LOG_EVIDENCE_BINDING_ROLE = "student_log_evidence"
-STUDENT_LOG_EVIDENCE_DATA_CLASS = "student_support"
-STUDENT_LOG_EVIDENCE_PURPOSE = "student_log_evidence"
+STUDENT_LOG_EVIDENCE_DATA_CLASS = "safeguarding"
+STUDENT_LOG_EVIDENCE_PURPOSE = "safeguarding_evidence"
 STUDENT_LOG_EVIDENCE_RETENTION_POLICY = "fixed_7y"
 STUDENT_LOG_EVIDENCE_SLOT_PREFIX = "student_log_evidence__"
 STUDENT_LOG_EVIDENCE_CATEGORY = "Student Log Evidence"
