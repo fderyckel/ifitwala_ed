@@ -342,8 +342,10 @@ class TestOrgCommunicationAttachmentsUnit(TestCase):
 
         self.assertEqual(payload["preview_status"], "pending")
         self.assertIsNone(payload["thumbnail_url"])
+        self.assertIsNone(payload["preview_url"])
         self.assertEqual(payload["attachment_preview"]["kind"], "pdf")
-        self.assertEqual(payload["attachment_preview"]["preview_mode"], "pdf_embed")
+        self.assertIsNone(payload["attachment_preview"]["preview_url"])
+        self.assertEqual(payload["attachment_preview"]["preview_mode"], "icon_only")
 
     def test_attachment_context_lock_blocks_issuing_school_change_when_files_remain(self):
         with stubbed_frappe():

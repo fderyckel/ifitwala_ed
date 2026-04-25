@@ -23,6 +23,7 @@ _RAW_STORAGE_PATH_PREFIXES = ("private/", "files/", "derivatives/", "tmp/")
 _S3_SIGNED_QUERY_KEYS = {"x-amz-signature", "x-amz-credential", "x-amz-security-token"}
 _GCS_SIGNED_QUERY_KEYS = {"x-goog-signature", "x-goog-credential", "x-goog-algorithm"}
 _AZURE_SIGNED_QUERY_KEYS = {"sv", "se", "sp", "sr", "sig"}
+_READY_PREVIEW_STATUS = "ready"
 
 
 def clean_text(value: Any) -> str | None:
@@ -88,6 +89,13 @@ def clean_action_url(value: Any) -> str | None:
             parsed.fragment,
         )
     )
+
+
+def preview_status_allows_preview(value: Any) -> bool:
+    status = clean_text(value)
+    if status is None:
+        return True
+    return status == _READY_PREVIEW_STATUS
 
 
 def coerce_size_bytes(value: Any) -> int | None:
@@ -251,6 +259,10 @@ def build_attachment_preview_item(
     resolved_preview_url = clean_action_url(preview_url)
     resolved_open_url = clean_action_url(open_url)
     resolved_download_url = clean_action_url(download_url)
+    resolved_preview_status = clean_text(preview_status)
+    if not preview_status_allows_preview(resolved_preview_status):
+        resolved_thumbnail_url = None
+        resolved_preview_url = None
     if not resolved_download_url and resolved_file_id:
         resolved_download_url = resolved_open_url
 
@@ -272,7 +284,7 @@ def build_attachment_preview_item(
             preview_url=resolved_preview_url,
             link_url=resolved_link_url,
         ),
-        "preview_status": clean_text(preview_status),
+        "preview_status": resolved_preview_status,
         "thumbnail_url": resolved_thumbnail_url,
         "preview_url": resolved_preview_url,
         "open_url": resolved_open_url,

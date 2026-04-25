@@ -13,6 +13,7 @@ from ifitwala_ed.api.attachment_previews import (
     build_attachment_preview_item,
     extract_file_extension,
     guess_mime_type,
+    preview_status_allows_preview,
 )
 from ifitwala_ed.api.file_access import (
     get_drive_file_thumbnail_ready_map,
@@ -266,6 +267,7 @@ def _serialize_task_submission_attachment_row(
         resolved_file_id = file_name_by_url.get(file_url)
         drive_file_meta = drive_file_meta_by_file.get(resolved_file_id) or {}
         resolved_drive_file_id = _clean_text(drive_file_meta.get("drive_file_id"))
+        preview_status = _clean_text(drive_file_meta.get("preview_status"))
         mime_type = _clean_text(drive_file_meta.get("mime_type")) or guess_mime_type(
             file_name=file_name,
             file_url=file_url,
@@ -283,6 +285,8 @@ def _serialize_task_submission_attachment_row(
             context_doctype="Task Submission",
             context_name=submission_id,
         )
+        if not preview_status_allows_preview(preview_status):
+            preview_url = None
         thumbnail_url = resolve_academic_file_thumbnail_url(
             file_name=resolved_file_id,
             file_url=file_url,
@@ -300,7 +304,7 @@ def _serialize_task_submission_attachment_row(
             mime_type=mime_type,
             extension=extension,
             size_bytes=file_size,
-            preview_status=_clean_text(drive_file_meta.get("preview_status")),
+            preview_status=preview_status,
             thumbnail_url=thumbnail_url,
             preview_url=preview_url,
             open_url=open_url,
@@ -316,7 +320,7 @@ def _serialize_task_submission_attachment_row(
             "file_size": file_size,
             "description": description,
             "public": _bool_flag(attachment_row.get("public")),
-            "preview_status": _clean_text(drive_file_meta.get("preview_status")),
+            "preview_status": preview_status,
             "thumbnail_url": thumbnail_url,
             "preview_url": preview_url,
             "open_url": open_url,

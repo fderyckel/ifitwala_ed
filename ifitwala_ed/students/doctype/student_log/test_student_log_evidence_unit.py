@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import sys
-from types import SimpleNamespace
+from types import ModuleType, SimpleNamespace
 from unittest import TestCase
 
 from ifitwala_ed.tests.frappe_stubs import import_fresh, stubbed_frappe
@@ -100,6 +100,59 @@ class TestStudentLogEvidenceUnit(TestCase):
 
         self.assertEqual([row["row_name"] for row in rows], ["row-visible"])
         self.assertEqual(rows[0]["attachment_preview"]["link_url"], "https://example.test/evidence")
+
+    def test_file_evidence_non_ready_preview_returns_open_only_actions(self):
+        file_access = ModuleType("ifitwala_ed.api.file_access")
+        file_access.build_student_log_evidence_attachment_open_url = lambda *, student_log, row_name: (
+            f"/open/{student_log}/{row_name}"
+        )
+        file_access.build_student_log_evidence_attachment_preview_url = lambda *, student_log, row_name: (
+            f"/preview/{student_log}/{row_name}"
+        )
+        file_access.build_student_log_evidence_attachment_thumbnail_url = lambda *, student_log, row_name: (
+            f"/thumb/{student_log}/{row_name}"
+        )
+
+        with stubbed_frappe(extra_modules={"ifitwala_ed.api.file_access": file_access}) as frappe:
+            sys.modules["frappe.utils"].cint = lambda value=0: int(value or 0)
+
+            def fake_get_value(doctype, filters=None, fieldname=None, as_dict=False):
+                if doctype == "Drive Binding":
+                    return {"drive_file": "DF-0001", "file": "FILE-0001"}
+                if (
+                    doctype == "Drive File"
+                    and filters == "DF-0001"
+                    and fieldname == ["preview_status", "current_version"]
+                    and as_dict
+                ):
+                    return {"preview_status": "failed", "current_version": "DFV-0001"}
+                return None
+
+            frappe.db.get_value = fake_get_value
+            evidence = import_fresh("ifitwala_ed.students.doctype.student_log.evidence")
+            payload = evidence.serialize_student_log_evidence_row(
+                "SLOG-0001",
+                SimpleNamespace(
+                    name="row-file",
+                    title="Evidence PDF",
+                    description=None,
+                    external_url=None,
+                    file="/private/files/evidence.pdf",
+                    file_name="evidence.pdf",
+                    file_size=1024,
+                    visible_to_student=1,
+                    visible_to_guardians=1,
+                ),
+            )
+
+        self.assertEqual(payload["preview_status"], "failed")
+        self.assertIsNone(payload["thumbnail_url"])
+        self.assertIsNone(payload["preview_url"])
+        self.assertEqual(payload["open_url"], "/open/SLOG-0001/row-file")
+        self.assertIsNone(payload["attachment_preview"]["preview_url"])
+        self.assertEqual(payload["attachment_preview"]["preview_mode"], "icon_only")
+        self.assertFalse(payload["attachment_preview"]["can_preview"])
+        self.assertTrue(payload["attachment_preview"]["can_open"])
 
     def test_workflow_registry_exposes_student_log_alias(self):
         with stubbed_frappe():

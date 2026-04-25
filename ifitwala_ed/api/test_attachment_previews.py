@@ -99,6 +99,32 @@ class TestAttachmentPreviewItems(TestCase):
         self.assertNotIn("files/aa/bb", serialized)
         self.assertNotIn("derivatives/aa/bb", serialized)
 
+    def test_build_attachment_preview_item_degrades_non_ready_previews_to_open_only(self):
+        for status in ("pending", "processing", "failed", "unsupported", "not_applicable"):
+            with self.subTest(status=status):
+                payload = build_attachment_preview_item(
+                    item_id="ATT-5",
+                    owner_doctype="Student Log",
+                    owner_name="SLOG-1",
+                    file_id="FILE-1",
+                    display_name="Evidence PDF",
+                    extension="pdf",
+                    preview_status=status,
+                    thumbnail_url="/thumb/file-1",
+                    preview_url="/preview/file-1",
+                    open_url="/open/file-1",
+                )
+
+                self.assertEqual(payload["preview_status"], status)
+                self.assertIsNone(payload["thumbnail_url"])
+                self.assertIsNone(payload["preview_url"])
+                self.assertEqual(payload["open_url"], "/open/file-1")
+                self.assertEqual(payload["download_url"], "/open/file-1")
+                self.assertEqual(payload["preview_mode"], "icon_only")
+                self.assertFalse(payload["can_preview"])
+                self.assertTrue(payload["can_open"])
+                self.assertTrue(payload["can_download"])
+
     def test_public_preview_docs_and_spa_contracts_do_not_expose_derivative_roles(self):
         repo_root = Path(__file__).resolve().parents[2]
         docs_roots = (

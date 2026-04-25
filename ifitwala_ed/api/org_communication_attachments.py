@@ -6,7 +6,11 @@ import frappe
 from frappe import _
 
 from ifitwala_ed.api import file_access as file_access_api
-from ifitwala_ed.api.attachment_previews import build_attachment_preview_item, extract_file_extension
+from ifitwala_ed.api.attachment_previews import (
+    build_attachment_preview_item,
+    extract_file_extension,
+    preview_status_allows_preview,
+)
 from ifitwala_ed.setup.doctype.org_communication.attachments import (
     ORG_COMMUNICATION_ATTACHMENT_BINDING_ROLE,
     ORG_COMMUNICATION_ATTACHMENT_SLOT_PREFIX,
@@ -141,6 +145,8 @@ def serialize_org_communication_attachment_row(org_communication: str, row) -> d
             org_communication=org_communication,
             row_name=row_name,
         )
+        if not preview_status_allows_preview(preview_status):
+            preview_url = None
         thumbnail_url = (
             _build_attachment_thumbnail_url(org_communication, row_name, preview_url)
             if preview_meta.get("inline_preview_ready")

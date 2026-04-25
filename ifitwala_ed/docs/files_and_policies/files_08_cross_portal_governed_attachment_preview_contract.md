@@ -39,6 +39,8 @@ Today Ifitwala_Ed already enforces the correct broad shape for governed reads:
 - the student learning space now also exposes stable `preview_url` routes for governed file resources on `CourseDetail.vue`
 - current target surfaces now consume the nested `attachment_preview` DTO through one shared display-only SPA card layer, with thin communication, planning, student-learning, and evidence adapters around it
 - student task attachments now render inside the assigned-work brief through the shared learning attachment card, with preview and download actions driven by the governed preview DTO
+- upload/finalize responses for applicant documents now return the same stable post-upload attachment DTO shape immediately, so the SPA can update the row without reloading or guessing file URLs
+- when Drive reports a preview status other than `ready`, Ed DTOs must keep `open_url` as the fallback action and suppress `preview_url` / `thumbnail_url`; users should never receive a preview action that is known to be pending, failed, unsupported, or not applicable
 - the SPA does not need to know storage paths or Drive object keys
 
 What still does not exist yet:
@@ -250,9 +252,25 @@ DTO rules:
 - URL fields are stable server-owned surface actions or `null`
 - the DTO is already filtered for the current viewer; the SPA must not infer hidden attachments
 - `thumbnail_url` should stay optional and represent the card-sized preview action for images or first-page PDF cards; DTOs must not expose Drive derivative role names or derivative-role query parameters
-- `preview_url` should be used only when a richer preview action exists
+- `preview_url` should be used only when a richer preview action exists and `preview_status` is absent or `ready`
 - `open_url` remains the current compatibility baseline during rollout
+- a non-ready preview status must degrade to open-only actions rather than surfacing a failing preview button
 - current surfaces may still keep their legacy top-level fields (`kind`, `material_type`, `title`, `reference_url`, and similar) while also exposing the nested shared DTO during convergence
+
+## Phase 5 UX Friction Rule
+
+Status: Implemented current target rule for active governed attachment surfaces
+Code refs: `ifitwala_ed/api/attachment_previews.py`, `ifitwala_ed/api/admissions_portal.py`, `ifitwala_ed/api/org_communication_attachments.py`, `ifitwala_ed/api/task_submission.py`, `ifitwala_ed/students/doctype/student_log/evidence.py`
+Test refs: `ifitwala_ed/api/test_attachment_previews.py`, `ifitwala_ed/api/test_admissions_document_items.py`, `ifitwala_ed/api/test_org_communication_attachments_unit.py`, `ifitwala_ed/api/test_task_submission_unit.py`, `ifitwala_ed/students/doctype/student_log/test_student_log_evidence_unit.py`
+
+For every governed file surface:
+
+- provide one obvious upload action in the owning workflow surface
+- return a stable post-upload DTO immediately after successful finalize
+- show actionable upload/finalize errors from the server rather than swallowing them in the SPA
+- expose only stable `open_url`, optional `thumbnail_url`, and optional `preview_url`
+- treat `open_url` as the guaranteed fallback whenever preview generation is not ready or cannot apply
+- keep preview/open behavior consistent across staff, student, guardian, and admissions surfaces by consuming the shared nested `attachment_preview` object wherever possible
 
 ## Surface Endpoint Rule
 

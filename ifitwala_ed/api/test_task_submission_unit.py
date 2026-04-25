@@ -241,6 +241,10 @@ class TestTaskSubmissionApiUnit(TestCase):
         self.assertEqual(attachments[0].get("mime_type"), "application/pdf")
         self.assertEqual(payload.get("annotation_readiness", {}).get("mode"), "reduced")
         self.assertEqual(payload.get("annotation_readiness", {}).get("reason_code"), "pdf_preview_pending")
+        self.assertIsNone(attachments[0].get("preview_url"))
+        self.assertIsNone(attachments[0].get("attachment_preview", {}).get("preview_url"))
+        self.assertFalse(attachments[0].get("attachment_preview", {}).get("can_preview"))
+        self.assertIsNone(payload.get("annotation_readiness", {}).get("preview_url"))
         self.assertEqual(payload.get("released_result", {}).get("outcome_id"), "TOUT-0002")
 
     def test_get_latest_submission_rejects_unowned_outcome(self):

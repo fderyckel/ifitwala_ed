@@ -3082,14 +3082,36 @@ def upload_applicant_document(
         context_name=row.get("name"),
         thumbnail_ready=thumbnail_ready,
     )
+    resolved_file_name = (
+        _as_text(upload_result.get("file_name")).strip()
+        or _as_text(file_name).strip()
+        or _as_text(upload_result.get("file")).strip()
+        or None
+    )
+    attachment_preview = build_attachment_preview_item(
+        item_id=resolved_drive_file_id or upload_result.get("file") or resolved_file_name,
+        owner_doctype="Student Applicant",
+        owner_name=row.get("name"),
+        file_id=resolved_drive_file_id or upload_result.get("file"),
+        display_name=upload_result.get("item_label") or item_label or resolved_file_name,
+        extension=extract_file_extension(file_name=resolved_file_name, file_url=None),
+        preview_status=preview_status or None,
+        thumbnail_url=thumbnail_url,
+        preview_url=preview_url,
+        open_url=open_url,
+        download_url=open_url,
+    )
     return {
+        "ok": True,
         "file": upload_result.get("file"),
+        "file_name": resolved_file_name,
         "open_url": open_url,
         "preview_url": preview_url,
         "thumbnail_url": thumbnail_url,
         "preview_status": preview_status or None,
         "drive_file_id": resolved_drive_file_id,
         "canonical_ref": resolved_canonical_ref,
+        "attachment_preview": attachment_preview,
         "applicant_document": upload_result.get("applicant_document"),
         "applicant_document_item": upload_result.get("applicant_document_item"),
         "item_key": upload_result.get("item_key"),

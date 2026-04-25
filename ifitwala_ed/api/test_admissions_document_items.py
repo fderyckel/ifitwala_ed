@@ -69,6 +69,13 @@ class TestAdmissionsDocumentItems(FrappeTestCase):
         self.assertTrue(bool(payload.get("applicant_document_item")))
         self.assertEqual(payload.get("item_key"), "aisl_2019")
         self.assertEqual(payload.get("item_label"), "AISL transcript 2019")
+        self.assertTrue(payload.get("ok"))
+        self.assertEqual(payload.get("file_name"), "aisl-2019.txt")
+        self.assertTrue(payload.get("open_url"))
+        self.assertEqual(payload.get("attachment_preview", {}).get("owner_doctype"), "Student Applicant")
+        self.assertEqual(payload.get("attachment_preview", {}).get("owner_name"), self.applicant.name)
+        self.assertEqual(payload.get("attachment_preview", {}).get("open_url"), payload.get("open_url"))
+        self.assertEqual(payload.get("attachment_preview", {}).get("preview_url"), payload.get("preview_url"))
 
         row = frappe.db.get_value(
             "Applicant Document Item",

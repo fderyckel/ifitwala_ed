@@ -1134,8 +1134,7 @@ describe('Gradebook page', () => {
 							file_size: 256,
 							description: 'Essay PDF',
 							preview_status: 'pending',
-							preview_url:
-								'/api/method/ifitwala_ed.api.file_access.preview_academic_file?file=FILE-TASK-1',
+							preview_url: null,
 							open_url:
 								'/api/method/ifitwala_ed.api.file_access.download_academic_file?file=FILE-TASK-1',
 							mime_type: 'application/pdf',
@@ -1151,8 +1150,7 @@ describe('Gradebook page', () => {
 						attachment_row_name: 'ATT-1',
 						attachment_file_name: 'essay.pdf',
 						preview_status: 'pending',
-						preview_url:
-							'/api/method/ifitwala_ed.api.file_access.preview_academic_file?file=FILE-TASK-1',
+						preview_url: null,
 						open_url:
 							'/api/method/ifitwala_ed.api.file_access.download_academic_file?file=FILE-TASK-1',
 					},
@@ -1232,9 +1230,7 @@ describe('Gradebook page', () => {
 		const previewLink = Array.from(document.querySelectorAll('a')).find(link =>
 			(link.textContent || '').includes('Try preview')
 		);
-		expect(previewLink?.getAttribute('href')).toContain(
-			'/api/method/ifitwala_ed.api.file_access.preview_academic_file'
-		);
+		expect(previewLink).toBeUndefined();
 	});
 
 	it('uses explicit contribution and moderation mutations from the drawer', async () => {

@@ -8,7 +8,11 @@ import frappe
 from frappe import _
 from frappe.utils import cint, now_datetime
 
-from ifitwala_ed.api.attachment_previews import build_attachment_preview_item, extract_file_extension
+from ifitwala_ed.api.attachment_previews import (
+    build_attachment_preview_item,
+    extract_file_extension,
+    preview_status_allows_preview,
+)
 
 STUDENT_LOG_EVIDENCE_BINDING_ROLE = "student_log_evidence"
 STUDENT_LOG_EVIDENCE_DATA_CLASS = "safeguarding"
@@ -453,6 +457,8 @@ def serialize_student_log_evidence_row(student_log: str, row) -> dict[str, Any]:
             student_log=student_log,
             row_name=row_name,
         )
+        if not preview_status_allows_preview(preview_status):
+            preview_url = None
         thumbnail_url = (
             file_access_api.build_student_log_evidence_attachment_thumbnail_url(
                 student_log=student_log,

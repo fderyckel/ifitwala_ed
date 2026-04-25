@@ -135,8 +135,7 @@ describe('CommunicationAttachmentPreviewList', () => {
 				title: 'Campus photo',
 				file_name: 'campus.png',
 				preview_status: 'pending',
-				preview_url:
-					'/api/method/ifitwala_ed.api.file_access.preview_org_communication_attachment?row_name=ATT-IMG-PENDING',
+				preview_url: null,
 				open_url:
 					'/api/method/ifitwala_ed.api.file_access.open_org_communication_attachment?row_name=ATT-IMG-PENDING',
 				attachment_preview: buildAttachmentPreview({
@@ -146,8 +145,7 @@ describe('CommunicationAttachmentPreviewList', () => {
 					extension: 'png',
 					preview_mode: 'icon_only',
 					preview_status: 'pending',
-					preview_url:
-						'/api/method/ifitwala_ed.api.file_access.preview_org_communication_attachment?row_name=ATT-IMG-PENDING',
+					preview_url: null,
 					open_url:
 						'/api/method/ifitwala_ed.api.file_access.open_org_communication_attachment?row_name=ATT-IMG-PENDING',
 				}),
@@ -156,8 +154,8 @@ describe('CommunicationAttachmentPreviewList', () => {
 		await flushUi();
 
 		expect(document.querySelector('[data-communication-attachment-kind="image"] img')).toBeNull();
-		expect(document.body.textContent || '').toContain('Preview');
-		expect(document.body.textContent || '').toContain('Open original');
+		expect(document.body.textContent || '').toContain('Open');
+		expect(document.body.textContent || '').not.toContain('Open original');
 	});
 
 	it('falls back to action-led image controls when the governed inline preview fails to load', async () => {
@@ -249,17 +247,16 @@ describe('CommunicationAttachmentPreviewList', () => {
 				file_name: 'policy.pdf',
 				preview_status: 'pending',
 				thumbnail_url: null,
-				preview_url: '/api/method/ifitwala_ed.api.file_access.preview_org_communication_attachment?row_name=ATT-PDF-PENDING',
+				preview_url: null,
 				open_url: '/api/method/ifitwala_ed.api.file_access.open_org_communication_attachment?row_name=ATT-PDF-PENDING',
 				attachment_preview: buildAttachmentPreview({
 					item_id: 'ATT-PDF-PENDING',
 					display_name: 'Policy update',
 					kind: 'pdf',
 					extension: 'pdf',
-					preview_mode: 'pdf_embed',
+					preview_mode: 'icon_only',
 					preview_status: 'pending',
-					preview_url:
-						'/api/method/ifitwala_ed.api.file_access.preview_org_communication_attachment?row_name=ATT-PDF-PENDING',
+					preview_url: null,
 					open_url:
 						'/api/method/ifitwala_ed.api.file_access.open_org_communication_attachment?row_name=ATT-PDF-PENDING',
 				}),
