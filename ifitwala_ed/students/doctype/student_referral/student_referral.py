@@ -128,7 +128,7 @@ class StudentReferral(Document):
             pe = frappe.db.get_value(
                 "Program Enrollment",
                 self.program_enrollment,
-                ["student", "program", "academic_year", "school", "docstatus"],
+                ["student", "program", "academic_year", "program_offering", "school", "docstatus"],
                 as_dict=True,
             )
             if not pe:
@@ -137,7 +137,9 @@ class StudentReferral(Document):
                 frappe.throw(_("Selected Program Enrollment belongs to another student."))
             self.program = self.program or pe.program
             self.academic_year = self.academic_year or pe.academic_year
-            self.school = self.school or pe.school or frappe.db.get_value("Program", pe.program, "school")
+            self.school = self.school or pe.school
+            if not self.school and pe.program_offering:
+                self.school = frappe.db.get_value("Program Offering", pe.program_offering, "school")
 
         # 2) Otherwise, resolve best Program Enrollment by referral date
         if not (self.program and self.academic_year and self.school):
@@ -149,11 +151,7 @@ class StudentReferral(Document):
                 self.program_enrollment = self.program_enrollment or best.get("name")
                 self.program = self.program or best.get("program")
                 self.academic_year = self.academic_year or best.get("academic_year")
-                self.school = (
-                    self.school
-                    or best.get("school")
-                    or (self.program and frappe.db.get_value("Program", self.program, "school"))
-                )
+                self.school = self.school or best.get("school")
 
         # 3) Final check
         missing = [f for f in ("program", "academic_year", "school") if not self.get(f)]
@@ -178,7 +176,7 @@ class StudentReferral(Document):
                 pe.student,
                 pe.program,
                 pe.academic_year,
-                COALESCE(pe.school, p.school) AS school,
+                COALESCE(pe.school, po.school) AS school,
                 CASE WHEN ay.year_start_date IS NOT NULL
                         AND ay.year_start_date <= %(on_date)s
                         AND ay.year_end_date   >= %(on_date)s
@@ -187,7 +185,7 @@ class StudentReferral(Document):
                 ay.year_start_date,
                 pe.creation
             FROM `tabProgram Enrollment` pe
-            LEFT JOIN `tabProgram` p ON p.name = pe.program
+            LEFT JOIN `tabProgram Offering` po ON po.name = pe.program_offering
             LEFT JOIN `tabAcademic Year` ay ON ay.name = pe.academic_year
             WHERE pe.student = %(student)s
                 AND pe.docstatus < 2

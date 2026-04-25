@@ -122,6 +122,48 @@ class TestStudentLogUnit(TestCase):
         self.assertEqual(anchor, "SCH-DEFAULT")
         self.assertEqual(employee_anchor, "SCH-EMP")
 
+    def test_program_enrollment_context_uses_program_offering_school(self):
+        captured = {}
+
+        def fake_sql(query, values=None, as_dict=False):
+            captured["query"] = query
+            captured["values"] = values
+            captured["as_dict"] = as_dict
+            return [
+                {
+                    "program": "PROG-1",
+                    "academic_year": "AY-2026",
+                    "program_offering": "PO-1",
+                    "school": "SCH-OFFERING",
+                    "within_ay": 1,
+                    "archived_flag": 0,
+                    "year_start_date": "2026-01-01",
+                    "creation": "2026-04-01 08:00:00",
+                }
+            ]
+
+        with _student_log_module() as (student_log_module, _):
+            with patch.object(student_log_module.frappe.db, "sql", side_effect=fake_sql):
+                context = student_log_module._get_program_enrollment_context(
+                    "STU-0001",
+                    on_date="2026-04-19",
+                )
+
+        self.assertEqual(
+            context,
+            {
+                "program": "PROG-1",
+                "academic_year": "AY-2026",
+                "program_offering": "PO-1",
+                "school": "SCH-OFFERING",
+            },
+        )
+        self.assertEqual(captured["values"], {"student": "STU-0001", "on_date": "2026-04-19"})
+        self.assertTrue(captured["as_dict"])
+        self.assertIn("LEFT JOIN `tabProgram Offering` po", captured["query"])
+        self.assertIn("po.school", captured["query"])
+        self.assertNotIn("p.school", captured["query"])
+
     def test_validate_persists_academic_staff_default_when_next_step_has_no_associated_role(self):
         with _student_log_module() as (student_log_module, _):
             doc = student_log_module.StudentLog.__new__(student_log_module.StudentLog)

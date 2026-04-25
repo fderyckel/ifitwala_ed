@@ -36,6 +36,7 @@ def _student_referral_module():
 
         frappe.db.exists = lambda *args, **kwargs: False
         frappe.db.get_value = lambda *args, **kwargs: None
+        frappe.db.sql = lambda *args, **kwargs: []
         frappe.db.set_value = lambda *args, **kwargs: None
         frappe.new_doc = lambda doctype: None
         frappe.publish_realtime = lambda *args, **kwargs: None
@@ -123,3 +124,45 @@ class TestStudentReferralUnit(TestCase):
             "RC-NEW-0001",
             update_modified=False,
         )
+
+    def test_active_enrollment_context_uses_program_offering_school(self):
+        captured = {}
+
+        def fake_sql(query, values=None, as_dict=False):
+            captured["query"] = query
+            captured["values"] = values
+            captured["as_dict"] = as_dict
+            return [
+                SimpleNamespace(
+                    name="PE-0001",
+                    program="PROG-1",
+                    academic_year="AY-2026",
+                    school="SCH-OFFERING",
+                    within_ay=1,
+                    archived_flag=0,
+                )
+            ]
+
+        with _student_referral_module() as (student_referral_module, frappe):
+            referral = student_referral_module.StudentReferral.__new__(student_referral_module.StudentReferral)
+            referral.student = "STU-0001"
+            referral.date = "2026-04-19"
+            referral.get = lambda fieldname: getattr(referral, fieldname, None)
+            frappe.db.sql = fake_sql
+
+            context = referral.get_student_active_enrollment("STU-0001", "2026-04-19")
+
+        self.assertEqual(
+            context,
+            {
+                "name": "PE-0001",
+                "program": "PROG-1",
+                "academic_year": "AY-2026",
+                "school": "SCH-OFFERING",
+            },
+        )
+        self.assertEqual(captured["values"], {"student": "STU-0001", "on_date": "2026-04-19"})
+        self.assertTrue(captured["as_dict"])
+        self.assertIn("LEFT JOIN `tabProgram Offering` po", captured["query"])
+        self.assertIn("po.school", captured["query"])
+        self.assertNotIn("p.school", captured["query"])

@@ -223,7 +223,20 @@ Allowed sources:
 
 If schema is incomplete or ambiguous: ask.
 
-### 3.2.1 JSON Metadata Timestamp Discipline
+### 3.2.1 Cross-DocType Field Provenance Discipline
+
+Unknown-column regressions are preventable and are treated as schema-discipline failures.
+
+When adding or changing SQL, Query Builder, `frappe.get_all`, `frappe.db.get_value`, or context-resolution helpers that read across multiple DocTypes:
+
+- Verify every selected `alias.field` against the authoritative DocType `.json` for the alias target before editing.
+- Do not infer field ownership from naming, legacy comments, nearby code, old helper behavior, or related business concepts.
+- Do not use a semantically related DocType as a fallback unless that exact field is present in its schema.
+- For school context in enrollment flows, `Program Offering.school` and `Program Enrollment.school` are valid verified sources; `Program.school` is not a valid source unless an approved schema change adds that field.
+- If a helper powers both fresh runtime behavior and one-shot patches, reuse one verified resolver instead of duplicating joins.
+- Add focused regression coverage for changed cross-DocType context queries, including assertions that the query reads from the verified owning DocType and does not reference the invalid field/alias that caused the regression.
+
+### 3.2.2 JSON Metadata Timestamp Discipline
 
 When a Frappe metadata `.json` file is touched:
 
