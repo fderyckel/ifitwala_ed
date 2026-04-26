@@ -1,7 +1,7 @@
 {
  "app": "ifitwala_ed",
  "charts": [],
- "content": "[{\"id\":\"jZNdnyS8D6\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">Admission</span>\",\"col\":12}},{\"id\":\"HF-thlk3eW\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Inquiry\",\"col\":3}},{\"id\":\"LUFyfGeE1b\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Hub\",\"col\":3}},{\"id\":\"f0wL_y51U4\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\"><b></b></span>\",\"col\":12}},{\"id\":\"TLatK8z_Re\",\"type\":\"card\",\"data\":{\"card_name\":\"Student Applicant\",\"col\":4}},{\"id\":\"jd11wlyF0B\",\"type\":\"card\",\"data\":{\"card_name\":\"Admin\",\"col\":4}},{\"id\":\"4WQiXIW_Ep\",\"type\":\"card\",\"data\":{\"card_name\":\"Governance\",\"col\":4}},{\"id\":\"eitUiLEPVV\",\"type\":\"card\",\"data\":{\"card_name\":\"Recommendations\",\"col\":4}},{\"id\":\"F57oAzqMP7\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\"><b></b></span>\",\"col\":12}},{\"id\":\"R1w2Bk3i-2\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\"><b>Website</b></span>\",\"col\":12}},{\"id\":\"WBi-BmGEah\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"School Website Page\",\"col\":3}},{\"id\":\"Bp4Fyt0v8X\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Website Block Definition\",\"col\":3}},{\"id\":\"ja84IlFvvQ\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Program Website Profile\",\"col\":3}},{\"id\":\"qrSyrkgXVt\",\"type\":\"card\",\"data\":{\"card_name\":\"Website Pages\",\"col\":4}},{\"id\":\"zTF1QpnPkh\",\"type\":\"card\",\"data\":{\"card_name\":\"CMS Settings\",\"col\":4}},{\"id\":\"hTyXQKHA89\",\"type\":\"card\",\"data\":{\"card_name\":\"Org and Schools\",\"col\":4}}]",
+ "content": "[{\"id\":\"jZNdnyS8D6\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">Admission</span>\",\"col\":12}},{\"id\":\"HF-thlk3eW\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Inquiry\",\"col\":3}},{\"id\":\"LUFyfGeE1b\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Hub\",\"col\":3}},{\"id\":\"f0wL_y51U4\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\"><b></b></span>\",\"col\":12}},{\"id\":\"TLatK8z_Re\",\"type\":\"card\",\"data\":{\"card_name\":\"Student Applicant\",\"col\":4}},{\"id\":\"jd11wlyF0B\",\"type\":\"card\",\"data\":{\"card_name\":\"Admin\",\"col\":4}},{\"id\":\"4WQiXIW_Ep\",\"type\":\"card\",\"data\":{\"card_name\":\"Governance\",\"col\":4}},{\"id\":\"eitUiLEPVV\",\"type\":\"card\",\"data\":{\"card_name\":\"Recommendations\",\"col\":4}},{\"id\":\"F57oAzqMP7\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\"><b></b></span>\",\"col\":12}},{\"id\":\"R1w2Bk3i-2\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\"><b>Org &amp; School</b></span>\",\"col\":12}},{\"id\":\"WBi-BmGEah\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"School Website Page\",\"col\":3}},{\"id\":\"Bp4Fyt0v8X\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Website Block Definition\",\"col\":3}},{\"id\":\"ja84IlFvvQ\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Program Website Profile\",\"col\":3}},{\"id\":\"hTyXQKHA89\",\"type\":\"card\",\"data\":{\"card_name\":\"Org and Schools\",\"col\":4}},{\"id\":\"qrSyrkgXVt\",\"type\":\"card\",\"data\":{\"card_name\":\"Website Pages\",\"col\":4}}]",
  "creation": "2025-06-23 20:21:38.876334",
  "custom_blocks": [],
  "docstatus": 0,
@@ -49,25 +49,6 @@
    "label": "Website Story",
    "link_count": 0,
    "link_to": "Website Story",
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "CMS Settings",
-   "link_count": 1,
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Card Break"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Website SEO Profile",
-   "link_count": 0,
-   "link_to": "Website SEO Profile",
    "link_type": "DocType",
    "onboard": 0,
    "type": "Link"
@@ -262,7 +243,7 @@
    "hidden": 0,
    "is_query_report": 0,
    "label": "Org and Schools",
-   "link_count": 2,
+   "link_count": 4,
    "link_type": "DocType",
    "onboard": 0,
    "type": "Card Break"
@@ -286,9 +267,29 @@
    "link_type": "DocType",
    "onboard": 0,
    "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Employee",
+   "link_count": 0,
+   "link_to": "Employee",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Staff Calendar",
+   "link_count": 0,
+   "link_to": "Staff Calendar",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
   }
  ],
- "modified": "2026-03-11 16:00:07.092825",
+ "modified": "2026-04-26 13:55:59.570267",
  "modified_by": "Administrator",
  "module": "Admission",
  "name": "Admission",

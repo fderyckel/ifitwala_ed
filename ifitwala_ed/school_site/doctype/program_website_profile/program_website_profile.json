@@ -116,7 +116,7 @@
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-04-11 23:41:56.572139",
+ "modified": "2026-04-26 13:58:19.731462",
  "modified_by": "Administrator",
  "module": "School Site",
  "name": "Program Website Profile",
@@ -183,6 +183,26 @@
    "read": 1,
    "report": 1,
    "role": "Accreditation Visitor"
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Admission Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Admission Officer",
+   "share": 1,
+   "write": 1
   }
  ],
  "row_format": "Dynamic",
