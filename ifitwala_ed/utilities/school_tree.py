@@ -191,7 +191,8 @@ def get_descendant_school_scope(user_school: str | None, *, max_depth: int | Non
 
     allowed = {user_school}
     frontier = [user_school]
-    for _ in range(depth_limit):
+    remaining_depth = depth_limit
+    while remaining_depth:
         next_frontier: list[str] = []
         for school_name in frontier:
             next_frontier.extend(children_by_parent.get(school_name, []))
@@ -199,6 +200,7 @@ def get_descendant_school_scope(user_school: str | None, *, max_depth: int | Non
             break
         allowed.update(next_frontier)
         frontier = next_frontier
+        remaining_depth -= 1
 
     return [school for school in subtree if school in allowed]
 

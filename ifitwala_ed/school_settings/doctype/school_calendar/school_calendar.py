@@ -271,7 +271,7 @@ class SchoolCalendar(Document):
 
         for i, d in enumerate(date_list):
             ch = self.append("holidays", {})
-            ch.description = _(self.weekly_off)
+            ch.description = self.weekly_off
             ch.holiday_date = d
             ch.color = self.weekend_color or ""
             ch.weekly_off = 1

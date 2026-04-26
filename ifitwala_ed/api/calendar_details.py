@@ -432,7 +432,7 @@ def _user_has_student_group_access(user: str, group_name: str) -> bool:
     employee_row = _resolve_employee_for_user(user, fields=["name"])
     employee_id = (employee_row or {}).get("name")
     instructor_ids = _resolve_instructor_ids(user, employee_id)
-    group_names, _ = _student_group_memberships(user, employee_id, instructor_ids)
+    group_names = _student_group_memberships(user, employee_id, instructor_ids)[0]
     if group_name in group_names:
         return True
     try:

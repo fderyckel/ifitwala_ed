@@ -580,13 +580,20 @@ class SchoolEvent(Document):
     def validate_date(self):
         """Non-'Other' categories must be in the future."""
         if self.event_category != "Other" and get_datetime(self.starts_on) < get_datetime(now_datetime()):
-            frappe.throw(_(f"The date {self.starts_on} of the event must be in the future. Please adjust the date."))
+            frappe.throw(
+                _("The date {starts_on} of the event must be in the future. Please adjust the date.").format(
+                    starts_on=self.starts_on
+                )
+            )
 
     def validate_time(self):
         """Start must be <= end."""
         if get_datetime(self.starts_on) > get_datetime(self.ends_on):
             frappe.throw(
-                _(f"Start time {self.starts_on} must be earlier than end time {self.ends_on}. Please adjust the time.")
+                _("Start time {starts_on} must be earlier than end time {ends_on}. Please adjust the time.").format(
+                    starts_on=self.starts_on,
+                    ends_on=self.ends_on,
+                )
             )
 
     def validate_audience_presence(self):

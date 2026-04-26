@@ -130,7 +130,7 @@ def _entry_visibility_sql(*, is_staff: bool, include_self: bool = True) -> tuple
 
 
 def _reaction_row_query(comm_names: list[str], *, is_staff: bool, user: str) -> list[dict]:
-    visibility_sql, _ = _entry_visibility_sql(is_staff=is_staff, include_self=True)
+    visibility_sql, visibility_params = _entry_visibility_sql(is_staff=is_staff, include_self=True)
     rows = frappe.db.sql(
         f"""
         SELECT
@@ -158,6 +158,7 @@ def _reaction_row_query(comm_names: list[str], *, is_staff: bool, user: str) -> 
         ORDER BY i.org_communication ASC, i.user ASC, i.creation DESC, i.modified DESC, i.name DESC
         """,
         {
+            **visibility_params,
             "comms": tuple(comm_names),
             "viewer_user": user,
             "reaction_intents": REACTION_INTENTS,
@@ -209,7 +210,7 @@ def _latest_user_rows(comm_names: list[str], *, user: str) -> dict[str, dict]:
 
 
 def _comment_counts(comm_names: list[str], *, is_staff: bool, user: str) -> dict[str, int]:
-    visibility_sql, _ = _entry_visibility_sql(is_staff=is_staff, include_self=True)
+    visibility_sql, visibility_params = _entry_visibility_sql(is_staff=is_staff, include_self=True)
     rows = frappe.db.sql(
         f"""
         SELECT i.org_communication, COUNT(*) AS cnt
@@ -221,7 +222,7 @@ def _comment_counts(comm_names: list[str], *, is_staff: bool, user: str) -> dict
           AND i.visibility != 'Hidden'
         GROUP BY i.org_communication
         """,
-        {"comms": tuple(comm_names), "viewer_user": user},
+        {**visibility_params, "comms": tuple(comm_names), "viewer_user": user},
         as_dict=True,
     )
     return {_to_text(row.get("org_communication")): cint(row.get("cnt") or 0) for row in (rows or [])}

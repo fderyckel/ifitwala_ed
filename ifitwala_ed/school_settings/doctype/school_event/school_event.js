@@ -63,7 +63,7 @@ function add_reference_jump_button(frm) {
 	if (frm.is_new() || !frm.doc.reference_type || !frm.doc.reference_name) return;
 	if (is_linked_announcement_reference(frm)) return;
 
-	frm.add_custom_button(__(frm.doc.reference_name), () => {
+	frm.add_custom_button(frm.doc.reference_name, () => {
 		frappe.set_route('Form', frm.doc.reference_type, frm.doc.reference_name);
 	});
 }
@@ -350,7 +350,7 @@ function render_status_badge(status) {
 	const color = LINKED_ANNOUNCEMENT_STATUS_COLORS[status] || '#475569';
 	return `
 		<span style="display:inline-flex; align-items:center; gap:6px; border-radius:999px; background:${color}14; color:${color}; padding:4px 10px; font-size:12px; font-weight:600;">
-			${frappe.utils.escape_html(__(status))}
+			${frappe.utils.escape_html(status)}
 		</span>
 	`;
 }

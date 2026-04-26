@@ -423,7 +423,7 @@ class StaffCalendar(Document):
 
     @frappe.whitelist()
     def get_supported_countries(self):
-        _, list_supported_countries = _load_holidays_api(raise_on_missing=False)
+        list_supported_countries = _load_holidays_api(raise_on_missing=False)[1]
         if not list_supported_countries:
             return {
                 "available": False,

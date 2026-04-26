@@ -28,7 +28,7 @@ _UPLOAD_ADMIN_ROLES = {"Academic Admin", "System Manager", "Administrator"}
 
 
 def _refresh_runtime_bindings():
-    global frappe, _
+    global frappe
 
     current_frappe = importlib.import_module("frappe")
     bound_is_stub = getattr(frappe, "__file__", None) is None
@@ -38,7 +38,6 @@ def _refresh_runtime_bindings():
         return frappe
 
     frappe = current_frappe
-    _ = getattr(current_frappe, "_", _)
     return frappe
 
 

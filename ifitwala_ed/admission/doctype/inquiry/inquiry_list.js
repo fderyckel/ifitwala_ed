@@ -54,9 +54,9 @@ frappe.listview_settings['Inquiry'] = {
 			const colour = colourMap[rawValue];
 			if (!colour) {
 				console.error(`Unknown Inquiry workflow_state: ${rawValue}`);
-				return `<span class="indicator-pill gray">${__(rawValue || 'Unknown')}</span>`;
+				return `<span class="indicator-pill gray">${frappe.utils.escape_html(rawValue || __('Unknown'))}</span>`;
 			}
-			return `<span class="indicator-pill ${colour}">${__(rawValue)}</span>`;
+			return `<span class="indicator-pill ${colour}">${frappe.utils.escape_html(rawValue)}</span>`;
 		}
 	}
 };

@@ -92,6 +92,25 @@ Forbidden:
 - Adding raw user-facing framework messages such as `frappe.throw("...")`.
 - Translating parameter names or payload keys into user copy without product review.
 
+### 3.1 Labels Versus Contract Values
+
+Translation must never change a value that the system stores, compares, filters, routes, or sends through an API.
+
+Keep these values canonical and untranslated:
+
+- DocType names and document names.
+- Fieldnames, route names, method names, payload keys, and permission role names.
+- `docstatus` values and any value used in server-side workflow logic.
+- Filter values such as `status,=,Open` or `voucher_type,=,Journal Entry`.
+- Link field values, dynamic reference names, tenant names, and user-entered names.
+
+When the same concept needs both a machine value and visible text, split the variables explicitly:
+
+- `statusValue`, `doctypeValue`, `roleValue`, or equivalent for canonical values.
+- `statusLabel`, `buttonLabel`, or equivalent for display-only labels.
+
+Only display-only labels may be translated, and their source must still be a stable literal string. If a variable might also be a contract value, do not translate it; show the raw value or defer it for product review.
+
 ## 4. Glossary Policy
 
 The glossary is a product contract, not a translator preference file.

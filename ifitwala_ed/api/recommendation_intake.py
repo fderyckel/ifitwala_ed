@@ -394,7 +394,9 @@ def get_recommendation_template_rows_for_applicant(
     if not student_applicant:
         return []
 
-    _, org_scope, school_scope = _request_scope_ancestors(student_applicant)
+    request_scope = _request_scope_ancestors(student_applicant)
+    org_scope = request_scope[1]
+    school_scope = request_scope[2]
 
     required_fields = ["name", "organization", "school"]
     if not include_confidential:

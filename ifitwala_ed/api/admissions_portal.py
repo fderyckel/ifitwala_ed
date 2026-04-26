@@ -229,12 +229,12 @@ APPLICANT_GUARDIAN_TEXT_FIELDS = (
     "guardian_designation",
 )
 APPLICANT_GUARDIAN_FIELDS = ("name",) + APPLICANT_GUARDIAN_TEXT_FIELDS + APPLICANT_GUARDIAN_CHECK_FIELDS
-APPLICANT_GUARDIAN_REQUIRED_FIELD_LABELS = (
-    ("guardian_first_name", "Guardian First Name"),
-    ("guardian_last_name", "Guardian Last Name"),
-    ("guardian_email", "Guardian Personal Email"),
-    ("guardian_mobile_phone", "Guardian Mobile Phone"),
-    ("guardian_image", "Guardian Photo"),
+APPLICANT_GUARDIAN_REQUIRED_FIELDS = (
+    "guardian_first_name",
+    "guardian_last_name",
+    "guardian_email",
+    "guardian_mobile_phone",
+    "guardian_image",
 )
 _CURRENT_PROFILE_IMAGE_STATUSES = ("active", "processing", "blocked")
 
@@ -1162,10 +1162,24 @@ def _guardian_signer_flag_from_primary_guardian(row: dict) -> int:
     return 1 if _as_check(row.get("is_primary_guardian")) else 0
 
 
+def _applicant_guardian_required_field_label(fieldname: str) -> str:
+    if fieldname == "guardian_first_name":
+        return _("Guardian First Name")
+    if fieldname == "guardian_last_name":
+        return _("Guardian Last Name")
+    if fieldname == "guardian_email":
+        return _("Guardian Personal Email")
+    if fieldname == "guardian_mobile_phone":
+        return _("Guardian Mobile Phone")
+    if fieldname == "guardian_image":
+        return _("Guardian Photo")
+    return fieldname
+
+
 def _validate_guardian_profile_row(row: dict) -> dict:
     missing_labels = [
-        _(label)
-        for fieldname, label in APPLICANT_GUARDIAN_REQUIRED_FIELD_LABELS
+        _applicant_guardian_required_field_label(fieldname)
+        for fieldname in APPLICANT_GUARDIAN_REQUIRED_FIELDS
         if not _as_text(row.get(fieldname)).strip()
     ]
     if missing_labels:

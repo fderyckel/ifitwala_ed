@@ -50,7 +50,7 @@ def get_school_lineage(*args, **kwargs):
 
 
 def _refresh_runtime_bindings():
-    global frappe, _, scrub, load_address_and_contact, get_doc_permissions
+    global frappe, scrub, load_address_and_contact, get_doc_permissions
     global invalidate_staff_portal_calendar_cache, resolve_current_staff_calendar_for_employee
     global get_descendant_organizations, get_user_base_org, get_preferred_employee_avatar_url
     global get_school_lineage, delete_events, slugify_route_segment
@@ -63,7 +63,6 @@ def _refresh_runtime_bindings():
         return frappe
 
     frappe = current_frappe
-    _ = getattr(current_frappe, "_", _)
     scrub = getattr(current_frappe, "scrub", scrub)
 
     from frappe.contacts.address_and_contact import load_address_and_contact as current_load_address_and_contact

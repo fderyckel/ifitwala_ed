@@ -252,5 +252,5 @@ def effective_workspace_for_user(user: str) -> str | None:
     if not emp:
         return None
     emp_doc = frappe.get_doc("Employee", emp)
-    _, ws = compute_effective_access_from_employee(emp_doc)
+    ws = compute_effective_access_from_employee(emp_doc)[1]
     return ws

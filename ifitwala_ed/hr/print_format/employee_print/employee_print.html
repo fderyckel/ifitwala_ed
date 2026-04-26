@@ -46,7 +46,7 @@
 {% set address_docs = frappe.get_all("Address", filters={"name": ["in", address_names]}, fields=["name", "address_title", "address_type", "address_line1", "address_line2", "city", "state", "country", "pincode"], order_by="creation asc") if address_names else [] %}
 {% set address_map = {} %}
 {% for row in address_docs %}
-	{% set _ = address_map.update({row.name: row}) %}
+	{% set ignored = address_map.update({row.name: row}) %}
 {% endfor %}
 
 {% set has_personal_identity = doc.employee_salutation or doc.employee_first_name or doc.employee_middle_name or doc.employee_last_name or doc.employee_full_name or doc.employee_preferred_name or doc.employee_gender or doc.employee_date_of_birth or doc.nationality or doc.employee_second_nationality or doc.first_language or doc.employee_second_language %}
@@ -355,13 +355,13 @@
 			{% set history_school = ((row.school or "") | string).strip() %}
 			{% set history_priority = (row.priority | string).strip() if row.priority is not none else "" %}
 			{% set history_fields = namespace(items=[]) %}
-			{% if row.from_date %}{% set _ = history_fields.items.append(("From Date", frappe.utils.formatdate(row.from_date))) %}{% endif %}
-			{% if row.to_date %}{% set _ = history_fields.items.append(("To Date", frappe.utils.formatdate(row.to_date))) %}{% endif %}
-			{% if row.is_current %}{% set _ = history_fields.items.append(("Is Current", "Yes")) %}{% endif %}
-			{% if row.access_mode %}{% set _ = history_fields.items.append(("Access Mode", row.access_mode)) %}{% endif %}
-			{% if row.role_profile %}{% set _ = history_fields.items.append(("Role Profile", row.role_profile)) %}{% endif %}
-			{% if row.workspace_override %}{% set _ = history_fields.items.append(("Workspace Override", row.workspace_override)) %}{% endif %}
-			{% if history_priority %}{% set _ = history_fields.items.append(("Priority", history_priority)) %}{% endif %}
+				{% if row.from_date %}{% set ignored = history_fields.items.append(("From Date", frappe.utils.formatdate(row.from_date))) %}{% endif %}
+				{% if row.to_date %}{% set ignored = history_fields.items.append(("To Date", frappe.utils.formatdate(row.to_date))) %}{% endif %}
+				{% if row.is_current %}{% set ignored = history_fields.items.append(("Is Current", "Yes")) %}{% endif %}
+				{% if row.access_mode %}{% set ignored = history_fields.items.append(("Access Mode", row.access_mode)) %}{% endif %}
+				{% if row.role_profile %}{% set ignored = history_fields.items.append(("Role Profile", row.role_profile)) %}{% endif %}
+				{% if row.workspace_override %}{% set ignored = history_fields.items.append(("Workspace Override", row.workspace_override)) %}{% endif %}
+				{% if history_priority %}{% set ignored = history_fields.items.append(("Priority", history_priority)) %}{% endif %}
 			{% set history_note = ((row.note or "") | string).strip() %}
 			{% if history_title or history_organization or history_school or history_fields.items or history_note %}
 			<div class="history-entry">

@@ -21,7 +21,7 @@ frappe.listview_settings["Sales Invoice"] = {
 			Credited: "blue",
 		};
 		const status = doc.status || (doc.docstatus === 2 ? "Cancelled" : "Draft");
-		return [__(status), palette[status] || "orange", `status,=,${status}`];
+		return [status, palette[status] || "orange", `status,=,${status}`];
 	},
 	right_column: "grand_total",
 };

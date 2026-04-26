@@ -48,7 +48,11 @@ class Designation(Document):
 
         # Step 1: Prevent self-reporting
         if self.reports_to == self.name:
-            frappe.throw(_(f"A designation cannot report to itself: {get_link_to_form('Designation', self.name)}."))
+            frappe.throw(
+                _("A designation cannot report to itself: {designation}.").format(
+                    designation=get_link_to_form("Designation", self.name)
+                )
+            )
 
         # Step 2: Prevent direct loops (A → B → A)
         reports_to_data = frappe.db.get_value(
@@ -59,7 +63,10 @@ class Designation(Document):
         if reports_to_data.get("reports_to") == self.name:
             frappe.throw(
                 _(
-                    f"The selected 'Reports to' designation {get_link_to_form('Designation', self.reports_to)} cannot report back to {get_link_to_form('Designation', self.name)}, creating a direct loop."
+                    "The selected 'Reports to' designation {reports_to} cannot report back to {designation}, creating a direct loop."
+                ).format(
+                    reports_to=get_link_to_form("Designation", self.reports_to),
+                    designation=get_link_to_form("Designation", self.name),
                 )
             )
 
@@ -74,7 +81,11 @@ class Designation(Document):
         if reports_to_org not in valid_orgs:
             frappe.throw(
                 _(
-                    f"This designation {get_link_to_form('Designation', self.reports_to)} is reporting to a designation that belongs to a different organizational lineage than the current designation's organization '{current_org}' ({get_link_to_form('Organization', current_org)})."
+                    "This designation {reports_to} is reporting to a designation that belongs to a different organizational lineage than the current designation's organization '{organization}' ({organization_link})."
+                ).format(
+                    reports_to=get_link_to_form("Designation", self.reports_to),
+                    organization=current_org,
+                    organization_link=get_link_to_form("Organization", current_org),
                 )
             )
 
@@ -82,15 +93,18 @@ class Designation(Document):
         if reports_to_data.get("archived"):
             frappe.throw(
                 _(
-                    f"The selected 'Reports to' designation {get_link_to_form('Designation', self.reports_to)} is archived and cannot be assigned as a supervisor."
-                )
+                    "The selected 'Reports to' designation {reports_to} is archived and cannot be assigned as a supervisor."
+                ).format(reports_to=get_link_to_form("Designation", self.reports_to))
             )
 
         # Step 5: Indirect Loop Prevention (Multi-Level)
         if self._check_indirect_loop(self.name, self.reports_to):
             frappe.throw(
                 _(
-                    f"The selected 'Reports to' designation {get_link_to_form('Designation', self.reports_to)} would create a circular reporting loop with {get_link_to_form('Designation', self.name)}."
+                    "The selected 'Reports to' designation {reports_to} would create a circular reporting loop with {designation}."
+                ).format(
+                    reports_to=get_link_to_form("Designation", self.reports_to),
+                    designation=get_link_to_form("Designation", self.name),
                 )
             )
 

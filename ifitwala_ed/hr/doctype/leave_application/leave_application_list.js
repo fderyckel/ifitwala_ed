@@ -19,6 +19,6 @@ frappe.listview_settings["Leave Application"] = {
 		};
 		const status =
 			!doc.docstatus && ["Approved", "Rejected"].includes(doc.status) ? "Draft" : doc.status;
-		return [__(status), status_color[status], "status,=," + doc.status];
+		return [status, status_color[status], "status,=," + doc.status];
 	},
 };

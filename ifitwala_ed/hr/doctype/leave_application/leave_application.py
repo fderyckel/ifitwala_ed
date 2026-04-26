@@ -244,7 +244,7 @@ class LeaveApplication(Document, PWANotificationsMixin):
                 if allowed_role and allowed_role not in user_roles:
                     frappe.throw(
                         _("Only users with the {0} role can create backdated leave applications").format(
-                            _(allowed_role)
+                            frappe.bold(allowed_role)
                         )
                     )
 

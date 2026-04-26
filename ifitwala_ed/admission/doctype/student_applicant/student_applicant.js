@@ -1753,7 +1753,7 @@ function bind_document_summary_actions(frm) {
 					override_reason: String(values.override_reason || "").trim(),
 				});
 			},
-			__(overrideValue),
+			overrideValue || __("Requirement Override"),
 			__("Apply")
 		);
 	});

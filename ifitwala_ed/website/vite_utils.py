@@ -111,7 +111,7 @@ def get_vite_assets(
             break
 
     if not entry:
-        for _, candidate in manifest.items():
+        for candidate in manifest.values():
             if isinstance(candidate, dict) and candidate.get("isEntry"):
                 entry = candidate
                 break

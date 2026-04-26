@@ -15,7 +15,7 @@ frappe.listview_settings["Student Group"] = {
 			Active: "green",
 			Retired: "darkgrey",
 		};
-		return [__(doc.status), color_map[doc.status] || "blue", `status,=,${doc.status}`];
+		return [doc.status, color_map[doc.status] || "blue", `status,=,${doc.status}`];
 	},
 
 	// Column-specific badges
@@ -28,7 +28,7 @@ frappe.listview_settings["Student Group"] = {
 				Other: "secondary",  // gray
 			};
 			const color = color_map[value] || "dark";
-			return `<span class="badge bg-${color} text-white">${__(value)}</span>`;
+			return `<span class="badge bg-${color} text-white">${frappe.utils.escape_html(value)}</span>`;
 		},
 	},
 };

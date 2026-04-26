@@ -731,7 +731,7 @@ def get_student_course_communication_summary(
         course_id=course_id,
         student_group=student_group,
     )
-    summary, _ = _course_communication_summary(user=context.get("user"), items=items)
+    summary = _course_communication_summary(user=context.get("user"), items=items)[0]
     return summary
 
 

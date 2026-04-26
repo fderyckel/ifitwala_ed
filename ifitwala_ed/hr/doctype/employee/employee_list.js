@@ -83,7 +83,7 @@ frappe.listview_settings["Employee"] = {
 	},
 	get_indicator: function (doc) {
 		var indicator = [
-			__(doc.employment_status),
+			doc.employment_status,
 			frappe.utils.guess_colour(doc.employment_status),
 			"employment_status,=," + doc.employment_status,
 		];

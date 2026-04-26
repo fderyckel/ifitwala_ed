@@ -948,9 +948,9 @@ def get_slice_entities(slice_key: str | None = None, filters=None, start: int = 
             cohort = parts[4] if len(parts) > 4 and parts[3] == "cohort" else None
 
             # Build sibling flags from current dataset
-            _, _, sibling_flags = _build_family_groups(
+            sibling_flags = _build_family_groups(
                 guardian_links, {s["name"]: s.get("student_date_of_birth") for s in students}
-            )
+            )[2]
 
             for s in students:
                 if cohort and s.get("cohort") != cohort:

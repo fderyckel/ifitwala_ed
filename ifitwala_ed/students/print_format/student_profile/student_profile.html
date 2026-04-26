@@ -21,7 +21,7 @@
 {% set address_docs = frappe.get_all("Address", filters={"name": ["in", address_names]}, fields=["name", "address_title", "address_type", "address_line1", "address_line2", "city", "state", "country", "pincode"], order_by="creation asc") if address_names else [] %}
 {% set address_map = {} %}
 {% for row in address_docs %}
-	{% set _ = address_map.update({row.name: row}) %}
+	{% set ignored = address_map.update({row.name: row}) %}
 {% endfor %}
 
 {% if using_managed_letterhead %}

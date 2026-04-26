@@ -1023,7 +1023,6 @@ def _normalize_thresholds(
 
     # Threshold governance is school-owned. Keep request payload accepted for compatibility,
     # but do not allow client-side overrides.
-    _ = thresholds
     warning = default_warning
     critical = default_critical
     if warning < critical:

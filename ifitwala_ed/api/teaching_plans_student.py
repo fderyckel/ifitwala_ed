@@ -100,17 +100,17 @@ def resolve_student_learning_focus(
         undated.append((unit_index, int(session.get("sequence_index") or 0), unit, session))
 
     if in_progress:
-        _, unit, session = sorted(in_progress, key=lambda row: row[0])[0]
-        return unit, session
+        selected = sorted(in_progress, key=lambda row: row[0])[0]
+        return selected[1], selected[2]
     if upcoming:
-        _, unit, session = sorted(upcoming, key=lambda row: row[0])[0]
-        return unit, session
+        selected = sorted(upcoming, key=lambda row: row[0])[0]
+        return selected[1], selected[2]
     if undated:
-        _, _, unit, session = sorted(undated, key=lambda row: (row[0], row[1]))[0]
-        return unit, session
+        selected = sorted(undated, key=lambda row: (row[0], row[1]))[0]
+        return selected[2], selected[3]
     if previous:
-        _, unit, session = sorted(previous, key=lambda row: row[0], reverse=True)[0]
-        return unit, session
+        selected = sorted(previous, key=lambda row: row[0], reverse=True)[0]
+        return selected[1], selected[2]
     return units[0], None
 
 
@@ -155,20 +155,20 @@ def resolve_student_learning_session(
         undated.append((sort_key, session))
 
     if in_progress:
-        _, _, session = sorted(in_progress, key=lambda row: (row[0], row[1]))[0]
-        return session
+        selected = sorted(in_progress, key=lambda row: (row[0], row[1]))[0]
+        return selected[2]
     if exact:
-        _, session = sorted(exact, key=lambda row: row[0])[0]
-        return session
+        selected = sorted(exact, key=lambda row: row[0])[0]
+        return selected[1]
     if future:
-        _, _, session = sorted(future, key=lambda row: (row[0], row[1]))[0]
-        return session
+        selected = sorted(future, key=lambda row: (row[0], row[1]))[0]
+        return selected[2]
     if undated:
-        _, session = sorted(undated, key=lambda row: row[0])[0]
-        return session
+        selected = sorted(undated, key=lambda row: row[0])[0]
+        return selected[1]
     if previous:
-        _, _, session = sorted(previous, key=lambda row: (row[0], row[1]), reverse=True)[0]
-        return session
+        selected = sorted(previous, key=lambda row: (row[0], row[1]), reverse=True)[0]
+        return selected[2]
     return None
 
 

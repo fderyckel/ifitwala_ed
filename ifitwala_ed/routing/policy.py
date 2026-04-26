@@ -111,7 +111,6 @@ def _linked_employee_status(*, user: str) -> tuple[bool, str]:
 
 
 def has_active_employee_profile(*, user: str, roles: set[str]) -> bool:
-    _ = roles
     has_employee, status = _linked_employee_status(user=user)
     if not has_employee:
         return False

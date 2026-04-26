@@ -1464,7 +1464,7 @@ def rebuild_resized_images(doctype):
         except Exception as e:
             frappe.log_error(f"Error on rebuild {file.name}: {e}", "Admin Resize Error")
 
-    frappe.msgprint(_(f"Processed {count} file(s) attached to {doctype}."))
+    frappe.msgprint(_("Processed {count} file(s) attached to {doctype}.").format(count=count, doctype=doctype))
 
 
 # ────────────────────────────────────────────────────────────────────────────

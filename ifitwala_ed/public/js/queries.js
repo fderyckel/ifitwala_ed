@@ -15,7 +15,7 @@ $.extend(ifitwala_ed.queries, {
 				cur_frm.scroll_to_field(frappe.dynamic_link.fieldname);
 				frappe.show_alert({
 					message: __('Please set {0} first.', [
-						__(frappe.meta.get_label(doc.doctype, frappe.dynamic_link.fieldname, doc.name)),
+						frappe.meta.get_label(doc.doctype, frappe.dynamic_link.fieldname, doc.name),
 					]),
 					indicator: 'orange',
 				});
@@ -34,7 +34,7 @@ $.extend(ifitwala_ed.queries, {
 	organization_contact_query: function (doc) {
 		if (!doc.organization) {
 			frappe.throw(
-				__('Please set {0}', [__(frappe.meta.get_label(doc.doctype, 'organization', doc.name))])
+				__('Please set {0}', [frappe.meta.get_label(doc.doctype, 'organization', doc.name)])
 			);
 		}
 
@@ -50,7 +50,7 @@ $.extend(ifitwala_ed.queries, {
 				cur_frm.scroll_to_field(frappe.dynamic_link.fieldname);
 				frappe.show_alert({
 					message: __('Please set {0} first.', [
-						__(frappe.meta.get_label(doc.doctype, frappe.dynamic_link.fieldname, doc.name)),
+						frappe.meta.get_label(doc.doctype, frappe.dynamic_link.fieldname, doc.name),
 					]),
 					indicator: 'orange',
 				});
@@ -71,7 +71,7 @@ $.extend(ifitwala_ed.queries, {
 			cur_frm.scroll_to_field('organization');
 			frappe.show_alert({
 				message: __('Please set {0} first.', [
-					__(frappe.meta.get_label(doc.doctype, 'organization', doc.name)),
+					frappe.meta.get_label(doc.doctype, 'organization', doc.name),
 				]),
 				indicator: 'orange',
 			});

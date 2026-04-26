@@ -400,11 +400,19 @@ class StudentLog(Document):
             return
 
         # Compose and emit immediately
-        msg = f"Follow-up status: {prev or '—'} → {new_status or '—'}"
         if reason:
-            msg += f" ({reason})"
+            msg = _("Follow-up status: {previous_status} → {new_status} ({reason})").format(
+                previous_status=prev or "—",
+                new_status=new_status or "—",
+                reason=reason,
+            )
+        else:
+            msg = _("Follow-up status: {previous_status} → {new_status}").format(
+                previous_status=prev or "—",
+                new_status=new_status or "—",
+            )
         try:
-            self.add_comment("Info", _(msg))
+            self.add_comment("Info", msg)
         except Exception:
             pass
 
@@ -466,7 +474,10 @@ class StudentLog(Document):
                 has_role = frappe.db.exists("Has Role", {"parent": self.follow_up_person, "role": expected_role})
                 if not has_role:
                     frappe.throw(
-                        _(f"Follow-up person '{self.follow_up_person}' does not have required role '{expected_role}'.")
+                        _("Follow-up person '{person}' does not have required role '{role}'.").format(
+                            person=self.follow_up_person,
+                            role=expected_role,
+                        )
                     )
             # Derive from current DB state
             derived = self._compute_follow_up_status()
