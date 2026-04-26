@@ -13,7 +13,9 @@ from frappe.utils.nestedset import get_ancestors_of, get_descendants_of
 
 from ifitwala_ed.governance.policy_scope_utils import (
     get_organization_ancestors_including_self,
+    get_organization_descendants_including_self,
     get_school_ancestors_including_self,
+    get_school_descendants_including_self,
 )
 from ifitwala_ed.utilities.school_tree import get_descendant_schools
 
@@ -519,26 +521,25 @@ def _validate_inquiry_assignee_scope(user: str, inquiry_doc) -> dict:
     inquiry_school = (inquiry_doc.get("school") or "").strip()
 
     if inquiry_org:
-        org_scope = _get_organization_scope(inquiry_org)
+        org_scope = _get_inquiry_assignment_organization_scope(inquiry_org)
         if not org_scope:
             frappe.throw(_("Invalid Inquiry Organization scope: {0}.").format(inquiry_org))
         if (employee.get("organization") or "").strip() not in set(org_scope):
-            frappe.throw(
-                _("Assignee must belong to Organization {0} or one of its descendants.").format(
-                    frappe.bold(inquiry_org)
-                )
-            )
+            message = _(
+                "Assignee must belong to Organization {organization}, an ancestor organization, "
+                "or a descendant organization."
+            ).format(organization=frappe.bold(inquiry_org))
+            frappe.throw(message)
 
     if inquiry_school:
-        school_scope = get_school_ancestors_including_self(inquiry_school) or []
+        school_scope = _get_inquiry_assignment_school_scope(inquiry_school)
         if not school_scope:
             frappe.throw(_("Invalid Inquiry School scope: {0}.").format(inquiry_school))
         if (employee.get("school") or "").strip() not in set(school_scope):
-            frappe.throw(
-                _("Assignee must belong to School {0} or one of its parent schools.").format(
-                    frappe.bold(inquiry_school)
-                )
+            message = _("Assignee must belong to School {school}, an ancestor school, or a descendant school.").format(
+                school=frappe.bold(inquiry_school)
             )
+            frappe.throw(message)
 
     return employee
 
@@ -566,6 +567,41 @@ def _get_organization_scope(organization: str | None) -> list[str]:
 
     descendants = get_descendants_of("Organization", organization) or []
     return [organization, *[org for org in descendants if org and org != organization]]
+
+
+def _merge_scope_values(*scopes: list[str]) -> list[str]:
+    merged: list[str] = []
+    seen: set[str] = set()
+    for scope in scopes:
+        for value in scope or []:
+            value = (value or "").strip()
+            if not value or value in seen:
+                continue
+            seen.add(value)
+            merged.append(value)
+    return merged
+
+
+def _get_inquiry_assignment_organization_scope(organization: str | None) -> list[str]:
+    organization = (organization or "").strip()
+    if not organization:
+        return []
+
+    return _merge_scope_values(
+        get_organization_ancestors_including_self(organization),
+        get_organization_descendants_including_self(organization),
+    )
+
+
+def _get_inquiry_assignment_school_scope(school: str | None) -> list[str]:
+    school = (school or "").strip()
+    if not school:
+        return []
+
+    return _merge_scope_values(
+        get_school_ancestors_including_self(school),
+        get_school_descendants_including_self(school),
+    )
 
 
 def _safe_active_employee_scope_row(user: str) -> dict | None:
@@ -1351,11 +1387,11 @@ def get_inquiry_assignees(doctype=None, txt=None, searchfield=None, start=0, pag
     organization = (filters.get("organization") or "").strip()
     school = (filters.get("school") or "").strip()
 
-    org_scope = _get_organization_scope(organization) if organization else []
+    org_scope = _get_inquiry_assignment_organization_scope(organization) if organization else []
     if organization and not org_scope:
         return []
 
-    school_scope = get_school_ancestors_including_self(school) if school else []
+    school_scope = _get_inquiry_assignment_school_scope(school) if school else []
     if school and not school_scope:
         return []
 

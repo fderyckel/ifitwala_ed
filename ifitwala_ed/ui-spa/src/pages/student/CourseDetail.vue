@@ -125,18 +125,19 @@
 							Current session
 						</button>
 						<button
-							type="button"
-							class="if-button if-button--secondary"
-							@click="jumpToSection(SECTION_IDS.assignedWork)"
-						>
-							Assignments
-						</button>
-						<button
+							v-if="hasVisibleResources"
 							type="button"
 							class="if-button if-button--secondary"
 							@click="jumpToSection(SECTION_IDS.resources)"
 						>
 							Resources
+						</button>
+						<button
+							type="button"
+							class="if-button if-button--secondary"
+							@click="jumpToSection(SECTION_IDS.assignedWork)"
+						>
+							Assignments
 						</button>
 						<RouterLink
 							:to="classUpdatesHref"
@@ -295,6 +296,60 @@
 						</article>
 					</div>
 				</article>
+			</section>
+
+			<section
+				v-if="resourceStreamGroups.length"
+				:id="SECTION_IDS.resources"
+				class="card-surface scroll-mt-40 p-6"
+			>
+				<div class="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+					<div>
+						<p class="type-overline text-ink/60">Resources</p>
+						<h2 class="mt-2 type-h2 text-ink">What you need</h2>
+					</div>
+					<span class="chip chip-focus">{{ resourceStreamCount }} items</span>
+				</div>
+
+				<div class="mt-5 grid gap-4 xl:grid-cols-2">
+					<template v-for="group in resourceStreamGroups" :key="group.id">
+						<details v-if="group.collapsed" class="student-hub-card" :class="group.cardClass">
+							<summary class="cursor-pointer list-none">
+								<div class="flex items-start justify-between gap-3">
+									<div class="min-w-0">
+										<p class="type-overline text-ink/60">{{ group.label }}</p>
+										<p class="mt-1 type-body-strong text-ink">{{ group.title }}</p>
+									</div>
+									<span class="chip">{{ group.resources.length }}</span>
+								</div>
+							</summary>
+							<div class="mt-4 grid gap-3">
+								<StudentLearningResourceCard
+									v-for="resource in group.resources"
+									:key="resource.placement || resource.material"
+									:resource="resource"
+								/>
+							</div>
+						</details>
+
+						<article v-else class="student-hub-card" :class="group.cardClass">
+							<div class="flex items-start justify-between gap-3">
+								<div class="min-w-0">
+									<p class="type-overline text-ink/60">{{ group.label }}</p>
+									<p class="mt-1 type-body-strong text-ink">{{ group.title }}</p>
+								</div>
+								<span class="chip">{{ group.resources.length }}</span>
+							</div>
+							<div class="mt-4 grid gap-3">
+								<StudentLearningResourceCard
+									v-for="resource in group.resources"
+									:key="resource.placement || resource.material"
+									:resource="resource"
+								/>
+							</div>
+						</article>
+					</template>
+				</div>
 			</section>
 
 			<section
@@ -459,20 +514,6 @@
 								</div>
 							</div>
 
-							<div v-if="selectedSession.resources.length" class="mt-6 space-y-3">
-								<div class="flex items-center justify-between gap-3">
-									<h3 class="type-h3 text-ink">Resources for this session</h3>
-									<span class="chip">{{ selectedSession.resources.length }}</span>
-								</div>
-								<div class="grid gap-3 lg:grid-cols-2">
-									<StudentLearningResourceCard
-										v-for="resource in selectedSession.resources"
-										:key="resource.placement || resource.material"
-										:resource="resource"
-									/>
-								</div>
-							</div>
-
 							<div v-if="selectedSession.assigned_work.length" class="mt-6 space-y-3">
 								<div class="flex items-center justify-between gap-3">
 									<h3 class="type-h3 text-ink">Work connected to this class</h3>
@@ -508,19 +549,6 @@
 												class="mt-3 prose prose-sm max-w-none text-ink/80"
 												v-html="item.instructions_html"
 											/>
-										</div>
-										<div v-if="item.materials.length" class="mt-4 space-y-3">
-											<div class="flex items-center justify-between gap-3">
-												<p class="type-caption text-ink/60">Attachments</p>
-												<span class="chip">{{ item.materials.length }}</span>
-											</div>
-											<div class="grid gap-3 lg:grid-cols-2">
-												<StudentLearningResourceCard
-													v-for="resource in item.materials"
-													:key="resource.placement || resource.material"
-													:resource="resource"
-												/>
-											</div>
 										</div>
 										<div class="mt-3 flex flex-wrap gap-2">
 											<RouterLink
@@ -1182,19 +1210,6 @@
 								v-html="item.instructions_html"
 							/>
 						</div>
-						<div v-if="item.materials.length" class="mt-4 space-y-3">
-							<div class="flex items-center justify-between gap-3">
-								<p class="type-caption text-ink/60">Attachments</p>
-								<span class="chip">{{ item.materials.length }}</span>
-							</div>
-							<div class="grid gap-3 lg:grid-cols-2">
-								<StudentLearningResourceCard
-									v-for="resource in item.materials"
-									:key="resource.placement || resource.material"
-									:resource="resource"
-								/>
-							</div>
-						</div>
 						<div class="mt-3 flex flex-wrap gap-2">
 							<RouterLink
 								v-if="isQuizAssignedWork(item)"
@@ -1270,67 +1285,6 @@
 					</div>
 				</details>
 			</section>
-
-			<section
-				v-if="
-					selectedUnit ||
-					learningSpace.resources.class_resources.length ||
-					learningSpace.resources.shared_resources.length
-				"
-				:id="SECTION_IDS.resources"
-				class="card-surface scroll-mt-40 p-6"
-			>
-				<div class="flex items-center justify-between gap-3">
-					<div>
-						<p class="type-overline text-ink/60">Helpful Resources</p>
-						<h2 class="mt-2 type-h2 text-ink">What you may need</h2>
-					</div>
-				</div>
-
-				<div class="mt-5 grid gap-4 xl:grid-cols-3">
-					<article
-						v-if="selectedUnit?.shared_resources.length"
-						class="rounded-2xl border border-line-soft bg-surface-soft p-4"
-					>
-						<p class="type-body-strong text-ink">This unit</p>
-						<div class="mt-3 grid gap-3">
-							<StudentLearningResourceCard
-								v-for="resource in selectedUnit.shared_resources"
-								:key="resource.placement || resource.material"
-								:resource="resource"
-							/>
-						</div>
-					</article>
-
-					<article
-						v-if="learningSpace.resources.class_resources.length"
-						class="rounded-2xl border border-line-soft bg-surface-soft p-4"
-					>
-						<p class="type-body-strong text-ink">Your class</p>
-						<div class="mt-3 grid gap-3">
-							<StudentLearningResourceCard
-								v-for="resource in learningSpace.resources.class_resources"
-								:key="resource.placement || resource.material"
-								:resource="resource"
-							/>
-						</div>
-					</article>
-
-					<article
-						v-if="learningSpace.resources.shared_resources.length"
-						class="rounded-2xl border border-line-soft bg-surface-soft p-4"
-					>
-						<p class="type-body-strong text-ink">Across this course</p>
-						<div class="mt-3 grid gap-3">
-							<StudentLearningResourceCard
-								v-for="resource in learningSpace.resources.shared_resources"
-								:key="resource.placement || resource.material"
-								:resource="resource"
-							/>
-						</div>
-					</article>
-				</div>
-			</section>
 		</template>
 	</div>
 </template>
@@ -1355,6 +1309,7 @@ import type {
 	StudentCourseCommunicationSummary,
 	StudentLearningNextAction,
 	StudentLearningReflectionEntry,
+	StudentLearningMaterial,
 	StudentLearningSession,
 	StudentLearningUnit,
 } from '@/types/contracts/student_learning/get_student_learning_space';
@@ -1387,6 +1342,14 @@ const SECTION_IDS = {
 } as const;
 
 type LearningSectionId = (typeof SECTION_IDS)[keyof typeof SECTION_IDS];
+type ResourceStreamGroup = {
+	id: string;
+	label: string;
+	title: string;
+	resources: StudentLearningMaterial[];
+	cardClass: string;
+	collapsed?: boolean;
+};
 
 const props = defineProps<{
 	course_id: string;
@@ -1511,6 +1474,79 @@ const displayedCompletedAssignedWork = computed<StudentAssignedWork[]>(() =>
 		item => !isActionableAssignedWork(item) && isDoneAssignedWork(item)
 	)
 );
+const resourceStreamGroups = computed<ResourceStreamGroup[]>(() => {
+	const seen = new Set<string>();
+	const groups: ResourceStreamGroup[] = [];
+	const neededNow: StudentLearningMaterial[] = [];
+	appendUniqueResources(neededNow, selectedSession.value?.resources || [], seen);
+	for (const action of nextActions.value) {
+		if (!action.task_delivery) continue;
+		appendUniqueResources(
+			neededNow,
+			findAssignedWorkByDelivery(action.task_delivery)?.materials || [],
+			seen
+		);
+	}
+	appendUniqueResources(neededNow, selectedAssignedWork.value?.materials || [], seen);
+	if (neededNow.length) {
+		groups.push({
+			id: 'needed-now',
+			label: 'Needed now',
+			title: 'For your next step',
+			resources: neededNow,
+			cardClass: 'student-hub-card--focus',
+		});
+	}
+
+	const thisUnit: StudentLearningMaterial[] = [];
+	appendUniqueResources(thisUnit, selectedUnit.value?.shared_resources || [], seen);
+	if (thisUnit.length) {
+		groups.push({
+			id: 'this-unit',
+			label: 'This unit',
+			title: selectedUnit.value?.title || 'Unit resources',
+			resources: thisUnit,
+			cardClass: 'student-hub-card--success',
+		});
+	}
+
+	const classResources: StudentLearningMaterial[] = [];
+	appendUniqueResources(
+		classResources,
+		learningSpace.value?.resources.class_resources || [],
+		seen
+	);
+	if (classResources.length) {
+		groups.push({
+			id: 'class-resources',
+			label: 'Your class',
+			title: 'Class resources',
+			resources: classResources,
+			cardClass: 'student-hub-card--warm',
+		});
+	}
+
+	const courseReferences: StudentLearningMaterial[] = [];
+	appendUniqueResources(
+		courseReferences,
+		learningSpace.value?.resources.shared_resources || [],
+		seen
+	);
+	if (courseReferences.length) {
+		groups.push({
+			id: 'course-references',
+			label: 'Course references',
+			title: 'Open when you need more',
+			resources: courseReferences,
+			cardClass: 'student-hub-card--neutral',
+			collapsed: true,
+		});
+	}
+	return groups;
+});
+const resourceStreamCount = computed(() =>
+	resourceStreamGroups.value.reduce((total, group) => total + group.resources.length, 0)
+);
 
 const selectedTaskWorkspaceNote = computed(() => {
 	if (!selectedTaskWorkspace.value) return '';
@@ -1608,11 +1644,7 @@ const resolvedClassLabel = computed(() => {
 });
 
 const hasVisibleResources = computed(() => {
-	return !!(
-		selectedUnit.value?.shared_resources.length ||
-		learningSpace.value?.resources.class_resources.length ||
-		learningSpace.value?.resources.shared_resources.length
-	);
+	return resourceStreamGroups.value.length > 0;
 });
 
 const classUpdatesHref = computed(() => ({
@@ -1639,8 +1671,16 @@ const learningSections = computed(() => {
 	const sections: Array<{ id: LearningSectionId; label: string }> = [
 		{ id: SECTION_IDS.focus, label: 'Focus' },
 		{ id: SECTION_IDS.nextActions, label: `Next Actions (${nextActions.value.length})` },
-		{ id: SECTION_IDS.unitJourney, label: `Units (${unitNavigation.value.length})` },
 	];
+
+	if (hasVisibleResources.value) {
+		sections.push({
+			id: SECTION_IDS.resources,
+			label: `Resources (${resourceStreamCount.value})`,
+		});
+	}
+
+	sections.push({ id: SECTION_IDS.unitJourney, label: `Units (${unitNavigation.value.length})` });
 
 	if (selectedUnit.value) {
 		sections.push(
@@ -1660,15 +1700,35 @@ const learningSections = computed(() => {
 		});
 	}
 
-	if (hasVisibleResources.value) {
-		sections.push({ id: SECTION_IDS.resources, label: 'Resources' });
-	}
-
 	return sections;
 });
 
 function isLearningSectionId(value: string): value is LearningSectionId {
 	return Object.values(SECTION_IDS).includes(value as LearningSectionId);
+}
+
+function resourceIdentity(resource: StudentLearningMaterial) {
+	return String(
+		resource.material ||
+			resource.placement ||
+			resource.open_url ||
+			resource.preview_url ||
+			resource.reference_url ||
+			resource.title
+	).trim();
+}
+
+function appendUniqueResources(
+	target: StudentLearningMaterial[],
+	resources: StudentLearningMaterial[],
+	seen: Set<string>
+) {
+	for (const resource of resources) {
+		const key = resourceIdentity(resource);
+		if (!key || seen.has(key)) continue;
+		seen.add(key);
+		target.push(resource);
+	}
 }
 
 function getSectionElement(sectionId: LearningSectionId) {

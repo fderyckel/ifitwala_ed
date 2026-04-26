@@ -18,9 +18,10 @@ Current live behavior:
 
 - the student course page leads with `Learning Focus`, `Next Actions`, a sticky `Jump to` strip, `Session Journey` before the denser `This Unit` summary, a dedicated `Assigned Work` zone, and scoped resources
 - the student course page now includes a contextual `Reflection & Journal` zone inside the same course workspace instead of pushing quick reflection into a second student flow
-- assigned-work cards now surface linked task materials and use `CourseDetail.vue` as the workspace entry for non-quiz work instead of forcing a second task page
+- assigned-work resources now surface through the resource stream and the selected task workspace, while `CourseDetail.vue` remains the workspace entry for non-quiz work instead of forcing a second task page
 - student hub work-board and timeline links now preserve `class_session` context when available so students land on the right class experience directly
 - student-facing surfaces now hide shared-plan management labels and raw planning-state language
+- the student course page now uses one colorful resource stream ordered by immediacy: needed now, this unit, your class, and collapsed course references
 - staff setup now treats Class Delivery as the live student-group delivery anchor, auto-created where possible from Student Group context and surfaced through Student Group setup when a Course Plan choice is needed
 - guardian home uses `learning_highlights` cards with a family-safe current theme, upcoming step, and a talk-at-home prompt
 - the guardian child brief now foregrounds current theme, next class experience, upcoming learning experiences, and helpful-at-home resources
@@ -449,7 +450,7 @@ Test refs: `ifitwala_ed/ui-spa/src/pages/student/__tests__/CourseDetail.test.ts`
 Recommended order:
 
 1. Keep extending the student course workspace without reintroducing planning-heavy language or a second task page.
-2. Refine the student resource stream by grouping existing resources by learning need: needed now, this unit, class resources, and collapsed course references.
+2. Keep tuning the resource stream only from observed student navigation friction; do not add extra buckets or labels unless they reduce clicks.
 3. Refine the bounded student read model only when the UI needs additional server-derived guidance.
 4. Improve guardian summaries and support prompts without turning guardian pages into a second LMS.
 5. Preserve permission and sibling-isolation rules for every guardian-facing curriculum field.

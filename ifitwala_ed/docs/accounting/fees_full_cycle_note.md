@@ -190,7 +190,37 @@ In the current workspace, invoicing is Desk-first.
 - Finance can create a linked `Payment Request` directly from the invoice.
 - Finance can create linked `Credit Note` and `Debit Note` drafts directly from the invoice.
 
-There is one implemented server-side draft-invoice shortcut: paid activity booking can create a draft tuition invoice tied to a `Program Offering`. That is a specific workflow, not the general school-fee engine.
+There are two implemented server-side draft-invoice shortcuts. These are specific workflow bridges, not the general school-fee engine:
+
+- paid activity booking can create a draft tuition invoice tied to a `Program Offering`
+- an accepted admissions offer can create one draft admissions deposit invoice from the linked `Applicant Enrollment Plan`
+
+### 3.6 Admissions deposit invoices
+
+Status: Implemented
+Code refs: `ifitwala_ed/admission/doctype/applicant_enrollment_plan/applicant_enrollment_plan.py`, `ifitwala_ed/admission/doctype/student_applicant/student_applicant.py`, `ifitwala_ed/admission/doctype/admission_settings/admission_settings.json`, `ifitwala_ed/admission/doctype/admission_deposit_default/admission_deposit_default.json`, `ifitwala_ed/accounting/doctype/sales_invoice/sales_invoice.py`
+Test refs: `ifitwala_ed/admission/doctype/applicant_enrollment_plan/test_applicant_enrollment_plan.py`
+
+Admissions deposit billing is implemented as a narrow bridge from admissions into accounting.
+
+What it does:
+
+- uses `Admission Settings.deposit_defaults` as the school-approved deposit source
+- links `Student Applicant.account_holder` to the payer, creating the account holder when needed
+- creates a draft `Sales Invoice` to the account holder for the accepted offer deposit
+- links the invoice back to `Applicant Enrollment Plan.deposit_invoice`
+- keeps invoice generation idempotent so the same accepted offer cannot produce duplicate deposit invoices
+- exposes invoice/payment status back to the Admissions Cockpit and applicant status page
+
+What it does not do:
+
+- submit the invoice automatically
+- record payment
+- provide checkout or a payment gateway
+- implement discounts without approval
+- replace finance review of the draft invoice
+
+If the deposit terms differ from the school default, the AEP treats them as a manual override. That override must be approved by both the academic side (`Academic Admin` or `System Manager`) and finance (`Accounts Manager` or `System Manager`) within employee scope before the draft invoice can be generated.
 
 ## 4. Receiving Payment
 

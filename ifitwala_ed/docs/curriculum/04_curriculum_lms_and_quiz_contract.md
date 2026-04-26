@@ -67,24 +67,26 @@ The student learning space currently renders:
 - reflection and journal capture inside the course workspace
 - unit journey
 - class sessions inside each unit
-- session resources inside the selected class experience
+- session resources inside the student resource stream
 - assigned work in its own student-facing zone
 - unit resources
 - class-wide resources
 - shared course-plan resources
-- task-linked materials directly on assigned-work cards
+- task-linked materials inside the student resource stream and the selected task workspace
 
 Resource shaping rule:
 
-- next-action, task-linked, and session resources should remain closest to the work they support
+- next-action, task-linked, and session resources should appear first in the resource stream
 - selected-unit resources should sit inside the current unit context
 - class-wide resources should stay available without crowding the immediate work area
 - shared course-plan references should remain available but visually secondary when class-owned context exists
+- the student-facing browsing surface is one colorful resource stream ordered by learning immediacy: needed now, this unit, your class, course references
+- the stream must deduplicate by closest context; if a material is already shown as needed now, it should not reappear lower in the stream
 
 Current resource preview behavior in that workspace:
 
 - governed file resources prefer optional stable Ed-owned `thumbnail_url` routes for inline image cards plus stable `preview_url` routes for richer preview/open behavior
-- session resources plus unit, class, and shared course resource shelves render inline image thumbnails from `thumbnail_url` and compact PDF preview tiles from `preview_url`
+- the student resource stream renders inline image thumbnails from `thumbnail_url` and compact PDF preview tiles from `preview_url`
 - assigned-work rows now also include sanitized `instructions_html` so `CourseDetail.vue` remains the canonical student task-reading surface for non-quiz work
 - task-linked materials render inside that task brief through the shared learning attachment card, with in-place preview plus download actions driven by the governed preview DTO
 - non-quiz task context is deep-linkable through the course route query, and the selected task workspace lives inside `CourseDetail.vue` rather than on a second student task page

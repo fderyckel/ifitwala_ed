@@ -120,22 +120,47 @@ class TestInquiry(FrappeTestCase):
         self.assertTrue(_school_belongs_to_organization_scope(school, parent_org))
         self.assertFalse(_school_belongs_to_organization_scope(school, sibling_org))
 
-    def test_validate_inquiry_assignee_scope_allows_parent_school_lineage(self):
+    def test_validate_inquiry_assignee_scope_allows_school_ancestors_and_descendants(self):
         organization = self._make_organization("Inquiry Scope Root", is_group=1)
         root_school = self._make_school(organization, "IIS", is_group=1)
         branch_school = self._make_school(organization, "ISS", parent_school=root_school, is_group=1)
         leaf_school = self._make_school(organization, "IHS", parent_school=branch_school)
         sibling_school = self._make_school(organization, "IPS", parent_school=root_school)
 
-        inquiry = self._make_inquiry(organization=organization, school=leaf_school)
+        inquiry = self._make_inquiry(organization=organization, school=branch_school)
         parent_assignee = self._make_employee_user(school=root_school)
+        child_assignee = self._make_employee_user(school=leaf_school)
         sibling_assignee = self._make_employee_user(school=sibling_school)
 
         _validate_inquiry_assignee_scope(parent_assignee.name, inquiry)
+        _validate_inquiry_assignee_scope(child_assignee.name, inquiry)
         with self.assertRaises(frappe.ValidationError):
             _validate_inquiry_assignee_scope(sibling_assignee.name, inquiry)
 
-    def test_get_inquiry_assignees_includes_parent_schools_and_excludes_siblings(self):
+    def test_validate_inquiry_assignee_scope_allows_organization_ancestors_and_descendants(self):
+        parent_org = self._make_organization("Inquiry Org Parent", is_group=1)
+        child_org = self._make_organization("Inquiry Org Child", parent=parent_org, is_group=1)
+        grandchild_org = self._make_organization("Inquiry Org Grandchild", parent=child_org)
+        sibling_org = self._make_organization("Inquiry Org Sibling", parent=parent_org)
+
+        parent_school = self._make_school(parent_org, "Org Parent School")
+        child_school = self._make_school(child_org, "Org Child School")
+        grandchild_school = self._make_school(grandchild_org, "Org Grandchild School")
+        sibling_school = self._make_school(sibling_org, "Org Sibling School")
+
+        inquiry = self._make_inquiry(organization=child_org)
+        parent_assignee = self._make_employee_user(school=parent_school)
+        child_assignee = self._make_employee_user(school=child_school)
+        grandchild_assignee = self._make_employee_user(school=grandchild_school)
+        sibling_assignee = self._make_employee_user(school=sibling_school)
+
+        _validate_inquiry_assignee_scope(parent_assignee.name, inquiry)
+        _validate_inquiry_assignee_scope(child_assignee.name, inquiry)
+        _validate_inquiry_assignee_scope(grandchild_assignee.name, inquiry)
+        with self.assertRaises(frappe.ValidationError):
+            _validate_inquiry_assignee_scope(sibling_assignee.name, inquiry)
+
+    def test_get_inquiry_assignees_includes_school_ancestors_descendants_and_excludes_siblings(self):
         organization = self._make_organization("Inquiry Picker Root", is_group=1)
         root_school = self._make_school(organization, "IIS", is_group=1)
         branch_school = self._make_school(organization, "ISS", parent_school=root_school, is_group=1)
@@ -148,12 +173,37 @@ class TestInquiry(FrappeTestCase):
         sibling_user = self._make_employee_user(school=sibling_school)
 
         with patch("ifitwala_ed.admission.admission_utils.ensure_admissions_permission", return_value="Administrator"):
-            rows = get_inquiry_assignees(filters={"organization": organization, "school": leaf_school})
+            rows = get_inquiry_assignees(filters={"organization": organization, "school": branch_school})
 
         names = {row[0] for row in rows}
         self.assertIn(root_user.name, names)
         self.assertIn(branch_user.name, names)
         self.assertIn(leaf_user.name, names)
+        self.assertNotIn(sibling_user.name, names)
+
+    def test_get_inquiry_assignees_includes_organization_ancestors_descendants_and_excludes_siblings(self):
+        parent_org = self._make_organization("Inquiry Picker Org Parent", is_group=1)
+        child_org = self._make_organization("Inquiry Picker Org Child", parent=parent_org, is_group=1)
+        grandchild_org = self._make_organization("Inquiry Picker Org Grandchild", parent=child_org)
+        sibling_org = self._make_organization("Inquiry Picker Org Sibling", parent=parent_org)
+
+        parent_school = self._make_school(parent_org, "Picker Org Parent School")
+        child_school = self._make_school(child_org, "Picker Org Child School")
+        grandchild_school = self._make_school(grandchild_org, "Picker Org Grandchild School")
+        sibling_school = self._make_school(sibling_org, "Picker Org Sibling School")
+
+        parent_user = self._make_employee_user(school=parent_school)
+        child_user = self._make_employee_user(school=child_school)
+        grandchild_user = self._make_employee_user(school=grandchild_school)
+        sibling_user = self._make_employee_user(school=sibling_school)
+
+        with patch("ifitwala_ed.admission.admission_utils.ensure_admissions_permission", return_value="Administrator"):
+            rows = get_inquiry_assignees(filters={"organization": child_org})
+
+        names = {row[0] for row in rows}
+        self.assertIn(parent_user.name, names)
+        self.assertIn(child_user.name, names)
+        self.assertIn(grandchild_user.name, names)
         self.assertNotIn(sibling_user.name, names)
 
     def test_from_inquiry_invite_rejects_mismatched_school_organization(self):

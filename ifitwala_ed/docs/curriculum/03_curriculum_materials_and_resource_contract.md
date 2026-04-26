@@ -134,8 +134,9 @@ Current student preview behavior:
 - `CourseDetail.vue` uses optional `thumbnail_url` for inline governed image cards and stable Ed-owned `preview_url` routes for richer preview/open behavior
 - those resource rows now also carry an additive nested `attachment_preview` block with the shared cross-surface preview DTO
 - `CourseDetail.vue` now consumes that nested preview DTO through the shared display-only SPA attachment preview card
-- session resources plus unit, class, and shared course resource shelves now render inline image thumbnails from `thumbnail_url`, use `thumbnail_url` for PDF first-page card previews when the card preview is ready, fall back to `preview_url` inline when needed, and keep `preview_url` as the richer PDF preview action
+- the student resource stream renders inline image thumbnails from `thumbnail_url`, uses `thumbnail_url` for PDF first-page card previews when the card preview is ready, falls back to `preview_url` inline when needed, and keeps `preview_url` as the richer PDF preview action
 - task-linked materials now render directly inside the assigned-work brief with preview and download actions so students can read the task and access its attachments in one place
+- `CourseDetail.vue` also consolidates navigational resource browsing into one student-facing stream: needed now, this unit, your class, and collapsed course references. The stream deduplicates by closest context so the same material is not repeated across resource buckets.
 
 The student surface must not require learners to hunt across unrelated pages just to collect the materials for a class.
 
@@ -181,12 +182,12 @@ Implemented now:
 - class-wide and session-specific resource authoring
 - student LMS resource shelves with governed preview/open URLs and inline image or compact PDF preview where available
 - Student Group Class Delivery setup for resolving the active class anchor that governs class-specific resource visibility
+- consolidated student resource stream with course references collapsed by default
 
 Not implemented now:
 
 - existing-file picker from Drive
 - a separate browse-first materials workspace replacing the current context-first flow
-- a consolidated student resource stream that reorders the existing buckets into immediacy groups such as needed now, this unit, class resources, and collapsed course references
 
 ## Related Docs
 
