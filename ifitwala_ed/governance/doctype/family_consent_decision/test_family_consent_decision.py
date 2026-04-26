@@ -6,6 +6,7 @@ from frappe.tests.utils import FrappeTestCase
 
 from ifitwala_ed.governance.doctype.family_consent_decision.family_consent_decision import has_permission
 from ifitwala_ed.tests.factories.organization import make_organization, make_school
+from ifitwala_ed.tests.fixtures import MINIMAL_PDF_BYTES
 
 
 class TestFamilyConsentDecision(FrappeTestCase):
@@ -84,7 +85,7 @@ class TestFamilyConsentDecision(FrappeTestCase):
                 "doctype": "File",
                 "file_name": f"paper-{frappe.generate_hash(length=6)}.pdf",
                 "is_private": 1,
-                "content": b"paper",
+                "content": MINIMAL_PDF_BYTES,
             }
         ).insert(ignore_permissions=True)
         self.created.append(("File", file_doc.name))

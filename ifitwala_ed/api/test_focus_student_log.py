@@ -52,7 +52,7 @@ class TestFocusStudentLog(FrappeTestCase):
         frappe.set_user("Administrator")
         for doctype, name in reversed(self._created):
             if frappe.db.exists(doctype, name):
-                if doctype == "Student Log":
+                if doctype in {"Student Log", "Student Log Follow Up"}:
                     docstatus = cint(frappe.db.get_value(doctype, name, "docstatus") or 0)
                     if docstatus == 1:
                         frappe.get_doc(doctype, name).cancel()

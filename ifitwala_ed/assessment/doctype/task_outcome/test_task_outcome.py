@@ -56,38 +56,14 @@ class TestTaskOutcome(TestCase):
 
         self.assertFalse(module._unique_index_exists(rows, ["task_delivery", "student"]))
 
-    def test_backfill_denorm_fields_only_reads_supported_task_delivery_columns(self):
+    def test_backfill_denorm_fields_reads_missing_required_and_optional_fields(self):
         task_outcome_service = types.ModuleType("ifitwala_ed.assessment.task_outcome_service")
         task_outcome_service.resolve_grade_symbol = lambda *_args, **_kwargs: 1
 
         with stubbed_frappe(
             extra_modules={"ifitwala_ed.assessment.task_outcome_service": task_outcome_service}
         ) as frappe:
-            available_fields = {
-                "Task Outcome": {
-                    "task_delivery",
-                    "student",
-                    "task",
-                    "student_group",
-                    "course",
-                    "academic_year",
-                    "school",
-                },
-                "Task Delivery": {
-                    "task",
-                    "student_group",
-                    "course",
-                    "academic_year",
-                    "school",
-                    "grade_scale",
-                },
-            }
             captured: dict[str, object] = {}
-
-            def fake_meta(doctype):
-                return types.SimpleNamespace(
-                    get_field=lambda fieldname: object() if fieldname in available_fields.get(doctype, set()) else None
-                )
 
             def fake_get_value(doctype, name, fieldname=None, as_dict=False):
                 captured["doctype"] = doctype
@@ -97,9 +73,9 @@ class TestTaskOutcome(TestCase):
                 return {
                     "task": "TASK-1",
                     "course": "COURSE-1",
+                    "grade_scale": "GRADE-SCALE-1",
                 }
 
-            frappe.get_meta = fake_meta
             frappe.db.get_value = fake_get_value
 
             module = import_fresh("ifitwala_ed.assessment.doctype.task_outcome.task_outcome")
@@ -117,7 +93,8 @@ class TestTaskOutcome(TestCase):
 
         self.assertEqual(captured["doctype"], "Task Delivery")
         self.assertEqual(captured["name"], "TDL-1")
-        self.assertEqual(captured["fieldname"], ["task", "course"])
+        self.assertEqual(captured["fieldname"], ["task", "course", "grade_scale"])
         self.assertTrue(captured["as_dict"])
         self.assertEqual(outcome.task, "TASK-1")
         self.assertEqual(outcome.course, "COURSE-1")
+        self.assertEqual(outcome.grade_scale, "GRADE-SCALE-1")

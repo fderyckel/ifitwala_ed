@@ -169,11 +169,17 @@ class TestStudentLogApi(TestCase):
                 return_value="STU-0001",
             ),
             patch("ifitwala_ed.api.student_log.frappe.db.get_value", return_value=log_row),
+            patch(
+                "ifitwala_ed.students.doctype.student_log.evidence.get_visible_student_log_evidence_attachments",
+                return_value=[],
+            ) as evidence_mock,
             patch("ifitwala_ed.api.student_log._upsert_student_log_read_receipt") as mark_read_mock,
         ):
             result = student_log_api.get_student_log_detail("LOG-0001")
 
         self.assertEqual(result, log_row)
+        self.assertEqual(result["attachments"], [])
+        evidence_mock.assert_called_once_with("LOG-0001", audience="student")
         mark_read_mock.assert_not_called()
 
     def test_mark_student_log_read_marks_log_read_with_timestamp(self):

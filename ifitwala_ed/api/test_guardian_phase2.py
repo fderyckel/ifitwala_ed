@@ -464,6 +464,10 @@ class TestGuardianMonitoringPhase2(FrappeTestCase):
                 "ifitwala_ed.api.guardian_monitoring.frappe.db.sql",
                 return_value=[{**row, "is_unread": 1}],
             ),
+            patch(
+                "ifitwala_ed.students.doctype.student_log.evidence.get_student_log_evidence_map",
+                return_value={},
+            ),
         ):
             result = _get_monitoring_logs(
                 user="guardian@example.com",

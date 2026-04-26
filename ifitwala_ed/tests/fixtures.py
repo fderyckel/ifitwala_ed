@@ -1,0 +1,25 @@
+from __future__ import annotations
+
+MINIMAL_PDF_BYTES = (
+    b"%PDF-1.4\n"
+    b"1 0 obj\n"
+    b"<< /Type /Catalog /Pages 2 0 R >>\n"
+    b"endobj\n"
+    b"2 0 obj\n"
+    b"<< /Type /Pages /Kids [3 0 R] /Count 1 >>\n"
+    b"endobj\n"
+    b"3 0 obj\n"
+    b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 1 1] >>\n"
+    b"endobj\n"
+    b"xref\n"
+    b"0 4\n"
+    b"0000000000 65535 f \n"
+    b"0000000009 00000 n \n"
+    b"0000000058 00000 n \n"
+    b"0000000115 00000 n \n"
+    b"trailer\n"
+    b"<< /Root 1 0 R /Size 4 >>\n"
+    b"startxref\n"
+    b"182\n"
+    b"%%EOF\n"
+)

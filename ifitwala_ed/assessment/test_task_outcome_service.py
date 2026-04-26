@@ -8,6 +8,18 @@ from unittest import TestCase
 from ifitwala_ed.tests.frappe_stubs import StubPermissionError, StubValidationError, import_fresh, stubbed_frappe
 
 
+def _task_feedback_service_stub(publication_state_by_outcome=None):
+    task_feedback_service = types.ModuleType("ifitwala_ed.assessment.task_feedback_service")
+
+    def build_publication_state_map(outcome_ids):
+        if not publication_state_by_outcome:
+            return {}
+        return {outcome_id: publication_state_by_outcome.get(outcome_id, {}) for outcome_id in outcome_ids or []}
+
+    task_feedback_service.build_publication_state_map = build_publication_state_map
+    return task_feedback_service
+
+
 class TestTaskOutcomeService(TestCase):
     def test_points_score_without_grade_scale_omits_null_grade_value_update(self):
         updates = []
@@ -644,7 +656,9 @@ class TestTaskOutcomeService(TestCase):
                     }
                 )
 
-        with stubbed_frappe() as frappe:
+        with stubbed_frappe(
+            extra_modules={"ifitwala_ed.assessment.task_feedback_service": _task_feedback_service_stub()}
+        ) as frappe:
             frappe.db.get_value = lambda doctype, name, fieldname=None, as_dict=False: (
                 {
                     "name": "OUT-1",
@@ -684,7 +698,9 @@ class TestTaskOutcomeService(TestCase):
         )
 
     def test_set_assign_only_completion_is_idempotent_when_already_complete(self):
-        with stubbed_frappe() as frappe:
+        with stubbed_frappe(
+            extra_modules={"ifitwala_ed.assessment.task_feedback_service": _task_feedback_service_stub()}
+        ) as frappe:
             frappe.db.get_value = lambda doctype, name, fieldname=None, as_dict=False: (
                 {
                     "name": "OUT-1",
@@ -719,13 +735,12 @@ class TestTaskOutcomeService(TestCase):
         )
 
     def test_set_assign_only_completion_rejects_published_outcomes(self):
-        task_feedback_service = types.ModuleType("ifitwala_ed.assessment.task_feedback_service")
-        task_feedback_service.build_publication_state_map = lambda outcome_ids: {
-            outcome_id: {"is_visible_to_any_audience": True} for outcome_id in outcome_ids or []
-        }
-
         with stubbed_frappe(
-            extra_modules={"ifitwala_ed.assessment.task_feedback_service": task_feedback_service}
+            extra_modules={
+                "ifitwala_ed.assessment.task_feedback_service": _task_feedback_service_stub(
+                    {"OUT-1": {"is_visible_to_any_audience": True}}
+                )
+            }
         ) as frappe:
             frappe.db.get_value = lambda doctype, name, fieldname=None, as_dict=False: (
                 {

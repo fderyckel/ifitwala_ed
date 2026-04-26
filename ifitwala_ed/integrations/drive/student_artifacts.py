@@ -6,7 +6,10 @@ from typing import Any
 import frappe
 from frappe import _
 
-from ifitwala_ed.admission.admission_utils import get_applicant_document_slot_spec
+from ifitwala_ed.admission.admission_utils import (
+    get_applicant_document_slot_spec,
+    has_scoped_staff_access_to_student_applicant,
+)
 
 _WORKFLOW_EXPORTS = {
     "portfolio": {
@@ -75,9 +78,10 @@ def _validate_session_fields(upload_session_doc, authoritative: dict[str, Any], 
     return authoritative
 
 
-def _resolve_student_scope(student: str) -> dict[str, str]:
+def _resolve_student_scope(student: str, *, permission_type: str | None = "write") -> dict[str, str]:
     student_doc = frappe.get_doc("Student", student)
-    student_doc.check_permission("write")
+    if permission_type:
+        student_doc.check_permission(permission_type)
 
     school = str(getattr(student_doc, "anchor_school", None) or "").strip()
     if not school:
@@ -205,7 +209,25 @@ def get_promoted_admissions_document_context(payload: dict[str, Any]) -> dict[st
     student_applicant = _require_text(payload, "student_applicant")
     source_item_name = _require_text(payload, "source_applicant_document_item")
 
-    scope = _resolve_student_scope(student)
+    student_applicant_for_student = str(frappe.db.get_value("Student", student, "student_applicant") or "").strip()
+    if student_applicant_for_student != student_applicant:
+        frappe.throw(
+            _("Student '{student}' is not linked to Student Applicant '{student_applicant}'.").format(
+                student=student,
+                student_applicant=student_applicant,
+            )
+        )
+
+    if not has_scoped_staff_access_to_student_applicant(
+        user=frappe.session.user,
+        student_applicant=student_applicant,
+    ):
+        frappe.throw(
+            _("You do not have permission to copy admissions documents for this applicant."),
+            frappe.PermissionError,
+        )
+
+    scope = _resolve_student_scope(student, permission_type=None)
     item_row = (
         frappe.db.get_value(
             "Applicant Document Item",
