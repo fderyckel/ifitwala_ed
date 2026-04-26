@@ -10,6 +10,8 @@ Read in this order:
 
 - `01_test_strategy.md`
   canonical test strategy and invariant priorities
+- `deterministic_test_suite.md`
+  app-owned deterministic DB test harness contract
 - `02_ci_policy.md`
   current required checks and CI intent
 - `03_staging_data_policy.md`

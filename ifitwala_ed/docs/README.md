@@ -19,6 +19,7 @@ Read in this order:
 Cross-cutting contracts every agent should know:
 
 - `high_concurrency_contract.md`
+- `i18n/README.md` when touching user-facing strings or translation workflow
 - `nested_scope_contract.md`
 - `testing/01_test_strategy.md`
 
@@ -51,6 +52,7 @@ Current domain indexes:
 - `curriculum/README.md`
 - `enrollment/README.md`
 - `files_and_policies/README.md`
+- `i18n/README.md`
 - `printing/README.md`
 - `scheduling/README.md`
 - `spa/README.md`

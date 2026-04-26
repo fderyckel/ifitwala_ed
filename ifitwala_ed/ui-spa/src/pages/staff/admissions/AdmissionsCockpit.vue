@@ -9,6 +9,15 @@
 				</p>
 			</div>
 			<div class="page-header__actions">
+				<a
+					v-if="data?.config?.can_create_inquiry"
+					href="/desk/inquiry/new-inquiry-1"
+					target="_blank"
+					rel="noopener noreferrer"
+					class="if-button if-button--primary"
+				>
+					New Inquiry
+				</a>
 				<button type="button" class="if-button if-button--quiet" @click="refreshNow">
 					Refresh
 				</button>
@@ -594,6 +603,7 @@ type CockpitPayload = {
 	config?: {
 		organizations?: string[];
 		schools?: string[];
+		can_create_inquiry?: boolean;
 	};
 	counts?: CockpitCounts;
 	blockers?: CockpitBlocker[];

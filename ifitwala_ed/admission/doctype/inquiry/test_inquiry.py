@@ -18,6 +18,52 @@ from ifitwala_ed.tests.factories.users import make_user
 
 
 class TestInquiry(FrappeTestCase):
+    def test_inquiry_lookup_fields_and_lead_fields_are_configured(self):
+        meta = frappe.get_meta("Inquiry")
+
+        self.assertEqual(meta.get_field("email").search_index, 1)
+        self.assertEqual(meta.get_field("phone_number").search_index, 1)
+        self.assertEqual(meta.get_field("source").fieldtype, "Select")
+        self.assertEqual(meta.get_field("next_action_note").fieldtype, "Small Text")
+        self.assertIn("WhatsApp", meta.get_field("source").options)
+        self.assertIn("Line", meta.get_field("source").options)
+        self.assertIn("Facebook", meta.get_field("source").options)
+
+    def test_manual_inquiry_can_record_source_and_next_action_note(self):
+        doc = self._make_inquiry(
+            source="WhatsApp",
+            next_action_note="Call parent after school tour dates are confirmed.",
+        )
+
+        saved = frappe.db.get_value(
+            "Inquiry",
+            doc.name,
+            ["source", "next_action_note"],
+            as_dict=True,
+        )
+        self.assertEqual(saved.source, "WhatsApp")
+        self.assertEqual(saved.next_action_note, "Call parent after school tour dates are confirmed.")
+
+    def test_web_form_inquiry_defaults_source_to_website(self):
+        previous = getattr(frappe.flags, "in_web_form", None)
+        frappe.flags.in_web_form = True
+        try:
+            doc = frappe.get_doc(
+                {
+                    "doctype": "Inquiry",
+                    "first_name": "Web",
+                    "last_name": "Lead",
+                    "email": f"web-{frappe.generate_hash(length=8)}@example.com",
+                    "type_of_inquiry": "Admission",
+                    "message": "We would like to learn more.",
+                }
+            )
+            doc.insert(ignore_permissions=True)
+        finally:
+            frappe.flags.in_web_form = previous
+
+        self.assertEqual(frappe.db.get_value("Inquiry", doc.name, "source"), "Website")
+
     def test_insert_legacy_new_inquiry_state_is_rejected(self):
         doc = frappe.get_doc(
             {
@@ -329,7 +375,15 @@ class TestInquiry(FrappeTestCase):
         ).insert(ignore_permissions=True)
         return user
 
-    def _make_inquiry(self, *, email: str | None = None, organization: str | None = None, school: str | None = None):
+    def _make_inquiry(
+        self,
+        *,
+        email: str | None = None,
+        organization: str | None = None,
+        school: str | None = None,
+        source: str | None = None,
+        next_action_note: str | None = None,
+    ):
         doc = frappe.get_doc(
             {
                 "doctype": "Inquiry",
@@ -338,6 +392,8 @@ class TestInquiry(FrappeTestCase):
                 "email": email,
                 "organization": organization,
                 "school": school,
+                "source": source,
+                "next_action_note": next_action_note,
             }
         )
         doc.insert(ignore_permissions=True)

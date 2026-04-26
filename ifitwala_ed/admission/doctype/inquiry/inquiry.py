@@ -232,6 +232,8 @@ class Inquiry(Document):
     def before_insert(self):
         if not self.submitted_at:
             self.submitted_at = frappe.utils.now()
+        if frappe.flags.in_web_form and not (self.source or "").strip():
+            self.source = "Website"
 
     def after_insert(self):
         if not self.workflow_state:

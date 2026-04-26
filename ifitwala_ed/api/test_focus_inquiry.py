@@ -103,7 +103,9 @@ class TestFocusInquiry(FrappeTestCase):
                 "last_name": "Inquiry",
                 "email": f"focus-{frappe.generate_hash(length=8)}@example.com",
                 "phone_number": "+6612345678",
+                "source": "WhatsApp",
                 "message": "Parent asked about enrollment and transportation.",
+                "next_action_note": "Reply with school tour availability.",
             }
         )
         doc.insert(ignore_permissions=True)
@@ -247,6 +249,8 @@ class TestFocusInquiry(FrappeTestCase):
 
         self.assertEqual(ctx["reference_doctype"], "Inquiry")
         self.assertEqual(ctx["inquiry"]["message"], "Parent asked about enrollment and transportation.")
+        self.assertEqual(ctx["inquiry"]["source"], "WhatsApp")
+        self.assertEqual(ctx["inquiry"]["next_action_note"], "Reply with school tour availability.")
         self.assertFalse(bool(ctx["inquiry"]["contact"]))
         self.assertTrue(bool(ctx["inquiry"]["email"]))
         self.assertTrue(bool(ctx["inquiry"]["phone_number"]))

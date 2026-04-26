@@ -40,10 +40,12 @@ export type Response = {
     email?: string | null
     phone_number?: string | null
     message?: string | null
+    next_action_note?: string | null
     contact?: string | null
     school?: string | null
     organization?: string | null
     type_of_inquiry?: string | null
+    source?: string | null
     workflow_state?: string | null
     assigned_to?: string | null
     followup_due_on?: string | null

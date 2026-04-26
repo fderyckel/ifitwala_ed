@@ -209,6 +209,8 @@ def list_focus_items(open_only: int = 1, limit: int = 20, offset: int = 0):
             i.last_name,
             i.school,
             i.organization,
+            i.source,
+            i.next_action_note,
             i.workflow_state,
             i.assigned_to,
             i.followup_due_on
@@ -271,6 +273,8 @@ def list_focus_items(open_only: int = 1, limit: int = 20, offset: int = 0):
             subtitle_parts.append(f"School: {r.get('school')}")
         elif r.get("organization"):
             subtitle_parts.append(f"Org: {r.get('organization')}")
+        if r.get("source"):
+            subtitle_parts.append(f"Source: {r.get('source')}")
         subtitle = " • ".join(subtitle_parts)
 
         assigned_by = (r.get("todo_assigned_by") or r.get("todo_owner") or "").strip() or None
@@ -297,6 +301,8 @@ def list_focus_items(open_only: int = 1, limit: int = 20, offset: int = 0):
                     "assigned_by_name": assigned_by_name,
                     "school": r.get("school"),
                     "organization": r.get("organization"),
+                    "source": r.get("source"),
+                    "next_action_note": r.get("next_action_note"),
                 },
                 "permissions": {"can_open": True},
             }

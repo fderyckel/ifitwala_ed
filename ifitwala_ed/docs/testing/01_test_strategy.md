@@ -19,7 +19,8 @@ Goals:
 
 2. Frappe DocType integration tests (moderate volume)
 - Validate transactional and permission behavior at the Document boundary.
-- Use `FrappeTestCase` when DB interactions are part of the invariant.
+- Use `IfitwalaEdTestSuite` when DB interactions are part of the invariant.
+- `IntegrationTestCase` remains opt-in only when the test intentionally needs Frappe's framework-owned test-record dependency behavior.
 
 3. API contract tests (targeted)
 - Ensure endpoint-level payload and visibility contracts.
@@ -55,6 +56,8 @@ Goals:
 4. Avoid schema invention; use existing DocType fields only.
 5. Add or update tests in the same PR as behavior changes.
 6. Keep browser E2E focused on shell bootstrap, role/scope rendering, admissions session switching, form save persistence, and submit gating/submission state.
+7. Use `IfitwalaEdTestSuite` for new DB-backed app tests.
+8. Keep persistent bootstrap data in `IfitwalaBootstrapTestData`; create scenario data inside tests or explicit domain factories.
 
 ## 5. Success Metrics (tracked by `scripts/test_metrics.sh`)
 
@@ -106,3 +109,8 @@ The metrics script is informational by default and can be enforced with environm
 
 12. Repeated harness shims belong in shared helpers.
 - If multiple suites need the same installed-app patch, import shim, or bootstrap guard, move it into a shared helper or base fixture with symmetric setup/teardown rather than duplicating local monkeypatches.
+
+13. Deterministic DB tests use the app-owned suite.
+- New DB-backed tests should inherit `IfitwalaEdTestSuite`, not raw `FrappeTestCase`.
+- Tests must not depend on hidden `test_records.json` loading or ambient developer-site master data.
+- Bootstrap data is persistent and committed; scenario data is transactional and must roll back.

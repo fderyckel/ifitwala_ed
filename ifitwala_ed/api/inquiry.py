@@ -154,6 +154,10 @@ def _apply_common_conditions(filters: dict, site_tz: str):
         conds.append("i.type_of_inquiry = %(type)s")
         params["type"] = filters["type_of_inquiry"]
 
+    if filters.get("source"):
+        conds.append("i.source = %(source)s")
+        params["source"] = filters["source"]
+
     if filters.get("assigned_to"):
         conds.append("i.assigned_to = %(assignee)s")
         params["assignee"] = filters["assigned_to"]
@@ -178,6 +182,9 @@ def _rest_conditions(filters: dict):
     if filters.get("type_of_inquiry"):
         conds.append("i.type_of_inquiry = %(type)s")
         params["type"] = filters["type_of_inquiry"]
+    if filters.get("source"):
+        conds.append("i.source = %(source)s")
+        params["source"] = filters["source"]
     if filters.get("assigned_to"):
         conds.append("i.assigned_to = %(assignee)s")
         params["assignee"] = filters["assigned_to"]
@@ -339,6 +346,18 @@ def get_dashboard_data(filters=None):
         FROM `tabInquiry` i
         WHERE {where}
         GROUP BY i.type_of_inquiry ORDER BY value DESC
+        """,
+        params,
+        as_dict=True,
+    )
+
+    sources = frappe.db.sql(
+        f"""
+        SELECT COALESCE(NULLIF(i.source, ''), 'Unspecified') AS label, COUNT(*) AS value
+        FROM `tabInquiry` i
+        WHERE {where}
+        GROUP BY COALESCE(NULLIF(i.source, ''), 'Unspecified')
+        ORDER BY value DESC, label ASC
         """,
         params,
         as_dict=True,
@@ -642,6 +661,7 @@ def get_dashboard_data(filters=None):
         "monthly_avg_series": monthly_series,
         "assignee_distribution": assignees,
         "type_distribution": types,
+        "source_distribution": sources,
         "lane_distribution": lane_distribution,
         "lane_breakdown": lane_breakdown,
         "monthly_lane_series": monthly_lane_series,
@@ -769,3 +789,15 @@ def get_inquiry_types():
         as_dict=False,
     )
     return [r[0] for r in rows]
+
+
+@frappe.whitelist()
+def get_inquiry_sources():
+    _ensure_access()
+    meta = frappe.get_meta("Inquiry")
+    source_field = meta.get_field("source")
+    if not source_field:
+        return []
+
+    options = [option.strip() for option in (source_field.options or "").splitlines() if option.strip()]
+    return options

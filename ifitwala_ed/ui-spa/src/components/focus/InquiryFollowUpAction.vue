@@ -15,6 +15,9 @@
 					<div v-if="inquiry?.type_of_inquiry" class="type-meta text-ink/60 mt-1">
 						Type: {{ inquiry?.type_of_inquiry }}
 					</div>
+					<div v-if="inquiry?.source" class="type-meta text-ink/60 mt-1">
+						Source: {{ inquiry?.source }}
+					</div>
 					<div v-if="inquiry?.followup_due_on" class="type-meta text-ink/60 mt-1">
 						Due: {{ formatLocalizedDate(inquiry?.followup_due_on, { includeWeekday: true }) }}
 					</div>
@@ -105,6 +108,14 @@
 							{{ inquiry.message }}
 						</p>
 						<p v-else class="type-meta text-ink/60">No message provided.</p>
+					</div>
+					<div v-if="inquiry?.next_action_note" class="space-y-2">
+						<div class="type-meta text-ink/60">Next action note</div>
+						<div class="rounded-xl border border-ink/10 bg-white px-4 py-3">
+							<p class="type-body whitespace-pre-wrap text-ink">
+								{{ inquiry.next_action_note }}
+							</p>
+						</div>
 					</div>
 				</div>
 			</div>

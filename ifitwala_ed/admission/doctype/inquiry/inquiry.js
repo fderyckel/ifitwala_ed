@@ -48,6 +48,11 @@ frappe.ui.form.on("Inquiry", {
 
 	refresh(frm) {
 		frm.page.clear_actions_menu();
+		frm.set_df_property(
+			'assigned_to',
+			'description',
+			__('Change ownership through Assign/Reassign actions so scope checks, ToDos, and SLA timestamps stay consistent.')
+		);
 
 		const s = String(frm.doc.workflow_state || '').trim();
 		const is_manager = frappe.user.has_role('Admission Manager');

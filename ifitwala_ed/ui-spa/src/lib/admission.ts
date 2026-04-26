@@ -14,6 +14,7 @@ export const ADMISSION_API = {
 	admissionsCaseMarkRead:
 		'ifitwala_ed.api.admissions_communication.mark_admissions_case_thread_read',
 	inquiryTypes: 'ifitwala_ed.api.inquiry.get_inquiry_types',
+	inquirySources: 'ifitwala_ed.api.inquiry.get_inquiry_sources',
 	organizations: 'ifitwala_ed.api.inquiry.get_inquiry_organizations',
 	schools: 'ifitwala_ed.api.inquiry.get_inquiry_schools',
 	// Reusing the existing link query if needed, though often we just want a simple list for dropdowns
@@ -28,6 +29,7 @@ export type DashboardFilters = {
 	to_date?: string;
 	academic_year?: string;
 	type_of_inquiry?: string;
+	source?: string;
 	assigned_to?: string;
 	assignment_lane?: 'Admission' | 'Staff' | '';
 	sla_status?: string; // 'Overdue', 'Due Today', 'Upcoming'
@@ -141,6 +143,10 @@ export function markAdmissionsCaseRead(payload: {
 
 export function getInquiryTypes() {
 	return api(ADMISSION_API.inquiryTypes);
+}
+
+export function getInquirySources() {
+	return api(ADMISSION_API.inquirySources);
 }
 
 export function searchAcademicYears(txt: string) {

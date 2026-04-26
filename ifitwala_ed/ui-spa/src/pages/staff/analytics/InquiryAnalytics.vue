@@ -95,6 +95,14 @@
 			</div>
 
 			<div class="flex flex-col gap-1">
+				<label class="type-label">Source</label>
+				<select v-model="filters.source" class="h-9 min-w-[140px] rounded-md border px-2 text-sm">
+					<option value="">All Sources</option>
+					<option v-for="s in inquirySources" :key="s" :value="s">{{ s }}</option>
+				</select>
+			</div>
+
+			<div class="flex flex-col gap-1">
 				<label class="type-label">Assignment Lane</label>
 				<select
 					v-model="filters.assignment_lane"
@@ -151,9 +159,10 @@
 				</section>
 			</div>
 
-			<div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
+			<div class="grid grid-cols-1 gap-6 lg:grid-cols-4">
 				<HorizontalBarTopN title="Assigned To" :items="assigneeItems" class="analytics-card" />
 				<HorizontalBarTopN title="Inquiry Types" :items="typeItems" class="analytics-card" />
+				<HorizontalBarTopN title="Inquiry Sources" :items="sourceItems" class="analytics-card" />
 				<HorizontalBarTopN
 					title="Lane Distribution"
 					:items="laneDistributionItems"
@@ -220,6 +229,7 @@ import {
 	getInquiryDashboardData,
 	getInquiryOrganizations,
 	getInquirySchools,
+	getInquirySources,
 	getInquiryTypes,
 	searchAdmissionUsers,
 	searchAcademicYears,
@@ -252,6 +262,7 @@ const filters = ref<DashboardFilters>({
 	to_date: '',
 	assigned_to: '',
 	type_of_inquiry: '',
+	source: '',
 	assignment_lane: '',
 	sla_status: '',
 	organization: '',
@@ -260,6 +271,7 @@ const filters = ref<DashboardFilters>({
 
 // Options
 const inquiryTypes = ref<string[]>([]);
+const inquirySources = ref<string[]>([]);
 const users = ref<{ name: string; full_name: string }[]>([]);
 const academicYears = ref<string[]>([]);
 const allowedOrganizations = ref<string[]>([]);
@@ -267,14 +279,16 @@ const allowedSchools = ref<string[]>([]);
 
 // -- Actions --
 async function loadOptions() {
-	const [types, userList, years, organizations, schools] = await Promise.all([
+	const [types, sources, userList, years, organizations, schools] = await Promise.all([
 		getInquiryTypes(),
+		getInquirySources(),
 		searchAdmissionUsers(''),
 		searchAcademicYears(''),
 		getInquiryOrganizations(),
 		getInquirySchools(),
 	]);
 	inquiryTypes.value = types || [];
+	inquirySources.value = sources || [];
 	if (userList) users.value = userList.map((u: any) => ({ name: u[0], full_name: u[1] }));
 	if (years) academicYears.value = years.map((y: any) => y[0]);
 	allowedOrganizations.value = organizations || [];
@@ -373,6 +387,15 @@ const assigneeItems = computed(() => {
 const typeItems = computed(() => {
 	if (!data.value?.type_distribution) return [];
 	return data.value.type_distribution.map((d: any) => ({
+		label: d.label,
+		count: d.value,
+		pct: data.value.counts.total ? Math.round((d.value / data.value.counts.total) * 100) : 0,
+	}));
+});
+
+const sourceItems = computed(() => {
+	if (!data.value?.source_distribution) return [];
+	return data.value.source_distribution.map((d: any) => ({
 		label: d.label,
 		count: d.value,
 		pct: data.value.counts.total ? Math.round((d.value / data.value.counts.total) * 100) : 0,

@@ -3,8 +3,8 @@ title: "Inquiry: Managing Website Visitor Intake"
 slug: inquiry
 category: Admission
 doc_order: 2
-version: "1.4.5"
-last_change_date: "2026-04-25"
+version: "1.4.6"
+last_change_date: "2026-04-26"
 summary: "Capture, assign, and track incoming website inquiries with SLA visibility and optional conversion to Student Applicant when relevant."
 seo_title: "Inquiry: Managing Website Visitor Intake"
 seo_description: "Capture, assign, and track incoming website inquiries with SLA visibility and optional conversion to Student Applicant when relevant."
@@ -21,7 +21,9 @@ seo_description: "Capture, assign, and track incoming website inquiries with SLA
 ## What It Solves
 
 - Centralizes inbound questions from community users and prospective applicants.
+- Captures lead source across public website submissions and staff-entered leads from channels such as WhatsApp, Line, Facebook, open days, referrals, and agents.
 - Assigns ownership to scoped staff users when operational follow-up is needed.
+- Gives staff a lightweight `Next Action Note` for the next planned follow-up without changing the original inquiry message.
 - Tracks first-contact and follow-up deadlines with SLA status.
 - Supports optional conversion to [**Student Applicant**](/docs/en/student-applicant/) only when the inquiry is admissions-related.
 
@@ -52,6 +54,8 @@ Allowed transitions are strictly server-validated:
 <DoDont doTitle="Do" dontTitle="Don't">
   <Do>Use `Assign`/`Reassign` actions so ownership, SLA fields, and ToDo artifacts stay consistent.</Do>
   <Do>Treat `Assigned To` as the latest assignee history field; it persists after `Contacted` and updates on reassignment.</Do>
+  <Do>Use `Source` when creating inquiries from WhatsApp, Line, Facebook, referrals, agents, open days, or other non-website channels.</Do>
+  <Do>Use `Next Action Note` for the next planned staff action; keep the original visitor text in `Message` unchanged.</Do>
   <Do>Move state with named actions (`Mark Contacted`, `Qualify`, `Archive`) so server transition rules and metrics are enforced.</Do>
   <Dont>Manually edit workflow fields to skip required transitions.</Dont>
   <Dont>Treat every inquiry as admissions conversion; convert only when it is actually admissions-relevant.</Dont>
@@ -70,6 +74,10 @@ Allowed transitions are strictly server-validated:
   - colored list pills for workflow and SLA status
   - Kanban board `Inquiry Team Pipeline` grouped by `sla_status` (with `workflow_state != Archived`) for admissions/marketing/comms triage
 - **Public web form**: `/apply/inquiry` creates Inquiry records from visitor submissions and shows a post-submit confirmation message; when Organization is selected, confirmation copy references that organization.
+  - `Organization` remains optional and visible so prospects can choose context when useful; admissions users can adjust it later.
+  - public web submissions default `Source` to `Website`.
+- **Manual lead capture**: admissions users can create `Inquiry` directly in Desk for leads received through WhatsApp, Line, Facebook, open days, referrals, agents, or other channels, then set `Source` and `Next Action Note` before assignment.
+  - Admissions Cockpit exposes a `New Inquiry` shortcut for users with Inquiry creation rights.
 - **Notifications**:
   - `Notify Admission Manager` on new Inquiry
   - `Inquiry Assigned` on assignee change
@@ -81,6 +89,7 @@ Allowed transitions are strictly server-validated:
   - assigned inquiries appear in Staff Home "Your Focus"
   - action type `inquiry.follow_up.act.first_contact` routes to the inquiry follow-up focus action
   - inquiry follow-up focus shows inquiry identity, linked contact state, email, phone number, and the original inquiry message
+  - source and next-action note are included in the focus context when present
   - focus users can create/link the canonical `Contact` anchor from the overlay via the same Inquiry linkage workflow
 - **CRM linkage**: `create_contact_from_inquiry` links/creates `Contact`.
 - **Optional admissions conversion**:
@@ -94,6 +103,7 @@ Allowed transitions are strictly server-validated:
 - **Analytics surface**:
   - staff SPA route: `/staff/analytics/inquiry`
   - API: `ifitwala_ed.api.inquiry.get_dashboard_data` and related filter endpoints
+  - source filter and source distribution are included for channel-quality reporting
 - **Scheduler**: hourly SLA recomputation (`run_hourly_sla_sweep` -> `check_sla_breaches`) updates SLA status only and caches the run summary at `admissions:sla_sweep:last_run`; legacy missing `first_contact_due_on` rows are remediated through the one-shot patch `ifitwala_ed.patches.backfill_inquiry_first_contact_due_dates`.
 - **File routing fallback**: attachments routed under Admissions inquiry context in file management utilities.
 
@@ -150,15 +160,18 @@ Action-level guard in server code: assignment/reassignment require admissions pe
 
 ## Technical Notes (IT)
 
-### Latest Technical Snapshot (2026-03-05)
+### Latest Technical Snapshot (2026-04-26)
 
 - **DocType schema file**: `ifitwala_ed/admission/doctype/inquiry/inquiry.json`
 - **Controller file**: `ifitwala_ed/admission/doctype/inquiry/inquiry.py`
 - **Required fields (`reqd=1`)**: none at schema level; controller/workflow rules enforce operational completeness where applicable.
+- **Manual lead fields**: `source` (`Website`, `WhatsApp`, `Line`, `Facebook`, `Open Day`, `Referral`, `Agent`, `Other`) and `next_action_note`.
+- **Indexed lookup fields**: `email`, `phone_number`, `source`, `workflow_state`, `first_contact_due_on`, `followup_due_on`.
 - **Lifecycle hooks in controller**: `validate`, `before_insert`, `after_insert`, `before_save`
 - **Operational/public methods**: `mark_assigned`, `mark_qualified`, `archive`, `invite_to_apply`, `set_contact_metrics`, `create_contact_from_inquiry`, `mark_contacted`
 - **Workflow-state contract**: only canonical Inquiry states are accepted (`New`, `Assigned`, `Contacted`, `Qualified`, `Archived`); no legacy state alias normalization in Inquiry controller or Inquiry Desk/list scripts.
 - **Assignment contract**: `assigned_to` is retained as the latest assignee across workflow states (including `Contacted`) and changes only through assignment/reassignment actions.
+- **Source contract**: public web-form inserts default missing `source` to `Website`; staff-created inquiries may set the appropriate manual lead source.
 - **Completion permission contract**: `mark_contacted` can be executed by Admissions/System users and by the current assigned user.
 - **Record visibility contract**: non-privileged users are query-scoped to assigned Inquiry rows (`assigned_to = session user`) through hooks.
 
@@ -173,6 +186,7 @@ Action-level guard in server code: assignment/reassignment require admissions pe
 - **Web form surface**:
   - config file `ifitwala_ed/admission/web_form/inquiry/inquiry.json`
   - route `apply/inquiry` (public form)
+  - `organization` remains visible and optional; hidden `source` defaults to `Website`
   - scoped shell assets via `hooks.py` `webform_include_css/js` for `Inquiry`, using app public paths: `public/css/admissions_webform_shell.css` and `public/js/admissions_webform_shell.js`
 - **Staff analytics (SPA)**:
   - page `ifitwala_ed/ui-spa/src/pages/staff/analytics/InquiryAnalytics.vue`
@@ -208,6 +222,7 @@ Action-level guard in server code: assignment/reassignment require admissions pe
 - **Analytics API endpoints** (`ifitwala_ed/api/inquiry.py`):
   - `get_dashboard_data`
   - `get_inquiry_types`
+  - `get_inquiry_sources`
   - `get_inquiry_organizations`
   - `get_inquiry_schools`
   - `academic_year_link_query`

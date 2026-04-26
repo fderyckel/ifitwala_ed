@@ -1209,11 +1209,12 @@ def _build_blockers(
     return blockers
 
 
-def _empty_payload(organizations: list[str], schools: list[str]) -> dict:
+def _empty_payload(organizations: list[str], schools: list[str], *, can_create_inquiry: bool = False) -> dict:
     return {
         "config": {
             "organizations": organizations,
             "schools": schools,
+            "can_create_inquiry": bool(can_create_inquiry),
             "columns": [{"id": col_id, "title": title} for col_id, title in KANBAN_COLUMNS],
         },
         "counts": {
@@ -1285,6 +1286,9 @@ def hydrate_admissions_cockpit_request(applicant_enrollment_plan: str):
 def get_admissions_cockpit_data(filters=None):
     user = _ensure_cockpit_access()
     user_roles = _get_roles_for_user(user)
+    can_create_inquiry = (
+        user == "Administrator" or "System Manager" in user_roles or bool(user_roles & ADMISSIONS_ROLES)
+    )
 
     filters = frappe.parse_json(filters) or {}
     organization_filter = _to_text(filters.get("organization"))
@@ -1321,7 +1325,7 @@ def get_admissions_cockpit_data(filters=None):
 
     organization_scope = _get_descendant_organizations(organization_filter) if organization_filter else []
     if organization_filter and not organization_scope:
-        response = _empty_payload([], [])
+        response = _empty_payload([], [], can_create_inquiry=can_create_inquiry)
         cache.set_value(cache_key, frappe.as_json(response), expires_in_sec=COCKPIT_CACHE_TTL_SECONDS)
         return response
 
@@ -1331,7 +1335,7 @@ def get_admissions_cockpit_data(filters=None):
 
     school_scope = get_descendant_schools(school_filter) if school_filter else []
     if school_filter and not school_scope:
-        response = _empty_payload(all_organizations, [])
+        response = _empty_payload(all_organizations, [], can_create_inquiry=can_create_inquiry)
         cache.set_value(cache_key, frappe.as_json(response), expires_in_sec=COCKPIT_CACHE_TTL_SECONDS)
         return response
 
@@ -1620,6 +1624,7 @@ def get_admissions_cockpit_data(filters=None):
         "config": {
             "organizations": all_organizations,
             "schools": all_schools,
+            "can_create_inquiry": can_create_inquiry,
             "columns": [{"id": col_id, "title": title} for col_id, title in KANBAN_COLUMNS],
         },
         "counts": counts,
