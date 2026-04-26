@@ -5,6 +5,7 @@ const {
 	getAdmissionsCockpitDataMock,
 	sendAdmissionsCockpitOfferMock,
 	hydrateAdmissionsCockpitRequestMock,
+	generateAdmissionsCockpitDepositInvoiceMock,
 	getAdmissionsCaseThreadMock,
 	markAdmissionsCaseReadMock,
 	sendAdmissionsCaseMessageMock,
@@ -13,6 +14,7 @@ const {
 	getAdmissionsCockpitDataMock: vi.fn(),
 	sendAdmissionsCockpitOfferMock: vi.fn(),
 	hydrateAdmissionsCockpitRequestMock: vi.fn(),
+	generateAdmissionsCockpitDepositInvoiceMock: vi.fn(),
 	getAdmissionsCaseThreadMock: vi.fn(),
 	markAdmissionsCaseReadMock: vi.fn(),
 	sendAdmissionsCaseMessageMock: vi.fn(),
@@ -47,6 +49,7 @@ vi.mock('@/lib/admission', () => ({
 	getAdmissionsCockpitData: getAdmissionsCockpitDataMock,
 	sendAdmissionsCockpitOffer: sendAdmissionsCockpitOfferMock,
 	hydrateAdmissionsCockpitRequest: hydrateAdmissionsCockpitRequestMock,
+	generateAdmissionsCockpitDepositInvoice: generateAdmissionsCockpitDepositInvoiceMock,
 	getAdmissionsCaseThread: getAdmissionsCaseThreadMock,
 	markAdmissionsCaseRead: markAdmissionsCaseReadMock,
 	sendAdmissionsCaseMessage: sendAdmissionsCaseMessageMock,
@@ -63,6 +66,7 @@ function buildPayload(
 		canHydrateRequest?: boolean;
 		requestName?: string | null;
 		requestUrl?: string | null;
+		deposit?: Record<string, unknown> | null;
 	} = {}
 ) {
 	return {
@@ -131,6 +135,7 @@ function buildPayload(
 							program_enrollment_request_url: options.requestUrl || null,
 							can_send_offer: Boolean(options.canSendOffer),
 							can_hydrate_request: Boolean(options.canHydrateRequest),
+							deposit: options.deposit || null,
 						},
 					},
 				],
@@ -169,6 +174,7 @@ afterEach(() => {
 	getAdmissionsCockpitDataMock.mockReset();
 	sendAdmissionsCockpitOfferMock.mockReset();
 	hydrateAdmissionsCockpitRequestMock.mockReset();
+	generateAdmissionsCockpitDepositInvoiceMock.mockReset();
 	getAdmissionsCaseThreadMock.mockReset();
 	markAdmissionsCaseReadMock.mockReset();
 	sendAdmissionsCaseMessageMock.mockReset();
@@ -209,5 +215,71 @@ describe('AdmissionsCockpit', () => {
 		expect(getAdmissionsCockpitDataMock).toHaveBeenCalledTimes(2);
 		expect(document.body.textContent || '').toContain('AEP · Offer Sent');
 		expect(document.body.textContent || '').not.toContain('Send Offer');
+	});
+
+	it('generates a deposit invoice from the applicant card and refreshes the cockpit', async () => {
+		const pendingDeposit = {
+			deposit_required: true,
+			deposit_amount: 500,
+			deposit_due_date: '2026-05-08',
+			terms_source: 'School Default',
+			override_status: 'Not Required',
+			requires_override_approval: false,
+			academic_approved: false,
+			finance_approved: false,
+			invoice: null,
+			invoice_status: null,
+			docstatus: null,
+			amount: 500,
+			paid_amount: 0,
+			outstanding_amount: 500,
+			due_date: '2026-05-08',
+			is_overdue: false,
+			is_paid: false,
+			blocker_label: 'Deposit not generated',
+			can_generate_invoice: true,
+		};
+		const paidDeposit = {
+			...pendingDeposit,
+			invoice: 'SI-0001',
+			invoice_status: 'Paid',
+			docstatus: 1,
+			paid_amount: 500,
+			outstanding_amount: 0,
+			is_paid: true,
+			blocker_label: 'Deposit paid',
+			can_generate_invoice: false,
+		};
+
+		getAdmissionsCockpitDataMock
+			.mockResolvedValueOnce(buildPayload('Offer Accepted', { deposit: pendingDeposit }))
+			.mockResolvedValueOnce(buildPayload('Offer Accepted', { deposit: paidDeposit }));
+		generateAdmissionsCockpitDepositInvoiceMock.mockResolvedValue({
+			ok: true,
+			created: true,
+			applicant_enrollment_plan: 'AEP-0001',
+			deposit: paidDeposit,
+			invoice: { invoice: 'SI-0001', invoice_status: 'Paid' },
+		});
+
+		mountAdmissionsCockpit();
+		await flushUi();
+
+		expect(document.body.textContent || '').toContain('Deposit not generated');
+		const generateButton = Array.from(document.querySelectorAll('button')).find(button =>
+			(button.textContent || '').includes('Generate Invoice')
+		);
+		expect(generateButton).toBeTruthy();
+
+		generateButton?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		await flushUi();
+
+		expect(generateAdmissionsCockpitDepositInvoiceMock).toHaveBeenCalledWith({
+			applicant_enrollment_plan: 'AEP-0001',
+		});
+		expect(getAdmissionsCockpitDataMock).toHaveBeenCalledTimes(2);
+		expect(document.body.textContent || '').toContain('Deposit paid');
+		expect(document.body.textContent || '').toContain('SI-0001 · Paid');
+		expect(document.body.textContent || '').not.toContain('Generate Invoice');
 	});
 });

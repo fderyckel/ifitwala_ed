@@ -12,7 +12,11 @@ from frappe.utils import add_days, cint, flt, getdate, now_datetime, nowdate
 from ifitwala_ed.accounting.account_holder_utils import get_school_organization
 from ifitwala_ed.accounting.receivables import money
 from ifitwala_ed.admission.admission_utils import has_scoped_staff_access_to_student_applicant
-from ifitwala_ed.governance.policy_scope_utils import get_school_ancestors_including_self
+from ifitwala_ed.governance.policy_scope_utils import (
+    get_organization_descendants_including_self,
+    get_school_ancestors_including_self,
+    get_school_descendants_including_self,
+)
 from ifitwala_ed.schedule.basket_group_utils import get_offering_course_semantics
 from ifitwala_ed.schedule.enrollment_engine import evaluate_basket_selection
 
@@ -45,12 +49,6 @@ STATUS_OPTIONS = {
     "Superseded",
 }
 TERMINAL_STATUSES = {"Offer Declined", "Offer Expired", "Hydrated", "Cancelled", "Superseded"}
-DEPOSIT_TERMS_FIELDS = (
-    "deposit_required",
-    "deposit_amount",
-    "deposit_due_date",
-    "deposit_billable_offering",
-)
 PAID_DEPOSIT_STATUSES = {"Paid", "Credited"}
 
 
@@ -771,10 +769,31 @@ class ApplicantEnrollmentPlan(Document):
             frappe.throw(_("Deposit Override Reason is required before approval."))
 
     def _ensure_deposit_approval_role(self, allowed_roles: set[str], message: str):
-        roles = set(frappe.get_roles(frappe.session.user))
-        if frappe.session.user == "Administrator" or roles & allowed_roles:
+        user = _as_clean_text(frappe.session.user)
+        roles = set(frappe.get_roles(user))
+        if user == "Administrator" or "System Manager" in roles:
             return
-        frappe.throw(message, frappe.PermissionError)
+        if not (roles & allowed_roles):
+            frappe.throw(message, frappe.PermissionError)
+
+        employee = frappe.db.get_value(
+            "Employee",
+            {"user_id": user, "employment_status": "Active"},
+            ["organization", "school"],
+            as_dict=True,
+        )
+        if not employee:
+            frappe.throw(_("Your user must be linked to an active Employee profile."), frappe.PermissionError)
+
+        org_scope = set(get_organization_descendants_including_self(employee.get("organization")) or [])
+        if self.organization and (not org_scope or self.organization not in org_scope):
+            frappe.throw(_("Your Organization scope does not cover this deposit override."), frappe.PermissionError)
+
+        employee_school = _as_clean_text(employee.get("school"))
+        if employee_school:
+            school_scope = set(get_school_descendants_including_self(employee_school) or [])
+            if self.school and school_scope and self.school not in school_scope:
+                frappe.throw(_("Your School scope does not cover this deposit override."), frappe.PermissionError)
 
     def _ensure_staff_role(self):
         roles = set(frappe.get_roles(frappe.session.user))

@@ -96,7 +96,7 @@ Staff add materials where they already work:
 Current staff preview behavior:
 
 - governed file materials in the task creation overlay now expose `thumbnail_url` only when a ready card-sized preview is available, alongside stable `preview_url` routes for richer preview/open behavior
-- governed file materials on the course-plan and class-planning workspaces now expose stable `thumbnail_url` routes for inline image cards plus stable `preview_url` routes for richer preview/open behavior
+- governed file materials on the course-plan and Class Delivery workspaces now expose stable `thumbnail_url` routes for inline image cards plus stable `preview_url` routes for richer preview/open behavior
 - those current material rows now also carry an additive nested `attachment_preview` block with the shared cross-surface preview DTO
 - those planning workspaces now consume that nested preview DTO through the shared display-only SPA attachment preview card
 - the task creation overlay now lets teachers queue governed task attachments while writing the task itself, then persists those queued attachments automatically during the create action so the workflow still feels like one compose step

@@ -69,14 +69,15 @@ Guardian + Student (identity upgrade)
 
 The Admissions Portal **only** operates on **Student Applicant** (and child artifacts).
 
-It has **zero knowledge** of:
+It has no operational ownership of:
 
 * Guardian
 * Student
 * Academic workflows
-* Finance
 * Attendance
 * LMS
+
+There is one narrow finance exception: after an offer is accepted, `/admissions/status` may show the admissions deposit invoice summary that the server resolves from the linked `Applicant Enrollment Plan` and `Sales Invoice`. The portal does not create invoices, collect payment, expose checkout, or reuse Guardian Finance before promotion.
 
 ---
 
@@ -326,6 +327,21 @@ Admissions access is site-configured in `Admission Settings.admissions_access_mo
 
 In both modes, access is enforced **server-side**, not via UI hiding.
 
+### 9.3 Admissions deposit visibility
+
+Status: Implemented
+Code refs: `ifitwala_ed/api/admissions_portal.py`, `ifitwala_ed/admission/doctype/applicant_enrollment_plan/applicant_enrollment_plan.py`, `ifitwala_ed/ui-spa/src/pages/admissions/ApplicantStatus.vue`
+Test refs: `ifitwala_ed/admission/doctype/applicant_enrollment_plan/test_applicant_enrollment_plan.py`
+
+When the latest `Applicant Enrollment Plan` has an accepted offer and a required admissions deposit, the status page shows a read-only deposit panel:
+
+* deposit amount and due date
+* linked invoice number when generated
+* invoice/payment status and outstanding amount
+* school payment instructions from the active deposit default
+
+The portal must not create a `Sales Invoice`, submit an invoice, record payment, or offer online payment. Admissions deposit payment state remains server-owned and comes from the linked `Sales Invoice`.
+
 ---
 
 ### 9.2 GDPR alignment (baseline)
@@ -421,9 +437,9 @@ Nothing below invents semantics. Everything is derived from what you already loc
 * Portal **never infers permissions**
 * Portal **never unwraps transport**
 * All logic lives in **server + services**
-* DTOs are **Applicant-scoped only**
+* DTOs are **Applicant-scoped only**, except the read-only admissions deposit summary that is resolved through the applicant's latest `Applicant Enrollment Plan`
 
-If an endpoint touches `Student`, `Guardian`, or `Employee`, it does **not** belong here.
+If an endpoint mutates `Student`, `Guardian`, `Employee`, or accounting documents, it does **not** belong here.
 
 ---
 

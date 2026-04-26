@@ -280,7 +280,7 @@ describe('ClassPlanning page', () => {
 		expect(
 			byTitle['Shared resources for this unit']?.getAttribute('data-show-read-only-notice')
 		).toBe('0');
-		expect(byTitle['Shared across this class plan']?.getAttribute('data-enable-preview')).toBe(
+		expect(byTitle['Shared across this class delivery']?.getAttribute('data-enable-preview')).toBe(
 			'1'
 		);
 		expect(byTitle['Materials for this class session']?.getAttribute('data-enable-preview')).toBe(
