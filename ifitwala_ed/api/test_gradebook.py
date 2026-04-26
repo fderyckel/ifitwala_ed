@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import types
 from unittest import TestCase
-from urllib.parse import parse_qs, urlparse
+from urllib.parse import urlparse
 
 from ifitwala_ed.tests.frappe_stubs import (
     StubPermissionError,
@@ -153,13 +153,18 @@ def _gradebook_stub_modules(
             else file_url
         )
     )
-    file_access.resolve_academic_file_thumbnail_url = (
-        lambda *, file_name, file_url, context_doctype=None, context_name=None, **kwargs: (
-            f"/api/method/ifitwala_ed.api.file_access.thumbnail_academic_file?file={file_name}&context_doctype={context_doctype}&context_name={context_name}"
-            if file_name
-            else file_url
-        )
-    )
+
+    def resolve_thumbnail_url(*, file_name, file_url, context_doctype=None, context_name=None, **kwargs):
+        if file_name:
+            if not kwargs.get("thumbnail_ready"):
+                return None
+            return (
+                f"/api/method/ifitwala_ed.api.file_access.thumbnail_academic_file?file={file_name}"
+                f"&context_doctype={context_doctype}&context_name={context_name}"
+            )
+        return file_url
+
+    file_access.resolve_academic_file_thumbnail_url = resolve_thumbnail_url
     file_access.get_drive_file_thumbnail_ready_map = lambda file_names: {
         file_name: False for file_name in (file_names or []) if file_name
     }
@@ -394,20 +399,21 @@ class TestGradebookApi(TestCase):
         self.assertEqual(attachment["attachment_preview"]["kind"], "pdf")
         self.assertFalse(attachment["attachment_preview"]["is_latest_version"])
         self.assertEqual(attachment["attachment_preview"]["version_label"], "Version 1")
+        self.assertIsNone(attachment["preview_url"])
+        self.assertIsNone(attachment["thumbnail_url"])
+        self.assertIsNone(attachment["attachment_preview"]["preview_url"])
+        self.assertIsNone(attachment["attachment_preview"]["thumbnail_url"])
+        self.assertFalse(attachment["attachment_preview"]["can_preview"])
         self.assertEqual(
             urlparse(attachment["open_url"]).path,
             "/api/method/ifitwala_ed.api.file_access.download_academic_file",
         )
-        preview_parsed = urlparse(attachment["preview_url"])
-        preview_query = parse_qs(preview_parsed.query)
-        self.assertEqual(preview_parsed.path, "/api/method/ifitwala_ed.api.file_access.preview_academic_file")
-        self.assertEqual((preview_query.get("file") or [None])[0], "FILE-SUB-0001")
-        self.assertEqual((preview_query.get("context_name") or [None])[0], "TSU-2026-00001")
         self.assertEqual(payload["selected_submission"]["annotation_readiness"]["mode"], "reduced")
         self.assertEqual(
             payload["selected_submission"]["annotation_readiness"]["reason_code"],
             "pdf_preview_pending",
         )
+        self.assertIsNone(payload["selected_submission"]["annotation_readiness"]["preview_url"])
 
     def test_save_feedback_draft_uses_named_feedback_service(self):
         saved_payloads = []

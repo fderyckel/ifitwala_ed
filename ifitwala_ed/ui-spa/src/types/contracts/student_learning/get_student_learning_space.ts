@@ -86,7 +86,10 @@ export type StudentAssignedWork = {
 	status_label?: string | null
 	submission_status?: string | null
 	grading_status?: string | null
+	has_submission?: number
 	is_complete?: number
+	is_done: number
+	is_actionable: number
 	is_published?: number
 	quiz_state?: StudentQuizDeliveryState | null
 	materials: StudentLearningMaterial[]
@@ -155,6 +158,8 @@ export type StudentLearningNavigationUnit = {
 	unit_order?: number | null
 	session_count: number
 	assigned_work_count: number
+	open_assigned_work_count: number
+	completed_assigned_work_count: number
 	is_current: number
 }
 
@@ -236,6 +241,8 @@ export type Response = {
 			units: number
 			sessions: number
 			assigned_work: number
+			open_assigned_work: number
+			completed_assigned_work: number
 		}
 	}
 }

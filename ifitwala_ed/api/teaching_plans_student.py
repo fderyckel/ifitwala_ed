@@ -3,28 +3,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any
 
-from ifitwala_ed.api.student_task_status import DONE_GRADING_STATUSES, DONE_SUBMISSION_STATUSES
-
-
-def truthy_completion_flag(value: Any) -> bool:
-    try:
-        return int(value or 0) == 1
-    except Exception:
-        return str(value or "").strip().lower() in {"true", "yes"}
-
-
-def assigned_work_is_done(item: dict[str, Any]) -> bool:
-    if truthy_completion_flag(item.get("is_complete")):
-        return True
-    if truthy_completion_flag(item.get("has_submission")):
-        return True
-    if str(item.get("submission_status") or "").strip() in DONE_SUBMISSION_STATUSES:
-        return True
-    if str(item.get("grading_status") or "").strip() in DONE_GRADING_STATUSES:
-        return True
-    if str(item.get("status_label") or "").strip() in {"Completed", "Submitted"}:
-        return True
-    return False
+from ifitwala_ed.api.student_task_status import coerce_bool_flag, is_student_work_actionable, is_student_work_done
 
 
 def coerce_learning_datetime(api, value: Any) -> datetime | None:
@@ -256,11 +235,39 @@ def build_student_unit_navigation(
             "title": unit.get("title"),
             "unit_order": unit.get("unit_order"),
             "session_count": len(unit.get("sessions") or []),
-            "assigned_work_count": len(unit.get("assigned_work") or []),
+            **summarize_student_assigned_work(unit.get("assigned_work") or []),
             "is_current": int(api.planning.normalize_text(unit.get("unit_plan")) == current_unit_plan),
         }
         for unit in units or []
     ]
+
+
+def summarize_student_assigned_work(items: list[dict[str, Any]] | None) -> dict[str, int]:
+    seen: set[str] = set()
+    total = 0
+    open_count = 0
+    completed_count = 0
+
+    for item in items or []:
+        if not isinstance(item, dict):
+            continue
+        task_delivery = str(item.get("task_delivery") or "").strip()
+        if not task_delivery or task_delivery in seen:
+            continue
+        seen.add(task_delivery)
+        total += 1
+        actionable = is_student_work_actionable(item)
+        done = is_student_work_done(item)
+        if actionable:
+            open_count += 1
+        elif done:
+            completed_count += 1
+
+    return {
+        "assigned_work_count": total,
+        "open_assigned_work_count": open_count,
+        "completed_assigned_work_count": completed_count,
+    }
 
 
 def build_student_next_actions(
@@ -280,7 +287,7 @@ def build_student_next_actions(
         task_type = api.planning.normalize_text(item.get("task_type"))
         action: dict[str, Any]
         priority = 3
-        if task_type == "Quiz" and truthy_completion_flag(quiz_state.get("can_continue")):
+        if task_type == "Quiz" and coerce_bool_flag(quiz_state.get("can_continue")):
             priority = 0
             action = {
                 "kind": "quiz",
@@ -290,7 +297,7 @@ def build_student_next_actions(
                 "class_session": item.get("class_session"),
                 "unit_plan": item.get("unit_plan"),
             }
-        elif task_type == "Quiz" and truthy_completion_flag(quiz_state.get("can_retry")):
+        elif task_type == "Quiz" and coerce_bool_flag(quiz_state.get("can_retry")):
             priority = 1
             action = {
                 "kind": "quiz",
@@ -300,7 +307,7 @@ def build_student_next_actions(
                 "class_session": item.get("class_session"),
                 "unit_plan": item.get("unit_plan"),
             }
-        elif task_type == "Quiz" and truthy_completion_flag(quiz_state.get("can_start")):
+        elif task_type == "Quiz" and coerce_bool_flag(quiz_state.get("can_start")):
             priority = 1
             action = {
                 "kind": "quiz",
@@ -310,7 +317,7 @@ def build_student_next_actions(
                 "class_session": item.get("class_session"),
                 "unit_plan": item.get("unit_plan"),
             }
-        elif task_type == "Quiz" or assigned_work_is_done(item):
+        elif task_type == "Quiz" or not is_student_work_actionable(item):
             continue
         else:
             action = {
@@ -381,7 +388,7 @@ def resolve_student_selected_task(
         for item in items or []:
             if api.planning.normalize_text(item.get("task_type")).lower() == "quiz":
                 continue
-            if assigned_work_is_done(item):
+            if not is_student_work_actionable(item):
                 continue
             if api.planning.normalize_text(item.get("task_delivery")):
                 return item
@@ -539,7 +546,11 @@ def build_student_learning_space_payload(
     units_payload: list[dict[str, Any]] = []
     resolved_course_plan = None
     resources_payload = {"shared_resources": [], "class_resources": [], "general_assigned_work": []}
-    assigned_work_count = 0
+    assigned_work_counts = {
+        "assigned_work_count": 0,
+        "open_assigned_work_count": 0,
+        "completed_assigned_work_count": 0,
+    }
     reflection_entries: list[dict[str, Any]] = []
     course_communication_summary: dict[str, Any] = {
         "total_count": 0,
@@ -577,7 +588,7 @@ def build_student_learning_space_payload(
             anchor_date=api.now_datetime(),
             require_staff_access=False,
         ).get("unit_plan")
-        assigned_work_count = len(assigned_work)
+        assigned_work_counts = summarize_student_assigned_work(assigned_work)
     else:
         course_plans = api.frappe.get_all(
             "Course Plan",
@@ -705,7 +716,9 @@ def build_student_learning_space_payload(
             "counts": {
                 "units": len(units_payload),
                 "sessions": sum(len(unit.get("sessions") or []) for unit in units_payload),
-                "assigned_work": assigned_work_count,
+                "assigned_work": assigned_work_counts["assigned_work_count"],
+                "open_assigned_work": assigned_work_counts["open_assigned_work_count"],
+                "completed_assigned_work": assigned_work_counts["completed_assigned_work_count"],
             },
         },
     }

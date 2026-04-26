@@ -12,9 +12,13 @@ import frappe
 from frappe import _
 from frappe.utils import getdate, nowdate, strip_html
 
-from ifitwala_ed.api.courses import DONE_GRADING_STATUSES, DONE_SUBMISSION_STATUSES
 from ifitwala_ed.api.student_log_dashboard import get_authorized_schools
 from ifitwala_ed.api.student_overview_roles import ALLOWED_STAFF_ROLES
+from ifitwala_ed.api.student_task_status import (
+    DONE_GRADING_STATUSES,
+    DONE_SUBMISSION_STATUSES,
+    is_student_work_done,
+)
 from ifitwala_ed.students.doctype.student_log.student_log import get_student_log_visibility_predicate
 from ifitwala_ed.students.doctype.student_referral.student_referral import (
     get_permission_query_conditions as get_student_referral_permission_query_conditions,
@@ -717,21 +721,7 @@ def _attendance_block(
 
 
 def _task_is_completed(row) -> bool:
-    if int(row.get("complete") or 0) == 1:
-        return True
-
-    grading_status = str(row.get("grading_status") or "").strip()
-    if grading_status in DONE_GRADING_STATUSES:
-        return True
-
-    submission_status = str(row.get("submission_status") or "").strip()
-    if submission_status in DONE_SUBMISSION_STATUSES:
-        return True
-
-    if int(row.get("has_submission") or 0) == 1:
-        return True
-
-    return False
+    return is_student_work_done(row)
 
 
 def _task_is_missed(row) -> bool:

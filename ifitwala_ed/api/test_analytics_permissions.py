@@ -87,6 +87,11 @@ class TestAnalyticsPermissions(FrappeTestCase):
         caps = _build_staff_home_capabilities({"Academic Admin"})
         self.assertTrue(caps.get("analytics_academic_load"))
 
+    def test_staff_home_term_reporting_capability_for_academic_roles(self):
+        self.assertTrue(_build_staff_home_capabilities({"Academic Admin"}).get("term_reporting_review"))
+        self.assertTrue(_build_staff_home_capabilities({"Instructor"}).get("term_reporting_review"))
+        self.assertFalse(_build_staff_home_capabilities({"Employee"}).get("term_reporting_review"))
+
     def test_staff_home_demographics_capability_for_academic_assistant(self):
         caps = _build_staff_home_capabilities({"Academic Assistant"})
         self.assertTrue(caps.get("analytics_demographics"))

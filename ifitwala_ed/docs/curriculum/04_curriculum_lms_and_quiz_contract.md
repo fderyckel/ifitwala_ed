@@ -124,6 +124,7 @@ Test refs: `ifitwala_ed/assessment/doctype/task_delivery/test_task_delivery.py`,
 - LMS assigned work is resolved through `Class Teaching Plan` and optional `Class Session` context.
 - Task materials, sanitized task instructions, `task_outcome`, `requires_submission`, and `allow_late_submission` are serialized with the student assigned-work payload.
 - Student quiz deliveries now include bounded quiz-launch state in the learning-space payload.
+- Student assigned-work rows serialize server-owned `is_done` and `is_actionable` flags. `learning.next_actions`, unit navigation assigned-work badges, and `curriculum.counts.open_assigned_work` must use `is_actionable` rather than raw assignment totals.
 - `CourseDetail.vue` is the canonical student reading and launch surface for assigned work; quiz-backed work hands off to `StudentQuiz.vue` only for the attempt runtime.
 - Non-quiz task cards open a selected task workspace inside `CourseDetail.vue`, not a second student task page.
 - That workspace may lazily read the latest student submission and support text/link/file submit or resubmit when the delivery requires submission.

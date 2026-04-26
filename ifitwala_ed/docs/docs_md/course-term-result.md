@@ -3,7 +3,7 @@ title: "Course Term Result: The Frozen Record of Term Performance"
 slug: course-term-result
 category: Assessment
 doc_order: 11
-version: "1.0.4"
+version: "1.0.5"
 last_change_date: "2026-04-25"
 summary: "Store one immutable term-grade record per student-course-cycle, including calculated values, overrides, and audit-safe context fields."
 seo_title: "Course Term Result: The Frozen Record of Term Performance"
@@ -30,6 +30,7 @@ Course Term Result intentionally duplicates context fields (student, course, pro
 - Generated from aggregated [**Task Outcome**](/docs/en/task-outcome/) truth in `assessment/term_reporting.py`.
 - Stores calculation components so educators and later parents can understand how the result was produced.
 - Queried by `ifitwala_ed.api.term_reporting.get_course_term_results`.
+- Reviewed in the staff SPA through `ifitwala_ed.api.term_reporting.get_review_surface`, which returns the selected Reporting Cycle, bounded result rows, and component breakdowns in one scoped payload.
 - Linked into student reporting presentation:
   - `Student Term Report Course` child rows reference Course Term Result.
 
@@ -83,6 +84,7 @@ Course Term Result intentionally duplicates context fields (student, course, pro
   - `assessment/term_reporting.py` (`upsert_course_term_results`)
 - **Read API**:
   - `api/term_reporting.py::get_course_term_results()` returns resolved scheme provenance and component rows for each result
+  - `api/term_reporting.py::get_review_surface()` returns the bounded staff review payload for cycle selection, Course Term Result rows, and component explainability
 - **Performance indexes**:
   - (`reporting_cycle`, `student`)
   - (`reporting_cycle`, `program_enrollment`, `course`)

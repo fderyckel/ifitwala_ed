@@ -281,6 +281,9 @@ class TestTeachingPlansApi(TestCase):
         self.assertEqual(payload[0]["requires_submission"], 0)
         self.assertEqual(payload[0]["allow_late_submission"], 0)
         self.assertEqual(payload[0]["status_label"], "Completed")
+        self.assertEqual(payload[0]["has_submission"], 1)
+        self.assertEqual(payload[0]["is_done"], 1)
+        self.assertEqual(payload[0]["is_actionable"], 1)
         self.assertEqual(payload[0]["quiz_state"]["can_continue"], 1)
         self.assertEqual(payload[0]["quiz_state"]["status_label"], "In Progress")
         self.assertEqual(payload[0]["instructions_html"], "<p>Bring your notes.</p>")
@@ -532,6 +535,9 @@ class TestTeachingPlansApi(TestCase):
         self.assertEqual(payload["learning"]["selected_context"]["unit_plan"], "UNIT-1")
         self.assertEqual(payload["learning"]["selected_context"]["class_session"], "SESSION-1")
         self.assertEqual(payload["learning"]["selected_context"]["task_delivery"], "TDL-2")
+        self.assertEqual(payload["curriculum"]["counts"]["assigned_work"], 2)
+        self.assertEqual(payload["curriculum"]["counts"]["open_assigned_work"], 2)
+        self.assertEqual(payload["curriculum"]["counts"]["completed_assigned_work"], 0)
         self.assertEqual(payload["learning"]["reflection_entries"][0]["name"], "REF-1")
         self.assertEqual(payload["learning"]["reflection_entries"][0]["class_session"], "SESSION-1")
         self.assertEqual(payload["learning"]["next_actions"][0]["kind"], "quiz")
@@ -603,10 +609,14 @@ class TestTeachingPlansApi(TestCase):
 
             with patch.object(module, "now_datetime", return_value=datetime(2026, 4, 2, 9, 0, 0)):
                 actions = module._build_student_next_actions(units, [])
+                navigation = module._build_student_unit_navigation(units, "UNIT-1")
 
         self.assertEqual([row.get("task_delivery") for row in actions], ["TDL-QUIZ-RETRY", "TDL-OPEN"])
         self.assertEqual(actions[0]["kind"], "quiz")
         self.assertEqual(actions[1]["kind"], "assigned_work")
+        self.assertEqual(navigation[0]["assigned_work_count"], 5)
+        self.assertEqual(navigation[0]["open_assigned_work_count"], 2)
+        self.assertEqual(navigation[0]["completed_assigned_work_count"], 3)
 
     def test_student_selected_task_skips_completed_work(self):
         with _teaching_plans_module() as module:

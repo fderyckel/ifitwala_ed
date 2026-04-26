@@ -66,7 +66,7 @@
 								class="chip transition hover:border-jacaranda/40 hover:bg-jacaranda/5"
 								@click="jumpToSection(SECTION_IDS.assignedWork)"
 							>
-								{{ learningSpace.curriculum.counts.assigned_work }} assignments
+								{{ learningSpace.curriculum.counts.open_assigned_work }} open assignments
 							</button>
 						</div>
 
@@ -338,7 +338,10 @@
 								<p class="type-overline text-ink/60">Unit {{ unit.unit_order || '—' }}</p>
 								<p class="mt-1 type-body-strong text-ink">{{ unit.title }}</p>
 								<p class="mt-1 type-caption text-ink/70">
-									{{ unit.session_count }} sessions · {{ unit.assigned_work_count }} tasks
+									{{ unit.session_count }} sessions · {{ unit.open_assigned_work_count }} open
+									<span v-if="unit.completed_assigned_work_count">
+										· {{ unit.completed_assigned_work_count }} completed
+									</span>
 								</p>
 							</button>
 						</div>
@@ -733,7 +736,7 @@
 				<div class="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
 					<div>
 						<p class="type-overline text-ink/60">Assigned Work</p>
-						<h2 class="mt-2 type-h2 text-ink">Keep track of what needs to be done</h2>
+						<h2 class="mt-2 type-h2 text-ink">Keep track of open work</h2>
 						<p class="mt-2 type-body text-ink/80">
 							{{
 								selectedUnit
@@ -742,7 +745,12 @@
 							}}
 						</p>
 					</div>
-					<span class="chip">{{ displayedAssignedWork.length }}</span>
+					<div class="flex flex-wrap gap-2">
+						<span class="chip chip-focus">{{ displayedOpenAssignedWork.length }} open</span>
+						<span v-if="displayedCompletedAssignedWork.length" class="chip">
+							{{ displayedCompletedAssignedWork.length }} completed
+						</span>
+					</div>
 				</div>
 
 				<section
@@ -1134,17 +1142,15 @@
 				</section>
 
 				<div
-					v-if="!displayedAssignedWork.length"
+					v-if="!displayedOpenAssignedWork.length"
 					class="mt-5 rounded-2xl border border-dashed border-line-soft p-4"
 				>
-					<p class="type-body text-ink/70">
-						No assigned work is published for this unit right now.
-					</p>
+					<p class="type-body text-ink/70">No open assigned work for this unit right now.</p>
 				</div>
 
 				<div v-else class="mt-5 grid gap-3 xl:grid-cols-2">
 					<article
-						v-for="item in displayedAssignedWork"
+						v-for="item in displayedOpenAssignedWork"
 						:key="item.task_delivery"
 						class="rounded-2xl border p-4"
 						:class="
@@ -1208,6 +1214,61 @@
 						</div>
 					</article>
 				</div>
+
+				<details
+					v-if="displayedCompletedAssignedWork.length"
+					class="mt-5 rounded-2xl border border-line-soft bg-surface-soft p-4"
+				>
+					<summary class="cursor-pointer list-none">
+						<div class="flex items-center justify-between gap-3">
+							<div>
+								<p class="type-body-strong text-ink">Completed work</p>
+								<p class="mt-1 type-caption text-ink/70">
+									Review work that no longer needs action.
+								</p>
+							</div>
+							<span class="chip">{{ displayedCompletedAssignedWork.length }}</span>
+						</div>
+					</summary>
+					<div class="mt-4 grid gap-3 xl:grid-cols-2">
+						<article
+							v-for="item in displayedCompletedAssignedWork"
+							:key="`completed-${item.task_delivery}`"
+							class="rounded-2xl border border-line-soft bg-white p-4"
+						>
+							<div class="flex flex-wrap items-center gap-2">
+								<p class="type-body-strong text-ink">{{ item.title }}</p>
+								<span v-if="item.task_type" class="chip">{{ item.task_type }}</span>
+								<span v-if="assignedWorkStatusLabel(item)" class="chip">
+									{{ assignedWorkStatusLabel(item) }}
+								</span>
+							</div>
+							<p v-if="assignedWorkTimingLabel(item)" class="mt-2 type-caption text-ink/70">
+								{{ assignedWorkTimingLabel(item) }}
+							</p>
+							<p v-if="assignedWorkContextLine(item)" class="mt-1 type-caption text-ink/60">
+								{{ assignedWorkContextLine(item) }}
+							</p>
+							<div class="mt-3 flex flex-wrap gap-2">
+								<RouterLink
+									v-if="isQuizAssignedWork(item)"
+									:to="quizRouteFor(item)"
+									class="if-button if-button--secondary"
+								>
+									{{ quizActionLabel(item) }}
+								</RouterLink>
+								<button
+									v-else-if="item.class_session || item.unit_plan"
+									type="button"
+									class="if-button if-button--secondary"
+									@click="focusAssignedWork(item)"
+								>
+									Review task workspace
+								</button>
+							</div>
+						</article>
+					</div>
+				</details>
 			</section>
 
 			<section
@@ -1442,6 +1503,14 @@ const displayedAssignedWork = computed<StudentAssignedWork[]>(() => {
 	}
 	return dedupeAssignedWork(learningSpace.value?.resources.general_assigned_work || []);
 });
+const displayedOpenAssignedWork = computed<StudentAssignedWork[]>(() =>
+	displayedAssignedWork.value.filter(item => isActionableAssignedWork(item))
+);
+const displayedCompletedAssignedWork = computed<StudentAssignedWork[]>(() =>
+	displayedAssignedWork.value.filter(
+		item => !isActionableAssignedWork(item) && isDoneAssignedWork(item)
+	)
+);
 
 const selectedTaskWorkspaceNote = computed(() => {
 	if (!selectedTaskWorkspace.value) return '';
@@ -1587,7 +1656,7 @@ const learningSections = computed(() => {
 	if (selectedUnit.value || displayedAssignedWork.value.length) {
 		sections.push({
 			id: SECTION_IDS.assignedWork,
-			label: `Assigned Work (${displayedAssignedWork.value.length})`,
+			label: `Assigned Work (${displayedOpenAssignedWork.value.length})`,
 		});
 	}
 
@@ -1842,6 +1911,14 @@ function isQuizAssignedWork(item: StudentAssignedWork) {
 	return (item.task_type || '').trim() === 'Quiz';
 }
 
+function isDoneAssignedWork(item: StudentAssignedWork) {
+	return Boolean(item.is_done);
+}
+
+function isActionableAssignedWork(item: StudentAssignedWork) {
+	return Boolean(item.is_actionable);
+}
+
 function dedupeAssignedWork(items: StudentAssignedWork[]) {
 	const seen = new Set<string>();
 	return items.filter(item => {
@@ -1872,6 +1949,69 @@ function findAssignedWorkInPayload(
 		}
 	}
 	return null;
+}
+
+function collectAssignedWorkFromPayload(payload: StudentLearningSpaceResponse | null) {
+	const items: StudentAssignedWork[] = [];
+	if (!payload) return items;
+	for (const item of payload.resources.general_assigned_work || []) {
+		items.push(item);
+	}
+	for (const unit of payload.curriculum.units || []) {
+		for (const item of unit.assigned_work || []) {
+			items.push(item);
+		}
+		for (const session of unit.sessions || []) {
+			for (const item of session.assigned_work || []) {
+				items.push(item);
+			}
+		}
+	}
+	return dedupeAssignedWork(items);
+}
+
+function assignedWorkCounts(items: StudentAssignedWork[]) {
+	const deduped = dedupeAssignedWork(items);
+	const open = deduped.filter(item => isActionableAssignedWork(item)).length;
+	const completed = deduped.filter(
+		item => !isActionableAssignedWork(item) && isDoneAssignedWork(item)
+	).length;
+	return {
+		total: deduped.length,
+		open,
+		completed,
+	};
+}
+
+function withAssignedWorkCounts(
+	payload: StudentLearningSpaceResponse
+): StudentLearningSpaceResponse {
+	const allCounts = assignedWorkCounts(collectAssignedWorkFromPayload(payload));
+	return {
+		...payload,
+		learning: {
+			...payload.learning,
+			unit_navigation: (payload.learning.unit_navigation || []).map(unitNav => {
+				const unit = payload.curriculum.units.find(row => row.unit_plan === unitNav.unit_plan);
+				const unitCounts = assignedWorkCounts(unit?.assigned_work || []);
+				return {
+					...unitNav,
+					assigned_work_count: unitCounts.total,
+					open_assigned_work_count: unitCounts.open,
+					completed_assigned_work_count: unitCounts.completed,
+				};
+			}),
+		},
+		curriculum: {
+			...payload.curriculum,
+			counts: {
+				...payload.curriculum.counts,
+				assigned_work: allCounts.total,
+				open_assigned_work: allCounts.open,
+				completed_assigned_work: allCounts.completed,
+			},
+		},
+	};
 }
 
 function taskBelongsToUnit(item: StudentAssignedWork, unitPlan?: string | null) {
@@ -2156,7 +2296,7 @@ function patchAssignedWork(taskDelivery: string, updates: Partial<StudentAssigne
 				: item
 		);
 
-	learningSpace.value = {
+	const nextPayload: StudentLearningSpaceResponse = {
 		...learningSpace.value,
 		resources: {
 			...learningSpace.value.resources,
@@ -2176,6 +2316,7 @@ function patchAssignedWork(taskDelivery: string, updates: Partial<StudentAssigne
 			})),
 		},
 	};
+	learningSpace.value = withAssignedWorkCounts(nextPayload);
 }
 
 function removeNextActionForTaskDelivery(taskDelivery: string) {
@@ -2233,6 +2374,9 @@ async function submitSelectedTaskWorkspace() {
 			submission_status:
 				response.outcome_flags?.submission_status ||
 				(isResubmission ? 'Resubmitted' : 'Submitted'),
+			has_submission: 1,
+			is_done: 1,
+			is_actionable: 0,
 		});
 		removeNextActionForTaskDelivery(task.task_delivery);
 		submissionDirty.value = false;
@@ -2263,6 +2407,8 @@ async function markSelectedTaskComplete() {
 		patchAssignedWork(task.task_delivery, {
 			is_complete: response.is_complete ? 1 : 0,
 			status_label: response.is_complete ? 'Completed' : task.status_label,
+			is_done: response.is_complete ? 1 : task.is_done,
+			is_actionable: response.is_complete ? 0 : task.is_actionable,
 		});
 		if (response.is_complete) {
 			removeNextActionForTaskDelivery(task.task_delivery);

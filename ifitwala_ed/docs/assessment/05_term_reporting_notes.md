@@ -241,6 +241,16 @@ This layer:
 
 No UI logic. No permissions hacks. No side effects.
 
+### Staff Review Surface
+
+The staff SPA review surface is read-only and bounded:
+
+* Route: `/staff/term-reporting`
+* API: `ifitwala_ed.api.term_reporting.get_review_surface`
+* Payload: available Reporting Cycles, selected cycle summary, paged Course Term Result rows, and component breakdowns
+
+This surface is for academic review and explainability only. It must not recalculate grades, mutate Course Term Result rows, or replace the Reporting Cycle lifecycle.
+
 ---
 
 ## 9. Configuration as Data

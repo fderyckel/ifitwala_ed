@@ -19,9 +19,8 @@ from ifitwala_ed.api import student_communications as student_communications_api
 from ifitwala_ed.api.family_consent import get_student_consent_home_summary
 from ifitwala_ed.api.student_policy import get_student_policy_home_summary
 from ifitwala_ed.api.student_task_status import (
-    DONE_GRADING_STATUSES,
-    DONE_SUBMISSION_STATUSES,
     build_student_task_status_label,
+    is_student_work_done,
 )
 
 COURSE_PLACEHOLDER = "/assets/ifitwala_ed/images/course_placeholder.jpg"
@@ -524,21 +523,7 @@ def _fetch_student_hub_task_rows(student_name: str, student_groups: list[str]) -
 
 
 def _is_work_item_done(row: dict[str, Any]) -> bool:
-    if int(row.get("is_complete") or 0) == 1:
-        return True
-
-    grading_status = str(row.get("grading_status") or "").strip()
-    if grading_status in DONE_GRADING_STATUSES:
-        return True
-
-    submission_status = str(row.get("submission_status") or "").strip()
-    if submission_status in DONE_SUBMISSION_STATUSES:
-        return True
-
-    if int(row.get("has_submission") or 0) == 1:
-        return True
-
-    return False
+    return is_student_work_done(row)
 
 
 def _build_work_item_href(row: dict[str, Any]) -> dict[str, Any] | None:

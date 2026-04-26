@@ -676,6 +676,14 @@ const exploreLinks: Array<StaffHomeAnalyticsLink | StaffHomeExploreAction> = [
 	},
 	{
 		kind: 'route',
+		label: 'Term Reporting',
+		caption: 'Review frozen results and calculation components',
+		icon: 'file-text',
+		to: { name: 'staff-term-reporting' },
+		capability: 'term_reporting_review',
+	},
+	{
+		kind: 'route',
 		label: 'Course Plans',
 		caption: 'Open the governed curriculum backbone and shared resources',
 		icon: 'layers',

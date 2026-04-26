@@ -225,6 +225,8 @@ function buildPayload(message: string | null = null): StudentLearningSpaceRespon
 					unit_order: 1,
 					session_count: 2,
 					assigned_work_count: 2,
+					open_assigned_work_count: 2,
+					completed_assigned_work_count: 0,
 					is_current: 1,
 				},
 			],
@@ -284,6 +286,9 @@ function buildPayload(message: string | null = null): StudentLearningSpaceRespon
 						task_type: 'Quiz',
 						unit_plan: 'UNIT-PLAN-1',
 						class_session: 'CLASS-SESSION-1',
+						has_submission: 1,
+						is_done: 1,
+						is_actionable: 1,
 						submission_status: 'Submitted',
 						quiz_state: {
 							can_continue: 1,
@@ -329,6 +334,9 @@ function buildPayload(message: string | null = null): StudentLearningSpaceRespon
 							allow_late_submission: 1,
 							status_label: 'Open',
 							submission_status: 'Not Submitted',
+							has_submission: 0,
+							is_done: 0,
+							is_actionable: 1,
 							materials: [],
 						},
 					],
@@ -338,6 +346,8 @@ function buildPayload(message: string | null = null): StudentLearningSpaceRespon
 				units: 1,
 				sessions: 2,
 				assigned_work: 2,
+				open_assigned_work: 2,
+				completed_assigned_work: 0,
 			},
 			units: [
 				{
@@ -385,6 +395,9 @@ function buildPayload(message: string | null = null): StudentLearningSpaceRespon
 								task_type: 'Quiz',
 								unit_plan: 'UNIT-PLAN-1',
 								class_session: 'CLASS-SESSION-1',
+								has_submission: 1,
+								is_done: 1,
+								is_actionable: 1,
 								submission_status: 'Submitted',
 								quiz_state: {
 									can_continue: 1,
@@ -430,6 +443,9 @@ function buildPayload(message: string | null = null): StudentLearningSpaceRespon
 								allow_late_submission: 1,
 								status_label: 'Open',
 								submission_status: 'Not Submitted',
+								has_submission: 0,
+								is_done: 0,
+								is_actionable: 1,
 								materials: [],
 							},
 						],
@@ -479,6 +495,9 @@ function buildPayload(message: string | null = null): StudentLearningSpaceRespon
 										task_type: 'Quiz',
 										unit_plan: 'UNIT-PLAN-1',
 										class_session: 'CLASS-SESSION-1',
+										has_submission: 1,
+										is_done: 1,
+										is_actionable: 1,
 										submission_status: 'Submitted',
 										quiz_state: {
 											can_continue: 1,
@@ -524,6 +543,9 @@ function buildPayload(message: string | null = null): StudentLearningSpaceRespon
 										allow_late_submission: 1,
 										status_label: 'Open',
 										submission_status: 'Not Submitted',
+										has_submission: 0,
+										is_done: 0,
+										is_actionable: 1,
 										materials: [],
 									},
 								],
@@ -569,6 +591,9 @@ function buildAssignOnlyPayload(): StudentLearningSpaceResponse {
 					status_label: 'Open',
 					submission_status: 'Not Required',
 					is_complete: 0,
+					has_submission: 0,
+					is_done: 0,
+					is_actionable: 1,
 				}
 			: item
 
@@ -1046,6 +1071,8 @@ describe('CourseDetail', () => {
 		expect(document.body.textContent).not.toContain('Complete Field notebook check')
 		expect(document.body.textContent).toContain('Task complete')
 		expect(document.body.textContent).toContain('Completed')
+		expect(document.body.textContent).toContain('Completed work')
+		expect(document.body.textContent).toContain('1 completed')
 	})
 
 	it('keeps the learning space visible when shared-plan messaging is present', async () => {
